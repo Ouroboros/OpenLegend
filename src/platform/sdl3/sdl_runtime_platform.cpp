@@ -5,12 +5,17 @@
 
 namespace openlegend::platform::sdl3 {
 
-SdlRuntimePlatform::SdlRuntimePlatform() {
+SdlRuntimePlatform::SdlRuntimePlatform(
+    const int window_width, const int window_height, const bool maximized) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         return;
     }
 
-    window_ = SDL_CreateWindow("OpenLegend", 960, 600, SDL_WINDOW_RESIZABLE);
+    SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+    if (maximized) {
+        flags |= SDL_WINDOW_MAXIMIZED;
+    }
+    window_ = SDL_CreateWindow("OpenLegend", window_width, window_height, flags);
     if (window_ == nullptr) {
         return;
     }
@@ -40,6 +45,15 @@ SdlRuntimePlatform::~SdlRuntimePlatform() {
 
 bool SdlRuntimePlatform::valid() const noexcept {
     return window_ != nullptr && renderer_ != nullptr && texture_ != nullptr;
+}
+
+bool SdlRuntimePlatform::query_window_state(
+    int& normal_width, int& normal_height, bool& maximized) const noexcept {
+    if (window_ == nullptr) {
+        return false;
+    }
+    maximized = (SDL_GetWindowFlags(window_) & SDL_WINDOW_MAXIMIZED) != 0U;
+    return maximized || SDL_GetWindowSize(window_, &normal_width, &normal_height);
 }
 
 bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {

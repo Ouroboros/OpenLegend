@@ -4,6 +4,28 @@ project(OpenLegend VERSION 0.1.0 LANGUAGES CXX)
 
 option(OPENLEGEND_BUILD_APP "Build the SDL3 OpenLegend executable" ON)
 option(OPENLEGEND_FETCH_SDL3 "Fetch SDL3 when no package is installed" ON)
+option(
+    OPENLEGEND_FETCH_TOMLPLUSPLUS
+    "Fetch the pinned toml++ source when no installed package is available"
+    ON
+)
+
+find_package(tomlplusplus 3.4 CONFIG QUIET)
+if(NOT TARGET tomlplusplus::tomlplusplus)
+    if(NOT OPENLEGEND_FETCH_TOMLPLUSPLUS)
+        message(FATAL_ERROR "toml++ 3.4 or newer was not found and fetching is disabled")
+    endif()
+    include(FetchContent)
+    set(TOMLPLUSPLUS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(TOMLPLUSPLUS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        tomlplusplus
+        URL https://github.com/marzer/tomlplusplus/archive/refs/tags/v3.4.0.tar.gz
+        URL_HASH SHA256=8517f65938a4faae9ccf8ebb36631a38c1cadfb5efa85d9a72e15b9e97d25155
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(tomlplusplus)
+endif()
 
 add_library(openlegend_project_options INTERFACE)
 target_compile_features(openlegend_project_options INTERFACE cxx_std_20)

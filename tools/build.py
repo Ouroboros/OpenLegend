@@ -157,6 +157,7 @@ def configure_command(
         "-DBUILD_TESTING:BOOL=ON",
         f"-DOPENLEGEND_BUILD_APP:BOOL={'ON' if target == 'app' else 'OFF'}",
         "-DOPENLEGEND_FETCH_SDL3:BOOL=ON",
+        "-DOPENLEGEND_FETCH_TOMLPLUSPLUS:BOOL=ON",
     ]
     if cxx_compiler:
         command.append(f"-DCMAKE_CXX_COMPILER:FILEPATH={cxx_compiler}")

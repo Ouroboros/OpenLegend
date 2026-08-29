@@ -47,6 +47,7 @@ class BuildToolTest(unittest.TestCase):
         )
         self.assertIn("Ninja Multi-Config", command)
         self.assertIn("-DOPENLEGEND_BUILD_APP:BOOL=OFF", command)
+        self.assertIn("-DOPENLEGEND_FETCH_TOMLPLUSPLUS:BOOL=ON", command)
         self.assertIn(r"-DCMAKE_CXX_COMPILER:FILEPATH=D:\Dev\clang++.exe", command)
         self.assertNotIn(r"-DCMAKE_C_COMPILER:FILEPATH=D:\Dev\clang.exe", command)
         self.assertIn(r"-DPython3_EXECUTABLE:FILEPATH=D:\Dev\python.exe", command)

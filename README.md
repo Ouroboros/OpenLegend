@@ -49,13 +49,32 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 
 原版文件只读使用；构建、测试和生成物只写入 `OpenLegend/build/` 或其他仓库内已忽略目录。
 
+## 配置文件
+
+示例见 [`config/openlegend.example.toml`](config/openlegend.example.toml)。把它复制到 `openlegend` 可执行文件同目录并命名为 `openlegend.toml`。当前实际生效字段来自 OpenSWD3 的同类启动配置：
+
+```toml
+[paths]
+data_dir = 'E:\Game\金庸群侠传'
+
+[window]
+width = 960
+height = 600
+maximized = false
+```
+
+- `--data-dir <目录>` 或 `--data-dir=<目录>` 的优先级高于 `[paths].data_dir`；
+- 配置中的相对数据路径以可执行文件目录为基准，命令行相对路径以启动目录为基准；
+- 正常退出会回写窗口宽高和最大化状态，同时保留 `[paths]` 与未知 TOML 表；
+- 当前不暴露 OpenSWD3 的显示 FPS/世界移动插值字段，因为 OpenLegend 的 B4 时钟和 B6 世界移动尚未实现，写入假字段不会产生有效行为。
+
 ## 构建
 
 要求：
 
 - Python 3；
 - GCC、Clang 或 MSVC 的 C++20 工具链；
-- 首次构建时可访问 Python package index 和 SDL GitHub release 压缩包。
+- 首次构建时可访问 Python package index，以及 toml++/SDL GitHub release 压缩包。
 
 构建脚本会把固定版本的 CMake 3.31.10 与 Ninja 1.13.0 安装到仓库内已忽略的 `.tools/`，不会修改系统工具链。
 
@@ -112,6 +131,7 @@ build/<platform>-<core|app>/
 ## 工程结构
 
 ```text
+config/               可复制的 openlegend.toml 示例
 include/openlegend/   公共 C++ 接口
 src/                  app、compat、resource、render 与平台实现
 tests/                单元、真实资产与集成测试

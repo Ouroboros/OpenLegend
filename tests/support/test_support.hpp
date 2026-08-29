@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace openlegend::test {
@@ -11,7 +12,12 @@ inline int failures = 0;
 
 inline std::filesystem::path utf8_path(const std::string_view value) {
 #if defined(_WIN32)
-    return std::filesystem::u8path(value.begin(), value.end());
+    std::u8string utf8;
+    utf8.reserve(value.size());
+    for (const char character : value) {
+        utf8.push_back(static_cast<char8_t>(static_cast<unsigned char>(character)));
+    }
+    return std::filesystem::path{utf8};
 #else
     return std::filesystem::path{value};
 #endif

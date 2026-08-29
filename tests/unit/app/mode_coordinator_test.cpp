@@ -7,6 +7,7 @@
 #include "test_support.hpp"
 
 void run_legacy_video_tests();
+void run_runtime_configuration_tests();
 
 namespace {
 
@@ -86,6 +87,7 @@ void run_mode_coordinator_tests() {
 
 int main() {
     run_mode_coordinator_tests();
+    run_runtime_configuration_tests();
     run_legacy_video_tests();
     return openlegend::test::failures == 0 ? 0 : 1;
 }

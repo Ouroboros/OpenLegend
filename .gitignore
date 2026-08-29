@@ -5,6 +5,7 @@
 /CMakeCache.txt
 /CMakeUserPresets.json
 /compile_commands.json
+/openlegend.toml
 
 # Project-local tool bootstrap
 /.tools/

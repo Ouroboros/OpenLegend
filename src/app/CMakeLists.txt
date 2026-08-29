@@ -1,4 +1,4 @@
-add_library(openlegend_app STATIC mode_coordinator.cpp)
+add_library(openlegend_app STATIC mode_coordinator.cpp runtime_configuration.cpp)
 target_include_directories(
     openlegend_app
     PUBLIC
@@ -8,4 +8,5 @@ target_include_directories(
 target_link_libraries(
     openlegend_app
     PUBLIC openlegend_compat openlegend_project_options openlegend_project_warnings
+    PRIVATE tomlplusplus::tomlplusplus
 )

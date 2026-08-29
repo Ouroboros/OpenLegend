@@ -15,7 +15,8 @@
         "CMAKE_CXX_EXTENSIONS": "OFF",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
-        "OPENLEGEND_FETCH_SDL3": "ON"
+        "OPENLEGEND_FETCH_SDL3": "ON",
+        "OPENLEGEND_FETCH_TOMLPLUSPLUS": "ON"
       }
     },
     {

@@ -1,0 +1,15 @@
+[paths]
+
+# Windows paths can use TOML literal strings, so backslashes need no escaping.
+# data_dir = 'E:\Game\金庸群侠传'
+
+# Linux and macOS example:
+# data_dir = '/home/user/games/jinyong'
+
+[window]
+
+# OpenLegend always renders internally at 320x200. These values only control
+# the restored host window; game content keeps its original aspect ratio.
+width = 960
+height = 600
+maximized = false

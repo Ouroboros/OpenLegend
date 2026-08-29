@@ -9,3 +9,6 @@ target_link_libraries(
         openlegend_project_warnings
         SDL3::SDL3
 )
+if(WIN32)
+    target_link_libraries(openlegend PRIVATE shell32)
+endif()

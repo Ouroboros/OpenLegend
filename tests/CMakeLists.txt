@@ -1,6 +1,7 @@
 add_executable(
     openlegend_core_tests
     unit/app/mode_coordinator_test.cpp
+    unit/app/runtime_configuration_test.cpp
     unit/compat/legacy_video_test.cpp
 )
 target_include_directories(openlegend_core_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
@@ -32,9 +33,14 @@ add_test(
 )
 
 if(TARGET openlegend)
-    add_test(NAME openlegend.sdl_smoke COMMAND openlegend --smoke-test)
+    add_test(
+        NAME openlegend.sdl_smoke
+        COMMAND openlegend --smoke-test --data-dir=${PROJECT_SOURCE_DIR}/..
+    )
     set_tests_properties(
         openlegend.sdl_smoke
-        PROPERTIES ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software"
+        PROPERTIES
+            ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software"
+            TIMEOUT 30
     )
 endif()
