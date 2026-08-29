@@ -10,8 +10,9 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 
 - **B0 已完成**：C++20/CMake 工程、同步模式协调、SDL3 窗口与 indexed framebuffer 上传。
 - **B1 已完成**：普通 IDX、MMAP 特例、SDX/WDX 哨兵、RLE、字体、调色板和世界层读取。
-- **B2 进行中**：按原版汇编还原 framebuffer、RLE 四向裁剪、ASCII/Big5 字形与基础呈现。
-- **B3–B9 未完成**：模型存档、输入音频、标题菜单、世界、场景、战斗与完整集成。
+- **B2 已完成**：framebuffer、RLE 四向裁剪、ASCII/Big5 字形、palette 淡变、shadow-mask 与地图深度顺序。
+- **B3 进行中**：按原版汇编恢复 RANGER 六段、R/S/D 物理格式和 lossless snapshot。
+- **B4–B9 未完成**：输入音频、标题菜单、世界、场景、战斗与完整集成。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 

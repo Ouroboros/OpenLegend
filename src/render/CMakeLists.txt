@@ -1,0 +1,19 @@
+add_library(
+    openlegend_render
+    STATIC
+        indexed_framebuffer.cpp
+        legacy_effects.cpp
+        legacy_font_renderer.cpp
+        rle_sprite_renderer.cpp
+        world_depth_order.cpp
+)
+target_include_directories(
+    openlegend_render
+    PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(
+    openlegend_render
+    PUBLIC openlegend_compat openlegend_resource openlegend_project_options openlegend_project_warnings
+)

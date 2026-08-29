@@ -22,6 +22,7 @@ endif()
 
 add_subdirectory(src/compat)
 add_subdirectory(src/resource)
+add_subdirectory(src/render)
 add_subdirectory(src/app)
 
 if(OPENLEGEND_BUILD_APP)

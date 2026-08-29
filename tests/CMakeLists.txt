@@ -16,6 +16,15 @@ target_include_directories(openlegend_resource_tests PRIVATE ${CMAKE_CURRENT_SOU
 target_link_libraries(openlegend_resource_tests PRIVATE openlegend_resource)
 add_test(NAME openlegend.resource COMMAND openlegend_resource_tests)
 
+add_executable(openlegend_render_tests unit/render/legacy_render_test.cpp)
+target_compile_definitions(
+    openlegend_render_tests
+    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+)
+target_include_directories(openlegend_render_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_render_tests PRIVATE openlegend_render)
+add_test(NAME openlegend.render COMMAND openlegend_render_tests)
+
 if(TARGET openlegend)
     add_test(NAME openlegend.sdl_smoke COMMAND openlegend --smoke-test)
     set_tests_properties(
