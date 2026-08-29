@@ -1,7 +1,12 @@
 @echo off
 setlocal
 
-cd /d "%~dp0"
+for %%I in ("%~dp0.") do set "PROJECT_ROOT=%%~fsI"
+if not defined PROJECT_ROOT (
+    echo [OpenLegend] Failed to resolve the Windows short project path. 1>&2
+    exit /b 2
+)
+cd /d "%PROJECT_ROOT%"
 
 set "CMAKE_EXE=D:\Dev\lldb\tools\cmake\bin\cmake.exe"
 set "CTEST_EXE=D:\Dev\lldb\tools\cmake\bin\ctest.exe"
@@ -20,25 +25,25 @@ if /I "%TARGET%"=="app" if not exist "%LLVM_BIN%\clang.exe" goto missing_tools
 if /I "%TARGET%"=="sdl" if not exist "%LLVM_BIN%\clang.exe" goto missing_tools
 
 set "PATH=%LLVM_BIN%;D:\Dev\lldb\tools\cmake\bin;D:\Dev\lldb\tools\ninja;%PATH%"
+set "OPENLEGEND_PROJECT_ROOT=%PROJECT_ROOT%"
 set "OPENLEGEND_CMAKE=%CMAKE_EXE%"
 set "OPENLEGEND_CTEST=%CTEST_EXE%"
 set "OPENLEGEND_NINJA=%NINJA_EXE%"
 set "CC=%LLVM_BIN%\clang.exe"
 set "CXX=%LLVM_BIN%\clang++.exe"
 
-where python >nul 2>nul
-if errorlevel 1 (
-    if exist "D:\Dev\Python\python.exe" (
-        set "PYTHON=D:\Dev\Python\python.exe"
-    ) else (
+if exist "D:\Dev\Python\python.exe" (
+    set "PYTHON=D:\Dev\Python\python.exe"
+) else (
+    where python >nul 2>nul
+    if errorlevel 1 (
         echo [OpenLegend] Python 3 was not found. 1>&2
         exit /b 2
     )
-) else (
     set "PYTHON=python"
 )
 
-"%PYTHON%" "%~dp0tools\build.py" %*
+"%PYTHON%" "%PROJECT_ROOT%\tools\build.py" %*
 set "BUILD_EXIT=%ERRORLEVEL%"
 echo.
 exit /b %BUILD_EXIT%

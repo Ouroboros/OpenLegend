@@ -25,6 +25,12 @@ target_include_directories(openlegend_render_tests PRIVATE ${CMAKE_CURRENT_SOURC
 target_link_libraries(openlegend_render_tests PRIVATE openlegend_render)
 add_test(NAME openlegend.render COMMAND openlegend_render_tests)
 
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(
+    NAME openlegend.build_tool
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/build_tool_test.py
+)
+
 if(TARGET openlegend)
     add_test(NAME openlegend.sdl_smoke COMMAND openlegend --smoke-test)
     set_tests_properties(

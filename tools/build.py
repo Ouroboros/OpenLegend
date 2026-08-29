@@ -28,10 +28,22 @@ def environment_jobs(name: str, fallback: int) -> int:
     return positive_integer(value)
 
 
-def parse_args() -> argparse.Namespace:
+def normalize_target(target: str) -> str:
+    return "app" if target == "sdl" else target
+
+
+def project_root_path(script_file: Path) -> Path:
+    if configured := os.environ.get("OPENLEGEND_PROJECT_ROOT"):
+        return Path(configured)
+    return script_file.resolve().parents[1]
+
+
+def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     processor_count = max(1, os.cpu_count() or 1)
     parser = argparse.ArgumentParser(description="Configure, build, and test OpenLegend with Ninja")
-    parser.add_argument("target", choices=("core", "app", "sdl"), nargs="?", default="core")
+    parser.add_argument(
+        "target", type=str.lower, choices=("core", "app", "sdl"), nargs="?", default="core"
+    )
     parser.add_argument("--config", choices=("Debug", "Release"), default="Debug")
     parser.add_argument(
         "--jobs",
@@ -45,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--configure-only", action="store_true")
     parser.add_argument("--skip-tests", action="store_true")
-    return parser.parse_args()
+    return parser.parse_args(arguments)
 
 
 def executable_name(name: str) -> str:
@@ -120,6 +132,39 @@ def run(command: list[str], cwd: Path) -> None:
     subprocess.run(command, cwd=cwd, check=True)
 
 
+def configure_command(
+    cmake: Path,
+    ninja: Path,
+    project_root: Path,
+    build_dir: Path,
+    target: str,
+    cxx_compiler: str | None = None,
+    c_compiler: str | None = None,
+    python_executable: str = sys.executable,
+) -> list[str]:
+    command = [
+        str(cmake),
+        "-S",
+        str(project_root),
+        "-B",
+        str(build_dir),
+        "-G",
+        EXPECTED_GENERATOR,
+        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja}",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON",
+        "-DCMAKE_CXX_EXTENSIONS:BOOL=OFF",
+        f"-DPython3_EXECUTABLE:FILEPATH={python_executable}",
+        "-DBUILD_TESTING:BOOL=ON",
+        f"-DOPENLEGEND_BUILD_APP:BOOL={'ON' if target == 'app' else 'OFF'}",
+        "-DOPENLEGEND_FETCH_SDL3:BOOL=ON",
+    ]
+    if cxx_compiler:
+        command.append(f"-DCMAKE_CXX_COMPILER:FILEPATH={cxx_compiler}")
+    if target == "app" and c_compiler:
+        command.append(f"-DCMAKE_C_COMPILER:FILEPATH={c_compiler}")
+    return command
+
+
 def cached_generator(cache_file: Path) -> str | None:
     if not cache_file.is_file():
         return None
@@ -131,10 +176,10 @@ def cached_generator(cache_file: Path) -> str | None:
 
 def main() -> int:
     args = parse_args()
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = project_root_path(Path(__file__))
     cmake, ninja, ctest = ensure_tools(project_root)
 
-    target = "app" if args.target == "sdl" else args.target
+    target = normalize_target(args.target)
     if args.target == "sdl":
         print("[OpenLegend] 'sdl' is a compatibility alias; prefer 'app'.", flush=True)
 
@@ -142,8 +187,6 @@ def main() -> int:
     build_dir = project_root / "build" / f"{platform_name}-{target}"
     cache_file = build_dir / "CMakeCache.txt"
     build_file = build_dir / "build.ninja"
-    build_app = "ON" if target == "app" else "OFF"
-
     reconfigure = os.environ.get("OPENLEGEND_RECONFIGURE", "0") == "1"
     current_generator = cached_generator(cache_file)
     if current_generator is not None and current_generator != EXPECTED_GENERATOR:
@@ -154,25 +197,15 @@ def main() -> int:
         shutil.rmtree(build_dir)
         reconfigure = True
 
-    configure = [
-        str(cmake),
-        "-S",
-        str(project_root),
-        "-B",
-        str(build_dir),
-        "-G",
-        EXPECTED_GENERATOR,
-        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja}",
-        "-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON",
-        "-DCMAKE_CXX_EXTENSIONS:BOOL=OFF",
-        "-DBUILD_TESTING:BOOL=ON",
-        f"-DOPENLEGEND_BUILD_APP:BOOL={build_app}",
-        "-DOPENLEGEND_FETCH_SDL3:BOOL=ON",
-    ]
-    if compiler := os.environ.get("CXX"):
-        configure.append(f"-DCMAKE_CXX_COMPILER:FILEPATH={compiler}")
-    if target == "app" and (c_compiler := os.environ.get("CC")):
-        configure.append(f"-DCMAKE_C_COMPILER:FILEPATH={c_compiler}")
+    configure = configure_command(
+        cmake,
+        ninja,
+        project_root,
+        build_dir,
+        target,
+        os.environ.get("CXX"),
+        os.environ.get("CC"),
+    )
 
     if reconfigure or not cache_file.is_file() or not build_file.is_file():
         print(f"[OpenLegend] Configure: {platform_name}-{target}", flush=True)

@@ -75,7 +75,7 @@ Windows 构建入口按 OpenSWD3 使用固定 Ninja/LLVM 工具布局：
 CMake/CTest  D:\Dev\lldb\tools\cmake\bin
 Ninja       D:\Dev\lldb\tools\ninja\ninja.exe
 Clang       D:\Dev\Compiler\LLVM\x64\bin
-Python      PATH 中的 python，或 D:\Dev\Python\python.exe
+Python      D:\Dev\Python\python.exe，PATH 中的 python 仅作回退
 ```
 
 ```bat
@@ -83,6 +83,8 @@ build.bat core
 build.bat app
 build.bat app --config Release
 ```
+
+`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已原生验证，core 为 4 项 CTest，app 为 5 项 CTest。
 
 可选参数：
 

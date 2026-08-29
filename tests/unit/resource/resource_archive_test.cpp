@@ -130,7 +130,7 @@ void validate_sentinel_sprite_pair(
 
 void run_real_asset_tests() {
     using namespace openlegend::resource;
-    const std::filesystem::path root{OPENLEGEND_GAME_DATA_ROOT};
+    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
     OL_CHECK(std::filesystem::is_directory(root));
 
     std::map<std::string, std::filesystem::path> indexes;
