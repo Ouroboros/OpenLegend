@@ -1,0 +1,33 @@
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+   524288    64 8192 allocating memory for b-tree...
+    65536     8 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+   851968            total memory allocated
+
+
+LoadLibrary(D:\Dev\Crack\IDA\procs\mc6864.dll) error: The specified module could not be found.
+Loading processor module D:\Dev\Crack\IDA\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'Z.COM' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.2.0.250908)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.2.0.250908 has been detected, gooMBA plugin ready to use
+The application bitness was wrongly set to 16-bit.
+The decompiler set it based on the bitness of the first segment -> OK
+The application bitness was wrongly set to 16-bit.
+The decompiler set it based on the bitness of the first segment -> OK
+The application bitness was wrongly set to 16-bit.
+The decompiler set it based on the bitness of the first segment -> OK
+OPENLEGEND_IDA_REPORT=E:\Game\金庸群侠传\OpenLegend\research\ida\reports\Z_COM.report.json
+OPENLEGEND_IDA_FUNCTIONS=3
+OPENLEGEND_IDA_STRINGS=2
+OPENLEGEND_IDA_SEGMENTS=1
+OPENLEGEND_IDA_DECOMPILED=3
+Flushing buffers, please wait...ok
+Unloading IDP module D:\Dev\Crack\IDA\procs\pc.dll...

@@ -1,0 +1,298 @@
+{
+  "input": {
+    "path": "E:\\Game\\金庸群侠传\\Z.COM",
+    "size": 413,
+    "sha256": "9de4c8002f92759bd2771a4984ff02599121e6c66fed1eb0d7e905a327e2dac1",
+    "idb_path": "E:\\Game\\金庸群侠传\\OpenLegend\\research\\ida\\databases\\Z_COM.i64"
+  },
+  "database": {
+    "processor": "pc",
+    "file_type": "MS-DOS COM-file",
+    "min_ea": "0x10100",
+    "max_ea": "0x1029D",
+    "start_ea": "0x10100",
+    "start_ip": "0x100",
+    "start_cs": "0x1000",
+    "is_64bit": false,
+    "is_32bit_exactly": false
+  },
+  "segments": [
+    {
+      "name": "seg000",
+      "class": "CODE",
+      "start": "0x10100",
+      "end": "0x1029D",
+      "size": 413,
+      "bitness": 0,
+      "permissions": 0
+    }
+  ],
+  "entries": [
+    {
+      "index": 0,
+      "ordinal": 65792,
+      "address": "0x10100",
+      "name": "start"
+    }
+  ],
+  "strings": [
+    {
+      "address": "0x10103",
+      "length": 9,
+      "type": 0,
+      "text": "LOGO.SCR",
+      "xrefs": []
+    },
+    {
+      "address": "0x1010C",
+      "length": 6,
+      "type": 0,
+      "text": "z.DAT",
+      "xrefs": []
+    }
+  ],
+  "functions": [
+    {
+      "address": "0x10100",
+      "end": "0x1015F",
+      "size": 95,
+      "name": "start",
+      "flags": 21505,
+      "instruction_count": 20,
+      "basic_blocks": 2,
+      "chunks": [
+        {
+          "start": "0x10100",
+          "end": "0x1015F",
+          "size": 95
+        }
+      ],
+      "callers": [],
+      "callees": [
+        "0x10100",
+        "0x1015F",
+        "0x101A7"
+      ],
+      "string_refs": []
+    },
+    {
+      "address": "0x1015F",
+      "end": "0x101A7",
+      "size": 72,
+      "name": "sub_1015F",
+      "flags": 21504,
+      "instruction_count": 20,
+      "basic_blocks": 1,
+      "chunks": [
+        {
+          "start": "0x1015F",
+          "end": "0x101A7",
+          "size": 72
+        }
+      ],
+      "callers": [
+        "0x10100"
+      ],
+      "callees": [],
+      "string_refs": []
+    },
+    {
+      "address": "0x101A7",
+      "end": "0x101C4",
+      "size": 29,
+      "name": "sub_101A7",
+      "flags": 21504,
+      "instruction_count": 12,
+      "basic_blocks": 4,
+      "chunks": [
+        {
+          "start": "0x101A7",
+          "end": "0x101C4",
+          "size": 29
+        }
+      ],
+      "callers": [
+        "0x10100"
+      ],
+      "callees": [
+        "0x101A7"
+      ],
+      "string_refs": []
+    }
+  ],
+  "entry_disassembly": [
+    {
+      "address": "0x10100",
+      "bytes": "eb2e",
+      "text": "jmp     short loc_10130"
+    },
+    {
+      "address": "0x10102",
+      "bytes": "90",
+      "text": "db 90h"
+    },
+    {
+      "address": "0x10103",
+      "bytes": "4c4f474f2e53435200",
+      "text": "db 'LOGO.SCR',0"
+    },
+    {
+      "address": "0x1010C",
+      "bytes": "7a2e44415400",
+      "text": "db 'z.DAT',0"
+    },
+    {
+      "address": "0x10112",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x10114",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x10116",
+      "bytes": "0000",
+      "text": "align 4"
+    },
+    {
+      "address": "0x10118",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x1011A",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x1011C",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x1011E",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x10120",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x10122",
+      "bytes": "0000",
+      "text": "dw 0"
+    },
+    {
+      "address": "0x10124",
+      "bytes": "000000000000000000000000",
+      "text": "align 10h"
+    },
+    {
+      "address": "0x10130",
+      "bytes": "bb6503",
+      "text": "mov     bx, 365h"
+    },
+    {
+      "address": "0x10133",
+      "bytes": "8be3",
+      "text": "mov     sp, bx"
+    },
+    {
+      "address": "0x10135",
+      "bytes": "83c30f",
+      "text": "add     bx, 0Fh"
+    },
+    {
+      "address": "0x10138",
+      "bytes": "b104",
+      "text": "mov     cl, 4"
+    },
+    {
+      "address": "0x1013A",
+      "bytes": "d3eb",
+      "text": "shr     bx, cl"
+    },
+    {
+      "address": "0x1013C",
+      "bytes": "b44a",
+      "text": "mov     ah, 4Ah"
+    },
+    {
+      "address": "0x1013E",
+      "bytes": "cd21",
+      "text": "int     21h; DOS - 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK)"
+    },
+    {
+      "address": "0x10140",
+      "bytes": "be0301",
+      "text": "mov     si, 103h"
+    },
+    {
+      "address": "0x10143",
+      "bytes": "e81900",
+      "text": "call    sub_1015F"
+    },
+    {
+      "address": "0x10146",
+      "bytes": "b80300",
+      "text": "mov     ax, 3"
+    },
+    {
+      "address": "0x10149",
+      "bytes": "cd10",
+      "text": "int     10h; - VIDEO - SET VIDEO MODE"
+    },
+    {
+      "address": "0x1014B",
+      "bytes": "b409",
+      "text": "mov     ah, 9"
+    },
+    {
+      "address": "0x1014D",
+      "bytes": "bac401",
+      "text": "mov     dx, 1C4h"
+    },
+    {
+      "address": "0x10150",
+      "bytes": "cd21",
+      "text": "int     21h; DOS - PRINT STRING"
+    },
+    {
+      "address": "0x10152",
+      "bytes": "e85200",
+      "text": "call    sub_101A7"
+    },
+    {
+      "address": "0x10155",
+      "bytes": "be0c01",
+      "text": "mov     si, 10Ch"
+    },
+    {
+      "address": "0x10158",
+      "bytes": "e80400",
+      "text": "call    sub_1015F"
+    },
+    {
+      "address": "0x1015B",
+      "bytes": "b44c",
+      "text": "mov     ah, 4Ch"
+    },
+    {
+      "address": "0x1015D",
+      "bytes": "cd21",
+      "text": "int     21h; DOS - 2+ - QUIT WITH EXIT CODE (EXIT)"
+    }
+  ],
+  "decompiler": {
+    "available": true,
+    "functions": [
+      "0x10100",
+      "0x1015F",
+      "0x101A7"
+    ]
+  }
+}

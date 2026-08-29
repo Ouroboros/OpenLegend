@@ -1,0 +1,21 @@
+# Local build outputs
+/build/
+/out/
+/CMakeFiles/
+/CMakeCache.txt
+/CMakeUserPresets.json
+/compile_commands.json
+
+# Project-local tool bootstrap
+/.tools/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# IDE and OS metadata
+/.idea/
+/.vscode/
+*.user
+.DS_Store
+Thumbs.db

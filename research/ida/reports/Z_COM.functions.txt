@@ -1,0 +1,81 @@
+IDB=E:\Game\金庸群侠传\OpenLegend\research\ida\databases\Z_COM.i64
+DECOMPILER_AVAILABLE=True
+
+
+====================================================================================================
+FUNCTION start start=0x10100 end=0x1015F size=95
+
+--- PSEUDOCODE ---
+None
+
+--- DISASSEMBLY ---
+00010100  eb 2e                             jmp     short loc_10130
+00010130  bb 65 03                          mov     bx, 365h
+00010133  8b e3                             mov     sp, bx
+00010135  83 c3 0f                          add     bx, 0Fh
+00010138  b1 04                             mov     cl, 4
+0001013A  d3 eb                             shr     bx, cl
+0001013C  b4 4a                             mov     ah, 4Ah
+0001013E  cd 21                             int     21h; DOS - 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK)
+00010140  be 03 01                          mov     si, 103h
+00010143  e8 19 00                          call    sub_1015F
+00010146  b8 03 00                          mov     ax, 3
+00010149  cd 10                             int     10h; - VIDEO - SET VIDEO MODE
+0001014B  b4 09                             mov     ah, 9
+0001014D  ba c4 01                          mov     dx, 1C4h
+00010150  cd 21                             int     21h; DOS - PRINT STRING
+00010152  e8 52 00                          call    sub_101A7
+00010155  be 0c 01                          mov     si, 10Ch
+00010158  e8 04 00                          call    sub_1015F
+0001015B  b4 4c                             mov     ah, 4Ch
+0001015D  cd 21                             int     21h; DOS - 2+ - QUIT WITH EXIT CODE (EXIT)
+
+
+====================================================================================================
+FUNCTION sub_1015F start=0x1015F end=0x101A7 size=72
+
+--- PSEUDOCODE ---
+None
+
+--- DISASSEMBLY ---
+0001015F  2e c7 06 18 01 80 00              mov     cs:word_10118, 80h
+00010166  2e 8c 06 1a 01                    mov     cs:word_1011A, es
+0001016B  2e c7 06 1c 01 5c 00              mov     cs:word_1011C, 5Ch ; '\'
+00010172  2e 8c 06 1e 01                    mov     cs:word_1011E, es
+00010177  2e c7 06 20 01 6c 00              mov     cs:word_10120, 6Ch ; 'l'
+0001017E  2e 8c 06 22 01                    mov     cs:word_10122, es
+00010183  bb 16 01                          mov     bx, 116h
+00010186  fa                                cli
+00010187  2e 8c 16 12 01                    mov     cs:word_10112, ss
+0001018C  2e 89 26 14 01                    mov     cs:word_10114, sp
+00010191  fb                                sti
+00010192  8b d6                             mov     dx, si
+00010194  b8 00 4b                          mov     ax, 4B00h
+00010197  cd 21                             int     21h; DOS - 2+ - LOAD OR EXECUTE (EXEC)
+00010199  fa                                cli
+0001019A  2e 8e 16 12 01                    mov     ss, cs:word_10112
+0001019F  2e 8b 26 14 01                    mov     sp, cs:word_10114
+000101A4  0e                                push    cs
+000101A5  1f                                pop     ds
+000101A6  c3                                retn
+
+
+====================================================================================================
+FUNCTION sub_101A7 start=0x101A7 end=0x101C4 size=29
+
+--- PSEUDOCODE ---
+None
+
+--- DISASSEMBLY ---
+000101A7  06                                push    es
+000101A8  b8 40 00                          mov     ax, 40h ; '@'
+000101AB  8e c0                             mov     es, ax
+000101AD  26 8b 16 6c 00                    mov     dx, es:6Ch
+000101B2  83 c2 36                          add     dx, 36h ; '6'
+000101B5  b4 01                             mov     ah, 1
+000101B7  cd 16                             int     16h; KEYBOARD - CHECK BUFFER, DO NOT CLEAR
+000101B9  75 07                             jnz     short loc_101C2
+000101BB  26 39 16 6c 00                    cmp     es:6Ch, dx
+000101C0  76 f3                             jbe     short loc_101B5
+000101C2  07                                pop     es
+000101C3  c3                                retn

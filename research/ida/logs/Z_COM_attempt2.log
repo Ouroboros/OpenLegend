@@ -1,0 +1,82 @@
+failed to load Python runtime: skipping IDAPython plugin
+failed to load Python runtime: skipping IDAPython plugin
+Possible file format: MS-DOS COM-file (D:\Dev\Crack\IDA\loaders\dos.dll)
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+   524288    64 8192 allocating memory for b-tree...
+    65536     8 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+   851968            total memory allocated
+
+Loading file 'E:\Game\金庸群侠传\Z.COM' into database...
+Detected file format: MS-DOS COM-file
+Assuming __cdecl calling convention by default
+
+LoadLibrary(D:\Dev\Crack\IDA\procs\mc6864.dll) error: The specified module could not be found.
+Loading processor module D:\Dev\Crack\IDA\procs\pc.dll for metapc...OK
+Autoanalysis subsystem has been initialized.
+failed to load Python runtime: skipping IDAPython plugin
+  0. Creating a new segment  (00010000-0001029D) ... ... OK
+Searching for the data segment...
+Default DS register: 0x1000
+Marking typical code sequences...
+Flushing buffers, please wait...ok
+File 'E:\Game\金庸群侠传\Z.COM' has been successfully loaded into the database.
+Flushing buffers, please wait...ok
+Hex-Rays Decompiler plugin has been loaded (v9.2.0.250908)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.2.0.250908 has been detected, gooMBA plugin ready to use
+failed to load Python runtime: skipping IDAPython plugin
+IDA is analysing the input file...
+You may start to explore the input file right now.
+E:\Game\金庸群侠传\OpenLegend\ida_export.py: unknown file extension -> OK
+Flushing buffers, please wait...ok
+Unloading IDP module D:\Dev\Crack\IDA\procs\pc.dll...Possible file format: MS-DOS COM-file (D:\Dev\Crack\IDA\loaders\dos.dll)
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+   524288    64 8192 allocating memory for b-tree...
+    65536     8 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+   851968            total memory allocated
+
+Loading file 'E:\Game\金庸群侠传\Z.COM' into database...
+Detected file format: MS-DOS COM-file
+Assuming __cdecl calling convention by default
+
+LoadLibrary(D:\Dev\Crack\IDA\procs\mc6864.dll) error: The specified module could not be found.
+Loading processor module D:\Dev\Crack\IDA\procs\pc.dll for metapc...OK
+Autoanalysis subsystem has been initialized.
+  0. Creating a new segment  (00010000-0001029D) ... ... OK
+Searching for the data segment...
+Default DS register: 0x1000
+Marking typical code sequences...
+Flushing buffers, please wait...ok
+File 'E:\Game\金庸群侠传\Z.COM' has been successfully loaded into the database.
+Flushing buffers, please wait...ok
+Hex-Rays Decompiler plugin has been loaded (v9.2.0.250908)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.2.0.250908 has been detected, gooMBA plugin ready to use
+IDA is analysing the input file...
+You may start to explore the input file right now.
+Propagating type information...
+Function argument information has been propagated
+lumina: bad signature
+The initial autoanalysis has been finished.
+Traceback (most recent call last):
+  File "E:/Game/金庸群侠传/OpenLegend/research/ida/scripts/ida_export.py", line 286, in <module>
+    main()
+    ~~~~^^
+  File "E:/Game/金庸群侠传/OpenLegend/research/ida/scripts/ida_export.py", line 257, in main
+    "file_type": ida_nalt.get_file_type_name(),
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'ida_nalt' has no attribute 'get_file_type_name'
+Flushing buffers, please wait...ok
+Unloading IDP module D:\Dev\Crack\IDA\procs\pc.dll...

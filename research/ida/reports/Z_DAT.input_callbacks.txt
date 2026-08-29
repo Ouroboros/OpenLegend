@@ -1,0 +1,38 @@
+IDB=E:\Game\金庸群侠传\OpenLegend\research\ida\databases\Z_DAT.i64
+tick_pointer_stored_value=0x46C
+
+
+====================================================================================================
+FUNCTION sub_20016 research=platform_video_input_init start=0x20016 end=0x20039 size=35
+
+--- PSEUDOCODE ---
+int __cdecl sub_20016(int a1)
+{
+  dword_51C7F = a1;
+  __asm { int     10h; - VIDEO - SET VIDEO MODE }
+  return 19;
+}
+
+
+--- DISASSEMBLY ---
+00020016  55                                push    ebp
+00020017  89 e5                             mov     ebp, esp
+00020019  53                                push    ebx
+0002001A  51                                push    ecx
+0002001B  52                                push    edx
+0002001C  56                                push    esi
+0002001D  57                                push    edi
+0002001E  8b 45 08                          mov     eax, [ebp+arg_0]
+00020021  a3 7f 1c 05 00                    mov     dword_51C7F, eax
+00020026  b8 13 00 00 00                    mov     eax, 13h
+0002002B  bb 00 01 00 00                    mov     ebx, 100h
+00020030  cd 10                             int     10h; - VIDEO - SET VIDEO MODE
+00020032  5f                                pop     edi
+00020033  5e                                pop     esi
+00020034  5a                                pop     edx
+00020035  59                                pop     ecx
+00020036  5b                                pop     ebx
+00020037  5d                                pop     ebp
+00020038  c3                                retn
+MISSING input_callback_press 0x20BEB
+MISSING input_callback_release 0x20C15

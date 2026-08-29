@@ -1,0 +1,53 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "linux-core-debug",
+      "displayName": "Linux core debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-core-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+        "CMAKE_MAKE_PROGRAM": "${sourceDir}/.tools/python/bin/ninja",
+        "BUILD_TESTING": "ON",
+        "OPENLEGEND_BUILD_APP": "OFF"
+      }
+    },
+    {
+      "name": "linux-sdl-debug",
+      "displayName": "Linux SDL3 debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-sdl-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+        "CMAKE_MAKE_PROGRAM": "${sourceDir}/.tools/python/bin/ninja",
+        "BUILD_TESTING": "ON",
+        "OPENLEGEND_BUILD_APP": "ON",
+        "OPENLEGEND_FETCH_SDL3": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "linux-core-debug", "configurePreset": "linux-core-debug" },
+    { "name": "linux-sdl-debug", "configurePreset": "linux-sdl-debug" }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-core-debug",
+      "configurePreset": "linux-core-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-sdl-debug",
+      "configurePreset": "linux-sdl-debug",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

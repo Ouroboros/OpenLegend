@@ -1,0 +1,52 @@
+Possible file format: MS-DOS executable (EXE) (D:\Dev\Crack\IDA\loaders\dos.dll)
+Possible file format: Linear Executable (LE) (D:\Dev\Crack\IDA\loaders\lx.dll)
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+  1368064   167 8192 allocating memory for b-tree...
+  1368064   167 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+  2998272            total memory allocated
+
+Loading file 'E:\Game\金庸群侠传\Z.DAT' into database...
+Detected file format: Linear Executable (LE)
+
+LoadLibrary(D:\Dev\Crack\IDA\procs\mc6864.dll) error: The specified module could not be found.
+Loading processor module D:\Dev\Crack\IDA\procs\pc.dll for metapc...OK
+Autoanalysis subsystem has been initialized.
+Assuming __cdecl calling convention by default
+  0. Creating a new segment  (00010000-00011000) ... ... OK
+  1. Creating a new segment  (00020000-00119D30) ... ... OK
+Applying fixup records...
+Plan  FLIRT signature: Watcom v9-*1.5  32bit DOS runtime
+autoload.cfg: wa32rtd.sig autoloads w32dos.til
+Assuming __cdecl calling convention by default
+Type library 'w32dos' loaded. Applying types...
+Types applied to 1 names.
+Plan  FLIRT signature: Watcom v9-*1.5  32bit common runtime
+main() function at 20D35, named "main"
+Marking typical code sequences...
+Flushing buffers, please wait...ok
+File 'E:\Game\金庸群侠传\Z.DAT' has been successfully loaded into the database.
+Flushing buffers, please wait...ok
+Hex-Rays Decompiler plugin has been loaded (v9.2.0.250908)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.2.0.250908 has been detected, gooMBA plugin ready to use
+IDA is analysing the input file...
+You may start to explore the input file right now.
+Using FLIRT signature: Watcom v9-*1.5  32bit DOS runtime
+Using FLIRT signature: Watcom v9-*1.5  32bit common runtime
+Propagating type information...
+Function argument information has been propagated
+lumina: bad signature
+The initial autoanalysis has been finished.
+OPENLEGEND_IDA_REPORT=E:\Game\金庸群侠传\OpenLegend\research\ida\reports\Z_DAT.report.json
+OPENLEGEND_IDA_FUNCTIONS=570
+OPENLEGEND_IDA_STRINGS=1057
+OPENLEGEND_IDA_SEGMENTS=2
+OPENLEGEND_IDA_DECOMPILED=80
+Flushing buffers, please wait...ok
+Unloading IDP module D:\Dev\Crack\IDA\procs\pc.dll...
