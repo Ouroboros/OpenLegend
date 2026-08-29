@@ -62,22 +62,32 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 
 ```bash
 ./build.sh core                 # 只构建核心库并运行测试
-./build.sh sdl                  # 构建 SDL3 应用并运行全部测试
-./build.sh sdl --config Release
+./build.sh app                  # 构建 SDL3 应用并运行全部测试
+./build.sh app --config Release
 ```
 
 ### Windows
 
+Windows 构建入口按 OpenSWD3 使用固定 Ninja/LLVM 工具布局：
+
+```text
+CMake/CTest  D:\Dev\lldb\tools\cmake\bin
+Ninja       D:\Dev\lldb\tools\ninja\ninja.exe
+Clang       D:\Dev\Compiler\LLVM\x64\bin
+Python      PATH 中的 python，或 D:\Dev\Python\python.exe
+```
+
 ```bat
 build.bat core
-build.bat sdl
-build.bat sdl --config Release
+build.bat app
+build.bat app --config Release
 ```
 
 可选参数：
 
 ```text
 --jobs N
+--test-jobs N
 --configure-only
 --skip-tests
 ```
@@ -85,7 +95,15 @@ build.bat sdl --config Release
 默认构建目录为：
 
 ```text
-build/<platform>-<core|sdl>-<debug|release>/
+build/<platform>-<core|app>/
+```
+
+生成器固定为 **Ninja Multi-Config**，`Debug` 与 `Release` 共用同一 target 构建目录；可用 `--config` 选择配置。构建脚本复用有效的 Ninja cache，设置 `OPENLEGEND_RECONFIGURE=1` 可强制重新配置。
+
+兼容旧命令时仍可使用 `sdl`，但它只作为 `app` 的别名：
+
+```bash
+./build.sh sdl
 ```
 
 ## 工程结构

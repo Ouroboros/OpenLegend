@@ -7,47 +7,72 @@
   },
   "configurePresets": [
     {
-      "name": "linux-core-debug",
-      "displayName": "Linux core debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-core-debug",
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-        "CMAKE_MAKE_PROGRAM": "${sourceDir}/.tools/python/bin/ninja",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
+        "OPENLEGEND_FETCH_SDL3": "ON"
+      }
+    },
+    {
+      "name": "core",
+      "displayName": "Core libraries and tests",
+      "inherits": "base",
+      "cacheVariables": {
         "OPENLEGEND_BUILD_APP": "OFF"
       }
     },
     {
-      "name": "linux-sdl-debug",
-      "displayName": "Linux SDL3 debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/linux-sdl-debug",
+      "name": "app",
+      "displayName": "SDL3 application and tests",
+      "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-        "CMAKE_MAKE_PROGRAM": "${sourceDir}/.tools/python/bin/ninja",
-        "BUILD_TESTING": "ON",
-        "OPENLEGEND_BUILD_APP": "ON",
-        "OPENLEGEND_FETCH_SDL3": "ON"
+        "OPENLEGEND_BUILD_APP": "ON"
       }
     }
   ],
   "buildPresets": [
-    { "name": "linux-core-debug", "configurePreset": "linux-core-debug" },
-    { "name": "linux-sdl-debug", "configurePreset": "linux-sdl-debug" }
+    {
+      "name": "core-debug",
+      "configurePreset": "core",
+      "configuration": "Debug"
+    },
+    {
+      "name": "core-release",
+      "configurePreset": "core",
+      "configuration": "Release"
+    },
+    {
+      "name": "app-debug",
+      "configurePreset": "app",
+      "configuration": "Debug"
+    },
+    {
+      "name": "app-release",
+      "configurePreset": "app",
+      "configuration": "Release"
+    }
   ],
   "testPresets": [
     {
-      "name": "linux-core-debug",
-      "configurePreset": "linux-core-debug",
-      "output": { "outputOnFailure": true }
+      "name": "core-test-debug",
+      "configurePreset": "core",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
     },
     {
-      "name": "linux-sdl-debug",
-      "configurePreset": "linux-sdl-debug",
-      "output": { "outputOnFailure": true }
+      "name": "app-test-debug",
+      "configurePreset": "app",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ]
 }

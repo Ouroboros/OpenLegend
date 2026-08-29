@@ -5,19 +5,44 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-import platform
+import shutil
 import subprocess
 import sys
 
 CMAKE_VERSION = "3.31.10"
 NINJA_VERSION = "1.13.0"
+EXPECTED_GENERATOR = "Ninja Multi-Config"
+
+
+def positive_integer(value: str) -> int:
+    result = int(value)
+    if result < 1:
+        raise argparse.ArgumentTypeError("value must be a positive integer")
+    return result
+
+
+def environment_jobs(name: str, fallback: int) -> int:
+    value = os.environ.get(name)
+    if value is None:
+        return fallback
+    return positive_integer(value)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Configure, build, and test OpenLegend")
-    parser.add_argument("target", choices=("core", "sdl"), nargs="?", default="sdl")
+    processor_count = max(1, os.cpu_count() or 1)
+    parser = argparse.ArgumentParser(description="Configure, build, and test OpenLegend with Ninja")
+    parser.add_argument("target", choices=("core", "app", "sdl"), nargs="?", default="core")
     parser.add_argument("--config", choices=("Debug", "Release"), default="Debug")
-    parser.add_argument("--jobs", type=int, default=max(1, min(4, os.cpu_count() or 1)))
+    parser.add_argument(
+        "--jobs",
+        type=positive_integer,
+        default=environment_jobs("OPENLEGEND_BUILD_JOBS", processor_count),
+    )
+    parser.add_argument(
+        "--test-jobs",
+        type=positive_integer,
+        default=environment_jobs("OPENLEGEND_TEST_JOBS", processor_count),
+    )
     parser.add_argument("--configure-only", action="store_true")
     parser.add_argument("--skip-tests", action="store_true")
     return parser.parse_args()
@@ -38,6 +63,22 @@ def find_tool(root: Path, name: str) -> Path | None:
 
 
 def ensure_tools(project_root: Path) -> tuple[Path, Path, Path]:
+    overrides = {
+        "cmake": os.environ.get("OPENLEGEND_CMAKE"),
+        "ninja": os.environ.get("OPENLEGEND_NINJA"),
+        "ctest": os.environ.get("OPENLEGEND_CTEST"),
+    }
+    if any(overrides.values()):
+        if not all(overrides.values()):
+            raise RuntimeError(
+                "OPENLEGEND_CMAKE, OPENLEGEND_NINJA, and OPENLEGEND_CTEST must be set together"
+            )
+        configured = tuple(Path(overrides[name]) for name in ("cmake", "ninja", "ctest"))
+        missing = [str(path) for path in configured if not path.is_file()]
+        if missing:
+            raise RuntimeError("Configured build tool was not found: " + ", ".join(missing))
+        return configured
+
     suffix = "windows" if os.name == "nt" else "linux"
     tool_root = project_root / ".tools" / f"python-{suffix}"
     search_roots = [tool_root]
@@ -79,14 +120,39 @@ def run(command: list[str], cwd: Path) -> None:
     subprocess.run(command, cwd=cwd, check=True)
 
 
+def cached_generator(cache_file: Path) -> str | None:
+    if not cache_file.is_file():
+        return None
+    for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("CMAKE_GENERATOR:INTERNAL="):
+            return line.split("=", 1)[1]
+    return None
+
+
 def main() -> int:
     args = parse_args()
     project_root = Path(__file__).resolve().parents[1]
     cmake, ninja, ctest = ensure_tools(project_root)
 
+    target = "app" if args.target == "sdl" else args.target
+    if args.target == "sdl":
+        print("[OpenLegend] 'sdl' is a compatibility alias; prefer 'app'.", flush=True)
+
     platform_name = "windows" if os.name == "nt" else "linux"
-    build_dir = project_root / "build" / f"{platform_name}-{args.target}-{args.config.lower()}"
-    build_app = "ON" if args.target == "sdl" else "OFF"
+    build_dir = project_root / "build" / f"{platform_name}-{target}"
+    cache_file = build_dir / "CMakeCache.txt"
+    build_file = build_dir / "build.ninja"
+    build_app = "ON" if target == "app" else "OFF"
+
+    reconfigure = os.environ.get("OPENLEGEND_RECONFIGURE", "0") == "1"
+    current_generator = cached_generator(cache_file)
+    if current_generator is not None and current_generator != EXPECTED_GENERATOR:
+        print(
+            f"[OpenLegend] Reset generator: {current_generator} -> {EXPECTED_GENERATOR}",
+            flush=True,
+        )
+        shutil.rmtree(build_dir)
+        reconfigure = True
 
     configure = [
         str(cmake),
@@ -95,25 +161,65 @@ def main() -> int:
         "-B",
         str(build_dir),
         "-G",
-        "Ninja",
-        f"-DCMAKE_MAKE_PROGRAM={ninja}",
-        f"-DCMAKE_BUILD_TYPE={args.config}",
-        "-DBUILD_TESTING=ON",
-        f"-DOPENLEGEND_BUILD_APP={build_app}",
-        "-DOPENLEGEND_FETCH_SDL3=ON",
+        EXPECTED_GENERATOR,
+        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja}",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON",
+        "-DCMAKE_CXX_EXTENSIONS:BOOL=OFF",
+        "-DBUILD_TESTING:BOOL=ON",
+        f"-DOPENLEGEND_BUILD_APP:BOOL={build_app}",
+        "-DOPENLEGEND_FETCH_SDL3:BOOL=ON",
     ]
     if compiler := os.environ.get("CXX"):
-        configure.append(f"-DCMAKE_CXX_COMPILER={compiler}")
+        configure.append(f"-DCMAKE_CXX_COMPILER:FILEPATH={compiler}")
+    if target == "app" and (c_compiler := os.environ.get("CC")):
+        configure.append(f"-DCMAKE_C_COMPILER:FILEPATH={c_compiler}")
 
-    run(configure, project_root)
+    if reconfigure or not cache_file.is_file() or not build_file.is_file():
+        print(f"[OpenLegend] Configure: {platform_name}-{target}", flush=True)
+        run(configure, project_root)
+    else:
+        print(f"[OpenLegend] Configure: {platform_name}-{target} (reuse Ninja cache)", flush=True)
+
     if args.configure_only:
         return 0
 
-    run([str(cmake), "--build", str(build_dir), "-j", str(args.jobs)], project_root)
+    print(
+        f"[OpenLegend] Build: {platform_name}-{target}-{args.config.lower()} "
+        f"(parallel jobs: {args.jobs})",
+        flush=True,
+    )
+    run(
+        [
+            str(cmake),
+            "--build",
+            str(build_dir),
+            "--config",
+            args.config,
+            "--parallel",
+            str(args.jobs),
+        ],
+        project_root,
+    )
     if not args.skip_tests:
-        run([str(ctest), "--test-dir", str(build_dir), "--output-on-failure"], project_root)
+        print(
+            f"[OpenLegend] Test: {args.config} (parallel jobs: {args.test_jobs})",
+            flush=True,
+        )
+        run(
+            [
+                str(ctest),
+                "--test-dir",
+                str(build_dir),
+                "-C",
+                args.config,
+                "--parallel",
+                str(args.test_jobs),
+                "--output-on-failure",
+            ],
+            project_root,
+        )
 
-    print(f"OpenLegend {args.target} {args.config} build completed: {build_dir}")
+    print(f"[OpenLegend] Build and tests completed: {build_dir} ({args.config})")
     return 0
 
 
