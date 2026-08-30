@@ -1301,6 +1301,150 @@
         8256
       ]
     },
+    "basic_helper_vectors": {
+      "opcode_19_and_40_script_235": {
+        "arguments": [
+          19,
+          14,
+          14,
+          40,
+          3
+        ],
+        "scene_position": [
+          14,
+          14
+        ],
+        "view_origin": [
+          3,
+          3
+        ],
+        "direction": 3,
+        "player_frame": 5044
+      },
+      "opcode_23_script_28": {
+        "arguments": [
+          23,
+          4,
+          99
+        ],
+        "role_4_use_poison": 99
+      },
+      "opcode_34_script_673": {
+        "arguments": [
+          34,
+          0,
+          3
+        ],
+        "cases": [
+          {
+            "before": 99,
+            "after": 100
+          },
+          {
+            "before": 32766,
+            "after": 0
+          }
+        ]
+      },
+      "opcode_36_script_328": {
+        "arguments": [
+          36,
+          2,
+          6,
+          0
+        ],
+        "cases": [
+          {
+            "sexual": 2,
+            "talk_id": 1123
+          },
+          {
+            "sexual": 1,
+            "talk_id": 1122
+          }
+        ]
+      },
+      "opcode_37_script_149": {
+        "arguments": [
+          37,
+          -5
+        ],
+        "cases": [
+          {
+            "before": 3,
+            "after": 0
+          },
+          {
+            "before": -32768,
+            "after": 100
+          }
+        ]
+      },
+      "opcode_39_script_420": {
+        "arguments": [
+          39,
+          75
+        ],
+        "scene_75_entrance_condition": 0
+      },
+      "opcode_42_script_445": {
+        "arguments": [
+          42,
+          6,
+          0
+        ],
+        "cases": [
+          {
+            "female_present": false,
+            "talk_id": 1575
+          },
+          {
+            "female_present": true,
+            "last_party_slot": -1,
+            "talk_id": 1574
+          }
+        ]
+      },
+      "opcode_55_script_464": {
+        "arguments": [
+          55,
+          2,
+          -1,
+          14,
+          0
+        ],
+        "cases": [
+          {
+            "event_1_before": -1,
+            "event_1_after": -1,
+            "current_picture": 1234
+          },
+          {
+            "event_1_before": 999,
+            "event_1_after": 862,
+            "current_picture": 1234
+          }
+        ]
+      },
+      "opcode_56_script_2": {
+        "arguments": [
+          56,
+          1
+        ],
+        "cases": [
+          {
+            "fame_before": 199,
+            "fame_after": 200,
+            "book_event_1": 932
+          },
+          {
+            "fame_before": 32767,
+            "fame_after": -32768,
+            "book_event_1": -1
+          }
+        ]
+      }
+    },
     "opcode_59_script_932": {
       "script_id": 932,
       "program_counter": 38,

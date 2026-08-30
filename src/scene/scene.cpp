@@ -125,13 +125,21 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return result;
 }
 
+[[nodiscard]] std::int16_t wrapping_add(
+    const std::int16_t value,
+    const std::int16_t delta) noexcept {
+    const auto bits = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(value) + static_cast<std::uint16_t>(delta));
+    return static_cast<std::int16_t>(
+        bits < 0x8000U ? static_cast<int>(bits) : static_cast<int>(bits) - 0x10000);
+}
+
 [[nodiscard]] std::int16_t clamped_add(
     const std::int16_t value,
     const std::int16_t delta,
     const std::int16_t minimum,
     const std::int16_t maximum) noexcept {
-    const auto result = static_cast<int>(value) + static_cast<int>(delta);
-    return static_cast<std::int16_t>(std::clamp(result, static_cast<int>(minimum), static_cast<int>(maximum)));
+    return std::clamp(wrapping_add(value, delta), minimum, maximum);
 }
 
 }  // namespace
@@ -1167,7 +1175,7 @@ SceneStepResult SceneSession::run_event() {
                 auto& role = snapshot_.ranger.roles[0];
                 role.set_word(
                     model::role_word::fame,
-                    static_cast<std::int16_t>(role.word(model::role_word::fame) + argument(1)));
+                    wrapping_add(role.word(model::role_word::fame), argument(1)));
                 update_book_event_if_ready();
             }
             program_counter_ += 2;

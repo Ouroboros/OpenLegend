@@ -554,6 +554,94 @@ def opcode_coverage(entries: list[bytes]) -> dict[str, object]:
     }
 
 
+def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
+    script_2 = words(scripts[2])
+    script_28 = words(scripts[28])
+    script_149 = words(scripts[149])
+    script_235 = words(scripts[235])
+    script_328 = words(scripts[328])
+    script_420 = words(scripts[420])
+    script_445 = words(scripts[445])
+    script_464 = words(scripts[464])
+    script_673 = words(scripts[673])
+    assert script_2[90:92] == (56, 1)
+    assert script_28[65:68] == (23, 4, 99)
+    assert script_149[59:61] == (37, -5)
+    assert script_235[30:35] == (19, 14, 14, 40, 3)
+    assert script_328[:4] == (36, 2, 6, 0)
+    assert script_420[24:26] == (39, 75)
+    assert script_445[24:27] == (42, 6, 0)
+    assert script_464[28:33] == (55, 2, -1, 14, 0)
+    assert script_673[74:77] == (34, 0, 3)
+
+    def wrapped_add(value: int, delta: int) -> int:
+        bits = (value + delta) & 0xFFFF
+        return bits if bits < 0x8000 else bits - 0x10000
+
+    def wrapped_clamped_add(value: int, delta: int) -> int:
+        return min(max(wrapped_add(value, delta), 0), 100)
+
+    return {
+        "opcode_19_and_40_script_235": {
+            "arguments": list(script_235[30:35]),
+            "scene_position": [14, 14],
+            "view_origin": [3, 3],
+            "direction": 3,
+            "player_frame": 5044,
+        },
+        "opcode_23_script_28": {
+            "arguments": list(script_28[65:68]),
+            "role_4_use_poison": 99,
+        },
+        "opcode_34_script_673": {
+            "arguments": list(script_673[74:77]),
+            "cases": [
+                {"before": value, "after": wrapped_clamped_add(value, 3)}
+                for value in (99, 32766)
+            ],
+        },
+        "opcode_36_script_328": {
+            "arguments": list(script_328[:4]),
+            "cases": [
+                {"sexual": 2, "talk_id": 1123},
+                {"sexual": 1, "talk_id": 1122},
+            ],
+        },
+        "opcode_37_script_149": {
+            "arguments": list(script_149[59:61]),
+            "cases": [
+                {"before": value, "after": wrapped_clamped_add(value, -5)}
+                for value in (3, -32768)
+            ],
+        },
+        "opcode_39_script_420": {
+            "arguments": list(script_420[24:26]),
+            "scene_75_entrance_condition": 0,
+        },
+        "opcode_42_script_445": {
+            "arguments": list(script_445[24:27]),
+            "cases": [
+                {"female_present": False, "talk_id": 1575},
+                {"female_present": True, "last_party_slot": -1, "talk_id": 1574},
+            ],
+        },
+        "opcode_55_script_464": {
+            "arguments": list(script_464[28:33]),
+            "cases": [
+                {"event_1_before": -1, "event_1_after": -1, "current_picture": 1234},
+                {"event_1_before": 999, "event_1_after": 862, "current_picture": 1234},
+            ],
+        },
+        "opcode_56_script_2": {
+            "arguments": list(script_2[90:92]),
+            "cases": [
+                {"fame_before": 199, "fame_after": 200, "book_event_1": 932},
+                {"fame_before": 32767, "fame_after": wrapped_add(32767, 1), "book_event_1": -1},
+            ],
+        },
+    }
+
+
 def death_menu_sequence(
     root: Path,
     palette: list[tuple[int, int, int]],
@@ -982,6 +1070,7 @@ def main() -> None:
                 "activated_target": [60, 16],
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
+            "basic_helper_vectors": basic_helper_vectors(scripts),
             "opcode_59_script_932": {
                 "script_id": 932,
                 "program_counter": 38,
