@@ -44,6 +44,8 @@ endif()
 
 add_subdirectory(src/compat)
 add_subdirectory(src/resource)
+add_subdirectory(src/model)
+add_subdirectory(src/persistence)
 add_subdirectory(src/render)
 add_subdirectory(src/app)
 

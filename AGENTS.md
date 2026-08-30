@@ -11,16 +11,16 @@
 ### 1.1 禁止子代理
 
 - 禁止使用 `subagent` 工具启动、恢复、转向、等待或管理任何子代理。
-- 禁止通过 `session_handoff`、`interactive_shell` 的 agent/spawn 模式或其他机制变相委派给子代理、外部 coding agent 或独立 AI 会话。
+- 禁止通过 `session_handoff` 或其他机制变相委派给子代理、外部 coding agent 或独立 AI 会话。
 - 调研、逆向、实现、审计、测试、提交和汇报全部由当前主会话直接完成。
-- `interactive_shell` 只可用于当前 shell 沙箱无法执行的普通宿主命令（例如 WSL2 调用 `cmd.exe`），不得用于启动 AI/TUI 代理。
+- 禁止使用 `pi-interactive-shell`、`interactive_shell` 及其任何模式执行任何命令。
+- Windows 宿主命令必须由主会话通过 `bash` 直接调用 `cmd.exe` 或目标 `.exe`，不得通过交互式 shell 中转。
 
 ## 2. 仓库与数据边界
 
 - 产品代码、工具和研究产物只放在本仓库。
 - 原版游戏文件保持只读，且不得复制或提交到本仓库。
 - 构建产物、本地工具、用户环境输出和原版 EXE/COM/DAT 不得误提交。
-- OpenSWD3 只作只读结构参考，不修改其文件或仓库状态。
 
 ## 3. Git、阶段提交与工作区保护
 

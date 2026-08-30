@@ -1,0 +1,1424 @@
+IDB=E:\Game\金庸群~1\OPENLE~1\research\ida\databases\Z_DAT.i64
+SOURCE=machine-code data references in current Z.DAT database
+NOTE=record/field values describe the referenced base displacement; indexed effective addresses may select later records or array elements at runtime.
+EXCLUDED=0x2004D -> 0xA0000 (Mode 13h display destination, not DS-relative magic state)
+
+====================================================================================================
+RANGE ranger_header begin=0xC0834 end=0xC0B78 bytes=836 record_size=2 refs=45 functions=5
+target=0xC0834 byte_offset=0 record=0 field_byte=0 from=0x248F9 owner=0x247DD sub_247DD :: push    offset word_C0834
+target=0xC0834 byte_offset=0 record=0 field_byte=0 from=0x24BDB owner=0x24A02 sub_24A02 :: mov     ax, word_C0834
+target=0xC0834 byte_offset=0 record=0 field_byte=0 from=0x2646E owner=0x26208 sub_26208 :: push    offset word_C0834
+target=0xC0834 byte_offset=0 record=0 field_byte=0 from=0x267FB owner=0x265AB sub_265AB :: mov     word_C0834, ax
+target=0xC0834 byte_offset=0 record=0 field_byte=0 from=0x2689F owner=0x265AB sub_265AB :: push    offset word_C0834
+target=0xC0834 byte_offset=0 record=0 field_byte=0 from=0x26D58 owner=0x26B5E sub_26B5E :: mov     ax, word_C0834
+target=0xC0838 byte_offset=4 record=2 field_byte=0 from=0x24A6D owner=0x24A02 sub_24A02 :: movsx   eax, word_C0838
+target=0xC0838 byte_offset=4 record=2 field_byte=0 from=0x26783 owner=0x265AB sub_265AB :: mov     word_C0838, ax
+target=0xC0838 byte_offset=4 record=2 field_byte=0 from=0x26BEA owner=0x26B5E sub_26B5E :: movsx   eax, word_C0838
+target=0xC083A byte_offset=6 record=3 field_byte=0 from=0x24AB5 owner=0x24A02 sub_24A02 :: movsx   eax, word_C083A
+target=0xC083A byte_offset=6 record=3 field_byte=0 from=0x2678F owner=0x265AB sub_265AB :: mov     word_C083A, ax
+target=0xC083A byte_offset=6 record=3 field_byte=0 from=0x26C32 owner=0x26B5E sub_26B5E :: movsx   eax, word_C083A
+target=0xC083C byte_offset=8 record=4 field_byte=0 from=0x24AFD owner=0x24A02 sub_24A02 :: mov     ax, word_C083C
+target=0xC083C byte_offset=8 record=4 field_byte=0 from=0x2679B owner=0x265AB sub_265AB :: mov     word_C083C, ax
+target=0xC083C byte_offset=8 record=4 field_byte=0 from=0x26C7A owner=0x26B5E sub_26B5E :: mov     ax, word_C083C
+target=0xC083E byte_offset=10 record=5 field_byte=0 from=0x24B33 owner=0x24A02 sub_24A02 :: mov     ax, word_C083E
+target=0xC083E byte_offset=10 record=5 field_byte=0 from=0x267A7 owner=0x265AB sub_265AB :: mov     word_C083E, ax
+target=0xC083E byte_offset=10 record=5 field_byte=0 from=0x26CB0 owner=0x26B5E sub_26B5E :: mov     ax, word_C083E
+target=0xC0840 byte_offset=12 record=6 field_byte=0 from=0x24B69 owner=0x24A02 sub_24A02 :: mov     ax, word_C0840
+target=0xC0840 byte_offset=12 record=6 field_byte=0 from=0x267B3 owner=0x265AB sub_265AB :: mov     word_C0840, ax
+target=0xC0840 byte_offset=12 record=6 field_byte=0 from=0x26CE6 owner=0x26B5E sub_26B5E :: mov     ax, word_C0840
+target=0xC0842 byte_offset=14 record=7 field_byte=0 from=0x24B81 owner=0x24A02 sub_24A02 :: mov     ax, word_C0842
+target=0xC0842 byte_offset=14 record=7 field_byte=0 from=0x267CB owner=0x265AB sub_265AB :: mov     word_C0842, ax
+target=0xC0842 byte_offset=14 record=7 field_byte=0 from=0x26CFE owner=0x26B5E sub_26B5E :: mov     ax, word_C0842
+target=0xC0844 byte_offset=16 record=8 field_byte=0 from=0x24B8D owner=0x24A02 sub_24A02 :: mov     ax, word_C0844
+target=0xC0844 byte_offset=16 record=8 field_byte=0 from=0x267D7 owner=0x265AB sub_265AB :: mov     word_C0844, ax
+target=0xC0844 byte_offset=16 record=8 field_byte=0 from=0x26D0A owner=0x26B5E sub_26B5E :: mov     ax, word_C0844
+target=0xC0846 byte_offset=18 record=9 field_byte=0 from=0x24B99 owner=0x24A02 sub_24A02 :: mov     ax, word_C0846
+target=0xC0846 byte_offset=18 record=9 field_byte=0 from=0x267E3 owner=0x265AB sub_265AB :: mov     word_C0846, ax
+target=0xC0846 byte_offset=18 record=9 field_byte=0 from=0x26D16 owner=0x26B5E sub_26B5E :: mov     ax, word_C0846
+target=0xC0848 byte_offset=20 record=10 field_byte=0 from=0x24BA5 owner=0x24A02 sub_24A02 :: mov     ax, word_C0848
+target=0xC0848 byte_offset=20 record=10 field_byte=0 from=0x267EF owner=0x265AB sub_265AB :: mov     word_C0848, ax
+target=0xC0848 byte_offset=20 record=10 field_byte=0 from=0x26D22 owner=0x26B5E sub_26B5E :: mov     ax, word_C0848
+target=0xC084A byte_offset=22 record=11 field_byte=0 from=0x24B75 owner=0x24A02 sub_24A02 :: mov     ax, word_C084A
+target=0xC084A byte_offset=22 record=11 field_byte=0 from=0x267BF owner=0x265AB sub_265AB :: mov     word_C084A, ax
+target=0xC084A byte_offset=22 record=11 field_byte=0 from=0x26CF2 owner=0x26B5E sub_26B5E :: mov     ax, word_C084A
+target=0xC084C byte_offset=24 record=12 field_byte=0 from=0x24A2C owner=0x24A02 sub_24A02 :: mov     bx, word_C084C[edx*2]
+target=0xC084C byte_offset=24 record=12 field_byte=0 from=0x26744 owner=0x265AB sub_265AB :: mov     word_C084C[ebx*2], dx
+target=0xC084C byte_offset=24 record=12 field_byte=0 from=0x26BA9 owner=0x26B5E sub_26B5E :: mov     bx, word_C084C[edx*2]
+target=0xC0858 byte_offset=36 record=18 field_byte=0 from=0x24A44 owner=0x24A02 sub_24A02 :: mov     bx, word_C0858[edx*4]
+target=0xC0858 byte_offset=36 record=18 field_byte=0 from=0x2675C owner=0x265AB sub_265AB :: mov     word_C0858[ebx*4], dx
+target=0xC0858 byte_offset=36 record=18 field_byte=0 from=0x26BC1 owner=0x26B5E sub_26B5E :: mov     bx, word_C0858[edx*4]
+target=0xC085A byte_offset=38 record=19 field_byte=0 from=0x24A54 owner=0x24A02 sub_24A02 :: mov     bx, word_C085A[edx*4]
+target=0xC085A byte_offset=38 record=19 field_byte=0 from=0x2676C owner=0x265AB sub_265AB :: mov     word_C085A[ebx*4], dx
+target=0xC085A byte_offset=38 record=19 field_byte=0 from=0x26BD1 owner=0x26B5E sub_26B5E :: mov     bx, word_C085A[edx*4]
+
+====================================================================================================
+RANGE roles_320x182 begin=0x9014C end=0x9E4CC bytes=58240 record_size=182 refs=1045 functions=94
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x21749 owner=0x21496 sub_21496 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2189A owner=0x21496 sub_21496 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x21D73 owner=0x21AC0 sub_21AC0 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x21EC4 owner=0x21AC0 sub_21AC0 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2242D owner=0x22090 sub_22090 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x227C0 owner=0x22090 sub_22090 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x22ADF owner=0x22A59 sub_22A59 :: add     ebx, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x234C7 owner=0x22A59 sub_22A59 :: add     ebx, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x24929 owner=0x247DD sub_247DD :: push    offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x264A0 owner=0x26208 sub_26208 :: push    offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x268CF owner=0x265AB sub_265AB :: push    offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2A66E owner=0x2A186 sub_2A186 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2B050 owner=0x2A86C sub_2A86C :: cmp     bx, word_9014C[edx]
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2B0C9 owner=0x2A86C sub_2A86C :: mov     bx, word_9014C[eax]
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2BE2F owner=0x2BD8B sub_2BD8B :: cmp     ax, word_9014C[edx]
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2F47E owner=0x2F3F0 sub_2F3F0 :: add     esi, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2F593 owner=0x2F526 sub_2F526 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2FB24 owner=0x2FAB7 sub_2FAB7 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2FC01 owner=0x2FBC0 sub_2FBC0 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2FD0A owner=0x2FC9D sub_2FC9D :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x2FE1E owner=0x2FDA6 sub_2FDA6 :: mov     ebx, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x32231 owner=0x31EB9 sub_31EB9 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x323A3 owner=0x31EB9 sub_31EB9 :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x3B5CF owner=0x3B387 sub_3B387 :: mov     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x3B72B owner=0x3B6BE sub_3B6BE :: add     ebx, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x3BBC0 owner=0x3BA85 sub_3BA85 :: add     ebx, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x3C3EF owner=0x3C2AC sub_3C2AC :: add     eax, offset word_9014C
+target=0x9014C byte_offset=0 record=0 field_byte=0 from=0x3C767 owner=0x3C6D3 sub_3C6D3 :: add     eax, offset word_9014C
+target=0x9014E byte_offset=2 record=0 field_byte=2 from=0x22ACB owner=0x22A59 sub_22A59 :: movsx   eax, word_9014E[ebx]
+target=0x9014E byte_offset=2 record=0 field_byte=2 from=0x234B3 owner=0x22A59 sub_22A59 :: movsx   eax, word_9014E[ebx]
+target=0x9014E byte_offset=2 record=0 field_byte=2 from=0x385C5 owner=0x3859E sub_3859E :: mov     dx, word_9014E[eax]
+target=0x9014E byte_offset=2 record=0 field_byte=2 from=0x3B208 owner=0x3B1E6 sub_3B1E6 :: mov     dx, word_9014E[edx]
+target=0x9014E byte_offset=2 record=0 field_byte=2 from=0x3C740 owner=0x3C6D3 sub_3C6D3 :: movsx   eax, word_9014E[eax]
+target=0x90150 byte_offset=4 record=0 field_byte=4 from=0x272B8 owner=0x2711A sub_2711A :: mov     word_90150, 0Ah
+target=0x90150 byte_offset=4 record=0 field_byte=4 from=0x27411 owner=0x2711A sub_2711A :: mov     word_90150, ax
+target=0x90150 byte_offset=4 record=0 field_byte=4 from=0x3B7FF owner=0x3B6BE sub_3B6BE :: mov     dx, word_90150[ebx]
+target=0x90152 byte_offset=6 record=0 field_byte=6 from=0x28A7C owner=0x28975 sub_28975 :: mov     byte_90152[eax], 0
+target=0x90153 byte_offset=7 record=0 field_byte=7 from=0x28A75 owner=0x28975 sub_28975 :: mov     byte_90153[eax], 0
+target=0x90153 byte_offset=7 record=0 field_byte=7 from=0x28AB4 owner=0x28975 sub_28975 :: mov     byte_90153[eax], 0
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x26B6E owner=0x26B5E sub_26B5E :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x27161 owner=0x2711A sub_2711A :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x27B24 owner=0x27A26 sub_27A26 :: mov     byte_90154[edx], 0
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x28318 owner=0x27A26 sub_27A26 :: mov     byte_90154[edx], bl
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x2833C owner=0x27A26 sub_27A26 :: mov     byte_90154[edx], al
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x2834C owner=0x27A26 sub_27A26 :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x283BF owner=0x27A26 sub_27A26 :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x28709 owner=0x2841A sub_2841A :: mov     byte_90154[eax], dl
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x2873D owner=0x2841A sub_2841A :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x28C0B owner=0x28975 sub_28975 :: mov     byte_90154[eax], 0
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x28C19 owner=0x28975 sub_28975 :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x2E6A2 owner=0x2E659 sub_2E659 :: push    offset byte_90154
+target=0x90154 byte_offset=8 record=0 field_byte=8 from=0x2EA51 owner=0x2E659 sub_2E659 :: push    offset byte_90154
+target=0x90168 byte_offset=28 record=0 field_byte=28 from=0x2AF23 owner=0x2A86C sub_2A86C :: cmp     word_90168[eax], 0
+target=0x90168 byte_offset=28 record=0 field_byte=28 from=0x2B00D owner=0x2A86C sub_2A86C :: mov     word_90168[eax], 2
+target=0x90168 byte_offset=28 record=0 field_byte=28 from=0x2C074 owner=0x2BD8B sub_2BD8B :: cmp     word_90168[eax], 1
+target=0x90168 byte_offset=28 record=0 field_byte=28 from=0x2F6CC owner=0x2F6C2 sub_2F6C2 :: movsx   eax, word_90168
+target=0x90168 byte_offset=28 record=0 field_byte=28 from=0x2F98F owner=0x2F966 sub_2F966 :: cmp     word_90168[eax], 1
+target=0x90168 byte_offset=28 record=0 field_byte=28 from=0x3129A owner=0x31284 sub_31284 :: mov     word_90168[eax], dx
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x22BEA owner=0x22A59 sub_22A59 :: movsx   eax, word_9016A[ebx]
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x22EE2 owner=0x22A59 sub_22A59 :: movsx   esi, word_9016A[ebx]
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x22F11 owner=0x22A59 sub_22A59 :: cmp     word_9016A[ebx], 1Eh
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x2741A owner=0x2711A sub_2711A :: imul    ax, word_9016A
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x394DF owner=0x39188 sub_39188 :: imul    ax, word_9016A[eax], 0Ah
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x3B642 owner=0x3B387 sub_3B387 :: cmp     ss:word_9016A[ebp], 1Eh
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x3B6D8 owner=0x3B6BE sub_3B6BE :: movsx   edx, word_9016A[eax]
+target=0x9016A byte_offset=30 record=0 field_byte=30 from=0x3B7EE owner=0x3B6BE sub_3B6BE :: add     word_9016A[ebx], ax
+target=0x9016C byte_offset=32 record=0 field_byte=32 from=0x22EA8 owner=0x22A59 sub_22A59 :: movzx   eax, word_9016C[ebx]
+target=0x9016C byte_offset=32 record=0 field_byte=32 from=0x3B510 owner=0x3B387 sub_3B387 :: add     word_9016C[ebx], dx
+target=0x9016C byte_offset=32 record=0 field_byte=32 from=0x3B548 owner=0x3B387 sub_3B387 :: cmp     word_9016C[ebx], 0EA60h
+target=0x9016C byte_offset=32 record=0 field_byte=32 from=0x3B553 owner=0x3B387 sub_3B387 :: mov     word_9016C[ebx], 0EA60h
+target=0x9016C byte_offset=32 record=0 field_byte=32 from=0x3B6DF owner=0x3B6BE sub_3B6BE :: mov     ax, word_9016C[eax]
+target=0x9016C byte_offset=32 record=0 field_byte=32 from=0x3B6FA owner=0x3B6BE sub_3B6BE :: mov     bx, word_9016C[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2269E owner=0x22090 sub_22090 :: movsx   eax, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x22932 owner=0x22090 sub_22090 :: movsx   eax, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x22C3E owner=0x22A59 sub_22A59 :: movsx   eax, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x26AFA owner=0x26A92 sub_26A92 :: cmp     word_9016E[edx], 1
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x26B04 owner=0x26A92 sub_26A92 :: dec     word_9016E[edx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x27493 owner=0x2711A sub_2711A :: mov     word_9016E, ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2766A owner=0x2711A sub_2711A :: movsx   eax, word_9016E
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x27684 owner=0x2711A sub_2711A :: cmp     word_9016E, 32h ; '2'
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B4E0 owner=0x2B483 sub_2B483 :: movsx   eax, word_9016E[edx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B655 owner=0x2B483 sub_2B483 :: add     word_9016E[eax], si
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B65C owner=0x2B483 sub_2B483 :: mov     dx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B673 owner=0x2B483 sub_2B483 :: mov     word_9016E[eax], dx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B680 owner=0x2B483 sub_2B483 :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B68A owner=0x2B483 sub_2B483 :: mov     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B699 owner=0x2B483 sub_2B483 :: movsx   eax, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B709 owner=0x2B483 sub_2B483 :: mov     dx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2B720 owner=0x2B483 sub_2B483 :: mov     word_9016E[eax], dx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2E268 owner=0x2E1E8 sub_2E1E8 :: mov     word_9016E[eax], cx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2FDBE owner=0x2FDA6 sub_2FDA6 :: movsx   edx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2FDDA owner=0x2FDA6 sub_2FDA6 :: mov     word_9016E[eax], dx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x2FE02 owner=0x2FDA6 sub_2FDA6 :: movsx   eax, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x30552 owner=0x30510 sub_30510 :: mov     word_9016E, ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3360F owner=0x33599 sub_33599 :: mov     ax, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x33641 owner=0x33599 sub_33599 :: mov     ax, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x336C2 owner=0x33599 sub_33599 :: cmp     word_9016E[ecx], 14h
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x336EE owner=0x33599 sub_33599 :: movsx   edx, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x33732 owner=0x33599 sub_33599 :: movsx   edx, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x33777 owner=0x33599 sub_33599 :: movsx   edx, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x337B7 owner=0x33599 sub_33599 :: movsx   edx, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x33B04 owner=0x33599 sub_33599 :: cmp     word_9016E[ecx], 14h
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x33B26 owner=0x33599 sub_33599 :: movsx   edx, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x33B66 owner=0x33599 sub_33599 :: movsx   edx, word_9016E[ecx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x34286 owner=0x341F6 sub_341F6 :: cmp     word_9016E[ebx], 14h
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x342B2 owner=0x341F6 sub_341F6 :: movsx   edx, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x342F6 owner=0x341F6 sub_341F6 :: movsx   edx, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3433B owner=0x341F6 sub_341F6 :: movsx   edx, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3437B owner=0x341F6 sub_341F6 :: movsx   edx, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3458E owner=0x34550 sub_34550 :: movsx   edx, word_9016E[edi]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3463A owner=0x34550 sub_34550 :: mov     dx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x34651 owner=0x34550 sub_34550 :: movsx   edi, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3466A owner=0x34550 sub_34550 :: sub     cx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35B73 owner=0x3598C sub_3598C :: mov     ax, word_9016E[edx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35CCF owner=0x3598C sub_3598C :: add     word_9016E[edx], si
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35CD6 owner=0x3598C sub_3598C :: mov     ax, word_9016E[edx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35CED owner=0x3598C sub_3598C :: mov     word_9016E[edx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35CFD owner=0x3598C sub_3598C :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35D07 owner=0x3598C sub_3598C :: mov     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35D19 owner=0x3598C sub_3598C :: movsx   edx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35E7F owner=0x3598C sub_3598C :: mov     ax, word_9016E[edx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35FD9 owner=0x3598C sub_3598C :: add     word_9016E[edx], si
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35FE0 owner=0x3598C sub_3598C :: mov     ax, word_9016E[edx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x35FF7 owner=0x3598C sub_3598C :: mov     word_9016E[edx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x36007 owner=0x3598C sub_3598C :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x36011 owner=0x3598C sub_3598C :: mov     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x36023 owner=0x3598C sub_3598C :: movsx   edx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x391C7 owner=0x39188 sub_39188 :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x394C5 owner=0x39188 sub_39188 :: sub     word_9016E[eax], bx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x394CC owner=0x39188 sub_39188 :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x394D6 owner=0x39188 sub_39188 :: mov     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A219 owner=0x3A10C sub_3A10C :: movsx   edx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A23B owner=0x3A10C sub_3A10C :: add     word_9016E[eax], bx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A242 owner=0x3A10C sub_3A10C :: mov     dx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A259 owner=0x3A10C sub_3A10C :: mov     word_9016E[eax], dx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A540 owner=0x3A30B sub_3A30B :: mov     dx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A6A7 owner=0x3A30B sub_3A30B :: add     word_9016E[eax], di
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A6AE owner=0x3A30B sub_3A30B :: mov     dx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A6C5 owner=0x3A30B sub_3A30B :: mov     word_9016E[eax], dx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A6D5 owner=0x3A30B sub_3A30B :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A6DF owner=0x3A30B sub_3A30B :: mov     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A6F1 owner=0x3A30B sub_3A30B :: movsx   edx, word_9016E[eax]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A986 owner=0x3A8A4 sub_3A8A4 :: add     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A99A owner=0x3A8A4 sub_3A8A4 :: mov     ax, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3A9B1 owner=0x3A8A4 sub_3A8A4 :: mov     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3AD4C owner=0x3AA85 sub_3AA85 :: cmp     word_9016E[edx], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B260 owner=0x3B238 sub_3B238 :: cmp     word_9016E[ebx], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B3BC owner=0x3B387 sub_3B387 :: mov     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B3EE owner=0x3B387 sub_3B387 :: cmp     word_9016E[ebx], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B44D owner=0x3B387 sub_3B387 :: cmp     word_9016E[edi], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B484 owner=0x3B387 sub_3B387 :: cmp     word_9016E[ebx], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B4A1 owner=0x3B387 sub_3B387 :: movsx   edx, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B4AC owner=0x3B387 sub_3B387 :: mov     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B4C8 owner=0x3B387 sub_3B387 :: mov     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3B837 owner=0x3B6BE sub_3B6BE :: mov     word_9016E[eax], dx
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C5A1 owner=0x3C563 sub_3C563 :: cmp     word_9016E[ebx], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C5F3 owner=0x3C563 sub_3C563 :: movsx   eax, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C5FC owner=0x3C563 sub_3C563 :: mov     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C618 owner=0x3C563 sub_3C563 :: movsx   eax, word_9016E[ebx]
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C621 owner=0x3C563 sub_3C563 :: mov     word_9016E[ebx], ax
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C64E owner=0x3C563 sub_3C563 :: cmp     word_9016E[eax], 0
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C658 owner=0x3C563 sub_3C563 :: mov     word_9016E[eax], 1
+target=0x9016E byte_offset=34 record=0 field_byte=34 from=0x3C992 owner=0x3C6D3 sub_3C6D3 :: movsx   eax, word_9016E[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x22716 owner=0x22090 sub_22090 :: movsx   eax, word_90170[edi]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2299B owner=0x22090 sub_22090 :: movsx   eax, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x22CBB owner=0x22A59 sub_22A59 :: movsx   eax, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x272D3 owner=0x2711A sub_2711A :: mov     word_90170, 32h ; '2'
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x27427 owner=0x2711A sub_2711A :: mov     word_90170, ax
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2748D owner=0x2711A sub_2711A :: mov     ax, word_90170
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B663 owner=0x2B483 sub_2B483 :: cmp     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B66C owner=0x2B483 sub_2B483 :: mov     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B6CF owner=0x2B483 sub_2B483 :: add     word_90170[eax], dx
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B6D6 owner=0x2B483 sub_2B483 :: cmp     word_90170[eax], 0
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B6E0 owner=0x2B483 sub_2B483 :: mov     word_90170[eax], 0
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B6EF owner=0x2B483 sub_2B483 :: cmp     word_90170[eax], 3E7h
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B6FA owner=0x2B483 sub_2B483 :: mov     word_90170[eax], 3E7h
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B710 owner=0x2B483 sub_2B483 :: cmp     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2B719 owner=0x2B483 sub_2B483 :: mov     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2E261 owner=0x2E1E8 sub_2E1E8 :: mov     cx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2FDCC owner=0x2FDA6 sub_2FDA6 :: add     word_90170[eax], dx
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x2FDD3 owner=0x2FDA6 sub_2FDA6 :: mov     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3054C owner=0x30510 sub_30510 :: mov     ax, word_90170
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x336DE owner=0x33599 sub_33599 :: movsx   edx, word_90170[ecx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3371F owner=0x33599 sub_33599 :: movsx   edx, word_90170[ecx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x33763 owner=0x33599 sub_33599 :: movsx   edx, word_90170[ecx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x337A4 owner=0x33599 sub_33599 :: movsx   edx, word_90170[ecx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x33B12 owner=0x33599 sub_33599 :: movsx   edx, word_90170[ecx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x33B53 owner=0x33599 sub_33599 :: movsx   edx, word_90170[ecx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x342A2 owner=0x341F6 sub_341F6 :: movsx   edx, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x342E3 owner=0x341F6 sub_341F6 :: movsx   edx, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x34327 owner=0x341F6 sub_341F6 :: movsx   edx, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x34368 owner=0x341F6 sub_341F6 :: movsx   edx, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x34641 owner=0x34550 sub_34550 :: cmp     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3464A owner=0x34550 sub_34550 :: movsx   edx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x34663 owner=0x34550 sub_34550 :: mov     cx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x35CDD owner=0x3598C sub_3598C :: cmp     ax, word_90170[edx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x35CE6 owner=0x3598C sub_3598C :: mov     ax, word_90170[edx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x35FE7 owner=0x3598C sub_3598C :: cmp     ax, word_90170[edx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x35FF0 owner=0x3598C sub_3598C :: mov     ax, word_90170[edx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A223 owner=0x3A10C sub_3A10C :: movsx   eax, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A249 owner=0x3A10C sub_3A10C :: cmp     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A252 owner=0x3A10C sub_3A10C :: mov     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A6B5 owner=0x3A30B sub_3A30B :: cmp     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A6BE owner=0x3A30B sub_3A30B :: mov     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A9A1 owner=0x3A8A4 sub_3A8A4 :: cmp     ax, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3A9AA owner=0x3A8A4 sub_3A8A4 :: mov     ax, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B3B5 owner=0x3B387 sub_3B387 :: mov     ax, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B48E owner=0x3B387 sub_3B387 :: movsx   edx, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B4B5 owner=0x3B387 sub_3B387 :: movsx   edx, word_90170[ebx]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B80F owner=0x3B6BE sub_3B6BE :: add     word_90170[ebx], ax
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B816 owner=0x3B6BE sub_3B6BE :: cmp     word_90170[ebx], 3E7h
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B821 owner=0x3B6BE sub_3B6BE :: mov     word_90170[ebx], 3E7h
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3B830 owner=0x3B6BE sub_3B6BE :: mov     dx, word_90170[eax]
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3BC73 owner=0x3BA85 sub_3BA85 :: add     word_90170[eax], dx
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3BC7A owner=0x3BA85 sub_3BA85 :: cmp     word_90170[eax], 3E7h
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3BC85 owner=0x3BA85 sub_3BA85 :: mov     word_90170[eax], 3E7h
+target=0x90170 byte_offset=36 record=0 field_byte=36 from=0x3CA3D owner=0x3C6D3 sub_3C6D3 :: movsx   eax, word_90170[eax]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x22657 owner=0x22090 sub_22090 :: cmp     word_90172[edi], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2266E owner=0x22090 sub_22090 :: cmp     word_90172[edi], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x22C58 owner=0x22A59 sub_22A59 :: cmp     word_90172[ebx], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x22C69 owner=0x22A59 sub_22A59 :: cmp     word_90172[ebx], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x26AD2 owner=0x26A92 sub_26A92 :: cmp     word_90172[edx], 32h ; '2'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B4FC owner=0x2B483 sub_2B483 :: movsx   edx, word_90172[edx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B556 owner=0x2B483 sub_2B483 :: movsx   eax, word_90172[edi]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B55F owner=0x2B483 sub_2B483 :: mov     word_90172[edi], ax
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B56B owner=0x2B483 sub_2B483 :: mov     word_90172[edi], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B57A owner=0x2B483 sub_2B483 :: cmp     word_90172[eax], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B588 owner=0x2B483 sub_2B483 :: mov     word_90172[eax], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B596 owner=0x2B483 sub_2B483 :: movsx   edx, word_90172[edx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B617 owner=0x2B483 sub_2B483 :: movsx   eax, word_90172[edi]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B620 owner=0x2B483 sub_2B483 :: mov     word_90172[edi], ax
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B62D owner=0x2B483 sub_2B483 :: mov     word_90172[edi], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B63C owner=0x2B483 sub_2B483 :: cmp     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2B646 owner=0x2B483 sub_2B483 :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2E22D owner=0x2E1E8 sub_2E1E8 :: cmp     word_90172[eax], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x2E241 owner=0x2E1E8 sub_2E1E8 :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3051A owner=0x30510 sub_30510 :: cmp     word_90172, 32h ; '2'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3052E owner=0x30510 sub_30510 :: mov     word_90172, 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x32892 owner=0x3271E sub_3271E :: movsx   edx, word_90172[edx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x336D0 owner=0x33599 sub_33599 :: cmp     word_90172[ecx], 32h ; '2'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x33C85 owner=0x33C4D sub_33C4D :: movsx   ebx, word_90172[edx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x33E36 owner=0x33C4D sub_33C4D :: movsx   esi, word_90172[esi]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x34252 owner=0x341F6 sub_341F6 :: movsx   ecx, word_90172[ebx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x34294 owner=0x341F6 sub_341F6 :: cmp     word_90172[ebx], 28h ; '('
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35B7D owner=0x3598C sub_3598C :: cmp     word_90172[edx], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35BB7 owner=0x3598C sub_3598C :: cmp     word_90172[edx], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35BE8 owner=0x3598C sub_3598C :: cmp     word_90172[eax], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35BF2 owner=0x3598C sub_3598C :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35C20 owner=0x3598C sub_3598C :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35C8B owner=0x3598C sub_3598C :: movsx   eax, word_90172[ecx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35C94 owner=0x3598C sub_3598C :: mov     word_90172[ecx], ax
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35CA1 owner=0x3598C sub_3598C :: mov     word_90172[ecx], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35CB3 owner=0x3598C sub_3598C :: cmp     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35CBD owner=0x3598C sub_3598C :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35E89 owner=0x3598C sub_3598C :: cmp     word_90172[edx], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35EC3 owner=0x3598C sub_3598C :: cmp     word_90172[edx], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35EF4 owner=0x3598C sub_3598C :: cmp     word_90172[eax], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35EFE owner=0x3598C sub_3598C :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35F2C owner=0x3598C sub_3598C :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35F95 owner=0x3598C sub_3598C :: movsx   eax, word_90172[ecx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35F9E owner=0x3598C sub_3598C :: mov     word_90172[ecx], ax
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35FAB owner=0x3598C sub_3598C :: mov     word_90172[ecx], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35FBD owner=0x3598C sub_3598C :: cmp     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x35FC7 owner=0x3598C sub_3598C :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x39432 owner=0x39188 sub_39188 :: movsx   edx, word_90172[edx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3950A owner=0x39188 sub_39188 :: movsx   eax, word_90172[ecx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x39513 owner=0x39188 sub_39188 :: mov     word_90172[ecx], ax
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x39520 owner=0x39188 sub_39188 :: mov     word_90172[ecx], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A14E owner=0x3A10C sub_3A10C :: cmp     word_90172[eax], 19h
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A170 owner=0x3A10C sub_3A10C :: cmp     word_90172[eax], 32h ; '2'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A199 owner=0x3A10C sub_3A10C :: cmp     word_90172[eax], 32h ; '2'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A1A3 owner=0x3A10C sub_3A10C :: cmp     word_90172[eax], 4Bh ; 'K'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A1C0 owner=0x3A10C sub_3A10C :: cmp     word_90172[eax], 4Bh ; 'K'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A1FE owner=0x3A10C sub_3A10C :: movsx   ecx, word_90172[eax]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A269 owner=0x3A10C sub_3A10C :: sub     word_90172[eax], si
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A270 owner=0x3A10C sub_3A10C :: cmp     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A27A owner=0x3A10C sub_3A10C :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A54B owner=0x3A30B sub_3A30B :: cmp     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A58B owner=0x3A30B sub_3A30B :: cmp     word_90172[eax], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A5BE owner=0x3A30B sub_3A30B :: cmp     word_90172[eax], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A5C8 owner=0x3A30B sub_3A30B :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A5F8 owner=0x3A30B sub_3A30B :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A663 owner=0x3A30B sub_3A30B :: movsx   eax, word_90172[ecx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A66C owner=0x3A30B sub_3A30B :: mov     word_90172[ecx], ax
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A679 owner=0x3A30B sub_3A30B :: mov     word_90172[ecx], 63h ; 'c'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A68B owner=0x3A30B sub_3A30B :: cmp     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3A695 owner=0x3A30B sub_3A30B :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3B3DA owner=0x3B387 sub_3B387 :: mov     word_90172[ebx], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3B83E owner=0x3B6BE sub_3B6BE :: mov     word_90172[eax], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3C589 owner=0x3C563 sub_3C563 :: cmp     word_90172[ebx], 0
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3C5DE owner=0x3C563 sub_3C563 :: movsx   edx, word_90172[ebx]
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3C9B9 owner=0x3C6D3 sub_3C6D3 :: cmp     word_90172[eax], 21h ; '!'
+target=0x90172 byte_offset=38 record=0 field_byte=38 from=0x3C9CA owner=0x3C6D3 sub_3C6D3 :: cmp     word_90172[eax], 42h ; 'B'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x22768 owner=0x22090 sub_22090 :: movsx   eax, word_90174[edi]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x229E7 owner=0x22090 sub_22090 :: movsx   eax, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x22CD5 owner=0x22A59 sub_22A59 :: cmp     word_90174[ebx], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x22CE6 owner=0x22A59 sub_22A59 :: cmp     word_90174[ebx], 32h ; '2'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x26AE2 owner=0x26A92 sub_26A92 :: cmp     word_90174[edx], 32h ; '2'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B755 owner=0x2B483 sub_2B483 :: movsx   edx, word_90174[edi]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B7C1 owner=0x2B483 sub_2B483 :: movsx   eax, word_90174[edi]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B7EF owner=0x2B483 sub_2B483 :: movsx   eax, word_90174[edi]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B7F8 owner=0x2B483 sub_2B483 :: mov     word_90174[edi], ax
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B805 owner=0x2B483 sub_2B483 :: cmp     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B80F owner=0x2B483 sub_2B483 :: mov     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B81E owner=0x2B483 sub_2B483 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B828 owner=0x2B483 sub_2B483 :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2B837 owner=0x2B483 sub_2B483 :: movsx   eax, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x2E237 owner=0x2E1E8 sub_2E1E8 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x30524 owner=0x30510 sub_30510 :: cmp     word_90174, 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x337F7 owner=0x33599 sub_33599 :: movsx   edx, word_90174[edx]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x33EC1 owner=0x33E93 sub_33E93 :: movsx   ecx, word_90174[edx]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3407C owner=0x33E93 sub_33E93 :: movsx   esi, word_90174[esi]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x34436 owner=0x343DA sub_343DA :: movsx   esi, word_90174[edx]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3446A owner=0x343DA sub_343DA :: cmp     word_90174[edx], 0Ah
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3449A owner=0x343DA sub_343DA :: cmp     word_90174[eax], 14h
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x344C6 owner=0x343DA sub_343DA :: cmp     word_90174[eax], 1Eh
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x344F2 owner=0x343DA sub_343DA :: cmp     word_90174[eax], 28h ; '('
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x346FB owner=0x34550 sub_34550 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x34705 owner=0x34550 sub_34550 :: cmp     cx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3470E owner=0x34550 sub_34550 :: mov     cx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x356B2 owner=0x35667 sub_35667 :: cmp     word_90174[eax], 5Fh ; '_'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x35765 owner=0x3570F sub_3570F :: cmp     word_90174[eax], 5Fh ; '_'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x35DA3 owner=0x3598C sub_3598C :: add     word_90174[edx], si
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x35DAA owner=0x3598C sub_3598C :: cmp     word_90174[edx], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x35DB4 owner=0x3598C sub_3598C :: mov     word_90174[edx], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x35DC6 owner=0x3598C sub_3598C :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x35DD0 owner=0x3598C sub_3598C :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x360B1 owner=0x3598C sub_3598C :: add     word_90174[edx], si
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x360B8 owner=0x3598C sub_3598C :: cmp     word_90174[edx], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x360C2 owner=0x3598C sub_3598C :: mov     word_90174[edx], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x360D4 owner=0x3598C sub_3598C :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x360DE owner=0x3598C sub_3598C :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x395A6 owner=0x39188 sub_39188 :: movsx   eax, word_90174[ecx]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x395AF owner=0x39188 sub_39188 :: mov     word_90174[ecx], ax
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x395BC owner=0x39188 sub_39188 :: mov     word_90174[ecx], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x395D0 owner=0x39188 sub_39188 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x395DA owner=0x39188 sub_39188 :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39AAB owner=0x39A45 sub_39A45 :: movsx   ebx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39ACD owner=0x39A45 sub_39A45 :: sub     dx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39ADF owner=0x39A45 sub_39A45 :: add     word_90174[eax], dx
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39AE6 owner=0x39A45 sub_39A45 :: cmp     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39AF0 owner=0x39A45 sub_39A45 :: mov     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39B04 owner=0x39A45 sub_39A45 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39B0E owner=0x39A45 sub_39A45 :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E15 owner=0x39DA3 sub_39DA3 :: movsx   ecx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E30 owner=0x39DA3 sub_39DA3 :: cmp     bx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E39 owner=0x39DA3 sub_39DA3 :: mov     bx, word_90174[eax]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E4B owner=0x39DA3 sub_39DA3 :: sub     word_90174[eax], bx
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E52 owner=0x39DA3 sub_39DA3 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E5C owner=0x39DA3 sub_39DA3 :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E70 owner=0x39DA3 sub_39DA3 :: cmp     word_90174[eax], 64h ; 'd'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x39E7A owner=0x39DA3 sub_39DA3 :: mov     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A7B9 owner=0x3A30B sub_3A30B :: movsx   eax, word_90174[ecx]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A7C2 owner=0x3A30B sub_3A30B :: mov     word_90174[ecx], ax
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A7F1 owner=0x3A30B sub_3A30B :: movsx   eax, word_90174[esi]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A7FA owner=0x3A30B sub_3A30B :: mov     word_90174[esi], ax
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A80A owner=0x3A30B sub_3A30B :: cmp     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A814 owner=0x3A30B sub_3A30B :: mov     word_90174[eax], 63h ; 'c'
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A826 owner=0x3A30B sub_3A30B :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3A830 owner=0x3A30B sub_3A30B :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3B3E3 owner=0x3B387 sub_3B387 :: mov     word_90174[ebx], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3B847 owner=0x3B6BE sub_3B6BE :: mov     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3C593 owner=0x3C563 sub_3C563 :: cmp     word_90174[ebx], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3C603 owner=0x3C563 sub_3C563 :: movsx   edx, word_90174[ebx]
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3CA64 owner=0x3C6D3 sub_3C6D3 :: cmp     word_90174[eax], 0
+target=0x90174 byte_offset=40 record=0 field_byte=40 from=0x3CA75 owner=0x3C6D3 sub_3C6D3 :: cmp     word_90174[eax], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x22E0E owner=0x22A59 sub_22A59 :: movsx   eax, word_90176[ebx]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x23A8E owner=0x2399E sub_2399E :: cmp     word_90176[eax], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x23A98 owner=0x2399E sub_2399E :: inc     word_90176[eax]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x26B38 owner=0x26A92 sub_26A92 :: cmp     word_90176[edx], 1
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x26B42 owner=0x26A92 sub_26A92 :: dec     word_90176[edx]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B862 owner=0x2B483 sub_2B483 :: movsx   ecx, word_90176[eax]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B877 owner=0x2B483 sub_2B483 :: add     word_90176[eax], dx
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B87E owner=0x2B483 sub_2B483 :: cmp     word_90176[eax], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B888 owner=0x2B483 sub_2B483 :: mov     word_90176[eax], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B897 owner=0x2B483 sub_2B483 :: cmp     word_90176[eax], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B8A1 owner=0x2B483 sub_2B483 :: mov     word_90176[eax], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2B8B0 owner=0x2B483 sub_2B483 :: movsx   eax, word_90176[eax]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x2E24A owner=0x2E1E8 sub_2E1E8 :: mov     word_90176[eax], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x30537 owner=0x30510 sub_30510 :: mov     word_90176, 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x32EAA owner=0x32E59 sub_32E59 :: cmp     word_90176[edx], 5
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x32ED9 owner=0x32E59 sub_32E59 :: cmp     word_90176[eax], 0Ah
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x32F73 owner=0x32E59 sub_32E59 :: cmp     word_90176[eax], 0Ah
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x32FA3 owner=0x32E59 sub_32E59 :: cmp     word_90176[eax], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x32FD3 owner=0x32E59 sub_32E59 :: cmp     word_90176[eax], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3333B owner=0x32E59 sub_32E59 :: cmp     word_90176[edx], 5
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x336A0 owner=0x33599 sub_33599 :: cmp     word_90176[eax], 0Ah
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3395D owner=0x33599 sub_33599 :: cmp     word_90176[eax], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x33A27 owner=0x33599 sub_33599 :: cmp     word_90176[eax], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x33C7B owner=0x33C4D sub_33C4D :: cmp     word_90176[edx], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x33ED6 owner=0x33E93 sub_33E93 :: cmp     word_90176[edx], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x345E9 owner=0x34550 sub_34550 :: cmp     word_90176[edi], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x346B1 owner=0x34550 sub_34550 :: cmp     word_90176[eax], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x34A3B owner=0x34550 sub_34550 :: cmp     word_90176[eax], 0Ah
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x37483 owner=0x37355 sub_37355 :: dec     word_90176[ecx]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3748A owner=0x37355 sub_37355 :: cmp     word_90176[ecx], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x37494 owner=0x37355 sub_37355 :: mov     word_90176[ecx], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x38579 owner=0x37734 sub_37734 :: sub     word_90176[eax], 3
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x38581 owner=0x37734 sub_37734 :: cmp     word_90176[eax], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3858B owner=0x37734 sub_37734 :: mov     word_90176[eax], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3940D owner=0x39188 sub_39188 :: movsx   edx, word_90176[edx]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x39A21 owner=0x397E5 sub_397E5 :: sub     word_90176[eax], 2
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x39A29 owner=0x397E5 sub_397E5 :: cmp     word_90176[eax], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x39A33 owner=0x397E5 sub_397E5 :: mov     word_90176[eax], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A12A owner=0x3A10C sub_3A10C :: cmp     word_90176[esi], 32h ; '2'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A28E owner=0x3A10C sub_3A10C :: sub     word_90176[eax], 2
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A90D owner=0x3A8A4 sub_3A8A4 :: add     word_90176[ebx], ax
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A929 owner=0x3A8A4 sub_3A8A4 :: cmp     word_90176[ebx], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A933 owner=0x3A8A4 sub_3A8A4 :: mov     word_90176[ebx], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A951 owner=0x3A8A4 sub_3A8A4 :: cmp     word_90176[ebx], 1Eh
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3A95F owner=0x3A8A4 sub_3A8A4 :: movsx   edx, word_90176[ebx]
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3B3D1 owner=0x3B387 sub_3B387 :: mov     word_90176[ebx], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3B4CF owner=0x3B387 sub_3B387 :: cmp     word_90176[ebx], 0Ah
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3B4D9 owner=0x3B387 sub_3B387 :: mov     word_90176[ebx], 0Ah
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3B850 owner=0x3B6BE sub_3B6BE :: mov     word_90176[eax], 64h ; 'd'
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3C5AF owner=0x3C563 sub_3C563 :: cmp     word_90176[ebx], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3C628 owner=0x3C563 sub_3C563 :: cmp     word_90176[ebx], 0
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3C632 owner=0x3C563 sub_3C563 :: mov     word_90176[ebx], 1
+target=0x90176 byte_offset=42 record=0 field_byte=42 from=0x3C8E6 owner=0x3C6D3 sub_3C6D3 :: movsx   eax, word_90176[eax]
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x2B0EE owner=0x2A86C sub_2A86C :: mov     word_90178[eax], 0
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3B538 owner=0x3B387 sub_3B387 :: movzx   eax, word_90178[ebx]
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3B541 owner=0x3B387 sub_3B387 :: mov     word_90178[ebx], ax
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3B57C owner=0x3B387 sub_3B387 :: cmp     word_90178[eax], 0EA60h
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3B587 owner=0x3B387 sub_3B387 :: mov     word_90178[eax], 0EA60h
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3C304 owner=0x3C2AC sub_3C2AC :: movzx   edx, word_90178[ebx]
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3C4C4 owner=0x3C2AC sub_3C2AC :: mov     word_90178[eax], 0
+target=0x90178 byte_offset=44 record=0 field_byte=44 from=0x3C54D owner=0x3C2AC sub_3C2AC :: mov     word_90178[edx], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x22F6E owner=0x22A59 sub_22A59 :: cmp     word_9017A[edx], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x22F78 owner=0x22A59 sub_22A59 :: movsx   edx, word_9017A[edx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x23014 owner=0x22A59 sub_22A59 :: cmp     word_9017A[edx], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2301E owner=0x22A59 sub_22A59 :: movsx   edx, word_9017A[edx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x230BA owner=0x22A59 sub_22A59 :: cmp     word_9017A[edx], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x230C4 owner=0x22A59 sub_22A59 :: movsx   edx, word_9017A[edx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x235D2 owner=0x22A59 sub_22A59 :: cmp     word_9017A[eax], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x235DC owner=0x22A59 sub_22A59 :: movsx   eax, word_9017A[eax]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2AB35 owner=0x2A86C sub_2A86C :: mov     word_9017A[eax], 0FFFFh
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2AB4C owner=0x2A86C sub_2A86C :: cmp     word_9017A[eax], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2AB56 owner=0x2A86C sub_2A86C :: movsx   eax, word_9017A[eax]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2AB96 owner=0x2A86C sub_2A86C :: mov     word_9017A[eax], dx
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2E04E owner=0x2DF0E sub_2DF0E :: mov     word_9017A[eax], 0FFFFh
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2E0CA owner=0x2E078 sub_2E078 :: movsx   eax, word_9017A[eax]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x2E12D owner=0x2E078 sub_2E078 :: mov     word_9017A[eax], 0FFFFh
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x32830 owner=0x3271E sub_3271E :: cmp     word_9017A[ecx], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x3283A owner=0x3271E sub_3271E :: movsx   edx, word_9017A[ecx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x32A8D owner=0x32A51 sub_32A51 :: cmp     word_9017A[eax], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x32A97 owner=0x32A51 sub_32A51 :: movsx   eax, word_9017A[eax]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x32AF6 owner=0x32A51 sub_32A51 :: cmp     word_9017A[eax], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x32B00 owner=0x32A51 sub_32A51 :: movsx   eax, word_9017A[eax]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x34CE2 owner=0x34C47 sub_34C47 :: mov     bx, word_9017A[ebx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x37811 owner=0x37734 sub_37734 :: mov     dx, word_9017A[edx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x392E1 owner=0x39188 sub_39188 :: cmp     word_9017A[ecx], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x392EB owner=0x39188 sub_39188 :: movsx   eax, word_9017A[ecx]
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x3936C owner=0x39188 sub_39188 :: cmp     word_9017A[eax], 0
+target=0x9017A byte_offset=46 record=0 field_byte=46 from=0x39376 owner=0x39188 sub_39188 :: movsx   eax, word_9017A[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x22F94 owner=0x22A59 sub_22A59 :: cmp     word_9017C[edx], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x22F9E owner=0x22A59 sub_22A59 :: movsx   edx, word_9017C[edx]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2303A owner=0x22A59 sub_22A59 :: cmp     word_9017C[edx], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x23044 owner=0x22A59 sub_22A59 :: movsx   edx, word_9017C[edx]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x230E0 owner=0x22A59 sub_22A59 :: cmp     word_9017C[edx], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x230EA owner=0x22A59 sub_22A59 :: movsx   edx, word_9017C[edx]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x23627 owner=0x22A59 sub_22A59 :: cmp     word_9017C[eax], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x23631 owner=0x22A59 sub_22A59 :: movsx   eax, word_9017C[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2ABFB owner=0x2A86C sub_2A86C :: mov     word_9017C[eax], 0FFFFh
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2AC12 owner=0x2A86C sub_2A86C :: cmp     word_9017C[eax], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2AC1C owner=0x2A86C sub_2A86C :: movsx   eax, word_9017C[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2AC5C owner=0x2A86C sub_2A86C :: mov     word_9017C[eax], dx
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2E057 owner=0x2DF0E sub_2DF0E :: mov     word_9017C[eax], 0FFFFh
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2E0EB owner=0x2E078 sub_2E078 :: movsx   eax, word_9017C[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x2E136 owner=0x2E078 sub_2E078 :: mov     word_9017C[eax], 0FFFFh
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x32861 owner=0x3271E sub_3271E :: cmp     word_9017C[ecx], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x3286B owner=0x3271E sub_3271E :: movsx   edx, word_9017C[ecx]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x32ABE owner=0x32A51 sub_32A51 :: cmp     word_9017C[eax], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x32AC8 owner=0x32A51 sub_32A51 :: movsx   eax, word_9017C[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x32B27 owner=0x32A51 sub_32A51 :: cmp     word_9017C[eax], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x32B31 owner=0x32A51 sub_32A51 :: movsx   eax, word_9017C[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x3930A owner=0x39188 sub_39188 :: cmp     word_9017C[eax], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x39314 owner=0x39188 sub_39188 :: movsx   eax, word_9017C[eax]
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x39343 owner=0x39188 sub_39188 :: cmp     word_9017C[eax], 0
+target=0x9017C byte_offset=48 record=0 field_byte=48 from=0x3934D owner=0x39188 sub_39188 :: movsx   eax, word_9017C[eax]
+target=0x9017E byte_offset=50 record=0 field_byte=50 from=0x38662 owner=0x3859E sub_3859E :: mov     dx, word_9017E[eax]
+target=0x9017E byte_offset=50 record=0 field_byte=50 from=0x386AA owner=0x3859E sub_3859E :: mov     ax, word_9017E[edx+eax*2]
+target=0x90188 byte_offset=60 record=0 field_byte=60 from=0x3866D owner=0x3859E sub_3859E :: sub     dx, word_90188[eax]
+target=0x90188 byte_offset=60 record=0 field_byte=60 from=0x38743 owner=0x3859E sub_3859E :: movsx   eax, word_90188[edx+eax*2]
+target=0x90192 byte_offset=70 record=0 field_byte=70 from=0x38786 owner=0x3859E sub_3859E :: movsx   eax, word_90192[edx+eax*2]
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x22D1B owner=0x22A59 sub_22A59 :: cmp     word_9019C[eax], 0
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x22D2C owner=0x22A59 sub_22A59 :: cmp     word_9019C[eax], 1
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x22D3D owner=0x22A59 sub_22A59 :: cmp     word_9019C[eax], 2
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x27243 owner=0x2711A sub_2711A :: mov     word_9019C, 2
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x272EB owner=0x2711A sub_2711A :: mov     word_9019C, ax
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x2B8DB owner=0x2B483 sub_2B483 :: mov     word_9019C[edx], 2
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x2BDAC owner=0x2BD8B sub_2BD8B :: cmp     word_9019C[eax], 2
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x2BDCB owner=0x2BD8B sub_2BD8B :: mov     ax, word_9019C[eax]
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x2FED5 owner=0x2FEBF sub_2FEBF :: mov     word_9019C[eax], dx
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x3BCA4 owner=0x3BA85 sub_3BA85 :: mov     word_9019C[eax], 2
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x3CAC5 owner=0x3C6D3 sub_3C6D3 :: cmp     word_9019C[eax], 0
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x3CAD6 owner=0x3C6D3 sub_3C6D3 :: cmp     word_9019C[eax], 1
+target=0x9019C byte_offset=80 record=0 field_byte=80 from=0x3CAE7 owner=0x3C6D3 sub_3C6D3 :: cmp     word_9019C[eax], 2
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x22D6F owner=0x22A59 sub_22A59 :: movsx   eax, word_9019E[ebx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x26B19 owner=0x26A92 sub_26A92 :: cmp     word_9019E[edx], 1
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x26B23 owner=0x26A92 sub_26A92 :: dec     word_9019E[edx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2749F owner=0x2711A sub_2711A :: mov     word_9019E, ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x274C2 owner=0x2711A sub_2711A :: movsx   eax, word_9019E
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x274DC owner=0x2711A sub_2711A :: cmp     word_9019E, 28h ; '('
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B908 owner=0x2B483 sub_2B483 :: movsx   ecx, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B91D owner=0x2B483 sub_2B483 :: add     word_9019E[eax], dx
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B924 owner=0x2B483 sub_2B483 :: mov     dx, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B93B owner=0x2B483 sub_2B483 :: mov     word_9019E[eax], dx
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B948 owner=0x2B483 sub_2B483 :: cmp     word_9019E[eax], 0
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B952 owner=0x2B483 sub_2B483 :: mov     word_9019E[eax], 0
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B961 owner=0x2B483 sub_2B483 :: movsx   eax, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B9D1 owner=0x2B483 sub_2B483 :: mov     dx, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2B9E8 owner=0x2B483 sub_2B483 :: mov     word_9019E[eax], dx
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2BE4E owner=0x2BD8B sub_2BD8B :: mov     ax, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2E25A owner=0x2E1E8 sub_2E1E8 :: mov     word_9019E[eax], cx
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2E55F owner=0x2E536 sub_2E536 :: mov     word_9019E[edx], 0
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2FBD3 owner=0x2FBC0 sub_2FBC0 :: movsx   edx, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x2FBEC owner=0x2FBC0 sub_2FBC0 :: mov     word_9019E[eax], bx
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x30546 owner=0x30510 sub_30510 :: mov     word_9019E, ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x32F4E owner=0x32E59 sub_32E59 :: cmp     si, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x33850 owner=0x33599 sub_33599 :: movsx   edx, word_9019E[ecx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x33894 owner=0x33599 sub_33599 :: movsx   edx, word_9019E[ecx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x338D9 owner=0x33599 sub_33599 :: movsx   edx, word_9019E[ecx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x33919 owner=0x33599 sub_33599 :: movsx   edx, word_9019E[ecx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x34AB4 owner=0x34550 sub_34550 :: mov     ax, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x38533 owner=0x37734 sub_37734 :: movsx   eax, word_9019E[ebx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3853C owner=0x37734 sub_37734 :: mov     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x38548 owner=0x37734 sub_37734 :: mov     word_9019E[ebx], 0
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x38E0B owner=0x38DAC sub_38DAC :: mov     ax, word_9019E[ecx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x39276 owner=0x39188 sub_39188 :: movsx   edx, word_9019E[ecx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x39608 owner=0x395EC sub_395EC :: movsx   eax, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3966B owner=0x395EC sub_395EC :: add     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x396C1 owner=0x395EC sub_395EC :: add     word_9019E[ebx], di
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x396C8 owner=0x395EC sub_395EC :: mov     ax, word_9019E[ebx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x396DF owner=0x395EC sub_395EC :: mov     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x39734 owner=0x395EC sub_395EC :: sub     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3973B owner=0x395EC sub_395EC :: sub     word_9019E[ebx], di
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x39742 owner=0x395EC sub_395EC :: cmp     word_9019E[ebx], 0
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3974C owner=0x395EC sub_395EC :: mov     word_9019E[ebx], 0
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x39760 owner=0x395EC sub_395EC :: movsx   eax, word_9019E[eax]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3A9E1 owner=0x3A8A4 sub_3A8A4 :: add     word_9019E[esi], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3A9F5 owner=0x3A8A4 sub_3A8A4 :: mov     ax, word_9019E[ebx]
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3AA0C owner=0x3A8A4 sub_3A8A4 :: mov     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3B3CA owner=0x3B387 sub_3B387 :: mov     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3B891 owner=0x3B6BE sub_3B6BE :: mov     word_9019E[ebx], ax
+target=0x9019E byte_offset=82 record=0 field_byte=82 from=0x3CB34 owner=0x3C6D3 sub_3C6D3 :: movsx   eax, word_9019E[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x22DBB owner=0x22A59 sub_22A59 :: movsx   eax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2724C owner=0x2711A sub_2711A :: mov     word_901A0, 28h ; '('
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x27300 owner=0x2711A sub_2711A :: mov     word_901A0, ax
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x27499 owner=0x2711A sub_2711A :: mov     ax, word_901A0
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B92B owner=0x2B483 sub_2B483 :: cmp     dx, word_901A0[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B934 owner=0x2B483 sub_2B483 :: mov     dx, word_901A0[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B997 owner=0x2B483 sub_2B483 :: add     word_901A0[eax], dx
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B99E owner=0x2B483 sub_2B483 :: cmp     word_901A0[eax], 0
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B9A8 owner=0x2B483 sub_2B483 :: mov     word_901A0[eax], 0
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B9B7 owner=0x2B483 sub_2B483 :: cmp     word_901A0[eax], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B9C2 owner=0x2B483 sub_2B483 :: mov     word_901A0[eax], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B9D8 owner=0x2B483 sub_2B483 :: cmp     dx, word_901A0[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2B9E1 owner=0x2B483 sub_2B483 :: mov     dx, word_901A0[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2E253 owner=0x2E1E8 sub_2E1E8 :: mov     cx, word_901A0[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2FBDE owner=0x2FBC0 sub_2FBC0 :: add     word_901A0[eax], bx
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x2FBE5 owner=0x2FBC0 sub_2FBC0 :: mov     bx, word_901A0[eax]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x30540 owner=0x30510 sub_30510 :: mov     ax, word_901A0
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x33840 owner=0x33599 sub_33599 :: movsx   edx, word_901A0[ecx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x33881 owner=0x33599 sub_33599 :: movsx   edx, word_901A0[ecx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x338C5 owner=0x33599 sub_33599 :: movsx   edx, word_901A0[ecx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x33906 owner=0x33599 sub_33599 :: movsx   edx, word_901A0[ecx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3969B owner=0x395EC sub_395EC :: add     word_901A0[ebx], ax
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x396A2 owner=0x395EC sub_395EC :: cmp     word_901A0[ebx], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x396AD owner=0x395EC sub_395EC :: mov     word_901A0[ebx], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x396CF owner=0x395EC sub_395EC :: cmp     ax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x396D8 owner=0x395EC sub_395EC :: mov     ax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3A9FC owner=0x3A8A4 sub_3A8A4 :: cmp     ax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3AA05 owner=0x3A8A4 sub_3A8A4 :: mov     ax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3B3C3 owner=0x3B387 sub_3B387 :: mov     ax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3B869 owner=0x3B6BE sub_3B6BE :: add     word_901A0[eax], dx
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3B870 owner=0x3B6BE sub_3B6BE :: cmp     word_901A0[eax], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3B87B owner=0x3B6BE sub_3B6BE :: mov     word_901A0[eax], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3B88A owner=0x3B6BE sub_3B6BE :: mov     ax, word_901A0[ebx]
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3BCC0 owner=0x3BA85 sub_3BA85 :: add     word_901A0[eax], dx
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3BCC7 owner=0x3BA85 sub_3BA85 :: cmp     word_901A0[eax], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3BCD2 owner=0x3BA85 sub_3BA85 :: mov     word_901A0[eax], 3E7h
+target=0x901A0 byte_offset=84 record=0 field_byte=84 from=0x3CBA2 owner=0x3C6D3 sub_3C6D3 :: movsx   eax, word_901A0[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x22F67 owner=0x22A59 sub_22A59 :: movsx   eax, word_901A2[edx]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x27255 owner=0x2711A sub_2711A :: mov     word_901A2, 1Eh
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x27315 owner=0x2711A sub_2711A :: mov     word_901A2, ax
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x27529 owner=0x2711A sub_2711A :: movsx   eax, word_901A2
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x27543 owner=0x2711A sub_2711A :: cmp     word_901A2, 1Eh
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2BA16 owner=0x2B483 sub_2B483 :: add     word_901A2[eax], dx
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2BE74 owner=0x2BD8B sub_2BD8B :: mov     ax, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2F148 owner=0x2F136 sub_2F136 :: movsx   eax, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCB0 owner=0x2FC9D sub_2FC9D :: movsx   edx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCBB owner=0x2FC9D sub_2FC9D :: add     word_901A2[eax], bx
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCC2 owner=0x2FC9D sub_2FC9D :: cmp     word_901A2[eax], 0
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCCC owner=0x2FC9D sub_2FC9D :: mov     word_901A2[eax], 0
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCDD owner=0x2FC9D sub_2FC9D :: cmp     word_901A2[eax], 64h ; 'd'
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCE7 owner=0x2FC9D sub_2FC9D :: mov     word_901A2[eax], 64h ; 'd'
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x2FCF8 owner=0x2FC9D sub_2FC9D :: movsx   ebx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x33601 owner=0x33599 sub_33599 :: mov     cx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x33633 owner=0x33599 sub_33599 :: mov     cx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x34595 owner=0x34550 sub_34550 :: movsx   eax, word_901A2[edi]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x347B9 owner=0x34550 sub_34550 :: movsx   eax, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x34865 owner=0x34550 sub_34550 :: movsx   edx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x348FC owner=0x34550 sub_34550 :: movsx   edx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x34993 owner=0x34550 sub_34550 :: movsx   ebp, word_901A2[edx]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x349EF owner=0x34550 sub_34550 :: movsx   ebp, word_901A2[ecx]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x35184 owner=0x3513A sub_3513A :: mov     ax, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x351F4 owner=0x351A7 sub_351A7 :: mov     ax, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x355CA owner=0x3540E sub_3540E :: movsx   ebx, word_901A2[edx]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x356D9 owner=0x35667 sub_35667 :: mov     ax, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x36373 owner=0x36210 sub_36210 :: movsx   ebx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x364D4 owner=0x363AC sub_363AC :: movsx   ebx, word_901A2[eax]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x392C5 owner=0x39188 sub_39188 :: movsx   edx, word_901A2[ecx]
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3B89C owner=0x3B6BE sub_3B6BE :: add     word_901A2[ebx], di
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3B988 owner=0x3B6BE sub_3B6BE :: cmp     word_901A2[ebx], 64h ; 'd'
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3B992 owner=0x3B6BE sub_3B6BE :: mov     word_901A2[ebx], 64h ; 'd'
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3BCEE owner=0x3BA85 sub_3BA85 :: add     word_901A2[eax], dx
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3BCF5 owner=0x3BA85 sub_3BA85 :: cmp     word_901A2[eax], 64h ; 'd'
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3BCFF owner=0x3BA85 sub_3BA85 :: mov     word_901A2[eax], 64h ; 'd'
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3BD0E owner=0x3BA85 sub_3BA85 :: cmp     word_901A2[eax], 0
+target=0x901A2 byte_offset=86 record=0 field_byte=86 from=0x3BD18 owner=0x3BA85 sub_3BA85 :: mov     word_901A2[eax], 0
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x230B3 owner=0x22A59 sub_22A59 :: movsx   eax, word_901A4[edx]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x259D6 owner=0x25911 sub_25911 :: cmp     word_901A4[edx], 46h ; 'F'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2725E owner=0x2711A sub_2711A :: mov     word_901A4, 1Eh
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2732A owner=0x2711A sub_2711A :: mov     word_901A4, ax
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x27590 owner=0x2711A sub_2711A :: movsx   eax, word_901A4
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x275AA owner=0x2711A sub_2711A :: cmp     word_901A4, 1Eh
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2BA24 owner=0x2B483 sub_2B483 :: add     word_901A4[eax], dx
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2BE9A owner=0x2BD8B sub_2BD8B :: mov     dx, word_901A4[edx]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FACA owner=0x2FAB7 sub_2FAB7 :: movsx   edx, word_901A4[eax]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FAD5 owner=0x2FAB7 sub_2FAB7 :: add     word_901A4[eax], bx
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FADC owner=0x2FAB7 sub_2FAB7 :: cmp     word_901A4[eax], 0
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FAE6 owner=0x2FAB7 sub_2FAB7 :: mov     word_901A4[eax], 0
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FAF7 owner=0x2FAB7 sub_2FAB7 :: cmp     word_901A4[eax], 64h ; 'd'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FB01 owner=0x2FAB7 sub_2FAB7 :: mov     word_901A4[eax], 64h ; 'd'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x2FB12 owner=0x2FAB7 sub_2FAB7 :: movsx   ebx, word_901A4[eax]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x32829 owner=0x3271E sub_3271E :: mov     si, word_901A4[ecx]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x32A86 owner=0x32A51 sub_32A51 :: mov     dx, word_901A4[eax]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x32AEF owner=0x32A51 sub_32A51 :: mov     cx, word_901A4[eax]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x37465 owner=0x37355 sub_37355 :: movsx   edx, word_901A4[ecx]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3A8CF owner=0x3A8A4 sub_3A8A4 :: movsx   edx, word_901A4[ebx]
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3B8A3 owner=0x3B6BE sub_3B6BE :: add     word_901A4[ebx], di
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3B9A1 owner=0x3B6BE sub_3B6BE :: cmp     word_901A4[eax], 64h ; 'd'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3B9AB owner=0x3B6BE sub_3B6BE :: mov     word_901A4[eax], 64h ; 'd'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3BD34 owner=0x3BA85 sub_3BA85 :: add     word_901A4[eax], dx
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3BD3B owner=0x3BA85 sub_3BA85 :: cmp     word_901A4[eax], 64h ; 'd'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3BD45 owner=0x3BA85 sub_3BA85 :: mov     word_901A4[eax], 64h ; 'd'
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3BD54 owner=0x3BA85 sub_3BA85 :: cmp     word_901A4[eax], 0
+target=0x901A4 byte_offset=88 record=0 field_byte=88 from=0x3BD5E owner=0x3BA85 sub_3BA85 :: mov     word_901A4[eax], 0
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x2300D owner=0x22A59 sub_22A59 :: movsx   eax, word_901A6[edx]
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x27267 owner=0x2711A sub_2711A :: mov     word_901A6, 1Eh
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x2733F owner=0x2711A sub_2711A :: mov     word_901A6, ax
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x275FD owner=0x2711A sub_2711A :: movsx   eax, word_901A6
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x27617 owner=0x2711A sub_2711A :: cmp     word_901A6, 1Eh
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x2BA32 owner=0x2B483 sub_2B483 :: add     word_901A6[eax], dx
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3933C owner=0x39188 sub_39188 :: mov     dx, word_901A6[eax]
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3B8AA owner=0x3B6BE sub_3B6BE :: add     word_901A6[ebx], di
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3B9BA owner=0x3B6BE sub_3B6BE :: cmp     word_901A6[eax], 64h ; 'd'
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3B9C4 owner=0x3B6BE sub_3B6BE :: mov     word_901A6[eax], 64h ; 'd'
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3BD7A owner=0x3BA85 sub_3BA85 :: add     word_901A6[eax], dx
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3BD81 owner=0x3BA85 sub_3BA85 :: cmp     word_901A6[eax], 64h ; 'd'
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3BD8B owner=0x3BA85 sub_3BA85 :: mov     word_901A6[eax], 64h ; 'd'
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3BD9A owner=0x3BA85 sub_3BA85 :: cmp     word_901A6[eax], 0
+target=0x901A6 byte_offset=90 record=0 field_byte=90 from=0x3BDA4 owner=0x3BA85 sub_3BA85 :: mov     word_901A6[eax], 0
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x214FC owner=0x21496 sub_21496 :: cmp     word_901A8[eax], 0Ah
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x21841 owner=0x21496 sub_21496 :: movsx   eax, word_901A8[eax]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x21992 owner=0x21496 sub_21496 :: movsx   eax, word_901A8[eax]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x23179 owner=0x22A59 sub_22A59 :: movsx   eax, word_901A8[ebx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x27270 owner=0x2711A sub_2711A :: mov     word_901A8, 1Eh
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x27354 owner=0x2711A sub_2711A :: mov     word_901A8, ax
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x276D1 owner=0x2711A sub_2711A :: movsx   eax, word_901A8
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x276EB owner=0x2711A sub_2711A :: cmp     word_901A8, 1Eh
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x2BA40 owner=0x2B483 sub_2B483 :: add     word_901A8[eax], dx
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x2BEE6 owner=0x2BD8B sub_2BD8B :: mov     ax, word_901A8[eax]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x32FDD owner=0x32E59 sub_32E59 :: cmp     word_901A8[eax], 14h
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3396B owner=0x33599 sub_33599 :: cmp     word_901A8[eax], 14h
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3399B owner=0x33599 sub_33599 :: cmp     word_901A8[eax], 28h ; '('
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x339C7 owner=0x33599 sub_33599 :: cmp     word_901A8[eax], 3Ch ; '<'
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x339F3 owner=0x33599 sub_33599 :: cmp     word_901A8[eax], 50h ; 'P'
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x33C71 owner=0x33C4D sub_33C4D :: cmp     word_901A8[edx], 14h
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x33C8C owner=0x33C4D sub_33C4D :: movsx   edx, word_901A8[edx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x33E15 owner=0x33C4D sub_33C4D :: cmp     word_901A8[ecx], 14h
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x33E3D owner=0x33C4D sub_33C4D :: movsx   ecx, word_901A8[ecx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x34266 owner=0x341F6 sub_341F6 :: movsx   edx, word_901A8[edx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x345DB owner=0x34550 sub_34550 :: cmp     word_901A8[edi], 14h
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3532A owner=0x35217 sub_35217 :: mov     dx, word_901A8[edx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x36232 owner=0x36210 sub_36210 :: movsx   edx, word_901A8[edx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x39EB2 owner=0x39E88 sub_39E88 :: movsx   edx, word_901A8[edx]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3A138 owner=0x3A10C sub_3A10C :: movsx   esi, word_901A8[esi]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3A1EE owner=0x3A10C sub_3A10C :: movsx   edx, word_901A8[eax]
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3B8B1 owner=0x3B6BE sub_3B6BE :: cmp     word_901A8[ebx], 14h
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3B8C5 owner=0x3B6BE sub_3B6BE :: add     word_901A8[ebx], ax
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3B9D3 owner=0x3B6BE sub_3B6BE :: cmp     word_901A8[eax], 64h ; 'd'
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3B9DD owner=0x3B6BE sub_3B6BE :: mov     word_901A8[eax], 64h ; 'd'
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3BDC0 owner=0x3BA85 sub_3BA85 :: add     word_901A8[eax], dx
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3BDC7 owner=0x3BA85 sub_3BA85 :: cmp     word_901A8[eax], 64h ; 'd'
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3BDD1 owner=0x3BA85 sub_3BA85 :: mov     word_901A8[eax], 64h ; 'd'
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3BDE0 owner=0x3BA85 sub_3BA85 :: cmp     word_901A8[eax], 0
+target=0x901A8 byte_offset=92 record=0 field_byte=92 from=0x3BDEA owner=0x3BA85 sub_3BA85 :: mov     word_901A8[eax], 0
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x231D3 owner=0x22A59 sub_22A59 :: movsx   eax, word_901AA[ebx]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x27279 owner=0x2711A sub_2711A :: mov     word_901AA, 1Eh
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x27369 owner=0x2711A sub_2711A :: mov     word_901AA, ax
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x27738 owner=0x2711A sub_2711A :: movsx   eax, word_901AA
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x27752 owner=0x2711A sub_2711A :: cmp     word_901AA, 1Eh
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x2BA4E owner=0x2B483 sub_2B483 :: add     word_901AA[eax], dx
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x2BEC0 owner=0x2BD8B sub_2BD8B :: mov     dx, word_901AA[edx]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x2E64F owner=0x2E639 sub_2E639 :: mov     word_901AA[eax], dx
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x32F7D owner=0x32E59 sub_32E59 :: cmp     word_901AA[eax], 14h
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x347B2 owner=0x34550 sub_34550 :: movsx   edi, word_901AA[eax]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x347DD owner=0x34550 sub_34550 :: movsx   edi, word_901AA[eax]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x35265 owner=0x35217 sub_35217 :: cmp     word_901AA[edx], 14h
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x35477 owner=0x3540E sub_3540E :: movsx   edx, word_901AA[edx]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x356D0 owner=0x35667 sub_35667 :: cmp     di, word_901AA[ecx]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x35783 owner=0x3570F sub_3570F :: cmp     ax, word_901AA[edx]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x397A0 owner=0x39776 sub_39776 :: movsx   edx, word_901AA[edx]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x39A5E owner=0x39A45 sub_39A45 :: movsx   eax, word_901AA[eax]
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3B8D2 owner=0x3B6BE sub_3B6BE :: cmp     word_901AA[ebx], 14h
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3B8E6 owner=0x3B6BE sub_3B6BE :: add     word_901AA[ebx], ax
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3B9EC owner=0x3B6BE sub_3B6BE :: cmp     word_901AA[eax], 64h ; 'd'
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3B9F6 owner=0x3B6BE sub_3B6BE :: mov     word_901AA[eax], 64h ; 'd'
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3BE06 owner=0x3BA85 sub_3BA85 :: add     word_901AA[eax], dx
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3BE0D owner=0x3BA85 sub_3BA85 :: cmp     word_901AA[eax], 64h ; 'd'
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3BE17 owner=0x3BA85 sub_3BA85 :: mov     word_901AA[eax], 64h ; 'd'
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3BE26 owner=0x3BA85 sub_3BA85 :: cmp     word_901AA[eax], 0
+target=0x901AA byte_offset=94 record=0 field_byte=94 from=0x3BE30 owner=0x3BA85 sub_3BA85 :: mov     word_901AA[eax], 0
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x21B26 owner=0x21AC0 sub_21AC0 :: cmp     word_901AC[eax], 0Ah
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x21E6B owner=0x21AC0 sub_21AC0 :: movsx   eax, word_901AC[eax]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x21FBC owner=0x21AC0 sub_21AC0 :: movsx   eax, word_901AC[eax]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x2322D owner=0x22A59 sub_22A59 :: movsx   eax, word_901AC[ebx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x27282 owner=0x2711A sub_2711A :: mov     word_901AC, 1Eh
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x2737E owner=0x2711A sub_2711A :: mov     word_901AC, ax
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x277A5 owner=0x2711A sub_2711A :: movsx   eax, word_901AC
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x277BF owner=0x2711A sub_2711A :: cmp     word_901AC, 1Eh
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x2BA5C owner=0x2B483 sub_2B483 :: add     word_901AC[eax], dx
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x2BF0C owner=0x2BD8B sub_2BD8B :: mov     dx, word_901AC[edx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x32FAD owner=0x32E59 sub_32E59 :: cmp     word_901AC[eax], 14h
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x33A35 owner=0x33599 sub_33599 :: cmp     word_901AC[eax], 14h
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x33A65 owner=0x33599 sub_33599 :: cmp     word_901AC[eax], 28h ; '('
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x33A91 owner=0x33599 sub_33599 :: cmp     word_901AC[eax], 3Ch ; '<'
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x33ABD owner=0x33599 sub_33599 :: cmp     word_901AC[eax], 50h ; 'P'
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x33EB7 owner=0x33E93 sub_33E93 :: cmp     word_901AC[edx], 14h
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x33EC8 owner=0x33E93 sub_33E93 :: movsx   ebx, word_901AC[edx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3405B owner=0x33E93 sub_33E93 :: cmp     word_901AC[ecx], 14h
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x34083 owner=0x33E93 sub_33E93 :: movsx   ecx, word_901AC[ecx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3444A owner=0x343DA sub_343DA :: movsx   ecx, word_901AC[ecx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x346A3 owner=0x34550 sub_34550 :: cmp     word_901AC[eax], 14h
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x352C0 owner=0x35217 sub_35217 :: mov     dx, word_901AC[edx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x363CE owner=0x363AC sub_363AC :: movsx   edx, word_901AC[edx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x39B49 owner=0x39B1F sub_39B1F :: movsx   edx, word_901AC[edx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x39DB9 owner=0x39DA3 sub_39DA3 :: movsx   edx, word_901AC[edx]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x39E03 owner=0x39DA3 sub_39DA3 :: movsx   edx, word_901AC[eax]
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3B8F3 owner=0x3B6BE sub_3B6BE :: cmp     word_901AC[ebx], 14h
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3B907 owner=0x3B6BE sub_3B6BE :: add     word_901AC[ebx], ax
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BA05 owner=0x3B6BE sub_3B6BE :: cmp     word_901AC[eax], 64h ; 'd'
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BA0F owner=0x3B6BE sub_3B6BE :: mov     word_901AC[eax], 64h ; 'd'
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BE4C owner=0x3BA85 sub_3BA85 :: add     word_901AC[eax], dx
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BE53 owner=0x3BA85 sub_3BA85 :: cmp     word_901AC[eax], 64h ; 'd'
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BE5D owner=0x3BA85 sub_3BA85 :: mov     word_901AC[eax], 64h ; 'd'
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BE6C owner=0x3BA85 sub_3BA85 :: cmp     word_901AC[eax], 0
+target=0x901AC byte_offset=96 record=0 field_byte=96 from=0x3BE76 owner=0x3BA85 sub_3BA85 :: mov     word_901AC[eax], 0
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x2728B owner=0x2711A sub_2711A :: mov     word_901AE, 1Eh
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x27393 owner=0x2711A sub_2711A :: mov     word_901AE, ax
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x2B786 owner=0x2B483 sub_2B483 :: movsx   esi, word_901AE[edi]
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x2B79C owner=0x2B483 sub_2B483 :: cmp     word_901AE[edi], 64h ; 'd'
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x2BA6A owner=0x2B483 sub_2B483 :: add     word_901AE[eax], dx
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x356C9 owner=0x35667 sub_35667 :: mov     di, word_901AE[eax]
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3577C owner=0x3570F sub_3570F :: mov     ax, word_901AE[eax]
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x39581 owner=0x39188 sub_39188 :: movsx   eax, word_901AE[ecx]
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3958C owner=0x39188 sub_39188 :: cmp     word_901AE[ecx], 5Ah ; 'Z'
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x39A73 owner=0x39A45 sub_39A45 :: movsx   edx, word_901AE[eax]
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3A76D owner=0x3A30B sub_3A30B :: movsx   edx, word_901AE[esi]
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3A78F owner=0x3A30B sub_3A30B :: cmp     word_901AE[esi], 64h ; 'd'
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3BE92 owner=0x3BA85 sub_3BA85 :: add     word_901AE[eax], dx
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3BE99 owner=0x3BA85 sub_3BA85 :: cmp     word_901AE[eax], 64h ; 'd'
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3BEA3 owner=0x3BA85 sub_3BA85 :: mov     word_901AE[eax], 64h ; 'd'
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3BEB2 owner=0x3BA85 sub_3BA85 :: cmp     word_901AE[eax], 0
+target=0x901AE byte_offset=98 record=0 field_byte=98 from=0x3BEBC owner=0x3BA85 sub_3BA85 :: mov     word_901AE[eax], 0
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x23287 owner=0x22A59 sub_22A59 :: movsx   eax, word_901B0[ebx]
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x27294 owner=0x2711A sub_2711A :: mov     word_901B0, 1Eh
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x273A8 owner=0x2711A sub_2711A :: mov     word_901B0, ax
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x27812 owner=0x2711A sub_2711A :: movsx   eax, word_901B0
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x2782C owner=0x2711A sub_2711A :: cmp     word_901B0, 1Eh
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x2BA78 owner=0x2B483 sub_2B483 :: add     word_901B0[eax], dx
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x2BF32 owner=0x2BD8B sub_2BD8B :: mov     dx, word_901B0[edx]
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3B914 owner=0x3B6BE sub_3B6BE :: cmp     word_901B0[ebx], 14h
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3B928 owner=0x3B6BE sub_3B6BE :: add     word_901B0[ebx], ax
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BA37 owner=0x3B6BE sub_3B6BE :: cmp     word_901B0[eax], 64h ; 'd'
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BA41 owner=0x3B6BE sub_3B6BE :: mov     word_901B0[eax], 64h ; 'd'
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BED8 owner=0x3BA85 sub_3BA85 :: add     word_901B0[eax], dx
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BEDF owner=0x3BA85 sub_3BA85 :: cmp     word_901B0[eax], 64h ; 'd'
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BEE9 owner=0x3BA85 sub_3BA85 :: mov     word_901B0[eax], 64h ; 'd'
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BEF8 owner=0x3BA85 sub_3BA85 :: cmp     word_901B0[eax], 0
+target=0x901B0 byte_offset=100 record=0 field_byte=100 from=0x3BF02 owner=0x3BA85 sub_3BA85 :: mov     word_901B0[eax], 0
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x232E1 owner=0x22A59 sub_22A59 :: movsx   eax, word_901B2[ebx]
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x2729D owner=0x2711A sub_2711A :: mov     word_901B2, 1Eh
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x273BD owner=0x2711A sub_2711A :: mov     word_901B2, ax
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x27879 owner=0x2711A sub_2711A :: movsx   eax, word_901B2
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x27893 owner=0x2711A sub_2711A :: cmp     word_901B2, 1Eh
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x2BA86 owner=0x2B483 sub_2B483 :: add     word_901B2[eax], dx
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x2BF58 owner=0x2BD8B sub_2BD8B :: mov     dx, word_901B2[edx]
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3B935 owner=0x3B6BE sub_3B6BE :: cmp     word_901B2[ebx], 14h
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3B949 owner=0x3B6BE sub_3B6BE :: add     word_901B2[ebx], ax
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BA50 owner=0x3B6BE sub_3B6BE :: cmp     word_901B2[eax], 64h ; 'd'
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BA5A owner=0x3B6BE sub_3B6BE :: mov     word_901B2[eax], 64h ; 'd'
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BF1E owner=0x3BA85 sub_3BA85 :: add     word_901B2[eax], dx
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BF25 owner=0x3BA85 sub_3BA85 :: cmp     word_901B2[eax], 64h ; 'd'
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BF2F owner=0x3BA85 sub_3BA85 :: mov     word_901B2[eax], 64h ; 'd'
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BF3E owner=0x3BA85 sub_3BA85 :: cmp     word_901B2[eax], 0
+target=0x901B2 byte_offset=102 record=0 field_byte=102 from=0x3BF48 owner=0x3BA85 sub_3BA85 :: mov     word_901B2[eax], 0
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x2333E owner=0x22A59 sub_22A59 :: movsx   eax, word_901B4[ebx]
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x272A6 owner=0x2711A sub_2711A :: mov     word_901B4, 1Eh
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x273D2 owner=0x2711A sub_2711A :: mov     word_901B4, ax
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x278E0 owner=0x2711A sub_2711A :: movsx   eax, word_901B4
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x278FA owner=0x2711A sub_2711A :: cmp     word_901B4, 1Eh
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x2BA94 owner=0x2B483 sub_2B483 :: add     word_901B4[eax], dx
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x2BF7E owner=0x2BD8B sub_2BD8B :: mov     dx, word_901B4[edx]
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3B956 owner=0x3B6BE sub_3B6BE :: cmp     word_901B4[ebx], 14h
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3B96A owner=0x3B6BE sub_3B6BE :: add     word_901B4[ebx], ax
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BA69 owner=0x3B6BE sub_3B6BE :: cmp     word_901B4[esi], 64h ; 'd'
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BA77 owner=0x3B6BE sub_3B6BE :: mov     word_901B4[esi], 64h ; 'd'
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BF64 owner=0x3BA85 sub_3BA85 :: add     word_901B4[eax], dx
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BF6B owner=0x3BA85 sub_3BA85 :: cmp     word_901B4[eax], 64h ; 'd'
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BF75 owner=0x3BA85 sub_3BA85 :: mov     word_901B4[eax], 64h ; 'd'
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BF84 owner=0x3BA85 sub_3BA85 :: cmp     word_901B4[eax], 0
+target=0x901B4 byte_offset=104 record=0 field_byte=104 from=0x3BF8E owner=0x3BA85 sub_3BA85 :: mov     word_901B4[eax], 0
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x2339E owner=0x22A59 sub_22A59 :: movsx   eax, word_901B6[ebx]
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x272CA owner=0x2711A sub_2711A :: mov     word_901B6, 1Eh
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x273E7 owner=0x2711A sub_2711A :: mov     word_901B6, ax
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x2BAA2 owner=0x2B483 sub_2B483 :: add     word_901B6[eax], dx
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x2BFA4 owner=0x2BD8B sub_2BD8B :: mov     dx, word_901B6[edx]
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x3BFAA owner=0x3BA85 sub_3BA85 :: add     word_901B6[eax], dx
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x3BFB1 owner=0x3BA85 sub_3BA85 :: cmp     word_901B6[eax], 64h ; 'd'
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x3BFBB owner=0x3BA85 sub_3BA85 :: mov     word_901B6[eax], 64h ; 'd'
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x3BFCA owner=0x3BA85 sub_3BA85 :: cmp     word_901B6[eax], 0
+target=0x901B6 byte_offset=106 record=0 field_byte=106 from=0x3BFD4 owner=0x3BA85 sub_3BA85 :: mov     word_901B6[eax], 0
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x233FE owner=0x22A59 sub_22A59 :: movsx   eax, word_901B8[ebx]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x272AF owner=0x2711A sub_2711A :: mov     word_901B8, 1Eh
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x273FC owner=0x2711A sub_2711A :: mov     word_901B8, ax
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x2794D owner=0x2711A sub_2711A :: movsx   eax, word_901B8
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x27967 owner=0x2711A sub_2711A :: cmp     word_901B8, 1Eh
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x2B5E5 owner=0x2B483 sub_2B483 :: movsx   esi, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x2B77F owner=0x2B483 sub_2B483 :: movsx   eax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x2BAB0 owner=0x2B483 sub_2B483 :: add     word_901B8[eax], dx
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x2BFCA owner=0x2BD8B sub_2BD8B :: mov     dx, word_901B8[edx]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3489F owner=0x34550 sub_34550 :: movsx   eax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x35882 owner=0x3582B sub_3582B :: movsx   edx, word_901B8[edx]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x35C51 owner=0x3598C sub_3598C :: mov     ax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x35D82 owner=0x3598C sub_3598C :: mov     ax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x35F5D owner=0x3598C sub_3598C :: mov     ax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3608C owner=0x3598C sub_3598C :: mov     ax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3A338 owner=0x3A30B sub_3A30B :: movsx   edx, word_901B8[edx]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3A62B owner=0x3A30B sub_3A30B :: mov     ax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3A766 owner=0x3A30B sub_3A30B :: mov     ax, word_901B8[eax]
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3B981 owner=0x3B6BE sub_3B6BE :: add     word_901B8[ebx], ax
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3BA1E owner=0x3B6BE sub_3B6BE :: cmp     word_901B8[eax], 64h ; 'd'
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3BA28 owner=0x3B6BE sub_3B6BE :: mov     word_901B8[eax], 64h ; 'd'
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3BFF0 owner=0x3BA85 sub_3BA85 :: add     word_901B8[eax], dx
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3BFF7 owner=0x3BA85 sub_3BA85 :: cmp     word_901B8[eax], 64h ; 'd'
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3C001 owner=0x3BA85 sub_3BA85 :: mov     word_901B8[eax], 64h ; 'd'
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3C010 owner=0x3BA85 sub_3BA85 :: cmp     word_901B8[eax], 0
+target=0x901B8 byte_offset=108 record=0 field_byte=108 from=0x3C01A owner=0x3BA85 sub_3BA85 :: mov     word_901B8[eax], 0
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x2BABE owner=0x2B483 sub_2B483 :: add     word_901BA[eax], dx
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x391BD owner=0x39188 sub_39188 :: cmp     word_901BA[eax], 50h ; 'P'
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x391F3 owner=0x39188 sub_39188 :: mov     ax, word_901BA[eax]
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x39200 owner=0x39188 sub_39188 :: mov     ax, word_901BA[eax]
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x3C036 owner=0x3BA85 sub_3BA85 :: add     word_901BA[eax], dx
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x3C03D owner=0x3BA85 sub_3BA85 :: cmp     word_901BA[eax], 64h ; 'd'
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x3C047 owner=0x3BA85 sub_3BA85 :: mov     word_901BA[eax], 64h ; 'd'
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x3C056 owner=0x3BA85 sub_3BA85 :: cmp     word_901BA[eax], 0
+target=0x901BA byte_offset=110 record=0 field_byte=110 from=0x3C060 owner=0x3BA85 sub_3BA85 :: mov     word_901BA[eax], 0
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2F119 owner=0x2F107 sub_2F107 :: movsx   eax, word_901BC[eax]
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2F6F1 owner=0x2F6E3 sub_2F6E3 :: add     word_901BC, ax
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2F6F8 owner=0x2F6E3 sub_2F6E3 :: cmp     word_901BC, 64h ; 'd'
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2F702 owner=0x2F6E3 sub_2F6E3 :: mov     word_901BC, 64h ; 'd'
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2F70B owner=0x2F6E3 sub_2F6E3 :: cmp     word_901BC, 0
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2F715 owner=0x2F6E3 sub_2F6E3 :: mov     word_901BC, 0
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x2FFBD owner=0x2FFB3 sub_2FFB3 :: movsx   eax, word_901BC
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x3507E owner=0x3505B sub_3505B :: cmp     word_901BC[eax], 4Bh ; 'K'
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x350BE owner=0x3505B sub_3505B :: cmp     word_901BC[eax], 19h
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x3C07C owner=0x3BA85 sub_3BA85 :: add     word_901BC[eax], dx
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x3C083 owner=0x3BA85 sub_3BA85 :: cmp     word_901BC[eax], 64h ; 'd'
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x3C08D owner=0x3BA85 sub_3BA85 :: mov     word_901BC[eax], 64h ; 'd'
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x3C09C owner=0x3BA85 sub_3BA85 :: cmp     word_901BC[eax], 0
+target=0x901BC byte_offset=112 record=0 field_byte=112 from=0x3C0A6 owner=0x3BA85 sub_3BA85 :: mov     word_901BC[eax], 0
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x2BACC owner=0x2B483 sub_2B483 :: add     word_901BE[eax], dx
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x3956D owner=0x39188 sub_39188 :: movsx   eax, word_901BE[ecx]
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x3C0E6 owner=0x3BA85 sub_3BA85 :: add     word_901BE[eax], dx
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x3C0ED owner=0x3BA85 sub_3BA85 :: cmp     word_901BE[eax], 64h ; 'd'
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x3C0F7 owner=0x3BA85 sub_3BA85 :: mov     word_901BE[eax], 64h ; 'd'
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x3C106 owner=0x3BA85 sub_3BA85 :: cmp     word_901BE[eax], 0
+target=0x901BE byte_offset=114 record=0 field_byte=114 from=0x3C110 owner=0x3BA85 sub_3BA85 :: mov     word_901BE[eax], 0
+target=0x901C0 byte_offset=116 record=0 field_byte=116 from=0x378F1 owner=0x37734 sub_37734 :: cmp     word_901C0[eax], 1
+target=0x901C0 byte_offset=116 record=0 field_byte=116 from=0x3C0B5 owner=0x3BA85 sub_3BA85 :: cmp     word_901C0[eax], 0
+target=0x901C0 byte_offset=116 record=0 field_byte=116 from=0x3C0CC owner=0x3BA85 sub_3BA85 :: mov     word_901C0[eax], dx
+target=0x901C2 byte_offset=118 record=0 field_byte=118 from=0x2D797 owner=0x2D678 sub_2D678 :: cmp     word_901C2, 0C8h
+target=0x901C2 byte_offset=118 record=0 field_byte=118 from=0x3003F owner=0x30035 sub_30035 :: movsx   eax, word_901C2
+target=0x901C2 byte_offset=118 record=0 field_byte=118 from=0x3011F owner=0x300FF sub_300FF :: add     word_901C2, ax
+target=0x901C2 byte_offset=118 record=0 field_byte=118 from=0x30128 owner=0x300FF sub_300FF :: cmp     word_901C2, 0C8h
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x237F1 owner=0x22A59 sub_22A59 :: movsx   edx, word_901C4[eax]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x23848 owner=0x22A59 sub_22A59 :: movsx   edx, word_901C4[ebx]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x272C1 owner=0x2711A sub_2711A :: mov     word_901C4, 64h ; 'd'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x27487 owner=0x2711A sub_2711A :: mov     word_901C4, ax
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2BFFA owner=0x2BD8B sub_2BD8B :: mov     dx, word_901C4[edx]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2C00C owner=0x2BD8B sub_2BD8B :: movsx   ebx, word_901C4[edx]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F539 owner=0x2F526 sub_2F526 :: movsx   edx, word_901C4[eax]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F544 owner=0x2F526 sub_2F526 :: add     word_901C4[eax], bx
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F54B owner=0x2F526 sub_2F526 :: cmp     word_901C4[eax], 64h ; 'd'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F555 owner=0x2F526 sub_2F526 :: mov     word_901C4[eax], 64h ; 'd'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F566 owner=0x2F526 sub_2F526 :: cmp     word_901C4[eax], 0
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F570 owner=0x2F526 sub_2F526 :: mov     word_901C4[eax], 0
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x2F581 owner=0x2F526 sub_2F526 :: movsx   ebx, word_901C4[eax]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x350FE owner=0x3505B sub_3505B :: cmp     word_901C4[eax], 46h ; 'F'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x35625 owner=0x355FF sub_355FF :: cmp     word_901C4[eax], 3Ch ; '<'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x3B7A0 owner=0x3B6BE sub_3B6BE :: cmp     word_901C4[eax], 1Eh
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x3B7AE owner=0x3B6BE sub_3B6BE :: cmp     word_901C4[eax], 32h ; '2'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x3B7BC owner=0x3B6BE sub_3B6BE :: cmp     word_901C4[eax], 46h ; 'F'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x3B7CA owner=0x3B6BE sub_3B6BE :: cmp     word_901C4[eax], 5Ah ; 'Z'
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x3BAA7 owner=0x3BA85 sub_3BA85 :: movsx   eax, word_901C4[eax]
+target=0x901C4 byte_offset=120 record=0 field_byte=120 from=0x3C2DA owner=0x3C2AC sub_3C2AC :: movsx   edx, word_901C4[ebx]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2369C owner=0x22A59 sub_22A59 :: cmp     word_901C6[ebx], 0
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x236AA owner=0x22A59 sub_22A59 :: movsx   eax, word_901C6[ebx]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2374C owner=0x22A59 sub_22A59 :: movsx   eax, word_901C6[ebx]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x23773 owner=0x22A59 sub_22A59 :: movsx   ebx, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x237DD owner=0x22A59 sub_22A59 :: movsx   edx, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2B06B owner=0x2A86C sub_2A86C :: mov     word_901C6[eax], 0FFFFh
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2B08B owner=0x2A86C sub_2A86C :: movsx   eax, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2B0DE owner=0x2A86C sub_2A86C :: mov     word_901C6[eax], dx
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2E060 owner=0x2DF0E sub_2DF0E :: mov     word_901C6[eax], 0FFFFh
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2E10C owner=0x2E078 sub_2E078 :: movsx   eax, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x2E13F owner=0x2E078 sub_2E078 :: mov     word_901C6[eax], 0FFFFh
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x3B663 owner=0x3B387 sub_3B387 :: movsx   eax, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x3B689 owner=0x3B387 sub_3B387 :: movsx   eax, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x3BAA0 owner=0x3BA85 sub_3BA85 :: movsx   ebp, word_901C6[eax]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x3BB78 owner=0x3BA85 sub_3BA85 :: movsx   eax, word_901C6[ebx]
+target=0x901C6 byte_offset=122 record=0 field_byte=122 from=0x3C2D3 owner=0x3C2AC sub_3C2AC :: movsx   ebp, word_901C6[ebx]
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x236F2 owner=0x22A59 sub_22A59 :: movzx   eax, word_901C8[ebx]
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x2B074 owner=0x2A86C sub_2A86C :: mov     word_901C8[eax], 0
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x2B0E5 owner=0x2A86C sub_2A86C :: mov     word_901C8[eax], 0
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x2E069 owner=0x2DF0E sub_2DF0E :: mov     word_901C8[eax], 0
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x2E148 owner=0x2E078 sub_2E078 :: mov     word_901C8[eax], 0
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x3B528 owner=0x3B387 sub_3B387 :: movzx   eax, word_901C8[ebx]
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x3B531 owner=0x3B387 sub_3B387 :: mov     word_901C8[ebx], ax
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x3B562 owner=0x3B387 sub_3B387 :: cmp     word_901C8[eax], 0EA60h
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x3B56D owner=0x3B387 sub_3B387 :: mov     word_901C8[eax], 0EA60h
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x3BB92 owner=0x3BA85 sub_3BA85 :: movzx   eax, word_901C8[ebx]
+target=0x901C8 byte_offset=124 record=0 field_byte=124 from=0x3C11F owner=0x3BA85 sub_3BA85 :: mov     word_901C8[eax], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x23785 owner=0x22A59 sub_22A59 :: mov     cx, word_901CA[eax]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x238C7 owner=0x22A59 sub_22A59 :: cmp     word_901CA[ebx], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x238D5 owner=0x22A59 sub_22A59 :: movsx   edx, word_901CA[ebx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2AE23 owner=0x2A86C sub_2A86C :: mov     bx, word_901CA[ebx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2C098 owner=0x2BD8B sub_2BD8B :: mov     bx, word_901CA[ebx+ecx*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F414 owner=0x2F3F0 sub_2F3F0 :: cmp     word_901CA[eax], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F41E owner=0x2F3F0 sub_2F3F0 :: mov     word_901CA[eax], di
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F448 owner=0x2F3F0 sub_2F3F0 :: mov     word_901CA[eax], di
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F65A owner=0x2F62F sub_2F62F :: mov     ss:word_901CA[ebp+eax*2], di
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F67B owner=0x2F62F sub_2F62F :: cmp     word_901CA[eax], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F685 owner=0x2F62F sub_2F62F :: mov     word_901CA[eax], di
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x2F6AD owner=0x2F62F sub_2F62F :: mov     ss:word_901CA[ebp], di
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x32F07 owner=0x32E59 sub_32E59 :: cmp     word_901CA[eax], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x32F11 owner=0x32E59 sub_32E59 :: movsx   edx, word_901CA[eax]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x34A67 owner=0x34550 sub_34550 :: cmp     word_901CA[eax], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x34A71 owner=0x34550 sub_34550 :: movsx   edx, word_901CA[eax]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x34C7F owner=0x34C47 sub_34C47 :: cmp     word_901CA[eax+ecx*2], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x34CD1 owner=0x34C47 sub_34C47 :: mov     cx, word_901CA[ebx+ecx*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x34D39 owner=0x34C47 sub_34C47 :: movsx   edx, word_901CA[ecx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x37767 owner=0x37734 sub_37734 :: cmp     word_901CA[ebx+eax*2], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x37800 owner=0x37734 sub_37734 :: mov     bx, word_901CA[edx+ebx*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3786F owner=0x37734 sub_37734 :: movsx   edx, word_901CA[ebx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x37AFC owner=0x37734 sub_37734 :: movsx   esi, word_901CA[esi]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38288 owner=0x37734 sub_37734 :: movsx   ebx, word_901CA[ebx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38410 owner=0x37734 sub_37734 :: movsx   edx, word_901CA[edx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38451 owner=0x37734 sub_37734 :: movsx   edx, word_901CA[edx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38509 owner=0x37734 sub_37734 :: movsx   edx, word_901CA[ebx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3861A owner=0x3859E sub_3859E :: movsx   edx, word_901CA[edx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x387C8 owner=0x3859E sub_3859E :: movsx   edx, word_901CA[edx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38DFA owner=0x38DAC sub_38DAC :: movsx   eax, word_901CA[edx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38E1B owner=0x38DAC sub_38DAC :: cmp     word_901CA[edx], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38F02 owner=0x38DAC sub_38DAC :: movsx   edx, word_901CA[edx+eax]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x38FCF owner=0x38DAC sub_38DAC :: movsx   edx, word_901CA[edx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3924F owner=0x39188 sub_39188 :: movsx   edx, word_901CA[ecx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x392A4 owner=0x39188 sub_39188 :: movsx   edx, word_901CA[ecx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3953E owner=0x39188 sub_39188 :: movsx   edi, word_901CA[edx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x39650 owner=0x395EC sub_395EC :: movsx   edx, word_901CA[ebx+esi*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x39672 owner=0x395EC sub_395EC :: movsx   eax, word_901CA[ebx+esi*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x39719 owner=0x395EC sub_395EC :: movsx   eax, word_901CA[edx+eax*2]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3BAE4 owner=0x3BA85 sub_3BA85 :: mov     cx, word_901CA[eax]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3C157 owner=0x3BA85 sub_3BA85 :: mov     dx, word_901CA[ebx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3C19F owner=0x3BA85 sub_3BA85 :: movsx   edx, word_901CA[ebx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3C1CB owner=0x3BA85 sub_3BA85 :: movsx   eax, word_901CA[ebx]
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3C27E owner=0x3BA85 sub_3BA85 :: cmp     word_901CA[eax], 0
+target=0x901CA byte_offset=126 record=0 field_byte=126 from=0x3C295 owner=0x3BA85 sub_3BA85 :: mov     word_901CA[eax], dx
+target=0x901DC byte_offset=144 record=0 field_byte=144 from=0x2AE6D owner=0x2A86C sub_2A86C :: cmp     word_901DC[eax], 0
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x23795 owner=0x22A59 sub_22A59 :: movzx   edx, word_901DE[eax]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x2392A owner=0x22A59 sub_22A59 :: movzx   edx, word_901DE[ebx]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x2F425 owner=0x2F3F0 sub_2F3F0 :: mov     word_901DE[eax], 0
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x2F44F owner=0x2F3F0 sub_2F3F0 :: mov     word_901DE[eax], 0
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x2F662 owner=0x2F62F sub_2F62F :: mov     ss:word_901DE[ebp+eax*2], si
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x2F68C owner=0x2F62F sub_2F62F :: mov     word_901DE[eax], si
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x2F6B4 owner=0x2F62F sub_2F62F :: mov     ss:word_901DE[ebp], si
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x34D24 owner=0x34C47 sub_34C47 :: movzx   edx, word_901DE[ecx]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x3785A owner=0x37734 sub_37734 :: movzx   edx, word_901DE[ebx]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x38363 owner=0x37734 sub_37734 :: movzx   edx, word_901DE[esi]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x38384 owner=0x37734 sub_37734 :: add     word_901DE[esi], ax
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x383A3 owner=0x37734 sub_37734 :: cmp     word_901DE[eax], 3E7h
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x383AE owner=0x37734 sub_37734 :: mov     word_901DE[eax], 3E7h
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x383D3 owner=0x37734 sub_37734 :: movzx   edx, word_901DE[eax+edx*2]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x39227 owner=0x39188 sub_39188 :: movzx   edx, word_901DE[eax+edx*2]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x39554 owner=0x39188 sub_39188 :: movzx   edx, word_901DE[edx]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x39622 owner=0x395EC sub_395EC :: movzx   edx, word_901DE[ebx+esi*2]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x3BAF4 owner=0x3BA85 sub_3BA85 :: movzx   edx, word_901DE[eax]
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x3C173 owner=0x3BA85 sub_3BA85 :: cmp     word_901DE[ebx], 383h
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x3C182 owner=0x3BA85 sub_3BA85 :: add     word_901DE[ebx], 64h ; 'd'
+target=0x901DE byte_offset=146 record=0 field_byte=146 from=0x3C18A owner=0x3BA85 sub_3BA85 :: movzx   edx, word_901DE[ebx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2DF52 owner=0x2DF0E sub_2DF0E :: movsx   eax, word_901F2[ebx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2DF73 owner=0x2DF0E sub_2DF0E :: movsx   eax, word_901F2[ebx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2DF9B owner=0x2DF0E sub_2DF0E :: movsx   eax, word_901F2[ebx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2E02A owner=0x2DF0E sub_2DF0E :: mov     word_901F2[ebx], 0FFFFh
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2F901 owner=0x2F8D1 sub_2F8D1 :: movsx   ebx, word_901F2[edx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2F938 owner=0x2F8D1 sub_2F8D1 :: movsx   ebx, word_901F2[edx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x2F944 owner=0x2F8D1 sub_2F8D1 :: mov     word_901F2[edx], di
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x33D7B owner=0x33C4D sub_33C4D :: cmp     word_901F2[edx], 0
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x33D85 owner=0x33C4D sub_33C4D :: movsx   edx, word_901F2[edx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x33FC1 owner=0x33E93 sub_33E93 :: cmp     word_901F2[edx], 0
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x33FCB owner=0x33E93 sub_33E93 :: movsx   edx, word_901F2[edx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x34192 owner=0x340D9 sub_340D9 :: cmp     word_901F2[edx], 0
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x3419C owner=0x340D9 sub_340D9 :: movsx   edx, word_901F2[edx]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x3496E owner=0x34550 sub_34550 :: cmp     word_901F2[eax], 0
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x3497C owner=0x34550 sub_34550 :: movsx   eax, word_901F2[eax]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x349D7 owner=0x34550 sub_34550 :: movsx   eax, word_901F2[ecx+eax*2]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x35A7C owner=0x3598C sub_3598C :: movsx   edx, word_901F2[edi+edx*2]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x35E14 owner=0x3598C sub_3598C :: movsx   eax, word_901F2[edx+eax*2]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x35E6E owner=0x3598C sub_3598C :: mov     di, word_901F2[edi+eax*2]
+target=0x901F2 byte_offset=166 record=0 field_byte=166 from=0x36169 owner=0x36133 sub_36133 :: mov     word_901F2[eax], bx
+target=0x901F4 byte_offset=168 record=0 field_byte=168 from=0x36162 owner=0x36133 sub_36133 :: mov     bx, word_901F4[eax]
+target=0x901F8 byte_offset=172 record=0 field_byte=172 from=0x36198 owner=0x36133 sub_36133 :: mov     word_901F8[eax], 0FFFFh
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x2DF62 owner=0x2DF0E sub_2DF0E :: movsx   edi, word_901FA[ebx]
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x2E033 owner=0x2DF0E sub_2DF0E :: mov     word_901FA[ebx], 0
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x2F90C owner=0x2F8D1 sub_2F8D1 :: add     word_901FA[edx], cx
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x2F94B owner=0x2F8D1 sub_2F8D1 :: mov     word_901FA[edx], cx
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x35AB9 owner=0x3598C sub_3598C :: dec     word_901FA[ebx+eax*2]
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x35AC1 owner=0x3598C sub_3598C :: cmp     word_901FA[ebx+eax*2], 0
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x3610F owner=0x3598C sub_3598C :: dec     word_901FA[eax+ecx*2]
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x36117 owner=0x3598C sub_3598C :: cmp     word_901FA[eax+ecx*2], 0
+target=0x901FA byte_offset=174 record=0 field_byte=174 from=0x36177 owner=0x36133 sub_36133 :: mov     word_901FA[eax], bx
+target=0x901FC byte_offset=176 record=0 field_byte=176 from=0x36170 owner=0x36133 sub_36133 :: mov     bx, word_901FC[eax]
+target=0x90200 byte_offset=180 record=0 field_byte=180 from=0x361A1 owner=0x36133 sub_36133 :: mov     word_90200[eax], 0
+
+====================================================================================================
+RANGE items_200x190 begin=0xA2744 end=0xABBB4 bytes=38000 record_size=190 refs=223 functions=25
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x222B3 owner=0x22090 sub_22090 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2233A owner=0x22090 sub_22090 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x235E9 owner=0x22A59 sub_22A59 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2363E owner=0x22A59 sub_22A59 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x236B7 owner=0x22A59 sub_22A59 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x24959 owner=0x247DD sub_247DD :: push    offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x264D2 owner=0x26208 sub_26208 :: push    offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x268FF owner=0x265AB sub_265AB :: push    offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2A37F owner=0x2A186 sub_2A186 :: mov     edx, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2A3BF owner=0x2A186 sub_2A186 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2A499 owner=0x2A186 sub_2A186 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2A577 owner=0x2A186 sub_2A186 :: cmp     word_A2744[eax], 0B6h
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2A5C7 owner=0x2A186 sub_2A186 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2A5F7 owner=0x2A186 sub_2A186 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2AB8F owner=0x2A86C sub_2A86C :: mov     dx, word_A2744[edx]
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2AC55 owner=0x2A86C sub_2A86C :: mov     dx, word_A2744[edx]
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2AEFD owner=0x2A86C sub_2A86C :: cmp     word_A2744[eax], 4Eh ; 'N'
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2AF07 owner=0x2A86C sub_2A86C :: cmp     word_A2744[eax], 5Dh ; ']'
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2B0D7 owner=0x2A86C sub_2A86C :: mov     dx, word_A2744[edx]
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2BC29 owner=0x2B483 sub_2B483 :: add     ebp, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2C05A owner=0x2BD8B sub_2BD8B :: cmp     word_A2744[eax], 4Eh ; 'N'
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2C064 owner=0x2BD8B sub_2BD8B :: cmp     word_A2744[eax], 5Dh ; ']'
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2D6FE owner=0x2D678 sub_2D678 :: mov     ebx, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2DF80 owner=0x2DF0E sub_2DF0E :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x2DFA8 owner=0x2DF0E sub_2DF0E :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x313B8 owner=0x312A6 sub_312A6 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x31444 owner=0x312A6 sub_312A6 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x315D4 owner=0x312A6 sub_312A6 :: mov     ebp, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x31661 owner=0x312A6 sub_312A6 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x3BBB7 owner=0x3BA85 sub_3BA85 :: add     eax, offset word_A2744
+target=0xA2744 byte_offset=0 record=0 field_byte=0 from=0x3C3DE owner=0x3C2AC sub_3C2AC :: add     eax, offset word_A2744
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x23759 owner=0x22A59 sub_22A59 :: movsx   edx, word_A278C[eax]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x2378C owner=0x22A59 sub_22A59 :: cmp     cx, word_A278C[ebx]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x2AE2A owner=0x2A86C sub_2A86C :: cmp     bx, word_A278C[edx]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x2AE53 owner=0x2A86C sub_2A86C :: movsx   eax, word_A278C[eax]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x2C0A0 owner=0x2BD8B sub_2BD8B :: cmp     bx, word_A278C[edx]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x3BABF owner=0x3BA85 sub_3BA85 :: movsx   edx, word_A278C[eax]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x3BAEB owner=0x3BA85 sub_3BA85 :: cmp     cx, word_A278C[ebx]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x3C12E owner=0x3BA85 sub_3BA85 :: cmp     word_A278C[eax], 0
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x3C15E owner=0x3BA85 sub_3BA85 :: cmp     dx, word_A278C[eax]
+target=0xA278C byte_offset=72 record=0 field_byte=72 from=0x3C28E owner=0x3BA85 sub_3BA85 :: mov     dx, word_A278C[edx]
+target=0xA278E byte_offset=74 record=0 field_byte=74 from=0x35B1D owner=0x3598C sub_3598C :: movsx   eax, word_A278E[eax]
+target=0xA278E byte_offset=74 record=0 field_byte=74 from=0x35E22 owner=0x3598C sub_3598C :: movsx   eax, word_A278E[eax]
+target=0xA278E byte_offset=74 record=0 field_byte=74 from=0x3A4DE owner=0x3A30B sub_3A30B :: movsx   eax, word_A278E[eax]
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2A424 owner=0x2A186 sub_2A186 :: cmp     word_A2790[eax], 0
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2A4FE owner=0x2A186 sub_2A186 :: cmp     word_A2790[eax], 0
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2A657 owner=0x2A186 sub_2A186 :: cmp     word_A2790[eax], 0
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2A661 owner=0x2A186 sub_2A186 :: movsx   eax, word_A2790[eax]
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2AB09 owner=0x2A86C sub_2A86C :: cmp     word_A2790[eax], 0
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2AB28 owner=0x2A86C sub_2A86C :: movsx   eax, word_A2790[eax]
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2AB63 owner=0x2A86C sub_2A86C :: mov     word_A2790[eax], 0FFFFh
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2ABAE owner=0x2A86C sub_2A86C :: mov     word_A2790[eax], dx
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2ABCF owner=0x2A86C sub_2A86C :: cmp     word_A2790[eax], 0
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2ABEE owner=0x2A86C sub_2A86C :: movsx   eax, word_A2790[eax]
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2AC29 owner=0x2A86C sub_2A86C :: mov     word_A2790[eax], 0FFFFh
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2AD00 owner=0x2A86C sub_2A86C :: cmp     word_A2790[eax], 0
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2B049 owner=0x2A86C sub_2A86C :: mov     bx, word_A2790[eax]
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2B09D owner=0x2A86C sub_2A86C :: mov     word_A2790[eax], 0FFFFh
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2B0D0 owner=0x2A86C sub_2A86C :: mov     word_A2790[edx], bx
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2E0DC owner=0x2E078 sub_2E078 :: mov     word_A2790[eax], 0FFFFh
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2E0FD owner=0x2E078 sub_2E078 :: mov     word_A2790[eax], 0FFFFh
+target=0xA2790 byte_offset=76 record=0 field_byte=76 from=0x2E11E owner=0x2E078 sub_2E078 :: mov     word_A2790[eax], 0FFFFh
+target=0xA2792 byte_offset=78 record=0 field_byte=78 from=0x2AAE6 owner=0x2A86C sub_2A86C :: cmp     word_A2792[eax], 0
+target=0xA2794 byte_offset=80 record=0 field_byte=80 from=0x2A386 owner=0x2A186 sub_2A186 :: cmp     word_A2794[eax], 0
+target=0xA2794 byte_offset=80 record=0 field_byte=80 from=0x2A9AA owner=0x2A86C sub_2A86C :: cmp     word_A2794[edx], 1
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2A153 owner=0x2A10F sub_2A10F :: movsx   ecx, word_A2796[eax]
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2A162 owner=0x2A10F sub_2A10F :: cmp     word_A2796[eax], 3
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2A3E7 owner=0x2A186 sub_2A186 :: cmp     word_A2796[eax], 1
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2A3F1 owner=0x2A186 sub_2A186 :: cmp     word_A2796[eax], 2
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2A4C1 owner=0x2A186 sub_2A186 :: cmp     word_A2796[eax], 1
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2A4CB owner=0x2A186 sub_2A186 :: cmp     word_A2796[eax], 2
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2AA79 owner=0x2A86C sub_2A86C :: cmp     word_A2796[eax], 0
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2AA8D owner=0x2A86C sub_2A86C :: cmp     word_A2796[eax], 1
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2ACF0 owner=0x2A86C sub_2A86C :: cmp     word_A2796[eax], 2
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2B169 owner=0x2A86C sub_2A86C :: cmp     word_A2796[eax], 3
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2B1E5 owner=0x2A86C sub_2A86C :: cmp     word_A2796[eax], 3
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2B207 owner=0x2A86C sub_2A86C :: cmp     word_A2796[eax], 4
+target=0xA2796 byte_offset=82 record=0 field_byte=82 from=0x2C037 owner=0x2BD8B sub_2BD8B :: cmp     word_A2796[eax], 2
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x2B4CC owner=0x2B483 sub_2B483 :: cmp     word_A279E[esi], 0
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x2B4EE owner=0x2B483 sub_2B483 :: cmp     word_A279E[esi], 0
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x2B50C owner=0x2B483 sub_2B483 :: movsx   edx, word_A279E[esi]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x2B540 owner=0x2B483 sub_2B483 :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x2B5AD owner=0x2B483 sub_2B483 :: movsx   eax, word_A279E[esi]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x33D05 owner=0x33C4D sub_33C4D :: cmp     word_A279E[edx], 0
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x33D92 owner=0x33C4D sub_33C4D :: cmp     word_A279E[edx], 0
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x34844 owner=0x34550 sub_34550 :: cmp     word_A279E[ecx], 0
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x3487E owner=0x34550 sub_34550 :: movsx   eax, word_A279E[ecx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x34989 owner=0x34550 sub_34550 :: cmp     word_A279E[eax], 0
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x3499A owner=0x34550 sub_34550 :: movsx   eax, word_A279E[eax]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35B90 owner=0x3598C sub_3598C :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35BCA owner=0x3598C sub_3598C :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35C05 owner=0x3598C sub_3598C :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35C3D owner=0x3598C sub_3598C :: mov     si, word_A279E[esi]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35E9C owner=0x3598C sub_3598C :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35ED6 owner=0x3598C sub_3598C :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35F11 owner=0x3598C sub_3598C :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x35F49 owner=0x3598C sub_3598C :: mov     si, word_A279E[esi]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x3A560 owner=0x3A30B sub_3A30B :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x3A5A0 owner=0x3A30B sub_3A30B :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x3A5DD owner=0x3A30B sub_3A30B :: movsx   edx, word_A279E[edx]
+target=0xA279E byte_offset=90 record=0 field_byte=90 from=0x3A617 owner=0x3A30B sub_3A30B :: mov     di, word_A279E[esi]
+target=0xA27A0 byte_offset=92 record=0 field_byte=92 from=0x2B6B4 owner=0x2B483 sub_2B483 :: cmp     word_A27A0[edx], 0
+target=0xA27A0 byte_offset=92 record=0 field_byte=92 from=0x2B6C8 owner=0x2B483 sub_2B483 :: mov     dx, word_A27A0[edx]
+target=0xA27A0 byte_offset=92 record=0 field_byte=92 from=0x2B72D owner=0x2B483 sub_2B483 :: movsx   eax, word_A27A0[eax]
+target=0xA27A0 byte_offset=92 record=0 field_byte=92 from=0x3BC6C owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27A0[edx]
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x2B741 owner=0x2B483 sub_2B483 :: cmp     word_A27A2[eax], 0
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x2B763 owner=0x2B483 sub_2B483 :: movsx   edx, word_A27A2[eax]
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x2B76A owner=0x2B483 sub_2B483 :: cmp     word_A27A2[eax], 0
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x33FD8 owner=0x33E93 sub_33E93 :: cmp     word_A27A2[edx], 0
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x348DF owner=0x34550 sub_34550 :: cmp     word_A27A2[ecx], 0
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x34915 owner=0x34550 sub_34550 :: movsx   eax, word_A27A2[ecx]
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x349E5 owner=0x34550 sub_34550 :: cmp     word_A27A2[eax], 0
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x349F6 owner=0x34550 sub_34550 :: movsx   eax, word_A27A2[eax]
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x35D6B owner=0x3598C sub_3598C :: mov     si, word_A27A2[esi]
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x36075 owner=0x3598C sub_3598C :: mov     si, word_A27A2[esi]
+target=0xA27A2 byte_offset=94 record=0 field_byte=94 from=0x3A74F owner=0x3A30B sub_3A30B :: mov     di, word_A27A2[edi]
+target=0xA27A4 byte_offset=96 record=0 field_byte=96 from=0x2B852 owner=0x2B483 sub_2B483 :: cmp     word_A27A4[edx], 0
+target=0xA27A4 byte_offset=96 record=0 field_byte=96 from=0x2B870 owner=0x2B483 sub_2B483 :: mov     dx, word_A27A4[edx]
+target=0xA27A6 byte_offset=98 record=0 field_byte=98 from=0x2B8CB owner=0x2B483 sub_2B483 :: cmp     word_A27A6[eax], 2
+target=0xA27A6 byte_offset=98 record=0 field_byte=98 from=0x2B8E4 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27A6[eax]
+target=0xA27A6 byte_offset=98 record=0 field_byte=98 from=0x3BC94 owner=0x3BA85 sub_3BA85 :: cmp     word_A27A6[eax], 2
+target=0xA27A8 byte_offset=100 record=0 field_byte=100 from=0x2B8F8 owner=0x2B483 sub_2B483 :: cmp     word_A27A8[edx], 0
+target=0xA27A8 byte_offset=100 record=0 field_byte=100 from=0x2B916 owner=0x2B483 sub_2B483 :: mov     dx, word_A27A8[edx]
+target=0xA27A8 byte_offset=100 record=0 field_byte=100 from=0x3411E owner=0x340D9 sub_340D9 :: cmp     word_A27A8[edx], 0
+target=0xA27A8 byte_offset=100 record=0 field_byte=100 from=0x341A9 owner=0x340D9 sub_340D9 :: cmp     word_A27A8[edx], 0
+target=0xA27AA byte_offset=102 record=0 field_byte=102 from=0x2B97C owner=0x2B483 sub_2B483 :: cmp     word_A27AA[edx], 0
+target=0xA27AA byte_offset=102 record=0 field_byte=102 from=0x2B990 owner=0x2B483 sub_2B483 :: mov     dx, word_A27AA[edx]
+target=0xA27AA byte_offset=102 record=0 field_byte=102 from=0x2B9F5 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27AA[eax]
+target=0xA27AA byte_offset=102 record=0 field_byte=102 from=0x3BCB9 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27AA[edx]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x22F85 owner=0x22A59 sub_22A59 :: movsx   edx, word_A27AC[edx]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x22FAB owner=0x22A59 sub_22A59 :: movsx   edx, word_A27AC[edx]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x2BA0F owner=0x2B483 sub_2B483 :: mov     dx, word_A27AC[ebx]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x2BAD3 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27AC[ebx]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x392F8 owner=0x39188 sub_39188 :: add     bx, word_A27AC[eax]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x39321 owner=0x39188 sub_39188 :: add     bx, word_A27AC[eax]
+target=0xA27AC byte_offset=104 record=0 field_byte=104 from=0x3BCE7 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27AC[edx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x230D1 owner=0x22A59 sub_22A59 :: movsx   edx, word_A27AE[edx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x230F7 owner=0x22A59 sub_22A59 :: movsx   edx, word_A27AE[edx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x2BA1D owner=0x2B483 sub_2B483 :: mov     dx, word_A27AE[ebx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x2BAE1 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27AE[ebx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x32847 owner=0x3271E sub_3271E :: add     si, word_A27AE[edx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x32878 owner=0x3271E sub_3271E :: add     si, word_A27AE[edx]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x32AA4 owner=0x32A51 sub_32A51 :: add     dx, word_A27AE[eax]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x32AD5 owner=0x32A51 sub_32A51 :: add     dx, word_A27AE[eax]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x32B0D owner=0x32A51 sub_32A51 :: add     cx, word_A27AE[eax]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x32B3E owner=0x32A51 sub_32A51 :: add     cx, word_A27AE[eax]
+target=0xA27AE byte_offset=106 record=0 field_byte=106 from=0x3BD2D owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27AE[edx]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x2302B owner=0x22A59 sub_22A59 :: movsx   edx, word_A27B0[edx]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x23051 owner=0x22A59 sub_22A59 :: movsx   edx, word_A27B0[edx]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x2BA2B owner=0x2B483 sub_2B483 :: mov     dx, word_A27B0[ebx]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x2BAEF owner=0x2B483 sub_2B483 :: movsx   eax, word_A27B0[ebx]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x3935A owner=0x39188 sub_39188 :: add     dx, word_A27B0[eax]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x39383 owner=0x39188 sub_39188 :: add     dx, word_A27B0[eax]
+target=0xA27B0 byte_offset=108 record=0 field_byte=108 from=0x3BD73 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27B0[edx]
+target=0xA27B2 byte_offset=110 record=0 field_byte=110 from=0x2BA39 owner=0x2B483 sub_2B483 :: mov     dx, word_A27B2[ebx]
+target=0xA27B2 byte_offset=110 record=0 field_byte=110 from=0x2BAFD owner=0x2B483 sub_2B483 :: movsx   eax, word_A27B2[ebx]
+target=0xA27B2 byte_offset=110 record=0 field_byte=110 from=0x3BDB9 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27B2[edx]
+target=0xA27B4 byte_offset=112 record=0 field_byte=112 from=0x2BA47 owner=0x2B483 sub_2B483 :: mov     dx, word_A27B4[ebx]
+target=0xA27B4 byte_offset=112 record=0 field_byte=112 from=0x2BB0B owner=0x2B483 sub_2B483 :: movsx   eax, word_A27B4[ebx]
+target=0xA27B4 byte_offset=112 record=0 field_byte=112 from=0x33F4B owner=0x33E93 sub_33E93 :: cmp     word_A27B4[edx], 0
+target=0xA27B4 byte_offset=112 record=0 field_byte=112 from=0x3BDFF owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27B4[edx]
+target=0xA27B6 byte_offset=114 record=0 field_byte=114 from=0x2BA55 owner=0x2B483 sub_2B483 :: mov     dx, word_A27B6[ebx]
+target=0xA27B6 byte_offset=114 record=0 field_byte=114 from=0x2BB19 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27B6[ebx]
+target=0xA27B6 byte_offset=114 record=0 field_byte=114 from=0x3BE45 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27B6[edx]
+target=0xA27B8 byte_offset=116 record=0 field_byte=116 from=0x2BA63 owner=0x2B483 sub_2B483 :: mov     dx, word_A27B8[ebx]
+target=0xA27B8 byte_offset=116 record=0 field_byte=116 from=0x2BB27 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27B8[ebx]
+target=0xA27B8 byte_offset=116 record=0 field_byte=116 from=0x3BE8B owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27B8[edx]
+target=0xA27BA byte_offset=118 record=0 field_byte=118 from=0x2BA71 owner=0x2B483 sub_2B483 :: mov     dx, word_A27BA[ebx]
+target=0xA27BA byte_offset=118 record=0 field_byte=118 from=0x2BB35 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27BA[ebx]
+target=0xA27BA byte_offset=118 record=0 field_byte=118 from=0x3BED1 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27BA[edx]
+target=0xA27BC byte_offset=120 record=0 field_byte=120 from=0x2BA7F owner=0x2B483 sub_2B483 :: mov     dx, word_A27BC[ebx]
+target=0xA27BC byte_offset=120 record=0 field_byte=120 from=0x2BB43 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27BC[ebx]
+target=0xA27BC byte_offset=120 record=0 field_byte=120 from=0x3BF17 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27BC[edx]
+target=0xA27BE byte_offset=122 record=0 field_byte=122 from=0x2BA8D owner=0x2B483 sub_2B483 :: mov     dx, word_A27BE[ebx]
+target=0xA27BE byte_offset=122 record=0 field_byte=122 from=0x2BB51 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27BE[ebx]
+target=0xA27BE byte_offset=122 record=0 field_byte=122 from=0x3BF5D owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27BE[edx]
+target=0xA27C0 byte_offset=124 record=0 field_byte=124 from=0x2BA9B owner=0x2B483 sub_2B483 :: mov     dx, word_A27C0[ebx]
+target=0xA27C0 byte_offset=124 record=0 field_byte=124 from=0x2BB5F owner=0x2B483 sub_2B483 :: movsx   eax, word_A27C0[ebx]
+target=0xA27C0 byte_offset=124 record=0 field_byte=124 from=0x3BFA3 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27C0[edx]
+target=0xA27C2 byte_offset=126 record=0 field_byte=126 from=0x2BAA9 owner=0x2B483 sub_2B483 :: mov     dx, word_A27C2[ebx]
+target=0xA27C2 byte_offset=126 record=0 field_byte=126 from=0x2BB6D owner=0x2B483 sub_2B483 :: movsx   eax, word_A27C2[ebx]
+target=0xA27C2 byte_offset=126 record=0 field_byte=126 from=0x3BFE9 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27C2[edx]
+target=0xA27C4 byte_offset=128 record=0 field_byte=128 from=0x2BAB7 owner=0x2B483 sub_2B483 :: mov     dx, word_A27C4[ebx]
+target=0xA27C4 byte_offset=128 record=0 field_byte=128 from=0x2BB7B owner=0x2B483 sub_2B483 :: movsx   eax, word_A27C4[ebx]
+target=0xA27C4 byte_offset=128 record=0 field_byte=128 from=0x3C02F owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27C4[edx]
+target=0xA27C6 byte_offset=130 record=0 field_byte=130 from=0x2BB89 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27C6[ebx]
+target=0xA27C6 byte_offset=130 record=0 field_byte=130 from=0x3C075 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27C6[edx]
+target=0xA27C8 byte_offset=132 record=0 field_byte=132 from=0x2BB97 owner=0x2B483 sub_2B483 :: movsx   eax, word_A27C8[ebx]
+target=0xA27C8 byte_offset=132 record=0 field_byte=132 from=0x3C0C5 owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27C8[edx]
+target=0xA27CA byte_offset=134 record=0 field_byte=134 from=0x2BAC5 owner=0x2B483 sub_2B483 :: mov     dx, word_A27CA[ebx]
+target=0xA27CA byte_offset=134 record=0 field_byte=134 from=0x3C0DF owner=0x3BA85 sub_3BA85 :: mov     dx, word_A27CA[edx]
+target=0xA27CC byte_offset=136 record=0 field_byte=136 from=0x2BE16 owner=0x2BD8B sub_2BD8B :: movsx   edx, word_A27CC[eax]
+target=0xA27CC byte_offset=136 record=0 field_byte=136 from=0x2BE28 owner=0x2BD8B sub_2BD8B :: mov     ax, word_A27CC[eax]
+target=0xA27CE byte_offset=138 record=0 field_byte=138 from=0x2BDD2 owner=0x2BD8B sub_2BD8B :: cmp     ax, word_A27CE[edx]
+target=0xA27CE byte_offset=138 record=0 field_byte=138 from=0x2BDF2 owner=0x2BD8B sub_2BD8B :: cmp     word_A27CE[eax], 2
+target=0xA27D0 byte_offset=140 record=0 field_byte=140 from=0x2BE55 owner=0x2BD8B sub_2BD8B :: cmp     ax, word_A27D0[edx]
+target=0xA27D2 byte_offset=142 record=0 field_byte=142 from=0x2BE7B owner=0x2BD8B sub_2BD8B :: cmp     ax, word_A27D2[edx]
+target=0xA27D4 byte_offset=144 record=0 field_byte=144 from=0x2BEA1 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27D4[eax]
+target=0xA27D6 byte_offset=146 record=0 field_byte=146 from=0x2BEC7 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27D6[eax]
+target=0xA27D8 byte_offset=148 record=0 field_byte=148 from=0x2BEED owner=0x2BD8B sub_2BD8B :: cmp     ax, word_A27D8[edx]
+target=0xA27DA byte_offset=150 record=0 field_byte=150 from=0x2BF13 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27DA[eax]
+target=0xA27DC byte_offset=152 record=0 field_byte=152 from=0x2BF39 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27DC[eax]
+target=0xA27DE byte_offset=154 record=0 field_byte=154 from=0x2BF5F owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27DE[eax]
+target=0xA27E0 byte_offset=156 record=0 field_byte=156 from=0x2BF85 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27E0[eax]
+target=0xA27E2 byte_offset=158 record=0 field_byte=158 from=0x2BFAB owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27E2[eax]
+target=0xA27E4 byte_offset=160 record=0 field_byte=160 from=0x2BFD1 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27E4[eax]
+target=0xA27E6 byte_offset=162 record=0 field_byte=162 from=0x2BFF0 owner=0x2BD8B sub_2BD8B :: cmp     word_A27E6[eax], 0
+target=0xA27E6 byte_offset=162 record=0 field_byte=162 from=0x2C001 owner=0x2BD8B sub_2BD8B :: cmp     dx, word_A27E6[eax]
+target=0xA27E6 byte_offset=162 record=0 field_byte=162 from=0x2C013 owner=0x2BD8B sub_2BD8B :: movsx   eax, word_A27E6[eax]
+target=0xA27E8 byte_offset=164 record=0 field_byte=164 from=0x237EA owner=0x22A59 sub_22A59 :: movsx   ebp, word_A27E8[edx]
+target=0xA27E8 byte_offset=164 record=0 field_byte=164 from=0x23841 owner=0x22A59 sub_22A59 :: movsx   esi, word_A27E8[eax]
+target=0xA27E8 byte_offset=164 record=0 field_byte=164 from=0x3BB1A owner=0x3BA85 sub_3BA85 :: movsx   ecx, word_A27E8[eax]
+target=0xA27E8 byte_offset=164 record=0 field_byte=164 from=0x3BB4F owner=0x3BA85 sub_3BA85 :: movsx   ecx, word_A27E8[eax]
+target=0xA27EA byte_offset=166 record=0 field_byte=166 from=0x3C2FA owner=0x3C2AC sub_3C2AC :: movsx   edx, word_A27EA[eax]
+target=0xA27EA byte_offset=166 record=0 field_byte=166 from=0x3C313 owner=0x3C2AC sub_3C2AC :: cmp     word_A27EA[eax], 0
+target=0xA27EC byte_offset=168 record=0 field_byte=168 from=0x3C333 owner=0x3C2AC sub_3C2AC :: cmp     bx, word_A27EC[edx]
+target=0xA27EE byte_offset=170 record=0 field_byte=170 from=0x3C375 owner=0x3C2AC sub_3C2AC :: movsx   edx, word_A27EE[edx]
+target=0xA27EE byte_offset=170 record=0 field_byte=170 from=0x3C3D0 owner=0x3C2AC sub_3C2AC :: movsx   eax, word_A27EE[eax+edx*2]
+target=0xA27EE byte_offset=170 record=0 field_byte=170 from=0x3C47E owner=0x3C2AC sub_3C2AC :: cmp     dx, word_A27EE[esi]
+target=0xA27EE byte_offset=170 record=0 field_byte=170 from=0x3C508 owner=0x3C2AC sub_3C2AC :: mov     ax, word_A27EE[ebx]
+target=0xA27F8 byte_offset=180 record=0 field_byte=180 from=0x3C36C owner=0x3C2AC sub_3C2AC :: cmp     bx, word_A27F8[edx]
+target=0xA27F8 byte_offset=180 record=0 field_byte=180 from=0x3C499 owner=0x3C2AC sub_3C2AC :: mov     dx, word_A27F8[esi]
+target=0xA27F8 byte_offset=180 record=0 field_byte=180 from=0x3C51D owner=0x3C2AC sub_3C2AC :: mov     dx, word_A27F8[ebx]
+
+====================================================================================================
+RANGE scenes_84x52 begin=0x9E4CC end=0x9F5DC bytes=4368 record_size=52 refs=36 functions=11
+target=0x9E4CC byte_offset=0 record=0 field_byte=0 from=0x24989 owner=0x247DD sub_247DD :: push    offset unk_9E4CC
+target=0x9E4CC byte_offset=0 record=0 field_byte=0 from=0x26504 owner=0x26208 sub_26208 :: push    offset unk_9E4CC
+target=0x9E4CC byte_offset=0 record=0 field_byte=0 from=0x2692F owner=0x265AB sub_265AB :: push    offset unk_9E4CC
+target=0x9E4CC byte_offset=0 record=0 field_byte=0 from=0x2C0CB owner=0x2C0BB sub_2C0BB :: add     ebx, offset unk_9E4CC
+target=0x9E4D8 byte_offset=12 record=0 field_byte=12 from=0x29368 owner=0x28E40 sub_28E40 :: movsx   eax, word_9E4D8[eax]
+target=0x9E4DA byte_offset=14 record=0 field_byte=14 from=0x28E9E owner=0x28E40 sub_28E40 :: movsx   eax, word_9E4DA[eax]
+target=0x9E4DA byte_offset=14 record=0 field_byte=14 from=0x2921C owner=0x28E40 sub_28E40 :: movsx   eax, word_9E4DA[eax]
+target=0x9E4DA byte_offset=14 record=0 field_byte=14 from=0x31D75 owner=0x31C75 sub_31C75 :: movsx   eax, word_9E4DA[eax]
+target=0x9E4DC byte_offset=16 record=0 field_byte=16 from=0x2913D owner=0x28E40 sub_28E40 :: movsx   edx, word_9E4DC[eax]
+target=0x9E4DC byte_offset=16 record=0 field_byte=16 from=0x291B9 owner=0x28E40 sub_28E40 :: mov     ax, word_9E4DC[eax]
+target=0x9E4DE byte_offset=18 record=0 field_byte=18 from=0x2599F owner=0x25911 sub_25911 :: cmp     word_9E4DE[eax], 0
+target=0x9E4DE byte_offset=18 record=0 field_byte=18 from=0x259B0 owner=0x25911 sub_25911 :: cmp     word_9E4DE[eax], 1
+target=0x9E4DE byte_offset=18 record=0 field_byte=18 from=0x259BA owner=0x25911 sub_25911 :: cmp     word_9E4DE[eax], 2
+target=0x9E4DE byte_offset=18 record=0 field_byte=18 from=0x2F89F owner=0x2F890 sub_2F890 :: mov     word_9E4DE[eax], 0
+target=0x9E4DE byte_offset=18 record=0 field_byte=18 from=0x300A3 owner=0x30094 sub_30094 :: mov     word_9E4DE[edx], 0
+target=0x9E4E0 byte_offset=20 record=0 field_byte=20 from=0x2595B owner=0x25911 sub_25911 :: movsx   edx, word_9E4E0[eax]
+target=0x9E4E0 byte_offset=20 record=0 field_byte=20 from=0x29196 owner=0x28E40 sub_28E40 :: cmp     word_9E4E0[eax], 0
+target=0x9E4E2 byte_offset=22 record=0 field_byte=22 from=0x25968 owner=0x25911 sub_25911 :: movsx   eax, word_9E4E2[eax]
+target=0x9E4E2 byte_offset=22 record=0 field_byte=22 from=0x291A0 owner=0x28E40 sub_28E40 :: cmp     word_9E4E2[eax], 0
+target=0x9E4E4 byte_offset=24 record=0 field_byte=24 from=0x25978 owner=0x25911 sub_25911 :: movsx   edx, word_9E4E4[eax]
+target=0x9E4E6 byte_offset=26 record=0 field_byte=26 from=0x25989 owner=0x25911 sub_25911 :: movsx   eax, word_9E4E6[eax]
+target=0x9E4E8 byte_offset=28 record=0 field_byte=28 from=0x29771 owner=0x296E6 sub_296E6 :: mov     dx, word_9E4E8[eax]
+target=0x9E4EA byte_offset=30 record=0 field_byte=30 from=0x2977F owner=0x296E6 sub_296E6 :: mov     ax, word_9E4EA[eax]
+target=0x9E4EC byte_offset=32 record=0 field_byte=32 from=0x2700D owner=0x26B5E sub_26B5E :: cmp     bx, word_9E4EC[eax]
+target=0x9E4EC byte_offset=32 record=0 field_byte=32 from=0x2910B owner=0x28E40 sub_28E40 :: cmp     bx, word_9E4EC[edx]
+target=0x9E4F2 byte_offset=38 record=0 field_byte=38 from=0x2701D owner=0x26B5E sub_26B5E :: cmp     bx, word_9E4F2[eax]
+target=0x9E4F2 byte_offset=38 record=0 field_byte=38 from=0x2911B owner=0x28E40 sub_28E40 :: cmp     bx, word_9E4F2[edx]
+target=0x9E4F8 byte_offset=44 record=0 field_byte=44 from=0x29154 owner=0x28E40 sub_28E40 :: cmp     dx, word_9E4F8[eax]
+target=0x9E4FA byte_offset=46 record=0 field_byte=46 from=0x29168 owner=0x28E40 sub_28E40 :: cmp     dx, word_9E4FA[eax]
+target=0x9E4FC byte_offset=48 record=0 field_byte=48 from=0x2975A owner=0x296E6 sub_296E6 :: mov     dx, word_9E4FC[eax]
+target=0x9E4FE byte_offset=50 record=0 field_byte=50 from=0x29768 owner=0x296E6 sub_296E6 :: mov     ax, word_9E4FE[eax]
+target=0x9E546 byte_offset=122 record=2 field_byte=18 from=0x300B2 owner=0x30094 sub_30094 :: mov     word_9E546, 2
+target=0x9EC96 byte_offset=1994 record=38 field_byte=18 from=0x300BB owner=0x30094 sub_30094 :: mov     word_9EC96, 2
+target=0x9F306 byte_offset=3642 record=70 field_byte=2 from=0x26B78 owner=0x26B5E sub_26B5E :: push    offset unk_9F306
+target=0x9F41A byte_offset=3918 record=75 field_byte=18 from=0x300C4 owner=0x30094 sub_30094 :: mov     word_9F41A, 1
+target=0x9F51E byte_offset=4178 record=80 field_byte=18 from=0x300CD owner=0x30094 sub_30094 :: mov     word_9F51E, 1
+
+====================================================================================================
+RANGE magics_93x136 begin=0x9F5DC end=0xA2744 bytes=12648 record_size=136 refs=34 functions=14
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x238E6 owner=0x22A59 sub_22A59 :: add     eax, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x249B9 owner=0x247DD sub_247DD :: push    offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x26536 owner=0x26208 sub_26208 :: push    offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x2695F owner=0x265AB sub_265AB :: push    offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x2F46D owner=0x2F3F0 sub_2F3F0 :: mov     ebx, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x38422 owner=0x37734 sub_37734 :: add     eax, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x38463 owner=0x37734 sub_37734 :: add     eax, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x38F14 owner=0x38DAC sub_38DAC :: add     eax, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x38FE1 owner=0x38DAC sub_38DAC :: add     eax, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x3C1B0 owner=0x3BA85 sub_3BA85 :: add     eax, offset unk_9F5DC
+target=0x9F5DC byte_offset=0 record=0 field_byte=0 from=0x3C1DC owner=0x3BA85 sub_3BA85 :: add     ebx, offset unk_9F5DC
+target=0x9F5F2 byte_offset=22 record=0 field_byte=22 from=0x38629 owner=0x3859E sub_3859E :: movsx   eax, word_9F5F2[eax*8]
+target=0x9F5F2 byte_offset=22 record=0 field_byte=22 from=0x387D7 owner=0x3859E sub_3859E :: movsx   eax, word_9F5F2[eax*8]
+target=0x9F5F4 byte_offset=24 record=0 field_byte=24 from=0x38297 owner=0x37734 sub_37734 :: mov     bx, word_9F5F4[eax*8]
+target=0x9F5F6 byte_offset=26 record=0 field_byte=26 from=0x3829F owner=0x37734 sub_37734 :: movsx   eax, word_9F5F6[eax*8]
+target=0x9F5F8 byte_offset=28 record=0 field_byte=28 from=0x37B11 owner=0x37734 sub_37734 :: cmp     word_9F5F8[esi], 0
+target=0x9F5F8 byte_offset=28 record=0 field_byte=28 from=0x37B47 owner=0x37734 sub_37734 :: cmp     word_9F5F8[esi], 1
+target=0x9F5FA byte_offset=30 record=0 field_byte=30 from=0x34D58 owner=0x34C47 sub_34C47 :: mov     di, word_9F5FA[eax*8]
+target=0x9F5FA byte_offset=30 record=0 field_byte=30 from=0x3789B owner=0x37734 sub_37734 :: mov     ax, word_9F5FA[edx]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x32F22 owner=0x32E59 sub_32E59 :: cmp     si, word_9F5FC[eax]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x32F2B owner=0x32E59 sub_32E59 :: mov     si, word_9F5FC[eax]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x34A86 owner=0x34550 sub_34550 :: cmp     dx, word_9F5FC[eax]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x34A8F owner=0x34550 sub_34550 :: mov     ax, word_9F5FC[eax]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x38518 owner=0x37734 sub_37734 :: movsx   esi, word_9F5FC[eax*8]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x38E12 owner=0x38DAC sub_38DAC :: cmp     ax, ss:word_9F5FC[ebp]
+target=0x9F5FC byte_offset=32 record=0 field_byte=32 from=0x3925E owner=0x39188 sub_39188 :: movsx   edi, word_9F5FC[eax*8]
+target=0x9F5FE byte_offset=34 record=0 field_byte=34 from=0x392BD owner=0x39188 sub_39188 :: movsx   edi, word_9F5FE[edx+eax*2]
+target=0x9F5FE byte_offset=34 record=0 field_byte=34 from=0x3954C owner=0x39188 sub_39188 :: movsx   edi, word_9F5FE[eax*8]
+target=0x9F614 byte_offset=56 record=0 field_byte=56 from=0x34D4C owner=0x34C47 sub_34C47 :: mov     dx, word_9F614[edx+eax*8]
+target=0x9F614 byte_offset=56 record=0 field_byte=56 from=0x37883 owner=0x37734 sub_37734 :: mov     bx, word_9F614[edx+eax*2]
+target=0x9F628 byte_offset=76 record=0 field_byte=76 from=0x3788F owner=0x37734 sub_37734 :: mov     ax, word_9F628[edx+eax*2]
+target=0x9F63C byte_offset=96 record=0 field_byte=96 from=0x39663 owner=0x395EC sub_395EC :: mov     ax, word_9F63C[edx+eax*8]
+target=0x9F63C byte_offset=96 record=0 field_byte=96 from=0x39681 owner=0x395EC sub_395EC :: movsx   edx, word_9F63C[edx+esi*8]
+target=0x9F650 byte_offset=116 record=0 field_byte=116 from=0x3972C owner=0x395EC sub_395EC :: mov     ax, word_9F650[eax+esi*8]
+
+====================================================================================================
+RANGE shops_5x30 begin=0xDC694 end=0xDC72A bytes=150 record_size=30 refs=19 functions=4
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x249E9 owner=0x247DD sub_247DD :: push    offset word_DC694
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x26568 owner=0x26208 sub_26208 :: push    offset word_DC694
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x2698F owner=0x265AB sub_265AB :: push    offset word_DC694
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x313AB owner=0x312A6 sub_312A6 :: movsx   eax, word_DC694[ebx]
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x31437 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC694[ebx]
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x315C7 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC694[ebx]
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x31654 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC694[ebx]
+target=0xDC694 byte_offset=0 record=0 field_byte=0 from=0x31769 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC694[ebx+eax*2]
+target=0xDC69E byte_offset=10 record=0 field_byte=10 from=0x31334 owner=0x312A6 sub_312A6 :: cmp     word_DC69E[ebx+eax*2], 0
+target=0xDC69E byte_offset=10 record=0 field_byte=10 from=0x3139D owner=0x312A6 sub_312A6 :: cmp     word_DC69E[ebx], 0
+target=0xDC69E byte_offset=10 record=0 field_byte=10 from=0x315B9 owner=0x312A6 sub_312A6 :: cmp     word_DC69E[ebx], 0
+target=0xDC69E byte_offset=10 record=0 field_byte=10 from=0x31731 owner=0x312A6 sub_312A6 :: dec     word_DC69E[eax]
+target=0xDC69E byte_offset=10 record=0 field_byte=10 from=0x3173A owner=0x312A6 sub_312A6 :: mov     word_DC69E[eax], 0
+target=0xDC6A8 byte_offset=20 record=0 field_byte=20 from=0x313F7 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC6A8[ebx]
+target=0xDC6A8 byte_offset=20 record=0 field_byte=20 from=0x3147B owner=0x312A6 sub_312A6 :: movsx   eax, word_DC6A8[ebx]
+target=0xDC6A8 byte_offset=20 record=0 field_byte=20 from=0x31615 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC6A8[ebx]
+target=0xDC6A8 byte_offset=20 record=0 field_byte=20 from=0x31698 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC6A8[ebx]
+target=0xDC6A8 byte_offset=20 record=0 field_byte=20 from=0x31714 owner=0x312A6 sub_312A6 :: movsx   eax, word_DC6A8[edi+eax*2]
+target=0xDC6A8 byte_offset=20 record=0 field_byte=20 from=0x3174B owner=0x312A6 sub_312A6 :: movsx   eax, word_DC6A8[ebx+eax*2]

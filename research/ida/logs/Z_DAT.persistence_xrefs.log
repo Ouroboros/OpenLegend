@@ -1,0 +1,29 @@
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+  2326528   284 8192 allocating memory for b-tree...
+  4120576   503 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+  6709248            total memory allocated
+
+
+LoadLibrary(D:\Dev\Crack\IDA\procs\mc6864.dll) error: The specified module could not be found.
+Loading processor module D:\Dev\Crack\IDA\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'Z.DAT' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.2.0.250908)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.2.0.250908 has been detected, gooMBA plugin ready to use
+OPENLEGEND_IDA_PERSISTENCE_REPORT=E:\Game\金庸群~1\OPENLE~1\research\ida\reports\Z_DAT.persistence_xrefs.txt
+OPENLEGEND_IDA_PERSISTENCE_RANGE=ranger_header refs=45 functions=5
+OPENLEGEND_IDA_PERSISTENCE_RANGE=roles_320x182 refs=1045 functions=94
+OPENLEGEND_IDA_PERSISTENCE_RANGE=items_200x190 refs=223 functions=25
+OPENLEGEND_IDA_PERSISTENCE_RANGE=scenes_84x52 refs=36 functions=11
+OPENLEGEND_IDA_PERSISTENCE_RANGE=magics_93x136 refs=34 functions=14
+OPENLEGEND_IDA_PERSISTENCE_RANGE=shops_5x30 refs=19 functions=4
+Flushing buffers, please wait...ok
+Unloading IDP module D:\Dev\Crack\IDA\procs\pc.dll...

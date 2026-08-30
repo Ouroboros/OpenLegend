@@ -26,6 +26,20 @@ target_include_directories(openlegend_render_tests PRIVATE ${CMAKE_CURRENT_SOURC
 target_link_libraries(openlegend_render_tests PRIVATE openlegend_render)
 add_test(NAME openlegend.render COMMAND openlegend_render_tests)
 
+add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
+target_compile_definitions(
+    openlegend_persistence_tests
+    PRIVATE
+        OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+        OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+)
+target_include_directories(openlegend_persistence_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(
+    openlegend_persistence_tests
+    PRIVATE openlegend_model openlegend_persistence openlegend_resource
+)
+add_test(NAME openlegend.persistence COMMAND openlegend_persistence_tests)
+
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 add_test(
     NAME openlegend.build_tool

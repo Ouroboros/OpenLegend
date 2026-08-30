@@ -275,6 +275,6 @@
 1. B0 已完成并通过 core/SDL smoke 门禁；
 2. B1 已完成 118 对 IDX/GRP、110 对 SDX/WDX、78,014 个非空 RLE 帧和基础资产的汇编合同验证；
 3. B2 已完成全部当前 RLE 帧四向裁剪、14,101 个字形、129 帧 palette 淡变、shadow-mask 和地图深度顺序验证；
-4. 当前执行 B3：逐字段恢复 RANGER 六段、R/S/D 物理格式和 lossless snapshot；
-5. 按 B4–B9 顺序逐模块清零可达逻辑缺口；
+4. B3 已完成 RANGER 六段、基线/工作副本/三槽 R/S/D 和 lossless snapshot 的逐字节验证；
+5. 当前执行 B4：输入、时间、随机与音频；随后按 B5–B9 顺序逐模块清零可达逻辑缺口；
 6. 只有满足第 9 节全部条件后才调用 Goal 完成。

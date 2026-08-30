@@ -1,12 +1,18 @@
 # OpenLegend 调研索引
 
-当前状态：**全局架构调研已收敛，未进入实现。**
+当前状态：**B0–B3 已按汇编与真实资产完成；当前进入 B4 输入、时间、随机与音频。**
 
 ## 架构主文档
 
 - [`architecture/program-architecture.md`](architecture/program-architecture.md)：原 DOS 程序模块、状态和运行时交互。
 - [`architecture/rewrite-architecture.md`](architecture/rewrite-architecture.md)：OpenLegend 模块、依赖、目录和测试组织。
 - [`../goal/execution-plan.md`](../goal/execution-plan.md)：阶段计划、开始/完成条件和当前停止线。
+
+## 已完成阶段证据
+
+- [`evidence/resource-loader-1to1.md`](evidence/resource-loader-1to1.md)：B1 资源读取。
+- [`evidence/render-1to1.md`](evidence/render-1to1.md)：B2 软件绘制。
+- [`evidence/model-persistence-1to1.md`](evidence/model-persistence-1to1.md)：B3 状态模型与物理存档。
 
 ## IDA headless 档案
 
