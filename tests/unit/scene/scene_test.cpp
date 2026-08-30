@@ -599,6 +599,96 @@ void check_event_three_statue_animation(const std::filesystem::path& root) {
     OL_CHECK(session.player_frame() == 7688);
 }
 
+void check_event_ending_prelude_animation(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    auto& metadata = snapshot.ranger.scenes[83];
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 22);
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 41);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 83};
+
+    auto result = session.begin_event(1017, 1, 23, 41);
+    for (int step = 0; step < 8; ++step) {
+        if (result.kind == SceneStepKind::present && result.wait_ticks == 2U &&
+            session.player_frame() == -86) {
+            break;
+        }
+        if (result.kind == SceneStepKind::dialogue || result.kind == SceneStepKind::present) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+
+    constexpr std::array<std::uint64_t, 38> expected_hashes{
+        0x349A815CD51123D6ULL,
+        0x66510181CBABFD3EULL,
+        0xD46AC66F3ACCA7C9ULL,
+        0xAC466D89E1553ABBULL,
+        0x1AB55396CF5BD6AEULL,
+        0xC3E96A8676826496ULL,
+        0x930AE0FE4AD48AFAULL,
+        0x5B2A76F736F60484ULL,
+        0x9ECEF333B94E100BULL,
+        0x8BB8A21E953DF4F7ULL,
+        0x29194BCF02693ED6ULL,
+        0x816884637FF912BBULL,
+        0x471F1388A19B9C0DULL,
+        0xDA0BFD78BE881F0AULL,
+        0x0201B4ED8B45C414ULL,
+        0xC16EEE23D5BCEE6BULL,
+        0xD4780BF2C01EEFD5ULL,
+        0xCBF0E49D13455C57ULL,
+        0xBE58F1C9E6D325BCULL,
+        0x26ADDABC5B2B2E4BULL,
+        0x32A4D581F536B2DFULL,
+        0xA75E9B7070885A1CULL,
+        0x3FAF09F7F7249332ULL,
+        0x7C18BE436FE3DE66ULL,
+        0xAEE105D1FB035EE6ULL,
+        0x3BADB7ECEA360037ULL,
+        0xCA17F1C632059426ULL,
+        0xAB0393813638F5D4ULL,
+        0xACA65670D582D328ULL,
+        0x453F15BC68682123ULL,
+        0x4622259D280E3CFAULL,
+        0x9B56788F7E438258ULL,
+        0x784023546501B76DULL,
+        0xD4719EC49245B4F5ULL,
+        0x4D18FDAC043F3B06ULL,
+        0xCD0B344D7EA17A1DULL,
+        0x1FFECC0EB4ACC776ULL,
+        0x677CE26188BA524AULL,
+    };
+    for (std::size_t index = 0U; index < expected_hashes.size(); ++index) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 2U);
+        OL_CHECK(session.player_frame() == -86);
+        const std::array<std::int16_t, 2> pictures{
+            static_cast<std::int16_t>(8054 + index * 2U),
+            static_cast<std::int16_t>(8130 + index * 2U),
+        };
+        for (std::size_t event = 0U; event < pictures.size(); ++event) {
+            for (const auto field : {
+                     openlegend::model::SceneEventField::current_picture,
+                     openlegend::model::SceneEventField::end_picture,
+                     openlegend::model::SceneEventField::begin_picture}) {
+                OL_CHECK(snapshot.event_value(83U, event, field).value_or(-1) ==
+                         pictures[event]);
+            }
+        }
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render_map(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::quit);
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -812,6 +902,7 @@ int main() {
     check_event_scripted_walk(root);
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
+    check_event_ending_prelude_animation(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;

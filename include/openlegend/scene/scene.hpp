@@ -206,6 +206,8 @@ private:
         int first_end_picture{};
         std::int16_t second_event{-1};
         int second_picture{};
+        bool skip_negative_events{};
+        bool quit_after{};
     };
 
     struct ThreeStatueAnimationState {

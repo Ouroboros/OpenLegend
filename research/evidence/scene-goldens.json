@@ -747,6 +747,211 @@
           "frame_fnv1a64": "0x22e67f4d16e05ddc"
         }
       ]
+    },
+    "opcode_62_script_1017": {
+      "scene_id": 83,
+      "player_x": 22,
+      "player_y": 41,
+      "arguments": [
+        0,
+        8054,
+        8128,
+        1,
+        8130,
+        8204
+      ],
+      "frames": [
+        {
+          "first_picture": 8054,
+          "second_picture": 8130,
+          "frame_fnv1a64": "0x349a815cd51123d6"
+        },
+        {
+          "first_picture": 8056,
+          "second_picture": 8132,
+          "frame_fnv1a64": "0x66510181cbabfd3e"
+        },
+        {
+          "first_picture": 8058,
+          "second_picture": 8134,
+          "frame_fnv1a64": "0xd46ac66f3acca7c9"
+        },
+        {
+          "first_picture": 8060,
+          "second_picture": 8136,
+          "frame_fnv1a64": "0xac466d89e1553abb"
+        },
+        {
+          "first_picture": 8062,
+          "second_picture": 8138,
+          "frame_fnv1a64": "0x1ab55396cf5bd6ae"
+        },
+        {
+          "first_picture": 8064,
+          "second_picture": 8140,
+          "frame_fnv1a64": "0xc3e96a8676826496"
+        },
+        {
+          "first_picture": 8066,
+          "second_picture": 8142,
+          "frame_fnv1a64": "0x930ae0fe4ad48afa"
+        },
+        {
+          "first_picture": 8068,
+          "second_picture": 8144,
+          "frame_fnv1a64": "0x5b2a76f736f60484"
+        },
+        {
+          "first_picture": 8070,
+          "second_picture": 8146,
+          "frame_fnv1a64": "0x9ecef333b94e100b"
+        },
+        {
+          "first_picture": 8072,
+          "second_picture": 8148,
+          "frame_fnv1a64": "0x8bb8a21e953df4f7"
+        },
+        {
+          "first_picture": 8074,
+          "second_picture": 8150,
+          "frame_fnv1a64": "0x29194bcf02693ed6"
+        },
+        {
+          "first_picture": 8076,
+          "second_picture": 8152,
+          "frame_fnv1a64": "0x816884637ff912bb"
+        },
+        {
+          "first_picture": 8078,
+          "second_picture": 8154,
+          "frame_fnv1a64": "0x471f1388a19b9c0d"
+        },
+        {
+          "first_picture": 8080,
+          "second_picture": 8156,
+          "frame_fnv1a64": "0xda0bfd78be881f0a"
+        },
+        {
+          "first_picture": 8082,
+          "second_picture": 8158,
+          "frame_fnv1a64": "0x0201b4ed8b45c414"
+        },
+        {
+          "first_picture": 8084,
+          "second_picture": 8160,
+          "frame_fnv1a64": "0xc16eee23d5bcee6b"
+        },
+        {
+          "first_picture": 8086,
+          "second_picture": 8162,
+          "frame_fnv1a64": "0xd4780bf2c01eefd5"
+        },
+        {
+          "first_picture": 8088,
+          "second_picture": 8164,
+          "frame_fnv1a64": "0xcbf0e49d13455c57"
+        },
+        {
+          "first_picture": 8090,
+          "second_picture": 8166,
+          "frame_fnv1a64": "0xbe58f1c9e6d325bc"
+        },
+        {
+          "first_picture": 8092,
+          "second_picture": 8168,
+          "frame_fnv1a64": "0x26addabc5b2b2e4b"
+        },
+        {
+          "first_picture": 8094,
+          "second_picture": 8170,
+          "frame_fnv1a64": "0x32a4d581f536b2df"
+        },
+        {
+          "first_picture": 8096,
+          "second_picture": 8172,
+          "frame_fnv1a64": "0xa75e9b7070885a1c"
+        },
+        {
+          "first_picture": 8098,
+          "second_picture": 8174,
+          "frame_fnv1a64": "0x3faf09f7f7249332"
+        },
+        {
+          "first_picture": 8100,
+          "second_picture": 8176,
+          "frame_fnv1a64": "0x7c18be436fe3de66"
+        },
+        {
+          "first_picture": 8102,
+          "second_picture": 8178,
+          "frame_fnv1a64": "0xaee105d1fb035ee6"
+        },
+        {
+          "first_picture": 8104,
+          "second_picture": 8180,
+          "frame_fnv1a64": "0x3badb7ecea360037"
+        },
+        {
+          "first_picture": 8106,
+          "second_picture": 8182,
+          "frame_fnv1a64": "0xca17f1c632059426"
+        },
+        {
+          "first_picture": 8108,
+          "second_picture": 8184,
+          "frame_fnv1a64": "0xab0393813638f5d4"
+        },
+        {
+          "first_picture": 8110,
+          "second_picture": 8186,
+          "frame_fnv1a64": "0xaca65670d582d328"
+        },
+        {
+          "first_picture": 8112,
+          "second_picture": 8188,
+          "frame_fnv1a64": "0x453f15bc68682123"
+        },
+        {
+          "first_picture": 8114,
+          "second_picture": 8190,
+          "frame_fnv1a64": "0x4622259d280e3cfa"
+        },
+        {
+          "first_picture": 8116,
+          "second_picture": 8192,
+          "frame_fnv1a64": "0x9b56788f7e438258"
+        },
+        {
+          "first_picture": 8118,
+          "second_picture": 8194,
+          "frame_fnv1a64": "0x784023546501b76d"
+        },
+        {
+          "first_picture": 8120,
+          "second_picture": 8196,
+          "frame_fnv1a64": "0xd4719ec49245b4f5"
+        },
+        {
+          "first_picture": 8122,
+          "second_picture": 8198,
+          "frame_fnv1a64": "0x4d18fdac043f3b06"
+        },
+        {
+          "first_picture": 8124,
+          "second_picture": 8200,
+          "frame_fnv1a64": "0xcd0b344d7ea17a1d"
+        },
+        {
+          "first_picture": 8126,
+          "second_picture": 8202,
+          "frame_fnv1a64": "0x1ffecc0eb4acc776"
+        },
+        {
+          "first_picture": 8128,
+          "second_picture": 8204,
+          "frame_fnv1a64": "0x677ce26188ba524a"
+        }
+      ]
     }
   },
   "scene_5_weather": {

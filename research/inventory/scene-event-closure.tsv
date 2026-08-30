@@ -84,7 +84,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 83	0x30559	sub_30559	event_helper_30559	0x30A5A	1281	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 84	0x30A5A	sub_30A5A	event_helper_30A5A	0x30B45	235	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 85	0x30B45	sub_30B45	event_helper_30B45	0x30B81	60	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-86	0x30B81	sub_30B81	event_helper_30B81	0x30C38	183	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+86	0x30B81	sub_30B81	event_helper_30B81	0x30C38	183	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::advance_dual_picture_animation_frame	research/evidence/functions/Z_DAT/0x30B81.md	Linux Debug openlegend.scene; independent scene83 script1017 oracle	not_started	complete full forward/reverse review after 0x30C3D and B7 implementation close; audit delegated event/render/time helpers
 87	0x30C3D	sub_30C3D	event_helper_30C3D	0x3123C	1535	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 88	0x31241	sub_31241	event_helper_31241	0x31280	63	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 89	0x31284	sub_31284	event_helper_31284	0x312A6	34	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

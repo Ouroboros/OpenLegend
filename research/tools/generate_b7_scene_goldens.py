@@ -255,8 +255,9 @@ def render_scene(
                 if picture > 0:
                     draw(picture, sx, sy - height)
             if x == player_x and y == player_y:
-                draw(FRAME_BASE[direction] if player_picture is None else player_picture,
-                     sx, sy - height)
+                picture = FRAME_BASE[direction] if player_picture is None else player_picture
+                if picture not in (0, -86):
+                    draw(picture, sx, sy - height)
             decoration = scene_value(scene_words, 2, x, y)
             if decoration:
                 draw(decoration, sx, sy - scene_value(scene_words, 5, x, y))
@@ -339,6 +340,7 @@ def dual_picture_animation_trace(
     direction: int,
     view_origin: tuple[int, int],
     arguments: tuple[int, int, int, int, int, int],
+    player_picture: int | None = None,
 ) -> list[dict[str, object]]:
     first_event, first_picture, first_end, second_event, second_picture, _ = arguments
     mutable_events = list(event_words)
@@ -352,7 +354,7 @@ def dual_picture_animation_trace(
                 mutable_events[event_index * 11 + field] = picture
         frame = render_scene(
             scene_words, tuple(mutable_events), sprites,
-            player_x, player_y, direction, view_origin,
+            player_x, player_y, direction, view_origin, player_picture,
         )
         result.append({
             "first_picture": first_picture,
@@ -609,6 +611,26 @@ def main() -> None:
         statue_map, statue_events, statue_sprites, 32, 15, 1
     )
 
+    ending_scene_id = 83
+    ending_map = words(scene_maps[ending_scene_id])
+    ending_events = words(scene_events[ending_scene_id])
+    ending_sprites = sentinel(
+        (root / "SDX083").read_bytes(), (root / "SMP083").read_bytes()
+    )
+    script_1017 = words(scripts[1017])
+    assert script_1017[5:12] == (62, 0, 8054, 8128, 1, 8130, 8204)
+    opcode_62_script_1017 = dual_picture_animation_trace(
+        ending_map,
+        ending_events,
+        ending_sprites,
+        22,
+        41,
+        1,
+        (11, 30),
+        script_1017[6:12],
+        -86,
+    )
+
     output = {
         "format": 1,
         "source": "current DOS assets; independent Python int16le/RLE/KDEF parser",
@@ -658,6 +680,13 @@ def main() -> None:
                 "player_x": 32,
                 "player_y": 15,
                 "frames": opcode_57_script_655,
+            },
+            "opcode_62_script_1017": {
+                "scene_id": ending_scene_id,
+                "player_x": 22,
+                "player_y": 41,
+                "arguments": list(script_1017[6:12]),
+                "frames": opcode_62_script_1017,
             },
         },
         "scene_5_weather": {

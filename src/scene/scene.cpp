@@ -1153,10 +1153,14 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 62:
+            player_frame_override_ = -86;
+            dual_picture_animation_state_ = DualPictureAnimationState{
+                argument(1), argument(2), argument(3), argument(4), argument(5), true, true};
             program_counter_ += 7;
-            event_active_ = false;
-            pending_ = current_result(SceneStepKind::quit);
-            return pending_;
+            if (auto frame = advance_dual_picture_animation_frame(); frame.has_value()) {
+                return *frame;
+            }
+            break;
         case 63:
             if (argument(1) >= 0 && static_cast<std::size_t>(argument(1)) < snapshot_.ranger.roles.size()) {
                 snapshot_.ranger.roles[static_cast<std::size_t>(argument(1))].set_word(model::role_word::sexual, argument(2));
@@ -1648,15 +1652,27 @@ std::optional<SceneStepResult> SceneSession::advance_dual_picture_animation_fram
     }
     if (dual_picture_animation_state_->first_picture >
         dual_picture_animation_state_->first_end_picture) {
+        const auto quit_after = dual_picture_animation_state_->quit_after;
         dual_picture_animation_state_.reset();
+        if (quit_after) {
+            event_active_ = false;
+            pending_ = current_result(SceneStepKind::quit);
+            return pending_;
+        }
         return std::nullopt;
     }
-    set_animated_picture(
-        dual_picture_animation_state_->first_event,
-        static_cast<std::int16_t>(dual_picture_animation_state_->first_picture));
-    set_animated_picture(
-        dual_picture_animation_state_->second_event,
-        static_cast<std::int16_t>(dual_picture_animation_state_->second_picture));
+    if (!dual_picture_animation_state_->skip_negative_events ||
+        dual_picture_animation_state_->first_event != -1) {
+        set_animated_picture(
+            dual_picture_animation_state_->first_event,
+            static_cast<std::int16_t>(dual_picture_animation_state_->first_picture));
+    }
+    if (!dual_picture_animation_state_->skip_negative_events ||
+        dual_picture_animation_state_->second_event != -1) {
+        set_animated_picture(
+            dual_picture_animation_state_->second_event,
+            static_cast<std::int16_t>(dual_picture_animation_state_->second_picture));
+    }
     dual_picture_animation_state_->first_picture += 2;
     dual_picture_animation_state_->second_picture += 2;
     pending_ = current_result(SceneStepKind::present);
