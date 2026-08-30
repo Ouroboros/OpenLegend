@@ -61,6 +61,7 @@ CLOSURE_SOURCES = (
     ("ui-closure.tsv", "Z_DAT.b5_ui_xrefs.txt"),
     ("world-map-closure.tsv", "Z_DAT.b6_world_xrefs.txt"),
     ("scene-event-closure.tsv", "Z_DAT.b7_scene_xrefs.txt"),
+    ("battle-closure.tsv", "Z_DAT.b8_battle_xrefs.txt"),
 )
 
 FUNCTION_PATTERN = re.compile(

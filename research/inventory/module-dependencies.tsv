@@ -13,6 +13,7 @@ app	resource	data root	read-only	no	implemented_pending_review
 app	ui	synchronous modal results	UI owns modal transients	no	implemented_pending_review
 app	world	synchronous world session and Scene request	world borrows model/RNG; app consumes result	no	implemented_pending_review
 app	scene	synchronous scene session and battle/UI requests	scene borrows model/RNG; app consumes result	no	implemented_pending_review
+app	battle	synchronous battle session and typed result	battle borrows model/RNG; app owns session and consumes result	no	pending_implementation
 resource	compat	little-endian and RGB6 values	value only	no	implemented_pending_review
 persistence	model	lossless snapshot transport	no duplicate gameplay owner	no	implemented_pending_review
 render	compat	indexed/RGB6 contracts	framebuffer owned by render/app boundary	no	implemented_pending_review
@@ -29,7 +30,10 @@ scene	model	scene maps/events/roles/items	borrow and synchronous write-through	n
 scene	random	weather/event RNG	shared ordered stream	no	implemented_pending_review
 scene	render	indexed scene/UI draw	framebuffer borrow only	no	implemented_pending_review
 scene	resource	scene sprites/TALK/KDEF/palette	read-only asset views	no	implemented_pending_review
-battle	model	battle setup and committed result	pending B8	no	pending_implementation
-battle	random	battle RNG	pending B8	no	pending_implementation
-battle	render	battle indexed rendering	pending B8	no	pending_implementation
-battle	resource	FIGHT and sprite assets	pending B8	no	pending_implementation
+battle	audio	battle music and effect commands	command values only; backend remains audio/platform	no	pending_implementation
+battle	input	host-neutral battle actions	LegacyKeyboard state borrowed through app boundary	no	pending_implementation
+battle	model	battle setup and committed result	persistent state borrowed from one GameSnapshot owner	no	pending_implementation
+battle	random	battle RNG	one shared ordered runtime stream	no	pending_implementation
+battle	render	battle indexed rendering	framebuffer borrowed from app/render owner	no	pending_implementation
+battle	resource	FIGHT, WAR, WARFLD and sprite assets	read-only validated views	no	pending_implementation
+battle	time	animation and wait quantization	legacy BIOS tick values only	no	pending_implementation
