@@ -1,6 +1,6 @@
 # B7 场景、事件与对话证据
 
-状态：进行中。本文先固定 B7 的资源、场景绘制、移动/碰撞和 KDEF 调度核心；app 同步接线、天气、全部高阶剧情副作用和战斗回收在后续小提交继续逐项审计，不能据本文提前宣称 B7 完成。
+状态：进行中。本文已固定 B7 的资源、场景绘制、移动/碰撞、KDEF 调度核心和 app 同步进入/返回链；天气、全部高阶剧情副作用和战斗回收在后续小提交继续逐项审计，不能据本文提前宣称 B7 完成。
 
 ## 1. 真值与证据
 
@@ -90,7 +90,20 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 - 每页作为同步 `SceneStepKind::dialogue` 返回，app 确认后才继续同一事件 PC；
 - 字体仍由 `FONT.X16` / `FONT.C16` 在 index8 framebuffer 上绘制。
 
-## 6. 当前验证
+## 6. app 同步消费
+
+`LegacyGameRuntime` 在世界移动产生 `WorldStepKind::enter_scene` 的同一调用点构造 `SceneSession`，不引入异步事件总线。场景结果由 app 同步消费：
+
+- 场景标题、对话和通知按键确认后继续同一事件 PC；
+- 问题、商店选择和战斗请求保持阻塞结果，不提前执行后续指令；
+- 世界菜单保持六项，场景菜单切换到原有 `GameMenuContext::scene` 四项边界；
+- 场景出口先写回 header，再销毁场景瞬态并从同一 snapshot 重建世界会话；
+- 场景音乐/音效先运输到 app 队列，再由 SDL 边界的 `LegacyAudioController` 同步消费；即使场景结果同时返回世界，音频命令也不会随 `SceneSession` 销毁而丢失；
+- SDL 主循环仍只处理宿主事件、最终 indexed frame 上传和音频设备，不持有场景语义。
+
+集成测试固定验证 `世界 → 场景 70 标题 → 场景四项菜单 → 场景 → 右侧出口 → 世界`，并检查 `in_sub_map` 清零和 scene request 回收。
+
+## 7. 当前验证
 
 Linux core Debug：10/10 测试通过，包括：
 
@@ -101,4 +114,6 @@ Linux core Debug：10/10 测试通过，包括：
 - 真实脚本 36 的背包副作用、274 的场景层写入、69 的 TALK 暂停/恢复；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
 
-后续 B7 门禁仍包括 app 同步流程、天气、全 opcode 基本块审计、Linux/Windows Debug/Release、ASan+UBSan、SDL dummy smoke、原资产只读和 `.i64` 审计。
+Linux app Debug：11/11 测试通过，包含上述场景同步链和 SDL dummy smoke。
+
+后续 B7 门禁仍包括天气、全 opcode 基本块审计、Linux/Windows Debug/Release、ASan+UBSan、原资产只读和 `.i64` 审计。

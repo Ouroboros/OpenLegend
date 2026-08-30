@@ -20,6 +20,7 @@ target_link_libraries(
         openlegend_random
         openlegend_render
         openlegend_resource
+        openlegend_scene
         openlegend_ui
         openlegend_world
         openlegend_project_options

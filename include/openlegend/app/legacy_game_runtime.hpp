@@ -12,6 +12,7 @@
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/scene/scene.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
@@ -26,6 +27,7 @@ enum class LegacyGameView {
     name_entry,
     attributes,
     world,
+    scene,
     game_menu,
     error,
     exited,
@@ -49,6 +51,10 @@ public:
     [[nodiscard]] std::optional<std::int16_t> scene_request() const noexcept {
         return scene_request_;
     }
+    [[nodiscard]] std::optional<std::int16_t> battle_request() const noexcept {
+        return battle_request_;
+    }
+    [[nodiscard]] std::vector<scene::SceneAudioCommand> take_scene_audio_commands();
 
 private:
     enum class PendingIo {
@@ -60,6 +66,8 @@ private:
     void begin_new_game();
     void perform_pending_io();
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
+    [[nodiscard]] bool start_scene(std::int16_t scene_id, LegacyGameView error_return_view);
+    void handle_scene_result(const scene::SceneStepResult& result);
     void update_menu_counts();
     void show_error(std::string message, LegacyGameView return_view);
     void show_legacy_error(
@@ -80,11 +88,15 @@ private:
     std::unique_ptr<ui::NewGameAttributeController> attribute_controller_;
     std::unique_ptr<world::WorldMapData> world_map_;
     std::unique_ptr<world::WorldSession> world_session_;
+    std::unique_ptr<scene::SceneSession> scene_session_;
     LegacyGameView view_{LegacyGameView::title};
+    LegacyGameView menu_return_view_{LegacyGameView::world};
     LegacyGameView error_return_view_{LegacyGameView::title};
     PendingIo pending_io_{PendingIo::none};
     std::uint8_t pending_slot_{};
     std::optional<std::int16_t> scene_request_;
+    std::optional<std::int16_t> battle_request_;
+    std::vector<scene::SceneAudioCommand> scene_audio_commands_;
     bool world_step_processed_{};
     std::vector<std::uint8_t> visible_error_;
     std::string startup_error_;

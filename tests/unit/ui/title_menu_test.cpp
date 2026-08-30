@@ -308,10 +308,6 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.advance();
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
-    new_game.handle_world_input(true, false, false, false);
-    new_game.advance();
-    OL_CHECK(new_game.scene_request().has_value());
-    OL_CHECK(new_game.scene_request().value_or(-1) == 70);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());
@@ -344,6 +340,28 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     if (before_leave.has_value() && after_leave.has_value()) {
         OL_CHECK(*before_leave == *after_leave);
     }
+    new_game.handle_key('A', false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+    new_game.handle_world_input(true, false, false, false);
+    new_game.advance();
+    OL_CHECK(new_game.scene_request().has_value());
+    OL_CHECK(new_game.scene_request().value_or(-1) == 70);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    OL_CHECK(new_game.render());
+    new_game.handle_key(0x0DU, false, false);
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    OL_CHECK(new_game.render());
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    new_game.handle_world_input(false, false, false, true);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    OL_CHECK(!new_game.scene_request().has_value());
+    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::in_sub_map) == 0);
+    OL_CHECK(new_game.render());
 
     app::LegacyGameRuntime load_game{data_root, 1U};
     load_game.handle_key(0x98U, false, false);

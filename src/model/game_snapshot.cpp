@@ -144,6 +144,14 @@ RangerState* GameState::ranger() noexcept {
     return snapshot_.has_value() ? &snapshot_->ranger : nullptr;
 }
 
+const GameSnapshot* GameState::snapshot() const noexcept {
+    return snapshot_.has_value() ? &*snapshot_ : nullptr;
+}
+
+GameSnapshot* GameState::snapshot() noexcept {
+    return snapshot_.has_value() ? &*snapshot_ : nullptr;
+}
+
 std::optional<GameSnapshot> GameState::export_snapshot() const {
     return snapshot_;
 }

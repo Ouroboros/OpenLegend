@@ -168,6 +168,9 @@ int main(const int argc, const char* const* argv) {
     }
 
     audio::AudioMixer audio_mixer;
+    audio::SystemAudioDelay audio_delay;
+    audio::LegacyAudioController legacy_audio{
+        resource::DataRoot{std::filesystem::current_path()}, audio_mixer, audio_delay};
     platform::sdl3::SdlAudioDevice audio_device{audio_mixer};
     if (!audio_mixer.valid()) {
         std::cerr << "XMI synthesizer unavailable; audio is disabled: " << audio_mixer.error()
@@ -217,6 +220,17 @@ int main(const int argc, const char* const* argv) {
             keyboard.down(0x98U),
             keyboard.down(0x9DU));
         game.advance();
+        for (const auto& command : game.take_scene_audio_commands()) {
+            if (command.id < 0) {
+                continue;
+            }
+            if (command.kind == scene::SceneAudioCommand::Kind::music) {
+                static_cast<void>(legacy_audio.play_music(static_cast<std::size_t>(command.id)));
+            } else {
+                static_cast<void>(legacy_audio.play_sample(
+                    audio::SampleBank::effect, static_cast<std::size_t>(command.id)));
+            }
+        }
         running = running && game.running();
         if (running) {
             if (!game.render()) {

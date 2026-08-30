@@ -348,6 +348,8 @@ public:
     [[nodiscard]] bool loaded() const noexcept { return snapshot_.has_value(); }
     [[nodiscard]] const RangerState* ranger() const noexcept;
     [[nodiscard]] RangerState* ranger() noexcept;
+    [[nodiscard]] const GameSnapshot* snapshot() const noexcept;
+    [[nodiscard]] GameSnapshot* snapshot() noexcept;
     [[nodiscard]] std::optional<GameSnapshot> export_snapshot() const;
 
 private:
