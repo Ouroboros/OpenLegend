@@ -1444,6 +1444,46 @@ void check_event_finale_party_cleanup(const std::filesystem::path& root) {
     }
 }
 
+void check_event_open_all_scenes(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    for (auto& scene : snapshot.ranger.scenes) {
+        scene.set_word(openlegend::model::scene_metadata_word::entrance_condition, 777);
+    }
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    auto result = session.begin_event(821, 0, 0, 0);
+    for (int step = 0; step < 256 && result.kind != SceneStepKind::stay; ++step) {
+        if (result.kind == SceneStepKind::dialogue ||
+            result.kind == SceneStepKind::notice ||
+            result.kind == SceneStepKind::present ||
+            result.kind == SceneStepKind::fade_from_black ||
+            result.kind == SceneStepKind::fade_to_black) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(snapshot.ranger.scenes[0].word(
+                 openlegend::model::scene_metadata_word::entrance_condition) == 0);
+    OL_CHECK(snapshot.ranger.scenes[2].word(
+                 openlegend::model::scene_metadata_word::entrance_condition) == 2);
+    OL_CHECK(snapshot.ranger.scenes[38].word(
+                 openlegend::model::scene_metadata_word::entrance_condition) == 2);
+    OL_CHECK(snapshot.ranger.scenes[75].word(
+                 openlegend::model::scene_metadata_word::entrance_condition) == 1);
+    OL_CHECK(snapshot.ranger.scenes[80].word(
+                 openlegend::model::scene_metadata_word::entrance_condition) == 1);
+    OL_CHECK(snapshot.ranger.scenes.size() == openlegend::model::kSceneMetadataCount);
+    OL_CHECK(snapshot.ranger.scenes.size() == 84U);
+    OL_CHECK(snapshot.ranger.scenes[83].word(
+                 openlegend::model::scene_metadata_word::entrance_condition) == 0);
+}
+
 void check_event_clear_party_mp(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1802,6 +1842,7 @@ int main() {
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
+    check_event_open_all_scenes(root);
     check_event_clear_party_mp(root);
     check_event_join_helper(root);
     check_event_state_side_effects(root);
