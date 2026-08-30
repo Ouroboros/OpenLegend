@@ -1427,6 +1427,60 @@ void check_event_finale_party_cleanup(const std::filesystem::path& root) {
     }
 }
 
+void check_event_join_helper(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{0});
+    snapshot.ranger.header.set_team_member(2U, openlegend::model::CharacterId{2});
+    snapshot.ranger.header.set_team_member(3U, openlegend::model::CharacterId{3});
+    snapshot.ranger.header.set_team_member(4U, openlegend::model::CharacterId{4});
+    snapshot.ranger.header.set_team_member(5U, openlegend::model::CharacterId{0});
+    snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{109}, 2);
+    snapshot.ranger.header.set_inventory(1U, openlegend::model::ItemId{109}, 3);
+    auto& role = snapshot.ranger.roles[1];
+    role.set_word(openlegend::model::role_word::taking_item_begin, 109);
+    role.set_word(openlegend::model::role_word::taking_item_count_begin, 0);
+    role.set_word(openlegend::model::role_word::equipment_begin, 10);
+    role.set_word(openlegend::model::role_word::equipment_begin + 1U, 11);
+    role.set_word(openlegend::model::role_word::practice_item, 12);
+    role.set_word(openlegend::model::role_word::item_experience, 77);
+    snapshot.ranger.items[10].set_word(openlegend::model::item_word::user, 1);
+    snapshot.ranger.items[11].set_word(openlegend::model::item_word::user, 1);
+    snapshot.ranger.items[12].set_word(openlegend::model::item_word::user, 1);
+
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    auto result = session.begin_event(11, 0, 0, 0);
+    for (int step = 0; step < 64 && result.kind != SceneStepKind::notice; ++step) {
+        if (result.kind == SceneStepKind::question) {
+            result = session.resume(SceneResponse::yes);
+        } else if (result.kind == SceneStepKind::dialogue ||
+                   result.kind == SceneStepKind::present ||
+                   result.kind == SceneStepKind::fade_from_black ||
+                   result.kind == SceneStepKind::fade_to_black) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(snapshot.ranger.header.team_member(1U).value == 1);
+    OL_CHECK(snapshot.ranger.header.inventory_count(0U) == 2);
+    OL_CHECK(snapshot.ranger.header.inventory_count(1U) == 3);
+    OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == -1);
+    OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin) == 0);
+    OL_CHECK(role.word(openlegend::model::role_word::equipment_begin) == -1);
+    OL_CHECK(role.word(openlegend::model::role_word::equipment_begin + 1U) == -1);
+    OL_CHECK(role.word(openlegend::model::role_word::practice_item) == -1);
+    OL_CHECK(role.word(openlegend::model::role_word::item_experience) == 0);
+    OL_CHECK(snapshot.ranger.items[10].word(openlegend::model::item_word::user) == -1);
+    OL_CHECK(snapshot.ranger.items[11].word(openlegend::model::item_word::user) == -1);
+    OL_CHECK(snapshot.ranger.items[12].word(openlegend::model::item_word::user) == -1);
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -1671,6 +1725,7 @@ int main() {
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
+    check_event_join_helper(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;

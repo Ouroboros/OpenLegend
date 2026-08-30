@@ -730,25 +730,22 @@ SceneStepResult SceneSession::run_event() {
                     continue;
                 }
                 snapshot_.ranger.header.set_team_member(index, model::CharacterId{argument(1)});
-                if (argument(1) >= 0 && static_cast<std::size_t>(argument(1)) < snapshot_.ranger.roles.size()) {
-                    auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(argument(1))];
-                    for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
-                        const auto item_id = role.word(model::role_word::taking_item_begin + slot);
-                        auto count = role.word(model::role_word::taking_item_count_begin + slot);
-                        if (item_id < 0) {
-                            continue;
-                        }
-                        if (count == 0) {
-                            count = 1;
-                        }
-                        add_inventory(item_id, count);
-                        role.set_word(model::role_word::taking_item_begin + slot, -1);
-                        role.set_word(model::role_word::taking_item_count_begin + slot, 0);
-                        queue_notice(ascii_message("item " + std::to_string(item_id) + " " + std::to_string(count)));
-                    }
-                    clear_role_personal_items(argument(1));
-                }
                 break;
+            }
+            if (argument(1) >= 0 && static_cast<std::size_t>(argument(1)) < snapshot_.ranger.roles.size()) {
+                auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(argument(1))];
+                for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
+                    const auto item_id = role.word(model::role_word::taking_item_begin + slot);
+                    const auto count = role.word(model::role_word::taking_item_count_begin + slot);
+                    if (item_id < 0) {
+                        continue;
+                    }
+                    add_inventory(item_id, count);
+                    role.set_word(model::role_word::taking_item_begin + slot, -1);
+                    role.set_word(model::role_word::taking_item_count_begin + slot, 0);
+                    queue_notice(ascii_message("item " + std::to_string(item_id) + " " + std::to_string(count)));
+                }
+                clear_role_personal_items(argument(1));
             }
             if (!queued_outputs_.empty()) {
                 return emit_queued();
