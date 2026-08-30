@@ -1471,6 +1471,97 @@
         ]
       }
     },
+    "scene_archive_state_vectors": {
+      "scene_70_asset_entry": {
+        "normal": [
+          44,
+          29
+        ],
+        "jump": [
+          0,
+          0
+        ]
+      },
+      "synthetic_entry_vectors": [
+        {
+          "jump": false,
+          "coordinate": [
+            0,
+            63
+          ],
+          "view_origin": [
+            0,
+            36
+          ],
+          "direction": 2,
+          "player_frame": 5030
+        },
+        {
+          "jump": true,
+          "coordinate": [
+            63,
+            0
+          ],
+          "view_origin": [
+            36,
+            0
+          ],
+          "direction": 2,
+          "player_frame": 5030
+        }
+      ],
+      "event_cell_count": 12,
+      "external_mutation_counts": {
+        "event": 311,
+        "map": 0
+      },
+      "external_event_script_436": {
+        "arguments": [
+          3,
+          7,
+          6,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          0,
+          -2,
+          -2
+        ],
+        "scene_id": 7,
+        "event_index": 6,
+        "before": [
+          1,
+          6,
+          394,
+          -1,
+          -1,
+          6190,
+          6190,
+          6190,
+          0,
+          14,
+          17
+        ],
+        "after": [
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          0,
+          14,
+          17
+        ]
+      }
+    },
     "status_notice_vectors": {
       "opcode_52_script_825": {
         "value": 7,

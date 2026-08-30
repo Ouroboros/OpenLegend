@@ -663,6 +663,80 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def scene_archive_state_vectors(
+    ranger: bytes,
+    scene_maps: list[bytes],
+    scene_events: list[bytes],
+    scripts: list[bytes],
+) -> dict[str, object]:
+    scene_id = 70
+    metadata = struct.unpack_from("<26h", ranger, 97_076 + scene_id * 52)
+    map_words = words(scene_maps[scene_id])
+    event_cell_count = sum(
+        value != -1 for value in map_words[3 * 4096:4 * 4096]
+    )
+    script_436 = words(scripts[436])
+    assert script_436[:14] == (
+        3, 7, 6, 0, 0, -1, -1, -1, -1, -1, -1, 0, -2, -2
+    )
+    external_event_mutations = 0
+    external_map_mutations = 0
+    for payload in scripts:
+        script = words(payload)
+        index = 0
+        while index < len(script) and script[index] != -1:
+            opcode = script[index]
+            assert 0 <= opcode < len(WIDTHS)
+            width = WIDTHS[opcode]
+            assert index + width <= len(script)
+            if opcode == 3 and script[index + 1] != -2:
+                external_event_mutations += 1
+            if opcode == 38 and script[index + 1] != -2:
+                external_map_mutations += 1
+            index += width
+    assert external_event_mutations == 311
+    assert external_map_mutations == 0
+    event_before = list(words(scene_events[7])[6 * 11:7 * 11])
+    event_after = event_before.copy()
+    for field, value in enumerate(script_436[3:14]):
+        if value != -2:
+            event_after[field] = value
+    return {
+        "scene_70_asset_entry": {
+            "normal": [metadata[14], metadata[15]],
+            "jump": [metadata[24], metadata[25]],
+        },
+        "synthetic_entry_vectors": [
+            {
+                "jump": False,
+                "coordinate": [0, 63],
+                "view_origin": [0, 36],
+                "direction": 2,
+                "player_frame": 5030,
+            },
+            {
+                "jump": True,
+                "coordinate": [63, 0],
+                "view_origin": [36, 0],
+                "direction": 2,
+                "player_frame": 5030,
+            },
+        ],
+        "event_cell_count": event_cell_count,
+        "external_mutation_counts": {
+            "event": external_event_mutations,
+            "map": external_map_mutations,
+        },
+        "external_event_script_436": {
+            "arguments": list(script_436[:14]),
+            "scene_id": 7,
+            "event_index": 6,
+            "before": event_before,
+            "after": event_after,
+        },
+    }
+
+
 def status_notice_vectors(
     root: Path,
     base_frame: bytes,
@@ -1173,6 +1247,9 @@ def main() -> None:
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
+            "scene_archive_state_vectors": scene_archive_state_vectors(
+                ranger, scene_maps, scene_events, scripts
+            ),
             "status_notice_vectors": status_notice_vectors(root, frame, palette, scripts),
             "opcode_59_script_932": {
                 "script_id": 932,
