@@ -282,10 +282,17 @@ int main(const int argc, const char* const* argv) {
                     " repeat=" + (event.repeat ? std::string{"true"} : std::string{"false"}) +
                     " translated=" + std::to_string(translated_key));
                 if (!event.repeat) {
-                    game.handle_key(
-                        translated_key,
-                        keyboard.down(0x82U),
-                        keyboard.down(0x83U) || keyboard.down(0x84U));
+                    const bool defer_world_menu =
+                        translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
+                    if (!defer_world_menu) {
+                        game.handle_key(
+                            translated_key,
+                            keyboard.down(0x82U),
+                            keyboard.down(0x83U) || keyboard.down(0x84U));
+                        if (translated_key == 0x1BU) {
+                            keyboard.consume_edge(0x1BU);
+                        }
+                    }
                     keyboard.clear_last_key();
                 }
             } else if (event.type == compat::HostEventType::key_up) {
@@ -294,11 +301,15 @@ int main(const int argc, const char* const* argv) {
                     "host key_up key=" + std::to_string(static_cast<int>(event.key)));
             }
         }
-        game.handle_world_input(
+        const bool world_menu_consumed = game.handle_world_input(
             keyboard.down(input::kLegacyLeftKey),
             keyboard.down(input::kLegacyUpKey),
             keyboard.down(input::kLegacyDownKey),
-            keyboard.down(input::kLegacyRightKey));
+            keyboard.down(input::kLegacyRightKey),
+            keyboard.edge(0x1BU));
+        if (world_menu_consumed) {
+            keyboard.consume_edge(0x1BU);
+        }
         game.advance();
         for (const auto& command : game.take_scene_audio_commands()) {
             if (command.id < 0) {
@@ -329,6 +340,7 @@ int main(const int argc, const char* const* argv) {
                 report_configuration_error("present", "unable to present indexed framebuffer", SDL_GetError());
                 return 7;
             }
+            game.finish_presented_tick();
             diagnostics::log_trace(
                 "frame presented tick=" + std::to_string(frame_tick) +
                 " view=" + std::to_string(static_cast<int>(game.view())));

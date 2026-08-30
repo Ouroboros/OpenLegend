@@ -1471,6 +1471,122 @@
         ]
       }
     },
+    "main_loop_dispatch_vectors": {
+      "priority": [
+        "left",
+        "up",
+        "down",
+        "right",
+        "menu",
+        "idle"
+      ],
+      "dispatch": {
+        "all": {
+          "held": {
+            "left": true,
+            "up": true,
+            "down": true,
+            "right": true
+          },
+          "menu_edge": true,
+          "action": "left",
+          "menu_edge_consumed": false
+        },
+        "up_down_right_menu": {
+          "held": {
+            "left": false,
+            "up": true,
+            "down": true,
+            "right": true
+          },
+          "menu_edge": true,
+          "action": "up",
+          "menu_edge_consumed": false
+        },
+        "down_right_menu": {
+          "held": {
+            "left": false,
+            "up": false,
+            "down": true,
+            "right": true
+          },
+          "menu_edge": true,
+          "action": "down",
+          "menu_edge_consumed": false
+        },
+        "right_menu": {
+          "held": {
+            "left": false,
+            "up": false,
+            "down": false,
+            "right": true
+          },
+          "menu_edge": true,
+          "action": "right",
+          "menu_edge_consumed": false
+        },
+        "menu": {
+          "held": {
+            "left": false,
+            "up": false,
+            "down": false,
+            "right": false
+          },
+          "menu_edge": true,
+          "action": "menu",
+          "menu_edge_consumed": true
+        },
+        "idle": {
+          "held": {
+            "left": false,
+            "up": false,
+            "down": false,
+            "right": false
+          },
+          "menu_edge": false,
+          "action": "idle",
+          "menu_edge_consumed": false
+        }
+      },
+      "post_action_order": [
+        "pending_load_slot",
+        "weather",
+        "idle_animation_if_active",
+        "world_render",
+        "present",
+        "palette_cycle_after_present_every_five_ticks",
+        "wait_for_tick_change"
+      ],
+      "palette_cycle": {
+        "ranges": [
+          [
+            224,
+            231
+          ],
+          [
+            244,
+            252
+          ]
+        ],
+        "direction": "rotate_right",
+        "after_first_present_fnv1a64": "0x898e23463574ae76",
+        "after_fifth_present_fnv1a64": "0x898e23463574ae76",
+        "after_sixth_present_fnv1a64": "0x6055f0cfd75adaa6",
+        "shared_phase": {
+          "world_before_scene": 4,
+          "scene_initial": 4,
+          "after_scene_tick": 0,
+          "world_after_return": 0
+        }
+      },
+      "shutdown_order": [
+        "world_archives",
+        "music_fade",
+        "audio_system",
+        "runtime_platform",
+        "exit_zero"
+      ]
+    },
     "rectangle_outline_vectors": {
       "caller": "sub_2A186 item grid",
       "geometry": [

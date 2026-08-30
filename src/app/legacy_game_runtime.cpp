@@ -140,6 +140,7 @@ void LegacyGameRuntime::advance() {
             world_session_->idle_tick();
         }
         world_session_->periodic_tick();
+        world_session_->idle_animation_tick();
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                scene_session_->pending().kind == scene::SceneStepKind::stay) {
         const auto direction = scene_direction_input_;
@@ -161,12 +162,26 @@ void LegacyGameRuntime::advance() {
     world_step_processed_ = false;
 }
 
-void LegacyGameRuntime::handle_world_input(
-    const bool left, const bool up, const bool down, const bool right) {
+void LegacyGameRuntime::finish_presented_tick() {
+    if (view_ != LegacyGameView::world || world_session_ == nullptr) {
+        return;
+    }
+    periodic_counter_ = static_cast<std::int16_t>((periodic_counter_ + 1) % 5);
+    if (periodic_counter_ == 1) {
+        world_session_->cycle_palette();
+    }
+}
+
+bool LegacyGameRuntime::handle_world_input(
+    const bool left,
+    const bool up,
+    const bool down,
+    const bool right,
+    const bool menu_requested) {
     if (!valid() ||
         ((view_ != LegacyGameView::world || world_session_ == nullptr) &&
          (view_ != LegacyGameView::scene || scene_session_ == nullptr))) {
-        return;
+        return false;
     }
     std::optional<world::WorldDirection> direction;
     if (left) {
@@ -179,7 +194,16 @@ void LegacyGameRuntime::handle_world_input(
         direction = world::WorldDirection::right;
     }
     if (!direction.has_value()) {
-        return;
+        if (menu_requested && view_ == LegacyGameView::world) {
+            world_step_processed_ = true;
+            update_menu_counts();
+            game_menu_.set_context(ui::GameMenuContext::world);
+            game_menu_.show_main();
+            menu_return_view_ = LegacyGameView::world;
+            set_view(LegacyGameView::game_menu, "open world menu");
+            return true;
+        }
+        return false;
     }
     world_step_processed_ = true;
     if (view_ == LegacyGameView::scene) {
@@ -189,7 +213,7 @@ void LegacyGameRuntime::handle_world_input(
         } else {
             scene_direction_input_.reset();
         }
-        return;
+        return false;
     }
     const auto result = world_session_->move(*direction);
     diagnostics::log_info(
@@ -202,6 +226,7 @@ void LegacyGameRuntime::handle_world_input(
         scene_request_ = result.scene_id;
         static_cast<void>(start_scene(result.scene_id, LegacyGameView::world));
     }
+    return false;
 }
 
 void LegacyGameRuntime::handle_key(
@@ -504,7 +529,7 @@ bool LegacyGameRuntime::start_scene(
     scene_interact_requested_ = false;
     scene_ui_requested_ = false;
     scene_session_ = std::make_unique<scene::SceneSession>(
-        data_root_, *snapshot, random_, scene_id);
+        data_root_, *snapshot, random_, scene_id, false, std::nullopt, periodic_counter_);
     if (!scene_session_->valid()) {
         show_error(scene_session_->error(), error_return_view);
         scene_session_.reset();
@@ -530,6 +555,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         " battle=" + std::to_string(result.battle_id) +
         " wait_ticks=" + std::to_string(result.wait_ticks));
     if (scene_session_ != nullptr) {
+        periodic_counter_ = scene_session_->periodic_counter();
         auto commands = scene_session_->take_audio_commands();
         scene_audio_commands_.insert(
             scene_audio_commands_.end(),

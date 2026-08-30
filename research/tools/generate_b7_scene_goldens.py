@@ -613,6 +613,82 @@ def opcode_coverage(entries: list[bytes]) -> dict[str, object]:
     }
 
 
+def main_loop_dispatch_vectors(world_palette: bytes) -> dict[str, object]:
+    cases = [
+        ("all", True, True, True, True, True),
+        ("up_down_right_menu", False, True, True, True, True),
+        ("down_right_menu", False, False, True, True, True),
+        ("right_menu", False, False, False, True, True),
+        ("menu", False, False, False, False, True),
+        ("idle", False, False, False, False, False),
+    ]
+    dispatch: dict[str, dict[str, object]] = {}
+    for name, left, up, down, right, menu in cases:
+        if left:
+            action = "left"
+        elif up:
+            action = "up"
+        elif down:
+            action = "down"
+        elif right:
+            action = "right"
+        elif menu:
+            action = "menu"
+        else:
+            action = "idle"
+        dispatch[name] = {
+            "held": {"left": left, "up": up, "down": down, "right": right},
+            "menu_edge": menu,
+            "action": action,
+            "menu_edge_consumed": action == "menu",
+        }
+    assert len(world_palette) == 256 * 3
+    palette = [list(world_palette[index:index + 3]) for index in range(0, len(world_palette), 3)]
+
+    def cycle_palette() -> None:
+        palette[224:232] = [palette[231], *palette[224:231]]
+        palette[244:253] = [palette[252], *palette[244:252]]
+
+    cycle_palette()
+    after_first = bytes(component for color in palette for component in color)
+    after_five = bytes(component for color in palette for component in color)
+    cycle_palette()
+    after_sixth = bytes(component for color in palette for component in color)
+    return {
+        "priority": ["left", "up", "down", "right", "menu", "idle"],
+        "dispatch": dispatch,
+        "post_action_order": [
+            "pending_load_slot",
+            "weather",
+            "idle_animation_if_active",
+            "world_render",
+            "present",
+            "palette_cycle_after_present_every_five_ticks",
+            "wait_for_tick_change",
+        ],
+        "palette_cycle": {
+            "ranges": [[224, 231], [244, 252]],
+            "direction": "rotate_right",
+            "after_first_present_fnv1a64": fnv1a64(after_first),
+            "after_fifth_present_fnv1a64": fnv1a64(after_five),
+            "after_sixth_present_fnv1a64": fnv1a64(after_sixth),
+            "shared_phase": {
+                "world_before_scene": 4,
+                "scene_initial": 4,
+                "after_scene_tick": 0,
+                "world_after_return": 0,
+            },
+        },
+        "shutdown_order": [
+            "world_archives",
+            "music_fade",
+            "audio_system",
+            "runtime_platform",
+            "exit_zero",
+        ],
+    }
+
+
 def rectangle_outline_vectors() -> dict[str, object]:
     x, y, width, height = 55, 62, 40, 40
 
@@ -1966,6 +2042,7 @@ def main() -> None:
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
+            "main_loop_dispatch_vectors": main_loop_dispatch_vectors(palette_bytes),
             "rectangle_outline_vectors": rectangle_outline_vectors(),
             "state_write_vectors": state_write_vectors(scripts),
             "scene_animation_vectors": scene_animation_vectors(

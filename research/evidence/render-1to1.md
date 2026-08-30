@@ -42,6 +42,8 @@
 ## 4. 调色板
 
 - `sub_20087 @ 0x20087` 按 256×RGB6 顺序写 VGA DAC。
+- `sub_3CBE3 @ 0x3CBE3` 把 entries 224..231 与244..252 各右旋一格后提交完整 palette；runtime 持有跨 world/scene 的5 tick相位，成功 present 后推进，scene jump 不重置，模态等待帧不推进。
+- MMAP.COL 首次/第五次右旋后 FNV-1a64 为 `898e23463574ae76`，第六次为 `6055f0cfd75adaa6`。
 - 核心保留 0..63 原值；显示兼容层使用 `(value<<2)|(value>>4)` 展开到 8-bit，不反写核心 palette。
 - 对每个 framebuffer 字节严格执行 `color=palette[index]`，依次输出 `R8,G8,B8,255`；该转换位于 `compat`，与 SDL API 解耦并可独立单测。
 

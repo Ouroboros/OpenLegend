@@ -152,6 +152,8 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 ## 7. app 同步消费
 
+`main @ 0x20D35` 已映射到 SDL 顶层、`LegacyGameRuntime` 与 legacy keyboard edge：世界 tick 按 left→up→down→right→menu→idle 选一个分支，只有实际打开菜单才消费 Esc odd edge；方向命中时保留键态到后续 tick。成功 present 后另按原计数右旋 palette entries 224..231 与244..252，使结果从下一帧生效；计数由 runtime 跨 world/scene 持有，scene 只在原外层 present continuation 后推进并回写，模态等待帧不推进。其启动/退出所委托的 UI、world、input、audio 与 platform callees 仍按各自 inventory 等待最终 REVIEW。
+
 `LegacyGameRuntime` 在世界移动产生 `WorldStepKind::enter_scene` 的同一调用点构造 `SceneSession`，不引入异步事件总线。场景结果由 app 同步消费：
 
 - 场景标题、对话和通知按键确认后继续同一事件 PC；

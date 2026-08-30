@@ -256,6 +256,33 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     auto snapshot = load_baseline(root);
     openlegend::random::LegacyRandom random{1U};
     WorldSession session{data_root, map, snapshot.ranger, random};
+    openlegend::render::IndexedFramebuffer palette_frame;
+    OL_CHECK(session.render(palette_frame));
+    const auto palette_before = palette_frame.palette();
+    session.cycle_palette();
+    OL_CHECK(session.render(palette_frame));
+    const auto palette_after = palette_frame.palette();
+    const auto same_color = [](const auto& left, const auto& right) {
+        return left.red == right.red && left.green == right.green && left.blue == right.blue;
+    };
+    OL_CHECK(same_color(palette_after[223], palette_before[223]));
+    OL_CHECK(same_color(palette_after[224], palette_before[231]));
+    for (std::size_t index = 225U; index <= 231U; ++index) {
+        OL_CHECK(same_color(palette_after[index], palette_before[index - 1U]));
+    }
+    OL_CHECK(same_color(palette_after[232], palette_before[232]));
+    OL_CHECK(same_color(palette_after[243], palette_before[243]));
+    OL_CHECK(same_color(palette_after[244], palette_before[252]));
+    for (std::size_t index = 245U; index <= 252U; ++index) {
+        OL_CHECK(same_color(palette_after[index], palette_before[index - 1U]));
+    }
+    OL_CHECK(same_color(palette_after[253], palette_before[253]));
+    session.cycle_palette();
+    OL_CHECK(session.render(palette_frame));
+    const auto palette_after_six = palette_frame.palette();
+    OL_CHECK(same_color(palette_after_six[224], palette_after[231]));
+    OL_CHECK(same_color(palette_after_six[244], palette_after[252]));
+
     session.periodic_tick();
     OL_CHECK(random.state() == 0xAF1CF0FBU);
     session.periodic_tick();
@@ -283,10 +310,12 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     WorldSession idle_frame{data_root, map, idle_frame_snapshot.ranger, idle_frame_random};
     for (int tick = 0; tick < 51; ++tick) {
         idle_frame.idle_tick();
+        idle_frame.idle_animation_tick();
     }
     OL_CHECK(idle_frame.player_frame() == 5070);
     for (int tick = 0; tick < 3; ++tick) {
         idle_frame.idle_tick();
+        idle_frame.idle_animation_tick();
     }
     OL_CHECK(idle_frame.player_frame() == 5072);
 

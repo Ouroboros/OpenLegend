@@ -415,20 +415,6 @@ void WorldSession::idle_tick() {
             idle_animation_step_ = static_cast<std::int16_t>(idle_animation_step_ + 2);
         }
     }
-    if (idle_animation_) {
-        ++idle_animation_delay_;
-        if (idle_animation_delay_ > 3) {
-            idle_animation_delay_ = 0;
-            idle_animation_step_ = static_cast<std::int16_t>(idle_animation_step_ + 2);
-        }
-        if (idle_animation_step_ > 12) {
-            idle_animation_ = false;
-            idle_animation_counter_ = 0;
-            idle_animation_delay_ = 0;
-            idle_animation_step_ = 0;
-            walk_frame_offset_ = 0;
-        }
-    }
     ++physical_power_counter_;
     if (physical_power_counter_ == 200) {
         for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
@@ -453,6 +439,32 @@ void WorldSession::periodic_tick() {
     if (valid()) {
         update_weather();
     }
+}
+
+void WorldSession::idle_animation_tick() {
+    if (!valid() || !idle_animation_) {
+        return;
+    }
+    ++idle_animation_delay_;
+    if (idle_animation_delay_ > 3) {
+        idle_animation_delay_ = 0;
+        idle_animation_step_ = static_cast<std::int16_t>(idle_animation_step_ + 2);
+    }
+    if (idle_animation_step_ > 12) {
+        idle_animation_ = false;
+        idle_animation_counter_ = 0;
+        idle_animation_delay_ = 0;
+        idle_animation_step_ = 0;
+        walk_frame_offset_ = 0;
+    }
+}
+
+void WorldSession::cycle_palette() {
+    if (!valid()) {
+        return;
+    }
+    std::rotate(palette_.begin() + 224, palette_.begin() + 231, palette_.begin() + 232);
+    std::rotate(palette_.begin() + 244, palette_.begin() + 252, palette_.begin() + 253);
 }
 
 bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {

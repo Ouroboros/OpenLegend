@@ -133,7 +133,8 @@ public:
         random::LegacyRandom& random,
         std::int16_t scene_id,
         bool use_jump_entrance = false,
-        std::optional<SceneDate> death_date_override = std::nullopt);
+        std::optional<SceneDate> death_date_override = std::nullopt,
+        std::int16_t periodic_counter = 0);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -165,6 +166,7 @@ public:
     [[nodiscard]] int view_origin_y() const noexcept { return view_origin_y_; }
     [[nodiscard]] SceneDirection direction() const noexcept { return direction_; }
     [[nodiscard]] bool weather_enabled() const noexcept { return weather_enabled_; }
+    [[nodiscard]] std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
     [[nodiscard]] std::int16_t player_frame() const noexcept;
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
     [[nodiscard]] std::span<const std::uint8_t> pending_text() const noexcept {
@@ -327,6 +329,7 @@ private:
         int anchor_y) const;
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
     void update_weather();
+    void cycle_palette();
     [[nodiscard]] bool draw_weather_particle(
         render::IndexedFramebuffer& framebuffer,
         const WeatherParticle& particle) const;

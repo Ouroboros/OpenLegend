@@ -31,9 +31,10 @@
 3. `[x]` 将 validator 注册为 CTest；
 4. `[x]` 完成线程安全文件日志、立即 flush、stderr/Windows debugger 失败回退和日志测试；
 5. `[x]` 接入启动、错误、输入、模式切换、世界/场景移动、碰撞、入口/跳转、坐标、方向、动画帧、玩家绘制列表和呈现失败日志；
-6. `[ ]` 建立 runtime/platform 专项 headless FUNCTION 报告和 closure；
-7. `[x]` 日志切片 Linux app Debug 构建、13/13 CTest 与 SDL dummy smoke；
-8. `[ ]` B7 完整模块收口时按 GOAL 第 0.2 节执行 Windows 全矩阵，不为本小切片重复执行。
+6. `[x]` 将 `main @ 0x20D35` 映射到 SDL/app/input 顶层，按 left→up→down→right→Esc menu→idle 处理世界 tick，仅在实际打开菜单后消费 Esc odd edge，并在成功 present 后按原5 tick周期右旋两段 palette；该相位由 runtime 跨 world/scene 持有，scene 模态等待帧不推进；
+7. `[ ]` 建立 runtime/platform 专项 headless FUNCTION 报告和 closure；
+8. `[x]` 日志切片 Linux app Debug 构建、13/13 CTest 与 SDL dummy smoke；
+9. `[ ]` B7 完整模块收口时按 GOAL 第 0.2 节执行 Windows 全矩阵，不为本小切片重复执行。
 
 ## 4. 停止线
 

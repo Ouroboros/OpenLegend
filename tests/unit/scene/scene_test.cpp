@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -717,6 +718,18 @@ void check_scene_entry_state(const std::filesystem::path& root) {
     OL_CHECK(jump.view_origin_x() == 36 && jump.view_origin_y() == 0);
     OL_CHECK(jump.direction() == openlegend::scene::SceneDirection::left);
     OL_CHECK(jump.player_frame() == 5030);
+
+    openlegend::random::LegacyRandom phase_random{1U};
+    openlegend::scene::SceneSession phase{
+        data_root, snapshot, phase_random, 70, false, std::nullopt, 4};
+    OL_CHECK(phase.periodic_counter() == 4);
+    OL_CHECK(finish_scene_title(phase).kind == openlegend::scene::SceneStepKind::stay);
+    OL_CHECK(phase.periodic_counter() == 4);
+    OL_CHECK(phase.tick(std::nullopt, false, false).kind ==
+             openlegend::scene::SceneStepKind::present);
+    OL_CHECK(phase.periodic_counter() == 4);
+    static_cast<void>(phase.resume(openlegend::scene::SceneResponse::acknowledge));
+    OL_CHECK(phase.periodic_counter() == 0);
 }
 
 void check_scene_archive_ownership(const std::filesystem::path& root) {
@@ -966,16 +979,18 @@ void check_scene_loop_transitions(const std::filesystem::path& root) {
     jump_snapshot.set_scene_value(71U, SceneLayer::event_index, 13U * 64U + 12U, -1);
     openlegend::random::LegacyRandom jump_random{1U};
     openlegend::scene::SceneSession jump_session{
-        data_root, jump_snapshot, jump_random, 70};
+        data_root, jump_snapshot, jump_random, 70, false, std::nullopt, 3};
     OL_CHECK(finish_scene_title(jump_session).kind == SceneStepKind::stay);
     OL_CHECK(jump_session.tick(SceneDirection::right, false, false).kind ==
              SceneStepKind::present);
     OL_CHECK(jump_session.scene_id() == 70);
     OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::fade_to_black);
+    OL_CHECK(jump_session.periodic_counter() == 4);
     OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::fade_from_black);
     OL_CHECK(jump_session.scene_id() == 71);
+    OL_CHECK(jump_session.periodic_counter() == 4);
     OL_CHECK(jump_session.scene_x() == 12 && jump_session.scene_y() == 13);
     OL_CHECK(jump_session.player_frame() == 5016);
     OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==

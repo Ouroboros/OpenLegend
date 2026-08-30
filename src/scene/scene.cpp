@@ -334,7 +334,8 @@ SceneSession::SceneSession(
     random::LegacyRandom& random,
     const std::int16_t scene_id,
     const bool use_jump_entrance,
-    std::optional<SceneDate> death_date_override)
+    std::optional<SceneDate> death_date_override,
+    const std::int16_t periodic_counter)
     : data_root_(data_root),
       snapshot_(snapshot),
       random_(random),
@@ -344,7 +345,8 @@ SceneSession::SceneSession(
           data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
       weather_sprites_(resource::PackedArchive::open(
           data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
-      scene_id_(scene_id) {
+      scene_id_(scene_id),
+      periodic_counter_(periodic_counter) {
     if (!snapshot_.valid()) {
         error_ = "scene session requires a valid game snapshot";
         return;
@@ -1526,6 +1528,7 @@ SceneStepResult SceneSession::finish_tick_after_scene_present(const SceneStepKin
     tick_continuation_ = TickContinuation::none;
     periodic_counter_ = static_cast<std::int16_t>((periodic_counter_ + 1) % 5);
     if (periodic_counter_ == 1) {
+        cycle_palette();
         periodic_tick();
     }
     const auto result = run_auto_event(fallback);
@@ -1590,7 +1593,6 @@ SceneStepResult SceneSession::complete_scene_jump() {
     clear_event();
     tick_continuation_ = TickContinuation::none;
     animation_counter_ = 0;
-    periodic_counter_ = 0;
     walk_frame_offset_ = 0;
     player_frame_override_.reset();
     weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
@@ -1639,6 +1641,11 @@ void SceneSession::periodic_tick() {
     if (valid() && weather_enabled_ && pending_.kind == SceneStepKind::stay) {
         update_weather();
     }
+}
+
+void SceneSession::cycle_palette() {
+    std::rotate(palette_.begin() + 224, palette_.begin() + 231, palette_.begin() + 232);
+    std::rotate(palette_.begin() + 244, palette_.begin() + 252, palette_.begin() + 253);
 }
 
 void SceneSession::update_weather() {

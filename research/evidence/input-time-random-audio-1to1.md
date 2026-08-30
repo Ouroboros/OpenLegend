@@ -66,6 +66,10 @@ IRQ 体严格按以下顺序执行：
 
 现代高精度时钟用 PIT 基准 `1,193,182 / 65,536 Hz` 生成兼容 tick，并在 BIOS 日界值 `0x1800B0` 回绕。等待逻辑只比较相等/不等，因此必须自然跨过回绕边界。
 
+`main @ 0x20D35` 在同一 tick 按 left→up→down→right→Esc menu→idle 只执行一个分支。四个方向命中时不清 Esc 对应 state 的低位；只有实际进入菜单后才执行 `state[Esc] &= 0xFE`。SDL 主循环因此在世界态延迟 Esc keydown，把 `keyboard.edge(0x1B)` 与四方向键态同时交给 runtime；runtime 回报实际打开菜单后才调用 `consume_edge(0x1B)`。方向与 Esc 同按时先移动，若 Esc 在方向释放前 keyup，则不会事后补开菜单。
+
+每个 world tick 完成重绘/呈现后，原入口把全局计数 `(counter+1)%5` 写回；余数为1时调用 `sub_3CBE3`，将 RGB6 palette entries 224..231 和244..252 各自右旋一格并立即提交 DAC。现代 `finish_presented_tick()` 只在宿主 present 成功后推进 `LegacyGameRuntime` 持有的全局相位并更新当前 world palette，使刚呈现帧仍使用旋转前 palette，下一帧才使用新顺序。进入 scene 时把同一相位传入 `SceneSession`，仅在原外层 scene present continuation 完成后推进并回写 runtime；普通对话/菜单等待宿主帧不推进，相位跨世界/场景往返持续。
+
 ### 3.2 `sub_3DB83`
 
 机器码执行有符号 `idiv 40`，然后加 1：

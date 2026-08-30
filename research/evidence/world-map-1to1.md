@@ -55,7 +55,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 
 ## 移动、碰撞、船和入口
 
-- 方向编号严格为 `up=0, right=1, left=2, down=3`；主循环优先级为 left→up→down→right。
+- 方向编号严格为 `up=0, right=1, left=2, down=3`；主循环优先级为 left→up→down→right→Esc menu→idle。方向命中不消费 Esc odd edge，后续无方向 tick 才能打开菜单；若期间 Esc keyup，则请求随原键态消失。
 - 步行帧基址 `5002/5016/5030/5044`，步进 `2..12`；船帧基址 `7430/7438/7446/7454`，步进 `2..6`。
 - 步行封锁区间严格为：`358..362, 374..380, 458..464, 506..670, 818..824, 838, 934..936, 1016..1022`。
 - 下船陆地区间严格为：`4..356, 364..372, 382..456, 672..954, 466..504, 1000..1014`；顺序保持机器码原顺序。
@@ -68,6 +68,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 ## 绘制与周期状态
 
 - 核心仍为 `320×200×index8 + 256×RGB6`；B6 不引入 RGBA 或 SDL 依赖。
+- world frame 成功呈现后按 `(counter+1)%5` 推进 runtime 全局计数，余数1时把 palette entries 224..231 与244..252 各右旋一格；旋转结果从下一帧 render 生效，不提前改变本次 present。该计数进入 scene 时传入并在外层 scene tick 后回写，往返不重置。真实 MMAP.COL 首次/第五次旋转后 FNV-1a64 为 `0x898e23463574ae76`，第六次为 `0x6055f0cfd75adaa6`。
 - 地面与 surface 使用 `MMAP.IDX/GRP`，legacy id 按 `/2` 取累计 archive entry；角色、船和建筑走同一 RLE 覆盖规则。
 - 初始 framebuffer：SHA256 `8b925f9bb4d8378cd9a134965e0ae95e56e85360036a38f64387e073a486bc2a`，FNV1a64 `0x6f6cf22b7c8cb4b8`。
 - 世界人物四方向 28 个 MMAP 行走帧均为合法非空 RLE；每帧含 305–402 个源像素。回归测试在初始位置、四方向轨迹和连续右移 35 步（覆盖完整 2–12 帧循环与 cache 重载）后逐步重绘，并确认当前人物帧至少一个源像素仍存在于 framebuffer 的 `(145,117)` anchor 区域。
@@ -76,6 +77,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 - RGB4 最近色使用目标 `(component*4+2)` 与当前 RGB6 palette 的平方距离，严格 `<` 保留首个同距 index。
 - seed 1、300 tick 的天气粒子和最终像素由 oracle 固定；framebuffer SHA256 `e8a96eda7898d8fc13ca270754b1d10b5cf05e0994db8cc82d3218aecf00a313`，FNV1a64 `0xdff4c0d05bd3426b`。
 - 相机移动时天气位置保留 `sub_24417` 的等角位移；全部粒子 x>500 时同 tick 重新生成。
+- 无输入 tick 保持 `sub_2399E` 判定/恢复→`sub_23B3E` 天气→条件 `sub_23AA6` 待机动画的顺序；现代拆分为 `idle_tick()`、`periodic_tick()`、`idle_animation_tick()`，不再把动画推进提前到天气之前。
 
 ## 随机遭遇审计
 

@@ -101,6 +101,8 @@ public:
     [[nodiscard]] WorldStepResult move(WorldDirection direction);
     void idle_tick();
     void periodic_tick();
+    void idle_animation_tick();
+    void cycle_palette();
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
 
     [[nodiscard]] int world_x() const noexcept { return world_x_; }

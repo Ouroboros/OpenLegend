@@ -43,7 +43,13 @@ public:
 
     void advance();
     void handle_key(std::uint8_t translated_key, bool control_down, bool shift_down);
-    void handle_world_input(bool left, bool up, bool down, bool right);
+    bool handle_world_input(
+        bool left,
+        bool up,
+        bool down,
+        bool right,
+        bool menu_requested = false);
+    void finish_presented_tick();
     [[nodiscard]] bool render();
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
@@ -117,6 +123,7 @@ private:
     std::vector<compat::LegacyPalette> scene_effect_palettes_;
     std::size_t scene_effect_frame_{};
     std::uint16_t scene_effect_wait_ticks_{1U};
+    std::int16_t periodic_counter_{};
     bool scene_effect_presented_{};
     bool world_step_processed_{};
     std::optional<scene::SceneDirection> scene_direction_input_;

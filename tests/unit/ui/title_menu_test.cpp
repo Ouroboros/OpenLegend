@@ -311,6 +311,27 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     }
     OL_CHECK(new_game.render());
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x6F6CF22B7C8CB4B8ULL);
+    const auto palette_before = new_game.framebuffer().palette();
+    new_game.finish_presented_tick();
+    OL_CHECK(new_game.render());
+    const auto palette_after_first = new_game.framebuffer().palette();
+    OL_CHECK(palette_after_first[224].red == palette_before[231].red);
+    OL_CHECK(palette_after_first[224].green == palette_before[231].green);
+    OL_CHECK(palette_after_first[224].blue == palette_before[231].blue);
+    for (int tick = 0; tick < 4; ++tick) {
+        new_game.finish_presented_tick();
+    }
+    OL_CHECK(new_game.render());
+    const auto palette_after_five = new_game.framebuffer().palette();
+    OL_CHECK(palette_after_five[224].red == palette_after_first[224].red);
+    OL_CHECK(palette_after_five[224].green == palette_after_first[224].green);
+    OL_CHECK(palette_after_five[224].blue == palette_after_first[224].blue);
+    new_game.finish_presented_tick();
+    OL_CHECK(new_game.render());
+    const auto palette_after_six = new_game.framebuffer().palette();
+    OL_CHECK(palette_after_six[224].red == palette_after_first[231].red);
+    OL_CHECK(palette_after_six[224].green == palette_after_first[231].green);
+    OL_CHECK(palette_after_six[224].blue == palette_after_first[231].blue);
     new_game.handle_world_input(false, false, false, true);
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
@@ -324,13 +345,13 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     OL_CHECK(new_game.render());
-    new_game.handle_world_input(false, false, true, false);
+    OL_CHECK(!new_game.handle_world_input(false, false, true, false, true));
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     OL_CHECK(new_game.render());
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
-    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.handle_world_input(false, false, false, false, true));
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());
     new_game.handle_key(0x98U, false, false);
