@@ -160,6 +160,44 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::face_towards) == 3);
 }
 
+void check_scene_weather(const std::filesystem::path& root) {
+    const openlegend::resource::DataRoot data_root{root};
+    auto coverage_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom coverage_random{1U};
+    constexpr std::array<std::int16_t, 11> weather_scene_ids{
+        5, 7, 10, 41, 42, 46, 65, 66, 67, 72, 79};
+    for (const auto scene_id : weather_scene_ids) {
+        const openlegend::scene::SceneSession weather_scene{
+            data_root, coverage_snapshot, coverage_random, scene_id};
+        OL_CHECK(weather_scene.valid());
+        OL_CHECK(weather_scene.weather_enabled());
+    }
+    const openlegend::scene::SceneSession clear_scene{
+        data_root, coverage_snapshot, coverage_random, 70};
+    OL_CHECK(clear_scene.valid());
+    OL_CHECK(!clear_scene.weather_enabled());
+
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 5};
+    OL_CHECK(session.valid());
+    OL_CHECK(session.scene_x() == 17);
+    OL_CHECK(session.scene_y() == 48);
+
+    openlegend::render::IndexedFramebuffer base_frame;
+    OL_CHECK(session.render_map(base_frame));
+    OL_CHECK(fnv1a64(base_frame.pixels()) == 0x52C8861F0349D6DBULL);
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::stay);
+    for (int tick = 0; tick < 300; ++tick) {
+        session.periodic_tick();
+    }
+    OL_CHECK(random.state() == 0xAF1CF0FBU);
+    openlegend::render::IndexedFramebuffer weather_frame;
+    OL_CHECK(session.render_map(weather_frame));
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0xB3E2B127988E5690ULL);
+}
+
 void check_event_execution(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     auto snapshot = load_baseline(root);
@@ -206,6 +244,7 @@ int main() {
     const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
     check_assets(root);
     check_scene_render_and_movement(root);
+    check_scene_weather(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;
 }

@@ -1,6 +1,6 @@
 # B7 场景、事件与对话证据
 
-状态：进行中。本文已固定 B7 的资源、场景绘制、移动/碰撞、KDEF 调度核心和 app 同步进入/返回链；天气、全部高阶剧情副作用和战斗回收在后续小提交继续逐项审计，不能据本文提前宣称 B7 完成。
+状态：进行中。本文已固定 B7 的资源、场景绘制、移动/碰撞、十一处天气场景、KDEF 调度核心和 app 同步进入/返回链；全部高阶剧情副作用和战斗回收仍在后续小提交逐项审计，不能据本文提前宣称 B7 完成。
 
 ## 1. 真值与证据
 
@@ -11,7 +11,7 @@
   - SHA256：`27e62d0e49fd397665738df88fbe9df31e2ae5f9223dac33b0cc728653307c59`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`575d6b99040b0dd5353a3cee6df51f7d43d7c1d253ae874af31beb88cf52e758`
+  - SHA256：`e8c00b93a7ef235406b598701b12e91a89c51e34843d24cc6e214e01280ffd85`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -88,7 +88,19 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 - 每页作为同步 `SceneStepKind::dialogue` 返回，app 确认后才继续同一事件 PC；
 - 字体仍由 `FONT.X16` / `FONT.C16` 在 index8 framebuffer 上绘制。
 
-## 6. app 同步消费
+## 6. 场景天气
+
+`sub_28E40` 只为场景 `5, 7, 10, 41, 42, 46, 65, 66, 67, 72, 79` 打开天气路径。现代场景会话复用 B6 已由机器码闭环的 `CLOUD.IDX/GRP` 合同：
+
+- 三粒子 kind、weight、x、y 按原 LCG 调用次数生成；`bounded(1)` 不推进 RNG；
+- 活跃粒子每 tick 横向加一，全部越过 500 后才重新生成；
+- 场景移动按菱形投影反向平移粒子；
+- RGB6 以 `source*weight/32 + destination*(8-weight)/32` 混合，再经 RGB4 最近色表写回 index8；
+- 对话/问题等阻塞输出期间不推进天气。
+
+独立 oracle 对场景 5 固定：入口 `(17,48)`；300 tick 后 RNG `0xaf1cf0fb`，粒子为 `(kind,weight,x,y) = (2,7,9,49), (2,7,18,-4000), (1,8,11,160)`，framebuffer FNV-1a64 为 `0xb3e2b127988e5690`。
+
+## 7. app 同步消费
 
 `LegacyGameRuntime` 在世界移动产生 `WorldStepKind::enter_scene` 的同一调用点构造 `SceneSession`，不引入异步事件总线。场景结果由 app 同步消费：
 
@@ -101,7 +113,7 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 
 集成测试固定验证 `世界 → 场景 70 标题 → 场景四项菜单 → 场景 → 右侧出口 → 世界`，并检查 `in_sub_map` 清零和 scene request 回收。
 
-## 7. 当前验证
+## 8. 当前验证
 
 Linux core Debug：10/10 测试通过，包括：
 
@@ -109,9 +121,10 @@ Linux core Debug：10/10 测试通过，包括：
 - 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素和碰撞轨迹；
+- 场景 5 的 300 tick RNG、粒子位置和半透明天气像素；
 - 真实脚本 36 的背包副作用、274 的场景层写入、69 的 TALK 暂停/恢复；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
 
 Linux app Debug：11/11 测试通过，包含上述场景同步链和 SDL dummy smoke。
 
-后续 B7 门禁仍包括天气、全 opcode 基本块审计、Linux/Windows Debug/Release、ASan+UBSan、原资产只读和 `.i64` 审计。
+后续 B7 门禁仍包括全 opcode 基本块审计、Linux/Windows Debug/Release、ASan+UBSan、原资产只读和 `.i64` 审计。

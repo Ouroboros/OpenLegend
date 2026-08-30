@@ -127,6 +127,7 @@ public:
         std::int16_t event_y = -1,
         std::int16_t item_id = -1);
     void idle_tick();
+    void periodic_tick();
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_map(render::IndexedFramebuffer& framebuffer) const;
 
@@ -136,6 +137,7 @@ public:
     [[nodiscard]] int view_origin_x() const noexcept { return view_origin_x_; }
     [[nodiscard]] int view_origin_y() const noexcept { return view_origin_y_; }
     [[nodiscard]] SceneDirection direction() const noexcept { return direction_; }
+    [[nodiscard]] bool weather_enabled() const noexcept { return weather_enabled_; }
     [[nodiscard]] std::int16_t player_frame() const noexcept;
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
     [[nodiscard]] std::span<const std::uint8_t> pending_text() const noexcept {
@@ -149,6 +151,13 @@ private:
         conditional,
         battle,
         shop,
+    };
+
+    struct WeatherParticle {
+        std::int16_t x{};
+        std::int16_t y{};
+        std::int16_t speed{};
+        std::int16_t kind{};
     };
 
     struct EventContext {
@@ -173,6 +182,10 @@ private:
         int anchor_x,
         int anchor_y) const;
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
+    void update_weather();
+    [[nodiscard]] bool draw_weather_particle(
+        render::IndexedFramebuffer& framebuffer,
+        const WeatherParticle& particle) const;
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_field(
@@ -212,7 +225,9 @@ private:
     random::LegacyRandom& random_;
     SceneAssets assets_;
     resource::SentinelArchive sprites_;
+    resource::PackedArchive weather_sprites_;
     compat::LegacyPalette palette_{};
+    std::array<std::uint8_t, 4096> rgb4_lookup_{};
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
     std::int16_t scene_id_{-1};
@@ -223,6 +238,9 @@ private:
     SceneDirection direction_{SceneDirection::up};
     std::int16_t walk_frame_offset_{};
     std::int16_t animation_counter_{};
+    bool weather_enabled_{};
+    bool weather_active_{};
+    std::array<WeatherParticle, 3> weather_{};
     EventContext event_context_{};
     std::vector<std::int16_t> script_;
     std::ptrdiff_t program_counter_{};

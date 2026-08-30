@@ -55,9 +55,11 @@ void LegacyGameRuntime::advance() {
             world_session_->idle_tick();
         }
         world_session_->periodic_tick();
-    } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
-               !world_step_processed_) {
-        scene_session_->idle_tick();
+    } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+        if (!world_step_processed_) {
+            scene_session_->idle_tick();
+        }
+        scene_session_->periodic_tick();
     }
     world_step_processed_ = false;
 }

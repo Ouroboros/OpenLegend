@@ -199,6 +199,8 @@ SceneSession::SceneSession(
       snapshot_(snapshot),
       random_(random),
       assets_(data_root),
+      weather_sprites_(resource::PackedArchive::open(
+          data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
       scene_id_(scene_id) {
     if (!snapshot_.valid()) {
         error_ = "scene session requires a valid game snapshot";
@@ -206,6 +208,10 @@ SceneSession::SceneSession(
     }
     if (!assets_.valid()) {
         error_ = assets_.error();
+        return;
+    }
+    if (!weather_sprites_.valid()) {
+        error_ = weather_sprites_.error();
         return;
     }
     if (scene_id_ < 0 || static_cast<std::size_t>(scene_id_) >= model::kSceneCount) {
@@ -226,6 +232,32 @@ SceneSession::SceneSession(
         return;
     }
     palette_ = palette.palette;
+    for (int red = 0; red < 16; ++red) {
+        for (int green = 0; green < 16; ++green) {
+            for (int blue = 0; blue < 16; ++blue) {
+                auto best_distance = 30'000;
+                std::uint8_t best_index{};
+                for (std::size_t palette_index = 0U; palette_index < palette_.size();
+                     ++palette_index) {
+                    const auto target_red = red * 4 + 2;
+                    const auto target_green = green * 4 + 2;
+                    const auto target_blue = blue * 4 + 2;
+                    const auto red_delta = target_red - palette_[palette_index].red;
+                    const auto green_delta = target_green - palette_[palette_index].green;
+                    const auto blue_delta = target_blue - palette_[palette_index].blue;
+                    const auto distance = red_delta * red_delta + green_delta * green_delta +
+                                          blue_delta * blue_delta;
+                    if (distance < best_distance) {
+                        best_distance = distance;
+                        best_index = static_cast<std::uint8_t>(palette_index);
+                    }
+                }
+                rgb4_lookup_[static_cast<std::size_t>(red * 256 + green * 16 + blue)] = best_index;
+            }
+        }
+    }
+    weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
+                       kWeatherSceneIds.end();
     auto ascii = data_root_.read("FONT.X16");
     auto big5 = data_root_.read("FONT.C16");
     if (!ascii) {
@@ -314,6 +346,17 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     }
     scene_x_ = target_x;
     scene_y_ = target_y;
+    if (weather_active_) {
+        for (auto& particle : weather_) {
+            if (delta_y != 0) {
+                particle.x = static_cast<std::int16_t>(particle.x + 18 * delta_y);
+                particle.y = static_cast<std::int16_t>(particle.y - 9 * delta_y);
+            } else {
+                particle.x = static_cast<std::int16_t>(particle.x - 18 * delta_x);
+                particle.y = static_cast<std::int16_t>(particle.y - 9 * delta_x);
+            }
+        }
+    }
     update_view_origin();
     commit_header();
 
@@ -334,6 +377,11 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
             const auto use_return = metadata.word(model::scene_metadata_word::jump_return_x) == 0 &&
                                     metadata.word(model::scene_metadata_word::jump_return_y) == 0;
             scene_id_ = jump_scene;
+            weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
+                               kWeatherSceneIds.end();
+            if (!weather_enabled_) {
+                weather_active_ = false;
+            }
             if (!load_scene_sprites()) {
                 pending_ = current_result(SceneStepKind::stay);
                 return pending_;
@@ -1052,6 +1100,50 @@ SceneStepResult SceneSession::run_auto_event(const SceneStepKind fallback) {
     return current_result(fallback);
 }
 
+void SceneSession::periodic_tick() {
+    if (valid() && weather_enabled_ && pending_.kind == SceneStepKind::stay) {
+        update_weather();
+    }
+}
+
+void SceneSession::update_weather() {
+    if (weather_active_) {
+        bool all_done = true;
+        for (auto& particle : weather_) {
+            particle.x = static_cast<std::int16_t>(particle.x + 1);
+            if (particle.x <= 500) {
+                all_done = false;
+            }
+        }
+        if (!all_done) {
+            return;
+        }
+        weather_active_ = false;
+    }
+    if (random_.bounded(1) != 0) {
+        return;
+    }
+    weather_active_ = true;
+    for (auto& particle : weather_) {
+        particle.kind = static_cast<std::int16_t>(random_.bounded(4));
+    }
+    for (auto& particle : weather_) {
+        particle.speed = static_cast<std::int16_t>(random_.bounded(3) + 6);
+    }
+    for (auto& particle : weather_) {
+        particle.x = static_cast<std::int16_t>(random_.bounded(100) - 300);
+    }
+    for (std::size_t index = 0U; index < weather_.size(); ++index) {
+        if (random_.bounded(2) != 0) {
+            weather_[index].y = static_cast<std::int16_t>(
+                -3000 - 1000 * static_cast<std::int32_t>(index));
+        } else {
+            weather_[index].y = static_cast<std::int16_t>(
+                random_.bounded(50) + static_cast<std::int32_t>(index) * 75);
+        }
+    }
+}
+
 void SceneSession::idle_tick() {
     if (!valid() || pending_.kind != SceneStepKind::stay) {
         return;
@@ -1424,6 +1516,13 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
             }
         }
     }
+    if (weather_active_) {
+        for (const auto& particle : weather_) {
+            if (particle.y > -1000 && !draw_weather_particle(framebuffer, particle)) {
+                return false;
+            }
+        }
+    }
     return true;
 }
 
@@ -1448,6 +1547,49 @@ bool SceneSession::draw_sprite(
         return false;
     }
     render::draw_rle_sprite(framebuffer, frame, anchor_x, anchor_y);
+    return true;
+}
+
+bool SceneSession::draw_weather_particle(
+    render::IndexedFramebuffer& framebuffer, const WeatherParticle& particle) const {
+    if (particle.kind < 0 ||
+        static_cast<std::size_t>(particle.kind) >= weather_sprites_.entry_count() ||
+        particle.speed < 0 || particle.speed > 8) {
+        return false;
+    }
+    const auto frame = resource::SpriteFrameView::parse(
+        weather_sprites_.entry(static_cast<std::size_t>(particle.kind)));
+    if (!frame.valid()) {
+        return false;
+    }
+    const auto source_weight = static_cast<int>(particle.speed);
+    const auto destination_weight = 8 - source_weight;
+    const auto left = static_cast<int>(particle.x) - static_cast<int>(frame.x_offset());
+    const auto top = static_cast<int>(particle.y) - static_cast<int>(frame.y_offset());
+    for (std::size_t row_index = 0U; row_index < frame.rows().size(); ++row_index) {
+        const auto destination_y = top + static_cast<int>(row_index);
+        auto destination_x = left;
+        for (const auto& run : frame.rows()[row_index].runs) {
+            destination_x += static_cast<int>(run.skip);
+            for (const auto source_index : run.pixels) {
+                if (destination_y >= 0 && destination_y < render::IndexedFramebuffer::height &&
+                    destination_x >= 0 && destination_x < render::IndexedFramebuffer::width) {
+                    auto& destination_index = framebuffer.row(destination_y)[destination_x];
+                    const auto source = palette_[source_index];
+                    const auto destination = palette_[destination_index];
+                    const auto red = (static_cast<int>(source.red) * source_weight) / 32 +
+                                     (static_cast<int>(destination.red) * destination_weight) / 32;
+                    const auto green = (static_cast<int>(source.green) * source_weight) / 32 +
+                                       (static_cast<int>(destination.green) * destination_weight) / 32;
+                    const auto blue = (static_cast<int>(source.blue) * source_weight) / 32 +
+                                      (static_cast<int>(destination.blue) * destination_weight) / 32;
+                    const auto lookup_index = static_cast<std::size_t>(red * 256 + green * 16 + blue);
+                    destination_index = rgb4_lookup_[lookup_index];
+                }
+                ++destination_x;
+            }
+        }
+    }
     return true;
 }
 

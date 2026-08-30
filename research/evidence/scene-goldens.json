@@ -165,6 +165,34 @@
     ],
     "instruction_count": 13315
   },
+  "scene_5_weather": {
+    "initial_x": 17,
+    "initial_y": 48,
+    "base_frame_fnv1a64": "0x52c8861f0349d6db",
+    "ticks": 300,
+    "frame_fnv1a64": "0xb3e2b127988e5690",
+    "particles": [
+      {
+        "kind": 2,
+        "weight": 7,
+        "x": 9,
+        "y": 49
+      },
+      {
+        "kind": 2,
+        "weight": 7,
+        "x": 18,
+        "y": -4000
+      },
+      {
+        "kind": 1,
+        "weight": 8,
+        "x": 11,
+        "y": 160
+      }
+    ],
+    "random_state": "0xaf1cf0fb"
+  },
   "scene_70": {
     "map_sha256": "db153483bb5d0d062021df1bc9bc46be8df5e01a2280fca0374c9244d02c7f88",
     "events_sha256": "5725ccf1ff5912c7817cc2a18339baa1fe7f87a372f3702273a919ba515a8d5b",

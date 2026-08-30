@@ -94,6 +94,108 @@ def draw_sprite(pixels: bytearray, frame: bytes, anchor_x: int, anchor_y: int) -
     assert cursor == len(frame)
 
 
+def rgb4_lookup(palette: list[tuple[int, int, int]]) -> list[int]:
+    result: list[int] = []
+    for red in range(16):
+        for green in range(16):
+            for blue in range(16):
+                target = (red * 4 + 2, green * 4 + 2, blue * 4 + 2)
+                best_distance = 30_000
+                best_index = 0
+                for index, color in enumerate(palette):
+                    distance = sum((target[channel] - color[channel]) ** 2 for channel in range(3))
+                    if distance < best_distance:
+                        best_distance = distance
+                        best_index = index
+                result.append(best_index)
+    return result
+
+
+def draw_translucent(
+    pixels: bytearray,
+    frame: bytes,
+    anchor_x: int,
+    anchor_y: int,
+    weight: int,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+) -> None:
+    width, height, x_offset, y_offset = struct.unpack_from("<HHhh", frame)
+    cursor = 8
+    left = anchor_x - x_offset
+    top = anchor_y - y_offset
+    for row in range(height):
+        row_size = frame[cursor]
+        cursor += 1
+        row_end = cursor + row_size
+        destination_x = left
+        while cursor < row_end:
+            skip = frame[cursor]
+            count = frame[cursor + 1]
+            cursor += 2
+            destination_x += skip
+            for source_index in frame[cursor:cursor + count]:
+                destination_y = top + row
+                if 0 <= destination_x < 320 and 0 <= destination_y < 200:
+                    destination_offset = destination_y * 320 + destination_x
+                    source = palette[source_index]
+                    destination = palette[pixels[destination_offset]]
+                    components = tuple(
+                        source[channel] * weight // 32
+                        + destination[channel] * (8 - weight) // 32
+                        for channel in range(3)
+                    )
+                    pixels[destination_offset] = lookup[
+                        components[0] * 256 + components[1] * 16 + components[2]
+                    ]
+                destination_x += 1
+            cursor += count
+        assert cursor == row_end
+        assert destination_x <= left + width
+    assert cursor == len(frame)
+
+
+def weather_frame(
+    base_frame: bytes,
+    cloud_archive: list[bytes],
+    palette: list[tuple[int, int, int]],
+    ticks: int,
+) -> tuple[bytes, list[dict[str, int]], int]:
+    state = 1
+
+    def bounded(upper_bound: int) -> int:
+        nonlocal state
+        if upper_bound <= 1 or upper_bound > 30_000:
+            return 0
+        state = (state * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
+        return ((state >> 16) & 0x7FFF) % upper_bound
+
+    particles = [{"kind": bounded(4)} for _ in range(3)]
+    for particle in particles:
+        particle["weight"] = bounded(3) + 6
+    for particle in particles:
+        particle["x"] = bounded(100) - 300
+    for index, particle in enumerate(particles):
+        particle["y"] = -3000 - index * 1000 if bounded(2) else bounded(50) + index * 75
+    for _ in range(1, ticks):
+        for particle in particles:
+            particle["x"] += 1
+    output = bytearray(base_frame)
+    lookup = rgb4_lookup(palette)
+    for particle in particles:
+        if particle["y"] > -1000:
+            draw_translucent(
+                output,
+                cloud_archive[particle["kind"]],
+                particle["x"],
+                particle["y"],
+                particle["weight"],
+                palette,
+                lookup,
+            )
+    return bytes(output), particles, state
+
+
 def words(data: bytes) -> tuple[int, ...]:
     return struct.unpack(f"<{len(data) // 2}h", data)
 
@@ -217,6 +319,23 @@ def main() -> None:
     sevent = words(scene_events[scene_id])
     sprites = sentinel((root / "SDX070").read_bytes(), (root / "SMP070").read_bytes())
     frame = render_scene(smap, sevent, sprites, 44, 29, 1)
+
+    weather_scene_id = 5
+    weather_map = words(scene_maps[weather_scene_id])
+    weather_events = words(scene_events[weather_scene_id])
+    weather_sprites = sentinel((root / "SDX005").read_bytes(), (root / "SMP005").read_bytes())
+    ranger = (root / "RANGER.GRP").read_bytes()
+    metadata_offset = 97_076 + weather_scene_id * 52
+    metadata = struct.unpack_from("<26h", ranger, metadata_offset)
+    weather_x, weather_y = metadata[14], metadata[15]
+    weather_base = render_scene(weather_map, weather_events, weather_sprites, weather_x, weather_y, 1)
+    cloud_archive = packed((root / "CLOUD.IDX").read_bytes(), (root / "CLOUD.GRP").read_bytes())
+    palette_bytes = (root / "MMAP.COL").read_bytes()
+    palette = [tuple(palette_bytes[offset:offset + 3]) for offset in range(0, len(palette_bytes), 3)]
+    weather_ticks = 300
+    weather_output, weather_particles, weather_random_state = weather_frame(
+        weather_base, cloud_archive, palette, weather_ticks
+    )
     decoded_talks = [bytes(value ^ 0xFF for value in entry[:-1]) + b"\0" for entry in talks]
     coverage = opcode_coverage(scripts)
 
@@ -242,6 +361,15 @@ def main() -> None:
             "record_2976_sha256": sha256(decoded_talks[2976]),
         },
         "kdef": coverage,
+        "scene_5_weather": {
+            "initial_x": weather_x,
+            "initial_y": weather_y,
+            "base_frame_fnv1a64": fnv1a64(weather_base),
+            "ticks": weather_ticks,
+            "frame_fnv1a64": fnv1a64(weather_output),
+            "particles": weather_particles,
+            "random_state": f"0x{weather_random_state:08x}",
+        },
         "scene_70": {
             "map_sha256": sha256(scene_maps[scene_id]),
             "events_sha256": sha256(scene_events[scene_id]),
