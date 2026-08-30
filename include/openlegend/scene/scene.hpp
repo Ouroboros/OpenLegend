@@ -271,6 +271,9 @@ private:
         std::int16_t x,
         std::int16_t y) const noexcept;
     [[nodiscard]] bool party_contains(std::int16_t role_id) const noexcept;
+    [[nodiscard]] bool inventory_contains_id(std::int16_t item_id) const noexcept;
+    [[nodiscard]] std::optional<std::int16_t> first_inventory_count(
+        std::int16_t item_id) const noexcept;
     [[nodiscard]] int inventory_count(std::int16_t item_id) const noexcept;
     void add_inventory(std::int16_t item_id, std::int16_t count);
     void update_book_event_if_ready();

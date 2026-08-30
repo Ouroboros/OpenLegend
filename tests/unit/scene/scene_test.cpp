@@ -505,7 +505,7 @@ void check_event_three_statue_animation(const std::filesystem::path& root) {
     auto& metadata = snapshot.ranger.scenes[14];
     metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 32);
     metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 15);
-    snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, 100);
+    snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, 2000);
     snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{106}, 1);
     openlegend::random::LegacyRandom random{1U};
     openlegend::scene::SceneSession session{data_root, snapshot, random, 14};
@@ -892,6 +892,85 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
                      activated[field]);
         }
     }
+}
+
+void check_event_role_stat_conditions(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    const auto reaches_success_dialogue = [&data_root, &root](const std::int16_t morality) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{110}, 0);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::morality, morality);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        auto result = session.begin_event(636, 0, 0, 0);
+        for (int step = 0; step < 64; ++step) {
+            if (result.kind == SceneStepKind::dialogue && result.talk_id == 2383) {
+                return true;
+            }
+            if (result.kind == SceneStepKind::battle || result.kind == SceneStepKind::stay ||
+                result.kind == SceneStepKind::quit) {
+                return false;
+            }
+            if (result.kind == SceneStepKind::dialogue ||
+                result.kind == SceneStepKind::notice ||
+                result.kind == SceneStepKind::present ||
+                result.kind == SceneStepKind::fade_from_black ||
+                result.kind == SceneStepKind::fade_to_black) {
+                result = session.resume(SceneResponse::acknowledge);
+            } else {
+                return false;
+            }
+        }
+        return false;
+    };
+    OL_CHECK(!reaches_success_dialogue(79));
+    OL_CHECK(reaches_success_dialogue(80));
+    OL_CHECK(reaches_success_dialogue(100));
+    OL_CHECK(!reaches_success_dialogue(101));
+}
+
+void check_event_inventory_condition_edge_cases(const std::filesystem::path& root) {
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto money_snapshot = load_baseline(root);
+    money_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{174}, 5);
+    money_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{174}, 10);
+    openlegend::random::LegacyRandom money_random{1U};
+    openlegend::scene::SceneSession money_session{
+        data_root, money_snapshot, money_random, 70};
+    const auto split_money = money_session.begin_event(234, 0, 0, 0, 174);
+    OL_CHECK(split_money.kind == SceneStepKind::dialogue);
+    OL_CHECK(split_money.talk_id == 790);
+
+    money_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{174}, 10);
+    money_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{174}, 0);
+    const auto first_money = money_session.begin_event(234, 0, 0, 0, 174);
+    OL_CHECK(first_money.kind == SceneStepKind::dialogue);
+    OL_CHECK(first_money.talk_id == 791);
+
+    auto presence_snapshot = load_baseline(root);
+    presence_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{110}, 0);
+    openlegend::random::LegacyRandom presence_random{1U};
+    openlegend::scene::SceneSession presence_session{
+        data_root, presence_snapshot, presence_random, 70};
+    const auto zero_count = presence_session.begin_event(636, 0, 0, 0);
+    OL_CHECK(zero_count.kind == SceneStepKind::dialogue);
+    OL_CHECK(zero_count.talk_id == 2381);
+
+    presence_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{-1}, 0);
+    const auto absent = presence_session.begin_event(636, 0, 0, 0);
+    OL_CHECK(absent.kind == SceneStepKind::dialogue);
+    OL_CHECK(absent.talk_id == 2380);
 }
 
 void check_event_all_book_pictures_condition(const std::filesystem::path& root) {
@@ -1437,6 +1516,8 @@ int main() {
     check_event_ending_prelude_animation(root);
     check_event_role_sexual_and_audio(root);
     check_event_shop_helpers(root);
+    check_event_role_stat_conditions(root);
+    check_event_inventory_condition_edge_cases(root);
     check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);

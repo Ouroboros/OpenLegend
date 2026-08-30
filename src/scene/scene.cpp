@@ -893,7 +893,9 @@ SceneStepResult SceneSession::run_event() {
             }
             break;
         case 31:
-            conditional(inventory_count(174) >= argument(1), 4U, argument(2), argument(3));
+            conditional(
+                first_inventory_count(174).value_or(0) >= argument(1),
+                4U, argument(2), argument(3));
             break;
         case 32:
             add_inventory(argument(1), argument(2));
@@ -1033,7 +1035,7 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 43:
-            conditional(inventory_count(argument(1)) > 0, 4U, argument(2), argument(3));
+            conditional(inventory_contains_id(argument(1)), 4U, argument(2), argument(3));
             break;
         case 44:
             dual_picture_animation_state_ = DualPictureAnimationState{
@@ -1432,6 +1434,25 @@ bool SceneSession::party_contains(const std::int16_t role_id) const noexcept {
         }
     }
     return false;
+}
+
+bool SceneSession::inventory_contains_id(const std::int16_t item_id) const noexcept {
+    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
+        if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<std::int16_t> SceneSession::first_inventory_count(
+    const std::int16_t item_id) const noexcept {
+    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
+        if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
+            return snapshot_.ranger.header.inventory_count(index);
+        }
+    }
+    return std::nullopt;
 }
 
 int SceneSession::inventory_count(const std::int16_t item_id) const noexcept {
