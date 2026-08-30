@@ -9,7 +9,10 @@
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/legacy_sprite.hpp"
+#include "openlegend/resource/packed_archive.hpp"
 #include "openlegend/world/world_map.hpp"
 #include "test_support.hpp"
 
@@ -35,6 +38,43 @@ namespace {
         }
     }
     return result;
+}
+
+[[nodiscard]] bool sprite_has_visible_pixel(
+    const openlegend::resource::PackedArchive& sprites,
+    const std::int16_t legacy_id,
+    const openlegend::render::IndexedFramebuffer& framebuffer,
+    const int anchor_x,
+    const int anchor_y) {
+    const auto index = openlegend::render::legacy_sprite_index(
+        static_cast<std::uint16_t>(legacy_id));
+    if (!index.has_value() || *index >= sprites.entry_count()) {
+        return false;
+    }
+    const auto frame = openlegend::resource::SpriteFrameView::parse(sprites.entry(*index));
+    if (!frame.valid()) {
+        return false;
+    }
+    const auto left = anchor_x - static_cast<int>(frame.x_offset());
+    const auto top = anchor_y - static_cast<int>(frame.y_offset());
+    for (std::size_t row_index = 0U; row_index < frame.rows().size(); ++row_index) {
+        const auto destination_y = top + static_cast<int>(row_index);
+        auto destination_x = left;
+        for (const auto& run : frame.rows()[row_index].runs) {
+            destination_x += static_cast<int>(run.skip);
+            for (const auto source_pixel : run.pixels) {
+                if (destination_y >= 0 &&
+                    destination_y < openlegend::render::IndexedFramebuffer::height &&
+                    destination_x >= 0 &&
+                    destination_x < openlegend::render::IndexedFramebuffer::width &&
+                    framebuffer.row(destination_y)[destination_x] == source_pixel) {
+                    return true;
+                }
+                ++destination_x;
+            }
+        }
+    }
+    return false;
 }
 
 [[nodiscard]] openlegend::model::GameSnapshot load_baseline(
@@ -85,6 +125,9 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     using namespace openlegend::world;
     const openlegend::resource::DataRoot data_root{root};
     const WorldMapData map{data_root};
+    const auto sprites = openlegend::resource::PackedArchive::open(
+        root / "MMAP.IDX", root / "MMAP.GRP");
+    OL_CHECK(sprites.valid());
     auto snapshot = load_baseline(root);
     openlegend::random::LegacyRandom random{1U};
     WorldSession session{data_root, map, snapshot.ranger, random};
@@ -101,6 +144,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x6F6CF22B7C8CB4B8ULL);
+    OL_CHECK(sprite_has_visible_pixel(sprites, session.player_frame(), framebuffer, 145, 117));
 
     constexpr std::array<WorldDirection, 4> directions{
         WorldDirection::right, WorldDirection::up, WorldDirection::left, WorldDirection::down};
@@ -115,6 +159,9 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         OL_CHECK(result.scene_id == -1);
         OL_CHECK(result.world_x == positions[index][0]);
         OL_CHECK(result.world_y == positions[index][1]);
+        OL_CHECK(session.render(framebuffer));
+        OL_CHECK(sprite_has_visible_pixel(
+            sprites, session.player_frame(), framebuffer, 145, 117));
     }
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_x) == 357);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_y) == 235);
@@ -174,6 +221,9 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(reload.cache().origin_x() == 7);
     for (int step = 0; step < 35; ++step) {
         OL_CHECK(reload.move(WorldDirection::right).kind == WorldStepKind::moved);
+        OL_CHECK(reload.render(framebuffer));
+        OL_CHECK(sprite_has_visible_pixel(
+            sprites, reload.player_frame(), framebuffer, 145, 117));
     }
     OL_CHECK(reload.world_x() == 106);
     OL_CHECK(reload.cache().origin_x() == 42);

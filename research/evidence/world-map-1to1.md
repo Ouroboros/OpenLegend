@@ -1,5 +1,7 @@
 # B6 世界地图 1:1 证据
 
+状态：`implemented_pending_review`；本文件记录已有实现/测试，不替代最终汇编↔C++ REVIEW。
+
 ## 真值与可复现产物
 
 - 唯一行为真值：当前原版 `Z.COM` / `Z.DAT` 机器码。
@@ -68,6 +70,8 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 - 核心仍为 `320×200×index8 + 256×RGB6`；B6 不引入 RGBA 或 SDL 依赖。
 - 地面与 surface 使用 `MMAP.IDX/GRP`，legacy id 按 `/2` 取累计 archive entry；角色、船和建筑走同一 RLE 覆盖规则。
 - 初始 framebuffer：SHA256 `8b925f9bb4d8378cd9a134965e0ae95e56e85360036a38f64387e073a486bc2a`，FNV1a64 `0x6f6cf22b7c8cb4b8`。
+- 世界人物四方向 28 个 MMAP 行走帧均为合法非空 RLE；每帧含 305–402 个源像素。回归测试在初始位置、四方向轨迹和连续右移 35 步（覆盖完整 2–12 帧循环与 cache 重载）后逐步重绘，并确认当前人物帧至少一个源像素仍存在于 framebuffer 的 `(145,117)` anchor 区域。
+- `LegacyGameRuntime` 同步链在四次 held-direction 输入后逐步断言 view 仍为 `world` 且 render 成功；因此当前固定真实资产路径未复现“移动几步后人物消失”。运行日志另记录 view、坐标、方向、帧号、深度列表是否包含玩家和 present 失败，以捕获真实运行环境中的后续复现。
 - 天气 alpha 表为 `table[weight][rgb6] = floor(rgb6*weight/32)`；source weight 为 6..8，destination weight 为 `8-weight`。
 - RGB4 最近色使用目标 `(component*4+2)` 与当前 RGB6 palette 的平方距离，严格 `<` 保留首个同距 index。
 - seed 1、300 tick 的天气粒子和最终像素由 oracle 固定；framebuffer SHA256 `e8a96eda7898d8fc13ca270754b1d10b5cf05e0994db8cc82d3218aecf00a313`，FNV1a64 `0xdff4c0d05bd3426b`。
@@ -95,9 +99,10 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 5. 上船、船移动、海岸过渡、下船与 header 同步；
 6. weather RNG 消费和 300 tick alpha framebuffer；
 7. 待机动画方向帧、50 次移动消耗原 BUG、200 tick 体力恢复；
-8. `LegacyGameRuntime` 和 SDL held-key 接线、scene request。
+8. `LegacyGameRuntime` 和 SDL held-key 接线、scene request；
+9. 每步 world render 的当前 MMAP 人物帧可见性，以及 app 每步 view/render 稳定性。
 
-阶段门禁（最终 B6 工作树）：
+历史阶段门禁（发生真实回归前的实现验证记录，不代表当前 B6 已完成最终 REVIEW）：
 
 - Linux core Debug/Release：各 9/9；
 - Linux app Debug/Release：各 10/10；

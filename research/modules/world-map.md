@@ -13,8 +13,8 @@
 ## 3. 已知回归
 
 - SDL 左右键曾读取错误 translated-key 索引，已修正并证明此前平台整链 REVIEW 不完整；
-- 用户报告人物移动后消失，尚未取得包含模式、坐标、frame 和深度结果的运行日志；
-- 因上述缺陷，B6 保持打开。
+- 用户报告人物移动后消失；当前真实资产回归在初始/四方向及连续 35 步、完整帧循环和 cache 重载中均确认人物帧仍有可见像素，app 每步保持 world view 且 render 成功，未复现消失；
+- 新日志已覆盖 view、坐标、方向、frame、碰撞、入口和玩家深度/绘制结果；若真实运行再次出现，可由单份日志定位。B6 仍因最终汇编 REVIEW 未完成而保持打开。
 
 ## 4. 实现阶段队列
 
@@ -22,4 +22,4 @@
 
 ## 5. 最终 REVIEW 停止线
 
-34 行及 ownership 过滤后补入的全部 world 函数必须从 `pending_* / implemented_pending_review` 变为有证据的关闭状态；每行均需实现映射、函数证据、验证和 `converged_no_new_differences`。人物消失必须得到复现、解释或修正，不能以资源帧非空代替运行链证据。
+34 行及 ownership 过滤后补入的全部 world 函数必须从 `pending_* / implemented_pending_review` 变为有证据的关闭状态；每行均需实现映射、函数证据、验证和 `converged_no_new_differences`。人物可见性必须同时保留逐步 framebuffer 断言、app view/render 整链和真实运行日志，不能只以资源帧非空代替运行链证据。
