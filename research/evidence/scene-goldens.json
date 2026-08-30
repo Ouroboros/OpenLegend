@@ -236,6 +236,57 @@
           "frame_fnv1a64": "0x473e57a3e9ac9b4f"
         }
       ]
+    },
+    "opcode_30_script_343": {
+      "scene_id": 39,
+      "arguments": [
+        28,
+        24,
+        28,
+        19
+      ],
+      "frames": [
+        {
+          "x": 28,
+          "y": 23,
+          "direction": 0,
+          "player_picture": 5004,
+          "wait_ticks": 3,
+          "frame_fnv1a64": "0xfe3ec0de318a5a82"
+        },
+        {
+          "x": 28,
+          "y": 22,
+          "direction": 0,
+          "player_picture": 5006,
+          "wait_ticks": 3,
+          "frame_fnv1a64": "0x68c98bb78c98819a"
+        },
+        {
+          "x": 28,
+          "y": 21,
+          "direction": 0,
+          "player_picture": 5008,
+          "wait_ticks": 3,
+          "frame_fnv1a64": "0x5c20ea03384f66fb"
+        },
+        {
+          "x": 28,
+          "y": 20,
+          "direction": 0,
+          "player_picture": 5010,
+          "wait_ticks": 3,
+          "frame_fnv1a64": "0xaaa97b36975c12e9"
+        },
+        {
+          "x": 28,
+          "y": 19,
+          "direction": 0,
+          "player_picture": 5012,
+          "wait_ticks": 3,
+          "frame_fnv1a64": "0xf2a1e35490a4f647"
+        }
+      ]
     }
   },
   "scene_5_weather": {

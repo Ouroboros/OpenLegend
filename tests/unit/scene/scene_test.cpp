@@ -329,6 +329,92 @@ void check_event_picture_animation(const std::filesystem::path& root) {
     OL_CHECK(player_session.player_frame() == 6012);
 }
 
+void check_event_scripted_walk(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    auto& metadata = snapshot.ranger.scenes[39];
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 28);
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 24);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 39};
+
+    auto result = session.begin_event(343, 12, 28, 24);
+    for (int step = 0; step < 64 &&
+                       !(result.kind == SceneStepKind::present && result.wait_ticks == 3U);
+         ++step) {
+        const auto resumable = result.kind == SceneStepKind::present ||
+                               result.kind == SceneStepKind::dialogue ||
+                               result.kind == SceneStepKind::fade_from_black ||
+                               result.kind == SceneStepKind::fade_to_black;
+        OL_CHECK(resumable);
+        if (!resumable) {
+            break;
+        }
+        result = session.resume(SceneResponse::acknowledge);
+    }
+
+    constexpr std::array<int, 5> expected_y{23, 22, 21, 20, 19};
+    constexpr std::array<std::int16_t, 5> expected_pictures{5004, 5006, 5008, 5010, 5012};
+    constexpr std::array<std::uint64_t, 5> expected_hashes{
+        0xFE3EC0DE318A5A82ULL,
+        0x68C98BB78C98819AULL,
+        0x5C20EA03384F66FBULL,
+        0xAAA97B36975C12E9ULL,
+        0xF2A1E35490A4F647ULL,
+    };
+    for (std::size_t index = 0U; index < expected_y.size(); ++index) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 3U);
+        OL_CHECK(session.scene_x() == 28);
+        OL_CHECK(session.scene_y() == expected_y[index]);
+        OL_CHECK(session.direction() == openlegend::scene::SceneDirection::up);
+        OL_CHECK(session.player_frame() == expected_pictures[index]);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render_map(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 1248);
+    OL_CHECK(session.player_frame() == 5002);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_x) == 28);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_y) == 19);
+
+    auto blocked_snapshot = load_baseline(root);
+    auto& blocked_metadata = blocked_snapshot.ranger.scenes[39];
+    blocked_metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 28);
+    blocked_metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 24);
+    OL_CHECK(blocked_snapshot.set_scene_value(
+        39U,
+        openlegend::model::SceneLayer::building,
+        22U * 64U + 28U,
+        2));
+    openlegend::random::LegacyRandom blocked_random{1U};
+    openlegend::scene::SceneSession blocked{
+        data_root, blocked_snapshot, blocked_random, 39};
+    auto blocked_result = blocked.begin_event(343, 12, 28, 24);
+    for (int step = 0; step < 64 &&
+                       !(blocked_result.kind == SceneStepKind::present &&
+                         blocked_result.wait_ticks == 3U);
+         ++step) {
+        blocked_result = blocked.resume(SceneResponse::acknowledge);
+    }
+    for (std::int16_t frame = 5004; frame <= 5012; frame += 2) {
+        OL_CHECK(blocked_result.kind == SceneStepKind::present);
+        OL_CHECK(blocked_result.wait_ticks == 3U);
+        OL_CHECK(blocked.scene_x() == 28);
+        OL_CHECK(blocked.scene_y() == 23);
+        OL_CHECK(blocked.player_frame() == frame);
+        blocked_result = blocked.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(blocked_result.kind == SceneStepKind::dialogue);
+    OL_CHECK(blocked_result.talk_id == 1248);
+    OL_CHECK(blocked.scene_y() == 23);
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -539,6 +625,7 @@ int main() {
     check_scene_weather(root);
     check_event_camera_pan(root);
     check_event_picture_animation(root);
+    check_event_scripted_walk(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;

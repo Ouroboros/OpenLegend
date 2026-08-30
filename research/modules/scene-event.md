@@ -10,7 +10,7 @@
 
 场景资源、六层绘制、移动/碰撞、跳转/出口、TALK、基础 KDEF switch、app 同步链、天气和部分角色/物品副作用已有 C++ 与测试。所有行统一视为 `pending_mapping` 或 `implemented_pending_review`，不得继承旧完成状态。
 
-opcode 0/13/14 的呈现/淡入淡出已提交；opcode 25 `sub_2ED8D` 的视口平移和 opcode 27 `sub_2F053` 的玩家/事件图片动画均已恢复逐帧呈现、原范围边界与 2 BIOS tick 等待，并登记为 `implemented_pending_review`。其余 handler 继续按机器码和真实脚本分组补齐。
+opcode 0/13/14 的呈现/淡入淡出已提交；opcode 25 `sub_2ED8D` 的视口平移、opcode 27 `sub_2F053` 的玩家/事件图片动画，以及 opcode 30 `sub_2F171` 的碰撞感知逐格行走均已恢复原范围边界、逐帧呈现和对应 BIOS tick 等待，并登记为 `implemented_pending_review`。其余 handler 继续按机器码和真实脚本分组补齐。
 
 ## 3. 实现阶段与最终 REVIEW
 

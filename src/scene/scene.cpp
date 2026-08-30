@@ -516,6 +516,7 @@ SceneStepResult SceneSession::begin_event(
     continuation_ = PendingContinuation::none;
     pan_state_.reset();
     picture_animation_state_.reset();
+    scripted_walk_state_.reset();
     queued_outputs_.clear();
     return run_event();
 }
@@ -543,6 +544,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     }
     if (picture_animation_state_.has_value()) {
         if (auto frame = advance_picture_animation_frame(); frame.has_value()) {
+            return *frame;
+        }
+    }
+    if (scripted_walk_state_.has_value()) {
+        if (auto frame = advance_scripted_walk_frame(); frame.has_value()) {
             return *frame;
         }
     }
@@ -854,11 +860,18 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 30:
-            scene_x_ = std::clamp<int>(argument(3), 0, kSceneExtent - 1);
-            scene_y_ = std::clamp<int>(argument(4), 0, kSceneExtent - 1);
-            update_view_origin();
-            commit_header();
+            scripted_walk_state_ = ScriptedWalkState{
+                argument(1),
+                argument(2),
+                argument(3),
+                argument(4),
+                argument(3) < argument(1) ? -1 : 1,
+                argument(4) < argument(2) ? -1 : 1,
+            };
             program_counter_ += 5;
+            if (auto frame = advance_scripted_walk_frame(); frame.has_value()) {
+                return *frame;
+            }
             break;
         case 31:
             conditional(inventory_count(174) >= argument(1), 4U, argument(2), argument(3));
@@ -1600,6 +1613,47 @@ std::optional<SceneStepResult> SceneSession::advance_picture_animation_frame() {
     return pending_;
 }
 
+std::optional<SceneStepResult> SceneSession::advance_scripted_walk_frame() {
+    if (!scripted_walk_state_.has_value()) {
+        return std::nullopt;
+    }
+    if (scripted_walk_state_->x != scripted_walk_state_->target_x) {
+        apply_scripted_walk_step(true, scripted_walk_state_->step_x);
+        scripted_walk_state_->x += scripted_walk_state_->step_x;
+    } else if (scripted_walk_state_->y != scripted_walk_state_->target_y) {
+        apply_scripted_walk_step(false, scripted_walk_state_->step_y);
+        scripted_walk_state_->y += scripted_walk_state_->step_y;
+    } else {
+        walk_frame_offset_ = 0;
+        player_frame_override_.reset();
+        commit_header();
+        scripted_walk_state_.reset();
+        return std::nullopt;
+    }
+    pending_ = current_result(SceneStepKind::present);
+    pending_.wait_ticks = 3U;
+    return pending_;
+}
+
+void SceneSession::apply_scripted_walk_step(const bool horizontal, const int step) {
+    player_frame_override_.reset();
+    walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
+    if (walk_frame_offset_ > 12) {
+        walk_frame_offset_ = 2;
+    }
+    direction_ = horizontal
+                     ? (step < 0 ? SceneDirection::left : SceneDirection::right)
+                     : (step < 0 ? SceneDirection::up : SceneDirection::down);
+    const auto target_x = std::clamp(scene_x_ + (horizontal ? step : 0), 0, kSceneExtent - 1);
+    const auto target_y = std::clamp(scene_y_ + (horizontal ? 0 : step), 0, kSceneExtent - 1);
+    if (target_is_walkable(target_x, target_y)) {
+        scene_x_ = target_x;
+        scene_y_ = target_y;
+        update_view_origin();
+    }
+    commit_header();
+}
+
 void SceneSession::commit_header() noexcept {
     snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 1);
     snapshot_.ranger.header.set_word(model::header_word::sub_map_x, static_cast<std::int16_t>(scene_x_));
@@ -1619,6 +1673,7 @@ void SceneSession::clear_event() noexcept {
     continuation_ = PendingContinuation::none;
     pan_state_.reset();
     picture_animation_state_.reset();
+    scripted_walk_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();

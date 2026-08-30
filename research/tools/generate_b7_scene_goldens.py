@@ -216,6 +216,7 @@ def render_scene(
     player_y: int,
     direction: int,
     view_origin: tuple[int, int] | None = None,
+    player_picture: int | None = None,
 ) -> bytes:
     pixels = bytearray(320 * 200)
     if view_origin is None:
@@ -254,7 +255,8 @@ def render_scene(
                 if picture > 0:
                     draw(picture, sx, sy - height)
             if x == player_x and y == player_y:
-                draw(FRAME_BASE[direction], sx, sy - height)
+                draw(FRAME_BASE[direction] if player_picture is None else player_picture,
+                     sx, sy - height)
             decoration = scene_value(scene_words, 2, x, y)
             if decoration:
                 draw(decoration, sx, sy - scene_value(scene_words, 5, x, y))
@@ -325,6 +327,58 @@ def picture_animation_trace(
             "picture": frame_id,
             "frame_fnv1a64": fnv1a64(frame),
         })
+    return result
+
+
+def scripted_walk_trace(
+    scene_words: tuple[int, ...],
+    event_words: tuple[int, ...],
+    sprites: list[bytes],
+    player_x: int,
+    player_y: int,
+    arguments: tuple[int, int, int, int],
+) -> list[dict[str, object]]:
+    source_x, source_y, target_x, target_y = arguments
+    x, y = player_x, player_y
+    walk_offset = 0
+    result: list[dict[str, object]] = []
+
+    def step(horizontal: bool, delta: int) -> None:
+        nonlocal x, y, walk_offset
+        walk_offset += 2
+        if walk_offset > 12:
+            walk_offset = 2
+        direction = (2 if delta < 0 else 1) if horizontal else (0 if delta < 0 else 3)
+        tx = min(max(x + (delta if horizontal else 0), 0), 63)
+        ty = min(max(y + (0 if horizontal else delta), 0), 63)
+        earth = scene_value(scene_words, 0, tx, ty)
+        blocked = scene_value(scene_words, 1, tx, ty) != 0
+        blocked = blocked or scene_value(scene_words, 4, tx, ty) - scene_value(scene_words, 4, x, y) >= 10
+        event = scene_value(scene_words, 3, tx, ty)
+        blocked = blocked or (event >= 0 and event_value(event_words, event, 0) != 0)
+        blocked = blocked or any(low <= earth <= high for low, high in zip(BLOCKED_LOW, BLOCKED_HIGH))
+        if not blocked:
+            x, y = tx, ty
+        picture = FRAME_BASE[direction] + walk_offset
+        frame = render_scene(
+            scene_words, event_words, sprites, x, y, direction,
+            player_picture=picture,
+        )
+        result.append({
+            "x": x,
+            "y": y,
+            "direction": direction,
+            "player_picture": picture,
+            "wait_ticks": 3,
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+
+    step_x = -1 if target_x < source_x else 1
+    for _ in range(source_x, target_x, step_x):
+        step(True, step_x)
+    step_y = -1 if target_y < source_y else 1
+    for _ in range(source_y, target_y, step_y):
+        step(False, step_y)
     return result
 
 
@@ -438,6 +492,18 @@ def main() -> None:
         script_535[3],
     )
 
+    walk_scene_id = 39
+    walk_map = words(scene_maps[walk_scene_id])
+    walk_events = words(scene_events[walk_scene_id])
+    walk_sprites = sentinel(
+        (root / "SDX039").read_bytes(), (root / "SMP039").read_bytes()
+    )
+    script_343 = words(scripts[343])
+    assert script_343[30:35] == (30, 28, 24, 28, 19)
+    opcode_30_script_343 = scripted_walk_trace(
+        walk_map, walk_events, walk_sprites, 28, 24, script_343[31:35]
+    )
+
     output = {
         "format": 1,
         "source": "current DOS assets; independent Python int16le/RLE/KDEF parser",
@@ -471,6 +537,11 @@ def main() -> None:
                 "player_y": animation_y,
                 "arguments": list(script_535[1:4]),
                 "frames": opcode_27_script_535,
+            },
+            "opcode_30_script_343": {
+                "scene_id": walk_scene_id,
+                "arguments": list(script_343[31:35]),
+                "frames": opcode_30_script_343,
             },
         },
         "scene_5_weather": {

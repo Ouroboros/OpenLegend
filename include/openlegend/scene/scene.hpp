@@ -191,6 +191,15 @@ private:
         int end_frame{};
     };
 
+    struct ScriptedWalkState {
+        int x{};
+        int y{};
+        int target_x{};
+        int target_y{};
+        int step_x{1};
+        int step_y{1};
+    };
+
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
     [[nodiscard]] SceneStepResult run_event();
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
@@ -239,6 +248,8 @@ private:
     [[nodiscard]] SceneStepResult emit_queued();
     [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_picture_animation_frame();
+    [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
+    void apply_scripted_walk_step(bool horizontal, int step);
     void commit_header() noexcept;
     void update_view_origin() noexcept;
     void clear_event() noexcept;
@@ -277,6 +288,7 @@ private:
     std::optional<std::int16_t> player_frame_override_;
     std::optional<PanState> pan_state_;
     std::optional<PictureAnimationState> picture_animation_state_;
+    std::optional<ScriptedWalkState> scripted_walk_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;
     std::string error_;
