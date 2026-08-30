@@ -663,6 +663,87 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def status_notice_vectors(
+    root: Path,
+    base_frame: bytes,
+    palette: list[tuple[int, int, int]],
+    scripts: list[bytes],
+) -> dict[str, object]:
+    ascii_font = (root / "FONT.X16").read_bytes()
+    big5_font = (root / "FONT.C16").read_bytes()
+    lookup = rgb4_lookup(palette)
+
+    def blend(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        source = palette[0]
+        for py in range(y, y + height):
+            for px in range(x, x + width):
+                offset = py * 320 + px
+                destination = palette[pixels[offset]]
+                components = tuple(
+                    source[channel] // 8 + destination[channel] // 8
+                    for channel in range(3)
+                )
+                pixels[offset] = lookup[
+                    components[0] * 256 + components[1] * 16 + components[2]
+                ]
+
+    def fill(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for py in range(y, y + height):
+            pixels[py * 320 + x:py * 320 + x + width] = bytes([0xFF]) * width
+
+    def panel(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for left, top, w, h in (
+            (x + 5, y, width - 10, 1),
+            (x + 4, y + 1, width - 8, 1),
+            (x + 3, y + 2, width - 6, 1),
+            (x + 2, y + 3, width - 4, 1),
+            (x + 1, y + 4, width - 2, 1),
+            (x, y + 5, width, height - 10),
+            (x + 1, y + height - 5, width - 2, 1),
+            (x + 2, y + height - 4, width - 4, 1),
+            (x + 3, y + height - 3, width - 6, 1),
+            (x + 4, y + height - 2, width - 8, 1),
+            (x + 5, y + height - 1, width - 10, 1),
+        ):
+            blend(pixels, left, top, w, h)
+        for left, top, w, h in (
+            (x + 5, y + 1, width - 10, 1),
+            (x + 4, y + 2, 1, 2),
+            (x + width - 5, y + 2, 1, 2),
+            (x + 2, y + 4, 2, 1),
+            (x + width - 4, y + 4, 2, 1),
+            (x + 1, y + 5, 1, height - 10),
+            (x + width - 2, y + 5, 1, height - 10),
+            (x + 2, y + height - 5, 2, 1),
+            (x + width - 4, y + height - 5, 2, 1),
+            (x + 4, y + height - 4, 1, 2),
+            (x + width - 5, y + height - 4, 1, 2),
+            (x + 5, y + height - 2, width - 10, 1),
+        ):
+            fill(pixels, left, top, w, h)
+
+    cases = (
+        (52, 825, 7, 54, 212, bytes.fromhex("a741b27ba662aabaab7ebc77abfcbcc6acb0"), 5),
+        (53, 828, 123, 50, 220, bytes.fromhex("a741b27ba662add3a448c16eb1e6abfcbcc6acb0"), 4),
+    )
+    output: dict[str, object] = {}
+    for opcode, script_id, value, x, width, prefix, field_width in cases:
+        assert words(scripts[script_id]) == (opcode, -1)
+        text = prefix + f"{value:{field_width}d}".encode("ascii") + b"\0"
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07)
+        output[f"opcode_{opcode}_script_{script_id}"] = {
+            "value": value,
+            "text_hex": text.hex(),
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": fnv1a64(pixels),
+        }
+    return output
+
+
 def death_menu_sequence(
     root: Path,
     palette: list[tuple[int, int, int]],
@@ -1092,6 +1173,7 @@ def main() -> None:
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
+            "status_notice_vectors": status_notice_vectors(root, frame, palette, scripts),
             "opcode_59_script_932": {
                 "script_id": 932,
                 "program_counter": 38,

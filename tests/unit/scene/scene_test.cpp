@@ -2155,6 +2155,49 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
 }
 
+void check_event_status_notices(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    constexpr std::array<std::uint8_t, 24> morality_text{
+        0xA7U, 0x41U, 0xB2U, 0x7BU, 0xA6U, 0x62U, 0xAAU, 0xBAU,
+        0xABU, 0x7EU, 0xBCU, 0x77U, 0xABU, 0xFCU, 0xBCU, 0xC6U,
+        0xACU, 0xB0U, 0x20U, 0x20U, 0x20U, 0x20U, 0x37U, 0x00U};
+    constexpr std::array<std::uint8_t, 25> fame_text{
+        0xA7U, 0x41U, 0xB2U, 0x7BU, 0xA6U, 0x62U, 0xADU, 0xD3U,
+        0xA4U, 0x48U, 0xC1U, 0x6EU, 0xB1U, 0xE6U, 0xABU, 0xFCU,
+        0xBCU, 0xC6U, 0xACU, 0xB0U, 0x20U, 0x31U, 0x32U, 0x33U, 0x00U};
+    const openlegend::resource::DataRoot data_root{root};
+    const auto check_notice = [&data_root, &root](
+                                  const std::int16_t script_id,
+                                  const std::size_t field,
+                                  const std::int16_t value,
+                                  const std::int16_t style,
+                                  const std::span<const std::uint8_t> expected_text,
+                                  const std::uint64_t expected_hash) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(field, value);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        const auto result = session.begin_event(script_id, 0, 44, 29);
+        OL_CHECK(result.kind == SceneStepKind::notice);
+        OL_CHECK(result.style == style);
+        OL_CHECK(session.pending_text().size() == expected_text.size());
+        OL_CHECK(std::equal(
+            session.pending_text().begin(), session.pending_text().end(), expected_text.begin()));
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hash);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    };
+    check_notice(
+        825, openlegend::model::role_word::morality, 7, 52, morality_text,
+        0x1CC47112086C10E7ULL);
+    check_notice(
+        828, openlegend::model::role_word::fame, 123, 53, fame_text,
+        0x5678C57A93EC10C4ULL);
+}
+
 void check_event_map_replace_and_random_talk(const std::filesystem::path& root) {
     using openlegend::scene::SceneStepKind;
 
@@ -2267,6 +2310,7 @@ int main() {
     check_event_join_helper(root);
     check_event_state_side_effects(root);
     check_event_basic_role_and_scene_helpers(root);
+    check_event_status_notices(root);
     check_event_map_replace_and_random_talk(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;

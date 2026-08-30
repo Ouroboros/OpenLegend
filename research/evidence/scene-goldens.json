@@ -1471,6 +1471,46 @@
         ]
       }
     },
+    "status_notice_vectors": {
+      "opcode_52_script_825": {
+        "value": 7,
+        "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb0202020203700",
+        "panel": [
+          54,
+          40,
+          212,
+          27
+        ],
+        "text_position": [
+          64,
+          45
+        ],
+        "colors": [
+          5,
+          7
+        ],
+        "frame_fnv1a64": "0x1cc47112086c10e7"
+      },
+      "opcode_53_script_828": {
+        "value": 123,
+        "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb02031323300",
+        "panel": [
+          50,
+          40,
+          220,
+          27
+        ],
+        "text_position": [
+          60,
+          45
+        ],
+        "colors": [
+          5,
+          7
+        ],
+        "frame_fnv1a64": "0x5678c57a93ec10c4"
+      }
+    },
     "opcode_59_script_932": {
       "script_id": 932,
       "program_counter": 38,

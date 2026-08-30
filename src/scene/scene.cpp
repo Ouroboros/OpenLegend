@@ -125,6 +125,31 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return result;
 }
 
+[[nodiscard]] std::vector<std::uint8_t> status_notice_message(
+    const bool fame,
+    const std::int16_t value) {
+    constexpr std::array<std::uint8_t, 18> morality_prefix{
+        0xA7U, 0x41U, 0xB2U, 0x7BU, 0xA6U, 0x62U, 0xAAU, 0xBAU, 0xABU,
+        0x7EU, 0xBCU, 0x77U, 0xABU, 0xFCU, 0xBCU, 0xC6U, 0xACU, 0xB0U};
+    constexpr std::array<std::uint8_t, 20> fame_prefix{
+        0xA7U, 0x41U, 0xB2U, 0x7BU, 0xA6U, 0x62U, 0xADU, 0xD3U, 0xA4U, 0x48U,
+        0xC1U, 0x6EU, 0xB1U, 0xE6U, 0xABU, 0xFCU, 0xBCU, 0xC6U, 0xACU, 0xB0U};
+    std::vector<std::uint8_t> result;
+    const auto prefix = fame ? std::span<const std::uint8_t>{fame_prefix}
+                             : std::span<const std::uint8_t>{morality_prefix};
+    result.assign(prefix.begin(), prefix.end());
+    std::array<char, 16> formatted{};
+    std::snprintf(
+        formatted.data(), formatted.size(), fame ? "%4d" : "%5d", static_cast<int>(value));
+    for (const auto character : formatted) {
+        result.push_back(static_cast<std::uint8_t>(static_cast<unsigned char>(character)));
+        if (character == '\0') {
+            break;
+        }
+    }
+    return result;
+}
+
 [[nodiscard]] std::int16_t wrapping_add(
     const std::int16_t value,
     const std::int16_t delta) noexcept {
@@ -1148,10 +1173,11 @@ SceneStepResult SceneSession::run_event() {
             return emit_queued();
         case 52:
         case 53: {
-            const auto field = opcode == 52 ? model::role_word::morality : model::role_word::fame;
+            const auto fame = opcode == 53;
+            const auto field = fame ? model::role_word::fame : model::role_word::morality;
             const auto value = snapshot_.ranger.roles.empty() ? 0 : snapshot_.ranger.roles[0].word(field);
             program_counter_ += 1;
-            queue_notice(ascii_message(std::string{opcode == 52 ? "morality " : "fame "} + std::to_string(value)));
+            queue_notice(status_notice_message(fame, value), opcode);
             return emit_queued();
         }
         case 54:
@@ -1723,8 +1749,12 @@ void SceneSession::queue_dialogue(
     }
 }
 
-void SceneSession::queue_notice(std::vector<std::uint8_t> text) {
-    queued_outputs_.push_back(QueuedOutput{current_result(SceneStepKind::notice), std::move(text)});
+void SceneSession::queue_notice(
+    std::vector<std::uint8_t> text,
+    const std::int16_t style) {
+    auto result = current_result(SceneStepKind::notice);
+    result.style = style;
+    queued_outputs_.push_back(QueuedOutput{result, std::move(text)});
 }
 
 SceneStepResult SceneSession::emit_queued() {
@@ -1947,11 +1977,12 @@ bool SceneSession::load_death_image() {
     return true;
 }
 
-void SceneSession::blend_death_rectangle(
+void SceneSession::blend_panel_rectangle(
+    render::IndexedFramebuffer& framebuffer,
     const int x,
     const int y,
     const int width,
-    const int height) {
+    const int height) const {
     const auto source = palette_[0U];
     const auto begin_x = std::max(x, 0);
     const auto end_x = std::min(x + width, render::IndexedFramebuffer::width);
@@ -1959,7 +1990,7 @@ void SceneSession::blend_death_rectangle(
     const auto end_y = std::min(y + height, render::IndexedFramebuffer::height);
     for (int destination_y = begin_y; destination_y < end_y; ++destination_y) {
         for (int destination_x = begin_x; destination_x < end_x; ++destination_x) {
-            auto& destination_index = death_framebuffer_.row(destination_y)[destination_x];
+            auto& destination_index = framebuffer.row(destination_y)[destination_x];
             const auto destination = palette_[destination_index];
             const auto red = static_cast<int>(source.red) / 8 +
                              static_cast<int>(destination.red) / 8;
@@ -1973,27 +2004,28 @@ void SceneSession::blend_death_rectangle(
     }
 }
 
-bool SceneSession::draw_death_panel(
+bool SceneSession::draw_panel(
+    render::IndexedFramebuffer& framebuffer,
     const int x,
     const int y,
     const int width,
-    const int height) {
+    const int height) const {
     if (width <= 10 || height <= 10) {
         return false;
     }
-    blend_death_rectangle(x + 5, y, width - 10, 1);
-    blend_death_rectangle(x + 4, y + 1, width - 8, 1);
-    blend_death_rectangle(x + 3, y + 2, width - 6, 1);
-    blend_death_rectangle(x + 2, y + 3, width - 4, 1);
-    blend_death_rectangle(x + 1, y + 4, width - 2, 1);
-    blend_death_rectangle(x, y + 5, width, height - 10);
-    blend_death_rectangle(x + 1, y + height - 5, width - 2, 1);
-    blend_death_rectangle(x + 2, y + height - 4, width - 4, 1);
-    blend_death_rectangle(x + 3, y + height - 3, width - 6, 1);
-    blend_death_rectangle(x + 4, y + height - 2, width - 8, 1);
-    blend_death_rectangle(x + 5, y + height - 1, width - 10, 1);
-    const auto fill = [this](const int left, const int top, const int w, const int h) {
-        return death_framebuffer_.fill_rectangle(
+    blend_panel_rectangle(framebuffer, x + 5, y, width - 10, 1);
+    blend_panel_rectangle(framebuffer, x + 4, y + 1, width - 8, 1);
+    blend_panel_rectangle(framebuffer, x + 3, y + 2, width - 6, 1);
+    blend_panel_rectangle(framebuffer, x + 2, y + 3, width - 4, 1);
+    blend_panel_rectangle(framebuffer, x + 1, y + 4, width - 2, 1);
+    blend_panel_rectangle(framebuffer, x, y + 5, width, height - 10);
+    blend_panel_rectangle(framebuffer, x + 1, y + height - 5, width - 2, 1);
+    blend_panel_rectangle(framebuffer, x + 2, y + height - 4, width - 4, 1);
+    blend_panel_rectangle(framebuffer, x + 3, y + height - 3, width - 6, 1);
+    blend_panel_rectangle(framebuffer, x + 4, y + height - 2, width - 8, 1);
+    blend_panel_rectangle(framebuffer, x + 5, y + height - 1, width - 10, 1);
+    const auto fill = [&framebuffer](const int left, const int top, const int w, const int h) {
+        return framebuffer.fill_rectangle(
             left, top, static_cast<std::uint16_t>(w), static_cast<std::uint16_t>(h), 0xFFU);
     };
     return fill(x + 5, y + 1, width - 10, 1) &&
@@ -2006,6 +2038,14 @@ bool SceneSession::draw_death_panel(
            fill(x + 4, y + height - 4, 1, 2) &&
            fill(x + width - 5, y + height - 4, 1, 2) &&
            fill(x + 5, y + height - 2, width - 10, 1);
+}
+
+bool SceneSession::draw_death_panel(
+    const int x,
+    const int y,
+    const int width,
+    const int height) {
+    return draw_panel(death_framebuffer_, x, y, width, height);
 }
 
 bool SceneSession::render_death_menu() {
@@ -2660,6 +2700,21 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         pending_.kind == SceneStepKind::return_world || pending_.kind == SceneStepKind::quit ||
         pending_.kind == SceneStepKind::open_ui || pending_.kind == SceneStepKind::battle) {
         return true;
+    }
+    if (pending_.kind == SceneStepKind::notice &&
+        (pending_.style == 52 || pending_.style == 53)) {
+        const auto x = pending_.style == 52 ? 54 : 50;
+        constexpr int y = 40;
+        const auto width = pending_.style == 52 ? 212 : 220;
+        if (!draw_panel(framebuffer, x, y, width, 27)) {
+            return false;
+        }
+        if (pending_text_.empty()) {
+            return true;
+        }
+        render::Big5GlyphCache cache{big5_font_};
+        return render::draw_legacy_text(
+            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
     int x = 12;
     int y = 12;
