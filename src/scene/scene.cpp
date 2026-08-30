@@ -519,6 +519,7 @@ SceneStepResult SceneSession::begin_event(
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
+    tournament_trial_state_.reset();
     queued_outputs_.clear();
     return run_event();
 }
@@ -562,6 +563,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     if (three_statue_animation_state_.has_value()) {
         if (auto frame = advance_three_statue_animation_frame(); frame.has_value()) {
             return *frame;
+        }
+    }
+    if (tournament_trial_state_.has_value() && queued_outputs_.empty()) {
+        if (auto step = advance_tournament_trial(previous_kind, response); step.has_value()) {
+            return *step;
         }
     }
 
@@ -1081,40 +1087,14 @@ SceneStepResult SceneSession::run_event() {
                 return *frame;
             }
             break;
-        case 58: {
+        case 58:
             program_counter_ += 1;
-            for (int group = 0; group < 5; ++group) {
-                std::array<bool, 6> chosen{};
-                for (int match = 0; match < 3; ++match) {
-                    int opponent = 0;
-                    do {
-                        opponent = random_.bounded(6);
-                    } while (chosen[static_cast<std::size_t>(opponent)]);
-                    chosen[static_cast<std::size_t>(opponent)] = true;
-                    const auto index = group * 6 + opponent;
-                    queue_dialogue(static_cast<std::int16_t>(2854 + index), kTournamentHeadIds[static_cast<std::size_t>(index)], 0);
-                    auto battle = current_result(SceneStepKind::battle);
-                    battle.battle_id = static_cast<std::int16_t>(102 + index);
-                    queued_outputs_.push_back(QueuedOutput{battle, {}});
-                }
-                if (group != 4) {
-                    queue_dialogue(2891, 70, 0);
-                    queue_dialogue(2892, 0, 1);
-                }
+            tournament_trial_state_ = TournamentTrialState{};
+            if (auto step = advance_tournament_trial(
+                    SceneStepKind::stay, SceneResponse::acknowledge); step.has_value()) {
+                return *step;
             }
-            queue_dialogue(2884, 0, 1);
-            queue_dialogue(2885, 70, 0);
-            queue_dialogue(2886, 12, 0);
-            queue_dialogue(2887, 64, 4);
-            queue_dialogue(2888, 19, 0);
-            for (std::int16_t event = 24; event < 73; ++event) {
-                set_event_field(scene_id_, event, model::SceneEventField::cannot_walk, 0);
-                set_event_field(scene_id_, event, model::SceneEventField::index, 0);
-            }
-            queue_dialogue(2889, 0, 1);
-            add_inventory(143, 1);
-            return emit_queued();
-        }
+            break;
         case 59: {
             for (int index = 6; index > 0; --index) {
                 const auto role_id = index == 6
@@ -1736,6 +1716,117 @@ std::optional<SceneStepResult> SceneSession::advance_three_statue_animation_fram
     return pending_;
 }
 
+std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
+    const SceneStepKind previous_kind, const SceneResponse response) {
+    const auto queue_step = [this](const SceneStepKind kind, const std::uint16_t wait_ticks = 1U) {
+        auto step = current_result(kind);
+        step.wait_ticks = wait_ticks;
+        queued_outputs_.push_back(QueuedOutput{step, {}});
+    };
+    while (tournament_trial_state_.has_value()) {
+        switch (tournament_trial_state_->phase) {
+        case TournamentTrialState::Phase::choose_opponent: {
+            int opponent = 0;
+            const auto base = tournament_trial_state_->group * 6;
+            do {
+                opponent = random_.bounded(6);
+            } while (tournament_trial_state_->chosen[static_cast<std::size_t>(base + opponent)]);
+            const auto index = base + opponent;
+            tournament_trial_state_->chosen[static_cast<std::size_t>(index)] = true;
+            queue_dialogue(
+                static_cast<std::int16_t>(2854 + index),
+                kTournamentHeadIds[static_cast<std::size_t>(index)], 0);
+            queue_step(SceneStepKind::present);
+            auto battle = current_result(SceneStepKind::battle);
+            battle.battle_id = static_cast<std::int16_t>(102 + index);
+            queued_outputs_.push_back(QueuedOutput{battle, {}});
+            tournament_trial_state_->phase = TournamentTrialState::Phase::awaiting_battle;
+            return emit_queued();
+        }
+        case TournamentTrialState::Phase::awaiting_battle:
+            if (previous_kind != SceneStepKind::battle ||
+                response != SceneResponse::battle_victory) {
+                tournament_trial_state_.reset();
+                event_active_ = false;
+                pending_ = current_result(SceneStepKind::quit);
+                return pending_;
+            }
+            queue_step(SceneStepKind::present);
+            queue_step(SceneStepKind::fade_from_black);
+            queue_dialogue(2890, 0, 1);
+            queue_step(SceneStepKind::present);
+            tournament_trial_state_->phase = TournamentTrialState::Phase::after_victory;
+            return emit_queued();
+        case TournamentTrialState::Phase::after_victory:
+            ++tournament_trial_state_->victories;
+            if (tournament_trial_state_->victories < 3) {
+                tournament_trial_state_->phase = TournamentTrialState::Phase::choose_opponent;
+                continue;
+            }
+            if (tournament_trial_state_->group < 4) {
+                queue_dialogue(2891, 70, 0);
+                queue_step(SceneStepKind::present);
+                queue_step(SceneStepKind::fade_to_black, 9U);
+                tournament_trial_state_->phase = TournamentTrialState::Phase::interround_fade;
+                return emit_queued();
+            }
+            for (const auto [talk_id, head_id, style] :
+                 std::array<std::array<std::int16_t, 3>, 5>{
+                     std::array<std::int16_t, 3>{2884, 0, 1},
+                     {2885, 70, 0}, {2886, 12, 0}, {2887, 64, 4}, {2888, 19, 0}}) {
+                queue_dialogue(talk_id, head_id, style);
+                queue_step(SceneStepKind::present);
+            }
+            queue_step(SceneStepKind::fade_to_black);
+            tournament_trial_state_->phase = TournamentTrialState::Phase::finale_fade;
+            return emit_queued();
+        case TournamentTrialState::Phase::interround_fade: {
+            if (!snapshot_.ranger.roles.empty()) {
+                auto& role = snapshot_.ranger.roles[0];
+                if (role.word(model::role_word::hurt) < 50 &&
+                    role.word(model::role_word::poison) == 0) {
+                    role.set_word(model::role_word::hurt, 0);
+                    role.set_word(model::role_word::physical_power, 100);
+                    role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
+                    role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
+                }
+            }
+            queue_step(SceneStepKind::fade_from_black);
+            queue_dialogue(2892, 0, 1);
+            queue_step(SceneStepKind::present);
+            tournament_trial_state_->phase = TournamentTrialState::Phase::interround_finish;
+            return emit_queued();
+        }
+        case TournamentTrialState::Phase::interround_finish:
+            ++tournament_trial_state_->group;
+            tournament_trial_state_->victories = 0;
+            tournament_trial_state_->phase = TournamentTrialState::Phase::choose_opponent;
+            continue;
+        case TournamentTrialState::Phase::finale_fade:
+            for (std::int16_t event = 24; event < 73; ++event) {
+                const std::array<std::int16_t, 13> arguments{
+                    -2, event, 0, 0, -1, -1, -1, -1, -1, -1, -2, -2, -2};
+                modify_event(arguments);
+            }
+            queue_step(SceneStepKind::present);
+            queue_step(SceneStepKind::fade_from_black);
+            queue_dialogue(2889, 0, 1);
+            queue_step(SceneStepKind::present);
+            tournament_trial_state_->phase = TournamentTrialState::Phase::finale_finish;
+            return emit_queued();
+        case TournamentTrialState::Phase::finale_finish:
+            add_inventory(143, 1);
+            queue_notice(ascii_message("item 143 1"));
+            tournament_trial_state_->phase = TournamentTrialState::Phase::reward_notice;
+            return emit_queued();
+        case TournamentTrialState::Phase::reward_notice:
+            tournament_trial_state_.reset();
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
 void SceneSession::apply_scripted_walk_step(const bool horizontal, const int step) {
     player_frame_override_.reset();
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
@@ -1790,6 +1881,7 @@ void SceneSession::clear_event() noexcept {
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
+    tournament_trial_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();

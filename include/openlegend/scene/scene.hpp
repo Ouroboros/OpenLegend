@@ -215,6 +215,23 @@ private:
         int value{7664};
     };
 
+    struct TournamentTrialState {
+        enum class Phase {
+            choose_opponent,
+            awaiting_battle,
+            after_victory,
+            interround_fade,
+            interround_finish,
+            finale_fade,
+            finale_finish,
+            reward_notice,
+        };
+        std::array<bool, 36> chosen{};
+        int group{};
+        int victories{};
+        Phase phase{Phase::choose_opponent};
+    };
+
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
     [[nodiscard]] SceneStepResult run_event();
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
@@ -267,6 +284,8 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
+    [[nodiscard]] std::optional<SceneStepResult> advance_tournament_trial(
+        SceneStepKind previous_kind, SceneResponse response);
     void apply_scripted_walk_step(bool horizontal, int step);
     void set_animated_picture(std::int16_t event_index, std::int16_t picture);
     void commit_header() noexcept;
@@ -310,6 +329,7 @@ private:
     std::optional<ScriptedWalkState> scripted_walk_state_;
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
+    std::optional<TournamentTrialState> tournament_trial_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;
     std::string error_;

@@ -689,6 +689,134 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::quit);
 }
 
+void check_event_tournament_trial(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    constexpr std::array<std::int16_t, 15> expected_battles{
+        104, 106, 105, 109, 113, 108, 117, 114, 115, 125, 120, 123, 129, 126, 128};
+
+    auto snapshot = load_baseline(root);
+    auto& metadata = snapshot.ranger.scenes[25];
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 33);
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 26);
+    auto& role = snapshot.ranger.roles[0];
+    role.set_word(openlegend::model::role_word::hurt, 49);
+    role.set_word(openlegend::model::role_word::poison, 0);
+    role.set_word(openlegend::model::role_word::hp, 1);
+    role.set_word(openlegend::model::role_word::maximum_hp, 100);
+    role.set_word(openlegend::model::role_word::mp, 2);
+    role.set_word(openlegend::model::role_word::maximum_mp, 90);
+    role.set_word(openlegend::model::role_word::physical_power, 3);
+    std::array<std::int16_t, 49> delays{};
+    std::array<std::pair<std::int16_t, std::int16_t>, 49> coordinates{};
+    for (std::size_t index = 0U; index < delays.size(); ++index) {
+        const auto event = index + 24U;
+        delays[index] = snapshot.event_value(
+            25U, event, openlegend::model::SceneEventField::picture_delay).value_or(-1);
+        coordinates[index] = {
+            snapshot.event_value(25U, event, openlegend::model::SceneEventField::x).value_or(-1),
+            snapshot.event_value(25U, event, openlegend::model::SceneEventField::y).value_or(-1),
+        };
+    }
+
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 25};
+    auto result = session.begin_event(936, 72, 33, 26);
+    std::size_t battle_index = 0U;
+    int interround_holds = 0;
+    SceneStepKind previous_kind = SceneStepKind::stay;
+    std::int16_t last_talk_id = -1;
+    for (int step = 0; step < 4096 && result.kind != SceneStepKind::stay; ++step) {
+        if (result.kind == SceneStepKind::dialogue) {
+            last_talk_id = result.talk_id;
+            previous_kind = result.kind;
+            result = session.resume(SceneResponse::acknowledge);
+        } else if (result.kind == SceneStepKind::battle) {
+            OL_CHECK(battle_index < expected_battles.size());
+            OL_CHECK(result.battle_id == expected_battles[battle_index]);
+            OL_CHECK(last_talk_id == result.battle_id + 2752);
+            OL_CHECK(previous_kind == SceneStepKind::present);
+            ++battle_index;
+            previous_kind = result.kind;
+            result = session.resume(SceneResponse::battle_victory);
+        } else if (result.kind == SceneStepKind::fade_to_black) {
+            if (result.wait_ticks == 9U) {
+                ++interround_holds;
+            }
+            previous_kind = result.kind;
+            result = session.resume(SceneResponse::acknowledge);
+        } else if (result.kind == SceneStepKind::notice ||
+                   result.kind == SceneStepKind::present ||
+                   result.kind == SceneStepKind::fade_from_black) {
+            previous_kind = result.kind;
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(battle_index == expected_battles.size());
+    OL_CHECK(interround_holds == 4);
+    OL_CHECK(random.state() == 0xE95678E2U);
+    OL_CHECK(role.word(openlegend::model::role_word::hurt) == 0);
+    OL_CHECK(role.word(openlegend::model::role_word::hp) == 100);
+    OL_CHECK(role.word(openlegend::model::role_word::mp) == 90);
+    OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 100);
+    for (std::size_t index = 0U; index < delays.size(); ++index) {
+        const auto event = index + 24U;
+        const std::array<std::int16_t, 8> expected{0, 0, -1, -1, -1, -1, -1, -1};
+        for (std::size_t field = 0U; field < expected.size(); ++field) {
+            OL_CHECK(snapshot.event_value(
+                         25U, event,
+                         static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
+                     expected[field]);
+        }
+        OL_CHECK(snapshot.event_value(
+                     25U, event, openlegend::model::SceneEventField::picture_delay).value_or(-1) ==
+                 delays[index]);
+        OL_CHECK(snapshot.event_value(
+                     25U, event, openlegend::model::SceneEventField::x).value_or(-1) ==
+                 coordinates[index].first);
+        OL_CHECK(snapshot.event_value(
+                     25U, event, openlegend::model::SceneEventField::y).value_or(-1) ==
+                 coordinates[index].second);
+    }
+    bool found_reward = false;
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        found_reward = found_reward ||
+                       (snapshot.ranger.header.inventory_item(slot).value == 143 &&
+                        snapshot.ranger.header.inventory_count(slot) == 1);
+    }
+    OL_CHECK(found_reward);
+
+    auto defeat_snapshot = load_baseline(root);
+    defeat_snapshot.ranger.scenes[25].set_word(
+        openlegend::model::scene_metadata_word::entrance_x, 33);
+    defeat_snapshot.ranger.scenes[25].set_word(
+        openlegend::model::scene_metadata_word::entrance_y, 26);
+    openlegend::random::LegacyRandom defeat_random{1U};
+    openlegend::scene::SceneSession defeat_session{
+        data_root, defeat_snapshot, defeat_random, 25};
+    auto defeat = defeat_session.begin_event(936, 72, 33, 26);
+    for (int step = 0; step < 512 && defeat.kind != SceneStepKind::battle; ++step) {
+        if (defeat.kind == SceneStepKind::dialogue ||
+            defeat.kind == SceneStepKind::present ||
+            defeat.kind == SceneStepKind::fade_from_black ||
+            defeat.kind == SceneStepKind::fade_to_black) {
+            defeat = defeat_session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(defeat.kind == SceneStepKind::battle);
+    OL_CHECK(defeat.battle_id == 104);
+    defeat = defeat_session.resume(SceneResponse::battle_defeat);
+    OL_CHECK(defeat.kind == SceneStepKind::quit);
+    OL_CHECK(defeat_random.state() == 0x41C67EA6U);
+}
+
 void check_event_finale_party_cleanup(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1003,6 +1131,7 @@ int main() {
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);
+    check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
     check_event_state_side_effects(root);
     check_event_execution(root);

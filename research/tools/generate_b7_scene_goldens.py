@@ -631,6 +631,20 @@ def main() -> None:
         -86,
     )
 
+    script_936 = words(scripts[936])
+    assert script_936[54] == 58
+    tournament_state = 1
+    tournament_indices: list[int] = []
+    for group in range(5):
+        chosen: set[int] = set()
+        while len(chosen) < 3:
+            tournament_state = (tournament_state * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
+            opponent = ((tournament_state >> 16) & 0x7FFF) % 6
+            if opponent in chosen:
+                continue
+            chosen.add(opponent)
+            tournament_indices.append(group * 6 + opponent)
+
     script_932 = words(scripts[932])
     assert script_932[38] == 59
     opcode_59_targets = [
@@ -698,6 +712,22 @@ def main() -> None:
                 "player_y": 41,
                 "arguments": list(script_1017[6:12]),
                 "frames": opcode_62_script_1017,
+            },
+            "opcode_58_script_936": {
+                "script_id": 936,
+                "program_counter": 54,
+                "seed": 1,
+                "selected_indices": tournament_indices,
+                "battle_ids": [102 + index for index in tournament_indices],
+                "talk_ids": [2854 + index for index in tournament_indices],
+                "head_ids": [
+                    8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
+                    22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69,
+                ],
+                "final_rng_state": f"0x{tournament_state:08x}",
+                "delay_300_ticks": 300 // 40 + 1,
+                "disabled_event_range": [24, 72],
+                "reward_item": 143,
             },
             "opcode_59_script_932": {
                 "script_id": 932,

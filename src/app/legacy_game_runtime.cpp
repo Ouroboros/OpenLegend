@@ -504,10 +504,10 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         begin_scene_effect(SceneEffectKind::present, result.wait_ticks);
         break;
     case scene::SceneStepKind::fade_from_black:
-        begin_scene_effect(SceneEffectKind::fade_from_black);
+        begin_scene_effect(SceneEffectKind::fade_from_black, result.wait_ticks);
         break;
     case scene::SceneStepKind::fade_to_black:
-        begin_scene_effect(SceneEffectKind::fade_to_black);
+        begin_scene_effect(SceneEffectKind::fade_to_black, result.wait_ticks);
         break;
     case scene::SceneStepKind::open_ui:
         update_menu_counts();
@@ -542,6 +542,10 @@ bool LegacyGameRuntime::advance_scene_effect() {
         scene_effect_frame_ + 1U < scene_effect_palettes_.size()) {
         ++scene_effect_frame_;
         scene_effect_presented_ = false;
+        return true;
+    }
+    if (scene_effect_kind_ != SceneEffectKind::present && scene_effect_wait_ticks_ > 1U) {
+        --scene_effect_wait_ticks_;
         return true;
     }
     clear_scene_effect();
