@@ -14,6 +14,9 @@
 __pycache__/
 *.py[cod]
 
+# User-reviewed deletion staging
+/TRASH/
+
 # Regenerable headless IDA runtime logs
 /research/ida/logs/
 
