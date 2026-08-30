@@ -689,6 +689,53 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::quit);
 }
 
+void check_event_all_book_pictures_condition(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto make_snapshot = [&root]() {
+        auto snapshot = load_baseline(root);
+        for (std::size_t event = 11U; event < 25U; ++event) {
+            static_cast<void>(snapshot.set_event_value(
+                70U, event, openlegend::model::SceneEventField::current_picture, 4664));
+            static_cast<void>(snapshot.set_event_value(
+                70U, event, openlegend::model::SceneEventField::end_picture, 100));
+            static_cast<void>(snapshot.set_event_value(
+                70U, event, openlegend::model::SceneEventField::begin_picture, 100));
+        }
+        return snapshot;
+    };
+
+    auto miss_snapshot = make_snapshot();
+    static_cast<void>(miss_snapshot.set_event_value(
+        70U, 12U, openlegend::model::SceneEventField::current_picture, 100));
+    static_cast<void>(miss_snapshot.set_event_value(
+        70U, 12U, openlegend::model::SceneEventField::end_picture, 4664));
+    static_cast<void>(miss_snapshot.set_event_value(
+        70U, 12U, openlegend::model::SceneEventField::begin_picture, 4664));
+    openlegend::random::LegacyRandom miss_random{1U};
+    openlegend::scene::SceneSession miss_session{
+        data_root, miss_snapshot, miss_random, 70};
+    auto miss = miss_session.begin_event(1001, 11, 0, 0, 144);
+    OL_CHECK(miss.kind == SceneStepKind::present);
+    miss = miss_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(miss.kind == SceneStepKind::stay);
+
+    auto match_snapshot = make_snapshot();
+    openlegend::random::LegacyRandom match_random{1U};
+    openlegend::scene::SceneSession match_session{
+        data_root, match_snapshot, match_random, 70};
+    auto match = match_session.begin_event(1001, 11, 0, 0, 144);
+    OL_CHECK(match.kind == SceneStepKind::present);
+    match = match_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(match.kind == SceneStepKind::dialogue);
+    OL_CHECK(match.talk_id == 2914);
+    OL_CHECK((match_session.take_audio_commands() ==
+              std::vector<openlegend::scene::SceneAudioCommand>{
+                  {openlegend::scene::SceneAudioCommand::Kind::wave, 23}}));
+}
+
 void check_event_current_picture_condition(const std::filesystem::path& root) {
     using openlegend::scene::SceneStepKind;
 
@@ -1183,6 +1230,7 @@ int main() {
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);
+    check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
