@@ -350,6 +350,7 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     }
     const auto source_x = scene_x_;
     const auto source_y = scene_y_;
+    player_frame_override_.reset();
     direction_ = direction;
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
     if (walk_frame_offset_ > 12) {
@@ -514,6 +515,7 @@ SceneStepResult SceneSession::begin_event(
     pending_text_.clear();
     continuation_ = PendingContinuation::none;
     pan_state_.reset();
+    picture_animation_state_.reset();
     queued_outputs_.clear();
     return run_event();
 }
@@ -536,6 +538,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     }
     if (pan_state_.has_value()) {
         if (auto frame = advance_pan_frame(); frame.has_value()) {
+            return *frame;
+        }
+    }
+    if (picture_animation_state_.has_value()) {
+        if (auto frame = advance_picture_animation_frame(); frame.has_value()) {
             return *frame;
         }
     }
@@ -823,10 +830,12 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 6;
             break;
         case 27:
-            if (argument(1) >= 0) {
-                set_event_field(scene_id_, argument(1), model::SceneEventField::current_picture, argument(3));
-            }
+            picture_animation_state_ = PictureAnimationState{
+                argument(1), argument(2), argument(3)};
             program_counter_ += 4;
+            if (auto frame = advance_picture_animation_frame(); frame.has_value()) {
+                return *frame;
+            }
             break;
         case 28: {
             const auto role = argument(1);
@@ -969,6 +978,7 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 2;
             break;
         case 40:
+            player_frame_override_.reset();
             direction_ = static_cast<SceneDirection>(std::clamp<std::int16_t>(argument(1), 0, 3));
             walk_frame_offset_ = 0;
             commit_header();
@@ -1566,6 +1576,30 @@ std::optional<SceneStepResult> SceneSession::advance_pan_frame() {
     return pending_;
 }
 
+std::optional<SceneStepResult> SceneSession::advance_picture_animation_frame() {
+    if (!picture_animation_state_.has_value()) {
+        return std::nullopt;
+    }
+    if (picture_animation_state_->frame > picture_animation_state_->end_frame) {
+        picture_animation_state_.reset();
+        return std::nullopt;
+    }
+    const auto frame = static_cast<std::int16_t>(picture_animation_state_->frame);
+    if (picture_animation_state_->event_index == -1) {
+        player_frame_override_ = frame;
+    } else {
+        std::array<std::int16_t, 13> arguments{
+            -2, picture_animation_state_->event_index,
+            -2, -2, -2, -2, -2, frame, frame, frame, -2, -2, -2,
+        };
+        modify_event(arguments);
+    }
+    picture_animation_state_->frame += 2;
+    pending_ = current_result(SceneStepKind::present);
+    pending_.wait_ticks = 2U;
+    return pending_;
+}
+
 void SceneSession::commit_header() noexcept {
     snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 1);
     snapshot_.ranger.header.set_word(model::header_word::sub_map_x, static_cast<std::int16_t>(scene_x_));
@@ -1584,12 +1618,16 @@ void SceneSession::clear_event() noexcept {
     program_counter_ = 0;
     continuation_ = PendingContinuation::none;
     pan_state_.reset();
+    picture_animation_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
 }
 
 std::int16_t SceneSession::player_frame() const noexcept {
+    if (player_frame_override_.has_value()) {
+        return *player_frame_override_;
+    }
     return static_cast<std::int16_t>(
         kPlayerFrameBase[static_cast<std::size_t>(direction_)] + walk_frame_offset_);
 }

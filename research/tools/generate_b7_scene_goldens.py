@@ -301,6 +301,33 @@ def pan_trace(
     return result
 
 
+def picture_animation_trace(
+    scene_words: tuple[int, ...],
+    event_words: tuple[int, ...],
+    sprites: list[bytes],
+    player_x: int,
+    player_y: int,
+    direction: int,
+    event_index: int,
+    start_frame: int,
+    end_frame: int,
+) -> list[dict[str, object]]:
+    mutable_events = list(event_words)
+    result: list[dict[str, object]] = []
+    for frame_id in range(start_frame, end_frame + 1, 2):
+        for field in (5, 6, 7):
+            mutable_events[event_index * 11 + field] = frame_id
+        frame = render_scene(
+            scene_words, tuple(mutable_events), sprites,
+            player_x, player_y, direction,
+        )
+        result.append({
+            "picture": frame_id,
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+    return result
+
+
 def movement_trace(
     scene_words: tuple[int, ...], event_words: tuple[int, ...], x: int, y: int
 ) -> list[dict[str, object]]:
@@ -388,6 +415,29 @@ def main() -> None:
         smap, sevent, sprites, 44, 29, 1, script_30[1:5]
     )
 
+    animation_scene_id = 53
+    animation_map = words(scene_maps[animation_scene_id])
+    animation_events = words(scene_events[animation_scene_id])
+    animation_sprites = sentinel(
+        (root / "SDX053").read_bytes(), (root / "SMP053").read_bytes()
+    )
+    animation_trigger_event = 4
+    animation_x = event_value(animation_events, animation_trigger_event, 9)
+    animation_y = event_value(animation_events, animation_trigger_event, 10)
+    script_535 = words(scripts[535])
+    assert script_535[:4] == (27, 3, 6342, 6348)
+    opcode_27_script_535 = picture_animation_trace(
+        animation_map,
+        animation_events,
+        animation_sprites,
+        animation_x,
+        animation_y,
+        1,
+        script_535[1],
+        script_535[2],
+        script_535[3],
+    )
+
     output = {
         "format": 1,
         "source": "current DOS assets; independent Python int16le/RLE/KDEF parser",
@@ -414,6 +464,13 @@ def main() -> None:
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),
                 "frames": opcode_25_script_30,
+            },
+            "opcode_27_script_535": {
+                "scene_id": animation_scene_id,
+                "player_x": animation_x,
+                "player_y": animation_y,
+                "arguments": list(script_535[1:4]),
+                "frames": opcode_27_script_535,
             },
         },
         "scene_5_weather": {

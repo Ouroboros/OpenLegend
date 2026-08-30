@@ -208,6 +208,34 @@
           "frame_fnv1a64": "0x2a895d743d76c127"
         }
       ]
+    },
+    "opcode_27_script_535": {
+      "scene_id": 53,
+      "player_x": 23,
+      "player_y": 24,
+      "arguments": [
+        3,
+        6342,
+        6348
+      ],
+      "frames": [
+        {
+          "picture": 6342,
+          "frame_fnv1a64": "0x0ab33641b9ed5d60"
+        },
+        {
+          "picture": 6344,
+          "frame_fnv1a64": "0x555593b96aa27757"
+        },
+        {
+          "picture": 6346,
+          "frame_fnv1a64": "0x54dc5d457c749844"
+        },
+        {
+          "picture": 6348,
+          "frame_fnv1a64": "0x473e57a3e9ac9b4f"
+        }
+      ]
     }
   },
   "scene_5_weather": {

@@ -267,6 +267,68 @@ void check_event_camera_pan(const std::filesystem::path& root) {
     }
 }
 
+void check_event_picture_animation(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    auto& metadata = snapshot.ranger.scenes[53];
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 23);
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 24);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 53};
+
+    constexpr std::array<std::int16_t, 4> expected_pictures{6342, 6344, 6346, 6348};
+    constexpr std::array<std::uint64_t, 4> expected_hashes{
+        0x0AB33641B9ED5D60ULL,
+        0x555593B96AA27757ULL,
+        0x54DC5D457C749844ULL,
+        0x473E57A3E9AC9B4FULL,
+    };
+    auto result = session.begin_event(535, 4, 23, 24);
+    for (std::size_t index = 0U; index < expected_pictures.size(); ++index) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 2U);
+        for (const auto field : {
+                 openlegend::model::SceneEventField::current_picture,
+                 openlegend::model::SceneEventField::end_picture,
+                 openlegend::model::SceneEventField::begin_picture}) {
+            OL_CHECK(snapshot.event_value(53U, 3U, field).value_or(-1) ==
+                     expected_pictures[index]);
+        }
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render_map(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 2005);
+
+    auto player_snapshot = load_baseline(root);
+    auto& player_metadata = player_snapshot.ranger.scenes[50];
+    player_metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 23);
+    player_metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 21);
+    openlegend::random::LegacyRandom player_random{1U};
+    openlegend::scene::SceneSession player_session{
+        data_root, player_snapshot, player_random, 50};
+    auto player_result = player_session.begin_event(20, 0, 23, 21);
+    while (player_result.kind == SceneStepKind::dialogue) {
+        player_result = player_session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(player_result.kind == SceneStepKind::present);
+    OL_CHECK(player_result.wait_ticks == 1U);
+    player_result = player_session.resume(SceneResponse::acknowledge);
+    for (std::int16_t frame = 5994; frame <= 6012; frame += 2) {
+        OL_CHECK(player_result.kind == SceneStepKind::present);
+        OL_CHECK(player_result.wait_ticks == 2U);
+        OL_CHECK(player_session.player_frame() == frame);
+        player_result = player_session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(player_result.kind == SceneStepKind::fade_to_black);
+    OL_CHECK(player_session.player_frame() == 6012);
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -476,6 +538,7 @@ int main() {
     check_scene_render_and_movement(root);
     check_scene_weather(root);
     check_event_camera_pan(root);
+    check_event_picture_animation(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;
