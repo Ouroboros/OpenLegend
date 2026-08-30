@@ -8,10 +8,10 @@
 
 - headless IDA 脚本：`research/ida/scripts/ida_b7_scene_xrefs.py`
 - IDA 报告：`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`
-  - SHA256：`27e62d0e49fd397665738df88fbe9df31e2ae5f9223dac33b0cc728653307c59`
+  - SHA256：`8827e8e8643a3a9b4a48488832c945a3f6d04415345fc1fd71d7557feb30aa58`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`e8c00b93a7ef235406b598701b12e91a89c51e34843d24cc6e214e01280ffd85`
+  - SHA256：`35490b9fd243cc27042aab7b4377530743c444dec520a500dc3e6b0fdce5a917`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -38,7 +38,7 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 - `sub_29B3C`：64×64 事件格图片推进；
 - `sub_29C36`：交互触发前重绘呈现；
 - `sub_29D2D`：六层场景绘制；
-- `sub_2B308`、`sub_2B3B4`：物品与自动事件入口；
+- `sub_2B288`、`sub_2B308`、`sub_2B3B4`：物品菜单相邻格目标、物品事件与自动事件入口；
 - `sub_2C0BB`：场景标题。
 
 现代核心保持：

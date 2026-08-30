@@ -143,6 +143,7 @@ public:
     [[nodiscard]] SceneStepResult move(SceneDirection direction);
     [[nodiscard]] SceneStepResult interact();
     [[nodiscard]] SceneStepResult use_item(std::int16_t item_id);
+    [[nodiscard]] SceneStepResult use_menu_item(std::int16_t item_id);
     [[nodiscard]] SceneStepResult open_ui() noexcept;
     [[nodiscard]] SceneStepResult resume(SceneResponse response, int value = -1);
     [[nodiscard]] SceneStepResult begin_event(
@@ -432,6 +433,8 @@ private:
     PendingContinuation continuation_{PendingContinuation::none};
     TickContinuation tick_continuation_{TickContinuation::none};
     SceneStepKind tick_fallback_{SceneStepKind::stay};
+    std::optional<std::int16_t> pending_menu_item_;
+    bool menu_item_event_active_{};
     std::optional<PendingJump> pending_jump_;
     std::int16_t exit_music_override_{-1};
     std::int16_t true_offset_{};

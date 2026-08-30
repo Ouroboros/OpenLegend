@@ -877,6 +877,30 @@ def scene_animation_vectors(
             "event_script_0": ["present", "stay"],
             "event_script_825": ["present", "notice_style_52"],
         },
+        "item_menu_call_chain": {
+            "selected_value": "inventory_item_id",
+            "required_item_type": 0,
+            "player": [44, 29],
+            "direction_targets": {
+                "0": [44, 28],
+                "1": [45, 29],
+                "2": [43, 29],
+                "3": [44, 30],
+            },
+            "no_event_outputs": ["restore_scene_present", "open_ui_main"],
+            "event_script_0_outputs": [
+                "restore_scene_present",
+                "item_event_present",
+                "open_ui_main",
+            ],
+            "event_script_825_outputs": [
+                "restore_scene_present",
+                "item_event_present",
+                "notice_style_52",
+                "open_ui_main",
+            ],
+            "tick_after_action": "deferred_until_menu_exit",
+        },
         "automatic_event_outputs": {
             "event_script_minus_1": ["fallback"],
             "event_script_0": ["present", "stay"],

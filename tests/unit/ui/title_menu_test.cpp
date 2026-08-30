@@ -195,7 +195,6 @@ void check_game_menu_controller() {
     result = items.handle_key(0x0DU);
     OL_CHECK(result.command == GameMenuCommand::items);
     OL_CHECK(result.index == 2U);
-    static_cast<void>(items.handle_key(0x1BU));
     OL_CHECK(items.screen() == GameMenuScreen::main);
 
     GameMenuController leave_party;
@@ -381,6 +380,31 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
     advance_rendered_frames(new_game, 1U);
     new_game.advance();
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    OL_CHECK(new_game.render());
+    new_game.handle_key(0x98U, false, false);
+    new_game.handle_key(0x98U, false, false);
+    new_game.handle_key(0x0DU, false, false);
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    OL_CHECK(new_game.render());
+    auto* scene_snapshot =
+        const_cast<model::GameState&>(new_game.game_state()).snapshot();
+    OL_CHECK(scene_snapshot != nullptr);
+    if (scene_snapshot != nullptr) {
+        OL_CHECK(scene_snapshot->ranger.header.word(model::header_word::sub_map_x) == 44);
+        OL_CHECK(scene_snapshot->ranger.header.word(model::header_word::sub_map_y) == 29);
+        OL_CHECK(scene_snapshot->ranger.header.word(model::header_word::face_towards) ==
+                 static_cast<std::int16_t>(scene::SceneDirection::up));
+        scene_snapshot->ranger.header.set_inventory(0U, model::ItemId{199}, 1);
+        scene_snapshot->ranger.items[199].set_word(model::item_word::item_type, 0);
+        OL_CHECK(scene_snapshot->set_scene_value(
+            70U, model::SceneLayer::event_index, 28U * 64U + 44U, -1));
+    }
+    new_game.handle_key(0x0DU, false, false);
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());
     new_game.handle_key(0x1BU, false, false);

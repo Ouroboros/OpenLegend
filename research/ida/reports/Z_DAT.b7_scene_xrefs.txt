@@ -2272,6 +2272,75 @@ DISASSEMBLY
 STRINGS
 
 ====================================================================================================
+FUNCTION sub_2B288 research=scene_item_event_target start=0x2B288 end=0x2B308 size=128
+PSEUDOCODE
+int __fastcall sub_2B288(__int32 a1, int a2, int a3, int a4)
+{
+  __int16 v4; // ax
+  __int16 v5; // ax
+
+  sub_3ED1E(a1, a2, a3, a4, 12);
+  word_54B76 = word_D295C;
+  word_54B78 = word_D295A;
+  switch ( word_544F2 )
+  {
+    case 0:
+      v4 = word_D295A - 1;
+      goto LABEL_7;
+    case 1:
+      v5 = word_D295C + 1;
+      goto LABEL_4;
+    case 2:
+      v5 = word_D295C - 1;
+LABEL_4:
+      word_54B76 = v5;
+      break;
+    case 3:
+      v4 = word_D295A + 1;
+LABEL_7:
+      word_54B78 = v4;
+      break;
+    default:
+      return sub_2B308(word_54B76, word_54B78);
+  }
+  return sub_2B308(word_54B76, word_54B78);
+}
+
+DISASSEMBLY
+0002B288  68 0c 00 00 00                    push    0Ch
+0002B28D  e8 8c 3a 01 00                    call    sub_3ED1E
+0002B292  66 a1 5c 29 0d 00                 mov     ax, word_D295C
+0002B298  66 a3 76 4b 05 00                 mov     word_54B76, ax
+0002B29E  66 a1 5a 29 0d 00                 mov     ax, word_D295A
+0002B2A4  66 a3 78 4b 05 00                 mov     word_54B78, ax
+0002B2AA  66 a1 f2 44 05 00                 mov     ax, word_544F2
+0002B2B0  66 3d 03 00                       cmp     ax, 3; switch 4 cases
+0002B2B4  77 39                             ja      short def_2B2B9; jumptable 0002B2B9 default case
+0002B2B6  0f b7 c0                          movzx   eax, ax
+0002B2B9  2e ff 24 85 78 b2 02 00           jmp     cs:jpt_2B2B9[eax*4]; switch jump
+0002B2C1  66 a1 5a 29 0d 00                 mov     ax, word_D295A; jumptable 0002B2B9 case 0
+0002B2C7  48                                dec     eax
+0002B2C8  eb 1f                             jmp     short loc_2B2E9
+0002B2CA  66 a1 5c 29 0d 00                 mov     ax, word_D295C; jumptable 0002B2B9 case 1
+0002B2D0  40                                inc     eax
+0002B2D1  66 a3 76 4b 05 00                 mov     word_54B76, ax
+0002B2D7  eb 16                             jmp     short def_2B2B9; jumptable 0002B2B9 default case
+0002B2D9  66 a1 5c 29 0d 00                 mov     ax, word_D295C; jumptable 0002B2B9 case 2
+0002B2DF  48                                dec     eax
+0002B2E0  eb ef                             jmp     short loc_2B2D1
+0002B2E2  66 a1 5a 29 0d 00                 mov     ax, word_D295A; jumptable 0002B2B9 case 3
+0002B2E8  40                                inc     eax
+0002B2E9  66 a3 78 4b 05 00                 mov     word_54B78, ax
+0002B2EF  0f bf 05 78 4b 05 00              movsx   eax, word_54B78; jumptable 0002B2B9 default case
+0002B2F6  50                                push    eax
+0002B2F7  0f bf 05 76 4b 05 00              movsx   eax, word_54B76
+0002B2FE  50                                push    eax
+0002B2FF  e8 04 00 00 00                    call    sub_2B308
+0002B304  83 c4 08                          add     esp, 8
+0002B307  c3                                retn
+STRINGS
+
+====================================================================================================
 FUNCTION sub_2B308 research=scene_event_entry start=0x2B308 end=0x2B3B4 size=172
 PSEUDOCODE
 int __usercall sub_2B308@<eax>(
@@ -15535,6 +15604,9 @@ from=0x2C15B owner=0x2C0BB sub_2C0BB :: call    sub_29D2D
 from=0x2CE1A owner=0x2CC21 sub_2CC21 :: call    sub_29D2D
 from=0x2D65D owner=0x2D653 sub_2D653 :: call    sub_29D2D
 from=0x321A2 owner=0x31EB9 sub_31EB9 :: call    sub_29D2D
+
+TARGET scene_item_event_target address=0x2B288 refs=1
+from=0x2AA83 owner=0x2A86C sub_2A86C :: call    sub_2B288
 
 TARGET scene_event_entry address=0x2B308 refs=1
 from=0x2B2FF owner=0x2B288 sub_2B288 :: call    sub_2B308

@@ -290,6 +290,43 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     const auto item_notice = item_session.resume(SceneResponse::acknowledge);
     OL_CHECK(item_notice.kind == SceneStepKind::notice && item_notice.style == 52);
 
+    auto menu_item_snapshot = load_baseline(root);
+    OL_CHECK(menu_item_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, front, event));
+    OL_CHECK(menu_item_snapshot.set_event_value(
+        70U, event, SceneEventField::event_2, 825));
+    menu_item_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::morality, 7);
+    openlegend::random::LegacyRandom menu_item_random{1U};
+    openlegend::scene::SceneSession menu_item_session{
+        data_root, menu_item_snapshot, menu_item_random, 70};
+    OL_CHECK(finish_scene_title(menu_item_session).kind == SceneStepKind::stay);
+    OL_CHECK(menu_item_session.tick(std::nullopt, false, true).kind ==
+             SceneStepKind::open_ui);
+    OL_CHECK(menu_item_session.use_menu_item(123).kind == SceneStepKind::present);
+    OL_CHECK(menu_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
+    const auto menu_item_notice = menu_item_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(menu_item_notice.kind == SceneStepKind::notice && menu_item_notice.style == 52);
+    OL_CHECK(menu_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::open_ui);
+    OL_CHECK(menu_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
+
+    auto empty_menu_item_snapshot = load_baseline(root);
+    OL_CHECK(empty_menu_item_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, front, -1));
+    openlegend::random::LegacyRandom empty_menu_item_random{1U};
+    openlegend::scene::SceneSession empty_menu_item_session{
+        data_root, empty_menu_item_snapshot, empty_menu_item_random, 70};
+    OL_CHECK(finish_scene_title(empty_menu_item_session).kind == SceneStepKind::stay);
+    OL_CHECK(empty_menu_item_session.tick(std::nullopt, false, true).kind ==
+             SceneStepKind::open_ui);
+    OL_CHECK(empty_menu_item_session.use_menu_item(123).kind == SceneStepKind::present);
+    OL_CHECK(empty_menu_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::open_ui);
+    OL_CHECK(empty_menu_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
+
     auto zero_item_snapshot = load_baseline(root);
     OL_CHECK(zero_item_snapshot.set_scene_value(
         70U, SceneLayer::event_index, front, event));

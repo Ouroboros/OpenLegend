@@ -35,6 +35,7 @@ TARGET_FUNCTIONS = (
     ("scene_collision_probe", 0x29B3C),
     ("scene_trigger_probe", 0x29C36),
     ("scene_render", 0x29D2D),
+    ("scene_item_event_target", 0x2B288),
     ("scene_event_entry", 0x2B308),
     ("scene_auto_event_entry", 0x2B3B4),
     ("scene_exit_prompt", 0x2C0BB),

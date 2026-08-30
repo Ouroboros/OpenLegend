@@ -713,9 +713,25 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
     case ui::GameMenuCommand::none:
     case ui::GameMenuCommand::medicine:
     case ui::GameMenuCommand::detoxification:
-    case ui::GameMenuCommand::items:
     case ui::GameMenuCommand::status:
         break;
+    case ui::GameMenuCommand::items: {
+        if (menu_return_view_ != LegacyGameView::scene || scene_session_ == nullptr) {
+            break;
+        }
+        const auto* ranger = game_state_.ranger();
+        if (ranger == nullptr || result.index >= model::kInventoryCount) {
+            break;
+        }
+        const auto item_id = ranger->header.inventory_item(result.index).value;
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger->items.size() ||
+            ranger->items[static_cast<std::size_t>(item_id)].word(model::item_word::item_type) != 0) {
+            break;
+        }
+        set_view(LegacyGameView::scene, "scene item selected");
+        handle_scene_result(scene_session_->use_menu_item(item_id));
+        break;
+    }
     case ui::GameMenuCommand::leave_party: {
         const auto* ranger = game_state_.ranger();
         if (ranger != nullptr && result.index < model::kTeamMemberCount &&

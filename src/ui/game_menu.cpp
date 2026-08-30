@@ -141,6 +141,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         return {pending_party_command_, 0U, party_selection_};
     case GameMenuScreen::items:
         if (inventory_count_ != 0U) {
+            screen_ = GameMenuScreen::main;
             return {GameMenuCommand::items, 0U, item_selection_};
         }
         return {};

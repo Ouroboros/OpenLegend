@@ -559,6 +559,15 @@ SceneStepResult SceneSession::use_item(const std::int16_t item_id) {
     return pending_;
 }
 
+SceneStepResult SceneSession::use_menu_item(const std::int16_t item_id) {
+    if (!valid() || pending_.kind != SceneStepKind::open_ui) {
+        return pending_;
+    }
+    pending_menu_item_ = item_id;
+    pending_ = current_result(SceneStepKind::present);
+    return pending_;
+}
+
 SceneStepResult SceneSession::open_ui() noexcept {
     pending_ = current_result(SceneStepKind::open_ui);
     return pending_;
@@ -646,6 +655,17 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         continuation_ = PendingContinuation::scene_title;
         pending_ = current_result(SceneStepKind::present);
         return pending_;
+    }
+    if (previous_kind == SceneStepKind::present && pending_menu_item_.has_value()) {
+        const auto item_id = *pending_menu_item_;
+        pending_menu_item_.reset();
+        const auto result = use_item(item_id);
+        if (result.kind == SceneStepKind::stay) {
+            pending_ = current_result(SceneStepKind::open_ui);
+            return pending_;
+        }
+        menu_item_event_active_ = true;
+        return result;
     }
     if (previous_kind == SceneStepKind::present &&
         tick_continuation_ == TickContinuation::after_scene_present) {
@@ -763,6 +783,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         }
     }
     clear_event();
+    if (menu_item_event_active_) {
+        menu_item_event_active_ = false;
+        pending_ = current_result(SceneStepKind::open_ui);
+        return pending_;
+    }
     if (tick_continuation_ == TickContinuation::after_action) {
         return finish_tick_after_action(tick_fallback_);
     }
