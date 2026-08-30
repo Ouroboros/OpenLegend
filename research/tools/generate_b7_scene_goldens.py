@@ -561,18 +561,25 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     script_235 = words(scripts[235])
     script_328 = words(scripts[328])
     script_420 = words(scripts[420])
+    script_434 = words(scripts[434])
     script_445 = words(scripts[445])
     script_464 = words(scripts[464])
     script_673 = words(scripts[673])
+    script_692 = words(scripts[692])
     assert script_2[90:92] == (56, 1)
     assert script_28[65:68] == (23, 4, 99)
     assert script_149[59:61] == (37, -5)
     assert script_235[30:35] == (19, 14, 14, 40, 3)
     assert script_328[:4] == (36, 2, 6, 0)
     assert script_420[24:26] == (39, 75)
+    assert script_434[:5] == (38, -2, 0, 990, 994)
     assert script_445[24:27] == (42, 6, 0)
     assert script_464[28:33] == (55, 2, -1, 14, 0)
     assert script_673[74:77] == (34, 0, 3)
+    assert script_692 == (51, -1)
+
+    random_state = (0x41C64E6D + 0x3039) & 0xFFFFFFFF
+    random_talk_id = 2547 + (((random_state >> 16) & 0x7FFF) % 18)
 
     def wrapped_add(value: int, delta: int) -> int:
         bits = (value + delta) & 0xFFFF
@@ -614,6 +621,12 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 for value in (3, -32768)
             ],
         },
+        "opcode_38_script_434": {
+            "arguments": list(script_434[:5]),
+            "changed_indices": [0, 63, 4095],
+            "unchanged_index": 64,
+            "unchanged_value": 123,
+        },
         "opcode_39_script_420": {
             "arguments": list(script_420[24:26]),
             "scene_75_entrance_condition": 0,
@@ -631,6 +644,14 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 {"event_1_before": -1, "event_1_after": -1, "current_picture": 1234},
                 {"event_1_before": 999, "event_1_after": 862, "current_picture": 1234},
             ],
+        },
+        "opcode_51_script_692": {
+            "arguments": list(script_692[:1]),
+            "seed": 1,
+            "random_state": f"0x{random_state:08x}",
+            "talk_id": random_talk_id,
+            "head_id": 114,
+            "style": 0,
         },
         "opcode_56_script_2": {
             "arguments": list(script_2[90:92]),

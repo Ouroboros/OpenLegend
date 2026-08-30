@@ -1380,6 +1380,22 @@
           }
         ]
       },
+      "opcode_38_script_434": {
+        "arguments": [
+          38,
+          -2,
+          0,
+          990,
+          994
+        ],
+        "changed_indices": [
+          0,
+          63,
+          4095
+        ],
+        "unchanged_index": 64,
+        "unchanged_value": 123
+      },
       "opcode_39_script_420": {
         "arguments": [
           39,
@@ -1425,6 +1441,16 @@
             "current_picture": 1234
           }
         ]
+      },
+      "opcode_51_script_692": {
+        "arguments": [
+          51
+        ],
+        "seed": 1,
+        "random_state": "0x41c67ea6",
+        "talk_id": 2555,
+        "head_id": 114,
+        "style": 0
       },
       "opcode_56_script_2": {
         "arguments": [

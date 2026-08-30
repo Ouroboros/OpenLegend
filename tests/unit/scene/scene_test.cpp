@@ -2155,6 +2155,43 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
 }
 
+void check_event_map_replace_and_random_talk(const std::filesystem::path& root) {
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::array<std::size_t, 3> targets{0U, 63U, 4095U};
+        for (const auto index : targets) {
+            OL_CHECK(snapshot.set_scene_value(
+                70U, openlegend::model::SceneLayer::earth, index, 990));
+        }
+        OL_CHECK(snapshot.set_scene_value(
+            70U, openlegend::model::SceneLayer::earth, 64U, 123));
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(434, 0, 44, 29).kind == SceneStepKind::stay);
+        for (const auto index : targets) {
+            OL_CHECK(snapshot.scene_value(
+                         70U, openlegend::model::SceneLayer::earth, index).value_or(-1) == 994);
+        }
+        OL_CHECK(snapshot.scene_value(
+                     70U, openlegend::model::SceneLayer::earth, 64U).value_or(-1) == 123);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        const auto result = session.begin_event(692, 0, 44, 29);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == 2555);
+        OL_CHECK(result.head_id == 114);
+        OL_CHECK(result.style == 0);
+        OL_CHECK(random.state() == 0x41C67EA6U);
+    }
+}
+
 void check_event_execution(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     auto snapshot = load_baseline(root);
@@ -2230,6 +2267,7 @@ int main() {
     check_event_join_helper(root);
     check_event_state_side_effects(root);
     check_event_basic_role_and_scene_helpers(root);
+    check_event_map_replace_and_random_talk(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;
 }
