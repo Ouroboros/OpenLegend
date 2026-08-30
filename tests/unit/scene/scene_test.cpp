@@ -719,6 +719,8 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     role.set_word(openlegend::model::role_word::taking_item_count_begin, -1);
     OL_CHECK(run_role_script(role_snapshot) == SceneStepKind::stay);
     OL_CHECK(role.word(openlegend::model::role_word::sexual) == 2);
+    OL_CHECK(role.word(openlegend::model::role_word::magic_id_begin) == 60);
+    OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin) == 100);
     OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == 78);
     OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin) == 0);
 
@@ -1444,6 +1446,31 @@ void check_event_finale_party_cleanup(const std::filesystem::path& root) {
     }
 }
 
+void check_event_role_iq_clamp(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    snapshot.ranger.roles[0].set_word(openlegend::model::role_word::iq, 99);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    auto result = session.begin_event(673, 0, 0, 0);
+    for (int step = 0; step < 256 && result.kind != SceneStepKind::stay; ++step) {
+        if (result.kind == SceneStepKind::dialogue ||
+            result.kind == SceneStepKind::notice ||
+            result.kind == SceneStepKind::present ||
+            result.kind == SceneStepKind::fade_from_black ||
+            result.kind == SceneStepKind::fade_to_black) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::iq) == 100);
+}
+
 void check_event_open_all_scenes(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1842,6 +1869,7 @@ int main() {
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
+    check_event_role_iq_clamp(root);
     check_event_open_all_scenes(root);
     check_event_clear_party_mp(root);
     check_event_join_helper(root);
