@@ -37,8 +37,8 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 36	0x2E278	sub_2E278	event_helper_2E278	0x2E28A	18	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 37	0x2E28A	sub_2E28A	event_helper_2E28A	0x2E29C	18	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 38	0x2E29C	sub_2E29C	event_helper_2E29C	0x2E2D7	59	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-39	0x2E2D7	sub_2E2D7	event_helper_2E2D7	0x2E2F5	30	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-40	0x2E2F5	sub_2E2F5	event_helper_2E2F5	0x2E337	66	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+39	0x2E2D7	sub_2E2D7	event_helper_2E2D7	0x2E2F5	30	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::run_event(case20)	research/evidence/functions/Z_DAT/0x2E2D7.md	Linux Debug openlegend.scene; script11 party-tail counterexamples	not_started	complete full forward/reverse review after B7 implementation closes
+40	0x2E2F5	sub_2E2F5	event_helper_2E2F5	0x2E337	66	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::inventory_contains_id	research/evidence/functions/Z_DAT/0x2E2F5.md	Linux Debug openlegend.scene; script37 zero-count item-ID counterexample	not_started	complete full forward/reverse review after B7 implementation closes
 41	0x2E337	sub_2E337	event_helper_2E337	0x2E46B	308	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 42	0x2E46B	sub_2E46B	event_helper_2E46B	0x2E536	203	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 43	0x2E536	sub_2E536	event_helper_2E536	0x2E571	59	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
@@ -70,7 +70,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 69	0x2FC9D	sub_2FC9D	event_helper_2FC9D	0x2FDA6	265	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 70	0x2FDA6	sub_2FDA6	event_helper_2FDA6	0x2FEBF	281	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 71	0x2FEBF	sub_2FEBF	event_helper_2FEBF	0x2FEDF	32	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-72	0x2FEDF	sub_2FEDF	event_helper_2FEDF	0x2FF87	168	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+72	0x2FEDF	sub_2FEDF	event_helper_2FEDF	0x2FF87	168	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::run_event(case50)	research/evidence/functions/Z_DAT/0x2FEDF.md	Linux Debug openlegend.scene; script676 five zero-count item IDs	not_started	complete full forward/reverse review after B7 implementation closes
 73	0x2FF87	sub_2FF87	event_helper_2FF87	0x2FFB3	44	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 74	0x2FFB3	sub_2FFB3	event_helper_2FFB3	0x30035	130	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 75	0x30035	sub_30035	event_helper_30035	0x30094	95	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

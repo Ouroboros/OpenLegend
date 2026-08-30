@@ -794,7 +794,7 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 6;
             break;
         case 18:
-            conditional(inventory_count(argument(1)) > 0, 4U, argument(2), argument(3));
+            conditional(inventory_contains_id(argument(1)), 4U, argument(2), argument(3));
             break;
         case 19:
             scene_x_ = std::clamp<int>(argument(1), 0, kSceneExtent - 1);
@@ -803,14 +803,11 @@ SceneStepResult SceneSession::run_event() {
             commit_header();
             program_counter_ += 3;
             break;
-        case 20: {
-            bool full = true;
-            for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
-                full = full && snapshot_.ranger.header.team_member(index).value >= 0;
-            }
-            conditional(full, 3U, argument(1), argument(2));
+        case 20:
+            conditional(
+                snapshot_.ranger.header.team_member(model::kTeamMemberCount - 1U).value > 0,
+                3U, argument(1), argument(2));
             break;
-        }
         case 21:
             remove_team_role(argument(1));
             program_counter_ += 2;
@@ -1054,7 +1051,7 @@ SceneStepResult SceneSession::run_event() {
         case 50: {
             bool all = true;
             for (std::size_t index = 1U; index <= 5U; ++index) {
-                all = all && inventory_count(argument(index)) > 0;
+                all = all && inventory_contains_id(argument(index));
             }
             conditional(all, 8U, argument(6), argument(7));
             break;

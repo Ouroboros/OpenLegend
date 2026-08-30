@@ -894,6 +894,72 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     }
 }
 
+void check_event_presence_and_party_tail_conditions(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto item_snapshot = load_baseline(root);
+    item_snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{173}, 0);
+    openlegend::random::LegacyRandom item_random{1U};
+    openlegend::scene::SceneSession item_session{
+        data_root, item_snapshot, item_random, 70};
+    auto result = item_session.begin_event(37, 0, 0, 0);
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    item_snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{-1}, 0);
+    result = item_session.begin_event(37, 0, 0, 0);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 139);
+
+    const auto party_tail_dialogue = [&data_root, &root](const bool tail_positive) {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kTeamMemberCount; ++index) {
+            snapshot.ranger.header.set_team_member(
+                index, openlegend::model::CharacterId{
+                           index == 2U
+                               ? std::int16_t{-1}
+                               : static_cast<std::int16_t>(index + 1U)});
+        }
+        snapshot.ranger.header.set_team_member(
+            openlegend::model::kTeamMemberCount - 1U,
+            openlegend::model::CharacterId{tail_positive ? std::int16_t{9} : std::int16_t{0}});
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        auto step = session.begin_event(11, 0, 0, 0);
+        OL_CHECK(step.kind == SceneStepKind::dialogue);
+        step = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(step.kind == SceneStepKind::present);
+        step = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(step.kind == SceneStepKind::question);
+        step = session.resume(SceneResponse::yes);
+        OL_CHECK(step.kind == SceneStepKind::dialogue);
+        OL_CHECK(step.talk_id == 29);
+        step = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(step.kind == SceneStepKind::present);
+        step = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(step.kind == SceneStepKind::dialogue);
+        return step.talk_id;
+    };
+    OL_CHECK(party_tail_dialogue(false) == 30);
+    OL_CHECK(party_tail_dialogue(true) == 175);
+
+    auto books_snapshot = load_baseline(root);
+    for (std::size_t index = 0U; index < 5U; ++index) {
+        books_snapshot.ranger.header.set_inventory(
+            index, openlegend::model::ItemId{static_cast<std::int16_t>(138 + index)}, 0);
+    }
+    openlegend::random::LegacyRandom books_random{1U};
+    openlegend::scene::SceneSession books_session{
+        data_root, books_snapshot, books_random, 70};
+    result = books_session.begin_event(676, 0, 0, 0);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 2482);
+    books_snapshot.ranger.header.set_inventory(4U, openlegend::model::ItemId{-1}, 0);
+    result = books_session.begin_event(676, 0, 0, 0);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 2481);
+}
+
 void check_event_role_stat_conditions(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1516,6 +1582,7 @@ int main() {
     check_event_ending_prelude_animation(root);
     check_event_role_sexual_and_audio(root);
     check_event_shop_helpers(root);
+    check_event_presence_and_party_tail_conditions(root);
     check_event_role_stat_conditions(root);
     check_event_inventory_condition_edge_cases(root);
     check_event_all_book_pictures_condition(root);
