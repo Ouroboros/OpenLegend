@@ -577,6 +577,7 @@ SceneStepResult SceneSession::run_event() {
         case 2:
             program_counter_ += 3;
             add_inventory(argument(1), argument(2));
+            update_book_event_if_ready();
             queue_notice(ascii_message("item " + std::to_string(argument(1)) + " " + std::to_string(argument(2))));
             return emit_queued();
         case 3: {
@@ -620,7 +621,7 @@ SceneStepResult SceneSession::run_event() {
             break;
         case 10: {
             program_counter_ += 2;
-            for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
+            for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
                 if (snapshot_.ranger.header.team_member(index).value >= 0) {
                     continue;
                 }
@@ -641,6 +642,7 @@ SceneStepResult SceneSession::run_event() {
                         role.set_word(model::role_word::taking_item_count_begin + slot, 0);
                         queue_notice(ascii_message("item " + std::to_string(item_id) + " " + std::to_string(count)));
                     }
+                    clear_role_personal_items(argument(1));
                 }
                 break;
             }
@@ -656,11 +658,13 @@ SceneStepResult SceneSession::run_event() {
                     continue;
                 }
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
-                role.set_word(model::role_word::physical_power, 100);
-                role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
-                role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
-                role.set_word(model::role_word::hurt, 0);
-                role.set_word(model::role_word::poison, 0);
+                if (role.word(model::role_word::hurt) < 33 &&
+                    role.word(model::role_word::poison) == 0) {
+                    role.set_word(model::role_word::hurt, 0);
+                    role.set_word(model::role_word::physical_power, 100);
+                    role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
+                    role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
+                }
             }
             program_counter_ += 1;
             break;
@@ -702,7 +706,7 @@ SceneStepResult SceneSession::run_event() {
         case 21: {
             const auto role_id = argument(1);
             bool found = false;
-            for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
+            for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
                 if (!found && snapshot_.ranger.header.team_member(index).value == role_id) {
                     found = true;
                 }
@@ -713,6 +717,7 @@ SceneStepResult SceneSession::run_event() {
                     snapshot_.ranger.header.set_team_member(index, next);
                 }
             }
+            clear_role_personal_items(role_id);
             program_counter_ += 2;
             break;
         }
@@ -784,13 +789,15 @@ SceneStepResult SceneSession::run_event() {
             const auto role_id = argument(1);
             if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+                std::size_t destination = 0U;
                 for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
                     if (role.word(model::role_word::magic_id_begin + slot) == 0) {
-                        role.set_word(model::role_word::magic_id_begin + slot, argument(2));
-                        role.set_word(model::role_word::magic_level_begin + slot, 0);
+                        destination = slot;
                         break;
                     }
                 }
+                role.set_word(model::role_word::magic_id_begin + destination, argument(2));
+                role.set_word(model::role_word::magic_level_begin + destination, 0);
             }
             program_counter_ += 4;
             if (argument(3) == 0) {
@@ -833,12 +840,27 @@ SceneStepResult SceneSession::run_event() {
         }
         case 35: {
             const auto role_id = argument(1);
-            const auto slot = argument(2);
-            if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size() &&
-                slot >= 0 && slot < static_cast<std::int16_t>(model::role_word::magic_count)) {
+            if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
-                role.set_word(model::role_word::magic_id_begin + static_cast<std::size_t>(slot), argument(3));
-                role.set_word(model::role_word::magic_level_begin + static_cast<std::size_t>(slot), argument(4));
+                auto destination = argument(2);
+                if (destination == -1) {
+                    destination = 0;
+                    for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+                        if (role.word(model::role_word::magic_id_begin + slot) == 0) {
+                            destination = static_cast<std::int16_t>(slot);
+                            break;
+                        }
+                    }
+                }
+                if (destination >= 0 &&
+                    destination < static_cast<std::int16_t>(model::role_word::magic_count)) {
+                    role.set_word(
+                        model::role_word::magic_id_begin + static_cast<std::size_t>(destination),
+                        argument(3));
+                    role.set_word(
+                        model::role_word::magic_level_begin + static_cast<std::size_t>(destination),
+                        argument(4));
+                }
             }
             program_counter_ += 5;
             break;
@@ -949,13 +971,10 @@ SceneStepResult SceneSession::run_event() {
         case 56:
             if (!snapshot_.ranger.roles.empty()) {
                 auto& role = snapshot_.ranger.roles[0];
-                const auto before = role.word(model::role_word::fame);
-                role.set_word(model::role_word::fame, static_cast<std::int16_t>(before + argument(1)));
-                if (before <= 200 && role.word(model::role_word::fame) > 200) {
-                    constexpr std::array<std::int16_t, 13> event_change{
-                        70, 11, 1, 1, 932, -1, -1, 7968, 7968, 7968, -2, -2, -2};
-                    modify_event(event_change);
-                }
+                role.set_word(
+                    model::role_word::fame,
+                    static_cast<std::int16_t>(role.word(model::role_word::fame) + argument(1)));
+                update_book_event_if_ready();
             }
             program_counter_ += 2;
             break;
@@ -1343,6 +1362,42 @@ void SceneSession::add_inventory(const std::int16_t item_id, const std::int16_t 
     while (destination < model::kInventoryCount) {
         snapshot_.ranger.header.set_inventory(destination++, model::ItemId{-1}, 0);
     }
+}
+
+void SceneSession::update_book_event_if_ready() {
+    if (snapshot_.ranger.roles.empty() ||
+        snapshot_.ranger.roles[0].word(model::role_word::fame) < 200 ||
+        inventory_count(189) > 0) {
+        return;
+    }
+    for (std::int16_t item_id = 144; item_id <= 157; ++item_id) {
+        if (inventory_count(item_id) <= 0) {
+            return;
+        }
+    }
+    constexpr std::array<std::int16_t, 13> event_change{
+        70, 11, 1, 1, 932, -1, -1, 7968, 7968, 7968, -2, -2, -2};
+    modify_event(event_change);
+}
+
+void SceneSession::clear_role_personal_items(const std::int16_t role_id) {
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
+        return;
+    }
+    auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+    constexpr std::array<std::size_t, 3> fields{
+        model::role_word::equipment_begin,
+        model::role_word::equipment_begin + 1U,
+        model::role_word::practice_item};
+    for (const auto field : fields) {
+        const auto item_id = role.word(field);
+        if (item_id >= 0 && static_cast<std::size_t>(item_id) < snapshot_.ranger.items.size()) {
+            snapshot_.ranger.items[static_cast<std::size_t>(item_id)].set_word(
+                model::item_word::user, -1);
+        }
+        role.set_word(field, -1);
+    }
+    role.set_word(model::role_word::item_experience, 0);
 }
 
 void SceneSession::add_role_item(
