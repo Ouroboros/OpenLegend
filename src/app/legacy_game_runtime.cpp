@@ -7,6 +7,7 @@
 
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/render/legacy_effects.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -49,6 +50,10 @@ LegacyGameRuntime::LegacyGameRuntime(
 void LegacyGameRuntime::advance() {
     if (pending_io_ != PendingIo::none) {
         perform_pending_io();
+    }
+    if (advance_scene_effect()) {
+        world_step_processed_ = false;
+        return;
     }
     if (view_ == LegacyGameView::world && world_session_ != nullptr) {
         if (!world_step_processed_) {
@@ -217,7 +222,22 @@ bool LegacyGameRuntime::render() {
     case LegacyGameView::world:
         return world_session_ != nullptr && world_session_->render(framebuffer_);
     case LegacyGameView::scene:
-        return scene_session_ != nullptr && scene_session_->render(framebuffer_);
+        if (scene_session_ == nullptr || !scene_session_->render(framebuffer_)) {
+            return false;
+        }
+        if (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
+            scene_effect_palettes_.empty()) {
+            scene_effect_palettes_ = render::legacy_fade_from_black(framebuffer_.palette());
+        } else if (scene_effect_kind_ == SceneEffectKind::fade_to_black &&
+                   scene_effect_palettes_.empty()) {
+            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
+        }
+        if (!scene_effect_palettes_.empty() &&
+            scene_effect_frame_ < scene_effect_palettes_.size()) {
+            framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
+        }
+        scene_effect_presented_ = scene_effect_kind_ != SceneEffectKind::none;
+        return true;
     case LegacyGameView::game_menu: {
         const auto* ranger = game_state_.ranger();
         const auto base_rendered = menu_return_view_ == LegacyGameView::scene
@@ -255,6 +275,7 @@ void LegacyGameRuntime::begin_new_game() {
     scene_request_.reset();
     battle_request_.reset();
     scene_audio_commands_.clear();
+    clear_scene_effect();
     auto loaded = persistence::load_baseline(data_root_path_);
     if (!loaded) {
         show_error(
@@ -294,6 +315,7 @@ void LegacyGameRuntime::perform_pending_io() {
         scene_request_.reset();
         battle_request_.reset();
         scene_audio_commands_.clear();
+        clear_scene_effect();
         if (!game_state_.import_snapshot(std::move(*loaded.snapshot))) {
             show_error("Save snapshot import failed", error_return_view_);
             return;
@@ -321,6 +343,7 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
     scene_request_.reset();
     battle_request_.reset();
     scene_session_.reset();
+    clear_scene_effect();
     world_step_processed_ = false;
     auto* ranger = game_state_.ranger();
     if (ranger == nullptr) {
@@ -355,6 +378,7 @@ bool LegacyGameRuntime::start_scene(
     world_session_.reset();
     world_map_.reset();
     battle_request_.reset();
+    clear_scene_effect();
     scene_session_ = std::make_unique<scene::SceneSession>(
         data_root_, *snapshot, random_, scene_id);
     if (!scene_session_->valid()) {
@@ -381,10 +405,20 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         static_cast<void>(start_world(LegacyGameView::scene));
         break;
     case scene::SceneStepKind::quit:
+        clear_scene_effect();
         view_ = LegacyGameView::exited;
         break;
     case scene::SceneStepKind::battle:
         battle_request_ = result.battle_id;
+        break;
+    case scene::SceneStepKind::present:
+        begin_scene_effect(SceneEffectKind::present);
+        break;
+    case scene::SceneStepKind::fade_from_black:
+        begin_scene_effect(SceneEffectKind::fade_from_black);
+        break;
+    case scene::SceneStepKind::fade_to_black:
+        begin_scene_effect(SceneEffectKind::fade_to_black);
         break;
     case scene::SceneStepKind::open_ui:
         update_menu_counts();
@@ -402,6 +436,40 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::shop:
         break;
     }
+}
+
+bool LegacyGameRuntime::advance_scene_effect() {
+    if (scene_effect_kind_ == SceneEffectKind::none) {
+        return false;
+    }
+    if (!scene_effect_presented_) {
+        return true;
+    }
+    if (scene_effect_kind_ != SceneEffectKind::present &&
+        scene_effect_frame_ + 1U < scene_effect_palettes_.size()) {
+        ++scene_effect_frame_;
+        scene_effect_presented_ = false;
+        return true;
+    }
+    clear_scene_effect();
+    if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+        handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));
+    }
+    return true;
+}
+
+void LegacyGameRuntime::begin_scene_effect(const SceneEffectKind kind) {
+    scene_effect_kind_ = kind;
+    scene_effect_palettes_.clear();
+    scene_effect_frame_ = 0U;
+    scene_effect_presented_ = false;
+}
+
+void LegacyGameRuntime::clear_scene_effect() noexcept {
+    scene_effect_kind_ = SceneEffectKind::none;
+    scene_effect_palettes_.clear();
+    scene_effect_frame_ = 0U;
+    scene_effect_presented_ = false;
 }
 
 std::vector<scene::SceneAudioCommand> LegacyGameRuntime::take_scene_audio_commands() {

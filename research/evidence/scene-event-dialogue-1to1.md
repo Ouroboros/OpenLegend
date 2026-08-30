@@ -87,6 +87,18 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 
 真实资产测试使用 KDEF 脚本 36、931、581 和 950 验证上述状态，不用合成脚本替代当前资产路径。
 
+### 4.2 逐帧呈现与淡入淡出
+
+逐基本块对照 `sub_2C319` 的 opcode 0、13、14 分派以及 `sub_3CC97`、`sub_3CD17` 后，事件解释器不再把视觉调用当作无输出指令：
+
+- opcode 0 返回 `SceneStepKind::present`，至少完成一次宿主 framebuffer 上传后才恢复事件 PC；
+- opcode 13 返回 `fade_from_black`，按 65 帧序列从全黑恢复场景 RGB6 调色板；
+- opcode 14 返回 `fade_to_black`，按 64 帧逐通道递减序列得到全黑调色板；
+- 每帧仍先由 `SceneSession` 重绘同一 index8 场景，`LegacyGameRuntime` 只在最终呈现边界替换 palette，不修改像素索引，也不把 SDL 类型引入核心；
+- 视觉步骤呈现完毕前脚本 PC、天气和玩家输入保持阻塞，完成后 app 同步调用同一 `SceneSession::resume()`；连续 opcode 14、场景修改、opcode 0、opcode 13 因而保持原基本块顺序。
+
+真实资产测试使用脚本 274 验证 opcode 0 在两次场景层写入后产生呈现边界，使用脚本 931 验证 `对话 → present → fade_to_black → 休息/换位 → present → fade_from_black → 对话` 的阻塞次序；64/65 帧 RGB6 序列继续由 render 单元测试逐帧固定。
+
 ## 5. TALK 分页
 
 `sub_2CC21` 在固定 `218×57` 对话框内调用文本例程并在每页后阻塞等待输入。当前资产使用 ASCII `'*'` 作为显式换行；Big5 trail byte 合法范围不包含 `0x2A`，因此可无歧义识别。
@@ -134,7 +146,7 @@ Linux core Debug：10/10 测试通过，包括：
 - 场景 70 初始像素和碰撞轨迹；
 - 场景 5 的 300 tick RNG、粒子位置和半透明天气像素；
 - 真实脚本 36 的背包与十四天书事件解锁、931 的条件休息、581 的满武功槽与入队清理、950 的离队清理；
-- 真实脚本 274 的场景层写入、69 的 TALK 暂停/恢复；
+- 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
 
 Linux app Debug：11/11 测试通过，包含上述场景同步链和 SDL dummy smoke。

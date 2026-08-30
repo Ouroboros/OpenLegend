@@ -55,6 +55,9 @@ enum class SceneDirection : std::uint8_t {
 enum class SceneStepKind {
     stay,
     moved,
+    present,
+    fade_from_black,
+    fade_to_black,
     scene_title,
     dialogue,
     notice,

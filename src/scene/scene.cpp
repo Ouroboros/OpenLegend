@@ -569,7 +569,8 @@ SceneStepResult SceneSession::run_event() {
         switch (opcode) {
         case 0:
             program_counter_ += 1;
-            break;
+            pending_ = current_result(SceneStepKind::present);
+            return pending_;
         case 1:
             program_counter_ += 4;
             queue_dialogue(argument(1), argument(2), argument(3));
@@ -669,9 +670,13 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 1;
             break;
         case 13:
+            program_counter_ += 1;
+            pending_ = current_result(SceneStepKind::fade_from_black);
+            return pending_;
         case 14:
             program_counter_ += 1;
-            break;
+            pending_ = current_result(SceneStepKind::fade_to_black);
+            return pending_;
         case 15:
         case 24:
             program_counter_ += static_cast<std::ptrdiff_t>(width);
@@ -1650,6 +1655,9 @@ bool SceneSession::draw_weather_particle(
 
 bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (pending_.kind == SceneStepKind::stay || pending_.kind == SceneStepKind::moved ||
+        pending_.kind == SceneStepKind::present ||
+        pending_.kind == SceneStepKind::fade_from_black ||
+        pending_.kind == SceneStepKind::fade_to_black ||
         pending_.kind == SceneStepKind::return_world || pending_.kind == SceneStepKind::quit ||
         pending_.kind == SceneStepKind::open_ui || pending_.kind == SceneStepKind::battle) {
         return true;

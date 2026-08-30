@@ -253,7 +253,11 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(rest_session.resume(openlegend::scene::SceneResponse::yes).kind ==
              openlegend::scene::SceneStepKind::dialogue);
     OL_CHECK(rest_session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
-             openlegend::scene::SceneStepKind::dialogue);
+             openlegend::scene::SceneStepKind::present);
+    OL_CHECK(rest_session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::fade_to_black);
+    OL_CHECK(rest_session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::present);
     OL_CHECK(resting_role.word(openlegend::model::role_word::hp) == 91);
     OL_CHECK(resting_role.word(openlegend::model::role_word::mp) == 82);
     OL_CHECK(resting_role.word(openlegend::model::role_word::hurt) == 0);
@@ -291,10 +295,17 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(join_session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
              openlegend::scene::SceneStepKind::stay);
     auto join_result = join_session.begin_event(581, 0, 44, 29);
-    for (int step = 0; step < 32 &&
-                       (join_result.kind == openlegend::scene::SceneStepKind::dialogue ||
-                        join_result.kind == openlegend::scene::SceneStepKind::notice);
+    for (int step = 0; step < 128 && join_result.kind != openlegend::scene::SceneStepKind::stay;
          ++step) {
+        const auto resumable = join_result.kind == openlegend::scene::SceneStepKind::dialogue ||
+                               join_result.kind == openlegend::scene::SceneStepKind::notice ||
+                               join_result.kind == openlegend::scene::SceneStepKind::present ||
+                               join_result.kind == openlegend::scene::SceneStepKind::fade_from_black ||
+                               join_result.kind == openlegend::scene::SceneStepKind::fade_to_black;
+        OL_CHECK(resumable);
+        if (!resumable) {
+            break;
+        }
         join_result = join_session.resume(openlegend::scene::SceneResponse::acknowledge);
     }
     OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::stay);
@@ -363,7 +374,7 @@ void check_event_execution(const std::filesystem::path& root) {
     OL_CHECK(script[6] == 17 && script[7] == -2 && script[8] == 1);
     OL_CHECK(script[9] == 12 && script[10] == 22 && script[11] == 2898);
     const auto map_result = session.begin_event(274, 0, 44, 29);
-    OL_CHECK(map_result.kind == openlegend::scene::SceneStepKind::stay);
+    OL_CHECK(map_result.kind == openlegend::scene::SceneStepKind::present);
     OL_CHECK(snapshot.scene_value(70U, openlegend::model::SceneLayer::building,
                                   22U * 64U + 13U).value_or(-1) == 0);
     const auto changed_building = snapshot.scene_value(
@@ -372,13 +383,20 @@ void check_event_execution(const std::filesystem::path& root) {
         std::cerr << "script 274 building value: " << changed_building << '\n';
     }
     OL_CHECK(changed_building == 2898);
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::stay);
 
     const auto dialogue = session.begin_event(69, 0, 44, 29);
     OL_CHECK(dialogue.kind == openlegend::scene::SceneStepKind::dialogue);
     OL_CHECK(dialogue.talk_id == 228);
     OL_CHECK(!session.pending_text().empty());
-    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
-             openlegend::scene::SceneStepKind::stay);
+    const auto dialogue_tail = session.resume(openlegend::scene::SceneResponse::acknowledge);
+    OL_CHECK(dialogue_tail.kind == openlegend::scene::SceneStepKind::stay ||
+             dialogue_tail.kind == openlegend::scene::SceneStepKind::present);
+    if (dialogue_tail.kind == openlegend::scene::SceneStepKind::present) {
+        OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+                 openlegend::scene::SceneStepKind::stay);
+    }
 }
 
 }  // namespace

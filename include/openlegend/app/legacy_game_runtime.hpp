@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -63,11 +64,21 @@ private:
         save,
     };
 
+    enum class SceneEffectKind {
+        none,
+        present,
+        fade_from_black,
+        fade_to_black,
+    };
+
     void begin_new_game();
     void perform_pending_io();
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
     [[nodiscard]] bool start_scene(std::int16_t scene_id, LegacyGameView error_return_view);
     void handle_scene_result(const scene::SceneStepResult& result);
+    [[nodiscard]] bool advance_scene_effect();
+    void begin_scene_effect(SceneEffectKind kind);
+    void clear_scene_effect() noexcept;
     void update_menu_counts();
     void show_error(std::string message, LegacyGameView return_view);
     void show_legacy_error(
@@ -97,6 +108,10 @@ private:
     std::optional<std::int16_t> scene_request_;
     std::optional<std::int16_t> battle_request_;
     std::vector<scene::SceneAudioCommand> scene_audio_commands_;
+    SceneEffectKind scene_effect_kind_{SceneEffectKind::none};
+    std::vector<compat::LegacyPalette> scene_effect_palettes_;
+    std::size_t scene_effect_frame_{};
+    bool scene_effect_presented_{};
     bool world_step_processed_{};
     std::vector<std::uint8_t> visible_error_;
     std::string startup_error_;
