@@ -24,6 +24,8 @@
 
 namespace openlegend::app {
 
+[[nodiscard]] std::string_view ending_terminal_message() noexcept;
+
 enum class LegacyGameView {
     title,
     name_entry,
@@ -46,6 +48,7 @@ public:
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
     [[nodiscard]] bool running() const noexcept { return view_ != LegacyGameView::exited; }
+    [[nodiscard]] bool ending_complete() const noexcept { return ending_complete_; }
     [[nodiscard]] LegacyGameView view() const noexcept { return view_; }
     [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
     [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
@@ -116,6 +119,7 @@ private:
     std::uint16_t scene_effect_wait_ticks_{1U};
     bool scene_effect_presented_{};
     bool world_step_processed_{};
+    bool ending_complete_{};
     std::vector<std::uint8_t> visible_error_;
     std::string startup_error_;
 };

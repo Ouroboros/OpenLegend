@@ -68,6 +68,7 @@ constexpr std::array<std::uint8_t, 26> kCannotLeaveProtagonist{
     case scene::SceneStepKind::dialogue: return "dialogue";
     case scene::SceneStepKind::notice: return "notice";
     case scene::SceneStepKind::question: return "question";
+    case scene::SceneStepKind::wait_key: return "wait_key";
     case scene::SceneStepKind::battle: return "battle";
     case scene::SceneStepKind::shop: return "shop";
     case scene::SceneStepKind::open_ui: return "open_ui";
@@ -88,6 +89,10 @@ constexpr std::array<std::uint8_t, 26> kCannotLeaveProtagonist{
 }
 
 }  // namespace
+
+std::string_view ending_terminal_message() noexcept {
+    return " Thanks for playing this game ! \n Oriental Software Studio 1996  \n";
+}
 
 LegacyGameRuntime::LegacyGameRuntime(
     std::filesystem::path data_root, const std::uint32_t random_seed)
@@ -246,7 +251,8 @@ void LegacyGameRuntime::handle_key(
             }
         } else if (pending_kind == scene::SceneStepKind::dialogue ||
                    pending_kind == scene::SceneStepKind::notice ||
-                   pending_kind == scene::SceneStepKind::scene_title) {
+                   pending_kind == scene::SceneStepKind::scene_title ||
+                   pending_kind == scene::SceneStepKind::wait_key) {
             handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));
         } else if (pending_kind == scene::SceneStepKind::stay) {
             if (translated_key == 0x1BU) {
@@ -495,6 +501,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         break;
     case scene::SceneStepKind::quit:
         clear_scene_effect();
+        ending_complete_ = result.ending_complete;
         set_view(LegacyGameView::exited, "scene requested quit");
         break;
     case scene::SceneStepKind::battle:
@@ -521,6 +528,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::scene_title:
     case scene::SceneStepKind::dialogue:
     case scene::SceneStepKind::question:
+    case scene::SceneStepKind::wait_key:
     case scene::SceneStepKind::notice:
     case scene::SceneStepKind::shop:
         break;

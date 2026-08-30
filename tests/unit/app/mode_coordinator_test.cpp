@@ -1,8 +1,10 @@
 #include <cstddef>
 #include <functional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/app/mode_coordinator.hpp"
 #include "test_support.hpp"
 
@@ -31,6 +33,10 @@ private:
 
 void run_mode_coordinator_tests() {
     using namespace openlegend::app;
+
+    OL_CHECK(ending_terminal_message() ==
+             std::string_view{" Thanks for playing this game ! \n"
+                              " Oriental Software Studio 1996  \n"});
 
     {
         ModeCoordinator coordinator;

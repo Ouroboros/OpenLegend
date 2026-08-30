@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -217,6 +218,8 @@ int main(const int argc, const char* const* argv) {
         return 3;
     }
 
+    bool ending_completed{};
+    const auto run_status = [&]() -> int {
     platform::sdl3::SdlRuntimePlatform platform{
         window_configuration.size.width,
         window_configuration.size.height,
@@ -334,6 +337,7 @@ int main(const int argc, const char* const* argv) {
         }
     }
 
+    ending_completed = game.ending_complete();
     if (smoke_test) {
         diagnostics::log_info("smoke test completed");
         return 0;
@@ -357,4 +361,11 @@ int main(const int argc, const char* const* argv) {
 
     diagnostics::log_info("normal shutdown");
     return 0;
+    }();
+
+    if (run_status == 0 && ending_completed) {
+        const auto message = app::ending_terminal_message();
+        static_cast<void>(std::fwrite(message.data(), 1U, message.size(), stdout));
+    }
+    return run_status;
 }

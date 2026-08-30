@@ -686,7 +686,97 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
         OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
         result = session.resume(SceneResponse::acknowledge);
     }
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+
+    openlegend::render::IndexedFramebuffer ending_framebuffer;
+    const auto ending_hash = [&]() {
+        OL_CHECK(session.render(ending_framebuffer));
+        return fnv1a64(ending_framebuffer.pixels());
+    };
+    OL_CHECK(ending_hash() == expected_hashes.back());
+
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    OL_CHECK(result.wait_ticks == 51U);
+    OL_CHECK(ending_hash() == 0x20420DB943FD8DEFULL);
+
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    OL_CHECK(ending_hash() == 0xDD14FCC6528CAB25ULL);
+    result = session.resume(SceneResponse::acknowledge);
+
+    constexpr std::array<std::pair<std::size_t, std::uint64_t>, 6> word_samples{
+        std::pair{0U, 0xDD14FCC6528CAB25ULL},
+        std::pair{50U, 0xFA8B7F39E4E2A9EFULL},
+        std::pair{150U, 0xDCD51CEC16CCFBCFULL},
+        std::pair{250U, 0x7FDB3C4BE6FB067DULL},
+        std::pair{350U, 0xC04F8C2FFE28965DULL},
+        std::pair{442U, 0xDD14FCC6528CAB25ULL},
+    };
+    std::size_t word_sample = 0U;
+    for (std::size_t frame = 0U; frame < 443U; ++frame) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 3U);
+        if (word_sample < word_samples.size() && word_samples[word_sample].first == frame) {
+            OL_CHECK(ending_hash() == word_samples[word_sample].second);
+            ++word_sample;
+        }
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(word_sample == word_samples.size());
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    OL_CHECK(ending_hash() == 0xA2186A3321F0153AULL);
+    result = session.resume(SceneResponse::acknowledge);
+    for (std::size_t frame = 1U; frame < 221U; ++frame) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        if (frame == 1U) {
+            OL_CHECK(ending_hash() == 0x68BF029A91B5D73CULL);
+        } else if (frame == 220U) {
+            OL_CHECK(ending_hash() == 0x42C2240F8D7700C7ULL);
+        }
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::wait_key);
+
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    OL_CHECK(ending_hash() == 0xDD14FCC6528CAB25ULL);
+    result = session.resume(SceneResponse::acknowledge);
+
+    constexpr std::array<std::pair<std::size_t, std::uint64_t>, 7> credit_samples{
+        std::pair{0U, 0xDD14FCC6528CAB25ULL},
+        std::pair{100U, 0xFC2E6273806B7A87ULL},
+        std::pair{500U, 0x45668C9FB96CBE4DULL},
+        std::pair{1000U, 0x534970B9F979F4C7ULL},
+        std::pair{2000U, 0x93036BE96FD45365ULL},
+        std::pair{3000U, 0xC5D6F84BE1DC5847ULL},
+        std::pair{3243U, 0x206B76FCA6006E95ULL},
+    };
+    std::size_t credit_sample = 0U;
+    for (std::size_t frame = 0U; frame < 3'244U; ++frame) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 3U);
+        if (credit_sample < credit_samples.size() &&
+            credit_samples[credit_sample].first == frame) {
+            OL_CHECK(ending_hash() == credit_samples[credit_sample].second);
+            ++credit_sample;
+        }
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(credit_sample == credit_samples.size());
+    OL_CHECK(result.kind == SceneStepKind::wait_key);
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    result = session.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::quit);
+    OL_CHECK(result.ending_complete);
 }
 
 void check_event_role_sexual_and_audio(const std::filesystem::path& root) {

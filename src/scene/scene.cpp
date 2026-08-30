@@ -29,11 +29,24 @@ constexpr std::array<std::int16_t, 11> kWeatherSceneIds{5, 7, 10, 41, 42, 46, 65
 constexpr std::array<std::int16_t, 30> kTournamentHeadIds{
     8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
     22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69};
+constexpr std::array<std::int16_t, 20> kEndingCreditIds{
+    6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
+    26, 28, 30, 32, 34, 36, 38, 40, 42, 44};
+constexpr std::array<int, 20> kEndingCreditX{
+    60, 60, 60, 60, 115, 115, 115, 115, 115, 115,
+    115, 115, 115, 115, 115, 115, 115, 105, 135, 56};
+constexpr std::array<int, 20> kEndingCreditInitialY{
+    210, 386, 551, 698, 950, 1111, 1255, 1391, 1557, 1718,
+    1772, 1938, 2087, 2195, 2335, 2479, 2642, 2743, 3055, 3301};
 constexpr std::array<std::size_t, 68> kInstructionWidths{
     1, 4, 3, 14, 4, 3, 5, 1, 2, 3, 2, 3, 1, 1, 1, 2, 4,
     6, 4, 3, 3, 2, 1, 3, 1, 5, 6, 4, 6, 6, 5, 4, 3, 4,
     3, 5, 4, 2, 5, 2, 2, 4, 3, 4, 7, 3, 3, 3, 3, 3, 8,
     1, 1, 1, 1, 5, 2, 1, 1, 1, 6, 3, 7, 3, 1, 1, 2, 2};
+
+[[nodiscard]] constexpr std::uint16_t legacy_delay_ticks(const int delay) noexcept {
+    return static_cast<std::uint16_t>(delay / 40 + 1);
+}
 
 [[nodiscard]] constexpr std::size_t tile_index(const int x, const int y) noexcept {
     return static_cast<std::size_t>(y) * model::kSceneCoordinateCount +
@@ -519,6 +532,7 @@ SceneStepResult SceneSession::begin_event(
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
+    ending_state_.reset();
     tournament_trial_state_.reset();
     queued_outputs_.clear();
     return run_event();
@@ -540,6 +554,9 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         previous_kind == SceneStepKind::open_ui) {
         pending_.kind = previous_kind;
         return pending_;
+    }
+    if (ending_state_.has_value()) {
+        return advance_ending();
     }
     if (pan_state_.has_value()) {
         if (auto frame = advance_pan_frame(); frame.has_value()) {
@@ -1745,9 +1762,7 @@ std::optional<SceneStepResult> SceneSession::advance_dual_picture_animation_fram
         const auto quit_after = dual_picture_animation_state_->quit_after;
         dual_picture_animation_state_.reset();
         if (quit_after) {
-            event_active_ = false;
-            pending_ = current_result(SceneStepKind::quit);
-            return pending_;
+            return start_ending();
         }
         return std::nullopt;
     }
@@ -1800,6 +1815,238 @@ std::optional<SceneStepResult> SceneSession::advance_three_statue_animation_fram
     pending_ = current_result(SceneStepKind::present);
     pending_.wait_ticks = 2U;
     return pending_;
+}
+
+SceneStepResult SceneSession::start_ending() {
+    if (!load_ending_assets()) {
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    }
+    if (!render_map(ending_framebuffer_)) {
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    }
+    ending_framebuffer_.set_palette(ending_palette_);
+    EndingState state;
+    state.credit_y = kEndingCreditInitialY;
+    ending_state_ = state;
+    pending_ = current_result(SceneStepKind::fade_to_black);
+    return pending_;
+}
+
+bool SceneSession::load_ending_assets() {
+    if (ending_words_.entry_count() >= 23U) {
+        return true;
+    }
+    const auto palette_file = data_root_.read("ENDCOL.COL");
+    if (!palette_file) {
+        error_ = palette_file.error;
+        return false;
+    }
+    const auto parsed_palette = resource::parse_vga_palette(palette_file.bytes);
+    if (!parsed_palette) {
+        error_ = parsed_palette.error;
+        return false;
+    }
+    ending_words_ = resource::PackedArchive::open(
+        data_root_.path() / "ENDWORD.IDX", data_root_.path() / "ENDWORD.GRP");
+    if (!ending_words_.valid() || ending_words_.entry_count() < 23U) {
+        error_ = ending_words_.valid() ? "ENDWORD archive has fewer than 23 frames"
+                                      : ending_words_.error();
+        return false;
+    }
+    ending_palette_ = parsed_palette.palette;
+    ending_framebuffer_.clear(0U);
+    ending_framebuffer_.set_palette(ending_palette_);
+    return true;
+}
+
+bool SceneSession::load_ending_frames() {
+    if (ending_frames_.entry_count() >= 221U) {
+        return true;
+    }
+    ending_frames_ = resource::PackedArchive::open(
+        data_root_.path() / "KEND.IDX", data_root_.path() / "KEND.GRP");
+    if (!ending_frames_.valid() || ending_frames_.entry_count() < 221U) {
+        error_ = ending_frames_.valid() ? "KEND archive has fewer than 221 frames"
+                                       : ending_frames_.error();
+        return false;
+    }
+    for (std::size_t frame = 0U; frame < 221U; ++frame) {
+        if (ending_frames_.entry(frame).size() != compat::kLegacyPixelCount) {
+            error_ = "KEND frame does not contain exactly 64000 pixels";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool SceneSession::draw_ending_word(
+    const std::int16_t legacy_id,
+    const int x,
+    const int y) {
+    const auto index = render::legacy_sprite_index(static_cast<std::uint16_t>(legacy_id));
+    if (!index.has_value() || *index >= ending_words_.entry_count()) {
+        error_ = "ENDWORD sprite index is out of range";
+        return false;
+    }
+    const auto frame = resource::SpriteFrameView::parse(ending_words_.entry(*index));
+    if (!frame.valid()) {
+        error_ = frame.error();
+        return false;
+    }
+    render::draw_rle_sprite(ending_framebuffer_, frame, x, y);
+    return true;
+}
+
+bool SceneSession::set_ending_frame(const std::size_t frame) {
+    if (frame >= ending_frames_.entry_count()) {
+        error_ = "KEND frame index is out of range";
+        return false;
+    }
+    const auto bytes = ending_frames_.entry(frame);
+    if (bytes.size() != ending_framebuffer_.pixels().size()) {
+        error_ = "KEND frame does not contain exactly 64000 pixels";
+        return false;
+    }
+    std::copy(bytes.begin(), bytes.end(), ending_framebuffer_.pixels().begin());
+    ending_framebuffer_.set_palette(ending_palette_);
+    return true;
+}
+
+bool SceneSession::draw_ending_credits() {
+    if (!ending_state_.has_value()) {
+        return false;
+    }
+    ending_framebuffer_.clear(0U);
+    ending_framebuffer_.set_palette(ending_palette_);
+    for (std::size_t index = 0U; index < kEndingCreditIds.size(); ++index) {
+        if (!draw_ending_word(
+                kEndingCreditIds[index], kEndingCreditX[index],
+                ending_state_->credit_y[index])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+SceneStepResult SceneSession::advance_ending() {
+    if (!ending_state_.has_value()) {
+        return current_result(SceneStepKind::stay);
+    }
+    auto& state = *ending_state_;
+    const auto fail = [this]() {
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    };
+    switch (state.phase) {
+    case EndingState::Phase::title_draw:
+        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.set_palette(ending_palette_);
+        if (!draw_ending_word(0, 94, 90)) {
+            return fail();
+        }
+        state.phase = EndingState::Phase::title_fade_out;
+        pending_ = current_result(SceneStepKind::fade_from_black);
+        pending_.wait_ticks = legacy_delay_ticks(2000);
+        return pending_;
+    case EndingState::Phase::title_fade_out:
+        state.phase = EndingState::Phase::word_scroll_setup;
+        pending_ = current_result(SceneStepKind::fade_to_black);
+        return pending_;
+    case EndingState::Phase::word_scroll_setup:
+        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.set_palette(ending_palette_);
+        if (!draw_ending_word(2, 44, state.word_first_y) ||
+            !draw_ending_word(4, 44, state.word_second_y)) {
+            return fail();
+        }
+        state.phase = EndingState::Phase::word_scroll;
+        pending_ = current_result(SceneStepKind::fade_from_black);
+        return pending_;
+    case EndingState::Phase::word_scroll:
+        if (state.word_second_y > -130) {
+            ending_framebuffer_.clear(0U);
+            ending_framebuffer_.set_palette(ending_palette_);
+            if (!draw_ending_word(2, 44, state.word_first_y) ||
+                !draw_ending_word(4, 44, state.word_second_y)) {
+                return fail();
+            }
+            --state.word_first_y;
+            --state.word_second_y;
+            pending_ = current_result(SceneStepKind::present);
+            pending_.wait_ticks = legacy_delay_ticks(100);
+            return pending_;
+        }
+        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.set_palette(ending_palette_);
+        state.phase = EndingState::Phase::kend_setup;
+        pending_ = current_result(SceneStepKind::fade_to_black);
+        return pending_;
+    case EndingState::Phase::kend_setup:
+        if (!load_ending_frames() || !set_ending_frame(0U)) {
+            return fail();
+        }
+        state.kend_frame = 1U;
+        state.phase = EndingState::Phase::kend_frames;
+        pending_ = current_result(SceneStepKind::fade_from_black);
+        return pending_;
+    case EndingState::Phase::kend_frames:
+        if (state.kend_frame < 221U) {
+            if (!set_ending_frame(state.kend_frame++)) {
+                return fail();
+            }
+            pending_ = current_result(SceneStepKind::present);
+            return pending_;
+        }
+        state.phase = EndingState::Phase::kend_fade_out;
+        pending_ = current_result(SceneStepKind::wait_key);
+        return pending_;
+    case EndingState::Phase::kend_fade_out:
+        state.phase = EndingState::Phase::credits_setup;
+        pending_ = current_result(SceneStepKind::fade_to_black);
+        return pending_;
+    case EndingState::Phase::credits_setup:
+        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.set_palette(ending_palette_);
+        for (std::size_t index = 0U; index < 4U; ++index) {
+            if (!draw_ending_word(
+                    kEndingCreditIds[index], kEndingCreditX[index], state.credit_y[index])) {
+                return fail();
+            }
+        }
+        state.phase = EndingState::Phase::credits_scroll;
+        pending_ = current_result(SceneStepKind::fade_from_black);
+        return pending_;
+    case EndingState::Phase::credits_scroll:
+        if (state.credit_y.back() > 57) {
+            if (!draw_ending_credits()) {
+                return fail();
+            }
+            for (auto& y : state.credit_y) {
+                --y;
+            }
+            pending_ = current_result(SceneStepKind::present);
+            pending_.wait_ticks = legacy_delay_ticks(100);
+            return pending_;
+        }
+        state.phase = EndingState::Phase::credits_fade_out;
+        pending_ = current_result(SceneStepKind::wait_key);
+        return pending_;
+    case EndingState::Phase::credits_fade_out:
+        state.phase = EndingState::Phase::finish;
+        pending_ = current_result(SceneStepKind::fade_to_black);
+        return pending_;
+    case EndingState::Phase::finish:
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::quit);
+        pending_.ending_complete = true;
+        return pending_;
+    }
+    return fail();
 }
 
 std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
@@ -2088,6 +2335,10 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
 }
 
 bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
+    if (ending_state_.has_value()) {
+        framebuffer = ending_framebuffer_;
+        return true;
+    }
     return render_map(framebuffer) && draw_overlay(framebuffer);
 }
 
@@ -2156,7 +2407,7 @@ bool SceneSession::draw_weather_particle(
 
 bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (pending_.kind == SceneStepKind::stay || pending_.kind == SceneStepKind::moved ||
-        pending_.kind == SceneStepKind::present ||
+        pending_.kind == SceneStepKind::present || pending_.kind == SceneStepKind::wait_key ||
         pending_.kind == SceneStepKind::fade_from_black ||
         pending_.kind == SceneStepKind::fade_to_black ||
         pending_.kind == SceneStepKind::return_world || pending_.kind == SceneStepKind::quit ||

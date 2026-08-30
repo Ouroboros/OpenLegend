@@ -951,7 +951,108 @@
           "second_picture": 8204,
           "frame_fnv1a64": "0x677ce26188ba524a"
         }
-      ]
+      ],
+      "ending": {
+        "palette_sha256": "edff0d5361792a68d6238eb6000837993b833050027b9b7cc92a4599f35a1ecc",
+        "title_frame_fnv1a64": "0x20420db943fd8def",
+        "title_delay_ticks": 51,
+        "word_scroll_frame_count": 443,
+        "word_scroll_delay_ticks": 3,
+        "word_scroll_samples": [
+          {
+            "index": 0,
+            "first_y": 210,
+            "second_y": 313,
+            "frame_fnv1a64": "0xdd14fcc6528cab25"
+          },
+          {
+            "index": 50,
+            "first_y": 160,
+            "second_y": 263,
+            "frame_fnv1a64": "0xfa8b7f39e4e2a9ef"
+          },
+          {
+            "index": 150,
+            "first_y": 60,
+            "second_y": 163,
+            "frame_fnv1a64": "0xdcd51cec16ccfbcf"
+          },
+          {
+            "index": 250,
+            "first_y": -40,
+            "second_y": 63,
+            "frame_fnv1a64": "0x7fdb3c4be6fb067d"
+          },
+          {
+            "index": 350,
+            "first_y": -140,
+            "second_y": -37,
+            "frame_fnv1a64": "0xc04f8c2ffe28965d"
+          },
+          {
+            "index": 442,
+            "first_y": -232,
+            "second_y": -129,
+            "frame_fnv1a64": "0xdd14fcc6528cab25"
+          }
+        ],
+        "kend_frame_count": 221,
+        "kend_samples": [
+          {
+            "index": 0,
+            "frame_fnv1a64": "0xa2186a3321f0153a"
+          },
+          {
+            "index": 1,
+            "frame_fnv1a64": "0x68bf029a91b5d73c"
+          },
+          {
+            "index": 220,
+            "frame_fnv1a64": "0x42c2240f8d7700c7"
+          }
+        ],
+        "credits_setup_fnv1a64": "0xdd14fcc6528cab25",
+        "credits_scroll_frame_count": 3244,
+        "credits_scroll_delay_ticks": 3,
+        "credits_scroll_samples": [
+          {
+            "index": 0,
+            "last_y": 3301,
+            "frame_fnv1a64": "0xdd14fcc6528cab25"
+          },
+          {
+            "index": 100,
+            "last_y": 3201,
+            "frame_fnv1a64": "0xfc2e6273806b7a87"
+          },
+          {
+            "index": 500,
+            "last_y": 2801,
+            "frame_fnv1a64": "0x45668c9fb96cbe4d"
+          },
+          {
+            "index": 1000,
+            "last_y": 2301,
+            "frame_fnv1a64": "0x534970b9f979f4c7"
+          },
+          {
+            "index": 2000,
+            "last_y": 1301,
+            "frame_fnv1a64": "0x93036be96fd45365"
+          },
+          {
+            "index": 3000,
+            "last_y": 301,
+            "frame_fnv1a64": "0xc5d6f84be1dc5847"
+          },
+          {
+            "index": 3243,
+            "last_y": 58,
+            "frame_fnv1a64": "0x206b76fca6006e95"
+          }
+        ],
+        "wait_key_count": 2
+      }
     },
     "opcode_58_script_936": {
       "script_id": 936,

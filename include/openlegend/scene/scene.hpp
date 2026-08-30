@@ -62,6 +62,7 @@ enum class SceneStepKind {
     dialogue,
     notice,
     question,
+    wait_key,
     battle,
     shop,
     open_ui,
@@ -97,6 +98,7 @@ struct SceneStepResult {
     std::int16_t shop_id{-1};
     std::uint16_t wait_ticks{1U};
     SceneQuestion question{SceneQuestion::none};
+    bool ending_complete{};
 
     friend bool operator==(const SceneStepResult&, const SceneStepResult&) = default;
 };
@@ -216,6 +218,27 @@ private:
         int value{7664};
     };
 
+    struct EndingState {
+        enum class Phase {
+            title_draw,
+            title_fade_out,
+            word_scroll_setup,
+            word_scroll,
+            kend_setup,
+            kend_frames,
+            kend_fade_out,
+            credits_setup,
+            credits_scroll,
+            credits_fade_out,
+            finish,
+        };
+        Phase phase{Phase::title_draw};
+        int word_first_y{210};
+        int word_second_y{313};
+        std::size_t kend_frame{};
+        std::array<int, 20> credit_y{};
+    };
+
     struct TournamentTrialState {
         enum class Phase {
             choose_opponent,
@@ -290,6 +313,13 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
+    [[nodiscard]] SceneStepResult start_ending();
+    [[nodiscard]] SceneStepResult advance_ending();
+    [[nodiscard]] bool load_ending_assets();
+    [[nodiscard]] bool load_ending_frames();
+    [[nodiscard]] bool draw_ending_word(std::int16_t legacy_id, int x, int y);
+    [[nodiscard]] bool set_ending_frame(std::size_t frame);
+    [[nodiscard]] bool draw_ending_credits();
     [[nodiscard]] std::optional<SceneStepResult> advance_tournament_trial(
         SceneStepKind previous_kind, SceneResponse response);
     void apply_scripted_walk_step(bool horizontal, int step);
@@ -304,7 +334,11 @@ private:
     SceneAssets assets_;
     resource::SentinelArchive sprites_;
     resource::PackedArchive weather_sprites_;
+    resource::PackedArchive ending_words_;
+    resource::PackedArchive ending_frames_;
     compat::LegacyPalette palette_{};
+    compat::LegacyPalette ending_palette_{};
+    render::IndexedFramebuffer ending_framebuffer_;
     std::array<std::uint8_t, 4096> rgb4_lookup_{};
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
@@ -335,6 +369,7 @@ private:
     std::optional<ScriptedWalkState> scripted_walk_state_;
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
+    std::optional<EndingState> ending_state_;
     std::optional<TournamentTrialState> tournament_trial_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;

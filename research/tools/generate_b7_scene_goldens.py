@@ -509,6 +509,78 @@ def opcode_coverage(entries: list[bytes]) -> dict[str, object]:
     }
 
 
+def ending_sequence(root: Path) -> dict[str, object]:
+    words_archive = packed(
+        (root / "ENDWORD.IDX").read_bytes(), (root / "ENDWORD.GRP").read_bytes()
+    )
+    kend_archive = packed(
+        (root / "KEND.IDX").read_bytes(), (root / "KEND.GRP").read_bytes()
+    )
+    assert len(words_archive) == 23
+    assert len(kend_archive) == 221
+    assert all(len(frame) == 64000 for frame in kend_archive)
+
+    def render_words(entries: tuple[tuple[int, int, int], ...]) -> bytes:
+        pixels = bytearray(64000)
+        for legacy_id, x, y in entries:
+            draw_sprite(pixels, words_archive[legacy_id // 2], x, y)
+        return bytes(pixels)
+
+    title = render_words(((0, 94, 90),))
+    word_scroll = []
+    for index in (0, 50, 150, 250, 350, 442):
+        word_scroll.append({
+            "index": index,
+            "first_y": 210 - index,
+            "second_y": 313 - index,
+            "frame_fnv1a64": fnv1a64(render_words((
+                (2, 44, 210 - index), (4, 44, 313 - index)
+            ))),
+        })
+
+    credit_ids = tuple(range(6, 46, 2))
+    credit_x = (
+        60, 60, 60, 60, 115, 115, 115, 115, 115, 115,
+        115, 115, 115, 115, 115, 115, 115, 105, 135, 56,
+    )
+    credit_y = (
+        210, 386, 551, 698, 950, 1111, 1255, 1391, 1557, 1718,
+        1772, 1938, 2087, 2195, 2335, 2479, 2642, 2743, 3055, 3301,
+    )
+    credits_setup = render_words(tuple(
+        (credit_ids[index], credit_x[index], credit_y[index]) for index in range(4)
+    ))
+    credits_scroll = []
+    for index in (0, 100, 500, 1000, 2000, 3000, 3243):
+        credits_scroll.append({
+            "index": index,
+            "last_y": credit_y[-1] - index,
+            "frame_fnv1a64": fnv1a64(render_words(tuple(
+                (credit_ids[item], credit_x[item], credit_y[item] - index)
+                for item in range(len(credit_ids))
+            ))),
+        })
+
+    return {
+        "palette_sha256": sha256((root / "ENDCOL.COL").read_bytes()),
+        "title_frame_fnv1a64": fnv1a64(title),
+        "title_delay_ticks": 2000 // 40 + 1,
+        "word_scroll_frame_count": 443,
+        "word_scroll_delay_ticks": 100 // 40 + 1,
+        "word_scroll_samples": word_scroll,
+        "kend_frame_count": len(kend_archive),
+        "kend_samples": [
+            {"index": index, "frame_fnv1a64": fnv1a64(kend_archive[index])}
+            for index in (0, 1, 220)
+        ],
+        "credits_setup_fnv1a64": fnv1a64(credits_setup),
+        "credits_scroll_frame_count": 3244,
+        "credits_scroll_delay_ticks": 100 // 40 + 1,
+        "credits_scroll_samples": credits_scroll,
+        "wait_key_count": 2,
+    }
+
+
 def main() -> None:
     args = parse_args()
     root = args.data_root
@@ -733,6 +805,7 @@ def main() -> None:
                 "player_y": 41,
                 "arguments": list(script_1017[6:12]),
                 "frames": opcode_62_script_1017,
+                "ending": ending_sequence(root),
             },
             "opcode_58_script_936": {
                 "script_id": 936,
