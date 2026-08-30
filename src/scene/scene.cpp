@@ -30,7 +30,7 @@ constexpr std::array<std::int16_t, 11> kWeatherSceneIds{5, 7, 10, 41, 42, 46, 65
 constexpr std::array<std::int16_t, 30> kTournamentHeadIds{
     8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
     22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69};
-constexpr std::array<std::array<std::uint8_t, 11>, 4> kDeathMenuItems{{
+constexpr std::array<std::array<std::uint8_t, 11>, 4> kProgressMenuItems{{
     {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x40U, 0x00U},
     {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x47U, 0x00U},
     {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x54U, 0x00U},
@@ -42,7 +42,7 @@ constexpr std::array<std::uint8_t, 17> kDeathMissingText{
     0xB7U, 0xEDU, 0xA6U, 0x61U, 0xA4U, 0x48U, 0xA4U, 0x66U, 0xAAU, 0xBAU, 0xA5U, 0xA2U, 0xC2U, 0xDCU, 0xBCU, 0xC6U, 0x00U};
 constexpr std::array<std::uint8_t, 17> kDeathAnotherText{
     0xA4U, 0x53U, 0xA6U, 0x68U, 0xA4U, 0x46U, 0xA4U, 0x40U, 0xB5U, 0xA7U, 0xA1U, 0x44U, 0xA1U, 0x44U, 0xA1U, 0x44U, 0x00U};
-constexpr std::array<std::uint8_t, 23> kDeathExitPrompt{
+constexpr std::array<std::uint8_t, 23> kExitPrompt{
     0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U, 0xC0U, 0xB8U,
     0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
 constexpr std::array<std::int16_t, 20> kEndingCreditIds{
@@ -656,6 +656,7 @@ bool SceneSession::prepare_event(
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
+    load_menu_state_.reset();
     death_menu_state_.reset();
     ending_state_.reset();
     tournament_trial_state_.reset();
@@ -727,6 +728,9 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         }
         pending_.kind = previous_kind;
         return pending_;
+    }
+    if (load_menu_state_.has_value()) {
+        return advance_load_menu(value);
     }
     if (death_menu_state_.has_value()) {
         return advance_death_menu(value);
@@ -859,8 +863,8 @@ SceneStepResult SceneSession::run_event() {
             return current_result(SceneStepKind::stay);
         }
         if (opcode < 0 || opcode >= static_cast<std::int16_t>(kInstructionWidths.size())) {
-            ++program_counter_;
-            continue;
+            pending_ = current_result(SceneStepKind::stay);
+            return pending_;
         }
         const auto width = kInstructionWidths[static_cast<std::size_t>(opcode)];
         if (static_cast<std::size_t>(program_counter_) + width > script_.size()) {
@@ -1002,9 +1006,7 @@ SceneStepResult SceneSession::run_event() {
             return start_death_menu();
         case 24:
             program_counter_ += static_cast<std::ptrdiff_t>(width);
-            event_active_ = false;
-            pending_ = current_result(SceneStepKind::quit);
-            return pending_;
+            return start_load_menu();
         case 16:
             conditional(party_contains(argument(1)), 4U, argument(2), argument(3));
             break;
@@ -2165,6 +2167,96 @@ std::optional<SceneStepResult> SceneSession::advance_three_statue_animation_fram
     return pending_;
 }
 
+SceneStepResult SceneSession::start_load_menu() {
+    load_menu_framebuffer_.clear(0U);
+    load_menu_framebuffer_.set_palette(palette_);
+    load_menu_state_ = LoadMenuState{};
+    pending_ = current_result(SceneStepKind::fade_from_black);
+    return pending_;
+}
+
+SceneStepResult SceneSession::advance_load_menu(const int translated_key) {
+    if (!load_menu_state_.has_value()) {
+        return current_result(SceneStepKind::stay);
+    }
+    auto& state = *load_menu_state_;
+    if (state.phase == LoadMenuState::Phase::fade_in) {
+        state.phase = LoadMenuState::Phase::menu;
+    } else if (state.phase == LoadMenuState::Phase::load_slot_fade) {
+        const auto selected_slot = state.selected_slot;
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::load_slot);
+        pending_.save_slot = selected_slot;
+        return pending_;
+    } else if (state.phase == LoadMenuState::Phase::confirm) {
+        if (translated_key == static_cast<int>('Y')) {
+            event_active_ = false;
+            pending_ = current_result(SceneStepKind::quit);
+            return pending_;
+        }
+        state.phase = LoadMenuState::Phase::menu;
+    } else if (translated_key == 0x98) {
+        state.selection = state.selection == 3 ? 0 : static_cast<std::int16_t>(state.selection + 1);
+    } else if (translated_key == 0x9E) {
+        state.selection = state.selection == 0 ? 2 : static_cast<std::int16_t>(state.selection - 1);
+    } else if (translated_key == 0x0D || translated_key == 0x20 || translated_key == 0x96) {
+        if (state.selection < 3) {
+            state.selected_slot = state.selection;
+            state.phase = LoadMenuState::Phase::load_slot_fade;
+            pending_ = current_result(SceneStepKind::fade_to_black);
+            return pending_;
+        }
+        state.phase = LoadMenuState::Phase::confirm;
+    }
+    if (!render_load_menu()) {
+        load_menu_state_.reset();
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    }
+    pending_ = current_result(SceneStepKind::load_menu);
+    pending_.menu_index = state.selection;
+    return pending_;
+}
+
+bool SceneSession::render_load_menu() {
+    if (!load_menu_state_.has_value()) {
+        return false;
+    }
+    render::Big5GlyphCache cache{big5_font_};
+    const auto draw_text = [this, &cache](
+                               const int x,
+                               const int y,
+                               const std::span<const std::uint8_t> text,
+                               const std::uint16_t colors) {
+        return render::draw_legacy_text(
+            load_menu_framebuffer_, x, y, text, ascii_font_, cache,
+            static_cast<std::uint8_t>(colors & 0xFFU),
+            static_cast<std::uint8_t>(colors >> 8U));
+    };
+    if (load_menu_state_->phase == LoadMenuState::Phase::confirm) {
+        return draw_panel(load_menu_framebuffer_, 71, 140, 177, 31) &&
+               draw_text(75, 145, kExitPrompt, 0x0705U);
+    }
+    if (!draw_panel(load_menu_framebuffer_, 109, 40, 101, 90)) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < kProgressMenuItems.size(); ++index) {
+        if (!draw_text(
+                119, 45 + static_cast<int>(index) * 20,
+                kProgressMenuItems[index], 0x2321U)) {
+            return false;
+        }
+    }
+    if (!draw_text(
+            119, 45 + static_cast<int>(load_menu_state_->selection) * 20,
+            kProgressMenuItems[static_cast<std::size_t>(load_menu_state_->selection)],
+            0x6663U)) {
+        return false;
+    }
+    return true;
+}
+
 SceneStepResult SceneSession::start_death_menu() {
     if (!load_death_image()) {
         event_active_ = false;
@@ -2371,21 +2463,21 @@ bool SceneSession::render_death_menu() {
         !draw_death_panel(205, 90, 101, 90)) {
         return false;
     }
-    for (std::size_t index = 0U; index < kDeathMenuItems.size(); ++index) {
+    for (std::size_t index = 0U; index < kProgressMenuItems.size(); ++index) {
         if (!draw_text(215, 95 + static_cast<int>(index) * 20,
-                       kDeathMenuItems[index], 0x2321U)) {
+                       kProgressMenuItems[index], 0x2321U)) {
             return false;
         }
     }
     if (!draw_text(
             215, 95 + static_cast<int>(death_menu_state_->selection) * 20,
-            kDeathMenuItems[static_cast<std::size_t>(death_menu_state_->selection)],
+            kProgressMenuItems[static_cast<std::size_t>(death_menu_state_->selection)],
             0x6663U)) {
         return false;
     }
     if (death_menu_state_->phase == DeathMenuState::Phase::confirm) {
         return draw_death_panel(71, 180, 177, 20) &&
-               draw_text(75, 182, kDeathExitPrompt, 0x0705U);
+               draw_text(75, 182, kExitPrompt, 0x0705U);
     }
     return true;
 }
@@ -2906,6 +2998,10 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
 }
 
 bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
+    if (load_menu_state_.has_value()) {
+        framebuffer = load_menu_framebuffer_;
+        return true;
+    }
     if (death_menu_state_.has_value()) {
         framebuffer = death_framebuffer_;
         return true;
@@ -3000,6 +3096,7 @@ bool SceneSession::draw_weather_particle(
 bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (pending_.kind == SceneStepKind::stay || pending_.kind == SceneStepKind::moved ||
         pending_.kind == SceneStepKind::present || pending_.kind == SceneStepKind::wait_key ||
+        pending_.kind == SceneStepKind::load_menu ||
         pending_.kind == SceneStepKind::death_menu || pending_.kind == SceneStepKind::load_slot ||
         pending_.kind == SceneStepKind::fade_from_black ||
         pending_.kind == SceneStepKind::fade_to_black ||

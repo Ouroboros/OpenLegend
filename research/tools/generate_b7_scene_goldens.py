@@ -1079,7 +1079,14 @@ def dialogue_vectors(
         5: ((94, 130), (23, 125)),
     }
 
-    def draw_text_linear(pixels: bytearray, x: int, y: int, text: bytes) -> None:
+    def draw_text_linear(
+        pixels: bytearray,
+        x: int,
+        y: int,
+        text: bytes,
+        right_shadow: int = 0x17,
+        foreground: int = 0x15,
+    ) -> None:
         cursor = 0
         while text[cursor] != 0:
             first = text[cursor]
@@ -1102,8 +1109,8 @@ def dialogue_vectors(
                         if bits & (0x80 >> bit):
                             offset = (y + row) * 320 + x + byte_index * 8 + bit
                             assert 0 <= offset and offset + 1 < len(pixels)
-                            pixels[offset] = 0x15
-                            pixels[offset + 1] = 0x17
+                            pixels[offset] = foreground
+                            pixels[offset + 1] = right_shadow
             x += glyph_width
 
     def render_case(
@@ -1150,6 +1157,44 @@ def dialogue_vectors(
             "colors": [0x17, 0x15],
             "frame_fnv1a64": page_frames,
         }
+
+    progress_menu_items = (
+        bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 40 00"),
+        bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 47 00"),
+        bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 54 00"),
+        bytes.fromhex("c2 f7 b6 7d ba ce c4 b1 a5 68 00"),
+    )
+    exit_prompt = bytes.fromhex(
+        "af 75 ad 6e c2 f7 b6 7d b9 43 c0 b8 a1 5d a2 e7 a1 fe a2 dc a1 5e 00"
+    )
+
+    def draw_progress_menu(pixels: bytearray, selection: int) -> None:
+        background(pixels, 109, 40, 101, 90)
+        border(pixels, 109, 40, 101, 90)
+        for index, text in enumerate(progress_menu_items):
+            draw_text_linear(pixels, 119, 45 + index * 20, text, 0x21, 0x23)
+        draw_text_linear(
+            pixels, 119, 45 + selection * 20,
+            progress_menu_items[selection], 0x63, 0x66,
+        )
+
+    def draw_exit_confirmation(pixels: bytearray) -> None:
+        background(pixels, 71, 140, 177, 31)
+        border(pixels, 71, 140, 177, 31)
+        draw_text_linear(pixels, 75, 145, exit_prompt, 0x05, 0x07)
+
+    load_menu_pixels = bytearray(320 * 200)
+    load_menu_frames = {"black": fnv1a64(load_menu_pixels)}
+    draw_progress_menu(load_menu_pixels, 0)
+    load_menu_frames["selection_0"] = fnv1a64(load_menu_pixels)
+    draw_progress_menu(load_menu_pixels, 2)
+    load_menu_frames["up_from_0_to_2"] = fnv1a64(load_menu_pixels)
+    draw_progress_menu(load_menu_pixels, 3)
+    load_menu_frames["down_from_2_to_3"] = fnv1a64(load_menu_pixels)
+    draw_exit_confirmation(load_menu_pixels)
+    load_menu_frames["quit_confirmation"] = fnv1a64(load_menu_pixels)
+    draw_progress_menu(load_menu_pixels, 3)
+    load_menu_frames["non_y_returns_with_prompt_pixels"] = fnv1a64(load_menu_pixels)
 
     style_cases = {
         "style_0_script_1_pc_0": render_case(0, 1, 0),
@@ -1200,6 +1245,28 @@ def dialogue_vectors(
         "maximum_explicit_line_talk": maximum_line_talk,
         "styles_present": sorted(styles_present),
         "cases": style_cases,
+        "opcode_24_load_menu": {
+            "items_hex": [item.hex() for item in progress_menu_items],
+            "exit_prompt_hex": exit_prompt.hex(),
+            "menu_panel": [109, 40, 101, 90],
+            "item_positions": [[119, 45 + index * 20] for index in range(4)],
+            "confirmation_panel": [71, 140, 177, 31],
+            "confirmation_text": [75, 145],
+            "normal_colors": [0x21, 0x23],
+            "selected_colors": [0x63, 0x66],
+            "confirmation_colors": [0x05, 0x07],
+            "up_from_zero": 2,
+            "frames": load_menu_frames,
+        },
+        "out_of_range_opcode": {
+            "opcode": 68,
+            "jump_table_base": "0x2c209",
+            "indexed_dword_address": "0x2c319",
+            "indexed_dword_value": "0x00004068",
+            "program_counter_delta_before_indirect_transfer": 0,
+            "modern_safe_adapter": "stable_no_progress",
+            "following_instruction_must_not_execute": [2, 123, 1],
+        },
     }
 
 

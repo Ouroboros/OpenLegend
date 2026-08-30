@@ -71,6 +71,7 @@ enum class SceneStepKind {
     notice,
     question,
     wait_key,
+    load_menu,
     death_menu,
     load_slot,
     battle,
@@ -254,6 +255,12 @@ private:
         int value{7664};
     };
 
+    struct LoadMenuState {
+        enum class Phase { fade_in, menu, load_slot_fade, confirm } phase{Phase::fade_in};
+        std::int16_t selection{};
+        std::int16_t selected_slot{-1};
+    };
+
     struct DeathMenuState {
         enum class Phase { fade_in, menu, load_slot_clear, confirm } phase{Phase::fade_in};
         std::int16_t selection{};
@@ -365,6 +372,9 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
+    [[nodiscard]] SceneStepResult start_load_menu();
+    [[nodiscard]] SceneStepResult advance_load_menu(int translated_key);
+    [[nodiscard]] bool render_load_menu();
     [[nodiscard]] SceneStepResult start_death_menu();
     [[nodiscard]] SceneStepResult advance_death_menu(int translated_key);
     [[nodiscard]] bool load_death_image();
@@ -414,6 +424,7 @@ private:
     compat::LegacyPalette palette_{};
     compat::LegacyPalette ending_palette_{};
     render::IndexedFramebuffer ending_framebuffer_;
+    render::IndexedFramebuffer load_menu_framebuffer_;
     render::IndexedFramebuffer death_framebuffer_;
     std::vector<std::uint8_t> death_image_;
     std::array<std::uint8_t, 4096> rgb4_lookup_{};
@@ -453,6 +464,7 @@ private:
     std::optional<ScriptedWalkState> scripted_walk_state_;
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
+    std::optional<LoadMenuState> load_menu_state_;
     std::optional<DeathMenuState> death_menu_state_;
     std::optional<EndingState> ending_state_;
     std::optional<TournamentTrialState> tournament_trial_state_;

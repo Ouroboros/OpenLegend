@@ -80,6 +80,7 @@ constexpr std::array<std::uint8_t, 26> kCannotLeaveProtagonist{
     case scene::SceneStepKind::notice: return "notice";
     case scene::SceneStepKind::question: return "question";
     case scene::SceneStepKind::wait_key: return "wait_key";
+    case scene::SceneStepKind::load_menu: return "load_menu";
     case scene::SceneStepKind::death_menu: return "death_menu";
     case scene::SceneStepKind::load_slot: return "load_slot";
     case scene::SceneStepKind::battle: return "battle";
@@ -277,7 +278,8 @@ void LegacyGameRuntime::handle_key(
             } else if (translated_key == 0x1BU) {
                 handle_scene_result(scene_session_->resume(scene::SceneResponse::cancel));
             }
-        } else if (pending_kind == scene::SceneStepKind::death_menu) {
+        } else if (pending_kind == scene::SceneStepKind::load_menu ||
+                   pending_kind == scene::SceneStepKind::death_menu) {
             handle_scene_result(scene_session_->resume(
                 scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
         } else if (pending_kind == scene::SceneStepKind::dialogue ||
@@ -586,6 +588,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::dialogue:
     case scene::SceneStepKind::question:
     case scene::SceneStepKind::wait_key:
+    case scene::SceneStepKind::load_menu:
     case scene::SceneStepKind::death_menu:
     case scene::SceneStepKind::notice:
     case scene::SceneStepKind::shop:

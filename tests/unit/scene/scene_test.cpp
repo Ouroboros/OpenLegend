@@ -3,8 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <span>
+#include <string_view>
 #include <vector>
 
 #include "openlegend/persistence/save_slot.hpp"
@@ -31,6 +33,77 @@ namespace {
     OL_CHECK(loaded);
     return loaded ? std::move(*loaded.snapshot) : openlegend::model::GameSnapshot{};
 }
+
+class Opcode24DataRoot {
+public:
+    explicit Opcode24DataRoot(const std::filesystem::path& source)
+        : path_(std::filesystem::temp_directory_path() / "openlegend-scene-opcode24") {
+        std::error_code error;
+        std::filesystem::remove_all(path_, error);
+        error.clear();
+        std::filesystem::create_directories(path_, error);
+        OL_CHECK(!error);
+        for (const auto name : std::array<std::string_view, 11>{
+                 "TALK.IDX", "TALK.GRP", "HDGRP.IDX", "HDGRP.GRP",
+                 "CLOUD.IDX", "CLOUD.GRP", "MMAP.COL", "FONT.X16",
+                 "FONT.C16", "SDX070", "SMP070"}) {
+            error.clear();
+            std::filesystem::copy_file(
+                source / name, path_ / name,
+                std::filesystem::copy_options::overwrite_existing, error);
+            OL_CHECK(!error);
+        }
+
+        std::vector<std::uint8_t> index;
+        std::vector<std::uint8_t> group;
+        index.reserve(openlegend::scene::kEventScriptCount * 4U);
+        for (std::size_t script = 0U; script < openlegend::scene::kEventScriptCount; ++script) {
+            if (script == 1U) {
+                append_i16(group, 24);
+            } else if (script == 2U) {
+                for (const auto word : std::array<std::int16_t, 4>{68, 2, 123, 1}) {
+                    append_i16(group, word);
+                }
+            }
+            append_i16(group, -1);
+            append_u32(index, static_cast<std::uint32_t>(group.size()));
+        }
+        OL_CHECK(write(path_ / "KDEF.IDX", index));
+        OL_CHECK(write(path_ / "KDEF.GRP", group));
+    }
+
+    ~Opcode24DataRoot() {
+        std::error_code error;
+        std::filesystem::remove_all(path_, error);
+    }
+
+    [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
+
+private:
+    static void append_i16(std::vector<std::uint8_t>& bytes, const std::int16_t value) {
+        const auto bits = static_cast<std::uint16_t>(value);
+        bytes.push_back(static_cast<std::uint8_t>(bits & 0xFFU));
+        bytes.push_back(static_cast<std::uint8_t>(bits >> 8U));
+    }
+
+    static void append_u32(std::vector<std::uint8_t>& bytes, const std::uint32_t value) {
+        for (unsigned shift = 0U; shift < 32U; shift += 8U) {
+            bytes.push_back(static_cast<std::uint8_t>((value >> shift) & 0xFFU));
+        }
+    }
+
+    static bool write(
+        const std::filesystem::path& path,
+        const std::span<const std::uint8_t> bytes) {
+        std::ofstream output{path, std::ios::binary | std::ios::trunc};
+        output.write(
+            reinterpret_cast<const char*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size()));
+        return output.good();
+    }
+
+    std::filesystem::path path_;
+};
 
 [[nodiscard]] openlegend::scene::SceneStepResult finish_scene_title(
     openlegend::scene::SceneSession& session) {
@@ -222,6 +295,87 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     openlegend::render::IndexedFramebuffer long_line_frame;
     OL_CHECK(long_line.render(long_line_frame));
     OL_CHECK(fnv1a64(long_line_frame.pixels()) == 0xF420561DCB42E981ULL);
+}
+
+void check_event_load_menu(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const Opcode24DataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+
+    auto result = session.begin_event(1, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    openlegend::render::IndexedFramebuffer frame;
+    OL_CHECK(session.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0xDD14FCC6528CAB25ULL);
+
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 0);
+    OL_CHECK(session.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0x65C8DA776EAC540FULL);
+
+    result = session.resume(SceneResponse::acknowledge, 0x9E);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 2);
+    OL_CHECK(session.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0x816757297E6CB14BULL);
+
+    result = session.resume(SceneResponse::acknowledge, 0x98);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 3);
+    OL_CHECK(session.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0x726A3CCCC0E9C1D2ULL);
+
+    result = session.resume(SceneResponse::acknowledge, 0x0D);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 3);
+    OL_CHECK(session.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0xB908953A6570B8A0ULL);
+
+    result = session.resume(SceneResponse::acknowledge, static_cast<int>('N'));
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 3);
+    OL_CHECK(session.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0xB908953A6570B8A0ULL);
+
+    result = session.resume(SceneResponse::acknowledge, 0x9E);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 2);
+    result = session.resume(SceneResponse::acknowledge, 0x20);
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::load_slot && result.save_slot == 2);
+
+    auto quit_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom quit_random{1U};
+    openlegend::scene::SceneSession quit_session{
+        data_root, quit_snapshot, quit_random, 70};
+    OL_CHECK(finish_scene_title(quit_session).kind == SceneStepKind::stay);
+    result = quit_session.begin_event(1, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    result = quit_session.resume(SceneResponse::acknowledge);
+    for (int selection = 1; selection <= 3; ++selection) {
+        result = quit_session.resume(SceneResponse::acknowledge, 0x98);
+        OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == selection);
+    }
+    result = quit_session.resume(SceneResponse::acknowledge, 0x96);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 3);
+    OL_CHECK(quit_session.resume(
+                 SceneResponse::acknowledge, static_cast<int>('Y')).kind ==
+             SceneStepKind::quit);
+
+    auto invalid_snapshot = load_baseline(root);
+    const auto item_count_before = inventory_count(invalid_snapshot.ranger, 123);
+    openlegend::random::LegacyRandom invalid_random{1U};
+    openlegend::scene::SceneSession invalid_opcode{
+        data_root, invalid_snapshot, invalid_random, 70};
+    OL_CHECK(finish_scene_title(invalid_opcode).kind == SceneStepKind::stay);
+    result = invalid_opcode.begin_event(2, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(invalid_snapshot.ranger, 123) == item_count_before);
+    result = invalid_opcode.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(invalid_snapshot.ranger, 123) == item_count_before);
 }
 
 void check_scene_render_and_movement(const std::filesystem::path& root) {
@@ -2786,6 +2940,7 @@ int main() {
     const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
     check_assets(root);
     check_event_dialogue_rendering(root);
+    check_event_load_menu(root);
     check_scene_render_and_movement(root);
     check_scene_entry_state(root);
     check_scene_archive_ownership(root);

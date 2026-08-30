@@ -19,7 +19,9 @@ RAW_RANGES = (
     ("scene_direction_and_animation_tables", 0x544E2, 0x5450C),
     ("scene_blocked_earth_ranges", 0x5456A, 0x5458E),
     ("scene_weather_scene_ids", 0x555A4, 0x555BA),
+    ("load_menu_items", 0x2C1A1, 0x2C1CD),
     ("tournament_head_ids", 0x2C1CD, 0x2C209),
+    ("exit_confirmation_text", 0x58903, 0x5891A),
 )
 
 TARGET_FUNCTIONS = (

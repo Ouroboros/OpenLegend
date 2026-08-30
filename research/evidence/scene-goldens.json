@@ -2209,6 +2209,83 @@
             "0xf420561dcb42e981"
           ]
         }
+      },
+      "opcode_24_load_menu": {
+        "items_hex": [
+          "b8fca44ab669abd7a44000",
+          "b8fca44ab669abd7a44700",
+          "b8fca44ab669abd7a45400",
+          "c2f7b67dbacec4b1a56800"
+        ],
+        "exit_prompt_hex": "af75ad6ec2f7b67db943c0b8a15da2e7a1fea2dca15e00",
+        "menu_panel": [
+          109,
+          40,
+          101,
+          90
+        ],
+        "item_positions": [
+          [
+            119,
+            45
+          ],
+          [
+            119,
+            65
+          ],
+          [
+            119,
+            85
+          ],
+          [
+            119,
+            105
+          ]
+        ],
+        "confirmation_panel": [
+          71,
+          140,
+          177,
+          31
+        ],
+        "confirmation_text": [
+          75,
+          145
+        ],
+        "normal_colors": [
+          33,
+          35
+        ],
+        "selected_colors": [
+          99,
+          102
+        ],
+        "confirmation_colors": [
+          5,
+          7
+        ],
+        "up_from_zero": 2,
+        "frames": {
+          "black": "0xdd14fcc6528cab25",
+          "selection_0": "0x65c8da776eac540f",
+          "up_from_0_to_2": "0x816757297e6cb14b",
+          "down_from_2_to_3": "0x726a3cccc0e9c1d2",
+          "quit_confirmation": "0xb908953a6570b8a0",
+          "non_y_returns_with_prompt_pixels": "0xb908953a6570b8a0"
+        }
+      },
+      "out_of_range_opcode": {
+        "opcode": 68,
+        "jump_table_base": "0x2c209",
+        "indexed_dword_address": "0x2c319",
+        "indexed_dword_value": "0x00004068",
+        "program_counter_delta_before_indirect_transfer": 0,
+        "modern_safe_adapter": "stable_no_progress",
+        "following_instruction_must_not_execute": [
+          2,
+          123,
+          1
+        ]
       }
     },
     "status_notice_vectors": {

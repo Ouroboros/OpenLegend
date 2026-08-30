@@ -8,10 +8,10 @@
 
 - headless IDA 脚本：`research/ida/scripts/ida_b7_scene_xrefs.py`
 - IDA 报告：`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`
-  - SHA256：`c41e49902edde670c33e433dec4cb3df3e12f493c8517aeebf9d839ae36b1769`
+  - SHA256：`7e2ce337bfeebd9d53ee0ae47351b4ec63813295fcecc79ff86680a1394d13f0`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`a3442f87685dbca2db015019ce97bff356225a76c6ba78c5fa49b599943dd71d`
+  - SHA256：`721ad6f9f793d2e94ccd90f463685f89f7f60f604ee868c32e2c1524bdab8dc5`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -77,7 +77,7 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 - 全部 1,018 条脚本均以 `-1` 终止；
 - 共 13,315 条指令；
 - 68 个分派槽位中实际使用 67 个；
-- 唯一未出现的是 opcode 24；解释器仍保留该槽位；
+- 唯一未出现的是 opcode 24；其合法槽位仍按机器码实现载入三档进度与退出确认菜单，并由 synthetic KDEF 覆盖；
 - opcode 使用频次完整数组写入 `scene-goldens.json`，C++ 真实资产测试逐项对照，不以少量示例脚本替代全量扫描。
 
 当前核心已建立 0–67 的同步 PC/偏移执行边界、对话/问题/商店/战斗请求队列及 snapshot 副作用入口。高阶剧情的每个基本块仍需在后续小提交逐条复核，本文不把“已有 switch”当作全部语义已闭环。
@@ -153,7 +153,7 @@ Linux app Debug BUILD 脚本：13/13 测试通过，包括：
 
 - 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
 - HDGRP 115帧以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
-- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次；
+- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode24/68 的载入菜单与 PC 不推进边界；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
 - 真实 script494 的 opcode8 立即空音频与离场 music3 覆盖；
