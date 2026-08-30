@@ -296,7 +296,7 @@ def render_scene(
                 draw(building, sx, sy - height)
             event = scene_value(scene_words, 3, x, y)
             if event >= 0:
-                picture = event_value(event_words, event, 5)
+                picture = event_value(event_words, event, 7)
                 if picture > 0:
                     draw(picture, sx, sy - height)
             if x == player_x and y == player_y:
@@ -475,7 +475,7 @@ def scripted_walk_trace(
         walk_offset += 2
         if walk_offset > 12:
             walk_offset = 2
-        direction = (2 if delta < 0 else 1) if horizontal else (0 if delta < 0 else 3)
+        direction = (2 if delta < 0 else 1) if horizontal else (3 if delta < 0 else 0)
         tx = min(max(x + (delta if horizontal else 0), 0), 63)
         ty = min(max(y + (0 if horizontal else delta), 0), 63)
         earth = scene_value(scene_words, 0, tx, ty)
@@ -659,6 +659,70 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 {"fame_before": 199, "fame_after": 200, "book_event_1": 932},
                 {"fame_before": 32767, "fame_after": wrapped_add(32767, 1), "book_event_1": -1},
             ],
+        },
+    }
+
+
+def scene_animation_vectors(
+    scene_maps: list[bytes],
+    scene_events: list[bytes],
+    sprites: list[bytes],
+    scripts: list[bytes],
+) -> dict[str, object]:
+    duplicate_scenes = []
+    for scene_id, payload in enumerate(scene_maps):
+        counts: dict[int, int] = {}
+        for event in words(payload)[3 * 4096:4 * 4096]:
+            if event >= 0:
+                counts[event] = counts.get(event, 0) + 1
+        if any(count > 1 for count in counts.values()):
+            duplicate_scenes.append(scene_id)
+    assert duplicate_scenes == []
+
+    displayed_picture = 102
+    first_picture = 100
+    end_picture = 110
+    counter = 4
+    delay = 99
+    for _ in range(2):
+        if displayed_picture >= end_picture:
+            displayed_picture = first_picture
+        if displayed_picture > first_picture and counter % 4 == 0 and displayed_picture < end_picture:
+            displayed_picture += 2
+        if delay <= counter % 100 and displayed_picture == first_picture and displayed_picture < end_picture:
+            displayed_picture += 2
+    assert displayed_picture == 106
+
+    map_words = list(words(scene_maps[70]))
+    event_words = list(words(scene_events[70]))
+    map_words[3 * 4096 + 29 * 64 + 44] = 199
+    event_words[199 * 11 + 5] = first_picture
+    event_words[199 * 11 + 6] = end_picture
+    event_words[199 * 11 + 7] = 102
+    event_words[199 * 11 + 8] = delay
+    frame = render_scene(tuple(map_words), tuple(event_words), sprites, 44, 29, 1)
+    script_825 = words(scripts[825])
+    assert script_825 == (52, -1)
+    return {
+        "asset_duplicate_event_scenes": duplicate_scenes,
+        "synthetic_duplicate_event": {
+            "event_index": 199,
+            "cell_count": 2,
+            "counter": counter,
+            "first_picture": first_picture,
+            "end_picture": end_picture,
+            "displayed_before": 102,
+            "displayed_after": displayed_picture,
+            "delay": delay,
+        },
+        "word7_render_frame_fnv1a64": fnv1a64(frame),
+        "interaction_present": {
+            "direction": 1,
+            "player": [44, 29],
+            "target": [45, 29],
+            "event_1_script": 825,
+            "script_words": list(script_825),
+            "outputs": ["present", "notice_style_52"],
         },
     }
 
@@ -1247,6 +1311,9 @@ def main() -> None:
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
+            "scene_animation_vectors": scene_animation_vectors(
+                scene_maps, scene_events, sprites, scripts
+            ),
             "scene_archive_state_vectors": scene_archive_state_vectors(
                 ranger, scene_maps, scene_events, scripts
             ),

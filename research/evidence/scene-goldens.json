@@ -249,42 +249,42 @@
         {
           "x": 28,
           "y": 23,
-          "direction": 0,
-          "player_picture": 5004,
+          "direction": 3,
+          "player_picture": 5046,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xfe3ec0de318a5a82"
+          "frame_fnv1a64": "0xd57c3152a82774cc"
         },
         {
           "x": 28,
           "y": 22,
-          "direction": 0,
-          "player_picture": 5006,
+          "direction": 3,
+          "player_picture": 5048,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0x68c98bb78c98819a"
+          "frame_fnv1a64": "0x9545f8856e41c3a4"
         },
         {
           "x": 28,
           "y": 21,
-          "direction": 0,
-          "player_picture": 5008,
+          "direction": 3,
+          "player_picture": 5050,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0x5c20ea03384f66fb"
+          "frame_fnv1a64": "0x9d6cf61532172d1d"
         },
         {
           "x": 28,
           "y": 20,
-          "direction": 0,
-          "player_picture": 5010,
+          "direction": 3,
+          "player_picture": 5052,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xaaa97b36975c12e9"
+          "frame_fnv1a64": "0xe16cc2b12c3abd8f"
         },
         {
           "x": 28,
           "y": 19,
-          "direction": 0,
-          "player_picture": 5012,
+          "direction": 3,
+          "player_picture": 5054,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xf2a1e35490a4f647"
+          "frame_fnv1a64": "0xa97e21b948cfc40f"
         }
       ]
     },
@@ -1468,6 +1468,40 @@
             "fame_after": -32768,
             "book_event_1": -1
           }
+        ]
+      }
+    },
+    "scene_animation_vectors": {
+      "asset_duplicate_event_scenes": [],
+      "synthetic_duplicate_event": {
+        "event_index": 199,
+        "cell_count": 2,
+        "counter": 4,
+        "first_picture": 100,
+        "end_picture": 110,
+        "displayed_before": 102,
+        "displayed_after": 106,
+        "delay": 99
+      },
+      "word7_render_frame_fnv1a64": "0x606eaa33da727537",
+      "interaction_present": {
+        "direction": 1,
+        "player": [
+          44,
+          29
+        ],
+        "target": [
+          45,
+          29
+        ],
+        "event_1_script": 825,
+        "script_words": [
+          52,
+          -1
+        ],
+        "outputs": [
+          "present",
+          "notice_style_52"
         ]
       }
     },

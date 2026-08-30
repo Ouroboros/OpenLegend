@@ -214,6 +214,85 @@ void check_scene_archive_ownership(const std::filesystem::path& root) {
     OL_CHECK(snapshot.event_value(7U, 6U, SceneEventField::y).value_or(-32768) == before_y);
 }
 
+void check_scene_interaction_present(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    constexpr std::size_t event = 199U;
+    OL_CHECK(snapshot.set_scene_value(
+        70U, SceneLayer::event_index, 29U * 64U + 45U, event));
+    OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::event_1, 825));
+    snapshot.ranger.roles[0].set_word(openlegend::model::role_word::morality, 7);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(session.interact().kind == SceneStepKind::present);
+    const auto result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(result.style == 52);
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+
+    auto empty_snapshot = load_baseline(root);
+    OL_CHECK(empty_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, 29U * 64U + 45U, -1));
+    openlegend::random::LegacyRandom empty_random{1U};
+    openlegend::scene::SceneSession empty_session{
+        data_root, empty_snapshot, empty_random, 70};
+    OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(empty_session.interact().kind == SceneStepKind::present);
+    OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+}
+
+void check_scene_event_animation(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    constexpr std::size_t event = 199U;
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, 0U, event));
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, 1U, event));
+    OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::current_picture, 100));
+    OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::end_picture, 110));
+    OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::begin_picture, 102));
+    OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::picture_delay, 99));
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    session.idle_tick();
+    session.idle_tick();
+    session.idle_tick();
+    session.idle_tick();
+    OL_CHECK(snapshot.event_value(
+                 70U, event, SceneEventField::current_picture).value_or(-1) == 100);
+    OL_CHECK(snapshot.event_value(
+                 70U, event, SceneEventField::begin_picture).value_or(-1) == 106);
+
+    auto render_snapshot = load_baseline(root);
+    OL_CHECK(render_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, 29U * 64U + 44U, event));
+    OL_CHECK(render_snapshot.set_event_value(
+        70U, event, SceneEventField::current_picture, 100));
+    OL_CHECK(render_snapshot.set_event_value(
+        70U, event, SceneEventField::end_picture, 110));
+    OL_CHECK(render_snapshot.set_event_value(
+        70U, event, SceneEventField::begin_picture, 102));
+    OL_CHECK(render_snapshot.set_event_value(
+        70U, event, SceneEventField::picture_delay, 99));
+    openlegend::random::LegacyRandom render_random{1U};
+    openlegend::scene::SceneSession render_session{
+        data_root, render_snapshot, render_random, 70};
+    openlegend::render::IndexedFramebuffer framebuffer;
+    OL_CHECK(render_session.render_map(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x606EAA33DA727537ULL);
+}
+
 void check_scene_weather(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     auto coverage_snapshot = load_baseline(root);
@@ -411,20 +490,20 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     }
 
     constexpr std::array<int, 5> expected_y{23, 22, 21, 20, 19};
-    constexpr std::array<std::int16_t, 5> expected_pictures{5004, 5006, 5008, 5010, 5012};
+    constexpr std::array<std::int16_t, 5> expected_pictures{5046, 5048, 5050, 5052, 5054};
     constexpr std::array<std::uint64_t, 5> expected_hashes{
-        0xFE3EC0DE318A5A82ULL,
-        0x68C98BB78C98819AULL,
-        0x5C20EA03384F66FBULL,
-        0xAAA97B36975C12E9ULL,
-        0xF2A1E35490A4F647ULL,
+        0xD57C3152A82774CCULL,
+        0x9545F8856E41C3A4ULL,
+        0x9D6CF61532172D1DULL,
+        0xE16CC2B12C3ABD8FULL,
+        0xA97E21B948CFC40FULL,
     };
     for (std::size_t index = 0U; index < expected_y.size(); ++index) {
         OL_CHECK(result.kind == SceneStepKind::present);
         OL_CHECK(result.wait_ticks == 3U);
         OL_CHECK(session.scene_x() == 28);
         OL_CHECK(session.scene_y() == expected_y[index]);
-        OL_CHECK(session.direction() == openlegend::scene::SceneDirection::up);
+        OL_CHECK(session.direction() == openlegend::scene::SceneDirection::down);
         OL_CHECK(session.player_frame() == expected_pictures[index]);
         openlegend::render::IndexedFramebuffer framebuffer;
         OL_CHECK(session.render_map(framebuffer));
@@ -433,7 +512,7 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     }
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 1248);
-    OL_CHECK(session.player_frame() == 5002);
+    OL_CHECK(session.player_frame() == 5044);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_x) == 28);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_y) == 19);
 
@@ -456,7 +535,7 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
          ++step) {
         blocked_result = blocked.resume(SceneResponse::acknowledge);
     }
-    for (std::int16_t frame = 5004; frame <= 5012; frame += 2) {
+    for (std::int16_t frame = 5046; frame <= 5054; frame += 2) {
         OL_CHECK(blocked_result.kind == SceneStepKind::present);
         OL_CHECK(blocked_result.wait_ticks == 3U);
         OL_CHECK(blocked.scene_x() == 28);
@@ -2344,6 +2423,8 @@ int main() {
     check_scene_render_and_movement(root);
     check_scene_entry_state(root);
     check_scene_archive_ownership(root);
+    check_scene_interaction_present(root);
+    check_scene_event_animation(root);
     check_scene_weather(root);
     check_event_camera_pan(root);
     check_event_picture_animation(root);

@@ -358,6 +358,12 @@ private:
     void set_animated_picture(std::int16_t event_index, std::int16_t picture);
     void commit_header() noexcept;
     void update_view_origin() noexcept;
+    [[nodiscard]] bool prepare_event(
+        std::int16_t script_id,
+        std::int16_t event_index,
+        std::int16_t event_x,
+        std::int16_t event_y,
+        std::int16_t item_id);
     void clear_event() noexcept;
 
     const resource::DataRoot& data_root_;

@@ -238,9 +238,9 @@ enum class SceneEventField : std::size_t {
     event_1 = 2U,
     event_2 = 3U,
     event_3 = 4U,
-    current_picture = 5U,
+    current_picture = 5U,  // Legacy first-picture/condition word; historical API name retained.
     end_picture = 6U,
-    begin_picture = 7U,
+    begin_picture = 7U,  // Mutable picture rendered and advanced by the scene loop.
     picture_delay = 8U,
     x = 9U,
     y = 10U,

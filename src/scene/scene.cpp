@@ -540,14 +540,15 @@ SceneStepResult SceneSession::interact() {
     const auto x = scene_x_ + delta_x;
     const auto y = scene_y_ + delta_y;
     const auto event = event_at(x, y);
-    if (!event.has_value()) {
-        return current_result(SceneStepKind::stay);
+    if (event.has_value()) {
+        const auto script = event_field(scene_id_, *event, model::SceneEventField::event_1);
+        if (script.has_value() && *script > 0) {
+            (void)prepare_event(
+                *script, *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1);
+        }
     }
-    const auto script = event_field(scene_id_, *event, model::SceneEventField::event_1);
-    if (!script.has_value() || *script <= 0) {
-        return current_result(SceneStepKind::stay);
-    }
-    return begin_event(*script, *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y));
+    pending_ = current_result(SceneStepKind::present);
+    return pending_;
 }
 
 SceneStepResult SceneSession::use_item(const std::int16_t item_id) {
@@ -579,14 +580,26 @@ SceneStepResult SceneSession::begin_event(
     const std::int16_t event_x,
     const std::int16_t event_y,
     const std::int16_t item_id) {
-    if (!valid() || script_id <= 0 || static_cast<std::size_t>(script_id) >= assets_.script_count()) {
+    if (!prepare_event(script_id, event_index, event_x, event_y, item_id)) {
         return current_result(SceneStepKind::stay);
+    }
+    return run_event();
+}
+
+bool SceneSession::prepare_event(
+    const std::int16_t script_id,
+    const std::int16_t event_index,
+    const std::int16_t event_x,
+    const std::int16_t event_y,
+    const std::int16_t item_id) {
+    if (!valid() || script_id <= 0 || static_cast<std::size_t>(script_id) >= assets_.script_count()) {
+        return false;
     }
     event_context_ = EventContext{event_index, event_x, event_y, item_id};
     script_ = assets_.script(static_cast<std::size_t>(script_id));
     if (script_.empty()) {
         error_ = "KDEF script is empty or has odd byte length";
-        return current_result(SceneStepKind::stay);
+        return false;
     }
     program_counter_ = 0;
     event_active_ = true;
@@ -602,7 +615,7 @@ SceneStepResult SceneSession::begin_event(
     ending_state_.reset();
     tournament_trial_state_.reset();
     queued_outputs_.clear();
-    return run_event();
+    return true;
 }
 
 SceneStepResult SceneSession::resume(const SceneResponse response, const int value) {
@@ -1395,24 +1408,37 @@ void SceneSession::idle_tick() {
         return;
     }
     animation_counter_ = static_cast<std::int16_t>((animation_counter_ + 1) % 1000);
-    for (std::size_t event = 0U; event < model::kSceneEventCount; ++event) {
-        const auto begin = event_field(scene_id_, static_cast<std::int16_t>(event), model::SceneEventField::begin_picture).value_or(0);
-        const auto end = event_field(scene_id_, static_cast<std::int16_t>(event), model::SceneEventField::end_picture).value_or(0);
-        auto current = event_field(scene_id_, static_cast<std::int16_t>(event), model::SceneEventField::current_picture).value_or(0);
-        const auto delay = event_field(scene_id_, static_cast<std::int16_t>(event), model::SceneEventField::picture_delay).value_or(0);
-        if (begin <= 0) {
-            continue;
+    for (int x = 0; x < kSceneExtent; ++x) {
+        for (int y = 0; y < kSceneExtent; ++y) {
+            const auto event = event_at(x, y);
+            if (!event.has_value()) {
+                continue;
+            }
+            const auto first_picture = event_field(
+                scene_id_, *event, model::SceneEventField::current_picture).value_or(0);
+            if (first_picture <= 0) {
+                continue;
+            }
+            const auto end_picture = event_field(
+                scene_id_, *event, model::SceneEventField::end_picture).value_or(0);
+            auto displayed_picture = event_field(
+                scene_id_, *event, model::SceneEventField::begin_picture).value_or(0);
+            const auto delay = event_field(
+                scene_id_, *event, model::SceneEventField::picture_delay).value_or(0);
+            if (displayed_picture >= end_picture) {
+                displayed_picture = first_picture;
+            }
+            if (displayed_picture > first_picture && animation_counter_ % 4 == 0 &&
+                displayed_picture < end_picture) {
+                displayed_picture = static_cast<std::int16_t>(displayed_picture + 2);
+            }
+            if (delay <= animation_counter_ % 100 && displayed_picture == first_picture &&
+                displayed_picture < end_picture) {
+                displayed_picture = static_cast<std::int16_t>(displayed_picture + 2);
+            }
+            set_event_field(
+                scene_id_, *event, model::SceneEventField::begin_picture, displayed_picture);
         }
-        if (current >= end) {
-            current = begin;
-        }
-        if (current > begin && animation_counter_ % 4 == 0 && current < end) {
-            current = static_cast<std::int16_t>(current + 2);
-        }
-        if (delay <= animation_counter_ % 100 && current == begin && current < end) {
-            current = static_cast<std::int16_t>(current + 2);
-        }
-        set_event_field(scene_id_, static_cast<std::int16_t>(event), model::SceneEventField::current_picture, current);
     }
 }
 
@@ -2450,7 +2476,7 @@ void SceneSession::apply_scripted_walk_step(const bool horizontal, const int ste
     }
     direction_ = horizontal
                      ? (step < 0 ? SceneDirection::left : SceneDirection::right)
-                     : (step < 0 ? SceneDirection::up : SceneDirection::down);
+                     : (step < 0 ? SceneDirection::down : SceneDirection::up);
     const auto target_x = std::clamp(scene_x_ + (horizontal ? step : 0), 0, kSceneExtent - 1);
     const auto target_y = std::clamp(scene_y_ + (horizontal ? 0 : step), 0, kSceneExtent - 1);
     if (target_is_walkable(target_x, target_y)) {
@@ -2560,7 +2586,7 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
             }
             const auto event = event_at(x, y);
             if (event.has_value()) {
-                const auto picture = event_field(scene_id_, *event, model::SceneEventField::current_picture).value_or(0);
+                const auto picture = event_field(scene_id_, *event, model::SceneEventField::begin_picture).value_or(0);
                 if (picture > 0 && !draw_sprite(framebuffer, picture, anchor_x, anchor_y - building_height)) {
                     return false;
                 }
