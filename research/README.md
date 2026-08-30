@@ -1,6 +1,6 @@
 # OpenLegend 调研索引
 
-当前状态：**B0–B4 已按汇编与真实资产完成；当前进入 B5 标题、菜单与新建/读取流程。**
+当前状态：**B0–B6 已按汇编与真实资产完成；当前进入 B7 场景、事件与脚本。**
 
 ## 架构主文档
 
@@ -14,12 +14,18 @@
 - [`evidence/render-1to1.md`](evidence/render-1to1.md)：B2 软件绘制。
 - [`evidence/model-persistence-1to1.md`](evidence/model-persistence-1to1.md)：B3 状态模型与物理存档。
 - [`evidence/input-time-random-audio-1to1.md`](evidence/input-time-random-audio-1to1.md)：B4 IRQ1 输入、BIOS tick、RNG 与 Miles 音频。
+- [`evidence/title-menu-new-game-1to1.md`](evidence/title-menu-new-game-1to1.md)：B5 标题、六项菜单、姓名输入、新游戏属性与三槽流程。
+- [`evidence/world-map-1to1.md`](evidence/world-map-1to1.md)：B6 五层世界、缓存、移动、船、入口、天气与绘制。
 
-## 当前 B5 证据
+## 独立 golden
 
-- [`evidence/title-menu-new-game-1to1.md`](evidence/title-menu-new-game-1to1.md)：标题、六项菜单、姓名输入、新游戏属性与三槽流程汇编合同。
-- [`evidence/title-menu-new-game-goldens.json`](evidence/title-menu-new-game-goldens.json)：独立 Python 标题 framebuffer 与初始属性 RNG golden。
-- [`ida/reports/Z_DAT.b5_ui_xrefs.txt`](ida/reports/Z_DAT.b5_ui_xrefs.txt)：B5 完整机器码、调用与数据引用报告。
+- [`evidence/title-menu-new-game-goldens.json`](evidence/title-menu-new-game-goldens.json)：B5 标题 framebuffer 与初始属性 RNG。
+- [`evidence/world-map-goldens.json`](evidence/world-map-goldens.json)：B6 五层 cache、固定轨迹、初始/天气 framebuffer。
+
+## 定点机器码报告
+
+- [`ida/reports/Z_DAT.b5_ui_xrefs.txt`](ida/reports/Z_DAT.b5_ui_xrefs.txt)：B5 UI/新游戏/三槽调用与数据引用。
+- [`ida/reports/Z_DAT.b6_world_xrefs.txt`](ida/reports/Z_DAT.b6_world_xrefs.txt)：B6 世界主循环、五层缓存、碰撞、深度与天气 alpha。
 
 ## IDA headless 档案
 

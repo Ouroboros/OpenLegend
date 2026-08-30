@@ -1,0 +1,278 @@
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <iomanip>
+#include <iostream>
+#include <span>
+
+#include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/random/legacy_random.hpp"
+#include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/resource/binary_file.hpp"
+#include "openlegend/world/world_map.hpp"
+#include "test_support.hpp"
+
+namespace {
+
+[[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
+    std::uint64_t result = 0xCBF29CE484222325ULL;
+    for (const auto byte : bytes) {
+        result ^= byte;
+        result *= 0x100000001B3ULL;
+    }
+    return result;
+}
+
+[[nodiscard]] std::uint64_t fnv1a64_words(const std::span<const std::int16_t> words) {
+    std::uint64_t result = 0xCBF29CE484222325ULL;
+    for (const auto word : words) {
+        const auto bits = static_cast<std::uint16_t>(word);
+        for (const auto byte : {static_cast<std::uint8_t>(bits & 0xFFU),
+                                static_cast<std::uint8_t>(bits >> 8U)}) {
+            result ^= byte;
+            result *= 0x100000001B3ULL;
+        }
+    }
+    return result;
+}
+
+[[nodiscard]] openlegend::model::GameSnapshot load_baseline(
+    const std::filesystem::path& root) {
+    auto loaded = openlegend::persistence::load_baseline(root);
+    OL_CHECK(loaded);
+    if (!loaded) {
+        return {};
+    }
+    return std::move(*loaded.snapshot);
+}
+
+void check_layers_and_cache(const std::filesystem::path& root) {
+    using namespace openlegend::world;
+    const openlegend::resource::DataRoot data_root{root};
+    const WorldMapData map{data_root};
+    OL_CHECK(map.valid());
+    OL_CHECK(map.layer(WorldLayer::earth).size() == kWorldCellCount);
+    OL_CHECK(map.at(WorldLayer::earth, 357, 235) == 70);
+    OL_CHECK(map.at(WorldLayer::surface, 358, 235) == 1544);
+    OL_CHECK(map.at(WorldLayer::building, 356, 235) == 2828);
+    OL_CHECK(map.at(WorldLayer::build_x, 356, 235) == 356);
+    OL_CHECK(map.at(WorldLayer::build_y, 356, 235) == 235);
+
+    WorldCache cache;
+    OL_CHECK(cache.reload(map, 293, 171));
+    OL_CHECK(cache.origin_x() == 293);
+    OL_CHECK(cache.origin_y() == 171);
+    OL_CHECK(cache.at(WorldLayer::earth, 64, 64) == 70);
+    constexpr std::array<std::uint64_t, 5> expected{
+        0x8243D1432C8E5541ULL,
+        0x391764A21E1CEC00ULL,
+        0xBE58B568D6F8C735ULL,
+        0x8A4E260A5A0773EFULL,
+        0xDDC443349D365081ULL};
+    for (std::size_t layer = 0U; layer < expected.size(); ++layer) {
+        const auto actual = fnv1a64_words(cache.layer(static_cast<WorldLayer>(layer)));
+        if (actual != expected[layer]) {
+            std::cerr << "world cache hash layer " << layer << ": expected 0x" << std::hex
+                      << expected[layer] << ", actual 0x" << actual << std::dec << '\n';
+        }
+        OL_CHECK(actual == expected[layer]);
+    }
+    OL_CHECK(!cache.reload(map, 353, 0));
+}
+
+void check_initial_render_and_trace(const std::filesystem::path& root) {
+    using namespace openlegend::world;
+    const openlegend::resource::DataRoot data_root{root};
+    const WorldMapData map{data_root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    WorldSession session{data_root, map, snapshot.ranger, random};
+    OL_CHECK(session.valid());
+    OL_CHECK(session.world_x() == 357);
+    OL_CHECK(session.world_y() == 235);
+    OL_CHECK(session.cache().origin_x() == 293);
+    OL_CHECK(session.cache().origin_y() == 171);
+    OL_CHECK(session.cache_x() == 64);
+    OL_CHECK(session.cache_y() == 64);
+    OL_CHECK(session.direction() == WorldDirection::right);
+    OL_CHECK(session.player_frame() == 5016);
+
+    openlegend::render::IndexedFramebuffer framebuffer;
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x6F6CF22B7C8CB4B8ULL);
+
+    constexpr std::array<WorldDirection, 4> directions{
+        WorldDirection::right, WorldDirection::up, WorldDirection::left, WorldDirection::down};
+    constexpr std::array<std::array<std::int16_t, 2>, 4> positions{
+        std::array<std::int16_t, 2>{358, 235},
+        std::array<std::int16_t, 2>{358, 234},
+        std::array<std::int16_t, 2>{357, 234},
+        std::array<std::int16_t, 2>{357, 235}};
+    for (std::size_t index = 0U; index < directions.size(); ++index) {
+        const auto result = session.move(directions[index]);
+        OL_CHECK(result.kind == WorldStepKind::moved);
+        OL_CHECK(result.scene_id == -1);
+        OL_CHECK(result.world_x == positions[index][0]);
+        OL_CHECK(result.world_y == positions[index][1]);
+    }
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_x) == 357);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_y) == 235);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::face_towards) == 3);
+
+    auto entrance_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom entrance_random{1U};
+    WorldSession entrance{data_root, map, entrance_snapshot.ranger, entrance_random};
+    const auto entrance_result = entrance.move(WorldDirection::left);
+    OL_CHECK(entrance_result.kind == WorldStepKind::enter_scene);
+    OL_CHECK(entrance_result.scene_id == 70);
+    OL_CHECK(entrance_result.world_x == 357);
+    OL_CHECK(entrance_result.world_y == 235);
+
+    auto blocked_snapshot = load_baseline(root);
+    for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                            openlegend::model::scene_metadata_word::main_entrance_y_1,
+                            openlegend::model::scene_metadata_word::main_entrance_x_2,
+                            openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+        blocked_snapshot.ranger.scenes[70].set_word(word, -1);
+    }
+    openlegend::random::LegacyRandom blocked_random{1U};
+    WorldSession blocked{data_root, map, blocked_snapshot.ranger, blocked_random};
+    const auto blocked_result = blocked.move(WorldDirection::left);
+    OL_CHECK(blocked_result.kind == WorldStepKind::stay);
+    OL_CHECK(blocked_result.world_x == 357);
+    OL_CHECK(blocked_result.world_y == 235);
+    OL_CHECK(blocked.player_frame() == 5032);
+
+    auto low_iq_snapshot = load_baseline(root);
+    auto& conditional_scene = low_iq_snapshot.ranger.scenes[0];
+    conditional_scene.set_word(openlegend::model::scene_metadata_word::entrance_condition, 2);
+    conditional_scene.set_word(openlegend::model::scene_metadata_word::main_entrance_x_1, 358);
+    conditional_scene.set_word(openlegend::model::scene_metadata_word::main_entrance_y_1, 235);
+    low_iq_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::iq, 69);
+    openlegend::random::LegacyRandom low_iq_random{1U};
+    WorldSession low_iq{data_root, map, low_iq_snapshot.ranger, low_iq_random};
+    OL_CHECK(low_iq.move(WorldDirection::right).kind == WorldStepKind::moved);
+
+    auto high_iq_snapshot = load_baseline(root);
+    auto& allowed_scene = high_iq_snapshot.ranger.scenes[0];
+    allowed_scene.set_word(openlegend::model::scene_metadata_word::entrance_condition, 2);
+    allowed_scene.set_word(openlegend::model::scene_metadata_word::main_entrance_x_1, 358);
+    allowed_scene.set_word(openlegend::model::scene_metadata_word::main_entrance_y_1, 235);
+    high_iq_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::iq, 70);
+    openlegend::random::LegacyRandom high_iq_random{1U};
+    WorldSession high_iq{data_root, map, high_iq_snapshot.ranger, high_iq_random};
+    const auto high_iq_result = high_iq.move(WorldDirection::right);
+    OL_CHECK(high_iq_result.kind == WorldStepKind::enter_scene);
+    OL_CHECK(high_iq_result.scene_id == 0);
+
+    auto reload_snapshot = load_baseline(root);
+    reload_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_x, 71);
+    reload_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_y, 149);
+    openlegend::random::LegacyRandom reload_random{1U};
+    WorldSession reload{data_root, map, reload_snapshot.ranger, reload_random};
+    OL_CHECK(reload.cache().origin_x() == 7);
+    for (int step = 0; step < 35; ++step) {
+        OL_CHECK(reload.move(WorldDirection::right).kind == WorldStepKind::moved);
+    }
+    OL_CHECK(reload.world_x() == 106);
+    OL_CHECK(reload.cache().origin_x() == 42);
+    OL_CHECK(reload.cache_x() == 64);
+
+    auto ship_snapshot = load_baseline(root);
+    ship_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_x, 108);
+    ship_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_y, 100);
+    openlegend::random::LegacyRandom ship_random{1U};
+    WorldSession ship{data_root, map, ship_snapshot.ranger, ship_random};
+    OL_CHECK(ship.move(WorldDirection::right).kind == WorldStepKind::moved);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(ship.world_x() == 109);
+    OL_CHECK(ship.move(WorldDirection::right).kind == WorldStepKind::moved);
+    OL_CHECK(ship.world_x() == 110);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_x) == 110);
+    OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
+    OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
+    OL_CHECK(ship.world_x() == 108);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
+    OL_CHECK(ship.world_x() == 107);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 0);
+}
+
+void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
+    using namespace openlegend::world;
+    const openlegend::resource::DataRoot data_root{root};
+    const WorldMapData map{data_root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    WorldSession session{data_root, map, snapshot.ranger, random};
+    session.periodic_tick();
+    OL_CHECK(random.state() == 0xAF1CF0FBU);
+    session.periodic_tick();
+    OL_CHECK(random.state() == 0xAF1CF0FBU);
+
+    auto weather_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom weather_random{1U};
+    WorldSession weather{data_root, map, weather_snapshot.ranger, weather_random};
+    for (int tick = 0; tick < 300; ++tick) {
+        weather.periodic_tick();
+    }
+    openlegend::render::IndexedFramebuffer weather_frame;
+    OL_CHECK(weather.render(weather_frame));
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0xDFF4C0D05BD3426BULL);
+
+    openlegend::random::LegacyRandom idle_random{1U};
+    WorldSession idle{data_root, map, snapshot.ranger, idle_random};
+    for (int tick = 0; tick < 51; ++tick) {
+        idle.idle_tick();
+    }
+    OL_CHECK(idle_random.state() == 0x41C67EA6U);
+
+    auto idle_frame_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom idle_frame_random{0U};
+    WorldSession idle_frame{data_root, map, idle_frame_snapshot.ranger, idle_frame_random};
+    for (int tick = 0; tick < 51; ++tick) {
+        idle_frame.idle_tick();
+    }
+    OL_CHECK(idle_frame.player_frame() == 5070);
+    for (int tick = 0; tick < 3; ++tick) {
+        idle_frame.idle_tick();
+    }
+    OL_CHECK(idle_frame.player_frame() == 5072);
+
+    auto recovery_snapshot = load_baseline(root);
+    auto& protagonist = recovery_snapshot.ranger.roles[0];
+    protagonist.set_word(openlegend::model::role_word::hurt, 51);
+    protagonist.set_word(openlegend::model::role_word::hp, 10);
+    protagonist.set_word(openlegend::model::role_word::mp, 20);
+    protagonist.set_word(openlegend::model::role_word::physical_power, 30);
+    openlegend::random::LegacyRandom recovery_random{1U};
+    WorldSession recovery{data_root, map, recovery_snapshot.ranger, recovery_random};
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        static_cast<void>(recovery.move(WorldDirection::left));
+    }
+    OL_CHECK(protagonist.word(openlegend::model::role_word::hurt) == 51);
+    OL_CHECK(protagonist.word(openlegend::model::role_word::hp) == 9);
+    OL_CHECK(protagonist.word(openlegend::model::role_word::mp) == 19);
+    OL_CHECK(protagonist.word(openlegend::model::role_word::physical_power) == 29);
+
+    auto power_snapshot = load_baseline(root);
+    power_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::physical_power, 99);
+    openlegend::random::LegacyRandom power_random{1U};
+    WorldSession power{data_root, map, power_snapshot.ranger, power_random};
+    for (int tick = 0; tick < 200; ++tick) {
+        power.idle_tick();
+    }
+    OL_CHECK(power_snapshot.ranger.roles[0].word(openlegend::model::role_word::physical_power) ==
+             100);
+}
+
+}  // namespace
+
+int main() {
+    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    check_layers_and_cache(root);
+    check_initial_render_and_trace(root);
+    check_periodic_rng_and_recovery(root);
+    return openlegend::test::failures == 0 ? 0 : 1;
+}

@@ -17,6 +17,7 @@
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 #include "openlegend/ui/title_menu.hpp"
+#include "openlegend/world/world_map.hpp"
 
 namespace openlegend::app {
 
@@ -36,6 +37,7 @@ public:
 
     void advance();
     void handle_key(std::uint8_t translated_key, bool control_down, bool shift_down);
+    void handle_world_input(bool left, bool up, bool down, bool right);
     [[nodiscard]] bool render();
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
@@ -44,6 +46,9 @@ public:
     [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
     [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
     [[nodiscard]] const model::GameState& game_state() const noexcept { return game_state_; }
+    [[nodiscard]] std::optional<std::int16_t> scene_request() const noexcept {
+        return scene_request_;
+    }
 
 private:
     enum class PendingIo {
@@ -54,6 +59,7 @@ private:
 
     void begin_new_game();
     void perform_pending_io();
+    [[nodiscard]] bool start_world(LegacyGameView error_return_view);
     void update_menu_counts();
     void show_error(std::string message, LegacyGameView return_view);
     void show_legacy_error(
@@ -72,10 +78,14 @@ private:
     ui::GameMenuController game_menu_;
     std::optional<ui::NewGameNameEditor> name_editor_;
     std::unique_ptr<ui::NewGameAttributeController> attribute_controller_;
+    std::unique_ptr<world::WorldMapData> world_map_;
+    std::unique_ptr<world::WorldSession> world_session_;
     LegacyGameView view_{LegacyGameView::title};
     LegacyGameView error_return_view_{LegacyGameView::title};
     PendingIo pending_io_{PendingIo::none};
     std::uint8_t pending_slot_{};
+    std::optional<std::int16_t> scene_request_;
+    bool world_step_processed_{};
     std::vector<std::uint8_t> visible_error_;
     std::string startup_error_;
 };

@@ -1,8 +1,8 @@
 # OpenLegend 执行 GOAL
 
 版本：v2
-当前阶段：B6 · 世界地图
-当前状态：B0–B5 已完成，下一工作包按原版汇编恢复五层世界数据、缓存、投影、移动、碰撞、入口和周期更新
+当前阶段：B7 · 场景、事件与对话
+当前状态：B0–B6 已完成，下一工作包按原版汇编恢复 6×64×64 场景、事件执行器、TALK 对话和同步返回
 
 ## 0. 唯一正确性真值
 
@@ -175,7 +175,9 @@
 
 ### B6 · 世界地图
 
-状态：**当前工作包**
+状态：**已完成**
+
+完成证据：`../research/evidence/world-map-1to1.md`、`../research/evidence/world-map-goldens.json`、`../research/ida/reports/Z_DAT.b6_world_xrefs.txt`。五层资源、128×128 cache、11/98 重载、陆地/船/海岸碰撞、双入口/IQ 条件、待机和 8 级半透明天气、indexed 世界绘制、held-key SDL 会话链均已实现；世界机器码无直接随机战斗 caller，未臆造该行为。
 
 范围：`world`
 

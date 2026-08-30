@@ -1,0 +1,160 @@
+{
+  "source": "independent Python int16le/cache/RLE/depth oracle over original assets",
+  "world": {
+    "extent": [
+      480,
+      480
+    ],
+    "layer_size": 460800,
+    "layer_sha256": {
+      "EARTH.002": "286bd09db291159c1f828ed59d0ef5f812c04129b9708f8d28a675f4ae10f2b7",
+      "SURFACE.002": "51639da4730377cd9775737b2124a99e9e47910ec0c73537ac2b259b9d092aa2",
+      "BUILDING.002": "903c9cc978ad9cedab894d63c2f9f57e6fd855940cdf9426663a8eae7dd592b4",
+      "BUILDX.002": "642f584eeccabee20ff73744f7ea74b0d78be521c7d509730bdb6e14d6fbf80c",
+      "BUILDY.002": "77531b0f9b6b06e0c96fdf73f471d9d759af3553b8dd300855d0c64ecb62257a"
+    }
+  },
+  "initial": {
+    "world": [
+      357,
+      235
+    ],
+    "cache_origin": [
+      293,
+      171
+    ],
+    "cache_local": [
+      64,
+      64
+    ],
+    "direction": 1,
+    "player_frame": 5016,
+    "cache_sha256_int16le": {
+      "EARTH.002": "01e155e1427f12bfaaf16f65835856c2235d2ed6d5376a20cd0c23356a1150e1",
+      "SURFACE.002": "aeabfc2d38a66d4d4de3dd92156e7f42c68d7314cc374641cb9b0ef1283cb2c8",
+      "BUILDING.002": "e054162caf121f5948796bce0696833dc288c7966b7abaca4e1acdef45b66929",
+      "BUILDX.002": "7fd9a2be10a13e6a34653cccae9cc503fbbb94589384c11a188884a30d14c7c7",
+      "BUILDY.002": "cf16198a58d72f132c7775a18f98a058f5afefed428594c61b9a54a6fa155e01"
+    },
+    "cache_fnv1a64_int16le": {
+      "EARTH.002": "0x8243d1432c8e5541",
+      "SURFACE.002": "0x391764a21e1cec00",
+      "BUILDING.002": "0xbe58b568d6f8c735",
+      "BUILDX.002": "0x8a4e260a5a0773ef",
+      "BUILDY.002": "0xddc443349d365081"
+    },
+    "framebuffer_sha256": "8b925f9bb4d8378cd9a134965e0ae95e56e85360036a38f64387e073a486bc2a",
+    "framebuffer_fnv1a64": "0x6f6cf22b7c8cb4b8"
+  },
+  "weather_after_300_ticks": {
+    "particles": [
+      {
+        "kind": 2,
+        "weight": 7,
+        "x": 9,
+        "y": 49
+      },
+      {
+        "kind": 2,
+        "weight": 7,
+        "x": 18,
+        "y": -4000
+      },
+      {
+        "kind": 1,
+        "weight": 8,
+        "x": 11,
+        "y": 160
+      }
+    ],
+    "random_state": "0xaf1cf0fb",
+    "framebuffer_sha256": "e8a96eda7898d8fc13ca270754b1d10b5cf05e0994db8cc82d3218aecf00a313",
+    "framebuffer_fnv1a64": "0xdff4c0d05bd3426b"
+  },
+  "initial_left_probe": {
+    "target": [
+      356,
+      235
+    ],
+    "kind": "enter_scene",
+    "scene_id": 70,
+    "world_after": [
+      357,
+      235
+    ]
+  },
+  "fixed_trace": [
+    {
+      "direction": "right",
+      "kind": "moved",
+      "scene_id": -1,
+      "world": [
+        358,
+        235
+      ]
+    },
+    {
+      "direction": "up",
+      "kind": "moved",
+      "scene_id": -1,
+      "world": [
+        358,
+        234
+      ]
+    },
+    {
+      "direction": "left",
+      "kind": "moved",
+      "scene_id": -1,
+      "world": [
+        357,
+        234
+      ]
+    },
+    {
+      "direction": "down",
+      "kind": "moved",
+      "scene_id": -1,
+      "world": [
+        357,
+        235
+      ]
+    }
+  ],
+  "collision": {
+    "blocked_walking_ranges": [
+      [
+        358,
+        362
+      ],
+      [
+        374,
+        380
+      ],
+      [
+        458,
+        464
+      ],
+      [
+        506,
+        670
+      ],
+      [
+        818,
+        824
+      ],
+      [
+        838,
+        838
+      ],
+      [
+        934,
+        936
+      ],
+      [
+        1016,
+        1022
+      ]
+    ]
+  }
+}

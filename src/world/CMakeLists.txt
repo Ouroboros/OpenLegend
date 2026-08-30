@@ -1,28 +1,17 @@
-add_library(
-    openlegend_app
-    STATIC
-        legacy_game_runtime.cpp
-        mode_coordinator.cpp
-        runtime_configuration.cpp
-)
+add_library(openlegend_world STATIC world_map.cpp)
 target_include_directories(
-    openlegend_app
+    openlegend_world
     PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(
-    openlegend_app
+    openlegend_world
     PUBLIC
-        openlegend_compat
         openlegend_model
-        openlegend_persistence
         openlegend_random
         openlegend_render
         openlegend_resource
-        openlegend_ui
-        openlegend_world
         openlegend_project_options
         openlegend_project_warnings
-    PRIVATE tomlplusplus::tomlplusplus
 )

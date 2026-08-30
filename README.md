@@ -14,7 +14,8 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B3 已完成**：RANGER 六段、基线/工作副本/三槽 R/S/D、lossless snapshot 与逐字节回写。
 - **B4 已完成**：IRQ1/set-1 键态、BIOS tick、原 LCG、Miles 命令顺序、8 槽 raw WAV 与 XMI/OPL3 音频。
 - **B5 已完成**：标题/三槽逐像素流程、CFONT 姓名输入、初始属性、六项菜单、状态/物品基础 UI、隔离存读错误路径与 SDL 会话链。
-- **B6–B9 未完成**：世界、场景、战斗与完整集成。
+- **B6 已完成**：五层世界、128×128 缓存、陆地/船移动、碰撞与入口、待机/天气周期和逐像素世界绘制。
+- **B7–B9 未完成**：场景、战斗与完整集成。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 
@@ -32,9 +33,10 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - RANGER 六段、100 个 S 场景状态、100 个 D 事件状态、基线/工作副本和三槽存档；
 - 84-byte 键盘翻译表、tick 舍入/回绕和 4 组独立 RNG 向量；
 - 24 个 `ATK*.WAV`、53 个 `E*.WAV` 与 24 个 `GAME*.XMI`，逐项长度、格式与 XMI PCM 生成；
-- 9 个标题帧、主/读档/等待逐像素 hash、CFONT 候选、四组新游戏 RNG 向量、双页状态/物品渲染与三槽成功/损坏/写失败会话链。
+- 9 个标题帧、主/读档/等待逐像素 hash、CFONT 候选、四组新游戏 RNG 向量、双页状态/物品渲染与三槽成功/损坏/写失败会话链；
+- 五层 128×128 cache hash、固定陆地/船轨迹、场景 70/IQ 条件、初始世界与 300 tick 半透明天气 framebuffer。
 
-对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)、[`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md) 和 [`research/evidence/title-menu-new-game-1to1.md`](research/evidence/title-menu-new-game-1to1.md)。
+对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)、[`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md)、[`research/evidence/title-menu-new-game-1to1.md`](research/evidence/title-menu-new-game-1to1.md) 和 [`research/evidence/world-map-1to1.md`](research/evidence/world-map-1to1.md)。
 
 ## 原版数据目录
 
@@ -72,7 +74,7 @@ maximized = false
 - `--data-dir <目录>` 或 `--data-dir=<目录>` 的优先级高于 `[paths].data_dir`；
 - 配置中的相对数据路径以可执行文件目录为基准，命令行相对路径以启动目录为基准；
 - 正常退出会回写窗口宽高和最大化状态，同时保留 `[paths]` 与未知 TOML 表；
-- 当前不暴露显示 FPS/世界移动插值字段；B4 已固定 BIOS tick，B6 世界移动尚未实现，提前写入这些字段仍不会产生有效行为。
+- 当前不暴露显示 FPS/世界移动插值字段；B4/B6 已按 BIOS tick 和原始 held-key 状态驱动世界，不增加宿主插值配置。
 
 ## 构建
 
@@ -109,7 +111,7 @@ build.bat app
 build.bat app --config Release
 ```
 
-`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已在 Linux 与 Windows 原生验证，core 为 8 项 CTest，app 为 9 项 CTest；Linux ASan+UBSan 同时通过 8/8。
+`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已在 Linux 与 Windows 原生验证，B6 起 core 为 9 项 CTest，app 为 10 项 CTest；Linux ASan+UBSan 同时覆盖 9 项核心测试。
 
 可选参数：
 

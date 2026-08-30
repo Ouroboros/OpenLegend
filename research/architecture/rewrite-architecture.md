@@ -27,7 +27,7 @@
 | `openlegend_random` | 原 32-bit LCG、显式 seed 与消费流 | RNG state | 无 |
 | `openlegend_render` | indexed framebuffer、RLE 精灵、文字、地图投影、画面效果、呈现请求 | framebuffer、palette、字形缓存 | compat, resource |
 | `openlegend_audio` | Miles 顺序、raw WAV 八槽、XMI 合成和设备无关 mixer | 曲目、音效与播放状态 | resource；私有依赖 libADLMIDI |
-| `openlegend_world` | 世界地图会话、缓存、移动、碰撞、入口和随机遇敌 | 世界运行时状态 | compat, resource, model, input, time, random, render, audio |
+| `openlegend_world` | 五层世界、128×128 缓存、移动/船/碰撞、入口、待机与天气 | 世界运行时状态 | resource, model, random, render |
 | `openlegend_scene` | 64×64 场景、事件、对话和场景流程 | 场景会话与事件执行状态 | compat, resource, model, input, time, random, render, audio |
 | `openlegend_ui` | 标题、菜单、状态、物品、商店、存读档选择和模态对话 | UI 模式状态 | compat, model, input, time, render, audio |
 | `openlegend_battle` | 战斗建立、角色临时态、动作/AI、胜负出口 | 战斗会话 | compat, resource, model, input, time, random, render, audio |
@@ -42,7 +42,7 @@
 ```text
 openlegend_app
 ├─ openlegend_persistence ──→ openlegend_model ──→ openlegend_resource
-├─ openlegend_world ────────→ model/resource/input/time/random/render/audio
+├─ openlegend_world ────────→ model/resource/random/render
 ├─ openlegend_scene ────────→ model/resource/input/time/random/render/audio
 ├─ openlegend_ui ───────────→ model/input/time/render/audio
 ├─ openlegend_battle ───────→ model/resource/input/time/random/render/audio
@@ -57,7 +57,7 @@ openlegend_app
 
 | 旧式关系 | OpenLegend 合同 |
 |---|---|
-| 世界函数直接进入场景、菜单或战斗 | `WorldStepResult` 返回原始请求及参数，`app` 同步消费 |
+| 世界函数直接进入场景或菜单 | `WorldStepResult` 返回原始请求及参数，`app` 同步消费；机器码世界循环不直接开始战斗 |
 | 场景事件直接调用战斗或世界主循环 | `SceneStepResult` 返回 `StartBattle` / `ReturnWorld` 等结果 |
 | UI 直接写世界、战斗和存档全局区 | UI 返回命令；模型修改走 owner API；存档走 snapshot |
 | 战斗结束直接跳回调用者内部状态 | `BattleStepResult` 保留明确出口，`app` 提交战后更新并恢复来源模式 |
@@ -87,7 +87,7 @@ using AppMode = std::variant<
 ### 5.2 结果类型
 
 ```text
-WorldStepResult  = Stay | EnterScene | OpenUi | StartBattle | Quit
+WorldStepResult  = Stay | Moved | EnterScene | OpenUi
 SceneStepResult  = Stay | ReturnWorld | OpenUi | StartBattle | Quit
 UiStepResult     = Stay | Close | NewGame | LoadSlot | SaveSlot | Quit
 BattleStepResult = Stay | Victory | Defeat | Escape
@@ -218,8 +218,9 @@ resource/legacy_sprite_frame.cpp
 render/indexed_framebuffer.cpp
 render/rle_sprite_renderer.cpp
 render/legacy_font_renderer.cpp
-world/world_session.cpp
-world/world_projection.cpp
+world/world_map.cpp
+render/world_projection.cpp
+render/world_depth_order.cpp
 scene/scene_event_runtime.cpp
 battle/battle_session.cpp
 persistence/save_slot.cpp

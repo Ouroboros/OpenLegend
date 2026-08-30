@@ -25,10 +25,11 @@ namespace {
 
 [[nodiscard]] bool prepare_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
-    constexpr std::array<std::string_view, 13> files{
-        "TITLE.IDX", "TITLE.GRP", "TITLE.BIG", "MMAP.COL", "FONT.X16", "FONT.C16",
-        "CFONT", "RANGER.IDX", "RANGER.GRP", "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX",
-        "ALLDEF.GRP"};
+    constexpr std::array<std::string_view, 22> files{
+        "TITLE.IDX", "TITLE.GRP", "TITLE.BIG", "MMAP.COL", "MMAP.IDX", "MMAP.GRP",
+        "CLOUD.IDX", "CLOUD.GRP", "EARTH.002", "SURFACE.002", "BUILDING.002", "BUILDX.002",
+        "BUILDY.002", "FONT.X16", "FONT.C16", "CFONT", "RANGER.IDX", "RANGER.GRP",
+        "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX", "ALLDEF.GRP"};
     std::error_code error;
     std::filesystem::remove_all(destination, error);
     error.clear();
@@ -295,6 +296,22 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte + 1U] == 0U);
     }
     OL_CHECK(new_game.render());
+    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x6F6CF22B7C8CB4B8ULL);
+    new_game.handle_world_input(false, false, false, true);
+    new_game.advance();
+    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 358);
+    new_game.handle_world_input(false, true, false, false);
+    new_game.advance();
+    new_game.handle_world_input(true, false, false, false);
+    new_game.advance();
+    new_game.handle_world_input(false, false, true, false);
+    new_game.advance();
+    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
+    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
+    new_game.handle_world_input(true, false, false, false);
+    new_game.advance();
+    OL_CHECK(new_game.scene_request().has_value());
+    OL_CHECK(new_game.scene_request().value_or(-1) == 70);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());

@@ -49,6 +49,38 @@ void LegacyGameRuntime::advance() {
     if (pending_io_ != PendingIo::none) {
         perform_pending_io();
     }
+    if (view_ == LegacyGameView::world && world_session_ != nullptr) {
+        if (!world_step_processed_) {
+            world_session_->idle_tick();
+        }
+        world_session_->periodic_tick();
+    }
+    world_step_processed_ = false;
+}
+
+void LegacyGameRuntime::handle_world_input(
+    const bool left, const bool up, const bool down, const bool right) {
+    if (!valid() || view_ != LegacyGameView::world || world_session_ == nullptr) {
+        return;
+    }
+    std::optional<world::WorldDirection> direction;
+    if (left) {
+        direction = world::WorldDirection::left;
+    } else if (up) {
+        direction = world::WorldDirection::up;
+    } else if (down) {
+        direction = world::WorldDirection::down;
+    } else if (right) {
+        direction = world::WorldDirection::right;
+    }
+    if (!direction.has_value()) {
+        return;
+    }
+    world_step_processed_ = true;
+    const auto result = world_session_->move(*direction);
+    if (result.kind == world::WorldStepKind::enter_scene) {
+        scene_request_ = result.scene_id;
+    }
 }
 
 void LegacyGameRuntime::handle_key(
@@ -88,7 +120,7 @@ void LegacyGameRuntime::handle_key(
                 ui::AttributeRollStatus::accepted) {
             attribute_controller_.reset();
             update_menu_counts();
-            view_ = LegacyGameView::world;
+            static_cast<void>(start_world(LegacyGameView::title));
         }
         break;
     case LegacyGameView::world:
@@ -128,22 +160,20 @@ bool LegacyGameRuntime::render() {
                    attribute_controller_ != nullptr && attribute_controller_->cheat_active(),
                    framebuffer_);
     }
-    case LegacyGameView::world: {
-        const auto* ranger = game_state_.ranger();
-        return ranger != nullptr && basic_renderer_.render_world_status(*ranger, framebuffer_);
-    }
+    case LegacyGameView::world:
+        return world_session_ != nullptr && world_session_->render(framebuffer_);
     case LegacyGameView::game_menu: {
         const auto* ranger = game_state_.ranger();
-        return ranger != nullptr &&
-               basic_renderer_.render_world_status(*ranger, framebuffer_) &&
+        return ranger != nullptr && world_session_ != nullptr &&
+               world_session_->render(framebuffer_) &&
                basic_renderer_.render_game_menu(game_menu_, *ranger, framebuffer_);
     }
     case LegacyGameView::error: {
         bool base_rendered = false;
         if (error_return_view_ == LegacyGameView::title) {
             base_rendered = title_renderer_.render(title_menu_, framebuffer_);
-        } else if (const auto* ranger = game_state_.ranger(); ranger != nullptr) {
-            base_rendered = basic_renderer_.render_world_status(*ranger, framebuffer_);
+        } else if (world_session_ != nullptr) {
+            base_rendered = world_session_->render(framebuffer_);
         }
         return base_rendered && basic_renderer_.render_error(visible_error_, framebuffer_);
     }
@@ -156,6 +186,9 @@ bool LegacyGameRuntime::render() {
 void LegacyGameRuntime::begin_new_game() {
     attribute_controller_.reset();
     name_editor_.reset();
+    world_session_.reset();
+    world_map_.reset();
+    scene_request_.reset();
     auto loaded = persistence::load_baseline(data_root_path_);
     if (!loaded) {
         show_error(
@@ -189,12 +222,15 @@ void LegacyGameRuntime::perform_pending_io() {
                 error_return_view_);
             return;
         }
+        world_session_.reset();
+        world_map_.reset();
+        scene_request_.reset();
         if (!game_state_.import_snapshot(std::move(*loaded.snapshot))) {
             show_error("Save snapshot import failed", error_return_view_);
             return;
         }
         update_menu_counts();
-        view_ = LegacyGameView::world;
+        static_cast<void>(start_world(error_return_view_));
         return;
     }
 
@@ -210,6 +246,31 @@ void LegacyGameRuntime::perform_pending_io() {
             std::string{persistence::persistence_status_message(written.status)},
             LegacyGameView::game_menu);
     }
+}
+
+bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
+    scene_request_.reset();
+    world_step_processed_ = false;
+    auto* ranger = game_state_.ranger();
+    if (ranger == nullptr) {
+        show_error("No game state is available for the world map", error_return_view);
+        return false;
+    }
+    world_map_ = std::make_unique<world::WorldMapData>(data_root_);
+    if (!world_map_->valid()) {
+        show_error(world_map_->error(), error_return_view);
+        return false;
+    }
+    world_session_ = std::make_unique<world::WorldSession>(
+        data_root_, *world_map_, *ranger, random_);
+    if (!world_session_->valid()) {
+        show_error(world_session_->error(), error_return_view);
+        world_session_.reset();
+        world_map_.reset();
+        return false;
+    }
+    view_ = LegacyGameView::world;
+    return true;
 }
 
 void LegacyGameRuntime::update_menu_counts() {

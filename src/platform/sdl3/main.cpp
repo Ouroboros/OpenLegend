@@ -194,7 +194,6 @@ int main(const int argc, const char* const* argv) {
     bool running = true;
     while (running) {
         const auto frame_tick = tick_source.tick();
-        game.advance();
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
@@ -212,6 +211,12 @@ int main(const int argc, const char* const* argv) {
                 keyboard.handle_host_key(event.key, false);
             }
         }
+        game.handle_world_input(
+            keyboard.down(0x9BU),
+            keyboard.down(0x9EU),
+            keyboard.down(0x98U),
+            keyboard.down(0x9DU));
+        game.advance();
         running = running && game.running();
         if (running) {
             if (!game.render()) {

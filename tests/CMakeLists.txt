@@ -55,6 +55,18 @@ target_include_directories(openlegend_render_tests PRIVATE ${CMAKE_CURRENT_SOURC
 target_link_libraries(openlegend_render_tests PRIVATE openlegend_render)
 add_test(NAME openlegend.render COMMAND openlegend_render_tests)
 
+add_executable(openlegend_world_tests unit/world/world_map_test.cpp)
+target_compile_definitions(
+    openlegend_world_tests
+    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+)
+target_include_directories(openlegend_world_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(
+    openlegend_world_tests
+    PRIVATE openlegend_persistence openlegend_resource openlegend_world
+)
+add_test(NAME openlegend.world COMMAND openlegend_world_tests)
+
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
 target_compile_definitions(
     openlegend_persistence_tests
