@@ -95,6 +95,10 @@ add_test(NAME openlegend.persistence COMMAND openlegend_persistence_tests)
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 add_test(
+    NAME openlegend.reverse_framework
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/research/tools/validate_reverse_framework.py
+)
+add_test(
     NAME openlegend.build_tool
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/build_tool_test.py
 )

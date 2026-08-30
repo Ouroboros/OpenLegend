@@ -1,8 +1,8 @@
 # OpenLegend 执行 GOAL
 
-版本：v2
-当前阶段：B7 · 场景、事件与对话
-当前状态：B0–B6 已完成，下一工作包按原版汇编恢复 6×64×64 场景、事件执行器、TALK 对话和同步返回
+版本：v4
+当前阶段：基础框架完善
+当前状态：B0–B7 已有实现全部重置为 `implemented_pending_review` 或更早状态；先完成 inventory、work package、validator、日志与诊断，再完成 B7–B9 功能实现，最后统一执行汇编↔C++ REVIEW
 
 ## 0. 唯一正确性真值
 
@@ -13,6 +13,40 @@
 - 上述任何内容与原版汇编冲突时，无条件服从原版汇编，并同步修正实现、测试、文档和 GOAL 进度。
 - 原始资源字节用于证明数据可达性和输入域，但资源表现的最终解释仍由读取它的原版汇编决定。
 - 没有汇编或原程序输出证据的行为不得标记为 `assembly_exact`，不得据此宣称 1:1 完成。
+
+### 0.1 强制反复 REVIEW 收敛门禁
+
+每个函数、handler、事件 opcode、平台适配调用链和紧耦合行为单元都必须执行以下闭环，任何一步不得省略：
+
+```text
+锁定机器码物理范围、调用者、参数/寄存器/标志位、共享状态和全部出口
+  -> 暂不参考现有 C++，从汇编独立记录基本块、分支、位宽、读写和调用顺序
+  -> 从汇编独立派生正常、边界、错误、哨兵、截断、回绕和原 BUG 测试
+  -> 再逐行审计 C++ 与测试
+  -> 最小实现或修正
+  -> 汇编到 C++、C++ 到汇编双向逐基本块 REVIEW
+  -> 发现差异时同步修正实现、测试、证据和本 GOAL 状态
+  -> 从函数入口重新开始完整 REVIEW
+  -> 重复上述过程，直到一轮完整正反向 REVIEW 不再产生任何新差异或未决项
+```
+
+硬性要求：
+
+- REVIEW 次数不设上限，以结果收敛为唯一停止条件；“再看一次”或固定轮数不构成完成。
+- 编译通过、单元测试通过、真实资产可运行、已有 golden 和现有 C++ 看似合理均不能替代汇编双向 REVIEW。
+- 平台边界同样必须审计完整链路；核心函数正确但 SDL 键码、显示、音频或会话接线错误，仍视为该行为单元未完成。
+- 条件方向、符号/零扩展、16/32 位截断、整数回绕、RNG 消费、阻塞/呈现时序、状态副作用和所有提前出口必须逐项追溯。
+- 只有最后一轮完整 REVIEW 零新增差异、全部差异已落入实现/测试/证据且全部验证通过，才允许标记 `assembly_exact` 或关闭工作包。
+- 后续发现真实运行缺陷时，必须立即撤销相关阶段的完成结论，重新打开并从汇编入口执行整轮收敛，不得仅做症状补丁。
+
+实现阶段与最终 REVIEW 阶段允许分离：可以先完成 B0–B9 的全部 C++ 功能实现，再按锁定的函数/handler workpack 统一 REVIEW。分离期间状态必须精确记录：
+
+- `pending_mapping`：尚未确认现有 C++ 是否覆盖；
+- `pending_implementation`：范围已确认但实现未完成；
+- `implemented_pending_review`：已有实现，但尚未取得最终汇编一致性结论；
+- `assembly_exact` / `platform_adapted`：仅在最终 REVIEW 收敛后使用。
+
+因此实现完成、测试通过和可运行都只能推进到 `implemented_pending_review`；最终 REVIEW 前不得把函数、模块或阶段写成“完成”。
 
 ## 1. 总目标
 
@@ -57,7 +91,9 @@
   -> 写格式、整数、状态、副作用和时序规格
   -> 建立汇编向量、真实资产、逐字节/逐像素 golden
   -> 现代 C++ 实现合法域行为
-  -> 逐基本块复核所有分支与调用点
+  -> 汇编到 C++、C++ 到汇编逐基本块复核所有分支与调用点
+  -> 有差异则修正并从函数入口重新执行完整双向 REVIEW
+  -> 重复直到完整 REVIEW 零新增差异
   -> 原程序差分或等价 oracle 验证
   -> 清零当前模块 unresolved 后关闭工作包
 ```
@@ -88,6 +124,8 @@
 ## 5. 阶段 B：逐模块 1:1 还原计划
 
 用户已通过当前 Goal 明确授权执行 B0–B9。
+
+状态重置：B0–B7 既有 C++、测试、golden 和证据不删除，但不继承完成结论。所有行为单元必须进入 `research/inventory` 和唯一模块 work package；已有实现先标 `implemented_pending_review`，未映射或未实现项分别标 `pending_mapping` / `pending_implementation`。允许先完成 B0–B9 功能实现，再统一按第 0.1 节 REVIEW。
 
 ### B0 · 工程与顶层骨架
 
@@ -142,7 +180,7 @@
 
 ### B4 · 输入、时间、随机与音频
 
-状态：**完成**
+状态：**已有实现，`implemented_pending_review`**
 证据：`../research/evidence/input-time-random-audio-1to1.md`、`../research/ida/reports/Z_DAT.b4_runtime_xrefs.txt`
 
 范围：`input + time + random + audio + platform_sdl3 audio/event adapter`
@@ -158,9 +196,9 @@
 
 ### B5 · 标题、菜单与新建/读取流程
 
-状态：**已完成**
+状态：**已有实现，`implemented_pending_review`**
 
-完成证据：标题/三槽逐像素 golden、CFONT 姓名输入、17 次 RNG 初始属性/BABERUTH、六项菜单、双页状态/物品 UI、隔离目录存读失败合同、`GameState` 会话所有者、SDL 主循环和 DOS indexed→现代 RGBA 显示兼容层均已接入；Linux/Windows `core/app × Debug/Release` 全通过，Linux ASan+UBSan 8/8 通过。
+已有证据：标题/三槽逐像素 golden、CFONT 姓名输入、17 次 RNG 初始属性/BABERUTH、六项菜单、双页状态/物品 UI、隔离目录存读失败合同、`GameState` 会话所有者、SDL 主循环和 DOS indexed→现代 RGBA 显示兼容层均已接入；Linux/Windows `core/app × Debug/Release` 全通过，Linux ASan+UBSan 8/8 通过。
 
 范围：`ui + app + persistence`
 
@@ -175,9 +213,9 @@
 
 ### B6 · 世界地图
 
-状态：**已完成**
+状态：**已有实现，`implemented_pending_review`；真实运行回归待诊断**
 
-完成证据：`../research/evidence/world-map-1to1.md`、`../research/evidence/world-map-goldens.json`、`../research/ida/reports/Z_DAT.b6_world_xrefs.txt`。五层资源、128×128 cache、11/98 重载、陆地/船/海岸碰撞、双入口/IQ 条件、待机和 8 级半透明天气、indexed 世界绘制、held-key SDL 会话链均已实现；世界机器码无直接随机战斗 caller，未臆造该行为。
+已有证据：`../research/evidence/world-map-1to1.md`、`../research/evidence/world-map-goldens.json`、`../research/ida/reports/Z_DAT.b6_world_xrefs.txt`。五层资源、128×128 cache、11/98 重载、陆地/船/海岸碰撞、双入口/IQ 条件、待机和 8 级半透明天气、indexed 世界绘制已实现；但真实 SDL 运行发现左右方向键状态索引接线错误，并收到人物移动后消失报告，因此此前“held-key SDL 会话链完成”和 B6 完成结论撤销。必须按第 0.1 节从机器码翻译表、平台事件、app 调用点、世界移动、深度排序、人物帧和最终呈现重新双向 REVIEW，收敛后才能恢复完成状态。
 
 范围：`world`
 
@@ -246,6 +284,7 @@
 - 单元测试覆盖正常、边界、错误、原 BUG、溢出和提前退出路径；
 - 当前原版资产全量测试通过；
 - 像素、字节、状态、RNG 和调用序列有 golden 或原程序差分证据；
+- 已按第 0.1 节执行不限次数的汇编↔C++ 双向逐基本块 REVIEW，最后一轮完整复核零新增差异；
 - 实现按基本块复核，研究结论、实现和测试三者一致；
 - 没有跨模块裸全局、SDL 类型泄漏、反向依赖或未批准行为改良；
 - 剩余的不可达库内部细节有证明性排除，不能用 TODO 代替可达逻辑。
@@ -271,6 +310,7 @@
 - 固定输入流程的状态、RNG、像素、调色板、保存字节和音频命令序列与原程序一致；
 - 所有原逻辑 BUG 和异常路径已保留，所有平台偏差均有用户批准；
 - Linux 与 Windows 构建、单元、真实资产、集成和原程序差分门禁全部通过；
+- 所有游戏自有函数、事件 opcode 和平台调用链均按第 0.1 节完成最后一轮零新增差异的双向 REVIEW；
 - 不存在以“可玩”“测试通过”或“现代实现更合理”为理由保留的未验证兼容缺口。
 
 ## 10. 计划维护规则
@@ -283,9 +323,9 @@
 
 ## 11. 当前唯一队列
 
-1. B0 已完成并通过 core/SDL smoke 门禁；
-2. B1 已完成 118 对 IDX/GRP、110 对 SDX/WDX、78,014 个非空 RLE 帧和基础资产的汇编合同验证；
-3. B2 已完成全部当前 RLE 帧四向裁剪、14,101 个字形、129 帧 palette 淡变、shadow-mask 和地图深度顺序验证；
-4. B3 已完成 RANGER 六段、基线/工作副本/三槽 R/S/D 和 lossless snapshot 的逐字节验证；
-5. 当前执行 B4：输入、时间、随机与音频；随后按 B5–B9 顺序逐模块清零可达逻辑缺口；
-6. 只有满足第 9 节全部条件后才调用 Goal 完成。
+1. 完善基础框架：function catalog、module/state/dependency inventory、模块 work package、closure 状态机、validator、日志与诊断；框架通过 CTest 前停止业务逆向扩展；
+2. 把 B0–B7 现有 C++ 映射到 inventory，统一标 `implemented_pending_review` 或更早状态，不继承旧完成结论；
+3. 在框架约束下完成 B7 剩余事件实现、B8 战斗和 B9 全集成；实现通过测试后仍只标 `implemented_pending_review`；
+4. 全部功能实现后，按锁定 workpack 对 B0–B9 逐函数/handler 执行第 0.1 节最终汇编↔C++ REVIEW，差异修正后从入口重启，直到完整一轮零新增差异；
+5. 最终执行 Linux/Windows 全矩阵、sanitizer、smoke、资产只读、IDA 数据库和原程序差分/登记阻塞验收；
+6. 只有全部 closure 关闭并满足第 9 节全部条件后才调用 Goal 完成。

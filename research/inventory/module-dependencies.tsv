@@ -1,0 +1,31 @@
+dependent_module	provider_module	relationship	shared_state_contract	reverse_dependency_present	review_status
+platform_sdl3	compat	host-neutral events and indexed frame view	const/value only	no	implemented_pending_review
+platform_sdl3	input	host key normalization	LegacyKeyboard owned outside SDL objects	no	implemented_pending_review
+platform_sdl3	time	BIOS tick host source	value samples only	no	implemented_pending_review
+platform_sdl3	audio	audio device and command consumption	backend resources stay platform/audio	no	implemented_pending_review
+app	model	persistent GameState owner	app owns GameState; modules borrow snapshot views	no	implemented_pending_review
+app	persistence	snapshot load/save transport	request/result only	no	implemented_pending_review
+app	random	runtime RNG owner	one borrowed stream	no	implemented_pending_review
+app	render	final core framebuffer	app owns one framebuffer	no	implemented_pending_review
+app	resource	data root	read-only	no	implemented_pending_review
+app	ui	synchronous modal results	UI owns modal transients	no	implemented_pending_review
+app	world	synchronous world session and Scene request	world borrows model/RNG; app consumes result	no	implemented_pending_review
+app	scene	synchronous scene session and battle/UI requests	scene borrows model/RNG; app consumes result	no	implemented_pending_review
+resource	compat	little-endian and RGB6 values	value only	no	implemented_pending_review
+persistence	model	lossless snapshot transport	no duplicate gameplay owner	no	implemented_pending_review
+render	compat	indexed/RGB6 contracts	framebuffer owned by render/app boundary	no	implemented_pending_review
+render	resource	sprite/font/palette views	read-only asset views	no	implemented_pending_review
+ui	model	read-only state plus explicit mutations	persistent writes remain in model owner	no	implemented_pending_review
+ui	render	software draw commands	framebuffer borrow only	no	implemented_pending_review
+world	model	world header/role state	borrow and synchronous write-through	no	implemented_pending_review
+world	random	weather/idle RNG	shared ordered stream	no	implemented_pending_review
+world	render	indexed world draw	framebuffer borrow only	no	implemented_pending_review
+world	resource	world layers/sprites/palette	read-only asset views	no	implemented_pending_review
+scene	model	scene maps/events/roles/items	borrow and synchronous write-through	no	implemented_pending_review
+scene	random	weather/event RNG	shared ordered stream	no	implemented_pending_review
+scene	render	indexed scene/UI draw	framebuffer borrow only	no	implemented_pending_review
+scene	resource	scene sprites/TALK/KDEF/palette	read-only asset views	no	implemented_pending_review
+battle	model	battle setup and committed result	pending B8	no	pending_implementation
+battle	random	battle RNG	pending B8	no	pending_implementation
+battle	render	battle indexed rendering	pending B8	no	pending_implementation
+battle	resource	FIGHT and sprite assets	pending B8	no	pending_implementation
