@@ -119,6 +119,10 @@ private:
     std::uint16_t scene_effect_wait_ticks_{1U};
     bool scene_effect_presented_{};
     bool world_step_processed_{};
+    std::optional<scene::SceneDirection> scene_direction_input_;
+    std::optional<world::WorldDirection> scene_entry_world_direction_;
+    bool scene_interact_requested_{};
+    bool scene_ui_requested_{};
     bool ending_complete_{};
     std::vector<std::uint8_t> visible_error_;
     std::string startup_error_;

@@ -47,6 +47,17 @@ constexpr std::array<std::uint8_t, 26> kCannotLeaveProtagonist{
     return "unknown";
 }
 
+[[nodiscard]] world::WorldDirection opposite_world_direction(
+    const world::WorldDirection direction) noexcept {
+    switch (direction) {
+    case world::WorldDirection::up: return world::WorldDirection::down;
+    case world::WorldDirection::right: return world::WorldDirection::left;
+    case world::WorldDirection::left: return world::WorldDirection::right;
+    case world::WorldDirection::down: return world::WorldDirection::up;
+    }
+    return world::WorldDirection::down;
+}
+
 [[nodiscard]] std::string_view world_step_name(const world::WorldStepKind kind) noexcept {
     switch (kind) {
     case world::WorldStepKind::stay: return "stay";
@@ -128,11 +139,23 @@ void LegacyGameRuntime::advance() {
             world_session_->idle_tick();
         }
         world_session_->periodic_tick();
-    } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
-        if (!world_step_processed_) {
-            scene_session_->idle_tick();
+    } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
+               scene_session_->pending().kind == scene::SceneStepKind::stay) {
+        const auto direction = scene_direction_input_;
+        scene_direction_input_.reset();
+        bool interact_requested = false;
+        bool ui_requested = false;
+        if (!direction.has_value() && scene_interact_requested_) {
+            interact_requested = true;
+            scene_interact_requested_ = false;
+        } else if (!direction.has_value() && scene_ui_requested_) {
+            ui_requested = true;
+            scene_ui_requested_ = false;
         }
-        scene_session_->periodic_tick();
+        handle_scene_result(
+            scene_session_->tick(direction, interact_requested, ui_requested));
+    } else {
+        scene_direction_input_.reset();
     }
     world_step_processed_ = false;
 }
@@ -159,9 +182,12 @@ void LegacyGameRuntime::handle_world_input(
     }
     world_step_processed_ = true;
     if (view_ == LegacyGameView::scene) {
-        const auto scene_direction = static_cast<scene::SceneDirection>(
-            static_cast<std::int16_t>(*direction));
-        handle_scene_result(scene_session_->move(scene_direction));
+        if (scene_session_->pending().kind == scene::SceneStepKind::stay) {
+            scene_direction_input_ = static_cast<scene::SceneDirection>(
+                static_cast<std::int16_t>(*direction));
+        } else {
+            scene_direction_input_.reset();
+        }
         return;
     }
     const auto result = world_session_->move(*direction);
@@ -261,13 +287,9 @@ void LegacyGameRuntime::handle_key(
             handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));
         } else if (pending_kind == scene::SceneStepKind::stay) {
             if (translated_key == 0x1BU) {
-                update_menu_counts();
-                game_menu_.set_context(ui::GameMenuContext::scene);
-                game_menu_.show_main();
-                menu_return_view_ = LegacyGameView::scene;
-                set_view(LegacyGameView::game_menu, "open scene menu");
+                scene_ui_requested_ = true;
             } else if (translated_key == 0x0DU || translated_key == 0x20U) {
-                handle_scene_result(scene_session_->interact());
+                scene_interact_requested_ = true;
             }
         }
         break;
@@ -432,6 +454,9 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
     scene_session_.reset();
     clear_scene_effect();
     world_step_processed_ = false;
+    scene_direction_input_.reset();
+    scene_interact_requested_ = false;
+    scene_ui_requested_ = false;
     auto* ranger = game_state_.ranger();
     if (ranger == nullptr) {
         show_error("No game state is available for the world map", error_return_view);
@@ -467,10 +492,16 @@ bool LegacyGameRuntime::start_scene(
         show_error("No game state is available for the scene", error_return_view);
         return false;
     }
+    if (world_session_ != nullptr) {
+        scene_entry_world_direction_ = world_session_->direction();
+    }
     world_session_.reset();
     world_map_.reset();
     battle_request_.reset();
     clear_scene_effect();
+    scene_direction_input_.reset();
+    scene_interact_requested_ = false;
+    scene_ui_requested_ = false;
     scene_session_ = std::make_unique<scene::SceneSession>(
         data_root_, *snapshot, random_, scene_id);
     if (!scene_session_->valid()) {
@@ -485,6 +516,7 @@ bool LegacyGameRuntime::start_scene(
         " x=" + std::to_string(scene_session_->scene_x()) +
         " y=" + std::to_string(scene_session_->scene_y()) +
         " frame=" + std::to_string(scene_session_->player_frame()));
+    handle_scene_result(scene_session_->pending());
     return true;
 }
 
@@ -505,6 +537,15 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     }
     switch (result.kind) {
     case scene::SceneStepKind::return_world:
+        if (scene_entry_world_direction_.has_value()) {
+            if (auto* ranger = game_state_.ranger(); ranger != nullptr) {
+                ranger->header.set_word(
+                    model::header_word::face_towards,
+                    static_cast<std::int16_t>(
+                        opposite_world_direction(*scene_entry_world_direction_)));
+            }
+        }
+        scene_entry_world_direction_.reset();
         scene_session_.reset();
         static_cast<void>(start_world(LegacyGameView::scene));
         break;
@@ -683,7 +724,13 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         }
         break;
     }
-    case ui::GameMenuCommand::resume: set_view(menu_return_view_, "resume from menu"); break;
+    case ui::GameMenuCommand::resume:
+        set_view(menu_return_view_, "resume from menu");
+        if (menu_return_view_ == LegacyGameView::scene && scene_session_ != nullptr &&
+            scene_session_->pending().kind == scene::SceneStepKind::open_ui) {
+            handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));
+        }
+        break;
     case ui::GameMenuCommand::load_slot:
         pending_slot_ = result.slot;
         pending_io_ = PendingIo::load;

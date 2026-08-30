@@ -119,6 +119,7 @@ struct SceneStepResult {
 struct SceneAudioCommand {
     enum class Kind { music, wave } kind{Kind::music};
     std::int16_t id{};
+    bool force{};
 
     friend bool operator==(const SceneAudioCommand&, const SceneAudioCommand&) = default;
 };
@@ -135,10 +136,14 @@ public:
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    [[nodiscard]] SceneStepResult tick(
+        std::optional<SceneDirection> direction,
+        bool interact_requested,
+        bool ui_requested);
     [[nodiscard]] SceneStepResult move(SceneDirection direction);
     [[nodiscard]] SceneStepResult interact();
     [[nodiscard]] SceneStepResult use_item(std::int16_t item_id);
-    [[nodiscard]] SceneStepResult open_ui() const noexcept;
+    [[nodiscard]] SceneStepResult open_ui() noexcept;
     [[nodiscard]] SceneStepResult resume(SceneResponse response, int value = -1);
     [[nodiscard]] SceneStepResult begin_event(
         std::int16_t script_id,
@@ -172,7 +177,17 @@ private:
         battle,
         shop,
         shop_feedback,
+        scene_entry,
+        scene_jump,
+        scene_exit,
         scene_title,
+    };
+
+    enum class TickContinuation {
+        none,
+        after_action,
+        after_scene_present,
+        after_auto_event,
     };
 
     struct WeatherParticle {
@@ -187,6 +202,11 @@ private:
         std::int16_t x{-1};
         std::int16_t y{-1};
         std::int16_t item_id{-1};
+    };
+
+    struct PendingJump {
+        std::int16_t scene_id{-1};
+        bool use_jump_entrance{};
     };
 
     struct QueuedOutput {
@@ -281,8 +301,15 @@ private:
     };
 
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
+    [[nodiscard]] SceneStepResult show_scene_title();
     [[nodiscard]] SceneStepResult run_event();
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
+    [[nodiscard]] SceneStepResult finish_tick_after_action(SceneStepKind fallback);
+    [[nodiscard]] SceneStepResult finish_tick_after_scene_present(SceneStepKind fallback);
+    [[nodiscard]] SceneStepResult finish_tick_after_auto_event(SceneStepKind fallback);
+    [[nodiscard]] SceneStepResult resolve_scene_transition(SceneStepKind fallback);
+    [[nodiscard]] SceneStepResult complete_scene_jump();
+    void queue_scene_music(std::size_t metadata_word);
     [[nodiscard]] bool load_scene_sprites();
     [[nodiscard]] bool draw_sprite(
         render::IndexedFramebuffer& framebuffer,
@@ -392,6 +419,7 @@ private:
     SceneDirection direction_{SceneDirection::up};
     std::int16_t walk_frame_offset_{};
     std::int16_t animation_counter_{};
+    std::int16_t periodic_counter_{};
     bool weather_enabled_{};
     bool weather_active_{};
     std::array<WeatherParticle, 3> weather_{};
@@ -402,6 +430,10 @@ private:
     SceneStepResult pending_{};
     std::vector<std::uint8_t> pending_text_;
     PendingContinuation continuation_{PendingContinuation::none};
+    TickContinuation tick_continuation_{TickContinuation::none};
+    SceneStepKind tick_fallback_{SceneStepKind::stay};
+    std::optional<PendingJump> pending_jump_;
+    std::int16_t exit_music_override_{-1};
     std::int16_t true_offset_{};
     std::int16_t false_offset_{};
     std::int16_t battle_get_exp_{};

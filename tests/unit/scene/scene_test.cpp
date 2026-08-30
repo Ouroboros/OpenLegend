@@ -34,9 +34,17 @@ namespace {
 
 [[nodiscard]] openlegend::scene::SceneStepResult finish_scene_title(
     openlegend::scene::SceneSession& session) {
-    const auto present = session.resume(openlegend::scene::SceneResponse::acknowledge);
-    OL_CHECK(present.kind == openlegend::scene::SceneStepKind::present);
-    return session.resume(openlegend::scene::SceneResponse::acknowledge);
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+    if (session.pending().kind == SceneStepKind::fade_from_black) {
+        const auto title = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(title.kind == SceneStepKind::scene_title);
+    } else {
+        OL_CHECK(session.pending().kind == SceneStepKind::scene_title);
+    }
+    const auto present = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(present.kind == SceneStepKind::present);
+    return session.resume(SceneResponse::acknowledge);
 }
 
 [[nodiscard]] int inventory_count(
@@ -137,7 +145,7 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     OL_CHECK(session.view_origin_x() == 33);
     OL_CHECK(session.view_origin_y() == 18);
     OL_CHECK(session.direction() == openlegend::scene::SceneDirection::right);
-    OL_CHECK(session.pending().kind == openlegend::scene::SceneStepKind::scene_title);
+    OL_CHECK(session.pending().kind == openlegend::scene::SceneStepKind::fade_from_black);
 
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(session.render_map(framebuffer));
@@ -147,6 +155,8 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
                   << std::hex << frame_hash << std::dec << '\n';
     }
     OL_CHECK(frame_hash == 0x38FBAA07B733AD79ULL);
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::scene_title);
     openlegend::render::IndexedFramebuffer title_framebuffer;
     OL_CHECK(session.render(title_framebuffer));
     OL_CHECK(fnv1a64(title_framebuffer.pixels()) == 0xC5A8777E049759F2ULL);
@@ -302,6 +312,8 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     openlegend::scene::SceneSession disabled_auto{
         data_root, disabled_auto_snapshot, disabled_auto_random, 70};
     OL_CHECK(disabled_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::scene_title);
+    OL_CHECK(disabled_auto.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::present);
     OL_CHECK(disabled_auto.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::stay);
@@ -314,6 +326,7 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     openlegend::random::LegacyRandom zero_auto_random{1U};
     openlegend::scene::SceneSession zero_auto{
         data_root, zero_auto_snapshot, zero_auto_random, 70};
+    OL_CHECK(zero_auto.resume(SceneResponse::acknowledge).kind == SceneStepKind::scene_title);
     OL_CHECK(zero_auto.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
     OL_CHECK(zero_auto.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
     OL_CHECK(zero_auto.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
@@ -328,11 +341,133 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     openlegend::scene::SceneSession active_auto{
         data_root, active_auto_snapshot, active_auto_random, 70};
     OL_CHECK(active_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::scene_title);
+    OL_CHECK(active_auto.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::present);
     OL_CHECK(active_auto.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::present);
     const auto auto_notice = active_auto.resume(SceneResponse::acknowledge);
     OL_CHECK(auto_notice.kind == SceneStepKind::notice && auto_notice.style == 52);
+}
+
+void check_scene_loop_transitions(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneAudioCommand;
+    using openlegend::scene::SceneDirection;
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    constexpr std::size_t event = 199U;
+    constexpr std::size_t target = 29U * 64U + 45U;
+
+    auto exit_snapshot = load_baseline(root);
+    auto& exit_metadata = exit_snapshot.ranger.scenes[70];
+    for (std::size_t index = 0U; index < openlegend::model::scene_metadata_word::exit_count;
+         ++index) {
+        exit_metadata.set_word(openlegend::model::scene_metadata_word::exit_x_begin + index, -1);
+        exit_metadata.set_word(openlegend::model::scene_metadata_word::exit_y_begin + index, -1);
+    }
+    exit_metadata.set_word(openlegend::model::scene_metadata_word::exit_x_begin, 45);
+    exit_metadata.set_word(openlegend::model::scene_metadata_word::exit_y_begin, 29);
+    exit_metadata.set_word(openlegend::model::scene_metadata_word::jump_scene, -1);
+    exit_metadata.set_word(openlegend::model::scene_metadata_word::exit_music, 10);
+    OL_CHECK(exit_snapshot.set_scene_value(70U, SceneLayer::event_index, target, event));
+    OL_CHECK(exit_snapshot.set_event_value(70U, event, SceneEventField::event_3, 825));
+    exit_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::morality, 7);
+    openlegend::random::LegacyRandom exit_random{1U};
+    openlegend::scene::SceneSession exit_session{
+        data_root, exit_snapshot, exit_random, 70};
+    OL_CHECK(finish_scene_title(exit_session).kind == SceneStepKind::stay);
+    static_cast<void>(exit_session.take_audio_commands());
+    OL_CHECK(exit_session.tick(SceneDirection::right, false, false).kind ==
+             SceneStepKind::present);
+    OL_CHECK(exit_session.scene_x() == 45 && exit_session.scene_y() == 29);
+    OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::notice);
+    OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::fade_to_black);
+    OL_CHECK(exit_snapshot.ranger.header.word(openlegend::model::header_word::in_sub_map) == 1);
+    OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::return_world);
+    OL_CHECK(exit_snapshot.ranger.header.word(openlegend::model::header_word::in_sub_map) == 0);
+    const auto exit_audio = exit_session.take_audio_commands();
+    const std::vector<SceneAudioCommand> expected_exit_audio{
+        {SceneAudioCommand::Kind::music, 10}};
+    OL_CHECK(exit_audio == expected_exit_audio);
+
+    auto jump_snapshot = load_baseline(root);
+    auto& source = jump_snapshot.ranger.scenes[70];
+    for (std::size_t index = 0U; index < openlegend::model::scene_metadata_word::exit_count;
+         ++index) {
+        source.set_word(openlegend::model::scene_metadata_word::exit_x_begin + index, -1);
+        source.set_word(openlegend::model::scene_metadata_word::exit_y_begin + index, -1);
+    }
+    source.set_word(openlegend::model::scene_metadata_word::jump_scene, 71);
+    source.set_word(openlegend::model::scene_metadata_word::jump_x, 45);
+    source.set_word(openlegend::model::scene_metadata_word::jump_y, 29);
+    source.set_word(openlegend::model::scene_metadata_word::main_entrance_x_1, 0);
+    source.set_word(openlegend::model::scene_metadata_word::main_entrance_y_1, 0);
+    auto& destination = jump_snapshot.ranger.scenes[71];
+    destination.set_word(openlegend::model::scene_metadata_word::jump_return_x, 12);
+    destination.set_word(openlegend::model::scene_metadata_word::jump_return_y, 13);
+    destination.set_word(openlegend::model::scene_metadata_word::entrance_x, 20);
+    destination.set_word(openlegend::model::scene_metadata_word::entrance_y, 21);
+    jump_snapshot.set_scene_value(70U, SceneLayer::event_index, target, -1);
+    jump_snapshot.set_scene_value(71U, SceneLayer::event_index, 13U * 64U + 12U, -1);
+    openlegend::random::LegacyRandom jump_random{1U};
+    openlegend::scene::SceneSession jump_session{
+        data_root, jump_snapshot, jump_random, 70};
+    OL_CHECK(finish_scene_title(jump_session).kind == SceneStepKind::stay);
+    OL_CHECK(jump_session.tick(SceneDirection::right, false, false).kind ==
+             SceneStepKind::present);
+    OL_CHECK(jump_session.scene_id() == 70);
+    OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::fade_to_black);
+    OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::fade_from_black);
+    OL_CHECK(jump_session.scene_id() == 71);
+    OL_CHECK(jump_session.scene_x() == 12 && jump_session.scene_y() == 13);
+    OL_CHECK(jump_session.player_frame() == 5016);
+    OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::scene_title);
+    OL_CHECK(finish_scene_title(jump_session).kind == SceneStepKind::stay);
+}
+
+void check_scene_exit_music_override(const std::filesystem::path& root) {
+    using openlegend::scene::SceneAudioCommand;
+    using openlegend::scene::SceneDirection;
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    OL_CHECK(snapshot.ranger.scenes[70].word(
+                 openlegend::model::scene_metadata_word::exit_music) == 19);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+    static_cast<void>(session.take_audio_commands());
+
+    auto result = session.begin_event(494, 0, 44, 29);
+    for (int step = 0; step < 128 && result.kind != SceneStepKind::stay; ++step) {
+        result = session.resume(
+            result.kind == SceneStepKind::question ? SceneResponse::yes
+                                                   : SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(session.take_audio_commands().empty());
+
+    result = session.tick(SceneDirection::right, false, false);
+    for (int step = 0; step < 16 && result.kind != SceneStepKind::fade_to_black; ++step) {
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::return_world);
+    const std::vector<SceneAudioCommand> expected{
+        {SceneAudioCommand::Kind::music, 3, true}};
+    OL_CHECK(session.take_audio_commands() == expected);
 }
 
 void check_scene_event_animation(const std::filesystem::path& root) {
@@ -579,10 +714,10 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     constexpr std::array<int, 5> expected_y{23, 22, 21, 20, 19};
     constexpr std::array<std::int16_t, 5> expected_pictures{5046, 5048, 5050, 5052, 5054};
     constexpr std::array<std::uint64_t, 5> expected_hashes{
-        0xD57C3152A82774CCULL,
-        0x9545F8856E41C3A4ULL,
-        0x9D6CF61532172D1DULL,
-        0xE16CC2B12C3ABD8FULL,
+        0x875FB7391E30B9B0ULL,
+        0x74B973721D47C71CULL,
+        0xC6F9A603AA1FC9F1ULL,
+        0xBBE8CD264878BE18ULL,
         0xA97E21B948CFC40FULL,
     };
     for (std::size_t index = 0U; index < expected_y.size(); ++index) {
@@ -594,7 +729,12 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
         OL_CHECK(session.player_frame() == expected_pictures[index]);
         openlegend::render::IndexedFramebuffer framebuffer;
         OL_CHECK(session.render_map(framebuffer));
-        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        const auto actual_hash = fnv1a64(framebuffer.pixels());
+        if (actual_hash != expected_hashes[index]) {
+            std::cerr << "script 343 frame " << index << ": actual 0x"
+                      << std::hex << actual_hash << std::dec << '\n';
+        }
+        OL_CHECK(actual_hash == expected_hashes[index]);
         result = session.resume(SceneResponse::acknowledge);
     }
     OL_CHECK(result.kind == SceneStepKind::dialogue);
@@ -1047,6 +1187,9 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     openlegend::random::LegacyRandom wave_random{1U};
     openlegend::scene::SceneSession wave_session{
         data_root, wave_snapshot, wave_random, 7};
+    const std::vector<openlegend::scene::SceneAudioCommand> expected_entrance_audio{
+        {openlegend::scene::SceneAudioCommand::Kind::music, 12}};
+    OL_CHECK(wave_session.take_audio_commands() == expected_entrance_audio);
     const auto wave_result = wave_session.begin_event(389, 0, 25, 48);
     OL_CHECK(wave_result.kind == SceneStepKind::dialogue);
     OL_CHECK(wave_result.talk_id == 1255);
@@ -1058,6 +1201,7 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     openlegend::random::LegacyRandom music_random{1U};
     openlegend::scene::SceneSession music_session{
         data_root, music_snapshot, music_random, 53};
+    OL_CHECK(music_session.take_audio_commands().empty());
     auto music_result = music_session.begin_event(531, 0, 0, 0, 183);
     for (int step = 0; step < 128 && music_result.kind != SceneStepKind::fade_to_black; ++step) {
         if (music_result.kind == SceneStepKind::dialogue ||
@@ -1073,7 +1217,7 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     OL_CHECK(music_result.kind == SceneStepKind::fade_from_black);
     OL_CHECK((music_session.take_audio_commands() ==
               std::vector<openlegend::scene::SceneAudioCommand>{
-                  {openlegend::scene::SceneAudioCommand::Kind::music, 9}}));
+                  {openlegend::scene::SceneAudioCommand::Kind::music, 9, true}}));
 }
 
 void check_event_shop_helpers(const std::filesystem::path& root) {
@@ -2512,6 +2656,8 @@ int main() {
     check_scene_archive_ownership(root);
     check_scene_interaction_present(root);
     check_scene_item_and_auto_event_present(root);
+    check_scene_loop_transitions(root);
+    check_scene_exit_music_override(root);
     check_scene_event_animation(root);
     check_scene_weather(root);
     check_event_camera_pan(root);

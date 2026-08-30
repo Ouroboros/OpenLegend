@@ -305,7 +305,10 @@ int main(const int argc, const char* const* argv) {
                 continue;
             }
             if (command.kind == scene::SceneAudioCommand::Kind::music) {
-                static_cast<void>(legacy_audio.play_music(static_cast<std::size_t>(command.id)));
+                const auto music_id = static_cast<std::size_t>(command.id);
+                if (command.force || legacy_audio.current_music() != music_id) {
+                    static_cast<void>(legacy_audio.play_music(music_id));
+                }
             } else {
                 static_cast<void>(legacy_audio.play_sample(
                     audio::SampleBank::effect, static_cast<std::size_t>(command.id)));

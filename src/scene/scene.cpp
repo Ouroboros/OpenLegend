@@ -379,13 +379,10 @@ SceneSession::SceneSession(
         snapshot_.ranger.header.word(model::header_word::face_towards), 0, 3));
     update_view_origin();
     commit_header();
-    pending_ = current_result(SceneStepKind::scene_title);
-    pending_text_.clear();
-    if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
-        const auto& bytes = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].bytes;
-        pending_text_.assign(bytes.begin() + 2, bytes.begin() + 12);
-        pending_text_.push_back(0U);
-    }
+    queue_scene_music(model::scene_metadata_word::entrance_music);
+    idle_tick();
+    continuation_ = PendingContinuation::scene_entry;
+    pending_ = current_result(SceneStepKind::fade_from_black);
 }
 
 SceneStepResult SceneSession::current_result(const SceneStepKind kind) const noexcept {
@@ -395,6 +392,17 @@ SceneStepResult SceneSession::current_result(const SceneStepKind kind) const noe
     result.scene_x = static_cast<std::int16_t>(scene_x_);
     result.scene_y = static_cast<std::int16_t>(scene_y_);
     return result;
+}
+
+SceneStepResult SceneSession::show_scene_title() {
+    pending_ = current_result(SceneStepKind::scene_title);
+    pending_text_.clear();
+    if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
+        const auto& bytes = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].bytes;
+        pending_text_.assign(bytes.begin() + 2, bytes.begin() + 12);
+        pending_text_.push_back(0U);
+    }
+    return pending_;
 }
 
 bool SceneSession::load_scene_sprites() {
@@ -418,6 +426,30 @@ bool SceneSession::load_scene_sprites() {
         return false;
     }
     return true;
+}
+
+SceneStepResult SceneSession::tick(
+    const std::optional<SceneDirection> direction,
+    const bool interact_requested,
+    const bool ui_requested) {
+    if (!valid() || pending_.kind != SceneStepKind::stay) {
+        return pending_;
+    }
+    idle_tick();
+    auto result = current_result(SceneStepKind::stay);
+    if (direction.has_value()) {
+        result = move(*direction);
+    } else if (interact_requested) {
+        result = interact();
+    } else if (ui_requested) {
+        result = open_ui();
+    }
+    if (result.kind != SceneStepKind::stay && result.kind != SceneStepKind::moved) {
+        tick_continuation_ = TickContinuation::after_action;
+        tick_fallback_ = SceneStepKind::stay;
+        return result;
+    }
+    return finish_tick_after_action(result.kind);
 }
 
 SceneStepResult SceneSession::move(const SceneDirection direction) {
@@ -481,55 +513,7 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
         " view_origin=" + std::to_string(view_origin_x_) + "," +
         std::to_string(view_origin_y_));
 
-    if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
-        const auto& metadata = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)];
-        for (std::size_t index = 0U; index < model::scene_metadata_word::exit_count; ++index) {
-            if (scene_x_ == metadata.word(model::scene_metadata_word::exit_x_begin + index) &&
-                scene_y_ == metadata.word(model::scene_metadata_word::exit_y_begin + index)) {
-                diagnostics::log_info(
-                    "scene exit scene=" + std::to_string(scene_id_) +
-                    " x=" + std::to_string(scene_x_) +
-                    " y=" + std::to_string(scene_y_));
-                snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 0);
-                pending_ = current_result(SceneStepKind::return_world);
-                return pending_;
-            }
-        }
-        const auto jump_scene = metadata.word(model::scene_metadata_word::jump_scene);
-        if (jump_scene >= 0 &&
-            scene_x_ == metadata.word(model::scene_metadata_word::jump_x) &&
-            scene_y_ == metadata.word(model::scene_metadata_word::jump_y)) {
-            const auto use_return = metadata.word(model::scene_metadata_word::jump_return_x) == 0 &&
-                                    metadata.word(model::scene_metadata_word::jump_return_y) == 0;
-            const auto previous_scene = scene_id_;
-            scene_id_ = jump_scene;
-            diagnostics::log_info(
-                "scene jump from=" + std::to_string(previous_scene) +
-                " to=" + std::to_string(scene_id_) +
-                " trigger=" + std::to_string(scene_x_) + "," + std::to_string(scene_y_));
-            weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
-                               kWeatherSceneIds.end();
-            if (!weather_enabled_) {
-                weather_active_ = false;
-            }
-            if (!load_scene_sprites()) {
-                pending_ = current_result(SceneStepKind::stay);
-                return pending_;
-            }
-            if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
-                const auto& target = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)];
-                scene_x_ = target.word(use_return ? model::scene_metadata_word::jump_return_x
-                                                  : model::scene_metadata_word::entrance_x);
-                scene_y_ = target.word(use_return ? model::scene_metadata_word::jump_return_y
-                                                  : model::scene_metadata_word::entrance_y);
-                scene_x_ = std::clamp(scene_x_, 0, kSceneExtent - 1);
-                scene_y_ = std::clamp(scene_y_, 0, kSceneExtent - 1);
-                update_view_origin();
-                commit_header();
-            }
-        }
-    }
-    return run_auto_event(SceneStepKind::moved);
+    return current_result(SceneStepKind::moved);
 }
 
 SceneStepResult SceneSession::interact() {
@@ -575,8 +559,9 @@ SceneStepResult SceneSession::use_item(const std::int16_t item_id) {
     return pending_;
 }
 
-SceneStepResult SceneSession::open_ui() const noexcept {
-    return current_result(SceneStepKind::open_ui);
+SceneStepResult SceneSession::open_ui() noexcept {
+    pending_ = current_result(SceneStepKind::open_ui);
+    return pending_;
 }
 
 SceneStepResult SceneSession::begin_event(
@@ -632,13 +617,48 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
 
+    if (previous_kind == SceneStepKind::fade_to_black &&
+        continuation_ == PendingContinuation::scene_jump) {
+        return complete_scene_jump();
+    }
+    if (previous_kind == SceneStepKind::fade_to_black &&
+        continuation_ == PendingContinuation::scene_exit) {
+        continuation_ = PendingContinuation::none;
+        snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 0);
+        if (exit_music_override_ >= 0) {
+            audio_commands_.push_back(SceneAudioCommand{
+                SceneAudioCommand::Kind::music, exit_music_override_, true});
+        } else {
+            queue_scene_music(model::scene_metadata_word::exit_music);
+        }
+        exit_music_override_ = -1;
+        weather_enabled_ = false;
+        weather_active_ = false;
+        pending_ = current_result(SceneStepKind::return_world);
+        return pending_;
+    }
+    if (previous_kind == SceneStepKind::fade_from_black &&
+        continuation_ == PendingContinuation::scene_entry) {
+        continuation_ = PendingContinuation::none;
+        return show_scene_title();
+    }
     if (previous_kind == SceneStepKind::scene_title) {
         continuation_ = PendingContinuation::scene_title;
         pending_ = current_result(SceneStepKind::present);
         return pending_;
     }
-    if (previous_kind == SceneStepKind::return_world || previous_kind == SceneStepKind::quit ||
-        previous_kind == SceneStepKind::open_ui) {
+    if (previous_kind == SceneStepKind::present &&
+        tick_continuation_ == TickContinuation::after_scene_present) {
+        return finish_tick_after_scene_present(tick_fallback_);
+    }
+    if (previous_kind == SceneStepKind::return_world || previous_kind == SceneStepKind::quit) {
+        pending_.kind = previous_kind;
+        return pending_;
+    }
+    if (previous_kind == SceneStepKind::open_ui) {
+        if (tick_continuation_ == TickContinuation::after_action) {
+            return finish_tick_after_action(tick_fallback_);
+        }
         pending_.kind = previous_kind;
         return pending_;
     }
@@ -737,9 +757,18 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         return emit_queued();
     }
     if (event_active_) {
-        return run_event();
+        const auto result = run_event();
+        if (result.kind != SceneStepKind::stay || event_active_) {
+            return result;
+        }
     }
     clear_event();
+    if (tick_continuation_ == TickContinuation::after_action) {
+        return finish_tick_after_action(tick_fallback_);
+    }
+    if (tick_continuation_ == TickContinuation::after_auto_event) {
+        return finish_tick_after_auto_event(tick_fallback_);
+    }
     return current_result(SceneStepKind::stay);
 }
 
@@ -832,7 +861,7 @@ SceneStepResult SceneSession::run_event() {
             clear_event();
             return current_result(SceneStepKind::stay);
         case 8:
-            audio_commands_.push_back(SceneAudioCommand{SceneAudioCommand::Kind::music, argument(1)});
+            exit_music_override_ = argument(1);
             program_counter_ += 2;
             break;
         case 10: {
@@ -1340,7 +1369,8 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 66:
-            audio_commands_.push_back(SceneAudioCommand{SceneAudioCommand::Kind::music, argument(1)});
+            audio_commands_.push_back(SceneAudioCommand{
+                SceneAudioCommand::Kind::music, argument(1), true});
             program_counter_ += 2;
             break;
         case 67:
@@ -1381,6 +1411,126 @@ SceneStepResult SceneSession::run_auto_event(const SceneStepKind fallback) {
     }
     pending_ = current_result(SceneStepKind::present);
     return pending_;
+}
+
+SceneStepResult SceneSession::finish_tick_after_action(const SceneStepKind fallback) {
+    tick_continuation_ = TickContinuation::after_scene_present;
+    tick_fallback_ = fallback;
+    pending_ = current_result(SceneStepKind::present);
+    return pending_;
+}
+
+SceneStepResult SceneSession::finish_tick_after_scene_present(const SceneStepKind fallback) {
+    tick_continuation_ = TickContinuation::none;
+    periodic_counter_ = static_cast<std::int16_t>((periodic_counter_ + 1) % 5);
+    if (periodic_counter_ == 1) {
+        periodic_tick();
+    }
+    const auto result = run_auto_event(fallback);
+    if (result.kind == SceneStepKind::present) {
+        tick_continuation_ = TickContinuation::after_auto_event;
+        tick_fallback_ = fallback;
+        return result;
+    }
+    return resolve_scene_transition(fallback);
+}
+
+SceneStepResult SceneSession::finish_tick_after_auto_event(const SceneStepKind fallback) {
+    tick_continuation_ = TickContinuation::none;
+    return resolve_scene_transition(fallback);
+}
+
+SceneStepResult SceneSession::resolve_scene_transition(const SceneStepKind fallback) {
+    if (static_cast<std::size_t>(scene_id_) >= snapshot_.ranger.scenes.size()) {
+        return current_result(fallback);
+    }
+    const auto& metadata = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)];
+    for (std::size_t index = 0U; index < model::scene_metadata_word::exit_count; ++index) {
+        if (scene_x_ == metadata.word(model::scene_metadata_word::exit_x_begin + index) &&
+            scene_y_ == metadata.word(model::scene_metadata_word::exit_y_begin + index)) {
+            diagnostics::log_info(
+                "scene exit scene=" + std::to_string(scene_id_) +
+                " x=" + std::to_string(scene_x_) +
+                " y=" + std::to_string(scene_y_));
+            continuation_ = PendingContinuation::scene_exit;
+            pending_ = current_result(SceneStepKind::fade_to_black);
+            return pending_;
+        }
+    }
+    const auto jump_scene = metadata.word(model::scene_metadata_word::jump_scene);
+    if (jump_scene < 0 ||
+        scene_x_ != metadata.word(model::scene_metadata_word::jump_x) ||
+        scene_y_ != metadata.word(model::scene_metadata_word::jump_y)) {
+        return current_result(fallback);
+    }
+    if (static_cast<std::size_t>(jump_scene) >= snapshot_.ranger.scenes.size()) {
+        error_ = "scene jump target is outside the 84-scene metadata table";
+        return current_result(SceneStepKind::stay);
+    }
+    const auto use_jump_entrance =
+        metadata.word(model::scene_metadata_word::main_entrance_x_1) == 0 &&
+        metadata.word(model::scene_metadata_word::main_entrance_y_1) == 0;
+    pending_jump_ = PendingJump{jump_scene, use_jump_entrance};
+    continuation_ = PendingContinuation::scene_jump;
+    pending_ = current_result(SceneStepKind::fade_to_black);
+    return pending_;
+}
+
+SceneStepResult SceneSession::complete_scene_jump() {
+    if (!pending_jump_.has_value()) {
+        continuation_ = PendingContinuation::none;
+        return current_result(SceneStepKind::stay);
+    }
+    const auto jump = *pending_jump_;
+    pending_jump_.reset();
+    const auto previous_scene = scene_id_;
+    scene_id_ = jump.scene_id;
+    clear_event();
+    tick_continuation_ = TickContinuation::none;
+    animation_counter_ = 0;
+    periodic_counter_ = 0;
+    walk_frame_offset_ = 0;
+    player_frame_override_.reset();
+    weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
+                       kWeatherSceneIds.end();
+    weather_active_ = false;
+    if (!load_scene_sprites()) {
+        return current_result(SceneStepKind::stay);
+    }
+    const auto& target = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)];
+    scene_x_ = std::clamp<int>(
+        target.word(jump.use_jump_entrance ? model::scene_metadata_word::jump_return_x
+                                           : model::scene_metadata_word::entrance_x),
+        0,
+        kSceneExtent - 1);
+    scene_y_ = std::clamp<int>(
+        target.word(jump.use_jump_entrance ? model::scene_metadata_word::jump_return_y
+                                           : model::scene_metadata_word::entrance_y),
+        0,
+        kSceneExtent - 1);
+    update_view_origin();
+    commit_header();
+    diagnostics::log_info(
+        "scene jump from=" + std::to_string(previous_scene) +
+        " to=" + std::to_string(scene_id_) +
+        " target=" + std::to_string(scene_x_) + "," + std::to_string(scene_y_));
+    queue_scene_music(model::scene_metadata_word::entrance_music);
+    idle_tick();
+    continuation_ = PendingContinuation::scene_entry;
+    pending_ = current_result(SceneStepKind::fade_from_black);
+    return pending_;
+}
+
+void SceneSession::queue_scene_music(const std::size_t metadata_word) {
+    if (static_cast<std::size_t>(scene_id_) >= snapshot_.ranger.scenes.size()) {
+        return;
+    }
+    const auto music = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].word(
+        metadata_word);
+    if (music < 0) {
+        return;
+    }
+    audio_commands_.push_back(SceneAudioCommand{SceneAudioCommand::Kind::music, music});
 }
 
 void SceneSession::periodic_tick() {

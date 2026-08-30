@@ -457,6 +457,42 @@ def three_statue_animation_trace(
     return result
 
 
+def advance_event_animation(
+    scene_words: tuple[int, ...],
+    event_words: tuple[int, ...],
+    counter: int,
+) -> tuple[int, ...]:
+    mutable_events = list(event_words)
+    for x in range(64):
+        for y in range(64):
+            event = scene_value(scene_words, 3, x, y)
+            if event < 0:
+                continue
+            base = event * 11
+            first_picture = mutable_events[base + 5]
+            if first_picture <= 0:
+                continue
+            end_picture = mutable_events[base + 6]
+            displayed_picture = mutable_events[base + 7]
+            delay = mutable_events[base + 8]
+            if displayed_picture >= end_picture:
+                displayed_picture = first_picture
+            if (
+                displayed_picture > first_picture
+                and counter % 4 == 0
+                and displayed_picture < end_picture
+            ):
+                displayed_picture += 2
+            if (
+                delay <= counter % 100
+                and displayed_picture == first_picture
+                and displayed_picture < end_picture
+            ):
+                displayed_picture += 2
+            mutable_events[base + 7] = displayed_picture
+    return tuple(mutable_events)
+
+
 def scripted_walk_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -660,6 +696,104 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 {"fame_before": 32767, "fame_after": wrapped_add(32767, 1), "book_event_1": -1},
             ],
         },
+    }
+
+
+def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]:
+    metadata = [
+        words(ranger[97_076 + scene * 52:97_076 + (scene + 1) * 52])
+        for scene in range(84)
+    ]
+    assert all(len(record) == 26 for record in metadata)
+    jumps = [
+        {
+            "scene": scene,
+            "target": record[8],
+            "trigger": [record[22], record[23]],
+            "use_jump_entrance": record[10] == 0 and record[11] == 0,
+            "normal_entrance": [record[14], record[15]],
+            "jump_entrance": [record[24], record[25]],
+        }
+        for scene, record in enumerate(metadata)
+        if record[8] >= 0
+    ]
+    exit_cells = [
+        [scene, record[16 + index], record[19 + index]]
+        for scene, record in enumerate(metadata)
+        for index in range(3)
+    ]
+    opcode_8 = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            assert 0 <= opcode < len(WIDTHS)
+            if opcode == 8:
+                opcode_8.append({"script": script_id, "pc": pc, "music": code[pc + 1]})
+            pc += WIDTHS[opcode]
+    assert len(opcode_8) == 15
+    return {
+        "entry_outputs": [
+            "fade_from_black",
+            "scene_title",
+            "present",
+            "auto_event_check",
+        ],
+        "loop_order": [
+            "event_animation",
+            "one_input_action",
+            "scene_render_present",
+            "periodic_update_if_remainder_1",
+            "auto_event",
+            "exit_cells",
+            "internal_jump",
+            "wait_tick_change",
+        ],
+        "input_priority": [
+            "left",
+            "up",
+            "down",
+            "right",
+            "interact",
+            "main_ui",
+            "weather_disable",
+            "idle_update",
+        ],
+        "periodic_update_ticks_first_20": [tick for tick in range(1, 21) if tick % 5 == 1],
+        "exit_outputs_after_auto_event": [
+            "auto_event_outputs",
+            "fade_to_black",
+            "return_world",
+        ],
+        "internal_jump_outputs": [
+            "fade_to_black",
+            "load_target_scene",
+            "fade_from_black",
+            "scene_title",
+            "present",
+            "auto_event_check",
+        ],
+        "world_direction_after_scene": [3, 2, 1, 0],
+        "metadata_jump_count": len(jumps),
+        "metadata_jumps": jumps,
+        "metadata_exit_cell_count": len(exit_cells),
+        "metadata_nonnegative_exit_cell_count": sum(
+            1 for _, x, y in exit_cells if x >= 0 and y >= 0
+        ),
+        "scene_music_samples": {
+            str(scene): {
+                "exit": metadata[scene][6],
+                "entrance": metadata[scene][7],
+            }
+            for scene in (7, 53, 70, 71)
+        },
+        "music_dispatch": {
+            "metadata_compares_current_music": True,
+            "opcode_8_override_compares_current_music": False,
+            "opcode_66_compares_current_music": False,
+        },
+        "opcode_8_exit_music_overrides": opcode_8,
     }
 
 
@@ -1172,7 +1306,9 @@ def main() -> None:
 
     walk_scene_id = 39
     walk_map = words(scene_maps[walk_scene_id])
-    walk_events = words(scene_events[walk_scene_id])
+    walk_events = advance_event_animation(
+        walk_map, words(scene_events[walk_scene_id]), 1
+    )
     walk_sprites = sentinel(
         (root / "SDX039").read_bytes(), (root / "SMP039").read_bytes()
     )
@@ -1371,6 +1507,7 @@ def main() -> None:
             "scene_archive_state_vectors": scene_archive_state_vectors(
                 ranger, scene_maps, scene_events, scripts
             ),
+            "scene_loop_vectors": scene_loop_vectors(ranger, scripts),
             "status_notice_vectors": status_notice_vectors(
                 root, frame, palette, scripts, ranger
             ),

@@ -58,6 +58,21 @@ void accept_minimal_new_game(openlegend::app::LegacyGameRuntime& game) {
     game.handle_key('Y', false, false);
 }
 
+void advance_rendered_frames(
+    openlegend::app::LegacyGameRuntime& game, const std::size_t frame_count) {
+    for (std::size_t frame = 0U; frame < frame_count; ++frame) {
+        OL_CHECK(game.render());
+        game.advance();
+    }
+}
+
+void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
+    advance_rendered_frames(game, 65U);
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
+    game.handle_key(0x0DU, false, false);
+    advance_rendered_frames(game, 1U);
+}
+
 void check_controller() {
     using namespace openlegend::ui;
 
@@ -358,19 +373,33 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.scene_request().has_value());
     OL_CHECK(new_game.scene_request().value_or(-1) == 70);
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
-    OL_CHECK(new_game.render());
-    new_game.handle_key(0x0DU, false, false);
-    OL_CHECK(new_game.render());
-    new_game.advance();
+    finish_scene_entry(new_game);
     new_game.handle_key(0x1BU, false, false);
+    new_game.handle_world_input(false, true, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    new_game.advance();
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
+    new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
+    new_game.handle_world_input(false, false, true, false);
+    new_game.advance();
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
     new_game.handle_world_input(false, false, false, true);
+    new_game.advance();
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
+    advance_rendered_frames(new_game, 64U);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     OL_CHECK(!new_game.scene_request().has_value());
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::in_sub_map) == 0);
+    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::face_towards) ==
+             static_cast<std::int16_t>(world::WorldDirection::right));
     OL_CHECK(new_game.render());
 
     app::LegacyGameRuntime load_game{data_root, 1U};

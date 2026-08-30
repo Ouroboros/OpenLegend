@@ -252,7 +252,7 @@
           "direction": 3,
           "player_picture": 5046,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xd57c3152a82774cc"
+          "frame_fnv1a64": "0x875fb7391e30b9b0"
         },
         {
           "x": 28,
@@ -260,7 +260,7 @@
           "direction": 3,
           "player_picture": 5048,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0x9545f8856e41c3a4"
+          "frame_fnv1a64": "0x74b973721d47c71c"
         },
         {
           "x": 28,
@@ -268,7 +268,7 @@
           "direction": 3,
           "player_picture": 5050,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0x9d6cf61532172d1d"
+          "frame_fnv1a64": "0xc6f9a603aa1fc9f1"
         },
         {
           "x": 28,
@@ -276,7 +276,7 @@
           "direction": 3,
           "player_picture": 5052,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xe16cc2b12c3abd8f"
+          "frame_fnv1a64": "0xbbe8cd264878be18"
         },
         {
           "x": 28,
@@ -1633,6 +1633,334 @@
           17
         ]
       }
+    },
+    "scene_loop_vectors": {
+      "entry_outputs": [
+        "fade_from_black",
+        "scene_title",
+        "present",
+        "auto_event_check"
+      ],
+      "loop_order": [
+        "event_animation",
+        "one_input_action",
+        "scene_render_present",
+        "periodic_update_if_remainder_1",
+        "auto_event",
+        "exit_cells",
+        "internal_jump",
+        "wait_tick_change"
+      ],
+      "input_priority": [
+        "left",
+        "up",
+        "down",
+        "right",
+        "interact",
+        "main_ui",
+        "weather_disable",
+        "idle_update"
+      ],
+      "periodic_update_ticks_first_20": [
+        1,
+        6,
+        11,
+        16
+      ],
+      "exit_outputs_after_auto_event": [
+        "auto_event_outputs",
+        "fade_to_black",
+        "return_world"
+      ],
+      "internal_jump_outputs": [
+        "fade_to_black",
+        "load_target_scene",
+        "fade_from_black",
+        "scene_title",
+        "present",
+        "auto_event_check"
+      ],
+      "world_direction_after_scene": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "metadata_jump_count": 10,
+      "metadata_jumps": [
+        {
+          "scene": 4,
+          "target": 67,
+          "trigger": [
+            13,
+            33
+          ],
+          "use_jump_entrance": true,
+          "normal_entrance": [
+            14,
+            33
+          ],
+          "jump_entrance": [
+            0,
+            0
+          ]
+        },
+        {
+          "scene": 12,
+          "target": 13,
+          "trigger": [
+            29,
+            22
+          ],
+          "use_jump_entrance": false,
+          "normal_entrance": [
+            54,
+            33
+          ],
+          "jump_entrance": [
+            29,
+            23
+          ]
+        },
+        {
+          "scene": 13,
+          "target": 12,
+          "trigger": [
+            19,
+            48
+          ],
+          "use_jump_entrance": true,
+          "normal_entrance": [
+            19,
+            47
+          ],
+          "jump_entrance": [
+            0,
+            0
+          ]
+        },
+        {
+          "scene": 14,
+          "target": 15,
+          "trigger": [
+            49,
+            15
+          ],
+          "use_jump_entrance": true,
+          "normal_entrance": [
+            48,
+            15
+          ],
+          "jump_entrance": [
+            0,
+            0
+          ]
+        },
+        {
+          "scene": 15,
+          "target": 14,
+          "trigger": [
+            19,
+            21
+          ],
+          "use_jump_entrance": false,
+          "normal_entrance": [
+            35,
+            26
+          ],
+          "jump_entrance": [
+            20,
+            21
+          ]
+        },
+        {
+          "scene": 55,
+          "target": 82,
+          "trigger": [
+            13,
+            22
+          ],
+          "use_jump_entrance": false,
+          "normal_entrance": [
+            30,
+            49
+          ],
+          "jump_entrance": [
+            14,
+            22
+          ]
+        },
+        {
+          "scene": 67,
+          "target": 4,
+          "trigger": [
+            48,
+            20
+          ],
+          "use_jump_entrance": false,
+          "normal_entrance": [
+            28,
+            45
+          ],
+          "jump_entrance": [
+            47,
+            20
+          ]
+        },
+        {
+          "scene": 76,
+          "target": 83,
+          "trigger": [
+            41,
+            24
+          ],
+          "use_jump_entrance": false,
+          "normal_entrance": [
+            29,
+            44
+          ],
+          "jump_entrance": [
+            41,
+            25
+          ]
+        },
+        {
+          "scene": 82,
+          "target": 55,
+          "trigger": [
+            49,
+            26
+          ],
+          "use_jump_entrance": true,
+          "normal_entrance": [
+            47,
+            26
+          ],
+          "jump_entrance": [
+            0,
+            0
+          ]
+        },
+        {
+          "scene": 83,
+          "target": 76,
+          "trigger": [
+            50,
+            26
+          ],
+          "use_jump_entrance": true,
+          "normal_entrance": [
+            49,
+            26
+          ],
+          "jump_entrance": [
+            0,
+            0
+          ]
+        }
+      ],
+      "metadata_exit_cell_count": 252,
+      "metadata_nonnegative_exit_cell_count": 237,
+      "scene_music_samples": {
+        "7": {
+          "exit": 16,
+          "entrance": 12
+        },
+        "53": {
+          "exit": 16,
+          "entrance": -1
+        },
+        "70": {
+          "exit": 19,
+          "entrance": -1
+        },
+        "71": {
+          "exit": 0,
+          "entrance": -1
+        }
+      },
+      "music_dispatch": {
+        "metadata_compares_current_music": true,
+        "opcode_8_override_compares_current_music": false,
+        "opcode_66_compares_current_music": false
+      },
+      "opcode_8_exit_music_overrides": [
+        {
+          "script": 30,
+          "pc": 241,
+          "music": 3
+        },
+        {
+          "script": 76,
+          "pc": 394,
+          "music": 3
+        },
+        {
+          "script": 93,
+          "pc": 112,
+          "music": 3
+        },
+        {
+          "script": 105,
+          "pc": 166,
+          "music": 3
+        },
+        {
+          "script": 286,
+          "pc": 259,
+          "music": 3
+        },
+        {
+          "script": 343,
+          "pc": 216,
+          "music": 3
+        },
+        {
+          "script": 344,
+          "pc": 215,
+          "music": 3
+        },
+        {
+          "script": 394,
+          "pc": 186,
+          "music": 3
+        },
+        {
+          "script": 417,
+          "pc": 129,
+          "music": 3
+        },
+        {
+          "script": 419,
+          "pc": 112,
+          "music": 3
+        },
+        {
+          "script": 494,
+          "pc": 54,
+          "music": 3
+        },
+        {
+          "script": 536,
+          "pc": 254,
+          "music": 3
+        },
+        {
+          "script": 616,
+          "pc": 245,
+          "music": 3
+        },
+        {
+          "script": 620,
+          "pc": 240,
+          "music": 3
+        },
+        {
+          "script": 635,
+          "pc": 119,
+          "music": 3
+        }
+      ]
     },
     "status_notice_vectors": {
       "opcode_52_script_825": {
