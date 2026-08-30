@@ -820,7 +820,8 @@ SceneStepResult SceneSession::run_event() {
         case 22:
             for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
                 const auto role_id = snapshot_.ranger.header.team_member(index).value;
-                if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
+                if ((index == 0U || role_id > 0) &&
+                    role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
                     snapshot_.ranger.roles[static_cast<std::size_t>(role_id)].set_word(model::role_word::mp, 0);
                 }
             }

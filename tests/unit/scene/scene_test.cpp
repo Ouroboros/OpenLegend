@@ -1427,6 +1427,39 @@ void check_event_finale_party_cleanup(const std::filesystem::path& root) {
     }
 }
 
+void check_event_clear_party_mp(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    snapshot.ranger.header.set_team_member(0U, openlegend::model::CharacterId{1});
+    snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{0});
+    for (std::size_t slot = 2U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+        snapshot.ranger.header.set_team_member(slot, openlegend::model::CharacterId{-1});
+    }
+    snapshot.ranger.roles[0].set_word(openlegend::model::role_word::mp, 77);
+    snapshot.ranger.roles[1].set_word(openlegend::model::role_word::mp, 88);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    auto result = session.begin_event(20, 0, 0, 0);
+    for (int step = 0; step < 128 &&
+                       snapshot.ranger.roles[1].word(openlegend::model::role_word::mp) != 0;
+         ++step) {
+        if (result.kind == SceneStepKind::dialogue ||
+            result.kind == SceneStepKind::notice ||
+            result.kind == SceneStepKind::present ||
+            result.kind == SceneStepKind::fade_from_black ||
+            result.kind == SceneStepKind::fade_to_black) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(snapshot.ranger.roles[1].word(openlegend::model::role_word::mp) == 0);
+    OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::mp) == 77);
+}
+
 void check_event_join_helper(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1738,6 +1771,7 @@ int main() {
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
+    check_event_clear_party_mp(root);
     check_event_join_helper(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
