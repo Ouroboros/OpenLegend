@@ -479,7 +479,8 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         " scene=" + std::to_string(result.scene_id) +
         " x=" + std::to_string(result.scene_x) +
         " y=" + std::to_string(result.scene_y) +
-        " battle=" + std::to_string(result.battle_id));
+        " battle=" + std::to_string(result.battle_id) +
+        " wait_ticks=" + std::to_string(result.wait_ticks));
     if (scene_session_ != nullptr) {
         auto commands = scene_session_->take_audio_commands();
         scene_audio_commands_.insert(
@@ -500,7 +501,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         battle_request_ = result.battle_id;
         break;
     case scene::SceneStepKind::present:
-        begin_scene_effect(SceneEffectKind::present);
+        begin_scene_effect(SceneEffectKind::present, result.wait_ticks);
         break;
     case scene::SceneStepKind::fade_from_black:
         begin_scene_effect(SceneEffectKind::fade_from_black);
@@ -533,6 +534,10 @@ bool LegacyGameRuntime::advance_scene_effect() {
     if (!scene_effect_presented_) {
         return true;
     }
+    if (scene_effect_kind_ == SceneEffectKind::present && scene_effect_wait_ticks_ > 1U) {
+        --scene_effect_wait_ticks_;
+        return true;
+    }
     if (scene_effect_kind_ != SceneEffectKind::present &&
         scene_effect_frame_ + 1U < scene_effect_palettes_.size()) {
         ++scene_effect_frame_;
@@ -546,10 +551,12 @@ bool LegacyGameRuntime::advance_scene_effect() {
     return true;
 }
 
-void LegacyGameRuntime::begin_scene_effect(const SceneEffectKind kind) {
+void LegacyGameRuntime::begin_scene_effect(
+    const SceneEffectKind kind, const std::uint16_t wait_ticks) {
     scene_effect_kind_ = kind;
     scene_effect_palettes_.clear();
     scene_effect_frame_ = 0U;
+    scene_effect_wait_ticks_ = std::max<std::uint16_t>(wait_ticks, 1U);
     scene_effect_presented_ = false;
 }
 
@@ -557,6 +564,7 @@ void LegacyGameRuntime::clear_scene_effect() noexcept {
     scene_effect_kind_ = SceneEffectKind::none;
     scene_effect_palettes_.clear();
     scene_effect_frame_ = 0U;
+    scene_effect_wait_ticks_ = 1U;
     scene_effect_presented_ = false;
 }
 

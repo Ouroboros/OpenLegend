@@ -78,7 +78,7 @@ private:
     [[nodiscard]] bool start_scene(std::int16_t scene_id, LegacyGameView error_return_view);
     void handle_scene_result(const scene::SceneStepResult& result);
     [[nodiscard]] bool advance_scene_effect();
-    void begin_scene_effect(SceneEffectKind kind);
+    void begin_scene_effect(SceneEffectKind kind, std::uint16_t wait_ticks = 1U);
     void clear_scene_effect() noexcept;
     void update_menu_counts();
     void set_view(LegacyGameView view, std::string_view reason);
@@ -113,6 +113,7 @@ private:
     SceneEffectKind scene_effect_kind_{SceneEffectKind::none};
     std::vector<compat::LegacyPalette> scene_effect_palettes_;
     std::size_t scene_effect_frame_{};
+    std::uint16_t scene_effect_wait_ticks_{1U};
     bool scene_effect_presented_{};
     bool world_step_processed_{};
     std::vector<std::uint8_t> visible_error_;

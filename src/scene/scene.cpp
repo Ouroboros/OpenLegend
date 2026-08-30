@@ -513,6 +513,7 @@ SceneStepResult SceneSession::begin_event(
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
     continuation_ = PendingContinuation::none;
+    pan_state_.reset();
     queued_outputs_.clear();
     return run_event();
 }
@@ -533,6 +534,12 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         pending_.kind = previous_kind;
         return pending_;
     }
+    if (pan_state_.has_value()) {
+        if (auto frame = advance_pan_frame(); frame.has_value()) {
+            return *frame;
+        }
+    }
+
     if (continuation_ == PendingContinuation::conditional) {
         const auto accepted = response == SceneResponse::yes;
         program_counter_ += accepted ? true_offset_ : false_offset_;
@@ -792,7 +799,18 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 3;
             break;
         case 25:
+            pan_state_ = PanState{
+                argument(1),
+                argument(2),
+                argument(3),
+                argument(4),
+                argument(3) < argument(1) ? -1 : 1,
+                argument(4) < argument(2) ? -1 : 1,
+            };
             program_counter_ += 5;
+            if (auto frame = advance_pan_frame(); frame.has_value()) {
+                return *frame;
+            }
             break;
         case 26:
             for (std::size_t field = 0U; field < 3U; ++field) {
@@ -1529,6 +1547,25 @@ SceneStepResult SceneSession::emit_queued() {
     return pending_;
 }
 
+std::optional<SceneStepResult> SceneSession::advance_pan_frame() {
+    if (!pan_state_.has_value()) {
+        return std::nullopt;
+    }
+    if (pan_state_->x != pan_state_->target_x) {
+        view_origin_x_ = std::clamp(pan_state_->x - 11, 0, kSceneMaximumViewOrigin);
+        pan_state_->x += pan_state_->step_x;
+    } else if (pan_state_->y != pan_state_->target_y) {
+        view_origin_y_ = std::clamp(pan_state_->y - 11, 0, kSceneMaximumViewOrigin);
+        pan_state_->y += pan_state_->step_y;
+    } else {
+        pan_state_.reset();
+        return std::nullopt;
+    }
+    pending_ = current_result(SceneStepKind::present);
+    pending_.wait_ticks = 2U;
+    return pending_;
+}
+
 void SceneSession::commit_header() noexcept {
     snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 1);
     snapshot_.ranger.header.set_word(model::header_word::sub_map_x, static_cast<std::int16_t>(scene_x_));
@@ -1546,6 +1583,7 @@ void SceneSession::clear_event() noexcept {
     script_.clear();
     program_counter_ = 0;
     continuation_ = PendingContinuation::none;
+    pan_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();

@@ -215,10 +215,14 @@ def render_scene(
     player_x: int,
     player_y: int,
     direction: int,
+    view_origin: tuple[int, int] | None = None,
 ) -> bytes:
     pixels = bytearray(320 * 200)
-    origin_x = min(max(player_x - 11, 0), 36)
-    origin_y = min(max(player_y - 11, 0), 36)
+    if view_origin is None:
+        origin_x = min(max(player_x - 11, 0), 36)
+        origin_y = min(max(player_y - 11, 0), 36)
+    else:
+        origin_x, origin_y = view_origin
 
     def draw(legacy_id: int, anchor_x: int, anchor_y: int) -> None:
         assert legacy_id >= 0 and legacy_id % 2 == 0
@@ -255,6 +259,46 @@ def render_scene(
             if decoration:
                 draw(decoration, sx, sy - scene_value(scene_words, 5, x, y))
     return bytes(pixels)
+
+
+def pan_trace(
+    scene_words: tuple[int, ...],
+    event_words: tuple[int, ...],
+    sprites: list[bytes],
+    player_x: int,
+    player_y: int,
+    direction: int,
+    arguments: tuple[int, int, int, int],
+) -> list[dict[str, object]]:
+    source_x, source_y, target_x, target_y = arguments
+    origin_x = min(max(player_x - 11, 0), 36)
+    origin_y = min(max(player_y - 11, 0), 36)
+    result: list[dict[str, object]] = []
+    step_x = -1 if target_x < source_x else 1
+    for x in range(source_x, target_x, step_x):
+        origin_x = min(max(x - 11, 0), 36)
+        frame = render_scene(
+            scene_words, event_words, sprites, player_x, player_y, direction,
+            (origin_x, origin_y),
+        )
+        result.append({
+            "view_origin_x": origin_x,
+            "view_origin_y": origin_y,
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+    step_y = -1 if target_y < source_y else 1
+    for y in range(source_y, target_y, step_y):
+        origin_y = min(max(y - 11, 0), 36)
+        frame = render_scene(
+            scene_words, event_words, sprites, player_x, player_y, direction,
+            (origin_x, origin_y),
+        )
+        result.append({
+            "view_origin_x": origin_x,
+            "view_origin_y": origin_y,
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+    return result
 
 
 def movement_trace(
@@ -338,6 +382,11 @@ def main() -> None:
     )
     decoded_talks = [bytes(value ^ 0xFF for value in entry[:-1]) + b"\0" for entry in talks]
     coverage = opcode_coverage(scripts)
+    script_30 = words(scripts[30])
+    assert script_30[:5] == (25, 41, 31, 34, 31)
+    opcode_25_script_30 = pan_trace(
+        smap, sevent, sprites, 44, 29, 1, script_30[1:5]
+    )
 
     output = {
         "format": 1,
@@ -360,7 +409,13 @@ def main() -> None:
             "record_0_hex": decoded_talks[0].hex(),
             "record_2976_sha256": sha256(decoded_talks[2976]),
         },
-        "kdef": coverage,
+        "kdef": {
+            **coverage,
+            "opcode_25_script_30": {
+                "arguments": list(script_30[1:5]),
+                "frames": opcode_25_script_30,
+            },
+        },
         "scene_5_weather": {
             "initial_x": weather_x,
             "initial_y": weather_y,

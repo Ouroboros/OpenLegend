@@ -1,6 +1,6 @@
 # 场景、事件与对话工作包
 
-状态：`implemented_pending_review`；业务实现暂停，等待基础框架完成
+状态：`implemented_pending_review`；基础框架和诊断日志已完成，按有限 handler 组继续业务实现
 
 ## 1. 有限范围
 
@@ -10,7 +10,7 @@
 
 场景资源、六层绘制、移动/碰撞、跳转/出口、TALK、基础 KDEF switch、app 同步链、天气和部分角色/物品副作用已有 C++ 与测试。所有行统一视为 `pending_mapping` 或 `implemented_pending_review`，不得继承旧完成状态。
 
-当前未提交的 opcode 0/13/14 呈现/淡入淡出改动也属于 `implemented_pending_review`，在基础框架和日志完成前不继续扩大。
+opcode 0/13/14 的呈现/淡入淡出已提交；opcode 25 的 `sub_2ED8D` 视口平移、逐帧呈现和 2 BIOS tick 等待已实现并登记为 `implemented_pending_review`。其余 handler 继续按机器码和真实脚本分组补齐。
 
 ## 3. 实现阶段与最终 REVIEW
 

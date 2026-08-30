@@ -163,7 +163,52 @@
       1,
       20
     ],
-    "instruction_count": 13315
+    "instruction_count": 13315,
+    "opcode_25_script_30": {
+      "arguments": [
+        41,
+        31,
+        34,
+        31
+      ],
+      "frames": [
+        {
+          "view_origin_x": 30,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0x9838f6a2b37ad75d"
+        },
+        {
+          "view_origin_x": 29,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0xa58b51e27d8f5fe3"
+        },
+        {
+          "view_origin_x": 28,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0x6a876603fd1dce87"
+        },
+        {
+          "view_origin_x": 27,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0x3d2c25f9165bd6b4"
+        },
+        {
+          "view_origin_x": 26,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0x8248a9b81ee91c88"
+        },
+        {
+          "view_origin_x": 25,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0x201c90b91aa11963"
+        },
+        {
+          "view_origin_x": 24,
+          "view_origin_y": 18,
+          "frame_fnv1a64": "0x2a895d743d76c127"
+        }
+      ]
+    }
   },
   "scene_5_weather": {
     "initial_x": 17,

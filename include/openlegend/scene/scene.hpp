@@ -95,6 +95,7 @@ struct SceneStepResult {
     std::int16_t style{};
     std::int16_t battle_id{-1};
     std::int16_t shop_id{-1};
+    std::uint16_t wait_ticks{1U};
     SceneQuestion question{SceneQuestion::none};
 
     friend bool operator==(const SceneStepResult&, const SceneStepResult&) = default;
@@ -175,6 +176,15 @@ private:
         std::vector<std::uint8_t> text;
     };
 
+    struct PanState {
+        int x{};
+        int y{};
+        int target_x{};
+        int target_y{};
+        int step_x{1};
+        int step_y{1};
+    };
+
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
     [[nodiscard]] SceneStepResult run_event();
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
@@ -221,6 +231,7 @@ private:
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
     void queue_notice(std::vector<std::uint8_t> text);
     [[nodiscard]] SceneStepResult emit_queued();
+    [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
     void commit_header() noexcept;
     void update_view_origin() noexcept;
     void clear_event() noexcept;
@@ -256,6 +267,7 @@ private:
     std::int16_t true_offset_{};
     std::int16_t false_offset_{};
     std::int16_t battle_get_exp_{};
+    std::optional<PanState> pan_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;
     std::string error_;

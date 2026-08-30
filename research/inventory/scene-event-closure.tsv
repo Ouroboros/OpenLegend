@@ -46,7 +46,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 45	0x2E639	sub_2E639	event_helper_2E639	0x2E659	32	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 46	0x2E659	sub_2E659	event_helper_2E659	0x2EB49	1264	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 47	0x2EB49	sub_2EB49	event_helper_2EB49	0x2ED7D	564	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-48	0x2ED8D	sub_2ED8D	event_helper_2ED8D	0x2F053	710	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+48	0x2ED8D	sub_2ED8D	event_helper_2ED8D	0x2F053	710	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::advance_pan_frame	research/evidence/functions/Z_DAT/0x2ED8D.md	Linux Debug openlegend.scene/openlegend.ui; independent script 30 oracle	not_started	complete full forward/reverse review after B7 implementation closes; audit delegated render/time helpers
 49	0x2F053	sub_2F053	event_helper_2F053	0x2F107	180	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 50	0x2F107	sub_2F107	event_helper_2F107	0x2F136	47	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 51	0x2F136	sub_2F136	event_helper_2F136	0x2F15F	41	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

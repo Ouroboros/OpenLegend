@@ -198,6 +198,75 @@ void check_scene_weather(const std::filesystem::path& root) {
     OL_CHECK(fnv1a64(weather_frame.pixels()) == 0xB3E2B127988E5690ULL);
 }
 
+void check_event_camera_pan(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+
+    constexpr std::array<int, 7> expected_origins{30, 29, 28, 27, 26, 25, 24};
+    constexpr std::array<std::uint64_t, 7> expected_hashes{
+        0x9838F6A2B37AD75DULL,
+        0xA58B51E27D8F5FE3ULL,
+        0x6A876603FD1DCE87ULL,
+        0x3D2C25F9165BD6B4ULL,
+        0x8248A9B81EE91C88ULL,
+        0x201C90B91AA11963ULL,
+        0x2A895D743D76C127ULL,
+    };
+    auto result = session.begin_event(30, 0, 44, 29);
+    for (std::size_t index = 0U; index < expected_origins.size(); ++index) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 2U);
+        OL_CHECK(session.view_origin_x() == expected_origins[index]);
+        OL_CHECK(session.view_origin_y() == 18);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render_map(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 86);
+    OL_CHECK(session.scene_x() == 44 && session.scene_y() == 29);
+
+    auto diagonal_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom diagonal_random{1U};
+    openlegend::scene::SceneSession diagonal{
+        data_root, diagonal_snapshot, diagonal_random, 70};
+    OL_CHECK(diagonal.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    auto diagonal_result = diagonal.begin_event(225, 0, 44, 29);
+    constexpr std::array<std::array<int, 2>, 5> forward_origins{{
+        {33, 18}, {34, 18}, {35, 18}, {36, 18}, {36, 36},
+    }};
+    for (const auto& origin : forward_origins) {
+        OL_CHECK(diagonal_result.kind == SceneStepKind::present);
+        OL_CHECK(diagonal_result.wait_ticks == 2U);
+        OL_CHECK(diagonal.view_origin_x() == origin[0]);
+        OL_CHECK(diagonal.view_origin_y() == origin[1]);
+        diagonal_result = diagonal.resume(SceneResponse::acknowledge);
+    }
+    for (int page = 0; page < 8 && diagonal_result.kind == SceneStepKind::dialogue; ++page) {
+        diagonal_result = diagonal.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(diagonal_result.kind == SceneStepKind::present);
+    OL_CHECK(diagonal_result.wait_ticks == 1U);
+    diagonal_result = diagonal.resume(SceneResponse::acknowledge);
+    constexpr std::array<std::array<int, 2>, 5> reverse_origins{{
+        {36, 36}, {36, 36}, {35, 36}, {34, 36}, {34, 36},
+    }};
+    for (const auto& origin : reverse_origins) {
+        OL_CHECK(diagonal_result.kind == SceneStepKind::present);
+        OL_CHECK(diagonal_result.wait_ticks == 2U);
+        OL_CHECK(diagonal.view_origin_x() == origin[0]);
+        OL_CHECK(diagonal.view_origin_y() == origin[1]);
+        diagonal_result = diagonal.resume(SceneResponse::acknowledge);
+    }
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -406,6 +475,7 @@ int main() {
     check_assets(root);
     check_scene_render_and_movement(root);
     check_scene_weather(root);
+    check_event_camera_pan(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;
