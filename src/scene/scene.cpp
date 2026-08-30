@@ -1125,11 +1125,9 @@ SceneStepResult SceneSession::run_event() {
         }
         case 60: {
             const auto target_scene = argument(1) == -2 ? scene_id_ : argument(1);
-            const auto current = event_field(target_scene, argument(2), model::SceneEventField::current_picture).value_or(-1);
-            const auto begin = event_field(target_scene, argument(2), model::SceneEventField::begin_picture).value_or(-1);
-            const auto end = event_field(target_scene, argument(2), model::SceneEventField::end_picture).value_or(-1);
-            conditional(current == argument(3) || begin == argument(3) || end == argument(3),
-                        6U, argument(4), argument(5));
+            const auto current = event_field(
+                target_scene, argument(2), model::SceneEventField::current_picture).value_or(-1);
+            conditional(current == argument(3), 6U, argument(4), argument(5));
             break;
         }
         case 61: {

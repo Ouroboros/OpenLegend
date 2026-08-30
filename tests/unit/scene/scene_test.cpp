@@ -689,6 +689,58 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::quit);
 }
 
+void check_event_current_picture_condition(const std::filesystem::path& root) {
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto local_snapshot = load_baseline(root);
+    local_snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{53});
+    static_cast<void>(local_snapshot.set_event_value(
+        52U, 2U, openlegend::model::SceneEventField::current_picture, 100));
+    static_cast<void>(local_snapshot.set_event_value(
+        52U, 2U, openlegend::model::SceneEventField::end_picture, 6298));
+    static_cast<void>(local_snapshot.set_event_value(
+        52U, 2U, openlegend::model::SceneEventField::begin_picture, 6298));
+    openlegend::random::LegacyRandom local_random{1U};
+    openlegend::scene::SceneSession local_session{
+        data_root, local_snapshot, local_random, 52};
+    OL_CHECK(local_session.begin_event(491, 0, 0, 0).kind == SceneStepKind::stay);
+
+    static_cast<void>(local_snapshot.set_event_value(
+        52U, 2U, openlegend::model::SceneEventField::current_picture, 6298));
+    static_cast<void>(local_snapshot.set_event_value(
+        52U, 2U, openlegend::model::SceneEventField::end_picture, 100));
+    static_cast<void>(local_snapshot.set_event_value(
+        52U, 2U, openlegend::model::SceneEventField::begin_picture, 100));
+    const auto local_match = local_session.begin_event(491, 0, 0, 0);
+    OL_CHECK(local_match.kind == SceneStepKind::dialogue);
+    OL_CHECK(local_match.talk_id == 1742);
+
+    auto external_snapshot = load_baseline(root);
+    static_cast<void>(external_snapshot.set_event_value(
+        80U, 1U, openlegend::model::SceneEventField::current_picture, 100));
+    static_cast<void>(external_snapshot.set_event_value(
+        80U, 1U, openlegend::model::SceneEventField::end_picture, 6068));
+    static_cast<void>(external_snapshot.set_event_value(
+        80U, 1U, openlegend::model::SceneEventField::begin_picture, 6068));
+    openlegend::random::LegacyRandom external_random{1U};
+    openlegend::scene::SceneSession external_session{
+        data_root, external_snapshot, external_random, 70};
+    const auto external_miss = external_session.begin_event(990, 0, 0, 0);
+    OL_CHECK(external_miss.kind == SceneStepKind::dialogue);
+    OL_CHECK(external_miss.talk_id == 2807);
+
+    static_cast<void>(external_snapshot.set_event_value(
+        80U, 1U, openlegend::model::SceneEventField::current_picture, 6068));
+    static_cast<void>(external_snapshot.set_event_value(
+        80U, 1U, openlegend::model::SceneEventField::end_picture, 100));
+    static_cast<void>(external_snapshot.set_event_value(
+        80U, 1U, openlegend::model::SceneEventField::begin_picture, 100));
+    const auto external_match = external_session.begin_event(990, 0, 0, 0);
+    OL_CHECK(external_match.kind == SceneStepKind::dialogue);
+    OL_CHECK(external_match.talk_id == 2968);
+}
+
 void check_event_tournament_trial(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1131,6 +1183,7 @@ int main() {
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);
+    check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
     check_event_state_side_effects(root);
