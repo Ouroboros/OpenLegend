@@ -1,8 +1,10 @@
 dependent_module	provider_module	relationship	shared_state_contract	reverse_dependency_present	review_status
 platform_sdl3	compat	host-neutral events and indexed frame view	const/value only	no	implemented_pending_review
+platform_sdl3	diagnostics	startup, host event, present and failure records	message/value only	no	implemented_pending_review
 platform_sdl3	input	host key normalization	LegacyKeyboard owned outside SDL objects	no	implemented_pending_review
 platform_sdl3	time	BIOS tick host source	value samples only	no	implemented_pending_review
 platform_sdl3	audio	audio device and command consumption	backend resources stay platform/audio	no	implemented_pending_review
+app	diagnostics	view, input result, session and error records	message/value only	no	implemented_pending_review
 app	model	persistent GameState owner	app owns GameState; modules borrow snapshot views	no	implemented_pending_review
 app	persistence	snapshot load/save transport	request/result only	no	implemented_pending_review
 app	random	runtime RNG owner	one borrowed stream	no	implemented_pending_review
@@ -17,10 +19,12 @@ render	compat	indexed/RGB6 contracts	framebuffer owned by render/app boundary	no
 render	resource	sprite/font/palette views	read-only asset views	no	implemented_pending_review
 ui	model	read-only state plus explicit mutations	persistent writes remain in model owner	no	implemented_pending_review
 ui	render	software draw commands	framebuffer borrow only	no	implemented_pending_review
+world	diagnostics	movement, collision, entrance and player render records	message/value only	no	implemented_pending_review
 world	model	world header/role state	borrow and synchronous write-through	no	implemented_pending_review
 world	random	weather/idle RNG	shared ordered stream	no	implemented_pending_review
 world	render	indexed world draw	framebuffer borrow only	no	implemented_pending_review
 world	resource	world layers/sprites/palette	read-only asset views	no	implemented_pending_review
+scene	diagnostics	movement, collision, jump, exit and player render records	message/value only	no	implemented_pending_review
 scene	model	scene maps/events/roles/items	borrow and synchronous write-through	no	implemented_pending_review
 scene	random	weather/event RNG	shared ordered stream	no	implemented_pending_review
 scene	render	indexed scene/UI draw	framebuffer borrow only	no	implemented_pending_review

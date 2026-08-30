@@ -108,6 +108,7 @@ MODULES = {
     "external_crt",
     "external_miles",
     "compat",
+    "diagnostics",
     "platform_sdl3",
     "app",
     "resource",

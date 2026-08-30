@@ -1,8 +1,8 @@
 # OpenLegend 执行 GOAL
 
-版本：v4
-当前阶段：基础框架完善
-当前状态：B0–B7 已有实现全部重置为 `implemented_pending_review` 或更早状态；先完成 inventory、work package、validator、日志与诊断，再完成 B7–B9 功能实现，最后统一执行汇编↔C++ REVIEW
+版本：v5
+当前阶段：B6 运行回归诊断 + B7 场景/事件实现
+当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态，继续完成 B6 回归闭环及 B7–B9 功能实现，最后统一执行汇编↔C++ REVIEW
 
 ## 0. 唯一正确性真值
 
@@ -47,6 +47,13 @@
 - `assembly_exact` / `platform_adapted`：仅在最终 REVIEW 收敛后使用。
 
 因此实现完成、测试通过和可运行都只能推进到 `implemented_pending_review`；最终 REVIEW 前不得把函数、模块或阶段写成“完成”。
+
+### 0.2 构建验证频率
+
+- 普通函数、handler、测试、日志、工具和小切片只执行与改动匹配的 Linux 定向构建/测试；不得为每个切片机械重复 Windows 构建。
+- Windows `core/app × Debug/Release` 全矩阵仅在一个完整大模块实现/REVIEW 工作包收口时执行，例如 B7 整体完成、B8 整体完成，以及 B9 最终全集成验收。
+- 大模块关闭前的 Windows 全矩阵结果属于该模块验收证据；更早小切片曾通过 Windows 不能替代模块关闭时的最终矩阵。
+- B9 总目标关闭仍必须满足第 9 节完整 Linux/Windows、sanitizer、smoke、资产只读和 IDA 审计门禁。
 
 ## 1. 总目标
 

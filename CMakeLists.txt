@@ -100,6 +100,7 @@ else()
 endif()
 
 add_subdirectory(src/compat)
+add_subdirectory(src/diagnostics)
 add_subdirectory(src/input)
 add_subdirectory(src/time)
 add_subdirectory(src/random)

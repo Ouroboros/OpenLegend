@@ -20,6 +20,7 @@
 #include "openlegend/audio/legacy_audio.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/compat/runtime_platform.hpp"
+#include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/legacy_keyboard.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 #include "sdl_audio_device.hpp"
@@ -28,6 +29,30 @@
 namespace {
 
 constexpr openlegend::app::WindowSize kDefaultWindowSize{960, 600};
+
+class LoggingLifetime {
+public:
+    ~LoggingLifetime() { openlegend::diagnostics::shutdown_logging(); }
+};
+
+[[nodiscard]] std::string path_utf8(const std::filesystem::path& path) {
+    const auto value = path.generic_u8string();
+    return {
+        reinterpret_cast<const char*>(value.data()),
+        reinterpret_cast<const char*>(value.data() + value.size())};
+}
+
+[[nodiscard]] std::string_view logging_initialization_status_message(
+    const openlegend::diagnostics::LoggingInitializationStatus status) noexcept {
+    using openlegend::diagnostics::LoggingInitializationStatus;
+    switch (status) {
+    case LoggingInitializationStatus::initialized: return "initialized";
+    case LoggingInitializationStatus::directory_creation_failed:
+        return "log directory creation failed";
+    case LoggingInitializationStatus::file_open_failed: return "log file open failed";
+    }
+    return "unknown logging initialization status";
+}
 
 #if defined(_WIN32)
 [[nodiscard]] std::optional<std::string> utf8_from_wide(const wchar_t* value) {
@@ -97,11 +122,17 @@ void report_configuration_error(
     const std::string_view category,
     const std::string_view message,
     const std::string_view detail = {}) {
-    std::cerr << category << ": " << message;
+    std::string record{category};
+    record += ": ";
+    record += message;
     if (!detail.empty()) {
-        std::cerr << ": " << detail;
+        record += ": ";
+        record += detail;
     }
-    std::cerr << '\n';
+    std::cerr << record << '\n';
+    if (openlegend::diagnostics::logging_to_file()) {
+        openlegend::diagnostics::log_error(record);
+    }
 }
 
 }  // namespace
@@ -123,10 +154,35 @@ int main(const int argc, const char* const* argv) {
     const auto executable_root = app::path_from_utf8(base_path);
     const auto configuration_path = executable_root / app::kConfigurationFilename;
 
+    LoggingLifetime logging_lifetime;
+    const auto logging_configuration = app::load_logging_configuration(
+        configuration_path,
+        executable_root,
+        executable_root / "logs" / "openlegend.log",
+        diagnostics::LogLevel::info);
+    const auto logging_status = diagnostics::initialize_logging(
+        logging_configuration.path, logging_configuration.minimum_level);
+    if (logging_status != diagnostics::LoggingInitializationStatus::initialized) {
+        report_configuration_error(
+            "logging",
+            logging_initialization_status_message(logging_status),
+            path_utf8(logging_configuration.path));
+    }
+    if (logging_configuration.status != app::LoggingConfigurationStatus::ready) {
+        report_configuration_error(
+            "logging configuration",
+            app::logging_configuration_status_message(logging_configuration.status),
+            logging_configuration.detail);
+    }
+    diagnostics::log_info(
+        "startup executable_root=" + path_utf8(executable_root) +
+        " launch_directory=" + path_utf8(launch_directory) +
+        " config=" + path_utf8(configuration_path));
+
     std::vector<std::string> argument_storage;
     std::vector<std::string_view> arguments;
     if (!collect_command_arguments(argc, argv, argument_storage, arguments)) {
-        std::cerr << "Unable to decode the process command line as UTF-8\n";
+        report_configuration_error("command line", "cannot decode arguments as UTF-8");
         return 1;
     }
     bool smoke_test = false;
@@ -153,6 +209,9 @@ int main(const int argc, const char* const* argv) {
             window_configuration.detail);
     }
 
+    diagnostics::log_info(
+        "resolved data_directory=" + path_utf8(data_directory.directory) +
+        " source=" + std::to_string(static_cast<int>(data_directory.source)));
     if (!app::activate_data_directory(data_directory.directory, path_error)) {
         report_configuration_error("game data directory", path_error.message());
         return 3;
@@ -163,9 +222,14 @@ int main(const int argc, const char* const* argv) {
         window_configuration.size.height,
         window_configuration.maximized};
     if (!platform.valid()) {
-        std::cerr << "Unable to initialize SDL3 platform\n";
+        report_configuration_error("SDL3 platform", "initialization failed", SDL_GetError());
         return 4;
     }
+    diagnostics::log_info(
+        "SDL3 platform ready window=" + std::to_string(window_configuration.size.width) +
+        "x" + std::to_string(window_configuration.size.height) +
+        " maximized=" + (window_configuration.maximized ? std::string{"true"}
+                                                          : std::string{"false"}));
 
     audio::AudioMixer audio_mixer;
     audio::SystemAudioDelay audio_delay;
@@ -173,10 +237,13 @@ int main(const int argc, const char* const* argv) {
         resource::DataRoot{std::filesystem::current_path()}, audio_mixer, audio_delay};
     platform::sdl3::SdlAudioDevice audio_device{audio_mixer};
     if (!audio_mixer.valid()) {
-        std::cerr << "XMI synthesizer unavailable; audio is disabled: " << audio_mixer.error()
-                  << '\n';
+        diagnostics::log_warning(
+            "XMI synthesizer unavailable; audio disabled: " + audio_mixer.error());
     } else if (!audio_device.valid()) {
-        std::cerr << "SDL3 audio device unavailable; audio is disabled: " << SDL_GetError() << '\n';
+        diagnostics::log_warning(
+            std::string{"SDL3 audio device unavailable; audio disabled: "} + SDL_GetError());
+    } else {
+        diagnostics::log_info("audio backend ready");
     }
 
     const auto wall_time = std::chrono::system_clock::now().time_since_epoch();
@@ -185,9 +252,11 @@ int main(const int argc, const char* const* argv) {
         std::chrono::duration_cast<std::chrono::milliseconds>(wall_time - whole_seconds);
     const auto second = static_cast<std::uint8_t>(whole_seconds.count() % 60);
     const auto hundredth = static_cast<std::uint8_t>(milliseconds.count() / 10);
-    app::LegacyGameRuntime game{
-        std::filesystem::current_path(), random::LegacyRandom::dos_time_seed(second, hundredth)};
+    const auto random_seed = random::LegacyRandom::dos_time_seed(second, hundredth);
+    app::LegacyGameRuntime game{std::filesystem::current_path(), random_seed};
+    diagnostics::log_info("runtime random_seed=" + std::to_string(random_seed));
     if (!game.valid()) {
+        diagnostics::log_critical("game runtime initialization failed: " + game.error());
         report_configuration_error("game runtime", game.error());
         return 5;
     }
@@ -200,18 +269,26 @@ int main(const int argc, const char* const* argv) {
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
+                diagnostics::log_info("host quit event");
                 running = false;
             } else if (event.type == compat::HostEventType::key_down) {
                 keyboard.handle_host_key(event.key, true);
+                const auto translated_key = keyboard.last_key();
+                diagnostics::log_debug(
+                    "host key_down key=" + std::to_string(static_cast<int>(event.key)) +
+                    " repeat=" + (event.repeat ? std::string{"true"} : std::string{"false"}) +
+                    " translated=" + std::to_string(translated_key));
                 if (!event.repeat) {
                     game.handle_key(
-                        keyboard.last_key(),
+                        translated_key,
                         keyboard.down(0x82U),
                         keyboard.down(0x83U) || keyboard.down(0x84U));
                     keyboard.clear_last_key();
                 }
             } else if (event.type == compat::HostEventType::key_up) {
                 keyboard.handle_host_key(event.key, false);
+                diagnostics::log_debug(
+                    "host key_up key=" + std::to_string(static_cast<int>(event.key)));
             }
         }
         game.handle_world_input(
@@ -234,15 +311,21 @@ int main(const int argc, const char* const* argv) {
         running = running && game.running();
         if (running) {
             if (!game.render()) {
-                std::cerr << "Unable to render legacy game state\n";
+                diagnostics::log_critical(
+                    "render failed view=" + std::to_string(static_cast<int>(game.view())));
+                report_configuration_error("render", "unable to render legacy game state");
                 return 6;
             }
             const auto& framebuffer = game.framebuffer();
             const compat::IndexedFrameView frame{framebuffer.pixels(), framebuffer.palette()};
             if (!platform.present(frame)) {
-                std::cerr << "Unable to present indexed framebuffer\n";
+                diagnostics::log_critical(std::string{"indexed framebuffer present failed: "} + SDL_GetError());
+                report_configuration_error("present", "unable to present indexed framebuffer", SDL_GetError());
                 return 7;
             }
+            diagnostics::log_trace(
+                "frame presented tick=" + std::to_string(frame_tick) +
+                " view=" + std::to_string(static_cast<int>(game.view())));
         }
         if (smoke_test) {
             running = false;
@@ -252,6 +335,7 @@ int main(const int argc, const char* const* argv) {
     }
 
     if (smoke_test) {
+        diagnostics::log_info("smoke test completed");
         return 0;
     }
 
@@ -271,5 +355,6 @@ int main(const int argc, const char* const* argv) {
             save_detail);
     }
 
+    diagnostics::log_info("normal shutdown");
     return 0;
 }

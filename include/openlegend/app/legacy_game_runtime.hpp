@@ -7,6 +7,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "openlegend/model/game_snapshot.hpp"
@@ -80,6 +81,7 @@ private:
     void begin_scene_effect(SceneEffectKind kind);
     void clear_scene_effect() noexcept;
     void update_menu_counts();
+    void set_view(LegacyGameView view, std::string_view reason);
     void show_error(std::string message, LegacyGameView return_view);
     void show_legacy_error(
         std::span<const std::uint8_t> message, LegacyGameView return_view);

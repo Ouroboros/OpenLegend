@@ -5,6 +5,7 @@
 #include <iterator>
 #include <string_view>
 
+#include "openlegend/diagnostics/log.hpp"
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/render/legacy_effects.hpp"
@@ -19,6 +20,61 @@ constexpr std::array<std::uint8_t, 26> kCannotLeaveProtagonist{
 
 [[nodiscard]] persistence::SaveSlot save_slot(const std::uint8_t slot) noexcept {
     return static_cast<persistence::SaveSlot>(slot);
+}
+
+[[nodiscard]] std::string_view view_name(const LegacyGameView view) noexcept {
+    switch (view) {
+    case LegacyGameView::title: return "title";
+    case LegacyGameView::name_entry: return "name_entry";
+    case LegacyGameView::attributes: return "attributes";
+    case LegacyGameView::world: return "world";
+    case LegacyGameView::scene: return "scene";
+    case LegacyGameView::game_menu: return "game_menu";
+    case LegacyGameView::error: return "error";
+    case LegacyGameView::exited: return "exited";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view world_direction_name(
+    const world::WorldDirection direction) noexcept {
+    switch (direction) {
+    case world::WorldDirection::up: return "up";
+    case world::WorldDirection::right: return "right";
+    case world::WorldDirection::left: return "left";
+    case world::WorldDirection::down: return "down";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view world_step_name(const world::WorldStepKind kind) noexcept {
+    switch (kind) {
+    case world::WorldStepKind::stay: return "stay";
+    case world::WorldStepKind::moved: return "moved";
+    case world::WorldStepKind::enter_scene: return "enter_scene";
+    case world::WorldStepKind::open_ui: return "open_ui";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view scene_step_name(const scene::SceneStepKind kind) noexcept {
+    switch (kind) {
+    case scene::SceneStepKind::stay: return "stay";
+    case scene::SceneStepKind::moved: return "moved";
+    case scene::SceneStepKind::present: return "present";
+    case scene::SceneStepKind::fade_from_black: return "fade_from_black";
+    case scene::SceneStepKind::fade_to_black: return "fade_to_black";
+    case scene::SceneStepKind::scene_title: return "scene_title";
+    case scene::SceneStepKind::dialogue: return "dialogue";
+    case scene::SceneStepKind::notice: return "notice";
+    case scene::SceneStepKind::question: return "question";
+    case scene::SceneStepKind::battle: return "battle";
+    case scene::SceneStepKind::shop: return "shop";
+    case scene::SceneStepKind::open_ui: return "open_ui";
+    case scene::SceneStepKind::return_world: return "return_world";
+    case scene::SceneStepKind::quit: return "quit";
+    }
+    return "unknown";
 }
 
 [[nodiscard]] std::vector<std::uint8_t> legacy_ascii(const std::string_view text) {
@@ -44,6 +100,11 @@ LegacyGameRuntime::LegacyGameRuntime(
         startup_error_ = title_renderer_.error();
     } else if (!basic_renderer_.valid()) {
         startup_error_ = basic_renderer_.error();
+    }
+    if (startup_error_.empty()) {
+        diagnostics::log_info("LegacyGameRuntime initialized view=title");
+    } else {
+        diagnostics::log_error("LegacyGameRuntime initialization failed: " + startup_error_);
     }
 }
 
@@ -97,6 +158,12 @@ void LegacyGameRuntime::handle_world_input(
         return;
     }
     const auto result = world_session_->move(*direction);
+    diagnostics::log_info(
+        "world input direction=" + std::string{world_direction_name(*direction)} +
+        " result=" + std::string{world_step_name(result.kind)} +
+        " x=" + std::to_string(result.world_x) +
+        " y=" + std::to_string(result.world_y) +
+        " frame=" + std::to_string(world_session_->player_frame()));
     if (result.kind == world::WorldStepKind::enter_scene) {
         scene_request_ = result.scene_id;
         static_cast<void>(start_scene(result.scene_id, LegacyGameView::world));
@@ -110,9 +177,14 @@ void LegacyGameRuntime::handle_key(
     if (!valid() || translated_key == 0U || view_ == LegacyGameView::exited) {
         return;
     }
+    diagnostics::log_debug(
+        "runtime key translated=" + std::to_string(translated_key) +
+        " control=" + (control_down ? std::string{"true"} : std::string{"false"}) +
+        " shift=" + (shift_down ? std::string{"true"} : std::string{"false"}) +
+        " view=" + std::string{view_name(view_)});
     if (view_ == LegacyGameView::error) {
         visible_error_.clear();
-        view_ = error_return_view_;
+        set_view(error_return_view_, "dismiss error");
         return;
     }
 
@@ -131,7 +203,7 @@ void LegacyGameRuntime::handle_key(
             }
             attribute_controller_ = std::make_unique<ui::NewGameAttributeController>(
                 ranger->roles[0], random_);
-            view_ = LegacyGameView::attributes;
+            set_view(LegacyGameView::attributes, "name entry accepted");
         }
         break;
     case LegacyGameView::attributes:
@@ -149,7 +221,7 @@ void LegacyGameRuntime::handle_key(
             game_menu_.set_context(ui::GameMenuContext::world);
             game_menu_.show_main();
             menu_return_view_ = LegacyGameView::world;
-            view_ = LegacyGameView::game_menu;
+            set_view(LegacyGameView::game_menu, "open world menu");
         }
         break;
     case LegacyGameView::scene: {
@@ -182,7 +254,7 @@ void LegacyGameRuntime::handle_key(
                 game_menu_.set_context(ui::GameMenuContext::scene);
                 game_menu_.show_main();
                 menu_return_view_ = LegacyGameView::scene;
-                view_ = LegacyGameView::game_menu;
+                set_view(LegacyGameView::game_menu, "open scene menu");
             } else if (translated_key == 0x0DU || translated_key == 0x20U) {
                 handle_scene_result(scene_session_->interact());
             }
@@ -293,7 +365,7 @@ void LegacyGameRuntime::begin_new_game() {
         show_error(name_editor_->error(), LegacyGameView::title);
         return;
     }
-    view_ = LegacyGameView::name_entry;
+    set_view(LegacyGameView::name_entry, "new game baseline loaded");
 }
 
 void LegacyGameRuntime::perform_pending_io() {
@@ -364,7 +436,12 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
         return false;
     }
     game_menu_.set_context(ui::GameMenuContext::world);
-    view_ = LegacyGameView::world;
+    set_view(LegacyGameView::world, "world session started");
+    diagnostics::log_info(
+        "world session ready x=" + std::to_string(world_session_->world_x()) +
+        " y=" + std::to_string(world_session_->world_y()) +
+        " direction=" + std::string{world_direction_name(world_session_->direction())} +
+        " frame=" + std::to_string(world_session_->player_frame()));
     return true;
 }
 
@@ -387,11 +464,22 @@ bool LegacyGameRuntime::start_scene(
         return false;
     }
     game_menu_.set_context(ui::GameMenuContext::scene);
-    view_ = LegacyGameView::scene;
+    set_view(LegacyGameView::scene, "scene session started");
+    diagnostics::log_info(
+        "scene session ready id=" + std::to_string(scene_session_->scene_id()) +
+        " x=" + std::to_string(scene_session_->scene_x()) +
+        " y=" + std::to_string(scene_session_->scene_y()) +
+        " frame=" + std::to_string(scene_session_->player_frame()));
     return true;
 }
 
 void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result) {
+    diagnostics::log_info(
+        "scene result kind=" + std::string{scene_step_name(result.kind)} +
+        " scene=" + std::to_string(result.scene_id) +
+        " x=" + std::to_string(result.scene_x) +
+        " y=" + std::to_string(result.scene_y) +
+        " battle=" + std::to_string(result.battle_id));
     if (scene_session_ != nullptr) {
         auto commands = scene_session_->take_audio_commands();
         scene_audio_commands_.insert(
@@ -406,7 +494,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         break;
     case scene::SceneStepKind::quit:
         clear_scene_effect();
-        view_ = LegacyGameView::exited;
+        set_view(LegacyGameView::exited, "scene requested quit");
         break;
     case scene::SceneStepKind::battle:
         battle_request_ = result.battle_id;
@@ -425,7 +513,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         game_menu_.set_context(ui::GameMenuContext::scene);
         game_menu_.show_main();
         menu_return_view_ = LegacyGameView::scene;
-        view_ = LegacyGameView::game_menu;
+        set_view(LegacyGameView::game_menu, "scene requested UI");
         break;
     case scene::SceneStepKind::stay:
     case scene::SceneStepKind::moved:
@@ -498,8 +586,22 @@ void LegacyGameRuntime::update_menu_counts() {
     game_menu_.set_inventory_count(inventory_count);
 }
 
+void LegacyGameRuntime::set_view(
+    const LegacyGameView view, const std::string_view reason) {
+    if (view_ == view) {
+        return;
+    }
+    diagnostics::log_info(
+        "view " + std::string{view_name(view_)} + " -> " + std::string{view_name(view)} +
+        " reason=" + std::string{reason});
+    view_ = view;
+}
+
 void LegacyGameRuntime::show_error(
     std::string message, const LegacyGameView return_view) {
+    diagnostics::log_error(
+        "runtime error return_view=" + std::string{view_name(return_view)} +
+        " message=" + message);
     show_legacy_error(legacy_ascii(message), return_view);
 }
 
@@ -511,7 +613,7 @@ void LegacyGameRuntime::show_legacy_error(
     }
     visible_error_.assign(message.begin(), message.end());
     error_return_view_ = return_view;
-    view_ = LegacyGameView::error;
+    set_view(LegacyGameView::error, "show legacy error");
 }
 
 void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
@@ -524,7 +626,7 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
         error_return_view_ = LegacyGameView::title;
         title_menu_.show_please_wait();
         break;
-    case ui::TitleCommand::exit_game: view_ = LegacyGameView::exited; break;
+    case ui::TitleCommand::exit_game: set_view(LegacyGameView::exited, "title exit"); break;
     }
 }
 
@@ -544,7 +646,7 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         }
         break;
     }
-    case ui::GameMenuCommand::resume: view_ = menu_return_view_; break;
+    case ui::GameMenuCommand::resume: set_view(menu_return_view_, "resume from menu"); break;
     case ui::GameMenuCommand::load_slot:
         pending_slot_ = result.slot;
         pending_io_ = PendingIo::load;
@@ -555,7 +657,9 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         pending_io_ = PendingIo::save;
         error_return_view_ = LegacyGameView::game_menu;
         break;
-    case ui::GameMenuCommand::exit_game: view_ = LegacyGameView::exited; break;
+    case ui::GameMenuCommand::exit_game:
+        set_view(LegacyGameView::exited, "game menu exit");
+        break;
     }
 }
 

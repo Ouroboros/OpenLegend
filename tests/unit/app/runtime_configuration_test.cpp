@@ -129,6 +129,48 @@ void test_configuration_paths_and_window() {
     OL_CHECK(window.loaded_from_file);
 }
 
+void test_logging_configuration() {
+    using namespace openlegend::app;
+    using openlegend::diagnostics::LogLevel;
+    const TemporaryTree tree;
+    const auto fallback = tree.executable_directory() / "logs" / "openlegend.log";
+
+    const auto missing = load_logging_configuration(
+        tree.configuration_path(), tree.executable_directory(), fallback, LogLevel::info);
+    OL_CHECK(missing.status == LoggingConfigurationStatus::ready);
+    OL_CHECK(missing.path == fallback);
+    OL_CHECK(missing.minimum_level == LogLevel::info);
+    OL_CHECK(!missing.loaded_from_file);
+
+    tree.write_configuration(
+        "[logging]\n"
+        "path = 'diagnostics/session.log'\n"
+        "level = 'trace'\n");
+    const auto loaded = load_logging_configuration(
+        tree.configuration_path(), tree.executable_directory(), fallback, LogLevel::info);
+    OL_CHECK(loaded.status == LoggingConfigurationStatus::ready);
+    OL_CHECK(loaded.path ==
+             (tree.executable_directory() / "diagnostics" / "session.log").lexically_normal());
+    OL_CHECK(loaded.minimum_level == LogLevel::trace);
+    OL_CHECK(loaded.loaded_from_file);
+
+    tree.write_configuration("logging = 7\n");
+    OL_CHECK(load_logging_configuration(
+                 tree.configuration_path(), tree.executable_directory(), fallback, LogLevel::info)
+                 .status == LoggingConfigurationStatus::invalid_logging_table);
+
+    tree.write_configuration("[logging]\npath = ''\n");
+    OL_CHECK(load_logging_configuration(
+                 tree.configuration_path(), tree.executable_directory(), fallback, LogLevel::info)
+                 .status == LoggingConfigurationStatus::invalid_log_path);
+
+    tree.write_configuration("[logging]\nlevel = 'verbose'\n");
+    const auto invalid_level = load_logging_configuration(
+        tree.configuration_path(), tree.executable_directory(), fallback, LogLevel::info);
+    OL_CHECK(invalid_level.status == LoggingConfigurationStatus::invalid_log_level);
+    OL_CHECK(invalid_level.detail == "verbose");
+}
+
 void test_command_line_overrides_configuration() {
     using namespace openlegend::app;
     const TemporaryTree tree;
@@ -250,6 +292,7 @@ void test_window_errors_and_lossless_other_tables() {
 void run_runtime_configuration_tests() {
     test_missing_configuration_uses_launch_directory();
     test_configuration_paths_and_window();
+    test_logging_configuration();
     test_command_line_overrides_configuration();
     test_configuration_errors();
     test_data_directory_activation();

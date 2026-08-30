@@ -225,6 +225,29 @@ template <typename Status>
     return value > 0 && value <= static_cast<std::int64_t>(std::numeric_limits<int>::max());
 }
 
+[[nodiscard]] std::optional<diagnostics::LogLevel> parse_log_level(
+    const std::string_view value) noexcept {
+    if (value == "trace") {
+        return diagnostics::LogLevel::trace;
+    }
+    if (value == "debug") {
+        return diagnostics::LogLevel::debug;
+    }
+    if (value == "info") {
+        return diagnostics::LogLevel::info;
+    }
+    if (value == "warning") {
+        return diagnostics::LogLevel::warning;
+    }
+    if (value == "error") {
+        return diagnostics::LogLevel::error;
+    }
+    if (value == "critical") {
+        return diagnostics::LogLevel::critical;
+    }
+    return std::nullopt;
+}
+
 [[nodiscard]] WindowConfigurationLoadResult window_load_error(
     const WindowConfigurationStatus status,
     const WindowSize fallback,
@@ -366,6 +389,78 @@ WindowConfigurationStatus save_window_configuration(
         return WindowConfigurationStatus::write_failed;
     }
     return WindowConfigurationStatus::ready;
+}
+
+LoggingConfigurationLoadResult load_logging_configuration(
+    const std::filesystem::path& configuration_path,
+    const std::filesystem::path& executable_directory,
+    const std::filesystem::path& fallback_path,
+    const diagnostics::LogLevel fallback_level) {
+    LoggingConfigurationLoadResult result;
+    result.path = fallback_path;
+    result.minimum_level = fallback_level;
+
+    toml::table document;
+    if (!read_existing_document(
+            configuration_path, document, result.status, result.detail)) {
+        return result;
+    }
+    const toml::node* logging_node = document.get("logging");
+    if (logging_node == nullptr) {
+        return result;
+    }
+    const toml::table* logging = logging_node->as_table();
+    if (logging == nullptr) {
+        result.status = LoggingConfigurationStatus::invalid_logging_table;
+        return result;
+    }
+    if (const toml::node* path_node = logging->get("path"); path_node != nullptr) {
+        const auto value = path_node->value<std::string>();
+        if (!value.has_value() || value->empty()) {
+            result.status = LoggingConfigurationStatus::invalid_log_path;
+            return result;
+        }
+        auto configured_path = path_from_utf8(*value);
+        if (configured_path.is_relative()) {
+            configured_path = executable_directory / configured_path;
+        }
+        result.path = configured_path.lexically_normal();
+    }
+    if (const toml::node* level_node = logging->get("level"); level_node != nullptr) {
+        const auto value = level_node->value<std::string>();
+        if (!value.has_value()) {
+            result.status = LoggingConfigurationStatus::invalid_log_level;
+            return result;
+        }
+        const auto parsed = parse_log_level(*value);
+        if (!parsed.has_value()) {
+            result.status = LoggingConfigurationStatus::invalid_log_level;
+            result.detail = *value;
+            return result;
+        }
+        result.minimum_level = *parsed;
+    }
+    result.loaded_from_file = true;
+    return result;
+}
+
+std::string_view logging_configuration_status_message(
+    const LoggingConfigurationStatus status) noexcept {
+    switch (status) {
+    case LoggingConfigurationStatus::ready:
+        return "ready";
+    case LoggingConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case LoggingConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case LoggingConfigurationStatus::invalid_logging_table:
+        return "[logging] must be a TOML table";
+    case LoggingConfigurationStatus::invalid_log_path:
+        return "[logging] path must be a non-empty string";
+    case LoggingConfigurationStatus::invalid_log_level:
+        return "[logging] level must be trace, debug, info, warning, error, or critical";
+    }
+    return "unknown logging configuration status";
 }
 
 std::string_view window_configuration_status_message(

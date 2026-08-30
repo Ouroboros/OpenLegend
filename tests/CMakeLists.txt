@@ -1,3 +1,5 @@
+find_package(Threads REQUIRED)
+
 add_executable(
     openlegend_core_tests
     unit/app/mode_coordinator_test.cpp
@@ -92,6 +94,18 @@ target_link_libraries(
     PRIVATE openlegend_model openlegend_persistence openlegend_resource
 )
 add_test(NAME openlegend.persistence COMMAND openlegend_persistence_tests)
+
+add_executable(openlegend_diagnostics_tests unit/diagnostics/log_test.cpp)
+target_compile_definitions(
+    openlegend_diagnostics_tests
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+)
+target_include_directories(openlegend_diagnostics_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(
+    openlegend_diagnostics_tests
+    PRIVATE openlegend_diagnostics Threads::Threads
+)
+add_test(NAME openlegend.diagnostics COMMAND openlegend_diagnostics_tests)
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 add_test(

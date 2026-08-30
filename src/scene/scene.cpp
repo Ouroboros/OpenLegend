@@ -7,9 +7,11 @@
 #include <cstdio>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/diagnostics/log.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
@@ -36,6 +38,17 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
 [[nodiscard]] constexpr std::size_t tile_index(const int x, const int y) noexcept {
     return static_cast<std::size_t>(y) * model::kSceneCoordinateCount +
            static_cast<std::size_t>(x);
+}
+
+[[nodiscard]] constexpr std::string_view direction_name(
+    const SceneDirection direction) noexcept {
+    switch (direction) {
+    case SceneDirection::up: return "up";
+    case SceneDirection::right: return "right";
+    case SceneDirection::left: return "left";
+    case SceneDirection::down: return "down";
+    }
+    return "unknown";
 }
 
 [[nodiscard]] constexpr std::pair<int, int> direction_delta(
@@ -330,8 +343,13 @@ bool SceneSession::load_scene_sprites() {
 
 SceneStepResult SceneSession::move(const SceneDirection direction) {
     if (!valid() || pending_.kind != SceneStepKind::stay) {
+        diagnostics::log_debug(
+            "scene move ignored scene=" + std::to_string(scene_id_) +
+            " pending=" + std::to_string(static_cast<int>(pending_.kind)));
         return pending_;
     }
+    const auto source_x = scene_x_;
+    const auto source_y = scene_y_;
     direction_ = direction;
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
     if (walk_frame_offset_ > 12) {
@@ -341,6 +359,21 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     const auto target_x = std::clamp(scene_x_ + delta_x, 0, kSceneExtent - 1);
     const auto target_y = std::clamp(scene_y_ + delta_y, 0, kSceneExtent - 1);
     if (!target_is_walkable(target_x, target_y)) {
+        diagnostics::log_info(
+            "scene blocked scene=" + std::to_string(scene_id_) +
+            " direction=" + std::string{direction_name(direction)} +
+            " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
+            " target=" + std::to_string(target_x) + "," + std::to_string(target_y) +
+            " frame=" + std::to_string(player_frame()) +
+            " earth=" + std::to_string(scene_value(
+                scene_id_, static_cast<std::int16_t>(model::SceneLayer::earth),
+                static_cast<std::int16_t>(target_x), static_cast<std::int16_t>(target_y))) +
+            " building=" + std::to_string(scene_value(
+                scene_id_, static_cast<std::int16_t>(model::SceneLayer::building),
+                static_cast<std::int16_t>(target_x), static_cast<std::int16_t>(target_y))) +
+            " height=" + std::to_string(scene_value(
+                scene_id_, static_cast<std::int16_t>(model::SceneLayer::building_height),
+                static_cast<std::int16_t>(target_x), static_cast<std::int16_t>(target_y))));
         commit_header();
         return current_result(SceneStepKind::stay);
     }
@@ -359,12 +392,24 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     }
     update_view_origin();
     commit_header();
+    diagnostics::log_info(
+        "scene moved scene=" + std::to_string(scene_id_) +
+        " direction=" + std::string{direction_name(direction)} +
+        " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
+        " to=" + std::to_string(scene_x_) + "," + std::to_string(scene_y_) +
+        " frame=" + std::to_string(player_frame()) +
+        " view_origin=" + std::to_string(view_origin_x_) + "," +
+        std::to_string(view_origin_y_));
 
     if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
         const auto& metadata = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)];
         for (std::size_t index = 0U; index < model::scene_metadata_word::exit_count; ++index) {
             if (scene_x_ == metadata.word(model::scene_metadata_word::exit_x_begin + index) &&
                 scene_y_ == metadata.word(model::scene_metadata_word::exit_y_begin + index)) {
+                diagnostics::log_info(
+                    "scene exit scene=" + std::to_string(scene_id_) +
+                    " x=" + std::to_string(scene_x_) +
+                    " y=" + std::to_string(scene_y_));
                 snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 0);
                 pending_ = current_result(SceneStepKind::return_world);
                 return pending_;
@@ -376,7 +421,12 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
             scene_y_ == metadata.word(model::scene_metadata_word::jump_y)) {
             const auto use_return = metadata.word(model::scene_metadata_word::jump_return_x) == 0 &&
                                     metadata.word(model::scene_metadata_word::jump_return_y) == 0;
+            const auto previous_scene = scene_id_;
             scene_id_ = jump_scene;
+            diagnostics::log_info(
+                "scene jump from=" + std::to_string(previous_scene) +
+                " to=" + std::to_string(scene_id_) +
+                " trigger=" + std::to_string(scene_x_) + "," + std::to_string(scene_y_));
             weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
                                kWeatherSceneIds.end();
             if (!weather_enabled_) {
@@ -1512,6 +1562,8 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
     }
     framebuffer.clear(0U);
     framebuffer.set_palette(palette_);
+    const auto player_sprite = player_frame();
+    bool player_drawn = false;
     for (int local_x = 0; local_x < kSceneViewExtent; ++local_x) {
         for (int local_y = 0; local_y < kSceneViewExtent; ++local_y) {
             const auto x = local_x + view_origin_x_;
@@ -1559,9 +1611,17 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
                     return false;
                 }
             }
-            if (x == scene_x_ && y == scene_y_ && player_frame() != 0 && player_frame() != -86 &&
-                !draw_sprite(framebuffer, player_frame(), anchor_x, anchor_y - building_height)) {
-                return false;
+            if (x == scene_x_ && y == scene_y_ && player_sprite != 0 && player_sprite != -86) {
+                if (!draw_sprite(
+                        framebuffer, player_sprite, anchor_x, anchor_y - building_height)) {
+                    diagnostics::log_error(
+                        "scene player sprite draw failed scene=" + std::to_string(scene_id_) +
+                        " x=" + std::to_string(scene_x_) +
+                        " y=" + std::to_string(scene_y_) +
+                        " frame=" + std::to_string(player_sprite));
+                    return false;
+                }
+                player_drawn = true;
             }
             const auto decoration = scene_value(
                 scene_id_, static_cast<std::int16_t>(model::SceneLayer::decoration),
@@ -1582,6 +1642,22 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
                 return false;
             }
         }
+    }
+    if (player_sprite != 0 && player_sprite != -86 && !player_drawn) {
+        diagnostics::log_warning(
+            "scene player not visited by render grid scene=" + std::to_string(scene_id_) +
+            " x=" + std::to_string(scene_x_) +
+            " y=" + std::to_string(scene_y_) +
+            " frame=" + std::to_string(player_sprite) +
+            " view_origin=" + std::to_string(view_origin_x_) + "," +
+            std::to_string(view_origin_y_));
+    } else {
+        diagnostics::log_trace(
+            "scene player render scene=" + std::to_string(scene_id_) +
+            " x=" + std::to_string(scene_x_) +
+            " y=" + std::to_string(scene_y_) +
+            " frame=" + std::to_string(player_sprite) +
+            " drawn=" + (player_drawn ? std::string{"true"} : std::string{"false"}));
     }
     return true;
 }

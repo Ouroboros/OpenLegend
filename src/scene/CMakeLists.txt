@@ -5,6 +5,7 @@ target_include_directories(
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
+target_link_libraries(openlegend_scene PRIVATE openlegend_diagnostics)
 target_link_libraries(
     openlegend_scene
     PUBLIC

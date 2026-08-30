@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/diagnostics/log.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/render/world_depth_order.hpp"
 #include "openlegend/render/world_projection.hpp"
@@ -55,6 +56,17 @@ constexpr std::array<std::int16_t, 12> kShipCoastRanges{
         }
     }
     return false;
+}
+
+[[nodiscard]] constexpr std::string_view direction_name(
+    const WorldDirection direction) noexcept {
+    switch (direction) {
+    case WorldDirection::up: return "up";
+    case WorldDirection::right: return "right";
+    case WorldDirection::left: return "left";
+    case WorldDirection::down: return "down";
+    }
+    return "unknown";
 }
 
 [[nodiscard]] constexpr std::pair<int, int> direction_delta(
@@ -221,8 +233,11 @@ WorldSession::WorldSession(
 
 WorldStepResult WorldSession::move(const WorldDirection direction) {
     if (!valid()) {
+        diagnostics::log_error("world move rejected: invalid session");
         return {};
     }
+    const auto source_x = world_x_;
+    const auto source_y = world_y_;
     if (in_ship_) {
         ship_direction_ = direction;
         ship_frame_offset_ = static_cast<std::int16_t>(ship_frame_offset_ + 2);
@@ -268,7 +283,20 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
     const auto target_x = std::clamp(world_x_ + delta_x, 0, kWorldExtent - 1);
     const auto target_y = std::clamp(world_y_ + delta_y, 0, kWorldExtent - 1);
     const auto moved_coordinate = delta_x != 0 ? target_x : target_y;
+    const auto cache_target_x = target_x - cache_.origin_x();
+    const auto cache_target_y = target_y - cache_.origin_y();
+    const auto target_earth = cache_.at(WorldLayer::earth, cache_target_x, cache_target_y);
+    const auto target_surface = cache_.at(WorldLayer::surface, cache_target_x, cache_target_y);
+    const auto target_building = cache_.at(WorldLayer::building, cache_target_x, cache_target_y);
+    const auto target_build_x = cache_.at(WorldLayer::build_x, cache_target_x, cache_target_y);
+    const auto target_build_y = cache_.at(WorldLayer::build_y, cache_target_x, cache_target_y);
     if (const auto scene = entrance_at(target_x, target_y); scene.has_value()) {
+        diagnostics::log_info(
+            "world entrance direction=" + std::string{direction_name(direction)} +
+            " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
+            " target=" + std::to_string(target_x) + "," + std::to_string(target_y) +
+            " scene=" + std::to_string(*scene) +
+            " frame=" + std::to_string(player_frame()));
         commit_header();
         return {WorldStepKind::enter_scene, *scene, static_cast<std::int16_t>(world_x_),
                 static_cast<std::int16_t>(world_y_)};
@@ -287,8 +315,6 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
             can_move = target_is_walkable(target_x, target_y, moved_coordinate);
         }
     } else {
-        const auto cache_target_x = target_x - cache_.origin_x();
-        const auto cache_target_y = target_y - cache_.origin_y();
         const auto target_clear =
             cache_.at(WorldLayer::building, cache_target_x, cache_target_y) == 0 &&
             cache_.at(WorldLayer::build_x, cache_target_x, cache_target_y) == 0 &&
@@ -316,6 +342,17 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
             ship_next_y_ = target_y;
             ship_direction_ = direction;
         }
+        diagnostics::log_info(
+            "world blocked direction=" + std::string{direction_name(direction)} +
+            " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
+            " target=" + std::to_string(target_x) + "," + std::to_string(target_y) +
+            " in_ship=" + (in_ship_ ? std::string{"true"} : std::string{"false"}) +
+            " frame=" + std::to_string(player_frame()) +
+            " earth=" + std::to_string(target_earth) +
+            " surface=" + std::to_string(target_surface) +
+            " building=" + std::to_string(target_building) +
+            " build_x=" + std::to_string(target_build_x) +
+            " build_y=" + std::to_string(target_build_y));
         commit_header();
         return {WorldStepKind::stay, -1, static_cast<std::int16_t>(world_x_),
                 static_cast<std::int16_t>(world_y_)};
@@ -343,6 +380,14 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
     }
     reload_cache_if_needed(delta_y != 0);
     commit_header();
+    diagnostics::log_info(
+        "world moved direction=" + std::string{direction_name(direction)} +
+        " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
+        " to=" + std::to_string(world_x_) + "," + std::to_string(world_y_) +
+        " in_ship=" + (in_ship_ ? std::string{"true"} : std::string{"false"}) +
+        " frame=" + std::to_string(player_frame()) +
+        " cache_origin=" + std::to_string(cache_.origin_x()) + "," +
+        std::to_string(cache_.origin_y()));
     return {WorldStepKind::moved, -1, static_cast<std::int16_t>(world_x_),
             static_cast<std::int16_t>(world_y_)};
 }
@@ -463,8 +508,12 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
             6000}};
     const auto depth = render::build_legacy_world_depth_list(input);
     if (!depth) {
+        diagnostics::log_error(
+            "world render depth list failed x=" + std::to_string(world_x_) +
+            " y=" + std::to_string(world_y_));
         return false;
     }
+    bool player_drawn = false;
     for (const auto& entry : depth.entries) {
         if (entry.sprite_id == 5000) {
             const auto sprite = in_ship_
@@ -473,8 +522,13 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
                                           ship_frame_offset_)
                                     : player_frame();
             if (!draw_sprite(framebuffer, sprite, 145, 117)) {
+                diagnostics::log_error(
+                    "world player sprite draw failed sprite=" + std::to_string(sprite) +
+                    " x=" + std::to_string(world_x_) +
+                    " y=" + std::to_string(world_y_));
                 return false;
             }
+            player_drawn = true;
             continue;
         }
         const auto relative_x = static_cast<int>(entry.world_x) - cache_.origin_x() -
@@ -497,6 +551,26 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
                 return false;
             }
         }
+    }
+    const auto frame = in_ship_
+                           ? static_cast<std::int16_t>(
+                                 kShipFrameBase[static_cast<std::size_t>(ship_direction_)] +
+                                 ship_frame_offset_)
+                           : player_frame();
+    if (!player_drawn) {
+        diagnostics::log_warning(
+            "world player missing from depth output x=" + std::to_string(world_x_) +
+            " y=" + std::to_string(world_y_) +
+            " frame=" + std::to_string(frame) +
+            " entries=" + std::to_string(depth.entries.size()) +
+            " cache_origin=" + std::to_string(cache_.origin_x()) + "," +
+            std::to_string(cache_.origin_y()));
+    } else {
+        diagnostics::log_trace(
+            "world player rendered x=" + std::to_string(world_x_) +
+            " y=" + std::to_string(world_y_) +
+            " frame=" + std::to_string(frame) +
+            " entries=" + std::to_string(depth.entries.size()));
     }
     return true;
 }

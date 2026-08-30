@@ -6,6 +6,7 @@ target_link_libraries(
         openlegend_app
         openlegend_audio
         openlegend_compat
+        openlegend_diagnostics
         openlegend_input
         openlegend_project_options
         openlegend_project_warnings

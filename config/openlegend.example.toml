@@ -6,6 +6,13 @@
 # Linux and macOS example:
 # data_dir = '/home/user/games/jinyong'
 
+[logging]
+
+# Relative paths resolve from the executable directory. Every record is flushed
+# immediately. Levels: trace, debug, info, warning, error, critical.
+path = "logs/openlegend.log"
+level = "info"
+
 [window]
 
 # OpenLegend always renders internally at 320x200. These values only control
