@@ -45,6 +45,15 @@ constexpr std::array<std::uint8_t, 17> kDeathAnotherText{
 constexpr std::array<std::uint8_t, 23> kExitPrompt{
     0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U, 0xC0U, 0xB8U,
     0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
+constexpr std::array<std::uint8_t, 23> kBattleQuestion{
+    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xBBU, 0x50U, 0xA4U, 0xA7U, 0xB9U, 0x4CU, 0xA9U, 0xDBU,
+    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
+constexpr std::array<std::uint8_t, 23> kJoinQuestion{
+    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xADU, 0x6EU, 0xA8U, 0x44U, 0xA5U, 0x5BU, 0xA4U, 0x4AU,
+    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
+constexpr std::array<std::uint8_t, 23> kRestQuestion{
+    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xA6U, 0xEDU, 0xB1U, 0x4AU, 0xB9U, 0x4CU, 0xA9U, 0x5DU,
+    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
 constexpr std::array<std::int16_t, 20> kEndingCreditIds{
     6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
     26, 28, 30, 32, 34, 36, 38, 40, 42, 44};
@@ -669,6 +678,7 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         return current_result(SceneStepKind::stay);
     }
     const auto previous_kind = pending_.kind;
+    const auto previous_question = pending_.question;
     const auto previous_shop_id = pending_.shop_id;
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
@@ -781,7 +791,18 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
 
     if (continuation_ == PendingContinuation::conditional) {
         const auto accepted = response == SceneResponse::yes;
-        program_counter_ += accepted ? true_offset_ : false_offset_;
+        const auto offset = accepted ? true_offset_ : false_offset_;
+        if (previous_kind == SceneStepKind::question &&
+            previous_question == SceneQuestion::join) {
+            true_offset_ = offset;
+            continuation_ = PendingContinuation::conditional_after_present;
+            pending_ = current_result(SceneStepKind::present);
+            return pending_;
+        }
+        program_counter_ += offset;
+        continuation_ = PendingContinuation::none;
+    } else if (continuation_ == PendingContinuation::conditional_after_present) {
+        program_counter_ += true_offset_;
         continuation_ = PendingContinuation::none;
     } else if (continuation_ == PendingContinuation::battle) {
         const auto victory = response == SceneResponse::battle_victory;
@@ -914,7 +935,7 @@ SceneStepResult SceneSession::run_event() {
             break;
         case 5:
         case 9:
-        case 11:
+        case 11: {
             true_offset_ = argument(1);
             false_offset_ = argument(2);
             program_counter_ += 3;
@@ -922,7 +943,11 @@ SceneStepResult SceneSession::run_event() {
             pending_ = current_result(SceneStepKind::question);
             pending_.question = opcode == 5 ? SceneQuestion::battle
                                             : (opcode == 9 ? SceneQuestion::join : SceneQuestion::rest);
+            const auto& question_text = opcode == 5 ? kBattleQuestion
+                                        : (opcode == 9 ? kJoinQuestion : kRestQuestion);
+            pending_text_.assign(question_text.begin(), question_text.end());
             return pending_;
+        }
         case 6:
             true_offset_ = argument(2);
             false_offset_ = argument(3);
@@ -3103,6 +3128,16 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         pending_.kind == SceneStepKind::return_world || pending_.kind == SceneStepKind::quit ||
         pending_.kind == SceneStepKind::open_ui || pending_.kind == SceneStepKind::battle) {
         return true;
+    }
+    if (pending_.kind == SceneStepKind::question) {
+        constexpr int x = 61;
+        constexpr int y = 40;
+        if (!draw_panel(framebuffer, x, y, 187, 27)) {
+            return false;
+        }
+        render::Big5GlyphCache cache{big5_font_};
+        return render::draw_legacy_text(
+            framebuffer, 71, 45, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == 52 || pending_.style == 53)) {

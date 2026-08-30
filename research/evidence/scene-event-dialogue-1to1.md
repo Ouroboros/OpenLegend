@@ -8,10 +8,10 @@
 
 - headless IDA 脚本：`research/ida/scripts/ida_b7_scene_xrefs.py`
 - IDA 报告：`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`
-  - SHA256：`7e2ce337bfeebd9d53ee0ae47351b4ec63813295fcecc79ff86680a1394d13f0`
+  - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`721ad6f9f793d2e94ccd90f463685f89f7f60f604ee868c32e2c1524bdab8dc5`
+  - SHA256：`6be92490b4ccfb959d967e1d328c47fd5e1001533609227cfcb233fbcb9dce62`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -153,7 +153,7 @@ Linux app Debug BUILD 脚本：13/13 测试通过，包括：
 
 - 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
 - HDGRP 115帧以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
-- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode4/6/13/14/16/24/68 的条件、同步、载入菜单与 PC 不推进边界；
+- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode4/5/6/9/11/13/14/16/24/68 的条件、问题框、同步、载入菜单与 PC 不推进边界；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
 - 真实 script494 的 opcode8 立即空音频与离场 music3 覆盖；

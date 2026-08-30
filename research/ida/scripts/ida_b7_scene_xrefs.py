@@ -21,6 +21,9 @@ RAW_RANGES = (
     ("scene_weather_scene_ids", 0x555A4, 0x555BA),
     ("load_menu_items", 0x2C1A1, 0x2C1CD),
     ("tournament_head_ids", 0x2C1CD, 0x2C209),
+    ("battle_question_text", 0x58849, 0x58860),
+    ("join_question_text", 0x58860, 0x58877),
+    ("rest_question_text", 0x58877, 0x5888E),
     ("exit_confirmation_text", 0x58903, 0x5891A),
 )
 

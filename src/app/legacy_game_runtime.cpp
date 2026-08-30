@@ -264,11 +264,10 @@ void LegacyGameRuntime::handle_key(
         }
         const auto pending_kind = scene_session_->pending().kind;
         if (pending_kind == scene::SceneStepKind::question) {
-            if (translated_key == static_cast<std::uint8_t>('Y') || translated_key == 0x0DU) {
-                handle_scene_result(scene_session_->resume(scene::SceneResponse::yes));
-            } else if (translated_key == static_cast<std::uint8_t>('N') || translated_key == 0x1BU) {
-                handle_scene_result(scene_session_->resume(scene::SceneResponse::no));
-            }
+            handle_scene_result(scene_session_->resume(
+                translated_key == static_cast<std::uint8_t>('Y')
+                    ? scene::SceneResponse::yes
+                    : scene::SceneResponse::no));
         } else if (pending_kind == scene::SceneStepKind::shop) {
             if (translated_key >= static_cast<std::uint8_t>('1') &&
                 translated_key <= static_cast<std::uint8_t>('5')) {

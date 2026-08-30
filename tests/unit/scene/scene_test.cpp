@@ -81,6 +81,18 @@ public:
                          6, 77, 0, 4, 9, 2, 202, 1, -1, 2, 203, 1}) {
                     append_i16(group, word);
                 }
+            } else if (script == 7U) {
+                for (const auto word : std::array<std::int16_t, 6>{5, 0, 3, 2, 210, 1}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 8U) {
+                for (const auto word : std::array<std::int16_t, 6>{9, 0, 3, 2, 211, 1}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 9U) {
+                for (const auto word : std::array<std::int16_t, 6>{11, 0, 3, 2, 212, 1}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -460,6 +472,69 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = battle_loss.resume(SceneResponse::battle_defeat);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(battle_loss_snapshot.ranger, 203) == loss_count_before + 1);
+
+    auto battle_question_snapshot = load_baseline(root);
+    const auto battle_question_count = inventory_count(battle_question_snapshot.ranger, 210);
+    openlegend::random::LegacyRandom battle_question_random{1U};
+    openlegend::scene::SceneSession battle_question{
+        data_root, battle_question_snapshot, battle_question_random, 70};
+    OL_CHECK(finish_scene_title(battle_question).kind == SceneStepKind::stay);
+    result = battle_question.begin_event(7, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::battle);
+    OL_CHECK(battle_question.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0x5D8FC752D48D9A98ULL);
+    OL_CHECK(battle_question.resume(SceneResponse::no).kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(battle_question_snapshot.ranger, 210) == battle_question_count);
+
+    auto battle_yes_snapshot = load_baseline(root);
+    const auto battle_yes_count = inventory_count(battle_yes_snapshot.ranger, 210);
+    openlegend::random::LegacyRandom battle_yes_random{1U};
+    openlegend::scene::SceneSession battle_yes{
+        data_root, battle_yes_snapshot, battle_yes_random, 70};
+    OL_CHECK(finish_scene_title(battle_yes).kind == SceneStepKind::stay);
+    result = battle_yes.begin_event(7, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question);
+    result = battle_yes.resume(SceneResponse::yes);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(battle_yes_snapshot.ranger, 210) == battle_yes_count + 1);
+
+    auto join_question_snapshot = load_baseline(root);
+    const auto join_question_count = inventory_count(join_question_snapshot.ranger, 211);
+    openlegend::random::LegacyRandom join_question_random{1U};
+    openlegend::scene::SceneSession join_question{
+        data_root, join_question_snapshot, join_question_random, 70};
+    OL_CHECK(finish_scene_title(join_question).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer bare_scene;
+    OL_CHECK(join_question.render(bare_scene));
+    const auto bare_scene_hash = fnv1a64(bare_scene.pixels());
+    result = join_question.begin_event(8, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::join);
+    OL_CHECK(join_question.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0xBEA93863A81CD9E0ULL);
+    result = join_question.resume(SceneResponse::yes);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(join_question.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == bare_scene_hash);
+    result = join_question.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(join_question_snapshot.ranger, 211) == join_question_count + 1);
+
+    auto rest_question_snapshot = load_baseline(root);
+    const auto rest_question_count = inventory_count(rest_question_snapshot.ranger, 212);
+    openlegend::random::LegacyRandom rest_question_random{1U};
+    openlegend::scene::SceneSession rest_question{
+        data_root, rest_question_snapshot, rest_question_random, 70};
+    OL_CHECK(finish_scene_title(rest_question).kind == SceneStepKind::stay);
+    result = rest_question.begin_event(9, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::rest);
+    OL_CHECK(rest_question.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == 0xD070227A07492883ULL);
+    result = rest_question.resume(SceneResponse::yes);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(rest_question_snapshot.ranger, 212) == rest_question_count + 1);
 }
 
 void check_scene_render_and_movement(const std::filesystem::path& root) {
@@ -1800,6 +1875,8 @@ void check_event_presence_and_party_tail_conditions(const std::filesystem::path&
         step = session.resume(SceneResponse::acknowledge);
         OL_CHECK(step.kind == SceneStepKind::question);
         step = session.resume(SceneResponse::yes);
+        OL_CHECK(step.kind == SceneStepKind::present);
+        step = session.resume(SceneResponse::acknowledge);
         OL_CHECK(step.kind == SceneStepKind::dialogue);
         OL_CHECK(step.talk_id == 29);
         step = session.resume(SceneResponse::acknowledge);
@@ -2847,6 +2924,8 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         }
         OL_CHECK(result.kind == SceneStepKind::question);
         result = session.resume(SceneResponse::yes);
+        OL_CHECK(result.kind == SceneStepKind::present);
+        result = session.resume(SceneResponse::acknowledge);
         OL_CHECK(result.kind == SceneStepKind::dialogue && result.talk_id == 1573);
         while ((result.kind == SceneStepKind::dialogue && result.talk_id == 1573) ||
                result.kind == SceneStepKind::present) {

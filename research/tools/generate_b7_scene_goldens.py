@@ -1158,6 +1158,25 @@ def dialogue_vectors(
             "frame_fnv1a64": page_frames,
         }
 
+    question_texts = {
+        "battle": bytes.fromhex(
+            "ac 4f a7 5f bb 50 a4 a7 b9 4c a9 db a1 5d a2 e7 a1 fe a2 dc a1 5e 00"
+        ),
+        "join": bytes.fromhex(
+            "ac 4f a7 5f ad 6e a8 44 a5 5b a4 4a a1 5d a2 e7 a1 fe a2 dc a1 5e 00"
+        ),
+        "rest": bytes.fromhex(
+            "ac 4f a7 5f a6 ed b1 4a b9 4c a9 5d a1 5d a2 e7 a1 fe a2 dc a1 5e 00"
+        ),
+    }
+    question_frames: dict[str, str] = {}
+    for question, text in question_texts.items():
+        pixels = bytearray(base_frame)
+        background(pixels, 61, 40, 187, 27)
+        border(pixels, 61, 40, 187, 27)
+        draw_text_linear(pixels, 71, 45, text, 0x05, 0x07)
+        question_frames[question] = fnv1a64(pixels)
+
     progress_menu_items = (
         bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 40 00"),
         bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 47 00"),
@@ -1245,6 +1264,15 @@ def dialogue_vectors(
         "maximum_explicit_line_talk": maximum_line_talk,
         "styles_present": sorted(styles_present),
         "cases": style_cases,
+        "question_prompts": {
+            "strings_hex": {key: value.hex() for key, value in question_texts.items()},
+            "panel": [61, 40, 187, 27],
+            "text_position": [71, 45],
+            "colors": [0x05, 0x07],
+            "frames": question_frames,
+            "join_post_key": "bare_scene_present_before_branch",
+            "accepted_key": "uppercase_Y_only",
+        },
         "opcode_24_load_menu": {
             "items_hex": [item.hex() for item in progress_menu_items],
             "exit_prompt_hex": exit_prompt.hex(),

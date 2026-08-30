@@ -176,6 +176,7 @@ private:
     enum class PendingContinuation {
         none,
         conditional,
+        conditional_after_present,
         battle,
         shop,
         shop_feedback,

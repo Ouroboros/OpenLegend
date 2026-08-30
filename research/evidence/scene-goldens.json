@@ -2210,6 +2210,34 @@
           ]
         }
       },
+      "question_prompts": {
+        "strings_hex": {
+          "battle": "ac4fa75fbb50a4a7b94ca9dba15da2e7a1fea2dca15e00",
+          "join": "ac4fa75fad6ea844a55ba44aa15da2e7a1fea2dca15e00",
+          "rest": "ac4fa75fa6edb14ab94ca95da15da2e7a1fea2dca15e00"
+        },
+        "panel": [
+          61,
+          40,
+          187,
+          27
+        ],
+        "text_position": [
+          71,
+          45
+        ],
+        "colors": [
+          5,
+          7
+        ],
+        "frames": {
+          "battle": "0x5d8fc752d48d9a98",
+          "join": "0xbea93863a81cd9e0",
+          "rest": "0xd070227a07492883"
+        },
+        "join_post_key": "bare_scene_present_before_branch",
+        "accepted_key": "uppercase_Y_only"
+      },
       "opcode_24_load_menu": {
         "items_hex": [
           "b8fca44ab669abd7a44000",
