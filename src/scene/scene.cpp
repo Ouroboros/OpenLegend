@@ -790,24 +790,10 @@ SceneStepResult SceneSession::run_event() {
             conditional(full, 3U, argument(1), argument(2));
             break;
         }
-        case 21: {
-            const auto role_id = argument(1);
-            bool found = false;
-            for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
-                if (!found && snapshot_.ranger.header.team_member(index).value == role_id) {
-                    found = true;
-                }
-                if (found) {
-                    const auto next = index + 1U < model::kTeamMemberCount
-                                          ? snapshot_.ranger.header.team_member(index + 1U)
-                                          : model::CharacterId{-1};
-                    snapshot_.ranger.header.set_team_member(index, next);
-                }
-            }
-            clear_role_personal_items(role_id);
+        case 21:
+            remove_team_role(argument(1));
             program_counter_ += 2;
             break;
-        }
         case 22:
             for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
                 const auto role_id = snapshot_.ranger.header.team_member(index).value;
@@ -1129,12 +1115,34 @@ SceneStepResult SceneSession::run_event() {
             add_inventory(143, 1);
             return emit_queued();
         }
-        case 59:
-            for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
-                snapshot_.ranger.header.set_team_member(index, model::CharacterId{-1});
+        case 59: {
+            for (int index = 6; index > 0; --index) {
+                const auto role_id = index == 6
+                                         ? snapshot_.ranger.header.inventory_item(0U).value
+                                         : snapshot_.ranger.header.team_member(
+                                               static_cast<std::size_t>(index)).value;
+                if (role_id > 0) {
+                    remove_team_role(role_id);
+                }
+            }
+            constexpr std::array<std::pair<std::int16_t, std::int16_t>, 36> targets{
+                std::pair<std::int16_t, std::int16_t>{0, 0},
+                {49, 2}, {4, 1}, {44, 0}, {44, 1}, {37, 5}, {30, 0}, {59, 0},
+                {40, 3}, {56, 1}, {1, 7}, {1, 8}, {1, 10}, {40, 7}, {40, 8},
+                {77, 0}, {54, 0}, {62, 3}, {62, 4}, {60, 2}, {60, 15}, {52, 1},
+                {61, 0}, {61, 8}, {78, 0}, {18, 0}, {18, 1}, {69, 0}, {69, 1},
+                {45, 0}, {52, 2}, {42, 6}, {42, 7}, {8, 8}, {7, 6}, {80, 1},
+            };
+            for (const auto [target_scene, target_event] : targets) {
+                const std::array<std::int16_t, 13> arguments{
+                    target_scene, target_event,
+                    0, 0, -1, -1, -1, -1, -1, -1, 0, -2, -2,
+                };
+                modify_event(arguments);
             }
             program_counter_ += 1;
             break;
+        }
         case 60: {
             const auto target_scene = argument(1) == -2 ? scene_id_ : argument(1);
             const auto current = event_field(target_scene, argument(2), model::SceneEventField::current_picture).value_or(-1);
@@ -1493,6 +1501,22 @@ void SceneSession::update_book_event_if_ready() {
     constexpr std::array<std::int16_t, 13> event_change{
         70, 11, 1, 1, 932, -1, -1, 7968, 7968, 7968, -2, -2, -2};
     modify_event(event_change);
+}
+
+void SceneSession::remove_team_role(const std::int16_t role_id) {
+    bool found = false;
+    for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
+        if (!found && snapshot_.ranger.header.team_member(index).value == role_id) {
+            found = true;
+        }
+        if (found) {
+            const auto next = index + 1U < model::kTeamMemberCount
+                                  ? snapshot_.ranger.header.team_member(index + 1U)
+                                  : model::CharacterId{-1};
+            snapshot_.ranger.header.set_team_member(index, next);
+        }
+    }
+    clear_role_personal_items(role_id);
 }
 
 void SceneSession::clear_role_personal_items(const std::int16_t role_id) {

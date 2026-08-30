@@ -631,6 +631,17 @@ def main() -> None:
         -86,
     )
 
+    script_932 = words(scripts[932])
+    assert script_932[38] == 59
+    opcode_59_targets = [
+        [0, 0], [49, 2], [4, 1], [44, 0], [44, 1], [37, 5],
+        [30, 0], [59, 0], [40, 3], [56, 1], [1, 7], [1, 8], [1, 10],
+        [40, 7], [40, 8], [77, 0], [54, 0], [62, 3], [62, 4],
+        [60, 2], [60, 15], [52, 1], [61, 0], [61, 8], [78, 0],
+        [18, 0], [18, 1], [69, 0], [69, 1], [45, 0], [52, 2],
+        [42, 6], [42, 7], [8, 8], [7, 6], [80, 1],
+    ]
+
     output = {
         "format": 1,
         "source": "current DOS assets; independent Python int16le/RLE/KDEF parser",
@@ -687,6 +698,14 @@ def main() -> None:
                 "player_y": 41,
                 "arguments": list(script_1017[6:12]),
                 "frames": opcode_62_script_1017,
+            },
+            "opcode_59_script_932": {
+                "script_id": 932,
+                "program_counter": 38,
+                "party_source_indices": [6, 5, 4, 3, 2, 1],
+                "index_6_source": "inventory_item_0",
+                "disabled_event_fields": [0, 0, -1, -1, -1, -1, -1, -1, 0],
+                "targets": opcode_59_targets,
             },
         },
         "scene_5_weather": {

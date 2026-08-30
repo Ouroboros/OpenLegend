@@ -689,6 +689,106 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::quit);
 }
 
+void check_event_finale_party_cleanup(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+        snapshot.ranger.header.set_team_member(
+            slot, openlegend::model::CharacterId{static_cast<std::int16_t>(slot)});
+    }
+    snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{6}, 1);
+    for (std::int16_t role_id = 1; role_id <= 6; ++role_id) {
+        auto& role = snapshot.ranger.roles[static_cast<std::size_t>(role_id)];
+        const std::array<std::int16_t, 3> items{
+            static_cast<std::int16_t>(20 + role_id * 3),
+            static_cast<std::int16_t>(21 + role_id * 3),
+            static_cast<std::int16_t>(22 + role_id * 3),
+        };
+        role.set_word(openlegend::model::role_word::equipment_begin, items[0]);
+        role.set_word(openlegend::model::role_word::equipment_begin + 1U, items[1]);
+        role.set_word(openlegend::model::role_word::practice_item, items[2]);
+        role.set_word(openlegend::model::role_word::item_experience, 123);
+        for (const auto item_id : items) {
+            snapshot.ranger.items[static_cast<std::size_t>(item_id)].set_word(
+                openlegend::model::item_word::user, role_id);
+        }
+    }
+    constexpr std::array<std::pair<std::int16_t, std::int16_t>, 36> targets{
+        std::pair<std::int16_t, std::int16_t>{0, 0},
+        {49, 2}, {4, 1}, {44, 0}, {44, 1}, {37, 5}, {30, 0}, {59, 0},
+        {40, 3}, {56, 1}, {1, 7}, {1, 8}, {1, 10}, {40, 7}, {40, 8},
+        {77, 0}, {54, 0}, {62, 3}, {62, 4}, {60, 2}, {60, 15}, {52, 1},
+        {61, 0}, {61, 8}, {78, 0}, {18, 0}, {18, 1}, {69, 0}, {69, 1},
+        {45, 0}, {52, 2}, {42, 6}, {42, 7}, {8, 8}, {7, 6}, {80, 1},
+    };
+    std::array<std::pair<std::int16_t, std::int16_t>, targets.size()> coordinates{};
+    for (std::size_t index = 0U; index < targets.size(); ++index) {
+        const auto [scene, event] = targets[index];
+        coordinates[index] = {
+            snapshot.event_value(scene, event, openlegend::model::SceneEventField::x).value_or(-1),
+            snapshot.event_value(scene, event, openlegend::model::SceneEventField::y).value_or(-1),
+        };
+    }
+
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    auto result = session.begin_event(932, 0, 0, 0);
+    for (int step = 0; step < 16 && result.kind != SceneStepKind::stay; ++step) {
+        if (result.kind == SceneStepKind::dialogue ||
+            result.kind == SceneStepKind::notice ||
+            result.kind == SceneStepKind::present) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    bool found_item_189 = false;
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        if (snapshot.ranger.header.inventory_item(slot).value == 189 &&
+            snapshot.ranger.header.inventory_count(slot) == 1) {
+            found_item_189 = true;
+        }
+    }
+    OL_CHECK(found_item_189);
+
+    OL_CHECK(snapshot.ranger.header.team_member(0U).value == 0);
+    for (std::size_t slot = 1U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+        OL_CHECK(snapshot.ranger.header.team_member(slot).value == -1);
+    }
+    for (std::int16_t role_id = 1; role_id <= 6; ++role_id) {
+        const auto& role = snapshot.ranger.roles[static_cast<std::size_t>(role_id)];
+        for (const auto field : {
+                 openlegend::model::role_word::equipment_begin,
+                 openlegend::model::role_word::equipment_begin + 1U,
+                 openlegend::model::role_word::practice_item}) {
+            OL_CHECK(role.word(field) == -1);
+        }
+        OL_CHECK(role.word(openlegend::model::role_word::item_experience) == 0);
+        for (std::int16_t offset = 0; offset < 3; ++offset) {
+            const auto item_id = static_cast<std::size_t>(20 + role_id * 3 + offset);
+            OL_CHECK(snapshot.ranger.items[item_id].word(openlegend::model::item_word::user) == -1);
+        }
+    }
+    for (std::size_t index = 0U; index < targets.size(); ++index) {
+        const auto [scene, event] = targets[index];
+        const std::array<std::int16_t, 9> expected{0, 0, -1, -1, -1, -1, -1, -1, 0};
+        for (std::size_t field = 0U; field < expected.size(); ++field) {
+            OL_CHECK(snapshot.event_value(
+                         scene, event,
+                         static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
+                     expected[field]);
+        }
+        OL_CHECK(snapshot.event_value(scene, event, openlegend::model::SceneEventField::x).value_or(-1) ==
+                 coordinates[index].first);
+        OL_CHECK(snapshot.event_value(scene, event, openlegend::model::SceneEventField::y).value_or(-1) ==
+                 coordinates[index].second);
+    }
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -903,6 +1003,7 @@ int main() {
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);
+    check_event_finale_party_cleanup(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;
