@@ -6,7 +6,6 @@
 - IDA：`/mnt/d/Dev/Crack/IDA/idat.exe -A`，仅 headless；每次导出后恢复 `research/ida/databases/Z_DAT.i64`。
 - IDA 脚本：`research/ida/scripts/ida_b6_world_xrefs.py`，SHA256 `b7db49dbd593a9e70b3f2ba5e0d3dd0c8e7c11571a12291e41ab56828db24cc6`。
 - 汇编/伪码报告：`research/ida/reports/Z_DAT.b6_world_xrefs.txt`，332,095 bytes，SHA256 `af02c2699e4cd9f3fea4642e5c09b740c00f93d8fb200a9e699fea3d1b730a53`。
-- headless 日志：`research/ida/logs/Z_DAT.b6_world_xrefs.log`，SHA256 `5caab6a1108ecd1e9cd8cd82cc436ce301426ea2afdf186dbb32251938969f5a`。
 - 独立 oracle：`research/tools/generate_b6_world_goldens.py`，SHA256 `d9959b905669d506eb6fcb258c6837edee59256b91c3e2a7982f3c58b76f8c0d`。
 - oracle 输出：`research/evidence/world-map-goldens.json`，SHA256 `b906e335fd903a376b0a6d65c26ee09d525a43a43b373def538df4edfbea3d2e`。
 

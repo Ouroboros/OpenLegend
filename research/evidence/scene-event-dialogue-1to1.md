@@ -9,8 +9,6 @@
 - headless IDA 脚本：`research/ida/scripts/ida_b7_scene_xrefs.py`
 - IDA 报告：`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`
   - SHA256：`27e62d0e49fd397665738df88fbe9df31e2ae5f9223dac33b0cc728653307c59`
-- IDA 日志：`research/ida/logs/Z_DAT.b7_scene_xrefs.log`
-  - SHA256：`5c5bbb566361c73beb6c5be73c6fe8182fa571b5d465b40563ff2e32f23c02bf`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
   - SHA256：`575d6b99040b0dd5353a3cee6df51f7d43d7c1d253ae874af31beb88cf52e758`

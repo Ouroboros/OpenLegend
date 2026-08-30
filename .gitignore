@@ -14,6 +14,9 @@
 __pycache__/
 *.py[cod]
 
+# Regenerable headless IDA runtime logs
+/research/ida/logs/
+
 # IDE and OS metadata
 /.idea/
 /.vscode/

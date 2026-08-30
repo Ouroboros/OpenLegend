@@ -31,7 +31,7 @@
 
 - `ida/scripts/`：IDAPython 只读导出与定点分析脚本。
 - `ida/databases/`：`Z.COM` / `Z.DAT` IDA 数据库。
-- `ida/logs/`：`idat.exe -A` 日志。
+- `ida/logs/`：本地 `idat.exe -A` 运行日志；可重复生成，已忽略且不提交。
 - `ida/reports/`：函数、伪码、定点调用链及输入/字体报告。
 
 所有 IDA 分析均使用 `idat.exe -A` headless；不得启动 GUI 分析器。
