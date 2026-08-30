@@ -15,8 +15,12 @@
 #endif
 
 #include "openlegend/app/runtime_configuration.hpp"
+#include "openlegend/audio/legacy_audio.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/compat/runtime_platform.hpp"
+#include "openlegend/input/legacy_keyboard.hpp"
+#include "openlegend/time/legacy_clock.hpp"
+#include "sdl_audio_device.hpp"
 #include "sdl_runtime_platform.hpp"
 
 namespace {
@@ -161,16 +165,32 @@ int main(const int argc, const char* const* argv) {
         return 4;
     }
 
+    audio::AudioMixer audio_mixer;
+    platform::sdl3::SdlAudioDevice audio_device{audio_mixer};
+    if (!audio_mixer.valid()) {
+        std::cerr << "XMI synthesizer unavailable; audio is disabled: " << audio_mixer.error()
+                  << '\n';
+    } else if (!audio_device.valid()) {
+        std::cerr << "SDL3 audio device unavailable; audio is disabled: " << SDL_GetError() << '\n';
+    }
+
     compat::LegacyPixels pixels{};
     compat::LegacyPalette palette{};
     const compat::IndexedFrameView frame{pixels, palette};
 
+    input::LegacyKeyboard keyboard;
+    timing::SteadyBiosTickSource tick_source;
     bool running = true;
     while (running) {
+        const auto frame_tick = tick_source.tick();
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
                 running = false;
+            } else if (event.type == compat::HostEventType::key_down) {
+                keyboard.handle_host_key(event.key, true);
+            } else if (event.type == compat::HostEventType::key_up) {
+                keyboard.handle_host_key(event.key, false);
             }
         }
         if (running && !platform.present(frame)) {
@@ -179,8 +199,8 @@ int main(const int argc, const char* const* argv) {
         }
         if (smoke_test) {
             running = false;
-        } else {
-            platform.delay(std::chrono::milliseconds{16});
+        } else if (running) {
+            static_cast<void>(timing::wait_for_tick_change(tick_source, frame_tick));
         }
     }
 

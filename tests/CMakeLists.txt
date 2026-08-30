@@ -3,9 +3,13 @@ add_executable(
     unit/app/mode_coordinator_test.cpp
     unit/app/runtime_configuration_test.cpp
     unit/compat/legacy_video_test.cpp
+    unit/input/legacy_runtime_test.cpp
 )
 target_include_directories(openlegend_core_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
-target_link_libraries(openlegend_core_tests PRIVATE openlegend_app openlegend_compat)
+target_link_libraries(
+    openlegend_core_tests
+    PRIVATE openlegend_app openlegend_compat openlegend_input openlegend_random openlegend_time
+)
 add_test(NAME openlegend.core COMMAND openlegend_core_tests)
 
 add_executable(openlegend_resource_tests unit/resource/resource_archive_test.cpp)
@@ -16,6 +20,15 @@ target_compile_definitions(
 target_include_directories(openlegend_resource_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_resource_tests PRIVATE openlegend_resource)
 add_test(NAME openlegend.resource COMMAND openlegend_resource_tests)
+
+add_executable(openlegend_audio_tests unit/audio/legacy_audio_test.cpp)
+target_compile_definitions(
+    openlegend_audio_tests
+    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+)
+target_include_directories(openlegend_audio_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_audio_tests PRIVATE openlegend_audio openlegend_resource)
+add_test(NAME openlegend.audio COMMAND openlegend_audio_tests)
 
 add_executable(openlegend_render_tests unit/render/legacy_render_test.cpp)
 target_compile_definitions(
@@ -54,7 +67,7 @@ if(TARGET openlegend)
     set_tests_properties(
         openlegend.sdl_smoke
         PROPERTIES
-            ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software"
+            ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_RENDER_DRIVER=software;SDL_AUDIODRIVER=dummy"
             TIMEOUT 30
     )
 endif()

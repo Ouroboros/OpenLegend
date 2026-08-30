@@ -6,6 +6,7 @@
 #include "openlegend/app/mode_coordinator.hpp"
 #include "test_support.hpp"
 
+void run_legacy_runtime_tests();
 void run_legacy_video_tests();
 void run_runtime_configuration_tests();
 
@@ -89,5 +90,6 @@ int main() {
     run_mode_coordinator_tests();
     run_runtime_configuration_tests();
     run_legacy_video_tests();
+    run_legacy_runtime_tests();
     return openlegend::test::failures == 0 ? 0 : 1;
 }

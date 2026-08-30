@@ -1,6 +1,6 @@
 # OpenLegend 调研索引
 
-当前状态：**B0–B3 已按汇编与真实资产完成；当前进入 B4 输入、时间、随机与音频。**
+当前状态：**B0–B4 已按汇编与真实资产完成；当前进入 B5 标题、菜单与新建/读取流程。**
 
 ## 架构主文档
 
@@ -13,6 +13,7 @@
 - [`evidence/resource-loader-1to1.md`](evidence/resource-loader-1to1.md)：B1 资源读取。
 - [`evidence/render-1to1.md`](evidence/render-1to1.md)：B2 软件绘制。
 - [`evidence/model-persistence-1to1.md`](evidence/model-persistence-1to1.md)：B3 状态模型与物理存档。
+- [`evidence/input-time-random-audio-1to1.md`](evidence/input-time-random-audio-1to1.md)：B4 IRQ1 输入、BIOS tick、RNG 与 Miles 音频。
 
 ## IDA headless 档案
 

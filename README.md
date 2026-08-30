@@ -12,7 +12,8 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B1 已完成**：普通 IDX、MMAP 特例、SDX/WDX 哨兵、RLE、字体、调色板和世界层读取。
 - **B2 已完成**：framebuffer、RLE 四向裁剪、ASCII/Big5 字形、palette 淡变、shadow-mask 与地图深度顺序。
 - **B3 已完成**：RANGER 六段、基线/工作副本/三槽 R/S/D、lossless snapshot 与逐字节回写。
-- **B4–B9 未完成**：输入音频、标题菜单、世界、场景、战斗与完整集成。
+- **B4 已完成**：IRQ1/set-1 键态、BIOS tick、原 LCG、Miles 命令顺序、8 槽 raw WAV 与 XMI/OPL3 音频。
+- **B5–B9 未完成**：标题菜单、世界、场景、战斗与完整集成。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 
@@ -27,9 +28,11 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - `MMAP` 前 3,731 个有效索引；
 - `FONT3.E16`、`FONT3.C16` 与 `MMAP.COL`；
 - 五个 `480×480×int16le` 世界层；
-- RANGER 六段、100 个 S 场景状态、100 个 D 事件状态、基线/工作副本和三槽存档。
+- RANGER 六段、100 个 S 场景状态、100 个 D 事件状态、基线/工作副本和三槽存档；
+- 84-byte 键盘翻译表、tick 舍入/回绕和 4 组独立 RNG 向量；
+- 24 个 `ATK*.WAV`、53 个 `E*.WAV` 与 24 个 `GAME*.XMI`，逐项长度、格式与 XMI PCM 生成。
 
-对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md) 和 [`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)。
+对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md) 和 [`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md)。
 
 ## 原版数据目录
 
@@ -67,7 +70,7 @@ maximized = false
 - `--data-dir <目录>` 或 `--data-dir=<目录>` 的优先级高于 `[paths].data_dir`；
 - 配置中的相对数据路径以可执行文件目录为基准，命令行相对路径以启动目录为基准；
 - 正常退出会回写窗口宽高和最大化状态，同时保留 `[paths]` 与未知 TOML 表；
-- 当前不暴露显示 FPS/世界移动插值字段，因为 OpenLegend 的 B4 时钟和 B6 世界移动尚未实现，写入假字段不会产生有效行为。
+- 当前不暴露显示 FPS/世界移动插值字段；B4 已固定 BIOS tick，B6 世界移动尚未实现，提前写入这些字段仍不会产生有效行为。
 
 ## 构建
 
@@ -75,7 +78,7 @@ maximized = false
 
 - Python 3；
 - GCC、Clang 或 MSVC 的 C++20 工具链；
-- 首次构建时可访问 Python package index，以及 toml++/SDL GitHub release 压缩包。
+- 首次构建时可访问 Python package index，以及 toml++、libADLMIDI、SDL GitHub release 压缩包。
 
 构建脚本会把固定版本的 CMake 3.31.10 与 Ninja 1.13.0 安装到仓库内已忽略的 `.tools/`，不会修改系统工具链。
 
@@ -104,7 +107,7 @@ build.bat app
 build.bat app --config Release
 ```
 
-`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已原生验证，core 为 5 项 CTest，app 为 6 项 CTest。
+`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已原生验证，core 为 6 项 CTest，app 为 7 项 CTest。
 
 可选参数：
 
@@ -134,14 +137,14 @@ build/<platform>-<core|app>/
 ```text
 config/               可复制的 openlegend.toml 示例
 include/openlegend/   公共 C++ 接口
-src/                  app、compat、resource、model、persistence、render 与平台实现
+src/                  app、compat、resource、model、persistence、input、time、random、audio、render 与平台实现
 tests/                单元、真实资产与集成测试
 research/             架构、汇编证据、IDA 脚本/报告/数据库
 goal/                 1:1 执行计划与阶段验收真值
 tools/                项目自包含构建入口
 ```
 
-核心模块不暴露 SDL、DOS 或 VGA 宿主类型。SDL3 仅负责窗口、输入、时钟、音频设备和最终纹理上传；核心画面真值始终是：
+核心模块不暴露 SDL、DOS 或 VGA 宿主类型。SDL3 仅负责窗口、宿主键事件、音频设备和最终纹理上传；BIOS tick、键态、RNG 和 mixer 均在核心。核心画面真值始终是：
 
 ```text
 320×200×8-bit indexed framebuffer + 256×RGB6 palette
@@ -166,3 +169,5 @@ tools/                项目自包含构建入口
 ## 许可说明
 
 本仓库不授予原版游戏数据、文字、美术、音乐或可执行文件的再分发权。使用者必须自行合法取得原版数据。
+
+XMI 合成使用固定的 libADLMIDI v1.6.1；该第三方库按 GNU LGPL v3 授权，构建时从上游源码压缩包取得并保留其独立许可条件。OpenLegend 不修改或再分发其源码快照。

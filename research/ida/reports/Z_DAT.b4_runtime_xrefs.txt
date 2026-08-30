@@ -1,0 +1,2552 @@
+IDB=E:\Game\金庸群~1\OPENLE~1\research\ida\databases\Z_DAT.i64
+SOURCE=current Z.DAT machine code decoded by IDA 9.x headless
+NOTE=embedded IRQ regions are transiently decoded; tracked IDB is restored by the host command.
+
+====================================================================================================
+BYTES keyboard_irq_source_block start=0x20BC0 end=0x20C32 size=114
+00020BC0  eb 6d fc c6 05 14 1b 05 00 01 e4 60 a2 6a 1b 05
+00020BD0  00 89 c3 83 e3 7f 8a 9b 16 1b 05 00 3c 80 73 2c
+00020BE0  80 bb 6d 1b 05 00 00 75 0c 88 1d 6b 1b 05 00 fe
+00020BF0  83 6d 1b 05 00 80 83 6d 1b 05 00 02 73 1c fe 8b
+00020C00  6d 1b 05 00 fe 8b 6d 1b 05 00 eb 0e c6 83 6d 1b
+00020C10  05 00 00 c6 05 6b 1b 05 00 00 e4 61 0c 80 e6 61
+00020C20  24 7f e6 61 b0 20 e6 20 c6 05 14 1b 05 00 00 fb
+00020C30  5b c3
+
+====================================================================================================
+BYTES keyboard_irq_installed_trampoline start=0x3CDE3 end=0x3CDFF size=28
+0003CDE3  60 1e 06 0f a0 0f a8 89 e5 fc e8 0e 27 00 00 e8
+0003CDF3  be 3d fe ff 0f a9 0f a1 07 1f 61 cf
+
+====================================================================================================
+BYTES scan_code_translation_table start=0x51B16 end=0x51B6A size=84
+00051B16  00 1b 31 32 33 34 35 36 37 38 39 30 2d 3d 08 09
+00051B26  51 57 45 52 54 59 55 49 4f 50 5b 5d 0d 82 41 53
+00051B36  44 46 47 48 4a 4b 4c 3b 27 60 83 5c 5a 58 43 56
+00051B46  42 4e 4d 2c 2e 2f 84 2a 85 20 86 c9 ca cb cc cd
+00051B56  ce cf d0 d1 d2 87 88 9d 9e 9f 2d 9a 9b 9c 2b 97
+00051B66  98 99 96 89
+
+====================================================================================================
+BYTES keyboard_last_scan_last_key_and_state start=0x51B6A end=0x51C0D size=163
+00051B6A  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051B7A  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051B8A  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051B9A  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051BAA  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051BBA  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051BCA  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051BDA  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051BEA  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051BFA  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00051C0A  00 00 00
+
+====================================================================================================
+DECODED keyboard_irq_source_block start=0x20BC0 end=0x20C32
+00020BC0  eb 6d                             jmp     short loc_20C2F
+00020BC2  fc                                cld
+00020BC3  c6 05 14 1b 05 00 01              mov     byte_51B14, 1
+00020BCA  e4 60                             in      al, 60h; 8042 keyboard controller data register
+00020BCC  a2 6a 1b 05 00                    mov     byte_51B6A, al
+00020BD1  89 c3                             mov     ebx, eax
+00020BD3  83 e3 7f                          and     ebx, 7Fh
+00020BD6  8a 9b 16 1b 05 00                 mov     bl, byte_51B16[ebx]
+00020BDC  3c 80                             cmp     al, 80h
+00020BDE  73 2c                             jnb     short loc_20C0C
+00020BE0  80 bb 6d 1b 05 00 00              cmp     byte_51B6D[ebx], 0
+00020BE7  75 0c                             jnz     short loc_20BF5
+00020BE9  88 1d 6b 1b 05 00                 mov     byte_51B6B, bl
+00020BEF  fe 83 6d 1b 05 00                 inc     byte_51B6D[ebx]
+00020BF5  80 83 6d 1b 05 00 02              add     byte_51B6D[ebx], 2
+00020BFC  73 1c                             jnb     short loc_20C1A
+00020BFE  fe 8b 6d 1b 05 00                 dec     byte_51B6D[ebx]
+00020C04  fe 8b 6d 1b 05 00                 dec     byte_51B6D[ebx]
+00020C0A  eb 0e                             jmp     short loc_20C1A
+00020C0C  c6 83 6d 1b 05 00 00              mov     byte_51B6D[ebx], 0
+00020C13  c6 05 6b 1b 05 00 00              mov     byte_51B6B, 0
+00020C1A  e4 61                             in      al, 61h; PC/XT PPI port B bits:
+00020C1C  0c 80                             or      al, 80h
+00020C1E  e6 61                             out     61h, al; PC/XT PPI port B bits:
+00020C20  24 7f                             and     al, 7Fh
+00020C22  e6 61                             out     61h, al; PC/XT PPI port B bits:
+00020C24  b0 20                             mov     al, 20h ; ' '
+00020C26  e6 20                             out     20h, al; Interrupt controller, 8259A.
+00020C28  c6 05 14 1b 05 00 00              mov     byte_51B14, 0
+00020C2F  fb                                sti
+00020C30  5b                                pop     ebx
+00020C31  c3                                retn
+
+====================================================================================================
+DECODED keyboard_irq_installed_trampoline start=0x3CDE3 end=0x3CDFF
+0003CDE3  60                                pusha
+0003CDE4  1e                                push    ds
+0003CDE5  06                                push    es
+0003CDE6  0f a0                             push    fs
+0003CDE8  0f a8                             push    gs
+0003CDEA  89 e5                             mov     ebp, esp
+0003CDEC  fc                                cld
+0003CDED  e8 0e 27 00 00                    call    __GETDS
+0003CDF2  e8 be 3d fe ff                    call    near ptr unk_20BB5
+0003CDF7  0f a9                             pop     gs
+0003CDF9  0f a1                             pop     fs
+0003CDFB  07                                pop     es
+0003CDFC  1f                                pop     ds
+0003CDFD  61                                popa
+0003CDFE  cf                                iret
+
+====================================================================================================
+FUNCTION sub_20C32 research=blocking_read_key start=0x20C32 end=0x20C45 size=19
+00020C32  c6 05 6b 1b 05 00 00              mov     byte_51B6B, 0
+00020C39  31 c0                             xor     eax, eax
+00020C3B  a0 6b 1b 05 00                    mov     al, byte_51B6B
+00020C40  20 c0                             and     al, al
+00020C42  74 f7                             jz      short loc_20C3B
+00020C44  c3                                retn
+
+====================================================================================================
+FUNCTION main research=main_loop start=0x20D35 end=0x20FAA size=629
+00020D35  68 10 00 00 00                    push    10h
+00020D3A  e8 df df 01 00                    call    sub_3ED1E
+00020D3F  53                                push    ebx
+00020D40  68 00 09 3d 00                    push    3D0900h
+00020D45  e8 11 e0 01 00                    call    sub_3ED5B
+00020D4A  83 c4 04                          add     esp, 4
+00020D4D  a3 ac 0b 0c 00                    mov     dword_C0BAC, eax
+00020D52  c7 05 98 0b 0c 00 bc 87 0e 00     mov     dword_C0B98, offset unk_E87BC
+00020D5C  66 c7 05 fa 0b 0c 00 00 00        mov     word_C0BFA, 0
+00020D65  66 c7 05 50 29 0d 00 ff ff        mov     word_D2950, 0FFFFh
+00020D6E  31 c0                             xor     eax, eax
+00020D70  eb 0b                             jmp     short loc_20D7D
+00020D72  0f bf d0                          movsx   edx, ax
+00020D75  c6 82 c4 07 0c 00 00              mov     byte_C07C4[edx], 0
+00020D7C  40                                inc     eax
+00020D7D  66 3d 50 00                       cmp     ax, 50h ; 'P'
+00020D81  7c ef                             jl      short loc_20D72
+00020D83  e8 77 c0 01 00                    call    sub_3CDFF
+00020D88  68 bc bb 0a 00                    push    offset unk_ABBBC
+00020D8D  68 f0 81 05 00                    push    offset a3ShadowMsk; "3_shadow.msk"
+00020D92  e8 ae c1 01 00                    call    sub_3CF45
+00020D97  83 c4 08                          add     esp, 8
+00020D9A  c7 05 a8 0b 0c 00 00 00 00 00     mov     dword_C0BA8, 0
+00020DA4  c7 05 94 0b 0c 00 00 00 00 00     mov     dword_C0B94, 0
+00020DAE  68 fc da 0a 00                    push    offset unk_ADAFC
+00020DB3  68 fd 81 05 00                    push    offset a4ShadowMsk; "4_shadow.msk"
+00020DB8  e8 88 c1 01 00                    call    sub_3CF45
+00020DBD  83 c4 08                          add     esp, 8
+00020DC0  c7 05 a8 0b 0c 00 00 00 00 00     mov     dword_C0BA8, 0
+00020DCA  c7 05 94 0b 0c 00 00 00 00 00     mov     dword_C0B94, 0
+00020DD4  68 bc 87 0e 00                    push    offset unk_E87BC
+00020DD9  e8 38 f2 ff ff                    call    sub_20016
+00020DDE  83 c4 04                          add     esp, 4
+00020DE1  e8 f7 39 00 00                    call    sub_247DD
+00020DE6  e8 38 3e 00 00                    call    sub_24C23
+00020DEB  6a 10                             push    10h
+00020DED  e8 c0 d3 01 00                    call    sub_3E1B2
+00020DF2  83 c4 04                          add     esp, 4
+00020DF5  e8 b5 01 00 00                    call    sub_20FAF
+00020DFA  c6 05 6b 1b 05 00 00              mov     byte_51B6B, 0
+00020E01  66 c7 05 de 44 05 00 01 00        mov     word_544DE, 1
+00020E0A  bb 05 00 00 00                    mov     ebx, 5
+00020E0F  66 83 3d de 44 05 00 01           cmp     word_544DE, 1
+00020E17  0f 85 72 01 00 00                 jnz     loc_20F8F
+00020E1D  a1 d8 44 05 00                    mov     eax, dword_544D8
+00020E22  8b 00                             mov     eax, [eax]
+00020E24  a3 90 0b 0c 00                    mov     dword_C0B90, eax
+00020E29  66 c7 05 f2 0b 0c 00 00 00        mov     word_C0BF2, 0
+00020E32  80 3d 0a 1c 05 00 00              cmp     byte_51C0A, 0
+00020E39  75 09                             jnz     short loc_20E44
+00020E3B  80 3d 07 1c 05 00 00              cmp     byte_51C07, 0
+00020E42  74 1d                             jz      short loc_20E61
+00020E44  c6 05 0a 1c 05 00 00              mov     byte_51C0A, 0
+00020E4B  c6 05 07 1c 05 00 00              mov     byte_51C07, 0
+00020E52  6a ff                             push    0FFFFFFFFh
+00020E54  e8 3f 2e 00 00                    call    sub_23C98
+00020E59  83 c4 04                          add     esp, 4
+00020E5C  e9 8d 00 00 00                    jmp     loc_20EEE
+00020E61  80 3d 0c 1c 05 00 00              cmp     byte_51C0C, 0
+00020E68  75 09                             jnz     short loc_20E73
+00020E6A  80 3d 0b 1c 05 00 00              cmp     byte_51C0B, 0
+00020E71  74 17                             jz      short loc_20E8A
+00020E73  c6 05 0c 1c 05 00 00              mov     byte_51C0C, 0
+00020E7A  c6 05 0b 1c 05 00 00              mov     byte_51C0B, 0
+00020E81  6a ff                             push    0FFFFFFFFh
+00020E83  e8 a0 30 00 00                    call    sub_23F28
+00020E88  eb cf                             jmp     short loc_20E59
+00020E8A  80 3d 04 1c 05 00 00              cmp     byte_51C04, 0
+00020E91  75 09                             jnz     short loc_20E9C
+00020E93  80 3d 05 1c 05 00 00              cmp     byte_51C05, 0
+00020E9A  74 12                             jz      short loc_20EAE
+00020E9C  c6 05 04 1c 05 00 00              mov     byte_51C04, 0
+00020EA3  c6 05 05 1c 05 00 00              mov     byte_51C05, 0
+00020EAA  6a 01                             push    1
+00020EAC  eb d5                             jmp     short loc_20E83
+00020EAE  80 3d 06 1c 05 00 00              cmp     byte_51C06, 0
+00020EB5  75 09                             jnz     short loc_20EC0
+00020EB7  80 3d 09 1c 05 00 00              cmp     byte_51C09, 0
+00020EBE  74 12                             jz      short loc_20ED2
+00020EC0  c6 05 06 1c 05 00 00              mov     byte_51C06, 0
+00020EC7  c6 05 09 1c 05 00 00              mov     byte_51C09, 0
+00020ECE  6a 01                             push    1
+00020ED0  eb 82                             jmp     short loc_20E54
+00020ED2  f6 05 88 1b 05 00 01              test    byte_51B88, 1
+00020ED9  74 0e                             jz      short loc_20EE9
+00020EDB  e8 e0 03 00 00                    call    sub_212C0
+00020EE0  80 25 88 1b 05 00 fe              and     byte_51B88, 0FEh
+00020EE7  eb 05                             jmp     short loc_20EEE
+00020EE9  e8 b0 2a 00 00                    call    sub_2399E
+00020EEE  0f bf 05 50 29 0d 00              movsx   eax, word_D2950
+00020EF5  83 f8 ff                          cmp     eax, 0FFFFFFFFh
+00020EF8  74 28                             jz      short loc_20F22
+00020EFA  68 bc 87 0e 00                    push    offset unk_E87BC
+00020EFF  6a 00                             push    0
+00020F01  e8 1c ca 01 00                    call    sub_3D922
+00020F06  83 c4 08                          add     esp, 8
+00020F09  0f bf 05 50 29 0d 00              movsx   eax, word_D2950
+00020F10  50                                push    eax
+00020F11  e8 f2 52 00 00                    call    sub_26208
+00020F16  83 c4 04                          add     esp, 4
+00020F19  66 c7 05 50 29 0d 00 ff ff        mov     word_D2950, 0FFFFh
+00020F22  e8 17 2c 00 00                    call    sub_23B3E
+00020F27  66 83 3d f8 44 05 00 01           cmp     word_544F8, 1
+00020F2F  75 05                             jnz     short loc_20F36
+00020F31  e8 70 2b 00 00                    call    sub_23AA6
+00020F36  0f bf 05 50 29 0d 00              movsx   eax, word_D2950
+00020F3D  83 f8 ff                          cmp     eax, 0FFFFFFFFh
+00020F40  75 18                             jnz     short loc_20F5A
+00020F42  e8 44 46 00 00                    call    sub_2558B
+00020F47  ff 35 98 0b 0c 00                 push    dword_C0B98
+00020F4D  68 bc 87 0e 00                    push    offset unk_E87BC
+00020F52  e8 7a c7 01 00                    call    sub_3D6D1
+00020F57  83 c4 08                          add     esp, 8
+00020F5A  0f bf 15 0a 45 05 00              movsx   edx, word_5450A
+00020F61  42                                inc     edx
+00020F62  89 d0                             mov     eax, edx
+00020F64  c1 fa 1f                          sar     edx, 1Fh
+00020F67  f7 fb                             idiv    ebx
+00020F69  66 89 15 0a 45 05 00              mov     word_5450A, dx
+00020F70  66 83 fa 01                       cmp     dx, 1
+00020F74  75 05                             jnz     short loc_20F7B
+00020F76  e8 68 bc 01 00                    call    sub_3CBE3
+00020F7B  a1 d8 44 05 00                    mov     eax, dword_544D8
+00020F80  8b 15 90 0b 0c 00                 mov     edx, dword_C0B90
+00020F86  3b 10                             cmp     edx, [eax]
+00020F88  74 fc                             jz      short loc_20F86
+00020F8A  e9 80 fe ff ff                    jmp     loc_20E0F
+00020F8F  e8 f9 3c 00 00                    call    sub_24C8D
+00020F94  e8 c2 d2 01 00                    call    sub_3E25B
+00020F99  e8 b9 cd 01 00                    call    sub_3DD57
+00020F9E  e8 76 bf 01 00                    call    sub_3CF19
+00020FA3  6a 00                             push    0
+00020FA5  e8 b5 de 01 00                    call    sub_3EE5F
+
+====================================================================================================
+FUNCTION sub_3CDFF research=keyboard_audio_font_initialize start=0x3CDFF end=0x3CF19 size=282
+0003CDFF  68 2c 00 00 00                    push    2Ch ; ','
+0003CE04  e8 15 1f 00 00                    call    sub_3ED1E
+0003CE09  83 ec 1c                          sub     esp, 1Ch
+0003CE0C  c6 05 bc 87 11 00 00              mov     byte_1187BC, 0
+0003CE13  c6 05 bd 87 11 00 3a              mov     byte_1187BD, 3Ah ; ':'
+0003CE1A  c6 05 be 87 11 00 00              mov     byte_1187BE, 0
+0003CE21  66 c7 04 24 00 15                 mov     word ptr [esp+1Ch+var_1C], 1500h
+0003CE27  89 e0                             mov     eax, esp
+0003CE29  50                                push    eax
+0003CE2A  50                                push    eax
+0003CE2B  6a 2f                             push    2Fh ; '/'
+0003CE2D  e8 e4 26 00 00                    call    sub_3F516
+0003CE32  83 c4 0c                          add     esp, 0Ch
+0003CE35  80 3c 24 ff                       cmp     [esp+1Ch+var_1C], 0FFh
+0003CE39  75 0d                             jnz     short loc_3CE48
+0003CE3B  8a 44 24 08                       mov     al, [esp+1Ch+var_14]
+0003CE3F  04 41                             add     al, 41h ; 'A'
+0003CE41  a2 bc 87 11 00                    mov     byte_1187BC, al
+0003CE46  eb 07                             jmp     short loc_3CE4F
+0003CE48  c6 05 bd 87 11 00 00              mov     byte_1187BD, 0
+0003CE4F  e8 8a 07 00 00                    call    sub_3D5DE
+0003CE54  e8 0d 0f 00 00                    call    sub_3DD66
+0003CE59  c7 05 c4 87 11 00 00 00 00 00     mov     dword_1187C4, 0
+0003CE63  68 00 02 00 00                    push    200h
+0003CE68  68 1c 8b 05 00                    push    offset aFont3E16; "FONT3.E16"
+0003CE6D  e8 47 21 00 00                    call    sub_3EFB9
+0003CE72  83 c4 08                          add     esp, 8
+0003CE75  a3 c0 87 11 00                    mov     dword_1187C0, eax
+0003CE7A  83 f8 ff                          cmp     eax, 0FFFFFFFFh
+0003CE7D  75 17                             jnz     short loc_3CE96
+0003CE7F  68 26 8b 05 00                    push    offset aFont3E16NotFou; "\nFONT3.E16 not found!!!"
+0003CE84  e8 0d 21 00 00                    call    sub_3EF96
+0003CE89  83 c4 04                          add     esp, 4
+0003CE8C  6a 01                             push    1
+0003CE8E  e8 cc 1f 00 00                    call    sub_3EE5F
+0003CE96  68 00 10 00 00                    push    1000h
+0003CE9B  68 3c 6f 0e 00                    push    offset byte_E6F3C
+0003CEA0  ff 35 c0 87 11 00                 push    dword_1187C0
+0003CEA6  e8 99 26 00 00                    call    sub_3F544
+0003CEAB  83 c4 0c                          add     esp, 0Ch
+0003CEAE  ff 35 c0 87 11 00                 push    dword_1187C0
+0003CEB4  e8 94 27 00 00                    call    sub_3F64D
+0003CEB9  83 c4 04                          add     esp, 4
+0003CEBC  68 00 02 00 00                    push    200h
+0003CEC1  68 3e 8b 05 00                    push    offset aFont3C16; "FONT3.C16"
+0003CEC6  e8 ee 20 00 00                    call    sub_3EFB9
+0003CECB  83 c4 08                          add     esp, 8
+0003CECE  a3 c0 87 11 00                    mov     dword_1187C0, eax
+0003CED3  83 f8 ff                          cmp     eax, 0FFFFFFFFh
+0003CED6  75 17                             jnz     short loc_3CEEF
+0003CED8  68 48 8b 05 00                    push    offset aFont3C16NotFou; "\nFONT3.C16 not found!!!"
+0003CEDD  e8 b4 20 00 00                    call    sub_3EF96
+0003CEE2  83 c4 04                          add     esp, 4
+0003CEE5  6a 01                             push    1
+0003CEE7  e8 73 1f 00 00                    call    sub_3EE5F
+0003CEEF  6a 09                             push    9
+0003CEF1  e8 65 27 00 00                    call    sub_3F65B
+0003CEF6  83 c4 04                          add     esp, 4
+0003CEF9  66 89 15 cc 87 11 00              mov     word_1187CC, dx
+0003CF00  a3 c8 87 11 00                    mov     dword_1187C8, eax
+0003CF05  0e                                push    cs
+0003CF06  68 e3 cd 03 00                    push    offset loc_3CDE3
+0003CF0B  6a 09                             push    9
+0003CF0D  e8 7e 27 00 00                    call    sub_3F690
+0003CF12  83 c4 0c                          add     esp, 0Ch
+0003CF15  83 c4 1c                          add     esp, 1Ch
+0003CF18  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3CF19 research=keyboard_restore start=0x3CF19 end=0x3CF45 size=44
+0003CF19  68 10 00 00 00                    push    10h
+0003CF1E  e8 fb 1d 00 00                    call    sub_3ED1E
+0003CF23  e8 2f 0e 00 00                    call    sub_3DD57
+0003CF28  0f b7 05 cc 87 11 00              movzx   eax, word_1187CC
+0003CF2F  50                                push    eax
+0003CF30  ff 35 c8 87 11 00                 push    dword_1187C8
+0003CF36  6a 09                             push    9
+0003CF38  e8 53 27 00 00                    call    sub_3F690
+0003CF3D  83 c4 0c                          add     esp, 0Ch
+0003CF40  e9 bb 30 fe ff                    jmp     sub_20000
+
+====================================================================================================
+FUNCTION sub_3DB83 research=bios_tick_delay start=0x3DB83 end=0x3DBBF size=60
+0003DB83  68 0c 00 00 00                    push    0Ch
+0003DB88  e8 91 11 00 00                    call    sub_3ED1E
+0003DB8D  53                                push    ebx
+0003DB8E  56                                push    esi
+0003DB8F  8b 5c 24 0c                       mov     ebx, [esp+8+arg_0]
+0003DB93  31 c9                             xor     ecx, ecx
+0003DB95  be 28 00 00 00                    mov     esi, 28h ; '('
+0003DB9A  eb 12                             jmp     short loc_3DBAE
+0003DB9C  8b 15 d8 44 05 00                 mov     edx, dword_544D8
+0003DBA2  8b 12                             mov     edx, [edx]
+0003DBA4  a1 d8 44 05 00                    mov     eax, dword_544D8
+0003DBA9  3b 10                             cmp     edx, [eax]
+0003DBAB  74 fc                             jz      short loc_3DBA9
+0003DBAD  41                                inc     ecx
+0003DBAE  89 d8                             mov     eax, ebx
+0003DBB0  89 da                             mov     edx, ebx
+0003DBB2  c1 fa 1f                          sar     edx, 1Fh
+0003DBB5  f7 fe                             idiv    esi
+0003DBB7  40                                inc     eax
+0003DBB8  39 c1                             cmp     ecx, eax
+0003DBBA  7c e0                             jl      short loc_3DB9C
+0003DBBC  5e                                pop     esi
+0003DBBD  5b                                pop     ebx
+0003DBBE  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3DD57 research=audio_shutdown start=0x3DD57 end=0x3DD66 size=15
+0003DD57  68 04 00 00 00                    push    4
+0003DD5C  e8 bd 0f 00 00                    call    sub_3ED1E
+0003DD61  e9 c2 1f 00 00                    jmp     loc_3FD28
+
+====================================================================================================
+FUNCTION sub_3DD66 research=audio_initialize start=0x3DD66 end=0x3DE4D size=231
+0003DD66  68 10 00 00 00                    push    10h
+0003DD6B  e8 ae 0f 00 00                    call    sub_3ED1E
+0003DD70  53                                push    ebx
+0003DD71  66 c7 05 46 88 11 00 00 00        mov     word_118846, 0
+0003DD7A  66 c7 05 44 88 11 00 00 00        mov     word_118844, 0
+0003DD83  e8 f6 1d 00 00                    call    sub_3FB7E
+0003DD88  68 40 88 11 00                    push    offset dword_118840
+0003DD8D  e8 fa 49 00 00                    call    sub_4278C
+0003DD92  83 c4 04                          add     esp, 4
+0003DD95  85 c0                             test    eax, eax
+0003DD97  74 25                             jz      short loc_3DDBE
+0003DD99  68 cc 88 11 00                    push    offset byte_1188CC
+0003DD9E  e8 f3 11 00 00                    call    sub_3EF96
+0003DDA3  83 c4 04                          add     esp, 4
+0003DDA6  68 7c 8b 05 00                    push    offset aSystemSetToNoM; "System set to no music mode\n"
+0003DDAB  e8 e6 11 00 00                    call    sub_3EF96
+0003DDB0  83 c4 04                          add     esp, 4
+0003DDB3  66 c7 05 46 88 11 00 01 00        mov     word_118846, 1
+0003DDBC  eb 13                             jmp     short loc_3DDD1
+0003DDBE  ff 35 40 88 11 00                 push    dword_118840
+0003DDC4  e8 e8 4b 00 00                    call    sub_429B1
+0003DDC9  83 c4 04                          add     esp, 4
+0003DDCC  a3 38 88 11 00                    mov     dword_118838, eax
+0003DDD1  68 11 2b 00 00                    push    2B11h
+0003DDD6  6a 01                             push    1
+0003DDD8  e8 dc 1f 00 00                    call    sub_3FDB9
+0003DDDD  83 c4 08                          add     esp, 8
+0003DDE0  6a 00                             push    0
+0003DDE2  6a 08                             push    8
+0003DDE4  e8 d0 1f 00 00                    call    sub_3FDB9
+0003DDE9  83 c4 08                          add     esp, 8
+0003DDEC  6a 00                             push    0
+0003DDEE  6a 07                             push    7
+0003DDF0  e8 c4 1f 00 00                    call    sub_3FDB9
+0003DDF5  83 c4 08                          add     esp, 8
+0003DDF8  68 3c 88 11 00                    push    offset dword_11883C
+0003DDFD  e8 de 2f 00 00                    call    sub_40DE0
+0003DE02  83 c4 04                          add     esp, 4
+0003DE05  85 c0                             test    eax, eax
+0003DE07  74 25                             jz      short loc_3DE2E
+0003DE09  68 cc 88 11 00                    push    offset byte_1188CC
+0003DE0E  e8 83 11 00 00                    call    sub_3EF96
+0003DE13  83 c4 04                          add     esp, 4
+0003DE16  68 99 8b 05 00                    push    offset aSystemSetToNoS; "System set to no sound mode\n"
+0003DE1B  e8 76 11 00 00                    call    sub_3EF96
+0003DE20  83 c4 04                          add     esp, 4
+0003DE23  66 c7 05 44 88 11 00 01 00        mov     word_118844, 1
+0003DE2C  5b                                pop     ebx
+0003DE2D  c3                                retn
+0003DE2E  31 db                             xor     ebx, ebx
+0003DE30  ff 35 3c 88 11 00                 push    dword_11883C
+0003DE36  e8 ca 31 00 00                    call    sub_41005
+0003DE3B  83 c4 04                          add     esp, 4
+0003DE3E  89 04 9d 10 88 11 00              mov     dword_118810[ebx*4], eax
+0003DE45  43                                inc     ebx
+0003DE46  83 fb 08                          cmp     ebx, 8
+0003DE49  7c e5                             jl      short loc_3DE30
+0003DE4B  5b                                pop     ebx
+0003DE4C  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3DE4D research=music_start_once_unused start=0x3DE4D end=0x3DECB size=126
+0003DE4D  68 10 00 00 00                    push    10h
+0003DE52  e8 c7 0e 00 00                    call    sub_3ED1E
+0003DE57  66 83 3d 46 88 11 00 00           cmp     word_118846, 0
+0003DE5F  75 69                             jnz     short locret_3DECA
+0003DE61  ff 35 38 88 11 00                 push    dword_118838
+0003DE67  e8 5d 50 00 00                    call    sub_42EC9
+0003DE6C  83 c4 04                          add     esp, 4
+0003DE6F  83 f8 04                          cmp     eax, 4
+0003DE72  75 05                             jnz     short loc_3DE79
+0003DE74  e8 e0 00 00 00                    call    sub_3DF59
+0003DE79  8b 44 24 04                       mov     eax, [esp+4]
+0003DE7D  a3 30 88 11 00                    mov     dword_118830, eax
+0003DE82  8b 44 24 08                       mov     eax, [esp+8]
+0003DE86  a3 34 88 11 00                    mov     dword_118834, eax
+0003DE8B  50                                push    eax
+0003DE8C  ff 74 24 08                       push    dword ptr [esp+8]
+0003DE90  e8 c8 06 00 00                    call    sub_3E55D
+0003DE95  83 c4 08                          add     esp, 8
+0003DE98  6a 7f                             push    7Fh
+0003DE9A  ff 35 40 88 11 00                 push    dword_118840
+0003DEA0  e8 94 53 00 00                    call    sub_43239
+0003DEA5  83 c4 08                          add     esp, 8
+0003DEA8  6a 00                             push    0
+0003DEAA  ff 74 24 08                       push    dword ptr [esp+8]
+0003DEAE  ff 35 38 88 11 00                 push    dword_118838
+0003DEB4  e8 39 4c 00 00                    call    sub_42AF2
+0003DEB9  83 c4 0c                          add     esp, 0Ch
+0003DEBC  ff 35 38 88 11 00                 push    dword_118838
+0003DEC2  e8 17 4d 00 00                    call    sub_42BDE
+0003DEC7  83 c4 04                          add     esp, 4
+0003DECA  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3DECB research=music_start_looping start=0x3DECB end=0x3DF59 size=142
+0003DECB  68 10 00 00 00                    push    10h
+0003DED0  e8 49 0e 00 00                    call    sub_3ED1E
+0003DED5  66 83 3d 46 88 11 00 00           cmp     word_118846, 0
+0003DEDD  75 79                             jnz     short locret_3DF58
+0003DEDF  ff 35 38 88 11 00                 push    dword_118838
+0003DEE5  e8 df 4f 00 00                    call    sub_42EC9
+0003DEEA  83 c4 04                          add     esp, 4
+0003DEED  83 f8 04                          cmp     eax, 4
+0003DEF0  75 05                             jnz     short loc_3DEF7
+0003DEF2  e8 62 00 00 00                    call    sub_3DF59
+0003DEF7  8b 44 24 04                       mov     eax, [esp+arg_0]
+0003DEFB  a3 30 88 11 00                    mov     dword_118830, eax
+0003DF00  8b 44 24 08                       mov     eax, [esp+arg_4]
+0003DF04  a3 34 88 11 00                    mov     dword_118834, eax
+0003DF09  50                                push    eax
+0003DF0A  ff 74 24 08                       push    [esp+4+arg_0]
+0003DF0E  e8 4a 06 00 00                    call    sub_3E55D
+0003DF13  83 c4 08                          add     esp, 8
+0003DF16  6a 7f                             push    7Fh
+0003DF18  ff 35 40 88 11 00                 push    dword_118840
+0003DF1E  e8 16 53 00 00                    call    sub_43239
+0003DF23  83 c4 08                          add     esp, 8
+0003DF26  6a 00                             push    0
+0003DF28  ff 74 24 08                       push    [esp+4+arg_0]
+0003DF2C  ff 35 38 88 11 00                 push    dword_118838
+0003DF32  e8 bb 4b 00 00                    call    sub_42AF2
+0003DF37  83 c4 0c                          add     esp, 0Ch
+0003DF3A  ff 35 38 88 11 00                 push    dword_118838
+0003DF40  e8 99 4c 00 00                    call    sub_42BDE
+0003DF45  83 c4 04                          add     esp, 4
+0003DF48  6a 00                             push    0
+0003DF4A  ff 35 38 88 11 00                 push    dword_118838
+0003DF50  e8 07 4f 00 00                    call    sub_42E5C
+0003DF55  83 c4 08                          add     esp, 8
+0003DF58  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3DF59 research=music_end start=0x3DF59 end=0x3DF90 size=55
+0003DF59  68 0c 00 00 00                    push    0Ch
+0003DF5E  e8 bb 0d 00 00                    call    sub_3ED1E
+0003DF63  66 83 3d 46 88 11 00 00           cmp     word_118846, 0
+0003DF6B  75 22                             jnz     short locret_3DF8F
+0003DF6D  ff 35 38 88 11 00                 push    dword_118838
+0003DF73  e8 95 4d 00 00                    call    sub_42D0D
+0003DF78  83 c4 04                          add     esp, 4
+0003DF7B  ff 35 34 88 11 00                 push    dword_118834
+0003DF81  ff 35 30 88 11 00                 push    dword_118830
+0003DF87  e8 e7 05 00 00                    call    sub_3E573
+0003DF8C  83 c4 08                          add     esp, 8
+0003DF8F  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3DF90 research=sample_start_loaded start=0x3DF90 end=0x3E088 size=248
+0003DF90  68 18 00 00 00                    push    18h
+0003DF95  e8 84 0d 00 00                    call    sub_3ED1E
+0003DF9A  53                                push    ebx
+0003DF9B  56                                push    esi
+0003DF9C  8b 74 24 0c                       mov     esi, [esp+8+arg_0]
+0003DFA0  66 83 3d 44 88 11 00 00           cmp     word_118844, 0
+0003DFA8  0f 85 d7 00 00 00                 jnz     loc_3E085
+0003DFAE  ff 34 b5 10 88 11 00              push    dword_118810[esi*4]
+0003DFB5  e8 fb 37 00 00                    call    sub_417B5
+0003DFBA  83 c4 04                          add     esp, 4
+0003DFBD  83 f8 04                          cmp     eax, 4
+0003DFC0  75 09                             jnz     short loc_3DFCB
+0003DFC2  56                                push    esi
+0003DFC3  e8 aa 01 00 00                    call    sub_3E172
+0003DFC8  83 c4 04                          add     esp, 4
+0003DFCB  89 f3                             mov     ebx, esi
+0003DFCD  c1 e3 02                          shl     ebx, 2
+0003DFD0  8b 44 24 14                       mov     eax, [esp+8+arg_8]
+0003DFD4  89 83 d0 87 11 00                 mov     dword_1187D0[ebx], eax
+0003DFDA  8b 44 24 10                       mov     eax, [esp+8+arg_4]
+0003DFDE  89 83 f0 87 11 00                 mov     dword_1187F0[ebx], eax
+0003DFE4  ff b3 d0 87 11 00                 push    dword_1187D0[ebx]
+0003DFEA  50                                push    eax
+0003DFEB  e8 6d 05 00 00                    call    sub_3E55D
+0003DFF0  83 c4 08                          add     esp, 8
+0003DFF3  ff b3 10 88 11 00                 push    dword_118810[ebx]
+0003DFF9  e8 34 32 00 00                    call    sub_41232
+0003DFFE  83 c4 04                          add     esp, 4
+0003E001  6a 00                             push    0
+0003E003  6a 00                             push    0
+0003E005  ff b3 10 88 11 00                 push    dword_118810[ebx]
+0003E00B  e8 e8 33 00 00                    call    sub_413F8
+0003E010  83 c4 0c                          add     esp, 0Ch
+0003E013  ff b3 d0 87 11 00                 push    dword_1187D0[ebx]
+0003E019  ff b3 f0 87 11 00                 push    dword_1187F0[ebx]
+0003E01F  ff b3 10 88 11 00                 push    dword_118810[ebx]
+0003E025  e8 59 33 00 00                    call    sub_41383
+0003E02A  83 c4 0c                          add     esp, 0Ch
+0003E02D  68 11 2b 00 00                    push    2B11h
+0003E032  ff b3 10 88 11 00                 push    dword_118810[ebx]
+0003E038  e8 c4 35 00 00                    call    sub_41601
+0003E03D  83 c4 08                          add     esp, 8
+0003E040  83 fe 01                          cmp     esi, 1
+0003E043  75 13                             jnz     short loc_3E058
+0003E045  68 c8 00 00 00                    push    0C8h
+0003E04A  ff b3 10 88 11 00                 push    dword_118810[ebx]
+0003E050  e8 19 36 00 00                    call    sub_4166E
+0003E055  83 c4 08                          add     esp, 8
+0003E058  83 fe 02                          cmp     esi, 2
+0003E05B  75 14                             jnz     short loc_3E071
+0003E05D  68 90 01 00 00                    push    190h
+0003E062  ff 34 b5 10 88 11 00              push    dword_118810[esi*4]
+0003E069  e8 00 36 00 00                    call    sub_4166E
+0003E06E  83 c4 08                          add     esp, 8
+0003E071  ff 34 b5 10 88 11 00              push    dword_118810[esi*4]
+0003E078  e8 f0 33 00 00                    call    sub_4146D
+0003E07D  83 c4 04                          add     esp, 4
+0003E080  e8 b8 02 00 00                    call    sub_3E33D
+0003E085  5e                                pop     esi
+0003E086  5b                                pop     ebx
+0003E087  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E088 research=sample_start_raw_unused start=0x3E088 end=0x3E172 size=234
+0003E088  68 14 00 00 00                    push    14h
+0003E08D  e8 8c 0c 00 00                    call    sub_3ED1E
+0003E092  53                                push    ebx
+0003E093  66 83 3d 44 88 11 00 00           cmp     word_118844, 0
+0003E09B  0f 85 cf 00 00 00                 jnz     loc_3E170
+0003E0A1  8b 5c 24 08                       mov     ebx, [esp+8]
+0003E0A5  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E0AC  e8 04 37 00 00                    call    sub_417B5
+0003E0B1  83 c4 04                          add     esp, 4
+0003E0B4  83 f8 04                          cmp     eax, 4
+0003E0B7  75 09                             jnz     short loc_3E0C2
+0003E0B9  53                                push    ebx
+0003E0BA  e8 b3 00 00 00                    call    sub_3E172
+0003E0BF  83 c4 04                          add     esp, 4
+0003E0C2  8b 5c 24 08                       mov     ebx, [esp+8]
+0003E0C6  8b 44 24 10                       mov     eax, [esp+10h]
+0003E0CA  89 04 9d d0 87 11 00              mov     dword_1187D0[ebx*4], eax
+0003E0D1  8b 44 24 0c                       mov     eax, [esp+0Ch]
+0003E0D5  89 04 9d f0 87 11 00              mov     dword_1187F0[ebx*4], eax
+0003E0DC  ff 34 9d d0 87 11 00              push    dword_1187D0[ebx*4]
+0003E0E3  50                                push    eax
+0003E0E4  e8 74 04 00 00                    call    sub_3E55D
+0003E0E9  83 c4 08                          add     esp, 8
+0003E0EC  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E0F3  e8 3a 31 00 00                    call    sub_41232
+0003E0F8  83 c4 04                          add     esp, 4
+0003E0FB  6a 00                             push    0
+0003E0FD  6a 00                             push    0
+0003E0FF  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E106  e8 ed 32 00 00                    call    sub_413F8
+0003E10B  83 c4 0c                          add     esp, 0Ch
+0003E10E  ff 34 9d d0 87 11 00              push    dword_1187D0[ebx*4]
+0003E115  ff 34 9d f0 87 11 00              push    dword_1187F0[ebx*4]
+0003E11C  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E123  e8 5b 32 00 00                    call    sub_41383
+0003E128  83 c4 0c                          add     esp, 0Ch
+0003E12B  68 11 2b 00 00                    push    2B11h
+0003E130  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E137  e8 c5 34 00 00                    call    sub_41601
+0003E13C  83 c4 08                          add     esp, 8
+0003E13F  6a 64                             push    64h ; 'd'
+0003E141  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E148  e8 21 35 00 00                    call    sub_4166E
+0003E14D  83 c4 08                          add     esp, 8
+0003E150  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E157  e8 11 33 00 00                    call    sub_4146D
+0003E15C  83 c4 04                          add     esp, 4
+0003E15F  6a 00                             push    0
+0003E161  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E168  e8 db 35 00 00                    call    near ptr unk_41748
+0003E16D  83 c4 08                          add     esp, 8
+0003E170  5b                                pop     ebx
+0003E171  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E172 research=sample_end start=0x3E172 end=0x3E1B2 size=64
+0003E172  68 10 00 00 00                    push    10h
+0003E177  e8 a2 0b 00 00                    call    sub_3ED1E
+0003E17C  53                                push    ebx
+0003E17D  66 83 3d 44 88 11 00 00           cmp     word_118844, 0
+0003E185  75 29                             jnz     short loc_3E1B0
+0003E187  8b 5c 24 08                       mov     ebx, [esp+4+arg_0]
+0003E18B  ff 34 9d 10 88 11 00              push    dword_118810[ebx*4]
+0003E192  e8 05 34 00 00                    call    sub_4159C
+0003E197  83 c4 04                          add     esp, 4
+0003E19A  ff 34 9d d0 87 11 00              push    dword_1187D0[ebx*4]
+0003E1A1  ff 34 9d f0 87 11 00              push    dword_1187F0[ebx*4]
+0003E1A8  e8 c6 03 00 00                    call    sub_3E573
+0003E1AD  83 c4 08                          add     esp, 8
+0003E1B0  5b                                pop     ebx
+0003E1B1  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E1B2 research=music_play_index start=0x3E1B2 end=0x3E23B size=137
+0003E1B2  68 ac 01 00 00                    push    1ACh
+0003E1B7  e8 62 0b 00 00                    call    sub_3ED1E
+0003E1BC  56                                push    esi
+0003E1BD  57                                push    edi
+0003E1BE  81 ec 98 01 00 00                 sub     esp, 198h
+0003E1C4  b9 4e 00 00 00                    mov     ecx, 4Eh ; 'N'
+0003E1C9  89 e7                             mov     edi, esp
+0003E1CB  be bf db 03 00                    mov     esi, offset aGame01Xmi; "game01.xmi"
+0003E1D0  f3 a5                             rep movsd
+0003E1D2  b9 18 00 00 00                    mov     ecx, 18h
+0003E1D7  8d bc 24 38 01 00 00              lea     edi, [esp+1A0h+var_68]
+0003E1DE  be f7 dc 03 00                    mov     esi, offset unk_3DCF7
+0003E1E3  f3 a5                             rep movsd
+0003E1E5  e8 71 00 00 00                    call    sub_3E25B
+0003E1EA  e8 6a fd ff ff                    call    sub_3DF59
+0003E1EF  68 0c b0 07 00                    push    offset byte_7B00C
+0003E1F4  6b 84 24 a8 01 00 00 0d           imul    eax, [esp+1A4h+arg_0], 0Dh
+0003E1FC  8d 54 24 04                       lea     edx, [esp+1A4h+var_1A0]
+0003E200  01 d0                             add     eax, edx
+0003E202  50                                push    eax
+0003E203  e8 3d ed ff ff                    call    sub_3CF45
+0003E208  83 c4 08                          add     esp, 8
+0003E20B  8b 84 24 a4 01 00 00              mov     eax, [esp+1A0h+arg_0]
+0003E212  ff b4 84 38 01 00 00              push    [esp+eax*4+1A0h+var_68]
+0003E219  68 0c b0 07 00                    push    offset byte_7B00C
+0003E21E  e8 a8 fc ff ff                    call    sub_3DECB
+0003E223  83 c4 08                          add     esp, 8
+0003E226  8b 84 24 a4 01 00 00              mov     eax, [esp+1A0h+arg_0]
+0003E22D  a3 9c 0b 0c 00                    mov     dword_C0B9C, eax
+0003E232  81 c4 98 01 00 00                 add     esp, 198h
+0003E238  5f                                pop     edi
+0003E239  5e                                pop     esi
+0003E23A  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E23B research=music_fade_in start=0x3E23B end=0x3E25B size=32
+0003E23B  68 10 00 00 00                    push    10h
+0003E240  e8 d9 0a 00 00                    call    sub_3ED1E
+0003E245  68 d0 07 00 00                    push    7D0h
+0003E24A  6a 7f                             push    7Fh
+0003E24C  ff 35 38 88 11 00                 push    dword_118838
+0003E252  e8 90 4b 00 00                    call    sub_42DE7
+0003E257  83 c4 0c                          add     esp, 0Ch
+0003E25A  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E25B research=music_fade_out start=0x3E25B end=0x3E288 size=45
+0003E25B  68 10 00 00 00                    push    10h
+0003E260  e8 b9 0a 00 00                    call    sub_3ED1E
+0003E265  68 d0 07 00 00                    push    7D0h
+0003E26A  6a 00                             push    0
+0003E26C  ff 35 38 88 11 00                 push    dword_118838
+0003E272  e8 70 4b 00 00                    call    sub_42DE7
+0003E277  83 c4 0c                          add     esp, 0Ch
+0003E27A  68 e8 03 00 00                    push    3E8h
+0003E27F  e8 a0 6f 00 00                    call    sub_45224
+0003E284  83 c4 04                          add     esp, 4
+0003E287  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E288 research=sample_dispatch_loaded start=0x3E288 end=0x3E2E2 size=90
+0003E288  68 10 00 00 00                    push    10h
+0003E28D  e8 8c 0a 00 00                    call    sub_3ED1E
+0003E292  83 7c 24 04 01                    cmp     [esp+arg_0], 1
+0003E297  75 1e                             jnz     short loc_3E2B7
+0003E299  8b 44 24 08                       mov     eax, [esp+arg_4]
+0003E29D  0f bf 04 45 94 6c 05 00           movsx   eax, word_56C94[eax*2]
+0003E2A5  50                                push    eax
+0003E2A6  68 94 92 0b 00                    push    offset byte_B9294
+0003E2AB  ff 74 24 0c                       push    [esp+8+arg_0]
+0003E2AF  e8 dc fc ff ff                    call    sub_3DF90
+0003E2B4  83 c4 0c                          add     esp, 0Ch
+0003E2B7  83 7c 24 04 02                    cmp     [esp+arg_0], 2
+0003E2BC  75 1e                             jnz     short loc_3E2DC
+0003E2BE  8b 44 24 08                       mov     eax, [esp+arg_4]
+0003E2C2  0f bf 04 45 c6 6c 05 00           movsx   eax, word_56CC6[eax*2]
+0003E2CA  50                                push    eax
+0003E2CB  68 dc 09 0b 00                    push    offset byte_B09DC
+0003E2D0  ff 74 24 0c                       push    [esp+8+arg_0]
+0003E2D4  e8 b7 fc ff ff                    call    sub_3DF90
+0003E2D9  83 c4 0c                          add     esp, 0Ch
+0003E2DC  b8 01 00 00 00                    mov     eax, 1
+0003E2E1  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3E2E2 research=sample_load_index start=0x3E2E2 end=0x3E33D size=91
+0003E2E2  68 0c 00 00 00                    push    0Ch
+0003E2E7  e8 32 0a 00 00                    call    sub_3ED1E
+0003E2EC  ff 74 24 04                       push    [esp+arg_0]
+0003E2F0  e8 7d fe ff ff                    call    sub_3E172
+0003E2F5  83 c4 04                          add     esp, 4
+0003E2F8  e8 40 00 00 00                    call    sub_3E33D
+0003E2FD  83 7c 24 04 01                    cmp     [esp+arg_0], 1
+0003E302  75 18                             jnz     short loc_3E31C
+0003E304  68 94 92 0b 00                    push    offset byte_B9294
+0003E309  6b 44 24 0c 0d                    imul    eax, [esp+4+arg_4], 0Dh
+0003E30E  05 30 6d 05 00                    add     eax, offset aAtk00Wav; "atk00.wav"
+0003E313  50                                push    eax
+0003E314  e8 2c ec ff ff                    call    sub_3CF45
+0003E319  83 c4 08                          add     esp, 8
+0003E31C  83 7c 24 04 02                    cmp     [esp+arg_0], 2
+0003E321  75 b9                             jnz     short loc_3E2DC
+0003E323  68 dc 09 0b 00                    push    offset byte_B09DC
+0003E328  6b 44 24 0c 0d                    imul    eax, [esp+4+arg_4], 0Dh
+0003E32D  05 75 6e 05 00                    add     eax, offset aE00Wav; "e00.wav"
+0003E332  50                                push    eax
+0003E333  e8 0d ec ff ff                    call    sub_3CF45
+0003E338  83 c4 08                          add     esp, 8
+0003E33B  eb 9f                             jmp     short loc_3E2DC
+
+====================================================================================================
+FUNCTION sub_3D5DE research=seed_from_dos_time start=0x3D5DE end=0x3D612 size=52
+0003D5DE  68 0c 00 00 00                    push    0Ch
+0003D5E3  e8 36 17 00 00                    call    sub_3ED1E
+0003D5E8  83 ec 04                          sub     esp, 4
+0003D5EB  89 e0                             mov     eax, esp
+0003D5ED  50                                push    eax
+0003D5EE  e8 76 23 00 00                    call    sub_3F969
+0003D5F3  83 c4 04                          add     esp, 4
+0003D5F6  0f b6 44 24 02                    movzx   eax, [esp+4+var_2]
+0003D5FB  6b d0 64                          imul    edx, eax, 64h ; 'd'
+0003D5FE  0f b6 44 24 03                    movzx   eax, [esp+4+var_1]
+0003D603  01 d0                             add     eax, edx
+0003D605  50                                push    eax
+0003D606  e8 a5 23 00 00                    call    sub_3F9B0
+0003D60B  83 c4 04                          add     esp, 4
+0003D60E  83 c4 04                          add     esp, 4
+0003D611  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3D612 research=rng_bounded start=0x3D612 end=0x3D643 size=49
+0003D612  68 04 00 00 00                    push    4
+0003D617  e8 02 17 00 00                    call    sub_3ED1E
+0003D61C  83 7c 24 04 01                    cmp     [esp+arg_0], 1
+0003D621  7e 0a                             jle     short loc_3D62D
+0003D623  81 7c 24 04 30 75 00 00           cmp     [esp+arg_0], 7530h
+0003D62B  7e 05                             jle     short loc_3D632
+0003D62D  31 d2                             xor     edx, edx
+0003D62F  89 d0                             mov     eax, edx
+0003D631  c3                                retn
+0003D632  e8 56 23 00 00                    call    sub_3F98D
+0003D637  89 c2                             mov     edx, eax
+0003D639  c1 fa 1f                          sar     edx, 1Fh
+0003D63C  f7 7c 24 04                       idiv    [esp+arg_0]
+0003D640  89 d0                             mov     eax, edx
+0003D642  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3F987 research=rng_state_address start=0x3F987 end=0x3F98D size=6
+0003F987  b8 68 71 05 00                    mov     eax, offset unk_57168
+0003F98C  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3F98D research=rng_next start=0x3F98D end=0x3F9B0 size=35
+0003F98D  e8 f5 ff ff ff                    call    sub_3F987
+0003F992  85 c0                             test    eax, eax
+0003F994  75 01                             jnz     short loc_3F997
+0003F996  c3                                retn
+0003F997  69 10 6d 4e c6 41                 imul    edx, [eax], 41C64E6Dh
+0003F99D  81 c2 39 30 00 00                 add     edx, 3039h
+0003F9A3  89 10                             mov     [eax], edx
+0003F9A5  89 d0                             mov     eax, edx
+0003F9A7  c1 e8 10                          shr     eax, 10h
+0003F9AA  25 ff 7f 00 00                    and     eax, 7FFFh
+0003F9AF  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3F9B0 research=rng_seed start=0x3F9B0 end=0x3F9C0 size=16
+0003F9B0  e8 d2 ff ff ff                    call    sub_3F987
+0003F9B5  85 c0                             test    eax, eax
+0003F9B7  74 06                             jz      short locret_3F9BF
+0003F9B9  8b 54 24 04                       mov     edx, [esp+arg_0]
+0003F9BD  89 10                             mov     [eax], edx
+0003F9BF  c3                                retn
+
+====================================================================================================
+FUNCTION sub_3F9C0 research=rng_runtime_initialize start=0x3F9C0 end=0x3FA62 size=162
+0003F9C0  83 3d 6c 71 05 00 00              cmp     dword_5716C, 0
+0003F9C7  0f 85 94 00 00 00                 jnz     locret_3FA61
+0003F9CD  68 af 48 04 00                    push    offset unk_448AF
+0003F9D2  68 c0 f9 03 00                    push    offset sub_3F9C0
+0003F9D7  e8 ea ea ff ff                    call    sub_3E4C6
+0003F9DC  83 c4 08                          add     esp, 8
+0003F9DF  6a 04                             push    4
+0003F9E1  68 54 88 11 00                    push    offset dword_118854
+0003F9E6  e8 72 eb ff ff                    call    sub_3E55D
+0003F9EB  83 c4 08                          add     esp, 8
+0003F9EE  6a 04                             push    4
+0003F9F0  68 58 88 11 00                    push    offset dword_118858
+0003F9F5  e8 63 eb ff ff                    call    sub_3E55D
+0003F9FA  83 c4 08                          add     esp, 8
+0003F9FD  6a 04                             push    4
+0003F9FF  68 50 88 11 00                    push    offset dword_118850
+0003FA04  e8 54 eb ff ff                    call    sub_3E55D
+0003FA09  83 c4 08                          add     esp, 8
+0003FA0C  6a 04                             push    4
+0003FA0E  68 5c 88 11 00                    push    offset dword_11885C
+0003FA13  e8 45 eb ff ff                    call    sub_3E55D
+0003FA18  83 c4 08                          add     esp, 8
+0003FA1B  6a 04                             push    4
+0003FA1D  68 64 88 11 00                    push    offset dword_118864
+0003FA22  e8 36 eb ff ff                    call    sub_3E55D
+0003FA27  83 c4 08                          add     esp, 8
+0003FA2A  6a 04                             push    4
+0003FA2C  68 60 88 11 00                    push    offset dword_118860
+0003FA31  e8 27 eb ff ff                    call    sub_3E55D
+0003FA36  83 c4 08                          add     esp, 8
+0003FA39  6a 04                             push    4
+0003FA3B  68 68 88 11 00                    push    offset dword_118868
+0003FA40  e8 18 eb ff ff                    call    sub_3E55D
+0003FA45  83 c4 08                          add     esp, 8
+0003FA48  6a 04                             push    4
+0003FA4A  68 48 88 11 00                    push    offset dword_118848
+0003FA4F  e8 09 eb ff ff                    call    sub_3E55D
+0003FA54  83 c4 08                          add     esp, 8
+0003FA57  c7 05 6c 71 05 00 01 00 00 00     mov     dword_5716C, 1
+0003FA61  c3                                retn
+
+====================================================================================================
+FUNCTION sub_41232 research=miles_init_sample start=0x41232 end=0x41297 size=101
+00041232  ff 05 4c 88 11 00                 inc     dword_11884C
+00041238  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+0004123F  74 2b                             jz      short loc_4126C
+00041241  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00041248  74 09                             jz      short loc_41253
+0004124A  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00041251  74 19                             jz      short loc_4126C
+00041253  e8 a2 60 00 00                    call    sub_472FA
+00041258  85 c0                             test    eax, eax
+0004125A  75 10                             jnz     short loc_4126C
+0004125C  e8 77 e8 ff ff                    call    sub_3FAD8
+00041261  85 c0                             test    eax, eax
+00041263  74 07                             jz      short loc_4126C
+00041265  b8 01 00 00 00                    mov     eax, 1
+0004126A  eb 02                             jmp     short loc_4126E
+0004126C  31 c0                             xor     eax, eax
+0004126E  85 c0                             test    eax, eax
+00041270  74 17                             jz      short loc_41289
+00041272  ff 74 24 04                       push    [esp+arg_0]
+00041276  68 c4 90 05 00                    push    offset aAilInitSample0; "AIL_init_sample(0x%X)\n"
+0004127B  ff 35 50 88 11 00                 push    dword_118850
+00041281  e8 b5 62 00 00                    call    sub_4753B
+00041286  83 c4 0c                          add     esp, 0Ch
+00041289  ff 74 24 04                       push    [esp+arg_0]
+0004128D  e8 2e 7d 00 00                    call    sub_48FC0
+00041292  e9 18 eb ff ff                    jmp     loc_3FDAF
+
+====================================================================================================
+FUNCTION sub_41383 research=miles_set_sample_data start=0x41383 end=0x413F8 size=117
+00041383  ff 05 4c 88 11 00                 inc     dword_11884C
+00041389  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00041390  74 2b                             jz      short loc_413BD
+00041392  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00041399  74 09                             jz      short loc_413A4
+0004139B  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+000413A2  74 19                             jz      short loc_413BD
+000413A4  e8 51 5f 00 00                    call    sub_472FA
+000413A9  85 c0                             test    eax, eax
+000413AB  75 10                             jnz     short loc_413BD
+000413AD  e8 26 e7 ff ff                    call    sub_3FAD8
+000413B2  85 c0                             test    eax, eax
+000413B4  74 07                             jz      short loc_413BD
+000413B6  b8 01 00 00 00                    mov     eax, 1
+000413BB  eb 02                             jmp     short loc_413BF
+000413BD  31 c0                             xor     eax, eax
+000413BF  85 c0                             test    eax, eax
+000413C1  74 1f                             jz      short loc_413E2
+000413C3  ff 74 24 0c                       push    [esp+arg_8]
+000413C7  ff 74 24 0c                       push    [esp+4+arg_4]
+000413CB  ff 74 24 0c                       push    [esp+8+arg_0]
+000413CF  68 fe 90 05 00                    push    offset aAilSetSampleAd; "AIL_set_sample_address(0x%X,0x%X,%u)\n"
+000413D4  ff 35 50 88 11 00                 push    dword_118850
+000413DA  e8 5c 61 00 00                    call    sub_4753B
+000413DF  83 c4 14                          add     esp, 14h
+000413E2  ff 74 24 0c                       push    [esp+arg_8]
+000413E6  ff 74 24 0c                       push    [esp+4+arg_4]
+000413EA  ff 74 24 0c                       push    [esp+8+arg_0]
+000413EE  e8 a1 7c 00 00                    call    sub_49094
+000413F3  e9 83 ec ff ff                    jmp     loc_4007B
+
+====================================================================================================
+FUNCTION sub_413F8 research=miles_set_sample_type start=0x413F8 end=0x4146D size=117
+000413F8  ff 05 4c 88 11 00                 inc     dword_11884C
+000413FE  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00041405  74 2b                             jz      short loc_41432
+00041407  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+0004140E  74 09                             jz      short loc_41419
+00041410  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00041417  74 19                             jz      short loc_41432
+00041419  e8 dc 5e 00 00                    call    sub_472FA
+0004141E  85 c0                             test    eax, eax
+00041420  75 10                             jnz     short loc_41432
+00041422  e8 b1 e6 ff ff                    call    sub_3FAD8
+00041427  85 c0                             test    eax, eax
+00041429  74 07                             jz      short loc_41432
+0004142B  b8 01 00 00 00                    mov     eax, 1
+00041430  eb 02                             jmp     short loc_41434
+00041432  31 c0                             xor     eax, eax
+00041434  85 c0                             test    eax, eax
+00041436  74 1f                             jz      short loc_41457
+00041438  ff 74 24 0c                       push    [esp+arg_8]
+0004143C  ff 74 24 0c                       push    [esp+4+arg_4]
+00041440  ff 74 24 0c                       push    [esp+8+arg_0]
+00041444  68 24 91 05 00                    push    offset aAilSetSampleTy; "AIL_set_sample_type(0x%X,%d,%u)\n"
+00041449  ff 35 50 88 11 00                 push    dword_118850
+0004144F  e8 e7 60 00 00                    call    sub_4753B
+00041454  83 c4 14                          add     esp, 14h
+00041457  ff 74 24 0c                       push    [esp+arg_8]
+0004145B  ff 74 24 0c                       push    [esp+4+arg_4]
+0004145F  ff 74 24 0c                       push    [esp+8+arg_0]
+00041463  e8 54 7c 00 00                    call    sub_490BC
+00041468  e9 0e ec ff ff                    jmp     loc_4007B
+
+====================================================================================================
+FUNCTION sub_4146D research=miles_start_sample start=0x4146D end=0x414D2 size=101
+0004146D  ff 05 4c 88 11 00                 inc     dword_11884C
+00041473  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+0004147A  74 2b                             jz      short loc_414A7
+0004147C  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00041483  74 09                             jz      short loc_4148E
+00041485  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+0004148C  74 19                             jz      short loc_414A7
+0004148E  e8 67 5e 00 00                    call    sub_472FA
+00041493  85 c0                             test    eax, eax
+00041495  75 10                             jnz     short loc_414A7
+00041497  e8 3c e6 ff ff                    call    sub_3FAD8
+0004149C  85 c0                             test    eax, eax
+0004149E  74 07                             jz      short loc_414A7
+000414A0  b8 01 00 00 00                    mov     eax, 1
+000414A5  eb 02                             jmp     short loc_414A9
+000414A7  31 c0                             xor     eax, eax
+000414A9  85 c0                             test    eax, eax
+000414AB  74 17                             jz      short loc_414C4
+000414AD  ff 74 24 04                       push    [esp+arg_0]
+000414B1  68 45 91 05 00                    push    offset aAilStartSample; "AIL_start_sample(0x%X)\n"
+000414B6  ff 35 50 88 11 00                 push    dword_118850
+000414BC  e8 7a 60 00 00                    call    sub_4753B
+000414C1  83 c4 0c                          add     esp, 0Ch
+000414C4  ff 74 24 04                       push    [esp+arg_0]
+000414C8  e8 f7 7c 00 00                    call    sub_491C4
+000414CD  e9 dd e8 ff ff                    jmp     loc_3FDAF
+
+====================================================================================================
+FUNCTION sub_4159C research=miles_end_sample start=0x4159C end=0x41601 size=101
+0004159C  ff 05 4c 88 11 00                 inc     dword_11884C
+000415A2  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+000415A9  74 2b                             jz      short loc_415D6
+000415AB  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+000415B2  74 09                             jz      short loc_415BD
+000415B4  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+000415BB  74 19                             jz      short loc_415D6
+000415BD  e8 38 5d 00 00                    call    sub_472FA
+000415C2  85 c0                             test    eax, eax
+000415C4  75 10                             jnz     short loc_415D6
+000415C6  e8 0d e5 ff ff                    call    sub_3FAD8
+000415CB  85 c0                             test    eax, eax
+000415CD  74 07                             jz      short loc_415D6
+000415CF  b8 01 00 00 00                    mov     eax, 1
+000415D4  eb 02                             jmp     short loc_415D8
+000415D6  31 c0                             xor     eax, eax
+000415D8  85 c0                             test    eax, eax
+000415DA  74 17                             jz      short loc_415F3
+000415DC  ff 74 24 04                       push    [esp+arg_0]
+000415E0  68 8d 91 05 00                    push    offset aAilEndSample0x; "AIL_end_sample(0x%X)\n"
+000415E5  ff 35 50 88 11 00                 push    dword_118850
+000415EB  e8 4b 5f 00 00                    call    sub_4753B
+000415F0  83 c4 0c                          add     esp, 0Ch
+000415F3  ff 74 24 04                       push    [esp+arg_0]
+000415F7  e8 ac 7c 00 00                    call    sub_492A8
+000415FC  e9 ae e7 ff ff                    jmp     loc_3FDAF
+
+====================================================================================================
+FUNCTION sub_41601 research=miles_set_sample_rate start=0x41601 end=0x4166E size=109
+00041601  ff 05 4c 88 11 00                 inc     dword_11884C
+00041607  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+0004160E  74 2b                             jz      short loc_4163B
+00041610  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00041617  74 09                             jz      short loc_41622
+00041619  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00041620  74 19                             jz      short loc_4163B
+00041622  e8 d3 5c 00 00                    call    sub_472FA
+00041627  85 c0                             test    eax, eax
+00041629  75 10                             jnz     short loc_4163B
+0004162B  e8 a8 e4 ff ff                    call    sub_3FAD8
+00041630  85 c0                             test    eax, eax
+00041632  74 07                             jz      short loc_4163B
+00041634  b8 01 00 00 00                    mov     eax, 1
+00041639  eb 02                             jmp     short loc_4163D
+0004163B  31 c0                             xor     eax, eax
+0004163D  85 c0                             test    eax, eax
+0004163F  74 1b                             jz      short loc_4165C
+00041641  ff 74 24 08                       push    [esp+arg_4]
+00041645  ff 74 24 08                       push    [esp+4+arg_0]
+00041649  68 a3 91 05 00                    push    offset aAilSetSamplePl; "AIL_set_sample_playback_rate(0x%X,%d)\n"
+0004164E  ff 35 50 88 11 00                 push    dword_118850
+00041654  e8 e2 5e 00 00                    call    sub_4753B
+00041659  83 c4 10                          add     esp, 10h
+0004165C  ff 74 24 08                       push    [esp+arg_4]
+00041660  ff 74 24 08                       push    [esp+4+arg_0]
+00041664  e8 97 7a 00 00                    call    sub_49100
+00041669  e9 95 e9 ff ff                    jmp     loc_40003
+
+====================================================================================================
+FUNCTION sub_4166E research=miles_set_sample_volume start=0x4166E end=0x416DB size=109
+0004166E  ff 05 4c 88 11 00                 inc     dword_11884C
+00041674  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+0004167B  74 2b                             jz      short loc_416A8
+0004167D  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00041684  74 09                             jz      short loc_4168F
+00041686  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+0004168D  74 19                             jz      short loc_416A8
+0004168F  e8 66 5c 00 00                    call    sub_472FA
+00041694  85 c0                             test    eax, eax
+00041696  75 10                             jnz     short loc_416A8
+00041698  e8 3b e4 ff ff                    call    sub_3FAD8
+0004169D  85 c0                             test    eax, eax
+0004169F  74 07                             jz      short loc_416A8
+000416A1  b8 01 00 00 00                    mov     eax, 1
+000416A6  eb 02                             jmp     short loc_416AA
+000416A8  31 c0                             xor     eax, eax
+000416AA  85 c0                             test    eax, eax
+000416AC  74 1b                             jz      short loc_416C9
+000416AE  ff 74 24 08                       push    [esp+arg_4]
+000416B2  ff 74 24 08                       push    [esp+4+arg_0]
+000416B6  68 ca 91 05 00                    push    offset aAilSetSampleVo; "AIL_set_sample_volume(0x%X,%d)\n"
+000416BB  ff 35 50 88 11 00                 push    dword_118850
+000416C1  e8 75 5e 00 00                    call    sub_4753B
+000416C6  83 c4 10                          add     esp, 10h
+000416C9  ff 74 24 08                       push    [esp+arg_4]
+000416CD  ff 74 24 08                       push    [esp+4+arg_0]
+000416D1  e8 4a 7a 00 00                    call    sub_49120
+000416D6  e9 28 e9 ff ff                    jmp     loc_40003
+
+====================================================================================================
+FUNCTION sub_41748 research=miles_set_sample_loop_count start=0x41748 end=0x417B5 size=109
+00041748  ff 05 4c 88 11 00                 inc     dword_11884C
+0004174E  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00041755  74 2b                             jz      short loc_41782
+00041757  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+0004175E  74 09                             jz      short loc_41769
+00041760  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00041767  74 19                             jz      short loc_41782
+00041769  e8 8c 5b 00 00                    call    sub_472FA
+0004176E  85 c0                             test    eax, eax
+00041770  75 10                             jnz     short loc_41782
+00041772  e8 61 e3 ff ff                    call    sub_3FAD8
+00041777  85 c0                             test    eax, eax
+00041779  74 07                             jz      short loc_41782
+0004177B  b8 01 00 00 00                    mov     eax, 1
+00041780  eb 02                             jmp     short loc_41784
+00041782  31 c0                             xor     eax, eax
+00041784  85 c0                             test    eax, eax
+00041786  74 1b                             jz      short loc_417A3
+00041788  ff 74 24 08                       push    dword ptr [esp+8]
+0004178C  ff 74 24 08                       push    dword ptr [esp+8]
+00041790  68 07 92 05 00                    push    offset aAilSetSampleLo; "AIL_set_sample_loop_count(0x%X,%d)\n"
+00041795  ff 35 50 88 11 00                 push    dword_118850
+0004179B  e8 9b 5d 00 00                    call    sub_4753B
+000417A0  83 c4 10                          add     esp, 10h
+000417A3  ff 74 24 08                       push    dword ptr [esp+8]
+000417A7  ff 74 24 08                       push    dword ptr [esp+8]
+000417AB  e8 04 7a 00 00                    call    near ptr unk_491B4
+000417B0  e9 4e e8 ff ff                    jmp     loc_40003
+
+====================================================================================================
+FUNCTION sub_417B5 research=miles_sample_status start=0x417B5 end=0x41891 size=220
+000417B5  53                                push    ebx
+000417B6  56                                push    esi
+000417B7  ff 05 4c 88 11 00                 inc     dword_11884C
+000417BD  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+000417C4  74 2b                             jz      short loc_417F1
+000417C6  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+000417CD  74 09                             jz      short loc_417D8
+000417CF  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+000417D6  74 19                             jz      short loc_417F1
+000417D8  e8 1d 5b 00 00                    call    sub_472FA
+000417DD  85 c0                             test    eax, eax
+000417DF  75 10                             jnz     short loc_417F1
+000417E1  e8 f2 e2 ff ff                    call    sub_3FAD8
+000417E6  85 c0                             test    eax, eax
+000417E8  74 07                             jz      short loc_417F1
+000417EA  b8 01 00 00 00                    mov     eax, 1
+000417EF  eb 02                             jmp     short loc_417F3
+000417F1  31 c0                             xor     eax, eax
+000417F3  85 c0                             test    eax, eax
+000417F5  74 17                             jz      short loc_4180E
+000417F7  ff 74 24 0c                       push    [esp+8+arg_0]
+000417FB  68 2b 92 05 00                    push    offset aAilSampleStatu; "AIL_sample_status(0x%X)\n"
+00041800  ff 35 50 88 11 00                 push    dword_118850
+00041806  e8 30 5d 00 00                    call    sub_4753B
+0004180B  83 c4 0c                          add     esp, 0Ch
+0004180E  ff 74 24 0c                       push    [esp+8+arg_0]
+00041812  e8 6d 78 00 00                    call    sub_49084
+00041817  83 c4 04                          add     esp, 4
+0004181A  89 c6                             mov     esi, eax
+0004181C  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00041823  0f 84 67 e7 ff ff                 jz      loc_3FF90
+00041829  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00041830  74 0d                             jz      short loc_4183F
+00041832  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00041839  0f 84 51 e7 ff ff                 jz      loc_3FF90
+0004183F  e8 b6 5a 00 00                    call    sub_472FA
+00041844  85 c0                             test    eax, eax
+00041846  0f 85 44 e7 ff ff                 jnz     loc_3FF90
+0004184C  31 db                             xor     ebx, ebx
+0004184E  eb 14                             jmp     short loc_41864
+00041850  68 d7 8b 05 00                    push    offset asc_58BD7; " "
+00041855  ff 35 50 88 11 00                 push    dword_118850
+0004185B  e8 db 5c 00 00                    call    sub_4753B
+00041860  83 c4 08                          add     esp, 8
+00041863  43                                inc     ebx
+00041864  83 fb 0e                          cmp     ebx, 0Eh
+00041867  72 e7                             jb      short loc_41850
+00041869  bb 01 00 00 00                    mov     ebx, 1
+0004186E  eb 14                             jmp     short loc_41884
+00041870  68 d9 8b 05 00                    push    offset unk_58BD9
+00041875  ff 35 50 88 11 00                 push    dword_118850
+0004187B  e8 bb 5c 00 00                    call    sub_4753B
+00041880  83 c4 08                          add     esp, 8
+00041883  43                                inc     ebx
+00041884  3b 1d 4c 88 11 00                 cmp     ebx, dword_11884C
+0004188A  72 e4                             jb      short loc_41870
+0004188C  e9 dd ed ff ff                    jmp     loc_4066E
+
+====================================================================================================
+FUNCTION sub_42AF2 research=miles_init_sequence start=0x42AF2 end=0x42BDE size=236
+00042AF2  53                                push    ebx
+00042AF3  56                                push    esi
+00042AF4  ff 05 4c 88 11 00                 inc     dword_11884C
+00042AFA  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042B01  74 2b                             jz      short loc_42B2E
+00042B03  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042B0A  74 09                             jz      short loc_42B15
+00042B0C  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042B13  74 19                             jz      short loc_42B2E
+00042B15  e8 e0 47 00 00                    call    sub_472FA
+00042B1A  85 c0                             test    eax, eax
+00042B1C  75 10                             jnz     short loc_42B2E
+00042B1E  e8 b5 cf ff ff                    call    sub_3FAD8
+00042B23  85 c0                             test    eax, eax
+00042B25  74 07                             jz      short loc_42B2E
+00042B27  b8 01 00 00 00                    mov     eax, 1
+00042B2C  eb 02                             jmp     short loc_42B30
+00042B2E  31 c0                             xor     eax, eax
+00042B30  85 c0                             test    eax, eax
+00042B32  74 1f                             jz      short loc_42B53
+00042B34  ff 74 24 14                       push    [esp+8+arg_8]
+00042B38  ff 74 24 14                       push    [esp+0Ch+arg_4]
+00042B3C  ff 74 24 14                       push    [esp+10h+arg_0]
+00042B40  68 7a 95 05 00                    push    offset aAilInitSequenc; "AIL_init_sequence(0x%X,0x%X,%d)\n"
+00042B45  ff 35 50 88 11 00                 push    dword_118850
+00042B4B  e8 eb 49 00 00                    call    sub_4753B
+00042B50  83 c4 14                          add     esp, 14h
+00042B53  ff 74 24 14                       push    [esp+8+arg_8]
+00042B57  ff 74 24 14                       push    [esp+0Ch+arg_4]
+00042B5B  ff 74 24 14                       push    [esp+10h+arg_0]
+00042B5F  e8 58 93 00 00                    call    sub_4BEBC
+00042B64  83 c4 0c                          add     esp, 0Ch
+00042B67  89 c6                             mov     esi, eax
+00042B69  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042B70  0f 84 1a d4 ff ff                 jz      loc_3FF90
+00042B76  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042B7D  74 0d                             jz      short loc_42B8C
+00042B7F  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042B86  0f 84 04 d4 ff ff                 jz      loc_3FF90
+00042B8C  e8 69 47 00 00                    call    sub_472FA
+00042B91  85 c0                             test    eax, eax
+00042B93  0f 85 f7 d3 ff ff                 jnz     loc_3FF90
+00042B99  31 db                             xor     ebx, ebx
+00042B9B  eb 14                             jmp     short loc_42BB1
+00042B9D  68 d7 8b 05 00                    push    offset asc_58BD7; " "
+00042BA2  ff 35 50 88 11 00                 push    dword_118850
+00042BA8  e8 8e 49 00 00                    call    sub_4753B
+00042BAD  83 c4 08                          add     esp, 8
+00042BB0  43                                inc     ebx
+00042BB1  83 fb 0e                          cmp     ebx, 0Eh
+00042BB4  72 e7                             jb      short loc_42B9D
+00042BB6  bb 01 00 00 00                    mov     ebx, 1
+00042BBB  eb 14                             jmp     short loc_42BD1
+00042BBD  68 d9 8b 05 00                    push    offset unk_58BD9
+00042BC2  ff 35 50 88 11 00                 push    dword_118850
+00042BC8  e8 6e 49 00 00                    call    sub_4753B
+00042BCD  83 c4 08                          add     esp, 8
+00042BD0  43                                inc     ebx
+00042BD1  3b 1d 4c 88 11 00                 cmp     ebx, dword_11884C
+00042BD7  72 e4                             jb      short loc_42BBD
+00042BD9  e9 ba d2 ff ff                    jmp     loc_3FE98
+
+====================================================================================================
+FUNCTION sub_42BDE research=miles_start_sequence start=0x42BDE end=0x42C43 size=101
+00042BDE  ff 05 4c 88 11 00                 inc     dword_11884C
+00042BE4  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042BEB  74 2b                             jz      short loc_42C18
+00042BED  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042BF4  74 09                             jz      short loc_42BFF
+00042BF6  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042BFD  74 19                             jz      short loc_42C18
+00042BFF  e8 f6 46 00 00                    call    sub_472FA
+00042C04  85 c0                             test    eax, eax
+00042C06  75 10                             jnz     short loc_42C18
+00042C08  e8 cb ce ff ff                    call    sub_3FAD8
+00042C0D  85 c0                             test    eax, eax
+00042C0F  74 07                             jz      short loc_42C18
+00042C11  b8 01 00 00 00                    mov     eax, 1
+00042C16  eb 02                             jmp     short loc_42C1A
+00042C18  31 c0                             xor     eax, eax
+00042C1A  85 c0                             test    eax, eax
+00042C1C  74 17                             jz      short loc_42C35
+00042C1E  ff 74 24 04                       push    [esp+arg_0]
+00042C22  68 9b 95 05 00                    push    offset aAilStartSequen; "AIL_start_sequence(0x%X)\n"
+00042C27  ff 35 50 88 11 00                 push    dword_118850
+00042C2D  e8 09 49 00 00                    call    sub_4753B
+00042C32  83 c4 0c                          add     esp, 0Ch
+00042C35  ff 74 24 04                       push    [esp+arg_0]
+00042C39  e8 f2 95 00 00                    call    sub_4C230
+00042C3E  e9 6c d1 ff ff                    jmp     loc_3FDAF
+
+====================================================================================================
+FUNCTION sub_42D0D research=miles_stop_sequence start=0x42D0D end=0x42D72 size=101
+00042D0D  ff 05 4c 88 11 00                 inc     dword_11884C
+00042D13  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042D1A  74 2b                             jz      short loc_42D47
+00042D1C  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042D23  74 09                             jz      short loc_42D2E
+00042D25  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042D2C  74 19                             jz      short loc_42D47
+00042D2E  e8 c7 45 00 00                    call    sub_472FA
+00042D33  85 c0                             test    eax, eax
+00042D35  75 10                             jnz     short loc_42D47
+00042D37  e8 9c cd ff ff                    call    sub_3FAD8
+00042D3C  85 c0                             test    eax, eax
+00042D3E  74 07                             jz      short loc_42D47
+00042D40  b8 01 00 00 00                    mov     eax, 1
+00042D45  eb 02                             jmp     short loc_42D49
+00042D47  31 c0                             xor     eax, eax
+00042D49  85 c0                             test    eax, eax
+00042D4B  74 17                             jz      short loc_42D64
+00042D4D  ff 74 24 04                       push    [esp+arg_0]
+00042D51  68 e9 95 05 00                    push    offset aAilEndSequence; "AIL_end_sequence(0x%X)\n"
+00042D56  ff 35 50 88 11 00                 push    dword_118850
+00042D5C  e8 da 47 00 00                    call    sub_4753B
+00042D61  83 c4 0c                          add     esp, 0Ch
+00042D64  ff 74 24 04                       push    [esp+arg_0]
+00042D68  e8 fb 95 00 00                    call    sub_4C368
+00042D6D  e9 3d d0 ff ff                    jmp     loc_3FDAF
+
+====================================================================================================
+FUNCTION sub_42DE7 research=miles_fade_sequence start=0x42DE7 end=0x42E5C size=117
+00042DE7  ff 05 4c 88 11 00                 inc     dword_11884C
+00042DED  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042DF4  74 2b                             jz      short loc_42E21
+00042DF6  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042DFD  74 09                             jz      short loc_42E08
+00042DFF  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042E06  74 19                             jz      short loc_42E21
+00042E08  e8 ed 44 00 00                    call    sub_472FA
+00042E0D  85 c0                             test    eax, eax
+00042E0F  75 10                             jnz     short loc_42E21
+00042E11  e8 c2 cc ff ff                    call    sub_3FAD8
+00042E16  85 c0                             test    eax, eax
+00042E18  74 07                             jz      short loc_42E21
+00042E1A  b8 01 00 00 00                    mov     eax, 1
+00042E1F  eb 02                             jmp     short loc_42E23
+00042E21  31 c0                             xor     eax, eax
+00042E23  85 c0                             test    eax, eax
+00042E25  74 1f                             jz      short loc_42E46
+00042E27  ff 74 24 0c                       push    [esp+arg_8]
+00042E2B  ff 74 24 0c                       push    [esp+4+arg_4]
+00042E2F  ff 74 24 0c                       push    [esp+8+arg_0]
+00042E33  68 25 96 05 00                    push    offset aAilSetSequence; "AIL_set_sequence_volume(0x%X,%d,%d)\n"
+00042E38  ff 35 50 88 11 00                 push    dword_118850
+00042E3E  e8 f8 46 00 00                    call    sub_4753B
+00042E43  83 c4 14                          add     esp, 14h
+00042E46  ff 74 24 0c                       push    [esp+arg_8]
+00042E4A  ff 74 24 0c                       push    [esp+4+arg_4]
+00042E4E  ff 74 24 0c                       push    [esp+8+arg_0]
+00042E52  e8 a9 95 00 00                    call    sub_4C400
+00042E57  e9 1f d2 ff ff                    jmp     loc_4007B
+
+====================================================================================================
+FUNCTION sub_42E5C research=miles_set_sequence_loop_count start=0x42E5C end=0x42EC9 size=109
+00042E5C  ff 05 4c 88 11 00                 inc     dword_11884C
+00042E62  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042E69  74 2b                             jz      short loc_42E96
+00042E6B  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042E72  74 09                             jz      short loc_42E7D
+00042E74  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042E7B  74 19                             jz      short loc_42E96
+00042E7D  e8 78 44 00 00                    call    sub_472FA
+00042E82  85 c0                             test    eax, eax
+00042E84  75 10                             jnz     short loc_42E96
+00042E86  e8 4d cc ff ff                    call    sub_3FAD8
+00042E8B  85 c0                             test    eax, eax
+00042E8D  74 07                             jz      short loc_42E96
+00042E8F  b8 01 00 00 00                    mov     eax, 1
+00042E94  eb 02                             jmp     short loc_42E98
+00042E96  31 c0                             xor     eax, eax
+00042E98  85 c0                             test    eax, eax
+00042E9A  74 1b                             jz      short loc_42EB7
+00042E9C  ff 74 24 08                       push    [esp+arg_4]
+00042EA0  ff 74 24 08                       push    [esp+4+arg_0]
+00042EA4  68 4a 96 05 00                    push    offset aAilSetSequence_0; "AIL_set_sequence_loop_count(0x%X,%d)\n"
+00042EA9  ff 35 50 88 11 00                 push    dword_118850
+00042EAF  e8 87 46 00 00                    call    sub_4753B
+00042EB4  83 c4 10                          add     esp, 10h
+00042EB7  ff 74 24 08                       push    [esp+arg_4]
+00042EBB  ff 74 24 08                       push    [esp+4+arg_0]
+00042EBF  e8 c8 94 00 00                    call    sub_4C38C
+00042EC4  e9 3a d1 ff ff                    jmp     loc_40003
+
+====================================================================================================
+FUNCTION sub_42EC9 research=miles_sequence_status start=0x42EC9 end=0x42FA5 size=220
+00042EC9  53                                push    ebx
+00042ECA  56                                push    esi
+00042ECB  ff 05 4c 88 11 00                 inc     dword_11884C
+00042ED1  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042ED8  74 2b                             jz      short loc_42F05
+00042EDA  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042EE1  74 09                             jz      short loc_42EEC
+00042EE3  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042EEA  74 19                             jz      short loc_42F05
+00042EEC  e8 09 44 00 00                    call    sub_472FA
+00042EF1  85 c0                             test    eax, eax
+00042EF3  75 10                             jnz     short loc_42F05
+00042EF5  e8 de cb ff ff                    call    sub_3FAD8
+00042EFA  85 c0                             test    eax, eax
+00042EFC  74 07                             jz      short loc_42F05
+00042EFE  b8 01 00 00 00                    mov     eax, 1
+00042F03  eb 02                             jmp     short loc_42F07
+00042F05  31 c0                             xor     eax, eax
+00042F07  85 c0                             test    eax, eax
+00042F09  74 17                             jz      short loc_42F22
+00042F0B  ff 74 24 0c                       push    [esp+8+arg_0]
+00042F0F  68 70 96 05 00                    push    offset aAilSequenceSta; "AIL_sequence_status(0x%X)\n"
+00042F14  ff 35 50 88 11 00                 push    dword_118850
+00042F1A  e8 1c 46 00 00                    call    sub_4753B
+00042F1F  83 c4 0c                          add     esp, 0Ch
+00042F22  ff 74 24 0c                       push    [esp+8+arg_0]
+00042F26  e8 41 95 00 00                    call    sub_4C46C
+00042F2B  83 c4 04                          add     esp, 4
+00042F2E  89 c6                             mov     esi, eax
+00042F30  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00042F37  0f 84 53 d0 ff ff                 jz      loc_3FF90
+00042F3D  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+00042F44  74 0d                             jz      short loc_42F53
+00042F46  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00042F4D  0f 84 3d d0 ff ff                 jz      loc_3FF90
+00042F53  e8 a2 43 00 00                    call    sub_472FA
+00042F58  85 c0                             test    eax, eax
+00042F5A  0f 85 30 d0 ff ff                 jnz     loc_3FF90
+00042F60  31 db                             xor     ebx, ebx
+00042F62  eb 14                             jmp     short loc_42F78
+00042F64  68 d7 8b 05 00                    push    offset asc_58BD7; " "
+00042F69  ff 35 50 88 11 00                 push    dword_118850
+00042F6F  e8 c7 45 00 00                    call    sub_4753B
+00042F74  83 c4 08                          add     esp, 8
+00042F77  43                                inc     ebx
+00042F78  83 fb 0e                          cmp     ebx, 0Eh
+00042F7B  72 e7                             jb      short loc_42F64
+00042F7D  bb 01 00 00 00                    mov     ebx, 1
+00042F82  eb 14                             jmp     short loc_42F98
+00042F84  68 d9 8b 05 00                    push    offset unk_58BD9
+00042F89  ff 35 50 88 11 00                 push    dword_118850
+00042F8F  e8 a7 45 00 00                    call    sub_4753B
+00042F94  83 c4 08                          add     esp, 8
+00042F97  43                                inc     ebx
+00042F98  3b 1d 4c 88 11 00                 cmp     ebx, dword_11884C
+00042F9E  72 e4                             jb      short loc_42F84
+00042FA0  e9 c9 d6 ff ff                    jmp     loc_4066E
+
+====================================================================================================
+FUNCTION sub_43239 research=miles_set_music_master_volume start=0x43239 end=0x432A6 size=109
+00043239  ff 05 4c 88 11 00                 inc     dword_11884C
+0004323F  83 3d 54 88 11 00 00              cmp     dword_118854, 0
+00043246  74 2b                             jz      short loc_43273
+00043248  83 3d 4c 88 11 00 01              cmp     dword_11884C, 1
+0004324F  74 09                             jz      short loc_4325A
+00043251  83 3d 58 88 11 00 00              cmp     dword_118858, 0
+00043258  74 19                             jz      short loc_43273
+0004325A  e8 9b 40 00 00                    call    sub_472FA
+0004325F  85 c0                             test    eax, eax
+00043261  75 10                             jnz     short loc_43273
+00043263  e8 70 c8 ff ff                    call    sub_3FAD8
+00043268  85 c0                             test    eax, eax
+0004326A  74 07                             jz      short loc_43273
+0004326C  b8 01 00 00 00                    mov     eax, 1
+00043271  eb 02                             jmp     short loc_43275
+00043273  31 c0                             xor     eax, eax
+00043275  85 c0                             test    eax, eax
+00043277  74 1b                             jz      short loc_43294
+00043279  ff 74 24 08                       push    [esp+arg_4]
+0004327D  ff 74 24 08                       push    [esp+4+arg_0]
+00043281  68 df 96 05 00                    push    offset aAilSetXmidiMas; "AIL_set_XMIDI_master_volume(0x%X,%d)\n"
+00043286  ff 35 50 88 11 00                 push    dword_118850
+0004328C  e8 aa 42 00 00                    call    sub_4753B
+00043291  83 c4 10                          add     esp, 10h
+00043294  ff 74 24 08                       push    [esp+arg_4]
+00043298  ff 74 24 08                       push    [esp+4+arg_0]
+0004329C  e8 0f 92 00 00                    call    sub_4C4B0
+000432A1  e9 5d cd ff ff                    jmp     loc_40003
+
+====================================================================================================
+FUNCTION sub_47DB8 research=miles_apply_sample_volume start=0x47DB8 end=0x48093 size=731
+00047DB8  53                                push    ebx
+00047DB9  56                                push    esi
+00047DBA  57                                push    edi
+00047DBB  55                                push    ebp
+00047DBC  83 ec 1c                          sub     esp, 1Ch
+00047DBF  8b 4c 24 30                       mov     ecx, [esp+2Ch+arg_0]
+00047DC3  83 79 40 7f                       cmp     dword ptr [ecx+40h], 7Fh
+00047DC7  7e 09                             jle     short loc_47DD2
+00047DC9  c7 41 40 7f 00 00 00              mov     dword ptr [ecx+40h], 7Fh
+00047DD0  eb 0d                             jmp     short loc_47DDF
+00047DD2  83 79 40 00                       cmp     dword ptr [ecx+40h], 0
+00047DD6  7d 07                             jge     short loc_47DDF
+00047DD8  c7 41 40 00 00 00 00              mov     dword ptr [ecx+40h], 0
+00047DDF  83 79 44 7f                       cmp     dword ptr [ecx+44h], 7Fh
+00047DE3  7e 09                             jle     short loc_47DEE
+00047DE5  c7 41 44 7f 00 00 00              mov     dword ptr [ecx+44h], 7Fh
+00047DEC  eb 0d                             jmp     short loc_47DFB
+00047DEE  83 79 44 00                       cmp     dword ptr [ecx+44h], 0
+00047DF2  7d 07                             jge     short loc_47DFB
+00047DF4  c7 41 44 00 00 00 00              mov     dword ptr [ecx+44h], 0
+00047DFB  8b 41 40                          mov     eax, [ecx+40h]
+00047DFE  89 44 24 18                       mov     [esp+2Ch+var_14], eax
+00047E02  8b 01                             mov     eax, [ecx]
+00047E04  8b 54 24 18                       mov     edx, [esp+2Ch+var_14]
+00047E08  0f af 50 68                       imul    edx, [eax+68h]
+00047E0C  bb 7f 00 00 00                    mov     ebx, 7Fh
+00047E11  89 d0                             mov     eax, edx
+00047E13  c1 fa 1f                          sar     edx, 1Fh
+00047E16  f7 fb                             idiv    ebx
+00047E18  8b 79 44                          mov     edi, [ecx+44h]
+00047E1B  89 44 24 18                       mov     [esp+2Ch+var_14], eax
+00047E1F  85 c0                             test    eax, eax
+00047E21  7d 08                             jge     short loc_47E2B
+00047E23  c7 44 24 18 00 00 00 00           mov     [esp+2Ch+var_14], 0
+00047E2B  83 7c 24 18 7f                    cmp     [esp+2Ch+var_14], 7Fh
+00047E30  7e 08                             jle     short loc_47E3A
+00047E32  c7 44 24 18 7f 00 00 00           mov     [esp+2Ch+var_14], 7Fh
+00047E3A  83 79 34 01                       cmp     dword ptr [ecx+34h], 1
+00047E3E  74 06                             jz      short loc_47E46
+00047E40  83 79 34 03                       cmp     dword ptr [ecx+34h], 3
+00047E44  75 40                             jnz     short loc_47E86
+00047E46  b8 7f 00 00 00                    mov     eax, 7Fh
+00047E4B  29 f8                             sub     eax, edi
+00047E4D  0f b6 90 f0 7f 05 00              movzx   edx, byte_57FF0[eax]
+00047E54  0f af 54 24 18                    imul    edx, [esp+2Ch+var_14]
+00047E59  bb 7f 00 00 00                    mov     ebx, 7Fh
+00047E5E  89 d0                             mov     eax, edx
+00047E60  c1 fa 1f                          sar     edx, 1Fh
+00047E63  f7 fb                             idiv    ebx
+00047E65  89 41 48                          mov     [ecx+48h], eax
+00047E68  0f b6 97 f0 7f 05 00              movzx   edx, byte_57FF0[edi]
+00047E6F  0f af 54 24 18                    imul    edx, [esp+2Ch+var_14]
+00047E74  89 d0                             mov     eax, edx
+00047E76  c1 fa 1f                          sar     edx, 1Fh
+00047E79  f7 fb                             idiv    ebx
+00047E7B  89 81 48 04 00 00                 mov     [ecx+448h], eax
+00047E81  e9 05 02 00 00                    jmp     loc_4808B
+00047E86  83 7c 24 18 00                    cmp     [esp+2Ch+var_14], 0
+00047E8B  74 04                             jz      short loc_47E91
+00047E8D  ff 44 24 18                       inc     [esp+2Ch+var_14]
+00047E91  8b 01                             mov     eax, [ecx]
+00047E93  83 78 18 02                       cmp     dword ptr [eax+18h], 2
+00047E97  74 26                             jz      short loc_47EBF
+00047E99  83 78 18 03                       cmp     dword ptr [eax+18h], 3
+00047E9D  74 20                             jz      short loc_47EBF
+00047E9F  83 78 18 00                       cmp     dword ptr [eax+18h], 0
+00047EA3  74 0a                             jz      short loc_47EAF
+00047EA5  83 78 18 01                       cmp     dword ptr [eax+18h], 1
+00047EA9  0f 85 3f 01 00 00                 jnz     loc_47FEE
+00047EAF  83 79 34 02                       cmp     dword ptr [ecx+34h], 2
+00047EB3  74 0a                             jz      short loc_47EBF
+00047EB5  83 79 34 03                       cmp     dword ptr [ecx+34h], 3
+00047EB9  0f 85 2f 01 00 00                 jnz     loc_47FEE
+00047EBF  bb 7f 00 00 00                    mov     ebx, 7Fh
+00047EC4  8d 41 48                          lea     eax, [ecx+48h]
+00047EC7  0f b6 b7 f0 7f 05 00              movzx   esi, byte_57FF0[edi]
+00047ECE  29 fb                             sub     ebx, edi
+00047ED0  8b 7c 24 18                       mov     edi, [esp+2Ch+var_14]
+00047ED4  8d 91 48 04 00 00                 lea     edx, [ecx+448h]
+00047EDA  c1 e7 08                          shl     edi, 8
+00047EDD  0f b6 9b f0 7f 05 00              movzx   ebx, byte_57FF0[ebx]
+00047EE4  89 7c 24 08                       mov     [esp+2Ch+var_24], edi
+00047EE8  f6 41 38 01                       test    byte ptr [ecx+38h], 1
+00047EEC  0f 84 a0 00 00 00                 jz      loc_47F92
+00047EF2  8b 4c 24 08                       mov     ecx, [esp+2Ch+var_24]
+00047EF6  31 ff                             xor     edi, edi
+00047EF8  89 4c 24 0c                       mov     [esp+2Ch+var_20], ecx
+00047EFC  6b 4c 24 18 00                    imul    ecx, [esp+2Ch+var_14], 0
+00047F01  8d 40 00                          lea     eax, [eax+0]
+00047F04  89 cd                             mov     ebp, ecx
+00047F06  c1 fd 07                          sar     ebp, 7
+00047F09  89 2c 24                          mov     [esp+2Ch+var_2C], ebp
+00047F0C  0f af eb                          imul    ebp, ebx
+00047F0F  c1 fd 07                          sar     ebp, 7
+00047F12  89 28                             mov     [eax], ebp
+00047F14  8b 2c 24                          mov     ebp, [esp+2Ch+var_2C]
+00047F17  0f af ee                          imul    ebp, esi
+00047F1A  83 c0 04                          add     eax, 4
+00047F1D  83 c2 04                          add     edx, 4
+00047F20  81 c7 00 01 00 00                 add     edi, 100h
+00047F26  c1 fd 07                          sar     ebp, 7
+00047F29  03 4c 24 0c                       add     ecx, [esp+2Ch+var_20]
+00047F2D  89 6a fc                          mov     [edx-4], ebp
+00047F30  81 ff 00 80 00 00                 cmp     edi, 8000h
+00047F36  7c cc                             jl      short loc_47F04
+00047F38  8b 4c 24 18                       mov     ecx, [esp+2Ch+var_14]
+00047F3C  c1 e1 08                          shl     ecx, 8
+00047F3F  89 4c 24 14                       mov     [esp+2Ch+var_18], ecx
+00047F43  8b 4c 24 18                       mov     ecx, [esp+2Ch+var_14]
+00047F47  89 4c 24 04                       mov     [esp+2Ch+var_28], ecx
+00047F4B  c1 e1 11                          shl     ecx, 11h
+00047F4E  2b 4c 24 04                       sub     ecx, [esp+2Ch+var_28]
+00047F52  bf 00 80 ff ff                    mov     edi, 0FFFF8000h
+00047F57  c1 e1 0f                          shl     ecx, 0Fh
+00047F5A  8b c0                             mov     eax, eax
+00047F5C  89 cd                             mov     ebp, ecx
+00047F5E  c1 fd 07                          sar     ebp, 7
+00047F61  89 2c 24                          mov     [esp+2Ch+var_2C], ebp
+00047F64  0f af eb                          imul    ebp, ebx
+00047F67  c1 fd 07                          sar     ebp, 7
+00047F6A  89 28                             mov     [eax], ebp
+00047F6C  8b 2c 24                          mov     ebp, [esp+2Ch+var_2C]
+00047F6F  0f af ee                          imul    ebp, esi
+00047F72  83 c0 04                          add     eax, 4
+00047F75  83 c2 04                          add     edx, 4
+00047F78  81 c7 00 01 00 00                 add     edi, 100h
+00047F7E  c1 fd 07                          sar     ebp, 7
+00047F81  03 4c 24 14                       add     ecx, [esp+2Ch+var_18]
+00047F85  89 6a fc                          mov     [edx-4], ebp
+00047F88  85 ff                             test    edi, edi
+00047F8A  0f 8d fb 00 00 00                 jge     loc_4808B
+00047F90  eb ca                             jmp     short loc_47F5C
+00047F92  8b 4c 24 08                       mov     ecx, [esp+2Ch+var_24]
+00047F96  89 4c 24 10                       mov     [esp+2Ch+var_1C], ecx
+00047F9A  8b 4c 24 18                       mov     ecx, [esp+2Ch+var_14]
+00047F9E  89 4c 24 04                       mov     [esp+2Ch+var_28], ecx
+00047FA2  c1 e1 11                          shl     ecx, 11h
+00047FA5  2b 4c 24 04                       sub     ecx, [esp+2Ch+var_28]
+00047FA9  bf 00 80 ff ff                    mov     edi, 0FFFF8000h
+00047FAE  c1 e1 0f                          shl     ecx, 0Fh
+00047FB1  8d 40 00                          lea     eax, [eax+0]
+00047FB4  89 cd                             mov     ebp, ecx
+00047FB6  c1 fd 07                          sar     ebp, 7
+00047FB9  89 2c 24                          mov     [esp+2Ch+var_2C], ebp
+00047FBC  0f af eb                          imul    ebp, ebx
+00047FBF  c1 fd 07                          sar     ebp, 7
+00047FC2  89 28                             mov     [eax], ebp
+00047FC4  8b 2c 24                          mov     ebp, [esp+2Ch+var_2C]
+00047FC7  0f af ee                          imul    ebp, esi
+00047FCA  83 c0 04                          add     eax, 4
+00047FCD  83 c2 04                          add     edx, 4
+00047FD0  81 c7 00 01 00 00                 add     edi, 100h
+00047FD6  c1 fd 07                          sar     ebp, 7
+00047FD9  03 4c 24 10                       add     ecx, [esp+2Ch+var_1C]
+00047FDD  89 6a fc                          mov     [edx-4], ebp
+00047FE0  81 ff 00 80 00 00                 cmp     edi, 8000h
+00047FE6  0f 8d 9f 00 00 00                 jge     loc_4808B
+00047FEC  eb c6                             jmp     short loc_47FB4
+00047FEE  8b 54 24 18                       mov     edx, [esp+2Ch+var_14]
+00047FF2  8d 41 48                          lea     eax, [ecx+48h]
+00047FF5  c1 e2 08                          shl     edx, 8
+00047FF8  f6 41 38 01                       test    byte ptr [ecx+38h], 1
+00047FFC  74 5b                             jz      short loc_48059
+00047FFE  89 d7                             mov     edi, edx
+00048000  31 c9                             xor     ecx, ecx
+00048002  6b 54 24 18 00                    imul    edx, [esp+2Ch+var_14], 0
+00048007  90                                nop
+00048008  89 d3                             mov     ebx, edx
+0004800A  83 c0 04                          add     eax, 4
+0004800D  81 c1 00 01 00 00                 add     ecx, 100h
+00048013  c1 fb 07                          sar     ebx, 7
+00048016  01 fa                             add     edx, edi
+00048018  89 58 fc                          mov     [eax-4], ebx
+0004801B  81 f9 00 80 00 00                 cmp     ecx, 8000h
+00048021  7c e5                             jl      short loc_48008
+00048023  8b 4c 24 18                       mov     ecx, [esp+2Ch+var_14]
+00048027  89 ca                             mov     edx, ecx
+00048029  bb 00 80 ff ff                    mov     ebx, 0FFFF8000h
+0004802E  c1 e2 11                          shl     edx, 11h
+00048031  8b 74 24 18                       mov     esi, [esp+2Ch+var_14]
+00048035  29 ca                             sub     edx, ecx
+00048037  c1 e6 08                          shl     esi, 8
+0004803A  c1 e2 0f                          shl     edx, 0Fh
+0004803D  8d 40 00                          lea     eax, [eax+0]
+00048040  89 d1                             mov     ecx, edx
+00048042  83 c0 04                          add     eax, 4
+00048045  81 c3 00 01 00 00                 add     ebx, 100h
+0004804B  c1 f9 07                          sar     ecx, 7
+0004804E  01 f2                             add     edx, esi
+00048050  89 48 fc                          mov     [eax-4], ecx
+00048053  85 db                             test    ebx, ebx
+00048055  7d 34                             jge     short loc_4808B
+00048057  eb e7                             jmp     short loc_48040
+00048059  8b 5c 24 18                       mov     ebx, [esp+2Ch+var_14]
+0004805D  89 d7                             mov     edi, edx
+0004805F  89 da                             mov     edx, ebx
+00048061  c1 e2 11                          shl     edx, 11h
+00048064  29 da                             sub     edx, ebx
+00048066  b9 00 80 ff ff                    mov     ecx, 0FFFF8000h
+0004806B  c1 e2 0f                          shl     edx, 0Fh
+0004806E  8b c0                             mov     eax, eax
+00048070  89 d3                             mov     ebx, edx
+00048072  83 c0 04                          add     eax, 4
+00048075  81 c1 00 01 00 00                 add     ecx, 100h
+0004807B  c1 fb 07                          sar     ebx, 7
+0004807E  01 fa                             add     edx, edi
+00048080  89 58 fc                          mov     [eax-4], ebx
+00048083  81 f9 00 80 00 00                 cmp     ecx, 8000h
+00048089  7c e5                             jl      short loc_48070
+0004808B  83 c4 1c                          add     esp, 1Ch
+0004808E  5d                                pop     ebp
+0004808F  5f                                pop     edi
+00048090  5e                                pop     esi
+00048091  5b                                pop     ebx
+00048092  c3                                retn
+
+====================================================================================================
+FUNCTION sub_49120 research=miles_internal_set_sample_volume start=0x49120 end=0x4913E size=30
+00049120  8b 44 24 04                       mov     eax, [esp+arg_0]
+00049124  85 c0                             test    eax, eax
+00049126  74 15                             jz      short locret_4913D
+00049128  8b 54 24 08                       mov     edx, [esp+arg_4]
+0004912C  3b 50 40                          cmp     edx, [eax+40h]
+0004912F  74 0c                             jz      short locret_4913D
+00049131  50                                push    eax
+00049132  89 50 40                          mov     [eax+40h], edx
+00049135  e8 7e ec ff ff                    call    sub_47DB8
+0004913A  83 c4 04                          add     esp, 4
+0004913D  c3                                retn
+
+====================================================================================================
+EXACT DATA REFERENCES
+
+TARGET bios_tick_pointer address=0x544D8 refs=22
+from=0x20E1D owner=0x20D35 main :: mov     eax, dword_544D8
+from=0x20F7B owner=0x20D35 main :: mov     eax, dword_544D8
+from=0x26E68 owner=0x26B5E sub_26B5E :: mov     eax, dword_544D8
+from=0x27035 owner=0x26B5E sub_26B5E :: mov     eax, dword_544D8
+from=0x28F66 owner=0x28E40 sub_28E40 :: mov     eax, dword_544D8
+from=0x292B0 owner=0x28E40 sub_28E40 :: mov     eax, dword_544D8
+from=0x2F073 owner=0x2F053 sub_2F053 :: mov     eax, dword_544D8
+from=0x2F0AC owner=0x2F053 sub_2F053 :: mov     eax, dword_544D8
+from=0x2F0CA owner=0x2F053 sub_2F053 :: mov     eax, dword_544D8
+from=0x2F0EC owner=0x2F053 sub_2F053 :: mov     eax, dword_544D8
+from=0x2FA13 owner=0x2F9F2 sub_2F9F2 :: mov     eax, dword_544D8
+from=0x2FA91 owner=0x2F9F2 sub_2F9F2 :: mov     eax, dword_544D8
+from=0x301E1 owner=0x301D1 sub_301D1 :: mov     eax, dword_544D8
+from=0x30203 owner=0x301D1 sub_301D1 :: mov     eax, dword_544D8
+from=0x3021F owner=0x301D1 sub_301D1 :: mov     eax, dword_544D8
+from=0x302C1 owner=0x301D1 sub_301D1 :: mov     eax, dword_544D8
+from=0x30BAB owner=0x30B81 sub_30B81 :: mov     eax, dword_544D8
+from=0x30C17 owner=0x30B81 sub_30B81 :: mov     eax, dword_544D8
+from=0x327E3 owner=0x3271E sub_3271E :: mov     eax, dword_544D8
+from=0x32A3D owner=0x3271E sub_3271E :: mov     edx, dword_544D8
+from=0x3DB9C owner=0x3DB83 sub_3DB83 :: mov     edx, dword_544D8
+from=0x3DBA4 owner=0x3DB83 sub_3DB83 :: mov     eax, dword_544D8
+
+TARGET last_raw_scan_code address=0x51B6A refs=1
+from=0x20BCC owner=0x20BCC <no-function> :: mov     byte_51B6A, al
+
+TARGET last_translated_key address=0x51B6B refs=132
+from=0x20BE9 owner=0x20BE9 <no-function> :: mov     byte_51B6B, bl
+from=0x20C13 owner=0x20C13 <no-function> :: mov     byte_51B6B, 0
+from=0x20C32 owner=0x20C32 sub_20C32 :: mov     byte_51B6B, 0
+from=0x20C3B owner=0x20C32 sub_20C32 :: mov     al, byte_51B6B
+from=0x20DFA owner=0x20D35 main :: mov     byte_51B6B, 0
+from=0x21069 owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+from=0x2107C owner=0x20FAF sub_20FAF :: mov     al, byte_51B6B
+from=0x210C9 owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+from=0x210FB owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+from=0x21138 owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+from=0x2119F owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+from=0x212F4 owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+from=0x21353 owner=0x212C0 sub_212C0 :: mov     al, byte_51B6B
+from=0x21392 owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+from=0x213BB owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+from=0x213E8 owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+from=0x2147A owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+from=0x2156B owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+from=0x2157B owner=0x21496 sub_21496 :: mov     al, byte_51B6B
+from=0x215C3 owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+from=0x215DC owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+from=0x2160B owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+from=0x21653 owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+from=0x21AAF owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+from=0x21B95 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+from=0x21BA5 owner=0x21AC0 sub_21AC0 :: mov     al, byte_51B6B
+from=0x21BE6 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+from=0x21C06 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+from=0x21C20 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+from=0x21C7D owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+from=0x22138 owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+from=0x2214D owner=0x22090 sub_22090 :: mov     bl, byte_51B6B
+from=0x2219D owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+from=0x221B6 owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+from=0x221CF owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+from=0x22203 owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+from=0x23992 owner=0x22A59 sub_22A59 :: mov     byte_51B6B, 0
+from=0x25D32 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25E0C owner=0x25D0E sub_25D0E :: mov     al, byte_51B6B
+from=0x25E47 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25E61 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25E7D owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25EC8 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25F32 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25F3E owner=0x25D0E sub_25D0E :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x25F6B owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+from=0x25FB0 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+from=0x25FF9 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+from=0x26019 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+from=0x26050 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+from=0x261BF owner=0x25F87 sub_25F87 :: mov     al, byte_51B6B
+from=0x261ED owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+from=0x27071 owner=0x26B5E sub_26B5E :: mov     byte_51B6B, 0
+from=0x27198 owner=0x2711A sub_2711A :: mov     byte_51B6B, 0
+from=0x2719F owner=0x2711A sub_2711A :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x271E3 owner=0x2711A sub_2711A :: movzx   eax, byte_51B6B
+from=0x27B3B owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+from=0x27DF5 owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+from=0x27E07 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 0
+from=0x28018 owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+from=0x28106 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 31h ; '1'
+from=0x2810F owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 32h ; '2'
+from=0x28118 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 33h ; '3'
+from=0x28121 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 34h ; '4'
+from=0x2812A owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 35h ; '5'
+from=0x28133 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 36h ; '6'
+from=0x2813C owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 37h ; '7'
+from=0x28145 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 38h ; '8'
+from=0x28152 owner=0x27A26 sub_27A26 :: movzx   ax, byte_51B6B
+from=0x28160 owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+from=0x28432 owner=0x2841A sub_2841A :: cmp     byte_51B6B, 80h
+from=0x2843F owner=0x2841A sub_2841A :: movzx   ax, byte_51B6B
+from=0x2844D owner=0x2841A sub_2841A :: movzx   eax, byte_51B6B
+from=0x284F1 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+from=0x28586 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+from=0x28621 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+from=0x28628 owner=0x2841A sub_2841A :: movzx   eax, byte_51B6B
+from=0x28691 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+from=0x286C3 owner=0x2841A sub_2841A :: cmp     byte_51B6B, 80h
+from=0x286D0 owner=0x2841A sub_2841A :: movzx   ax, byte_51B6B
+from=0x286DE owner=0x2841A sub_2841A :: movzx   eax, byte_51B6B
+from=0x287B9 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+from=0x2897F owner=0x28975 sub_28975 :: mov     byte_51B6B, 0
+from=0x292E0 owner=0x28E40 sub_28E40 :: mov     byte_51B6B, 0
+from=0x2A0E3 owner=0x2A0D9 sub_2A0D9 :: mov     byte_51B6B, 0
+from=0x2A88B owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A8C6 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A8EA owner=0x2A86C sub_2A86C :: mov     al, byte_51B6B
+from=0x2A90F owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A924 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A93B owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A950 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A968 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A980 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A9D3 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2A9E1 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2ADC0 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2ADCC owner=0x2A86C sub_2A86C :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x2AFE5 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2AFF1 owner=0x2A86C sub_2A86C :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x2B1DC owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2B218 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+from=0x2CEAE owner=0x2CC21 sub_2CC21 :: mov     byte_51B6B, 0
+from=0x2DD81 owner=0x2DD77 sub_2DD77 :: mov     byte_51B6B, 0
+from=0x2DDF0 owner=0x2DD77 sub_2DD77 :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x2DE87 owner=0x2DE7D sub_2DE7D :: mov     byte_51B6B, 0
+from=0x2DEFB owner=0x2DE7D sub_2DE7D :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x2E15F owner=0x2E155 sub_2E155 :: mov     byte_51B6B, 0
+from=0x2E1C9 owner=0x2E155 sub_2E155 :: mov     byte_51B6B, 0
+from=0x2E1D5 owner=0x2E155 sub_2E155 :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x2E837 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+from=0x2E8E0 owner=0x2E659 sub_2E659 :: mov     al, byte_51B6B
+from=0x2E911 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+from=0x2E92A owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+from=0x2E945 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+from=0x2E992 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+from=0x2EA02 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+from=0x2EA0E owner=0x2E659 sub_2E659 :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x2EB6E owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+from=0x2EC42 owner=0x2EB49 sub_2EB49 :: mov     al, byte_51B6B
+from=0x2EC73 owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+from=0x2EC8C owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+from=0x2ECA7 owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+from=0x2ECCF owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+from=0x2ED3F owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+from=0x2ED4B owner=0x2EB49 sub_2EB49 :: cmp     byte_51B6B, 59h ; 'Y'
+from=0x314DB owner=0x312A6 sub_312A6 :: mov     bl, byte_51B6B
+from=0x31524 owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+from=0x3153D owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+from=0x31556 owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+from=0x31584 owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+from=0x3218F owner=0x31EB9 sub_31EB9 :: mov     byte_51B6B, 0
+
+TARGET translated_key_state address=0x51B6D refs=6
+from=0x20BE0 owner=0x20BE0 <no-function> :: cmp     byte_51B6D[ebx], 0
+from=0x20BEF owner=0x20BEF <no-function> :: inc     byte_51B6D[ebx]
+from=0x20BF5 owner=0x20BF5 <no-function> :: add     byte_51B6D[ebx], 2
+from=0x20BFE owner=0x20BFE <no-function> :: dec     byte_51B6D[ebx]
+from=0x20C04 owner=0x20C04 <no-function> :: dec     byte_51B6D[ebx]
+from=0x20C0C owner=0x20C0C <no-function> :: mov     byte_51B6D[ebx], 0
+
+TARGET audio_sample_handles address=0x118810 refs=10
+from=0x3DE3E owner=0x3DD66 sub_3DD66 :: mov     dword_118810[ebx*4], eax
+from=0x3DFAE owner=0x3DF90 sub_3DF90 :: push    dword_118810[esi*4]
+from=0x3DFF3 owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+from=0x3E005 owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+from=0x3E01F owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+from=0x3E032 owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+from=0x3E04A owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+from=0x3E062 owner=0x3DF90 sub_3DF90 :: push    dword_118810[esi*4]
+from=0x3E071 owner=0x3DF90 sub_3DF90 :: push    dword_118810[esi*4]
+from=0x3E18B owner=0x3E172 sub_3E172 :: push    dword_118810[ebx*4]
+
+TARGET audio_sequence_handle address=0x118838 refs=7
+from=0x3DDCC owner=0x3DD66 sub_3DD66 :: mov     dword_118838, eax
+from=0x3DEDF owner=0x3DECB sub_3DECB :: push    dword_118838
+from=0x3DF2C owner=0x3DECB sub_3DECB :: push    dword_118838
+from=0x3DF3A owner=0x3DECB sub_3DECB :: push    dword_118838
+from=0x3DF4A owner=0x3DECB sub_3DECB :: push    dword_118838
+from=0x3DF6D owner=0x3DF59 sub_3DF59 :: push    dword_118838
+from=0x3E26C owner=0x3E25B sub_3E25B :: push    dword_118838
+
+TARGET audio_digital_driver address=0x11883C refs=2
+from=0x3DDF8 owner=0x3DD66 sub_3DD66 :: push    offset dword_11883C
+from=0x3DE30 owner=0x3DD66 sub_3DD66 :: push    dword_11883C
+
+TARGET audio_music_driver address=0x118840 refs=3
+from=0x3DD88 owner=0x3DD66 sub_3DD66 :: push    offset dword_118840
+from=0x3DDBE owner=0x3DD66 sub_3DD66 :: push    dword_118840
+from=0x3DF18 owner=0x3DECB sub_3DECB :: push    dword_118840
+
+TARGET audio_disabled_sound address=0x118844 refs=4
+from=0x3DD7A owner=0x3DD66 sub_3DD66 :: mov     word_118844, 0
+from=0x3DE23 owner=0x3DD66 sub_3DD66 :: mov     word_118844, 1
+from=0x3DFA0 owner=0x3DF90 sub_3DF90 :: cmp     word_118844, 0
+from=0x3E17D owner=0x3E172 sub_3E172 :: cmp     word_118844, 0
+
+TARGET audio_disabled_music address=0x118846 refs=4
+from=0x3DD71 owner=0x3DD66 sub_3DD66 :: mov     word_118846, 0
+from=0x3DDB3 owner=0x3DD66 sub_3DD66 :: mov     word_118846, 1
+from=0x3DED5 owner=0x3DECB sub_3DECB :: cmp     word_118846, 0
+from=0x3DF63 owner=0x3DF59 sub_3DF59 :: cmp     word_118846, 0
+
+====================================================================================================
+INTERVAL DATA REFERENCES
+
+RANGE keyboard_state_region begin=0x51B6A end=0x51C0D refs=385
+target=0x51B6A offset=0 from=0x20BCC owner=0x20BCC <no-function> :: mov     byte_51B6A, al
+target=0x51B6B offset=1 from=0x20BE9 owner=0x20BE9 <no-function> :: mov     byte_51B6B, bl
+target=0x51B6B offset=1 from=0x20C13 owner=0x20C13 <no-function> :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x20C32 owner=0x20C32 sub_20C32 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x20C3B owner=0x20C32 sub_20C32 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x20DFA owner=0x20D35 main :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21069 owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2107C owner=0x20FAF sub_20FAF :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x210C9 owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x210FB owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21138 owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2119F owner=0x20FAF sub_20FAF :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x212F4 owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21353 owner=0x212C0 sub_212C0 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x21392 owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x213BB owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x213E8 owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2147A owner=0x212C0 sub_212C0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2156B owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2157B owner=0x21496 sub_21496 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x215C3 owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x215DC owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2160B owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21653 owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21AAF owner=0x21496 sub_21496 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21B95 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21BA5 owner=0x21AC0 sub_21AC0 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x21BE6 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21C06 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21C20 owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x21C7D owner=0x21AC0 sub_21AC0 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x22138 owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2214D owner=0x22090 sub_22090 :: mov     bl, byte_51B6B
+target=0x51B6B offset=1 from=0x2219D owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x221B6 owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x221CF owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x22203 owner=0x22090 sub_22090 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x23992 owner=0x22A59 sub_22A59 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25D32 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25E0C owner=0x25D0E sub_25D0E :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x25E47 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25E61 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25E7D owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25EC8 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25F32 owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25F3E owner=0x25D0E sub_25D0E :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x25F6B owner=0x25D0E sub_25D0E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25FB0 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x25FF9 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x26019 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x26050 owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x261BF owner=0x25F87 sub_25F87 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x261ED owner=0x25F87 sub_25F87 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x27071 owner=0x26B5E sub_26B5E :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x27198 owner=0x2711A sub_2711A :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2719F owner=0x2711A sub_2711A :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x271E3 owner=0x2711A sub_2711A :: movzx   eax, byte_51B6B
+target=0x51B6B offset=1 from=0x27B3B owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x27DF5 owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x27E07 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x28018 owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x28106 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 31h ; '1'
+target=0x51B6B offset=1 from=0x2810F owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 32h ; '2'
+target=0x51B6B offset=1 from=0x28118 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 33h ; '3'
+target=0x51B6B offset=1 from=0x28121 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 34h ; '4'
+target=0x51B6B offset=1 from=0x2812A owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 35h ; '5'
+target=0x51B6B offset=1 from=0x28133 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 36h ; '6'
+target=0x51B6B offset=1 from=0x2813C owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 37h ; '7'
+target=0x51B6B offset=1 from=0x28145 owner=0x27A26 sub_27A26 :: cmp     byte_51B6B, 38h ; '8'
+target=0x51B6B offset=1 from=0x28152 owner=0x27A26 sub_27A26 :: movzx   ax, byte_51B6B
+target=0x51B6B offset=1 from=0x28160 owner=0x27A26 sub_27A26 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x28432 owner=0x2841A sub_2841A :: cmp     byte_51B6B, 80h
+target=0x51B6B offset=1 from=0x2843F owner=0x2841A sub_2841A :: movzx   ax, byte_51B6B
+target=0x51B6B offset=1 from=0x2844D owner=0x2841A sub_2841A :: movzx   eax, byte_51B6B
+target=0x51B6B offset=1 from=0x284F1 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x28586 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x28621 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x28628 owner=0x2841A sub_2841A :: movzx   eax, byte_51B6B
+target=0x51B6B offset=1 from=0x28691 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x286C3 owner=0x2841A sub_2841A :: cmp     byte_51B6B, 80h
+target=0x51B6B offset=1 from=0x286D0 owner=0x2841A sub_2841A :: movzx   ax, byte_51B6B
+target=0x51B6B offset=1 from=0x286DE owner=0x2841A sub_2841A :: movzx   eax, byte_51B6B
+target=0x51B6B offset=1 from=0x287B9 owner=0x2841A sub_2841A :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2897F owner=0x28975 sub_28975 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x292E0 owner=0x28E40 sub_28E40 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A0E3 owner=0x2A0D9 sub_2A0D9 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A88B owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A8C6 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A8EA owner=0x2A86C sub_2A86C :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x2A90F owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A924 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A93B owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A950 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A968 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A980 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A9D3 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2A9E1 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2ADC0 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2ADCC owner=0x2A86C sub_2A86C :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x2AFE5 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2AFF1 owner=0x2A86C sub_2A86C :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x2B1DC owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2B218 owner=0x2A86C sub_2A86C :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2CEAE owner=0x2CC21 sub_2CC21 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2DD81 owner=0x2DD77 sub_2DD77 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2DDF0 owner=0x2DD77 sub_2DD77 :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x2DE87 owner=0x2DE7D sub_2DE7D :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2DEFB owner=0x2DE7D sub_2DE7D :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x2E15F owner=0x2E155 sub_2E155 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2E1C9 owner=0x2E155 sub_2E155 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2E1D5 owner=0x2E155 sub_2E155 :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x2E837 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2E8E0 owner=0x2E659 sub_2E659 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x2E911 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2E92A owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2E945 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2E992 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2EA02 owner=0x2E659 sub_2E659 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2EA0E owner=0x2E659 sub_2E659 :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x2EB6E owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2EC42 owner=0x2EB49 sub_2EB49 :: mov     al, byte_51B6B
+target=0x51B6B offset=1 from=0x2EC73 owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2EC8C owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2ECA7 owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2ECCF owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2ED3F owner=0x2EB49 sub_2EB49 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x2ED4B owner=0x2EB49 sub_2EB49 :: cmp     byte_51B6B, 59h ; 'Y'
+target=0x51B6B offset=1 from=0x314DB owner=0x312A6 sub_312A6 :: mov     bl, byte_51B6B
+target=0x51B6B offset=1 from=0x31524 owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x3153D owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x31556 owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x31584 owner=0x312A6 sub_312A6 :: mov     byte_51B6B, 0
+target=0x51B6B offset=1 from=0x3218F owner=0x31EB9 sub_31EB9 :: mov     byte_51B6B, 0
+target=0x51B6D offset=3 from=0x20BE0 owner=0x20BE0 <no-function> :: cmp     byte_51B6D[ebx], 0
+target=0x51B6D offset=3 from=0x20BEF owner=0x20BEF <no-function> :: inc     byte_51B6D[ebx]
+target=0x51B6D offset=3 from=0x20BF5 owner=0x20BF5 <no-function> :: add     byte_51B6D[ebx], 2
+target=0x51B6D offset=3 from=0x20BFE owner=0x20BFE <no-function> :: dec     byte_51B6D[ebx]
+target=0x51B6D offset=3 from=0x20C04 owner=0x20C04 <no-function> :: dec     byte_51B6D[ebx]
+target=0x51B6D offset=3 from=0x20C0C owner=0x20C0C <no-function> :: mov     byte_51B6D[ebx], 0
+target=0x51B75 offset=11 from=0x27E52 owner=0x27A26 sub_27A26 :: cmp     byte_51B75, 0
+target=0x51B75 offset=11 from=0x27E5B owner=0x27A26 sub_27A26 :: mov     byte_51B75, 0
+target=0x51B7A offset=16 from=0x2113F owner=0x20FAF sub_20FAF :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x213EF owner=0x212C0 sub_212C0 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x215F6 owner=0x21496 sub_21496 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x21C27 owner=0x21AC0 sub_21AC0 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x221D6 owner=0x22090 sub_22090 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x25E84 owner=0x25D0E sub_25D0E :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x2603B owner=0x25F87 sub_25F87 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x26F34 owner=0x26B5E sub_26B5E :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x26F54 owner=0x26B5E sub_26B5E :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x27E6C owner=0x27A26 sub_27A26 :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x27E7F owner=0x27A26 sub_27A26 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x29032 owner=0x28E40 sub_28E40 :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x29052 owner=0x28E40 sub_28E40 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x3155D owner=0x312A6 sub_312A6 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x3251F owner=0x31EB9 sub_31EB9 :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x3253E owner=0x31EB9 sub_31EB9 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x328E2 owner=0x3271E sub_3271E :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x328FD owner=0x3271E sub_3271E :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x33296 owner=0x32E59 sub_32E59 :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x332B5 owner=0x32E59 sub_32E59 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x36B0C owner=0x36AF7 sub_36AF7 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x36D67 owner=0x36AF7 sub_36AF7 :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x36D86 owner=0x36AF7 sub_36AF7 :: mov     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x390E9 owner=0x38DAC sub_38DAC :: cmp     byte_51B7A, 0
+target=0x51B7A offset=16 from=0x39104 owner=0x38DAC sub_38DAC :: mov     byte_51B7A, 0
+target=0x51B88 offset=30 from=0x20ED2 owner=0x20D35 main :: test    byte_51B88, 1
+target=0x51B88 offset=30 from=0x20EE0 owner=0x20D35 main :: and     byte_51B88, 0FEh
+target=0x51B88 offset=30 from=0x211A6 owner=0x20FAF sub_20FAF :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x21481 owner=0x212C0 sub_212C0 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x2165A owner=0x21496 sub_21496 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x21C84 owner=0x21AC0 sub_21AC0 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x2220A owner=0x22090 sub_22090 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x25F72 owner=0x25D0E sub_25D0E :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x261F4 owner=0x25F87 sub_25F87 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x26F6B owner=0x26B5E sub_26B5E :: test    byte_51B88, 1
+target=0x51B88 offset=30 from=0x26F79 owner=0x26B5E sub_26B5E :: and     byte_51B88, 0FEh
+target=0x51B88 offset=30 from=0x27CEE owner=0x27A26 sub_27A26 :: cmp     byte_51B88, 0
+target=0x51B88 offset=30 from=0x27D29 owner=0x27A26 sub_27A26 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x27D43 owner=0x27A26 sub_27A26 :: cmp     byte_51B88, 0
+target=0x51B88 offset=30 from=0x27D5E owner=0x27A26 sub_27A26 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x282A2 owner=0x27A26 sub_27A26 :: cmp     byte_51B88, 0
+target=0x51B88 offset=30 from=0x282AF owner=0x27A26 sub_27A26 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x29069 owner=0x28E40 sub_28E40 :: test    byte_51B88, 1
+target=0x51B88 offset=30 from=0x29077 owner=0x28E40 sub_28E40 :: and     byte_51B88, 0FEh
+target=0x51B88 offset=30 from=0x3158B owner=0x312A6 sub_312A6 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x36D42 owner=0x36AF7 sub_36AF7 :: cmp     byte_51B88, 0
+target=0x51B88 offset=30 from=0x36D4B owner=0x36AF7 sub_36AF7 :: mov     byte_51B88, 0
+target=0x51B88 offset=30 from=0x39163 owner=0x38DAC sub_38DAC :: cmp     byte_51B88, 0
+target=0x51B88 offset=30 from=0x39170 owner=0x38DAC sub_38DAC :: mov     byte_51B88, 0
+target=0x51B8D offset=35 from=0x21146 owner=0x20FAF sub_20FAF :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x213F6 owner=0x212C0 sub_212C0 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x215FD owner=0x21496 sub_21496 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x21C2E owner=0x21AC0 sub_21AC0 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x221DD owner=0x22090 sub_22090 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x25E8B owner=0x25D0E sub_25D0E :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x26042 owner=0x25F87 sub_25F87 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x26F3D owner=0x26B5E sub_26B5E :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x26F5B owner=0x26B5E sub_26B5E :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x27C95 owner=0x27A26 sub_27A26 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x27CD9 owner=0x27A26 sub_27A26 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x27EA4 owner=0x27A26 sub_27A26 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x27EB8 owner=0x27A26 sub_27A26 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x2825B owner=0x27A26 sub_27A26 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x28264 owner=0x27A26 sub_27A26 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x2903B owner=0x28E40 sub_28E40 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x29059 owner=0x28E40 sub_28E40 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x31564 owner=0x312A6 sub_312A6 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x32528 owner=0x31EB9 sub_31EB9 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x32545 owner=0x31EB9 sub_31EB9 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x328EB owner=0x3271E sub_3271E :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x32904 owner=0x3271E sub_3271E :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x3329F owner=0x32E59 sub_32E59 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x332BC owner=0x32E59 sub_32E59 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x36B13 owner=0x36AF7 sub_36AF7 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x36D70 owner=0x36AF7 sub_36AF7 :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x36D8D owner=0x36AF7 sub_36AF7 :: mov     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x390F2 owner=0x38DAC sub_38DAC :: cmp     byte_51B8D, 0
+target=0x51B8D offset=35 from=0x3910B owner=0x38DAC sub_38DAC :: mov     byte_51B8D, 0
+target=0x51B99 offset=47 from=0x281F0 owner=0x27A26 sub_27A26 :: cmp     byte_51B99, 0
+target=0x51B99 offset=47 from=0x28211 owner=0x27A26 sub_27A26 :: mov     byte_51B99, 0
+target=0x51B9B offset=49 from=0x28078 owner=0x27A26 sub_27A26 :: cmp     byte_51B9B, 0
+target=0x51B9B offset=49 from=0x280A1 owner=0x27A26 sub_27A26 :: mov     byte_51B9B, 0
+target=0x51BB9 offset=79 from=0x26F82 owner=0x26B5E sub_26B5E :: test    byte_51BB9, 1
+target=0x51BB9 offset=79 from=0x26F94 owner=0x26B5E sub_26B5E :: and     byte_51BB9, 0FEh
+target=0x51BB9 offset=79 from=0x29080 owner=0x28E40 sub_28E40 :: test    byte_51BB9, 1
+target=0x51BB9 offset=79 from=0x29092 owner=0x28E40 sub_28E40 :: and     byte_51BB9, 0FEh
+target=0x51BEF offset=133 from=0x27C9E owner=0x27A26 sub_27A26 :: cmp     byte_51BEF, 0
+target=0x51BEF offset=133 from=0x27E97 owner=0x27A26 sub_27A26 :: cmp     byte_51BEF, 0
+target=0x51BEF offset=133 from=0x27EB1 owner=0x27A26 sub_27A26 :: mov     byte_51BEF, 0
+target=0x51BF0 offset=134 from=0x28062 owner=0x27A26 sub_27A26 :: cmp     byte_51BF0, 0
+target=0x51BF0 offset=134 from=0x28093 owner=0x27A26 sub_27A26 :: mov     byte_51BF0, 0
+target=0x51BF0 offset=134 from=0x281DE owner=0x27A26 sub_27A26 :: cmp     byte_51BF0, 0
+target=0x51BF0 offset=134 from=0x28203 owner=0x27A26 sub_27A26 :: mov     byte_51BF0, 0
+target=0x51BF1 offset=135 from=0x2806B owner=0x27A26 sub_27A26 :: cmp     byte_51BF1, 0
+target=0x51BF1 offset=135 from=0x2809A owner=0x27A26 sub_27A26 :: mov     byte_51BF1, 0
+target=0x51BF1 offset=135 from=0x281E7 owner=0x27A26 sub_27A26 :: cmp     byte_51BF1, 0
+target=0x51BF1 offset=135 from=0x2820A owner=0x27A26 sub_27A26 :: mov     byte_51BF1, 0
+target=0x51C03 offset=153 from=0x2114D owner=0x20FAF sub_20FAF :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x213FD owner=0x212C0 sub_212C0 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x21604 owner=0x21496 sub_21496 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x21C35 owner=0x21AC0 sub_21AC0 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x221E4 owner=0x22090 sub_22090 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x25E92 owner=0x25D0E sub_25D0E :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x26049 owner=0x25F87 sub_25F87 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x26F46 owner=0x26B5E sub_26B5E :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x26F62 owner=0x26B5E sub_26B5E :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x29044 owner=0x28E40 sub_28E40 :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x29060 owner=0x28E40 sub_28E40 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x3156B owner=0x312A6 sub_312A6 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x32531 owner=0x31EB9 sub_31EB9 :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x3254C owner=0x31EB9 sub_31EB9 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x328F4 owner=0x3271E sub_3271E :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x3290B owner=0x3271E sub_3271E :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x332A8 owner=0x32E59 sub_32E59 :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x332C3 owner=0x32E59 sub_32E59 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x36B1A owner=0x36AF7 sub_36AF7 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x36D79 owner=0x36AF7 sub_36AF7 :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x36D94 owner=0x36AF7 sub_36AF7 :: mov     byte_51C03, 0
+target=0x51C03 offset=153 from=0x390FB owner=0x38DAC sub_38DAC :: cmp     byte_51C03, 0
+target=0x51C03 offset=153 from=0x39112 owner=0x38DAC sub_38DAC :: mov     byte_51C03, 0
+target=0x51C04 offset=154 from=0x20E8A owner=0x20D35 main :: cmp     byte_51C04, 0
+target=0x51C04 offset=154 from=0x20E9C owner=0x20D35 main :: mov     byte_51C04, 0
+target=0x51C04 offset=154 from=0x26EEC owner=0x26B5E sub_26B5E :: cmp     byte_51C04, 0
+target=0x51C04 offset=154 from=0x26EFE owner=0x26B5E sub_26B5E :: mov     byte_51C04, 0
+target=0x51C04 offset=154 from=0x27078 owner=0x26B5E sub_26B5E :: mov     byte_51C04, 0
+target=0x51C04 offset=154 from=0x28FEA owner=0x28E40 sub_28E40 :: cmp     byte_51C04, 0
+target=0x51C04 offset=154 from=0x28FFC owner=0x28E40 sub_28E40 :: mov     byte_51C04, 0
+target=0x51C04 offset=154 from=0x292E7 owner=0x28E40 sub_28E40 :: mov     byte_51C04, 0
+target=0x51C04 offset=154 from=0x36BC5 owner=0x36AF7 sub_36AF7 :: cmp     byte_51C04, 0
+target=0x51C04 offset=154 from=0x36BD7 owner=0x36AF7 sub_36AF7 :: mov     byte_51C04, 0
+target=0x51C04 offset=154 from=0x37C60 owner=0x37734 sub_37734 :: cmp     byte_51C04, 0
+target=0x51C04 offset=154 from=0x37C72 owner=0x37734 sub_37734 :: mov     byte_51C04, 0
+target=0x51C05 offset=155 from=0x20E93 owner=0x20D35 main :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x20EA3 owner=0x20D35 main :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x210C2 owner=0x20FAF sub_20FAF :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x2138B owner=0x212C0 sub_212C0 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x213C2 owner=0x212C0 sub_212C0 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x215BC owner=0x21496 sub_21496 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x21BED owner=0x21AC0 sub_21AC0 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x221A4 owner=0x22090 sub_22090 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x25E4E owner=0x25D0E sub_25D0E :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x26000 owner=0x25F87 sub_25F87 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x26EF5 owner=0x26B5E sub_26B5E :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x26F05 owner=0x26B5E sub_26B5E :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x27094 owner=0x26B5E sub_26B5E :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x28FF3 owner=0x28E40 sub_28E40 :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x29003 owner=0x28E40 sub_28E40 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x29303 owner=0x28E40 sub_28E40 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x3152B owner=0x312A6 sub_312A6 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x324C8 owner=0x31EB9 sub_31EB9 :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x324D1 owner=0x31EB9 sub_31EB9 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x33250 owner=0x32E59 sub_32E59 :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x33259 owner=0x32E59 sub_32E59 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x36BCE owner=0x36AF7 sub_36AF7 :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x36BDE owner=0x36AF7 sub_36AF7 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x37C69 owner=0x37734 sub_37734 :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x37C79 owner=0x37734 sub_37734 :: mov     byte_51C05, 0
+target=0x51C05 offset=155 from=0x3908A owner=0x38DAC sub_38DAC :: cmp     byte_51C05, 0
+target=0x51C05 offset=155 from=0x39093 owner=0x38DAC sub_38DAC :: mov     byte_51C05, 0
+target=0x51C06 offset=156 from=0x20EAE owner=0x20D35 main :: cmp     byte_51C06, 0
+target=0x51C06 offset=156 from=0x20EC0 owner=0x20D35 main :: mov     byte_51C06, 0
+target=0x51C06 offset=156 from=0x26F10 owner=0x26B5E sub_26B5E :: cmp     byte_51C06, 0
+target=0x51C06 offset=156 from=0x26F22 owner=0x26B5E sub_26B5E :: mov     byte_51C06, 0
+target=0x51C06 offset=156 from=0x2707F owner=0x26B5E sub_26B5E :: mov     byte_51C06, 0
+target=0x51C06 offset=156 from=0x2900E owner=0x28E40 sub_28E40 :: cmp     byte_51C06, 0
+target=0x51C06 offset=156 from=0x29020 owner=0x28E40 sub_28E40 :: mov     byte_51C06, 0
+target=0x51C06 offset=156 from=0x292EE owner=0x28E40 sub_28E40 :: mov     byte_51C06, 0
+target=0x51C06 offset=156 from=0x36C1F owner=0x36AF7 sub_36AF7 :: cmp     byte_51C06, 0
+target=0x51C06 offset=156 from=0x36C31 owner=0x36AF7 sub_36AF7 :: mov     byte_51C06, 0
+target=0x51C06 offset=156 from=0x37C9D owner=0x37734 sub_37734 :: cmp     byte_51C06, 0
+target=0x51C06 offset=156 from=0x37CAF owner=0x37734 sub_37734 :: mov     byte_51C06, 0
+target=0x51C07 offset=157 from=0x20E3B owner=0x20D35 main :: cmp     byte_51C07, 0
+target=0x51C07 offset=157 from=0x20E4B owner=0x20D35 main :: mov     byte_51C07, 0
+target=0x51C07 offset=157 from=0x26E9D owner=0x26B5E sub_26B5E :: cmp     byte_51C07, 0
+target=0x51C07 offset=157 from=0x26EAD owner=0x26B5E sub_26B5E :: mov     byte_51C07, 0
+target=0x51C07 offset=157 from=0x2709B owner=0x26B5E sub_26B5E :: mov     byte_51C07, 0
+target=0x51C07 offset=157 from=0x28F9B owner=0x28E40 sub_28E40 :: cmp     byte_51C07, 0
+target=0x51C07 offset=157 from=0x28FAB owner=0x28E40 sub_28E40 :: mov     byte_51C07, 0
+target=0x51C07 offset=157 from=0x2930A owner=0x28E40 sub_28E40 :: mov     byte_51C07, 0
+target=0x51C07 offset=157 from=0x36C89 owner=0x36AF7 sub_36AF7 :: cmp     byte_51C07, 0
+target=0x51C07 offset=157 from=0x36C99 owner=0x36AF7 sub_36AF7 :: mov     byte_51C07, 0
+target=0x51C07 offset=157 from=0x37CE6 owner=0x37734 sub_37734 :: cmp     byte_51C07, 0
+target=0x51C07 offset=157 from=0x37CF6 owner=0x37734 sub_37734 :: mov     byte_51C07, 0
+target=0x51C09 offset=159 from=0x20EB7 owner=0x20D35 main :: cmp     byte_51C09, 0
+target=0x51C09 offset=159 from=0x20EC7 owner=0x20D35 main :: mov     byte_51C09, 0
+target=0x51C09 offset=159 from=0x26F19 owner=0x26B5E sub_26B5E :: cmp     byte_51C09, 0
+target=0x51C09 offset=159 from=0x26F29 owner=0x26B5E sub_26B5E :: mov     byte_51C09, 0
+target=0x51C09 offset=159 from=0x270A2 owner=0x26B5E sub_26B5E :: mov     byte_51C09, 0
+target=0x51C09 offset=159 from=0x29017 owner=0x28E40 sub_28E40 :: cmp     byte_51C09, 0
+target=0x51C09 offset=159 from=0x29027 owner=0x28E40 sub_28E40 :: mov     byte_51C09, 0
+target=0x51C09 offset=159 from=0x29311 owner=0x28E40 sub_28E40 :: mov     byte_51C09, 0
+target=0x51C09 offset=159 from=0x36C28 owner=0x36AF7 sub_36AF7 :: cmp     byte_51C09, 0
+target=0x51C09 offset=159 from=0x36C38 owner=0x36AF7 sub_36AF7 :: mov     byte_51C09, 0
+target=0x51C09 offset=159 from=0x37CA6 owner=0x37734 sub_37734 :: cmp     byte_51C09, 0
+target=0x51C09 offset=159 from=0x37CB6 owner=0x37734 sub_37734 :: mov     byte_51C09, 0
+target=0x51C0A offset=160 from=0x20E32 owner=0x20D35 main :: cmp     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x20E44 owner=0x20D35 main :: mov     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x26E94 owner=0x26B5E sub_26B5E :: cmp     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x26EA6 owner=0x26B5E sub_26B5E :: mov     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x27086 owner=0x26B5E sub_26B5E :: mov     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x28F92 owner=0x28E40 sub_28E40 :: cmp     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x28FA4 owner=0x28E40 sub_28E40 :: mov     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x292F5 owner=0x28E40 sub_28E40 :: mov     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x36C80 owner=0x36AF7 sub_36AF7 :: cmp     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x36C92 owner=0x36AF7 sub_36AF7 :: mov     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x37CDD owner=0x37734 sub_37734 :: cmp     byte_51C0A, 0
+target=0x51C0A offset=160 from=0x37CEF owner=0x37734 sub_37734 :: mov     byte_51C0A, 0
+target=0x51C0B offset=161 from=0x20E6A owner=0x20D35 main :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x20E7A owner=0x20D35 main :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x21102 owner=0x20FAF sub_20FAF :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x215E3 owner=0x21496 sub_21496 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x21C0D owner=0x21AC0 sub_21AC0 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x221BD owner=0x22090 sub_22090 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x25E68 owner=0x25D0E sub_25D0E :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x26020 owner=0x25F87 sub_25F87 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x26ECC owner=0x26B5E sub_26B5E :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x26EDC owner=0x26B5E sub_26B5E :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x270A9 owner=0x26B5E sub_26B5E :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x28FCA owner=0x28E40 sub_28E40 :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x28FDA owner=0x28E40 sub_28E40 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x29318 owner=0x28E40 sub_28E40 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x31544 owner=0x312A6 sub_312A6 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x324F5 owner=0x31EB9 sub_31EB9 :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x324FE owner=0x31EB9 sub_31EB9 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x33277 owner=0x32E59 sub_32E59 :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x33280 owner=0x32E59 sub_32E59 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x36CEA owner=0x36AF7 sub_36AF7 :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x36CFA owner=0x36AF7 sub_36AF7 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x37D26 owner=0x37734 sub_37734 :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x37D3A owner=0x37734 sub_37734 :: mov     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x390BA owner=0x38DAC sub_38DAC :: cmp     byte_51C0B, 0
+target=0x51C0B offset=161 from=0x390C3 owner=0x38DAC sub_38DAC :: mov     byte_51C0B, 0
+target=0x51C0C offset=162 from=0x20E61 owner=0x20D35 main :: cmp     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x20E73 owner=0x20D35 main :: mov     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x26EC3 owner=0x26B5E sub_26B5E :: cmp     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x26ED5 owner=0x26B5E sub_26B5E :: mov     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x2708D owner=0x26B5E sub_26B5E :: mov     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x28FC1 owner=0x28E40 sub_28E40 :: cmp     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x28FD3 owner=0x28E40 sub_28E40 :: mov     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x292FC owner=0x28E40 sub_28E40 :: mov     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x36CE1 owner=0x36AF7 sub_36AF7 :: cmp     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x36CF3 owner=0x36AF7 sub_36AF7 :: mov     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x37D1D owner=0x37734 sub_37734 :: cmp     byte_51C0C, 0
+target=0x51C0C offset=162 from=0x37D33 owner=0x37734 sub_37734 :: mov     byte_51C0C, 0
+
+RANGE audio_runtime_region begin=0x118810 end=0x118848 refs=34
+target=0x118810 offset=0 from=0x3DE3E owner=0x3DD66 sub_3DD66 :: mov     dword_118810[ebx*4], eax
+target=0x118810 offset=0 from=0x3DFAE owner=0x3DF90 sub_3DF90 :: push    dword_118810[esi*4]
+target=0x118810 offset=0 from=0x3DFF3 owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+target=0x118810 offset=0 from=0x3E005 owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+target=0x118810 offset=0 from=0x3E01F owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+target=0x118810 offset=0 from=0x3E032 owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+target=0x118810 offset=0 from=0x3E04A owner=0x3DF90 sub_3DF90 :: push    dword_118810[ebx]
+target=0x118810 offset=0 from=0x3E062 owner=0x3DF90 sub_3DF90 :: push    dword_118810[esi*4]
+target=0x118810 offset=0 from=0x3E071 owner=0x3DF90 sub_3DF90 :: push    dword_118810[esi*4]
+target=0x118810 offset=0 from=0x3E18B owner=0x3E172 sub_3E172 :: push    dword_118810[ebx*4]
+target=0x118830 offset=32 from=0x3DEFB owner=0x3DECB sub_3DECB :: mov     dword_118830, eax
+target=0x118830 offset=32 from=0x3DF81 owner=0x3DF59 sub_3DF59 :: push    dword_118830
+target=0x118834 offset=36 from=0x3DF04 owner=0x3DECB sub_3DECB :: mov     dword_118834, eax
+target=0x118834 offset=36 from=0x3DF7B owner=0x3DF59 sub_3DF59 :: push    dword_118834
+target=0x118838 offset=40 from=0x3DDCC owner=0x3DD66 sub_3DD66 :: mov     dword_118838, eax
+target=0x118838 offset=40 from=0x3DEDF owner=0x3DECB sub_3DECB :: push    dword_118838
+target=0x118838 offset=40 from=0x3DF2C owner=0x3DECB sub_3DECB :: push    dword_118838
+target=0x118838 offset=40 from=0x3DF3A owner=0x3DECB sub_3DECB :: push    dword_118838
+target=0x118838 offset=40 from=0x3DF4A owner=0x3DECB sub_3DECB :: push    dword_118838
+target=0x118838 offset=40 from=0x3DF6D owner=0x3DF59 sub_3DF59 :: push    dword_118838
+target=0x118838 offset=40 from=0x3E26C owner=0x3E25B sub_3E25B :: push    dword_118838
+target=0x11883C offset=44 from=0x3DDF8 owner=0x3DD66 sub_3DD66 :: push    offset dword_11883C
+target=0x11883C offset=44 from=0x3DE30 owner=0x3DD66 sub_3DD66 :: push    dword_11883C
+target=0x118840 offset=48 from=0x3DD88 owner=0x3DD66 sub_3DD66 :: push    offset dword_118840
+target=0x118840 offset=48 from=0x3DDBE owner=0x3DD66 sub_3DD66 :: push    dword_118840
+target=0x118840 offset=48 from=0x3DF18 owner=0x3DECB sub_3DECB :: push    dword_118840
+target=0x118844 offset=52 from=0x3DD7A owner=0x3DD66 sub_3DD66 :: mov     word_118844, 0
+target=0x118844 offset=52 from=0x3DE23 owner=0x3DD66 sub_3DD66 :: mov     word_118844, 1
+target=0x118844 offset=52 from=0x3DFA0 owner=0x3DF90 sub_3DF90 :: cmp     word_118844, 0
+target=0x118844 offset=52 from=0x3E17D owner=0x3E172 sub_3E172 :: cmp     word_118844, 0
+target=0x118846 offset=54 from=0x3DD71 owner=0x3DD66 sub_3DD66 :: mov     word_118846, 0
+target=0x118846 offset=54 from=0x3DDB3 owner=0x3DD66 sub_3DD66 :: mov     word_118846, 1
+target=0x118846 offset=54 from=0x3DED5 owner=0x3DECB sub_3DECB :: cmp     word_118846, 0
+target=0x118846 offset=54 from=0x3DF63 owner=0x3DF59 sub_3DF59 :: cmp     word_118846, 0
+
+====================================================================================================
+CALL REFERENCES
+
+TARGET music_start_once_unused address=0x3DE4D refs=0
+
+TARGET music_start_looping address=0x3DECB refs=1
+from=0x3E21E owner=0x3E1B2 sub_3E1B2 :: call    sub_3DECB
+
+TARGET music_end address=0x3DF59 refs=3
+from=0x3DE74 owner=0x3DE4D sub_3DE4D :: call    sub_3DF59
+from=0x3DEF2 owner=0x3DECB sub_3DECB :: call    sub_3DF59
+from=0x3E1EA owner=0x3E1B2 sub_3E1B2 :: call    sub_3DF59
+
+TARGET sample_start_loaded address=0x3DF90 refs=2
+from=0x3E2AF owner=0x3E288 sub_3E288 :: call    sub_3DF90
+from=0x3E2D4 owner=0x3E288 sub_3E288 :: call    sub_3DF90
+
+TARGET sample_start_raw_unused address=0x3E088 refs=0
+
+TARGET sample_end address=0x3E172 refs=3
+from=0x3DFC3 owner=0x3DF90 sub_3DF90 :: call    sub_3E172
+from=0x3E0BA owner=0x3E088 sub_3E088 :: call    sub_3E172
+from=0x3E2F0 owner=0x3E2E2 sub_3E2E2 :: call    sub_3E172
+
+TARGET music_play_index address=0x3E1B2 refs=9
+from=0x20DED owner=0x20D35 main :: call    sub_3E1B2
+from=0x270D1 owner=0x26B5E sub_26B5E :: call    sub_3E1B2
+from=0x28EB3 owner=0x28E40 sub_28E40 :: call    sub_3E1B2
+from=0x29231 owner=0x28E40 sub_28E40 :: call    sub_3E1B2
+from=0x2934B owner=0x28E40 sub_28E40 :: call    sub_3E1B2
+from=0x2937D owner=0x28E40 sub_28E40 :: call    sub_3E1B2
+from=0x31C3D owner=0x31C2F sub_31C2F :: call    sub_3E1B2
+from=0x31D31 owner=0x31C75 sub_31C75 :: call    sub_3E1B2
+from=0x31D86 owner=0x31C75 sub_31C75 :: call    sub_3E1B2
+
+TARGET music_fade_in address=0x3E23B refs=0
+
+TARGET music_fade_out address=0x3E25B refs=4
+from=0x20F94 owner=0x20D35 main :: call    sub_3E25B
+from=0x25F50 owner=0x25D0E sub_25D0E :: call    sub_3E25B
+from=0x31250 owner=0x31241 sub_31241 :: call    sub_3E25B
+from=0x3E1E5 owner=0x3E1B2 sub_3E1B2 :: call    sub_3E25B
+
+TARGET sample_dispatch_loaded address=0x3E288 refs=5
+from=0x31C68 owner=0x31C4A sub_31C4A :: call    sub_3E288
+from=0x387E2 owner=0x3859E sub_3859E :: call    sub_3E288
+from=0x38800 owner=0x3859E sub_3859E :: call    sub_3E288
+from=0x38878 owner=0x3884A sub_3884A :: call    sub_3E288
+from=0x3888D owner=0x3884A sub_3884A :: call    sub_3E288
+
+TARGET sample_load_index address=0x3E2E2 refs=5
+from=0x31C5A owner=0x31C4A sub_31C4A :: call    sub_3E2E2
+from=0x38634 owner=0x3859E sub_3859E :: call    sub_3E2E2
+from=0x38644 owner=0x3859E sub_3859E :: call    sub_3E2E2
+from=0x3885E owner=0x3884A sub_3884A :: call    sub_3E2E2
+from=0x3886C owner=0x3884A sub_3884A :: call    sub_3E2E2
+
+TARGET rng_bounded address=0x3D612 refs=114
+from=0x23A25 owner=0x2399E sub_2399E :: call    sub_3D612
+from=0x23B9D owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23BBA owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23BD4 owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23BF3 owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23C13 owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23C21 owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23C3C owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23C4A owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23C6A owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x23C78 owner=0x23B3E sub_23B3E :: call    sub_3D612
+from=0x2589A owner=0x2558B sub_2558B :: call    sub_3D612
+from=0x258B1 owner=0x2558B sub_2558B :: call    sub_3D612
+from=0x272E3 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x272F3 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27308 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2731D owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27332 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27347 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2735C owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27371 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27386 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2739B owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x273B0 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x273C5 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x273DA owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x273EF owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27404 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2742F owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x27444 owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2745F owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2747A owner=0x2711A sub_2711A :: call    sub_3D612
+from=0x2A072 owner=0x29D2D sub_29D2D :: call    sub_3D612
+from=0x2A089 owner=0x29D2D sub_29D2D :: call    sub_3D612
+from=0x2B519 owner=0x2B483 sub_2B483 :: call    sub_3D612
+from=0x2B529 owner=0x2B483 sub_2B483 :: call    sub_3D612
+from=0x2B5B9 owner=0x2B483 sub_2B483 :: call    sub_3D612
+from=0x2B5CB owner=0x2B483 sub_2B483 :: call    sub_3D612
+from=0x2B7D9 owner=0x2B483 sub_2B483 :: call    sub_3D612
+from=0x2B7E5 owner=0x2B483 sub_2B483 :: call    sub_3D612
+from=0x2FF93 owner=0x2FF87 sub_2FF87 :: call    sub_3D612
+from=0x30317 owner=0x302E0 sub_302E0 :: call    sub_3D612
+from=0x31B40 owner=0x31945 sub_31945 :: call    sub_3D612
+from=0x336FB owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x3373F owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33784 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x337C4 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x3380D owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x3385D owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x338A1 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x338E6 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33926 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33977 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x339A7 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x339D3 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33A41 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33A71 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33A9D owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33AE0 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33B33 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x33B73 owner=0x33599 sub_33599 :: call    sub_3D612
+from=0x342BF owner=0x341F6 sub_341F6 :: call    sub_3D612
+from=0x34303 owner=0x341F6 sub_341F6 :: call    sub_3D612
+from=0x34348 owner=0x341F6 sub_341F6 :: call    sub_3D612
+from=0x34476 owner=0x343DA sub_343DA :: call    sub_3D612
+from=0x344A6 owner=0x343DA sub_343DA :: call    sub_3D612
+from=0x344D2 owner=0x343DA sub_343DA :: call    sub_3D612
+from=0x347C4 owner=0x34550 sub_34550 :: call    sub_3D612
+from=0x347E9 owner=0x34550 sub_34550 :: call    sub_3D612
+from=0x348A7 owner=0x34550 sub_34550 :: call    sub_3D612
+from=0x3492B owner=0x34550 sub_34550 :: call    sub_3D612
+from=0x349B0 owner=0x34550 sub_34550 :: call    sub_3D612
+from=0x34A0C owner=0x34550 sub_34550 :: call    sub_3D612
+from=0x34C96 owner=0x34C47 sub_34C47 :: call    sub_3D612
+from=0x3508A owner=0x3505B sub_3505B :: call    sub_3D612
+from=0x350CA owner=0x3505B sub_3505B :: call    sub_3D612
+from=0x3510A owner=0x3505B sub_3505B :: call    sub_3D612
+from=0x35631 owner=0x355FF sub_355FF :: call    sub_3D612
+from=0x35BA8 owner=0x3598C sub_3598C :: call    sub_3D612
+from=0x35C35 owner=0x3598C sub_3598C :: call    sub_3D612
+from=0x35EB4 owner=0x3598C sub_3598C :: call    sub_3D612
+from=0x35F41 owner=0x3598C sub_3598C :: call    sub_3D612
+from=0x3837B owner=0x37734 sub_37734 :: call    sub_3D612
+from=0x393B1 owner=0x39188 sub_39188 :: call    sub_3D612
+from=0x393BD owner=0x39188 sub_39188 :: call    sub_3D612
+from=0x393DE owner=0x39188 sub_39188 :: call    sub_3D612
+from=0x393EA owner=0x39188 sub_39188 :: call    sub_3D612
+from=0x3963A owner=0x395EC sub_395EC :: call    sub_3D612
+from=0x39646 owner=0x395EC sub_395EC :: call    sub_3D612
+from=0x39693 owner=0x395EC sub_395EC :: call    sub_3D612
+from=0x396E8 owner=0x395EC sub_395EC :: call    sub_3D612
+from=0x396F4 owner=0x395EC sub_395EC :: call    sub_3D612
+from=0x39DD0 owner=0x39DA3 sub_39DA3 :: call    sub_3D612
+from=0x39DDC owner=0x39DA3 sub_39DA3 :: call    sub_3D612
+from=0x3A1D9 owner=0x3A10C sub_3A10C :: call    sub_3D612
+from=0x3A578 owner=0x3A30B sub_3A30B :: call    sub_3D612
+from=0x3A60F owner=0x3A30B sub_3A30B :: call    sub_3D612
+from=0x3A7DB owner=0x3A30B sub_3A30B :: call    sub_3D612
+from=0x3A7E7 owner=0x3A30B sub_3A30B :: call    sub_3D612
+from=0x3A8EF owner=0x3A8A4 sub_3A8A4 :: call    sub_3D612
+from=0x3A900 owner=0x3A8A4 sub_3A8A4 :: call    sub_3D612
+from=0x3A979 owner=0x3A8A4 sub_3A8A4 :: call    sub_3D612
+from=0x3A9D4 owner=0x3A8A4 sub_3A8A4 :: call    sub_3D612
+from=0x3B7DA owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B7F7 owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B8BD owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B8DE owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B8FF owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B920 owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B941 owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B962 owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3B979 owner=0x3B6BE sub_3B6BE :: call    sub_3D612
+from=0x3C3A1 owner=0x3C2AC sub_3C2AC :: call    sub_3D612
+from=0x3C489 owner=0x3C2AC sub_3C2AC :: call    sub_3D612
+
+TARGET rng_next address=0x3F98D refs=1
+from=0x3D632 owner=0x3D612 sub_3D612 :: call    sub_3F98D
+
+TARGET rng_seed address=0x3F9B0 refs=1
+from=0x3D606 owner=0x3D5DE sub_3D5DE :: call    sub_3F9B0
+
+TARGET bios_tick_delay address=0x3DB83 refs=37
+from=0x2840B owner=0x27A26 sub_27A26 :: call    sub_3DB83
+from=0x2EE4A owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2EE90 owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2EED9 owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2EF1F owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2EF68 owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2EFAE owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2EFF7 owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2F03D owner=0x2ED8D sub_2ED8D :: call    sub_3DB83
+from=0x2F0A4 owner=0x2F053 sub_2F053 :: call    sub_3DB83
+from=0x2F0E4 owner=0x2F053 sub_2F053 :: call    sub_3DB83
+from=0x2F20C owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F230 owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F257 owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F27B owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F2A2 owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F2C6 owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F2EA owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2F30E owner=0x2F171 sub_2F171 :: call    sub_3DB83
+from=0x2FA89 owner=0x2F9F2 sub_2F9F2 :: call    sub_3DB83
+from=0x301FB owner=0x301D1 sub_301D1 :: call    sub_3DB83
+from=0x302B9 owner=0x301D1 sub_301D1 :: call    sub_3DB83
+from=0x30374 owner=0x302E0 sub_302E0 :: call    sub_3DB83
+from=0x30C0F owner=0x30B81 sub_30B81 :: call    sub_3DB83
+from=0x30D70 owner=0x30C3D sub_30C3D :: call    sub_3DB83
+from=0x30E2E owner=0x30C3D sub_30C3D :: call    sub_3DB83
+from=0x31220 owner=0x30C3D sub_30C3D :: call    sub_3DB83
+from=0x33688 owner=0x33599 sub_33599 :: call    sub_3DB83
+from=0x35A34 owner=0x3598C sub_3598C :: call    sub_3DB83
+from=0x35A9B owner=0x3598C sub_3598C :: call    sub_3DB83
+from=0x37540 owner=0x37355 sub_37355 :: call    sub_3DB83
+from=0x3832A owner=0x37734 sub_37734 :: call    sub_3DB83
+from=0x384E5 owner=0x37734 sub_37734 :: call    sub_3DB83
+from=0x38827 owner=0x3859E sub_3859E :: call    sub_3DB83
+from=0x38882 owner=0x3884A sub_3884A :: call    sub_3DB83
+from=0x388EE owner=0x3884A sub_3884A :: call    sub_3DB83
+from=0x3896D owner=0x38910 sub_38910 :: call    sub_3DB83
+
+====================================================================================================
+FUNCTIONS AROUND AUDIO WRAPPERS start=0x3DD00 end=0x3E300
+0x3DD57..0x3DD66 sub_3DD57
+0x3DD66..0x3DE4D sub_3DD66
+0x3DE4D..0x3DECB sub_3DE4D
+0x3DECB..0x3DF59 sub_3DECB
+0x3DF59..0x3DF90 sub_3DF59
+0x3DF90..0x3E088 sub_3DF90
+0x3E088..0x3E172 sub_3E088
+0x3E172..0x3E1B2 sub_3E172
+0x3E1B2..0x3E23B sub_3E1B2
+0x3E23B..0x3E25B sub_3E23B
+0x3E25B..0x3E288 sub_3E25B
+0x3E288..0x3E2E2 sub_3E288
+0x3E2E2..0x3E33D sub_3E2E2

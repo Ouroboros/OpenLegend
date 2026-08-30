@@ -22,16 +22,18 @@
 | `openlegend_compat` | 固定宽度类型、小端读取、legacy ID、结果码、字节视图 | 无业务可变状态 | 无 |
 | `openlegend_resource` | 文件定位、IDX/GRP、SDX/WDX、地图层、RLE 帧、字体/调色板原始视图 | 文件缓存和已验证字节块 | compat |
 | `openlegend_model` | 角色、物品、武功、商店、场景元数据和全局会话的规范化模型 | 当前 `GameState` | compat, resource |
-| `openlegend_input` | 宿主输入归一化、按下/持续/释放、逻辑 tick、随机数 | 输入快照、tick/RNG 状态 | compat |
+| `openlegend_input` | set-1 键码翻译、last-key、按下/重复/释放 byte state | IRQ1 兼容键态 | compat |
+| `openlegend_time` | PIT/BIOS tick 量化、tick 边沿等待与原 delay 除法 | 单调时钟锚点 | 无 |
+| `openlegend_random` | 原 32-bit LCG、显式 seed 与消费流 | RNG state | 无 |
 | `openlegend_render` | indexed framebuffer、RLE 精灵、文字、地图投影、画面效果、呈现请求 | framebuffer、palette、字形缓存 | compat, resource |
-| `openlegend_audio` | XMI/WAV 逻辑播放状态和平台音频端口 | 曲目、音效与播放状态 | compat, resource |
-| `openlegend_world` | 世界地图会话、缓存、移动、碰撞、入口和随机遇敌 | 世界运行时状态 | compat, resource, model, input, render, audio |
-| `openlegend_scene` | 64×64 场景、事件、对话和场景流程 | 场景会话与事件执行状态 | compat, resource, model, input, render, audio |
-| `openlegend_ui` | 标题、菜单、状态、物品、商店、存读档选择和模态对话 | UI 模式状态 | compat, model, input, render, audio |
-| `openlegend_battle` | 战斗建立、角色临时态、动作/AI、胜负出口 | 战斗会话 | compat, resource, model, input, render, audio |
+| `openlegend_audio` | Miles 顺序、raw WAV 八槽、XMI 合成和设备无关 mixer | 曲目、音效与播放状态 | resource；私有依赖 libADLMIDI |
+| `openlegend_world` | 世界地图会话、缓存、移动、碰撞、入口和随机遇敌 | 世界运行时状态 | compat, resource, model, input, time, random, render, audio |
+| `openlegend_scene` | 64×64 场景、事件、对话和场景流程 | 场景会话与事件执行状态 | compat, resource, model, input, time, random, render, audio |
+| `openlegend_ui` | 标题、菜单、状态、物品、商店、存读档选择和模态对话 | UI 模式状态 | compat, model, input, time, render, audio |
+| `openlegend_battle` | 战斗建立、角色临时态、动作/AI、胜负出口 | 战斗会话 | compat, resource, model, input, time, random, render, audio |
 | `openlegend_persistence` | 基线/工作副本/三槽格式、精确读取、快照导入导出 | 槽元数据和 I/O 事务 | compat, resource, model |
 | `openlegend_app` | 生命周期、模式协调、同步请求消费、初始化与销毁顺序 | 顶层模式和转换请求 | 全部核心模块与平台端口 |
-| `openlegend_platform_sdl3` | 窗口、事件、时钟、音频设备、文件路径、indexed 画面上传 | SDL 句柄和宿主资源 | compat, SDL3 |
+| `openlegend_platform_sdl3` | 窗口、事件映射、音频 stream、文件路径、indexed 画面上传 | SDL 句柄和宿主资源 | compat, input, time, audio, SDL3 |
 
 `diagnostics` 首版保持为少量公共设施，不必先拆成独立业务 target；逆向工具永远不进入产品 target。
 
@@ -40,11 +42,12 @@
 ```text
 openlegend_app
 ├─ openlegend_persistence ──→ openlegend_model ──→ openlegend_resource
-├─ openlegend_world ────────→ model/resource/input/render/audio
-├─ openlegend_scene ────────→ model/resource/input/render/audio
-├─ openlegend_ui ───────────→ model/input/render/audio
-├─ openlegend_battle ───────→ model/resource/input/render/audio
-├─ openlegend_platform_sdl3
+├─ openlegend_world ────────→ model/resource/input/time/random/render/audio
+├─ openlegend_scene ────────→ model/resource/input/time/random/render/audio
+├─ openlegend_ui ───────────→ model/input/time/render/audio
+├─ openlegend_battle ───────→ model/resource/input/time/random/render/audio
+├─ openlegend_platform_sdl3 → compat/input/time/audio/SDL3
+├─ openlegend_time / openlegend_random
 └─ openlegend_compat  ← 所有 target 的共同底层
 ```
 
@@ -165,12 +168,13 @@ IndexedFramebuffer
 
 核心负责：
 
-- 约 18.2Hz 原始逻辑 tick 的量化与推进；
-- 原输入边沿、持续状态和菜单重复语义；
-- 原 LCG 随机数流；
-- XMI/WAV 的游戏级播放、切换和停止状态。
+- 以 `1,193,182 / 65,536 Hz` 生成 BIOS tick，并在 `0x1800B0` 回绕；主循环只等待值变化，不做宿主 delta-time 补帧；
+- 84-byte set-1 翻译表、相邻内存别名、last-key 和 256 项 byte state；
+- `state = state * 0x41C64E6D + 0x3039` 的显式 32-bit RNG 流；
+- 8 个 raw unsigned mono sample slot、强制 11025 Hz、legacy volume/loop 参数和 Miles 调用顺序；
+- XMI 内存加载、无限循环、停止与 2000/1000 淡入淡出边界。
 
-XMI 的具体解码库可在 `audio` 工作包选择，但不得泄漏到业务模块公共接口。
+B4 冻结 libADLMIDI v1.6.1，只启用 DOSBox OPL3、内嵌 AIL bank 0、AIL volume model、MIDI sequencer 与 XMI；具体 C API 和类型不泄漏到业务模块公共接口。SDL3 只从 mixer 拉取 interleaved S16，并在设备不可用时静默降级。
 
 ## 9. 正式目录
 
@@ -180,11 +184,11 @@ OpenLegend/
 ├─ CMakePresets.json
 ├─ cmake/
 ├─ include/openlegend/
-│  ├─ compat/ resource/ model/ input/ render/ audio/
+│  ├─ compat/ resource/ model/ input/ time/ random/ render/ audio/
 │  └─ world/ scene/ ui/ battle/ persistence/ app/
 ├─ src/
 │  ├─ platform/sdl3/
-│  ├─ resource/ model/ input/ render/ audio/
+│  ├─ resource/ model/ input/ time/ random/ render/ audio/
 │  └─ world/ scene/ ui/ battle/ persistence/ app/
 ├─ tests/
 │  ├─ support/
