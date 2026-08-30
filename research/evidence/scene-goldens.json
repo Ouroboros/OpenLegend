@@ -1471,6 +1471,71 @@
         ]
       }
     },
+    "state_write_vectors": {
+      "opcode_3_event_fields": {
+        "occurrences": 2320,
+        "explicit_scene_occurrences": 311,
+        "coordinate_updates": 30,
+        "one_axis_coordinate_updates": 0,
+        "first_coordinate_update": {
+          "script": 147,
+          "pc": 0,
+          "arguments": [
+            -2,
+            6,
+            -2,
+            -2,
+            146,
+            -1,
+            -1,
+            5398,
+            5398,
+            5398,
+            -2,
+            14,
+            40
+          ]
+        },
+        "coordinate_order": [
+          "read_old_x_y",
+          "write_selected_event_fields",
+          "clear_old_current_scene_event_cell",
+          "write_new_current_scene_event_cell"
+        ]
+      },
+      "opcode_17_scene_cell": {
+        "occurrences": 127,
+        "current_scene_occurrences": 99,
+        "explicit_scene_ids": [
+          11,
+          18,
+          21,
+          49,
+          52,
+          53,
+          55
+        ],
+        "linear_index": "4096*layer + 64*y + x"
+      },
+      "opcode_26_event_script_add": {
+        "occurrences": 121,
+        "current_event_sentinel_occurrences": 0,
+        "event_ids": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          6
+        ],
+        "updated_fields": [
+          2,
+          3,
+          4
+        ],
+        "addition_width_bits": 16
+      }
+    },
     "scene_animation_vectors": {
       "asset_duplicate_event_scenes": [],
       "synthetic_duplicate_event": {

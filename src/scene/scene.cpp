@@ -1088,16 +1088,20 @@ SceneStepResult SceneSession::run_event() {
                 return *frame;
             }
             break;
-        case 26:
+        case 26: {
+            const auto target_scene = argument(1) == -2 ? scene_id_ : argument(1);
+            const auto target_event = argument(2) == -2 ? event_context_.event_index : argument(2);
             for (std::size_t field = 0U; field < 3U; ++field) {
                 const auto event_field_id = static_cast<model::SceneEventField>(
                     static_cast<std::size_t>(model::SceneEventField::event_1) + field);
-                const auto value = event_field(argument(1) == -2 ? scene_id_ : argument(1), argument(2), event_field_id).value_or(0);
-                set_event_field(argument(1) == -2 ? scene_id_ : argument(1), argument(2), event_field_id,
-                                static_cast<std::int16_t>(value + argument(3U + field)));
+                const auto value = event_field(target_scene, target_event, event_field_id).value_or(0);
+                set_event_field(
+                    target_scene, target_event, event_field_id,
+                    wrapping_add(value, argument(3U + field)));
             }
             program_counter_ += 6;
             break;
+        }
         case 27:
             picture_animation_state_ = PictureAnimationState{
                 argument(1), argument(2), argument(3)};
@@ -1783,6 +1787,10 @@ void SceneSession::modify_event(const std::span<const std::int16_t, 13> argument
         static_cast<std::size_t>(target_event) >= model::kSceneEventCount) {
         return;
     }
+    const auto old_x = event_field(
+        target_scene, target_event, model::SceneEventField::x).value_or(-1);
+    const auto old_y = event_field(
+        target_scene, target_event, model::SceneEventField::y).value_or(-1);
     if (arguments[1] == -1 && event_context_.x >= 0 && event_context_.y >= 0) {
         set_scene_value(scene_id_, static_cast<std::int16_t>(model::SceneLayer::event_index),
                         event_context_.x, event_context_.y, -1);
@@ -1793,15 +1801,15 @@ void SceneSession::modify_event(const std::span<const std::int16_t, 13> argument
             set_event_field(target_scene, target_event, static_cast<model::SceneEventField>(field), value);
         }
     }
-    if (target_scene == scene_id_ && (arguments[11] != -2 || arguments[12] != -2)) {
-        const auto old_x = event_field(target_scene, target_event, model::SceneEventField::x).value_or(-1);
-        const auto old_y = event_field(target_scene, target_event, model::SceneEventField::y).value_or(-1);
-        if (old_x >= 0 && old_y >= 0) {
-            set_scene_value(scene_id_, static_cast<std::int16_t>(model::SceneLayer::event_index), old_x, old_y, -1);
-        }
+    if (arguments[11] != -2 || arguments[12] != -2) {
+        set_scene_value(
+            scene_id_, static_cast<std::int16_t>(model::SceneLayer::event_index),
+            old_x, old_y, -1);
         const auto new_x = arguments[11] == -2 ? old_x : arguments[11];
         const auto new_y = arguments[12] == -2 ? old_y : arguments[12];
-        set_scene_value(scene_id_, static_cast<std::int16_t>(model::SceneLayer::event_index), new_x, new_y, target_event);
+        set_scene_value(
+            scene_id_, static_cast<std::int16_t>(model::SceneLayer::event_index),
+            new_x, new_y, target_event);
     }
 }
 

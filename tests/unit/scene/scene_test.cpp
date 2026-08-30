@@ -93,6 +93,23 @@ public:
                 for (const auto word : std::array<std::int16_t, 6>{11, 0, 3, 2, 212, 1}) {
                     append_i16(group, word);
                 }
+            } else if (script == 10U) {
+                for (const auto word : std::array<std::int16_t, 14>{
+                         3, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, 30, 31}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 11U) {
+                for (const auto word : std::array<std::int16_t, 6>{26, -2, -2, 1, 2, 3}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 12U) {
+                for (const auto word : std::array<std::int16_t, 6>{17, 69, 1, 2, 3, 456}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 13U) {
+                for (const auto word : std::array<std::int16_t, 6>{26, 69, 5, -1, -2, -3}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -535,6 +552,90 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = rest_question.resume(SceneResponse::yes);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(rest_question_snapshot.ranger, 212) == rest_question_count + 1);
+}
+
+void check_event_state_write_helpers(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::size_t event = 0U;
+        constexpr std::size_t old_cell = 21U * 64U + 20U;
+        constexpr std::size_t new_cell = 31U * 64U + 30U;
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::x, 20));
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::y, 21));
+        OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, old_cell, 0));
+        OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, new_cell, -1));
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(10, 0, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.event_value(70U, event, SceneEventField::x).value_or(-1) == 30);
+        OL_CHECK(snapshot.event_value(70U, event, SceneEventField::y).value_or(-1) == 31);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::event_index, old_cell).value_or(0) == -1);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::event_index, new_cell).value_or(-1) == 0);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::size_t event = 5U;
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::event_1, 32767));
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::event_2, -2));
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::event_3, 3));
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(11, 5, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.event_value(
+                     70U, event, SceneEventField::event_1).value_or(0) == -32768);
+        OL_CHECK(snapshot.event_value(
+                     70U, event, SceneEventField::event_2).value_or(0) == 0);
+        OL_CHECK(snapshot.event_value(
+                     70U, event, SceneEventField::event_3).value_or(0) == 6);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::size_t event = 5U;
+        for (const auto& [scene, values] : std::array{
+                 std::pair{69U, std::array<std::int16_t, 3>{10, 20, 30}},
+                 std::pair{70U, std::array<std::int16_t, 3>{100, 200, 300}}}) {
+            OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::event_1, values[0]));
+            OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::event_2, values[1]));
+            OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::event_3, values[2]));
+        }
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(13, 0, 44, 29).kind == SceneStepKind::stay);
+        for (std::size_t field = 0U; field < 3U; ++field) {
+            const auto field_id = static_cast<SceneEventField>(
+                static_cast<std::size_t>(SceneEventField::event_1) + field);
+            OL_CHECK(snapshot.event_value(69U, event, field_id).value_or(0) ==
+                     static_cast<std::int16_t>(9 + field * 9));
+            OL_CHECK(snapshot.event_value(70U, event, field_id).value_or(0) ==
+                     static_cast<std::int16_t>(100 + field * 100));
+        }
+        OL_CHECK(session.scene_id() == 70);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::size_t cell = 3U * 64U + 2U;
+        OL_CHECK(snapshot.set_scene_value(69U, SceneLayer::building, cell, 0));
+        OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building, cell, 123));
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(12, 0, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.scene_value(
+                     69U, SceneLayer::building, cell).value_or(-1) == 456);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::building, cell).value_or(-1) == 123);
+        OL_CHECK(session.scene_id() == 70);
+    }
 }
 
 void check_scene_render_and_movement(const std::filesystem::path& root) {
@@ -3104,6 +3205,7 @@ int main() {
     check_assets(root);
     check_event_dialogue_rendering(root);
     check_event_load_menu(root);
+    check_event_state_write_helpers(root);
     check_scene_render_and_movement(root);
     check_scene_entry_state(root);
     check_scene_archive_ownership(root);

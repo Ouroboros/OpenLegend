@@ -613,6 +613,89 @@ def opcode_coverage(entries: list[bytes]) -> dict[str, object]:
     }
 
 
+def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: dict[int, list[dict[str, object]]] = {3: [], 17: [], 26: []}
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            assert 0 <= opcode < len(WIDTHS)
+            if opcode in occurrences:
+                arguments = code[pc + 1:pc + WIDTHS[opcode]]
+                occurrences[opcode].append({
+                    "script": script_id,
+                    "pc": pc,
+                    "arguments": list(arguments),
+                })
+            pc += WIDTHS[opcode]
+
+    opcode_3 = occurrences[3]
+    opcode_17 = occurrences[17]
+    opcode_26 = occurrences[26]
+    coordinate_updates = [
+        row for row in opcode_3
+        if row["arguments"][11] != -2 or row["arguments"][12] != -2
+    ]
+    assert len(opcode_3) == 2_320
+    assert len(coordinate_updates) == 30
+    assert all(
+        row["arguments"][11] != -2 and row["arguments"][12] != -2
+        for row in coordinate_updates
+    )
+    assert coordinate_updates[0] == {
+        "script": 147,
+        "pc": 0,
+        "arguments": [-2, 6, -2, -2, 146, -1, -1, 5398, 5398, 5398, -2, 14, 40],
+    }
+    assert len(opcode_17) == 127
+    assert sorted({row["arguments"][0] for row in opcode_17}) == [-2, 11, 18, 21, 49, 52, 53, 55]
+    assert len(opcode_26) == 121
+    assert all(row["arguments"][1] != -2 for row in opcode_26)
+
+    return {
+        "opcode_3_event_fields": {
+            "occurrences": len(opcode_3),
+            "explicit_scene_occurrences": sum(
+                row["arguments"][0] != -2 for row in opcode_3
+            ),
+            "coordinate_updates": len(coordinate_updates),
+            "one_axis_coordinate_updates": sum(
+                (row["arguments"][11] == -2) != (row["arguments"][12] == -2)
+                for row in coordinate_updates
+            ),
+            "first_coordinate_update": coordinate_updates[0],
+            "coordinate_order": [
+                "read_old_x_y",
+                "write_selected_event_fields",
+                "clear_old_current_scene_event_cell",
+                "write_new_current_scene_event_cell",
+            ],
+        },
+        "opcode_17_scene_cell": {
+            "occurrences": len(opcode_17),
+            "current_scene_occurrences": sum(
+                row["arguments"][0] == -2 for row in opcode_17
+            ),
+            "explicit_scene_ids": sorted({
+                row["arguments"][0]
+                for row in opcode_17
+                if row["arguments"][0] != -2
+            }),
+            "linear_index": "4096*layer + 64*y + x",
+        },
+        "opcode_26_event_script_add": {
+            "occurrences": len(opcode_26),
+            "current_event_sentinel_occurrences": sum(
+                row["arguments"][1] == -2 for row in opcode_26
+            ),
+            "event_ids": sorted({row["arguments"][1] for row in opcode_26}),
+            "updated_fields": [2, 3, 4],
+            "addition_width_bits": 16,
+        },
+    }
+
+
 def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     script_2 = words(scripts[2])
     script_28 = words(scripts[28])
@@ -1850,6 +1933,7 @@ def main() -> None:
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
+            "state_write_vectors": state_write_vectors(scripts),
             "scene_animation_vectors": scene_animation_vectors(
                 scene_maps, scene_events, sprites, scripts
             ),
