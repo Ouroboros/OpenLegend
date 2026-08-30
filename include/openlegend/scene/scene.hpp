@@ -208,6 +208,11 @@ private:
         int second_picture{};
     };
 
+    struct ThreeStatueAnimationState {
+        int phase{};
+        int value{7664};
+    };
+
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
     [[nodiscard]] SceneStepResult run_event();
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
@@ -258,6 +263,7 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_picture_animation_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
+    [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
     void apply_scripted_walk_step(bool horizontal, int step);
     void set_animated_picture(std::int16_t event_index, std::int16_t picture);
     void commit_header() noexcept;
@@ -300,6 +306,7 @@ private:
     std::optional<PictureAnimationState> picture_animation_state_;
     std::optional<ScriptedWalkState> scripted_walk_state_;
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
+    std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;
     std::string error_;

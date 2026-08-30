@@ -496,6 +496,109 @@ void check_event_dual_picture_animation(const std::filesystem::path& root) {
     }
 }
 
+void check_event_three_statue_animation(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    auto& metadata = snapshot.ranger.scenes[14];
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 32);
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 15);
+    snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, 100);
+    snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{106}, 1);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 14};
+
+    auto result = session.begin_event(655, 3, 33, 15);
+    for (int step = 0; step < 32; ++step) {
+        if (result.kind == SceneStepKind::present && result.wait_ticks == 2U &&
+            session.player_frame() == 7664) {
+            break;
+        }
+        if (result.kind == SceneStepKind::dialogue ||
+            result.kind == SceneStepKind::notice ||
+            result.kind == SceneStepKind::present ||
+            result.kind == SceneStepKind::fade_from_black ||
+            result.kind == SceneStepKind::fade_to_black) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+
+    constexpr std::array<std::uint64_t, 35> expected_hashes{
+        0x310B7251C11479C4ULL,
+        0x5DDA4D227403997BULL,
+        0x5CE5831A41F6660EULL,
+        0x591A01311B415D26ULL,
+        0x7152955C3B8C242FULL,
+        0x5CE5831A41F6660EULL,
+        0xA6194A871EE14761ULL,
+        0x1D768B6E4C5EEBBCULL,
+        0x1DD6D05034E6DC66ULL,
+        0x80251CB6068DBC95ULL,
+        0x8954DA17BAECA653ULL,
+        0x5B0012E1172B4FB9ULL,
+        0x7D434F000AD224BDULL,
+        0x8B2882D4EC890A7DULL,
+        0xD050BFCE553E4DB5ULL,
+        0x0D2441DD86F179FEULL,
+        0x5DDA4D227403997BULL,
+        0x5DDA4D227403997BULL,
+        0x664EBCE027362C73ULL,
+        0x5ED2A1D842AA5AD5ULL,
+        0x8B2BE8610C3745C2ULL,
+        0xE895949267CE417FULL,
+        0x96E75A216A8D511FULL,
+        0xA4CE4369D5FF4E9DULL,
+        0x0799CED98322657AULL,
+        0xF7CED4E019B01ECDULL,
+        0x6A31E5C28A92952BULL,
+        0x7A4BC6B60B7C2ED0ULL,
+        0xB5E2CA7C45A1F75CULL,
+        0xE786D0E064D8264AULL,
+        0xEB527D3369847414ULL,
+        0xF2AF878C6437BDD5ULL,
+        0xFF9227DA5FA68699ULL,
+        0xA1B2AF3219F0C4CBULL,
+        0x22E67F4D16E05DDCULL,
+    };
+    for (std::size_t index = 0U; index < expected_hashes.size(); ++index) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 2U);
+        const auto player_picture = index < 6U
+                                        ? static_cast<std::int16_t>(7664 + index * 2U)
+                                        : static_cast<std::int16_t>(
+                                              std::min<std::size_t>(7688, 7676 + (index - 6U) * 2U));
+        OL_CHECK(session.player_frame() == player_picture);
+        std::array<std::int16_t, 3> event_pictures{7690, 7748, 7806};
+        if (index >= 6U) {
+            const auto offset = static_cast<std::int16_t>((index - 6U) * 2U);
+            event_pictures = {
+                static_cast<std::int16_t>(7690 + offset),
+                static_cast<std::int16_t>(7748 + offset),
+                static_cast<std::int16_t>(7806 + offset),
+            };
+        }
+        for (std::size_t event = 0U; event < event_pictures.size(); ++event) {
+            for (const auto field : {
+                     openlegend::model::SceneEventField::current_picture,
+                     openlegend::model::SceneEventField::end_picture,
+                     openlegend::model::SceneEventField::begin_picture}) {
+                OL_CHECK(snapshot.event_value(14U, event + 2U, field).value_or(-1) ==
+                         event_pictures[event]);
+            }
+        }
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render_map(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        result = session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(session.player_frame() == 7688);
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -708,6 +811,7 @@ int main() {
     check_event_picture_animation(root);
     check_event_scripted_walk(root);
     check_event_dual_picture_animation(root);
+    check_event_three_statue_animation(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;

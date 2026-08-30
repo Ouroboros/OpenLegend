@@ -518,6 +518,7 @@ SceneStepResult SceneSession::begin_event(
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
+    three_statue_animation_state_.reset();
     queued_outputs_.clear();
     return run_event();
 }
@@ -555,6 +556,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     }
     if (dual_picture_animation_state_.has_value()) {
         if (auto frame = advance_dual_picture_animation_frame(); frame.has_value()) {
+            return *frame;
+        }
+    }
+    if (three_statue_animation_state_.has_value()) {
+        if (auto frame = advance_three_statue_animation_frame(); frame.has_value()) {
             return *frame;
         }
     }
@@ -1083,10 +1089,11 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 2;
             break;
         case 57:
-            set_event_field(scene_id_, 2, model::SceneEventField::current_picture, 7746);
-            set_event_field(scene_id_, 3, model::SceneEventField::current_picture, 7804);
-            set_event_field(scene_id_, 4, model::SceneEventField::current_picture, 7862);
+            three_statue_animation_state_ = ThreeStatueAnimationState{};
             program_counter_ += 1;
+            if (auto frame = advance_three_statue_animation_frame(); frame.has_value()) {
+                return *frame;
+            }
             break;
         case 58: {
             program_counter_ += 1;
@@ -1657,6 +1664,38 @@ std::optional<SceneStepResult> SceneSession::advance_dual_picture_animation_fram
     return pending_;
 }
 
+std::optional<SceneStepResult> SceneSession::advance_three_statue_animation_frame() {
+    if (!three_statue_animation_state_.has_value()) {
+        return std::nullopt;
+    }
+    if (three_statue_animation_state_->phase == 0) {
+        if (three_statue_animation_state_->value <= 7674) {
+            player_frame_override_ = static_cast<std::int16_t>(three_statue_animation_state_->value);
+            three_statue_animation_state_->value += 2;
+            pending_ = current_result(SceneStepKind::present);
+            pending_.wait_ticks = 2U;
+            return pending_;
+        }
+        three_statue_animation_state_->phase = 1;
+        three_statue_animation_state_->value = 0;
+    }
+    if (three_statue_animation_state_->value > 56) {
+        three_statue_animation_state_.reset();
+        return std::nullopt;
+    }
+    const auto value = three_statue_animation_state_->value;
+    if (player_frame() < 7688) {
+        player_frame_override_ = static_cast<std::int16_t>(value + 7676);
+    }
+    set_animated_picture(2, static_cast<std::int16_t>(value + 7690));
+    set_animated_picture(3, static_cast<std::int16_t>(value + 7748));
+    set_animated_picture(4, static_cast<std::int16_t>(value + 7806));
+    three_statue_animation_state_->value += 2;
+    pending_ = current_result(SceneStepKind::present);
+    pending_.wait_ticks = 2U;
+    return pending_;
+}
+
 void SceneSession::apply_scripted_walk_step(const bool horizontal, const int step) {
     player_frame_override_.reset();
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
@@ -1710,6 +1749,7 @@ void SceneSession::clear_event() noexcept {
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
+    three_statue_animation_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();

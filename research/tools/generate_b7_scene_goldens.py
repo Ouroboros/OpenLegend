@@ -364,6 +364,52 @@ def dual_picture_animation_trace(
     return result
 
 
+def three_statue_animation_trace(
+    scene_words: tuple[int, ...],
+    event_words: tuple[int, ...],
+    sprites: list[bytes],
+    player_x: int,
+    player_y: int,
+    direction: int,
+) -> list[dict[str, object]]:
+    mutable_events = list(event_words)
+    result: list[dict[str, object]] = []
+    player_picture = 0
+    for player_picture in range(7664, 7676, 2):
+        frame = render_scene(
+            scene_words, tuple(mutable_events), sprites,
+            player_x, player_y, direction,
+            player_picture=player_picture,
+        )
+        result.append({
+            "phase": 0,
+            "player_picture": player_picture,
+            "event_pictures": [
+                mutable_events[event * 11 + 5] for event in (2, 3, 4)
+            ],
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+    for value in range(0, 58, 2):
+        if player_picture < 7688:
+            player_picture = value + 7676
+        pictures = (value + 7690, value + 7748, value + 7806)
+        for event_index, picture in zip((2, 3, 4), pictures):
+            for field in (5, 6, 7):
+                mutable_events[event_index * 11 + field] = picture
+        frame = render_scene(
+            scene_words, tuple(mutable_events), sprites,
+            player_x, player_y, direction,
+            player_picture=player_picture,
+        )
+        result.append({
+            "phase": 1,
+            "player_picture": player_picture,
+            "event_pictures": list(pictures),
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+    return result
+
+
 def scripted_walk_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -551,6 +597,18 @@ def main() -> None:
         script_534[121:127],
     )
 
+    statue_scene_id = 14
+    statue_map = words(scene_maps[statue_scene_id])
+    statue_events = words(scene_events[statue_scene_id])
+    statue_sprites = sentinel(
+        (root / "SDX014").read_bytes(), (root / "SMP014").read_bytes()
+    )
+    script_655 = words(scripts[655])
+    assert script_655[47] == 57
+    opcode_57_script_655 = three_statue_animation_trace(
+        statue_map, statue_events, statue_sprites, 32, 15, 1
+    )
+
     output = {
         "format": 1,
         "source": "current DOS assets; independent Python int16le/RLE/KDEF parser",
@@ -594,6 +652,12 @@ def main() -> None:
                 "scene_id": animation_scene_id,
                 "arguments": list(script_534[121:127]),
                 "frames": opcode_44_script_534,
+            },
+            "opcode_57_script_655": {
+                "scene_id": statue_scene_id,
+                "player_x": 32,
+                "player_y": 15,
+                "frames": opcode_57_script_655,
             },
         },
         "scene_5_weather": {

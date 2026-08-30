@@ -390,6 +390,363 @@
           "frame_fnv1a64": "0xf0453734925d7d4b"
         }
       ]
+    },
+    "opcode_57_script_655": {
+      "scene_id": 14,
+      "player_x": 32,
+      "player_y": 15,
+      "frames": [
+        {
+          "phase": 0,
+          "player_picture": 7664,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0x310b7251c11479c4"
+        },
+        {
+          "phase": 0,
+          "player_picture": 7666,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0x5dda4d227403997b"
+        },
+        {
+          "phase": 0,
+          "player_picture": 7668,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0x5ce5831a41f6660e"
+        },
+        {
+          "phase": 0,
+          "player_picture": 7670,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0x591a01311b415d26"
+        },
+        {
+          "phase": 0,
+          "player_picture": 7672,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0x7152955c3b8c242f"
+        },
+        {
+          "phase": 0,
+          "player_picture": 7674,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0x5ce5831a41f6660e"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7676,
+          "event_pictures": [
+            7690,
+            7748,
+            7806
+          ],
+          "frame_fnv1a64": "0xa6194a871ee14761"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7678,
+          "event_pictures": [
+            7692,
+            7750,
+            7808
+          ],
+          "frame_fnv1a64": "0x1d768b6e4c5eebbc"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7680,
+          "event_pictures": [
+            7694,
+            7752,
+            7810
+          ],
+          "frame_fnv1a64": "0x1dd6d05034e6dc66"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7682,
+          "event_pictures": [
+            7696,
+            7754,
+            7812
+          ],
+          "frame_fnv1a64": "0x80251cb6068dbc95"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7684,
+          "event_pictures": [
+            7698,
+            7756,
+            7814
+          ],
+          "frame_fnv1a64": "0x8954da17baeca653"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7686,
+          "event_pictures": [
+            7700,
+            7758,
+            7816
+          ],
+          "frame_fnv1a64": "0x5b0012e1172b4fb9"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7702,
+            7760,
+            7818
+          ],
+          "frame_fnv1a64": "0x7d434f000ad224bd"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7704,
+            7762,
+            7820
+          ],
+          "frame_fnv1a64": "0x8b2882d4ec890a7d"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7706,
+            7764,
+            7822
+          ],
+          "frame_fnv1a64": "0xd050bfce553e4db5"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7708,
+            7766,
+            7824
+          ],
+          "frame_fnv1a64": "0x0d2441dd86f179fe"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7710,
+            7768,
+            7826
+          ],
+          "frame_fnv1a64": "0x5dda4d227403997b"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7712,
+            7770,
+            7828
+          ],
+          "frame_fnv1a64": "0x5dda4d227403997b"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7714,
+            7772,
+            7830
+          ],
+          "frame_fnv1a64": "0x664ebce027362c73"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7716,
+            7774,
+            7832
+          ],
+          "frame_fnv1a64": "0x5ed2a1d842aa5ad5"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7718,
+            7776,
+            7834
+          ],
+          "frame_fnv1a64": "0x8b2be8610c3745c2"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7720,
+            7778,
+            7836
+          ],
+          "frame_fnv1a64": "0xe895949267ce417f"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7722,
+            7780,
+            7838
+          ],
+          "frame_fnv1a64": "0x96e75a216a8d511f"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7724,
+            7782,
+            7840
+          ],
+          "frame_fnv1a64": "0xa4ce4369d5ff4e9d"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7726,
+            7784,
+            7842
+          ],
+          "frame_fnv1a64": "0x0799ced98322657a"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7728,
+            7786,
+            7844
+          ],
+          "frame_fnv1a64": "0xf7ced4e019b01ecd"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7730,
+            7788,
+            7846
+          ],
+          "frame_fnv1a64": "0x6a31e5c28a92952b"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7732,
+            7790,
+            7848
+          ],
+          "frame_fnv1a64": "0x7a4bc6b60b7c2ed0"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7734,
+            7792,
+            7850
+          ],
+          "frame_fnv1a64": "0xb5e2ca7c45a1f75c"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7736,
+            7794,
+            7852
+          ],
+          "frame_fnv1a64": "0xe786d0e064d8264a"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7738,
+            7796,
+            7854
+          ],
+          "frame_fnv1a64": "0xeb527d3369847414"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7740,
+            7798,
+            7856
+          ],
+          "frame_fnv1a64": "0xf2af878c6437bdd5"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7742,
+            7800,
+            7858
+          ],
+          "frame_fnv1a64": "0xff9227da5fa68699"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7744,
+            7802,
+            7860
+          ],
+          "frame_fnv1a64": "0xa1b2af3219f0c4cb"
+        },
+        {
+          "phase": 1,
+          "player_picture": 7688,
+          "event_pictures": [
+            7746,
+            7804,
+            7862
+          ],
+          "frame_fnv1a64": "0x22e67f4d16e05ddc"
+        }
+      ]
     }
   },
   "scene_5_weather": {
