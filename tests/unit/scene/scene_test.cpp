@@ -689,6 +689,153 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::quit);
 }
 
+void check_event_shop_helpers(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    const auto open_shop = [](openlegend::scene::SceneSession& session) {
+        auto result = session.begin_event(938, 0, 0, 0);
+        for (int step = 0; step < 16 && result.kind == SceneStepKind::dialogue; ++step) {
+            result = session.resume(SceneResponse::acknowledge);
+        }
+        return result;
+    };
+    struct ShopCase {
+        std::int16_t scene;
+        std::int16_t shop;
+        std::vector<std::int16_t> close_events;
+    };
+    const std::array<ShopCase, 6> cases{
+        ShopCase{0, 0, {}},
+        {1, 0, {17, 18}},
+        {3, 1, {15, 16}},
+        {40, 2, {21, 22}},
+        {60, 3, {17, 18}},
+        {61, 4, {10, 11, 12}},
+    };
+    for (const auto& shop_case : cases) {
+        auto snapshot = load_baseline(root);
+        for (const auto event : shop_case.close_events) {
+            static_cast<void>(snapshot.set_event_value(
+                shop_case.scene, event, openlegend::model::SceneEventField::event_3, -1));
+        }
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{
+            data_root, snapshot, random, shop_case.scene};
+        auto result = open_shop(session);
+        OL_CHECK(result.kind == SceneStepKind::shop);
+        OL_CHECK(result.shop_id == shop_case.shop);
+        result = session.resume(SceneResponse::cancel);
+        OL_CHECK(result.kind == SceneStepKind::stay);
+        for (const auto event : shop_case.close_events) {
+            OL_CHECK(snapshot.event_value(
+                         shop_case.scene, event,
+                         openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
+        }
+    }
+
+    auto purchase_snapshot = load_baseline(root);
+    auto& shop = purchase_snapshot.ranger.shops[1];
+    shop.set_word(openlegend::model::shop_word::item_id_begin, 42);
+    shop.set_word(openlegend::model::shop_word::total_begin, 2);
+    shop.set_word(openlegend::model::shop_word::price_begin, 7);
+    purchase_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{174}, 10);
+    static_cast<void>(purchase_snapshot.set_event_value(
+        3U, 15U, openlegend::model::SceneEventField::event_3, -1));
+    static_cast<void>(purchase_snapshot.set_event_value(
+        3U, 16U, openlegend::model::SceneEventField::event_3, -1));
+    openlegend::random::LegacyRandom purchase_random{1U};
+    openlegend::scene::SceneSession purchase_session{
+        data_root, purchase_snapshot, purchase_random, 3};
+    auto purchase = open_shop(purchase_session);
+    OL_CHECK(purchase.kind == SceneStepKind::shop);
+    purchase = purchase_session.resume(SceneResponse::yes, 0);
+    OL_CHECK(purchase.kind == SceneStepKind::dialogue);
+    OL_CHECK(purchase.talk_id == 2976);
+    OL_CHECK(purchase_snapshot.event_value(
+                 3U, 15U, openlegend::model::SceneEventField::event_3).value_or(-1) == -1);
+    for (int step = 0; step < 16 && purchase.kind == SceneStepKind::dialogue; ++step) {
+        purchase = purchase_session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(purchase.kind == SceneStepKind::stay);
+    OL_CHECK(shop.word(openlegend::model::shop_word::total_begin) == 1);
+    bool found_currency = false;
+    bool found_item = false;
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        found_currency = found_currency ||
+                         (purchase_snapshot.ranger.header.inventory_item(slot).value == 174 &&
+                          purchase_snapshot.ranger.header.inventory_count(slot) == 3);
+        found_item = found_item ||
+                     (purchase_snapshot.ranger.header.inventory_item(slot).value == 42 &&
+                      purchase_snapshot.ranger.header.inventory_count(slot) == 1);
+    }
+    OL_CHECK(found_currency);
+    OL_CHECK(found_item);
+    OL_CHECK(purchase_snapshot.event_value(
+                 3U, 15U, openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
+    OL_CHECK(purchase_snapshot.event_value(
+                 3U, 16U, openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
+
+    const std::array<std::pair<std::int16_t, std::vector<std::int16_t>>, 6> hide_cases{
+        std::pair<std::int16_t, std::vector<std::int16_t>>{0, {}},
+        {1, {16, 17, 18}},
+        {3, {14, 15, 16}},
+        {40, {20, 21, 22}},
+        {60, {16, 17, 18}},
+        {61, {9, 10, 11, 12}},
+    };
+    for (const auto& [scene, hidden_events] : hide_cases) {
+        auto snapshot = load_baseline(root);
+        for (const auto event : hidden_events) {
+            for (std::size_t field = 0U; field < 8U; ++field) {
+                static_cast<void>(snapshot.set_event_value(
+                    scene, event,
+                    static_cast<openlegend::model::SceneEventField>(field), 777));
+            }
+        }
+        if (scene == 0) {
+            for (std::size_t field = 0U; field < 8U; ++field) {
+                static_cast<void>(snapshot.set_event_value(
+                    0U, 16U,
+                    static_cast<openlegend::model::SceneEventField>(field), 777));
+            }
+        }
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, scene};
+        OL_CHECK(session.begin_event(939, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(random.state() == 0x41C67EA6U);
+        for (const auto event : hidden_events) {
+            if (scene == 60 && event == 16) {
+                continue;
+            }
+            const std::array<std::int16_t, 8> expected{0, 0, -1, -1, -1, -1, -1, -1};
+            for (std::size_t field = 0U; field < expected.size(); ++field) {
+                OL_CHECK(snapshot.event_value(
+                             scene, event,
+                             static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
+                         expected[field]);
+            }
+        }
+        if (scene == 0) {
+            for (std::size_t field = 0U; field < 8U; ++field) {
+                OL_CHECK(snapshot.event_value(
+                             0U, 16U,
+                             static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) == 777);
+            }
+        }
+        const std::array<std::int16_t, 8> activated{
+            1, 1, 938, -1, -1, 8256, 8256, 8256};
+        for (std::size_t field = 0U; field < activated.size(); ++field) {
+            OL_CHECK(snapshot.event_value(
+                         60U, 16U,
+                         static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
+                     activated[field]);
+        }
+    }
+}
+
 void check_event_all_book_pictures_condition(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1230,6 +1377,7 @@ int main() {
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);
+    check_event_shop_helpers(root);
     check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);

@@ -529,6 +529,7 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         return current_result(SceneStepKind::stay);
     }
     const auto previous_kind = pending_.kind;
+    const auto previous_shop_id = pending_.shop_id;
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
 
@@ -571,6 +572,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         }
     }
 
+    if (continuation_ == PendingContinuation::shop_feedback && queued_outputs_.empty()) {
+        close_shop_events();
+        continuation_ = PendingContinuation::none;
+    }
+
     if (continuation_ == PendingContinuation::conditional) {
         const auto accepted = response == SceneResponse::yes;
         program_counter_ += accepted ? true_offset_ : false_offset_;
@@ -580,10 +586,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         program_counter_ += victory ? true_offset_ : false_offset_;
         continuation_ = PendingContinuation::none;
     } else if (continuation_ == PendingContinuation::shop) {
-        if (response == SceneResponse::yes && pending_.shop_id >= 0 &&
-            static_cast<std::size_t>(pending_.shop_id) < snapshot_.ranger.shops.size() &&
+        bool has_feedback = false;
+        if (response == SceneResponse::yes && previous_shop_id >= 0 &&
+            static_cast<std::size_t>(previous_shop_id) < snapshot_.ranger.shops.size() &&
             value >= 0 && value < 5) {
-            auto& shop = snapshot_.ranger.shops[static_cast<std::size_t>(pending_.shop_id)];
+            auto& shop = snapshot_.ranger.shops[static_cast<std::size_t>(previous_shop_id)];
             const auto slot = static_cast<std::size_t>(value);
             const auto item_id = shop.word(model::shop_word::item_id_begin + slot);
             const auto stock = shop.word(model::shop_word::total_begin + slot);
@@ -591,13 +598,21 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
             if (stock > 0 && inventory_count(174) >= price) {
                 add_inventory(174, static_cast<std::int16_t>(-price));
                 add_inventory(item_id, 1);
-                shop.set_word(model::shop_word::total_begin + slot, static_cast<std::int16_t>(stock - 1));
+                shop.set_word(
+                    model::shop_word::total_begin + slot,
+                    static_cast<std::int16_t>(stock - 1));
                 queue_dialogue(2976, 111, 0);
             } else {
                 queue_dialogue(2975, 111, 0);
             }
+            has_feedback = true;
         }
-        continuation_ = PendingContinuation::none;
+        if (has_feedback) {
+            continuation_ = PendingContinuation::shop_feedback;
+        } else {
+            close_shop_events();
+            continuation_ = PendingContinuation::none;
+        }
     } else if (previous_kind == SceneStepKind::battle &&
                response == SceneResponse::battle_defeat && !queued_outputs_.empty()) {
         queued_outputs_.clear();
@@ -1160,16 +1175,16 @@ SceneStepResult SceneSession::run_event() {
             auto shop = current_result(SceneStepKind::shop);
             shop.shop_id = static_cast<std::int16_t>(shop_id);
             queued_outputs_.push_back(QueuedOutput{shop, {}});
-            continuation_ = PendingContinuation::shop;
             return emit_queued();
         }
         case 65: {
             const auto hide = [this](const std::int16_t event) {
-                set_event_field(scene_id_, event, model::SceneEventField::cannot_walk, 0);
-                set_event_field(scene_id_, event, model::SceneEventField::index, 0);
+                const std::array<std::int16_t, 13> event_change{
+                    -2, event, 0, 0, -1, -1, -1, -1, -1, -1, -2, -2, -2};
+                modify_event(event_change);
             };
-            if (scene_id_ == 0 || scene_id_ == 1) {
-                hide(16);
+            if (scene_id_ == 1) {
+                hide(16); hide(17); hide(18);
             } else if (scene_id_ == 3) {
                 hide(14); hide(15); hide(16);
             } else if (scene_id_ == 40) {
@@ -1479,6 +1494,26 @@ void SceneSession::update_book_event_if_ready() {
     constexpr std::array<std::int16_t, 13> event_change{
         70, 11, 1, 1, 932, -1, -1, 7968, 7968, 7968, -2, -2, -2};
     modify_event(event_change);
+}
+
+void SceneSession::close_shop_events() {
+    std::span<const std::int16_t> events;
+    constexpr std::array<std::int16_t, 2> scene_1{17, 18};
+    constexpr std::array<std::int16_t, 2> scene_3{15, 16};
+    constexpr std::array<std::int16_t, 2> scene_40{21, 22};
+    constexpr std::array<std::int16_t, 2> scene_60{17, 18};
+    constexpr std::array<std::int16_t, 3> scene_61{10, 11, 12};
+    switch (scene_id_) {
+    case 1: events = scene_1; break;
+    case 3: events = scene_3; break;
+    case 40: events = scene_40; break;
+    case 60: events = scene_60; break;
+    case 61: events = scene_61; break;
+    default: break;
+    }
+    for (const auto event : events) {
+        set_event_field(scene_id_, event, model::SceneEventField::event_3, 939);
+    }
 }
 
 void SceneSession::remove_team_role(const std::int16_t role_id) {

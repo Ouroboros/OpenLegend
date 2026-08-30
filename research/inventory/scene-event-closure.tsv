@@ -88,8 +88,8 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 87	0x30C3D	sub_30C3D	event_helper_30C3D	0x3123C	1535	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 88	0x31241	sub_31241	event_helper_31241	0x31280	63	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 89	0x31284	sub_31284	event_helper_31284	0x312A6	34	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-90	0x312A6	sub_312A6	event_helper_312A6	0x3192E	1672	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-91	0x31945	sub_31945	event_helper_31945	0x31C2F	746	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+90	0x312A6	sub_312A6	event_helper_312A6	0x3192E	1672	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::run_event(case64)/resume	research/evidence/functions/Z_DAT/0x312A6.md	Linux Debug openlegend.scene/openlegend.ui; script938 purchase/cancel vectors	not_started	complete full forward/reverse review after B7 implementation closes; audit UI selection compaction
+91	0x31945	sub_31945	event_helper_31945	0x31C2F	746	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::run_event(case65)	research/evidence/functions/Z_DAT/0x31945.md	Linux Debug openlegend.scene/openlegend.ui; independent script939 seed1 refresh vector	not_started	complete full forward/reverse review after B7 implementation closes
 92	0x31C2F	sub_31C2F	event_helper_31C2F	0x31C4A	27	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 93	0x31C4A	sub_31C4A	event_helper_31C4A	0x31C75	43	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 94	0x31C75	sub_31C75	battle_entry	0x31DA0	299	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

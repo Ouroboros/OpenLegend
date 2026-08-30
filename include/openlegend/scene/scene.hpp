@@ -155,6 +155,7 @@ private:
         conditional,
         battle,
         shop,
+        shop_feedback,
     };
 
     struct WeatherParticle {
@@ -273,6 +274,7 @@ private:
     [[nodiscard]] int inventory_count(std::int16_t item_id) const noexcept;
     void add_inventory(std::int16_t item_id, std::int16_t count);
     void update_book_event_if_ready();
+    void close_shop_events();
     void remove_team_role(std::int16_t role_id);
     void clear_role_personal_items(std::int16_t role_id);
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);

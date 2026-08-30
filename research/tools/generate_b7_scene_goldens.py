@@ -645,6 +645,27 @@ def main() -> None:
             chosen.add(opponent)
             tournament_indices.append(group * 6 + opponent)
 
+    script_938 = words(scripts[938])
+    script_939 = words(scripts[939])
+    assert script_938 == (64, -1)
+    assert script_939 == (65, -1)
+    shop_cases = [
+        {"scene": 0, "shop": 0, "close_events": []},
+        {"scene": 1, "shop": 0, "close_events": [17, 18]},
+        {"scene": 3, "shop": 1, "close_events": [15, 16]},
+        {"scene": 40, "shop": 2, "close_events": [21, 22]},
+        {"scene": 60, "shop": 3, "close_events": [17, 18]},
+        {"scene": 61, "shop": 4, "close_events": [10, 11, 12]},
+    ]
+    merchant_hide_cases = [
+        {"scene": 0, "events": []},
+        {"scene": 1, "events": [16, 17, 18]},
+        {"scene": 3, "events": [14, 15, 16]},
+        {"scene": 40, "events": [20, 21, 22]},
+        {"scene": 60, "events": [16, 17, 18]},
+        {"scene": 61, "events": [9, 10, 11, 12]},
+    ]
+
     script_932 = words(scripts[932])
     assert script_932[38] == 59
     opcode_59_targets = [
@@ -728,6 +749,22 @@ def main() -> None:
                 "delay_300_ticks": 300 // 40 + 1,
                 "disabled_event_range": [24, 72],
                 "reward_item": 143,
+            },
+            "opcode_64_script_938": {
+                "script_id": 938,
+                "shop_cases": shop_cases,
+                "currency_item": 174,
+                "success_talk": 2976,
+                "failure_talk": 2975,
+                "close_event_3": 939,
+            },
+            "opcode_65_script_939": {
+                "script_id": 939,
+                "hide_cases": merchant_hide_cases,
+                "hide_fields": [0, 0, -1, -1, -1, -1, -1, -1],
+                "seed_1_random_value": 3,
+                "activated_target": [60, 16],
+                "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "opcode_59_script_932": {
                 "script_id": 932,
