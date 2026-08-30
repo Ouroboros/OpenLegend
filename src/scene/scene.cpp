@@ -517,6 +517,7 @@ SceneStepResult SceneSession::begin_event(
     pan_state_.reset();
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
+    dual_picture_animation_state_.reset();
     queued_outputs_.clear();
     return run_event();
 }
@@ -549,6 +550,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     }
     if (scripted_walk_state_.has_value()) {
         if (auto frame = advance_scripted_walk_frame(); frame.has_value()) {
+            return *frame;
+        }
+    }
+    if (dual_picture_animation_state_.has_value()) {
+        if (auto frame = advance_dual_picture_animation_frame(); frame.has_value()) {
             return *frame;
         }
     }
@@ -1017,10 +1023,12 @@ SceneStepResult SceneSession::run_event() {
             conditional(inventory_count(argument(1)) > 0, 4U, argument(2), argument(3));
             break;
         case 44:
-            set_event_field(scene_id_, argument(1), model::SceneEventField::current_picture, argument(3));
-            set_event_field(scene_id_, argument(4), model::SceneEventField::current_picture,
-                            static_cast<std::int16_t>(argument(5) + argument(3) - argument(2)));
+            dual_picture_animation_state_ = DualPictureAnimationState{
+                argument(1), argument(2), argument(3), argument(4), argument(5)};
             program_counter_ += 7;
+            if (auto frame = advance_dual_picture_animation_frame(); frame.has_value()) {
+                return *frame;
+            }
             break;
         case 49:
             if (argument(1) >= 0 && static_cast<std::size_t>(argument(1)) < snapshot_.ranger.roles.size()) {
@@ -1598,15 +1606,7 @@ std::optional<SceneStepResult> SceneSession::advance_picture_animation_frame() {
         return std::nullopt;
     }
     const auto frame = static_cast<std::int16_t>(picture_animation_state_->frame);
-    if (picture_animation_state_->event_index == -1) {
-        player_frame_override_ = frame;
-    } else {
-        std::array<std::int16_t, 13> arguments{
-            -2, picture_animation_state_->event_index,
-            -2, -2, -2, -2, -2, frame, frame, frame, -2, -2, -2,
-        };
-        modify_event(arguments);
-    }
+    set_animated_picture(picture_animation_state_->event_index, frame);
     picture_animation_state_->frame += 2;
     pending_ = current_result(SceneStepKind::present);
     pending_.wait_ticks = 2U;
@@ -1635,6 +1635,28 @@ std::optional<SceneStepResult> SceneSession::advance_scripted_walk_frame() {
     return pending_;
 }
 
+std::optional<SceneStepResult> SceneSession::advance_dual_picture_animation_frame() {
+    if (!dual_picture_animation_state_.has_value()) {
+        return std::nullopt;
+    }
+    if (dual_picture_animation_state_->first_picture >
+        dual_picture_animation_state_->first_end_picture) {
+        dual_picture_animation_state_.reset();
+        return std::nullopt;
+    }
+    set_animated_picture(
+        dual_picture_animation_state_->first_event,
+        static_cast<std::int16_t>(dual_picture_animation_state_->first_picture));
+    set_animated_picture(
+        dual_picture_animation_state_->second_event,
+        static_cast<std::int16_t>(dual_picture_animation_state_->second_picture));
+    dual_picture_animation_state_->first_picture += 2;
+    dual_picture_animation_state_->second_picture += 2;
+    pending_ = current_result(SceneStepKind::present);
+    pending_.wait_ticks = 2U;
+    return pending_;
+}
+
 void SceneSession::apply_scripted_walk_step(const bool horizontal, const int step) {
     player_frame_override_.reset();
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
@@ -1652,6 +1674,19 @@ void SceneSession::apply_scripted_walk_step(const bool horizontal, const int ste
         update_view_origin();
     }
     commit_header();
+}
+
+void SceneSession::set_animated_picture(
+    const std::int16_t event_index, const std::int16_t picture) {
+    if (event_index == -1) {
+        player_frame_override_ = picture;
+        return;
+    }
+    std::array<std::int16_t, 13> arguments{
+        -2, event_index,
+        -2, -2, -2, -2, -2, picture, picture, picture, -2, -2, -2,
+    };
+    modify_event(arguments);
 }
 
 void SceneSession::commit_header() noexcept {
@@ -1674,6 +1709,7 @@ void SceneSession::clear_event() noexcept {
     pan_state_.reset();
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
+    dual_picture_animation_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();

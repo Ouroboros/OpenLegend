@@ -200,6 +200,14 @@ private:
         int step_y{1};
     };
 
+    struct DualPictureAnimationState {
+        std::int16_t first_event{-1};
+        int first_picture{};
+        int first_end_picture{};
+        std::int16_t second_event{-1};
+        int second_picture{};
+    };
+
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
     [[nodiscard]] SceneStepResult run_event();
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
@@ -249,7 +257,9 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_picture_animation_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
+    [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
     void apply_scripted_walk_step(bool horizontal, int step);
+    void set_animated_picture(std::int16_t event_index, std::int16_t picture);
     void commit_header() noexcept;
     void update_view_origin() noexcept;
     void clear_event() noexcept;
@@ -289,6 +299,7 @@ private:
     std::optional<PanState> pan_state_;
     std::optional<PictureAnimationState> picture_animation_state_;
     std::optional<ScriptedWalkState> scripted_walk_state_;
+    std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;
     std::string error_;

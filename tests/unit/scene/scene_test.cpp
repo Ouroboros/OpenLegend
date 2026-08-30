@@ -415,6 +415,87 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     OL_CHECK(blocked.scene_y() == 23);
 }
 
+void check_event_dual_picture_animation(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    auto& metadata = snapshot.ranger.scenes[53];
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 23);
+    metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 24);
+    snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{49});
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 53};
+
+    auto result = session.begin_event(534, 0, 23, 24);
+    for (int step = 0; step < 512; ++step) {
+        const auto first = snapshot.event_value(
+            53U, 1U, openlegend::model::SceneEventField::current_picture).value_or(-1);
+        const auto second = snapshot.event_value(
+            53U, 2U, openlegend::model::SceneEventField::current_picture).value_or(-1);
+        if (result.kind == SceneStepKind::present && result.wait_ticks == 2U &&
+            first == 6486 && second == 6450 &&
+            session.view_origin_x() == 12 && session.view_origin_y() == 9) {
+            result = session.resume(SceneResponse::acknowledge);
+            break;
+        }
+        if (result.kind == SceneStepKind::question) {
+            result = session.resume(SceneResponse::yes);
+        } else if (result.kind == SceneStepKind::battle) {
+            result = session.resume(SceneResponse::battle_victory);
+        } else if (result.kind == SceneStepKind::shop) {
+            result = session.resume(SceneResponse::cancel);
+        } else if (result.kind == SceneStepKind::dialogue ||
+                   result.kind == SceneStepKind::notice ||
+                   result.kind == SceneStepKind::present ||
+                   result.kind == SceneStepKind::fade_from_black ||
+                   result.kind == SceneStepKind::fade_to_black) {
+            result = session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+
+    constexpr std::array<std::uint64_t, 18> expected_hashes{
+        0xF0453734925D7D4BULL,
+        0x83284B4E46EFD8B3ULL,
+        0xDF52440BFF8700F6ULL,
+        0x24FBF6707AE2232CULL,
+        0x8EF2CCE87521AF73ULL,
+        0x57D2BDA3374E89FFULL,
+        0x53CACA1140353B1BULL,
+        0x98024E3D5C7001DDULL,
+        0xEF0115242C04D81BULL,
+        0x911AF846FF69DF3DULL,
+        0x202532675B2DB0EEULL,
+        0x0DA6B7809F0139EEULL,
+        0x300F40F7E7D30F53ULL,
+        0xEF9C6361C44BE45FULL,
+        0xF76FAAC632BA21C5ULL,
+        0xEDA8A5BC6E3A5A87ULL,
+        0xBC143D9337E610C6ULL,
+        0xF0453734925D7D4BULL,
+    };
+    for (std::size_t index = 0U; index < expected_hashes.size(); ++index) {
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 2U);
+        const auto first = static_cast<std::int16_t>(6486 + index * 2U);
+        const auto second = static_cast<std::int16_t>(6450 + index * 2U);
+        for (const auto field : {
+                 openlegend::model::SceneEventField::current_picture,
+                 openlegend::model::SceneEventField::end_picture,
+                 openlegend::model::SceneEventField::begin_picture}) {
+            OL_CHECK(snapshot.event_value(53U, 1U, field).value_or(-1) == first);
+            OL_CHECK(snapshot.event_value(53U, 2U, field).value_or(-1) == second);
+        }
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render_map(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hashes[index]);
+        result = session.resume(SceneResponse::acknowledge);
+    }
+}
+
 void check_event_state_side_effects(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
 
@@ -626,6 +707,7 @@ int main() {
     check_event_camera_pan(root);
     check_event_picture_animation(root);
     check_event_scripted_walk(root);
+    check_event_dual_picture_animation(root);
     check_event_state_side_effects(root);
     check_event_execution(root);
     return openlegend::test::failures == 0 ? 0 : 1;

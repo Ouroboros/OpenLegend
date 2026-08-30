@@ -287,6 +287,109 @@
           "frame_fnv1a64": "0xf2a1e35490a4f647"
         }
       ]
+    },
+    "opcode_44_script_534": {
+      "scene_id": 53,
+      "arguments": [
+        1,
+        6486,
+        6520,
+        2,
+        6450,
+        6484
+      ],
+      "frames": [
+        {
+          "first_picture": 6486,
+          "second_picture": 6450,
+          "frame_fnv1a64": "0xf0453734925d7d4b"
+        },
+        {
+          "first_picture": 6488,
+          "second_picture": 6452,
+          "frame_fnv1a64": "0x83284b4e46efd8b3"
+        },
+        {
+          "first_picture": 6490,
+          "second_picture": 6454,
+          "frame_fnv1a64": "0xdf52440bff8700f6"
+        },
+        {
+          "first_picture": 6492,
+          "second_picture": 6456,
+          "frame_fnv1a64": "0x24fbf6707ae2232c"
+        },
+        {
+          "first_picture": 6494,
+          "second_picture": 6458,
+          "frame_fnv1a64": "0x8ef2cce87521af73"
+        },
+        {
+          "first_picture": 6496,
+          "second_picture": 6460,
+          "frame_fnv1a64": "0x57d2bda3374e89ff"
+        },
+        {
+          "first_picture": 6498,
+          "second_picture": 6462,
+          "frame_fnv1a64": "0x53caca1140353b1b"
+        },
+        {
+          "first_picture": 6500,
+          "second_picture": 6464,
+          "frame_fnv1a64": "0x98024e3d5c7001dd"
+        },
+        {
+          "first_picture": 6502,
+          "second_picture": 6466,
+          "frame_fnv1a64": "0xef0115242c04d81b"
+        },
+        {
+          "first_picture": 6504,
+          "second_picture": 6468,
+          "frame_fnv1a64": "0x911af846ff69df3d"
+        },
+        {
+          "first_picture": 6506,
+          "second_picture": 6470,
+          "frame_fnv1a64": "0x202532675b2db0ee"
+        },
+        {
+          "first_picture": 6508,
+          "second_picture": 6472,
+          "frame_fnv1a64": "0x0da6b7809f0139ee"
+        },
+        {
+          "first_picture": 6510,
+          "second_picture": 6474,
+          "frame_fnv1a64": "0x300f40f7e7d30f53"
+        },
+        {
+          "first_picture": 6512,
+          "second_picture": 6476,
+          "frame_fnv1a64": "0xef9c6361c44be45f"
+        },
+        {
+          "first_picture": 6514,
+          "second_picture": 6478,
+          "frame_fnv1a64": "0xf76faac632ba21c5"
+        },
+        {
+          "first_picture": 6516,
+          "second_picture": 6480,
+          "frame_fnv1a64": "0xeda8a5bc6e3a5a87"
+        },
+        {
+          "first_picture": 6518,
+          "second_picture": 6482,
+          "frame_fnv1a64": "0xbc143d9337e610c6"
+        },
+        {
+          "first_picture": 6520,
+          "second_picture": 6484,
+          "frame_fnv1a64": "0xf0453734925d7d4b"
+        }
+      ]
     }
   },
   "scene_5_weather": {

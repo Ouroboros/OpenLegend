@@ -330,6 +330,40 @@ def picture_animation_trace(
     return result
 
 
+def dual_picture_animation_trace(
+    scene_words: tuple[int, ...],
+    event_words: tuple[int, ...],
+    sprites: list[bytes],
+    player_x: int,
+    player_y: int,
+    direction: int,
+    view_origin: tuple[int, int],
+    arguments: tuple[int, int, int, int, int, int],
+) -> list[dict[str, object]]:
+    first_event, first_picture, first_end, second_event, second_picture, _ = arguments
+    mutable_events = list(event_words)
+    result: list[dict[str, object]] = []
+    while first_picture <= first_end:
+        for event_index, picture in (
+            (first_event, first_picture), (second_event, second_picture)
+        ):
+            assert event_index >= 0
+            for field in (5, 6, 7):
+                mutable_events[event_index * 11 + field] = picture
+        frame = render_scene(
+            scene_words, tuple(mutable_events), sprites,
+            player_x, player_y, direction, view_origin,
+        )
+        result.append({
+            "first_picture": first_picture,
+            "second_picture": second_picture,
+            "frame_fnv1a64": fnv1a64(frame),
+        })
+        first_picture += 2
+        second_picture += 2
+    return result
+
+
 def scripted_walk_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -504,6 +538,19 @@ def main() -> None:
         walk_map, walk_events, walk_sprites, 28, 24, script_343[31:35]
     )
 
+    script_534 = words(scripts[534])
+    assert script_534[120:127] == (44, 1, 6486, 6520, 2, 6450, 6484)
+    opcode_44_script_534 = dual_picture_animation_trace(
+        animation_map,
+        animation_events,
+        animation_sprites,
+        animation_x,
+        animation_y,
+        1,
+        (12, 9),
+        script_534[121:127],
+    )
+
     output = {
         "format": 1,
         "source": "current DOS assets; independent Python int16le/RLE/KDEF parser",
@@ -542,6 +589,11 @@ def main() -> None:
                 "scene_id": walk_scene_id,
                 "arguments": list(script_343[31:35]),
                 "frames": opcode_30_script_343,
+            },
+            "opcode_44_script_534": {
+                "scene_id": animation_scene_id,
+                "arguments": list(script_534[121:127]),
+                "frames": opcode_44_script_534,
             },
         },
         "scene_5_weather": {
