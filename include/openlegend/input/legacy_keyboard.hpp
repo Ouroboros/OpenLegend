@@ -10,6 +10,10 @@ namespace openlegend::input {
 
 inline constexpr std::size_t kLegacyTranslationSize = 84;
 inline constexpr std::size_t kLegacyKeyStateCount = 256;
+inline constexpr std::uint8_t kLegacyLeftKey = 0x9AU;
+inline constexpr std::uint8_t kLegacyUpKey = 0x9EU;
+inline constexpr std::uint8_t kLegacyDownKey = 0x98U;
+inline constexpr std::uint8_t kLegacyRightKey = 0x9CU;
 
 class LegacyKeyboard {
 public:

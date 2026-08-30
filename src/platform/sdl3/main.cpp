@@ -215,10 +215,10 @@ int main(const int argc, const char* const* argv) {
             }
         }
         game.handle_world_input(
-            keyboard.down(0x9BU),
-            keyboard.down(0x9EU),
-            keyboard.down(0x98U),
-            keyboard.down(0x9DU));
+            keyboard.down(input::kLegacyLeftKey),
+            keyboard.down(input::kLegacyUpKey),
+            keyboard.down(input::kLegacyDownKey),
+            keyboard.down(input::kLegacyRightKey));
         game.advance();
         for (const auto& command : game.take_scene_audio_commands()) {
             if (command.id < 0) {

@@ -115,6 +115,23 @@ void run_keyboard_tests() {
     OL_CHECK(extended.last_raw_scan_code() == 0xC8U);
     OL_CHECK(extended.last_key() == 0U);
 
+    LegacyKeyboard arrows;
+    constexpr std::array<std::pair<HostKey, std::uint8_t>, 4> arrow_states{
+        std::pair{HostKey::left, openlegend::input::kLegacyLeftKey},
+        std::pair{HostKey::up, openlegend::input::kLegacyUpKey},
+        std::pair{HostKey::down, openlegend::input::kLegacyDownKey},
+        std::pair{HostKey::right, openlegend::input::kLegacyRightKey}};
+    constexpr std::array<std::uint8_t, 4> expected_arrow_states{0x9AU, 0x9EU, 0x98U, 0x9CU};
+    for (std::size_t index = 0U; index < arrow_states.size(); ++index) {
+        OL_CHECK(arrow_states[index].second == expected_arrow_states[index]);
+        arrows.handle_host_key(arrow_states[index].first, true);
+        OL_CHECK(arrows.down(arrow_states[index].second));
+        arrows.handle_host_key(arrow_states[index].first, false);
+        OL_CHECK(!arrows.down(arrow_states[index].second));
+    }
+    OL_CHECK(!arrows.down(0x9BU));
+    OL_CHECK(!arrows.down(0x9DU));
+
     LegacyKeyboard print_screen;
     print_screen.handle_host_key(HostKey::print_screen, true);
     OL_CHECK(print_screen.state(0x00U) == 0U);
