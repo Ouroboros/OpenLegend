@@ -670,6 +670,19 @@ def scene_animation_vectors(
     scripts: list[bytes],
 ) -> dict[str, object]:
     duplicate_scenes = []
+    trigger_counts = {
+        "event_2": {"minus_one": 0, "other_nonpositive": 0, "positive": 0},
+        "event_3": {"minus_one": 0, "other_nonpositive": 0, "positive": 0},
+    }
+    for payload in scene_events:
+        event_words = words(payload)
+        for event in range(200):
+            for name, field in (("event_2", 3), ("event_3", 4)):
+                value = event_words[event * 11 + field]
+                category = "minus_one" if value == -1 else (
+                    "positive" if value > 0 else "other_nonpositive"
+                )
+                trigger_counts[name][category] += 1
     for scene_id, payload in enumerate(scene_maps):
         counts: dict[int, int] = {}
         for event in words(payload)[3 * 4096:4 * 4096]:
@@ -723,6 +736,17 @@ def scene_animation_vectors(
             "event_1_script": 825,
             "script_words": list(script_825),
             "outputs": ["present", "notice_style_52"],
+        },
+        "trigger_field_counts": trigger_counts,
+        "item_event_outputs": {
+            "no_event": ["stay"],
+            "event_script_0": ["present", "stay"],
+            "event_script_825": ["present", "notice_style_52"],
+        },
+        "automatic_event_outputs": {
+            "event_script_minus_1": ["fallback"],
+            "event_script_0": ["present", "stay"],
+            "event_script_825": ["present", "notice_style_52"],
         },
     }
 
@@ -806,6 +830,7 @@ def status_notice_vectors(
     base_frame: bytes,
     palette: list[tuple[int, int, int]],
     scripts: list[bytes],
+    ranger: bytes,
 ) -> dict[str, object]:
     ascii_font = (root / "FONT.X16").read_bytes()
     big5_font = (root / "FONT.C16").read_bytes()
@@ -879,6 +904,35 @@ def status_notice_vectors(
             "colors": [5, 7],
             "frame_fnv1a64": fnv1a64(pixels),
         }
+
+    title_lengths = [
+        ranger[97_076 + scene * 52 + 2:97_076 + scene * 52 + 12].find(b"\0")
+        for scene in range(84)
+    ]
+    assert all(length >= 0 for length in title_lengths)
+    title_field = ranger[97_076 + 70 * 52 + 2:97_076 + 70 * 52 + 12]
+    title_length = title_field.find(b"\0")
+    if title_length < 0:
+        title_length = len(title_field)
+    title = title_field[:title_length] + b"\0"
+    title_x = 150 - 4 * title_length
+    title_width = 8 * title_length + 20
+    title_pixels = bytearray(base_frame)
+    panel(title_pixels, title_x, 10, title_width, 27)
+    draw_legacy_text(
+        title_pixels, title_x + 10, 15, title, ascii_font, big5_font, 0x05, 0x07
+    )
+    output["scene_70_title"] = {
+        "text_hex": title.hex(),
+        "byte_length": title_length,
+        "all_metadata_titles_nul_terminated": True,
+        "metadata_title_max_bytes": max(title_lengths),
+        "panel": [title_x, 10, title_width, 27],
+        "text_position": [title_x + 10, 15],
+        "colors": [5, 7],
+        "outputs": ["scene_title", "present", "auto_event_check"],
+        "frame_fnv1a64": fnv1a64(title_pixels),
+    }
     return output
 
 
@@ -1317,7 +1371,9 @@ def main() -> None:
             "scene_archive_state_vectors": scene_archive_state_vectors(
                 ranger, scene_maps, scene_events, scripts
             ),
-            "status_notice_vectors": status_notice_vectors(root, frame, palette, scripts),
+            "status_notice_vectors": status_notice_vectors(
+                root, frame, palette, scripts, ranger
+            ),
             "opcode_59_script_932": {
                 "script_id": 932,
                 "program_counter": 38,

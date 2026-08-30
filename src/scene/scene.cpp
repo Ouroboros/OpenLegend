@@ -541,6 +541,8 @@ SceneStepResult SceneSession::interact() {
     const auto y = scene_y_ + delta_y;
     const auto event = event_at(x, y);
     if (event.has_value()) {
+        event_context_ = EventContext{
+            *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1};
         const auto script = event_field(scene_id_, *event, model::SceneEventField::event_1);
         if (script.has_value() && *script > 0) {
             (void)prepare_event(
@@ -562,12 +564,15 @@ SceneStepResult SceneSession::use_item(const std::int16_t item_id) {
     if (!event.has_value()) {
         return current_result(SceneStepKind::stay);
     }
+    event_context_ = EventContext{
+        *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), item_id};
     const auto script = event_field(scene_id_, *event, model::SceneEventField::event_2);
-    if (!script.has_value() || *script <= 0) {
-        return current_result(SceneStepKind::stay);
+    if (script.has_value() && *script > 0) {
+        (void)prepare_event(
+            *script, *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), item_id);
     }
-    return begin_event(
-        *script, *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), item_id);
+    pending_ = current_result(SceneStepKind::present);
+    return pending_;
 }
 
 SceneStepResult SceneSession::open_ui() const noexcept {
@@ -628,7 +633,9 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     pending_text_.clear();
 
     if (previous_kind == SceneStepKind::scene_title) {
-        return run_auto_event(SceneStepKind::stay);
+        continuation_ = PendingContinuation::scene_title;
+        pending_ = current_result(SceneStepKind::present);
+        return pending_;
     }
     if (previous_kind == SceneStepKind::return_world || previous_kind == SceneStepKind::quit ||
         previous_kind == SceneStepKind::open_ui) {
@@ -670,6 +677,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         if (auto step = advance_tournament_trial(previous_kind, response); step.has_value()) {
             return *step;
         }
+    }
+
+    if (continuation_ == PendingContinuation::scene_title) {
+        continuation_ = PendingContinuation::none;
+        return run_auto_event(SceneStepKind::stay);
     }
 
     if (continuation_ == PendingContinuation::shop_feedback && queued_outputs_.empty()) {
@@ -1345,18 +1357,30 @@ SceneStepResult SceneSession::run_event() {
 
 SceneStepResult SceneSession::run_auto_event(const SceneStepKind fallback) {
     const auto event = event_at(scene_x_, scene_y_);
-    if (event.has_value()) {
-        const auto script = event_field(scene_id_, *event, model::SceneEventField::event_3);
-        if (script.has_value() && *script > 0) {
-            return begin_event(
-                *script,
-                *event,
-                static_cast<std::int16_t>(scene_x_),
-                static_cast<std::int16_t>(scene_y_));
-        }
+    if (!event.has_value()) {
+        pending_ = current_result(SceneStepKind::stay);
+        return current_result(fallback);
     }
-    pending_ = current_result(SceneStepKind::stay);
-    return current_result(fallback);
+    const auto script = event_field(scene_id_, *event, model::SceneEventField::event_3);
+    if (!script.has_value() || *script == -1) {
+        pending_ = current_result(SceneStepKind::stay);
+        return current_result(fallback);
+    }
+    event_context_ = EventContext{
+        *event,
+        static_cast<std::int16_t>(scene_x_),
+        static_cast<std::int16_t>(scene_y_),
+        -1};
+    if (*script > 0) {
+        (void)prepare_event(
+            *script,
+            *event,
+            static_cast<std::int16_t>(scene_x_),
+            static_cast<std::int16_t>(scene_y_),
+            -1);
+    }
+    pending_ = current_result(SceneStepKind::present);
+    return pending_;
 }
 
 void SceneSession::periodic_tick() {
@@ -2742,6 +2766,23 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         return render::draw_legacy_text(
             framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
+    if (pending_.kind == SceneStepKind::scene_title) {
+        const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
+        const auto length = static_cast<int>(
+            std::distance(pending_text_.begin(), terminator));
+        const auto x = 150 - 4 * length;
+        constexpr int y = 10;
+        const auto width = 8 * length + 20;
+        if (!draw_panel(framebuffer, x, y, width, 27)) {
+            return false;
+        }
+        if (pending_text_.empty()) {
+            return true;
+        }
+        render::Big5GlyphCache cache{big5_font_};
+        return render::draw_legacy_text(
+            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+    }
     int x = 12;
     int y = 12;
     int width = 218;
@@ -2754,11 +2795,6 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         case 5: x = 94; y = 130; break;
         default: x = 94; y = 17; break;
         }
-    } else if (pending_.kind == SceneStepKind::scene_title) {
-        width = 140;
-        height = 27;
-        x = 90;
-        y = 10;
     } else {
         width = 212;
         height = 27;

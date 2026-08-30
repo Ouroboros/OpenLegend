@@ -360,6 +360,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
     OL_CHECK(new_game.render());
     new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.render());
+    new_game.advance();
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());

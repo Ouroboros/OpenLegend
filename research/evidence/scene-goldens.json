@@ -1503,6 +1503,44 @@
           "present",
           "notice_style_52"
         ]
+      },
+      "trigger_field_counts": {
+        "event_2": {
+          "minus_one": 1215,
+          "other_nonpositive": 18745,
+          "positive": 40
+        },
+        "event_3": {
+          "minus_one": 1153,
+          "other_nonpositive": 18748,
+          "positive": 99
+        }
+      },
+      "item_event_outputs": {
+        "no_event": [
+          "stay"
+        ],
+        "event_script_0": [
+          "present",
+          "stay"
+        ],
+        "event_script_825": [
+          "present",
+          "notice_style_52"
+        ]
+      },
+      "automatic_event_outputs": {
+        "event_script_minus_1": [
+          "fallback"
+        ],
+        "event_script_0": [
+          "present",
+          "stay"
+        ],
+        "event_script_825": [
+          "present",
+          "notice_style_52"
+        ]
       }
     },
     "scene_archive_state_vectors": {
@@ -1634,6 +1672,32 @@
           7
         ],
         "frame_fnv1a64": "0x5678c57a93ec10c4"
+      },
+      "scene_70_title": {
+        "text_hex": "a544a8a4aabaae6100",
+        "byte_length": 8,
+        "all_metadata_titles_nul_terminated": true,
+        "metadata_title_max_bytes": 8,
+        "panel": [
+          118,
+          10,
+          84,
+          27
+        ],
+        "text_position": [
+          128,
+          15
+        ],
+        "colors": [
+          5,
+          7
+        ],
+        "outputs": [
+          "scene_title",
+          "present",
+          "auto_event_check"
+        ],
+        "frame_fnv1a64": "0xc5a8777e049759f2"
       }
     },
     "opcode_59_script_932": {

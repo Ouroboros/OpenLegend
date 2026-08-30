@@ -172,6 +172,7 @@ private:
         battle,
         shop,
         shop_feedback,
+        scene_title,
     };
 
     struct WeatherParticle {
