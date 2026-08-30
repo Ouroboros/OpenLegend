@@ -27,6 +27,26 @@ bool IndexedFramebuffer::fill_rectangle(
     return true;
 }
 
+bool IndexedFramebuffer::outline_rectangle(
+    const int x,
+    const int y,
+    const std::uint16_t rectangle_width,
+    const std::uint16_t rectangle_height,
+    const std::uint8_t color) noexcept {
+    if (rectangle_width == 0U || rectangle_height == 0U) {
+        return false;
+    }
+    const auto right = x + static_cast<int>(rectangle_width);
+    const auto bottom = y + static_cast<int>(rectangle_height);
+    if (x < 0 || y < 0 || right > width || bottom > height) {
+        return false;
+    }
+    return fill_rectangle(x, y, rectangle_width, 1U, color) &&
+           fill_rectangle(x, y, 1U, rectangle_height, color) &&
+           fill_rectangle(right - 1, y, 1U, rectangle_height, color) &&
+           fill_rectangle(x, bottom - 1, rectangle_width, 1U, color);
+}
+
 void IndexedFramebuffer::set_palette(const openlegend::compat::LegacyPalette& palette) noexcept {
     palette_ = palette;
 }

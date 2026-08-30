@@ -1471,6 +1471,26 @@
         ]
       }
     },
+    "rectangle_outline_vectors": {
+      "caller": "sub_2A186 item grid",
+      "geometry": [
+        55,
+        62,
+        40,
+        40
+      ],
+      "draw_order": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ],
+      "normal_color": 0,
+      "normal_frame_fnv1a64": "0x63eb8c2a7f900ed9",
+      "selected_color": 255,
+      "selected_frame_fnv1a64": "0xe154c07ba899cba5",
+      "interior_preserved": 7
+    },
     "state_write_vectors": {
       "opcode_3_event_fields": {
         "occurrences": 2320,

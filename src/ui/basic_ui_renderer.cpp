@@ -327,7 +327,8 @@ bool BasicUiRenderer::draw_box(
     const int y,
     const std::uint16_t width,
     const std::uint16_t height) {
-    if (width < 2U || height < 2U || !framebuffer.fill_rectangle(x, y, width, height, 0xFFU)) {
+    if (width < 2U || height < 2U ||
+        !framebuffer.outline_rectangle(x, y, width, height, 0xFFU)) {
         return false;
     }
     return framebuffer.fill_rectangle(

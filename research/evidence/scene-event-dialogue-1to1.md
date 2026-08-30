@@ -116,6 +116,12 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 真实资产测试使用脚本 274 验证 opcode 0 在两次场景层写入后产生呈现边界，使用脚本 931 验证 `对话 → present → fade_to_black → 休息/换位 → present → fade_from_black → 对话` 的阻塞次序；64/65 帧 RGB6 序列继续由 render 单元测试逐帧固定。
 
+### 4.4 物品格直角边框 primitive
+
+`sub_2D501` 只负责依次绘制矩形上、左、右、下四条1像素边，不填充内部。唯一调用者 `sub_2A186` 对5×3物品格先绘制颜色0的 `40×40` 普通边框和物品图，再以颜色255重画选中格。现代 `IndexedFramebuffer::outline_rectangle` 保留四次填充顺序并由现有 UI `draw_box` 实际复用；独立背景色7 oracle 固定普通框 `0x63eb8c2a7f900ed9`、选中框 `0xe154c07ba899cba5`，内部 `(56,63)` 保持7。
+
+本函数 closure 不代表 `sub_2A186` 全界面完成；物品图标、15格分页和详情仍在 `ui-closure.tsv` 保持 `pending_mapping`。
+
 ## 5. TALK 分页
 
 `sub_2CC21` 在固定 `218×57` 对话框内调用文本例程并在每页后阻塞等待输入。当前资产使用 ASCII `'*'` 作为显式换行；Big5 trail byte 合法范围不包含 `0x2A`，因此可无歧义识别。

@@ -54,6 +54,22 @@ void run_framebuffer_tests() {
     OL_CHECK(!framebuffer.fill_rectangle(-1, 0, 1U, 1U, 0U));
     OL_CHECK(!framebuffer.fill_rectangle(319, 199, 2U, 1U, 0U));
 
+    framebuffer.clear(7U);
+    OL_CHECK(framebuffer.outline_rectangle(55, 62, 40U, 40U, 0U));
+    OL_CHECK(framebuffer.row(62)[55] == 0U);
+    OL_CHECK(framebuffer.row(62)[94] == 0U);
+    OL_CHECK(framebuffer.row(101)[55] == 0U);
+    OL_CHECK(framebuffer.row(101)[94] == 0U);
+    OL_CHECK(framebuffer.row(63)[56] == 7U);
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x63EB8C2A7F900ED9ULL);
+
+    framebuffer.clear(7U);
+    OL_CHECK(framebuffer.outline_rectangle(55, 62, 40U, 40U, 0xFFU));
+    OL_CHECK(framebuffer.row(63)[56] == 7U);
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xE154C07BA899CBA5ULL);
+    OL_CHECK(!framebuffer.outline_rectangle(55, 62, 0U, 40U, 0xFFU));
+    OL_CHECK(!framebuffer.outline_rectangle(300, 180, 40U, 40U, 0xFFU));
+
     OL_CHECK(openlegend::render::project_isometric(0, 0, 160, 100) ==
              (openlegend::render::ScreenPoint{160, 100}));
     OL_CHECK(openlegend::render::project_isometric(1, 0, 160, 100) ==

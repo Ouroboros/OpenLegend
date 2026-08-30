@@ -7,6 +7,7 @@
 
 - `sub_20039 @ 0x20039`：把 64,000 字节后备缓冲提交到 VGA `A000:0000`。
 - `sub_2010A @ 0x2010A`：按 320 字节 stride 逐行填充矩形。
+- `sub_2D501 @ 0x2D501`：以上、左、右、下顺序调用四次矩形填充形成1像素直角框，不改内部像素；现代映射为 `IndexedFramebuffer::outline_rectangle`。
 - 核心真值固定为 `320×200×8-bit indexed framebuffer`；DOS index 字节不可直接作为现代颜色提交，宿主 RGBA 只在最终显示兼容层生成。
 
 ## 2. RLE 精灵 `sub_20354 @ 0x20354`
@@ -132,7 +133,8 @@ screenY =  9*dx +  9*dy - 81
 
 对应测试：`tests/unit/render/legacy_render_test.cpp`。
 
-- 合成矩形、RLE 左右裁剪、两像素字形覆盖、shadow-mask、fade 和深度旋转向量；
+- 合成矩形、直角框内部保持、RLE 左右裁剪、两像素字形覆盖、shadow-mask、fade 和深度旋转向量；
+- 原物品格 `(55,62,40,40)` 在背景色7上的普通色0/选中色255边框 FNV-1a：`63eb8c2a7f900ed9` / `e154c07ba899cba5`；
 - `TITLE[0] + CLOUD[0] + MMAP[0] + ASCII/Big5` 组合画面 FNV-1a：`cf173ba0515b7807`；
 - 全部 14,101 个字形序列 FNV-1a：`6fa3df724d833333`；
 - 全部 78,014 个非空 RLE 帧四角裁剪组合 FNV-1a：`fce6bf593964e433`；

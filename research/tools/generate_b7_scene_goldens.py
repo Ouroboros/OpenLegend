@@ -613,6 +613,39 @@ def opcode_coverage(entries: list[bytes]) -> dict[str, object]:
     }
 
 
+def rectangle_outline_vectors() -> dict[str, object]:
+    x, y, width, height = 55, 62, 40, 40
+
+    def render(color: int) -> bytearray:
+        framebuffer = bytearray([7]) * (320 * 200)
+
+        def fill(left: int, top: int, rectangle_width: int, rectangle_height: int) -> None:
+            for destination_y in range(top, top + rectangle_height):
+                begin = destination_y * 320 + left
+                framebuffer[begin:begin + rectangle_width] = bytes([color]) * rectangle_width
+
+        fill(x, y, width, 1)
+        fill(x, y, 1, height)
+        fill(x + width - 1, y, 1, height)
+        fill(x, y + height - 1, width, 1)
+        return framebuffer
+
+    normal = render(0)
+    selected = render(255)
+    assert normal[(y + 1) * 320 + x + 1] == 7
+    assert selected[(y + 1) * 320 + x + 1] == 7
+    return {
+        "caller": "sub_2A186 item grid",
+        "geometry": [x, y, width, height],
+        "draw_order": ["top", "left", "right", "bottom"],
+        "normal_color": 0,
+        "normal_frame_fnv1a64": fnv1a64(normal),
+        "selected_color": 255,
+        "selected_frame_fnv1a64": fnv1a64(selected),
+        "interior_preserved": 7,
+    }
+
+
 def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: dict[int, list[dict[str, object]]] = {3: [], 17: [], 26: []}
     for script_id, payload in enumerate(scripts):
@@ -1933,6 +1966,7 @@ def main() -> None:
                 "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
+            "rectangle_outline_vectors": rectangle_outline_vectors(),
             "state_write_vectors": state_write_vectors(scripts),
             "scene_animation_vectors": scene_animation_vectors(
                 scene_maps, scene_events, sprites, scripts

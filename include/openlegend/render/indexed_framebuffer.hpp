@@ -21,6 +21,12 @@ public:
         std::uint16_t rectangle_width,
         std::uint16_t rectangle_height,
         std::uint8_t color) noexcept;
+    [[nodiscard]] bool outline_rectangle(
+        int x,
+        int y,
+        std::uint16_t rectangle_width,
+        std::uint16_t rectangle_height,
+        std::uint8_t color) noexcept;
 
     void set_palette(const openlegend::compat::LegacyPalette& palette) noexcept;
 
