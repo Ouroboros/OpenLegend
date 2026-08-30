@@ -34,10 +34,10 @@ namespace {
     return loaded ? std::move(*loaded.snapshot) : openlegend::model::GameSnapshot{};
 }
 
-class Opcode24DataRoot {
+class SyntheticKdefDataRoot {
 public:
-    explicit Opcode24DataRoot(const std::filesystem::path& source)
-        : path_(std::filesystem::temp_directory_path() / "openlegend-scene-opcode24") {
+    explicit SyntheticKdefDataRoot(const std::filesystem::path& source)
+        : path_(std::filesystem::temp_directory_path() / "openlegend-scene-synthetic-kdef") {
         std::error_code error;
         std::filesystem::remove_all(path_, error);
         error.clear();
@@ -64,6 +64,23 @@ public:
                 for (const auto word : std::array<std::int16_t, 4>{68, 2, 123, 1}) {
                     append_i16(group, word);
                 }
+            } else if (script == 3U) {
+                for (const auto word : std::array<std::int16_t, 7>{4, 123, 0, 3, 2, 200, 1}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 4U) {
+                for (const auto word : std::array<std::int16_t, 2>{13, 14}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 5U) {
+                for (const auto word : std::array<std::int16_t, 7>{16, 55, 0, 3, 2, 201, 1}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 6U) {
+                for (const auto word : std::array<std::int16_t, 12>{
+                         6, 77, 0, 4, 9, 2, 202, 1, -1, 2, 203, 1}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -72,7 +89,7 @@ public:
         OL_CHECK(write(path_ / "KDEF.GRP", group));
     }
 
-    ~Opcode24DataRoot() {
+    ~SyntheticKdefDataRoot() {
         std::error_code error;
         std::filesystem::remove_all(path_, error);
     }
@@ -301,7 +318,7 @@ void check_event_load_menu(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
 
-    const Opcode24DataRoot synthetic{root};
+    const SyntheticKdefDataRoot synthetic{root};
     const openlegend::resource::DataRoot data_root{synthetic.path()};
     auto snapshot = load_baseline(root);
     openlegend::random::LegacyRandom random{1U};
@@ -376,6 +393,73 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = invalid_opcode.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::stay);
     OL_CHECK(inventory_count(invalid_snapshot.ranger, 123) == item_count_before);
+
+    auto item_match_snapshot = load_baseline(root);
+    const auto matched_count_before = inventory_count(item_match_snapshot.ranger, 200);
+    openlegend::random::LegacyRandom item_match_random{1U};
+    openlegend::scene::SceneSession item_match{
+        data_root, item_match_snapshot, item_match_random, 70};
+    OL_CHECK(finish_scene_title(item_match).kind == SceneStepKind::stay);
+    result = item_match.begin_event(3, 0, 44, 29, 123);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(item_match_snapshot.ranger, 200) == matched_count_before + 1);
+
+    auto item_miss_snapshot = load_baseline(root);
+    const auto missed_count_before = inventory_count(item_miss_snapshot.ranger, 200);
+    openlegend::random::LegacyRandom item_miss_random{1U};
+    openlegend::scene::SceneSession item_miss{
+        data_root, item_miss_snapshot, item_miss_random, 70};
+    OL_CHECK(finish_scene_title(item_miss).kind == SceneStepKind::stay);
+    result = item_miss.begin_event(3, 0, 44, 29, 124);
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(item_miss_snapshot.ranger, 200) == missed_count_before);
+
+    auto fade_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom fade_random{1U};
+    openlegend::scene::SceneSession fade_session{
+        data_root, fade_snapshot, fade_random, 70};
+    OL_CHECK(finish_scene_title(fade_session).kind == SceneStepKind::stay);
+    result = fade_session.begin_event(4, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+    result = fade_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    OL_CHECK(fade_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+
+    auto party_match_snapshot = load_baseline(root);
+    party_match_snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{-1});
+    party_match_snapshot.ranger.header.set_team_member(5U, openlegend::model::CharacterId{55});
+    const auto party_count_before = inventory_count(party_match_snapshot.ranger, 201);
+    openlegend::random::LegacyRandom party_match_random{1U};
+    openlegend::scene::SceneSession party_match{
+        data_root, party_match_snapshot, party_match_random, 70};
+    OL_CHECK(finish_scene_title(party_match).kind == SceneStepKind::stay);
+    result = party_match.begin_event(5, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(party_match_snapshot.ranger, 201) == party_count_before + 1);
+
+    auto battle_win_snapshot = load_baseline(root);
+    const auto win_count_before = inventory_count(battle_win_snapshot.ranger, 202);
+    openlegend::random::LegacyRandom battle_win_random{1U};
+    openlegend::scene::SceneSession battle_win{
+        data_root, battle_win_snapshot, battle_win_random, 70};
+    OL_CHECK(finish_scene_title(battle_win).kind == SceneStepKind::stay);
+    result = battle_win.begin_event(6, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 77);
+    result = battle_win.resume(SceneResponse::battle_victory);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(battle_win_snapshot.ranger, 202) == win_count_before + 1);
+
+    auto battle_loss_snapshot = load_baseline(root);
+    const auto loss_count_before = inventory_count(battle_loss_snapshot.ranger, 203);
+    openlegend::random::LegacyRandom battle_loss_random{1U};
+    openlegend::scene::SceneSession battle_loss{
+        data_root, battle_loss_snapshot, battle_loss_random, 70};
+    OL_CHECK(finish_scene_title(battle_loss).kind == SceneStepKind::stay);
+    result = battle_loss.begin_event(6, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 77);
+    result = battle_loss.resume(SceneResponse::battle_defeat);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(battle_loss_snapshot.ranger, 203) == loss_count_before + 1);
 }
 
 void check_scene_render_and_movement(const std::filesystem::path& root) {

@@ -153,7 +153,7 @@ Linux app Debug BUILD 脚本：13/13 测试通过，包括：
 
 - 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
 - HDGRP 115帧以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
-- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode24/68 的载入菜单与 PC 不推进边界；
+- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode4/6/13/14/16/24/68 的条件、同步、载入菜单与 PC 不推进边界；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
 - 真实 script494 的 opcode8 立即空音频与离场 music3 覆盖；
