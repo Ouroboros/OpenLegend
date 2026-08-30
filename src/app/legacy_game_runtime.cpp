@@ -69,6 +69,8 @@ constexpr std::array<std::uint8_t, 26> kCannotLeaveProtagonist{
     case scene::SceneStepKind::notice: return "notice";
     case scene::SceneStepKind::question: return "question";
     case scene::SceneStepKind::wait_key: return "wait_key";
+    case scene::SceneStepKind::death_menu: return "death_menu";
+    case scene::SceneStepKind::load_slot: return "load_slot";
     case scene::SceneStepKind::battle: return "battle";
     case scene::SceneStepKind::shop: return "shop";
     case scene::SceneStepKind::open_ui: return "open_ui";
@@ -249,6 +251,9 @@ void LegacyGameRuntime::handle_key(
             } else if (translated_key == 0x1BU) {
                 handle_scene_result(scene_session_->resume(scene::SceneResponse::cancel));
             }
+        } else if (pending_kind == scene::SceneStepKind::death_menu) {
+            handle_scene_result(scene_session_->resume(
+                scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
         } else if (pending_kind == scene::SceneStepKind::dialogue ||
                    pending_kind == scene::SceneStepKind::notice ||
                    pending_kind == scene::SceneStepKind::scene_title ||
@@ -382,6 +387,10 @@ void LegacyGameRuntime::perform_pending_io() {
         auto loaded = persistence::load_numbered_slot(
             data_root_path_, save_slot(pending_slot_));
         if (!loaded) {
+            if (error_return_view_ == LegacyGameView::scene && scene_session_ != nullptr &&
+                scene_session_->pending().kind == scene::SceneStepKind::load_slot) {
+                handle_scene_result(scene_session_->resume(scene::SceneResponse::cancel));
+            }
             show_error(
                 std::string{persistence::persistence_status_message(loaded.status)},
                 error_return_view_);
@@ -504,6 +513,13 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         ending_complete_ = result.ending_complete;
         set_view(LegacyGameView::exited, "scene requested quit");
         break;
+    case scene::SceneStepKind::load_slot:
+        if (result.save_slot >= 0 && result.save_slot <= 2) {
+            pending_slot_ = static_cast<std::uint8_t>(result.save_slot);
+            pending_io_ = PendingIo::load;
+            error_return_view_ = LegacyGameView::scene;
+        }
+        break;
     case scene::SceneStepKind::battle:
         battle_request_ = result.battle_id;
         break;
@@ -529,6 +545,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::dialogue:
     case scene::SceneStepKind::question:
     case scene::SceneStepKind::wait_key:
+    case scene::SceneStepKind::death_menu:
     case scene::SceneStepKind::notice:
     case scene::SceneStepKind::shop:
         break;

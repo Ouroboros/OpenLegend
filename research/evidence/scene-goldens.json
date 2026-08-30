@@ -1147,7 +1147,29 @@
         24,
         72
       ],
-      "reward_item": 143
+      "reward_item": 143,
+      "death_menu": {
+        "image_sha256": "c2fea09d332a38e5e84ebeb0d7054508021185a6ae8f3130ce8a87b2d7050caa",
+        "fixed_date": [
+          1996,
+          1,
+          1
+        ],
+        "selected_frame_fnv1a64": [
+          "0x9da84526f6317a4a",
+          "0x5f72cf3141ce8b24",
+          "0xb2db9b6f5ea184de",
+          "0x11f91fd0e5becceb"
+        ],
+        "confirm_frame_fnv1a64": "0x4ba394e637cc051e",
+        "cleared_frame_fnv1a64": "0xdd14fcc6528cab25",
+        "menu_items_hex": [
+          "b8fca44ab669abd7a44000",
+          "b8fca44ab669abd7a44700",
+          "b8fca44ab669abd7a45400",
+          "c2f7b67dbacec4b1a56800"
+        ]
+      }
     },
     "opcode_64_script_938": {
       "script_id": 938,

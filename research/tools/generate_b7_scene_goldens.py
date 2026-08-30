@@ -94,6 +94,51 @@ def draw_sprite(pixels: bytearray, frame: bytes, anchor_x: int, anchor_y: int) -
     assert cursor == len(frame)
 
 
+def draw_legacy_text(
+    pixels: bytearray,
+    x: int,
+    y: int,
+    text: bytes,
+    ascii_font: bytes,
+    big5_font: bytes,
+    shadow: int,
+    foreground: int,
+) -> None:
+    cursor = 0
+    while True:
+        first = text[cursor]
+        cursor += 1
+        if first == 0:
+            return
+        if first > 0x7F:
+            second = text[cursor]
+            cursor += 1
+            trail = second - 0x40 if 0x40 <= second <= 0x7E else second - 0x62
+            glyph_index = (first - 0xA1) * 157 + trail
+            glyph = big5_font[glyph_index * 32:(glyph_index + 1) * 32]
+            assert len(glyph) == 32 and 0 <= x and x + 16 < 320 and 0 <= y and y + 16 <= 200
+            for row in range(16):
+                for byte_index in range(2):
+                    bits = glyph[row * 2 + byte_index]
+                    for bit in range(8):
+                        if bits & (0x80 >> bit):
+                            offset = (y + row) * 320 + x + byte_index * 8 + bit
+                            pixels[offset] = foreground
+                            pixels[offset + 1] = shadow
+            x += 16
+        else:
+            glyph_index = 32 if first == ord("_") else first
+            glyph = ascii_font[glyph_index * 16:(glyph_index + 1) * 16]
+            assert len(glyph) == 16 and 0 <= x and x + 8 < 320 and 0 <= y and y + 16 <= 200
+            for row, bits in enumerate(glyph):
+                for bit in range(8):
+                    if bits & (0x80 >> bit):
+                        offset = (y + row) * 320 + x + bit
+                        pixels[offset] = foreground
+                        pixels[offset + 1] = shadow
+            x += 4 if first == ord("_") else 8
+
+
 def rgb4_lookup(palette: list[tuple[int, int, int]]) -> list[int]:
     result: list[int] = []
     for red in range(16):
@@ -509,6 +554,103 @@ def opcode_coverage(entries: list[bytes]) -> dict[str, object]:
     }
 
 
+def death_menu_sequence(
+    root: Path,
+    palette: list[tuple[int, int, int]],
+    ranger: bytes,
+) -> dict[str, object]:
+    image = (root / "DEAD.BIG").read_bytes()
+    assert len(image) == 64000
+    ascii_font = (root / "FONT.X16").read_bytes()
+    big5_font = (root / "FONT.C16").read_bytes()
+    lookup = rgb4_lookup(palette)
+    menu_items = (
+        bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 40 00"),
+        bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 47 00"),
+        bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 54 00"),
+        bytes.fromhex("c2 f7 b6 7d ba ce c4 b1 a5 68 00"),
+    )
+    location = bytes.fromhex("a6 62 a6 61 b2 79 aa ba ac 59 b3 42 00")
+    missing = bytes.fromhex("b7 ed a6 61 a4 48 a4 66 aa ba a5 a2 c2 dc bc c6 00")
+    another = bytes.fromhex("a4 53 a6 68 a4 46 a4 40 b5 a7 a1 44 a1 44 a1 44 00")
+    exit_prompt = bytes.fromhex(
+        "af 75 ad 6e c2 f7 b6 7d b9 43 c0 b8 a1 5d a2 e7 a1 fe a2 dc a1 5e 00"
+    )
+
+    def blend(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        source = palette[0]
+        for py in range(y, y + height):
+            for px in range(x, x + width):
+                offset = py * 320 + px
+                destination = palette[pixels[offset]]
+                components = tuple(
+                    source[channel] * 4 // 32 + destination[channel] * 4 // 32
+                    for channel in range(3)
+                )
+                pixels[offset] = lookup[
+                    components[0] * 256 + components[1] * 16 + components[2]
+                ]
+
+    def fill(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for py in range(y, y + height):
+            pixels[py * 320 + x:py * 320 + x + width] = bytes([255]) * width
+
+    def panel(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for left, top, w, h in (
+            (x + 5, y, width - 10, 1), (x + 4, y + 1, width - 8, 1),
+            (x + 3, y + 2, width - 6, 1), (x + 2, y + 3, width - 4, 1),
+            (x + 1, y + 4, width - 2, 1), (x, y + 5, width, height - 10),
+            (x + 1, y + height - 5, width - 2, 1),
+            (x + 2, y + height - 4, width - 4, 1),
+            (x + 3, y + height - 3, width - 6, 1),
+            (x + 4, y + height - 2, width - 8, 1),
+            (x + 5, y + height - 1, width - 10, 1),
+        ):
+            blend(pixels, left, top, w, h)
+        for left, top, w, h in (
+            (x + 5, y + 1, width - 10, 1), (x + 4, y + 2, 1, 2),
+            (x + width - 5, y + 2, 1, 2), (x + 2, y + 4, 2, 1),
+            (x + width - 4, y + 4, 2, 1), (x + 1, y + 5, 1, height - 10),
+            (x + width - 2, y + 5, 1, height - 10),
+            (x + 2, y + height - 5, 2, 1),
+            (x + width - 4, y + height - 5, 2, 1),
+            (x + 4, y + height - 4, 1, 2),
+            (x + width - 5, y + height - 4, 1, 2),
+            (x + 5, y + height - 2, width - 10, 1),
+        ):
+            fill(pixels, left, top, w, h)
+
+    def render(selection: int, confirm: bool = False) -> bytes:
+        pixels = bytearray(image)
+        name = ranger[836 + 8:836 + 8 + 10] + b"\0"
+        date = b"  1996/ 1/ 1  \0"
+        draw_legacy_text(pixels, 97, 46, name, ascii_font, big5_font, 0x6E, 0x6C)
+        draw_legacy_text(pixels, 190, 8, date, ascii_font, big5_font, 0x17, 0x15)
+        draw_legacy_text(pixels, 190, 28, location, ascii_font, big5_font, 0x17, 0x15)
+        draw_legacy_text(pixels, 190, 48, missing, ascii_font, big5_font, 0x17, 0x15)
+        draw_legacy_text(pixels, 190, 68, another, ascii_font, big5_font, 0x17, 0x15)
+        panel(pixels, 205, 90, 101, 90)
+        for index, item in enumerate(menu_items):
+            draw_legacy_text(pixels, 215, 95 + index * 20, item, ascii_font, big5_font, 0x21, 0x23)
+        draw_legacy_text(
+            pixels, 215, 95 + selection * 20, menu_items[selection],
+            ascii_font, big5_font, 0x63, 0x66,
+        )
+        if confirm:
+            panel(pixels, 71, 180, 177, 20)
+            draw_legacy_text(pixels, 75, 182, exit_prompt, ascii_font, big5_font, 0x05, 0x07)
+        return bytes(pixels)
+
+    return {
+        "image_sha256": sha256(image),
+        "fixed_date": [1996, 1, 1],
+        "selected_frame_fnv1a64": [fnv1a64(render(index)) for index in range(4)],
+        "confirm_frame_fnv1a64": fnv1a64(render(3, True)),
+        "cleared_frame_fnv1a64": fnv1a64(bytes(64000)),
+        "menu_items_hex": [item.hex() for item in menu_items],
+    }
+
+
 def ending_sequence(root: Path) -> dict[str, object]:
     words_archive = packed(
         (root / "ENDWORD.IDX").read_bytes(), (root / "ENDWORD.GRP").read_bytes()
@@ -822,6 +964,7 @@ def main() -> None:
                 "delay_300_ticks": 300 // 40 + 1,
                 "disabled_event_range": [24, 72],
                 "reward_item": 143,
+                "death_menu": death_menu_sequence(root, palette, ranger),
             },
             "opcode_64_script_938": {
                 "script_id": 938,

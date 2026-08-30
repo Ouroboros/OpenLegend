@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <ctime>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -29,6 +30,21 @@ constexpr std::array<std::int16_t, 11> kWeatherSceneIds{5, 7, 10, 41, 42, 46, 65
 constexpr std::array<std::int16_t, 30> kTournamentHeadIds{
     8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
     22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69};
+constexpr std::array<std::array<std::uint8_t, 11>, 4> kDeathMenuItems{{
+    {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x40U, 0x00U},
+    {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x47U, 0x00U},
+    {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x54U, 0x00U},
+    {0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xBAU, 0xCEU, 0xC4U, 0xB1U, 0xA5U, 0x68U, 0x00U},
+}};
+constexpr std::array<std::uint8_t, 13> kDeathLocationText{
+    0xA6U, 0x62U, 0xA6U, 0x61U, 0xB2U, 0x79U, 0xAAU, 0xBAU, 0xACU, 0x59U, 0xB3U, 0x42U, 0x00U};
+constexpr std::array<std::uint8_t, 17> kDeathMissingText{
+    0xB7U, 0xEDU, 0xA6U, 0x61U, 0xA4U, 0x48U, 0xA4U, 0x66U, 0xAAU, 0xBAU, 0xA5U, 0xA2U, 0xC2U, 0xDCU, 0xBCU, 0xC6U, 0x00U};
+constexpr std::array<std::uint8_t, 17> kDeathAnotherText{
+    0xA4U, 0x53U, 0xA6U, 0x68U, 0xA4U, 0x46U, 0xA4U, 0x40U, 0xB5U, 0xA7U, 0xA1U, 0x44U, 0xA1U, 0x44U, 0xA1U, 0x44U, 0x00U};
+constexpr std::array<std::uint8_t, 23> kDeathExitPrompt{
+    0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U, 0xC0U, 0xB8U,
+    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
 constexpr std::array<std::int16_t, 20> kEndingCreditIds{
     6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
     26, 28, 30, 32, 34, 36, 38, 40, 42, 44};
@@ -43,6 +59,21 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     6, 4, 3, 3, 2, 1, 3, 1, 5, 6, 4, 6, 6, 5, 4, 3, 4,
     3, 5, 4, 2, 5, 2, 2, 4, 3, 4, 7, 3, 3, 3, 3, 3, 8,
     1, 1, 1, 1, 5, 2, 1, 1, 1, 6, 3, 7, 3, 1, 1, 2, 2};
+
+[[nodiscard]] SceneDate current_local_date() noexcept {
+    const auto now = std::time(nullptr);
+    std::tm value{};
+#if defined(_WIN32)
+    if (localtime_s(&value, &now) != 0) {
+        return {};
+    }
+#else
+    if (localtime_r(&now, &value) == nullptr) {
+        return {};
+    }
+#endif
+    return SceneDate{value.tm_year + 1900, value.tm_mon + 1, value.tm_mday};
+}
 
 [[nodiscard]] constexpr std::uint16_t legacy_delay_ticks(const int delay) noexcept {
     return static_cast<std::uint16_t>(delay / 40 + 1);
@@ -220,10 +251,12 @@ SceneSession::SceneSession(
     model::GameSnapshot& snapshot,
     random::LegacyRandom& random,
     const std::int16_t scene_id,
-    const bool use_jump_entrance)
+    const bool use_jump_entrance,
+    std::optional<SceneDate> death_date_override)
     : data_root_(data_root),
       snapshot_(snapshot),
       random_(random),
+      death_date_override_(death_date_override),
       assets_(data_root),
       weather_sprites_(resource::PackedArchive::open(
           data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
@@ -532,6 +565,7 @@ SceneStepResult SceneSession::begin_event(
     scripted_walk_state_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
+    death_menu_state_.reset();
     ending_state_.reset();
     tournament_trial_state_.reset();
     queued_outputs_.clear();
@@ -554,6 +588,9 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         previous_kind == SceneStepKind::open_ui) {
         pending_.kind = previous_kind;
         return pending_;
+    }
+    if (death_menu_state_.has_value()) {
+        return advance_death_menu(value);
     }
     if (ending_state_.has_value()) {
         return advance_ending();
@@ -803,6 +840,8 @@ SceneStepResult SceneSession::run_event() {
             pending_ = current_result(SceneStepKind::fade_to_black);
             return pending_;
         case 15:
+            program_counter_ += static_cast<std::ptrdiff_t>(width);
+            return start_death_menu();
         case 24:
             program_counter_ += static_cast<std::ptrdiff_t>(width);
             event_active_ = false;
@@ -1817,6 +1856,203 @@ std::optional<SceneStepResult> SceneSession::advance_three_statue_animation_fram
     return pending_;
 }
 
+SceneStepResult SceneSession::start_death_menu() {
+    if (!load_death_image()) {
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    }
+    const auto date = death_date_override_.has_value()
+                          ? *death_date_override_
+                          : current_local_date();
+    death_menu_state_ = DeathMenuState{
+        DeathMenuState::Phase::fade_in, 0, -1, date.year, date.month, date.day};
+    if (!render_death_menu()) {
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    }
+    pending_ = current_result(SceneStepKind::fade_from_black);
+    return pending_;
+}
+
+SceneStepResult SceneSession::advance_death_menu(const int translated_key) {
+    if (!death_menu_state_.has_value()) {
+        return current_result(SceneStepKind::stay);
+    }
+    auto& state = *death_menu_state_;
+    if (state.phase == DeathMenuState::Phase::fade_in) {
+        state.phase = DeathMenuState::Phase::menu;
+    } else if (state.phase == DeathMenuState::Phase::load_slot_clear) {
+        event_active_ = false;
+        state.phase = DeathMenuState::Phase::menu;
+        pending_ = current_result(SceneStepKind::load_slot);
+        pending_.save_slot = state.selected_slot;
+        return pending_;
+    } else if (state.phase == DeathMenuState::Phase::confirm) {
+        if (translated_key == static_cast<int>('Y')) {
+            event_active_ = false;
+            pending_ = current_result(SceneStepKind::quit);
+            return pending_;
+        }
+        state.phase = DeathMenuState::Phase::menu;
+    } else if (translated_key == 0x98) {
+        state.selection = state.selection == 3 ? 0 : static_cast<std::int16_t>(state.selection + 1);
+    } else if (translated_key == 0x9E) {
+        state.selection = state.selection == 0 ? 3 : static_cast<std::int16_t>(state.selection - 1);
+    } else if (translated_key == 0x0D || translated_key == 0x20 || translated_key == 0x96) {
+        if (state.selection < 3) {
+            state.selected_slot = state.selection;
+            state.phase = DeathMenuState::Phase::load_slot_clear;
+            death_framebuffer_.clear(0U);
+            death_framebuffer_.set_palette(palette_);
+            pending_ = current_result(SceneStepKind::present);
+            return pending_;
+        }
+        state.phase = DeathMenuState::Phase::confirm;
+    }
+    if (!render_death_menu()) {
+        event_active_ = false;
+        pending_ = current_result(SceneStepKind::stay);
+        return pending_;
+    }
+    pending_ = current_result(SceneStepKind::death_menu);
+    pending_.menu_index = state.selection;
+    pending_.death_confirm = state.phase == DeathMenuState::Phase::confirm;
+    return pending_;
+}
+
+bool SceneSession::load_death_image() {
+    if (death_image_.size() == compat::kLegacyPixelCount) {
+        return true;
+    }
+    const auto file = data_root_.read("DEAD.BIG");
+    if (!file) {
+        error_ = file.error;
+        return false;
+    }
+    if (file.bytes.size() != compat::kLegacyPixelCount) {
+        error_ = "DEAD.BIG does not contain exactly 64000 pixels";
+        return false;
+    }
+    death_image_ = file.bytes;
+    return true;
+}
+
+void SceneSession::blend_death_rectangle(
+    const int x,
+    const int y,
+    const int width,
+    const int height) {
+    const auto source = palette_[0U];
+    const auto begin_x = std::max(x, 0);
+    const auto end_x = std::min(x + width, render::IndexedFramebuffer::width);
+    const auto begin_y = std::max(y, 0);
+    const auto end_y = std::min(y + height, render::IndexedFramebuffer::height);
+    for (int destination_y = begin_y; destination_y < end_y; ++destination_y) {
+        for (int destination_x = begin_x; destination_x < end_x; ++destination_x) {
+            auto& destination_index = death_framebuffer_.row(destination_y)[destination_x];
+            const auto destination = palette_[destination_index];
+            const auto red = static_cast<int>(source.red) / 8 +
+                             static_cast<int>(destination.red) / 8;
+            const auto green = static_cast<int>(source.green) / 8 +
+                               static_cast<int>(destination.green) / 8;
+            const auto blue = static_cast<int>(source.blue) / 8 +
+                              static_cast<int>(destination.blue) / 8;
+            destination_index = rgb4_lookup_[static_cast<std::size_t>(
+                red * 256 + green * 16 + blue)];
+        }
+    }
+}
+
+bool SceneSession::draw_death_panel(
+    const int x,
+    const int y,
+    const int width,
+    const int height) {
+    if (width <= 10 || height <= 10) {
+        return false;
+    }
+    blend_death_rectangle(x + 5, y, width - 10, 1);
+    blend_death_rectangle(x + 4, y + 1, width - 8, 1);
+    blend_death_rectangle(x + 3, y + 2, width - 6, 1);
+    blend_death_rectangle(x + 2, y + 3, width - 4, 1);
+    blend_death_rectangle(x + 1, y + 4, width - 2, 1);
+    blend_death_rectangle(x, y + 5, width, height - 10);
+    blend_death_rectangle(x + 1, y + height - 5, width - 2, 1);
+    blend_death_rectangle(x + 2, y + height - 4, width - 4, 1);
+    blend_death_rectangle(x + 3, y + height - 3, width - 6, 1);
+    blend_death_rectangle(x + 4, y + height - 2, width - 8, 1);
+    blend_death_rectangle(x + 5, y + height - 1, width - 10, 1);
+    const auto fill = [this](const int left, const int top, const int w, const int h) {
+        return death_framebuffer_.fill_rectangle(
+            left, top, static_cast<std::uint16_t>(w), static_cast<std::uint16_t>(h), 0xFFU);
+    };
+    return fill(x + 5, y + 1, width - 10, 1) &&
+           fill(x + 4, y + 2, 1, 2) && fill(x + width - 5, y + 2, 1, 2) &&
+           fill(x + 2, y + 4, 2, 1) && fill(x + width - 4, y + 4, 2, 1) &&
+           fill(x + 1, y + 5, 1, height - 10) &&
+           fill(x + width - 2, y + 5, 1, height - 10) &&
+           fill(x + 2, y + height - 5, 2, 1) &&
+           fill(x + width - 4, y + height - 5, 2, 1) &&
+           fill(x + 4, y + height - 4, 1, 2) &&
+           fill(x + width - 5, y + height - 4, 1, 2) &&
+           fill(x + 5, y + height - 2, width - 10, 1);
+}
+
+bool SceneSession::render_death_menu() {
+    if (!death_menu_state_.has_value() || death_image_.size() != compat::kLegacyPixelCount) {
+        return false;
+    }
+    std::copy(death_image_.begin(), death_image_.end(), death_framebuffer_.pixels().begin());
+    death_framebuffer_.set_palette(palette_);
+    render::Big5GlyphCache cache{big5_font_};
+    const auto draw_text = [this, &cache](
+                               const int x,
+                               const int y,
+                               const std::span<const std::uint8_t> text,
+                               const std::uint16_t colors) {
+        return render::draw_legacy_text(
+            death_framebuffer_, x, y, text, ascii_font_, cache,
+            static_cast<std::uint8_t>(colors & 0xFFU),
+            static_cast<std::uint8_t>(colors >> 8U));
+    };
+    const auto& protagonist = snapshot_.ranger.roles[0].bytes;
+    std::vector<std::uint8_t> name(
+        protagonist.begin() + static_cast<std::ptrdiff_t>(model::role_word::name_byte),
+        protagonist.end());
+    name.push_back(0U);
+    std::array<std::uint8_t, 32> date{};
+    std::snprintf(
+        reinterpret_cast<char*>(date.data()), date.size(), "  %4d/%2d/%2d  ",
+        death_menu_state_->year, death_menu_state_->month, death_menu_state_->day);
+    if (!draw_text(97, 46, name, 0x6C6EU) ||
+        !draw_text(190, 8, date, 0x1517U) ||
+        !draw_text(190, 28, kDeathLocationText, 0x1517U) ||
+        !draw_text(190, 48, kDeathMissingText, 0x1517U) ||
+        !draw_text(190, 68, kDeathAnotherText, 0x1517U) ||
+        !draw_death_panel(205, 90, 101, 90)) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < kDeathMenuItems.size(); ++index) {
+        if (!draw_text(215, 95 + static_cast<int>(index) * 20,
+                       kDeathMenuItems[index], 0x2321U)) {
+            return false;
+        }
+    }
+    if (!draw_text(
+            215, 95 + static_cast<int>(death_menu_state_->selection) * 20,
+            kDeathMenuItems[static_cast<std::size_t>(death_menu_state_->selection)],
+            0x6663U)) {
+        return false;
+    }
+    if (death_menu_state_->phase == DeathMenuState::Phase::confirm) {
+        return draw_death_panel(71, 180, 177, 20) &&
+               draw_text(75, 182, kDeathExitPrompt, 0x0705U);
+    }
+    return true;
+}
+
 SceneStepResult SceneSession::start_ending() {
     if (!load_ending_assets()) {
         event_active_ = false;
@@ -2080,9 +2316,7 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
             if (previous_kind != SceneStepKind::battle ||
                 response != SceneResponse::battle_victory) {
                 tournament_trial_state_.reset();
-                event_active_ = false;
-                pending_ = current_result(SceneStepKind::quit);
-                return pending_;
+                return start_death_menu();
             }
             queue_step(SceneStepKind::present);
             queue_step(SceneStepKind::fade_from_black);
@@ -2335,6 +2569,10 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
 }
 
 bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
+    if (death_menu_state_.has_value()) {
+        framebuffer = death_framebuffer_;
+        return true;
+    }
     if (ending_state_.has_value()) {
         framebuffer = ending_framebuffer_;
         return true;
@@ -2408,6 +2646,7 @@ bool SceneSession::draw_weather_particle(
 bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (pending_.kind == SceneStepKind::stay || pending_.kind == SceneStepKind::moved ||
         pending_.kind == SceneStepKind::present || pending_.kind == SceneStepKind::wait_key ||
+        pending_.kind == SceneStepKind::death_menu || pending_.kind == SceneStepKind::load_slot ||
         pending_.kind == SceneStepKind::fade_from_black ||
         pending_.kind == SceneStepKind::fade_to_black ||
         pending_.kind == SceneStepKind::return_world || pending_.kind == SceneStepKind::quit ||

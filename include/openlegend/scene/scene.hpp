@@ -45,6 +45,14 @@ private:
     std::string error_;
 };
 
+struct SceneDate {
+    int year{};
+    int month{};
+    int day{};
+
+    friend bool operator==(const SceneDate&, const SceneDate&) = default;
+};
+
 enum class SceneDirection : std::uint8_t {
     up = 0U,
     right = 1U,
@@ -63,6 +71,8 @@ enum class SceneStepKind {
     notice,
     question,
     wait_key,
+    death_menu,
+    load_slot,
     battle,
     shop,
     open_ui,
@@ -96,8 +106,11 @@ struct SceneStepResult {
     std::int16_t style{};
     std::int16_t battle_id{-1};
     std::int16_t shop_id{-1};
+    std::int16_t menu_index{-1};
+    std::int16_t save_slot{-1};
     std::uint16_t wait_ticks{1U};
     SceneQuestion question{SceneQuestion::none};
+    bool death_confirm{};
     bool ending_complete{};
 
     friend bool operator==(const SceneStepResult&, const SceneStepResult&) = default;
@@ -117,7 +130,8 @@ public:
         model::GameSnapshot& snapshot,
         random::LegacyRandom& random,
         std::int16_t scene_id,
-        bool use_jump_entrance = false);
+        bool use_jump_entrance = false,
+        std::optional<SceneDate> death_date_override = std::nullopt);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -218,6 +232,15 @@ private:
         int value{7664};
     };
 
+    struct DeathMenuState {
+        enum class Phase { fade_in, menu, load_slot_clear, confirm } phase{Phase::fade_in};
+        std::int16_t selection{};
+        std::int16_t selected_slot{-1};
+        int year{};
+        int month{};
+        int day{};
+    };
+
     struct EndingState {
         enum class Phase {
             title_draw,
@@ -313,6 +336,12 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
+    [[nodiscard]] SceneStepResult start_death_menu();
+    [[nodiscard]] SceneStepResult advance_death_menu(int translated_key);
+    [[nodiscard]] bool load_death_image();
+    [[nodiscard]] bool render_death_menu();
+    void blend_death_rectangle(int x, int y, int width, int height);
+    [[nodiscard]] bool draw_death_panel(int x, int y, int width, int height);
     [[nodiscard]] SceneStepResult start_ending();
     [[nodiscard]] SceneStepResult advance_ending();
     [[nodiscard]] bool load_ending_assets();
@@ -331,6 +360,7 @@ private:
     const resource::DataRoot& data_root_;
     model::GameSnapshot& snapshot_;
     random::LegacyRandom& random_;
+    std::optional<SceneDate> death_date_override_;
     SceneAssets assets_;
     resource::SentinelArchive sprites_;
     resource::PackedArchive weather_sprites_;
@@ -339,6 +369,8 @@ private:
     compat::LegacyPalette palette_{};
     compat::LegacyPalette ending_palette_{};
     render::IndexedFramebuffer ending_framebuffer_;
+    render::IndexedFramebuffer death_framebuffer_;
+    std::vector<std::uint8_t> death_image_;
     std::array<std::uint8_t, 4096> rgb4_lookup_{};
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
@@ -369,6 +401,7 @@ private:
     std::optional<ScriptedWalkState> scripted_walk_state_;
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
+    std::optional<DeathMenuState> death_menu_state_;
     std::optional<EndingState> ending_state_;
     std::optional<TournamentTrialState> tournament_trial_state_;
     std::deque<QueuedOutput> queued_outputs_;

@@ -1417,7 +1417,8 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
         openlegend::model::scene_metadata_word::entrance_y, 26);
     openlegend::random::LegacyRandom defeat_random{1U};
     openlegend::scene::SceneSession defeat_session{
-        data_root, defeat_snapshot, defeat_random, 25};
+        data_root, defeat_snapshot, defeat_random, 25, false,
+        openlegend::scene::SceneDate{1996, 1, 1}};
     auto defeat = defeat_session.begin_event(936, 72, 33, 26);
     for (int step = 0; step < 512 && defeat.kind != SceneStepKind::battle; ++step) {
         if (defeat.kind == SceneStepKind::dialogue ||
@@ -1432,8 +1433,87 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     OL_CHECK(defeat.kind == SceneStepKind::battle);
     OL_CHECK(defeat.battle_id == 104);
     defeat = defeat_session.resume(SceneResponse::battle_defeat);
+    OL_CHECK(defeat.kind == SceneStepKind::fade_from_black);
+    openlegend::render::IndexedFramebuffer death_framebuffer;
+    const auto death_hash = [&]() {
+        OL_CHECK(defeat_session.render(death_framebuffer));
+        return fnv1a64(death_framebuffer.pixels());
+    };
+    OL_CHECK(death_hash() == 0x9DA84526F6317A4AULL);
+    defeat = defeat_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(defeat.kind == SceneStepKind::death_menu);
+    OL_CHECK(defeat.menu_index == 0);
+    constexpr std::array<std::uint64_t, 4> selected_hashes{
+        0x9DA84526F6317A4AULL,
+        0x5F72CF3141CE8B24ULL,
+        0xB2DB9B6F5EA184DEULL,
+        0x11F91FD0E5BECCEBULL,
+    };
+    for (int selection = 1; selection < 4; ++selection) {
+        defeat = defeat_session.resume(SceneResponse::acknowledge, 0x98);
+        OL_CHECK(defeat.kind == SceneStepKind::death_menu);
+        OL_CHECK(defeat.menu_index == selection);
+        OL_CHECK(death_hash() == selected_hashes[static_cast<std::size_t>(selection)]);
+    }
+    defeat = defeat_session.resume(SceneResponse::acknowledge, 0x98);
+    OL_CHECK(defeat.menu_index == 0);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, 0x9E);
+    OL_CHECK(defeat.menu_index == 3);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, 0x0D);
+    OL_CHECK(defeat.kind == SceneStepKind::death_menu);
+    OL_CHECK(defeat.death_confirm);
+    OL_CHECK(death_hash() == 0x4BA394E637CC051EULL);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, static_cast<int>('N'));
+    OL_CHECK(defeat.kind == SceneStepKind::death_menu);
+    OL_CHECK(defeat.menu_index == 3);
+    OL_CHECK(!defeat.death_confirm);
+    OL_CHECK(death_hash() == selected_hashes[3]);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, 0x20);
+    OL_CHECK(defeat.death_confirm);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, static_cast<int>('Y'));
     OL_CHECK(defeat.kind == SceneStepKind::quit);
     OL_CHECK(defeat_random.state() == 0x41C67EA6U);
+
+    auto load_snapshot = load_baseline(root);
+    load_snapshot.ranger.scenes[25].set_word(
+        openlegend::model::scene_metadata_word::entrance_x, 33);
+    load_snapshot.ranger.scenes[25].set_word(
+        openlegend::model::scene_metadata_word::entrance_y, 26);
+    openlegend::random::LegacyRandom load_random{1U};
+    openlegend::scene::SceneSession load_session{
+        data_root, load_snapshot, load_random, 25, false,
+        openlegend::scene::SceneDate{1996, 1, 1}};
+    auto load_result = load_session.begin_event(936, 72, 33, 26);
+    for (int step = 0; step < 512 && load_result.kind != SceneStepKind::battle; ++step) {
+        if (load_result.kind == SceneStepKind::dialogue ||
+            load_result.kind == SceneStepKind::present ||
+            load_result.kind == SceneStepKind::fade_from_black ||
+            load_result.kind == SceneStepKind::fade_to_black) {
+            load_result = load_session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(load_result.kind == SceneStepKind::battle);
+    load_result = load_session.resume(SceneResponse::battle_defeat);
+    OL_CHECK(load_result.kind == SceneStepKind::fade_from_black);
+    load_result = load_session.resume(SceneResponse::acknowledge);
+    load_result = load_session.resume(SceneResponse::acknowledge, 0x98);
+    load_result = load_session.resume(SceneResponse::acknowledge, 0x98);
+    OL_CHECK(load_result.menu_index == 2);
+    load_result = load_session.resume(SceneResponse::acknowledge, 0x0D);
+    OL_CHECK(load_result.kind == SceneStepKind::present);
+    openlegend::render::IndexedFramebuffer cleared;
+    OL_CHECK(load_session.render(cleared));
+    OL_CHECK(fnv1a64(cleared.pixels()) == 0xDD14FCC6528CAB25ULL);
+    load_result = load_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(load_result.kind == SceneStepKind::load_slot);
+    OL_CHECK(load_result.save_slot == 2);
+    load_result = load_session.resume(SceneResponse::cancel);
+    OL_CHECK(load_result.kind == SceneStepKind::death_menu);
+    OL_CHECK(load_result.menu_index == 2);
+    OL_CHECK(load_session.render(cleared));
+    OL_CHECK(fnv1a64(cleared.pixels()) == selected_hashes[2]);
 }
 
 void check_event_finale_party_cleanup(const std::filesystem::path& root) {
