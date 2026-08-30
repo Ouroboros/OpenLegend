@@ -927,28 +927,44 @@ SceneStepResult SceneSession::run_event() {
         }
         case 34:
         case 45:
-        case 46:
-        case 47:
-        case 48: {
+        case 47: {
             const auto role_id = argument(1);
             if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
                 const auto field = opcode == 34 ? model::role_word::iq
                                   : opcode == 45 ? model::role_word::speed
-                                  : opcode == 46 ? model::role_word::maximum_mp
-                                  : opcode == 47 ? model::role_word::attack
-                                                 : model::role_word::maximum_hp;
-                const auto maximum = (opcode == 46 || opcode == 48) ? std::int16_t{999} : std::int16_t{100};
+                                                 : model::role_word::attack;
                 const auto before = role.word(field);
-                const auto after = clamped_add(before, argument(2), 0, maximum);
+                const auto after = clamped_add(before, argument(2), 0, 100);
                 role.set_word(field, after);
-                if (opcode == 46) {
-                    role.set_word(model::role_word::mp, clamped_add(role.word(model::role_word::mp), argument(2), 0, after));
-                } else if (opcode == 48) {
-                    role.set_word(model::role_word::hp, clamped_add(role.word(model::role_word::hp), argument(2), 0, after));
-                }
                 if (after > before) {
                     queue_notice(ascii_message("role " + std::to_string(role_id) + " +" + std::to_string(after - before)));
+                }
+            }
+            program_counter_ += 3;
+            if (!queued_outputs_.empty()) {
+                return emit_queued();
+            }
+            break;
+        }
+        case 46:
+        case 48: {
+            const auto role_id = argument(1);
+            if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
+                auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+                const auto maximum_field = opcode == 46 ? model::role_word::maximum_mp
+                                                        : model::role_word::maximum_hp;
+                const auto current_field = opcode == 46 ? model::role_word::mp
+                                                        : model::role_word::hp;
+                const auto before = role.word(current_field);
+                const auto maximum = static_cast<std::int16_t>(
+                    role.word(maximum_field) + argument(2));
+                role.set_word(maximum_field, maximum);
+                role.set_word(current_field, maximum);
+                const auto gain = static_cast<int>(maximum) - static_cast<int>(before);
+                if (gain > 0 && (opcode == 46 || party_contains(role_id))) {
+                    queue_notice(ascii_message(
+                        "role " + std::to_string(role_id) + " +" + std::to_string(gain)));
                 }
             }
             program_counter_ += 3;

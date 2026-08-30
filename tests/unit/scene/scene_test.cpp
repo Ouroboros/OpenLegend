@@ -1644,6 +1644,13 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
                               static_cast<std::int16_t>(40 + slot));
         joining_role.set_word(openlegend::model::role_word::magic_level_begin + slot, 100);
     }
+    joining_role.set_word(openlegend::model::role_word::maximum_mp, 900);
+    joining_role.set_word(openlegend::model::role_word::mp, 100);
+    joining_role.set_word(openlegend::model::role_word::maximum_hp, 900);
+    joining_role.set_word(openlegend::model::role_word::hp, 100);
+    joining_role.set_word(openlegend::model::role_word::attack, 90);
+    joining_role.set_word(openlegend::model::role_word::speed, 90);
+    joining_role.set_word(openlegend::model::role_word::mp_type, 0);
     joining_role.set_word(openlegend::model::role_word::equipment_begin, 1);
     joining_role.set_word(openlegend::model::role_word::equipment_begin + 1U, 2);
     joining_role.set_word(openlegend::model::role_word::practice_item, 3);
@@ -1677,6 +1684,13 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     }
     OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::stay);
     OL_CHECK(join_snapshot.ranger.header.team_member(1U).value == 49);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_mp) == 1200);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::mp) == 1200);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_hp) == 1100);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::hp) == 1100);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::attack) == 100);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::speed) == 100);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::mp_type) == 2);
     OL_CHECK(joining_role.word(openlegend::model::role_word::magic_id_begin) == 15);
     OL_CHECK(joining_role.word(openlegend::model::role_word::magic_level_begin) == 0);
     OL_CHECK(joining_role.word(openlegend::model::role_word::equipment_begin) == -1);
