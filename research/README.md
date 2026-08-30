@@ -15,6 +15,12 @@
 - [`evidence/model-persistence-1to1.md`](evidence/model-persistence-1to1.md)：B3 状态模型与物理存档。
 - [`evidence/input-time-random-audio-1to1.md`](evidence/input-time-random-audio-1to1.md)：B4 IRQ1 输入、BIOS tick、RNG 与 Miles 音频。
 
+## 当前 B5 证据
+
+- [`evidence/title-menu-new-game-1to1.md`](evidence/title-menu-new-game-1to1.md)：标题、六项菜单、姓名输入、新游戏属性与三槽流程汇编合同。
+- [`evidence/title-menu-new-game-goldens.json`](evidence/title-menu-new-game-goldens.json)：独立 Python 标题 framebuffer 与初始属性 RNG golden。
+- [`ida/reports/Z_DAT.b5_ui_xrefs.txt`](ida/reports/Z_DAT.b5_ui_xrefs.txt)：B5 完整机器码、调用与数据引用报告。
+
 ## IDA headless 档案
 
 - `ida/scripts/`：IDAPython 只读导出与定点分析脚本。

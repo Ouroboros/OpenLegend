@@ -13,7 +13,8 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B2 已完成**：framebuffer、RLE 四向裁剪、ASCII/Big5 字形、palette 淡变、shadow-mask 与地图深度顺序。
 - **B3 已完成**：RANGER 六段、基线/工作副本/三槽 R/S/D、lossless snapshot 与逐字节回写。
 - **B4 已完成**：IRQ1/set-1 键态、BIOS tick、原 LCG、Miles 命令顺序、8 槽 raw WAV 与 XMI/OPL3 音频。
-- **B5–B9 未完成**：标题菜单、世界、场景、战斗与完整集成。
+- **B5 已完成**：标题/三槽逐像素流程、CFONT 姓名输入、初始属性、六项菜单、状态/物品基础 UI、隔离存读错误路径与 SDL 会话链。
+- **B6–B9 未完成**：世界、场景、战斗与完整集成。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 
@@ -30,9 +31,10 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - 五个 `480×480×int16le` 世界层；
 - RANGER 六段、100 个 S 场景状态、100 个 D 事件状态、基线/工作副本和三槽存档；
 - 84-byte 键盘翻译表、tick 舍入/回绕和 4 组独立 RNG 向量；
-- 24 个 `ATK*.WAV`、53 个 `E*.WAV` 与 24 个 `GAME*.XMI`，逐项长度、格式与 XMI PCM 生成。
+- 24 个 `ATK*.WAV`、53 个 `E*.WAV` 与 24 个 `GAME*.XMI`，逐项长度、格式与 XMI PCM 生成；
+- 9 个标题帧、主/读档/等待逐像素 hash、CFONT 候选、四组新游戏 RNG 向量、双页状态/物品渲染与三槽成功/损坏/写失败会话链。
 
-对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md) 和 [`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md)。
+对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)、[`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md) 和 [`research/evidence/title-menu-new-game-1to1.md`](research/evidence/title-menu-new-game-1to1.md)。
 
 ## 原版数据目录
 
@@ -107,7 +109,7 @@ build.bat app
 build.bat app --config Release
 ```
 
-`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已原生验证，core 为 6 项 CTest，app 为 7 项 CTest。
+`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已在 Linux 与 Windows 原生验证，core 为 8 项 CTest，app 为 9 项 CTest；Linux ASan+UBSan 同时通过 8/8。
 
 可选参数：
 
@@ -149,6 +151,8 @@ tools/                项目自包含构建入口
 ```text
 320×200×8-bit indexed framebuffer + 256×RGB6 palette
 ```
+
+DOS 索引像素不能直接作为现代窗口像素提交。`openlegend_compat` 的受测显示转换层按 `palette[index]` 逐像素取 RGB6，并用 `(value << 2) | (value >> 4)` 展开到 RGBA8；SDL3 只上传这份现代纹理，以 nearest-neighbor 居中整数倍缩放并保留黑边。转换与缩放只发生在最终显示边界，绝不反写或替换上述核心像素真值。
 
 ## 研究与贡献约束
 

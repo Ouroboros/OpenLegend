@@ -29,7 +29,7 @@ private:
     SDL_Window* window_{};
     SDL_Renderer* renderer_{};
     SDL_Texture* texture_{};
-    std::array<std::uint8_t, compat::kLegacyPixelCount * 4U> rgba_pixels_{};
+    compat::ModernRgbaPixels rgba_pixels_{};
 };
 
 }  // namespace openlegend::platform::sdl3

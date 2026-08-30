@@ -12,6 +12,11 @@ target_link_libraries(
 )
 add_test(NAME openlegend.core COMMAND openlegend_core_tests)
 
+add_executable(openlegend_model_tests unit/model/new_game_test.cpp)
+target_include_directories(openlegend_model_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_model_tests PRIVATE openlegend_model)
+add_test(NAME openlegend.model COMMAND openlegend_model_tests)
+
 add_executable(openlegend_resource_tests unit/resource/resource_archive_test.cpp)
 target_compile_definitions(
     openlegend_resource_tests
@@ -20,6 +25,17 @@ target_compile_definitions(
 target_include_directories(openlegend_resource_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_resource_tests PRIVATE openlegend_resource)
 add_test(NAME openlegend.resource COMMAND openlegend_resource_tests)
+
+add_executable(openlegend_ui_tests unit/ui/title_menu_test.cpp)
+target_compile_definitions(
+    openlegend_ui_tests
+    PRIVATE
+        OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+        OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+)
+target_include_directories(openlegend_ui_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_ui_tests PRIVATE openlegend_app openlegend_ui)
+add_test(NAME openlegend.ui COMMAND openlegend_ui_tests)
 
 add_executable(openlegend_audio_tests unit/audio/legacy_audio_test.cpp)
 target_compile_definitions(

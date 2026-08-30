@@ -1,4 +1,4 @@
-add_library(openlegend_model STATIC game_snapshot.cpp)
+add_library(openlegend_model STATIC game_snapshot.cpp new_game.cpp)
 target_include_directories(
     openlegend_model
     PUBLIC
@@ -7,5 +7,9 @@ target_include_directories(
 )
 target_link_libraries(
     openlegend_model
-    PUBLIC openlegend_compat openlegend_project_options openlegend_project_warnings
+    PUBLIC
+        openlegend_compat
+        openlegend_random
+        openlegend_project_options
+        openlegend_project_warnings
 )

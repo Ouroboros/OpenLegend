@@ -1,0 +1,174 @@
+{
+  "oracle": "independent Python little-endian/RLE implementation",
+  "assets": {
+    "title.idx": {
+      "bytes": 36,
+      "sha256": "a481baf8c061c59497b661afbf9e3fbfeb9d1f6a2f55d303e37124d7b591f32a"
+    },
+    "title.grp": {
+      "bytes": 8179,
+      "sha256": "13ffc848084fa94017dc36ff4aa9b56bfb770511eaacdfd57a9bccf54bf30cf9"
+    },
+    "title.big": {
+      "bytes": 64000,
+      "sha256": "b69be6fc2981768c1d69b2ec2abc36fa857b0c3441cd1daf9c607d6f0f7232cc"
+    },
+    "mmap.col": {
+      "bytes": 768,
+      "sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a"
+    }
+  },
+  "title_pixels_fnv1a64": {
+    "main_selection_0": "86690e3b3b68fe20",
+    "main_selection_1": "01a9df9f3a147c7c",
+    "main_selection_2": "7e4c70629a4c00d4",
+    "load_slot_0": "c6475eb2b76d4457",
+    "load_slot_1": "7d49db972e535393",
+    "load_slot_2": "b76c74065386ab63",
+    "please_wait": "7333253ca7400de6"
+  },
+  "runtime_ui_regression_fnv1a64": {
+    "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
+    "status_page_0": "51f12e62670dcb3e",
+    "status_page_1": "1ee8cf32156bd6fa",
+    "items_page_0": "1f2c81326be42838"
+  },
+  "title_navigation": {
+    "main_labels": [
+      "new_game",
+      "load",
+      "exit"
+    ],
+    "slot_labels_big5_hex": [
+      "a440",
+      "a447",
+      "a454"
+    ],
+    "down_key": "98",
+    "up_key": "9e",
+    "confirm_keys": [
+      "0d",
+      "20",
+      "96"
+    ],
+    "escape_key": "1b",
+    "title_escape_effect": "none",
+    "load_escape_effect": "return_to_main_selection_1"
+  },
+  "protagonist_level_from_baseline": 1,
+  "protagonist_rolls": {
+    "00000000": {
+      "mp_type": 0,
+      "maximum_mp": 29,
+      "attack": 29,
+      "speed": 28,
+      "defence": 29,
+      "medicine": 28,
+      "use_poison": 26,
+      "detoxification": 22,
+      "anti_poison": 23,
+      "fist": 21,
+      "sword": 22,
+      "knife": 23,
+      "unusual": 30,
+      "hidden_weapon": 29,
+      "increased_life": 5,
+      "maximum_hp": 34,
+      "iq": 68,
+      "hp": 34,
+      "mp": 29,
+      "rng_consumed": 17,
+      "rng_state": "7e7099a9"
+    },
+    "00000001": {
+      "mp_type": 0,
+      "maximum_mp": 39,
+      "attack": 24,
+      "speed": 26,
+      "defence": 22,
+      "medicine": 28,
+      "use_poison": 21,
+      "detoxification": 30,
+      "anti_poison": 23,
+      "fist": 27,
+      "sword": 30,
+      "knife": 28,
+      "unusual": 25,
+      "hidden_weapon": 21,
+      "increased_life": 3,
+      "maximum_hp": 32,
+      "iq": 69,
+      "hp": 32,
+      "mp": 39,
+      "rng_consumed": 17,
+      "rng_state": "e201dd56"
+    },
+    "12345678": {
+      "mp_type": 1,
+      "maximum_mp": 28,
+      "attack": 26,
+      "speed": 29,
+      "defence": 29,
+      "medicine": 22,
+      "use_poison": 30,
+      "detoxification": 26,
+      "anti_poison": 27,
+      "fist": 23,
+      "sword": 21,
+      "knife": 30,
+      "unusual": 26,
+      "hidden_weapon": 23,
+      "increased_life": 3,
+      "maximum_hp": 32,
+      "iq": 60,
+      "hp": 32,
+      "mp": 28,
+      "rng_consumed": 17,
+      "rng_state": "e06870c1"
+    },
+    "ffffffff": {
+      "mp_type": 1,
+      "maximum_mp": 30,
+      "attack": 23,
+      "speed": 29,
+      "defence": 24,
+      "medicine": 27,
+      "use_poison": 21,
+      "detoxification": 24,
+      "anti_poison": 23,
+      "fist": 25,
+      "sword": 24,
+      "knife": 30,
+      "unusual": 26,
+      "hidden_weapon": 27,
+      "increased_life": 7,
+      "maximum_hp": 36,
+      "iq": 94,
+      "hp": 36,
+      "mp": 30,
+      "rng_consumed": 17,
+      "rng_state": "1adf55fc"
+    }
+  },
+  "protagonist_cheat": {
+    "sequence": "BABERUTH",
+    "mp_type": 2,
+    "maximum_mp": 40,
+    "attack": 30,
+    "speed": 30,
+    "defence": 30,
+    "medicine": 30,
+    "use_poison": 30,
+    "detoxification": 30,
+    "anti_poison": 30,
+    "fist": 30,
+    "sword": 30,
+    "knife": 30,
+    "unusual": 30,
+    "hidden_weapon": 30,
+    "increased_life": 10,
+    "maximum_hp": 50,
+    "iq": 100,
+    "rng_consumed_for_matching_key": 0
+  }
+}

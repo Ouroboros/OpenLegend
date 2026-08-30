@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -14,6 +15,7 @@
 #include <shellapi.h>
 #endif
 
+#include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
 #include "openlegend/compat/legacy_video.hpp"
@@ -174,28 +176,54 @@ int main(const int argc, const char* const* argv) {
         std::cerr << "SDL3 audio device unavailable; audio is disabled: " << SDL_GetError() << '\n';
     }
 
-    compat::LegacyPixels pixels{};
-    compat::LegacyPalette palette{};
-    const compat::IndexedFrameView frame{pixels, palette};
+    const auto wall_time = std::chrono::system_clock::now().time_since_epoch();
+    const auto whole_seconds = std::chrono::duration_cast<std::chrono::seconds>(wall_time);
+    const auto milliseconds =
+        std::chrono::duration_cast<std::chrono::milliseconds>(wall_time - whole_seconds);
+    const auto second = static_cast<std::uint8_t>(whole_seconds.count() % 60);
+    const auto hundredth = static_cast<std::uint8_t>(milliseconds.count() / 10);
+    app::LegacyGameRuntime game{
+        std::filesystem::current_path(), random::LegacyRandom::dos_time_seed(second, hundredth)};
+    if (!game.valid()) {
+        report_configuration_error("game runtime", game.error());
+        return 5;
+    }
 
     input::LegacyKeyboard keyboard;
     timing::SteadyBiosTickSource tick_source;
     bool running = true;
     while (running) {
         const auto frame_tick = tick_source.tick();
+        game.advance();
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
                 running = false;
             } else if (event.type == compat::HostEventType::key_down) {
                 keyboard.handle_host_key(event.key, true);
+                if (!event.repeat) {
+                    game.handle_key(
+                        keyboard.last_key(),
+                        keyboard.down(0x82U),
+                        keyboard.down(0x83U) || keyboard.down(0x84U));
+                    keyboard.clear_last_key();
+                }
             } else if (event.type == compat::HostEventType::key_up) {
                 keyboard.handle_host_key(event.key, false);
             }
         }
-        if (running && !platform.present(frame)) {
-            std::cerr << "Unable to present indexed framebuffer\n";
-            return 5;
+        running = running && game.running();
+        if (running) {
+            if (!game.render()) {
+                std::cerr << "Unable to render legacy game state\n";
+                return 6;
+            }
+            const auto& framebuffer = game.framebuffer();
+            const compat::IndexedFrameView frame{framebuffer.pixels(), framebuffer.palette()};
+            if (!platform.present(frame)) {
+                std::cerr << "Unable to present indexed framebuffer\n";
+                return 7;
+            }
         }
         if (smoke_test) {
             running = false;

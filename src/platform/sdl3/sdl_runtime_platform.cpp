@@ -1,7 +1,6 @@
 #include "sdl_runtime_platform.hpp"
 
 #include <algorithm>
-#include <limits>
 
 namespace openlegend::platform::sdl3 {
 namespace {
@@ -133,7 +132,11 @@ SdlRuntimePlatform::SdlRuntimePlatform(
         flags |= SDL_WINDOW_MAXIMIZED;
     }
     window_ = SDL_CreateWindow("OpenLegend", window_width, window_height, flags);
-    if (window_ == nullptr) {
+    if (window_ == nullptr ||
+        !SDL_SetWindowMinimumSize(
+            window_,
+            static_cast<int>(compat::kLegacyWidth),
+            static_cast<int>(compat::kLegacyHeight))) {
         return;
     }
 
@@ -198,14 +201,8 @@ bool SdlRuntimePlatform::present(const compat::IndexedFrameView frame) {
         return false;
     }
 
-    for (std::size_t index = 0; index < frame.pixels.size(); ++index) {
-        const auto palette_index = frame.pixels[index];
-        const auto color = frame.palette[palette_index];
-        const auto target = index * 4U;
-        rgba_pixels_[target] = compat::expand_rgb6(color.red);
-        rgba_pixels_[target + 1U] = compat::expand_rgb6(color.green);
-        rgba_pixels_[target + 2U] = compat::expand_rgb6(color.blue);
-        rgba_pixels_[target + 3U] = std::numeric_limits<std::uint8_t>::max();
+    if (!compat::convert_indexed_frame_to_rgba(frame, rgba_pixels_)) {
+        return false;
     }
 
     if (!SDL_UpdateTexture(
@@ -222,16 +219,15 @@ bool SdlRuntimePlatform::present(const compat::IndexedFrameView frame) {
         return false;
     }
 
-    const auto scale_x = static_cast<float>(output_width) / static_cast<float>(compat::kLegacyWidth);
-    const auto scale_y = static_cast<float>(output_height) / static_cast<float>(compat::kLegacyHeight);
-    const auto scale = std::max(0.0F, std::min(scale_x, scale_y));
-    const auto target_width = static_cast<float>(compat::kLegacyWidth) * scale;
-    const auto target_height = static_cast<float>(compat::kLegacyHeight) * scale;
+    const auto viewport = compat::integer_viewport(output_width, output_height);
+    if (!viewport.valid()) {
+        return false;
+    }
     const SDL_FRect destination{
-        (static_cast<float>(output_width) - target_width) * 0.5F,
-        (static_cast<float>(output_height) - target_height) * 0.5F,
-        target_width,
-        target_height};
+        static_cast<float>(viewport.x),
+        static_cast<float>(viewport.y),
+        static_cast<float>(viewport.width),
+        static_cast<float>(viewport.height)};
 
     if (!SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255) || !SDL_RenderClear(renderer_) ||
         !SDL_RenderTexture(renderer_, texture_, nullptr, &destination)) {

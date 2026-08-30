@@ -1,13 +1,13 @@
 # B2 软件绘制汇编合同
 
-状态：assembly-reviewed  
+状态：assembly-reviewed
 真值：`Z.DAT` 原版机器码与完整汇编
 
 ## 1. Indexed framebuffer
 
 - `sub_20039 @ 0x20039`：把 64,000 字节后备缓冲提交到 VGA `A000:0000`。
 - `sub_2010A @ 0x2010A`：按 320 字节 stride 逐行填充矩形。
-- 核心真值固定为 `320×200×8-bit indexed framebuffer`；宿主 RGBA 只在 SDL3 最终上传阶段生成。
+- 核心真值固定为 `320×200×8-bit indexed framebuffer`；DOS index 字节不可直接作为现代颜色提交，宿主 RGBA 只在最终显示兼容层生成。
 
 ## 2. RLE 精灵 `sub_20354 @ 0x20354`
 
@@ -41,7 +41,8 @@
 ## 4. 调色板
 
 - `sub_20087 @ 0x20087` 按 256×RGB6 顺序写 VGA DAC。
-- 核心保留 0..63 原值；SDL3 使用 `(value<<2)|(value>>4)` 展开到 8-bit，不反写核心 palette。
+- 核心保留 0..63 原值；显示兼容层使用 `(value<<2)|(value>>4)` 展开到 8-bit，不反写核心 palette。
+- 对每个 framebuffer 字节严格执行 `color=palette[index]`，依次输出 `R8,G8,B8,255`；该转换位于 `compat`，与 SDL API 解耦并可独立单测。
 
 ## 5. 世界地图投影与深度
 
@@ -110,7 +111,24 @@ screenY =  9*dx +  9*dy - 81
 
 `sub_3D88A` 是附加特效对象的业务绘制调用方，其 framebuffer 写入仍由本阶段原语完成；特效状态所有权归后续 world/scene/battle 模块。
 
-## 9. 自动门禁
+## 9. 现代显示兼容边界
+
+原版 Mode 13h 的 64,000 个字节是 palette index，不是现代 RGB 像素。现代后端必须按以下固定管线呈现：
+
+```text
+320×200 index8 + 256×RGB6
+  -> palette[index]
+  -> RGB6 bit replication to RGBA8
+  -> 320×200 streaming texture
+  -> nearest-neighbor centered integer viewport
+  -> host window
+```
+
+窗口最小尺寸为 `320×200`。视口 scale 为 `min(outputWidth/320, outputHeight/200)` 的正整数，目标尺寸固定为 `320*scale × 200*scale`，余区清黑；不得使用线性过滤、任意小数放大或缩放后回读核心缓冲。当前默认 `960×600` 得到精确 3 倍显示。
+
+这是一条平台兼容要求：它允许 DOS 像素在现代系统显示，但不改变游戏侧逐像素真值。对应纯单元测试覆盖 RGB6 `0/31/63`、任意 palette index、非法帧/输出长度与 `960×600`、带黑边窗口、过小窗口视口。
+
+## 10. 自动门禁
 
 对应测试：`tests/unit/render/legacy_render_test.cpp`。
 

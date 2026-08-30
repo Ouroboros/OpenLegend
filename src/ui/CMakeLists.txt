@@ -1,27 +1,24 @@
 add_library(
-    openlegend_app
+    openlegend_ui
     STATIC
-        legacy_game_runtime.cpp
-        mode_coordinator.cpp
-        runtime_configuration.cpp
+        basic_ui_renderer.cpp
+        game_menu.cpp
+        new_game_attributes.cpp
+        new_game_name_editor.cpp
+        title_menu.cpp
 )
 target_include_directories(
-    openlegend_app
+    openlegend_ui
     PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(
-    openlegend_app
+    openlegend_ui
     PUBLIC
-        openlegend_compat
         openlegend_model
-        openlegend_persistence
-        openlegend_random
         openlegend_render
         openlegend_resource
-        openlegend_ui
         openlegend_project_options
         openlegend_project_warnings
-    PRIVATE tomlplusplus::tomlplusplus
 )

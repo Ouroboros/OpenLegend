@@ -25,4 +25,23 @@ void run_legacy_video_tests() {
     palette[7].red = 0U;
     frame = IndexedFrameView{short_pixels, palette};
     OL_CHECK(!frame.valid());
+
+    pixels[0] = 7U;
+    palette[7] = {63U, 31U, 1U};
+    frame = IndexedFrameView{pixels, palette};
+    ModernRgbaPixels rgba{};
+    OL_CHECK(convert_indexed_frame_to_rgba(frame, rgba));
+    OL_CHECK(rgba[0] == 255U);
+    OL_CHECK(rgba[1] == 125U);
+    OL_CHECK(rgba[2] == 4U);
+    OL_CHECK(rgba[3] == 255U);
+    OL_CHECK(!convert_indexed_frame_to_rgba(frame, std::span<std::uint8_t>{rgba}.first(4U)));
+
+    constexpr auto exact = integer_viewport(960, 600);
+    static_assert(exact.x == 0 && exact.y == 0);
+    static_assert(exact.width == 960 && exact.height == 600 && exact.scale == 3);
+    constexpr auto bordered = integer_viewport(1000, 700);
+    static_assert(bordered.x == 20 && bordered.y == 50);
+    static_assert(bordered.width == 960 && bordered.height == 600 && bordered.scale == 3);
+    static_assert(!integer_viewport(319, 200).valid());
 }
