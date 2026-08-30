@@ -689,6 +689,64 @@ void check_event_ending_prelude_animation(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::quit);
 }
 
+void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto role_snapshot = load_baseline(root);
+    role_snapshot.ranger.roles[36].set_word(openlegend::model::role_word::sexual, 0);
+    openlegend::random::LegacyRandom role_random{1U};
+    openlegend::scene::SceneSession role_session{
+        data_root, role_snapshot, role_random, 53};
+    auto role_result = role_session.begin_event(289, 0, 0, 0);
+    for (int step = 0; step < 128 && role_result.kind != SceneStepKind::stay; ++step) {
+        if (role_result.kind == SceneStepKind::dialogue ||
+            role_result.kind == SceneStepKind::notice ||
+            role_result.kind == SceneStepKind::present ||
+            role_result.kind == SceneStepKind::fade_from_black ||
+            role_result.kind == SceneStepKind::fade_to_black) {
+            role_result = role_session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(role_result.kind == SceneStepKind::stay);
+    OL_CHECK(role_snapshot.ranger.roles[36].word(openlegend::model::role_word::sexual) == 2);
+
+    auto wave_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom wave_random{1U};
+    openlegend::scene::SceneSession wave_session{
+        data_root, wave_snapshot, wave_random, 7};
+    const auto wave_result = wave_session.begin_event(389, 0, 25, 48);
+    OL_CHECK(wave_result.kind == SceneStepKind::dialogue);
+    OL_CHECK(wave_result.talk_id == 1255);
+    OL_CHECK((wave_session.take_audio_commands() ==
+              std::vector<openlegend::scene::SceneAudioCommand>{
+                  {openlegend::scene::SceneAudioCommand::Kind::wave, 22}}));
+
+    auto music_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom music_random{1U};
+    openlegend::scene::SceneSession music_session{
+        data_root, music_snapshot, music_random, 53};
+    auto music_result = music_session.begin_event(531, 0, 0, 0, 183);
+    for (int step = 0; step < 128 && music_result.kind != SceneStepKind::fade_to_black; ++step) {
+        if (music_result.kind == SceneStepKind::dialogue ||
+            music_result.kind == SceneStepKind::notice ||
+            music_result.kind == SceneStepKind::present) {
+            music_result = music_session.resume(SceneResponse::acknowledge);
+        } else {
+            break;
+        }
+    }
+    OL_CHECK(music_result.kind == SceneStepKind::fade_to_black);
+    music_result = music_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(music_result.kind == SceneStepKind::fade_from_black);
+    OL_CHECK((music_session.take_audio_commands() ==
+              std::vector<openlegend::scene::SceneAudioCommand>{
+                  {openlegend::scene::SceneAudioCommand::Kind::music, 9}}));
+}
+
 void check_event_shop_helpers(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -1377,6 +1435,7 @@ int main() {
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);
+    check_event_role_sexual_and_audio(root);
     check_event_shop_helpers(root);
     check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);
