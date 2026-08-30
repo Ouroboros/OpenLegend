@@ -694,25 +694,42 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     using openlegend::scene::SceneStepKind;
 
     const openlegend::resource::DataRoot data_root{root};
-    auto role_snapshot = load_baseline(root);
-    role_snapshot.ranger.roles[36].set_word(openlegend::model::role_word::sexual, 0);
-    openlegend::random::LegacyRandom role_random{1U};
-    openlegend::scene::SceneSession role_session{
-        data_root, role_snapshot, role_random, 53};
-    auto role_result = role_session.begin_event(289, 0, 0, 0);
-    for (int step = 0; step < 128 && role_result.kind != SceneStepKind::stay; ++step) {
-        if (role_result.kind == SceneStepKind::dialogue ||
-            role_result.kind == SceneStepKind::notice ||
-            role_result.kind == SceneStepKind::present ||
-            role_result.kind == SceneStepKind::fade_from_black ||
-            role_result.kind == SceneStepKind::fade_to_black) {
-            role_result = role_session.resume(SceneResponse::acknowledge);
-        } else {
-            break;
+    const auto run_role_script = [&data_root](openlegend::model::GameSnapshot& snapshot) {
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 53};
+        auto result = session.begin_event(289, 0, 0, 0);
+        for (int step = 0; step < 128 && result.kind != SceneStepKind::stay; ++step) {
+            if (result.kind == SceneStepKind::dialogue ||
+                result.kind == SceneStepKind::notice ||
+                result.kind == SceneStepKind::present ||
+                result.kind == SceneStepKind::fade_from_black ||
+                result.kind == SceneStepKind::fade_to_black) {
+                result = session.resume(SceneResponse::acknowledge);
+            } else {
+                break;
+            }
         }
-    }
-    OL_CHECK(role_result.kind == SceneStepKind::stay);
-    OL_CHECK(role_snapshot.ranger.roles[36].word(openlegend::model::role_word::sexual) == 2);
+        return result.kind;
+    };
+
+    auto role_snapshot = load_baseline(root);
+    auto& role = role_snapshot.ranger.roles[36];
+    role.set_word(openlegend::model::role_word::sexual, 0);
+    role.set_word(openlegend::model::role_word::taking_item_begin, 78);
+    role.set_word(openlegend::model::role_word::taking_item_count_begin, -1);
+    OL_CHECK(run_role_script(role_snapshot) == SceneStepKind::stay);
+    OL_CHECK(role.word(openlegend::model::role_word::sexual) == 2);
+    OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == 78);
+    OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin) == 0);
+
+    auto exact_empty_snapshot = load_baseline(root);
+    auto& exact_empty_role = exact_empty_snapshot.ranger.roles[36];
+    exact_empty_role.set_word(openlegend::model::role_word::taking_item_begin, -2);
+    exact_empty_role.set_word(openlegend::model::role_word::taking_item_begin + 1U, -1);
+    OL_CHECK(run_role_script(exact_empty_snapshot) == SceneStepKind::stay);
+    OL_CHECK(exact_empty_role.word(openlegend::model::role_word::taking_item_begin) == -2);
+    OL_CHECK(exact_empty_role.word(openlegend::model::role_word::taking_item_begin + 1U) == 78);
+    OL_CHECK(exact_empty_role.word(openlegend::model::role_word::taking_item_count_begin + 1U) == 1);
 
     auto wave_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom wave_random{1U};

@@ -1594,8 +1594,7 @@ void SceneSession::add_role_item(
     const std::int16_t role_id,
     const std::int16_t item_id,
     const std::int16_t count) {
-    if (role_id < 0 || item_id < 0 || count == 0 ||
-        static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
         return;
     }
     auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
@@ -1608,7 +1607,7 @@ void SceneSession::add_role_item(
     }
     if (slot < 0) {
         for (std::size_t index = 0U; index < model::role_word::taking_item_count; ++index) {
-            if (role.word(model::role_word::taking_item_begin + index) < 0) {
+            if (role.word(model::role_word::taking_item_begin + index) == -1) {
                 slot = static_cast<int>(index);
                 break;
             }
@@ -1618,14 +1617,14 @@ void SceneSession::add_role_item(
         return;
     }
     const auto index = static_cast<std::size_t>(slot);
-    const auto before = role.word(model::role_word::taking_item_count_begin + index);
+    const auto existing = role.word(model::role_word::taking_item_begin + index) == item_id;
     role.set_word(model::role_word::taking_item_begin + index, item_id);
-    role.set_word(model::role_word::taking_item_count_begin + index,
-                  static_cast<std::int16_t>(before + count));
-    if (role.word(model::role_word::taking_item_count_begin + index) <= 0) {
-        role.set_word(model::role_word::taking_item_begin + index, -1);
-        role.set_word(model::role_word::taking_item_count_begin + index, 0);
-    }
+    role.set_word(
+        model::role_word::taking_item_count_begin + index,
+        existing
+            ? static_cast<std::int16_t>(
+                  role.word(model::role_word::taking_item_count_begin + index) + count)
+            : count);
 }
 
 void SceneSession::queue_dialogue(
