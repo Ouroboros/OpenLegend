@@ -13128,6 +13128,302 @@ DISASSEMBLY
 STRINGS
 
 ====================================================================================================
+FUNCTION sub_20615 research=draw_big5_glyph start=0x20615 end=0x20663 size=78
+PSEUDOCODE
+__int16 __cdecl sub_20615(int a1, int a2, __int16 *a3, char a4, char a5)
+{
+  _WORD *v5; // edi
+  __int16 v7; // dx
+  __int16 v8; // bx
+  __int16 v9; // ax
+  __int16 result; // ax
+  char v11; // t0
+  int v12; // ecx
+  _BOOL1 v13; // cf
+
+  v5 = (_WORD *)(dword_51C7F + a1 + 320 * a2);
+  v7 = 16;
+  HIBYTE(v8) = a4;
+  LOBYTE(v8) = a5;
+  do
+  {
+    v9 = *a3++;
+    v11 = v9;
+    LOBYTE(result) = HIBYTE(v9);
+    HIBYTE(result) = v11;
+    v12 = 16;
+    do
+    {
+      v13 = __CFSHL__(result, 1);
+      result *= 2;
+      if ( v13 )
+        *v5 = v8;
+      v5 = (_WORD *)((char *)v5 + 1);
+      --v12;
+    }
+    while ( v12 );
+    v5 += 152;
+    --v7;
+  }
+  while ( v7 );
+  return result;
+}
+
+DISASSEMBLY
+00020615  55                                push    ebp
+00020616  89 e5                             mov     ebp, esp
+00020618  53                                push    ebx
+00020619  51                                push    ecx
+0002061A  52                                push    edx
+0002061B  56                                push    esi
+0002061C  57                                push    edi
+0002061D  fc                                cld
+0002061E  b8 40 01 00 00                    mov     eax, 140h
+00020623  f7 65 0c                          mul     [ebp+arg_4]
+00020626  03 45 08                          add     eax, [ebp+arg_0]
+00020629  03 05 7f 1c 05 00                 add     eax, dword_51C7F
+0002062F  89 c7                             mov     edi, eax
+00020631  8b 75 10                          mov     esi, [ebp+arg_8]
+00020634  66 ba 10 00                       mov     dx, 10h
+00020638  8a 7d 14                          mov     bh, [ebp+arg_C]
+0002063B  8a 5d 18                          mov     bl, [ebp+arg_10]
+0002063E  66 ad                             lodsw
+00020640  86 c4                             xchg    al, ah
+00020642  b9 10 00 00 00                    mov     ecx, 10h
+00020647  66 d1 e0                          shl     ax, 1
+0002064A  73 03                             jnb     short loc_2064F
+0002064C  66 89 1f                          mov     [edi], bx
+0002064F  47                                inc     edi
+00020650  e2 f5                             loop    loc_20647
+00020652  81 c7 30 01 00 00                 add     edi, 130h
+00020658  66 4a                             dec     dx
+0002065A  75 e2                             jnz     short loc_2063E
+0002065C  5f                                pop     edi
+0002065D  5e                                pop     esi
+0002065E  5a                                pop     edx
+0002065F  59                                pop     ecx
+00020660  5b                                pop     ebx
+00020661  5d                                pop     ebp
+00020662  c3                                retn
+STRINGS
+
+====================================================================================================
+FUNCTION sub_20663 research=draw_ascii_glyph start=0x20663 end=0x206AD size=74
+PSEUDOCODE
+char __cdecl sub_20663(int a1, int a2, char *a3, char a4, char a5)
+{
+  _WORD *v5; // edi
+  __int16 v7; // dx
+  __int16 v8; // bx
+  char result; // al
+  int v10; // ecx
+  _BOOL1 v11; // cf
+
+  v5 = (_WORD *)(dword_51C7F + a1 + 320 * a2);
+  v7 = 16;
+  HIBYTE(v8) = a4;
+  LOBYTE(v8) = a5;
+  do
+  {
+    result = *a3++;
+    v10 = 8;
+    do
+    {
+      v11 = __CFSHL__(result, 1);
+      result *= 2;
+      if ( v11 )
+        *v5 = v8;
+      v5 = (_WORD *)((char *)v5 + 1);
+      --v10;
+    }
+    while ( v10 );
+    v5 += 156;
+    --v7;
+  }
+  while ( v7 );
+  return result;
+}
+
+DISASSEMBLY
+00020663  55                                push    ebp
+00020664  89 e5                             mov     ebp, esp
+00020666  53                                push    ebx
+00020667  51                                push    ecx
+00020668  52                                push    edx
+00020669  56                                push    esi
+0002066A  57                                push    edi
+0002066B  fc                                cld
+0002066C  b8 40 01 00 00                    mov     eax, 140h
+00020671  f7 65 0c                          mul     [ebp+arg_4]
+00020674  03 45 08                          add     eax, [ebp+arg_0]
+00020677  03 05 7f 1c 05 00                 add     eax, dword_51C7F
+0002067D  89 c7                             mov     edi, eax
+0002067F  8b 75 10                          mov     esi, [ebp+arg_8]
+00020682  66 ba 10 00                       mov     dx, 10h
+00020686  8a 7d 14                          mov     bh, [ebp+arg_C]
+00020689  8a 5d 18                          mov     bl, [ebp+arg_10]
+0002068C  ac                                lodsb
+0002068D  b9 08 00 00 00                    mov     ecx, 8
+00020692  d0 e0                             shl     al, 1
+00020694  73 03                             jnb     short loc_20699
+00020696  66 89 1f                          mov     [edi], bx
+00020699  47                                inc     edi
+0002069A  e2 f6                             loop    loc_20692
+0002069C  81 c7 38 01 00 00                 add     edi, 138h
+000206A2  66 4a                             dec     dx
+000206A4  75 e6                             jnz     short loc_2068C
+000206A6  5f                                pop     edi
+000206A7  5e                                pop     esi
+000206A8  5a                                pop     edx
+000206A9  59                                pop     ecx
+000206AA  5b                                pop     ebx
+000206AB  5d                                pop     ebp
+000206AC  c3                                retn
+STRINGS
+
+====================================================================================================
+FUNCTION sub_3D950 research=dialogue_text_renderer start=0x3D950 end=0x3DA40 size=240
+PSEUDOCODE
+void __fastcall sub_3D950(__int32 a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
+{
+  int v9; // esi
+  int v10; // ebx
+  int v11; // edi
+  int v12; // ebp
+  int v13; // eax
+  int v14; // eax
+  int v15; // [esp+0h] [ebp-18h]
+  int v16; // [esp+4h] [ebp-14h]
+
+  sub_3ED1E(a1, a2, a3, a4, 48);
+  v15 = (a9 - (__CFSHL__(a9 >> 31, 8) + (a9 >> 31 << 8))) >> 8;
+  v16 = a9 % 256;
+  v9 = 0;
+  v10 = a5;
+  v11 = a6;
+  while ( 1 )
+  {
+    v12 = 0;
+    v13 = (unsigned __int8)~*(_BYTE *)(v9 + a7);
+    if ( v13 == 255 )
+      break;
+    if ( (unsigned __int8)~*(_BYTE *)(v9 + a7) <= 0x7Fu )
+    {
+      if ( v13 == 42 )
+        v12 = 1;
+      else
+        sub_20663(v10, v11, &byte_E6F3C[16 * v13], v15, v16);
+      v10 += 8;
+      ++v9;
+    }
+    else
+    {
+      v14 = sub_3D27A(
+              (unsigned __int8)~*(_BYTE *)(v9 + a7 + 1) + (v13 << 8),
+              (unsigned __int8)~*(_BYTE *)(v9 + a7 + 1),
+              v10,
+              a4,
+              (unsigned __int8)~*(_BYTE *)(v9 + a7 + 1) + (v13 << 8));
+      sub_20615(v10, v11, (__int16 *)&byte_E7F3C[32 * v14], v15, v16);
+      v10 += 16;
+      v9 += 2;
+    }
+    if ( v12 == 1 )
+    {
+      v10 = a5;
+      v11 += 17;
+      if ( v11 >= a6 + 51 )
+        break;
+    }
+  }
+  JUMPOUT(0x3D82A);
+}
+
+DISASSEMBLY
+0003D950  68 30 00 00 00                    push    30h ; '0'
+0003D955  e8 c4 13 00 00                    call    sub_3ED1E
+0003D95A  53                                push    ebx
+0003D95B  56                                push    esi
+0003D95C  57                                push    edi
+0003D95D  55                                push    ebp
+0003D95E  83 ec 08                          sub     esp, 8
+0003D961  8b 5c 24 2c                       mov     ebx, [esp+18h+arg_10]
+0003D965  89 d8                             mov     eax, ebx
+0003D967  89 da                             mov     edx, ebx
+0003D969  c1 fa 1f                          sar     edx, 1Fh
+0003D96C  c1 e2 08                          shl     edx, 8
+0003D96F  1b c2                             sbb     eax, edx
+0003D971  c1 f8 08                          sar     eax, 8
+0003D974  89 04 24                          mov     [esp+18h+var_18], eax
+0003D977  be 00 01 00 00                    mov     esi, 100h
+0003D97C  89 d8                             mov     eax, ebx
+0003D97E  89 da                             mov     edx, ebx
+0003D980  c1 fa 1f                          sar     edx, 1Fh
+0003D983  f7 fe                             idiv    esi
+0003D985  89 54 24 04                       mov     [esp+18h+var_14], edx
+0003D989  31 f6                             xor     esi, esi
+0003D98B  8b 5c 24 1c                       mov     ebx, [esp+18h+arg_0]
+0003D98F  8b 7c 24 20                       mov     edi, [esp+18h+arg_4]
+0003D993  31 ed                             xor     ebp, ebp
+0003D995  8b 54 24 24                       mov     edx, [esp+18h+arg_8]
+0003D999  01 f2                             add     edx, esi
+0003D99B  8a 02                             mov     al, [edx]
+0003D99D  34 ff                             xor     al, 0FFh
+0003D99F  0f b6 c0                          movzx   eax, al
+0003D9A2  3d ff 00 00 00                    cmp     eax, 0FFh
+0003D9A7  75 07                             jnz     short loc_3D9B0
+0003D9A9  31 c0                             xor     eax, eax
+0003D9AB  e9 7a fe ff ff                    jmp     loc_3D82A
+0003D9B0  83 f8 7f                          cmp     eax, 7Fh
+0003D9B3  7e 3a                             jle     short loc_3D9EF
+0003D9B5  c1 e0 08                          shl     eax, 8
+0003D9B8  8a 52 01                          mov     dl, [edx+1]
+0003D9BB  80 f2 ff                          xor     dl, 0FFh
+0003D9BE  0f b6 d2                          movzx   edx, dl
+0003D9C1  01 d0                             add     eax, edx
+0003D9C3  50                                push    eax
+0003D9C4  e8 b1 f8 ff ff                    call    sub_3D27A
+0003D9C9  83 c4 04                          add     esp, 4
+0003D9CC  ff 74 24 04                       push    [esp+18h+var_14]
+0003D9D0  ff 74 24 04                       push    [esp+1Ch+var_18]
+0003D9D4  c1 e0 05                          shl     eax, 5
+0003D9D7  05 3c 7f 0e 00                    add     eax, offset byte_E7F3C
+0003D9DC  50                                push    eax
+0003D9DD  57                                push    edi
+0003D9DE  53                                push    ebx
+0003D9DF  e8 31 2c fe ff                    call    sub_20615
+0003D9E4  83 c4 14                          add     esp, 14h
+0003D9E7  83 c3 10                          add     ebx, 10h
+0003D9EA  83 c6 02                          add     esi, 2
+0003D9ED  eb 2b                             jmp     short loc_3DA1A
+0003D9EF  83 f8 2a                          cmp     eax, 2Ah ; '*'
+0003D9F2  75 07                             jnz     short loc_3D9FB
+0003D9F4  bd 01 00 00 00                    mov     ebp, 1
+0003D9F9  eb 1b                             jmp     short loc_3DA16
+0003D9FB  ff 74 24 04                       push    [esp+18h+var_14]
+0003D9FF  ff 74 24 04                       push    [esp+1Ch+var_18]
+0003DA03  c1 e0 04                          shl     eax, 4
+0003DA06  05 3c 6f 0e 00                    add     eax, offset byte_E6F3C
+0003DA0B  50                                push    eax
+0003DA0C  57                                push    edi
+0003DA0D  53                                push    ebx
+0003DA0E  e8 50 2c fe ff                    call    sub_20663
+0003DA13  83 c4 14                          add     esp, 14h
+0003DA16  83 c3 08                          add     ebx, 8
+0003DA19  46                                inc     esi
+0003DA1A  83 fd 01                          cmp     ebp, 1
+0003DA1D  0f 85 70 ff ff ff                 jnz     loc_3D993
+0003DA23  8b 5c 24 1c                       mov     ebx, [esp+18h+arg_0]
+0003DA27  83 c7 11                          add     edi, 11h
+0003DA2A  8b 44 24 20                       mov     eax, [esp+18h+arg_4]
+0003DA2E  83 c0 33                          add     eax, 33h ; '3'
+0003DA31  39 c7                             cmp     edi, eax
+0003DA33  0f 8c 5a ff ff ff                 jl      loc_3D993
+0003DA39  89 f0                             mov     eax, esi
+0003DA3B  e9 ea fd ff ff                    jmp     loc_3D82A
+STRINGS
+
+====================================================================================================
 FUNCTION sub_31C75 research=battle_entry start=0x31C75 end=0x31DA0 size=299
 PSEUDOCODE
 int __usercall sub_31C75@<eax>(
@@ -16065,6 +16361,18 @@ from=0x2CBE7 owner=0x2C319 sub_2C319 :: call    sub_31C2F
 
 TARGET event_helper_31C4A address=0x31C4A refs=1
 from=0x2CBF9 owner=0x2C319 sub_2C319 :: call    sub_31C4A
+
+TARGET draw_big5_glyph address=0x20615 refs=2
+from=0x3D232 owner=0x3D1E5 sub_3D1E5 :: call    sub_20615
+from=0x3D9DF owner=0x3D950 sub_3D950 :: call    sub_20615
+
+TARGET draw_ascii_glyph address=0x20663 refs=3
+from=0x3D250 owner=0x3D1E5 sub_3D1E5 :: call    sub_20663
+from=0x3D26D owner=0x3D1E5 sub_3D1E5 :: call    sub_20663
+from=0x3DA0E owner=0x3D950 sub_3D950 :: call    sub_20663
+
+TARGET dialogue_text_renderer address=0x3D950 refs=1
+from=0x2CDEA owner=0x2CC21 sub_2CC21 :: call    sub_3D950
 
 TARGET battle_entry address=0x31C75 refs=2
 from=0x2DE15 owner=0x2DE03 sub_2DE03 :: call    sub_31C75

@@ -76,8 +76,19 @@ void check_assets(const std::filesystem::path& root) {
     for (const auto& page : pages) {
         OL_CHECK(!page.empty());
         OL_CHECK(page.back() == 0U);
-        OL_CHECK(std::count(page.begin(), page.end(), static_cast<std::uint8_t>('*')) <= 2);
+        OL_CHECK(std::count(page.begin(), page.end(), static_cast<std::uint8_t>('*')) <= 3);
     }
+    std::vector<std::uint8_t> overwide_line(30U, static_cast<std::uint8_t>('A'));
+    overwide_line.push_back(0U);
+    const auto overwide_pages = openlegend::scene::paginate_dialogue(overwide_line);
+    OL_CHECK(overwide_pages.size() == 1U);
+    OL_CHECK(overwide_pages.front() == overwide_line);
+    constexpr std::array<std::uint8_t, 7> exact_page_boundary{
+        'A', '*', 'B', '*', 'C', '*', 0U};
+    const auto boundary_pages = openlegend::scene::paginate_dialogue(exact_page_boundary);
+    OL_CHECK(boundary_pages.size() == 2U);
+    OL_CHECK(boundary_pages[0] == std::vector<std::uint8_t>(exact_page_boundary.begin(), exact_page_boundary.end()));
+    OL_CHECK(boundary_pages[1] == std::vector<std::uint8_t>{0U});
 
     constexpr std::array<std::size_t, 68> widths{
         1, 4, 3, 14, 4, 3, 5, 1, 2, 3, 2, 3, 1, 1, 1, 2, 4,
@@ -125,6 +136,92 @@ void check_assets(const std::filesystem::path& root) {
         OL_CHECK(file);
         OL_CHECK(fnv1a64(file.bytes) == expected);
     }
+}
+
+void check_event_dialogue_rendering(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession paired{data_root, snapshot, random, 70};
+    OL_CHECK(finish_scene_title(paired).kind == SceneStepKind::stay);
+
+    auto result = paired.begin_event(1, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 0 && result.head_id == 1 && result.style == 0);
+    openlegend::render::IndexedFramebuffer style_0_frame;
+    OL_CHECK(paired.render(style_0_frame));
+    OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0x1510F9342DE536C3ULL);
+
+    result = paired.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    result = paired.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 1 && result.head_id == 0 && result.style == 1);
+    openlegend::render::IndexedFramebuffer style_1_frame;
+    OL_CHECK(paired.render(style_1_frame));
+    OL_CHECK(fnv1a64(style_1_frame.pixels()) == 0xFD2A5CB6664410E1ULL);
+
+    auto style_2_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom style_2_random{1U};
+    openlegend::scene::SceneSession style_2{
+        data_root, style_2_snapshot, style_2_random, 70};
+    OL_CHECK(finish_scene_title(style_2).kind == SceneStepKind::stay);
+    result = style_2.begin_event(244, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 796 && result.head_id == 200 && result.style == 2);
+    openlegend::render::IndexedFramebuffer style_2_frame;
+    OL_CHECK(style_2.render(style_2_frame));
+    OL_CHECK(fnv1a64(style_2_frame.pixels()) == 0x961BBDDC3FC79F35ULL);
+
+    auto style_4_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom style_4_random{1U};
+    openlegend::scene::SceneSession style_4{
+        data_root, style_4_snapshot, style_4_random, 70};
+    OL_CHECK(finish_scene_title(style_4).kind == SceneStepKind::stay);
+    result = style_4.begin_event(142, 0, 44, 29);
+    for (int step = 0; step < 32 && result.kind == SceneStepKind::present; ++step) {
+        result = style_4.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 546 && result.style == 0);
+    while (result.kind == SceneStepKind::dialogue && result.talk_id == 546) {
+        result = style_4.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::present);
+    result = style_4.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::dialogue);
+    OL_CHECK(result.talk_id == 547 && result.head_id == 77 && result.style == 4);
+    openlegend::render::IndexedFramebuffer style_4_frame;
+    OL_CHECK(style_4.render(style_4_frame));
+    const auto style_4_hash = fnv1a64(style_4_frame.pixels());
+    if (style_4_hash != 0xD66E3B67975125A2ULL) {
+        std::cerr << "style 4 dialogue frame: expected 0xd66e3b67975125a2, actual 0x"
+                  << std::hex << style_4_hash << std::dec << '\n';
+    }
+    OL_CHECK(style_4_hash == 0xD66E3B67975125A2ULL);
+
+    auto long_line_snapshot = load_baseline(root);
+    long_line_snapshot.ranger.header.set_team_member(
+        1U, openlegend::model::CharacterId{51});
+    openlegend::random::LegacyRandom long_line_random{1U};
+    openlegend::scene::SceneSession long_line{
+        data_root, long_line_snapshot, long_line_random, 70};
+    OL_CHECK(finish_scene_title(long_line).kind == SceneStepKind::stay);
+    result = long_line.begin_event(515, 0, 44, 29);
+    for (int step = 0; step < 128 &&
+                       !(result.kind == SceneStepKind::dialogue && result.talk_id == 1841);
+         ++step) {
+        OL_CHECK(result.kind == SceneStepKind::dialogue ||
+                 result.kind == SceneStepKind::present);
+        result = long_line.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(result.kind == SceneStepKind::dialogue && result.talk_id == 1841);
+    openlegend::render::IndexedFramebuffer long_line_frame;
+    OL_CHECK(long_line.render(long_line_frame));
+    OL_CHECK(fnv1a64(long_line_frame.pixels()) == 0xF420561DCB42E981ULL);
 }
 
 void check_scene_render_and_movement(const std::filesystem::path& root) {
@@ -2688,6 +2785,7 @@ void check_event_execution(const std::filesystem::path& root) {
 int main() {
     const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
     check_assets(root);
+    check_event_dialogue_rendering(root);
     check_scene_render_and_movement(root);
     check_scene_entry_state(root);
     check_scene_archive_ownership(root);

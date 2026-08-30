@@ -373,6 +373,12 @@ private:
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
     [[nodiscard]] bool draw_panel(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+    void blend_panel(
+        render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+    [[nodiscard]] bool draw_panel_border(
+        render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+    [[nodiscard]] bool draw_portrait(
+        render::IndexedFramebuffer& framebuffer, std::int16_t head_id, int x, int y) const;
     [[nodiscard]] bool draw_death_panel(int x, int y, int width, int height);
     [[nodiscard]] SceneStepResult start_ending();
     [[nodiscard]] SceneStepResult advance_ending();
@@ -400,6 +406,7 @@ private:
     random::LegacyRandom& random_;
     std::optional<SceneDate> death_date_override_;
     SceneAssets assets_;
+    resource::PackedArchive portraits_;
     resource::SentinelArchive sprites_;
     resource::PackedArchive weather_sprites_;
     resource::PackedArchive ending_words_;

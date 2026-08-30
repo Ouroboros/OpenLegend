@@ -167,73 +167,113 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return std::clamp(wrapping_add(value, delta), minimum, maximum);
 }
 
+[[nodiscard]] bool draw_dialogue_text(
+    render::IndexedFramebuffer& framebuffer,
+    int x,
+    const int y,
+    const std::span<const std::uint8_t> zero_terminated_text,
+    const std::span<const std::uint8_t> ascii_font,
+    render::Big5GlyphCache& big5_cache,
+    const std::uint8_t right_shadow,
+    const std::uint8_t foreground) noexcept {
+    if (ascii_font.size() < 128U * 16U) {
+        return false;
+    }
+    const auto draw_glyph = [&framebuffer, y, right_shadow, foreground](
+                                const int glyph_x,
+                                const std::span<const std::uint8_t> glyph,
+                                const int glyph_width) {
+        auto pixels = framebuffer.pixels();
+        for (int row = 0; row < 16; ++row) {
+            for (int byte_index = 0; byte_index < glyph_width / 8; ++byte_index) {
+                const auto bits = glyph[static_cast<std::size_t>(row * glyph_width / 8 + byte_index)];
+                for (int bit = 0; bit < 8; ++bit) {
+                    if ((bits & static_cast<std::uint8_t>(0x80U >> bit)) == 0U) {
+                        continue;
+                    }
+                    const auto destination = static_cast<std::ptrdiff_t>(
+                        (y + row) * render::IndexedFramebuffer::width + glyph_x +
+                        byte_index * 8 + bit);
+                    if (destination < 0 ||
+                        static_cast<std::size_t>(destination + 1) >= pixels.size()) {
+                        return false;
+                    }
+                    pixels[static_cast<std::size_t>(destination)] = foreground;
+                    pixels[static_cast<std::size_t>(destination + 1)] = right_shadow;
+                }
+            }
+        }
+        return true;
+    };
+
+    for (std::size_t index = 0U; index < zero_terminated_text.size();) {
+        const auto first = zero_terminated_text[index++];
+        if (first == 0U) {
+            return true;
+        }
+        if (first > 0x7FU) {
+            if (index >= zero_terminated_text.size()) {
+                return false;
+            }
+            const auto second = zero_terminated_text[index++];
+            const auto code = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(first) << 8U | static_cast<std::uint16_t>(second));
+            const auto glyph = big5_cache.resolve(code);
+            if (!glyph || !draw_glyph(x, *glyph, 16)) {
+                return false;
+            }
+            x += 16;
+            continue;
+        }
+        const auto glyph_offset = static_cast<std::size_t>(first) * 16U;
+        const auto glyph = std::span<const std::uint8_t, 16>{
+            ascii_font.data() + glyph_offset, 16U};
+        if (!draw_glyph(x, glyph, 8)) {
+            return false;
+        }
+        x += 8;
+    }
+    return false;
+}
+
 }  // namespace
 
 std::vector<std::vector<std::uint8_t>> paginate_dialogue(
     const std::span<const std::uint8_t> zero_terminated_text) {
-    constexpr int maximum_line_width = 208;
     std::vector<std::vector<std::uint8_t>> pages;
     std::vector<std::uint8_t> page;
-    std::vector<std::uint8_t> line;
     page.reserve(zero_terminated_text.size());
-    line.reserve(zero_terminated_text.size());
-    std::size_t page_line_count = 0U;
-    const auto flush_page = [&pages, &page, &page_line_count]() {
-        if (!page.empty() && page.back() == static_cast<std::uint8_t>('*')) {
-            page.pop_back();
-        }
+    std::size_t line_break_count = 0U;
+    const auto flush_page = [&pages, &page, &line_break_count]() {
         page.push_back(0U);
         pages.push_back(std::move(page));
         page.clear();
-        page_line_count = 0U;
-    };
-    const auto flush_line = [&page, &line, &page_line_count, &flush_page]() {
-        page.insert(page.end(), line.begin(), line.end());
-        line.clear();
-        ++page_line_count;
-        page.push_back(static_cast<std::uint8_t>('*'));
-        if (page_line_count == 3U) {
-            flush_page();
-        }
+        line_break_count = 0U;
     };
 
-    int line_width = 0;
     for (std::size_t index = 0U;
          index < zero_terminated_text.size() && zero_terminated_text[index] != 0U;) {
         const auto first = zero_terminated_text[index];
         if (first == static_cast<std::uint8_t>('*')) {
-            flush_line();
-            line_width = 0;
+            page.push_back(first);
+            ++line_break_count;
             ++index;
+            if (line_break_count == 3U) {
+                flush_page();
+            }
             continue;
         }
         const auto token_size = first > 0x7FU ? 2U : 1U;
         if (index + token_size > zero_terminated_text.size()) {
             break;
         }
-        const auto token_width = first > 0x7FU
-                                     ? 16
-                                     : (first == static_cast<std::uint8_t>('_') ? 4 : 8);
-        if (!line.empty() && line_width + token_width > maximum_line_width) {
-            flush_line();
-            line_width = 0;
-        }
-        line.insert(
-            line.end(),
+        page.insert(
+            page.end(),
             zero_terminated_text.begin() + static_cast<std::ptrdiff_t>(index),
             zero_terminated_text.begin() + static_cast<std::ptrdiff_t>(index + token_size));
-        line_width += token_width;
         index += token_size;
     }
-    if (!line.empty()) {
-        flush_line();
-    }
-    if (!page.empty()) {
-        flush_page();
-    }
-    if (pages.empty()) {
-        pages.push_back(std::vector<std::uint8_t>{0U});
-    }
+    flush_page();
     return pages;
 }
 
@@ -291,6 +331,8 @@ SceneSession::SceneSession(
       random_(random),
       death_date_override_(death_date_override),
       assets_(data_root),
+      portraits_(resource::PackedArchive::open(
+          data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
       weather_sprites_(resource::PackedArchive::open(
           data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
       scene_id_(scene_id) {
@@ -300,6 +342,10 @@ SceneSession::SceneSession(
     }
     if (!assets_.valid()) {
         error_ = assets_.error();
+        return;
+    }
+    if (!portraits_.valid()) {
+        error_ = portraits_.error();
         return;
     }
     if (!weather_sprites_.valid()) {
@@ -2229,15 +2275,12 @@ void SceneSession::blend_panel_rectangle(
     }
 }
 
-bool SceneSession::draw_panel(
+void SceneSession::blend_panel(
     render::IndexedFramebuffer& framebuffer,
     const int x,
     const int y,
     const int width,
     const int height) const {
-    if (width <= 10 || height <= 10) {
-        return false;
-    }
     blend_panel_rectangle(framebuffer, x + 5, y, width - 10, 1);
     blend_panel_rectangle(framebuffer, x + 4, y + 1, width - 8, 1);
     blend_panel_rectangle(framebuffer, x + 3, y + 2, width - 6, 1);
@@ -2249,6 +2292,14 @@ bool SceneSession::draw_panel(
     blend_panel_rectangle(framebuffer, x + 3, y + height - 3, width - 6, 1);
     blend_panel_rectangle(framebuffer, x + 4, y + height - 2, width - 8, 1);
     blend_panel_rectangle(framebuffer, x + 5, y + height - 1, width - 10, 1);
+}
+
+bool SceneSession::draw_panel_border(
+    render::IndexedFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const int width,
+    const int height) const {
     const auto fill = [&framebuffer](const int left, const int top, const int w, const int h) {
         return framebuffer.fill_rectangle(
             left, top, static_cast<std::uint16_t>(w), static_cast<std::uint16_t>(h), 0xFFU);
@@ -2263,6 +2314,19 @@ bool SceneSession::draw_panel(
            fill(x + 4, y + height - 4, 1, 2) &&
            fill(x + width - 5, y + height - 4, 1, 2) &&
            fill(x + 5, y + height - 2, width - 10, 1);
+}
+
+bool SceneSession::draw_panel(
+    render::IndexedFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const int width,
+    const int height) const {
+    if (width <= 10 || height <= 10) {
+        return false;
+    }
+    blend_panel(framebuffer, x, y, width, height);
+    return draw_panel_border(framebuffer, x, y, width, height);
 }
 
 bool SceneSession::draw_death_panel(
@@ -2873,6 +2937,23 @@ bool SceneSession::draw_sprite(
     return true;
 }
 
+bool SceneSession::draw_portrait(
+    render::IndexedFramebuffer& framebuffer,
+    const std::int16_t head_id,
+    const int x,
+    const int y) const {
+    if (head_id < 0 || static_cast<std::size_t>(head_id) >= portraits_.entry_count()) {
+        return false;
+    }
+    const auto frame = resource::SpriteFrameView::parse(
+        portraits_.entry(static_cast<std::size_t>(head_id)));
+    if (!frame.valid()) {
+        return false;
+    }
+    render::draw_rle_sprite(framebuffer, frame, x, y);
+    return true;
+}
+
 bool SceneSession::draw_weather_particle(
     render::IndexedFramebuffer& framebuffer, const WeatherParticle& particle) const {
     if (particle.kind < 0 ||
@@ -2958,26 +3039,60 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         return render::draw_legacy_text(
             framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
-    int x = 12;
-    int y = 12;
-    int width = 218;
-    int height = 57;
+    int x = 54;
+    int y = 40;
+    int width = 212;
+    int height = 27;
+    auto text_x = x + 4;
     if (pending_.kind == SceneStepKind::dialogue) {
+        width = 218;
+        height = 57;
+        std::optional<std::pair<int, int>> portrait_position;
         switch (pending_.style) {
         case 1:
-        case 3: x = 8; y = 130; break;
-        case 4: x = 8; y = 17; break;
-        case 5: x = 94; y = 130; break;
-        default: x = 94; y = 17; break;
+            x = 8;
+            y = 130;
+            portrait_position = std::pair{237, 125};
+            break;
+        case 2:
+            x = 94;
+            y = 17;
+            break;
+        case 3:
+            x = 8;
+            y = 130;
+            break;
+        case 4:
+            x = 8;
+            y = 17;
+            portrait_position = std::pair{237, 12};
+            break;
+        case 5:
+            x = 94;
+            y = 130;
+            portrait_position = std::pair{23, 125};
+            break;
+        default:
+            x = 94;
+            y = 17;
+            portrait_position = std::pair{23, 12};
+            break;
         }
-    } else {
-        width = 212;
-        height = 27;
-        x = 54;
-        y = 40;
-    }
-    if (!framebuffer.fill_rectangle(x, y, static_cast<std::uint16_t>(width),
-                                    static_cast<std::uint16_t>(height), 0U)) {
+        if (!draw_panel(framebuffer, x, y, width, height)) {
+            return false;
+        }
+        if (portrait_position.has_value()) {
+            const auto [portrait_x, portrait_y] = *portrait_position;
+            blend_panel(framebuffer, portrait_x, portrait_y, 60, 62);
+            if (!draw_portrait(framebuffer, pending_.head_id, portrait_x + 2, portrait_y + 59) ||
+                !draw_panel_border(framebuffer, portrait_x, portrait_y, 60, 62)) {
+                return false;
+            }
+        }
+        text_x = x + 13;
+    } else if (!framebuffer.fill_rectangle(
+                   x, y, static_cast<std::uint16_t>(width),
+                   static_cast<std::uint16_t>(height), 0U)) {
         return false;
     }
     if (pending_text_.empty()) {
@@ -2993,15 +3108,26 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
             continue;
         }
         line.push_back(0U);
-        if (!render::draw_legacy_text(
-                framebuffer,
-                x + 4,
-                y + 3 + line_index * 17,
-                line,
-                ascii_font_,
-                cache,
-                0x17U,
-                0x15U)) {
+        const auto rendered = pending_.kind == SceneStepKind::dialogue
+                                  ? draw_dialogue_text(
+                                        framebuffer,
+                                        text_x,
+                                        y + 3 + line_index * 17,
+                                        line,
+                                        ascii_font_,
+                                        cache,
+                                        0x17U,
+                                        0x15U)
+                                  : render::draw_legacy_text(
+                                        framebuffer,
+                                        text_x,
+                                        y + 3 + line_index * 17,
+                                        line,
+                                        ascii_font_,
+                                        cache,
+                                        0x17U,
+                                        0x15U);
+        if (!rendered) {
             return false;
         }
         line.clear();

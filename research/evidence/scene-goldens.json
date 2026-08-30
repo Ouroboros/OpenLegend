@@ -2004,6 +2004,213 @@
         }
       ]
     },
+    "dialogue_vectors": {
+      "hdgrp_entry_count": 115,
+      "hdgrp_sha256": "9b3ea687e0a2d82cc0dd83f580cff6a5cb48e7b62b6fd98dc4b63dad93a9c037",
+      "talk_14_page_count": 5,
+      "maximum_explicit_line_width": 344,
+      "maximum_explicit_line_talk": 1841,
+      "styles_present": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "cases": {
+        "style_0_script_1_pc_0": {
+          "talk_id": 0,
+          "head_id": 1,
+          "style": 0,
+          "view_origin": [
+            33,
+            18
+          ],
+          "page_count": 1,
+          "page_hex": [
+            "a470a553a7cca141a8eca6b9b448a4d1b3b7a661a1412aa4a3aabea6b3a6f3abfcb1d0a14800"
+          ],
+          "panel": [
+            94,
+            17,
+            218,
+            57
+          ],
+          "portrait_panel": [
+            23,
+            12,
+            60,
+            62
+          ],
+          "portrait_anchor": [
+            25,
+            71
+          ],
+          "text_position": [
+            107,
+            20
+          ],
+          "colors": [
+            23,
+            21
+          ],
+          "frame_fnv1a64": [
+            "0x1510f9342de536c3"
+          ]
+        },
+        "style_1_script_1_pc_5": {
+          "talk_id": 1,
+          "head_id": 0,
+          "style": 1,
+          "view_origin": [
+            33,
+            18
+          ],
+          "page_count": 1,
+          "page_hex": [
+            "bdd0b0dda741ac4fad4ab4b4ad4aa46aadf4b6dca14800"
+          ],
+          "panel": [
+            8,
+            130,
+            218,
+            57
+          ],
+          "portrait_panel": [
+            237,
+            125,
+            60,
+            62
+          ],
+          "portrait_anchor": [
+            239,
+            184
+          ],
+          "text_position": [
+            21,
+            133
+          ],
+          "colors": [
+            23,
+            21
+          ],
+          "frame_fnv1a64": [
+            "0xfd2a5cb6664410e1"
+          ]
+        },
+        "style_2_script_244_pc_0": {
+          "talk_id": 796,
+          "head_id": 200,
+          "style": 2,
+          "view_origin": [
+            33,
+            18
+          ],
+          "page_count": 1,
+          "page_hex": [
+            "aeaea8d3abc8b4cca1472aa575a6b9a440ae61a141a74fb54ca4c0b8b92aa6edb14aa2b0a2afa2af00"
+          ],
+          "panel": [
+            94,
+            17,
+            218,
+            57
+          ],
+          "portrait_panel": null,
+          "portrait_anchor": null,
+          "text_position": [
+            107,
+            20
+          ],
+          "colors": [
+            23,
+            21
+          ],
+          "frame_fnv1a64": [
+            "0x961bbddc3fc79f35"
+          ]
+        },
+        "style_4_script_142_pc_10": {
+          "talk_id": 547,
+          "head_id": 77,
+          "style": 4,
+          "view_origin": [
+            33,
+            14
+          ],
+          "page_count": 1,
+          "page_hex": [
+            "a7cca46cbb7da84da6babed4a1412abb50a7afc55da8b8b944b6d5a4a3a8e2a5dfa14400"
+          ],
+          "panel": [
+            8,
+            17,
+            218,
+            57
+          ],
+          "portrait_panel": [
+            237,
+            12,
+            60,
+            62
+          ],
+          "portrait_anchor": [
+            239,
+            71
+          ],
+          "text_position": [
+            21,
+            20
+          ],
+          "colors": [
+            23,
+            21
+          ],
+          "frame_fnv1a64": [
+            "0xd66e3b67975125a2"
+          ]
+        },
+        "long_line_script_515_pc_65": {
+          "talk_id": 1841,
+          "head_id": 0,
+          "style": 1,
+          "view_origin": [
+            33,
+            18
+          ],
+          "page_count": 1,
+          "page_hex": [
+            "bc7dae65a4bda46ca141b36fac4fabe7bbf2a65ea8c6a1482aa4b0bbf2ba7ea448a141abb4a4a6a448aabaa148202020a140a140a140a140a140a140a140a140a140a14000"
+          ],
+          "panel": [
+            8,
+            130,
+            218,
+            57
+          ],
+          "portrait_panel": [
+            237,
+            125,
+            60,
+            62
+          ],
+          "portrait_anchor": [
+            239,
+            184
+          ],
+          "text_position": [
+            21,
+            133
+          ],
+          "colors": [
+            23,
+            21
+          ],
+          "frame_fnv1a64": [
+            "0xf420561dcb42e981"
+          ]
+        }
+      }
+    },
     "status_notice_vectors": {
       "opcode_52_script_825": {
         "value": 7,

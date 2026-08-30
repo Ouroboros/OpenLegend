@@ -139,6 +139,29 @@ def draw_legacy_text(
             x += 4 if first == ord("_") else 8
 
 
+def dialogue_pages(text: bytes) -> list[bytes]:
+    pages: list[bytes] = []
+    page = bytearray()
+    line_break_count = 0
+    cursor = 0
+    while cursor < len(text) and text[cursor] != 0:
+        first = text[cursor]
+        if first == ord("*"):
+            page.append(first)
+            line_break_count += 1
+            cursor += 1
+            if line_break_count == 3:
+                pages.append(bytes(page) + b"\0")
+                page.clear()
+                line_break_count = 0
+            continue
+        token_size = 2 if first > 0x7F else 1
+        page.extend(text[cursor:cursor + token_size])
+        cursor += token_size
+    pages.append(bytes(page) + b"\0")
+    return pages
+
+
 def rgb4_lookup(palette: list[tuple[int, int, int]]) -> list[int]:
     result: list[int] = []
     for red in range(16):
@@ -983,6 +1006,203 @@ def scene_archive_state_vectors(
     }
 
 
+def dialogue_vectors(
+    root: Path,
+    base_frame: bytes,
+    style_4_base_frame: bytes,
+    palette: list[tuple[int, int, int]],
+    decoded_talks: list[bytes],
+    scripts: list[bytes],
+) -> dict[str, object]:
+    ascii_font = (root / "FONT.X16").read_bytes()
+    big5_font = (root / "FONT.C16").read_bytes()
+    portraits = packed((root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes())
+    lookup = rgb4_lookup(palette)
+
+    def blend(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        source = palette[0]
+        for py in range(y, y + height):
+            for px in range(x, x + width):
+                offset = py * 320 + px
+                destination = palette[pixels[offset]]
+                components = tuple(
+                    source[channel] // 8 + destination[channel] // 8
+                    for channel in range(3)
+                )
+                pixels[offset] = lookup[
+                    components[0] * 256 + components[1] * 16 + components[2]
+                ]
+
+    def fill(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for py in range(y, y + height):
+            pixels[py * 320 + x:py * 320 + x + width] = bytes([0xFF]) * width
+
+    def background(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for left, top, w, h in (
+            (x + 5, y, width - 10, 1),
+            (x + 4, y + 1, width - 8, 1),
+            (x + 3, y + 2, width - 6, 1),
+            (x + 2, y + 3, width - 4, 1),
+            (x + 1, y + 4, width - 2, 1),
+            (x, y + 5, width, height - 10),
+            (x + 1, y + height - 5, width - 2, 1),
+            (x + 2, y + height - 4, width - 4, 1),
+            (x + 3, y + height - 3, width - 6, 1),
+            (x + 4, y + height - 2, width - 8, 1),
+            (x + 5, y + height - 1, width - 10, 1),
+        ):
+            blend(pixels, left, top, w, h)
+
+    def border(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
+        for left, top, w, h in (
+            (x + 5, y + 1, width - 10, 1),
+            (x + 4, y + 2, 1, 2),
+            (x + width - 5, y + 2, 1, 2),
+            (x + 2, y + 4, 2, 1),
+            (x + width - 4, y + 4, 2, 1),
+            (x + 1, y + 5, 1, height - 10),
+            (x + width - 2, y + 5, 1, height - 10),
+            (x + 2, y + height - 5, 2, 1),
+            (x + width - 4, y + height - 5, 2, 1),
+            (x + 4, y + height - 4, 1, 2),
+            (x + width - 5, y + height - 4, 1, 2),
+            (x + 5, y + height - 2, width - 10, 1),
+        ):
+            fill(pixels, left, top, w, h)
+
+    layouts = {
+        0: ((94, 17), (23, 12)),
+        1: ((8, 130), (237, 125)),
+        2: ((94, 17), None),
+        3: ((8, 130), None),
+        4: ((8, 17), (237, 12)),
+        5: ((94, 130), (23, 125)),
+    }
+
+    def draw_text_linear(pixels: bytearray, x: int, y: int, text: bytes) -> None:
+        cursor = 0
+        while text[cursor] != 0:
+            first = text[cursor]
+            cursor += 1
+            if first > 0x7F:
+                second = text[cursor]
+                cursor += 1
+                trail = second - 0x40 if 0x40 <= second <= 0x7E else second - 0x62
+                glyph_index = (first - 0xA1) * 157 + trail
+                glyph = big5_font[glyph_index * 32:(glyph_index + 1) * 32]
+                glyph_width = 16
+            else:
+                glyph = ascii_font[first * 16:(first + 1) * 16]
+                glyph_width = 8
+            assert len(glyph) == glyph_width * 2
+            for row in range(16):
+                for byte_index in range(glyph_width // 8):
+                    bits = glyph[row * glyph_width // 8 + byte_index]
+                    for bit in range(8):
+                        if bits & (0x80 >> bit):
+                            offset = (y + row) * 320 + x + byte_index * 8 + bit
+                            assert 0 <= offset and offset + 1 < len(pixels)
+                            pixels[offset] = 0x15
+                            pixels[offset + 1] = 0x17
+            x += glyph_width
+
+    def render_case(
+        talk_id: int,
+        head_id: int,
+        style: int,
+        case_base_frame: bytes | None = None,
+        view_origin: tuple[int, int] = (33, 18),
+    ) -> dict[str, object]:
+        panel_position, portrait_position = layouts[style]
+        panel_x, panel_y = panel_position
+        page_frames: list[str] = []
+        pages = dialogue_pages(decoded_talks[talk_id])
+        for page in pages:
+            pixels = bytearray(base_frame if case_base_frame is None else case_base_frame)
+            background(pixels, panel_x, panel_y, 218, 57)
+            border(pixels, panel_x, panel_y, 218, 57)
+            if portrait_position is not None:
+                portrait_x, portrait_y = portrait_position
+                background(pixels, portrait_x, portrait_y, 60, 62)
+                draw_sprite(pixels, portraits[head_id], portrait_x + 2, portrait_y + 59)
+                border(pixels, portrait_x, portrait_y, 60, 62)
+            for line_index, line in enumerate(page[:-1].split(b"*")):
+                if not line:
+                    continue
+                draw_text_linear(
+                    pixels,
+                    panel_x + 13,
+                    panel_y + 3 + line_index * 17,
+                    line + b"\0",
+                )
+            page_frames.append(fnv1a64(pixels))
+        return {
+            "talk_id": talk_id,
+            "head_id": head_id,
+            "style": style,
+            "view_origin": list(view_origin),
+            "page_count": len(pages),
+            "page_hex": [page.hex() for page in pages],
+            "panel": [panel_x, panel_y, 218, 57],
+            "portrait_panel": None if portrait_position is None else [*portrait_position, 60, 62],
+            "portrait_anchor": None if portrait_position is None else [portrait_position[0] + 2, portrait_position[1] + 59],
+            "text_position": [panel_x + 13, panel_y + 3],
+            "colors": [0x17, 0x15],
+            "frame_fnv1a64": page_frames,
+        }
+
+    style_cases = {
+        "style_0_script_1_pc_0": render_case(0, 1, 0),
+        "style_1_script_1_pc_5": render_case(1, 0, 1),
+        "style_2_script_244_pc_0": render_case(796, 200, 2),
+        "style_4_script_142_pc_10": render_case(
+            547, 77, 4, style_4_base_frame, (33, 14)
+        ),
+        "long_line_script_515_pc_65": render_case(1841, 0, 1),
+    }
+    assert words(scripts[1])[:9] == (1, 0, 1, 0, 0, 1, 1, 0, 1)
+    assert words(scripts[244])[:5] == (1, 796, 200, 2, 0)
+    assert words(scripts[142])[10:14] == (1, 547, 77, 4)
+    assert words(scripts[515])[65:69] == (1, 1841, 0, 1)
+
+    maximum_line_width = 0
+    maximum_line_talk = -1
+    for talk_id, text in enumerate(decoded_talks):
+        for line in text[:-1].split(b"*"):
+            width = 0
+            cursor = 0
+            while cursor < len(line):
+                if line[cursor] > 0x7F:
+                    width += 16
+                    cursor += 2
+                else:
+                    width += 4 if line[cursor] == ord("_") else 8
+                    cursor += 1
+            if width > maximum_line_width:
+                maximum_line_width = width
+                maximum_line_talk = talk_id
+
+    styles_present: set[int] = set()
+    for script in scripts:
+        instructions = words(script)
+        program_counter = 0
+        while instructions[program_counter] != -1:
+            opcode = instructions[program_counter]
+            if opcode == 1:
+                styles_present.add(instructions[program_counter + 3])
+            program_counter += WIDTHS[opcode]
+
+    return {
+        "hdgrp_entry_count": len(portraits),
+        "hdgrp_sha256": sha256((root / "HDGRP.GRP").read_bytes()),
+        "talk_14_page_count": len(dialogue_pages(decoded_talks[14])),
+        "maximum_explicit_line_width": maximum_line_width,
+        "maximum_explicit_line_talk": maximum_line_talk,
+        "styles_present": sorted(styles_present),
+        "cases": style_cases,
+    }
+
+
 def status_notice_vectors(
     root: Path,
     base_frame: bytes,
@@ -1304,6 +1524,16 @@ def main() -> None:
     opcode_25_script_30 = pan_trace(
         smap, sevent, sprites, 44, 29, 1, script_30[1:5]
     )
+    script_142 = words(scripts[142])
+    assert script_142[:5] == (25, 30, 33, 30, 24)
+    opcode_25_script_142 = pan_trace(
+        smap, sevent, sprites, 44, 29, 1, script_142[1:5]
+    )
+    assert opcode_25_script_142[-1]["view_origin_x"] == 33
+    assert opcode_25_script_142[-1]["view_origin_y"] == 14
+    style_4_base_frame = render_scene(
+        smap, sevent, sprites, 44, 29, 1, (33, 14)
+    )
 
     animation_scene_id = 53
     animation_map = words(scene_maps[animation_scene_id])
@@ -1532,6 +1762,9 @@ def main() -> None:
                 ranger, scene_maps, scene_events, scripts
             ),
             "scene_loop_vectors": scene_loop_vectors(ranger, scripts),
+            "dialogue_vectors": dialogue_vectors(
+                root, frame, style_4_base_frame, palette, decoded_talks, scripts
+            ),
             "status_notice_vectors": status_notice_vectors(
                 root, frame, palette, scripts, ranger
             ),

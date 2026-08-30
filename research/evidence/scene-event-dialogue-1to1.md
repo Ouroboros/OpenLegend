@@ -8,10 +8,10 @@
 
 - headless IDA 脚本：`research/ida/scripts/ida_b7_scene_xrefs.py`
 - IDA 报告：`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`
-  - SHA256：`8827e8e8643a3a9b4a48488832c945a3f6d04415345fc1fd71d7557feb30aa58`
+  - SHA256：`c41e49902edde670c33e433dec4cb3df3e12f493c8517aeebf9d839ae36b1769`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`35490b9fd243cc27042aab7b4377530743c444dec520a500dc3e6b0fdce5a917`
+  - SHA256：`a3442f87685dbca2db015019ce97bff356225a76c6ba78c5fa49b599943dd71d`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -25,6 +25,7 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 | `ALLDEF.GRP` | 100 × 200 × 11 × int16 = 440,000 bytes | `3633122f6a43f0b5dd390c2fa2516766d735a064ca955c8766b73232230a4480` |
 | `TALK.GRP` | 2,977 records | `5cde11862ed7a52ffd45920e8f19ff21a5065bfe4c02036c524a504a5cb91811` |
 | `KDEF.GRP` | 1,018 scripts | `135c5e097a7fe561ee931046e1bebf55de9b469678e3d111d8e9f2c6bb600e06` |
+| `HDGRP.GRP` | 115 portrait frames | `9b3ea687e0a2d82cc0dd83f580cff6a5cb48e7b62b6fd98dc4b63dad93a9c037` |
 
 `TALK.GRP` 每条记录的正文逐字节 XOR `0xFF`，原记录末尾的零字节是终止符，不参与 XOR；解码后的 Big5 字节流重新以零终止。全部解码记录串联 SHA256 为 `f9af125e5c483ded03f4d444a615cddddcff8ab1ad416669abd1f561b9bb15eb`。
 
@@ -112,9 +113,13 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 
 - 每页最多三行；
 - `'*'` 结束当前行；
-- 超过对话框 208 像素正文宽度时只在完整 ASCII/Big5 token 边界软换行；
+- 不按对话框宽度软换行；只有 `'*'` 增加17像素行距，第三次显式换行结束本次调用；
+- 第三个 `'*'` 后恰逢记录终止时仍保留下一次终止符调用形成的空白末页；
+- 正文固定从面板 `(x+13,y+3)` 开始，ASCII 前进8像素、Big5前进16像素；
+- `sub_20615/sub_20663` 不裁剪横向越界，超过319的置位像素按线性 framebuffer 地址落到后续扫描线；
+- style0/1/4/5 绘制 `60×62` 混色头像框并按 head ID 直接读取 HDGRP，style2/3 不读取头像；
 - 每页作为同步 `SceneStepKind::dialogue` 返回，app 确认后才继续同一事件 PC；
-- 字体仍由 `FONT.X16` / `FONT.C16` 在 index8 framebuffer 上绘制。
+- 当前2,977条 TALK 最大显式行宽为344像素（talk1841），当前 KDEF 实际 style 为0/1/2/4。
 
 ## 6. 场景天气
 
@@ -146,7 +151,8 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 
 Linux app Debug BUILD 脚本：13/13 测试通过，包括：
 
-- 2,977 条 TALK 数量与首尾记录解码；
+- 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
+- HDGRP 115帧以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
 - 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
