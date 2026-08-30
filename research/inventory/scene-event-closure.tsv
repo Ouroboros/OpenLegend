@@ -22,7 +22,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 21	0x2D501	sub_2D501	event_helper_2D501	0x2D590	143	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 22	0x2D590	sub_2D590	event_helper_2D590	0x2D653	195	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 23	0x2D653	sub_2D653	event_helper_2D653	0x2D678	37	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-24	0x2D678	sub_2D678	event_helper_2D678	0x2D841	457	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+24	0x2D678	sub_2D678	event_helper_2D678	0x2D841	457	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::add_inventory/update_book_event_if_ready	research/evidence/functions/Z_DAT/0x2D678.md	Linux Debug openlegend.scene; scripts149/497/36 duplicate/residual/presence vectors	not_started	complete full forward/reverse review after B7 implementation closes
 25	0x2D841	sub_2D841	event_helper_2D841	0x2DBF4	947	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 26	0x2DBF4	sub_2DBF4	event_helper_2DBF4	0x2DD45	337	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 27	0x2DD45	sub_2DD45	event_helper_2DD45	0x2DD77	50	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
@@ -42,7 +42,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 41	0x2E337	sub_2E337	event_helper_2E337	0x2E46B	308	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 42	0x2E46B	sub_2E46B	event_helper_2E46B	0x2E536	203	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 43	0x2E536	sub_2E536	event_helper_2E536	0x2E571	59	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-44	0x2E571	sub_2E571	event_helper_2E571	0x2E5E6	117	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+44	0x2E571	sub_2E571	event_helper_2E571	0x2E5E6	117	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::add_inventory	research/evidence/functions/Z_DAT/0x2E571.md	Linux Debug openlegend.scene; duplicate/all-match and residual empty-slot vectors	not_started	complete full forward/reverse review after B7 implementation closes
 45	0x2E639	sub_2E639	event_helper_2E639	0x2E659	32	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 46	0x2E659	sub_2E659	event_helper_2E659	0x2EB49	1264	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 47	0x2EB49	sub_2EB49	event_helper_2EB49	0x2ED7D	564	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
@@ -52,7 +52,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 51	0x2F136	sub_2F136	event_helper_2F136	0x2F15F	41	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::run_event(case29)	research/evidence/functions/Z_DAT/0x2F136.md	Linux Debug openlegend.scene; script655 ignored-upper-bound counterexample	not_started	complete full forward/reverse review after B7 implementation closes
 52	0x2F171	sub_2F171	event_helper_2F171	0x2F34C	475	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::advance_scripted_walk_frame	research/evidence/functions/Z_DAT/0x2F171.md	Linux Debug openlegend.scene; independent scene39 script343 oracle	not_started	complete full forward/reverse review after B7 implementation closes; audit delegated movement/render/time helpers
 53	0x2F34C	sub_2F34C	event_helper_2F34C	0x2F39C	80	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::first_inventory_count	research/evidence/functions/Z_DAT/0x2F34C.md	Linux Debug openlegend.scene; script234 duplicate-money-slot counterexample	not_started	complete full forward/reverse review after B7 implementation closes
-54	0x2F39C	sub_2F39C	event_helper_2F39C	0x2F3F0	84	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+54	0x2F39C	sub_2F39C	event_helper_2F39C	0x2F3F0	84	implemented_pending_review	scene	src/scene/scene.cpp:SceneSession::change_first_inventory	research/evidence/functions/Z_DAT/0x2F39C.md	Linux Debug openlegend.scene; script234 first-slot delete/compact vector	not_started	complete full forward/reverse review after B7 implementation closes
 55	0x2F3F0	sub_2F3F0	event_helper_2F3F0	0x2F526	310	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 56	0x2F526	sub_2F526	event_helper_2F526	0x2F62F	265	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 57	0x2F62F	sub_2F62F	event_helper_2F62F	0x2F6C2	147	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

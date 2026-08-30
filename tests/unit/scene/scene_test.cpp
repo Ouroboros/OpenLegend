@@ -836,6 +836,29 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     OL_CHECK(purchase_snapshot.event_value(
                  3U, 16U, openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
 
+    auto split_money_snapshot = load_baseline(root);
+    auto& split_money_shop = split_money_snapshot.ranger.shops[1];
+    split_money_shop.set_word(openlegend::model::shop_word::item_id_begin, 42);
+    split_money_shop.set_word(openlegend::model::shop_word::total_begin, 2);
+    split_money_shop.set_word(openlegend::model::shop_word::price_begin, 7);
+    split_money_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{174}, 5);
+    split_money_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{174}, 100);
+    const auto item_count_before = inventory_count(split_money_snapshot.ranger, 42);
+    openlegend::random::LegacyRandom split_money_random{1U};
+    openlegend::scene::SceneSession split_money_session{
+        data_root, split_money_snapshot, split_money_random, 3};
+    auto split_purchase = open_shop(split_money_session);
+    OL_CHECK(split_purchase.kind == SceneStepKind::shop);
+    split_purchase = split_money_session.resume(SceneResponse::yes, 0);
+    OL_CHECK(split_purchase.kind == SceneStepKind::dialogue);
+    OL_CHECK(split_purchase.talk_id == 2975);
+    OL_CHECK(split_money_shop.word(openlegend::model::shop_word::total_begin) == 2);
+    OL_CHECK(split_money_snapshot.ranger.header.inventory_count(0U) == 5);
+    OL_CHECK(split_money_snapshot.ranger.header.inventory_count(1U) == 100);
+    OL_CHECK(inventory_count(split_money_snapshot.ranger, 42) == item_count_before);
+
     const std::array<std::pair<std::int16_t, std::vector<std::int16_t>>, 6> hide_cases{
         std::pair<std::int16_t, std::vector<std::int16_t>>{0, {}},
         {1, {16, 17, 18}},
@@ -1017,10 +1040,48 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     money_snapshot.ranger.header.set_inventory(
         0U, openlegend::model::ItemId{174}, 10);
     money_snapshot.ranger.header.set_inventory(
-        1U, openlegend::model::ItemId{174}, 0);
+        1U, openlegend::model::ItemId{174}, 20);
     const auto first_money = money_session.begin_event(234, 0, 0, 0, 174);
     OL_CHECK(first_money.kind == SceneStepKind::dialogue);
     OL_CHECK(first_money.talk_id == 791);
+    OL_CHECK(money_snapshot.ranger.header.inventory_item(0U).value == 174);
+    OL_CHECK(money_snapshot.ranger.header.inventory_count(0U) == 20);
+
+    auto duplicate_snapshot = load_baseline(root);
+    duplicate_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{109}, 2);
+    duplicate_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{109}, 3);
+    duplicate_snapshot.ranger.header.set_inventory(
+        2U, openlegend::model::ItemId{88}, 4);
+    openlegend::random::LegacyRandom duplicate_random{1U};
+    openlegend::scene::SceneSession duplicate_session{
+        data_root, duplicate_snapshot, duplicate_random, 70};
+    const auto duplicate_add = duplicate_session.begin_event(149, 0, 0, 0);
+    OL_CHECK(duplicate_add.kind == SceneStepKind::notice);
+    OL_CHECK(duplicate_snapshot.ranger.header.inventory_item(0U).value == 109);
+    OL_CHECK(duplicate_snapshot.ranger.header.inventory_count(0U) == 3);
+    OL_CHECK(duplicate_snapshot.ranger.header.inventory_item(1U).value == 109);
+    OL_CHECK(duplicate_snapshot.ranger.header.inventory_count(1U) == 4);
+    OL_CHECK(duplicate_snapshot.ranger.header.inventory_item(2U).value == 88);
+    OL_CHECK(duplicate_snapshot.ranger.header.inventory_count(2U) == 4);
+
+    auto residual_snapshot = load_baseline(root);
+    for (std::size_t index = 0U; index < 5U; ++index) {
+        residual_snapshot.ranger.header.set_inventory(
+            index,
+            openlegend::model::ItemId{static_cast<std::int16_t>(50 + index)},
+            1);
+    }
+    residual_snapshot.ranger.header.set_inventory(
+        5U, openlegend::model::ItemId{-1}, 9);
+    openlegend::random::LegacyRandom residual_random{1U};
+    openlegend::scene::SceneSession residual_session{
+        data_root, residual_snapshot, residual_random, 70};
+    const auto residual_add = residual_session.begin_event(497, 0, 0, 0);
+    OL_CHECK(residual_add.kind == SceneStepKind::notice);
+    OL_CHECK(residual_snapshot.ranger.header.inventory_item(5U).value == 57);
+    OL_CHECK(residual_snapshot.ranger.header.inventory_count(5U) == 10);
 
     auto presence_snapshot = load_baseline(root);
     presence_snapshot.ranger.header.set_inventory(
@@ -1375,7 +1436,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     }
     for (std::int16_t item_id = 144; item_id <= 157; ++item_id) {
         book_snapshot.ranger.header.set_inventory(
-            static_cast<std::size_t>(item_id - 144), openlegend::model::ItemId{item_id}, 1);
+            static_cast<std::size_t>(item_id - 144), openlegend::model::ItemId{item_id}, 0);
     }
     book_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::fame, 200);
     openlegend::random::LegacyRandom book_random{1U};
@@ -1390,6 +1451,27 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(book_snapshot.event_value(
                  70U, 11U, openlegend::model::SceneEventField::current_picture).value_or(-1) ==
              7968);
+
+    auto letter_snapshot = load_baseline(root);
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        letter_snapshot.ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+    }
+    for (std::int16_t item_id = 144; item_id <= 157; ++item_id) {
+        letter_snapshot.ranger.header.set_inventory(
+            static_cast<std::size_t>(item_id - 144), openlegend::model::ItemId{item_id}, 0);
+    }
+    letter_snapshot.ranger.header.set_inventory(
+        14U, openlegend::model::ItemId{189}, 0);
+    letter_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::fame, 200);
+    static_cast<void>(letter_snapshot.set_event_value(
+        70U, 11U, openlegend::model::SceneEventField::event_1, 111));
+    openlegend::random::LegacyRandom letter_random{1U};
+    openlegend::scene::SceneSession letter_session{
+        data_root, letter_snapshot, letter_random, 70};
+    OL_CHECK(letter_session.begin_event(36, 0, 44, 29).kind ==
+             openlegend::scene::SceneStepKind::notice);
+    OL_CHECK(letter_snapshot.event_value(
+                 70U, 11U, openlegend::model::SceneEventField::event_1).value_or(-1) == 111);
 
     auto rest_snapshot = load_baseline(root);
     auto& resting_role = rest_snapshot.ranger.roles[0];

@@ -276,6 +276,7 @@ private:
         std::int16_t item_id) const noexcept;
     [[nodiscard]] int inventory_count(std::int16_t item_id) const noexcept;
     void add_inventory(std::int16_t item_id, std::int16_t count);
+    void change_first_inventory(std::int16_t item_id, std::int16_t count);
     void update_book_event_if_ready();
     void close_shop_events();
     void remove_team_role(std::int16_t role_id);

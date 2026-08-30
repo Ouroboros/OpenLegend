@@ -595,8 +595,8 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
             const auto item_id = shop.word(model::shop_word::item_id_begin + slot);
             const auto stock = shop.word(model::shop_word::total_begin + slot);
             const auto price = shop.word(model::shop_word::price_begin + slot);
-            if (stock > 0 && inventory_count(174) >= price) {
-                add_inventory(174, static_cast<std::int16_t>(-price));
+            if (stock > 0 && first_inventory_count(174).value_or(0) >= price) {
+                change_first_inventory(174, static_cast<std::int16_t>(-price));
                 add_inventory(item_id, 1);
                 shop.set_word(
                     model::shop_word::total_begin + slot,
@@ -726,7 +726,7 @@ SceneStepResult SceneSession::run_event() {
         case 10: {
             program_counter_ += 2;
             for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
-                if (snapshot_.ranger.header.team_member(index).value >= 0) {
+                if (snapshot_.ranger.header.team_member(index).value > 0) {
                     continue;
                 }
                 snapshot_.ranger.header.set_team_member(index, model::CharacterId{argument(1)});
@@ -895,7 +895,7 @@ SceneStepResult SceneSession::run_event() {
                 4U, argument(2), argument(3));
             break;
         case 32:
-            add_inventory(argument(1), argument(2));
+            change_first_inventory(argument(1), argument(2));
             program_counter_ += 3;
             break;
         case 33: {
@@ -1463,49 +1463,63 @@ int SceneSession::inventory_count(const std::int16_t item_id) const noexcept {
 }
 
 void SceneSession::add_inventory(const std::int16_t item_id, const std::int16_t count) {
-    if (item_id < 0 || count == 0) {
-        return;
-    }
-    std::array<std::pair<std::int16_t, int>, model::kInventoryCount> combined{};
-    std::size_t used = 0U;
     bool found = false;
     for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
-        const auto current_id = snapshot_.ranger.header.inventory_item(index).value;
-        const auto current_count = snapshot_.ranger.header.inventory_count(index);
-        if (current_id < 0 || current_count <= 0) {
+        if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
+            snapshot_.ranger.header.set_inventory(
+                index, model::ItemId{item_id},
+                static_cast<std::int16_t>(
+                    snapshot_.ranger.header.inventory_count(index) + count));
+            found = true;
+        }
+    }
+    if (found) {
+        return;
+    }
+    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
+        if (snapshot_.ranger.header.inventory_item(index).value == -1) {
+            snapshot_.ranger.header.set_inventory(
+                index, model::ItemId{item_id},
+                static_cast<std::int16_t>(
+                    snapshot_.ranger.header.inventory_count(index) + count));
+            return;
+        }
+    }
+}
+
+void SceneSession::change_first_inventory(
+    const std::int16_t item_id,
+    const std::int16_t count) {
+    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
+        if (snapshot_.ranger.header.inventory_item(index).value != item_id) {
             continue;
         }
-        if (current_id == item_id) {
-            combined[used++] = {current_id, static_cast<int>(current_count) + count};
-            found = true;
-        } else {
-            combined[used++] = {current_id, current_count};
+        const auto changed = static_cast<std::int16_t>(
+            snapshot_.ranger.header.inventory_count(index) + count);
+        if (changed > 0) {
+            snapshot_.ranger.header.set_inventory(index, model::ItemId{item_id}, changed);
+            return;
         }
-    }
-    if (!found && count > 0 && used < combined.size()) {
-        combined[used++] = {item_id, count};
-    }
-    std::size_t destination = 0U;
-    for (std::size_t index = 0U; index < used; ++index) {
-        if (combined[index].second > 0) {
+        for (std::size_t source = index + 1U; source < model::kInventoryCount; ++source) {
             snapshot_.ranger.header.set_inventory(
-                destination++, model::ItemId{combined[index].first},
-                static_cast<std::int16_t>(combined[index].second));
+                source - 1U,
+                snapshot_.ranger.header.inventory_item(source),
+                snapshot_.ranger.header.inventory_count(source));
         }
-    }
-    while (destination < model::kInventoryCount) {
-        snapshot_.ranger.header.set_inventory(destination++, model::ItemId{-1}, 0);
+        snapshot_.ranger.header.set_inventory(
+            model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+        return;
     }
 }
 
 void SceneSession::update_book_event_if_ready() {
     if (snapshot_.ranger.roles.empty() ||
         snapshot_.ranger.roles[0].word(model::role_word::fame) < 200 ||
-        inventory_count(189) > 0) {
+        inventory_contains_id(189)) {
         return;
     }
     for (std::int16_t item_id = 144; item_id <= 157; ++item_id) {
-        if (inventory_count(item_id) <= 0) {
+        if (!inventory_contains_id(item_id)) {
             return;
         }
     }
