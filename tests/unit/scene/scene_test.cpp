@@ -1544,9 +1544,18 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     poisoned_role.set_word(openlegend::model::role_word::hurt, 10);
     poisoned_role.set_word(openlegend::model::role_word::poison, 1);
     poisoned_role.set_word(openlegend::model::role_word::physical_power, 6);
+    auto& after_gap_role = rest_snapshot.ranger.roles[2];
+    after_gap_role.set_word(openlegend::model::role_word::hp, 7);
+    after_gap_role.set_word(openlegend::model::role_word::maximum_hp, 97);
+    after_gap_role.set_word(openlegend::model::role_word::mp, 8);
+    after_gap_role.set_word(openlegend::model::role_word::maximum_mp, 88);
+    after_gap_role.set_word(openlegend::model::role_word::hurt, 10);
+    after_gap_role.set_word(openlegend::model::role_word::poison, 0);
+    after_gap_role.set_word(openlegend::model::role_word::physical_power, 9);
     rest_snapshot.ranger.header.set_team_member(0U, openlegend::model::CharacterId{0});
     rest_snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{1});
     rest_snapshot.ranger.header.set_team_member(2U, openlegend::model::CharacterId{-1});
+    rest_snapshot.ranger.header.set_team_member(3U, openlegend::model::CharacterId{2});
     openlegend::random::LegacyRandom rest_random{1U};
     openlegend::scene::SceneSession rest_session{
         data_root, rest_snapshot, rest_random, 70};
@@ -1570,6 +1579,10 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(poisoned_role.word(openlegend::model::role_word::mp) == 5);
     OL_CHECK(poisoned_role.word(openlegend::model::role_word::hurt) == 10);
     OL_CHECK(poisoned_role.word(openlegend::model::role_word::physical_power) == 6);
+    OL_CHECK(after_gap_role.word(openlegend::model::role_word::hp) == 7);
+    OL_CHECK(after_gap_role.word(openlegend::model::role_word::mp) == 8);
+    OL_CHECK(after_gap_role.word(openlegend::model::role_word::hurt) == 10);
+    OL_CHECK(after_gap_role.word(openlegend::model::role_word::physical_power) == 9);
 
     auto join_snapshot = load_baseline(root);
     for (std::size_t slot = 1U; slot < openlegend::model::kTeamMemberCount; ++slot) {

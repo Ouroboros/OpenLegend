@@ -752,8 +752,15 @@ SceneStepResult SceneSession::run_event() {
             }
             break;
         }
-        case 12:
-            for (std::size_t slot = 0U; slot < model::kTeamMemberCount; ++slot) {
+        case 12: {
+            auto party_end = model::kTeamMemberCount;
+            for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
+                if (snapshot_.ranger.header.team_member(slot).value <= 0) {
+                    party_end = slot;
+                    break;
+                }
+            }
+            for (std::size_t slot = 0U; slot < party_end; ++slot) {
                 const auto role_id = snapshot_.ranger.header.team_member(slot).value;
                 if (role_id < 0 || static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
                     continue;
@@ -769,6 +776,7 @@ SceneStepResult SceneSession::run_event() {
             }
             program_counter_ += 1;
             break;
+        }
         case 13:
             program_counter_ += 1;
             pending_ = current_result(SceneStepKind::fade_from_black);
