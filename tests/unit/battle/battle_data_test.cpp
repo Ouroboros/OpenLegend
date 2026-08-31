@@ -2276,7 +2276,20 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::detoxification, 20);
     ranger.roles[0U].set_word(role_word::medicine, 20);
     ranger.roles[0U].set_word(role_word::magic_id_begin, 5);
+    ranger.roles[0U].set_word(role_word::magic_id_begin + 2U, 6);
     ranger.magics[5U].set_word(magic_word::need_mp, 25);
+    ranger.magics[6U].set_word(magic_word::need_mp, 20);
+    auto magic5_name = std::span<std::uint8_t>{ranger.magics[5U].bytes}.subspan(
+        magic_word::name_byte, magic_word::name_bytes);
+    auto magic6_name = std::span<std::uint8_t>{ranger.magics[6U].bytes}.subspan(
+        magic_word::name_byte, magic_word::name_bytes);
+    std::ranges::fill(magic5_name, std::uint8_t{0U});
+    std::ranges::fill(magic6_name, std::uint8_t{0U});
+    std::ranges::copy(std::array<std::uint8_t, 4>{0xA7U, 0xF0U, 0xC0U, 0xBBU},
+                      magic5_name.begin());
+    std::ranges::copy(std::array<std::uint8_t, 6>{
+                          0xADU, 0xB0U, 0xC0U, 0x59U, 0xAFU, 0xABU},
+                      magic6_name.begin());
     session.advance();
     OL_CHECK(session.phase() == BattleSessionPhase::actor_present);
     OL_CHECK(session.render(framebuffer));
@@ -2296,9 +2309,35 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
     OL_CHECK(session.player_action_menu().cursor == 1U);
     OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
-    OL_CHECK(session.phase() == BattleSessionPhase::player_action_selected);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_magic_selection);
     OL_CHECK(session.player_action_menu().selected_action ==
              static_cast<std::int16_t>(BattlePlayerAction::attack));
+    OL_CHECK(session.player_magic_selection().has_value());
+    OL_CHECK(session.player_magic_selection()->learned_count == 2);
+    OL_CHECK(session.player_magic_selection()->available_count == 2);
+    OL_CHECK(session.player_magic_selection()->available_slots[0U] == 0);
+    OL_CHECK(session.player_magic_selection()->available_slots[1U] == 2);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x909332be9671b27cULL);
+    OL_CHECK(session.handle_key(0x9CU) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.player_magic_selection()->cursor == 1);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x6977ba7a0c3172a6ULL);
+    OL_CHECK(session.handle_key(0x9CU) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.player_magic_selection()->cursor == 0);
+    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.player_magic_selection()->cursor == 1);
+    OL_CHECK(session.handle_key(0x1BU) == BattleSessionInputResult::magic_cancelled);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK(session.player_action_menu().cursor == 1U);
+    OL_CHECK(session.player_action_menu().selected_action == -1);
+    OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_magic_selection);
+    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.handle_key(0x0DU) == BattleSessionInputResult::magic_selected);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_action_selected);
+    OL_CHECK(session.selected_magic_slot() == 2);
+    OL_CHECK(!session.player_magic_selection().has_value());
     OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::ignored);
 
     openlegend::diagnostics::shutdown_logging();
@@ -2313,6 +2352,12 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(log_text.find("battle actor dispatch id=2") != std::string::npos);
     OL_CHECK(log_text.find("battle player action menu ready id=2") != std::string::npos);
     OL_CHECK(log_text.find("battle player action selected id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle player magic selection ready id=2") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle player magic cursor id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle player magic selection cancelled id=2") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle player magic selected id=2") != std::string::npos);
 
     const auto reach_player_action = [&](BattleSession& target) {
         OL_CHECK(target.valid());

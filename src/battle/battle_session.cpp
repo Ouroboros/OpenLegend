@@ -55,6 +55,7 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::actor_present: return "actor_present";
     case BattleSessionPhase::player_action: return "player_action";
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
+    case BattleSessionPhase::player_magic_selection: return "player_magic_selection";
     case BattleSessionPhase::player_movement_select: return "player_movement_select";
     case BattleSessionPhase::player_targeting_select: return "player_targeting_select";
     case BattleSessionPhase::player_magic_frame_present:
@@ -94,6 +95,16 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     const std::span<const std::uint8_t> name) noexcept {
     const auto end = std::find(name.begin(), name.end(), std::uint8_t{0U});
     return name.first(static_cast<std::size_t>(std::distance(name.begin(), end)));
+}
+
+[[nodiscard]] int centered_magic_name_x(
+    const std::span<const std::uint8_t> name) noexcept {
+    for (std::size_t byte = 2U; byte <= name.size(); byte += 2U) {
+        if (byte == name.size() || name[byte] == 0U) {
+            return 65 - static_cast<int>(byte * 4U);
+        }
+    }
+    return 25;
 }
 
 }  // namespace
@@ -143,6 +154,9 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
     }
     if (phase_ == BattleSessionPhase::player_action) {
         return handle_player_action_key(translated_key);
+    }
+    if (phase_ == BattleSessionPhase::player_magic_selection) {
+        return handle_player_magic_selection_key(translated_key);
     }
     if (phase_ == BattleSessionPhase::player_movement_select) {
         return handle_player_movement_key(translated_key);
@@ -230,6 +244,8 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
         rendered = render_party_selection(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_action) {
         rendered = render_player_action_menu(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_magic_selection) {
+        rendered = render_player_magic_selection(framebuffer);
     } else {
         rendered = render_battlefield(framebuffer);
         if (rendered && phase_ == BattleSessionPhase::initial_fade &&
@@ -875,6 +891,85 @@ bool BattleSession::begin_player_action_menu() {
     return true;
 }
 
+bool BattleSession::begin_player_attack() {
+    const auto learned_count = setup_.learned_magic_count(current_actor_slot_);
+    if (learned_count == 1U) {
+        selected_magic_slot_ = 0;
+        phase_ = BattleSessionPhase::player_action_selected;
+        diagnostics::log_info(
+            "battle player single magic selected id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " magic_slot=0");
+        return true;
+    }
+
+    player_magic_selection_ = setup_.begin_magic_selection(current_actor_slot_);
+    if (!player_magic_selection_.has_value()) {
+        error_ = "battle player magic selection is invalid";
+        return false;
+    }
+    phase_ = BattleSessionPhase::player_magic_selection;
+    diagnostics::log_info(
+        "battle player magic selection ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " learned=" + std::to_string(player_magic_selection_->learned_count) +
+        " available=" + std::to_string(player_magic_selection_->available_count));
+    return true;
+}
+
+BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
+    const std::uint8_t translated_key) {
+    if (!player_magic_selection_.has_value()) {
+        return BattleSessionInputResult::ignored;
+    }
+    std::optional<BattleMagicSelectionAction> action;
+    if (translated_key == kRight) {
+        action = BattleMagicSelectionAction::next;
+    } else if (translated_key == kLeft) {
+        action = BattleMagicSelectionAction::previous;
+    } else if (confirms(translated_key)) {
+        action = BattleMagicSelectionAction::activate;
+    } else if (translated_key == kEscape) {
+        action = BattleMagicSelectionAction::cancel;
+    } else {
+        return BattleSessionInputResult::ignored;
+    }
+
+    const auto result = BattleSetup::apply_magic_selection(
+        *player_magic_selection_, *action);
+    if (result == BattleMagicSelectionResult::changed) {
+        diagnostics::log_debug(
+            "battle player magic cursor id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " cursor=" + std::to_string(player_magic_selection_->cursor));
+        return BattleSessionInputResult::magic_changed;
+    }
+    if (result == BattleMagicSelectionResult::cancelled) {
+        player_magic_selection_.reset();
+        player_action_menu_.selected_action = -1;
+        phase_ = BattleSessionPhase::player_action;
+        diagnostics::log_info(
+            "battle player magic selection cancelled id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_));
+        return BattleSessionInputResult::magic_cancelled;
+    }
+    if (result != BattleMagicSelectionResult::selected ||
+        !player_magic_selection_->selected_slot.has_value()) {
+        return BattleSessionInputResult::ignored;
+    }
+
+    selected_magic_slot_ = *player_magic_selection_->selected_slot;
+    diagnostics::log_info(
+        "battle player magic selected id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " cursor=" + std::to_string(player_magic_selection_->cursor) +
+        " magic_slot=" + std::to_string(selected_magic_slot_));
+    player_magic_selection_.reset();
+    phase_ = BattleSessionPhase::player_action_selected;
+    return BattleSessionInputResult::magic_selected;
+}
+
 bool BattleSession::begin_player_movement() {
     auto selection = setup_.begin_player_movement_selection(current_actor_slot_);
     if (!selection.has_value()) {
@@ -1466,6 +1561,7 @@ bool BattleSession::dispatch_selected_player_action() {
     case BattlePlayerAction::medicine:
         return begin_player_targeting(action);
     case BattlePlayerAction::attack:
+        return begin_player_attack();
     case BattlePlayerAction::item:
     case BattlePlayerAction::status:
         return true;
@@ -1602,6 +1698,80 @@ bool BattleSession::render_battlefield(
         : std::span<const std::int16_t>{};
     const auto plan = setup_.battle_render_plan(render_state_, path_values);
     return plan.has_value() && renderer_.render(*plan, framebuffer);
+}
+
+bool BattleSession::render_player_magic_selection(
+    render::IndexedFramebuffer& framebuffer) {
+    if (!player_magic_selection_.has_value() ||
+        player_magic_selection_->learned_count <= 0 ||
+        player_magic_selection_->learned_count >
+            static_cast<std::int16_t>(model::role_word::magic_count) ||
+        player_magic_selection_->available_count <= 0 ||
+        player_magic_selection_->cursor < 0 ||
+        player_magic_selection_->cursor >= player_magic_selection_->available_count ||
+        !render_battlefield(framebuffer)) {
+        return false;
+    }
+    const auto& actor = setup_.combatants()[current_actor_slot_].words;
+    const auto role_id = actor[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return false;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto draw_magic_name = [this, &framebuffer, &role](
+                                     const std::int16_t magic_slot,
+                                     const int y,
+                                     const std::uint16_t colors) {
+        if (magic_slot < 0 ||
+            static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
+            return false;
+        }
+        const auto magic_id = role.word(
+            model::role_word::magic_id_begin + static_cast<std::size_t>(magic_slot));
+        if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+            return false;
+        }
+        const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
+        const auto name = std::span<const std::uint8_t>{magic.bytes}.subspan(
+            model::magic_word::name_byte, model::magic_word::name_bytes);
+        return renderer_.draw_text(
+            framebuffer,
+            centered_magic_name_x(name),
+            y,
+            terminated_name(name),
+            colors);
+    };
+
+    const auto panel_height = static_cast<std::uint16_t>(
+        17 * player_magic_selection_->learned_count + 10);
+    if (!renderer_.draw_box(framebuffer, 20, 10, 90U, panel_height)) {
+        return false;
+    }
+    std::int16_t ordinal = 0;
+    for (std::int16_t magic_slot = 0;
+         magic_slot < player_magic_selection_->learned_count;
+         ++magic_slot) {
+        const auto available = std::find(
+            player_magic_selection_->available_slots.begin(),
+            player_magic_selection_->available_slots.begin() +
+                player_magic_selection_->available_count,
+            magic_slot);
+        if (available == player_magic_selection_->available_slots.begin() +
+                player_magic_selection_->available_count) {
+            continue;
+        }
+        if (!draw_magic_name(magic_slot, 17 * ordinal + 15, 0x2321U)) {
+            return false;
+        }
+        ++ordinal;
+    }
+
+    const auto selected_slot = player_magic_selection_->available_slots[
+        static_cast<std::size_t>(player_magic_selection_->cursor)];
+    return draw_magic_name(
+        selected_slot,
+        17 * player_magic_selection_->cursor + 15,
+        0x6663U);
 }
 
 bool BattleSession::render_player_action_menu(

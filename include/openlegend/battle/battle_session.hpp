@@ -27,6 +27,7 @@ enum class BattleSessionPhase {
     actor_present,
     player_action,
     player_action_selected,
+    player_magic_selection,
     player_movement_select,
     player_targeting_select,
     player_magic_frame_present,
@@ -55,6 +56,9 @@ enum class BattleSessionInputResult {
     cursor_changed,
     cursor_cancelled,
     cursor_selected,
+    magic_changed,
+    magic_cancelled,
+    magic_selected,
 };
 
 enum class BattleAudioBank : std::int16_t {
@@ -117,6 +121,13 @@ public:
     [[nodiscard]] const BattlePlayerActionMenuState& player_action_menu() const noexcept {
         return player_action_menu_;
     }
+    [[nodiscard]] const std::optional<BattleMagicSelectionState>&
+    player_magic_selection() const noexcept {
+        return player_magic_selection_;
+    }
+    [[nodiscard]] std::int16_t selected_magic_slot() const noexcept {
+        return selected_magic_slot_;
+    }
     [[nodiscard]] std::optional<BattlePathCoord> active_cursor() const noexcept {
         return player_cursor_selection_.has_value()
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
@@ -163,6 +174,9 @@ private:
     [[nodiscard]] bool finish_ai_movement();
     [[nodiscard]] bool finish_ai_handler(BattlePlayerAction action, bool rest_first);
     [[nodiscard]] bool begin_player_action_menu();
+    [[nodiscard]] bool begin_player_attack();
+    [[nodiscard]] BattleSessionInputResult handle_player_magic_selection_key(
+        std::uint8_t translated_key);
     [[nodiscard]] bool begin_player_movement();
     [[nodiscard]] bool begin_player_targeting(BattlePlayerAction action);
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
@@ -192,6 +206,8 @@ private:
     [[nodiscard]] bool render_battlefield(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_action_menu(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_magic_selection(
         render::IndexedFramebuffer& framebuffer);
     void capture_selection_background(
         const render::IndexedFramebuffer& framebuffer) noexcept;
@@ -239,6 +255,7 @@ private:
     std::uint32_t ai_movement_wait_tick_{};
     std::int32_t ai_movement_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};
+    std::optional<BattleMagicSelectionState> player_magic_selection_;
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
