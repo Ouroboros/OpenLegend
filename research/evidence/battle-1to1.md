@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `8b1a2b73df6074950cd148d2fd2ad58eb45b46428299ace132a35f652cabdb7f`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `68ebd8ae17e0b2b872f4ae8098b5613c874bf7848086df7fe973f4dd98733332`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -219,4 +219,6 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 
 `sub_36133`在敌方携带物品数量耗尽后，从指定slot起同步左移后续item ID和数量并清空第4槽；`[5,6,7,8]/[1,2,3,4]`删除slot1严格得到`[5,7,8,-1]/[1,3,4,0]`，已完整映射为`remove_carried_item_slot`。
 
-现代已恢复两个typed handler计划与携带槽移除状态核心，但未实际执行逐格移动、`sub_3598C`物品/暗器动画与状态提交、队伍库存扣减、`sub_34C47`攻击回退和外层action_done continuation，故两个handler仍保持`pending_implementation`。
+`sub_3598C`的AI mode1暗器状态与手动`sub_3A30B`并不共用毒值公式：item add_poison非负时直接加到目标poison，负值才算`(add_poison-hidden_weapon)/2`，两者都不读取anti_poison且不追加RNG。真实item102在seed1下伤害21、hurt40→45、HP100→79、poison10→50，仅消费一次RNG；无毒item96在seed2下伤害16、poison10保持10，也仅消费一次RNG。队伍方耗尽200槽inventory后左移，敌方耗尽4槽taking-item后调用`sub_36133`；AI分支不改actor方向且不提前写action_done。
+
+现代已恢复两个typed handler计划、AI mode1暗器状态与两种来源扣减、携带槽移除状态核心，但未实际执行逐格移动、`sub_3598C` mode0共享物品效果、暗器effect/damage render/sample/present/wait、`sub_34C47`攻击回退和外层action_done continuation，故两个handler与`sub_3598C`仍保持`pending_implementation`。

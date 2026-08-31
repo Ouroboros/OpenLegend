@@ -1437,6 +1437,149 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
     return result;
 }
 
+std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_target(
+    const std::size_t actor_slot,
+    const BattlePathCoord target,
+    const BattleAiChoice& choice,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        choice.action != BattleAiAction::throwing_weapon) {
+        error_ = "battle AI throwing-weapon action is outside legacy state";
+        return std::nullopt;
+    }
+    const auto item_id = ai_item_id(actor_slot, choice);
+    if (!item_id) {
+        error_ = "battle AI throwing-weapon item is outside legacy records";
+        return std::nullopt;
+    }
+    auto& actor_words = combatants_[actor_slot].words;
+    const auto actor_role_id = actor_words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI throwing-weapon actor role is outside ranger records";
+        return std::nullopt;
+    }
+
+    clear_attack_effects();
+    if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
+        target.y >= static_cast<std::int16_t>(kBattleExtent)) {
+        error_ = "battle AI throwing-weapon target is outside battlefield";
+        return std::nullopt;
+    }
+    const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
+        static_cast<std::size_t>(target.x);
+    attack_effects_[cell] = 1;
+    const auto target_slot = data_.occupancy()[cell];
+    if (target_slot < 0 || target_slot >= combatant_count_) {
+        error_ = "battle AI throwing-weapon occupancy is outside combatant slots";
+        return std::nullopt;
+    }
+    const auto target_index = static_cast<std::size_t>(target_slot);
+    auto& target_words = combatants_[target_index].words;
+    const auto target_role_id = target_words[combatant_word::role_id];
+    if (target_role_id < 0 || static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI throwing-weapon target role is outside ranger records";
+        return std::nullopt;
+    }
+
+    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target_role = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& item = ranger_.items[static_cast<std::size_t>(*item_id)];
+    const auto hurt = target_role.word(model::role_word::hurt);
+    if (hurt < 0) {
+        error_ = "battle AI throwing-weapon target hurt is outside legacy domain";
+        return std::nullopt;
+    }
+    std::int32_t divisor = 1;
+    if (hurt == 0) {
+        divisor = 4;
+    } else if (hurt <= 33) {
+        divisor = 3;
+    } else if (hurt <= 66) {
+        divisor = 2;
+    }
+    const auto base_delta =
+        static_cast<std::int32_t>(item.word(model::item_word::add_hp)) / divisor -
+        random.bounded(5);
+    const auto hp_delta = wrapping_i16(
+        (base_delta -
+         2 * static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon))) /
+        3);
+
+    auto changed_hurt = wrapping_i16(
+        static_cast<std::int32_t>(target_role.word(model::role_word::hurt)) - hp_delta / 4);
+    if (changed_hurt > 99) {
+        changed_hurt = 99;
+    }
+    if (changed_hurt < 0) {
+        changed_hurt = 0;
+    }
+    target_role.set_word(model::role_word::hurt, changed_hurt);
+
+    const auto old_hp = target_role.word(model::role_word::hp);
+    auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
+    if (changed_hp >= target_role.word(model::role_word::maximum_hp)) {
+        changed_hp = target_role.word(model::role_word::maximum_hp);
+    }
+    if (changed_hp <= 0) {
+        changed_hp = 0;
+    }
+    target_role.set_word(model::role_word::hp, changed_hp);
+    const auto damage = wrapping_i16(std::abs(
+        static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp)));
+    target_words[combatant_word::damage_value] = damage;
+
+    const auto item_poison = item.word(model::item_word::add_poison);
+    const auto poison_delta = item_poison < 0
+        ? wrapping_i16(
+              (static_cast<std::int32_t>(item_poison) -
+               actor.word(model::role_word::hidden_weapon)) /
+              2)
+        : item_poison;
+    auto changed_poison = wrapping_i16(
+        static_cast<std::int32_t>(target_role.word(model::role_word::poison)) + poison_delta);
+    if (changed_poison >= 99) {
+        changed_poison = 99;
+    }
+    if (changed_poison <= 0) {
+        changed_poison = 0;
+    }
+    target_role.set_word(model::role_word::poison, changed_poison);
+
+    if (choice.item_source == BattleAiItemSource::inventory) {
+        const auto slot = static_cast<std::size_t>(choice.item_slot);
+        const auto remaining = wrapping_i16(
+            static_cast<std::int32_t>(ranger_.header.inventory_count(slot)) - 1);
+        ranger_.header.set_inventory(slot, model::ItemId{*item_id}, remaining);
+        if (remaining <= 0) {
+            for (std::size_t source = slot + 1U; source < model::kInventoryCount; ++source) {
+                ranger_.header.set_inventory(
+                    source - 1U,
+                    ranger_.header.inventory_item(source),
+                    ranger_.header.inventory_count(source));
+            }
+            ranger_.header.set_inventory(
+                model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+        }
+    } else {
+        const auto slot = static_cast<std::size_t>(choice.item_slot);
+        auto remaining = wrapping_i16(
+            static_cast<std::int32_t>(
+                actor.word(model::role_word::taking_item_count_begin + slot)) -
+            1);
+        actor.set_word(model::role_word::taking_item_count_begin + slot, remaining);
+        if (remaining <= 0 && !remove_carried_item_slot(actor_slot, slot)) {
+            return std::nullopt;
+        }
+    }
+
+    BattleThrownItemResult result{};
+    result.hit_count = 1;
+    result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
+    result.damage = damage;
+    result.inventory_consumed = true;
+    return result;
+}
+
 std::optional<BattleRestResult> BattleSetup::rest_actor(
     const std::size_t actor_slot,
     random::LegacyRandom& random) {

@@ -769,6 +769,84 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(ranger.header.inventory_count(0U) == 1);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(std::ranges::count(setup.attack_effects(), 1) == 1);
+
+    data.occupancy()[26U * 64U + 26U] = 1;
+    setup.combatants()[0U].words[combatant_word::side] = 0;
+    setup.combatants()[1U].words[combatant_word::side] = 1;
+    setup.combatants()[0U].words[combatant_word::initial_mode] = 1;
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    actor.set_word(openlegend::model::role_word::hidden_weapon, 20);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::maximum_hp, 200);
+    target.set_word(openlegend::model::role_word::hurt, 40);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    target.set_word(openlegend::model::role_word::anti_poison, 5);
+    ranger.header.set_inventory(0U, openlegend::model::ItemId{102}, 1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{97}, 2);
+    const BattleAiChoice party_throwing_choice{
+        .action = BattleAiAction::throwing_weapon,
+        .item_source = BattleAiItemSource::inventory,
+        .item_slot = 0,
+        .action_code_written = true,
+    };
+    random.seed(1U);
+    const auto ai_party_result = setup.apply_ai_throwing_weapon_target(
+        0U, BattlePathCoord{26, 26}, party_throwing_choice, random);
+    OL_CHECK(ai_party_result.has_value());
+    OL_CHECK(ai_party_result->hit_count == 1);
+    OL_CHECK(ai_party_result->effect_id == 30);
+    OL_CHECK(ai_party_result->damage == 21);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 50);
+    OL_CHECK(ranger.header.inventory_item(0U).value == 97);
+    OL_CHECK(ranger.header.inventory_count(0U) == 2);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+
+    ranger.header.set_inventory(0U, openlegend::model::ItemId{96}, 1);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    random.seed(2U);
+    const auto ai_plain_result = setup.apply_ai_throwing_weapon_target(
+        0U, BattlePathCoord{26, 26}, party_throwing_choice, random);
+    OL_CHECK(ai_plain_result.has_value());
+    OL_CHECK(ai_plain_result->damage == 16);
+    OL_CHECK(random.state() == 2'207'042'835U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 84);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 4);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+
+    setup.combatants()[0U].words[combatant_word::side] = 1;
+    setup.combatants()[1U].words[combatant_word::side] = 0;
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::hurt, 40);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    actor.set_word(openlegend::model::role_word::taking_item_begin, 102);
+    actor.set_word(openlegend::model::role_word::taking_item_count_begin, 1);
+    actor.set_word(openlegend::model::role_word::taking_item_begin + 1U, 97);
+    actor.set_word(openlegend::model::role_word::taking_item_count_begin + 1U, 2);
+    const BattleAiChoice carried_throwing_choice{
+        .action = BattleAiAction::throwing_weapon,
+        .item_source = BattleAiItemSource::carried,
+        .item_slot = 0,
+        .action_code_written = true,
+    };
+    random.seed(1U);
+    const auto ai_carried_result = setup.apply_ai_throwing_weapon_target(
+        0U, BattlePathCoord{26, 26}, carried_throwing_choice, random);
+    OL_CHECK(ai_carried_result.has_value());
+    OL_CHECK(ai_carried_result->damage == 21);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 50);
+    OL_CHECK(actor.word(openlegend::model::role_word::taking_item_begin) == 97);
+    OL_CHECK(actor.word(openlegend::model::role_word::taking_item_count_begin) == 2);
+    OL_CHECK(actor.word(openlegend::model::role_word::taking_item_begin + 3U) == -1);
+    OL_CHECK(actor.word(openlegend::model::role_word::taking_item_count_begin + 3U) == 0);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 }
 
 void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {

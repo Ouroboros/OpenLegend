@@ -464,6 +464,11 @@ public:
         BattlePathCoord target,
         std::size_t inventory_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleThrownItemResult> apply_ai_throwing_weapon_target(
+        std::size_t actor_slot,
+        BattlePathCoord target,
+        const BattleAiChoice& choice,
+        random::LegacyRandom& random);
     [[nodiscard]] std::optional<BattleRestResult> rest_actor(
         std::size_t actor_slot,
         random::LegacyRandom& random);

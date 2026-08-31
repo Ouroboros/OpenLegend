@@ -158,6 +158,63 @@ def throwing_weapon_vector(
     }
 
 
+def ai_throwing_weapon_vector(
+    item: bytes,
+    *,
+    seed: int,
+    hidden_weapon: int,
+    hp: int,
+    maximum_hp: int,
+    hurt: int,
+    poison: int,
+) -> dict[str, object]:
+    word = lambda index: struct.unpack_from("<h", item, index * 2)[0]
+    divisor = 4 if hurt == 0 else 3 if hurt <= 33 else 2 if hurt <= 66 else 1
+    damage_random, state = legacy_bounded(seed, 5)
+    base_delta = trunc_div(word(45), divisor) - damage_random
+    hp_delta = wrapping_i16(trunc_div(base_delta - 2 * hidden_weapon, 3))
+    hurt_after = min(99, max(0, wrapping_i16(hurt - trunc_div(hp_delta, 4))))
+    hp_after = wrapping_i16(hp + hp_delta)
+    if hp_after >= maximum_hp:
+        hp_after = maximum_hp
+    if hp_after <= 0:
+        hp_after = 0
+    damage = wrapping_i16(abs(hp_after - hp))
+
+    item_poison = word(47)
+    poison_delta = (
+        wrapping_i16(trunc_div(item_poison - hidden_weapon, 2))
+        if item_poison < 0
+        else item_poison
+    )
+    poison_after = wrapping_i16(poison + poison_delta)
+    if poison_after >= 99:
+        poison_after = 99
+    if poison_after <= 0:
+        poison_after = 0
+    return {
+        "item_id": word(0),
+        "item_type": word(41),
+        "effect_id": word(37),
+        "add_hp": word(45),
+        "add_poison": item_poison,
+        "rng_seed": seed,
+        "rng_outputs": [damage_random],
+        "rng_state_after": state,
+        "hidden_weapon": hidden_weapon,
+        "hp_before": hp,
+        "maximum_hp": maximum_hp,
+        "hurt_before": hurt,
+        "poison_before": poison,
+        "hp_delta": hp_delta,
+        "damage": damage,
+        "hp_after": hp_after,
+        "hurt_after": hurt_after,
+        "poison_delta": poison_delta,
+        "poison_after": poison_after,
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1159,6 +1216,24 @@ def build(data_root: Path) -> dict[str, object]:
         poison=10,
         anti_poison=0,
     )
+    ai_poisoned_throw = ai_throwing_weapon_vector(
+        item_records[102],
+        seed=1,
+        hidden_weapon=20,
+        hp=100,
+        maximum_hp=200,
+        hurt=40,
+        poison=10,
+    )
+    ai_plain_throw = ai_throwing_weapon_vector(
+        item_records[96],
+        seed=2,
+        hidden_weapon=20,
+        hp=100,
+        maximum_hp=200,
+        hurt=0,
+        poison=10,
+    )
     if poisoned_throw["item_id"] != 102 or poisoned_throw["item_type"] != 4:
         raise ValueError("RANGER.GRP item 102 is not the expected throwing weapon")
     if plain_throw["item_id"] != 96 or plain_throw["item_type"] != 4:
@@ -1512,6 +1587,17 @@ def build(data_root: Path) -> dict[str, object]:
                         "before": [[102, 1], [97, 2], [10, 0], [-1, 0]],
                         "after_consuming_slot_0": [[97, 2], [10, 0], [-1, 0], [-1, 0]],
                         "decrement_wraps_to_int16": True,
+                    },
+                    "ai_throwing": {
+                        "poisoned_state_vector": ai_poisoned_throw,
+                        "plain_state_vector": ai_plain_throw,
+                        "effect_cell_marked": True,
+                        "actor_direction_unchanged": True,
+                        "action_done_before_outer_ai_finish": 0,
+                        "party_inventory_before": [[102, 1], [97, 2]],
+                        "party_inventory_after": [[97, 2], [-1, 0]],
+                        "enemy_carried_before": [[102, 1], [97, 2], [-1, 0], [-1, 0]],
+                        "enemy_carried_after": [[97, 2], [-1, 0], [-1, 0], [-1, 0]],
                     },
                 },
                 "ai_selector_vectors": ai_selector_vectors(),

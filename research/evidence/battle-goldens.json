@@ -654,6 +654,113 @@
             ]
           ],
           "decrement_wraps_to_int16": true
+        },
+        "ai_throwing": {
+          "poisoned_state_vector": {
+            "item_id": 102,
+            "item_type": 4,
+            "effect_id": 30,
+            "add_hp": -40,
+            "add_poison": 40,
+            "rng_seed": 1,
+            "rng_outputs": [
+              3
+            ],
+            "rng_state_after": 1103527590,
+            "hidden_weapon": 20,
+            "hp_before": 100,
+            "maximum_hp": 200,
+            "hurt_before": 40,
+            "poison_before": 10,
+            "hp_delta": -21,
+            "damage": 21,
+            "hp_after": 79,
+            "hurt_after": 45,
+            "poison_delta": 40,
+            "poison_after": 50
+          },
+          "plain_state_vector": {
+            "item_id": 96,
+            "item_type": 4,
+            "effect_id": 23,
+            "add_hp": -30,
+            "add_poison": 0,
+            "rng_seed": 2,
+            "rng_outputs": [
+              3
+            ],
+            "rng_state_after": 2207042835,
+            "hidden_weapon": 20,
+            "hp_before": 100,
+            "maximum_hp": 200,
+            "hurt_before": 0,
+            "poison_before": 10,
+            "hp_delta": -16,
+            "damage": 16,
+            "hp_after": 84,
+            "hurt_after": 4,
+            "poison_delta": 0,
+            "poison_after": 10
+          },
+          "effect_cell_marked": true,
+          "actor_direction_unchanged": true,
+          "action_done_before_outer_ai_finish": 0,
+          "party_inventory_before": [
+            [
+              102,
+              1
+            ],
+            [
+              97,
+              2
+            ]
+          ],
+          "party_inventory_after": [
+            [
+              97,
+              2
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "enemy_carried_before": [
+            [
+              102,
+              1
+            ],
+            [
+              97,
+              2
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "enemy_carried_after": [
+            [
+              97,
+              2
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ]
         }
       },
       "ai_selector_vectors": {
