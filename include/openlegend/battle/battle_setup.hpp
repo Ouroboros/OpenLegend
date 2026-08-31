@@ -138,6 +138,12 @@ struct BattleAiTurnDecision {
     BattleAiHandler handler{BattleAiHandler::rest};
 };
 
+struct BattleAiEscapePlan {
+    std::optional<BattlePathCoord> destination;
+    std::int32_t maximum_enemy_distance_sum{};
+    bool rest_after_move{};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -379,6 +385,9 @@ public:
         std::size_t actor_slot,
         random::LegacyRandom& random);
     [[nodiscard]] bool finish_ai_turn(std::size_t actor_slot) noexcept;
+    [[nodiscard]] std::optional<BattleAiEscapePlan> ai_escape_plan(
+        std::size_t actor_slot,
+        bool rest_after_move) const;
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }

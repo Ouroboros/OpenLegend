@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前30项为 `pending_mapping`、22项为 `pending_implementation`、29项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前28项为 `pending_mapping`、23项为 `pending_implementation`、30项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `d36198d26a7be34aae0be0671d76035cc0c902920547acbb84f99fb133851cca`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `d040ae42dda1fd395cba1c37a042c17efa3e7aca760d86ad001543f179b7d843`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -178,3 +178,9 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 低HP四档RNG阈值为3/5/7/9，中毒入口无条件消费一次`bounded(10)`并与`poison/10`比较，低MP四档为2/4/6/8；医疗和解毒能力20/40/60分别比较4/6/8，80最终无RNG兜底；逃跑先比较5，再按HP的1/4和1/5档比较6/8。保留原顺序BUG：体力<10先选等待7，但低HP selector若被调用后返回0，会把等待清零并继续后续决策。固定seed1清零等待向量为`[8,8,13]`、终态662824084；seed10逃跑向量为`[3,4]`、终态1849040536。
 
 动作0/7共享休息handler，其余1..6、8..11逐项映射移动、攻击、用毒、解毒、医疗、物品、请求医疗、请求解毒、暗器和逃跑。当前现代代码只生成typed handler并提供handler后最终写入；render/present/300 tick和11个实际handler尚未由BattleSession同步执行，故`sub_33599`保持 `pending_implementation`。
+
+## 22. AI休息与逃跑目的格
+
+动作0/7的`sub_34AD3`仅做遗留栈清理并直接调用`sub_3A8A4`，现代完整映射到`rest_actor`，无额外状态，标为 `implemented_pending_review`。
+
+动作11的`sub_34AEC`先以actor坐标建立movement图，再只扫描路径值恰等于round value的格。扫描严格为x外层、y内层；候选分数是与全部不同side combatant的曼哈顿距离和，不跳过隐藏或死亡槽；仅strict更大才替换，故同分保留早格。真实field2 synthetic向量source `(10,20)`、round value 3、敌方 `(13,23)/(14,24)`选择`(7,20)`，最大和20。入口参数0表示移动后休息，物品wrapper传1表示只重定位。现代已生成typed目的格与条件休息计划，实际逐格移动/render/present/tick及休息调用尚未接线，故保持 `pending_implementation`。

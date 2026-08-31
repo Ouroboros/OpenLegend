@@ -697,6 +697,47 @@ def build_path_map(
     return values
 
 
+def ai_escape_vector(field_words: list[int]) -> dict[str, object]:
+    combatants = [
+        {"side": 0, "x": 10, "y": 20},
+        {"side": 0, "x": 11, "y": 21},
+        {"side": 0, "x": 12, "y": 22},
+        {"side": 1, "x": 13, "y": 23},
+        {"side": 1, "x": 14, "y": 24},
+    ]
+    source = (10, 20)
+    occupied = {c["y"] * 64 + c["x"] for c in combatants}
+    values = build_path_map(field_words, source, "movement", occupied)
+    round_value = 3
+    best_score = 0
+    destination: list[int] | None = None
+    for x in range(64):
+        for y in range(64):
+            if values[y * 64 + x] != round_value:
+                continue
+            score = sum(
+                abs(x - c["x"]) + abs(y - c["y"])
+                for c in combatants
+                if c["side"] != 0
+            )
+            if score > best_score:
+                best_score = score
+                destination = [x, y]
+    return {
+        "battle_id": 3,
+        "battlefield_id": 2,
+        "source": list(source),
+        "round_value": round_value,
+        "combatants": combatants,
+        "scan_order": ["x", "y"],
+        "strictly_greater_replaces": True,
+        "destination": destination,
+        "maximum_enemy_distance_sum": best_score,
+        "rest_after_move_for_escape_action": True,
+        "rest_after_move_for_item_reposition": False,
+    }
+
+
 def mark_path(values: list[int], source: tuple[int, int], target: tuple[int, int]) -> bool:
     target_index = legacy_path_index(*target)
     if target_index is None or not 0 <= values[target_index] < 254:
@@ -944,6 +985,9 @@ def build(data_root: Path) -> dict[str, object]:
         list(struct.unpack("<8192h", warfld_entries[int(setup_records[4]["battlefield_id"])][:16384])),
         setup_records[4],
     )
+    escape_vector = ai_escape_vector(
+        list(struct.unpack("<8192h", warfld_entries[int(setup_records[3]["battlefield_id"])][:16384]))
+    )
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
@@ -1189,6 +1233,7 @@ def build(data_root: Path) -> dict[str, object]:
                 },
                 "ai_selector_vectors": ai_selector_vectors(),
                 "ai_entry_vectors": ai_entry_vectors(),
+                "ai_escape_vector": escape_vector,
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

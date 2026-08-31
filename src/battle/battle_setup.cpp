@@ -2252,6 +2252,43 @@ bool BattleSetup::finish_ai_turn(const std::size_t actor_slot) noexcept {
     return true;
 }
 
+std::optional<BattleAiEscapePlan> BattleSetup::ai_escape_plan(
+    const std::size_t actor_slot,
+    const bool rest_after_move) const {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto& actor = combatants_[actor_slot].words;
+    BattlePathing pathing{data_};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::movement);
+
+    BattleAiEscapePlan plan{.rest_after_move = rest_after_move};
+    for (std::int16_t x = 0; x < static_cast<std::int16_t>(kBattleExtent); ++x) {
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(kBattleExtent); ++y) {
+            const BattlePathCoord coordinate{x, y};
+            if (pathing.value(coordinate) != actor[combatant_word::round_value]) {
+                continue;
+            }
+            std::int32_t score = 0;
+            for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+                const auto& other = combatants_[slot].words;
+                if (other[combatant_word::side] == actor[combatant_word::side]) {
+                    continue;
+                }
+                score += std::abs(static_cast<std::int32_t>(x) - other[combatant_word::x]);
+                score += std::abs(static_cast<std::int32_t>(y) - other[combatant_word::y]);
+            }
+            if (score > plan.maximum_enemy_distance_sum) {
+                plan.maximum_enemy_distance_sum = score;
+                plan.destination = coordinate;
+            }
+        }
+    }
+    return plan;
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

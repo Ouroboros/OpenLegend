@@ -952,6 +952,54 @@
         },
         "action_done_written_after_handler": true
       },
+      "ai_escape_vector": {
+        "battle_id": 3,
+        "battlefield_id": 2,
+        "source": [
+          10,
+          20
+        ],
+        "round_value": 3,
+        "combatants": [
+          {
+            "side": 0,
+            "x": 10,
+            "y": 20
+          },
+          {
+            "side": 0,
+            "x": 11,
+            "y": 21
+          },
+          {
+            "side": 0,
+            "x": 12,
+            "y": 22
+          },
+          {
+            "side": 1,
+            "x": 13,
+            "y": 23
+          },
+          {
+            "side": 1,
+            "x": 14,
+            "y": 24
+          }
+        ],
+        "scan_order": [
+          "x",
+          "y"
+        ],
+        "strictly_greater_replaces": true,
+        "destination": [
+          7,
+          20
+        ],
+        "maximum_enemy_distance_sum": 20,
+        "rest_after_move_for_escape_action": true,
+        "rest_after_move_for_item_reposition": false
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,

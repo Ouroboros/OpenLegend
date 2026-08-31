@@ -1232,6 +1232,26 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(setup.finish_ai_turn(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+
+    reset();
+    std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+    for (std::size_t slot = 0U; slot < 5U; ++slot) {
+        const auto& combatant = setup.combatants()[slot].words;
+        const auto index = static_cast<std::size_t>(combatant[combatant_word::y]) * 64U +
+            static_cast<std::size_t>(combatant[combatant_word::x]);
+        data.occupancy()[index] = static_cast<std::int16_t>(slot);
+    }
+    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    const auto escape_plan = setup.ai_escape_plan(0U, true);
+    OL_CHECK(escape_plan.has_value());
+    OL_CHECK(escape_plan->destination.has_value());
+    OL_CHECK((*escape_plan->destination == BattlePathCoord{7, 20}));
+    OL_CHECK(escape_plan->maximum_enemy_distance_sum == 20);
+    OL_CHECK(escape_plan->rest_after_move);
+    const auto reposition_plan = setup.ai_escape_plan(0U, false);
+    OL_CHECK(reposition_plan.has_value());
+    OL_CHECK(reposition_plan->destination == escape_plan->destination);
+    OL_CHECK(!reposition_plan->rest_after_move);
 }
 
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
