@@ -2289,6 +2289,202 @@ std::optional<BattleAiEscapePlan> BattleSetup::ai_escape_plan(
     return plan;
 }
 
+std::optional<bool> BattleSetup::choose_ai_strongest_attack_target(
+    const std::size_t actor_slot) {
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    std::int16_t best_attack = 0;
+    bool written = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] == actor_side ||
+            combatant[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto attack = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::attack);
+        if (attack > best_attack) {
+            best_attack = attack;
+            combatants_[actor_slot].words[combatant_word::ai_target] =
+                static_cast<std::int16_t>(slot);
+            written = true;
+        }
+    }
+    return written;
+}
+
+std::optional<bool> BattleSetup::choose_ai_weakest_attack_target(
+    const std::size_t actor_slot) {
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    std::int16_t best_attack = 1'000;
+    bool written = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] == actor_side ||
+            combatant[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto attack = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::attack);
+        if (attack < best_attack) {
+            best_attack = attack;
+            combatants_[actor_slot].words[combatant_word::ai_target] =
+                static_cast<std::int16_t>(slot);
+            written = true;
+        }
+    }
+    return written;
+}
+
+std::optional<bool> BattleSetup::choose_ai_specialist_target(const std::size_t actor_slot) {
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    auto ally_can_poison = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] != actor_side) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        if (ranger_.roles[static_cast<std::size_t>(role_id)].word(
+                model::role_word::use_poison) > 20) {
+            ally_can_poison = true;
+        }
+    }
+
+    std::int16_t best_value = 0;
+    bool detox_target_at_least_20 = false;
+    bool medicine_target_at_least_20 = false;
+    bool written = false;
+    if (ally_can_poison) {
+        for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+            const auto& combatant = combatants_[slot].words;
+            if (combatant[combatant_word::side] == actor_side ||
+                combatant[combatant_word::occupancy_hidden] != 0) {
+                continue;
+            }
+            const auto role_id = combatant[combatant_word::role_id];
+            if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+                return std::nullopt;
+            }
+            const auto detoxification = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+                model::role_word::detoxification);
+            if (detoxification > best_value) {
+                best_value = detoxification;
+                combatants_[actor_slot].words[combatant_word::ai_target] =
+                    static_cast<std::int16_t>(slot);
+                written = true;
+                if (detoxification >= 20) {
+                    detox_target_at_least_20 = true;
+                }
+            }
+        }
+    }
+
+    if (!detox_target_at_least_20) {
+        for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+            const auto& combatant = combatants_[slot].words;
+            if (combatant[combatant_word::side] == actor_side ||
+                combatant[combatant_word::occupancy_hidden] != 0) {
+                continue;
+            }
+            const auto role_id = combatant[combatant_word::role_id];
+            if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+                return std::nullopt;
+            }
+            const auto medicine = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+                model::role_word::medicine);
+            if (medicine > best_value) {
+                best_value = medicine;
+                combatants_[actor_slot].words[combatant_word::ai_target] =
+                    static_cast<std::int16_t>(slot);
+                written = true;
+                if (medicine >= 20) {
+                    medicine_target_at_least_20 = true;
+                }
+            }
+        }
+    }
+
+    if (!medicine_target_at_least_20) {
+        return choose_ai_weakest_attack_target(actor_slot);
+    }
+    return written;
+}
+
+std::optional<bool> BattleSetup::choose_ai_nearest_target(const std::size_t actor_slot) {
+    const auto& actor = combatants_[actor_slot].words;
+    BattlePathing pathing{data_};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::targeting);
+    std::int16_t best_distance = 1'000;
+    bool written = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] == actor[combatant_word::side] ||
+            combatant[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto distance = pathing.value(
+            BattlePathCoord{combatant[combatant_word::x], combatant[combatant_word::y]});
+        if (distance < best_distance) {
+            best_distance = distance;
+            combatants_[actor_slot].words[combatant_word::ai_target] =
+                static_cast<std::int16_t>(slot);
+            written = true;
+        }
+    }
+    return written;
+}
+
+std::optional<BattleAiTargetSelection> BattleSetup::choose_ai_attack_target(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto selection = [&](const BattleAiTargetStrategy strategy,
+                               const std::optional<bool> written)
+        -> std::optional<BattleAiTargetSelection> {
+        if (!written.has_value()) {
+            return std::nullopt;
+        }
+        return BattleAiTargetSelection{
+            combatants_[actor_slot].words[combatant_word::ai_target], strategy, *written};
+    };
+    if (role.word(model::role_word::morality) >= 75 && random.bounded(10) < 7) {
+        return selection(
+            BattleAiTargetStrategy::strongest_attack,
+            choose_ai_strongest_attack_target(actor_slot));
+    }
+    if (role.word(model::role_word::morality) <= 25 && random.bounded(10) < 7) {
+        return selection(
+            BattleAiTargetStrategy::weakest_attack,
+            choose_ai_weakest_attack_target(actor_slot));
+    }
+    if (role.word(model::role_word::iq) >= 70 && random.bounded(10) < 7) {
+        return selection(
+            BattleAiTargetStrategy::specialist,
+            choose_ai_specialist_target(actor_slot));
+    }
+    return selection(BattleAiTargetStrategy::nearest, choose_ai_nearest_target(actor_slot));
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

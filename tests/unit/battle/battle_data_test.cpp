@@ -968,6 +968,8 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
             record.set_word(role_word::use_poison, 0);
             record.set_word(role_word::detoxification, 0);
             record.set_word(role_word::hidden_weapon, 0);
+            record.set_word(role_word::morality, 50);
+            record.set_word(role_word::iq, 0);
             for (std::size_t slot = 0U; slot < role_word::magic_count; ++slot) {
                 record.set_word(role_word::magic_id_begin + slot, 0);
             }
@@ -982,6 +984,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
             combatant[combatant_word::occupancy_hidden] = 0;
             combatant[combatant_word::action_done] = 0;
             combatant[combatant_word::ai_action] = -1;
+            combatant[combatant_word::ai_target] = -1;
         }
     };
 
@@ -1252,6 +1255,82 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(reposition_plan.has_value());
     OL_CHECK(reposition_plan->destination == escape_plan->destination);
     OL_CHECK(!reposition_plan->rest_after_move);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, 50);
+    openlegend::random::LegacyRandom strongest_random{9U};
+    auto target = setup.choose_ai_attack_target(0U, strongest_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::strongest_attack);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(target->target_written);
+    OL_CHECK(strongest_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 25);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, 50);
+    openlegend::random::LegacyRandom weakest_random{9U};
+    target = setup.choose_ai_attack_target(0U, weakest_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(weakest_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    ranger.roles[3U].set_word(role_word::medicine, 30);
+    ranger.roles[4U].set_word(role_word::medicine, 10);
+    openlegend::random::LegacyRandom specialist_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(specialist_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    ranger.roles[1U].set_word(role_word::use_poison, 21);
+    ranger.roles[3U].set_word(role_word::detoxification, 30);
+    ranger.roles[3U].set_word(role_word::attack, 50);
+    ranger.roles[4U].set_word(role_word::attack, 10);
+    openlegend::random::LegacyRandom specialist_bug_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_bug_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(specialist_bug_random.state() == 1'341'714'958U);
+
+    reset();
+    openlegend::random::LegacyRandom nearest_random{1U};
+    target = setup.choose_ai_attack_target(0U, nearest_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(nearest_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    openlegend::random::LegacyRandom cascade_random{1U};
+    target = setup.choose_ai_attack_target(0U, cascade_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(cascade_random.state() == 2'524'885'223U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[3U].set_word(role_word::attack, 0);
+    ranger.roles[4U].set_word(role_word::attack, 0);
+    openlegend::random::LegacyRandom no_strongest_random{9U};
+    target = setup.choose_ai_attack_target(0U, no_strongest_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::strongest_attack);
+    OL_CHECK(target->target_slot == -1);
+    OL_CHECK(!target->target_written);
+    OL_CHECK(no_strongest_random.state() == 1'341'714'958U);
 }
 
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {

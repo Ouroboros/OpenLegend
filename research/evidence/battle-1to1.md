@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前28项为 `pending_mapping`、23项为 `pending_implementation`、30项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前23项为 `pending_mapping`、23项为 `pending_implementation`、35项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `d040ae42dda1fd395cba1c37a042c17efa3e7aca760d86ad001543f179b7d843`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `09e3654792051287edd9ee693a4e933ea7b2f1d02fecbd9f3ca2e1883dcf9c75`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -184,3 +184,11 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 动作0/7的`sub_34AD3`仅做遗留栈清理并直接调用`sub_3A8A4`，现代完整映射到`rest_actor`，无额外状态，标为 `implemented_pending_review`。
 
 动作11的`sub_34AEC`先以actor坐标建立movement图，再只扫描路径值恰等于round value的格。扫描严格为x外层、y内层；候选分数是与全部不同side combatant的曼哈顿距离和，不跳过隐藏或死亡槽；仅strict更大才替换，故同分保留早格。真实field2 synthetic向量source `(10,20)`、round value 3、敌方 `(13,23)/(14,24)`选择`(7,20)`，最大和20。入口参数0表示移动后休息，物品wrapper传1表示只重定位。现代已生成typed目的格与条件休息计划，实际逐格移动/render/present/tick及休息调用尚未接线，故保持 `pending_implementation`。
+
+## 23. 自动攻击目标策略
+
+`sub_3505B`按morality与IQ调度四种目标策略。morality>=75、morality<=25、IQ>=70分支各自在条件成立时消费一次`bounded(10)`并要求结果<7；命中后分别调用最高攻击、最低攻击和专长selector，三者均未命中才无RNG选择最近目标。一旦策略门槛命中，即使selector没有写目标也不回退。seed9输出2、终态1341714958；morality75与IQ70在seed1下依次失败`[8,8]`后选最近目标，终态2524885223。
+
+`sub_3513A/sub_351A7`只扫描不同side且未隐藏目标，分别以best 0/1000选择signed attack严格最大/最小值，同值保留早槽；最高攻击策略面对`[0,0]`不写word11，顶层仍停止。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。
+
+`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。固定detox`[30,0]`先暂选slot3，最终按attack`[50,10]`改为slot4。五个函数均为 `implemented_pending_review`；`sub_34C47`的武功选择、射程判定、移动重选和实际攻击仍待恢复。

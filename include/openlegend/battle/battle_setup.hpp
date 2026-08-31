@@ -32,6 +32,7 @@ inline constexpr std::size_t action_done = 7U;
 inline constexpr std::size_t sprite = 8U;
 inline constexpr std::size_t damage_value = 9U;
 inline constexpr std::size_t ai_action = 10U;
+inline constexpr std::size_t ai_target = 11U;
 inline constexpr std::size_t attack_counter = 13U;
 }  // namespace combatant_word
 
@@ -142,6 +143,19 @@ struct BattleAiEscapePlan {
     std::optional<BattlePathCoord> destination;
     std::int32_t maximum_enemy_distance_sum{};
     bool rest_after_move{};
+};
+
+enum class BattleAiTargetStrategy : std::int16_t {
+    strongest_attack,
+    weakest_attack,
+    specialist,
+    nearest,
+};
+
+struct BattleAiTargetSelection {
+    std::int16_t target_slot{-1};
+    BattleAiTargetStrategy strategy{BattleAiTargetStrategy::nearest};
+    bool target_written{};
 };
 
 enum class BattleRenderCommandKind : std::int16_t {
@@ -388,6 +402,9 @@ public:
     [[nodiscard]] std::optional<BattleAiEscapePlan> ai_escape_plan(
         std::size_t actor_slot,
         bool rest_after_move) const;
+    [[nodiscard]] std::optional<BattleAiTargetSelection> choose_ai_attack_target(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
@@ -445,6 +462,12 @@ private:
         BattleAiItemSource item_source = BattleAiItemSource::none,
         std::int16_t item_slot = -1,
         bool write_action_code = true) noexcept;
+    [[nodiscard]] std::optional<bool> choose_ai_strongest_attack_target(
+        std::size_t actor_slot);
+    [[nodiscard]] std::optional<bool> choose_ai_weakest_attack_target(
+        std::size_t actor_slot);
+    [[nodiscard]] std::optional<bool> choose_ai_specialist_target(std::size_t actor_slot);
+    [[nodiscard]] std::optional<bool> choose_ai_nearest_target(std::size_t actor_slot);
 
     BattleData& data_;
     model::RangerState& ranger_;

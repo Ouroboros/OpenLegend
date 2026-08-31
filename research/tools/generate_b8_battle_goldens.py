@@ -738,6 +738,75 @@ def ai_escape_vector(field_words: list[int]) -> dict[str, object]:
     }
 
 
+def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
+    combatants = [
+        {"side": 0, "x": 10, "y": 20},
+        {"side": 0, "x": 11, "y": 21},
+        {"side": 0, "x": 12, "y": 22},
+        {"side": 1, "x": 13, "y": 23},
+        {"side": 1, "x": 14, "y": 24},
+    ]
+    attacks = [10, 10, 10, 30, 50]
+    visible_enemies = [i for i, c in enumerate(combatants) if c["side"] != 0]
+    strongest = max(visible_enemies, key=lambda i: attacks[i])
+    weakest = min(visible_enemies, key=lambda i: attacks[i])
+    targeting = build_path_map(field_words, (10, 20), "targeting")
+    nearest = min(
+        visible_enemies,
+        key=lambda i: targeting[combatants[i]["y"] * 64 + combatants[i]["x"]],
+    )
+    seed9_roll, seed9_state = legacy_bounded(9, 10)
+    cascade_first, cascade_state = legacy_bounded(1, 10)
+    cascade_second, cascade_state = legacy_bounded(cascade_state, 10)
+    return {
+        "strongest": {
+            "morality": 75,
+            "rng_output": seed9_roll,
+            "rng_state_after": seed9_state,
+            "attacks": attacks[3:],
+            "target_slot": strongest,
+        },
+        "weakest": {
+            "morality": 25,
+            "rng_output": seed9_roll,
+            "rng_state_after": seed9_state,
+            "attacks": attacks[3:],
+            "target_slot": weakest,
+        },
+        "specialist_medicine": {
+            "iq": 70,
+            "medicine": [30, 10],
+            "target_slot": 3,
+        },
+        "specialist_detox_fallback_bug": {
+            "ally_use_poison": 21,
+            "detoxification": [30, 0],
+            "attacks": [50, 10],
+            "provisional_detox_target": 3,
+            "final_target_slot": 4,
+        },
+        "nearest": {
+            "targeting_distances": [
+                targeting[c["y"] * 64 + c["x"]] for c in combatants[3:]
+            ],
+            "target_slot": nearest,
+            "rng_consumed": False,
+        },
+        "failed_high_morality_then_failed_iq": {
+            "rng_outputs": [cascade_first, cascade_second],
+            "rng_state_after": cascade_state,
+            "target_slot": nearest,
+        },
+        "selected_strongest_with_no_positive_attack": {
+            "attacks": [0, 0],
+            "target_slot": -1,
+            "falls_back": False,
+        },
+        "strict_comparisons_preserve_first_tie": True,
+        "hidden_opponents_skipped": True,
+    }
+
+
 def mark_path(values: list[int], source: tuple[int, int], target: tuple[int, int]) -> bool:
     target_index = legacy_path_index(*target)
     if target_index is None or not 0 <= values[target_index] < 254:
@@ -985,9 +1054,11 @@ def build(data_root: Path) -> dict[str, object]:
         list(struct.unpack("<8192h", warfld_entries[int(setup_records[4]["battlefield_id"])][:16384])),
         setup_records[4],
     )
-    escape_vector = ai_escape_vector(
-        list(struct.unpack("<8192h", warfld_entries[int(setup_records[3]["battlefield_id"])][:16384]))
+    battle3_field_words = list(
+        struct.unpack("<8192h", warfld_entries[int(setup_records[3]["battlefield_id"])][:16384])
     )
+    escape_vector = ai_escape_vector(battle3_field_words)
+    attack_target_vectors = ai_attack_target_vectors(battle3_field_words)
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
@@ -1234,6 +1305,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_selector_vectors": ai_selector_vectors(),
                 "ai_entry_vectors": ai_entry_vectors(),
                 "ai_escape_vector": escape_vector,
+                "ai_attack_target_vectors": attack_target_vectors,
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

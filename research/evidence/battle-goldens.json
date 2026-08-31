@@ -1000,6 +1000,75 @@
         "rest_after_move_for_escape_action": true,
         "rest_after_move_for_item_reposition": false
       },
+      "ai_attack_target_vectors": {
+        "strongest": {
+          "morality": 75,
+          "rng_output": 2,
+          "rng_state_after": 1341714958,
+          "attacks": [
+            30,
+            50
+          ],
+          "target_slot": 4
+        },
+        "weakest": {
+          "morality": 25,
+          "rng_output": 2,
+          "rng_state_after": 1341714958,
+          "attacks": [
+            30,
+            50
+          ],
+          "target_slot": 3
+        },
+        "specialist_medicine": {
+          "iq": 70,
+          "medicine": [
+            30,
+            10
+          ],
+          "target_slot": 3
+        },
+        "specialist_detox_fallback_bug": {
+          "ally_use_poison": 21,
+          "detoxification": [
+            30,
+            0
+          ],
+          "attacks": [
+            50,
+            10
+          ],
+          "provisional_detox_target": 3,
+          "final_target_slot": 4
+        },
+        "nearest": {
+          "targeting_distances": [
+            6,
+            8
+          ],
+          "target_slot": 3,
+          "rng_consumed": false
+        },
+        "failed_high_morality_then_failed_iq": {
+          "rng_outputs": [
+            8,
+            8
+          ],
+          "rng_state_after": 2524885223,
+          "target_slot": 3
+        },
+        "selected_strongest_with_no_positive_attack": {
+          "attacks": [
+            0,
+            0
+          ],
+          "target_slot": -1,
+          "falls_back": false
+        },
+        "strict_comparisons_preserve_first_tie": true,
+        "hidden_opponents_skipped": true
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,
