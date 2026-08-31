@@ -17,6 +17,9 @@ __pycache__/
 # User-reviewed deletion staging
 /TRASH/
 
+# Project-local temporary workspace
+/tmp/
+
 # Regenerable headless IDA runtime logs
 /research/ida/logs/
 
