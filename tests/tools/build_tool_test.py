@@ -103,14 +103,35 @@ class BuildToolTest(unittest.TestCase):
             )
             self.assertEqual(build.cached_generator(cache), "Ninja Multi-Config")
 
-    def test_windows_batch_uses_fixed_tools_and_short_path(self) -> None:
+    def test_reset_preserves_runtime_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            build_dir = Path(directory) / "windows-app"
+            configuration = (
+                build_dir / "src" / "platform" / "sdl3" / "Debug" / "openlegend.toml"
+            )
+            configuration.parent.mkdir(parents=True)
+            configuration.write_text("[window]\nwidth = 960\n", encoding="utf-8")
+            (build_dir / "CMakeCache.txt").write_text("stale", encoding="utf-8")
+
+            build.reset_build_directory(build_dir)
+
+            self.assertEqual(
+                configuration.read_text(encoding="utf-8"), "[window]\nwidth = 960\n"
+            )
+            self.assertFalse((build_dir / "CMakeCache.txt").exists())
+
+    def test_windows_batch_uses_locked_tools_and_long_path(self) -> None:
         batch = (PROJECT_ROOT / "build.bat").read_text(encoding="utf-8")
-        self.assertIn(r'D:\Dev\lldb\tools\cmake\bin\cmake.exe', batch)
-        self.assertIn(r'D:\Dev\lldb\tools\ninja\ninja.exe', batch)
+        self.assertNotIn(r'D:\Dev\lldb\tools\cmake\bin\cmake.exe', batch)
+        self.assertNotIn(r'D:\Dev\lldb\tools\ninja\ninja.exe', batch)
         self.assertIn(r'D:\Dev\Compiler\LLVM\x64\bin', batch)
         self.assertIn(r'D:\Dev\Python\python.exe', batch)
-        self.assertIn('set "PROJECT_ROOT=%%~fsI"', batch)
+        self.assertIn('set "PROJECT_ROOT=%%~fI"', batch)
+        self.assertNotIn('set "PROJECT_ROOT=%%~fsI"', batch)
         self.assertIn('set "OPENLEGEND_PROJECT_ROOT=%PROJECT_ROOT%"', batch)
+        self.assertIn('set "OPENLEGEND_CMAKE="', batch)
+        self.assertIn('set "OPENLEGEND_CTEST="', batch)
+        self.assertIn('set "OPENLEGEND_NINJA="', batch)
 
 
 if __name__ == "__main__":

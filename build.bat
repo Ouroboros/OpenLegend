@@ -1,21 +1,17 @@
 @echo off
 setlocal
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
 
-for %%I in ("%~dp0.") do set "PROJECT_ROOT=%%~fsI"
+for %%I in ("%~dp0.") do set "PROJECT_ROOT=%%~fI"
 if not defined PROJECT_ROOT (
-    echo [OpenLegend] Failed to resolve the Windows short project path. 1>&2
+    echo [OpenLegend] Failed to resolve the Windows project path. 1>&2
     exit /b 2
 )
 cd /d "%PROJECT_ROOT%"
 
-set "CMAKE_EXE=D:\Dev\lldb\tools\cmake\bin\cmake.exe"
-set "CTEST_EXE=D:\Dev\lldb\tools\cmake\bin\ctest.exe"
-set "NINJA_EXE=D:\Dev\lldb\tools\ninja\ninja.exe"
 set "LLVM_BIN=D:\Dev\Compiler\LLVM\x64\bin"
 
-if not exist "%CMAKE_EXE%" goto missing_tools
-if not exist "%CTEST_EXE%" goto missing_tools
-if not exist "%NINJA_EXE%" goto missing_tools
 if not exist "%LLVM_BIN%\clang++.exe" goto missing_tools
 
 set "TARGET=%~1"
@@ -24,11 +20,11 @@ if /I not "%TARGET%"=="core" if /I not "%TARGET%"=="app" if /I not "%TARGET%"=="
 if /I "%TARGET%"=="app" if not exist "%LLVM_BIN%\clang.exe" goto missing_tools
 if /I "%TARGET%"=="sdl" if not exist "%LLVM_BIN%\clang.exe" goto missing_tools
 
-set "PATH=%LLVM_BIN%;D:\Dev\lldb\tools\cmake\bin;D:\Dev\lldb\tools\ninja;%PATH%"
+set "PATH=%LLVM_BIN%;%PATH%"
 set "OPENLEGEND_PROJECT_ROOT=%PROJECT_ROOT%"
-set "OPENLEGEND_CMAKE=%CMAKE_EXE%"
-set "OPENLEGEND_CTEST=%CTEST_EXE%"
-set "OPENLEGEND_NINJA=%NINJA_EXE%"
+set "OPENLEGEND_CMAKE="
+set "OPENLEGEND_CTEST="
+set "OPENLEGEND_NINJA="
 set "CC=%LLVM_BIN%\clang.exe"
 set "CXX=%LLVM_BIN%\clang++.exe"
 
@@ -53,10 +49,7 @@ echo Usage: build.bat [core^|app] [--config Debug^|Release] [options] 1>&2
 exit /b 2
 
 :missing_tools
-echo [OpenLegend] Required tool not found. 1>&2
-echo CMake: %CMAKE_EXE% 1>&2
-echo CTest: %CTEST_EXE% 1>&2
-echo Ninja: %NINJA_EXE% 1>&2
+echo [OpenLegend] Required compiler not found. 1>&2
 echo LLVM C: %LLVM_BIN%\clang.exe 1>&2
 echo LLVM C++: %LLVM_BIN%\clang++.exe 1>&2
 exit /b 2

@@ -31,7 +31,7 @@ class TestTree {
 public:
     TestTree() {
         const auto unique = std::chrono::steady_clock::now().time_since_epoch().count();
-        root_ = std::filesystem::path{OPENLEGEND_TEST_OUTPUT_ROOT} /
+        root_ = openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
                 ("logging-" + std::to_string(unique));
         std::filesystem::create_directories(root_);
     }

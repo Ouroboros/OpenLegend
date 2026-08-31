@@ -175,6 +175,28 @@ def cached_generator(cache_file: Path) -> str | None:
     return None
 
 
+def cached_home_directory(cache_file: Path) -> str | None:
+    if not cache_file.is_file():
+        return None
+    for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("CMAKE_HOME_DIRECTORY:INTERNAL="):
+            return line.split("=", 1)[1]
+    return None
+
+
+def reset_build_directory(build_dir: Path) -> None:
+    configurations = [
+        (path.relative_to(build_dir), path.read_bytes())
+        for path in build_dir.glob("src/platform/sdl3/*/openlegend.toml")
+        if path.is_file()
+    ]
+    shutil.rmtree(build_dir)
+    for relative_path, contents in configurations:
+        destination = build_dir / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(contents)
+
+
 def main() -> int:
     args = parse_args()
     project_root = project_root_path(Path(__file__))
@@ -190,12 +212,20 @@ def main() -> int:
     build_file = build_dir / "build.ninja"
     reconfigure = os.environ.get("OPENLEGEND_RECONFIGURE", "0") == "1"
     current_generator = cached_generator(cache_file)
+    current_home = cached_home_directory(cache_file)
     if current_generator is not None and current_generator != EXPECTED_GENERATOR:
         print(
             f"[OpenLegend] Reset generator: {current_generator} -> {EXPECTED_GENERATOR}",
             flush=True,
         )
-        shutil.rmtree(build_dir)
+        reset_build_directory(build_dir)
+        reconfigure = True
+    elif os.name == "nt" and current_home is not None and "~" in current_home:
+        print(
+            f"[OpenLegend] Reset legacy 8.3 source path: {current_home}",
+            flush=True,
+        )
+        reset_build_directory(build_dir)
         reconfigure = True
 
     configure = configure_command(
@@ -207,10 +237,11 @@ def main() -> int:
         os.environ.get("CXX"),
         os.environ.get("CC"),
     )
+    process_cwd = Path(sys.executable).parent if os.name == "nt" else project_root
 
     if reconfigure or not cache_file.is_file() or not build_file.is_file():
         print(f"[OpenLegend] Configure: {platform_name}-{target}", flush=True)
-        run(configure, project_root)
+        run(configure, process_cwd)
     else:
         print(f"[OpenLegend] Configure: {platform_name}-{target} (reuse Ninja cache)", flush=True)
 
@@ -232,7 +263,7 @@ def main() -> int:
             "--parallel",
             str(args.jobs),
         ],
-        project_root,
+        process_cwd,
     )
     if not args.skip_tests:
         print(
@@ -250,7 +281,7 @@ def main() -> int:
                 str(args.test_jobs),
                 "--output-on-failure",
             ],
-            project_root,
+            process_cwd,
         )
 
     print(f"[OpenLegend] Build and tests completed: {build_dir} ({args.config})")

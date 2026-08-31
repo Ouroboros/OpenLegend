@@ -79,6 +79,9 @@ target_link_libraries(
     openlegend_scene_tests
     PRIVATE openlegend_persistence openlegend_resource openlegend_scene
 )
+if(WIN32)
+    target_link_options(openlegend_scene_tests PRIVATE -Wl,/STACK:8388608)
+endif()
 add_test(NAME openlegend.scene COMMAND openlegend_scene_tests)
 
 add_executable(openlegend_battle_tests unit/battle/battle_data_test.cpp)
