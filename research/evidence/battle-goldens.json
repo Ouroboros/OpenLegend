@@ -456,6 +456,26 @@
           "damage": 14
         }
       },
+      "poison_vector": {
+        "use_poison": 80,
+        "targeting_range": 6,
+        "target_anti_poison": 20,
+        "target_poison_before": 90,
+        "raw_amount": 15,
+        "applied_amount": 9,
+        "target_poison_after": 99,
+        "direction_after": 3,
+        "effect_hash": "0xab559939923b4f74",
+        "effect_kind": 2,
+        "negative_amount_clamped": 0,
+        "maximum_amount": 99,
+        "action_done": 1,
+        "attack_counter_after": 1,
+        "physical_power_before": 1,
+        "physical_power_after": 0,
+        "empty_cell_marked": true,
+        "friendly_cell_marked": false
+      },
       "mp_damage_vector": {
         "rng_seed": 1,
         "rng_bounds": [

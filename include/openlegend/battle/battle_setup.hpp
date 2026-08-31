@@ -201,6 +201,15 @@ public:
         std::size_t target_slot,
         std::int16_t magic_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<std::int16_t> poison_targeting_range(
+        std::size_t actor_slot) const noexcept;
+    [[nodiscard]] std::optional<std::int16_t> apply_poison_value(
+        std::size_t actor_slot,
+        std::size_t target_slot);
+    [[nodiscard]] std::optional<BattleAreaResult> apply_poison_target(
+        std::size_t actor_slot,
+        BattlePathCoord target);
+    [[nodiscard]] bool finish_poison_action(std::size_t actor_slot);
     void clear_attack_effects() noexcept;
     [[nodiscard]] std::span<const std::int16_t> attack_effects() const noexcept {
         return attack_effects_;

@@ -405,6 +405,61 @@ void run_attack_animation_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(std::ranges::none_of(suppressed, [](const auto& frame) { return frame.flash; }));
 }
 
+void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& actor = ranger.roles[1U];
+    auto& target = ranger.roles[3U];
+    actor.set_word(openlegend::model::role_word::use_poison, 80);
+    actor.set_word(openlegend::model::role_word::physical_power, 1);
+    target.set_word(openlegend::model::role_word::anti_poison, 20);
+    target.set_word(openlegend::model::role_word::poison, 90);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    OL_CHECK(setup.poison_targeting_range(0U) == 6);
+    const auto result = setup.apply_poison_target(0U, BattlePathCoord{26, 26});
+    OL_CHECK(result.has_value());
+    OL_CHECK(result->hit_count == 1);
+    OL_CHECK(result->effect_kind == 2);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
+    OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 9);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
+    OL_CHECK(setup.finish_poison_action(0U));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 1);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 0);
+
+    actor.set_word(openlegend::model::role_word::use_poison, 10);
+    target.set_word(openlegend::model::role_word::anti_poison, 20);
+    target.set_word(openlegend::model::role_word::poison, 0);
+    OL_CHECK(setup.apply_poison_value(0U, 1U) == 0);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 0);
+    actor.set_word(openlegend::model::role_word::use_poison, 500);
+    target.set_word(openlegend::model::role_word::anti_poison, 0);
+    OL_CHECK(setup.apply_poison_value(0U, 1U) == 99);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
+
+    data.occupancy()[26U * 64U + 26U] = -1;
+    const auto empty = setup.apply_poison_target(0U, BattlePathCoord{25, 24});
+    OL_CHECK(empty.has_value());
+    OL_CHECK(empty->hit_count == 0);
+    OL_CHECK(!empty->effect_kind.has_value());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 2);
+    OL_CHECK(std::ranges::count(setup.attack_effects(), 1) == 1);
+
+    const auto friendly = setup.apply_poison_target(0U, BattlePathCoord{26, 24});
+    OL_CHECK(friendly.has_value());
+    OL_CHECK(friendly->hit_count == 0);
+    OL_CHECK(!friendly->effect_kind.has_value());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 2);
+    OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
+        return value != 0;
+    }));
+}
+
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -801,6 +856,7 @@ int main() {
     run_movement_step_test(data_root);
     run_attack_profile_test(data_root);
     run_attack_animation_test(data_root);
+    run_poison_action_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);
