@@ -803,6 +803,72 @@ def ai_attack_handler_vectors(
     }
 
 
+def ai_item_handler_vectors(field_words: list[int]) -> dict[str, object]:
+    targeting = build_path_map(field_words, (10, 20), "targeting")
+    strongest_roll, strongest_state = legacy_bounded(9, 10)
+    return {
+        "consumable": {
+            "calls_relocation_before_use": True,
+            "relocation_rest_after_move": False,
+            "source": [10, 20],
+            "round_value": 3,
+            "destination": [7, 20],
+            "maximum_enemy_distance_sum": 20,
+            "use_mode": 0,
+            "next_step_with_destination": "move",
+            "next_step_after_relocation": "use_item",
+            "use_after_relocation_even_without_destination": True,
+        },
+        "throwing_weapon": {
+            "target_selector_runs_before_range": True,
+            "actor_hidden_weapon": 80,
+            "targeting_range": trunc_div(80, 15) + 1,
+            "movement_mode": 1,
+            "use_mode": 1,
+            "nearest": {
+                "target_slot": 3,
+                "distance": targeting[23 * 64 + 13],
+                "rng_consumed": False,
+                "result": "use_item",
+                "range_checks": 1,
+            },
+            "strongest": {
+                "rng_seed": 9,
+                "rng_output": strongest_roll,
+                "rng_state_after": strongest_state,
+                "attacks": [30, 50],
+                "target_slot": 4,
+                "distance": targeting[24 * 64 + 14],
+                "round_positive_result": "move",
+                "range_checks_before_move": 1,
+                "no_position_change_result": "attack_fallback",
+                "range_checks_after_resume": 2,
+                "moved_source": [13, 23],
+                "moved_distance": 2,
+                "moved_result": "use_item",
+            },
+            "round_zero_out_of_range": {
+                "result": "attack_fallback",
+                "range_checks": 2,
+            },
+            "stale_target_bug": {
+                "strategy_gate_hit": True,
+                "eligible_attacks": [0, 0],
+                "target_written": False,
+                "preexisting_target_slot": 4,
+                "target_slot_used": 4,
+            },
+            "post_move_target_reselected": False,
+        },
+        "item_source_by_side": {
+            "party_side_0": "inventory_slot",
+            "enemy_nonzero_side": "role_carried_slot",
+            "inventory_count_checked_before_handler": False,
+        },
+        "outer_ai_marks_action_done_after_handler": True,
+    }
+
+
 def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
     targeting = build_path_map(field_words, (10, 20), "targeting")
     high_iq_roll, high_iq_state = legacy_bounded(9, 10)
@@ -1197,6 +1263,7 @@ def build(data_root: Path) -> dict[str, object]:
     attack_target_vectors = ai_attack_target_vectors(battle3_field_words)
     attack_handler_vectors = ai_attack_handler_vectors(z_dat_bytes, battle3_field_words)
     poison_handler_vectors = ai_poison_handler_vectors(battle3_field_words)
+    item_handler_vectors = ai_item_handler_vectors(battle3_field_words)
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
@@ -1446,6 +1513,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,
                 "ai_poison_handler_vectors": poison_handler_vectors,
+                "ai_item_handler_vectors": item_handler_vectors,
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

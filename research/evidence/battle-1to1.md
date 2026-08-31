@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `084322af8d3e3d1d6ede874cebb870c4c173432a612ca13772eeb26b25956059`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `2a7e987003eabb2d2840a55de8f56c8d8834a93e41592f1e939607e6559d26ae`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -210,3 +210,11 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 `sub_3540E`的射程为signed use_poison除15加1。round value恰0且在射程首次检查直接用毒；round value>0时即使已在射程仍请求movement mode3；负值跳过移动并重复建立targeting图后在第二次检查用毒。移动后只复检原目标，不重选。仍超距时比较`2*target attack`与wrapped int16己方`attack+HP`总和的`2*total/count`，strict更大回退自动攻击，否则休息。固定total330/count3阈值220，target attack50休息、200攻击。
 
 现代已恢复三个selector及typed handler计划；实际`sub_3650E`移动、`sub_397E5`用毒、`sub_34C47`攻击回退、`sub_34AD3`休息和外层AI action_done continuation尚未接线，故主handler保持`pending_implementation`。
+
+## 26. AI物品与暗器handler计划
+
+`sub_35803`先调用`sub_34AEC(actor,1)`，复用逃跑最远格算法但不在移动后休息；随后无条件调用`sub_3598C(actor,0)`。固定field2 source `(10,20)`、round value3时目的格`(7,20)`、敌方曼哈顿和20。party side0的全局item slot索引200槽inventory，非零side索引角色4槽taking-item，handler不先检查数量。现代将目的格move与移动后mode0使用拆为两个同步步骤。
+
+`sub_3582B`先调用攻击目标策略，再按actor hidden_weapon signed除15加1计算射程；首次targeting距离命中即调用`sub_3598C(actor,1)`，超距且round value>0请求movement mode1，移动后只复检同一目标，仍超距回退`sub_34C47`。round value<=0跳过移动但重复第二次targeting检查。hidden_weapon80得射程6；最近slot3距离6立即使用且无RNG；morality75、seed9输出2选slot4距离8，移动前1次检查，未改变位置后累计2次并回退攻击，移动到`(13,23)`后距离2则使用。最高攻击门槛命中但attack均为0时不写word11，原版继续使用合法stale target。
+
+现代已恢复两个typed handler计划，但未实际执行逐格移动、`sub_3598C`物品/暗器动画与状态提交、库存扣减、`sub_34C47`攻击回退和外层action_done continuation，故两项均保持`pending_implementation`。

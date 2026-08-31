@@ -2863,6 +2863,147 @@ std::optional<BattleAiPoisonPlan> BattleSetup::resume_ai_poison_after_move(
     return plan;
 }
 
+std::optional<std::int16_t> BattleSetup::ai_item_id(
+    const std::size_t actor_slot,
+    const BattleAiChoice& choice) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        choice.item_slot < 0) {
+        return std::nullopt;
+    }
+    const auto& actor = combatants_[actor_slot].words;
+    std::int16_t item_id = -1;
+    if (actor[combatant_word::side] == 0) {
+        if (choice.item_source != BattleAiItemSource::inventory ||
+            static_cast<std::size_t>(choice.item_slot) >= model::kInventoryCount) {
+            return std::nullopt;
+        }
+        item_id = ranger_.header.inventory_item(
+            static_cast<std::size_t>(choice.item_slot)).value;
+    } else {
+        if (choice.item_source != BattleAiItemSource::carried ||
+            static_cast<std::size_t>(choice.item_slot) >= model::role_word::taking_item_count) {
+            return std::nullopt;
+        }
+        const auto role_id = actor[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        item_id = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::taking_item_begin + static_cast<std::size_t>(choice.item_slot));
+    }
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+        return std::nullopt;
+    }
+    return item_id;
+}
+
+std::optional<BattleAiItemPlan> BattleSetup::begin_ai_item_plan(
+    const std::size_t actor_slot,
+    const BattleAiChoice& choice) const {
+    if (choice.action != BattleAiAction::item) {
+        return std::nullopt;
+    }
+    const auto relocation = ai_escape_plan(actor_slot, false);
+    const auto item_id = ai_item_id(actor_slot, choice);
+    if (!relocation || !item_id) {
+        return std::nullopt;
+    }
+    BattleAiItemPlan plan{};
+    plan.item_source = choice.item_source;
+    plan.item_slot = choice.item_slot;
+    plan.item_id = *item_id;
+    plan.use_mode = 0;
+    plan.relocation_destination = relocation->destination;
+    plan.maximum_enemy_distance_sum = relocation->maximum_enemy_distance_sum;
+    plan.movement_mode = 0;
+    plan.next_step = plan.relocation_destination.has_value()
+        ? BattleAiItemNextStep::move
+        : BattleAiItemNextStep::use_item;
+    return plan;
+}
+
+std::optional<BattleAiItemPlan> BattleSetup::resume_ai_item_after_relocation(
+    const std::size_t actor_slot,
+    BattleAiItemPlan plan) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.use_mode != 0 || plan.next_step != BattleAiItemNextStep::move ||
+        !plan.relocation_destination.has_value()) {
+        return std::nullopt;
+    }
+    plan.next_step = BattleAiItemNextStep::use_item;
+    return plan;
+}
+
+bool BattleSetup::update_ai_throwing_weapon_target_range(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    BattleAiItemPlan& plan) const {
+    const auto& actor = combatants_[actor_slot].words;
+    const auto& target = combatants_[target_slot].words;
+    BattlePathing pathing{data_};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::targeting);
+    plan.target_slot = static_cast<std::int16_t>(target_slot);
+    plan.target_distance = pathing.value(
+        BattlePathCoord{target[combatant_word::x], target[combatant_word::y]});
+    plan.range_check_count = static_cast<std::int16_t>(plan.range_check_count + 1);
+    return plan.target_distance <= plan.targeting_range;
+}
+
+std::optional<BattleAiItemPlan> BattleSetup::begin_ai_throwing_weapon_plan(
+    const std::size_t actor_slot,
+    const BattleAiChoice& choice,
+    random::LegacyRandom& random) {
+    if (choice.action != BattleAiAction::throwing_weapon) {
+        return std::nullopt;
+    }
+    const auto target = choose_ai_attack_target(actor_slot, random);
+    const auto range = throwing_weapon_targeting_range(actor_slot);
+    const auto item_id = ai_item_id(actor_slot, choice);
+    if (!target || !range || !item_id || target->target_slot < 0 ||
+        target->target_slot >= combatant_count_) {
+        error_ = "battle AI throwing-weapon plan target or item is outside legacy records";
+        return std::nullopt;
+    }
+
+    BattleAiItemPlan plan{};
+    plan.item_source = choice.item_source;
+    plan.item_slot = choice.item_slot;
+    plan.item_id = *item_id;
+    plan.use_mode = 1;
+    plan.target_slot = target->target_slot;
+    plan.targeting_range = *range;
+    plan.target_strategy = target->strategy;
+    plan.target_written = target->target_written;
+    const auto target_slot = static_cast<std::size_t>(target->target_slot);
+    if (update_ai_throwing_weapon_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiItemNextStep::use_item;
+    } else if (combatants_[actor_slot].words[combatant_word::round_value] > 0) {
+        plan.next_step = BattleAiItemNextStep::move;
+    } else if (update_ai_throwing_weapon_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiItemNextStep::use_item;
+    } else {
+        plan.next_step = BattleAiItemNextStep::attack_fallback;
+    }
+    return plan;
+}
+
+std::optional<BattleAiItemPlan> BattleSetup::resume_ai_throwing_weapon_after_move(
+    const std::size_t actor_slot,
+    BattleAiItemPlan plan) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.use_mode != 1 || plan.next_step != BattleAiItemNextStep::move ||
+        plan.target_slot < 0 || plan.target_slot >= combatant_count_) {
+        return std::nullopt;
+    }
+    const auto target_slot = static_cast<std::size_t>(plan.target_slot);
+    plan.next_step = update_ai_throwing_weapon_target_range(actor_slot, target_slot, plan)
+        ? BattleAiItemNextStep::use_item
+        : BattleAiItemNextStep::attack_fallback;
+    return plan;
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

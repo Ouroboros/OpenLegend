@@ -1243,6 +1243,82 @@
         "no_target_result": "attack",
         "outer_ai_marks_action_done_after_handler": true
       },
+      "ai_item_handler_vectors": {
+        "consumable": {
+          "calls_relocation_before_use": true,
+          "relocation_rest_after_move": false,
+          "source": [
+            10,
+            20
+          ],
+          "round_value": 3,
+          "destination": [
+            7,
+            20
+          ],
+          "maximum_enemy_distance_sum": 20,
+          "use_mode": 0,
+          "next_step_with_destination": "move",
+          "next_step_after_relocation": "use_item",
+          "use_after_relocation_even_without_destination": true
+        },
+        "throwing_weapon": {
+          "target_selector_runs_before_range": true,
+          "actor_hidden_weapon": 80,
+          "targeting_range": 6,
+          "movement_mode": 1,
+          "use_mode": 1,
+          "nearest": {
+            "target_slot": 3,
+            "distance": 6,
+            "rng_consumed": false,
+            "result": "use_item",
+            "range_checks": 1
+          },
+          "strongest": {
+            "rng_seed": 9,
+            "rng_output": 2,
+            "rng_state_after": 1341714958,
+            "attacks": [
+              30,
+              50
+            ],
+            "target_slot": 4,
+            "distance": 8,
+            "round_positive_result": "move",
+            "range_checks_before_move": 1,
+            "no_position_change_result": "attack_fallback",
+            "range_checks_after_resume": 2,
+            "moved_source": [
+              13,
+              23
+            ],
+            "moved_distance": 2,
+            "moved_result": "use_item"
+          },
+          "round_zero_out_of_range": {
+            "result": "attack_fallback",
+            "range_checks": 2
+          },
+          "stale_target_bug": {
+            "strategy_gate_hit": true,
+            "eligible_attacks": [
+              0,
+              0
+            ],
+            "target_written": false,
+            "preexisting_target_slot": 4,
+            "target_slot_used": 4
+          },
+          "post_move_target_reselected": false
+        },
+        "item_source_by_side": {
+          "party_side_0": "inventory_slot",
+          "enemy_nonzero_side": "role_carried_slot",
+          "inventory_count_checked_before_handler": false
+        },
+        "outer_ai_marks_action_done_after_handler": true
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,

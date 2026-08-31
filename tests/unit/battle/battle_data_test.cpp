@@ -1619,6 +1619,128 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(resumed_poison_plan->doubled_target_attack == 400);
     OL_CHECK(resumed_poison_plan->doubled_allied_average == 220);
     OL_CHECK(resumed_poison_plan->next_step == BattleAiPoisonNextStep::attack_fallback);
+
+    reset();
+    std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+    for (std::size_t slot = 0U; slot < 5U; ++slot) {
+        const auto& combatant = setup.combatants()[slot].words;
+        const auto index = static_cast<std::size_t>(combatant[combatant_word::y]) * 64U +
+            static_cast<std::size_t>(combatant[combatant_word::x]);
+        data.occupancy()[index] = static_cast<std::int16_t>(slot);
+    }
+    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    ranger.header.set_inventory(2U, openlegend::model::ItemId{5}, 0);
+    const BattleAiChoice item_choice{
+        .action = BattleAiAction::item,
+        .target_slot = 0,
+        .item_source = BattleAiItemSource::inventory,
+        .item_slot = 2,
+        .action_code_written = true,
+    };
+    const auto item_plan = setup.begin_ai_item_plan(0U, item_choice);
+    OL_CHECK(item_plan.has_value());
+    OL_CHECK(item_plan->item_source == BattleAiItemSource::inventory);
+    OL_CHECK(item_plan->item_slot == 2);
+    OL_CHECK(item_plan->item_id == 5);
+    OL_CHECK(item_plan->use_mode == 0);
+    OL_CHECK(item_plan->relocation_destination.has_value());
+    OL_CHECK((*item_plan->relocation_destination == BattlePathCoord{7, 20}));
+    OL_CHECK(item_plan->maximum_enemy_distance_sum == 20);
+    OL_CHECK(item_plan->movement_mode == 0);
+    OL_CHECK(item_plan->next_step == BattleAiItemNextStep::move);
+    OL_CHECK(item_plan->outer_marks_action_done_after_handler);
+    const auto resumed_item_plan = setup.resume_ai_item_after_relocation(0U, *item_plan);
+    OL_CHECK(resumed_item_plan.has_value());
+    OL_CHECK(resumed_item_plan->next_step == BattleAiItemNextStep::use_item);
+
+    reset();
+    ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
+    ranger.roles[0U].set_word(role_word::hidden_weapon, 80);
+    const BattleAiChoice throwing_choice{
+        .action = BattleAiAction::throwing_weapon,
+        .item_source = BattleAiItemSource::inventory,
+        .item_slot = 4,
+        .action_code_written = true,
+    };
+    openlegend::random::LegacyRandom immediate_throwing_random{1U};
+    auto throwing_plan = setup.begin_ai_throwing_weapon_plan(
+        0U, throwing_choice, immediate_throwing_random);
+    OL_CHECK(throwing_plan.has_value());
+    OL_CHECK(throwing_plan->item_id == 5);
+    OL_CHECK(throwing_plan->use_mode == 1);
+    OL_CHECK(throwing_plan->target_slot == 3);
+    OL_CHECK(throwing_plan->target_strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(throwing_plan->target_written);
+    OL_CHECK(throwing_plan->targeting_range == 6);
+    OL_CHECK(throwing_plan->target_distance == 6);
+    OL_CHECK(throwing_plan->range_check_count == 1);
+    OL_CHECK(throwing_plan->movement_mode == 1);
+    OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::use_item);
+    OL_CHECK(immediate_throwing_random.state() == 1U);
+
+    reset();
+    ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
+    ranger.roles[0U].set_word(role_word::hidden_weapon, 80);
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, 50);
+    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    openlegend::random::LegacyRandom moving_throwing_random{9U};
+    throwing_plan = setup.begin_ai_throwing_weapon_plan(
+        0U, throwing_choice, moving_throwing_random);
+    OL_CHECK(throwing_plan.has_value());
+    OL_CHECK(throwing_plan->target_slot == 4);
+    OL_CHECK(throwing_plan->target_strategy == BattleAiTargetStrategy::strongest_attack);
+    OL_CHECK(throwing_plan->target_distance == 8);
+    OL_CHECK(throwing_plan->range_check_count == 1);
+    OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::move);
+    auto resumed_throwing_plan = setup.resume_ai_throwing_weapon_after_move(0U, *throwing_plan);
+    OL_CHECK(resumed_throwing_plan.has_value());
+    OL_CHECK(resumed_throwing_plan->target_slot == 4);
+    OL_CHECK(resumed_throwing_plan->target_distance == 8);
+    OL_CHECK(resumed_throwing_plan->range_check_count == 2);
+    OL_CHECK(resumed_throwing_plan->next_step == BattleAiItemNextStep::attack_fallback);
+    OL_CHECK(moving_throwing_random.state() == 1'341'714'958U);
+
+    setup.combatants()[0U].words[combatant_word::x] = 13;
+    setup.combatants()[0U].words[combatant_word::y] = 23;
+    resumed_throwing_plan = setup.resume_ai_throwing_weapon_after_move(0U, *throwing_plan);
+    OL_CHECK(resumed_throwing_plan.has_value());
+    OL_CHECK(resumed_throwing_plan->target_distance == 2);
+    OL_CHECK(resumed_throwing_plan->range_check_count == 2);
+    OL_CHECK(resumed_throwing_plan->next_step == BattleAiItemNextStep::use_item);
+
+    reset();
+    ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
+    ranger.roles[0U].set_word(role_word::hidden_weapon, 80);
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, 50);
+    openlegend::random::LegacyRandom zero_round_throwing_random{9U};
+    throwing_plan = setup.begin_ai_throwing_weapon_plan(
+        0U, throwing_choice, zero_round_throwing_random);
+    OL_CHECK(throwing_plan.has_value());
+    OL_CHECK(throwing_plan->target_slot == 4);
+    OL_CHECK(throwing_plan->target_distance == 8);
+    OL_CHECK(throwing_plan->range_check_count == 2);
+    OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::attack_fallback);
+
+    reset();
+    ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
+    ranger.roles[0U].set_word(role_word::hidden_weapon, 80);
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[3U].set_word(role_word::attack, 0);
+    ranger.roles[4U].set_word(role_word::attack, 0);
+    setup.combatants()[0U].words[combatant_word::ai_target] = 4;
+    openlegend::random::LegacyRandom stale_throwing_random{9U};
+    throwing_plan = setup.begin_ai_throwing_weapon_plan(
+        0U, throwing_choice, stale_throwing_random);
+    OL_CHECK(throwing_plan.has_value());
+    OL_CHECK(!throwing_plan->target_written);
+    OL_CHECK(throwing_plan->target_slot == 4);
+    OL_CHECK(throwing_plan->target_distance == 8);
+    OL_CHECK(throwing_plan->range_check_count == 2);
+    OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::attack_fallback);
 }
 
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {

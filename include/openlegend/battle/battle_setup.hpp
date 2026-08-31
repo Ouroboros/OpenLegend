@@ -217,6 +217,30 @@ struct BattleAiPoisonPlan {
     bool outer_marks_action_done_after_handler{true};
 };
 
+enum class BattleAiItemNextStep : std::int16_t {
+    use_item,
+    move,
+    attack_fallback,
+};
+
+struct BattleAiItemPlan {
+    BattleAiItemSource item_source{BattleAiItemSource::none};
+    std::int16_t item_slot{-1};
+    std::int16_t item_id{-1};
+    std::int16_t use_mode{};
+    std::optional<BattlePathCoord> relocation_destination;
+    std::int32_t maximum_enemy_distance_sum{};
+    std::int16_t target_slot{-1};
+    std::int16_t targeting_range{};
+    std::int16_t target_distance{};
+    std::int16_t range_check_count{};
+    std::int16_t movement_mode{1};
+    BattleAiTargetStrategy target_strategy{BattleAiTargetStrategy::nearest};
+    BattleAiItemNextStep next_step{BattleAiItemNextStep::use_item};
+    bool target_written{};
+    bool outer_marks_action_done_after_handler{true};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -481,6 +505,19 @@ public:
     [[nodiscard]] std::optional<BattleAiPoisonPlan> resume_ai_poison_after_move(
         std::size_t actor_slot,
         BattleAiPoisonPlan plan);
+    [[nodiscard]] std::optional<BattleAiItemPlan> begin_ai_item_plan(
+        std::size_t actor_slot,
+        const BattleAiChoice& choice) const;
+    [[nodiscard]] std::optional<BattleAiItemPlan> resume_ai_item_after_relocation(
+        std::size_t actor_slot,
+        BattleAiItemPlan plan) const noexcept;
+    [[nodiscard]] std::optional<BattleAiItemPlan> begin_ai_throwing_weapon_plan(
+        std::size_t actor_slot,
+        const BattleAiChoice& choice,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiItemPlan> resume_ai_throwing_weapon_after_move(
+        std::size_t actor_slot,
+        BattleAiItemPlan plan);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
@@ -562,6 +599,13 @@ private:
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiPoisonPlan& plan);
+    [[nodiscard]] std::optional<std::int16_t> ai_item_id(
+        std::size_t actor_slot,
+        const BattleAiChoice& choice) const noexcept;
+    [[nodiscard]] bool update_ai_throwing_weapon_target_range(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        BattleAiItemPlan& plan) const;
 
     BattleData& data_;
     model::RangerState& ranger_;
