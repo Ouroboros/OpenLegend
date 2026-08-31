@@ -196,6 +196,61 @@ void run_movement_step_test(const openlegend::resource::DataRoot& data_root) {
         0U, target, 1U, BattleMovementStopRule::aligned_in_range, 0));
 }
 
+void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& role = ranger.roles[1U];
+    role.set_word(openlegend::model::role_word::magic_id_begin + 2U, 5);
+    role.set_word(openlegend::model::role_word::magic_level_begin + 2U, 299);
+    role.set_word(openlegend::model::role_word::attack_twice, 1);
+    role.set_word(openlegend::model::role_word::mp, 3);
+    role.set_word(openlegend::model::role_word::physical_power, 2);
+    auto& magic = ranger.magics[5U];
+    magic.set_word(openlegend::model::magic_word::select_distance_begin + 2U, 7);
+    magic.set_word(openlegend::model::magic_word::attack_distance_begin + 2U, 3);
+    magic.set_word(openlegend::model::magic_word::attack_area_type, 2);
+    magic.set_word(openlegend::model::magic_word::hurt_type, 1);
+    magic.set_word(openlegend::model::magic_word::need_mp, 4);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    OL_CHECK(setup.learned_magic_count(0U) == 1U);
+    openlegend::random::LegacyRandom random{1U};
+    OL_CHECK(setup.automatic_magic_slot(0U, random) == 0);
+    OL_CHECK(random.state() == 1U);
+    const auto legacy_single = setup.attack_profile(0U, 0);
+    OL_CHECK(legacy_single.has_value());
+    OL_CHECK(legacy_single->magic_id == 0);
+
+    const auto profile = setup.attack_profile(0U, 2);
+    OL_CHECK(profile.has_value());
+    OL_CHECK(profile->magic_id == 5);
+    OL_CHECK(profile->level_index == 2);
+    OL_CHECK(profile->select_distance == 7);
+    OL_CHECK(profile->attack_distance == 3);
+    OL_CHECK(profile->area_type == 2);
+    OL_CHECK(profile->hurt_type == 1);
+    OL_CHECK(profile->attack_count == 2);
+    OL_CHECK(profile->need_mp == 4);
+
+    OL_CHECK(setup.commit_attack_iteration(0U, 2, 3, random));
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin + 2U) == 300);
+    OL_CHECK(role.word(openlegend::model::role_word::mp) == 0);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 2);
+
+    role.set_word(openlegend::model::role_word::magic_level_begin + 2U, 999);
+    role.set_word(openlegend::model::role_word::mp, 10);
+    OL_CHECK(!setup.commit_attack_iteration(0U, 2, 2, random));
+    OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin + 2U) == 999);
+    OL_CHECK(role.word(openlegend::model::role_word::mp) == 6);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 4);
+    OL_CHECK(setup.finish_attack(0U));
+    OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 0);
+}
+
 void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -375,6 +430,7 @@ int main() {
     run_real_asset_fixtures(data_root);
     run_pathing_tests(data_root);
     run_movement_step_test(data_root);
+    run_attack_profile_test(data_root);
     run_party_selection_test(data_root);
     run_fixed_and_duplicate_tests(data_root);
     run_turn_order_test(data_root);

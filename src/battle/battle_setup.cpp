@@ -391,6 +391,120 @@ bool BattleSetup::movement_should_stop(
         actor[combatant_word::y] == target[combatant_word::y];
 }
 
+std::size_t BattleSetup::learned_magic_count(const std::size_t slot) const noexcept {
+    if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
+        return 0U;
+    }
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return 0U;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    std::size_t count = 0U;
+    for (std::size_t magic = 0U; magic < model::role_word::magic_count; ++magic) {
+        if (role.word(model::role_word::magic_id_begin + magic) > 0) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+std::int16_t BattleSetup::automatic_magic_slot(
+    const std::size_t slot, random::LegacyRandom& random) const noexcept {
+    return static_cast<std::int16_t>(
+        random.bounded(static_cast<std::int32_t>(learned_magic_count(slot))));
+}
+
+std::optional<BattleAttackProfile> BattleSetup::attack_profile(
+    const std::size_t slot, const std::int16_t magic_slot) const noexcept {
+    if (!valid() || slot >= static_cast<std::size_t>(combatant_count_) || magic_slot < 0 ||
+        static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto slot_index = static_cast<std::size_t>(magic_slot);
+    const auto magic_id = role.word(model::role_word::magic_id_begin + slot_index);
+    if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+        return std::nullopt;
+    }
+    const auto level_index = static_cast<std::size_t>(
+        role.unsigned_word(model::role_word::magic_level_begin + slot_index) / 100U);
+    if (level_index >= model::magic_word::level_value_count) {
+        return std::nullopt;
+    }
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
+    return BattleAttackProfile{
+        magic_slot,
+        magic_id,
+        static_cast<std::int16_t>(level_index),
+        magic.word(model::magic_word::select_distance_begin + level_index),
+        magic.word(model::magic_word::attack_distance_begin + level_index),
+        magic.word(model::magic_word::attack_area_type),
+        magic.word(model::magic_word::hurt_type),
+        static_cast<std::int16_t>(
+            role.word(model::role_word::attack_twice) == 1 ? 2 : 1),
+        magic.word(model::magic_word::need_mp),
+    };
+}
+
+bool BattleSetup::commit_attack_iteration(
+    const std::size_t slot,
+    const std::int16_t magic_slot,
+    const std::int16_t cost_scale,
+    random::LegacyRandom& random) {
+    const auto profile = attack_profile(slot, magic_slot);
+    if (!profile) {
+        error_ = "battle attack profile is outside ranger records";
+        return false;
+    }
+    auto& words = combatants_[slot].words;
+    words[combatant_word::action_done] = 1;
+    words[combatant_word::attack_counter] = wrapping_i16(
+        static_cast<std::int32_t>(words[combatant_word::attack_counter]) + 2);
+
+    auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+    const auto experience_word = model::role_word::magic_level_begin +
+        static_cast<std::size_t>(magic_slot);
+    const auto previous_rank = role.unsigned_word(experience_word) / 100U + 1U;
+    auto experience = static_cast<std::uint16_t>(
+        role.unsigned_word(experience_word) + random.bounded(2) + 1);
+    if (experience > 999U) {
+        experience = 999U;
+    }
+    role.set_word(experience_word, static_cast<std::int16_t>(experience));
+    const auto current_rank = experience / 100U + 1U;
+
+    const auto cost = static_cast<std::int32_t>(cost_scale / 2) * profile->need_mp;
+    auto mp = wrapping_i16(static_cast<std::int32_t>(role.word(model::role_word::mp)) - cost);
+    if (mp < 0) {
+        mp = 0;
+    }
+    role.set_word(model::role_word::mp, mp);
+    return current_rank > previous_rank;
+}
+
+bool BattleSetup::finish_attack(const std::size_t slot) {
+    if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
+        return false;
+    }
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return false;
+    }
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto physical_power = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::physical_power)) - 3);
+    if (physical_power < 0) {
+        physical_power = 0;
+    }
+    role.set_word(model::role_word::physical_power, physical_power);
+    return true;
+}
+
 PartySelectionResult BattleSetup::apply(const PartySelectionAction action) {
     if (!valid()) {
         return PartySelectionResult::invalid;

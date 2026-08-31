@@ -324,6 +324,53 @@
       "both_empty": 2,
       "public_return": "raw_result - 1"
     },
+    "attack_entry": {
+      "learned_magic_rule": "count role magic ids > 0",
+      "single_learned_slot_bug": {
+        "magic_ids": [
+          0,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "learned_count": 1,
+        "selected_slot": 0,
+        "selected_magic_id": 0,
+        "rng_consumed": false
+      },
+      "profile_vector": {
+        "slot": 2,
+        "magic_id": 5,
+        "experience": 299,
+        "level_index": 2,
+        "select_distance": 7,
+        "attack_distance": 3,
+        "area_type": 2,
+        "hurt_type": 1,
+        "attack_count": 2,
+        "need_mp": 4
+      },
+      "commit_vector": {
+        "rng_seed": 1,
+        "rng_bound": 2,
+        "rng_state_after": 1103527590,
+        "experience_after": 300,
+        "leveled": true,
+        "cost_scale": 3,
+        "mp_before": 3,
+        "mp_after": 0,
+        "action_done": 1,
+        "attack_counter_after": 2,
+        "physical_power_after_finish": 0,
+        "experience_cap": 999
+      }
+    },
     "pathing": {
       "directions": [
         [

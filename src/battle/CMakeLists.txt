@@ -9,6 +9,7 @@ target_link_libraries(
     openlegend_battle
     PUBLIC
         openlegend_model
+        openlegend_random
         openlegend_resource
         openlegend_project_options
         openlegend_project_warnings

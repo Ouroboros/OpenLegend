@@ -10,6 +10,7 @@
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/random/legacy_random.hpp"
 
 namespace openlegend::battle {
 
@@ -26,11 +27,25 @@ inline constexpr std::size_t y = 3U;
 inline constexpr std::size_t initial_mode = 4U;
 inline constexpr std::size_t occupancy_hidden = 5U;
 inline constexpr std::size_t round_value = 6U;
+inline constexpr std::size_t action_done = 7U;
 inline constexpr std::size_t sprite = 8U;
+inline constexpr std::size_t attack_counter = 13U;
 }  // namespace combatant_word
 
 struct BattleCombatant {
     std::array<std::int16_t, kBattleCombatantWords> words{};
+};
+
+struct BattleAttackProfile {
+    std::int16_t magic_slot{};
+    std::int16_t magic_id{};
+    std::int16_t level_index{};
+    std::int16_t select_distance{};
+    std::int16_t attack_distance{};
+    std::int16_t area_type{};
+    std::int16_t hurt_type{};
+    std::int16_t attack_count{};
+    std::int16_t need_mp{};
 };
 
 enum class BattleOutcome {
@@ -90,6 +105,17 @@ public:
         std::size_t target_slot,
         BattleMovementStopRule rule,
         std::int16_t range) const noexcept;
+    [[nodiscard]] std::size_t learned_magic_count(std::size_t slot) const noexcept;
+    [[nodiscard]] std::int16_t automatic_magic_slot(
+        std::size_t slot, random::LegacyRandom& random) const noexcept;
+    [[nodiscard]] std::optional<BattleAttackProfile> attack_profile(
+        std::size_t slot, std::int16_t magic_slot) const noexcept;
+    [[nodiscard]] bool commit_attack_iteration(
+        std::size_t slot,
+        std::int16_t magic_slot,
+        std::int16_t cost_scale,
+        random::LegacyRandom& random);
+    [[nodiscard]] bool finish_attack(std::size_t slot);
 
 private:
     void initialize_combatants();
