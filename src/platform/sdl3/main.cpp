@@ -325,6 +325,16 @@ int main(const int argc, const char* const* argv) {
                     audio::SampleBank::effect, static_cast<std::size_t>(command.id)));
             }
         }
+        for (const auto& command : game.take_battle_audio_commands()) {
+            if (command.sample_id < 0) {
+                continue;
+            }
+            const auto bank = command.bank == battle::BattleAudioBank::attack
+                ? audio::SampleBank::attack
+                : audio::SampleBank::effect;
+            static_cast<void>(legacy_audio.play_sample(
+                bank, static_cast<std::size_t>(command.sample_id)));
+        }
         running = running && game.running();
         if (running) {
             if (!game.render()) {

@@ -716,6 +716,12 @@ std::vector<scene::SceneAudioCommand> LegacyGameRuntime::take_scene_audio_comman
     return commands;
 }
 
+std::vector<battle::BattleAudioCommand> LegacyGameRuntime::take_battle_audio_commands() {
+    return battle_session_ != nullptr
+        ? battle_session_->take_audio_commands()
+        : std::vector<battle::BattleAudioCommand>{};
+}
+
 void LegacyGameRuntime::update_menu_counts() {
     const auto* ranger = game_state_.ranger();
     if (ranger == nullptr) {

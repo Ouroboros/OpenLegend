@@ -29,6 +29,10 @@ enum class BattleSessionPhase {
     player_action_selected,
     player_movement_select,
     player_targeting_select,
+    player_magic_frame_present,
+    player_magic_wait,
+    player_damage_frame_present,
+    player_damage_wait,
     player_movement_step_present,
     player_movement_wait,
     automatic_present,
@@ -51,6 +55,18 @@ enum class BattleSessionInputResult {
     cursor_changed,
     cursor_cancelled,
     cursor_selected,
+};
+
+enum class BattleAudioBank : std::int16_t {
+    attack,
+    effect,
+};
+
+struct BattleAudioCommand {
+    BattleAudioBank bank{BattleAudioBank::effect};
+    std::int16_t sample_id{};
+
+    friend bool operator==(const BattleAudioCommand&, const BattleAudioCommand&) = default;
 };
 
 enum class BattlePlayerAction : std::int16_t {
@@ -107,12 +123,11 @@ public:
             : std::nullopt;
     }
     [[nodiscard]] std::optional<BattlePathCoord> selected_player_target() const noexcept {
-        return player_cursor_selection_.has_value() && player_cursor_selection_->selected
-            ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
-            : std::nullopt;
+        return selected_player_target_;
     }
 
     [[nodiscard]] BattleSessionInputResult handle_key(std::uint8_t translated_key);
+    [[nodiscard]] std::vector<BattleAudioCommand> take_audio_commands();
     void advance(std::uint32_t bios_tick = 0U);
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer);
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
@@ -154,6 +169,14 @@ private:
         std::uint8_t translated_key);
     [[nodiscard]] BattleSessionInputResult handle_player_targeting_key(
         std::uint8_t translated_key);
+    [[nodiscard]] bool begin_player_target_effect(
+        BattlePlayerAction action, BattlePathCoord target);
+    [[nodiscard]] bool prepare_player_magic_frame();
+    [[nodiscard]] bool advance_player_magic_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool begin_player_damage_animation();
+    [[nodiscard]] bool prepare_player_damage_frame();
+    [[nodiscard]] bool advance_player_damage_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool finish_player_target_effect();
     [[nodiscard]] bool advance_player_movement_step();
     [[nodiscard]] bool advance_player_movement_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool rebuild_player_menu_after_movement();
@@ -174,6 +197,20 @@ private:
         const render::IndexedFramebuffer& framebuffer) noexcept;
     void restore_selection_background(
         render::IndexedFramebuffer& framebuffer) const noexcept;
+
+    struct PlayerTargetEffectState {
+        BattlePlayerAction action{};
+        BattleMagicAnimationPlan magic_animation;
+        std::size_t magic_frame{};
+        std::array<BattleDamageAnimationFrame, 10> damage_animation{};
+        std::size_t damage_frame{};
+        std::uint32_t animation_wait_tick{};
+        std::int32_t animation_wait_tick_changes_remaining{};
+        std::int16_t effect_id{};
+        std::int16_t damage_kind{};
+        bool damage_suppress_flash{};
+        std::vector<BattleAudioCommand> audio_commands;
+    };
 
     model::RangerState& ranger_;
     random::LegacyRandom& random_;
@@ -203,6 +240,9 @@ private:
     std::int32_t ai_movement_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
+    std::optional<BattlePathCoord> selected_player_target_;
+    std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
+    std::int16_t selected_magic_slot_{};
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;
     std::uint32_t player_movement_wait_tick_{};
     std::int32_t player_movement_wait_tick_changes_remaining_{};

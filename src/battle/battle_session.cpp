@@ -57,6 +57,12 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
     case BattleSessionPhase::player_movement_select: return "player_movement_select";
     case BattleSessionPhase::player_targeting_select: return "player_targeting_select";
+    case BattleSessionPhase::player_magic_frame_present:
+        return "player_magic_frame_present";
+    case BattleSessionPhase::player_magic_wait: return "player_magic_wait";
+    case BattleSessionPhase::player_damage_frame_present:
+        return "player_damage_frame_present";
+    case BattleSessionPhase::player_damage_wait: return "player_damage_wait";
     case BattleSessionPhase::player_movement_step_present:
         return "player_movement_step_present";
     case BattleSessionPhase::player_movement_wait: return "player_movement_wait";
@@ -183,6 +189,15 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
         : BattleSessionInputResult::ignored;
 }
 
+std::vector<BattleAudioCommand> BattleSession::take_audio_commands() {
+    if (!player_target_effect_) {
+        return {};
+    }
+    auto commands = std::move(player_target_effect_->audio_commands);
+    player_target_effect_->audio_commands.clear();
+    return commands;
+}
+
 void BattleSession::advance(const std::uint32_t bios_tick) {
     if (!valid()) {
         return;
@@ -197,6 +212,10 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
         static_cast<void>(advance_ai_movement_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_movement_wait) {
         static_cast<void>(advance_player_movement_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::player_magic_wait) {
+        static_cast<void>(advance_player_magic_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::player_damage_wait) {
+        static_cast<void>(advance_player_damage_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::round_wait && bios_tick != round_tick_) {
         static_cast<void>(begin_round(bios_tick));
     }
@@ -255,6 +274,46 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             diagnostics::log_info(
                 "battle initial fade complete id=" + std::to_string(battle_id()));
         }
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_magic_frame_present) {
+        if (!player_target_effect_ ||
+            player_target_effect_->magic_frame >=
+                player_target_effect_->magic_animation.frames.size()) {
+            error_ = "battle player magic frame is outside animation plan";
+            return;
+        }
+        auto& effect = *player_target_effect_;
+        effect.animation_wait_tick = bios_tick;
+        effect.animation_wait_tick_changes_remaining = timing::legacy_delay_tick_count(
+            effect.magic_animation.frames[effect.magic_frame].wait_ticks);
+        phase_ = BattleSessionPhase::player_magic_wait;
+        diagnostics::log_debug(
+            "battle player magic frame presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " frame=" + std::to_string(effect.magic_frame) +
+            " wait_tick_changes=" +
+            std::to_string(effect.animation_wait_tick_changes_remaining));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_damage_frame_present) {
+        if (!player_target_effect_ ||
+            player_target_effect_->damage_frame >=
+                player_target_effect_->damage_animation.size()) {
+            error_ = "battle player damage frame is outside animation plan";
+            return;
+        }
+        auto& effect = *player_target_effect_;
+        effect.animation_wait_tick = bios_tick;
+        effect.animation_wait_tick_changes_remaining = timing::legacy_delay_tick_count(
+            effect.damage_animation[effect.damage_frame].wait_ticks);
+        phase_ = BattleSessionPhase::player_damage_wait;
+        diagnostics::log_debug(
+            "battle player damage frame presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " frame=" + std::to_string(effect.damage_frame) +
+            " wait_tick_changes=" +
+            std::to_string(effect.animation_wait_tick_changes_remaining));
         return;
     }
     if (phase_ == BattleSessionPhase::automatic_present) {
@@ -856,6 +915,7 @@ bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
         return false;
     }
     player_cursor_selection_.emplace(std::move(*selection));
+    selected_player_target_.reset();
     render_state_.path_limit = player_cursor_selection_->path_limit;
     render_state_.primary_cursor = player_cursor_selection_->cursor;
     phase_ = BattleSessionPhase::player_targeting_select;
@@ -975,6 +1035,7 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
     if (result == BattleCursorSelectionResult::cancelled) {
         render_state_.path_limit = 0;
         player_cursor_selection_.reset();
+        selected_player_target_.reset();
         player_action_menu_.selected_action = -1;
         phase_ = BattleSessionPhase::player_action;
         diagnostics::log_info(
@@ -986,15 +1047,246 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
         return BattleSessionInputResult::ignored;
     }
 
-    render_state_.primary_cursor = player_cursor_selection_->cursor;
-    phase_ = BattleSessionPhase::player_action_selected;
+    const auto target = player_cursor_selection_->cursor;
+    selected_player_target_ = target;
+    render_state_.primary_cursor = target;
     diagnostics::log_info(
         "battle player target selected id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
         " action=" + std::to_string(player_action_menu_.selected_action) +
-        " target=" + std::to_string(player_cursor_selection_->cursor.x) + "," +
-        std::to_string(player_cursor_selection_->cursor.y));
+        " target=" + std::to_string(target.x) + "," + std::to_string(target.y));
+    const auto selected_action = static_cast<BattlePlayerAction>(
+        player_action_menu_.selected_action);
+    if (!begin_player_target_effect(selected_action, target)) {
+        diagnostics::log_error(
+            "battle player target effect failed id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " action=" + std::to_string(player_action_menu_.selected_action) +
+            " reason=" + error_);
+        return BattleSessionInputResult::ignored;
+    }
     return BattleSessionInputResult::cursor_selected;
+}
+
+bool BattleSession::begin_player_target_effect(
+    const BattlePlayerAction action,
+    const BattlePathCoord target) {
+    std::optional<BattleAreaResult> result;
+    std::int16_t effect_id = 0;
+    std::int16_t damage_kind = 0;
+    bool suppress_flash = false;
+    if (action == BattlePlayerAction::use_poison) {
+        result = setup_.apply_poison_target(current_actor_slot_, target);
+        effect_id = 30;
+        damage_kind = 2;
+    } else if (action == BattlePlayerAction::detoxification) {
+        result = setup_.apply_detox_target(current_actor_slot_, target, random_);
+        effect_id = 36;
+        damage_kind = 3;
+        suppress_flash = true;
+    } else if (action == BattlePlayerAction::medicine) {
+        result = setup_.apply_medicine_target(current_actor_slot_, target, random_);
+        effect_id = 0;
+        damage_kind = 4;
+        suppress_flash = true;
+    } else {
+        error_ = "battle player target action does not use support effect";
+        return false;
+    }
+    if (!result.has_value()) {
+        error_ = setup_.valid() ? "battle player target state application failed" : setup_.error();
+        return false;
+    }
+
+    auto animation = setup_.magic_animation_plan(
+        current_actor_slot_,
+        selected_magic_slot_,
+        0,
+        effect_id,
+        kBattleFightPointerBase);
+    if (!animation.has_value()) {
+        error_ = "battle player target magic animation is invalid";
+        return false;
+    }
+    if (!renderer_.load_fight_package(animation->fight_head_id)) {
+        error_ = "battle player target FIGHT package load failed";
+        return false;
+    }
+
+    player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
+        PlayerTargetEffectState{
+            .action = action,
+            .magic_animation = std::move(*animation),
+            .effect_id = effect_id,
+            .damage_kind = damage_kind,
+            .damage_suppress_flash = suppress_flash,
+            .audio_commands = {},
+        });
+    player_cursor_selection_.reset();
+    render_state_.path_limit = 0;
+    render_state_.effect_id = kBattleEffectPointerBase;
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    diagnostics::log_info(
+        "battle player target effect ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" + std::to_string(static_cast<std::int16_t>(action)) +
+        " target=" + std::to_string(target.x) + "," + std::to_string(target.y) +
+        " effect=" + std::to_string(effect_id) +
+        " damage_kind=" + std::to_string(damage_kind) +
+        " hits=" + std::to_string(result->hit_count) +
+        " frames=" +
+        std::to_string(player_target_effect_->magic_animation.frames.size()));
+    return prepare_player_magic_frame();
+}
+
+bool BattleSession::prepare_player_magic_frame() {
+    if (!player_target_effect_ ||
+        player_target_effect_->magic_frame >=
+            player_target_effect_->magic_animation.frames.size()) {
+        error_ = "battle player magic animation frame is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    const auto& frame = effect.magic_animation.frames[effect.magic_frame];
+    if (frame.actor_sprite_updated) {
+        setup_.combatants()[current_actor_slot_].words[combatant_word::sprite] =
+            frame.actor_sprite;
+    }
+    render_state_.effect_visible = frame.effect_visible;
+    render_state_.effect_frame_offset = frame.effect_frame;
+    if (frame.dispatch_magic_sample) {
+        effect.audio_commands.push_back(BattleAudioCommand{
+            BattleAudioBank::attack, effect.magic_animation.magic_sample_id});
+    }
+    if (frame.dispatch_effect_sample) {
+        effect.audio_commands.push_back(BattleAudioCommand{
+            BattleAudioBank::effect, effect.magic_animation.effect_sample_id});
+    }
+    phase_ = BattleSessionPhase::player_magic_frame_present;
+    diagnostics::log_debug(
+        "battle player magic frame ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " frame=" + std::to_string(effect.magic_frame) +
+        " sprite=" + std::to_string(frame.actor_sprite) +
+        " effect_frame=" + std::to_string(frame.effect_frame) +
+        " effect_visible=" + (frame.effect_visible ? std::string{"true"} : std::string{"false"}) +
+        " attack_sample=" + (frame.dispatch_magic_sample ? std::string{"true"} : std::string{"false"}) +
+        " effect_sample=" + (frame.dispatch_effect_sample ? std::string{"true"} : std::string{"false"}));
+    return true;
+}
+
+bool BattleSession::advance_player_magic_wait(const std::uint32_t bios_tick) {
+    if (!player_target_effect_) {
+        error_ = "battle player target effect continuation is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    if (bios_tick == effect.animation_wait_tick) {
+        return true;
+    }
+    effect.animation_wait_tick = bios_tick;
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        --effect.animation_wait_tick_changes_remaining;
+    }
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        return true;
+    }
+    ++effect.magic_frame;
+    if (effect.magic_frame < effect.magic_animation.frames.size()) {
+        return prepare_player_magic_frame();
+    }
+    render_state_.effect_visible = false;
+    return begin_player_damage_animation();
+}
+
+bool BattleSession::begin_player_damage_animation() {
+    if (!player_target_effect_) {
+        error_ = "battle player target effect continuation is absent";
+        return false;
+    }
+    player_target_effect_->damage_animation = BattleSetup::damage_animation_frames(
+        player_target_effect_->damage_suppress_flash);
+    player_target_effect_->damage_frame = 0U;
+    return prepare_player_damage_frame();
+}
+
+bool BattleSession::prepare_player_damage_frame() {
+    if (!player_target_effect_ ||
+        player_target_effect_->damage_frame >=
+            player_target_effect_->damage_animation.size()) {
+        error_ = "battle player damage animation frame is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    const auto& frame = effect.damage_animation[effect.damage_frame];
+    render_state_.damage_kind = effect.damage_kind;
+    render_state_.damage_text_offset = frame.phase;
+    render_state_.highlight_enabled = frame.flash;
+    render_state_.highlight_mode = effect.damage_kind == 2 ? 2 : 1;
+    phase_ = BattleSessionPhase::player_damage_frame_present;
+    diagnostics::log_debug(
+        "battle player damage frame ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " frame=" + std::to_string(effect.damage_frame) +
+        " phase=" + std::to_string(frame.phase) +
+        " flash=" + (frame.flash ? std::string{"true"} : std::string{"false"}));
+    return true;
+}
+
+bool BattleSession::advance_player_damage_wait(const std::uint32_t bios_tick) {
+    if (!player_target_effect_) {
+        error_ = "battle player target effect continuation is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    if (bios_tick == effect.animation_wait_tick) {
+        return true;
+    }
+    effect.animation_wait_tick = bios_tick;
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        --effect.animation_wait_tick_changes_remaining;
+    }
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        return true;
+    }
+    ++effect.damage_frame;
+    if (effect.damage_frame < effect.damage_animation.size()) {
+        return prepare_player_damage_frame();
+    }
+    return finish_player_target_effect();
+}
+
+bool BattleSession::finish_player_target_effect() {
+    if (!player_target_effect_) {
+        error_ = "battle player target effect continuation is absent";
+        return false;
+    }
+    const auto action = player_target_effect_->action;
+    bool finished = false;
+    if (action == BattlePlayerAction::use_poison) {
+        finished = setup_.finish_poison_action(current_actor_slot_);
+    } else if (action == BattlePlayerAction::detoxification) {
+        finished = setup_.finish_detox_action(current_actor_slot_);
+    } else if (action == BattlePlayerAction::medicine) {
+        finished = setup_.finish_medicine_action(current_actor_slot_);
+    }
+    if (!finished) {
+        error_ = setup_.valid() ? "battle player target action completion failed" : setup_.error();
+        return false;
+    }
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    diagnostics::log_info(
+        "battle player target effect complete id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" + std::to_string(static_cast<std::int16_t>(action)) +
+        " magic_frames=" + std::to_string(player_target_effect_->magic_frame) +
+        " damage_frames=" + std::to_string(player_target_effect_->damage_frame));
+    player_target_effect_.reset();
+    return finish_current_actor(action);
 }
 
 bool BattleSession::advance_player_movement_step() {

@@ -19,6 +19,8 @@ inline constexpr std::size_t kBattleCombatantCount = 26U;
 inline constexpr std::size_t kBattleCombatantWords = 14U;
 inline constexpr std::size_t kBattlePartySlots = 6U;
 inline constexpr std::size_t kBattleEnemySlots = 20U;
+inline constexpr std::int16_t kBattleEffectPointerBase = 6'500;
+inline constexpr std::int16_t kBattleFightPointerBase = 8'000;
 
 namespace combatant_word {
 inline constexpr std::size_t role_id = 0U;
@@ -883,7 +885,13 @@ public:
     [[nodiscard]] std::optional<BattleMagicAnimationPlan> magic_animation_plan(
         std::size_t actor_slot,
         std::int16_t magic_slot,
-        std::int16_t fight_frame_count) const;
+        std::int16_t fight_pointer_base) const;
+    [[nodiscard]] std::optional<BattleMagicAnimationPlan> magic_animation_plan(
+        std::size_t actor_slot,
+        std::int16_t magic_slot,
+        std::int16_t magic_type,
+        std::int16_t effect_id,
+        std::int16_t fight_pointer_base) const;
     [[nodiscard]] static std::optional<BattleEffectAnimationPlan> effect_animation_plan(
         std::int16_t effect_id);
     [[nodiscard]] static std::array<BattleDamageAnimationFrame, 10>

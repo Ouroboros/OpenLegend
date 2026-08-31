@@ -5135,9 +5135,31 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
 std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
     const std::size_t actor_slot,
     const std::int16_t magic_slot,
-    const std::int16_t fight_frame_count) const {
+    const std::int16_t fight_pointer_base) const {
     const auto profile = attack_profile(actor_slot, magic_slot);
     if (!profile) {
+        return std::nullopt;
+    }
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
+    return magic_animation_plan(
+        actor_slot,
+        magic_slot,
+        magic.word(model::magic_word::magic_type),
+        magic.word(model::magic_word::effect_id),
+        fight_pointer_base);
+}
+
+std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
+    const std::size_t actor_slot,
+    const std::int16_t magic_slot,
+    const std::int16_t magic_type,
+    const std::int16_t effect_id,
+    const std::int16_t fight_pointer_base) const {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        magic_slot < 0 || static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count ||
+        magic_type < 0 || magic_type > 4 || effect_id < 0 ||
+        static_cast<std::size_t>(effect_id) >= kBattleEffectFrameCounts.size() ||
+        fight_pointer_base < 0) {
         return std::nullopt;
     }
     const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
@@ -5145,14 +5167,12 @@ std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
         return std::nullopt;
     }
     const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-    const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
-    const auto magic_type = magic.word(model::magic_word::magic_type);
-    const auto effect_id = magic.word(model::magic_word::effect_id);
-    if (magic_type < 0 || magic_type > 4 || effect_id < 0 ||
-        static_cast<std::size_t>(effect_id) >= kBattleEffectFrameCounts.size()) {
+    const auto magic_id = role.word(
+        model::role_word::magic_id_begin + static_cast<std::size_t>(magic_slot));
+    if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
         return std::nullopt;
     }
-
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
     const auto type_index = static_cast<std::size_t>(magic_type);
     const auto effect_index = static_cast<std::size_t>(effect_id);
     const auto actor_frame_count = role.word(model::role_word::frame_begin + type_index);
@@ -5166,7 +5186,7 @@ std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
         static_cast<std::int32_t>(role.word(model::role_word::frame_begin + 5U + type_index)) +
         kBattleEffectFrameCounts[effect_index] - 1);
 
-    auto sprite_base = static_cast<std::int32_t>(fight_frame_count);
+    auto sprite_base = static_cast<std::int32_t>(fight_pointer_base);
     for (std::int16_t index = 0; index < magic_type; ++index) {
         sprite_base += 4 * static_cast<std::int32_t>(
             role.word(model::role_word::frame_begin + static_cast<std::size_t>(index)));

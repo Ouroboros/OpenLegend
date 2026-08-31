@@ -68,6 +68,7 @@ public:
         return battle_request_;
     }
     [[nodiscard]] std::vector<scene::SceneAudioCommand> take_scene_audio_commands();
+    [[nodiscard]] std::vector<battle::BattleAudioCommand> take_battle_audio_commands();
 
 private:
     enum class PendingIo {

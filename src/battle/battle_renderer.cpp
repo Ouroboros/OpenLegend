@@ -403,20 +403,19 @@ bool BattleRenderer::load_fight_package(const std::int16_t fight_head_id) {
 
 std::span<const std::uint8_t> BattleRenderer::fight_entry(
     const std::int32_t legacy_id) const {
-    constexpr std::size_t kEffectPointerBase = 6'500U;
-    constexpr std::size_t kFightPointerBase = 8'000U;
     if (legacy_id < 0 || legacy_id > 0x7FFE || legacy_id % 2 != 0) {
         return {};
     }
     const auto pointer_index = static_cast<std::size_t>(legacy_id / 2);
-    if (pointer_index >= kFightPointerBase && fight_sprites_.has_value()) {
-        const auto local_index = pointer_index - kFightPointerBase;
+    if (pointer_index >= static_cast<std::size_t>(kBattleFightPointerBase) &&
+        fight_sprites_.has_value()) {
+        const auto local_index = pointer_index - static_cast<std::size_t>(kBattleFightPointerBase);
         if (local_index < fight_sprites_->entry_count()) {
             return fight_sprites_->entry(local_index);
         }
     }
-    if (pointer_index >= kEffectPointerBase) {
-        const auto local_index = pointer_index - kEffectPointerBase;
+    if (pointer_index >= static_cast<std::size_t>(kBattleEffectPointerBase)) {
+        const auto local_index = pointer_index - static_cast<std::size_t>(kBattleEffectPointerBase);
         if (local_index < effect_sprites_.entry_count()) {
             return effect_sprites_.entry(local_index);
         }
