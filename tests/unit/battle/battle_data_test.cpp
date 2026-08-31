@@ -1110,6 +1110,136 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(!setup.begin_ai_request_plan(0U, invalid).has_value());
 }
 
+void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    const auto actor_slot = std::size_t{0U};
+    const auto target_slot = std::size_t{1U};
+    auto& actor = setup.combatants()[actor_slot].words;
+    auto& target = setup.combatants()[target_slot].words;
+    target[combatant_word::side] = actor[combatant_word::side];
+    const auto actor_role_id = static_cast<std::size_t>(actor[combatant_word::role_id]);
+    const auto target_role_id = static_cast<std::size_t>(target[combatant_word::role_id]);
+
+    BattlePathing pathing{data};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::targeting);
+    std::optional<BattlePathCoord> adjacent;
+    std::optional<BattlePathCoord> distant;
+    for (std::int16_t y = 0; y < 64; ++y) {
+        for (std::int16_t x = 0; x < 64; ++x) {
+            const auto value = pathing.value(BattlePathCoord{x, y});
+            if (value == 1 && !adjacent.has_value()) {
+                adjacent = BattlePathCoord{x, y};
+            }
+            if (value >= 5 && !distant.has_value()) {
+                distant = BattlePathCoord{x, y};
+            }
+        }
+    }
+    OL_CHECK(adjacent.has_value());
+    OL_CHECK(distant.has_value());
+
+    ranger.roles[actor_role_id].set_word(role_word::medicine, 0);
+    ranger.roles[actor_role_id].set_word(role_word::detoxification, 0);
+    target[combatant_word::x] = adjacent->x;
+    target[combatant_word::y] = adjacent->y;
+    actor[combatant_word::round_value] = 3;
+    actor[combatant_word::action_done] = 0;
+    const BattleAiChoice medicine_choice{
+        .action = BattleAiAction::medicine,
+        .target_slot = static_cast<std::int16_t>(target_slot),
+        .action_code_written = true,
+    };
+    auto plan = setup.begin_ai_support_plan(actor_slot, medicine_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->support_action == BattleAiAction::medicine);
+    OL_CHECK(plan->target_slot == static_cast<std::int16_t>(target_slot));
+    OL_CHECK(plan->target.x == adjacent->x);
+    OL_CHECK(plan->target.y == adjacent->y);
+    OL_CHECK(plan->targeting_range == 1);
+    OL_CHECK(plan->target_distance == 1);
+    OL_CHECK(plan->range_check_count == 1);
+    OL_CHECK(plan->movement_mode == 1);
+    OL_CHECK(plan->movement_value == 1);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::apply_support);
+    OL_CHECK(plan->restore_target_after_move);
+    OL_CHECK(plan->outer_marks_action_done_after_handler);
+
+    const BattleAiChoice detox_choice{
+        .action = BattleAiAction::detox,
+        .target_slot = static_cast<std::int16_t>(target_slot),
+        .action_code_written = true,
+    };
+    plan = setup.begin_ai_support_plan(actor_slot, detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->support_action == BattleAiAction::detox);
+    OL_CHECK(plan->targeting_range == 1);
+    OL_CHECK(plan->target_distance == 1);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::apply_support);
+
+    for (const auto& combatant : setup.combatants().first(
+             static_cast<std::size_t>(setup.combatant_count()))) {
+        if (combatant.words[combatant_word::side] != actor[combatant_word::side]) {
+            continue;
+        }
+        const auto role_id = static_cast<std::size_t>(combatant.words[combatant_word::role_id]);
+        ranger.roles[role_id].set_word(role_word::attack, 0);
+        ranger.roles[role_id].set_word(role_word::hp, 0);
+    }
+    ranger.roles[actor_role_id].set_word(role_word::attack, 300);
+    target[combatant_word::x] = distant->x;
+    target[combatant_word::y] = distant->y;
+    actor[combatant_word::round_value] = 3;
+    plan = setup.begin_ai_support_plan(actor_slot, medicine_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->target_distance >= 5);
+    OL_CHECK(plan->range_check_count == 1);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::move);
+    OL_CHECK(plan->movement_mode == 1);
+    OL_CHECK(plan->movement_value == plan->targeting_range);
+
+    plan = setup.resume_ai_support_after_move(actor_slot, *plan);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->range_check_count == 2);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
+    OL_CHECK(plan->doubled_actor_attack == 600);
+    OL_CHECK(plan->doubled_actor_attack > plan->doubled_allied_average);
+    OL_CHECK(!setup.resume_ai_support_after_move(actor_slot, *plan).has_value());
+
+    ranger.roles[actor_role_id].set_word(role_word::attack, 0);
+    actor[combatant_word::round_value] = 0;
+    plan = setup.begin_ai_support_plan(actor_slot, detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->range_check_count == 2);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::rest);
+    OL_CHECK(plan->doubled_actor_attack == 0);
+    OL_CHECK(plan->doubled_allied_average == 0);
+    OL_CHECK(actor[combatant_word::action_done] == 0);
+
+    OL_CHECK(actor_role_id != target_role_id);
+    ranger.roles[actor_role_id].set_word(role_word::attack, 30'000);
+    ranger.roles[actor_role_id].set_word(role_word::hp, 30'000);
+    ranger.roles[target_role_id].set_word(role_word::attack, 10'000);
+    ranger.roles[target_role_id].set_word(role_word::hp, 10'000);
+    plan = setup.begin_ai_support_plan(actor_slot, medicine_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->allied_total == 14'464);
+    OL_CHECK(plan->allied_count == 2);
+    OL_CHECK(plan->doubled_actor_attack == 60'000);
+    OL_CHECK(plan->doubled_allied_average == 14'464);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
+
+    BattleAiChoice invalid = medicine_choice;
+    invalid.action = BattleAiAction::attack;
+    OL_CHECK(!setup.begin_ai_support_plan(actor_slot, invalid).has_value());
+}
+
 void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -2504,6 +2634,7 @@ int main() {
     run_throwing_weapon_action_test(data_root);
     run_ai_item_effect_test(data_root);
     run_ai_request_handler_test(data_root);
+    run_ai_support_handler_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);
     run_ai_selector_test(data_root);

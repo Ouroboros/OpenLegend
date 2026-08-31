@@ -372,6 +372,54 @@ def ai_request_vectors() -> dict[str, object]:
     }
 
 
+def ai_support_vectors() -> dict[str, object]:
+    medicine = 30
+    detoxification = 45
+    medicine_range = trunc_div(medicine, 15) + 1
+    detox_range = trunc_div(detoxification, 15) + 1
+    allied_total = wrapping_i16(30_000 + 30_000 + 10_000 + 10_000)
+    allied_count = 2
+    doubled_average = trunc_div(2 * allied_total, allied_count)
+    return {
+        "medicine": {
+            "ability": medicine,
+            "targeting_range": medicine_range,
+            "direct_distance": medicine_range,
+            "direct_next_step": "apply_support",
+        },
+        "detox": {
+            "ability": detoxification,
+            "targeting_range": detox_range,
+            "direct_distance": detox_range,
+            "direct_next_step": "apply_support",
+        },
+        "out_of_range_positive_round": {
+            "round_value": 3,
+            "range_checks_before_move": 1,
+            "movement_mode": 1,
+            "movement_value_source": "targeting_range",
+            "next_step": "move",
+        },
+        "out_of_range_zero_round": {
+            "round_value": 0,
+            "range_checks": 2,
+            "movement_called": False,
+        },
+        "fallback": {
+            "allied_total_wrapped": allied_total,
+            "allied_count": allied_count,
+            "doubled_allied_average": doubled_average,
+            "actor_attack_30000_doubled": 60_000,
+            "actor_attack_30000_next_step": "automatic_attack",
+            "actor_attack_7232_next_step": "rest",
+            "strict_greater_for_attack": True,
+        },
+        "restore_same_target_after_move": True,
+        "rng_consumed_before_support_or_fallback": False,
+        "outer_marks_action_done_after_handler": True,
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1811,6 +1859,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_selector_vectors": ai_selector_vectors(),
                 "ai_entry_vectors": ai_entry_vectors(),
                 "ai_request_vectors": ai_request_vectors(),
+                "ai_support_vectors": ai_support_vectors(),
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,

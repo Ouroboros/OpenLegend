@@ -1382,6 +1382,44 @@
         "outer_marks_action_done_after_handler": true,
         "rng_consumed_before_automatic_attack": false
       },
+      "ai_support_vectors": {
+        "medicine": {
+          "ability": 30,
+          "targeting_range": 3,
+          "direct_distance": 3,
+          "direct_next_step": "apply_support"
+        },
+        "detox": {
+          "ability": 45,
+          "targeting_range": 4,
+          "direct_distance": 4,
+          "direct_next_step": "apply_support"
+        },
+        "out_of_range_positive_round": {
+          "round_value": 3,
+          "range_checks_before_move": 1,
+          "movement_mode": 1,
+          "movement_value_source": "targeting_range",
+          "next_step": "move"
+        },
+        "out_of_range_zero_round": {
+          "round_value": 0,
+          "range_checks": 2,
+          "movement_called": false
+        },
+        "fallback": {
+          "allied_total_wrapped": 14464,
+          "allied_count": 2,
+          "doubled_allied_average": 14464,
+          "actor_attack_30000_doubled": 60000,
+          "actor_attack_30000_next_step": "automatic_attack",
+          "actor_attack_7232_next_step": "rest",
+          "strict_greater_for_attack": true
+        },
+        "restore_same_target_after_move": true,
+        "rng_consumed_before_support_or_fallback": false,
+        "outer_marks_action_done_after_handler": true
+      },
       "ai_escape_vector": {
         "battle_id": 3,
         "battlefield_id": 2,

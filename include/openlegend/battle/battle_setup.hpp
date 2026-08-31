@@ -271,6 +271,31 @@ struct BattleAiRequestPlan {
     bool outer_marks_action_done_after_handler{true};
 };
 
+enum class BattleAiSupportNextStep : std::int16_t {
+    apply_support,
+    move,
+    automatic_attack,
+    rest,
+};
+
+struct BattleAiSupportPlan {
+    BattleAiAction support_action{BattleAiAction::medicine};
+    std::int16_t target_slot{-1};
+    BattlePathCoord target{};
+    std::int16_t targeting_range{};
+    std::int16_t target_distance{};
+    std::int16_t range_check_count{};
+    std::int16_t movement_mode{1};
+    std::int16_t movement_value{};
+    std::int16_t allied_total{};
+    std::int16_t allied_count{};
+    std::int32_t doubled_actor_attack{};
+    std::int32_t doubled_allied_average{};
+    BattleAiSupportNextStep next_step{BattleAiSupportNextStep::apply_support};
+    bool restore_target_after_move{true};
+    bool outer_marks_action_done_after_handler{true};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -566,6 +591,12 @@ public:
     [[nodiscard]] std::optional<BattleAiRequestPlan> resume_ai_request_after_move(
         std::size_t actor_slot,
         BattleAiRequestPlan plan) const noexcept;
+    [[nodiscard]] std::optional<BattleAiSupportPlan> begin_ai_support_plan(
+        std::size_t actor_slot,
+        const BattleAiChoice& choice);
+    [[nodiscard]] std::optional<BattleAiSupportPlan> resume_ai_support_after_move(
+        std::size_t actor_slot,
+        BattleAiSupportPlan plan);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
@@ -647,6 +678,13 @@ private:
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiPoisonPlan& plan);
+    [[nodiscard]] bool update_ai_support_target_range(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        BattleAiSupportPlan& plan) const;
+    [[nodiscard]] bool update_ai_support_fallback(
+        std::size_t actor_slot,
+        BattleAiSupportPlan& plan);
     [[nodiscard]] std::optional<std::int16_t> ai_item_id(
         std::size_t actor_slot,
         const BattleAiChoice& choice) const noexcept;

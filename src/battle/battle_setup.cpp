@@ -3477,6 +3477,123 @@ std::optional<BattleAiRequestPlan> BattleSetup::resume_ai_request_after_move(
     return plan;
 }
 
+bool BattleSetup::update_ai_support_target_range(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    BattleAiSupportPlan& plan) const {
+    const auto& actor = combatants_[actor_slot].words;
+    const auto& target = combatants_[target_slot].words;
+    BattlePathing pathing{data_};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::targeting);
+    plan.target_slot = static_cast<std::int16_t>(target_slot);
+    plan.target = BattlePathCoord{
+        target[combatant_word::x],
+        target[combatant_word::y],
+    };
+    plan.target_distance = pathing.value(plan.target);
+    plan.range_check_count = static_cast<std::int16_t>(plan.range_check_count + 1);
+    return plan.targeting_range >= plan.target_distance;
+}
+
+bool BattleSetup::update_ai_support_fallback(
+    const std::size_t actor_slot,
+    BattleAiSupportPlan& plan) {
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    std::int16_t allied_total = 0;
+    std::int16_t allied_count = 0;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] != actor_side) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            error_ = "battle AI support ally is outside ranger records";
+            return false;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        allied_total = wrapping_i16(
+            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::attack));
+        allied_total = wrapping_i16(
+            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::hp));
+        allied_count = wrapping_i16(static_cast<std::int32_t>(allied_count) + 1);
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (allied_count == 0 || actor_role_id < 0 ||
+        static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI support fallback state is invalid";
+        return false;
+    }
+    plan.allied_total = allied_total;
+    plan.allied_count = allied_count;
+    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(
+        ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(model::role_word::attack));
+    plan.doubled_allied_average =
+        2 * static_cast<std::int32_t>(allied_total) / allied_count;
+    plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
+        ? BattleAiSupportNextStep::automatic_attack
+        : BattleAiSupportNextStep::rest;
+    return true;
+}
+
+std::optional<BattleAiSupportPlan> BattleSetup::begin_ai_support_plan(
+    const std::size_t actor_slot,
+    const BattleAiChoice& choice) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        (choice.action != BattleAiAction::medicine &&
+         choice.action != BattleAiAction::detox) ||
+        choice.target_slot < 0 || choice.target_slot >= combatant_count_) {
+        return std::nullopt;
+    }
+    const auto targeting_range = choice.action == BattleAiAction::medicine
+        ? medicine_targeting_range(actor_slot)
+        : detox_targeting_range(actor_slot);
+    if (!targeting_range) {
+        return std::nullopt;
+    }
+    BattleAiSupportPlan plan{};
+    plan.support_action = choice.action;
+    plan.targeting_range = *targeting_range;
+    plan.movement_mode = 1;
+    plan.movement_value = *targeting_range;
+    const auto target_slot = static_cast<std::size_t>(choice.target_slot);
+    if (update_ai_support_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiSupportNextStep::apply_support;
+        return plan;
+    }
+    if (combatants_[actor_slot].words[combatant_word::round_value] > 0) {
+        plan.next_step = BattleAiSupportNextStep::move;
+        return plan;
+    }
+    if (update_ai_support_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiSupportNextStep::apply_support;
+    } else if (!update_ai_support_fallback(actor_slot, plan)) {
+        return std::nullopt;
+    }
+    return plan;
+}
+
+std::optional<BattleAiSupportPlan> BattleSetup::resume_ai_support_after_move(
+    const std::size_t actor_slot,
+    BattleAiSupportPlan plan) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.next_step != BattleAiSupportNextStep::move || plan.target_slot < 0 ||
+        plan.target_slot >= combatant_count_ ||
+        (plan.support_action != BattleAiAction::medicine &&
+         plan.support_action != BattleAiAction::detox)) {
+        return std::nullopt;
+    }
+    const auto target_slot = static_cast<std::size_t>(plan.target_slot);
+    if (update_ai_support_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiSupportNextStep::apply_support;
+    } else if (!update_ai_support_fallback(actor_slot, plan)) {
+        return std::nullopt;
+    }
+    return plan;
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";
