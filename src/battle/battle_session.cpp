@@ -50,7 +50,10 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::actor_present: return "actor_present";
     case BattleSessionPhase::player_action: return "player_action";
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
+    case BattleSessionPhase::automatic_present: return "automatic_present";
     case BattleSessionPhase::ai_action: return "ai_action";
+    case BattleSessionPhase::round_wait: return "round_wait";
+    case BattleSessionPhase::battle_outcome: return "battle_outcome";
     }
     return "unknown";
 }
@@ -76,10 +79,11 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
 BattleSession::BattleSession(
     const resource::DataRoot& data_root,
     model::RangerState& ranger,
-    random::LegacyRandom&,
+    random::LegacyRandom& random,
     const std::int16_t battle_id,
     const bool grant_experience)
     : ranger_(ranger),
+      random_(random),
       data_(data_root, battle_id),
       setup_(data_, ranger_),
       pathing_(data_),
@@ -217,6 +221,15 @@ void BattleSession::finish_presented_tick() {
             diagnostics::log_info(
                 "battle initial fade complete id=" + std::to_string(battle_id()));
         }
+        return;
+    }
+    if (phase_ == BattleSessionPhase::automatic_present) {
+        setup_.enable_automatic_mode();
+        phase_ = BattleSessionPhase::ai_action;
+        diagnostics::log_info(
+            "battle automatic mode enabled id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " phase=" + std::string{phase_name(phase_)});
         return;
     }
     if (phase_ == BattleSessionPhase::actor_present) {
@@ -371,7 +384,117 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
         " slot=" + std::to_string(current_actor_slot_) +
         " cursor=" + std::to_string(player_action_menu_.cursor) +
         " action=" + std::to_string(player_action_menu_.selected_action));
+    if (!dispatch_selected_player_action()) {
+        diagnostics::log_error(
+            "battle player action dispatch failed id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " action=" + std::to_string(player_action_menu_.selected_action) +
+            " reason=" + error_);
+        return BattleSessionInputResult::ignored;
+    }
     return BattleSessionInputResult::action_selected;
+}
+
+bool BattleSession::dispatch_selected_player_action() {
+    const auto action = static_cast<BattlePlayerAction>(
+        player_action_menu_.selected_action);
+    switch (action) {
+    case BattlePlayerAction::wait:
+        if (!setup_.defer_turn_to_end(current_actor_slot_).has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        return finish_current_actor(action);
+    case BattlePlayerAction::rest:
+        if (!setup_.rest_actor(current_actor_slot_, random_).has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        return finish_current_actor(action);
+    case BattlePlayerAction::automatic:
+        phase_ = BattleSessionPhase::automatic_present;
+        return true;
+    case BattlePlayerAction::movement:
+    case BattlePlayerAction::attack:
+    case BattlePlayerAction::use_poison:
+    case BattlePlayerAction::detoxification:
+    case BattlePlayerAction::medicine:
+    case BattlePlayerAction::item:
+    case BattlePlayerAction::status:
+        return true;
+    }
+    error_ = "battle player action id is invalid";
+    return false;
+}
+
+bool BattleSession::finish_current_actor(const BattlePlayerAction action) {
+    const auto outcome = setup_.evaluate_outcome();
+    if (!setup_.clear_hidden_ai_targets().has_value()) {
+        error_ = setup_.error();
+        return false;
+    }
+    if (outcome != BattleOutcome::ongoing) {
+        outcome_ = outcome;
+        phase_ = BattleSessionPhase::battle_outcome;
+        diagnostics::log_info(
+            "battle outcome reached id=" + std::to_string(battle_id()) +
+            " outcome=" + std::to_string(static_cast<int>(outcome_)));
+        return true;
+    }
+    if (action != BattlePlayerAction::wait) {
+        ++current_actor_slot_;
+    }
+    while (current_actor_slot_ < static_cast<std::size_t>(setup_.combatant_count()) &&
+           setup_.combatants()[current_actor_slot_]
+                   .words[combatant_word::occupancy_hidden] != 0) {
+        const auto skipped_outcome = setup_.evaluate_outcome();
+        if (!setup_.clear_hidden_ai_targets().has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        if (skipped_outcome != BattleOutcome::ongoing) {
+            outcome_ = skipped_outcome;
+            phase_ = BattleSessionPhase::battle_outcome;
+            diagnostics::log_info(
+                "battle outcome reached id=" + std::to_string(battle_id()) +
+                " outcome=" + std::to_string(static_cast<int>(outcome_)));
+            return true;
+        }
+        ++current_actor_slot_;
+    }
+    if (current_actor_slot_ >= static_cast<std::size_t>(setup_.combatant_count())) {
+        if (!setup_.apply_round_status_damage().has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        phase_ = BattleSessionPhase::round_wait;
+        diagnostics::log_info(
+            "battle round actions complete id=" + std::to_string(battle_id()) +
+            " phase=" + std::string{phase_name(phase_)});
+        return true;
+    }
+    return begin_actor_present();
+}
+
+bool BattleSession::begin_actor_present() {
+    const auto& actor = setup_.combatants()[current_actor_slot_].words;
+    render_state_.view_x = static_cast<std::int16_t>(
+        std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
+    render_state_.view_y = static_cast<std::int16_t>(
+        std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
+    render_state_.path_limit = 0;
+    render_state_.primary_cursor = {
+        actor[combatant_word::x], actor[combatant_word::y]};
+    phase_ = BattleSessionPhase::actor_present;
+    diagnostics::log_info(
+        "battle next actor ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " role=" + std::to_string(actor[combatant_word::role_id]) +
+        " side=" + std::to_string(actor[combatant_word::side]) +
+        " round_value=" + std::to_string(actor[combatant_word::round_value]) +
+        " view=" + std::to_string(render_state_.view_x) + "," +
+        std::to_string(render_state_.view_y));
+    return true;
 }
 
 bool BattleSession::render_party_selection(

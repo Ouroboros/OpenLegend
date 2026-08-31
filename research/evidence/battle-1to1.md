@@ -76,7 +76,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 - 每轮 word6=`max(0,effective_speed/15-role.hurt/40)`，signed division toward zero；
 - hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
 
-`BattleSession`现已在建队后按slot0计算clamp视图原点、实际绘制初始战场、逐present帧执行黑场淡入，随后完成轮首排序/word6计算、actor居中呈现及player/AI动作分界。玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，Enter/Space/keypad Insert确认后再扫描映射原action id。菜单每帧重绘战场、圆角混色框、原Big5文字和右侧actor状态面板；十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x7d062c289e7f933a`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；确认后的十个handler、移动重检、菜单重建/退出、AI动作、逐槽后处理、tick wait、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
+`BattleSession`现已在建队后按slot0计算clamp视图原点、实际绘制初始战场、逐present帧执行黑场淡入，随后完成轮首排序/word6计算、actor居中呈现及player/AI动作分界。玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，Enter/Space/keypad Insert确认后再扫描映射原action id。菜单每帧重绘战场、圆角混色框、原Big5文字和右侧actor状态面板；十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x7d062c289e7f933a`。
+
+等待动作现实际把当前actor逐槽交换到队尾，并保持外层索引继续处理交换后占据同槽的actor；休息实际提交原RNG体力/HP/MP恢复和action-done后推进下一槽。两项完成后均按原顺序执行胜负检查、26槽隐藏目标清理、隐藏槽跳过和下一actor居中present，最后一槽后调用轮末异常状态。自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI相位。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；其余七个玩家handler、移动重检、菜单重建/退出、AI实际执行、轮末tick wait、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
 
 ## 8. 战场路径图与最短路回溯
 

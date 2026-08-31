@@ -2104,30 +2104,85 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(log_text.find("battle player action menu ready id=2") != std::string::npos);
     OL_CHECK(log_text.find("battle player action selected id=2") != std::string::npos);
 
+    const auto reach_player_action = [&](BattleSession& target) {
+        OL_CHECK(target.valid());
+        OL_CHECK(target.phase() == BattleSessionPhase::initial_present);
+        OL_CHECK(target.render(framebuffer));
+        target.finish_presented_tick();
+        for (std::size_t frame = 0U; frame < target.fade_frame_count(); ++frame) {
+            OL_CHECK(target.render(framebuffer));
+            target.finish_presented_tick();
+        }
+        OL_CHECK(target.phase() == BattleSessionPhase::round_start);
+        target.advance();
+        OL_CHECK(target.phase() == BattleSessionPhase::actor_present);
+        OL_CHECK(target.render(framebuffer));
+        target.finish_presented_tick();
+        OL_CHECK(target.phase() == BattleSessionPhase::player_action);
+    };
+
     auto filtered_ranger = make_ranger({0, 2, 3, -1, -1, -1});
     openlegend::random::LegacyRandom filtered_random{1U};
     BattleSession filtered_session{
         data_root, filtered_ranger, filtered_random, 4, false};
-    OL_CHECK(filtered_session.valid());
-    OL_CHECK(filtered_session.phase() == BattleSessionPhase::initial_present);
-    OL_CHECK(filtered_session.render(framebuffer));
-    filtered_session.finish_presented_tick();
-    for (std::size_t frame = 0U; frame < filtered_session.fade_frame_count(); ++frame) {
-        OL_CHECK(filtered_session.render(framebuffer));
-        filtered_session.finish_presented_tick();
-    }
-    OL_CHECK(filtered_session.phase() == BattleSessionPhase::round_start);
-    filtered_session.advance();
-    OL_CHECK(filtered_session.phase() == BattleSessionPhase::actor_present);
-    OL_CHECK(filtered_session.render(framebuffer));
-    filtered_session.finish_presented_tick();
-    OL_CHECK(filtered_session.phase() == BattleSessionPhase::player_action);
+    reach_player_action(filtered_session);
     OL_CHECK((filtered_session.player_action_menu().available ==
               std::array<std::int16_t, 10>{0, 0, 0, 0, 0, 1, 1, 1, 1, 1}));
     OL_CHECK(filtered_session.player_action_menu().available_count == 5U);
     OL_CHECK(filtered_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
     OL_CHECK(filtered_session.player_action_menu().selected_action ==
              static_cast<std::int16_t>(BattlePlayerAction::item));
+
+    auto wait_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    wait_ranger.roles[1U].set_word(role_word::hp, 100);
+    wait_ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    wait_ranger.roles[3U].set_word(role_word::hp, 100);
+    wait_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom wait_random{1U};
+    BattleSession wait_session{data_root, wait_ranger, wait_random, 4, false};
+    reach_player_action(wait_session);
+    OL_CHECK(wait_session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
+    OL_CHECK(wait_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
+    OL_CHECK(wait_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(wait_session.current_actor_slot() == 0U);
+    OL_CHECK(wait_session.setup().combatants()[0U].words[combatant_word::role_id] == 3);
+    OL_CHECK(wait_session.setup().combatants()[1U].words[combatant_word::role_id] == 1);
+    OL_CHECK(wait_session.setup().combatants()[1U].words[combatant_word::action_done] == 0);
+
+    auto rest_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    rest_ranger.roles[1U].set_word(role_word::hp, 100);
+    rest_ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    rest_ranger.roles[3U].set_word(role_word::hp, 100);
+    rest_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom rest_random{1U};
+    BattleSession rest_session{data_root, rest_ranger, rest_random, 4, false};
+    reach_player_action(rest_session);
+    for (std::size_t step = 0U; step < 3U; ++step) {
+        OL_CHECK(rest_session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
+    }
+    OL_CHECK(rest_session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
+    OL_CHECK(rest_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(rest_session.current_actor_slot() == 1U);
+    OL_CHECK(rest_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(rest_ranger.roles[1U].word(role_word::physical_power) == 5);
+
+    auto automatic_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    openlegend::random::LegacyRandom automatic_random{1U};
+    BattleSession automatic_session{
+        data_root, automatic_ranger, automatic_random, 4, false};
+    reach_player_action(automatic_session);
+    for (std::size_t step = 0U; step < 4U; ++step) {
+        OL_CHECK(
+            automatic_session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
+    }
+    OL_CHECK(
+        automatic_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::automatic_present);
+    OL_CHECK(!automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_session.render(framebuffer));
+    automatic_session.finish_presented_tick();
+    OL_CHECK(automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_action);
 }
 
 void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {

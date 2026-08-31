@@ -26,7 +26,10 @@ enum class BattleSessionPhase {
     actor_present,
     player_action,
     player_action_selected,
+    automatic_present,
     ai_action,
+    round_wait,
+    battle_outcome,
 };
 
 enum class BattleSessionInputResult {
@@ -74,6 +77,7 @@ public:
     [[nodiscard]] std::int16_t view_x() const noexcept { return render_state_.view_x; }
     [[nodiscard]] std::int16_t view_y() const noexcept { return render_state_.view_y; }
     [[nodiscard]] std::size_t current_actor_slot() const noexcept { return current_actor_slot_; }
+    [[nodiscard]] BattleOutcome outcome() const noexcept { return outcome_; }
     [[nodiscard]] std::size_t fade_frame_count() const noexcept {
         return fade_palettes_.size();
     }
@@ -98,6 +102,9 @@ private:
         std::size_t ordinal) const noexcept;
     [[nodiscard]] BattleSessionInputResult handle_player_action_key(
         std::uint8_t translated_key);
+    [[nodiscard]] bool dispatch_selected_player_action();
+    [[nodiscard]] bool finish_current_actor(BattlePlayerAction action);
+    [[nodiscard]] bool begin_actor_present();
     [[nodiscard]] bool render_party_selection(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_battlefield(
@@ -110,6 +117,7 @@ private:
         render::IndexedFramebuffer& framebuffer) const noexcept;
 
     model::RangerState& ranger_;
+    random::LegacyRandom& random_;
     BattleData data_;
     BattleSetup setup_;
     BattlePathing pathing_;
@@ -119,6 +127,7 @@ private:
     std::vector<compat::LegacyPalette> fade_palettes_;
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
+    BattleOutcome outcome_{BattleOutcome::ongoing};
     BattlePlayerActionMenuState player_action_menu_{};
     std::array<std::uint8_t, compat::kLegacyPixelCount> selection_background_{};
     compat::LegacyPalette selection_palette_{};
