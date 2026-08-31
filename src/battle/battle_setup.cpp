@@ -5,6 +5,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 
 namespace openlegend::battle {
 namespace {
@@ -540,6 +541,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
             break;
         }
     }
+    last_hp_cost_scale_ = cost_scale;
 
     const auto equipment_bonus = [this](
                                      const model::RoleRecord& role,
@@ -703,6 +705,138 @@ std::optional<std::int32_t> BattleSetup::apply_mp_damage(
     }
     target.set_word(model::role_word::mp, target_mp);
     return static_cast<std::int32_t>(target_mp_before) - target_mp;
+}
+
+void BattleSetup::clear_attack_effects() noexcept {
+    std::ranges::fill(attack_effects_, static_cast<std::int16_t>(0));
+}
+
+std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
+    const std::size_t actor_slot,
+    const std::int16_t magic_slot,
+    const BattlePathCoord target,
+    const std::int16_t special_attack_bonus,
+    random::LegacyRandom& random) {
+    const auto profile = attack_profile(actor_slot, magic_slot);
+    if (!profile) {
+        error_ = "battle attack area profile is outside ranger records";
+        return std::nullopt;
+    }
+    if (profile->area_type != 0 && profile->area_type != 2 && profile->area_type != 3) {
+        error_ = "battle line attack area requires its direction handler";
+        return std::nullopt;
+    }
+    if (profile->select_distance < 0 || profile->attack_distance < 0) {
+        error_ = "battle attack area distance is negative";
+        return std::nullopt;
+    }
+
+    auto& actor_words = combatants_[actor_slot].words;
+    const auto actor_side = actor_words[combatant_word::side];
+    BattleAreaResult result{};
+    const auto apply_cell = [this,
+                             actor_slot,
+                             magic_slot,
+                             special_attack_bonus,
+                             actor_side,
+                             hurt_type = profile->hurt_type,
+                             &random,
+                             &result](
+                                const std::int32_t x,
+                                const std::int32_t y,
+                                const std::int16_t distance,
+                                const bool force_hp) -> bool {
+        if (x < 0 || x >= static_cast<std::int32_t>(kBattleExtent) || y < 0 ||
+            y >= static_cast<std::int32_t>(kBattleExtent)) {
+            return true;
+        }
+        const auto index = static_cast<std::size_t>(y) * kBattleExtent +
+            static_cast<std::size_t>(x);
+        const auto target_slot = data_.occupancy()[index];
+        if (target_slot != -1) {
+            if (target_slot < 0 || target_slot >= combatant_count_) {
+                error_ = "battle attack area occupancy is outside combatant slots";
+                return false;
+            }
+            if (combatants_[static_cast<std::size_t>(target_slot)]
+                    .words[combatant_word::side] == actor_side) {
+                return true;
+            }
+        }
+        attack_effects_[index] = 1;
+        if (target_slot == -1) {
+            return true;
+        }
+
+        const auto target_index = static_cast<std::size_t>(target_slot);
+        if (force_hp || hurt_type == 0) {
+            const auto damage = apply_hp_damage(
+                actor_slot,
+                target_index,
+                magic_slot,
+                distance,
+                special_attack_bonus,
+                random);
+            if (!damage) {
+                return false;
+            }
+            combatants_[target_index].words[combatant_word::damage_value] = damage->damage;
+            result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
+            result.effect_kind = 1;
+        } else if (hurt_type == 1) {
+            const auto damage = apply_mp_damage(actor_slot, target_index, magic_slot, random);
+            if (!damage) {
+                return false;
+            }
+            combatants_[target_index].words[combatant_word::damage_value] =
+                wrapping_i16(*damage);
+            result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
+            result.effect_kind = 3;
+        }
+        return true;
+    };
+
+    if (profile->area_type == 2) {
+        const auto actor_x = actor_words[combatant_word::x];
+        const auto actor_y = actor_words[combatant_word::y];
+        for (std::int32_t distance = 1; distance <= profile->select_distance; ++distance) {
+            const auto legacy_distance = static_cast<std::int16_t>(distance);
+            if (!apply_cell(actor_x, actor_y - distance, legacy_distance, true) ||
+                !apply_cell(actor_x, actor_y + distance, legacy_distance, true) ||
+                !apply_cell(actor_x - distance, actor_y, legacy_distance, true) ||
+                !apply_cell(actor_x + distance, actor_y, legacy_distance, true)) {
+                return std::nullopt;
+            }
+        }
+        return result;
+    }
+
+    const auto delta_x = static_cast<std::int32_t>(target.x) -
+        actor_words[combatant_word::x];
+    const auto delta_y = static_cast<std::int32_t>(target.y) -
+        actor_words[combatant_word::y];
+    if (std::abs(delta_x) < std::abs(delta_y)) {
+        actor_words[combatant_word::initial_mode] = delta_y <= 0 ? 0 : 3;
+    } else {
+        actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
+    }
+
+    const auto radius = static_cast<std::int32_t>(profile->attack_distance);
+    for (std::int32_t x = static_cast<std::int32_t>(target.x) - radius;
+         x <= static_cast<std::int32_t>(target.x) + radius;
+         ++x) {
+        for (std::int32_t y = static_cast<std::int32_t>(target.y) - radius;
+             y <= static_cast<std::int32_t>(target.y) + radius;
+             ++y) {
+            const auto distance = static_cast<std::int16_t>(
+                std::abs(static_cast<std::int32_t>(actor_words[combatant_word::x]) - x) +
+                std::abs(static_cast<std::int32_t>(actor_words[combatant_word::y]) - y));
+            if (!apply_cell(x, y, distance, false)) {
+                return std::nullopt;
+            }
+        }
+    }
+    return result;
 }
 
 bool BattleSetup::finish_attack(const std::size_t slot) {

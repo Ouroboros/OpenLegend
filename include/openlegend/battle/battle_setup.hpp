@@ -29,6 +29,7 @@ inline constexpr std::size_t occupancy_hidden = 5U;
 inline constexpr std::size_t round_value = 6U;
 inline constexpr std::size_t action_done = 7U;
 inline constexpr std::size_t sprite = 8U;
+inline constexpr std::size_t damage_value = 9U;
 inline constexpr std::size_t attack_counter = 13U;
 }  // namespace combatant_word
 
@@ -51,6 +52,11 @@ struct BattleAttackProfile {
 struct BattleHpDamageResult {
     std::int16_t damage{};
     std::int16_t cost_scale{};
+};
+
+struct BattleAreaResult {
+    std::int16_t hit_count{};
+    std::optional<std::int16_t> effect_kind;
 };
 
 enum class BattleOutcome {
@@ -132,6 +138,19 @@ public:
         std::size_t target_slot,
         std::int16_t magic_slot,
         random::LegacyRandom& random);
+    void clear_attack_effects() noexcept;
+    [[nodiscard]] std::span<const std::int16_t> attack_effects() const noexcept {
+        return attack_effects_;
+    }
+    [[nodiscard]] std::int16_t last_hp_cost_scale() const noexcept {
+        return last_hp_cost_scale_;
+    }
+    [[nodiscard]] std::optional<BattleAreaResult> apply_attack_area(
+        std::size_t actor_slot,
+        std::int16_t magic_slot,
+        BattlePathCoord target,
+        std::int16_t special_attack_bonus,
+        random::LegacyRandom& random);
     [[nodiscard]] bool finish_attack(std::size_t slot);
 
 private:
@@ -154,7 +173,9 @@ private:
     model::RangerState& ranger_;
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};
     std::array<std::int16_t, kBattlePartySlots> selection_states_{};
+    std::array<std::int16_t, kBattleOccupancyCells> attack_effects_{};
     std::int16_t combatant_count_{};
+    std::int16_t last_hp_cost_scale_{};
     std::size_t party_prefix_length_{kBattlePartySlots};
     std::size_t cursor_{};
     bool waiting_{};

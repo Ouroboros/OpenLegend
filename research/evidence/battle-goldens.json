@@ -439,6 +439,61 @@
         "actor_max_mp_after": 23,
         "target_mp_after": 35,
         "drained": 15
+      },
+      "area_vectors": {
+        "square": {
+          "scan_order": "x outer, y inner",
+          "center": [
+            26,
+            26
+          ],
+          "radius": 1,
+          "friendly_skip": [
+            25,
+            25
+          ],
+          "marked_cells": 8,
+          "effect_hash": "0xe5f47b0a810ce2bd",
+          "direction_after": 3,
+          "target_distance": 2,
+          "damage": 29,
+          "effect_kind": 1
+        },
+        "cross": {
+          "scan_order": [
+            "up",
+            "down",
+            "left",
+            "right"
+          ],
+          "source": [
+            26,
+            24
+          ],
+          "radius": 2,
+          "friendly_skip": [
+            26,
+            25
+          ],
+          "marked_cells": 7,
+          "effect_hash": "0x3144c415023d9464",
+          "direction_unchanged": 2,
+          "hurt_type_ignored": 1,
+          "damage": 29,
+          "effect_kind": 1
+        },
+        "mp_square": {
+          "center": [
+            26,
+            26
+          ],
+          "radius": 0,
+          "marked_cells": 1,
+          "effect_hash": "0xab559939923b4f74",
+          "damage": 15,
+          "effect_kind": 3,
+          "last_hp_cost_scale_unchanged": 3
+        }
       }
     },
     "pathing": {
