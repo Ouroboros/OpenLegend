@@ -63,11 +63,10 @@ constexpr std::array<std::uint8_t, 4> kConfirmLabel{0xB5U, 0xB2U, 0xA7U, 0xF4U};
 BattleSession::BattleSession(
     const resource::DataRoot& data_root,
     model::RangerState& ranger,
-    random::LegacyRandom& random,
+    random::LegacyRandom&,
     const std::int16_t battle_id,
     const bool grant_experience)
     : ranger_(ranger),
-      random_(random),
       data_(data_root, battle_id),
       setup_(data_, ranger_),
       pathing_(data_),

@@ -954,7 +954,8 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
     BattleStatusPanelPlan plan{
         .combatant_slot = combatant_slot,
         .role_id = role_id,
-        .side_offset = words[combatant_word::side] == 0 ? 0 : 220,
+        .side_offset = static_cast<std::int16_t>(
+            words[combatant_word::side] == 0 ? 0 : 220),
         .portrait_id = role.word(model::role_word::head_id),
         .physical_power = role.word(model::role_word::physical_power),
         .hp = role.word(model::role_word::hp),
@@ -3851,7 +3852,8 @@ std::optional<BattleAiPoisonTargetSelection> BattleSetup::choose_ai_poison_targe
         return std::nullopt;
     }
     return BattleAiPoisonTargetSelection{
-        *written ? combatants_[actor_slot].words[combatant_word::ai_poison_target] : -1,
+        static_cast<std::int16_t>(
+            *written ? combatants_[actor_slot].words[combatant_word::ai_poison_target] : -1),
         stale_target_distance,
         *written ? BattleAiPoisonTargetStrategy::first_eligible_stale_distance
                  : BattleAiPoisonTargetStrategy::none,

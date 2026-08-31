@@ -77,7 +77,6 @@ private:
         render::IndexedFramebuffer& framebuffer) const noexcept;
 
     model::RangerState& ranger_;
-    random::LegacyRandom& random_;
     BattleData data_;
     BattleSetup setup_;
     BattlePathing pathing_;
