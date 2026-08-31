@@ -3433,6 +3433,50 @@ std::optional<BattleAiItemPlan> BattleSetup::resume_ai_throwing_weapon_after_mov
     return plan;
 }
 
+std::optional<BattleAiRequestPlan> BattleSetup::begin_ai_request_plan(
+    const std::size_t actor_slot,
+    const BattleAiChoice& choice) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        (choice.action != BattleAiAction::request_medicine &&
+         choice.action != BattleAiAction::request_detox) ||
+        choice.target_slot < 0 || choice.target_slot >= combatant_count_) {
+        return std::nullopt;
+    }
+    const auto& target = combatants_[static_cast<std::size_t>(choice.target_slot)].words;
+    BattleAiRequestPlan plan{};
+    plan.request_action = choice.action;
+    plan.target_slot = choice.target_slot;
+    plan.target = BattlePathCoord{
+        target[combatant_word::x],
+        target[combatant_word::y],
+    };
+    plan.movement_mode = 0;
+    plan.movement_value = 0;
+    plan.next_step = combatants_[actor_slot].words[combatant_word::round_value] > 0
+        ? BattleAiRequestNextStep::move
+        : BattleAiRequestNextStep::automatic_attack;
+    return plan;
+}
+
+std::optional<BattleAiRequestPlan> BattleSetup::resume_ai_request_after_move(
+    const std::size_t actor_slot,
+    BattleAiRequestPlan plan) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.next_step != BattleAiRequestNextStep::move || plan.target_slot < 0 ||
+        plan.target_slot >= combatant_count_ ||
+        (plan.request_action != BattleAiAction::request_medicine &&
+         plan.request_action != BattleAiAction::request_detox)) {
+        return std::nullopt;
+    }
+    const auto& target = combatants_[static_cast<std::size_t>(plan.target_slot)].words;
+    plan.target = BattlePathCoord{
+        target[combatant_word::x],
+        target[combatant_word::y],
+    };
+    plan.next_step = BattleAiRequestNextStep::automatic_attack;
+    return plan;
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

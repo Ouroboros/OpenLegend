@@ -344,6 +344,34 @@ def shared_item_effect_vector(
     }
 
 
+def ai_request_vectors() -> dict[str, object]:
+    return {
+        "entry_aliases": ["request_medicine", "request_detox"],
+        "target_slot": 1,
+        "target": [13, 23],
+        "positive_round_value": {
+            "round_value": 3,
+            "next_step": "move",
+            "movement_mode": 0,
+            "movement_value": 0,
+        },
+        "zero_round_value": {
+            "round_value": 0,
+            "next_step": "automatic_attack",
+            "movement_called": False,
+        },
+        "negative_round_value": {
+            "round_value": -1,
+            "next_step": "automatic_attack",
+            "movement_called": False,
+        },
+        "restore_request_target_before_attack": True,
+        "automatic_attack_after_move_or_skip": True,
+        "outer_marks_action_done_after_handler": True,
+        "rng_consumed_before_automatic_attack": False,
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1782,6 +1810,7 @@ def build(data_root: Path) -> dict[str, object]:
                 },
                 "ai_selector_vectors": ai_selector_vectors(),
                 "ai_entry_vectors": ai_entry_vectors(),
+                "ai_request_vectors": ai_request_vectors(),
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,

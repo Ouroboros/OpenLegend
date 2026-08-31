@@ -255,6 +255,22 @@ struct BattleAiItemPlan {
     bool outer_marks_action_done_after_handler{true};
 };
 
+enum class BattleAiRequestNextStep : std::int16_t {
+    move,
+    automatic_attack,
+};
+
+struct BattleAiRequestPlan {
+    BattleAiAction request_action{BattleAiAction::request_medicine};
+    std::int16_t target_slot{-1};
+    BattlePathCoord target{};
+    std::int16_t movement_mode{};
+    std::int16_t movement_value{};
+    BattleAiRequestNextStep next_step{BattleAiRequestNextStep::automatic_attack};
+    bool restore_request_target_before_attack{true};
+    bool outer_marks_action_done_after_handler{true};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -544,6 +560,12 @@ public:
     [[nodiscard]] std::optional<BattleAiItemPlan> resume_ai_throwing_weapon_after_move(
         std::size_t actor_slot,
         BattleAiItemPlan plan);
+    [[nodiscard]] std::optional<BattleAiRequestPlan> begin_ai_request_plan(
+        std::size_t actor_slot,
+        const BattleAiChoice& choice) const noexcept;
+    [[nodiscard]] std::optional<BattleAiRequestPlan> resume_ai_request_after_move(
+        std::size_t actor_slot,
+        BattleAiRequestPlan plan) const noexcept;
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }

@@ -1351,6 +1351,37 @@
         },
         "action_done_written_after_handler": true
       },
+      "ai_request_vectors": {
+        "entry_aliases": [
+          "request_medicine",
+          "request_detox"
+        ],
+        "target_slot": 1,
+        "target": [
+          13,
+          23
+        ],
+        "positive_round_value": {
+          "round_value": 3,
+          "next_step": "move",
+          "movement_mode": 0,
+          "movement_value": 0
+        },
+        "zero_round_value": {
+          "round_value": 0,
+          "next_step": "automatic_attack",
+          "movement_called": false
+        },
+        "negative_round_value": {
+          "round_value": -1,
+          "next_step": "automatic_attack",
+          "movement_called": false
+        },
+        "restore_request_target_before_attack": true,
+        "automatic_attack_after_move_or_skip": true,
+        "outer_marks_action_done_after_handler": true,
+        "rng_consumed_before_automatic_attack": false
+      },
       "ai_escape_vector": {
         "battle_id": 3,
         "battlefield_id": 2,
