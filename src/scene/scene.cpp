@@ -958,6 +958,7 @@ SceneStepResult SceneSession::run_event() {
             continuation_ = PendingContinuation::battle;
             pending_ = current_result(SceneStepKind::battle);
             pending_.battle_id = argument(1);
+            pending_.battle_get_exp = battle_get_exp_;
             return pending_;
         case 7:
             clear_event();

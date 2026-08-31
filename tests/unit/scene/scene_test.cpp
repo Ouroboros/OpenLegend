@@ -475,6 +475,7 @@ void check_event_load_menu(const std::filesystem::path& root) {
     OL_CHECK(finish_scene_title(battle_win).kind == SceneStepKind::stay);
     result = battle_win.begin_event(6, 0, 44, 29);
     OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 77);
+    OL_CHECK(result.battle_get_exp == 9);
     result = battle_win.resume(SceneResponse::battle_victory);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(battle_win_snapshot.ranger, 202) == win_count_before + 1);
@@ -487,6 +488,7 @@ void check_event_load_menu(const std::filesystem::path& root) {
     OL_CHECK(finish_scene_title(battle_loss).kind == SceneStepKind::stay);
     result = battle_loss.begin_event(6, 0, 44, 29);
     OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 77);
+    OL_CHECK(result.battle_get_exp == 9);
     result = battle_loss.resume(SceneResponse::battle_defeat);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(battle_loss_snapshot.ranger, 203) == loss_count_before + 1);

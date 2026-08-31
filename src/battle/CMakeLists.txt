@@ -4,6 +4,7 @@ add_library(
         battle_data.cpp
         battle_pathing.cpp
         battle_renderer.cpp
+        battle_session.cpp
         battle_setup.cpp
 )
 target_include_directories(
@@ -15,6 +16,7 @@ target_include_directories(
 target_link_libraries(
     openlegend_battle
     PUBLIC
+        openlegend_diagnostics
         openlegend_model
         openlegend_random
         openlegend_render

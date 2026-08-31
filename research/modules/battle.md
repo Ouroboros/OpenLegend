@@ -2,7 +2,7 @@
 
 ## 状态
 
-- 实现状态：`implemented_pending_review`（另已实现 `sub_32A51/sub_32B78` 排序交换与 `sub_36E06..sub_37245` 路径图/回溯；`sub_3271E/sub_3B238` 仅回合值/typed结果核心已实现；其余 battle 按 closure 待实现）。
+- 实现状态：`implemented_pending_review`（`sub_31EB9`队伍选择已由runtime实际驱动像素/input/present，`sub_3271E`已接初始呈现/淡入和首轮actor边界；玩家/AI动作、结果与其余battle按closure待实现）。
 - 最终 REVIEW：`not_started`。
 - 当前唯一工作包：B8-WP01 战斗入口、资产、战场与参战者建立。
 
@@ -33,11 +33,11 @@
 
 1. `sub_31DA0` 已映射为 `BattleData`：WAR 186字节记录、WARFLD entry 前16,384字节与64×64 occupancy 清空；状态仅为 `implemented_pending_review`；
 2. `sub_31C75`：资源生命周期、主状态机调用和返回码边界；
-3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；后者完整待 REVIEW，前者仍缺原选择框绘制/呈现/input flag 基本块；
-4. `sub_3271E..sub_32E59` 已恢复：稳定速度降序、逐槽 swap、回合值，以及等待动作的逐槽队尾交换已实现；自动动作仅恢复flag，顶层 render/tick/分派及十项菜单UI与同步continuation仍待实现；
+3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；`BattleSession`实际绘制原圆角队伍选择框、Big5标题/确认文字、角色名/星号，逐键执行上下回绕与确认，并在每帧恢复冻结背景防止混色叠加；真实battle2选择和初始战场像素均与独立oracle一致；runtime已驱动render/present/input，前者推进为`implemented_pending_review`；
+4. `sub_3271E..sub_32E59` 已恢复：稳定速度降序、逐槽swap、回合值，以及等待动作的逐槽队尾交换；`BattleSession`已执行初始actor居中战场实际绘制、逐帧黑场淡入、轮首prepare和actor-present后player/AI分界；顶层动作执行、逐槽后处理、tick等待、十项菜单UI与同步continuation仍待实现；
 5. `sub_33599`的int16态势、候选优先级、逃跑、typed handler映射和handler后行动标记，以及`sub_33C4D..sub_34550`六个候选selector均已恢复；`sub_34AD3`休息wrapper、`sub_3505B..sub_35372`四种攻击目标策略、`sub_355FF..sub_3570F`三个用毒目标selector已完整映射，`sub_34AEC`已恢复逃跑/物品重定位目的格计划，`sub_34C47`已恢复自动武功、装备加成、射程、移动后复检/重选的typed计划，`sub_3540E`已恢复用毒射程、移动后同目标复检和wrapped己方平均攻击回退typed计划，`sub_35803/sub_3582B`已恢复普通物品重定位后mode0使用和暗器目标/射程/移动复检/mode1使用或攻击回退typed计划，`sub_3598C`已恢复AI mode0共享物品23项状态、面板/等待参数与AI mode1暗器伤害/毒值，并按side扣队伍库存或敌方携带槽；`sub_361AC/sub_36209`已恢复请求医疗/解毒在正行动值时mode0/value0移动、恢复请求目标并自动攻击的共享typed计划，`sub_36210/sub_363AC`已恢复AI医疗/解毒射程、mode1移动、同目标重检及按actor攻击与wrapped己方平均值回退攻击/休息的typed计划；`sub_3650E`已恢复mode0..3目的格、双可达性检查、最短路标记和每次一格的实际状态continuation；`sub_36A98/sub_36AF7`已恢复玩家movement/targeting光标、取消/确认、选择期路径图复用、最短路和逐格状态continuation；实际自动攻击、用毒、医疗、解毒、物品、暗器与条件休息待BattleSession同步执行，玩家与AI逐格render/present/40 tick、光标输入/重画、共享效果面板/present/input/tick、暗器effect/damage render/sample continuation和`sub_37734`方向选择/UI continuation待补；
 6. `sub_3859E/sub_3884A/sub_38910` 的actor/effect/sample/damage逐帧时间线、`sub_38DAC` 的MP过滤武功菜单状态，以及 `sub_39776..sub_3A8A4` 的用毒/解毒/医疗、战斗物品筛选、暗器目标/伤害/中毒/库存消耗和休息状态核心已映射；FIGHT/sample/render/present/input接线及共享物品界面仍待BattleSession；
-7. `sub_3AA17` 等待队尾重排为 `implemented_pending_review`；`sub_3AA4B` 已锁定重绘→present→置自动flag→AI的顺序；`sub_3AA85` 已恢复双32×32 pass、地形/overlay/物件/角色/effect/damage的typed命令计划，`BattleRenderer`已按WDX/WMP、EFT、动态FIGHT pointer基址实际执行RLE、高亮、CLOUD混色overlay和damage字体像素，独立资产oracle与C++整帧hash一致；BattleSession调用和present仍待接入；
+7. `sub_3AA17` 等待队尾重排为 `implemented_pending_review`；`sub_3AA4B` 已锁定重绘→present→置自动flag→AI的顺序；`sub_3AA85` 已恢复双32×32 pass、地形/overlay/物件/角色/effect/damage的typed命令计划，`BattleRenderer`已按WDX/WMP、EFT、动态FIGHT pointer基址实际执行RLE、高亮、CLOUD混色overlay和damage字体像素，独立资产oracle与C++整帧hash一致；BattleSession已用于初始战场和actor-present，动作/移动/动画调用点仍待接入；
 8. `sub_3B387..sub_3C2AC`已恢复敌方状态重置、胜利经验均分、队伍HP/体力下限、角色/练功/制造经验提交、30项等级阈值及属性RNG、练功物品与武功成长、五配方制造RNG及库存写入/压缩；升级、练功与制造提示框、present和按键等待仍待BattleSession；
 9. `sub_3C563`与`sub_3C672`已恢复回合hurt/poison扣血及hidden==1目标引用清理，前者保留严格负值夹1，后者覆盖0..25槽并登记负值/大于25 target现代安全边界；`sub_3C6D3`已恢复状态面板typed布局、名称NUL对齐、三组颜色和非法MP类型复用poison颜色BUG，`BattleRenderer`已实际绘制原圆角混色面板、离散边框、头像、Big5标签和数值并获独立像素hash；原调用点present/等待仍待BattleSession；
 10. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
@@ -52,6 +52,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：0项 `pending_mapping`、40项 `pending_implementation`、41项 `implemented_pending_review`，0项最终关闭。
+- `battle-closure.tsv`：0项 `pending_mapping`、39项 `pending_implementation`、42项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
 - 下一停点：把玩家与AI typed步骤接入BattleSession同步执行，将已完成的战场/状态面板像素renderer接到动作与逐格render/present/input/tick，并把结果回送scene边界。

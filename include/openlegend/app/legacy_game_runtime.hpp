@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/battle/battle_session.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
@@ -32,6 +33,7 @@ enum class LegacyGameView {
     attributes,
     world,
     scene,
+    battle,
     game_menu,
     error,
     exited,
@@ -85,6 +87,8 @@ private:
     void perform_pending_io();
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
     [[nodiscard]] bool start_scene(std::int16_t scene_id, LegacyGameView error_return_view);
+    [[nodiscard]] bool start_battle(
+        std::int16_t battle_id, bool grant_experience);
     void handle_scene_result(const scene::SceneStepResult& result);
     [[nodiscard]] bool advance_scene_effect();
     void begin_scene_effect(SceneEffectKind kind, std::uint16_t wait_ticks = 1U);
@@ -111,6 +115,7 @@ private:
     std::unique_ptr<world::WorldMapData> world_map_;
     std::unique_ptr<world::WorldSession> world_session_;
     std::unique_ptr<scene::SceneSession> scene_session_;
+    std::unique_ptr<battle::BattleSession> battle_session_;
     LegacyGameView view_{LegacyGameView::title};
     LegacyGameView menu_return_view_{LegacyGameView::world};
     LegacyGameView error_return_view_{LegacyGameView::title};

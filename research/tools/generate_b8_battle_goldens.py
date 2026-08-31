@@ -1308,6 +1308,152 @@ def battle_pixel_hashes(
     return battle_hash, fnv1a_bytes(pixels)
 
 
+def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, object]:
+    palette_bytes = (root / "MMAP.COL").read_bytes()
+    palette = [tuple(palette_bytes[index:index + 3]) for index in range(0, 768, 3)]
+    rgb4_lookup: list[int] = []
+    for red in range(16):
+        for green in range(16):
+            for blue in range(16):
+                target = (red * 4 + 2, green * 4 + 2, blue * 4 + 2)
+                rgb4_lookup.append(min(
+                    range(256),
+                    key=lambda index: sum(
+                        (target[channel] - palette[index][channel]) ** 2
+                        for channel in range(3)
+                    ),
+                ))
+    ascii_font = (root / "FONT.X16").read_bytes()
+    big5_font = (root / "FONT.C16").read_bytes()
+    pixels = bytearray(index % 251 for index in range(320 * 200))
+
+    def blend_rectangle(x: int, y: int, width: int, height: int) -> None:
+        for destination_y in range(y, y + height):
+            for destination_x in range(x, x + width):
+                offset = destination_y * 320 + destination_x
+                destination_rgb = palette[pixels[offset]]
+                source_rgb = palette[0]
+                components = tuple(
+                    source_rgb[index] // 8 + destination_rgb[index] // 8
+                    for index in range(3)
+                )
+                pixels[offset] = rgb4_lookup[
+                    components[0] * 256 + components[1] * 16 + components[2]
+                ]
+
+    def draw_panel(x: int, y: int, width: int, height: int) -> None:
+        for rectangle in (
+            (x + 5, y, width - 10, 1),
+            (x + 4, y + 1, width - 8, 1),
+            (x + 3, y + 2, width - 6, 1),
+            (x + 2, y + 3, width - 4, 1),
+            (x + 1, y + 4, width - 2, 1),
+            (x, y + 5, width, height - 10),
+            (x + 1, y + height - 5, width - 2, 1),
+            (x + 2, y + height - 4, width - 4, 1),
+            (x + 3, y + height - 3, width - 6, 1),
+            (x + 4, y + height - 2, width - 8, 1),
+            (x + 5, y + height - 1, width - 10, 1),
+        ):
+            blend_rectangle(*rectangle)
+        for left, top, rectangle_width, rectangle_height in (
+            (x + 5, y + 1, width - 10, 1),
+            (x + 4, y + 2, 1, 2),
+            (x + width - 5, y + 2, 1, 2),
+            (x + 2, y + 4, 2, 1),
+            (x + width - 4, y + 4, 2, 1),
+            (x + 1, y + 5, 1, height - 10),
+            (x + width - 2, y + 5, 1, height - 10),
+            (x + 2, y + height - 5, 2, 1),
+            (x + width - 4, y + height - 5, 2, 1),
+            (x + 4, y + height - 4, 1, 2),
+            (x + width - 5, y + height - 4, 1, 2),
+            (x + 5, y + height - 2, width - 10, 1),
+        ):
+            for row in range(top, top + rectangle_height):
+                begin = row * 320 + left
+                pixels[begin:begin + rectangle_width] = bytes([0xFF]) * rectangle_width
+
+    draw_panel(64, 17, 180, 30)
+    draw_battle_text(
+        pixels,
+        69,
+        25,
+        bytes.fromhex("bdd0bfefbedcb0d1bb50bed4b0aba4a7a448aaab00"),
+        ascii_font,
+        big5_font,
+        0x0705,
+    )
+    draw_panel(64, 48, 66, 70)
+    draw_battle_text(pixels, 95, 55, b"A\0", ascii_font, big5_font, 0x6663)
+    draw_battle_text(pixels, 67, 55, b"*\0", ascii_font, big5_font, 0x0705)
+    draw_battle_text(pixels, 95, 75, b"C\0", ascii_font, big5_font, 0x2321)
+    draw_battle_text(
+        pixels,
+        83,
+        95,
+        bytes.fromhex("b5b2a7f400"),
+        ascii_font,
+        big5_font,
+        0x2321,
+    )
+    selection_hash = fnv1a_bytes(pixels)
+
+    view_x, view_y = 19, 13
+    occupancy = [-1] * 4096
+    combatants = (
+        (0, 30, 24, 5110),
+        (1, 30, 22, 5118),
+        (2, 30, 26, 5126),
+        (4, 24, 24, 5140),
+    )
+    for slot, (_, x, y, _) in enumerate(combatants):
+        occupancy[y * 64 + x] = slot
+    commands: list[list[int]] = []
+    for local_x in range(32):
+        for local_y in range(32):
+            map_x = local_x + view_x
+            map_y = local_y + view_y
+            screen_x = 18 * local_x - 18 * local_y + 145
+            screen_y = 9 * local_x + 9 * local_y - 81
+            commands.append([
+                0, map_x, map_y, screen_x, screen_y,
+                field_words[map_y * 64 + map_x], 0, 0, 0,
+            ])
+    for local_x in range(32):
+        for local_y in range(32):
+            map_x = local_x + view_x
+            map_y = local_y + view_y
+            cell = map_y * 64 + map_x
+            screen_x = 18 * local_x - 18 * local_y + 145
+            screen_y = 9 * local_x + 9 * local_y - 81
+            object_sprite = field_words[4096 + cell]
+            if object_sprite not in (0, 15000):
+                commands.append([
+                    0, map_x, map_y, screen_x, screen_y,
+                    object_sprite, 0, 0, 0,
+                ])
+            occupant = occupancy[cell]
+            if occupant >= 0:
+                commands.append([
+                    0, map_x, map_y, screen_x, screen_y,
+                    combatants[occupant][3], 0, 0, 0,
+                ])
+    initial_hash, _ = battle_pixel_hashes(root, 1, commands)
+    return {
+        "battle_id": 2,
+        "party_prefix_length": 2,
+        "selection_states": [2, 0],
+        "selection_cursor": 0,
+        "selection_pixel_hash": selection_hash,
+        "selected_role_ids": [0, 1, 2],
+        "combatant_role_ids": [0, 1, 2, 4],
+        "initial_view": [view_x, view_y],
+        "initial_command_count": len(commands),
+        "initial_pixel_hash": initial_hash,
+    }
+
+
 def battle_render_plan_vector(
     root: Path, field_words: list[int], setup: dict[str, object]
 ) -> dict[str, object]:
@@ -2215,6 +2361,10 @@ def build(data_root: Path) -> dict[str, object]:
             }
         )
 
+    battle_session = battle_session_vector(
+        data_root,
+        list(struct.unpack("<8192h", warfld_entries[int(setup_records[2]["battlefield_id"])][:16384])),
+    )
     render_plan = battle_render_plan_vector(
         data_root,
         list(struct.unpack("<8192h", warfld_entries[int(setup_records[4]["battlefield_id"])][:16384])),
@@ -2519,6 +2669,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_attack_handler_vectors": attack_handler_vectors,
                 "ai_poison_handler_vectors": poison_handler_vectors,
                 "ai_item_handler_vectors": item_handler_vectors,
+                "battle_session_vector": battle_session,
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

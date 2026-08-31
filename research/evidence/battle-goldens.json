@@ -2261,6 +2261,33 @@
         },
         "outer_ai_marks_action_done_after_handler": true
       },
+      "battle_session_vector": {
+        "battle_id": 2,
+        "party_prefix_length": 2,
+        "selection_states": [
+          2,
+          0
+        ],
+        "selection_cursor": 0,
+        "selection_pixel_hash": "0x83f943240d14bb33",
+        "selected_role_ids": [
+          0,
+          1,
+          2
+        ],
+        "combatant_role_ids": [
+          0,
+          1,
+          2,
+          4
+        ],
+        "initial_view": [
+          19,
+          13
+        ],
+        "initial_command_count": 1185,
+        "initial_pixel_hash": "0x03446a8a41ef2ec6"
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,

@@ -87,7 +87,9 @@ add_test(NAME openlegend.scene COMMAND openlegend_scene_tests)
 add_executable(openlegend_battle_tests unit/battle/battle_data_test.cpp)
 target_compile_definitions(
     openlegend_battle_tests
-    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+    PRIVATE
+        OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
+        OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)

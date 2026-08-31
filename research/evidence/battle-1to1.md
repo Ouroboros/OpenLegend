@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前22项为 `pending_mapping`、24项为 `pending_implementation`、35项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、39项为 `pending_implementation`、42项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -22,7 +22,7 @@
 6. 淡出，关闭 SMP/SDX，并按主角记录决定停止或恢复原音乐；
 7. 写运行模式1，返回 `word_E6ED2 - 1`。
 
-因此现有 scene 仅存储 `battle_get_exp_` 但没有 battle session 回传结果，不能把 `sub_2DE03/sub_31C75` 提前标为已实现。
+`SceneStepResult`现携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。Session保留get-exp布尔值，并对初始化失败、选择变化/完成、初始视图、淡入结束、轮首actor和player/AI分派记录关键路径日志。动作循环、资源/音频收尾及Victory/Defeat/Escape回送scene仍未实现，因此`sub_2DE03/sub_31C75`继续保持`pending_implementation`。
 
 ## 3. 资产 oracle
 
@@ -63,9 +63,9 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 - occupancy 以 `y*64+x` 寻址，无范围、重复或容量检查；战斗93证明重复格必须后写覆盖；
 - `sub_3B1E6` 返回 `int16(8*role.word1 + word_556D4 + 2*word_556CC + 2*combatant.word4)`；空槽初始化会以 role=-1 对角色表前182字节读取。
 
-`BattleSetup` 已实现26槽完整初值、固定/预置队伍、host-neutral cursor/0·1·2选择状态、按当前 count 取坐标追加、敌方建立、sprite word 和后写 occupancy 覆盖。真实 battle0 固定手选顺序、battle4 固定队伍、battle93 slot9→slot11覆盖及全140条记录均通过 Linux Debug 14/14。
+`BattleSetup` 已实现26槽完整初值、固定/预置队伍、host-neutral cursor/0·1·2选择状态、按当前 count 取坐标追加、敌方建立、sprite word 和后写 occupancy 覆盖。`BattleSession`已实际绘制圆角混色选择框、原Big5标题/确认文字、角色名和星号，逐键执行上下回绕与确认，并在每次选择重绘前恢复冻结背景。真实 battle0 固定手选顺序、battle4 固定队伍、battle93 slot9→slot11覆盖及全140条记录均通过。
 
-因此 `sub_3265C/sub_3B1E6` 已推进为 `implemented_pending_review`；`sub_31EB9` 仍缺原像素选择框、present 与 input flag 清除基本块，继续保持 `pending_implementation`。
+battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0,1,2]`并追加敌方4；选择菜单与初始战场的独立Python oracle/C++ FNV64分别一致。runtime已实际驱动Session render/present/input，因此`sub_31EB9/sub_3265C/sub_3B1E6`均推进为`implemented_pending_review`。
 
 ## 7. 回合排序、玩家菜单与胜负核心
 
@@ -76,7 +76,7 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 - 每轮 word6=`max(0,effective_speed/15-role.hurt/40)`，signed division toward zero；
 - hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
 
-真实 Big5 菜单固定为「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」，可用门槛和 ordinal cursor 见 `0x32E59.md`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；顶层 render/turn dispatch/tick wait、十项动作、结果 panel/按键/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
+`BattleSession`现已在建队后按slot0计算clamp视图原点、实际绘制初始战场、逐present帧执行黑场淡入，随后完成轮首排序/word6计算、actor居中呈现及player/AI动作分界。真实 Big5 菜单固定为「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」，可用门槛和 ordinal cursor 见 `0x32E59.md`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；玩家/AI动作、逐槽后处理、tick wait、十项动作、结果 panel/按键/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
 
 ## 8. 战场路径图与最短路回溯
 

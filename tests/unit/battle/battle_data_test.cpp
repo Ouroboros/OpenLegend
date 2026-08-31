@@ -2,14 +2,18 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/battle/battle_renderer.hpp"
+#include "openlegend/battle/battle_session.hpp"
 #include "openlegend/battle/battle_setup.hpp"
+#include "openlegend/diagnostics/log.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
@@ -1924,6 +1928,90 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     }));
 }
 
+void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    const auto log_path =
+        openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
+        "b8-battle-session.log";
+    std::error_code log_error;
+    std::filesystem::remove(log_path, log_error);
+    OL_CHECK(openlegend::diagnostics::initialize_logging(
+                 log_path, openlegend::diagnostics::LogLevel::debug) ==
+             openlegend::diagnostics::LoggingInitializationStatus::initialized);
+
+    auto ranger = make_ranger({0, 2, -1, -1, -1, -1});
+    for (const auto role_id : {0U, 2U}) {
+        auto& role = ranger.roles[role_id];
+        auto name = std::span<std::uint8_t>{role.bytes}.subspan(
+            openlegend::model::role_word::name_byte,
+            openlegend::model::role_word::name_bytes);
+        std::ranges::fill(name, std::uint8_t{0U});
+        name[0U] = static_cast<std::uint8_t>('A' + role_id);
+    }
+    openlegend::random::LegacyRandom random{1U};
+    BattleSession session{data_root, ranger, random, 2, true};
+    OL_CHECK(session.valid());
+    OL_CHECK(session.grants_experience());
+    OL_CHECK(session.phase() == BattleSessionPhase::party_selection);
+    OL_CHECK(session.setup().party_prefix_length() == 2U);
+
+    openlegend::render::IndexedFramebuffer framebuffer;
+    for (std::size_t index = 0U; index < framebuffer.pixels().size(); ++index) {
+        framebuffer.pixels()[index] = static_cast<std::uint8_t>(index % 251U);
+    }
+    OL_CHECK(session.render(framebuffer));
+    const auto selection_hash = fnv1a_bytes(framebuffer.pixels());
+    OL_CHECK(selection_hash == 0x83f943240d14bb33ULL);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == selection_hash);
+
+    for (std::size_t index = 0U; index < session.setup().party_prefix_length(); ++index) {
+        if (session.setup().selection_states()[index] == 0) {
+            static_cast<void>(session.handle_key(0x0DU));
+        }
+        OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::changed);
+    }
+    OL_CHECK(session.setup().cursor() == session.setup().party_prefix_length());
+    OL_CHECK(session.handle_key(0x0DU) == BattleSessionInputResult::selection_complete);
+    OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+    OL_CHECK(session.setup().combatant_count() == 4);
+    constexpr std::array<std::int16_t, 4> kExpectedRoles{0, 1, 2, 4};
+    for (std::size_t slot = 0U; slot < kExpectedRoles.size(); ++slot) {
+        OL_CHECK(session.setup().combatants()[slot].words[combatant_word::role_id] ==
+                 kExpectedRoles[slot]);
+    }
+    OL_CHECK(session.view_x() == 19 && session.view_y() == 13);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x03446a8a41ef2ec6ULL);
+
+    session.finish_presented_tick();
+    OL_CHECK(session.phase() == BattleSessionPhase::initial_fade);
+    OL_CHECK(session.fade_frame_count() > 0U);
+    for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {
+        OL_CHECK(session.fade_frame() == frame);
+        OL_CHECK(session.render(framebuffer));
+        session.finish_presented_tick();
+    }
+    OL_CHECK(session.phase() == BattleSessionPhase::round_start);
+    session.advance();
+    OL_CHECK(session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(session.render(framebuffer));
+    session.finish_presented_tick();
+    OL_CHECK(session.phase() == BattleSessionPhase::player_action ||
+             session.phase() == BattleSessionPhase::ai_action);
+
+    openlegend::diagnostics::shutdown_logging();
+    std::ifstream log_file{log_path, std::ios::binary};
+    const std::string log_text{
+        std::istreambuf_iterator<char>{log_file}, std::istreambuf_iterator<char>{}};
+    OL_CHECK(log_text.find("battle session initialized id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle party selection complete id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle initial frame presented id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle initial fade complete id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle round actor ready id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle actor dispatch id=2") != std::string::npos);
+}
+
 void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
 
@@ -3163,6 +3251,7 @@ int main() {
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);
+    run_battle_session_test(data_root);
     run_ai_selector_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);

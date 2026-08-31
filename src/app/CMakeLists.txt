@@ -14,6 +14,7 @@ target_include_directories(
 target_link_libraries(
     openlegend_app
     PUBLIC
+        openlegend_battle
         openlegend_compat
         openlegend_diagnostics
         openlegend_model

@@ -106,6 +106,7 @@ struct SceneStepResult {
     std::int16_t head_id{-1};
     std::int16_t style{};
     std::int16_t battle_id{-1};
+    std::int16_t battle_get_exp{};
     std::int16_t shop_id{-1};
     std::int16_t menu_index{-1};
     std::int16_t save_slot{-1};
