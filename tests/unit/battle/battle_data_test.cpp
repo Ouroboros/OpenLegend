@@ -2166,6 +2166,98 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(rest_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
     OL_CHECK(rest_ranger.roles[1U].word(role_word::physical_power) == 5);
 
+    std::filesystem::remove(log_path, log_error);
+    OL_CHECK(openlegend::diagnostics::initialize_logging(
+                 log_path, openlegend::diagnostics::LogLevel::debug) ==
+             openlegend::diagnostics::LoggingInitializationStatus::initialized);
+    auto movement_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    movement_ranger.roles[1U].set_word(role_word::hp, 100);
+    movement_ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    movement_ranger.roles[1U].set_word(role_word::physical_power, 10);
+    movement_ranger.roles[1U].set_word(role_word::speed, 30);
+    movement_ranger.roles[3U].set_word(role_word::hp, 100);
+    movement_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom movement_random{1U};
+    BattleSession movement_session{
+        data_root, movement_ranger, movement_random, 4, false};
+    reach_player_action(movement_session);
+    OL_CHECK(
+        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 2);
+    OL_CHECK(movement_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_select);
+    OL_CHECK((movement_session.active_cursor() == BattlePathCoord{26, 24}));
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(200U);
+    OL_CHECK(movement_session.handle_key(0x1BU) ==
+             BattleSessionInputResult::cursor_cancelled);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK(movement_session.player_action_menu().available[0U] == 1);
+
+    OL_CHECK(movement_session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(200U);
+    OL_CHECK(movement_session.handle_key(0x98U) ==
+             BattleSessionInputResult::cursor_changed);
+    OL_CHECK((movement_session.active_cursor() == BattlePathCoord{26, 25}));
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(200U);
+    OL_CHECK(movement_session.handle_key(0x0DU) ==
+             BattleSessionInputResult::cursor_selected);
+    OL_CHECK(movement_session.phase() ==
+             BattleSessionPhase::player_movement_step_present);
+    OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::x] == 26);
+    OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::y] == 25);
+    OL_CHECK(
+        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 1);
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(200U);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_wait);
+    movement_session.advance(200U);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_wait);
+    movement_session.advance(201U);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_wait);
+    movement_session.advance(202U);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK(movement_session.player_action_menu().available[0U] == 1);
+
+    OL_CHECK(movement_session.handle_key(0x96U) == BattleSessionInputResult::action_selected);
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(202U);
+    OL_CHECK(movement_session.handle_key(0x9AU) ==
+             BattleSessionInputResult::cursor_changed);
+    OL_CHECK((movement_session.active_cursor() == BattlePathCoord{25, 25}));
+    OL_CHECK(movement_session.handle_key(0x20U) ==
+             BattleSessionInputResult::cursor_selected);
+    OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::x] == 25);
+    OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::y] == 25);
+    OL_CHECK(
+        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 0);
+    OL_CHECK(movement_ranger.roles[1U].word(role_word::physical_power) == 10);
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(202U);
+    movement_session.advance(203U);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_wait);
+    movement_session.advance(204U);
+    OL_CHECK(movement_session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK(movement_session.player_action_menu().available[0U] == 0);
+    OL_CHECK(movement_session.player_action_menu().available_count == 5U);
+    openlegend::diagnostics::shutdown_logging();
+    std::ifstream movement_log_file{log_path, std::ios::binary};
+    const std::string movement_log_text{
+        std::istreambuf_iterator<char>{movement_log_file},
+        std::istreambuf_iterator<char>{}};
+    OL_CHECK(movement_log_text.find("battle player movement selection ready id=4") !=
+             std::string::npos);
+    OL_CHECK(movement_log_text.find("battle player movement cursor id=4") !=
+             std::string::npos);
+    OL_CHECK(movement_log_text.find("battle player movement step id=4") !=
+             std::string::npos);
+    OL_CHECK(movement_log_text.find("battle player movement step presented id=4") !=
+             std::string::npos);
+    OL_CHECK(movement_log_text.find(
+                 "battle player action menu rebuilt after movement id=4") !=
+             std::string::npos);
+
     auto automatic_ranger = make_ranger({0, 2, 3, -1, -1, -1});
     automatic_ranger.roles[1U].set_word(role_word::hp, 100);
     automatic_ranger.roles[1U].set_word(role_word::maximum_hp, 100);

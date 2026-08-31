@@ -26,6 +26,9 @@ enum class BattleSessionPhase {
     actor_present,
     player_action,
     player_action_selected,
+    player_movement_select,
+    player_movement_step_present,
+    player_movement_wait,
     automatic_present,
     ai_action,
     ai_prelude_present,
@@ -41,6 +44,9 @@ enum class BattleSessionInputResult {
     selection_complete,
     action_changed,
     action_selected,
+    cursor_changed,
+    cursor_cancelled,
+    cursor_selected,
 };
 
 enum class BattlePlayerAction : std::int16_t {
@@ -91,6 +97,11 @@ public:
     [[nodiscard]] const BattlePlayerActionMenuState& player_action_menu() const noexcept {
         return player_action_menu_;
     }
+    [[nodiscard]] std::optional<BattlePathCoord> active_cursor() const noexcept {
+        return player_cursor_selection_.has_value()
+            ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
+            : std::nullopt;
+    }
 
     [[nodiscard]] BattleSessionInputResult handle_key(std::uint8_t translated_key);
     void advance(std::uint32_t bios_tick = 0U);
@@ -103,6 +114,12 @@ private:
     [[nodiscard]] bool begin_ai_action();
     [[nodiscard]] bool advance_ai_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool begin_player_action_menu();
+    [[nodiscard]] bool begin_player_movement();
+    [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
+        std::uint8_t translated_key);
+    [[nodiscard]] bool advance_player_movement_step();
+    [[nodiscard]] bool advance_player_movement_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool rebuild_player_menu_after_movement();
     [[nodiscard]] std::optional<std::size_t> action_for_ordinal(
         std::size_t ordinal) const noexcept;
     [[nodiscard]] BattleSessionInputResult handle_player_action_key(
@@ -139,6 +156,10 @@ private:
     std::uint32_t ai_wait_tick_{};
     std::int32_t ai_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};
+    std::optional<BattleCursorSelectionState> player_cursor_selection_;
+    std::optional<BattlePlayerMovementPlan> player_movement_plan_;
+    std::uint32_t player_movement_wait_tick_{};
+    std::int32_t player_movement_wait_tick_changes_remaining_{};
     std::array<std::uint8_t, compat::kLegacyPixelCount> selection_background_{};
     compat::LegacyPalette selection_palette_{};
     bool selection_background_captured_{};

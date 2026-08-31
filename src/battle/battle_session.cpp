@@ -6,6 +6,7 @@
 #include <iterator>
 #include <span>
 #include <string_view>
+#include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/render/legacy_effects.hpp"
@@ -16,8 +17,11 @@ namespace {
 
 constexpr std::uint8_t kEnter = 0x0DU;
 constexpr std::uint8_t kSpace = 0x20U;
+constexpr std::uint8_t kEscape = 0x1BU;
 constexpr std::uint8_t kKeypadInsert = 0x96U;
 constexpr std::uint8_t kDown = 0x98U;
+constexpr std::uint8_t kLeft = 0x9AU;
+constexpr std::uint8_t kRight = 0x9CU;
 constexpr std::uint8_t kUp = 0x9EU;
 constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
     0xBDU, 0xD0U, 0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xB0U, 0xD1U, 0xBBU, 0x50U,
@@ -51,6 +55,10 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::actor_present: return "actor_present";
     case BattleSessionPhase::player_action: return "player_action";
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
+    case BattleSessionPhase::player_movement_select: return "player_movement_select";
+    case BattleSessionPhase::player_movement_step_present:
+        return "player_movement_step_present";
+    case BattleSessionPhase::player_movement_wait: return "player_movement_wait";
     case BattleSessionPhase::automatic_present: return "automatic_present";
     case BattleSessionPhase::ai_action: return "ai_action";
     case BattleSessionPhase::ai_prelude_present: return "ai_prelude_present";
@@ -126,6 +134,9 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
     if (phase_ == BattleSessionPhase::player_action) {
         return handle_player_action_key(translated_key);
     }
+    if (phase_ == BattleSessionPhase::player_movement_select) {
+        return handle_player_movement_key(translated_key);
+    }
     if (phase_ != BattleSessionPhase::party_selection) {
         return BattleSessionInputResult::ignored;
     }
@@ -175,6 +186,8 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
         static_cast<void>(begin_ai_action());
     } else if (phase_ == BattleSessionPhase::ai_wait) {
         static_cast<void>(advance_ai_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::player_movement_wait) {
+        static_cast<void>(advance_player_movement_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::round_wait && bios_tick != round_tick_) {
         static_cast<void>(begin_round(bios_tick));
     }
@@ -242,6 +255,17 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             "battle automatic mode enabled id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
             " phase=" + std::string{phase_name(phase_)});
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_movement_step_present) {
+        player_movement_wait_tick_ = bios_tick;
+        player_movement_wait_tick_changes_remaining_ = timing::legacy_delay_tick_count(40);
+        phase_ = BattleSessionPhase::player_movement_wait;
+        diagnostics::log_info(
+            "battle player movement step presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " wait_tick_changes=" +
+            std::to_string(player_movement_wait_tick_changes_remaining_));
         return;
     }
     if (phase_ == BattleSessionPhase::ai_prelude_present) {
@@ -412,6 +436,180 @@ bool BattleSession::begin_player_action_menu() {
     return true;
 }
 
+bool BattleSession::begin_player_movement() {
+    auto selection = setup_.begin_player_movement_selection(current_actor_slot_);
+    if (!selection.has_value()) {
+        error_ = "battle player movement selection is invalid";
+        return false;
+    }
+    player_cursor_selection_.emplace(std::move(*selection));
+    player_movement_plan_.reset();
+    render_state_.path_limit = player_cursor_selection_->path_limit;
+    render_state_.primary_cursor = player_cursor_selection_->cursor;
+    phase_ = BattleSessionPhase::player_movement_select;
+    diagnostics::log_info(
+        "battle player movement selection ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " source=" + std::to_string(player_cursor_selection_->source.x) + "," +
+        std::to_string(player_cursor_selection_->source.y) +
+        " path_limit=" + std::to_string(player_cursor_selection_->path_limit));
+    return true;
+}
+
+BattleSessionInputResult BattleSession::handle_player_movement_key(
+    const std::uint8_t translated_key) {
+    if (!player_cursor_selection_.has_value()) {
+        return BattleSessionInputResult::ignored;
+    }
+    std::optional<BattleCursorSelectionAction> action;
+    if (translated_key == kDown) {
+        action = BattleCursorSelectionAction::down;
+    } else if (translated_key == kRight) {
+        action = BattleCursorSelectionAction::right;
+    } else if (translated_key == kLeft) {
+        action = BattleCursorSelectionAction::left;
+    } else if (translated_key == kUp) {
+        action = BattleCursorSelectionAction::up;
+    } else if (translated_key == kEscape) {
+        action = BattleCursorSelectionAction::cancel;
+    } else if (confirms(translated_key)) {
+        action = BattleCursorSelectionAction::activate;
+    } else {
+        return BattleSessionInputResult::ignored;
+    }
+
+    const auto result = setup_.apply_cursor_selection(*player_cursor_selection_, *action);
+    if (result == BattleCursorSelectionResult::moved) {
+        render_state_.primary_cursor = player_cursor_selection_->cursor;
+        diagnostics::log_debug(
+            "battle player movement cursor id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " cursor=" + std::to_string(player_cursor_selection_->cursor.x) + "," +
+            std::to_string(player_cursor_selection_->cursor.y));
+        return BattleSessionInputResult::cursor_changed;
+    }
+    if (result == BattleCursorSelectionResult::cancelled) {
+        render_state_.path_limit = 0;
+        player_cursor_selection_.reset();
+        if (!rebuild_player_menu_after_movement()) {
+            return BattleSessionInputResult::ignored;
+        }
+        diagnostics::log_info(
+            "battle player movement cancelled id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_));
+        return BattleSessionInputResult::cursor_cancelled;
+    }
+    if (result != BattleCursorSelectionResult::selected) {
+        return BattleSessionInputResult::ignored;
+    }
+
+    auto plan = setup_.finish_player_movement_selection(*player_cursor_selection_);
+    if (!plan.has_value()) {
+        error_ = "battle player movement path marking failed";
+        return BattleSessionInputResult::ignored;
+    }
+    const auto destination = plan->destination;
+    player_movement_plan_.emplace(std::move(*plan));
+    render_state_.path_limit = 0;
+    player_cursor_selection_.reset();
+    diagnostics::log_info(
+        "battle player movement selected id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " destination=" + std::to_string(destination.x) + "," +
+        std::to_string(destination.y));
+    if (player_movement_plan_->complete) {
+        if (!rebuild_player_menu_after_movement()) {
+            return BattleSessionInputResult::ignored;
+        }
+    } else if (!advance_player_movement_step()) {
+        return BattleSessionInputResult::ignored;
+    }
+    return BattleSessionInputResult::cursor_selected;
+}
+
+bool BattleSession::advance_player_movement_step() {
+    if (!player_movement_plan_.has_value()) {
+        error_ = "battle player movement plan is absent";
+        return false;
+    }
+    const auto step = setup_.advance_player_movement(*player_movement_plan_);
+    if (!step.has_value()) {
+        if (player_movement_plan_->complete) {
+            player_movement_plan_.reset();
+            return rebuild_player_menu_after_movement();
+        }
+        error_ = setup_.valid() ? "battle player movement step failed" : setup_.error();
+        return false;
+    }
+    render_state_.view_x = step->view_x;
+    render_state_.view_y = step->view_y;
+    render_state_.path_limit = 0;
+    render_state_.primary_cursor = step->to;
+    phase_ = BattleSessionPhase::player_movement_step_present;
+    diagnostics::log_info(
+        "battle player movement step id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " from=" + std::to_string(step->from.x) + "," +
+        std::to_string(step->from.y) +
+        " to=" + std::to_string(step->to.x) + "," +
+        std::to_string(step->to.y) +
+        " round_value=" + std::to_string(step->remaining_round_value) +
+        " physical_power=" + std::to_string(step->physical_power) +
+        " complete=" + (step->complete ? std::string{"true"} : std::string{"false"}));
+    return true;
+}
+
+bool BattleSession::advance_player_movement_wait(const std::uint32_t bios_tick) {
+    if (bios_tick == player_movement_wait_tick_) {
+        return true;
+    }
+    player_movement_wait_tick_ = bios_tick;
+    if (player_movement_wait_tick_changes_remaining_ > 0) {
+        --player_movement_wait_tick_changes_remaining_;
+    }
+    if (player_movement_wait_tick_changes_remaining_ > 0) {
+        return true;
+    }
+    if (player_movement_plan_.has_value() && !player_movement_plan_->complete) {
+        return advance_player_movement_step();
+    }
+    player_movement_plan_.reset();
+    return rebuild_player_menu_after_movement();
+}
+
+bool BattleSession::rebuild_player_menu_after_movement() {
+    const auto availability = setup_.player_action_availability(current_actor_slot_);
+    if (!availability.has_value()) {
+        error_ = "battle player movement availability recheck failed";
+        return false;
+    }
+    const auto old_movement = player_action_menu_.available[0U];
+    const auto new_movement = availability->available[0U];
+    if (old_movement != new_movement) {
+        player_action_menu_.available[0U] = new_movement;
+        if (new_movement == 0 && player_action_menu_.available_count > 0U) {
+            --player_action_menu_.available_count;
+        } else if (new_movement == 1) {
+            ++player_action_menu_.available_count;
+        }
+    }
+    player_action_menu_.cursor = std::min(
+        player_action_menu_.cursor,
+        player_action_menu_.available_count > 0U
+            ? player_action_menu_.available_count - 1U
+            : 0U);
+    player_action_menu_.selected_action = -1;
+    render_state_.path_limit = 0;
+    phase_ = BattleSessionPhase::player_action;
+    diagnostics::log_info(
+        "battle player action menu rebuilt after movement id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " movement=" + std::to_string(new_movement) +
+        " available=" + std::to_string(player_action_menu_.available_count));
+    return player_action_menu_.available_count > 0U;
+}
+
 std::optional<std::size_t> BattleSession::action_for_ordinal(
     const std::size_t ordinal) const noexcept {
     std::size_t available_ordinal = 0U;
@@ -500,6 +698,7 @@ bool BattleSession::dispatch_selected_player_action() {
         phase_ = BattleSessionPhase::automatic_present;
         return true;
     case BattlePlayerAction::movement:
+        return begin_player_movement();
     case BattlePlayerAction::attack:
     case BattlePlayerAction::use_poison:
     case BattlePlayerAction::detoxification:
@@ -635,7 +834,10 @@ bool BattleSession::render_party_selection(
 
 bool BattleSession::render_battlefield(
     render::IndexedFramebuffer& framebuffer) {
-    const auto plan = setup_.battle_render_plan(render_state_, {});
+    const auto path_values = player_cursor_selection_.has_value()
+        ? std::span<const std::int16_t>{player_cursor_selection_->pathing.values()}
+        : std::span<const std::int16_t>{};
+    const auto plan = setup_.battle_render_plan(render_state_, path_values);
     return plan.has_value() && renderer_.render(*plan, framebuffer);
 }
 
