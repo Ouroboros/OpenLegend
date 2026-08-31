@@ -2622,6 +2622,247 @@ std::optional<BattleAiAttackPlan> BattleSetup::resume_ai_attack_after_move(
     return plan;
 }
 
+std::optional<bool> BattleSetup::choose_ai_strongest_poison_target(
+    const std::size_t actor_slot) {
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    const auto actor_use_poison = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
+        model::role_word::use_poison);
+    std::int16_t best_attack = 0;
+    bool written = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] == actor_side ||
+            combatant[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        if (role.word(model::role_word::poison) >= 95 ||
+            role.word(model::role_word::anti_poison) >= actor_use_poison) {
+            continue;
+        }
+        const auto attack = role.word(model::role_word::attack);
+        if (attack > best_attack) {
+            best_attack = attack;
+            combatants_[actor_slot].words[combatant_word::ai_poison_target] =
+                static_cast<std::int16_t>(slot);
+            written = true;
+        }
+    }
+    return written;
+}
+
+std::optional<bool> BattleSetup::choose_ai_first_poison_target(
+    const std::size_t actor_slot,
+    const std::size_t stale_target_slot,
+    std::int16_t& stale_target_distance) {
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    const auto actor_use_poison = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
+        model::role_word::use_poison);
+    std::int16_t best_distance = 1'000;
+    bool written = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] == actor_side ||
+            combatant[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        if (role.word(model::role_word::poison) >= 95 ||
+            role.word(model::role_word::anti_poison) >= actor_use_poison) {
+            continue;
+        }
+        if (stale_target_slot >= static_cast<std::size_t>(combatant_count_)) {
+            return std::nullopt;
+        }
+        const auto& actor = combatants_[actor_slot].words;
+        const auto& stale_target = combatants_[stale_target_slot].words;
+        BattlePathing pathing{data_};
+        pathing.build(
+            BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+            BattlePathMode::targeting);
+        stale_target_distance = pathing.value(BattlePathCoord{
+            stale_target[combatant_word::x], stale_target[combatant_word::y]});
+        if (stale_target_distance < best_distance) {
+            best_distance = stale_target_distance;
+            combatants_[actor_slot].words[combatant_word::ai_poison_target] =
+                static_cast<std::int16_t>(slot);
+            written = true;
+        }
+    }
+    return written;
+}
+
+std::optional<BattleAiPoisonTargetSelection> BattleSetup::choose_ai_poison_target(
+    const std::size_t actor_slot,
+    const std::size_t stale_target_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    combatants_[actor_slot].words[combatant_word::ai_poison_target] = -1;
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    if (actor_role.word(model::role_word::iq) > 60 && random.bounded(10) < 7) {
+        const auto written = choose_ai_strongest_poison_target(actor_slot);
+        if (!written) {
+            return std::nullopt;
+        }
+        if (*written) {
+            return BattleAiPoisonTargetSelection{
+                combatants_[actor_slot].words[combatant_word::ai_poison_target],
+                0,
+                BattleAiPoisonTargetStrategy::strongest_attack,
+                true};
+        }
+    }
+
+    std::int16_t stale_target_distance = 0;
+    const auto written = choose_ai_first_poison_target(
+        actor_slot, stale_target_slot, stale_target_distance);
+    if (!written) {
+        return std::nullopt;
+    }
+    return BattleAiPoisonTargetSelection{
+        *written ? combatants_[actor_slot].words[combatant_word::ai_poison_target] : -1,
+        stale_target_distance,
+        *written ? BattleAiPoisonTargetStrategy::first_eligible_stale_distance
+                 : BattleAiPoisonTargetStrategy::none,
+        *written};
+}
+
+bool BattleSetup::update_ai_poison_target_range(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    BattleAiPoisonPlan& plan) const {
+    const auto& actor = combatants_[actor_slot].words;
+    const auto& target = combatants_[target_slot].words;
+    BattlePathing pathing{data_};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::targeting);
+    plan.target_slot = static_cast<std::int16_t>(target_slot);
+    plan.target_distance = pathing.value(
+        BattlePathCoord{target[combatant_word::x], target[combatant_word::y]});
+    plan.range_check_count = static_cast<std::int16_t>(plan.range_check_count + 1);
+    return plan.target_distance <= plan.targeting_range;
+}
+
+bool BattleSetup::update_ai_poison_fallback(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    BattleAiPoisonPlan& plan) {
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    std::int16_t allied_total = 0;
+    std::int16_t allied_count = 0;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& combatant = combatants_[slot].words;
+        if (combatant[combatant_word::side] != actor_side) {
+            continue;
+        }
+        const auto role_id = combatant[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            error_ = "battle AI poison ally is outside ranger records";
+            return false;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        allied_total = wrapping_i16(
+            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::attack));
+        allied_total = wrapping_i16(
+            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::hp));
+        allied_count = wrapping_i16(static_cast<std::int32_t>(allied_count) + 1);
+    }
+    if (allied_count == 0) {
+        error_ = "battle AI poison has no allied combatants";
+        return false;
+    }
+    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
+    if (target_role_id < 0 ||
+        static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI poison target is outside ranger records";
+        return false;
+    }
+    plan.allied_total = allied_total;
+    plan.allied_count = allied_count;
+    plan.doubled_target_attack = 2 * static_cast<std::int32_t>(
+        ranger_.roles[static_cast<std::size_t>(target_role_id)].word(model::role_word::attack));
+    plan.doubled_allied_average =
+        2 * static_cast<std::int32_t>(allied_total) / allied_count;
+    plan.next_step = plan.doubled_target_attack > plan.doubled_allied_average
+        ? BattleAiPoisonNextStep::attack_fallback
+        : BattleAiPoisonNextStep::rest;
+    return true;
+}
+
+std::optional<BattleAiPoisonPlan> BattleSetup::begin_ai_poison_plan(
+    const std::size_t actor_slot,
+    const std::size_t stale_target_slot,
+    random::LegacyRandom& random) {
+    const auto selection = choose_ai_poison_target(actor_slot, stale_target_slot, random);
+    if (!selection) {
+        return std::nullopt;
+    }
+    BattleAiPoisonPlan plan{};
+    plan.target_strategy = selection->strategy;
+    if (!selection->target_written) {
+        return plan;
+    }
+    const auto range = poison_targeting_range(actor_slot);
+    if (!range || selection->target_slot < 0 || selection->target_slot >= combatant_count_) {
+        error_ = "battle AI poison plan target is outside combatant slots";
+        return std::nullopt;
+    }
+    plan.targeting_range = *range;
+    const auto target_slot = static_cast<std::size_t>(selection->target_slot);
+    const auto in_range = update_ai_poison_target_range(actor_slot, target_slot, plan);
+    const auto round_value = combatants_[actor_slot].words[combatant_word::round_value];
+    if (in_range && round_value == 0) {
+        plan.next_step = BattleAiPoisonNextStep::poison;
+    } else if (round_value > 0) {
+        plan.next_step = BattleAiPoisonNextStep::move;
+    } else if (update_ai_poison_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiPoisonNextStep::poison;
+    } else if (!update_ai_poison_fallback(actor_slot, target_slot, plan)) {
+        return std::nullopt;
+    }
+    return plan;
+}
+
+std::optional<BattleAiPoisonPlan> BattleSetup::resume_ai_poison_after_move(
+    const std::size_t actor_slot,
+    BattleAiPoisonPlan plan) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.next_step != BattleAiPoisonNextStep::move || plan.target_slot < 0 ||
+        plan.target_slot >= combatant_count_) {
+        return std::nullopt;
+    }
+    const auto target_slot = static_cast<std::size_t>(plan.target_slot);
+    if (update_ai_poison_target_range(actor_slot, target_slot, plan)) {
+        plan.next_step = BattleAiPoisonNextStep::poison;
+    } else if (!update_ai_poison_fallback(actor_slot, target_slot, plan)) {
+        return std::nullopt;
+    }
+    return plan;
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

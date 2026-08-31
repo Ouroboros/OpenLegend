@@ -33,6 +33,7 @@ inline constexpr std::size_t sprite = 8U;
 inline constexpr std::size_t damage_value = 9U;
 inline constexpr std::size_t ai_action = 10U;
 inline constexpr std::size_t ai_target = 11U;
+inline constexpr std::size_t ai_poison_target = 12U;
 inline constexpr std::size_t attack_counter = 13U;
 }  // namespace combatant_word
 
@@ -179,6 +180,41 @@ struct BattleAiAttackPlan {
     bool target_reselected{};
     bool automatic_attack{true};
     bool mark_action_done_after_step{true};
+};
+
+enum class BattleAiPoisonTargetStrategy : std::int16_t {
+    strongest_attack,
+    first_eligible_stale_distance,
+    none,
+};
+
+struct BattleAiPoisonTargetSelection {
+    std::int16_t target_slot{-1};
+    std::int16_t stale_target_distance{};
+    BattleAiPoisonTargetStrategy strategy{BattleAiPoisonTargetStrategy::none};
+    bool target_written{};
+};
+
+enum class BattleAiPoisonNextStep : std::int16_t {
+    poison,
+    move,
+    attack_fallback,
+    rest,
+};
+
+struct BattleAiPoisonPlan {
+    std::int16_t target_slot{-1};
+    std::int16_t targeting_range{};
+    std::int16_t target_distance{};
+    std::int16_t range_check_count{};
+    std::int16_t movement_mode{3};
+    std::int16_t allied_total{};
+    std::int16_t allied_count{};
+    std::int32_t doubled_target_attack{};
+    std::int32_t doubled_allied_average{};
+    BattleAiPoisonTargetStrategy target_strategy{BattleAiPoisonTargetStrategy::none};
+    BattleAiPoisonNextStep next_step{BattleAiPoisonNextStep::attack_fallback};
+    bool outer_marks_action_done_after_handler{true};
 };
 
 enum class BattleRenderCommandKind : std::int16_t {
@@ -434,6 +470,17 @@ public:
     [[nodiscard]] std::optional<BattleAiAttackPlan> resume_ai_attack_after_move(
         std::size_t actor_slot,
         BattleAiAttackPlan plan);
+    [[nodiscard]] std::optional<BattleAiPoisonTargetSelection> choose_ai_poison_target(
+        std::size_t actor_slot,
+        std::size_t stale_target_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiPoisonPlan> begin_ai_poison_plan(
+        std::size_t actor_slot,
+        std::size_t stale_target_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiPoisonPlan> resume_ai_poison_after_move(
+        std::size_t actor_slot,
+        BattleAiPoisonPlan plan);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
@@ -501,6 +548,20 @@ private:
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiAttackPlan& plan) const;
+    [[nodiscard]] std::optional<bool> choose_ai_strongest_poison_target(
+        std::size_t actor_slot);
+    [[nodiscard]] std::optional<bool> choose_ai_first_poison_target(
+        std::size_t actor_slot,
+        std::size_t stale_target_slot,
+        std::int16_t& stale_target_distance);
+    [[nodiscard]] bool update_ai_poison_target_range(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        BattleAiPoisonPlan& plan) const;
+    [[nodiscard]] bool update_ai_poison_fallback(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        BattleAiPoisonPlan& plan);
 
     BattleData& data_;
     model::RangerState& ranger_;

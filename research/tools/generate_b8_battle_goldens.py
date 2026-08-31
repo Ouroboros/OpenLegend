@@ -803,6 +803,77 @@ def ai_attack_handler_vectors(
     }
 
 
+def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
+    targeting = build_path_map(field_words, (10, 20), "targeting")
+    high_iq_roll, high_iq_state = legacy_bounded(9, 10)
+    allied_total = wrapping_i16(0 + 10)
+    allied_total = wrapping_i16(allied_total + 100)
+    allied_total = wrapping_i16(allied_total + 10)
+    allied_total = wrapping_i16(allied_total + 100)
+    allied_total = wrapping_i16(allied_total + 10)
+    allied_total = wrapping_i16(allied_total + 100)
+    allied_count = 3
+    doubled_average = trunc_div(2 * allied_total, allied_count)
+    return {
+        "eligibility": {
+            "different_side": True,
+            "hidden_equals_zero": True,
+            "target_poison_strictly_below": 95,
+            "target_anti_poison_strictly_below_actor_use_poison": True,
+        },
+        "high_iq_strongest": {
+            "iq_strictly_above": 60,
+            "rng_seed": 9,
+            "rng_output": high_iq_roll,
+            "rng_state_after": high_iq_state,
+            "rng_threshold": 7,
+            "attacks": [30, 50],
+            "target_slot": 4,
+        },
+        "stale_distance_first_eligible_bug": {
+            "strongest_attacks": [0, 0],
+            "stale_target_slot": 4,
+            "stale_target_distance": targeting[24 * 64 + 14],
+            "candidate_distances_ignored": [
+                targeting[23 * 64 + 13],
+                targeting[24 * 64 + 14],
+            ],
+            "target_slot": 3,
+            "strict_tie_keeps_first": True,
+            "rebuilds_targeting_map_for_each_eligible_candidate": True,
+            "no_eligible_target_does_not_read_stale_slot": True,
+        },
+        "range_and_round": {
+            "actor_use_poison": 80,
+            "targeting_range": trunc_div(80, 15) + 1,
+            "target_distance": targeting[23 * 64 + 13],
+            "round_zero_in_range": {"result": "poison", "range_checks": 1},
+            "round_positive_in_range": {"result": "move_mode_3", "range_checks_before_move": 1},
+            "round_zero_out_of_range": {
+                "result": "average_attack_fallback",
+                "range_checks": 2,
+            },
+            "round_negative_in_range": {
+                "result": "poison_after_second_range_check",
+                "range_checks": 2,
+            },
+        },
+        "out_of_range_fallback": {
+            "allied_total_i16": allied_total,
+            "allied_count_i16": allied_count,
+            "doubled_allied_average": doubled_average,
+            "target_attack_50_doubled": 100,
+            "target_attack_50_result": "rest",
+            "target_attack_200_doubled": 400,
+            "target_attack_200_result": "attack",
+            "comparison": "strictly_greater",
+        },
+        "selector_initializes_word12_to": -1,
+        "no_target_result": "attack",
+        "outer_ai_marks_action_done_after_handler": True,
+    }
+
+
 def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     combatants = [
         {"side": 0, "x": 10, "y": 20},
@@ -1125,6 +1196,7 @@ def build(data_root: Path) -> dict[str, object]:
     escape_vector = ai_escape_vector(battle3_field_words)
     attack_target_vectors = ai_attack_target_vectors(battle3_field_words)
     attack_handler_vectors = ai_attack_handler_vectors(z_dat_bytes, battle3_field_words)
+    poison_handler_vectors = ai_poison_handler_vectors(battle3_field_words)
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
@@ -1373,6 +1445,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,
+                "ai_poison_handler_vectors": poison_handler_vectors,
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

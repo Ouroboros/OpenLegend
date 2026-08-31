@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `31280db70448da59a8074c6f104d2c53772543dbcde1a8aad1ef5a1152cd71f1`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `084322af8d3e3d1d6ede874cebb870c4c173432a612ca13772eeb26b25956059`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -200,3 +200,13 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 area type0/3在targeting距离不大于select distance时命中并传movement mode1；type1/2还必须同x或同y并传mode2；其他type永不直接命中并传mode0。初次命中调用automatic flag1攻击；未命中且round value<=0直接结束而不休息，否则移动。移动后先复检原目标，仍失败才强制改选最近目标；二次命中则攻击，否则休息。固定field2初始距离为6/8，相邻重选距离1。
 
 现代`begin_ai_attack_plan/resume_ai_attack_after_move`已恢复全部typed决策及尾部action_done要求，但未实际执行`sub_3650E`逐格移动、`sub_37734`动画/伤害/攻击提交、休息及handler自身完成写入，故`sub_34C47`保持 `pending_implementation`。目标selector未写slot时现代安全拒绝原版slot -1线性越界读取，留待最终REVIEW。
+
+## 25. AI用毒handler计划
+
+`sub_355FF`仅在actor IQ严格大于60时消费一次`bounded(10)`；结果<7先选合格目标中signed attack严格最大者，否则及最大selector未写目标时回退`sub_3570F`。合格条件为敌对、未隐藏、poison<95且target anti_poison严格小于actor use_poison。最高攻击best从0开始，同值保留早槽，所有attack<=0时不写word12。
+
+`sub_3570F`并非最近目标：循环对每个合格候选都重复建立targeting图，再错误读取陈旧全局目标slot的距离。固定stale slot4距离8、候选真实距离`[6,8]`时，两次比较值相同，strict更新仅让slot3首个合格目标写入。无合格候选时原版不读取stale slot。seed9输出2、终态1341714958；IQ恰60无RNG。
+
+`sub_3540E`的射程为signed use_poison除15加1。round value恰0且在射程首次检查直接用毒；round value>0时即使已在射程仍请求movement mode3；负值跳过移动并重复建立targeting图后在第二次检查用毒。移动后只复检原目标，不重选。仍超距时比较`2*target attack`与wrapped int16己方`attack+HP`总和的`2*total/count`，strict更大回退自动攻击，否则休息。固定total330/count3阈值220，target attack50休息、200攻击。
+
+现代已恢复三个selector及typed handler计划；实际`sub_3650E`移动、`sub_397E5`用毒、`sub_34C47`攻击回退、`sub_34AD3`休息和外层AI action_done continuation尚未接线，故主handler保持`pending_implementation`。

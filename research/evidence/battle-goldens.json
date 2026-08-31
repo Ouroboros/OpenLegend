@@ -1173,6 +1173,76 @@
           "reselected_distance_6_result_for_range_1": "rest"
         }
       },
+      "ai_poison_handler_vectors": {
+        "eligibility": {
+          "different_side": true,
+          "hidden_equals_zero": true,
+          "target_poison_strictly_below": 95,
+          "target_anti_poison_strictly_below_actor_use_poison": true
+        },
+        "high_iq_strongest": {
+          "iq_strictly_above": 60,
+          "rng_seed": 9,
+          "rng_output": 2,
+          "rng_state_after": 1341714958,
+          "rng_threshold": 7,
+          "attacks": [
+            30,
+            50
+          ],
+          "target_slot": 4
+        },
+        "stale_distance_first_eligible_bug": {
+          "strongest_attacks": [
+            0,
+            0
+          ],
+          "stale_target_slot": 4,
+          "stale_target_distance": 8,
+          "candidate_distances_ignored": [
+            6,
+            8
+          ],
+          "target_slot": 3,
+          "strict_tie_keeps_first": true,
+          "rebuilds_targeting_map_for_each_eligible_candidate": true,
+          "no_eligible_target_does_not_read_stale_slot": true
+        },
+        "range_and_round": {
+          "actor_use_poison": 80,
+          "targeting_range": 6,
+          "target_distance": 6,
+          "round_zero_in_range": {
+            "result": "poison",
+            "range_checks": 1
+          },
+          "round_positive_in_range": {
+            "result": "move_mode_3",
+            "range_checks_before_move": 1
+          },
+          "round_zero_out_of_range": {
+            "result": "average_attack_fallback",
+            "range_checks": 2
+          },
+          "round_negative_in_range": {
+            "result": "poison_after_second_range_check",
+            "range_checks": 2
+          }
+        },
+        "out_of_range_fallback": {
+          "allied_total_i16": 330,
+          "allied_count_i16": 3,
+          "doubled_allied_average": 220,
+          "target_attack_50_doubled": 100,
+          "target_attack_50_result": "rest",
+          "target_attack_200_doubled": 400,
+          "target_attack_200_result": "attack",
+          "comparison": "strictly_greater"
+        },
+        "selector_initializes_word12_to": -1,
+        "no_target_result": "attack",
+        "outer_ai_marks_action_done_after_handler": true
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,
