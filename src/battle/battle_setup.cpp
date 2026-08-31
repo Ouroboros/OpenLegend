@@ -50,6 +50,17 @@ constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuse
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
 }
 
+[[nodiscard]] constexpr std::optional<std::size_t> legacy_cursor_index(
+    const BattlePathCoord coordinate) noexcept {
+    const auto index = static_cast<std::int32_t>(coordinate.y) *
+            static_cast<std::int32_t>(kBattleExtent) +
+        coordinate.x;
+    if (index < 0 || index >= static_cast<std::int32_t>(kBattleOccupancyCells)) {
+        return std::nullopt;
+    }
+    return static_cast<std::size_t>(index);
+}
+
 }  // namespace
 
 BattleSetup::BattleSetup(BattleData& data, model::RangerState& ranger)
@@ -3599,6 +3610,174 @@ std::optional<BattleAiSupportPlan> BattleSetup::resume_ai_support_after_move(
         return std::nullopt;
     }
     return plan;
+}
+
+std::optional<BattleCursorSelectionState> BattleSetup::begin_cursor_selection(
+    const std::size_t actor_slot,
+    const std::int16_t path_limit,
+    const BattleCursorSelectionMode mode) const {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        (mode != BattleCursorSelectionMode::movement &&
+         mode != BattleCursorSelectionMode::targeting)) {
+        return std::nullopt;
+    }
+    const auto& actor = combatants_[actor_slot].words;
+    BattleCursorSelectionState state{data_};
+    state.actor_slot = actor_slot;
+    state.source = BattlePathCoord{
+        actor[combatant_word::x],
+        actor[combatant_word::y],
+    };
+    state.cursor = state.source;
+    state.path_limit = path_limit;
+    state.mode = mode;
+    state.pathing.build(
+        state.source,
+        mode == BattleCursorSelectionMode::movement ? BattlePathMode::movement
+                                                    : BattlePathMode::targeting);
+    return state;
+}
+
+BattleCursorSelectionResult BattleSetup::apply_cursor_selection(
+    BattleCursorSelectionState& state,
+    const BattleCursorSelectionAction action) const noexcept {
+    if (!valid() || state.complete ||
+        state.actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        (state.mode != BattleCursorSelectionMode::movement &&
+         state.mode != BattleCursorSelectionMode::targeting)) {
+        return BattleCursorSelectionResult::invalid;
+    }
+
+    if (action == BattleCursorSelectionAction::cancel) {
+        state.path_limit = 0;
+        state.cancelled = true;
+        state.complete = true;
+        return BattleCursorSelectionResult::cancelled;
+    }
+    if (action == BattleCursorSelectionAction::activate) {
+        const auto index = legacy_cursor_index(state.cursor);
+        if (!index) {
+            return BattleCursorSelectionResult::unchanged;
+        }
+        const auto path_value = state.pathing.values()[*index];
+        const auto selectable = path_value <= state.path_limit &&
+            ((state.mode == BattleCursorSelectionMode::movement && path_value > 0) ||
+             (state.mode == BattleCursorSelectionMode::targeting && path_value >= 0));
+        if (!selectable) {
+            return BattleCursorSelectionResult::unchanged;
+        }
+        state.selected = true;
+        state.complete = true;
+        return BattleCursorSelectionResult::selected;
+    }
+
+    BattlePathCoord direction{};
+    switch (action) {
+    case BattleCursorSelectionAction::down:
+        direction.y = 1;
+        break;
+    case BattleCursorSelectionAction::right:
+        direction.x = 1;
+        break;
+    case BattleCursorSelectionAction::left:
+        direction.x = -1;
+        break;
+    case BattleCursorSelectionAction::up:
+        direction.y = -1;
+        break;
+    case BattleCursorSelectionAction::cancel:
+    case BattleCursorSelectionAction::activate:
+        return BattleCursorSelectionResult::invalid;
+    }
+
+    const BattlePathCoord candidate{
+        static_cast<std::int16_t>(state.cursor.x + direction.x),
+        static_cast<std::int16_t>(state.cursor.y + direction.y),
+    };
+    const auto index = legacy_cursor_index(candidate);
+    if (!index) {
+        return BattleCursorSelectionResult::unchanged;
+    }
+    const auto path_value = state.pathing.values()[*index];
+    if (path_value > state.path_limit && data_.occupancy()[*index] == -1) {
+        return BattleCursorSelectionResult::unchanged;
+    }
+    state.cursor = candidate;
+    return BattleCursorSelectionResult::moved;
+}
+
+std::optional<BattleCursorSelectionState> BattleSetup::begin_player_movement_selection(
+    const std::size_t actor_slot) const {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    return begin_cursor_selection(
+        actor_slot,
+        combatants_[actor_slot].words[combatant_word::round_value],
+        BattleCursorSelectionMode::movement);
+}
+
+std::optional<BattlePlayerMovementPlan> BattleSetup::finish_player_movement_selection(
+    const BattleCursorSelectionState& state) const {
+    if (!valid() || state.actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        state.mode != BattleCursorSelectionMode::movement || !state.complete ||
+        !state.selected || state.cancelled) {
+        return std::nullopt;
+    }
+    const auto& actor = combatants_[state.actor_slot].words;
+    if (state.source != BattlePathCoord{
+                            actor[combatant_word::x],
+                            actor[combatant_word::y]}) {
+        return std::nullopt;
+    }
+
+    BattlePlayerMovementPlan plan{state.pathing};
+    plan.actor_slot = state.actor_slot;
+    plan.source = state.source;
+    plan.destination = state.cursor;
+    plan.path_marked = plan.pathing.mark_shortest_path(plan.source, plan.destination);
+    plan.complete = !plan.path_marked;
+    return plan;
+}
+
+std::optional<BattleAiMovementStep> BattleSetup::advance_player_movement(
+    BattlePlayerMovementPlan& plan) {
+    if (!valid() || plan.complete || !plan.path_marked ||
+        plan.actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    auto& actor = combatants_[plan.actor_slot].words;
+    const BattlePathCoord from{
+        actor[combatant_word::x],
+        actor[combatant_word::y],
+    };
+    const auto moved = move_one_marked_step(plan.pathing, plan.actor_slot);
+    if (!moved) {
+        plan.complete = true;
+        return std::nullopt;
+    }
+    plan.step_count = wrapping_i16(static_cast<std::int32_t>(plan.step_count) + 1);
+    plan.complete = *moved == plan.destination || actor[combatant_word::round_value] <= 0;
+
+    const auto role_id = actor[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    return BattleAiMovementStep{
+        .from = from,
+        .to = *moved,
+        .remaining_round_value = actor[combatant_word::round_value],
+        .physical_power = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::physical_power),
+        .view_center_x = moved->x,
+        .view_center_y = moved->y,
+        .view_x = static_cast<std::int16_t>(std::clamp<std::int32_t>(moved->x - 11, 0, 32)),
+        .view_y = static_cast<std::int16_t>(std::clamp<std::int32_t>(moved->y - 11, 0, 32)),
+        .moved = true,
+        .render_required = true,
+        .present_required = true,
+        .complete = plan.complete,
+    };
 }
 
 std::optional<BattleAiMovementPlan> BattleSetup::begin_ai_movement_plan(

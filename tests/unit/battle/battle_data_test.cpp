@@ -1240,6 +1240,89 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(!setup.begin_ai_support_plan(actor_slot, invalid).has_value());
 }
 
+void run_player_movement_selection_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    auto& actor = setup.combatants()[0U].words;
+    const auto& occupied_target = setup.combatants()[1U].words;
+    const auto role_id = static_cast<std::size_t>(actor[combatant_word::role_id]);
+    actor[combatant_word::round_value] = 2;
+    ranger.roles[role_id].set_word(role_word::speed, 20);
+    ranger.roles[role_id].set_word(role_word::physical_power, 10);
+
+    auto selection = setup.begin_player_movement_selection(0U);
+    OL_CHECK(selection.has_value());
+    OL_CHECK((selection->source == BattlePathCoord{26, 24}));
+    OL_CHECK(selection->cursor == selection->source);
+    OL_CHECK(selection->path_limit == 2);
+    OL_CHECK(selection->mode == BattleCursorSelectionMode::movement);
+    OL_CHECK(selection->render_required);
+    OL_CHECK(selection->present_required);
+    OL_CHECK(
+        setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::activate) ==
+        BattleCursorSelectionResult::unchanged);
+    OL_CHECK(setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::down) ==
+             BattleCursorSelectionResult::moved);
+    OL_CHECK((selection->cursor == BattlePathCoord{26, 25}));
+    OL_CHECK(setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::down) ==
+             BattleCursorSelectionResult::moved);
+    OL_CHECK((selection->cursor == BattlePathCoord{
+                                       occupied_target[combatant_word::x],
+                                       occupied_target[combatant_word::y]}));
+    OL_CHECK(selection->pathing.value(selection->cursor) == kBattlePathBlocked);
+    OL_CHECK(
+        setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::activate) ==
+        BattleCursorSelectionResult::unchanged);
+    OL_CHECK(setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::up) ==
+             BattleCursorSelectionResult::moved);
+    OL_CHECK(
+        setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::activate) ==
+        BattleCursorSelectionResult::selected);
+    OL_CHECK(selection->selected);
+    OL_CHECK(selection->complete);
+
+    auto movement = setup.finish_player_movement_selection(*selection);
+    OL_CHECK(movement.has_value());
+    OL_CHECK(movement->path_marked);
+    OL_CHECK((movement->destination == BattlePathCoord{26, 25}));
+    const auto step = setup.advance_player_movement(*movement);
+    OL_CHECK(step.has_value());
+    OL_CHECK((step->from == BattlePathCoord{26, 24}));
+    OL_CHECK((step->to == BattlePathCoord{26, 25}));
+    OL_CHECK(step->remaining_round_value == 1);
+    OL_CHECK(step->physical_power == 9);
+    OL_CHECK(step->wait_ticks == 40);
+    OL_CHECK(step->render_required);
+    OL_CHECK(step->present_required);
+    OL_CHECK(step->complete);
+    OL_CHECK(movement->complete);
+
+    auto cancelled = setup.begin_player_movement_selection(0U);
+    OL_CHECK(cancelled.has_value());
+    OL_CHECK(
+        setup.apply_cursor_selection(*cancelled, BattleCursorSelectionAction::cancel) ==
+        BattleCursorSelectionResult::cancelled);
+    OL_CHECK(cancelled->path_limit == 0);
+    OL_CHECK(cancelled->cancelled);
+    OL_CHECK(!setup.finish_player_movement_selection(*cancelled).has_value());
+
+    auto targeting = setup.begin_cursor_selection(
+        0U, 1, BattleCursorSelectionMode::targeting);
+    OL_CHECK(targeting.has_value());
+    OL_CHECK(setup.apply_cursor_selection(*targeting, BattleCursorSelectionAction::down) ==
+             BattleCursorSelectionResult::moved);
+    OL_CHECK((targeting->cursor == BattlePathCoord{26, 26}));
+    OL_CHECK(targeting->pathing.value(targeting->cursor) == 1);
+    OL_CHECK(
+        setup.apply_cursor_selection(*targeting, BattleCursorSelectionAction::activate) ==
+        BattleCursorSelectionResult::selected);
+}
+
 void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
@@ -2758,6 +2841,7 @@ int main() {
     run_ai_item_effect_test(data_root);
     run_ai_request_handler_test(data_root);
     run_ai_support_handler_test(data_root);
+    run_player_movement_selection_test(data_root);
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);

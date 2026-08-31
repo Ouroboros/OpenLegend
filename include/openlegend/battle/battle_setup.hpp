@@ -341,6 +341,57 @@ struct BattleAiMovementStep {
     bool complete{};
 };
 
+enum class BattleCursorSelectionMode : std::int16_t {
+    movement,
+    targeting,
+};
+
+enum class BattleCursorSelectionAction : std::int16_t {
+    down,
+    right,
+    left,
+    up,
+    cancel,
+    activate,
+};
+
+enum class BattleCursorSelectionResult : std::int16_t {
+    unchanged,
+    moved,
+    selected,
+    cancelled,
+    invalid,
+};
+
+struct BattleCursorSelectionState {
+    explicit BattleCursorSelectionState(const BattleData& data) : pathing(data) {}
+
+    BattlePathing pathing;
+    std::size_t actor_slot{};
+    BattlePathCoord source{};
+    BattlePathCoord cursor{};
+    std::int16_t path_limit{};
+    BattleCursorSelectionMode mode{BattleCursorSelectionMode::movement};
+    bool cancelled{};
+    bool selected{};
+    bool complete{};
+    bool render_required{true};
+    bool present_required{true};
+};
+
+struct BattlePlayerMovementPlan {
+    explicit BattlePlayerMovementPlan(const BattlePathing& selected_pathing)
+        : pathing(selected_pathing) {}
+
+    BattlePathing pathing;
+    std::size_t actor_slot{};
+    BattlePathCoord source{};
+    BattlePathCoord destination{};
+    std::int16_t step_count{};
+    bool path_marked{};
+    bool complete{};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -642,6 +693,19 @@ public:
     [[nodiscard]] std::optional<BattleAiSupportPlan> resume_ai_support_after_move(
         std::size_t actor_slot,
         BattleAiSupportPlan plan);
+    [[nodiscard]] std::optional<BattleCursorSelectionState> begin_cursor_selection(
+        std::size_t actor_slot,
+        std::int16_t path_limit,
+        BattleCursorSelectionMode mode) const;
+    [[nodiscard]] BattleCursorSelectionResult apply_cursor_selection(
+        BattleCursorSelectionState& state,
+        BattleCursorSelectionAction action) const noexcept;
+    [[nodiscard]] std::optional<BattleCursorSelectionState> begin_player_movement_selection(
+        std::size_t actor_slot) const;
+    [[nodiscard]] std::optional<BattlePlayerMovementPlan> finish_player_movement_selection(
+        const BattleCursorSelectionState& state) const;
+    [[nodiscard]] std::optional<BattleAiMovementStep> advance_player_movement(
+        BattlePlayerMovementPlan& plan);
     [[nodiscard]] std::optional<BattleAiMovementPlan> begin_ai_movement_plan(
         std::size_t actor_slot,
         std::int16_t target_slot,

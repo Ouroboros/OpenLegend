@@ -591,6 +591,55 @@ def ai_movement_vectors(
     }
 
 
+def player_cursor_vectors(
+    field_words: list[int], occupied: set[int]
+) -> dict[str, object]:
+    source = (26, 24)
+    destination = (26, 25)
+    occupied_target = (26, 26)
+    movement = build_path_map(field_words, source, "movement", occupied)
+    targeting = build_path_map(field_words, source, "targeting", occupied)
+    movement_target_value = movement[occupied_target[1] * 64 + occupied_target[0]]
+    targeting_target_value = targeting[occupied_target[1] * 64 + occupied_target[0]]
+    marked = movement.copy()
+    path_marked = mark_path(marked, source, destination)
+    return {
+        "battle_id": 4,
+        "battlefield_id": 2,
+        "source": list(source),
+        "path_limit": 2,
+        "input_priority": ["down", "right", "left", "up", "cancel", "activate"],
+        "movement": {
+            "source_activation_selects": False,
+            "first_down": list(destination),
+            "occupied_hover": list(occupied_target),
+            "occupied_path_value": movement_target_value,
+            "occupied_value_over_limit_but_occupancy_allows_hover":
+                movement_target_value > 2 and occupied_target[1] * 64 + occupied_target[0] in occupied,
+            "occupied_activation_selects": False,
+            "selected": list(destination),
+            "path_marked": path_marked,
+            "first_step": list(destination),
+            "round_value": [2, 1],
+            "speed_div_10": 2,
+            "physical_power": [10, 9],
+            "render_required": True,
+            "present_required": True,
+            "wait_ticks": 40,
+        },
+        "targeting": {
+            "occupied_path_value": targeting_target_value,
+            "path_limit": targeting_target_value,
+            "occupied_activation_selects": targeting_target_value >= 0,
+        },
+        "cancel": {
+            "path_limit_after": 0,
+            "cancel_word_after": 1,
+            "wrapper_return": -1,
+        },
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1692,6 +1741,7 @@ def build(data_root: Path) -> dict[str, object]:
         for write in movement_setup["static_occupancy_writes"]
     }
     movement_vectors = ai_movement_vectors(movement_field_words, movement_occupied)
+    cursor_vectors = player_cursor_vectors(movement_field_words, movement_occupied)
 
     pathing_records: list[dict[str, object]] = []
     for battle_id in (0, 93):
@@ -2041,6 +2091,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_request_vectors": ai_request_vectors(),
                 "ai_support_vectors": ai_support_vectors(),
                 "ai_movement_vectors": movement_vectors,
+                "player_cursor_vectors": cursor_vectors,
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,

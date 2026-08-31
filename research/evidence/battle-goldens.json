@@ -1568,6 +1568,68 @@
         },
         "mode_0_round_exhaustion_stops_after_first_step": true
       },
+      "player_cursor_vectors": {
+        "battle_id": 4,
+        "battlefield_id": 2,
+        "source": [
+          26,
+          24
+        ],
+        "path_limit": 2,
+        "input_priority": [
+          "down",
+          "right",
+          "left",
+          "up",
+          "cancel",
+          "activate"
+        ],
+        "movement": {
+          "source_activation_selects": false,
+          "first_down": [
+            26,
+            25
+          ],
+          "occupied_hover": [
+            26,
+            26
+          ],
+          "occupied_path_value": 555,
+          "occupied_value_over_limit_but_occupancy_allows_hover": true,
+          "occupied_activation_selects": false,
+          "selected": [
+            26,
+            25
+          ],
+          "path_marked": true,
+          "first_step": [
+            26,
+            25
+          ],
+          "round_value": [
+            2,
+            1
+          ],
+          "speed_div_10": 2,
+          "physical_power": [
+            10,
+            9
+          ],
+          "render_required": true,
+          "present_required": true,
+          "wait_ticks": 40
+        },
+        "targeting": {
+          "occupied_path_value": 2,
+          "path_limit": 2,
+          "occupied_activation_selects": true
+        },
+        "cancel": {
+          "path_limit_after": 0,
+          "cancel_word_after": 1,
+          "wrapper_return": -1
+        }
+      },
       "ai_escape_vector": {
         "battle_id": 3,
         "battlefield_id": 2,
