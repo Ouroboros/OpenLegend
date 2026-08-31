@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -34,6 +35,8 @@ enum class BattleSessionPhase {
     ai_prelude_present,
     ai_wait,
     ai_action_selected,
+    ai_movement_step_present,
+    ai_movement_wait,
     round_wait,
     battle_outcome,
 };
@@ -109,10 +112,35 @@ public:
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
 
 private:
+    enum class AiMovementContinuation {
+        direct,
+        escape,
+        attack,
+        poison,
+        item,
+        request,
+        support,
+        throwing_weapon,
+    };
+
     [[nodiscard]] bool begin_initial_battle();
     [[nodiscard]] bool begin_round(std::uint32_t bios_tick);
     [[nodiscard]] bool begin_ai_action();
     [[nodiscard]] bool advance_ai_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool dispatch_selected_ai_action();
+    [[nodiscard]] bool begin_ai_movement_to(
+        std::int16_t target_slot,
+        BattlePathCoord target,
+        std::int16_t mode,
+        std::int16_t range,
+        AiMovementContinuation continuation);
+    [[nodiscard]] bool begin_ai_movement(
+        BattleAiMovementPlan plan,
+        AiMovementContinuation continuation);
+    [[nodiscard]] bool advance_ai_movement_step();
+    [[nodiscard]] bool advance_ai_movement_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool finish_ai_movement();
+    [[nodiscard]] bool finish_ai_handler(BattlePlayerAction action, bool rest_first);
     [[nodiscard]] bool begin_player_action_menu();
     [[nodiscard]] bool begin_player_movement();
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
@@ -155,6 +183,15 @@ private:
     std::uint32_t round_tick_{};
     std::uint32_t ai_wait_tick_{};
     std::int32_t ai_wait_tick_changes_remaining_{};
+    std::unique_ptr<BattleAiMovementPlan> ai_movement_plan_;
+    std::optional<AiMovementContinuation> ai_movement_continuation_;
+    std::optional<BattleAiAttackPlan> ai_attack_plan_;
+    std::optional<BattleAiPoisonPlan> ai_poison_plan_;
+    std::optional<BattleAiItemPlan> ai_item_plan_;
+    std::optional<BattleAiRequestPlan> ai_request_plan_;
+    std::optional<BattleAiSupportPlan> ai_support_plan_;
+    std::uint32_t ai_movement_wait_tick_{};
+    std::int32_t ai_movement_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;

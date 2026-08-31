@@ -64,6 +64,9 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::ai_prelude_present: return "ai_prelude_present";
     case BattleSessionPhase::ai_wait: return "ai_wait";
     case BattleSessionPhase::ai_action_selected: return "ai_action_selected";
+    case BattleSessionPhase::ai_movement_step_present:
+        return "ai_movement_step_present";
+    case BattleSessionPhase::ai_movement_wait: return "ai_movement_wait";
     case BattleSessionPhase::round_wait: return "round_wait";
     case BattleSessionPhase::battle_outcome: return "battle_outcome";
     }
@@ -186,6 +189,8 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
         static_cast<void>(begin_ai_action());
     } else if (phase_ == BattleSessionPhase::ai_wait) {
         static_cast<void>(advance_ai_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::ai_movement_wait) {
+        static_cast<void>(advance_ai_movement_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_movement_wait) {
         static_cast<void>(advance_player_movement_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::round_wait && bios_tick != round_tick_) {
@@ -266,6 +271,17 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             " slot=" + std::to_string(current_actor_slot_) +
             " wait_tick_changes=" +
             std::to_string(player_movement_wait_tick_changes_remaining_));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::ai_movement_step_present) {
+        ai_movement_wait_tick_ = bios_tick;
+        ai_movement_wait_tick_changes_remaining_ = timing::legacy_delay_tick_count(40);
+        phase_ = BattleSessionPhase::ai_movement_wait;
+        diagnostics::log_info(
+            "battle AI movement step presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " wait_tick_changes=" +
+            std::to_string(ai_movement_wait_tick_changes_remaining_));
         return;
     }
     if (phase_ == BattleSessionPhase::ai_prelude_present) {
@@ -402,11 +418,371 @@ bool BattleSession::advance_ai_wait(const std::uint32_t bios_tick) {
         " handler=" +
         std::to_string(static_cast<std::int16_t>(ai_turn_decision_->handler)) +
         " target=" + std::to_string(ai_turn_decision_->choice.target_slot));
-    if (ai_turn_decision_->handler != BattleAiHandler::rest) {
+    return dispatch_selected_ai_action();
+}
+
+bool BattleSession::dispatch_selected_ai_action() {
+    if (!ai_turn_decision_.has_value()) {
+        error_ = "battle AI decision is absent";
+        return false;
+    }
+    const auto& choice = ai_turn_decision_->choice;
+    const auto target_coordinate = [this](const std::int16_t slot)
+        -> std::optional<BattlePathCoord> {
+        if (slot < 0 || slot >= setup_.combatant_count()) {
+            return std::nullopt;
+        }
+        const auto& target = setup_.combatants()[static_cast<std::size_t>(slot)].words;
+        return BattlePathCoord{target[combatant_word::x], target[combatant_word::y]};
+    };
+    const auto begin_targeted_movement = [this, &target_coordinate](
+                                             const std::int16_t target_slot,
+                                             const std::int16_t mode,
+                                             const std::int16_t range,
+                                             const AiMovementContinuation continuation) {
+        const auto target = target_coordinate(target_slot);
+        if (!target.has_value()) {
+            error_ = "battle AI movement target is outside combatant slots";
+            return false;
+        }
+        return begin_ai_movement_to(
+            target_slot, *target, mode, range, continuation);
+    };
+
+    switch (ai_turn_decision_->handler) {
+    case BattleAiHandler::rest:
+        return finish_ai_handler(BattlePlayerAction::rest, true);
+    case BattleAiHandler::move:
+        return begin_ai_movement_to(
+            choice.target_slot,
+            choice.target,
+            0,
+            0,
+            AiMovementContinuation::direct);
+    case BattleAiHandler::escape: {
+        const auto escape = setup_.ai_escape_plan(current_actor_slot_, true);
+        if (!escape.has_value()) {
+            error_ = "battle AI escape plan failed";
+            return false;
+        }
+        if (!escape->destination.has_value()) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
+        return begin_ai_movement_to(
+            -1, *escape->destination, 0, 0, AiMovementContinuation::escape);
+    }
+    case BattleAiHandler::attack:
+        ai_attack_plan_ = setup_.begin_ai_attack_plan(current_actor_slot_, random_);
+        if (!ai_attack_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI attack plan failed" : setup_.error();
+            return false;
+        }
+        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::move) {
+            return begin_targeted_movement(
+                ai_attack_plan_->target_slot,
+                ai_attack_plan_->movement_mode,
+                ai_attack_plan_->select_distance,
+                AiMovementContinuation::attack);
+        }
+        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::rest) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
+        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::finish) {
+            return finish_ai_handler(BattlePlayerAction::attack, false);
+        }
+        phase_ = BattleSessionPhase::ai_action_selected;
+        return true;
+    case BattleAiHandler::use_poison: {
+        const auto stale_target = setup_.combatants()[current_actor_slot_]
+                                      .words[combatant_word::ai_poison_target];
+        ai_poison_plan_ = setup_.begin_ai_poison_plan(
+            current_actor_slot_, static_cast<std::size_t>(stale_target), random_);
+        if (!ai_poison_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI poison plan failed" : setup_.error();
+            return false;
+        }
+        if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::move) {
+            return begin_targeted_movement(
+                ai_poison_plan_->target_slot,
+                ai_poison_plan_->movement_mode,
+                ai_poison_plan_->targeting_range,
+                AiMovementContinuation::poison);
+        }
+        if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::rest) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
         phase_ = BattleSessionPhase::ai_action_selected;
         return true;
     }
-    if (!setup_.rest_actor(current_actor_slot_, random_).has_value()) {
+    case BattleAiHandler::item:
+        ai_item_plan_ = setup_.begin_ai_item_plan(current_actor_slot_, choice);
+        if (!ai_item_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI item plan failed" : setup_.error();
+            return false;
+        }
+        if (ai_item_plan_->next_step == BattleAiItemNextStep::move &&
+            ai_item_plan_->relocation_destination.has_value()) {
+            return begin_ai_movement_to(
+                -1,
+                *ai_item_plan_->relocation_destination,
+                0,
+                0,
+                AiMovementContinuation::item);
+        }
+        phase_ = BattleSessionPhase::ai_action_selected;
+        return true;
+    case BattleAiHandler::request_medicine:
+    case BattleAiHandler::request_detox:
+        ai_request_plan_ = setup_.begin_ai_request_plan(current_actor_slot_, choice);
+        if (!ai_request_plan_.has_value()) {
+            error_ = "battle AI request plan failed";
+            return false;
+        }
+        if (ai_request_plan_->next_step == BattleAiRequestNextStep::move) {
+            return begin_ai_movement_to(
+                ai_request_plan_->target_slot,
+                ai_request_plan_->target,
+                ai_request_plan_->movement_mode,
+                ai_request_plan_->movement_value,
+                AiMovementContinuation::request);
+        }
+        phase_ = BattleSessionPhase::ai_action_selected;
+        return true;
+    case BattleAiHandler::detox:
+    case BattleAiHandler::medicine:
+        ai_support_plan_ = setup_.begin_ai_support_plan(current_actor_slot_, choice);
+        if (!ai_support_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI support plan failed" : setup_.error();
+            return false;
+        }
+        if (ai_support_plan_->next_step == BattleAiSupportNextStep::move) {
+            return begin_targeted_movement(
+                ai_support_plan_->target_slot,
+                ai_support_plan_->movement_mode,
+                ai_support_plan_->movement_value,
+                AiMovementContinuation::support);
+        }
+        if (ai_support_plan_->next_step == BattleAiSupportNextStep::rest) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
+        phase_ = BattleSessionPhase::ai_action_selected;
+        return true;
+    case BattleAiHandler::throwing_weapon:
+        ai_item_plan_ = setup_.begin_ai_throwing_weapon_plan(
+            current_actor_slot_, choice, random_);
+        if (!ai_item_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI throwing-weapon plan failed" : setup_.error();
+            return false;
+        }
+        if (ai_item_plan_->next_step == BattleAiItemNextStep::move) {
+            return begin_targeted_movement(
+                ai_item_plan_->target_slot,
+                ai_item_plan_->movement_mode,
+                ai_item_plan_->targeting_range,
+                AiMovementContinuation::throwing_weapon);
+        }
+        phase_ = BattleSessionPhase::ai_action_selected;
+        return true;
+    }
+    error_ = "battle AI handler is invalid";
+    return false;
+}
+
+bool BattleSession::begin_ai_movement_to(
+    const std::int16_t target_slot,
+    const BattlePathCoord target,
+    const std::int16_t mode,
+    const std::int16_t range,
+    const AiMovementContinuation continuation) {
+    auto movement = setup_.begin_ai_movement_plan(
+        current_actor_slot_, target_slot, target, mode, range);
+    if (!movement.has_value()) {
+        error_ = setup_.valid() ? "battle AI movement plan failed" : setup_.error();
+        return false;
+    }
+    return begin_ai_movement(std::move(*movement), continuation);
+}
+
+bool BattleSession::begin_ai_movement(
+    BattleAiMovementPlan plan,
+    const AiMovementContinuation continuation) {
+    ai_movement_plan_ = std::make_unique<BattleAiMovementPlan>(std::move(plan));
+    ai_movement_continuation_ = continuation;
+    render_state_.path_limit = 0;
+    diagnostics::log_info(
+        "battle AI movement ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " mode=" + std::to_string(ai_movement_plan_->mode) +
+        " source=" + std::to_string(ai_movement_plan_->source.x) + "," +
+        std::to_string(ai_movement_plan_->source.y) +
+        " destination=" + std::to_string(ai_movement_plan_->destination.x) + "," +
+        std::to_string(ai_movement_plan_->destination.y) +
+        " continuation=" + std::to_string(static_cast<int>(continuation)));
+    if (ai_movement_plan_->complete) {
+        return finish_ai_movement();
+    }
+    return advance_ai_movement_step();
+}
+
+bool BattleSession::advance_ai_movement_step() {
+    if (!ai_movement_plan_) {
+        error_ = "battle AI movement plan is absent";
+        return false;
+    }
+    const auto step = setup_.advance_ai_movement(*ai_movement_plan_);
+    if (!step.has_value()) {
+        if (ai_movement_plan_->complete) {
+            return finish_ai_movement();
+        }
+        error_ = setup_.valid() ? "battle AI movement step failed" : setup_.error();
+        return false;
+    }
+    render_state_.view_x = step->view_x;
+    render_state_.view_y = step->view_y;
+    render_state_.path_limit = 0;
+    render_state_.primary_cursor = step->to;
+    phase_ = BattleSessionPhase::ai_movement_step_present;
+    diagnostics::log_info(
+        "battle AI movement step id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " mode=" + std::to_string(ai_movement_plan_->mode) +
+        " from=" + std::to_string(step->from.x) + "," + std::to_string(step->from.y) +
+        " to=" + std::to_string(step->to.x) + "," + std::to_string(step->to.y) +
+        " round_value=" + std::to_string(step->remaining_round_value) +
+        " physical_power=" + std::to_string(step->physical_power) +
+        " complete=" + (step->complete ? std::string{"true"} : std::string{"false"}));
+    return true;
+}
+
+bool BattleSession::advance_ai_movement_wait(const std::uint32_t bios_tick) {
+    if (bios_tick == ai_movement_wait_tick_) {
+        return true;
+    }
+    ai_movement_wait_tick_ = bios_tick;
+    if (ai_movement_wait_tick_changes_remaining_ > 0) {
+        --ai_movement_wait_tick_changes_remaining_;
+    }
+    if (ai_movement_wait_tick_changes_remaining_ > 0) {
+        return true;
+    }
+    if (ai_movement_plan_ && !ai_movement_plan_->complete) {
+        return advance_ai_movement_step();
+    }
+    return finish_ai_movement();
+}
+
+bool BattleSession::finish_ai_movement() {
+    if (!ai_movement_continuation_.has_value()) {
+        error_ = "battle AI movement continuation is absent";
+        return false;
+    }
+    const auto continuation = *ai_movement_continuation_;
+    ai_movement_plan_.reset();
+    ai_movement_continuation_.reset();
+    switch (continuation) {
+    case AiMovementContinuation::direct:
+        return finish_ai_handler(BattlePlayerAction::movement, false);
+    case AiMovementContinuation::escape:
+        return finish_ai_handler(BattlePlayerAction::rest, true);
+    case AiMovementContinuation::attack:
+        if (!ai_attack_plan_.has_value()) {
+            error_ = "battle AI attack continuation plan is absent";
+            return false;
+        }
+        ai_attack_plan_ = setup_.resume_ai_attack_after_move(
+            current_actor_slot_, *ai_attack_plan_);
+        if (!ai_attack_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI attack continuation failed" : setup_.error();
+            return false;
+        }
+        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::rest) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
+        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::finish) {
+            return finish_ai_handler(BattlePlayerAction::attack, false);
+        }
+        break;
+    case AiMovementContinuation::poison:
+        if (!ai_poison_plan_.has_value()) {
+            error_ = "battle AI poison continuation plan is absent";
+            return false;
+        }
+        ai_poison_plan_ = setup_.resume_ai_poison_after_move(
+            current_actor_slot_, *ai_poison_plan_);
+        if (!ai_poison_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI poison continuation failed" : setup_.error();
+            return false;
+        }
+        if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::rest) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
+        break;
+    case AiMovementContinuation::item:
+        if (!ai_item_plan_.has_value()) {
+            error_ = "battle AI item continuation plan is absent";
+            return false;
+        }
+        ai_item_plan_ = setup_.resume_ai_item_after_relocation(
+            current_actor_slot_, *ai_item_plan_);
+        if (!ai_item_plan_.has_value()) {
+            error_ = "battle AI item continuation failed";
+            return false;
+        }
+        break;
+    case AiMovementContinuation::request:
+        if (!ai_request_plan_.has_value()) {
+            error_ = "battle AI request continuation plan is absent";
+            return false;
+        }
+        ai_request_plan_ = setup_.resume_ai_request_after_move(
+            current_actor_slot_, *ai_request_plan_);
+        if (!ai_request_plan_.has_value()) {
+            error_ = "battle AI request continuation failed";
+            return false;
+        }
+        break;
+    case AiMovementContinuation::support:
+        if (!ai_support_plan_.has_value()) {
+            error_ = "battle AI support continuation plan is absent";
+            return false;
+        }
+        ai_support_plan_ = setup_.resume_ai_support_after_move(
+            current_actor_slot_, *ai_support_plan_);
+        if (!ai_support_plan_.has_value()) {
+            error_ = setup_.valid() ? "battle AI support continuation failed" : setup_.error();
+            return false;
+        }
+        if (ai_support_plan_->next_step == BattleAiSupportNextStep::rest) {
+            return finish_ai_handler(BattlePlayerAction::rest, true);
+        }
+        break;
+    case AiMovementContinuation::throwing_weapon:
+        if (!ai_item_plan_.has_value()) {
+            error_ = "battle AI throwing-weapon continuation plan is absent";
+            return false;
+        }
+        ai_item_plan_ = setup_.resume_ai_throwing_weapon_after_move(
+            current_actor_slot_, *ai_item_plan_);
+        if (!ai_item_plan_.has_value()) {
+            error_ = setup_.valid()
+                ? "battle AI throwing-weapon continuation failed"
+                : setup_.error();
+            return false;
+        }
+        break;
+    }
+    phase_ = BattleSessionPhase::ai_action_selected;
+    diagnostics::log_info(
+        "battle AI movement continuation ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " continuation=" + std::to_string(static_cast<int>(continuation)));
+    return true;
+}
+
+bool BattleSession::finish_ai_handler(
+    const BattlePlayerAction action,
+    const bool rest_first) {
+    if (rest_first && !setup_.rest_actor(current_actor_slot_, random_).has_value()) {
         error_ = setup_.error();
         return false;
     }
@@ -414,7 +790,7 @@ bool BattleSession::advance_ai_wait(const std::uint32_t bios_tick) {
         error_ = "battle AI turn completion failed";
         return false;
     }
-    return finish_current_actor(BattlePlayerAction::rest);
+    return finish_current_actor(action);
 }
 
 bool BattleSession::begin_player_action_menu() {

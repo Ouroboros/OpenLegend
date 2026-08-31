@@ -2326,6 +2326,133 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(
         automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(automatic_session.setup().combatants()[0U].words[combatant_word::ai_action] == 0);
+
+    std::filesystem::remove(log_path, log_error);
+    OL_CHECK(openlegend::diagnostics::initialize_logging(
+                 log_path, openlegend::diagnostics::LogLevel::debug) ==
+             openlegend::diagnostics::LoggingInitializationStatus::initialized);
+    auto escape_ranger = make_ranger({0, 2, -1, -1, -1, -1});
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        escape_ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+    }
+    for (const auto role_id : {0U, 1U, 2U, 4U}) {
+        auto& role = escape_ranger.roles[role_id];
+        role.set_word(role_word::hp, 100);
+        role.set_word(role_word::maximum_hp, 100);
+        role.set_word(role_word::hurt, 0);
+        role.set_word(role_word::poison, 0);
+        role.set_word(role_word::physical_power, 100);
+        role.set_word(role_word::mp, 0);
+        role.set_word(role_word::maximum_mp, 0);
+        role.set_word(role_word::attack, 10);
+        role.set_word(role_word::medicine, 0);
+        role.set_word(role_word::detoxification, 0);
+        role.set_word(role_word::use_poison, 0);
+        role.set_word(role_word::speed, 0);
+        for (std::size_t magic_slot = 0U; magic_slot < role_word::magic_count; ++magic_slot) {
+            role.set_word(role_word::magic_id_begin + magic_slot, 0);
+        }
+    }
+    escape_ranger.roles[0U].set_word(role_word::hp, 19);
+    escape_ranger.roles[0U].set_word(role_word::speed, 45);
+    openlegend::random::LegacyRandom escape_session_random{10U};
+    BattleSession escape_session{
+        data_root, escape_ranger, escape_session_random, 2, false};
+    OL_CHECK(escape_session.valid());
+    for (std::size_t index = 0U;
+         index < escape_session.setup().party_prefix_length();
+         ++index) {
+        if (escape_session.setup().selection_states()[index] == 0) {
+            static_cast<void>(escape_session.handle_key(0x0DU));
+        }
+        OL_CHECK(escape_session.handle_key(0x98U) == BattleSessionInputResult::changed);
+    }
+    OL_CHECK(escape_session.handle_key(0x0DU) ==
+             BattleSessionInputResult::selection_complete);
+    OL_CHECK(escape_session.render(framebuffer));
+    escape_session.finish_presented_tick(300U);
+    for (std::size_t frame = 0U; frame < escape_session.fade_frame_count(); ++frame) {
+        OL_CHECK(escape_session.render(framebuffer));
+        escape_session.finish_presented_tick(300U);
+    }
+    escape_session.setup().enable_automatic_mode();
+    escape_session.advance(300U);
+    OL_CHECK(escape_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(escape_session.current_actor_slot() == 0U);
+    OL_CHECK(escape_session.setup().combatants()[0U].words[combatant_word::role_id] == 0);
+    OL_CHECK(
+        escape_session.setup().combatants()[0U].words[combatant_word::round_value] == 3);
+    const BattlePathCoord escape_source{
+        escape_session.setup().combatants()[0U].words[combatant_word::x],
+        escape_session.setup().combatants()[0U].words[combatant_word::y]};
+    OL_CHECK(escape_session.render(framebuffer));
+    escape_session.finish_presented_tick(300U);
+    OL_CHECK(escape_session.phase() == BattleSessionPhase::ai_action);
+    escape_session.advance(300U);
+    OL_CHECK(escape_session.phase() == BattleSessionPhase::ai_prelude_present);
+    OL_CHECK(escape_session.render(framebuffer));
+    escape_session.finish_presented_tick(300U);
+    for (std::uint32_t tick = 301U; tick < 308U; ++tick) {
+        escape_session.advance(tick);
+        OL_CHECK(escape_session.phase() == BattleSessionPhase::ai_wait);
+    }
+    escape_session.advance(308U);
+    OL_CHECK(escape_session.phase() == BattleSessionPhase::ai_movement_step_present);
+    OL_CHECK(escape_session.setup().combatants()[0U].words[combatant_word::ai_action] == 0);
+    OL_CHECK((BattlePathCoord{
+                  escape_session.setup().combatants()[0U].words[combatant_word::x],
+                  escape_session.setup().combatants()[0U].words[combatant_word::y]} !=
+              escape_source));
+    OL_CHECK(
+        escape_session.setup().combatants()[0U].words[combatant_word::round_value] == 2);
+    std::uint32_t movement_tick = 308U;
+    std::size_t movement_steps = 0U;
+    while (escape_session.phase() == BattleSessionPhase::ai_movement_step_present &&
+           movement_steps < 4U) {
+        OL_CHECK(escape_session.render(framebuffer));
+        escape_session.finish_presented_tick(movement_tick);
+        OL_CHECK(escape_session.phase() == BattleSessionPhase::ai_movement_wait);
+        escape_session.advance(++movement_tick);
+        OL_CHECK(escape_session.phase() == BattleSessionPhase::ai_movement_wait);
+        escape_session.advance(++movement_tick);
+        ++movement_steps;
+    }
+    OL_CHECK(movement_steps == 3U);
+    OL_CHECK(escape_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(escape_session.current_actor_slot() == 1U);
+    const auto& escaped_actor = escape_session.setup().combatants()[0U].words;
+    OL_CHECK((BattlePathCoord{
+                  escaped_actor[combatant_word::x], escaped_actor[combatant_word::y]} ==
+              BattlePathCoord{31, 22}));
+    OL_CHECK(escaped_actor[combatant_word::round_value] == 0);
+    OL_CHECK(escape_ranger.roles[0U].word(role_word::physical_power) == 100);
+    OL_CHECK(escaped_actor[combatant_word::ai_action] == 0);
+    OL_CHECK(escaped_actor[combatant_word::action_done] == 1);
+    openlegend::diagnostics::shutdown_logging();
+    std::ifstream escape_log_file{log_path, std::ios::binary};
+    const std::string escape_log_text{
+        std::istreambuf_iterator<char>{escape_log_file},
+        std::istreambuf_iterator<char>{}};
+    OL_CHECK(
+        escape_log_text.find("source=30,24 destination=31,21 continuation=1") !=
+        std::string::npos);
+    OL_CHECK(escape_log_text.find(
+                 "from=30,24 to=30,23 round_value=2 physical_power=100") !=
+             std::string::npos);
+    OL_CHECK(escape_log_text.find(
+                 "from=30,23 to=31,23 round_value=1 physical_power=100") !=
+             std::string::npos);
+    OL_CHECK(escape_log_text.find(
+                 "from=31,23 to=31,22 round_value=0 physical_power=100") !=
+             std::string::npos);
+    const std::string movement_presented{"battle AI movement step presented id=2"};
+    std::size_t presented_count = 0U;
+    for (std::size_t offset = 0U;
+         (offset = escape_log_text.find(movement_presented, offset)) != std::string::npos;
+         offset += movement_presented.size()) {
+        ++presented_count;
+    }
+    OL_CHECK(presented_count == 3U);
 }
 
 void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
