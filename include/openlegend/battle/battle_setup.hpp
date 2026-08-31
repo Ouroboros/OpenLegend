@@ -35,6 +35,7 @@ inline constexpr std::size_t ai_action = 10U;
 inline constexpr std::size_t ai_target = 11U;
 inline constexpr std::size_t ai_poison_target = 12U;
 inline constexpr std::size_t attack_counter = 13U;
+inline constexpr std::size_t reward_experience = 13U;
 }  // namespace combatant_word
 
 struct BattleCombatant {
@@ -495,6 +496,120 @@ enum class BattleOutcome {
     victory,
 };
 
+struct BattleLevelUpResult {
+    std::int16_t role_id{-1};
+    std::int16_t old_level{};
+    std::int16_t new_level{};
+    std::int16_t levels_gained{};
+    std::int16_t growth_roll{};
+    std::int16_t maximum_hp{};
+    std::int16_t maximum_mp{};
+    bool changed{};
+    bool message_required{};
+    bool present_required{};
+    bool wait_for_input{};
+};
+
+struct BattlePracticeResult {
+    std::int16_t role_id{-1};
+    std::int16_t item_id{-1};
+    std::int16_t magic_id{-1};
+    std::int16_t magic_slot{-1};
+    std::int32_t required_experience{};
+    bool practiced{};
+    bool maximum_magic_level{};
+    bool learned_magic{};
+    bool increased_magic_level{};
+    bool practice_message_required{};
+    bool magic_message_required{};
+    bool present_required{};
+    bool wait_for_input{};
+};
+
+struct BattleCraftResult {
+    std::int16_t role_id{-1};
+    std::int16_t practice_item_id{-1};
+    std::int16_t material_item_id{-1};
+    std::int16_t product_item_id{-1};
+    std::int16_t recipe_slot{-1};
+    std::int16_t product_count_added{};
+    std::int16_t material_count_removed{};
+    std::int32_t required_experience{};
+    bool recipe_available{};
+    bool message_required{};
+    bool crafted{};
+    bool created_inventory_slot{};
+    bool inventory_full{};
+    bool present_required{};
+    bool wait_for_input{};
+};
+
+struct BattlePostBattleRoleResult {
+    std::size_t combatant_slot{};
+    std::int16_t role_id{-1};
+    std::int16_t experience_gained{};
+    bool experience_message_required{};
+    BattleLevelUpResult level_up{};
+    BattlePracticeResult practice{};
+    BattleCraftResult craft{};
+};
+
+struct BattlePostBattleResult {
+    BattleOutcome outcome{BattleOutcome::ongoing};
+    std::int16_t total_experience{};
+    std::int16_t living_party_count{};
+    std::int16_t shared_experience{};
+    std::vector<BattlePostBattleRoleResult> roles;
+    bool render_required{};
+    bool present_required{};
+    bool wait_for_input{};
+};
+
+struct BattleRoundStatusDamageEntry {
+    std::size_t combatant_slot{};
+    std::int16_t role_id{};
+    std::int16_t hp_before{};
+    std::int16_t hp_after{};
+    std::int16_t hurt_damage{};
+    std::int16_t poison_damage{};
+    bool physical_power_floored{};
+    bool hp_floored{};
+};
+
+struct BattleRoundStatusDamageResult {
+    std::vector<BattleRoundStatusDamageEntry> entries;
+};
+
+struct BattleAiTargetCleanupResult {
+    std::int16_t attack_targets_cleared{};
+    std::int16_t poison_targets_cleared{};
+};
+
+struct BattleStatusPanelPlan {
+    std::size_t combatant_slot{};
+    std::int16_t role_id{};
+    std::int16_t side_offset{};
+    std::int16_t panel_x{};
+    std::int16_t panel_y{19};
+    std::int16_t panel_width{100};
+    std::int16_t panel_height{140};
+    std::int16_t portrait_x{};
+    std::int16_t portrait_y{82};
+    std::int16_t portrait_id{};
+    std::array<std::uint8_t, model::role_word::name_bytes> name_bytes{};
+    std::optional<std::int16_t> name_x;
+    std::int16_t name_y{84};
+    std::int16_t physical_power{};
+    std::int16_t hp{};
+    std::int16_t maximum_hp{};
+    std::int16_t mp{};
+    std::int16_t maximum_mp{};
+    std::int16_t hurt_color{};
+    std::int16_t poison_color{};
+    std::int16_t mp_color{};
+    bool render_required{true};
+};
+
 enum class BattleMovementStopRule {
     destination,
     in_range,
@@ -538,6 +653,25 @@ public:
     [[nodiscard]] bool sort_by_effective_speed();
     [[nodiscard]] bool prepare_round();
     [[nodiscard]] BattleOutcome evaluate_outcome();
+    [[nodiscard]] std::optional<BattleLevelUpResult> apply_battle_level_up(
+        std::size_t role_id,
+        bool suppress_message,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattlePracticeResult> apply_battle_practice(
+        std::size_t role_id,
+        bool suppress_message);
+    [[nodiscard]] std::optional<BattleCraftResult> apply_battle_crafting(
+        std::size_t role_id,
+        bool suppress_message,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattlePostBattleResult> settle_battle(
+        BattleOutcome outcome,
+        bool grant_experience,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleRoundStatusDamageResult> apply_round_status_damage();
+    [[nodiscard]] std::optional<BattleAiTargetCleanupResult> clear_hidden_ai_targets();
+    [[nodiscard]] std::optional<BattleStatusPanelPlan> status_panel_plan(
+        std::size_t combatant_slot) const noexcept;
     [[nodiscard]] std::optional<BattlePathCoord> move_one_marked_step(
         BattlePathing& pathing, std::size_t slot);
     [[nodiscard]] bool movement_should_stop(
@@ -809,6 +943,7 @@ private:
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiItemPlan& plan) const;
+    void remove_inventory_slot(std::size_t slot) noexcept;
 
     BattleData& data_;
     model::RangerState& ranger_;

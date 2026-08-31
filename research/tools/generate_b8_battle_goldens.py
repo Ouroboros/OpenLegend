@@ -640,6 +640,156 @@ def player_cursor_vectors(
     }
 
 
+def post_battle_progression_vectors(total_experience: int) -> dict[str, object]:
+    thresholds = [
+        0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250,
+        2750, 3850, 5050, 6350, 7750, 9250, 10850, 12550, 14350, 16750,
+        18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000,
+    ]
+    old_level = 1
+    experience = 150
+    new_level = old_level
+    for level in range(old_level, 30):
+        if experience >= thresholds[level]:
+            new_level = level + 1
+    level_count = new_level - old_level
+    state = 1
+    growth_zero_based, state = legacy_bounded(state, 6)
+    hp_random, state = legacy_bounded(state, 3)
+    skill_words = {
+        "medicine": 21,
+        "use_poison": 20,
+        "detoxification": 22,
+        "fist": 23,
+        "sword": 24,
+        "knife": 25,
+    }
+    skill_after: dict[str, int] = {}
+    for name, value in skill_words.items():
+        if value > 20:
+            addition, state = legacy_bounded(state, 3)
+            value = min(100, wrapping_i16(value + addition))
+        skill_after[name] = value
+    hidden_addition, state = legacy_bounded(state, 3)
+    growth_roll = growth_zero_based + 1
+
+    craft_state = 1
+    craft_picks: list[int] = []
+    while True:
+        choice, craft_state = legacy_bounded(craft_state, 5)
+        craft_picks.append(choice)
+        if choice == 0:
+            break
+    product_zero_based, craft_state = legacy_bounded(craft_state, 3)
+    return {
+        "level_thresholds": thresholds,
+        "level_up": {
+            "seed": 1,
+            "old_level": old_level,
+            "experience": experience,
+            "new_level": new_level,
+            "levels_gained": level_count,
+            "growth_roll": growth_roll,
+            "maximum_hp": 100 + (hp_random + 2) * 3 * level_count,
+            "maximum_mp": 80 + (9 - growth_roll) * 4 * level_count,
+            "primary_stats": [36, 36, 36],
+            "skills": skill_after,
+            "hidden_weapon": min(100, 26 + hidden_addition),
+            "rng_state_after": state,
+        },
+        "practice": {
+            "iq": 60,
+            "factor": 3,
+            "need_experience": 10,
+            "existing_magic_level": 199,
+            "magic_rank": 1,
+            "required_experience": 60,
+            "maximum_hp": [100, 110],
+            "maximum_mp": [80, 100],
+            "attack": [30, 100],
+            "morality": [50, 0],
+            "attack_twice": [0, 1],
+            "attack_with_poison": [0, 5],
+            "magic_level": [199, 299],
+            "item_experience_after": 0,
+        },
+        "craft": {
+            "seed": 1,
+            "iq": 60,
+            "factor": 3,
+            "required_experience": 30,
+            "eligible_recipes": [0],
+            "selection_rng": craft_picks,
+            "selected_recipe": 0,
+            "product_count_added": product_zero_based + 1,
+            "material_count": [3, 1],
+            "product_count": [4, 4 + product_zero_based + 1],
+            "rng_state_after": craft_state,
+        },
+        "settlement": {
+            "battle_id": 2,
+            "total_experience": total_experience,
+            "living_party_count": 1,
+            "shared_experience": total_experience,
+            "living_reward": [5, wrapping_i16(5 + total_experience)],
+            "dead_reward": 7,
+            "dead_hp_floor_divisor": 5,
+            "dead_physical_power_floor": 10,
+            "enemy_restore": {
+                "hp_to_maximum": True,
+                "mp_to_maximum": True,
+                "hurt": 0,
+                "poison": 0,
+                "physical_power": 100,
+            },
+        },
+        "round_status_damage": {
+            "condition": "hurt>0 || (poison>0 && hp>0 && physical_power>0 && hidden==0)",
+            "hurt_divisor": 20,
+            "poison_divisor": 10,
+            "negative_hp_floor": 1,
+            "negative_physical_power_floor": 1,
+            "zero_hp_is_not_floored": True,
+            "hurt_priority_vector": {
+                "hp": [0, 1],
+                "hurt": 20,
+                "poison": 0,
+                "physical_power": [-1, 1],
+                "hidden": 1,
+            },
+            "poison_vector": {
+                "hp": [100, 98],
+                "hurt": 0,
+                "poison": 20,
+                "physical_power": 100,
+                "hidden": 0,
+            },
+        },
+        "ai_target_cleanup": {
+            "fields": ["ai_target", "ai_poison_target"],
+            "clear_only_when_hidden_equals": 1,
+            "hidden_one": [1, -1],
+            "hidden_two": [1, 1],
+            "inactive_slot_within_26": [2, -1],
+            "negative_target_preserved": [-1, -1],
+            "true_out_of_bounds_preserved": [26, 26],
+        },
+        "status_panel": {
+            "party_offset": 0,
+            "enemy_offset": 220,
+            "panel_origin_party": [220, 19],
+            "panel_origin_enemy": [0, 19],
+            "portrait_origin_party": [242, 82],
+            "portrait_origin_enemy": [22, 82],
+            "name_null_byte_2_x": 262,
+            "hurt_colors": {"0_to_33": 1797, "34_to_66": 3600, "67_plus": 5142},
+            "poison_colors": {"zero": 8993, "1_to_49": 12338, "50_plus": 13623},
+            "mp_type_colors": {"0": 20558, "1": 1797, "2": 26211},
+            "invalid_mp_type_reuses_poison_color": True,
+        },
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1742,6 +1892,9 @@ def build(data_root: Path) -> dict[str, object]:
     }
     movement_vectors = ai_movement_vectors(movement_field_words, movement_occupied)
     cursor_vectors = player_cursor_vectors(movement_field_words, movement_occupied)
+    post_battle_vectors = post_battle_progression_vectors(
+        struct.unpack_from("<h", war_records[2], 7 * 2)[0]
+    )
 
     pathing_records: list[dict[str, object]] = []
     for battle_id in (0, 93):
@@ -2092,6 +2245,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_support_vectors": ai_support_vectors(),
                 "ai_movement_vectors": movement_vectors,
                 "player_cursor_vectors": cursor_vectors,
+                "post_battle_progression_vectors": post_battle_vectors,
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,

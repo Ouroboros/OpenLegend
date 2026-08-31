@@ -31,6 +31,10 @@ constexpr std::array<std::int16_t, 53> kBattleEffectFrameCounts{
     10, 14, 17, 9,  13, 17, 17, 17, 18, 19, 19, 15, 13, 10, 10, 15, 21, 16,
     9,  11, 8,  9,  8,  8,  7,  8,  8,  9,  12, 19, 11, 14, 12, 17, 8,  11,
     9,  13, 10, 19, 14, 17, 19, 14, 21, 16, 13, 18, 14, 17, 17, 16, 7};
+constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
+    0,     50,    150,   300,   500,   750,   1050,  1400,  1800,  2250,
+    2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
+    18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000};
 struct BattleAiSpecialAttackBonus {
     std::int16_t weapon_id{};
     std::int16_t magic_id{};
@@ -331,6 +335,665 @@ BattleOutcome BattleSetup::evaluate_outcome() {
         outcome = BattleOutcome::victory;
     }
     return outcome;
+}
+
+std::optional<BattleLevelUpResult> BattleSetup::apply_battle_level_up(
+    const std::size_t role_id,
+    const bool suppress_message,
+    random::LegacyRandom& random) {
+    if (!valid() || role_id >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    auto& role = ranger_.roles[role_id];
+    BattleLevelUpResult result{
+        .role_id = static_cast<std::int16_t>(role_id),
+        .old_level = role.word(model::role_word::level),
+        .new_level = role.word(model::role_word::level),
+    };
+    if (result.old_level < 0 || result.old_level >= 30) {
+        return result;
+    }
+
+    const auto experience = role.unsigned_word(model::role_word::experience);
+    if (experience < kLevelExperienceThresholds[static_cast<std::size_t>(result.old_level)]) {
+        return result;
+    }
+    auto new_level = result.old_level;
+    for (std::int16_t level = result.old_level; level < 30; ++level) {
+        if (experience >= kLevelExperienceThresholds[static_cast<std::size_t>(level)]) {
+            new_level = static_cast<std::int16_t>(level + 1);
+        }
+    }
+    const auto levels_gained = static_cast<std::int16_t>(new_level - result.old_level);
+    if (levels_gained <= 0) {
+        return result;
+    }
+
+    const auto iq = role.word(model::role_word::iq);
+    const auto growth_bound = iq < 30 ? 2 : iq < 50 ? 3 : iq < 70 ? 4 : iq < 90 ? 5 : 6;
+    const auto growth_roll = static_cast<std::int16_t>(random.bounded(growth_bound) + 1);
+    role.set_word(
+        model::role_word::level,
+        wrapping_i16(static_cast<std::int32_t>(role.word(model::role_word::level)) +
+                     levels_gained));
+
+    auto maximum_hp = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) +
+        (random.bounded(3) + role.word(model::role_word::increased_life)) * 3 *
+            levels_gained);
+    if (maximum_hp > 999) {
+        maximum_hp = 999;
+    }
+    role.set_word(model::role_word::maximum_hp, maximum_hp);
+    role.set_word(model::role_word::hp, maximum_hp);
+    role.set_word(model::role_word::hurt, 0);
+    role.set_word(model::role_word::poison, 0);
+    role.set_word(model::role_word::physical_power, 100);
+
+    auto maximum_mp = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::maximum_mp)) +
+        (9 - growth_roll) * 4 * levels_gained);
+    if (maximum_mp > 999) {
+        maximum_mp = 999;
+    }
+    role.set_word(model::role_word::maximum_mp, maximum_mp);
+    role.set_word(model::role_word::mp, maximum_mp);
+
+    const auto primary_gain = static_cast<std::int32_t>(growth_roll) * levels_gained;
+    for (const auto word : {
+             model::role_word::attack,
+             model::role_word::speed,
+             model::role_word::defence,
+         }) {
+        role.set_word(
+            word,
+            wrapping_i16(static_cast<std::int32_t>(role.word(word)) + primary_gain));
+    }
+    for (const auto word : {
+             model::role_word::medicine,
+             model::role_word::use_poison,
+             model::role_word::detoxification,
+             model::role_word::fist,
+             model::role_word::sword,
+             model::role_word::knife,
+         }) {
+        if (role.word(word) > 20) {
+            role.set_word(
+                word,
+                wrapping_i16(
+                    static_cast<std::int32_t>(role.word(word)) + random.bounded(3)));
+        }
+    }
+    role.set_word(
+        model::role_word::hidden_weapon,
+        wrapping_i16(
+            static_cast<std::int32_t>(role.word(model::role_word::hidden_weapon)) +
+            random.bounded(3)));
+    for (const auto word : {
+             model::role_word::attack,
+             model::role_word::speed,
+             model::role_word::defence,
+             model::role_word::medicine,
+             model::role_word::use_poison,
+             model::role_word::detoxification,
+             model::role_word::hidden_weapon,
+             model::role_word::fist,
+             model::role_word::sword,
+             model::role_word::knife,
+         }) {
+        if (role.word(word) > 100) {
+            role.set_word(word, 100);
+        }
+    }
+
+    result.new_level = role.word(model::role_word::level);
+    result.levels_gained = levels_gained;
+    result.growth_roll = growth_roll;
+    result.maximum_hp = role.word(model::role_word::maximum_hp);
+    result.maximum_mp = role.word(model::role_word::maximum_mp);
+    result.changed = true;
+    result.message_required = !suppress_message;
+    result.present_required = !suppress_message;
+    result.wait_for_input = !suppress_message;
+    return result;
+}
+
+std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
+    const std::size_t role_id,
+    const bool suppress_message) {
+    if (!valid() || role_id >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    auto& role = ranger_.roles[role_id];
+    const auto item_id = role.word(model::role_word::practice_item);
+    BattlePracticeResult result{
+        .role_id = static_cast<std::int16_t>(role_id),
+        .item_id = item_id,
+    };
+    if (item_id == -1) {
+        return result;
+    }
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+        error_ = "battle practice item is outside item records";
+        return std::nullopt;
+    }
+    const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
+    const auto magic_id = item.word(model::item_word::magic_id);
+    result.magic_id = magic_id;
+    std::int16_t magic_slot = -1;
+    std::uint16_t magic_rank = 0;
+    if (magic_id != -1) {
+        for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+            if (role.word(model::role_word::magic_id_begin + slot) == magic_id) {
+                magic_slot = static_cast<std::int16_t>(slot);
+                magic_rank = static_cast<std::uint16_t>(
+                    role.unsigned_word(model::role_word::magic_level_begin + slot) / 100U);
+                break;
+            }
+        }
+    }
+    result.magic_slot = magic_slot;
+    const auto factor = 7 - role.word(model::role_word::iq) / 15;
+    result.required_experience = static_cast<std::int32_t>(
+        item.word(model::item_word::need_experience)) * factor *
+        (magic_id == -1 ? 2 : static_cast<std::int32_t>(magic_rank) + 1);
+    if (magic_rank >= 9U) {
+        result.maximum_magic_level = true;
+        return result;
+    }
+    if (static_cast<std::int32_t>(role.unsigned_word(model::role_word::item_experience)) <
+        result.required_experience) {
+        return result;
+    }
+
+    auto maximum_hp = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) +
+        item.word(model::item_word::add_maximum_hp));
+    if (maximum_hp > 999) {
+        maximum_hp = 999;
+    }
+    role.set_word(model::role_word::maximum_hp, maximum_hp);
+    if (item.word(model::item_word::change_mp_type) == 2) {
+        role.set_word(model::role_word::mp_type, 2);
+    }
+    auto maximum_mp = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::maximum_mp)) +
+        item.word(model::item_word::add_maximum_mp));
+    if (maximum_mp > 999) {
+        maximum_mp = 999;
+    }
+    role.set_word(model::role_word::maximum_mp, maximum_mp);
+
+    for (std::size_t offset = 0U; offset <=
+            model::item_word::add_morality - model::item_word::add_attack;
+         ++offset) {
+        const auto role_word = model::role_word::attack + offset;
+        auto changed = wrapping_i16(
+            static_cast<std::int32_t>(role.word(role_word)) +
+            item.word(model::item_word::add_attack + offset));
+        if (changed >= 100) {
+            changed = 100;
+        }
+        if (changed <= 0) {
+            changed = 0;
+        }
+        role.set_word(role_word, changed);
+    }
+    if (role.word(model::role_word::attack_twice) == 0) {
+        role.set_word(
+            model::role_word::attack_twice,
+            item.word(model::item_word::add_attack_twice));
+    }
+    auto attack_with_poison = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::attack_with_poison)) +
+        item.word(model::item_word::add_attack_with_poison));
+    if (attack_with_poison >= 100) {
+        attack_with_poison = 100;
+    }
+    if (attack_with_poison <= 0) {
+        attack_with_poison = 0;
+    }
+    role.set_word(model::role_word::attack_with_poison, attack_with_poison);
+    role.set_word(model::role_word::item_experience, 0);
+
+    result.practiced = true;
+    result.practice_message_required = !suppress_message;
+    result.present_required = !suppress_message;
+    result.wait_for_input = !suppress_message;
+    if (magic_id > 0) {
+        if (magic_slot >= 0) {
+            const auto word = model::role_word::magic_level_begin +
+                static_cast<std::size_t>(magic_slot);
+            if (role.unsigned_word(word) < 899U) {
+                role.set_word(
+                    word,
+                    wrapping_i16(static_cast<std::int32_t>(role.word(word)) + 100));
+                result.increased_magic_level = true;
+                result.magic_message_required = true;
+                result.present_required = true;
+                result.wait_for_input = true;
+            }
+        } else {
+            for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+                if (role.word(model::role_word::magic_id_begin + slot) <= 0) {
+                    role.set_word(model::role_word::magic_id_begin + slot, magic_id);
+                    result.magic_slot = static_cast<std::int16_t>(slot);
+                    result.learned_magic = true;
+                    break;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+void BattleSetup::remove_inventory_slot(const std::size_t slot) noexcept {
+    if (slot >= model::kInventoryCount) {
+        return;
+    }
+    for (std::size_t source = slot + 1U; source < model::kInventoryCount; ++source) {
+        ranger_.header.set_inventory(
+            source - 1U,
+            ranger_.header.inventory_item(source),
+            ranger_.header.inventory_count(source));
+    }
+    ranger_.header.set_inventory(model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+}
+
+std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
+    const std::size_t role_id,
+    const bool suppress_message,
+    random::LegacyRandom& random) {
+    if (!valid() || role_id >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    auto& role = ranger_.roles[role_id];
+    const auto practice_item_id = role.word(model::role_word::practice_item);
+    BattleCraftResult result{
+        .role_id = static_cast<std::int16_t>(role_id),
+        .practice_item_id = practice_item_id,
+    };
+    if (practice_item_id < 0 ||
+        static_cast<std::size_t>(practice_item_id) >= ranger_.items.size()) {
+        return result;
+    }
+    const auto& item = ranger_.items[static_cast<std::size_t>(practice_item_id)];
+    const auto factor = 7 - role.word(model::role_word::iq) / 15;
+    const auto need_experience = item.word(model::item_word::need_make_item_experience);
+    result.required_experience = static_cast<std::int32_t>(need_experience) * factor;
+    if (need_experience <= 0 ||
+        static_cast<std::int32_t>(
+            role.unsigned_word(model::role_word::make_item_experience)) <
+            result.required_experience) {
+        return result;
+    }
+
+    result.material_item_id = item.word(model::item_word::need_material);
+    std::optional<std::size_t> material_slot;
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        if (ranger_.header.inventory_item(slot).value == result.material_item_id) {
+            material_slot = slot;
+            break;
+        }
+    }
+    if (!material_slot) {
+        return result;
+    }
+
+    std::array<bool, model::item_word::make_item_count> eligible{};
+    auto eligible_count = 0U;
+    for (std::size_t recipe = 0U; recipe < eligible.size(); ++recipe) {
+        const auto product = item.word(model::item_word::make_item_begin + recipe);
+        const auto material_count = item.word(
+            model::item_word::make_item_count_begin + recipe);
+        if (product != -1 && ranger_.header.inventory_count(*material_slot) >= material_count) {
+            eligible[recipe] = true;
+            ++eligible_count;
+        }
+    }
+    if (eligible_count == 0U) {
+        return result;
+    }
+    result.recipe_available = true;
+    std::size_t recipe = 0U;
+    do {
+        recipe = static_cast<std::size_t>(random.bounded(5));
+    } while (!eligible[recipe]);
+    result.recipe_slot = static_cast<std::int16_t>(recipe);
+    result.product_item_id = item.word(model::item_word::make_item_begin + recipe);
+    result.material_count_removed = item.word(
+        model::item_word::make_item_count_begin + recipe);
+    if (suppress_message) {
+        return result;
+    }
+    if (result.product_item_id < 0 ||
+        static_cast<std::size_t>(result.product_item_id) >= ranger_.items.size()) {
+        error_ = "battle crafted product is outside item records";
+        return std::nullopt;
+    }
+    result.message_required = true;
+    result.present_required = true;
+    result.wait_for_input = true;
+
+    std::optional<std::size_t> product_slot;
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        if (ranger_.header.inventory_item(slot).value == result.product_item_id) {
+            product_slot = slot;
+            break;
+        }
+    }
+    if (product_slot) {
+        result.product_count_added = static_cast<std::int16_t>(random.bounded(3) + 1);
+        ranger_.header.set_inventory(
+            *product_slot,
+            model::ItemId{result.product_item_id},
+            wrapping_i16(
+                static_cast<std::int32_t>(ranger_.header.inventory_count(*product_slot)) +
+                result.product_count_added));
+    } else {
+        for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+            if (ranger_.header.inventory_item(slot).value == -1) {
+                product_slot = slot;
+                result.product_count_added = 1;
+                result.created_inventory_slot = true;
+                ranger_.header.set_inventory(
+                    slot,
+                    model::ItemId{result.product_item_id},
+                    wrapping_i16(
+                        static_cast<std::int32_t>(ranger_.header.inventory_count(slot)) + 1));
+                break;
+            }
+        }
+        if (!product_slot) {
+            result.inventory_full = true;
+            return result;
+        }
+    }
+
+    const auto remaining_material = wrapping_i16(
+        static_cast<std::int32_t>(ranger_.header.inventory_count(*material_slot)) -
+        result.material_count_removed);
+    ranger_.header.set_inventory(
+        *material_slot,
+        model::ItemId{result.material_item_id},
+        remaining_material);
+    if (remaining_material <= 0) {
+        remove_inventory_slot(*material_slot);
+    }
+    role.set_word(model::role_word::make_item_experience, 0);
+    result.crafted = true;
+    return result;
+}
+
+std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
+    const BattleOutcome outcome,
+    const bool grant_experience,
+    random::LegacyRandom& random) {
+    if (!valid() || outcome == BattleOutcome::ongoing) {
+        return std::nullopt;
+    }
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            error_ = "post-battle combatant role is outside ranger records";
+            return std::nullopt;
+        }
+    }
+
+    BattlePostBattleResult result{
+        .outcome = outcome,
+        .total_experience = data_.definition()[7U],
+    };
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& words = combatants_[slot].words;
+        auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+        if (words[combatant_word::side] == 1) {
+            role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
+            role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
+            role.set_word(model::role_word::physical_power, 100);
+            role.set_word(model::role_word::hurt, 0);
+            role.set_word(model::role_word::poison, 0);
+        } else if (role.word(model::role_word::hp) > 0) {
+            result.living_party_count = wrapping_i16(
+                static_cast<std::int32_t>(result.living_party_count) + 1);
+        }
+    }
+    if (outcome == BattleOutcome::victory) {
+        if (result.living_party_count == 0) {
+            result.living_party_count = 1;
+        }
+        result.shared_experience = static_cast<std::int16_t>(
+            result.total_experience / result.living_party_count);
+        for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+            auto& words = combatants_[slot].words;
+            const auto& role = ranger_.roles[static_cast<std::size_t>(
+                words[combatant_word::role_id])];
+            if (words[combatant_word::side] == 0 &&
+                role.word(model::role_word::hp) > 0) {
+                words[combatant_word::reward_experience] = wrapping_i16(
+                    static_cast<std::int32_t>(
+                        words[combatant_word::reward_experience]) +
+                    result.shared_experience);
+            }
+        }
+    }
+
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& words = combatants_[slot].words;
+        if (words[combatant_word::side] != 0) {
+            continue;
+        }
+        auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+        const auto floor_hp = static_cast<std::int16_t>(
+            role.word(model::role_word::maximum_hp) / 5);
+        if (role.word(model::role_word::hp) > 0) {
+            if (role.word(model::role_word::hp) < floor_hp) {
+                role.set_word(model::role_word::hp, floor_hp);
+            }
+        } else {
+            role.set_word(model::role_word::hp, floor_hp);
+            if (role.word(model::role_word::physical_power) < 10) {
+                role.set_word(model::role_word::physical_power, 10);
+            }
+        }
+    }
+
+    const auto add_capped_experience = [](model::RoleRecord& role,
+                                          const std::size_t word,
+                                          const std::uint16_t amount) {
+        auto changed = static_cast<std::uint16_t>(role.unsigned_word(word) + amount);
+        if (changed > 60'000U) {
+            changed = 60'000U;
+        }
+        role.set_word(word, std::bit_cast<std::int16_t>(changed));
+    };
+    result.roles.reserve(static_cast<std::size_t>(combatant_count_));
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        auto& words = combatants_[slot].words;
+        const auto role_id = words[combatant_word::role_id];
+        auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto reward = words[combatant_word::reward_experience];
+        const auto unsigned_reward = static_cast<std::uint16_t>(reward);
+        add_capped_experience(role, model::role_word::experience, unsigned_reward);
+        const auto scaled_reward = static_cast<std::uint32_t>(
+            static_cast<std::int32_t>(reward) * 8);
+        const auto training_reward = static_cast<std::uint16_t>(scaled_reward / 10U);
+        add_capped_experience(role, model::role_word::item_experience, training_reward);
+        add_capped_experience(
+            role, model::role_word::make_item_experience, training_reward);
+
+        BattlePostBattleRoleResult role_result{
+            .combatant_slot = slot,
+            .role_id = role_id,
+            .experience_gained = reward,
+        };
+        if (words[combatant_word::side] == 0 &&
+            (grant_experience || outcome == BattleOutcome::victory)) {
+            role_result.experience_message_required = true;
+            result.render_required = true;
+            result.present_required = true;
+            result.wait_for_input = true;
+            if (role.word(model::role_word::level) < 30) {
+                const auto level_up = apply_battle_level_up(
+                    static_cast<std::size_t>(role_id), false, random);
+                if (!level_up) {
+                    return std::nullopt;
+                }
+                role_result.level_up = *level_up;
+            }
+            if (role.word(model::role_word::practice_item) != -1) {
+                const auto practice = apply_battle_practice(
+                    static_cast<std::size_t>(role_id), false);
+                if (!practice) {
+                    return std::nullopt;
+                }
+                role_result.practice = *practice;
+                const auto craft = apply_battle_crafting(
+                    static_cast<std::size_t>(role_id), false, random);
+                if (!craft) {
+                    return std::nullopt;
+                }
+                role_result.craft = *craft;
+            }
+        }
+        result.roles.push_back(role_result);
+    }
+    return result;
+}
+
+std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_damage() {
+    if (!valid()) {
+        return std::nullopt;
+    }
+    BattleRoundStatusDamageResult result{};
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& words = combatants_[slot].words;
+        const auto role_id = words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            error_ = "round-status combatant role is outside ranger records";
+            return std::nullopt;
+        }
+        auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto hurt = role.word(model::role_word::hurt);
+        const auto poison = role.word(model::role_word::poison);
+        if (!(hurt > 0 ||
+              (poison > 0 && role.word(model::role_word::hp) > 0 &&
+               role.word(model::role_word::physical_power) > 0 &&
+               words[combatant_word::occupancy_hidden] == 0))) {
+            continue;
+        }
+
+        BattleRoundStatusDamageEntry entry{
+            .combatant_slot = slot,
+            .role_id = role_id,
+            .hp_before = role.word(model::role_word::hp),
+            .hurt_damage = static_cast<std::int16_t>(hurt / 20),
+            .poison_damage = static_cast<std::int16_t>(poison / 10),
+        };
+        auto hp = wrapping_i16(
+            static_cast<std::int32_t>(role.word(model::role_word::hp)) -
+            entry.hurt_damage);
+        hp = wrapping_i16(static_cast<std::int32_t>(hp) - entry.poison_damage);
+        role.set_word(model::role_word::hp, hp);
+        if (role.word(model::role_word::physical_power) < 0) {
+            role.set_word(model::role_word::physical_power, 1);
+            entry.physical_power_floored = true;
+        }
+        if (role.word(model::role_word::hp) < 0) {
+            role.set_word(model::role_word::hp, 1);
+            entry.hp_floored = true;
+        }
+        entry.hp_after = role.word(model::role_word::hp);
+        result.entries.push_back(entry);
+    }
+    return result;
+}
+
+std::optional<BattleAiTargetCleanupResult> BattleSetup::clear_hidden_ai_targets() {
+    if (!valid()) {
+        return std::nullopt;
+    }
+    BattleAiTargetCleanupResult result{};
+    const auto clear_if_hidden = [this](std::int16_t& target) {
+        if (target < 0 ||
+            target >= static_cast<std::int16_t>(kBattleCombatantCount)) {
+            return false;
+        }
+        if (combatants_[static_cast<std::size_t>(target)]
+                .words[combatant_word::occupancy_hidden] != 1) {
+            return false;
+        }
+        target = -1;
+        return true;
+    };
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        auto& words = combatants_[slot].words;
+        if (clear_if_hidden(words[combatant_word::ai_target])) {
+            result.attack_targets_cleared = wrapping_i16(
+                static_cast<std::int32_t>(result.attack_targets_cleared) + 1);
+        }
+        if (clear_if_hidden(words[combatant_word::ai_poison_target])) {
+            result.poison_targets_cleared = wrapping_i16(
+                static_cast<std::int32_t>(result.poison_targets_cleared) + 1);
+        }
+    }
+    return result;
+}
+
+std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
+    const std::size_t combatant_slot) const noexcept {
+    if (!valid() || combatant_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto& words = combatants_[combatant_slot].words;
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    BattleStatusPanelPlan plan{
+        .combatant_slot = combatant_slot,
+        .role_id = role_id,
+        .side_offset = words[combatant_word::side] == 0 ? 0 : 220,
+        .portrait_id = role.word(model::role_word::head_id),
+        .physical_power = role.word(model::role_word::physical_power),
+        .hp = role.word(model::role_word::hp),
+        .maximum_hp = role.word(model::role_word::maximum_hp),
+        .mp = role.word(model::role_word::mp),
+        .maximum_mp = role.word(model::role_word::maximum_mp),
+    };
+    plan.panel_x = static_cast<std::int16_t>(220 - plan.side_offset);
+    plan.portrait_x = static_cast<std::int16_t>(242 - plan.side_offset);
+    std::copy_n(
+        role.bytes.begin() + static_cast<std::ptrdiff_t>(model::role_word::name_byte),
+        model::role_word::name_bytes,
+        plan.name_bytes.begin());
+    for (std::size_t byte = 1U; byte <= 8U; ++byte) {
+        if (plan.name_bytes[byte] == 0U) {
+            plan.name_x = static_cast<std::int16_t>(
+                270 - static_cast<std::int16_t>(byte * 4U) - plan.side_offset);
+            break;
+        }
+    }
+    const auto hurt = role.word(model::role_word::hurt);
+    plan.hurt_color = hurt > 66 ? 5'142 : hurt > 33 ? 3'600 : 1'797;
+    const auto poison = role.word(model::role_word::poison);
+    plan.poison_color = poison == 0 ? 8'993 : poison >= 50 ? 13'623 : 12'338;
+    switch (role.word(model::role_word::mp_type)) {
+    case 0:
+        plan.mp_color = 20'558;
+        break;
+    case 1:
+        plan.mp_color = 1'797;
+        break;
+    case 2:
+        plan.mp_color = 26'211;
+        break;
+    default:
+        plan.mp_color = plan.poison_color;
+        break;
+    }
+    return plan;
 }
 
 std::optional<BattlePathCoord> BattleSetup::move_one_marked_step(

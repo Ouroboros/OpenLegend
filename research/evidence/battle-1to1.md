@@ -232,3 +232,7 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 `sub_3650E`已恢复完整目的格状态逻辑：mode2在本回合可入射程时按range向下找轴向层，mode3无轴向限制，其他分支从目标周围按上、右、左、下找同轴可达格、任意可达格或逐轴退向actor。目的格须连续通过当前图和重建actor movement图两次严格`path<128`检查，随后按原tie-break标最短路。battle4固定mode0/1 `(26,25)`、mode2 `(23,26)`、mode3 `(25,24)`。`advance_ai_movement`已实际逐格提交path255、occupancy、坐标、方向、sprite、体力和行动值，并恢复mode0/3行动值停止、mode1距离停止和mode2轴向停止；每步render/present/40 tick仍只返回typed参数。
 
 `sub_36AF7`通用玩家光标选择已恢复为typed状态：入口按mode建立movement或targeting图，方向优先级下、右、左、上；相邻path不大于上限即可移动，path超限但occupancy非空仍可悬停；movement确认严格要求`0<path<=limit`，targeting允许`0<=path<=limit`，Escape清path上限并写取消结果。`sub_36A98`以actor行动值启动mode0选择，取消返回-1，否则复制选择期路径图、标最短路并逐格移动。battle4覆盖movement悬停占用格但拒绝确认、确认`(26,25)`、targeting确认占用格和首步状态；实际键盘、每轮战场重画、present及40 tick仍未接入。
+
+`sub_3B387..sub_3C2AC`战后进度状态已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利把WAR word7总经验均分给存活side0；队伍至少补最大HP/5，死亡者体力至少10；word13及其80%分别加角色、练功、制造经验并unsigned封顶60000。等级提升保留30项机器阈值、资质分档成长RNG与技能条件RNG；练功保留需求系数、18项角色写入、武功学习/加100；制造保留五配方标记、反复`bounded(5)`、已有产物随机1..3与新槽固定1、材料槽压缩。提示框、present与按键等待仍为typed事件，四函数保持`pending_implementation`。
+
+`sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12，现代仅对负值及大于25 target采用不读取数组外的安全边界，两者状态核心标`implemented_pending_review`。`sub_3C6D3`已恢复side横移220、面板/头像/名称NUL对齐、HP hurt色、最大HP poison色及MP类型色；非法MP类型复用poison色的寄存器残值BUG被保留，但实际面板indexed像素尚未接入。

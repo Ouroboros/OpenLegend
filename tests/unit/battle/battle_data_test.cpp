@@ -1240,6 +1240,303 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(!setup.begin_ai_support_plan(actor_slot, invalid).has_value());
 }
 
+void run_post_battle_progression_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& role = ranger.roles[0U];
+        role.set_word(role_word::level, 1);
+        role.set_word(role_word::experience, 150);
+        role.set_word(role_word::increased_life, 2);
+        role.set_word(role_word::iq, 90);
+        role.set_word(role_word::maximum_hp, 100);
+        role.set_word(role_word::maximum_mp, 80);
+        role.set_word(role_word::attack, 30);
+        role.set_word(role_word::speed, 30);
+        role.set_word(role_word::defence, 30);
+        role.set_word(role_word::medicine, 21);
+        role.set_word(role_word::use_poison, 20);
+        role.set_word(role_word::detoxification, 22);
+        role.set_word(role_word::fist, 23);
+        role.set_word(role_word::sword, 24);
+        role.set_word(role_word::knife, 25);
+        role.set_word(role_word::hidden_weapon, 26);
+        openlegend::random::LegacyRandom random{1U};
+        const auto level_up = setup.apply_battle_level_up(0U, false, random);
+        OL_CHECK(level_up.has_value());
+        OL_CHECK(level_up->changed);
+        OL_CHECK(level_up->old_level == 1);
+        OL_CHECK(level_up->new_level == 3);
+        OL_CHECK(level_up->levels_gained == 2);
+        OL_CHECK(level_up->growth_roll == 3);
+        OL_CHECK(level_up->maximum_hp == 118);
+        OL_CHECK(level_up->maximum_mp == 128);
+        OL_CHECK(level_up->message_required);
+        OL_CHECK(level_up->present_required);
+        OL_CHECK(level_up->wait_for_input);
+        OL_CHECK(role.word(role_word::hp) == 118);
+        OL_CHECK(role.word(role_word::mp) == 128);
+        OL_CHECK(role.word(role_word::hurt) == 0);
+        OL_CHECK(role.word(role_word::poison) == 0);
+        OL_CHECK(role.word(role_word::physical_power) == 100);
+        OL_CHECK(role.word(role_word::attack) == 36);
+        OL_CHECK(role.word(role_word::speed) == 36);
+        OL_CHECK(role.word(role_word::defence) == 36);
+        OL_CHECK(role.word(role_word::medicine) == 21);
+        OL_CHECK(role.word(role_word::use_poison) == 20);
+        OL_CHECK(role.word(role_word::detoxification) == 23);
+        OL_CHECK(role.word(role_word::fist) == 24);
+        OL_CHECK(role.word(role_word::sword) == 26);
+        OL_CHECK(role.word(role_word::knife) == 25);
+        OL_CHECK(role.word(role_word::hidden_weapon) == 26);
+        OL_CHECK(random.state() == 2'633'739'833U);
+
+        auto& practice_item = ranger.items[5U];
+        role.set_word(role_word::practice_item, 5);
+        role.set_word(role_word::iq, 60);
+        role.set_word(role_word::item_experience, 60);
+        role.set_word(role_word::maximum_hp, 100);
+        role.set_word(role_word::maximum_mp, 80);
+        role.set_word(role_word::attack, 30);
+        role.set_word(role_word::morality, 50);
+        role.set_word(role_word::attack_twice, 0);
+        role.set_word(role_word::attack_with_poison, 0);
+        role.set_word(role_word::magic_id_begin, 2);
+        role.set_word(role_word::magic_level_begin, 199);
+        practice_item.set_word(item_word::magic_id, 2);
+        practice_item.set_word(item_word::need_experience, 10);
+        practice_item.set_word(item_word::add_maximum_hp, 10);
+        practice_item.set_word(item_word::add_maximum_mp, 20);
+        practice_item.set_word(item_word::add_attack, 80);
+        practice_item.set_word(item_word::add_morality, -100);
+        practice_item.set_word(item_word::add_attack_twice, 1);
+        practice_item.set_word(item_word::add_attack_with_poison, 5);
+        const auto practice = setup.apply_battle_practice(0U, false);
+        OL_CHECK(practice.has_value());
+        OL_CHECK(practice->practiced);
+        OL_CHECK(practice->required_experience == 60);
+        OL_CHECK(practice->magic_slot == 0);
+        OL_CHECK(practice->increased_magic_level);
+        OL_CHECK(practice->practice_message_required);
+        OL_CHECK(practice->magic_message_required);
+        OL_CHECK(role.word(role_word::item_experience) == 0);
+        OL_CHECK(role.word(role_word::maximum_hp) == 110);
+        OL_CHECK(role.word(role_word::maximum_mp) == 100);
+        OL_CHECK(role.word(role_word::attack) == 100);
+        OL_CHECK(role.word(role_word::morality) == 0);
+        OL_CHECK(role.word(role_word::attack_twice) == 1);
+        OL_CHECK(role.word(role_word::attack_with_poison) == 5);
+        OL_CHECK(role.word(role_word::magic_level_begin) == 299);
+
+        role.set_word(role_word::make_item_experience, 30);
+        practice_item.set_word(item_word::need_make_item_experience, 10);
+        practice_item.set_word(item_word::need_material, 10);
+        practice_item.set_word(item_word::make_item_begin, 20);
+        practice_item.set_word(item_word::make_item_count_begin, 2);
+        for (std::size_t recipe = 1U; recipe < item_word::make_item_count; ++recipe) {
+            practice_item.set_word(item_word::make_item_begin + recipe, -1);
+        }
+        ranger.header.set_inventory(0U, ItemId{10}, 3);
+        ranger.header.set_inventory(1U, ItemId{20}, 4);
+        ranger.header.set_inventory(2U, ItemId{-1}, 0);
+        openlegend::random::LegacyRandom craft_random{1U};
+        const auto craft = setup.apply_battle_crafting(0U, false, craft_random);
+        OL_CHECK(craft.has_value());
+        OL_CHECK(craft->recipe_available);
+        OL_CHECK(craft->recipe_slot == 0);
+        OL_CHECK(craft->product_item_id == 20);
+        OL_CHECK(craft->product_count_added == 2);
+        OL_CHECK(craft->material_count_removed == 2);
+        OL_CHECK(craft->message_required);
+        OL_CHECK(craft->crafted);
+        OL_CHECK(!craft->created_inventory_slot);
+        OL_CHECK(ranger.header.inventory_count(0U) == 1);
+        OL_CHECK(ranger.header.inventory_count(1U) == 6);
+        OL_CHECK(role.word(role_word::make_item_experience) == 0);
+        OL_CHECK(craft_random.state() == 4'182'499'122U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 2};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        for (std::size_t step = 0U; step < setup.party_prefix_length(); ++step) {
+            OL_CHECK(setup.apply(PartySelectionAction::next) ==
+                     PartySelectionResult::changed);
+        }
+        OL_CHECK(setup.apply(PartySelectionAction::activate) ==
+                 PartySelectionResult::complete);
+        OL_CHECK(setup.combatant_count() >= 3);
+        std::optional<std::size_t> first_party;
+        std::optional<std::size_t> dead_party;
+        std::optional<std::size_t> first_enemy;
+        for (std::size_t slot = 0U;
+             slot < static_cast<std::size_t>(setup.combatant_count());
+             ++slot) {
+            auto& words = setup.combatants()[slot].words;
+            auto& role = ranger.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+            role.set_word(role_word::level, 30);
+            role.set_word(role_word::practice_item, -1);
+            role.set_word(role_word::maximum_hp, 100);
+            role.set_word(role_word::maximum_mp, 80);
+            role.set_word(role_word::experience, 0);
+            role.set_word(role_word::item_experience, 0);
+            role.set_word(role_word::make_item_experience, 0);
+            words[combatant_word::reward_experience] = 0;
+            if (words[combatant_word::side] == 0) {
+                if (!first_party) {
+                    first_party = slot;
+                    role.set_word(role_word::hp, 100);
+                    words[combatant_word::reward_experience] = 5;
+                } else {
+                    if (!dead_party) {
+                        dead_party = slot;
+                        words[combatant_word::reward_experience] = 7;
+                    }
+                    role.set_word(role_word::hp, 0);
+                    role.set_word(role_word::physical_power, 0);
+                }
+            } else {
+                if (!first_enemy) {
+                    first_enemy = slot;
+                }
+                role.set_word(role_word::hp, 1);
+                role.set_word(role_word::mp, 1);
+                role.set_word(role_word::hurt, 50);
+                role.set_word(role_word::poison, 50);
+                role.set_word(role_word::physical_power, 1);
+            }
+        }
+        OL_CHECK(first_party.has_value());
+        OL_CHECK(dead_party.has_value());
+        OL_CHECK(first_enemy.has_value());
+        openlegend::random::LegacyRandom random{1U};
+        const auto settled = setup.settle_battle(BattleOutcome::victory, false, random);
+        OL_CHECK(settled.has_value());
+        OL_CHECK(settled->total_experience == data.definition()[7U]);
+        OL_CHECK(settled->living_party_count == 1);
+        OL_CHECK(settled->shared_experience == data.definition()[7U]);
+        OL_CHECK(settled->render_required);
+        OL_CHECK(settled->present_required);
+        OL_CHECK(settled->wait_for_input);
+        OL_CHECK(settled->roles.size() == static_cast<std::size_t>(setup.combatant_count()));
+        const auto first_party_role = static_cast<std::size_t>(
+            setup.combatants()[*first_party].words[combatant_word::role_id]);
+        const auto dead_party_role = static_cast<std::size_t>(
+            setup.combatants()[*dead_party].words[combatant_word::role_id]);
+        const auto enemy_role = static_cast<std::size_t>(
+            setup.combatants()[*first_enemy].words[combatant_word::role_id]);
+        OL_CHECK(ranger.roles[first_party_role].word(role_word::experience) ==
+                 static_cast<std::int16_t>(data.definition()[7U] + 5));
+        OL_CHECK(ranger.roles[dead_party_role].word(role_word::experience) == 7);
+        OL_CHECK(ranger.roles[dead_party_role].word(role_word::hp) == 20);
+        OL_CHECK(ranger.roles[dead_party_role].word(role_word::physical_power) == 10);
+        OL_CHECK(ranger.roles[enemy_role].word(role_word::hp) == 100);
+        OL_CHECK(ranger.roles[enemy_role].word(role_word::mp) == 80);
+        OL_CHECK(ranger.roles[enemy_role].word(role_word::hurt) == 0);
+        OL_CHECK(ranger.roles[enemy_role].word(role_word::poison) == 0);
+        OL_CHECK(ranger.roles[enemy_role].word(role_word::physical_power) == 100);
+        OL_CHECK(random.state() == 1U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        OL_CHECK(setup.combatant_count() == 2);
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        auto& first_role = ranger.roles[static_cast<std::size_t>(
+            first[combatant_word::role_id])];
+        auto& second_role = ranger.roles[static_cast<std::size_t>(
+            second[combatant_word::role_id])];
+        first_role.set_word(role_word::hp, 0);
+        first_role.set_word(role_word::hurt, 20);
+        first_role.set_word(role_word::poison, 0);
+        first_role.set_word(role_word::physical_power, -1);
+        first[combatant_word::occupancy_hidden] = 1;
+        second_role.set_word(role_word::hp, 100);
+        second_role.set_word(role_word::hurt, 0);
+        second_role.set_word(role_word::poison, 20);
+        second_role.set_word(role_word::physical_power, 100);
+        second[combatant_word::occupancy_hidden] = 0;
+        const auto status_damage = setup.apply_round_status_damage();
+        OL_CHECK(status_damage.has_value());
+        OL_CHECK(status_damage->entries.size() == 2U);
+        OL_CHECK(status_damage->entries[0U].hurt_damage == 1);
+        OL_CHECK(status_damage->entries[0U].poison_damage == 0);
+        OL_CHECK(status_damage->entries[0U].physical_power_floored);
+        OL_CHECK(status_damage->entries[0U].hp_floored);
+        OL_CHECK(first_role.word(role_word::hp) == 1);
+        OL_CHECK(first_role.word(role_word::physical_power) == 1);
+        OL_CHECK(status_damage->entries[1U].hurt_damage == 0);
+        OL_CHECK(status_damage->entries[1U].poison_damage == 2);
+        OL_CHECK(second_role.word(role_word::hp) == 98);
+
+        first[combatant_word::ai_target] = 1;
+        first[combatant_word::ai_poison_target] = 1;
+        second[combatant_word::occupancy_hidden] = 1;
+        const auto cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(cleanup.has_value());
+        OL_CHECK(cleanup->attack_targets_cleared == 1);
+        OL_CHECK(cleanup->poison_targets_cleared == 1);
+        OL_CHECK(first[combatant_word::ai_target] == -1);
+        OL_CHECK(first[combatant_word::ai_poison_target] == -1);
+        first[combatant_word::ai_target] = 1;
+        second[combatant_word::occupancy_hidden] = 2;
+        const auto exact_cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(exact_cleanup.has_value());
+        OL_CHECK(exact_cleanup->attack_targets_cleared == 0);
+        OL_CHECK(first[combatant_word::ai_target] == 1);
+        first[combatant_word::ai_target] = setup.combatant_count();
+        setup.combatants()[static_cast<std::size_t>(setup.combatant_count())]
+            .words[combatant_word::occupancy_hidden] = 1;
+        const auto inactive_cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(inactive_cleanup.has_value());
+        OL_CHECK(inactive_cleanup->attack_targets_cleared == 1);
+        OL_CHECK(first[combatant_word::ai_target] == -1);
+
+        std::fill_n(
+            first_role.bytes.begin() + static_cast<std::ptrdiff_t>(role_word::name_byte),
+            role_word::name_bytes,
+            static_cast<std::uint8_t>(0));
+        first_role.bytes[role_word::name_byte] = 'A';
+        first_role.bytes[role_word::name_byte + 1U] = 'B';
+        first_role.set_word(role_word::head_id, 123);
+        first_role.set_word(role_word::physical_power, 77);
+        first_role.set_word(role_word::hp, 55);
+        first_role.set_word(role_word::maximum_hp, 100);
+        first_role.set_word(role_word::hurt, 34);
+        first_role.set_word(role_word::poison, 50);
+        first_role.set_word(role_word::mp_type, 3);
+        first_role.set_word(role_word::mp, 22);
+        first_role.set_word(role_word::maximum_mp, 80);
+        const auto party_panel = setup.status_panel_plan(0U);
+        OL_CHECK(party_panel.has_value());
+        OL_CHECK(party_panel->side_offset == 0);
+        OL_CHECK(party_panel->panel_x == 220);
+        OL_CHECK(party_panel->portrait_x == 242);
+        OL_CHECK(party_panel->portrait_id == 123);
+        OL_CHECK(party_panel->name_x == 262);
+        OL_CHECK(party_panel->hurt_color == 3'600);
+        OL_CHECK(party_panel->poison_color == 13'623);
+        OL_CHECK(party_panel->mp_color == 13'623);
+        OL_CHECK(party_panel->render_required);
+        const auto enemy_panel = setup.status_panel_plan(1U);
+        OL_CHECK(enemy_panel.has_value());
+        OL_CHECK(enemy_panel->side_offset == 220);
+        OL_CHECK(enemy_panel->panel_x == 0);
+        OL_CHECK(enemy_panel->portrait_x == 22);
+    }
+}
+
 void run_player_movement_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
@@ -2841,6 +3138,7 @@ int main() {
     run_ai_item_effect_test(data_root);
     run_ai_request_handler_test(data_root);
     run_ai_support_handler_test(data_root);
+    run_post_battle_progression_test(data_root);
     run_player_movement_selection_test(data_root);
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
