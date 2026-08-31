@@ -2167,6 +2167,10 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(rest_ranger.roles[1U].word(role_word::physical_power) == 5);
 
     auto automatic_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    automatic_ranger.roles[1U].set_word(role_word::hp, 100);
+    automatic_ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    automatic_ranger.roles[3U].set_word(role_word::hp, 100);
+    automatic_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
     openlegend::random::LegacyRandom automatic_random{1U};
     BattleSession automatic_session{
         data_root, automatic_ranger, automatic_random, 4, false};
@@ -2180,9 +2184,56 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::automatic_present);
     OL_CHECK(!automatic_session.setup().automatic_enabled());
     OL_CHECK(automatic_session.render(framebuffer));
-    automatic_session.finish_presented_tick();
+    automatic_session.finish_presented_tick(100U);
     OL_CHECK(automatic_session.setup().automatic_enabled());
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_action);
+    automatic_session.advance(100U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_prelude_present);
+    OL_CHECK(automatic_session.render(framebuffer));
+    automatic_session.finish_presented_tick(100U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_wait);
+    automatic_session.advance(100U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_wait);
+    for (std::uint32_t tick = 101U; tick < 108U; ++tick) {
+        automatic_session.advance(tick);
+        OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_wait);
+    }
+    automatic_session.advance(108U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(automatic_session.current_actor_slot() == 1U);
+    OL_CHECK(automatic_ranger.roles[1U].word(role_word::physical_power) == 5);
+    OL_CHECK(
+        automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
+
+    OL_CHECK(automatic_session.render(framebuffer));
+    automatic_session.finish_presented_tick(108U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_action);
+    automatic_session.advance(108U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_prelude_present);
+    OL_CHECK(automatic_session.render(framebuffer));
+    automatic_session.finish_presented_tick(108U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_wait);
+    for (std::uint32_t tick = 109U; tick < 116U; ++tick) {
+        automatic_session.advance(tick);
+        OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_wait);
+    }
+    automatic_session.advance(116U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(automatic_ranger.roles[3U].word(role_word::physical_power) == 4);
+    OL_CHECK(
+        automatic_session.setup().combatants()[1U].words[combatant_word::action_done] == 1);
+    automatic_session.advance(0U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::round_wait);
+    automatic_session.advance(1U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(automatic_session.current_actor_slot() == 0U);
+    OL_CHECK(
+        automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(automatic_session.render(framebuffer));
+    automatic_session.finish_presented_tick(1U);
+    OL_CHECK(
+        automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 0);
+    OL_CHECK(automatic_session.setup().combatants()[0U].words[combatant_word::ai_action] == 0);
 }
 
 void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {

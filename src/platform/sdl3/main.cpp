@@ -310,7 +310,7 @@ int main(const int argc, const char* const* argv) {
         if (world_menu_consumed) {
             keyboard.consume_edge(0x1BU);
         }
-        game.advance();
+        game.advance(frame_tick);
         for (const auto& command : game.take_scene_audio_commands()) {
             if (command.id < 0) {
                 continue;
@@ -340,7 +340,7 @@ int main(const int argc, const char* const* argv) {
                 report_configuration_error("present", "unable to present indexed framebuffer", SDL_GetError());
                 return 7;
             }
-            game.finish_presented_tick();
+            game.finish_presented_tick(tick_source.tick());
             diagnostics::log_trace(
                 "frame presented tick=" + std::to_string(frame_tick) +
                 " view=" + std::to_string(static_cast<int>(game.view())));

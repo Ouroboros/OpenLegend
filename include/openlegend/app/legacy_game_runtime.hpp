@@ -43,7 +43,7 @@ class LegacyGameRuntime {
 public:
     LegacyGameRuntime(std::filesystem::path data_root, std::uint32_t random_seed);
 
-    void advance();
+    void advance(std::uint32_t bios_tick = 0U);
     void handle_key(std::uint8_t translated_key, bool control_down, bool shift_down);
     bool handle_world_input(
         bool left,
@@ -51,7 +51,7 @@ public:
         bool down,
         bool right,
         bool menu_requested = false);
-    void finish_presented_tick();
+    void finish_presented_tick(std::uint32_t bios_tick = 0U);
     [[nodiscard]] bool render();
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }

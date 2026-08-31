@@ -28,6 +28,9 @@ enum class BattleSessionPhase {
     player_action_selected,
     automatic_present,
     ai_action,
+    ai_prelude_present,
+    ai_wait,
+    ai_action_selected,
     round_wait,
     battle_outcome,
 };
@@ -90,13 +93,15 @@ public:
     }
 
     [[nodiscard]] BattleSessionInputResult handle_key(std::uint8_t translated_key);
-    void advance();
+    void advance(std::uint32_t bios_tick = 0U);
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer);
-    void finish_presented_tick();
+    void finish_presented_tick(std::uint32_t bios_tick = 0U);
 
 private:
     [[nodiscard]] bool begin_initial_battle();
-    [[nodiscard]] bool begin_round();
+    [[nodiscard]] bool begin_round(std::uint32_t bios_tick);
+    [[nodiscard]] bool begin_ai_action();
+    [[nodiscard]] bool advance_ai_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool begin_player_action_menu();
     [[nodiscard]] std::optional<std::size_t> action_for_ordinal(
         std::size_t ordinal) const noexcept;
@@ -128,6 +133,11 @@ private:
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
     BattleOutcome outcome_{BattleOutcome::ongoing};
+    std::optional<BattleAiTurnPrelude> ai_turn_prelude_;
+    std::optional<BattleAiTurnDecision> ai_turn_decision_;
+    std::uint32_t round_tick_{};
+    std::uint32_t ai_wait_tick_{};
+    std::int32_t ai_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};
     std::array<std::uint8_t, compat::kLegacyPixelCount> selection_background_{};
     compat::LegacyPalette selection_palette_{};

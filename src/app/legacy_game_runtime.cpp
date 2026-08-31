@@ -128,7 +128,7 @@ LegacyGameRuntime::LegacyGameRuntime(
     }
 }
 
-void LegacyGameRuntime::advance() {
+void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     if (pending_io_ != PendingIo::none) {
         perform_pending_io();
     }
@@ -143,7 +143,7 @@ void LegacyGameRuntime::advance() {
         world_session_->periodic_tick();
         world_session_->idle_animation_tick();
     } else if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
-        battle_session_->advance();
+        battle_session_->advance(bios_tick);
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                scene_session_->pending().kind == scene::SceneStepKind::stay) {
         const auto direction = scene_direction_input_;
@@ -165,9 +165,9 @@ void LegacyGameRuntime::advance() {
     world_step_processed_ = false;
 }
 
-void LegacyGameRuntime::finish_presented_tick() {
+void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
     if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
-        battle_session_->finish_presented_tick();
+        battle_session_->finish_presented_tick(bios_tick);
         return;
     }
     if (view_ != LegacyGameView::world || world_session_ == nullptr) {

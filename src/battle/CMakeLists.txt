@@ -21,6 +21,7 @@ target_link_libraries(
         openlegend_random
         openlegend_render
         openlegend_resource
+        openlegend_time
         openlegend_project_options
         openlegend_project_warnings
 )

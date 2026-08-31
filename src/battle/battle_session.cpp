@@ -9,6 +9,7 @@
 
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/render/legacy_effects.hpp"
+#include "openlegend/time/legacy_clock.hpp"
 
 namespace openlegend::battle {
 namespace {
@@ -52,6 +53,9 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
     case BattleSessionPhase::automatic_present: return "automatic_present";
     case BattleSessionPhase::ai_action: return "ai_action";
+    case BattleSessionPhase::ai_prelude_present: return "ai_prelude_present";
+    case BattleSessionPhase::ai_wait: return "ai_wait";
+    case BattleSessionPhase::ai_action_selected: return "ai_action_selected";
     case BattleSessionPhase::round_wait: return "round_wait";
     case BattleSessionPhase::battle_outcome: return "battle_outcome";
     }
@@ -161,11 +165,19 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
         : BattleSessionInputResult::ignored;
 }
 
-void BattleSession::advance() {
-    if (!valid() || phase_ != BattleSessionPhase::round_start) {
+void BattleSession::advance(const std::uint32_t bios_tick) {
+    if (!valid()) {
         return;
     }
-    static_cast<void>(begin_round());
+    if (phase_ == BattleSessionPhase::round_start) {
+        static_cast<void>(begin_round(bios_tick));
+    } else if (phase_ == BattleSessionPhase::ai_action) {
+        static_cast<void>(begin_ai_action());
+    } else if (phase_ == BattleSessionPhase::ai_wait) {
+        static_cast<void>(advance_ai_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::round_wait && bios_tick != round_tick_) {
+        static_cast<void>(begin_round(bios_tick));
+    }
 }
 
 bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
@@ -193,7 +205,7 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
     return rendered;
 }
 
-void BattleSession::finish_presented_tick() {
+void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     if (!valid() || !frame_rendered_) {
         return;
     }
@@ -232,9 +244,23 @@ void BattleSession::finish_presented_tick() {
             " phase=" + std::string{phase_name(phase_)});
         return;
     }
+    if (phase_ == BattleSessionPhase::ai_prelude_present) {
+        ai_wait_tick_ = bios_tick;
+        ai_wait_tick_changes_remaining_ = timing::legacy_delay_tick_count(
+            ai_turn_prelude_.has_value() ? ai_turn_prelude_->wait_ticks : 300);
+        phase_ = BattleSessionPhase::ai_wait;
+        diagnostics::log_info(
+            "battle AI prelude presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " wait_tick_changes=" +
+            std::to_string(ai_wait_tick_changes_remaining_));
+        return;
+    }
     if (phase_ == BattleSessionPhase::actor_present) {
-        const auto side = setup_.combatants()[current_actor_slot_]
-                              .words[combatant_word::side];
+        auto& words = setup_.combatants()[current_actor_slot_].words;
+        words[combatant_word::action_done] = 0;
+        words[combatant_word::ai_action] = 0;
+        const auto side = words[combatant_word::side];
         if (side == 0 && !setup_.automatic_enabled()) {
             if (!begin_player_action_menu()) {
                 diagnostics::log_error(
@@ -283,12 +309,13 @@ bool BattleSession::begin_initial_battle() {
     return true;
 }
 
-bool BattleSession::begin_round() {
+bool BattleSession::begin_round(const std::uint32_t bios_tick) {
     if (!setup_.sort_by_effective_speed() || !setup_.prepare_round() ||
         setup_.combatant_count() <= 0) {
         error_ = setup_.valid() ? "battle round preparation failed" : setup_.error();
         return false;
     }
+    round_tick_ = bios_tick;
     current_actor_slot_ = 0U;
     const auto& actor = setup_.combatants()[current_actor_slot_]
                             .words;
@@ -306,6 +333,64 @@ bool BattleSession::begin_round() {
         " view=" + std::to_string(render_state_.view_x) + "," +
         std::to_string(render_state_.view_y));
     return true;
+}
+
+bool BattleSession::begin_ai_action() {
+    ai_turn_prelude_ = setup_.begin_ai_turn(current_actor_slot_);
+    ai_turn_decision_.reset();
+    if (!ai_turn_prelude_.has_value()) {
+        error_ = "battle AI prelude is invalid";
+        return false;
+    }
+    phase_ = BattleSessionPhase::ai_prelude_present;
+    diagnostics::log_info(
+        "battle AI prelude ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " allied_total=" + std::to_string(ai_turn_prelude_->allied_total) +
+        " opponent_total=" + std::to_string(ai_turn_prelude_->opponent_total) +
+        " allied_count=" + std::to_string(ai_turn_prelude_->allied_count) +
+        " opponent_count=" + std::to_string(ai_turn_prelude_->opponent_count));
+    return true;
+}
+
+bool BattleSession::advance_ai_wait(const std::uint32_t bios_tick) {
+    if (bios_tick == ai_wait_tick_) {
+        return true;
+    }
+    ai_wait_tick_ = bios_tick;
+    if (ai_wait_tick_changes_remaining_ > 0) {
+        --ai_wait_tick_changes_remaining_;
+    }
+    if (ai_wait_tick_changes_remaining_ > 0) {
+        return true;
+    }
+
+    ai_turn_decision_ = setup_.choose_ai_turn_action(current_actor_slot_, random_);
+    if (!ai_turn_decision_.has_value()) {
+        error_ = "battle AI action selection failed";
+        return false;
+    }
+    diagnostics::log_info(
+        "battle AI action selected id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" +
+        std::to_string(static_cast<std::int16_t>(ai_turn_decision_->choice.action)) +
+        " handler=" +
+        std::to_string(static_cast<std::int16_t>(ai_turn_decision_->handler)) +
+        " target=" + std::to_string(ai_turn_decision_->choice.target_slot));
+    if (ai_turn_decision_->handler != BattleAiHandler::rest) {
+        phase_ = BattleSessionPhase::ai_action_selected;
+        return true;
+    }
+    if (!setup_.rest_actor(current_actor_slot_, random_).has_value()) {
+        error_ = setup_.error();
+        return false;
+    }
+    if (!setup_.finish_ai_turn(current_actor_slot_)) {
+        error_ = "battle AI turn completion failed";
+        return false;
+    }
+    return finish_current_actor(BattlePlayerAction::rest);
 }
 
 bool BattleSession::begin_player_action_menu() {
