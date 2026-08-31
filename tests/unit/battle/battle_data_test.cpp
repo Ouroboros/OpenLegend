@@ -980,6 +980,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
             combatant[combatant_word::x] = static_cast<std::int16_t>(10 + role);
             combatant[combatant_word::y] = static_cast<std::int16_t>(20 + role);
             combatant[combatant_word::occupancy_hidden] = 0;
+            combatant[combatant_word::action_done] = 0;
             combatant[combatant_word::ai_action] = -1;
         }
     };
@@ -1130,6 +1131,107 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(!choice->action_code_written);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
     OL_CHECK(attack_random.state() == 1'103'527'590U);
+
+    reset();
+    const auto prelude = setup.begin_ai_turn(0U);
+    OL_CHECK(prelude.has_value());
+    OL_CHECK(prelude->allied_total == 330);
+    OL_CHECK(prelude->opponent_total == 220);
+    OL_CHECK(prelude->allied_count == 3);
+    OL_CHECK(prelude->opponent_count == 2);
+    OL_CHECK(prelude->render_required);
+    OL_CHECK(prelude->present_required);
+    OL_CHECK(prelude->wait_ticks == 300);
+
+    ranger.roles[0U].set_word(role_word::physical_power, 9);
+    openlegend::random::LegacyRandom wait_random{1U};
+    auto decision = setup.choose_ai_turn_action(0U, wait_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::wait);
+    OL_CHECK(decision->handler == BattleAiHandler::rest);
+    OL_CHECK(wait_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::physical_power, 9);
+    ranger.roles[0U].set_word(role_word::hp, 10);
+    openlegend::random::LegacyRandom cleared_wait_random{1U};
+    decision = setup.choose_ai_turn_action(0U, cleared_wait_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::none);
+    OL_CHECK(decision->handler == BattleAiHandler::rest);
+    OL_CHECK(cleared_wait_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::poison, 100);
+    ranger.roles[0U].set_word(role_word::detoxification, 100);
+    openlegend::random::LegacyRandom poisoned_entry_random{1U};
+    decision = setup.choose_ai_turn_action(0U, poisoned_entry_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::detox);
+    OL_CHECK(decision->handler == BattleAiHandler::detox);
+    OL_CHECK(poisoned_entry_random.state() == 1'103'527'590U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::mp, 0);
+    ranger.roles[0U].set_word(role_word::maximum_mp, 100);
+    ranger.items[7U].set_word(item_word::add_mp, 1);
+    ranger.header.set_inventory(3U, openlegend::model::ItemId{7}, 0);
+    openlegend::random::LegacyRandom low_mp_entry_random{1U};
+    decision = setup.choose_ai_turn_action(0U, low_mp_entry_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::item);
+    OL_CHECK(decision->choice.item_slot == 3);
+    OL_CHECK(decision->handler == BattleAiHandler::item);
+    OL_CHECK(low_mp_entry_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::medicine, 80);
+    setup.combatants()[1U].words[combatant_word::ai_action] =
+        static_cast<std::int16_t>(BattleAiAction::request_medicine);
+    openlegend::random::LegacyRandom medicine_entry_random{1U};
+    decision = setup.choose_ai_turn_action(0U, medicine_entry_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::medicine);
+    OL_CHECK(decision->choice.target_slot == 1);
+    OL_CHECK(decision->handler == BattleAiHandler::medicine);
+    OL_CHECK(medicine_entry_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 80);
+    setup.combatants()[1U].words[combatant_word::ai_action] =
+        static_cast<std::int16_t>(BattleAiAction::request_detox);
+    openlegend::random::LegacyRandom detox_entry_random{1U};
+    decision = setup.choose_ai_turn_action(0U, detox_entry_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::detox);
+    OL_CHECK(decision->choice.target_slot == 1);
+    OL_CHECK(decision->handler == BattleAiHandler::detox);
+    OL_CHECK(detox_entry_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::hp, 19);
+    openlegend::random::LegacyRandom escape_random{10U};
+    decision = setup.choose_ai_turn_action(0U, escape_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::escape);
+    OL_CHECK(decision->handler == BattleAiHandler::escape);
+    OL_CHECK(escape_random.state() == 1'849'040'536U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::mp, 5);
+    ranger.roles[0U].set_word(role_word::maximum_mp, 5);
+    ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
+    ranger.magics[1U].set_word(magic_word::need_mp, 5);
+    openlegend::random::LegacyRandom entry_attack_random{1U};
+    decision = setup.choose_ai_turn_action(0U, entry_attack_random);
+    OL_CHECK(decision.has_value());
+    OL_CHECK(decision->choice.action == BattleAiAction::attack);
+    OL_CHECK(decision->handler == BattleAiHandler::attack);
+    OL_CHECK(!decision->choice.action_code_written);
+    OL_CHECK(entry_attack_random.state() == 662'824'084U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+    OL_CHECK(setup.finish_ai_turn(0U));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
 }
 
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {

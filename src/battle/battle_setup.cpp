@@ -2028,6 +2028,230 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
         actor_slot, BattleAiAction::attack, -1, BattleAiItemSource::none, -1, false);
 }
 
+std::optional<BattleAiTurnPrelude> BattleSetup::begin_ai_turn(
+    const std::size_t actor_slot) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    BattleAiTurnPrelude prelude{};
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        auto& total = combatants_[slot].words[combatant_word::side] == actor_side ?
+            prelude.allied_total : prelude.opponent_total;
+        auto& count = combatants_[slot].words[combatant_word::side] == actor_side ?
+            prelude.allied_count : prelude.opponent_count;
+        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::attack));
+        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::hp));
+        count = wrapping_i16(static_cast<std::int32_t>(count) + 1);
+    }
+    return prelude;
+}
+
+std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    BattleAiChoice choice{};
+    if (actor_role.word(model::role_word::physical_power) < 10) {
+        choice.action = BattleAiAction::wait;
+    }
+
+    auto choose_low_hp = actor_role.word(model::role_word::hp) < 20 ||
+        actor_role.word(model::role_word::hurt) > 50;
+    if (!choose_low_hp && actor_role.word(model::role_word::hp) <
+            actor_role.word(model::role_word::maximum_hp) / 2) {
+        choose_low_hp = random.bounded(10) < 3;
+    }
+    if (!choose_low_hp && actor_role.word(model::role_word::hp) <
+            actor_role.word(model::role_word::maximum_hp) / 3) {
+        choose_low_hp = random.bounded(10) < 5;
+    }
+    if (!choose_low_hp && actor_role.word(model::role_word::hp) <
+            actor_role.word(model::role_word::maximum_hp) / 4) {
+        choose_low_hp = random.bounded(10) < 7;
+    }
+    if (!choose_low_hp && actor_role.word(model::role_word::hp) <
+            actor_role.word(model::role_word::maximum_hp) / 5) {
+        choose_low_hp = random.bounded(10) < 9;
+    }
+    if (choose_low_hp) {
+        const auto selected = choose_ai_low_hp_action(actor_slot);
+        if (!selected) {
+            return std::nullopt;
+        }
+        choice = *selected;
+    }
+
+    if (choice.action == BattleAiAction::none) {
+        const auto poison_gate = static_cast<std::int32_t>(
+            actor_role.word(model::role_word::poison)) / 10;
+        if (random.bounded(10) < poison_gate) {
+            const auto selected = choose_ai_poisoned_action(actor_slot);
+            if (!selected) {
+                return std::nullopt;
+            }
+            choice = *selected;
+        }
+    }
+
+    if (choice.action == BattleAiAction::none) {
+        auto choose_low_mp = false;
+        if (actor_role.word(model::role_word::mp) <
+            actor_role.word(model::role_word::maximum_mp) / 2) {
+            choose_low_mp = random.bounded(10) < 2;
+        }
+        if (!choose_low_mp && actor_role.word(model::role_word::mp) <
+                actor_role.word(model::role_word::maximum_mp) / 3) {
+            choose_low_mp = random.bounded(10) < 4;
+        }
+        if (!choose_low_mp && actor_role.word(model::role_word::mp) <
+                actor_role.word(model::role_word::maximum_mp) / 4) {
+            choose_low_mp = random.bounded(10) < 6;
+        }
+        if (!choose_low_mp && actor_role.word(model::role_word::mp) <
+                actor_role.word(model::role_word::maximum_mp) / 5) {
+            choose_low_mp = random.bounded(10) < 8;
+        }
+        if (choose_low_mp) {
+            const auto selected = choose_ai_low_mp_action(actor_slot);
+            if (!selected) {
+                return std::nullopt;
+            }
+            choice = *selected;
+        }
+    }
+
+    if (choice.action == BattleAiAction::none &&
+        actor_role.word(model::role_word::physical_power) > 50) {
+        auto choose_medicine = false;
+        if (actor_role.word(model::role_word::medicine) >= 20) {
+            choose_medicine = random.bounded(10) < 4;
+        }
+        if (!choose_medicine && actor_role.word(model::role_word::medicine) >= 40) {
+            choose_medicine = random.bounded(10) < 6;
+        }
+        if (!choose_medicine && actor_role.word(model::role_word::medicine) >= 60) {
+            choose_medicine = random.bounded(10) < 8;
+        }
+        if (!choose_medicine && actor_role.word(model::role_word::medicine) >= 80) {
+            choose_medicine = true;
+        }
+        if (choose_medicine) {
+            const auto selected = choose_ai_medicine_target(actor_slot, random);
+            if (!selected) {
+                return std::nullopt;
+            }
+            choice = *selected;
+        }
+    }
+
+    if (choice.action == BattleAiAction::none &&
+        actor_role.word(model::role_word::physical_power) > 50) {
+        auto choose_detox = false;
+        if (actor_role.word(model::role_word::detoxification) >= 20) {
+            choose_detox = random.bounded(10) < 4;
+        }
+        if (!choose_detox && actor_role.word(model::role_word::detoxification) >= 40) {
+            choose_detox = random.bounded(10) < 6;
+        }
+        if (!choose_detox && actor_role.word(model::role_word::detoxification) >= 60) {
+            choose_detox = random.bounded(10) < 8;
+        }
+        if (!choose_detox && actor_role.word(model::role_word::detoxification) >= 80) {
+            choose_detox = true;
+        }
+        if (choose_detox) {
+            const auto selected = choose_ai_detox_target(actor_slot, random);
+            if (!selected) {
+                return std::nullopt;
+            }
+            choice = *selected;
+        }
+    }
+
+    if (choice.action == BattleAiAction::none && random.bounded(10) < 5) {
+        auto choose_escape = actor_role.word(model::role_word::hp) < 20;
+        if (!choose_escape && actor_role.word(model::role_word::hp) <
+                actor_role.word(model::role_word::maximum_hp) / 4) {
+            choose_escape = random.bounded(10) < 6;
+        }
+        if (!choose_escape && actor_role.word(model::role_word::hp) <
+                actor_role.word(model::role_word::maximum_hp) / 5) {
+            choose_escape = random.bounded(10) < 8;
+        }
+        if (choose_escape) {
+            choice.action = BattleAiAction::escape;
+        }
+    }
+
+    if (choice.action == BattleAiAction::none) {
+        const auto selected = choose_ai_offensive_action(actor_slot, random);
+        if (!selected) {
+            return std::nullopt;
+        }
+        choice = *selected;
+    }
+
+    BattleAiHandler handler{};
+    switch (choice.action) {
+    case BattleAiAction::none:
+    case BattleAiAction::wait:
+        handler = BattleAiHandler::rest;
+        break;
+    case BattleAiAction::move:
+        handler = BattleAiHandler::move;
+        break;
+    case BattleAiAction::attack:
+        handler = BattleAiHandler::attack;
+        break;
+    case BattleAiAction::use_poison:
+        handler = BattleAiHandler::use_poison;
+        break;
+    case BattleAiAction::detox:
+        handler = BattleAiHandler::detox;
+        break;
+    case BattleAiAction::medicine:
+        handler = BattleAiHandler::medicine;
+        break;
+    case BattleAiAction::item:
+        handler = BattleAiHandler::item;
+        break;
+    case BattleAiAction::request_medicine:
+        handler = BattleAiHandler::request_medicine;
+        break;
+    case BattleAiAction::request_detox:
+        handler = BattleAiHandler::request_detox;
+        break;
+    case BattleAiAction::throwing_weapon:
+        handler = BattleAiHandler::throwing_weapon;
+        break;
+    case BattleAiAction::escape:
+        handler = BattleAiHandler::escape;
+        break;
+    }
+    return BattleAiTurnDecision{choice, handler};
+}
+
+bool BattleSetup::finish_ai_turn(const std::size_t actor_slot) noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return false;
+    }
+    combatants_[actor_slot].words[combatant_word::action_done] = 1;
+    return true;
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

@@ -109,6 +109,35 @@ struct BattleAiChoice {
     bool action_code_written{};
 };
 
+enum class BattleAiHandler : std::int16_t {
+    rest,
+    move,
+    attack,
+    use_poison,
+    detox,
+    medicine,
+    item,
+    request_medicine,
+    request_detox,
+    throwing_weapon,
+    escape,
+};
+
+struct BattleAiTurnPrelude {
+    std::int16_t allied_total{};
+    std::int16_t opponent_total{};
+    std::int16_t allied_count{};
+    std::int16_t opponent_count{};
+    std::int16_t wait_ticks{300};
+    bool render_required{true};
+    bool present_required{true};
+};
+
+struct BattleAiTurnDecision {
+    BattleAiChoice choice;
+    BattleAiHandler handler{BattleAiHandler::rest};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -344,6 +373,12 @@ public:
     [[nodiscard]] std::optional<BattleAiChoice> choose_ai_offensive_action(
         std::size_t actor_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiTurnPrelude> begin_ai_turn(
+        std::size_t actor_slot) const noexcept;
+    [[nodiscard]] std::optional<BattleAiTurnDecision> choose_ai_turn_action(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] bool finish_ai_turn(std::size_t actor_slot) noexcept;
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }

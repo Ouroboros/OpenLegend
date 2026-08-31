@@ -802,6 +802,156 @@
           }
         }
       },
+      "ai_entry_vectors": {
+        "prelude": {
+          "allied_total": 330,
+          "opponent_total": 220,
+          "allied_count": 3,
+          "opponent_count": 2,
+          "order": [
+            "render",
+            "present",
+            "wait"
+          ],
+          "wait_ticks": 300
+        },
+        "priority": [
+          "low_hp",
+          "poisoned",
+          "low_mp",
+          "medicine_target",
+          "detox_target",
+          "escape",
+          "offensive"
+        ],
+        "wait": {
+          "physical_power": 9,
+          "rng_consumed": false,
+          "action": 7
+        },
+        "wait_cleared_by_low_hp_no_choice": {
+          "physical_power": 9,
+          "hp": 10,
+          "rng_bounds_after_low_hp": [
+            10,
+            10,
+            50
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            13
+          ],
+          "rng_state_after": 662824084,
+          "action": 0
+        },
+        "poisoned": {
+          "poison": 100,
+          "rng_bounds": [
+            10
+          ],
+          "rng_outputs": [
+            8
+          ],
+          "rng_state_after": 1103527590,
+          "action": 4
+        },
+        "low_mp": {
+          "mp": 0,
+          "maximum_mp": 100,
+          "rng_bounds": [
+            10,
+            10,
+            10
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            3
+          ],
+          "rng_state_after": 662824084,
+          "action": 6
+        },
+        "medicine": {
+          "medicine": 80,
+          "requested_target": 1,
+          "rng_bounds": [
+            10,
+            10,
+            10
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            3
+          ],
+          "rng_state_after": 662824084,
+          "action": 5
+        },
+        "detox": {
+          "detoxification": 80,
+          "requested_target": 1,
+          "rng_bounds": [
+            10,
+            10,
+            10
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            3
+          ],
+          "rng_state_after": 662824084,
+          "action": 4
+        },
+        "escape": {
+          "seed": 10,
+          "hp": 19,
+          "rng_bounds": [
+            10,
+            10
+          ],
+          "rng_outputs": [
+            3,
+            4
+          ],
+          "rng_state_after": 1849040536,
+          "action": 11
+        },
+        "attack": {
+          "mp": 5,
+          "maximum_mp": 5,
+          "minimum_need_mp": 5,
+          "rng_bounds": [
+            10,
+            10,
+            50
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            13
+          ],
+          "rng_state_after": 662824084,
+          "writes_action_code": false,
+          "action": 2
+        },
+        "handler_by_action": {
+          "0": "rest",
+          "1": "move",
+          "2": "attack",
+          "3": "use_poison",
+          "4": "detox",
+          "5": "medicine",
+          "6": "item",
+          "7": "rest",
+          "8": "request_medicine",
+          "9": "request_detox",
+          "10": "throwing_weapon",
+          "11": "escape"
+        },
+        "action_done_written_after_handler": true
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,

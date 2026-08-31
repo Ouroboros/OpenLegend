@@ -194,6 +194,116 @@ def rest_vector(
     }
 
 
+def ai_entry_vectors() -> dict[str, object]:
+    def consume(seed: int, bounds: list[int]) -> tuple[list[int], int]:
+        outputs: list[int] = []
+        state = seed
+        for bound in bounds:
+            value, state = legacy_bounded(state, bound)
+            outputs.append(value)
+        return outputs, state
+
+    poisoned_outputs, poisoned_state = consume(1, [10])
+    low_mp_outputs, low_mp_state = consume(1, [10, 10, 10])
+    medicine_outputs, medicine_state = consume(1, [10, 10, 10])
+    detox_outputs, detox_state = consume(1, [10, 10, 10])
+    cleared_wait_outputs, cleared_wait_state = consume(1, [10, 10, 50])
+    attack_outputs, attack_state = consume(1, [10, 10, 50])
+    escape_outputs, escape_state = consume(10, [10, 10])
+    return {
+        "prelude": {
+            "allied_total": 330,
+            "opponent_total": 220,
+            "allied_count": 3,
+            "opponent_count": 2,
+            "order": ["render", "present", "wait"],
+            "wait_ticks": 300,
+        },
+        "priority": [
+            "low_hp",
+            "poisoned",
+            "low_mp",
+            "medicine_target",
+            "detox_target",
+            "escape",
+            "offensive",
+        ],
+        "wait": {"physical_power": 9, "rng_consumed": False, "action": 7},
+        "wait_cleared_by_low_hp_no_choice": {
+            "physical_power": 9,
+            "hp": 10,
+            "rng_bounds_after_low_hp": [10, 10, 50],
+            "rng_outputs": cleared_wait_outputs,
+            "rng_state_after": cleared_wait_state,
+            "action": 0,
+        },
+        "poisoned": {
+            "poison": 100,
+            "rng_bounds": [10],
+            "rng_outputs": poisoned_outputs,
+            "rng_state_after": poisoned_state,
+            "action": 4,
+        },
+        "low_mp": {
+            "mp": 0,
+            "maximum_mp": 100,
+            "rng_bounds": [10, 10, 10],
+            "rng_outputs": low_mp_outputs,
+            "rng_state_after": low_mp_state,
+            "action": 6,
+        },
+        "medicine": {
+            "medicine": 80,
+            "requested_target": 1,
+            "rng_bounds": [10, 10, 10],
+            "rng_outputs": medicine_outputs,
+            "rng_state_after": medicine_state,
+            "action": 5,
+        },
+        "detox": {
+            "detoxification": 80,
+            "requested_target": 1,
+            "rng_bounds": [10, 10, 10],
+            "rng_outputs": detox_outputs,
+            "rng_state_after": detox_state,
+            "action": 4,
+        },
+        "escape": {
+            "seed": 10,
+            "hp": 19,
+            "rng_bounds": [10, 10],
+            "rng_outputs": escape_outputs,
+            "rng_state_after": escape_state,
+            "action": 11,
+        },
+        "attack": {
+            "mp": 5,
+            "maximum_mp": 5,
+            "minimum_need_mp": 5,
+            "rng_bounds": [10, 10, 50],
+            "rng_outputs": attack_outputs,
+            "rng_state_after": attack_state,
+            "writes_action_code": False,
+            "action": 2,
+        },
+        "handler_by_action": {
+            "0": "rest",
+            "1": "move",
+            "2": "attack",
+            "3": "use_poison",
+            "4": "detox",
+            "5": "medicine",
+            "6": "item",
+            "7": "rest",
+            "8": "request_medicine",
+            "9": "request_detox",
+            "10": "throwing_weapon",
+            "11": "escape",
+        },
+        "action_done_written_after_handler": True,
+    }
+
+
 def ai_selector_vectors() -> dict[str, object]:
     medicine_outputs: list[int] = []
     state = 1
@@ -1078,6 +1188,7 @@ def build(data_root: Path) -> dict[str, object]:
                     },
                 },
                 "ai_selector_vectors": ai_selector_vectors(),
+                "ai_entry_vectors": ai_entry_vectors(),
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,
