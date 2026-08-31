@@ -19,6 +19,10 @@
 
 namespace {
 
+namespace item_word = openlegend::model::item_word;
+namespace magic_word = openlegend::model::magic_word;
+namespace role_word = openlegend::model::role_word;
+
 std::uint64_t fnv1a_words(const std::span<const std::int16_t> words) {
     std::uint64_t hash = 0xcbf29ce484222325ULL;
     for (const auto word : words) {
@@ -928,6 +932,206 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     }));
 }
 
+void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData data{data_root, 3};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    OL_CHECK(setup.apply(PartySelectionAction::previous) == PartySelectionResult::changed);
+    OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+    OL_CHECK(setup.combatant_count() == 5);
+
+    const auto reset = [&]() {
+        for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+            ranger.header.set_inventory(
+                slot, openlegend::model::ItemId{-1}, static_cast<std::int16_t>(0));
+        }
+        for (std::size_t item = 0U; item < 8U; ++item) {
+            ranger.items[item].set_word(item_word::add_hp, 0);
+            ranger.items[item].set_word(item_word::add_poison, 0);
+            ranger.items[item].set_word(item_word::add_mp, 0);
+            ranger.items[item].set_word(item_word::add_use_poison, 0);
+        }
+        for (std::size_t role = 0U; role < 5U; ++role) {
+            auto& record = ranger.roles[role];
+            record.set_word(role_word::hp, 100);
+            record.set_word(role_word::maximum_hp, 100);
+            record.set_word(role_word::hurt, 0);
+            record.set_word(role_word::poison, 0);
+            record.set_word(role_word::physical_power, 100);
+            record.set_word(role_word::mp, 0);
+            record.set_word(role_word::maximum_mp, 0);
+            record.set_word(role_word::attack, 10);
+            record.set_word(role_word::medicine, 0);
+            record.set_word(role_word::use_poison, 0);
+            record.set_word(role_word::detoxification, 0);
+            record.set_word(role_word::hidden_weapon, 0);
+            for (std::size_t slot = 0U; slot < role_word::magic_count; ++slot) {
+                record.set_word(role_word::magic_id_begin + slot, 0);
+            }
+            for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
+                record.set_word(role_word::taking_item_begin + slot, -1);
+            }
+            auto& combatant = setup.combatants()[role].words;
+            combatant[combatant_word::role_id] = static_cast<std::int16_t>(role);
+            combatant[combatant_word::side] = role < 3U ? 0 : 1;
+            combatant[combatant_word::x] = static_cast<std::int16_t>(10 + role);
+            combatant[combatant_word::y] = static_cast<std::int16_t>(20 + role);
+            combatant[combatant_word::occupancy_hidden] = 0;
+            combatant[combatant_word::ai_action] = -1;
+        }
+    };
+
+    reset();
+    ranger.roles[0U].set_word(role_word::medicine, 21);
+    ranger.roles[0U].set_word(role_word::hurt, 50);
+    auto choice = setup.choose_ai_low_hp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 0);
+    OL_CHECK((choice->target == BattlePathCoord{10, 20}));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 5);
+
+    reset();
+    ranger.items[5U].set_word(item_word::add_hp, 1);
+    ranger.header.set_inventory(2U, openlegend::model::ItemId{5}, 0);
+    choice = setup.choose_ai_low_hp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_source == BattleAiItemSource::inventory);
+    OL_CHECK(choice->item_slot == 2);
+    OL_CHECK(choice->target_slot == 0);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::hurt, 80);
+    ranger.roles[1U].set_word(role_word::medicine, 51);
+    choice = setup.choose_ai_low_hp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::request_medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK((choice->target == BattlePathCoord{11, 21}));
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 22);
+    ranger.roles[0U].set_word(role_word::poison, 51);
+    ranger.roles[0U].set_word(role_word::physical_power, 51);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 0);
+
+    reset();
+    ranger.items[6U].set_word(item_word::add_poison, -1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{6}, 0);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    ranger.items[6U].set_word(item_word::add_use_poison, -1);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_source == BattleAiItemSource::inventory);
+    OL_CHECK(choice->item_slot == 1);
+
+    reset();
+    setup.combatants()[0U].words[combatant_word::side] = 1;
+    ranger.roles[0U].set_word(role_word::taking_item_begin + 2U, 6);
+    ranger.items[6U].set_word(item_word::add_poison, -1);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_source == BattleAiItemSource::carried);
+    OL_CHECK(choice->item_slot == 2);
+
+    reset();
+    ranger.items[7U].set_word(item_word::add_mp, 1);
+    ranger.header.set_inventory(3U, openlegend::model::ItemId{7}, 0);
+    choice = setup.choose_ai_low_mp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_slot == 3);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::medicine, 80);
+    ranger.roles[1U].set_word(role_word::hp, 24);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom medicine_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(medicine_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 80);
+    ranger.roles[1U].set_word(role_word::poison, 35);
+    openlegend::random::LegacyRandom detox_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(detox_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::hp, 1);
+    ranger.roles[0U].set_word(role_word::attack, 1);
+    ranger.roles[0U].set_word(role_word::medicine, 20);
+    ranger.roles[0U].set_word(role_word::physical_power, 50);
+    ranger.roles[1U].set_word(role_word::hp, 500);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 600);
+    ranger.roles[1U].set_word(role_word::attack, 0);
+    ranger.roles[2U].set_word(role_word::hp, 500);
+    ranger.roles[2U].set_word(role_word::maximum_hp, 800);
+    ranger.roles[2U].set_word(role_word::attack, 0);
+    ranger.roles[3U].set_word(role_word::hp, 100);
+    ranger.roles[3U].set_word(role_word::attack, 100);
+    ranger.roles[4U].set_word(role_word::hp, 100);
+    ranger.roles[4U].set_word(role_word::attack, 100);
+    openlegend::random::LegacyRandom aid_random{1U};
+    choice = setup.choose_ai_offensive_action(0U, aid_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 2);
+    OL_CHECK(aid_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::use_poison, 100);
+    openlegend::random::LegacyRandom poison_random{1U};
+    choice = setup.choose_ai_offensive_action(0U, poison_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::use_poison);
+    OL_CHECK(choice->action_code_written);
+    OL_CHECK(poison_random.state() == 2'524'885'223U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::hidden_weapon, 100);
+    ranger.items[5U].set_word(item_word::add_hp, -100);
+    ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
+    openlegend::random::LegacyRandom throwing_random{1U};
+    choice = setup.choose_ai_offensive_action(0U, throwing_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::throwing_weapon);
+    OL_CHECK(choice->item_source == BattleAiItemSource::inventory);
+    OL_CHECK(choice->item_slot == 4);
+    OL_CHECK(throwing_random.state() == 2'524'885'223U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::physical_power, 100);
+    ranger.roles[0U].set_word(role_word::mp, 5);
+    ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
+    ranger.magics[1U].set_word(magic_word::need_mp, 5);
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    openlegend::random::LegacyRandom attack_random{1U};
+    choice = setup.choose_ai_offensive_action(0U, attack_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::attack);
+    OL_CHECK(!choice->action_code_written);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+    OL_CHECK(attack_random.state() == 1'103'527'590U);
+}
+
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -1330,6 +1534,7 @@ int main() {
     run_throwing_weapon_action_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);
+    run_ai_selector_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);

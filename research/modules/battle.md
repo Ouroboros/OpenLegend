@@ -35,7 +35,7 @@
 2. `sub_31C75`：资源生命周期、主状态机调用和返回码边界；
 3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；后者完整待 REVIEW，前者仍缺原选择框绘制/呈现/input flag 基本块；
 4. `sub_3271E..sub_32E59` 已恢复：稳定速度降序、逐槽 swap、回合值，以及等待动作的逐槽队尾交换已实现；自动动作仅恢复flag，顶层 render/tick/分派及十项菜单UI与同步continuation仍待实现；
-5. `sub_33599..sub_395EC`：AI selector、路径图/回溯、逐格移动 state/stop、武功profile/每击提交、方形/十字/直线area和HP/MP伤害公式已实现；`sub_37734` 方向选择与UI continuation 待补；
+5. `sub_33C4D..sub_34550` 六个AI候选selector，以及路径图/回溯、逐格移动 state/stop、武功profile/每击提交、方形/十字/直线area和HP/MP伤害公式已实现；`sub_33599`候选优先级/逃跑/action handler同步与`sub_37734`方向选择/UI continuation待补；
 6. `sub_3859E/sub_3884A/sub_38910` 的actor/effect/sample/damage逐帧时间线、`sub_38DAC` 的MP过滤武功菜单状态，以及 `sub_39776..sub_3A8A4` 的用毒/解毒/医疗、战斗物品筛选、暗器目标/伤害/中毒/库存消耗和休息状态核心已映射；FIGHT/sample/render/present/input接线及共享物品界面仍待BattleSession；
 7. `sub_3AA17` 等待队尾重排为 `implemented_pending_review`；`sub_3AA4B` 已锁定重绘→present→置自动flag→AI的顺序；`sub_3AA85` 已恢复双32×32 pass、地形/overlay/物件/角色/effect/damage的typed命令计划，实际indexed像素执行和present仍待BattleSession；
 8. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
@@ -50,6 +50,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：37项 `pending_mapping`、21项 `pending_implementation`、23项 `implemented_pending_review`，0项最终关闭。
+- `battle-closure.tsv`：31项 `pending_mapping`、21项 `pending_implementation`、29项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
-- 下一停点：独立恢复 `sub_33599` AI决策入口及候选选择器，再接BattleSession的renderer executor、present与自动AI同步continuation。
+- 下一停点：独立恢复 `sub_33599` AI入口的候选调用优先级、逃跑判定与动作码分派，再接BattleSession的renderer executor、present与自动AI同步continuation。

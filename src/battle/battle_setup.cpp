@@ -1439,6 +1439,595 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
         role.word(model::role_word::mp)};
 }
 
+BattleAiChoice BattleSetup::commit_ai_choice(
+    const std::size_t actor_slot,
+    const BattleAiAction action,
+    const std::int16_t target_slot,
+    const BattleAiItemSource item_source,
+    const std::int16_t item_slot,
+    const bool write_action_code) noexcept {
+    BattleAiChoice choice{
+        .action = action,
+        .target_slot = target_slot,
+        .item_source = item_source,
+        .item_slot = item_slot,
+        .action_code_written = write_action_code,
+    };
+    if (target_slot >= 0 && target_slot < combatant_count_) {
+        const auto& target = combatants_[static_cast<std::size_t>(target_slot)].words;
+        choice.target = BattlePathCoord{target[combatant_word::x], target[combatant_word::y]};
+    }
+    if (write_action_code) {
+        combatants_[actor_slot].words[combatant_word::ai_action] =
+            static_cast<std::int16_t>(action);
+    }
+    return choice;
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_low_hp_action(
+    const std::size_t actor_slot) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    if (actor_role.word(model::role_word::medicine) >= 20 &&
+        actor_role.word(model::role_word::physical_power) >= 50 &&
+        actor_role.word(model::role_word::medicine) >
+            static_cast<std::int32_t>(actor_role.word(model::role_word::hurt)) - 30) {
+        return commit_ai_choice(
+            actor_slot,
+            BattleAiAction::medicine,
+            static_cast<std::int16_t>(actor_slot));
+    }
+
+    const auto side = combatants_[actor_slot].words[combatant_word::side];
+    const auto select_item = [&](const std::int16_t item_id,
+                                 const BattleAiItemSource source,
+                                 const std::int16_t item_slot)
+        -> std::optional<BattleAiChoice> {
+        if (item_id < 0) {
+            return BattleAiChoice{};
+        }
+        if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            return std::nullopt;
+        }
+        if (ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::add_hp) > 0) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::item,
+                static_cast<std::int16_t>(actor_slot),
+                source,
+                item_slot);
+        }
+        return BattleAiChoice{};
+    };
+    if (side == 0) {
+        for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+            const auto selected = select_item(
+                ranger_.header.inventory_item(slot).value,
+                BattleAiItemSource::inventory,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    } else {
+        for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
+            const auto selected = select_item(
+                actor_role.word(model::role_word::taking_item_begin + slot),
+                BattleAiItemSource::carried,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    }
+
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
+            combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto medicine = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::medicine);
+        if (medicine > 20 && medicine >
+                static_cast<std::int32_t>(actor_role.word(model::role_word::hurt)) - 30) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::request_medicine,
+                static_cast<std::int16_t>(slot));
+        }
+    }
+    return commit_ai_choice(
+        actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_poisoned_action(
+    const std::size_t actor_slot) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    if (actor_role.word(model::role_word::detoxification) > 20 &&
+        actor_role.word(model::role_word::detoxification) >
+            static_cast<std::int32_t>(actor_role.word(model::role_word::poison)) - 30 &&
+        actor_role.word(model::role_word::physical_power) > 50) {
+        return commit_ai_choice(
+            actor_slot,
+            BattleAiAction::detox,
+            static_cast<std::int16_t>(actor_slot));
+    }
+
+    const auto side = combatants_[actor_slot].words[combatant_word::side];
+    const auto property = side == 0 ? model::item_word::add_use_poison :
+                                     model::item_word::add_poison;
+    const auto select_item = [&](const std::int16_t item_id,
+                                 const BattleAiItemSource source,
+                                 const std::int16_t item_slot)
+        -> std::optional<BattleAiChoice> {
+        if (item_id < 0) {
+            return BattleAiChoice{};
+        }
+        if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            return std::nullopt;
+        }
+        if (ranger_.items[static_cast<std::size_t>(item_id)].word(property) < 0) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::item,
+                static_cast<std::int16_t>(actor_slot),
+                source,
+                item_slot);
+        }
+        return BattleAiChoice{};
+    };
+    if (side == 0) {
+        for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+            const auto selected = select_item(
+                ranger_.header.inventory_item(slot).value,
+                BattleAiItemSource::inventory,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    } else {
+        for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
+            const auto selected = select_item(
+                actor_role.word(model::role_word::taking_item_begin + slot),
+                BattleAiItemSource::carried,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    }
+
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
+            combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto detoxification = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::detoxification);
+        if (detoxification > 20 && detoxification >
+                static_cast<std::int32_t>(actor_role.word(model::role_word::poison)) - 30) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::request_detox,
+                static_cast<std::int16_t>(slot));
+        }
+    }
+    return commit_ai_choice(
+        actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_low_mp_action(
+    const std::size_t actor_slot) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto side = combatants_[actor_slot].words[combatant_word::side];
+    const auto select_item = [&](const std::int16_t item_id,
+                                 const BattleAiItemSource source,
+                                 const std::int16_t item_slot)
+        -> std::optional<BattleAiChoice> {
+        if (item_id < 0) {
+            return BattleAiChoice{};
+        }
+        if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            return std::nullopt;
+        }
+        if (ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::add_mp) > 0) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::item,
+                static_cast<std::int16_t>(actor_slot),
+                source,
+                item_slot);
+        }
+        return BattleAiChoice{};
+    };
+    if (side == 0) {
+        for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+            const auto selected = select_item(
+                ranger_.header.inventory_item(slot).value,
+                BattleAiItemSource::inventory,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    } else {
+        for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
+            const auto selected = select_item(
+                actor_role.word(model::role_word::taking_item_begin + slot),
+                BattleAiItemSource::carried,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    }
+    return commit_ai_choice(
+        actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto medicine = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
+        model::role_word::medicine);
+    const auto side = combatants_[actor_slot].words[combatant_word::side];
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
+            combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        if (medicine <= static_cast<std::int32_t>(role.word(model::role_word::hurt)) - 30) {
+            continue;
+        }
+        auto selected = combatants_[slot].words[combatant_word::ai_action] ==
+                static_cast<std::int16_t>(BattleAiAction::request_medicine) ||
+            role.word(model::role_word::hp) < 20 || role.word(model::role_word::hurt) > 40;
+        if (!selected && role.word(model::role_word::hp) <
+                role.word(model::role_word::maximum_hp) / 2) {
+            selected = random.bounded(10) < 7;
+        }
+        if (!selected && role.word(model::role_word::hp) <
+                role.word(model::role_word::maximum_hp) / 3) {
+            selected = random.bounded(10) < 8;
+        }
+        if (!selected && role.word(model::role_word::hp) <
+                role.word(model::role_word::maximum_hp) / 4) {
+            selected = random.bounded(10) < 9;
+        }
+        if (!selected && role.word(model::role_word::hp) <
+                role.word(model::role_word::maximum_hp) / 5) {
+            selected = true;
+        }
+        if (selected) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::medicine,
+                static_cast<std::int16_t>(slot));
+        }
+    }
+    return commit_ai_choice(
+        actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto detoxification = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
+        model::role_word::detoxification);
+    const auto side = combatants_[actor_slot].words[combatant_word::side];
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
+            combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        if (detoxification <= static_cast<std::int32_t>(role.word(model::role_word::poison)) - 30) {
+            continue;
+        }
+        auto selected = combatants_[slot].words[combatant_word::ai_action] ==
+            static_cast<std::int16_t>(BattleAiAction::request_detox);
+        if (!selected && role.word(model::role_word::poison) > 10) {
+            selected = random.bounded(10) < 4;
+        }
+        if (!selected && role.word(model::role_word::poison) > 20) {
+            selected = random.bounded(10) < 6;
+        }
+        if (!selected && role.word(model::role_word::poison) > 30) {
+            selected = random.bounded(10) < 8;
+        }
+        if (!selected && role.word(model::role_word::poison) > 40) {
+            selected = true;
+        }
+        if (selected) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::detox,
+                static_cast<std::int16_t>(slot));
+        }
+    }
+    return commit_ai_choice(
+        actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto side = combatants_[actor_slot].words[combatant_word::side];
+    std::int16_t allied_total = 0;
+    std::int16_t opponent_total = 0;
+    std::int16_t allied_count = 0;
+    std::int16_t opponent_count = 0;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        auto& total = combatants_[slot].words[combatant_word::side] == side ? allied_total :
+                                                                          opponent_total;
+        auto& count = combatants_[slot].words[combatant_word::side] == side ? allied_count :
+                                                                          opponent_count;
+        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::attack));
+        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::hp));
+        count = wrapping_i16(static_cast<std::int32_t>(count) + 1);
+    }
+    if (opponent_count == 0) {
+        return std::nullopt;
+    }
+
+    const auto opponent_average_half =
+        (static_cast<std::int32_t>(opponent_total) / opponent_count) / 2;
+    const auto actor_power = static_cast<std::int32_t>(actor_role.word(model::role_word::attack)) +
+        actor_role.word(model::role_word::hp);
+    if (opponent_average_half > actor_power &&
+        static_cast<std::int32_t>(allied_total) > 2 * static_cast<std::int32_t>(opponent_total)) {
+        std::int16_t best_value = 0;
+        std::int16_t best_slot = 0;
+        BattleAiAction aid_action = BattleAiAction::none;
+        if (actor_role.word(model::role_word::medicine) >= 20 &&
+            actor_role.word(model::role_word::physical_power) >= 50) {
+            for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+                if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
+                    combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+                    continue;
+                }
+                const auto role_id = combatants_[slot].words[combatant_word::role_id];
+                const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+                if (role.word(model::role_word::hp) < role.word(model::role_word::maximum_hp)) {
+                    const auto missing = wrapping_i16(
+                        static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) -
+                        role.word(model::role_word::hp));
+                    if (missing > best_value) {
+                        best_value = missing;
+                        best_slot = static_cast<std::int16_t>(slot);
+                        aid_action = BattleAiAction::medicine;
+                    }
+                }
+            }
+        } else if (actor_role.word(model::role_word::detoxification) >= 20 &&
+                   actor_role.word(model::role_word::physical_power) >= 50) {
+            for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+                if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
+                    combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+                    continue;
+                }
+                const auto role_id = combatants_[slot].words[combatant_word::role_id];
+                const auto poison = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+                    model::role_word::poison);
+                if (poison > best_value) {
+                    best_value = poison;
+                    best_slot = static_cast<std::int16_t>(slot);
+                    aid_action = BattleAiAction::detox;
+                }
+            }
+        }
+        if (best_value != 0) {
+            return commit_ai_choice(actor_slot, aid_action, best_slot);
+        }
+    }
+
+    const auto poison_advantage =
+        static_cast<std::int32_t>(actor_role.word(model::role_word::use_poison)) -
+        actor_role.word(model::role_word::attack);
+    const auto poison_gate = random.bounded(50);
+    if (poison_advantage > poison_gate) {
+        const auto poison_roll = random.bounded(150);
+        if (poison_roll < actor_role.word(model::role_word::use_poison)) {
+            return commit_ai_choice(actor_slot, BattleAiAction::use_poison, -1);
+        }
+    }
+
+    const auto attack = static_cast<std::int32_t>(actor_role.word(model::role_word::attack));
+    const auto party_threshold = (3 * attack) / 2;
+    const auto select_throwing_item = [&](const std::int16_t item_id,
+                                          const BattleAiItemSource source,
+                                          const std::int16_t item_slot)
+        -> std::optional<BattleAiChoice> {
+        if (item_id < 0) {
+            return BattleAiChoice{};
+        }
+        if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            return std::nullopt;
+        }
+        const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
+        const auto add_hp = static_cast<std::int32_t>(item.word(model::item_word::add_hp));
+        if (add_hp < 0) {
+            const auto magnitude = -add_hp;
+            if (source == BattleAiItemSource::inventory) {
+                if (magnitude > party_threshold) {
+                    const auto roll = random.bounded(
+                        actor_role.word(model::role_word::hidden_weapon));
+                    if (roll > 20) {
+                        return commit_ai_choice(
+                            actor_slot,
+                            BattleAiAction::throwing_weapon,
+                            -1,
+                            source,
+                            item_slot);
+                    }
+                }
+            } else if (magnitude > attack) {
+                const auto roll = random.bounded(10);
+                if (roll < 6) {
+                    return commit_ai_choice(
+                        actor_slot,
+                        BattleAiAction::throwing_weapon,
+                        -1,
+                        source,
+                        item_slot);
+                }
+            }
+        }
+        const auto add_poison = static_cast<std::int32_t>(
+            item.word(model::item_word::add_poison));
+        const auto poison_threshold = source == BattleAiItemSource::inventory ? party_threshold :
+                                                                                 attack;
+        if (add_poison > 0 && add_poison > poison_threshold) {
+            const auto roll = random.bounded(10);
+            if (roll < 3) {
+                return commit_ai_choice(
+                    actor_slot,
+                    BattleAiAction::throwing_weapon,
+                    -1,
+                    source,
+                    item_slot);
+            }
+        }
+        return BattleAiChoice{};
+    };
+    if (side == 0) {
+        for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+            const auto selected = select_throwing_item(
+                ranger_.header.inventory_item(slot).value,
+                BattleAiItemSource::inventory,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    } else {
+        for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
+            const auto selected = select_throwing_item(
+                actor_role.word(model::role_word::taking_item_begin + slot),
+                BattleAiItemSource::carried,
+                static_cast<std::int16_t>(slot));
+            if (!selected) {
+                return std::nullopt;
+            }
+            if (selected->action != BattleAiAction::none) {
+                return selected;
+            }
+        }
+    }
+
+    if (actor_role.word(model::role_word::physical_power) <= 10) {
+        return commit_ai_choice(
+            actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+    }
+    std::int16_t minimum_mp = 1'000;
+    for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+        const auto magic_id = actor_role.word(model::role_word::magic_id_begin + slot);
+        if (magic_id == 0) {
+            continue;
+        }
+        if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+            return std::nullopt;
+        }
+        const auto need_mp = ranger_.magics[static_cast<std::size_t>(magic_id)].word(
+            model::magic_word::need_mp);
+        if (minimum_mp > need_mp) {
+            minimum_mp = need_mp;
+        }
+    }
+    if (actor_role.word(model::role_word::mp) < minimum_mp) {
+        return commit_ai_choice(
+            actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
+    }
+    return commit_ai_choice(
+        actor_slot, BattleAiAction::attack, -1, BattleAiItemSource::none, -1, false);
+}
+
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle wait actor is outside combatant slots";

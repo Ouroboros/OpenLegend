@@ -31,6 +31,7 @@ inline constexpr std::size_t round_value = 6U;
 inline constexpr std::size_t action_done = 7U;
 inline constexpr std::size_t sprite = 8U;
 inline constexpr std::size_t damage_value = 9U;
+inline constexpr std::size_t ai_action = 10U;
 inline constexpr std::size_t attack_counter = 13U;
 }  // namespace combatant_word
 
@@ -76,6 +77,36 @@ struct BattleRestResult {
     std::int16_t physical_power{};
     std::int16_t hp{};
     std::int16_t mp{};
+};
+
+enum class BattleAiAction : std::int16_t {
+    none = 0,
+    move = 1,
+    attack = 2,
+    use_poison = 3,
+    detox = 4,
+    medicine = 5,
+    item = 6,
+    wait = 7,
+    request_medicine = 8,
+    request_detox = 9,
+    throwing_weapon = 10,
+    escape = 11,
+};
+
+enum class BattleAiItemSource : std::int16_t {
+    none,
+    inventory,
+    carried,
+};
+
+struct BattleAiChoice {
+    BattleAiAction action{BattleAiAction::none};
+    std::int16_t target_slot{-1};
+    BattlePathCoord target{};
+    BattleAiItemSource item_source{BattleAiItemSource::none};
+    std::int16_t item_slot{-1};
+    bool action_code_written{};
 };
 
 enum class BattleRenderCommandKind : std::int16_t {
@@ -301,6 +332,18 @@ public:
     [[nodiscard]] std::optional<BattleRestResult> rest_actor(
         std::size_t actor_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_low_hp_action(std::size_t actor_slot);
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_poisoned_action(std::size_t actor_slot);
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_low_mp_action(std::size_t actor_slot);
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_medicine_target(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_detox_target(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_offensive_action(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
@@ -351,6 +394,13 @@ private:
     [[nodiscard]] std::int16_t effective_speed(std::size_t slot);
     void swap_combatants(std::size_t first, std::size_t second);
     void update_occupancy(std::size_t slot);
+    [[nodiscard]] BattleAiChoice commit_ai_choice(
+        std::size_t actor_slot,
+        BattleAiAction action,
+        std::int16_t target_slot,
+        BattleAiItemSource item_source = BattleAiItemSource::none,
+        std::int16_t item_slot = -1,
+        bool write_action_code = true) noexcept;
 
     BattleData& data_;
     model::RangerState& ranger_;

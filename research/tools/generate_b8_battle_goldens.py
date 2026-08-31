@@ -194,6 +194,114 @@ def rest_vector(
     }
 
 
+def ai_selector_vectors() -> dict[str, object]:
+    medicine_outputs: list[int] = []
+    state = 1
+    for _ in range(3):
+        value, state = legacy_bounded(state, 10)
+        medicine_outputs.append(value)
+
+    detox_outputs: list[int] = []
+    detox_state = 1
+    for _ in range(3):
+        value, detox_state = legacy_bounded(detox_state, 10)
+        detox_outputs.append(value)
+
+    poison_gate, poison_state = legacy_bounded(1, 50)
+    poison_roll, poison_state = legacy_bounded(poison_state, 150)
+    throwing_gate, throwing_state = legacy_bounded(1, 50)
+    throwing_roll, throwing_state = legacy_bounded(throwing_state, 100)
+    attack_gate, attack_state = legacy_bounded(1, 50)
+    return {
+        "action_codes": {
+            "none": 0,
+            "move": 1,
+            "attack": 2,
+            "use_poison": 3,
+            "detox": 4,
+            "medicine": 5,
+            "item": 6,
+            "wait": 7,
+            "request_medicine": 8,
+            "request_detox": 9,
+            "throwing_weapon": 10,
+            "escape": 11,
+        },
+        "low_hp": {
+            "self": {"medicine": 21, "hurt": 50, "physical_power": 50, "action": 5},
+            "inventory": {"add_hp": 1, "inventory_slot": 2, "action": 6},
+            "request": {"hurt": 80, "ally_medicine": 51, "target_slot": 1, "action": 8},
+        },
+        "poisoned": {
+            "self": {"detoxification": 22, "poison": 51, "physical_power": 51, "action": 4},
+            "party_item_property_word": 56,
+            "party_ignores_negative_add_poison_word": 47,
+            "enemy_carried_item_property_word": 47,
+            "party_item_slot": 1,
+            "enemy_carried_slot": 2,
+            "item_action": 6,
+        },
+        "low_mp": {"add_mp_word": 50, "inventory_slot": 3, "action": 6},
+        "medicine_target": {
+            "hp": 24,
+            "maximum_hp": 100,
+            "rng_bounds": [10, 10, 10],
+            "rng_outputs": medicine_outputs,
+            "rng_state_after": state,
+            "target_slot": 1,
+            "action": 5,
+        },
+        "detox_target": {
+            "poison": 35,
+            "rng_bounds": [10, 10, 10],
+            "rng_outputs": detox_outputs,
+            "rng_state_after": detox_state,
+            "target_slot": 1,
+            "action": 4,
+        },
+        "offensive": {
+            "aid": {
+                "allied_total": 1002,
+                "opponent_total": 400,
+                "opponent_count": 2,
+                "actor_hp_plus_attack": 2,
+                "missing_hp": [100, 300],
+                "target_slot": 2,
+                "action": 5,
+                "rng_consumed": False,
+            },
+            "poison": {
+                "use_poison": 100,
+                "attack": 10,
+                "rng_bounds": [50, 150],
+                "rng_outputs": [poison_gate, poison_roll],
+                "rng_state_after": poison_state,
+                "action": 3,
+            },
+            "party_throwing": {
+                "add_hp": -100,
+                "attack": 10,
+                "hidden_weapon": 100,
+                "rng_bounds": [50, 100],
+                "rng_outputs": [throwing_gate, throwing_roll],
+                "rng_state_after": throwing_state,
+                "inventory_slot": 4,
+                "action": 10,
+            },
+            "attack": {
+                "physical_power": 100,
+                "current_mp": 5,
+                "minimum_need_mp": 5,
+                "rng_bounds": [50],
+                "rng_outputs": [attack_gate],
+                "rng_state_after": attack_state,
+                "writes_action_code": False,
+                "action": 2,
+            },
+        },
+    }
+
+
 def battle_render_plan_vector(
     field_words: list[int], setup: dict[str, object]
 ) -> dict[str, object]:
@@ -969,6 +1077,7 @@ def build(data_root: Path) -> dict[str, object]:
                         "decrement_wraps_to_int16": True,
                     },
                 },
+                "ai_selector_vectors": ai_selector_vectors(),
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

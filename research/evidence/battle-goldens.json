@@ -656,6 +656,152 @@
           "decrement_wraps_to_int16": true
         }
       },
+      "ai_selector_vectors": {
+        "action_codes": {
+          "none": 0,
+          "move": 1,
+          "attack": 2,
+          "use_poison": 3,
+          "detox": 4,
+          "medicine": 5,
+          "item": 6,
+          "wait": 7,
+          "request_medicine": 8,
+          "request_detox": 9,
+          "throwing_weapon": 10,
+          "escape": 11
+        },
+        "low_hp": {
+          "self": {
+            "medicine": 21,
+            "hurt": 50,
+            "physical_power": 50,
+            "action": 5
+          },
+          "inventory": {
+            "add_hp": 1,
+            "inventory_slot": 2,
+            "action": 6
+          },
+          "request": {
+            "hurt": 80,
+            "ally_medicine": 51,
+            "target_slot": 1,
+            "action": 8
+          }
+        },
+        "poisoned": {
+          "self": {
+            "detoxification": 22,
+            "poison": 51,
+            "physical_power": 51,
+            "action": 4
+          },
+          "party_item_property_word": 56,
+          "party_ignores_negative_add_poison_word": 47,
+          "enemy_carried_item_property_word": 47,
+          "party_item_slot": 1,
+          "enemy_carried_slot": 2,
+          "item_action": 6
+        },
+        "low_mp": {
+          "add_mp_word": 50,
+          "inventory_slot": 3,
+          "action": 6
+        },
+        "medicine_target": {
+          "hp": 24,
+          "maximum_hp": 100,
+          "rng_bounds": [
+            10,
+            10,
+            10
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            3
+          ],
+          "rng_state_after": 662824084,
+          "target_slot": 1,
+          "action": 5
+        },
+        "detox_target": {
+          "poison": 35,
+          "rng_bounds": [
+            10,
+            10,
+            10
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            3
+          ],
+          "rng_state_after": 662824084,
+          "target_slot": 1,
+          "action": 4
+        },
+        "offensive": {
+          "aid": {
+            "allied_total": 1002,
+            "opponent_total": 400,
+            "opponent_count": 2,
+            "actor_hp_plus_attack": 2,
+            "missing_hp": [
+              100,
+              300
+            ],
+            "target_slot": 2,
+            "action": 5,
+            "rng_consumed": false
+          },
+          "poison": {
+            "use_poison": 100,
+            "attack": 10,
+            "rng_bounds": [
+              50,
+              150
+            ],
+            "rng_outputs": [
+              38,
+              58
+            ],
+            "rng_state_after": 2524885223,
+            "action": 3
+          },
+          "party_throwing": {
+            "add_hp": -100,
+            "attack": 10,
+            "hidden_weapon": 100,
+            "rng_bounds": [
+              50,
+              100
+            ],
+            "rng_outputs": [
+              38,
+              58
+            ],
+            "rng_state_after": 2524885223,
+            "inventory_slot": 4,
+            "action": 10
+          },
+          "attack": {
+            "physical_power": 100,
+            "current_mp": 5,
+            "minimum_need_mp": 5,
+            "rng_bounds": [
+              50
+            ],
+            "rng_outputs": [
+              38
+            ],
+            "rng_state_after": 1103527590,
+            "writes_action_code": false,
+            "action": 2
+          }
+        }
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,
