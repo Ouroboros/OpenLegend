@@ -286,16 +286,60 @@ bool BattleRenderer::draw_box(
     const int y,
     const std::uint16_t width,
     const std::uint16_t height) const noexcept {
-    if (width < 2U || height < 2U ||
-        !framebuffer.outline_rectangle(x, y, width, height, 0xFFU)) {
+    if (width <= 10U || height <= 10U) {
         return false;
     }
-    return framebuffer.fill_rectangle(
-        x + 1,
-        y + 1,
-        static_cast<std::uint16_t>(width - 2U),
-        static_cast<std::uint16_t>(height - 2U),
-        0U);
+    const auto blend = [this, &framebuffer](
+                           const int left,
+                           const int top,
+                           const int rectangle_width,
+                           const int rectangle_height) {
+        const auto begin_x = std::max(left, 0);
+        const auto end_x = std::min(
+            left + rectangle_width, render::IndexedFramebuffer::width);
+        const auto begin_y = std::max(top, 0);
+        const auto end_y = std::min(
+            top + rectangle_height, render::IndexedFramebuffer::height);
+        for (int destination_y = begin_y; destination_y < end_y; ++destination_y) {
+            for (int destination_x = begin_x; destination_x < end_x; ++destination_x) {
+                auto& destination = framebuffer.row(destination_y)[destination_x];
+                destination = blend_pixel(0U, destination, 4);
+            }
+        }
+    };
+    const auto w = static_cast<int>(width);
+    const auto h = static_cast<int>(height);
+    blend(x + 5, y, w - 10, 1);
+    blend(x + 4, y + 1, w - 8, 1);
+    blend(x + 3, y + 2, w - 6, 1);
+    blend(x + 2, y + 3, w - 4, 1);
+    blend(x + 1, y + 4, w - 2, 1);
+    blend(x, y + 5, w, h - 10);
+    blend(x + 1, y + h - 5, w - 2, 1);
+    blend(x + 2, y + h - 4, w - 4, 1);
+    blend(x + 3, y + h - 3, w - 6, 1);
+    blend(x + 4, y + h - 2, w - 8, 1);
+    blend(x + 5, y + h - 1, w - 10, 1);
+
+    const auto fill = [&framebuffer](
+                          const int left,
+                          const int top,
+                          const int rectangle_width,
+                          const int rectangle_height) {
+        return framebuffer.fill_rectangle(
+            left,
+            top,
+            static_cast<std::uint16_t>(rectangle_width),
+            static_cast<std::uint16_t>(rectangle_height),
+            0xFFU);
+    };
+    return fill(x + 5, y + 1, w - 10, 1) &&
+        fill(x + 4, y + 2, 1, 2) && fill(x + w - 5, y + 2, 1, 2) &&
+        fill(x + 2, y + 4, 2, 1) && fill(x + w - 4, y + 4, 2, 1) &&
+        fill(x + 1, y + 5, 1, h - 10) && fill(x + w - 2, y + 5, 1, h - 10) &&
+        fill(x + 2, y + h - 5, 2, 1) && fill(x + w - 4, y + h - 5, 2, 1) &&
+        fill(x + 4, y + h - 4, 1, 2) && fill(x + w - 5, y + h - 4, 1, 2) &&
+        fill(x + 5, y + h - 2, w - 10, 1);
 }
 
 bool BattleRenderer::draw_text(

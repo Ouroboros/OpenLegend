@@ -1239,11 +1239,53 @@ def battle_pixel_hashes(
             )
     battle_hash = fnv1a_bytes(pixels)
 
-    for row in range(140):
-        for column in range(100):
-            x = 220 + column
-            y = 19 + row
-            pixels[y * 320 + x] = 0xFF if row in (0, 139) or column in (0, 99) else 0
+    panel_x, panel_y, panel_width, panel_height = 220, 19, 100, 140
+
+    def blend_rectangle(x: int, y: int, width: int, height: int) -> None:
+        for destination_y in range(max(y, 0), min(y + height, 200)):
+            for destination_x in range(max(x, 0), min(x + width, 320)):
+                offset = destination_y * 320 + destination_x
+                destination = pixels[offset]
+                source_rgb = palette[0]
+                destination_rgb = palette[destination]
+                components = tuple(
+                    source_rgb[index] // 8 + destination_rgb[index] // 8
+                    for index in range(3)
+                )
+                pixels[offset] = rgb4_lookup[
+                    components[0] * 256 + components[1] * 16 + components[2]
+                ]
+
+    for rectangle in (
+        (panel_x + 5, panel_y, panel_width - 10, 1),
+        (panel_x + 4, panel_y + 1, panel_width - 8, 1),
+        (panel_x + 3, panel_y + 2, panel_width - 6, 1),
+        (panel_x + 2, panel_y + 3, panel_width - 4, 1),
+        (panel_x + 1, panel_y + 4, panel_width - 2, 1),
+        (panel_x, panel_y + 5, panel_width, panel_height - 10),
+        (panel_x + 1, panel_y + panel_height - 5, panel_width - 2, 1),
+        (panel_x + 2, panel_y + panel_height - 4, panel_width - 4, 1),
+        (panel_x + 3, panel_y + panel_height - 3, panel_width - 6, 1),
+        (panel_x + 4, panel_y + panel_height - 2, panel_width - 8, 1),
+        (panel_x + 5, panel_y + panel_height - 1, panel_width - 10, 1),
+    ):
+        blend_rectangle(*rectangle)
+    for left, top, width, height in (
+        (panel_x + 5, panel_y + 1, panel_width - 10, 1),
+        (panel_x + 4, panel_y + 2, 1, 2),
+        (panel_x + panel_width - 5, panel_y + 2, 1, 2),
+        (panel_x + 2, panel_y + 4, 2, 1),
+        (panel_x + panel_width - 4, panel_y + 4, 2, 1),
+        (panel_x + 1, panel_y + 5, 1, panel_height - 10),
+        (panel_x + panel_width - 2, panel_y + 5, 1, panel_height - 10),
+        (panel_x + 2, panel_y + panel_height - 5, 2, 1),
+        (panel_x + panel_width - 4, panel_y + panel_height - 5, 2, 1),
+        (panel_x + 4, panel_y + panel_height - 4, 1, 2),
+        (panel_x + panel_width - 5, panel_y + panel_height - 4, 1, 2),
+        (panel_x + 5, panel_y + panel_height - 2, panel_width - 10, 1),
+    ):
+        for row in range(top, top + height):
+            pixels[row * 320 + left:row * 320 + left + width] = bytes([0xFF]) * width
     draw_battle_sprite(pixels, portraits[1], 242, 82)
     labels = (
         (225, 101, bytes.fromhex("ca5ea44f20"), 0x2321),

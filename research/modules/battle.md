@@ -39,7 +39,7 @@
 6. `sub_3859E/sub_3884A/sub_38910` 的actor/effect/sample/damage逐帧时间线、`sub_38DAC` 的MP过滤武功菜单状态，以及 `sub_39776..sub_3A8A4` 的用毒/解毒/医疗、战斗物品筛选、暗器目标/伤害/中毒/库存消耗和休息状态核心已映射；FIGHT/sample/render/present/input接线及共享物品界面仍待BattleSession；
 7. `sub_3AA17` 等待队尾重排为 `implemented_pending_review`；`sub_3AA4B` 已锁定重绘→present→置自动flag→AI的顺序；`sub_3AA85` 已恢复双32×32 pass、地形/overlay/物件/角色/effect/damage的typed命令计划，`BattleRenderer`已按WDX/WMP、EFT、动态FIGHT pointer基址实际执行RLE、高亮、CLOUD混色overlay和damage字体像素，独立资产oracle与C++整帧hash一致；BattleSession调用和present仍待接入；
 8. `sub_3B387..sub_3C2AC`已恢复敌方状态重置、胜利经验均分、队伍HP/体力下限、角色/练功/制造经验提交、30项等级阈值及属性RNG、练功物品与武功成长、五配方制造RNG及库存写入/压缩；升级、练功与制造提示框、present和按键等待仍待BattleSession；
-9. `sub_3C563`与`sub_3C672`已恢复回合hurt/poison扣血及hidden==1目标引用清理，前者保留严格负值夹1，后者覆盖0..25槽并登记负值/大于25 target现代安全边界；`sub_3C6D3`已恢复状态面板typed布局、名称NUL对齐、三组颜色和非法MP类型复用poison颜色BUG，`BattleRenderer`已实际绘制矩形、头像、Big5标签和数值并获独立像素hash；原调用点present/等待仍待BattleSession；
+9. `sub_3C563`与`sub_3C672`已恢复回合hurt/poison扣血及hidden==1目标引用清理，前者保留严格负值夹1，后者覆盖0..25槽并登记负值/大于25 target现代安全边界；`sub_3C6D3`已恢复状态面板typed布局、名称NUL对齐、三组颜色和非法MP类型复用poison颜色BUG，`BattleRenderer`已实际绘制原圆角混色面板、离散边框、头像、Big5标签和数值并获独立像素hash；原调用点present/等待仍待BattleSession；
 10. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
 
 ## 测试、真实资产与差分点

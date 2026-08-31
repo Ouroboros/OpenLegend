@@ -1911,7 +1911,7 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     const auto status_panel = render_setup.status_panel_plan(0U);
     OL_CHECK(status_panel.has_value());
     OL_CHECK(renderer.render_status_panel(*status_panel, framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0xb60bc6d6849232a2ULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x630a82d57e1d8715ULL);
 
     auto no_range_state = state;
     no_range_state.path_limit = 0;
