@@ -56,6 +56,7 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::player_action: return "player_action";
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
     case BattleSessionPhase::player_movement_select: return "player_movement_select";
+    case BattleSessionPhase::player_targeting_select: return "player_targeting_select";
     case BattleSessionPhase::player_movement_step_present:
         return "player_movement_step_present";
     case BattleSessionPhase::player_movement_wait: return "player_movement_wait";
@@ -139,6 +140,9 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
     }
     if (phase_ == BattleSessionPhase::player_movement_select) {
         return handle_player_movement_key(translated_key);
+    }
+    if (phase_ == BattleSessionPhase::player_targeting_select) {
+        return handle_player_targeting_key(translated_key);
     }
     if (phase_ != BattleSessionPhase::party_selection) {
         return BattleSessionInputResult::ignored;
@@ -832,6 +836,39 @@ bool BattleSession::begin_player_movement() {
     return true;
 }
 
+bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
+    std::optional<std::int16_t> path_limit;
+    if (action == BattlePlayerAction::use_poison) {
+        path_limit = setup_.poison_targeting_range(current_actor_slot_);
+    } else if (action == BattlePlayerAction::detoxification) {
+        path_limit = setup_.detox_targeting_range(current_actor_slot_);
+    } else if (action == BattlePlayerAction::medicine) {
+        path_limit = setup_.medicine_targeting_range(current_actor_slot_);
+    }
+    if (!path_limit.has_value()) {
+        error_ = "battle player targeting range is invalid";
+        return false;
+    }
+    auto selection = setup_.begin_cursor_selection(
+        current_actor_slot_, *path_limit, BattleCursorSelectionMode::targeting);
+    if (!selection.has_value()) {
+        error_ = "battle player targeting selection is invalid";
+        return false;
+    }
+    player_cursor_selection_.emplace(std::move(*selection));
+    render_state_.path_limit = player_cursor_selection_->path_limit;
+    render_state_.primary_cursor = player_cursor_selection_->cursor;
+    phase_ = BattleSessionPhase::player_targeting_select;
+    diagnostics::log_info(
+        "battle player targeting ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" + std::to_string(static_cast<std::int16_t>(action)) +
+        " source=" + std::to_string(player_cursor_selection_->source.x) + "," +
+        std::to_string(player_cursor_selection_->source.y) +
+        " path_limit=" + std::to_string(player_cursor_selection_->path_limit));
+    return true;
+}
+
 BattleSessionInputResult BattleSession::handle_player_movement_key(
     const std::uint8_t translated_key) {
     if (!player_cursor_selection_.has_value()) {
@@ -900,6 +937,63 @@ BattleSessionInputResult BattleSession::handle_player_movement_key(
     } else if (!advance_player_movement_step()) {
         return BattleSessionInputResult::ignored;
     }
+    return BattleSessionInputResult::cursor_selected;
+}
+
+BattleSessionInputResult BattleSession::handle_player_targeting_key(
+    const std::uint8_t translated_key) {
+    if (!player_cursor_selection_.has_value()) {
+        return BattleSessionInputResult::ignored;
+    }
+    std::optional<BattleCursorSelectionAction> action;
+    if (translated_key == kDown) {
+        action = BattleCursorSelectionAction::down;
+    } else if (translated_key == kRight) {
+        action = BattleCursorSelectionAction::right;
+    } else if (translated_key == kLeft) {
+        action = BattleCursorSelectionAction::left;
+    } else if (translated_key == kUp) {
+        action = BattleCursorSelectionAction::up;
+    } else if (translated_key == kEscape) {
+        action = BattleCursorSelectionAction::cancel;
+    } else if (confirms(translated_key)) {
+        action = BattleCursorSelectionAction::activate;
+    } else {
+        return BattleSessionInputResult::ignored;
+    }
+
+    const auto result = setup_.apply_cursor_selection(*player_cursor_selection_, *action);
+    if (result == BattleCursorSelectionResult::moved) {
+        render_state_.primary_cursor = player_cursor_selection_->cursor;
+        diagnostics::log_debug(
+            "battle player targeting cursor id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " cursor=" + std::to_string(player_cursor_selection_->cursor.x) + "," +
+            std::to_string(player_cursor_selection_->cursor.y));
+        return BattleSessionInputResult::cursor_changed;
+    }
+    if (result == BattleCursorSelectionResult::cancelled) {
+        render_state_.path_limit = 0;
+        player_cursor_selection_.reset();
+        player_action_menu_.selected_action = -1;
+        phase_ = BattleSessionPhase::player_action;
+        diagnostics::log_info(
+            "battle player targeting cancelled id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_));
+        return BattleSessionInputResult::cursor_cancelled;
+    }
+    if (result != BattleCursorSelectionResult::selected) {
+        return BattleSessionInputResult::ignored;
+    }
+
+    render_state_.primary_cursor = player_cursor_selection_->cursor;
+    phase_ = BattleSessionPhase::player_action_selected;
+    diagnostics::log_info(
+        "battle player target selected id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" + std::to_string(player_action_menu_.selected_action) +
+        " target=" + std::to_string(player_cursor_selection_->cursor.x) + "," +
+        std::to_string(player_cursor_selection_->cursor.y));
     return BattleSessionInputResult::cursor_selected;
 }
 
@@ -1075,10 +1169,11 @@ bool BattleSession::dispatch_selected_player_action() {
         return true;
     case BattlePlayerAction::movement:
         return begin_player_movement();
-    case BattlePlayerAction::attack:
     case BattlePlayerAction::use_poison:
     case BattlePlayerAction::detoxification:
     case BattlePlayerAction::medicine:
+        return begin_player_targeting(action);
+    case BattlePlayerAction::attack:
     case BattlePlayerAction::item:
     case BattlePlayerAction::status:
         return true;

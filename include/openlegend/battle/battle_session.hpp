@@ -28,6 +28,7 @@ enum class BattleSessionPhase {
     player_action,
     player_action_selected,
     player_movement_select,
+    player_targeting_select,
     player_movement_step_present,
     player_movement_wait,
     automatic_present,
@@ -105,6 +106,11 @@ public:
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
             : std::nullopt;
     }
+    [[nodiscard]] std::optional<BattlePathCoord> selected_player_target() const noexcept {
+        return player_cursor_selection_.has_value() && player_cursor_selection_->selected
+            ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
+            : std::nullopt;
+    }
 
     [[nodiscard]] BattleSessionInputResult handle_key(std::uint8_t translated_key);
     void advance(std::uint32_t bios_tick = 0U);
@@ -143,7 +149,10 @@ private:
     [[nodiscard]] bool finish_ai_handler(BattlePlayerAction action, bool rest_first);
     [[nodiscard]] bool begin_player_action_menu();
     [[nodiscard]] bool begin_player_movement();
+    [[nodiscard]] bool begin_player_targeting(BattlePlayerAction action);
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
+        std::uint8_t translated_key);
+    [[nodiscard]] BattleSessionInputResult handle_player_targeting_key(
         std::uint8_t translated_key);
     [[nodiscard]] bool advance_player_movement_step();
     [[nodiscard]] bool advance_player_movement_wait(std::uint32_t bios_tick);

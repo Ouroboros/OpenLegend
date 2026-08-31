@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <span>
 #include <string>
 #include <vector>
@@ -2256,6 +2257,118 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
              std::string::npos);
     OL_CHECK(movement_log_text.find(
                  "battle player action menu rebuilt after movement id=4") !=
+             std::string::npos);
+
+    const auto targeting_log_path = log_path.parent_path() / "b8-battle-targeting.log";
+    std::filesystem::remove(targeting_log_path, log_error);
+    OL_CHECK(openlegend::diagnostics::initialize_logging(
+                 targeting_log_path, openlegend::diagnostics::LogLevel::debug) ==
+             openlegend::diagnostics::LoggingInitializationStatus::initialized);
+    auto& targeting_actor = filtered_ranger.roles[1U];
+    targeting_actor.set_word(role_word::hp, 100);
+    targeting_actor.set_word(role_word::maximum_hp, 100);
+    targeting_actor.set_word(role_word::physical_power, 100);
+    targeting_actor.set_word(role_word::use_poison, 30);
+    targeting_actor.set_word(role_word::detoxification, 30);
+    targeting_actor.set_word(role_word::medicine, 30);
+    filtered_ranger.roles[3U].set_word(role_word::hp, 100);
+    filtered_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom targeting_random{1U};
+    auto targeting_session = std::make_unique<BattleSession>(
+        data_root, filtered_ranger, targeting_random, 4, false);
+    reach_player_action(*targeting_session);
+    OL_CHECK((targeting_session->player_action_menu().available ==
+              std::array<std::int16_t, 10>{0, 0, 1, 1, 1, 1, 1, 1, 1, 1}));
+    OL_CHECK(targeting_session->player_action_menu().available_count == 8U);
+    OL_CHECK(targeting_session->handle_key(0x0DU) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_targeting_select);
+    OL_CHECK((targeting_session->active_cursor() == BattlePathCoord{26, 24}));
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x1BU) ==
+             BattleSessionInputResult::cursor_cancelled);
+    OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_action);
+    OL_CHECK(targeting_session->player_action_menu().cursor == 0U);
+    OL_CHECK(targeting_session->player_action_menu().selected_action == -1);
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x98U) ==
+             BattleSessionInputResult::action_changed);
+    OL_CHECK(targeting_session->player_action_menu().cursor == 1U);
+    OL_CHECK(targeting_session->handle_key(0x20U) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_targeting_select);
+    OL_CHECK(targeting_session->player_action_menu().selected_action ==
+             static_cast<std::int16_t>(BattlePlayerAction::detoxification));
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x1BU) ==
+             BattleSessionInputResult::cursor_cancelled);
+    OL_CHECK(targeting_session->player_action_menu().cursor == 1U);
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x98U) ==
+             BattleSessionInputResult::action_changed);
+    OL_CHECK(targeting_session->player_action_menu().cursor == 2U);
+    OL_CHECK(targeting_session->handle_key(0x20U) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_targeting_select);
+    OL_CHECK(targeting_session->player_action_menu().selected_action ==
+             static_cast<std::int16_t>(BattlePlayerAction::medicine));
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x1BU) ==
+             BattleSessionInputResult::cursor_cancelled);
+    OL_CHECK(targeting_session->player_action_menu().cursor == 2U);
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x9EU) ==
+             BattleSessionInputResult::action_changed);
+    OL_CHECK(targeting_session->handle_key(0x9EU) ==
+             BattleSessionInputResult::action_changed);
+    OL_CHECK(targeting_session->player_action_menu().cursor == 0U);
+    OL_CHECK(targeting_session->handle_key(0x20U) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x98U) ==
+             BattleSessionInputResult::cursor_changed);
+    OL_CHECK((targeting_session->active_cursor() == BattlePathCoord{26, 25}));
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x98U) ==
+             BattleSessionInputResult::cursor_changed);
+    OL_CHECK((targeting_session->active_cursor() == BattlePathCoord{26, 26}));
+    OL_CHECK(targeting_session->render(framebuffer));
+    targeting_session->finish_presented_tick(250U);
+    OL_CHECK(targeting_session->handle_key(0x20U) ==
+             BattleSessionInputResult::cursor_selected);
+    OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_action_selected);
+    OL_CHECK((targeting_session->selected_player_target() == BattlePathCoord{26, 26}));
+    OL_CHECK(targeting_session->player_action_menu().selected_action ==
+             static_cast<std::int16_t>(BattlePlayerAction::use_poison));
+    openlegend::diagnostics::shutdown_logging();
+    std::ifstream targeting_log_file{targeting_log_path, std::ios::binary};
+    const std::string targeting_log_text{
+        std::istreambuf_iterator<char>{targeting_log_file},
+        std::istreambuf_iterator<char>{}};
+    OL_CHECK(targeting_log_text.find(
+                 "battle player targeting ready id=4 slot=0 action=2 source=26,24 path_limit=3") !=
+             std::string::npos);
+    OL_CHECK(targeting_log_text.find(
+                 "battle player targeting ready id=4 slot=0 action=3 source=26,24 path_limit=3") !=
+             std::string::npos);
+    OL_CHECK(targeting_log_text.find(
+                 "battle player targeting ready id=4 slot=0 action=4 source=26,24 path_limit=3") !=
+             std::string::npos);
+    OL_CHECK(targeting_log_text.find(
+                 "battle player targeting cursor id=4 slot=0 cursor=26,26") !=
+             std::string::npos);
+    OL_CHECK(targeting_log_text.find("battle player targeting cancelled id=4 slot=0") !=
+             std::string::npos);
+    OL_CHECK(targeting_log_text.find(
+                 "battle player target selected id=4 slot=0 action=2 target=26,26") !=
              std::string::npos);
 
     auto automatic_ranger = make_ranger({0, 2, 3, -1, -1, -1});

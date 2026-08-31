@@ -237,7 +237,7 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 
 `sub_3650E`已恢复完整目的格状态逻辑：mode2在本回合可入射程时按range向下找轴向层，mode3无轴向限制，其他分支从目标周围按上、右、左、下找同轴可达格、任意可达格或逐轴退向actor。目的格须连续通过当前图和重建actor movement图两次严格`path<128`检查，随后按原tie-break标最短路。battle4固定mode0/1 `(26,25)`、mode2 `(23,26)`、mode3 `(25,24)`。`advance_ai_movement`已实际逐格提交path255、occupancy、坐标、方向、sprite、体力和行动值，并恢复mode0/3行动值停止、mode1距离停止和mode2轴向停止；`BattleSession`已对mode0..3统一执行每格render/present及参数40对应的两次BIOS tick变化，并恢复调用方typed计划，该函数推进为`implemented_pending_review`。
 
-`sub_36AF7`通用玩家光标选择已恢复为typed状态：入口按mode建立movement或targeting图，方向优先级下、右、左、上；相邻path不大于上限即可移动，path超限但occupancy非空仍可悬停；movement确认严格要求`0<path<=limit`，targeting允许`0<=path<=limit`，Escape清path上限并写取消结果。`sub_36A98`以actor行动值启动mode0选择，取消返回-1，否则复制选择期路径图、标最短路并逐格移动。battle4已实际接入movement四方向/Escape/确认、每轮路径/光标重画present、逐格重画present和两次BIOS tick变化，并在返回菜单时仅重检移动项；targeting mode仍待玩家攻击/支持/暗器流程接入。
+`sub_36AF7`通用玩家光标选择已恢复为typed状态：入口按mode建立movement或targeting图，方向优先级下、右、左、上；相邻path不大于上限即可移动，path超限但occupancy非空仍可悬停；movement确认严格要求`0<path<=limit`，targeting允许`0<=path<=limit`，Escape清path上限并写取消结果。`sub_36A98`以actor行动值启动mode0选择，取消返回-1，否则复制选择期路径图、标最短路并逐格移动。battle4已实际接入movement与targeting的四方向/Escape/三确认键和每轮路径/光标重画present；movement继续逐格重画present与两次BIOS tick变化，targeting现由玩家用毒/解毒/医疗按各自能力射程进入，取消保持原菜单ordinal，确认敌方占位格`(26,26)`并保存目标。攻击与暗器在各自武功/物品选择接入后复用同一相位；`b8-battle-targeting.log`保留三入口、取消、逐格光标和最终确认的完整可读轨迹，Linux与Windows Debug完整BUILD全部14项测试及逆向validator通过；本函数推进为`implemented_pending_review`。
 
 `sub_3B387..sub_3C2AC`战后进度状态已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利把WAR word7总经验均分给存活side0；队伍至少补最大HP/5，死亡者体力至少10；word13及其80%分别加角色、练功、制造经验并unsigned封顶60000。等级提升保留30项机器阈值、资质分档成长RNG与技能条件RNG；练功保留需求系数、18项角色写入、武功学习/加100；制造保留五配方标记、反复`bounded(5)`、已有产物随机1..3与新槽固定1、材料槽压缩。提示框、present与按键等待仍为typed事件，四函数保持`pending_implementation`。
 
