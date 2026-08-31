@@ -940,6 +940,52 @@ std::optional<BattleAiTargetCleanupResult> BattleSetup::clear_hidden_ai_targets(
     return result;
 }
 
+std::optional<BattlePlayerActionAvailability> BattleSetup::player_action_availability(
+    const std::size_t combatant_slot) const noexcept {
+    if (!valid() || combatant_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto& words = combatants_[combatant_slot].words;
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    BattlePlayerActionAvailability result{};
+    const auto physical_power = role.word(model::role_word::physical_power);
+    result.available[0U] = static_cast<std::int16_t>(
+        physical_power > 5 && words[combatant_word::round_value] > 0 ? 1 : 0);
+
+    std::int16_t minimum_magic_cost = 1'000;
+    if (physical_power > 10) {
+        for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+            const auto magic_id = role.word(model::role_word::magic_id_begin + slot);
+            if (magic_id == 0) {
+                continue;
+            }
+            if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+                return std::nullopt;
+            }
+            minimum_magic_cost = std::min(
+                minimum_magic_cost,
+                ranger_.magics[static_cast<std::size_t>(magic_id)]
+                    .word(model::magic_word::need_mp));
+        }
+        result.available[1U] = static_cast<std::int16_t>(
+            minimum_magic_cost <= role.word(model::role_word::mp) ? 1 : 0);
+    }
+    result.available[2U] = static_cast<std::int16_t>(
+        physical_power > 10 && role.word(model::role_word::use_poison) >= 20 ? 1 : 0);
+    result.available[3U] = static_cast<std::int16_t>(
+        physical_power > 50 && role.word(model::role_word::detoxification) >= 20 ? 1 : 0);
+    result.available[4U] = static_cast<std::int16_t>(
+        physical_power > 50 && role.word(model::role_word::medicine) >= 20 ? 1 : 0);
+    std::fill(result.available.begin() + 5, result.available.end(), std::int16_t{1});
+    result.available_count = static_cast<std::int16_t>(
+        std::ranges::count(result.available, std::int16_t{1}));
+    return result;
+}
+
 std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
     const std::size_t combatant_slot) const noexcept {
     if (!valid() || combatant_slot >= static_cast<std::size_t>(combatant_count_)) {

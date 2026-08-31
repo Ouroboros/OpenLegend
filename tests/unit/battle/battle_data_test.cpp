@@ -1928,6 +1928,72 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     }));
 }
 
+void run_player_action_availability_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& role = ranger.roles[1U];
+    role.set_word(role_word::magic_id_begin, 5);
+    ranger.magics[5U].set_word(magic_word::need_mp, 25);
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    auto& actor = setup.combatants()[0U].words;
+
+    role.set_word(role_word::physical_power, 5);
+    actor[combatant_word::round_value] = 0;
+    auto availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK((availability->available ==
+              std::array<std::int16_t, 10>{0, 0, 0, 0, 0, 1, 1, 1, 1, 1}));
+    OL_CHECK(availability->available_count == 5);
+
+    role.set_word(role_word::physical_power, 6);
+    actor[combatant_word::round_value] = 1;
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK(availability->available[0U] == 1);
+    OL_CHECK(availability->available_count == 6);
+
+    role.set_word(role_word::physical_power, 11);
+    role.set_word(role_word::mp, 24);
+    role.set_word(role_word::use_poison, 19);
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK(availability->available[1U] == 0);
+    OL_CHECK(availability->available[2U] == 0);
+    role.set_word(role_word::mp, 25);
+    role.set_word(role_word::use_poison, 20);
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK(availability->available[1U] == 1);
+    OL_CHECK(availability->available[2U] == 1);
+
+    role.set_word(role_word::physical_power, 50);
+    role.set_word(role_word::detoxification, 20);
+    role.set_word(role_word::medicine, 20);
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK(availability->available[3U] == 0);
+    OL_CHECK(availability->available[4U] == 0);
+    role.set_word(role_word::physical_power, 51);
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK((availability->available ==
+              std::array<std::int16_t, 10>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}));
+    OL_CHECK(availability->available_count == 10);
+
+    role.set_word(role_word::magic_id_begin, 0);
+    role.set_word(role_word::mp, 999);
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK(availability->available[1U] == 0);
+    role.set_word(role_word::mp, 1'000);
+    availability = setup.player_action_availability(0U);
+    OL_CHECK(availability.has_value());
+    OL_CHECK(availability->available[1U] == 1);
+}
+
 void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     const auto log_path =
@@ -1993,12 +2059,37 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         session.finish_presented_tick();
     }
     OL_CHECK(session.phase() == BattleSessionPhase::round_start);
+    ranger.roles[0U].set_word(role_word::speed, 100);
+    ranger.roles[0U].set_word(role_word::physical_power, 60);
+    ranger.roles[0U].set_word(role_word::mp, 25);
+    ranger.roles[0U].set_word(role_word::use_poison, 20);
+    ranger.roles[0U].set_word(role_word::detoxification, 20);
+    ranger.roles[0U].set_word(role_word::medicine, 20);
+    ranger.roles[0U].set_word(role_word::magic_id_begin, 5);
+    ranger.magics[5U].set_word(magic_word::need_mp, 25);
     session.advance();
     OL_CHECK(session.phase() == BattleSessionPhase::actor_present);
     OL_CHECK(session.render(framebuffer));
     session.finish_presented_tick();
-    OL_CHECK(session.phase() == BattleSessionPhase::player_action ||
-             session.phase() == BattleSessionPhase::ai_action);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK((session.player_action_menu().available ==
+              std::array<std::int16_t, 10>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}));
+    OL_CHECK(session.player_action_menu().available_count == 10U);
+    OL_CHECK(session.player_action_menu().cursor == 0U);
+    OL_CHECK(session.player_action_menu().selected_action == -1);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x7d062c289e7f933aULL);
+    OL_CHECK(session.handle_key(0x9EU) == BattleSessionInputResult::action_changed);
+    OL_CHECK(session.player_action_menu().cursor == 9U);
+    OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
+    OL_CHECK(session.player_action_menu().cursor == 0U);
+    OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
+    OL_CHECK(session.player_action_menu().cursor == 1U);
+    OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_action_selected);
+    OL_CHECK(session.player_action_menu().selected_action ==
+             static_cast<std::int16_t>(BattlePlayerAction::attack));
+    OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::ignored);
 
     openlegend::diagnostics::shutdown_logging();
     std::ifstream log_file{log_path, std::ios::binary};
@@ -2010,6 +2101,33 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(log_text.find("battle initial fade complete id=2") != std::string::npos);
     OL_CHECK(log_text.find("battle round actor ready id=2") != std::string::npos);
     OL_CHECK(log_text.find("battle actor dispatch id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle player action menu ready id=2") != std::string::npos);
+    OL_CHECK(log_text.find("battle player action selected id=2") != std::string::npos);
+
+    auto filtered_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    openlegend::random::LegacyRandom filtered_random{1U};
+    BattleSession filtered_session{
+        data_root, filtered_ranger, filtered_random, 4, false};
+    OL_CHECK(filtered_session.valid());
+    OL_CHECK(filtered_session.phase() == BattleSessionPhase::initial_present);
+    OL_CHECK(filtered_session.render(framebuffer));
+    filtered_session.finish_presented_tick();
+    for (std::size_t frame = 0U; frame < filtered_session.fade_frame_count(); ++frame) {
+        OL_CHECK(filtered_session.render(framebuffer));
+        filtered_session.finish_presented_tick();
+    }
+    OL_CHECK(filtered_session.phase() == BattleSessionPhase::round_start);
+    filtered_session.advance();
+    OL_CHECK(filtered_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(filtered_session.render(framebuffer));
+    filtered_session.finish_presented_tick();
+    OL_CHECK(filtered_session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK((filtered_session.player_action_menu().available ==
+              std::array<std::int16_t, 10>{0, 0, 0, 0, 0, 1, 1, 1, 1, 1}));
+    OL_CHECK(filtered_session.player_action_menu().available_count == 5U);
+    OL_CHECK(filtered_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
+    OL_CHECK(filtered_session.player_action_menu().selected_action ==
+             static_cast<std::int16_t>(BattlePlayerAction::item));
 }
 
 void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
@@ -3251,6 +3369,7 @@ int main() {
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);
+    run_player_action_availability_test(data_root);
     run_battle_session_test(data_root);
     run_ai_selector_test(data_root);
     run_damage_formula_test(data_root);

@@ -1171,7 +1171,7 @@ def battle_pixel_hashes(
     root: Path,
     battlefield_id: int,
     commands: list[list[int]],
-) -> tuple[str, str]:
+) -> tuple[str, str, bytes]:
     battlefield = sentinel_entries(
         (root / f"WDX{battlefield_id:03d}").read_bytes(),
         (root / f"WMP{battlefield_id:03d}").read_bytes(),
@@ -1238,6 +1238,7 @@ def battle_pixel_hashes(
                 style & 0xFFFF,
             )
     battle_hash = fnv1a_bytes(pixels)
+    battle_pixels = bytes(pixels)
 
     panel_x, panel_y, panel_width, panel_height = 220, 19, 100, 140
 
@@ -1305,7 +1306,7 @@ def battle_pixel_hashes(
         draw_battle_text(
             pixels, x, y, text + b"\0", ascii_font, big5_font, colors
         )
-    return battle_hash, fnv1a_bytes(pixels)
+    return battle_hash, fnv1a_bytes(pixels), battle_pixels
 
 
 def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, object]:
@@ -1439,7 +1440,55 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
                     0, map_x, map_y, screen_x, screen_y,
                     combatants[occupant][3], 0, 0, 0,
                 ])
-    initial_hash, _ = battle_pixel_hashes(root, 1, commands)
+    initial_hash, _, initial_pixels = battle_pixel_hashes(root, 1, commands)
+    pixels = bytearray(initial_pixels)
+    draw_panel(20, 19, 42, 180)
+    action_labels = (
+        bytes.fromhex("b2beb0ca"),
+        bytes.fromhex("a7f0c0bb"),
+        bytes.fromhex("a5ceac72"),
+        bytes.fromhex("b8d1ac72"),
+        bytes.fromhex("c2e5c0f8"),
+        bytes.fromhex("aaabab7e"),
+        bytes.fromhex("b5a5abdd"),
+        bytes.fromhex("aaacba41"),
+        bytes.fromhex("a5f0aea7"),
+        bytes.fromhex("a6dbb0ca"),
+    )
+    for ordinal, label in enumerate(action_labels):
+        draw_battle_text(
+            pixels,
+            25,
+            24 + 17 * ordinal,
+            label + b"\0",
+            ascii_font,
+            big5_font,
+            0x6663 if ordinal == 0 else 0x2321,
+        )
+    draw_panel(220, 19, 100, 140)
+    portraits = cumulative_entries(
+        (root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes()
+    )
+    draw_battle_sprite(pixels, portraits[0], 242, 82)
+    for x, y, text, colors in (
+        (266, 84, b"A", 0x0705),
+        (225, 101, bytes.fromhex("ca5ea44f20"), 0x2321),
+        (262, 101, b" 60", 0x0705),
+        (285, 101, b"/", 0x6663),
+        (292, 101, b"100", 0x2321),
+        (225, 118, bytes.fromhex("a5cda95220"), 0x2321),
+        (262, 118, b"  0", 0x0705),
+        (285, 118, b"/", 0x6663),
+        (292, 118, b"  0", 0x2321),
+        (225, 135, bytes.fromhex("a4baa44f20"), 0x2321),
+        (262, 135, b" 25", 0x504E),
+        (285, 135, b"/", 0x504E),
+        (292, 135, b"  0", 0x504E),
+    ):
+        draw_battle_text(
+            pixels, x, y, text + b"\0", ascii_font, big5_font, colors
+        )
+    action_menu_hash = fnv1a_bytes(pixels)
     return {
         "battle_id": 2,
         "party_prefix_length": 2,
@@ -1451,6 +1500,13 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
         "initial_view": [view_x, view_y],
         "initial_command_count": len(commands),
         "initial_pixel_hash": initial_hash,
+        "action_menu": {
+            "availability": [1] * 10,
+            "available_count": 10,
+            "cursor": 0,
+            "selected_action": -1,
+            "pixel_hash": action_menu_hash,
+        },
     }
 
 
@@ -1564,7 +1620,7 @@ def battle_render_plan_vector(
     words = [wrapping_i16(value) for command in commands for value in command]
     counts = {str(kind): sum(command[0] == kind for command in commands) for kind in range(4)}
     target_commands = [command for command in commands if command[1:3] == [26, 26]]
-    battle_hash, status_hash = battle_pixel_hashes(
+    battle_hash, status_hash, _ = battle_pixel_hashes(
         root, int(setup["battlefield_id"]), commands
     )
     return {

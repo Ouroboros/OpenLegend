@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `2e0d240b98d44441612e14576ec9b620016249c50dec90914b40c95696de6127`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `f84e51e8f3887a207e0ae107eb5adb363a5cf2f24489884928fb64f9e95437f4`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -76,7 +76,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 - 每轮 word6=`max(0,effective_speed/15-role.hurt/40)`，signed division toward zero；
 - hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
 
-`BattleSession`现已在建队后按slot0计算clamp视图原点、实际绘制初始战场、逐present帧执行黑场淡入，随后完成轮首排序/word6计算、actor居中呈现及player/AI动作分界。真实 Big5 菜单固定为「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」，可用门槛和 ordinal cursor 见 `0x32E59.md`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；玩家/AI动作、逐槽后处理、tick wait、十项动作、结果 panel/按键/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
+`BattleSession`现已在建队后按slot0计算clamp视图原点、实际绘制初始战场、逐present帧执行黑场淡入，随后完成轮首排序/word6计算、actor居中呈现及player/AI动作分界。玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，Enter/Space/keypad Insert确认后再扫描映射原action id。菜单每帧重绘战场、圆角混色框、原Big5文字和右侧actor状态面板；十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x7d062c289e7f933a`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；确认后的十个handler、移动重检、菜单重建/退出、AI动作、逐槽后处理、tick wait、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
 
 ## 8. 战场路径图与最短路回溯
 
@@ -161,7 +161,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3AA4B` 的顺序为完整战场重绘、present、自动flag写1、调用当前actor的AI。现代仅恢复 `automatic_enabled` 状态与可供前置重绘使用的typed计划；present与AI尚未同步接线，因此该函数保持 `pending_implementation`。
 
-`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession调用与present仍未接入，故原绘制函数保持 `pending_implementation`。
+`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present及玩家动作菜单每帧重绘中实际调用并由runtime present；移动、目标、动画和结果调用点仍未接入，故原绘制函数保持 `pending_implementation`。
 
 ## 20. AI六个候选selector
 
@@ -235,4 +235,4 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 
 `sub_3B387..sub_3C2AC`战后进度状态已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利把WAR word7总经验均分给存活side0；队伍至少补最大HP/5，死亡者体力至少10；word13及其80%分别加角色、练功、制造经验并unsigned封顶60000。等级提升保留30项机器阈值、资质分档成长RNG与技能条件RNG；练功保留需求系数、18项角色写入、武功学习/加100；制造保留五配方标记、反复`bounded(5)`、已有产物随机1..3与新槽固定1、材料槽压缩。提示框、present与按键等待仍为typed事件，四函数保持`pending_implementation`。
 
-`sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12，现代仅对负值及大于25 target采用不读取数组外的安全边界，两者状态核心标`implemented_pending_review`。`sub_3C6D3`已恢复side横移220、面板/头像/名称NUL对齐、HP hurt色、最大HP poison色及MP类型色；非法MP类型复用poison色的寄存器残值BUG被保留。`BattleRenderer`已按`sub_2CEBF`实际绘制圆角半透明面板、离散白边、HDGRP头像、原Big5标签和数值，battle4固定队员面板叠加整帧的独立oracle与C++ FNV64均为`0x630a82d57e1d8715`；BattleSession原调用点present与等待仍未接入。
+`sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12，现代仅对负值及大于25 target采用不读取数组外的安全边界，两者状态核心标`implemented_pending_review`。`sub_3C6D3`已恢复side横移220、面板/头像/名称NUL对齐、HP hurt色、最大HP poison色及MP类型色；非法MP类型复用poison色的寄存器残值BUG被保留。`BattleRenderer`已按`sub_2CEBF`实际绘制圆角半透明面板、离散白边、HDGRP头像、原Big5标签和数值，battle4固定队员面板叠加整帧的独立oracle与C++ FNV64均为`0x630a82d57e1d8715`；BattleSession已接玩家动作菜单调用点，剩余调用点及显式present/等待仍未接入。

@@ -25,6 +25,7 @@ enum class BattleSessionPhase {
     round_start,
     actor_present,
     player_action,
+    player_action_selected,
     ai_action,
 };
 
@@ -32,6 +33,28 @@ enum class BattleSessionInputResult {
     ignored,
     changed,
     selection_complete,
+    action_changed,
+    action_selected,
+};
+
+enum class BattlePlayerAction : std::int16_t {
+    movement,
+    attack,
+    use_poison,
+    detoxification,
+    medicine,
+    item,
+    wait,
+    status,
+    rest,
+    automatic,
+};
+
+struct BattlePlayerActionMenuState {
+    std::array<std::int16_t, 10> available{};
+    std::size_t available_count{};
+    std::size_t cursor{};
+    std::int16_t selected_action{-1};
 };
 
 class BattleSession {
@@ -58,6 +81,9 @@ public:
     [[nodiscard]] const BattleSetup& setup() const noexcept { return setup_; }
     [[nodiscard]] BattleSetup& setup() noexcept { return setup_; }
     [[nodiscard]] const BattleData& data() const noexcept { return data_; }
+    [[nodiscard]] const BattlePlayerActionMenuState& player_action_menu() const noexcept {
+        return player_action_menu_;
+    }
 
     [[nodiscard]] BattleSessionInputResult handle_key(std::uint8_t translated_key);
     void advance();
@@ -67,9 +93,16 @@ public:
 private:
     [[nodiscard]] bool begin_initial_battle();
     [[nodiscard]] bool begin_round();
+    [[nodiscard]] bool begin_player_action_menu();
+    [[nodiscard]] std::optional<std::size_t> action_for_ordinal(
+        std::size_t ordinal) const noexcept;
+    [[nodiscard]] BattleSessionInputResult handle_player_action_key(
+        std::uint8_t translated_key);
     [[nodiscard]] bool render_party_selection(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_battlefield(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_action_menu(
         render::IndexedFramebuffer& framebuffer);
     void capture_selection_background(
         const render::IndexedFramebuffer& framebuffer) noexcept;
@@ -86,6 +119,7 @@ private:
     std::vector<compat::LegacyPalette> fade_palettes_;
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
+    BattlePlayerActionMenuState player_action_menu_{};
     std::array<std::uint8_t, compat::kLegacyPixelCount> selection_background_{};
     compat::LegacyPalette selection_palette_{};
     bool selection_background_captured_{};

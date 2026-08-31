@@ -2286,7 +2286,25 @@
           13
         ],
         "initial_command_count": 1185,
-        "initial_pixel_hash": "0x03446a8a41ef2ec6"
+        "initial_pixel_hash": "0x03446a8a41ef2ec6",
+        "action_menu": {
+          "availability": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "available_count": 10,
+          "cursor": 0,
+          "selected_action": -1,
+          "pixel_hash": "0x7d062c289e7f933a"
+        }
       },
       "wait_auto_render_vector": {
         "wait_order_before": [

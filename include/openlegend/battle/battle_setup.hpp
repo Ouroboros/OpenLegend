@@ -585,6 +585,11 @@ struct BattleAiTargetCleanupResult {
     std::int16_t poison_targets_cleared{};
 };
 
+struct BattlePlayerActionAvailability {
+    std::array<std::int16_t, 10> available{};
+    std::int16_t available_count{};
+};
+
 struct BattleStatusPanelPlan {
     std::size_t combatant_slot{};
     std::int16_t role_id{};
@@ -670,6 +675,8 @@ public:
         random::LegacyRandom& random);
     [[nodiscard]] std::optional<BattleRoundStatusDamageResult> apply_round_status_damage();
     [[nodiscard]] std::optional<BattleAiTargetCleanupResult> clear_hidden_ai_targets();
+    [[nodiscard]] std::optional<BattlePlayerActionAvailability>
+        player_action_availability(std::size_t combatant_slot) const noexcept;
     [[nodiscard]] std::optional<BattleStatusPanelPlan> status_panel_plan(
         std::size_t combatant_slot) const noexcept;
     [[nodiscard]] std::optional<BattlePathCoord> move_one_marked_step(
