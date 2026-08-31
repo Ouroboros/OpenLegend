@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前53项为 `pending_mapping`、10项为 `pending_implementation`、18项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前52项为 `pending_mapping`、11项为 `pending_implementation`、18项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `852f315420e4fe19c3d6c0d82d3439ff8dd6e4b8f19650a13df6fdcab6261342`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `ca2f56f95b16070aa989ccb501f20e38ac8ee9f68995cf92b9da55e5f830a788`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -122,3 +122,9 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 `sub_3859E` 的actor sprite、effect frame/visible、channel1/2 sample分派点与每帧17 tick已映射为 `magic_animation_plan`；固定19帧hash `0x5aaffbb1d5697a73`。`sub_3884A` 的固定sample13、100 tick前奏与17帧effect2时间线hash为 `0x2b5c87d8e0c754d5`。`sub_38910` 的10个damage phase、每帧1 tick与前4帧flash hash为 `0x364953a2c8f42144`，抑制flash时为 `0xec7a73890ce825c4`。
 
 三项typed时间线均已实现，但FIGHT载入、sample调用、render/present/wait和结束清理尚未接入BattleSession，因此三函数均为 `pending_implementation`。
+
+## 14. 武功选择菜单状态
+
+`sub_38DAC` 已映射为 `begin_magic_selection/apply_magic_selection`。可用mask扫描全部10槽，只接受magic id>0且当前MP≥need_mp；cursor是可用项ordinal，左右在可用数内回绕，确认再次扫描10槽映射到实际slot，取消写out flag1。
+
+调用者传入的a7是已学武功数。面板宽为 `17*a7+10`，普通名称绘制也只扫描slot `<a7`，但可用mask/确认扫描10槽，故稀疏槽位存在原显示BUG。固定slots `[6,0,5,0,7,...]`、MP6得到learned3、available `[0,2]`、状态hash `0xc254d2cd83d7da76`；next→next→previous后确认slot2，取消flag1。panel、名称与input/present continuation待接，函数为 `pending_implementation`。

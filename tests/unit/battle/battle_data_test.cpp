@@ -250,6 +250,50 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 4);
     OL_CHECK(setup.finish_attack(0U));
     OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 0);
+
+    role.set_word(openlegend::model::role_word::magic_id_begin, 6);
+    role.set_word(openlegend::model::role_word::magic_id_begin + 4U, 7);
+    ranger.magics[6U].set_word(openlegend::model::magic_word::need_mp, 6);
+    ranger.magics[7U].set_word(openlegend::model::magic_word::need_mp, 7);
+    auto selection = setup.begin_magic_selection(0U);
+    OL_CHECK(selection.has_value());
+    OL_CHECK(selection->learned_count == 3);
+    OL_CHECK(selection->available_count == 2);
+    OL_CHECK(selection->available_slots[0U] == 0);
+    OL_CHECK(selection->available_slots[1U] == 2);
+    OL_CHECK(selection->available_slots[2U] == -1);
+    std::vector<std::int16_t> selection_words(
+        selection->available_slots.begin(), selection->available_slots.end());
+    selection_words.insert(
+        selection_words.end(),
+        {selection->learned_count, selection->available_count, selection->cursor});
+    OL_CHECK(fnv1a_words(selection_words) == 0xc254d2cd83d7da76ULL);
+    OL_CHECK(BattleSetup::apply_magic_selection(
+                 *selection, BattleMagicSelectionAction::next) ==
+             BattleMagicSelectionResult::changed);
+    OL_CHECK(selection->cursor == 1);
+    OL_CHECK(BattleSetup::apply_magic_selection(
+                 *selection, BattleMagicSelectionAction::next) ==
+             BattleMagicSelectionResult::changed);
+    OL_CHECK(selection->cursor == 0);
+    OL_CHECK(BattleSetup::apply_magic_selection(
+                 *selection, BattleMagicSelectionAction::previous) ==
+             BattleMagicSelectionResult::changed);
+    OL_CHECK(selection->cursor == 1);
+    OL_CHECK(BattleSetup::apply_magic_selection(
+                 *selection, BattleMagicSelectionAction::activate) ==
+             BattleMagicSelectionResult::selected);
+    OL_CHECK(selection->selected_slot == 2);
+    OL_CHECK(BattleSetup::apply_magic_selection(
+                 *selection, BattleMagicSelectionAction::next) ==
+             BattleMagicSelectionResult::invalid);
+
+    auto cancelled = setup.begin_magic_selection(0U);
+    OL_CHECK(cancelled.has_value());
+    OL_CHECK(BattleSetup::apply_magic_selection(
+                 *cancelled, BattleMagicSelectionAction::cancel) ==
+             BattleMagicSelectionResult::cancelled);
+    OL_CHECK(cancelled->cancelled);
 }
 
 void run_attack_animation_test(const openlegend::resource::DataRoot& data_root) {

@@ -456,6 +456,72 @@ std::optional<BattleAttackProfile> BattleSetup::attack_profile(
     };
 }
 
+std::optional<BattleMagicSelectionState> BattleSetup::begin_magic_selection(
+    const std::size_t slot) const noexcept {
+    if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    BattleMagicSelectionState state{};
+    std::ranges::fill(state.available_slots, static_cast<std::int16_t>(-1));
+    for (std::size_t magic_slot = 0U; magic_slot < model::role_word::magic_count; ++magic_slot) {
+        const auto magic_id = role.word(model::role_word::magic_id_begin + magic_slot);
+        if (magic_id <= 0) {
+            continue;
+        }
+        state.learned_count = wrapping_i16(
+            static_cast<std::int32_t>(state.learned_count) + 1);
+        if (static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+            return std::nullopt;
+        }
+        const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
+        if (role.word(model::role_word::mp) < magic.word(model::magic_word::need_mp)) {
+            continue;
+        }
+        state.available_slots[static_cast<std::size_t>(state.available_count)] =
+            static_cast<std::int16_t>(magic_slot);
+        state.available_count = wrapping_i16(
+            static_cast<std::int32_t>(state.available_count) + 1);
+    }
+    if (state.available_count <= 0) {
+        return std::nullopt;
+    }
+    return state;
+}
+
+BattleMagicSelectionResult BattleSetup::apply_magic_selection(
+    BattleMagicSelectionState& state,
+    const BattleMagicSelectionAction action) noexcept {
+    if (state.available_count <= 0 || state.available_count > 10 || state.cursor < 0 ||
+        state.cursor >= state.available_count || state.selected_slot.has_value() ||
+        state.cancelled) {
+        return BattleMagicSelectionResult::invalid;
+    }
+    switch (action) {
+        case BattleMagicSelectionAction::next:
+            state.cursor = state.cursor == state.available_count - 1
+                ? 0
+                : wrapping_i16(static_cast<std::int32_t>(state.cursor) + 1);
+            return BattleMagicSelectionResult::changed;
+        case BattleMagicSelectionAction::previous:
+            state.cursor = state.cursor == 0
+                ? wrapping_i16(static_cast<std::int32_t>(state.available_count) - 1)
+                : wrapping_i16(static_cast<std::int32_t>(state.cursor) - 1);
+            return BattleMagicSelectionResult::changed;
+        case BattleMagicSelectionAction::activate:
+            state.selected_slot = state.available_slots[static_cast<std::size_t>(state.cursor)];
+            return BattleMagicSelectionResult::selected;
+        case BattleMagicSelectionAction::cancel:
+            state.cancelled = true;
+            return BattleMagicSelectionResult::cancelled;
+    }
+    return BattleMagicSelectionResult::invalid;
+}
+
 bool BattleSetup::commit_attack_iteration(
     const std::size_t slot,
     const std::int16_t magic_slot,
