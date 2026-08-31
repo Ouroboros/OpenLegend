@@ -1184,6 +1184,261 @@ bool BattleSetup::finish_medicine_action(const std::size_t actor_slot) {
     return finish_poison_action(actor_slot);
 }
 
+BattleItemSelectionState BattleSetup::begin_item_selection() const noexcept {
+    BattleItemSelectionState state{};
+    std::ranges::fill(state.inventory_slots, static_cast<std::int16_t>(-1));
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        const auto item_id = ranger_.header.inventory_item(slot).value;
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            continue;
+        }
+        const auto item_type =
+            ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::item_type);
+        if (item_type == 3 || item_type == 4) {
+            state.inventory_slots[static_cast<std::size_t>(state.count)] =
+                static_cast<std::int16_t>(slot);
+            state.count = static_cast<std::int16_t>(state.count + 1);
+        }
+    }
+    return state;
+}
+
+std::optional<std::int16_t> BattleSetup::throwing_weapon_targeting_range(
+    const std::size_t actor_slot) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    return wrapping_i16(
+        static_cast<std::int32_t>(
+            ranger_.roles[static_cast<std::size_t>(role_id)].word(
+                model::role_word::hidden_weapon)) /
+            15 +
+        1);
+}
+
+std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
+    const std::size_t actor_slot,
+    const BattlePathCoord target,
+    const std::size_t inventory_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle throwing-weapon actor is outside combatant slots";
+        return std::nullopt;
+    }
+    auto& actor_words = combatants_[actor_slot].words;
+    const auto actor_role_id = actor_words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle throwing-weapon actor role is outside ranger records";
+        return std::nullopt;
+    }
+    const auto refresh_sprites = [this]() {
+        for (std::int16_t slot = 0; slot < combatant_count_; ++slot) {
+            auto& words = combatants_[static_cast<std::size_t>(slot)].words;
+            words[combatant_word::sprite] =
+                sprite_word(words[combatant_word::role_id], words[combatant_word::initial_mode]);
+        }
+    };
+
+    const auto delta_x = static_cast<std::int32_t>(target.x) - actor_words[combatant_word::x];
+    const auto delta_y = static_cast<std::int32_t>(target.y) - actor_words[combatant_word::y];
+    if (delta_x != 0 || delta_y != 0) {
+        if (std::abs(delta_y) > std::abs(delta_x)) {
+            actor_words[combatant_word::initial_mode] = delta_y <= 0 ? 0 : 3;
+        } else {
+            actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
+        }
+    }
+    clear_attack_effects();
+    BattleThrownItemResult result{};
+    if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
+        target.y >= static_cast<std::int16_t>(kBattleExtent)) {
+        refresh_sprites();
+        return result;
+    }
+    const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
+        static_cast<std::size_t>(target.x);
+    const auto target_slot = data_.occupancy()[cell];
+    if (target_slot != -1) {
+        if (target_slot < 0 || target_slot >= combatant_count_) {
+            error_ = "battle throwing-weapon occupancy is outside combatant slots";
+            return std::nullopt;
+        }
+        if (combatants_[static_cast<std::size_t>(target_slot)].words[combatant_word::side] ==
+            actor_words[combatant_word::side]) {
+            refresh_sprites();
+            return result;
+        }
+    }
+    attack_effects_[cell] = 1;
+    if (target_slot == -1) {
+        refresh_sprites();
+        return result;
+    }
+    if (inventory_slot >= model::kInventoryCount) {
+        error_ = "battle throwing-weapon inventory slot is outside ranger header";
+        return std::nullopt;
+    }
+    const auto item_id = ranger_.header.inventory_item(inventory_slot).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+        error_ = "battle throwing-weapon item is outside ranger records";
+        return std::nullopt;
+    }
+
+    const auto target_index = static_cast<std::size_t>(target_slot);
+    auto& target_words = combatants_[target_index].words;
+    const auto target_role_id = target_words[combatant_word::role_id];
+    if (target_role_id < 0 || static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+        error_ = "battle throwing-weapon target role is outside ranger records";
+        return std::nullopt;
+    }
+    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target_role = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
+    const auto hurt = target_role.word(model::role_word::hurt);
+    if (hurt < 0) {
+        error_ = "battle throwing-weapon target hurt is outside legacy domain";
+        return std::nullopt;
+    }
+
+    std::int32_t divisor = 1;
+    if (hurt == 0) {
+        divisor = 4;
+    } else if (hurt <= 33) {
+        divisor = 3;
+    } else if (hurt <= 66) {
+        divisor = 2;
+    }
+    const auto base_delta =
+        static_cast<std::int32_t>(item.word(model::item_word::add_hp)) / divisor -
+        random.bounded(5);
+    const auto hp_delta = wrapping_i16(
+        (base_delta -
+         2 * static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon))) /
+        3);
+
+    auto changed_hurt = wrapping_i16(
+        static_cast<std::int32_t>(target_role.word(model::role_word::hurt)) - hp_delta / 4);
+    if (changed_hurt > 99) {
+        changed_hurt = 99;
+    }
+    if (changed_hurt < 0) {
+        changed_hurt = 0;
+    }
+    target_role.set_word(model::role_word::hurt, changed_hurt);
+
+    const auto old_hp = target_role.word(model::role_word::hp);
+    auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
+    if (changed_hp >= target_role.word(model::role_word::maximum_hp)) {
+        changed_hp = target_role.word(model::role_word::maximum_hp);
+    }
+    if (changed_hp <= 0) {
+        changed_hp = 0;
+    }
+    target_role.set_word(model::role_word::hp, changed_hp);
+    const auto damage = wrapping_i16(std::abs(
+        static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp)));
+    target_words[combatant_word::damage_value] = damage;
+
+    const auto item_poison = item.word(model::item_word::add_poison);
+    std::int16_t poison_delta = 0;
+    if (item_poison > 0) {
+        poison_delta = wrapping_i16(
+            (static_cast<std::int32_t>(item_poison) -
+             actor.word(model::role_word::hidden_weapon)) /
+                2 -
+            target_role.word(model::role_word::anti_poison));
+        if (target_role.word(model::role_word::anti_poison) >= 100 || poison_delta < 0) {
+            poison_delta = 0;
+        }
+        poison_delta = wrapping_i16(static_cast<std::int32_t>(poison_delta) / 2);
+    } else {
+        poison_delta = wrapping_i16(
+            static_cast<std::int32_t>(item_poison) / 2 + random.bounded(5) - random.bounded(5));
+    }
+    auto changed_poison = wrapping_i16(
+        static_cast<std::int32_t>(target_role.word(model::role_word::poison)) + poison_delta);
+    if (changed_poison >= 99) {
+        changed_poison = 99;
+    }
+    if (changed_poison <= 0) {
+        changed_poison = 0;
+    }
+    target_role.set_word(model::role_word::poison, changed_poison);
+
+    const auto remaining = wrapping_i16(
+        static_cast<std::int32_t>(ranger_.header.inventory_count(inventory_slot)) - 1);
+    ranger_.header.set_inventory(inventory_slot, model::ItemId{item_id}, remaining);
+    if (remaining <= 0) {
+        for (std::size_t source = inventory_slot + 1U; source < model::kInventoryCount; ++source) {
+            ranger_.header.set_inventory(
+                source - 1U,
+                ranger_.header.inventory_item(source),
+                ranger_.header.inventory_count(source));
+        }
+        ranger_.header.set_inventory(
+            model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+    }
+
+    actor_words[combatant_word::action_done] = 1;
+    refresh_sprites();
+    result.hit_count = 1;
+    result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
+    result.damage = damage;
+    result.inventory_consumed = true;
+    return result;
+}
+
+std::optional<BattleRestResult> BattleSetup::rest_actor(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle rest actor is outside combatant slots";
+        return std::nullopt;
+    }
+    auto& words = combatants_[actor_slot].words;
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "battle rest actor role is outside ranger records";
+        return std::nullopt;
+    }
+    words[combatant_word::action_done] = 1;
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto speed_tenth = static_cast<std::int32_t>(role.word(model::role_word::speed)) / 10;
+    const auto physical_gain = random.bounded(3) +
+        (words[combatant_word::round_value] == speed_tenth ? 3 : 2);
+    auto physical_power = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::physical_power)) + physical_gain);
+    if (physical_power > 100) {
+        physical_power = 100;
+    }
+    role.set_word(model::role_word::physical_power, physical_power);
+
+    if (physical_power >= 30) {
+        const auto bound = static_cast<std::int32_t>(physical_power) / 10 - 2;
+        auto hp = wrapping_i16(
+            static_cast<std::int32_t>(role.word(model::role_word::hp)) + random.bounded(bound) + 3);
+        if (hp > role.word(model::role_word::maximum_hp)) {
+            hp = role.word(model::role_word::maximum_hp);
+        }
+        role.set_word(model::role_word::hp, hp);
+
+        auto mp = wrapping_i16(
+            static_cast<std::int32_t>(role.word(model::role_word::mp)) + random.bounded(bound) + 3);
+        if (mp > role.word(model::role_word::maximum_mp)) {
+            mp = role.word(model::role_word::maximum_mp);
+        }
+        role.set_word(model::role_word::mp, mp);
+    }
+    return BattleRestResult{
+        role.word(model::role_word::physical_power),
+        role.word(model::role_word::hp),
+        role.word(model::role_word::mp)};
+}
+
 void BattleSetup::clear_attack_effects() noexcept {
     std::ranges::fill(attack_effects_, static_cast<std::int16_t>(0));
 }

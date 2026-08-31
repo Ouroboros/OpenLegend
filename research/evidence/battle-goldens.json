@@ -547,6 +547,145 @@
         "animation_effect_id": 0,
         "damage_flash_suppressed": true
       },
+      "battle_item_vector": {
+        "menu_filter": {
+          "requested_type": 4,
+          "accepted_types": [
+            3,
+            4
+          ],
+          "inventory_count_ignored": true,
+          "selected_type_4_opens_targeting": true,
+          "result_1_marks_action_done": true
+        },
+        "poisoned_throw": {
+          "item_id": 102,
+          "item_type": 4,
+          "effect_id": 30,
+          "add_hp": -40,
+          "add_poison": 40,
+          "rng_seed": 1,
+          "rng_outputs": [
+            3
+          ],
+          "rng_state_after": 1103527590,
+          "hidden_weapon": 20,
+          "targeting_range": 2,
+          "hp_before": 100,
+          "maximum_hp": 200,
+          "hurt_before": 40,
+          "poison_before": 10,
+          "anti_poison": 5,
+          "hp_delta": -21,
+          "damage": 21,
+          "hp_after": 79,
+          "hurt_after": 45,
+          "poison_after": 12
+        },
+        "plain_throw": {
+          "item_id": 96,
+          "item_type": 4,
+          "effect_id": 23,
+          "add_hp": -30,
+          "add_poison": 0,
+          "rng_seed": 2,
+          "rng_outputs": [
+            3,
+            2,
+            4
+          ],
+          "rng_state_after": 2818548041,
+          "hidden_weapon": 20,
+          "targeting_range": 2,
+          "hp_before": 100,
+          "maximum_hp": 200,
+          "hurt_before": 0,
+          "poison_before": 10,
+          "anti_poison": 0,
+          "hp_delta": -16,
+          "damage": 16,
+          "hp_after": 84,
+          "hurt_after": 4,
+          "poison_after": 8
+        },
+        "targeting": {
+          "direction_after": 3,
+          "effect_hash": "0xab559939923b4f74",
+          "friendly_cell_marked": false,
+          "empty_cell_marked": true,
+          "friendly_consumes_item": false,
+          "empty_consumes_item": false
+        },
+        "inventory": {
+          "before": [
+            [
+              102,
+              1
+            ],
+            [
+              97,
+              2
+            ],
+            [
+              10,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "after_consuming_slot_0": [
+            [
+              97,
+              2
+            ],
+            [
+              10,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "decrement_wraps_to_int16": true
+        }
+      },
+      "rest_vector": {
+        "ready": {
+          "rng_seed": 1,
+          "rng_outputs": [
+            2,
+            1,
+            0
+          ],
+          "rng_state_after": 662824084,
+          "speed": 60,
+          "round_value": 6,
+          "physical_power_after": 55,
+          "hp_after": 99,
+          "mp_after": 50,
+          "action_done": 1
+        },
+        "tired": {
+          "rng_seed": 1,
+          "rng_outputs": [
+            2
+          ],
+          "rng_state_after": 1103527590,
+          "speed": 60,
+          "round_value": 5,
+          "physical_power_after": 29,
+          "hp_after": 95,
+          "mp_after": 48,
+          "action_done": 1
+        }
+      },
       "mp_damage_vector": {
         "rng_seed": 1,
         "rng_bounds": [

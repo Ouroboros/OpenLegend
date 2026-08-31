@@ -632,6 +632,158 @@ void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
     }));
 }
 
+void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+    }
+    auto& actor = ranger.roles[1U];
+    auto& target = ranger.roles[3U];
+    actor.set_word(openlegend::model::role_word::hidden_weapon, 20);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::maximum_hp, 200);
+    target.set_word(openlegend::model::role_word::hurt, 40);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    target.set_word(openlegend::model::role_word::anti_poison, 5);
+
+    auto& poisoned = ranger.items[102U];
+    poisoned.set_word(openlegend::model::item_word::item_type, 4);
+    poisoned.set_word(openlegend::model::item_word::hidden_weapon_effect_id, 30);
+    poisoned.set_word(openlegend::model::item_word::add_hp, -40);
+    poisoned.set_word(openlegend::model::item_word::add_poison, 40);
+    ranger.items[97U].set_word(openlegend::model::item_word::item_type, 4);
+    ranger.items[10U].set_word(openlegend::model::item_word::item_type, 3);
+    ranger.items[11U].set_word(openlegend::model::item_word::item_type, 2);
+    ranger.header.set_inventory(0U, openlegend::model::ItemId{102}, 1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{97}, 2);
+    ranger.header.set_inventory(2U, openlegend::model::ItemId{10}, 0);
+    ranger.header.set_inventory(3U, openlegend::model::ItemId{11}, 3);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    const auto selection = setup.begin_item_selection();
+    OL_CHECK(selection.count == 3);
+    OL_CHECK(selection.inventory_slots[0U] == 0);
+    OL_CHECK(selection.inventory_slots[1U] == 1);
+    OL_CHECK(selection.inventory_slots[2U] == 2);
+    OL_CHECK(selection.inventory_slots[3U] == -1);
+    OL_CHECK(setup.throwing_weapon_targeting_range(0U) == 2);
+
+    openlegend::random::LegacyRandom random{1U};
+    const auto result =
+        setup.apply_throwing_weapon_target(0U, BattlePathCoord{26, 26}, 0U, random);
+    OL_CHECK(result.has_value());
+    OL_CHECK(result->hit_count == 1);
+    OL_CHECK(result->effect_id == 30);
+    OL_CHECK(result->damage == 21);
+    OL_CHECK(result->inventory_consumed);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
+    OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 12);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 21);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 0);
+    OL_CHECK(ranger.header.inventory_item(0U).value == 97);
+    OL_CHECK(ranger.header.inventory_count(0U) == 2);
+    OL_CHECK(ranger.header.inventory_item(1U).value == 10);
+    OL_CHECK(ranger.header.inventory_count(1U) == 0);
+
+    auto& plain = ranger.items[96U];
+    plain.set_word(openlegend::model::item_word::item_type, 4);
+    plain.set_word(openlegend::model::item_word::hidden_weapon_effect_id, 23);
+    plain.set_word(openlegend::model::item_word::add_hp, -30);
+    plain.set_word(openlegend::model::item_word::add_poison, 0);
+    ranger.header.set_inventory(0U, openlegend::model::ItemId{96}, 2);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    target.set_word(openlegend::model::role_word::anti_poison, 0);
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    random.seed(2U);
+    const auto plain_result =
+        setup.apply_throwing_weapon_target(0U, BattlePathCoord{26, 26}, 0U, random);
+    OL_CHECK(plain_result.has_value());
+    OL_CHECK(plain_result->damage == 16);
+    OL_CHECK(random.state() == 2'818'548'041U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 84);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 4);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 8);
+    OL_CHECK(ranger.header.inventory_count(0U) == 1);
+
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    setup.combatants()[1U].words[combatant_word::side] =
+        setup.combatants()[0U].words[combatant_word::side];
+    random.seed(1U);
+    const auto friendly =
+        setup.apply_throwing_weapon_target(0U, BattlePathCoord{26, 26}, 0U, random);
+    OL_CHECK(friendly.has_value());
+    OL_CHECK(friendly->hit_count == 0);
+    OL_CHECK(!friendly->effect_id.has_value());
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(ranger.header.inventory_count(0U) == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+    OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
+        return value != 0;
+    }));
+
+    setup.combatants()[1U].words[combatant_word::side] = 1;
+    data.occupancy()[26U * 64U + 26U] = -1;
+    random.seed(1U);
+    const auto empty =
+        setup.apply_throwing_weapon_target(0U, BattlePathCoord{26, 26}, 0U, random);
+    OL_CHECK(empty.has_value());
+    OL_CHECK(empty->hit_count == 0);
+    OL_CHECK(!empty->effect_id.has_value());
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(ranger.header.inventory_count(0U) == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+    OL_CHECK(std::ranges::count(setup.attack_effects(), 1) == 1);
+}
+
+void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& actor = ranger.roles[1U];
+    actor.set_word(openlegend::model::role_word::speed, 60);
+    actor.set_word(openlegend::model::role_word::physical_power, 50);
+    actor.set_word(openlegend::model::role_word::hp, 95);
+    actor.set_word(openlegend::model::role_word::maximum_hp, 100);
+    actor.set_word(openlegend::model::role_word::mp, 48);
+    actor.set_word(openlegend::model::role_word::maximum_mp, 50);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    setup.combatants()[0U].words[combatant_word::round_value] = 6;
+    openlegend::random::LegacyRandom random{1U};
+    const auto rested = setup.rest_actor(0U, random);
+    OL_CHECK(rested.has_value());
+    OL_CHECK(rested->physical_power == 55);
+    OL_CHECK(rested->hp == 99);
+    OL_CHECK(rested->mp == 50);
+    OL_CHECK(random.state() == 662'824'084U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+
+    actor.set_word(openlegend::model::role_word::physical_power, 25);
+    actor.set_word(openlegend::model::role_word::hp, 95);
+    actor.set_word(openlegend::model::role_word::mp, 48);
+    setup.combatants()[0U].words[combatant_word::round_value] = 5;
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    random.seed(1U);
+    const auto tired = setup.rest_actor(0U, random);
+    OL_CHECK(tired.has_value());
+    OL_CHECK(tired->physical_power == 29);
+    OL_CHECK(tired->hp == 95);
+    OL_CHECK(tired->mp == 48);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+}
+
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -1031,6 +1183,8 @@ int main() {
     run_poison_action_test(data_root);
     run_detox_action_test(data_root);
     run_medicine_action_test(data_root);
+    run_throwing_weapon_action_test(data_root);
+    run_rest_action_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);

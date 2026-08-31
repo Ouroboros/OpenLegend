@@ -60,6 +60,24 @@ struct BattleAreaResult {
     std::optional<std::int16_t> effect_kind;
 };
 
+struct BattleItemSelectionState {
+    std::array<std::int16_t, model::kInventoryCount> inventory_slots{};
+    std::int16_t count{};
+};
+
+struct BattleThrownItemResult {
+    std::int16_t hit_count{};
+    std::optional<std::int16_t> effect_id;
+    std::int16_t damage{};
+    bool inventory_consumed{};
+};
+
+struct BattleRestResult {
+    std::int16_t physical_power{};
+    std::int16_t hp{};
+    std::int16_t mp{};
+};
+
 struct BattleMagicAnimationFrame {
     std::int16_t actor_sprite{};
     std::int16_t effect_frame{};
@@ -232,6 +250,17 @@ public:
         BattlePathCoord target,
         random::LegacyRandom& random);
     [[nodiscard]] bool finish_medicine_action(std::size_t actor_slot);
+    [[nodiscard]] BattleItemSelectionState begin_item_selection() const noexcept;
+    [[nodiscard]] std::optional<std::int16_t> throwing_weapon_targeting_range(
+        std::size_t actor_slot) const noexcept;
+    [[nodiscard]] std::optional<BattleThrownItemResult> apply_throwing_weapon_target(
+        std::size_t actor_slot,
+        BattlePathCoord target,
+        std::size_t inventory_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleRestResult> rest_actor(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
     void clear_attack_effects() noexcept;
     [[nodiscard]] std::span<const std::int16_t> attack_effects() const noexcept {
         return attack_effects_;

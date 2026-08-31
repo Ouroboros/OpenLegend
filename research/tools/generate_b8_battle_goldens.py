@@ -79,6 +79,121 @@ def wrapping_i16(value: int) -> int:
     return value - 0x10000 if value >= 0x8000 else value
 
 
+def trunc_div(value: int, divisor: int) -> int:
+    quotient = abs(value) // abs(divisor)
+    return -quotient if (value < 0) != (divisor < 0) else quotient
+
+
+def legacy_bounded(state: int, upper_bound: int) -> tuple[int, int]:
+    if upper_bound <= 1 or upper_bound > 30_000:
+        return 0, state
+    state = (state * 0x41C64E6D + 0x3039) & 0xFFFF_FFFF
+    return ((state >> 16) & 0x7FFF) % upper_bound, state
+
+
+def throwing_weapon_vector(
+    item: bytes,
+    *,
+    seed: int,
+    hidden_weapon: int,
+    hp: int,
+    maximum_hp: int,
+    hurt: int,
+    poison: int,
+    anti_poison: int,
+) -> dict[str, object]:
+    word = lambda index: struct.unpack_from("<h", item, index * 2)[0]
+    divisor = 4 if hurt == 0 else 3 if hurt <= 33 else 2 if hurt <= 66 else 1
+    damage_random, state = legacy_bounded(seed, 5)
+    base_delta = trunc_div(word(45), divisor) - damage_random
+    hp_delta = wrapping_i16(trunc_div(base_delta - 2 * hidden_weapon, 3))
+    hurt_after = min(99, max(0, wrapping_i16(hurt - trunc_div(hp_delta, 4))))
+    hp_after = wrapping_i16(hp + hp_delta)
+    if hp_after >= maximum_hp:
+        hp_after = maximum_hp
+    if hp_after <= 0:
+        hp_after = 0
+    damage = wrapping_i16(abs(hp_after - hp))
+
+    item_poison = word(47)
+    poison_rng: list[int] = []
+    if item_poison > 0:
+        poison_delta = wrapping_i16(trunc_div(item_poison - hidden_weapon, 2) - anti_poison)
+        if anti_poison >= 100 or poison_delta < 0:
+            poison_delta = 0
+        poison_delta = wrapping_i16(trunc_div(poison_delta, 2))
+    else:
+        first, state = legacy_bounded(state, 5)
+        second, state = legacy_bounded(state, 5)
+        poison_rng = [first, second]
+        poison_delta = wrapping_i16(trunc_div(item_poison, 2) + first - second)
+    poison_after = wrapping_i16(poison + poison_delta)
+    if poison_after >= 99:
+        poison_after = 99
+    if poison_after <= 0:
+        poison_after = 0
+    return {
+        "item_id": word(0),
+        "item_type": word(41),
+        "effect_id": word(37),
+        "add_hp": word(45),
+        "add_poison": item_poison,
+        "rng_seed": seed,
+        "rng_outputs": [damage_random, *poison_rng],
+        "rng_state_after": state,
+        "hidden_weapon": hidden_weapon,
+        "targeting_range": trunc_div(hidden_weapon, 15) + 1,
+        "hp_before": hp,
+        "maximum_hp": maximum_hp,
+        "hurt_before": hurt,
+        "poison_before": poison,
+        "anti_poison": anti_poison,
+        "hp_delta": hp_delta,
+        "damage": damage,
+        "hp_after": hp_after,
+        "hurt_after": hurt_after,
+        "poison_after": poison_after,
+    }
+
+
+def rest_vector(
+    *,
+    seed: int,
+    speed: int,
+    round_value: int,
+    physical_power: int,
+    hp: int,
+    maximum_hp: int,
+    mp: int,
+    maximum_mp: int,
+) -> dict[str, object]:
+    first, state = legacy_bounded(seed, 3)
+    physical_power = wrapping_i16(
+        physical_power + first + (3 if round_value == trunc_div(speed, 10) else 2)
+    )
+    if physical_power > 100:
+        physical_power = 100
+    outputs = [first]
+    if physical_power >= 30:
+        bound = trunc_div(physical_power, 10) - 2
+        second, state = legacy_bounded(state, bound)
+        third, state = legacy_bounded(state, bound)
+        outputs.extend([second, third])
+        hp = min(maximum_hp, wrapping_i16(hp + second + 3))
+        mp = min(maximum_mp, wrapping_i16(mp + third + 3))
+    return {
+        "rng_seed": seed,
+        "rng_outputs": outputs,
+        "rng_state_after": state,
+        "speed": speed,
+        "round_value": round_value,
+        "physical_power_after": physical_power,
+        "hp_after": hp,
+        "mp_after": mp,
+        "action_done": 1,
+    }
+
+
 def animation_vectors(effect_counts: list[int]) -> dict[str, object]:
     magic_type = 2
     actor_frame_count = 4
@@ -353,6 +468,34 @@ def build(data_root: Path) -> dict[str, object]:
         struct.unpack_from("<h", magic_bytes, index * 136 + 13 * 2)[0]
         for index in range(93)
     ]
+    item_bytes = ranger_group_bytes[59_076:97_076]
+    if len(item_bytes) != 200 * 190:
+        raise ValueError("RANGER.GRP does not contain 200 complete item records")
+    item_records = [item_bytes[index * 190:(index + 1) * 190] for index in range(200)]
+    poisoned_throw = throwing_weapon_vector(
+        item_records[102],
+        seed=1,
+        hidden_weapon=20,
+        hp=100,
+        maximum_hp=200,
+        hurt=40,
+        poison=10,
+        anti_poison=5,
+    )
+    plain_throw = throwing_weapon_vector(
+        item_records[96],
+        seed=2,
+        hidden_weapon=20,
+        hp=100,
+        maximum_hp=200,
+        hurt=0,
+        poison=10,
+        anti_poison=0,
+    )
+    if poisoned_throw["item_id"] != 102 or poisoned_throw["item_type"] != 4:
+        raise ValueError("RANGER.GRP item 102 is not the expected throwing weapon")
+    if plain_throw["item_id"] != 96 or plain_throw["item_type"] != 4:
+        raise ValueError("RANGER.GRP item 96 is not the expected throwing weapon")
 
     war_bytes = (data_root / "WAR.STA").read_bytes()
     if len(war_bytes) % WAR_RECORD_SIZE != 0:
@@ -666,6 +809,52 @@ def build(data_root: Path) -> dict[str, object]:
                     "enemy_cell_marked": False,
                     "animation_effect_id": 0,
                     "damage_flash_suppressed": True,
+                },
+                "battle_item_vector": {
+                    "menu_filter": {
+                        "requested_type": 4,
+                        "accepted_types": [3, 4],
+                        "inventory_count_ignored": True,
+                        "selected_type_4_opens_targeting": True,
+                        "result_1_marks_action_done": True,
+                    },
+                    "poisoned_throw": poisoned_throw,
+                    "plain_throw": plain_throw,
+                    "targeting": {
+                        "direction_after": 3,
+                        "effect_hash": "0xab559939923b4f74",
+                        "friendly_cell_marked": False,
+                        "empty_cell_marked": True,
+                        "friendly_consumes_item": False,
+                        "empty_consumes_item": False,
+                    },
+                    "inventory": {
+                        "before": [[102, 1], [97, 2], [10, 0], [-1, 0]],
+                        "after_consuming_slot_0": [[97, 2], [10, 0], [-1, 0], [-1, 0]],
+                        "decrement_wraps_to_int16": True,
+                    },
+                },
+                "rest_vector": {
+                    "ready": rest_vector(
+                        seed=1,
+                        speed=60,
+                        round_value=6,
+                        physical_power=50,
+                        hp=95,
+                        maximum_hp=100,
+                        mp=48,
+                        maximum_mp=50,
+                    ),
+                    "tired": rest_vector(
+                        seed=1,
+                        speed=60,
+                        round_value=5,
+                        physical_power=25,
+                        hp=95,
+                        maximum_hp=100,
+                        mp=48,
+                        maximum_mp=50,
+                    ),
                 },
                 "mp_damage_vector": {
                     "rng_seed": 1,
