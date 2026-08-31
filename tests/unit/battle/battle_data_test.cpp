@@ -1,0 +1,187 @@
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <filesystem>
+#include <span>
+
+#include "openlegend/battle/battle_data.hpp"
+#include "openlegend/battle/battle_setup.hpp"
+#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/resource/binary_file.hpp"
+#include "test_support.hpp"
+
+#ifndef OPENLEGEND_GAME_DATA_ROOT
+#error OPENLEGEND_GAME_DATA_ROOT must name the read-only original data directory
+#endif
+
+namespace {
+
+std::uint64_t fnv1a_words(const std::span<const std::int16_t> words) {
+    std::uint64_t hash = 0xcbf29ce484222325ULL;
+    for (const auto word : words) {
+        const auto raw = static_cast<std::uint16_t>(word);
+        hash ^= static_cast<std::uint8_t>(raw);
+        hash *= 0x100000001b3ULL;
+        hash ^= static_cast<std::uint8_t>(raw >> 8U);
+        hash *= 0x100000001b3ULL;
+    }
+    return hash;
+}
+
+void run_real_asset_fixtures(const openlegend::resource::DataRoot& data_root) {
+    struct Fixture {
+        std::int16_t battle_id;
+        std::int16_t battlefield_id;
+        std::int16_t music_id;
+        std::uint64_t definition_hash;
+        std::uint64_t battlefield_hash;
+    };
+    constexpr std::array fixtures{
+        Fixture{0, 0, 5, 0xca8bf0ffb5fb1174ULL, 0x004d07e3421dbf99ULL},
+        Fixture{4, 2, 7, 0x703a3afde8945d4dULL, 0xae3409d798fd5167ULL},
+        Fixture{93, 24, 7, 0x04873ba87ef6e4bdULL, 0xbe54d444b579fde5ULL},
+        Fixture{139, 21, 7, 0x33392999c31679ceULL, 0x5b6319016ff6273fULL},
+    };
+
+    for (const auto& fixture : fixtures) {
+        openlegend::battle::BattleData data{data_root, fixture.battle_id};
+        OL_CHECK(data.valid());
+        OL_CHECK(data.battle_id() == fixture.battle_id);
+        OL_CHECK(data.battlefield_id() == fixture.battlefield_id);
+        OL_CHECK(data.music_id() == fixture.music_id);
+        OL_CHECK(fnv1a_words(data.definition()) == fixture.definition_hash);
+        OL_CHECK(fnv1a_words(data.battlefield()) == fixture.battlefield_hash);
+        OL_CHECK(std::ranges::all_of(data.occupancy(), [](const std::int16_t value) {
+            return value == -1;
+        }));
+    }
+}
+
+openlegend::model::RangerState make_ranger(
+    const std::array<std::int16_t, openlegend::model::kTeamMemberCount>& party) {
+    openlegend::model::RangerState ranger;
+    for (std::size_t role = 0U; role < ranger.roles.size(); ++role) {
+        ranger.roles[role].set_word(
+            openlegend::model::role_word::head_id,
+            static_cast<std::int16_t>(role % 17U));
+    }
+    for (std::size_t index = 0U; index < party.size(); ++index) {
+        ranger.header.set_team_member(index, openlegend::model::CharacterId{party[index]});
+    }
+    return ranger;
+}
+
+void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData data{data_root, 0};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    OL_CHECK(setup.waiting_for_party_selection());
+    OL_CHECK(setup.party_prefix_length() == 3U);
+    OL_CHECK(setup.combatant_count() == 1);
+    OL_CHECK(setup.selection_states()[0U] == 2);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 0);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5110);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5098);
+
+    OL_CHECK(setup.apply(PartySelectionAction::previous) == PartySelectionResult::changed);
+    OL_CHECK(setup.cursor() == 3U);
+    OL_CHECK(setup.apply(PartySelectionAction::next) == PartySelectionResult::changed);
+    OL_CHECK(setup.cursor() == 0U);
+    OL_CHECK(setup.apply(PartySelectionAction::next) == PartySelectionResult::changed);
+    OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::changed);
+    OL_CHECK(setup.selection_states()[1U] == 1);
+    OL_CHECK(setup.apply(PartySelectionAction::next) == PartySelectionResult::changed);
+    OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::changed);
+    OL_CHECK(setup.selection_states()[2U] == 1);
+    OL_CHECK(setup.apply(PartySelectionAction::next) == PartySelectionResult::changed);
+    OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+
+    OL_CHECK(!setup.waiting_for_party_selection());
+    OL_CHECK(setup.combatant_count() == 4);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::role_id] == 2);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::x] == 36);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::y] == 17);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5126);
+    OL_CHECK(setup.combatants()[2U].words[combatant_word::role_id] == 3);
+    OL_CHECK(setup.combatants()[2U].words[combatant_word::x] == 35);
+    OL_CHECK(setup.combatants()[2U].words[combatant_word::y] == 20);
+    OL_CHECK(setup.combatants()[3U].words[combatant_word::role_id] == 1);
+    OL_CHECK(setup.combatants()[3U].words[combatant_word::sprite] == 5116);
+    OL_CHECK(data.occupancy()[20U * 64U + 32U] == 0);
+    OL_CHECK(data.occupancy()[17U * 64U + 36U] == 1);
+    OL_CHECK(data.occupancy()[20U * 64U + 35U] == 2);
+    OL_CHECK(data.occupancy()[23U * 64U + 21U] == 3);
+}
+
+void run_fixed_and_duplicate_tests(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData fixed_data{data_root, 4};
+    BattleSetup fixed{fixed_data, ranger};
+    OL_CHECK(fixed.valid());
+    OL_CHECK(!fixed.waiting_for_party_selection());
+    OL_CHECK(fixed.combatant_count() == 2);
+    OL_CHECK(fixed.combatants()[0U].words[combatant_word::role_id] == 1);
+    OL_CHECK(fixed.combatants()[0U].words[combatant_word::side] == 0);
+    OL_CHECK(fixed.combatants()[0U].words[combatant_word::initial_mode] == 2);
+    OL_CHECK(fixed.combatants()[1U].words[combatant_word::role_id] == 3);
+    OL_CHECK(fixed.combatants()[1U].words[combatant_word::side] == 1);
+    OL_CHECK(fixed_data.occupancy()[24U * 64U + 26U] == 0);
+    OL_CHECK(fixed_data.occupancy()[26U * 64U + 26U] == 1);
+
+    BattleData duplicate_data{data_root, 93};
+    auto single_ranger = make_ranger({0, -1, -1, -1, -1, -1});
+    BattleSetup duplicate{duplicate_data, single_ranger};
+    OL_CHECK(duplicate.valid());
+    OL_CHECK(duplicate.waiting_for_party_selection());
+    OL_CHECK(duplicate.apply(PartySelectionAction::next) == PartySelectionResult::changed);
+    OL_CHECK(duplicate.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+    OL_CHECK(duplicate.combatant_count() == 17);
+    OL_CHECK(duplicate.combatants()[9U].words[combatant_word::role_id] == 286);
+    OL_CHECK(duplicate.combatants()[11U].words[combatant_word::role_id] == 288);
+    OL_CHECK(duplicate_data.occupancy()[34U * 64U + 13U] == 11);
+}
+
+void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
+    for (std::int16_t battle_id = 0; battle_id < 140; ++battle_id) {
+        BattleData data{data_root, battle_id};
+        OL_CHECK(data.valid());
+        OL_CHECK(data.definition().size() == kBattleDefinitionWords);
+        OL_CHECK(data.battlefield().size() == kBattlefieldWords);
+        OL_CHECK(data.occupancy().size() == kBattleOccupancyCells);
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        if (setup.waiting_for_party_selection()) {
+            for (std::size_t step = 0U; step < setup.party_prefix_length(); ++step) {
+                OL_CHECK(setup.apply(PartySelectionAction::next) == PartySelectionResult::changed);
+            }
+            OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+        }
+        OL_CHECK(setup.valid());
+        OL_CHECK(!setup.waiting_for_party_selection());
+        OL_CHECK(setup.combatant_count() > 0);
+        OL_CHECK(setup.combatant_count() <= static_cast<std::int16_t>(kBattleCombatantCount));
+    }
+
+    const BattleData negative{data_root, -1};
+    const BattleData past_end{data_root, 140};
+    OL_CHECK(!negative.valid());
+    OL_CHECK(!past_end.valid());
+}
+
+}  // namespace
+
+int main() {
+    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    OL_CHECK(std::filesystem::is_directory(root));
+    const openlegend::resource::DataRoot data_root{root};
+    run_real_asset_fixtures(data_root);
+    run_party_selection_test(data_root);
+    run_fixed_and_duplicate_tests(data_root);
+    run_all_definition_tests(data_root);
+    return openlegend::test::failures == 0 ? 0 : 1;
+}

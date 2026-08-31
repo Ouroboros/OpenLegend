@@ -50,6 +50,82 @@ def archive_record(index_path: Path, group_path: Path) -> dict[str, object]:
     }
 
 
+def battle_setup_record(battle_id: int, record: bytes) -> dict[str, object]:
+    words = list(struct.unpack("<93h", record))
+    preset_party = words[9:15]
+    fixed_party = words[15:21]
+    party_x = words[21:27]
+    party_y = words[27:33]
+    enemies = words[33:53]
+    enemy_x = words[53:73]
+    enemy_y = words[73:93]
+    use_fixed_party = any(role_id != -1 for role_id in fixed_party)
+    active_party = fixed_party if use_fixed_party else preset_party
+    writes: list[dict[str, int | str]] = []
+    slot = 0
+    for source_index, role_id in enumerate(active_party):
+        if role_id == -1:
+            continue
+        writes.append(
+            {
+                "slot": slot,
+                "side": "party",
+                "source_index": source_index,
+                "role_id": role_id,
+                "x": party_x[source_index],
+                "y": party_y[source_index],
+                "occupancy_index": party_y[source_index] * 64 + party_x[source_index],
+            }
+        )
+        slot += 1
+    for source_index, role_id in enumerate(enemies):
+        if role_id == -1:
+            continue
+        writes.append(
+            {
+                "slot": slot,
+                "side": "enemy",
+                "source_index": source_index,
+                "role_id": role_id,
+                "x": enemy_x[source_index],
+                "y": enemy_y[source_index],
+                "occupancy_index": enemy_y[source_index] * 64 + enemy_x[source_index],
+            }
+        )
+        slot += 1
+    duplicate_writes: list[dict[str, int]] = []
+    previous_slots: dict[int, int] = {}
+    for write in writes:
+        occupancy_index = int(write["occupancy_index"])
+        if occupancy_index in previous_slots:
+            duplicate_writes.append(
+                {
+                    "occupancy_index": occupancy_index,
+                    "previous_slot": previous_slots[occupancy_index],
+                    "replacement_slot": int(write["slot"]),
+                }
+            )
+        previous_slots[occupancy_index] = int(write["slot"])
+    return {
+        "battle_id": battle_id,
+        "battlefield_id": words[6],
+        "music_id": words[8],
+        "preset_party_ids": preset_party,
+        "fixed_party_ids": fixed_party,
+        "party_x": party_x,
+        "party_y": party_y,
+        "enemy_ids": enemies,
+        "enemy_x": enemy_x,
+        "enemy_y": enemy_y,
+        "active_party_source": "fixed" if use_fixed_party else "preset",
+        "active_party_count": sum(role_id != -1 for role_id in active_party),
+        "enemy_count": sum(role_id != -1 for role_id in enemies),
+        "static_combatant_count": len(writes),
+        "static_occupancy_writes": writes,
+        "duplicate_occupancy_writes": duplicate_writes,
+    }
+
+
 def build(data_root: Path) -> dict[str, object]:
     war_bytes = (data_root / "WAR.STA").read_bytes()
     if len(war_bytes) % WAR_RECORD_SIZE != 0:
@@ -58,6 +134,18 @@ def build(data_root: Path) -> dict[str, object]:
         war_bytes[offset:offset + WAR_RECORD_SIZE]
         for offset in range(0, len(war_bytes), WAR_RECORD_SIZE)
     ]
+    setup_records = [
+        battle_setup_record(battle_id, record)
+        for battle_id, record in enumerate(war_records)
+    ]
+    for record in setup_records:
+        for write in record["static_occupancy_writes"]:
+            if not (0 <= int(write["x"]) < 64 and 0 <= int(write["y"]) < 64):
+                raise ValueError(
+                    f"battle {record['battle_id']} has out-of-range static coordinate {write}"
+                )
+        if int(record["static_combatant_count"]) > 26:
+            raise ValueError(f"battle {record['battle_id']} exceeds 26 combatant slots")
 
     fight_ids: list[int] = []
     fight_packages: list[dict[str, object]] = []
@@ -89,6 +177,49 @@ def build(data_root: Path) -> dict[str, object]:
             "record_sha256": [sha256(record) for record in war_records],
         },
         "warfld": warfld,
+        "battle_setup": {
+            "combatant_slot_count": 26,
+            "combatant_words_per_slot": 14,
+            "combatant_bytes_per_slot": 28,
+            "initial_words": [-1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, 0, -1, -1, 0],
+            "sprite_word": {
+                "role_head_word": 1,
+                "archive_frame_offset": 0,
+                "base": 5106,
+                "empty_role_head_word": -1,
+                "formula": "int16(8*role_head_word + 5106 + 2*initial_mode)",
+            },
+            "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",
+            "selection_states": {
+                "unselected": 0,
+                "selected": 1,
+                "mandatory": 2,
+                "confirm_index": "party_prefix_length",
+            },
+            "fixed_records": sum(
+                record["active_party_source"] == "fixed" for record in setup_records
+            ),
+            "preset_records": sum(
+                record["active_party_source"] == "preset" for record in setup_records
+            ),
+            "max_active_party_count": max(
+                int(record["active_party_count"]) for record in setup_records
+            ),
+            "max_enemy_count": max(int(record["enemy_count"]) for record in setup_records),
+            "max_static_combatant_count": max(
+                int(record["static_combatant_count"]) for record in setup_records
+            ),
+            "records_with_duplicate_occupancy": [
+                int(record["battle_id"])
+                for record in setup_records
+                if record["duplicate_occupancy_writes"]
+            ],
+            "battlefield_ids": sorted(
+                {int(record["battlefield_id"]) for record in setup_records}
+            ),
+            "music_ids": sorted({int(record["music_id"]) for record in setup_records}),
+            "records": setup_records,
+        },
         "fight_packages": {
             "count": len(fight_packages),
             "ids": fight_ids,

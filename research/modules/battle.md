@@ -2,7 +2,7 @@
 
 ## 状态
 
-- 实现状态：`pending_implementation`。
+- 实现状态：`implemented_pending_review`（`sub_31DA0/sub_3265C/sub_3B1E6` 已实现；`sub_31EB9` 仅建立/选择状态已实现，UI基本块仍待实现；其余 battle 待实现）。
 - 最终 REVIEW：`not_started`。
 - 当前唯一工作包：B8-WP01 战斗入口、资产、战场与参战者建立。
 
@@ -19,6 +19,7 @@
 - 机器码报告：`research/ida/reports/Z_DAT.b8_battle_xrefs.txt`，范围首尾与81个 FUNCTION 记录由 validator 固定。
 - 独立资产 oracle：`research/tools/generate_b8_battle_goldens.py` 与 `research/evidence/battle-goldens.json`，不链接 OpenLegend C++。
 - 当前原版资产为92对 `FIGHTnnn.IDX/GRP`、共4,992帧；`WAR.STA` 为140条×186字节；`WARFLD.IDX/GRP` 为26条累计 archive entry。
+- `sub_31EB9/sub_3265C` 证明参战者池是26槽×14 word（每槽28字节），occupancy 是64×64 `int16`；固定/预置队伍先写、敌方后写，重复格由后写槽覆盖。
 - battle data xref 锁定瞬时状态簇：`0xDC72C..0xDEA04`、`0xE0A04..0xE6AC0`、`0xE6CBC..0xE6CBE`、`0xE6EBA..0xE6EEA`；`0xE87BC` framebuffer 仍由 render owner，`0x9014C..` 与 `0xC0B78..` 持久记录仍由 model owner。
 
 ## 接口与状态所有权
@@ -30,13 +31,14 @@
 
 ## 当前实现队列
 
-1. `sub_31C75/sub_31DA0`：资源生命周期、WAR 186字节记录、WARFLD 16,384字节战场载入、返回码边界；
-2. `sub_31EB9/sub_3265C`：队伍/敌方临时角色建立、坐标与 occupancy；
-3. `sub_3271E..sub_32E59`：战斗顶层状态机、输入与胜负出口；
-4. `sub_33599..sub_37734`：玩家动作、AI、移动、攻击、伤害、状态与物品；
-5. `sub_3859E..sub_3A8A4`：动画、效果、数值提示与战后状态；
-6. `sub_3AA17..sub_3C6D3`：绘制、菜单/信息与共享显示边界；
-7. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
+1. `sub_31DA0` 已映射为 `BattleData`：WAR 186字节记录、WARFLD entry 前16,384字节与64×64 occupancy 清空；状态仅为 `implemented_pending_review`；
+2. `sub_31C75`：资源生命周期、主状态机调用和返回码边界；
+3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；后者完整待 REVIEW，前者仍缺原选择框绘制/呈现/input flag 基本块；
+4. `sub_3271E..sub_32E59`：战斗顶层状态机、输入与胜负出口；
+5. `sub_33599..sub_37734`：玩家动作、AI、移动、攻击、伤害、状态与物品；
+6. `sub_3859E..sub_3A8A4`：动画、效果、数值提示与战后状态；
+7. `sub_3AA17..sub_3C6D3`：绘制、菜单/信息与共享显示边界；
+8. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
 
 ## 测试、真实资产与差分点
 
@@ -48,6 +50,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：79项 `pending_mapping`、2项 `pending_implementation`，0项关闭。
+- `battle-closure.tsv`：76项 `pending_mapping`、2项 `pending_implementation`、3项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
-- 下一停点：独立恢复 `sub_31EB9` 与 `sub_3265C` 的参战者记录布局和全部建立分支，再定义最小 `BattleSession` 公共接口。
+- 下一停点：恢复 `sub_3271E..sub_32E59` 顶层战斗状态机、输入 flag 与结果出口；以其 render/input 调用边界补全 `sub_31EB9` 选择 UI，而不是另造菜单语义。

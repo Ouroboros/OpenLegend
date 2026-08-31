@@ -112,6 +112,7 @@ add_subdirectory(src/render)
 add_subdirectory(src/ui)
 add_subdirectory(src/world)
 add_subdirectory(src/scene)
+add_subdirectory(src/battle)
 add_subdirectory(src/app)
 
 if(OPENLEGEND_BUILD_APP)

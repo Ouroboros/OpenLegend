@@ -32,8 +32,8 @@ scene	render	indexed scene/UI draw	framebuffer borrow only	no	implemented_pendin
 scene	resource	scene sprites/TALK/KDEF/palette	read-only asset views	no	implemented_pending_review
 battle	audio	battle music and effect commands	command values only; backend remains audio/platform	no	pending_implementation
 battle	input	host-neutral battle actions	LegacyKeyboard state borrowed through app boundary	no	pending_implementation
-battle	model	battle setup and committed result	persistent state borrowed from one GameSnapshot owner	no	pending_implementation
+battle	model	battle setup and committed result	persistent state borrowed from one GameSnapshot owner	no	implemented_pending_review
 battle	random	battle RNG	one shared ordered runtime stream	no	pending_implementation
 battle	render	battle indexed rendering	framebuffer borrowed from app/render owner	no	pending_implementation
-battle	resource	FIGHT, WAR, WARFLD and sprite assets	read-only validated views	no	pending_implementation
+battle	resource	FIGHT, WAR, WARFLD and sprite assets	read-only validated views	no	implemented_pending_review
 battle	time	animation and wait quantization	legacy BIOS tick values only	no	pending_implementation

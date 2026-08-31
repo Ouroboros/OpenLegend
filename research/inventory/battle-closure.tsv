@@ -1,8 +1,8 @@
 audit_order	address	name	research_name	function_end	size	closure_status	target_owner	implementation_mapping	evidence	verification	final_review	remaining
 1	0x31C75	sub_31C75	battle_31C75	0x31DA0	299	pending_implementation	battle		research/evidence/battle-1to1.md	81-function headless report; 92 FIGHT/140 WAR/26 WARFLD independent asset oracle	not_started	implement full battle session and complete final review
-2	0x31DA0	sub_31DA0	battle_31DA0	0x31EB9	281	pending_implementation	battle		research/evidence/battle-1to1.md	WAR record and WARFLD machine-code load sequence; independent archive oracle	not_started	implement battle definition and battlefield loading, then complete final review
-3	0x31EB9	sub_31EB9	battle_31EB9	0x3265C	1955	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-4	0x3265C	sub_3265C	battle_3265C	0x3271E	194	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+2	0x31DA0	sub_31DA0	battle_31DA0	0x31EB9	281	implemented_pending_review	battle	openlegend::battle::BattleData::BattleData	research/evidence/functions/Z_DAT/0x31DA0.md	140 real WAR records; 16384-byte WARFLD prefix fixtures; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
+3	0x31EB9	sub_31EB9	battle_31EB9	0x3265C	1955	pending_implementation	battle	openlegend::battle::BattleSetup	research/evidence/functions/Z_DAT/0x31EB9.md	26-slot/14-word setup and host-neutral selection state implemented; real WAR setup oracle and Linux Debug 14/14	not_started	implement exact selection rendering/input-flag blocks and complete final review
+4	0x3265C	sub_3265C	battle_3265C	0x3271E	194	implemented_pending_review	battle	openlegend::battle::BattleSetup::append_enemies	research/evidence/functions/Z_DAT/0x3265C.md	all 140 WAR records; battle 93 slot9-to-slot11 duplicate overwrite; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
 5	0x3271E	sub_3271E	battle_3271E	0x32A51	819	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 6	0x32A51	sub_32A51	battle_32A51	0x32B78	295	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 7	0x32B78	sub_32B78	battle_32B78	0x32E2F	695	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
@@ -71,7 +71,7 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 70	0x3AA17	sub_3AA17	battle_3AA17	0x3AA4B	52	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 71	0x3AA4B	sub_3AA4B	battle_3AA4B	0x3AA85	58	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 72	0x3AA85	sub_3AA85	battle_3AA85	0x3B1E6	1889	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-73	0x3B1E6	sub_3B1E6	battle_3B1E6	0x3B238	82	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+73	0x3B1E6	sub_3B1E6	battle_3B1E6	0x3B238	82	implemented_pending_review	battle	openlegend::battle::BattleSetup::sprite_word	research/evidence/functions/Z_DAT/0x3B1E6.md	headless constants 0/5106; pre-table head -1; active and empty sprite fixtures; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
 74	0x3B238	sub_3B238	battle_3B238	0x3B387	335	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 75	0x3B387	sub_3B387	battle_3B387	0x3B6BE	823	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 76	0x3B6BE	sub_3B6BE	battle_3B6BE	0x3BA85	967	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
