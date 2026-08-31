@@ -2,7 +2,7 @@
 
 ## 状态
 
-- 实现状态：`implemented_pending_review`（`sub_31DA0/sub_3265C/sub_3B1E6` 已实现；`sub_31EB9` 仅建立/选择状态已实现，UI基本块仍待实现；其余 battle 待实现）。
+- 实现状态：`implemented_pending_review`（另已实现 `sub_32A51/sub_32B78` 排序交换；`sub_3271E/sub_3B238` 仅回合值/typed结果核心已实现；其余 battle 按 closure 待实现）。
 - 最终 REVIEW：`not_started`。
 - 当前唯一工作包：B8-WP01 战斗入口、资产、战场与参战者建立。
 
@@ -34,7 +34,7 @@
 1. `sub_31DA0` 已映射为 `BattleData`：WAR 186字节记录、WARFLD entry 前16,384字节与64×64 occupancy 清空；状态仅为 `implemented_pending_review`；
 2. `sub_31C75`：资源生命周期、主状态机调用和返回码边界；
 3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；后者完整待 REVIEW，前者仍缺原选择框绘制/呈现/input flag 基本块；
-4. `sub_3271E..sub_32E59`：战斗顶层状态机、输入与胜负出口；
+4. `sub_3271E..sub_32E59` 已恢复：稳定速度降序、逐槽 swap 与回合值已实现；顶层 render/tick/分派及十项「移動/攻擊/用毒/解毒/醫療/物品/等待/狀態/休息/自動」菜单仍待实现；
 5. `sub_33599..sub_37734`：玩家动作、AI、移动、攻击、伤害、状态与物品；
 6. `sub_3859E..sub_3A8A4`：动画、效果、数值提示与战后状态；
 7. `sub_3AA17..sub_3C6D3`：绘制、菜单/信息与共享显示边界；
@@ -50,6 +50,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：76项 `pending_mapping`、2项 `pending_implementation`、3项 `implemented_pending_review`，0项最终关闭。
+- `battle-closure.tsv`：71项 `pending_mapping`、5项 `pending_implementation`、5项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
-- 下一停点：恢复 `sub_3271E..sub_32E59` 顶层战斗状态机、输入 flag 与结果出口；以其 render/input 调用边界补全 `sub_31EB9` 选择 UI，而不是另造菜单语义。
+- 下一停点：恢复 `sub_33599` 敌方/自动行动入口及其到移动、攻击和胜负 helper 的分支；在下游动作语义闭合前不伪造顶层 turn completion。

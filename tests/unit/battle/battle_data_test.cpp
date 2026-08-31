@@ -64,6 +64,12 @@ openlegend::model::RangerState make_ranger(
         ranger.roles[role].set_word(
             openlegend::model::role_word::head_id,
             static_cast<std::int16_t>(role % 17U));
+        for (std::size_t equipment = 0U;
+             equipment < openlegend::model::role_word::equipment_count;
+             ++equipment) {
+            ranger.roles[role].set_word(
+                openlegend::model::role_word::equipment_begin + equipment, -1);
+        }
     }
     for (std::size_t index = 0U; index < party.size(); ++index) {
         ranger.header.set_team_member(index, openlegend::model::CharacterId{party[index]});
@@ -144,6 +150,74 @@ void run_fixed_and_duplicate_tests(const openlegend::resource::DataRoot& data_ro
     OL_CHECK(duplicate_data.occupancy()[34U * 64U + 13U] == 11);
 }
 
+void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    ranger.roles[1U].set_word(openlegend::model::role_word::speed, 10);
+    ranger.roles[1U].set_word(openlegend::model::role_word::equipment_begin, 5);
+    ranger.items[5U].set_word(openlegend::model::item_word::add_speed, 30);
+    ranger.roles[3U].set_word(openlegend::model::role_word::speed, 40);
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    OL_CHECK(setup.sort_by_effective_speed());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::role_id] == 3);
+
+    ranger.roles[3U].set_word(openlegend::model::role_word::speed, 41);
+    OL_CHECK(setup.sort_by_effective_speed());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 3);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::role_id] == 1);
+    OL_CHECK(data.occupancy()[26U * 64U + 26U] == 0);
+    OL_CHECK(data.occupancy()[24U * 64U + 26U] == 1);
+
+    setup.combatants()[0U].words[combatant_word::occupancy_hidden] = 1;
+    ranger.roles[1U].set_word(openlegend::model::role_word::speed, 20);
+    ranger.roles[1U].set_word(openlegend::model::role_word::hurt, 40);
+    ranger.roles[3U].set_word(openlegend::model::role_word::hurt, 200);
+    OL_CHECK(setup.prepare_round());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::round_value] == 2);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5118);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::role_id] == 3);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 0);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5132);
+    OL_CHECK(data.occupancy()[24U * 64U + 26U] == 0);
+    OL_CHECK(data.occupancy()[26U * 64U + 26U] == -1);
+}
+
+void run_outcome_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        ranger.roles[1U].set_word(openlegend::model::role_word::hp, 1);
+        ranger.roles[3U].set_word(openlegend::model::role_word::hp, 1);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.evaluate_outcome() == BattleOutcome::ongoing);
+        ranger.roles[3U].set_word(openlegend::model::role_word::hp, 0);
+        OL_CHECK(setup.evaluate_outcome() == BattleOutcome::victory);
+        OL_CHECK(setup.combatants()[1U].words[combatant_word::occupancy_hidden] == 1);
+        OL_CHECK(data.occupancy()[26U * 64U + 26U] == -1);
+    }
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        ranger.roles[1U].set_word(openlegend::model::role_word::hp, 0);
+        ranger.roles[3U].set_word(openlegend::model::role_word::hp, 1);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.evaluate_outcome() == BattleOutcome::defeat);
+    }
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        ranger.roles[1U].set_word(openlegend::model::role_word::hp, 0);
+        ranger.roles[3U].set_word(openlegend::model::role_word::hp, 0);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.evaluate_outcome() == BattleOutcome::victory);
+    }
+}
+
 void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
@@ -182,6 +256,8 @@ int main() {
     run_real_asset_fixtures(data_root);
     run_party_selection_test(data_root);
     run_fixed_and_duplicate_tests(data_root);
+    run_turn_order_test(data_root);
+    run_outcome_test(data_root);
     run_all_definition_tests(data_root);
     return openlegend::test::failures == 0 ? 0 : 1;
 }

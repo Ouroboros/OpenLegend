@@ -26,7 +26,7 @@ constexpr std::int16_t kBattleSpriteBase = 5106;
 
 }  // namespace
 
-BattleSetup::BattleSetup(BattleData& data, const model::RangerState& ranger)
+BattleSetup::BattleSetup(BattleData& data, model::RangerState& ranger)
     : data_(data), ranger_(ranger) {
     initialize_combatants();
     if (!data_.valid()) {
@@ -162,6 +162,138 @@ std::int16_t BattleSetup::sprite_word(
     return wrapping_i16(
         8 * static_cast<std::int32_t>(head_id) + kBattleSpriteBase +
         2 * static_cast<std::int32_t>(initial_mode));
+}
+
+std::int16_t BattleSetup::effective_speed(const std::size_t slot) {
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "battle combatant role id is outside ranger records";
+        return 0;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto speed = role.word(model::role_word::speed);
+    for (std::size_t equipment = 0U; equipment < model::role_word::equipment_count; ++equipment) {
+        const auto item_id = role.word(model::role_word::equipment_begin + equipment);
+        if (item_id < 0) {
+            continue;
+        }
+        if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            error_ = "battle equipment id is outside ranger item records";
+            return 0;
+        }
+        speed = wrapping_i16(
+            static_cast<std::int32_t>(speed) +
+            ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::add_speed));
+    }
+    return speed;
+}
+
+void BattleSetup::update_occupancy(const std::size_t slot) {
+    const auto& words = combatants_[slot].words;
+    const auto index = static_cast<std::size_t>(words[combatant_word::y]) * kBattleExtent +
+        static_cast<std::size_t>(words[combatant_word::x]);
+    data_.occupancy()[index] = words[combatant_word::occupancy_hidden] == 0
+        ? static_cast<std::int16_t>(slot)
+        : static_cast<std::int16_t>(-1);
+}
+
+void BattleSetup::swap_combatants(const std::size_t first, const std::size_t second) {
+    const auto saved = combatants_[first].words;
+    for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
+        if (word != combatant_word::sprite) {
+            combatants_[first].words[word] = combatants_[second].words[word];
+        }
+    }
+    update_occupancy(first);
+    for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
+        if (word != combatant_word::sprite) {
+            combatants_[second].words[word] = saved[word];
+        }
+    }
+    update_occupancy(second);
+    auto& first_words = combatants_[first].words;
+    auto& second_words = combatants_[second].words;
+    first_words[combatant_word::sprite] = sprite_word(
+        first_words[combatant_word::role_id], first_words[combatant_word::initial_mode]);
+    second_words[combatant_word::sprite] = sprite_word(
+        second_words[combatant_word::role_id], second_words[combatant_word::initial_mode]);
+}
+
+bool BattleSetup::sort_by_effective_speed() {
+    if (!valid()) {
+        return false;
+    }
+    const auto count = static_cast<std::size_t>(combatant_count_);
+    for (std::size_t first = 0U; first + 1U < count; ++first) {
+        for (std::size_t second = first + 1U; second < count; ++second) {
+            const auto first_speed = effective_speed(first);
+            if (!valid()) {
+                return false;
+            }
+            const auto second_speed = effective_speed(second);
+            if (!valid()) {
+                return false;
+            }
+            if (first_speed < second_speed) {
+                swap_combatants(first, second);
+            }
+        }
+    }
+    return true;
+}
+
+bool BattleSetup::prepare_round() {
+    if (!sort_by_effective_speed()) {
+        return false;
+    }
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto speed = effective_speed(slot);
+        if (!valid()) {
+            return false;
+        }
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        const auto hurt = ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hurt);
+        const auto value = static_cast<std::int16_t>(speed / 15 - hurt / 40);
+        combatants_[slot].words[combatant_word::round_value] = std::max<std::int16_t>(value, 0);
+    }
+    return true;
+}
+
+BattleOutcome BattleSetup::evaluate_outcome() {
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        auto& words = combatants_[slot].words;
+        const auto role_id = words[combatant_word::role_id];
+        if (ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hp) <= 0 &&
+            words[combatant_word::occupancy_hidden] == 0) {
+            const auto occupancy_index = static_cast<std::size_t>(words[combatant_word::y]) *
+                    kBattleExtent +
+                static_cast<std::size_t>(words[combatant_word::x]);
+            data_.occupancy()[occupancy_index] = -1;
+            words[combatant_word::occupancy_hidden] = 1;
+        }
+    }
+
+    auto party_alive = false;
+    auto enemy_alive = false;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto& words = combatants_[slot].words;
+        if (words[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        if (words[combatant_word::side] == 0) {
+            party_alive = true;
+        } else {
+            enemy_alive = true;
+        }
+    }
+    auto outcome = BattleOutcome::ongoing;
+    if (!party_alive) {
+        outcome = BattleOutcome::defeat;
+    }
+    if (!enemy_alive) {
+        outcome = BattleOutcome::victory;
+    }
+    return outcome;
 }
 
 PartySelectionResult BattleSetup::apply(const PartySelectionAction action) {

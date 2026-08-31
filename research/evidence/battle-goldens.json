@@ -238,6 +238,92 @@
       "empty_role_head_word": -1,
       "formula": "int16(8*role_head_word + 5106 + 2*initial_mode)"
     },
+    "round_order": {
+      "role_speed_word": 44,
+      "role_equipment_words": [
+        23,
+        24
+      ],
+      "item_add_speed_word": 53,
+      "effective_speed": "int16(role.speed + each equipped item.add_speed)",
+      "sort": "signed descending; equal values do not swap",
+      "swap_words": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "recomputed_word": 8,
+      "occupancy_hidden_word": 5,
+      "round_value_word": 6,
+      "round_value": "max(0, effective_speed/15 - role.hurt/40), signed truncation toward zero",
+      "vectors": {
+        "stable_equal": {
+          "input": [
+            {
+              "role_id": 1,
+              "speed": 10,
+              "item_add_speed": 30
+            },
+            {
+              "role_id": 3,
+              "speed": 40,
+              "item_add_speed": 0
+            }
+          ],
+          "expected_role_order": [
+            1,
+            3
+          ]
+        },
+        "swap_hidden_round": {
+          "input_role_order": [
+            3,
+            1
+          ],
+          "effective_speeds": [
+            41,
+            50
+          ],
+          "hurt": [
+            200,
+            40
+          ],
+          "hidden": [
+            1,
+            0
+          ],
+          "expected_role_order": [
+            1,
+            3
+          ],
+          "expected_round_values": [
+            2,
+            0
+          ],
+          "expected_occupancy": {
+            "party_26_24": 0,
+            "enemy_26_26": -1
+          }
+        }
+      }
+    },
+    "result_codes": {
+      "ongoing": 0,
+      "no_party_alive": 1,
+      "no_enemy_alive": 2,
+      "both_empty": 2,
+      "public_return": "raw_result - 1"
+    },
     "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",
     "selection_states": {
       "unselected": 0,

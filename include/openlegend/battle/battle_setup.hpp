@@ -22,11 +22,19 @@ inline constexpr std::size_t side = 1U;
 inline constexpr std::size_t x = 2U;
 inline constexpr std::size_t y = 3U;
 inline constexpr std::size_t initial_mode = 4U;
+inline constexpr std::size_t occupancy_hidden = 5U;
+inline constexpr std::size_t round_value = 6U;
 inline constexpr std::size_t sprite = 8U;
 }  // namespace combatant_word
 
 struct BattleCombatant {
     std::array<std::int16_t, kBattleCombatantWords> words{};
+};
+
+enum class BattleOutcome {
+    ongoing,
+    defeat,
+    victory,
 };
 
 enum class PartySelectionAction {
@@ -44,7 +52,7 @@ enum class PartySelectionResult {
 
 class BattleSetup {
 public:
-    BattleSetup(BattleData& data, const model::RangerState& ranger);
+    BattleSetup(BattleData& data, model::RangerState& ranger);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -58,8 +66,14 @@ public:
     [[nodiscard]] std::span<const BattleCombatant, kBattleCombatantCount> combatants() const noexcept {
         return combatants_;
     }
+    [[nodiscard]] std::span<BattleCombatant, kBattleCombatantCount> combatants() noexcept {
+        return combatants_;
+    }
 
     [[nodiscard]] PartySelectionResult apply(PartySelectionAction action);
+    [[nodiscard]] bool sort_by_effective_speed();
+    [[nodiscard]] bool prepare_round();
+    [[nodiscard]] BattleOutcome evaluate_outcome();
 
 private:
     void initialize_combatants();
@@ -73,9 +87,12 @@ private:
     [[nodiscard]] bool append_enemies();
     [[nodiscard]] std::int16_t sprite_word(
         std::int16_t role_id, std::int16_t initial_mode) const noexcept;
+    [[nodiscard]] std::int16_t effective_speed(std::size_t slot);
+    void swap_combatants(std::size_t first, std::size_t second);
+    void update_occupancy(std::size_t slot);
 
     BattleData& data_;
-    const model::RangerState& ranger_;
+    model::RangerState& ranger_;
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};
     std::array<std::int16_t, kBattlePartySlots> selection_states_{};
     std::int16_t combatant_count_{};

@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前76项为 `pending_mapping`、2项为 `pending_implementation`、3项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前71项为 `pending_mapping`、5项为 `pending_implementation`、5项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `e4aaceb3eb082302f2b68040e5fbfe5a56e00907d5676d12f8fec90dac03852d`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `dde9e1c1b3fb1b92355464fff7ac4fac1e0767d4a21990fbefbff012b8b9ddcd`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -45,7 +45,7 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 - `0xE6A04..0xE6AC0`：当前186字节 WAR 建立记录；
 - `0xE6CBC..0xE6CBE`、`0xE6EBA..0xE6EEA`：battle 控制/选择/结果 globals。
 
-`0xE87BC` 的64,000字节 indexed framebuffer 仍归 render；`0x9014C..` 角色记录、`0x9F5DC..` 物品与 `0xC0B78..` 会话状态仍归 model。现代实现必须借用这些 owner，而不是复制第二份持久状态。
+`0xE87BC` 的64,000字节 indexed framebuffer 仍归 render；`0x9014C..` 角色记录、`0x9F5DC..0xA2744` 武功记录、`0xA2744..0xABBB4` 物品记录与 `0xC0B78..` 会话状态仍归 model。现代实现必须借用这些 owner，而不是复制第二份持久状态。
 
 ## 5. WAR/WARFLD 载入实现
 
@@ -65,4 +65,15 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 
 `BattleSetup` 已实现26槽完整初值、固定/预置队伍、host-neutral cursor/0·1·2选择状态、按当前 count 取坐标追加、敌方建立、sprite word 和后写 occupancy 覆盖。真实 battle0 固定手选顺序、battle4 固定队伍、battle93 slot9→slot11覆盖及全140条记录均通过 Linux Debug 14/14。
 
-因此 `sub_3265C/sub_3B1E6` 已推进为 `implemented_pending_review`；`sub_31EB9` 仍缺原像素选择框、present 与 input flag 清除基本块，继续保持 `pending_implementation`。下一单元恢复 `sub_3271E..sub_32E59` 顶层状态机和共享输入/绘制边界后再补全该 UI，不用默认选择或自动全选占位。
+因此 `sub_3265C/sub_3B1E6` 已推进为 `implemented_pending_review`；`sub_31EB9` 仍缺原像素选择框、present 与 input flag 清除基本块，继续保持 `pending_implementation`。
+
+## 7. 回合排序、玩家菜单与胜负核心
+
+`sub_3271E/sub_32A51/sub_32B78/sub_32E59/sub_3B238` 已从入口到返回完整恢复。`BattleSetup` 现实现：
+
+- `int16(role.speed + 两件已装备物品的 add_speed word53)` signed降序，等值不交换；
+- 交换时按原顺序复制 word0..7/9..13、逐槽写 occupancy、最后重算两槽 word8；
+- 每轮 word6=`max(0,effective_speed/15-role.hurt/40)`，signed division toward zero；
+- hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
+
+真实 Big5 菜单固定为「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」，可用门槛和 ordinal cursor 见 `0x32E59.md`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；顶层 render/turn dispatch/tick wait、十项动作、结果 panel/按键/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
