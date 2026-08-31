@@ -75,6 +75,20 @@ struct BattleThrownItemResult {
     bool inventory_consumed{};
 };
 
+struct BattleItemEffectResult {
+    std::array<std::int16_t, 23U> deltas{};
+    std::int16_t effect_count{};
+    std::int16_t panel_x{70};
+    std::int16_t panel_y{18};
+    std::int16_t panel_width{148};
+    std::int16_t panel_height{30};
+    std::int16_t post_effect_tick_changes{9};
+    bool has_effect{};
+    bool battle_redraw_required{};
+    bool wait_for_input{};
+    bool item_consumed{};
+};
+
 struct BattleRestResult {
     std::int16_t physical_power{};
     std::int16_t hp{};
@@ -467,6 +481,10 @@ public:
     [[nodiscard]] std::optional<BattleThrownItemResult> apply_ai_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
+        const BattleAiChoice& choice,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleItemEffectResult> apply_ai_item_effect(
+        std::size_t actor_slot,
         const BattleAiChoice& choice,
         random::LegacyRandom& random);
     [[nodiscard]] std::optional<BattleRestResult> rest_actor(

@@ -215,6 +215,135 @@ def ai_throwing_weapon_vector(
     }
 
 
+def shared_item_effect_vector(
+    item: bytes,
+    *,
+    seed: int,
+    role_words: list[int],
+) -> dict[str, object]:
+    item_word = lambda index: struct.unpack_from("<h", item, index * 2)[0]
+    role = list(role_words)
+    before = list(role)
+    deltas = [0] * 23
+    outputs: list[int] = []
+    state = seed
+    hidden_weapon = role[54]
+
+    item_hp = item_word(45)
+    if item_hp:
+        old_hp = role[17]
+        if item_hp > 0:
+            value, state = legacy_bounded(state, 10)
+            outputs.append(value)
+            hp_delta = item_hp - trunc_div(role[19], 2) + value
+            if hp_delta < 0:
+                value, state = legacy_bounded(state, 5)
+                outputs.append(value)
+                hp_delta = value + 5
+            role[19] = wrapping_i16(role[19] - trunc_div(item_hp, 4))
+            role[19] = min(99, max(0, role[19]))
+        else:
+            value, state = legacy_bounded(state, 10)
+            outputs.append(value)
+            damage_base = item_hp + 50 - trunc_div(role[19], 2) - value
+            if damage_base > 0:
+                value, state = legacy_bounded(state, 5)
+                outputs.append(value)
+                damage_base = -5 - value
+            hp_delta = trunc_div(damage_base - 3 * hidden_weapon, 3)
+            role[19] = wrapping_i16(role[19] - trunc_div(hp_delta, 10))
+            role[19] = min(99, max(0, role[19]))
+        role[17] = wrapping_i16(role[17] + hp_delta)
+        role[17] = min(role[18], max(0, role[17]))
+        deltas[0] = wrapping_i16(role[17] - old_hp)
+
+    if item_word(46):
+        role[18] = wrapping_i16(role[18] + item_word(46))
+        role[18] = min(999, max(0, role[18]))
+        if role[17] >= role[18]:
+            role[17] = role[18]
+        deltas[1] = item_word(46)
+
+    item_poison = item_word(47)
+    if item_poison:
+        old_poison = role[20]
+        if item_poison > 0:
+            poison_delta = trunc_div(hidden_weapon + item_poison, 2) - role[49]
+            if role[49] >= 100 or poison_delta < 0:
+                poison_delta = 0
+            poison_delta = trunc_div(poison_delta, 2)
+        else:
+            first, state = legacy_bounded(state, 5)
+            second, state = legacy_bounded(state, 5)
+            outputs.extend((first, second))
+            poison_delta = trunc_div(item_poison, 2) + first - second
+        role[20] = wrapping_i16(role[20] + poison_delta)
+        role[20] = min(99, max(0, role[20]))
+        deltas[2] = wrapping_i16(role[20] - old_poison)
+
+    if item_word(48):
+        old_value = role[21]
+        role[21] = wrapping_i16(role[21] + item_word(48))
+        role[21] = min(100, max(0, role[21]))
+        deltas[3] = wrapping_i16(role[21] - old_value)
+
+    if item_word(49) == 2:
+        role[40] = 2
+        deltas[4] = 2
+
+    if item_word(50):
+        old_value = role[41]
+        role[41] = wrapping_i16(role[41] + item_word(50))
+        role[41] = min(role[42], max(0, role[41]))
+        deltas[5] = wrapping_i16(role[41] - old_value)
+
+    if item_word(51):
+        role[42] = wrapping_i16(role[42] + item_word(51))
+        role[42] = min(999, max(0, role[42]))
+        if role[41] >= role[42]:
+            role[41] = role[42]
+        deltas[6] = item_word(51)
+
+    for index in range(13):
+        delta = item_word(52 + index)
+        role[43 + index] = wrapping_i16(role[43 + index] + delta)
+        deltas[7 + index] = delta
+    deltas[20] = item_word(65)
+    deltas[21] = item_word(66)
+    role[57] = wrapping_i16(role[57] + item_word(67))
+    deltas[22] = item_word(67)
+
+    selected_names = {
+        17: "hp",
+        18: "maximum_hp",
+        19: "hurt",
+        20: "poison",
+        21: "physical_power",
+        40: "mp_type",
+        41: "mp",
+        42: "maximum_mp",
+        43: "attack",
+        44: "speed",
+        45: "defence",
+        49: "anti_poison",
+        54: "hidden_weapon",
+        56: "morality",
+        57: "attack_with_poison",
+        58: "attack_twice",
+    }
+    return {
+        "item_id": item_word(0),
+        "item_type": item_word(41),
+        "rng_seed": seed,
+        "rng_outputs": outputs,
+        "rng_state_after": state,
+        "deltas": deltas,
+        "effect_count": sum(value != 0 for value in deltas),
+        "role_before": {name: before[index] for index, name in selected_names.items()},
+        "role_after": {name: role[index] for index, name in selected_names.items()},
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1234,10 +1363,36 @@ def build(data_root: Path) -> dict[str, object]:
         hurt=0,
         poison=10,
     )
+    shared_role = [0] * 91
+    shared_role[17] = 100
+    shared_role[18] = 200
+    shared_role[19] = 40
+    shared_role[20] = 50
+    shared_role[21] = 30
+    shared_role[40] = 0
+    shared_role[41] = 10
+    shared_role[42] = 100
+    shared_role[49] = 5
+    shared_role[54] = 20
+    shared_item_19 = shared_item_effect_vector(
+        item_records[19], seed=1, role_words=shared_role
+    )
+    display_role = list(shared_role)
+    display_role[58] = 4
+    shared_item_91 = shared_item_effect_vector(
+        item_records[91], seed=1, role_words=display_role
+    )
+    shared_item_40 = shared_item_effect_vector(
+        item_records[40], seed=1, role_words=shared_role
+    )
     if poisoned_throw["item_id"] != 102 or poisoned_throw["item_type"] != 4:
         raise ValueError("RANGER.GRP item 102 is not the expected throwing weapon")
     if plain_throw["item_id"] != 96 or plain_throw["item_type"] != 4:
         raise ValueError("RANGER.GRP item 96 is not the expected throwing weapon")
+    if shared_item_19["item_id"] != 19 or shared_item_19["item_type"] != 3:
+        raise ValueError("RANGER.GRP item 19 is not the expected shared-use item")
+    if shared_item_91["item_id"] != 91 or shared_item_40["item_id"] != 40:
+        raise ValueError("RANGER.GRP shared item bug vectors changed identity")
 
     war_bytes = (data_root / "WAR.STA").read_bytes()
     if len(war_bytes) % WAR_RECORD_SIZE != 0:
@@ -1598,6 +1753,31 @@ def build(data_root: Path) -> dict[str, object]:
                         "party_inventory_after": [[97, 2], [-1, 0]],
                         "enemy_carried_before": [[102, 1], [97, 2], [-1, 0], [-1, 0]],
                         "enemy_carried_after": [[97, 2], [-1, 0], [-1, 0], [-1, 0]],
+                    },
+                    "ai_item_effect": {
+                        "multi_effect_item_19": shared_item_19,
+                        "display_only_item_91": shared_item_91,
+                        "mp_type_item_40": shared_item_40,
+                        "presentation": {
+                            "panel_rect": [70, 18, 148],
+                            "panel_height_formula": "20 * effect_count + 30",
+                            "item_name_position": [75, 25],
+                            "row_label_x": 75,
+                            "row_sign_x": 155,
+                            "row_value_x": 187,
+                            "row_y_formula": "18 * visible_index + 45",
+                            "battle_redraw_when_effect_count_positive": True,
+                            "wait_for_input_when_effect_count_positive": True,
+                            "post_effect_tick_changes": 340 // 40 + 1,
+                        },
+                        "effect_cell_marked": True,
+                        "zero_effect_item_still_consumed": True,
+                        "actor_direction_unchanged": True,
+                        "action_done_before_outer_ai_finish": 0,
+                        "party_inventory_before": [[19, 1], [2, 3]],
+                        "party_inventory_after": [[2, 3], [-1, 0]],
+                        "enemy_carried_before": [[19, 1], [2, 3], [-1, 0], [-1, 0]],
+                        "enemy_carried_after": [[2, 3], [-1, 0], [-1, 0], [-1, 0]],
                     },
                 },
                 "ai_selector_vectors": ai_selector_vectors(),

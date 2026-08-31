@@ -761,6 +761,298 @@
               0
             ]
           ]
+        },
+        "ai_item_effect": {
+          "multi_effect_item_19": {
+            "item_id": 19,
+            "item_type": 3,
+            "rng_seed": 1,
+            "rng_outputs": [
+              8,
+              3,
+              3
+            ],
+            "rng_state_after": 662824084,
+            "deltas": [
+              100,
+              0,
+              -50,
+              70,
+              0,
+              90,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "effect_count": 4,
+            "role_before": {
+              "hp": 100,
+              "maximum_hp": 200,
+              "hurt": 40,
+              "poison": 50,
+              "physical_power": 30,
+              "mp_type": 0,
+              "mp": 10,
+              "maximum_mp": 100,
+              "attack": 0,
+              "speed": 0,
+              "defence": 0,
+              "anti_poison": 5,
+              "hidden_weapon": 20,
+              "morality": 0,
+              "attack_with_poison": 0,
+              "attack_twice": 0
+            },
+            "role_after": {
+              "hp": 200,
+              "maximum_hp": 200,
+              "hurt": 0,
+              "poison": 0,
+              "physical_power": 100,
+              "mp_type": 0,
+              "mp": 100,
+              "maximum_mp": 100,
+              "attack": 0,
+              "speed": 0,
+              "defence": 0,
+              "anti_poison": 5,
+              "hidden_weapon": 20,
+              "morality": 0,
+              "attack_with_poison": 0,
+              "attack_twice": 0
+            }
+          },
+          "display_only_item_91": {
+            "item_id": 91,
+            "item_type": 2,
+            "rng_seed": 1,
+            "rng_outputs": [],
+            "rng_state_after": 1,
+            "deltas": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "effect_count": 1,
+            "role_before": {
+              "hp": 100,
+              "maximum_hp": 200,
+              "hurt": 40,
+              "poison": 50,
+              "physical_power": 30,
+              "mp_type": 0,
+              "mp": 10,
+              "maximum_mp": 100,
+              "attack": 0,
+              "speed": 0,
+              "defence": 0,
+              "anti_poison": 5,
+              "hidden_weapon": 20,
+              "morality": 0,
+              "attack_with_poison": 0,
+              "attack_twice": 4
+            },
+            "role_after": {
+              "hp": 100,
+              "maximum_hp": 200,
+              "hurt": 40,
+              "poison": 50,
+              "physical_power": 30,
+              "mp_type": 0,
+              "mp": 10,
+              "maximum_mp": 100,
+              "attack": 0,
+              "speed": 0,
+              "defence": 0,
+              "anti_poison": 5,
+              "hidden_weapon": 20,
+              "morality": 0,
+              "attack_with_poison": 0,
+              "attack_twice": 4
+            }
+          },
+          "mp_type_item_40": {
+            "item_id": 40,
+            "item_type": 2,
+            "rng_seed": 1,
+            "rng_outputs": [],
+            "rng_state_after": 1,
+            "deltas": [
+              0,
+              0,
+              0,
+              0,
+              2,
+              0,
+              15,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "effect_count": 2,
+            "role_before": {
+              "hp": 100,
+              "maximum_hp": 200,
+              "hurt": 40,
+              "poison": 50,
+              "physical_power": 30,
+              "mp_type": 0,
+              "mp": 10,
+              "maximum_mp": 100,
+              "attack": 0,
+              "speed": 0,
+              "defence": 0,
+              "anti_poison": 5,
+              "hidden_weapon": 20,
+              "morality": 0,
+              "attack_with_poison": 0,
+              "attack_twice": 0
+            },
+            "role_after": {
+              "hp": 100,
+              "maximum_hp": 200,
+              "hurt": 40,
+              "poison": 50,
+              "physical_power": 30,
+              "mp_type": 2,
+              "mp": 10,
+              "maximum_mp": 115,
+              "attack": 0,
+              "speed": 0,
+              "defence": 0,
+              "anti_poison": 5,
+              "hidden_weapon": 20,
+              "morality": 0,
+              "attack_with_poison": 0,
+              "attack_twice": 0
+            }
+          },
+          "presentation": {
+            "panel_rect": [
+              70,
+              18,
+              148
+            ],
+            "panel_height_formula": "20 * effect_count + 30",
+            "item_name_position": [
+              75,
+              25
+            ],
+            "row_label_x": 75,
+            "row_sign_x": 155,
+            "row_value_x": 187,
+            "row_y_formula": "18 * visible_index + 45",
+            "battle_redraw_when_effect_count_positive": true,
+            "wait_for_input_when_effect_count_positive": true,
+            "post_effect_tick_changes": 9
+          },
+          "effect_cell_marked": true,
+          "zero_effect_item_still_consumed": true,
+          "actor_direction_unchanged": true,
+          "action_done_before_outer_ai_finish": 0,
+          "party_inventory_before": [
+            [
+              19,
+              1
+            ],
+            [
+              2,
+              3
+            ]
+          ],
+          "party_inventory_after": [
+            [
+              2,
+              3
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "enemy_carried_before": [
+            [
+              19,
+              1
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "enemy_carried_after": [
+            [
+              2,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ]
         }
       },
       "ai_selector_vectors": {

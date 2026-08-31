@@ -849,6 +849,213 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 }
 
+void run_ai_item_effect_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+    }
+    auto& actor = ranger.roles[1U];
+    actor.set_word(role_word::hp, 100);
+    actor.set_word(role_word::maximum_hp, 200);
+    actor.set_word(role_word::hurt, 40);
+    actor.set_word(role_word::poison, 50);
+    actor.set_word(role_word::anti_poison, 5);
+    actor.set_word(role_word::physical_power, 30);
+    actor.set_word(role_word::mp, 10);
+    actor.set_word(role_word::maximum_mp, 100);
+    actor.set_word(role_word::hidden_weapon, 20);
+    for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
+        actor.set_word(role_word::taking_item_begin + slot, -1);
+        actor.set_word(role_word::taking_item_count_begin + slot, 0);
+    }
+
+    auto& item = ranger.items[19U];
+    item.set_word(item_word::item_type, 3);
+    item.set_word(item_word::add_hp, 5'000);
+    item.set_word(item_word::add_poison, -100);
+    item.set_word(item_word::add_physical_power, 100);
+    item.set_word(item_word::add_mp, 5'000);
+    ranger.header.set_inventory(0U, openlegend::model::ItemId{19}, 1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{2}, 3);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    const BattleAiChoice party_choice{
+        .action = BattleAiAction::item,
+        .target_slot = 0,
+        .item_source = BattleAiItemSource::inventory,
+        .item_slot = 0,
+        .action_code_written = true,
+    };
+    openlegend::random::LegacyRandom random{1U};
+    const auto party_result = setup.apply_ai_item_effect(0U, party_choice, random);
+    OL_CHECK(party_result.has_value());
+    OL_CHECK(party_result->has_effect);
+    OL_CHECK(party_result->effect_count == 4);
+    OL_CHECK(party_result->panel_x == 70);
+    OL_CHECK(party_result->panel_y == 18);
+    OL_CHECK(party_result->panel_width == 148);
+    OL_CHECK(party_result->panel_height == 110);
+    OL_CHECK(party_result->post_effect_tick_changes == 9);
+    OL_CHECK(party_result->battle_redraw_required);
+    OL_CHECK(party_result->wait_for_input);
+    OL_CHECK(party_result->deltas[0U] == 100);
+    OL_CHECK(party_result->deltas[2U] == -50);
+    OL_CHECK(party_result->deltas[3U] == 70);
+    OL_CHECK(party_result->deltas[5U] == 90);
+    OL_CHECK(party_result->item_consumed);
+    OL_CHECK(random.state() == 662'824'084U);
+    OL_CHECK(actor.word(role_word::hp) == 200);
+    OL_CHECK(actor.word(role_word::hurt) == 0);
+    OL_CHECK(actor.word(role_word::poison) == 0);
+    OL_CHECK(actor.word(role_word::physical_power) == 100);
+    OL_CHECK(actor.word(role_word::mp) == 100);
+    OL_CHECK(ranger.header.inventory_item(0U).value == 2);
+    OL_CHECK(ranger.header.inventory_count(0U) == 3);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+    OL_CHECK(std::ranges::count(setup.attack_effects(), 1) == 1);
+
+    actor.set_word(role_word::hp, 100);
+    actor.set_word(role_word::hurt, 40);
+    actor.set_word(role_word::poison, 50);
+    actor.set_word(role_word::physical_power, 30);
+    actor.set_word(role_word::mp, 10);
+    actor.set_word(role_word::taking_item_begin, 19);
+    actor.set_word(role_word::taking_item_count_begin, 1);
+    actor.set_word(role_word::taking_item_begin + 1U, 2);
+    actor.set_word(role_word::taking_item_count_begin + 1U, 3);
+    setup.combatants()[0U].words[combatant_word::side] = 1;
+    const BattleAiChoice carried_choice{
+        .action = BattleAiAction::item,
+        .target_slot = 0,
+        .item_source = BattleAiItemSource::carried,
+        .item_slot = 0,
+        .action_code_written = true,
+    };
+    random.seed(1U);
+    const auto carried_result = setup.apply_ai_item_effect(0U, carried_choice, random);
+    OL_CHECK(carried_result.has_value());
+    OL_CHECK(carried_result->effect_count == 4);
+    OL_CHECK(actor.word(role_word::taking_item_begin) == 2);
+    OL_CHECK(actor.word(role_word::taking_item_count_begin) == 3);
+    OL_CHECK(actor.word(role_word::taking_item_begin + 3U) == -1);
+    OL_CHECK(actor.word(role_word::taking_item_count_begin + 3U) == 0);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+
+    auto& display_only = ranger.items[151U];
+    display_only.set_word(item_word::item_type, 3);
+    display_only.set_word(item_word::add_morality, 7);
+    display_only.set_word(item_word::add_attack_twice, 1);
+    actor.set_word(role_word::morality, 25);
+    actor.set_word(role_word::attack_twice, 0);
+    actor.set_word(role_word::taking_item_begin, 151);
+    actor.set_word(role_word::taking_item_count_begin, 1);
+    const auto display_result = setup.apply_ai_item_effect(0U, carried_choice, random);
+    OL_CHECK(display_result.has_value());
+    OL_CHECK(display_result->has_effect);
+    OL_CHECK(display_result->effect_count == 2);
+    OL_CHECK(display_result->deltas[20U] == 7);
+    OL_CHECK(display_result->deltas[21U] == 1);
+    OL_CHECK(actor.word(role_word::morality) == 25);
+    OL_CHECK(actor.word(role_word::attack_twice) == 0);
+
+    auto& empty_item = ranger.items[152U];
+    empty_item.set_word(item_word::item_type, 3);
+    actor.set_word(role_word::taking_item_begin, 152);
+    actor.set_word(role_word::taking_item_count_begin, 1);
+    const auto empty_result = setup.apply_ai_item_effect(0U, carried_choice, random);
+    OL_CHECK(empty_result.has_value());
+    OL_CHECK(!empty_result->has_effect);
+    OL_CHECK(empty_result->effect_count == 0);
+    OL_CHECK(empty_result->panel_height == 30);
+    OL_CHECK(empty_result->post_effect_tick_changes == 9);
+    OL_CHECK(!empty_result->battle_redraw_required);
+    OL_CHECK(!empty_result->wait_for_input);
+    OL_CHECK(empty_result->item_consumed);
+    OL_CHECK(actor.word(role_word::taking_item_begin) == -1);
+    OL_CHECK(actor.word(role_word::taking_item_count_begin) == 0);
+
+    auto& restorative = ranger.items[2U];
+    restorative.set_word(item_word::item_type, 3);
+    restorative.set_word(item_word::add_hp, 20);
+    actor.set_word(role_word::hp, 100);
+    actor.set_word(role_word::hurt, 100);
+    actor.set_word(role_word::taking_item_begin, 2);
+    actor.set_word(role_word::taking_item_count_begin, 1);
+    random.seed(1U);
+    const auto restorative_result = setup.apply_ai_item_effect(0U, carried_choice, random);
+    OL_CHECK(restorative_result.has_value());
+    OL_CHECK(restorative_result->deltas[0U] == 8);
+    OL_CHECK(random.state() == 2'524'885'223U);
+    OL_CHECK(actor.word(role_word::hp) == 108);
+    OL_CHECK(actor.word(role_word::hurt) == 95);
+
+    auto& harmful = ranger.items[96U];
+    harmful.set_word(item_word::item_type, 4);
+    harmful.set_word(item_word::add_hp, -30);
+    actor.set_word(role_word::hp, 100);
+    actor.set_word(role_word::hurt, 0);
+    actor.set_word(role_word::taking_item_begin, 96);
+    actor.set_word(role_word::taking_item_count_begin, 1);
+    random.seed(1U);
+    const auto harmful_result = setup.apply_ai_item_effect(0U, carried_choice, random);
+    OL_CHECK(harmful_result.has_value());
+    OL_CHECK(harmful_result->deltas[0U] == -22);
+    OL_CHECK(random.state() == 2'524'885'223U);
+    OL_CHECK(actor.word(role_word::hp) == 78);
+    OL_CHECK(actor.word(role_word::hurt) == 2);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+
+    auto& all_fields = ranger.items[153U];
+    all_fields.set_word(item_word::item_type, 3);
+    all_fields.set_word(item_word::add_maximum_hp, 50);
+    all_fields.set_word(item_word::change_mp_type, 2);
+    all_fields.set_word(item_word::add_maximum_mp, 30);
+    for (std::size_t index = 0U; index < 13U; ++index) {
+        all_fields.set_word(
+            item_word::add_attack + index, static_cast<std::int16_t>(index + 1U));
+        actor.set_word(role_word::attack + index, 10);
+    }
+    all_fields.set_word(item_word::add_morality, 7);
+    all_fields.set_word(item_word::add_attack_twice, 1);
+    all_fields.set_word(item_word::add_attack_with_poison, 5);
+    actor.set_word(role_word::hp, 100);
+    actor.set_word(role_word::maximum_hp, 200);
+    actor.set_word(role_word::mp_type, 0);
+    actor.set_word(role_word::mp, 50);
+    actor.set_word(role_word::maximum_mp, 100);
+    actor.set_word(role_word::morality, 25);
+    actor.set_word(role_word::attack_twice, 0);
+    actor.set_word(role_word::attack_with_poison, 4);
+    actor.set_word(role_word::taking_item_begin, 153);
+    actor.set_word(role_word::taking_item_count_begin, 2);
+    random.seed(1U);
+    const auto all_fields_result = setup.apply_ai_item_effect(0U, carried_choice, random);
+    OL_CHECK(all_fields_result.has_value());
+    OL_CHECK(all_fields_result->effect_count == 19);
+    OL_CHECK(all_fields_result->deltas[1U] == 50);
+    OL_CHECK(all_fields_result->deltas[4U] == 2);
+    OL_CHECK(all_fields_result->deltas[6U] == 30);
+    OL_CHECK(all_fields_result->deltas[20U] == 7);
+    OL_CHECK(all_fields_result->deltas[21U] == 1);
+    OL_CHECK(all_fields_result->deltas[22U] == 5);
+    OL_CHECK(all_fields_result->panel_height == 410);
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(actor.word(role_word::maximum_hp) == 250);
+    OL_CHECK(actor.word(role_word::mp_type) == 2);
+    OL_CHECK(actor.word(role_word::maximum_mp) == 130);
+    for (std::size_t index = 0U; index < 13U; ++index) {
+        OL_CHECK(actor.word(role_word::attack + index) == static_cast<std::int16_t>(11U + index));
+    }
+    OL_CHECK(actor.word(role_word::morality) == 25);
+    OL_CHECK(actor.word(role_word::attack_twice) == 0);
+    OL_CHECK(actor.word(role_word::attack_with_poison) == 9);
+    OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
+}
+
 void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -2241,6 +2448,7 @@ int main() {
     run_detox_action_test(data_root);
     run_medicine_action_test(data_root);
     run_throwing_weapon_action_test(data_root);
+    run_ai_item_effect_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);
     run_ai_selector_test(data_root);
