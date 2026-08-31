@@ -1069,6 +1069,110 @@
         "strict_comparisons_preserve_first_tie": true,
         "hidden_opponents_skipped": true
       },
+      "ai_attack_handler_vectors": {
+        "special_attack_table": {
+          "z_dat_file_offset": 324920,
+          "entry_count": 7,
+          "bytes_sha256": "ca8afce46330bbee8946b805affa544dc4e60cdac942bcb0962d5880161aa4e1",
+          "entries": [
+            {
+              "weapon_id": 106,
+              "magic_id": 57,
+              "bonus": 100
+            },
+            {
+              "weapon_id": 107,
+              "magic_id": 49,
+              "bonus": 50
+            },
+            {
+              "weapon_id": 108,
+              "magic_id": 49,
+              "bonus": 50
+            },
+            {
+              "weapon_id": 110,
+              "magic_id": 54,
+              "bonus": 80
+            },
+            {
+              "weapon_id": 115,
+              "magic_id": 63,
+              "bonus": 50
+            },
+            {
+              "weapon_id": 116,
+              "magic_id": 67,
+              "bonus": 70
+            },
+            {
+              "weapon_id": 119,
+              "magic_id": 68,
+              "bonus": 100
+            }
+          ]
+        },
+        "magic_then_target_rng": {
+          "seed": 9,
+          "learned_magic_count": 2,
+          "magic_slot": 0,
+          "target_bound": 10,
+          "target_roll": 5,
+          "state_after": 2878571567,
+          "call_order": [
+            "automatic_magic_slot",
+            "attack_target_strategy"
+          ]
+        },
+        "range_rules": {
+          "target_distance": 6,
+          "area_0": {
+            "movement_mode": 1,
+            "range": 6,
+            "in_range": true
+          },
+          "area_1_diagonal": {
+            "movement_mode": 2,
+            "range": 6,
+            "in_range": false
+          },
+          "area_1_aligned": {
+            "movement_mode": 2,
+            "distance": 1,
+            "in_range": true
+          },
+          "area_2_diagonal": {
+            "movement_mode": 2,
+            "range": 6,
+            "in_range": false
+          },
+          "area_3": {
+            "movement_mode": 1,
+            "range": 6,
+            "in_range": true
+          },
+          "unsupported_area": {
+            "movement_mode": 0,
+            "in_range": false
+          }
+        },
+        "branch_order": {
+          "initial_target_distances": [
+            6,
+            8
+          ],
+          "already_in_range": "attack",
+          "out_of_range_with_no_round_value": "finish_without_rest",
+          "out_of_range_with_round_value": "move",
+          "after_move_original_target_first": true,
+          "after_move_reselect_strategy": "nearest",
+          "attack_call_automatic_flag": 1,
+          "handler_writes_action_done_after_step": true,
+          "reselected_adjacent_distance": 1,
+          "reselected_adjacent_result": "attack",
+          "reselected_distance_6_result_for_range_1": "rest"
+        }
+      },
       "wait_auto_render_vector": {
         "wait_order_before": [
           10,

@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前23项为 `pending_mapping`、23项为 `pending_implementation`、35项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前22项为 `pending_mapping`、24项为 `pending_implementation`、35项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `09e3654792051287edd9ee693a4e933ea7b2f1d02fecbd9f3ca2e1883dcf9c75`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `31280db70448da59a8074c6f104d2c53772543dbcde1a8aad1ef5a1152cd71f1`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -191,4 +191,12 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 
 `sub_3513A/sub_351A7`只扫描不同side且未隐藏目标，分别以best 0/1000选择signed attack严格最大/最小值，同值保留早槽；最高攻击策略面对`[0,0]`不写word11，顶层仍停止。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。
 
-`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。固定detox`[30,0]`先暂选slot3，最终按attack`[50,10]`改为slot4。五个函数均为 `implemented_pending_review`；`sub_34C47`的武功选择、射程判定、移动重选和实际攻击仍待恢复。
+`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。固定detox`[30,0]`先暂选slot3，最终按attack`[50,10]`改为slot4。五个函数均为 `implemented_pending_review`。
+
+## 24. 自动攻击主handler计划
+
+`sub_34C47`先统计正magic id并用`bounded(count)`直接选槽，再执行目标策略，因此两次RNG顺序不可互换。seed9、两个已学槽先得magic槽0，再得目标roll5，终态2878571567。特殊攻击表从Z.DAT file offset324920直接解析；首列是角色第一装备槽word23，不是角色ID，七组装备/武功/加成为`106/57/100`、`107/49/50`、`108/49/50`、`110/54/80`、`115/63/50`、`116/67/70`、`119/68/100`。
+
+area type0/3在targeting距离不大于select distance时命中并传movement mode1；type1/2还必须同x或同y并传mode2；其他type永不直接命中并传mode0。初次命中调用automatic flag1攻击；未命中且round value<=0直接结束而不休息，否则移动。移动后先复检原目标，仍失败才强制改选最近目标；二次命中则攻击，否则休息。固定field2初始距离为6/8，相邻重选距离1。
+
+现代`begin_ai_attack_plan/resume_ai_attack_after_move`已恢复全部typed决策及尾部action_done要求，但未实际执行`sub_3650E`逐格移动、`sub_37734`动画/伤害/攻击提交、休息及handler自身完成写入，故`sub_34C47`保持 `pending_implementation`。目标selector未写slot时现代安全拒绝原版slot -1线性越界读取，留待最终REVIEW。

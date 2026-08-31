@@ -13,7 +13,9 @@ from pathlib import Path
 
 WAR_RECORD_SIZE = 186
 Z_DAT_EFFECT_FRAME_COUNTS_OFFSET = 324_814
+Z_DAT_AI_SPECIAL_ATTACK_OFFSET = 324_920
 EFFECT_FRAME_COUNT = 53
+AI_SPECIAL_ATTACK_COUNT = 7
 FIGHT_PATTERN = re.compile(r"^FIGHT(?P<id>\d{3})\.IDX$", re.IGNORECASE)
 PATH_DIRECTIONS = ((0, -1), (1, 0), (-1, 0), (0, 1))
 BLOCKED_TILE_RANGES = (
@@ -738,6 +740,69 @@ def ai_escape_vector(field_words: list[int]) -> dict[str, object]:
     }
 
 
+def ai_attack_handler_vectors(
+    z_dat_bytes: bytes, field_words: list[int]
+) -> dict[str, object]:
+    table_end = Z_DAT_AI_SPECIAL_ATTACK_OFFSET + AI_SPECIAL_ATTACK_COUNT * 6
+    if table_end > len(z_dat_bytes):
+        raise ValueError("Z.DAT does not contain the AI special-attack table")
+    table_bytes = z_dat_bytes[Z_DAT_AI_SPECIAL_ATTACK_OFFSET:table_end]
+    table_words = struct.unpack(f"<{AI_SPECIAL_ATTACK_COUNT * 3}h", table_bytes)
+    table = [
+        {
+            "weapon_id": table_words[index * 3],
+            "magic_id": table_words[index * 3 + 1],
+            "bonus": table_words[index * 3 + 2],
+        }
+        for index in range(AI_SPECIAL_ATTACK_COUNT)
+    ]
+    magic_roll, state = legacy_bounded(9, 2)
+    target_roll, state = legacy_bounded(state, 10)
+    targeting = build_path_map(field_words, (10, 20), "targeting")
+    distance_3 = targeting[23 * 64 + 13]
+    distance_4 = targeting[24 * 64 + 14]
+    adjacent_targeting = build_path_map(field_words, (10, 20), "targeting")
+    return {
+        "special_attack_table": {
+            "z_dat_file_offset": Z_DAT_AI_SPECIAL_ATTACK_OFFSET,
+            "entry_count": AI_SPECIAL_ATTACK_COUNT,
+            "bytes_sha256": sha256(table_bytes),
+            "entries": table,
+        },
+        "magic_then_target_rng": {
+            "seed": 9,
+            "learned_magic_count": 2,
+            "magic_slot": magic_roll,
+            "target_bound": 10,
+            "target_roll": target_roll,
+            "state_after": state,
+            "call_order": ["automatic_magic_slot", "attack_target_strategy"],
+        },
+        "range_rules": {
+            "target_distance": distance_3,
+            "area_0": {"movement_mode": 1, "range": 6, "in_range": True},
+            "area_1_diagonal": {"movement_mode": 2, "range": 6, "in_range": False},
+            "area_1_aligned": {"movement_mode": 2, "distance": 1, "in_range": True},
+            "area_2_diagonal": {"movement_mode": 2, "range": 6, "in_range": False},
+            "area_3": {"movement_mode": 1, "range": 6, "in_range": True},
+            "unsupported_area": {"movement_mode": 0, "in_range": False},
+        },
+        "branch_order": {
+            "initial_target_distances": [distance_3, distance_4],
+            "already_in_range": "attack",
+            "out_of_range_with_no_round_value": "finish_without_rest",
+            "out_of_range_with_round_value": "move",
+            "after_move_original_target_first": True,
+            "after_move_reselect_strategy": "nearest",
+            "attack_call_automatic_flag": 1,
+            "handler_writes_action_done_after_step": True,
+            "reselected_adjacent_distance": adjacent_targeting[20 * 64 + 11],
+            "reselected_adjacent_result": "attack",
+            "reselected_distance_6_result_for_range_1": "rest",
+        },
+    }
+
+
 def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     combatants = [
         {"side": 0, "x": 10, "y": 20},
@@ -1059,6 +1124,7 @@ def build(data_root: Path) -> dict[str, object]:
     )
     escape_vector = ai_escape_vector(battle3_field_words)
     attack_target_vectors = ai_attack_target_vectors(battle3_field_words)
+    attack_handler_vectors = ai_attack_handler_vectors(z_dat_bytes, battle3_field_words)
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
@@ -1306,6 +1372,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_entry_vectors": ai_entry_vectors(),
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
+                "ai_attack_handler_vectors": attack_handler_vectors,
                 "wait_auto_render_vector": {
                     "wait_order_before": [10, 20, 30, 40],
                     "wait_source_slot": 1,

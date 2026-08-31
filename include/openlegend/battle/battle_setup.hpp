@@ -158,6 +158,29 @@ struct BattleAiTargetSelection {
     bool target_written{};
 };
 
+enum class BattleAiAttackNextStep : std::int16_t {
+    attack,
+    move,
+    rest,
+    finish,
+};
+
+struct BattleAiAttackPlan {
+    std::int16_t magic_slot{};
+    std::int16_t magic_id{};
+    std::int16_t special_attack_bonus{};
+    std::int16_t select_distance{};
+    std::int16_t area_type{};
+    std::int16_t target_slot{-1};
+    std::int16_t target_distance{};
+    std::int16_t movement_mode{};
+    BattleAiTargetStrategy target_strategy{BattleAiTargetStrategy::nearest};
+    BattleAiAttackNextStep next_step{BattleAiAttackNextStep::finish};
+    bool target_reselected{};
+    bool automatic_attack{true};
+    bool mark_action_done_after_step{true};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -405,6 +428,12 @@ public:
     [[nodiscard]] std::optional<BattleAiTargetSelection> choose_ai_attack_target(
         std::size_t actor_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiAttackPlan> begin_ai_attack_plan(
+        std::size_t actor_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAiAttackPlan> resume_ai_attack_after_move(
+        std::size_t actor_slot,
+        BattleAiAttackPlan plan);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
@@ -468,6 +497,10 @@ private:
         std::size_t actor_slot);
     [[nodiscard]] std::optional<bool> choose_ai_specialist_target(std::size_t actor_slot);
     [[nodiscard]] std::optional<bool> choose_ai_nearest_target(std::size_t actor_slot);
+    [[nodiscard]] bool update_ai_attack_target_range(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        BattleAiAttackPlan& plan) const;
 
     BattleData& data_;
     model::RangerState& ranger_;

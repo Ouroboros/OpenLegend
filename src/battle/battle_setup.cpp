@@ -24,6 +24,20 @@ constexpr std::array<std::int16_t, 53> kBattleEffectFrameCounts{
     10, 14, 17, 9,  13, 17, 17, 17, 18, 19, 19, 15, 13, 10, 10, 15, 21, 16,
     9,  11, 8,  9,  8,  8,  7,  8,  8,  9,  12, 19, 11, 14, 12, 17, 8,  11,
     9,  13, 10, 19, 14, 17, 19, 14, 21, 16, 13, 18, 14, 17, 17, 16, 7};
+struct BattleAiSpecialAttackBonus {
+    std::int16_t weapon_id{};
+    std::int16_t magic_id{};
+    std::int16_t bonus{};
+};
+constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuses{{
+    {106, 57, 100},
+    {107, 49, 50},
+    {108, 49, 50},
+    {110, 54, 80},
+    {115, 63, 50},
+    {116, 67, 70},
+    {119, 68, 100},
+}};
 
 [[nodiscard]] constexpr std::int16_t wrapping_i16(const std::int32_t value) noexcept {
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
@@ -2483,6 +2497,129 @@ std::optional<BattleAiTargetSelection> BattleSetup::choose_ai_attack_target(
             choose_ai_specialist_target(actor_slot));
     }
     return selection(BattleAiTargetStrategy::nearest, choose_ai_nearest_target(actor_slot));
+}
+
+bool BattleSetup::update_ai_attack_target_range(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    BattleAiAttackPlan& plan) const {
+    const auto& actor = combatants_[actor_slot].words;
+    const auto& target = combatants_[target_slot].words;
+    BattlePathing pathing{data_};
+    pathing.build(
+        BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
+        BattlePathMode::targeting);
+    plan.target_slot = static_cast<std::int16_t>(target_slot);
+    plan.target_distance = pathing.value(
+        BattlePathCoord{target[combatant_word::x], target[combatant_word::y]});
+    if (plan.area_type == 0 || plan.area_type == 3) {
+        plan.movement_mode = 1;
+        return plan.target_distance <= plan.select_distance;
+    }
+    if (plan.area_type == 1 || plan.area_type == 2) {
+        plan.movement_mode = 2;
+        return plan.target_distance <= plan.select_distance &&
+            (target[combatant_word::x] == actor[combatant_word::x] ||
+             target[combatant_word::y] == actor[combatant_word::y]);
+    }
+    plan.movement_mode = 0;
+    return false;
+}
+
+std::optional<BattleAiAttackPlan> BattleSetup::begin_ai_attack_plan(
+    const std::size_t actor_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto magic_slot = automatic_magic_slot(actor_slot, random);
+    const auto profile = attack_profile(actor_slot, magic_slot);
+    if (!profile) {
+        error_ = "battle AI attack profile is outside ranger records";
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI attack role is outside ranger records";
+        return std::nullopt;
+    }
+    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    std::int16_t special_attack_bonus = 0;
+    for (const auto entry : kBattleAiSpecialAttackBonuses) {
+        if (entry.weapon_id == actor_role.word(model::role_word::equipment_begin) &&
+            entry.magic_id == profile->magic_id) {
+            special_attack_bonus = entry.bonus;
+        }
+    }
+
+    const auto target = choose_ai_attack_target(actor_slot, random);
+    if (!target) {
+        return std::nullopt;
+    }
+    if (!target->target_written || target->target_slot < 0 ||
+        target->target_slot >= combatant_count_) {
+        error_ = "battle AI attack target is outside combatant slots";
+        return std::nullopt;
+    }
+
+    BattleAiAttackPlan plan{
+        magic_slot,
+        profile->magic_id,
+        special_attack_bonus,
+        profile->select_distance,
+        profile->area_type,
+        target->target_slot,
+        0,
+        0,
+        target->strategy,
+        BattleAiAttackNextStep::finish,
+        false};
+    if (update_ai_attack_target_range(
+            actor_slot, static_cast<std::size_t>(target->target_slot), plan)) {
+        plan.next_step = BattleAiAttackNextStep::attack;
+    } else if (combatants_[actor_slot].words[combatant_word::round_value] > 0) {
+        plan.next_step = BattleAiAttackNextStep::move;
+    }
+    return plan;
+}
+
+std::optional<BattleAiAttackPlan> BattleSetup::resume_ai_attack_after_move(
+    const std::size_t actor_slot,
+    BattleAiAttackPlan plan) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.next_step != BattleAiAttackNextStep::move || plan.target_slot < 0 ||
+        plan.target_slot >= combatant_count_) {
+        return std::nullopt;
+    }
+    const auto profile = attack_profile(actor_slot, plan.magic_slot);
+    if (!profile || profile->magic_id != plan.magic_id ||
+        profile->select_distance != plan.select_distance || profile->area_type != plan.area_type) {
+        error_ = "battle AI attack plan no longer matches its magic profile";
+        return std::nullopt;
+    }
+    if (update_ai_attack_target_range(
+            actor_slot, static_cast<std::size_t>(plan.target_slot), plan)) {
+        plan.next_step = BattleAiAttackNextStep::attack;
+        return plan;
+    }
+
+    const auto reselected = choose_ai_nearest_target(actor_slot);
+    if (!reselected || !*reselected) {
+        error_ = "battle AI attack could not reselect a nearest target";
+        return std::nullopt;
+    }
+    const auto target_slot = combatants_[actor_slot].words[combatant_word::ai_target];
+    if (target_slot < 0 || target_slot >= combatant_count_) {
+        error_ = "battle AI attack reselected target is outside combatant slots";
+        return std::nullopt;
+    }
+    plan.target_strategy = BattleAiTargetStrategy::nearest;
+    plan.target_reselected = true;
+    plan.next_step = update_ai_attack_target_range(
+        actor_slot, static_cast<std::size_t>(target_slot), plan)
+        ? BattleAiAttackNextStep::attack
+        : BattleAiAttackNextStep::rest;
+    return plan;
 }
 
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
