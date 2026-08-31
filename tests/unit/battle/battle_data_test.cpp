@@ -1056,6 +1056,26 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice->item_slot == 2);
 
     reset();
+    for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
+        ranger.roles[3U].set_word(
+            role_word::taking_item_begin + slot,
+            static_cast<std::int16_t>(5 + slot));
+        ranger.roles[3U].set_word(
+            role_word::taking_item_count_begin + slot,
+            static_cast<std::int16_t>(1 + slot));
+    }
+    OL_CHECK(setup.remove_carried_item_slot(3U, 1U));
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin) == 5);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 1U) == 7);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 2U) == 8);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 3U) == -1);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin) == 1);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 1U) == 3);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 2U) == 4);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 3U) == 0);
+    OL_CHECK(!setup.remove_carried_item_slot(3U, role_word::taking_item_count));
+
+    reset();
     ranger.items[7U].set_word(item_word::add_mp, 1);
     ranger.header.set_inventory(3U, openlegend::model::ItemId{7}, 0);
     choice = setup.choose_ai_low_mp_action(0U);

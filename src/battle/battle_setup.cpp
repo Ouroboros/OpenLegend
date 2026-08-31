@@ -1217,6 +1217,37 @@ BattleItemSelectionState BattleSetup::begin_item_selection() const noexcept {
     return state;
 }
 
+bool BattleSetup::remove_carried_item_slot(
+    const std::size_t actor_slot,
+    const std::size_t item_slot) noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        item_slot >= model::role_word::taking_item_count) {
+        return false;
+    }
+    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return false;
+    }
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    for (std::size_t source = item_slot + 1U;
+         source < model::role_word::taking_item_count;
+         ++source) {
+        role.set_word(
+            model::role_word::taking_item_begin + source - 1U,
+            role.word(model::role_word::taking_item_begin + source));
+        role.set_word(
+            model::role_word::taking_item_count_begin + source - 1U,
+            role.word(model::role_word::taking_item_count_begin + source));
+    }
+    role.set_word(
+        model::role_word::taking_item_begin + model::role_word::taking_item_count - 1U,
+        -1);
+    role.set_word(
+        model::role_word::taking_item_count_begin + model::role_word::taking_item_count - 1U,
+        0);
+    return true;
+}
+
 std::optional<std::int16_t> BattleSetup::throwing_weapon_targeting_range(
     const std::size_t actor_slot) const noexcept {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {

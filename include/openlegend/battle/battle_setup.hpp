@@ -454,6 +454,9 @@ public:
         random::LegacyRandom& random);
     [[nodiscard]] bool finish_medicine_action(std::size_t actor_slot);
     [[nodiscard]] BattleItemSelectionState begin_item_selection() const noexcept;
+    [[nodiscard]] bool remove_carried_item_slot(
+        std::size_t actor_slot,
+        std::size_t item_slot) noexcept;
     [[nodiscard]] std::optional<std::int16_t> throwing_weapon_targeting_range(
         std::size_t actor_slot) const noexcept;
     [[nodiscard]] std::optional<BattleThrownItemResult> apply_throwing_weapon_target(

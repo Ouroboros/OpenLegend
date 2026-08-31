@@ -50,6 +50,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：16项 `pending_mapping`、27项 `pending_implementation`、38项 `implemented_pending_review`，0项最终关闭。
+- `battle-closure.tsv`：15项 `pending_mapping`、27项 `pending_implementation`、39项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
 - 下一停点：恢复`sub_3540E` AI用毒的目标距离、移动复检、最近目标重选和实际动作计划，再推进物品、请求、暗器handler。

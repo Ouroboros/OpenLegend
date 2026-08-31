@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `2a7e987003eabb2d2840a55de8f56c8d8834a93e41592f1e939607e6559d26ae`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `8b1a2b73df6074950cd148d2fd2ad58eb45b46428299ace132a35f652cabdb7f`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -217,4 +217,6 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 
 `sub_3582B`先调用攻击目标策略，再按actor hidden_weapon signed除15加1计算射程；首次targeting距离命中即调用`sub_3598C(actor,1)`，超距且round value>0请求movement mode1，移动后只复检同一目标，仍超距回退`sub_34C47`。round value<=0跳过移动但重复第二次targeting检查。hidden_weapon80得射程6；最近slot3距离6立即使用且无RNG；morality75、seed9输出2选slot4距离8，移动前1次检查，未改变位置后累计2次并回退攻击，移动到`(13,23)`后距离2则使用。最高攻击门槛命中但attack均为0时不写word11，原版继续使用合法stale target。
 
-现代已恢复两个typed handler计划，但未实际执行逐格移动、`sub_3598C`物品/暗器动画与状态提交、库存扣减、`sub_34C47`攻击回退和外层action_done continuation，故两项均保持`pending_implementation`。
+`sub_36133`在敌方携带物品数量耗尽后，从指定slot起同步左移后续item ID和数量并清空第4槽；`[5,6,7,8]/[1,2,3,4]`删除slot1严格得到`[5,7,8,-1]/[1,3,4,0]`，已完整映射为`remove_carried_item_slot`。
+
+现代已恢复两个typed handler计划与携带槽移除状态核心，但未实际执行逐格移动、`sub_3598C`物品/暗器动画与状态提交、队伍库存扣减、`sub_34C47`攻击回退和外层action_done continuation，故两个handler仍保持`pending_implementation`。

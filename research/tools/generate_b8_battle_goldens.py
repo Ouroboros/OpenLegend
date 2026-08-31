@@ -865,6 +865,13 @@ def ai_item_handler_vectors(field_words: list[int]) -> dict[str, object]:
             "enemy_nonzero_side": "role_carried_slot",
             "inventory_count_checked_before_handler": False,
         },
+        "carried_item_remove": {
+            "removed_slot": 1,
+            "item_ids_before": [5, 6, 7, 8],
+            "counts_before": [1, 2, 3, 4],
+            "item_ids_after": [5, 7, 8, -1],
+            "counts_after": [1, 3, 4, 0],
+        },
         "outer_ai_marks_action_done_after_handler": True,
     }
 
