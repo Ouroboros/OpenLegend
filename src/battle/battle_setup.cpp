@@ -1041,6 +1041,149 @@ bool BattleSetup::finish_detox_action(const std::size_t actor_slot) {
     return finish_poison_action(actor_slot);
 }
 
+std::optional<std::int16_t> BattleSetup::medicine_targeting_range(
+    const std::size_t actor_slot) const noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    return wrapping_i16(
+        static_cast<std::int32_t>(
+            ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::medicine)) /
+            15 +
+        1);
+}
+
+std::optional<std::int32_t> BattleSetup::apply_medicine_value(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        target_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle medicine actors are outside combatant slots";
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
+    if (actor_role_id < 0 || target_role_id < 0 ||
+        static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size() ||
+        static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+        error_ = "battle medicine role is outside ranger records";
+        return std::nullopt;
+    }
+    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    if (actor.word(model::role_word::physical_power) < 50) {
+        return 0;
+    }
+
+    auto medicine = static_cast<std::int32_t>(actor.word(model::role_word::medicine));
+    if (medicine < 0) {
+        medicine = 0;
+    }
+    const auto hurt = target.word(model::role_word::hurt);
+    std::int32_t base = 0;
+    if (hurt <= 25) {
+        base = (4 * medicine) / 5;
+    } else if (hurt <= 50) {
+        base = (3 * medicine) / 4;
+    } else if (hurt <= 75) {
+        base = (2 * medicine) / 3;
+    } else {
+        base = medicine / 2;
+    }
+    auto amount = base + random.bounded(5);
+    if (hurt > static_cast<std::int32_t>(actor.word(model::role_word::medicine)) + 20) {
+        amount = 0;
+        medicine = 0;
+    }
+
+    const auto hp = static_cast<std::int32_t>(target.word(model::role_word::hp));
+    const auto maximum_hp = static_cast<std::int32_t>(target.word(model::role_word::maximum_hp));
+    if (hp + amount > maximum_hp) {
+        amount = maximum_hp - hp;
+    }
+    target.set_word(
+        model::role_word::hp,
+        wrapping_i16(hp + wrapping_i16(amount)));
+    if (target.word(model::role_word::hp) > target.word(model::role_word::maximum_hp)) {
+        target.set_word(model::role_word::hp, target.word(model::role_word::maximum_hp));
+    }
+
+    auto target_hurt = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::hurt)) -
+        wrapping_i16(medicine));
+    if (target_hurt < 0) {
+        target_hurt = 0;
+    }
+    target.set_word(model::role_word::hurt, target_hurt);
+    actor.set_word(
+        model::role_word::physical_power,
+        wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2));
+    return amount;
+}
+
+std::optional<BattleAreaResult> BattleSetup::apply_medicine_target(
+    const std::size_t actor_slot,
+    const BattlePathCoord target,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle medicine actor is outside combatant slots";
+        return std::nullopt;
+    }
+    auto& actor_words = combatants_[actor_slot].words;
+    const auto delta_x = static_cast<std::int32_t>(target.x) -
+        actor_words[combatant_word::x];
+    const auto delta_y = static_cast<std::int32_t>(target.y) -
+        actor_words[combatant_word::y];
+    if (delta_x != 0 || delta_y != 0) {
+        if (std::abs(delta_y) > std::abs(delta_x)) {
+            actor_words[combatant_word::initial_mode] = delta_y <= 0 ? 0 : 3;
+        } else {
+            actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
+        }
+    }
+    clear_attack_effects();
+    BattleAreaResult result{};
+    if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
+        target.y >= static_cast<std::int16_t>(kBattleExtent)) {
+        return result;
+    }
+    const auto index = static_cast<std::size_t>(target.y) * kBattleExtent +
+        static_cast<std::size_t>(target.x);
+    const auto target_slot = data_.occupancy()[index];
+    if (target_slot != -1) {
+        if (target_slot < 0 || target_slot >= combatant_count_) {
+            error_ = "battle medicine occupancy is outside combatant slots";
+            return std::nullopt;
+        }
+        if (combatants_[static_cast<std::size_t>(target_slot)].words[combatant_word::side] !=
+            actor_words[combatant_word::side]) {
+            return result;
+        }
+    }
+    attack_effects_[index] = 1;
+    if (target_slot == -1) {
+        return result;
+    }
+    const auto target_index = static_cast<std::size_t>(target_slot);
+    const auto amount = apply_medicine_value(actor_slot, target_index, random);
+    if (!amount) {
+        return std::nullopt;
+    }
+    combatants_[target_index].words[combatant_word::damage_value] = wrapping_i16(*amount);
+    result.hit_count = 1;
+    result.effect_kind = 4;
+    return result;
+}
+
+bool BattleSetup::finish_medicine_action(const std::size_t actor_slot) {
+    return finish_poison_action(actor_slot);
+}
+
 void BattleSetup::clear_attack_effects() noexcept {
     std::ranges::fill(attack_effects_, static_cast<std::int16_t>(0));
 }

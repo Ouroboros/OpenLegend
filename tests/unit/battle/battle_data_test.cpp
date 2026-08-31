@@ -534,6 +534,104 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     }));
 }
 
+void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& actor = ranger.roles[1U];
+    auto& target = ranger.roles[3U];
+    actor.set_word(openlegend::model::role_word::medicine, 80);
+    actor.set_word(openlegend::model::role_word::physical_power, 51);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::maximum_hp, 200);
+    target.set_word(openlegend::model::role_word::hurt, 40);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    setup.combatants()[1U].words[combatant_word::side] =
+        setup.combatants()[0U].words[combatant_word::side];
+    OL_CHECK(setup.medicine_targeting_range(0U) == 6);
+    openlegend::random::LegacyRandom random{1U};
+    const auto result = setup.apply_medicine_target(0U, BattlePathCoord{26, 26}, random);
+    OL_CHECK(result.has_value());
+    OL_CHECK(result->hit_count == 1);
+    OL_CHECK(result->effect_kind == 4);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
+    OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 63);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 163);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 0);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
+    OL_CHECK(setup.finish_medicine_action(0U));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 1);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 47);
+
+    actor.set_word(openlegend::model::role_word::medicine, 20);
+    actor.set_word(openlegend::model::role_word::physical_power, 60);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::maximum_hp, 200);
+    target.set_word(openlegend::model::role_word::hurt, 41);
+    random.seed(1U);
+    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 0);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 100);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 41);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 58);
+
+    actor.set_word(openlegend::model::role_word::medicine, 80);
+    actor.set_word(openlegend::model::role_word::physical_power, 49);
+    random.seed(1U);
+    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 0);
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
+
+    constexpr std::array<std::pair<std::int16_t, std::int32_t>, 4> kHurtBands{{
+        {25, 67},
+        {26, 63},
+        {51, 56},
+        {76, 43},
+    }};
+    for (const auto [hurt, expected] : kHurtBands) {
+        actor.set_word(openlegend::model::role_word::physical_power, 60);
+        target.set_word(openlegend::model::role_word::hp, 0);
+        target.set_word(openlegend::model::role_word::maximum_hp, 1'000);
+        target.set_word(openlegend::model::role_word::hurt, hurt);
+        random.seed(1U);
+        OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == expected);
+    }
+
+    actor.set_word(openlegend::model::role_word::physical_power, 60);
+    target.set_word(openlegend::model::role_word::hp, 190);
+    target.set_word(openlegend::model::role_word::maximum_hp, 200);
+    target.set_word(openlegend::model::role_word::hurt, 40);
+    random.seed(1U);
+    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 10);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 200);
+
+    data.occupancy()[26U * 64U + 26U] = -1;
+    random.seed(1U);
+    const auto empty = setup.apply_medicine_target(0U, BattlePathCoord{25, 24}, random);
+    OL_CHECK(empty.has_value());
+    OL_CHECK(empty->hit_count == 0);
+    OL_CHECK(!empty->effect_kind.has_value());
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(std::ranges::count(setup.attack_effects(), 1) == 1);
+
+    data.occupancy()[26U * 64U + 26U] = 1;
+    setup.combatants()[1U].words[combatant_word::side] = 1;
+    random.seed(1U);
+    const auto enemy = setup.apply_medicine_target(0U, BattlePathCoord{26, 26}, random);
+    OL_CHECK(enemy.has_value());
+    OL_CHECK(enemy->hit_count == 0);
+    OL_CHECK(!enemy->effect_kind.has_value());
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
+        return value != 0;
+    }));
+}
+
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -932,6 +1030,7 @@ int main() {
     run_attack_animation_test(data_root);
     run_poison_action_test(data_root);
     run_detox_action_test(data_root);
+    run_medicine_action_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);
