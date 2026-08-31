@@ -1,4 +1,11 @@
-add_library(openlegend_battle STATIC battle_data.cpp battle_pathing.cpp battle_setup.cpp)
+add_library(
+    openlegend_battle
+    STATIC
+        battle_data.cpp
+        battle_pathing.cpp
+        battle_renderer.cpp
+        battle_setup.cpp
+)
 target_include_directories(
     openlegend_battle
     PUBLIC
@@ -10,6 +17,7 @@ target_link_libraries(
     PUBLIC
         openlegend_model
         openlegend_random
+        openlegend_render
         openlegend_resource
         openlegend_project_options
         openlegend_project_warnings

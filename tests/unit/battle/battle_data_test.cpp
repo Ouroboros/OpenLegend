@@ -8,6 +8,7 @@
 
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
+#include "openlegend/battle/battle_renderer.hpp"
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/resource/binary_file.hpp"
@@ -22,6 +23,15 @@ namespace {
 namespace item_word = openlegend::model::item_word;
 namespace magic_word = openlegend::model::magic_word;
 namespace role_word = openlegend::model::role_word;
+
+std::uint64_t fnv1a_bytes(const std::span<const std::uint8_t> bytes) {
+    std::uint64_t hash = 0xcbf29ce484222325ULL;
+    for (const auto byte : bytes) {
+        hash ^= byte;
+        hash *= 0x100000001b3ULL;
+    }
+    return hash;
+}
 
 std::uint64_t fnv1a_words(const std::span<const std::int16_t> words) {
     std::uint64_t hash = 0xcbf29ce484222325ULL;
@@ -1892,6 +1902,16 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(target_commands[3U].overlay_variant == 1);
     OL_CHECK(target_commands[3U].style == static_cast<std::int16_t>(0x9193U));
     OL_CHECK(target_commands[3U].value == 17);
+
+    BattleRenderer renderer{data_root, render_data.battlefield_id()};
+    openlegend::render::IndexedFramebuffer framebuffer;
+    OL_CHECK(renderer.valid());
+    OL_CHECK(renderer.render(*plan, framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x7d8a5211fe8c4eb0ULL);
+    const auto status_panel = render_setup.status_panel_plan(0U);
+    OL_CHECK(status_panel.has_value());
+    OL_CHECK(renderer.render_status_panel(*status_panel, framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0xb60bc6d6849232a2ULL);
 
     auto no_range_state = state;
     no_range_state.path_limit = 0;

@@ -66,6 +66,14 @@ def archive_record(index_path: Path, group_path: Path) -> dict[str, object]:
     }
 
 
+def fnv1a_bytes(data: bytes | bytearray) -> str:
+    value = 0xCBF29CE484222325
+    for byte in data:
+        value ^= byte
+        value = value * 0x100000001B3 & 0xFFFFFFFFFFFFFFFF
+    return f"0x{value:016x}"
+
+
 def fnv1a_words(words: list[int]) -> str:
     value = 0xCBF29CE484222325
     for word in words:
@@ -1046,8 +1054,220 @@ def ai_selector_vectors() -> dict[str, object]:
     }
 
 
+def sentinel_entries(index_bytes: bytes, group_bytes: bytes) -> list[bytes]:
+    offsets = struct.unpack(f"<{len(index_bytes) // 4}I", index_bytes)
+    if not offsets or offsets[-1] != 0:
+        raise ValueError("sentinel archive is missing trailing zero")
+    entries: list[bytes] = []
+    begin = 0
+    for end in offsets[:-1]:
+        if end < begin or end > len(group_bytes):
+            raise ValueError("sentinel archive has invalid offset")
+        entries.append(group_bytes[begin:end])
+        begin = end
+    entries.append(group_bytes[begin:])
+    return entries
+
+
+def draw_battle_sprite(
+    pixels: bytearray,
+    frame: bytes,
+    anchor_x: int,
+    anchor_y: int,
+    mode: str = "normal",
+    value: int = 0,
+    palette: list[tuple[int, int, int]] | None = None,
+    rgb4_lookup: list[int] | None = None,
+) -> None:
+    if len(frame) < 8:
+        return
+    width, height, x_offset, y_offset = struct.unpack_from("<HHhh", frame)
+    cursor = 8
+    left = anchor_x - x_offset
+    top = anchor_y - y_offset
+    for row in range(height):
+        row_size = frame[cursor]
+        cursor += 1
+        row_end = cursor + row_size
+        destination_x = left
+        while cursor < row_end:
+            skip = frame[cursor]
+            count = frame[cursor + 1]
+            cursor += 2
+            destination_x += skip
+            for source in frame[cursor:cursor + count]:
+                destination_y = top + row
+                if 0 <= destination_x < 320 and 0 <= destination_y < 200:
+                    offset = destination_y * 320 + destination_x
+                    if mode == "tint":
+                        pixels[offset] = value
+                    elif mode == "blend":
+                        assert palette is not None and rgb4_lookup is not None
+                        destination = pixels[offset]
+                        source_rgb = palette[source]
+                        destination_rgb = palette[destination]
+                        components = tuple(
+                            value * source_rgb[index] // 32
+                            + (8 - value) * destination_rgb[index] // 32
+                            for index in range(3)
+                        )
+                        pixels[offset] = rgb4_lookup[
+                            components[0] * 256 + components[1] * 16 + components[2]
+                        ]
+                    else:
+                        pixels[offset] = source
+                destination_x += 1
+            cursor += count
+        if cursor != row_end or destination_x > left + width:
+            raise ValueError("malformed battle RLE row")
+    if cursor != len(frame):
+        raise ValueError("battle RLE frame has trailing bytes")
+
+
+def draw_battle_text(
+    pixels: bytearray,
+    x: int,
+    y: int,
+    text: bytes,
+    ascii_font: bytes,
+    big5_font: bytes,
+    packed_colors: int,
+) -> None:
+    shadow = packed_colors & 0xFF
+    foreground = packed_colors >> 8 & 0xFF
+    cursor = 0
+    while cursor < len(text):
+        first = text[cursor]
+        cursor += 1
+        if first == 0:
+            return
+        if first > 0x7F:
+            second = text[cursor]
+            cursor += 1
+            trail = second - 0x40 if 0x40 <= second <= 0x7E else second - 0x62
+            glyph_index = (first - 0xA1) * 157 + trail
+            glyph = big5_font[glyph_index * 32:(glyph_index + 1) * 32]
+            glyph_width = 16
+            stride = 2
+        else:
+            glyph_index = 32 if first == ord("_") else first
+            glyph = ascii_font[glyph_index * 16:(glyph_index + 1) * 16]
+            glyph_width = 8
+            stride = 1
+        for row in range(16):
+            for byte_index in range(stride):
+                bits = glyph[row * stride + byte_index]
+                for bit in range(8):
+                    if bits & (0x80 >> bit):
+                        target_x = x + byte_index * 8 + bit
+                        if 0 <= target_x < 319 and 0 <= y + row < 200:
+                            offset = (y + row) * 320 + target_x
+                            pixels[offset] = foreground
+                            pixels[offset + 1] = shadow
+        x += 4 if first == ord("_") else glyph_width
+
+
+def battle_pixel_hashes(
+    root: Path,
+    battlefield_id: int,
+    commands: list[list[int]],
+) -> tuple[str, str]:
+    battlefield = sentinel_entries(
+        (root / f"WDX{battlefield_id:03d}").read_bytes(),
+        (root / f"WMP{battlefield_id:03d}").read_bytes(),
+    )
+    cloud = cumulative_entries(
+        (root / "CLOUD.IDX").read_bytes(), (root / "CLOUD.GRP").read_bytes()
+    )
+    portraits = cumulative_entries(
+        (root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes()
+    )
+    palette_bytes = (root / "MMAP.COL").read_bytes()
+    palette = [tuple(palette_bytes[index:index + 3]) for index in range(0, 768, 3)]
+    rgb4_lookup: list[int] = []
+    for red in range(16):
+        for green in range(16):
+            for blue in range(16):
+                target = (red * 4 + 2, green * 4 + 2, blue * 4 + 2)
+                rgb4_lookup.append(min(
+                    range(256),
+                    key=lambda index: sum(
+                        (target[channel] - palette[index][channel]) ** 2
+                        for channel in range(3)
+                    ),
+                ))
+    ascii_font = (root / "FONT.X16").read_bytes()
+    big5_font = (root / "FONT.C16").read_bytes()
+    pixels = bytearray(320 * 200)
+    for command in commands:
+        kind, _, _, screen_x, screen_y, sprite_id, variant, style, value = command
+        if kind in (0, 2):
+            if sprite_id < 0 or sprite_id > 0x7FFE or sprite_id & 1:
+                continue
+            index = sprite_id // 2
+            if index >= len(battlefield):
+                continue
+            draw_battle_sprite(
+                pixels,
+                battlefield[index],
+                screen_x,
+                screen_y,
+                "tint" if kind == 2 else "normal",
+                style & 0xFF,
+            )
+        elif kind == 1:
+            draw_battle_sprite(
+                pixels,
+                cloud[4 + variant],
+                screen_x,
+                screen_y,
+                "blend",
+                style,
+                palette,
+                rgb4_lookup,
+            )
+        elif kind == 3:
+            sign = b"-" if variant < 0 else b"+"
+            draw_battle_text(
+                pixels,
+                screen_x,
+                screen_y,
+                sign + str(value).encode("ascii") + b"\0",
+                ascii_font,
+                big5_font,
+                style & 0xFFFF,
+            )
+    battle_hash = fnv1a_bytes(pixels)
+
+    for row in range(140):
+        for column in range(100):
+            x = 220 + column
+            y = 19 + row
+            pixels[y * 320 + x] = 0xFF if row in (0, 139) or column in (0, 99) else 0
+    draw_battle_sprite(pixels, portraits[1], 242, 82)
+    labels = (
+        (225, 101, bytes.fromhex("ca5ea44f20"), 0x2321),
+        (262, 101, b"  0", 0x0705),
+        (285, 101, b"/", 0x6663),
+        (292, 101, b"100", 0x2321),
+        (225, 118, bytes.fromhex("a5cda95220"), 0x2321),
+        (262, 118, b"  0", 0x0705),
+        (285, 118, b"/", 0x6663),
+        (292, 118, b"  0", 0x2321),
+        (225, 135, bytes.fromhex("a4baa44f20"), 0x2321),
+        (262, 135, b"  0", 0x504E),
+        (285, 135, b"/", 0x504E),
+        (292, 135, b"  0", 0x504E),
+    )
+    for x, y, text, colors in labels:
+        draw_battle_text(
+            pixels, x, y, text + b"\0", ascii_font, big5_font, colors
+        )
+    return battle_hash, fnv1a_bytes(pixels)
+
+
 def battle_render_plan_vector(
-    field_words: list[int], setup: dict[str, object]
+    root: Path, field_words: list[int], setup: dict[str, object]
 ) -> dict[str, object]:
     view_x = 15
     view_y = 17
@@ -1156,6 +1376,9 @@ def battle_render_plan_vector(
     words = [wrapping_i16(value) for command in commands for value in command]
     counts = {str(kind): sum(command[0] == kind for command in commands) for kind in range(4)}
     target_commands = [command for command in commands if command[1:3] == [26, 26]]
+    battle_hash, status_hash = battle_pixel_hashes(
+        root, int(setup["battlefield_id"]), commands
+    )
     return {
         "battle_id": 4,
         "view": [view_x, view_y],
@@ -1166,6 +1389,8 @@ def battle_render_plan_vector(
         "command_count": len(commands),
         "command_kind_counts": counts,
         "command_hash": fnv1a_words(words),
+        "pixel_hash": battle_hash,
+        "status_panel_pixel_hash": status_hash,
         "first_command": commands[0],
         "target_commands": target_commands,
         "zero_path_limit_vector": {
@@ -1949,6 +2174,7 @@ def build(data_root: Path) -> dict[str, object]:
         )
 
     render_plan = battle_render_plan_vector(
+        data_root,
         list(struct.unpack("<8192h", warfld_entries[int(setup_records[4]["battlefield_id"])][:16384])),
         setup_records[4],
     )
