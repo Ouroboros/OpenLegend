@@ -505,6 +505,22 @@ def build(data_root: Path) -> dict[str, object]:
                         "effect_kind": 3,
                         "last_hp_cost_scale_unchanged": 3,
                     },
+                    "line": {
+                        "direction_map": {
+                            "0": [0, -1],
+                            "1": [1, 0],
+                            "2": [-1, 0],
+                            "3": [0, 1],
+                        },
+                        "range": 2,
+                        "effect_hash": "0xae7c1e4e161ac125",
+                        "friendly_skip_hash": "0xab559939923b4f74",
+                        "invalid_direction_hash": "0xb9d103fd6854a325",
+                        "continues_after_friendly": True,
+                        "hurt_type_ignored": 1,
+                        "damage": 29,
+                        "effect_kind": 1,
+                    },
                 },
             },
             "pathing": {

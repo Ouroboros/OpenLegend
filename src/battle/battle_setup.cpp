@@ -839,6 +839,74 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
     return result;
 }
 
+std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
+    const std::size_t actor_slot,
+    const std::int16_t magic_slot,
+    const std::int16_t direction,
+    const std::int16_t special_attack_bonus,
+    random::LegacyRandom& random) {
+    const auto profile = attack_profile(actor_slot, magic_slot);
+    if (!profile) {
+        error_ = "battle line attack profile is outside ranger records";
+        return std::nullopt;
+    }
+    BattleAreaResult result{};
+    if (direction < 0 || direction > 3 || profile->select_distance < 1) {
+        return result;
+    }
+    constexpr std::array<BattlePathCoord, 4> kDirections{
+        BattlePathCoord{0, -1},
+        BattlePathCoord{1, 0},
+        BattlePathCoord{-1, 0},
+        BattlePathCoord{0, 1},
+    };
+    const auto delta = kDirections[static_cast<std::size_t>(direction)];
+    const auto& actor_words = combatants_[actor_slot].words;
+    const auto actor_side = actor_words[combatant_word::side];
+    const auto actor_x = actor_words[combatant_word::x];
+    const auto actor_y = actor_words[combatant_word::y];
+    for (std::int32_t distance = 1; distance <= profile->select_distance; ++distance) {
+        const auto x = static_cast<std::int32_t>(actor_x) + distance * delta.x;
+        const auto y = static_cast<std::int32_t>(actor_y) + distance * delta.y;
+        if (x < 0 || x >= static_cast<std::int32_t>(kBattleExtent) || y < 0 ||
+            y >= static_cast<std::int32_t>(kBattleExtent)) {
+            continue;
+        }
+        const auto index = static_cast<std::size_t>(y) * kBattleExtent +
+            static_cast<std::size_t>(x);
+        const auto target_slot = data_.occupancy()[index];
+        if (target_slot != -1) {
+            if (target_slot < 0 || target_slot >= combatant_count_) {
+                error_ = "battle line attack occupancy is outside combatant slots";
+                return std::nullopt;
+            }
+            if (combatants_[static_cast<std::size_t>(target_slot)]
+                    .words[combatant_word::side] == actor_side) {
+                continue;
+            }
+        }
+        attack_effects_[index] = 1;
+        if (target_slot == -1) {
+            continue;
+        }
+        const auto target_index = static_cast<std::size_t>(target_slot);
+        const auto damage = apply_hp_damage(
+            actor_slot,
+            target_index,
+            magic_slot,
+            static_cast<std::int16_t>(distance),
+            special_attack_bonus,
+            random);
+        if (!damage) {
+            return std::nullopt;
+        }
+        combatants_[target_index].words[combatant_word::damage_value] = damage->damage;
+        result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
+        result.effect_kind = 1;
+    }
+    return result;
+}
+
 bool BattleSetup::finish_attack(const std::size_t slot) {
     if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
         return false;

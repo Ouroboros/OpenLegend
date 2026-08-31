@@ -421,6 +421,49 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
     OL_CHECK(setup.last_hp_cost_scale() == 3);
     OL_CHECK(random.state() == 4'182'499'122U);
+
+    magic.set_word(openlegend::model::magic_word::attack_area_type, 1);
+    magic.set_word(openlegend::model::magic_word::select_distance_begin + 2U, 2);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    setup.combatants()[0U].words[combatant_word::initial_mode] = 1;
+    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    data.occupancy()[25U * 64U + 26U] = -1;
+    setup.clear_attack_effects();
+    random.seed(1U);
+    const auto line = setup.apply_line_attack_area(0U, 2, 3, 0, random);
+    OL_CHECK(line.has_value());
+    OL_CHECK(line->hit_count == 1);
+    OL_CHECK(line->effect_kind == 1);
+    OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xae7c1e4e161ac125ULL);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 1);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 29);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
+    OL_CHECK(random.state() == 2'524'885'223U);
+
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    data.occupancy()[25U * 64U + 26U] = 0;
+    setup.clear_attack_effects();
+    random.seed(1U);
+    const auto friend_skipped = setup.apply_line_attack_area(0U, 2, 3, 0, random);
+    OL_CHECK(friend_skipped.has_value());
+    OL_CHECK(friend_skipped->hit_count == 1);
+    OL_CHECK(friend_skipped->effect_kind == 1);
+    OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
+    OL_CHECK(random.state() == 2'524'885'223U);
+
+    setup.clear_attack_effects();
+    random.seed(1U);
+    const auto invalid_direction = setup.apply_line_attack_area(0U, 2, 4, 0, random);
+    OL_CHECK(invalid_direction.has_value());
+    OL_CHECK(invalid_direction->hit_count == 0);
+    OL_CHECK(!invalid_direction->effect_kind.has_value());
+    OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xb9d103fd6854a325ULL);
+    OL_CHECK(random.state() == 1U);
 }
 
 void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {

@@ -151,6 +151,12 @@ public:
         BattlePathCoord target,
         std::int16_t special_attack_bonus,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleAreaResult> apply_line_attack_area(
+        std::size_t actor_slot,
+        std::int16_t magic_slot,
+        std::int16_t direction,
+        std::int16_t special_attack_bonus,
+        random::LegacyRandom& random);
     [[nodiscard]] bool finish_attack(std::size_t slot);
 
 private:
