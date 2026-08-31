@@ -78,6 +78,46 @@ struct BattleRestResult {
     std::int16_t mp{};
 };
 
+enum class BattleRenderCommandKind : std::int16_t {
+    legacy_sprite,
+    cursor_overlay,
+    highlighted_sprite,
+    damage_text,
+};
+
+struct BattleRenderCommand {
+    BattleRenderCommandKind kind{};
+    std::int16_t map_x{};
+    std::int16_t map_y{};
+    std::int32_t screen_x{};
+    std::int32_t screen_y{};
+    std::int32_t sprite_id{};
+    std::int16_t overlay_variant{};
+    std::int16_t style{};
+    std::int16_t value{};
+};
+
+struct BattleRenderState {
+    std::int16_t view_x{};
+    std::int16_t view_y{};
+    std::int16_t path_limit{};
+    BattlePathCoord primary_cursor{};
+    bool primary_cursor_alternate{};
+    bool secondary_cursor_visible{};
+    BattlePathCoord secondary_cursor{};
+    bool highlight_enabled{};
+    std::int16_t highlight_mode{};
+    bool effect_visible{};
+    std::int16_t effect_id{};
+    std::int16_t effect_frame_offset{};
+    std::int16_t damage_kind{};
+    std::int16_t damage_text_offset{};
+};
+
+struct BattleRenderPlan {
+    std::vector<BattleRenderCommand> commands;
+};
+
 struct BattleMagicAnimationFrame {
     std::int16_t actor_sprite{};
     std::int16_t effect_frame{};
@@ -261,6 +301,12 @@ public:
     [[nodiscard]] std::optional<BattleRestResult> rest_actor(
         std::size_t actor_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
+    void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
+    [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
+    [[nodiscard]] std::optional<BattleRenderPlan> battle_render_plan(
+        const BattleRenderState& state,
+        std::span<const std::int16_t> path_values) const;
     void clear_attack_effects() noexcept;
     [[nodiscard]] std::span<const std::int16_t> attack_effects() const noexcept {
         return attack_effects_;
@@ -316,6 +362,7 @@ private:
     std::size_t party_prefix_length_{kBattlePartySlots};
     std::size_t cursor_{};
     bool waiting_{};
+    bool automatic_enabled_{};
     std::string error_;
 };
 

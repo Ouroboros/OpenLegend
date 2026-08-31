@@ -194,6 +194,136 @@ def rest_vector(
     }
 
 
+def battle_render_plan_vector(
+    field_words: list[int], setup: dict[str, object]
+) -> dict[str, object]:
+    view_x = 15
+    view_y = 17
+    path_limit = 5
+    primary_cursor = (27, 26)
+    secondary_cursor = (25, 27)
+    effect_cell = 26 * 64 + 26
+    path_values = [0] * 4096
+    path_values[25 * 64 + 25] = 10
+    path_values[24 * 64 + 24] = 555
+    effects = [0] * 4096
+    effects[effect_cell] = 1
+    occupancy = [-1] * 4096
+    combatants: list[dict[str, int]] = []
+    for write in setup["static_occupancy_writes"]:
+        role_id = int(write["role_id"])
+        initial_mode = 2 if write["side"] == "party" else 1
+        combatants.append(
+            {
+                "role_id": role_id,
+                "sprite": 8 * (role_id % 17) + 5106 + 2 * initial_mode,
+                "damage": 17 if int(write["occupancy_index"]) == effect_cell else 0,
+            }
+        )
+        occupancy[int(write["occupancy_index"])] = int(write["slot"])
+
+    commands: list[list[int]] = []
+
+    def append(
+        kind: int,
+        map_x: int,
+        map_y: int,
+        screen_x: int,
+        screen_y: int,
+        sprite_id: int = 0,
+        overlay_variant: int = 0,
+        style: int = 0,
+        value: int = 0,
+    ) -> None:
+        commands.append(
+            [
+                kind,
+                map_x,
+                map_y,
+                screen_x,
+                screen_y,
+                sprite_id,
+                overlay_variant,
+                wrapping_i16(style),
+                value,
+            ]
+        )
+
+    for local_x in range(32):
+        for local_y in range(32):
+            map_x = local_x + view_x
+            map_y = local_y + view_y
+            cell = map_y * 64 + map_x
+            append(
+                0,
+                map_x,
+                map_y,
+                18 * local_x - 18 * local_y + 145,
+                9 * local_x + 9 * local_y - 81,
+                field_words[cell],
+            )
+
+    for local_x in range(32):
+        for local_y in range(32):
+            map_x = local_x + view_x
+            map_y = local_y + view_y
+            cell = map_y * 64 + map_x
+            sprite_x = 18 * local_x - 18 * local_y + 145
+            overlay_x = sprite_x - 18
+            screen_y = 9 * local_x + 9 * local_y - 81
+            if path_values[cell] > path_limit and path_values[cell] != 555:
+                append(1, map_x, map_y, overlay_x, screen_y, overlay_variant=0, style=3)
+            if (map_x, map_y) == primary_cursor:
+                append(1, map_x, map_y, overlay_x, screen_y, overlay_variant=0, style=2)
+            if (map_x, map_y) == secondary_cursor:
+                append(1, map_x, map_y, overlay_x, screen_y, overlay_variant=1, style=3)
+            object_sprite = field_words[4096 + cell]
+            if object_sprite not in (0, 15000):
+                append(0, map_x, map_y, sprite_x, screen_y, object_sprite)
+            occupant = occupancy[cell]
+            if occupant >= 0:
+                combatant = combatants[occupant]
+                if effects[cell] == 1:
+                    append(2, map_x, map_y, sprite_x, screen_y, combatant["sprite"], style=47)
+                else:
+                    append(0, map_x, map_y, sprite_x, screen_y, combatant["sprite"])
+            if effects[cell] == 1:
+                append(0, map_x, map_y, sprite_x, screen_y, 8)
+            if occupant >= 0 and effects[cell] == 1:
+                append(
+                    3,
+                    map_x,
+                    map_y,
+                    overlay_x,
+                    9 * local_x + 9 * local_y - 145,
+                    overlay_variant=1,
+                    style=0x9193,
+                    value=combatants[occupant]["damage"],
+                )
+
+    words = [wrapping_i16(value) for command in commands for value in command]
+    counts = {str(kind): sum(command[0] == kind for command in commands) for kind in range(4)}
+    target_commands = [command for command in commands if command[1:3] == [26, 26]]
+    return {
+        "battle_id": 4,
+        "view": [view_x, view_y],
+        "path_limit": path_limit,
+        "primary_cursor": list(primary_cursor),
+        "secondary_cursor": list(secondary_cursor),
+        "effect_cell": [26, 26],
+        "command_count": len(commands),
+        "command_kind_counts": counts,
+        "command_hash": fnv1a_words(words),
+        "first_command": commands[0],
+        "target_commands": target_commands,
+        "zero_path_limit_vector": {
+            "secondary_cursor_visible": False,
+            "command_count": len(commands) - counts["1"],
+            "cursor_overlay_count": 0,
+        },
+    }
+
+
 def animation_vectors(effect_counts: list[int]) -> dict[str, object]:
     magic_type = 2
     actor_frame_count = 4
@@ -592,6 +722,11 @@ def build(data_root: Path) -> dict[str, object]:
             }
         )
 
+    render_plan = battle_render_plan_vector(
+        list(struct.unpack("<8192h", warfld_entries[int(setup_records[4]["battlefield_id"])][:16384])),
+        setup_records[4],
+    )
+
     return {
         "format": "openlegend-b8-battle-goldens-v1",
         "war_sta": {
@@ -833,6 +968,15 @@ def build(data_root: Path) -> dict[str, object]:
                         "after_consuming_slot_0": [[97, 2], [10, 0], [-1, 0], [-1, 0]],
                         "decrement_wraps_to_int16": True,
                     },
+                },
+                "wait_auto_render_vector": {
+                    "wait_order_before": [10, 20, 30, 40],
+                    "wait_source_slot": 1,
+                    "wait_order_after": [10, 30, 40, 20],
+                    "wait_return_slot": 3,
+                    "automatic_flag_after": 1,
+                    "automatic_sequence": ["render", "present", "set_flag", "ai"],
+                    "render_plan": render_plan,
                 },
                 "rest_vector": {
                     "ready": rest_vector(

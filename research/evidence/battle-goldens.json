@@ -656,6 +656,119 @@
           "decrement_wraps_to_int16": true
         }
       },
+      "wait_auto_render_vector": {
+        "wait_order_before": [
+          10,
+          20,
+          30,
+          40
+        ],
+        "wait_source_slot": 1,
+        "wait_order_after": [
+          10,
+          30,
+          40,
+          20
+        ],
+        "wait_return_slot": 3,
+        "automatic_flag_after": 1,
+        "automatic_sequence": [
+          "render",
+          "present",
+          "set_flag",
+          "ai"
+        ],
+        "render_plan": {
+          "battle_id": 4,
+          "view": [
+            15,
+            17
+          ],
+          "path_limit": 5,
+          "primary_cursor": [
+            27,
+            26
+          ],
+          "secondary_cursor": [
+            25,
+            27
+          ],
+          "effect_cell": [
+            26,
+            26
+          ],
+          "command_count": 1157,
+          "command_kind_counts": {
+            "0": 1152,
+            "1": 3,
+            "2": 1,
+            "3": 1
+          },
+          "command_hash": "0xb9f8a428699b3712",
+          "first_command": [
+            0,
+            15,
+            17,
+            145,
+            -81,
+            170,
+            0,
+            0,
+            0
+          ],
+          "target_commands": [
+            [
+              0,
+              26,
+              26,
+              181,
+              99,
+              8,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              26,
+              26,
+              181,
+              99,
+              5132,
+              0,
+              47,
+              0
+            ],
+            [
+              0,
+              26,
+              26,
+              181,
+              99,
+              8,
+              0,
+              0,
+              0
+            ],
+            [
+              3,
+              26,
+              26,
+              163,
+              35,
+              0,
+              1,
+              -28269,
+              17
+            ]
+          ],
+          "zero_path_limit_vector": {
+            "secondary_cursor_visible": false,
+            "command_count": 1154,
+            "cursor_overlay_count": 0
+          }
+        }
+      },
       "rest_vector": {
         "ready": {
           "rng_seed": 1,

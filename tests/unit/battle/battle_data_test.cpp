@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <span>
 #include <vector>
 
@@ -28,6 +29,27 @@ std::uint64_t fnv1a_words(const std::span<const std::int16_t> words) {
         hash *= 0x100000001b3ULL;
     }
     return hash;
+}
+
+std::uint64_t fnv1a_render_plan(const openlegend::battle::BattleRenderPlan& plan) {
+    std::vector<std::int16_t> words;
+    words.reserve(plan.commands.size() * 9U);
+    for (const auto& command : plan.commands) {
+        words.insert(
+            words.end(),
+            {
+                static_cast<std::int16_t>(command.kind),
+                command.map_x,
+                command.map_y,
+                static_cast<std::int16_t>(command.screen_x),
+                static_cast<std::int16_t>(command.screen_y),
+                static_cast<std::int16_t>(command.sprite_id),
+                command.overlay_variant,
+                command.style,
+                command.value,
+            });
+    }
+    return fnv1a_words(words);
 }
 
 void run_real_asset_fixtures(const openlegend::resource::DataRoot& data_root) {
@@ -784,6 +806,128 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
 }
 
+void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto wait_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData wait_data{data_root, 3};
+    BattleSetup wait_setup{wait_data, wait_ranger};
+    OL_CHECK(wait_setup.valid());
+    OL_CHECK(wait_setup.apply(PartySelectionAction::previous) == PartySelectionResult::changed);
+    OL_CHECK(wait_setup.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+    OL_CHECK(wait_setup.combatant_count() == 5);
+    constexpr std::array<std::int16_t, 5> kBefore{0, 101, 102, 103, 104};
+    for (std::size_t slot = 0U; slot < kBefore.size(); ++slot) {
+        OL_CHECK(wait_setup.combatants()[slot].words[combatant_word::role_id] == kBefore[slot]);
+    }
+    OL_CHECK(wait_setup.defer_turn_to_end(1U) == 4U);
+    constexpr std::array<std::int16_t, 5> kAfter{0, 102, 103, 104, 101};
+    for (std::size_t slot = 0U; slot < kAfter.size(); ++slot) {
+        OL_CHECK(wait_setup.combatants()[slot].words[combatant_word::role_id] == kAfter[slot]);
+    }
+    OL_CHECK(wait_setup.combatants()[4U].words[combatant_word::action_done] == 0);
+    OL_CHECK(!wait_setup.automatic_enabled());
+    wait_setup.enable_automatic_mode();
+    OL_CHECK(wait_setup.automatic_enabled());
+
+    auto render_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    render_ranger.roles[1U].set_word(openlegend::model::role_word::use_poison, 80);
+    render_ranger.roles[3U].set_word(openlegend::model::role_word::anti_poison, 0);
+    render_ranger.roles[3U].set_word(openlegend::model::role_word::poison, 0);
+    BattleData render_data{data_root, 4};
+    BattleSetup render_setup{render_data, render_ranger};
+    OL_CHECK(render_setup.valid());
+    const auto marked = render_setup.apply_poison_target(0U, BattlePathCoord{26, 26});
+    OL_CHECK(marked.has_value());
+    OL_CHECK(marked->hit_count == 1);
+    render_setup.combatants()[1U].words[combatant_word::damage_value] = 17;
+
+    std::array<std::int16_t, kBattleOccupancyCells> path_values{};
+    path_values[25U * 64U + 25U] = 10;
+    path_values[24U * 64U + 24U] = kBattlePathBlocked;
+    const BattleRenderState state{
+        .view_x = 15,
+        .view_y = 17,
+        .path_limit = 5,
+        .primary_cursor = {27, 26},
+        .primary_cursor_alternate = false,
+        .secondary_cursor_visible = true,
+        .secondary_cursor = {25, 27},
+        .highlight_enabled = true,
+        .highlight_mode = 2,
+        .effect_visible = true,
+        .effect_id = 2,
+        .effect_frame_offset = 4,
+        .damage_kind = 3,
+        .damage_text_offset = 2,
+    };
+    const auto plan = render_setup.battle_render_plan(state, path_values);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->commands.size() == 1'157U);
+    OL_CHECK(fnv1a_render_plan(*plan) == 0xb9f8a428699b3712ULL);
+    OL_CHECK(std::ranges::count_if(plan->commands, [](const BattleRenderCommand& command) {
+        return command.kind == BattleRenderCommandKind::legacy_sprite;
+    }) == 1'152);
+    OL_CHECK(std::ranges::count_if(plan->commands, [](const BattleRenderCommand& command) {
+        return command.kind == BattleRenderCommandKind::cursor_overlay;
+    }) == 3);
+    OL_CHECK(std::ranges::count_if(plan->commands, [](const BattleRenderCommand& command) {
+        return command.kind == BattleRenderCommandKind::highlighted_sprite;
+    }) == 1);
+    OL_CHECK(std::ranges::count_if(plan->commands, [](const BattleRenderCommand& command) {
+        return command.kind == BattleRenderCommandKind::damage_text;
+    }) == 1);
+
+    std::vector<BattleRenderCommand> cursor_commands;
+    std::ranges::copy_if(
+        plan->commands,
+        std::back_inserter(cursor_commands),
+        [](const BattleRenderCommand& command) {
+            return command.kind == BattleRenderCommandKind::cursor_overlay;
+        });
+    OL_CHECK(cursor_commands.size() == 3U);
+    OL_CHECK(cursor_commands[0U].map_x == 25 && cursor_commands[0U].map_y == 25);
+    OL_CHECK(cursor_commands[0U].screen_x == 163 && cursor_commands[0U].screen_y == 81);
+    OL_CHECK(cursor_commands[0U].overlay_variant == 0 && cursor_commands[0U].style == 3);
+    OL_CHECK(cursor_commands[1U].map_x == 25 && cursor_commands[1U].map_y == 27);
+    OL_CHECK(cursor_commands[1U].screen_x == 127 && cursor_commands[1U].screen_y == 99);
+    OL_CHECK(cursor_commands[1U].overlay_variant == 1 && cursor_commands[1U].style == 3);
+    OL_CHECK(cursor_commands[2U].map_x == 27 && cursor_commands[2U].map_y == 26);
+    OL_CHECK(cursor_commands[2U].screen_x == 181 && cursor_commands[2U].screen_y == 108);
+    OL_CHECK(cursor_commands[2U].overlay_variant == 0 && cursor_commands[2U].style == 2);
+
+    std::vector<BattleRenderCommand> target_commands;
+    std::ranges::copy_if(
+        plan->commands,
+        std::back_inserter(target_commands),
+        [](const BattleRenderCommand& command) {
+            return command.map_x == 26 && command.map_y == 26;
+        });
+    OL_CHECK(target_commands.size() == 4U);
+    OL_CHECK(target_commands[0U].kind == BattleRenderCommandKind::legacy_sprite);
+    OL_CHECK(target_commands[0U].sprite_id == 8);
+    OL_CHECK(target_commands[1U].kind == BattleRenderCommandKind::highlighted_sprite);
+    OL_CHECK(target_commands[1U].sprite_id == 5'132);
+    OL_CHECK(target_commands[1U].style == 47);
+    OL_CHECK(target_commands[2U].kind == BattleRenderCommandKind::legacy_sprite);
+    OL_CHECK(target_commands[2U].sprite_id == 8);
+    OL_CHECK(target_commands[3U].kind == BattleRenderCommandKind::damage_text);
+    OL_CHECK(target_commands[3U].screen_x == 163);
+    OL_CHECK(target_commands[3U].screen_y == 35);
+    OL_CHECK(target_commands[3U].overlay_variant == 1);
+    OL_CHECK(target_commands[3U].style == static_cast<std::int16_t>(0x9193U));
+    OL_CHECK(target_commands[3U].value == 17);
+
+    auto no_range_state = state;
+    no_range_state.path_limit = 0;
+    no_range_state.secondary_cursor_visible = false;
+    const auto no_range_plan = render_setup.battle_render_plan(no_range_state, {});
+    OL_CHECK(no_range_plan.has_value());
+    OL_CHECK(no_range_plan->commands.size() == 1'154U);
+    OL_CHECK(std::ranges::none_of(no_range_plan->commands, [](const BattleRenderCommand& command) {
+        return command.kind == BattleRenderCommandKind::cursor_overlay;
+    }));
+}
+
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -1185,6 +1329,7 @@ int main() {
     run_medicine_action_test(data_root);
     run_throwing_weapon_action_test(data_root);
     run_rest_action_test(data_root);
+    run_wait_auto_render_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);

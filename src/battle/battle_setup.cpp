@@ -1439,6 +1439,212 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
         role.word(model::role_word::mp)};
 }
 
+std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle wait actor is outside combatant slots";
+        return std::nullopt;
+    }
+    auto slot = actor_slot;
+    while (slot + 1U < static_cast<std::size_t>(combatant_count_)) {
+        swap_combatants(slot, slot + 1U);
+        ++slot;
+    }
+    return slot;
+}
+
+std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
+    const BattleRenderState& state,
+    const std::span<const std::int16_t> path_values) const {
+    if (!valid() || state.view_x < 0 || state.view_x > 32 || state.view_y < 0 ||
+        state.view_y > 32 ||
+        (state.path_limit > 0 && path_values.size() != kBattleOccupancyCells)) {
+        return std::nullopt;
+    }
+
+    BattleRenderPlan plan{};
+    plan.commands.reserve(4'096U);
+    const auto append_sprite = [&plan](
+                                   const BattleRenderCommandKind kind,
+                                   const std::int16_t map_x,
+                                   const std::int16_t map_y,
+                                   const std::int32_t screen_x,
+                                   const std::int32_t screen_y,
+                                   const std::int32_t sprite_id,
+                                   const std::int16_t overlay_variant = 0,
+                                   const std::int16_t style = 0,
+                                   const std::int16_t value = 0) {
+        plan.commands.push_back(BattleRenderCommand{
+            kind,
+            map_x,
+            map_y,
+            screen_x,
+            screen_y,
+            sprite_id,
+            overlay_variant,
+            style,
+            value});
+    };
+
+    const auto field = data_.battlefield();
+    for (std::int16_t local_x = 0; local_x < 32; ++local_x) {
+        for (std::int16_t local_y = 0; local_y < 32; ++local_y) {
+            const auto map_x = static_cast<std::int16_t>(local_x + state.view_x);
+            const auto map_y = static_cast<std::int16_t>(local_y + state.view_y);
+            const auto cell = static_cast<std::size_t>(map_y) * kBattleExtent +
+                static_cast<std::size_t>(map_x);
+            append_sprite(
+                BattleRenderCommandKind::legacy_sprite,
+                map_x,
+                map_y,
+                18 * static_cast<std::int32_t>(local_x) -
+                    18 * static_cast<std::int32_t>(local_y) + 145,
+                9 * static_cast<std::int32_t>(local_x) +
+                    9 * static_cast<std::int32_t>(local_y) - 81,
+                field[cell]);
+        }
+    }
+
+    for (std::int16_t local_x = 0; local_x < 32; ++local_x) {
+        for (std::int16_t local_y = 0; local_y < 32; ++local_y) {
+            const auto map_x = static_cast<std::int16_t>(local_x + state.view_x);
+            const auto map_y = static_cast<std::int16_t>(local_y + state.view_y);
+            const auto cell = static_cast<std::size_t>(map_y) * kBattleExtent +
+                static_cast<std::size_t>(map_x);
+            const auto sprite_x = 18 * static_cast<std::int32_t>(local_x) -
+                18 * static_cast<std::int32_t>(local_y) + 145;
+            const auto overlay_x = sprite_x - 18;
+            const auto screen_y = 9 * static_cast<std::int32_t>(local_x) +
+                9 * static_cast<std::int32_t>(local_y) - 81;
+
+            if (state.path_limit > 0) {
+                if (path_values[cell] > state.path_limit &&
+                    path_values[cell] != kBattlePathBlocked) {
+                    append_sprite(
+                        BattleRenderCommandKind::cursor_overlay,
+                        map_x,
+                        map_y,
+                        overlay_x,
+                        screen_y,
+                        0,
+                        0,
+                        3);
+                }
+                if (map_x == state.primary_cursor.x && map_y == state.primary_cursor.y) {
+                    append_sprite(
+                        BattleRenderCommandKind::cursor_overlay,
+                        map_x,
+                        map_y,
+                        overlay_x,
+                        screen_y,
+                        0,
+                        state.primary_cursor_alternate ? 1 : 0,
+                        state.primary_cursor_alternate ? 3 : 2);
+                }
+            }
+            if (state.secondary_cursor_visible && map_x == state.secondary_cursor.x &&
+                map_y == state.secondary_cursor.y) {
+                append_sprite(
+                    BattleRenderCommandKind::cursor_overlay,
+                    map_x,
+                    map_y,
+                    overlay_x,
+                    screen_y,
+                    0,
+                    1,
+                    3);
+            }
+
+            const auto object_sprite = field[kBattleOccupancyCells + cell];
+            if (object_sprite != 0 && object_sprite != 15'000) {
+                append_sprite(
+                    BattleRenderCommandKind::legacy_sprite,
+                    map_x,
+                    map_y,
+                    sprite_x,
+                    screen_y,
+                    object_sprite);
+            }
+
+            const auto occupant = data_.occupancy()[cell];
+            if (occupant >= 0) {
+                if (occupant >= combatant_count_) {
+                    return std::nullopt;
+                }
+                const auto combatant = static_cast<std::size_t>(occupant);
+                const auto& words = combatants_[combatant].words;
+                const auto role_id = words[combatant_word::role_id];
+                if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+                    return std::nullopt;
+                }
+                const auto highlighted = state.highlight_enabled && attack_effects_[cell] == 1 &&
+                    ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hp) >= 0;
+                if (highlighted) {
+                    std::int16_t color = 0;
+                    if (state.highlight_mode == 1) {
+                        color = 255;
+                    } else if (state.highlight_mode == 2) {
+                        color = 47;
+                    } else if (state.highlight_mode == 3) {
+                        color = 78;
+                    }
+                    if (color != 0) {
+                        append_sprite(
+                            BattleRenderCommandKind::highlighted_sprite,
+                            map_x,
+                            map_y,
+                            sprite_x,
+                            screen_y,
+                            words[combatant_word::sprite],
+                            0,
+                            color);
+                    }
+                } else {
+                    append_sprite(
+                        BattleRenderCommandKind::legacy_sprite,
+                        map_x,
+                        map_y,
+                        sprite_x,
+                        screen_y,
+                        words[combatant_word::sprite]);
+                }
+            }
+
+            if (state.effect_visible && attack_effects_[cell] == 1) {
+                append_sprite(
+                    BattleRenderCommandKind::legacy_sprite,
+                    map_x,
+                    map_y,
+                    sprite_x,
+                    screen_y,
+                    2 * static_cast<std::int32_t>(state.effect_id) +
+                        state.effect_frame_offset);
+            }
+
+            if (state.damage_kind > 0 && occupant >= 0 && attack_effects_[cell] == 1) {
+                static constexpr std::array<std::uint16_t, 6> kDamageColors{
+                    0x0000U, 0x1014U, 0x3032U, 0x9193U, 0x0705U, 0x5053U};
+                static constexpr std::array<std::int16_t, 6> kDamageSigns{0, -1, -1, 1, 1, -1};
+                if (state.damage_kind <= 5) {
+                    const auto combatant = static_cast<std::size_t>(occupant);
+                    append_sprite(
+                        BattleRenderCommandKind::damage_text,
+                        map_x,
+                        map_y,
+                        overlay_x,
+                        9 * static_cast<std::int32_t>(local_x) +
+                            9 * static_cast<std::int32_t>(local_y) - 141 -
+                            2 * static_cast<std::int32_t>(state.damage_text_offset),
+                        0,
+                        kDamageSigns[static_cast<std::size_t>(state.damage_kind)],
+                        wrapping_i16(kDamageColors[static_cast<std::size_t>(state.damage_kind)]),
+                        combatants_[combatant].words[combatant_word::damage_value]);
+                }
+            }
+        }
+    }
+    return plan;
+}
+
 void BattleSetup::clear_attack_effects() noexcept {
     std::ranges::fill(attack_effects_, static_cast<std::int16_t>(0));
 }
