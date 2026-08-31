@@ -251,6 +251,89 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 0);
 }
 
+void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& actor = ranger.roles[1U];
+    auto& target = ranger.roles[3U];
+    actor.set_word(openlegend::model::role_word::magic_id_begin + 2U, 5);
+    actor.set_word(openlegend::model::role_word::magic_level_begin + 2U, 200);
+    actor.set_word(openlegend::model::role_word::mp, 10);
+    actor.set_word(openlegend::model::role_word::maximum_mp, 20);
+    actor.set_word(openlegend::model::role_word::attack, 30);
+    actor.set_word(openlegend::model::role_word::physical_power, 10);
+    actor.set_word(openlegend::model::role_word::attack_with_poison, 30);
+    target.set_word(openlegend::model::role_word::level, 4);
+    target.set_word(openlegend::model::role_word::hp, 30);
+    target.set_word(openlegend::model::role_word::defence, 5);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    target.set_word(openlegend::model::role_word::poison, 0);
+    target.set_word(openlegend::model::role_word::anti_poison, 0);
+    auto& magic = ranger.magics[5U];
+    magic.set_word(openlegend::model::magic_word::need_mp, 4);
+    magic.set_word(openlegend::model::magic_word::attack_begin + 2U, 30);
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 20);
+    magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 15);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    openlegend::random::LegacyRandom hp_random{1U};
+    const auto exact = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
+    OL_CHECK(exact.has_value());
+    OL_CHECK(exact->damage == 30);
+    OL_CHECK(exact->cost_scale == 3);
+    OL_CHECK(hp_random.state() == 2'524'885'223U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 3);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 4);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 6);
+
+    target.set_word(openlegend::model::role_word::hp, 29);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    target.set_word(openlegend::model::role_word::poison, 0);
+    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    hp_random.seed(1U);
+    const auto underkill = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
+    OL_CHECK(underkill.has_value());
+    OL_CHECK(underkill->damage == 30);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 46);
+
+    actor.set_word(openlegend::model::role_word::knowledge, 81);
+    actor.set_word(openlegend::model::role_word::hp, 1);
+    target.set_word(openlegend::model::role_word::knowledge, 82);
+    actor.set_word(openlegend::model::role_word::physical_power, 0);
+    actor.set_word(openlegend::model::role_word::equipment_begin, 10);
+    target.set_word(openlegend::model::role_word::equipment_begin, 11);
+    ranger.items[10U].set_word(openlegend::model::item_word::add_attack, 6);
+    ranger.items[11U].set_word(openlegend::model::item_word::add_defence, 2);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::hurt, 0);
+    target.set_word(openlegend::model::role_word::poison, 0);
+    target.set_word(openlegend::model::role_word::anti_poison, 100);
+    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    hp_random.seed(1U);
+    const auto fallback = setup.apply_hp_damage(0U, 1U, 2, 11, 3, hp_random);
+    OL_CHECK(fallback.has_value());
+    OL_CHECK(fallback->damage == 14);
+    OL_CHECK(hp_random.state() == 3'295'386'429U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 86);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 2);
+
+    actor.set_word(openlegend::model::role_word::mp, 10);
+    actor.set_word(openlegend::model::role_word::maximum_mp, 20);
+    target.set_word(openlegend::model::role_word::mp, 50);
+    openlegend::random::LegacyRandom mp_random{1U};
+    const auto drained = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(drained == 15);
+    OL_CHECK(mp_random.state() == 4'182'499'122U);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 23);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 23);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
+}
+
 void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -431,6 +514,7 @@ int main() {
     run_pathing_tests(data_root);
     run_movement_step_test(data_root);
     run_attack_profile_test(data_root);
+    run_damage_formula_test(data_root);
     run_party_selection_test(data_root);
     run_fixed_and_duplicate_tests(data_root);
     run_turn_order_test(data_root);

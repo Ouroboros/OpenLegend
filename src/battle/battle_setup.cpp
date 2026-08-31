@@ -487,6 +487,224 @@ bool BattleSetup::commit_attack_iteration(
     return current_rank > previous_rank;
 }
 
+std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    const std::int16_t magic_slot,
+    const std::int16_t distance,
+    const std::int16_t special_attack_bonus,
+    random::LegacyRandom& random) {
+    const auto profile = attack_profile(actor_slot, magic_slot);
+    if (!profile || target_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle HP damage arguments are outside battle records";
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
+    if (target_role_id < 0 || static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+        error_ = "battle HP damage target role is outside ranger records";
+        return std::nullopt;
+    }
+    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
+
+    std::int32_t allied_knowledge = 0;
+    std::int32_t enemy_knowledge = 0;
+    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        const auto role_id = combatants_[slot].words[combatant_word::role_id];
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            error_ = "battle HP damage combatant role is outside ranger records";
+            return std::nullopt;
+        }
+        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto knowledge = role.word(model::role_word::knowledge);
+        if (knowledge <= 80 || role.word(model::role_word::hp) <= 0 ||
+            combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
+            continue;
+        }
+        if (combatants_[slot].words[combatant_word::side] == actor_side) {
+            allied_knowledge += 2 * static_cast<std::int32_t>(knowledge);
+        } else {
+            enemy_knowledge += 2 * static_cast<std::int32_t>(knowledge);
+        }
+    }
+
+    std::int16_t cost_scale = 0;
+    for (std::int16_t level = profile->level_index; level >= 0; --level) {
+        const auto required_mp = static_cast<std::int32_t>(profile->need_mp) *
+            static_cast<std::int32_t>((level + 1) / 2);
+        if (actor.word(model::role_word::mp) >= required_mp) {
+            cost_scale = static_cast<std::int16_t>(level + 1);
+            break;
+        }
+    }
+
+    const auto equipment_bonus = [this](
+                                     const model::RoleRecord& role,
+                                     const std::size_t item_word)
+        -> std::optional<std::int16_t> {
+        std::int32_t bonus = 0;
+        for (std::size_t index = 0U; index < model::role_word::equipment_count; ++index) {
+            const auto item_id = role.word(model::role_word::equipment_begin + index);
+            if (item_id < 0) {
+                continue;
+            }
+            if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+                return std::nullopt;
+            }
+            bonus += ranger_.items[static_cast<std::size_t>(item_id)].word(item_word);
+        }
+        return wrapping_i16(bonus);
+    };
+    const auto attack_equipment = equipment_bonus(actor, model::item_word::add_attack);
+    const auto defence_equipment = equipment_bonus(target, model::item_word::add_defence);
+    if (!attack_equipment || !defence_equipment) {
+        error_ = "battle HP damage equipment id is outside ranger records";
+        return std::nullopt;
+    }
+
+    auto attack_total = wrapping_i16(
+        (3 * static_cast<std::int32_t>(actor.word(model::role_word::attack)) +
+         magic.word(model::magic_word::with_poison + static_cast<std::size_t>(cost_scale))) /
+        2);
+    attack_total = wrapping_i16(
+        static_cast<std::int32_t>(attack_total) + *attack_equipment + special_attack_bonus +
+        allied_knowledge);
+    auto defence_total = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::defence)) +
+        *defence_equipment + enemy_knowledge);
+
+    const auto first_attack_variance = random.bounded(20);
+    const auto second_attack_variance = random.bounded(20);
+    auto damage = wrapping_i16(
+        2 * (static_cast<std::int32_t>(attack_total) -
+             3 * static_cast<std::int32_t>(defence_total)) /
+            3 +
+        first_attack_variance - second_attack_variance);
+    if (damage <= 0) {
+        const auto first_fallback_variance = random.bounded(4);
+        const auto second_fallback_variance = random.bounded(4);
+        damage = wrapping_i16(
+            static_cast<std::int32_t>(attack_total) / 10 + first_fallback_variance -
+            second_fallback_variance);
+    }
+    if (damage < 0) {
+        damage = 0;
+    } else {
+        damage = wrapping_i16(
+            static_cast<std::int32_t>(damage) +
+            actor.word(model::role_word::physical_power) / 15 +
+            target.word(model::role_word::hurt) / 20);
+        const auto factor = distance > 10
+            ? 2
+            : 100 - 3 * (static_cast<std::int32_t>(distance) - 1);
+        const auto divisor = distance > 10 ? 3U : 100U;
+        const auto product = static_cast<std::uint32_t>(
+            static_cast<std::int32_t>(damage) * factor);
+        damage = wrapping_i16(static_cast<std::int32_t>(product / divisor));
+    }
+    if (damage < 1) {
+        damage = 1;
+    }
+
+    auto& actor_counter = combatants_[actor_slot].words[combatant_word::attack_counter];
+    actor_counter = wrapping_i16(
+        static_cast<std::int32_t>(actor_counter) + damage / 5);
+    auto target_hp = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::hp)) - damage);
+    target.set_word(model::role_word::hp, target_hp);
+    if (target_hp < 0) {
+        target.set_word(model::role_word::hp, 0);
+        actor_counter = wrapping_i16(
+            static_cast<std::int32_t>(actor_counter) +
+            10 * static_cast<std::int32_t>(target.word(model::role_word::level)));
+    }
+
+    auto hurt = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::hurt)) + damage / 10);
+    target.set_word(model::role_word::hurt, hurt);
+    if (hurt > 99) {
+        target.set_word(model::role_word::hurt, 99);
+    }
+
+    const auto poison_power = static_cast<std::int32_t>(
+                                  actor.word(model::role_word::attack_with_poison)) +
+        magic.word(
+            model::magic_word::attack_begin + static_cast<std::size_t>(profile->level_index));
+    const auto anti_poison = target.word(model::role_word::anti_poison);
+    if (poison_power > anti_poison && anti_poison < 90) {
+        auto poison = wrapping_i16(
+            static_cast<std::int32_t>(target.word(model::role_word::poison)) +
+            (poison_power - anti_poison) / 15);
+        target.set_word(model::role_word::poison, poison);
+        if (poison > 100) {
+            target.set_word(model::role_word::poison, 99);
+        }
+        if (target.word(model::role_word::poison) < 0) {
+            target.set_word(model::role_word::poison, 0);
+        }
+    }
+    return BattleHpDamageResult{damage, cost_scale};
+}
+
+std::optional<std::int32_t> BattleSetup::apply_mp_damage(
+    const std::size_t actor_slot,
+    const std::size_t target_slot,
+    const std::int16_t magic_slot,
+    random::LegacyRandom& random) {
+    const auto profile = attack_profile(actor_slot, magic_slot);
+    if (!profile || target_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle MP damage arguments are outside battle records";
+        return std::nullopt;
+    }
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
+    if (target_role_id < 0 || static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+        error_ = "battle MP damage target role is outside ranger records";
+        return std::nullopt;
+    }
+    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
+    const auto level = static_cast<std::size_t>(profile->level_index);
+    const auto target_mp_before = target.word(model::role_word::mp);
+
+    const auto first_actor_variance = random.bounded(3);
+    const auto second_actor_variance = random.bounded(3);
+    const auto actor_variance = first_actor_variance - second_actor_variance;
+    const auto add_mp = magic.word(model::magic_word::add_mp_begin + level);
+    actor.set_word(
+        model::role_word::mp,
+        wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::mp)) + add_mp));
+    auto maximum_mp = wrapping_i16(
+        static_cast<std::int32_t>(actor.word(model::role_word::maximum_mp)) +
+        random.bounded(add_mp / 2));
+    if (maximum_mp >= 999) {
+        maximum_mp = 999;
+    }
+    actor.set_word(model::role_word::maximum_mp, maximum_mp);
+    auto actor_mp = wrapping_i16(
+        static_cast<std::int32_t>(actor.word(model::role_word::mp)) + actor_variance);
+    if (actor_mp >= maximum_mp) {
+        actor_mp = maximum_mp;
+    }
+    actor.set_word(model::role_word::mp, actor_mp);
+
+    const auto first_target_variance = random.bounded(3);
+    const auto second_target_variance = random.bounded(3);
+    const auto target_variance = first_target_variance - second_target_variance;
+    auto target_mp = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::mp)) -
+        magic.word(model::magic_word::hurt_mp_begin + level) - target_variance);
+    if (target_mp <= 0) {
+        target_mp = 0;
+    }
+    target.set_word(model::role_word::mp, target_mp);
+    return static_cast<std::int32_t>(target_mp_before) - target_mp;
+}
+
 bool BattleSetup::finish_attack(const std::size_t slot) {
     if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
         return false;

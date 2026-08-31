@@ -369,6 +369,76 @@
         "attack_counter_after": 2,
         "physical_power_after_finish": 0,
         "experience_cap": 999
+      },
+      "hp_damage_vector": {
+        "attack": 30,
+        "magic_attack": 30,
+        "defence": 5,
+        "rng_bounds": [
+          20,
+          20
+        ],
+        "rng_values": [
+          18,
+          18
+        ],
+        "rng_state_after": 2524885223,
+        "distance": 1,
+        "damage": 30,
+        "cost_scale": 3,
+        "exact_hp_before": 30,
+        "exact_kill_bonus": 0,
+        "underkill_hp_before": 29,
+        "underkill_level": 4,
+        "underkill_attack_counter": 46,
+        "hurt_after": 3,
+        "poison_after": 4,
+        "fallback_vector": {
+          "allied_knowledge": 162,
+          "enemy_knowledge": 164,
+          "equipment_attack": 6,
+          "equipment_defence": 2,
+          "special_bonus": 3,
+          "rng_bounds": [
+            20,
+            20,
+            4,
+            4
+          ],
+          "rng_values": [
+            18,
+            18,
+            1,
+            3
+          ],
+          "rng_state_after": 3295386429,
+          "distance": 11,
+          "damage": 14
+        }
+      },
+      "mp_damage_vector": {
+        "rng_seed": 1,
+        "rng_bounds": [
+          3,
+          3,
+          10,
+          3,
+          3
+        ],
+        "rng_values": [
+          2,
+          1,
+          3,
+          1,
+          1
+        ],
+        "rng_state_after": 4182499122,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "actor_mp_after": 23,
+        "actor_max_mp_after": 23,
+        "target_mp_after": 35,
+        "drained": 15
       }
     },
     "pathing": {

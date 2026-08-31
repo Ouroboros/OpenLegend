@@ -48,6 +48,11 @@ struct BattleAttackProfile {
     std::int16_t need_mp{};
 };
 
+struct BattleHpDamageResult {
+    std::int16_t damage{};
+    std::int16_t cost_scale{};
+};
+
 enum class BattleOutcome {
     ongoing,
     defeat,
@@ -114,6 +119,18 @@ public:
         std::size_t slot,
         std::int16_t magic_slot,
         std::int16_t cost_scale,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleHpDamageResult> apply_hp_damage(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        std::int16_t magic_slot,
+        std::int16_t distance,
+        std::int16_t special_attack_bonus,
+        random::LegacyRandom& random);
+    [[nodiscard]] std::optional<std::int32_t> apply_mp_damage(
+        std::size_t actor_slot,
+        std::size_t target_slot,
+        std::int16_t magic_slot,
         random::LegacyRandom& random);
     [[nodiscard]] bool finish_attack(std::size_t slot);
 

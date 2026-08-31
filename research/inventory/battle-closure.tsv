@@ -54,8 +54,8 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 53	0x38910	sub_38910	battle_38910	0x38988	120	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 54	0x38999	sub_38999	battle_38999	0x38DAC	1043	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 55	0x38DAC	sub_38DAC	battle_38DAC	0x39188	988	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-56	0x39188	sub_39188	battle_39188	0x395EC	1124	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-57	0x395EC	sub_395EC	battle_395EC	0x39776	394	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+56	0x39188	sub_39188	battle_39188	0x395EC	1124	implemented_pending_review	battle	openlegend::battle::BattleSetup::apply_hp_damage	research/evidence/functions/Z_DAT/0x39188.md	cost scale, dual RNG, exact-zero kill bug, hurt/poison vectors; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
+57	0x395EC	sub_395EC	battle_395EC	0x39776	394	implemented_pending_review	battle	openlegend::battle::BattleSetup::apply_mp_damage	research/evidence/functions/Z_DAT/0x395EC.md	five-call RNG order and actor/target MP state vectors; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
 58	0x39776	sub_39776	battle_39776	0x397E5	111	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 59	0x397E5	sub_397E5	battle_397E5	0x39A45	608	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 60	0x39A45	sub_39A45	battle_39A45	0x39B1F	218	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
