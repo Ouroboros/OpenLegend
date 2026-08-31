@@ -13,6 +13,18 @@ from pathlib import Path
 
 WAR_RECORD_SIZE = 186
 FIGHT_PATTERN = re.compile(r"^FIGHT(?P<id>\d{3})\.IDX$", re.IGNORECASE)
+PATH_DIRECTIONS = ((0, -1), (1, 0), (-1, 0), (0, 1))
+BLOCKED_TILE_RANGES = (
+    (0x0166, 0x016A),
+    (0x0176, 0x017C),
+    (0x01CA, 0x01D0),
+    (0x01FA, 0x0262),
+    (0x0332, 0x0338),
+    (0x0346, 0x0346),
+    (0x03A6, 0x03A8),
+    (0x03F8, 0x03FE),
+    (0x052C, 0x0544),
+)
 
 
 def sha256(data: bytes) -> str:
@@ -48,6 +60,107 @@ def archive_record(index_path: Path, group_path: Path) -> dict[str, object]:
         "entry_sizes": [len(entry) for entry in entries],
         "entry_sha256": [sha256(entry) for entry in entries],
     }
+
+
+def fnv1a_words(words: list[int]) -> str:
+    value = 0xCBF29CE484222325
+    for word in words:
+        raw = word & 0xFFFF
+        for byte in (raw & 0xFF, raw >> 8):
+            value ^= byte
+            value = value * 0x100000001B3 & 0xFFFFFFFFFFFFFFFF
+    return f"0x{value:016x}"
+
+
+def legacy_path_index(x: int, y: int) -> int | None:
+    if x < 0 or y < 0 or x > 64 or y > 64:
+        return None
+    index = y * 64 + x
+    return index if 0 <= index < 4096 else None
+
+
+def build_path_map(
+    field_words: list[int],
+    source: tuple[int, int],
+    mode: str,
+    occupied: set[int] | None = None,
+) -> list[int]:
+    occupied = occupied or set()
+    values: list[int] = []
+    for index in range(4096):
+        upper_layer = field_words[4096 + index]
+        if mode == "targeting":
+            values.append(555 if upper_layer != 0 else 254)
+        else:
+            blocked_ground = any(
+                begin <= field_words[index] <= end for begin, end in BLOCKED_TILE_RANGES
+            )
+            values.append(
+                555 if upper_layer != 0 or index in occupied or blocked_ground else 254
+            )
+    source_index = legacy_path_index(*source)
+    if source_index is None:
+        raise ValueError(f"invalid path source {source}")
+    values[source_index] = 0
+
+    queue = [(0, 0)] * 255
+    queue[0] = (0, -1)
+    queue[1] = source
+    read_index = 0
+    write_index = 2
+    distance = 0
+
+    def enqueue(coordinate: tuple[int, int]) -> None:
+        nonlocal write_index
+        queue[write_index] = coordinate
+        write_index = (write_index + 1) % 255
+
+    def dequeue() -> tuple[int, int]:
+        nonlocal read_index
+        coordinate = queue[read_index]
+        read_index = (read_index + 1) % 255
+        return coordinate
+
+    while True:
+        current = dequeue()
+        if current[1] < 0:
+            distance = (distance + 1) % 128
+            enqueue((0, -1))
+            current = dequeue()
+            if current[1] < 0:
+                break
+        for dx, dy in PATH_DIRECTIONS:
+            next_coord = (current[0] + dx, current[1] + dy)
+            next_index = legacy_path_index(*next_coord)
+            if next_index is not None and values[next_index] == 254:
+                enqueue(next_coord)
+                values[next_index] = distance
+    return values
+
+
+def mark_path(values: list[int], source: tuple[int, int], target: tuple[int, int]) -> bool:
+    target_index = legacy_path_index(*target)
+    if target_index is None or not 0 <= values[target_index] < 254:
+        return False
+    current = target
+    distance = values[target_index]
+    values[target_index] = 250
+    for _ in range(4096):
+        if current == source:
+            return True
+        distance = (distance + 127) % 128
+        for dx, dy in PATH_DIRECTIONS:
+            previous = (current[0] + dx, current[1] + dy)
+            if not (0 <= previous[0] < 64 and 0 <= previous[1] < 64):
+                continue
+            previous_index = legacy_path_index(*previous)
+            if previous_index is not None and values[previous_index] == distance:
+                values[previous_index] = 250
+                current = previous
+                break
+        else:
+            return False
+    return False
 
 
 def battle_setup_record(battle_id: int, record: bytes) -> dict[str, object]:
@@ -163,9 +276,64 @@ def build(data_root: Path) -> dict[str, object]:
     if len(fight_packages) != 92:
         raise ValueError(f"expected 92 FIGHT packages, got {len(fight_packages)}")
 
+    warfld_index_bytes = (data_root / "WARFLD.IDX").read_bytes()
+    warfld_group_bytes = (data_root / "WARFLD.GRP").read_bytes()
+    warfld_entries = cumulative_entries(warfld_index_bytes, warfld_group_bytes)
     warfld = archive_record(data_root / "WARFLD.IDX", data_root / "WARFLD.GRP")
     if warfld["entry_count"] != 26:
         raise ValueError(f"expected 26 WARFLD entries, got {warfld['entry_count']}")
+
+    pathing_records: list[dict[str, object]] = []
+    for battle_id in (0, 93):
+        setup = setup_records[battle_id]
+        party = next(
+            write for write in setup["static_occupancy_writes"] if write["side"] == "party"
+        )
+        enemy = next(
+            write for write in setup["static_occupancy_writes"] if write["side"] == "enemy"
+        )
+        source = (int(party["x"]), int(party["y"]))
+        target = (int(enemy["x"]), int(enemy["y"]))
+        field_bytes = warfld_entries[int(setup["battlefield_id"])][:16384]
+        field_words = list(struct.unpack("<8192h", field_bytes))
+        movement = build_path_map(field_words, source, "movement")
+        occupied_coordinate = (source[0] + 1, source[1])
+        movement_occupied = build_path_map(
+            field_words,
+            source,
+            "movement",
+            {occupied_coordinate[1] * 64 + occupied_coordinate[0]},
+        )
+        targeting = build_path_map(field_words, source, "targeting")
+        targeting_before_mark = fnv1a_words(targeting)
+        path_marked = mark_path(targeting, source, target)
+        first_marked_step = next(
+            (
+                [source[0] + dx, source[1] + dy]
+                for dx, dy in PATH_DIRECTIONS
+                if 0 <= source[0] + dx < 64
+                and 0 <= source[1] + dy < 64
+                and targeting[(source[1] + dy) * 64 + source[0] + dx] == 250
+            ),
+            None,
+        )
+        pathing_records.append(
+            {
+                "battle_id": battle_id,
+                "source": list(source),
+                "target": list(target),
+                "movement_hash": fnv1a_words(movement),
+                "occupied_coordinate": list(occupied_coordinate),
+                "movement_occupied_hash": fnv1a_words(movement_occupied),
+                "targeting_hash": targeting_before_mark,
+                "targeting_marked": path_marked,
+                "targeting_marked_hash": fnv1a_words(targeting),
+                "first_marked_step": first_marked_step,
+                "target_distance": build_path_map(field_words, source, "targeting")[
+                    target[1] * 64 + target[0]
+                ],
+            }
+        )
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
@@ -225,6 +393,17 @@ def build(data_root: Path) -> dict[str, object]:
                 "no_enemy_alive": 2,
                 "both_empty": 2,
                 "public_return": "raw_result - 1",
+            },
+            "pathing": {
+                "directions": [[0, -1], [1, 0], [-1, 0], [0, 1]],
+                "blocked_tile_ranges": [list(value) for value in BLOCKED_TILE_RANGES],
+                "unvisited": 254,
+                "blocked": 555,
+                "marked": 250,
+                "consumed": 255,
+                "queue_slots": 255,
+                "distance_modulus": 128,
+                "records": pathing_records,
             },
             "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",
             "selection_states": {

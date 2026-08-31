@@ -324,6 +324,122 @@
       "both_empty": 2,
       "public_return": "raw_result - 1"
     },
+    "pathing": {
+      "directions": [
+        [
+          0,
+          -1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "blocked_tile_ranges": [
+        [
+          358,
+          362
+        ],
+        [
+          374,
+          380
+        ],
+        [
+          458,
+          464
+        ],
+        [
+          506,
+          610
+        ],
+        [
+          818,
+          824
+        ],
+        [
+          838,
+          838
+        ],
+        [
+          934,
+          936
+        ],
+        [
+          1016,
+          1022
+        ],
+        [
+          1324,
+          1348
+        ]
+      ],
+      "unvisited": 254,
+      "blocked": 555,
+      "marked": 250,
+      "consumed": 255,
+      "queue_slots": 255,
+      "distance_modulus": 128,
+      "records": [
+        {
+          "battle_id": 0,
+          "source": [
+            32,
+            20
+          ],
+          "target": [
+            21,
+            23
+          ],
+          "movement_hash": "0x773478cb5fde310d",
+          "occupied_coordinate": [
+            33,
+            20
+          ],
+          "movement_occupied_hash": "0x8b3c54e9cbef5eff",
+          "targeting_hash": "0x773478cb5fde310d",
+          "targeting_marked": true,
+          "targeting_marked_hash": "0x3555eec69bfdbfc0",
+          "first_marked_step": [
+            31,
+            20
+          ],
+          "target_distance": 14
+        },
+        {
+          "battle_id": 93,
+          "source": [
+            34,
+            29
+          ],
+          "target": [
+            12,
+            29
+          ],
+          "movement_hash": "0xc4e9944b25f2c2bb",
+          "occupied_coordinate": [
+            35,
+            29
+          ],
+          "movement_occupied_hash": "0x407e0a6bb5fd7397",
+          "targeting_hash": "0xc4e9944b25f2c2bb",
+          "targeting_marked": true,
+          "targeting_marked_hash": "0x6760d37356a2b33a",
+          "first_marked_step": [
+            33,
+            29
+          ],
+          "target_distance": 22
+        }
+      ]
+    },
     "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",
     "selection_states": {
       "unselected": 0,

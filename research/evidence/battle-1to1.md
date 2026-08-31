@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前71项为 `pending_mapping`、5项为 `pending_implementation`、5项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前61项为 `pending_mapping`、5项为 `pending_implementation`、15项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `dde9e1c1b3fb1b92355464fff7ac4fac1e0767d4a21990fbefbff012b8b9ddcd`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `6ef997bdb4a3ca13aa3170e30b46ef28af0c5b997bcb0b89c162a9c699d63cf7`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -77,3 +77,14 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 - hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
 
 真实 Big5 菜单固定为「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」，可用门槛和 ordinal cursor 见 `0x32E59.md`。`sub_32A51/sub_32B78` 已为 `implemented_pending_review`；顶层 render/turn dispatch/tick wait、十项动作、结果 panel/按键/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_3B238` 保持 `pending_implementation`。
+
+## 8. 战场路径图与最短路回溯
+
+`sub_36E06..sub_37245` 的十个 path 单元已映射为 `BattlePathing`：
+
+- movement 图把 upper layer非0、occupancy非-1或 ground tile 命中9段 IDA 常量的格写555，其余写254；targeting 图只检查 upper layer；source 随后强制写0；
+- 原255槽环形队列保留 `(0,-1)` sentinel、distance `%128` 和上→右→左→下扩展顺序，没有替换为无界 queue；
+- 回溯从 target 开始写250，每层用 `(distance+127)%128` 并按同一方向顺序选择首个前驱；消费标记255由后续移动单元使用；
+- `sub_37070` 的坐标比较允许64，现代仅保留线性 index仍在0..4095的别名，index>=4096安全拒绝；不可达回溯返回false而不进入原死循环。
+
+独立 oracle 固定 battle0/93 空 occupancy、单格占位、target距离14/22、回溯前后完整 FNV-1a 与首步 `(31,20)/(33,29)`；Linux Debug 14/14。十项均为 `implemented_pending_review`，实际 `sub_37355` 逐格移动、occupancy/sprite/体力/行动值和 render/present 尚未实现。

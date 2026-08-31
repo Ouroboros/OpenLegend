@@ -37,16 +37,16 @@ audit_order	address	name	research_name	function_end	size	closure_status	target_o
 36	0x3650E	sub_3650E	battle_3650E	0x36A98	1418	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 37	0x36A98	sub_36A98	battle_36A98	0x36AF7	95	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 38	0x36AF7	sub_36AF7	battle_36AF7	0x36E06	783	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-39	0x36E06	sub_36E06	battle_36E06	0x36E7F	121	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-40	0x36E7F	sub_36E7F	battle_36E7F	0x36EF8	121	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-41	0x36EF8	sub_36EF8	battle_36EF8	0x36FF9	257	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-42	0x36FF9	sub_36FF9	battle_36FF9	0x37070	119	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-43	0x37070	sub_37070	battle_37070	0x37166	246	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-44	0x37166	sub_37166	battle_37166	0x371AE	72	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-45	0x371AE	sub_371AE	battle_371AE	0x371F7	73	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-46	0x371F7	sub_371F7	battle_371F7	0x3721E	39	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-47	0x3721E	sub_3721E	battle_3721E	0x37245	39	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-48	0x37245	sub_37245	battle_37245	0x37355	272	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+39	0x36E06	sub_36E06	battle_36E06	0x36E7F	121	implemented_pending_review	battle	openlegend::battle::BattlePathing::build(movement)	research/evidence/functions/Z_DAT/0x36E06.md	battle0/93 path hashes and occupied-cell vectors; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
+40	0x36E7F	sub_36E7F	battle_36E7F	0x36EF8	121	implemented_pending_review	battle	openlegend::battle::BattlePathing::build(targeting)	research/evidence/functions/Z_DAT/0x36E7F.md	battle0/93 target distances and path hashes; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
+41	0x36EF8	sub_36EF8	battle_36EF8	0x36FF9	257	implemented_pending_review	battle	openlegend::battle::BattlePathing::initialize(movement)	research/evidence/functions/Z_DAT/0x36EF8.md	nine IDA data-segment tile ranges and occupancy vector	not_started	complete final assembly-to-C++ review
+42	0x36FF9	sub_36FF9	battle_36FF9	0x37070	119	implemented_pending_review	battle	openlegend::battle::BattlePathing::initialize(targeting)	research/evidence/functions/Z_DAT/0x36FF9.md	upper-layer-only real field hashes	not_started	complete final assembly-to-C++ review
+43	0x37070	sub_37070	battle_37070	0x37166	246	implemented_pending_review	battle	openlegend::battle::BattlePathing::build flood step	research/evidence/functions/Z_DAT/0x37070.md	255-slot sentinel queue and full-map hashes	not_started	complete final assembly-to-C++ review
+44	0x37166	sub_37166	battle_37166	0x371AE	72	implemented_pending_review	battle	openlegend::battle::BattlePathing dequeue	research/evidence/functions/Z_DAT/0x37166.md	255-slot modulo queue	not_started	complete final assembly-to-C++ review
+45	0x371AE	sub_371AE	battle_371AE	0x371F7	73	implemented_pending_review	battle	openlegend::battle::BattlePathing enqueue	research/evidence/functions/Z_DAT/0x371AE.md	255-slot modulo queue	not_started	complete final assembly-to-C++ review
+46	0x371F7	sub_371F7	battle_371F7	0x3721E	39	implemented_pending_review	battle	openlegend::battle::BattlePathing path write	research/evidence/functions/Z_DAT/0x371F7.md	legacy linear index vectors	not_started	complete final assembly-to-C++ review
+47	0x3721E	sub_3721E	battle_3721E	0x37245	39	implemented_pending_review	battle	openlegend::battle::BattlePathing::value	research/evidence/functions/Z_DAT/0x3721E.md	legacy linear index vectors	not_started	complete final assembly-to-C++ review
+48	0x37245	sub_37245	battle_37245	0x37355	272	implemented_pending_review	battle	openlegend::battle::BattlePathing::mark_shortest_path	research/evidence/functions/Z_DAT/0x37245.md	battle0/93 marked hashes and first-step vectors; Linux Debug 14/14	not_started	complete final assembly-to-C++ review
 49	0x37355	sub_37355	battle_37355	0x37734	991	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 50	0x37734	sub_37734	battle_37734	0x3859E	3690	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 51	0x3859E	sub_3859E	battle_3859E	0x3884A	684	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

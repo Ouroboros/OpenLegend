@@ -5,6 +5,7 @@
 #include <span>
 
 #include "openlegend/battle/battle_data.hpp"
+#include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/resource/binary_file.hpp"
@@ -54,6 +55,74 @@ void run_real_asset_fixtures(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(std::ranges::all_of(data.occupancy(), [](const std::int16_t value) {
             return value == -1;
         }));
+    }
+}
+
+void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    struct Fixture {
+        std::int16_t battle_id;
+        BattlePathCoord source;
+        BattlePathCoord target;
+        BattlePathCoord occupied;
+        BattlePathCoord first_step;
+        std::int16_t target_distance;
+        std::uint64_t movement_hash;
+        std::uint64_t occupied_hash;
+        std::uint64_t targeting_hash;
+        std::uint64_t marked_hash;
+    };
+    constexpr std::array fixtures{
+        Fixture{
+            0,
+            {32, 20},
+            {21, 23},
+            {33, 20},
+            {31, 20},
+            14,
+            0x773478cb5fde310dULL,
+            0x8b3c54e9cbef5effULL,
+            0x773478cb5fde310dULL,
+            0x3555eec69bfdbfc0ULL,
+        },
+        Fixture{
+            93,
+            {34, 29},
+            {12, 29},
+            {35, 29},
+            {33, 29},
+            22,
+            0xc4e9944b25f2c2bbULL,
+            0x407e0a6bb5fd7397ULL,
+            0xc4e9944b25f2c2bbULL,
+            0x6760d37356a2b33aULL,
+        },
+    };
+
+    for (const auto& fixture : fixtures) {
+        BattleData data{data_root, fixture.battle_id};
+        OL_CHECK(data.valid());
+        std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+        BattlePathing pathing{data};
+
+        pathing.build(fixture.source, BattlePathMode::movement);
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.movement_hash);
+
+        const auto occupied_index = static_cast<std::size_t>(fixture.occupied.y) * 64U +
+            static_cast<std::size_t>(fixture.occupied.x);
+        data.occupancy()[occupied_index] = 7;
+        pathing.build(fixture.source, BattlePathMode::movement);
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.occupied_hash);
+        OL_CHECK(pathing.value(fixture.occupied) == kBattlePathBlocked);
+
+        pathing.build(fixture.source, BattlePathMode::targeting);
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
+        OL_CHECK(pathing.value(fixture.target) == fixture.target_distance);
+        OL_CHECK(pathing.mark_shortest_path(fixture.source, fixture.target));
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.marked_hash);
+        OL_CHECK(pathing.next_marked_step(fixture.source) == fixture.first_step);
+        pathing.consume(fixture.source);
+        OL_CHECK(pathing.value(fixture.source) == kBattlePathConsumed);
     }
 }
 
@@ -254,6 +323,7 @@ int main() {
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
     run_real_asset_fixtures(data_root);
+    run_pathing_tests(data_root);
     run_party_selection_test(data_root);
     run_fixed_and_duplicate_tests(data_root);
     run_turn_order_test(data_root);

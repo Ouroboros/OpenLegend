@@ -1,4 +1,4 @@
-add_library(openlegend_battle STATIC battle_data.cpp battle_setup.cpp)
+add_library(openlegend_battle STATIC battle_data.cpp battle_pathing.cpp battle_setup.cpp)
 target_include_directories(
     openlegend_battle
     PUBLIC
