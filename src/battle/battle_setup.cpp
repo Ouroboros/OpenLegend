@@ -296,6 +296,101 @@ BattleOutcome BattleSetup::evaluate_outcome() {
     return outcome;
 }
 
+std::optional<BattlePathCoord> BattleSetup::move_one_marked_step(
+    BattlePathing& pathing, const std::size_t slot) {
+    if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    auto& words = combatants_[slot].words;
+    const BattlePathCoord current{
+        words[combatant_word::x],
+        words[combatant_word::y],
+    };
+    const auto next = pathing.next_marked_step(current);
+    if (!next) {
+        return std::nullopt;
+    }
+
+    pathing.consume(current);
+    const auto current_index = static_cast<std::size_t>(current.y) * kBattleExtent +
+        static_cast<std::size_t>(current.x);
+    const auto next_index = static_cast<std::size_t>(next->y) * kBattleExtent +
+        static_cast<std::size_t>(next->x);
+    data_.occupancy()[current_index] = -1;
+    data_.occupancy()[next_index] = static_cast<std::int16_t>(slot);
+    words[combatant_word::x] = next->x;
+    words[combatant_word::y] = next->y;
+
+    std::int16_t direction = 3;
+    if (next->y < current.y) {
+        direction = 0;
+    } else if (next->x > current.x) {
+        direction = 1;
+    } else if (next->x < current.x) {
+        direction = 2;
+    }
+    words[combatant_word::initial_mode] = direction;
+
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "battle movement role id is outside ranger records";
+        return std::nullopt;
+    }
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    words[combatant_word::sprite] = sprite_word(role_id, direction);
+    const auto speed_step = static_cast<std::int16_t>(role.word(model::role_word::speed) / 10);
+    if (words[combatant_word::round_value] == speed_step) {
+        auto physical_power = wrapping_i16(
+            static_cast<std::int32_t>(role.word(model::role_word::physical_power)) - 1);
+        if (physical_power < 0) {
+            physical_power = 0;
+        }
+        role.set_word(model::role_word::physical_power, physical_power);
+    }
+    words[combatant_word::round_value] = wrapping_i16(
+        static_cast<std::int32_t>(words[combatant_word::round_value]) - 1);
+    return next;
+}
+
+bool BattleSetup::movement_should_stop(
+    const std::size_t slot,
+    const BattlePathCoord destination,
+    const std::size_t target_slot,
+    const BattleMovementStopRule rule,
+    const std::int16_t range) const noexcept {
+    if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
+        return true;
+    }
+    const auto& actor = combatants_[slot].words;
+    if (actor[combatant_word::x] == destination.x &&
+        actor[combatant_word::y] == destination.y) {
+        return true;
+    }
+    if (rule == BattleMovementStopRule::destination) {
+        return false;
+    }
+    if (actor[combatant_word::round_value] <= 0 ||
+        target_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return true;
+    }
+
+    const auto& target = combatants_[target_slot].words;
+    const auto x_difference = static_cast<std::int32_t>(target[combatant_word::x]) -
+        actor[combatant_word::x];
+    const auto y_difference = static_cast<std::int32_t>(target[combatant_word::y]) -
+        actor[combatant_word::y];
+    const auto distance = (x_difference < 0 ? -x_difference : x_difference) +
+        (y_difference < 0 ? -y_difference : y_difference);
+    if (distance > range) {
+        return false;
+    }
+    if (rule == BattleMovementStopRule::in_range) {
+        return true;
+    }
+    return actor[combatant_word::x] == target[combatant_word::x] ||
+        actor[combatant_word::y] == target[combatant_word::y];
+}
+
 PartySelectionResult BattleSetup::apply(const PartySelectionAction action) {
     if (!valid()) {
         return PartySelectionResult::invalid;

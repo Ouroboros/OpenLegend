@@ -387,6 +387,40 @@
       "consumed": 255,
       "queue_slots": 255,
       "distance_modulus": 128,
+      "movement_step": {
+        "source": [
+          32,
+          20
+        ],
+        "marked_first_steps": [
+          [
+            31,
+            20
+          ],
+          [
+            30,
+            20
+          ]
+        ],
+        "slot": 0,
+        "role_head_word": 0,
+        "role_speed": 50,
+        "physical_power_before": 1,
+        "round_value_before": 5,
+        "first_direction": 2,
+        "first_sprite": 5110,
+        "physical_power_after_first": 0,
+        "round_value_after_first": 4,
+        "round_value_after_second": 3,
+        "stop_vectors": {
+          "destination_equal": true,
+          "destination_different": false,
+          "manhattan_13_in_range": true,
+          "manhattan_13_aligned": false,
+          "round_value_zero": true
+        },
+        "consumed_value": 255
+      },
       "records": [
         {
           "battle_id": 0,

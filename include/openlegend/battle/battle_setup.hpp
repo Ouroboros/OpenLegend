@@ -3,10 +3,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 
 #include "openlegend/battle/battle_data.hpp"
+#include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 
 namespace openlegend::battle {
@@ -35,6 +37,12 @@ enum class BattleOutcome {
     ongoing,
     defeat,
     victory,
+};
+
+enum class BattleMovementStopRule {
+    destination,
+    in_range,
+    aligned_in_range,
 };
 
 enum class PartySelectionAction {
@@ -74,6 +82,14 @@ public:
     [[nodiscard]] bool sort_by_effective_speed();
     [[nodiscard]] bool prepare_round();
     [[nodiscard]] BattleOutcome evaluate_outcome();
+    [[nodiscard]] std::optional<BattlePathCoord> move_one_marked_step(
+        BattlePathing& pathing, std::size_t slot);
+    [[nodiscard]] bool movement_should_stop(
+        std::size_t slot,
+        BattlePathCoord destination,
+        std::size_t target_slot,
+        BattleMovementStopRule rule,
+        std::int16_t range) const noexcept;
 
 private:
     void initialize_combatants();

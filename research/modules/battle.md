@@ -35,7 +35,7 @@
 2. `sub_31C75`：资源生命周期、主状态机调用和返回码边界；
 3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；后者完整待 REVIEW，前者仍缺原选择框绘制/呈现/input flag 基本块；
 4. `sub_3271E..sub_32E59` 已恢复：稳定速度降序、逐槽 swap 与回合值已实现；顶层 render/tick/分派及十项「移動/攻擊/用毒/解毒/醫療/物品/等待/狀態/休息/自動」菜单仍待实现；
-5. `sub_33599..sub_37734`：AI selector 已恢复；其中 `sub_36E06..sub_37245` 的移动/目标阻挡图、255槽分层 BFS 与最短路250标记已实现，实际逐格移动/呈现、攻击、伤害、状态与物品仍待实现；
+5. `sub_33599..sub_37734`：AI selector 已恢复；`sub_36E06..sub_37245` 路径图/回溯已实现，`sub_37355` 逐格 state mutation 与停止规则已实现但 render/present/tick continuation 待补；攻击、伤害、状态与物品仍待实现；
 6. `sub_3859E..sub_3A8A4`：动画、效果、数值提示与战后状态；
 7. `sub_3AA17..sub_3C6D3`：绘制、菜单/信息与共享显示边界；
 8. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
@@ -50,6 +50,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：61项 `pending_mapping`、5项 `pending_implementation`、15项 `implemented_pending_review`，0项最终关闭。
+- `battle-closure.tsv`：60项 `pending_mapping`、6项 `pending_implementation`、15项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
-- 下一停点：实现 `sub_37355` 沿250标记逐格移动、occupancy/sprite/physical-power/action-point 更新核心；render/present continuation 保持显式待实现。
+- 下一停点：恢复 `sub_37734` 武功攻击入口、十槽选择/等级、目标距离与第一次伤害提交边界；不把完整动画链提前合并。

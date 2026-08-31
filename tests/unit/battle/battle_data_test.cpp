@@ -146,6 +146,56 @@ openlegend::model::RangerState make_ranger(
     return ranger;
 }
 
+void run_movement_step_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    ranger.roles[0U].set_word(openlegend::model::role_word::speed, 50);
+    ranger.roles[0U].set_word(openlegend::model::role_word::physical_power, 1);
+    BattleData data{data_root, 0};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.apply(PartySelectionAction::previous) == PartySelectionResult::changed);
+    OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+
+    auto& actor = setup.combatants()[0U].words;
+    actor[combatant_word::initial_mode] = 3;
+    actor[combatant_word::sprite] = 5112;
+    actor[combatant_word::round_value] = 5;
+    BattlePathing pathing{data};
+    const BattlePathCoord source{32, 20};
+    const BattlePathCoord target{21, 23};
+    pathing.build(source, BattlePathMode::targeting);
+    OL_CHECK(pathing.mark_shortest_path(source, target));
+
+    OL_CHECK((setup.move_one_marked_step(pathing, 0U) == BattlePathCoord{31, 20}));
+    OL_CHECK(pathing.value(source) == kBattlePathConsumed);
+    OL_CHECK(data.occupancy()[20U * 64U + 32U] == -1);
+    OL_CHECK(data.occupancy()[20U * 64U + 31U] == 0);
+    OL_CHECK(actor[combatant_word::x] == 31);
+    OL_CHECK(actor[combatant_word::y] == 20);
+    OL_CHECK(actor[combatant_word::initial_mode] == 2);
+    OL_CHECK(actor[combatant_word::sprite] == 5110);
+    OL_CHECK(actor[combatant_word::round_value] == 4);
+    OL_CHECK(ranger.roles[0U].word(openlegend::model::role_word::physical_power) == 0);
+    OL_CHECK(setup.movement_should_stop(
+        0U, BattlePathCoord{31, 20}, 1U, BattleMovementStopRule::destination, 0));
+    OL_CHECK(!setup.movement_should_stop(
+        0U, target, 1U, BattleMovementStopRule::destination, 0));
+    OL_CHECK(setup.movement_should_stop(
+        0U, target, 1U, BattleMovementStopRule::in_range, 13));
+    OL_CHECK(!setup.movement_should_stop(
+        0U, target, 1U, BattleMovementStopRule::aligned_in_range, 13));
+
+    OL_CHECK((setup.move_one_marked_step(pathing, 0U) == BattlePathCoord{30, 20}));
+    OL_CHECK(pathing.value(BattlePathCoord{31, 20}) == kBattlePathConsumed);
+    OL_CHECK(data.occupancy()[20U * 64U + 31U] == -1);
+    OL_CHECK(data.occupancy()[20U * 64U + 30U] == 0);
+    OL_CHECK(actor[combatant_word::round_value] == 3);
+    OL_CHECK(ranger.roles[0U].word(openlegend::model::role_word::physical_power) == 0);
+    actor[combatant_word::round_value] = 0;
+    OL_CHECK(setup.movement_should_stop(
+        0U, target, 1U, BattleMovementStopRule::aligned_in_range, 0));
+}
+
 void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -324,6 +374,7 @@ int main() {
     const openlegend::resource::DataRoot data_root{root};
     run_real_asset_fixtures(data_root);
     run_pathing_tests(data_root);
+    run_movement_step_test(data_root);
     run_party_selection_test(data_root);
     run_fixed_and_duplicate_tests(data_root);
     run_turn_order_test(data_root);
