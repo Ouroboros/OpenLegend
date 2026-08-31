@@ -12,6 +12,8 @@ from pathlib import Path
 
 
 WAR_RECORD_SIZE = 186
+Z_DAT_EFFECT_FRAME_COUNTS_OFFSET = 324_814
+EFFECT_FRAME_COUNT = 53
 FIGHT_PATTERN = re.compile(r"^FIGHT(?P<id>\d{3})\.IDX$", re.IGNORECASE)
 PATH_DIRECTIONS = ((0, -1), (1, 0), (-1, 0), (0, 1))
 BLOCKED_TILE_RANGES = (
@@ -70,6 +72,100 @@ def fnv1a_words(words: list[int]) -> str:
             value ^= byte
             value = value * 0x100000001B3 & 0xFFFFFFFFFFFFFFFF
     return f"0x{value:016x}"
+
+
+def wrapping_i16(value: int) -> int:
+    value &= 0xFFFF
+    return value - 0x10000 if value >= 0x8000 else value
+
+
+def animation_vectors(effect_counts: list[int]) -> dict[str, object]:
+    magic_type = 2
+    actor_frame_count = 4
+    effect_start = 2
+    magic_dispatch_frame = 4
+    total_frames = 19
+    sprite_base = 100 + 4 * (2 + 3)
+    direction = 1
+    sprite = 0
+    effect_frame = -2 + 2 * sum(effect_counts[:2])
+    effect_visible = False
+    effect_dispatched = False
+    magic_dispatched = False
+    magic_words: list[int] = []
+    for frame in range(total_frames):
+        sprite_updated = frame < actor_frame_count
+        if sprite_updated:
+            sprite = wrapping_i16(
+                2 * actor_frame_count * direction + 2 * sprite_base + 2 * frame
+            )
+        dispatch_effect = False
+        if frame >= effect_start:
+            effect_visible = True
+            effect_frame = wrapping_i16(effect_frame + 2)
+            if not effect_dispatched:
+                effect_dispatched = True
+                dispatch_effect = True
+        dispatch_magic = False
+        if frame >= magic_dispatch_frame and not magic_dispatched:
+            magic_dispatched = True
+            dispatch_magic = True
+        magic_words.extend(
+            [
+                sprite,
+                effect_frame,
+                17,
+                int(sprite_updated),
+                int(effect_visible),
+                int(dispatch_magic),
+                int(dispatch_effect),
+            ]
+        )
+
+    standalone_words: list[int] = []
+    standalone_frame = 2 * sum(effect_counts[:2])
+    for _ in range(effect_counts[2]):
+        standalone_words.extend([standalone_frame, 17, 1])
+        standalone_frame = wrapping_i16(standalone_frame + 2)
+
+    damage_words: list[int] = []
+    suppressed_words: list[int] = []
+    for frame in range(10):
+        damage_words.extend([frame, 1, int(frame < 4)])
+        suppressed_words.extend([frame, 1, 0])
+    return {
+        "magic": {
+            "magic_type": magic_type,
+            "effect_id": 2,
+            "fight_frame_count": 100,
+            "direction": direction,
+            "actor_frame_count": actor_frame_count,
+            "effect_start_frame": effect_start,
+            "magic_dispatch_frame": magic_dispatch_frame,
+            "frame_count": total_frames,
+            "first_sprite": 248,
+            "last_sprite": 254,
+            "first_effect_frame": 48,
+            "last_effect_frame": 80,
+            "frame_hash": fnv1a_words(magic_words),
+        },
+        "standalone_effect": {
+            "effect_id": 2,
+            "magic_sample_id": 13,
+            "prelude_wait_ticks": 100,
+            "frame_count": effect_counts[2],
+            "first_effect_frame": 48,
+            "last_effect_frame": 80,
+            "frame_hash": fnv1a_words(standalone_words),
+        },
+        "damage_display": {
+            "frame_count": 10,
+            "wait_ticks": 1,
+            "flash_frames": [0, 1, 2, 3],
+            "frame_hash": fnv1a_words(damage_words),
+            "suppressed_hash": fnv1a_words(suppressed_words),
+        },
+    }
 
 
 def legacy_path_index(x: int, y: int) -> int | None:
@@ -240,6 +336,24 @@ def battle_setup_record(battle_id: int, record: bytes) -> dict[str, object]:
 
 
 def build(data_root: Path) -> dict[str, object]:
+    z_dat_bytes = (data_root / "Z.DAT").read_bytes()
+    effect_end = Z_DAT_EFFECT_FRAME_COUNTS_OFFSET + EFFECT_FRAME_COUNT * 2
+    if effect_end > len(z_dat_bytes):
+        raise ValueError("Z.DAT does not contain the battle effect frame-count table")
+    effect_table_bytes = z_dat_bytes[Z_DAT_EFFECT_FRAME_COUNTS_OFFSET:effect_end]
+    effect_counts = list(struct.unpack(f"<{EFFECT_FRAME_COUNT}h", effect_table_bytes))
+    if any(value <= 0 for value in effect_counts):
+        raise ValueError("battle effect frame-count table contains a non-positive value")
+
+    ranger_group_bytes = (data_root / "RANGER.GRP").read_bytes()
+    magic_bytes = ranger_group_bytes[101_444:114_092]
+    if len(magic_bytes) != 93 * 136:
+        raise ValueError("RANGER.GRP does not contain 93 complete magic records")
+    magic_effect_ids = [
+        struct.unpack_from("<h", magic_bytes, index * 136 + 13 * 2)[0]
+        for index in range(93)
+    ]
+
     war_bytes = (data_root / "WAR.STA").read_bytes()
     if len(war_bytes) % WAR_RECORD_SIZE != 0:
         raise ValueError("WAR.STA is not a whole number of 186-byte records")
@@ -521,6 +635,22 @@ def build(data_root: Path) -> dict[str, object]:
                         "damage": 29,
                         "effect_kind": 1,
                     },
+                },
+                "animation": {
+                    "effect_frame_table": {
+                        "z_dat_file_offset": Z_DAT_EFFECT_FRAME_COUNTS_OFFSET,
+                        "entry_count": len(effect_counts),
+                        "bytes_sha256": sha256(effect_table_bytes),
+                        "word_hash": fnv1a_words(effect_counts),
+                        "values": effect_counts,
+                    },
+                    "ranger_magic_effect_ids": {
+                        "record_count": len(magic_effect_ids),
+                        "minimum": min(magic_effect_ids),
+                        "maximum": max(magic_effect_ids),
+                        "unique": sorted(set(magic_effect_ids)),
+                    },
+                    "vectors": animation_vectors(effect_counts),
                 },
             },
             "pathing": {

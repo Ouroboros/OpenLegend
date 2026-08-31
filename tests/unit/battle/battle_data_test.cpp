@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <span>
+#include <vector>
 
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
@@ -249,6 +250,115 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 4);
     OL_CHECK(setup.finish_attack(0U));
     OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 0);
+}
+
+void run_attack_animation_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& actor = ranger.roles[1U];
+    actor.set_word(openlegend::model::role_word::head_id, 9);
+    actor.set_word(openlegend::model::role_word::magic_id_begin + 2U, 5);
+    actor.set_word(openlegend::model::role_word::magic_level_begin + 2U, 200);
+    actor.set_word(openlegend::model::role_word::frame_begin, 2);
+    actor.set_word(openlegend::model::role_word::frame_begin + 1U, 3);
+    actor.set_word(openlegend::model::role_word::frame_begin + 2U, 4);
+    actor.set_word(openlegend::model::role_word::frame_begin + 5U + 2U, 3);
+    actor.set_word(openlegend::model::role_word::frame_begin + 10U + 2U, 5);
+    auto& magic = ranger.magics[5U];
+    magic.set_word(openlegend::model::magic_word::sound_id, 7);
+    magic.set_word(openlegend::model::magic_word::magic_type, 2);
+    magic.set_word(openlegend::model::magic_word::effect_id, 2);
+
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger};
+    OL_CHECK(setup.valid());
+    setup.combatants()[0U].words[combatant_word::initial_mode] = 1;
+    setup.combatants()[0U].words[combatant_word::sprite] = 5110;
+    const auto plan = setup.magic_animation_plan(0U, 2, 100);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->fight_head_id == 9);
+    OL_CHECK(plan->magic_sample_id == 7);
+    OL_CHECK(plan->effect_sample_id == 2);
+    OL_CHECK(plan->clear_effect_after_frames);
+    OL_CHECK(plan->frames.size() == 19U);
+    OL_CHECK(plan->frames[0U].actor_sprite == 248);
+    OL_CHECK(plan->frames[0U].effect_frame == 46);
+    OL_CHECK(plan->frames[0U].actor_sprite_updated);
+    OL_CHECK(!plan->frames[0U].effect_visible);
+    OL_CHECK(plan->frames[2U].actor_sprite == 252);
+    OL_CHECK(plan->frames[2U].effect_frame == 48);
+    OL_CHECK(plan->frames[2U].dispatch_effect_sample);
+    OL_CHECK(plan->frames[4U].actor_sprite == 254);
+    OL_CHECK(!plan->frames[4U].actor_sprite_updated);
+    OL_CHECK(plan->frames[4U].dispatch_magic_sample);
+    OL_CHECK(plan->frames.back().effect_frame == 80);
+    OL_CHECK(std::ranges::count_if(plan->frames, [](const auto& frame) {
+                 return frame.actor_sprite_updated;
+             }) == 4);
+    OL_CHECK(std::ranges::count_if(plan->frames, [](const auto& frame) {
+                 return frame.effect_visible;
+             }) == 17);
+    OL_CHECK(std::ranges::count_if(plan->frames, [](const auto& frame) {
+                 return frame.dispatch_magic_sample;
+             }) == 1);
+    OL_CHECK(std::ranges::count_if(plan->frames, [](const auto& frame) {
+                 return frame.dispatch_effect_sample;
+             }) == 1);
+    std::vector<std::int16_t> magic_words;
+    for (const auto& frame : plan->frames) {
+        magic_words.insert(
+            magic_words.end(),
+            {frame.actor_sprite,
+             frame.effect_frame,
+             frame.wait_ticks,
+             static_cast<std::int16_t>(frame.actor_sprite_updated),
+             static_cast<std::int16_t>(frame.effect_visible),
+             static_cast<std::int16_t>(frame.dispatch_magic_sample),
+             static_cast<std::int16_t>(frame.dispatch_effect_sample)});
+    }
+    OL_CHECK(fnv1a_words(magic_words) == 0x5aaffbb1d5697a73ULL);
+
+    const auto effect = BattleSetup::effect_animation_plan(2);
+    OL_CHECK(effect.has_value());
+    OL_CHECK(effect->magic_sample_id == 13);
+    OL_CHECK(effect->effect_sample_id == 2);
+    OL_CHECK(effect->prelude_wait_ticks == 100);
+    OL_CHECK(effect->dispatch_magic_before_prelude);
+    OL_CHECK(effect->dispatch_effect_after_prelude);
+    OL_CHECK(effect->clear_effect_after_frames);
+    OL_CHECK(effect->frames.size() == 17U);
+    OL_CHECK(effect->frames.front().effect_frame == 48);
+    OL_CHECK(effect->frames.back().effect_frame == 80);
+    std::vector<std::int16_t> effect_words;
+    for (const auto& frame : effect->frames) {
+        effect_words.insert(
+            effect_words.end(),
+            {frame.effect_frame,
+             frame.wait_ticks,
+             static_cast<std::int16_t>(frame.effect_visible)});
+    }
+    OL_CHECK(fnv1a_words(effect_words) == 0x2b5c87d8e0c754d5ULL);
+    OL_CHECK(!BattleSetup::effect_animation_plan(53).has_value());
+
+    const auto damage = BattleSetup::damage_animation_frames(false);
+    std::vector<std::int16_t> damage_words;
+    for (const auto& frame : damage) {
+        damage_words.insert(
+            damage_words.end(),
+            {frame.phase, frame.wait_ticks, static_cast<std::int16_t>(frame.flash)});
+    }
+    OL_CHECK(fnv1a_words(damage_words) == 0x364953a2c8f42144ULL);
+    OL_CHECK(damage[3U].flash);
+    OL_CHECK(!damage[4U].flash);
+    const auto suppressed = BattleSetup::damage_animation_frames(true);
+    damage_words.clear();
+    for (const auto& frame : suppressed) {
+        damage_words.insert(
+            damage_words.end(),
+            {frame.phase, frame.wait_ticks, static_cast<std::int16_t>(frame.flash)});
+    }
+    OL_CHECK(fnv1a_words(damage_words) == 0xec7a73890ce825c4ULL);
+    OL_CHECK(std::ranges::none_of(suppressed, [](const auto& frame) { return frame.flash; }));
 }
 
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
@@ -646,6 +756,7 @@ int main() {
     run_pathing_tests(data_root);
     run_movement_step_test(data_root);
     run_attack_profile_test(data_root);
+    run_attack_animation_test(data_root);
     run_damage_formula_test(data_root);
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);

@@ -6,6 +6,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <vector>
 
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
@@ -57,6 +58,40 @@ struct BattleHpDamageResult {
 struct BattleAreaResult {
     std::int16_t hit_count{};
     std::optional<std::int16_t> effect_kind;
+};
+
+struct BattleMagicAnimationFrame {
+    std::int16_t actor_sprite{};
+    std::int16_t effect_frame{};
+    std::int16_t wait_ticks{};
+    bool actor_sprite_updated{};
+    bool effect_visible{};
+    bool dispatch_magic_sample{};
+    bool dispatch_effect_sample{};
+};
+
+struct BattleMagicAnimationPlan {
+    std::int16_t fight_head_id{};
+    std::int16_t magic_sample_id{};
+    std::int16_t effect_sample_id{};
+    bool clear_effect_after_frames{};
+    std::vector<BattleMagicAnimationFrame> frames;
+};
+
+struct BattleEffectAnimationPlan {
+    std::int16_t magic_sample_id{};
+    std::int16_t effect_sample_id{};
+    std::int16_t prelude_wait_ticks{};
+    bool dispatch_magic_before_prelude{};
+    bool dispatch_effect_after_prelude{};
+    bool clear_effect_after_frames{};
+    std::vector<BattleMagicAnimationFrame> frames;
+};
+
+struct BattleDamageAnimationFrame {
+    std::int16_t phase{};
+    std::int16_t wait_ticks{};
+    bool flash{};
 };
 
 enum class BattleOutcome {
@@ -157,6 +192,14 @@ public:
         std::int16_t direction,
         std::int16_t special_attack_bonus,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattleMagicAnimationPlan> magic_animation_plan(
+        std::size_t actor_slot,
+        std::int16_t magic_slot,
+        std::int16_t fight_frame_count) const;
+    [[nodiscard]] static std::optional<BattleEffectAnimationPlan> effect_animation_plan(
+        std::int16_t effect_id);
+    [[nodiscard]] static std::array<BattleDamageAnimationFrame, 10>
+    damage_animation_frames(bool suppress_flash) noexcept;
     [[nodiscard]] bool finish_attack(std::size_t slot);
 
 private:

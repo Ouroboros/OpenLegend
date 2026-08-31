@@ -20,6 +20,10 @@ constexpr std::size_t kEnemyBegin = 33U;
 constexpr std::size_t kEnemyXBegin = 53U;
 constexpr std::size_t kEnemyYBegin = 73U;
 constexpr std::int16_t kBattleSpriteBase = 5106;
+constexpr std::array<std::int16_t, 53> kBattleEffectFrameCounts{
+    10, 14, 17, 9,  13, 17, 17, 17, 18, 19, 19, 15, 13, 10, 10, 15, 21, 16,
+    9,  11, 8,  9,  8,  8,  7,  8,  8,  9,  12, 19, 11, 14, 12, 17, 8,  11,
+    9,  13, 10, 19, 14, 17, 19, 14, 21, 16, 13, 18, 14, 17, 17, 16, 7};
 
 [[nodiscard]] constexpr std::int16_t wrapping_i16(const std::int32_t value) noexcept {
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
@@ -905,6 +909,143 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
         result.effect_kind = 1;
     }
     return result;
+}
+
+std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
+    const std::size_t actor_slot,
+    const std::int16_t magic_slot,
+    const std::int16_t fight_frame_count) const {
+    const auto profile = attack_profile(actor_slot, magic_slot);
+    if (!profile) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
+    const auto magic_type = magic.word(model::magic_word::magic_type);
+    const auto effect_id = magic.word(model::magic_word::effect_id);
+    if (magic_type < 0 || magic_type > 4 || effect_id < 0 ||
+        static_cast<std::size_t>(effect_id) >= kBattleEffectFrameCounts.size()) {
+        return std::nullopt;
+    }
+
+    const auto type_index = static_cast<std::size_t>(magic_type);
+    const auto effect_index = static_cast<std::size_t>(effect_id);
+    const auto actor_frame_count = role.word(model::role_word::frame_begin + type_index);
+    const auto effect_start = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::frame_begin + 5U + type_index)) -
+        1);
+    const auto magic_dispatch_frame = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::frame_begin + 10U + type_index)) -
+        1);
+    const auto total_frames = wrapping_i16(
+        static_cast<std::int32_t>(role.word(model::role_word::frame_begin + 5U + type_index)) +
+        kBattleEffectFrameCounts[effect_index] - 1);
+
+    auto sprite_base = static_cast<std::int32_t>(fight_frame_count);
+    for (std::int16_t index = 0; index < magic_type; ++index) {
+        sprite_base += 4 * static_cast<std::int32_t>(
+            role.word(model::role_word::frame_begin + static_cast<std::size_t>(index)));
+    }
+    auto effect_frame = static_cast<std::int16_t>(-2);
+    for (std::int16_t index = 0; index < effect_id; ++index) {
+        effect_frame = wrapping_i16(
+            static_cast<std::int32_t>(effect_frame) +
+            2 * kBattleEffectFrameCounts[static_cast<std::size_t>(index)]);
+    }
+
+    BattleMagicAnimationPlan plan{
+        role.word(model::role_word::head_id),
+        magic.word(model::magic_word::sound_id),
+        effect_id,
+        true,
+        {}};
+    if (total_frames > 0) {
+        plan.frames.reserve(static_cast<std::size_t>(total_frames));
+    }
+    const auto direction = combatants_[actor_slot].words[combatant_word::initial_mode];
+    auto current_sprite = combatants_[actor_slot].words[combatant_word::sprite];
+    bool effect_visible = false;
+    bool effect_dispatched = false;
+    bool magic_dispatched = false;
+    for (std::int32_t frame_index = 0;
+         static_cast<std::int16_t>(frame_index) < total_frames;
+         ++frame_index) {
+        const auto legacy_frame = static_cast<std::int16_t>(frame_index);
+        bool actor_sprite_updated = false;
+        if (legacy_frame < actor_frame_count) {
+            current_sprite = wrapping_i16(
+                2 * static_cast<std::int32_t>(actor_frame_count) * direction +
+                2 * sprite_base + 2 * frame_index);
+            actor_sprite_updated = true;
+        }
+        bool dispatch_effect_sample = false;
+        if (legacy_frame >= effect_start) {
+            effect_visible = true;
+            effect_frame = wrapping_i16(static_cast<std::int32_t>(effect_frame) + 2);
+            if (!effect_dispatched) {
+                effect_dispatched = true;
+                dispatch_effect_sample = true;
+            }
+        }
+        bool dispatch_magic_sample = false;
+        if (legacy_frame >= magic_dispatch_frame && !magic_dispatched) {
+            magic_dispatched = true;
+            dispatch_magic_sample = true;
+        }
+        plan.frames.push_back(BattleMagicAnimationFrame{
+            current_sprite,
+            effect_frame,
+            17,
+            actor_sprite_updated,
+            effect_visible,
+            dispatch_magic_sample,
+            dispatch_effect_sample});
+    }
+    return plan;
+}
+
+std::optional<BattleEffectAnimationPlan> BattleSetup::effect_animation_plan(
+    const std::int16_t effect_id) {
+    if (effect_id < 0 || static_cast<std::size_t>(effect_id) >= kBattleEffectFrameCounts.size()) {
+        return std::nullopt;
+    }
+    const auto effect_index = static_cast<std::size_t>(effect_id);
+    auto effect_frame = static_cast<std::int16_t>(0);
+    for (std::size_t index = 0; index < effect_index; ++index) {
+        effect_frame = wrapping_i16(
+            static_cast<std::int32_t>(effect_frame) + 2 * kBattleEffectFrameCounts[index]);
+    }
+    BattleEffectAnimationPlan plan{13, effect_id, 100, true, true, true, {}};
+    const auto frame_count = kBattleEffectFrameCounts[effect_index];
+    plan.frames.reserve(static_cast<std::size_t>(frame_count));
+    for (std::int16_t frame = 0; frame < frame_count; ++frame) {
+        plan.frames.push_back(BattleMagicAnimationFrame{
+            0,
+            effect_frame,
+            17,
+            false,
+            true,
+            false,
+            false});
+        effect_frame = wrapping_i16(static_cast<std::int32_t>(effect_frame) + 2);
+    }
+    return plan;
+}
+
+std::array<BattleDamageAnimationFrame, 10> BattleSetup::damage_animation_frames(
+    const bool suppress_flash) noexcept {
+    std::array<BattleDamageAnimationFrame, 10> frames{};
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        frames[index] = BattleDamageAnimationFrame{
+            static_cast<std::int16_t>(index),
+            1,
+            index < 4U && !suppress_flash};
+    }
+    return frames;
 }
 
 bool BattleSetup::finish_attack(const std::size_t slot) {
