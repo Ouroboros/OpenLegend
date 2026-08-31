@@ -1420,6 +1420,154 @@
         "rng_consumed_before_support_or_fallback": false,
         "outer_marks_action_done_after_handler": true
       },
+      "ai_movement_vectors": {
+        "battle_id": 4,
+        "battlefield_id": 2,
+        "direction_order": [
+          "up",
+          "right",
+          "left",
+          "down"
+        ],
+        "mode_0": {
+          "mode": 0,
+          "range": 0,
+          "round_value": 1,
+          "selection": "generic_reachable_neighbor",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": false,
+          "destination": [
+            26,
+            25
+          ],
+          "selected_distance_layer": -1,
+          "movement_map_build_count": 3,
+          "first_reachability_passed": true,
+          "second_reachability_passed": true,
+          "path_marked": true,
+          "marked_path_hash": "0xbb9bb90a2b318db7",
+          "first_step": [
+            26,
+            25
+          ]
+        },
+        "mode_1": {
+          "mode": 1,
+          "range": 1,
+          "round_value": 8,
+          "selection": "generic_reachable_neighbor",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": true,
+          "destination": [
+            26,
+            25
+          ],
+          "selected_distance_layer": -1,
+          "movement_map_build_count": 3,
+          "first_reachability_passed": true,
+          "second_reachability_passed": true,
+          "path_marked": true,
+          "marked_path_hash": "0xbb9bb90a2b318db7",
+          "first_step": [
+            26,
+            25
+          ]
+        },
+        "mode_2": {
+          "mode": 2,
+          "range": 3,
+          "round_value": 20,
+          "selection": "aligned_range_layer",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": true,
+          "destination": [
+            23,
+            26
+          ],
+          "selected_distance_layer": 3,
+          "movement_map_build_count": 2,
+          "first_reachability_passed": true,
+          "second_reachability_passed": true,
+          "path_marked": true,
+          "marked_path_hash": "0x8ca6722ab77ca627",
+          "first_step": [
+            25,
+            24
+          ]
+        },
+        "mode_3": {
+          "mode": 3,
+          "range": 3,
+          "round_value": 20,
+          "selection": "range_layer",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": true,
+          "destination": [
+            25,
+            24
+          ],
+          "selected_distance_layer": 3,
+          "movement_map_build_count": 2,
+          "first_reachability_passed": true,
+          "second_reachability_passed": true,
+          "path_marked": true,
+          "marked_path_hash": "0xaaf9a992e52e5b07",
+          "first_step": [
+            25,
+            24
+          ]
+        },
+        "first_step_state": {
+          "source_path_after_step": 255,
+          "old_occupancy": -1,
+          "new_occupancy": 0,
+          "round_value": [
+            8,
+            7
+          ],
+          "speed_div_10": 8,
+          "physical_power": [
+            10,
+            9
+          ],
+          "render_required": true,
+          "present_required": true,
+          "wait_ticks": 40
+        },
+        "mode_0_round_exhaustion_stops_after_first_step": true
+      },
       "ai_escape_vector": {
         "battle_id": 3,
         "battlefield_id": 2,

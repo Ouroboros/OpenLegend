@@ -1240,6 +1240,129 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(!setup.begin_ai_support_plan(actor_slot, invalid).has_value());
 }
 
+void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& actor = setup.combatants()[0U].words;
+        const auto& target = setup.combatants()[1U].words;
+        const auto role_id = static_cast<std::size_t>(actor[combatant_word::role_id]);
+        actor[combatant_word::round_value] = 8;
+        ranger.roles[role_id].set_word(role_word::speed, 80);
+        ranger.roles[role_id].set_word(role_word::physical_power, 10);
+        const BattlePathCoord requested_target{
+            target[combatant_word::x],
+            target[combatant_word::y],
+        };
+        auto plan = setup.begin_ai_movement_plan(0U, 1, requested_target, 1, 1);
+        OL_CHECK(plan.has_value());
+        OL_CHECK(plan->selection == BattleAiMovementSelection::generic_reachable_neighbor);
+        OL_CHECK(plan->requested_target == requested_target);
+        OL_CHECK((plan->source == BattlePathCoord{26, 24}));
+        OL_CHECK((plan->destination == BattlePathCoord{26, 25}));
+        OL_CHECK(plan->preliminary_target_distance == 2);
+        OL_CHECK(plan->preliminary_within_turn_range);
+        OL_CHECK(plan->movement_map_build_count == 3);
+        OL_CHECK(plan->first_reachability_passed);
+        OL_CHECK(plan->second_reachability_passed);
+        OL_CHECK(plan->path_marked);
+        OL_CHECK(!plan->complete);
+
+        const auto source = plan->source;
+        const auto source_index = static_cast<std::size_t>(source.y) * kBattleExtent +
+            static_cast<std::size_t>(source.x);
+        const auto first_step = setup.advance_ai_movement(*plan);
+        OL_CHECK(first_step.has_value());
+        OL_CHECK(first_step->moved);
+        OL_CHECK(first_step->from == source);
+        OL_CHECK((first_step->to == BattlePathCoord{26, 25}));
+        OL_CHECK(first_step->remaining_round_value == 7);
+        OL_CHECK(first_step->physical_power == 9);
+        OL_CHECK(first_step->view_center_x == first_step->to.x);
+        OL_CHECK(first_step->view_center_y == first_step->to.y);
+        OL_CHECK(first_step->view_x == std::clamp<std::int16_t>(
+            static_cast<std::int16_t>(first_step->to.x - 11), 0, 32));
+        OL_CHECK(first_step->view_y == std::clamp<std::int16_t>(
+            static_cast<std::int16_t>(first_step->to.y - 11), 0, 32));
+        OL_CHECK(first_step->wait_ticks == 40);
+        OL_CHECK(first_step->render_required);
+        OL_CHECK(first_step->present_required);
+        OL_CHECK(plan->pathing.value(source) == kBattlePathConsumed);
+        OL_CHECK(data.occupancy()[source_index] == -1);
+        const auto first_index = static_cast<std::size_t>(first_step->to.y) * kBattleExtent +
+            static_cast<std::size_t>(first_step->to.x);
+        OL_CHECK(data.occupancy()[first_index] == 0);
+
+        for (std::size_t step = 0U; step < 16U && !plan->complete; ++step) {
+            OL_CHECK(setup.advance_ai_movement(*plan).has_value());
+        }
+        OL_CHECK(plan->complete);
+        OL_CHECK(!setup.advance_ai_movement(*plan).has_value());
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& actor = setup.combatants()[0U].words;
+        const auto& target = setup.combatants()[1U].words;
+        actor[combatant_word::round_value] = 20;
+        const BattlePathCoord requested_target{
+            target[combatant_word::x],
+            target[combatant_word::y],
+        };
+        const auto aligned = setup.begin_ai_movement_plan(0U, 1, requested_target, 2, 3);
+        OL_CHECK(aligned.has_value());
+        OL_CHECK(aligned->preliminary_within_turn_range);
+        OL_CHECK(aligned->selection == BattleAiMovementSelection::aligned_range_layer);
+        OL_CHECK(aligned->selected_distance_layer == 3);
+        OL_CHECK((aligned->destination == BattlePathCoord{23, 26}));
+        OL_CHECK(aligned->movement_map_build_count == 2);
+        OL_CHECK(aligned->first_reachability_passed);
+        OL_CHECK(aligned->second_reachability_passed);
+        OL_CHECK(aligned->path_marked);
+
+        const auto radial = setup.begin_ai_movement_plan(0U, 1, requested_target, 3, 3);
+        OL_CHECK(radial.has_value());
+        OL_CHECK(radial->selection == BattleAiMovementSelection::range_layer);
+        OL_CHECK(radial->selected_distance_layer == 3);
+        OL_CHECK((radial->destination == BattlePathCoord{25, 24}));
+        OL_CHECK(radial->movement_map_build_count == 2);
+        OL_CHECK(radial->first_reachability_passed);
+        OL_CHECK(radial->second_reachability_passed);
+        OL_CHECK(radial->path_marked);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& actor = setup.combatants()[0U].words;
+        const auto& target = setup.combatants()[1U].words;
+        actor[combatant_word::round_value] = 1;
+        const BattlePathCoord requested_target{
+            target[combatant_word::x],
+            target[combatant_word::y],
+        };
+        auto plan = setup.begin_ai_movement_plan(0U, -1, requested_target, 0, 0);
+        OL_CHECK(plan.has_value());
+        OL_CHECK(plan->path_marked);
+        OL_CHECK((plan->destination == BattlePathCoord{26, 25}));
+        OL_CHECK(plan->movement_map_build_count == 3);
+        const auto step = setup.advance_ai_movement(*plan);
+        OL_CHECK(step.has_value());
+        OL_CHECK(step->remaining_round_value == 0);
+        OL_CHECK(step->complete);
+        OL_CHECK(plan->complete);
+    }
+}
+
 void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -2635,6 +2758,7 @@ int main() {
     run_ai_item_effect_test(data_root);
     run_ai_request_handler_test(data_root);
     run_ai_support_handler_test(data_root);
+    run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
     run_wait_auto_render_test(data_root);
     run_ai_selector_test(data_root);

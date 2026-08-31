@@ -296,6 +296,51 @@ struct BattleAiSupportPlan {
     bool outer_marks_action_done_after_handler{true};
 };
 
+enum class BattleAiMovementSelection : std::int16_t {
+    generic_reachable_neighbor,
+    aligned_range_layer,
+    range_layer,
+};
+
+struct BattleAiMovementPlan {
+    explicit BattleAiMovementPlan(const BattleData& data) : pathing(data) {}
+
+    BattlePathing pathing;
+    std::size_t actor_slot{};
+    std::int16_t target_slot{-1};
+    BattlePathCoord requested_target{};
+    BattlePathCoord source{};
+    BattlePathCoord destination{};
+    std::int16_t mode{};
+    std::int16_t range{};
+    std::int16_t preliminary_target_distance{};
+    std::int16_t selected_distance_layer{-1};
+    std::int16_t movement_map_build_count{};
+    std::int16_t step_count{};
+    BattleAiMovementSelection selection{BattleAiMovementSelection::generic_reachable_neighbor};
+    bool preliminary_within_turn_range{};
+    bool first_reachability_passed{};
+    bool second_reachability_passed{};
+    bool path_marked{};
+    bool complete{};
+};
+
+struct BattleAiMovementStep {
+    BattlePathCoord from{};
+    BattlePathCoord to{};
+    std::int16_t remaining_round_value{};
+    std::int16_t physical_power{};
+    std::int16_t view_center_x{};
+    std::int16_t view_center_y{};
+    std::int16_t view_x{};
+    std::int16_t view_y{};
+    std::int16_t wait_ticks{40};
+    bool moved{};
+    bool render_required{};
+    bool present_required{};
+    bool complete{};
+};
+
 enum class BattleRenderCommandKind : std::int16_t {
     legacy_sprite,
     cursor_overlay,
@@ -597,6 +642,14 @@ public:
     [[nodiscard]] std::optional<BattleAiSupportPlan> resume_ai_support_after_move(
         std::size_t actor_slot,
         BattleAiSupportPlan plan);
+    [[nodiscard]] std::optional<BattleAiMovementPlan> begin_ai_movement_plan(
+        std::size_t actor_slot,
+        std::int16_t target_slot,
+        BattlePathCoord requested_target,
+        std::int16_t mode,
+        std::int16_t range) const;
+    [[nodiscard]] std::optional<BattleAiMovementStep> advance_ai_movement(
+        BattleAiMovementPlan& plan);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }

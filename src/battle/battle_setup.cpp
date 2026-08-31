@@ -6,12 +6,19 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 
 namespace openlegend::battle {
 namespace {
 
 constexpr std::array<std::int16_t, kBattleCombatantWords> kInitialCombatantWords{
     -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, 0, -1, -1, 0};
+constexpr std::array<BattlePathCoord, 4> kLegacyPathDirections{{
+    {0, -1},
+    {1, 0},
+    {-1, 0},
+    {0, 1},
+}};
 constexpr std::size_t kPresetPartyBegin = 9U;
 constexpr std::size_t kFixedPartyBegin = 15U;
 constexpr std::size_t kPartyXBegin = 21U;
@@ -3592,6 +3599,241 @@ std::optional<BattleAiSupportPlan> BattleSetup::resume_ai_support_after_move(
         return std::nullopt;
     }
     return plan;
+}
+
+std::optional<BattleAiMovementPlan> BattleSetup::begin_ai_movement_plan(
+    const std::size_t actor_slot,
+    const std::int16_t target_slot,
+    const BattlePathCoord requested_target,
+    const std::int16_t mode,
+    const std::int16_t range) const {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) || mode < 0 ||
+        mode > 3 || requested_target.x < 0 ||
+        requested_target.x >= static_cast<std::int16_t>(kBattleExtent) ||
+        requested_target.y < 0 ||
+        requested_target.y >= static_cast<std::int16_t>(kBattleExtent) ||
+        ((mode == 1 || mode == 2) &&
+         (target_slot < 0 || target_slot >= combatant_count_)) ||
+        (target_slot >= combatant_count_)) {
+        return std::nullopt;
+    }
+    if (mode == 3 && range < 0) {
+        return std::nullopt;
+    }
+
+    const auto& actor = combatants_[actor_slot].words;
+    const BattlePathCoord source{
+        actor[combatant_word::x],
+        actor[combatant_word::y],
+    };
+    BattleAiMovementPlan plan{data_};
+    plan.actor_slot = actor_slot;
+    plan.target_slot = target_slot;
+    plan.requested_target = requested_target;
+    plan.source = source;
+    plan.destination = requested_target;
+    plan.mode = mode;
+    plan.range = range;
+
+    plan.pathing.build(requested_target, BattlePathMode::targeting);
+    plan.preliminary_target_distance = plan.pathing.value(source);
+    plan.preliminary_within_turn_range =
+        static_cast<std::int32_t>(plan.preliminary_target_distance) -
+            actor[combatant_word::round_value] <=
+        range;
+
+    const auto select_range_layer = [&](const bool require_alignment) {
+        plan.pathing.build(requested_target, BattlePathMode::movement);
+        plan.movement_map_build_count = wrapping_i16(
+            static_cast<std::int32_t>(plan.movement_map_build_count) + 1);
+        auto layer = range;
+        for (std::size_t iteration = 0U; iteration <=
+                static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max());
+             ++iteration) {
+            bool found = false;
+            std::int16_t best_distance = 1000;
+            BattlePathCoord best{};
+            for (std::int16_t x = 0; x < static_cast<std::int16_t>(kBattleExtent); ++x) {
+                for (std::int16_t y = 0; y < static_cast<std::int16_t>(kBattleExtent); ++y) {
+                    const BattlePathCoord candidate{x, y};
+                    if (plan.pathing.value(candidate) != layer ||
+                        (require_alignment && candidate.x != requested_target.x &&
+                         candidate.y != requested_target.y)) {
+                        continue;
+                    }
+                    found = true;
+                    const auto distance = static_cast<std::int16_t>(
+                        std::abs(static_cast<std::int32_t>(candidate.x) - source.x) +
+                        std::abs(static_cast<std::int32_t>(candidate.y) - source.y));
+                    if (distance < best_distance) {
+                        best = candidate;
+                        best_distance = distance;
+                    }
+                }
+            }
+            if (found) {
+                plan.destination = best;
+                plan.selected_distance_layer = layer;
+                return true;
+            }
+            layer = wrapping_i16(static_cast<std::int32_t>(layer) - 1);
+            if (layer == 0) {
+                return false;
+            }
+        }
+        return false;
+    };
+
+    const auto use_aligned_layer = mode == 2 && plan.preliminary_within_turn_range;
+    const auto use_range_layer = mode == 3;
+    if (use_aligned_layer) {
+        if (range < 0) {
+            return std::nullopt;
+        }
+        plan.selection = BattleAiMovementSelection::aligned_range_layer;
+        static_cast<void>(select_range_layer(true));
+    } else if (use_range_layer) {
+        plan.selection = BattleAiMovementSelection::range_layer;
+        static_cast<void>(select_range_layer(false));
+    } else {
+        plan.selection = BattleAiMovementSelection::generic_reachable_neighbor;
+        plan.pathing.build(source, BattlePathMode::movement);
+        plan.movement_map_build_count = wrapping_i16(
+            static_cast<std::int32_t>(plan.movement_map_build_count) + 1);
+        auto cursor = requested_target;
+        for (std::size_t iteration = 0U; iteration < kBattleOccupancyCells; ++iteration) {
+            bool found = false;
+            for (const auto direction : kLegacyPathDirections) {
+                const BattlePathCoord candidate{
+                    static_cast<std::int16_t>(cursor.x + direction.x),
+                    static_cast<std::int16_t>(cursor.y + direction.y),
+                };
+                plan.pathing.build(source, BattlePathMode::movement);
+                plan.movement_map_build_count = wrapping_i16(
+                    static_cast<std::int32_t>(plan.movement_map_build_count) + 1);
+                if (plan.pathing.value(candidate) < 128 &&
+                    (candidate.x == source.x || candidate.y == source.y)) {
+                    cursor = candidate;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                for (const auto direction : kLegacyPathDirections) {
+                    const BattlePathCoord candidate{
+                        static_cast<std::int16_t>(cursor.x + direction.x),
+                        static_cast<std::int16_t>(cursor.y + direction.y),
+                    };
+                    plan.pathing.build(source, BattlePathMode::movement);
+                    plan.movement_map_build_count = wrapping_i16(
+                        static_cast<std::int32_t>(plan.movement_map_build_count) + 1);
+                    if (plan.pathing.value(candidate) < 128) {
+                        cursor = candidate;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found) {
+                break;
+            }
+            if (cursor.x > source.x && cursor.x > 0) {
+                cursor.x = static_cast<std::int16_t>(cursor.x - 1);
+            } else if (cursor.x < source.x && cursor.x < 63) {
+                cursor.x = static_cast<std::int16_t>(cursor.x + 1);
+            } else if (cursor.y > source.y && cursor.y > 0) {
+                cursor.y = static_cast<std::int16_t>(cursor.y - 1);
+            } else if (cursor.y < source.y && cursor.y < 63) {
+                cursor.y = static_cast<std::int16_t>(cursor.y + 1);
+            }
+            if (cursor == source) {
+                break;
+            }
+        }
+        plan.destination = cursor;
+    }
+
+    if (plan.destination == source) {
+        plan.complete = true;
+        return plan;
+    }
+    plan.first_reachability_passed = plan.pathing.value(plan.destination) < 128;
+    if (!plan.first_reachability_passed) {
+        plan.complete = true;
+        return plan;
+    }
+    plan.pathing.build(source, BattlePathMode::movement);
+    plan.movement_map_build_count = wrapping_i16(
+        static_cast<std::int32_t>(plan.movement_map_build_count) + 1);
+    plan.second_reachability_passed = plan.pathing.value(plan.destination) < 128;
+    if (!plan.second_reachability_passed) {
+        plan.complete = true;
+        return plan;
+    }
+    plan.path_marked = plan.pathing.mark_shortest_path(source, plan.destination);
+    plan.complete = !plan.path_marked;
+    return plan;
+}
+
+std::optional<BattleAiMovementStep> BattleSetup::advance_ai_movement(
+    BattleAiMovementPlan& plan) {
+    if (!valid() || plan.complete || !plan.path_marked ||
+        plan.actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        plan.mode < 0 || plan.mode > 3) {
+        return std::nullopt;
+    }
+    auto& actor = combatants_[plan.actor_slot].words;
+    const BattlePathCoord from{
+        actor[combatant_word::x],
+        actor[combatant_word::y],
+    };
+    const auto moved = move_one_marked_step(plan.pathing, plan.actor_slot);
+    if (!moved) {
+        plan.complete = true;
+        return std::nullopt;
+    }
+    plan.step_count = wrapping_i16(static_cast<std::int32_t>(plan.step_count) + 1);
+
+    auto complete = *moved == plan.destination ||
+        actor[combatant_word::round_value] <= 0;
+    if (!complete && (plan.mode == 1 || plan.mode == 2)) {
+        if (plan.target_slot < 0 || plan.target_slot >= combatant_count_) {
+            plan.complete = true;
+            return std::nullopt;
+        }
+        const auto& target = combatants_[static_cast<std::size_t>(plan.target_slot)].words;
+        const auto distance =
+            std::abs(static_cast<std::int32_t>(target[combatant_word::x]) -
+                     actor[combatant_word::x]) +
+            std::abs(static_cast<std::int32_t>(target[combatant_word::y]) -
+                     actor[combatant_word::y]);
+        if (distance <= plan.range) {
+            complete = plan.mode == 1 ||
+                actor[combatant_word::x] == target[combatant_word::x] ||
+                actor[combatant_word::y] == target[combatant_word::y];
+        }
+    }
+    plan.complete = complete;
+
+    const auto role_id = actor[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    return BattleAiMovementStep{
+        .from = from,
+        .to = *moved,
+        .remaining_round_value = actor[combatant_word::round_value],
+        .physical_power = ranger_.roles[static_cast<std::size_t>(role_id)].word(
+            model::role_word::physical_power),
+        .view_center_x = moved->x,
+        .view_center_y = moved->y,
+        .view_x = static_cast<std::int16_t>(std::clamp<std::int32_t>(moved->x - 11, 0, 32)),
+        .view_y = static_cast<std::int16_t>(std::clamp<std::int32_t>(moved->y - 11, 0, 32)),
+        .moved = true,
+        .render_required = true,
+        .present_required = true,
+        .complete = complete,
+    };
 }
 
 std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t actor_slot) {

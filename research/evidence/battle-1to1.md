@@ -26,7 +26,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `1ba327336b952075f5bfe50d0c86e42cdf7a4537e6cf0d56148b18868fae0d58`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `2e0d240b98d44441612e14576ec9b620016249c50dec90914b40c95696de6127`。
 
 - 92对 `FIGHTnnn.IDX/GRP`，ID 范围0..109，中间缺18个编号；累计4,992帧；每包最后累计 offset 必须等于对应 GRP 大小。
 - `WAR.STA` 26,040字节，严格为140条×186字节，SHA256 `98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6`。
@@ -228,3 +228,5 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 `sub_361AC`请求医疗与`sub_36209`请求解毒实际共享同一函数体；后者仅建立相同栈帧后跳入前者。actor行动值严格大于0时先调用`sub_3650E(actor, mode0, value0)`，零或负值跳过；随后无条件从请求目标槽恢复x/y并调用`sub_34C47`自动攻击。typed计划保留move→automatic_attack同步边界、两项零参数和请求目标恢复；实际移动、攻击及外层完成仍待接线。
 
 `sub_36210` AI医疗与`sub_363AC` AI解毒使用各自ability signed除15加1为射程；首轮目标图命中即执行动作，超距且行动值严格正时调用`sub_3650E(actor,mode1,value=range)`，移动后恢复同一目标再建图。零/负行动值虽然不移动，仍执行第二次建图。第二次仍超距时仅当`2*actor.attack`严格大于`2*wrapped_allied_total/allied_count`才自动攻击，否则休息。完整callee汇编确认IDIV余数和医疗分支两次`sub_3F50B`返回值均无行为效果。typed计划已恢复以上边界；实际移动、医疗/解毒、攻击/休息呈现及外层完成仍待接线。
+
+`sub_3650E`已恢复完整目的格状态逻辑：mode2在本回合可入射程时按range向下找轴向层，mode3无轴向限制，其他分支从目标周围按上、右、左、下找同轴可达格、任意可达格或逐轴退向actor。目的格须连续通过当前图和重建actor movement图两次严格`path<128`检查，随后按原tie-break标最短路。battle4固定mode0/1 `(26,25)`、mode2 `(23,26)`、mode3 `(25,24)`。`advance_ai_movement`已实际逐格提交path255、occupancy、坐标、方向、sprite、体力和行动值，并恢复mode0/3行动值停止、mode1距离停止和mode2轴向停止；每步render/present/40 tick仍只返回typed参数。

@@ -420,6 +420,177 @@ def ai_support_vectors() -> dict[str, object]:
     }
 
 
+def ai_movement_plan_vector(
+    field_words: list[int],
+    occupied: set[int],
+    *,
+    source: tuple[int, int],
+    target: tuple[int, int],
+    round_value: int,
+    mode: int,
+    range_value: int,
+) -> dict[str, object]:
+    targeting = build_path_map(field_words, target, "targeting")
+    target_distance = targeting[source[1] * 64 + source[0]]
+    within_turn_range = target_distance - round_value <= range_value
+    destination = target
+    selected_layer = -1
+    movement_builds = 0
+    selection = "generic_reachable_neighbor"
+    values = targeting
+
+    if mode == 2 and within_turn_range or mode == 3:
+        selection = "aligned_range_layer" if mode == 2 else "range_layer"
+        values = build_path_map(field_words, target, "movement", occupied)
+        movement_builds += 1
+        layer = range_value
+        while True:
+            found = False
+            best_distance = 1000
+            best = (0, 0)
+            for x in range(64):
+                for y in range(64):
+                    if values[y * 64 + x] != layer:
+                        continue
+                    if mode == 2 and x != target[0] and y != target[1]:
+                        continue
+                    found = True
+                    distance = abs(x - source[0]) + abs(y - source[1])
+                    if distance < best_distance:
+                        best = (x, y)
+                        best_distance = distance
+            if found:
+                destination = best
+                selected_layer = layer
+                break
+            layer = wrapping_i16(layer - 1)
+            if layer == 0:
+                break
+    else:
+        values = build_path_map(field_words, source, "movement", occupied)
+        movement_builds += 1
+        cursor = target
+        for _ in range(4096):
+            found = False
+            for dx, dy in PATH_DIRECTIONS:
+                candidate = (cursor[0] + dx, cursor[1] + dy)
+                values = build_path_map(field_words, source, "movement", occupied)
+                movement_builds += 1
+                index = legacy_path_index(*candidate)
+                value = values[index] if index is not None else 555
+                if value < 128 and (candidate[0] == source[0] or candidate[1] == source[1]):
+                    cursor = candidate
+                    found = True
+                    break
+            if not found:
+                for dx, dy in PATH_DIRECTIONS:
+                    candidate = (cursor[0] + dx, cursor[1] + dy)
+                    values = build_path_map(field_words, source, "movement", occupied)
+                    movement_builds += 1
+                    index = legacy_path_index(*candidate)
+                    value = values[index] if index is not None else 555
+                    if value < 128:
+                        cursor = candidate
+                        found = True
+                        break
+            if found:
+                break
+            x, y = cursor
+            if x > source[0] and x > 0:
+                x -= 1
+            elif x < source[0] and x < 63:
+                x += 1
+            elif y > source[1] and y > 0:
+                y -= 1
+            elif y < source[1] and y < 63:
+                y += 1
+            cursor = (x, y)
+            if cursor == source:
+                break
+        destination = cursor
+
+    first_index = legacy_path_index(*destination)
+    first_reachable = destination != source and first_index is not None and values[first_index] < 128
+    second_reachable = False
+    marked = False
+    first_step = None
+    if first_reachable:
+        values = build_path_map(field_words, source, "movement", occupied)
+        movement_builds += 1
+        second_reachable = values[destination[1] * 64 + destination[0]] < 128
+        if second_reachable:
+            marked = mark_path(values, source, destination)
+            if marked:
+                first_step = next(
+                    (
+                        [source[0] + dx, source[1] + dy]
+                        for dx, dy in PATH_DIRECTIONS
+                        if 0 <= source[0] + dx < 64
+                        and 0 <= source[1] + dy < 64
+                        and values[(source[1] + dy) * 64 + source[0] + dx] == 250
+                    ),
+                    None,
+                )
+    return {
+        "mode": mode,
+        "range": range_value,
+        "round_value": round_value,
+        "selection": selection,
+        "source": list(source),
+        "target": list(target),
+        "target_distance": target_distance,
+        "within_turn_range": within_turn_range,
+        "destination": list(destination),
+        "selected_distance_layer": selected_layer,
+        "movement_map_build_count": movement_builds,
+        "first_reachability_passed": first_reachable,
+        "second_reachability_passed": second_reachable,
+        "path_marked": marked,
+        "marked_path_hash": fnv1a_words(values),
+        "first_step": first_step,
+    }
+
+
+def ai_movement_vectors(
+    field_words: list[int], occupied: set[int]
+) -> dict[str, object]:
+    source = (26, 24)
+    target = (26, 26)
+    return {
+        "battle_id": 4,
+        "battlefield_id": 2,
+        "direction_order": ["up", "right", "left", "down"],
+        "mode_0": ai_movement_plan_vector(
+            field_words, occupied, source=source, target=target,
+            round_value=1, mode=0, range_value=0,
+        ),
+        "mode_1": ai_movement_plan_vector(
+            field_words, occupied, source=source, target=target,
+            round_value=8, mode=1, range_value=1,
+        ),
+        "mode_2": ai_movement_plan_vector(
+            field_words, occupied, source=source, target=target,
+            round_value=20, mode=2, range_value=3,
+        ),
+        "mode_3": ai_movement_plan_vector(
+            field_words, occupied, source=source, target=target,
+            round_value=20, mode=3, range_value=3,
+        ),
+        "first_step_state": {
+            "source_path_after_step": 255,
+            "old_occupancy": -1,
+            "new_occupancy": 0,
+            "round_value": [8, 7],
+            "speed_div_10": 8,
+            "physical_power": [10, 9],
+            "render_required": True,
+            "present_required": True,
+            "wait_ticks": 40,
+        },
+        "mode_0_round_exhaustion_stops_after_first_step": True,
+    }
+
+
 def rest_vector(
     *,
     seed: int,
@@ -1513,6 +1684,15 @@ def build(data_root: Path) -> dict[str, object]:
     if warfld["entry_count"] != 26:
         raise ValueError(f"expected 26 WARFLD entries, got {warfld['entry_count']}")
 
+    movement_setup = setup_records[4]
+    movement_field_bytes = warfld_entries[int(movement_setup["battlefield_id"])][:16384]
+    movement_field_words = list(struct.unpack("<8192h", movement_field_bytes))
+    movement_occupied = {
+        int(write["occupancy_index"])
+        for write in movement_setup["static_occupancy_writes"]
+    }
+    movement_vectors = ai_movement_vectors(movement_field_words, movement_occupied)
+
     pathing_records: list[dict[str, object]] = []
     for battle_id in (0, 93):
         setup = setup_records[battle_id]
@@ -1860,6 +2040,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "ai_entry_vectors": ai_entry_vectors(),
                 "ai_request_vectors": ai_request_vectors(),
                 "ai_support_vectors": ai_support_vectors(),
+                "ai_movement_vectors": movement_vectors,
                 "ai_escape_vector": escape_vector,
                 "ai_attack_target_vectors": attack_target_vectors,
                 "ai_attack_handler_vectors": attack_handler_vectors,
