@@ -36,7 +36,7 @@
 3. `sub_31EB9` 的26槽、固定/预置/手选状态与 `sub_3265C` 敌方建立已映射为 `BattleSetup`；后者完整待 REVIEW，前者仍缺原选择框绘制/呈现/input flag 基本块；
 4. `sub_3271E..sub_32E59` 已恢复：稳定速度降序、逐槽 swap 与回合值已实现；顶层 render/tick/分派及十项「移動/攻擊/用毒/解毒/醫療/物品/等待/狀態/休息/自動」菜单仍待实现；
 5. `sub_33599..sub_395EC`：AI selector、路径图/回溯、逐格移动 state/stop、武功profile/每击提交、方形/十字/直线area和HP/MP伤害公式已实现；`sub_37734` 方向选择与UI continuation 待补；
-6. `sub_3859E/sub_3884A/sub_38910` 的actor/effect/sample/damage逐帧时间线、`sub_38DAC` 的MP过滤武功菜单状态及 `sub_39776..sub_39A45` 的用毒射程/目标/effect/毒值/行动提交已映射；FIGHT/sample/render/present/input接线仍待BattleSession，`sub_39B1F..sub_3A8A4`继续映射；
+6. `sub_3859E/sub_3884A/sub_38910` 的actor/effect/sample/damage逐帧时间线、`sub_38DAC` 的MP过滤武功菜单状态，以及 `sub_39776..sub_39DA3` 的用毒/解毒射程、目标、effect、状态值和行动提交已映射；FIGHT/sample/render/present/input接线仍待BattleSession，`sub_39E88..sub_3A8A4`继续映射；
 7. `sub_3AA17..sub_3C6D3`：绘制、菜单/信息与共享显示边界；
 8. 完成全部实现后逐函数执行不限次数双向 REVIEW，最后一轮零新增差异前只标 `implemented_pending_review`。
 
@@ -50,6 +50,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：49项 `pending_mapping`、13项 `pending_implementation`、19项 `implemented_pending_review`，0项最终关闭。
+- `battle-closure.tsv`：46项 `pending_mapping`、15项 `pending_implementation`、20项 `implemented_pending_review`，0项最终关闭。
 - B7 尚余 `sub_2DE03/sub_31C75` 联合边界；只有 battle result 实际回送 scene 后才能把两项推进到 `implemented_pending_review`。
-- 下一停点：恢复 `sub_39B1F/sub_39B8E/sub_39DA3` 解毒入口、目标选择与状态结算，再继续 `sub_39E88..sub_3A8A4` 战斗动作链。
+- 下一停点：恢复 `sub_39E88/sub_39EF7/sub_3A10C` 医疗入口、目标选择与状态结算，再继续 `sub_3A29C..sub_3A8A4` 战斗物品链。
