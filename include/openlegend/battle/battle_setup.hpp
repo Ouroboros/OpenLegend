@@ -66,6 +66,17 @@ struct BattleAreaResult {
     std::optional<std::int16_t> effect_kind;
 };
 
+[[nodiscard]] std::optional<std::int16_t> apply_role_detox_value(
+    model::RangerState& ranger,
+    std::int16_t actor_role_id,
+    std::int16_t target_role_id,
+    random::LegacyRandom& random);
+[[nodiscard]] std::optional<std::int32_t> apply_role_medicine_value(
+    model::RangerState& ranger,
+    std::int16_t actor_role_id,
+    std::int16_t target_role_id,
+    random::LegacyRandom& random);
+
 struct BattleItemSelectionState {
     std::array<std::int16_t, model::kInventoryCount> inventory_slots{};
     std::int16_t count{};

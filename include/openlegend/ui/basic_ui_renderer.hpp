@@ -37,6 +37,9 @@ public:
         const GameMenuController& menu,
         const model::RangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_game_menu_main(
+        const GameMenuController& menu,
+        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_io_wait(render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_error(
         std::span<const std::uint8_t> legacy_message,

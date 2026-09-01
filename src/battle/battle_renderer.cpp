@@ -39,9 +39,39 @@ constexpr std::array<std::uint8_t, 1> kSlash{'/'};
 constexpr std::array<std::uint8_t, 3> kHundred{'1', '0', '0'};
 constexpr std::array<std::uint8_t, 7> kMaximumLevel{' ', ' ', ' ', '=', ' ', ' ', ' '};
 constexpr std::array<std::uint8_t, 3> kMaximumPractice{' ', '=', ' '};
+constexpr std::array<std::uint8_t, 8> kMedicineTargetTitle{
+    0xADU, 0x6EU, 0xC2U, 0xE5U, 0xAAU, 0x76U, 0xBDU, 0xD6U};
+constexpr std::array<std::uint8_t, 8> kDetoxificationTargetTitle{
+    0xB4U, 0xC0U, 0xBDU, 0xD6U, 0xB8U, 0xD1U, 0xACU, 0x72U};
 constexpr std::array<std::uint8_t, 14> kStatusSelectionTitle{
     0xADU, 0x6EU, 0xACU, 0x64U, 0xBEU, 0x5CU, 0xBDU,
     0xD6U, 0xAAU, 0xBAU, 0xAAU, 0xACU, 0xBAU, 0x41U};
+constexpr std::array<std::uint8_t, 10> kLeavePartyTitle{
+    0xADU, 0x6EU, 0xA8U, 0x44U, 0xBDU, 0xD6U, 0xC2U, 0xF7U, 0xB6U, 0xA4U};
+constexpr std::array<std::uint8_t, 8> kLifePointsLabel{
+    0xA5U, 0xCDU, 0xA9U, 0x52U, 0xC2U, 0x49U, 0xBCU, 0xC6U};
+constexpr std::array<std::uint8_t, 8> kPoisonLevelLabel{
+    0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U};
+constexpr std::array<std::uint8_t, 18> kNoMedicineUser{
+    0xB6U, 0xA4U, 0xADU, 0xFBU, 0xA4U, 0xA4U, 0xB5U, 0x4CU, 0xA4U,
+    0x48U, 0xC2U, 0xE5U, 0xB3U, 0x4EU, 0xB0U, 0xF7U, 0xAEU, 0xE6U};
+constexpr std::array<std::uint8_t, 12> kMedicineUserTitle{
+    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xA8U, 0xCFU, 0xA5U, 0xCEU,
+    0xC2U, 0xE5U, 0xB3U, 0x4EU};
+constexpr std::array<std::uint8_t, 8> kMedicineAbilityLabel{
+    0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU};
+constexpr std::array<std::uint8_t, 8> kMedicineResultLabel{
+    0xABU, 0xECU, 0xB4U, 0x5FU, 0xA5U, 0xCDU, 0xA9U, 0x52U};
+constexpr std::array<std::uint8_t, 18> kNoDetoxificationUser{
+    0xB6U, 0xA4U, 0xADU, 0xFBU, 0xA4U, 0xA4U, 0xB5U, 0x4CU, 0xA4U,
+    0x48U, 0xB8U, 0xD1U, 0xACU, 0x72U, 0xB0U, 0xF7U, 0xAEU, 0xE6U};
+constexpr std::array<std::uint8_t, 12> kDetoxificationUserTitle{
+    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xC0U, 0xB0U, 0xA4U, 0x48U,
+    0xB8U, 0xD1U, 0xACU, 0x72U};
+constexpr std::array<std::uint8_t, 8> kDetoxificationAbilityLabel{
+    0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU};
+constexpr std::array<std::uint8_t, 8> kDetoxificationResultLabel{
+    0xC0U, 0xB0U, 0xA7U, 0x55U, 0xB8U, 0xD1U, 0xACU, 0x72U};
 constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
     0,     50,    150,   300,   500,   750,   1050,  1400,  1800,  2250,
     2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
@@ -345,9 +375,10 @@ bool BattleRenderer::render_status_panel(
             static_cast<std::uint16_t>(plan.mp_color));
 }
 
-bool BattleRenderer::render_character_status_selection(
+bool BattleRenderer::render_character_selection(
     const model::RangerState& ranger,
     const std::size_t cursor,
+    const PartySelectionKind kind,
     render::IndexedFramebuffer& framebuffer) {
     std::size_t party_count = model::kTeamMemberCount;
     for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
@@ -356,15 +387,32 @@ bool BattleRenderer::render_character_status_selection(
             break;
         }
     }
+    std::span<const std::uint8_t> title;
+    std::span<const std::uint8_t> subtitle;
+    std::uint16_t list_width = 62U;
+    switch (kind) {
+    case PartySelectionKind::medicine_target:
+        title = kMedicineTargetTitle;
+        subtitle = kLifePointsLabel;
+        list_width = 118U;
+        break;
+    case PartySelectionKind::detoxification_target:
+        title = kDetoxificationTargetTitle;
+        subtitle = kPoisonLevelLabel;
+        list_width = 86U;
+        break;
+    case PartySelectionKind::status: title = kStatusSelectionTitle; break;
+    case PartySelectionKind::leave_party: title = kLeavePartyTitle; break;
+    }
+    const auto has_details = !subtitle.empty();
+    const auto title_width = static_cast<std::uint16_t>(8U * title.size() + 12U);
+    const auto list_height = static_cast<std::uint16_t>(
+        20U * party_count + (has_details ? 30U : 10U));
     if (!valid() || party_count == 0U || cursor >= party_count ||
-        !draw_box(framebuffer, 70, 18, 124U, 26U) ||
-        !draw_text(framebuffer, 75, 22, kStatusSelectionTitle, 0x0705U) ||
-        !draw_box(
-            framebuffer,
-            70,
-            45,
-            62U,
-            static_cast<std::uint16_t>(20U * party_count + 10U))) {
+        !draw_box(framebuffer, 70, 18, title_width, 26U) ||
+        !draw_text(framebuffer, 75, 22, title, 0x0705U) ||
+        !draw_box(framebuffer, 70, 45, list_width, list_height) ||
+        (has_details && !draw_text(framebuffer, 75, 52, subtitle, 0x0705U))) {
         return false;
     }
     for (std::size_t slot = 0U; slot < party_count; ++slot) {
@@ -372,22 +420,140 @@ bool BattleRenderer::render_character_status_selection(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
             return false;
         }
-        const auto name_storage = std::span<const std::uint8_t>{
-            ranger.roles[static_cast<std::size_t>(role_id)].bytes}.subspan(
-                model::role_word::name_byte,
-                model::role_word::name_bytes);
+        const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+        const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
+            model::role_word::name_byte, model::role_word::name_bytes);
+        const auto selected = slot == cursor;
+        const auto color = selected ? std::uint16_t{0x6663U} : std::uint16_t{0x2321U};
+        const auto y = (has_details ? 72 : 52) + 20 * static_cast<int>(slot);
         const auto name_extent = legacy_name_extent(name_storage);
         if (name_extent.has_value() &&
             !draw_text(
                 framebuffer,
                 99 - 4 * *name_extent,
-                52 + 20 * static_cast<int>(slot),
+                y,
                 zero_terminated_prefix(name_storage),
-                slot == cursor ? 0x6663U : 0x2321U)) {
+                color)) {
+            return false;
+        }
+        if (kind == PartySelectionKind::medicine_target) {
+            const auto hurt = role.word(model::role_word::hurt);
+            const auto hp_color = selected ? std::uint16_t{0x6663U}
+                : hurt > 66 ? std::uint16_t{0x1416U}
+                : hurt > 33 ? std::uint16_t{0x0E10U}
+                            : std::uint16_t{0x0705U};
+            if (!draw_text(
+                    framebuffer,
+                    127,
+                    y,
+                    decimal_text(role.word(model::role_word::hp), 3),
+                    hp_color) ||
+                !draw_text(framebuffer, 149, y, kSlash, selected ? 0x6663U : 0x2322U) ||
+                !draw_text(
+                    framebuffer,
+                    155,
+                    y,
+                    decimal_text(role.word(model::role_word::maximum_hp), 3),
+                    color)) {
+                return false;
+            }
+        } else if (kind == PartySelectionKind::detoxification_target &&
+                   !draw_text(
+                       framebuffer,
+                       127,
+                       y,
+                       decimal_text(role.word(model::role_word::poison), 3),
+                       color)) {
             return false;
         }
     }
     return true;
+}
+
+bool BattleRenderer::render_character_status_selection(
+    const model::RangerState& ranger,
+    const std::size_t cursor,
+    render::IndexedFramebuffer& framebuffer) {
+    return render_character_selection(
+        ranger, cursor, PartySelectionKind::status, framebuffer);
+}
+
+bool BattleRenderer::render_party_ability_selection(
+    const model::RangerState& ranger,
+    const std::span<const std::uint8_t> party_slots,
+    const std::size_t cursor,
+    const PartyAbilityKind kind,
+    render::IndexedFramebuffer& framebuffer) {
+    const auto title = kind == PartyAbilityKind::medicine
+        ? std::span<const std::uint8_t>{kMedicineUserTitle}
+        : std::span<const std::uint8_t>{kDetoxificationUserTitle};
+    const auto subtitle = kind == PartyAbilityKind::medicine
+        ? std::span<const std::uint8_t>{kMedicineAbilityLabel}
+        : std::span<const std::uint8_t>{kDetoxificationAbilityLabel};
+    const auto ability_word = kind == PartyAbilityKind::medicine
+        ? model::role_word::medicine
+        : model::role_word::detoxification;
+    if (!valid() || party_slots.empty() || cursor >= party_slots.size() ||
+        !draw_box(framebuffer, 70, 18, 108U, 26U) ||
+        !draw_text(framebuffer, 75, 22, title, 0x0705U) ||
+        !draw_box(
+            framebuffer,
+            70,
+            45,
+            90U,
+            static_cast<std::uint16_t>(20U * party_slots.size() + 30U)) ||
+        !draw_text(framebuffer, 75, 52, subtitle, 0x0705U)) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < party_slots.size(); ++index) {
+        const auto party_slot = party_slots[index];
+        if (party_slot >= model::kTeamMemberCount) {
+            return false;
+        }
+        const auto role_id = ranger.header.team_member(party_slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
+            return false;
+        }
+        const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+        const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
+            model::role_word::name_byte, model::role_word::name_bytes);
+        const auto color = index == cursor ? std::uint16_t{0x6663U} : std::uint16_t{0x2321U};
+        const auto y = 72 + 20 * static_cast<int>(index);
+        const auto name_extent = legacy_name_extent(name_storage);
+        if ((name_extent.has_value() &&
+             !draw_text(
+                 framebuffer,
+                 99 - 4 * *name_extent,
+                 y,
+                 zero_terminated_prefix(name_storage),
+                 color)) ||
+            !draw_text(framebuffer, 130, y, decimal_text(role.word(ability_word), 2), color)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BattleRenderer::render_party_action_notice(
+    const PartyAbilityKind kind,
+    const std::optional<std::int32_t> amount,
+    render::IndexedFramebuffer& framebuffer) {
+    if (!valid()) {
+        return false;
+    }
+    if (!amount.has_value()) {
+        const auto message = kind == PartyAbilityKind::medicine
+            ? std::span<const std::uint8_t>{kNoMedicineUser}
+            : std::span<const std::uint8_t>{kNoDetoxificationUser};
+        return draw_box(framebuffer, 70, 18, 154U, 26U) &&
+            draw_text(framebuffer, 75, 22, message, 0x0705U);
+    }
+    const auto label = kind == PartyAbilityKind::medicine
+        ? std::span<const std::uint8_t>{kMedicineResultLabel}
+        : std::span<const std::uint8_t>{kDetoxificationResultLabel};
+    return draw_box(framebuffer, 112, 47, 96U, 26U) &&
+        draw_text(framebuffer, 117, 51, label, 0x6663U) &&
+        draw_text(framebuffer, 181, 51, decimal_text(*amount, 3), 0x0705U);
 }
 
 bool BattleRenderer::render_character_status(

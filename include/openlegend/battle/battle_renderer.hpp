@@ -16,6 +16,18 @@
 
 namespace openlegend::battle {
 
+enum class PartySelectionKind {
+    medicine_target,
+    detoxification_target,
+    status,
+    leave_party,
+};
+
+enum class PartyAbilityKind {
+    medicine,
+    detoxification,
+};
+
 class BattleRenderer {
 public:
     BattleRenderer(const resource::DataRoot& data_root, std::int16_t battlefield_id);
@@ -33,9 +45,24 @@ public:
     [[nodiscard]] bool render_status_panel(
         const BattleStatusPanelPlan& plan,
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_character_selection(
+        const model::RangerState& ranger,
+        std::size_t cursor,
+        PartySelectionKind kind,
+        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_character_status_selection(
         const model::RangerState& ranger,
         std::size_t cursor,
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_party_ability_selection(
+        const model::RangerState& ranger,
+        std::span<const std::uint8_t> party_slots,
+        std::size_t cursor,
+        PartyAbilityKind kind,
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_party_action_notice(
+        PartyAbilityKind kind,
+        std::optional<std::int32_t> amount,
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_character_status(
         const model::RangerState& ranger,

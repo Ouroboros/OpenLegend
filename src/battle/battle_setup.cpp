@@ -67,6 +67,108 @@ constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuse
 
 }  // namespace
 
+std::optional<std::int16_t> apply_role_detox_value(
+    model::RangerState& ranger,
+    const std::int16_t actor_role_id,
+    const std::int16_t target_role_id,
+    random::LegacyRandom& random) {
+    if (actor_role_id < 0 || target_role_id < 0 ||
+        static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(target_role_id) >= ranger.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
+    const auto first_variance = random.bounded(10);
+    const auto second_variance = random.bounded(10);
+    auto amount = wrapping_i16(
+        static_cast<std::int32_t>(actor.word(model::role_word::detoxification)) / 3 +
+        first_variance - second_variance);
+    if (amount > 99) {
+        amount = 99;
+    }
+    if (amount < 0) {
+        amount = 0;
+    }
+    if (target.word(model::role_word::poison) >
+        static_cast<std::int32_t>(actor.word(model::role_word::detoxification)) + 20) {
+        amount = 0;
+    }
+    if (amount > target.word(model::role_word::poison)) {
+        amount = target.word(model::role_word::poison);
+    }
+    const auto poison = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::poison)) - amount);
+    target.set_word(model::role_word::poison, poison);
+    if (target.word(model::role_word::poison) < 0) {
+        target.set_word(model::role_word::poison, 0);
+    }
+    if (target.word(model::role_word::poison) > 100) {
+        target.set_word(model::role_word::poison, 99);
+    }
+    return amount;
+}
+
+std::optional<std::int32_t> apply_role_medicine_value(
+    model::RangerState& ranger,
+    const std::int16_t actor_role_id,
+    const std::int16_t target_role_id,
+    random::LegacyRandom& random) {
+    if (actor_role_id < 0 || target_role_id < 0 ||
+        static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(target_role_id) >= ranger.roles.size()) {
+        return std::nullopt;
+    }
+    auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
+    if (actor.word(model::role_word::physical_power) < 50) {
+        return 0;
+    }
+
+    auto medicine = static_cast<std::int32_t>(actor.word(model::role_word::medicine));
+    if (medicine < 0) {
+        medicine = 0;
+    }
+    const auto hurt = target.word(model::role_word::hurt);
+    std::int32_t base = 0;
+    if (hurt <= 25) {
+        base = (4 * medicine) / 5;
+    } else if (hurt <= 50) {
+        base = (3 * medicine) / 4;
+    } else if (hurt <= 75) {
+        base = (2 * medicine) / 3;
+    } else {
+        base = medicine / 2;
+    }
+    auto amount = base + random.bounded(5);
+    if (hurt > static_cast<std::int32_t>(actor.word(model::role_word::medicine)) + 20) {
+        amount = 0;
+        medicine = 0;
+    }
+
+    const auto hp = static_cast<std::int32_t>(target.word(model::role_word::hp));
+    const auto maximum_hp = static_cast<std::int32_t>(target.word(model::role_word::maximum_hp));
+    if (hp + amount > maximum_hp) {
+        amount = maximum_hp - hp;
+    }
+    target.set_word(model::role_word::hp, wrapping_i16(hp + wrapping_i16(amount)));
+    if (target.word(model::role_word::hp) > target.word(model::role_word::maximum_hp)) {
+        target.set_word(model::role_word::hp, target.word(model::role_word::maximum_hp));
+    }
+
+    auto target_hurt = wrapping_i16(
+        static_cast<std::int32_t>(target.word(model::role_word::hurt)) -
+        wrapping_i16(medicine));
+    if (target_hurt < 0) {
+        target_hurt = 0;
+    }
+    target.set_word(model::role_word::hurt, target_hurt);
+    actor.set_word(
+        model::role_word::physical_power,
+        wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2));
+    return amount;
+}
+
 BattleSetup::BattleSetup(BattleData& data, model::RangerState& ranger)
     : data_(data), ranger_(ranger) {
     initialize_combatants();
@@ -1768,36 +1870,8 @@ std::optional<std::int16_t> BattleSetup::apply_detox_value(
         error_ = "battle detox role is outside ranger records";
         return std::nullopt;
     }
-    const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    const auto first_variance = random.bounded(10);
-    const auto second_variance = random.bounded(10);
-    auto amount = wrapping_i16(
-        static_cast<std::int32_t>(actor.word(model::role_word::detoxification)) / 3 +
-        first_variance - second_variance);
-    if (amount > 99) {
-        amount = 99;
-    }
-    if (amount < 0) {
-        amount = 0;
-    }
-    if (target.word(model::role_word::poison) >
-        static_cast<std::int32_t>(actor.word(model::role_word::detoxification)) + 20) {
-        amount = 0;
-    }
-    if (amount > target.word(model::role_word::poison)) {
-        amount = target.word(model::role_word::poison);
-    }
-    const auto poison = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::poison)) - amount);
-    target.set_word(model::role_word::poison, poison);
-    if (target.word(model::role_word::poison) < 0) {
-        target.set_word(model::role_word::poison, 0);
-    }
-    if (target.word(model::role_word::poison) > 100) {
-        target.set_word(model::role_word::poison, 99);
-    }
-    return amount;
+    return apply_role_detox_value(
+        ranger_, actor_role_id, target_role_id, random);
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_detox_target(
@@ -1891,56 +1965,8 @@ std::optional<std::int32_t> BattleSetup::apply_medicine_value(
         error_ = "battle medicine role is outside ranger records";
         return std::nullopt;
     }
-    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    if (actor.word(model::role_word::physical_power) < 50) {
-        return 0;
-    }
-
-    auto medicine = static_cast<std::int32_t>(actor.word(model::role_word::medicine));
-    if (medicine < 0) {
-        medicine = 0;
-    }
-    const auto hurt = target.word(model::role_word::hurt);
-    std::int32_t base = 0;
-    if (hurt <= 25) {
-        base = (4 * medicine) / 5;
-    } else if (hurt <= 50) {
-        base = (3 * medicine) / 4;
-    } else if (hurt <= 75) {
-        base = (2 * medicine) / 3;
-    } else {
-        base = medicine / 2;
-    }
-    auto amount = base + random.bounded(5);
-    if (hurt > static_cast<std::int32_t>(actor.word(model::role_word::medicine)) + 20) {
-        amount = 0;
-        medicine = 0;
-    }
-
-    const auto hp = static_cast<std::int32_t>(target.word(model::role_word::hp));
-    const auto maximum_hp = static_cast<std::int32_t>(target.word(model::role_word::maximum_hp));
-    if (hp + amount > maximum_hp) {
-        amount = maximum_hp - hp;
-    }
-    target.set_word(
-        model::role_word::hp,
-        wrapping_i16(hp + wrapping_i16(amount)));
-    if (target.word(model::role_word::hp) > target.word(model::role_word::maximum_hp)) {
-        target.set_word(model::role_word::hp, target.word(model::role_word::maximum_hp));
-    }
-
-    auto target_hurt = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::hurt)) -
-        wrapping_i16(medicine));
-    if (target_hurt < 0) {
-        target_hurt = 0;
-    }
-    target.set_word(model::role_word::hurt, target_hurt);
-    actor.set_word(
-        model::role_word::physical_power,
-        wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2));
-    return amount;
+    return apply_role_medicine_value(
+        ranger_, actor_role_id, target_role_id, random);
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_medicine_target(

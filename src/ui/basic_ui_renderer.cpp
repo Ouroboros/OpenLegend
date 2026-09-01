@@ -182,26 +182,37 @@ bool BasicUiRenderer::render_attributes(
     return true;
 }
 
+bool BasicUiRenderer::render_game_menu_main(
+    const GameMenuController& menu,
+    render::IndexedFramebuffer& framebuffer) {
+    if (!draw_box(
+            framebuffer,
+            20,
+            18,
+            42U,
+            static_cast<std::uint16_t>(12U + 20U * menu.visible_main_items()))) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < menu.visible_main_items(); ++index) {
+        if (!draw_text(
+                framebuffer,
+                24,
+                25 + static_cast<int>(index) * 20,
+                kMainLabels[index],
+                index == menu.selection() ? 0x6663U : 0x2321U)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool BasicUiRenderer::render_game_menu(
     const GameMenuController& menu,
     const model::RangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
     switch (menu.screen()) {
     case GameMenuScreen::main:
-        if (!draw_box(framebuffer, 20, 18, 42U, static_cast<std::uint16_t>(12U + 20U * menu.visible_main_items()))) {
-            return false;
-        }
-        for (std::size_t index = 0U; index < menu.visible_main_items(); ++index) {
-            if (!draw_text(
-                    framebuffer,
-                    24,
-                    25 + static_cast<int>(index) * 20,
-                    kMainLabels[index],
-                    index == menu.selection() ? 0x6663U : 0x2321U)) {
-                return false;
-            }
-        }
-        return true;
+        return render_game_menu_main(menu, framebuffer);
     case GameMenuScreen::party_select:
         if (!draw_box(framebuffer, 68, 18, 92U, 132U)) {
             return false;
@@ -222,6 +233,7 @@ bool BasicUiRenderer::render_game_menu(
             }
         }
         return true;
+    case GameMenuScreen::party_notice:
     case GameMenuScreen::status_panel:
         return false;
     case GameMenuScreen::items:

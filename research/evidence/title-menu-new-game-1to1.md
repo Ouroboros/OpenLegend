@@ -75,6 +75,8 @@ wait   = 7333253ca7400de6
 5 -> sub_25D0E 系统
 ```
 
+医疗与解毒先在连续队伍前缀中筛选对应能力`>=10`的施术者，再进入参数0/1共享目标选择器选择全部队员。目标Escape返回原施术者光标，外层Escape才返回主菜单；确认后party slot经队伍表映射为角色ID，分别调用共享医疗/解毒状态核心。结果框显示`%3d`变化量并等待任意非零键。没有合格施术者时保留已显示的主菜单底图，在其上叠加原提示框并同样等待任意非零键。
+
 系统菜单内嵌于代码 `0x20D17`，三个标签是“读档 / 存档 / 离开”。读档和存档都进入 `sub_25F87` 的“一 / 二 / 三”三槽菜单；参数 0 调 `sub_26208`，参数 1 调 `sub_265AB`。槽菜单 `Esc` 同步返回系统菜单，不执行 I/O。系统菜单“离开”先显示“真要离开游戏（Ｙ／Ｎ）”，仅大写 `Y=0x59` 退出；其他键原样返回系统菜单。
 
 离队分支先选择队员。主角 ID 0 不可离队，并显示“抱歉！没有你游戏进行不下去”；其他角色映射到离队事件并返回。B5 只固化入口、选择和返回合同；角色事件执行仍属于 B7。
@@ -115,7 +117,7 @@ wait   = 7333253ca7400de6
 
 状态入口 `sub_22066` 调队员选择器，再以角色 ID 调 `sub_22A59`。共享选择器和状态页都先按`word_C0BF2`分支重画世界、场景或战斗背景；参数2使用“要查閱誰的狀態”圆角标题框、62像素宽队伍列表、NUL居中姓名和当前项颜色。状态函数连续显示两页并各调用一次同步按键等待：第一页为姓名/头像、等级、生命、内力、体力、经验/升级，以及攻击、防御、轻功、医疗、用毒、解毒、拳掌、御剑、耍刀、特殊兵器、暗器；任意键进入第二页，显示两件装备、修炼物/经验和最多十项武功/等级；第二次任意键才返回主菜单。
 
-现代实现由`BattleRenderer`单一拥有参数2选择框和两页状态像素；`BattleSession`与`LegacyGameRuntime`分别提供战斗及世界/场景背景。`GameMenuController`以`status_page=0/1`保留两次同步返回合同，全部值直接读取当前RANGER的`int16`/raw bits，不拥有或复制第二份角色状态。旧`BasicUiRenderer`简化状态页已删除。世界整帧回归固定选择框和两页结果，场景回归确认框/面板之外逐像素保持场景背景。
+现代实现由`BattleRenderer`单一拥有参数0/1/2/6选择框、医疗/解毒能力列表与两页状态像素；`BattleSession`与`LegacyGameRuntime`分别提供战斗及世界/场景背景。参数0以`%3d/%3d`显示生命，参数1以`%3d`显示中毒，参数2保留纯姓名状态选择；`GameMenuController`保存过滤后的party slot、嵌套施术者/目标状态和`status_page=0/1`两次同步返回合同。全部值直接读取当前RANGER的`int16`/raw bits，不拥有或复制第二份角色状态。旧`BasicUiRenderer`简化状态页已删除。世界整帧回归固定医疗、解毒、状态选择与结果，场景回归确认框/面板之外逐像素保持场景背景。
 
 物品入口 `sub_2A0D9` 依次调用 reset/draw/select。B5 的基础边界是：从 header 的 200 格物品/数量对显示当前列表、支持原菜单的环绕/取消/同步返回，并保留选择的 legacy item ID；装备、修炼、使用效果和事件副作用归 B7，不在 B5 伪造执行。共享 `sub_2D501` 四边框 primitive 已映射到 `IndexedFramebuffer::outline_rectangle`，但这不关闭 `sub_2A186` 的5×3物品图标、分页与详情绘制；该函数仍在 `ui-closure.tsv` 保持 `pending_mapping`。
 
@@ -134,4 +136,4 @@ wait   = 7333253ca7400de6
 - 存档测试只复制基线和 UI 资产到 `build/.../tests/generated/<Config>/b5-runtime/`，验证成功写出的 R/S/D snapshot 与内存状态完全相等，并通过删除隔离目录强制证明写失败不会伪报成功；
 - 主角离队返回原 Big5 提示且不修改 snapshot；其他角色的离队事件副作用按汇编边界留给 B7 事件执行器；物品使用/装备/修炼副作用同样留给 B7；
 - 标题主菜单、三槽和等待帧使用独立 Python RLE oracle；世界菜单参数2选择框、双页精确状态和物品帧锁定 framebuffer FNV-1a 回归值，战斗双页状态另由独立原资产oracle复算，场景调用验证面板外背景逐像素不变；现代提交路径仍为 `indexed8 + RGB6 -> RGBA8 -> SDL nearest integer viewport`；
-- 本次共享角色状态切片的Linux/Windows app Debug均14/14通过，Linux app ASan+UBSan 14/14通过并已恢复普通Debug cache；原始`Z.COM/Z.DAT/WAR.STA/WARFLD.IDX/WARFLD.GRP`与阶段前hash合同一致，`research/ida/databases/Z_DAT.i64`无工作树修改。
+- 本次菜单医疗/解毒切片的Linux/Windows app Debug均14/14通过，Linux app ASan+UBSan 14/14通过并已恢复普通Debug cache；独立B5 golden与tracked证据一致，原始`Z.COM/Z.DAT/WAR.STA/WARFLD.IDX/WARFLD.GRP`与阶段前hash合同一致，`research/ida/databases/Z_DAT.i64`无工作树修改。

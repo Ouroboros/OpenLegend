@@ -416,12 +416,13 @@ bool LegacyGameRuntime::render() {
         if (ranger == nullptr || !base_rendered) {
             return false;
         }
-        const auto exact_status_selection =
-            game_menu_.screen() == ui::GameMenuScreen::party_select &&
-            game_menu_.pending_party_command() == ui::GameMenuCommand::status;
+        const auto exact_party_selection =
+            game_menu_.screen() == ui::GameMenuScreen::party_select;
+        const auto exact_party_notice =
+            game_menu_.screen() == ui::GameMenuScreen::party_notice;
         const auto exact_status_page =
             game_menu_.screen() == ui::GameMenuScreen::status_panel;
-        if (exact_status_selection || exact_status_page) {
+        if (exact_party_selection || exact_party_notice || exact_status_page) {
             if (game_menu_status_renderer_ == nullptr) {
                 game_menu_status_renderer_ =
                     std::make_unique<battle::BattleRenderer>(data_root_, 0);
@@ -429,14 +430,46 @@ bool LegacyGameRuntime::render() {
             if (!game_menu_status_renderer_->valid()) {
                 return false;
             }
-            if (exact_status_selection) {
-                if (!game_menu_status_renderer_->render_character_status_selection(
-                        *ranger, game_menu_.party_selection(), framebuffer_)) {
+            const auto command = game_menu_.pending_party_command();
+            if (exact_party_selection &&
+                game_menu_.party_stage() == ui::GameMenuPartyStage::source) {
+                const auto kind = command == ui::GameMenuCommand::medicine
+                    ? battle::PartyAbilityKind::medicine
+                    : battle::PartyAbilityKind::detoxification;
+                if (!game_menu_status_renderer_->render_party_ability_selection(
+                        *ranger,
+                        game_menu_.party_options(),
+                        game_menu_.party_selection(),
+                        kind,
+                        framebuffer_)) {
+                    return false;
+                }
+            } else if (exact_party_selection) {
+                const auto kind = command == ui::GameMenuCommand::medicine
+                    ? battle::PartySelectionKind::medicine_target
+                    : command == ui::GameMenuCommand::detoxification
+                    ? battle::PartySelectionKind::detoxification_target
+                    : command == ui::GameMenuCommand::leave_party
+                    ? battle::PartySelectionKind::leave_party
+                    : battle::PartySelectionKind::status;
+                if (!game_menu_status_renderer_->render_character_selection(
+                        *ranger, game_menu_.party_selection(), kind, framebuffer_)) {
+                    return false;
+                }
+            } else if (exact_party_notice) {
+                const auto amount = game_menu_.party_action_amount();
+                const auto kind = command == ui::GameMenuCommand::medicine
+                    ? battle::PartyAbilityKind::medicine
+                    : battle::PartyAbilityKind::detoxification;
+                if ((!amount.has_value() &&
+                     !basic_renderer_.render_game_menu_main(game_menu_, framebuffer_)) ||
+                    !game_menu_status_renderer_->render_party_action_notice(
+                        kind, amount, framebuffer_)) {
                     return false;
                 }
             } else {
                 const auto role_id = ranger->header.team_member(
-                    game_menu_.party_selection()).value;
+                    game_menu_.selected_party_slot()).value;
                 if (!game_menu_status_renderer_->render_character_status(
                         *ranger,
                         role_id,
@@ -854,6 +887,18 @@ void LegacyGameRuntime::update_menu_counts() {
         ++party_count;
     }
     game_menu_.set_party_count(party_count);
+    std::array<std::int16_t, 6U> medicine_abilities{};
+    std::array<std::int16_t, 6U> detoxification_abilities{};
+    for (std::uint8_t slot = 0U; slot < party_count; ++slot) {
+        const auto role_id = ranger->header.team_member(slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger->roles.size()) {
+            continue;
+        }
+        const auto& role = ranger->roles[static_cast<std::size_t>(role_id)];
+        medicine_abilities[slot] = role.word(model::role_word::medicine);
+        detoxification_abilities[slot] = role.word(model::role_word::detoxification);
+    }
+    game_menu_.set_party_abilities(medicine_abilities, detoxification_abilities);
 
     std::uint16_t inventory_count = 0U;
     while (inventory_count < model::kInventoryCount &&
@@ -911,10 +956,27 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
 void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result) {
     switch (result.command) {
     case ui::GameMenuCommand::none:
-    case ui::GameMenuCommand::medicine:
-    case ui::GameMenuCommand::detoxification:
     case ui::GameMenuCommand::status:
         break;
+    case ui::GameMenuCommand::medicine:
+    case ui::GameMenuCommand::detoxification: {
+        auto* ranger = game_state_.ranger();
+        if (ranger == nullptr || result.slot >= model::kTeamMemberCount ||
+            result.index >= model::kTeamMemberCount) {
+            break;
+        }
+        const auto actor_role_id = ranger->header.team_member(result.slot).value;
+        const auto target_role_id = ranger->header.team_member(result.index).value;
+        const auto amount = result.command == ui::GameMenuCommand::medicine
+            ? battle::apply_role_medicine_value(
+                  *ranger, actor_role_id, target_role_id, random_)
+            : std::optional<std::int32_t>{battle::apply_role_detox_value(
+                  *ranger, actor_role_id, target_role_id, random_)};
+        if (amount.has_value()) {
+            game_menu_.complete_party_action(*amount);
+        }
+        break;
+    }
     case ui::GameMenuCommand::items: {
         if (menu_return_view_ != LegacyGameView::scene || scene_session_ == nullptr) {
             break;
