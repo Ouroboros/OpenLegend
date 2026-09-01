@@ -1966,6 +1966,66 @@ BattleItemSelectionState BattleSetup::begin_item_selection() const noexcept {
     return state;
 }
 
+bool BattleSetup::consume_inventory_item_slot(const std::size_t inventory_slot) noexcept {
+    if (!valid() || inventory_slot >= model::kInventoryCount) {
+        return false;
+    }
+    const auto item_id = ranger_.header.inventory_item(inventory_slot).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+        return false;
+    }
+    const auto remaining = wrapping_i16(
+        static_cast<std::int32_t>(ranger_.header.inventory_count(inventory_slot)) - 1);
+    ranger_.header.set_inventory(inventory_slot, model::ItemId{item_id}, remaining);
+    if (remaining > 0) {
+        return true;
+    }
+    for (std::size_t source = inventory_slot + 1U; source < model::kInventoryCount; ++source) {
+        ranger_.header.set_inventory(
+            source - 1U,
+            ranger_.header.inventory_item(source),
+            ranger_.header.inventory_count(source));
+    }
+    ranger_.header.set_inventory(model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+    return true;
+}
+
+std::optional<BattleItemEffectResult> BattleSetup::apply_player_item_effect(
+    const std::size_t actor_slot,
+    const std::size_t inventory_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        inventory_slot >= model::kInventoryCount) {
+        error_ = "battle player item action is outside legacy state";
+        return std::nullopt;
+    }
+    const auto item_id = ranger_.header.inventory_item(inventory_slot).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size() ||
+        ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::item_type) != 3) {
+        error_ = "battle player item is outside usable item records";
+        return std::nullopt;
+    }
+    const BattleAiChoice choice{
+        .action = BattleAiAction::item,
+        .target_slot = static_cast<std::int16_t>(actor_slot),
+        .item_source = BattleAiItemSource::inventory,
+        .item_slot = static_cast<std::int16_t>(inventory_slot),
+        .action_code_written = false,
+    };
+    const auto saved_attack_effects = attack_effects_;
+    auto result = apply_ai_item_effect(actor_slot, choice, random, false);
+    attack_effects_ = saved_attack_effects;
+    return result;
+}
+
+bool BattleSetup::finish_player_item_action(const std::size_t actor_slot) noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return false;
+    }
+    combatants_[actor_slot].words[combatant_word::action_done] = 1;
+    return true;
+}
+
 bool BattleSetup::remove_carried_item_slot(
     const std::size_t actor_slot,
     const std::size_t item_slot) noexcept {
@@ -2163,27 +2223,22 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
     }
     target_role.set_word(model::role_word::poison, changed_poison);
 
-    const auto remaining = wrapping_i16(
-        static_cast<std::int32_t>(ranger_.header.inventory_count(inventory_slot)) - 1);
-    ranger_.header.set_inventory(inventory_slot, model::ItemId{item_id}, remaining);
-    if (remaining <= 0) {
-        for (std::size_t source = inventory_slot + 1U; source < model::kInventoryCount; ++source) {
-            ranger_.header.set_inventory(
-                source - 1U,
-                ranger_.header.inventory_item(source),
-                ranger_.header.inventory_count(source));
-        }
-        ranger_.header.set_inventory(
-            model::kInventoryCount - 1U, model::ItemId{-1}, 0);
-    }
-
-    actor_words[combatant_word::action_done] = 1;
-    refresh_sprites();
     result.hit_count = 1;
     result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
     result.damage = damage;
-    result.inventory_consumed = true;
+    result.inventory_consumed = false;
     return result;
+}
+
+bool BattleSetup::finish_throwing_weapon_action(
+    const std::size_t actor_slot,
+    const std::size_t inventory_slot) noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        !consume_inventory_item_slot(inventory_slot)) {
+        return false;
+    }
+    combatants_[actor_slot].words[combatant_word::action_done] = 1;
+    return refresh_combatant_sprites();
 }
 
 std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_target(
@@ -2332,7 +2387,8 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
 std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
     const std::size_t actor_slot,
     const BattleAiChoice& choice,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random,
+    const bool consume_item) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
         choice.action != BattleAiAction::item) {
         error_ = "battle AI item action is outside legacy state";
@@ -2553,20 +2609,13 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
     result.battle_redraw_required = result.has_effect;
     result.wait_for_input = result.has_effect;
 
+    if (!consume_item) {
+        return result;
+    }
     if (choice.item_source == BattleAiItemSource::inventory) {
         const auto slot = static_cast<std::size_t>(choice.item_slot);
-        const auto remaining = wrapping_i16(
-            static_cast<std::int32_t>(ranger_.header.inventory_count(slot)) - 1);
-        ranger_.header.set_inventory(slot, model::ItemId{*item_id}, remaining);
-        if (remaining <= 0) {
-            for (std::size_t source = slot + 1U; source < model::kInventoryCount; ++source) {
-                ranger_.header.set_inventory(
-                    source - 1U,
-                    ranger_.header.inventory_item(source),
-                    ranger_.header.inventory_count(source));
-            }
-            ranger_.header.set_inventory(
-                model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+        if (!consume_inventory_item_slot(slot)) {
+            return std::nullopt;
         }
     } else {
         const auto slot = static_cast<std::size_t>(choice.item_slot);

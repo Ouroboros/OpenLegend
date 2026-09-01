@@ -750,6 +750,12 @@ public:
         random::LegacyRandom& random);
     [[nodiscard]] bool finish_medicine_action(std::size_t actor_slot);
     [[nodiscard]] BattleItemSelectionState begin_item_selection() const noexcept;
+    [[nodiscard]] bool consume_inventory_item_slot(std::size_t inventory_slot) noexcept;
+    [[nodiscard]] std::optional<BattleItemEffectResult> apply_player_item_effect(
+        std::size_t actor_slot,
+        std::size_t inventory_slot,
+        random::LegacyRandom& random);
+    [[nodiscard]] bool finish_player_item_action(std::size_t actor_slot) noexcept;
     [[nodiscard]] bool remove_carried_item_slot(
         std::size_t actor_slot,
         std::size_t item_slot) noexcept;
@@ -760,6 +766,9 @@ public:
         BattlePathCoord target,
         std::size_t inventory_slot,
         random::LegacyRandom& random);
+    [[nodiscard]] bool finish_throwing_weapon_action(
+        std::size_t actor_slot,
+        std::size_t inventory_slot) noexcept;
     [[nodiscard]] std::optional<BattleThrownItemResult> apply_ai_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
@@ -768,7 +777,8 @@ public:
     [[nodiscard]] std::optional<BattleItemEffectResult> apply_ai_item_effect(
         std::size_t actor_slot,
         const BattleAiChoice& choice,
-        random::LegacyRandom& random);
+        random::LegacyRandom& random,
+        bool consume_item = true);
     [[nodiscard]] std::optional<BattleRestResult> rest_actor(
         std::size_t actor_slot,
         random::LegacyRandom& random);

@@ -82,7 +82,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98`推进为`implemented_pending_review`，通用`sub_36AF7/sub_37355`仍因targeting/AI路径未全部接入而保持`pending_implementation`。
 
-自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、第二次重绘/present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler已完成并进入逐actor后处理，固定seed1连续两个角色体力增量为5、4。`sub_32A51/sub_32B78/sub_36A98` 已为 `implemented_pending_review`；玩家攻击现已完成目标/方向选择、四类area、动画、逐轮提交和升级等待；其余物品/状态玩家handler、十类AI效果handler、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_33599/sub_3B238` 保持 `pending_implementation`。
+自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、第二次重绘/present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler已完成并进入逐actor后处理，固定seed1连续两个角色体力增量为5、4。`sub_32A51/sub_32B78/sub_36A98` 已为 `implemented_pending_review`；玩家攻击与物品现均完成选择、实际UI、状态、动画及actor尾部，玩家状态动作仍待接入；十类AI效果handler、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_33599/sub_3B238` 保持 `pending_implementation`。
 
 ## 8. 战场路径图与最短路回溯
 
@@ -129,7 +129,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3859E` 的actor sprite、effect frame/visible、channel1/2 sample分派点与每帧17 tick已映射为 `magic_animation_plan`；固定19帧hash `0x5aaffbb1d5697a73`。`sub_3884A` 的固定sample13、100 tick前奏与17帧effect2时间线hash为 `0x2b5c87d8e0c754d5`。`sub_38910` 的10个damage phase、每帧1 tick与前4帧flash hash为 `0x364953a2c8f42144`，抑制flash时为 `0xec7a73890ce825c4`。
 
-三项typed时间线均已实现。玩家攻击、用毒、解毒、医疗现已把`sub_3859E/sub_38910`接入BattleSession：按动态FIGHT基址8000与EFT基址6500实际载入/绘制，分派attack/effect双bank音效，每帧present后等待一次BIOS tick变化，并在十帧damage后清显示状态。三条支持动作真实battle4向量分别执行11/9/10帧magic与10帧damage；用毒仅前4帧flash，解毒/医疗全部抑制。攻击每击固定10帧magic与10帧damage、前4帧flash，双击完整重复两组并在每组后执行独立提交等待。AI、暗器等其余调用点及`sub_3884A`前奏仍未全部接入，所以三函数仍为 `pending_implementation`。
+三项typed时间线均已实现。玩家攻击、用毒、解毒、医疗现已把`sub_3859E/sub_38910`接入BattleSession：按动态FIGHT基址8000与EFT基址6500实际载入/绘制，分派attack/effect双bank音效，每帧present后等待一次BIOS tick变化，并在十帧damage后清显示状态。三条支持动作真实battle4向量分别执行11/9/10帧magic与10帧damage；用毒仅前4帧flash，解毒/医疗全部抑制。攻击每击固定10帧magic与10帧damage、前4帧flash，双击完整重复两组并在每组后执行独立提交等待。玩家暗器现把`sub_3884A/sub_38910`接入BattleSession：sample13、100前奏、effect sample、11帧EFT及10帧damage均实际render/present/tick。AI动画调用点仍未接入，所以三函数仍为 `pending_implementation`。
 
 ## 14. 武功选择菜单
 
@@ -159,9 +159,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 18. 战斗物品与休息状态核心
 
-`sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器返回4才进入暗器目标，返回1直接结束actor行动。现代 `begin_item_selection` 只恢复该typed槽表，物品格/详情/type3使用与同步返回仍未接入，因此保持 `pending_implementation`。
+`sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器返回4才进入暗器目标，返回1直接结束actor行动。现代Session已实际执行战场重画、三个共享框、5×3 MMAP图标、上下箭头、名称/简介、数量条件、四方向/PageUp/PageDown、Escape和三确认键。16项count2/count1菜单整帧FNV64为`0x68c3b70dfec20bba`/`0x17b6845a718a6cf8`。type3固定当前actor自用；非零效果执行23项状态、面板present、库存提交及任意键等待，面板FNV64为`0xd518fb664f3e0e3c`；全零效果不画面板、不扣库存、不消费RNG但仍结束行动。该wrapper推进为 `implemented_pending_review`。
 
-`sub_3A30B` 以signed `hidden_weapon/15+1`选择目标；友军不标记，空格只标effect，敌方才执行暗器effect、伤害、中毒、damage kind0动画、库存减一和行动结束。HP负增量先按target hurt的0、1..33、34..66、>66四档取item `add_hp`的`1/4、1/3、1/2、1`并减一次`bounded(5)`，再以`(值-2*hidden_weapon)/3`结算；hurt按负增量四分之一上升。正`add_poison`分支不消费额外RNG，非正分支严格再消费两次`bounded(5)`，所以无毒暗器仍可能随机改变poison。库存数量按int16减一，不大于0时把后续槽全部左移并清尾槽。当前只完成状态核心与动画参数返回；目标UI、effect/damage render/present/wait未接入，故保持 `pending_implementation`。
+`sub_3A30B` 以signed `hidden_weapon/15+1`选择目标；友军不标记，空格只标effect，敌方才执行暗器effect、伤害、中毒、damage kind1显示、库存减一和行动结束。HP负增量先按target hurt的0、1..33、34..66、>66四档取item `add_hp`的`1/4、1/3、1/2、1`并减一次`bounded(5)`，再以`(值-2*hidden_weapon)/3`结算；hurt按负增量四分之一上升。正`add_poison`分支不消费额外RNG，非正分支严格再消费两次`bounded(5)`，所以无毒暗器仍可能随机改变poison。Session已覆盖目标取消、空目标返回、敌方确认、sample13/100前奏/effect sample/11帧EFT/10帧damage、延后库存提交、sprite刷新与下一actor；前奏、首EFT和首damage FNV64为`0xdbee20f394fd7219`、`0x370a4078e9de6172`、`0xd41fa068222d444a`。库存数量按int16减一，不大于0时把后续槽全部左移并清尾槽。该函数推进为 `implemented_pending_review`。
 
 `sub_3A8A4` 已映射为 `rest_actor`：先结束行动，按round value是否等于signed `speed/10`执行`bounded(3)+3/+2`恢复体力并只夹上限100；更新后体力不少于30时，以`physical_power/10-2`为bound严格依次恢复HP与MP，各加`bounded(bound)+3`并只封顶。固定向量得到体力50→55、HP95→99、MP48→50；低体力向量25→29且不消费后两次RNG。该函数为 `implemented_pending_review`。
 
@@ -171,7 +171,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3AA4B` 的顺序为完整战场重绘、present、自动flag写1、调用当前actor的AI。`BattleSession`已按该顺序实际重绘/present，在present前保持flag0、present完成后写flag1并以同一actor进入AI前导；后续已执行态势累计、第二次重绘/present及参数300的八次BIOS tick变化。其余AI效果handler未完成，因此该函数保持 `pending_implementation`。
 
-`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present、玩家动作/武功菜单、movement/targeting路径光标、每个玩家/AI移动步，以及玩家攻击/用毒/解毒/医疗的逐帧FIGHT/EFT与damage动画实际调用并由runtime present；攻击方向提示与升级框整帧hash分别为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。AI效果、物品/暗器和结果调用点仍未接入，故原绘制函数保持 `pending_implementation`。
+`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体，并从MMAP实际绘制物品图标；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present、玩家动作/武功/物品菜单、movement/targeting路径光标、每个玩家/AI移动步，以及全部玩家攻击/支持/物品的逐帧FIGHT/EFT与damage动画实际调用并由runtime present；攻击方向提示与升级框整帧hash分别为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。AI效果和结果调用点仍未接入，故原绘制函数保持 `pending_implementation`。
 
 ## 20. AI六个候选selector
 

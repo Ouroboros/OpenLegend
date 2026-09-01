@@ -29,8 +29,13 @@ enum class BattleSessionPhase {
     player_action_selected,
     player_magic_selection,
     player_attack_direction,
+    player_item_selection,
+    player_item_effect_present,
+    player_item_effect_wait,
     player_movement_select,
     player_targeting_select,
+    player_effect_prelude_present,
+    player_effect_prelude_wait,
     player_magic_frame_present,
     player_magic_wait,
     player_damage_frame_present,
@@ -65,6 +70,10 @@ enum class BattleSessionInputResult {
     magic_cancelled,
     magic_selected,
     direction_selected,
+    item_changed,
+    item_cancelled,
+    item_selected,
+    item_effect_acknowledged,
 };
 
 enum class BattleAudioBank : std::int16_t {
@@ -134,6 +143,10 @@ public:
     [[nodiscard]] std::int16_t selected_magic_slot() const noexcept {
         return selected_magic_slot_;
     }
+    [[nodiscard]] const BattleItemSelectionState* player_item_selection() const noexcept;
+    [[nodiscard]] std::int16_t player_item_page() const noexcept;
+    [[nodiscard]] std::int16_t player_item_row() const noexcept;
+    [[nodiscard]] std::int16_t player_item_column() const noexcept;
     [[nodiscard]] std::optional<BattlePathCoord> active_cursor() const noexcept {
         return player_cursor_selection_.has_value()
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
@@ -193,6 +206,9 @@ private:
     [[nodiscard]] bool advance_player_attack_level_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool finish_player_attack_iteration();
     [[nodiscard]] bool begin_player_movement();
+    [[nodiscard]] bool begin_player_item_selection();
+    [[nodiscard]] BattleSessionInputResult handle_player_item_key(
+        std::uint8_t translated_key);
     [[nodiscard]] bool begin_player_targeting(BattlePlayerAction action);
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
         std::uint8_t translated_key);
@@ -201,6 +217,8 @@ private:
     [[nodiscard]] bool begin_player_target_effect(
         BattlePlayerAction action, BattlePathCoord target);
     [[nodiscard]] bool prepare_player_magic_frame();
+    [[nodiscard]] bool advance_player_effect_prelude_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool prepare_player_effect_frame();
     [[nodiscard]] bool advance_player_magic_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool begin_player_damage_animation();
     [[nodiscard]] bool prepare_player_damage_frame();
@@ -224,6 +242,10 @@ private:
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_magic_selection(
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_item_selection(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_item_effect(
+        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_attack_direction(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_attack_level(
@@ -242,9 +264,21 @@ private:
         std::vector<std::uint8_t> level_text;
     };
 
+    struct PlayerItemState {
+        BattleItemSelectionState selection;
+        std::int16_t page{};
+        std::int16_t row{};
+        std::int16_t column{};
+        std::optional<std::size_t> selected_inventory_slot;
+        std::int16_t selected_item_id{-1};
+        std::optional<BattleItemEffectResult> effect_result;
+        bool inventory_consumed{};
+    };
+
     struct PlayerTargetEffectState {
         BattlePlayerAction action{};
         BattleMagicAnimationPlan magic_animation;
+        std::optional<BattleEffectAnimationPlan> effect_animation;
         std::size_t magic_frame{};
         std::array<BattleDamageAnimationFrame, 10> damage_animation{};
         std::size_t damage_frame{};
@@ -287,6 +321,7 @@ private:
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerAttackState> player_attack_;
+    std::unique_ptr<PlayerItemState> player_item_;
     std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
     std::int16_t selected_magic_slot_{};
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;

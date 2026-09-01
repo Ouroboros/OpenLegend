@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cstddef>
 #include <iterator>
 #include <span>
@@ -20,9 +21,11 @@ constexpr std::uint8_t kSpace = 0x20U;
 constexpr std::uint8_t kEscape = 0x1BU;
 constexpr std::uint8_t kKeypadInsert = 0x96U;
 constexpr std::uint8_t kDown = 0x98U;
+constexpr std::uint8_t kPageDown = 0x99U;
 constexpr std::uint8_t kLeft = 0x9AU;
 constexpr std::uint8_t kRight = 0x9CU;
 constexpr std::uint8_t kUp = 0x9EU;
+constexpr std::uint8_t kPageUp = 0x9FU;
 constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
     0xBDU, 0xD0U, 0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xB0U, 0xD1U, 0xBBU, 0x50U,
     0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA4U, 0xA7U, 0xA4U, 0x48U, 0xAAU, 0xABU};
@@ -43,6 +46,40 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     {0xA5U, 0xF0U, 0xAEU, 0xA7U},
     {0xA6U, 0xDBU, 0xB0U, 0xCAU},
 }};
+constexpr std::array<std::uint8_t, 5> kUseItemPrefix{
+    0xA8U, 0xCFU, 0xA5U, 0xCEU, 0x20U};
+constexpr std::array<std::uint8_t, 4> kItemIncrease{
+    0xB4U, 0xA3U, 0xA4U, 0xC9U};
+constexpr std::array<std::uint8_t, 4> kItemDecrease{
+    0xB4U, 0xEEU, 0xA4U, 0xD6U};
+constexpr std::array<std::uint8_t, 20> kItemMpTypeChanged{
+    0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U, 0xA7U, 0xEFU,
+    0xACU, 0xB0U, 0x20U, 0x20U, 0xB3U, 0xB1U, 0xB6U, 0xA7U, 0xA6U, 0x58U};
+constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
+    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xADU, 0xC8U},
+    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
+    {0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U},
+    {0xCAU, 0x5EU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
+    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U},
+    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
+    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
+    {0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
+    {0xBBU, 0xB4U, 0xA5U, 0xADU, 0xC8U},
+    {0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA4U, 0x4FU},
+    {0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xA8U, 0xCFU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xA7U, 0xDCU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA5U, 0xA4U, 0xD2U},
+    {0xB1U, 0x73U, 0xBCU, 0x43U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xADU, 0x41U, 0xA4U, 0x4DU, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
+    {0xAFU, 0x53U, 0xAEU, 0xEDU, 0xA7U, 0x4CU, 0xBEU, 0xB9U},
+    {0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
+    {0xAAU, 0x5AU, 0xBEU, 0xC7U, 0xB1U, 0x60U, 0xC3U, 0xD1U},
+    {0xA4U, 0x48U, 0xA9U, 0xCAU},
+    {0xA7U, 0xF0U, 0xC0U, 0xBBU, 0xA6U, 0xB8U, 0xBCU, 0xC6U},
+    {0xA5U, 0xA4U, 0xD2U, 0xB1U, 0x61U, 0xACU, 0x72U},
+}};
 
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == kEnter || key == kSpace || key == kKeypadInsert;
@@ -60,8 +97,15 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
     case BattleSessionPhase::player_magic_selection: return "player_magic_selection";
     case BattleSessionPhase::player_attack_direction: return "player_attack_direction";
+    case BattleSessionPhase::player_item_selection: return "player_item_selection";
+    case BattleSessionPhase::player_item_effect_present: return "player_item_effect_present";
+    case BattleSessionPhase::player_item_effect_wait: return "player_item_effect_wait";
     case BattleSessionPhase::player_movement_select: return "player_movement_select";
     case BattleSessionPhase::player_targeting_select: return "player_targeting_select";
+    case BattleSessionPhase::player_effect_prelude_present:
+        return "player_effect_prelude_present";
+    case BattleSessionPhase::player_effect_prelude_wait:
+        return "player_effect_prelude_wait";
     case BattleSessionPhase::player_magic_frame_present:
         return "player_magic_frame_present";
     case BattleSessionPhase::player_magic_wait: return "player_magic_wait";
@@ -119,6 +163,23 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     return 25;
 }
 
+[[nodiscard]] std::vector<std::uint8_t> decimal_text(
+    const std::int32_t value,
+    const int width = 0) {
+    std::array<char, 16> buffer{};
+    const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
+    const auto count = static_cast<int>(converted.ptr - buffer.data());
+    std::vector<std::uint8_t> text;
+    text.reserve(static_cast<std::size_t>(std::max(width, count)));
+    for (int index = count; index < width; ++index) {
+        text.push_back(static_cast<std::uint8_t>(' '));
+    }
+    for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
+        text.push_back(static_cast<std::uint8_t>(*cursor));
+    }
+    return text;
+}
+
 }  // namespace
 
 BattleSession::BattleSession(
@@ -160,6 +221,22 @@ BattleSession::BattleSession(
     }
 }
 
+const BattleItemSelectionState* BattleSession::player_item_selection() const noexcept {
+    return player_item_ ? &player_item_->selection : nullptr;
+}
+
+std::int16_t BattleSession::player_item_page() const noexcept {
+    return player_item_ ? player_item_->page : 0;
+}
+
+std::int16_t BattleSession::player_item_row() const noexcept {
+    return player_item_ ? player_item_->row : 0;
+}
+
+std::int16_t BattleSession::player_item_column() const noexcept {
+    return player_item_ ? player_item_->column : 0;
+}
+
 BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated_key) {
     if (!valid() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
@@ -172,6 +249,28 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
     }
     if (phase_ == BattleSessionPhase::player_attack_direction) {
         return handle_player_attack_direction_key(translated_key);
+    }
+    if (phase_ == BattleSessionPhase::player_item_selection) {
+        return handle_player_item_key(translated_key);
+    }
+    if (phase_ == BattleSessionPhase::player_item_effect_wait) {
+        if (!player_item_ || !player_item_->effect_result.has_value() ||
+            !setup_.finish_player_item_action(current_actor_slot_)) {
+            error_ = setup_.valid()
+                ? "battle player item completion state is absent"
+                : setup_.error();
+            return BattleSessionInputResult::ignored;
+        }
+        diagnostics::log_info(
+            "battle player item effect acknowledged id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " item=" + std::to_string(player_item_->selected_item_id) +
+            " effects=" + std::to_string(player_item_->effect_result->effect_count));
+        player_item_.reset();
+        if (!finish_current_actor(BattlePlayerAction::item)) {
+            return BattleSessionInputResult::ignored;
+        }
+        return BattleSessionInputResult::item_effect_acknowledged;
     }
     if (phase_ == BattleSessionPhase::player_movement_select) {
         return handle_player_movement_key(translated_key);
@@ -241,6 +340,8 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
         static_cast<void>(advance_ai_movement_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_movement_wait) {
         static_cast<void>(advance_player_movement_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::player_effect_prelude_wait) {
+        static_cast<void>(advance_player_effect_prelude_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_magic_wait) {
         static_cast<void>(advance_player_magic_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_damage_wait) {
@@ -265,6 +366,11 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
         rendered = render_player_action_menu(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_magic_selection) {
         rendered = render_player_magic_selection(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_item_selection) {
+        rendered = render_player_item_selection(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_item_effect_present ||
+               phase_ == BattleSessionPhase::player_item_effect_wait) {
+        rendered = render_player_item_effect(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_attack_direction) {
         rendered = render_player_attack_direction(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_attack_level_present ||
@@ -316,17 +422,58 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         }
         return;
     }
+    if (phase_ == BattleSessionPhase::player_item_effect_present) {
+        if (!player_item_ || !player_item_->selected_inventory_slot.has_value() ||
+            !player_item_->effect_result.has_value() || player_item_->inventory_consumed ||
+            !setup_.consume_inventory_item_slot(*player_item_->selected_inventory_slot)) {
+            error_ = setup_.valid()
+                ? "battle player item inventory continuation is invalid"
+                : setup_.error();
+            return;
+        }
+        player_item_->inventory_consumed = true;
+        player_item_->effect_result->item_consumed = true;
+        phase_ = BattleSessionPhase::player_item_effect_wait;
+        diagnostics::log_info(
+            "battle player item effect presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " item=" + std::to_string(player_item_->selected_item_id) +
+            " effects=" + std::to_string(player_item_->effect_result->effect_count));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_effect_prelude_present) {
+        if (!player_target_effect_ || !player_target_effect_->effect_animation.has_value()) {
+            error_ = "battle player effect prelude continuation is absent";
+            return;
+        }
+        player_target_effect_->animation_wait_tick = bios_tick;
+        player_target_effect_->animation_wait_tick_changes_remaining =
+            timing::legacy_delay_tick_count(
+                player_target_effect_->effect_animation->prelude_wait_ticks);
+        phase_ = BattleSessionPhase::player_effect_prelude_wait;
+        diagnostics::log_debug(
+            "battle player effect prelude presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " wait_tick_changes=" + std::to_string(
+                player_target_effect_->animation_wait_tick_changes_remaining));
+        return;
+    }
     if (phase_ == BattleSessionPhase::player_magic_frame_present) {
-        if (!player_target_effect_ ||
-            player_target_effect_->magic_frame >=
-                player_target_effect_->magic_animation.frames.size()) {
-            error_ = "battle player magic frame is outside animation plan";
+        if (!player_target_effect_) {
+            error_ = "battle player magic frame continuation is absent";
             return;
         }
         auto& effect = *player_target_effect_;
+        const auto& frames = effect.effect_animation.has_value()
+            ? effect.effect_animation->frames
+            : effect.magic_animation.frames;
+        if (effect.magic_frame >= frames.size()) {
+            error_ = "battle player magic frame is outside animation plan";
+            return;
+        }
         effect.animation_wait_tick = bios_tick;
         effect.animation_wait_tick_changes_remaining = timing::legacy_delay_tick_count(
-            effect.magic_animation.frames[effect.magic_frame].wait_ticks);
+            frames[effect.magic_frame].wait_ticks);
         phase_ = BattleSessionPhase::player_magic_wait;
         diagnostics::log_debug(
             "battle player magic frame presented id=" + std::to_string(battle_id()) +
@@ -1162,6 +1309,7 @@ bool BattleSession::begin_player_attack_iteration(
         PlayerTargetEffectState{
             .action = BattlePlayerAction::attack,
             .magic_animation = std::move(*animation),
+            .effect_animation = std::nullopt,
             .effect_id = effect_id,
             .damage_kind = static_cast<std::int16_t>(
                 result->effect_kind == 3 ? 5 : 1),
@@ -1210,6 +1358,142 @@ bool BattleSession::begin_player_movement() {
     return true;
 }
 
+bool BattleSession::begin_player_item_selection() {
+    player_item_ = std::make_unique<PlayerItemState>(PlayerItemState{
+        .selection = setup_.begin_item_selection(),
+        .page = 0,
+        .row = 0,
+        .column = 0,
+        .selected_inventory_slot = std::nullopt,
+        .selected_item_id = -1,
+        .effect_result = std::nullopt,
+        .inventory_consumed = false,
+    });
+    phase_ = BattleSessionPhase::player_item_selection;
+    diagnostics::log_info(
+        "battle player item selection ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " items=" + std::to_string(player_item_->selection.count));
+    return true;
+}
+
+BattleSessionInputResult BattleSession::handle_player_item_key(
+    const std::uint8_t translated_key) {
+    if (!player_item_) {
+        return BattleSessionInputResult::ignored;
+    }
+    auto& item = *player_item_;
+    if (translated_key == kRight) {
+        item.column = item.column == 4 ? 0 : static_cast<std::int16_t>(item.column + 1);
+    } else if (translated_key == kLeft) {
+        item.column = item.column == 0 ? 4 : static_cast<std::int16_t>(item.column - 1);
+    } else if (translated_key == kDown) {
+        if (item.row < 2) {
+            ++item.row;
+        } else if (item.page < 37) {
+            ++item.page;
+        }
+    } else if (translated_key == kUp) {
+        if (item.row > 0) {
+            --item.row;
+        } else if (item.page > 0) {
+            --item.page;
+        }
+    } else if (translated_key == kPageDown) {
+        if (item.page < 35) {
+            item.page = static_cast<std::int16_t>(item.page + 3);
+        }
+    } else if (translated_key == kPageUp) {
+        if (item.page > 2) {
+            item.page = static_cast<std::int16_t>(item.page - 3);
+        }
+    } else if (translated_key == kEscape) {
+        diagnostics::log_info(
+            "battle player item selection cancelled id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_));
+        player_item_.reset();
+        player_action_menu_.selected_action = -1;
+        phase_ = BattleSessionPhase::player_action;
+        return BattleSessionInputResult::item_cancelled;
+    } else if (!confirms(translated_key)) {
+        return BattleSessionInputResult::ignored;
+    } else {
+        const auto list_index = static_cast<std::int32_t>(
+            5 * (item.page + item.row) + item.column);
+        if (list_index < 0 || list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
+            return BattleSessionInputResult::ignored;
+        }
+        const auto inventory_slot = item.selection.inventory_slots[
+            static_cast<std::size_t>(list_index)];
+        if (inventory_slot < 0 ||
+            static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
+            return BattleSessionInputResult::ignored;
+        }
+        const auto item_id = ranger_.header.inventory_item(
+            static_cast<std::size_t>(inventory_slot)).value;
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            return BattleSessionInputResult::ignored;
+        }
+        const auto& record = ranger_.items[static_cast<std::size_t>(item_id)];
+        if (record.word(model::item_word::show_introduction) != 1) {
+            return BattleSessionInputResult::ignored;
+        }
+        item.selected_inventory_slot = static_cast<std::size_t>(inventory_slot);
+        item.selected_item_id = item_id;
+        const auto item_type = record.word(model::item_word::item_type);
+        diagnostics::log_info(
+            "battle player item selected id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " inventory_slot=" + std::to_string(inventory_slot) +
+            " item=" + std::to_string(item_id) +
+            " type=" + std::to_string(item_type));
+        if (item_type == 3) {
+            auto effect = setup_.apply_player_item_effect(
+                current_actor_slot_, static_cast<std::size_t>(inventory_slot), random_);
+            if (!effect.has_value()) {
+                error_ = setup_.valid()
+                    ? "battle player item state application failed"
+                    : setup_.error();
+                return BattleSessionInputResult::ignored;
+            }
+            if (!effect->has_effect) {
+                diagnostics::log_info(
+                    "battle player item had no visible effect id=" +
+                    std::to_string(battle_id()) +
+                    " slot=" + std::to_string(current_actor_slot_) +
+                    " item=" + std::to_string(item_id) +
+                    " consumed=false action_complete=true");
+                if (!setup_.finish_player_item_action(current_actor_slot_)) {
+                    error_ = "battle player zero-effect item completion failed";
+                    return BattleSessionInputResult::ignored;
+                }
+                player_item_.reset();
+                player_action_menu_.selected_action = -1;
+                if (!finish_current_actor(BattlePlayerAction::item)) {
+                    return BattleSessionInputResult::ignored;
+                }
+                return BattleSessionInputResult::item_selected;
+            }
+            item.effect_result = std::move(*effect);
+            phase_ = BattleSessionPhase::player_item_effect_present;
+            return BattleSessionInputResult::item_selected;
+        }
+        if (item_type == 4 && begin_player_targeting(BattlePlayerAction::item)) {
+            return BattleSessionInputResult::item_selected;
+        }
+        error_ = "battle player item type is outside filtered records";
+        return BattleSessionInputResult::ignored;
+    }
+
+    diagnostics::log_debug(
+        "battle player item cursor id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " page=" + std::to_string(item.page) +
+        " row=" + std::to_string(item.row) +
+        " column=" + std::to_string(item.column));
+    return BattleSessionInputResult::item_changed;
+}
+
 bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
     std::optional<std::int16_t> path_limit;
     if (action == BattlePlayerAction::attack && player_attack_) {
@@ -1220,6 +1504,9 @@ bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
         path_limit = setup_.detox_targeting_range(current_actor_slot_);
     } else if (action == BattlePlayerAction::medicine) {
         path_limit = setup_.medicine_targeting_range(current_actor_slot_);
+    } else if (action == BattlePlayerAction::item && player_item_ &&
+               player_item_->selected_inventory_slot.has_value()) {
+        path_limit = setup_.throwing_weapon_targeting_range(current_actor_slot_);
     }
     if (!path_limit.has_value()) {
         error_ = "battle player targeting range is invalid";
@@ -1357,6 +1644,10 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
             static_cast<std::int16_t>(BattlePlayerAction::attack)) {
             player_attack_.reset();
         }
+        if (player_action_menu_.selected_action ==
+            static_cast<std::int16_t>(BattlePlayerAction::item)) {
+            player_item_.reset();
+        }
         player_action_menu_.selected_action = -1;
         phase_ = BattleSessionPhase::player_action;
         diagnostics::log_info(
@@ -1394,6 +1685,77 @@ bool BattleSession::begin_player_target_effect(
     const BattlePathCoord target) {
     if (action == BattlePlayerAction::attack) {
         return begin_player_attack_iteration(target);
+    }
+    if (action == BattlePlayerAction::item) {
+        if (!player_item_ || !player_item_->selected_inventory_slot.has_value()) {
+            error_ = "battle player throwing-weapon selection is absent";
+            return false;
+        }
+        const auto inventory_slot = *player_item_->selected_inventory_slot;
+        const auto thrown = setup_.apply_throwing_weapon_target(
+            current_actor_slot_, target, inventory_slot, random_);
+        if (!thrown.has_value()) {
+            error_ = setup_.valid()
+                ? "battle player throwing-weapon state application failed"
+                : setup_.error();
+            return false;
+        }
+        player_cursor_selection_.reset();
+        render_state_.path_limit = 0;
+        if (thrown->hit_count == 0) {
+            diagnostics::log_info(
+                "battle player throwing-weapon target rejected id=" +
+                std::to_string(battle_id()) +
+                " slot=" + std::to_string(current_actor_slot_) +
+                " target=" + std::to_string(target.x) + "," +
+                std::to_string(target.y));
+            selected_player_target_.reset();
+            player_item_.reset();
+            player_action_menu_.selected_action = -1;
+            phase_ = BattleSessionPhase::player_action;
+            return true;
+        }
+        if (!thrown->effect_id.has_value()) {
+            error_ = "battle player throwing-weapon effect id is absent";
+            return false;
+        }
+        auto animation = BattleSetup::effect_animation_plan(*thrown->effect_id);
+        if (!animation.has_value()) {
+            error_ = "battle player throwing-weapon effect animation is invalid";
+            return false;
+        }
+        player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
+            PlayerTargetEffectState{
+                .action = BattlePlayerAction::item,
+                .magic_animation = {},
+                .effect_animation = std::move(*animation),
+                .effect_id = *thrown->effect_id,
+                .damage_kind = static_cast<std::int16_t>(thrown->damage == 0 ? 0 : 1),
+                .damage_suppress_flash = false,
+                .audio_commands = {},
+            });
+        if (player_target_effect_->effect_animation->dispatch_magic_before_prelude) {
+            player_target_effect_->audio_commands.push_back(BattleAudioCommand{
+                BattleAudioBank::attack,
+                player_target_effect_->effect_animation->magic_sample_id});
+        }
+        render_state_.effect_id = kBattleEffectPointerBase;
+        render_state_.effect_visible = false;
+        render_state_.damage_kind = 0;
+        render_state_.highlight_enabled = false;
+        phase_ = BattleSessionPhase::player_effect_prelude_present;
+        diagnostics::log_info(
+            "battle player throwing-weapon effect ready id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " inventory_slot=" + std::to_string(inventory_slot) +
+            " target=" + std::to_string(target.x) + "," +
+            std::to_string(target.y) +
+            " effect=" + std::to_string(*thrown->effect_id) +
+            " damage=" + std::to_string(thrown->damage) +
+            " frames=" + std::to_string(
+                player_target_effect_->effect_animation->frames.size()));
+        return true;
     }
 
     std::optional<BattleAreaResult> result;
@@ -1442,6 +1804,7 @@ bool BattleSession::begin_player_target_effect(
         PlayerTargetEffectState{
             .action = action,
             .magic_animation = std::move(*animation),
+            .effect_animation = std::nullopt,
             .effect_id = effect_id,
             .damage_kind = damage_kind,
             .damage_suppress_flash = suppress_flash,
@@ -1464,6 +1827,51 @@ bool BattleSession::begin_player_target_effect(
         " frames=" +
         std::to_string(player_target_effect_->magic_animation.frames.size()));
     return prepare_player_magic_frame();
+}
+
+bool BattleSession::advance_player_effect_prelude_wait(
+    const std::uint32_t bios_tick) {
+    if (!player_target_effect_ || !player_target_effect_->effect_animation.has_value()) {
+        error_ = "battle player effect prelude continuation is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    if (bios_tick == effect.animation_wait_tick) {
+        return true;
+    }
+    effect.animation_wait_tick = bios_tick;
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        --effect.animation_wait_tick_changes_remaining;
+    }
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        return true;
+    }
+    if (effect.effect_animation->dispatch_effect_after_prelude) {
+        effect.audio_commands.push_back(BattleAudioCommand{
+            BattleAudioBank::effect, effect.effect_animation->effect_sample_id});
+    }
+    effect.magic_frame = 0U;
+    return prepare_player_effect_frame();
+}
+
+bool BattleSession::prepare_player_effect_frame() {
+    if (!player_target_effect_ || !player_target_effect_->effect_animation.has_value() ||
+        player_target_effect_->magic_frame >=
+            player_target_effect_->effect_animation->frames.size()) {
+        error_ = "battle player effect animation frame is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    const auto& frame = effect.effect_animation->frames[effect.magic_frame];
+    render_state_.effect_visible = frame.effect_visible;
+    render_state_.effect_frame_offset = frame.effect_frame;
+    phase_ = BattleSessionPhase::player_magic_frame_present;
+    diagnostics::log_debug(
+        "battle player effect frame ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " frame=" + std::to_string(effect.magic_frame) +
+        " effect_frame=" + std::to_string(frame.effect_frame));
+    return true;
 }
 
 bool BattleSession::prepare_player_magic_frame() {
@@ -1519,8 +1927,13 @@ bool BattleSession::advance_player_magic_wait(const std::uint32_t bios_tick) {
         return true;
     }
     ++effect.magic_frame;
-    if (effect.magic_frame < effect.magic_animation.frames.size()) {
-        return prepare_player_magic_frame();
+    const auto frame_count = effect.effect_animation.has_value()
+        ? effect.effect_animation->frames.size()
+        : effect.magic_animation.frames.size();
+    if (effect.magic_frame < frame_count) {
+        return effect.effect_animation.has_value()
+            ? prepare_player_effect_frame()
+            : prepare_player_magic_frame();
     }
     render_state_.effect_visible = false;
     return begin_player_damage_animation();
@@ -1616,6 +2029,10 @@ bool BattleSession::finish_player_target_effect() {
         finished = setup_.finish_detox_action(current_actor_slot_);
     } else if (action == BattlePlayerAction::medicine) {
         finished = setup_.finish_medicine_action(current_actor_slot_);
+    } else if (action == BattlePlayerAction::item && player_item_ &&
+               player_item_->selected_inventory_slot.has_value()) {
+        finished = setup_.finish_throwing_weapon_action(
+            current_actor_slot_, *player_item_->selected_inventory_slot);
     }
     if (!finished) {
         error_ = setup_.valid() ? "battle player target action completion failed" : setup_.error();
@@ -1628,6 +2045,9 @@ bool BattleSession::finish_player_target_effect() {
         " magic_frames=" + std::to_string(player_target_effect_->magic_frame) +
         " damage_frames=" + std::to_string(player_target_effect_->damage_frame));
     player_target_effect_.reset();
+    if (action == BattlePlayerAction::item) {
+        player_item_.reset();
+    }
     return finish_current_actor(action);
 }
 
@@ -1932,6 +2352,7 @@ bool BattleSession::dispatch_selected_player_action() {
     case BattlePlayerAction::attack:
         return begin_player_attack();
     case BattlePlayerAction::item:
+        return begin_player_item_selection();
     case BattlePlayerAction::status:
         return true;
     }
@@ -2170,6 +2591,206 @@ bool BattleSession::render_player_magic_selection(
         selected_slot,
         17 * player_magic_selection_->cursor + 15,
         0x6663U);
+}
+
+bool BattleSession::render_player_item_selection(
+    render::IndexedFramebuffer& framebuffer) {
+    if (!player_item_ || !render_battlefield(framebuffer) ||
+        !renderer_.draw_box(framebuffer, 45, 2, 230U, 23U) ||
+        !renderer_.draw_box(framebuffer, 45, 27, 230U, 23U) ||
+        !renderer_.draw_box(framebuffer, 45, 52, 230U, 145U)) {
+        return false;
+    }
+    const auto draw_scroll_line = [&framebuffer](
+                                      const int x,
+                                      const int y,
+                                      const int width,
+                                      const int height) {
+        return framebuffer.fill_rectangle(
+            x,
+            y,
+            static_cast<std::uint16_t>(width),
+            static_cast<std::uint16_t>(height),
+            99U);
+    };
+    if (player_item_->selection.count > 5 * (player_item_->page + 3)) {
+        if (!draw_scroll_line(267, 175, 2, 1) ||
+            !draw_scroll_line(266, 174, 4, 1) ||
+            !draw_scroll_line(265, 173, 6, 1) ||
+            !draw_scroll_line(264, 172, 8, 1) ||
+            !draw_scroll_line(266, 161, 4, 11)) {
+            return false;
+        }
+    }
+    if (player_item_->selection.count > 15 && player_item_->page > 0) {
+        if (!draw_scroll_line(267, 72, 2, 1) ||
+            !draw_scroll_line(266, 73, 4, 1) ||
+            !draw_scroll_line(265, 74, 6, 1) ||
+            !draw_scroll_line(264, 75, 8, 1) ||
+            !draw_scroll_line(266, 76, 4, 11)) {
+            return false;
+        }
+    }
+
+    for (std::int16_t row = 0; row < 3; ++row) {
+        for (std::int16_t column = 0; column < 5; ++column) {
+            const auto x = 55 + 42 * column;
+            const auto y = 62 + 42 * row;
+            if (!framebuffer.outline_rectangle(x, y, 40U, 40U, 0U)) {
+                return false;
+            }
+            const auto list_index = static_cast<std::int32_t>(
+                5 * (player_item_->page + row) + column);
+            if (list_index < 0 ||
+                list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
+                continue;
+            }
+            const auto inventory_slot = player_item_->selection.inventory_slots[
+                static_cast<std::size_t>(list_index)];
+            if (inventory_slot < 0 ||
+                static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
+                continue;
+            }
+            const auto item_id = ranger_.header.inventory_item(
+                static_cast<std::size_t>(inventory_slot)).value;
+            if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger_.items.size() &&
+                !renderer_.draw_item_icon(framebuffer, item_id, x, y)) {
+                return false;
+            }
+        }
+    }
+    if (!framebuffer.outline_rectangle(
+            55 + 42 * player_item_->column,
+            62 + 42 * player_item_->row,
+            40U,
+            40U,
+            255U)) {
+        return false;
+    }
+
+    const auto list_index = static_cast<std::int32_t>(
+        5 * (player_item_->page + player_item_->row) + player_item_->column);
+    if (list_index < 0 || list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
+        return true;
+    }
+    const auto inventory_slot = player_item_->selection.inventory_slots[
+        static_cast<std::size_t>(list_index)];
+    if (inventory_slot < 0 ||
+        static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
+        return true;
+    }
+    const auto item_id = ranger_.header.inventory_item(
+        static_cast<std::size_t>(inventory_slot)).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+        return true;
+    }
+    const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
+    const auto name = terminated_name(std::span<const std::uint8_t>{item.bytes}.subspan(
+        2U * model::item_word::secondary_name_begin,
+        2U * model::item_word::secondary_name_count));
+    const auto introduction = terminated_name(
+        std::span<const std::uint8_t>{item.bytes}.subspan(
+            model::item_word::introduction_byte,
+            model::item_word::introduction_bytes));
+    if (!renderer_.draw_text(
+            framebuffer,
+            160 - 4 * static_cast<int>(name.size()),
+            5,
+            name,
+            0x0705U) ||
+        !renderer_.draw_text(
+            framebuffer,
+            160 - 4 * static_cast<int>(introduction.size()),
+            30,
+            introduction,
+            0x2321U)) {
+        return false;
+    }
+    const auto inventory_count = ranger_.header.inventory_count(
+        static_cast<std::size_t>(inventory_slot));
+    if (inventory_count <= 1) {
+        return true;
+    }
+    constexpr std::array<std::uint8_t, 1> kCountMarker{'X'};
+    return renderer_.draw_text(framebuffer, 215, 5, kCountMarker, 0x2321U) &&
+        renderer_.draw_text(
+            framebuffer,
+            235,
+            5,
+            decimal_text(inventory_count, 2U),
+            0x6663U);
+}
+
+bool BattleSession::render_player_item_effect(
+    render::IndexedFramebuffer& framebuffer) {
+    if (!player_item_ || !player_item_->effect_result.has_value() ||
+        player_item_->selected_item_id < 0 ||
+        static_cast<std::size_t>(player_item_->selected_item_id) >= ranger_.items.size() ||
+        !render_battlefield(framebuffer)) {
+        return false;
+    }
+    const auto& effect = *player_item_->effect_result;
+    if (!renderer_.draw_box(
+            framebuffer,
+            effect.panel_x,
+            effect.panel_y,
+            static_cast<std::uint16_t>(effect.panel_width),
+            static_cast<std::uint16_t>(effect.panel_height))) {
+        return false;
+    }
+    const auto& item = ranger_.items[static_cast<std::size_t>(player_item_->selected_item_id)];
+    const auto name = terminated_name(std::span<const std::uint8_t>{item.bytes}.subspan(
+        2U * model::item_word::secondary_name_begin,
+        2U * model::item_word::secondary_name_count));
+    std::vector<std::uint8_t> header{kUseItemPrefix.begin(), kUseItemPrefix.end()};
+    header.insert(header.end(), name.begin(), name.end());
+    if (!renderer_.draw_text(framebuffer, 75, 25, header, 0x6663U)) {
+        return false;
+    }
+    std::int16_t visible_row = 0;
+    for (std::size_t index = 0U; index < effect.deltas.size(); ++index) {
+        const auto delta = effect.deltas[index];
+        if (delta == 0) {
+            continue;
+        }
+        const auto y = 45 + 18 * visible_row;
+        if (!renderer_.draw_text(
+                framebuffer,
+                75,
+                y,
+                terminated_name(kItemEffectLabels[index]),
+                0x0705U)) {
+            return false;
+        }
+        if (index == 4U) {
+            if (!renderer_.draw_text(framebuffer, 155, y, kItemMpTypeChanged, 0x0705U)) {
+                return false;
+            }
+        } else {
+            if (!renderer_.draw_text(
+                    framebuffer,
+                    155,
+                    y,
+                    delta > 0 ? std::span<const std::uint8_t>{kItemIncrease}
+                              : std::span<const std::uint8_t>{kItemDecrease},
+                    delta > 0 ? 0x0705U : 0x1014U)) {
+                return false;
+            }
+            const auto magnitude = delta < 0
+                ? -static_cast<std::int32_t>(delta)
+                : static_cast<std::int32_t>(delta);
+            if (!renderer_.draw_text(
+                    framebuffer,
+                    187,
+                    y,
+                    decimal_text(magnitude, 3),
+                    0x0705U)) {
+                return false;
+            }
+        }
+        ++visible_row;
+    }
+    return true;
 }
 
 bool BattleSession::render_player_action_menu(

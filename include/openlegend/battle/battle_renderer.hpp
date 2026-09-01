@@ -49,6 +49,11 @@ public:
         std::int16_t portrait_id,
         int x,
         int y) const;
+    [[nodiscard]] bool draw_item_icon(
+        render::IndexedFramebuffer& framebuffer,
+        std::int16_t item_id,
+        int x,
+        int y) const;
 
 private:
     [[nodiscard]] std::span<const std::uint8_t> fight_entry(
@@ -86,6 +91,7 @@ private:
     std::optional<resource::PackedArchive> fight_sprites_;
     resource::PackedArchive cloud_sprites_;
     resource::PackedArchive portraits_;
+    resource::PackedArchive item_sprites_;
     compat::LegacyPalette palette_{};
     std::array<std::uint8_t, 4'096U> rgb4_lookup_{};
     std::vector<std::uint8_t> ascii_font_;

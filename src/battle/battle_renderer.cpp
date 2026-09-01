@@ -55,7 +55,9 @@ BattleRenderer::BattleRenderer(
       cloud_sprites_(resource::PackedArchive::open(
           data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
       portraits_(resource::PackedArchive::open(
-          data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")) {
+          data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
+      item_sprites_(resource::PackedArchive::open(
+          data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")) {
     if (battlefield_id < 0 || battlefield_id > 999) {
         error_ = "battlefield sprite id is outside filename range";
         return;
@@ -110,6 +112,12 @@ BattleRenderer::BattleRenderer(
     }
     if (!portraits_.valid()) {
         error_ = portraits_.error();
+        return;
+    }
+    if (!item_sprites_.valid() || item_sprites_.entry_count() < model::kItemCount) {
+        error_ = item_sprites_.valid()
+            ? "MMAP archive is missing item icon frames"
+            : item_sprites_.error();
         return;
     }
     const auto palette_file = data_root.read("MMAP.COL");
@@ -374,6 +382,23 @@ bool BattleRenderer::draw_portrait(
     }
     const auto frame = resource::SpriteFrameView::parse(
         portraits_.entry(static_cast<std::size_t>(portrait_id)));
+    if (!frame.valid()) {
+        return false;
+    }
+    render::draw_rle_sprite(framebuffer, frame, x, y);
+    return true;
+}
+
+bool BattleRenderer::draw_item_icon(
+    render::IndexedFramebuffer& framebuffer,
+    const std::int16_t item_id,
+    const int x,
+    const int y) const {
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= item_sprites_.entry_count()) {
+        return false;
+    }
+    const auto frame = resource::SpriteFrameView::parse(
+        item_sprites_.entry(static_cast<std::size_t>(item_id)));
     if (!frame.valid()) {
         return false;
     }
