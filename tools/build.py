@@ -57,6 +57,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--configure-only", action="store_true")
     parser.add_argument("--skip-tests", action="store_true")
+    parser.add_argument("--sanitizers", action="store_true")
     return parser.parse_args(arguments)
 
 
@@ -141,6 +142,7 @@ def configure_command(
     cxx_compiler: str | None = None,
     c_compiler: str | None = None,
     python_executable: str = sys.executable,
+    enable_sanitizers: bool = False,
 ) -> list[str]:
     command = [
         str(cmake),
@@ -158,6 +160,7 @@ def configure_command(
         f"-DOPENLEGEND_BUILD_APP:BOOL={'ON' if target == 'app' else 'OFF'}",
         "-DOPENLEGEND_FETCH_SDL3:BOOL=ON",
         "-DOPENLEGEND_FETCH_TOMLPLUSPLUS:BOOL=ON",
+        f"-DOPENLEGEND_ENABLE_SANITIZERS:BOOL={'ON' if enable_sanitizers else 'OFF'}",
     ]
     if cxx_compiler:
         command.append(f"-DCMAKE_CXX_COMPILER:FILEPATH={cxx_compiler}")
@@ -181,6 +184,16 @@ def cached_home_directory(cache_file: Path) -> str | None:
     for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
         if line.startswith("CMAKE_HOME_DIRECTORY:INTERNAL="):
             return line.split("=", 1)[1]
+    return None
+
+
+def cached_bool(cache_file: Path, name: str) -> bool | None:
+    if not cache_file.is_file():
+        return None
+    prefix = f"{name}:BOOL="
+    for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith(prefix):
+            return line.removeprefix(prefix).upper() == "ON"
     return None
 
 
@@ -213,6 +226,7 @@ def main() -> int:
     reconfigure = os.environ.get("OPENLEGEND_RECONFIGURE", "0") == "1"
     current_generator = cached_generator(cache_file)
     current_home = cached_home_directory(cache_file)
+    current_sanitizers = cached_bool(cache_file, "OPENLEGEND_ENABLE_SANITIZERS")
     if current_generator is not None and current_generator != EXPECTED_GENERATOR:
         print(
             f"[OpenLegend] Reset generator: {current_generator} -> {EXPECTED_GENERATOR}",
@@ -227,6 +241,13 @@ def main() -> int:
         )
         reset_build_directory(build_dir)
         reconfigure = True
+    elif current_sanitizers is not None and current_sanitizers != args.sanitizers:
+        print(
+            f"[OpenLegend] Reconfigure sanitizers: "
+            f"{'ON' if current_sanitizers else 'OFF'} -> {'ON' if args.sanitizers else 'OFF'}",
+            flush=True,
+        )
+        reconfigure = True
 
     configure = configure_command(
         cmake,
@@ -236,6 +257,7 @@ def main() -> int:
         target,
         os.environ.get("CXX"),
         os.environ.get("CC"),
+        enable_sanitizers=args.sanitizers,
     )
     process_cwd = Path(sys.executable).parent if os.name == "nt" else project_root
 

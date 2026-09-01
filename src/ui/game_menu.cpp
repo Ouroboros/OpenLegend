@@ -63,6 +63,12 @@ void GameMenuController::set_inventory_count(const std::uint16_t count) noexcept
     }
 }
 
+void GameMenuController::complete_slot_operation() noexcept {
+    if (screen_ == GameMenuScreen::load_slots || screen_ == GameMenuScreen::save_slots) {
+        screen_ = GameMenuScreen::system;
+    }
+}
+
 GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key) noexcept {
     if (screen_ == GameMenuScreen::quit_confirmation) {
         screen_ = GameMenuScreen::system;
@@ -160,7 +166,6 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         const auto command = screen_ == GameMenuScreen::load_slots
                                  ? GameMenuCommand::load_slot
                                  : GameMenuCommand::save_slot;
-        screen_ = GameMenuScreen::system;
         return {command, slot_selection_, 0U};
     }
     case GameMenuScreen::status_panel:

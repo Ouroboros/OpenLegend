@@ -2,7 +2,10 @@
 
 #include <toml++/toml.hpp>
 
+#include <chrono>
 #include <cstdint>
+#include <cstdio>
+#include <ctime>
 #include <fstream>
 #include <limits>
 #include <optional>
@@ -442,6 +445,45 @@ LoggingConfigurationLoadResult load_logging_configuration(
     }
     result.loaded_from_file = true;
     return result;
+}
+
+std::filesystem::path make_session_log_path(
+    const std::filesystem::path& configured_path,
+    const std::chrono::system_clock::time_point launch_time,
+    const std::uint64_t process_id) {
+    const std::time_t seconds = std::chrono::system_clock::to_time_t(launch_time);
+    std::tm utc{};
+#if defined(_WIN32)
+    const bool converted = gmtime_s(&utc, &seconds) == 0;
+#else
+    const bool converted = gmtime_r(&seconds, &utc) != nullptr;
+#endif
+
+    char suffix[64]{};
+    if (converted) {
+        static_cast<void>(std::snprintf(
+            suffix,
+            sizeof(suffix),
+            "-%04d-%02d-%02d_%02d-%02d-%02d-%llu",
+            utc.tm_year + 1900,
+            utc.tm_mon + 1,
+            utc.tm_mday,
+            utc.tm_hour,
+            utc.tm_min,
+            utc.tm_sec,
+            static_cast<unsigned long long>(process_id)));
+    } else {
+        static_cast<void>(std::snprintf(
+            suffix,
+            sizeof(suffix),
+            "-0000-00-00_00-00-00-%llu",
+            static_cast<unsigned long long>(process_id)));
+    }
+
+    auto filename = configured_path.stem();
+    filename += path_from_utf8(suffix);
+    filename += configured_path.extension();
+    return configured_path.parent_path() / filename;
 }
 
 std::string_view logging_configuration_status_message(

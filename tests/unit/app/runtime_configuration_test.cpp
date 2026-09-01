@@ -141,6 +141,14 @@ void test_logging_configuration() {
     OL_CHECK(missing.path == fallback);
     OL_CHECK(missing.minimum_level == LogLevel::info);
     OL_CHECK(!missing.loaded_from_file);
+    const auto first_session = make_session_log_path(
+        missing.path, std::chrono::system_clock::time_point{}, 42U);
+    const auto second_session = make_session_log_path(
+        missing.path, std::chrono::system_clock::time_point{}, 43U);
+    OL_CHECK(first_session ==
+             tree.executable_directory() / "logs" /
+                 "openlegend-1970-01-01_00-00-00-42.log");
+    OL_CHECK(second_session != first_session);
 
     tree.write_configuration(
         "[logging]\n"
@@ -153,6 +161,10 @@ void test_logging_configuration() {
              (tree.executable_directory() / "diagnostics" / "session.log").lexically_normal());
     OL_CHECK(loaded.minimum_level == LogLevel::trace);
     OL_CHECK(loaded.loaded_from_file);
+    OL_CHECK(make_session_log_path(
+                 loaded.path, std::chrono::system_clock::time_point{}, 7U) ==
+             tree.executable_directory() / "diagnostics" /
+                 "session-1970-01-01_00-00-00-7.log");
 
     tree.write_configuration("logging = 7\n");
     OL_CHECK(load_logging_configuration(

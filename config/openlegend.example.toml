@@ -8,7 +8,9 @@
 
 [logging]
 
-# Relative paths resolve from the executable directory. Every record is flushed
+# Relative paths resolve from the executable directory. The path supplies the
+# PREFIX and extension; every launch writes a separate
+# PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log file beside it. Every record is flushed
 # immediately. Levels: trace, debug, info, warning, error, critical.
 path = "logs/openlegend.log"
 level = "info"

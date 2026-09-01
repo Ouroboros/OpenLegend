@@ -91,7 +91,10 @@ private:
     void begin_new_game();
     void perform_pending_io();
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
-    [[nodiscard]] bool start_scene(std::int16_t scene_id, LegacyGameView error_return_view);
+    [[nodiscard]] bool start_scene(
+        std::int16_t scene_id,
+        LegacyGameView error_return_view,
+        std::optional<scene::SceneEntryOverride> entry_override = std::nullopt);
     [[nodiscard]] bool start_battle(
         std::int16_t battle_id, bool grant_experience);
     void finish_battle_if_ready();
@@ -127,6 +130,7 @@ private:
     LegacyGameView menu_return_view_{LegacyGameView::world};
     LegacyGameView error_return_view_{LegacyGameView::title};
     PendingIo pending_io_{PendingIo::none};
+    bool pending_io_wait_presented_{};
     std::uint8_t pending_slot_{};
     std::optional<std::int16_t> scene_request_;
     std::optional<std::int16_t> battle_request_;

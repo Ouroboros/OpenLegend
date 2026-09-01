@@ -25,6 +25,10 @@ class BuildToolTest(unittest.TestCase):
     def test_accepts_case_insensitive_target_from_batch(self) -> None:
         self.assertEqual(build.parse_args(["APP", "--config", "Release"]).target, "app")
 
+    def test_accepts_sanitizer_gate(self) -> None:
+        self.assertTrue(build.parse_args(["app", "--sanitizers"]).sanitizers)
+        self.assertFalse(build.parse_args(["app"]).sanitizers)
+
     def test_rejects_nonpositive_parallelism(self) -> None:
         with self.assertRaisesRegex(argparse.ArgumentTypeError, "positive integer"):
             build.positive_integer("0")
@@ -48,6 +52,7 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn("Ninja Multi-Config", command)
         self.assertIn("-DOPENLEGEND_BUILD_APP:BOOL=OFF", command)
         self.assertIn("-DOPENLEGEND_FETCH_TOMLPLUSPLUS:BOOL=ON", command)
+        self.assertIn("-DOPENLEGEND_ENABLE_SANITIZERS:BOOL=OFF", command)
         self.assertIn(r"-DCMAKE_CXX_COMPILER:FILEPATH=D:\Dev\clang++.exe", command)
         self.assertNotIn(r"-DCMAKE_C_COMPILER:FILEPATH=D:\Dev\clang.exe", command)
         self.assertIn(r"-DPython3_EXECUTABLE:FILEPATH=D:\Dev\python.exe", command)
@@ -62,9 +67,11 @@ class BuildToolTest(unittest.TestCase):
             "clang++",
             "clang",
             "python",
+            True,
         )
         self.assertIn("-DOPENLEGEND_BUILD_APP:BOOL=ON", command)
         self.assertIn("-DCMAKE_C_COMPILER:FILEPATH=clang", command)
+        self.assertIn("-DOPENLEGEND_ENABLE_SANITIZERS:BOOL=ON", command)
 
     def test_requires_complete_tool_override_set(self) -> None:
         with mock.patch.dict(
@@ -102,6 +109,18 @@ class BuildToolTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(build.cached_generator(cache), "Ninja Multi-Config")
+
+    def test_reads_cached_bool(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "CMakeCache.txt"
+            cache.write_text(
+                "OPENLEGEND_ENABLE_SANITIZERS:BOOL=ON\n",
+                encoding="utf-8",
+            )
+            self.assertTrue(
+                build.cached_bool(cache, "OPENLEGEND_ENABLE_SANITIZERS")
+            )
+            self.assertIsNone(build.cached_bool(cache, "MISSING"))
 
     def test_reset_preserves_runtime_configuration(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

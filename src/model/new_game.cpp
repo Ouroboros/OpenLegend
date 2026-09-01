@@ -58,7 +58,9 @@ void roll_protagonist_attributes(
     protagonist.set_word(role_word::increased_life, increased_life);
     const auto level = protagonist.word(role_word::level);
     const auto maximum_hp = static_cast<std::int16_t>(
-        static_cast<std::int32_t>(increased_life) * static_cast<std::int32_t>(level) + 29);
+        static_cast<std::int32_t>(increased_life) * 3 *
+            static_cast<std::int32_t>(level) +
+        29);
     protagonist.set_word(role_word::maximum_hp, maximum_hp);
 
     const auto bucket = random.bounded(10);

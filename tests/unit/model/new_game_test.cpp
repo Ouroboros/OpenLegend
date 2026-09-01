@@ -29,11 +29,23 @@ void check_seed_zero_roll() {
     OL_CHECK(role.word(model::role_word::unusual) == 30);
     OL_CHECK(role.word(model::role_word::hidden_weapon) == 29);
     OL_CHECK(role.word(model::role_word::increased_life) == 5);
-    OL_CHECK(role.word(model::role_word::maximum_hp) == 34);
-    OL_CHECK(role.word(model::role_word::hp) == 34);
+    OL_CHECK(role.word(model::role_word::maximum_hp) == 44);
+    OL_CHECK(role.word(model::role_word::hp) == 44);
     OL_CHECK(role.word(model::role_word::mp) == 29);
     OL_CHECK(role.word(model::role_word::iq) == 68);
     OL_CHECK(random.next() == 26'233U);
+}
+
+void check_level_multiplier() {
+    using namespace openlegend;
+
+    model::RoleRecord role;
+    role.set_word(model::role_word::level, 2);
+    random::LegacyRandom random{0U};
+    model::roll_protagonist_attributes(role, random);
+    OL_CHECK(role.word(model::role_word::increased_life) == 5);
+    OL_CHECK(role.word(model::role_word::maximum_hp) == 59);
+    OL_CHECK(role.word(model::role_word::hp) == 59);
 }
 
 void check_cheat() {
@@ -89,6 +101,7 @@ void check_name_transport() {
 
 int main() {
     check_seed_zero_roll();
+    check_level_multiplier();
     check_cheat();
     check_name_transport();
     return openlegend::test::failures == 0 ? 0 : 1;

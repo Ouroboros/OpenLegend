@@ -89,7 +89,7 @@ wait   = 7333253ca7400de6
 2. `maximum_mp = bounded(20) + 21`；
 3. attack、speed、defence、medicine、use_poison、detoxification、anti_poison、fist、sword、knife、unusual、hidden_weapon，依次各 `bounded(10)+21`；
 4. `increased_life = bounded(5)+3`；
-5. `maximum_hp = increased_life * level + 29`；
+5. `maximum_hp = increased_life * 3 * level + 29`；
 6. 先 `bucket=bounded(10)`：0..1 时 `iq=bounded(35)+30`，2..7 时 `iq=bounded(20)+60`，8..9 时 `iq=bounded(20)+75`；
 7. `hp=maximum_hp`，`mp=maximum_mp`。
 

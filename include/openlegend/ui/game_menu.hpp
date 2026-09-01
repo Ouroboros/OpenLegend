@@ -49,6 +49,7 @@ public:
     void set_party_count(std::uint8_t count) noexcept;
     void set_inventory_count(std::uint16_t count) noexcept;
     void show_main() noexcept { screen_ = GameMenuScreen::main; }
+    void complete_slot_operation() noexcept;
 
     [[nodiscard]] constexpr GameMenuContext context() const noexcept { return context_; }
     [[nodiscard]] constexpr GameMenuScreen screen() const noexcept { return screen_; }

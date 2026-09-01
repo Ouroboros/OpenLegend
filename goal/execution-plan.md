@@ -2,7 +2,7 @@
 
 版本：v5
 当前阶段：B6 运行回归诊断 + B7 场景/事件实现
-当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态；B8功能实现与入口实现差异审计已关闭，81项仍保持`implemented_pending_review`，Linux/Windows完整矩阵通过；下一步完成B9功能实现，随后统一执行B0→B9汇编↔C++ REVIEW
+当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态；B8功能实现与入口实现差异审计已关闭，81项仍保持`implemented_pending_review`，Linux/Windows完整矩阵通过；B9已建立14项有限closure并进入实现差异审计，随后统一执行B0→B9汇编↔C++ REVIEW
 
 ## 0. 唯一正确性真值
 
@@ -310,13 +310,14 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 范围：全模块
 
-当前状态：`pending_mapping` / `pending_implementation`盘点待执行；B9功能实现完成后进入B0→B9统一最终双向REVIEW。
+当前状态：`B9-WP01`为唯一work package；14项有限closure均已映射为`implemented_pending_review`，实现映射口径100%、统一最终REVIEW口径0%。已修正新游戏scene70序章入口、初始最大生命漏乘3、编号槽I/O等待帧present门禁、系统菜单载入后的返回页和每进程独立日志；14项实现差异审计已覆盖，Linux/Windows八项矩阵、Linux app ASan+UBSan、双平台smoke、golden与原版资产只读门禁均已通过。提交B9切片后处理其余closure，再进入B0→B9统一最终双向REVIEW。
 
 交付：
 
 - 所有状态所有者的 snapshot/import；
 - 新游戏、世界、场景、战斗、菜单、保存、读取的集成链；
 - 原存档兼容、错误路径、退出与资源清理；
+- 每次启动独立的`PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log`，不得追加到跨启动共享日志；
 - 可发布构建和兼容性报告。
 
 验收：启动到退出的全部当前资产可达主流程均有固定输入差分；状态、调用序列、RNG、存档字节、indexed framebuffer、调色板和音频命令序列与原版一致，偏差清单为空或每项均获用户明确批准。

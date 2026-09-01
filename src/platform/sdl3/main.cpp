@@ -14,6 +14,8 @@
 #define NOMINMAX
 #include <windows.h>
 #include <shellapi.h>
+#else
+#include <unistd.h>
 #endif
 
 #include "openlegend/app/legacy_game_runtime.hpp"
@@ -30,6 +32,14 @@
 namespace {
 
 constexpr openlegend::app::WindowSize kDefaultWindowSize{960, 600};
+
+[[nodiscard]] std::uint64_t current_process_id() noexcept {
+#if defined(_WIN32)
+    return static_cast<std::uint64_t>(GetCurrentProcessId());
+#else
+    return static_cast<std::uint64_t>(getpid());
+#endif
+}
 
 class LoggingLifetime {
 public:
@@ -161,13 +171,16 @@ int main(const int argc, const char* const* argv) {
         executable_root,
         executable_root / "logs" / "openlegend.log",
         diagnostics::LogLevel::info);
+    const auto launch_time = std::chrono::system_clock::now();
+    const auto session_log_path = app::make_session_log_path(
+        logging_configuration.path, launch_time, current_process_id());
     const auto logging_status = diagnostics::initialize_logging(
-        logging_configuration.path, logging_configuration.minimum_level);
+        session_log_path, logging_configuration.minimum_level);
     if (logging_status != diagnostics::LoggingInitializationStatus::initialized) {
         report_configuration_error(
             "logging",
             logging_initialization_status_message(logging_status),
-            path_utf8(logging_configuration.path));
+            path_utf8(session_log_path));
     }
     if (logging_configuration.status != app::LoggingConfigurationStatus::ready) {
         report_configuration_error(
@@ -178,7 +191,8 @@ int main(const int argc, const char* const* argv) {
     diagnostics::log_info(
         "startup executable_root=" + path_utf8(executable_root) +
         " launch_directory=" + path_utf8(launch_directory) +
-        " config=" + path_utf8(configuration_path));
+        " config=" + path_utf8(configuration_path) +
+        " log=" + path_utf8(session_log_path));
 
     std::vector<std::string> argument_storage;
     std::vector<std::string_view> arguments;

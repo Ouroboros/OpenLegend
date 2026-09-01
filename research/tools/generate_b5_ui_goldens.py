@@ -122,7 +122,7 @@ def protagonist_roll(seed: int, level: int) -> dict[str, int | str]:
     ):
         result[field] = rng.bounded(10) + 21
     result["increased_life"] = rng.bounded(5) + 3
-    result["maximum_hp"] = int(result["increased_life"]) * level + 29
+    result["maximum_hp"] = int(result["increased_life"]) * 3 * level + 29
     iq_bucket = rng.bounded(10)
     if iq_bucket <= 1:
         result["iq"] = rng.bounded(35) + 30
@@ -175,7 +175,7 @@ def main() -> int:
         },
         "runtime_ui_regression_fnv1a64": {
             "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-            "status_page_0": "51f12e62670dcb3e",
+            "status_page_0": "9fbb25bc84680cfe",
             "status_page_1": "1ee8cf32156bd6fa",
             "items_page_0": "1f2c81326be42838",
         },

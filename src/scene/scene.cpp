@@ -335,7 +335,8 @@ SceneSession::SceneSession(
     const std::int16_t scene_id,
     const bool use_jump_entrance,
     std::optional<SceneDate> death_date_override,
-    const std::int16_t periodic_counter)
+    const std::int16_t periodic_counter,
+    const std::optional<SceneEntryOverride> entry_override)
     : data_root_(data_root),
       snapshot_(snapshot),
       random_(random),
@@ -420,7 +421,17 @@ SceneSession::SceneSession(
     ascii_font_ = std::move(ascii.bytes);
     big5_font_ = std::move(big5.bytes);
 
-    if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
+    if (entry_override.has_value()) {
+        scene_x_ = std::clamp<int>(entry_override->x, 0, kSceneExtent - 1);
+        scene_y_ = std::clamp<int>(entry_override->y, 0, kSceneExtent - 1);
+        direction_ = entry_override->direction;
+        if (entry_override->player_frame >= 0) {
+            player_frame_override_ = entry_override->player_frame;
+        }
+        if (entry_override->script_id > 0) {
+            initial_script_ = entry_override->script_id;
+        }
+    } else if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
         const auto& metadata = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)];
         const auto x_word = use_jump_entrance ? model::scene_metadata_word::jump_return_x
                                               : model::scene_metadata_word::entrance_x;
@@ -432,8 +443,10 @@ SceneSession::SceneSession(
         scene_x_ = std::clamp<int>(snapshot_.ranger.header.word(model::header_word::sub_map_x), 0, kSceneExtent - 1);
         scene_y_ = std::clamp<int>(snapshot_.ranger.header.word(model::header_word::sub_map_y), 0, kSceneExtent - 1);
     }
-    direction_ = static_cast<SceneDirection>(std::clamp<std::int16_t>(
-        snapshot_.ranger.header.word(model::header_word::face_towards), 0, 3));
+    if (!entry_override.has_value()) {
+        direction_ = static_cast<SceneDirection>(std::clamp<std::int16_t>(
+            snapshot_.ranger.header.word(model::header_word::face_towards), 0, 3));
+    }
     update_view_origin();
     commit_header();
     queue_scene_music(model::scene_metadata_word::entrance_music);
@@ -708,6 +721,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     if (previous_kind == SceneStepKind::fade_from_black &&
         continuation_ == PendingContinuation::scene_entry) {
         continuation_ = PendingContinuation::none;
+        if (initial_script_.has_value()) {
+            const auto script_id = *initial_script_;
+            initial_script_.reset();
+            return begin_event(script_id);
+        }
         return show_scene_title();
     }
     if (previous_kind == SceneStepKind::scene_title) {

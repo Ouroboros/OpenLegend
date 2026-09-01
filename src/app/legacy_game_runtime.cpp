@@ -130,7 +130,13 @@ LegacyGameRuntime::LegacyGameRuntime(
 
 void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     if (pending_io_ != PendingIo::none) {
+        if (!pending_io_wait_presented_) {
+            world_step_processed_ = false;
+            return;
+        }
         perform_pending_io();
+        world_step_processed_ = false;
+        return;
     }
     if (advance_scene_effect()) {
         world_step_processed_ = false;
@@ -167,6 +173,10 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
 }
 
 void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
+    if (pending_io_ != PendingIo::none) {
+        pending_io_wait_presented_ = true;
+        return;
+    }
     if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
         const auto start_music =
             battle_session_->phase() == battle::BattleSessionPhase::initial_present &&
@@ -288,7 +298,11 @@ void LegacyGameRuntime::handle_key(
                 ui::AttributeRollStatus::accepted) {
             attribute_controller_.reset();
             update_menu_counts();
-            static_cast<void>(start_world(LegacyGameView::title));
+            static_cast<void>(start_scene(
+                70,
+                LegacyGameView::title,
+                scene::SceneEntryOverride{
+                    19, 20, scene::SceneDirection::right, 6890, 691}));
         }
         break;
     case LegacyGameView::world:
@@ -399,8 +413,11 @@ bool LegacyGameRuntime::render() {
         const auto base_rendered = menu_return_view_ == LegacyGameView::scene
                                        ? scene_session_ != nullptr && scene_session_->render(framebuffer_)
                                        : world_session_ != nullptr && world_session_->render(framebuffer_);
-        return ranger != nullptr && base_rendered &&
-               basic_renderer_.render_game_menu(game_menu_, *ranger, framebuffer_);
+        if (ranger == nullptr || !base_rendered ||
+            !basic_renderer_.render_game_menu(game_menu_, *ranger, framebuffer_)) {
+            return false;
+        }
+        return pending_io_ == PendingIo::none || basic_renderer_.render_io_wait(framebuffer_);
     }
     case LegacyGameView::error: {
         bool base_rendered = false;
@@ -456,6 +473,8 @@ void LegacyGameRuntime::begin_new_game() {
 void LegacyGameRuntime::perform_pending_io() {
     const auto operation = pending_io_;
     pending_io_ = PendingIo::none;
+    pending_io_wait_presented_ = false;
+    game_menu_.complete_slot_operation();
     if (operation == PendingIo::load) {
         attribute_controller_.reset();
         auto loaded = persistence::load_numbered_slot(
@@ -482,8 +501,16 @@ void LegacyGameRuntime::perform_pending_io() {
             show_error("Save snapshot import failed", error_return_view_);
             return;
         }
+        const auto load_return_view = error_return_view_;
         update_menu_counts();
-        static_cast<void>(start_world(error_return_view_));
+        if (!start_world(load_return_view)) {
+            return;
+        }
+        if (load_return_view == LegacyGameView::game_menu) {
+            menu_return_view_ = LegacyGameView::world;
+            game_menu_.set_context(ui::GameMenuContext::world);
+            set_view(LegacyGameView::game_menu, "loaded world behind system menu");
+        }
         return;
     }
 
@@ -540,7 +567,9 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
 }
 
 bool LegacyGameRuntime::start_scene(
-    const std::int16_t scene_id, const LegacyGameView error_return_view) {
+    const std::int16_t scene_id,
+    const LegacyGameView error_return_view,
+    const std::optional<scene::SceneEntryOverride> entry_override) {
     auto* snapshot = game_state_.snapshot();
     if (snapshot == nullptr) {
         show_error("No game state is available for the scene", error_return_view);
@@ -558,7 +587,14 @@ bool LegacyGameRuntime::start_scene(
     scene_interact_requested_ = false;
     scene_ui_requested_ = false;
     scene_session_ = std::make_unique<scene::SceneSession>(
-        data_root_, *snapshot, random_, scene_id, false, std::nullopt, periodic_counter_);
+        data_root_,
+        *snapshot,
+        random_,
+        scene_id,
+        false,
+        std::nullopt,
+        periodic_counter_,
+        entry_override);
     if (!scene_session_->valid()) {
         show_error(scene_session_->error(), error_return_view);
         scene_session_.reset();
@@ -680,6 +716,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         if (result.save_slot >= 0 && result.save_slot <= 2) {
             pending_slot_ = static_cast<std::uint8_t>(result.save_slot);
             pending_io_ = PendingIo::load;
+            pending_io_wait_presented_ = false;
             error_return_view_ = LegacyGameView::scene;
         }
         break;
@@ -831,6 +868,7 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
     case ui::TitleCommand::load_slot:
         pending_slot_ = result.slot;
         pending_io_ = PendingIo::load;
+        pending_io_wait_presented_ = false;
         error_return_view_ = LegacyGameView::title;
         title_menu_.show_please_wait();
         break;
@@ -880,11 +918,13 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
     case ui::GameMenuCommand::load_slot:
         pending_slot_ = result.slot;
         pending_io_ = PendingIo::load;
+        pending_io_wait_presented_ = false;
         error_return_view_ = LegacyGameView::game_menu;
         break;
     case ui::GameMenuCommand::save_slot:
         pending_slot_ = result.slot;
         pending_io_ = PendingIo::save;
+        pending_io_wait_presented_ = false;
         error_return_view_ = LegacyGameView::game_menu;
         break;
     case ui::GameMenuCommand::exit_game:

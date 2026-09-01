@@ -344,6 +344,40 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     OL_CHECK(fnv1a64(long_line_frame.pixels()) == 0xF420561DCB42E981ULL);
 }
 
+void check_new_game_entry(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{
+        data_root,
+        snapshot,
+        random,
+        70,
+        false,
+        std::nullopt,
+        0,
+        openlegend::scene::SceneEntryOverride{
+            19, 20, openlegend::scene::SceneDirection::right, 6890, 691}};
+    OL_CHECK(session.valid());
+    OL_CHECK(session.scene_x() == 19);
+    OL_CHECK(session.scene_y() == 20);
+    OL_CHECK(session.direction() == openlegend::scene::SceneDirection::right);
+    OL_CHECK(session.player_frame() == 6890);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::in_sub_map) == 1);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_x) == 19);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_y) == 20);
+    OL_CHECK(session.pending().kind == SceneStepKind::fade_from_black);
+
+    const auto first_event_step = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(first_event_step.kind == SceneStepKind::dialogue);
+    OL_CHECK(first_event_step.talk_id == 2520);
+    OL_CHECK(first_event_step.head_id == 0);
+    OL_CHECK(first_event_step.style == 1);
+}
+
 void check_event_load_menu(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -3221,6 +3255,7 @@ int main() {
     const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
     check_assets(root);
     check_event_dialogue_rendering(root);
+    check_new_game_entry(root);
     check_event_load_menu(root);
     check_event_state_write_helpers(root);
     check_scene_render_and_movement(root);

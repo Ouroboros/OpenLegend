@@ -61,6 +61,8 @@ constexpr std::array<std::uint8_t, 22> kQuitPrompt{
     0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U,
     0xC0U, 0xB8U, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU,
     0xA1U, 0x5EU};
+constexpr std::array<std::uint8_t, 8> kIoWaitLabel{
+    0xBDU, 0xD0U, 0xB5U, 0x79U, 0xADU, 0xD4U, 0xA1U, 0x49U};
 
 struct AttributeLine {
     std::array<std::uint8_t, 6> label;
@@ -289,6 +291,13 @@ bool BasicUiRenderer::render_game_menu(
         return draw_text(framebuffer, 124, 25, kQuitPrompt, 0x0705U);
     }
     return false;
+}
+
+bool BasicUiRenderer::render_io_wait(render::IndexedFramebuffer& framebuffer) {
+    if (!draw_box(framebuffer, 154, 18, 68U, 31U)) {
+        return false;
+    }
+    return draw_text(framebuffer, 158, 25, kIoWaitLabel, 0x0705U);
 }
 
 bool BasicUiRenderer::render_error(

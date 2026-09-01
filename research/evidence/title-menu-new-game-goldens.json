@@ -29,7 +29,7 @@
   },
   "runtime_ui_regression_fnv1a64": {
     "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-    "status_page_0": "51f12e62670dcb3e",
+    "status_page_0": "9fbb25bc84680cfe",
     "status_page_1": "1ee8cf32156bd6fa",
     "items_page_0": "1f2c81326be42838"
   },
@@ -73,9 +73,9 @@
       "unusual": 30,
       "hidden_weapon": 29,
       "increased_life": 5,
-      "maximum_hp": 34,
+      "maximum_hp": 44,
       "iq": 68,
-      "hp": 34,
+      "hp": 44,
       "mp": 29,
       "rng_consumed": 17,
       "rng_state": "7e7099a9"
@@ -96,9 +96,9 @@
       "unusual": 25,
       "hidden_weapon": 21,
       "increased_life": 3,
-      "maximum_hp": 32,
+      "maximum_hp": 38,
       "iq": 69,
-      "hp": 32,
+      "hp": 38,
       "mp": 39,
       "rng_consumed": 17,
       "rng_state": "e201dd56"
@@ -119,9 +119,9 @@
       "unusual": 26,
       "hidden_weapon": 23,
       "increased_life": 3,
-      "maximum_hp": 32,
+      "maximum_hp": 38,
       "iq": 60,
-      "hp": 32,
+      "hp": 38,
       "mp": 28,
       "rng_consumed": 17,
       "rng_state": "e06870c1"
@@ -142,9 +142,9 @@
       "unusual": 26,
       "hidden_weapon": 27,
       "increased_life": 7,
-      "maximum_hp": 36,
+      "maximum_hp": 50,
       "iq": 94,
-      "hp": 36,
+      "hp": 50,
       "mp": 30,
       "rng_consumed": 17,
       "rng_state": "1adf55fc"

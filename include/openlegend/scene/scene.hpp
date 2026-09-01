@@ -126,6 +126,16 @@ struct SceneAudioCommand {
     friend bool operator==(const SceneAudioCommand&, const SceneAudioCommand&) = default;
 };
 
+struct SceneEntryOverride {
+    std::int16_t x{};
+    std::int16_t y{};
+    SceneDirection direction{SceneDirection::up};
+    std::int16_t player_frame{-1};
+    std::int16_t script_id{-1};
+
+    friend bool operator==(const SceneEntryOverride&, const SceneEntryOverride&) = default;
+};
+
 class SceneSession {
 public:
     SceneSession(
@@ -135,7 +145,8 @@ public:
         std::int16_t scene_id,
         bool use_jump_entrance = false,
         std::optional<SceneDate> death_date_override = std::nullopt,
-        std::int16_t periodic_counter = 0);
+        std::int16_t periodic_counter = 0,
+        std::optional<SceneEntryOverride> entry_override = std::nullopt);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -457,6 +468,7 @@ private:
     TickContinuation tick_continuation_{TickContinuation::none};
     SceneStepKind tick_fallback_{SceneStepKind::stay};
     std::optional<std::int16_t> pending_menu_item_;
+    std::optional<std::int16_t> initial_script_;
     bool menu_item_event_active_{};
     std::optional<PendingJump> pending_jump_;
     std::int16_t exit_music_override_{-1};

@@ -25,11 +25,12 @@ namespace {
 
 [[nodiscard]] bool prepare_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
-    constexpr std::array<std::string_view, 22> files{
+    constexpr std::array<std::string_view, 30> files{
         "TITLE.IDX", "TITLE.GRP", "TITLE.BIG", "MMAP.COL", "MMAP.IDX", "MMAP.GRP",
         "CLOUD.IDX", "CLOUD.GRP", "EARTH.002", "SURFACE.002", "BUILDING.002", "BUILDX.002",
         "BUILDY.002", "FONT.X16", "FONT.C16", "CFONT", "RANGER.IDX", "RANGER.GRP",
-        "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX", "ALLDEF.GRP"};
+        "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX", "ALLDEF.GRP", "TALK.IDX", "TALK.GRP",
+        "KDEF.IDX", "KDEF.GRP", "HDGRP.IDX", "HDGRP.GRP", "SDX070", "SMP070"};
     std::error_code error;
     std::filesystem::remove_all(destination, error);
     error.clear();
@@ -48,14 +49,6 @@ namespace {
         }
     }
     return true;
-}
-
-void accept_minimal_new_game(openlegend::app::LegacyGameRuntime& game) {
-    game.handle_key(0x0DU, false, false);
-    game.handle_key(0x20U, true, false);
-    game.handle_key('A', false, false);
-    game.handle_key(0x0DU, false, false);
-    game.handle_key('Y', false, false);
 }
 
 void advance_rendered_frames(
@@ -131,6 +124,8 @@ void check_game_menu_controller() {
     auto result = menu.handle_key(0x96U);
     OL_CHECK(result.command == GameMenuCommand::save_slot);
     OL_CHECK(result.slot == 2U);
+    OL_CHECK(menu.screen() == GameMenuScreen::save_slots);
+    menu.complete_slot_operation();
     OL_CHECK(menu.screen() == GameMenuScreen::system);
 
     static_cast<void>(menu.handle_key(0x1BU));
@@ -287,28 +282,57 @@ void check_name_editor(const std::filesystem::path& data_root) {
 void check_game_runtime(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
-    app::LegacyGameRuntime new_game{data_root, 0U};
-    OL_CHECK(new_game.valid());
-    OL_CHECK(new_game.view() == app::LegacyGameView::title);
-    OL_CHECK(new_game.render());
-    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x86690E3B3B68FE20ULL);
+    std::optional<model::GameSnapshot> accepted_new_game;
+    {
+        app::LegacyGameRuntime intro_game{data_root, 0U};
+        OL_CHECK(intro_game.valid());
+        OL_CHECK(intro_game.view() == app::LegacyGameView::title);
+        OL_CHECK(intro_game.render());
+        OL_CHECK(fnv1a64(intro_game.framebuffer().pixels()) == 0x86690E3B3B68FE20ULL);
+        intro_game.handle_key(0x0DU, false, false);
+        OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
+        OL_CHECK(intro_game.game_state().loaded());
+        OL_CHECK(intro_game.render());
+        intro_game.handle_key(0x20U, true, false);
+        intro_game.handle_key('A', false, false);
+        intro_game.handle_key(0x0DU, false, false);
+        OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
+        OL_CHECK(intro_game.render());
+        intro_game.handle_key('Y', false, false);
+        OL_CHECK(intro_game.view() == app::LegacyGameView::scene);
+        const auto* ranger = intro_game.game_state().ranger();
+        OL_CHECK(ranger != nullptr);
+        if (ranger != nullptr) {
+            OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte] == 'A');
+            OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte + 1U] == 0U);
+            OL_CHECK(ranger->header.word(model::header_word::in_sub_map) == 1);
+            OL_CHECK(ranger->header.word(model::header_word::sub_map_x) == 19);
+            OL_CHECK(ranger->header.word(model::header_word::sub_map_y) == 20);
+            OL_CHECK(ranger->header.word(model::header_word::face_towards) ==
+                     static_cast<std::int16_t>(scene::SceneDirection::right));
+        }
+        accepted_new_game = intro_game.game_state().export_snapshot();
+    }
+    OL_CHECK(accepted_new_game.has_value());
+    if (!accepted_new_game.has_value()) {
+        return;
+    }
+    accepted_new_game->ranger.header.set_word(model::header_word::in_sub_map, 0);
+    const auto world_fixture = test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-new-game-world";
+    OL_CHECK(prepare_runtime_fixture(data_root, world_fixture));
+    OL_CHECK(persistence::write_numbered_slot(
+        world_fixture, persistence::SaveSlot::one, *accepted_new_game));
+
+    app::LegacyGameRuntime new_game{world_fixture, 0U};
+    new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
-    OL_CHECK(new_game.view() == app::LegacyGameView::name_entry);
-    OL_CHECK(new_game.game_state().loaded());
-    OL_CHECK(new_game.render());
-    new_game.handle_key(0x20U, true, false);
-    new_game.handle_key('A', false, false);
     new_game.handle_key(0x0DU, false, false);
-    OL_CHECK(new_game.view() == app::LegacyGameView::attributes);
     OL_CHECK(new_game.render());
-    new_game.handle_key('Y', false, false);
+    new_game.finish_presented_tick();
+    new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     const auto* ranger = new_game.game_state().ranger();
     OL_CHECK(ranger != nullptr);
-    if (ranger != nullptr) {
-        OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte] == 'A');
-        OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte + 1U] == 0U);
-    }
     OL_CHECK(new_game.render());
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x6F6CF22B7C8CB4B8ULL);
     const auto palette_before = new_game.framebuffer().palette();
@@ -360,7 +384,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
-    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x51F12E62670DCB3EULL);
+    const auto status_page_0_hash = fnv1a64(new_game.framebuffer().pixels());
+    if (status_page_0_hash != 0x9FBB25BC84680CFEULL) {
+        std::cerr << "status_page_0_hash=0x" << std::hex << status_page_0_hash << std::dec << '\n';
+    }
+    OL_CHECK(status_page_0_hash == 0x9FBB25BC84680CFEULL);
     new_game.handle_key('A', false, false);
     OL_CHECK(new_game.render());
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x1EE8CF32156BD6FAULL);
@@ -454,6 +482,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(load_game.view() == app::LegacyGameView::title);
     OL_CHECK(load_game.render());
     OL_CHECK(fnv1a64(load_game.framebuffer().pixels()) == 0x7333253CA7400DE6ULL);
+    load_game.finish_presented_tick();
     load_game.advance();
     OL_CHECK(load_game.view() == app::LegacyGameView::world);
     OL_CHECK(load_game.game_state().loaded());
@@ -465,10 +494,29 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
 
     const auto output_root = test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-runtime";
     OL_CHECK(prepare_runtime_fixture(data_root, output_root));
+    const auto baseline = persistence::load_baseline(data_root);
+    OL_CHECK(static_cast<bool>(baseline));
+    if (!baseline.snapshot.has_value()) {
+        return;
+    }
+    OL_CHECK(persistence::write_numbered_slot(
+        output_root, persistence::SaveSlot::one, *baseline.snapshot));
     app::LegacyGameRuntime game{output_root, 0U};
     OL_CHECK(game.valid());
-    accept_minimal_new_game(game);
+    game.handle_key(0x98U, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::world);
+    auto* mutable_ranger = const_cast<model::GameState&>(game.game_state()).ranger();
+    OL_CHECK(mutable_ranger != nullptr);
+    if (mutable_ranger != nullptr) {
+        mutable_ranger->roles[0].set_word(
+            model::role_word::morality,
+            static_cast<std::int16_t>(mutable_ranger->roles[0].word(model::role_word::morality) + 1));
+    }
 
     game.handle_key(0x1BU, false, false);
     game.handle_key(0x9EU, false, false);
@@ -479,6 +527,15 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     const auto before_save = game.game_state().export_snapshot();
     OL_CHECK(before_save.has_value());
     game.advance();
+    const auto before_wait_present =
+        persistence::load_numbered_slot(output_root, persistence::SaveSlot::one);
+    OL_CHECK(static_cast<bool>(before_wait_present));
+    if (before_save.has_value() && before_wait_present.snapshot.has_value()) {
+        OL_CHECK(*before_save != *before_wait_present.snapshot);
+    }
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::game_menu);
     const auto saved =
         persistence::load_numbered_slot(output_root, persistence::SaveSlot::one);
@@ -488,13 +545,32 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
         OL_CHECK(*before_save == *saved.snapshot);
     }
 
+    if (mutable_ranger != nullptr) {
+        mutable_ranger->roles[0].set_word(
+            model::role_word::morality,
+            static_cast<std::int16_t>(mutable_ranger->roles[0].word(model::role_word::morality) + 1));
+    }
     game.handle_key(0x9EU, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    OL_CHECK(game.view() == app::LegacyGameView::game_menu);
+    const auto loaded_behind_menu = game.game_state().export_snapshot();
+    OL_CHECK(loaded_behind_menu.has_value() && saved.snapshot.has_value());
+    if (loaded_behind_menu.has_value() && saved.snapshot.has_value()) {
+        OL_CHECK(*loaded_behind_menu == *saved.snapshot);
+    }
+
     game.handle_key(0x0DU, false, false);
     game.handle_key(0x0DU, false, false);
     std::error_code error;
     std::filesystem::remove(output_root / "R1.GRP", error);
     OL_CHECK(!error);
     const auto before_failed_load = game.game_state().export_snapshot();
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::error);
     const auto after_failed_load = game.game_state().export_snapshot();
@@ -510,6 +586,8 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     std::filesystem::remove_all(output_root, error);
     OL_CHECK(!error);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::error);
 }

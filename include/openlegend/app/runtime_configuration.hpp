@@ -1,6 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <span>
 #include <string>
@@ -110,6 +112,11 @@ struct LoggingConfigurationLoadResult {
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& fallback_path,
     diagnostics::LogLevel fallback_level);
+
+[[nodiscard]] std::filesystem::path make_session_log_path(
+    const std::filesystem::path& configured_path,
+    std::chrono::system_clock::time_point launch_time,
+    std::uint64_t process_id);
 
 [[nodiscard]] std::string_view logging_configuration_status_message(
     LoggingConfigurationStatus status) noexcept;

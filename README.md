@@ -92,6 +92,7 @@ maximized = false
 ./build.sh core                 # 只构建核心库并运行测试
 ./build.sh app                  # 构建 SDL3 应用并运行全部测试
 ./build.sh app --config Release
+./build.sh app --config Debug --sanitizers  # ASan + UBSan
 ```
 
 ### Windows
@@ -111,7 +112,7 @@ build.bat app
 build.bat app --config Release
 ```
 
-`build.bat` 会先把仓库根目录解析为 Windows 8.3 短路径，再传给 CMake，避免当前中文目录触发 CMake 4.2.1 配置崩溃；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已在 Linux 与 Windows 原生验证，B6 起 core 为 9 项 CTest，app 为 10 项 CTest；Linux ASan+UBSan 同时覆盖 9 项核心测试。
+`build.bat` 保持仓库根目录的 Unicode 长路径并传给固定工具链；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已在 Linux 与 Windows 原生验证；当前 core 为 13 项 CTest，app 为 14 项 CTest，Linux `--sanitizers` 覆盖全部 14 项 app 测试。
 
 可选参数：
 
@@ -120,6 +121,7 @@ build.bat app --config Release
 --test-jobs N
 --configure-only
 --skip-tests
+--sanitizers
 ```
 
 默认构建目录为：
