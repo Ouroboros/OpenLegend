@@ -316,11 +316,16 @@ int main(const int argc, const char* const* argv) {
                     "host key_up key=" + std::to_string(static_cast<int>(event.key)));
             }
         }
+        const auto world_direction = keyboard.world_direction();
+        if (game.view() == app::LegacyGameView::world) {
+            keyboard.consume_world_direction(world_direction);
+        }
+        using input::LegacyWorldDirectionInput;
         const bool world_menu_consumed = game.handle_world_input(
-            keyboard.down(input::kLegacyLeftKey),
-            keyboard.down(input::kLegacyUpKey),
-            keyboard.down(input::kLegacyDownKey),
-            keyboard.down(input::kLegacyRightKey),
+            world_direction == LegacyWorldDirectionInput::left,
+            world_direction == LegacyWorldDirectionInput::up,
+            world_direction == LegacyWorldDirectionInput::down,
+            world_direction == LegacyWorldDirectionInput::right,
             keyboard.edge(0x1BU));
         if (world_menu_consumed) {
             keyboard.consume_edge(0x1BU);

@@ -145,6 +145,11 @@ private:
     bool world_step_processed_{};
     std::optional<scene::SceneDirection> scene_direction_input_;
     std::optional<world::WorldDirection> scene_entry_world_direction_;
+    std::optional<world::WorldMoveContinuation> world_move_continuation_;
+    bool world_scene_transition_pending_{};
+    bool world_scene_transition_presented_{};
+    bool world_scene_return_pending_{};
+    bool world_scene_return_presented_{};
     bool scene_interact_requested_{};
     bool scene_ui_requested_{};
     bool ending_complete_{};

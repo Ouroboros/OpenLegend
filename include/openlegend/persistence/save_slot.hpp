@@ -81,6 +81,10 @@ struct SnapshotWriteResult {
 
 [[nodiscard]] SnapshotWriteResult write_snapshot(
     const SaveFileSet& files, const model::GameSnapshot& snapshot);
+[[nodiscard]] SnapshotWriteResult write_numbered_slot_scene_archives(
+    const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
+[[nodiscard]] SnapshotWriteResult write_numbered_slot_ranger(
+    const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
 [[nodiscard]] SnapshotWriteResult write_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
 

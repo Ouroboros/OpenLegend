@@ -14,6 +14,18 @@ inline constexpr std::uint8_t kLegacyLeftKey = 0x9AU;
 inline constexpr std::uint8_t kLegacyUpKey = 0x9EU;
 inline constexpr std::uint8_t kLegacyDownKey = 0x98U;
 inline constexpr std::uint8_t kLegacyRightKey = 0x9CU;
+inline constexpr std::array<std::uint8_t, 2> kLegacyWorldLeftKeys{kLegacyLeftKey, 0x9DU};
+inline constexpr std::array<std::uint8_t, 2> kLegacyWorldUpKeys{kLegacyUpKey, 0x9FU};
+inline constexpr std::array<std::uint8_t, 2> kLegacyWorldDownKeys{0x97U, kLegacyDownKey};
+inline constexpr std::array<std::uint8_t, 2> kLegacyWorldRightKeys{0x99U, kLegacyRightKey};
+
+enum class LegacyWorldDirectionInput : std::uint8_t {
+    none,
+    left,
+    up,
+    down,
+    right,
+};
 
 class LegacyKeyboard {
 public:
@@ -31,6 +43,8 @@ public:
     [[nodiscard]] bool edge(std::uint8_t translated_key) const noexcept;
     void clear_state(std::uint8_t translated_key) noexcept;
     void consume_edge(std::uint8_t translated_key) noexcept;
+    [[nodiscard]] LegacyWorldDirectionInput world_direction() const noexcept;
+    void consume_world_direction(LegacyWorldDirectionInput direction) noexcept;
 
     [[nodiscard]] static const std::array<std::uint8_t, kLegacyTranslationSize>&
     translation_table() noexcept;

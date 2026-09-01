@@ -22,7 +22,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 | `0x23B3E` | 三个天气粒子的生成、水平推进和同 tick 重启 |
 | `0x23C98` / `0x23F28` | 陆地/船 X/Y 移动、方向、帧、碰撞、缓存提交和天气滚动 |
 | `0x241DC` / `0x2422A` | cache-local 与 world 坐标同步 |
-| `0x24278` | `11/98` 边界触发 origin 重算、五层重载、存档 header 回写 |
+| `0x24278` | `11/98` 边界触发 origin 重算、五层重载；不写RANGER header |
 | `0x24417` | 相机移动时天气按等角投影反向平移 |
 | `0x24496` | 玩家踏入船当前/下一格时切换乘船状态 |
 | `0x24559` | 船体当前格/下一格的海岸过渡探测 |
@@ -51,18 +51,20 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 | `BUILDX.002` | `642f584eeccabee20ff73744f7ea74b0d78be521c7d509730bdb6e14d6fbf80c` |
 | `BUILDY.002` | `77531b0f9b6b06e0c96fdf73f471d9d759af3553b8dd300855d0c64ecb62257a` |
 
-原版每层执行 128 次读取：文件偏移 `960*(origin_y+row)+2*origin_x`，每行 256 bytes。`origin = clamp(world-64, 0, 352)`。原始初始状态 `(357,235)` 得到 origin `(293,171)`、local `(64,64)`；五层 cache 的 FNV1a64 已固定在 oracle JSON。连续 35 格固定轨迹验证 local 超过 98 后 origin 从 7 重载为 42，local 回到 64。
+原版打开文件和每次cache总加载均保持 EARTH→BUILDING→SURFACE→BUILDX→BUILDY；现代实现用显式`kLayerLoadOrder`保留该机器顺序，同时层枚举索引仍按渲染语义访问。每层执行 128 次读取：文件偏移 `960*(origin_y+row)+2*origin_x`，每行 256 bytes。`origin = clamp(world-64, 0, 352)`。原始初始状态 `(357,235)` 得到 origin `(293,171)`、local `(64,64)`；五层 cache 的 FNV1a64 已固定在 oracle JSON。连续 35 格固定轨迹验证 local 超过 98 后 origin 从 7 重载为 42，local 回到 64。
 
 ## 移动、碰撞、船和入口
 
-- 方向编号严格为 `up=0, right=1, left=2, down=3`；主循环优先级为 left→up→down→right→Esc menu→idle。方向命中不消费 Esc odd edge，后续无方向 tick 才能打开菜单；若期间 Esc keyup，则请求随原键态消失。
+- 方向编号严格为 `up=0, right=1, left=2, down=3`；主循环优先级为 left→up→down→right→Esc menu→idle。四个方向分别合并并清零 translated-key 对：left=`0x9A/0x9D`、up=`0x9E/0x9F`、down=`0x97/0x98`、right=`0x99/0x9C`；按住后必须等待后续 make/repeat 重新置位，不能每个宿主帧连续移动。方向命中不消费 Esc odd edge，后续无方向 tick 才能打开菜单；若期间 Esc keyup，则请求随原键态消失。
 - 步行帧基址 `5002/5016/5030/5044`，步进 `2..12`；船帧基址 `7430/7438/7446/7454`，步进 `2..6`。
 - 步行封锁区间严格为：`358..362, 374..380, 458..464, 506..670, 818..824, 838, 934..936, 1016..1022`。
 - 下船陆地区间严格为：`4..356, 364..372, 382..456, 672..954, 466..504, 1000..1014`；顺序保持机器码原顺序。
 - 船海岸区间严格为：`358..362, 374..380, 458..464, 458..464, 506..610, 1016..1022`，包括原版重复区间。
 - 固定轨迹 `right→up→left→down` 返回 `(357,235)`；初始向左命中场景 70，世界坐标不先提交。
-- 条件 2 的合成入口分别验证 IQ 69 不触发、IQ 70 触发。
-- 固定船轨迹验证 `(108,100)` 上船、海岸格移动、在 `(107,100)` 下船以及 header 的 current/next 船坐标。
+- 条件 2 的合成入口分别验证 IQ 69 不触发、IQ 70 触发；party只扫描slot0起的连续前缀，首个空槽后的高IQ角色不得触发。
+- `sub_25911`在进入scene前先present更新朝向后的完整世界帧，再执行64级fade-to-black；scene返回后先反转朝向，以仍保留的world cache、weather、idle、50步计数和palette present世界帧并执行65级fade-from-black，fade结束后才继续原移动调用者的碰撞/坐标/cache/weather后半段。两侧fade期间均冻结输入和世界palette周期。真实scene70因目标建筑阻挡保持`(357,235)`，合成可行入口移动到`(358,235)`；已旋转palette及第49→50次移动计数均跨scene保持。
+- world移动仅修改原全局运行态；`sub_24278`不写RANGER header。`sub_265AB`保存槽时才复制world X/Y、方向、in_ship及船字段。现代`WorldSession::sync_persistent_state`只在保存导出边界调用；scene菜单保存不覆盖SceneSession维护的scene方向。
+- 固定船轨迹验证 `(108,100)` 上船、海岸格移动、在 `(107,100)` 下船以及 header 的 current/next 船坐标。`in_ship`保留raw 16位：移动对任意非零走乘船分支，但render只有值1绘中心船，其他非零跳过中心玩家节点；提交不归一化为bool。
 - 每 50 次移动尝试保留 `sub_26A92` 的原 BUG：第二个判断读取“队伍槽号对应角色”的 poison，而非队员 role id；随后减少真实队员的 HP、MP、体力。
 
 ## 绘制与周期状态
@@ -72,12 +74,12 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 - 地面与 surface 使用 `MMAP.IDX/GRP`，legacy id 按 `/2` 取累计 archive entry；角色、船和建筑走同一 RLE 覆盖规则。
 - 初始 framebuffer：SHA256 `8b925f9bb4d8378cd9a134965e0ae95e56e85360036a38f64387e073a486bc2a`，FNV1a64 `0x6f6cf22b7c8cb4b8`。
 - 世界人物四方向 28 个 MMAP 行走帧均为合法非空 RLE；每帧含 305–402 个源像素。回归测试在初始位置、四方向轨迹和连续右移 35 步（覆盖完整 2–12 帧循环与 cache 重载）后逐步重绘，并确认当前人物帧至少一个源像素仍存在于 framebuffer 的 `(145,117)` anchor 区域。
-- `LegacyGameRuntime` 同步链在四次 held-direction 输入后逐步断言 view 仍为 `world` 且 render 成功；因此当前固定真实资产路径未复现“移动几步后人物消失”。运行日志另记录 view、坐标、方向、帧号、深度列表是否包含玩家和 present 失败，以捕获真实运行环境中的后续复现。
+- `LegacyGameRuntime` 同步链在四次方向输入后逐步断言 view 仍为 `world` 且 render 成功；键盘回归另固定四组成对键码、left→up→down→right 优先级、命中整组清零和 repeat 再置位。因此当前固定真实资产路径未复现“移动几步后人物消失”。运行日志另记录 view、坐标、方向、帧号、深度列表是否包含玩家和 present 失败，以捕获真实运行环境中的后续复现。
 - 天气 alpha 表为 `table[weight][rgb6] = floor(rgb6*weight/32)`；source weight 为 6..8，destination weight 为 `8-weight`。
 - RGB4 最近色使用目标 `(component*4+2)` 与当前 RGB6 palette 的平方距离，严格 `<` 保留首个同距 index。
 - seed 1、300 tick 的天气粒子和最终像素由 oracle 固定；framebuffer SHA256 `e8a96eda7898d8fc13ca270754b1d10b5cf05e0994db8cc82d3218aecf00a313`，FNV1a64 `0xdff4c0d05bd3426b`。
 - 相机移动时天气位置保留 `sub_24417` 的等角位移；全部粒子 x>500 时同 tick 重新生成。
-- 无输入 tick 保持 `sub_2399E` 判定/恢复→`sub_23B3E` 天气→条件 `sub_23AA6` 待机动画的顺序；现代拆分为 `idle_tick()`、`periodic_tick()`、`idle_animation_tick()`，不再把动画推进提前到天气之前。
+- 无输入 tick 保持 `sub_2399E` 判定/恢复→`sub_23B3E` 天气→条件 `sub_23AA6` 待机动画的顺序；20 tick步行frame复位计数只在`in_ship==0`时递增。现代拆分为 `idle_tick()`、`periodic_tick()`、`idle_animation_tick()`，不再把动画推进提前到天气之前。
 
 ## 随机遭遇审计
 
@@ -86,9 +88,9 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 ## 实现边界
 
 - `openlegend_world` 拥有只读五层数据、128×128 cache 和世界会话瞬态；`model::GameState` 仍是持久状态唯一所有者。
-- 世界会话只经 `RangerState` 的 header/角色记录回写；persistence 不拥有或解释世界瞬态。
-- `LegacyGameRuntime` 在新游戏接受或读档成功后创建世界会话；SDL 主循环把 held key 状态按原优先级传入，再执行 idle/weather tick。
-- 场景入口在 B6 形成 typed `scene_request`；真正同步进入场景属于 B7，不在世界模块伪造场景行为。
+- 世界移动不即时改写 `RangerState` 的world header；`LegacyGameRuntime`仅在`sub_265AB`保存边界按S→D→运行态写回→R顺序调用`sync_persistent_state`。persistence只运输snapshot，不拥有或解释世界瞬态。
+- `LegacyGameRuntime` 在新游戏接受或读档成功后创建世界会话；SDL 主循环通过 `LegacyKeyboard::world_direction()`按原优先级读取成对键态，世界态在调用 runtime 前以 `consume_world_direction()`清除命中方向的整组状态，后续 repeat keydown 才能重新置位，再执行 idle/weather tick。
+- 场景入口在 B6 形成 typed `scene_request`；同步场景会话和双侧present/fade由app在B6/B7调用边界承接，world模块只保存并恢复移动continuation。
 
 ## 自动验证
 
@@ -98,18 +100,19 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 2. 初始 framebuffer 独立 golden；
 3. 固定移动轨迹、阻挡、场景 70、IQ 条件 2；
 4. 11/98 cache reload；
-5. 上船、船移动、海岸过渡、下船与 header 同步；
+5. 上船、船移动、海岸过渡、下船、移动后header保持及保存边界同步；
 6. weather RNG 消费和 300 tick alpha framebuffer；
-7. 待机动画方向帧、50 次移动消耗原 BUG、200 tick 体力恢复；
-8. `LegacyGameRuntime` 和 SDL held-key 接线、scene request；
-9. 每步 world render 的当前 MMAP 人物帧可见性，以及 app 每步 view/render 稳定性。
+7. 待机动画方向帧、船上不递增步行复位计数、50 次移动消耗slot-poison原 BUG、200 tick 体力恢复；
+8. `LegacyGameRuntime`、SDL方向接线、四组成对键码与消费/repeat合同、入口world预present/64级fade、返回world预present/65级fade、scene continuation与world瞬态保留；
+9. 每步 world render 的当前 MMAP 人物帧可见性、raw `in_ship`中心帧分支，以及 app 每步 view/render 稳定性。
 
-历史阶段门禁（发生真实回归前的实现验证记录，不代表当前 B6 已完成最终 REVIEW）：
+当前实现切片门禁（状态仍为`implemented_pending_review`，不代表最终双向REVIEW完成）：
 
-- Linux core Debug/Release：各 9/9；
-- Linux app Debug/Release：各 10/10；
-- Windows clang-cl core Debug/Release：各 9/9；
-- Windows clang-cl app Debug/Release：各 10/10；
-- Linux ASan+UBSan：9/9；
-- Linux 与 Windows Debug：SDL dummy video/software renderer/dummy audio smoke 均返回 0；
-- GCC/clang-cl 构建输出无项目 warning，`git diff --check` 通过。
+- Linux core Debug/Release：各13/13；
+- Linux app Debug/Release：各14/14；
+- Windows clang-cl core Debug/Release：各13/13；
+- Windows clang-cl app Debug/Release：各14/14；
+- Linux app Debug ASan+UBSan：14/14；
+- app矩阵内SDL dummy video/software renderer/dummy audio smoke通过；
+- 独立B6 oracle与受控golden逐字节相同，reverse-framework validator为577行有效；
+- 五项原版资产SHA256保持固定值，正式`Z_DAT.i64`无diff，`git diff --check`通过。

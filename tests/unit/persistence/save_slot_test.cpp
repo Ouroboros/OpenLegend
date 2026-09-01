@@ -280,8 +280,14 @@ void check_runtime_slot_contract(
     write_bytes(slot_files.ranger_index, sentinel);
     write_bytes(slot_files.scene_map_index, sentinel);
     write_bytes(slot_files.scene_event_index, sentinel);
+    write_bytes(slot_files.ranger_group, sentinel);
 
-    OL_CHECK(openlegend::persistence::write_numbered_slot(root, SaveSlot::one, *source.snapshot));
+    OL_CHECK(openlegend::persistence::write_numbered_slot_scene_archives(
+        root, SaveSlot::one, *source.snapshot));
+    OL_CHECK(read_bytes(slot_files.ranger_group) ==
+             std::vector<std::uint8_t>(sentinel.begin(), sentinel.end()));
+    OL_CHECK(openlegend::persistence::write_numbered_slot_ranger(
+        root, SaveSlot::one, *source.snapshot));
     OL_CHECK(read_bytes(slot_files.ranger_index) ==
              std::vector<std::uint8_t>(sentinel.begin(), sentinel.end()));
     OL_CHECK(read_bytes(slot_files.scene_map_index) ==

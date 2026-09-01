@@ -425,7 +425,26 @@ SnapshotWriteResult write_snapshot(
     return SnapshotWriteResult{};
 }
 
-SnapshotWriteResult write_numbered_slot(
+SnapshotWriteResult write_numbered_slot_scene_archives(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const model::GameSnapshot& snapshot) {
+    const auto files = numbered_file_set(root, slot);
+    if (!files.has_value()) {
+        return write_error(PersistenceStatus::invalid_slot, root);
+    }
+    if (!snapshot.valid()) {
+        return write_error(PersistenceStatus::invalid_snapshot, files->scene_map_group);
+    }
+
+    auto result = write_bytes(files->scene_map_group, snapshot.scene_maps);
+    if (!result) {
+        return result;
+    }
+    return write_bytes(files->scene_event_group, snapshot.scene_events);
+}
+
+SnapshotWriteResult write_numbered_slot_ranger(
     const std::filesystem::path& root,
     const SaveSlot slot,
     const model::GameSnapshot& snapshot) {
@@ -437,16 +456,19 @@ SnapshotWriteResult write_numbered_slot(
         return write_error(PersistenceStatus::invalid_snapshot, files->ranger_group);
     }
 
-    auto result = write_bytes(files->scene_map_group, snapshot.scene_maps);
-    if (!result) {
-        return result;
-    }
-    result = write_bytes(files->scene_event_group, snapshot.scene_events);
-    if (!result) {
-        return result;
-    }
     const auto ranger_group = encode_ranger(snapshot.ranger);
     return write_bytes(files->ranger_group, ranger_group);
+}
+
+SnapshotWriteResult write_numbered_slot(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const model::GameSnapshot& snapshot) {
+    auto result = write_numbered_slot_scene_archives(root, slot, snapshot);
+    if (!result) {
+        return result;
+    }
+    return write_numbered_slot_ranger(root, slot, snapshot);
 }
 
 std::string_view persistence_status_message(const PersistenceStatus status) noexcept {

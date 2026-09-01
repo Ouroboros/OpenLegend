@@ -128,6 +128,8 @@ ALLDEF.GRP  SHA256 3633122f6a43f0b5dd390c2fa2516766d735a064ca955c8766b73232230a4
 | 10 | 20 | previous/paired ship Y | `word_C0BA2` |
 | 11 | 22 | encode flag | `word_5450E` |
 
+现代`WorldSession`对应原world全局运行态，不在每次移动提前写header。保存wait-frame已经present后，`LegacyGameRuntime::perform_pending_io`先用保存前snapshot写S/D，再调用`sync_persistent_state`并重新导出R snapshot，最后写R：world菜单同步方向与全部world字段；scene菜单同步world坐标/船字段但保留`SceneSession`当前方向。由此保持`sub_265AB`的S→D→运行态回写→R顺序；S/D失败不会提前修改header，R失败前则已完成机器要求的回写。
+
 ### 4.3 RANGER
 
 - `0x26801..0x2683E`：同样只读取公共 `RANGER.IDX`；

@@ -79,11 +79,20 @@ enum class WorldStepKind {
     open_ui,
 };
 
+struct WorldMoveContinuation {
+    WorldDirection direction{WorldDirection::up};
+    std::int16_t target_x{};
+    std::int16_t target_y{};
+
+    friend bool operator==(const WorldMoveContinuation&, const WorldMoveContinuation&) = default;
+};
+
 struct WorldStepResult {
     WorldStepKind kind{WorldStepKind::stay};
     std::int16_t scene_id{-1};
     std::int16_t world_x{};
     std::int16_t world_y{};
+    std::optional<WorldMoveContinuation> continuation;
 
     friend bool operator==(const WorldStepResult&, const WorldStepResult&) = default;
 };
@@ -99,6 +108,10 @@ public:
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
     [[nodiscard]] WorldStepResult move(WorldDirection direction);
+    void restore_direction_after_scene(WorldDirection direction) noexcept;
+    [[nodiscard]] WorldStepResult resume_move_after_scene(
+        const WorldMoveContinuation& continuation);
+    void sync_persistent_state(bool include_direction) noexcept;
     void idle_tick();
     void periodic_tick();
     void idle_animation_tick();
@@ -111,6 +124,7 @@ public:
     [[nodiscard]] int cache_y() const noexcept { return world_y_ - cache_.origin_y(); }
     [[nodiscard]] WorldDirection direction() const noexcept { return direction_; }
     [[nodiscard]] std::int16_t player_frame() const noexcept;
+    [[nodiscard]] std::optional<std::int16_t> rendered_player_frame() const noexcept;
     [[nodiscard]] const WorldCache& cache() const noexcept { return cache_; }
 
 private:
@@ -126,8 +140,9 @@ private:
     [[nodiscard]] bool target_is_ship_water(
         int world_x, int world_y, int moved_coordinate) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> entrance_at(int world_x, int world_y) const noexcept;
+    [[nodiscard]] WorldStepResult complete_move(
+        WorldDirection direction, int target_x, int target_y);
     void reload_cache_if_needed(bool vertical_move);
-    void commit_header() noexcept;
     void update_weather();
     [[nodiscard]] bool draw_sprite(
         render::IndexedFramebuffer& framebuffer,
@@ -163,7 +178,7 @@ private:
     std::int16_t physical_power_counter_{};
     std::int32_t role_recovery_counter_{};
     bool idle_animation_{};
-    bool in_ship_{};
+    std::int16_t in_ship_{};
     bool weather_active_{};
     std::array<WeatherParticle, 3> weather_{};
     std::string error_;

@@ -165,6 +165,10 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     }
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_x) == 357);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_y) == 235);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::face_towards) == 1);
+    session.sync_persistent_state(true);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_x) == 357);
+    OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::main_map_y) == 235);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::face_towards) == 3);
 
     auto entrance_snapshot = load_baseline(root);
@@ -175,6 +179,16 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(entrance_result.scene_id == 70);
     OL_CHECK(entrance_result.world_x == 357);
     OL_CHECK(entrance_result.world_y == 235);
+    OL_CHECK(entrance_result.continuation ==
+             (std::optional{WorldMoveContinuation{WorldDirection::left, 356, 235}}));
+    entrance.restore_direction_after_scene(WorldDirection::right);
+    const auto resumed_entrance_result =
+        entrance.resume_move_after_scene(*entrance_result.continuation);
+    OL_CHECK(resumed_entrance_result.kind == WorldStepKind::stay);
+    OL_CHECK(resumed_entrance_result.world_x == 357);
+    OL_CHECK(resumed_entrance_result.world_y == 235);
+    OL_CHECK(entrance.direction() == WorldDirection::right);
+    OL_CHECK(entrance.player_frame() == 5016);
 
     auto blocked_snapshot = load_baseline(root);
     for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
@@ -190,6 +204,19 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(blocked_result.world_x == 357);
     OL_CHECK(blocked_result.world_y == 235);
     OL_CHECK(blocked.player_frame() == 5032);
+
+    auto noncanonical_ship_snapshot = blocked_snapshot;
+    noncanonical_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::in_ship, 2);
+    openlegend::random::LegacyRandom noncanonical_ship_random{1U};
+    WorldSession noncanonical_ship{
+        data_root, map, noncanonical_ship_snapshot.ranger, noncanonical_ship_random};
+    openlegend::render::IndexedFramebuffer noncanonical_ship_framebuffer;
+    OL_CHECK(noncanonical_ship.render(noncanonical_ship_framebuffer));
+    OL_CHECK(!noncanonical_ship.rendered_player_frame().has_value());
+    OL_CHECK(noncanonical_ship.move(WorldDirection::left).kind == WorldStepKind::stay);
+    OL_CHECK(noncanonical_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::in_ship) == 2);
 
     auto low_iq_snapshot = load_baseline(root);
     auto& conditional_scene = low_iq_snapshot.ranger.scenes[0];
@@ -212,6 +239,31 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     const auto high_iq_result = high_iq.move(WorldDirection::right);
     OL_CHECK(high_iq_result.kind == WorldStepKind::enter_scene);
     OL_CHECK(high_iq_result.scene_id == 0);
+    OL_CHECK(high_iq_result.continuation ==
+             (std::optional{WorldMoveContinuation{WorldDirection::right, 358, 235}}));
+    high_iq.restore_direction_after_scene(WorldDirection::left);
+    const auto resumed_high_iq_result =
+        high_iq.resume_move_after_scene(*high_iq_result.continuation);
+    OL_CHECK(resumed_high_iq_result.kind == WorldStepKind::moved);
+    OL_CHECK(resumed_high_iq_result.world_x == 358);
+    OL_CHECK(resumed_high_iq_result.world_y == 235);
+    OL_CHECK(high_iq.direction() == WorldDirection::left);
+    OL_CHECK(high_iq.player_frame() == 5030);
+
+    auto party_gap_snapshot = load_baseline(root);
+    auto& party_gap_scene = party_gap_snapshot.ranger.scenes[0];
+    party_gap_scene.set_word(openlegend::model::scene_metadata_word::entrance_condition, 2);
+    party_gap_scene.set_word(openlegend::model::scene_metadata_word::main_entrance_x_1, 358);
+    party_gap_scene.set_word(openlegend::model::scene_metadata_word::main_entrance_y_1, 235);
+    party_gap_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::iq, 69);
+    party_gap_snapshot.ranger.roles[1].set_word(openlegend::model::role_word::iq, 100);
+    party_gap_snapshot.ranger.header.set_team_member(
+        1U, openlegend::model::CharacterId{-1});
+    party_gap_snapshot.ranger.header.set_team_member(
+        2U, openlegend::model::CharacterId{1});
+    openlegend::random::LegacyRandom party_gap_random{1U};
+    WorldSession party_gap{data_root, map, party_gap_snapshot.ranger, party_gap_random};
+    OL_CHECK(party_gap.move(WorldDirection::right).kind == WorldStepKind::moved);
 
     auto reload_snapshot = load_baseline(root);
     reload_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_x, 71);
@@ -235,18 +287,29 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     openlegend::random::LegacyRandom ship_random{1U};
     WorldSession ship{data_root, map, ship_snapshot.ranger, ship_random};
     OL_CHECK(ship.move(WorldDirection::right).kind == WorldStepKind::moved);
-    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
     OL_CHECK(ship.world_x() == 109);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 0);
+    ship.sync_persistent_state(true);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
     OL_CHECK(ship.move(WorldDirection::right).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 110);
+    ship.sync_persistent_state(true);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_x) == 110);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 108);
+    ship.sync_persistent_state(true);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 107);
+    ship.sync_persistent_state(true);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 0);
+    ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::face_towards,
+        static_cast<std::int16_t>(WorldDirection::up));
+    ship.sync_persistent_state(false);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::face_towards) ==
+             static_cast<std::int16_t>(WorldDirection::up));
 }
 
 void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
@@ -334,6 +397,28 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     OL_CHECK(protagonist.word(openlegend::model::role_word::hp) == 9);
     OL_CHECK(protagonist.word(openlegend::model::role_word::mp) == 19);
     OL_CHECK(protagonist.word(openlegend::model::role_word::physical_power) == 29);
+
+    auto poison_index_snapshot = load_baseline(root);
+    poison_index_snapshot.ranger.header.set_team_member(
+        1U, openlegend::model::CharacterId{10});
+    auto& poison_gate_role = poison_index_snapshot.ranger.roles[1U];
+    poison_gate_role.set_word(openlegend::model::role_word::poison, 51);
+    auto& indexed_party_role = poison_index_snapshot.ranger.roles[10U];
+    indexed_party_role.set_word(openlegend::model::role_word::hurt, 0);
+    indexed_party_role.set_word(openlegend::model::role_word::poison, 0);
+    indexed_party_role.set_word(openlegend::model::role_word::hp, 10);
+    indexed_party_role.set_word(openlegend::model::role_word::mp, 20);
+    indexed_party_role.set_word(openlegend::model::role_word::physical_power, 30);
+    openlegend::random::LegacyRandom poison_index_random{1U};
+    WorldSession poison_index{
+        data_root, map, poison_index_snapshot.ranger, poison_index_random};
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        static_cast<void>(poison_index.move(WorldDirection::left));
+    }
+    OL_CHECK(indexed_party_role.word(openlegend::model::role_word::hp) == 9);
+    OL_CHECK(indexed_party_role.word(openlegend::model::role_word::mp) == 19);
+    OL_CHECK(indexed_party_role.word(openlegend::model::role_word::physical_power) == 29);
+    OL_CHECK(poison_gate_role.word(openlegend::model::role_word::poison) == 51);
 
     auto power_snapshot = load_baseline(root);
     power_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::physical_power, 99);

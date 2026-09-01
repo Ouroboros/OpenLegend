@@ -1,6 +1,6 @@
 audit_order	address	name	research_name	function_end	size	closure_status	target_owner	implementation_mapping	evidence	verification	final_review	remaining
 1	0x20C32	sub_20C32	blocking_read_key	0x20C45	19	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
-2	0x20D35	main	main_loop	0x20FAA	629	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
+2	0x20D35	main	main_loop	0x20FAA	629	implemented_pending_review	app	openlegend::input::LegacyKeyboard::world_direction/consume_world_direction;openlegend::app::LegacyGameRuntime::advance/render/finish_presented_tick;openlegend::world::WorldSession;src/platform/sdl3/main.cpp	research/evidence/functions/Z_DAT/0x20D35.md	machine-code startup/world dispatch, paired-key consumption, present then palette cycle then BIOS-tick wait and shutdown mapping; Linux app Debug 14/14	not_started	complete final bidirectional assembly-to-C++ review of delegated runtime/audio/platform boundaries
 3	0x3CDFF	sub_3CDFF	keyboard_audio_font_initialize	0x3CF19	282	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 4	0x3CF19	sub_3CF19	keyboard_restore	0x3CF45	44	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review
 5	0x3DB83	sub_3DB83	bios_tick_delay	0x3DBBF	60	pending_mapping	unresolved				not_started	map existing implementation or implement, then complete final review

@@ -59,7 +59,7 @@ The reviewed machine order for a save is:
 3. copy live runtime/header/team/inventory values to the ranger save buffer;
 4. write the numbered ranger record (`R*`).
 
-The modern path exports one complete snapshot before `persistence::write_numbered_slot` performs the same `S -> D -> R` fixed-record writes.
+At the presented save boundary, the modern path exports the pre-sync snapshot and writes S/D through `write_numbered_slot_scene_archives`; only after both writes succeed does it call `WorldSession::sync_persistent_state`, re-export the ranger state, and write R through `write_numbered_slot_ranger`. World saves transport coordinates, ship state, and world direction; scene-menu saves leave the `SceneSession` direction intact while transporting retained world coordinates and ship state. This preserves `S -> D -> live header transport -> R`; ordinary movement does not write the ranger header early.
 
 ## Confirmed integration differences repaired during B9
 
@@ -89,7 +89,7 @@ The original slot confirmation renders a centered wait box and performs an actua
 - text origin `(158, 25)`;
 - text color `0x0705`.
 
-`BasicUiRenderer::render_io_wait` emits that frame. `GameMenuController` retains the slot page until `complete_slot_operation()`. `LegacyGameRuntime::finish_presented_tick` opens the pending-I/O gate only after the wait frame has been presented. Regression coverage mutates the live snapshot, confirms the numbered-slot bytes are unchanged before present, and confirms the complete snapshot is written after present.
+`BasicUiRenderer::render_io_wait` emits that frame. `GameMenuController` retains the slot page until `complete_slot_operation()`. `LegacyGameRuntime::finish_presented_tick` opens the pending-I/O gate only after the wait frame has been presented. Regression coverage mutates the live snapshot and moves the world position while the ranger header remains unchanged, confirms the numbered-slot bytes are unchanged before present, verifies the split writer leaves R untouched after its S/D phase, then confirms the save boundary synchronizes the current world position/direction and writes R after present.
 
 ### System-menu load return boundary
 

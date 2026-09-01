@@ -60,11 +60,36 @@ void advance_rendered_frames(
     }
 }
 
+void finish_world_scene_transition(openlegend::app::LegacyGameRuntime& game) {
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        OL_CHECK(game.render());
+        game.finish_presented_tick();
+        game.advance();
+    }
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
+}
+
 void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
     advance_rendered_frames(game, 65U);
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
     game.handle_key(0x0DU, false, false);
     advance_rendered_frames(game, 1U);
+}
+
+void finish_world_scene_return(openlegend::app::LegacyGameRuntime& game) {
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    for (std::size_t frame = 0U; frame < 65U; ++frame) {
+        OL_CHECK(game.render());
+        game.finish_presented_tick();
+        game.advance();
+    }
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
 }
 
 void check_controller() {
@@ -394,7 +419,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     OL_CHECK(new_game.render());
-    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 358);
+    OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
     new_game.handle_world_input(false, true, false, false);
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
@@ -459,12 +484,15 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    OL_CHECK(new_game.render());
+    const auto world_palette_before_scene = new_game.framebuffer().palette();
 
     new_game.handle_world_input(true, false, false, false);
     new_game.advance();
     OL_CHECK(new_game.scene_request().has_value());
     OL_CHECK(new_game.scene_request().value_or(-1) == 70);
-    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    finish_world_scene_transition(new_game);
     finish_scene_entry(new_game);
     new_game.handle_key(0x1BU, false, false);
     new_game.handle_world_input(false, true, false, false);
@@ -617,11 +645,22 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     advance_rendered_frames(new_game, 1U);
     advance_rendered_frames(new_game, 64U);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    finish_world_scene_return(new_game);
     OL_CHECK(!new_game.scene_request().has_value());
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::in_sub_map) == 0);
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::face_towards) ==
              static_cast<std::int16_t>(world::WorldDirection::right));
     OL_CHECK(new_game.render());
+    auto world_palette_preserved = true;
+    for (std::size_t index = 0U; index < world_palette_before_scene.size(); ++index) {
+        const auto before = world_palette_before_scene[index];
+        const auto after = new_game.framebuffer().palette()[index];
+        if (before.red != after.red || before.green != after.green || before.blue != after.blue) {
+            world_palette_preserved = false;
+            break;
+        }
+    }
+    OL_CHECK(world_palette_preserved);
 
     auto* menu_ranger = const_cast<model::GameState&>(new_game.game_state()).ranger();
     OL_CHECK(menu_ranger != nullptr);
@@ -659,6 +698,9 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(medicine_result_hash == 0x70CE82FBA86ECED6ULL);
     if (menu_ranger != nullptr) {
         const auto& role = menu_ranger->roles[0U];
+        if (role.word(model::role_word::hp) != 80) {
+            std::cerr << "medicine_hp=" << role.word(model::role_word::hp) << '\n';
+        }
         OL_CHECK(role.word(model::role_word::hp) == 80);
         OL_CHECK(role.word(model::role_word::hurt) == 0);
         OL_CHECK(role.word(model::role_word::physical_power) == 98);
@@ -693,6 +735,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     }
     OL_CHECK(detoxification_result_hash == 0x985B2010DF3F15EBULL);
     if (menu_ranger != nullptr) {
+        if (menu_ranger->roles[0U].word(model::role_word::poison) != 59) {
+            std::cerr << "detoxification_poison="
+                      << menu_ranger->roles[0U].word(model::role_word::poison) << '\n';
+        }
         OL_CHECK(menu_ranger->roles[0U].word(model::role_word::poison) == 59);
         menu_ranger->roles[0U].set_word(model::role_word::medicine, 0);
         menu_ranger->roles[0U].set_word(model::role_word::detoxification, 0);
@@ -739,6 +785,66 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(load_game.view() == app::LegacyGameView::world);
     OL_CHECK(load_game.game_state().loaded());
     OL_CHECK(load_game.render());
+
+    auto* continuation_ranger =
+        const_cast<model::GameState&>(load_game.game_state()).ranger();
+    OL_CHECK(continuation_ranger != nullptr);
+    if (continuation_ranger != nullptr) {
+        auto& role = continuation_ranger->roles[0U];
+        role.set_word(model::role_word::hurt, 51);
+        role.set_word(model::role_word::hp, 10);
+        for (int pair = 0; pair < 24; ++pair) {
+            load_game.handle_world_input(false, false, false, true);
+            load_game.advance();
+            load_game.handle_world_input(true, false, false, false);
+            load_game.advance();
+        }
+        OL_CHECK(role.word(model::role_word::hp) == 10);
+
+        auto& entrance_scene = continuation_ranger->scenes[70U];
+        const auto first_is_current_entrance =
+            entrance_scene.word(model::scene_metadata_word::main_entrance_x_1) == 356 &&
+            entrance_scene.word(model::scene_metadata_word::main_entrance_y_1) == 235;
+        if (first_is_current_entrance) {
+            entrance_scene.set_word(model::scene_metadata_word::main_entrance_x_1, 358);
+        } else {
+            OL_CHECK(
+                entrance_scene.word(model::scene_metadata_word::main_entrance_x_2) == 356);
+            OL_CHECK(
+                entrance_scene.word(model::scene_metadata_word::main_entrance_y_2) == 235);
+            entrance_scene.set_word(model::scene_metadata_word::main_entrance_x_2, 358);
+        }
+    }
+    load_game.handle_world_input(false, false, false, true);
+    load_game.advance();
+    OL_CHECK(load_game.view() == app::LegacyGameView::world);
+    finish_world_scene_transition(load_game);
+    finish_scene_entry(load_game);
+    auto* continuation_snapshot =
+        const_cast<model::GameState&>(load_game.game_state()).snapshot();
+    OL_CHECK(continuation_snapshot != nullptr);
+    if (continuation_snapshot != nullptr) {
+        OL_CHECK(continuation_snapshot->set_scene_value(
+            70U, model::SceneLayer::event_index, 28U * 64U + 44U, -1));
+    }
+    load_game.handle_world_input(false, false, true, false);
+    load_game.advance();
+    advance_rendered_frames(load_game, 1U);
+    load_game.handle_world_input(false, false, false, true);
+    load_game.advance();
+    advance_rendered_frames(load_game, 1U);
+    advance_rendered_frames(load_game, 64U);
+    OL_CHECK(load_game.view() == app::LegacyGameView::world);
+    finish_world_scene_return(load_game);
+    OL_CHECK(load_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
+    OL_CHECK(load_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
+    OL_CHECK(load_game.game_state().ranger()->header.word(model::header_word::face_towards) ==
+             static_cast<std::int16_t>(world::WorldDirection::right));
+    OL_CHECK(load_game.game_state().ranger()->roles[0U].word(model::role_word::hp) == 10);
+    load_game.handle_world_input(false, true, false, false);
+    load_game.advance();
+    OL_CHECK(load_game.game_state().ranger()->roles[0U].word(model::role_word::hp) == 9);
+    OL_CHECK(load_game.render());
 }
 
 void check_runtime_persistence(const std::filesystem::path& data_root) {
@@ -762,6 +868,10 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.finish_presented_tick();
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::world);
+    game.handle_world_input(false, false, false, true);
+    game.advance();
+    OL_CHECK(game.view() == app::LegacyGameView::world);
+    OL_CHECK(game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
     auto* mutable_ranger = const_cast<model::GameState&>(game.game_state()).ranger();
     OL_CHECK(mutable_ranger != nullptr);
     if (mutable_ranger != nullptr) {
@@ -778,6 +888,9 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     const auto before_save = game.game_state().export_snapshot();
     OL_CHECK(before_save.has_value());
+    if (before_save.has_value()) {
+        OL_CHECK(before_save->ranger.header.word(model::header_word::main_map_x) == 357);
+    }
     game.advance();
     const auto before_wait_present =
         persistence::load_numbered_slot(output_root, persistence::SaveSlot::one);
@@ -793,8 +906,15 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
         persistence::load_numbered_slot(output_root, persistence::SaveSlot::one);
     OL_CHECK(static_cast<bool>(saved));
     OL_CHECK(saved.snapshot.has_value());
-    if (before_save.has_value() && saved.snapshot.has_value()) {
-        OL_CHECK(*before_save == *saved.snapshot);
+    const auto after_save = game.game_state().export_snapshot();
+    OL_CHECK(after_save.has_value());
+    if (before_save.has_value() && saved.snapshot.has_value() && after_save.has_value()) {
+        OL_CHECK(*before_save != *saved.snapshot);
+        OL_CHECK(*after_save == *saved.snapshot);
+        OL_CHECK(saved.snapshot->ranger.header.word(model::header_word::main_map_x) == 358);
+        OL_CHECK(saved.snapshot->ranger.header.word(model::header_word::main_map_y) == 235);
+        OL_CHECK(saved.snapshot->ranger.header.word(model::header_word::face_towards) ==
+                 static_cast<std::int16_t>(world::WorldDirection::right));
     }
 
     if (mutable_ranger != nullptr) {

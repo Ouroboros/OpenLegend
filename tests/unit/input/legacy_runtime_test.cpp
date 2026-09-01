@@ -132,6 +132,48 @@ void run_keyboard_tests() {
     OL_CHECK(!arrows.down(0x9BU));
     OL_CHECK(!arrows.down(0x9DU));
 
+    OL_CHECK(openlegend::input::kLegacyWorldLeftKeys ==
+             (std::array<std::uint8_t, 2>{0x9AU, 0x9DU}));
+    OL_CHECK(openlegend::input::kLegacyWorldUpKeys ==
+             (std::array<std::uint8_t, 2>{0x9EU, 0x9FU}));
+    OL_CHECK(openlegend::input::kLegacyWorldDownKeys ==
+             (std::array<std::uint8_t, 2>{0x97U, 0x98U}));
+    OL_CHECK(openlegend::input::kLegacyWorldRightKeys ==
+             (std::array<std::uint8_t, 2>{0x99U, 0x9CU}));
+
+    LegacyKeyboard keypad_directions;
+    constexpr std::array<std::pair<HostKey, std::uint8_t>, 4> keypad_states{
+        std::pair{HostKey::home, 0x9DU},
+        std::pair{HostKey::page_up, 0x9FU},
+        std::pair{HostKey::end, 0x97U},
+        std::pair{HostKey::page_down, 0x99U}};
+    for (const auto& [key, translated] : keypad_states) {
+        keypad_directions.handle_host_key(key, true);
+        OL_CHECK(keypad_directions.down(translated));
+        keypad_directions.clear_state(translated);
+        OL_CHECK(!keypad_directions.down(translated));
+        keypad_directions.handle_host_key(key, true);
+        OL_CHECK(keypad_directions.state(translated) == 3U);
+        keypad_directions.handle_host_key(key, false);
+        OL_CHECK(!keypad_directions.down(translated));
+    }
+
+    using openlegend::input::LegacyWorldDirectionInput;
+    LegacyKeyboard world_priority;
+    world_priority.handle_host_key(HostKey::home, true);
+    world_priority.handle_host_key(HostKey::up, true);
+    OL_CHECK(world_priority.world_direction() == LegacyWorldDirectionInput::left);
+    world_priority.consume_world_direction(LegacyWorldDirectionInput::left);
+    OL_CHECK(!world_priority.down(0x9AU));
+    OL_CHECK(!world_priority.down(0x9DU));
+    OL_CHECK(world_priority.down(0x9EU));
+    OL_CHECK(world_priority.world_direction() == LegacyWorldDirectionInput::up);
+    world_priority.consume_world_direction(LegacyWorldDirectionInput::up);
+    OL_CHECK(world_priority.world_direction() == LegacyWorldDirectionInput::none);
+    world_priority.handle_host_key(HostKey::home, true);
+    OL_CHECK(world_priority.state(0x9DU) == 3U);
+    OL_CHECK(world_priority.world_direction() == LegacyWorldDirectionInput::left);
+
     LegacyKeyboard print_screen;
     print_screen.handle_host_key(HostKey::print_screen, true);
     OL_CHECK(print_screen.state(0x00U) == 0U);
