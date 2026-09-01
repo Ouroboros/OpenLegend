@@ -168,6 +168,14 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
 
 void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
     if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
+        const auto start_music =
+            battle_session_->phase() == battle::BattleSessionPhase::initial_present &&
+            battle_session_->frame_rendered();
+        if (start_music) {
+            scene_audio_commands_.push_back(scene::SceneAudioCommand{
+                scene::SceneAudioCommand::Kind::music,
+                battle_session_->data().music_id()});
+        }
         battle_session_->finish_presented_tick(bios_tick);
         return;
     }
@@ -576,15 +584,17 @@ bool LegacyGameRuntime::start_battle(
     }
     clear_scene_effect();
     battle_session_ = std::make_unique<battle::BattleSession>(
-        data_root_, *ranger, random_, battle_id, grant_experience);
+        data_root_,
+        *ranger,
+        random_,
+        battle_id,
+        grant_experience,
+        retained_battle_render_state_);
     if (!battle_session_->valid()) {
         show_error(battle_session_->error(), LegacyGameView::scene);
         battle_session_.reset();
         return false;
     }
-    scene_audio_commands_.push_back(scene::SceneAudioCommand{
-        scene::SceneAudioCommand::Kind::music,
-        battle_session_->data().music_id()});
     set_view(LegacyGameView::battle, "battle session started");
     diagnostics::log_info(
         "battle session ready id=" + std::to_string(battle_id) +
@@ -615,6 +625,7 @@ void LegacyGameRuntime::finish_battle_if_ready() {
         "battle runtime completion id=" + std::to_string(battle_id) +
         " result=" + std::to_string(static_cast<int>(result)) +
         " restore_music=" + std::to_string(restore_music));
+    retained_battle_render_state_ = battle_session_->render_state();
     battle_session_.reset();
     battle_request_.reset();
     scene_audio_commands_.push_back(scene::SceneAudioCommand{

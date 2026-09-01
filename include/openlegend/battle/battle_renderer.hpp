@@ -20,6 +20,7 @@ class BattleRenderer {
 public:
     BattleRenderer(const resource::DataRoot& data_root, std::int16_t battlefield_id);
 
+    [[nodiscard]] bool load_battle_assets();
     [[nodiscard]] bool load_fight_package(std::int16_t fight_head_id);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
@@ -90,6 +91,8 @@ private:
     void build_rgb4_lookup() noexcept;
 
     resource::DataRoot data_root_;
+    std::int16_t battlefield_id_{};
+    bool battle_assets_loaded_{};
     std::vector<std::uint32_t> battlefield_offsets_;
     std::vector<std::uint8_t> battlefield_group_;
     resource::PackedArchive effect_sprites_;

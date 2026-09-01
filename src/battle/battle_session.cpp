@@ -234,13 +234,15 @@ BattleSession::BattleSession(
     model::RangerState& ranger,
     random::LegacyRandom& random,
     const std::int16_t battle_id,
-    const bool grant_experience)
+    const bool grant_experience,
+    const BattleRenderState initial_render_state)
     : ranger_(ranger),
       random_(random),
       data_(data_root, battle_id),
       setup_(data_, ranger_),
       pathing_(data_),
       renderer_(data_root, data_.battlefield_id()),
+      render_state_(initial_render_state),
       grants_experience_(grant_experience) {
     if (!data_.valid()) {
         error_ = data_.error();
@@ -528,6 +530,20 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     }
     frame_rendered_ = false;
     if (phase_ == BattleSessionPhase::initial_present) {
+        if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
+            error_ = setup_.valid()
+                ? "battle has no combatants after initial presentation"
+                : setup_.error();
+            return;
+        }
+        current_actor_slot_ = 0U;
+        const auto& actor = setup_.combatants()[0U].words;
+        render_state_.view_x = static_cast<std::int16_t>(
+            std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
+        render_state_.view_y = static_cast<std::int16_t>(
+            std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
+        render_state_.primary_cursor = {
+            actor[combatant_word::x], actor[combatant_word::y]};
         if (fade_palettes_.empty()) {
             phase_ = BattleSessionPhase::round_start;
             diagnostics::log_info(
@@ -810,19 +826,16 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
 }
 
 bool BattleSession::begin_initial_battle() {
-    if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
-        error_ = setup_.valid() ? "battle has no combatants after setup" : setup_.error();
+    if (setup_.combatant_count() <= 0) {
+        error_ = "battle has no combatants after setup";
+        return false;
+    }
+    if (!renderer_.load_battle_assets()) {
+        error_ = renderer_.error();
         return false;
     }
     current_actor_slot_ = 0U;
     const auto& actor = setup_.combatants()[0U].words;
-    render_state_.view_x = static_cast<std::int16_t>(
-        std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
-    render_state_.view_y = static_cast<std::int16_t>(
-        std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
-    render_state_.path_limit = 0;
-    render_state_.primary_cursor = {
-        actor[combatant_word::x], actor[combatant_word::y]};
     phase_ = BattleSessionPhase::initial_present;
     diagnostics::log_info(
         "battle initial view ready id=" + std::to_string(battle_id()) +
@@ -841,6 +854,9 @@ bool BattleSession::begin_round(const std::uint32_t bios_tick) {
         return false;
     }
     round_tick_ = bios_tick;
+    render_state_.effect_frame_offset = 0;
+    render_state_.effect_visible = false;
+    render_state_.highlight_mode = 0;
     current_actor_slot_ = 0U;
     const auto& actor = setup_.combatants()[current_actor_slot_]
                             .words;

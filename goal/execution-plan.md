@@ -2,7 +2,7 @@
 
 版本：v5
 当前阶段：B6 运行回归诊断 + B7 场景/事件实现
-当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态，继续完成 B6 回归闭环及 B7–B9 功能实现，最后统一执行汇编↔C++ REVIEW
+当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态；B8功能实现与入口实现差异审计已关闭，81项仍保持`implemented_pending_review`，Linux/Windows完整矩阵通过；下一步完成B9功能实现，随后统一执行B0→B9汇编↔C++ REVIEW
 
 ## 0. 唯一正确性真值
 
@@ -300,13 +300,17 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 - FIGHT 资源、战斗建立、角色临时态、输入、动作、AI、绘制和结果；
 - 战后状态提交；
-- `Victory / Defeat / Escape` 出口。
+- `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
+
+当前状态：功能实现100%，入口实现差异审计5/5已修正，Linux/Windows core/app × Debug/Release完整矩阵通过；81项closure仍为`implemented_pending_review`，统一最终REVIEW为0%。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 
 ### B9 · 完整持久化与兼容整合
 
 范围：全模块
+
+当前状态：`pending_mapping` / `pending_implementation`盘点待执行；B9功能实现完成后进入B0→B9统一最终双向REVIEW。
 
 交付：
 

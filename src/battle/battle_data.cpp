@@ -10,8 +10,6 @@ namespace openlegend::battle {
 
 BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t battle_id)
     : battle_id_(battle_id) {
-    occupancy_.fill(-1);
-
     const auto war = data_root.read("WAR.STA");
     if (!war) {
         error_ = war.error;
@@ -55,6 +53,7 @@ BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t b
     for (std::size_t word = 0U; word < battlefield_.size(); ++word) {
         battlefield_[word] = compat::read_i16le(field, word * 2U);
     }
+    occupancy_.fill(-1);
 }
 
 }  // namespace openlegend::battle

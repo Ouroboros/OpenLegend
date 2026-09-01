@@ -1937,6 +1937,8 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     BattleRenderer renderer{data_root, render_data.battlefield_id()};
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(renderer.valid());
+    OL_CHECK(!renderer.render(*plan, framebuffer));
+    OL_CHECK(renderer.load_battle_assets());
     OL_CHECK(renderer.render(*plan, framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x7d8a5211fe8c4eb0ULL);
     const auto status_panel = render_setup.status_panel_plan(0U);
@@ -4702,9 +4704,9 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(session.setup().combatants()[slot].words[combatant_word::role_id] ==
                  kExpectedRoles[slot]);
     }
-    OL_CHECK(session.view_x() == 19 && session.view_y() == 13);
+    OL_CHECK(session.view_x() == 0 && session.view_y() == 0);
     OL_CHECK(session.render(framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x03446a8a41ef2ec6ULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x568240847c97700cULL);
 
     session.finish_presented_tick();
     OL_CHECK(session.phase() == BattleSessionPhase::initial_fade);
@@ -6388,6 +6390,47 @@ void run_fixed_and_duplicate_tests(const openlegend::resource::DataRoot& data_ro
     OL_CHECK(duplicate_data.occupancy()[34U * 64U + 13U] == 11);
 }
 
+void run_initial_presentation_order_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
+    ranger->roles[1U].set_word(openlegend::model::role_word::speed, 1);
+    ranger->roles[3U].set_word(openlegend::model::role_word::speed, 30'000);
+    for (const auto role_id : {1U, 3U}) {
+        for (std::size_t equipment = 0U;
+             equipment < openlegend::model::role_word::equipment_count;
+             ++equipment) {
+            ranger->roles[role_id].set_word(
+                openlegend::model::role_word::equipment_begin + equipment, -1);
+        }
+    }
+    openlegend::random::LegacyRandom random{1U};
+    BattleRenderState inherited_state{};
+    inherited_state.view_x = 17;
+    inherited_state.view_y = 19;
+    auto session = std::make_unique<BattleSession>(
+        data_root, *ranger, random, 4, false, inherited_state);
+    OL_CHECK(session->valid());
+    OL_CHECK(session->phase() == BattleSessionPhase::initial_present);
+    OL_CHECK(session->view_x() == 17);
+    OL_CHECK(session->view_y() == 19);
+    OL_CHECK(session->setup().combatant_count() == 2);
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
+
+    auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
+    OL_CHECK(session->render(*framebuffer));
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
+    session->finish_presented_tick(10U);
+    OL_CHECK(session->phase() == BattleSessionPhase::initial_fade);
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 3);
+    const auto& first = session->setup().combatants()[0U].words;
+    OL_CHECK(session->view_x() ==
+             std::clamp(static_cast<int>(first[combatant_word::x]) - 11, 0, 32));
+    OL_CHECK(session->view_y() ==
+             std::clamp(static_cast<int>(first[combatant_word::y]) - 11, 0, 32));
+}
+
 void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -6761,6 +6804,7 @@ int main() {
     run_attack_area_test(data_root);
     run_party_selection_test(data_root);
     run_fixed_and_duplicate_tests(data_root);
+    run_initial_presentation_order_test(data_root);
     run_turn_order_test(data_root);
     run_outcome_test(data_root);
     run_battle_outcome_session_test(data_root);

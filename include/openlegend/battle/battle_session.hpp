@@ -147,7 +147,8 @@ public:
         model::RangerState& ranger,
         random::LegacyRandom& random,
         std::int16_t battle_id,
-        bool grant_experience);
+        bool grant_experience,
+        BattleRenderState initial_render_state = {});
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -173,6 +174,10 @@ public:
         return fade_palettes_.size();
     }
     [[nodiscard]] std::size_t fade_frame() const noexcept { return fade_frame_; }
+    [[nodiscard]] bool frame_rendered() const noexcept { return frame_rendered_; }
+    [[nodiscard]] const BattleRenderState& render_state() const noexcept {
+        return render_state_;
+    }
     [[nodiscard]] const BattleSetup& setup() const noexcept { return setup_; }
     [[nodiscard]] BattleSetup& setup() noexcept { return setup_; }
     [[nodiscard]] const BattleData& data() const noexcept { return data_; }

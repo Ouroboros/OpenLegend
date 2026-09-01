@@ -78,7 +78,6 @@ BattleSetup::BattleSetup(BattleData& data, model::RangerState& ranger)
         error_ = "battle setup requires a complete ranger state";
         return;
     }
-    std::ranges::fill(data_.occupancy(), static_cast<std::int16_t>(-1));
     initialize_party();
 }
 

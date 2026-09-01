@@ -17,16 +17,16 @@
 1. 保存 get-exp 到 battle global，写运行模式2，保存 battle id；
 2. 调 `sub_31DA0` 载入 `WAR.STA` 记录和 `WARFLD` 战场；
 3. 调 `sub_31EB9/sub_3265C` 建立参战者和瞬时态；
-4. 打开对应 WMP/WDX 与 EFT 资源、淡出、装入效果、呈现；
-5. 启动战斗音乐并调用 `sub_3271E` 主状态机；
+4. 队伍选择完成后打开对应 WMP/WDX 与 EFT，使用跨战保留的battle render globals绘制并呈现首帧；
+5. 首帧present后启动战斗音乐，再调用 `sub_3271E` 执行首次排序、重定位、fade与主状态机；
 6. 淡出，关闭 SMP/SDX，并按主角记录决定停止或恢复原音乐；
 7. 写运行模式1，返回 `word_E6ED2 - 1`。
 
-`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。启动时按WAR word8发战斗music命令；消息队列耗尽后销毁battle资源，按当前scene metadata word7恢复场景music（负值按机器分支转0），再以严格`Victory`映射`battle_victory`，`Defeat`映射`battle_defeat`恢复解释器真假PC。AI逃跑是动作11的回合内移动/休息handler，不是第三种battle返回值。`sub_2DE03/sub_31C75`均推进为`implemented_pending_review`。
+`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。runtime跨battle保留完整`BattleRenderState`；队伍确认后才加载战斗专属WDX/WMP/EFT，首帧实际present后按WAR word8发战斗music命令，随后Session排序并重定位fade视角。消息队列耗尽后保存本场最终battle render globals、销毁battle资源，按当前scene metadata word7恢复场景music（负值按机器分支转0），再以严格`Victory`映射`battle_victory`，`Defeat`映射`battle_defeat`恢复解释器真假PC。AI逃跑是动作11的回合内移动/休息handler，不是第三种battle返回值。`sub_2DE03/sub_31C75`均保持`implemented_pending_review`。
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `f84e51e8f3887a207e0ae107eb5adb363a5cf2f24489884928fb64f9e95437f4`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `bf6b45f17a774645b4f4bca4bddc7d937fa401eea0d3e11b28d6244d9086c232`。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -51,9 +51,9 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 
 ## 5. WAR/WARFLD 载入实现
 
-`sub_31DA0 @ 0x31DA0..0x31EB9` 已映射为 `openlegend::battle::BattleData`：按 `battle_id*186` 解码93个 signed word，以 definition word6 选择 WARFLD cumulative archive entry，只取前16,384字节为8,192个战场 word，并把4,096个 occupancy word 清成-1。真实 battle 0..139 全部通过；-1和140由现代安全适配拒绝；battle 0/4/93/139 的记录和战场哈希固定。Linux Debug BUILD 14/14。
+`sub_31DA0 @ 0x31DA0..0x31EB9` 已映射为 `openlegend::battle::BattleData`：按 `battle_id*186` 解码93个 signed word，以 definition word6 选择 WARFLD cumulative archive entry，只取前16,384字节为8,192个战场 word，并在成功读取后把4,096个 occupancy word清成-1；随后`BattleSetup`初始化26槽，不再冗余清空occupancy。真实 battle 0..139 全部通过；-1和140由现代安全适配拒绝；battle 0/4/93/139 的记录和战场哈希固定。Linux Debug BUILD 14/14。
 
-该函数只标 `implemented_pending_review`；IDX cache 的重载时机和错误路径清空次序留待总 REVIEW，未标 `assembly_exact`。
+该函数只标 `implemented_pending_review`；错误路径属于现代安全适配，未标 `assembly_exact`。
 
 ## 6. 参战者建立单元
 
@@ -67,7 +67,7 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 
 `BattleSetup` 已实现26槽完整初值、固定/预置队伍、host-neutral cursor/0·1·2选择状态、按当前 count 取坐标追加、敌方建立、sprite word 和后写 occupancy 覆盖。`BattleSession`已实际绘制圆角混色选择框、原Big5标题/确认文字、角色名和星号，逐键执行上下回绕与确认，并在每次选择重绘前恢复冻结背景。真实 battle0 固定手选顺序、battle4 固定队伍、battle93 slot9→slot11覆盖及全140条记录均通过。
 
-battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0,1,2]`并追加敌方4；选择菜单与初始战场的独立Python oracle/C++ FNV64分别一致。runtime已实际驱动Session render/present/input，因此`sub_31EB9/sub_3265C/sub_3B1E6`均推进为`implemented_pending_review`。
+battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0,1,2]`并追加敌方4；建队完成不排序也不覆盖battle render globals。选择菜单的独立Python oracle/C++ FNV64均为`0x83f943240d14bb33`；程序初始globals为零时，确认后的首个战场帧使用`view=(0,0)`，FNV64均为`0x568240847c97700c`。runtime已实际驱动Session render/present/input，因此`sub_31EB9/sub_3265C/sub_3B1E6`均保持`implemented_pending_review`。
 
 ## 7. 回合排序、玩家菜单与胜负核心
 
@@ -78,7 +78,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 - 每轮 word6=`max(0,effective_speed/15-role.hurt/40)`，signed division toward zero；
 - hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
 
-`BattleSession`现已在建队后按slot0计算clamp视图原点、实际绘制初始战场、逐present帧执行黑场淡入，随后完成轮首排序/word6计算、actor居中呈现及player/AI动作分界。玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，Enter/Space/keypad Insert确认后再扫描映射原action id。菜单每帧重绘战场、圆角混色框、原Big5文字和右侧actor状态面板；十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x7d062c289e7f933a`。
+`BattleSession`现已在建队后使用跨战保留的battle render globals实际绘制首帧；首帧present并排入music后才首次排序、按slot0计算clamp视图原点并执行黑场淡入。随后轮首再次排序，清effect帧偏移、effect可见和highlight模式三个globals，完成word6计算、actor居中呈现及player/AI动作分界。玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，Enter/Space/keypad Insert确认后再扫描映射原action id。菜单每帧重绘战场、圆角混色框、原Big5文字和右侧actor状态面板；十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x7d062c289e7f933a`。
 
 等待动作现实际把当前actor逐槽交换到队尾，并保持外层索引继续处理交换后占据同槽的actor；休息实际提交原RNG体力/HP/MP恢复和action-done后推进下一槽。两项完成后均按原顺序执行胜负检查、26槽隐藏目标清理、隐藏槽跳过和下一actor居中present；每个actor present后再清word7/word10。最后一槽后调用轮末异常状态，并仅在本轮开始时捕获的BIOS tick发生变化后开始下一轮。
 
@@ -250,3 +250,9 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 `sub_3B387..sub_3C2AC`战后进度状态与同步UI均已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利经验均分、队伍HP/体力下限、角色/练功/制造经验封顶，以及等级、练功、武功升级、制造RNG/状态均保持原顺序。`BattleSession`依次执行经验固定框、升级固定框、练功动态框、武功等级动态框和制造固定框，每项重画战场、present并等待任意非零键。经验在其消息前提交；升级和练功以副本/RNG副本预演，按键后才执行真实提交；制造配方选择在消息前消费共享RNG，库存及数量RNG在按键后提交，保留原同步可观察边界；五帧FNV64依次为`0xa699bf683f037936`、`0xef2c8987fe26a127`、`0xdd4c7e74171e8ee5`、`0x0f4783440328986e`、`0xb980de17004d5b6c`。四函数均推进为`implemented_pending_review`。
 
 `sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12。`sub_3C6D3`三个机器码xref均已覆盖：玩家菜单内两处由同一菜单重绘相位执行，AI prelude调用由prelude/wait相位执行；独立面板oracle为`0x630a82d57e1d8715`，Session AI prelude为`0xb02104139829a80d`。三函数均为`implemented_pending_review`。
+
+## 16. B8 实现差异审计关闭
+
+B9前的B8入口实现审计从`sub_31C75`机器顺序发现并修正五处差异：首帧present后才排battle music；手选确认后才加载WDX/WMP/EFT；WAR/WARFLD成功读取后清occupancy且不重复清空；首帧present后、fade前才首次速度排序；首帧继承跨battle保留的完整render globals，present后才按排序后slot0重定位。对应回归锁定延迟battle资源加载、首帧插入顺序、present后排序、继承视角与独立`view=(0,0)`首帧hash。
+
+最终源码通过Linux与Windows的core/app × Debug/Release完整8项BUILD矩阵；Linux/Windows Debug当前9个同名B8 hash逐字节一致，独立battle golden双生成逐字节一致。81项closure仍全部为`implemented_pending_review`，本节只关闭B8实现差异审计；B0→B9统一最终双向REVIEW尚未开始，不产生`assembly_exact`结论。

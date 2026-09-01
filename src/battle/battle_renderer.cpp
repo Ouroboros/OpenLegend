@@ -90,58 +90,15 @@ BattleRenderer::BattleRenderer(
     const resource::DataRoot& data_root,
     const std::int16_t battlefield_id)
     : data_root_(data_root),
-      effect_sprites_(resource::PackedArchive::open(
-          data_root.path() / "EFT.IDX", data_root.path() / "EFT.GRP")),
+      battlefield_id_(battlefield_id),
       cloud_sprites_(resource::PackedArchive::open(
           data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
       portraits_(resource::PackedArchive::open(
           data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
       item_sprites_(resource::PackedArchive::open(
           data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")) {
-    if (battlefield_id < 0 || battlefield_id > 999) {
+    if (battlefield_id_ < 0 || battlefield_id_ > 999) {
         error_ = "battlefield sprite id is outside filename range";
-        return;
-    }
-    std::array<char, 7> index_name{};
-    std::array<char, 7> group_name{};
-    static_cast<void>(std::snprintf(
-        index_name.data(), index_name.size(), "WDX%03d", battlefield_id));
-    static_cast<void>(std::snprintf(
-        group_name.data(), group_name.size(), "WMP%03d", battlefield_id));
-    const auto battlefield_index = data_root.read(index_name.data());
-    const auto battlefield_group = data_root.read(group_name.data());
-    if (!battlefield_index) {
-        error_ = battlefield_index.error;
-        return;
-    }
-    if (!battlefield_group) {
-        error_ = battlefield_group.error;
-        return;
-    }
-    if (battlefield_index.bytes.size() < 8U ||
-        battlefield_index.bytes.size() % 4U != 0U ||
-        compat::read_u32le(
-            battlefield_index.bytes,
-            battlefield_index.bytes.size() - 4U) != 0U) {
-        error_ = "battlefield WDX does not have the original trailing zero word";
-        return;
-    }
-    battlefield_offsets_.reserve(battlefield_index.bytes.size() / 4U - 1U);
-    std::uint32_t previous{};
-    for (std::size_t offset = 0U;
-         offset + 4U < battlefield_index.bytes.size();
-         offset += 4U) {
-        const auto value = compat::read_u32le(battlefield_index.bytes, offset);
-        if (value < previous || value > battlefield_group.bytes.size()) {
-            error_ = "battlefield WDX contains an invalid cumulative offset";
-            return;
-        }
-        battlefield_offsets_.push_back(value);
-        previous = value;
-    }
-    battlefield_group_ = battlefield_group.bytes;
-    if (!effect_sprites_.valid()) {
-        error_ = effect_sprites_.error();
         return;
     }
     if (!cloud_sprites_.valid() || cloud_sprites_.entry_count() <= 5U) {
@@ -191,6 +148,63 @@ BattleRenderer::BattleRenderer(
     build_rgb4_lookup();
 }
 
+bool BattleRenderer::load_battle_assets() {
+    if (!valid()) {
+        return false;
+    }
+    if (battle_assets_loaded_) {
+        return true;
+    }
+
+    std::array<char, 7> index_name{};
+    std::array<char, 7> group_name{};
+    static_cast<void>(std::snprintf(
+        index_name.data(), index_name.size(), "WDX%03d", battlefield_id_));
+    static_cast<void>(std::snprintf(
+        group_name.data(), group_name.size(), "WMP%03d", battlefield_id_));
+    const auto battlefield_index = data_root_.read(index_name.data());
+    const auto battlefield_group = data_root_.read(group_name.data());
+    if (!battlefield_index) {
+        error_ = battlefield_index.error;
+        return false;
+    }
+    if (!battlefield_group) {
+        error_ = battlefield_group.error;
+        return false;
+    }
+    if (battlefield_index.bytes.size() < 8U ||
+        battlefield_index.bytes.size() % 4U != 0U ||
+        compat::read_u32le(
+            battlefield_index.bytes,
+            battlefield_index.bytes.size() - 4U) != 0U) {
+        error_ = "battlefield WDX does not have the original trailing zero word";
+        return false;
+    }
+    battlefield_offsets_.clear();
+    battlefield_offsets_.reserve(battlefield_index.bytes.size() / 4U - 1U);
+    std::uint32_t previous{};
+    for (std::size_t offset = 0U;
+         offset + 4U < battlefield_index.bytes.size();
+         offset += 4U) {
+        const auto value = compat::read_u32le(battlefield_index.bytes, offset);
+        if (value < previous || value > battlefield_group.bytes.size()) {
+            error_ = "battlefield WDX contains an invalid cumulative offset";
+            return false;
+        }
+        battlefield_offsets_.push_back(value);
+        previous = value;
+    }
+    battlefield_group_ = battlefield_group.bytes;
+    effect_sprites_ = resource::PackedArchive::open(
+        data_root_.path() / "EFT.IDX", data_root_.path() / "EFT.GRP");
+    if (!effect_sprites_.valid()) {
+        error_ = effect_sprites_.error();
+        return false;
+    }
+    battle_assets_loaded_ = true;
+    return true;
+}
+
 void BattleRenderer::build_rgb4_lookup() noexcept {
     for (int red = 0; red < 16; ++red) {
         for (int green = 0; green < 16; ++green) {
@@ -218,7 +232,7 @@ void BattleRenderer::build_rgb4_lookup() noexcept {
 bool BattleRenderer::render(
     const BattleRenderPlan& plan,
     render::IndexedFramebuffer& framebuffer) {
-    if (!valid()) {
+    if (!valid() || !battle_assets_loaded_) {
         return false;
     }
     framebuffer.clear(0U);

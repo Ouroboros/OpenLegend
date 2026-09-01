@@ -1400,7 +1400,6 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
     )
     selection_hash = fnv1a_bytes(pixels)
 
-    view_x, view_y = 19, 13
     occupancy = [-1] * 4096
     combatants = (
         (0, 30, 24, 5110),
@@ -1410,38 +1409,46 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
     )
     for slot, (_, x, y, _) in enumerate(combatants):
         occupancy[y * 64 + x] = slot
-    commands: list[list[int]] = []
-    for local_x in range(32):
-        for local_y in range(32):
-            map_x = local_x + view_x
-            map_y = local_y + view_y
-            screen_x = 18 * local_x - 18 * local_y + 145
-            screen_y = 9 * local_x + 9 * local_y - 81
-            commands.append([
-                0, map_x, map_y, screen_x, screen_y,
-                field_words[map_y * 64 + map_x], 0, 0, 0,
-            ])
-    for local_x in range(32):
-        for local_y in range(32):
-            map_x = local_x + view_x
-            map_y = local_y + view_y
-            cell = map_y * 64 + map_x
-            screen_x = 18 * local_x - 18 * local_y + 145
-            screen_y = 9 * local_x + 9 * local_y - 81
-            object_sprite = field_words[4096 + cell]
-            if object_sprite not in (0, 15000):
+
+    def render_commands(view_x: int, view_y: int) -> list[list[int]]:
+        commands: list[list[int]] = []
+        for local_x in range(32):
+            for local_y in range(32):
+                map_x = local_x + view_x
+                map_y = local_y + view_y
+                screen_x = 18 * local_x - 18 * local_y + 145
+                screen_y = 9 * local_x + 9 * local_y - 81
                 commands.append([
                     0, map_x, map_y, screen_x, screen_y,
-                    object_sprite, 0, 0, 0,
+                    field_words[map_y * 64 + map_x], 0, 0, 0,
                 ])
-            occupant = occupancy[cell]
-            if occupant >= 0:
-                commands.append([
-                    0, map_x, map_y, screen_x, screen_y,
-                    combatants[occupant][3], 0, 0, 0,
-                ])
-    initial_hash, _, initial_pixels = battle_pixel_hashes(root, 1, commands)
-    pixels = bytearray(initial_pixels)
+        for local_x in range(32):
+            for local_y in range(32):
+                map_x = local_x + view_x
+                map_y = local_y + view_y
+                cell = map_y * 64 + map_x
+                screen_x = 18 * local_x - 18 * local_y + 145
+                screen_y = 9 * local_x + 9 * local_y - 81
+                object_sprite = field_words[4096 + cell]
+                if object_sprite not in (0, 15000):
+                    commands.append([
+                        0, map_x, map_y, screen_x, screen_y,
+                        object_sprite, 0, 0, 0,
+                    ])
+                occupant = occupancy[cell]
+                if occupant >= 0:
+                    commands.append([
+                        0, map_x, map_y, screen_x, screen_y,
+                        combatants[occupant][3], 0, 0, 0,
+                    ])
+        return commands
+
+    initial_view_x, initial_view_y = 0, 0
+    initial_commands = render_commands(initial_view_x, initial_view_y)
+    initial_hash, _, _ = battle_pixel_hashes(root, 1, initial_commands)
+    action_commands = render_commands(19, 13)
+    _, _, action_pixels = battle_pixel_hashes(root, 1, action_commands)
+    pixels = bytearray(action_pixels)
     draw_panel(20, 19, 42, 180)
     action_labels = (
         bytes.fromhex("b2beb0ca"),
@@ -1497,8 +1504,8 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
         "selection_pixel_hash": selection_hash,
         "selected_role_ids": [0, 1, 2],
         "combatant_role_ids": [0, 1, 2, 4],
-        "initial_view": [view_x, view_y],
-        "initial_command_count": len(commands),
+        "initial_view": [initial_view_x, initial_view_y],
+        "initial_command_count": len(initial_commands),
         "initial_pixel_hash": initial_hash,
         "action_menu": {
             "availability": [1] * 10,

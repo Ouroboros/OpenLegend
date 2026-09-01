@@ -2282,11 +2282,11 @@
           4
         ],
         "initial_view": [
-          19,
-          13
+          0,
+          0
         ],
-        "initial_command_count": 1185,
-        "initial_pixel_hash": "0x03446a8a41ef2ec6",
+        "initial_command_count": 1130,
+        "initial_pixel_hash": "0x568240847c97700c",
         "action_menu": {
           "availability": [
             1,
