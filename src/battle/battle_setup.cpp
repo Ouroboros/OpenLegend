@@ -666,6 +666,17 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
     if (suppress_message) {
         return result;
     }
+    return commit_battle_crafting(result, random);
+}
+
+std::optional<BattleCraftResult> BattleSetup::commit_battle_crafting(
+    const BattleCraftResult& prepared,
+    random::LegacyRandom& random) {
+    if (!valid() || !prepared.recipe_available || prepared.role_id < 0 ||
+        static_cast<std::size_t>(prepared.role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    auto result = prepared;
     if (result.product_item_id < 0 ||
         static_cast<std::size_t>(result.product_item_id) >= ranger_.items.size()) {
         error_ = "battle crafted product is outside item records";
@@ -674,6 +685,18 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
     result.message_required = true;
     result.present_required = true;
     result.wait_for_input = true;
+
+    std::optional<std::size_t> material_slot;
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        if (ranger_.header.inventory_item(slot).value == result.material_item_id) {
+            material_slot = slot;
+            break;
+        }
+    }
+    if (!material_slot) {
+        error_ = "battle crafted material slot disappeared before commit";
+        return std::nullopt;
+    }
 
     std::optional<std::size_t> product_slot;
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
@@ -720,15 +743,14 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
     if (remaining_material <= 0) {
         remove_inventory_slot(*material_slot);
     }
-    role.set_word(model::role_word::make_item_experience, 0);
+    ranger_.roles[static_cast<std::size_t>(result.role_id)].set_word(
+        model::role_word::make_item_experience, 0);
     result.crafted = true;
     return result;
 }
 
-std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
-    const BattleOutcome outcome,
-    const bool grant_experience,
-    random::LegacyRandom& random) {
+std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
+    const BattleOutcome outcome) {
     if (!valid() || outcome == BattleOutcome::ongoing) {
         return std::nullopt;
     }
@@ -743,6 +765,7 @@ std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
     BattlePostBattleResult result{
         .outcome = outcome,
         .total_experience = data_.definition()[7U],
+        .roles = {},
     };
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& words = combatants_[slot].words;
@@ -780,62 +803,94 @@ std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
 
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& words = combatants_[slot].words;
-        if (words[combatant_word::side] != 0) {
-            continue;
-        }
-        auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
-        const auto floor_hp = static_cast<std::int16_t>(
-            role.word(model::role_word::maximum_hp) / 5);
-        if (role.word(model::role_word::hp) > 0) {
-            if (role.word(model::role_word::hp) < floor_hp) {
+        if (words[combatant_word::side] == 0) {
+            auto& role = ranger_.roles[static_cast<std::size_t>(
+                words[combatant_word::role_id])];
+            const auto floor_hp = static_cast<std::int16_t>(
+                role.word(model::role_word::maximum_hp) / 5);
+            if (role.word(model::role_word::hp) > 0) {
+                if (role.word(model::role_word::hp) < floor_hp) {
+                    role.set_word(model::role_word::hp, floor_hp);
+                }
+            } else {
                 role.set_word(model::role_word::hp, floor_hp);
-            }
-        } else {
-            role.set_word(model::role_word::hp, floor_hp);
-            if (role.word(model::role_word::physical_power) < 10) {
-                role.set_word(model::role_word::physical_power, 10);
+                if (role.word(model::role_word::physical_power) < 10) {
+                    role.set_word(model::role_word::physical_power, 10);
+                }
             }
         }
+        result.roles.push_back(BattlePostBattleRoleResult{
+            .combatant_slot = slot,
+            .role_id = words[combatant_word::role_id],
+            .experience_gained = words[combatant_word::reward_experience],
+        });
     }
+    return result;
+}
 
-    const auto add_capped_experience = [](model::RoleRecord& role,
+std::optional<BattlePostBattleRoleResult> BattleSetup::apply_post_battle_experience(
+    const std::size_t combatant_slot,
+    const BattleOutcome outcome,
+    const bool grant_experience) {
+    if (!valid() || outcome == BattleOutcome::ongoing ||
+        combatant_slot >= static_cast<std::size_t>(combatant_count_)) {
+        return std::nullopt;
+    }
+    auto& words = combatants_[combatant_slot].words;
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "post-battle experience role is outside ranger records";
+        return std::nullopt;
+    }
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto add_capped_experience = [](model::RoleRecord& target,
                                           const std::size_t word,
                                           const std::uint16_t amount) {
-        auto changed = static_cast<std::uint16_t>(role.unsigned_word(word) + amount);
+        auto changed = static_cast<std::uint16_t>(target.unsigned_word(word) + amount);
         if (changed > 60'000U) {
             changed = 60'000U;
         }
-        role.set_word(word, std::bit_cast<std::int16_t>(changed));
+        target.set_word(word, std::bit_cast<std::int16_t>(changed));
     };
-    result.roles.reserve(static_cast<std::size_t>(combatant_count_));
-    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        auto& words = combatants_[slot].words;
-        const auto role_id = words[combatant_word::role_id];
-        auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        const auto reward = words[combatant_word::reward_experience];
-        const auto unsigned_reward = static_cast<std::uint16_t>(reward);
-        add_capped_experience(role, model::role_word::experience, unsigned_reward);
-        const auto scaled_reward = static_cast<std::uint32_t>(
-            static_cast<std::int32_t>(reward) * 8);
-        const auto training_reward = static_cast<std::uint16_t>(scaled_reward / 10U);
-        add_capped_experience(role, model::role_word::item_experience, training_reward);
-        add_capped_experience(
-            role, model::role_word::make_item_experience, training_reward);
+    const auto reward = words[combatant_word::reward_experience];
+    add_capped_experience(
+        role, model::role_word::experience, static_cast<std::uint16_t>(reward));
+    const auto scaled_reward = static_cast<std::uint32_t>(
+        static_cast<std::int32_t>(reward) * 8);
+    const auto training_reward = static_cast<std::uint16_t>(scaled_reward / 10U);
+    add_capped_experience(role, model::role_word::item_experience, training_reward);
+    add_capped_experience(role, model::role_word::make_item_experience, training_reward);
+    return BattlePostBattleRoleResult{
+        .combatant_slot = combatant_slot,
+        .role_id = role_id,
+        .experience_gained = reward,
+        .experience_message_required = words[combatant_word::side] == 0 &&
+            (grant_experience || outcome == BattleOutcome::victory),
+    };
+}
 
-        BattlePostBattleRoleResult role_result{
-            .combatant_slot = slot,
-            .role_id = role_id,
-            .experience_gained = reward,
-        };
-        if (words[combatant_word::side] == 0 &&
-            (grant_experience || outcome == BattleOutcome::victory)) {
-            role_result.experience_message_required = true;
-            result.render_required = true;
-            result.present_required = true;
-            result.wait_for_input = true;
+std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
+    const BattleOutcome outcome,
+    const bool grant_experience,
+    random::LegacyRandom& random) {
+    auto result = prepare_battle_settlement(outcome);
+    if (!result) {
+        return std::nullopt;
+    }
+    for (std::size_t slot = 0U; slot < result->roles.size(); ++slot) {
+        const auto applied = apply_post_battle_experience(slot, outcome, grant_experience);
+        if (!applied) {
+            return std::nullopt;
+        }
+        auto role_result = *applied;
+        if (role_result.experience_message_required) {
+            result->render_required = true;
+            result->present_required = true;
+            result->wait_for_input = true;
+            auto& role = ranger_.roles[static_cast<std::size_t>(role_result.role_id)];
             if (role.word(model::role_word::level) < 30) {
                 const auto level_up = apply_battle_level_up(
-                    static_cast<std::size_t>(role_id), false, random);
+                    static_cast<std::size_t>(role_result.role_id), false, random);
                 if (!level_up) {
                     return std::nullopt;
                 }
@@ -843,20 +898,20 @@ std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
             }
             if (role.word(model::role_word::practice_item) != -1) {
                 const auto practice = apply_battle_practice(
-                    static_cast<std::size_t>(role_id), false);
+                    static_cast<std::size_t>(role_result.role_id), false);
                 if (!practice) {
                     return std::nullopt;
                 }
                 role_result.practice = *practice;
                 const auto craft = apply_battle_crafting(
-                    static_cast<std::size_t>(role_id), false, random);
+                    static_cast<std::size_t>(role_result.role_id), false, random);
                 if (!craft) {
                     return std::nullopt;
                 }
                 role_result.craft = *craft;
             }
         }
-        result.roles.push_back(role_result);
+        result->roles[slot] = role_result;
     }
     return result;
 }

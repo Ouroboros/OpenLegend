@@ -3027,6 +3027,7 @@ void run_ai_attack_session_test(
     session->advance(1'200U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_prelude_present);
     OL_CHECK(session->render(*framebuffer));
+    const auto ai_prelude_hash = fnv1a_bytes(framebuffer->pixels());
     session->finish_presented_tick(1'200U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_wait);
     for (std::uint32_t tick = 1'201U; tick < 1'208U; ++tick) {
@@ -3111,6 +3112,7 @@ void run_ai_attack_session_test(
                                           .words[combatant_word::attack_counter];
     OL_CHECK(final_attack_counter == attack_counter_after_damage + 2);
     OL_CHECK(random.state() == 3'655'513'600U);
+    OL_CHECK(ai_prelude_hash == 0xb02104139829a80dULL);
     OL_CHECK(first_magic_hash == 0xe1d1b3cff84bc0c4ULL);
     OL_CHECK(first_damage_hash == 0x04c528de57fbffa0ULL);
     OL_CHECK(commit_hash == 0xdbee20f394fd7219ULL);
@@ -3211,6 +3213,7 @@ void run_ai_attack_session_test(
     const auto hash_path = log_path.parent_path() / "b8-battle-ai-attack.hash";
     std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
     OL_CHECK(hash_file.good());
+    hash_file << "prelude=0x" << std::hex << ai_prelude_hash << '\n';
     hash_file << "first_magic=0x" << std::hex << first_magic_hash << '\n';
     hash_file << "first_damage=0x" << std::hex << first_damage_hash << '\n';
     hash_file << "commit=0x" << std::hex << commit_hash << '\n';
@@ -6453,6 +6456,241 @@ void run_outcome_test(const openlegend::resource::DataRoot& data_root) {
     }
 }
 
+void run_battle_outcome_session_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+
+    openlegend::render::IndexedFramebuffer framebuffer;
+    const auto prepare_player_action = [&](BattleSession& session) {
+        OL_CHECK(session.valid());
+        OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+        OL_CHECK(session.render(framebuffer));
+        session.finish_presented_tick();
+        for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {
+            OL_CHECK(session.render(framebuffer));
+            session.finish_presented_tick();
+        }
+        OL_CHECK(session.phase() == BattleSessionPhase::round_start);
+        session.advance();
+        OL_CHECK(session.phase() == BattleSessionPhase::actor_present);
+        OL_CHECK(session.render(framebuffer));
+        session.finish_presented_tick();
+        OL_CHECK(session.phase() == BattleSessionPhase::player_action);
+    };
+    const auto select_wait = [](BattleSession& session) {
+        std::size_t wait_ordinal = 0U;
+        for (std::size_t action = 0U;
+             action < static_cast<std::size_t>(BattlePlayerAction::wait);
+             ++action) {
+            if (session.player_action_menu().available[action] == 1) {
+                ++wait_ordinal;
+            }
+        }
+        OL_CHECK(session.player_action_menu().available[
+                     static_cast<std::size_t>(BattlePlayerAction::wait)] == 1);
+        while (session.player_action_menu().cursor != wait_ordinal) {
+            OL_CHECK(session.handle_key(0x98U) ==
+                     BattleSessionInputResult::action_changed);
+        }
+        OL_CHECK(session.handle_key(0x0DU) ==
+                 BattleSessionInputResult::action_selected);
+    };
+    const auto set_names = [](openlegend::model::RangerState& ranger) {
+        for (std::size_t role_id = 0U; role_id < ranger.roles.size(); ++role_id) {
+            auto name = std::span<std::uint8_t>{ranger.roles[role_id].bytes}.subspan(
+                role_word::name_byte, role_word::name_bytes);
+            std::ranges::fill(name, std::uint8_t{0U});
+            name[0U] = static_cast<std::uint8_t>('A' + role_id % 26U);
+        }
+    };
+
+    auto victory_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    set_names(victory_ranger);
+    openlegend::random::LegacyRandom victory_random{1U};
+    BattleSession victory{data_root, victory_ranger, victory_random, 4, false};
+    prepare_player_action(victory);
+    auto& practice_item = victory_ranger.items[5U];
+    practice_item.set_word(item_word::magic_id, 2);
+    practice_item.set_word(item_word::need_experience, 10);
+    practice_item.set_word(item_word::need_make_item_experience, 10);
+    practice_item.set_word(item_word::need_material, 10);
+    practice_item.set_word(item_word::make_item_begin, 20);
+    practice_item.set_word(item_word::make_item_count_begin, 2);
+    for (std::size_t recipe = 1U; recipe < item_word::make_item_count; ++recipe) {
+        practice_item.set_word(item_word::make_item_begin + recipe, -1);
+    }
+    auto practice_name = std::span<std::uint8_t>{practice_item.bytes}.subspan(
+        2U * item_word::secondary_name_begin,
+        2U * item_word::secondary_name_count);
+    std::ranges::fill(practice_name, std::uint8_t{0U});
+    std::ranges::copy(std::array<std::uint8_t, 4>{'B', 'O', 'O', 'K'},
+                      practice_name.begin());
+    auto product_name = std::span<std::uint8_t>{victory_ranger.items[20U].bytes}.subspan(
+        2U * item_word::secondary_name_begin,
+        2U * item_word::secondary_name_count);
+    std::ranges::fill(product_name, std::uint8_t{0U});
+    std::ranges::copy(std::array<std::uint8_t, 4>{'P', 'I', 'L', 'L'},
+                      product_name.begin());
+    auto magic_name = std::span<std::uint8_t>{victory_ranger.magics[2U].bytes}.subspan(
+        magic_word::name_byte, magic_word::name_bytes);
+    std::ranges::fill(magic_name, std::uint8_t{0U});
+    std::ranges::copy(std::array<std::uint8_t, 5>{'M', 'A', 'G', 'I', 'C'},
+                      magic_name.begin());
+    victory_ranger.header.set_inventory(0U, ItemId{10}, 3);
+    victory_ranger.header.set_inventory(1U, ItemId{20}, 4);
+    victory_ranger.header.set_inventory(2U, ItemId{-1}, 0);
+    for (const auto& combatant : victory.setup().combatants().first(
+             static_cast<std::size_t>(victory.setup().combatant_count()))) {
+        const auto role_id = combatant.words[combatant_word::role_id];
+        auto& role = victory_ranger.roles[static_cast<std::size_t>(role_id)];
+        if (combatant.words[combatant_word::side] == 0) {
+            role.set_word(role_word::level, 1);
+            role.set_word(role_word::experience, 150);
+            role.set_word(role_word::increased_life, 2);
+            role.set_word(role_word::iq, 60);
+            role.set_word(role_word::practice_item, 5);
+            role.set_word(role_word::item_experience, 60);
+            role.set_word(role_word::make_item_experience, 30);
+            role.set_word(role_word::magic_id_begin, 2);
+            role.set_word(role_word::magic_level_begin, 199);
+        } else {
+            role.set_word(role_word::hp, 0);
+        }
+    }
+    select_wait(victory);
+    OL_CHECK(victory.phase() == BattleSessionPhase::battle_outcome);
+    OL_CHECK(victory.outcome() == BattleOutcome::victory);
+    OL_CHECK(victory.render(framebuffer));
+    const auto victory_outcome_hash = fnv1a_bytes(framebuffer.pixels());
+    victory.finish_presented_tick();
+    OL_CHECK(victory.phase() == BattleSessionPhase::battle_outcome_wait);
+    OL_CHECK(victory.handle_key(0x20U) ==
+             BattleSessionInputResult::outcome_acknowledged);
+    OL_CHECK(victory.post_battle_result().has_value());
+    OL_CHECK(victory.post_battle_message_count() == 1U);
+    const auto role_result = std::ranges::find_if(
+        victory.post_battle_result()->roles,
+        [](const BattlePostBattleRoleResult& role) {
+            return role.experience_message_required;
+        });
+    OL_CHECK(role_result != victory.post_battle_result()->roles.end());
+    const auto progress_role_id = static_cast<std::size_t>(role_result->role_id);
+    OL_CHECK(!role_result->level_up.message_required);
+    OL_CHECK(!role_result->practice.practice_message_required);
+    OL_CHECK(!role_result->practice.magic_message_required);
+    OL_CHECK(!role_result->craft.message_required);
+    OL_CHECK(victory_ranger.roles[progress_role_id].word(role_word::level) == 1);
+    OL_CHECK(victory_random.state() == 1U);
+    OL_CHECK(victory_ranger.header.inventory_count(1U) == 4);
+    OL_CHECK(victory.phase() == BattleSessionPhase::post_battle_message_present);
+    std::vector<std::uint64_t> post_battle_hashes;
+    for (std::size_t message = 0U; message < 5U; ++message) {
+        OL_CHECK(victory.post_battle_message_count() == message + 1U);
+        OL_CHECK(victory.phase() == BattleSessionPhase::post_battle_message_present);
+        OL_CHECK(victory.post_battle_message_index() == message);
+        if (message <= 1U) {
+            OL_CHECK(victory_ranger.roles[progress_role_id].word(role_word::level) == 1);
+            OL_CHECK(victory_random.state() == 1U);
+        }
+        if (message == 2U) {
+            OL_CHECK(victory_ranger.roles[progress_role_id].word(
+                         role_word::magic_level_begin) == 199);
+        }
+        if (message >= 2U) {
+            OL_CHECK(victory_ranger.header.inventory_count(1U) == 4);
+        }
+        OL_CHECK(victory.render(framebuffer));
+        post_battle_hashes.push_back(fnv1a_bytes(framebuffer.pixels()));
+        victory.finish_presented_tick();
+        OL_CHECK(victory.phase() == BattleSessionPhase::post_battle_message_wait);
+        OL_CHECK(victory.handle_key(0x0DU) ==
+                 BattleSessionInputResult::post_battle_message_acknowledged);
+        if (message == 2U) {
+            OL_CHECK(victory_ranger.roles[progress_role_id].word(
+                         role_word::magic_level_begin) == 299);
+        }
+        if (message == 3U) {
+            OL_CHECK(victory_ranger.header.inventory_count(1U) == 4);
+        }
+    }
+    OL_CHECK(victory.post_battle_message_count() == 5U);
+    OL_CHECK(role_result->level_up.message_required);
+    OL_CHECK(role_result->practice.practice_message_required);
+    OL_CHECK(role_result->practice.magic_message_required);
+    OL_CHECK(role_result->craft.message_required);
+    OL_CHECK(victory.phase() == BattleSessionPhase::complete);
+    OL_CHECK(victory.finished());
+    OL_CHECK(victory.result() == BattleStepResult::victory);
+    for (const auto& combatant : victory.setup().combatants().first(
+             static_cast<std::size_t>(victory.setup().combatant_count()))) {
+        if (combatant.words[combatant_word::side] != 1) {
+            continue;
+        }
+        const auto& role = victory_ranger.roles[static_cast<std::size_t>(
+            combatant.words[combatant_word::role_id])];
+        OL_CHECK(role.word(role_word::hp) == role.word(role_word::maximum_hp));
+        OL_CHECK(role.word(role_word::mp) == role.word(role_word::maximum_mp));
+        OL_CHECK(role.word(role_word::physical_power) == 100);
+        OL_CHECK(role.word(role_word::hurt) == 0);
+        OL_CHECK(role.word(role_word::poison) == 0);
+    }
+
+    auto defeat_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    set_names(defeat_ranger);
+    openlegend::random::LegacyRandom defeat_random{1U};
+    BattleSession defeat{data_root, defeat_ranger, defeat_random, 4, false};
+    prepare_player_action(defeat);
+    for (const auto& combatant : defeat.setup().combatants().first(
+             static_cast<std::size_t>(defeat.setup().combatant_count()))) {
+        const auto role_id = combatant.words[combatant_word::role_id];
+        auto& role = defeat_ranger.roles[static_cast<std::size_t>(role_id)];
+        if (combatant.words[combatant_word::side] == 0) {
+            role.set_word(role_word::hp, 0);
+        } else {
+            role.set_word(role_word::maximum_hp, 100);
+            role.set_word(role_word::hp, 100);
+        }
+    }
+    select_wait(defeat);
+    OL_CHECK(defeat.phase() == BattleSessionPhase::battle_outcome);
+    OL_CHECK(defeat.outcome() == BattleOutcome::defeat);
+    OL_CHECK(defeat.render(framebuffer));
+    const auto defeat_outcome_hash = fnv1a_bytes(framebuffer.pixels());
+    defeat.finish_presented_tick();
+    OL_CHECK(defeat.phase() == BattleSessionPhase::battle_outcome_wait);
+    OL_CHECK(defeat.handle_key(0x20U) ==
+             BattleSessionInputResult::outcome_acknowledged);
+    OL_CHECK(defeat.post_battle_result().has_value());
+    OL_CHECK(defeat.post_battle_message_count() == 0U);
+    OL_CHECK(defeat.phase() == BattleSessionPhase::complete);
+    OL_CHECK(defeat.finished());
+    OL_CHECK(defeat.result() == BattleStepResult::defeat);
+
+    OL_CHECK(victory_outcome_hash == 0x52bc7b717bebdba9ULL);
+    OL_CHECK(defeat_outcome_hash == 0xf3c79c485413dfe5ULL);
+    OL_CHECK((post_battle_hashes == std::vector<std::uint64_t>{
+        0xa699bf683f037936ULL,
+        0xef2c8987fe26a127ULL,
+        0xdd4c7e74171e8ee5ULL,
+        0x0f4783440328986eULL,
+        0xb980de17004d5b6cULL,
+    }));
+    const auto hash_path = openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
+        "b8-battle-outcome.hash";
+    std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
+    OL_CHECK(hash_file.good());
+    hash_file << "victory=0x" << std::hex << victory_outcome_hash << '\n';
+    hash_file << "defeat=0x" << std::hex << defeat_outcome_hash << '\n';
+    hash_file << "experience=0x" << std::hex << post_battle_hashes[0U] << '\n';
+    hash_file << "level=0x" << std::hex << post_battle_hashes[1U] << '\n';
+    hash_file << "practice=0x" << std::hex << post_battle_hashes[2U] << '\n';
+    hash_file << "magic=0x" << std::hex << post_battle_hashes[3U] << '\n';
+    hash_file << "craft=0x" << std::hex << post_battle_hashes[4U] << '\n';
+    hash_file.close();
+    OL_CHECK(hash_file.good());
+}
+
 void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
@@ -6462,6 +6700,7 @@ void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(data.definition().size() == kBattleDefinitionWords);
         OL_CHECK(data.battlefield().size() == kBattlefieldWords);
         OL_CHECK(data.occupancy().size() == kBattleOccupancyCells);
+        OL_CHECK(data.music_id() >= 0 && data.music_id() < 24);
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.valid());
         if (setup.waiting_for_party_selection()) {
@@ -6524,6 +6763,7 @@ int main() {
     run_fixed_and_duplicate_tests(data_root);
     run_turn_order_test(data_root);
     run_outcome_test(data_root);
+    run_battle_outcome_session_test(data_root);
     run_all_definition_tests(data_root);
     return openlegend::test::failures == 0 ? 0 : 1;
 }

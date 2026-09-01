@@ -50,6 +50,25 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     {0xA5U, 0xF0U, 0xAEU, 0xA7U},
     {0xA6U, 0xDBU, 0xB0U, 0xCAU},
 }};
+constexpr std::array<std::uint8_t, 8> kBattleDefeatText{
+    0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA5U, 0xA2U, 0xB1U, 0xD1U};
+constexpr std::array<std::uint8_t, 8> kBattleVictoryText{
+    0xBEU, 0xD4U, 0xB0U, 0xABU, 0xB3U, 0xD3U, 0xA7U, 0x51U};
+constexpr std::array<std::uint8_t, 13> kExperienceGainedText{
+    0x20U, 0xC0U, 0xF2U, 0xB1U, 0x6FU, 0xB8U, 0x67U, 0xC5U,
+    0xE7U, 0xC2U, 0x49U, 0xBCU, 0xC6U};
+constexpr std::array<std::uint8_t, 7> kLevelUpText{
+    0x20U, 0xA4U, 0xC9U, 0xAFU, 0xC5U, 0xA4U, 0x46U};
+constexpr std::array<std::uint8_t, 6> kPracticePrefix{
+    0x20U, 0xADU, 0xD7U, 0xBDU, 0x6DU, 0x20U};
+constexpr std::array<std::uint8_t, 6> kPracticeSuffix{
+    0x20U, 0xA6U, 0xA8U, 0xA5U, 0x5CU, 0x20U};
+constexpr std::array<std::uint8_t, 8> kMagicLevelPrefix{
+    0x20U, 0xA4U, 0xC9U, 0xAFU, 0xC5U, 0xA4U, 0x46U, 0x20U};
+constexpr std::array<std::uint8_t, 3> kMagicLevelSuffix{
+    0x20U, 0xAFU, 0xC5U};
+constexpr std::array<std::uint8_t, 8> kCraftedItemText{
+    0x20U, 0xBBU, 0x73U, 0xB3U, 0x79U, 0xA5U, 0x58U, 0x20U};
 constexpr std::array<std::uint8_t, 5> kUseItemPrefix{
     0xA8U, 0xCFU, 0xA5U, 0xCEU, 0x20U};
 constexpr std::array<std::uint8_t, 4> kItemIncrease{
@@ -155,6 +174,12 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     case BattleSessionPhase::ai_movement_wait: return "ai_movement_wait";
     case BattleSessionPhase::round_wait: return "round_wait";
     case BattleSessionPhase::battle_outcome: return "battle_outcome";
+    case BattleSessionPhase::battle_outcome_wait: return "battle_outcome_wait";
+    case BattleSessionPhase::post_battle_message_present:
+        return "post_battle_message_present";
+    case BattleSessionPhase::post_battle_message_wait:
+        return "post_battle_message_wait";
+    case BattleSessionPhase::complete: return "complete";
     }
     return "unknown";
 }
@@ -280,6 +305,18 @@ BattleSessionInputResult BattleSession::handle_key(
     const std::optional<std::uint32_t> bios_tick) {
     if (!valid() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
+    }
+    if (phase_ == BattleSessionPhase::battle_outcome_wait) {
+        if (!begin_post_battle_settlement()) {
+            return BattleSessionInputResult::ignored;
+        }
+        return BattleSessionInputResult::outcome_acknowledged;
+    }
+    if (phase_ == BattleSessionPhase::post_battle_message_wait) {
+        if (!advance_post_battle_message()) {
+            return BattleSessionInputResult::ignored;
+        }
+        return BattleSessionInputResult::post_battle_message_acknowledged;
     }
     if (phase_ == BattleSessionPhase::player_action) {
         return handle_player_action_key(translated_key);
@@ -432,8 +469,19 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
     bool rendered = false;
     if (phase_ == BattleSessionPhase::party_selection) {
         rendered = render_party_selection(framebuffer);
+    } else if (phase_ == BattleSessionPhase::battle_outcome ||
+               phase_ == BattleSessionPhase::battle_outcome_wait) {
+        rendered = render_battle_outcome(framebuffer);
+    } else if (phase_ == BattleSessionPhase::post_battle_message_present ||
+               phase_ == BattleSessionPhase::post_battle_message_wait) {
+        rendered = render_post_battle_message(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_action) {
         rendered = render_player_action_menu(framebuffer);
+    } else if (phase_ == BattleSessionPhase::ai_prelude_present ||
+               phase_ == BattleSessionPhase::ai_wait) {
+        const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
+        rendered = render_battlefield(framebuffer) && status_panel.has_value() &&
+            renderer_.render_status_panel(*status_panel, framebuffer);
     } else if (phase_ == BattleSessionPhase::player_magic_selection) {
         rendered = render_player_magic_selection(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_item_selection) {
@@ -502,6 +550,26 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             diagnostics::log_info(
                 "battle initial fade complete id=" + std::to_string(battle_id()));
         }
+        return;
+    }
+    if (phase_ == BattleSessionPhase::battle_outcome) {
+        phase_ = BattleSessionPhase::battle_outcome_wait;
+        diagnostics::log_info(
+            "battle outcome presented id=" + std::to_string(battle_id()) +
+            " outcome=" + std::to_string(static_cast<int>(outcome_)));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::post_battle_message_present) {
+        if (!post_battle_result_.has_value() ||
+            post_battle_message_index_ >= post_battle_messages_.size()) {
+            error_ = "battle post-battle message continuation is absent";
+            return;
+        }
+        phase_ = BattleSessionPhase::post_battle_message_wait;
+        diagnostics::log_info(
+            "battle post-battle message presented id=" + std::to_string(battle_id()) +
+            " index=" + std::to_string(post_battle_message_index_) +
+            " count=" + std::to_string(post_battle_messages_.size()));
         return;
     }
     if (phase_ == BattleSessionPhase::player_status_page_present) {
@@ -3219,6 +3287,227 @@ bool BattleSession::finish_current_actor(const BattlePlayerAction action) {
     return begin_actor_present();
 }
 
+bool BattleSession::begin_post_battle_settlement() {
+    if (outcome_ == BattleOutcome::ongoing || post_battle_result_.has_value()) {
+        error_ = "battle post-battle settlement state is invalid";
+        return false;
+    }
+    auto settlement = setup_.prepare_battle_settlement(outcome_);
+    if (!settlement.has_value()) {
+        error_ = setup_.valid() ? "battle post-battle settlement failed" : setup_.error();
+        return false;
+    }
+    post_battle_result_ = std::move(*settlement);
+    post_battle_messages_.clear();
+    post_battle_message_index_ = 0U;
+    post_battle_role_index_ = 0U;
+    diagnostics::log_info(
+        "battle post-battle settlement ready id=" + std::to_string(battle_id()) +
+        " outcome=" + std::to_string(static_cast<int>(outcome_)) +
+        " roles=" + std::to_string(post_battle_result_->roles.size()) +
+        " experience=" + std::to_string(post_battle_result_->total_experience) +
+        " shared=" + std::to_string(post_battle_result_->shared_experience));
+    return begin_post_battle_role();
+}
+
+bool BattleSession::schedule_post_battle_message(PostBattleMessage message) {
+    if (!post_battle_result_.has_value() ||
+        message.role_result_index >= post_battle_result_->roles.size()) {
+        error_ = "battle post-battle message role is invalid";
+        return false;
+    }
+    post_battle_result_->render_required = true;
+    post_battle_result_->present_required = true;
+    post_battle_result_->wait_for_input = true;
+    post_battle_messages_.push_back(message);
+    phase_ = BattleSessionPhase::post_battle_message_present;
+    return true;
+}
+
+bool BattleSession::begin_post_battle_role() {
+    if (!post_battle_result_.has_value()) {
+        error_ = "battle post-battle role state is missing";
+        return false;
+    }
+    while (post_battle_role_index_ < post_battle_result_->roles.size()) {
+        const auto applied = setup_.apply_post_battle_experience(
+            post_battle_result_->roles[post_battle_role_index_].combatant_slot,
+            outcome_,
+            grants_experience_);
+        if (!applied.has_value()) {
+            error_ = setup_.valid()
+                ? "battle post-battle experience commit failed"
+                : setup_.error();
+            return false;
+        }
+        post_battle_result_->roles[post_battle_role_index_] = *applied;
+        if (applied->experience_message_required) {
+            return schedule_post_battle_message(
+                {PostBattleMessageKind::experience, post_battle_role_index_});
+        }
+        ++post_battle_role_index_;
+    }
+    result_ = outcome_ == BattleOutcome::victory
+        ? BattleStepResult::victory
+        : BattleStepResult::defeat;
+    phase_ = BattleSessionPhase::complete;
+    diagnostics::log_info(
+        "battle session complete id=" + std::to_string(battle_id()) +
+        " result=" + std::to_string(static_cast<int>(result_)) +
+        " messages=" + std::to_string(post_battle_messages_.size()));
+    return true;
+}
+
+std::optional<BattleLevelUpResult> BattleSession::preview_post_battle_level(
+    const std::size_t role_id) {
+    if (role_id >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto saved_role = ranger_.roles[role_id];
+    auto preview_random = random_;
+    const auto preview = setup_.apply_battle_level_up(role_id, false, preview_random);
+    ranger_.roles[role_id] = saved_role;
+    return preview;
+}
+
+std::optional<BattlePracticeResult> BattleSession::preview_post_battle_practice(
+    const std::size_t role_id) {
+    if (role_id >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto saved_role = ranger_.roles[role_id];
+    const auto preview = setup_.apply_battle_practice(role_id, false);
+    ranger_.roles[role_id] = saved_role;
+    return preview;
+}
+
+bool BattleSession::continue_post_battle_level() {
+    if (!post_battle_result_.has_value() ||
+        post_battle_role_index_ >= post_battle_result_->roles.size()) {
+        error_ = "battle post-battle level state is invalid";
+        return false;
+    }
+    auto& role_result = post_battle_result_->roles[post_battle_role_index_];
+    const auto role_id = static_cast<std::size_t>(role_result.role_id);
+    if (ranger_.roles[role_id].word(model::role_word::level) < 30) {
+        const auto preview = preview_post_battle_level(role_id);
+        if (!preview.has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        role_result.level_up = *preview;
+        if (preview->message_required) {
+            return schedule_post_battle_message(
+                {PostBattleMessageKind::level_up, post_battle_role_index_});
+        }
+    }
+    return continue_post_battle_practice();
+}
+
+bool BattleSession::continue_post_battle_practice() {
+    if (!post_battle_result_.has_value() ||
+        post_battle_role_index_ >= post_battle_result_->roles.size()) {
+        error_ = "battle post-battle practice state is invalid";
+        return false;
+    }
+    auto& role_result = post_battle_result_->roles[post_battle_role_index_];
+    const auto role_id = static_cast<std::size_t>(role_result.role_id);
+    if (ranger_.roles[role_id].word(model::role_word::practice_item) == -1) {
+        return finish_post_battle_role();
+    }
+    const auto preview = preview_post_battle_practice(role_id);
+    if (!preview.has_value()) {
+        error_ = setup_.error();
+        return false;
+    }
+    role_result.practice = *preview;
+    if (preview->practice_message_required) {
+        return schedule_post_battle_message(
+            {PostBattleMessageKind::practice, post_battle_role_index_});
+    }
+    return continue_post_battle_crafting();
+}
+
+bool BattleSession::continue_post_battle_crafting() {
+    if (!post_battle_result_.has_value() ||
+        post_battle_role_index_ >= post_battle_result_->roles.size()) {
+        error_ = "battle post-battle crafting state is invalid";
+        return false;
+    }
+    auto& role_result = post_battle_result_->roles[post_battle_role_index_];
+    const auto prepared = setup_.apply_battle_crafting(
+        static_cast<std::size_t>(role_result.role_id), true, random_);
+    if (!prepared.has_value()) {
+        error_ = setup_.error();
+        return false;
+    }
+    role_result.craft = *prepared;
+    if (prepared->recipe_available) {
+        role_result.craft.message_required = true;
+        role_result.craft.present_required = true;
+        role_result.craft.wait_for_input = true;
+        return schedule_post_battle_message(
+            {PostBattleMessageKind::craft, post_battle_role_index_});
+    }
+    return finish_post_battle_role();
+}
+
+bool BattleSession::finish_post_battle_role() {
+    ++post_battle_role_index_;
+    return begin_post_battle_role();
+}
+
+bool BattleSession::advance_post_battle_message() {
+    if (!post_battle_result_.has_value() ||
+        post_battle_message_index_ >= post_battle_messages_.size()) {
+        error_ = "battle post-battle message state is invalid";
+        return false;
+    }
+    const auto message = post_battle_messages_[post_battle_message_index_];
+    ++post_battle_message_index_;
+    auto& role_result = post_battle_result_->roles[message.role_result_index];
+    const auto role_id = static_cast<std::size_t>(role_result.role_id);
+    switch (message.kind) {
+    case PostBattleMessageKind::experience:
+        return continue_post_battle_level();
+    case PostBattleMessageKind::level_up: {
+        const auto level_up = setup_.apply_battle_level_up(role_id, false, random_);
+        if (!level_up.has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        role_result.level_up = *level_up;
+        return continue_post_battle_practice();
+    }
+    case PostBattleMessageKind::practice: {
+        const auto practice = setup_.apply_battle_practice(role_id, false);
+        if (!practice.has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        role_result.practice = *practice;
+        if (practice->magic_message_required) {
+            return schedule_post_battle_message(
+                {PostBattleMessageKind::magic_level, post_battle_role_index_});
+        }
+        return continue_post_battle_crafting();
+    }
+    case PostBattleMessageKind::magic_level:
+        return continue_post_battle_crafting();
+    case PostBattleMessageKind::craft: {
+        const auto crafted = setup_.commit_battle_crafting(role_result.craft, random_);
+        if (!crafted.has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        role_result.craft = *crafted;
+        return finish_post_battle_role();
+    }
+    }
+    error_ = "battle post-battle message kind is invalid";
+    return false;
+}
+
 bool BattleSession::begin_actor_present() {
     const auto& actor = setup_.combatants()[current_actor_slot_].words;
     render_state_.view_x = static_cast<std::int16_t>(
@@ -3679,6 +3968,133 @@ bool BattleSession::render_player_action_menu(
     const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
     return status_panel.has_value() &&
         renderer_.render_status_panel(*status_panel, framebuffer);
+}
+
+bool BattleSession::render_battle_outcome(
+    render::IndexedFramebuffer& framebuffer) {
+    if (outcome_ == BattleOutcome::ongoing || !render_battlefield(framebuffer) ||
+        !renderer_.draw_box(framebuffer, 118, 30, 85U, 27U)) {
+        return false;
+    }
+    const auto text = outcome_ == BattleOutcome::victory
+        ? std::span<const std::uint8_t>{kBattleVictoryText}
+        : std::span<const std::uint8_t>{kBattleDefeatText};
+    return renderer_.draw_text(framebuffer, 128, 35, text, 0x0705U);
+}
+
+bool BattleSession::render_post_battle_message(
+    render::IndexedFramebuffer& framebuffer) {
+    if (!post_battle_result_.has_value() ||
+        post_battle_message_index_ >= post_battle_messages_.size() ||
+        !render_battlefield(framebuffer)) {
+        return false;
+    }
+    const auto message = post_battle_messages_[post_battle_message_index_];
+    if (message.role_result_index >= post_battle_result_->roles.size()) {
+        return false;
+    }
+    const auto& role_result = post_battle_result_->roles[message.role_result_index];
+    if (role_result.role_id < 0 ||
+        static_cast<std::size_t>(role_result.role_id) >= ranger_.roles.size()) {
+        return false;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_result.role_id)];
+    const auto role_name = terminated_name(
+        std::span<const std::uint8_t>{role.bytes}.subspan(
+            model::role_word::name_byte, model::role_word::name_bytes));
+    std::vector<std::uint8_t> text;
+    const auto append = [&text](const std::span<const std::uint8_t> bytes) {
+        text.insert(text.end(), bytes.begin(), bytes.end());
+    };
+
+    switch (message.kind) {
+    case PostBattleMessageKind::experience: {
+        append(role_name);
+        append(kExperienceGainedText);
+        append(decimal_text(role_result.experience_gained, 5));
+        return renderer_.draw_box(framebuffer, 60, 30, 200U, 27U) &&
+            renderer_.draw_text(framebuffer, 63, 35, text, 0x0705U);
+    }
+    case PostBattleMessageKind::level_up:
+        append(role_name);
+        append(kLevelUpText);
+        return renderer_.draw_box(framebuffer, 100, 30, 120U, 27U) &&
+            renderer_.draw_text(framebuffer, 107, 35, text, 0x0705U);
+    case PostBattleMessageKind::practice: {
+        const auto item_id = role_result.practice.item_id;
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            return false;
+        }
+        const auto item_name = terminated_name(
+            std::span<const std::uint8_t>{
+                ranger_.items[static_cast<std::size_t>(item_id)].bytes}.subspan(
+                    2U * model::item_word::secondary_name_begin,
+                    2U * model::item_word::secondary_name_count));
+        append(role_name);
+        append(kPracticePrefix);
+        append(item_name);
+        append(kPracticeSuffix);
+        const auto width_units = static_cast<int>(role_name.size() + item_name.size() + 12U);
+        return renderer_.draw_box(
+                   framebuffer,
+                   150 - width_units * 4,
+                   40,
+                   static_cast<std::uint16_t>(width_units * 8 + 20),
+                   27U) &&
+            renderer_.draw_text(
+                framebuffer, 160 - width_units * 4, 45, text, 0x0705U);
+    }
+    case PostBattleMessageKind::magic_level: {
+        const auto magic_id = role_result.practice.magic_id;
+        const auto magic_slot = role_result.practice.magic_slot;
+        if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size() ||
+            magic_slot < 0 ||
+            static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
+            return false;
+        }
+        const auto magic_name = terminated_name(
+            std::span<const std::uint8_t>{
+                ranger_.magics[static_cast<std::size_t>(magic_id)].bytes}.subspan(
+                    model::magic_word::name_byte, model::magic_word::name_bytes));
+        const auto level = static_cast<std::int32_t>(
+            role.unsigned_word(
+                model::role_word::magic_level_begin +
+                static_cast<std::size_t>(magic_slot)) /
+                100U +
+            1U);
+        append(magic_name);
+        append(kMagicLevelPrefix);
+        append(decimal_text(level, 2));
+        append(kMagicLevelSuffix);
+        const auto width_units = static_cast<int>(magic_name.size() + 13U);
+        return renderer_.draw_box(
+                   framebuffer,
+                   150 - width_units * 4,
+                   80,
+                   static_cast<std::uint16_t>(width_units * 8 + 20),
+                   27U) &&
+            renderer_.draw_text(
+                framebuffer, 160 - width_units * 4, 85, text, 0x0705U);
+    }
+    case PostBattleMessageKind::craft: {
+        const auto product_id = role_result.craft.product_item_id;
+        if (product_id < 0 ||
+            static_cast<std::size_t>(product_id) >= ranger_.items.size()) {
+            return false;
+        }
+        const auto product_name = terminated_name(
+            std::span<const std::uint8_t>{
+                ranger_.items[static_cast<std::size_t>(product_id)].bytes}.subspan(
+                    2U * model::item_word::secondary_name_begin,
+                    2U * model::item_word::secondary_name_count));
+        append(role_name);
+        append(kCraftedItemText);
+        append(product_name);
+        return renderer_.draw_box(framebuffer, 55, 30, 210U, 27U) &&
+            renderer_.draw_text(framebuffer, 62, 35, text, 0x0705U);
+    }
+    }
+    return false;
 }
 
 void BattleSession::capture_selection_background(

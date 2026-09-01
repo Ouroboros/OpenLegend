@@ -1,6 +1,6 @@
 # 函数证据：`sub_3B6BE` `0x3B6BE..0x3BA85`
 
-状态：`pending_implementation`
+状态：`implemented_pending_review`
 
 部分映射：`BattleSetup::apply_battle_level_up`。
 
@@ -8,4 +8,4 @@
 
 攻击、轻功、防御各加`成长值*升级数`；医疗、用毒、解毒、拳、剑、刀仅在原值严格大于20时按该顺序各消费一次`bounded(3)`；暗器最后无条件消费一次。上述十项只在大于100时封顶，最大HP/MP只在大于999时封顶，全部word加法保留16位回绕。
 
-seed1、等级1、经验150、资质90固定向量连升至3，成长值3，最大HP100→118、最大MP80→128，RNG最终状态2633739833。实际升级提示框、present和按键等待尚未执行，故保持`pending_implementation`。
+seed1、等级1、经验150、资质90固定向量连升至3，成长值3，最大HP100→118、最大MP80→128，RNG最终状态2633739833。`BattleSession`先以复制角色与复制RNG预演是否升级，执行原`(100,30,120,27)`升级框、`%s 升級了`Big5文字、present和任意键等待；仅按键到达后才用共享RNG执行实际等级/属性提交，故预演不改变可观察状态或RNG；真实battle4升级帧FNV64为`0xef2c8987fe26a127`。Linux Debug完整BUILD 14/14，因此推进为`implemented_pending_review`；最终完整双向REVIEW尚未开始。

@@ -144,6 +144,7 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
         world_session_->idle_animation_tick();
     } else if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
         battle_session_->advance(bios_tick);
+        finish_battle_if_ready();
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                scene_session_->pending().kind == scene::SceneStepKind::stay) {
         const auto direction = scene_direction_input_;
@@ -331,6 +332,7 @@ void LegacyGameRuntime::handle_key(
     case LegacyGameView::battle:
         if (battle_session_ != nullptr) {
             static_cast<void>(battle_session_->handle_key(translated_key, bios_tick));
+            finish_battle_if_ready();
         }
         break;
     case LegacyGameView::game_menu:
@@ -580,6 +582,9 @@ bool LegacyGameRuntime::start_battle(
         battle_session_.reset();
         return false;
     }
+    scene_audio_commands_.push_back(scene::SceneAudioCommand{
+        scene::SceneAudioCommand::Kind::music,
+        battle_session_->data().music_id()});
     set_view(LegacyGameView::battle, "battle session started");
     diagnostics::log_info(
         "battle session ready id=" + std::to_string(battle_id) +
@@ -588,6 +593,41 @@ bool LegacyGameRuntime::start_battle(
              ? std::string{"party_selection"}
              : std::string{"initial_present"}));
     return true;
+}
+
+void LegacyGameRuntime::finish_battle_if_ready() {
+    if (battle_session_ == nullptr || !battle_session_->finished()) {
+        return;
+    }
+    const auto battle_id = battle_session_->battle_id();
+    const auto result = battle_session_->result();
+    std::int16_t restore_music = 0;
+    if (const auto* ranger = game_state_.ranger();
+        ranger != nullptr && scene_session_ != nullptr && scene_session_->scene_id() >= 0 &&
+        static_cast<std::size_t>(scene_session_->scene_id()) < ranger->scenes.size()) {
+        restore_music = ranger->scenes[static_cast<std::size_t>(
+            scene_session_->scene_id())].word(model::scene_metadata_word::entrance_music);
+        if (restore_music < 0) {
+            restore_music = 0;
+        }
+    }
+    diagnostics::log_info(
+        "battle runtime completion id=" + std::to_string(battle_id) +
+        " result=" + std::to_string(static_cast<int>(result)) +
+        " restore_music=" + std::to_string(restore_music));
+    battle_session_.reset();
+    battle_request_.reset();
+    scene_audio_commands_.push_back(scene::SceneAudioCommand{
+        scene::SceneAudioCommand::Kind::music, restore_music});
+    if (scene_session_ == nullptr) {
+        show_error("No scene session is available after battle", LegacyGameView::world);
+        return;
+    }
+    set_view(LegacyGameView::scene, "battle session completed");
+    handle_scene_result(scene_session_->resume(
+        result == battle::BattleStepResult::victory
+            ? scene::SceneResponse::battle_victory
+            : scene::SceneResponse::battle_defeat));
 }
 
 void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result) {

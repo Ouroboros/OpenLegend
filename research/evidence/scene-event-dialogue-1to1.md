@@ -80,7 +80,7 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 - 唯一未出现的是 opcode 24；其合法槽位仍按机器码实现载入三档进度与退出确认菜单，并由 synthetic KDEF 覆盖；
 - opcode 使用频次完整数组写入 `scene-goldens.json`，C++ 真实资产测试逐项对照，不以少量示例脚本替代全量扫描。
 
-当前核心已建立 0–67 的同步 PC/偏移执行边界、对话/问题/商店/战斗请求队列及 snapshot 副作用入口。opcode6现把battle id与get-exp word一并交给runtime-owned `BattleSession`并进入实际battle view；Victory/Defeat/Escape尚未回送解释器真假PC，所以`sub_2DE03`仍为`pending_implementation`。高阶剧情的每个基本块仍需在后续小提交逐条复核，本文不把“已有 switch”当作全部语义已闭环。
+当前核心已建立 0–67 的同步 PC/偏移执行边界、对话/问题/商店/战斗请求队列及 snapshot 副作用入口。opcode6把battle id与get-exp word交给runtime-owned `BattleSession`并进入实际battle view；消息队列耗尽后，runtime销毁battle资源、恢复scene音乐，并仅把`Victory`映射到`battle_victory`真偏移，`Defeat`映射到`battle_defeat`假偏移；AI逃跑不离开战斗。`sub_2DE03`推进为`implemented_pending_review`。高阶剧情的每个基本块仍需最终双向REVIEW，本文不把“已有 switch”当作全部语义已闭环。
 
 ### 4.1 场景与事件状态写入
 

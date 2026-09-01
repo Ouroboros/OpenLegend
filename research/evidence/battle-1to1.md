@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：`pending_implementation`；最终汇编↔C++ REVIEW 尚未开始。
+状态：`implemented_pending_review`；81项功能实现已接入，最终汇编↔C++ REVIEW 尚未开始。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、18项为 `pending_implementation`、63项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、81项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -22,7 +22,7 @@
 6. 淡出，关闭 SMP/SDX，并按主角记录决定停止或恢复原音乐；
 7. 写运行模式1，返回 `word_E6ED2 - 1`。
 
-`SceneStepResult`现携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。Session保留get-exp布尔值，并对初始化失败、选择变化/完成、初始视图、淡入结束、轮首actor和player/AI分派记录关键路径日志。动作循环、资源/音频收尾及Victory/Defeat/Escape回送scene仍未实现，因此`sub_2DE03/sub_31C75`继续保持`pending_implementation`。
+`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。启动时按WAR word8发战斗music命令；消息队列耗尽后销毁battle资源，按当前scene metadata word7恢复场景music（负值按机器分支转0），再以严格`Victory`映射`battle_victory`，`Defeat`映射`battle_defeat`恢复解释器真假PC。AI逃跑是动作11的回合内移动/休息handler，不是第三种battle返回值。`sub_2DE03/sub_31C75`均推进为`implemented_pending_review`。
 
 ## 3. 资产 oracle
 
@@ -86,7 +86,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 状态动作现按`sub_22066(...,2)`进入队伍前缀选择，执行圆角标题/列表、角色名NUL对齐、上下回绕、Escape取消和三确认键；确认后在battle背景上依次呈现`sub_22A59`两页角色状态，每页各等待任意非零键。第一页保留伤势/中毒/内力分档、非法内力类型复用中毒色、装备加成和30级阈值；第二页保留两件装备、修炼物经验分母与十项武功等级。动作返回菜单但不结束actor、不消费RNG。独立Python直接读取原WARFLD、HDGRP和字体资产复算，选择页/第一页/第二页与C++整帧FNV64分别一致为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`；逐块回审修正了最大生命中毒色、修炼所需经验普通色和分母系数读取资质而非修炼经验三处差异。
 
-自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、第二次重绘/present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler已完成并进入逐actor后处理，固定seed1连续两个角色体力增量为5、4。`sub_32A51/sub_32B78/sub_36A98` 已为 `implemented_pending_review`；玩家攻击、物品与状态现均完成选择、实际UI及各自同步返回边界；AI动作0..11的休息、移动、攻击、用毒、支持、请求、普通物品、暗器与逃跑handler均已完成；结果panel/战后提交尚未实现，所以`sub_3271E/sub_32E59/sub_3B238`保持`pending_implementation`，`sub_33599`推进为`implemented_pending_review`。
+自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、重绘战场并按`sub_33599`第三个调用点叠加当前actor状态面板、present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler及动作1..6、8..11全部进入逐actor后处理。结果命中后执行战果panel、任意键、战后消息队列和typed runtime返回；`sub_3271E/sub_32E59/sub_33599/sub_3B238/sub_3C6D3`均为`implemented_pending_review`。AI prelude整帧FNV64固定为`0xb02104139829a80d`。
 
 ## 8. 战场路径图与最短路回溯
 
@@ -247,6 +247,6 @@ area type0/3在targeting距离不大于select distance时命中并传movement mo
 
 `sub_36AF7`通用玩家光标选择已恢复为typed状态：入口按mode建立movement或targeting图，方向优先级下、右、左、上；相邻path不大于上限即可移动，path超限但occupancy非空仍可悬停；movement确认严格要求`0<path<=limit`，targeting允许`0<=path<=limit`，Escape清path上限并写取消结果。`sub_36A98`以actor行动值启动mode0选择，取消返回-1，否则复制选择期路径图、标最短路并逐格移动。battle4已实际接入movement与targeting的四方向/Escape/三确认键和每轮路径/光标重画present；movement继续逐格重画present与两次BIOS tick变化，targeting现由玩家用毒/解毒/医疗按各自能力射程进入，取消保持原菜单ordinal，确认敌方占位格`(26,26)`并保存目标。攻击与暗器在各自武功/物品选择接入后复用同一相位；`b8-battle-targeting.log`保留三入口、取消、逐格光标和最终确认的完整可读轨迹，Linux与Windows Debug完整BUILD全部14项测试及逆向validator通过；本函数推进为`implemented_pending_review`。
 
-`sub_3B387..sub_3C2AC`战后进度状态已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利把WAR word7总经验均分给存活side0；队伍至少补最大HP/5，死亡者体力至少10；word13及其80%分别加角色、练功、制造经验并unsigned封顶60000。等级提升保留30项机器阈值、资质分档成长RNG与技能条件RNG；练功保留需求系数、18项角色写入、武功学习/加100；制造保留五配方标记、反复`bounded(5)`、已有产物随机1..3与新槽固定1、材料槽压缩。提示框、present与按键等待仍为typed事件，四函数保持`pending_implementation`。
+`sub_3B387..sub_3C2AC`战后进度状态与同步UI均已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利经验均分、队伍HP/体力下限、角色/练功/制造经验封顶，以及等级、练功、武功升级、制造RNG/状态均保持原顺序。`BattleSession`依次执行经验固定框、升级固定框、练功动态框、武功等级动态框和制造固定框，每项重画战场、present并等待任意非零键。经验在其消息前提交；升级和练功以副本/RNG副本预演，按键后才执行真实提交；制造配方选择在消息前消费共享RNG，库存及数量RNG在按键后提交，保留原同步可观察边界；五帧FNV64依次为`0xa699bf683f037936`、`0xef2c8987fe26a127`、`0xdd4c7e74171e8ee5`、`0x0f4783440328986e`、`0xb980de17004d5b6c`。四函数均推进为`implemented_pending_review`。
 
-`sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12，现代仅对负值及大于25 target采用不读取数组外的安全边界，两者状态核心标`implemented_pending_review`。`sub_3C6D3`已恢复side横移220、面板/头像/名称NUL对齐、HP hurt色、最大HP poison色及MP类型色；非法MP类型复用poison色的寄存器残值BUG被保留。`BattleRenderer`已按`sub_2CEBF`实际绘制圆角半透明面板、离散白边、HDGRP头像、原Big5标签和数值，battle4固定队员面板叠加整帧的独立oracle与C++ FNV64均为`0x630a82d57e1d8715`；BattleSession已接玩家动作菜单调用点，剩余调用点及显式present/等待仍未接入。
+`sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12。`sub_3C6D3`三个机器码xref均已覆盖：玩家菜单内两处由同一菜单重绘相位执行，AI prelude调用由prelude/wait相位执行；独立面板oracle为`0x630a82d57e1d8715`，Session AI prelude为`0xb02104139829a80d`。三函数均为`implemented_pending_review`。

@@ -1,6 +1,6 @@
 # 函数证据：`sub_3C2AC` `0x3C2AC..0x3C563`
 
-状态：`pending_implementation`
+状态：`implemented_pending_review`
 
 部分映射：`BattleSetup::apply_battle_crafting`。
 
@@ -8,4 +8,4 @@
 
 消息抑制参数非0时，原函数在选出配方后直接返回且不制造。正常路径先显示消息；若产物库存已存在，数量增加`bounded(3)+1`，再扣材料；若不存在，写入首个ID=-1槽且数量仅加1，不消费数量RNG。材料数不大于0时调用原库存槽左移；成功后制造经验清0。库存已满且产物不存在时，已显示消息但不扣材料、不清经验。
 
-seed1且仅配方0可用时，选择RNG序列严格为`3,3,3,0`，已有产物数量增加2，材料3→1、产物4→6，RNG最终状态4182499122。实际制造提示框、present和按键等待尚未执行，故保持`pending_implementation`。
+seed1且仅配方0可用时，选择RNG序列严格为`3,3,3,0`，已有产物数量增加2，材料3→1、产物4→6，RNG最终状态4182499122。`BattleSession`在制造框前以共享RNG完成原反复`bounded(5)`配方选择但不改库存，执行原`(55,30,210,27)`制造框、`%s 製造出 %s`Big5文字、present和任意键等待；按键后才消费已有产物数量RNG并提交产物、材料与制造经验；真实battle4制造帧FNV64为`0xb980de17004d5b6c`。Linux Debug完整BUILD 14/14，因此推进为`implemented_pending_review`；最终完整双向REVIEW尚未开始。

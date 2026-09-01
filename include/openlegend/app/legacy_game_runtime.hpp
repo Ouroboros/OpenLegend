@@ -94,6 +94,7 @@ private:
     [[nodiscard]] bool start_scene(std::int16_t scene_id, LegacyGameView error_return_view);
     [[nodiscard]] bool start_battle(
         std::int16_t battle_id, bool grant_experience);
+    void finish_battle_if_ready();
     void handle_scene_result(const scene::SceneStepResult& result);
     [[nodiscard]] bool advance_scene_effect();
     void begin_scene_effect(SceneEffectKind kind, std::uint16_t wait_ticks = 1U);

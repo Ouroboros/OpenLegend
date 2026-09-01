@@ -671,6 +671,16 @@ public:
         std::size_t role_id,
         bool suppress_message,
         random::LegacyRandom& random);
+    [[nodiscard]] std::optional<BattlePostBattleResult> prepare_battle_settlement(
+        BattleOutcome outcome);
+    [[nodiscard]] std::optional<BattlePostBattleRoleResult>
+        apply_post_battle_experience(
+            std::size_t combatant_slot,
+            BattleOutcome outcome,
+            bool grant_experience);
+    [[nodiscard]] std::optional<BattleCraftResult> commit_battle_crafting(
+        const BattleCraftResult& prepared,
+        random::LegacyRandom& random);
     [[nodiscard]] std::optional<BattlePostBattleResult> settle_battle(
         BattleOutcome outcome,
         bool grant_experience,

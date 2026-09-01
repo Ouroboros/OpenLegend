@@ -70,6 +70,10 @@ enum class BattleSessionPhase {
     ai_movement_wait,
     round_wait,
     battle_outcome,
+    battle_outcome_wait,
+    post_battle_message_present,
+    post_battle_message_wait,
+    complete,
 };
 
 enum class BattleSessionInputResult {
@@ -94,6 +98,14 @@ enum class BattleSessionInputResult {
     status_selected,
     status_page_advanced,
     status_closed,
+    outcome_acknowledged,
+    post_battle_message_acknowledged,
+};
+
+enum class BattleStepResult {
+    stay,
+    victory,
+    defeat,
 };
 
 enum class BattleAudioBank : std::int16_t {
@@ -146,6 +158,17 @@ public:
     [[nodiscard]] std::int16_t view_y() const noexcept { return render_state_.view_y; }
     [[nodiscard]] std::size_t current_actor_slot() const noexcept { return current_actor_slot_; }
     [[nodiscard]] BattleOutcome outcome() const noexcept { return outcome_; }
+    [[nodiscard]] BattleStepResult result() const noexcept { return result_; }
+    [[nodiscard]] bool finished() const noexcept { return result_ != BattleStepResult::stay; }
+    [[nodiscard]] const std::optional<BattlePostBattleResult>& post_battle_result() const noexcept {
+        return post_battle_result_;
+    }
+    [[nodiscard]] std::size_t post_battle_message_index() const noexcept {
+        return post_battle_message_index_;
+    }
+    [[nodiscard]] std::size_t post_battle_message_count() const noexcept {
+        return post_battle_messages_.size();
+    }
     [[nodiscard]] std::size_t fade_frame_count() const noexcept {
         return fade_palettes_.size();
     }
@@ -189,6 +212,19 @@ public:
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
 
 private:
+    enum class PostBattleMessageKind {
+        experience,
+        level_up,
+        practice,
+        magic_level,
+        craft,
+    };
+
+    struct PostBattleMessage {
+        PostBattleMessageKind kind{PostBattleMessageKind::experience};
+        std::size_t role_result_index{};
+    };
+
     enum class AiMovementContinuation {
         direct,
         escape,
@@ -278,6 +314,18 @@ private:
     [[nodiscard]] bool dispatch_selected_player_action();
     [[nodiscard]] bool finish_current_actor(BattlePlayerAction action);
     [[nodiscard]] bool begin_actor_present();
+    [[nodiscard]] bool begin_post_battle_settlement();
+    [[nodiscard]] bool begin_post_battle_role();
+    [[nodiscard]] bool continue_post_battle_level();
+    [[nodiscard]] bool continue_post_battle_practice();
+    [[nodiscard]] bool continue_post_battle_crafting();
+    [[nodiscard]] bool finish_post_battle_role();
+    [[nodiscard]] bool schedule_post_battle_message(PostBattleMessage message);
+    [[nodiscard]] std::optional<BattleLevelUpResult> preview_post_battle_level(
+        std::size_t role_id);
+    [[nodiscard]] std::optional<BattlePracticeResult> preview_post_battle_practice(
+        std::size_t role_id);
+    [[nodiscard]] bool advance_post_battle_message();
     [[nodiscard]] bool render_party_selection(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_battlefield(
@@ -297,6 +345,10 @@ private:
     [[nodiscard]] bool render_player_attack_direction(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_attack_level(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_battle_outcome(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_post_battle_message(
         render::IndexedFramebuffer& framebuffer);
     void capture_selection_background(
         const render::IndexedFramebuffer& framebuffer) noexcept;
@@ -359,6 +411,11 @@ private:
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
     BattleOutcome outcome_{BattleOutcome::ongoing};
+    BattleStepResult result_{BattleStepResult::stay};
+    std::optional<BattlePostBattleResult> post_battle_result_;
+    std::vector<PostBattleMessage> post_battle_messages_;
+    std::size_t post_battle_message_index_{};
+    std::size_t post_battle_role_index_{};
     std::optional<BattleAiTurnPrelude> ai_turn_prelude_;
     std::optional<BattleAiTurnDecision> ai_turn_decision_;
     std::uint32_t round_tick_{};
