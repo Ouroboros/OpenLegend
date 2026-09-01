@@ -1,6 +1,6 @@
 # B4 输入、时间、随机与音频汇编合同
 
-状态：assembly-reviewed / asset-inventoried
+状态：最终双向REVIEW已收敛；RNG核心为`assembly_exact`，输入/计时/音频及宿主生命周期为`platform_adapted`
 真值：当前 `Z.DAT` 机器码、当前 77 个 WAV 与 24 个 XMI 字节、Miles 3.03 包装器内嵌诊断字符串
 
 ## 1. 证据范围
@@ -174,3 +174,24 @@ XMI 后端固定使用 libADLMIDI v1.6.1、内嵌 bank 0 `AIL (The Fat Man 2op s
 - SDL、ADLMIDI、DOS 与 Miles 类型不进入 model/persistence/render 公共接口。
 
 最终验证：Linux 与 Windows LLVM 的 `core/app × Debug/Release` 全部通过；core 6 项 CTest、app 7 项 CTest。独立 `OPENLEGEND_ENABLE_SANITIZERS=ON` 配置以 ASan+UBSan+LeakSanitizer 串行运行 6 项 core CTest 全部通过。首次把 sanitizer 全局施加到第三方时，只命中 libADLMIDI DOSBox OPL 的 `dbopl.cpp:1620` 空指针 `offsetof` 实现技巧；最终门禁仅 instrument OpenLegend targets，未屏蔽或跳过任何 OpenLegend 测试。
+
+## 8. 最终双向逐基本块 REVIEW
+
+本轮先仅依据`Z_DAT.b4_runtime_xrefs.txt`和机器指令重新锁定42项closure的物理范围、调用者、参数、全局读写、循环回边、提前出口及外部Miles合同，完成独立向量后才读取现代C++。逐地址结论如下：
+
+- `0x20C32`：清last-key后等待IRQ写非零；现代异步事件循环保留同一last-key/byte-state合同，阻塞方式属于宿主适配。
+- `0x20D35`：启动、同tick单分支优先级、present后调色板相位、tick等待及退出链全部有现代对应；SDL事件、窗口与设备生命周期属于宿主适配。
+- `0x3CDFF/0x3CF19`：IRQ9、字体和Miles初始化/恢复由`LegacyKeyboard`、资源RAII、`AudioMixer`和SDL生命周期整体替代，所有游戏可见调用时点保留。
+- `0x3DB83`：有符号`idiv 40`、加1、`<=0`提前出口和逐tick等待逐块对应`legacy_delay_tick_count/legacy_delay`；tick来源替换为PIT比例steady clock。
+- `0x3DD57/0x3DD66/0x3DE4D/0x3DECB/0x3DF59/0x3DF90/0x3E088/0x3E172/0x3E1B2/0x3E23B/0x3E25B/0x3E288/0x3E2E2`：disabled门禁、stop-before-reuse、GAME/ATK/E文件索引、整文件WAV字节、11025Hz、slot1/2、volume200/400、loop0/1及fade/delay顺序均正向映射；反向审计`LegacyAudioController`没有无汇编来源的游戏状态写入。
+- `0x3D5DE`：DOS second/hundredth形成`second*100+hundredth`后seed；宿主仅替换取时来源。
+- `0x3D612/0x3F987/0x3F98D/0x3F9B0`：边界门禁、零消费提前出口、32位回绕LCG、15位结果和原样seed逐指令一致，无平台偏差。
+- `0x3F9C0`：Watcom RNG运行时注册由显式`LegacyRandom`实例生命周期替代，算法状态不变。
+- `0x41232/0x41383/0x413F8/0x4146D/0x4159C/0x41601/0x4166E/0x41748/0x417B5/0x42AF2/0x42BDE/0x42D0D/0x42DE7/0x42E5C/0x42EC9/0x43239/0x47DB8/0x49120`：均为Miles 3.03内部API/设备增益实现；游戏依赖的handle状态、loop、rate、volume裁剪和sequence状态合同由`LegacyAudioPort`覆盖，DOS驱动和实体声卡内部不复制。
+
+正向汇编→C++复核覆盖上述全部分支、位宽、回绕、资源顺序与外部调用；反向C++→汇编复核覆盖`LegacyKeyboard`、`legacy_clock`、`LegacyRandom`、`LegacyAudioController`、`AudioMixer`、`SdlAudioDevice`及SDL主循环的每项游戏可见行为。最后一轮未发现新差异或未决项；原程序动态差分因本机无DOS运行器登记为`blocked_runtime_oracle`，不改变机器码静态结论。
+
+```text
+final_review = converged_no_new_differences
+remaining =
+```
