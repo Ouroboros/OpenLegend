@@ -50,4 +50,4 @@
 ## Closure统计与下一停点
 
 - `persistence-closure.tsv`：0项`pending_mapping`、0项`pending_implementation`、14项`implemented_pending_review`，0项最终关闭；实现映射口径100%，最终REVIEW口径0%。
-- 下一停点：精确提交B9实现切片；随后按计划处理其余closure，再从B0开始统一最终双向逐基本块REVIEW。
+- B9实现切片、完整矩阵和阶段提交均已收口，不再保留旧提交停点；当前业务停点见[主执行计划](../../goal/execution-plan.md)。其余功能closure清零后，从B0开始统一最终双向逐基本块REVIEW。

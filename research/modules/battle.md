@@ -54,4 +54,4 @@
 
 - `battle-closure.tsv`：0项`pending_mapping`、0项`pending_implementation`、81项`implemented_pending_review`，0项最终关闭；按81个函数实现状态口径为100%。
 - B7 `sub_2DE03`联合边界已随typed battle result回送推进到`implemented_pending_review`。
-- 下一停点：完成B8入口时序差异的双平台关闭矩阵并进入B9功能实现；B9完成后统一执行B0→B9完整汇编↔C++双向REVIEW，实现/测试通过不替代该门禁。
+- B8实现与双平台关闭矩阵均已收口，不再以旧入口审计或B9实现作为下一停点；当前业务停点见[主执行计划](../../goal/execution-plan.md)。功能缺口清零后，本模块按81项closure顺序进入B0→B9统一最终双向REVIEW，实现/测试通过不替代该门禁。
