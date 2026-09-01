@@ -6,7 +6,7 @@
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、27项为 `pending_implementation`、54项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、26项为 `pending_implementation`、55项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -82,7 +82,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98`推进为`implemented_pending_review`，通用`sub_36AF7/sub_37355`仍因targeting/AI路径未全部接入而保持`pending_implementation`。
 
-自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、第二次重绘/present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler已完成并进入逐actor后处理，固定seed1连续两个角色体力增量为5、4。`sub_32A51/sub_32B78/sub_36A98` 已为 `implemented_pending_review`；其余六个玩家handler、targeting、十类AI handler、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_33599/sub_3B238` 保持 `pending_implementation`。
+自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、第二次重绘/present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler已完成并进入逐actor后处理，固定seed1连续两个角色体力增量为5、4。`sub_32A51/sub_32B78/sub_36A98` 已为 `implemented_pending_review`；玩家攻击现已完成目标/方向选择、四类area、动画、逐轮提交和升级等待；其余物品/状态玩家handler、十类AI效果handler、结果panel/战后提交尚未实现，所以 `sub_3271E/sub_32E59/sub_33599/sub_3B238` 保持 `pending_implementation`。
 
 ## 8. 战场路径图与最短路回溯
 
@@ -101,7 +101,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_37734` 已恢复十槽统计与 magic profile：只统计 ID>0；唯一已学武功时原版仍选 slot0 的 BUG 保留；等级用熟练度 unsigned `/100`，并从 magic words 28+level、38+level、15、14、16读取选择距离、攻击距离、area type、hurt type和 need_mp。attack_twice严格等于1时轮数为2。
 
-现代每轮提交严格保留 action word7=1、word13加2、`LegacyRandom::bounded(2)+1` 熟练度增长、unsigned 999 cap、跨百升级判定，以及 `(cost_scale/2)*need_mp` 内力扣除后 signed负值夹0；全部轮次后体力减3并夹0。seed1固定 state1103527590、299→300、cost scale3下 mp3→0、999 cap和体力2→0，Linux Debug 14/14。攻击入口现已执行多武功菜单；area type0/3目标UI、type1方向UI、type2直接攻击、动画/present/升级框仍待实现，所以 `sub_37734` 保持 `pending_implementation`。
+现代每轮提交严格保留 action word7=1、word13加2、`LegacyRandom::bounded(2)+1` 熟练度增长、unsigned 999 cap、跨百升级判定，以及 `(cost_scale/2)*need_mp` 内力扣除后 signed负值夹0；全部轮次后体力减3并夹0。seed1固定 state1103527590、299→300、cost scale3下 mp3→0、999 cap和体力2→0。
+
+`BattleSession`现完整执行攻击入口：多武功菜单确认后，area type0/3进入mode1目标UI并支持Escape返回原ordinal，type1显示方向框并按0/1/2/3映射上/右/左/下，type2直接攻击。每击实际执行area伤害、FIGHT/EFT双bank动画、10帧damage、sprite刷新、重画/present/wait17，随后才提交word7/word13/熟练度/MP；跨百绘制升级框并present/wait500，双击结束后才扣体力并进入共享actor尾部。原版在循环外缓存范围，现代同样缓存初始profile；首击升级后第二击继续命中原范围，但伤害与cost scale按新熟练度重算。固定双击第二击hits1、cost scale4、内力20→15→5；方向提示与升级框整帧hash为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。四种area type、取消、双击和13次升级等待均由battle4 Session覆盖，Linux Debug 14/14；`sub_37734`推进为`implemented_pending_review`。
 
 ## 10. HP与MP伤害
 
@@ -113,13 +115,13 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_37734` 的方形与十字单轮状态边界已映射为 `clear_attack_effects/apply_attack_area`。方形按x外/y内扫描并按目标差更新方向；十字逐距离按上、下、左、右扫描且不改方向。友军格完全跳过，空格只写effect=1，敌方格写damage word9。type2忽略hurt_type并强制HP伤害；type0/3按hurt_type 0/1分派HP/MP，其他值只留effect。
 
-固定方形8格hash `0xe5f47b0a810ce2bd`、十字7格hash `0x3144c415023d9464`、单格MP hash `0xab559939923b4f74`；伤害29/29/15，effect kind 1/1/3，MP分支保留上次HP cost scale3。目标选择、type1方向选择接线、攻击动画与present仍待实现，故 `sub_37734` 继续 `pending_implementation`。
+固定方形8格hash `0xe5f47b0a810ce2bd`、十字7格hash `0x3144c415023d9464`、单格MP hash `0xab559939923b4f74`；伤害29/29/15，effect kind 1/1/3，MP分支保留上次HP cost scale3。四种area现均接入目标/方向输入、动画、present、提交与双击；area覆盖使用入口缓存profile，伤害函数每次命中仍读取当前熟练度。`sub_37734`为`implemented_pending_review`。
 
 ## 12. 直线area扫描
 
 `sub_38999` 已映射为 `apply_line_attack_area`。方向0/1/2/3对应上/右/左/下，逐格扫描到select distance；越界只跳过当前格，不终止循环。友军格跳过，空格写effect，敌方格始终调用HP伤害而不读取hurt_type，命中后仍继续后续距离；非法方向无操作。
 
-固定向量：方向3下方空格+敌方hash `0xae7c1e4e161ac125`、damage29；中间友军跳过后仍命中第二格hash `0xab559939923b4f74`；非法方向空hash `0xb9d103fd6854a325`且不消费seed1。函数完整状态边界为 `implemented_pending_review`。
+固定向量：方向3下方空格+敌方hash `0xae7c1e4e161ac125`、damage29；中间友军跳过后仍命中第二格hash `0xab559939923b4f74`；非法方向空hash `0xb9d103fd6854a325`且不消费seed1。BattleSession现实际绘制方向提示、消费方向键、复用首击方向/缓存范围，并执行伤害与动画提交；提示整帧hash为`0x5e46c805f42677b0`。函数完整状态边界为 `implemented_pending_review`。
 
 ## 13. 攻击动画时间线
 
@@ -127,7 +129,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3859E` 的actor sprite、effect frame/visible、channel1/2 sample分派点与每帧17 tick已映射为 `magic_animation_plan`；固定19帧hash `0x5aaffbb1d5697a73`。`sub_3884A` 的固定sample13、100 tick前奏与17帧effect2时间线hash为 `0x2b5c87d8e0c754d5`。`sub_38910` 的10个damage phase、每帧1 tick与前4帧flash hash为 `0x364953a2c8f42144`，抑制flash时为 `0xec7a73890ce825c4`。
 
-三项typed时间线均已实现。玩家用毒、解毒、医疗现已把`sub_3859E/sub_38910`接入BattleSession：按动态FIGHT基址8000与EFT基址6500实际载入/绘制，分派attack/effect双bank音效，每帧present后等待一次BIOS tick变化，并在十帧damage后清显示状态。三条真实battle4向量分别执行11/9/10帧magic与10帧damage；用毒仅前4帧flash，解毒/医疗全部抑制。攻击、AI、暗器等其余调用点及`sub_3884A`前奏仍未全部接入，所以三函数仍为 `pending_implementation`。
+三项typed时间线均已实现。玩家攻击、用毒、解毒、医疗现已把`sub_3859E/sub_38910`接入BattleSession：按动态FIGHT基址8000与EFT基址6500实际载入/绘制，分派attack/effect双bank音效，每帧present后等待一次BIOS tick变化，并在十帧damage后清显示状态。三条支持动作真实battle4向量分别执行11/9/10帧magic与10帧damage；用毒仅前4帧flash，解毒/医疗全部抑制。攻击每击固定10帧magic与10帧damage、前4帧flash，双击完整重复两组并在每组后执行独立提交等待。AI、暗器等其余调用点及`sub_3884A`前奏仍未全部接入，所以三函数仍为 `pending_implementation`。
 
 ## 14. 武功选择菜单
 
@@ -169,7 +171,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3AA4B` 的顺序为完整战场重绘、present、自动flag写1、调用当前actor的AI。`BattleSession`已按该顺序实际重绘/present，在present前保持flag0、present完成后写flag1并以同一actor进入AI前导；后续已执行态势累计、第二次重绘/present及参数300的八次BIOS tick变化。其余AI效果handler未完成，因此该函数保持 `pending_implementation`。
 
-`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present、玩家动作/武功菜单、movement/targeting路径光标、每个玩家/AI移动步，以及玩家用毒/解毒/医疗的逐帧FIGHT/EFT与damage动画实际调用并由runtime present；攻击效果、AI效果、物品/暗器和结果调用点仍未接入，故原绘制函数保持 `pending_implementation`。
+`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present、玩家动作/武功菜单、movement/targeting路径光标、每个玩家/AI移动步，以及玩家攻击/用毒/解毒/医疗的逐帧FIGHT/EFT与damage动画实际调用并由runtime present；攻击方向提示与升级框整帧hash分别为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。AI效果、物品/暗器和结果调用点仍未接入，故原绘制函数保持 `pending_implementation`。
 
 ## 20. AI六个候选selector
 

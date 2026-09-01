@@ -28,12 +28,17 @@ enum class BattleSessionPhase {
     player_action,
     player_action_selected,
     player_magic_selection,
+    player_attack_direction,
     player_movement_select,
     player_targeting_select,
     player_magic_frame_present,
     player_magic_wait,
     player_damage_frame_present,
     player_damage_wait,
+    player_attack_commit_present,
+    player_attack_commit_wait,
+    player_attack_level_present,
+    player_attack_level_wait,
     player_movement_step_present,
     player_movement_wait,
     automatic_present,
@@ -59,6 +64,7 @@ enum class BattleSessionInputResult {
     magic_changed,
     magic_cancelled,
     magic_selected,
+    direction_selected,
 };
 
 enum class BattleAudioBank : std::int16_t {
@@ -175,8 +181,17 @@ private:
     [[nodiscard]] bool finish_ai_handler(BattlePlayerAction action, bool rest_first);
     [[nodiscard]] bool begin_player_action_menu();
     [[nodiscard]] bool begin_player_attack();
+    [[nodiscard]] bool begin_player_attack_execution();
     [[nodiscard]] BattleSessionInputResult handle_player_magic_selection_key(
         std::uint8_t translated_key);
+    [[nodiscard]] BattleSessionInputResult handle_player_attack_direction_key(
+        std::uint8_t translated_key);
+    [[nodiscard]] bool begin_player_attack_iteration(
+        std::optional<BattlePathCoord> target = std::nullopt);
+    [[nodiscard]] bool advance_player_attack_commit_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool commit_player_attack_iteration();
+    [[nodiscard]] bool advance_player_attack_level_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool finish_player_attack_iteration();
     [[nodiscard]] bool begin_player_movement();
     [[nodiscard]] bool begin_player_targeting(BattlePlayerAction action);
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
@@ -209,10 +224,23 @@ private:
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_magic_selection(
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_attack_direction(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_attack_level(
+        render::IndexedFramebuffer& framebuffer);
     void capture_selection_background(
         const render::IndexedFramebuffer& framebuffer) noexcept;
     void restore_selection_background(
         render::IndexedFramebuffer& framebuffer) const noexcept;
+
+    struct PlayerAttackState {
+        BattleAttackProfile profile;
+        std::int16_t special_attack_bonus{};
+        std::int16_t iteration{};
+        std::optional<BattlePathCoord> target;
+        std::int16_t direction{-1};
+        std::vector<std::uint8_t> level_text;
+    };
 
     struct PlayerTargetEffectState {
         BattlePlayerAction action{};
@@ -258,6 +286,7 @@ private:
     std::optional<BattleMagicSelectionState> player_magic_selection_;
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
     std::optional<BattlePathCoord> selected_player_target_;
+    std::unique_ptr<PlayerAttackState> player_attack_;
     std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
     std::int16_t selected_magic_slot_{};
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;

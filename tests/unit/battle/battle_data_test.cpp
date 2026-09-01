@@ -2204,6 +2204,221 @@ void run_player_support_session_test(
              std::string::npos);
 }
 
+void run_player_attack_session_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    const auto log_path =
+        openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
+        "b8-battle-player-attacks.log";
+    std::error_code log_error;
+    std::filesystem::remove(log_path, log_error);
+    OL_CHECK(openlegend::diagnostics::initialize_logging(
+                 log_path, openlegend::diagnostics::LogLevel::debug) ==
+             openlegend::diagnostics::LoggingInitializationStatus::initialized);
+
+    auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
+    const auto run_case = [&](const std::int16_t area_type,
+                              const std::uint32_t initial_tick,
+                              const bool attack_twice,
+                              const std::int16_t initial_experience) {
+        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
+        auto& actor = ranger->roles[1U];
+        auto& enemy = ranger->roles[3U];
+        actor.set_word(role_word::hp, 500);
+        actor.set_word(role_word::maximum_hp, 500);
+        actor.set_word(role_word::mp, 20);
+        actor.set_word(role_word::maximum_mp, 20);
+        actor.set_word(role_word::physical_power, 100);
+        actor.set_word(role_word::attack, 50);
+        actor.set_word(role_word::speed, 0);
+        actor.set_word(role_word::magic_id_begin, 5);
+        actor.set_word(role_word::magic_level_begin, initial_experience);
+        actor.set_word(role_word::attack_twice, attack_twice ? 1 : 0);
+        actor.set_word(role_word::frame_begin, 2);
+        actor.set_word(role_word::frame_begin + 5U, 1);
+        actor.set_word(role_word::frame_begin + 10U, 1);
+        enemy.set_word(role_word::hp, 5'000);
+        enemy.set_word(role_word::maximum_hp, 5'000);
+        enemy.set_word(role_word::defence, 0);
+        enemy.set_word(role_word::anti_poison, 100);
+        auto& magic = ranger->magics[5U];
+        magic.set_word(magic_word::sound_id, 7);
+        magic.set_word(magic_word::magic_type, 0);
+        magic.set_word(magic_word::effect_id, 0);
+        magic.set_word(magic_word::hurt_type, 0);
+        magic.set_word(magic_word::attack_area_type, area_type);
+        magic.set_word(magic_word::need_mp, 5);
+        magic.set_word(magic_word::attack_begin + 2U, 20);
+        magic.set_word(magic_word::attack_begin + 3U, 20);
+        magic.set_word(magic_word::select_distance_begin + 2U, 2);
+        magic.set_word(magic_word::attack_distance_begin + 2U, 0);
+
+        openlegend::random::LegacyRandom random{1U};
+        auto session = std::make_unique<BattleSession>(
+            data_root, *ranger, random, 4, false);
+        OL_CHECK(session->valid());
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(initial_tick);
+        for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
+            OL_CHECK(session->render(*framebuffer));
+            session->finish_presented_tick(initial_tick);
+        }
+        session->advance(initial_tick);
+        OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(initial_tick);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+        OL_CHECK(session->player_action_menu().available[0U] == 0);
+        OL_CHECK(session->player_action_menu().available[1U] == 1);
+        OL_CHECK(session->player_action_menu().cursor == 0U);
+        OL_CHECK(session->handle_key(0x0DU) ==
+                 BattleSessionInputResult::action_selected);
+
+        if (area_type == 0 || area_type == 3) {
+            OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
+            if (area_type == 0) {
+                OL_CHECK(session->handle_key(0x1BU) ==
+                         BattleSessionInputResult::cursor_cancelled);
+                OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+                OL_CHECK(session->player_action_menu().cursor == 0U);
+                OL_CHECK(session->handle_key(0x0DU) ==
+                         BattleSessionInputResult::action_selected);
+                OL_CHECK(session->phase() ==
+                         BattleSessionPhase::player_targeting_select);
+            }
+            OL_CHECK(session->handle_key(0x98U) ==
+                     BattleSessionInputResult::cursor_changed);
+            OL_CHECK(session->handle_key(0x98U) ==
+                     BattleSessionInputResult::cursor_changed);
+            OL_CHECK((session->active_cursor() == BattlePathCoord{26, 26}));
+            OL_CHECK(session->handle_key(0x20U) ==
+                     BattleSessionInputResult::cursor_selected);
+            OL_CHECK((session->selected_player_target() == BattlePathCoord{26, 26}));
+        } else if (area_type == 1) {
+            OL_CHECK(session->phase() == BattleSessionPhase::player_attack_direction);
+            OL_CHECK(session->render(*framebuffer));
+            OL_CHECK(fnv1a_bytes(framebuffer->pixels()) == 0x5e46c805f42677b0ULL);
+            OL_CHECK(session->handle_key(0x1BU) == BattleSessionInputResult::ignored);
+            OL_CHECK(session->handle_key(0x98U) ==
+                     BattleSessionInputResult::direction_selected);
+            OL_CHECK(session->setup().combatants()[0U]
+                         .words[combatant_word::initial_mode] == 3);
+        } else {
+            OL_CHECK(area_type == 2);
+        }
+
+        OL_CHECK(session->phase() == BattleSessionPhase::player_magic_frame_present);
+        OL_CHECK(enemy.word(role_word::hp) < 5'000);
+        std::uint32_t tick = initial_tick;
+        std::size_t iterations = 0U;
+        std::size_t level_wait_tick_changes = 0U;
+        while (session->phase() != BattleSessionPhase::actor_present &&
+               iterations < 3U) {
+            OL_CHECK(session->phase() == BattleSessionPhase::player_magic_frame_present);
+            OL_CHECK((session->take_audio_commands() ==
+                      std::vector<BattleAudioCommand>{
+                          {BattleAudioBank::attack, 7},
+                          {BattleAudioBank::effect, 0}}));
+            std::size_t magic_frames = 0U;
+            while (session->phase() ==
+                       BattleSessionPhase::player_magic_frame_present &&
+                   magic_frames < 20U) {
+                OL_CHECK(session->render(*framebuffer));
+                session->finish_presented_tick(tick);
+                OL_CHECK(session->phase() == BattleSessionPhase::player_magic_wait);
+                session->advance(tick);
+                session->advance(++tick);
+                ++magic_frames;
+            }
+            OL_CHECK(magic_frames == 10U);
+            OL_CHECK(session->phase() ==
+                     BattleSessionPhase::player_damage_frame_present);
+            std::size_t damage_frames = 0U;
+            while (session->phase() ==
+                       BattleSessionPhase::player_damage_frame_present &&
+                   damage_frames < 20U) {
+                OL_CHECK(session->render(*framebuffer));
+                session->finish_presented_tick(tick);
+                OL_CHECK(session->phase() == BattleSessionPhase::player_damage_wait);
+                session->advance(tick);
+                session->advance(++tick);
+                ++damage_frames;
+            }
+            OL_CHECK(damage_frames == 10U);
+            OL_CHECK(session->phase() ==
+                     BattleSessionPhase::player_attack_commit_present);
+            OL_CHECK(session->render(*framebuffer));
+            session->finish_presented_tick(tick);
+            OL_CHECK(session->phase() ==
+                     BattleSessionPhase::player_attack_commit_wait);
+            session->advance(tick);
+            OL_CHECK(session->phase() ==
+                     BattleSessionPhase::player_attack_commit_wait);
+            session->advance(++tick);
+            ++iterations;
+            if (session->phase() == BattleSessionPhase::player_attack_level_present) {
+                OL_CHECK(session->render(*framebuffer));
+                OL_CHECK(fnv1a_bytes(framebuffer->pixels()) ==
+                         0x1f0048d1945a4948ULL);
+                session->finish_presented_tick(tick);
+                OL_CHECK(session->phase() ==
+                         BattleSessionPhase::player_attack_level_wait);
+                session->advance(tick);
+                while (session->phase() ==
+                           BattleSessionPhase::player_attack_level_wait &&
+                       level_wait_tick_changes < 20U) {
+                    session->advance(++tick);
+                    ++level_wait_tick_changes;
+                }
+            }
+        }
+        const auto expected_iterations = attack_twice ? 2U : 1U;
+        OL_CHECK(iterations == expected_iterations);
+        OL_CHECK(level_wait_tick_changes ==
+                 (initial_experience == 299 ? 13U : 0U));
+        OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+        OL_CHECK(session->current_actor_slot() == 1U);
+        OL_CHECK(actor.word(role_word::mp) ==
+                 static_cast<std::int16_t>(attack_twice ? 5 : 15));
+        OL_CHECK(actor.word(role_word::physical_power) == 97);
+        OL_CHECK(actor.word(role_word::magic_level_begin) >=
+                 initial_experience + static_cast<std::int16_t>(expected_iterations));
+        OL_CHECK(actor.word(role_word::magic_level_begin) <=
+                 initial_experience +
+                     static_cast<std::int16_t>(2U * expected_iterations));
+        OL_CHECK(session->setup().combatants()[0U]
+                     .words[combatant_word::action_done] == 1);
+        OL_CHECK(session->setup().combatants()[0U]
+                     .words[combatant_word::attack_counter] >=
+                 static_cast<std::int16_t>(2U * expected_iterations));
+    };
+
+    run_case(0, 800U, false, 250);
+    run_case(1, 900U, false, 250);
+    run_case(2, 1'000U, true, 299);
+    run_case(3, 1'100U, false, 250);
+    openlegend::diagnostics::shutdown_logging();
+    std::ifstream log_file{log_path, std::ios::binary};
+    const std::string log_text{
+        std::istreambuf_iterator<char>{log_file}, std::istreambuf_iterator<char>{}};
+    OL_CHECK(log_text.find("battle player attack ready id=4") != std::string::npos);
+    OL_CHECK(log_text.find("battle player attack direction selected id=4") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle player attack iteration ready id=4") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle player attack commit frame presented id=4") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "iteration=1 area_type=2 hits=1 damage_kind=1 frames=10") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "iteration=1 cost_scale=4 level_up=false") != std::string::npos);
+    OL_CHECK(log_text.find("battle player attack iteration committed id=4") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle player attack complete id=4") != std::string::npos);
+}
+
 void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     const auto log_path =
@@ -2335,10 +2550,9 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(session.phase() == BattleSessionPhase::player_magic_selection);
     OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::magic_changed);
     OL_CHECK(session.handle_key(0x0DU) == BattleSessionInputResult::magic_selected);
-    OL_CHECK(session.phase() == BattleSessionPhase::player_action_selected);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_targeting_select);
     OL_CHECK(session.selected_magic_slot() == 2);
     OL_CHECK(!session.player_magic_selection().has_value());
-    OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::ignored);
 
     openlegend::diagnostics::shutdown_logging();
     std::ifstream log_file{log_path, std::ios::binary};
@@ -4065,6 +4279,7 @@ int main() {
     run_wait_auto_render_test(data_root);
     run_player_action_availability_test(data_root);
     run_player_support_session_test(data_root);
+    run_player_attack_session_test(data_root);
     run_battle_session_test(data_root);
     run_ai_selector_test(data_root);
     run_damage_formula_test(data_root);

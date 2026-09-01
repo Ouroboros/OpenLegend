@@ -694,6 +694,8 @@ public:
         std::size_t slot, random::LegacyRandom& random) const noexcept;
     [[nodiscard]] std::optional<BattleAttackProfile> attack_profile(
         std::size_t slot, std::int16_t magic_slot) const noexcept;
+    [[nodiscard]] std::optional<std::int16_t> attack_special_bonus(
+        std::size_t slot, std::int16_t magic_slot) const noexcept;
     [[nodiscard]] std::optional<BattleMagicSelectionState> begin_magic_selection(
         std::size_t slot) const noexcept;
     [[nodiscard]] static BattleMagicSelectionResult apply_magic_selection(
@@ -875,13 +877,15 @@ public:
         std::int16_t magic_slot,
         BattlePathCoord target,
         std::int16_t special_attack_bonus,
-        random::LegacyRandom& random);
+        random::LegacyRandom& random,
+        const BattleAttackProfile* cached_area_profile = nullptr);
     [[nodiscard]] std::optional<BattleAreaResult> apply_line_attack_area(
         std::size_t actor_slot,
         std::int16_t magic_slot,
         std::int16_t direction,
         std::int16_t special_attack_bonus,
-        random::LegacyRandom& random);
+        random::LegacyRandom& random,
+        const BattleAttackProfile* cached_area_profile = nullptr);
     [[nodiscard]] std::optional<BattleMagicAnimationPlan> magic_animation_plan(
         std::size_t actor_slot,
         std::int16_t magic_slot,
@@ -896,6 +900,7 @@ public:
         std::int16_t effect_id);
     [[nodiscard]] static std::array<BattleDamageAnimationFrame, 10>
     damage_animation_frames(bool suppress_flash) noexcept;
+    [[nodiscard]] bool refresh_combatant_sprites() noexcept;
     [[nodiscard]] bool finish_attack(std::size_t slot);
 
 private:

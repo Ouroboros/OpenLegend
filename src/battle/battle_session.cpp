@@ -28,6 +28,9 @@ constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
     0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA4U, 0xA7U, 0xA4U, 0x48U, 0xAAU, 0xABU};
 constexpr std::array<std::uint8_t, 1> kSelectedMarker{'*'};
 constexpr std::array<std::uint8_t, 4> kConfirmLabel{0xB5U, 0xB2U, 0xA7U, 0xF4U};
+constexpr std::array<std::uint8_t, 12> kAttackDirectionPrompt{
+    0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xA7U, 0xF0U,
+    0xC0U, 0xBBU, 0xA4U, 0xE8U, 0xA6U, 0x56U};
 constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     {0xB2U, 0xBEU, 0xB0U, 0xCAU},
     {0xA7U, 0xF0U, 0xC0U, 0xBBU},
@@ -56,6 +59,7 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::player_action: return "player_action";
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
     case BattleSessionPhase::player_magic_selection: return "player_magic_selection";
+    case BattleSessionPhase::player_attack_direction: return "player_attack_direction";
     case BattleSessionPhase::player_movement_select: return "player_movement_select";
     case BattleSessionPhase::player_targeting_select: return "player_targeting_select";
     case BattleSessionPhase::player_magic_frame_present:
@@ -64,6 +68,14 @@ constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
     case BattleSessionPhase::player_damage_frame_present:
         return "player_damage_frame_present";
     case BattleSessionPhase::player_damage_wait: return "player_damage_wait";
+    case BattleSessionPhase::player_attack_commit_present:
+        return "player_attack_commit_present";
+    case BattleSessionPhase::player_attack_commit_wait:
+        return "player_attack_commit_wait";
+    case BattleSessionPhase::player_attack_level_present:
+        return "player_attack_level_present";
+    case BattleSessionPhase::player_attack_level_wait:
+        return "player_attack_level_wait";
     case BattleSessionPhase::player_movement_step_present:
         return "player_movement_step_present";
     case BattleSessionPhase::player_movement_wait: return "player_movement_wait";
@@ -158,6 +170,9 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
     if (phase_ == BattleSessionPhase::player_magic_selection) {
         return handle_player_magic_selection_key(translated_key);
     }
+    if (phase_ == BattleSessionPhase::player_attack_direction) {
+        return handle_player_attack_direction_key(translated_key);
+    }
     if (phase_ == BattleSessionPhase::player_movement_select) {
         return handle_player_movement_key(translated_key);
     }
@@ -230,6 +245,10 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
         static_cast<void>(advance_player_magic_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_damage_wait) {
         static_cast<void>(advance_player_damage_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::player_attack_commit_wait) {
+        static_cast<void>(advance_player_attack_commit_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::player_attack_level_wait) {
+        static_cast<void>(advance_player_attack_level_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::round_wait && bios_tick != round_tick_) {
         static_cast<void>(begin_round(bios_tick));
     }
@@ -246,6 +265,11 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
         rendered = render_player_action_menu(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_magic_selection) {
         rendered = render_player_magic_selection(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_attack_direction) {
+        rendered = render_player_attack_direction(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_attack_level_present ||
+               phase_ == BattleSessionPhase::player_attack_level_wait) {
+        rendered = render_player_attack_level(framebuffer);
     } else {
         rendered = render_battlefield(framebuffer);
         if (rendered && phase_ == BattleSessionPhase::initial_fade &&
@@ -330,6 +354,44 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             " frame=" + std::to_string(effect.damage_frame) +
             " wait_tick_changes=" +
             std::to_string(effect.animation_wait_tick_changes_remaining));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_attack_commit_present) {
+        if (!player_target_effect_ || !player_attack_) {
+            error_ = "battle player attack commit continuation is absent";
+            return;
+        }
+        player_target_effect_->animation_wait_tick = bios_tick;
+        player_target_effect_->animation_wait_tick_changes_remaining =
+            timing::legacy_delay_tick_count(17);
+        phase_ = BattleSessionPhase::player_attack_commit_wait;
+        diagnostics::log_debug(
+            "battle player attack commit frame presented id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " iteration=" + std::to_string(player_attack_->iteration) +
+            " wait_tick_changes=" +
+            std::to_string(
+                player_target_effect_->animation_wait_tick_changes_remaining));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_attack_level_present) {
+        if (!player_target_effect_ || !player_attack_) {
+            error_ = "battle player attack level continuation is absent";
+            return;
+        }
+        player_target_effect_->animation_wait_tick = bios_tick;
+        player_target_effect_->animation_wait_tick_changes_remaining =
+            timing::legacy_delay_tick_count(500);
+        phase_ = BattleSessionPhase::player_attack_level_wait;
+        diagnostics::log_debug(
+            "battle player attack level frame presented id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " iteration=" + std::to_string(player_attack_->iteration) +
+            " wait_tick_changes=" +
+            std::to_string(
+                player_target_effect_->animation_wait_tick_changes_remaining));
         return;
     }
     if (phase_ == BattleSessionPhase::automatic_present) {
@@ -895,12 +957,11 @@ bool BattleSession::begin_player_attack() {
     const auto learned_count = setup_.learned_magic_count(current_actor_slot_);
     if (learned_count == 1U) {
         selected_magic_slot_ = 0;
-        phase_ = BattleSessionPhase::player_action_selected;
         diagnostics::log_info(
             "battle player single magic selected id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
             " magic_slot=0");
-        return true;
+        return begin_player_attack_execution();
     }
 
     player_magic_selection_ = setup_.begin_magic_selection(current_actor_slot_);
@@ -966,8 +1027,167 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
         " cursor=" + std::to_string(player_magic_selection_->cursor) +
         " magic_slot=" + std::to_string(selected_magic_slot_));
     player_magic_selection_.reset();
-    phase_ = BattleSessionPhase::player_action_selected;
+    if (!begin_player_attack_execution()) {
+        return BattleSessionInputResult::ignored;
+    }
     return BattleSessionInputResult::magic_selected;
+}
+
+bool BattleSession::begin_player_attack_execution() {
+    const auto profile = setup_.attack_profile(current_actor_slot_, selected_magic_slot_);
+    const auto special_attack_bonus =
+        setup_.attack_special_bonus(current_actor_slot_, selected_magic_slot_);
+    if (!profile.has_value() || !special_attack_bonus.has_value()) {
+        error_ = "battle player attack profile is invalid";
+        return false;
+    }
+    player_attack_ = std::make_unique<PlayerAttackState>(PlayerAttackState{
+        .profile = *profile,
+        .special_attack_bonus = *special_attack_bonus,
+        .iteration = 0,
+        .target = std::nullopt,
+        .direction = -1,
+        .level_text = {},
+    });
+    setup_.clear_attack_effects();
+    selected_player_target_.reset();
+    render_state_.path_limit = 0;
+    diagnostics::log_info(
+        "battle player attack ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " magic_slot=" + std::to_string(selected_magic_slot_) +
+        " area_type=" + std::to_string(profile->area_type) +
+        " attack_count=" + std::to_string(profile->attack_count) +
+        " special_bonus=" + std::to_string(*special_attack_bonus));
+    if (profile->area_type == 0 || profile->area_type == 3) {
+        return begin_player_targeting(BattlePlayerAction::attack);
+    }
+    if (profile->area_type == 1) {
+        phase_ = BattleSessionPhase::player_attack_direction;
+        return true;
+    }
+    return begin_player_attack_iteration();
+}
+
+BattleSessionInputResult BattleSession::handle_player_attack_direction_key(
+    const std::uint8_t translated_key) {
+    if (!player_attack_) {
+        return BattleSessionInputResult::ignored;
+    }
+    std::optional<std::int16_t> direction;
+    if (translated_key == kDown) {
+        direction = 3;
+    } else if (translated_key == kRight) {
+        direction = 1;
+    } else if (translated_key == kLeft) {
+        direction = 2;
+    } else if (translated_key == kUp) {
+        direction = 0;
+    } else {
+        return BattleSessionInputResult::ignored;
+    }
+    player_attack_->direction = *direction;
+    setup_.combatants()[current_actor_slot_].words[combatant_word::initial_mode] =
+        *direction;
+    diagnostics::log_info(
+        "battle player attack direction selected id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " direction=" + std::to_string(*direction));
+    if (!begin_player_attack_iteration()) {
+        return BattleSessionInputResult::ignored;
+    }
+    return BattleSessionInputResult::direction_selected;
+}
+
+bool BattleSession::begin_player_attack_iteration(
+    const std::optional<BattlePathCoord> target) {
+    if (!player_attack_ || player_attack_->iteration < 0 ||
+        player_attack_->iteration >= player_attack_->profile.attack_count) {
+        error_ = "battle player attack iteration is invalid";
+        return false;
+    }
+    if (target.has_value()) {
+        player_attack_->target = target;
+    }
+
+    std::optional<BattleAreaResult> result{BattleAreaResult{}};
+    if (player_attack_->profile.area_type == 0 ||
+        player_attack_->profile.area_type == 3) {
+        if (!player_attack_->target.has_value()) {
+            error_ = "battle player attack target is absent";
+            return false;
+        }
+        result = setup_.apply_attack_area(
+            current_actor_slot_,
+            selected_magic_slot_,
+            *player_attack_->target,
+            player_attack_->special_attack_bonus,
+            random_,
+            &player_attack_->profile);
+    } else if (player_attack_->profile.area_type == 1) {
+        result = setup_.apply_line_attack_area(
+            current_actor_slot_,
+            selected_magic_slot_,
+            player_attack_->direction,
+            player_attack_->special_attack_bonus,
+            random_,
+            &player_attack_->profile);
+    } else if (player_attack_->profile.area_type == 2) {
+        result = setup_.apply_attack_area(
+            current_actor_slot_,
+            selected_magic_slot_,
+            BattlePathCoord{},
+            player_attack_->special_attack_bonus,
+            random_,
+            &player_attack_->profile);
+    }
+    if (!result.has_value()) {
+        error_ = setup_.valid() ? "battle player attack area failed" : setup_.error();
+        return false;
+    }
+
+    auto animation = setup_.magic_animation_plan(
+        current_actor_slot_, selected_magic_slot_, kBattleFightPointerBase);
+    if (!animation.has_value()) {
+        error_ = "battle player attack magic animation is invalid";
+        return false;
+    }
+    if (!renderer_.load_fight_package(animation->fight_head_id)) {
+        error_ = "battle player attack FIGHT package load failed";
+        return false;
+    }
+    const auto effect_id = animation->effect_sample_id;
+    player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
+        PlayerTargetEffectState{
+            .action = BattlePlayerAction::attack,
+            .magic_animation = std::move(*animation),
+            .effect_id = effect_id,
+            .damage_kind = static_cast<std::int16_t>(
+                result->effect_kind == 3 ? 5 : 1),
+            .damage_suppress_flash = false,
+            .audio_commands = {},
+        });
+    player_cursor_selection_.reset();
+    render_state_.path_limit = 0;
+    render_state_.effect_id = kBattleEffectPointerBase;
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    diagnostics::log_info(
+        "battle player attack iteration ready id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " iteration=" + std::to_string(player_attack_->iteration) +
+        " area_type=" + std::to_string(player_attack_->profile.area_type) +
+        " hits=" + std::to_string(result->hit_count) +
+        " damage_kind=" + std::to_string(player_target_effect_->damage_kind) +
+        " frames=" +
+        std::to_string(player_target_effect_->magic_animation.frames.size()));
+    if (player_target_effect_->magic_animation.frames.empty()) {
+        return begin_player_damage_animation();
+    }
+    return prepare_player_magic_frame();
 }
 
 bool BattleSession::begin_player_movement() {
@@ -992,7 +1212,9 @@ bool BattleSession::begin_player_movement() {
 
 bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
     std::optional<std::int16_t> path_limit;
-    if (action == BattlePlayerAction::use_poison) {
+    if (action == BattlePlayerAction::attack && player_attack_) {
+        path_limit = player_attack_->profile.select_distance;
+    } else if (action == BattlePlayerAction::use_poison) {
         path_limit = setup_.poison_targeting_range(current_actor_slot_);
     } else if (action == BattlePlayerAction::detoxification) {
         path_limit = setup_.detox_targeting_range(current_actor_slot_);
@@ -1131,6 +1353,10 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
         render_state_.path_limit = 0;
         player_cursor_selection_.reset();
         selected_player_target_.reset();
+        if (player_action_menu_.selected_action ==
+            static_cast<std::int16_t>(BattlePlayerAction::attack)) {
+            player_attack_.reset();
+        }
         player_action_menu_.selected_action = -1;
         phase_ = BattleSessionPhase::player_action;
         diagnostics::log_info(
@@ -1166,6 +1392,10 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
 bool BattleSession::begin_player_target_effect(
     const BattlePlayerAction action,
     const BattlePathCoord target) {
+    if (action == BattlePlayerAction::attack) {
+        return begin_player_attack_iteration(target);
+    }
+
     std::optional<BattleAreaResult> result;
     std::int16_t effect_id = 0;
     std::int16_t damage_kind = 0;
@@ -1301,6 +1531,7 @@ bool BattleSession::begin_player_damage_animation() {
         error_ = "battle player target effect continuation is absent";
         return false;
     }
+    render_state_.effect_visible = false;
     player_target_effect_->damage_animation = BattleSetup::damage_animation_frames(
         player_target_effect_->damage_suppress_flash);
     player_target_effect_->damage_frame = 0U;
@@ -1359,6 +1590,25 @@ bool BattleSession::finish_player_target_effect() {
         return false;
     }
     const auto action = player_target_effect_->action;
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    if (action == BattlePlayerAction::attack) {
+        if (!player_attack_ || !setup_.refresh_combatant_sprites()) {
+            error_ = "battle player attack sprite refresh failed";
+            return false;
+        }
+        phase_ = BattleSessionPhase::player_attack_commit_present;
+        diagnostics::log_info(
+            "battle player attack animation complete id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " iteration=" + std::to_string(player_attack_->iteration) +
+            " magic_frames=" + std::to_string(player_target_effect_->magic_frame) +
+            " damage_frames=" + std::to_string(player_target_effect_->damage_frame));
+        return true;
+    }
+
     bool finished = false;
     if (action == BattlePlayerAction::use_poison) {
         finished = setup_.finish_poison_action(current_actor_slot_);
@@ -1371,9 +1621,6 @@ bool BattleSession::finish_player_target_effect() {
         error_ = setup_.valid() ? "battle player target action completion failed" : setup_.error();
         return false;
     }
-    render_state_.effect_visible = false;
-    render_state_.damage_kind = 0;
-    render_state_.highlight_enabled = false;
     diagnostics::log_info(
         "battle player target effect complete id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
@@ -1382,6 +1629,128 @@ bool BattleSession::finish_player_target_effect() {
         " damage_frames=" + std::to_string(player_target_effect_->damage_frame));
     player_target_effect_.reset();
     return finish_current_actor(action);
+}
+
+bool BattleSession::advance_player_attack_commit_wait(
+    const std::uint32_t bios_tick) {
+    if (!player_target_effect_ || !player_attack_) {
+        error_ = "battle player attack commit continuation is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    if (bios_tick == effect.animation_wait_tick) {
+        return true;
+    }
+    effect.animation_wait_tick = bios_tick;
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        --effect.animation_wait_tick_changes_remaining;
+    }
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        return true;
+    }
+    return commit_player_attack_iteration();
+}
+
+bool BattleSession::commit_player_attack_iteration() {
+    if (!player_target_effect_ || !player_attack_) {
+        error_ = "battle player attack commit continuation is absent";
+        return false;
+    }
+    const auto level_up = setup_.commit_attack_iteration(
+        current_actor_slot_,
+        selected_magic_slot_,
+        setup_.last_hp_cost_scale(),
+        random_);
+    diagnostics::log_info(
+        "battle player attack iteration committed id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " iteration=" + std::to_string(player_attack_->iteration) +
+        " cost_scale=" + std::to_string(setup_.last_hp_cost_scale()) +
+        " level_up=" + (level_up ? std::string{"true"} : std::string{"false"}));
+    if (!level_up) {
+        return finish_player_attack_iteration();
+    }
+
+    const auto role_id = setup_.combatants()[current_actor_slot_]
+                             .words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "battle player attack level role is outside ranger records";
+        return false;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto magic_id = role.word(
+        model::role_word::magic_id_begin + static_cast<std::size_t>(selected_magic_slot_));
+    if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+        error_ = "battle player attack level magic is outside ranger records";
+        return false;
+    }
+    const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
+    const auto name = std::span<const std::uint8_t>{magic.bytes}.subspan(
+        model::magic_word::name_byte, model::magic_word::name_bytes);
+    auto& text = player_attack_->level_text;
+    const auto visible_name = terminated_name(name);
+    text.assign(visible_name.begin(), visible_name.end());
+    constexpr std::array<std::uint8_t, 8> kLevelPrefix{
+        0x20U, 0xA4U, 0xC9U, 0xACU, 0xB0U, 0xB2U, 0xC4U, 0x20U};
+    constexpr std::array<std::uint8_t, 3> kLevelSuffix{0x20U, 0xAFU, 0xC5U};
+    text.insert(text.end(), kLevelPrefix.begin(), kLevelPrefix.end());
+    const auto rank = static_cast<std::uint16_t>(
+        role.unsigned_word(
+            model::role_word::magic_level_begin +
+            static_cast<std::size_t>(selected_magic_slot_)) /
+            100U +
+        1U);
+    text.push_back(rank < 10U
+                       ? static_cast<std::uint8_t>(' ')
+                       : static_cast<std::uint8_t>('0' + rank / 10U));
+    text.push_back(static_cast<std::uint8_t>('0' + rank % 10U));
+    text.insert(text.end(), kLevelSuffix.begin(), kLevelSuffix.end());
+    phase_ = BattleSessionPhase::player_attack_level_present;
+    return true;
+}
+
+bool BattleSession::advance_player_attack_level_wait(
+    const std::uint32_t bios_tick) {
+    if (!player_target_effect_ || !player_attack_) {
+        error_ = "battle player attack level continuation is absent";
+        return false;
+    }
+    auto& effect = *player_target_effect_;
+    if (bios_tick == effect.animation_wait_tick) {
+        return true;
+    }
+    effect.animation_wait_tick = bios_tick;
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        --effect.animation_wait_tick_changes_remaining;
+    }
+    if (effect.animation_wait_tick_changes_remaining > 0) {
+        return true;
+    }
+    return finish_player_attack_iteration();
+}
+
+bool BattleSession::finish_player_attack_iteration() {
+    if (!player_target_effect_ || !player_attack_) {
+        error_ = "battle player attack iteration continuation is absent";
+        return false;
+    }
+    player_target_effect_.reset();
+    player_attack_->level_text.clear();
+    ++player_attack_->iteration;
+    if (player_attack_->iteration < player_attack_->profile.attack_count) {
+        return begin_player_attack_iteration();
+    }
+    if (!setup_.finish_attack(current_actor_slot_)) {
+        error_ = "battle player attack completion failed";
+        return false;
+    }
+    diagnostics::log_info(
+        "battle player attack complete id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " iterations=" + std::to_string(player_attack_->iteration));
+    player_attack_.reset();
+    return finish_current_actor(BattlePlayerAction::attack);
 }
 
 bool BattleSession::advance_player_movement_step() {
@@ -1698,6 +2067,35 @@ bool BattleSession::render_battlefield(
         : std::span<const std::int16_t>{};
     const auto plan = setup_.battle_render_plan(render_state_, path_values);
     return plan.has_value() && renderer_.render(*plan, framebuffer);
+}
+
+bool BattleSession::render_player_attack_direction(
+    render::IndexedFramebuffer& framebuffer) {
+    return player_attack_ && render_battlefield(framebuffer) &&
+        renderer_.draw_box(framebuffer, 122, 40, 116U, 27U) &&
+        renderer_.draw_text(
+            framebuffer, 132, 45, kAttackDirectionPrompt, 0x0705U);
+}
+
+bool BattleSession::render_player_attack_level(
+    render::IndexedFramebuffer& framebuffer) {
+    if (!player_attack_ || player_attack_->level_text.empty() ||
+        !render_battlefield(framebuffer)) {
+        return false;
+    }
+    const auto length = static_cast<int>(player_attack_->level_text.size());
+    return renderer_.draw_box(
+               framebuffer,
+               150 - 4 * length,
+               40,
+               static_cast<std::uint16_t>(8 * length + 20),
+               27U) &&
+        renderer_.draw_text(
+            framebuffer,
+            160 - 4 * length,
+            45,
+            player_attack_->level_text,
+            0x0705U);
 }
 
 bool BattleSession::render_player_magic_selection(

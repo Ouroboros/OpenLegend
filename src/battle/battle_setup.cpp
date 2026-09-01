@@ -1198,6 +1198,27 @@ std::optional<BattleAttackProfile> BattleSetup::attack_profile(
     };
 }
 
+std::optional<std::int16_t> BattleSetup::attack_special_bonus(
+    const std::size_t slot, const std::int16_t magic_slot) const noexcept {
+    const auto profile = attack_profile(slot, magic_slot);
+    if (!profile) {
+        return std::nullopt;
+    }
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return std::nullopt;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    std::int16_t bonus = 0;
+    for (const auto entry : kBattleAiSpecialAttackBonuses) {
+        if (entry.weapon_id == role.word(model::role_word::equipment_begin) &&
+            entry.magic_id == profile->magic_id) {
+            bonus = entry.bonus;
+        }
+    }
+    return bonus;
+}
+
 std::optional<BattleMagicSelectionState> BattleSetup::begin_magic_selection(
     const std::size_t slot) const noexcept {
     if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
@@ -3694,18 +3715,10 @@ std::optional<BattleAiAttackPlan> BattleSetup::begin_ai_attack_plan(
         error_ = "battle AI attack profile is outside ranger records";
         return std::nullopt;
     }
-    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+    const auto special_attack_bonus = attack_special_bonus(actor_slot, magic_slot);
+    if (!special_attack_bonus.has_value()) {
         error_ = "battle AI attack role is outside ranger records";
         return std::nullopt;
-    }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    std::int16_t special_attack_bonus = 0;
-    for (const auto entry : kBattleAiSpecialAttackBonuses) {
-        if (entry.weapon_id == actor_role.word(model::role_word::equipment_begin) &&
-            entry.magic_id == profile->magic_id) {
-            special_attack_bonus = entry.bonus;
-        }
     }
 
     const auto target = choose_ai_attack_target(actor_slot, random);
@@ -3721,7 +3734,7 @@ std::optional<BattleAiAttackPlan> BattleSetup::begin_ai_attack_plan(
     BattleAiAttackPlan plan{
         magic_slot,
         profile->magic_id,
-        special_attack_bonus,
+        *special_attack_bonus,
         profile->select_distance,
         profile->area_type,
         target->target_slot,
@@ -4941,17 +4954,21 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
     const std::int16_t magic_slot,
     const BattlePathCoord target,
     const std::int16_t special_attack_bonus,
-    random::LegacyRandom& random) {
-    const auto profile = attack_profile(actor_slot, magic_slot);
-    if (!profile) {
+    random::LegacyRandom& random,
+    const BattleAttackProfile* const cached_area_profile) {
+    const auto current_profile = attack_profile(actor_slot, magic_slot);
+    if (!current_profile) {
         error_ = "battle attack area profile is outside ranger records";
         return std::nullopt;
     }
-    if (profile->area_type != 0 && profile->area_type != 2 && profile->area_type != 3) {
+    const auto& area_profile =
+        cached_area_profile == nullptr ? *current_profile : *cached_area_profile;
+    if (area_profile.area_type != 0 && area_profile.area_type != 2 &&
+        area_profile.area_type != 3) {
         error_ = "battle line attack area requires its direction handler";
         return std::nullopt;
     }
-    if (profile->select_distance < 0 || profile->attack_distance < 0) {
+    if (area_profile.select_distance < 0 || area_profile.attack_distance < 0) {
         error_ = "battle attack area distance is negative";
         return std::nullopt;
     }
@@ -4964,7 +4981,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
                              magic_slot,
                              special_attack_bonus,
                              actor_side,
-                             hurt_type = profile->hurt_type,
+                             hurt_type = area_profile.hurt_type,
                              &random,
                              &result](
                                 const std::int32_t x,
@@ -5021,10 +5038,10 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
         return true;
     };
 
-    if (profile->area_type == 2) {
+    if (area_profile.area_type == 2) {
         const auto actor_x = actor_words[combatant_word::x];
         const auto actor_y = actor_words[combatant_word::y];
-        for (std::int32_t distance = 1; distance <= profile->select_distance; ++distance) {
+        for (std::int32_t distance = 1; distance <= area_profile.select_distance; ++distance) {
             const auto legacy_distance = static_cast<std::int16_t>(distance);
             if (!apply_cell(actor_x, actor_y - distance, legacy_distance, true) ||
                 !apply_cell(actor_x, actor_y + distance, legacy_distance, true) ||
@@ -5046,7 +5063,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
         actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
     }
 
-    const auto radius = static_cast<std::int32_t>(profile->attack_distance);
+    const auto radius = static_cast<std::int32_t>(area_profile.attack_distance);
     for (std::int32_t x = static_cast<std::int32_t>(target.x) - radius;
          x <= static_cast<std::int32_t>(target.x) + radius;
          ++x) {
@@ -5069,14 +5086,17 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
     const std::int16_t magic_slot,
     const std::int16_t direction,
     const std::int16_t special_attack_bonus,
-    random::LegacyRandom& random) {
-    const auto profile = attack_profile(actor_slot, magic_slot);
-    if (!profile) {
+    random::LegacyRandom& random,
+    const BattleAttackProfile* const cached_area_profile) {
+    const auto current_profile = attack_profile(actor_slot, magic_slot);
+    if (!current_profile) {
         error_ = "battle line attack profile is outside ranger records";
         return std::nullopt;
     }
+    const auto& area_profile =
+        cached_area_profile == nullptr ? *current_profile : *cached_area_profile;
     BattleAreaResult result{};
-    if (direction < 0 || direction > 3 || profile->select_distance < 1) {
+    if (direction < 0 || direction > 3 || area_profile.select_distance < 1) {
         return result;
     }
     constexpr std::array<BattlePathCoord, 4> kDirections{
@@ -5090,7 +5110,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
     const auto actor_side = actor_words[combatant_word::side];
     const auto actor_x = actor_words[combatant_word::x];
     const auto actor_y = actor_words[combatant_word::y];
-    for (std::int32_t distance = 1; distance <= profile->select_distance; ++distance) {
+    for (std::int32_t distance = 1; distance <= area_profile.select_distance; ++distance) {
         const auto x = static_cast<std::int32_t>(actor_x) + distance * delta.x;
         const auto y = static_cast<std::int32_t>(actor_y) + distance * delta.y;
         if (x < 0 || x >= static_cast<std::int32_t>(kBattleExtent) || y < 0 ||
@@ -5287,6 +5307,18 @@ std::array<BattleDamageAnimationFrame, 10> BattleSetup::damage_animation_frames(
             index < 4U && !suppress_flash};
     }
     return frames;
+}
+
+bool BattleSetup::refresh_combatant_sprites() noexcept {
+    if (!valid()) {
+        return false;
+    }
+    for (std::int16_t slot = 0; slot < combatant_count_; ++slot) {
+        auto& words = combatants_[static_cast<std::size_t>(slot)].words;
+        words[combatant_word::sprite] =
+            sprite_word(words[combatant_word::role_id], words[combatant_word::initial_mode]);
+    }
+    return true;
 }
 
 bool BattleSetup::finish_attack(const std::size_t slot) {
