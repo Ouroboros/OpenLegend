@@ -32,6 +32,9 @@ enum class BattleSessionPhase {
     player_item_selection,
     player_item_effect_present,
     player_item_effect_wait,
+    player_status_selection,
+    player_status_page_present,
+    player_status_page_wait,
     player_movement_select,
     player_targeting_select,
     player_effect_prelude_present,
@@ -74,6 +77,11 @@ enum class BattleSessionInputResult {
     item_cancelled,
     item_selected,
     item_effect_acknowledged,
+    status_changed,
+    status_cancelled,
+    status_selected,
+    status_page_advanced,
+    status_closed,
 };
 
 enum class BattleAudioBank : std::int16_t {
@@ -147,6 +155,10 @@ public:
     [[nodiscard]] std::int16_t player_item_page() const noexcept;
     [[nodiscard]] std::int16_t player_item_row() const noexcept;
     [[nodiscard]] std::int16_t player_item_column() const noexcept;
+    [[nodiscard]] std::size_t player_status_count() const noexcept;
+    [[nodiscard]] std::size_t player_status_cursor() const noexcept;
+    [[nodiscard]] std::int16_t player_status_role_id() const noexcept;
+    [[nodiscard]] std::uint8_t player_status_page() const noexcept;
     [[nodiscard]] std::optional<BattlePathCoord> active_cursor() const noexcept {
         return player_cursor_selection_.has_value()
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
@@ -209,6 +221,11 @@ private:
     [[nodiscard]] bool begin_player_item_selection();
     [[nodiscard]] BattleSessionInputResult handle_player_item_key(
         std::uint8_t translated_key);
+    [[nodiscard]] bool begin_player_status_selection();
+    [[nodiscard]] BattleSessionInputResult handle_player_status_selection_key(
+        std::uint8_t translated_key);
+    [[nodiscard]] BattleSessionInputResult handle_player_status_page_key(
+        std::uint8_t translated_key);
     [[nodiscard]] bool begin_player_targeting(BattlePlayerAction action);
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
         std::uint8_t translated_key);
@@ -246,6 +263,10 @@ private:
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_item_effect(
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_status_selection(
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_player_status_page(
+        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_attack_direction(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_attack_level(
@@ -273,6 +294,13 @@ private:
         std::int16_t selected_item_id{-1};
         std::optional<BattleItemEffectResult> effect_result;
         bool inventory_consumed{};
+    };
+
+    struct PlayerStatusState {
+        std::size_t party_count{};
+        std::size_t cursor{};
+        std::int16_t role_id{-1};
+        std::uint8_t page{};
     };
 
     struct PlayerTargetEffectState {
@@ -322,6 +350,7 @@ private:
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerAttackState> player_attack_;
     std::unique_ptr<PlayerItemState> player_item_;
+    std::optional<PlayerStatusState> player_status_;
     std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
     std::int16_t selected_magic_slot_{};
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;

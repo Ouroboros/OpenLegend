@@ -32,6 +32,11 @@ public:
     [[nodiscard]] bool render_status_panel(
         const BattleStatusPanelPlan& plan,
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_character_status(
+        const model::RangerState& ranger,
+        std::int16_t role_id,
+        std::uint8_t page,
+        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool draw_box(
         render::IndexedFramebuffer& framebuffer,
         int x,

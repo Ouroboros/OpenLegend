@@ -1,0 +1,49 @@
+{
+  "asset_sha256": {
+    "FONT.C16": "8d395791f14395b18f8afd98204856e3a836a1b4497de41e4bb701de2fc19c40",
+    "FONT.X16": "d821d564c90dd6b7dc78ba0cdf6c7052066a5311ffc4b6e308bc0b60af20ecec",
+    "HDGRP.GRP": "9b3ea687e0a2d82cc0dd83f580cff6a5cb48e7b62b6fd98dc4b63dad93a9c037",
+    "HDGRP.IDX": "4c992c82d1f88fbe7f8cd145222b93c5715ee4b42f540ba6264ba2d22895ca35",
+    "MMAP.COL": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
+    "WAR.STA": "98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6",
+    "WARFLD.GRP": "58cc936f758bd2ca23b0b6e818e14adf76845e822f03a9910c01b9987215c9bf",
+    "WARFLD.IDX": "b5fdbb1775206c1de72bc6f5e7e9b45cfa126f2a2cd0d1a4384f4a00801ee7be",
+    "WDX002": "dd9ba2643fb4e0461e9d9bb5ddf3af6dccc3a5188d27760ae21e91a00a752847",
+    "WMP002": "a58afad2d6bf1cc5792d4ff7a180f11fcb5a19a7322db5317ce6637e573a2f92"
+  },
+  "battle_id": 4,
+  "battlefield_id": 2,
+  "fixture": {
+    "equipment_secondary_name_hex": [
+      "a44aa44c",
+      "a44ea450"
+    ],
+    "experience": 1234,
+    "iq": 75,
+    "item_experience": 15,
+    "level": 5,
+    "magic_id": 5,
+    "magic_name_hex": "a456a458",
+    "magic_proficiency": 800,
+    "practice_experience_factor": 2,
+    "practice_required_experience": 540,
+    "practice_secondary_name_hex": "a452a454",
+    "role_name_hex": "a444a446a448"
+  },
+  "format": "openlegend-b8-player-status-golden-v1",
+  "hashes": {
+    "status_page_0": "0x1c5e879ce61d5b34",
+    "status_page_1": "0x9592da33a3c151d4",
+    "status_selection": "0xfa1b21403051335c"
+  },
+  "party": [
+    1,
+    2
+  ],
+  "selected_party_slot": 1,
+  "selected_role_id": 2,
+  "view": [
+    15,
+    13
+  ]
+}

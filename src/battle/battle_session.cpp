@@ -31,6 +31,9 @@ constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
     0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA4U, 0xA7U, 0xA4U, 0x48U, 0xAAU, 0xABU};
 constexpr std::array<std::uint8_t, 1> kSelectedMarker{'*'};
 constexpr std::array<std::uint8_t, 4> kConfirmLabel{0xB5U, 0xB2U, 0xA7U, 0xF4U};
+constexpr std::array<std::uint8_t, 14> kStatusSelectionTitle{
+    0xADU, 0x6EU, 0xACU, 0x64U, 0xBEU, 0x5CU, 0xBDU,
+    0xD6U, 0xAAU, 0xBAU, 0xAAU, 0xACU, 0xBAU, 0x41U};
 constexpr std::array<std::uint8_t, 12> kAttackDirectionPrompt{
     0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xA7U, 0xF0U,
     0xC0U, 0xBBU, 0xA4U, 0xE8U, 0xA6U, 0x56U};
@@ -100,6 +103,9 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     case BattleSessionPhase::player_item_selection: return "player_item_selection";
     case BattleSessionPhase::player_item_effect_present: return "player_item_effect_present";
     case BattleSessionPhase::player_item_effect_wait: return "player_item_effect_wait";
+    case BattleSessionPhase::player_status_selection: return "player_status_selection";
+    case BattleSessionPhase::player_status_page_present: return "player_status_page_present";
+    case BattleSessionPhase::player_status_page_wait: return "player_status_page_wait";
     case BattleSessionPhase::player_movement_select: return "player_movement_select";
     case BattleSessionPhase::player_targeting_select: return "player_targeting_select";
     case BattleSessionPhase::player_effect_prelude_present:
@@ -237,6 +243,22 @@ std::int16_t BattleSession::player_item_column() const noexcept {
     return player_item_ ? player_item_->column : 0;
 }
 
+std::size_t BattleSession::player_status_count() const noexcept {
+    return player_status_.has_value() ? player_status_->party_count : 0U;
+}
+
+std::size_t BattleSession::player_status_cursor() const noexcept {
+    return player_status_.has_value() ? player_status_->cursor : 0U;
+}
+
+std::int16_t BattleSession::player_status_role_id() const noexcept {
+    return player_status_.has_value() ? player_status_->role_id : -1;
+}
+
+std::uint8_t BattleSession::player_status_page() const noexcept {
+    return player_status_.has_value() ? player_status_->page : 0U;
+}
+
 BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated_key) {
     if (!valid() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
@@ -252,6 +274,12 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
     }
     if (phase_ == BattleSessionPhase::player_item_selection) {
         return handle_player_item_key(translated_key);
+    }
+    if (phase_ == BattleSessionPhase::player_status_selection) {
+        return handle_player_status_selection_key(translated_key);
+    }
+    if (phase_ == BattleSessionPhase::player_status_page_wait) {
+        return handle_player_status_page_key(translated_key);
     }
     if (phase_ == BattleSessionPhase::player_item_effect_wait) {
         if (!player_item_ || !player_item_->effect_result.has_value() ||
@@ -371,6 +399,11 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
     } else if (phase_ == BattleSessionPhase::player_item_effect_present ||
                phase_ == BattleSessionPhase::player_item_effect_wait) {
         rendered = render_player_item_effect(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_status_selection) {
+        rendered = render_player_status_selection(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_status_page_present ||
+               phase_ == BattleSessionPhase::player_status_page_wait) {
+        rendered = render_player_status_page(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_attack_direction) {
         rendered = render_player_attack_direction(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_attack_level_present ||
@@ -420,6 +453,19 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             diagnostics::log_info(
                 "battle initial fade complete id=" + std::to_string(battle_id()));
         }
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_status_page_present) {
+        if (!player_status_.has_value() || player_status_->page > 1U) {
+            error_ = "battle player status page continuation is absent";
+            return;
+        }
+        phase_ = BattleSessionPhase::player_status_page_wait;
+        diagnostics::log_info(
+            "battle player status page presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " role=" + std::to_string(player_status_->role_id) +
+            " page=" + std::to_string(player_status_->page));
         return;
     }
     if (phase_ == BattleSessionPhase::player_item_effect_present) {
@@ -1494,6 +1540,95 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
     return BattleSessionInputResult::item_changed;
 }
 
+bool BattleSession::begin_player_status_selection() {
+    std::size_t party_count = model::kTeamMemberCount;
+    for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
+        if (ranger_.header.team_member(slot).value <= 0) {
+            party_count = slot;
+            break;
+        }
+    }
+    player_status_ = PlayerStatusState{
+        .party_count = party_count,
+        .cursor = 0U,
+        .role_id = -1,
+        .page = 0U,
+    };
+    phase_ = BattleSessionPhase::player_status_selection;
+    diagnostics::log_info(
+        "battle player status selection ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " party=" + std::to_string(party_count));
+    return true;
+}
+
+BattleSessionInputResult BattleSession::handle_player_status_selection_key(
+    const std::uint8_t translated_key) {
+    if (!player_status_.has_value() || player_status_->party_count == 0U) {
+        return BattleSessionInputResult::ignored;
+    }
+    auto& status = *player_status_;
+    if (translated_key == kDown) {
+        status.cursor = status.cursor + 1U == status.party_count ? 0U : status.cursor + 1U;
+    } else if (translated_key == kUp) {
+        status.cursor = status.cursor == 0U ? status.party_count - 1U : status.cursor - 1U;
+    } else if (translated_key == kEscape) {
+        diagnostics::log_info(
+            "battle player status selection cancelled id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_));
+        player_status_.reset();
+        player_action_menu_.selected_action = -1;
+        phase_ = BattleSessionPhase::player_action;
+        return BattleSessionInputResult::status_cancelled;
+    } else if (!confirms(translated_key)) {
+        return BattleSessionInputResult::ignored;
+    } else {
+        const auto role_id = ranger_.header.team_member(status.cursor).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            error_ = "battle player status role id is outside RANGER records";
+            return BattleSessionInputResult::ignored;
+        }
+        status.role_id = role_id;
+        status.page = 0U;
+        phase_ = BattleSessionPhase::player_status_page_present;
+        diagnostics::log_info(
+            "battle player status selected id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " party_slot=" + std::to_string(status.cursor) +
+            " role=" + std::to_string(role_id));
+        return BattleSessionInputResult::status_selected;
+    }
+    diagnostics::log_debug(
+        "battle player status cursor id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " cursor=" + std::to_string(status.cursor));
+    return BattleSessionInputResult::status_changed;
+}
+
+BattleSessionInputResult BattleSession::handle_player_status_page_key(
+    const std::uint8_t translated_key) {
+    if (!player_status_.has_value() || translated_key == 0U) {
+        return BattleSessionInputResult::ignored;
+    }
+    if (player_status_->page == 0U) {
+        player_status_->page = 1U;
+        phase_ = BattleSessionPhase::player_status_page_present;
+        diagnostics::log_info(
+            "battle player status page advanced id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " role=" + std::to_string(player_status_->role_id));
+        return BattleSessionInputResult::status_page_advanced;
+    }
+    diagnostics::log_info(
+        "battle player status closed id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " role=" + std::to_string(player_status_->role_id));
+    player_status_.reset();
+    player_action_menu_.selected_action = -1;
+    phase_ = BattleSessionPhase::player_action;
+    return BattleSessionInputResult::status_closed;
+}
+
 bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
     std::optional<std::int16_t> path_limit;
     if (action == BattlePlayerAction::attack && player_attack_) {
@@ -2354,7 +2489,7 @@ bool BattleSession::dispatch_selected_player_action() {
     case BattlePlayerAction::item:
         return begin_player_item_selection();
     case BattlePlayerAction::status:
-        return true;
+        return begin_player_status_selection();
     }
     error_ = "battle player action id is invalid";
     return false;
@@ -2791,6 +2926,52 @@ bool BattleSession::render_player_item_effect(
         ++visible_row;
     }
     return true;
+}
+
+bool BattleSession::render_player_status_selection(
+    render::IndexedFramebuffer& framebuffer) {
+    if (!player_status_.has_value() || player_status_->party_count == 0U ||
+        player_status_->cursor >= player_status_->party_count ||
+        !render_battlefield(framebuffer) ||
+        !renderer_.draw_box(framebuffer, 70, 18, 124U, 26U) ||
+        !renderer_.draw_text(framebuffer, 75, 22, kStatusSelectionTitle, 0x0705U) ||
+        !renderer_.draw_box(
+            framebuffer,
+            70,
+            45,
+            62U,
+            static_cast<std::uint16_t>(20U * player_status_->party_count + 10U))) {
+        return false;
+    }
+    for (std::size_t slot = 0U; slot < player_status_->party_count; ++slot) {
+        const auto role_id = ranger_.header.team_member(slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+            return false;
+        }
+        const auto name_storage = std::span<const std::uint8_t>{
+            ranger_.roles[static_cast<std::size_t>(role_id)].bytes}.subspan(
+                model::role_word::name_byte,
+                model::role_word::name_bytes);
+        const auto name_x = centered_name_x(name_storage);
+        if (name_x.has_value() &&
+            !renderer_.draw_text(
+                framebuffer,
+                *name_x,
+                52 + 20 * static_cast<int>(slot),
+                terminated_name(name_storage),
+                slot == player_status_->cursor ? 0x6663U : 0x2321U)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BattleSession::render_player_status_page(
+    render::IndexedFramebuffer& framebuffer) {
+    return player_status_.has_value() && player_status_->role_id >= 0 &&
+        render_battlefield(framebuffer) &&
+        renderer_.render_character_status(
+            ranger_, player_status_->role_id, player_status_->page, framebuffer);
 }
 
 bool BattleSession::render_player_action_menu(
