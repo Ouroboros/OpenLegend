@@ -897,8 +897,7 @@ bool BattleSession::dispatch_selected_ai_action() {
                 ai_request_plan_->movement_value,
                 AiMovementContinuation::request);
         }
-        phase_ = BattleSessionPhase::ai_action_selected;
-        return true;
+        return continue_ai_request_plan();
     case BattleAiHandler::detox:
     case BattleAiHandler::medicine:
         ai_support_plan_ = setup_.begin_ai_support_plan(current_actor_slot_, choice);
@@ -913,11 +912,7 @@ bool BattleSession::dispatch_selected_ai_action() {
                 ai_support_plan_->movement_value,
                 AiMovementContinuation::support);
         }
-        if (ai_support_plan_->next_step == BattleAiSupportNextStep::rest) {
-            return finish_ai_handler(BattlePlayerAction::rest, true);
-        }
-        phase_ = BattleSessionPhase::ai_action_selected;
-        return true;
+        return continue_ai_support_plan();
     case BattleAiHandler::throwing_weapon:
         ai_item_plan_ = setup_.begin_ai_throwing_weapon_plan(
             current_actor_slot_, choice, random_);
@@ -1052,6 +1047,129 @@ bool BattleSession::begin_ai_poison_execution() {
         " target=" + std::to_string(ai_poison_plan_->target_slot) +
         " target_coordinate=" + std::to_string(target.x) + "," +
         std::to_string(target.y) +
+        " hits=" + std::to_string(result->hit_count) +
+        " frames=" +
+        std::to_string(player_target_effect_->magic_animation.frames.size()));
+    return prepare_player_magic_frame();
+}
+
+bool BattleSession::continue_ai_request_plan() {
+    if (!ai_request_plan_.has_value() ||
+        ai_request_plan_->next_step != BattleAiRequestNextStep::automatic_attack) {
+        error_ = "battle AI request continuation plan is invalid";
+        return false;
+    }
+    diagnostics::log_info(
+        "battle AI request attack ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" +
+        std::to_string(static_cast<std::int16_t>(ai_request_plan_->request_action)) +
+        " target=" + std::to_string(ai_request_plan_->target_slot) +
+        " target_coordinate=" + std::to_string(ai_request_plan_->target.x) + "," +
+        std::to_string(ai_request_plan_->target.y));
+    ai_request_plan_.reset();
+    return begin_ai_attack_action();
+}
+
+bool BattleSession::continue_ai_support_plan() {
+    if (!ai_support_plan_.has_value()) {
+        error_ = "battle AI support continuation plan is absent";
+        return false;
+    }
+    if (ai_support_plan_->next_step == BattleAiSupportNextStep::apply_support) {
+        return begin_ai_support_execution();
+    }
+    if (ai_support_plan_->next_step == BattleAiSupportNextStep::automatic_attack) {
+        diagnostics::log_info(
+            "battle AI support fallback attack id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " action=" +
+            std::to_string(static_cast<std::int16_t>(ai_support_plan_->support_action)) +
+            " target=" + std::to_string(ai_support_plan_->target_slot));
+        ai_support_plan_.reset();
+        return begin_ai_attack_action();
+    }
+    if (ai_support_plan_->next_step == BattleAiSupportNextStep::rest) {
+        diagnostics::log_info(
+            "battle AI support fallback rest id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " action=" +
+            std::to_string(static_cast<std::int16_t>(ai_support_plan_->support_action)) +
+            " target=" + std::to_string(ai_support_plan_->target_slot));
+        ai_support_plan_.reset();
+        return finish_ai_handler(BattlePlayerAction::rest, true);
+    }
+    error_ = "battle AI support continuation remained in movement state";
+    return false;
+}
+
+bool BattleSession::begin_ai_support_execution() {
+    if (!ai_support_plan_.has_value() ||
+        ai_support_plan_->next_step != BattleAiSupportNextStep::apply_support ||
+        ai_support_plan_->target_slot < 0 ||
+        ai_support_plan_->target_slot >= setup_.combatant_count()) {
+        error_ = "battle AI support execution plan is invalid";
+        return false;
+    }
+    const auto medicine =
+        ai_support_plan_->support_action == BattleAiAction::medicine;
+    if (!medicine && ai_support_plan_->support_action != BattleAiAction::detox) {
+        error_ = "battle AI support action is invalid";
+        return false;
+    }
+    const auto target_slot = static_cast<std::size_t>(ai_support_plan_->target_slot);
+    const auto& target_words = setup_.combatants()[target_slot].words;
+    const BattlePathCoord target{
+        target_words[combatant_word::x], target_words[combatant_word::y]};
+    const auto result = medicine
+        ? setup_.apply_medicine_target(current_actor_slot_, target, random_)
+        : setup_.apply_detox_target(current_actor_slot_, target, random_);
+    if (!result.has_value()) {
+        error_ = setup_.valid() ? "battle AI support state application failed" : setup_.error();
+        return false;
+    }
+
+    const auto action = medicine ? BattlePlayerAction::medicine
+                                 : BattlePlayerAction::detoxification;
+    const std::int16_t effect_id = medicine ? 0 : 36;
+    const std::int16_t damage_kind = medicine ? 4 : 3;
+    selected_magic_slot_ = 0;
+    auto animation = setup_.magic_animation_plan(
+        current_actor_slot_, selected_magic_slot_, 0, effect_id, kBattleFightPointerBase);
+    if (!animation.has_value()) {
+        error_ = "battle AI support magic animation is invalid";
+        return false;
+    }
+    if (!renderer_.load_fight_package(animation->fight_head_id)) {
+        error_ = "battle AI support FIGHT package load failed";
+        return false;
+    }
+    player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
+        PlayerTargetEffectState{
+            .action = action,
+            .ai_controlled = true,
+            .magic_animation = std::move(*animation),
+            .effect_animation = std::nullopt,
+            .effect_id = effect_id,
+            .damage_kind = damage_kind,
+            .damage_suppress_flash = true,
+            .audio_commands = {},
+        });
+    render_state_.path_limit = 0;
+    render_state_.primary_cursor = target;
+    render_state_.effect_id = kBattleEffectPointerBase;
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    diagnostics::log_info(
+        "battle AI support effect ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " action=" + std::to_string(static_cast<std::int16_t>(action)) +
+        " target=" + std::to_string(ai_support_plan_->target_slot) +
+        " target_coordinate=" + std::to_string(target.x) + "," +
+        std::to_string(target.y) +
+        " effect=" + std::to_string(effect_id) +
+        " damage_kind=" + std::to_string(damage_kind) +
         " hits=" + std::to_string(result->hit_count) +
         " frames=" +
         std::to_string(player_target_effect_->magic_animation.frames.size()));
@@ -1283,7 +1401,12 @@ bool BattleSession::finish_ai_movement() {
             error_ = "battle AI request continuation failed";
             return false;
         }
-        break;
+        diagnostics::log_info(
+            "battle AI movement continuation ready id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " continuation=" + std::to_string(static_cast<int>(continuation)));
+        return continue_ai_request_plan();
     case AiMovementContinuation::support:
         if (!ai_support_plan_.has_value()) {
             error_ = "battle AI support continuation plan is absent";
@@ -1295,10 +1418,12 @@ bool BattleSession::finish_ai_movement() {
             error_ = setup_.valid() ? "battle AI support continuation failed" : setup_.error();
             return false;
         }
-        if (ai_support_plan_->next_step == BattleAiSupportNextStep::rest) {
-            return finish_ai_handler(BattlePlayerAction::rest, true);
-        }
-        break;
+        diagnostics::log_info(
+            "battle AI movement continuation ready id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " continuation=" + std::to_string(static_cast<int>(continuation)));
+        return continue_ai_support_plan();
     case AiMovementContinuation::throwing_weapon:
         if (!ai_item_plan_.has_value()) {
             error_ = "battle AI throwing-weapon continuation plan is absent";
@@ -2409,6 +2534,9 @@ bool BattleSession::finish_player_target_effect() {
     if (ai_controlled) {
         if (action == BattlePlayerAction::use_poison) {
             ai_poison_plan_.reset();
+        } else if (action == BattlePlayerAction::detoxification ||
+                   action == BattlePlayerAction::medicine) {
+            ai_support_plan_.reset();
         }
         return finish_ai_handler(action, false);
     }

@@ -203,6 +203,9 @@ private:
     [[nodiscard]] bool begin_ai_attack_execution();
     [[nodiscard]] bool continue_ai_poison_plan();
     [[nodiscard]] bool begin_ai_poison_execution();
+    [[nodiscard]] bool continue_ai_request_plan();
+    [[nodiscard]] bool continue_ai_support_plan();
+    [[nodiscard]] bool begin_ai_support_execution();
     [[nodiscard]] bool begin_ai_movement_to(
         std::int16_t target_slot,
         BattlePathCoord target,
