@@ -2241,11 +2241,42 @@ bool BattleSetup::finish_throwing_weapon_action(
     return refresh_combatant_sprites();
 }
 
+bool BattleSetup::consume_ai_item(
+    const std::size_t actor_slot,
+    const BattleAiChoice& choice) noexcept {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        (choice.action != BattleAiAction::item &&
+         choice.action != BattleAiAction::throwing_weapon) ||
+        choice.item_slot < 0 || !ai_item_id(actor_slot, choice).has_value()) {
+        return false;
+    }
+    const auto slot = static_cast<std::size_t>(choice.item_slot);
+    if (choice.item_source == BattleAiItemSource::inventory) {
+        return consume_inventory_item_slot(slot);
+    }
+    if (choice.item_source != BattleAiItemSource::carried ||
+        slot >= model::role_word::taking_item_count) {
+        return false;
+    }
+    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return false;
+    }
+    auto& actor = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto remaining = wrapping_i16(
+        static_cast<std::int32_t>(
+            actor.word(model::role_word::taking_item_count_begin + slot)) -
+        1);
+    actor.set_word(model::role_word::taking_item_count_begin + slot, remaining);
+    return remaining > 0 || remove_carried_item_slot(actor_slot, slot);
+}
+
 std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_target(
     const std::size_t actor_slot,
     const BattlePathCoord target,
     const BattleAiChoice& choice,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random,
+    const bool consume_item) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
         choice.action != BattleAiAction::throwing_weapon) {
         error_ = "battle AI throwing-weapon action is outside legacy state";
@@ -2349,38 +2380,15 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
     }
     target_role.set_word(model::role_word::poison, changed_poison);
 
-    if (choice.item_source == BattleAiItemSource::inventory) {
-        const auto slot = static_cast<std::size_t>(choice.item_slot);
-        const auto remaining = wrapping_i16(
-            static_cast<std::int32_t>(ranger_.header.inventory_count(slot)) - 1);
-        ranger_.header.set_inventory(slot, model::ItemId{*item_id}, remaining);
-        if (remaining <= 0) {
-            for (std::size_t source = slot + 1U; source < model::kInventoryCount; ++source) {
-                ranger_.header.set_inventory(
-                    source - 1U,
-                    ranger_.header.inventory_item(source),
-                    ranger_.header.inventory_count(source));
-            }
-            ranger_.header.set_inventory(
-                model::kInventoryCount - 1U, model::ItemId{-1}, 0);
-        }
-    } else {
-        const auto slot = static_cast<std::size_t>(choice.item_slot);
-        auto remaining = wrapping_i16(
-            static_cast<std::int32_t>(
-                actor.word(model::role_word::taking_item_count_begin + slot)) -
-            1);
-        actor.set_word(model::role_word::taking_item_count_begin + slot, remaining);
-        if (remaining <= 0 && !remove_carried_item_slot(actor_slot, slot)) {
-            return std::nullopt;
-        }
+    if (consume_item && !consume_ai_item(actor_slot, choice)) {
+        return std::nullopt;
     }
 
     BattleThrownItemResult result{};
     result.hit_count = 1;
     result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
     result.damage = damage;
-    result.inventory_consumed = true;
+    result.inventory_consumed = consume_item;
     return result;
 }
 
@@ -2612,21 +2620,8 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
     if (!consume_item) {
         return result;
     }
-    if (choice.item_source == BattleAiItemSource::inventory) {
-        const auto slot = static_cast<std::size_t>(choice.item_slot);
-        if (!consume_inventory_item_slot(slot)) {
-            return std::nullopt;
-        }
-    } else {
-        const auto slot = static_cast<std::size_t>(choice.item_slot);
-        auto remaining = wrapping_i16(
-            static_cast<std::int32_t>(
-                actor.word(model::role_word::taking_item_count_begin + slot)) -
-            1);
-        actor.set_word(model::role_word::taking_item_count_begin + slot, remaining);
-        if (remaining <= 0 && !remove_carried_item_slot(actor_slot, slot)) {
-            return std::nullopt;
-        }
+    if (!consume_ai_item(actor_slot, choice)) {
+        return std::nullopt;
     }
     result.item_consumed = true;
     return result;

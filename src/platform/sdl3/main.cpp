@@ -288,7 +288,8 @@ int main(const int argc, const char* const* argv) {
                         game.handle_key(
                             translated_key,
                             keyboard.down(0x82U),
-                            keyboard.down(0x83U) || keyboard.down(0x84U));
+                            keyboard.down(0x83U) || keyboard.down(0x84U),
+                            frame_tick);
                         if (translated_key == 0x1BU) {
                             keyboard.consume_edge(0x1BU);
                         }

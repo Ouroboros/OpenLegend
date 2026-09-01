@@ -773,12 +773,16 @@ public:
         std::size_t actor_slot,
         BattlePathCoord target,
         const BattleAiChoice& choice,
-        random::LegacyRandom& random);
+        random::LegacyRandom& random,
+        bool consume_item = true);
     [[nodiscard]] std::optional<BattleItemEffectResult> apply_ai_item_effect(
         std::size_t actor_slot,
         const BattleAiChoice& choice,
         random::LegacyRandom& random,
         bool consume_item = true);
+    [[nodiscard]] bool consume_ai_item(
+        std::size_t actor_slot,
+        const BattleAiChoice& choice) noexcept;
     [[nodiscard]] std::optional<BattleRestResult> rest_actor(
         std::size_t actor_slot,
         random::LegacyRandom& random);

@@ -44,7 +44,11 @@ public:
     LegacyGameRuntime(std::filesystem::path data_root, std::uint32_t random_seed);
 
     void advance(std::uint32_t bios_tick = 0U);
-    void handle_key(std::uint8_t translated_key, bool control_down, bool shift_down);
+    void handle_key(
+        std::uint8_t translated_key,
+        bool control_down,
+        bool shift_down,
+        std::optional<std::uint32_t> bios_tick = std::nullopt);
     bool handle_world_input(
         bool left,
         bool up,

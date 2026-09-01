@@ -53,7 +53,11 @@ enum class BattleSessionPhase {
     ai_action,
     ai_prelude_present,
     ai_wait,
-    ai_action_selected,
+    ai_item_effect_present,
+    ai_item_effect_wait,
+    ai_item_post_effect_wait,
+    ai_effect_prelude_present,
+    ai_effect_prelude_wait,
     ai_magic_frame_present,
     ai_magic_wait,
     ai_damage_frame_present,
@@ -176,7 +180,9 @@ public:
         return selected_player_target_;
     }
 
-    [[nodiscard]] BattleSessionInputResult handle_key(std::uint8_t translated_key);
+    [[nodiscard]] BattleSessionInputResult handle_key(
+        std::uint8_t translated_key,
+        std::optional<std::uint32_t> bios_tick = std::nullopt);
     [[nodiscard]] std::vector<BattleAudioCommand> take_audio_commands();
     void advance(std::uint32_t bios_tick = 0U);
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer);
@@ -206,6 +212,12 @@ private:
     [[nodiscard]] bool continue_ai_request_plan();
     [[nodiscard]] bool continue_ai_support_plan();
     [[nodiscard]] bool begin_ai_support_execution();
+    [[nodiscard]] bool continue_ai_item_plan();
+    [[nodiscard]] bool begin_ai_item_execution();
+    [[nodiscard]] bool begin_ai_throwing_weapon_execution();
+    [[nodiscard]] bool begin_ai_item_post_effect_wait();
+    [[nodiscard]] bool advance_ai_item_post_effect_wait(std::uint32_t bios_tick);
+    [[nodiscard]] bool finish_ai_item_action();
     [[nodiscard]] bool begin_ai_movement_to(
         std::int16_t target_slot,
         BattlePathCoord target,
@@ -359,6 +371,8 @@ private:
     std::optional<BattleAiItemPlan> ai_item_plan_;
     std::optional<BattleAiRequestPlan> ai_request_plan_;
     std::optional<BattleAiSupportPlan> ai_support_plan_;
+    std::uint32_t ai_item_wait_tick_{};
+    std::int32_t ai_item_wait_tick_changes_remaining_{};
     std::uint32_t ai_movement_wait_tick_{};
     std::int32_t ai_movement_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};

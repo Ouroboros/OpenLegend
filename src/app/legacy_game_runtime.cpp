@@ -239,7 +239,8 @@ bool LegacyGameRuntime::handle_world_input(
 void LegacyGameRuntime::handle_key(
     const std::uint8_t translated_key,
     const bool control_down,
-    const bool shift_down) {
+    const bool shift_down,
+    const std::optional<std::uint32_t> bios_tick) {
     if (!valid() || translated_key == 0U || view_ == LegacyGameView::exited) {
         return;
     }
@@ -329,7 +330,7 @@ void LegacyGameRuntime::handle_key(
     }
     case LegacyGameView::battle:
         if (battle_session_ != nullptr) {
-            static_cast<void>(battle_session_->handle_key(translated_key));
+            static_cast<void>(battle_session_->handle_key(translated_key, bios_tick));
         }
         break;
     case LegacyGameView::game_menu:

@@ -134,7 +134,12 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     case BattleSessionPhase::ai_action: return "ai_action";
     case BattleSessionPhase::ai_prelude_present: return "ai_prelude_present";
     case BattleSessionPhase::ai_wait: return "ai_wait";
-    case BattleSessionPhase::ai_action_selected: return "ai_action_selected";
+    case BattleSessionPhase::ai_item_effect_present: return "ai_item_effect_present";
+    case BattleSessionPhase::ai_item_effect_wait: return "ai_item_effect_wait";
+    case BattleSessionPhase::ai_item_post_effect_wait: return "ai_item_post_effect_wait";
+    case BattleSessionPhase::ai_effect_prelude_present:
+        return "ai_effect_prelude_present";
+    case BattleSessionPhase::ai_effect_prelude_wait: return "ai_effect_prelude_wait";
     case BattleSessionPhase::ai_magic_frame_present: return "ai_magic_frame_present";
     case BattleSessionPhase::ai_magic_wait: return "ai_magic_wait";
     case BattleSessionPhase::ai_damage_frame_present: return "ai_damage_frame_present";
@@ -270,7 +275,9 @@ std::uint8_t BattleSession::player_status_page() const noexcept {
     return player_status_.has_value() ? player_status_->page : 0U;
 }
 
-BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated_key) {
+BattleSessionInputResult BattleSession::handle_key(
+    const std::uint8_t translated_key,
+    const std::optional<std::uint32_t> bios_tick) {
     if (!valid() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
     }
@@ -309,6 +316,23 @@ BattleSessionInputResult BattleSession::handle_key(const std::uint8_t translated
         if (!finish_current_actor(BattlePlayerAction::item)) {
             return BattleSessionInputResult::ignored;
         }
+        return BattleSessionInputResult::item_effect_acknowledged;
+    }
+    if (phase_ == BattleSessionPhase::ai_item_effect_wait) {
+        if (bios_tick.has_value()) {
+            ai_item_wait_tick_ = *bios_tick;
+        }
+        if (!player_item_ || !player_item_->effect_result.has_value() ||
+            !begin_ai_item_post_effect_wait()) {
+            return BattleSessionInputResult::ignored;
+        }
+        diagnostics::log_info(
+            "battle AI item effect acknowledged id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " item=" + std::to_string(player_item_->selected_item_id) +
+            " effects=" + std::to_string(player_item_->effect_result->effect_count) +
+            " wait_tick_changes=" +
+            std::to_string(ai_item_wait_tick_changes_remaining_));
         return BattleSessionInputResult::item_effect_acknowledged;
     }
     if (phase_ == BattleSessionPhase::player_movement_select) {
@@ -379,8 +403,11 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
         static_cast<void>(advance_ai_movement_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_movement_wait) {
         static_cast<void>(advance_player_movement_wait(bios_tick));
-    } else if (phase_ == BattleSessionPhase::player_effect_prelude_wait) {
+    } else if (phase_ == BattleSessionPhase::player_effect_prelude_wait ||
+               phase_ == BattleSessionPhase::ai_effect_prelude_wait) {
         static_cast<void>(advance_player_effect_prelude_wait(bios_tick));
+    } else if (phase_ == BattleSessionPhase::ai_item_post_effect_wait) {
+        static_cast<void>(advance_ai_item_post_effect_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::player_magic_wait ||
                phase_ == BattleSessionPhase::ai_magic_wait) {
         static_cast<void>(advance_player_magic_wait(bios_tick));
@@ -412,7 +439,12 @@ bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
     } else if (phase_ == BattleSessionPhase::player_item_selection) {
         rendered = render_player_item_selection(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_item_effect_present ||
-               phase_ == BattleSessionPhase::player_item_effect_wait) {
+               phase_ == BattleSessionPhase::player_item_effect_wait ||
+               phase_ == BattleSessionPhase::ai_item_effect_present ||
+               phase_ == BattleSessionPhase::ai_item_effect_wait ||
+               (phase_ == BattleSessionPhase::ai_item_post_effect_wait &&
+                player_item_ && player_item_->effect_result.has_value() &&
+                player_item_->effect_result->has_effect)) {
         rendered = render_player_item_effect(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_status_selection) {
         rendered = render_player_status_selection(framebuffer);
@@ -504,18 +536,38 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             " effects=" + std::to_string(player_item_->effect_result->effect_count));
         return;
     }
-    if (phase_ == BattleSessionPhase::player_effect_prelude_present) {
+    if (phase_ == BattleSessionPhase::ai_item_effect_present) {
+        if (!player_item_ || !player_item_->effect_result.has_value() ||
+            !player_item_->effect_result->has_effect ||
+            player_item_->effect_result->item_consumed) {
+            error_ = "battle AI item effect continuation is invalid";
+            return;
+        }
+        ai_item_wait_tick_ = bios_tick;
+        phase_ = BattleSessionPhase::ai_item_effect_wait;
+        diagnostics::log_info(
+            "battle AI item effect presented id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " item=" + std::to_string(player_item_->selected_item_id) +
+            " effects=" + std::to_string(player_item_->effect_result->effect_count));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_effect_prelude_present ||
+        phase_ == BattleSessionPhase::ai_effect_prelude_present) {
+        const auto ai_controlled = phase_ == BattleSessionPhase::ai_effect_prelude_present;
         if (!player_target_effect_ || !player_target_effect_->effect_animation.has_value()) {
-            error_ = "battle player effect prelude continuation is absent";
+            error_ = "battle effect prelude continuation is absent";
             return;
         }
         player_target_effect_->animation_wait_tick = bios_tick;
         player_target_effect_->animation_wait_tick_changes_remaining =
             timing::legacy_delay_tick_count(
                 player_target_effect_->effect_animation->prelude_wait_ticks);
-        phase_ = BattleSessionPhase::player_effect_prelude_wait;
+        phase_ = ai_controlled ? BattleSessionPhase::ai_effect_prelude_wait
+                               : BattleSessionPhase::player_effect_prelude_wait;
         diagnostics::log_debug(
-            "battle player effect prelude presented id=" + std::to_string(battle_id()) +
+            std::string{"battle "} + (ai_controlled ? "AI" : "player") +
+            " effect prelude presented id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
             " wait_tick_changes=" + std::to_string(
                 player_target_effect_->animation_wait_tick_changes_remaining));
@@ -880,8 +932,7 @@ bool BattleSession::dispatch_selected_ai_action() {
                 0,
                 AiMovementContinuation::item);
         }
-        phase_ = BattleSessionPhase::ai_action_selected;
-        return true;
+        return continue_ai_item_plan();
     case BattleAiHandler::request_medicine:
     case BattleAiHandler::request_detox:
         ai_request_plan_ = setup_.begin_ai_request_plan(current_actor_slot_, choice);
@@ -927,8 +978,7 @@ bool BattleSession::dispatch_selected_ai_action() {
                 ai_item_plan_->targeting_range,
                 AiMovementContinuation::throwing_weapon);
         }
-        phase_ = BattleSessionPhase::ai_action_selected;
-        return true;
+        return continue_ai_item_plan();
     }
     error_ = "battle AI handler is invalid";
     return false;
@@ -1176,6 +1226,235 @@ bool BattleSession::begin_ai_support_execution() {
     return prepare_player_magic_frame();
 }
 
+bool BattleSession::continue_ai_item_plan() {
+    if (!ai_item_plan_.has_value()) {
+        error_ = "battle AI item continuation plan is absent";
+        return false;
+    }
+    if (ai_item_plan_->next_step == BattleAiItemNextStep::use_item) {
+        if (ai_item_plan_->use_mode == 0) {
+            return begin_ai_item_execution();
+        }
+        if (ai_item_plan_->use_mode == 1) {
+            return begin_ai_throwing_weapon_execution();
+        }
+        error_ = "battle AI item use mode is invalid";
+        return false;
+    }
+    if (ai_item_plan_->next_step == BattleAiItemNextStep::attack_fallback) {
+        diagnostics::log_info(
+            "battle AI throwing-weapon fallback attack id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " target=" + std::to_string(ai_item_plan_->target_slot) +
+            " range_checks=" + std::to_string(ai_item_plan_->range_check_count));
+        ai_item_plan_.reset();
+        return begin_ai_attack_action();
+    }
+    error_ = "battle AI item continuation remained in movement state";
+    return false;
+}
+
+bool BattleSession::begin_ai_item_execution() {
+    if (!ai_item_plan_.has_value() ||
+        ai_item_plan_->next_step != BattleAiItemNextStep::use_item ||
+        ai_item_plan_->use_mode != 0 || ai_item_plan_->target_slot < 0 ||
+        ai_item_plan_->target_slot >= setup_.combatant_count()) {
+        error_ = "battle AI item execution plan is invalid";
+        return false;
+    }
+    const BattleAiChoice choice{
+        .action = BattleAiAction::item,
+        .target_slot = ai_item_plan_->target_slot,
+        .item_source = ai_item_plan_->item_source,
+        .item_slot = ai_item_plan_->item_slot,
+        .action_code_written = true,
+    };
+    auto effect = setup_.apply_ai_item_effect(
+        current_actor_slot_, choice, random_, false);
+    if (!effect.has_value()) {
+        error_ = setup_.valid() ? "battle AI item state application failed" : setup_.error();
+        return false;
+    }
+    player_item_ = std::make_unique<PlayerItemState>(PlayerItemState{
+        .selection = {},
+        .selected_inventory_slot = std::nullopt,
+        .selected_item_id = ai_item_plan_->item_id,
+        .effect_result = std::move(*effect),
+        .inventory_consumed = false,
+    });
+    render_state_.path_limit = 0;
+    const auto& target = setup_.combatants()[
+        static_cast<std::size_t>(ai_item_plan_->target_slot)].words;
+    render_state_.primary_cursor = BattlePathCoord{
+        target[combatant_word::x], target[combatant_word::y]};
+    diagnostics::log_info(
+        "battle AI item effect ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " target=" + std::to_string(ai_item_plan_->target_slot) +
+        " item=" + std::to_string(ai_item_plan_->item_id) +
+        " source=" +
+        std::to_string(static_cast<std::int16_t>(ai_item_plan_->item_source)) +
+        " item_slot=" + std::to_string(ai_item_plan_->item_slot) +
+        " has_effect=" +
+        (player_item_->effect_result->has_effect ? std::string{"true"}
+                                                : std::string{"false"}) +
+        " effects=" +
+        std::to_string(player_item_->effect_result->effect_count) +
+        " consumed=false");
+    if (player_item_->effect_result->has_effect) {
+        phase_ = BattleSessionPhase::ai_item_effect_present;
+        return true;
+    }
+    ai_item_wait_tick_ = ai_wait_tick_;
+    return begin_ai_item_post_effect_wait();
+}
+
+bool BattleSession::begin_ai_throwing_weapon_execution() {
+    if (!ai_item_plan_.has_value() ||
+        ai_item_plan_->next_step != BattleAiItemNextStep::use_item ||
+        ai_item_plan_->use_mode != 1 || ai_item_plan_->target_slot < 0 ||
+        ai_item_plan_->target_slot >= setup_.combatant_count()) {
+        error_ = "battle AI throwing-weapon execution plan is invalid";
+        return false;
+    }
+    const auto target_slot = static_cast<std::size_t>(ai_item_plan_->target_slot);
+    const auto& target_words = setup_.combatants()[target_slot].words;
+    const BattlePathCoord target{
+        target_words[combatant_word::x], target_words[combatant_word::y]};
+    const BattleAiChoice choice{
+        .action = BattleAiAction::throwing_weapon,
+        .target_slot = ai_item_plan_->target_slot,
+        .target = target,
+        .item_source = ai_item_plan_->item_source,
+        .item_slot = ai_item_plan_->item_slot,
+        .action_code_written = true,
+    };
+    const auto thrown = setup_.apply_ai_throwing_weapon_target(
+        current_actor_slot_, target, choice, random_, false);
+    if (!thrown.has_value() || thrown->hit_count != 1 ||
+        !thrown->effect_id.has_value()) {
+        error_ = setup_.valid()
+            ? "battle AI throwing-weapon state application failed"
+            : setup_.error();
+        return false;
+    }
+    auto animation = BattleSetup::effect_animation_plan(*thrown->effect_id);
+    if (!animation.has_value()) {
+        error_ = "battle AI throwing-weapon effect animation is invalid";
+        return false;
+    }
+    player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
+        PlayerTargetEffectState{
+            .action = BattlePlayerAction::item,
+            .ai_controlled = true,
+            .magic_animation = {},
+            .effect_animation = std::move(*animation),
+            .effect_id = *thrown->effect_id,
+            .damage_kind = static_cast<std::int16_t>(thrown->damage == 0 ? 0 : 1),
+            .damage_suppress_flash = false,
+            .audio_commands = {},
+        });
+    if (player_target_effect_->effect_animation->dispatch_magic_before_prelude) {
+        player_target_effect_->audio_commands.push_back(BattleAudioCommand{
+            BattleAudioBank::attack,
+            player_target_effect_->effect_animation->magic_sample_id});
+    }
+    render_state_.path_limit = 0;
+    render_state_.primary_cursor = target;
+    render_state_.effect_id = kBattleEffectPointerBase;
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    phase_ = BattleSessionPhase::ai_effect_prelude_present;
+    diagnostics::log_info(
+        "battle AI throwing-weapon effect ready id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " target=" + std::to_string(ai_item_plan_->target_slot) +
+        " target_coordinate=" + std::to_string(target.x) + "," +
+        std::to_string(target.y) +
+        " item=" + std::to_string(ai_item_plan_->item_id) +
+        " source=" +
+        std::to_string(static_cast<std::int16_t>(ai_item_plan_->item_source)) +
+        " item_slot=" + std::to_string(ai_item_plan_->item_slot) +
+        " effect=" + std::to_string(*thrown->effect_id) +
+        " damage=" + std::to_string(thrown->damage) +
+        " frames=" + std::to_string(
+            player_target_effect_->effect_animation->frames.size()) +
+        " consumed=false");
+    return true;
+}
+
+bool BattleSession::begin_ai_item_post_effect_wait() {
+    if (!player_item_ || !player_item_->effect_result.has_value() ||
+        !ai_item_plan_.has_value() ||
+        ai_item_plan_->next_step != BattleAiItemNextStep::use_item ||
+        ai_item_plan_->use_mode != 0) {
+        error_ = "battle AI item post-effect continuation is absent";
+        return false;
+    }
+    ai_item_wait_tick_changes_remaining_ =
+        player_item_->effect_result->post_effect_tick_changes;
+    phase_ = BattleSessionPhase::ai_item_post_effect_wait;
+    if (ai_item_wait_tick_changes_remaining_ <= 0) {
+        return finish_ai_item_action();
+    }
+    return true;
+}
+
+bool BattleSession::advance_ai_item_post_effect_wait(
+    const std::uint32_t bios_tick) {
+    if (bios_tick == ai_item_wait_tick_) {
+        return true;
+    }
+    ai_item_wait_tick_ = bios_tick;
+    if (ai_item_wait_tick_changes_remaining_ > 0) {
+        --ai_item_wait_tick_changes_remaining_;
+    }
+    if (ai_item_wait_tick_changes_remaining_ > 0) {
+        return true;
+    }
+    return finish_ai_item_action();
+}
+
+bool BattleSession::finish_ai_item_action() {
+    if (!ai_item_plan_.has_value()) {
+        error_ = "battle AI item completion plan is absent";
+        return false;
+    }
+    const auto action = ai_item_plan_->use_mode == 1
+        ? BattleAiAction::throwing_weapon
+        : BattleAiAction::item;
+    const BattleAiChoice choice{
+        .action = action,
+        .target_slot = ai_item_plan_->target_slot,
+        .item_source = ai_item_plan_->item_source,
+        .item_slot = ai_item_plan_->item_slot,
+        .action_code_written = true,
+    };
+    if (!setup_.consume_ai_item(current_actor_slot_, choice)) {
+        error_ = "battle AI item inventory completion failed";
+        return false;
+    }
+    if (player_item_ && player_item_->effect_result.has_value()) {
+        player_item_->inventory_consumed = true;
+        player_item_->effect_result->item_consumed = true;
+    }
+    diagnostics::log_info(
+        "battle AI item consumed id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " item=" + std::to_string(ai_item_plan_->item_id) +
+        " use_mode=" + std::to_string(ai_item_plan_->use_mode) +
+        " source=" +
+        std::to_string(static_cast<std::int16_t>(ai_item_plan_->item_source)) +
+        " item_slot=" + std::to_string(ai_item_plan_->item_slot));
+    player_item_.reset();
+    ai_item_plan_.reset();
+    ai_item_wait_tick_changes_remaining_ = 0;
+    return finish_ai_handler(BattlePlayerAction::item, false);
+}
+
 bool BattleSession::begin_ai_attack_execution() {
     if (!ai_attack_plan_.has_value() ||
         ai_attack_plan_->next_step != BattleAiAttackNextStep::attack ||
@@ -1389,7 +1668,12 @@ bool BattleSession::finish_ai_movement() {
             error_ = "battle AI item continuation failed";
             return false;
         }
-        break;
+        diagnostics::log_info(
+            "battle AI movement continuation ready id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " continuation=" + std::to_string(static_cast<int>(continuation)));
+        return continue_ai_item_plan();
     case AiMovementContinuation::request:
         if (!ai_request_plan_.has_value()) {
             error_ = "battle AI request continuation plan is absent";
@@ -1437,14 +1721,15 @@ bool BattleSession::finish_ai_movement() {
                 : setup_.error();
             return false;
         }
-        break;
+        diagnostics::log_info(
+            "battle AI movement continuation ready id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " continuation=" + std::to_string(static_cast<int>(continuation)));
+        return continue_ai_item_plan();
     }
-    phase_ = BattleSessionPhase::ai_action_selected;
-    diagnostics::log_info(
-        "battle AI movement continuation ready id=" + std::to_string(battle_id()) +
-        " slot=" + std::to_string(current_actor_slot_) +
-        " continuation=" + std::to_string(static_cast<int>(continuation)));
-    return true;
+    error_ = "battle AI movement continuation is invalid";
+    return false;
 }
 
 bool BattleSession::finish_ai_handler(
@@ -2338,9 +2623,12 @@ bool BattleSession::prepare_player_effect_frame() {
     const auto& frame = effect.effect_animation->frames[effect.magic_frame];
     render_state_.effect_visible = frame.effect_visible;
     render_state_.effect_frame_offset = frame.effect_frame;
-    phase_ = BattleSessionPhase::player_magic_frame_present;
+    const auto ai_controlled = effect.ai_controlled;
+    phase_ = ai_controlled ? BattleSessionPhase::ai_magic_frame_present
+                           : BattleSessionPhase::player_magic_frame_present;
     diagnostics::log_debug(
-        "battle player effect frame ready id=" + std::to_string(battle_id()) +
+        std::string{"battle "} + (ai_controlled ? "AI" : "player") +
+        " effect frame ready id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
         " frame=" + std::to_string(effect.magic_frame) +
         " effect_frame=" + std::to_string(frame.effect_frame));
@@ -2510,6 +2798,26 @@ bool BattleSession::finish_player_target_effect() {
         finished = setup_.finish_detox_action(current_actor_slot_);
     } else if (action == BattlePlayerAction::medicine) {
         finished = setup_.finish_medicine_action(current_actor_slot_);
+    } else if (action == BattlePlayerAction::item &&
+               player_target_effect_->ai_controlled && ai_item_plan_) {
+        const BattleAiChoice choice{
+            .action = BattleAiAction::throwing_weapon,
+            .target_slot = ai_item_plan_->target_slot,
+            .item_source = ai_item_plan_->item_source,
+            .item_slot = ai_item_plan_->item_slot,
+            .action_code_written = true,
+        };
+        finished = setup_.consume_ai_item(current_actor_slot_, choice);
+        if (finished) {
+            diagnostics::log_info(
+                "battle AI item consumed id=" + std::to_string(battle_id()) +
+                " slot=" + std::to_string(current_actor_slot_) +
+                " item=" + std::to_string(ai_item_plan_->item_id) +
+                " use_mode=" + std::to_string(ai_item_plan_->use_mode) +
+                " source=" + std::to_string(static_cast<std::int16_t>(
+                    ai_item_plan_->item_source)) +
+                " item_slot=" + std::to_string(ai_item_plan_->item_slot));
+        }
     } else if (action == BattlePlayerAction::item && player_item_ &&
                player_item_->selected_inventory_slot.has_value()) {
         finished = setup_.finish_throwing_weapon_action(
@@ -2537,6 +2845,8 @@ bool BattleSession::finish_player_target_effect() {
         } else if (action == BattlePlayerAction::detoxification ||
                    action == BattlePlayerAction::medicine) {
             ai_support_plan_.reset();
+        } else if (action == BattlePlayerAction::item) {
+            ai_item_plan_.reset();
         }
         return finish_ai_handler(action, false);
     }
