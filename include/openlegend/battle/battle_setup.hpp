@@ -103,6 +103,28 @@ struct BattleItemEffectResult {
     bool item_consumed{};
 };
 
+[[nodiscard]] bool role_meets_item_requirements(
+    const model::RangerState& ranger,
+    std::int16_t role_id,
+    std::int16_t item_id) noexcept;
+[[nodiscard]] bool equip_role_item(
+    model::RangerState& ranger,
+    std::int16_t role_id,
+    std::int16_t item_id) noexcept;
+[[nodiscard]] bool assign_role_practice_item(
+    model::RangerState& ranger,
+    std::int16_t role_id,
+    std::int16_t item_id) noexcept;
+[[nodiscard]] bool consume_inventory_item_slot(
+    model::RangerState& ranger,
+    std::size_t inventory_slot) noexcept;
+[[nodiscard]] std::optional<BattleItemEffectResult> apply_role_item_effect(
+    model::RangerState& ranger,
+    std::int16_t actor_role_id,
+    std::int16_t target_role_id,
+    std::int16_t item_id,
+    random::LegacyRandom& random);
+
 struct BattleRestResult {
     std::int16_t physical_power{};
     std::int16_t hp{};

@@ -88,6 +88,27 @@ private:
         fade_to_black,
     };
 
+    enum class WorldMenuEventPhase {
+        none,
+        running,
+        present,
+        fade_to_black,
+        fade_from_black,
+        leave_pre_script_present,
+        leave_post_fade_to_black,
+        leave_post_redraw_present,
+        leave_post_fade_from_black,
+    };
+
+    enum class SceneLeaveEventPhase {
+        none,
+        running,
+        pre_script_present,
+        fade_to_black,
+        redraw_present,
+        fade_from_black,
+    };
+
     void begin_new_game();
     void perform_pending_io();
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
@@ -109,6 +130,10 @@ private:
         std::span<const std::uint8_t> message, LegacyGameView return_view);
     void handle_title_result(ui::TitleResult result);
     void handle_game_menu_result(ui::GameMenuResult result);
+    void handle_menu_item_result(ui::GameMenuResult result);
+    void handle_menu_item_confirmation(std::uint8_t translated_key);
+    [[nodiscard]] bool begin_world_leave_event(std::int16_t role_id);
+    void handle_world_menu_event_result(const scene::SceneStepResult& result);
 
     std::filesystem::path data_root_path_;
     resource::DataRoot data_root_;
@@ -125,6 +150,7 @@ private:
     std::unique_ptr<world::WorldMapData> world_map_;
     std::unique_ptr<world::WorldSession> world_session_;
     std::unique_ptr<scene::SceneSession> scene_session_;
+    std::unique_ptr<scene::SceneSession> world_menu_event_session_;
     std::unique_ptr<battle::BattleSession> battle_session_;
     battle::BattleRenderState retained_battle_render_state_{};
     LegacyGameView view_{LegacyGameView::title};
@@ -135,6 +161,10 @@ private:
     std::uint8_t pending_slot_{};
     std::optional<std::int16_t> scene_request_;
     std::optional<std::int16_t> battle_request_;
+    std::optional<std::uint16_t> pending_menu_item_slot_;
+    std::optional<std::int16_t> pending_menu_item_id_;
+    std::optional<std::int16_t> pending_menu_item_role_;
+    std::optional<battle::BattleItemEffectResult> pending_menu_item_effect_;
     std::vector<scene::SceneAudioCommand> scene_audio_commands_;
     SceneEffectKind scene_effect_kind_{SceneEffectKind::none};
     std::vector<compat::LegacyPalette> scene_effect_palettes_;
@@ -150,6 +180,11 @@ private:
     bool world_scene_transition_presented_{};
     bool world_scene_return_pending_{};
     bool world_scene_return_presented_{};
+    WorldMenuEventPhase world_menu_event_phase_{WorldMenuEventPhase::none};
+    SceneLeaveEventPhase scene_leave_event_phase_{SceneLeaveEventPhase::none};
+    std::optional<std::int16_t> world_menu_event_script_id_;
+    std::optional<std::int16_t> scene_leave_event_script_id_;
+    bool leave_protagonist_notice_pending_{};
     bool scene_interact_requested_{};
     bool scene_ui_requested_{};
     bool ending_complete_{};

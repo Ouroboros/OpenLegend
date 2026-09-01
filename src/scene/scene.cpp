@@ -336,7 +336,8 @@ SceneSession::SceneSession(
     const bool use_jump_entrance,
     std::optional<SceneDate> death_date_override,
     const std::int16_t periodic_counter,
-    const std::optional<SceneEntryOverride> entry_override)
+    const std::optional<SceneEntryOverride> entry_override,
+    const SceneSessionContext context)
     : data_root_(data_root),
       snapshot_(snapshot),
       random_(random),
@@ -347,6 +348,7 @@ SceneSession::SceneSession(
       weather_sprites_(resource::PackedArchive::open(
           data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
       scene_id_(scene_id),
+      context_(context),
       periodic_counter_(periodic_counter) {
     if (!snapshot_.valid()) {
         error_ = "scene session requires a valid game snapshot";
@@ -368,7 +370,7 @@ SceneSession::SceneSession(
         error_ = "scene id is outside the 100-scene archive";
         return;
     }
-    if (!load_scene_sprites()) {
+    if (context_ == SceneSessionContext::scene && !load_scene_sprites()) {
         return;
     }
     const auto palette_file = data_root_.read("MMAP.COL");
@@ -420,6 +422,22 @@ SceneSession::SceneSession(
     }
     ascii_font_ = std::move(ascii.bytes);
     big5_font_ = std::move(big5.bytes);
+
+    if (context_ == SceneSessionContext::world_event_overlay) {
+        scene_x_ = std::clamp<int>(
+            snapshot_.ranger.header.word(model::header_word::sub_map_x),
+            0,
+            kSceneExtent - 1);
+        scene_y_ = std::clamp<int>(
+            snapshot_.ranger.header.word(model::header_word::sub_map_y),
+            0,
+            kSceneExtent - 1);
+        direction_ = static_cast<SceneDirection>(std::clamp<std::int16_t>(
+            snapshot_.ranger.header.word(model::header_word::face_towards), 0, 3));
+        update_view_origin();
+        pending_ = current_result(SceneStepKind::stay);
+        return;
+    }
 
     if (entry_override.has_value()) {
         scene_x_ = std::clamp<int>(entry_override->x, 0, kSceneExtent - 1);
@@ -3070,6 +3088,10 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         return true;
     }
     return render_map(framebuffer) && draw_overlay(framebuffer);
+}
+
+bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const {
+    return valid() && draw_overlay(framebuffer);
 }
 
 bool SceneSession::draw_sprite(

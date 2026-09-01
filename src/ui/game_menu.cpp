@@ -11,7 +11,11 @@ constexpr std::uint8_t kSpace = 0x20U;
 constexpr std::uint8_t kY = 0x59U;
 constexpr std::uint8_t kKeypadInsert = 0x96U;
 constexpr std::uint8_t kDown = 0x98U;
+constexpr std::uint8_t kPageDown = 0x99U;
+constexpr std::uint8_t kLeft = 0x9AU;
+constexpr std::uint8_t kRight = 0x9CU;
 constexpr std::uint8_t kUp = 0x9EU;
+constexpr std::uint8_t kPageUp = 0x9FU;
 
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == kEnter || key == kSpace || key == kKeypadInsert;
@@ -63,9 +67,6 @@ void GameMenuController::set_party_abilities(
 
 void GameMenuController::set_inventory_count(const std::uint16_t count) noexcept {
     inventory_count_ = std::min<std::uint16_t>(count, 200U);
-    if (item_selection_ >= inventory_count_) {
-        item_selection_ = 0U;
-    }
 }
 
 void GameMenuController::complete_party_action(const std::int32_t amount) noexcept {
@@ -80,6 +81,27 @@ void GameMenuController::complete_slot_operation() noexcept {
     if (screen_ == GameMenuScreen::load_slots || screen_ == GameMenuScreen::save_slots) {
         screen_ = GameMenuScreen::system;
     }
+}
+
+void GameMenuController::begin_item_target_selection(
+    const GameMenuItemTargetKind kind) noexcept {
+    pending_party_command_ = GameMenuCommand::items;
+    item_target_kind_ = kind;
+    set_all_party_options();
+    party_stage_ = GameMenuPartyStage::direct;
+    party_selection_ = 0U;
+    screen_ = GameMenuScreen::party_select;
+}
+
+void GameMenuController::show_item_confirmation(
+    const GameMenuItemConfirmation confirmation) noexcept {
+    item_confirmation_ = confirmation;
+    screen_ = GameMenuScreen::item_confirmation;
+}
+
+void GameMenuController::show_notice(const GameMenuNotice notice) noexcept {
+    notice_ = notice;
+    screen_ = GameMenuScreen::notice;
 }
 
 GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key) noexcept {
@@ -108,17 +130,35 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
         return {};
     }
+    if (screen_ == GameMenuScreen::item_effect || screen_ == GameMenuScreen::notice) {
+        if (translated_key != 0U) {
+            screen_ = GameMenuScreen::main;
+        }
+        return {};
+    }
+    if (screen_ == GameMenuScreen::item_confirmation) {
+        return {};
+    }
 
     if (translated_key == kDown) {
         switch (screen_) {
         case GameMenuScreen::main: move_down(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_down(party_selection_, party_option_count_); break;
-        case GameMenuScreen::items: move_down(item_selection_, inventory_count_); break;
+        case GameMenuScreen::items:
+            if (item_row_ < 2U) {
+                ++item_row_;
+            } else if (item_page_ < 37U) {
+                ++item_page_;
+            }
+            break;
         case GameMenuScreen::system: move_down(system_selection_, std::uint8_t{3U}); break;
         case GameMenuScreen::load_slots:
         case GameMenuScreen::save_slots: move_down(slot_selection_, std::uint8_t{3U}); break;
         case GameMenuScreen::party_notice:
         case GameMenuScreen::status_panel:
+        case GameMenuScreen::item_confirmation:
+        case GameMenuScreen::item_effect:
+        case GameMenuScreen::notice:
         case GameMenuScreen::quit_confirmation: break;
         }
         return {};
@@ -127,12 +167,21 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         switch (screen_) {
         case GameMenuScreen::main: move_up(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_up(party_selection_, party_option_count_); break;
-        case GameMenuScreen::items: move_up(item_selection_, inventory_count_); break;
+        case GameMenuScreen::items:
+            if (item_row_ > 0U) {
+                --item_row_;
+            } else if (item_page_ > 0U) {
+                --item_page_;
+            }
+            break;
         case GameMenuScreen::system: move_up(system_selection_, std::uint8_t{3U}); break;
         case GameMenuScreen::load_slots:
         case GameMenuScreen::save_slots: move_up(slot_selection_, std::uint8_t{3U}); break;
         case GameMenuScreen::party_notice:
         case GameMenuScreen::status_panel:
+        case GameMenuScreen::item_confirmation:
+        case GameMenuScreen::item_effect:
+        case GameMenuScreen::notice:
         case GameMenuScreen::quit_confirmation: break;
         }
         return {};
@@ -159,7 +208,32 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             return {};
         case GameMenuScreen::party_notice:
         case GameMenuScreen::status_panel:
+        case GameMenuScreen::item_confirmation:
+        case GameMenuScreen::item_effect:
+        case GameMenuScreen::notice:
         case GameMenuScreen::quit_confirmation: break;
+        }
+    }
+    if (screen_ == GameMenuScreen::items) {
+        if (translated_key == kLeft) {
+            item_column_ = item_column_ == 0U ? 4U : static_cast<std::uint8_t>(item_column_ - 1U);
+            return {};
+        }
+        if (translated_key == kRight) {
+            item_column_ = item_column_ == 4U ? 0U : static_cast<std::uint8_t>(item_column_ + 1U);
+            return {};
+        }
+        if (translated_key == kPageDown) {
+            if (item_page_ < 35U) {
+                item_page_ = static_cast<std::uint8_t>(item_page_ + 3U);
+            }
+            return {};
+        }
+        if (translated_key == kPageUp) {
+            if (item_page_ > 2U) {
+                item_page_ = static_cast<std::uint8_t>(item_page_ - 3U);
+            }
+            return {};
         }
     }
     if (!confirms(translated_key)) {
@@ -191,12 +265,17 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             status_page_ = 0U;
             return {};
         }
+        if (pending_party_command_ == GameMenuCommand::items) {
+            const auto target_slot = selected_party_slot();
+            screen_ = GameMenuScreen::main;
+            return {GameMenuCommand::items, target_slot, item_selection()};
+        }
         screen_ = GameMenuScreen::main;
         return {pending_party_command_, 0U, selected_party_slot()};
     case GameMenuScreen::items:
-        if (inventory_count_ != 0U) {
+        if (item_selection() < inventory_count_) {
             screen_ = GameMenuScreen::main;
-            return {GameMenuCommand::items, 0U, item_selection_};
+            return {GameMenuCommand::items, 0U, item_selection()};
         }
         return {};
     case GameMenuScreen::system:
@@ -218,6 +297,9 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
     }
     case GameMenuScreen::party_notice:
     case GameMenuScreen::status_panel:
+    case GameMenuScreen::item_confirmation:
+    case GameMenuScreen::item_effect:
+    case GameMenuScreen::notice:
     case GameMenuScreen::quit_confirmation: return {};
     }
     return {};
@@ -246,7 +328,9 @@ GameMenuResult GameMenuController::confirm_main() noexcept {
         break;
     case 2U:
         screen_ = GameMenuScreen::items;
-        item_selection_ = 0U;
+        item_page_ = 0U;
+        item_row_ = 0U;
+        item_column_ = 0U;
         return {};
     case 3U:
         pending_party_command_ = GameMenuCommand::status;

@@ -890,6 +890,97 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 }
 
+void run_shared_menu_item_helper_test() {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    auto ranger = make_ranger({0, 1, -1, -1, -1, -1});
+    ranger.roles[0U].set_word(model::role_word::id, 0);
+    ranger.roles[1U].set_word(model::role_word::id, 1);
+    auto& role = ranger.roles[0U];
+    role.set_word(model::role_word::mp_type, 0);
+    role.set_word(model::role_word::mp, 50);
+    role.set_word(model::role_word::attack, 40);
+    role.set_word(model::role_word::iq, 80);
+
+    auto& equipment = ranger.items[5U];
+    equipment.set_word(model::item_word::id, 5);
+    equipment.set_word(model::item_word::item_type, 1);
+    equipment.set_word(model::item_word::need_mp_type, 0);
+    equipment.set_word(model::item_word::only_suitable_role, -1);
+    equipment.set_word(model::item_word::need_mp, 50);
+    equipment.set_word(model::item_word::need_attack, 40);
+    equipment.set_word(model::item_word::need_iq, 80);
+    OL_CHECK(role_meets_item_requirements(ranger, 0, 5));
+    equipment.set_word(model::item_word::need_attack, 41);
+    OL_CHECK(!role_meets_item_requirements(ranger, 0, 5));
+    equipment.set_word(model::item_word::need_attack, 40);
+    equipment.set_word(model::item_word::need_iq, -79);
+    OL_CHECK(!role_meets_item_requirements(ranger, 0, 5));
+    equipment.set_word(model::item_word::need_iq, -80);
+    OL_CHECK(role_meets_item_requirements(ranger, 0, 5));
+    equipment.set_word(model::item_word::id, 93);
+    equipment.set_word(model::item_word::item_type, 2);
+    equipment.set_word(model::item_word::need_attack, 41);
+    equipment.set_word(model::item_word::magic_id, -1);
+    role.set_word(model::role_word::sexual, 1);
+    OL_CHECK(!role_meets_item_requirements(ranger, 0, 5));
+    equipment.set_word(model::item_word::magic_id, 77);
+    role.set_word(model::role_word::magic_id_begin, 77);
+    OL_CHECK(role_meets_item_requirements(ranger, 0, 5));
+    equipment.set_word(model::item_word::id, 5);
+    equipment.set_word(model::item_word::item_type, 1);
+    equipment.set_word(model::item_word::magic_id, -1);
+    equipment.set_word(model::item_word::need_attack, 40);
+    role.set_word(model::role_word::mp_type, 2);
+    equipment.set_word(model::item_word::need_mp_type, 0);
+    OL_CHECK(role_meets_item_requirements(ranger, 0, 5));
+
+    equipment.set_word(model::item_word::equipment_type, 0);
+    equipment.set_word(model::item_word::user, 1);
+    ranger.roles[1U].set_word(model::role_word::equipment_begin, 5);
+    auto& previous_equipment = ranger.items[6U];
+    previous_equipment.set_word(model::item_word::id, 6);
+    previous_equipment.set_word(model::item_word::user, 0);
+    role.set_word(model::role_word::equipment_begin, 6);
+    OL_CHECK(equip_role_item(ranger, 0, 5));
+    OL_CHECK(ranger.roles[1U].word(model::role_word::equipment_begin) == -1);
+    OL_CHECK(previous_equipment.word(model::item_word::user) == -1);
+    OL_CHECK(role.word(model::role_word::equipment_begin) == 5);
+    OL_CHECK(equipment.word(model::item_word::user) == 0);
+
+    auto& practice = ranger.items[20U];
+    practice.set_word(model::item_word::id, 20);
+    practice.set_word(model::item_word::item_type, 2);
+    practice.set_word(model::item_word::user, 1);
+    ranger.roles[1U].set_word(model::role_word::practice_item, 20);
+    ranger.roles[1U].set_word(model::role_word::item_experience, 7);
+    auto& previous_practice = ranger.items[21U];
+    previous_practice.set_word(model::item_word::id, 21);
+    previous_practice.set_word(model::item_word::user, 0);
+    role.set_word(model::role_word::practice_item, 21);
+    role.set_word(model::role_word::item_experience, 8);
+    role.set_word(model::role_word::make_item_experience, 9);
+    OL_CHECK(assign_role_practice_item(ranger, 0, 20));
+    OL_CHECK(ranger.roles[1U].word(model::role_word::practice_item) == -1);
+    OL_CHECK(ranger.roles[1U].word(model::role_word::item_experience) == 0);
+    OL_CHECK(previous_practice.word(model::item_word::user) == -1);
+    OL_CHECK(practice.word(model::item_word::user) == 0);
+    OL_CHECK(role.word(model::role_word::practice_item) == 20);
+    OL_CHECK(role.word(model::role_word::item_experience) == 0);
+    OL_CHECK(role.word(model::role_word::make_item_experience) == 0);
+
+    ranger.header.set_inventory(0U, model::ItemId{5}, 1);
+    ranger.header.set_inventory(1U, model::ItemId{20}, 3);
+    ranger.header.set_inventory(2U, model::ItemId{-1}, 0);
+    OL_CHECK(consume_inventory_item_slot(ranger, 0U));
+    OL_CHECK(ranger.header.inventory_item(0U).value == 20);
+    OL_CHECK(ranger.header.inventory_count(0U) == 3);
+    OL_CHECK(ranger.header.inventory_item(1U).value == -1);
+    OL_CHECK(consume_inventory_item_slot(ranger, 0U));
+    OL_CHECK(ranger.header.inventory_item(0U).value == 20);
+    OL_CHECK(ranger.header.inventory_count(0U) == 2);
+}
+
 void run_ai_item_effect_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -6779,6 +6870,7 @@ int main() {
     run_detox_action_test(data_root);
     run_medicine_action_test(data_root);
     run_throwing_weapon_action_test(data_root);
+    run_shared_menu_item_helper_test();
     run_ai_item_effect_test(data_root);
     run_ai_request_handler_test(data_root);
     run_ai_support_handler_test(data_root);

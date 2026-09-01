@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -245,10 +246,47 @@ void check_game_menu_controller() {
     static_cast<void>(items.handle_key(0x98U));
     static_cast<void>(items.handle_key(0x98U));
     static_cast<void>(items.handle_key(0x0DU));
+    OL_CHECK(items.item_selection() == 0U);
+    static_cast<void>(items.handle_key(0x98U));
+    OL_CHECK(items.item_selection() == 5U);
     static_cast<void>(items.handle_key(0x9EU));
+    OL_CHECK(items.item_selection() == 0U);
+    static_cast<void>(items.handle_key(0x99U));
+    OL_CHECK(items.item_selection() == 15U);
+    static_cast<void>(items.handle_key(0x9FU));
+    OL_CHECK(items.item_selection() == 0U);
+    static_cast<void>(items.handle_key(0x9AU));
+    OL_CHECK(items.item_selection() == 4U);
+    static_cast<void>(items.handle_key(0x9CU));
+    OL_CHECK(items.item_selection() == 0U);
+    static_cast<void>(items.handle_key(0x9CU));
+    static_cast<void>(items.handle_key(0x9CU));
     result = items.handle_key(0x0DU);
     OL_CHECK(result.command == GameMenuCommand::items);
     OL_CHECK(result.index == 2U);
+    OL_CHECK(items.screen() == GameMenuScreen::main);
+    items.set_party_count(2U);
+    items.begin_item_target_selection(GameMenuItemTargetKind::equipment);
+    OL_CHECK(items.screen() == GameMenuScreen::party_select);
+    OL_CHECK(items.item_target_kind() == GameMenuItemTargetKind::equipment);
+    static_cast<void>(items.handle_key(0x98U));
+    result = items.handle_key(0x0DU);
+    OL_CHECK(result.command == GameMenuCommand::items);
+    OL_CHECK(result.slot == 1U);
+    OL_CHECK(result.index == 2U);
+    items.show_item_confirmation(GameMenuItemConfirmation::practice_reassign);
+    OL_CHECK(items.screen() == GameMenuScreen::item_confirmation);
+    static_cast<void>(items.handle_key('N'));
+    OL_CHECK(items.screen() == GameMenuScreen::item_confirmation);
+    items.show_notice(GameMenuNotice::practice_unsuitable);
+    OL_CHECK(items.screen() == GameMenuScreen::notice);
+    static_cast<void>(items.handle_key(0U));
+    OL_CHECK(items.screen() == GameMenuScreen::notice);
+    static_cast<void>(items.handle_key('A'));
+    OL_CHECK(items.screen() == GameMenuScreen::main);
+    items.show_item_effect();
+    OL_CHECK(items.screen() == GameMenuScreen::item_effect);
+    static_cast<void>(items.handle_key('A'));
     OL_CHECK(items.screen() == GameMenuScreen::main);
 
     GameMenuController leave_party;
@@ -259,6 +297,15 @@ void check_game_menu_controller() {
     result = leave_party.handle_key(0x0DU);
     OL_CHECK(result.command == GameMenuCommand::leave_party);
     OL_CHECK(result.index == 0U);
+    leave_party.show_notice(GameMenuNotice::leave_protagonist);
+    static_cast<void>(leave_party.handle_key('A'));
+    OL_CHECK(leave_party.screen() == GameMenuScreen::main);
+    leave_party.set_party_count(2U);
+    static_cast<void>(leave_party.handle_key(0x0DU));
+    static_cast<void>(leave_party.handle_key(0x98U));
+    result = leave_party.handle_key(0x0DU);
+    OL_CHECK(result.command == GameMenuCommand::leave_party);
+    OL_CHECK(result.index == 1U);
 
     GameMenuController load_cancel;
     static_cast<void>(load_cancel.handle_key(0x9EU));
@@ -468,12 +515,22 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x1F2C81326BE42838ULL);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.render());
+    auto* leave_prefix_ranger =
+        const_cast<model::GameState&>(new_game.game_state()).ranger();
+    OL_CHECK(leave_prefix_ranger != nullptr);
+    if (leave_prefix_ranger != nullptr) {
+        leave_prefix_ranger->header.set_team_member(1U, model::CharacterId{0});
+    }
     const auto before_leave = new_game.game_state().export_snapshot();
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
     new_game.handle_key(0x0DU, false, false);
-    OL_CHECK(new_game.view() == app::LegacyGameView::error);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    OL_CHECK(new_game.render());
+    new_game.finish_presented_tick();
+    new_game.advance();
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());
     const auto after_leave = new_game.game_state().export_snapshot();
     OL_CHECK(before_leave.has_value() && after_leave.has_value());
@@ -484,6 +541,262 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    auto* leave_snapshot = const_cast<model::GameState&>(new_game.game_state()).snapshot();
+    OL_CHECK(leave_snapshot != nullptr);
+    if (leave_snapshot != nullptr) {
+        leave_snapshot->ranger.header.set_team_member(1U, model::CharacterId{1});
+    }
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    for (int index = 0; index < 4; ++index) {
+        new_game.handle_key(0x98U, false, false);
+    }
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.render());
+    const auto leave_selector_hash = fnv1a64(new_game.framebuffer().pixels());
+    if (leave_selector_hash != 0x0AE903EBB645F691ULL) {
+        std::cerr << "leave_selector_hash=0x" << std::hex << leave_selector_hash << std::dec
+                  << '\n';
+    }
+    OL_CHECK(leave_selector_hash == 0x0AE903EBB645F691ULL);
+    new_game.handle_key(0x98U, false, false);
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    OL_CHECK(new_game.render());
+    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) != leave_selector_hash);
+    new_game.finish_presented_tick();
+    new_game.advance();
+    OL_CHECK(new_game.render());
+    const auto leave_dialogue_pixels_hash = fnv1a64(new_game.framebuffer().pixels());
+    new_game.handle_key('A', false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    OL_CHECK(new_game.game_state().ranger()->header.team_member(1U).value == -1);
+    const auto* after_leave_script = new_game.game_state().snapshot();
+    OL_CHECK(after_leave_script != nullptr);
+    if (after_leave_script != nullptr) {
+        OL_CHECK(after_leave_script->event_value(
+                     0U, 0U, model::SceneEventField::event_1).value_or(-1) == 951);
+    }
+    OL_CHECK(!new_game.handle_world_input(false, false, false, false, true));
+    OL_CHECK(new_game.render());
+    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == leave_dialogue_pixels_hash);
+    new_game.finish_presented_tick();
+    new_game.advance();
+    advance_rendered_frames(new_game, 63U);
+    OL_CHECK(new_game.render());
+    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) != leave_dialogue_pixels_hash);
+    auto leave_redraw_is_black = true;
+    for (const auto component : new_game.framebuffer().palette()) {
+        if (component.red != 0U || component.green != 0U || component.blue != 0U) {
+            leave_redraw_is_black = false;
+        }
+    }
+    OL_CHECK(leave_redraw_is_black);
+    new_game.finish_presented_tick();
+    new_game.advance();
+    advance_rendered_frames(new_game, 65U);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+    auto* item_ranger = const_cast<model::GameState&>(new_game.game_state()).ranger();
+    OL_CHECK(item_ranger != nullptr);
+    if (item_ranger != nullptr) {
+        const auto prepare_item = [&](const std::int16_t item_id, const std::int16_t item_type) {
+            auto& item = item_ranger->items[static_cast<std::size_t>(item_id)];
+            item.set_word(model::item_word::id, item_id);
+            item.set_word(model::item_word::item_type, item_type);
+            item.set_word(model::item_word::show_introduction, 1);
+            item.set_word(model::item_word::user, -1);
+            item.set_word(model::item_word::only_suitable_role, -1);
+            item.set_word(model::item_word::need_mp_type, 2);
+            for (std::size_t field = model::item_word::need_mp;
+                 field <= model::item_word::need_iq;
+                 ++field) {
+                item.set_word(field, 0);
+            }
+        };
+        prepare_item(197, 1);
+        auto& equipment_item = item_ranger->items[197U];
+        equipment_item.set_word(model::item_word::equipment_type, 0);
+        equipment_item.set_word(model::item_word::show_introduction, 0);
+        for (std::size_t index = 0U; index < model::item_word::name_bytes; ++index) {
+            equipment_item.bytes[model::item_word::name_byte + index] = 0U;
+            equipment_item.bytes[2U * model::item_word::secondary_name_begin + index] = 0U;
+        }
+        constexpr std::array<std::uint8_t, 7U> primary_name{'P', 'R', 'I', 'M', 'A', 'R', 'Y'};
+        constexpr std::array<std::uint8_t, 6U> secondary_name{'S', 'E', 'C', 'O', 'N', 'D'};
+        std::copy(
+            primary_name.begin(),
+            primary_name.end(),
+            equipment_item.bytes.begin() + model::item_word::name_byte);
+        std::copy(
+            secondary_name.begin(),
+            secondary_name.end(),
+            equipment_item.bytes.begin() + 2U * model::item_word::secondary_name_begin);
+        item_ranger->header.set_inventory(0U, model::ItemId{197}, 1);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        item_ranger->items[197U].set_word(model::item_word::show_introduction, 1);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        const auto equipment_target_hash = fnv1a64(new_game.framebuffer().pixels());
+        if (equipment_target_hash != 0xA32562C2475B1D86ULL) {
+            std::cerr << "equipment_target_hash=0x" << std::hex << equipment_target_hash
+                      << std::dec << '\n';
+        }
+        OL_CHECK(equipment_target_hash == 0xA32562C2475B1D86ULL);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::equipment_begin) == 197);
+        OL_CHECK(item_ranger->items[197U].word(model::item_word::user) == 0);
+        OL_CHECK(item_ranger->header.inventory_count(0U) == 1);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        prepare_item(198, 2);
+        item_ranger->items[198U].set_word(model::item_word::magic_id, -1);
+        item_ranger->header.set_inventory(0U, model::ItemId{198}, 1);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        const auto practice_target_hash = fnv1a64(new_game.framebuffer().pixels());
+        if (practice_target_hash != 0x6CA2EC3987565F66ULL) {
+            std::cerr << "practice_target_hash=0x" << std::hex << practice_target_hash
+                      << std::dec << '\n';
+        }
+        OL_CHECK(practice_target_hash == 0x6CA2EC3987565F66ULL);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::practice_item) == 198);
+        OL_CHECK(item_ranger->items[198U].word(model::item_word::user) == 0);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        item_ranger->items[198U].set_word(model::item_word::user, 1);
+        item_ranger->roles[0U].set_word(model::role_word::practice_item, -1);
+        item_ranger->roles[1U].set_word(model::role_word::practice_item, 198);
+        item_ranger->roles[1U].set_word(model::role_word::item_experience, 9);
+        item_ranger->header.set_inventory(0U, model::ItemId{198}, 1);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        new_game.handle_key('N', false, false);
+        OL_CHECK(item_ranger->items[198U].word(model::item_word::user) == 1);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key('Y', false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(item_ranger->items[198U].word(model::item_word::user) == 0);
+        OL_CHECK(item_ranger->roles[1U].word(model::role_word::practice_item) == -1);
+        OL_CHECK(item_ranger->roles[1U].word(model::role_word::item_experience) == 0);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        prepare_item(195, 2);
+        item_ranger->items[195U].set_word(model::item_word::magic_id, 77);
+        item_ranger->header.set_inventory(0U, model::ItemId{195}, 1);
+        for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+            item_ranger->roles[0U].set_word(
+                model::role_word::magic_id_begin + slot,
+                static_cast<std::int16_t>(slot + 1U));
+        }
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::practice_item) != 195);
+        new_game.handle_key('A', false, false);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        prepare_item(194, 1);
+        item_ranger->items[194U].set_word(model::item_word::only_suitable_role, 1);
+        item_ranger->header.set_inventory(0U, model::ItemId{194}, 1);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::equipment_begin) == 197);
+        new_game.handle_key('A', false, false);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        prepare_item(196, 2);
+        item_ranger->items[196U].set_word(model::item_word::id, 93);
+        item_ranger->items[196U].set_word(model::item_word::magic_id, -1);
+        item_ranger->roles[0U].set_word(model::role_word::sexual, 0);
+        item_ranger->header.set_inventory(0U, model::ItemId{196}, 1);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        new_game.handle_key('N', false, false);
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::sexual) == 0);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key('Y', false, false);
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::sexual) == 2);
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::practice_item) == 93);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        prepare_item(199, 3);
+        for (std::size_t field = model::item_word::add_hp;
+             field <= model::item_word::add_attack_with_poison;
+             ++field) {
+            item_ranger->items[199U].set_word(field, 0);
+        }
+        item_ranger->items[199U].set_word(model::item_word::add_physical_power, 10);
+        item_ranger->roles[0U].set_word(model::role_word::physical_power, 50);
+        item_ranger->header.set_inventory(0U, model::ItemId{199}, 1);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        const auto consumable_target_hash = fnv1a64(new_game.framebuffer().pixels());
+        if (consumable_target_hash != 0x90778A5B1B2BE465ULL) {
+            std::cerr << "consumable_target_hash=0x" << std::hex << consumable_target_hash
+                      << std::dec << '\n';
+        }
+        OL_CHECK(consumable_target_hash == 0x90778A5B1B2BE465ULL);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        OL_CHECK(item_ranger->roles[0U].word(model::role_word::physical_power) == 60);
+        OL_CHECK(item_ranger->header.inventory_item(0U).value != 199);
+        new_game.handle_key('A', false, false);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    }
     OL_CHECK(new_game.render());
     const auto world_palette_before_scene = new_game.framebuffer().palette();
 
@@ -607,12 +920,6 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.render());
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == scene_medicine_user_hash);
     new_game.handle_key(0x1BU, false, false);
-    new_game.handle_key(0x98U, false, false);
-    new_game.handle_key(0x98U, false, false);
-    new_game.handle_key(0x0DU, false, false);
-    new_game.handle_key(0x0DU, false, false);
-    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
-    OL_CHECK(new_game.render());
     auto* scene_snapshot =
         const_cast<model::GameState&>(new_game.game_state()).snapshot();
     OL_CHECK(scene_snapshot != nullptr);
@@ -626,6 +933,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(scene_snapshot->set_scene_value(
             70U, model::SceneLayer::event_index, 28U * 64U + 44U, -1));
     }
+    new_game.handle_key(0x98U, false, false);
+    new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);

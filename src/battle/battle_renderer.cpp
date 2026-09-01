@@ -46,12 +46,52 @@ constexpr std::array<std::uint8_t, 8> kDetoxificationTargetTitle{
 constexpr std::array<std::uint8_t, 14> kStatusSelectionTitle{
     0xADU, 0x6EU, 0xACU, 0x64U, 0xBEU, 0x5CU, 0xBDU,
     0xD6U, 0xAAU, 0xBAU, 0xAAU, 0xACU, 0xBAU, 0x41U};
+constexpr std::array<std::uint8_t, 8> kEquipmentTargetTitle{
+    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xB0U, 0x74U, 0xB3U, 0xC6U};
+constexpr std::array<std::uint8_t, 8> kPracticeTargetTitle{
+    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xADU, 0xD7U, 0xBDU, 0x6DU};
+constexpr std::array<std::uint8_t, 8> kItemTargetTitle{
+    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xA8U, 0xCFU, 0xA5U, 0xCEU};
 constexpr std::array<std::uint8_t, 10> kLeavePartyTitle{
     0xADU, 0x6EU, 0xA8U, 0x44U, 0xBDU, 0xD6U, 0xC2U, 0xF7U, 0xB6U, 0xA4U};
 constexpr std::array<std::uint8_t, 8> kLifePointsLabel{
     0xA5U, 0xCDU, 0xA9U, 0x52U, 0xC2U, 0x49U, 0xBCU, 0xC6U};
 constexpr std::array<std::uint8_t, 8> kPoisonLevelLabel{
     0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U};
+constexpr std::array<std::uint8_t, 5> kUseItemPrefix{
+    0xA8U, 0xCFU, 0xA5U, 0xCEU, 0x20U};
+constexpr std::array<std::uint8_t, 4> kItemIncrease{
+    0xB4U, 0xA3U, 0xA4U, 0xC9U};
+constexpr std::array<std::uint8_t, 4> kItemDecrease{
+    0xB4U, 0xEEU, 0xA4U, 0xD6U};
+constexpr std::array<std::uint8_t, 20> kItemMpTypeChanged{
+    0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U, 0xA7U, 0xEFU,
+    0xACU, 0xB0U, 0x20U, 0x20U, 0xB3U, 0xB1U, 0xB6U, 0xA7U, 0xA6U, 0x58U};
+constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
+    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xADU, 0xC8U},
+    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
+    {0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U},
+    {0xCAU, 0x5EU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
+    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U},
+    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
+    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
+    {0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
+    {0xBBU, 0xB4U, 0xA5U, 0xADU, 0xC8U},
+    {0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA4U, 0x4FU},
+    {0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xA8U, 0xCFU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xA7U, 0xDCU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA5U, 0xA4U, 0xD2U},
+    {0xB1U, 0x73U, 0xBCU, 0x43U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
+    {0xADU, 0x41U, 0xA4U, 0x4DU, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
+    {0xAFU, 0x53U, 0xAEU, 0xEDU, 0xA7U, 0x4CU, 0xBEU, 0xB9U},
+    {0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
+    {0xAAU, 0x5AU, 0xBEU, 0xC7U, 0xB1U, 0x60U, 0xC3U, 0xD1U},
+    {0xA4U, 0x48U, 0xA9U, 0xCAU},
+    {0xA7U, 0xF0U, 0xC0U, 0xBBU, 0xA6U, 0xB8U, 0xBCU, 0xC6U},
+    {0xA5U, 0xA4U, 0xD2U, 0xB1U, 0x61U, 0xACU, 0x72U},
+}};
 constexpr std::array<std::uint8_t, 18> kNoMedicineUser{
     0xB6U, 0xA4U, 0xADU, 0xFBU, 0xA4U, 0xA4U, 0xB5U, 0x4CU, 0xA4U,
     0x48U, 0xC2U, 0xE5U, 0xB3U, 0x4EU, 0xB0U, 0xF7U, 0xAEU, 0xE6U};
@@ -379,7 +419,8 @@ bool BattleRenderer::render_character_selection(
     const model::RangerState& ranger,
     const std::size_t cursor,
     const PartySelectionKind kind,
-    render::IndexedFramebuffer& framebuffer) {
+    render::IndexedFramebuffer& framebuffer,
+    const std::optional<std::int16_t> item_id) {
     std::size_t party_count = model::kTeamMemberCount;
     for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
         if (ranger.header.team_member(slot).value <= 0) {
@@ -402,15 +443,35 @@ bool BattleRenderer::render_character_selection(
         list_width = 86U;
         break;
     case PartySelectionKind::status: title = kStatusSelectionTitle; break;
+    case PartySelectionKind::equipment_target: title = kEquipmentTargetTitle; break;
+    case PartySelectionKind::practice_target: title = kPracticeTargetTitle; break;
+    case PartySelectionKind::item_target: title = kItemTargetTitle; break;
     case PartySelectionKind::leave_party: title = kLeavePartyTitle; break;
     }
     const auto has_details = !subtitle.empty();
-    const auto title_width = static_cast<std::uint16_t>(8U * title.size() + 12U);
+    const auto has_item_title =
+        kind == PartySelectionKind::equipment_target ||
+        kind == PartySelectionKind::practice_target ||
+        kind == PartySelectionKind::item_target;
+    std::span<const std::uint8_t> item_name;
+    if (has_item_title) {
+        if (!item_id.has_value() || *item_id < 0 ||
+            static_cast<std::size_t>(*item_id) >= ranger.items.size()) {
+            return false;
+        }
+        item_name = fixed_text(
+            std::span<const std::uint8_t>{ranger.items[static_cast<std::size_t>(*item_id)].bytes},
+            2U * model::item_word::secondary_name_begin,
+            2U * model::item_word::secondary_name_count);
+    }
+    const auto title_width = static_cast<std::uint16_t>(
+        8U * (title.size() + item_name.size()) + (has_item_title ? 28U : 12U));
     const auto list_height = static_cast<std::uint16_t>(
         20U * party_count + (has_details ? 30U : 10U));
     if (!valid() || party_count == 0U || cursor >= party_count ||
         !draw_box(framebuffer, 70, 18, title_width, 26U) ||
         !draw_text(framebuffer, 75, 22, title, 0x0705U) ||
+        (has_item_title && !draw_text(framebuffer, 145, 22, item_name, 0x1014U)) ||
         !draw_box(framebuffer, 70, 45, list_width, list_height) ||
         (has_details && !draw_text(framebuffer, 75, 52, subtitle, 0x0705U))) {
         return false;
@@ -791,6 +852,71 @@ bool BattleRenderer::render_character_status(
                 0x6663U)) {
             return false;
         }
+    }
+    return true;
+}
+
+bool BattleRenderer::render_item_effect(
+    const model::RangerState& ranger,
+    const std::int16_t item_id,
+    const BattleItemEffectResult& effect,
+    render::IndexedFramebuffer& framebuffer) {
+    if (!valid() || item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size() ||
+        !draw_box(
+            framebuffer,
+            effect.panel_x,
+            effect.panel_y,
+            static_cast<std::uint16_t>(effect.panel_width),
+            static_cast<std::uint16_t>(effect.panel_height))) {
+        return false;
+    }
+    const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    const auto name = fixed_text(
+        item.bytes,
+        2U * model::item_word::secondary_name_begin,
+        2U * model::item_word::secondary_name_count);
+    std::vector<std::uint8_t> header{kUseItemPrefix.begin(), kUseItemPrefix.end()};
+    header.insert(header.end(), name.begin(), name.end());
+    if (!draw_text(framebuffer, 75, 25, header, 0x6663U)) {
+        return false;
+    }
+    std::int16_t visible_row = 0;
+    for (std::size_t index = 0U; index < effect.deltas.size(); ++index) {
+        const auto delta = effect.deltas[index];
+        if (delta == 0) {
+            continue;
+        }
+        const auto y = 45 + 18 * visible_row;
+        if (!draw_text(
+                framebuffer,
+                75,
+                y,
+                zero_terminated_prefix(kItemEffectLabels[index]),
+                0x0705U)) {
+            return false;
+        }
+        if (index == 4U) {
+            if (!draw_text(framebuffer, 155, y, kItemMpTypeChanged, 0x0705U)) {
+                return false;
+            }
+        } else {
+            if (!draw_text(
+                    framebuffer,
+                    155,
+                    y,
+                    delta > 0 ? std::span<const std::uint8_t>{kItemIncrease}
+                              : std::span<const std::uint8_t>{kItemDecrease},
+                    delta > 0 ? 0x0705U : 0x1014U)) {
+                return false;
+            }
+            const auto magnitude = delta < 0
+                ? -static_cast<std::int32_t>(delta)
+                : static_cast<std::int32_t>(delta);
+            if (!draw_text(framebuffer, 187, y, decimal_text(magnitude, 3), 0x0705U)) {
+                return false;
+            }
+        }
+        ++visible_row;
     }
     return true;
 }

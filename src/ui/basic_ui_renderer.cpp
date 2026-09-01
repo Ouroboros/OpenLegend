@@ -43,6 +43,35 @@ constexpr std::array<std::uint8_t, 22> kQuitPrompt{
     0xA1U, 0x5EU};
 constexpr std::array<std::uint8_t, 8> kIoWaitLabel{
     0xBDU, 0xD0U, 0xB5U, 0x79U, 0xADU, 0xD4U, 0xA1U, 0x49U};
+constexpr std::array<std::uint8_t, 26> kLeaveProtagonistNotice{
+    0xA9U, 0xEAU, 0xBAU, 0x70U, 0xA1U, 0x49U, 0xA8U, 0x53U, 0xA6U,
+    0xB3U, 0xA7U, 0x41U, 0xB9U, 0x43U, 0xC0U, 0xB8U, 0xB6U, 0x69U,
+    0xA6U, 0xE6U, 0xA4U, 0xA3U, 0xA4U, 0x55U, 0xA5U, 0x68U};
+constexpr std::array<std::uint8_t, 20> kEquipmentUnsuitableNotice{
+    0xA6U, 0xB9U, 0xA4U, 0x48U, 0xA4U, 0xA3U, 0xBEU, 0x41U, 0xA6U, 0x58U,
+    0xB0U, 0x74U, 0xB3U, 0xC6U, 0xA6U, 0xB9U, 0xAAU, 0xABU, 0xABU, 0x7EU};
+constexpr std::array<std::uint8_t, 24> kPracticeAssignedNotice{
+    0xA6U, 0xB9U, 0xAAU, 0xABU, 0xABU, 0x7EU, 0xB2U, 0x7BU, 0xA6U, 0x62U,
+    0xA4U, 0x77U, 0xB8U, 0x67U, 0xA6U, 0xB3U, 0xA4U, 0x48U, 0xADU, 0xD7U,
+    0xBDU, 0x6DU, 0xA4U, 0x46U};
+constexpr std::array<std::uint8_t, 24> kPracticeReassignQuestion{
+    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xADU, 0x6EU, 0xB4U, 0xABU, 0xA4U, 0x48U,
+    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU,
+    0xA2U, 0xDCU, 0xA1U, 0x5EU};
+constexpr std::array<std::uint8_t, 20> kPracticeMagicFullNotice{
+    0xA4U, 0x40U, 0xA4U, 0x48U, 0xA5U, 0x75U, 0xAFU, 0xE0U, 0xADU, 0xD7U,
+    0xBDU, 0x6DU, 0xA4U, 0x51U, 0xBAU, 0xD8U, 0xA5U, 0x5CU, 0xA4U, 0xD2U};
+constexpr std::array<std::uint8_t, 24> kPracticeCastrationNotice{
+    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA6U, 0xB9U, 0xAEU, 0xD1U, 0xA5U, 0xB2U,
+    0xB6U, 0xB7U, 0xA5U, 0xFDU, 0xA6U, 0xE6U, 0xB4U, 0xA7U, 0xBCU, 0x43U,
+    0xA6U, 0xDBU, 0xAEU, 0x63U};
+constexpr std::array<std::uint8_t, 24> kPracticeCastrationQuestion{
+    0xA7U, 0x41U, 0xACU, 0x4FU, 0xA7U, 0x5FU, 0xA4U, 0xB4U, 0xADU, 0x6EU,
+    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU,
+    0xA2U, 0xDCU, 0xA1U, 0x5EU};
+constexpr std::array<std::uint8_t, 20> kPracticeUnsuitableNotice{
+    0xA6U, 0xB9U, 0xA4U, 0x48U, 0xA4U, 0xA3U, 0xBEU, 0x41U, 0xA6U, 0x58U,
+    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA6U, 0xB9U, 0xAAU, 0xABU, 0xABU, 0x7EU};
 
 struct AttributeLine {
     std::array<std::uint8_t, 6> label;
@@ -238,6 +267,34 @@ bool BasicUiRenderer::render_game_menu(
         return false;
     case GameMenuScreen::items:
         return render_items(ranger, menu.item_selection(), framebuffer);
+    case GameMenuScreen::item_confirmation:
+        if (!draw_box(framebuffer, 62, 18, 203U, 50U)) {
+            return false;
+        }
+        if (menu.item_confirmation() == GameMenuItemConfirmation::practice_reassign) {
+            return draw_text(framebuffer, 67, 25, kPracticeAssignedNotice, 0x0705U) &&
+                draw_text(framebuffer, 67, 45, kPracticeReassignQuestion, 0x0705U);
+        }
+        return draw_text(framebuffer, 67, 25, kPracticeCastrationNotice, 0x0705U) &&
+            draw_text(framebuffer, 67, 45, kPracticeCastrationQuestion, 0x0705U);
+    case GameMenuScreen::item_effect:
+        return false;
+    case GameMenuScreen::notice:
+        switch (menu.notice()) {
+        case GameMenuNotice::leave_protagonist:
+            return draw_box(framebuffer, 40, 40, 228U, 27U) &&
+                draw_text(framebuffer, 50, 45, kLeaveProtagonistNotice, 0x0705U);
+        case GameMenuNotice::equipment_unsuitable:
+            return draw_box(framebuffer, 70, 18, 170U, 30U) &&
+                draw_text(framebuffer, 75, 25, kEquipmentUnsuitableNotice, 0x0705U);
+        case GameMenuNotice::practice_magic_full:
+            return draw_box(framebuffer, 70, 18, 170U, 30U) &&
+                draw_text(framebuffer, 75, 25, kPracticeMagicFullNotice, 0x0705U);
+        case GameMenuNotice::practice_unsuitable:
+            return draw_box(framebuffer, 70, 18, 180U, 30U) &&
+                draw_text(framebuffer, 80, 25, kPracticeUnsuitableNotice, 0x0705U);
+        }
+        return false;
     case GameMenuScreen::system:
         if (!draw_box(framebuffer, 70, 18, 74U, 72U)) {
             return false;

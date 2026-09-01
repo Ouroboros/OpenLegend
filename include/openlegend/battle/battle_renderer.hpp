@@ -20,6 +20,9 @@ enum class PartySelectionKind {
     medicine_target,
     detoxification_target,
     status,
+    equipment_target,
+    practice_target,
+    item_target,
     leave_party,
 };
 
@@ -49,7 +52,8 @@ public:
         const model::RangerState& ranger,
         std::size_t cursor,
         PartySelectionKind kind,
-        render::IndexedFramebuffer& framebuffer);
+        render::IndexedFramebuffer& framebuffer,
+        std::optional<std::int16_t> item_id = std::nullopt);
     [[nodiscard]] bool render_character_status_selection(
         const model::RangerState& ranger,
         std::size_t cursor,
@@ -68,6 +72,11 @@ public:
         const model::RangerState& ranger,
         std::int16_t role_id,
         std::uint8_t page,
+        render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_item_effect(
+        const model::RangerState& ranger,
+        std::int16_t item_id,
+        const BattleItemEffectResult& effect,
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool draw_box(
         render::IndexedFramebuffer& framebuffer,

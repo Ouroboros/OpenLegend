@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <utility>
 
 namespace openlegend::battle {
 namespace {
@@ -167,6 +168,355 @@ std::optional<std::int32_t> apply_role_medicine_value(
         model::role_word::physical_power,
         wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2));
     return amount;
+}
+
+bool role_meets_item_requirements(
+    const model::RangerState& ranger,
+    const std::int16_t role_id,
+    const std::int16_t item_id) noexcept {
+    if (role_id < 0 || item_id < 0 ||
+        static_cast<std::size_t>(role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+        return false;
+    }
+    const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+    const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    const auto need_mp_type = item.word(model::item_word::need_mp_type);
+    bool suitable = role.word(model::role_word::mp_type) == 2 || need_mp_type == 2 ||
+        role.word(model::role_word::mp_type) == need_mp_type;
+    const auto only_suitable_role = item.word(model::item_word::only_suitable_role);
+    if (only_suitable_role != -1 && only_suitable_role != role.word(model::role_word::id)) {
+        suitable = false;
+    }
+    constexpr std::array<std::pair<std::size_t, std::size_t>, 11U> requirements{{
+        {model::role_word::mp, model::item_word::need_mp},
+        {model::role_word::attack, model::item_word::need_attack},
+        {model::role_word::speed, model::item_word::need_speed},
+        {model::role_word::use_poison, model::item_word::need_use_poison},
+        {model::role_word::medicine, model::item_word::need_medicine},
+        {model::role_word::detoxification, model::item_word::need_detoxification},
+        {model::role_word::fist, model::item_word::need_fist},
+        {model::role_word::sword, model::item_word::need_sword},
+        {model::role_word::knife, model::item_word::need_knife},
+        {model::role_word::unusual, model::item_word::need_unusual},
+        {model::role_word::hidden_weapon, model::item_word::need_hidden_weapon},
+    }};
+    for (const auto [role_word_index, item_word_index] : requirements) {
+        if (role.word(role_word_index) < item.word(item_word_index)) {
+            suitable = false;
+        }
+    }
+    const auto need_iq = item.word(model::item_word::need_iq);
+    if ((need_iq >= 0 && role.word(model::role_word::iq) < need_iq) ||
+        (need_iq < 0 &&
+         static_cast<std::int32_t>(role.word(model::role_word::iq)) >
+             -static_cast<std::int32_t>(need_iq))) {
+        suitable = false;
+    }
+    if (item.word(model::item_word::item_type) == 2) {
+        const auto record_item_id = item.word(model::item_word::id);
+        if ((record_item_id == 78 || record_item_id == 93) &&
+            role.word(model::role_word::sexual) == 1) {
+            suitable = false;
+        }
+        const auto magic_id = item.word(model::item_word::magic_id);
+        for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+            if (role.word(model::role_word::magic_id_begin + slot) == magic_id) {
+                suitable = true;
+            }
+        }
+    }
+    return suitable;
+}
+
+bool equip_role_item(
+    model::RangerState& ranger,
+    const std::int16_t role_id,
+    const std::int16_t item_id) noexcept {
+    if (role_id < 0 || item_id < 0 ||
+        static_cast<std::size_t>(role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+        return false;
+    }
+    auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+    auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    if (item.word(model::item_word::item_type) != 1) {
+        return false;
+    }
+    const auto equipment_slot = item.word(model::item_word::equipment_type) == 0 ? 0U : 1U;
+    const auto field = model::role_word::equipment_begin + equipment_slot;
+    const auto previous_user = item.word(model::item_word::user);
+    if (previous_user >= 0 && static_cast<std::size_t>(previous_user) < ranger.roles.size()) {
+        ranger.roles[static_cast<std::size_t>(previous_user)].set_word(field, -1);
+    }
+    const auto previous_item = role.word(field);
+    if (previous_item >= 0 && static_cast<std::size_t>(previous_item) < ranger.items.size()) {
+        ranger.items[static_cast<std::size_t>(previous_item)].set_word(
+            model::item_word::user, -1);
+    }
+    role.set_word(field, item.word(model::item_word::id));
+    item.set_word(model::item_word::user, role.word(model::role_word::id));
+    return true;
+}
+
+bool assign_role_practice_item(
+    model::RangerState& ranger,
+    const std::int16_t role_id,
+    const std::int16_t item_id) noexcept {
+    if (role_id < 0 || item_id < 0 ||
+        static_cast<std::size_t>(role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+        return false;
+    }
+    auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+    auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    if (item.word(model::item_word::item_type) != 2) {
+        return false;
+    }
+    if (item.word(model::item_word::user) == role.word(model::role_word::id)) {
+        return true;
+    }
+    const auto previous_user = item.word(model::item_word::user);
+    if (previous_user >= 0 && static_cast<std::size_t>(previous_user) < ranger.roles.size()) {
+        auto& previous_role = ranger.roles[static_cast<std::size_t>(previous_user)];
+        previous_role.set_word(model::role_word::practice_item, -1);
+        previous_role.set_word(model::role_word::item_experience, 0);
+    }
+    const auto previous_item = role.word(model::role_word::practice_item);
+    if (previous_item >= 0 && static_cast<std::size_t>(previous_item) < ranger.items.size()) {
+        ranger.items[static_cast<std::size_t>(previous_item)].set_word(
+            model::item_word::user, -1);
+    }
+    item.set_word(model::item_word::user, role.word(model::role_word::id));
+    role.set_word(model::role_word::practice_item, item.word(model::item_word::id));
+    role.set_word(model::role_word::item_experience, 0);
+    role.set_word(model::role_word::make_item_experience, 0);
+    return true;
+}
+
+bool consume_inventory_item_slot(
+    model::RangerState& ranger,
+    const std::size_t inventory_slot) noexcept {
+    if (inventory_slot >= model::kInventoryCount) {
+        return false;
+    }
+    const auto item_id = ranger.header.inventory_item(inventory_slot).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+        return false;
+    }
+    const auto remaining = wrapping_i16(
+        static_cast<std::int32_t>(ranger.header.inventory_count(inventory_slot)) - 1);
+    ranger.header.set_inventory(inventory_slot, model::ItemId{item_id}, remaining);
+    if (remaining > 0) {
+        return true;
+    }
+    for (std::size_t source = inventory_slot + 1U; source < model::kInventoryCount; ++source) {
+        ranger.header.set_inventory(
+            source - 1U,
+            ranger.header.inventory_item(source),
+            ranger.header.inventory_count(source));
+    }
+    ranger.header.set_inventory(model::kInventoryCount - 1U, model::ItemId{-1}, 0);
+    return true;
+}
+
+std::optional<BattleItemEffectResult> apply_role_item_effect(
+    model::RangerState& ranger,
+    const std::int16_t actor_role_id,
+    const std::int16_t target_role_id,
+    const std::int16_t item_id,
+    random::LegacyRandom& random) {
+    if (actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
+        static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(target_role_id) >= ranger.roles.size() ||
+        static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+        return std::nullopt;
+    }
+    auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
+    auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    BattleItemEffectResult result{};
+
+    const auto item_hp = item.word(model::item_word::add_hp);
+    if (item_hp != 0) {
+        const auto old_hp = target.word(model::role_word::hp);
+        std::int32_t hp_delta = 0;
+        if (item_hp > 0) {
+            hp_delta = static_cast<std::int32_t>(item_hp) -
+                static_cast<std::int32_t>(target.word(model::role_word::hurt)) / 2 +
+                random.bounded(10);
+            if (hp_delta < 0) {
+                hp_delta = random.bounded(5) + 5;
+            }
+            auto changed_hurt = wrapping_i16(
+                static_cast<std::int32_t>(target.word(model::role_word::hurt)) - item_hp / 4);
+            if (changed_hurt < 0) {
+                changed_hurt = 0;
+            }
+            if (changed_hurt > 99) {
+                changed_hurt = 99;
+            }
+            target.set_word(model::role_word::hurt, changed_hurt);
+        } else {
+            auto damage_base = static_cast<std::int32_t>(item_hp) + 50 -
+                static_cast<std::int32_t>(target.word(model::role_word::hurt)) / 2 -
+                random.bounded(10);
+            if (damage_base > 0) {
+                damage_base = -5 - random.bounded(5);
+            }
+            hp_delta = (damage_base -
+                        3 * static_cast<std::int32_t>(
+                                actor.word(model::role_word::hidden_weapon))) /
+                3;
+            auto changed_hurt = wrapping_i16(
+                static_cast<std::int32_t>(target.word(model::role_word::hurt)) - hp_delta / 10);
+            if (changed_hurt > 99) {
+                changed_hurt = 99;
+            }
+            if (changed_hurt < 0) {
+                changed_hurt = 0;
+            }
+            target.set_word(model::role_word::hurt, changed_hurt);
+        }
+        auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
+        if (changed_hp >= target.word(model::role_word::maximum_hp)) {
+            changed_hp = target.word(model::role_word::maximum_hp);
+        }
+        if (changed_hp <= 0) {
+            changed_hp = 0;
+        }
+        target.set_word(model::role_word::hp, changed_hp);
+        result.deltas[0U] = wrapping_i16(
+            static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp));
+    }
+
+    const auto add_maximum_hp = item.word(model::item_word::add_maximum_hp);
+    if (add_maximum_hp != 0) {
+        auto changed = wrapping_i16(
+            static_cast<std::int32_t>(target.word(model::role_word::maximum_hp)) +
+            add_maximum_hp);
+        if (changed <= 0) {
+            changed = 0;
+        }
+        if (changed >= 999) {
+            changed = 999;
+        }
+        target.set_word(model::role_word::maximum_hp, changed);
+        if (target.word(model::role_word::hp) >= changed) {
+            target.set_word(model::role_word::hp, changed);
+        }
+        result.deltas[1U] = add_maximum_hp;
+    }
+
+    const auto item_poison = item.word(model::item_word::add_poison);
+    if (item_poison != 0) {
+        const auto old_poison = target.word(model::role_word::poison);
+        std::int32_t poison_delta = 0;
+        if (item_poison > 0) {
+            poison_delta =
+                (static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon)) +
+                 item_poison) /
+                    2 -
+                target.word(model::role_word::anti_poison);
+            if (target.word(model::role_word::anti_poison) >= 100 || poison_delta < 0) {
+                poison_delta = 0;
+            }
+            poison_delta /= 2;
+        } else {
+            poison_delta = static_cast<std::int32_t>(item_poison) / 2 + random.bounded(5) -
+                random.bounded(5);
+        }
+        auto changed = wrapping_i16(static_cast<std::int32_t>(old_poison) + poison_delta);
+        if (changed >= 99) {
+            changed = 99;
+        }
+        if (changed <= 0) {
+            changed = 0;
+        }
+        target.set_word(model::role_word::poison, changed);
+        result.deltas[2U] = wrapping_i16(
+            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_poison));
+    }
+
+    const auto add_physical_power = item.word(model::item_word::add_physical_power);
+    if (add_physical_power != 0) {
+        const auto old_value = target.word(model::role_word::physical_power);
+        auto changed = wrapping_i16(static_cast<std::int32_t>(old_value) + add_physical_power);
+        if (changed >= 100) {
+            changed = 100;
+        }
+        if (changed <= 0) {
+            changed = 0;
+        }
+        target.set_word(model::role_word::physical_power, changed);
+        result.deltas[3U] = wrapping_i16(
+            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_value));
+    }
+
+    const auto change_mp_type = item.word(model::item_word::change_mp_type);
+    if (change_mp_type == 2) {
+        target.set_word(model::role_word::mp_type, 2);
+        result.deltas[4U] = 2;
+    }
+
+    const auto add_mp = item.word(model::item_word::add_mp);
+    if (add_mp != 0) {
+        const auto old_value = target.word(model::role_word::mp);
+        auto changed = wrapping_i16(static_cast<std::int32_t>(old_value) + add_mp);
+        if (changed >= target.word(model::role_word::maximum_mp)) {
+            changed = target.word(model::role_word::maximum_mp);
+        }
+        if (changed <= 0) {
+            changed = 0;
+        }
+        target.set_word(model::role_word::mp, changed);
+        result.deltas[5U] = wrapping_i16(
+            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_value));
+    }
+
+    const auto add_maximum_mp = item.word(model::item_word::add_maximum_mp);
+    if (add_maximum_mp != 0) {
+        auto changed = wrapping_i16(
+            static_cast<std::int32_t>(target.word(model::role_word::maximum_mp)) +
+            add_maximum_mp);
+        if (changed <= 0) {
+            changed = 0;
+        }
+        if (changed >= 999) {
+            changed = 999;
+        }
+        target.set_word(model::role_word::maximum_mp, changed);
+        if (target.word(model::role_word::mp) >= changed) {
+            target.set_word(model::role_word::mp, changed);
+        }
+        result.deltas[6U] = add_maximum_mp;
+    }
+
+    for (std::size_t index = 0U; index < 13U; ++index) {
+        const auto delta = item.word(model::item_word::add_attack + index);
+        const auto role_word_index = model::role_word::attack + index;
+        target.set_word(
+            role_word_index,
+            wrapping_i16(static_cast<std::int32_t>(target.word(role_word_index)) + delta));
+        result.deltas[7U + index] = delta;
+    }
+    result.deltas[20U] = item.word(model::item_word::add_morality);
+    result.deltas[21U] = item.word(model::item_word::add_attack_twice);
+    const auto add_attack_with_poison = item.word(model::item_word::add_attack_with_poison);
+    target.set_word(
+        model::role_word::attack_with_poison,
+        wrapping_i16(
+            static_cast<std::int32_t>(target.word(model::role_word::attack_with_poison)) +
+            add_attack_with_poison));
+    result.deltas[22U] = add_attack_with_poison;
+
+    result.effect_count = static_cast<std::int16_t>(std::ranges::count_if(
+        result.deltas, [](const std::int16_t value) { return value != 0; }));
+    result.has_effect = result.effect_count > 0;
+    result.panel_height = static_cast<std::int16_t>(20 * result.effect_count + 30);
+    result.battle_redraw_required = result.has_effect;
+    result.wait_for_input = result.has_effect;
+    return result;
 }
 
 BattleSetup::BattleSetup(BattleData& data, model::RangerState& ranger)
@@ -2047,27 +2397,8 @@ BattleItemSelectionState BattleSetup::begin_item_selection() const noexcept {
 }
 
 bool BattleSetup::consume_inventory_item_slot(const std::size_t inventory_slot) noexcept {
-    if (!valid() || inventory_slot >= model::kInventoryCount) {
-        return false;
-    }
-    const auto item_id = ranger_.header.inventory_item(inventory_slot).value;
-    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
-        return false;
-    }
-    const auto remaining = wrapping_i16(
-        static_cast<std::int32_t>(ranger_.header.inventory_count(inventory_slot)) - 1);
-    ranger_.header.set_inventory(inventory_slot, model::ItemId{item_id}, remaining);
-    if (remaining > 0) {
-        return true;
-    }
-    for (std::size_t source = inventory_slot + 1U; source < model::kInventoryCount; ++source) {
-        ranger_.header.set_inventory(
-            source - 1U,
-            ranger_.header.inventory_item(source),
-            ranger_.header.inventory_count(source));
-    }
-    ranger_.header.set_inventory(model::kInventoryCount - 1U, model::ItemId{-1}, 0);
-    return true;
+    return valid() &&
+        openlegend::battle::consume_inventory_item_slot(ranger_, inventory_slot);
 }
 
 std::optional<BattleItemEffectResult> BattleSetup::apply_player_item_effect(
@@ -2511,199 +2842,18 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
     attack_effects_[static_cast<std::size_t>(y) * kBattleExtent +
                     static_cast<std::size_t>(x)] = 1;
 
-    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    const auto& item = ranger_.items[static_cast<std::size_t>(*item_id)];
-    BattleItemEffectResult result{};
-
-    const auto item_hp = item.word(model::item_word::add_hp);
-    if (item_hp != 0) {
-        const auto old_hp = target.word(model::role_word::hp);
-        std::int32_t hp_delta = 0;
-        if (item_hp > 0) {
-            hp_delta = static_cast<std::int32_t>(item_hp) -
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) / 2 +
-                random.bounded(10);
-            if (hp_delta < 0) {
-                hp_delta = random.bounded(5) + 5;
-            }
-            auto changed_hurt = wrapping_i16(
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) - item_hp / 4);
-            if (changed_hurt < 0) {
-                changed_hurt = 0;
-            }
-            if (changed_hurt > 99) {
-                changed_hurt = 99;
-            }
-            target.set_word(model::role_word::hurt, changed_hurt);
-        } else {
-            auto damage_base = static_cast<std::int32_t>(item_hp) + 50 -
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) / 2 -
-                random.bounded(10);
-            if (damage_base > 0) {
-                damage_base = -5 - random.bounded(5);
-            }
-            hp_delta = (damage_base -
-                        3 * static_cast<std::int32_t>(
-                                actor.word(model::role_word::hidden_weapon))) /
-                3;
-            auto changed_hurt = wrapping_i16(
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) - hp_delta / 10);
-            if (changed_hurt > 99) {
-                changed_hurt = 99;
-            }
-            if (changed_hurt < 0) {
-                changed_hurt = 0;
-            }
-            target.set_word(model::role_word::hurt, changed_hurt);
-        }
-        auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
-        if (changed_hp >= target.word(model::role_word::maximum_hp)) {
-            changed_hp = target.word(model::role_word::maximum_hp);
-        }
-        if (changed_hp <= 0) {
-            changed_hp = 0;
-        }
-        target.set_word(model::role_word::hp, changed_hp);
-        result.deltas[0U] = wrapping_i16(
-            static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp));
+    auto result = openlegend::battle::apply_role_item_effect(
+        ranger_, actor_role_id, target_role_id, *item_id, random);
+    if (!result.has_value()) {
+        return std::nullopt;
     }
-
-    const auto add_maximum_hp = item.word(model::item_word::add_maximum_hp);
-    if (add_maximum_hp != 0) {
-        auto changed = wrapping_i16(
-            static_cast<std::int32_t>(target.word(model::role_word::maximum_hp)) +
-            add_maximum_hp);
-        if (changed <= 0) {
-            changed = 0;
-        }
-        if (changed >= 999) {
-            changed = 999;
-        }
-        target.set_word(model::role_word::maximum_hp, changed);
-        if (target.word(model::role_word::hp) >= changed) {
-            target.set_word(model::role_word::hp, changed);
-        }
-        result.deltas[1U] = add_maximum_hp;
-    }
-
-    const auto item_poison = item.word(model::item_word::add_poison);
-    if (item_poison != 0) {
-        const auto old_poison = target.word(model::role_word::poison);
-        std::int32_t poison_delta = 0;
-        if (item_poison > 0) {
-            poison_delta =
-                (static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon)) +
-                 item_poison) /
-                    2 -
-                target.word(model::role_word::anti_poison);
-            if (target.word(model::role_word::anti_poison) >= 100 || poison_delta < 0) {
-                poison_delta = 0;
-            }
-            poison_delta /= 2;
-        } else {
-            poison_delta = static_cast<std::int32_t>(item_poison) / 2 + random.bounded(5) -
-                random.bounded(5);
-        }
-        auto changed = wrapping_i16(static_cast<std::int32_t>(old_poison) + poison_delta);
-        if (changed >= 99) {
-            changed = 99;
-        }
-        if (changed <= 0) {
-            changed = 0;
-        }
-        target.set_word(model::role_word::poison, changed);
-        result.deltas[2U] = wrapping_i16(
-            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_poison));
-    }
-
-    const auto add_physical_power = item.word(model::item_word::add_physical_power);
-    if (add_physical_power != 0) {
-        const auto old_value = target.word(model::role_word::physical_power);
-        auto changed = wrapping_i16(static_cast<std::int32_t>(old_value) + add_physical_power);
-        if (changed >= 100) {
-            changed = 100;
-        }
-        if (changed <= 0) {
-            changed = 0;
-        }
-        target.set_word(model::role_word::physical_power, changed);
-        result.deltas[3U] = wrapping_i16(
-            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_value));
-    }
-
-    const auto change_mp_type = item.word(model::item_word::change_mp_type);
-    if (change_mp_type == 2) {
-        target.set_word(model::role_word::mp_type, 2);
-        result.deltas[4U] = 2;
-    }
-
-    const auto add_mp = item.word(model::item_word::add_mp);
-    if (add_mp != 0) {
-        const auto old_value = target.word(model::role_word::mp);
-        auto changed = wrapping_i16(static_cast<std::int32_t>(old_value) + add_mp);
-        if (changed >= target.word(model::role_word::maximum_mp)) {
-            changed = target.word(model::role_word::maximum_mp);
-        }
-        if (changed <= 0) {
-            changed = 0;
-        }
-        target.set_word(model::role_word::mp, changed);
-        result.deltas[5U] = wrapping_i16(
-            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_value));
-    }
-
-    const auto add_maximum_mp = item.word(model::item_word::add_maximum_mp);
-    if (add_maximum_mp != 0) {
-        auto changed = wrapping_i16(
-            static_cast<std::int32_t>(target.word(model::role_word::maximum_mp)) +
-            add_maximum_mp);
-        if (changed <= 0) {
-            changed = 0;
-        }
-        if (changed >= 999) {
-            changed = 999;
-        }
-        target.set_word(model::role_word::maximum_mp, changed);
-        if (target.word(model::role_word::mp) >= changed) {
-            target.set_word(model::role_word::mp, changed);
-        }
-        result.deltas[6U] = add_maximum_mp;
-    }
-
-    for (std::size_t index = 0U; index < 13U; ++index) {
-        const auto delta = item.word(model::item_word::add_attack + index);
-        const auto role_word_index = model::role_word::attack + index;
-        target.set_word(
-            role_word_index,
-            wrapping_i16(static_cast<std::int32_t>(target.word(role_word_index)) + delta));
-        result.deltas[7U + index] = delta;
-    }
-    result.deltas[20U] = item.word(model::item_word::add_morality);
-    result.deltas[21U] = item.word(model::item_word::add_attack_twice);
-    const auto add_attack_with_poison = item.word(model::item_word::add_attack_with_poison);
-    target.set_word(
-        model::role_word::attack_with_poison,
-        wrapping_i16(
-            static_cast<std::int32_t>(
-                target.word(model::role_word::attack_with_poison)) +
-            add_attack_with_poison));
-    result.deltas[22U] = add_attack_with_poison;
-
-    result.effect_count = static_cast<std::int16_t>(std::ranges::count_if(
-        result.deltas, [](const std::int16_t value) { return value != 0; }));
-    result.has_effect = result.effect_count > 0;
-    result.panel_height = static_cast<std::int16_t>(20 * result.effect_count + 30);
-    result.battle_redraw_required = result.has_effect;
-    result.wait_for_input = result.has_effect;
-
     if (!consume_item) {
         return result;
     }
     if (!consume_ai_item(actor_slot, choice)) {
         return std::nullopt;
     }
-    result.item_consumed = true;
+    result->item_consumed = true;
     return result;
 }
 

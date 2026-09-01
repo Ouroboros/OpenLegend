@@ -136,6 +136,11 @@ struct SceneEntryOverride {
     friend bool operator==(const SceneEntryOverride&, const SceneEntryOverride&) = default;
 };
 
+enum class SceneSessionContext {
+    scene,
+    world_event_overlay,
+};
+
 class SceneSession {
 public:
     SceneSession(
@@ -146,7 +151,8 @@ public:
         bool use_jump_entrance = false,
         std::optional<SceneDate> death_date_override = std::nullopt,
         std::int16_t periodic_counter = 0,
-        std::optional<SceneEntryOverride> entry_override = std::nullopt);
+        std::optional<SceneEntryOverride> entry_override = std::nullopt,
+        SceneSessionContext context = SceneSessionContext::scene);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -170,6 +176,7 @@ public:
     void periodic_tick();
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_map(render::IndexedFramebuffer& framebuffer) const;
+    [[nodiscard]] bool render_overlay(render::IndexedFramebuffer& framebuffer) const;
 
     [[nodiscard]] std::int16_t scene_id() const noexcept { return scene_id_; }
     [[nodiscard]] int scene_x() const noexcept { return scene_x_; }
@@ -447,6 +454,7 @@ private:
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
     std::int16_t scene_id_{-1};
+    SceneSessionContext context_{SceneSessionContext::scene};
     int scene_x_{};
     int scene_y_{};
     int view_origin_x_{};

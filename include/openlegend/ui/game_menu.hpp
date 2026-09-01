@@ -18,10 +18,31 @@ enum class GameMenuScreen {
     party_notice,
     status_panel,
     items,
+    item_confirmation,
+    item_effect,
+    notice,
     system,
     load_slots,
     save_slots,
     quit_confirmation,
+};
+
+enum class GameMenuItemTargetKind {
+    equipment,
+    practice,
+    consumable,
+};
+
+enum class GameMenuItemConfirmation {
+    practice_reassign,
+    practice_castration,
+};
+
+enum class GameMenuNotice {
+    leave_protagonist,
+    equipment_unsuitable,
+    practice_magic_full,
+    practice_unsuitable,
 };
 
 enum class GameMenuPartyStage {
@@ -67,6 +88,11 @@ public:
     }
     void complete_party_action(std::int32_t amount) noexcept;
     void complete_slot_operation() noexcept;
+    void begin_item_target_selection(GameMenuItemTargetKind kind) noexcept;
+    void show_item_confirmation(GameMenuItemConfirmation confirmation) noexcept;
+    void show_items() noexcept { screen_ = GameMenuScreen::items; }
+    void show_item_effect() noexcept { screen_ = GameMenuScreen::item_effect; }
+    void show_notice(GameMenuNotice notice) noexcept;
 
     [[nodiscard]] constexpr GameMenuContext context() const noexcept { return context_; }
     [[nodiscard]] constexpr GameMenuScreen screen() const noexcept { return screen_; }
@@ -90,8 +116,19 @@ public:
         return party_action_amount_;
     }
     [[nodiscard]] constexpr std::uint16_t item_selection() const noexcept {
-        return item_selection_;
+        return static_cast<std::uint16_t>(
+            5 * (item_page_ + item_row_) + item_column_);
     }
+    [[nodiscard]] constexpr std::uint8_t item_page() const noexcept { return item_page_; }
+    [[nodiscard]] constexpr std::uint8_t item_row() const noexcept { return item_row_; }
+    [[nodiscard]] constexpr std::uint8_t item_column() const noexcept { return item_column_; }
+    [[nodiscard]] constexpr GameMenuItemTargetKind item_target_kind() const noexcept {
+        return item_target_kind_;
+    }
+    [[nodiscard]] constexpr GameMenuItemConfirmation item_confirmation() const noexcept {
+        return item_confirmation_;
+    }
+    [[nodiscard]] constexpr GameMenuNotice notice() const noexcept { return notice_; }
     [[nodiscard]] constexpr std::uint8_t status_page() const noexcept { return status_page_; }
     [[nodiscard]] constexpr std::uint8_t system_selection() const noexcept {
         return system_selection_;
@@ -122,11 +159,16 @@ private:
     std::array<std::int16_t, 6U> medicine_abilities_{};
     std::array<std::int16_t, 6U> detoxification_abilities_{};
     std::optional<std::int32_t> party_action_amount_;
+    GameMenuItemTargetKind item_target_kind_{GameMenuItemTargetKind::equipment};
+    GameMenuItemConfirmation item_confirmation_{GameMenuItemConfirmation::practice_reassign};
+    GameMenuNotice notice_{GameMenuNotice::leave_protagonist};
     std::uint8_t status_page_{};
     std::uint8_t system_selection_{};
     std::uint8_t slot_selection_{};
-    std::uint16_t item_selection_{};
     std::uint16_t inventory_count_{};
+    std::uint8_t item_page_{};
+    std::uint8_t item_row_{};
+    std::uint8_t item_column_{};
 };
 
 }  // namespace openlegend::ui
