@@ -54,6 +54,14 @@ enum class BattleSessionPhase {
     ai_prelude_present,
     ai_wait,
     ai_action_selected,
+    ai_magic_frame_present,
+    ai_magic_wait,
+    ai_damage_frame_present,
+    ai_damage_wait,
+    ai_attack_commit_present,
+    ai_attack_commit_wait,
+    ai_attack_level_present,
+    ai_attack_level_wait,
     ai_movement_step_present,
     ai_movement_wait,
     round_wait,
@@ -191,6 +199,7 @@ private:
     [[nodiscard]] bool begin_ai_action();
     [[nodiscard]] bool advance_ai_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool dispatch_selected_ai_action();
+    [[nodiscard]] bool begin_ai_attack_execution();
     [[nodiscard]] bool begin_ai_movement_to(
         std::int16_t target_slot,
         BattlePathCoord target,
@@ -280,6 +289,7 @@ private:
         BattleAttackProfile profile;
         std::int16_t special_attack_bonus{};
         std::int16_t iteration{};
+        bool ai_controlled{};
         std::optional<BattlePathCoord> target;
         std::int16_t direction{-1};
         std::vector<std::uint8_t> level_text;
