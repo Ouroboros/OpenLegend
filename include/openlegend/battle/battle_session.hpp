@@ -199,7 +199,10 @@ private:
     [[nodiscard]] bool begin_ai_action();
     [[nodiscard]] bool advance_ai_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool dispatch_selected_ai_action();
+    [[nodiscard]] bool begin_ai_attack_action();
     [[nodiscard]] bool begin_ai_attack_execution();
+    [[nodiscard]] bool continue_ai_poison_plan();
+    [[nodiscard]] bool begin_ai_poison_execution();
     [[nodiscard]] bool begin_ai_movement_to(
         std::int16_t target_slot,
         BattlePathCoord target,
@@ -315,6 +318,7 @@ private:
 
     struct PlayerTargetEffectState {
         BattlePlayerAction action{};
+        bool ai_controlled{};
         BattleMagicAnimationPlan magic_animation;
         std::optional<BattleEffectAnimationPlan> effect_animation;
         std::size_t magic_frame{};

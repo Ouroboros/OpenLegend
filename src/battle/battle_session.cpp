@@ -783,7 +783,16 @@ bool BattleSession::advance_ai_wait(const std::uint32_t bios_tick) {
         " handler=" +
         std::to_string(static_cast<std::int16_t>(ai_turn_decision_->handler)) +
         " target=" + std::to_string(ai_turn_decision_->choice.target_slot));
-    return dispatch_selected_ai_action();
+    if (!dispatch_selected_ai_action()) {
+        diagnostics::log_error(
+            "battle AI action dispatch failed id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " action=" +
+            std::to_string(static_cast<std::int16_t>(ai_turn_decision_->choice.action)) +
+            " reason=" + error_);
+        return false;
+    }
+    return true;
 }
 
 bool BattleSession::dispatch_selected_ai_action() {
@@ -837,25 +846,7 @@ bool BattleSession::dispatch_selected_ai_action() {
             -1, *escape->destination, 0, 0, AiMovementContinuation::escape);
     }
     case BattleAiHandler::attack:
-        ai_attack_plan_ = setup_.begin_ai_attack_plan(current_actor_slot_, random_);
-        if (!ai_attack_plan_.has_value()) {
-            error_ = setup_.valid() ? "battle AI attack plan failed" : setup_.error();
-            return false;
-        }
-        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::move) {
-            return begin_targeted_movement(
-                ai_attack_plan_->target_slot,
-                ai_attack_plan_->movement_mode,
-                ai_attack_plan_->select_distance,
-                AiMovementContinuation::attack);
-        }
-        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::rest) {
-            return finish_ai_handler(BattlePlayerAction::rest, true);
-        }
-        if (ai_attack_plan_->next_step == BattleAiAttackNextStep::finish) {
-            return finish_ai_handler(BattlePlayerAction::attack, false);
-        }
-        return begin_ai_attack_execution();
+        return begin_ai_attack_action();
     case BattleAiHandler::use_poison: {
         const auto stale_target = setup_.combatants()[current_actor_slot_]
                                       .words[combatant_word::ai_poison_target];
@@ -872,11 +863,7 @@ bool BattleSession::dispatch_selected_ai_action() {
                 ai_poison_plan_->targeting_range,
                 AiMovementContinuation::poison);
         }
-        if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::rest) {
-            return finish_ai_handler(BattlePlayerAction::rest, true);
-        }
-        phase_ = BattleSessionPhase::ai_action_selected;
-        return true;
+        return continue_ai_poison_plan();
     }
     case BattleAiHandler::item:
         ai_item_plan_ = setup_.begin_ai_item_plan(current_actor_slot_, choice);
@@ -950,6 +937,125 @@ bool BattleSession::dispatch_selected_ai_action() {
     }
     error_ = "battle AI handler is invalid";
     return false;
+}
+
+bool BattleSession::begin_ai_attack_action() {
+    ai_attack_plan_ = setup_.begin_ai_attack_plan(current_actor_slot_, random_);
+    if (!ai_attack_plan_.has_value()) {
+        error_ = setup_.valid() ? "battle AI attack plan failed" : setup_.error();
+        return false;
+    }
+    if (ai_attack_plan_->next_step == BattleAiAttackNextStep::move) {
+        const auto target_slot = ai_attack_plan_->target_slot;
+        if (target_slot < 0 || target_slot >= setup_.combatant_count()) {
+            error_ = "battle AI attack movement target is outside combatant slots";
+            return false;
+        }
+        const auto& target_words = setup_.combatants()[
+            static_cast<std::size_t>(target_slot)].words;
+        return begin_ai_movement_to(
+            target_slot,
+            BattlePathCoord{
+                target_words[combatant_word::x], target_words[combatant_word::y]},
+            ai_attack_plan_->movement_mode,
+            ai_attack_plan_->select_distance,
+            AiMovementContinuation::attack);
+    }
+    if (ai_attack_plan_->next_step == BattleAiAttackNextStep::rest) {
+        ai_attack_plan_.reset();
+        return finish_ai_handler(BattlePlayerAction::rest, true);
+    }
+    if (ai_attack_plan_->next_step == BattleAiAttackNextStep::finish) {
+        ai_attack_plan_.reset();
+        return finish_ai_handler(BattlePlayerAction::attack, false);
+    }
+    return begin_ai_attack_execution();
+}
+
+bool BattleSession::continue_ai_poison_plan() {
+    if (!ai_poison_plan_.has_value()) {
+        error_ = "battle AI poison continuation plan is absent";
+        return false;
+    }
+    if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::poison) {
+        return begin_ai_poison_execution();
+    }
+    if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::attack_fallback) {
+        diagnostics::log_info(
+            "battle AI poison fallback attack id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " target=" + std::to_string(ai_poison_plan_->target_slot));
+        ai_poison_plan_.reset();
+        return begin_ai_attack_action();
+    }
+    if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::rest) {
+        diagnostics::log_info(
+            "battle AI poison fallback rest id=" + std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " target=" + std::to_string(ai_poison_plan_->target_slot));
+        ai_poison_plan_.reset();
+        return finish_ai_handler(BattlePlayerAction::rest, true);
+    }
+    error_ = "battle AI poison continuation remained in movement state";
+    return false;
+}
+
+bool BattleSession::begin_ai_poison_execution() {
+    if (!ai_poison_plan_.has_value() ||
+        ai_poison_plan_->next_step != BattleAiPoisonNextStep::poison ||
+        ai_poison_plan_->target_slot < 0 ||
+        ai_poison_plan_->target_slot >= setup_.combatant_count()) {
+        error_ = "battle AI poison execution plan is invalid";
+        return false;
+    }
+    const auto target_slot = static_cast<std::size_t>(ai_poison_plan_->target_slot);
+    const auto& target_words = setup_.combatants()[target_slot].words;
+    const BattlePathCoord target{
+        target_words[combatant_word::x], target_words[combatant_word::y]};
+    const auto result = setup_.apply_poison_target(current_actor_slot_, target);
+    if (!result.has_value()) {
+        error_ = setup_.valid() ? "battle AI poison state application failed" : setup_.error();
+        return false;
+    }
+
+    selected_magic_slot_ = 0;
+    auto animation = setup_.magic_animation_plan(
+        current_actor_slot_, selected_magic_slot_, 0, 30, kBattleFightPointerBase);
+    if (!animation.has_value()) {
+        error_ = "battle AI poison magic animation is invalid";
+        return false;
+    }
+    if (!renderer_.load_fight_package(animation->fight_head_id)) {
+        error_ = "battle AI poison FIGHT package load failed";
+        return false;
+    }
+    player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
+        PlayerTargetEffectState{
+            .action = BattlePlayerAction::use_poison,
+            .ai_controlled = true,
+            .magic_animation = std::move(*animation),
+            .effect_animation = std::nullopt,
+            .effect_id = 30,
+            .damage_kind = 2,
+            .damage_suppress_flash = false,
+            .audio_commands = {},
+        });
+    render_state_.path_limit = 0;
+    render_state_.primary_cursor = target;
+    render_state_.effect_id = kBattleEffectPointerBase;
+    render_state_.effect_visible = false;
+    render_state_.damage_kind = 0;
+    render_state_.highlight_enabled = false;
+    diagnostics::log_info(
+        "battle AI poison effect ready id=" + std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " target=" + std::to_string(ai_poison_plan_->target_slot) +
+        " target_coordinate=" + std::to_string(target.x) + "," +
+        std::to_string(target.y) +
+        " hits=" + std::to_string(result->hit_count) +
+        " frames=" +
+        std::to_string(player_target_effect_->magic_animation.frames.size()));
+    return prepare_player_magic_frame();
 }
 
 bool BattleSession::begin_ai_attack_execution() {
@@ -1148,10 +1254,12 @@ bool BattleSession::finish_ai_movement() {
             error_ = setup_.valid() ? "battle AI poison continuation failed" : setup_.error();
             return false;
         }
-        if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::rest) {
-            return finish_ai_handler(BattlePlayerAction::rest, true);
-        }
-        break;
+        diagnostics::log_info(
+            "battle AI movement continuation ready id=" +
+            std::to_string(battle_id()) +
+            " slot=" + std::to_string(current_actor_slot_) +
+            " continuation=" + std::to_string(static_cast<int>(continuation)));
+        return continue_ai_poison_plan();
     case AiMovementContinuation::item:
         if (!ai_item_plan_.has_value()) {
             error_ = "battle AI item continuation plan is absent";
@@ -1456,6 +1564,7 @@ bool BattleSession::begin_player_attack_iteration(
     player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
         PlayerTargetEffectState{
             .action = BattlePlayerAction::attack,
+            .ai_controlled = player_attack_->ai_controlled,
             .magic_animation = std::move(*animation),
             .effect_animation = std::nullopt,
             .effect_id = effect_id,
@@ -2041,6 +2150,7 @@ bool BattleSession::begin_player_target_effect(
     player_target_effect_ = std::make_unique<PlayerTargetEffectState>(
         PlayerTargetEffectState{
             .action = action,
+            .ai_controlled = false,
             .magic_animation = std::move(*animation),
             .effect_animation = std::nullopt,
             .effect_id = effect_id,
@@ -2135,7 +2245,7 @@ bool BattleSession::prepare_player_magic_frame() {
         effect.audio_commands.push_back(BattleAudioCommand{
             BattleAudioBank::effect, effect.magic_animation.effect_sample_id});
     }
-    const auto ai_controlled = player_attack_ && player_attack_->ai_controlled;
+    const auto ai_controlled = effect.ai_controlled;
     phase_ = ai_controlled ? BattleSessionPhase::ai_magic_frame_present
                            : BattleSessionPhase::player_magic_frame_present;
     diagnostics::log_debug(
@@ -2205,7 +2315,7 @@ bool BattleSession::prepare_player_damage_frame() {
     render_state_.damage_text_offset = frame.phase;
     render_state_.highlight_enabled = frame.flash;
     render_state_.highlight_mode = effect.damage_kind == 2 ? 2 : 1;
-    const auto ai_controlled = player_attack_ && player_attack_->ai_controlled;
+    const auto ai_controlled = effect.ai_controlled;
     phase_ = ai_controlled ? BattleSessionPhase::ai_damage_frame_present
                            : BattleSessionPhase::player_damage_frame_present;
     diagnostics::log_debug(
@@ -2284,8 +2394,10 @@ bool BattleSession::finish_player_target_effect() {
         error_ = setup_.valid() ? "battle player target action completion failed" : setup_.error();
         return false;
     }
+    const auto ai_controlled = player_target_effect_->ai_controlled;
     diagnostics::log_info(
-        "battle player target effect complete id=" + std::to_string(battle_id()) +
+        std::string{"battle "} + (ai_controlled ? "AI" : "player") +
+        " target effect complete id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
         " action=" + std::to_string(static_cast<std::int16_t>(action)) +
         " magic_frames=" + std::to_string(player_target_effect_->magic_frame) +
@@ -2293,6 +2405,12 @@ bool BattleSession::finish_player_target_effect() {
     player_target_effect_.reset();
     if (action == BattlePlayerAction::item) {
         player_item_.reset();
+    }
+    if (ai_controlled) {
+        if (action == BattlePlayerAction::use_poison) {
+            ai_poison_plan_.reset();
+        }
+        return finish_ai_handler(action, false);
     }
     return finish_current_actor(action);
 }

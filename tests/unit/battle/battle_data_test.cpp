@@ -3253,6 +3253,240 @@ void run_ai_attack_session_test(
              std::string::npos);
 }
 
+void run_ai_poison_session_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    const auto log_path =
+        openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
+        "b8-battle-ai-poison.log";
+    std::error_code log_error;
+    std::filesystem::remove(log_path, log_error);
+    OL_CHECK(openlegend::diagnostics::initialize_logging(
+                 log_path, openlegend::diagnostics::LogLevel::debug) ==
+             openlegend::diagnostics::LoggingInitializationStatus::initialized);
+
+    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
+    auto& actor = ranger->roles[1U];
+    auto& enemy = ranger->roles[3U];
+    actor.set_word(role_word::hp, 500);
+    actor.set_word(role_word::maximum_hp, 500);
+    actor.set_word(role_word::mp, 0);
+    actor.set_word(role_word::maximum_mp, 0);
+    actor.set_word(role_word::physical_power, 100);
+    actor.set_word(role_word::attack, 0);
+    actor.set_word(role_word::speed, 0);
+    actor.set_word(role_word::use_poison, 100);
+    actor.set_word(role_word::medicine, 0);
+    actor.set_word(role_word::detoxification, 0);
+    actor.set_word(role_word::magic_id_begin, 5);
+    actor.set_word(role_word::frame_begin, 2);
+    actor.set_word(role_word::frame_begin + 5U, 1);
+    actor.set_word(role_word::frame_begin + 10U, 1);
+    enemy.set_word(role_word::hp, 5'000);
+    enemy.set_word(role_word::maximum_hp, 5'000);
+    enemy.set_word(role_word::poison, 0);
+    enemy.set_word(role_word::anti_poison, 0);
+    auto& magic = ranger->magics[5U];
+    magic.set_word(magic_word::sound_id, 7);
+
+    openlegend::random::LegacyRandom random{2U};
+    auto session = std::make_unique<BattleSession>(
+        data_root, *ranger, random, 4, false);
+    auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
+    OL_CHECK(session->valid());
+    OL_CHECK(session->render(*framebuffer));
+    session->finish_presented_tick(1'400U);
+    for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(1'400U);
+    }
+    session->setup().combatants()[0U]
+        .words[combatant_word::ai_poison_target] = 1;
+    session->setup().enable_automatic_mode();
+    session->advance(1'400U);
+    OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
+    const auto initial_attack_counter = session->setup().combatants()[0U]
+                                            .words[combatant_word::attack_counter];
+    OL_CHECK(session->render(*framebuffer));
+    session->finish_presented_tick(1'400U);
+    OL_CHECK(session->phase() == BattleSessionPhase::ai_action);
+    session->advance(1'400U);
+    OL_CHECK(session->phase() == BattleSessionPhase::ai_prelude_present);
+    OL_CHECK(session->render(*framebuffer));
+    session->finish_presented_tick(1'400U);
+    for (std::uint32_t tick = 1'401U; tick < 1'408U; ++tick) {
+        session->advance(tick);
+        OL_CHECK(session->phase() == BattleSessionPhase::ai_wait);
+    }
+    session->advance(1'408U);
+    OL_CHECK(session->valid());
+    OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::ai_action] ==
+             static_cast<std::int16_t>(BattleAiAction::use_poison));
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::initial_mode] == 3);
+    OL_CHECK(enemy.word(role_word::poison) == 25);
+    OL_CHECK((session->take_audio_commands() ==
+              std::vector<BattleAudioCommand>{
+                  {BattleAudioBank::attack, 7},
+                  {BattleAudioBank::effect, 30}}));
+
+    std::uint32_t tick = 1'408U;
+    std::size_t magic_frames = 0U;
+    std::uint64_t first_magic_hash = 0U;
+    while (session->phase() == BattleSessionPhase::ai_magic_frame_present &&
+           magic_frames < 20U) {
+        OL_CHECK(session->render(*framebuffer));
+        if (magic_frames == 0U) {
+            first_magic_hash = fnv1a_bytes(framebuffer->pixels());
+        }
+        session->finish_presented_tick(tick);
+        OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_wait);
+        session->advance(tick);
+        session->advance(++tick);
+        ++magic_frames;
+    }
+    OL_CHECK(magic_frames == 11U);
+    OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
+
+    std::size_t damage_frames = 0U;
+    std::uint64_t first_damage_hash = 0U;
+    while (session->phase() == BattleSessionPhase::ai_damage_frame_present &&
+           damage_frames < 20U) {
+        OL_CHECK(session->render(*framebuffer));
+        if (damage_frames == 0U) {
+            first_damage_hash = fnv1a_bytes(framebuffer->pixels());
+        }
+        session->finish_presented_tick(tick);
+        OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_wait);
+        session->advance(tick);
+        session->advance(++tick);
+        ++damage_frames;
+    }
+    OL_CHECK(damage_frames == 10U);
+    OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(session->current_actor_slot() == 1U);
+    OL_CHECK(actor.word(role_word::physical_power) == 98);
+    OL_CHECK(session->setup().combatants()[0U]
+                 .words[combatant_word::action_done] == 1);
+    OL_CHECK(session->setup().combatants()[0U]
+                 .words[combatant_word::attack_counter] ==
+             initial_attack_counter + 1);
+    OL_CHECK(first_magic_hash == 0x47286fa4af30fce4ULL);
+    OL_CHECK(first_damage_hash == 0xd76de7fa195a1ac3ULL);
+    OL_CHECK(random.state() == 2'993'822'286U);
+
+    auto fallback_ranger = std::make_unique<openlegend::model::RangerState>();
+    initialize_ranger(*fallback_ranger, {0, 2, 3, -1, -1, -1});
+    auto& fallback_actor = fallback_ranger->roles[1U];
+    auto& fallback_enemy = fallback_ranger->roles[3U];
+    fallback_actor.set_word(role_word::hp, 500);
+    fallback_actor.set_word(role_word::maximum_hp, 500);
+    fallback_actor.set_word(role_word::mp, 20);
+    fallback_actor.set_word(role_word::maximum_mp, 20);
+    fallback_actor.set_word(role_word::physical_power, 100);
+    fallback_actor.set_word(role_word::attack, 0);
+    fallback_actor.set_word(role_word::speed, 0);
+    fallback_actor.set_word(role_word::use_poison, 100);
+    fallback_actor.set_word(role_word::medicine, 0);
+    fallback_actor.set_word(role_word::detoxification, 0);
+    fallback_actor.set_word(role_word::magic_id_begin, 5);
+    fallback_actor.set_word(role_word::magic_level_begin, 200);
+    fallback_actor.set_word(role_word::frame_begin, 2);
+    fallback_actor.set_word(role_word::frame_begin + 5U, 1);
+    fallback_actor.set_word(role_word::frame_begin + 10U, 1);
+    fallback_enemy.set_word(role_word::hp, 5'000);
+    fallback_enemy.set_word(role_word::maximum_hp, 5'000);
+    fallback_enemy.set_word(role_word::poison, 95);
+    fallback_enemy.set_word(role_word::anti_poison, 0);
+    auto& fallback_magic = fallback_ranger->magics[5U];
+    fallback_magic.set_word(magic_word::sound_id, 7);
+    fallback_magic.set_word(magic_word::magic_type, 0);
+    fallback_magic.set_word(magic_word::effect_id, 0);
+    fallback_magic.set_word(magic_word::hurt_type, 0);
+    fallback_magic.set_word(magic_word::attack_area_type, 1);
+    fallback_magic.set_word(magic_word::need_mp, 5);
+    fallback_magic.set_word(magic_word::attack_begin + 2U, 20);
+    fallback_magic.set_word(magic_word::select_distance_begin + 2U, 2);
+    fallback_magic.set_word(magic_word::attack_distance_begin + 2U, 0);
+    openlegend::random::LegacyRandom fallback_random{2U};
+    auto fallback_session = std::make_unique<BattleSession>(
+        data_root, *fallback_ranger, fallback_random, 4, false);
+    OL_CHECK(fallback_session->valid());
+    OL_CHECK(fallback_session->render(*framebuffer));
+    fallback_session->finish_presented_tick(1'500U);
+    for (std::size_t frame = 0U;
+         frame < fallback_session->fade_frame_count();
+         ++frame) {
+        OL_CHECK(fallback_session->render(*framebuffer));
+        fallback_session->finish_presented_tick(1'500U);
+    }
+    fallback_session->setup().combatants()[0U]
+        .words[combatant_word::ai_poison_target] = 1;
+    fallback_session->setup().enable_automatic_mode();
+    fallback_session->advance(1'500U);
+    OL_CHECK(fallback_session->render(*framebuffer));
+    fallback_session->finish_presented_tick(1'500U);
+    fallback_session->advance(1'500U);
+    OL_CHECK(fallback_session->phase() == BattleSessionPhase::ai_prelude_present);
+    OL_CHECK(fallback_session->render(*framebuffer));
+    fallback_session->finish_presented_tick(1'500U);
+    for (std::uint32_t fallback_tick = 1'501U;
+         fallback_tick < 1'508U;
+         ++fallback_tick) {
+        fallback_session->advance(fallback_tick);
+        OL_CHECK(fallback_session->phase() == BattleSessionPhase::ai_wait);
+    }
+    fallback_session->advance(1'508U);
+    OL_CHECK(fallback_session->valid());
+    OL_CHECK(fallback_session->phase() == BattleSessionPhase::ai_magic_frame_present);
+    OL_CHECK(fallback_session->setup().combatants()[0U]
+                 .words[combatant_word::ai_action] ==
+             static_cast<std::int16_t>(BattleAiAction::use_poison));
+    OL_CHECK((fallback_session->take_audio_commands() ==
+              std::vector<BattleAudioCommand>{
+                  {BattleAudioBank::attack, 7},
+                  {BattleAudioBank::effect, 0}}));
+
+    const auto hash_path = log_path.parent_path() / "b8-battle-ai-poison.hash";
+    std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
+    OL_CHECK(hash_file.good());
+    hash_file << "first_magic=0x" << std::hex << first_magic_hash << '\n';
+    hash_file << "first_damage=0x" << std::hex << first_damage_hash << '\n';
+    hash_file << "random_state=" << std::dec << random.state() << '\n';
+    hash_file << "enemy_poison=" << enemy.word(role_word::poison) << '\n';
+    hash_file << "actor_physical_power=" << actor.word(role_word::physical_power) << '\n';
+    hash_file.close();
+    OL_CHECK(hash_file.good());
+
+    openlegend::diagnostics::shutdown_logging();
+    std::ifstream log_file{log_path, std::ios::binary};
+    const std::string log_text{
+        std::istreambuf_iterator<char>{log_file}, std::istreambuf_iterator<char>{}};
+    OL_CHECK(log_text.find("battle AI action selected id=4 slot=0 action=3") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "battle AI poison effect ready id=4 slot=0 target=1 ") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "target_coordinate=26,26 hits=1 frames=11") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle AI magic frame ready id=4 slot=0 frame=0") !=
+             std::string::npos);
+    OL_CHECK(log_text.find("battle AI damage frame ready id=4 slot=0 frame=0") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "battle AI target effect complete id=4 slot=0 action=2 magic_frames=11 damage_frames=10") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "battle AI poison fallback attack id=4 slot=0 target=-1") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "battle AI attack ready id=4 slot=0 magic_slot=0 target=1") !=
+             std::string::npos);
+}
+
 void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     const auto log_path =
@@ -5117,6 +5351,7 @@ int main() {
     run_player_status_session_test(data_root);
     run_player_attack_session_test(data_root);
     run_ai_attack_session_test(data_root);
+    run_ai_poison_session_test(data_root);
     run_battle_session_test(data_root);
     run_ai_selector_test(data_root);
     run_damage_formula_test(data_root);
