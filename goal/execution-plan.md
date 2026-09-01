@@ -1,133 +1,388 @@
 # OpenLegend 执行 GOAL
 
-当前阶段：B0–B9 功能映射补齐，尚未进入统一最终 REVIEW
+版本：v5
+当前阶段：B6 运行回归诊断 + B7 场景/事件实现
+当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态；B8功能实现与入口实现差异审计已关闭，81项仍保持`implemented_pending_review`，Linux/Windows完整矩阵通过；B9已建立14项有限closure并进入实现差异审计，随后统一执行B0→B9汇编↔C++ REVIEW
 
-当前工作项：B5 游戏菜单共享队员选择器的装备、修炼、使用和离队调用链
+## 0. 唯一正确性真值
 
-当前状态：医疗、解毒和查看状态路径已推进到 `implemented_pending_review`；共享选择器仍有模式和业务调用链未实现。B7、B8、B9 的有限 closure 已完成实现映射，但全项目最终汇编↔C++ REVIEW 仍为 0%。
+**一切以当前原版 `Z.COM` / `Z.DAT` 的机器码和完整汇编为准；原版汇编是本项目唯一正确的行为真值。**
 
-下一步：从当前机器码和调用者独立恢复共享选择器剩余模式，先锁定参数、标题/数值布局、Escape/确认返回和业务副作用，再审计现有 C++；不得从已有 renderer 反推原行为。
+- IDA 反编译伪码只用于导航，不能覆盖实际指令、寄存器、标志位、栈参数和基本块顺序。
+- 研究文档、字段命名、现有测试、现代 C++、开源端口、编辑器、攻略和玩法常识都只是辅助证据。
+- 上述任何内容与原版汇编冲突时，无条件服从原版汇编，并同步修正实现、测试、文档和 GOAL 进度。
+- 原始资源字节用于证明数据可达性和输入域，但资源表现的最终解释仍由读取它的原版汇编决定。
+- 没有汇编或原程序输出证据的行为不得标记为 `assembly_exact`，不得据此宣称 1:1 完成。
 
-## 1. 目标与完成条件
+### 0.1 强制反复 REVIEW 收敛门禁
 
-以现代 C++20、CMake 和 SDL3 为实现载体，对当前《金庸群侠传》DOS 版执行可观察行为 1:1 还原。现代模块拆分和宿主平台适配可以改变代码所有权与接入方式，但不能改变原程序的状态、顺序、整数语义、随机数流、输入边界、呈现结果、存档字节或音频命令。
+每个函数、handler、事件 opcode、平台适配调用链和紧耦合行为单元都必须执行以下闭环，任何一步不得省略：
 
-全项目只有同时满足以下条件才可完成：
+```text
+锁定机器码物理范围、调用者、参数/寄存器/标志位、共享状态和全部出口
+  -> 暂不参考现有 C++，从汇编独立记录基本块、分支、位宽、读写和调用顺序
+  -> 从汇编独立派生正常、边界、错误、哨兵、截断、回绕和原 BUG 测试
+  -> 再逐行审计 C++ 与测试
+  -> 最小实现或修正
+  -> 汇编到 C++、C++ 到汇编双向逐基本块 REVIEW
+  -> 发现差异时同步修正实现、测试、证据和本 GOAL 状态
+  -> 从函数入口重新开始完整 REVIEW
+  -> 重复上述过程，直到一轮完整正反向 REVIEW 不再产生任何新差异或未决项
+```
 
-1. 当前 `Z.COM` / `Z.DAT` 的游戏自有函数、当前资产可达分支、事件 opcode 和平台调用链均已归属到唯一 owner。
-2. 所有 closure 的 `pending_mapping`、`pending_implementation` 和 `implemented_pending_review` 均归零；关闭状态满足 `research/inventory/README.md` 的证据与最终 REVIEW 硬门。
-3. 每个行为单元完成汇编→C++和C++→汇编双向逐基本块 REVIEW；发现差异后从入口重启，最后一轮完整 REVIEW 零新增差异。
-4. 固定输入流程的状态、RNG、indexed framebuffer、调色板、存档字节和音频命令与原版一致；所有当前资产全量门禁通过。
-5. Linux 与 Windows 的构建、测试、sanitizer、smoke、资产只读和正式 IDA 数据库门禁通过。
-6. 原程序动态差分已完成，或其运行环境阻塞已被明确解决；不存在未经用户批准的平台偏差或兼容缺口。
+硬性要求：
 
-“可运行”“可玩”“已有测试”或“实现映射完成”均不构成 GOAL 完成。
+- REVIEW 次数不设上限，以结果收敛为唯一停止条件；“再看一次”或固定轮数不构成完成。
+- 编译通过、单元测试通过、真实资产可运行、已有 golden 和现有 C++ 看似合理均不能替代汇编双向 REVIEW。
+- 平台边界同样必须审计完整链路；核心函数正确但 SDL 键码、显示、音频或会话接线错误，仍视为该行为单元未完成。
+- 条件方向、符号/零扩展、16/32 位截断、整数回绕、RNG 消费、阻塞/呈现时序、状态副作用和所有提前出口必须逐项追溯。
+- 只有最后一轮完整 REVIEW 零新增差异、全部差异已落入实现/测试/证据且全部验证通过，才允许标记 `assembly_exact` 或关闭工作包。
+- 后续发现真实运行缺陷时，必须立即撤销相关阶段的完成结论，重新打开并从汇编入口执行整轮收敛，不得仅做症状补丁。
 
-## 2. 本 GOAL 特有的长期约束
+实现阶段与最终 REVIEW 阶段允许分离：可以先完成 B0–B9 的全部 C++ 功能实现，再按锁定的函数/handler workpack 统一 REVIEW。分离期间状态必须精确记录：
 
-- 行为真值及仓库执行规则以 `AGENTS.md` 为准；本文件不复制 Git、TG、暂停、BUILD、临时目录或 IDA 操作规则。
-- 允许先补齐 B0–B9 功能映射，再执行统一最终 REVIEW；在最终收敛前，已有实现最多标记为 `implemented_pending_review`。
-- 当前资产可达范围是实现与验收边界；不可达代码只能以机器码、调用图和资产证据排除，不能以缺少测试样本推定无关。
-- 宿主平台适配必须停留在窗口、事件、音频设备、文件系统和最终呈现边界；游戏语义仍由核心模块按原同步时序执行。
-- 任何后续真实运行缺陷都会重新打开相关 closure，并从机器码入口重启完整 REVIEW；不得只修补症状。
-- 本机当前没有可用 DOS 动态运行环境；`blocked_runtime_oracle` 是最终动态差分门禁的外部阻塞，不阻止继续完成静态机器码、真实资产和独立 oracle 工作，但不能被这些证据替代为“动态差分已完成”。
+- `pending_mapping`：尚未确认现有 C++ 是否覆盖；
+- `pending_implementation`：范围已确认但实现未完成；
+- `implemented_pending_review`：已有实现，但尚未取得最终汇编一致性结论；
+- `assembly_exact` / `platform_adapted`：仅在最终 REVIEW 收敛后使用。
 
-## 3. 当前执行状态
+因此实现完成、测试通过和可运行都只能推进到 `implemented_pending_review`；最终 REVIEW 前不得把函数、模块或阶段写成“完成”。
 
-### 当前模块
+### 0.2 构建验证频率
 
-B5 `ui + app`，同时涉及共享 `model` 状态和既有 `battle` 医疗/解毒公式。
+- 普通函数、handler、测试、日志、工具和小切片只执行与改动匹配的 Linux 定向构建/测试；不得为每个切片机械重复 Windows 构建。
+- Windows `core/app × Debug/Release` 全矩阵仅在一个完整大模块实现/REVIEW 工作包收口时执行，例如 B7 整体完成、B8 整体完成，以及 B9 最终全集成验收。
+- 大模块关闭前的 Windows 全矩阵结果属于该模块验收证据；更早小切片曾通过 Windows 不能替代模块关闭时的最终矩阵。
+- B9 总目标关闭仍必须满足第 9 节完整 Linux/Windows、sanitizer、smoke、资产只读和 IDA 审计门禁。
 
-### 当前工作包
+### 0.3 阶段性 TG 汇报（强制格式）
 
-补齐共享队员选择器的剩余游戏菜单调用链：
+每达到一个已经验证、可独立回退并完成提交与推送的阶段性边界，主 Agent 必须调用：
 
-- 装备对象选择；
-- 修炼对象选择；
-- 使用对象选择；
-- 离队选择后的完整业务与事件移交。
+```bash
+python3 /mnt/d/Dev/Source/Project/stockkit/scripts/tg_notify.py "CONTENT"
+```
 
-参数0医疗、参数1解毒和参数2查看状态已实现；参数6只有共享姓名选择器像素，离队业务尚未闭合。精确队列和持久状态以 `research/inventory/ui-closure.tsv`、`research/inventory/input-font-closure.tsv` 为准。
+`CONTENT` 固定为恰好五段。必须逐字使用下面的段首与顺序，不得改标签、重排、增减或合并段落；相邻段落之间恰好保留一个真实空行：
 
-### 已经具备的结果
+```text
+OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
-- 逆向 function catalog、owner、closure、模块依赖和状态所有权框架已建立并通过 validator。
-- B7 场景/事件、B8 战斗、B9 持久化有限 closure 均已有实现映射，统一保持 `implemented_pending_review`。
-- 游戏菜单医疗、解毒、查看状态已覆盖世界/场景背景、嵌套选择、状态写入和同步返回；最近验证门已全部通过。
-- 原版资产保持只读，正式 IDA 数据库未被修改。
+实现：<高层业务结果>。
 
-### 尚未完成的门禁
+兼容：<关键兼容行为与调用方回收；没有新增兼容事项时写“保持既有兼容边界。”>。
 
-1. B5 共享选择器剩余模式与离队业务未实现。
-2. `input-font`、`runtime-audio`、`ui`、`world-map` closure 仍有大量 `pending_mapping`，其中共享选择器仍有 `pending_implementation`。
-3. B0–B3 尚缺覆盖完整模块范围的 closure/ownership 对账，不能因基础实现存在而关闭。
-4. B0–B9 统一最终双向 REVIEW 尚未开始。
-5. 最终全矩阵、sanitizer、smoke、资产只读、IDA 审计和动态原程序差分尚未作为全项目关闭门执行。
+验证：<本轮实际执行的验证门>全部通过。
 
-### 当前阻塞
+进度：<整体进度>；下一项<下一工作包或明确动作>。
+```
 
-- 当前实现工作无外部阻塞。
-- 最终动态原程序差分受本机缺少 DOS runtime 阻塞，登记为 `blocked_runtime_oracle`。
-- 世界人物移动后消失的用户报告尚未复现；现有诊断日志保留，若再次出现则重新打开 B6 对应调用链。
+硬性要求：
 
-### 恢复执行时的第一个动作
+- 汇报只包含阶段/工作包名称、高层完成概述、关键兼容结果、实际验证和整体进度/下一步；不得罗列函数地址、helper、字段、flag、基本块、测试边界、workpack SHA256 或 commit ID。
+- shell 参数必须使用普通 ASCII 双引号包住一整个多行字符串，并在双引号内直接写真实换行和真实空行；禁止使用单引号、`$"..."`、`$'...'`、字面量 `\n`、转义拼接或单行长句。
+- 未到大模块边界时只报告本轮实际执行的 Linux/定向验证，不得暗示 Windows、sanitizer、smoke 或全矩阵已经运行。
+- 五段之外不得增加标题、问候、总结、风险或备注；确有阻塞时把阻塞事实压缩写入“兼容”段。
+- TG 命令失败时必须记录错误并明确告知用户，不得声称已经发送或送达。
+- Context 压缩或自动 Goal continuation 不得中断该规则；恢复工作时必须先从本节重新确认最近一个已提交、已推送且尚未汇报的阶段边界。
 
-从共享选择器剩余模式及其直接调用者的机器码开始独立推导，先形成模式3–6的输入、显示、返回和副作用表；完成前不修改 C++，也不把医疗/解毒/状态路径的相似结构外推为事实。
+### 0.4 每轮逆向后强制重读规则
 
-## 4. 模块顺序与状态
+- 每完成一轮逆向（物理函数机器码独立推导、C++ 映射/实现、证据登记和本轮验证收口）后，在开始下一轮逆向前，主 Agent 必须重新完整读取仓库根目录 `AGENTS.md` 与 `/root/.pi/agent/APPEND_SYSTEM.md`。
+- 不得凭记忆、摘要或先前读取结果代替本轮重读；必须实际调用文件读取工具并读完整内容。
+- Context 压缩、自动 Goal continuation、阶段提交、push 或 TG 汇报均不得跳过、延后或合并该重读门禁。
+- 重读发现的新约束立即应用于后续工作；如与当前执行方式冲突，先停止冲突操作并按最新文件内容修正。
 
-| 阶段 | 范围 | 当前状态 | 权威入口 |
-|---|---|---|---|
-| A | 架构恢复 | 已关闭；只在新机器证据推翻边界时重开 | `research/architecture/program-architecture.md`、`research/architecture/rewrite-architecture.md` |
-| B0 | `compat + platform_sdl3 + app` | 基础实现已有；runtime/platform closure 范围仍不完整，待映射与最终 REVIEW | `research/modules/runtime-platform.md` |
-| B1 | `resource` | 实现和资产证据已有；待 ownership/closure 对账与最终 REVIEW | `research/evidence/resource-loader-1to1.md` |
-| B2 | `render` | indexed framebuffer、字体、精灵和宿主展开实现已有；待最终 REVIEW | `research/evidence/render-1to1.md` |
-| B3 | `model + persistence` 物理格式 | snapshot 与存档运输实现已有；待模块 closure 对账与最终 REVIEW | `research/evidence/model-persistence-1to1.md` |
-| B4 | `input + time + random + audio` | 实现已有；`input-font` 与 `runtime-audio` 仍以 pending mapping 为主 | `research/evidence/input-time-random-audio-1to1.md`、`research/modules/runtime-platform.md` |
-| B5 | `ui + app + persistence` 菜单流程 | **当前进行中**；医疗、解毒、状态已映射，装备/修炼/使用/离队及其余 UI 队列待处理 | `research/evidence/title-menu-new-game-1to1.md`、`research/inventory/ui-closure.tsv` |
-| B6 | `world` | 实现已有，旧完成结论已撤销；closure 待映射，真实消失问题未复现 | `research/modules/world-map.md` |
-| B7 | `scene` | 有限 closure 实现映射完成；最终 REVIEW 未开始 | `research/modules/scene-event.md` |
-| B8 | `battle` | 有限 closure 实现映射完成；最终 REVIEW 未开始 | `research/modules/battle.md` |
-| B9 | 全模块持久化与兼容整合 | 有限 closure 实现映射完成；最终 REVIEW 未开始 | `research/modules/persistence.md` |
-| Final | B0→B9 统一 REVIEW 与发布门禁 | 待开始 | `research/inventory/`、本文件第1节 |
+### 0.5 编译与测试强制使用 BUILD 脚本
 
-执行顺序：先完成 B5 当前工作包，再处理其余 `pending_implementation` 与 `pending_mapping`；全部功能映射完成后，按 inventory 锁定顺序从 B0 开始执行统一最终 REVIEW。
+- 所有配置、编译和测试必须调用仓库根目录现有 BUILD 脚本：Linux/WSL 使用 `./build.sh`，Windows 使用 `build.bat`。
+- 禁止自行拼接或直接调用 `cmake`、`ctest`、`ninja`、编译器及等价底层构建命令；单 target、单测试、短命令或历史命令均不构成例外。
+- 仅当现有 BUILD 脚本确实无法表达任务所需的明确特殊构建/测试需求时，才允许例外；执行前必须先向用户说明脚本缺口、直接命令、影响范围和恢复方式。
+- 独立 oracle、逆向框架 validator 和资产审计不属于编译/测试，可继续通过后台进程管理器单独运行。
 
-## 5. 权威资料
+## 1. 总目标
 
-### 规则与目标
+以现代 C++20/CMake/SDL3 为实现载体，对《金庸群侠传》DOS 版进行**可观察行为 1:1 还原**。这不是依据玩法重新设计的“现代重实现”，也不是只保证可玩或大致兼容的复刻。
 
-- 仓库长期规则：`AGENTS.md`
-- 当前阶段、当前工作项和恢复入口：`goal/execution-plan.md`
+1:1 还原范围包括：
 
-### 架构与所有权
+- 启动链、标题、世界、场景、菜单、战斗、保存、读取和退出的调用顺序；
+- 当前原版资产可达的全部游戏自有逻辑和状态迁移；
+- 原始资源编号、偶数精灵编号、记录布局、字符串字节和未知字段；
+- 16/32 位有符号与无符号运算、截断、溢出、随机数流和原逻辑 BUG；
+- 输入按下/持续/释放、同 tick 同步请求、阻塞等待和 BIOS tick 量化语义；
+- `320×200×8-bit indexed framebuffer`、RGB6 调色板、裁剪、覆盖顺序和逐像素结果；
+- 原存档文件的读取、写入、未知字节保留和未修改状态逐字节 round-trip；
+- 错误返回、提前退出、异常资源和原程序实际依赖的 CRT/Miles 行为合同。
 
-- 原程序架构：`research/architecture/program-architecture.md`
-- 现代模块与依赖：`research/architecture/rewrite-architecture.md`
-- owner、状态和依赖机械真值：`research/inventory/module-function-ownership.tsv`、`research/inventory/module-state-ownership.tsv`、`research/inventory/module-dependencies.tsv`
+现代模块拆分只能改变源码所有权和宿主平台接入方式，不能改变上述行为。任何无法做到 1:1 的平台差异必须形成显式偏差记录，并在用户明确批准前阻止“完整还原”结论。
 
-### 完整工作队列
+## 2. 当前固定决定
 
-- inventory 合同：`research/inventory/README.md`
-- 各模块完整队列：`research/inventory/*-closure.tsv`
-- 模块范围、接口和移交条件：`research/modules/README.md`、`research/modules/*.md`
+- **完整机器指令、原始文件字节和可重复原程序输出是行为真值。** IDA 伪码、现有开源端口、玩法常识和当前 C++ 测试都不能单独证明 1:1。
+- C++20、CMake、模块静态库；B0 已固定 GCC/Clang/MSVC 可构建边界。
+- SDL3 只用于宿主窗口、事件、音频设备和最终纹理上传，不拥有游戏语义；BIOS tick 量化属于核心。
+- 核心像素真值为 `320×200×8-bit indexed framebuffer + 256×RGB6 palette`；现代显示层必须逐像素展开为宿主 RGBA 纹理并做 nearest-neighbor 整数缩放，不能把 DOS 索引字节直接交给现代窗口系统，也不能反向污染核心像素真值。
+- 原始游戏数据保持只读；测试生成物只写入 OpenLegend 构建/测试目录。
+- 资源解析采用显式小端读取；合法原始数据必须逐字节等价，新增边界保护不得改变合法输入行为。
+- 原 Big5、legacy ID、16/32 位整数、整数除法、溢出、异常行为和原 BUG 必须显式表示。
+- 跨模块请求由 `app` 在原调用点同步消费，不使用会改变时序的异步事件总线。
+- 一个可变状态只有一个所有者；状态拆分后仍必须保持原程序交叉写入顺序。
+- 存档只运输 snapshot，但导入/导出顺序和物理字节必须与原版一致。
+- CRT、DOS、VGA 和 Miles 不要求复制其通用内部实现，但原游戏实际调用到的行为合同必须还原。
+- IDA 必须继续使用 `idat.exe -A` headless；不启动 IDA GUI。
+- 未经用户明确批准，不修复原逻辑 BUG、不改变数值平衡、不改善 AI、不重排 UI 流程、不替换资源语义。
 
-### 当前工作项证据
+## 3. 总体执行方法
 
-- B5 综合规格：`research/evidence/title-menu-new-game-1to1.md`
-- 共享选择器证据：`research/evidence/functions/Z_DAT/0x22090.md`
-- 当前 UI 队列：`research/inventory/ui-closure.tsv`
-- 当前输入边界队列：`research/inventory/input-font-closure.tsv`
+先完成一次全局架构恢复，然后严格按模块循环：
 
-函数级事实、地址、测试向量和差异记录只进入 `research/evidence/`；已完成工作的版本历史由 Git 保存。本项目当前不创建 `execution-history-pi.md`，因为没有发现无法从 inventory、模块文档、evidence 和 Git 恢复的唯一阶段决策。
+```text
+模块所有权与可达路径清单
+  -> 对当前工作包逐函数/逐基本块定点逆向
+  -> 写格式、整数、状态、副作用和时序规格
+  -> 建立汇编向量、真实资产、逐字节/逐像素 golden
+  -> 现代 C++ 实现合法域行为
+  -> 汇编到 C++、C++ 到汇编逐基本块复核所有分支与调用点
+  -> 有差异则修正并从函数入口重新执行完整双向 REVIEW
+  -> 重复直到完整 REVIEW 零新增差异
+  -> 原程序差分或等价 oracle 验证
+  -> 清零当前模块 unresolved 后关闭工作包
+```
 
-## 6. 维护规则
+架构阶段不要求预先理解全部函数；但进入某模块后，该模块当前资产可达的游戏自有函数、分支、副作用和出口必须全部闭环，不能以“已经可玩”代替 1:1 完成。
 
-- 当前状态变化时替换文件顶部和第3节的旧状态，不在文末追加“本轮完成”记录。
-- 工作包完成后只移动当前指针并更新模块表；函数级结果写入 evidence，持久状态写入 inventory，模块接口或移交条件写入模块文档。
-- inventory 是 closure 关闭状态的唯一真值；模块文档是范围、接口和移交条件的真值；本文件只保存当前执行状态和恢复入口。若出现冲突，先以 inventory 重建本文件，不在主 GOAL 另造状态。
-- 不复制 `AGENTS.md` 的仓库规则，不记录版本标识、文件哈希、函数地址清单、逐测试过程或已完成阶段流水账。
-- 不设置行数、字节数或章节数量硬阈值；内容必须直接回答目标、当前进度、下一步、仍有效约束或权威资料位置之一。
-- 不按工作包创建历史文档，不引入自动归档器、数据库或 CI 文档大小门禁。
-- 只有确实无法由现有权威资料和 Git 恢复的阶段级决策，才允许建立单一历史归档；该归档必须明确标记为非执行依据。
-- 每次更新后验证所有引用路径有效，并确认新会话只阅读本文件即可确定当前断点、剩余门禁和第一个动作。
+## 4. 阶段 A：架构恢复
+
+状态：**完成**
+
+产物：
+
+- `../research/architecture/program-architecture.md`
+- `../research/architecture/rewrite-architecture.md`
+- `../research/ida/` 下的 headless 数据库、脚本、日志和报告
+
+完成条件：
+
+- [x] 启动链和主程序边界已确认；
+- [x] 资源、会话、世界、场景、战斗、UI、渲染、输入、音频、存档等大模块已识别；
+- [x] 可说明初始化、普通世界、场景、战斗、存读档和退出的模块协作；
+- [x] 平台替换边界与核心兼容行为已分离；
+- [x] 现代 target、依赖方向、状态所有权和切环规则已确定；
+- [x] 未决项均已归入对应模块，不再阻塞工程结构。
+
+停止线：满足以上条件后立即结束全局调研。事件 opcode、战斗公式、完整键码表和未知记录字段不延长阶段 A，但必须在对应 B 阶段全部闭环后才能宣称 1:1 完成。
+
+## 5. 阶段 B：逐模块 1:1 还原计划
+
+用户已通过当前 Goal 明确授权执行 B0–B9。
+
+状态重置：B0–B7 既有 C++、测试、golden 和证据不删除，但不继承完成结论。所有行为单元必须进入 `research/inventory` 和唯一模块 work package；已有实现先标 `implemented_pending_review`，未映射或未实现项分别标 `pending_mapping` / `pending_implementation`。允许先完成 B0–B9 功能实现，再统一按第 0.1 节 REVIEW。
+
+### B0 · 工程与顶层骨架
+
+范围：`compat + platform_sdl3 + app`
+
+交付：
+
+- CMake/C++20 工程和模块 target；
+- 假平台端口与 `ModeCoordinator` 单元测试；
+- SDL3 窗口、事件循环和空 indexed framebuffer 上传；
+- 初始化、逻辑 tick、同步模式结果和逆序销毁骨架。
+
+验收：无游戏数据也能运行空窗口测试；假模块验证调用顺序，不伪装业务模块已完成。
+
+### B1 · 资源与格式基础
+
+范围：`resource`
+
+交付：
+
+- `.IDX/.GRP`、`SDX/WDX`、RLE 帧、地图裸层、调色板和字体视图；
+- 统一边界错误和只读数据根目录；
+- 当前已识别资源的全量扫描测试。
+
+验收：当前数据目录全部 118 对 IDX/GRP、全部 SDX/WDX、所有当前资产可达 RLE 帧和五个世界层逐项通过；每种索引规则、空项、零尾、异常偏移和截断均与原读取合同一致。
+
+### B2 · 像素、字体与基础呈现
+
+范围：`render`
+
+交付：
+
+- 320×200 indexed framebuffer；
+- RLE 精灵裁剪、矩形、清屏、ASCII/Big5 字体和调色板；
+- SDL3 通过受测兼容转换层执行 indexed/RGB6 → RGBA8 展开和 nearest-neighbor 整数缩放；
+- 固定资源的 framebuffer/palette golden hash。
+
+验收：所有绘制原语、四向裁剪、全部当前资产帧、ASCII/Big5 字形、地图深度顺序和调色板更新逐像素符合原算法；RGB6 端点和任意 palette index 的 RGBA8 展开有 golden，任意窗口视口仅采用居中整数倍 nearest-neighbor 缩放，平台转换不得改变核心缓冲。
+
+### B3 · 游戏模型与物理存档
+
+范围：`model + persistence` 的物理格式部分
+
+交付：
+
+- `RANGER.GRP` 六段受检视图和首批规范化类型；
+- 基线、工作副本、三槽文件读取；
+- 未知字节 lossless 保存；
+- `GameSnapshot` 导入/导出边界。
+
+验收：已有 R/S/D 和基线/工作副本全部可读；未修改状态逐字节 round-trip；所有会被当前游戏代码读取或写入的字段均有语义与所有者，未知但不可达字段保留原字节。
+
+### B4 · 输入、时间、随机与音频
+
+状态：**已有实现，`implemented_pending_review`**
+证据：`../research/evidence/input-time-random-audio-1to1.md`、`../research/ida/reports/Z_DAT.b4_runtime_xrefs.txt`
+
+范围：`input + time + random + audio + platform_sdl3 audio/event adapter`
+
+交付：
+
+- 按下/持续/释放和逻辑动作映射；
+- BIOS tick 等价逻辑时钟和 LCG；
+- WAV 播放；
+- XMI 解码/合成后端及游戏级播放状态。
+
+验收：完整键码与输入边沿、BIOS tick 量化、所有 RNG 调用点和当前 WAV/XMI 资产的播放/停止/切换顺序均有原程序向量；宿主输出差异必须有偏差审计，不能以“能播放”代替原时序。
+
+### B5 · 标题、菜单与新建/读取流程
+
+状态：**已有实现，`implemented_pending_review`**
+
+已有证据：标题/三槽逐像素 golden、CFONT 姓名输入、17 次 RNG 初始属性/BABERUTH、六项菜单、双页状态/物品 UI、隔离目录存读失败合同、`GameState` 会话所有者、SDL 主循环和 DOS indexed→现代 RGBA 显示兼容层均已接入。参数0/1医疗解毒目标选择、过滤后的施术者列表、状态公式、结果/无合格提示和任意键边界已覆盖世界及场景菜单；参数2“查看状态”选择框与双页角色状态由同一精确renderer覆盖世界、场景和战斗背景。医疗、解毒、状态入口及双页函数均为`implemented_pending_review`；共享选择器参数3..5与参数6完整离队业务仍为`pending_implementation`。最新Linux/Windows app Debug均14/14通过，Linux app ASan+UBSan 14/14通过；普通Linux Debug cache已恢复并复验，独立B5 golden及五项原版资产门禁通过。
+
+范围：`ui + app + persistence`
+
+交付：
+
+- 标题、选择、文本框、角色状态/物品基础 UI；
+- 新游戏从基线创建工作状态；
+- 三槽扫描和加载；
+- 模态 UI 的同步结果合同。
+
+验收：启动器、标题和全部当前可达菜单分支逐状态闭环；新游戏、三槽扫描/加载、取消、错误和返回路径与原版顺序一致，并得到逐字段一致 `GameState`。
+
+### B6 · 世界地图
+
+状态：**已有实现，`implemented_pending_review`；真实运行回归待诊断**
+
+已有证据：`../research/evidence/world-map-1to1.md`、`../research/evidence/world-map-goldens.json`、`../research/ida/reports/Z_DAT.b6_world_xrefs.txt`。五层资源、128×128 cache、11/98 重载、陆地/船/海岸碰撞、双入口/IQ 条件、待机和 8 级半透明天气、indexed 世界绘制已实现；但真实 SDL 运行发现左右方向键状态索引接线错误，并收到人物移动后消失报告，因此此前“held-key SDL 会话链完成”和 B6 完成结论撤销。必须按第 0.1 节从机器码翻译表、平台事件、app 调用点、世界移动、深度排序、人物帧和最终呈现重新双向 REVIEW，收敛后才能恢复完成状态。
+
+范围：`world`
+
+交付：
+
+- 五层 480×480 数据、128×128 缓存、32×32 视口；
+- 菱形投影、玩家移动、碰撞、入口和周期更新；
+- `WorldStepResult`。
+
+验收：世界全部五层语义、缓存边界、投影、移动、碰撞、入口、周期更新和随机遇敌可达分支闭环；固定输入 trace 的坐标、请求、RNG 消费和 indexed frame 与原版一致。
+
+### B7 · 场景、事件与对话
+
+范围：`scene`
+
+交付：
+
+- 6×64×64 场景层和事件区；
+- `TALK.GRP` XOR/Big5；
+- 事件执行器按实际使用指令逐批闭环；
+- 返回世界、菜单和战斗请求。
+
+验收：100 个场景数据和 2,977 条 TALK 记录可读；当前 KDEF/场景资产可达的全部事件指令、跳转、副作用、对话、战斗和返回路径闭环，不以单一示例场景代替完成。
+
+### B8 · 战斗
+
+范围：`battle`
+
+交付：
+
+- FIGHT 资源、战斗建立、角色临时态、输入、动作、AI、绘制和结果；
+- 战后状态提交；
+- `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
+
+当前状态：功能实现100%，入口实现差异审计5/5已修正，Linux/Windows core/app × Debug/Release完整矩阵通过；81项closure仍为`implemented_pending_review`，统一最终REVIEW为0%。
+
+验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
+
+### B9 · 完整持久化与兼容整合
+
+范围：全模块
+
+当前状态：`B9-WP01`为唯一work package；14项有限closure均已映射为`implemented_pending_review`，实现映射口径100%、统一最终REVIEW口径0%。已修正新游戏scene70序章入口、初始最大生命漏乘3、编号槽I/O等待帧present门禁、系统菜单载入后的返回页和每进程独立日志；14项实现差异审计已覆盖，Linux/Windows八项矩阵、Linux app ASan+UBSan、双平台smoke、golden与原版资产只读门禁均已通过。提交B9切片后处理其余closure，再进入B0→B9统一最终双向REVIEW。
+
+交付：
+
+- 所有状态所有者的 snapshot/import；
+- 新游戏、世界、场景、战斗、菜单、保存、读取的集成链；
+- 原存档兼容、错误路径、退出与资源清理；
+- 每次启动独立的`PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log`，不得追加到跨启动共享日志；
+- 可发布构建和兼容性报告。
+
+验收：启动到退出的全部当前资产可达主流程均有固定输入差分；状态、调用序列、RNG、存档字节、indexed framebuffer、调色板和音频命令序列与原版一致，偏差清单为空或每项均获用户明确批准。
+
+## 6. 单模块开始条件
+
+进入某模块前必须同时满足：
+
+- 公共职责和依赖已在 `rewrite-architecture.md` 中存在；
+- 已机械列出该模块的游戏自有函数、入口、调用点、数据、共享状态和当前资产可达性；
+- 已区分游戏代码、CRT/编译器和第三方库合同；
+- 至少准备汇编派生向量、真实资产/记录样本和差分策略；
+- 明确核心 1:1 行为和纯宿主平台适配边界；
+- 不需要修改上游模块依赖方向。
+
+## 7. 单模块完成条件
+
+- 模块函数/状态清单中的 `unresolved`、`hypothesis_only` 和未审计可达分支均为零；
+- 每个游戏自有函数均已归属为 `assembly_exact` 或有证据的 `platform_adapted`；
+- 公共接口只改变代码所有权，不改变原调用时点和副作用顺序；
+- 单元测试覆盖正常、边界、错误、原 BUG、溢出和提前退出路径；
+- 当前原版资产全量测试通过；
+- 像素、字节、状态、RNG 和调用序列有 golden 或原程序差分证据；
+- 已按第 0.1 节执行不限次数的汇编↔C++ 双向逐基本块 REVIEW，最后一轮完整复核零新增差异；
+- 实现按基本块复核，研究结论、实现和测试三者一致；
+- 没有跨模块裸全局、SDL 类型泄漏、反向依赖或未批准行为改良；
+- 剩余的不可达库内部细节有证明性排除，不能用 TODO 代替可达逻辑。
+
+## 8. 集成里程碑
+
+以下只是可运行检查点，不是模块完成或 1:1 完成标准：
+
+1. **M0**：现代窗口和空 indexed framebuffer；
+2. **M1**：真实精灵、调色板和字体可呈现；
+3. **M2**：标题、新游戏和读档可用；
+4. **M3**：世界地图可探索；
+5. **M4**：场景进入、对话和返回闭环；
+6. **M5**：一个真实战斗闭环；
+7. **M6**：保存/读取后状态和画面一致；
+8. **M7**：全部当前资产可达路径完成原程序差分，才进入最终 1:1 评审。
+
+## 9. 全项目 1:1 完成条件
+
+- `Z.COM` 启动链和 `Z.DAT` 全部游戏自有函数均已归属，当前资产可达函数和分支全部闭环；
+- 约 256 个 Watcom/CRT/Miles 函数均已证明为无关、不可达内部细节或被精确平台合同覆盖；
+- 118 对 IDX/GRP、110 对 SDX/WDX、五个世界层、100 个场景、2,977 条 TALK、92 个 FIGHT 包和全部存档文件通过全量验证；
+- 固定输入流程的状态、RNG、像素、调色板、保存字节和音频命令序列与原程序一致；
+- 所有原逻辑 BUG 和异常路径已保留，所有平台偏差均有用户批准；
+- Linux 与 Windows 构建、单元、真实资产、集成和原程序差分门禁全部通过；
+- 所有游戏自有函数、事件 opcode 和平台调用链均按第 0.1 节完成最后一轮零新增差异的双向 REVIEW；
+- 不存在以“可玩”“测试通过”或“现代实现更合理”为理由保留的未验证兼容缺口。
+
+## 10. 计划维护规则
+
+- `goal/execution-plan.md` 是阶段和当前队列真值；研究摘要不能覆盖它。
+- 架构文档只在模块边界或依赖被新证据推翻时修改。
+- 详细地址、伪码和字段证据放在 `research/evidence`，不把 GOAL 变成无限变更日志。
+- 当前模块只保留一个明确工作包；完成后再开启下一项。
+- 测试通过不能单独证明原版行为；必须同时有反汇编、原始字节或真实资产证据。
+
+## 11. 当前唯一队列
+
+1. 完善基础框架：function catalog、module/state/dependency inventory、模块 work package、closure 状态机、validator、日志与诊断；框架通过 CTest 前停止业务逆向扩展；
+2. 把 B0–B7 现有 C++ 映射到 inventory，统一标 `implemented_pending_review` 或更早状态，不继承旧完成结论；
+3. 在框架约束下完成 B7 剩余事件实现、B8 战斗和 B9 全集成；实现通过测试后仍只标 `implemented_pending_review`；
+4. 全部功能实现后，按锁定 workpack 对 B0–B9 逐函数/handler 执行第 0.1 节最终汇编↔C++ REVIEW，差异修正后从入口重启，直到完整一轮零新增差异；
+5. 最终执行 Linux/Windows 全矩阵、sanitizer、smoke、资产只读、IDA 数据库和原程序差分/登记阻塞验收；
+6. 只有全部 closure 关闭并满足第 9 节全部条件后才调用 Goal 完成。
