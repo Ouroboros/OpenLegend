@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string_view>
+#include <vector>
 
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/persistence/save_slot.hpp"
@@ -141,6 +142,7 @@ void check_game_menu_controller() {
     result = menu.handle_key(0x0DU);
     OL_CHECK(result.command == GameMenuCommand::none);
     OL_CHECK(menu.screen() == GameMenuScreen::party_select);
+    OL_CHECK(menu.pending_party_command() == GameMenuCommand::status);
     static_cast<void>(menu.handle_key(0x0DU));
     OL_CHECK(menu.screen() == GameMenuScreen::status_panel);
     OL_CHECK(menu.status_page() == 0U);
@@ -382,16 +384,26 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.render());
+    const auto status_selector_hash = fnv1a64(new_game.framebuffer().pixels());
+    if (status_selector_hash != 0xC680E9DC6259C18CULL) {
+        std::cerr << "status_selector_hash=0x" << std::hex << status_selector_hash << std::dec << '\n';
+    }
+    OL_CHECK(status_selector_hash == 0xC680E9DC6259C18CULL);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto status_page_0_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (status_page_0_hash != 0x9FBB25BC84680CFEULL) {
+    if (status_page_0_hash != 0x754D417908729F49ULL) {
         std::cerr << "status_page_0_hash=0x" << std::hex << status_page_0_hash << std::dec << '\n';
     }
-    OL_CHECK(status_page_0_hash == 0x9FBB25BC84680CFEULL);
+    OL_CHECK(status_page_0_hash == 0x754D417908729F49ULL);
     new_game.handle_key('A', false, false);
     OL_CHECK(new_game.render());
-    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x1EE8CF32156BD6FAULL);
+    const auto status_page_1_hash = fnv1a64(new_game.framebuffer().pixels());
+    if (status_page_1_hash != 0x3FB535C659854C04ULL) {
+        std::cerr << "status_page_1_hash=0x" << std::hex << status_page_1_hash << std::dec << '\n';
+    }
+    OL_CHECK(status_page_1_hash == 0x3FB535C659854C04ULL);
     new_game.handle_key('A', false, false);
     new_game.handle_key(0x9EU, false, false);
     new_game.handle_key(0x0DU, false, false);
@@ -430,9 +442,58 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     advance_rendered_frames(new_game, 1U);
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    const auto scene_background = std::vector<std::uint8_t>{
+        new_game.framebuffer().pixels().begin(), new_game.framebuffer().pixels().end()};
     OL_CHECK(new_game.render());
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x98U, false, false);
+    new_game.handle_key(0x98U, false, false);
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.render());
+    bool selector_preserved_scene_background = true;
+    for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
+        for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
+            const auto inside_title = x >= 70 && x < 194 && y >= 18 && y < 44;
+            const auto inside_list = x >= 70 && x < 132 && y >= 45 && y < 75;
+            if (!inside_title && !inside_list &&
+                new_game.framebuffer().row(y)[x] !=
+                    scene_background[static_cast<std::size_t>(
+                        y * render::IndexedFramebuffer::width + x)]) {
+                selector_preserved_scene_background = false;
+            }
+        }
+    }
+    OL_CHECK(selector_preserved_scene_background);
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.render());
+    bool first_page_preserved_scene_background = true;
+    for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
+        for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
+            if ((x < 55 || x >= 265) &&
+                new_game.framebuffer().row(y)[x] !=
+                    scene_background[static_cast<std::size_t>(
+                        y * render::IndexedFramebuffer::width + x)]) {
+                first_page_preserved_scene_background = false;
+            }
+        }
+    }
+    OL_CHECK(first_page_preserved_scene_background);
+    new_game.handle_key('A', false, false);
+    OL_CHECK(new_game.render());
+    bool second_page_preserved_scene_background = true;
+    for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
+        for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
+            if ((x < 55 || x >= 265) &&
+                new_game.framebuffer().row(y)[x] !=
+                    scene_background[static_cast<std::size_t>(
+                        y * render::IndexedFramebuffer::width + x)]) {
+                second_page_preserved_scene_background = false;
+            }
+        }
+    }
+    OL_CHECK(second_page_preserved_scene_background);
+    new_game.handle_key('A', false, false);
+    new_game.handle_key(0x9EU, false, false);
     new_game.handle_key(0x0DU, false, false);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);

@@ -119,6 +119,7 @@ private:
     ui::TitleMenuRenderer title_renderer_;
     ui::BasicUiRenderer basic_renderer_;
     ui::GameMenuController game_menu_;
+    std::unique_ptr<battle::BattleRenderer> game_menu_status_renderer_;
     std::optional<ui::NewGameNameEditor> name_editor_;
     std::unique_ptr<ui::NewGameAttributeController> attribute_controller_;
     std::unique_ptr<world::WorldMapData> world_map_;

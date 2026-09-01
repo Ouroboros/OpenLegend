@@ -175,8 +175,9 @@ def main() -> int:
         },
         "runtime_ui_regression_fnv1a64": {
             "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-            "status_page_0": "9fbb25bc84680cfe",
-            "status_page_1": "1ee8cf32156bd6fa",
+            "status_selector": "c680e9dc6259c18c",
+            "status_page_0": "754d417908729f49",
+            "status_page_1": "3fb535c659854c04",
             "items_page_0": "1f2c81326be42838",
         },
         "title_navigation": {

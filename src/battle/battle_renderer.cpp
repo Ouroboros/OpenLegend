@@ -39,6 +39,9 @@ constexpr std::array<std::uint8_t, 1> kSlash{'/'};
 constexpr std::array<std::uint8_t, 3> kHundred{'1', '0', '0'};
 constexpr std::array<std::uint8_t, 7> kMaximumLevel{' ', ' ', ' ', '=', ' ', ' ', ' '};
 constexpr std::array<std::uint8_t, 3> kMaximumPractice{' ', '=', ' '};
+constexpr std::array<std::uint8_t, 14> kStatusSelectionTitle{
+    0xADU, 0x6EU, 0xACU, 0x64U, 0xBEU, 0x5CU, 0xBDU,
+    0xD6U, 0xAAU, 0xBAU, 0xAAU, 0xACU, 0xBAU, 0x41U};
 constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
     0,     50,    150,   300,   500,   750,   1050,  1400,  1800,  2250,
     2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
@@ -340,6 +343,51 @@ bool BattleRenderer::render_status_panel(
             135,
             maximum_mp,
             static_cast<std::uint16_t>(plan.mp_color));
+}
+
+bool BattleRenderer::render_character_status_selection(
+    const model::RangerState& ranger,
+    const std::size_t cursor,
+    render::IndexedFramebuffer& framebuffer) {
+    std::size_t party_count = model::kTeamMemberCount;
+    for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
+        if (ranger.header.team_member(slot).value <= 0) {
+            party_count = slot;
+            break;
+        }
+    }
+    if (!valid() || party_count == 0U || cursor >= party_count ||
+        !draw_box(framebuffer, 70, 18, 124U, 26U) ||
+        !draw_text(framebuffer, 75, 22, kStatusSelectionTitle, 0x0705U) ||
+        !draw_box(
+            framebuffer,
+            70,
+            45,
+            62U,
+            static_cast<std::uint16_t>(20U * party_count + 10U))) {
+        return false;
+    }
+    for (std::size_t slot = 0U; slot < party_count; ++slot) {
+        const auto role_id = ranger.header.team_member(slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
+            return false;
+        }
+        const auto name_storage = std::span<const std::uint8_t>{
+            ranger.roles[static_cast<std::size_t>(role_id)].bytes}.subspan(
+                model::role_word::name_byte,
+                model::role_word::name_bytes);
+        const auto name_extent = legacy_name_extent(name_storage);
+        if (name_extent.has_value() &&
+            !draw_text(
+                framebuffer,
+                99 - 4 * *name_extent,
+                52 + 20 * static_cast<int>(slot),
+                zero_terminated_prefix(name_storage),
+                slot == cursor ? 0x6663U : 0x2321U)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool BattleRenderer::render_character_status(

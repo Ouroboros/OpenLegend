@@ -32,9 +32,6 @@ constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
     0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA4U, 0xA7U, 0xA4U, 0x48U, 0xAAU, 0xABU};
 constexpr std::array<std::uint8_t, 1> kSelectedMarker{'*'};
 constexpr std::array<std::uint8_t, 4> kConfirmLabel{0xB5U, 0xB2U, 0xA7U, 0xF4U};
-constexpr std::array<std::uint8_t, 14> kStatusSelectionTitle{
-    0xADU, 0x6EU, 0xACU, 0x64U, 0xBEU, 0x5CU, 0xBDU,
-    0xD6U, 0xAAU, 0xBAU, 0xAAU, 0xACU, 0xBAU, 0x41U};
 constexpr std::array<std::uint8_t, 12> kAttackDirectionPrompt{
     0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xA7U, 0xF0U,
     0xC0U, 0xBBU, 0xA4U, 0xE8U, 0xA6U, 0x56U};
@@ -3910,40 +3907,9 @@ bool BattleSession::render_player_item_effect(
 
 bool BattleSession::render_player_status_selection(
     render::IndexedFramebuffer& framebuffer) {
-    if (!player_status_.has_value() || player_status_->party_count == 0U ||
-        player_status_->cursor >= player_status_->party_count ||
-        !render_battlefield(framebuffer) ||
-        !renderer_.draw_box(framebuffer, 70, 18, 124U, 26U) ||
-        !renderer_.draw_text(framebuffer, 75, 22, kStatusSelectionTitle, 0x0705U) ||
-        !renderer_.draw_box(
-            framebuffer,
-            70,
-            45,
-            62U,
-            static_cast<std::uint16_t>(20U * player_status_->party_count + 10U))) {
-        return false;
-    }
-    for (std::size_t slot = 0U; slot < player_status_->party_count; ++slot) {
-        const auto role_id = ranger_.header.team_member(slot).value;
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-            return false;
-        }
-        const auto name_storage = std::span<const std::uint8_t>{
-            ranger_.roles[static_cast<std::size_t>(role_id)].bytes}.subspan(
-                model::role_word::name_byte,
-                model::role_word::name_bytes);
-        const auto name_x = centered_name_x(name_storage);
-        if (name_x.has_value() &&
-            !renderer_.draw_text(
-                framebuffer,
-                *name_x,
-                52 + 20 * static_cast<int>(slot),
-                terminated_name(name_storage),
-                slot == player_status_->cursor ? 0x6663U : 0x2321U)) {
-            return false;
-        }
-    }
-    return true;
+    return player_status_.has_value() && render_battlefield(framebuffer) &&
+        renderer_.render_character_status_selection(
+            ranger_, player_status_->cursor, framebuffer);
 }
 
 bool BattleSession::render_player_status_page(

@@ -25,26 +25,6 @@ constexpr std::array<std::array<std::uint8_t, 2>, 3> kSlotLabels{{
     {0xA4U, 0x47U},
     {0xA4U, 0x54U},
 }};
-constexpr std::array<std::uint8_t, 5> kLevelLabel{0xB5U, 0xA5U, 0xAFU, 0xC5U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kLifeLabel{0xA5U, 0xCDU, 0xA9U, 0x52U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kMpLabel{0xA4U, 0xBAU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 5> kPowerLabel{0xCAU, 0x5EU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 5> kExperienceLabel{0xB8U, 0x67U, 0xC5U, 0xE7U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kUpgradeLabel{0xA4U, 0xC9U, 0xAFU, 0xC5U, 0x20U};
-constexpr std::array<std::uint8_t, 7> kAttackLabel{0xA7U, 0xF0U, 0xC0U, 0xBBU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 7> kDefenceLabel{0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 5> kSpeedLabel{0xBBU, 0xB4U, 0xA5U, 0x5CU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kMedicineLabel{0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kUsePoisonLabel{0xA5U, 0xCEU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kDetoxLabel{0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kFistLabel{0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA5U, 0x5CU, 0xA4U, 0xD2U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kSwordLabel{0xB1U, 0x73U, 0xBCU, 0x43U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kKnifeLabel{0xADU, 0x41U, 0xA4U, 0x4DU, 0xA7U, 0xDEU, 0xA5U, 0xA9U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kUnusualLabel{0xAFU, 0x53U, 0xAEU, 0xEDU, 0xA7U, 0x4CU, 0xBEU, 0xB9U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kHiddenLabel{0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA7U, 0xDEU, 0xA5U, 0xA9U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kEquipmentLabel{0xB8U, 0xCBU, 0xB3U, 0xC6U, 0xAAU, 0xABU, 0xABU, 0x7EU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kPracticeLabel{0xADU, 0xD7U, 0xBDU, 0x6DU, 0xAAU, 0xABU, 0xABU, 0x7EU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kMagicLabel{0xA9U, 0xD2U, 0xB7U, 0x7CU, 0xA5U, 0x5CU, 0xA4U, 0xD2U, 0x20U};
 constexpr std::array<std::uint8_t, 13> kNamePrompt{
     0xBDU, 0xD0U, 0xBFU, 0xE9U, 0xA4U, 0x4AU, 0xA9U,
     0x6DU, 0xA6U, 0x57U, 0x20U, 0x20U, 0x3AU};
@@ -202,12 +182,6 @@ bool BasicUiRenderer::render_attributes(
     return true;
 }
 
-bool BasicUiRenderer::render_world_status(
-    const model::RangerState& ranger, render::IndexedFramebuffer& framebuffer) {
-    framebuffer.clear(0U);
-    return render_status_panel(ranger, 0U, 0U, framebuffer);
-}
-
 bool BasicUiRenderer::render_game_menu(
     const GameMenuController& menu,
     const model::RangerState& ranger,
@@ -249,8 +223,7 @@ bool BasicUiRenderer::render_game_menu(
         }
         return true;
     case GameMenuScreen::status_panel:
-        return render_status_panel(
-            ranger, menu.party_selection(), menu.status_page(), framebuffer);
+        return false;
     case GameMenuScreen::items:
         return render_items(ranger, menu.item_selection(), framebuffer);
     case GameMenuScreen::system:
@@ -346,168 +319,6 @@ bool BasicUiRenderer::draw_box(
         static_cast<std::uint16_t>(width - 2U),
         static_cast<std::uint16_t>(height - 2U),
         0U);
-}
-
-bool BasicUiRenderer::render_status_panel(
-    const model::RangerState& ranger,
-    const std::uint8_t party_index,
-    const std::uint8_t page,
-    render::IndexedFramebuffer& framebuffer) {
-    const auto role_id = ranger.header.team_member(party_index).value;
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
-        return false;
-    }
-    const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-    framebuffer.clear(0U);
-    if (!draw_text(
-            framebuffer,
-            80,
-            70,
-            fixed_text(role.bytes, model::role_word::name_byte, model::role_word::name_bytes),
-            0x6663U) ||
-        !draw_text(
-            framebuffer,
-            180,
-            70,
-            fixed_text(
-                role.bytes, model::role_word::nickname_byte, model::role_word::nickname_bytes),
-            0x6663U)) {
-        return false;
-    }
-
-    const auto draw_number = [this, &framebuffer](
-                                 const int x, const int y, const std::int16_t value,
-                                 const std::uint16_t color = 0x0705U) {
-        std::vector<std::uint8_t> number;
-        append_number(number, value);
-        return draw_text(framebuffer, x, y, number, color);
-    };
-    const auto draw_pair = [this, &framebuffer, &draw_number](
-                               const int y,
-                               const std::span<const std::uint8_t> label,
-                               const std::int16_t current,
-                               const std::optional<std::int16_t> maximum = std::nullopt) {
-        if (!draw_text(framebuffer, 60, y, label, 0x2321U) ||
-            !draw_number(100, y, current)) {
-            return false;
-        }
-        if (!maximum.has_value()) {
-            return true;
-        }
-        constexpr std::array<std::uint8_t, 1> slash{'/'};
-        return draw_text(framebuffer, 120, y, slash, 0x6663U) &&
-               draw_number(127, y, *maximum);
-    };
-
-    if (page == 0U) {
-        if (!draw_pair(90, kLevelLabel, role.word(model::role_word::level)) ||
-            !draw_pair(
-                107,
-                kLifeLabel,
-                role.word(model::role_word::hp),
-                role.word(model::role_word::maximum_hp)) ||
-            !draw_pair(
-                124,
-                kMpLabel,
-                role.word(model::role_word::mp),
-                role.word(model::role_word::maximum_mp)) ||
-            !draw_pair(
-                141,
-                kPowerLabel,
-                role.word(model::role_word::physical_power),
-                std::int16_t{100}) ||
-            !draw_pair(158, kExperienceLabel, role.word(model::role_word::experience)) ||
-            !draw_text(framebuffer, 60, 175, kUpgradeLabel, 0x2321U)) {
-            return false;
-        }
-        struct StatusField {
-            std::span<const std::uint8_t> label;
-            std::size_t word;
-        };
-        const std::array<StatusField, 11> fields{{
-            {kAttackLabel, model::role_word::attack},
-            {kDefenceLabel, model::role_word::defence},
-            {kSpeedLabel, model::role_word::speed},
-            {kMedicineLabel, model::role_word::medicine},
-            {kUsePoisonLabel, model::role_word::use_poison},
-            {kDetoxLabel, model::role_word::detoxification},
-            {kFistLabel, model::role_word::fist},
-            {kSwordLabel, model::role_word::sword},
-            {kKnifeLabel, model::role_word::knife},
-            {kUnusualLabel, model::role_word::unusual},
-            {kHiddenLabel, model::role_word::hidden_weapon},
-        }};
-        for (std::size_t index = 0U; index < fields.size(); ++index) {
-            const auto y = 5 + static_cast<int>(index) * 17;
-            if (!draw_text(framebuffer, 160, y, fields[index].label, 0x6663U) ||
-                !draw_number(230, y, role.word(fields[index].word))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    if (!draw_text(framebuffer, 60, 90, kEquipmentLabel, 0x2321U)) {
-        return false;
-    }
-    for (std::size_t index = 0U; index < model::role_word::equipment_count; ++index) {
-        const auto item_id = role.word(model::role_word::equipment_begin + index);
-        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
-            continue;
-        }
-        const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
-        if (!draw_text(
-                framebuffer,
-                60,
-                107 + static_cast<int>(index) * 17,
-                fixed_text(item.bytes, model::item_word::name_byte, model::item_word::name_bytes),
-                0x0705U)) {
-            return false;
-        }
-    }
-    if (!draw_text(framebuffer, 60, 141, kPracticeLabel, 0x2321U)) {
-        return false;
-    }
-    const auto practice_id = role.word(model::role_word::practice_item);
-    if (practice_id >= 0 && static_cast<std::size_t>(practice_id) < ranger.items.size()) {
-        const auto& item = ranger.items[static_cast<std::size_t>(practice_id)];
-        if (!draw_text(
-                framebuffer,
-                60,
-                158,
-                fixed_text(item.bytes, model::item_word::name_byte, model::item_word::name_bytes),
-                0x0705U) ||
-            !draw_number(60, 175, role.word(model::role_word::item_experience))) {
-            return false;
-        }
-    }
-    if (!draw_text(framebuffer, 160, 5, kMagicLabel, 0x6663U)) {
-        return false;
-    }
-    for (std::size_t index = 0U; index < model::role_word::magic_count; ++index) {
-        const auto magic_id = role.word(model::role_word::magic_id_begin + index);
-        if (magic_id <= 0 || static_cast<std::size_t>(magic_id) >= ranger.magics.size()) {
-            continue;
-        }
-        const auto& magic = ranger.magics[static_cast<std::size_t>(magic_id)];
-        const auto y = 22 + static_cast<int>(index) * 17;
-        if (!draw_text(
-                framebuffer,
-                160,
-                y,
-                fixed_text(
-                    magic.bytes, model::magic_word::name_byte, model::magic_word::name_bytes),
-                0x0705U) ||
-            !draw_number(
-                242,
-                y,
-                static_cast<std::int16_t>(
-                    role.word(model::role_word::magic_level_begin + index) / 100 + 1),
-                0x6663U)) {
-            return false;
-        }
-    }
-    return true;
 }
 
 bool BasicUiRenderer::render_items(

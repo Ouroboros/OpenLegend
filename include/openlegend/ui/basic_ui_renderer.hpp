@@ -33,8 +33,6 @@ public:
         std::span<const std::uint8_t> name,
         bool cheat_active,
         render::IndexedFramebuffer& framebuffer);
-    [[nodiscard]] bool render_world_status(
-        const model::RangerState& ranger, render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_game_menu(
         const GameMenuController& menu,
         const model::RangerState& ranger,
@@ -57,11 +55,6 @@ private:
         int y,
         std::uint16_t width,
         std::uint16_t height);
-    [[nodiscard]] bool render_status_panel(
-        const model::RangerState& ranger,
-        std::uint8_t party_index,
-        std::uint8_t page,
-        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_items(
         const model::RangerState& ranger,
         std::uint16_t selection,

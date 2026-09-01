@@ -250,7 +250,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 状态：**已有实现，`implemented_pending_review`**
 
-已有证据：标题/三槽逐像素 golden、CFONT 姓名输入、17 次 RNG 初始属性/BABERUTH、六项菜单、双页状态/物品 UI、隔离目录存读失败合同、`GameState` 会话所有者、SDL 主循环和 DOS indexed→现代 RGBA 显示兼容层均已接入；Linux/Windows `core/app × Debug/Release` 全通过，Linux ASan+UBSan 8/8 通过。
+已有证据：标题/三槽逐像素 golden、CFONT 姓名输入、17 次 RNG 初始属性/BABERUTH、六项菜单、双页状态/物品 UI、隔离目录存读失败合同、`GameState` 会话所有者、SDL 主循环和 DOS indexed→现代 RGBA 显示兼容层均已接入。参数2“查看状态”选择框与双页角色状态现由单一精确renderer覆盖世界、场景和战斗背景，状态入口与双页函数提升为`implemented_pending_review`；共享选择器的其他参数模式仍为`pending_implementation`。最新Linux/Windows app Debug均14/14通过，Linux app ASan+UBSan 14/14通过；普通Linux Debug cache已恢复并复验。
 
 范围：`ui + app + persistence`
 

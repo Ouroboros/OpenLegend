@@ -413,8 +413,40 @@ bool LegacyGameRuntime::render() {
         const auto base_rendered = menu_return_view_ == LegacyGameView::scene
                                        ? scene_session_ != nullptr && scene_session_->render(framebuffer_)
                                        : world_session_ != nullptr && world_session_->render(framebuffer_);
-        if (ranger == nullptr || !base_rendered ||
-            !basic_renderer_.render_game_menu(game_menu_, *ranger, framebuffer_)) {
+        if (ranger == nullptr || !base_rendered) {
+            return false;
+        }
+        const auto exact_status_selection =
+            game_menu_.screen() == ui::GameMenuScreen::party_select &&
+            game_menu_.pending_party_command() == ui::GameMenuCommand::status;
+        const auto exact_status_page =
+            game_menu_.screen() == ui::GameMenuScreen::status_panel;
+        if (exact_status_selection || exact_status_page) {
+            if (game_menu_status_renderer_ == nullptr) {
+                game_menu_status_renderer_ =
+                    std::make_unique<battle::BattleRenderer>(data_root_, 0);
+            }
+            if (!game_menu_status_renderer_->valid()) {
+                return false;
+            }
+            if (exact_status_selection) {
+                if (!game_menu_status_renderer_->render_character_status_selection(
+                        *ranger, game_menu_.party_selection(), framebuffer_)) {
+                    return false;
+                }
+            } else {
+                const auto role_id = ranger->header.team_member(
+                    game_menu_.party_selection()).value;
+                if (!game_menu_status_renderer_->render_character_status(
+                        *ranger,
+                        role_id,
+                        game_menu_.status_page(),
+                        framebuffer_)) {
+                    return false;
+                }
+            }
+        } else if (!basic_renderer_.render_game_menu(
+                       game_menu_, *ranger, framebuffer_)) {
             return false;
         }
         return pending_io_ == PendingIo::none || basic_renderer_.render_io_wait(framebuffer_);

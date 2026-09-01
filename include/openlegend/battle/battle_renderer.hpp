@@ -33,6 +33,10 @@ public:
     [[nodiscard]] bool render_status_panel(
         const BattleStatusPanelPlan& plan,
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render_character_status_selection(
+        const model::RangerState& ranger,
+        std::size_t cursor,
+        render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_character_status(
         const model::RangerState& ranger,
         std::int16_t role_id,

@@ -57,6 +57,9 @@ public:
     [[nodiscard]] constexpr std::uint8_t party_selection() const noexcept {
         return party_selection_;
     }
+    [[nodiscard]] constexpr GameMenuCommand pending_party_command() const noexcept {
+        return pending_party_command_;
+    }
     [[nodiscard]] constexpr std::uint16_t item_selection() const noexcept {
         return item_selection_;
     }
