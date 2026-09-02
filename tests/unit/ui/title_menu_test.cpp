@@ -1199,14 +1199,36 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         std::cerr << "medicine_user_hash=0x" << std::hex << medicine_user_hash << std::dec << '\n';
     }
     OL_CHECK(medicine_user_hash == 0x946FD60959CD16E3ULL);
-    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(
+        new_game.handle_key(0x98U, false, false) ==
+        app::LegacyKeyStateReset::translated);
+    OL_CHECK(
+        new_game.handle_key(0x9EU, false, false) ==
+        app::LegacyKeyStateReset::translated);
+    OL_CHECK(
+        new_game.handle_key(0x1BU, false, false) ==
+        app::LegacyKeyStateReset::translated);
+    OL_CHECK(
+        new_game.handle_key(0x0DU, false, false) ==
+        app::LegacyKeyStateReset::confirmation_group);
+    OL_CHECK(
+        new_game.handle_key(0x0DU, false, false) ==
+        app::LegacyKeyStateReset::confirmation_group);
     OL_CHECK(new_game.render());
     const auto medicine_target_hash = fnv1a64(new_game.framebuffer().pixels());
     if (medicine_target_hash != 0x5C6481B6CC10E991ULL) {
         std::cerr << "medicine_target_hash=0x" << std::hex << medicine_target_hash << std::dec << '\n';
     }
     OL_CHECK(medicine_target_hash == 0x5C6481B6CC10E991ULL);
-    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(
+        new_game.handle_key(0x1BU, false, false) ==
+        app::LegacyKeyStateReset::translated);
+    OL_CHECK(
+        new_game.handle_key(0x0DU, false, false) ==
+        app::LegacyKeyStateReset::confirmation_group);
+    OL_CHECK(
+        new_game.handle_key(0x0DU, false, false) ==
+        app::LegacyKeyStateReset::confirmation_group);
     OL_CHECK(new_game.render());
     const auto medicine_result_hash = fnv1a64(new_game.framebuffer().pixels());
     if (medicine_result_hash != 0x70CE82FBA86ECED6ULL) {

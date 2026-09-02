@@ -460,7 +460,8 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         const auto screen = game_menu_.screen();
         if (screen == ui::GameMenuScreen::main) {
             key_state_reset = main_game_menu_key_state_reset(translated_key);
-        } else if (screen == ui::GameMenuScreen::system ||
+        } else if (screen == ui::GameMenuScreen::party_select ||
+                   screen == ui::GameMenuScreen::system ||
                    screen == ui::GameMenuScreen::load_slots ||
                    screen == ui::GameMenuScreen::save_slots) {
             key_state_reset = menu_key_state_reset(translated_key);
