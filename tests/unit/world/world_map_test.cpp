@@ -370,19 +370,38 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     }
     OL_CHECK(idle_random.state() == 0x41C67EA6U);
 
-    auto idle_frame_snapshot = load_baseline(root);
-    openlegend::random::LegacyRandom idle_frame_random{0U};
-    WorldSession idle_frame{data_root, map, idle_frame_snapshot.ranger, idle_frame_random};
-    for (int tick = 0; tick < 51; ++tick) {
+    constexpr std::array<std::int16_t, 4> idle_frame_base{5002, 5016, 5030, 5044};
+    constexpr std::array<std::int16_t, 4> idle_frame_offset{54, 52, 50, 48};
+    constexpr std::array<std::int16_t, 24> idle_animation_steps{
+        2, 2, 2, 4, 4, 4, 4, 6, 6, 6, 6, 8,
+        8, 8, 8, 10, 10, 10, 10, 12, 12, 12, 12, 0};
+    for (std::size_t direction = 0U; direction < idle_frame_base.size(); ++direction) {
+        auto idle_frame_snapshot = load_baseline(root);
+        idle_frame_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::face_towards,
+            static_cast<std::int16_t>(direction));
+        openlegend::random::LegacyRandom idle_frame_random{0U};
+        WorldSession idle_frame{data_root, map, idle_frame_snapshot.ranger, idle_frame_random};
+        for (int tick = 0; tick < 50; ++tick) {
+            idle_frame.idle_tick();
+            idle_frame.idle_animation_tick();
+        }
+        OL_CHECK(idle_frame.player_frame() == idle_frame_base[direction]);
+        for (const auto step : idle_animation_steps) {
+            idle_frame.idle_tick();
+            idle_frame.idle_animation_tick();
+            const auto expected = step == 0
+                                      ? idle_frame_base[direction]
+                                      : static_cast<std::int16_t>(
+                                            idle_frame_base[direction] +
+                                            idle_frame_offset[direction] + step);
+            OL_CHECK(idle_frame.player_frame() == expected);
+        }
         idle_frame.idle_tick();
         idle_frame.idle_animation_tick();
+        OL_CHECK(idle_frame.player_frame() == idle_frame_base[direction]);
+        OL_CHECK(idle_frame_random.state() == 0x00003039U);
     }
-    OL_CHECK(idle_frame.player_frame() == 5070);
-    for (int tick = 0; tick < 3; ++tick) {
-        idle_frame.idle_tick();
-        idle_frame.idle_animation_tick();
-    }
-    OL_CHECK(idle_frame.player_frame() == 5072);
 
     auto recovery_snapshot = load_baseline(root);
     auto& protagonist = recovery_snapshot.ranger.roles[0];
