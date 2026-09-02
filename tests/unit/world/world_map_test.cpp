@@ -514,6 +514,40 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
                  openlegend::model::header_word::ship_y) == 174);
     OL_CHECK(upward_ship_snapshot.ranger.header.word(
                  openlegend::model::header_word::ship_y_1) == 173);
+
+    const auto check_ship_collision = [&](const int world_x,
+                                           const int world_y,
+                                           const WorldDirection direction,
+                                           const WorldStepKind expected) {
+        auto collision_snapshot = load_baseline(root);
+        for (auto& scene : collision_snapshot.ranger.scenes) {
+            for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                    openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                    openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                    openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+                scene.set_word(word, -1);
+            }
+        }
+        collision_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::main_map_x,
+            static_cast<std::int16_t>(world_x));
+        collision_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::main_map_y,
+            static_cast<std::int16_t>(world_y));
+        collision_snapshot.ranger.header.set_word(openlegend::model::header_word::in_ship, 1);
+        openlegend::random::LegacyRandom collision_random{1U};
+        WorldSession collision{
+            data_root, map, collision_snapshot.ranger, collision_random};
+        OL_CHECK(collision.move(direction).kind == expected);
+    };
+    check_ship_collision(52, 10, WorldDirection::down, WorldStepKind::moved);
+    check_ship_collision(52, 11, WorldDirection::up, WorldStepKind::stay);
+    check_ship_collision(457, 310, WorldDirection::right, WorldStepKind::moved);
+    check_ship_collision(458, 310, WorldDirection::right, WorldStepKind::stay);
+    check_ship_collision(48, 10, WorldDirection::right, WorldStepKind::moved);
+    check_ship_collision(30, 271, WorldDirection::right, WorldStepKind::moved);
+    check_ship_collision(49, 1, WorldDirection::right, WorldStepKind::moved);
+    check_ship_collision(47, 1, WorldDirection::right, WorldStepKind::moved);
 }
 
 void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
