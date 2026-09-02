@@ -139,6 +139,7 @@ struct SceneEntryOverride {
 enum class SceneSessionContext {
     scene,
     world_event_overlay,
+    retained_scene_event,
 };
 
 class SceneSession {
@@ -167,6 +168,7 @@ public:
     [[nodiscard]] SceneStepResult interact();
     [[nodiscard]] SceneStepResult use_item(std::int16_t item_id);
     [[nodiscard]] SceneStepResult use_menu_item(std::int16_t item_id);
+    [[nodiscard]] SceneStepResult use_retained_menu_item(std::int16_t item_id);
     [[nodiscard]] SceneStepResult open_ui() noexcept;
     [[nodiscard]] SceneStepResult resume(SceneResponse response, int value = -1);
     [[nodiscard]] SceneStepResult begin_event(
@@ -353,6 +355,7 @@ private:
     void cycle_palette();
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
+    [[nodiscard]] std::optional<std::int16_t> item_event_at(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_field(
         std::int16_t scene_id,
         std::int16_t event_index,

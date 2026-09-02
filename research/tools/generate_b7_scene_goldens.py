@@ -1004,6 +1004,47 @@ def scene_animation_vectors(
                     "positive" if value > 0 else "other_nonpositive"
                 )
                 trigger_counts[name][category] += 1
+
+    event_index_values = [
+        event
+        for payload in scene_maps
+        for event in words(payload)[3 * 4096:4 * 4096]
+    ]
+    vertical_alias_values = []
+    for payload in scene_maps:
+        map_words = words(payload)
+        vertical_alias_values.extend(map_words[3 * 4096 - 64:3 * 4096])
+        vertical_alias_values.extend(map_words[4 * 4096:4 * 4096 + 64])
+    positive_event_2_scripts = sorted({
+        event_words[event * 11 + 3]
+        for payload in scene_events
+        for event_words in (words(payload),)
+        for event in range(200)
+        if event_words[event * 11 + 3] > 0
+    })
+    outer_control_opcodes = set()
+    for script_id in positive_event_2_scripts:
+        script_words = words(scripts[script_id])
+        pc = 0
+        while pc < len(script_words):
+            opcode = script_words[pc]
+            if opcode == -1:
+                break
+            if opcode in (6, 15, 24):
+                outer_control_opcodes.add(opcode)
+            if opcode < 0 or opcode >= len(WIDTHS):
+                break
+            pc += WIDTHS[opcode]
+    assert min(event_index_values) == -1
+    assert max(event_index_values) == 140
+    assert all(-1 <= value < 200 for value in event_index_values)
+    assert len(vertical_alias_values) == 12800
+    assert min(vertical_alias_values) == 0
+    assert max(vertical_alias_values) == 36
+    assert all(0 <= value < 200 for value in vertical_alias_values)
+    assert len(positive_event_2_scripts) == 38
+    assert outer_control_opcodes == set()
+
     for scene_id, payload in enumerate(scene_maps):
         counts: dict[int, int] = {}
         for event in words(payload)[3 * 4096:4 * 4096]:
@@ -1146,6 +1187,22 @@ def scene_animation_vectors(
             "empty_target_caller_outputs": ["scene_tail_present", "stay"],
         },
         "trigger_field_counts": trigger_counts,
+        "item_event_asset_domain": {
+            "event_index_min": min(event_index_values),
+            "event_index_max": max(event_index_values),
+            "event_index_invalid_count": sum(
+                value < -1 or value >= 200 for value in event_index_values
+            ),
+            "vertical_alias_sample_count": len(vertical_alias_values),
+            "vertical_alias_min": min(vertical_alias_values),
+            "vertical_alias_max": max(vertical_alias_values),
+            "vertical_alias_invalid_count": sum(
+                value < 0 or value >= 200 for value in vertical_alias_values
+            ),
+            "positive_event_2_script_ids": positive_event_2_scripts,
+            "outer_control_opcodes": [6, 15, 24],
+            "outer_control_opcodes_present": sorted(outer_control_opcodes),
+        },
         "item_event_outputs": {
             "no_event": ["stay"],
             "event_script_0": ["present", "stay"],
@@ -1161,18 +1218,41 @@ def scene_animation_vectors(
                 "2": [43, 29],
                 "3": [44, 30],
             },
-            "no_event_outputs": ["restore_scene_present", "open_ui_main"],
-            "event_script_0_outputs": [
-                "restore_scene_present",
-                "item_event_present",
-                "open_ui_main",
-            ],
-            "event_script_825_outputs": [
-                "restore_scene_present",
-                "item_event_present",
-                "notice_style_52",
-                "open_ui_main",
-            ],
+            "boundary_linear_aliases": {
+                "up_from_y0": {"layer": "decoration", "coordinate": [44, 63]},
+                "right_from_x63": {"layer": "event_index", "coordinate": [0, 30]},
+                "left_from_x0": {"layer": "event_index", "coordinate": [63, 28]},
+                "down_from_y63": {"layer": "building_height", "coordinate": [44, 0]},
+            },
+            "scene_menu_outputs": {
+                "no_event": ["restore_scene_present", "open_ui_main_scene"],
+                "event_script_0": [
+                    "restore_scene_present",
+                    "item_event_present",
+                    "open_ui_main_scene",
+                ],
+                "event_script_825": [
+                    "restore_scene_present",
+                    "item_event_present",
+                    "notice_style_52",
+                    "open_ui_main_scene",
+                ],
+            },
+            "world_menu_outputs": {
+                "no_event": ["restore_world_present", "open_ui_main_world"],
+                "event_script_0": [
+                    "restore_world_present",
+                    "item_event_present_over_world_buffer",
+                    "open_ui_main_world",
+                ],
+                "event_script_825": [
+                    "restore_world_present",
+                    "item_event_present_over_world_buffer",
+                    "notice_style_52",
+                    "open_ui_main_world",
+                ],
+                "requires_retained_scene_state": True,
+            },
             "tick_after_action": "deferred_until_menu_exit",
         },
         "automatic_event_outputs": {

@@ -164,6 +164,7 @@ private:
         leave_post_fade_to_black,
         leave_post_redraw_present,
         leave_post_fade_from_black,
+        item_background_present,
     };
 
     enum class SceneLeaveEventPhase {
@@ -199,6 +200,7 @@ private:
     void handle_game_menu_result(ui::GameMenuResult result);
     void handle_menu_item_result(ui::GameMenuResult result);
     void handle_menu_item_confirmation(std::uint8_t translated_key);
+    [[nodiscard]] bool begin_world_menu_item_event(std::int16_t item_id);
     [[nodiscard]] bool begin_world_leave_event(std::int16_t role_id);
     void handle_world_menu_event_result(const scene::SceneStepResult& result);
 
@@ -253,6 +255,8 @@ private:
     bool pending_world_exit_{};
     std::optional<scene::SceneDirection> scene_direction_input_;
     std::optional<std::uint8_t> pending_scene_load_slot_;
+    std::optional<std::int16_t> retained_scene_id_;
+    std::optional<std::int16_t> pending_world_menu_item_id_;
     std::optional<world::WorldDirection> scene_entry_world_direction_;
     std::optional<world::WorldMoveContinuation> world_move_continuation_;
     bool world_scene_transition_pending_{};
@@ -264,6 +268,7 @@ private:
     std::optional<std::int16_t> world_menu_event_script_id_;
     std::optional<std::int16_t> scene_leave_event_script_id_;
     bool leave_protagonist_notice_pending_{};
+    bool world_menu_item_event_active_{};
     bool scene_interact_requested_{};
     bool scene_ui_requested_{};
     bool scene_idle_skip_requested_{};

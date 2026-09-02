@@ -392,7 +392,7 @@ SceneSession::SceneSession(
         error_ = "scene id is outside the 100-scene archive";
         return;
     }
-    if (context_ == SceneSessionContext::scene && !load_scene_sprites()) {
+    if (context_ != SceneSessionContext::world_event_overlay && !load_scene_sprites()) {
         return;
     }
     const auto palette_file = data_root_.read("MMAP.COL");
@@ -448,7 +448,7 @@ SceneSession::SceneSession(
     ascii_font_ = std::move(ascii.bytes);
     big5_font_ = std::move(big5.bytes);
 
-    if (context_ == SceneSessionContext::world_event_overlay) {
+    if (context_ != SceneSessionContext::scene) {
         scene_x_ = std::clamp<int>(
             snapshot_.ranger.header.word(model::header_word::sub_map_x),
             0,
@@ -459,6 +459,9 @@ SceneSession::SceneSession(
             kSceneExtent - 1);
         direction_ = static_cast<SceneDirection>(std::clamp<std::int16_t>(
             snapshot_.ranger.header.word(model::header_word::face_towards), 0, 3));
+        if (context_ == SceneSessionContext::retained_scene_event) {
+            shadow_state_ = 0;
+        }
         update_view_origin();
         pending_ = current_result(SceneStepKind::stay);
         return;
@@ -659,10 +662,11 @@ SceneStepResult SceneSession::use_item(const std::int16_t item_id) {
     const auto [delta_x, delta_y] = direction_delta(direction_);
     const auto x = scene_x_ + delta_x;
     const auto y = scene_y_ + delta_y;
-    const auto event = event_at(x, y);
+    const auto event = item_event_at(x, y);
     if (!event.has_value()) {
         return current_result(SceneStepKind::stay);
     }
+    player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
     event_context_ = EventContext{
         *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), item_id};
     const auto script = event_field(scene_id_, *event, model::SceneEventField::event_2);
@@ -681,6 +685,20 @@ SceneStepResult SceneSession::use_menu_item(const std::int16_t item_id) {
     pending_menu_item_ = item_id;
     pending_ = current_result(SceneStepKind::present);
     return pending_;
+}
+
+SceneStepResult SceneSession::use_retained_menu_item(const std::int16_t item_id) {
+    if (!valid() || context_ != SceneSessionContext::retained_scene_event ||
+        pending_.kind != SceneStepKind::stay) {
+        return pending_;
+    }
+    const auto result = use_item(item_id);
+    if (result.kind == SceneStepKind::stay) {
+        pending_ = current_result(SceneStepKind::open_ui);
+        return pending_;
+    }
+    menu_item_event_active_ = true;
+    return result;
 }
 
 SceneStepResult SceneSession::open_ui() noexcept {
@@ -1842,6 +1860,30 @@ std::optional<std::int16_t> SceneSession::event_at(const int x, const int y) con
     const auto value = scene_value(scene_id_, static_cast<std::int16_t>(model::SceneLayer::event_index),
                                    static_cast<std::int16_t>(x), static_cast<std::int16_t>(y));
     if (value < 0 || static_cast<std::size_t>(value) >= model::kSceneEventCount) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+std::optional<std::int16_t> SceneSession::item_event_at(
+    const int x, const int y) const noexcept {
+    if (scene_id_ < 0) {
+        return std::nullopt;
+    }
+    constexpr auto event_layer = static_cast<int>(model::SceneLayer::event_index);
+    const auto word_offset = event_layer * kSceneExtent * kSceneExtent + y * kSceneExtent + x;
+    if (word_offset < 0 || word_offset >=
+            static_cast<int>(model::kSceneLayerCount * model::kSceneTileCount)) {
+        return std::nullopt;
+    }
+    const auto layer = static_cast<model::SceneLayer>(
+        word_offset / static_cast<int>(model::kSceneTileCount));
+    const auto tile = static_cast<std::size_t>(
+        word_offset % static_cast<int>(model::kSceneTileCount));
+    const auto value = snapshot_.scene_value(
+        static_cast<std::size_t>(scene_id_), layer, tile);
+    if (!value.has_value() || *value < 0 ||
+        static_cast<std::size_t>(*value) >= model::kSceneEventCount) {
         return std::nullopt;
     }
     return value;

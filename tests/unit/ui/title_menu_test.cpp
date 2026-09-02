@@ -1487,6 +1487,66 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     }
     OL_CHECK(world_palette_preserved);
 
+    auto* world_item_snapshot =
+        const_cast<model::GameState&>(new_game.game_state()).snapshot();
+    OL_CHECK(world_item_snapshot != nullptr);
+    std::optional<std::size_t> world_item_target;
+    if (world_item_snapshot != nullptr) {
+        const auto x = world_item_snapshot->ranger.header.word(model::header_word::sub_map_x);
+        const auto y = world_item_snapshot->ranger.header.word(model::header_word::sub_map_y);
+        const auto direction = world_item_snapshot->ranger.header.word(
+            model::header_word::face_towards);
+        constexpr std::array<std::pair<int, int>, 4> deltas{
+            std::pair{0, -1}, std::pair{1, 0}, std::pair{-1, 0}, std::pair{0, 1}};
+        OL_CHECK(direction >= 0 && static_cast<std::size_t>(direction) < deltas.size());
+        const auto [delta_x, delta_y] = deltas[static_cast<std::size_t>(direction)];
+        world_item_target = static_cast<std::size_t>((y + delta_y) * 64 + x + delta_x);
+        OL_CHECK(world_item_snapshot->set_scene_value(
+            70U, model::SceneLayer::event_index, *world_item_target, -1));
+    }
+    const auto select_world_event_item = [&new_game]() {
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x98U, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    };
+    select_world_event_item();
+    advance_rendered_frames(new_game, 1U);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+    OL_CHECK(world_item_snapshot != nullptr && world_item_target.has_value());
+    if (world_item_snapshot != nullptr && world_item_target.has_value()) {
+        OL_CHECK(world_item_snapshot->set_scene_value(
+            70U, model::SceneLayer::event_index, *world_item_target, 199));
+        OL_CHECK(world_item_snapshot->set_event_value(
+            70U, 199U, model::SceneEventField::event_2, 0));
+    }
+    select_world_event_item();
+    advance_rendered_frames(new_game, 1U);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+    if (world_item_snapshot != nullptr) {
+        OL_CHECK(world_item_snapshot->set_event_value(
+            70U, 199U, model::SceneEventField::event_2, 825));
+    }
+    select_world_event_item();
+    advance_rendered_frames(new_game, 1U);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    advance_rendered_frames(new_game, 1U);
+    OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+    new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
     auto* menu_ranger = const_cast<model::GameState&>(new_game.game_state()).ranger();
     OL_CHECK(menu_ranger != nullptr);
     if (menu_ranger != nullptr) {

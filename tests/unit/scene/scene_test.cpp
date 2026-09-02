@@ -1159,6 +1159,29 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     OL_CHECK(empty_menu_item_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::present);
 
+    auto boundary_item_snapshot = load_baseline(root);
+    boundary_item_snapshot.ranger.scenes[70U].set_word(
+        openlegend::model::scene_metadata_word::entrance_x, 63);
+    boundary_item_snapshot.ranger.scenes[70U].set_word(
+        openlegend::model::scene_metadata_word::entrance_y, 29);
+    boundary_item_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::face_towards,
+        static_cast<std::int16_t>(openlegend::scene::SceneDirection::right));
+    OL_CHECK(boundary_item_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, 30U * 64U, event));
+    OL_CHECK(boundary_item_snapshot.set_event_value(
+        70U, event, SceneEventField::event_2, 0));
+    openlegend::random::LegacyRandom boundary_item_random{1U};
+    openlegend::scene::SceneSession boundary_item_session{
+        data_root, boundary_item_snapshot, boundary_item_random, 70};
+    OL_CHECK(finish_scene_title(boundary_item_session).kind == SceneStepKind::stay);
+    static_cast<void>(boundary_item_session.move(openlegend::scene::SceneDirection::right));
+    OL_CHECK(boundary_item_session.player_frame() == 5018);
+    OL_CHECK(boundary_item_session.use_item(123).kind == SceneStepKind::present);
+    OL_CHECK(boundary_item_session.player_frame() == 5016);
+    OL_CHECK(boundary_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::stay);
+
     auto zero_item_snapshot = load_baseline(root);
     OL_CHECK(zero_item_snapshot.set_scene_value(
         70U, SceneLayer::event_index, front, event));
