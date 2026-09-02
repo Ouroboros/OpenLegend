@@ -279,12 +279,16 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     openlegend::random::LegacyRandom reload_random{1U};
     WorldSession reload{data_root, map, reload_snapshot.ranger, reload_random};
     OL_CHECK(reload.cache().origin_x() == 7);
-    for (int step = 0; step < 35; ++step) {
+    for (int step = 0; step < 34; ++step) {
         OL_CHECK(reload.move(WorldDirection::right).kind == WorldStepKind::moved);
         OL_CHECK(reload.render(framebuffer));
         OL_CHECK(sprite_has_visible_pixel(
             sprites, reload.player_frame(), framebuffer, 145, 117));
     }
+    OL_CHECK(reload.world_x() == 105);
+    OL_CHECK(reload.cache().origin_x() == 7);
+    OL_CHECK(reload.cache_x() == 98);
+    OL_CHECK(reload.move(WorldDirection::right).kind == WorldStepKind::moved);
     OL_CHECK(reload.world_x() == 106);
     OL_CHECK(reload.cache().origin_x() == 42);
     OL_CHECK(reload.cache_x() == 64);
@@ -399,9 +403,13 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(vertical_scene.direction() == WorldDirection::up);
     OL_CHECK(vertical_scene.cache().origin_y() == 36);
     OL_CHECK(vertical_scene.cache_y() == 65);
-    for (int step = 0; step < 34; ++step) {
+    for (int step = 0; step < 33; ++step) {
         OL_CHECK(vertical_scene.move(WorldDirection::down).kind == WorldStepKind::moved);
     }
+    OL_CHECK(vertical_scene.world_y() == 134);
+    OL_CHECK(vertical_scene.cache().origin_y() == 36);
+    OL_CHECK(vertical_scene.cache_y() == 98);
+    OL_CHECK(vertical_scene.move(WorldDirection::down).kind == WorldStepKind::moved);
     OL_CHECK(vertical_scene.world_y() == 135);
     OL_CHECK(vertical_scene.cache().origin_y() == 71);
     OL_CHECK(vertical_scene.cache_y() == 64);
