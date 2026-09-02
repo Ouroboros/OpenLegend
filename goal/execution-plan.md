@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=129/349`，`unique_any=88/284`，`unique_all=87/284`
-当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=17` 陆地移动碰撞判定；状态为机器码独立审计中
-下一任务指针：当前工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=18` 下船落地判定
+已发布进度：`closure=131/349`，`unique_any=90/284`，`unique_all=89/284`
+当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=23–28` 五层世界缓存总加载及逐层复制；状态为机器码独立审计中
+下一任务指针：`audit_order=23–28` 缓存加载组合工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=29` 世界地图深度表重建
 
 ## 0. 唯一正确性真值
 

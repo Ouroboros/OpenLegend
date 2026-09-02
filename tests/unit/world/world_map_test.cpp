@@ -319,6 +319,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 108);
+    OL_CHECK(ship.rendered_player_frame() == 5030);
     ship.sync_persistent_state(true);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 0);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
@@ -548,6 +549,108 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     check_ship_collision(30, 271, WorldDirection::right, WorldStepKind::moved);
     check_ship_collision(49, 1, WorldDirection::right, WorldStepKind::moved);
     check_ship_collision(47, 1, WorldDirection::right, WorldStepKind::moved);
+
+    const auto check_disembark = [&](const int world_x,
+                                      const int world_y,
+                                      const WorldDirection direction,
+                                      const WorldStepKind expected,
+                                      const std::int16_t expected_in_ship) {
+        auto disembark_snapshot = load_baseline(root);
+        for (auto& scene : disembark_snapshot.ranger.scenes) {
+            for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                    openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                    openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                    openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+                scene.set_word(word, -1);
+            }
+        }
+        disembark_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::main_map_x,
+            static_cast<std::int16_t>(world_x));
+        disembark_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::main_map_y,
+            static_cast<std::int16_t>(world_y));
+        disembark_snapshot.ranger.header.set_word(openlegend::model::header_word::in_ship, 1);
+        openlegend::random::LegacyRandom disembark_random{1U};
+        WorldSession disembark{
+            data_root, map, disembark_snapshot.ranger, disembark_random};
+        OL_CHECK(disembark.move(direction).kind == expected);
+        if (expected_in_ship == 0) {
+            constexpr std::array<std::int16_t, 4> player_frame_base{5002, 5016, 5030, 5044};
+            OL_CHECK(disembark.rendered_player_frame() ==
+                     player_frame_base[static_cast<std::size_t>(direction)]);
+        }
+        disembark.sync_persistent_state(true);
+        OL_CHECK(disembark_snapshot.ranger.header.word(
+                     openlegend::model::header_word::in_ship) == expected_in_ship);
+    };
+    check_disembark(61, 34, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(168, 162, WorldDirection::left, WorldStepKind::moved, 0);
+    check_disembark(169, 163, WorldDirection::left, WorldStepKind::moved, 0);
+    check_disembark(190, 172, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(182, 191, WorldDirection::left, WorldStepKind::moved, 0);
+    check_disembark(89, 10, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(91, 19, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(26, 22, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(111, 31, WorldDirection::left, WorldStepKind::moved, 0);
+    check_disembark(53, 348, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(45, 3, WorldDirection::right, WorldStepKind::stay, 1);
+    check_disembark(9, 0, WorldDirection::right, WorldStepKind::stay, 1);
+    check_disembark(10, 0, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(457, 313, WorldDirection::right, WorldStepKind::moved, 0);
+    check_disembark(458, 311, WorldDirection::right, WorldStepKind::stay, 1);
+
+    const auto check_land_collision = [&](const int world_x,
+                                           const int world_y,
+                                           const WorldDirection direction,
+                                           const WorldStepKind expected) {
+        auto collision_snapshot = load_baseline(root);
+        for (auto& scene : collision_snapshot.ranger.scenes) {
+            for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                    openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                    openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                    openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+                scene.set_word(word, -1);
+            }
+        }
+        collision_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::main_map_x,
+            static_cast<std::int16_t>(world_x));
+        collision_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::main_map_y,
+            static_cast<std::int16_t>(world_y));
+        collision_snapshot.ranger.header.set_word(openlegend::model::header_word::in_ship, 0);
+        for (const auto word : {openlegend::model::header_word::ship_x,
+                                openlegend::model::header_word::ship_y,
+                                openlegend::model::header_word::ship_x_1,
+                                openlegend::model::header_word::ship_y_1}) {
+            collision_snapshot.ranger.header.set_word(word, -1);
+        }
+        openlegend::random::LegacyRandom collision_random{1U};
+        WorldSession collision{
+            data_root, map, collision_snapshot.ranger, collision_random};
+        OL_CHECK(collision.move(direction).kind == expected);
+    };
+    check_land_collision(165, 155, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(29, 251, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(186, 166, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(290, 174, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(48, 2, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(424, 29, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(54, 349, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(51, 0, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(10, 26, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(100, 19, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(1, 15, WorldDirection::down, WorldStepKind::stay);
+    check_land_collision(11, 22, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(3, 15, WorldDirection::down, WorldStepKind::stay);
+    check_land_collision(164, 154, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(35, 2, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(13, 5, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(0, 13, WorldDirection::down, WorldStepKind::stay);
+    check_land_collision(10, 0, WorldDirection::right, WorldStepKind::moved);
+    check_land_collision(9, 0, WorldDirection::right, WorldStepKind::stay);
+    check_land_collision(458, 311, WorldDirection::right, WorldStepKind::stay);
 }
 
 void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
