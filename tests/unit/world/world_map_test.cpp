@@ -10,6 +10,7 @@
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
+#include "openlegend/render/world_depth_order.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/resource/packed_archive.hpp"
@@ -35,6 +36,22 @@ namespace {
                                 static_cast<std::uint8_t>(bits >> 8U)}) {
             result ^= byte;
             result *= 0x100000001B3ULL;
+        }
+    }
+    return result;
+}
+
+[[nodiscard]] std::uint64_t fnv1a64_depth_entries(
+    const std::span<const openlegend::render::LegacyDepthEntry> entries) {
+    std::uint64_t result = 0xCBF29CE484222325ULL;
+    for (const auto& entry : entries) {
+        for (const auto word : {entry.world_x, entry.world_y, entry.sprite_id}) {
+            const auto bits = static_cast<std::uint16_t>(word);
+            for (const auto byte : {static_cast<std::uint8_t>(bits & 0xFFU),
+                                    static_cast<std::uint8_t>(bits >> 8U)}) {
+                result ^= byte;
+                result *= 0x100000001B3ULL;
+            }
         }
     }
     return result;
@@ -165,6 +182,32 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(session.cache_y() == 64);
     OL_CHECK(session.direction() == WorldDirection::right);
     OL_CHECK(session.player_frame() == 5016);
+
+    const auto ship_x = snapshot.ranger.header.word(openlegend::model::header_word::ship_x);
+    const auto ship_y = snapshot.ranger.header.word(openlegend::model::header_word::ship_y);
+    const openlegend::render::LegacyWorldDepthInput depth_input{
+        session.cache().layer(WorldLayer::build_x),
+        session.cache().layer(WorldLayer::build_y),
+        session.cache().layer(WorldLayer::building),
+        session.cache_x(),
+        session.cache_y(),
+        session.cache().origin_x(),
+        session.cache().origin_y(),
+        {static_cast<std::int16_t>(session.world_x()),
+         static_cast<std::int16_t>(session.world_y()),
+         session.cache_x(),
+         session.cache_y(),
+         5000},
+        openlegend::render::LegacyDepthActor{
+            ship_x,
+            ship_y,
+            static_cast<int>(ship_x) - session.cache().origin_x(),
+            static_cast<int>(ship_y) - session.cache().origin_y(),
+            6000}};
+    const auto depth = openlegend::render::build_legacy_world_depth_list(depth_input);
+    OL_CHECK(static_cast<bool>(depth));
+    OL_CHECK(depth.entries.size() == 65U);
+    OL_CHECK(fnv1a64_depth_entries(depth.entries) == 0x5A1FB9A1B7E72989ULL);
 
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(session.render(framebuffer));

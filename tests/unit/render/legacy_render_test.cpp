@@ -121,6 +121,30 @@ void run_depth_order_tests() {
         OL_CHECK(result.entries[2] == (LegacyDepthEntry{60, 61, 5000}));
     }
 
+    auto with_ship = input;
+    with_ship.secondary_actor = LegacyDepthActor{70, 71, 1, 0, 6000};
+    const auto ship_result = build_legacy_world_depth_list(with_ship);
+    OL_CHECK(static_cast<bool>(ship_result));
+    OL_CHECK(std::count_if(
+                 ship_result.entries.begin(),
+                 ship_result.entries.end(),
+                 [](const LegacyDepthEntry& entry) { return entry.sprite_id == 6000; }) == 1);
+
+    auto same_cell = input;
+    same_cell.secondary_actor = LegacyDepthActor{70, 71, 11, 11, 6000};
+    const auto same_cell_result = build_legacy_world_depth_list(same_cell);
+    OL_CHECK(static_cast<bool>(same_cell_result));
+    OL_CHECK(std::none_of(
+        same_cell_result.entries.begin(),
+        same_cell_result.entries.end(),
+        [](const LegacyDepthEntry& entry) { return entry.sprite_id == 6000; }));
+
+    auto maximum_sprites = sprites;
+    maximum_sprites[index(8, 18)] = 0x2064;
+    auto maximum = input;
+    maximum.building_sprite = maximum_sprites;
+    OL_CHECK(static_cast<bool>(build_legacy_world_depth_list(maximum)));
+
     auto invalid_sprites = sprites;
     invalid_sprites[index(8, 18)] = -1;
     auto invalid = input;
@@ -181,6 +205,7 @@ void run_synthetic_sprite_tests() {
         4U, 0U, 2U, 0U, 1U, 0U, 0xFFU, 0xFFU,
         4U, 1U, 2U, 7U, 8U,
         0U};
+    OL_CHECK(!legacy_sprite_index(static_cast<std::uint32_t>(-1)));
     OL_CHECK(legacy_sprite_index(0U) == 0U);
     OL_CHECK(legacy_sprite_index(1U) == 0U);
     OL_CHECK(legacy_sprite_index(2U) == 1U);
