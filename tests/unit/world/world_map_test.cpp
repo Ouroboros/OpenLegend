@@ -155,6 +155,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         std::array<std::int16_t, 2>{357, 235}};
     constexpr std::array<std::int16_t, 4> movement_frames{5018, 5006, 5036, 5052};
     constexpr std::array<int, 4> cache_x_after_move{65, 65, 64, 64};
+    constexpr std::array<int, 4> cache_y_after_move{64, 63, 63, 64};
     for (std::size_t index = 0U; index < directions.size(); ++index) {
         const auto result = session.move(directions[index]);
         OL_CHECK(result.kind == WorldStepKind::moved);
@@ -162,6 +163,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         OL_CHECK(result.world_x == positions[index][0]);
         OL_CHECK(result.world_y == positions[index][1]);
         OL_CHECK(session.cache_x() == cache_x_after_move[index]);
+        OL_CHECK(session.cache_y() == cache_y_after_move[index]);
         OL_CHECK(session.player_frame() == movement_frames[index]);
         OL_CHECK(session.render(framebuffer));
         OL_CHECK(sprite_has_visible_pixel(
@@ -396,6 +398,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(resumed_vertical_scene.world_y == 101);
     OL_CHECK(vertical_scene.direction() == WorldDirection::up);
     OL_CHECK(vertical_scene.cache().origin_y() == 36);
+    OL_CHECK(vertical_scene.cache_y() == 65);
     for (int step = 0; step < 34; ++step) {
         OL_CHECK(vertical_scene.move(WorldDirection::down).kind == WorldStepKind::moved);
     }
@@ -422,6 +425,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         data_root, map, downward_ship_snapshot.ranger, downward_ship_random};
     OL_CHECK(downward_ship.move(WorldDirection::down).kind == WorldStepKind::moved);
     OL_CHECK(downward_ship.world_y() == 173);
+    OL_CHECK(downward_ship.cache_y() == 65);
     downward_ship.sync_persistent_state(true);
     OL_CHECK(downward_ship_snapshot.ranger.header.word(
                  openlegend::model::header_word::in_ship) == 1);

@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=124/349`，`unique_any=83/284`，`unique_all=82/284`
-当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=12` 船只纵向坐标提交；状态为机器码独立审计中
-下一任务指针：当前工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=13` 世界坐标与缓存提交
+已发布进度：`closure=125/349`，`unique_any=84/284`，`unique_all=83/284`
+当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=13` 世界坐标与缓存提交；状态为机器码独立审计中
+下一任务指针：当前工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=14` 天气随相机滚动
 
 ## 0. 唯一正确性真值
 
