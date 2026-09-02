@@ -1476,6 +1476,7 @@ def dialogue_vectors(
     root: Path,
     base_frame: bytes,
     style_4_base_frame: bytes,
+    weather_base_frame: bytes,
     palette: list[tuple[int, int, int]],
     decoded_talks: list[bytes],
     scripts: list[bytes],
@@ -1689,6 +1690,9 @@ def dialogue_vectors(
             547, 77, 4, style_4_base_frame, (33, 14)
         ),
         "long_line_script_515_pc_65": render_case(1841, 0, 1),
+        "weather_script_18_pc_0": render_case(
+            2960, 93, 0, weather_base_frame, (6, 36)
+        ),
     }
     assert words(scripts[1])[:9] == (1, 0, 1, 0, 0, 1, 1, 0, 1)
     assert words(scripts[244])[:5] == (1, 796, 200, 2, 0)
@@ -1706,21 +1710,49 @@ def dialogue_vectors(
                     width += 16
                     cursor += 2
                 else:
-                    width += 4 if line[cursor] == ord("_") else 8
+                    width += 8
                     cursor += 1
             if width > maximum_line_width:
                 maximum_line_width = width
                 maximum_line_talk = talk_id
 
     styles_present: set[int] = set()
-    for script in scripts:
+    style_counts: dict[int, int] = {}
+    opcode_1_count = 0
+    invalid_talk_ids: list[tuple[int, int, int]] = []
+    invalid_portrait_ids: list[tuple[int, int, int]] = []
+    for script_id, script in enumerate(scripts):
         instructions = words(script)
         program_counter = 0
         while instructions[program_counter] != -1:
             opcode = instructions[program_counter]
             if opcode == 1:
-                styles_present.add(instructions[program_counter + 3])
+                talk_id = instructions[program_counter + 1]
+                head_id = instructions[program_counter + 2]
+                style = instructions[program_counter + 3]
+                opcode_1_count += 1
+                styles_present.add(style)
+                style_counts[style] = style_counts.get(style, 0) + 1
+                if not 0 <= talk_id < len(decoded_talks):
+                    invalid_talk_ids.append((script_id, program_counter, talk_id))
+                if not 2 <= style <= 3 and not 0 <= head_id < len(portraits):
+                    invalid_portrait_ids.append((script_id, program_counter, head_id))
             program_counter += WIDTHS[opcode]
+
+    page_count_distribution: dict[int, int] = {}
+    maximum_page_count = 0
+    maximum_page_talks: list[int] = []
+    empty_final_page_talks: list[int] = []
+    for talk_id, text in enumerate(decoded_talks):
+        page_count = len(dialogue_pages(text))
+        page_count_distribution[page_count] = page_count_distribution.get(page_count, 0) + 1
+        if page_count > maximum_page_count:
+            maximum_page_count = page_count
+            maximum_page_talks = [talk_id]
+        elif page_count == maximum_page_count:
+            maximum_page_talks.append(talk_id)
+        if text[-2:-1] == b"*" and text[:-1].count(b"*") % 3 == 0:
+            empty_final_page_talks.append(talk_id)
 
     return {
         "hdgrp_entry_count": len(portraits),
@@ -1729,6 +1761,39 @@ def dialogue_vectors(
         "maximum_explicit_line_width": maximum_line_width,
         "maximum_explicit_line_talk": maximum_line_talk,
         "styles_present": sorted(styles_present),
+        "opcode_1_asset_domain": {
+            "occurrences": opcode_1_count,
+            "style_counts": {str(style): style_counts[style] for style in sorted(style_counts)},
+            "invalid_talk_ids": invalid_talk_ids,
+            "invalid_portrait_ids_for_drawn_styles": invalid_portrait_ids,
+        },
+        "pagination_asset_domain": {
+            "page_count_distribution": {
+                str(count): page_count_distribution[count]
+                for count in sorted(page_count_distribution)
+            },
+            "maximum_page_count": maximum_page_count,
+            "maximum_page_talks": maximum_page_talks,
+            "empty_final_page_talks": empty_final_page_talks,
+        },
+        "render_policy": {
+            "first_page": "reuse_caller_framebuffer_without_scene_redraw",
+            "repeated_same_page": "restore_frozen_page_base",
+            "later_pages": "redraw_scene_once_before_each_page",
+            "final_key": "leave_final_dialogue_framebuffer",
+            "weather_random_draws": {
+                "first_page": 0,
+                "repeated_same_page": 0,
+                "later_page_first_render": 2,
+            },
+        },
+        "physical_callers": [
+            "sub_2C319:0x2C3ED opcode_1",
+            "sub_2FF87:0x2FFA6 random_talk",
+            "sub_302E0:0x3035D/0x3038F/0x303AF/0x303C5/0x303DB/0x303F1/0x30407/0x30458 tournament",
+            "sub_30480:0x304B3/0x304EA tournament_challenger",
+            "sub_312A6:0x31359/0x31798 shop",
+        ],
         "cases": style_cases,
         "question_prompts": {
             "strings_hex": {key: value.hex() for key, value in question_texts.items()},
@@ -2394,7 +2459,13 @@ def main() -> None:
             ),
             "scene_loop_vectors": scene_loop_vectors(ranger, scripts),
             "dialogue_vectors": dialogue_vectors(
-                root, frame, style_4_base_frame, palette, decoded_talks, scripts
+                root,
+                frame,
+                style_4_base_frame,
+                weather_output,
+                palette,
+                decoded_talks,
+                scripts,
             ),
             "status_notice_vectors": status_notice_vectors(
                 root, frame, palette, scripts, ranger

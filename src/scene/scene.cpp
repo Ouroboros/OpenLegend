@@ -2191,8 +2191,10 @@ void SceneSession::queue_dialogue(
     const auto text = talk_id >= 0 && static_cast<std::size_t>(talk_id) < assets_.talk_count()
                           ? assets_.talk(static_cast<std::size_t>(talk_id))
                           : std::vector<std::uint8_t>{0U};
+    bool first_page = true;
     for (auto& page : paginate_dialogue(text)) {
-        queued_outputs_.push_back(QueuedOutput{result, std::move(page)});
+        queued_outputs_.push_back(QueuedOutput{result, std::move(page), !first_page});
+        first_page = false;
     }
 }
 
@@ -2208,12 +2210,17 @@ SceneStepResult SceneSession::emit_queued() {
     if (queued_outputs_.empty()) {
         pending_ = current_result(SceneStepKind::stay);
         pending_text_.clear();
+        dialogue_base_framebuffer_.reset();
+        dialogue_redraw_scene_before_ = false;
         return pending_;
     }
     auto output = std::move(queued_outputs_.front());
     queued_outputs_.pop_front();
     pending_ = output.result;
     pending_text_ = std::move(output.text);
+    dialogue_base_framebuffer_.reset();
+    dialogue_redraw_scene_before_ =
+        pending_.kind == SceneStepKind::dialogue && output.redraw_scene_before;
     if (pending_.kind == SceneStepKind::shop) {
         continuation_ = PendingContinuation::shop;
     }
@@ -3197,6 +3204,7 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         return true;
     }
     if (pending_.kind == SceneStepKind::scene_title) {
+        dialogue_base_framebuffer_.reset();
         if (scene_title_base_framebuffer_.has_value()) {
             framebuffer = *scene_title_base_framebuffer_;
         } else {
@@ -3205,11 +3213,35 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         return draw_overlay(framebuffer);
     }
     scene_title_base_framebuffer_.reset();
+    if (pending_.kind == SceneStepKind::dialogue) {
+        return render_dialogue_overlay(framebuffer);
+    }
+    dialogue_base_framebuffer_.reset();
     return render_map(framebuffer) && draw_overlay(framebuffer);
 }
 
 bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const {
-    return valid() && draw_overlay(framebuffer);
+    if (!valid()) {
+        return false;
+    }
+    if (pending_.kind == SceneStepKind::dialogue) {
+        return render_dialogue_overlay(framebuffer);
+    }
+    dialogue_base_framebuffer_.reset();
+    return draw_overlay(framebuffer);
+}
+
+bool SceneSession::render_dialogue_overlay(
+    render::IndexedFramebuffer& framebuffer) const {
+    if (dialogue_base_framebuffer_.has_value()) {
+        framebuffer = *dialogue_base_framebuffer_;
+    } else {
+        if (dialogue_redraw_scene_before_ && !render_map(framebuffer)) {
+            return false;
+        }
+        dialogue_base_framebuffer_ = framebuffer;
+    }
+    return draw_overlay(framebuffer);
 }
 
 bool SceneSession::draw_sprite(

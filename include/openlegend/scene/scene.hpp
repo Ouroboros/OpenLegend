@@ -242,6 +242,7 @@ private:
     struct QueuedOutput {
         SceneStepResult result;
         std::vector<std::uint8_t> text;
+        bool redraw_scene_before{};
     };
 
     struct PanState {
@@ -354,6 +355,8 @@ private:
         int anchor_x,
         int anchor_y) const;
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
+    [[nodiscard]] bool render_dialogue_overlay(
+        render::IndexedFramebuffer& framebuffer) const;
     void cycle_palette();
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
@@ -486,6 +489,8 @@ private:
     SceneStepResult pending_{};
     std::vector<std::uint8_t> pending_text_;
     mutable std::optional<render::IndexedFramebuffer> scene_title_base_framebuffer_;
+    mutable std::optional<render::IndexedFramebuffer> dialogue_base_framebuffer_;
+    bool dialogue_redraw_scene_before_{};
     PendingContinuation continuation_{PendingContinuation::none};
     TickContinuation tick_continuation_{TickContinuation::none};
     SceneStepKind tick_fallback_{SceneStepKind::stay};

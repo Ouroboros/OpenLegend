@@ -2662,6 +2662,57 @@
         2,
         4
       ],
+      "opcode_1_asset_domain": {
+        "occurrences": 3561,
+        "style_counts": {
+          "0": 2029,
+          "1": 1499,
+          "2": 7,
+          "4": 26
+        },
+        "invalid_talk_ids": [],
+        "invalid_portrait_ids_for_drawn_styles": []
+      },
+      "pagination_asset_domain": {
+        "page_count_distribution": {
+          "1": 2292,
+          "2": 407,
+          "3": 131,
+          "4": 75,
+          "5": 43,
+          "6": 11,
+          "7": 7,
+          "8": 3,
+          "9": 4,
+          "10": 1,
+          "12": 1,
+          "14": 1,
+          "21": 1
+        },
+        "maximum_page_count": 21,
+        "maximum_page_talks": [
+          1360
+        ],
+        "empty_final_page_talks": []
+      },
+      "render_policy": {
+        "first_page": "reuse_caller_framebuffer_without_scene_redraw",
+        "repeated_same_page": "restore_frozen_page_base",
+        "later_pages": "redraw_scene_once_before_each_page",
+        "final_key": "leave_final_dialogue_framebuffer",
+        "weather_random_draws": {
+          "first_page": 0,
+          "repeated_same_page": 0,
+          "later_page_first_render": 2
+        }
+      },
+      "physical_callers": [
+        "sub_2C319:0x2C3ED opcode_1",
+        "sub_2FF87:0x2FFA6 random_talk",
+        "sub_302E0:0x3035D/0x3038F/0x303AF/0x303C5/0x303DB/0x303F1/0x30407/0x30458 tournament",
+        "sub_30480:0x304B3/0x304EA tournament_challenger",
+        "sub_312A6:0x31359/0x31798 shop"
+      ],
       "cases": {
         "style_0_script_1_pc_0": {
           "talk_id": 0,
@@ -2853,6 +2904,48 @@
           ],
           "frame_fnv1a64": [
             "0xf420561dcb42e981"
+          ]
+        },
+        "weather_script_18_pc_0": {
+          "talk_id": 2960,
+          "head_id": 93,
+          "style": 0,
+          "view_origin": [
+            6,
+            36
+          ],
+          "page_count": 2,
+          "page_hex": [
+            "a7dac5a5a448ae61bba1a141b6c2c073bce6a4a4a6edb5db2aa440a6ecafabbae2a46ca141aabebee5b35ca668afabafb52aaabaa8c6a141acc6a6dcc1d9a55dac41a1a8a451a57ca4d12a00",
+            "aed1a1a8a94fa1492aa4a3b94ca448ae61c1d9bba1a141b6c2c073bce6a747b86d2aa95faf53a141a440afeba448b3a3b669a4a3a568a14400"
+          ],
+          "panel": [
+            94,
+            17,
+            218,
+            57
+          ],
+          "portrait_panel": [
+            23,
+            12,
+            60,
+            62
+          ],
+          "portrait_anchor": [
+            25,
+            71
+          ],
+          "text_position": [
+            107,
+            20
+          ],
+          "colors": [
+            23,
+            21
+          ],
+          "frame_fnv1a64": [
+            "0x8d9f538b1482e95e",
+            "0x372fe4647b884671"
           ]
         }
       },

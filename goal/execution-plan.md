@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=154/349`，`unique_any=111/284`，`unique_all=110/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=18` 事件对话与提示框helper；状态为等待`audit_order=17`事件解释器工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=18` 收口后进入同表 `audit_order=19` 面板像素混色helper
+已发布进度：`closure=156/349`，`unique_any=112/284`，`unique_all=111/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=20` 头像框混色helper；状态为等待`audit_order=18`事件对话工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=20` 收口后进入同表 `audit_order=21` 头像框白边helper
 
 ## 0. 唯一正确性真值
 

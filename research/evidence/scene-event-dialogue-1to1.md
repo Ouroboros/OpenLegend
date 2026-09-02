@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`6be92490b4ccfb959d967e1d328c47fd5e1001533609227cfcb233fbcb9dce62`
+  - SHA256：`ed5f5bd3f09cfe485de10513987b5fb0c5b5fbe935f629f3f7493254c0aa1eaa`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -136,7 +136,9 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 - `sub_20615/sub_20663` 不裁剪横向越界，超过319的置位像素按线性 framebuffer 地址落到后续扫描线；
 - style0/1/4/5 绘制 `60×62` 混色头像框并按 head ID 直接读取 HDGRP，style2/3 不读取头像；
 - 每页作为同步 `SceneStepKind::dialogue` 返回，app 确认后才继续同一事件 PC；
-- 当前2,977条 TALK 最大显式行宽为344像素（talk1841），当前 KDEF 实际 style 为0/1/2/4。
+- 第一页直接叠到caller现有framebuffer，不预先重绘scene；同页宿主重画恢复冻结底图，第二页及以后才在每页首次绘制前执行一次裸scene重绘；
+- scene5真实script18两页frame分别固定为 `0x8d9f538b1482e95e`、`0x372fe4647b884671`，对应首屏0次与第二页2次RNG消费；
+- 当前2,977条TALK最大为talk1360的21页，最大显式行宽为344像素（talk1841）；3,561次KDEF opcode1实际style为0/1/2/4，talk/head均在合法域。
 
 ## 6. 场景天气
 
@@ -168,7 +170,7 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 ## 8. 当前验证
 
-Linux app Debug BUILD 脚本：13/13 测试通过，包括：
+Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
 - 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
 - HDGRP 115帧以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
@@ -181,6 +183,6 @@ Linux app Debug BUILD 脚本：13/13 测试通过，包括：
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
 
-同一13项包含上述场景同步链、全部既有模块测试和 SDL dummy smoke。
+同一14项包含上述场景同步链、全部既有模块测试和 SDL dummy smoke。
 
 后续 B7 门禁仍包括全 opcode 基本块审计、Linux/Windows Debug/Release、ASan+UBSan、原资产只读和 `.i64` 审计。

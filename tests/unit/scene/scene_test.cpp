@@ -271,32 +271,34 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     openlegend::random::LegacyRandom random{1U};
     openlegend::scene::SceneSession paired{data_root, snapshot, random, 70};
     OL_CHECK(finish_scene_title(paired).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer style_0_frame;
+    OL_CHECK(paired.render_map(style_0_frame));
 
     auto result = paired.begin_event(1, 0, 44, 29);
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 0 && result.head_id == 1 && result.style == 0);
-    openlegend::render::IndexedFramebuffer style_0_frame;
     OL_CHECK(paired.render(style_0_frame));
     OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0x1510F9342DE536C3ULL);
 
     result = paired.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(paired.render(style_0_frame));
     result = paired.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 1 && result.head_id == 0 && result.style == 1);
-    openlegend::render::IndexedFramebuffer style_1_frame;
-    OL_CHECK(paired.render(style_1_frame));
-    OL_CHECK(fnv1a64(style_1_frame.pixels()) == 0xFD2A5CB6664410E1ULL);
+    OL_CHECK(paired.render(style_0_frame));
+    OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0xFD2A5CB6664410E1ULL);
 
     auto style_2_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom style_2_random{1U};
     openlegend::scene::SceneSession style_2{
         data_root, style_2_snapshot, style_2_random, 70};
     OL_CHECK(finish_scene_title(style_2).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer style_2_frame;
+    OL_CHECK(style_2.render_map(style_2_frame));
     result = style_2.begin_event(244, 0, 44, 29);
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 796 && result.head_id == 200 && result.style == 2);
-    openlegend::render::IndexedFramebuffer style_2_frame;
     OL_CHECK(style_2.render(style_2_frame));
     OL_CHECK(fnv1a64(style_2_frame.pixels()) == 0x961BBDDC3FC79F35ULL);
 
@@ -305,20 +307,24 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     openlegend::scene::SceneSession style_4{
         data_root, style_4_snapshot, style_4_random, 70};
     OL_CHECK(finish_scene_title(style_4).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer style_4_frame;
+    OL_CHECK(style_4.render_map(style_4_frame));
     result = style_4.begin_event(142, 0, 44, 29);
     for (int step = 0; step < 32 && result.kind == SceneStepKind::present; ++step) {
+        OL_CHECK(style_4.render(style_4_frame));
         result = style_4.resume(SceneResponse::acknowledge);
     }
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 546 && result.style == 0);
     while (result.kind == SceneStepKind::dialogue && result.talk_id == 546) {
+        OL_CHECK(style_4.render(style_4_frame));
         result = style_4.resume(SceneResponse::acknowledge);
     }
     OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(style_4.render(style_4_frame));
     result = style_4.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 547 && result.head_id == 77 && result.style == 4);
-    openlegend::render::IndexedFramebuffer style_4_frame;
     OL_CHECK(style_4.render(style_4_frame));
     const auto style_4_hash = fnv1a64(style_4_frame.pixels());
     if (style_4_hash != 0xD66E3B67975125A2ULL) {
@@ -334,16 +340,18 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     openlegend::scene::SceneSession long_line{
         data_root, long_line_snapshot, long_line_random, 70};
     OL_CHECK(finish_scene_title(long_line).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer long_line_frame;
+    OL_CHECK(long_line.render_map(long_line_frame));
     result = long_line.begin_event(515, 0, 44, 29);
     for (int step = 0; step < 128 &&
                        !(result.kind == SceneStepKind::dialogue && result.talk_id == 1841);
          ++step) {
         OL_CHECK(result.kind == SceneStepKind::dialogue ||
                  result.kind == SceneStepKind::present);
+        OL_CHECK(long_line.render(long_line_frame));
         result = long_line.resume(SceneResponse::acknowledge);
     }
     OL_CHECK(result.kind == SceneStepKind::dialogue && result.talk_id == 1841);
-    openlegend::render::IndexedFramebuffer long_line_frame;
     OL_CHECK(long_line.render(long_line_frame));
     OL_CHECK(fnv1a64(long_line_frame.pixels()) == 0xF420561DCB42E981ULL);
 }
@@ -1537,13 +1545,50 @@ void check_scene_weather(const std::filesystem::path& root) {
     OL_CHECK(random.state() == expected_after_title.state());
     OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
              openlegend::scene::SceneStepKind::stay);
+
+    auto dialogue = session.begin_event(18, 0, 17, 48);
+    OL_CHECK(dialogue.kind == openlegend::scene::SceneStepKind::dialogue);
+    OL_CHECK(dialogue.talk_id == 2960 && dialogue.head_id == 93 && dialogue.style == 0);
+    const auto first_page_random_state = random.state();
+    OL_CHECK(session.render(weather_frame));
+    const auto first_page_hash = fnv1a64(weather_frame.pixels());
+    OL_CHECK(first_page_hash == 0x8D9F538B1482E95EULL);
+    OL_CHECK(random.state() == first_page_random_state);
+    OL_CHECK(session.render(weather_frame));
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == first_page_hash);
+    OL_CHECK(random.state() == first_page_random_state);
+
+    dialogue = session.resume(openlegend::scene::SceneResponse::acknowledge);
+    OL_CHECK(dialogue.kind == openlegend::scene::SceneStepKind::dialogue);
+    OL_CHECK(dialogue.talk_id == 2960);
+    openlegend::random::LegacyRandom expected_second_page{first_page_random_state};
+    static_cast<void>(expected_second_page.bounded(7));
+    static_cast<void>(expected_second_page.bounded(7));
+    OL_CHECK(session.render(weather_frame));
+    const auto second_page_hash = fnv1a64(weather_frame.pixels());
+    OL_CHECK(second_page_hash == 0x372FE4647B884671ULL);
+    OL_CHECK(random.state() == expected_second_page.state());
+    OL_CHECK(session.render(weather_frame));
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == second_page_hash);
+    OL_CHECK(random.state() == expected_second_page.state());
+
+    dialogue = session.resume(openlegend::scene::SceneResponse::acknowledge);
+    OL_CHECK(dialogue.kind == openlegend::scene::SceneStepKind::present);
+    openlegend::random::LegacyRandom expected_after_dialogue{expected_second_page.state()};
+    static_cast<void>(expected_after_dialogue.bounded(7));
+    static_cast<void>(expected_after_dialogue.bounded(7));
+    OL_CHECK(session.render(weather_frame));
+    OL_CHECK(random.state() == expected_after_dialogue.state());
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::stay);
+
     OL_CHECK(session.tick(std::nullopt, false, false, true).kind ==
              openlegend::scene::SceneStepKind::present);
     OL_CHECK(!session.weather_enabled());
     openlegend::render::IndexedFramebuffer disabled_frame;
     OL_CHECK(session.render_map(disabled_frame));
     OL_CHECK(fnv1a64(disabled_frame.pixels()) == 0x52C8861F0349D6DBULL);
-    OL_CHECK(random.state() == expected_after_title.state());
+    OL_CHECK(random.state() == expected_after_dialogue.state());
 
     auto preserved_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom preserved_random{1U};
