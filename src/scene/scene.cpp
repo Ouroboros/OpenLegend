@@ -621,14 +621,16 @@ SceneStepResult SceneSession::interact() {
     const auto x = scene_x_ + delta_x;
     const auto y = scene_y_ + delta_y;
     const auto event = event_at(x, y);
-    if (event.has_value()) {
-        event_context_ = EventContext{
-            *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1};
-        const auto script = event_field(scene_id_, *event, model::SceneEventField::event_1);
-        if (script.has_value() && *script > 0) {
-            (void)prepare_event(
-                *script, *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1);
-        }
+    if (!event.has_value()) {
+        return current_result(SceneStepKind::stay);
+    }
+    player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
+    event_context_ = EventContext{
+        *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1};
+    const auto script = event_field(scene_id_, *event, model::SceneEventField::event_1);
+    if (script.has_value() && *script > 0) {
+        (void)prepare_event(
+            *script, *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1);
     }
     pending_ = current_result(SceneStepKind::present);
     return pending_;

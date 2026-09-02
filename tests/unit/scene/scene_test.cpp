@@ -1033,6 +1033,7 @@ void check_scene_archive_ownership(const std::filesystem::path& root) {
 void check_scene_interaction_present(const std::filesystem::path& root) {
     using openlegend::model::SceneEventField;
     using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneDirection;
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
 
@@ -1042,14 +1043,20 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
     OL_CHECK(snapshot.set_scene_value(
         70U, SceneLayer::event_index, 29U * 64U + 45U, event));
     OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::event_1, 825));
+    OL_CHECK(snapshot.set_scene_value(
+        70U, SceneLayer::building, 29U * 64U + 45U, 1));
     snapshot.ranger.roles[0].set_word(openlegend::model::role_word::morality, 7);
     openlegend::random::LegacyRandom random{1U};
     openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
     OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
-    OL_CHECK(session.interact().kind == SceneStepKind::present);
-    const auto result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(session.move(SceneDirection::right).kind == SceneStepKind::stay);
+    OL_CHECK(session.player_frame() == 5018);
+    OL_CHECK(session.tick(std::nullopt, true, false).kind == SceneStepKind::present);
+    OL_CHECK(session.player_frame() == 5016);
+    auto result = session.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(result.style == 52);
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 
     auto empty_snapshot = load_baseline(root);
@@ -1059,8 +1066,37 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
     openlegend::scene::SceneSession empty_session{
         data_root, empty_snapshot, empty_random, 70};
     OL_CHECK(finish_scene_title(empty_session).kind == SceneStepKind::stay);
-    OL_CHECK(empty_session.interact().kind == SceneStepKind::present);
+    OL_CHECK(empty_session.tick(std::nullopt, true, false).kind == SceneStepKind::present);
     OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+
+    constexpr std::array<SceneDirection, 4> directions{
+        SceneDirection::up, SceneDirection::right, SceneDirection::left, SceneDirection::down};
+    constexpr std::array<std::size_t, 4> front_cells{
+        28U * 64U + 44U, 29U * 64U + 45U, 29U * 64U + 43U, 30U * 64U + 44U};
+    for (std::size_t index = 0U; index < directions.size(); ++index) {
+        auto direction_snapshot = load_baseline(root);
+        direction_snapshot.ranger.header.set_word(
+            openlegend::model::header_word::face_towards,
+            static_cast<std::int16_t>(directions[index]));
+        for (const auto cell : front_cells) {
+            OL_CHECK(direction_snapshot.set_scene_value(
+                70U, SceneLayer::event_index, cell, -1));
+        }
+        OL_CHECK(direction_snapshot.set_scene_value(
+            70U, SceneLayer::event_index, front_cells[index], event));
+        OL_CHECK(direction_snapshot.set_event_value(
+            70U, event, SceneEventField::event_1, 0));
+        openlegend::random::LegacyRandom direction_random{1U};
+        openlegend::scene::SceneSession direction_session{
+            data_root, direction_snapshot, direction_random, 70};
+        OL_CHECK(finish_scene_title(direction_session).kind == SceneStepKind::stay);
+        OL_CHECK(direction_session.tick(std::nullopt, true, false).kind ==
+                 SceneStepKind::present);
+        OL_CHECK(direction_session.resume(SceneResponse::acknowledge).kind ==
+                 SceneStepKind::present);
+        OL_CHECK(direction_session.resume(SceneResponse::acknowledge).kind ==
+                 SceneStepKind::stay);
+    }
 }
 
 void check_scene_item_and_auto_event_present(const std::filesystem::path& root) {

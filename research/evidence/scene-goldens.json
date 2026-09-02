@@ -1739,23 +1739,58 @@
       "entry_scan_displayed_picture": 104,
       "entry_scanned_word7_render_frame_fnv1a64": "0x3051f24e11c08dc5",
       "interaction_present": {
-        "direction": 1,
         "player": [
           44,
           29
         ],
-        "target": [
-          45,
-          29
-        ],
+        "direction_targets": {
+          "0": [
+            44,
+            28
+          ],
+          "1": [
+            45,
+            29
+          ],
+          "2": [
+            43,
+            29
+          ],
+          "3": [
+            44,
+            30
+          ]
+        },
         "event_1_script": 825,
         "script_words": [
           52,
           -1
         ],
-        "outputs": [
+        "picture_vector_direction": 1,
+        "player_picture_before": 5018,
+        "player_picture_at_event_present": 5016,
+        "function_order_with_event": [
+          "probe_front_event",
+          "set_direction_base_picture",
+          "render_scene",
           "present",
-          "notice_style_52"
+          "write_event_context",
+          "run_positive_script"
+        ],
+        "positive_script_caller_outputs": [
+          "event_present",
+          "notice_style_52",
+          "scene_tail_present",
+          "stay"
+        ],
+        "nonpositive_script_caller_outputs": [
+          "event_present",
+          "scene_tail_present",
+          "stay"
+        ],
+        "empty_target_caller_outputs": [
+          "scene_tail_present",
+          "stay"
         ]
       },
       "trigger_field_counts": {
