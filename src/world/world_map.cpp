@@ -309,9 +309,7 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
     } else {
         direction_ = direction;
         idle_animation_ = false;
-        idle_animation_counter_ = 0;
-        idle_animation_delay_ = 0;
-        idle_animation_step_ = 0;
+        idle_counter_ = 0;
         walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
         if (walk_frame_offset_ > 12) {
             walk_frame_offset_ = 2;
@@ -406,7 +404,8 @@ WorldStepResult WorldSession::complete_move(
             cache_.at(WorldLayer::building, cache_target_x, cache_target_y) == 0 &&
             cache_.at(WorldLayer::build_x, cache_target_x, cache_target_y) == 0 &&
             cache_.at(WorldLayer::build_y, cache_target_x, cache_target_y) == 0;
-        if (target_is_ship_water(target_x, target_y, moved_coordinate)) {
+        if (target_is_ship_water(
+                target_x, target_y, moved_coordinate, delta_x, delta_y)) {
             can_move = true;
         } else if (target_clear && moved_coordinate > 10 && moved_coordinate < 459 &&
                    in_ranges(
@@ -730,25 +729,29 @@ bool WorldSession::target_is_walkable(
 }
 
 bool WorldSession::target_is_ship_water(
-    const int world_x, const int world_y, const int moved_coordinate) const noexcept {
+    const int world_x,
+    const int world_y,
+    const int moved_coordinate,
+    const int delta_x,
+    const int delta_y) const noexcept {
     const auto target_x = world_x - cache_.origin_x();
     const auto target_y = world_y - cache_.origin_y();
-    const auto current_x = world_x_ - cache_.origin_x();
-    const auto current_y = world_y_ - cache_.origin_y();
+    const auto next_x = target_x + delta_x;
+    const auto next_y = target_y + delta_y;
     const auto one_building_cell_is_empty =
-        cache_.at(WorldLayer::building, current_x, current_y) == 0 ||
-        cache_.at(WorldLayer::building, target_x, target_y) == 0;
+        cache_.at(WorldLayer::building, target_x, target_y) == 0 ||
+        cache_.at(WorldLayer::building, next_x, next_y) == 0;
     const auto one_owner_cell_is_empty =
-        (cache_.at(WorldLayer::build_x, current_x, current_y) == 0 &&
-         cache_.at(WorldLayer::build_y, current_x, current_y) == 0) ||
         (cache_.at(WorldLayer::build_x, target_x, target_y) == 0 &&
-         cache_.at(WorldLayer::build_y, target_x, target_y) == 0);
+         cache_.at(WorldLayer::build_y, target_x, target_y) == 0) ||
+        (cache_.at(WorldLayer::build_x, next_x, next_y) == 0 &&
+         cache_.at(WorldLayer::build_y, next_x, next_y) == 0);
     if (moved_coordinate <= 10 || moved_coordinate >= 459 ||
         !one_building_cell_is_empty || !one_owner_cell_is_empty) {
         return false;
     }
-    return in_ranges(cache_.at(WorldLayer::earth, current_x, current_y), kShipCoastRanges) ||
-           in_ranges(cache_.at(WorldLayer::earth, target_x, target_y), kShipCoastRanges);
+    return in_ranges(cache_.at(WorldLayer::earth, target_x, target_y), kShipCoastRanges) ||
+           in_ranges(cache_.at(WorldLayer::earth, next_x, next_y), kShipCoastRanges);
 }
 
 std::optional<std::int16_t> WorldSession::entrance_at(

@@ -301,7 +301,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 108);
     ship.sync_persistent_state(true);
-    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 0);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 107);
     ship.sync_persistent_state(true);
@@ -312,6 +312,48 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     ship.sync_persistent_state(false);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::face_towards) ==
              static_cast<std::int16_t>(WorldDirection::up));
+
+    auto forward_ship_snapshot = load_baseline(root);
+    for (auto& scene : forward_ship_snapshot.ranger.scenes) {
+        for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+            scene.set_word(word, -1);
+        }
+    }
+    forward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_x, 50);
+    forward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_y, 12);
+    forward_ship_snapshot.ranger.header.set_word(openlegend::model::header_word::in_ship, 1);
+    openlegend::random::LegacyRandom forward_ship_random{1U};
+    WorldSession forward_ship{
+        data_root, map, forward_ship_snapshot.ranger, forward_ship_random};
+    OL_CHECK(forward_ship.move(WorldDirection::right).kind == WorldStepKind::moved);
+    OL_CHECK(forward_ship.world_x() == 51);
+    forward_ship.sync_persistent_state(true);
+    OL_CHECK(forward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(forward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_x) == 51);
+    OL_CHECK(forward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_x_1) == 52);
+
+    auto backward_ship_snapshot = forward_ship_snapshot;
+    backward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_x, 52);
+    backward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_y, 12);
+    backward_ship_snapshot.ranger.header.set_word(openlegend::model::header_word::in_ship, 1);
+    openlegend::random::LegacyRandom backward_ship_random{1U};
+    WorldSession backward_ship{
+        data_root, map, backward_ship_snapshot.ranger, backward_ship_random};
+    OL_CHECK(backward_ship.move(WorldDirection::left).kind == WorldStepKind::moved);
+    OL_CHECK(backward_ship.world_x() == 51);
+    backward_ship.sync_persistent_state(true);
+    OL_CHECK(backward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::in_ship) == 0);
 }
 
 void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
@@ -408,6 +450,43 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
         OL_CHECK(idle_frame.player_frame() == idle_frame_base[direction]);
         OL_CHECK(idle_frame_random.state() == 0x00003039U);
     }
+
+    auto interrupted_idle_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom interrupted_idle_random{0U};
+    WorldSession interrupted_idle{
+        data_root, map, interrupted_idle_snapshot.ranger, interrupted_idle_random};
+    for (int tick = 0; tick < 50; ++tick) {
+        interrupted_idle.idle_tick();
+        interrupted_idle.idle_animation_tick();
+    }
+    for (int tick = 0; tick < 12; ++tick) {
+        interrupted_idle.idle_tick();
+        interrupted_idle.idle_animation_tick();
+    }
+    constexpr auto right_index = static_cast<std::size_t>(WorldDirection::right);
+    OL_CHECK(interrupted_idle.player_frame() ==
+             idle_frame_base[right_index] + idle_frame_offset[right_index] + 8);
+    OL_CHECK(interrupted_idle.move(WorldDirection::right).kind == WorldStepKind::moved);
+    OL_CHECK(interrupted_idle.player_frame() == idle_frame_base[right_index] + 2);
+    for (int tick = 0; tick < 20; ++tick) {
+        interrupted_idle.idle_tick();
+        interrupted_idle.idle_animation_tick();
+        OL_CHECK(interrupted_idle.player_frame() == idle_frame_base[right_index] + 2);
+    }
+    interrupted_idle.idle_tick();
+    interrupted_idle.idle_animation_tick();
+    OL_CHECK(interrupted_idle.player_frame() == idle_frame_base[right_index]);
+    auto resumed_idle_animation = false;
+    for (int tick = 0; tick < 512 && !resumed_idle_animation; ++tick) {
+        interrupted_idle.idle_tick();
+        interrupted_idle.idle_animation_tick();
+        if (interrupted_idle.player_frame() > idle_frame_base[right_index] + 12) {
+            resumed_idle_animation = true;
+            OL_CHECK(interrupted_idle.player_frame() ==
+                     idle_frame_base[right_index] + idle_frame_offset[right_index] + 10);
+        }
+    }
+    OL_CHECK(resumed_idle_animation);
 
     auto recovery_snapshot = load_baseline(root);
     auto& protagonist = recovery_snapshot.ranger.roles[0];

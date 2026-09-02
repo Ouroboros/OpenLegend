@@ -160,7 +160,11 @@ private:
     [[nodiscard]] bool target_is_walkable(
         int world_x, int world_y, int moved_coordinate) const noexcept;
     [[nodiscard]] bool target_is_ship_water(
-        int world_x, int world_y, int moved_coordinate) const noexcept;
+        int world_x,
+        int world_y,
+        int moved_coordinate,
+        int delta_x,
+        int delta_y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> entrance_at(int world_x, int world_y) const noexcept;
     [[nodiscard]] WorldStepResult complete_move(
         WorldDirection direction, int target_x, int target_y);
