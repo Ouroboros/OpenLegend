@@ -245,6 +245,7 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
         return {};
     }
 
+    player_frame_override_.reset();
     ++role_recovery_counter_;
     if (role_recovery_counter_ == 50) {
         for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
@@ -314,6 +315,7 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
 void WorldSession::restore_direction_after_scene(const WorldDirection direction) noexcept {
     direction_ = direction;
     walk_frame_offset_ = 0;
+    player_frame_override_.reset();
 }
 
 WorldStepResult WorldSession::resume_move_after_scene(
@@ -469,6 +471,7 @@ void WorldSession::idle_tick() {
     if (idle_animation_counter_ > 50 && !idle_animation_) {
         if (random_.bounded(10) == 0) {
             idle_animation_ = true;
+            player_frame_override_.reset();
             walk_frame_offset_ = 0;
             idle_counter_ = 0;
             idle_animation_step_ = static_cast<std::int16_t>(idle_animation_step_ + 2);
@@ -504,6 +507,7 @@ void WorldSession::idle_animation_tick() {
     if (!valid() || !idle_animation_) {
         return;
     }
+    player_frame_override_.reset();
     ++idle_animation_delay_;
     if (idle_animation_delay_ > 3) {
         idle_animation_delay_ = 0;
@@ -524,6 +528,10 @@ void WorldSession::cycle_palette() {
     }
     std::rotate(palette_.begin() + 224, palette_.begin() + 231, palette_.begin() + 232);
     std::rotate(palette_.begin() + 244, palette_.begin() + 252, palette_.begin() + 253);
+}
+
+void WorldSession::prepare_game_menu_frame() noexcept {
+    player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
 }
 
 bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
@@ -652,6 +660,9 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
 }
 
 std::int16_t WorldSession::player_frame() const noexcept {
+    if (player_frame_override_.has_value()) {
+        return *player_frame_override_;
+    }
     const auto direction_index = static_cast<std::size_t>(direction_);
     if (idle_animation_) {
         return static_cast<std::int16_t>(

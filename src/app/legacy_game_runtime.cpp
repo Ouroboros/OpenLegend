@@ -113,6 +113,14 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
     return LegacyKeyStateReset::none;
 }
 
+[[nodiscard]] constexpr LegacyKeyStateReset main_game_menu_key_state_reset(
+    const std::uint8_t translated_key) noexcept {
+    if (translated_key == 0x98U || translated_key == 0x9EU) {
+        return LegacyKeyStateReset::down_translated;
+    }
+    return menu_key_state_reset(translated_key);
+}
+
 }  // namespace
 
 std::string_view ending_terminal_message() noexcept {
@@ -287,6 +295,7 @@ bool LegacyGameRuntime::handle_world_input(
     if (!direction.has_value()) {
         if (menu_requested && view_ == LegacyGameView::world) {
             world_step_processed_ = true;
+            world_session_->prepare_game_menu_frame();
             update_menu_counts();
             game_menu_.set_context(ui::GameMenuContext::world);
             game_menu_.show_main();
@@ -391,6 +400,7 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                         : scene::SceneResponse::no));
             }
         } else if (translated_key == 0x1BU) {
+            world_session_->prepare_game_menu_frame();
             update_menu_counts();
             game_menu_.set_context(ui::GameMenuContext::world);
             game_menu_.show_main();
@@ -448,9 +458,11 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         break;
     case LegacyGameView::game_menu: {
         const auto screen = game_menu_.screen();
-        if (screen == ui::GameMenuScreen::system ||
-            screen == ui::GameMenuScreen::load_slots ||
-            screen == ui::GameMenuScreen::save_slots) {
+        if (screen == ui::GameMenuScreen::main) {
+            key_state_reset = main_game_menu_key_state_reset(translated_key);
+        } else if (screen == ui::GameMenuScreen::system ||
+                   screen == ui::GameMenuScreen::load_slots ||
+                   screen == ui::GameMenuScreen::save_slots) {
             key_state_reset = menu_key_state_reset(translated_key);
         }
         if (screen == ui::GameMenuScreen::item_confirmation) {

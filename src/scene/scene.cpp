@@ -666,6 +666,7 @@ SceneStepResult SceneSession::use_menu_item(const std::int16_t item_id) {
 }
 
 SceneStepResult SceneSession::open_ui() noexcept {
+    player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
     pending_ = current_result(SceneStepKind::open_ui);
     return pending_;
 }

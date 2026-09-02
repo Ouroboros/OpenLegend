@@ -377,6 +377,23 @@ void check_new_game_entry(const std::filesystem::path& root) {
     OL_CHECK(first_event_step.head_id == 0);
     OL_CHECK(first_event_step.style == 1);
 
+    auto menu_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom menu_random{1U};
+    openlegend::scene::SceneSession menu_session{
+        data_root,
+        menu_snapshot,
+        menu_random,
+        70,
+        false,
+        std::nullopt,
+        0,
+        openlegend::scene::SceneEntryOverride{
+            44, 29, openlegend::scene::SceneDirection::right, 6890, 0}};
+    OL_CHECK(finish_scene_title(menu_session).kind == SceneStepKind::stay);
+    OL_CHECK(menu_session.player_frame() == 6890);
+    OL_CHECK(menu_session.open_ui().kind == SceneStepKind::open_ui);
+    OL_CHECK(menu_session.player_frame() == 5016);
+
     auto idle_snapshot = load_baseline(root);
     idle_snapshot.ranger.roles[0U].set_word(
         openlegend::model::role_word::physical_power, 50);

@@ -116,6 +116,7 @@ public:
     void periodic_tick();
     void idle_animation_tick();
     void cycle_palette();
+    void prepare_game_menu_frame() noexcept;
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
 
     [[nodiscard]] int world_x() const noexcept { return world_x_; }
@@ -175,6 +176,7 @@ private:
     std::int16_t idle_animation_counter_{};
     std::int16_t idle_animation_delay_{};
     std::int16_t idle_animation_step_{};
+    std::optional<std::int16_t> player_frame_override_;
     std::int16_t physical_power_counter_{};
     std::int32_t role_recovery_counter_{};
     bool idle_animation_{};

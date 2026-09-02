@@ -204,6 +204,8 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(blocked_result.world_x == 357);
     OL_CHECK(blocked_result.world_y == 235);
     OL_CHECK(blocked.player_frame() == 5032);
+    blocked.prepare_game_menu_frame();
+    OL_CHECK(blocked.player_frame() == 5030);
 
     auto noncanonical_ship_snapshot = blocked_snapshot;
     noncanonical_ship_snapshot.ranger.header.set_word(

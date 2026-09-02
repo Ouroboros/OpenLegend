@@ -314,6 +314,9 @@ int main(const int argc, const char* const* argv) {
                         } else if (key_state_reset == app::LegacyKeyStateReset::translated) {
                             keyboard.clear_state(translated_key);
                         } else if (
+                            key_state_reset == app::LegacyKeyStateReset::down_translated) {
+                            keyboard.clear_state(input::kLegacyDownKey);
+                        } else if (
                             key_state_reset == app::LegacyKeyStateReset::confirmation_group) {
                             keyboard.clear_confirmation_states();
                         } else if (translated_key == 0x1BU) {

@@ -31,6 +31,7 @@ enum class LegacyKeyStateReset : std::uint8_t {
     none,
     edge,
     translated,
+    down_translated,
     confirmation_group,
 };
 
