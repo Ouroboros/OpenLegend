@@ -146,6 +146,8 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x6F6CF22B7C8CB4B8ULL);
     OL_CHECK(sprite_has_visible_pixel(sprites, session.player_frame(), framebuffer, 145, 117));
 
+    session.periodic_tick();
+    OL_CHECK(random.state() == 0xAF1CF0FBU);
     constexpr std::array<WorldDirection, 4> directions{
         WorldDirection::right, WorldDirection::up, WorldDirection::left, WorldDirection::down};
     constexpr std::array<std::array<std::int16_t, 2>, 4> positions{
@@ -156,6 +158,11 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 4> movement_frames{5018, 5006, 5036, 5052};
     constexpr std::array<int, 4> cache_x_after_move{65, 65, 64, 64};
     constexpr std::array<int, 4> cache_y_after_move{64, 63, 63, 64};
+    constexpr std::array<std::uint64_t, 4> weather_frame_hashes{
+        0x125A8A4075AEAEA6ULL,
+        0x4AC2406E66E4442AULL,
+        0xE24E0A05CD54064EULL,
+        0x0E14CD607B173F30ULL};
     for (std::size_t index = 0U; index < directions.size(); ++index) {
         const auto result = session.move(directions[index]);
         OL_CHECK(result.kind == WorldStepKind::moved);
@@ -166,6 +173,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         OL_CHECK(session.cache_y() == cache_y_after_move[index]);
         OL_CHECK(session.player_frame() == movement_frames[index]);
         OL_CHECK(session.render(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == weather_frame_hashes[index]);
         OL_CHECK(sprite_has_visible_pixel(
             sprites, session.player_frame(), framebuffer, 145, 117));
     }
