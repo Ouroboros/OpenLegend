@@ -452,6 +452,10 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
     }
     case LegacyGameView::battle:
         if (battle_session_ != nullptr) {
+            if (battle_session_->phase() ==
+                battle::BattleSessionPhase::player_status_selection) {
+                key_state_reset = menu_key_state_reset(translated_key);
+            }
             static_cast<void>(battle_session_->handle_key(translated_key, bios_tick));
             finish_battle_if_ready();
         }
@@ -695,6 +699,10 @@ bool LegacyGameRuntime::render() {
                 return false;
             }
             const auto command = game_menu_.pending_party_command();
+            if (exact_party_selection &&
+                !basic_renderer_.render_game_menu_main(game_menu_, framebuffer_)) {
+                return false;
+            }
             if (exact_party_selection &&
                 game_menu_.party_stage() == ui::GameMenuPartyStage::source) {
                 const auto kind = command == ui::GameMenuCommand::medicine
