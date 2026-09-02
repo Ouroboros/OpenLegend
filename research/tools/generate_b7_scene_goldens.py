@@ -1055,6 +1055,51 @@ def scene_animation_vectors(
             displayed_picture += 2
     assert displayed_picture == 106
 
+    def advance_one(
+        first: int, end: int, displayed: int, picture_delay: int, animation_counter: int
+    ) -> int:
+        if first <= 0:
+            return displayed
+        if displayed >= end:
+            displayed = first
+        if displayed > first and animation_counter % 4 == 0 and displayed < end:
+            displayed += 2
+        if (
+            picture_delay <= animation_counter % 100
+            and displayed == first
+            and displayed < end
+        ):
+            displayed += 2
+        return displayed
+
+    condition_vectors = [
+        {
+            "name": "nonpositive_first_skips",
+            "counter": 0,
+            "before": [0, 110, 108, -1],
+            "displayed_after": advance_one(0, 110, 108, -1, 0),
+        },
+        {
+            "name": "end_resets_before_delayed_start",
+            "counter": 0,
+            "before": [200, 210, 210, 1],
+            "displayed_after": advance_one(200, 210, 210, 1, 0),
+        },
+        {
+            "name": "end_resets_then_signed_delay_starts",
+            "counter": 0,
+            "before": [300, 310, 310, -1],
+            "displayed_after": advance_one(300, 310, 310, -1, 0),
+        },
+        {
+            "name": "delay_starts_at_counter_one",
+            "counter": 1,
+            "before": [400, 410, 400, 1],
+            "displayed_after": advance_one(400, 410, 400, 1, 1),
+        },
+    ]
+    assert [case["displayed_after"] for case in condition_vectors] == [108, 200, 302, 402]
+
     map_words = list(words(scene_maps[70]))
     event_words = list(words(scene_events[70]))
     map_words[3 * 4096 + 29 * 64 + 44] = 199
@@ -1082,6 +1127,12 @@ def scene_animation_vectors(
             "displayed_after": displayed_picture,
             "delay": delay,
         },
+        "condition_vectors": condition_vectors,
+        "counter_call_order": [
+            "scene_entry_scan_at_zero",
+            "main_tick_increment_mod_1000_then_scan",
+            "scene_jump_scan_at_zero",
+        ],
         "word7_render_frame_fnv1a64": fnv1a64(frame),
         "entry_scan_displayed_picture": entry_displayed_picture,
         "entry_scanned_word7_render_frame_fnv1a64": fnv1a64(entry_frame),

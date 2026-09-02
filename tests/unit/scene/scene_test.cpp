@@ -1320,12 +1320,46 @@ void check_scene_event_animation(const std::filesystem::path& root) {
     OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::end_picture, 110));
     OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::begin_picture, 102));
     OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::picture_delay, 99));
+    const auto set_animation = [&](const std::size_t event_index,
+                                   const std::size_t cell,
+                                   const std::int16_t first,
+                                   const std::int16_t end,
+                                   const std::int16_t displayed,
+                                   const std::int16_t delay) {
+        OL_CHECK(snapshot.set_scene_value(
+            70U, SceneLayer::event_index, cell, static_cast<std::int16_t>(event_index)));
+        OL_CHECK(snapshot.set_event_value(
+            70U, event_index, SceneEventField::current_picture, first));
+        OL_CHECK(snapshot.set_event_value(
+            70U, event_index, SceneEventField::end_picture, end));
+        OL_CHECK(snapshot.set_event_value(
+            70U, event_index, SceneEventField::begin_picture, displayed));
+        OL_CHECK(snapshot.set_event_value(
+            70U, event_index, SceneEventField::picture_delay, delay));
+    };
+    set_animation(195U, 2U, 0, 110, 108, -1);
+    set_animation(196U, 3U, 200, 210, 210, 1);
+    set_animation(197U, 4U, 300, 310, 310, -1);
+    set_animation(198U, 5U, 400, 410, 400, 1);
+
     openlegend::random::LegacyRandom random{1U};
     openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
     OL_CHECK(snapshot.event_value(
                  70U, event, SceneEventField::begin_picture).value_or(-1) == 106);
+    OL_CHECK(snapshot.event_value(
+                 70U, 195U, SceneEventField::begin_picture).value_or(-1) == 108);
+    OL_CHECK(snapshot.event_value(
+                 70U, 196U, SceneEventField::begin_picture).value_or(-1) == 200);
+    OL_CHECK(snapshot.event_value(
+                 70U, 197U, SceneEventField::begin_picture).value_or(-1) == 302);
+    OL_CHECK(snapshot.event_value(
+                 70U, 198U, SceneEventField::begin_picture).value_or(-1) == 400);
     OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
     session.idle_tick();
+    OL_CHECK(snapshot.event_value(
+                 70U, 196U, SceneEventField::begin_picture).value_or(-1) == 202);
+    OL_CHECK(snapshot.event_value(
+                 70U, 198U, SceneEventField::begin_picture).value_or(-1) == 402);
     session.idle_tick();
     session.idle_tick();
     session.idle_tick();

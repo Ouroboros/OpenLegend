@@ -1684,6 +1684,57 @@
         "displayed_after": 106,
         "delay": 99
       },
+      "condition_vectors": [
+        {
+          "name": "nonpositive_first_skips",
+          "counter": 0,
+          "before": [
+            0,
+            110,
+            108,
+            -1
+          ],
+          "displayed_after": 108
+        },
+        {
+          "name": "end_resets_before_delayed_start",
+          "counter": 0,
+          "before": [
+            200,
+            210,
+            210,
+            1
+          ],
+          "displayed_after": 200
+        },
+        {
+          "name": "end_resets_then_signed_delay_starts",
+          "counter": 0,
+          "before": [
+            300,
+            310,
+            310,
+            -1
+          ],
+          "displayed_after": 302
+        },
+        {
+          "name": "delay_starts_at_counter_one",
+          "counter": 1,
+          "before": [
+            400,
+            410,
+            400,
+            1
+          ],
+          "displayed_after": 402
+        }
+      ],
+      "counter_call_order": [
+        "scene_entry_scan_at_zero",
+        "main_tick_increment_mod_1000_then_scan",
+        "scene_jump_scan_at_zero"
+      ],
       "word7_render_frame_fnv1a64": "0x606eaa33da727537",
       "entry_scan_displayed_picture": 104,
       "entry_scanned_word7_render_frame_fnv1a64": "0x3051f24e11c08dc5",
