@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=131/349`，`unique_any=90/284`，`unique_all=89/284`
-当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=23–28` 五层世界缓存总加载及逐层复制；状态为机器码独立审计中
-下一任务指针：`audit_order=23–28` 缓存加载组合工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=29` 世界地图深度表重建
+已发布进度：`closure=137/349`，`unique_any=96/284`，`unique_all=95/284`
+当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=29,34` 世界深度队列与旧版精灵绘制；状态为机器码独立审计中
+下一任务指针：`audit_order=29,34` 世界绘制基础组合工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=31` 世界场景入口与返回边界
 
 ## 0. 唯一正确性真值
 

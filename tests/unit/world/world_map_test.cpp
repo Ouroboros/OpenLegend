@@ -118,6 +118,31 @@ void check_layers_and_cache(const std::filesystem::path& root) {
         }
         OL_CHECK(actual == expected[layer]);
     }
+    constexpr std::array<std::uint64_t, 5> upper_left_expected{
+        0x61FEAFE5CF36484BULL,
+        0xDF9288BFEC9D5955ULL,
+        0x169640B60BC2F3D1ULL,
+        0xA9DC45EBF02F6307ULL,
+        0xFA85DB6848E033FEULL};
+    OL_CHECK(cache.reload(map, 0, 0));
+    for (std::size_t layer = 0U; layer < upper_left_expected.size(); ++layer) {
+        OL_CHECK(fnv1a64_words(cache.layer(static_cast<WorldLayer>(layer))) ==
+                 upper_left_expected[layer]);
+    }
+
+    constexpr std::array<std::uint64_t, 5> lower_right_expected{
+        0x41D5DC540D8CDD8FULL,
+        0x7258C267A7C00302ULL,
+        0xE4BF994183591B46ULL,
+        0xBE395614125BE83EULL,
+        0x9ECCCAE589131829ULL};
+    OL_CHECK(cache.reload(map, kWorldCacheMaximumOrigin, kWorldCacheMaximumOrigin));
+    for (std::size_t layer = 0U; layer < lower_right_expected.size(); ++layer) {
+        OL_CHECK(fnv1a64_words(cache.layer(static_cast<WorldLayer>(layer))) ==
+                 lower_right_expected[layer]);
+    }
+    OL_CHECK(cache.origin_x() == 352);
+    OL_CHECK(cache.origin_y() == 352);
     OL_CHECK(!cache.reload(map, 353, 0));
 }
 
