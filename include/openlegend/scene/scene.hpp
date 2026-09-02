@@ -187,6 +187,12 @@ public:
     [[nodiscard]] SceneDirection direction() const noexcept { return direction_; }
     [[nodiscard]] bool weather_enabled() const noexcept { return weather_enabled_; }
     [[nodiscard]] std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
+    [[nodiscard]] std::int16_t physical_power_counter() const noexcept {
+        return physical_power_counter_;
+    }
+    void set_physical_power_counter(const std::int16_t counter) noexcept {
+        physical_power_counter_ = counter;
+    }
     [[nodiscard]] std::int16_t player_frame() const noexcept;
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
     [[nodiscard]] bool exit_transition_pending() const noexcept;

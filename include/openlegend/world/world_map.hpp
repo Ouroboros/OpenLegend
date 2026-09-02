@@ -126,6 +126,12 @@ public:
     void prepare_game_menu_frame() noexcept;
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
 
+    [[nodiscard]] std::int16_t physical_power_counter() const noexcept {
+        return physical_power_counter_;
+    }
+    void set_physical_power_counter(const std::int16_t counter) noexcept {
+        physical_power_counter_ = counter;
+    }
     [[nodiscard]] int world_x() const noexcept { return world_x_; }
     [[nodiscard]] int world_y() const noexcept { return world_y_; }
     [[nodiscard]] int cache_x() const noexcept { return world_x_ - cache_.origin_x(); }

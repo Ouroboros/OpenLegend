@@ -229,6 +229,7 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     if (view_ == LegacyGameView::world && world_session_ != nullptr) {
         if (!world_step_processed_) {
             world_session_->idle_tick();
+            physical_power_counter_ = world_session_->physical_power_counter();
         }
         world_session_->periodic_tick();
         world_session_->idle_animation_tick();
@@ -980,6 +981,11 @@ bool LegacyGameRuntime::activate_pending_load() {
     pending_new_game_wait_present_ = false;
     pending_new_game_scene_start_ = false;
     const auto replacing_scene = scene_session_ != nullptr;
+    if (scene_session_ != nullptr) {
+        physical_power_counter_ = scene_session_->physical_power_counter();
+    } else if (world_session_ != nullptr) {
+        physical_power_counter_ = world_session_->physical_power_counter();
+    }
     world_session_.reset();
     scene_session_.reset();
     world_menu_event_session_.reset();
@@ -1050,6 +1056,7 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
         world_session_.reset();
         return false;
     }
+    world_session_->set_physical_power_counter(physical_power_counter_);
     game_menu_.set_context(ui::GameMenuContext::world);
     set_view(LegacyGameView::world, "world session started");
     diagnostics::log_info(
@@ -1070,6 +1077,7 @@ bool LegacyGameRuntime::start_scene(
         return false;
     }
     if (world_session_ != nullptr) {
+        physical_power_counter_ = world_session_->physical_power_counter();
         scene_entry_world_direction_ = world_session_->direction();
         snapshot->ranger.header.set_word(
             model::header_word::face_towards,
@@ -1096,6 +1104,7 @@ bool LegacyGameRuntime::start_scene(
         scene_session_.reset();
         return false;
     }
+    scene_session_->set_physical_power_counter(physical_power_counter_);
     game_menu_.set_context(ui::GameMenuContext::scene);
     set_view(LegacyGameView::scene, "scene session started");
     diagnostics::log_info(
@@ -1183,6 +1192,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         " wait_ticks=" + std::to_string(result.wait_ticks));
     if (scene_session_ != nullptr) {
         periodic_counter_ = scene_session_->periodic_counter();
+        physical_power_counter_ = scene_session_->physical_power_counter();
         auto commands = scene_session_->take_audio_commands();
         scene_audio_commands_.insert(
             scene_audio_commands_.end(),
@@ -1203,6 +1213,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
 
         const auto retained_world = world_session_ != nullptr && world_map_ != nullptr;
         if (retained_world) {
+            world_session_->set_physical_power_counter(physical_power_counter_);
             scene_request_.reset();
             battle_request_.reset();
             clear_scene_effect();

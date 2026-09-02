@@ -199,6 +199,14 @@ void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
     advance_rendered_frames(game, 1U);
 }
 
+void advance_scene_idle_ticks(
+    openlegend::app::LegacyGameRuntime& game, const std::size_t tick_count) {
+    for (std::size_t tick = 0U; tick < tick_count; ++tick) {
+        OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
+        advance_rendered_frames(game, 2U);
+    }
+}
+
 void finish_world_scene_return(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
     OL_CHECK(game.render());
@@ -735,6 +743,124 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(prepare_runtime_fixture(data_root, world_fixture));
     OL_CHECK(persistence::write_numbered_slot(
         world_fixture, persistence::SaveSlot::one, *accepted_new_game));
+
+    auto idle_counter_snapshot = *accepted_new_game;
+    idle_counter_snapshot.ranger.header.set_word(model::header_word::in_sub_map, 0);
+    idle_counter_snapshot.ranger.header.set_word(model::header_word::in_ship, 0);
+    idle_counter_snapshot.ranger.header.set_word(model::header_word::main_map_x, 356);
+    idle_counter_snapshot.ranger.header.set_word(model::header_word::main_map_y, 235);
+    idle_counter_snapshot.ranger.header.set_word(
+        model::header_word::face_towards,
+        static_cast<std::int16_t>(world::WorldDirection::right));
+    idle_counter_snapshot.ranger.roles[0U].set_word(
+        model::role_word::physical_power, 50);
+    auto& idle_counter_scene = idle_counter_snapshot.ranger.scenes[70U];
+    idle_counter_scene.set_word(model::scene_metadata_word::main_entrance_x_1, 357);
+    idle_counter_scene.set_word(model::scene_metadata_word::main_entrance_y_1, 235);
+    idle_counter_scene.set_word(model::scene_metadata_word::entrance_condition, 0);
+    const auto idle_counter_fixture =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-idle-counter-continuity";
+    OL_CHECK(prepare_runtime_fixture(data_root, idle_counter_fixture));
+    OL_CHECK(persistence::write_numbered_slot(
+        idle_counter_fixture, persistence::SaveSlot::one, idle_counter_snapshot));
+    {
+        app::LegacyGameRuntime idle_counter{idle_counter_fixture, 0U};
+        OL_CHECK(idle_counter.valid());
+        finish_title_startup(idle_counter);
+        idle_counter.handle_key(0x98U, false, false);
+        idle_counter.handle_key(0x0DU, false, false);
+        idle_counter.handle_key(0x0DU, false, false);
+        finish_title_confirmation(idle_counter);
+        OL_CHECK(idle_counter.render());
+        idle_counter.finish_presented_tick();
+        idle_counter.advance();
+        finish_numbered_load_transition(idle_counter, app::LegacyGameView::world);
+        auto* idle_ranger =
+            const_cast<model::GameState&>(idle_counter.game_state()).ranger();
+        OL_CHECK(idle_ranger != nullptr);
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
+        }
+        for (int tick = 0; tick < 99; ++tick) {
+            idle_counter.advance();
+        }
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
+        }
+
+        OL_CHECK(idle_counter.handle_world_input(false, false, false, true));
+        idle_counter.advance();
+        OL_CHECK(idle_counter.scene_request().value_or(-1) == 70);
+        finish_world_scene_transition(idle_counter);
+        finish_scene_entry(idle_counter);
+        advance_scene_idle_ticks(idle_counter, 99U);
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
+        }
+        advance_scene_idle_ticks(idle_counter, 1U);
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 51);
+        }
+        advance_scene_idle_ticks(idle_counter, 60U);
+
+        auto* idle_scene_snapshot =
+            const_cast<model::GameState&>(idle_counter.game_state()).snapshot();
+        OL_CHECK(idle_scene_snapshot != nullptr);
+        if (idle_scene_snapshot != nullptr) {
+            OL_CHECK(idle_scene_snapshot->set_scene_value(
+                70U, model::SceneLayer::event_index, 28U * 64U + 44U, -1));
+        }
+        OL_CHECK(idle_counter.handle_world_input(false, false, true, false));
+        idle_counter.advance();
+        advance_rendered_frames(idle_counter, 1U);
+        OL_CHECK(idle_counter.handle_world_input(false, false, false, true));
+        idle_counter.advance();
+        advance_rendered_frames(idle_counter, 1U);
+        advance_rendered_frames(idle_counter, 64U);
+        OL_CHECK(idle_counter.view() == app::LegacyGameView::world);
+        finish_world_scene_return(idle_counter);
+        for (int tick = 0; tick < 139; ++tick) {
+            idle_counter.advance();
+        }
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 51);
+        }
+        idle_counter.advance();
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 52);
+        }
+
+        for (int tick = 0; tick < 40; ++tick) {
+            idle_counter.advance();
+        }
+        idle_counter.handle_key(0x1BU, false, false);
+        idle_counter.handle_key(0x9EU, false, false);
+        idle_counter.handle_key(0x0DU, false, false);
+        idle_counter.handle_key(0x0DU, false, false);
+        idle_counter.handle_key(0x0DU, false, false);
+        OL_CHECK(idle_counter.render());
+        idle_counter.finish_presented_tick();
+        idle_counter.advance();
+        finish_numbered_load_transition(idle_counter, app::LegacyGameView::game_menu);
+        idle_ranger = const_cast<model::GameState&>(idle_counter.game_state()).ranger();
+        OL_CHECK(idle_ranger != nullptr);
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
+        }
+        idle_counter.handle_key(0x1BU, false, false);
+        idle_counter.handle_key(0x1BU, false, false);
+        OL_CHECK(idle_counter.view() == app::LegacyGameView::world);
+        for (int tick = 0; tick < 159; ++tick) {
+            idle_counter.advance();
+        }
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
+        }
+        idle_counter.advance();
+        if (idle_ranger != nullptr) {
+            OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 51);
+        }
+    }
 
     auto system_exit_snapshot = *accepted_new_game;
     system_exit_snapshot.ranger.roles[0U].set_word(
