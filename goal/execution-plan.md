@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=141/349`，`unique_any=98/284`，`unique_all=97/284`
-当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=31` 世界场景入口与返回边界；状态为机器码独立审计中
-下一任务指针：`audit_order=31` 工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=32` 世界移动每50次的队员体力恢复
+已发布进度：`closure=142/349`，`unique_any=99/284`，`unique_all=98/284`
+当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=32` 世界移动每50次的队员体力恢复；状态为机器码独立审计中
+下一任务指针：`audit_order=32` 工作包提交、push、TG 与规则重读完成后，重新计算七表并进入首个未审行为类别
 
 ## 0. 唯一正确性真值
 

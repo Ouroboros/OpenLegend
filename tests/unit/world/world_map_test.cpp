@@ -349,6 +349,30 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     WorldSession party_gap{data_root, map, party_gap_snapshot.ranger, party_gap_random};
     OL_CHECK(party_gap.move(WorldDirection::right).kind == WorldStepKind::moved);
 
+    auto first_allowed_snapshot = load_baseline(root);
+    for (auto& scene : first_allowed_snapshot.ranger.scenes) {
+        for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+            scene.set_word(word, -1);
+        }
+    }
+    for (std::size_t index = 0U; index < 3U; ++index) {
+        auto& scene = first_allowed_snapshot.ranger.scenes[index];
+        scene.set_word(openlegend::model::scene_metadata_word::main_entrance_x_1, 358);
+        scene.set_word(openlegend::model::scene_metadata_word::main_entrance_y_1, 235);
+        scene.set_word(
+            openlegend::model::scene_metadata_word::entrance_condition,
+            static_cast<std::int16_t>(index == 0U ? 1 : 0));
+    }
+    openlegend::random::LegacyRandom first_allowed_random{1U};
+    WorldSession first_allowed{
+        data_root, map, first_allowed_snapshot.ranger, first_allowed_random};
+    const auto first_allowed_result = first_allowed.move(WorldDirection::right);
+    OL_CHECK(first_allowed_result.kind == WorldStepKind::enter_scene);
+    OL_CHECK(first_allowed_result.scene_id == 1);
+
     auto reload_snapshot = load_baseline(root);
     reload_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_x, 71);
     reload_snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_y, 149);
