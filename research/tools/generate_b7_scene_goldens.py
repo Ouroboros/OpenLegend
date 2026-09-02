@@ -1785,6 +1785,12 @@ def status_notice_vectors(
         for scene in range(84)
     ]
     assert all(length >= 0 for length in title_lengths)
+    title_length_counts = {
+        str(length): title_lengths.count(length)
+        for length in sorted(set(title_lengths))
+    }
+    assert title_length_counts == {"4": 13, "6": 47, "8": 24}
+    assert all(length % 2 == 0 for length in title_lengths)
     title_field = ranger[97_076 + 70 * 52 + 2:97_076 + 70 * 52 + 12]
     title_length = title_field.find(b"\0")
     if title_length < 0:
@@ -1801,10 +1807,32 @@ def status_notice_vectors(
         "text_hex": title.hex(),
         "byte_length": title_length,
         "all_metadata_titles_nul_terminated": True,
+        "metadata_title_length_counts": title_length_counts,
         "metadata_title_max_bytes": max(title_lengths),
         "panel": [title_x, 10, title_width, 27],
         "text_position": [title_x + 10, 15],
         "colors": [5, 7],
+        "function_order": [
+            "copy_metadata_name_from_byte_2",
+            "measure_nul_terminated_byte_length",
+            "draw_panel_on_existing_scene_frame",
+            "draw_name",
+            "present",
+            "clear_last_key_and_wait_for_any_nonzero_key",
+            "render_scene",
+            "present",
+        ],
+        "physical_callers": [
+            "sub_28E40:0x28F4B normal_scene_entry",
+            "sub_28E40:0x292A3 internal_scene_jump",
+        ],
+        "caller_next_step": "sub_2B3B4 automatic_event_check",
+        "overlay_render_policy": "restore_frozen_pre_title_frame_before_each_overlay_render",
+        "weather_random_draws": {
+            "title_overlay": 0,
+            "repeated_title_overlay": 0,
+            "post_key_scene_redraw": 2,
+        },
         "outputs": ["scene_title", "present", "auto_event_check"],
         "frame_fnv1a64": fnv1a64(title_pixels),
     }

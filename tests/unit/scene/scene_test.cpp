@@ -767,9 +767,12 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     OL_CHECK(frame_hash == 0x38FBAA07B733AD79ULL);
     OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
              openlegend::scene::SceneStepKind::scene_title);
-    openlegend::render::IndexedFramebuffer title_framebuffer;
+    auto title_framebuffer = framebuffer;
     OL_CHECK(session.render(title_framebuffer));
     OL_CHECK(fnv1a64(title_framebuffer.pixels()) == 0xC5A8777E049759F2ULL);
+    const auto title_hash = fnv1a64(title_framebuffer.pixels());
+    OL_CHECK(session.render(title_framebuffer));
+    OL_CHECK(fnv1a64(title_framebuffer.pixels()) == title_hash);
 
     OL_CHECK(finish_scene_title(session).kind ==
              openlegend::scene::SceneStepKind::stay);
@@ -1515,14 +1518,32 @@ void check_scene_weather(const std::filesystem::path& root) {
     OL_CHECK(session.render_map(weather_frame));
     OL_CHECK(fnv1a64(weather_frame.pixels()) == 0x9EB8192A25F56019ULL);
     OL_CHECK(random.state() == 0x967EB0E7U);
-    OL_CHECK(finish_scene_title(session).kind == openlegend::scene::SceneStepKind::stay);
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::scene_title);
+    const auto title_random_state = random.state();
+    OL_CHECK(session.render(weather_frame));
+    const auto title_hash = fnv1a64(weather_frame.pixels());
+    OL_CHECK(random.state() == title_random_state);
+    OL_CHECK(session.render(weather_frame));
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == title_hash);
+    OL_CHECK(random.state() == title_random_state);
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::present);
+    openlegend::random::LegacyRandom expected_after_title{title_random_state};
+    static_cast<void>(expected_after_title.bounded(7));
+    static_cast<void>(expected_after_title.bounded(7));
+    OL_CHECK(session.render(weather_frame));
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0x9EB8192A25F56019ULL);
+    OL_CHECK(random.state() == expected_after_title.state());
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::stay);
     OL_CHECK(session.tick(std::nullopt, false, false, true).kind ==
              openlegend::scene::SceneStepKind::present);
     OL_CHECK(!session.weather_enabled());
     openlegend::render::IndexedFramebuffer disabled_frame;
     OL_CHECK(session.render_map(disabled_frame));
     OL_CHECK(fnv1a64(disabled_frame.pixels()) == 0x52C8861F0349D6DBULL);
-    OL_CHECK(random.state() == 0x967EB0E7U);
+    OL_CHECK(random.state() == expected_after_title.state());
 
     auto preserved_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom preserved_random{1U};

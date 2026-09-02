@@ -2844,6 +2844,11 @@
         "text_hex": "a544a8a4aabaae6100",
         "byte_length": 8,
         "all_metadata_titles_nul_terminated": true,
+        "metadata_title_length_counts": {
+          "4": 13,
+          "6": 47,
+          "8": 24
+        },
         "metadata_title_max_bytes": 8,
         "panel": [
           118,
@@ -2859,6 +2864,27 @@
           5,
           7
         ],
+        "function_order": [
+          "copy_metadata_name_from_byte_2",
+          "measure_nul_terminated_byte_length",
+          "draw_panel_on_existing_scene_frame",
+          "draw_name",
+          "present",
+          "clear_last_key_and_wait_for_any_nonzero_key",
+          "render_scene",
+          "present"
+        ],
+        "physical_callers": [
+          "sub_28E40:0x28F4B normal_scene_entry",
+          "sub_28E40:0x292A3 internal_scene_jump"
+        ],
+        "caller_next_step": "sub_2B3B4 automatic_event_check",
+        "overlay_render_policy": "restore_frozen_pre_title_frame_before_each_overlay_render",
+        "weather_random_draws": {
+          "title_overlay": 0,
+          "repeated_title_overlay": 0,
+          "post_key_scene_redraw": 2
+        },
         "outputs": [
           "scene_title",
           "present",

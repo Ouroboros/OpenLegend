@@ -518,6 +518,7 @@ SceneStepResult SceneSession::current_result(const SceneStepKind kind) const noe
 SceneStepResult SceneSession::show_scene_title() {
     pending_ = current_result(SceneStepKind::scene_title);
     pending_text_.clear();
+    scene_title_base_framebuffer_.reset();
     if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
         const auto& bytes = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].bytes;
         pending_text_.assign(bytes.begin() + 2, bytes.begin() + 12);
@@ -3195,6 +3196,15 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         framebuffer = ending_framebuffer_;
         return true;
     }
+    if (pending_.kind == SceneStepKind::scene_title) {
+        if (scene_title_base_framebuffer_.has_value()) {
+            framebuffer = *scene_title_base_framebuffer_;
+        } else {
+            scene_title_base_framebuffer_ = framebuffer;
+        }
+        return draw_overlay(framebuffer);
+    }
+    scene_title_base_framebuffer_.reset();
     return render_map(framebuffer) && draw_overlay(framebuffer);
 }
 

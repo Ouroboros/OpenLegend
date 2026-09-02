@@ -485,6 +485,7 @@ private:
     bool event_active_{};
     SceneStepResult pending_{};
     std::vector<std::uint8_t> pending_text_;
+    mutable std::optional<render::IndexedFramebuffer> scene_title_base_framebuffer_;
     PendingContinuation continuation_{PendingContinuation::none};
     TickContinuation tick_continuation_{TickContinuation::none};
     SceneStepKind tick_fallback_{SceneStepKind::stay};
