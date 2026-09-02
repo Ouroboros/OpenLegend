@@ -2816,6 +2816,114 @@
           ]
         ]
       },
+      "portrait_border_contract": {
+        "entry_range": "0x2D372..0x2D501",
+        "instruction_count": 153,
+        "strict_dimension_gate": "width > 10 && height > 10",
+        "rectangles": [
+          [
+            "x+5",
+            "y+1",
+            "w-10",
+            "1"
+          ],
+          [
+            "x+4",
+            "y+2",
+            "1",
+            "2"
+          ],
+          [
+            "x+w-5",
+            "y+2",
+            "1",
+            "2"
+          ],
+          [
+            "x+2",
+            "y+4",
+            "2",
+            "1"
+          ],
+          [
+            "x+w-4",
+            "y+4",
+            "2",
+            "1"
+          ],
+          [
+            "x+1",
+            "y+5",
+            "1",
+            "h-10"
+          ],
+          [
+            "x+w-2",
+            "y+5",
+            "1",
+            "h-10"
+          ],
+          [
+            "x+2",
+            "y+h-5",
+            "2",
+            "1"
+          ],
+          [
+            "x+w-4",
+            "y+h-5",
+            "2",
+            "1"
+          ],
+          [
+            "x+4",
+            "y+h-4",
+            "1",
+            "2"
+          ],
+          [
+            "x+w-5",
+            "y+h-4",
+            "1",
+            "2"
+          ],
+          [
+            "x+5",
+            "y+h-2",
+            "w-10",
+            "1"
+          ]
+        ],
+        "portrait_size": [
+          60,
+          62
+        ],
+        "border_pixel_count": 220,
+        "caller_addresses": [
+          "0x2CDBC",
+          "0x2CE9B"
+        ],
+        "color_index": 255,
+        "draw_order": "after_portrait_sprite",
+        "positions": [
+          [
+            23,
+            12
+          ],
+          [
+            237,
+            125
+          ],
+          [
+            237,
+            12
+          ],
+          [
+            23,
+            125
+          ]
+        ]
+      },
       "cases": {
         "style_0_script_1_pc_0": {
           "talk_id": 0,
