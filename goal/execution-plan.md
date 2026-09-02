@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=144/349`，`unique_any=101/284`，`unique_all=100/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=8–9` 场景横向与纵向移动组合；状态为等待`audit_order=7`场景会话初始化工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=8–9` 收口后进入同表 `audit_order=10` 场景事件图片周期推进
+已发布进度：`closure=146/349`，`unique_any=103/284`，`unique_all=102/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=10` 场景事件图片周期推进；状态为等待`audit_order=8–9`场景横向与纵向移动工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=10` 收口后进入同表 `audit_order=11` 场景触发探测
 
 ## 0. 唯一正确性真值
 

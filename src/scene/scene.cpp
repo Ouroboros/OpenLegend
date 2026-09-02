@@ -1834,9 +1834,7 @@ void SceneSession::player_idle_tick() {
 
 void SceneSession::cancel_player_idle_animation() noexcept {
     idle_animation_ = false;
-    idle_animation_counter_ = 0;
-    idle_animation_delay_ = 0;
-    idle_animation_step_ = 0;
+    player_idle_counter_ = 0;
 }
 
 bool SceneSession::target_is_walkable(const int x, const int y) const noexcept {
@@ -2989,7 +2987,7 @@ void SceneSession::apply_scripted_walk_step(const bool horizontal, const int ste
     }
     direction_ = horizontal
                      ? (step < 0 ? SceneDirection::left : SceneDirection::right)
-                     : (step < 0 ? SceneDirection::down : SceneDirection::up);
+                     : (step < 0 ? SceneDirection::up : SceneDirection::down);
     const auto target_x = std::clamp(scene_x_ + (horizontal ? step : 0), 0, kSceneExtent - 1);
     const auto target_y = std::clamp(scene_y_ + (horizontal ? 0 : step), 0, kSceneExtent - 1);
     if (target_is_walkable(target_x, target_y)) {

@@ -111,6 +111,10 @@ public:
                 for (const auto word : std::array<std::int16_t, 6>{26, 69, 5, -1, -2, -3}) {
                     append_i16(group, word);
                 }
+            } else if (script == 14U) {
+                for (const auto word : std::array<std::int16_t, 5>{30, 10, 10, 10, 9}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -786,6 +790,180 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::face_towards) == 3);
 }
 
+void check_scene_movement_guards(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneDirection;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto prepare = [&]() {
+        auto snapshot = load_baseline(root);
+        auto& metadata = snapshot.ranger.scenes[70];
+        metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 10);
+        metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 10);
+        for (const auto cell : std::array<std::size_t, 2>{10U * 64U + 10U, 10U * 64U + 11U}) {
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::earth, cell, 0));
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building, cell, 0));
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, cell, -1));
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, cell, 0));
+        }
+        return snapshot;
+    };
+
+    auto snapshot = prepare();
+    constexpr std::size_t source = 10U * 64U + 10U;
+    constexpr std::size_t target = 10U * 64U + 11U;
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building, target, 1));
+    OL_CHECK(session.move(SceneDirection::right).kind == SceneStepKind::stay);
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building, target, 0));
+
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, source, -5));
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, target, 5));
+    OL_CHECK(session.move(SceneDirection::right).kind == SceneStepKind::stay);
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, source, 0));
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, target, 0));
+
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, target, 0));
+    OL_CHECK(snapshot.set_event_value(70U, 0U, SceneEventField::cannot_walk, 1));
+    OL_CHECK(session.move(SceneDirection::right).kind == SceneStepKind::stay);
+    OL_CHECK(snapshot.set_event_value(70U, 0U, SceneEventField::cannot_walk, 0));
+
+    constexpr std::array<std::int16_t, 9> blocked_low{
+        358, 374, 458, 506, 818, 838, 934, 1016, 1324};
+    constexpr std::array<std::int16_t, 9> blocked_high{
+        362, 380, 464, 610, 824, 838, 936, 1022, 1348};
+    for (std::size_t index = 0U; index < blocked_low.size(); ++index) {
+        for (const auto earth : {blocked_low[index], blocked_high[index]}) {
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::earth, target, earth));
+            const auto blocked = session.move(SceneDirection::right);
+            OL_CHECK(blocked.kind == SceneStepKind::stay);
+            OL_CHECK(blocked.scene_x == 10 && blocked.scene_y == 10);
+            OL_CHECK(session.direction() == SceneDirection::right);
+        }
+    }
+    OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::earth, target, 0));
+    const auto moved = session.move(SceneDirection::right);
+    OL_CHECK(moved.kind == SceneStepKind::moved);
+    OL_CHECK(moved.scene_x == 11 && moved.scene_y == 10);
+    OL_CHECK(session.view_origin_x() == 0 && session.view_origin_y() == 0);
+
+    auto boundary_snapshot = prepare();
+    auto& boundary_metadata = boundary_snapshot.ranger.scenes[70];
+    boundary_metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 0);
+    boundary_metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 63);
+    constexpr std::size_t boundary_cell = 63U * 64U;
+    OL_CHECK(boundary_snapshot.set_scene_value(70U, SceneLayer::earth, boundary_cell, 0));
+    OL_CHECK(boundary_snapshot.set_scene_value(70U, SceneLayer::building, boundary_cell, 0));
+    OL_CHECK(boundary_snapshot.set_scene_value(70U, SceneLayer::event_index, boundary_cell, -1));
+    OL_CHECK(boundary_snapshot.set_scene_value(70U, SceneLayer::building_height, boundary_cell, 0));
+    openlegend::random::LegacyRandom boundary_random{1U};
+    openlegend::scene::SceneSession boundary{
+        data_root, boundary_snapshot, boundary_random, 70};
+    OL_CHECK(finish_scene_title(boundary).kind == SceneStepKind::stay);
+    OL_CHECK(boundary.move(SceneDirection::left).kind == SceneStepKind::moved);
+    OL_CHECK(boundary.scene_x() == 0 && boundary.scene_y() == 63);
+    OL_CHECK(boundary.direction() == SceneDirection::left);
+    OL_CHECK(boundary.move(SceneDirection::down).kind == SceneStepKind::moved);
+    OL_CHECK(boundary.scene_x() == 0 && boundary.scene_y() == 63);
+    OL_CHECK(boundary.direction() == SceneDirection::down);
+    OL_CHECK(boundary.view_origin_x() == 0 && boundary.view_origin_y() == 36);
+
+    auto opposite_snapshot = prepare();
+    auto& opposite_metadata = opposite_snapshot.ranger.scenes[70];
+    opposite_metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 63);
+    opposite_metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 0);
+    constexpr std::size_t opposite_cell = 63U;
+    OL_CHECK(opposite_snapshot.set_scene_value(70U, SceneLayer::earth, opposite_cell, 0));
+    OL_CHECK(opposite_snapshot.set_scene_value(70U, SceneLayer::building, opposite_cell, 0));
+    OL_CHECK(opposite_snapshot.set_scene_value(70U, SceneLayer::event_index, opposite_cell, -1));
+    OL_CHECK(opposite_snapshot.set_scene_value(70U, SceneLayer::building_height, opposite_cell, 0));
+    openlegend::random::LegacyRandom opposite_random{1U};
+    openlegend::scene::SceneSession opposite{
+        data_root, opposite_snapshot, opposite_random, 70};
+    OL_CHECK(finish_scene_title(opposite).kind == SceneStepKind::stay);
+    OL_CHECK(opposite.move(SceneDirection::right).kind == SceneStepKind::moved);
+    OL_CHECK(opposite.scene_x() == 63 && opposite.scene_y() == 0);
+    OL_CHECK(opposite.direction() == SceneDirection::right);
+    OL_CHECK(opposite.move(SceneDirection::up).kind == SceneStepKind::moved);
+    OL_CHECK(opposite.scene_x() == 63 && opposite.scene_y() == 0);
+    OL_CHECK(opposite.direction() == SceneDirection::up);
+    OL_CHECK(opposite.view_origin_x() == 36 && opposite.view_origin_y() == 0);
+}
+
+void check_scene_movement_idle_state(const std::filesystem::path& root) {
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneDirection;
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    auto prepare = [&]() {
+        auto snapshot = load_baseline(root);
+        auto& metadata = snapshot.ranger.scenes[70];
+        metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 10);
+        metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 10);
+        metadata.set_word(openlegend::model::scene_metadata_word::jump_scene, -1);
+        for (std::size_t index = 0U;
+             index < openlegend::model::scene_metadata_word::exit_count;
+             ++index) {
+            metadata.set_word(openlegend::model::scene_metadata_word::exit_x_begin + index, -1);
+            metadata.set_word(openlegend::model::scene_metadata_word::exit_y_begin + index, -1);
+        }
+        for (const auto cell : std::array<std::size_t, 3>{
+                 10U * 64U + 10U, 10U * 64U + 11U, 9U * 64U + 10U}) {
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::earth, cell, 0));
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building, cell, 0));
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, cell, -1));
+            OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, cell, 0));
+        }
+        return snapshot;
+    };
+    auto idle_once = [](openlegend::scene::SceneSession& session) {
+        OL_CHECK(session.tick(std::nullopt, false, false).kind == SceneStepKind::present);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    };
+
+    auto walk_snapshot = prepare();
+    openlegend::random::LegacyRandom walk_random{1U};
+    openlegend::scene::SceneSession walk{
+        data_root, walk_snapshot, walk_random, 70};
+    OL_CHECK(finish_scene_title(walk).kind == SceneStepKind::stay);
+    for (int tick = 0; tick < 20; ++tick) {
+        idle_once(walk);
+    }
+    OL_CHECK(walk.move(SceneDirection::right).kind == SceneStepKind::moved);
+    OL_CHECK(walk.player_frame() == 5018);
+    idle_once(walk);
+    OL_CHECK(walk.player_frame() == 5018);
+
+    auto counter_snapshot = prepare();
+    openlegend::random::LegacyRandom counter_random{1U};
+    openlegend::scene::SceneSession counter{
+        data_root, counter_snapshot, counter_random, 70};
+    OL_CHECK(finish_scene_title(counter).kind == SceneStepKind::stay);
+    for (int tick = 0; tick < 50; ++tick) {
+        idle_once(counter);
+    }
+    OL_CHECK(counter_random.state() == 1U);
+    const auto scripted = counter.begin_event(14, 0, 10, 10);
+    OL_CHECK(scripted.kind == SceneStepKind::present);
+    OL_CHECK(scripted.wait_ticks == 3U);
+    OL_CHECK(counter.scene_y() == 9);
+    OL_CHECK(counter.direction() == SceneDirection::up);
+    OL_CHECK(counter.player_frame() == 5004);
+    OL_CHECK(counter.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(counter.player_frame() == 5002);
+    OL_CHECK(counter_random.state() == 1U);
+    idle_once(counter);
+    OL_CHECK(counter_random.state() == 0x41C67EA6U);
+}
+
 void check_scene_entry_state(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     auto snapshot = load_baseline(root);
@@ -1371,20 +1549,20 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     }
 
     constexpr std::array<int, 5> expected_y{23, 22, 21, 20, 19};
-    constexpr std::array<std::int16_t, 5> expected_pictures{5046, 5048, 5050, 5052, 5054};
+    constexpr std::array<std::int16_t, 5> expected_pictures{5004, 5006, 5008, 5010, 5012};
     constexpr std::array<std::uint64_t, 5> expected_hashes{
-        0x875FB7391E30B9B0ULL,
-        0x74B973721D47C71CULL,
-        0xC6F9A603AA1FC9F1ULL,
-        0xBBE8CD264878BE18ULL,
-        0xA97E21B948CFC40FULL,
+        0xB53215FF283C375AULL,
+        0xA6CAE4420F245B6EULL,
+        0x3F2F76D31C813BF3ULL,
+        0xE1D227F227EF9D0EULL,
+        0xF2A1E35490A4F647ULL,
     };
     for (std::size_t index = 0U; index < expected_y.size(); ++index) {
         OL_CHECK(result.kind == SceneStepKind::present);
         OL_CHECK(result.wait_ticks == 3U);
         OL_CHECK(session.scene_x() == 28);
         OL_CHECK(session.scene_y() == expected_y[index]);
-        OL_CHECK(session.direction() == openlegend::scene::SceneDirection::down);
+        OL_CHECK(session.direction() == openlegend::scene::SceneDirection::up);
         OL_CHECK(session.player_frame() == expected_pictures[index]);
         openlegend::render::IndexedFramebuffer framebuffer;
         OL_CHECK(session.render_map(framebuffer));
@@ -1398,7 +1576,7 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     }
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 1248);
-    OL_CHECK(session.player_frame() == 5044);
+    OL_CHECK(session.player_frame() == 5002);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_x) == 28);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_y) == 19);
 
@@ -1421,11 +1599,12 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
          ++step) {
         blocked_result = blocked.resume(SceneResponse::acknowledge);
     }
-    for (std::int16_t frame = 5046; frame <= 5054; frame += 2) {
+    for (std::int16_t frame = 5004; frame <= 5012; frame += 2) {
         OL_CHECK(blocked_result.kind == SceneStepKind::present);
         OL_CHECK(blocked_result.wait_ticks == 3U);
         OL_CHECK(blocked.scene_x() == 28);
         OL_CHECK(blocked.scene_y() == 23);
+        OL_CHECK(blocked.direction() == openlegend::scene::SceneDirection::up);
         OL_CHECK(blocked.player_frame() == frame);
         blocked_result = blocked.resume(SceneResponse::acknowledge);
     }
@@ -3319,6 +3498,8 @@ int main() {
     check_event_load_menu(root);
     check_event_state_write_helpers(root);
     check_scene_render_and_movement(root);
+    check_scene_movement_guards(root);
+    check_scene_movement_idle_state(root);
     check_scene_entry_state(root);
     check_scene_archive_ownership(root);
     check_scene_interaction_present(root);

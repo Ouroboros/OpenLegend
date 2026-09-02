@@ -249,42 +249,42 @@
         {
           "x": 28,
           "y": 23,
-          "direction": 3,
-          "player_picture": 5046,
+          "direction": 0,
+          "player_picture": 5004,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0x875fb7391e30b9b0"
+          "frame_fnv1a64": "0xb53215ff283c375a"
         },
         {
           "x": 28,
           "y": 22,
-          "direction": 3,
-          "player_picture": 5048,
+          "direction": 0,
+          "player_picture": 5006,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0x74b973721d47c71c"
+          "frame_fnv1a64": "0xa6cae4420f245b6e"
         },
         {
           "x": 28,
           "y": 21,
-          "direction": 3,
-          "player_picture": 5050,
+          "direction": 0,
+          "player_picture": 5008,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xc6f9a603aa1fc9f1"
+          "frame_fnv1a64": "0x3f2f76d31c813bf3"
         },
         {
           "x": 28,
           "y": 20,
-          "direction": 3,
-          "player_picture": 5052,
+          "direction": 0,
+          "player_picture": 5010,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xbbe8cd264878be18"
+          "frame_fnv1a64": "0xe1d227f227ef9d0e"
         },
         {
           "x": 28,
           "y": 19,
-          "direction": 3,
-          "player_picture": 5054,
+          "direction": 0,
+          "player_picture": 5012,
           "wait_ticks": 3,
-          "frame_fnv1a64": "0xa97e21b948cfc40f"
+          "frame_fnv1a64": "0xf2a1e35490a4f647"
         }
       ]
     },

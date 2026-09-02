@@ -534,7 +534,7 @@ def scripted_walk_trace(
         walk_offset += 2
         if walk_offset > 12:
             walk_offset = 2
-        direction = (2 if delta < 0 else 1) if horizontal else (3 if delta < 0 else 0)
+        direction = (2 if delta < 0 else 1) if horizontal else (0 if delta < 0 else 3)
         tx = min(max(x + (delta if horizontal else 0), 0), 63)
         ty = min(max(y + (0 if horizontal else delta), 0), 63)
         earth = scene_value(scene_words, 0, tx, ty)
