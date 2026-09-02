@@ -880,18 +880,57 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     auto recovery_snapshot = load_baseline(root);
     auto& protagonist = recovery_snapshot.ranger.roles[0];
     protagonist.set_word(openlegend::model::role_word::hurt, 51);
+    protagonist.set_word(openlegend::model::role_word::poison, 0);
     protagonist.set_word(openlegend::model::role_word::hp, 10);
     protagonist.set_word(openlegend::model::role_word::mp, 20);
     protagonist.set_word(openlegend::model::role_word::physical_power, 30);
     openlegend::random::LegacyRandom recovery_random{1U};
     WorldSession recovery{data_root, map, recovery_snapshot.ranger, recovery_random};
-    for (int attempt = 0; attempt < 50; ++attempt) {
+    for (int attempt = 0; attempt < 49; ++attempt) {
         static_cast<void>(recovery.move(WorldDirection::left));
     }
+    OL_CHECK(protagonist.word(openlegend::model::role_word::hp) == 10);
+    OL_CHECK(protagonist.word(openlegend::model::role_word::mp) == 20);
+    OL_CHECK(protagonist.word(openlegend::model::role_word::physical_power) == 30);
+    static_cast<void>(recovery.move(WorldDirection::left));
     OL_CHECK(protagonist.word(openlegend::model::role_word::hurt) == 51);
     OL_CHECK(protagonist.word(openlegend::model::role_word::hp) == 9);
     OL_CHECK(protagonist.word(openlegend::model::role_word::mp) == 19);
     OL_CHECK(protagonist.word(openlegend::model::role_word::physical_power) == 29);
+
+    auto recovery_threshold_snapshot = load_baseline(root);
+    auto& recovery_threshold_role = recovery_threshold_snapshot.ranger.roles[0U];
+    recovery_threshold_role.set_word(openlegend::model::role_word::hurt, 50);
+    recovery_threshold_role.set_word(openlegend::model::role_word::poison, 50);
+    recovery_threshold_role.set_word(openlegend::model::role_word::hp, 2);
+    recovery_threshold_role.set_word(openlegend::model::role_word::mp, 2);
+    recovery_threshold_role.set_word(openlegend::model::role_word::physical_power, 2);
+    openlegend::random::LegacyRandom recovery_threshold_random{1U};
+    WorldSession recovery_threshold{
+        data_root, map, recovery_threshold_snapshot.ranger, recovery_threshold_random};
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        static_cast<void>(recovery_threshold.move(WorldDirection::left));
+    }
+    OL_CHECK(recovery_threshold_role.word(openlegend::model::role_word::hp) == 2);
+    OL_CHECK(recovery_threshold_role.word(openlegend::model::role_word::mp) == 2);
+    OL_CHECK(recovery_threshold_role.word(openlegend::model::role_word::physical_power) == 2);
+
+    auto recovery_floor_snapshot = load_baseline(root);
+    auto& recovery_floor_role = recovery_floor_snapshot.ranger.roles[0U];
+    recovery_floor_role.set_word(openlegend::model::role_word::hurt, 51);
+    recovery_floor_role.set_word(openlegend::model::role_word::poison, 0);
+    recovery_floor_role.set_word(openlegend::model::role_word::hp, 2);
+    recovery_floor_role.set_word(openlegend::model::role_word::mp, 1);
+    recovery_floor_role.set_word(openlegend::model::role_word::physical_power, 0);
+    openlegend::random::LegacyRandom recovery_floor_random{1U};
+    WorldSession recovery_floor{
+        data_root, map, recovery_floor_snapshot.ranger, recovery_floor_random};
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        static_cast<void>(recovery_floor.move(WorldDirection::left));
+    }
+    OL_CHECK(recovery_floor_role.word(openlegend::model::role_word::hp) == 1);
+    OL_CHECK(recovery_floor_role.word(openlegend::model::role_word::mp) == 1);
+    OL_CHECK(recovery_floor_role.word(openlegend::model::role_word::physical_power) == 0);
 
     auto poison_index_snapshot = load_baseline(root);
     poison_index_snapshot.ranger.header.set_team_member(

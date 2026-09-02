@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=142/349`，`unique_any=99/284`，`unique_all=98/284`
-当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=32` 世界移动每50次的队员体力恢复；状态为机器码独立审计中
-下一任务指针：`audit_order=32` 工作包提交、push、TG 与规则重读完成后，重新计算七表并进入首个未审行为类别
+已发布进度：`closure=143/349`，`unique_any=100/284`，`unique_all=99/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=7–8` 场景地图状态与事件状态载入组合；状态为等待B6工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=7–8` 收口后进入同表 `audit_order=9` 场景深度队列重建
 
 ## 0. 唯一正确性真值
 
@@ -268,9 +268,9 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 ### B6 · 世界地图
 
-状态：**已有实现，`implemented_pending_review`；真实运行回归待诊断**
+状态：**完成；`world-map-closure.tsv` 34/34均已完成最终汇编→C++ REVIEW**
 
-已有证据：`../research/evidence/world-map-1to1.md`、`../research/evidence/world-map-goldens.json`、`../research/ida/reports/Z_DAT.b6_world_xrefs.txt`。五层资源、128×128 cache、11/98 重载、陆地/船/海岸碰撞、双入口/IQ 条件、待机和 8 级半透明天气、indexed 世界绘制已实现；但真实 SDL 运行发现左右方向键状态索引接线错误，并收到人物移动后消失报告，因此此前“held-key SDL 会话链完成”和 B6 完成结论撤销。必须按第 0.1 节从机器码翻译表、平台事件、app 调用点、世界移动、深度排序、人物帧和最终呈现反复执行汇编→C++ REVIEW，收敛后才能恢复完成状态。
+已有证据：`../research/evidence/world-map-1to1.md`、`../research/evidence/world-map-goldens.json`、`../research/ida/reports/Z_DAT.b6_world_xrefs.txt`。五层资源与缓存、移动/碰撞/船只、场景入口与返回续行、待机/天气/50次移动衰减、深度队列、indexed绘制、SDL按键与最终呈现链均已从当前机器码入口反复复核并收敛。原版左右键映射、人物移动后保留渲染节点、船体双格、缓存边界、跨scene世界瞬态及slot-index中毒BUG均有定向回归；B6 oracle双次幂等并与仓库基线一致，逆向框架为0项world待审，Linux app Debug及Windows core/app × Debug/Release模块关闭矩阵通过。动态原程序差分统一登记为`blocked_runtime_oracle`。
 
 范围：`world`
 
