@@ -325,12 +325,61 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(ship.world_x() == 107);
     ship.sync_persistent_state(true);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 0);
+    OL_CHECK(ship.move(WorldDirection::right).kind == WorldStepKind::moved);
+    OL_CHECK(ship.world_x() == 108);
+    OL_CHECK(ship.rendered_player_frame() == 7438);
+    ship.sync_persistent_state(true);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_x) == 108);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_y) == 100);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_x_1) == 109);
+    OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_y_1) == 100);
     ship_snapshot.ranger.header.set_word(
         openlegend::model::header_word::face_towards,
         static_cast<std::int16_t>(WorldDirection::up));
     ship.sync_persistent_state(false);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::face_towards) ==
              static_cast<std::int16_t>(WorldDirection::up));
+
+    auto orthogonal_boarding_snapshot = load_baseline(root);
+    for (auto& scene : orthogonal_boarding_snapshot.ranger.scenes) {
+        for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+            scene.set_word(word, -1);
+        }
+    }
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_x, 109);
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_y, 99);
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::in_ship, 0);
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::ship_x, 109);
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::ship_y, 100);
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::ship_x_1, 108);
+    orthogonal_boarding_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::ship_y_1, 100);
+    openlegend::random::LegacyRandom orthogonal_boarding_random{1U};
+    WorldSession orthogonal_boarding{
+        data_root, map, orthogonal_boarding_snapshot.ranger, orthogonal_boarding_random};
+    OL_CHECK(orthogonal_boarding.move(WorldDirection::down).kind == WorldStepKind::moved);
+    OL_CHECK(orthogonal_boarding.world_x() == 109);
+    OL_CHECK(orthogonal_boarding.world_y() == 100);
+    OL_CHECK(orthogonal_boarding.rendered_player_frame() == 7454);
+    orthogonal_boarding.sync_persistent_state(true);
+    OL_CHECK(orthogonal_boarding_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_x) == 109);
+    OL_CHECK(orthogonal_boarding_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_y) == 100);
+    OL_CHECK(orthogonal_boarding_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_x_1) == 108);
+    OL_CHECK(orthogonal_boarding_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_y_1) == 101);
 
     auto forward_ship_snapshot = load_baseline(root);
     for (auto& scene : forward_ship_snapshot.ranger.scenes) {

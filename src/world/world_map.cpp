@@ -395,6 +395,7 @@ WorldStepResult WorldSession::complete_move(
         if (boarded_ship) {
             in_ship_ = true;
             ship_direction_ = direction;
+            ship_frame_offset_ = 0;
             can_move = true;
         } else {
             can_move = target_is_walkable(target_x, target_y, moved_coordinate);
@@ -453,8 +454,16 @@ WorldStepResult WorldSession::complete_move(
     if (in_ship_) {
         ship_x_ = world_x_;
         ship_y_ = world_y_;
-        ship_next_x_ = world_x_ + delta_x;
-        ship_next_y_ = world_y_ + delta_y;
+        if (boarded_ship) {
+            if (delta_x != 0) {
+                ship_next_x_ = world_x_ + delta_x;
+            } else {
+                ship_next_y_ = world_y_ + delta_y;
+            }
+        } else {
+            ship_next_x_ = world_x_ + delta_x;
+            ship_next_y_ = world_y_ + delta_y;
+        }
         ship_direction_ = direction;
     }
     reload_cache_if_needed(delta_y != 0);
