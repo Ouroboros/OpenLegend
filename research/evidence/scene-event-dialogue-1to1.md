@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`ed5f5bd3f09cfe485de10513987b5fb0c5b5fbe935f629f3f7493254c0aa1eaa`
+  - SHA256：`91e1318007c8fdb7e61d34abe4e1eb67f78a6dc623fd7c99a1704c59a00f93d1`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -134,7 +134,7 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 - 第三个 `'*'` 后恰逢记录终止时仍保留下一次终止符调用形成的空白末页；
 - 正文固定从面板 `(x+13,y+3)` 开始，ASCII 前进8像素、Big5前进16像素；
 - `sub_20615/sub_20663` 不裁剪横向越界，超过319的置位像素按线性 framebuffer 地址落到后续扫描线；
-- style0/1/4/5 绘制 `60×62` 混色头像框并按 head ID 直接读取 HDGRP，style2/3 不读取头像；
+- style0/1/4/5 绘制 `60×62` 混色头像框：十一段圆角区域共改写3,660像素，再按 head ID 直接读取HDGRP；style2/3不读取头像；
 - 每页作为同步 `SceneStepKind::dialogue` 返回，app 确认后才继续同一事件 PC；
 - 第一页直接叠到caller现有framebuffer，不预先重绘scene；同页宿主重画恢复冻结底图，第二页及以后才在每页首次绘制前执行一次裸scene重绘；
 - scene5真实script18两页frame分别固定为 `0x8d9f538b1482e95e`、`0x372fe4647b884671`，对应首屏0次与第二页2次RNG消费；
