@@ -55,6 +55,8 @@ public:
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
     [[nodiscard]] bool render_background(render::IndexedFramebuffer& framebuffer) const;
+    [[nodiscard]] bool render_new_game_wait(
+        render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render(
         const TitleMenuController& controller, render::IndexedFramebuffer& framebuffer) const;
 

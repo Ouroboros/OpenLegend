@@ -182,7 +182,6 @@ bool BasicUiRenderer::render_attributes(
     const TitleMenuRenderer& title,
     const model::RoleRecord& protagonist,
     const std::span<const std::uint8_t> name,
-    const bool cheat_active,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid() || !title.render_background(framebuffer) ||
         !framebuffer.fill_rectangle(0, 135, 320U, 65U, 0U)) {
@@ -199,12 +198,21 @@ bool BasicUiRenderer::render_attributes(
         append_number(line, protagonist.word(kAttributeLines[index].word), 2);
         const auto column = index % 4U;
         const auto row = index / 4U;
-        if (!draw_text(
+        const auto x = 10 + static_cast<int>(column) * 75;
+        const auto y = 152 + static_cast<int>(row) * 16;
+        const auto value = protagonist.word(kAttributeLines[index].word);
+        const auto highlighted =
+            (kAttributeLines[index].word == model::role_word::maximum_mp && value == 40) ||
+            (kAttributeLines[index].word == model::role_word::maximum_hp && value == 50) ||
+            (kAttributeLines[index].word != model::role_word::maximum_mp &&
+             kAttributeLines[index].word != model::role_word::maximum_hp && value == 30);
+        if ((highlighted && !framebuffer.fill_rectangle(x, y + 1, 64U, 15U, 21U)) ||
+            !draw_text(
                 framebuffer,
-                10 + static_cast<int>(column) * 75,
-                152 + static_cast<int>(row) * 16,
+                x,
+                y,
                 line,
-                cheat_active ? 0x1F1DU : 0x1715U)) {
+                highlighted ? 0x1F1DU : 0x1715U)) {
             return false;
         }
     }

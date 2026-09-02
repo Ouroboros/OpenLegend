@@ -193,6 +193,7 @@ private:
     LegacyGameView load_return_view_{LegacyGameView::title};
     std::optional<model::GameSnapshot> pending_loaded_snapshot_;
     std::optional<ui::TitleResult> pending_title_result_;
+    bool pending_new_game_wait_present_{};
     bool pending_new_game_scene_start_{};
     std::optional<std::int16_t> scene_request_;
     std::optional<std::int16_t> battle_request_;
@@ -208,7 +209,9 @@ private:
     std::int16_t periodic_counter_{};
     bool scene_effect_presented_{};
     bool world_step_processed_{};
+    bool pending_world_exit_{};
     std::optional<scene::SceneDirection> scene_direction_input_;
+    std::optional<std::uint8_t> pending_scene_load_slot_;
     std::optional<world::WorldDirection> scene_entry_world_direction_;
     std::optional<world::WorldMoveContinuation> world_move_continuation_;
     bool world_scene_transition_pending_{};

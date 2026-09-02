@@ -113,6 +113,13 @@ bool TitleMenuRenderer::render_background(render::IndexedFramebuffer& framebuffe
     return true;
 }
 
+bool TitleMenuRenderer::render_new_game_wait(
+    render::IndexedFramebuffer& framebuffer) const {
+    return render_background(framebuffer) &&
+        framebuffer.fill_rectangle(0, 135, 320U, 65U, 0U) &&
+        draw_legacy_id(framebuffer, 16U, 120, 160);
+}
+
 bool TitleMenuRenderer::render(
     const TitleMenuController& controller, render::IndexedFramebuffer& framebuffer) const {
     if (!render_background(framebuffer)) {

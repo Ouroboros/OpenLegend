@@ -463,9 +463,10 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = session.resume(SceneResponse::acknowledge, 0x20);
     OL_CHECK(result.kind == SceneStepKind::fade_to_black);
     result = session.resume(SceneResponse::acknowledge);
-    OL_CHECK(result.kind == SceneStepKind::load_slot && result.save_slot == 2);
-    result = session.resume(SceneResponse::cancel);
-    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 2);
+    OL_CHECK(result.kind == SceneStepKind::fade_to_black);
+    OL_CHECK(session.exit_transition_pending());
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::return_world && result.save_slot == 2);
 
     auto quit_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom quit_random{1U};

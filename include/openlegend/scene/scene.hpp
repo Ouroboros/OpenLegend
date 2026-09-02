@@ -280,7 +280,8 @@ private:
     };
 
     struct LoadMenuState {
-        enum class Phase { fade_in, menu, load_slot_fade, confirm } phase{Phase::fade_in};
+        enum class Phase { fade_in, menu, load_slot_fade, scene_exit_fade, confirm }
+            phase{Phase::fade_in};
         std::int16_t selection{};
         std::int16_t selected_slot{-1};
     };
@@ -501,6 +502,7 @@ private:
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
     std::optional<LoadMenuState> load_menu_state_;
+    std::optional<std::int16_t> pending_load_slot_;
     std::optional<DeathMenuState> death_menu_state_;
     std::optional<EndingState> ending_state_;
     std::optional<TournamentTrialState> tournament_trial_state_;

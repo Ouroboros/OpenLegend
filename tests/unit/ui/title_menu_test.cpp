@@ -2,12 +2,14 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <string_view>
 #include <vector>
 
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/ui/basic_ui_renderer.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
@@ -53,6 +55,38 @@ namespace {
     return true;
 }
 
+[[nodiscard]] bool install_opcode24_initial_script(const std::filesystem::path& root) {
+    std::vector<std::uint8_t> index;
+    std::vector<std::uint8_t> group;
+    index.reserve(openlegend::scene::kEventScriptCount * 4U);
+    const auto append_i16 = [&group](const std::int16_t value) {
+        const auto bits = static_cast<std::uint16_t>(value);
+        group.push_back(static_cast<std::uint8_t>(bits & 0xFFU));
+        group.push_back(static_cast<std::uint8_t>(bits >> 8U));
+    };
+    const auto append_u32 = [&index](const std::uint32_t value) {
+        for (unsigned shift = 0U; shift < 32U; shift += 8U) {
+            index.push_back(static_cast<std::uint8_t>((value >> shift) & 0xFFU));
+        }
+    };
+    for (std::size_t script = 0U; script < openlegend::scene::kEventScriptCount; ++script) {
+        if (script == 691U) {
+            append_i16(24);
+        }
+        append_i16(-1);
+        append_u32(static_cast<std::uint32_t>(group.size()));
+    }
+    const auto write = [](const std::filesystem::path& path,
+                          const std::span<const std::uint8_t> bytes) {
+        std::ofstream output{path, std::ios::binary | std::ios::trunc};
+        output.write(
+            reinterpret_cast<const char*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size()));
+        return output.good();
+    };
+    return write(root / "KDEF.IDX", index) && write(root / "KDEF.GRP", group);
+}
+
 void advance_rendered_frames(
     openlegend::app::LegacyGameRuntime& game, const std::size_t frame_count) {
     for (std::size_t frame = 0U; frame < frame_count; ++frame) {
@@ -91,14 +125,16 @@ void finish_new_game_scene_transition(openlegend::app::LegacyGameRuntime& game) 
 
     OL_CHECK(game.view() == LegacyGameView::attributes);
     OL_CHECK(game.render());
-    const auto attribute_pixels = fnv1a64(game.framebuffer().pixels());
+    const auto wait_pixels = fnv1a64(game.framebuffer().pixels());
+    OL_CHECK(wait_pixels == 0x7333253CA7400DE6ULL);
     OL_CHECK(
         game.handle_key(0x0DU, false, false) ==
         LegacyKeyStateReset::none);
     OL_CHECK(game.view() == LegacyGameView::attributes);
+    game.advance();
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
         OL_CHECK(game.render());
-        OL_CHECK(fnv1a64(game.framebuffer().pixels()) == attribute_pixels);
+        OL_CHECK(fnv1a64(game.framebuffer().pixels()) == wait_pixels);
         game.advance();
     }
     OL_CHECK(std::all_of(
@@ -538,8 +574,16 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(persistence::write_numbered_slot(
         world_fixture, persistence::SaveSlot::one, *accepted_new_game));
 
+    auto system_exit_snapshot = *accepted_new_game;
+    system_exit_snapshot.ranger.roles[0U].set_word(
+        model::role_word::physical_power, 50);
+    const auto system_exit_fixture =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-main-system-exit";
+    OL_CHECK(prepare_runtime_fixture(data_root, system_exit_fixture));
+    OL_CHECK(persistence::write_numbered_slot(
+        system_exit_fixture, persistence::SaveSlot::one, system_exit_snapshot));
     {
-        app::LegacyGameRuntime system_exit{world_fixture, 0U};
+        app::LegacyGameRuntime system_exit{system_exit_fixture, 0U};
         finish_title_startup(system_exit);
         system_exit.handle_key(0x98U, false, false);
         system_exit.handle_key(0x0DU, false, false);
@@ -549,6 +593,13 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         system_exit.finish_presented_tick();
         system_exit.advance();
         finish_numbered_load_transition(system_exit, app::LegacyGameView::world);
+        OL_CHECK(system_exit.game_state().ranger()->roles[0U].word(
+                     model::role_word::physical_power) == 50);
+        for (int tick = 0; tick < 199; ++tick) {
+            system_exit.advance();
+        }
+        OL_CHECK(system_exit.game_state().ranger()->roles[0U].word(
+                     model::role_word::physical_power) == 51);
         OL_CHECK(system_exit.handle_world_input(false, false, false, false, true));
         system_exit.handle_key(0x9EU, false, false);
         system_exit.handle_key(0x0DU, false, false);
@@ -561,6 +612,14 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(
             system_exit.handle_key('Y', false, false) ==
             app::LegacyKeyStateReset::none);
+        OL_CHECK(system_exit.running());
+        OL_CHECK(system_exit.view() == app::LegacyGameView::world);
+        OL_CHECK(!system_exit.handle_world_input(true, false, false, false, false));
+        system_exit.advance();
+        OL_CHECK(system_exit.game_state().ranger()->roles[0U].word(
+                     model::role_word::physical_power) == 51);
+        OL_CHECK(system_exit.render());
+        system_exit.finish_presented_tick();
         OL_CHECK(!system_exit.running());
         OL_CHECK(system_exit.fade_music_on_exit());
         OL_CHECK(!system_exit.ending_complete());
@@ -1303,6 +1362,60 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(load_game.render());
 }
 
+void check_scene_load_runtime(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-opcode24-runtime";
+    OL_CHECK(prepare_runtime_fixture(data_root, output_root));
+    const auto baseline = persistence::load_baseline(data_root);
+    OL_CHECK(static_cast<bool>(baseline));
+    if (!baseline.snapshot.has_value()) {
+        return;
+    }
+    auto loaded_snapshot = *baseline.snapshot;
+    loaded_snapshot.ranger.roles[0U].set_word(model::role_word::morality, 77);
+    OL_CHECK(persistence::write_numbered_slot(
+        output_root, persistence::SaveSlot::one, loaded_snapshot));
+    OL_CHECK(install_opcode24_initial_script(output_root));
+
+    app::LegacyGameRuntime game{output_root, 0U};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    game.handle_key(0x20U, true, false);
+    game.handle_key('A', false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key('Y', false, false);
+    finish_new_game_scene_transition(game);
+
+    advance_rendered_frames(game, 65U);
+    advance_rendered_frames(game, 65U);
+    OL_CHECK(game.view() == app::LegacyGameView::scene);
+    OL_CHECK(game.render());
+    const auto menu_hash = fnv1a64(game.framebuffer().pixels());
+    OL_CHECK(menu_hash == 0x65C8DA776EAC540FULL);
+    OL_CHECK(game.game_state().ranger()->roles[0U].word(model::role_word::morality) != 77);
+
+    game.handle_key(0x0DU, false, false);
+    advance_rendered_frames(game, 64U);
+    OL_CHECK(game.view() == app::LegacyGameView::scene);
+    OL_CHECK(game.take_clear_scene_exit_key_states_request());
+    OL_CHECK(game.render());
+    OL_CHECK(fnv1a64(game.framebuffer().pixels()) == menu_hash);
+    advance_rendered_frames(game, 64U);
+    OL_CHECK(game.view() == app::LegacyGameView::world);
+    OL_CHECK(game.game_state().ranger()->roles[0U].word(model::role_word::morality) != 77);
+
+    finish_world_scene_return(game);
+    OL_CHECK(game.render());
+    OL_CHECK(fnv1a64(game.framebuffer().pixels()) == 0xDD14FCC6528CAB25ULL);
+    OL_CHECK(game.game_state().ranger()->roles[0U].word(model::role_word::morality) != 77);
+    finish_numbered_load_transition(game, app::LegacyGameView::world);
+    OL_CHECK(game.game_state().ranger()->roles[0U].word(model::role_word::morality) == 77);
+}
+
 void check_runtime_persistence(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
@@ -1461,6 +1574,41 @@ void check_renderer(const std::filesystem::path& data_root) {
     menu.show_please_wait();
     OL_CHECK(renderer.render(menu, framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x7333253CA7400DE6ULL);
+    OL_CHECK(renderer.render_new_game_wait(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x7333253CA7400DE6ULL);
+
+    ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
+    OL_CHECK(basic_renderer.valid());
+    model::RoleRecord protagonist;
+    constexpr std::array<std::uint8_t, 1> name{'A'};
+    OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));
+    const std::vector<std::uint8_t> normal_attributes{
+        framebuffer.pixels().begin(), framebuffer.pixels().end()};
+    const auto check_highlight_cell = [&normal_attributes](
+                                          const std::span<const std::uint8_t> highlighted,
+                                          const int expected_x) {
+        std::size_t changed = 0U;
+        bool confined = highlighted.size() == normal_attributes.size();
+        for (std::size_t index = 0U; confined && index < highlighted.size(); ++index) {
+            if (highlighted[index] == normal_attributes[index]) {
+                continue;
+            }
+            ++changed;
+            const auto x = static_cast<int>(index % 320U);
+            const auto y = static_cast<int>(index / 320U);
+            confined = x >= expected_x && x < expected_x + 65 && y >= 152 && y < 168;
+        }
+        OL_CHECK(confined);
+        OL_CHECK(changed > 500U);
+    };
+
+    protagonist.set_word(model::role_word::maximum_mp, 40);
+    OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));
+    check_highlight_cell(framebuffer.pixels(), 10);
+    protagonist.set_word(model::role_word::maximum_mp, 0);
+    protagonist.set_word(model::role_word::attack, 30);
+    OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));
+    check_highlight_cell(framebuffer.pixels(), 85);
 }
 
 }  // namespace
@@ -1472,6 +1620,7 @@ int main() {
     check_attribute_controller();
     check_name_editor(data_root);
     check_game_runtime(data_root);
+    check_scene_load_runtime(data_root);
     check_runtime_persistence(data_root);
     check_renderer(data_root);
     return openlegend::test::failures == 0 ? 0 : 1;

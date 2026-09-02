@@ -25,7 +25,8 @@
     "load_slot_0": "c6475eb2b76d4457",
     "load_slot_1": "7d49db972e535393",
     "load_slot_2": "b76c74065386ab63",
-    "please_wait": "7333253ca7400de6"
+    "please_wait": "7333253ca7400de6",
+    "new_game_wait": "7333253ca7400de6"
   },
   "runtime_ui_regression_fnv1a64": {
     "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",

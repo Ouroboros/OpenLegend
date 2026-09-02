@@ -85,6 +85,14 @@ def title_wait_screen(background: bytes, frames: list[bytes]) -> bytearray:
     return pixels
 
 
+def new_game_wait_screen(background: bytes, frames: list[bytes]) -> bytearray:
+    pixels = bytearray(background)
+    for y in range(135, 200):
+        pixels[y * 320 : (y + 1) * 320] = bytes([0]) * 320
+    draw_sprite(pixels, frames[8], 120, 160)
+    return pixels
+
+
 class LegacyRandom:
     def __init__(self, state: int):
         self.state = state & 0xFFFFFFFF
@@ -172,6 +180,7 @@ def main() -> int:
             "load_slot_1": fnv1a64(title_load_screen(title_big, frames, 1)),
             "load_slot_2": fnv1a64(title_load_screen(title_big, frames, 2)),
             "please_wait": fnv1a64(title_wait_screen(title_big, frames)),
+            "new_game_wait": fnv1a64(new_game_wait_screen(title_big, frames)),
         },
         "runtime_ui_regression_fnv1a64": {
             "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",

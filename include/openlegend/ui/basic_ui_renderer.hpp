@@ -31,7 +31,6 @@ public:
         const TitleMenuRenderer& title,
         const model::RoleRecord& protagonist,
         std::span<const std::uint8_t> name,
-        bool cheat_active,
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_game_menu(
         const GameMenuController& menu,

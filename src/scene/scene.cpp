@@ -743,6 +743,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         weather_enabled_ = false;
         weather_active_ = false;
         pending_ = current_result(SceneStepKind::return_world);
+        if (pending_load_slot_.has_value()) {
+            pending_.save_slot = *pending_load_slot_;
+            pending_load_slot_.reset();
+            load_menu_state_.reset();
+        }
         return pending_;
     }
     if (previous_kind == SceneStepKind::fade_from_black &&
@@ -2331,12 +2336,14 @@ SceneStepResult SceneSession::advance_load_menu(const int translated_key) {
     if (state.phase == LoadMenuState::Phase::fade_in) {
         state.phase = LoadMenuState::Phase::menu;
     } else if (state.phase == LoadMenuState::Phase::load_slot_fade) {
-        const auto selected_slot = state.selected_slot;
-        state.phase = LoadMenuState::Phase::menu;
+        state.phase = LoadMenuState::Phase::scene_exit_fade;
+        pending_load_slot_ = state.selected_slot;
         event_active_ = false;
-        pending_ = current_result(SceneStepKind::load_slot);
-        pending_.save_slot = selected_slot;
+        continuation_ = PendingContinuation::scene_exit;
+        pending_ = current_result(SceneStepKind::fade_to_black);
         return pending_;
+    } else if (state.phase == LoadMenuState::Phase::scene_exit_fade) {
+        return current_result(SceneStepKind::stay);
     } else if (state.phase == LoadMenuState::Phase::confirm) {
         if (translated_key == static_cast<int>('Y')) {
             event_active_ = false;
