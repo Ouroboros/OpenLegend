@@ -153,12 +153,14 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         std::array<std::int16_t, 2>{358, 234},
         std::array<std::int16_t, 2>{357, 234},
         std::array<std::int16_t, 2>{357, 235}};
+    constexpr std::array<std::int16_t, 4> movement_frames{5018, 5006, 5036, 5052};
     for (std::size_t index = 0U; index < directions.size(); ++index) {
         const auto result = session.move(directions[index]);
         OL_CHECK(result.kind == WorldStepKind::moved);
         OL_CHECK(result.scene_id == -1);
         OL_CHECK(result.world_x == positions[index][0]);
         OL_CHECK(result.world_y == positions[index][1]);
+        OL_CHECK(session.player_frame() == movement_frames[index]);
         OL_CHECK(session.render(framebuffer));
         OL_CHECK(sprite_has_visible_pixel(
             sprites, session.player_frame(), framebuffer, 145, 117));
@@ -354,6 +356,92 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     backward_ship.sync_persistent_state(true);
     OL_CHECK(backward_ship_snapshot.ranger.header.word(
                  openlegend::model::header_word::in_ship) == 0);
+
+    auto vertical_scene_snapshot = load_baseline(root);
+    for (auto& scene : vertical_scene_snapshot.ranger.scenes) {
+        for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+            scene.set_word(word, -1);
+        }
+    }
+    vertical_scene_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_x, 11);
+    vertical_scene_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_y, 100);
+    auto& vertical_scene_entry = vertical_scene_snapshot.ranger.scenes[0];
+    vertical_scene_entry.set_word(
+        openlegend::model::scene_metadata_word::entrance_condition, 0);
+    vertical_scene_entry.set_word(
+        openlegend::model::scene_metadata_word::main_entrance_x_1, 11);
+    vertical_scene_entry.set_word(
+        openlegend::model::scene_metadata_word::main_entrance_y_1, 101);
+    openlegend::random::LegacyRandom vertical_scene_random{1U};
+    WorldSession vertical_scene{
+        data_root, map, vertical_scene_snapshot.ranger, vertical_scene_random};
+    const auto vertical_scene_result = vertical_scene.move(WorldDirection::down);
+    OL_CHECK(vertical_scene_result.kind == WorldStepKind::enter_scene);
+    OL_CHECK(vertical_scene_result.scene_id == 0);
+    OL_CHECK(vertical_scene_result.continuation ==
+             (std::optional{WorldMoveContinuation{WorldDirection::down, 11, 101}}));
+    vertical_scene.restore_direction_after_scene(WorldDirection::up);
+    const auto resumed_vertical_scene =
+        vertical_scene.resume_move_after_scene(*vertical_scene_result.continuation);
+    OL_CHECK(resumed_vertical_scene.kind == WorldStepKind::moved);
+    OL_CHECK(resumed_vertical_scene.world_x == 11);
+    OL_CHECK(resumed_vertical_scene.world_y == 101);
+    OL_CHECK(vertical_scene.direction() == WorldDirection::up);
+    OL_CHECK(vertical_scene.cache().origin_y() == 36);
+    for (int step = 0; step < 34; ++step) {
+        OL_CHECK(vertical_scene.move(WorldDirection::down).kind == WorldStepKind::moved);
+    }
+    OL_CHECK(vertical_scene.world_y() == 135);
+    OL_CHECK(vertical_scene.cache().origin_y() == 71);
+    OL_CHECK(vertical_scene.cache_y() == 64);
+
+    auto downward_ship_snapshot = load_baseline(root);
+    for (auto& scene : downward_ship_snapshot.ranger.scenes) {
+        for (const auto word : {openlegend::model::scene_metadata_word::main_entrance_x_1,
+                                openlegend::model::scene_metadata_word::main_entrance_y_1,
+                                openlegend::model::scene_metadata_word::main_entrance_x_2,
+                                openlegend::model::scene_metadata_word::main_entrance_y_2}) {
+            scene.set_word(word, -1);
+        }
+    }
+    downward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_x, 11);
+    downward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_y, 172);
+    downward_ship_snapshot.ranger.header.set_word(openlegend::model::header_word::in_ship, 1);
+    openlegend::random::LegacyRandom downward_ship_random{1U};
+    WorldSession downward_ship{
+        data_root, map, downward_ship_snapshot.ranger, downward_ship_random};
+    OL_CHECK(downward_ship.move(WorldDirection::down).kind == WorldStepKind::moved);
+    OL_CHECK(downward_ship.world_y() == 173);
+    downward_ship.sync_persistent_state(true);
+    OL_CHECK(downward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(downward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_y) == 173);
+    OL_CHECK(downward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_y_1) == 174);
+
+    auto upward_ship_snapshot = downward_ship_snapshot;
+    upward_ship_snapshot.ranger.header.set_word(
+        openlegend::model::header_word::main_map_y, 174);
+    openlegend::random::LegacyRandom upward_ship_random{1U};
+    WorldSession upward_ship{
+        data_root, map, upward_ship_snapshot.ranger, upward_ship_random};
+    OL_CHECK(upward_ship.move(WorldDirection::up).kind == WorldStepKind::stay);
+    OL_CHECK(upward_ship.world_y() == 174);
+    upward_ship.sync_persistent_state(true);
+    OL_CHECK(upward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::in_ship) == 1);
+    OL_CHECK(upward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_y) == 174);
+    OL_CHECK(upward_ship_snapshot.ranger.header.word(
+                 openlegend::model::header_word::ship_y_1) == 173);
 }
 
 void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
