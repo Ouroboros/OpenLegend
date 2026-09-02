@@ -1685,6 +1685,8 @@
         "delay": 99
       },
       "word7_render_frame_fnv1a64": "0x606eaa33da727537",
+      "entry_scan_displayed_picture": 104,
+      "entry_scanned_word7_render_frame_fnv1a64": "0x3051f24e11c08dc5",
       "interaction_present": {
         "direction": 1,
         "player": [

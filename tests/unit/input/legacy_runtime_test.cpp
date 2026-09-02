@@ -132,6 +132,27 @@ void run_keyboard_tests() {
     OL_CHECK(!arrows.down(0x9BU));
     OL_CHECK(!arrows.down(0x9DU));
 
+    LegacyKeyboard consumed_repeat;
+    consumed_repeat.handle_host_key(HostKey::down, true);
+    OL_CHECK(consumed_repeat.last_key() == openlegend::input::kLegacyDownKey);
+    consumed_repeat.clear_state(openlegend::input::kLegacyDownKey);
+    consumed_repeat.clear_last_key();
+    consumed_repeat.handle_host_key(HostKey::down, true);
+    OL_CHECK(consumed_repeat.last_key() == openlegend::input::kLegacyDownKey);
+    OL_CHECK(consumed_repeat.state(openlegend::input::kLegacyDownKey) == 3U);
+
+    LegacyKeyboard confirmation_states;
+    confirmation_states.handle_host_key(HostKey::enter, true);
+    confirmation_states.handle_host_key(HostKey::space, true);
+    confirmation_states.handle_host_key(HostKey::insert, true);
+    for (const auto translated_key : openlegend::input::kLegacyConfirmationKeys) {
+        OL_CHECK(confirmation_states.down(translated_key));
+    }
+    confirmation_states.clear_confirmation_states();
+    for (const auto translated_key : openlegend::input::kLegacyConfirmationKeys) {
+        OL_CHECK(!confirmation_states.down(translated_key));
+    }
+
     OL_CHECK(openlegend::input::kLegacyWorldLeftKeys ==
              (std::array<std::uint8_t, 2>{0x9AU, 0x9DU}));
     OL_CHECK(openlegend::input::kLegacyWorldUpKeys ==
@@ -173,6 +194,40 @@ void run_keyboard_tests() {
     world_priority.handle_host_key(HostKey::home, true);
     OL_CHECK(world_priority.state(0x9DU) == 3U);
     OL_CHECK(world_priority.world_direction() == LegacyWorldDirectionInput::left);
+
+    LegacyKeyboard all_directions;
+    constexpr std::array<HostKey, 8> all_direction_keys{
+        HostKey::left,
+        HostKey::home,
+        HostKey::up,
+        HostKey::page_up,
+        HostKey::end,
+        HostKey::down,
+        HostKey::page_down,
+        HostKey::right};
+    for (const auto key : all_direction_keys) {
+        all_directions.handle_host_key(key, true);
+    }
+    for (const auto translated_keys : {
+             openlegend::input::kLegacyWorldLeftKeys,
+             openlegend::input::kLegacyWorldUpKeys,
+             openlegend::input::kLegacyWorldDownKeys,
+             openlegend::input::kLegacyWorldRightKeys}) {
+        OL_CHECK(all_directions.down(translated_keys[0]));
+        OL_CHECK(all_directions.down(translated_keys[1]));
+    }
+    OL_CHECK(all_directions.last_key() != 0U);
+    all_directions.clear_scene_exit_key_states();
+    OL_CHECK(all_directions.last_key() == 0U);
+    OL_CHECK(all_directions.world_direction() == LegacyWorldDirectionInput::none);
+    for (const auto translated_keys : {
+             openlegend::input::kLegacyWorldLeftKeys,
+             openlegend::input::kLegacyWorldUpKeys,
+             openlegend::input::kLegacyWorldDownKeys,
+             openlegend::input::kLegacyWorldRightKeys}) {
+        OL_CHECK(!all_directions.down(translated_keys[0]));
+        OL_CHECK(!all_directions.down(translated_keys[1]));
+    }
 
     LegacyKeyboard print_screen;
     print_screen.handle_host_key(HostKey::print_screen, true);

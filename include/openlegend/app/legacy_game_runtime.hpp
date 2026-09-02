@@ -27,6 +27,13 @@ namespace openlegend::app {
 
 [[nodiscard]] std::string_view ending_terminal_message() noexcept;
 
+enum class LegacyKeyStateReset : std::uint8_t {
+    none,
+    edge,
+    translated,
+    confirmation_group,
+};
+
 enum class LegacyGameView {
     title,
     name_entry,
@@ -44,7 +51,7 @@ public:
     LegacyGameRuntime(std::filesystem::path data_root, std::uint32_t random_seed);
 
     void advance(std::uint32_t bios_tick = 0U);
-    void handle_key(
+    LegacyKeyStateReset handle_key(
         std::uint8_t translated_key,
         bool control_down,
         bool shift_down,
@@ -61,6 +68,7 @@ public:
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
     [[nodiscard]] bool running() const noexcept { return view_ != LegacyGameView::exited; }
     [[nodiscard]] bool ending_complete() const noexcept { return ending_complete_; }
+    [[nodiscard]] bool fade_music_on_exit() const noexcept { return fade_music_on_exit_; }
     [[nodiscard]] LegacyGameView view() const noexcept { return view_; }
     [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
     [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
@@ -73,6 +81,11 @@ public:
     }
     [[nodiscard]] std::vector<scene::SceneAudioCommand> take_scene_audio_commands();
     [[nodiscard]] std::vector<battle::BattleAudioCommand> take_battle_audio_commands();
+    bool take_clear_scene_exit_key_states_request() noexcept {
+        const auto requested = clear_scene_exit_key_states_requested_;
+        clear_scene_exit_key_states_requested_ = false;
+        return requested;
+    }
 
 private:
     enum class PendingIo {
@@ -86,6 +99,21 @@ private:
         present,
         fade_from_black,
         fade_to_black,
+    };
+
+    enum class LoadTransitionPhase {
+        none,
+        fade_to_black,
+        first_black_present,
+        second_black_present,
+        fade_from_black,
+    };
+
+    enum class TitleStartupPhase {
+        none,
+        fade_to_black,
+        black_menu_present,
+        fade_from_black,
     };
 
     enum class WorldMenuEventPhase {
@@ -111,6 +139,7 @@ private:
 
     void begin_new_game();
     void perform_pending_io();
+    [[nodiscard]] bool activate_pending_load();
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
     [[nodiscard]] bool start_scene(
         std::int16_t scene_id,
@@ -159,6 +188,12 @@ private:
     PendingIo pending_io_{PendingIo::none};
     bool pending_io_wait_presented_{};
     std::uint8_t pending_slot_{};
+    LoadTransitionPhase load_transition_phase_{LoadTransitionPhase::none};
+    TitleStartupPhase title_startup_phase_{TitleStartupPhase::none};
+    LegacyGameView load_return_view_{LegacyGameView::title};
+    std::optional<model::GameSnapshot> pending_loaded_snapshot_;
+    std::optional<ui::TitleResult> pending_title_result_;
+    bool pending_new_game_scene_start_{};
     std::optional<std::int16_t> scene_request_;
     std::optional<std::int16_t> battle_request_;
     std::optional<std::uint16_t> pending_menu_item_slot_;
@@ -187,7 +222,10 @@ private:
     bool leave_protagonist_notice_pending_{};
     bool scene_interact_requested_{};
     bool scene_ui_requested_{};
+    bool scene_idle_skip_requested_{};
+    bool clear_scene_exit_key_states_requested_{};
     bool ending_complete_{};
+    bool fade_music_on_exit_{};
     std::vector<std::uint8_t> visible_error_;
     std::string startup_error_;
 };

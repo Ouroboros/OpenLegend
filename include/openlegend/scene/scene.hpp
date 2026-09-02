@@ -159,7 +159,8 @@ public:
     [[nodiscard]] SceneStepResult tick(
         std::optional<SceneDirection> direction,
         bool interact_requested,
-        bool ui_requested);
+        bool ui_requested,
+        bool skip_player_idle = false);
     [[nodiscard]] SceneStepResult move(SceneDirection direction);
     [[nodiscard]] SceneStepResult interact();
     [[nodiscard]] SceneStepResult use_item(std::int16_t item_id);
@@ -188,6 +189,7 @@ public:
     [[nodiscard]] std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
     [[nodiscard]] std::int16_t player_frame() const noexcept;
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
+    [[nodiscard]] bool exit_transition_pending() const noexcept;
     [[nodiscard]] std::span<const std::uint8_t> pending_text() const noexcept {
         return pending_text_;
     }
@@ -433,6 +435,9 @@ private:
         std::int16_t event_y,
         std::int16_t item_id);
     void clear_event() noexcept;
+    void advance_event_pictures();
+    void player_idle_tick();
+    void cancel_player_idle_animation() noexcept;
 
     const resource::DataRoot& data_root_;
     model::GameSnapshot& snapshot_;
@@ -461,8 +466,14 @@ private:
     int view_origin_y_{};
     SceneDirection direction_{SceneDirection::up};
     std::int16_t walk_frame_offset_{};
+    std::int16_t player_idle_counter_{};
+    std::int16_t idle_animation_counter_{};
+    std::int16_t idle_animation_delay_{};
+    std::int16_t idle_animation_step_{};
+    std::int16_t physical_power_counter_{};
     std::int16_t animation_counter_{};
     std::int16_t periodic_counter_{};
+    bool idle_animation_{};
     bool weather_enabled_{};
     bool weather_active_{};
     std::array<WeatherParticle, 3> weather_{};

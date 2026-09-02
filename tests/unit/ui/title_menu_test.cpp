@@ -61,6 +61,89 @@ void advance_rendered_frames(
     }
 }
 
+void finish_title_startup(openlegend::app::LegacyGameRuntime& game) {
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
+    advance_rendered_frames(game, 64U);
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
+    OL_CHECK(game.render());
+    OL_CHECK(fnv1a64(game.framebuffer().pixels()) == 0x86690E3B3B68FE20ULL);
+    OL_CHECK(std::all_of(
+        game.framebuffer().palette().begin(),
+        game.framebuffer().palette().end(),
+        [](const auto& color) {
+            return color.red == 0U && color.green == 0U && color.blue == 0U;
+        }));
+    game.advance();
+    advance_rendered_frames(game, 65U);
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
+}
+
+void finish_title_confirmation(openlegend::app::LegacyGameRuntime& game) {
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+}
+
+void finish_new_game_scene_transition(openlegend::app::LegacyGameRuntime& game) {
+    using openlegend::app::LegacyGameView;
+    using openlegend::app::LegacyKeyStateReset;
+
+    OL_CHECK(game.view() == LegacyGameView::attributes);
+    OL_CHECK(game.render());
+    const auto attribute_pixels = fnv1a64(game.framebuffer().pixels());
+    OL_CHECK(
+        game.handle_key(0x0DU, false, false) ==
+        LegacyKeyStateReset::none);
+    OL_CHECK(game.view() == LegacyGameView::attributes);
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        OL_CHECK(game.render());
+        OL_CHECK(fnv1a64(game.framebuffer().pixels()) == attribute_pixels);
+        game.advance();
+    }
+    OL_CHECK(std::all_of(
+        game.framebuffer().palette().begin(),
+        game.framebuffer().palette().end(),
+        [](const auto& color) {
+            return color.red == 0U && color.green == 0U && color.blue == 0U;
+        }));
+    OL_CHECK(game.view() == LegacyGameView::scene);
+}
+
+void finish_numbered_load_transition(
+    openlegend::app::LegacyGameRuntime& game,
+    const openlegend::app::LegacyGameView destination) {
+    advance_rendered_frames(game, 64U);
+    OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+    OL_CHECK(game.game_state().loaded());
+
+    std::uint64_t first_black_pixels = 0U;
+    for (std::size_t present = 0U; present < 2U; ++present) {
+        OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+        OL_CHECK(game.render());
+        OL_CHECK(std::all_of(
+            game.framebuffer().palette().begin(),
+            game.framebuffer().palette().end(),
+            [](const auto& color) {
+                return color.red == 0U && color.green == 0U && color.blue == 0U;
+            }));
+        const auto pixels = fnv1a64(game.framebuffer().pixels());
+        if (present == 0U) {
+            first_black_pixels = pixels;
+        } else {
+            OL_CHECK(pixels == first_black_pixels);
+        }
+        game.advance();
+    }
+
+    for (std::size_t frame = 0U; frame < 65U; ++frame) {
+        OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+        OL_CHECK(game.render());
+        game.advance();
+    }
+    OL_CHECK(game.view() == destination);
+}
+
 void finish_world_scene_transition(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.render());
     game.finish_presented_tick();
@@ -83,6 +166,12 @@ void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
 void finish_world_scene_return(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
     OL_CHECK(game.render());
+    OL_CHECK(std::all_of(
+        game.framebuffer().palette().begin(),
+        game.framebuffer().palette().end(),
+        [](const auto& color) {
+            return color.red == 0U && color.green == 0U && color.blue == 0U;
+        }));
     game.finish_presented_tick();
     game.advance();
     for (std::size_t frame = 0U; frame < 65U; ++frame) {
@@ -388,14 +477,32 @@ void check_name_editor(const std::filesystem::path& data_root) {
 void check_game_runtime(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
+    {
+        app::LegacyGameRuntime title_exit{data_root, 0U};
+        OL_CHECK(title_exit.valid());
+        finish_title_startup(title_exit);
+        OL_CHECK(!title_exit.fade_music_on_exit());
+        OL_CHECK(
+            title_exit.handle_key(0x9EU, false, false) ==
+            app::LegacyKeyStateReset::translated);
+        OL_CHECK(
+            title_exit.handle_key(0x0DU, false, false) ==
+            app::LegacyKeyStateReset::confirmation_group);
+        OL_CHECK(!title_exit.running());
+        OL_CHECK(!title_exit.fade_music_on_exit());
+        OL_CHECK(!title_exit.ending_complete());
+    }
+
     std::optional<model::GameSnapshot> accepted_new_game;
     {
         app::LegacyGameRuntime intro_game{data_root, 0U};
         OL_CHECK(intro_game.valid());
+        finish_title_startup(intro_game);
         OL_CHECK(intro_game.view() == app::LegacyGameView::title);
         OL_CHECK(intro_game.render());
         OL_CHECK(fnv1a64(intro_game.framebuffer().pixels()) == 0x86690E3B3B68FE20ULL);
         intro_game.handle_key(0x0DU, false, false);
+        finish_title_confirmation(intro_game);
         OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
         OL_CHECK(intro_game.game_state().loaded());
         OL_CHECK(intro_game.render());
@@ -405,6 +512,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
         OL_CHECK(intro_game.render());
         intro_game.handle_key('Y', false, false);
+        OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
+        finish_new_game_scene_transition(intro_game);
         OL_CHECK(intro_game.view() == app::LegacyGameView::scene);
         const auto* ranger = intro_game.game_state().ranger();
         OL_CHECK(ranger != nullptr);
@@ -429,14 +538,44 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(persistence::write_numbered_slot(
         world_fixture, persistence::SaveSlot::one, *accepted_new_game));
 
+    {
+        app::LegacyGameRuntime system_exit{world_fixture, 0U};
+        finish_title_startup(system_exit);
+        system_exit.handle_key(0x98U, false, false);
+        system_exit.handle_key(0x0DU, false, false);
+        system_exit.handle_key(0x0DU, false, false);
+        finish_title_confirmation(system_exit);
+        OL_CHECK(system_exit.render());
+        system_exit.finish_presented_tick();
+        system_exit.advance();
+        finish_numbered_load_transition(system_exit, app::LegacyGameView::world);
+        OL_CHECK(system_exit.handle_world_input(false, false, false, false, true));
+        system_exit.handle_key(0x9EU, false, false);
+        system_exit.handle_key(0x0DU, false, false);
+        OL_CHECK(
+            system_exit.handle_key(0x9EU, false, false) ==
+            app::LegacyKeyStateReset::translated);
+        OL_CHECK(
+            system_exit.handle_key(0x0DU, false, false) ==
+            app::LegacyKeyStateReset::confirmation_group);
+        OL_CHECK(
+            system_exit.handle_key('Y', false, false) ==
+            app::LegacyKeyStateReset::none);
+        OL_CHECK(!system_exit.running());
+        OL_CHECK(system_exit.fade_music_on_exit());
+        OL_CHECK(!system_exit.ending_complete());
+    }
+
     app::LegacyGameRuntime new_game{world_fixture, 0U};
+    finish_title_startup(new_game);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
     new_game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(new_game);
     OL_CHECK(new_game.render());
     new_game.finish_presented_tick();
     new_game.advance();
-    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    finish_numbered_load_transition(new_game, app::LegacyGameView::world);
     const auto* ranger = new_game.game_state().ranger();
     OL_CHECK(ranger != nullptr);
     OL_CHECK(new_game.render());
@@ -475,7 +614,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     OL_CHECK(new_game.render());
-    OL_CHECK(!new_game.handle_world_input(false, false, true, false, true));
+    OL_CHECK(new_game.handle_world_input(false, false, true, false, true));
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     OL_CHECK(new_game.render());
@@ -807,6 +946,9 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     finish_world_scene_transition(new_game);
     finish_scene_entry(new_game);
+    OL_CHECK(
+        new_game.handle_key('L', false, false) ==
+        app::LegacyKeyStateReset::edge);
     new_game.handle_key(0x1BU, false, false);
     new_game.handle_world_input(false, true, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
@@ -1083,16 +1225,18 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
 
     app::LegacyGameRuntime load_game{data_root, 1U};
+    finish_title_startup(load_game);
     load_game.handle_key(0x98U, false, false);
     load_game.handle_key(0x0DU, false, false);
     load_game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(load_game);
     OL_CHECK(load_game.view() == app::LegacyGameView::title);
     OL_CHECK(load_game.render());
     OL_CHECK(fnv1a64(load_game.framebuffer().pixels()) == 0x7333253CA7400DE6ULL);
     load_game.finish_presented_tick();
     load_game.advance();
-    OL_CHECK(load_game.view() == app::LegacyGameView::world);
-    OL_CHECK(load_game.game_state().loaded());
+    finish_numbered_load_transition(load_game, app::LegacyGameView::world);
+    OL_CHECK(!load_game.take_clear_scene_exit_key_states_request());
     OL_CHECK(load_game.render());
 
     auto* continuation_ranger =
@@ -1124,7 +1268,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             entrance_scene.set_word(model::scene_metadata_word::main_entrance_x_2, 358);
         }
     }
-    load_game.handle_world_input(false, false, false, true);
+    OL_CHECK(load_game.handle_world_input(false, false, false, true));
     load_game.advance();
     OL_CHECK(load_game.view() == app::LegacyGameView::world);
     finish_world_scene_transition(load_game);
@@ -1136,14 +1280,17 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(continuation_snapshot->set_scene_value(
             70U, model::SceneLayer::event_index, 28U * 64U + 44U, -1));
     }
-    load_game.handle_world_input(false, false, true, false);
+    OL_CHECK(load_game.handle_world_input(false, false, true, false));
     load_game.advance();
     advance_rendered_frames(load_game, 1U);
-    load_game.handle_world_input(false, false, false, true);
+    OL_CHECK(load_game.handle_world_input(false, false, false, true));
     load_game.advance();
     advance_rendered_frames(load_game, 1U);
+    OL_CHECK(load_game.take_clear_scene_exit_key_states_request());
+    OL_CHECK(!load_game.take_clear_scene_exit_key_states_request());
     advance_rendered_frames(load_game, 64U);
     OL_CHECK(load_game.view() == app::LegacyGameView::world);
+    OL_CHECK(!load_game.take_clear_scene_exit_key_states_request());
     finish_world_scene_return(load_game);
     OL_CHECK(load_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
     OL_CHECK(load_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
@@ -1170,13 +1317,15 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
         output_root, persistence::SaveSlot::one, *baseline.snapshot));
     app::LegacyGameRuntime game{output_root, 0U};
     OL_CHECK(game.valid());
+    finish_title_startup(game);
     game.handle_key(0x98U, false, false);
     game.handle_key(0x0DU, false, false);
     game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
     OL_CHECK(game.render());
     game.finish_presented_tick();
     game.advance();
-    OL_CHECK(game.view() == app::LegacyGameView::world);
+    finish_numbered_load_transition(game, app::LegacyGameView::world);
     game.handle_world_input(false, false, false, true);
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::world);
@@ -1237,7 +1386,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     OL_CHECK(game.render());
     game.finish_presented_tick();
     game.advance();
-    OL_CHECK(game.view() == app::LegacyGameView::game_menu);
+    finish_numbered_load_transition(game, app::LegacyGameView::game_menu);
     const auto loaded_behind_menu = game.game_state().export_snapshot();
     OL_CHECK(loaded_behind_menu.has_value() && saved.snapshot.has_value());
     if (loaded_behind_menu.has_value() && saved.snapshot.has_value()) {

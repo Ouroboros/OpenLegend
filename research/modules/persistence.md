@@ -2,9 +2,9 @@
 
 ## 状态
 
-- 实现状态：`implemented_pending_review`（14/14个B9边界均已有C++映射；本轮已修正序章入口、初始最大生命公式、槽位I/O present门禁、系统载入返回页和独立会话日志）。
-- 最终 REVIEW：`not_started`。
-- 当前唯一work package：`B9-WP01`。
+- 实现映射：14/14个B9边界均已有C++承接点。
+- 最终单向汇编→C++ REVIEW：5/14终态（`sub_25D0E`至`sub_26B5E`均为`platform_adapted`），9/14仍为`implemented_pending_review/not_started`。
+- 当前work package：`B9-WP01`，按阶段终审、验证、提交，不等待14/14一次性收口。
 
 ## 范围与非范围
 
@@ -29,14 +29,13 @@
 - scene事件PC和序章首脚本属于`SceneSession`；新游戏入口只通过显式`SceneEntryOverride`传递机器状态。
 - 所有状态owner以`research/inventory/module-state-ownership.tsv`为准，函数owner以`module-function-ownership.tsv`为准。
 
-## 当前实现队列
+## 当前终审队列
 
-1. `sub_20FAF/sub_24A02/sub_25AB7/sub_26208/sub_265AB`：现有fixed-size S/D/R slot运输、完整snapshot导入/导出及baseline reset已映射；仍为`implemented_pending_review`。
-2. `sub_26B5E/sub_2711A`：name/17次属性RNG、`increased_life*3*level+29`最大生命及确认后直接进入scene70；显式入口固定`(19,20)`、方向1、图号6890、view`(8,9)`，fade后首脚本691与首对话2520；仍为`implemented_pending_review`。
-3. `sub_25D0E/sub_25F87/sub_2EB49`：系统与场景槽位菜单已映射；编号槽确认先绘制“请稍候”并present，之后才执行I/O；系统菜单载入后保留系统页覆盖在已导入世界上；仍为`implemented_pending_review`。
-4. `main/sub_24C8D/sub_30C3D/sub_31241`：标题/世界/场景/结局退出汇聚于runtime-owned资源生命周期；结局保留专属终端消息；仍为`implemented_pending_review`。
-5. 现代日志：SDL3没有当前进程PID API；SDL入口在Windows调用`GetCurrentProcessId()`，Linux/macOS调用`getpid()`，每次启动写`PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log`。
-6. B9实现稳定后，对14项执行独立机器码恢复与不限次数双向逐基本块REVIEW；任何差异均从函数入口重来。
+1. 已终态阶段：`sub_25D0E/sub_25F87/sub_26208/sub_265AB/sub_26B5E`。系统/槽位页、S/D/R运输、新游戏scene70入口、属性页淡黑、scene共享idle/键态清理及黑world淡入均完成零新增差异轮。
+2. 前序待登记/复核：`main/sub_20FAF/sub_24A02/sub_24C8D/sub_25AB7`仍按TSV保持`implemented_pending_review`，不得以旧口头结论替代v6证据。
+3. 后续顺序：`sub_2711A/sub_2EB49/sub_30C3D/sub_31241`。
+4. 现代日志：SDL3没有当前进程PID API；SDL入口在Windows调用`GetCurrentProcessId()`，Linux/macOS调用`getpid()`，每次启动写`PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log`。
+5. 每个函数从入口独立恢复机器语义，再单向逐块对照C++；发现差异立即废弃当轮并从入口重启。禁止以C++→汇编或双向REVIEW作为终态证据。
 
 ## 验证
 
@@ -49,5 +48,7 @@
 
 ## Closure统计与下一停点
 
-- `persistence-closure.tsv`：0项`pending_mapping`、0项`pending_implementation`、14项`implemented_pending_review`，0项最终关闭；实现映射口径100%，最终REVIEW口径0%。
-- 下一停点：精确提交B9实现切片；随后按计划处理其余closure，再从B0开始统一最终双向逐基本块REVIEW。
+- `persistence-closure.tsv`：14/14实现映射（100%）；5/14最终关闭（35.7%），9/14待终审（64.3%）。
+- 五个唯一地址已传播到persistence 5行、input/font 3行和UI 4行，共12条closure：全局由42增至54，即54/349（15.5%）。
+- 唯一地址口径：43/284全部重复行均终态（15.1%）；另有4个地址仍为跨表部分终态，未计入43。
+- 下一停点：本阶段五函数精确提交并push；随后按TSV状态与`audit_order`继续，不回扫已终态且依赖未变化的行。

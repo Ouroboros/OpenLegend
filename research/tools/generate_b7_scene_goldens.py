@@ -1063,6 +1063,11 @@ def scene_animation_vectors(
     event_words[199 * 11 + 7] = 102
     event_words[199 * 11 + 8] = delay
     frame = render_scene(tuple(map_words), tuple(event_words), sprites, 44, 29, 1)
+    entry_displayed_picture = 102
+    if entry_displayed_picture > first_picture and entry_displayed_picture < end_picture:
+        entry_displayed_picture += 2
+    event_words[199 * 11 + 7] = entry_displayed_picture
+    entry_frame = render_scene(tuple(map_words), tuple(event_words), sprites, 44, 29, 1)
     script_825 = words(scripts[825])
     assert script_825 == (52, -1)
     return {
@@ -1078,6 +1083,8 @@ def scene_animation_vectors(
             "delay": delay,
         },
         "word7_render_frame_fnv1a64": fnv1a64(frame),
+        "entry_scan_displayed_picture": entry_displayed_picture,
+        "entry_scanned_word7_render_frame_fnv1a64": fnv1a64(entry_frame),
         "interaction_present": {
             "direction": 1,
             "player": [44, 29],

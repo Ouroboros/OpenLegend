@@ -18,6 +18,7 @@ inline constexpr std::array<std::uint8_t, 2> kLegacyWorldLeftKeys{kLegacyLeftKey
 inline constexpr std::array<std::uint8_t, 2> kLegacyWorldUpKeys{kLegacyUpKey, 0x9FU};
 inline constexpr std::array<std::uint8_t, 2> kLegacyWorldDownKeys{0x97U, kLegacyDownKey};
 inline constexpr std::array<std::uint8_t, 2> kLegacyWorldRightKeys{0x99U, kLegacyRightKey};
+inline constexpr std::array<std::uint8_t, 3> kLegacyConfirmationKeys{0x0DU, 0x20U, 0x96U};
 
 enum class LegacyWorldDirectionInput : std::uint8_t {
     none,
@@ -43,8 +44,11 @@ public:
     [[nodiscard]] bool edge(std::uint8_t translated_key) const noexcept;
     void clear_state(std::uint8_t translated_key) noexcept;
     void consume_edge(std::uint8_t translated_key) noexcept;
+    void clear_confirmation_states() noexcept;
     [[nodiscard]] LegacyWorldDirectionInput world_direction() const noexcept;
     void consume_world_direction(LegacyWorldDirectionInput direction) noexcept;
+    void clear_world_direction_states() noexcept;
+    void clear_scene_exit_key_states() noexcept;
 
     [[nodiscard]] static const std::array<std::uint8_t, kLegacyTranslationSize>&
     translation_table() noexcept;

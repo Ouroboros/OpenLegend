@@ -468,9 +468,14 @@ SceneSession::SceneSession(
     update_view_origin();
     commit_header();
     queue_scene_music(model::scene_metadata_word::entrance_music);
-    idle_tick();
+    advance_event_pictures();
     continuation_ = PendingContinuation::scene_entry;
     pending_ = current_result(SceneStepKind::fade_from_black);
+}
+
+bool SceneSession::exit_transition_pending() const noexcept {
+    return pending_.kind == SceneStepKind::fade_to_black &&
+           continuation_ == PendingContinuation::scene_exit;
 }
 
 SceneStepResult SceneSession::current_result(const SceneStepKind kind) const noexcept {
@@ -519,7 +524,8 @@ bool SceneSession::load_scene_sprites() {
 SceneStepResult SceneSession::tick(
     const std::optional<SceneDirection> direction,
     const bool interact_requested,
-    const bool ui_requested) {
+    const bool ui_requested,
+    const bool skip_player_idle) {
     if (!valid() || pending_.kind != SceneStepKind::stay) {
         return pending_;
     }
@@ -531,6 +537,8 @@ SceneStepResult SceneSession::tick(
         result = interact();
     } else if (ui_requested) {
         result = open_ui();
+    } else if (!skip_player_idle) {
+        player_idle_tick();
     }
     if (result.kind != SceneStepKind::stay && result.kind != SceneStepKind::moved) {
         tick_continuation_ = TickContinuation::after_action;
@@ -550,6 +558,7 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     const auto source_x = scene_x_;
     const auto source_y = scene_y_;
     player_frame_override_.reset();
+    cancel_player_idle_animation();
     direction_ = direction;
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
     if (walk_frame_offset_ > 12) {
@@ -1632,6 +1641,11 @@ SceneStepResult SceneSession::complete_scene_jump() {
     animation_counter_ = 0;
     walk_frame_offset_ = 0;
     player_frame_override_.reset();
+    idle_animation_ = false;
+    idle_animation_counter_ = 0;
+    idle_animation_delay_ = 0;
+    idle_animation_step_ = 0;
+    player_idle_counter_ = 0;
     weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
                        kWeatherSceneIds.end();
     weather_active_ = false;
@@ -1656,7 +1670,7 @@ SceneStepResult SceneSession::complete_scene_jump() {
         " to=" + std::to_string(scene_id_) +
         " target=" + std::to_string(scene_x_) + "," + std::to_string(scene_y_));
     queue_scene_music(model::scene_metadata_word::entrance_music);
-    idle_tick();
+    advance_event_pictures();
     continuation_ = PendingContinuation::scene_entry;
     pending_ = current_result(SceneStepKind::fade_from_black);
     return pending_;
@@ -1728,6 +1742,13 @@ void SceneSession::idle_tick() {
         return;
     }
     animation_counter_ = static_cast<std::int16_t>((animation_counter_ + 1) % 1000);
+    advance_event_pictures();
+}
+
+void SceneSession::advance_event_pictures() {
+    if (!valid()) {
+        return;
+    }
     for (int x = 0; x < kSceneExtent; ++x) {
         for (int y = 0; y < kSceneExtent; ++y) {
             const auto event = event_at(x, y);
@@ -1760,6 +1781,56 @@ void SceneSession::idle_tick() {
                 scene_id_, *event, model::SceneEventField::begin_picture, displayed_picture);
         }
     }
+}
+
+void SceneSession::player_idle_tick() {
+    if (snapshot_.ranger.header.word(model::header_word::in_ship) == 0) {
+        ++player_idle_counter_;
+        if (player_idle_counter_ > 20) {
+            player_frame_override_.reset();
+            walk_frame_offset_ = 0;
+            player_idle_counter_ = 0;
+        }
+    }
+    if (walk_frame_offset_ != 0) {
+        idle_animation_counter_ = 0;
+        idle_animation_delay_ = 0;
+    } else {
+        idle_animation_counter_ = wrapping_add(idle_animation_counter_, 1);
+    }
+    if (idle_animation_counter_ > 50 && !idle_animation_ &&
+        random_.bounded(10) == 0) {
+        idle_animation_ = true;
+        walk_frame_offset_ = 0;
+        player_idle_counter_ = 0;
+        idle_animation_step_ = static_cast<std::int16_t>(idle_animation_step_ + 2);
+    }
+    ++physical_power_counter_;
+    if (physical_power_counter_ != 200) {
+        return;
+    }
+    for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
+        const auto role_id = snapshot_.ranger.header.team_member(index).value;
+        if ((index != 0U && role_id <= 0) || role_id < 0 ||
+            static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
+            continue;
+        }
+        auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+        if (role.word(model::role_word::physical_power) < 100) {
+            role.set_word(
+                model::role_word::physical_power,
+                static_cast<std::int16_t>(
+                    role.word(model::role_word::physical_power) + 1));
+        }
+    }
+    physical_power_counter_ = 0;
+}
+
+void SceneSession::cancel_player_idle_animation() noexcept {
+    idle_animation_ = false;
+    idle_animation_counter_ = 0;
+    idle_animation_delay_ = 0;
+    idle_animation_step_ = 0;
 }
 
 bool SceneSession::target_is_walkable(const int x, const int y) const noexcept {
@@ -2261,6 +2332,7 @@ SceneStepResult SceneSession::advance_load_menu(const int translated_key) {
         state.phase = LoadMenuState::Phase::menu;
     } else if (state.phase == LoadMenuState::Phase::load_slot_fade) {
         const auto selected_slot = state.selected_slot;
+        state.phase = LoadMenuState::Phase::menu;
         event_active_ = false;
         pending_ = current_result(SceneStepKind::load_slot);
         pending_.save_slot = selected_slot;
@@ -2902,6 +2974,7 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
 
 void SceneSession::apply_scripted_walk_step(const bool horizontal, const int step) {
     player_frame_override_.reset();
+    cancel_player_idle_animation();
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
     if (walk_frame_offset_ > 12) {
         walk_frame_offset_ = 2;

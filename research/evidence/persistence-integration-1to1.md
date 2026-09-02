@@ -2,10 +2,10 @@
 
 ## Status
 
-- B9 functional implementation: `implemented_pending_review`.
+- B9 functional implementation mappings: 14/14.
 - Finite closure: `research/inventory/persistence-closure.tsv`, 14 machine-code boundary functions.
-- Final bidirectional assembly-to-C++ basic-block review: `not_started` for all 14 entries.
-- This document records implementation evidence and identified integration differences. It does not claim `assembly_exact` or `platform_adapted` closure.
+- Final repeated one-way assembly-to-C++ review: 5/14 terminal (`sub_25D0E` through `sub_26B5E`); 9/14 remain `implemented_pending_review`.
+- Terminal rows are `platform_adapted`: legal-domain observable order is closed, while SDL frame driving, RAII, in-memory working snapshots, and checked I/O remain explicit platform adaptations.
 
 ## Primary truth sources
 
@@ -37,6 +37,20 @@ The closure is derived from the complete observable title/new/load/save/system-m
 | `sub_31241` | ending shutdown and terminal messages | app/platform |
 
 Detailed source-unit mappings and verification state are recorded row-by-row in `research/inventory/persistence-closure.tsv`.
+
+## Stage 1 final review: `0x25D0E..0x2711A`
+
+The first staged closure commit covers five consecutive TSV rows:
+
+| Boundary | Final result | Function evidence |
+|---|---|---|
+| `sub_25D0E` | system-page loops, key resets, caller continuation and uppercase-`Y` converged | `functions/Z_DAT/0x25D0E.md` |
+| `sub_25F87` | three-slot loop and present-before-I/O wait frame converged | `functions/Z_DAT/0x25F87.md` |
+| `sub_26208` | S→D→R import and 64+2+65 load tail converged | `functions/Z_DAT/0x26208.md` |
+| `sub_265AB` | S→D→live transport→R save order converged | `functions/Z_DAT/0x265AB.md` |
+| `sub_26B5E` | new-game prologue, scene loop, key states, shared idle logic and world-return tail converged | `functions/Z_DAT/0x26B5E.md` |
+
+Every implementation difference invalidated its review round. The final result was recorded only after restarting from the function entry and completing a zero-new-difference assembly-to-C++ pass. No C++→assembly review was performed or claimed.
 
 ## Snapshot transport and import contract
 
@@ -130,14 +144,16 @@ Completed after the readable PID log name, full prologue entry, system-menu load
 - Two consecutive Linux SDL smoke launches produced distinct paths matching `openlegend-YYYY-MM-DD_HH-MM-SS-{PID}.log`; the Windows app smoke produced the same timestamp/PID shape.
 - Independent B5 golden generation was byte-identical across two runs and matched the tracked golden.
 - Original `Z.COM`, `Z.DAT`, `WAR.STA`, `WARFLD.IDX`, and `WARFLD.GRP` hashes remained unchanged.
-- The B9 closure audit confirmed 14/14 implementation mappings and manually reviewed module owners; all 14 final reviews remain `not_started`.
+- The B9 closure audit confirms 14/14 implementation mappings; 5/14 staged final reviews are `converged_no_new_differences` and 9/14 remain `not_started`.
+- Cross-table propagation is 54/349 terminal closure rows (15.5%); 43/284 unique addresses have every duplicate row terminal (15.1%), with four additional addresses still only partially terminal across tables.
 
 The affected tests now cover:
 
 - deterministic session-log filename construction;
 - distinct PID suffixes for the same timestamp;
 - 17-call attribute RNG and the `increased_life * 3 * level + 29` maximum-HP formula;
-- scene 70 coordinates, direction, initial picture, view origin, fade/script order, and first dialogue;
+- scene 70 coordinates, direction, initial picture, view origin, 64-frame attribute-page fade-to-black, scene fade/script order, and first dialogue;
+- scene direction pair consumption, Insert confirmation-group input, pending-`L` priority/edge consumption with an idle-skip tick, exact `sub_2399E` 20/50/200tick state, no world-only idle-frame advance in scene, counter0 entry scan, fade-start last-key/eight-direction clearing, black-world present, and 65-frame world fade-in;
 - runtime snapshot header values after new-game entry;
 - no numbered-slot disk mutation before the wait-frame present boundary;
 - full numbered-slot snapshot write after that boundary;
@@ -147,4 +163,4 @@ No runtime sanitizer finding or BUILD/test failure remains in this implementatio
 
 ## Closure rule
 
-All 14 rows remain `implemented_pending_review`. After B9 implementation is stable, each function must be reviewed independently from machine instructions, then assembly-to-C++ and C++-to-assembly by basic block. Any difference restarts that function review from its entry. Only a complete zero-new-difference pass can advance a row beyond `implemented_pending_review`.
+Rows are reviewed in current TSV state and `audit_order`. Each round begins with an independent machine recovery from the function entry, then proceeds one way from assembly to C++ by basic block. C++, tests, goldens and documentation are corroboration only. Any difference immediately invalidates the round and forces a full restart from entry. Only a complete zero-new-difference pass advances a row to `assembly_exact` or `platform_adapted`.

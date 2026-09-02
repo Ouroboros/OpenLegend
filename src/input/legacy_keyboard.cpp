@@ -156,6 +156,12 @@ void LegacyKeyboard::consume_edge(const std::uint8_t translated_key) noexcept {
     state_byte(translated_key) &= 0xFEU;
 }
 
+void LegacyKeyboard::clear_confirmation_states() noexcept {
+    for (const auto translated_key : kLegacyConfirmationKeys) {
+        clear_state(translated_key);
+    }
+}
+
 LegacyWorldDirectionInput LegacyKeyboard::world_direction() const noexcept {
     const auto any_down = [this](const auto& keys) {
         return down(keys[0]) || down(keys[1]);
@@ -196,6 +202,21 @@ void LegacyKeyboard::consume_world_direction(const LegacyWorldDirectionInput dir
     case LegacyWorldDirectionInput::none:
         break;
     }
+}
+
+void LegacyKeyboard::clear_world_direction_states() noexcept {
+    for (const auto direction : {
+             LegacyWorldDirectionInput::left,
+             LegacyWorldDirectionInput::up,
+             LegacyWorldDirectionInput::down,
+             LegacyWorldDirectionInput::right}) {
+        consume_world_direction(direction);
+    }
+}
+
+void LegacyKeyboard::clear_scene_exit_key_states() noexcept {
+    clear_last_key();
+    clear_world_direction_states();
 }
 
 const std::array<std::uint8_t, kLegacyTranslationSize>&

@@ -270,12 +270,17 @@ int main(const int argc, const char* const* argv) {
     const auto second = static_cast<std::uint8_t>(whole_seconds.count() % 60);
     const auto hundredth = static_cast<std::uint8_t>(milliseconds.count() / 10);
     const auto random_seed = random::LegacyRandom::dos_time_seed(second, hundredth);
+    bool fade_music_on_exit = false;
+    {
     app::LegacyGameRuntime game{std::filesystem::current_path(), random_seed};
     diagnostics::log_info("runtime random_seed=" + std::to_string(random_seed));
     if (!game.valid()) {
         diagnostics::log_critical("game runtime initialization failed: " + game.error());
         report_configuration_error("game runtime", game.error());
         return 5;
+    }
+    if (!legacy_audio.play_music(16U)) {
+        diagnostics::log_warning("title music unavailable: " + legacy_audio.error());
     }
 
     input::LegacyKeyboard keyboard;
@@ -295,16 +300,23 @@ int main(const int argc, const char* const* argv) {
                     "host key_down key=" + std::to_string(static_cast<int>(event.key)) +
                     " repeat=" + (event.repeat ? std::string{"true"} : std::string{"false"}) +
                     " translated=" + std::to_string(translated_key));
-                if (!event.repeat) {
+                if (translated_key != 0U) {
                     const bool defer_world_menu =
                         translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
                     if (!defer_world_menu) {
-                        game.handle_key(
+                        const auto key_state_reset = game.handle_key(
                             translated_key,
                             keyboard.down(0x82U),
                             keyboard.down(0x83U) || keyboard.down(0x84U),
                             frame_tick);
-                        if (translated_key == 0x1BU) {
+                        if (key_state_reset == app::LegacyKeyStateReset::edge) {
+                            keyboard.consume_edge(translated_key);
+                        } else if (key_state_reset == app::LegacyKeyStateReset::translated) {
+                            keyboard.clear_state(translated_key);
+                        } else if (
+                            key_state_reset == app::LegacyKeyStateReset::confirmation_group) {
+                            keyboard.clear_confirmation_states();
+                        } else if (translated_key == 0x1BU) {
                             keyboard.consume_edge(0x1BU);
                         }
                     }
@@ -317,20 +329,23 @@ int main(const int argc, const char* const* argv) {
             }
         }
         const auto world_direction = keyboard.world_direction();
-        if (game.view() == app::LegacyGameView::world) {
-            keyboard.consume_world_direction(world_direction);
-        }
         using input::LegacyWorldDirectionInput;
-        const bool world_menu_consumed = game.handle_world_input(
+        const bool directional_input_consumed = game.handle_world_input(
             world_direction == LegacyWorldDirectionInput::left,
             world_direction == LegacyWorldDirectionInput::up,
             world_direction == LegacyWorldDirectionInput::down,
             world_direction == LegacyWorldDirectionInput::right,
             keyboard.edge(0x1BU));
-        if (world_menu_consumed) {
+        if (directional_input_consumed &&
+            world_direction != LegacyWorldDirectionInput::none) {
+            keyboard.consume_world_direction(world_direction);
+        } else if (directional_input_consumed && keyboard.edge(0x1BU)) {
             keyboard.consume_edge(0x1BU);
         }
         game.advance(frame_tick);
+        if (game.take_clear_scene_exit_key_states_request()) {
+            keyboard.clear_scene_exit_key_states();
+        }
         for (const auto& command : game.take_scene_audio_commands()) {
             if (command.id < 0) {
                 continue;
@@ -383,9 +398,14 @@ int main(const int argc, const char* const* argv) {
     }
 
     ending_completed = game.ending_complete();
+    fade_music_on_exit = game.fade_music_on_exit();
     if (smoke_test) {
         diagnostics::log_info("smoke test completed");
         return 0;
+    }
+    }
+    if (fade_music_on_exit) {
+        legacy_audio.fade_out_music();
     }
 
     auto normal_size = window_configuration.size;

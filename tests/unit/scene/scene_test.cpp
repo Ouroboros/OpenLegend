@@ -376,6 +376,44 @@ void check_new_game_entry(const std::filesystem::path& root) {
     OL_CHECK(first_event_step.talk_id == 2520);
     OL_CHECK(first_event_step.head_id == 0);
     OL_CHECK(first_event_step.style == 1);
+
+    auto idle_snapshot = load_baseline(root);
+    idle_snapshot.ranger.roles[0U].set_word(
+        openlegend::model::role_word::physical_power, 50);
+    openlegend::random::LegacyRandom idle_random{1U};
+    openlegend::scene::SceneSession idle_session{
+        data_root,
+        idle_snapshot,
+        idle_random,
+        70,
+        false,
+        std::nullopt,
+        0,
+        openlegend::scene::SceneEntryOverride{
+            44, 29, openlegend::scene::SceneDirection::right, 6890, 0}};
+    OL_CHECK(finish_scene_title(idle_session).kind == SceneStepKind::stay);
+    const auto run_idle_tick = [&idle_session](const bool skip_player_idle = false) {
+        auto step = idle_session.tick(
+            std::nullopt, false, false, skip_player_idle);
+        OL_CHECK(step.kind == SceneStepKind::present);
+        step = idle_session.resume(SceneResponse::acknowledge);
+        OL_CHECK(step.kind == SceneStepKind::stay);
+    };
+    for (int tick = 0; tick < 20; ++tick) {
+        run_idle_tick();
+    }
+    OL_CHECK(idle_session.player_frame() == 6890);
+    run_idle_tick(true);
+    OL_CHECK(idle_session.player_frame() == 6890);
+    run_idle_tick();
+    OL_CHECK(idle_session.player_frame() != 6890);
+    const auto reset_player_frame = idle_session.player_frame();
+    for (int tick = 21; tick < 200; ++tick) {
+        run_idle_tick();
+    }
+    OL_CHECK(idle_session.player_frame() == reset_player_frame);
+    OL_CHECK(idle_snapshot.ranger.roles[0U].word(
+                 openlegend::model::role_word::physical_power) == 51);
 }
 
 void check_event_load_menu(const std::filesystem::path& root) {
@@ -426,6 +464,8 @@ void check_event_load_menu(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::fade_to_black);
     result = session.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::load_slot && result.save_slot == 2);
+    result = session.resume(SceneResponse::cancel);
+    OL_CHECK(result.kind == SceneStepKind::load_menu && result.menu_index == 2);
 
     auto quit_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom quit_random{1U};
@@ -1086,6 +1126,8 @@ void check_scene_event_animation(const std::filesystem::path& root) {
     OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::picture_delay, 99));
     openlegend::random::LegacyRandom random{1U};
     openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(snapshot.event_value(
+                 70U, event, SceneEventField::begin_picture).value_or(-1) == 106);
     OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
     session.idle_tick();
     session.idle_tick();
@@ -1094,7 +1136,7 @@ void check_scene_event_animation(const std::filesystem::path& root) {
     OL_CHECK(snapshot.event_value(
                  70U, event, SceneEventField::current_picture).value_or(-1) == 100);
     OL_CHECK(snapshot.event_value(
-                 70U, event, SceneEventField::begin_picture).value_or(-1) == 106);
+                 70U, event, SceneEventField::begin_picture).value_or(-1) == 110);
 
     auto render_snapshot = load_baseline(root);
     OL_CHECK(render_snapshot.set_scene_value(
@@ -1112,7 +1154,7 @@ void check_scene_event_animation(const std::filesystem::path& root) {
         data_root, render_snapshot, render_random, 70};
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(render_session.render_map(framebuffer));
-    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x606EAA33DA727537ULL);
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x3051F24E11C08DC5ULL);
 }
 
 void check_scene_weather(const std::filesystem::path& root) {
