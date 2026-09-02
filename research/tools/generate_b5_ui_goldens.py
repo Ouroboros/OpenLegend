@@ -101,6 +101,13 @@ MAIN_MENU_LABELS = (
     bytes.fromhex("c2f7b6a4"),
     bytes.fromhex("a874b2ce"),
 )
+NAME_PROMPT = bytes.fromhex("bdd0bfe9a44aa96da65720203a")
+ZHUYIN_PROMPT = bytes.fromhex("a15daa60adb5a15ea147")
+ALNUM_PROMPT = bytes.fromhex("a15dad5ebcc6a15ea147")
+NO_NAME_CANDIDATES = bytes.fromhex("b54ca6b9a672")
+CANDIDATE_BOTH_PAGES = bytes.fromhex("a1d5a1fea1d6")
+CANDIDATE_PREVIOUS_PAGE = bytes.fromhex("a1d5")
+CANDIDATE_NEXT_PAGE = bytes.fromhex("a1d6")
 
 
 def parse_palette(raw: bytes) -> list[tuple[int, int, int]]:
@@ -258,6 +265,236 @@ def game_menu_screen(
     return pixels
 
 
+def draw_ascii_glyph(
+    pixels: bytearray,
+    font: bytes,
+    x: int,
+    y: int,
+    code: int,
+    right_shadow: int,
+    foreground: int,
+) -> None:
+    glyph = font[code * 16 : code * 16 + 16]
+    assert len(glyph) == 16
+    for row, bits in enumerate(glyph):
+        for bit_index in range(8):
+            if bits & (0x80 >> bit_index):
+                target = (y + row) * 320 + x + bit_index
+                pixels[target] = foreground
+                pixels[target + 1] = right_shadow
+
+
+def renderable_big5(font: bytes, lead: int, trail: int) -> bool:
+    if lead < 0xA1:
+        return False
+    if 0x40 <= trail <= 0x7E:
+        trail_index = trail - 0x40
+    elif 0xA1 <= trail <= 0xFE:
+        trail_index = trail - 0x62
+    else:
+        return False
+    glyph_index = (lead - 0xA1) * 157 + trail_index
+    return glyph_index * 32 + 32 <= len(font)
+
+
+def draw_legacy_text(
+    pixels: bytearray,
+    ascii_font: bytes,
+    big5_font: bytes,
+    x: int,
+    y: int,
+    text: bytes,
+    right_shadow: int,
+    foreground: int,
+) -> None:
+    offset = 0
+    while offset < len(text) and text[offset] != 0:
+        if text[offset] > 0x7F:
+            if offset + 1 >= len(text):
+                break
+            if renderable_big5(big5_font, text[offset], text[offset + 1]):
+                draw_big5_text(
+                    pixels,
+                    big5_font,
+                    x,
+                    y,
+                    text[offset : offset + 2],
+                    right_shadow,
+                    foreground,
+                )
+            x += 16
+            offset += 2
+        else:
+            draw_ascii_glyph(
+                pixels, ascii_font, x, y, text[offset], right_shadow, foreground
+            )
+            x += 8
+            offset += 1
+
+
+def zhuyin_label(kind: int, value: int) -> bytes:
+    if kind == 1 and 1 <= value <= 21:
+        return bytes((0xA3, (0x73 + value) if value <= 11 else (0x95 + value)))
+    if kind == 2 and 1 <= value <= 3:
+        return bytes((0xA3, 0xB7 + value))
+    if kind == 3 and 1 <= value <= 13:
+        return bytes((0xA3, 0xAA + value))
+    if kind == 4 and 1 <= value <= 4:
+        return bytes((0xA3, 0xBB if value == 1 else 0xBB + value))
+    return b""
+
+
+def lookup_name_candidates(
+    cfont: bytes, initial: int, medial: int, final: int, tone: int
+) -> tuple[int, list[bytes]]:
+    table_index = initial * 5 + tone
+    begin = struct.unpack_from("<H", cfont, table_index * 2)[0]
+    end = struct.unpack_from("<H", cfont, (table_index + 1) * 2)[0]
+    packed = (medial << 4) | final
+    try:
+        match = cfont.index(bytes((packed,)), begin, end)
+    except ValueError:
+        return 0, []
+    candidate_begin = match + 1
+    cursor = candidate_begin
+    while cursor < len(cfont) and cfont[cursor] >= 0x40:
+        cursor += 1
+    count = (cursor - candidate_begin) // 2
+    return candidate_begin, [
+        cfont[candidate_begin + index * 2 : candidate_begin + index * 2 + 2]
+        for index in range(count)
+    ]
+
+
+def name_entry_screen(
+    title_big: bytes,
+    ascii_font: bytes,
+    big5_font: bytes,
+    cfont: bytes,
+    *,
+    mode: int = 0,
+    name: bytes = b"",
+    display_name: bytes | None = None,
+    composition: tuple[int, int, int, int] = (0, 0, 0, 0),
+    candidates: list[bytes] | None = None,
+    candidate_begin: int = 0,
+    candidate_page: int = 0,
+    no_candidates: bool = False,
+    cursor_color: int = 7,
+    accepted: bool = False,
+) -> bytearray:
+    pixels = bytearray(title_big)
+    fill_rectangle(pixels, 0, 140, 320, 60, 0)
+    active_candidates = candidates or []
+    draw_legacy_text(pixels, ascii_font, big5_font, 48, 141, NAME_PROMPT, 0x15, 0x17)
+    draw_legacy_text(
+        pixels,
+        ascii_font,
+        big5_font,
+        3,
+        161,
+        ZHUYIN_PROMPT if mode == 0 else ALNUM_PROMPT,
+        0x19 if active_candidates else 0x15,
+        0x17,
+    )
+    draw_legacy_text(
+        pixels,
+        ascii_font,
+        big5_font,
+        158,
+        141,
+        name if display_name is None else display_name,
+        0x03,
+        0x05,
+    )
+    if not accepted and len(name) < 6:
+        fill_rectangle(pixels, 158 + len(name) * 8, 156, 8, 1, cursor_color)
+
+    if active_candidates:
+        for visible_index in range(8):
+            global_index = candidate_page * 8 + visible_index
+            if global_index >= 0:
+                if global_index >= len(active_candidates):
+                    break
+                candidate = active_candidates[global_index]
+            else:
+                offset = candidate_begin + global_index * 2
+                if offset < 0 or offset + 1 >= len(cfont):
+                    break
+                candidate = cfont[offset : offset + 2]
+            draw_legacy_text(
+                pixels,
+                ascii_font,
+                big5_font,
+                30 * (visible_index + 1),
+                180,
+                bytes((ord("1") + visible_index,)) + candidate,
+                0x19,
+                0x17,
+            )
+        has_next = candidate_page < 0 or (candidate_page + 1) * 8 < len(active_candidates)
+        if candidate_page == 0 and has_next:
+            draw_legacy_text(
+                pixels,
+                ascii_font,
+                big5_font,
+                300,
+                180,
+                CANDIDATE_NEXT_PAGE,
+                0x19,
+                0x17,
+            )
+        elif candidate_page != 0 and has_next:
+            draw_legacy_text(
+                pixels,
+                ascii_font,
+                big5_font,
+                270,
+                180,
+                CANDIDATE_BOTH_PAGES,
+                0x19,
+                0x17,
+            )
+        elif candidate_page != 0:
+            draw_legacy_text(
+                pixels,
+                ascii_font,
+                big5_font,
+                300,
+                180,
+                CANDIDATE_PREVIOUS_PAGE,
+                0x19,
+                0x17,
+            )
+        return pixels
+
+    for index, value in enumerate(composition):
+        label = zhuyin_label(index + 1, value)
+        if label:
+            draw_legacy_text(
+                pixels,
+                ascii_font,
+                big5_font,
+                100 + index * 20,
+                161,
+                label,
+                0x15,
+                0x17,
+            )
+    if no_candidates:
+        draw_legacy_text(
+            pixels,
+            ascii_font,
+            big5_font,
+            240,
+            161,
+            NO_NAME_CANDIDATES,
+            0x05,
+            0x07,
+        )
+    return pixels
+
+
 class LegacyRandom:
     def __init__(self, state: int):
         self.state = state & 0xFFFFFFFF
@@ -320,11 +557,15 @@ def main() -> int:
     title_group = (args.data_root / "title.grp").read_bytes()
     title_big = (args.data_root / "title.big").read_bytes()
     palette = (args.data_root / "mmap.col").read_bytes()
+    ascii_font = (args.data_root / "FONT.X16").read_bytes()
     big5_font = (args.data_root / "FONT.C16").read_bytes()
+    cfont = (args.data_root / "CFONT").read_bytes()
     ranger = (args.data_root / "RANGER.GRP").read_bytes()
     assert len(title_big) == 320 * 200
     assert len(palette) == 256 * 3
+    assert len(ascii_font) == 128 * 16
     assert len(big5_font) % 32 == 0
+    assert len(cfont) == 29674
     assert len(ranger) == 114242
     frames = archive_entries(title_index, title_group)
     assert len(frames) == 9
@@ -332,6 +573,10 @@ def main() -> int:
     (level,) = struct.unpack_from("<h", protagonist, 15 * 2)
     parsed_palette = parse_palette(palette)
     panel_lookup = rgb4_lookup(parsed_palette)
+    candidate_begin, name_candidates = lookup_name_candidates(cfont, 12, 1, 10, 0)
+    assert len(name_candidates) == 20
+    no_match_begin, no_match_candidates = lookup_name_candidates(cfont, 1, 0, 0, 1)
+    assert no_match_begin == 0 and not no_match_candidates
 
     output = {
         "oracle": "independent Python little-endian/RLE implementation",
@@ -340,7 +585,9 @@ def main() -> int:
             "title.grp": {"bytes": len(title_group), "sha256": sha256(title_group)},
             "title.big": {"bytes": len(title_big), "sha256": sha256(title_big)},
             "mmap.col": {"bytes": len(palette), "sha256": sha256(palette)},
+            "FONT.X16": {"bytes": len(ascii_font), "sha256": sha256(ascii_font)},
             "FONT.C16": {"bytes": len(big5_font), "sha256": sha256(big5_font)},
+            "CFONT": {"bytes": len(cfont), "sha256": sha256(cfont)},
         },
         "title_pixels_fnv1a64": {
             "main_selection_0": fnv1a64(title_screen(title_big, frames, 0)),
@@ -359,6 +606,84 @@ def main() -> int:
             ),
             "scene_selection_3": fnv1a64(
                 game_menu_screen(big5_font, parsed_palette, panel_lookup, 4, 3)
+            ),
+        },
+        "name_entry_pixels_fnv1a64": {
+            "source": "independent machine-coordinate FONT.X16/FONT.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
+            "initial_zhuyin_cursor_7": fnv1a64(
+                name_entry_screen(title_big, ascii_font, big5_font, cfont)
+            ),
+            "composition_rup_cursor_7": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    composition=(12, 1, 10, 0),
+                )
+            ),
+            "candidates_rup_page_0_cursor_7": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    candidates=name_candidates,
+                    candidate_begin=candidate_begin,
+                )
+            ),
+            "candidates_rup_page_minus_1_cursor_7": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    candidates=name_candidates,
+                    candidate_begin=candidate_begin,
+                    candidate_page=-1,
+                )
+            ),
+            "no_candidates_initial_1_tone_1_cursor_7": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    composition=(1, 0, 0, 1),
+                    no_candidates=True,
+                )
+            ),
+            "alphanumeric_a_cursor_7": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    mode=1,
+                    name=b"A",
+                )
+            ),
+            "alphanumeric_single_backspace_ghost_cursor_7": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    mode=1,
+                    name=b"",
+                    display_name=b"A",
+                )
+            ),
+            "accepted_alphanumeric_a": fnv1a64(
+                name_entry_screen(
+                    title_big,
+                    ascii_font,
+                    big5_font,
+                    cfont,
+                    mode=1,
+                    name=b"A",
+                    accepted=True,
+                )
             ),
         },
         "runtime_ui_regression_fnv1a64": {

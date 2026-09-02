@@ -59,7 +59,34 @@ NameEditStatus NewGameNameEditor::handle_key(
     if (!valid()) {
         return NameEditStatus::editing;
     }
-    no_candidates_ = false;
+    if (accepted_) {
+        return NameEditStatus::completed;
+    }
+    if (no_candidates_) {
+        clear_composition();
+        return NameEditStatus::editing;
+    }
+
+    if (!candidates_.empty()) {
+        if (translated_key == kEscape) {
+            clear_composition();
+        } else if (translated_key >= '1' && translated_key <= '8') {
+            commit_candidate(static_cast<std::size_t>(translated_key - '1'));
+        } else if (shift_down && translated_key == kPeriod &&
+                   has_next_candidate_page()) {
+            ++candidate_page_;
+        } else if (shift_down && translated_key == kComma &&
+                   has_previous_candidate_page()) {
+            --candidate_page_;
+        } else if (translated_key == kSpace) {
+            if (has_next_candidate_page()) {
+                ++candidate_page_;
+            } else if (has_previous_candidate_page()) {
+                candidate_page_ = 0;
+            }
+        }
+        return NameEditStatus::editing;
+    }
 
     if (control_down && translated_key == kSpace) {
         mode_ = mode_ == NameInputMode::zhuyin ? NameInputMode::alphanumeric
@@ -72,36 +99,28 @@ NameEditStatus NewGameNameEditor::handle_key(
         return NameEditStatus::editing;
     }
     if (translated_key == kEnter) {
-        return name_.empty() ? NameEditStatus::editing : NameEditStatus::completed;
+        if (!name_.empty()) {
+            accepted_ = true;
+            return NameEditStatus::completed;
+        }
+        return NameEditStatus::editing;
     }
     if (translated_key == kEscape) {
         clear_composition();
         return NameEditStatus::editing;
     }
 
-    if (!candidates_.empty()) {
-        if (translated_key >= '1' && translated_key <= '8') {
-            commit_candidate(static_cast<std::size_t>(translated_key - '1'));
-        } else if ((shift_down && translated_key == kPeriod) || translated_key == kSpace) {
-            const auto next_page = candidate_page_ + 1U;
-            if (next_page * kCandidatesPerPage < candidates_.size()) {
-                candidate_page_ = next_page;
-            } else if (translated_key == kSpace && candidate_page_ != 0U) {
-                candidate_page_ = 0U;
-            }
-        } else if (shift_down && translated_key == kComma && candidate_page_ != 0U) {
-            --candidate_page_;
-        }
-        return NameEditStatus::editing;
-    }
-
-    if (name_.size() >= model::kNewGameNameMaximumBytes) {
+    const auto limit = mode_ == NameInputMode::zhuyin
+        ? model::kNewGameNameMaximumBytes - 1U
+        : model::kNewGameNameMaximumBytes;
+    if (name_.size() >= limit) {
         return NameEditStatus::editing;
     }
     if (mode_ == NameInputMode::alphanumeric) {
         if (is_ascii_name_key(translated_key)) {
             name_.push_back(translated_key);
             unit_sizes_.push_back(1U);
+            sync_display_name();
         }
         return NameEditStatus::editing;
     }
@@ -128,11 +147,69 @@ NameEditStatus NewGameNameEditor::handle_key(
 }
 
 std::size_t NewGameNameEditor::visible_candidate_count() const noexcept {
-    const auto begin = candidate_page_ * kCandidatesPerPage;
-    if (begin >= candidates_.size()) {
-        return 0U;
+    std::size_t count = 0U;
+    while (count < kCandidatesPerPage && visible_candidate(count).has_value()) {
+        ++count;
     }
-    return std::min(kCandidatesPerPage, candidates_.size() - begin);
+    return count;
+}
+
+std::optional<std::array<std::uint8_t, 2>> NewGameNameEditor::visible_candidate(
+    const std::size_t visible_index) const noexcept {
+    if (visible_index >= kCandidatesPerPage || candidates_.empty()) {
+        return std::nullopt;
+    }
+    const auto index = static_cast<std::int64_t>(candidate_page_) *
+                           static_cast<std::int64_t>(kCandidatesPerPage) +
+                       static_cast<std::int64_t>(visible_index);
+    if (index >= 0) {
+        if (static_cast<std::size_t>(index) >= candidates_.size()) {
+            return std::nullopt;
+        }
+        return candidates_[static_cast<std::size_t>(index)];
+    }
+    const auto offset = static_cast<std::int64_t>(candidate_data_begin_) + index * 2;
+    if (offset < 0 || offset + 1 >= static_cast<std::int64_t>(cfont_.size())) {
+        return std::nullopt;
+    }
+    return std::array<std::uint8_t, 2>{
+        cfont_[static_cast<std::size_t>(offset)],
+        cfont_[static_cast<std::size_t>(offset + 1)]};
+}
+
+bool NewGameNameEditor::has_previous_candidate_page() const noexcept {
+    if (candidates_.empty()) {
+        return false;
+    }
+    if (candidate_page_ == 0) {
+        return candidates_.size() > kCandidatesPerPage;
+    }
+    if (candidate_page_ > 0) {
+        return true;
+    }
+    const auto previous_begin = static_cast<std::int64_t>(candidate_data_begin_) +
+        (static_cast<std::int64_t>(candidate_page_) - 1) *
+            static_cast<std::int64_t>(kCandidatesPerPage * 2U);
+    return previous_begin >= 0;
+}
+
+bool NewGameNameEditor::has_next_candidate_page() const noexcept {
+    if (candidates_.empty()) {
+        return false;
+    }
+    if (candidate_page_ < 0) {
+        return true;
+    }
+    const auto next_begin = (static_cast<std::size_t>(candidate_page_) + 1U) *
+        kCandidatesPerPage;
+    return next_begin < candidates_.size();
+}
+
+void NewGameNameEditor::finish_presented_frame() noexcept {
+    if (!accepted_ && candidates_.empty() && !no_candidates_ &&
+        name_.size() < model::kNewGameNameMaximumBytes) {
+        cursor_bright_ = !cursor_bright_;
+    }
 }
 
 NewGameNameEditor::ZhuyinKey NewGameNameEditor::zhuyin_key(
@@ -197,22 +274,18 @@ void NewGameNameEditor::clear_composition() noexcept {
     final_ = 0;
     tone_ = 0;
     candidates_.clear();
-    candidate_page_ = 0U;
+    candidate_page_ = 0;
+    candidate_data_begin_ = 0U;
     no_candidates_ = false;
 }
 
 void NewGameNameEditor::erase_last() noexcept {
-    if (!candidates_.empty() || has_composition()) {
-        if (!candidates_.empty()) {
-            candidates_.clear();
-            candidate_page_ = 0U;
-        } else if (tone_ != 0) {
-            tone_ = 0;
-        } else if (final_ != 0) {
+    if (has_composition()) {
+        if (final_ != 0) {
             final_ = 0;
         } else if (medial_ != 0) {
             medial_ = 0;
-        } else {
+        } else if (initial_ != 0) {
             initial_ = 0;
         }
         return;
@@ -221,13 +294,18 @@ void NewGameNameEditor::erase_last() noexcept {
         return;
     }
     const auto byte_count = unit_sizes_.back();
+    const auto retain_single_ascii_display = unit_sizes_.size() == 1U && byte_count == 1U;
     unit_sizes_.pop_back();
     name_.resize(name_.size() - byte_count);
+    if (!retain_single_ascii_display) {
+        sync_display_name();
+    }
 }
 
 void NewGameNameEditor::lookup_candidates() {
     candidates_.clear();
-    candidate_page_ = 0U;
+    candidate_page_ = 0;
+    candidate_data_begin_ = 0U;
     const auto index = static_cast<std::size_t>(initial_) * 5U +
                        static_cast<std::size_t>(tone_);
     if (index + 1U >= kCfontBoundaryCount) {
@@ -249,24 +327,43 @@ void NewGameNameEditor::lookup_candidates() {
         return;
     }
 
-    auto cursor = static_cast<std::size_t>(std::distance(cfont_.begin(), match)) + 1U;
-    while (cursor + 1U < end && cfont_[cursor] >= 0x40U && cfont_[cursor + 1U] >= 0x40U) {
-        candidates_.push_back({cfont_[cursor], cfont_[cursor + 1U]});
-        cursor += 2U;
+    candidate_data_begin_ =
+        static_cast<std::size_t>(std::distance(cfont_.begin(), match)) + 1U;
+    auto cursor = candidate_data_begin_;
+    while (cursor < cfont_.size() && cfont_[cursor] >= 0x40U) {
+        ++cursor;
+    }
+    const auto count = (cursor - candidate_data_begin_) / 2U;
+    candidates_.reserve(count);
+    for (std::size_t index = 0U; index < count; ++index) {
+        const auto offset = candidate_data_begin_ + index * 2U;
+        candidates_.push_back({cfont_[offset], cfont_[offset + 1U]});
     }
     no_candidates_ = candidates_.empty();
 }
 
 void NewGameNameEditor::commit_candidate(const std::size_t visible_index) {
-    const auto index = candidate_page_ * kCandidatesPerPage + visible_index;
-    if (index >= candidates_.size() ||
+    const auto selected = static_cast<std::int64_t>(candidate_page_) *
+                              static_cast<std::int64_t>(kCandidatesPerPage) +
+                          static_cast<std::int64_t>(visible_index) + 1;
+    if (selected < 0) {
+        clear_composition();
+        return;
+    }
+    if (selected == 0 || static_cast<std::size_t>(selected) > candidates_.size() ||
         name_.size() + 2U > model::kNewGameNameMaximumBytes) {
         return;
     }
+    const auto index = static_cast<std::size_t>(selected - 1);
     name_.push_back(candidates_[index][0]);
     name_.push_back(candidates_[index][1]);
     unit_sizes_.push_back(2U);
+    sync_display_name();
     clear_composition();
+}
+
+void NewGameNameEditor::sync_display_name() {
+    display_name_ = name_;
 }
 
 }  // namespace openlegend::ui

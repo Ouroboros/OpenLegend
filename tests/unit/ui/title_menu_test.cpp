@@ -481,6 +481,11 @@ void check_name_editor(const std::filesystem::path& data_root) {
         return;
     }
     OL_CHECK(editor.mode() == NameInputMode::zhuyin);
+    OL_CHECK(editor.cursor_color() == 7U);
+    editor.finish_presented_frame();
+    OL_CHECK(editor.cursor_color() == 9U);
+    editor.finish_presented_frame();
+    OL_CHECK(editor.cursor_color() == 7U);
     static_cast<void>(editor.handle_key('R', false, false));
     static_cast<void>(editor.handle_key('U', false, false));
     static_cast<void>(editor.handle_key('P', false, false));
@@ -489,6 +494,30 @@ void check_name_editor(const std::filesystem::path& data_root) {
     OL_CHECK(editor.visible_candidate_count() == 8U);
     OL_CHECK(editor.candidates()[0][0] == 0xA4U);
     OL_CHECK(editor.candidates()[0][1] == 0xB5U);
+    OL_CHECK(editor.handle_key(0x0DU, false, false) == NameEditStatus::editing);
+    static_cast<void>(editor.handle_key(0x08U, false, false));
+    OL_CHECK(editor.candidates().size() == 20U);
+    static_cast<void>(editor.handle_key(0x2CU, false, true));
+    OL_CHECK(editor.candidate_page() == -1);
+    OL_CHECK(editor.visible_candidate_count() == 8U);
+    static_cast<void>(editor.handle_key('8', false, false));
+    OL_CHECK(editor.candidate_page() == -1);
+    static_cast<void>(editor.handle_key('1', false, false));
+    OL_CHECK(editor.candidates().empty());
+    OL_CHECK(editor.initial() == 0);
+    OL_CHECK(editor.medial() == 0);
+    OL_CHECK(editor.final() == 0);
+    static_cast<void>(editor.handle_key('R', false, false));
+    static_cast<void>(editor.handle_key('U', false, false));
+    static_cast<void>(editor.handle_key('P', false, false));
+    static_cast<void>(editor.handle_key(0x20U, false, false));
+    static_cast<void>(editor.handle_key(0x2EU, false, true));
+    OL_CHECK(editor.candidate_page() == 1);
+    static_cast<void>(editor.handle_key(0x2EU, false, true));
+    OL_CHECK(editor.candidate_page() == 2);
+    OL_CHECK(editor.visible_candidate_count() == 4U);
+    static_cast<void>(editor.handle_key(0x20U, false, false));
+    OL_CHECK(editor.candidate_page() == 0);
     static_cast<void>(editor.handle_key('2', false, false));
     OL_CHECK(editor.name().size() == 2U);
     OL_CHECK(editor.name()[0] == 0xAAU);
@@ -508,6 +537,44 @@ void check_name_editor(const std::filesystem::path& data_root) {
     OL_CHECK(editor.name()[0] == 'A');
     OL_CHECK(editor.name()[5] == 'G');
     OL_CHECK(editor.handle_key(0x0DU, false, false) == NameEditStatus::completed);
+    OL_CHECK(editor.accepted());
+
+    NewGameNameEditor no_match{openlegend::resource::DataRoot{data_root}};
+    static_cast<void>(no_match.handle_key('1', false, false));
+    static_cast<void>(no_match.handle_key('7', false, false));
+    OL_CHECK(no_match.no_candidates());
+    OL_CHECK(no_match.initial() == 1);
+    OL_CHECK(no_match.tone() == 1);
+    static_cast<void>(no_match.handle_key('A', false, false));
+    OL_CHECK(!no_match.no_candidates());
+    OL_CHECK(no_match.initial() == 0);
+    OL_CHECK(no_match.tone() == 0);
+    OL_CHECK(no_match.name().empty());
+    static_cast<void>(no_match.handle_key('A', false, false));
+    OL_CHECK(no_match.initial() == 3);
+
+    NewGameNameEditor ghost{openlegend::resource::DataRoot{data_root}};
+    static_cast<void>(ghost.handle_key(0x20U, true, false));
+    static_cast<void>(ghost.handle_key('A', false, false));
+    static_cast<void>(ghost.handle_key(0x08U, false, false));
+    OL_CHECK(ghost.name().empty());
+    OL_CHECK(ghost.display_name().size() == 1U);
+    OL_CHECK(ghost.display_name()[0] == 'A');
+    OL_CHECK(ghost.handle_key(0x0DU, false, false) == NameEditStatus::editing);
+    static_cast<void>(ghost.handle_key('B', false, false));
+    OL_CHECK(ghost.name().size() == 1U);
+    OL_CHECK(ghost.name()[0] == 'B');
+    OL_CHECK(ghost.display_name()[0] == 'B');
+
+    NewGameNameEditor zhuyin_limit{openlegend::resource::DataRoot{data_root}};
+    static_cast<void>(zhuyin_limit.handle_key(0x20U, true, false));
+    for (const auto key : {'A', 'B', 'C', 'D', 'E'}) {
+        static_cast<void>(
+            zhuyin_limit.handle_key(static_cast<std::uint8_t>(key), false, false));
+    }
+    static_cast<void>(zhuyin_limit.handle_key(0x20U, true, false));
+    static_cast<void>(zhuyin_limit.handle_key('R', false, false));
+    OL_CHECK(zhuyin_limit.initial() == 0);
 }
 
 void check_startup_resource_cache(const std::filesystem::path& data_root) {
@@ -632,6 +699,14 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         intro_game.handle_key(0x20U, true, false);
         intro_game.handle_key('A', false, false);
         intro_game.handle_key(0x0DU, false, false);
+        OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
+        OL_CHECK(intro_game.render());
+        intro_game.finish_presented_tick();
+        for (int tick = 0; tick < 29; ++tick) {
+            intro_game.advance();
+            OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
+        }
+        intro_game.advance();
         OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
         OL_CHECK(intro_game.render());
         intro_game.handle_key('Y', false, false);
@@ -1508,6 +1583,12 @@ void check_scene_load_runtime(const std::filesystem::path& data_root) {
     game.handle_key(0x20U, true, false);
     game.handle_key('A', false, false);
     game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    for (int tick = 0; tick < 30; ++tick) {
+        game.advance();
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
 
@@ -1700,6 +1781,44 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.valid());
+
+    ui::NewGameNameEditor initial_name{resource::DataRoot{data_root}};
+    OL_CHECK(basic_renderer.render_name_entry(renderer, initial_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xD1CB80F1E6EC5692ULL);
+    static_cast<void>(initial_name.handle_key('R', false, false));
+    static_cast<void>(initial_name.handle_key('U', false, false));
+    static_cast<void>(initial_name.handle_key('P', false, false));
+    OL_CHECK(basic_renderer.render_name_entry(renderer, initial_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xF75FE18F23C3226BULL);
+    static_cast<void>(initial_name.handle_key(0x20U, false, false));
+    OL_CHECK(basic_renderer.render_name_entry(renderer, initial_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xB2E1B2B2B13B316CULL);
+    static_cast<void>(initial_name.handle_key(0x2CU, false, true));
+    OL_CHECK(basic_renderer.render_name_entry(renderer, initial_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x2ED4A5F661FA48A1ULL);
+
+    ui::NewGameNameEditor no_name_candidates{resource::DataRoot{data_root}};
+    static_cast<void>(no_name_candidates.handle_key('1', false, false));
+    static_cast<void>(no_name_candidates.handle_key('7', false, false));
+    OL_CHECK(basic_renderer.render_name_entry(renderer, no_name_candidates, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x6F24256F81E60C98ULL);
+
+    ui::NewGameNameEditor alphanumeric_name{resource::DataRoot{data_root}};
+    static_cast<void>(alphanumeric_name.handle_key(0x20U, true, false));
+    static_cast<void>(alphanumeric_name.handle_key('A', false, false));
+    OL_CHECK(basic_renderer.render_name_entry(renderer, alphanumeric_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x446D93DB98EA6270ULL);
+    static_cast<void>(alphanumeric_name.handle_key(0x08U, false, false));
+    OL_CHECK(basic_renderer.render_name_entry(renderer, alphanumeric_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x2D1D57B78908ED6CULL);
+
+    ui::NewGameNameEditor accepted_name{resource::DataRoot{data_root}};
+    static_cast<void>(accepted_name.handle_key(0x20U, true, false));
+    static_cast<void>(accepted_name.handle_key('A', false, false));
+    OL_CHECK(accepted_name.handle_key(0x0DU, false, false) == ui::NameEditStatus::completed);
+    OL_CHECK(basic_renderer.render_name_entry(renderer, accepted_name, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xA5D18B00944A30F3ULL);
+
     const auto fill_menu_oracle_background = [&framebuffer]() {
         auto pixels = framebuffer.pixels();
         for (std::size_t index = 0U; index < pixels.size(); ++index) {

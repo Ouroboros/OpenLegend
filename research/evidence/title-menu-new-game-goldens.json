@@ -17,9 +17,17 @@
       "bytes": 768,
       "sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a"
     },
+    "FONT.X16": {
+      "bytes": 2048,
+      "sha256": "d821d564c90dd6b7dc78ba0cdf6c7052066a5311ffc4b6e308bc0b60af20ecec"
+    },
     "FONT.C16": {
       "bytes": 447136,
       "sha256": "8d395791f14395b18f8afd98204856e3a836a1b4497de41e4bb701de2fc19c40"
+    },
+    "CFONT": {
+      "bytes": 29674,
+      "sha256": "bf20d4a5b4bbc6b2e602f7a328d1ec8fc8e592cee00673bf3bdf2147a128932e"
     }
   },
   "title_pixels_fnv1a64": {
@@ -36,6 +44,17 @@
     "source": "independent synthetic indexed background plus current mmap.col/FONT.C16",
     "world_selection_0": "4821b1c9f78f507d",
     "scene_selection_3": "2d951419c79fa4f8"
+  },
+  "name_entry_pixels_fnv1a64": {
+    "source": "independent machine-coordinate FONT.X16/FONT.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
+    "initial_zhuyin_cursor_7": "d1cb80f1e6ec5692",
+    "composition_rup_cursor_7": "f75fe18f23c3226b",
+    "candidates_rup_page_0_cursor_7": "b2e1b2b2b13b316c",
+    "candidates_rup_page_minus_1_cursor_7": "2ed4a5f661fa48a1",
+    "no_candidates_initial_1_tone_1_cursor_7": "6f24256f81e60c98",
+    "alphanumeric_a_cursor_7": "446d93db98ea6270",
+    "alphanumeric_single_backspace_ghost_cursor_7": "2d1d57b78908ed6c",
+    "accepted_alphanumeric_a": "a5d18b00944a30f3"
   },
   "runtime_ui_regression_fnv1a64": {
     "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -32,12 +33,24 @@ public:
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
     [[nodiscard]] NameInputMode mode() const noexcept { return mode_; }
     [[nodiscard]] std::span<const std::uint8_t> name() const noexcept { return name_; }
+    [[nodiscard]] std::span<const std::uint8_t> display_name() const noexcept {
+        return display_name_;
+    }
     [[nodiscard]] std::span<const std::array<std::uint8_t, 2>> candidates() const noexcept {
         return candidates_;
     }
-    [[nodiscard]] std::size_t candidate_page() const noexcept { return candidate_page_; }
+    [[nodiscard]] std::int16_t candidate_page() const noexcept { return candidate_page_; }
     [[nodiscard]] std::size_t visible_candidate_count() const noexcept;
+    [[nodiscard]] std::optional<std::array<std::uint8_t, 2>> visible_candidate(
+        std::size_t visible_index) const noexcept;
+    [[nodiscard]] bool has_previous_candidate_page() const noexcept;
+    [[nodiscard]] bool has_next_candidate_page() const noexcept;
     [[nodiscard]] bool no_candidates() const noexcept { return no_candidates_; }
+    [[nodiscard]] bool accepted() const noexcept { return accepted_; }
+    [[nodiscard]] std::uint8_t cursor_color() const noexcept {
+        return cursor_bright_ ? 9U : 7U;
+    }
+    void finish_presented_frame() noexcept;
     [[nodiscard]] std::int16_t initial() const noexcept { return initial_; }
     [[nodiscard]] std::int16_t medial() const noexcept { return medial_; }
     [[nodiscard]] std::int16_t final() const noexcept { return final_; }
@@ -55,19 +68,24 @@ private:
     void erase_last() noexcept;
     void lookup_candidates();
     void commit_candidate(std::size_t visible_index);
+    void sync_display_name();
 
     std::vector<std::uint8_t> cfont_;
     std::vector<std::uint8_t> name_;
+    std::vector<std::uint8_t> display_name_;
     std::vector<std::uint8_t> unit_sizes_;
     std::vector<std::array<std::uint8_t, 2>> candidates_;
     std::string error_;
     NameInputMode mode_{NameInputMode::zhuyin};
-    std::size_t candidate_page_{};
+    std::int16_t candidate_page_{};
+    std::size_t candidate_data_begin_{};
     std::int16_t initial_{};
     std::int16_t medial_{};
     std::int16_t final_{};
     std::int16_t tone_{};
     bool no_candidates_{};
+    bool accepted_{};
+    bool cursor_bright_{};
 };
 
 }  // namespace openlegend::ui

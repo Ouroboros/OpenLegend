@@ -261,6 +261,15 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
 }
 
 void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
+    if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
+        name_editor_->finish_presented_frame();
+    }
+    if (pending_name_accept_) {
+        if (scene_effect_kind_ != SceneEffectKind::none) {
+            scene_effect_presented_ = true;
+        }
+        return;
+    }
     if (pending_io_ != PendingIo::none) {
         pending_io_wait_presented_ = true;
         return;
@@ -394,8 +403,8 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         pending_world_exit_ || world_scene_transition_pending_ || world_scene_return_pending_ ||
         load_transition_phase_ != LoadTransitionPhase::none ||
         title_startup_phase_ != TitleStartupPhase::none ||
-        pending_title_result_.has_value() || pending_new_game_wait_present_ ||
-        pending_new_game_scene_start_) {
+        pending_title_result_.has_value() || pending_name_accept_ ||
+        pending_new_game_wait_present_ || pending_new_game_scene_start_) {
         return LegacyKeyStateReset::none;
     }
     diagnostics::log_debug(
@@ -424,9 +433,8 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 show_error("Unable to store protagonist name", LegacyGameView::title);
                 break;
             }
-            attribute_controller_ = std::make_unique<ui::NewGameAttributeController>(
-                ranger->roles[0], random_);
-            set_view(LegacyGameView::attributes, "name entry accepted");
+            pending_name_accept_ = true;
+            begin_scene_effect(SceneEffectKind::present, 30U);
         }
         break;
     case LegacyGameView::attributes:
@@ -859,6 +867,7 @@ bool LegacyGameRuntime::render() {
 }
 
 void LegacyGameRuntime::begin_new_game() {
+    pending_name_accept_ = false;
     pending_new_game_wait_present_ = false;
     pending_new_game_scene_start_ = false;
     attribute_controller_.reset();
@@ -1298,7 +1307,17 @@ bool LegacyGameRuntime::advance_scene_effect() {
         return true;
     }
     clear_scene_effect();
-    if (pending_new_game_wait_present_) {
+    if (pending_name_accept_) {
+        pending_name_accept_ = false;
+        auto* ranger = game_state_.ranger();
+        if (ranger == nullptr) {
+            show_error("No protagonist is available after name entry", LegacyGameView::title);
+        } else {
+            attribute_controller_ = std::make_unique<ui::NewGameAttributeController>(
+                ranger->roles[0], random_);
+            set_view(LegacyGameView::attributes, "name entry delay completed");
+        }
+    } else if (pending_new_game_wait_present_) {
         pending_new_game_wait_present_ = false;
         pending_new_game_scene_start_ = true;
         begin_scene_effect(SceneEffectKind::fade_to_black, 1U);

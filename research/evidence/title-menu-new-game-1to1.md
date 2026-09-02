@@ -19,7 +19,7 @@
 - `sub_2A0D9/sub_2A10F/sub_2A186/sub_2A86C`：物品基础 UI；
 - `sub_3D643 @ 0x3D643..0x3D689`：按 `legacy_id / 2` 取帧并绘制 RLE；
 - `research/ida/reports/Z_DAT.b5_ui_xrefs.txt`：上述完整机器码、调用引用、数据引用与静态表；
-- `research/evidence/title-menu-new-game-goldens.json`：独立 Python oracle 生成的标题像素与角色随机向量。
+- `research/evidence/title-menu-new-game-goldens.json`：独立 Python oracle 生成的标题像素、姓名输入像素与角色随机向量。
 
 IDA 9.2 只通过 `idat.exe -A` headless 运行。最终报告按仓库 LF 规则规范化后为 704,601 字节、10,421 行，SHA256 `df04245790f8a3161c37fb9af64376a6e3f56c6cd5701a33bc31d526e68468f6`。导出结束后以 Git 中的字节恢复 `research/ida/databases/Z_DAT.i64`；数据库不属于 B5 改动。
 
@@ -101,17 +101,17 @@ wait   = 7333253ca7400de6
 
 ## 5. 姓名输入
 
-主角姓名的物理区域是 role 0 的 offset 8、10 字节；输入器先清零全部 10 字节，但可提交长度上限是 6 字节。英文数字占 1 字节，Big5 字占 2 字节。退格按上次提交单元删除 1 或 2 字节，不得按 UTF-8 code unit 处理。
+主角姓名的物理区域是 role 0 的 offset 8、10 字节；输入器先清零全部 10 字节，但可提交长度上限是 6 字节。英数占1字节，Big5占2字节。注音模式只在当前长度小于5时接受新组合，英数模式可写到6字节；不得统一成单一6-byte输入门。
 
-初始模式为注音；`Ctrl(0x82)+Space(0x20)` 在注音/英数间切换。英数模式只接受翻译表产生的 `0..9` 与 `A..Z`。非空姓名上的 `Enter` 完成输入；空姓名 Enter 无效。Backspace 为 `0x08`。
+初始模式为注音；`Ctrl(0x82)+Space(0x20)` 在注音/英数间切换并清组合。`0x545E8..0x54B67` 按translated key提供3-byte注音标签、128个`{type,value}`记录和英数资格/输出字符。type 1/2/3/4分别写初声、介音、韵母、声调，并在x=100/120/140/160、y=161以颜色`0x1715`绘制；声调写入后自动查找。英数模式只接受翻译表产生的`0..9`与`A..Z`。
 
-`0x545E8..0x54B67` 的静态表按 translated key 提供：
+`CFONT`查询严格令`i=initial*5+tone`，从文件开头16-bit little-endian累计边界读取`[word[i],word[i+1])`；用`(medial<<4)|final`寻找索引字节；命中后从下一字节连续扫描到首个`<0x40`，字节数除2形成候选。无匹配时在`(240,161)`以`0x0705`绘“沒有字”，present并等待任意一次非零key，再清组合。
 
-- 3-byte 注音显示标签；
-- 128 个 `{type,value}` 记录，type 1/2/3/4 分别为声母、介音、韵母、声调；
-- 英数输出字符与有效标志。
+候选底栏先清`(0,160,320,40)`，模式提示改用`0x1719`；最多8项，页内编号与Big5位于`(30*(i+1),180)`。第一页仅画后箭头，中间页画双箭头，末页画前箭头。机器原BUG会在20候选的第一页把前页flag也置1，Shift+comma令有符号页码变-1并读取候选起点前16字节；现代保留负页、分页与数字选择语义，但对原字体例程会越界的非法Big5确定性跳过，并在CFONT头边界停止继续前翻。
 
-`CFONT` 的查询合同由 `0x27EF1..0x27FE8` 确认：令 `i=initial*5+tone`，从文件开头的 16-bit little-endian 累计边界表读取 `[word[i], word[i+1])`；用 `(medial<<4)|final` 在该区间寻找索引字节；命中后紧随的连续 `>=0x40` 字节按 Big5 两字节形成候选，首个 `<0x40` 结束。候选每页最多 8 个，数字 1..8 选择，提交后清空注音组合。现代实现必须读取并验证当前 `CFONT`，不得引入宿主输入法改变候选顺序。
+候选态普通短按Enter/Backspace不执行命令；Space前进并在末页回第一页，Escape退出候选，数字1..8按`page*8+digit`生成1-based选择。退格在普通输入态按韵母→介音→初声优先清组合，否则按1/2-byte姓名单元删除。仅有一个ASCII时原机长度减0却不清首字节，画面保留残字；现代用独立display buffer保留该残影而保持逻辑姓名为空。
+
+非空姓名Enter先清`(158,141,50,17)`并重绘最终姓名、present，再阻塞30 ticks才进入属性生成；空姓名Enter无效。现代用present-gated continuation承接该顺序。详细入口终审见`0x27A26.md`、`0x2841A.md`、`0x287CA.md`、`0x28975.md`。
 
 ## 6. 状态与物品基础 UI
 
@@ -135,5 +135,5 @@ wait   = 7333253ca7400de6
 - 标题读档先显示原“请稍候”帧，再在下一逻辑步完整导入 snapshot；失败进入显式错误模态且测试逐字节确认原 `GameState` 不变；
 - 存档测试只复制基线和 UI 资产到 `build/.../tests/generated/<Config>/b5-runtime/`，验证成功写出的 R/S/D snapshot 与内存状态完全相等，并通过删除隔离目录强制证明写失败不会伪报成功；
 - 主角离队返回原 Big5 提示且不修改 snapshot；其他角色的离队事件副作用按汇编边界留给 B7 事件执行器；物品使用/装备/修炼副作用同样留给 B7；
-- 标题主菜单、三槽和等待帧使用独立 Python RLE oracle；世界菜单参数2选择框、双页精确状态和物品帧锁定 framebuffer FNV-1a 回归值，战斗双页状态另由独立原资产oracle复算，场景调用验证面板外背景逐像素不变；现代提交路径仍为 `indexed8 + RGB6 -> RGBA8 -> SDL nearest integer viewport`；
+- 标题主菜单、三槽和等待帧使用独立 Python RLE oracle；姓名输入另以当前`title.big/FONT.X16/FONT.C16/CFONT`固定初始、组合、候选第一页、负页安全适配、无候选、英数A、单ASCII残影和接受帧八项hash；世界菜单参数2选择框、双页精确状态和物品帧锁定 framebuffer FNV-1a 回归值，战斗双页状态另由独立原资产oracle复算，场景调用验证面板外背景逐像素不变；现代提交路径仍为 `indexed8 + RGB6 -> RGBA8 -> SDL nearest integer viewport`；
 - 本次菜单医疗/解毒切片的Linux/Windows app Debug均14/14通过，Linux app ASan+UBSan 14/14通过并已恢复普通Debug cache；独立B5 golden与tracked证据一致，原始`Z.COM/Z.DAT/WAR.STA/WARFLD.IDX/WARFLD.GRP`与阶段前hash合同一致，`research/ida/databases/Z_DAT.i64`无工作树修改。

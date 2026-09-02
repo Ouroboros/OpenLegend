@@ -224,6 +224,7 @@ private:
     LegacyGameView load_return_view_{LegacyGameView::title};
     std::optional<model::GameSnapshot> pending_loaded_snapshot_;
     std::optional<ui::TitleResult> pending_title_result_;
+    bool pending_name_accept_{};
     bool pending_new_game_wait_present_{};
     bool pending_new_game_scene_start_{};
     std::optional<std::int16_t> scene_request_;

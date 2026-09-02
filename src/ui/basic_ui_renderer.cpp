@@ -4,6 +4,8 @@
 #include <array>
 #include <charconv>
 
+#include "openlegend/model/new_game.hpp"
+
 namespace openlegend::ui {
 namespace {
 
@@ -32,6 +34,12 @@ constexpr std::array<std::uint8_t, 10> kZhuyinPrompt{
     0xA1U, 0x5DU, 0xAAU, 0x60U, 0xADU, 0xB5U, 0xA1U, 0x5EU, 0xA1U, 0x47U};
 constexpr std::array<std::uint8_t, 10> kAlnumPrompt{
     0xA1U, 0x5DU, 0xADU, 0x5EU, 0xBCU, 0xC6U, 0xA1U, 0x5EU, 0xA1U, 0x47U};
+constexpr std::array<std::uint8_t, 6> kNoNameCandidates{
+    0xB5U, 0x4CU, 0xA6U, 0xB9U, 0xA6U, 0x72U};
+constexpr std::array<std::uint8_t, 6> kCandidateBothPages{
+    0xA1U, 0xD5U, 0xA1U, 0xFEU, 0xA1U, 0xD6U};
+constexpr std::array<std::uint8_t, 2> kCandidatePreviousPage{0xA1U, 0xD5U};
+constexpr std::array<std::uint8_t, 2> kCandidateNextPage{0xA1U, 0xD6U};
 constexpr std::array<std::uint8_t, 31> kAttributeQuestion{
     0x20U, 0x20U, 0x20U, 0xB3U, 0x6FU, 0xBCU, 0xCBU, 0xAAU, 0xBAU, 0xC4U,
     0xDDU, 0xA9U, 0xCAU, 0xBAU, 0xA1U, 0xB7U, 0x4EU, 0xB6U, 0xDCU, 0xA1U,
@@ -111,6 +119,30 @@ void append_number(std::vector<std::uint8_t>& text, const std::int16_t value, co
     }
 }
 
+[[nodiscard]] std::optional<std::array<std::uint8_t, 2>> zhuyin_label(
+    const int type,
+    const std::int16_t value) noexcept {
+    if (type == 1 && value >= 1 && value <= 21) {
+        return std::array<std::uint8_t, 2>{
+            0xA3U,
+            static_cast<std::uint8_t>(value <= 11 ? 0x73 + value : 0x95 + value)};
+    }
+    if (type == 2 && value >= 1 && value <= 3) {
+        return std::array<std::uint8_t, 2>{
+            0xA3U, static_cast<std::uint8_t>(0xB7 + value)};
+    }
+    if (type == 3 && value >= 1 && value <= 13) {
+        return std::array<std::uint8_t, 2>{
+            0xA3U, static_cast<std::uint8_t>(0xAA + value)};
+    }
+    if (type == 4 && value >= 1 && value <= 4) {
+        return std::array<std::uint8_t, 2>{
+            0xA3U,
+            static_cast<std::uint8_t>(value == 1 ? 0xBB : 0xBB + value)};
+    }
+    return std::nullopt;
+}
+
 template <std::size_t ByteCount>
 [[nodiscard]] std::span<const std::uint8_t> fixed_text(
     const std::array<std::uint8_t, ByteCount>& bytes,
@@ -151,6 +183,7 @@ bool BasicUiRenderer::render_name_entry(
         !framebuffer.fill_rectangle(0, 140, 320U, 60U, 0U)) {
         return false;
     }
+    const auto has_candidates = !editor.candidates().empty();
     if (!draw_text(framebuffer, 48, 141, kNamePrompt) ||
         !draw_text(
             framebuffer,
@@ -158,24 +191,77 @@ bool BasicUiRenderer::render_name_entry(
             161,
             editor.mode() == NameInputMode::zhuyin
                 ? std::span<const std::uint8_t>{kZhuyinPrompt}
-                : std::span<const std::uint8_t>{kAlnumPrompt}) ||
-        !draw_text(framebuffer, 158, 141, editor.name(), 0x0503U)) {
+                : std::span<const std::uint8_t>{kAlnumPrompt},
+            has_candidates ? 0x1719U : 0x1715U) ||
+        !draw_text(framebuffer, 158, 141, editor.display_name(), 0x0503U)) {
+        return false;
+    }
+    if (!editor.accepted() && editor.name().size() < model::kNewGameNameMaximumBytes &&
+        !framebuffer.fill_rectangle(
+            158 + static_cast<int>(editor.name().size()) * 8,
+            156,
+            8U,
+            1U,
+            editor.cursor_color())) {
         return false;
     }
 
-    const auto visible = editor.visible_candidate_count();
-    const auto begin = editor.candidate_page() * 8U;
-    for (std::size_t index = 0U; index < visible; ++index) {
-        std::array<std::uint8_t, 4> label{
-            static_cast<std::uint8_t>('1' + index),
-            editor.candidates()[begin + index][0],
-            editor.candidates()[begin + index][1],
-            0U};
-        if (!draw_text(framebuffer, 4 + static_cast<int>(index) * 38, 181, label)) {
+    if (has_candidates) {
+        const auto visible = editor.visible_candidate_count();
+        for (std::size_t index = 0U; index < visible; ++index) {
+            const auto candidate = editor.visible_candidate(index);
+            if (!candidate.has_value()) {
+                return false;
+            }
+            auto x = 30 * static_cast<int>(index + 1U);
+            const std::array<std::uint8_t, 1> digit{
+                static_cast<std::uint8_t>('1' + index)};
+            if (!draw_text(framebuffer, x, 180, digit, 0x1719U)) {
+                return false;
+            }
+            x += 8;
+            if ((*candidate)[0] <= 0x7FU) {
+                const std::array<std::uint8_t, 1> first{(*candidate)[0]};
+                if (!draw_text(framebuffer, x, 180, first, 0x1719U)) {
+                    return false;
+                }
+                x += 8;
+                if ((*candidate)[1] <= 0x7FU) {
+                    const std::array<std::uint8_t, 1> second{(*candidate)[1]};
+                    if (!draw_text(framebuffer, x, 180, second, 0x1719U)) {
+                        return false;
+                    }
+                }
+            } else {
+                const std::array<std::uint8_t, 2> pair{
+                    (*candidate)[0], (*candidate)[1]};
+                if (!draw_text(framebuffer, x, 180, pair, 0x1719U) &&
+                    editor.candidate_page() >= 0) {
+                    return false;
+                }
+            }
+        }
+        if (editor.candidate_page() == 0) {
+            return !editor.has_next_candidate_page() ||
+                draw_text(framebuffer, 300, 180, kCandidateNextPage, 0x1719U);
+        }
+        if (editor.has_next_candidate_page()) {
+            return draw_text(framebuffer, 270, 180, kCandidateBothPages, 0x1719U);
+        }
+        return draw_text(framebuffer, 300, 180, kCandidatePreviousPage, 0x1719U);
+    }
+
+    const std::array<std::int16_t, 4> composition{
+        editor.initial(), editor.medial(), editor.final(), editor.tone()};
+    for (std::size_t index = 0U; index < composition.size(); ++index) {
+        const auto label = zhuyin_label(static_cast<int>(index + 1U), composition[index]);
+        if (label.has_value() &&
+            !draw_text(framebuffer, 100 + static_cast<int>(index) * 20, 161, *label)) {
             return false;
         }
     }
-    return true;
+    return !editor.no_candidates() ||
+        draw_text(framebuffer, 240, 161, kNoNameCandidates, 0x0705U);
 }
 
 bool BasicUiRenderer::render_attributes(
