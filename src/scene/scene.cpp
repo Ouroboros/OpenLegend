@@ -645,7 +645,7 @@ SceneStepResult SceneSession::interact() {
     }
     player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
     event_context_ = EventContext{
-        *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), -1};
+        *event, static_cast<std::int16_t>(x), static_cast<std::int16_t>(y), event_item_id_};
     const auto script = event_field(scene_id_, *event, model::SceneEventField::event_1);
     if (script.has_value() && *script > 0) {
         (void)prepare_event(
@@ -659,6 +659,7 @@ SceneStepResult SceneSession::use_item(const std::int16_t item_id) {
     if (!valid() || pending_.kind != SceneStepKind::stay) {
         return pending_;
     }
+    event_item_id_ = item_id;
     const auto [delta_x, delta_y] = direction_delta(direction_);
     const auto x = scene_x_ + delta_x;
     const auto y = scene_y_ + delta_y;
@@ -728,7 +729,10 @@ bool SceneSession::prepare_event(
     if (!valid() || script_id <= 0 || static_cast<std::size_t>(script_id) >= assets_.script_count()) {
         return false;
     }
-    event_context_ = EventContext{event_index, event_x, event_y, item_id};
+    if (item_id >= 0) {
+        event_item_id_ = item_id;
+    }
+    event_context_ = EventContext{event_index, event_x, event_y, event_item_id_};
     script_ = assets_.script(static_cast<std::size_t>(script_id));
     if (script_.empty()) {
         error_ = "KDEF script is empty or has odd byte length";
@@ -1587,18 +1591,19 @@ SceneStepResult SceneSession::run_auto_event(const SceneStepKind fallback) {
         pending_ = current_result(SceneStepKind::stay);
         return current_result(fallback);
     }
+    player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
     event_context_ = EventContext{
         *event,
         static_cast<std::int16_t>(scene_x_),
         static_cast<std::int16_t>(scene_y_),
-        -1};
+        event_item_id_};
     if (*script > 0) {
         (void)prepare_event(
             *script,
             *event,
             static_cast<std::int16_t>(scene_x_),
             static_cast<std::int16_t>(scene_y_),
-            -1);
+            event_item_id_);
     }
     pending_ = current_result(SceneStepKind::present);
     return pending_;

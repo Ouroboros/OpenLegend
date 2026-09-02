@@ -250,6 +250,7 @@ private:
     std::uint16_t scene_effect_wait_ticks_{1U};
     std::int16_t periodic_counter_{};
     std::int16_t physical_power_counter_{};
+    std::int16_t scene_event_item_id_{};
     bool scene_effect_presented_{};
     bool world_step_processed_{};
     bool pending_world_exit_{};

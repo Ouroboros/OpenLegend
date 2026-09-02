@@ -1156,6 +1156,7 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     OL_CHECK(empty_menu_item_session.use_menu_item(123).kind == SceneStepKind::present);
     OL_CHECK(empty_menu_item_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::open_ui);
+    OL_CHECK(empty_menu_item_session.event_item_id() == 123);
     OL_CHECK(empty_menu_item_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::present);
 
@@ -1195,6 +1196,19 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     OL_CHECK(zero_item_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::stay);
 
+    auto empty_auto_snapshot = load_baseline(root);
+    OL_CHECK(empty_auto_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, current, -1));
+    openlegend::random::LegacyRandom empty_auto_random{1U};
+    openlegend::scene::SceneSession empty_auto{
+        data_root, empty_auto_snapshot, empty_auto_random, 70};
+    OL_CHECK(empty_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::scene_title);
+    OL_CHECK(empty_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
+    OL_CHECK(empty_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::stay);
+
     auto disabled_auto_snapshot = load_baseline(root);
     OL_CHECK(disabled_auto_snapshot.set_scene_value(
         70U, SceneLayer::event_index, current, event));
@@ -1208,6 +1222,23 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     OL_CHECK(disabled_auto.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::present);
     OL_CHECK(disabled_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::stay);
+
+    auto negative_auto_snapshot = load_baseline(root);
+    OL_CHECK(negative_auto_snapshot.set_scene_value(
+        70U, SceneLayer::event_index, current, event));
+    OL_CHECK(negative_auto_snapshot.set_event_value(
+        70U, event, SceneEventField::event_3, -2));
+    openlegend::random::LegacyRandom negative_auto_random{1U};
+    openlegend::scene::SceneSession negative_auto{
+        data_root, negative_auto_snapshot, negative_auto_random, 70};
+    OL_CHECK(negative_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::scene_title);
+    OL_CHECK(negative_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
+    OL_CHECK(negative_auto.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
+    OL_CHECK(negative_auto.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::stay);
 
     auto zero_auto_snapshot = load_baseline(root);
@@ -1273,10 +1304,14 @@ void check_scene_loop_transitions(const std::filesystem::path& root) {
         data_root, exit_snapshot, exit_random, 70};
     OL_CHECK(finish_scene_title(exit_session).kind == SceneStepKind::stay);
     static_cast<void>(exit_session.take_audio_commands());
+    exit_session.set_event_item_id(123);
     OL_CHECK(exit_session.tick(SceneDirection::right, false, false).kind ==
              SceneStepKind::present);
     OL_CHECK(exit_session.scene_x() == 45 && exit_session.scene_y() == 29);
+    OL_CHECK(exit_session.player_frame() == 5018);
     OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(exit_session.player_frame() == 5016);
+    OL_CHECK(exit_session.event_item_id() == 123);
     OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::notice);
     OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::fade_to_black);

@@ -1010,6 +1010,52 @@ def scene_animation_vectors(
         for payload in scene_maps
         for event in words(payload)[3 * 4096:4 * 4096]
     ]
+    automatic_event_cell_counts = {
+        "event_minus_one": 0,
+        "event_3_minus_one": 0,
+        "event_3_zero": 0,
+        "event_3_positive": 0,
+    }
+    for scene_id, payload in enumerate(scene_maps):
+        event_words = words(scene_events[scene_id])
+        for event in words(payload)[3 * 4096:4 * 4096]:
+            if event == -1:
+                automatic_event_cell_counts["event_minus_one"] += 1
+                continue
+            event_3 = event_words[event * 11 + 4]
+            category = "event_3_minus_one" if event_3 == -1 else (
+                "event_3_positive" if event_3 > 0 else "event_3_zero"
+            )
+            automatic_event_cell_counts[category] += 1
+    positive_event_3_scripts = sorted({
+        event_words[event * 11 + 4]
+        for payload in scene_events
+        for event_words in (words(payload),)
+        for event in range(200)
+        if event_words[event * 11 + 4] > 0
+    })
+    event_3_item_context_scripts = set()
+    for script_id in positive_event_3_scripts:
+        script_words = words(scripts[script_id])
+        pc = 0
+        while pc < len(script_words):
+            opcode = script_words[pc]
+            if opcode == -1:
+                break
+            if opcode == 4:
+                event_3_item_context_scripts.add(script_id)
+            if opcode < 0 or opcode >= len(WIDTHS):
+                break
+            pc += WIDTHS[opcode]
+    assert automatic_event_cell_counts == {
+        "event_minus_one": 408342,
+        "event_3_minus_one": 1153,
+        "event_3_zero": 6,
+        "event_3_positive": 99,
+    }
+    assert len(positive_event_3_scripts) == 54
+    assert event_3_item_context_scripts == set()
+
     vertical_alias_values = []
     for payload in scene_maps:
         map_words = words(payload)
@@ -1256,9 +1302,34 @@ def scene_animation_vectors(
             "tick_after_action": "deferred_until_menu_exit",
         },
         "automatic_event_outputs": {
+            "event_index_minus_1": ["fallback"],
             "event_script_minus_1": ["fallback"],
+            "event_script_minus_2": ["present", "stay"],
             "event_script_0": ["present", "stay"],
             "event_script_825": ["present", "notice_style_52"],
+            "function_order_with_trigger": [
+                "probe_current_event",
+                "probe_event_3",
+                "set_direction_base_picture",
+                "render_scene",
+                "present",
+                "reread_event_context_without_item_write",
+                "run_positive_script",
+            ],
+            "player_picture_before": 5018,
+            "player_picture_at_event_present": 5016,
+            "event_item_context_before": 123,
+            "event_item_context_after": 123,
+            "asset_cell_counts": automatic_event_cell_counts,
+            "positive_script_ids": positive_event_3_scripts,
+            "positive_scripts_with_opcode_4": sorted(event_3_item_context_scripts),
+            "callers": [
+                "sub_26B5E:0x26FF0 post_title_new_game_tick",
+                "sub_28E40:0x28F53 scene_entry_after_title",
+                "sub_28E40:0x290EE main_tick_after_present_and_periodic_update",
+                "sub_28E40:0x292AB scene_jump_after_title",
+            ],
+            "caller_return_value": "ignored_before_transition_checks",
         },
     }
 

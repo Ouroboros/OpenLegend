@@ -197,6 +197,8 @@ public:
         physical_power_counter_ = counter;
     }
     [[nodiscard]] std::int16_t player_frame() const noexcept;
+    [[nodiscard]] std::int16_t event_item_id() const noexcept { return event_item_id_; }
+    void set_event_item_id(const std::int16_t item_id) noexcept { event_item_id_ = item_id; }
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
     [[nodiscard]] bool exit_transition_pending() const noexcept;
     [[nodiscard]] std::span<const std::uint8_t> pending_text() const noexcept {
@@ -476,6 +478,7 @@ private:
     std::int16_t periodic_counter_{};
     bool idle_animation_{};
     std::int16_t shadow_state_{};
+    std::int16_t event_item_id_{};
     EventContext event_context_{};
     std::vector<std::int16_t> script_;
     std::ptrdiff_t program_counter_{};

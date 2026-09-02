@@ -1147,6 +1147,7 @@ bool LegacyGameRuntime::start_scene(
         return false;
     }
     scene_session_->set_physical_power_counter(physical_power_counter_);
+    scene_session_->set_event_item_id(scene_event_item_id_);
     retained_scene_id_ = scene_session_->scene_id();
     pending_world_menu_item_id_.reset();
     world_menu_item_event_active_ = false;
@@ -1778,6 +1779,10 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger->items.size()) {
             return;
         }
+        scene_event_item_id_ = item_id;
+        if (scene_session_ != nullptr) {
+            scene_session_->set_event_item_id(item_id);
+        }
         const auto& item = ranger->items[static_cast<std::size_t>(item_id)];
         if (item.word(model::item_word::show_introduction) != 1) {
             game_menu_.show_items();
@@ -1914,6 +1919,7 @@ bool LegacyGameRuntime::begin_world_menu_item_event(const std::int16_t item_id) 
         return false;
     }
     scene_session_->set_physical_power_counter(physical_power_counter_);
+    scene_session_->set_event_item_id(scene_event_item_id_);
     pending_world_menu_item_id_ = item_id;
     world_menu_item_event_active_ = true;
     world_menu_event_phase_ = WorldMenuEventPhase::item_background_present;
@@ -1980,6 +1986,7 @@ bool LegacyGameRuntime::begin_world_leave_event(const std::int16_t role_id) {
         world_menu_event_phase_ = WorldMenuEventPhase::none;
         return false;
     }
+    world_menu_event_session_->set_event_item_id(scene_event_item_id_);
     world_menu_event_script_id_ = script_id;
     world_menu_event_phase_ = WorldMenuEventPhase::leave_pre_script_present;
     begin_scene_effect(SceneEffectKind::present, 1U);
