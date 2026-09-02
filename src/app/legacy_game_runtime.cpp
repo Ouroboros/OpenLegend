@@ -4,6 +4,7 @@
 #include <array>
 #include <iterator>
 #include <string_view>
+#include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/model/new_game.hpp"
@@ -123,6 +124,44 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
 
 }  // namespace
 
+LegacyStartupResources::LegacyStartupResources(const resource::DataRoot& data_root) {
+    auto cloud_group = data_root.read("CLOUD.GRP");
+    if (!cloud_group) {
+        error_ = cloud_group.error;
+        return;
+    }
+    const auto cloud_index = data_root.read("CLOUD.IDX");
+    if (!cloud_index) {
+        error_ = cloud_index.error;
+        return;
+    }
+    weather_sprites_ = resource::PackedArchive::parse(
+        cloud_index.bytes, std::move(cloud_group.bytes));
+    if (!weather_sprites_.valid()) {
+        error_ = weather_sprites_.error();
+        return;
+    }
+
+    const auto palette_file = data_root.read("MMAP.COL");
+    if (!palette_file) {
+        error_ = palette_file.error;
+        return;
+    }
+    const auto palette = resource::parse_vga_palette(palette_file.bytes);
+    if (!palette) {
+        error_ = palette.error;
+        return;
+    }
+    palette_ = palette.palette;
+
+    ranger_ = persistence::load_baseline_ranger(data_root.path());
+    if (!ranger_) {
+        error_ = ranger_.detail.empty()
+            ? std::string{persistence::persistence_status_message(ranger_.status)}
+            : ranger_.detail;
+    }
+}
+
 std::string_view ending_terminal_message() noexcept {
     return " Thanks for playing this game ! \n Oriental Software Studio 1996  \n";
 }
@@ -131,14 +170,28 @@ LegacyGameRuntime::LegacyGameRuntime(
     std::filesystem::path data_root, const std::uint32_t random_seed)
     : data_root_path_(std::move(data_root)),
       data_root_(data_root_path_),
-      random_(random_seed),
-      title_renderer_(data_root_),
-      basic_renderer_(data_root_) {
-    if (!title_renderer_.valid()) {
-        startup_error_ = title_renderer_.error();
-    } else if (!basic_renderer_.valid()) {
+      basic_renderer_(data_root_),
+      startup_resources_(data_root_),
+      random_(random_seed) {
+    if (!basic_renderer_.valid()) {
         startup_error_ = basic_renderer_.error();
-    } else if (!title_renderer_.render_background(framebuffer_)) {
+    } else if (!startup_resources_.valid()) {
+        startup_error_ = startup_resources_.error();
+    }
+    if (startup_error_.empty()) {
+        world_map_ = std::make_unique<world::WorldMapData>(data_root_);
+        if (!world_map_->valid()) {
+            startup_error_ = world_map_->error();
+        }
+    }
+    if (startup_error_.empty()) {
+        title_renderer_ = std::make_unique<ui::TitleMenuRenderer>(
+            data_root_, startup_resources_.palette());
+        if (!title_renderer_->valid()) {
+            startup_error_ = title_renderer_->error();
+        }
+    }
+    if (startup_error_.empty() && !title_renderer_->render_background(framebuffer_)) {
         startup_error_ = "Unable to render title background";
     }
     if (startup_error_.empty()) {
@@ -503,7 +556,7 @@ bool LegacyGameRuntime::render() {
         return true;
     }
     if (title_startup_phase_ == TitleStartupPhase::black_menu_present) {
-        if (!title_renderer_.render(title_menu_, framebuffer_)) {
+        if (!title_renderer_->render(title_menu_, framebuffer_)) {
             return false;
         }
         const auto black = render::legacy_fade_to_black(framebuffer_.palette());
@@ -515,7 +568,7 @@ bool LegacyGameRuntime::render() {
         return true;
     }
     if (title_startup_phase_ == TitleStartupPhase::fade_from_black) {
-        if (!title_renderer_.render(title_menu_, framebuffer_)) {
+        if (!title_renderer_->render(title_menu_, framebuffer_)) {
             return false;
         }
         if (scene_effect_palettes_.empty()) {
@@ -545,7 +598,7 @@ bool LegacyGameRuntime::render() {
     if (pending_new_game_wait_present_) {
         if (view_ != LegacyGameView::attributes ||
             scene_effect_kind_ != SceneEffectKind::present ||
-            !title_renderer_.render_new_game_wait(framebuffer_)) {
+            !title_renderer_->render_new_game_wait(framebuffer_)) {
             return false;
         }
         scene_effect_presented_ = true;
@@ -554,7 +607,7 @@ bool LegacyGameRuntime::render() {
     if (pending_new_game_scene_start_) {
         if (view_ != LegacyGameView::attributes ||
             scene_effect_kind_ != SceneEffectKind::fade_to_black ||
-            !title_renderer_.render_new_game_wait(framebuffer_)) {
+            !title_renderer_->render_new_game_wait(framebuffer_)) {
             return false;
         }
         if (scene_effect_palettes_.empty()) {
@@ -569,16 +622,16 @@ bool LegacyGameRuntime::render() {
     }
     switch (view_) {
     case LegacyGameView::title:
-        return title_renderer_.render(title_menu_, framebuffer_);
+        return title_renderer_->render(title_menu_, framebuffer_);
     case LegacyGameView::name_entry:
         return name_editor_.has_value() &&
                basic_renderer_.render_name_entry(
-                   title_renderer_, *name_editor_, framebuffer_);
+                   *title_renderer_, *name_editor_, framebuffer_);
     case LegacyGameView::attributes: {
         const auto* ranger = game_state_.ranger();
         return ranger != nullptr && name_editor_.has_value() &&
                basic_renderer_.render_attributes(
-                   title_renderer_,
+                   *title_renderer_,
                    ranger->roles[0],
                    name_editor_->name(),
                    framebuffer_);
@@ -788,7 +841,7 @@ bool LegacyGameRuntime::render() {
     case LegacyGameView::error: {
         bool base_rendered = false;
         if (error_return_view_ == LegacyGameView::title) {
-            base_rendered = title_renderer_.render(title_menu_, framebuffer_);
+            base_rendered = title_renderer_->render(title_menu_, framebuffer_);
         } else if ((error_return_view_ == LegacyGameView::scene ||
                     (error_return_view_ == LegacyGameView::game_menu &&
                      menu_return_view_ == LegacyGameView::scene)) &&
@@ -811,7 +864,6 @@ void LegacyGameRuntime::begin_new_game() {
     attribute_controller_.reset();
     name_editor_.reset();
     world_session_.reset();
-    world_map_.reset();
     scene_session_.reset();
     world_menu_event_session_.reset();
     battle_session_.reset();
@@ -828,7 +880,8 @@ void LegacyGameRuntime::begin_new_game() {
     leave_protagonist_notice_pending_ = false;
     scene_audio_commands_.clear();
     clear_scene_effect();
-    auto loaded = persistence::load_baseline(data_root_path_);
+    auto loaded = persistence::load_baseline_scenes(
+        data_root_path_, startup_resources_.ranger());
     if (!loaded) {
         show_error(
             std::string{persistence::persistence_status_message(loaded.status)},
@@ -856,7 +909,9 @@ void LegacyGameRuntime::perform_pending_io() {
     if (operation == PendingIo::load) {
         attribute_controller_.reset();
         auto loaded = persistence::load_numbered_slot(
-            data_root_path_, save_slot(pending_slot_));
+            data_root_path_,
+            save_slot(pending_slot_),
+            startup_resources_.ranger_index_bytes());
         if (!loaded) {
             if (error_return_view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                 scene_session_->pending().kind == scene::SceneStepKind::load_slot) {
@@ -917,7 +972,6 @@ bool LegacyGameRuntime::activate_pending_load() {
     pending_new_game_scene_start_ = false;
     const auto replacing_scene = scene_session_ != nullptr;
     world_session_.reset();
-    world_map_.reset();
     scene_session_.reset();
     world_menu_event_session_.reset();
     battle_session_.reset();
@@ -971,17 +1025,20 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
         show_error("No game state is available for the world map", error_return_view);
         return false;
     }
-    world_map_ = std::make_unique<world::WorldMapData>(data_root_);
-    if (!world_map_->valid()) {
-        show_error(world_map_->error(), error_return_view);
+    if (world_map_ == nullptr || !world_map_->valid()) {
+        show_error("World map startup resources are unavailable", error_return_view);
         return false;
     }
     world_session_ = std::make_unique<world::WorldSession>(
-        data_root_, *world_map_, *ranger, random_);
+        data_root_,
+        *world_map_,
+        *ranger,
+        random_,
+        startup_resources_.weather_sprites(),
+        startup_resources_.palette());
     if (!world_session_->valid()) {
         show_error(world_session_->error(), error_return_view);
         world_session_.reset();
-        world_map_.reset();
         return false;
     }
     game_menu_.set_context(ui::GameMenuContext::world);

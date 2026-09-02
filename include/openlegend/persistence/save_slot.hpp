@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "openlegend/model/game_snapshot.hpp"
 
@@ -63,6 +66,18 @@ struct SnapshotLoadResult {
     }
 };
 
+struct RangerLoadResult {
+    PersistenceStatus status{PersistenceStatus::ready};
+    std::optional<model::RangerState> ranger;
+    std::vector<std::uint8_t> index_bytes;
+    std::filesystem::path path;
+    std::string detail;
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return status == PersistenceStatus::ready && ranger.has_value();
+    }
+};
+
 struct SnapshotWriteResult {
     PersistenceStatus status{PersistenceStatus::ready};
     std::filesystem::path path;
@@ -74,10 +89,17 @@ struct SnapshotWriteResult {
 };
 
 [[nodiscard]] SnapshotLoadResult load_snapshot(const SaveFileSet& files);
+[[nodiscard]] RangerLoadResult load_baseline_ranger(const std::filesystem::path& root);
+[[nodiscard]] SnapshotLoadResult load_baseline_scenes(
+    const std::filesystem::path& root, const model::RangerState& ranger);
 [[nodiscard]] SnapshotLoadResult load_baseline(const std::filesystem::path& root);
 [[nodiscard]] SnapshotLoadResult load_working_copy(const std::filesystem::path& root);
 [[nodiscard]] SnapshotLoadResult load_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot);
+[[nodiscard]] SnapshotLoadResult load_numbered_slot(
+    const std::filesystem::path& root,
+    SaveSlot slot,
+    std::span<const std::uint8_t> ranger_index_bytes);
 
 [[nodiscard]] SnapshotWriteResult write_snapshot(
     const SaveFileSet& files, const model::GameSnapshot& snapshot);

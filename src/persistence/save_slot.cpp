@@ -41,6 +41,15 @@ struct LoadedBytes {
     return result;
 }
 
+[[nodiscard]] RangerLoadResult ranger_load_error(
+    const PersistenceStatus status, std::filesystem::path path, std::string detail = {}) {
+    RangerLoadResult result;
+    result.status = status;
+    result.path = std::move(path);
+    result.detail = std::move(detail);
+    return result;
+}
+
 [[nodiscard]] SnapshotWriteResult write_error(
     const PersistenceStatus status, std::filesystem::path path, std::string detail = {}) {
     SnapshotWriteResult result;
@@ -177,6 +186,38 @@ void encode_records(
     }
     output = group_file.bytes;
     return SnapshotLoadResult{};
+}
+
+[[nodiscard]] SnapshotLoadResult decode_numbered_slot(
+    const LoadedBytes& scene_map_group,
+    const LoadedBytes& scene_event_group,
+    const LoadedBytes& ranger_index,
+    const LoadedBytes& ranger_group) {
+    model::GameSnapshot snapshot;
+    auto result = decode_fixed_scene_group(
+        scene_map_group,
+        model::kSceneMapBytesPerScene,
+        snapshot.scene_map_ends,
+        snapshot.scene_maps);
+    if (result.status != PersistenceStatus::ready) {
+        return result;
+    }
+    result = decode_fixed_scene_group(
+        scene_event_group,
+        model::kSceneEventBytesPerScene,
+        snapshot.scene_event_ends,
+        snapshot.scene_events);
+    if (result.status != PersistenceStatus::ready) {
+        return result;
+    }
+    result = decode_ranger(ranger_index, ranger_group, snapshot);
+    if (result.status != PersistenceStatus::ready) {
+        return result;
+    }
+
+    SnapshotLoadResult loaded;
+    loaded.snapshot = std::move(snapshot);
+    return loaded;
 }
 
 [[nodiscard]] std::vector<std::uint8_t> encode_ranger(const model::RangerState& ranger) {
@@ -327,8 +368,88 @@ SnapshotLoadResult load_snapshot(const SaveFileSet& files) {
     return loaded;
 }
 
+RangerLoadResult load_baseline_ranger(const std::filesystem::path& root) {
+    const auto files = baseline_file_set(root);
+    auto ranger_index = read_required(files.ranger_index);
+    if (ranger_index.status != PersistenceStatus::ready) {
+        return ranger_load_error(
+            ranger_index.status, ranger_index.path, ranger_index.detail);
+    }
+    const auto ranger_group = read_required(files.ranger_group);
+    if (ranger_group.status != PersistenceStatus::ready) {
+        return ranger_load_error(
+            ranger_group.status, ranger_group.path, ranger_group.detail);
+    }
+
+    model::GameSnapshot snapshot;
+    const auto decoded = decode_ranger(ranger_index, ranger_group, snapshot);
+    if (decoded.status != PersistenceStatus::ready) {
+        return ranger_load_error(decoded.status, decoded.path, decoded.detail);
+    }
+
+    RangerLoadResult result;
+    result.ranger = std::move(snapshot.ranger);
+    result.index_bytes = std::move(ranger_index.bytes);
+    return result;
+}
+
+SnapshotLoadResult load_baseline_scenes(
+    const std::filesystem::path& root, const model::RangerState& ranger) {
+    const auto files = baseline_file_set(root);
+    const auto scene_map_index = read_required(files.scene_map_index);
+    if (scene_map_index.status != PersistenceStatus::ready) {
+        return load_error(scene_map_index.status, scene_map_index.path, scene_map_index.detail);
+    }
+    const auto scene_map_group = read_required(files.scene_map_group);
+    if (scene_map_group.status != PersistenceStatus::ready) {
+        return load_error(scene_map_group.status, scene_map_group.path, scene_map_group.detail);
+    }
+    const auto scene_event_index = read_required(files.scene_event_index);
+    if (scene_event_index.status != PersistenceStatus::ready) {
+        return load_error(
+            scene_event_index.status, scene_event_index.path, scene_event_index.detail);
+    }
+    const auto scene_event_group = read_required(files.scene_event_group);
+    if (scene_event_group.status != PersistenceStatus::ready) {
+        return load_error(
+            scene_event_group.status, scene_event_group.path, scene_event_group.detail);
+    }
+
+    model::GameSnapshot snapshot;
+    snapshot.ranger = ranger;
+    auto result = decode_scene_archive(
+        scene_map_index,
+        scene_map_group,
+        model::kSceneMapBytesPerScene,
+        snapshot.scene_map_ends,
+        snapshot.scene_maps);
+    if (result.status != PersistenceStatus::ready) {
+        return result;
+    }
+    result = decode_scene_archive(
+        scene_event_index,
+        scene_event_group,
+        model::kSceneEventBytesPerScene,
+        snapshot.scene_event_ends,
+        snapshot.scene_events);
+    if (result.status != PersistenceStatus::ready) {
+        return result;
+    }
+    if (!snapshot.valid()) {
+        return load_error(PersistenceStatus::invalid_snapshot, files.ranger_group);
+    }
+
+    SnapshotLoadResult loaded;
+    loaded.snapshot = std::move(snapshot);
+    return loaded;
+}
+
 SnapshotLoadResult load_baseline(const std::filesystem::path& root) {
-    return load_snapshot(baseline_file_set(root));
+    auto ranger = load_baseline_ranger(root);
+    if (!ranger) {
+        return load_error(ranger.status, ranger.path, ranger.detail);
+    }
+    return load_baseline_scenes(root, *ranger.ranger);
 }
 
 SnapshotLoadResult load_working_copy(const std::filesystem::path& root) {
@@ -358,32 +479,39 @@ SnapshotLoadResult load_numbered_slot(
     if (ranger_group.status != PersistenceStatus::ready) {
         return load_error(ranger_group.status, ranger_group.path, ranger_group.detail);
     }
+    return decode_numbered_slot(
+        scene_map_group, scene_event_group, ranger_index, ranger_group);
+}
 
-    model::GameSnapshot snapshot;
-    auto result = decode_fixed_scene_group(
-        scene_map_group,
-        model::kSceneMapBytesPerScene,
-        snapshot.scene_map_ends,
-        snapshot.scene_maps);
-    if (result.status != PersistenceStatus::ready) {
-        return result;
-    }
-    result = decode_fixed_scene_group(
-        scene_event_group,
-        model::kSceneEventBytesPerScene,
-        snapshot.scene_event_ends,
-        snapshot.scene_events);
-    if (result.status != PersistenceStatus::ready) {
-        return result;
-    }
-    result = decode_ranger(ranger_index, ranger_group, snapshot);
-    if (result.status != PersistenceStatus::ready) {
-        return result;
+SnapshotLoadResult load_numbered_slot(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const std::span<const std::uint8_t> ranger_index_bytes) {
+    const auto files = numbered_file_set(root, slot);
+    if (!files.has_value()) {
+        return load_error(PersistenceStatus::invalid_slot, root);
     }
 
-    SnapshotLoadResult loaded;
-    loaded.snapshot = std::move(snapshot);
-    return loaded;
+    const auto scene_map_group = read_required(files->scene_map_group);
+    if (scene_map_group.status != PersistenceStatus::ready) {
+        return load_error(scene_map_group.status, scene_map_group.path, scene_map_group.detail);
+    }
+    const auto scene_event_group = read_required(files->scene_event_group);
+    if (scene_event_group.status != PersistenceStatus::ready) {
+        return load_error(scene_event_group.status, scene_event_group.path, scene_event_group.detail);
+    }
+    const auto ranger_group = read_required(files->ranger_group);
+    if (ranger_group.status != PersistenceStatus::ready) {
+        return load_error(ranger_group.status, ranger_group.path, ranger_group.detail);
+    }
+    const LoadedBytes ranger_index{
+        PersistenceStatus::ready,
+        std::vector<std::uint8_t>{ranger_index_bytes.begin(), ranger_index_bytes.end()},
+        root / "RANGER.IDX",
+        {}};
+
+    return decode_numbered_slot(
+        scene_map_group, scene_event_group, ranger_index, ranger_group);
 }
 
 SnapshotWriteResult write_snapshot(

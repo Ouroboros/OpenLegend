@@ -69,6 +69,16 @@ TitleResult TitleMenuController::handle_key(const std::uint8_t translated_key) n
 }
 
 TitleMenuRenderer::TitleMenuRenderer(const resource::DataRoot& data_root)
+    : TitleMenuRenderer(data_root, nullptr) {}
+
+TitleMenuRenderer::TitleMenuRenderer(
+    const resource::DataRoot& data_root,
+    const compat::LegacyPalette& startup_palette)
+    : TitleMenuRenderer(data_root, &startup_palette) {}
+
+TitleMenuRenderer::TitleMenuRenderer(
+    const resource::DataRoot& data_root,
+    const compat::LegacyPalette* startup_palette)
     : frames_(resource::PackedArchive::open(
           data_root.path() / "title.idx", data_root.path() / "title.grp")) {
     if (!frames_.valid()) {
@@ -91,6 +101,10 @@ TitleMenuRenderer::TitleMenuRenderer(const resource::DataRoot& data_root)
     }
     background_ = std::move(background.bytes);
 
+    if (startup_palette != nullptr) {
+        palette_ = *startup_palette;
+        return;
+    }
     const auto palette_file = data_root.read("mmap.col");
     if (!palette_file) {
         error_ = palette_file.error;

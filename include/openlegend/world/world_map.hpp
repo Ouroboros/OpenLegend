@@ -104,6 +104,13 @@ public:
         const WorldMapData& map,
         model::RangerState& ranger,
         random::LegacyRandom& random);
+    WorldSession(
+        const resource::DataRoot& data_root,
+        const WorldMapData& map,
+        model::RangerState& ranger,
+        random::LegacyRandom& random,
+        const resource::PackedArchive& startup_weather_sprites,
+        const compat::LegacyPalette& startup_palette);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -129,6 +136,14 @@ public:
     [[nodiscard]] const WorldCache& cache() const noexcept { return cache_; }
 
 private:
+    WorldSession(
+        const resource::DataRoot& data_root,
+        const WorldMapData& map,
+        model::RangerState& ranger,
+        random::LegacyRandom& random,
+        const resource::PackedArchive* startup_weather_sprites,
+        const compat::LegacyPalette* startup_palette);
+
     struct WeatherParticle {
         std::int16_t x{};
         std::int16_t y{};

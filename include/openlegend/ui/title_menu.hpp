@@ -51,6 +51,9 @@ private:
 class TitleMenuRenderer {
 public:
     explicit TitleMenuRenderer(const resource::DataRoot& data_root);
+    TitleMenuRenderer(
+        const resource::DataRoot& data_root,
+        const compat::LegacyPalette& startup_palette);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -61,6 +64,10 @@ public:
         const TitleMenuController& controller, render::IndexedFramebuffer& framebuffer) const;
 
 private:
+    TitleMenuRenderer(
+        const resource::DataRoot& data_root,
+        const compat::LegacyPalette* startup_palette);
+
     [[nodiscard]] bool draw_legacy_id(
         render::IndexedFramebuffer& framebuffer,
         std::uint32_t legacy_id,

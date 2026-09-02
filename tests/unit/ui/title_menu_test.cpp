@@ -510,6 +510,93 @@ void check_name_editor(const std::filesystem::path& data_root) {
     OL_CHECK(editor.handle_key(0x0DU, false, false) == NameEditStatus::completed);
 }
 
+void check_startup_resource_cache(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+
+    const auto missing_cloud_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-missing-cloud";
+    OL_CHECK(prepare_runtime_fixture(data_root, missing_cloud_root));
+    std::error_code error;
+    std::filesystem::remove(missing_cloud_root / "CLOUD.GRP", error);
+    OL_CHECK(!error);
+    app::LegacyGameRuntime missing_cloud{missing_cloud_root, 0U};
+    OL_CHECK(!missing_cloud.valid());
+    OL_CHECK(missing_cloud.error().find("CLOUD.GRP") != std::string::npos);
+
+    const auto missing_ranger_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-missing-ranger";
+    OL_CHECK(prepare_runtime_fixture(data_root, missing_ranger_root));
+    std::filesystem::remove(missing_ranger_root / "RANGER.IDX", error);
+    OL_CHECK(!error);
+    app::LegacyGameRuntime missing_ranger{missing_ranger_root, 0U};
+    OL_CHECK(!missing_ranger.valid());
+    OL_CHECK(missing_ranger.error().find("RANGER.IDX") != std::string::npos);
+
+    const auto missing_world_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-missing-world";
+    OL_CHECK(prepare_runtime_fixture(data_root, missing_world_root));
+    std::filesystem::remove(missing_world_root / "EARTH.002", error);
+    OL_CHECK(!error);
+    app::LegacyGameRuntime missing_world{missing_world_root, 0U};
+    OL_CHECK(!missing_world.valid());
+    OL_CHECK(missing_world.error().find("EARTH.002") != std::string::npos);
+
+    const auto cached_new_game_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-cached-new-game";
+    OL_CHECK(prepare_runtime_fixture(data_root, cached_new_game_root));
+    app::LegacyGameRuntime cached_new_game{cached_new_game_root, 0U};
+    OL_CHECK(cached_new_game.valid());
+    std::filesystem::remove(cached_new_game_root / "RANGER.IDX", error);
+    OL_CHECK(!error);
+    std::filesystem::remove(cached_new_game_root / "RANGER.GRP", error);
+    OL_CHECK(!error);
+    finish_title_startup(cached_new_game);
+    cached_new_game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(cached_new_game);
+    OL_CHECK(cached_new_game.view() == app::LegacyGameView::name_entry);
+    OL_CHECK(cached_new_game.game_state().loaded());
+
+    const auto cached_slot_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-cached-slot";
+    OL_CHECK(prepare_runtime_fixture(data_root, cached_slot_root));
+    const auto baseline = persistence::load_baseline(data_root);
+    OL_CHECK(static_cast<bool>(baseline));
+    if (!baseline.snapshot.has_value()) {
+        return;
+    }
+    OL_CHECK(persistence::write_numbered_slot(
+        cached_slot_root, persistence::SaveSlot::one, *baseline.snapshot));
+    app::LegacyGameRuntime cached_slot{cached_slot_root, 0U};
+    OL_CHECK(cached_slot.valid());
+    std::filesystem::remove(cached_slot_root / "RANGER.IDX", error);
+    OL_CHECK(!error);
+    std::filesystem::remove(cached_slot_root / "CLOUD.IDX", error);
+    OL_CHECK(!error);
+    std::filesystem::remove(cached_slot_root / "CLOUD.GRP", error);
+    OL_CHECK(!error);
+    std::filesystem::remove(cached_slot_root / "MMAP.COL", error);
+    OL_CHECK(!error);
+    for (const auto layer : {
+             "EARTH.002",
+             "BUILDING.002",
+             "SURFACE.002",
+             "BUILDX.002",
+             "BUILDY.002"}) {
+        std::filesystem::remove(cached_slot_root / layer, error);
+        OL_CHECK(!error);
+    }
+    finish_title_startup(cached_slot);
+    cached_slot.handle_key(0x98U, false, false);
+    cached_slot.handle_key(0x0DU, false, false);
+    cached_slot.handle_key(0x0DU, false, false);
+    finish_title_confirmation(cached_slot);
+    OL_CHECK(cached_slot.render());
+    cached_slot.finish_presented_tick();
+    cached_slot.advance();
+    finish_numbered_load_transition(cached_slot, app::LegacyGameView::world);
+    OL_CHECK(cached_slot.game_state().loaded());
+}
+
 void check_game_runtime(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
@@ -1653,6 +1740,7 @@ int main() {
     check_game_menu_controller();
     check_attribute_controller();
     check_name_editor(data_root);
+    check_startup_resource_cache(data_root);
     check_game_runtime(data_root);
     check_scene_load_runtime(data_root);
     check_runtime_persistence(data_root);

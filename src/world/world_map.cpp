@@ -167,13 +167,40 @@ WorldSession::WorldSession(
     const WorldMapData& map,
     model::RangerState& ranger,
     random::LegacyRandom& random)
+    : WorldSession(data_root, map, ranger, random, nullptr, nullptr) {}
+
+WorldSession::WorldSession(
+    const resource::DataRoot& data_root,
+    const WorldMapData& map,
+    model::RangerState& ranger,
+    random::LegacyRandom& random,
+    const resource::PackedArchive& startup_weather_sprites,
+    const compat::LegacyPalette& startup_palette)
+    : WorldSession(
+          data_root,
+          map,
+          ranger,
+          random,
+          &startup_weather_sprites,
+          &startup_palette) {}
+
+WorldSession::WorldSession(
+    const resource::DataRoot& data_root,
+    const WorldMapData& map,
+    model::RangerState& ranger,
+    random::LegacyRandom& random,
+    const resource::PackedArchive* startup_weather_sprites,
+    const compat::LegacyPalette* startup_palette)
     : map_(map),
       ranger_(ranger),
       random_(random),
       sprites_(resource::PackedArchive::open(
           data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")),
-      weather_sprites_(resource::PackedArchive::open(
-          data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")) {
+      weather_sprites_(
+          startup_weather_sprites != nullptr
+              ? *startup_weather_sprites
+              : resource::PackedArchive::open(
+                    data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")) {
     if (!map_.valid()) {
         error_ = map_.error();
         return;
@@ -186,17 +213,21 @@ WorldSession::WorldSession(
         error_ = weather_sprites_.error();
         return;
     }
-    const auto palette_file = data_root.read("MMAP.COL");
-    if (!palette_file) {
-        error_ = palette_file.error;
-        return;
+    if (startup_palette != nullptr) {
+        palette_ = *startup_palette;
+    } else {
+        const auto palette_file = data_root.read("MMAP.COL");
+        if (!palette_file) {
+            error_ = palette_file.error;
+            return;
+        }
+        const auto palette = resource::parse_vga_palette(palette_file.bytes);
+        if (!palette) {
+            error_ = palette.error;
+            return;
+        }
+        palette_ = palette.palette;
     }
-    const auto palette = resource::parse_vga_palette(palette_file.bytes);
-    if (!palette) {
-        error_ = palette.error;
-        return;
-    }
-    palette_ = palette.palette;
     for (int red = 0; red < 16; ++red) {
         for (int green = 0; green < 16; ++green) {
             for (int blue = 0; blue < 16; ++blue) {

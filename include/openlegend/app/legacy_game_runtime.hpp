@@ -12,9 +12,12 @@
 
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/legacy_assets.hpp"
+#include "openlegend/resource/packed_archive.hpp"
 #include "openlegend/scene/scene.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 #include "openlegend/ui/game_menu.hpp"
@@ -24,6 +27,32 @@
 #include "openlegend/world/world_map.hpp"
 
 namespace openlegend::app {
+
+class LegacyStartupResources {
+public:
+    explicit LegacyStartupResources(const resource::DataRoot& data_root);
+
+    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    [[nodiscard]] const resource::PackedArchive& weather_sprites() const noexcept {
+        return weather_sprites_;
+    }
+    [[nodiscard]] const compat::LegacyPalette& palette() const noexcept {
+        return palette_;
+    }
+    [[nodiscard]] const model::RangerState& ranger() const noexcept {
+        return *ranger_.ranger;
+    }
+    [[nodiscard]] std::span<const std::uint8_t> ranger_index_bytes() const noexcept {
+        return ranger_.index_bytes;
+    }
+
+private:
+    resource::PackedArchive weather_sprites_;
+    compat::LegacyPalette palette_{};
+    persistence::RangerLoadResult ranger_;
+    std::string error_;
+};
 
 [[nodiscard]] std::string_view ending_terminal_message() noexcept;
 
@@ -167,17 +196,18 @@ private:
 
     std::filesystem::path data_root_path_;
     resource::DataRoot data_root_;
+    ui::BasicUiRenderer basic_renderer_;
+    LegacyStartupResources startup_resources_;
+    std::unique_ptr<world::WorldMapData> world_map_;
     random::LegacyRandom random_;
     model::GameState game_state_;
     render::IndexedFramebuffer framebuffer_;
     ui::TitleMenuController title_menu_;
-    ui::TitleMenuRenderer title_renderer_;
-    ui::BasicUiRenderer basic_renderer_;
+    std::unique_ptr<ui::TitleMenuRenderer> title_renderer_;
     ui::GameMenuController game_menu_;
     std::unique_ptr<battle::BattleRenderer> game_menu_status_renderer_;
     std::optional<ui::NewGameNameEditor> name_editor_;
     std::unique_ptr<ui::NewGameAttributeController> attribute_controller_;
-    std::unique_ptr<world::WorldMapData> world_map_;
     std::unique_ptr<world::WorldSession> world_session_;
     std::unique_ptr<scene::SceneSession> scene_session_;
     std::unique_ptr<scene::SceneSession> world_menu_event_session_;

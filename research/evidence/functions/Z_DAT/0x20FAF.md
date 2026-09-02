@@ -28,6 +28,7 @@
 - 从 `0x20FAF` 入口独立恢复后才读取现代实现。
 - 逐块覆盖资源载入、初始绘制/淡入、last-key分派、两级三项环绕、全部清态、Esc返回、每轮重绘、new/load/quit三个出口和load wait帧。
 - 本轮零新增差异，无需修正或重启。
+- `sub_247DD/sub_24C23`启动owner修正后废弃旧结论并再次从入口覆盖：标题renderer复用标题前载入的palette，TITLE archive、菜单循环、wait帧及new/load/quit出口均未改变；零新增差异。
 
 ## 4. 平台适配
 
@@ -38,7 +39,7 @@
 
 ## 5. 验证与结论
 
-- Linux app Debug `proc_07d5`：14/14。
+- Linux app Debug `proc_96cf`：14/14。
 - 独立原资产golden固定main选择0..2、load槽0..2与please-wait共7个framebuffer hash；单测覆盖三键确认、Up/Down环绕、load Esc、选择后present门禁、load失败返回及标题Quit不fade。
 - 原程序动态差分：`blocked_runtime_oracle`。
 
