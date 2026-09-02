@@ -93,6 +93,171 @@ def new_game_wait_screen(background: bytes, frames: list[bytes]) -> bytearray:
     return pixels
 
 
+MAIN_MENU_LABELS = (
+    bytes.fromhex("c2e5c0f8"),
+    bytes.fromhex("b8d1ac72"),
+    bytes.fromhex("aaabab7e"),
+    bytes.fromhex("aaacba41"),
+    bytes.fromhex("c2f7b6a4"),
+    bytes.fromhex("a874b2ce"),
+)
+
+
+def parse_palette(raw: bytes) -> list[tuple[int, int, int]]:
+    assert len(raw) == 256 * 3
+    return [tuple(raw[offset : offset + 3]) for offset in range(0, len(raw), 3)]
+
+
+def rgb4_lookup(palette: list[tuple[int, int, int]]) -> list[int]:
+    lookup = [0] * 4096
+    for red in range(16):
+        for green in range(16):
+            for blue in range(16):
+                best_distance = 30_000
+                best_index = 0
+                for index, color in enumerate(palette):
+                    distance = (
+                        (red * 4 + 2 - color[0]) ** 2
+                        + (green * 4 + 2 - color[1]) ** 2
+                        + (blue * 4 + 2 - color[2]) ** 2
+                    )
+                    if distance < best_distance:
+                        best_distance = distance
+                        best_index = index
+                lookup[red * 256 + green * 16 + blue] = best_index
+    return lookup
+
+
+def draw_blended_rectangle(
+    pixels: bytearray,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+) -> None:
+    source = palette[0]
+    for target_y in range(y, y + height):
+        for target_x in range(x, x + width):
+            offset = target_y * 320 + target_x
+            target = palette[pixels[offset]]
+            red = 3 * source[0] // 32 + 5 * target[0] // 32
+            green = 3 * source[1] // 32 + 5 * target[1] // 32
+            blue = 3 * source[2] // 32 + 5 * target[2] // 32
+            pixels[offset] = lookup[red * 256 + green * 16 + blue]
+
+
+def fill_rectangle(
+    pixels: bytearray, x: int, y: int, width: int, height: int, color: int
+) -> None:
+    for target_y in range(y, y + height):
+        begin = target_y * 320 + x
+        pixels[begin : begin + width] = bytes([color]) * width
+
+
+def draw_rounded_panel(
+    pixels: bytearray,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+) -> None:
+    assert width > 10 and height > 10
+    blend_rectangles = (
+        (x + 5, y, width - 10, 1),
+        (x + 4, y + 1, width - 8, 1),
+        (x + 3, y + 2, width - 6, 1),
+        (x + 2, y + 3, width - 4, 1),
+        (x + 1, y + 4, width - 2, 1),
+        (x, y + 5, width, height - 10),
+        (x + 1, y + height - 5, width - 2, 1),
+        (x + 2, y + height - 4, width - 4, 1),
+        (x + 3, y + height - 3, width - 6, 1),
+        (x + 4, y + height - 2, width - 8, 1),
+        (x + 5, y + height - 1, width - 10, 1),
+    )
+    for rectangle in blend_rectangles:
+        draw_blended_rectangle(pixels, palette, lookup, *rectangle)
+    border_rectangles = (
+        (x + 5, y + 1, width - 10, 1),
+        (x + 4, y + 2, 1, 2),
+        (x + width - 5, y + 2, 1, 2),
+        (x + 2, y + 4, 2, 1),
+        (x + width - 4, y + 4, 2, 1),
+        (x + 1, y + 5, 1, height - 10),
+        (x + width - 2, y + 5, 1, height - 10),
+        (x + 2, y + height - 5, 2, 1),
+        (x + width - 4, y + height - 5, 2, 1),
+        (x + 4, y + height - 4, 1, 2),
+        (x + width - 5, y + height - 4, 1, 2),
+        (x + 5, y + height - 2, width - 10, 1),
+    )
+    for rectangle in border_rectangles:
+        fill_rectangle(pixels, *rectangle, 255)
+
+
+def big5_glyph_index(code: int) -> int:
+    lead = code >> 8
+    trail = code & 0xFF
+    assert lead >= 0xA1
+    if 0x40 <= trail <= 0x7E:
+        trail_index = trail - 0x40
+    else:
+        assert 0xA1 <= trail <= 0xFE
+        trail_index = trail - 0x62
+    return (lead - 0xA1) * 157 + trail_index
+
+
+def draw_big5_text(
+    pixels: bytearray,
+    font: bytes,
+    x: int,
+    y: int,
+    text: bytes,
+    right_shadow: int,
+    foreground: int,
+) -> None:
+    assert len(text) % 2 == 0
+    for offset in range(0, len(text), 2):
+        code = text[offset] << 8 | text[offset + 1]
+        glyph_offset = big5_glyph_index(code) * 32
+        glyph = font[glyph_offset : glyph_offset + 32]
+        assert len(glyph) == 32
+        for row in range(16):
+            for byte_index in range(2):
+                bits = glyph[row * 2 + byte_index]
+                for bit_index in range(8):
+                    if bits & (0x80 >> bit_index):
+                        column = byte_index * 8 + bit_index
+                        target = (y + row) * 320 + x + column
+                        pixels[target] = foreground
+                        pixels[target + 1] = right_shadow
+        x += 16
+
+
+def game_menu_screen(
+    font: bytes,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+    count: int,
+    selection: int,
+) -> bytearray:
+    pixels = bytearray(
+        ((index % 320) * 13 + (index // 320) * 7) & 0xFF
+        for index in range(320 * 200)
+    )
+    draw_rounded_panel(pixels, palette, lookup, 20, 18, 42, 12 + 20 * count)
+    for index in range(count):
+        draw_big5_text(pixels, font, 24, 25 + 20 * index, MAIN_MENU_LABELS[index], 0x21, 0x23)
+    draw_big5_text(
+        pixels, font, 24, 25 + 20 * selection, MAIN_MENU_LABELS[selection], 0x63, 0x66
+    )
+    return pixels
+
+
 class LegacyRandom:
     def __init__(self, state: int):
         self.state = state & 0xFFFFFFFF
@@ -155,14 +320,18 @@ def main() -> int:
     title_group = (args.data_root / "title.grp").read_bytes()
     title_big = (args.data_root / "title.big").read_bytes()
     palette = (args.data_root / "mmap.col").read_bytes()
+    big5_font = (args.data_root / "FONT.C16").read_bytes()
     ranger = (args.data_root / "RANGER.GRP").read_bytes()
     assert len(title_big) == 320 * 200
     assert len(palette) == 256 * 3
+    assert len(big5_font) % 32 == 0
     assert len(ranger) == 114242
     frames = archive_entries(title_index, title_group)
     assert len(frames) == 9
     protagonist = ranger[836 : 836 + 182]
     (level,) = struct.unpack_from("<h", protagonist, 15 * 2)
+    parsed_palette = parse_palette(palette)
+    panel_lookup = rgb4_lookup(parsed_palette)
 
     output = {
         "oracle": "independent Python little-endian/RLE implementation",
@@ -171,6 +340,7 @@ def main() -> int:
             "title.grp": {"bytes": len(title_group), "sha256": sha256(title_group)},
             "title.big": {"bytes": len(title_big), "sha256": sha256(title_big)},
             "mmap.col": {"bytes": len(palette), "sha256": sha256(palette)},
+            "FONT.C16": {"bytes": len(big5_font), "sha256": sha256(big5_font)},
         },
         "title_pixels_fnv1a64": {
             "main_selection_0": fnv1a64(title_screen(title_big, frames, 0)),
@@ -182,11 +352,20 @@ def main() -> int:
             "please_wait": fnv1a64(title_wait_screen(title_big, frames)),
             "new_game_wait": fnv1a64(new_game_wait_screen(title_big, frames)),
         },
+        "game_menu_pixels_fnv1a64": {
+            "source": "independent synthetic indexed background plus current mmap.col/FONT.C16",
+            "world_selection_0": fnv1a64(
+                game_menu_screen(big5_font, parsed_palette, panel_lookup, 6, 0)
+            ),
+            "scene_selection_3": fnv1a64(
+                game_menu_screen(big5_font, parsed_palette, panel_lookup, 4, 3)
+            ),
+        },
         "runtime_ui_regression_fnv1a64": {
             "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-            "status_selector": "c680e9dc6259c18c",
-            "status_page_0": "754d417908729f49",
-            "status_page_1": "3fb535c659854c04",
+            "status_selector": "85fc6aad255a1c1b",
+            "status_page_0": "76cb48686954de6d",
+            "status_page_1": "a51f2adebe80d31f",
             "items_page_0": "1f2c81326be42838",
         },
         "title_navigation": {

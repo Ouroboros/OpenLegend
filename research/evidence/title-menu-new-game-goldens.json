@@ -16,6 +16,10 @@
     "mmap.col": {
       "bytes": 768,
       "sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a"
+    },
+    "FONT.C16": {
+      "bytes": 447136,
+      "sha256": "8d395791f14395b18f8afd98204856e3a836a1b4497de41e4bb701de2fc19c40"
     }
   },
   "title_pixels_fnv1a64": {
@@ -28,11 +32,16 @@
     "please_wait": "7333253ca7400de6",
     "new_game_wait": "7333253ca7400de6"
   },
+  "game_menu_pixels_fnv1a64": {
+    "source": "independent synthetic indexed background plus current mmap.col/FONT.C16",
+    "world_selection_0": "4821b1c9f78f507d",
+    "scene_selection_3": "2d951419c79fa4f8"
+  },
   "runtime_ui_regression_fnv1a64": {
     "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-    "status_selector": "c680e9dc6259c18c",
-    "status_page_0": "754d417908729f49",
-    "status_page_1": "3fb535c659854c04",
+    "status_selector": "85fc6aad255a1c1b",
+    "status_page_0": "76cb48686954de6d",
+    "status_page_1": "a51f2adebe80d31f",
     "items_page_0": "1f2c81326be42838"
   },
   "title_navigation": {

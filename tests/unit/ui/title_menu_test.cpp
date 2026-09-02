@@ -779,10 +779,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto status_selector_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (status_selector_hash != 0xD6100842CBE61F3AULL) {
+    if (status_selector_hash != 0x85FC6AAD255A1C1BULL) {
         std::cerr << "status_selector_hash=0x" << std::hex << status_selector_hash << std::dec << '\n';
     }
-    OL_CHECK(status_selector_hash == 0xD6100842CBE61F3AULL);
+    OL_CHECK(status_selector_hash == 0x85FC6AAD255A1C1BULL);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto status_page_0_hash = fnv1a64(new_game.framebuffer().pixels());
@@ -843,11 +843,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto leave_selector_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (leave_selector_hash != 0x31CF5331A5092282ULL) {
+    if (leave_selector_hash != 0x298AF9814AE272C3ULL) {
         std::cerr << "leave_selector_hash=0x" << std::hex << leave_selector_hash << std::dec
                   << '\n';
     }
-    OL_CHECK(leave_selector_hash == 0x31CF5331A5092282ULL);
+    OL_CHECK(leave_selector_hash == 0x298AF9814AE272C3ULL);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
@@ -933,11 +933,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         const auto equipment_target_hash = fnv1a64(new_game.framebuffer().pixels());
-        if (equipment_target_hash != 0xE16EDB24262074B6ULL) {
+        if (equipment_target_hash != 0x897FD6EE4D9C0863ULL) {
             std::cerr << "equipment_target_hash=0x" << std::hex << equipment_target_hash
                       << std::dec << '\n';
         }
-        OL_CHECK(equipment_target_hash == 0xE16EDB24262074B6ULL);
+        OL_CHECK(equipment_target_hash == 0x897FD6EE4D9C0863ULL);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(item_ranger->roles[0U].word(model::role_word::equipment_begin) == 197);
         OL_CHECK(item_ranger->items[197U].word(model::item_word::user) == 0);
@@ -955,11 +955,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         const auto practice_target_hash = fnv1a64(new_game.framebuffer().pixels());
-        if (practice_target_hash != 0x250DEA3E489C7AF6ULL) {
+        if (practice_target_hash != 0xBD6F68B7F461D523ULL) {
             std::cerr << "practice_target_hash=0x" << std::hex << practice_target_hash
                       << std::dec << '\n';
         }
-        OL_CHECK(practice_target_hash == 0x250DEA3E489C7AF6ULL);
+        OL_CHECK(practice_target_hash == 0xBD6F68B7F461D523ULL);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(item_ranger->roles[0U].word(model::role_word::practice_item) == 198);
         OL_CHECK(item_ranger->items[198U].word(model::item_word::user) == 0);
@@ -1073,11 +1073,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         const auto consumable_target_hash = fnv1a64(new_game.framebuffer().pixels());
-        if (consumable_target_hash != 0xEE723E46EB5E7435ULL) {
+        if (consumable_target_hash != 0xB1214B635968B358ULL) {
             std::cerr << "consumable_target_hash=0x" << std::hex << consumable_target_hash
                       << std::dec << '\n';
         }
-        OL_CHECK(consumable_target_hash == 0xEE723E46EB5E7435ULL);
+        OL_CHECK(consumable_target_hash == 0xB1214B635968B358ULL);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         OL_CHECK(item_ranger->roles[0U].word(model::role_word::physical_power) == 60);
@@ -1175,11 +1175,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto scene_medicine_user_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (scene_medicine_user_hash != 0x13F1A3B8F19BE319ULL) {
+    if (scene_medicine_user_hash != 0x0F0C6EAA9F8211C4ULL) {
         std::cerr << "scene_medicine_user_hash=0x" << std::hex << scene_medicine_user_hash
                   << std::dec << '\n';
     }
-    OL_CHECK(scene_medicine_user_hash == 0x13F1A3B8F19BE319ULL);
+    OL_CHECK(scene_medicine_user_hash == 0x0F0C6EAA9F8211C4ULL);
     bool medicine_user_preserved_scene_background = true;
     for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
         for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
@@ -1197,11 +1197,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto scene_medicine_target_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (scene_medicine_target_hash != 0x83E99495AE4D5CC1ULL) {
+    if (scene_medicine_target_hash != 0x31962764F208FE98ULL) {
         std::cerr << "scene_medicine_target_hash=0x" << std::hex << scene_medicine_target_hash
                   << std::dec << '\n';
     }
-    OL_CHECK(scene_medicine_target_hash == 0x83E99495AE4D5CC1ULL);
+    OL_CHECK(scene_medicine_target_hash == 0x31962764F208FE98ULL);
     bool medicine_target_preserved_scene_background = true;
     for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
         for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
@@ -1287,10 +1287,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto medicine_user_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (medicine_user_hash != 0xE8012B081084965BULL) {
+    if (medicine_user_hash != 0xF29CF96C4CDD605AULL) {
         std::cerr << "medicine_user_hash=0x" << std::hex << medicine_user_hash << std::dec << '\n';
     }
-    OL_CHECK(medicine_user_hash == 0xE8012B081084965BULL);
+    OL_CHECK(medicine_user_hash == 0xF29CF96C4CDD605AULL);
     OL_CHECK(
         new_game.handle_key(0x98U, false, false) ==
         app::LegacyKeyStateReset::translated);
@@ -1308,10 +1308,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         app::LegacyKeyStateReset::confirmation_group);
     OL_CHECK(new_game.render());
     const auto medicine_target_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (medicine_target_hash != 0x1427485A30154B25ULL) {
+    if (medicine_target_hash != 0x474230757F6D850CULL) {
         std::cerr << "medicine_target_hash=0x" << std::hex << medicine_target_hash << std::dec << '\n';
     }
-    OL_CHECK(medicine_target_hash == 0x1427485A30154B25ULL);
+    OL_CHECK(medicine_target_hash == 0x474230757F6D850CULL);
     OL_CHECK(
         new_game.handle_key(0x1BU, false, false) ==
         app::LegacyKeyStateReset::translated);
@@ -1345,18 +1345,18 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto detoxification_user_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (detoxification_user_hash != 0x2D46CDEB32C70ACAULL) {
+    if (detoxification_user_hash != 0x18D36845C43B095FULL) {
         std::cerr << "detoxification_user_hash=0x" << std::hex << detoxification_user_hash << std::dec << '\n';
     }
-    OL_CHECK(detoxification_user_hash == 0x2D46CDEB32C70ACAULL);
+    OL_CHECK(detoxification_user_hash == 0x18D36845C43B095FULL);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto detoxification_target_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (detoxification_target_hash != 0x4CC76632F592C9F6ULL) {
+    if (detoxification_target_hash != 0x9A2830AE1A9EDDA7ULL) {
         std::cerr << "detoxification_target_hash=0x" << std::hex << detoxification_target_hash
                   << std::dec << '\n';
     }
-    OL_CHECK(detoxification_target_hash == 0x4CC76632F592C9F6ULL);
+    OL_CHECK(detoxification_target_hash == 0x9A2830AE1A9EDDA7ULL);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto detoxification_result_hash = fnv1a64(new_game.framebuffer().pixels());
@@ -1382,10 +1382,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto no_medicine_user_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (no_medicine_user_hash != 0xC9828D8AE6422CEFULL) {
+    if (no_medicine_user_hash != 0xB651D56047CB4D26ULL) {
         std::cerr << "no_medicine_user_hash=0x" << std::hex << no_medicine_user_hash << std::dec << '\n';
     }
-    OL_CHECK(no_medicine_user_hash == 0xC9828D8AE6422CEFULL);
+    OL_CHECK(no_medicine_user_hash == 0xB651D56047CB4D26ULL);
     new_game.handle_key('A', false, false);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
@@ -1395,11 +1395,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.render());
     const auto no_detoxification_user_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (no_detoxification_user_hash != 0x9F12EC5BDE262B27ULL) {
+    if (no_detoxification_user_hash != 0x0E5EA90F0BEF9E36ULL) {
         std::cerr << "no_detoxification_user_hash=0x" << std::hex
                   << no_detoxification_user_hash << std::dec << '\n';
     }
-    OL_CHECK(no_detoxification_user_hash == 0x9F12EC5BDE262B27ULL);
+    OL_CHECK(no_detoxification_user_hash == 0x0E5EA90F0BEF9E36ULL);
     new_game.handle_key('A', false, false);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
@@ -1700,6 +1700,24 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.valid());
+    const auto fill_menu_oracle_background = [&framebuffer]() {
+        auto pixels = framebuffer.pixels();
+        for (std::size_t index = 0U; index < pixels.size(); ++index) {
+            pixels[index] = static_cast<std::uint8_t>(
+                ((index % 320U) * 13U + (index / 320U) * 7U) & 0xFFU);
+        }
+    };
+    ui::GameMenuController world_game_menu;
+    fill_menu_oracle_background();
+    OL_CHECK(basic_renderer.render_game_menu_main(world_game_menu, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x4821B1C9F78F507DULL);
+    ui::GameMenuController scene_game_menu;
+    scene_game_menu.set_context(ui::GameMenuContext::scene);
+    static_cast<void>(scene_game_menu.handle_key(0x9EU));
+    fill_menu_oracle_background();
+    OL_CHECK(basic_renderer.render_game_menu_main(scene_game_menu, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x2D951419C79FA4F8ULL);
+
     model::RoleRecord protagonist;
     constexpr std::array<std::uint8_t, 1> name{'A'};
     OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));

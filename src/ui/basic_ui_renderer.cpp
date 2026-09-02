@@ -386,16 +386,107 @@ bool BasicUiRenderer::draw_box(
     const int y,
     const std::uint16_t width,
     const std::uint16_t height) {
-    if (width < 2U || height < 2U ||
-        !framebuffer.outline_rectangle(x, y, width, height, 0xFFU)) {
+    if (width <= 10U || height <= 10U || x < 0 || y < 0 ||
+        x + static_cast<int>(width) > render::IndexedFramebuffer::width ||
+        y + static_cast<int>(height) > render::IndexedFramebuffer::height) {
         return false;
     }
-    return framebuffer.fill_rectangle(
-        x + 1,
-        y + 1,
-        static_cast<std::uint16_t>(width - 2U),
-        static_cast<std::uint16_t>(height - 2U),
-        0U);
+    update_panel_palette(framebuffer.palette());
+    const auto blend = [this, &framebuffer](
+                           const int left,
+                           const int top,
+                           const int rectangle_width,
+                           const int rectangle_height) {
+        for (int destination_y = top; destination_y < top + rectangle_height; ++destination_y) {
+            for (int destination_x = left; destination_x < left + rectangle_width; ++destination_x) {
+                auto& destination = framebuffer.row(destination_y)[destination_x];
+                destination = blend_panel_pixel(destination);
+            }
+        }
+    };
+    const auto w = static_cast<int>(width);
+    const auto h = static_cast<int>(height);
+    blend(x + 5, y, w - 10, 1);
+    blend(x + 4, y + 1, w - 8, 1);
+    blend(x + 3, y + 2, w - 6, 1);
+    blend(x + 2, y + 3, w - 4, 1);
+    blend(x + 1, y + 4, w - 2, 1);
+    blend(x, y + 5, w, h - 10);
+    blend(x + 1, y + h - 5, w - 2, 1);
+    blend(x + 2, y + h - 4, w - 4, 1);
+    blend(x + 3, y + h - 3, w - 6, 1);
+    blend(x + 4, y + h - 2, w - 8, 1);
+    blend(x + 5, y + h - 1, w - 10, 1);
+
+    const auto fill = [&framebuffer](
+                          const int left,
+                          const int top,
+                          const int rectangle_width,
+                          const int rectangle_height) {
+        return framebuffer.fill_rectangle(
+            left,
+            top,
+            static_cast<std::uint16_t>(rectangle_width),
+            static_cast<std::uint16_t>(rectangle_height),
+            0xFFU);
+    };
+    return fill(x + 5, y + 1, w - 10, 1) &&
+        fill(x + 4, y + 2, 1, 2) && fill(x + w - 5, y + 2, 1, 2) &&
+        fill(x + 2, y + 4, 2, 1) && fill(x + w - 4, y + 4, 2, 1) &&
+        fill(x + 1, y + 5, 1, h - 10) && fill(x + w - 2, y + 5, 1, h - 10) &&
+        fill(x + 2, y + h - 5, 2, 1) && fill(x + w - 4, y + h - 5, 2, 1) &&
+        fill(x + 4, y + h - 4, 1, 2) && fill(x + w - 5, y + h - 4, 1, 2) &&
+        fill(x + 5, y + h - 2, w - 10, 1);
+}
+
+void BasicUiRenderer::update_panel_palette(const compat::LegacyPalette& palette) noexcept {
+    const auto same_palette = panel_palette_ready_ && std::equal(
+        panel_palette_.begin(),
+        panel_palette_.end(),
+        palette.begin(),
+        [](const compat::Rgb6 left, const compat::Rgb6 right) {
+            return left.red == right.red && left.green == right.green && left.blue == right.blue;
+        });
+    if (same_palette) {
+        return;
+    }
+    panel_palette_ = palette;
+    panel_palette_ready_ = true;
+    for (int red = 0; red < 16; ++red) {
+        for (int green = 0; green < 16; ++green) {
+            for (int blue = 0; blue < 16; ++blue) {
+                auto best_distance = 30'000;
+                std::uint8_t best_index{};
+                for (std::size_t index = 0U; index < panel_palette_.size(); ++index) {
+                    const auto red_delta = red * 4 + 2 - panel_palette_[index].red;
+                    const auto green_delta = green * 4 + 2 - panel_palette_[index].green;
+                    const auto blue_delta = blue * 4 + 2 - panel_palette_[index].blue;
+                    const auto distance = red_delta * red_delta + green_delta * green_delta +
+                        blue_delta * blue_delta;
+                    if (distance < best_distance) {
+                        best_distance = distance;
+                        best_index = static_cast<std::uint8_t>(index);
+                    }
+                }
+                panel_rgb4_lookup_[
+                    static_cast<std::size_t>(red * 256 + green * 16 + blue)] = best_index;
+            }
+        }
+    }
+}
+
+std::uint8_t BasicUiRenderer::blend_panel_pixel(
+    const std::uint8_t destination) const noexcept {
+    const auto blend_component = [](const std::uint8_t source, const std::uint8_t target) {
+        return static_cast<std::uint8_t>(3 * source / 32 + 5 * target / 32);
+    };
+    const auto source = panel_palette_[0U];
+    const auto target = panel_palette_[destination];
+    const auto red = blend_component(source.red, target.red);
+    const auto green = blend_component(source.green, target.green);
+    const auto blue = blend_component(source.blue, target.blue);
+    return panel_rgb4_lookup_[static_cast<std::size_t>(red) * 256U +
+                              static_cast<std::size_t>(green) * 16U + blue];
 }
 
 bool BasicUiRenderer::render_items(

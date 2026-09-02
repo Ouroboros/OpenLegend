@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -61,10 +62,16 @@ private:
         const model::RangerState& ranger,
         std::uint16_t selection,
         render::IndexedFramebuffer& framebuffer);
+    void update_panel_palette(const compat::LegacyPalette& palette) noexcept;
+    [[nodiscard]] std::uint8_t blend_panel_pixel(
+        std::uint8_t destination) const noexcept;
 
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
     std::optional<render::Big5GlyphCache> big5_cache_;
+    compat::LegacyPalette panel_palette_{};
+    std::array<std::uint8_t, 4'096U> panel_rgb4_lookup_{};
+    bool panel_palette_ready_{};
     std::string error_;
 };
 
