@@ -1,8 +1,10 @@
 # OpenLegend 执行 GOAL
 
 版本：v6
-当前阶段：B6 运行回归诊断 + B7 场景/事件实现
-当前状态：底层逆向框架和运行日志已建立；B0–B7 已有实现保持 `implemented_pending_review` 或更早状态；B8功能实现与入口实现差异审计已关闭，81项仍保持`implemented_pending_review`，Linux/Windows完整矩阵通过；B9已建立14项有限closure并进入实现差异审计，随后统一执行B0→B9反复汇编→C++ REVIEW
+当前阶段：B0–B9 统一最终汇编→C++ REVIEW
+已发布进度：`closure=119/349`，`unique_any=78/284`，`unique_all=77/284`
+当前任务指针：B6 `research/inventory/world-map-closure.tsv` `audit_order=7` 世界待机动画；状态为验证与发布中
+下一任务指针：当前工作包提交、push、TG 与规则重读完成后，进入同表 `audit_order=8` 世界天气周期
 
 ## 0. 唯一正确性真值
 
