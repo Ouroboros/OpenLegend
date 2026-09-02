@@ -747,9 +747,25 @@ def rectangle_outline_vectors() -> dict[str, object]:
     assert normal[(y + 1) * 320 + x + 1] == 7
     assert selected[(y + 1) * 320 + x + 1] == 7
     return {
+        "entry_range": "0x2D501..0x2D590",
+        "instruction_count": 41,
         "caller": "sub_2A186 item grid",
+        "caller_addresses": ["0x2A2A0", "0x2A32F"],
         "geometry": [x, y, width, height],
+        "grid": {
+            "columns": 5,
+            "rows": 3,
+            "origin": [55, 62],
+            "step": [42, 42],
+            "positions": [
+                [55 + 42 * column, 62 + 42 * row]
+                for row in range(3)
+                for column in range(5)
+            ],
+        },
         "draw_order": ["top", "left", "right", "bottom"],
+        "pixel_writes": 160,
+        "unique_border_pixels": 156,
         "normal_color": 0,
         "normal_frame_fnv1a64": fnv1a64(normal),
         "selected_color": 255,

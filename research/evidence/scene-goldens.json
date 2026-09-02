@@ -1749,19 +1749,101 @@
       ]
     },
     "rectangle_outline_vectors": {
+      "entry_range": "0x2D501..0x2D590",
+      "instruction_count": 41,
       "caller": "sub_2A186 item grid",
+      "caller_addresses": [
+        "0x2A2A0",
+        "0x2A32F"
+      ],
       "geometry": [
         55,
         62,
         40,
         40
       ],
+      "grid": {
+        "columns": 5,
+        "rows": 3,
+        "origin": [
+          55,
+          62
+        ],
+        "step": [
+          42,
+          42
+        ],
+        "positions": [
+          [
+            55,
+            62
+          ],
+          [
+            97,
+            62
+          ],
+          [
+            139,
+            62
+          ],
+          [
+            181,
+            62
+          ],
+          [
+            223,
+            62
+          ],
+          [
+            55,
+            104
+          ],
+          [
+            97,
+            104
+          ],
+          [
+            139,
+            104
+          ],
+          [
+            181,
+            104
+          ],
+          [
+            223,
+            104
+          ],
+          [
+            55,
+            146
+          ],
+          [
+            97,
+            146
+          ],
+          [
+            139,
+            146
+          ],
+          [
+            181,
+            146
+          ],
+          [
+            223,
+            146
+          ]
+        ]
+      },
       "draw_order": [
         "top",
         "left",
         "right",
         "bottom"
       ],
+      "pixel_writes": 160,
+      "unique_border_pixels": 156,
       "normal_color": 0,
       "normal_frame_fnv1a64": "0x63eb8c2a7f900ed9",
       "selected_color": 255,

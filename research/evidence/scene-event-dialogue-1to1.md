@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`b245a6a42d54da0eb8957a4f70b613e0da896691d454a80719573b4c668683cf`
+  - SHA256：`193b4e33f2a7737bf55a85715884acb82719e690d956b6d0a838e1c26082212f`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -118,9 +118,9 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 ### 4.4 物品格直角边框 primitive
 
-`sub_2D501` 只负责依次绘制矩形上、左、右、下四条1像素边，不填充内部。唯一调用者 `sub_2A186` 对5×3物品格先绘制颜色0的 `40×40` 普通边框和物品图，再以颜色255重画选中格。现代 `IndexedFramebuffer::outline_rectangle` 保留四次填充顺序并由现有 UI `draw_box` 实际复用；独立背景色7 oracle 固定普通框 `0x63eb8c2a7f900ed9`、选中框 `0xe154c07ba899cba5`，内部 `(56,63)` 保持7。
+`sub_2D501`只负责依次绘制矩形上、左、右、下四条1像素边，不填充内部。唯一owner `sub_2A186` 的两个callsite对5×3物品格先绘制color0的 `40×40` 普通框和物品图，再以color255重画当前格。现代 `IndexedFramebuffer::outline_rectangle` 保留四次填充顺序，已由battle物品选择路径按原几何调用；独立背景index7 oracle固定普通框 `0x63eb8c2a7f900ed9`、选中框 `0xe154c07ba899cba5`，内部 `(56,63)` 保持7。
 
-本函数 closure 不代表 `sub_2A186` 全界面完成；物品图标、15格分页和详情仍在 `ui-closure.tsv` 保持 `pending_mapping`。
+当前world/scene普通菜单仍是8行文字列表，未接线原5×3轮廓primitive；`sub_2A186`的背景、图标、分页、详情和输入整体继续在 `ui-closure.tsv` 保持待审，不由本helper closure提前关闭。
 
 ## 5. TALK 分页
 
