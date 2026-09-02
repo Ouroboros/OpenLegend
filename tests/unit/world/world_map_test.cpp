@@ -352,6 +352,12 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     OL_CHECK(random.state() == 0xAF1CF0FBU);
     session.periodic_tick();
     OL_CHECK(random.state() == 0xAF1CF0FBU);
+    for (int tick = 2; tick < 791; ++tick) {
+        session.periodic_tick();
+    }
+    OL_CHECK(random.state() == 0xAF1CF0FBU);
+    session.periodic_tick();
+    OL_CHECK(random.state() == 0x42877E5CU);
 
     auto weather_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom weather_random{1U};
