@@ -13,6 +13,7 @@
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
@@ -337,7 +338,9 @@ SceneSession::SceneSession(
     std::optional<SceneDate> death_date_override,
     const std::int16_t periodic_counter,
     const std::optional<SceneEntryOverride> entry_override,
-    const SceneSessionContext context)
+    const SceneSessionContext context,
+    const std::span<const std::uint16_t> fixed_shadow_mask,
+    const std::span<const std::uint16_t> shifted_shadow_mask)
     : data_root_(data_root),
       snapshot_(snapshot),
       random_(random),
@@ -345,8 +348,6 @@ SceneSession::SceneSession(
       assets_(data_root),
       portraits_(resource::PackedArchive::open(
           data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
-      weather_sprites_(resource::PackedArchive::open(
-          data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")),
       scene_id_(scene_id),
       context_(context),
       periodic_counter_(periodic_counter) {
@@ -362,8 +363,29 @@ SceneSession::SceneSession(
         error_ = portraits_.error();
         return;
     }
-    if (!weather_sprites_.valid()) {
-        error_ = weather_sprites_.error();
+    const auto load_shadow_mask = [this](
+                                      const std::span<const std::uint16_t> provided,
+                                      const std::string_view name,
+                                      std::vector<std::uint16_t>& destination) {
+        if (!provided.empty()) {
+            destination.assign(provided.begin(), provided.end());
+            return true;
+        }
+        const auto file = data_root_.read(name);
+        if (!file) {
+            error_ = file.error;
+            return false;
+        }
+        auto parsed = render::parse_legacy_shadow_mask(file.bytes);
+        if (!parsed.has_value()) {
+            error_ = std::string{name} + " is not a valid legacy shadow mask";
+            return false;
+        }
+        destination = std::move(*parsed);
+        return true;
+    };
+    if (!load_shadow_mask(fixed_shadow_mask, "3_shadow.msk", fixed_shadow_mask_) ||
+        !load_shadow_mask(shifted_shadow_mask, "4_shadow.msk", shifted_shadow_mask_)) {
         return;
     }
     if (scene_id_ < 0 || static_cast<std::size_t>(scene_id_) >= model::kSceneCount) {
@@ -408,8 +430,11 @@ SceneSession::SceneSession(
             }
         }
     }
-    weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
-                       kWeatherSceneIds.end();
+    shadow_state_ =
+        std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
+                kWeatherSceneIds.end()
+            ? 1
+            : 0;
     auto ascii = data_root_.read("FONT.X16");
     auto big5 = data_root_.read("FONT.C16");
     if (!ascii) {
@@ -537,7 +562,9 @@ SceneStepResult SceneSession::tick(
         result = interact();
     } else if (ui_requested) {
         result = open_ui();
-    } else if (!skip_player_idle) {
+    } else if (skip_player_idle) {
+        shadow_state_ = 0;
+    } else {
         player_idle_tick();
     }
     if (result.kind != SceneStepKind::stay && result.kind != SceneStepKind::moved) {
@@ -588,17 +615,6 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     }
     scene_x_ = target_x;
     scene_y_ = target_y;
-    if (weather_active_) {
-        for (auto& particle : weather_) {
-            if (delta_y != 0) {
-                particle.x = static_cast<std::int16_t>(particle.x + 18 * delta_y);
-                particle.y = static_cast<std::int16_t>(particle.y - 9 * delta_y);
-            } else {
-                particle.x = static_cast<std::int16_t>(particle.x - 18 * delta_x);
-                particle.y = static_cast<std::int16_t>(particle.y - 9 * delta_x);
-            }
-        }
-    }
     update_view_origin();
     commit_header();
     diagnostics::log_info(
@@ -743,8 +759,7 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
             queue_scene_music(model::scene_metadata_word::exit_music);
         }
         exit_music_override_ = -1;
-        weather_enabled_ = false;
-        weather_active_ = false;
+        shadow_state_ = 0;
         pending_ = current_result(SceneStepKind::return_world);
         if (pending_load_slot_.has_value()) {
             pending_.save_slot = *pending_load_slot_;
@@ -1583,7 +1598,6 @@ SceneStepResult SceneSession::finish_tick_after_scene_present(const SceneStepKin
     periodic_counter_ = static_cast<std::int16_t>((periodic_counter_ + 1) % 5);
     if (periodic_counter_ == 1) {
         cycle_palette();
-        periodic_tick();
     }
     const auto result = run_auto_event(fallback);
     if (result.kind == SceneStepKind::present) {
@@ -1654,9 +1668,11 @@ SceneStepResult SceneSession::complete_scene_jump() {
     idle_animation_delay_ = 0;
     idle_animation_step_ = 0;
     player_idle_counter_ = 0;
-    weather_enabled_ = std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
-                       kWeatherSceneIds.end();
-    weather_active_ = false;
+    shadow_state_ =
+        std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
+                kWeatherSceneIds.end()
+            ? 1
+            : 0;
     if (!load_scene_sprites()) {
         return current_result(SceneStepKind::stay);
     }
@@ -1696,53 +1712,9 @@ void SceneSession::queue_scene_music(const std::size_t metadata_word) {
     audio_commands_.push_back(SceneAudioCommand{SceneAudioCommand::Kind::music, music});
 }
 
-void SceneSession::periodic_tick() {
-    if (valid() && weather_enabled_ && pending_.kind == SceneStepKind::stay) {
-        update_weather();
-    }
-}
-
 void SceneSession::cycle_palette() {
     std::rotate(palette_.begin() + 224, palette_.begin() + 231, palette_.begin() + 232);
     std::rotate(palette_.begin() + 244, palette_.begin() + 252, palette_.begin() + 253);
-}
-
-void SceneSession::update_weather() {
-    if (weather_active_) {
-        bool all_done = true;
-        for (auto& particle : weather_) {
-            particle.x = static_cast<std::int16_t>(particle.x + 1);
-            if (particle.x <= 500) {
-                all_done = false;
-            }
-        }
-        if (!all_done) {
-            return;
-        }
-        weather_active_ = false;
-    }
-    if (random_.bounded(1) != 0) {
-        return;
-    }
-    weather_active_ = true;
-    for (auto& particle : weather_) {
-        particle.kind = static_cast<std::int16_t>(random_.bounded(4));
-    }
-    for (auto& particle : weather_) {
-        particle.speed = static_cast<std::int16_t>(random_.bounded(3) + 6);
-    }
-    for (auto& particle : weather_) {
-        particle.x = static_cast<std::int16_t>(random_.bounded(100) - 300);
-    }
-    for (std::size_t index = 0U; index < weather_.size(); ++index) {
-        if (random_.bounded(2) != 0) {
-            weather_[index].y = static_cast<std::int16_t>(
-                -3000 - 1000 * static_cast<std::int32_t>(index));
-        } else {
-            weather_[index].y = static_cast<std::int16_t>(
-                random_.bounded(50) + static_cast<std::int32_t>(index) * 75);
-        }
-    }
 }
 
 void SceneSession::idle_tick() {
@@ -3053,7 +3025,6 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
     if (!valid()) {
         return false;
     }
-    framebuffer.clear(0U);
     framebuffer.set_palette(palette_);
     const auto player_sprite = player_frame();
     bool player_drawn = false;
@@ -3099,9 +3070,14 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
             }
             const auto event = event_at(x, y);
             if (event.has_value()) {
-                const auto picture = event_field(scene_id_, *event, model::SceneEventField::begin_picture).value_or(0);
-                if (picture > 0 && !draw_sprite(framebuffer, picture, anchor_x, anchor_y - building_height)) {
-                    return false;
+                const auto first_picture = event_field(
+                    scene_id_, *event, model::SceneEventField::current_picture).value_or(0);
+                if (first_picture > 0) {
+                    const auto picture = event_field(
+                        scene_id_, *event, model::SceneEventField::begin_picture).value_or(0);
+                    if (!draw_sprite(framebuffer, picture, anchor_x, anchor_y - building_height)) {
+                        return false;
+                    }
                 }
             }
             if (x == scene_x_ && y == scene_y_ && player_sprite != 0 && player_sprite != -86) {
@@ -3129,11 +3105,15 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
             }
         }
     }
-    if (weather_active_) {
-        for (const auto& particle : weather_) {
-            if (particle.y > -1000 && !draw_weather_particle(framebuffer, particle)) {
-                return false;
-            }
+    if (shadow_state_ > 0) {
+        const auto offset = 320 * (random_.bounded(7) - 3) + (random_.bounded(7) - 3);
+        if (shadow_state_ == 1 &&
+            !render::apply_legacy_shadow_mask(framebuffer, fixed_shadow_mask_, 0)) {
+            return false;
+        }
+        if (shadow_state_ == 2 &&
+            !render::apply_legacy_shadow_mask(framebuffer, shifted_shadow_mask_, offset)) {
+            return false;
         }
     }
     if (player_sprite != 0 && player_sprite != -86 && !player_drawn) {
@@ -3209,49 +3189,6 @@ bool SceneSession::draw_portrait(
         return false;
     }
     render::draw_rle_sprite(framebuffer, frame, x, y);
-    return true;
-}
-
-bool SceneSession::draw_weather_particle(
-    render::IndexedFramebuffer& framebuffer, const WeatherParticle& particle) const {
-    if (particle.kind < 0 ||
-        static_cast<std::size_t>(particle.kind) >= weather_sprites_.entry_count() ||
-        particle.speed < 0 || particle.speed > 8) {
-        return false;
-    }
-    const auto frame = resource::SpriteFrameView::parse(
-        weather_sprites_.entry(static_cast<std::size_t>(particle.kind)));
-    if (!frame.valid()) {
-        return false;
-    }
-    const auto source_weight = static_cast<int>(particle.speed);
-    const auto destination_weight = 8 - source_weight;
-    const auto left = static_cast<int>(particle.x) - static_cast<int>(frame.x_offset());
-    const auto top = static_cast<int>(particle.y) - static_cast<int>(frame.y_offset());
-    for (std::size_t row_index = 0U; row_index < frame.rows().size(); ++row_index) {
-        const auto destination_y = top + static_cast<int>(row_index);
-        auto destination_x = left;
-        for (const auto& run : frame.rows()[row_index].runs) {
-            destination_x += static_cast<int>(run.skip);
-            for (const auto source_index : run.pixels) {
-                if (destination_y >= 0 && destination_y < render::IndexedFramebuffer::height &&
-                    destination_x >= 0 && destination_x < render::IndexedFramebuffer::width) {
-                    auto& destination_index = framebuffer.row(destination_y)[destination_x];
-                    const auto source = palette_[source_index];
-                    const auto destination = palette_[destination_index];
-                    const auto red = (static_cast<int>(source.red) * source_weight) / 32 +
-                                     (static_cast<int>(destination.red) * destination_weight) / 32;
-                    const auto green = (static_cast<int>(source.green) * source_weight) / 32 +
-                                       (static_cast<int>(destination.green) * destination_weight) / 32;
-                    const auto blue = (static_cast<int>(source.blue) * source_weight) / 32 +
-                                      (static_cast<int>(destination.blue) * destination_weight) / 32;
-                    const auto lookup_index = static_cast<std::size_t>(red * 256 + green * 16 + blue);
-                    destination_index = rgb4_lookup_[lookup_index];
-                }
-                ++destination_x;
-            }
-        }
-    }
     return true;
 }
 

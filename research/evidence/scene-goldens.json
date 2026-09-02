@@ -1738,6 +1738,7 @@
       "word7_render_frame_fnv1a64": "0x606eaa33da727537",
       "entry_scan_displayed_picture": 104,
       "entry_scanned_word7_render_frame_fnv1a64": "0x3051f24e11c08dc5",
+      "word5_zero_word7_positive_frame_fnv1a64": "0x38fbaa07b733ad79",
       "interaction_present": {
         "player": [
           44,
@@ -2842,33 +2843,92 @@
       ]
     }
   },
-  "scene_5_weather": {
+  "scene_render_buffer_preservation": {
+    "scene_archive_count": 84,
+    "scenes_with_uncovered_pixels": [
+      {
+        "scene": 4,
+        "entrance": [
+          14,
+          33
+        ],
+        "different_pixels": 3,
+        "different_positions": [
+          [
+            294,
+            89
+          ],
+          [
+            168,
+            116
+          ],
+          [
+            78,
+            161
+          ]
+        ],
+        "zero_frame_fnv1a64": "0x8d0b853f2d3eb551",
+        "seed255_frame_fnv1a64": "0xa28918f3e9080082"
+      },
+      {
+        "scene": 44,
+        "entrance": [
+          33,
+          45
+        ],
+        "different_pixels": 2,
+        "different_positions": [
+          [
+            276,
+            98
+          ],
+          [
+            240,
+            116
+          ]
+        ],
+        "zero_frame_fnv1a64": "0xd637ca6664f900e0",
+        "seed255_frame_fnv1a64": "0x69a9ae7aefc1b27c"
+      },
+      {
+        "scene": 80,
+        "entrance": [
+          14,
+          54
+        ],
+        "different_pixels": 2,
+        "different_positions": [
+          [
+            222,
+            89
+          ],
+          [
+            186,
+            107
+          ]
+        ],
+        "zero_frame_fnv1a64": "0xcf8e66ef3b4b9e81",
+        "seed255_frame_fnv1a64": "0xac5ebd38e9e6e58d"
+      }
+    ]
+  },
+  "scene_5_shadow": {
     "initial_x": 17,
     "initial_y": 48,
     "base_frame_fnv1a64": "0x52c8861f0349d6db",
-    "ticks": 300,
-    "frame_fnv1a64": "0xb3e2b127988e5690",
-    "particles": [
-      {
-        "kind": 2,
-        "weight": 7,
-        "x": 9,
-        "y": 49
-      },
-      {
-        "kind": 2,
-        "weight": 7,
-        "x": 18,
-        "y": -4000
-      },
-      {
-        "kind": 1,
-        "weight": 8,
-        "x": 11,
-        "y": 160
-      }
+    "shadow_counter": 0,
+    "rng_upper_bounds": [
+      7,
+      7
     ],
-    "random_state": "0xaf1cf0fb"
+    "random_offset": 1,
+    "random_state_after_render": "0x967eb0e7",
+    "fixed_mask_bytes": 7770,
+    "fixed_mask_sha256": "68fcd4158238204fa1ea7416ed5ba91df033f57f2a2e6455ad5d6584e3352d6e",
+    "fixed_mask_frame_fnv1a64": "0x9eb8192a25f56019",
+    "shifted_mask_bytes": 11170,
+    "shifted_mask_sha256": "44076b5b362a429965fb5958c90dce09fee36fe8a916ed2cae8167274b04fcb4",
+    "shifted_mask_frame_fnv1a64": "0xc7ee58fb87928a27"
   },
   "scene_70": {
     "map_sha256": "db153483bb5d0d062021df1bc9bc46be8df5e01a2280fca0374c9244d02c7f88",

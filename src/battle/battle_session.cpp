@@ -461,13 +461,15 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
     }
 }
 
-bool BattleSession::render(render::IndexedFramebuffer& framebuffer) {
+bool BattleSession::render(
+    render::IndexedFramebuffer& framebuffer,
+    const bool party_selection_background_redrawn) {
     if (!valid()) {
         return false;
     }
     bool rendered = false;
     if (phase_ == BattleSessionPhase::party_selection) {
-        rendered = render_party_selection(framebuffer);
+        rendered = render_party_selection(framebuffer, party_selection_background_redrawn);
     } else if (phase_ == BattleSessionPhase::battle_outcome ||
                phase_ == BattleSessionPhase::battle_outcome_wait) {
         rendered = render_battle_outcome(framebuffer);
@@ -3543,11 +3545,14 @@ bool BattleSession::begin_actor_present() {
 }
 
 bool BattleSession::render_party_selection(
-    render::IndexedFramebuffer& framebuffer) {
-    if (!selection_background_captured_) {
-        capture_selection_background(framebuffer);
-    } else {
-        restore_selection_background(framebuffer);
+    render::IndexedFramebuffer& framebuffer,
+    const bool background_redrawn) {
+    if (!background_redrawn) {
+        if (!selection_background_captured_) {
+            capture_selection_background(framebuffer);
+        } else {
+            restore_selection_background(framebuffer);
+        }
     }
     const auto count = setup_.party_prefix_length();
     if (!renderer_.draw_box(framebuffer, 64, 17, 180U, 30U) ||

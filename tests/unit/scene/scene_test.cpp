@@ -44,10 +44,10 @@ public:
         error.clear();
         std::filesystem::create_directories(path_, error);
         OL_CHECK(!error);
-        for (const auto name : std::array<std::string_view, 11>{
+        for (const auto name : std::array<std::string_view, 13>{
                  "TALK.IDX", "TALK.GRP", "HDGRP.IDX", "HDGRP.GRP",
                  "CLOUD.IDX", "CLOUD.GRP", "MMAP.COL", "FONT.X16",
-                 "FONT.C16", "SDX070", "SMP070"}) {
+                 "FONT.C16", "3_shadow.msk", "4_shadow.msk", "SDX070", "SMP070"}) {
             error.clear();
             std::filesystem::copy_file(
                 source / name, path_ / name,
@@ -1421,6 +1421,12 @@ void check_scene_event_animation(const std::filesystem::path& root) {
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(render_session.render_map(framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x3051F24E11C08DC5ULL);
+
+    OL_CHECK(render_snapshot.set_event_value(
+        70U, event, SceneEventField::current_picture, 0));
+    openlegend::render::IndexedFramebuffer gated_framebuffer;
+    OL_CHECK(render_session.render_map(gated_framebuffer));
+    OL_CHECK(fnv1a64(gated_framebuffer.pixels()) == 0x38FBAA07B733AD79ULL);
 }
 
 void check_scene_weather(const std::filesystem::path& root) {
@@ -1447,17 +1453,29 @@ void check_scene_weather(const std::filesystem::path& root) {
     OL_CHECK(session.scene_x() == 17);
     OL_CHECK(session.scene_y() == 48);
 
-    openlegend::render::IndexedFramebuffer base_frame;
-    OL_CHECK(session.render_map(base_frame));
-    OL_CHECK(fnv1a64(base_frame.pixels()) == 0x52C8861F0349D6DBULL);
-    OL_CHECK(finish_scene_title(session).kind == openlegend::scene::SceneStepKind::stay);
-    for (int tick = 0; tick < 300; ++tick) {
-        session.periodic_tick();
-    }
-    OL_CHECK(random.state() == 0xAF1CF0FBU);
     openlegend::render::IndexedFramebuffer weather_frame;
     OL_CHECK(session.render_map(weather_frame));
-    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0xB3E2B127988E5690ULL);
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0x9EB8192A25F56019ULL);
+    OL_CHECK(random.state() == 0x967EB0E7U);
+    OL_CHECK(finish_scene_title(session).kind == openlegend::scene::SceneStepKind::stay);
+    OL_CHECK(session.tick(std::nullopt, false, false, true).kind ==
+             openlegend::scene::SceneStepKind::present);
+    OL_CHECK(!session.weather_enabled());
+    openlegend::render::IndexedFramebuffer disabled_frame;
+    OL_CHECK(session.render_map(disabled_frame));
+    OL_CHECK(fnv1a64(disabled_frame.pixels()) == 0x52C8861F0349D6DBULL);
+    OL_CHECK(random.state() == 0x967EB0E7U);
+
+    auto preserved_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom preserved_random{1U};
+    openlegend::scene::SceneSession preserved{
+        data_root, preserved_snapshot, preserved_random, 4};
+    OL_CHECK(preserved.valid());
+    openlegend::render::IndexedFramebuffer preserved_frame;
+    preserved_frame.clear(255U);
+    OL_CHECK(preserved.render_map(preserved_frame));
+    OL_CHECK(fnv1a64(preserved_frame.pixels()) == 0xA28918F3E9080082ULL);
+    OL_CHECK(preserved_random.state() == 1U);
 }
 
 void check_event_camera_pan(const std::filesystem::path& root) {

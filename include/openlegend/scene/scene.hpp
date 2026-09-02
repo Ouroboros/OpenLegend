@@ -152,7 +152,9 @@ public:
         std::optional<SceneDate> death_date_override = std::nullopt,
         std::int16_t periodic_counter = 0,
         std::optional<SceneEntryOverride> entry_override = std::nullopt,
-        SceneSessionContext context = SceneSessionContext::scene);
+        SceneSessionContext context = SceneSessionContext::scene,
+        std::span<const std::uint16_t> fixed_shadow_mask = {},
+        std::span<const std::uint16_t> shifted_shadow_mask = {});
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -174,7 +176,6 @@ public:
         std::int16_t event_y = -1,
         std::int16_t item_id = -1);
     void idle_tick();
-    void periodic_tick();
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_map(render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_overlay(render::IndexedFramebuffer& framebuffer) const;
@@ -185,7 +186,7 @@ public:
     [[nodiscard]] int view_origin_x() const noexcept { return view_origin_x_; }
     [[nodiscard]] int view_origin_y() const noexcept { return view_origin_y_; }
     [[nodiscard]] SceneDirection direction() const noexcept { return direction_; }
-    [[nodiscard]] bool weather_enabled() const noexcept { return weather_enabled_; }
+    [[nodiscard]] bool weather_enabled() const noexcept { return shadow_state_ > 0; }
     [[nodiscard]] std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
     [[nodiscard]] std::int16_t physical_power_counter() const noexcept {
         return physical_power_counter_;
@@ -220,13 +221,6 @@ private:
         after_action,
         after_scene_present,
         after_auto_event,
-    };
-
-    struct WeatherParticle {
-        std::int16_t x{};
-        std::int16_t y{};
-        std::int16_t speed{};
-        std::int16_t kind{};
     };
 
     struct EventContext {
@@ -356,11 +350,7 @@ private:
         int anchor_x,
         int anchor_y) const;
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
-    void update_weather();
     void cycle_palette();
-    [[nodiscard]] bool draw_weather_particle(
-        render::IndexedFramebuffer& framebuffer,
-        const WeatherParticle& particle) const;
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_field(
@@ -453,11 +443,12 @@ private:
     SceneAssets assets_;
     resource::PackedArchive portraits_;
     resource::SentinelArchive sprites_;
-    resource::PackedArchive weather_sprites_;
     resource::PackedArchive ending_words_;
     resource::PackedArchive ending_frames_;
     compat::LegacyPalette palette_{};
     compat::LegacyPalette ending_palette_{};
+    std::vector<std::uint16_t> fixed_shadow_mask_;
+    std::vector<std::uint16_t> shifted_shadow_mask_;
     render::IndexedFramebuffer ending_framebuffer_;
     render::IndexedFramebuffer load_menu_framebuffer_;
     render::IndexedFramebuffer death_framebuffer_;
@@ -481,9 +472,7 @@ private:
     std::int16_t animation_counter_{};
     std::int16_t periodic_counter_{};
     bool idle_animation_{};
-    bool weather_enabled_{};
-    bool weather_active_{};
-    std::array<WeatherParticle, 3> weather_{};
+    std::int16_t shadow_state_{};
     EventContext event_context_{};
     std::vector<std::int16_t> script_;
     std::ptrdiff_t program_counter_{};

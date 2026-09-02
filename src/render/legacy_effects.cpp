@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "openlegend/compat/byte_reader.hpp"
+
 namespace openlegend::render {
 namespace {
 
@@ -22,6 +24,23 @@ void decrement_palette(openlegend::compat::LegacyPalette& palette) noexcept {
 }
 
 }  // namespace
+
+std::optional<std::vector<std::uint16_t>> parse_legacy_shadow_mask(
+    const std::span<const std::uint8_t> bytes) {
+    if (bytes.empty() || bytes.size() % 2U != 0U) {
+        return std::nullopt;
+    }
+    std::vector<std::uint16_t> runs(bytes.size() / 2U);
+    std::uint64_t covered{};
+    for (std::size_t index = 0U; index < runs.size(); ++index) {
+        runs[index] = openlegend::compat::read_u16le(bytes, index * 2U);
+        covered += runs[index];
+    }
+    if (covered < openlegend::compat::kLegacyPixelCount) {
+        return std::nullopt;
+    }
+    return runs;
+}
 
 bool apply_legacy_shadow_mask(
     IndexedFramebuffer& framebuffer,

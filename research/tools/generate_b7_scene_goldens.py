@@ -179,89 +179,61 @@ def rgb4_lookup(palette: list[tuple[int, int, int]]) -> list[int]:
     return result
 
 
-def draw_translucent(
-    pixels: bytearray,
-    frame: bytes,
-    anchor_x: int,
-    anchor_y: int,
-    weight: int,
-    palette: list[tuple[int, int, int]],
-    lookup: list[int],
-) -> None:
-    width, height, x_offset, y_offset = struct.unpack_from("<HHhh", frame)
-    cursor = 8
-    left = anchor_x - x_offset
-    top = anchor_y - y_offset
-    for row in range(height):
-        row_size = frame[cursor]
-        cursor += 1
-        row_end = cursor + row_size
-        destination_x = left
-        while cursor < row_end:
-            skip = frame[cursor]
-            count = frame[cursor + 1]
-            cursor += 2
-            destination_x += skip
-            for source_index in frame[cursor:cursor + count]:
-                destination_y = top + row
-                if 0 <= destination_x < 320 and 0 <= destination_y < 200:
-                    destination_offset = destination_y * 320 + destination_x
-                    source = palette[source_index]
-                    destination = palette[pixels[destination_offset]]
-                    components = tuple(
-                        source[channel] * weight // 32
-                        + destination[channel] * (8 - weight) // 32
-                        for channel in range(3)
-                    )
-                    pixels[destination_offset] = lookup[
-                        components[0] * 256 + components[1] * 16 + components[2]
-                    ]
-                destination_x += 1
-            cursor += count
-        assert cursor == row_end
-        assert destination_x <= left + width
-    assert cursor == len(frame)
+def apply_shadow_mask(base_frame: bytes, mask: bytes, offset: int) -> bytes:
+    runs = struct.unpack(f"<{len(mask) // 2}H", mask)
+    assert len(mask) % 2 == 0 and sum(runs) >= 64_000
+    pixels = bytearray(base_frame)
+    destination = 0
+    run_index = 0
+    if offset < 0:
+        remaining = 64_000 + offset
+        zero_count = (runs[0] + offset) & 0xFFFFFFFF
+        run_index = 1
+    else:
+        pixels[:offset] = bytes(offset)
+        destination = offset
+        remaining = 64_000 - offset
+        zero_count = runs[0]
+        run_index = 1
+    while remaining:
+        count = min(zero_count, remaining)
+        pixels[destination:destination + count] = bytes(count)
+        destination += count
+        remaining -= count
+        if not remaining:
+            break
+        skip_count = runs[run_index]
+        run_index += 1
+        if skip_count >= remaining:
+            destination += remaining
+            remaining = 0
+            break
+        destination += skip_count
+        remaining -= skip_count
+        zero_count = runs[run_index]
+        run_index += 1
+    if offset < 0:
+        pixels[destination:destination - offset] = bytes(-offset)
+    return bytes(pixels)
 
 
-def weather_frame(
-    base_frame: bytes,
-    cloud_archive: list[bytes],
-    palette: list[tuple[int, int, int]],
-    ticks: int,
-) -> tuple[bytes, list[dict[str, int]], int]:
+def scene_shadow_frames(
+    base_frame: bytes, fixed_mask: bytes, shifted_mask: bytes
+) -> tuple[bytes, bytes, int, int]:
     state = 1
 
     def bounded(upper_bound: int) -> int:
         nonlocal state
-        if upper_bound <= 1 or upper_bound > 30_000:
-            return 0
         state = (state * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
         return ((state >> 16) & 0x7FFF) % upper_bound
 
-    particles = [{"kind": bounded(4)} for _ in range(3)]
-    for particle in particles:
-        particle["weight"] = bounded(3) + 6
-    for particle in particles:
-        particle["x"] = bounded(100) - 300
-    for index, particle in enumerate(particles):
-        particle["y"] = -3000 - index * 1000 if bounded(2) else bounded(50) + index * 75
-    for _ in range(1, ticks):
-        for particle in particles:
-            particle["x"] += 1
-    output = bytearray(base_frame)
-    lookup = rgb4_lookup(palette)
-    for particle in particles:
-        if particle["y"] > -1000:
-            draw_translucent(
-                output,
-                cloud_archive[particle["kind"]],
-                particle["x"],
-                particle["y"],
-                particle["weight"],
-                palette,
-                lookup,
-            )
-    return bytes(output), particles, state
+    offset = 320 * (bounded(7) - 3) + (bounded(7) - 3)
+    return (
+        apply_shadow_mask(base_frame, fixed_mask, 0),
+        apply_shadow_mask(base_frame, shifted_mask, offset),
+        offset,
+        state,
+    )
 
 
 def words(data: bytes) -> tuple[int, ...]:
@@ -285,8 +257,9 @@ def render_scene(
     direction: int,
     view_origin: tuple[int, int] | None = None,
     player_picture: int | None = None,
+    base_frame: bytes | None = None,
 ) -> bytes:
-    pixels = bytearray(320 * 200)
+    pixels = bytearray(320 * 200 if base_frame is None else base_frame)
     if view_origin is None:
         origin_x = min(max(player_x - 11, 0), 36)
         origin_y = min(max(player_y - 11, 0), 36)
@@ -318,10 +291,9 @@ def render_scene(
             if building not in (0, 15000):
                 draw(building, sx, sy - height)
             event = scene_value(scene_words, 3, x, y)
-            if event >= 0:
+            if event >= 0 and event_value(event_words, event, 5) > 0:
                 picture = event_value(event_words, event, 7)
-                if picture > 0:
-                    draw(picture, sx, sy - height)
+                draw(picture, sx, sy - height)
             if x == player_x and y == player_y:
                 picture = FRAME_BASE[direction] if player_picture is None else player_picture
                 if picture not in (0, -86):
@@ -1113,6 +1085,8 @@ def scene_animation_vectors(
         entry_displayed_picture += 2
     event_words[199 * 11 + 7] = entry_displayed_picture
     entry_frame = render_scene(tuple(map_words), tuple(event_words), sprites, 44, 29, 1)
+    event_words[199 * 11 + 5] = 0
+    word5_zero_frame = render_scene(tuple(map_words), tuple(event_words), sprites, 44, 29, 1)
     script_825 = words(scripts[825])
     assert script_825 == (52, -1)
     return {
@@ -1136,6 +1110,7 @@ def scene_animation_vectors(
         "word7_render_frame_fnv1a64": fnv1a64(frame),
         "entry_scan_displayed_picture": entry_displayed_picture,
         "entry_scanned_word7_render_frame_fnv1a64": fnv1a64(entry_frame),
+        "word5_zero_word7_positive_frame_fnv1a64": fnv1a64(word5_zero_frame),
         "interaction_present": {
             "player": [44, 29],
             "direction_targets": {
@@ -1881,13 +1856,52 @@ def main() -> None:
     metadata = struct.unpack_from("<26h", ranger, metadata_offset)
     weather_x, weather_y = metadata[14], metadata[15]
     weather_base = render_scene(weather_map, weather_events, weather_sprites, weather_x, weather_y, 1)
-    cloud_archive = packed((root / "CLOUD.IDX").read_bytes(), (root / "CLOUD.GRP").read_bytes())
+    fixed_shadow_mask = (root / "3_shadow.msk").read_bytes()
+    shifted_shadow_mask = (root / "4_shadow.msk").read_bytes()
+    weather_output, shifted_weather_output, shadow_offset, weather_random_state = scene_shadow_frames(
+        weather_base, fixed_shadow_mask, shifted_shadow_mask
+    )
     palette_bytes = (root / "MMAP.COL").read_bytes()
     palette = [tuple(palette_bytes[offset:offset + 3]) for offset in range(0, len(palette_bytes), 3)]
-    weather_ticks = 300
-    weather_output, weather_particles, weather_random_state = weather_frame(
-        weather_base, cloud_archive, palette, weather_ticks
-    )
+    buffer_preservation = []
+    for render_scene_id in range(84):
+        render_metadata = struct.unpack_from("<26h", ranger, 97_076 + render_scene_id * 52)
+        render_x, render_y = render_metadata[14], render_metadata[15]
+        render_map_words = words(scene_maps[render_scene_id])
+        render_event_words = words(scene_events[render_scene_id])
+        render_sprites = sentinel(
+            (root / f"SDX{render_scene_id:03d}").read_bytes(),
+            (root / f"SMP{render_scene_id:03d}").read_bytes(),
+        )
+        zero_frame = render_scene(
+            render_map_words, render_event_words, render_sprites, render_x, render_y, 1
+        )
+        seeded_frame = render_scene(
+            render_map_words,
+            render_event_words,
+            render_sprites,
+            render_x,
+            render_y,
+            1,
+            base_frame=bytes([255]) * 64_000,
+        )
+        different_positions = [
+            [index % 320, index // 320]
+            for index, (left, right) in enumerate(zip(zero_frame, seeded_frame, strict=True))
+            if left != right
+        ]
+        if different_positions:
+            buffer_preservation.append({
+                "scene": render_scene_id,
+                "entrance": [render_x, render_y],
+                "different_pixels": len(different_positions),
+                "different_positions": different_positions,
+                "zero_frame_fnv1a64": fnv1a64(zero_frame),
+                "seed255_frame_fnv1a64": fnv1a64(seeded_frame),
+            })
+    assert [
+        (entry["scene"], entry["different_pixels"]) for entry in buffer_preservation
+    ] == [(4, 3), (44, 2), (80, 2)]
     decoded_talks = [bytes(value ^ 0xFF for value in entry[:-1]) + b"\0" for entry in talks]
     coverage = opcode_coverage(scripts)
     script_30 = words(scripts[30])
@@ -2151,14 +2165,24 @@ def main() -> None:
                 "targets": opcode_59_targets,
             },
         },
-        "scene_5_weather": {
+        "scene_render_buffer_preservation": {
+            "scene_archive_count": 84,
+            "scenes_with_uncovered_pixels": buffer_preservation,
+        },
+        "scene_5_shadow": {
             "initial_x": weather_x,
             "initial_y": weather_y,
             "base_frame_fnv1a64": fnv1a64(weather_base),
-            "ticks": weather_ticks,
-            "frame_fnv1a64": fnv1a64(weather_output),
-            "particles": weather_particles,
-            "random_state": f"0x{weather_random_state:08x}",
+            "shadow_counter": 0,
+            "rng_upper_bounds": [7, 7],
+            "random_offset": shadow_offset,
+            "random_state_after_render": f"0x{weather_random_state:08x}",
+            "fixed_mask_bytes": len(fixed_shadow_mask),
+            "fixed_mask_sha256": sha256(fixed_shadow_mask),
+            "fixed_mask_frame_fnv1a64": fnv1a64(weather_output),
+            "shifted_mask_bytes": len(shifted_shadow_mask),
+            "shifted_mask_sha256": sha256(shifted_shadow_mask),
+            "shifted_mask_frame_fnv1a64": fnv1a64(shifted_weather_output),
         },
         "scene_70": {
             "map_sha256": sha256(scene_maps[scene_id]),

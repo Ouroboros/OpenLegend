@@ -40,6 +40,12 @@ public:
     [[nodiscard]] const compat::LegacyPalette& palette() const noexcept {
         return palette_;
     }
+    [[nodiscard]] std::span<const std::uint16_t> fixed_shadow_mask() const noexcept {
+        return fixed_shadow_mask_;
+    }
+    [[nodiscard]] std::span<const std::uint16_t> shifted_shadow_mask() const noexcept {
+        return shifted_shadow_mask_;
+    }
     [[nodiscard]] const model::RangerState& ranger() const noexcept {
         return *ranger_.ranger;
     }
@@ -50,6 +56,8 @@ public:
 private:
     resource::PackedArchive weather_sprites_;
     compat::LegacyPalette palette_{};
+    std::vector<std::uint16_t> fixed_shadow_mask_;
+    std::vector<std::uint16_t> shifted_shadow_mask_;
     persistence::RangerLoadResult ranger_;
     std::string error_;
 };

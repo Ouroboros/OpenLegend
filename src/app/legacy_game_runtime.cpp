@@ -125,6 +125,30 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
 }  // namespace
 
 LegacyStartupResources::LegacyStartupResources(const resource::DataRoot& data_root) {
+    const auto fixed_shadow_file = data_root.read("3_shadow.msk");
+    if (!fixed_shadow_file) {
+        error_ = fixed_shadow_file.error;
+        return;
+    }
+    auto fixed_shadow = render::parse_legacy_shadow_mask(fixed_shadow_file.bytes);
+    if (!fixed_shadow.has_value()) {
+        error_ = "3_shadow.msk is not a valid legacy shadow mask";
+        return;
+    }
+    fixed_shadow_mask_ = std::move(*fixed_shadow);
+
+    const auto shifted_shadow_file = data_root.read("4_shadow.msk");
+    if (!shifted_shadow_file) {
+        error_ = shifted_shadow_file.error;
+        return;
+    }
+    auto shifted_shadow = render::parse_legacy_shadow_mask(shifted_shadow_file.bytes);
+    if (!shifted_shadow.has_value()) {
+        error_ = "4_shadow.msk is not a valid legacy shadow mask";
+        return;
+    }
+    shifted_shadow_mask_ = std::move(*shifted_shadow);
+
     auto cloud_group = data_root.read("CLOUD.GRP");
     if (!cloud_group) {
         error_ = cloud_group.error;
@@ -734,7 +758,15 @@ bool LegacyGameRuntime::render() {
         scene_effect_presented_ = scene_effect_kind_ != SceneEffectKind::none;
         return true;
     case LegacyGameView::battle:
-        return battle_session_ != nullptr && battle_session_->render(framebuffer_);
+        if (battle_session_ == nullptr) {
+            return false;
+        }
+        if (battle_session_->phase() == battle::BattleSessionPhase::party_selection &&
+            (scene_session_ == nullptr || !scene_session_->render_map(framebuffer_))) {
+            return false;
+        }
+        return battle_session_->render(
+            framebuffer_, battle_session_->phase() == battle::BattleSessionPhase::party_selection);
     case LegacyGameView::game_menu: {
         const auto* ranger = game_state_.ranger();
         const auto base_rendered = menu_return_view_ == LegacyGameView::scene
@@ -1098,7 +1130,10 @@ bool LegacyGameRuntime::start_scene(
         false,
         std::nullopt,
         periodic_counter_,
-        entry_override);
+        entry_override,
+        scene::SceneSessionContext::scene,
+        startup_resources_.fixed_shadow_mask(),
+        startup_resources_.shifted_shadow_mask());
     if (!scene_session_->valid()) {
         show_error(scene_session_->error(), error_return_view);
         scene_session_.reset();
@@ -1860,7 +1895,9 @@ bool LegacyGameRuntime::begin_world_leave_event(const std::int16_t role_id) {
         std::nullopt,
         periodic_counter_,
         std::nullopt,
-        scene::SceneSessionContext::world_event_overlay);
+        scene::SceneSessionContext::world_event_overlay,
+        startup_resources_.fixed_shadow_mask(),
+        startup_resources_.shifted_shadow_mask());
     if (!world_menu_event_session_->valid()) {
         world_menu_event_session_.reset();
         world_menu_event_phase_ = WorldMenuEventPhase::none;

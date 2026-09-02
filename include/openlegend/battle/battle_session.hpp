@@ -213,7 +213,9 @@ public:
         std::optional<std::uint32_t> bios_tick = std::nullopt);
     [[nodiscard]] std::vector<BattleAudioCommand> take_audio_commands();
     void advance(std::uint32_t bios_tick = 0U);
-    [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool render(
+        render::IndexedFramebuffer& framebuffer,
+        bool party_selection_background_redrawn = false);
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
 
 private:
@@ -332,7 +334,8 @@ private:
         std::size_t role_id);
     [[nodiscard]] bool advance_post_battle_message();
     [[nodiscard]] bool render_party_selection(
-        render::IndexedFramebuffer& framebuffer);
+        render::IndexedFramebuffer& framebuffer,
+        bool background_redrawn);
     [[nodiscard]] bool render_battlefield(
         render::IndexedFramebuffer& framebuffer);
     [[nodiscard]] bool render_player_action_menu(

@@ -4804,6 +4804,12 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(selection_hash == 0x83f943240d14bb33ULL);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == selection_hash);
+    framebuffer.pixels()[0U] = 123U;
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(framebuffer.pixels()[0U] == 0U);
+    framebuffer.pixels()[0U] = 123U;
+    OL_CHECK(session.render(framebuffer, true));
+    OL_CHECK(framebuffer.pixels()[0U] == 123U);
 
     for (std::size_t index = 0U; index < session.setup().party_prefix_length(); ++index) {
         if (session.setup().selection_states()[index] == 0) {

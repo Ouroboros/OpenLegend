@@ -29,12 +29,13 @@ namespace {
 
 [[nodiscard]] bool prepare_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
-    constexpr std::array<std::string_view, 30> files{
+    constexpr std::array<std::string_view, 32> files{
         "TITLE.IDX", "TITLE.GRP", "TITLE.BIG", "MMAP.COL", "MMAP.IDX", "MMAP.GRP",
-        "CLOUD.IDX", "CLOUD.GRP", "EARTH.002", "SURFACE.002", "BUILDING.002", "BUILDX.002",
-        "BUILDY.002", "FONT.X16", "FONT.C16", "CFONT", "RANGER.IDX", "RANGER.GRP",
-        "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX", "ALLDEF.GRP", "TALK.IDX", "TALK.GRP",
-        "KDEF.IDX", "KDEF.GRP", "HDGRP.IDX", "HDGRP.GRP", "SDX070", "SMP070"};
+        "CLOUD.IDX", "CLOUD.GRP", "3_shadow.msk", "4_shadow.msk", "EARTH.002",
+        "SURFACE.002", "BUILDING.002", "BUILDX.002", "BUILDY.002", "FONT.X16", "FONT.C16",
+        "CFONT", "RANGER.IDX", "RANGER.GRP", "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX",
+        "ALLDEF.GRP", "TALK.IDX", "TALK.GRP", "KDEF.IDX", "KDEF.GRP", "HDGRP.IDX",
+        "HDGRP.GRP", "SDX070", "SMP070"};
     std::error_code error;
     std::filesystem::remove_all(destination, error);
     error.clear();
@@ -588,6 +589,11 @@ void check_name_editor(const std::filesystem::path& data_root) {
 void check_startup_resource_cache(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
+    app::LegacyStartupResources startup_resources{resource::DataRoot{data_root}};
+    OL_CHECK(startup_resources.valid());
+    OL_CHECK(startup_resources.fixed_shadow_mask().size() == 3'885U);
+    OL_CHECK(startup_resources.shifted_shadow_mask().size() == 5'585U);
+
     const auto missing_cloud_root =
         test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-missing-cloud";
     OL_CHECK(prepare_runtime_fixture(data_root, missing_cloud_root));
@@ -597,6 +603,15 @@ void check_startup_resource_cache(const std::filesystem::path& data_root) {
     app::LegacyGameRuntime missing_cloud{missing_cloud_root, 0U};
     OL_CHECK(!missing_cloud.valid());
     OL_CHECK(missing_cloud.error().find("CLOUD.GRP") != std::string::npos);
+
+    const auto missing_shadow_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b7-startup-missing-shadow";
+    OL_CHECK(prepare_runtime_fixture(data_root, missing_shadow_root));
+    std::filesystem::remove(missing_shadow_root / "3_shadow.msk", error);
+    OL_CHECK(!error);
+    app::LegacyGameRuntime missing_shadow{missing_shadow_root, 0U};
+    OL_CHECK(!missing_shadow.valid());
+    OL_CHECK(missing_shadow.error().find("3_shadow.msk") != std::string::npos);
 
     const auto missing_ranger_root =
         test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-missing-ranger";

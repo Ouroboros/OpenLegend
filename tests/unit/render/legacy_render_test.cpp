@@ -156,6 +156,12 @@ void run_effect_tests() {
     using namespace openlegend::render;
     IndexedFramebuffer framebuffer;
     const std::array<std::uint16_t, 3> mask{3U, 2U, 63'995U};
+    const std::array<std::uint8_t, 6> mask_bytes{3U, 0U, 2U, 0U, 0xFBU, 0xF9U};
+    const auto parsed_mask = parse_legacy_shadow_mask(mask_bytes);
+    OL_CHECK(parsed_mask.has_value());
+    OL_CHECK(*parsed_mask == std::vector<std::uint16_t>(mask.begin(), mask.end()));
+    OL_CHECK(!parse_legacy_shadow_mask(std::span{mask_bytes}.first(5U)).has_value());
+    OL_CHECK(!parse_legacy_shadow_mask(std::span{mask_bytes}.first(4U)).has_value());
 
     framebuffer.clear(9U);
     OL_CHECK(apply_legacy_shadow_mask(framebuffer, mask, 0));
