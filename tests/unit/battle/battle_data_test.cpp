@@ -2720,6 +2720,31 @@ void run_player_status_session_test(
     std::ranges::copy(
         kMagicName,
         ranger->magics[5U].bytes.begin() + magic_word::name_byte);
+
+    status_role.set_word(role_word::experience, -32'767);
+    status_role.set_word(role_word::item_experience, -1);
+    BattleRenderer unsigned_status_renderer{data_root, 0};
+    openlegend::render::IndexedFramebuffer unsigned_status_page_0;
+    openlegend::render::IndexedFramebuffer unsigned_status_page_1;
+    OL_CHECK(unsigned_status_renderer.valid());
+    OL_CHECK(unsigned_status_renderer.render_character_status(
+        *ranger, 2, 0U, unsigned_status_page_0));
+    OL_CHECK(unsigned_status_renderer.render_character_status(
+        *ranger, 2, 1U, unsigned_status_page_1));
+    const auto unsigned_status_page_0_hash = fnv1a_bytes(unsigned_status_page_0.pixels());
+    const auto unsigned_status_page_1_hash = fnv1a_bytes(unsigned_status_page_1.pixels());
+    if (unsigned_status_page_0_hash != 0x77C7894D66E05F7CULL) {
+        std::cerr << "unsigned_status_page_0_hash=0x" << std::hex
+                  << unsigned_status_page_0_hash << std::dec << '\n';
+    }
+    if (unsigned_status_page_1_hash != 0x943CBB1B8EE2C566ULL) {
+        std::cerr << "unsigned_status_page_1_hash=0x" << std::hex
+                  << unsigned_status_page_1_hash << std::dec << '\n';
+    }
+    OL_CHECK(unsigned_status_page_0_hash == 0x77C7894D66E05F7CULL);
+    OL_CHECK(unsigned_status_page_1_hash == 0x943CBB1B8EE2C566ULL);
+    status_role.set_word(role_word::experience, 1'234);
+    status_role.set_word(role_word::item_experience, 15);
     const auto status_role_before = status_role.bytes;
 
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();

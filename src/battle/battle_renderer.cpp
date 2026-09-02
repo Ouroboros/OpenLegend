@@ -692,7 +692,7 @@ bool BattleRenderer::render_character_status(
             !draw_text(framebuffer, 120, 141, kSlash, 0x6663U) ||
             !draw_text(framebuffer, 127, 141, kHundred, 0x2321U) ||
             !draw_text(framebuffer, 60, 158, kExperienceLabel, 0x2321U) ||
-            !draw_number(97, 158, role.word(model::role_word::experience), 6) ||
+            !draw_number(97, 158, role.unsigned_word(model::role_word::experience), 6) ||
             !draw_text(framebuffer, 60, 175, kUpgradeLabel, 0x2321U)) {
             return false;
         }
@@ -788,7 +788,11 @@ bool BattleRenderer::render_character_status(
                     model::item_word::secondary_name_begin * 2U,
                     model::item_word::secondary_name_count * 2U),
                 0x0705U) ||
-            !draw_number(60, 175, role.word(model::role_word::item_experience), 5) ||
+            !draw_number(
+                60,
+                175,
+                role.unsigned_word(model::role_word::item_experience),
+                5) ||
             !draw_text(framebuffer, 100, 175, kSlash, 0x6663U)) {
             return false;
         }
