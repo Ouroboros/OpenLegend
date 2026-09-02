@@ -154,12 +154,14 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         std::array<std::int16_t, 2>{357, 234},
         std::array<std::int16_t, 2>{357, 235}};
     constexpr std::array<std::int16_t, 4> movement_frames{5018, 5006, 5036, 5052};
+    constexpr std::array<int, 4> cache_x_after_move{65, 65, 64, 64};
     for (std::size_t index = 0U; index < directions.size(); ++index) {
         const auto result = session.move(directions[index]);
         OL_CHECK(result.kind == WorldStepKind::moved);
         OL_CHECK(result.scene_id == -1);
         OL_CHECK(result.world_x == positions[index][0]);
         OL_CHECK(result.world_y == positions[index][1]);
+        OL_CHECK(session.cache_x() == cache_x_after_move[index]);
         OL_CHECK(session.player_frame() == movement_frames[index]);
         OL_CHECK(session.render(framebuffer));
         OL_CHECK(sprite_has_visible_pixel(
@@ -297,6 +299,7 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::in_ship) == 1);
     OL_CHECK(ship.move(WorldDirection::right).kind == WorldStepKind::moved);
     OL_CHECK(ship.world_x() == 110);
+    OL_CHECK(ship.cache_x() == 66);
     ship.sync_persistent_state(true);
     OL_CHECK(ship_snapshot.ranger.header.word(openlegend::model::header_word::ship_x) == 110);
     OL_CHECK(ship.move(WorldDirection::left).kind == WorldStepKind::moved);
