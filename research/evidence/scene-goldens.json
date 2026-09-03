@@ -1850,6 +1850,92 @@
       "selected_frame_fnv1a64": "0xe154c07ba899cba5",
       "interior_preserved": 7
     },
+    "portrait_archive_vectors": {
+      "entry_range": "0x2D590..0x2D653",
+      "instruction_count": 49,
+      "caller_addresses": [
+        "0x22AD7",
+        "0x234BF",
+        "0x2CDA0",
+        "0x2CE7F",
+        "0x3C752"
+      ],
+      "caller_owners": [
+        "sub_22A59",
+        "sub_2CC21",
+        "sub_3C6D3"
+      ],
+      "resources": [
+        "HDGRP.IDX",
+        "HDGRP.GRP"
+      ],
+      "direct_head_id_index": true,
+      "legacy_sprite_divide_by_two": false,
+      "entry_count": 115,
+      "index_bytes": 460,
+      "group_bytes": 249276,
+      "index_sha256": "4c992c82d1f88fbe7f8cd145222b93c5715ee4b42f540ba6264ba2d22895ca35",
+      "group_sha256": "9b3ea687e0a2d82cc0dd83f580cff6a5cb48e7b62b6fd98dc4b63dad93a9c037",
+      "length_prefixed_entry_stream_sha256": "47851eedd769245ad805a7d9ee50135a44472cce968b4eeea25cd89dbd233096",
+      "metadata_stream_sha256": "3f66a25a039dd7d658a7a66a5583fd6237fd75a20ce99e020fc5c5195f5f8567",
+      "width_range": [
+        13,
+        56
+      ],
+      "height_range": [
+        9,
+        58
+      ],
+      "x_offset_range": [
+        -22,
+        0
+      ],
+      "y_offset_range": [
+        25,
+        57
+      ],
+      "run_count": 7568,
+      "opaque_pixel_count": 226957,
+      "caller_anchors": [
+        [
+          78,
+          68
+        ],
+        [
+          25,
+          71
+        ],
+        [
+          239,
+          184
+        ],
+        [
+          239,
+          71
+        ],
+        [
+          25,
+          184
+        ],
+        [
+          242,
+          82
+        ],
+        [
+          22,
+          82
+        ]
+      ],
+      "all_entries_at_caller_anchors_sha256": "92ec7ccffd3068c0c04831d6eaebec18e917892ddfcd27cdc2e5792150d2b0db",
+      "role_record_count": 320,
+      "role_head_id_range": [
+        0,
+        109
+      ],
+      "unique_role_head_ids": 103,
+      "invalid_role_head_ids": [],
+      "return_value": 1
+    },
     "state_write_vectors": {
       "opcode_3_event_fields": {
         "occurrences": 2320,

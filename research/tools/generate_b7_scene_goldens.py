@@ -774,6 +774,105 @@ def rectangle_outline_vectors() -> dict[str, object]:
     }
 
 
+def portrait_archive_vectors(root: Path, ranger: bytes) -> dict[str, object]:
+    index = (root / "HDGRP.IDX").read_bytes()
+    group = (root / "HDGRP.GRP").read_bytes()
+    assert len(index) == 460 and len(index) % 4 == 0
+    frames = packed(index, group)
+    assert len(frames) == 115
+
+    metadata: list[tuple[int, int, int, int, int, int]] = []
+    for frame in frames:
+        assert len(frame) >= 8
+        width, height, x_offset, y_offset = struct.unpack_from("<HHhh", frame)
+        cursor = 8
+        run_count = 0
+        pixel_count = 0
+        for _ in range(height):
+            assert cursor < len(frame)
+            row_end = cursor + 1 + frame[cursor]
+            cursor += 1
+            assert row_end <= len(frame)
+            x = 0
+            while cursor < row_end:
+                assert row_end - cursor >= 2
+                skip, count = frame[cursor:cursor + 2]
+                cursor += 2
+                assert count <= row_end - cursor
+                x += skip
+                assert x + count <= width
+                cursor += count
+                x += count
+                run_count += 1
+                pixel_count += count
+            assert cursor == row_end
+        assert cursor == len(frame)
+        metadata.append((width, height, x_offset, y_offset, run_count, pixel_count))
+
+    caller_anchors = [
+        [78, 68],
+        [25, 71],
+        [239, 184],
+        [239, 71],
+        [25, 184],
+        [242, 82],
+        [22, 82],
+    ]
+    render_stream = hashlib.sha256()
+    for background, (x, y) in enumerate(caller_anchors, 1):
+        for frame in frames:
+            pixels = bytearray([background]) * (320 * 200)
+            draw_sprite(pixels, frame, x, y)
+            render_stream.update(pixels)
+
+    role_head_ids = [
+        struct.unpack_from("<h", ranger, 836 + role * 182 + 2)[0]
+        for role in range(320)
+    ]
+    invalid_role_head_ids = [
+        [role, head_id]
+        for role, head_id in enumerate(role_head_ids)
+        if not 0 <= head_id < len(frames)
+    ]
+    assert not invalid_role_head_ids
+
+    entry_stream = b"".join(struct.pack("<I", len(frame)) + frame for frame in frames)
+    metadata_stream = b"".join(
+        struct.pack("<HHhhII", *record) for record in metadata
+    )
+    return {
+        "entry_range": "0x2D590..0x2D653",
+        "instruction_count": 49,
+        "caller_addresses": [
+            "0x22AD7", "0x234BF", "0x2CDA0", "0x2CE7F", "0x3C752",
+        ],
+        "caller_owners": ["sub_22A59", "sub_2CC21", "sub_3C6D3"],
+        "resources": ["HDGRP.IDX", "HDGRP.GRP"],
+        "direct_head_id_index": True,
+        "legacy_sprite_divide_by_two": False,
+        "entry_count": len(frames),
+        "index_bytes": len(index),
+        "group_bytes": len(group),
+        "index_sha256": sha256(index),
+        "group_sha256": sha256(group),
+        "length_prefixed_entry_stream_sha256": sha256(entry_stream),
+        "metadata_stream_sha256": sha256(metadata_stream),
+        "width_range": [min(record[0] for record in metadata), max(record[0] for record in metadata)],
+        "height_range": [min(record[1] for record in metadata), max(record[1] for record in metadata)],
+        "x_offset_range": [min(record[2] for record in metadata), max(record[2] for record in metadata)],
+        "y_offset_range": [min(record[3] for record in metadata), max(record[3] for record in metadata)],
+        "run_count": sum(record[4] for record in metadata),
+        "opaque_pixel_count": sum(record[5] for record in metadata),
+        "caller_anchors": caller_anchors,
+        "all_entries_at_caller_anchors_sha256": render_stream.hexdigest(),
+        "role_record_count": len(role_head_ids),
+        "role_head_id_range": [min(role_head_ids), max(role_head_ids)],
+        "unique_role_head_ids": len(set(role_head_ids)),
+        "invalid_role_head_ids": invalid_role_head_ids,
+        "return_value": 1,
+    }
+
+
 def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: dict[int, list[dict[str, object]]] = {3: [], 17: [], 26: []}
     for script_id, payload in enumerate(scripts):
@@ -2516,6 +2615,7 @@ def main() -> None:
             "basic_helper_vectors": basic_helper_vectors(scripts),
             "main_loop_dispatch_vectors": main_loop_dispatch_vectors(palette_bytes),
             "rectangle_outline_vectors": rectangle_outline_vectors(),
+            "portrait_archive_vectors": portrait_archive_vectors(root, ranger),
             "state_write_vectors": state_write_vectors(scripts),
             "scene_animation_vectors": scene_animation_vectors(
                 scene_maps, scene_events, sprites, scripts

@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`193b4e33f2a7737bf55a85715884acb82719e690d956b6d0a838e1c26082212f`
+  - SHA256：`522f0739c8061ac301083825d2398948cf4996e0be6bfde5a85f5f59ef06928f`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -122,6 +122,12 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 当前world/scene普通菜单仍是8行文字列表，未接线原5×3轮廓primitive；`sub_2A186`的背景、图标、分页、详情和输入整体继续在 `ui-closure.tsv` 保持待审，不由本helper closure提前关闭。
 
+### 4.5 HDGRP头像记录与锚点
+
+`sub_2D590`以head ID直接索引 `HDGRP.IDX/GRP`，不执行普通legacy sprite编号除二；读取单帧后把 `(x,y,frame,framebuffer)` 转交RLE绘制并固定返回1。完整xref包含角色状态两页的 `(78,68)`、对话四个头像框的 `(x+2,y+59)`，以及战斗角色状态面板双方的 `(242-side_offset,82)`。现代 `SceneSession::draw_portrait` 与 `BattleRenderer::draw_portrait` 均直接读取 `PackedArchive::entry(head_id)` 并转交同一RLE renderer，覆盖5个物理callsite。
+
+独立oracle逐帧验证全部115个HDGRP记录：IDX末偏移恰覆盖249,276字节GRP，共7,568个run、226,957个非透明像素；七类caller锚点上逐个绘制所有记录后的串联SHA256为 `92ec7ccffd3068c0c04831d6eaebec18e917892ddfcd27cdc2e5792150d2b0db`。RANGER的320个角色head ID范围0..109且全部有效；3,561次opcode1中实际绘制style的head ID也无越界。现代一次性缓存archive并拒绝损坏资源/非法ID，替代机器共享IDX类型缓存及越界访问，合法静态资产输出一致。
+
 ## 5. TALK 分页
 
 `sub_2CC21` 在固定 `218×57` 对话框内调用文本例程并在每页后阻塞等待输入。当前资产使用 ASCII `'*'` 作为显式换行；Big5 trail byte 合法范围不包含 `0x2A`，因此可无歧义识别。
@@ -173,7 +179,7 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
 - 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
-- HDGRP 115帧以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
+- HDGRP 115帧的记录边界、全部7,568个run、320个角色head域、七类caller锚点逐帧聚合hash，以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
 - 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode3/4/5/6/9/11/13/14/16/17/24/26/68 的状态写入、条件、问题框、同步、载入菜单与 PC 不推进边界；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
