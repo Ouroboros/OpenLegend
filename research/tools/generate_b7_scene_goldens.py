@@ -1503,6 +1503,39 @@ def party_tail_condition_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def inventory_presence_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 18:
+                occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1],
+                     code[program_counter + 2], code[program_counter + 3]))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<IIhhh", *row) for row in occurrences)
+    assert occurrences == [(37, 0, 173, 0, 15), (38, 0, 173, 0, 20)]
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhh:script_pc_item_true_false>",
+        "parameter_stream_sha256": sha256(stream),
+        "all": [list(row) for row in occurrences],
+        "scan_slot_range": [0, 199],
+        "item_word_stride_bytes": 4,
+        "stops_at_first_match": True,
+        "reads_count": False,
+        "program_counter_formula": "old_pc + 4 + selected_signed_offset",
+        "script_37_vectors": [
+            {"matching_slot": 0, "count": 0, "selected": "true", "result": "stay"},
+            {"matching_slot": None, "selected": "false", "result": "dialogue_139"},
+            {"matching_slot": 199, "count": -32768, "selected": "true", "result": "stay"},
+        ],
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3596,6 +3629,7 @@ def main() -> None:
             "opcode_13_fade_from_black": fade_from_black_vectors(scripts),
             "opcode_14_fade_to_black": fade_to_black_vectors(scripts),
             "opcode_16_party_contains": party_contains_vectors(scripts),
+            "opcode_18_inventory_presence": inventory_presence_vectors(scripts),
             "opcode_20_party_tail_condition": party_tail_condition_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),

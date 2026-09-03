@@ -1701,6 +1701,54 @@
         }
       }
     },
+    "opcode_18_inventory_presence": {
+      "occurrences": 2,
+      "stream_encoding": "little_endian_<IIhhh:script_pc_item_true_false>",
+      "parameter_stream_sha256": "3f25065164137f7c2ec64615393422cc449b804fa50db0183a5ed188bd19ab6f",
+      "all": [
+        [
+          37,
+          0,
+          173,
+          0,
+          15
+        ],
+        [
+          38,
+          0,
+          173,
+          0,
+          20
+        ]
+      ],
+      "scan_slot_range": [
+        0,
+        199
+      ],
+      "item_word_stride_bytes": 4,
+      "stops_at_first_match": true,
+      "reads_count": false,
+      "program_counter_formula": "old_pc + 4 + selected_signed_offset",
+      "script_37_vectors": [
+        {
+          "matching_slot": 0,
+          "count": 0,
+          "selected": "true",
+          "result": "stay"
+        },
+        {
+          "matching_slot": null,
+          "selected": "false",
+          "result": "dialogue_139"
+        },
+        {
+          "matching_slot": 199,
+          "count": -32768,
+          "selected": "true",
+          "result": "stay"
+        }
+      ]
+    },
     "opcode_20_party_tail_condition": {
       "occurrences": 82,
       "stream_encoding": "little_endian_<IIhh:script_pc_true_false>",

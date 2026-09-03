@@ -2717,6 +2717,15 @@ void check_event_presence_and_party_tail_conditions(const std::filesystem::path&
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 139);
 
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        item_snapshot.ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+    }
+    item_snapshot.ranger.header.set_inventory(
+        openlegend::model::kInventoryCount - 1U,
+        openlegend::model::ItemId{173}, std::int16_t{-32768});
+    result = item_session.begin_event(37, 0, 0, 0);
+    OL_CHECK(result.kind == SceneStepKind::stay);
+
     const auto party_tail_dialogue = [&data_root, &root](
                                          const std::int16_t tail_value,
                                          const bool interior_gap) {

@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`38a000cf2a59f1c99d6e636e29bfc32e0e6e826ca8902959097dc88a35d613c7`
+  - SHA256：`f5fc1d8c3d9f88fa231e7fde5d8d967f9d0d3bf72ed0dcc45ed49db61d038d5f`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -205,7 +205,13 @@ helper始终扫描slots0..5，不因非正值停止；任一signed角色ID匹配
 
 helper不扫描队伍，只判断signed slot5是否严格大于0；全KDEF有82次opcode20，参数流SHA256为`0737d0189d784163a00c0ef3ad8b71c9f86ee1c18259fe5cd1111f8c85baa831`。真实script11固定尾槽`-1/0`均走对话30、前方有空洞但尾槽9仍走对话175。现代case20比较和PC偏移完全一致，归类`assembly_exact`；计划旧“声望增加”标签已按机器职责校正。
 
-### 4.15 添加物品提示与十四书门禁
+### 4.15 背包物品ID存在条件
+
+`sub_2E2F5`已完成最终汇编→C++ REVIEW。66字节、22条指令；loaded/raw SHA256分别为`4558ac4d5836ca13bd20fd042834b3555bcf550eb84a6062fd93e01ba0d9daf6`、`91a65940ab92f424e14810ac5ccf3ffc31df8955e45e6f1b1b813e03666854ca`，唯一差异是背包item ID基址加`0x20000`的DOS重定位。
+
+helper扫描slots0..199并在首个item ID匹配时停止，完全不读取count。全KDEF仅script37/38两次opcode18，参数流SHA256为`3f25065164137f7c2ec64615393422cc449b804fa50db0183a5ed188bd19ab6f`。真实script37固定slot0 count0仍命中、完全缺失走对话139、仅slot199 count-32768仍命中；现代ID存在判断和PC偏移完全一致，归类`assembly_exact`。
+
+### 4.16 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 
