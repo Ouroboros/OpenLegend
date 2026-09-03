@@ -3497,8 +3497,11 @@ void check_event_clear_party_mp(const std::filesystem::path& root) {
     for (std::size_t slot = 2U; slot < openlegend::model::kTeamMemberCount; ++slot) {
         snapshot.ranger.header.set_team_member(slot, openlegend::model::CharacterId{-1});
     }
+    snapshot.ranger.header.set_team_member(3U, openlegend::model::CharacterId{2});
+    snapshot.ranger.header.set_team_member(5U, openlegend::model::CharacterId{0});
     snapshot.ranger.roles[0].set_word(openlegend::model::role_word::mp, 77);
     snapshot.ranger.roles[1].set_word(openlegend::model::role_word::mp, 88);
+    snapshot.ranger.roles[2].set_word(openlegend::model::role_word::mp, 66);
     openlegend::random::LegacyRandom random{1U};
     openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
     auto result = session.begin_event(20, 0, 0, 0);
@@ -3517,6 +3520,7 @@ void check_event_clear_party_mp(const std::filesystem::path& root) {
     }
     OL_CHECK(snapshot.ranger.roles[1].word(openlegend::model::role_word::mp) == 0);
     OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::mp) == 77);
+    OL_CHECK(snapshot.ranger.roles[2].word(openlegend::model::role_word::mp) == 0);
 }
 
 void check_event_join_helper(const std::filesystem::path& root) {

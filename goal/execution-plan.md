@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=180/349`，`unique_any=136/284`，`unique_all=132/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=44` 当前队伍角色内力增加helper；状态为等待`audit_order=43` 场景坐标重定位工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=44` 收口后进入同表 `audit_order=45` 背包物品修改helper
+已发布进度：`closure=181/349`，`unique_any=137/284`，`unique_all=133/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=45` 背包物品修改helper；状态为等待`audit_order=44` 当前队伍角色内力清零工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=45` 收口后进入同表 `audit_order=46` 角色用毒能力写入helper
 
 ## 0. 唯一正确性真值
 

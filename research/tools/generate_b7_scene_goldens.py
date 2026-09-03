@@ -1654,6 +1654,39 @@ def coordinate_relocation_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def clear_party_mp_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 22:
+                occurrences.append((script_id, program_counter))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<II", *row) for row in occurrences)
+    assert occurrences == [(20, 10)]
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<II:script_pc>",
+        "position_stream_sha256": sha256(stream),
+        "all": [list(row) for row in occurrences],
+        "scan_slots": [0, 1, 2, 3, 4, 5],
+        "slot_0_condition": "always",
+        "later_slot_condition": "signed_role_id > 0",
+        "stops_at_nonpositive_slot": False,
+        "written_role_word": "mp",
+        "written_value": 0,
+        "synthetic_vector": {
+            "team": [1, 0, -1, 2, -1, 0],
+            "before_mp": {"0": 77, "1": 88, "2": 66},
+            "after_mp": {"0": 77, "1": 0, "2": 0},
+        },
+        "program_counter_formula": "old_pc + 1",
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3751,6 +3784,7 @@ def main() -> None:
             "opcode_19_coordinate_relocation": coordinate_relocation_vectors(scripts),
             "opcode_20_party_tail_condition": party_tail_condition_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
+            "opcode_22_clear_party_mp": clear_party_mp_vectors(scripts),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),

@@ -2298,6 +2298,51 @@
       ],
       "program_counter_formula": "old_pc + 2"
     },
+    "opcode_22_clear_party_mp": {
+      "occurrences": 1,
+      "stream_encoding": "little_endian_<II:script_pc>",
+      "position_stream_sha256": "071341166610b3e2805c1bed9ef6725d95748e1ed9291b1d53fb3f232aa5ce0c",
+      "all": [
+        [
+          20,
+          10
+        ]
+      ],
+      "scan_slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "slot_0_condition": "always",
+      "later_slot_condition": "signed_role_id > 0",
+      "stops_at_nonpositive_slot": false,
+      "written_role_word": "mp",
+      "written_value": 0,
+      "synthetic_vector": {
+        "team": [
+          1,
+          0,
+          -1,
+          2,
+          -1,
+          0
+        ],
+        "before_mp": {
+          "0": 77,
+          "1": 88,
+          "2": 66
+        },
+        "after_mp": {
+          "0": 77,
+          "1": 0,
+          "2": 0
+        }
+      },
+      "program_counter_formula": "old_pc + 1"
+    },
     "explicit_scene_present": {
       "start": "0x2D653",
       "end": "0x2D678",

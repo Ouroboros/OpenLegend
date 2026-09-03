@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`818bede2e3ed85d023274f61166f9c517e7bc83344a53baf28f281130d4da6d4`
+  - SHA256：`058a92abf5bbe9bc3b629891e34b1b869f62b5718ada64790b27b93dad66d6b4`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -223,7 +223,13 @@ helper扫描slots0..199并在首个item ID匹配时停止，完全不读取count
 
 helper把signed x/y钳位到`0..63`，再将各自减11并钳位到`0..36`作为视口原点；不绘制或present。全KDEF有15次opcode19，参数流SHA256为`59063796bd864eb36610866d9bdca4e490bde722bb3bee802fa481bced4c2d0b`。真实script235固定`(14,14)→位置(14,14)/视口(3,3)`，synthetic覆盖两个signed极值到对角边界；现代最终四word和PC推进完全一致，归类`assembly_exact`。
 
-### 4.18 添加物品提示与十四书门禁
+### 4.18 清零当前队伍角色内力
+
+`sub_2E536`已完成最终汇编→C++ REVIEW。59字节、15条指令；loaded/raw SHA256分别为`e53b0d8946ce0db18f1724391d0f162516aada5f2ddbbeef5541eaeef0db7ccc`、`a181178559c2a742c28d42aa2d817d1cbf80f764c6332397c0521ac23f03ec4d`，三个差异字节均为队伍/角色绝对地址加`0x20000`的DOS重定位。
+
+helper固定访问六槽：slot0无条件清对应role的mp，slots1..5仅signed role ID`>0`时清mp，遇非正槽不停止。全KDEF仅`script20,PC10`一次opcode22。真实流程固定slot0 role1被清、后续role0保持、负空洞后的role2仍被清；现代非法role范围保护替代原机未定义越界，归类`platform_adapted`。计划旧“内力增加”标签已按机器职责校正。
+
+### 4.19 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 
