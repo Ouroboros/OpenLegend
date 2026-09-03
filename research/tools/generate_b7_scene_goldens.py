@@ -933,8 +933,11 @@ def portrait_archive_vectors(root: Path, ranger: bytes) -> dict[str, object]:
     }
 
 
-def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
-    occurrences: dict[int, list[dict[str, object]]] = {3: [], 17: [], 26: []}
+def state_write_vectors(
+    scripts: list[bytes],
+    scene_events: list[bytes],
+) -> dict[str, object]:
+    occurrences: dict[int, list[dict[str, object]]] = {3: [], 4: [], 17: [], 26: []}
     for script_id, payload in enumerate(scripts):
         code = words(payload)
         pc = 0
@@ -951,8 +954,35 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
             pc += WIDTHS[opcode]
 
     opcode_3 = occurrences[3]
+    opcode_4 = occurrences[4]
     opcode_17 = occurrences[17]
     opcode_26 = occurrences[26]
+    opcode_4_stream = b"".join(
+        struct.pack("<II3h", row["script"], row["pc"], *row["arguments"])
+        for row in opcode_4
+    )
+    opcode_4_scripts = {row["script"] for row in opcode_4}
+    opcode_4_event_references: list[dict[str, int]] = []
+    for scene_id, payload in enumerate(scene_events):
+        event_words = words(payload)
+        assert len(event_words) == 200 * 11
+        for event_id in range(200):
+            for field in range(2, 5):
+                script_id = event_words[event_id * 11 + field]
+                if script_id in opcode_4_scripts:
+                    opcode_4_event_references.append({
+                        "scene": scene_id,
+                        "event": event_id,
+                        "field": field,
+                        "script": script_id,
+                    })
+    opcode_4_event_reference_stream = b"".join(
+        struct.pack(
+            "<IIII",
+            row["scene"], row["event"], row["field"], row["script"],
+        )
+        for row in opcode_4_event_references
+    )
     opcode_26_stream = b"".join(
         struct.pack("<II5h", row["script"], row["pc"], *row["arguments"])
         for row in opcode_26
@@ -1006,6 +1036,21 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
         "script": 147,
         "pc": 0,
         "arguments": [-2, 6, -2, -2, 146, -1, -1, 5398, 5398, 5398, -2, 14, 40],
+    }
+    assert len(opcode_4) == 167
+    assert all(row["pc"] == 0 for row in opcode_4)
+    assert all(row["arguments"][1:] == [1, 0] for row in opcode_4)
+    assert len({row["arguments"][0] for row in opcode_4}) == 60
+    assert min(row["arguments"][0] for row in opcode_4) == 37
+    assert max(row["arguments"][0] for row in opcode_4) == 195
+    assert sum(row["arguments"][0] == 186 for row in opcode_4) == 100
+    assert len(opcode_4_event_references) == 40
+    assert all(row["field"] == 3 for row in opcode_4_event_references)
+    assert opcode_4_event_references[0] == {
+        "scene": 0, "event": 0, "field": 3, "script": 10,
+    }
+    assert opcode_4_event_references[-1] == {
+        "scene": 83, "event": 24, "field": 3, "script": 1014,
     }
     assert len(opcode_17) == 127
     assert sorted({row["arguments"][0] for row in opcode_17}) == [-2, 11, 18, 21, 49, 52, 53, 55]
@@ -1067,6 +1112,43 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
                 "clear_old_current_scene_event_cell",
                 "write_new_current_scene_event_cell",
             ],
+        },
+        "opcode_4_selected_item_branch": {
+            "occurrences": len(opcode_4),
+            "argument_stream_sha256": sha256(opcode_4_stream),
+            "instruction_pc_values": sorted({row["pc"] for row in opcode_4}),
+            "item_id_range": [
+                min(row["arguments"][0] for row in opcode_4),
+                max(row["arguments"][0] for row in opcode_4),
+            ],
+            "item_ids": sorted({row["arguments"][0] for row in opcode_4}),
+            "repeated_item_ids": [
+                {
+                    "item_id": item_id,
+                    "occurrences": count,
+                }
+                for item_id, count in sorted(Counter(
+                    row["arguments"][0] for row in opcode_4
+                ).items())
+                if count > 1
+            ],
+            "true_offsets": sorted({row["arguments"][1] for row in opcode_4}),
+            "false_offsets": sorted({row["arguments"][2] for row in opcode_4}),
+            "first_occurrence": opcode_4[0],
+            "last_occurrence": opcode_4[-1],
+            "scene_event_references": len(opcode_4_event_references),
+            "scene_event_reference_stream_sha256": sha256(
+                opcode_4_event_reference_stream
+            ),
+            "scene_event_field_indices": sorted({
+                row["field"] for row in opcode_4_event_references
+            }),
+            "referenced_scripts": sorted({
+                row["script"] for row in opcode_4_event_references
+            }),
+            "reference_scenes": sorted({
+                row["scene"] for row in opcode_4_event_references
+            }),
         },
         "opcode_17_scene_cell": {
             "occurrences": len(opcode_17),
@@ -3004,7 +3086,7 @@ def main() -> None:
             "main_loop_dispatch_vectors": main_loop_dispatch_vectors(palette_bytes),
             "rectangle_outline_vectors": rectangle_outline_vectors(),
             "portrait_archive_vectors": portrait_archive_vectors(root, ranger),
-            "state_write_vectors": state_write_vectors(scripts),
+            "state_write_vectors": state_write_vectors(scripts, scene_events),
             "scene_animation_vectors": scene_animation_vectors(
                 scene_maps, scene_events, sprites, scripts
             ),

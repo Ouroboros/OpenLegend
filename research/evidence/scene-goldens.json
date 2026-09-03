@@ -2210,6 +2210,198 @@
           "write_new_current_scene_event_cell"
         ]
       },
+      "opcode_4_selected_item_branch": {
+        "occurrences": 167,
+        "argument_stream_sha256": "89690e50d4231de72f458f6e5c5f1aae8390024b7872323674258ce752ef3e96",
+        "instruction_pc_values": [
+          0
+        ],
+        "item_id_range": [
+          37,
+          195
+        ],
+        "item_ids": [
+          37,
+          124,
+          125,
+          126,
+          127,
+          128,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149,
+          150,
+          151,
+          152,
+          153,
+          154,
+          155,
+          156,
+          157,
+          158,
+          159,
+          160,
+          161,
+          162,
+          163,
+          164,
+          165,
+          166,
+          167,
+          168,
+          169,
+          170,
+          174,
+          176,
+          177,
+          178,
+          179,
+          180,
+          181,
+          183,
+          184,
+          186,
+          187,
+          188,
+          189,
+          190,
+          191,
+          193,
+          194,
+          195
+        ],
+        "repeated_item_ids": [
+          {
+            "item_id": 132,
+            "occurrences": 2
+          },
+          {
+            "item_id": 160,
+            "occurrences": 3
+          },
+          {
+            "item_id": 163,
+            "occurrences": 2
+          },
+          {
+            "item_id": 174,
+            "occurrences": 3
+          },
+          {
+            "item_id": 186,
+            "occurrences": 100
+          },
+          {
+            "item_id": 187,
+            "occurrences": 2
+          },
+          {
+            "item_id": 188,
+            "occurrences": 2
+          }
+        ],
+        "true_offsets": [
+          1
+        ],
+        "false_offsets": [
+          0
+        ],
+        "first_occurrence": {
+          "script": 10,
+          "pc": 0,
+          "arguments": [
+            133,
+            1,
+            0
+          ]
+        },
+        "last_occurrence": {
+          "script": 1014,
+          "pc": 0,
+          "arguments": [
+            157,
+            1,
+            0
+          ]
+        },
+        "scene_event_references": 40,
+        "scene_event_reference_stream_sha256": "8ecd2bae575f1720bdabf6b7e5656a9d6c57cca80180c9c55706eb6e3986207b",
+        "scene_event_field_indices": [
+          3
+        ],
+        "referenced_scripts": [
+          10,
+          16,
+          53,
+          61,
+          181,
+          279,
+          317,
+          342,
+          350,
+          496,
+          555,
+          564,
+          598,
+          603,
+          647,
+          649,
+          680,
+          681,
+          685,
+          830,
+          831,
+          914,
+          942,
+          943,
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007,
+          1008,
+          1009,
+          1010,
+          1011,
+          1012,
+          1013,
+          1014
+        ],
+        "reference_scenes": [
+          0,
+          5,
+          6,
+          8,
+          26,
+          39,
+          41,
+          52,
+          54,
+          57,
+          58,
+          62,
+          72,
+          74,
+          76,
+          79,
+          82,
+          83
+        ]
+      },
       "opcode_17_scene_cell": {
         "occurrences": 127,
         "current_scene_occurrences": 99,
