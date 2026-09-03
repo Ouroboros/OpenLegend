@@ -1259,6 +1259,80 @@ def battle_request_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def join_role_vectors(scripts: list[bytes], ranger: bytes) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 10:
+                occurrences.append((script_id, program_counter, code[program_counter + 1]))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<IIh", *row) for row in occurrences)
+    role_ids = sorted({row[2] for row in occurrences})
+    role_records = []
+    for role_id in role_ids:
+        record = words(ranger[836 + role_id * 182:836 + (role_id + 1) * 182])
+        role_records.append({
+            "role_id": role_id,
+            "equipment": list(record[23:25]),
+            "practice_item": record[61],
+            "item_experience": record[62],
+            "carrying": [
+                [record[83 + slot], record[87 + slot]] for slot in range(4)
+            ],
+        })
+    carrying = [pair for record in role_records for pair in record["carrying"]]
+    nonempty = [pair for pair in carrying if pair[0] != -1]
+    role_counts = Counter(row[2] for row in occurrences)
+    assert len(occurrences) == 80
+    assert occurrences[0] == (10, 160, 1)
+    assert occurrences[-1] == (999, 50, 76)
+    assert role_ids == [
+        1, 2, 9, 16, 17, 25, 26, 28, 29, 35, 36, 37, 38,
+        44, 45, 47, 48, 49, 51, 53, 54, 58, 59, 61, 63, 76,
+    ]
+    assert all(0 <= role_id < 320 for role_id in role_ids)
+    assert all(item_id == -1 or 0 <= item_id < 200 for item_id, _ in carrying)
+    assert all(count >= 0 for _, count in carrying)
+    assert words(scripts[11])[50:52] == (10, 1)
+
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIh:script_pc_role>",
+        "parameter_stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "role_id_range": [min(role_ids), max(role_ids)],
+        "role_ids": role_ids,
+        "role_counts": {str(role_id): count for role_id, count in sorted(role_counts.items())},
+        "all_role_ids_valid": True,
+        "baseline_role_records": role_records,
+        "baseline_nonempty_carrying_slots": len(nonempty),
+        "baseline_carrying_item_ids": sorted({pair[0] for pair in nonempty}),
+        "baseline_carrying_counts": sorted({pair[1] for pair in nonempty}),
+        "script_11": {
+            "script_id": 11,
+            "program_counter": 50,
+            "role_id": 1,
+            "carrying": role_records[0]["carrying"],
+        },
+        "team_scan_slots": [1, 2, 3, 4, 5],
+        "empty_team_value": "signed_le_zero",
+        "carrying_slot_order": [0, 1, 2, 3],
+        "empty_carrying_item": -1,
+        "notice_format_big5_hex": "b16fa8ec257300",
+        "notice_format_cp950": "得到%s",
+        "post_notice_fields": [-1, 0],
+        "cleared_role_fields": [23, 24, 61, 62],
+        "cleared_role_values": [-1, -1, -1, 0],
+        "item_user_writes": 0,
+        "program_counter_formula": "old_pc + 2",
+    }
+
+
 def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     script_2 = words(scripts[2])
     script_28 = words(scripts[28])
@@ -3174,6 +3248,7 @@ def main() -> None:
             "alldef_sha256": sha256((root / "ALLDEF.GRP").read_bytes()),
             "talk_sha256": sha256((root / "TALK.GRP").read_bytes()),
             "kdef_sha256": sha256((root / "KDEF.GRP").read_bytes()),
+            "ranger_sha256": sha256(ranger),
         },
         "talk": {
             "decoded_stream_sha256": sha256(b"".join(decoded_talks)),
@@ -3184,6 +3259,7 @@ def main() -> None:
         "kdef": {
             **coverage,
             "opcode_6_battle_requests": battle_request_vectors(scripts),
+            "opcode_10_join_role": join_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),

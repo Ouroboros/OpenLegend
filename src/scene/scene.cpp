@@ -746,6 +746,7 @@ bool SceneSession::prepare_event(
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
     continuation_ = PendingContinuation::none;
+    join_role_state_.reset();
     pan_state_.reset();
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
@@ -882,6 +883,11 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     if (continuation_ == PendingContinuation::shop_feedback && queued_outputs_.empty()) {
         close_shop_events();
         continuation_ = PendingContinuation::none;
+    }
+    if (continuation_ == PendingContinuation::join_role_items && queued_outputs_.empty()) {
+        if (auto step = advance_join_role_items(); step.has_value()) {
+            return *step;
+        }
     }
 
     if (continuation_ == PendingContinuation::conditional) {
@@ -1065,32 +1071,21 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 2;
             break;
         case 10: {
+            const auto role_id = argument(1);
             program_counter_ += 2;
             for (std::size_t index = 1U; index < model::kTeamMemberCount; ++index) {
                 if (snapshot_.ranger.header.team_member(index).value > 0) {
                     continue;
                 }
-                snapshot_.ranger.header.set_team_member(index, model::CharacterId{argument(1)});
+                snapshot_.ranger.header.set_team_member(index, model::CharacterId{role_id});
                 break;
             }
-            if (argument(1) >= 0 && static_cast<std::size_t>(argument(1)) < snapshot_.ranger.roles.size()) {
-                auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(argument(1))];
-                for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
-                    const auto item_id = role.word(model::role_word::taking_item_begin + slot);
-                    const auto count = role.word(model::role_word::taking_item_count_begin + slot);
-                    if (item_id < 0) {
-                        continue;
-                    }
-                    add_inventory(item_id, count);
-                    role.set_word(model::role_word::taking_item_begin + slot, -1);
-                    role.set_word(model::role_word::taking_item_count_begin + slot, 0);
-                    queue_notice(ascii_message("item " + std::to_string(item_id) + " " + std::to_string(count)));
-                    queue_scene_present();
+            if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
+                join_role_state_ = JoinRoleState{role_id};
+                continuation_ = PendingContinuation::join_role_items;
+                if (auto step = advance_join_role_items(); step.has_value()) {
+                    return *step;
                 }
-                clear_role_personal_items(argument(1));
-            }
-            if (!queued_outputs_.empty()) {
-                return emit_queued();
             }
             break;
         }
@@ -2156,6 +2151,41 @@ void SceneSession::clear_role_personal_items(const std::int16_t role_id) {
     role.set_word(model::role_word::item_experience, 0);
 }
 
+std::optional<SceneStepResult> SceneSession::advance_join_role_items() {
+    if (!join_role_state_.has_value()) {
+        continuation_ = PendingContinuation::none;
+        return std::nullopt;
+    }
+    auto& state = *join_role_state_;
+    auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(state.role_id)];
+    if (state.awaiting_clear) {
+        role.set_word(model::role_word::taking_item_begin + state.slot, -1);
+        role.set_word(model::role_word::taking_item_count_begin + state.slot, 0);
+        ++state.slot;
+        state.awaiting_clear = false;
+    }
+    while (state.slot < model::role_word::taking_item_count) {
+        const auto item_id = role.word(model::role_word::taking_item_begin + state.slot);
+        if (item_id == -1) {
+            ++state.slot;
+            continue;
+        }
+        const auto count = role.word(model::role_word::taking_item_count_begin + state.slot);
+        add_inventory(item_id, count);
+        queue_item_notice(item_id);
+        queue_scene_present();
+        state.awaiting_clear = true;
+        return emit_queued();
+    }
+    role.set_word(model::role_word::equipment_begin, -1);
+    role.set_word(model::role_word::equipment_begin + 1U, -1);
+    role.set_word(model::role_word::practice_item, -1);
+    role.set_word(model::role_word::item_experience, 0);
+    join_role_state_.reset();
+    continuation_ = PendingContinuation::none;
+    return std::nullopt;
+}
+
 void SceneSession::add_role_item(
     const std::int16_t role_id,
     const std::int16_t item_id,
@@ -3090,6 +3120,7 @@ void SceneSession::clear_event() noexcept {
     script_.clear();
     program_counter_ = 0;
     continuation_ = PendingContinuation::none;
+    join_role_state_.reset();
     pan_state_.reset();
     picture_animation_state_.reset();
     scripted_walk_state_.reset();

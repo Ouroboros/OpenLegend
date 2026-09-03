@@ -214,6 +214,7 @@ private:
         battle,
         shop,
         shop_feedback,
+        join_role_items,
         scene_entry,
         scene_jump,
         scene_exit,
@@ -243,6 +244,12 @@ private:
         SceneStepResult result;
         std::vector<std::uint8_t> text;
         bool redraw_scene_before{};
+    };
+
+    struct JoinRoleState {
+        std::int16_t role_id{-1};
+        std::size_t slot{};
+        bool awaiting_clear{};
     };
 
     struct PanState {
@@ -395,6 +402,7 @@ private:
     void close_shop_events();
     void remove_team_role(std::int16_t role_id);
     void clear_role_personal_items(std::int16_t role_id);
+    [[nodiscard]] std::optional<SceneStepResult> advance_join_role_items();
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
     void queue_notice(std::vector<std::uint8_t> text, std::int16_t style = 0);
@@ -503,6 +511,7 @@ private:
     std::optional<std::int16_t> initial_script_;
     bool menu_item_event_active_{};
     std::optional<PendingJump> pending_jump_;
+    std::optional<JoinRoleState> join_role_state_;
     std::int16_t exit_music_override_{-1};
     std::int16_t true_offset_{};
     std::int16_t false_offset_{};
