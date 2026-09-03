@@ -2594,6 +2594,12 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     shop.set_word(openlegend::model::shop_word::price_begin, 7);
     purchase_snapshot.ranger.header.set_inventory(
         0U, openlegend::model::ItemId{174}, 10);
+    purchase_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{42}, 32767);
+    purchase_snapshot.ranger.header.set_inventory(
+        openlegend::model::kInventoryCount - 1U,
+        openlegend::model::ItemId{42},
+        -32768);
     static_cast<void>(purchase_snapshot.set_event_value(
         3U, 15U, openlegend::model::SceneEventField::event_3, -1));
     static_cast<void>(purchase_snapshot.set_event_value(
@@ -2617,18 +2623,14 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     purchase = purchase_session.resume(SceneResponse::acknowledge);
     OL_CHECK(purchase.kind == SceneStepKind::stay);
     OL_CHECK(shop.word(openlegend::model::shop_word::total_begin) == 1);
-    bool found_currency = false;
-    bool found_item = false;
-    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
-        found_currency = found_currency ||
-                         (purchase_snapshot.ranger.header.inventory_item(slot).value == 174 &&
-                          purchase_snapshot.ranger.header.inventory_count(slot) == 3);
-        found_item = found_item ||
-                     (purchase_snapshot.ranger.header.inventory_item(slot).value == 42 &&
-                      purchase_snapshot.ranger.header.inventory_count(slot) == 1);
-    }
-    OL_CHECK(found_currency);
-    OL_CHECK(found_item);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_item(0U).value == 174);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_count(0U) == 3);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_item(1U).value == 42);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_count(1U) == -32768);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_item(
+                 openlegend::model::kInventoryCount - 1U).value == 42);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_count(
+                 openlegend::model::kInventoryCount - 1U) == -32767);
     OL_CHECK(purchase_snapshot.event_value(
                  3U, 15U, openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
     OL_CHECK(purchase_snapshot.event_value(

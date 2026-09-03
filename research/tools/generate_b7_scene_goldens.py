@@ -1687,6 +1687,119 @@ def clear_party_mp_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def inventory_add_helper_vectors(
+    scripts: list[bytes], ranger: bytes
+) -> dict[str, object]:
+    role_ids: set[int] = set()
+    for payload in scripts:
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 10:
+                role_ids.add(code[program_counter + 1])
+            program_counter += WIDTHS[opcode]
+
+    carried_items: list[tuple[int, int, int, int]] = []
+    for role_id in sorted(role_ids):
+        record = ranger[836 + role_id * 182:836 + (role_id + 1) * 182]
+        role_words = struct.unpack("<91h", record)
+        for slot in range(4):
+            item_id = role_words[83 + slot]
+            count = role_words[87 + slot]
+            if item_id != -1:
+                carried_items.append((role_id, slot, item_id, count))
+
+    shop_rows: list[tuple[int, int, int, int, int]] = []
+    shop_data = ranger[114_092:114_242]
+    for shop_id in range(5):
+        shop_words = struct.unpack(
+            "<15h", shop_data[shop_id * 30:(shop_id + 1) * 30]
+        )
+        for slot in range(5):
+            shop_rows.append(
+                (
+                    shop_id,
+                    slot,
+                    shop_words[slot],
+                    shop_words[5 + slot],
+                    shop_words[10 + slot],
+                )
+            )
+
+    def wrap_word(value: int) -> int:
+        bits = value & 0xFFFF
+        return bits if bits < 0x8000 else bits - 0x10000
+
+    def add_item(
+        slots: list[tuple[int, int]], item_id: int, count: int
+    ) -> list[tuple[int, int]]:
+        result = slots.copy()
+        found = False
+        for index, (slot_item, slot_count) in enumerate(result):
+            if slot_item == item_id:
+                result[index] = (slot_item, wrap_word(slot_count + count))
+                found = True
+        if not found:
+            for index, (slot_item, slot_count) in enumerate(result):
+                if slot_item == -1:
+                    result[index] = (item_id, wrap_word(slot_count + count))
+                    break
+        return result
+
+    duplicate_before = [(109, 32767), (109, -32768), (88, 4)] + [(-1, 0)] * 197
+    residual_before = [(50 + index, 1) for index in range(5)] + [(-1, 9)] + [(-1, 0)] * 194
+    full_before = [(index, 7) for index in range(200)]
+    minus_one_before = [(-1, 32767), (-1, -32768), (5, 4)] + [(6, 0)] * 197
+    duplicate_after = add_item(duplicate_before, 109, 1)
+    residual_after = add_item(residual_before, 57, 1)
+    full_after = add_item(full_before, 300, 1)
+    minus_one_after = add_item(minus_one_before, -1, 1)
+    assert duplicate_after[:3] == [(109, -32768), (109, -32767), (88, 4)]
+    assert residual_after[5] == (57, 10)
+    assert full_after == full_before
+    assert minus_one_after[:3] == [(-1, -32768), (-1, -32767), (5, 4)]
+
+    caller_addresses = [0x2DF6B, 0x31772]
+    caller_stream = b"".join(struct.pack("<I", address) for address in caller_addresses)
+    carried_stream = b"".join(
+        struct.pack("<HHhh", *row) for row in carried_items
+    )
+    shop_stream = b"".join(struct.pack("<HHhhh", *row) for row in shop_rows)
+    assert len(carried_items) == 67
+    assert len(shop_rows) == 25 and all(row[3] > 0 for row in shop_rows)
+    return {
+        "entry_range": "0x2E571..0x2E5E6",
+        "size_bytes": 117,
+        "instruction_count": 37,
+        "caller_addresses": [f"0x{address:X}" for address in caller_addresses],
+        "caller_owners": ["sub_2DF0E", "sub_312A6"],
+        "caller_stream_encoding": "little_endian_<I:call_address>",
+        "caller_stream_sha256": sha256(caller_stream),
+        "inventory_slots": 200,
+        "matching_slots_updated": "all",
+        "matching_scan_stops_early": False,
+        "new_slot": "first_item_id_minus_one",
+        "new_slot_count": "wrapping_add_existing_count",
+        "full_inventory_without_match": "unchanged",
+        "target_item_minus_one": "all_empty_slots_match_in_first_scan",
+        "callee_return_consumed": False,
+        "join_carried_item_stream_encoding": "little_endian_<HHhh:role,slot,item,count>",
+        "join_carried_item_count": len(carried_items),
+        "join_carried_item_stream_sha256": sha256(carried_stream),
+        "shop_stream_encoding": "little_endian_<HHhhh:shop,slot,item,stock,price>",
+        "shop_row_count": len(shop_rows),
+        "shop_stream_sha256": sha256(shop_stream),
+        "shop_rows": [list(row) for row in shop_rows],
+        "synthetic_vectors": {
+            "duplicate_wrapping_after": [list(value) for value in duplicate_after[:3]],
+            "residual_empty_slot_after": list(residual_after[5]),
+            "full_inventory_unchanged": full_after == full_before,
+            "target_minus_one_after": [list(value) for value in minus_one_after[:3]],
+        },
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3785,6 +3898,7 @@ def main() -> None:
             "opcode_20_party_tail_condition": party_tail_condition_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "opcode_22_clear_party_mp": clear_party_mp_vectors(scripts),
+            "shared_inventory_add_helper": inventory_add_helper_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),

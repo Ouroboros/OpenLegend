@@ -2343,6 +2343,247 @@
       },
       "program_counter_formula": "old_pc + 1"
     },
+    "shared_inventory_add_helper": {
+      "entry_range": "0x2E571..0x2E5E6",
+      "size_bytes": 117,
+      "instruction_count": 37,
+      "caller_addresses": [
+        "0x2DF6B",
+        "0x31772"
+      ],
+      "caller_owners": [
+        "sub_2DF0E",
+        "sub_312A6"
+      ],
+      "caller_stream_encoding": "little_endian_<I:call_address>",
+      "caller_stream_sha256": "47673764dc49f475bcc794bf0fd3ee4b6434450e8a91be5945ad895cda52a889",
+      "inventory_slots": 200,
+      "matching_slots_updated": "all",
+      "matching_scan_stops_early": false,
+      "new_slot": "first_item_id_minus_one",
+      "new_slot_count": "wrapping_add_existing_count",
+      "full_inventory_without_match": "unchanged",
+      "target_item_minus_one": "all_empty_slots_match_in_first_scan",
+      "callee_return_consumed": false,
+      "join_carried_item_stream_encoding": "little_endian_<HHhh:role,slot,item,count>",
+      "join_carried_item_count": 67,
+      "join_carried_item_stream_sha256": "0f6a678f1e0a4a5bdd7e36b659c5de2ef82a7a89cb4e2db60bc0cec3444e1df9",
+      "shop_stream_encoding": "little_endian_<HHhhh:shop,slot,item,stock,price>",
+      "shop_row_count": 25,
+      "shop_stream_sha256": "93a0ea314a0fa61d7650e1208c9dc3d4f2d9cb47dfa2ff0f42e23dde064f49e3",
+      "shop_rows": [
+        [
+          0,
+          0,
+          7,
+          1000,
+          80
+        ],
+        [
+          0,
+          1,
+          104,
+          1000,
+          100
+        ],
+        [
+          0,
+          2,
+          16,
+          1000,
+          150
+        ],
+        [
+          0,
+          3,
+          111,
+          1,
+          400
+        ],
+        [
+          0,
+          4,
+          59,
+          1,
+          700
+        ],
+        [
+          1,
+          0,
+          1,
+          1000,
+          20
+        ],
+        [
+          1,
+          1,
+          8,
+          1000,
+          150
+        ],
+        [
+          1,
+          2,
+          36,
+          1,
+          500
+        ],
+        [
+          1,
+          3,
+          118,
+          1,
+          400
+        ],
+        [
+          1,
+          4,
+          85,
+          1,
+          600
+        ],
+        [
+          2,
+          0,
+          26,
+          1000,
+          100
+        ],
+        [
+          2,
+          1,
+          5,
+          1000,
+          60
+        ],
+        [
+          2,
+          2,
+          35,
+          1,
+          500
+        ],
+        [
+          2,
+          3,
+          120,
+          1,
+          800
+        ],
+        [
+          2,
+          4,
+          71,
+          1,
+          300
+        ],
+        [
+          3,
+          0,
+          9,
+          1000,
+          200
+        ],
+        [
+          3,
+          1,
+          20,
+          1000,
+          250
+        ],
+        [
+          3,
+          2,
+          97,
+          1000,
+          10
+        ],
+        [
+          3,
+          3,
+          114,
+          1,
+          300
+        ],
+        [
+          3,
+          4,
+          55,
+          1,
+          250
+        ],
+        [
+          4,
+          0,
+          19,
+          1000,
+          250
+        ],
+        [
+          4,
+          1,
+          13,
+          1000,
+          50
+        ],
+        [
+          4,
+          2,
+          28,
+          1,
+          400
+        ],
+        [
+          4,
+          3,
+          119,
+          1,
+          500
+        ],
+        [
+          4,
+          4,
+          51,
+          1,
+          300
+        ]
+      ],
+      "synthetic_vectors": {
+        "duplicate_wrapping_after": [
+          [
+            109,
+            -32768
+          ],
+          [
+            109,
+            -32767
+          ],
+          [
+            88,
+            4
+          ]
+        ],
+        "residual_empty_slot_after": [
+          57,
+          10
+        ],
+        "full_inventory_unchanged": true,
+        "target_minus_one_after": [
+          [
+            -1,
+            -32768
+          ],
+          [
+            -1,
+            -32767
+          ],
+          [
+            5,
+            4
+          ]
+        ]
+      }
+    },
     "explicit_scene_present": {
       "start": "0x2D653",
       "end": "0x2D678",
