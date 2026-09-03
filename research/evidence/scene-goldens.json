@@ -3913,12 +3913,28 @@
         "player_frame": 5044
       },
       "opcode_23_script_28": {
+        "occurrences": 1,
+        "stream_encoding": "little_endian_<IIhh:script,pc,role,value>",
+        "parameter_stream_sha256": "0d97f2cc103d8b9cfb264e1a7b843f3deefb5084b0dd973c226f61d75eccd22f",
+        "all": [
+          [
+            28,
+            65,
+            4,
+            99
+          ]
+        ],
         "arguments": [
           23,
           4,
           99
         ],
-        "role_4_use_poison": 99
+        "role_4_use_poison": 99,
+        "role_record_bytes": 182,
+        "written_role_word": "use_poison",
+        "written_word_index": 47,
+        "written_value_semantics": "low_signed_int16",
+        "program_counter_formula": "old_pc + 3"
       },
       "opcode_34_script_673": {
         "arguments": [

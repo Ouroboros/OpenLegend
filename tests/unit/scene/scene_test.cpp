@@ -3945,7 +3945,9 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     {
         auto snapshot = load_baseline(root);
         snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{1});
-        snapshot.ranger.roles[4].set_word(openlegend::model::role_word::use_poison, 0);
+        snapshot.ranger.roles[4].set_word(openlegend::model::role_word::medicine, 77);
+        snapshot.ranger.roles[4].set_word(openlegend::model::role_word::use_poison, -32768);
+        snapshot.ranger.roles[4].set_word(openlegend::model::role_word::detoxification, 88);
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
         auto result = session.begin_event(28, 0, 44, 29);
@@ -3957,7 +3959,10 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
             result = session.resume(SceneResponse::acknowledge);
         }
         OL_CHECK(result.kind == SceneStepKind::battle);
+        OL_CHECK(snapshot.ranger.roles[4].word(openlegend::model::role_word::medicine) == 77);
         OL_CHECK(snapshot.ranger.roles[4].word(openlegend::model::role_word::use_poison) == 99);
+        OL_CHECK(snapshot.ranger.roles[4].word(
+                     openlegend::model::role_word::detoxification) == 88);
     }
 
     {

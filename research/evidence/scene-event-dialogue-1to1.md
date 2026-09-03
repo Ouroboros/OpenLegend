@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`fbe1e65aa9e044a13cf3823ff22176cadd52c568b1b1233b350ba77e4722a4b7`
+  - SHA256：`da1d1f35d6c504f6081765b12ebf687e290860a8830dfb78851ea703c8475cdf`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -235,7 +235,13 @@ helper固定访问六槽：slot0无条件清对应role的mp，slots1..5仅signed
 
 helper第一轮固定扫描200槽并对全部目标ID匹配槽做16位回绕加法；仅完全未命中时，第二轮写首个ID为`-1`的槽，并在其残留count上相加。全满未命中不修改；目标ID为`-1`时全部空槽在第一轮视为匹配。两个唯一caller为入队携带物转移与商店购买，均不消费偶然EAX返回值；现代`add_inventory`逐项一致，归类`assembly_exact`。
 
-### 4.20 添加物品提示与十四书门禁
+### 4.20 写入角色用毒能力
+
+`sub_2E639`已完成最终汇编→C++ REVIEW。32字节、7条指令；loaded/raw SHA256分别为`b3b2507c471dd0ca376f333d960f71852b018c789f0d5583aab3f8bb5d6c9709`、`b65a65a395a3aa0f7223295061cebe037d1eeca0b4f0272f0a10352cecbccaf8`，唯一差异字节为角色`use_poison`字段地址加`0x20000`的DOS重定位。
+
+opcode23把第二个signed word直接覆盖到指定角色记录word47，不读取旧值、不加法或钳位，并固定推进3 words。全KDEF仅script28 PC65一次`(role4,99)`；现代合法域字段和后续battle边界一致，非法role范围保护替代原机未定义数组外写，归类`platform_adapted`。
+
+### 4.21 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 

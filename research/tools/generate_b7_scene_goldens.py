@@ -1959,6 +1959,27 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     assert script_673[74:77] == (34, 0, 3)
     assert script_692 == (51, -1)
 
+    opcode_23_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 23:
+                opcode_23_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_23_occurrences == [(28, 65, 4, 99)]
+    opcode_23_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_23_occurrences
+    )
+
     random_state = (0x41C64E6D + 0x3039) & 0xFFFFFFFF
     random_talk_id = 2547 + (((random_state >> 16) & 0x7FFF) % 18)
 
@@ -1978,8 +1999,17 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "player_frame": 5044,
         },
         "opcode_23_script_28": {
+            "occurrences": len(opcode_23_occurrences),
+            "stream_encoding": "little_endian_<IIhh:script,pc,role,value>",
+            "parameter_stream_sha256": sha256(opcode_23_stream),
+            "all": [list(row) for row in opcode_23_occurrences],
             "arguments": list(script_28[65:68]),
             "role_4_use_poison": 99,
+            "role_record_bytes": 182,
+            "written_role_word": "use_poison",
+            "written_word_index": 47,
+            "written_value_semantics": "low_signed_int16",
+            "program_counter_formula": "old_pc + 3",
         },
         "opcode_34_script_673": {
             "arguments": list(script_673[74:77]),
