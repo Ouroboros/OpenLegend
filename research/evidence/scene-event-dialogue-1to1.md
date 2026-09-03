@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`e2252a1718834e1f64a4a8254d9aa0adf8f96c096be136140bf41baf7a804693`
+  - SHA256：`6d0c629e6ab40d49614740412e29ea0c836c9ae9fa17b87d16a8d7ae227dfc77`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -187,7 +187,13 @@ helper从team slot1扫描首个signed `<=0`哨兵；若没有哨兵则队伍尾�
 
 全KDEF有346次opcode13，位置流SHA256为`719e01b8842f5d467f82cd3160e1cfcdbbf35e7ba602ca2148f6aa6920dd935e`。synthetic `[13,14,-1]`固定淡入完成后才产生淡出；武林大会全胜路径固定15次战后、4次轮间和1次终局淡入。现代宿主逐帧continuation替代DOS同步调色板循环，后续PC或对话仍只在效果完成后继续，归类`platform_adapted`；淡入算法本体继续按其UI closure独立终审。
 
-### 4.12 添加物品提示与十四书门禁
+### 4.12 场景淡出至黑回调
+
+`sub_2E28A`已完成最终汇编→C++ REVIEW。wrapper为18字节、5条指令，loaded/raw SHA256均为`9676e06789973719b49261b6257f5fd6a124ed06284db962d5a4b1785a848cc4`；无参数调用委托淡出函数，清EAX并返回。3个callsite分别是解释器opcode14，以及武林大会轮间、终局的两个时序点，均忽略返回0。
+
+全KDEF有171次opcode14，位置流SHA256为`f40aad4e13d6cf6bf668883a8d3243002c7a5e01d4a1664a779d4542ae9d9575`。武林大会全胜路径固定4次轮间、1次终局淡出；轮间机器淡出后的300计数延迟换算为额外8 ticks，只在64帧淡出完成后于黑屏消耗。现代逐帧continuation保持PC、恢复和事件禁用顺序，归类`platform_adapted`；淡出算法本体继续按其UI closure独立终审。
+
+### 4.13 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 

@@ -1370,6 +1370,48 @@ def fade_from_black_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def fade_to_black_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 14:
+                occurrences.append((script_id, program_counter))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<II", *row) for row in occurrences)
+    assert len(occurrences) == 171
+    assert occurrences[0] == (10, 129)
+    assert occurrences[-1] == (1016, 70)
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<II:script_pc>",
+        "position_stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "machine_callers": [
+            {"address": "0x2C5C5", "owner": "sub_2C319", "role": "opcode_14"},
+            {"address": "0x3036A", "owner": "sub_302E0", "role": "interround"},
+            {"address": "0x30414", "owner": "sub_302E0", "role": "finale"},
+        ],
+        "tournament_success_fades": {
+            "interround": 4,
+            "finale": 1,
+            "total": 5,
+        },
+        "interround_post_fade_delay": {
+            "legacy_counter": 300,
+            "legacy_delay_ticks": 8,
+            "result_wait_ticks": 9,
+            "additional_wait_ticks_after_final_frame": 8,
+            "placement": "after_complete_fade_at_black",
+        },
+        "program_counter_formula": "old_pc + 1",
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3461,6 +3503,7 @@ def main() -> None:
             "opcode_10_join_role": join_role_vectors(scripts, ranger),
             "opcode_12_party_rest": party_rest_vectors(scripts),
             "opcode_13_fade_from_black": fade_from_black_vectors(scripts),
+            "opcode_14_fade_to_black": fade_to_black_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {

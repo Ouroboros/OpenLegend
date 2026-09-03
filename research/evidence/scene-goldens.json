@@ -1433,6 +1433,49 @@
       },
       "program_counter_formula": "old_pc + 1"
     },
+    "opcode_14_fade_to_black": {
+      "occurrences": 171,
+      "stream_encoding": "little_endian_<II:script_pc>",
+      "position_stream_sha256": "f40aad4e13d6cf6bf668883a8d3243002c7a5e01d4a1664a779d4542ae9d9575",
+      "first": [
+        10,
+        129
+      ],
+      "last": [
+        1016,
+        70
+      ],
+      "machine_callers": [
+        {
+          "address": "0x2C5C5",
+          "owner": "sub_2C319",
+          "role": "opcode_14"
+        },
+        {
+          "address": "0x3036A",
+          "owner": "sub_302E0",
+          "role": "interround"
+        },
+        {
+          "address": "0x30414",
+          "owner": "sub_302E0",
+          "role": "finale"
+        }
+      ],
+      "tournament_success_fades": {
+        "interround": 4,
+        "finale": 1,
+        "total": 5
+      },
+      "interround_post_fade_delay": {
+        "legacy_counter": 300,
+        "legacy_delay_ticks": 8,
+        "result_wait_ticks": 9,
+        "additional_wait_ticks_after_final_frame": 8,
+        "placement": "after_complete_fade_at_black"
+      },
+      "program_counter_formula": "old_pc + 1"
+    },
     "opcode_21_leave_role": {
       "occurrences": 35,
       "stream_encoding": "little_endian_<IIh:script_pc_role>",
