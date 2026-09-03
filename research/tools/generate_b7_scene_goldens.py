@@ -1333,6 +1333,99 @@ def join_role_vectors(scripts: list[bytes], ranger: bytes) -> dict[str, object]:
     }
 
 
+def leave_role_vectors(scripts: list[bytes], ranger: bytes) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int]] = []
+    opcode_59: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 21:
+                occurrences.append((script_id, program_counter, code[program_counter + 1]))
+            elif opcode == 59:
+                opcode_59.append((script_id, program_counter))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<IIh", *row) for row in occurrences)
+    role_ids = sorted({row[2] for row in occurrences})
+    populated_personal_items = []
+    for role_id in role_ids:
+        record = words(ranger[836 + role_id * 182:836 + (role_id + 1) * 182])
+        for field in (23, 24, 61):
+            item_id = record[field]
+            if item_id == -1:
+                continue
+            assert 0 <= item_id < 200
+            item = words(ranger[59_076 + item_id * 190:59_076 + (item_id + 1) * 190])
+            populated_personal_items.append({
+                "role_id": role_id,
+                "role_field": field,
+                "item_id": item_id,
+                "item_user": item[38],
+            })
+    role_counts = Counter(row[2] for row in occurrences)
+    script_950 = words(scripts[950])
+    header = words(ranger[:836])
+    assert len(occurrences) == 35
+    assert occurrences[0] == (320, 358, 26)
+    assert occurrences[-1] == (998, 4, 76)
+    assert role_ids == [
+        1, 2, 9, 16, 17, 25, 26, 28, 29, 35, 36, 37, 38,
+        44, 45, 47, 48, 49, 51, 53, 54, 58, 59, 61, 63, 76,
+    ]
+    assert all(0 <= role_id < 320 for role_id in role_ids)
+    assert opcode_59 == [(932, 38)]
+    assert script_950 == (
+        1, 2707, 0, 1, 21, 1,
+        3, 0, 0, 1, 1, 951, -1, -1, 5166, 5166, 5166, 0, -2, -2,
+        -1,
+    )
+    assert populated_personal_items == [
+        {"role_id": 44, "role_field": 24, "item_id": 123, "item_user": -1},
+        {"role_id": 58, "role_field": 23, "item_id": 106, "item_user": -1},
+    ]
+
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIh:script_pc_role>",
+        "parameter_stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "role_id_range": [min(role_ids), max(role_ids)],
+        "role_ids": role_ids,
+        "role_counts": {str(role_id): count for role_id, count in sorted(role_counts.items())},
+        "all_role_ids_valid": True,
+        "script_950": {
+            "words": list(script_950),
+            "role_id": 1,
+            "program_counter": 4,
+        },
+        "baseline_team": list(header[12:18]),
+        "baseline_team_index_6_alias_inventory_item_0": header[18],
+        "baseline_personal_item_slots": len(role_ids) * 3,
+        "baseline_populated_personal_items": populated_personal_items,
+        "team_scan_slots": [1, 2, 3, 4, 5],
+        "team_remove_matches": "first_only_then_shift_left",
+        "team_tail_value": -1,
+        "cleanup_when_team_role_missing": True,
+        "personal_role_fields": [23, 24, 61, 62],
+        "personal_role_values": [-1, -1, -1, 0],
+        "item_user_field": 38,
+        "item_user_value": -1,
+        "opcode_59_callers": [
+            {
+                "script_id": 932,
+                "program_counter": 38,
+                "source_indices": [6, 5, 4, 3, 2, 1],
+                "index_6_source": "inventory_item_0",
+                "positive_roles_only": True,
+            }
+        ],
+        "program_counter_formula": "old_pc + 2",
+    }
+
+
 def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     script_2 = words(scripts[2])
     script_28 = words(scripts[28])
@@ -3260,6 +3353,7 @@ def main() -> None:
             **coverage,
             "opcode_6_battle_requests": battle_request_vectors(scripts),
             "opcode_10_join_role": join_role_vectors(scripts, ranger),
+            "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),

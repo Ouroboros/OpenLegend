@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`79551a99f932ad92c45087874e7c04ec282a89b69dc89ce428766d688ca31e1b`
+  - SHA256：`e840f6444b464fb8cab9c23a9aacc1cfe3533e3986d1d9af390ed1220034df92`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -110,7 +110,7 @@ synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清
 
 - 添加物品或增加声望后，仅当主角声望不少于 200、物品 144–157 全部存在且物品 189 不存在时，才把场景 70 事件 11 改为原武林大会入口；
 - 休息只恢复受伤值小于 33 且未中毒的队员，不替中毒或重伤角色清毒/治疗；
-- 角色加入清除角色自身的两件装备引用、修炼物引用及修炼经验，但不写全局物品 user；角色离队当前实现及其物品user处理仍由`sub_2E078`后续closure终审；队伍槽0不参与普通入队插槽扫描；
+- 角色加入只清角色自身装备/修炼引用而不写全局物品user；角色离队则先解绑对应物品user再清角色字段；两者的队伍扫描均不包含slot0；
 - 学习武功和指定武功槽在没有空槽时覆盖槽 0，`-1` 槽参数按原版先寻找空槽。
 
 真实资产测试使用 KDEF 脚本 36、931、581 和 950 验证上述状态，不用合成脚本替代当前资产路径。
@@ -155,9 +155,17 @@ synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清
 
 角色四个携带槽按0..3处理，只有ID `-1`为空。每个非空槽先把原count交给`sub_2E571`，再以Big5 `得到%s`和item record byte2名称绘动态面板；notice确认并裸场景present后才把当前槽清为`(-1,0)`。全部物品结束后才把角色word 23/24/61/62清为`-1,-1,-1,0`；机器没有任何`item.user`写入。
 
-首轮REVIEW据此修正了ASCII编号notice、首个notice前预清全部状态及入队时错误解绑全局item.user三类差异；修正后从入口重审，第二轮零新增差异。全资产80次opcode10参数流SHA256为`bdad3c7d40a1a5a512ca7b6784924e527094b966b8a923b112b5c4a1d169f543`，26个role ID全在1..76；基准104个携带槽仅含`-1`或0..171有效item ID，count均非负。现代专用逐物品continuation归类`platform_adapted`；`sub_2E571`背包主体和`sub_2E078`退队/解绑语义仍按各自后续closure独立终审。
+首轮REVIEW据此修正了ASCII编号notice、首个notice前预清全部状态及入队时错误解绑全局item.user三类差异；修正后从入口重审，第二轮零新增差异。全资产80次opcode10参数流SHA256为`bdad3c7d40a1a5a512ca7b6784924e527094b966b8a923b112b5c4a1d169f543`，26个role ID全在1..76；基准104个携带槽仅含`-1`或0..171有效item ID，count均非负。现代专用逐物品continuation归类`platform_adapted`；`sub_2E571`背包主体仍按其后续closure独立终审。
 
-### 4.8 添加物品提示与十四书门禁
+### 4.8 角色离队、队伍压缩与物品解绑
+
+`sub_2E078`已完成最终汇编→C++ REVIEW。入口为221字节、45条指令；loaded/raw SHA256分别为`69caaca765139c6fb1333c9bddbce324f325f8583dde02dd6f8a6fc39e474cdc`、`83a294457130b648e49416cd3883755e376ef4de2a1153a98302e1d1c956901f`，14个差异字节全部是`raw+0x20000`地址重定位。两个caller分别是解释器opcode21和武林大会收尾。
+
+helper只扫描team slots1..5，移除首个精确匹配role并左移后续槽，slot5写`-1`；未命中不改team但仍继续清理。它按角色word23、24、61读取两件装备与修炼物，对每个非`-1` item把word38 user写`-1`，再把角色word23/24/61/62写为`-1,-1,-1,0`。全KDEF 35次opcode21参数流SHA256为`d08335eb84f4c585ab7ed59750f0593730f09d05e5ed2eaf2a5796f709de97f2`，26个role ID全在1..76。
+
+武林大会caller从物理index6递减到1；index6越过队伍数组并确定性别名inventory item0，现代case59显式保留该来源，再按每次清理后的最新team读取slots5..1。script932用inventory item0=role6固定“不在team仍清个人物品”，script950直接固定队伍左移、尾槽、三条item.user解绑及角色字段清理。首轮完整对照零产品差异；现代只对资产未使用的非法role/item越界访问增加安全拒绝，归类`platform_adapted`。`sub_30559`其余剧情副作用不由本closure提前关闭。
+
+### 4.9 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 
@@ -222,7 +230,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
 - 真实 script494 的 opcode8 立即空音频与离场 music3 覆盖；
 - 场景 5 的 300 tick RNG、粒子位置和半透明天气像素；
-- 真实脚本36的背包与十四天书事件解锁、931的条件休息、581的满武功槽与入队清理、950的离队清理；其中opcode10回归固定原Big5物品提示、逐物品present后清槽、末尾清角色装备/修炼字段且保持全局item.user；
+- 真实脚本36的背包与十四天书事件解锁、931的条件休息、581的满武功槽与入队清理、950的离队清理；opcode10固定原Big5物品提示、逐物品present后清槽且保持全局item.user，opcode21固定队伍压缩、三件item.user解绑及角色字段清理；
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；

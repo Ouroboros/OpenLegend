@@ -3736,6 +3736,10 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(leaving_role.word(openlegend::model::role_word::equipment_begin + 1U) == -1);
     OL_CHECK(leaving_role.word(openlegend::model::role_word::practice_item) == -1);
     OL_CHECK(leaving_role.word(openlegend::model::role_word::item_experience) == 0);
+    for (std::int16_t item_id = 4; item_id <= 6; ++item_id) {
+        OL_CHECK(leave_snapshot.ranger.items[static_cast<std::size_t>(item_id)].word(
+                     openlegend::model::item_word::user) == -1);
+    }
 }
 
 void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root) {
