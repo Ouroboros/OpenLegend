@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=175/349`，`unique_any=131/284`，`unique_all=127/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=39` 全队成员条件helper；状态为等待`audit_order=38` 淡出回调工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=39` 收口后进入同表 `audit_order=40` 声望增加helper
+已发布进度：`closure=176/349`，`unique_any=132/284`，`unique_all=128/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=40` 声望增加helper；状态为等待`audit_order=39` 全队成员条件工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=40` 收口后进入同表 `audit_order=41` 背包物品条件helper
 
 ## 0. 唯一正确性真值
 

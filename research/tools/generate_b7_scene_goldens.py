@@ -1412,6 +1412,58 @@ def fade_to_black_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def party_contains_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 16:
+                occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1],
+                     code[program_counter + 2], code[program_counter + 3]))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<IIhhh", *row) for row in occurrences)
+    role_counts = Counter(row[2] for row in occurrences)
+    true_offsets = Counter(row[3] for row in occurrences)
+    false_offsets = Counter(row[4] for row in occurrences)
+    assert len(occurrences) == 80
+    assert occurrences[0] == (27, 0, 1, 1, 0)
+    assert occurrences[-1] == (914, 35, 35, 0, 1)
+    assert min(role_counts) == 1 and max(role_counts) == 76 and len(role_counts) == 17
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhh:script_pc_role_true_false>",
+        "parameter_stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "role_counts": [[value, role_counts[value]] for value in sorted(role_counts)],
+        "true_offset_counts": [[value, true_offsets[value]] for value in sorted(true_offsets)],
+        "false_offset_counts": [[value, false_offsets[value]] for value in sorted(false_offsets)],
+        "scan_slots": [0, 1, 2, 3, 4, 5],
+        "stops_at_nonpositive": False,
+        "program_counter_formula": "old_pc + 4 + selected_signed_offset",
+        "synthetic_vectors": {
+            "late_match_after_gap": {
+                "team": [0, -1, -1, -1, -1, 55],
+                "role": 55,
+                "true_offset": 0,
+                "false_offset": 3,
+                "selected_offset": 0,
+            },
+            "miss": {
+                "team": [0, 1, 2, 3, 4, 5],
+                "role": 55,
+                "true_offset": 0,
+                "false_offset": 3,
+                "selected_offset": 3,
+            },
+        },
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3504,6 +3556,7 @@ def main() -> None:
             "opcode_12_party_rest": party_rest_vectors(scripts),
             "opcode_13_fade_from_black": fade_from_black_vectors(scripts),
             "opcode_14_fade_to_black": fade_to_black_vectors(scripts),
+            "opcode_16_party_contains": party_contains_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {

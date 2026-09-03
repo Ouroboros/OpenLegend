@@ -1476,6 +1476,231 @@
       },
       "program_counter_formula": "old_pc + 1"
     },
+    "opcode_16_party_contains": {
+      "occurrences": 80,
+      "stream_encoding": "little_endian_<IIhhh:script_pc_role_true_false>",
+      "parameter_stream_sha256": "7d7884ffea7b6dcb4f7d0e79f30273b98b1ee5ceceba807c68da412d5b5e6e73",
+      "first": [
+        27,
+        0,
+        1,
+        1,
+        0
+      ],
+      "last": [
+        914,
+        35,
+        35,
+        0,
+        1
+      ],
+      "role_counts": [
+        [
+          1,
+          6
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          25,
+          1
+        ],
+        [
+          26,
+          2
+        ],
+        [
+          29,
+          3
+        ],
+        [
+          35,
+          11
+        ],
+        [
+          36,
+          3
+        ],
+        [
+          38,
+          7
+        ],
+        [
+          45,
+          2
+        ],
+        [
+          47,
+          3
+        ],
+        [
+          49,
+          3
+        ],
+        [
+          51,
+          8
+        ],
+        [
+          53,
+          11
+        ],
+        [
+          58,
+          1
+        ],
+        [
+          63,
+          4
+        ],
+        [
+          76,
+          5
+        ]
+      ],
+      "true_offset_counts": [
+        [
+          0,
+          38
+        ],
+        [
+          1,
+          19
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          6,
+          10
+        ],
+        [
+          11,
+          4
+        ],
+        [
+          29,
+          2
+        ],
+        [
+          34,
+          2
+        ],
+        [
+          75,
+          1
+        ],
+        [
+          165,
+          1
+        ],
+        [
+          204,
+          1
+        ]
+      ],
+      "false_offset_counts": [
+        [
+          0,
+          42
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          14,
+          1
+        ],
+        [
+          15,
+          3
+        ],
+        [
+          20,
+          1
+        ],
+        [
+          32,
+          4
+        ],
+        [
+          41,
+          1
+        ],
+        [
+          46,
+          1
+        ],
+        [
+          48,
+          1
+        ],
+        [
+          74,
+          1
+        ],
+        [
+          239,
+          1
+        ]
+      ],
+      "scan_slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "stops_at_nonpositive": false,
+      "program_counter_formula": "old_pc + 4 + selected_signed_offset",
+      "synthetic_vectors": {
+        "late_match_after_gap": {
+          "team": [
+            0,
+            -1,
+            -1,
+            -1,
+            -1,
+            55
+          ],
+          "role": 55,
+          "true_offset": 0,
+          "false_offset": 3,
+          "selected_offset": 0
+        },
+        "miss": {
+          "team": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "role": 55,
+          "true_offset": 0,
+          "false_offset": 3,
+          "selected_offset": 3
+        }
+      }
+    },
     "opcode_21_leave_role": {
       "occurrences": 35,
       "stream_encoding": "little_endian_<IIh:script_pc_role>",

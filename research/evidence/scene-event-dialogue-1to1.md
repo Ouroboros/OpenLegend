@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`6d0c629e6ab40d49614740412e29ea0c836c9ae9fa17b87d16a8d7ae227dfc77`
+  - SHA256：`e49ad1b3c0fdc2cf18a1affb2b2f68301615fd8797e17f0b57579502609d7346`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -193,7 +193,13 @@ helper从team slot1扫描首个signed `<=0`哨兵；若没有哨兵则队伍尾�
 
 全KDEF有171次opcode14，位置流SHA256为`f40aad4e13d6cf6bf668883a8d3243002c7a5e01d4a1664a779d4542ae9d9575`。武林大会全胜路径固定4次轮间、1次终局淡出；轮间机器淡出后的300计数延迟换算为额外8 ticks，只在64帧淡出完成后于黑屏消耗。现代逐帧continuation保持PC、恢复和事件禁用顺序，归类`platform_adapted`；淡出算法本体继续按其UI closure独立终审。
 
-### 4.13 添加物品提示与十四书门禁
+### 4.13 全六槽队伍成员条件
+
+`sub_2E29C`已完成最终汇编→C++ REVIEW。59字节、21条指令；loaded/raw SHA256分别为`a7ea8f35b08b716d80015bbba9399d4fa5ca2c2841db6c8603cc6b569bf66fca`、`da0eda07dea8d49ba683890ffb22810eb54adfd88b3bd25d840c69a6945d9d2a`，唯一差异是队伍数组绝对地址加`0x20000`的DOS重定位。
+
+helper始终扫描slots0..5，不因非正值停止；任一signed角色ID匹配即选择真偏移，否则选择假偏移。全KDEF有80次opcode16，参数流SHA256为`7d7884ffea7b6dcb4f7d0e79f30273b98b1ee5ceceba807c68da412d5b5e6e73`，角色参数为17种有效正ID。synthetic同时固定空洞后slot5命中和完整未命中两条路径；现代提前返回只省略无副作用的剩余只读扫描，所有输入的可观察结果一致，归类`assembly_exact`。
+
+### 4.14 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 

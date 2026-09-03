@@ -599,6 +599,15 @@ void check_event_load_menu(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(party_match_snapshot.ranger, 201) == party_count_before + 1);
 
+    for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+        party_match_snapshot.ranger.header.set_team_member(
+            slot, openlegend::model::CharacterId{static_cast<std::int16_t>(slot)});
+    }
+    const auto party_miss_count_before = inventory_count(party_match_snapshot.ranger, 201);
+    result = party_match.begin_event(5, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(party_match_snapshot.ranger, 201) == party_miss_count_before);
+
     auto battle_win_snapshot = load_baseline(root);
     const auto win_count_before = inventory_count(battle_win_snapshot.ranger, 202);
     openlegend::random::LegacyRandom battle_win_random{1U};
