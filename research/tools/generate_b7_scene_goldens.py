@@ -1605,6 +1605,55 @@ def inventory_presence_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def coordinate_relocation_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 19:
+                occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1],
+                     code[program_counter + 2]))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<IIhh", *row) for row in occurrences)
+    clamp = lambda value, low, high: max(low, min(high, value))
+    derived = []
+    for script_id, program_counter, x, y in occurrences:
+        scene_x = clamp(x, 0, 63)
+        scene_y = clamp(y, 0, 63)
+        derived.append([
+            script_id, program_counter, x, y, scene_x, scene_y,
+            clamp(scene_x - 11, 0, 36), clamp(scene_y - 11, 0, 36),
+        ])
+    assert len(occurrences) == 15
+    assert occurrences[0] == (30, 127, 35, 31)
+    assert occurrences[-1] == (664, 30, 38, 18)
+    assert all(0 <= row[2] < 64 and 0 <= row[3] < 64 for row in occurrences)
+    assert [row for row in derived if row[0] == 235] == [
+        [235, 30, 14, 14, 14, 14, 3, 3],
+    ]
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhh:script_pc_x_y>",
+        "parameter_stream_sha256": sha256(stream),
+        "all": [list(row) for row in occurrences],
+        "input_x_range": [min(row[2] for row in occurrences), max(row[2] for row in occurrences)],
+        "input_y_range": [min(row[3] for row in occurrences), max(row[3] for row in occurrences)],
+        "all_current_asset_coordinates_in_bounds": True,
+        "position_clamp": [0, 63],
+        "view_origin_formula": "clamp(clamped_position - 11, 0, 36)",
+        "derived_rows": derived,
+        "synthetic_extremes": [
+            {"input": [-32768, 32767], "position": [0, 63], "view_origin": [0, 36]},
+            {"input": [32767, -32768], "position": [63, 0], "view_origin": [36, 0]},
+        ],
+        "program_counter_formula": "old_pc + 3",
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3699,6 +3748,7 @@ def main() -> None:
             "opcode_14_fade_to_black": fade_to_black_vectors(scripts),
             "opcode_16_party_contains": party_contains_vectors(scripts),
             "opcode_18_inventory_presence": inventory_presence_vectors(scripts),
+            "opcode_19_coordinate_relocation": coordinate_relocation_vectors(scripts),
             "opcode_20_party_tail_condition": party_tail_condition_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),

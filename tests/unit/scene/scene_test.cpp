@@ -143,6 +143,14 @@ public:
                 }
             } else if (script == 19U) {
                 append_i16(group, 12);
+            } else if (script == 20U) {
+                for (const auto word : std::array<std::int16_t, 3>{19, -32768, 32767}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 21U) {
+                for (const auto word : std::array<std::int16_t, 3>{19, 32767, -32768}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -963,6 +971,18 @@ void check_event_state_write_helpers(const std::filesystem::path& root) {
         OL_CHECK(snapshot.scene_value(
                      70U, SceneLayer::building, cell).value_or(-1) == 123);
         OL_CHECK(session.scene_id() == 70);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(20, 0, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(session.scene_x() == 0 && session.scene_y() == 63);
+        OL_CHECK(session.view_origin_x() == 0 && session.view_origin_y() == 36);
+        OL_CHECK(session.begin_event(21, 0, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(session.scene_x() == 63 && session.scene_y() == 0);
+        OL_CHECK(session.view_origin_x() == 36 && session.view_origin_y() == 0);
     }
 }
 
