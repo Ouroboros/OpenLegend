@@ -1701,6 +1701,93 @@
         }
       }
     },
+    "opcode_20_party_tail_condition": {
+      "occurrences": 82,
+      "stream_encoding": "little_endian_<IIhh:script_pc_true_false>",
+      "parameter_stream_sha256": "0737d0189d784163a00c0ef3ad8b71c9f86ee1c18259fe5cd1111f8c85baa831",
+      "first": [
+        10,
+        110,
+        0,
+        6
+      ],
+      "last": [
+        999,
+        19,
+        0,
+        6
+      ],
+      "true_offset_counts": [
+        [
+          0,
+          80
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "false_offset_counts": [
+        [
+          0,
+          2
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          6,
+          79
+        ]
+      ],
+      "tested_slot": 5,
+      "condition": "signed_team_slot_5 > 0",
+      "scans_other_slots": false,
+      "program_counter_formula": "old_pc + 3 + selected_signed_offset",
+      "script_11_vectors": [
+        {
+          "team": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            -1
+          ],
+          "selected": "false",
+          "talk_id": 30
+        },
+        {
+          "team": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            0
+          ],
+          "selected": "false",
+          "talk_id": 30
+        },
+        {
+          "team": [
+            1,
+            2,
+            -1,
+            4,
+            5,
+            9
+          ],
+          "selected": "true",
+          "talk_id": 175
+        }
+      ]
+    },
     "opcode_21_leave_role": {
       "occurrences": 35,
       "stream_encoding": "little_endian_<IIh:script_pc_role>",

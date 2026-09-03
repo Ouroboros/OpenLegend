@@ -1464,6 +1464,45 @@ def party_contains_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def party_tail_condition_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 20:
+                occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1],
+                     code[program_counter + 2]))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<IIhh", *row) for row in occurrences)
+    true_offsets = Counter(row[2] for row in occurrences)
+    false_offsets = Counter(row[3] for row in occurrences)
+    assert len(occurrences) == 82
+    assert occurrences[0] == (10, 110, 0, 6)
+    assert occurrences[-1] == (999, 19, 0, 6)
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhh:script_pc_true_false>",
+        "parameter_stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "true_offset_counts": [[value, true_offsets[value]] for value in sorted(true_offsets)],
+        "false_offset_counts": [[value, false_offsets[value]] for value in sorted(false_offsets)],
+        "tested_slot": 5,
+        "condition": "signed_team_slot_5 > 0",
+        "scans_other_slots": False,
+        "program_counter_formula": "old_pc + 3 + selected_signed_offset",
+        "script_11_vectors": [
+            {"team": [1, 2, 3, 4, 5, -1], "selected": "false", "talk_id": 30},
+            {"team": [1, 2, 3, 4, 5, 0], "selected": "false", "talk_id": 30},
+            {"team": [1, 2, -1, 4, 5, 9], "selected": "true", "talk_id": 175},
+        ],
+    }
+
+
 def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -3557,6 +3596,7 @@ def main() -> None:
             "opcode_13_fade_from_black": fade_from_black_vectors(scripts),
             "opcode_14_fade_to_black": fade_to_black_vectors(scripts),
             "opcode_16_party_contains": party_contains_vectors(scripts),
+            "opcode_20_party_tail_condition": party_tail_condition_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
