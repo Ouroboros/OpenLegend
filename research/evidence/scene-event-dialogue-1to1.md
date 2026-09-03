@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`f15a0f5a0eac3013fd4e89434c719bfddae13f0c95f2ff775b392f97977a9580`
+  - SHA256：`ededfe7b1f9cdfee98109be9112ce7ba9fc3a6a796be81454e554d9e106e3fbf`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -138,6 +138,14 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 现代以同步`SceneStepKind::present`运输，`LegacyGameRuntime`重绘64,000字节indexed framebuffer，SDL完成RGBA转换、纹理上传及`SDL_RenderPresent`后才恢复事件；不写VGA地址及render/upload错误返回属于平台适配，合法像素与阻塞顺序一致。
 
+### 4.7 添加物品提示与十四书门禁
+
+`sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
+
+首轮汇编→C++ REVIEW修正了显式word回绕、ASCII编号/固定黑框、提示前错误重绘和重复render叠加，并为武林大会物品143奖励补上同一函数内必经的十四书门禁。门禁在库存修改后按有符号声望`>=200`、物品144..157 ID全部存在且物品189 ID不存在判断，完全忽略count；满足时把scene70/event11改为script932和picture7968。
+
+全KDEF共325次opcode2、148个物品ID，RANGER全部200个名称在20字节字段内NUL终止且长度4..16。独立oracle固定物品109 `得到倚天劍`帧`0x8397ba508b05051f`、最长16字节名称布局、全合法提示hash流、库存满仍提示、重复槽回绕、残留count、count0 presence和大会caller门禁；现代对非法ID和非终止字段的安全边界归类为平台适配。
+
 ## 5. TALK 分页
 
 `sub_2CC21` 在固定 `218×57` 对话框内调用文本例程并在每页后阻塞等待输入。当前资产使用 ASCII `'*'` 作为显式换行；Big5 trail byte 合法范围不包含 `0x2A`，因此可无歧义识别。
@@ -198,6 +206,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 真实脚本 36 的背包与十四天书事件解锁、931 的条件休息、581 的满武功槽与入队清理、950 的离队清理；
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
+- 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
 
 同一14项包含上述场景同步链、全部既有模块测试和 SDL dummy smoke。

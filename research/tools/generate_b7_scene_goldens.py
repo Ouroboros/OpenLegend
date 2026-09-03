@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import json
 import struct
@@ -2146,6 +2147,192 @@ def status_notice_vectors(
             "frame_fnv1a64": fnv1a64(pixels),
             "post_ack_outputs": ["present", "stay"] if opcode == 52 else ["stay"],
         }
+
+    opcode_2_occurrences: list[dict[str, int | str]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        previous_opcode: int | None = None
+        while code[pc] != -1:
+            opcode = code[pc]
+            assert 0 <= opcode < len(WIDTHS)
+            if opcode == 2:
+                opcode_2_occurrences.append({
+                    "script": script_id,
+                    "pc": pc,
+                    "item_id": code[pc + 1],
+                    "count": code[pc + 2],
+                    "previous_opcode": "start" if previous_opcode is None else previous_opcode,
+                    "next_opcode": code[pc + 3],
+                })
+            previous_opcode = opcode
+            pc += WIDTHS[opcode]
+    assert len(opcode_2_occurrences) == 325
+    legal_item_ids = sorted({int(row["item_id"]) for row in opcode_2_occurrences} | {143})
+    assert len(legal_item_ids) == 148 and legal_item_ids[0] == 1 and legal_item_ids[-1] == 197
+
+    item_records = [
+        ranger[59_076 + item_id * 190:59_076 + (item_id + 1) * 190]
+        for item_id in range(200)
+    ]
+    item_name_lengths = [record[2:22].find(b"\0") for record in item_records]
+    assert all(length >= 0 for length in item_name_lengths)
+    assert min(item_name_lengths) == 4 and max(item_name_lengths) == 16
+    item_name_length_counts = {
+        str(length): item_name_lengths.count(length)
+        for length in sorted(set(item_name_lengths))
+    }
+
+    def item_notice(item_id: int) -> dict[str, object]:
+        name_length = item_name_lengths[item_id]
+        name = item_records[item_id][2:2 + name_length]
+        text = bytes.fromhex("b1 6f a8 ec") + name + b"\0"
+        x = 150 - (4 * name_length + 16)
+        width = 8 * name_length + 52
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(
+            pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07
+        )
+        return {
+            "item_id": item_id,
+            "name_hex": name.hex(),
+            "name_byte_length": name_length,
+            "text_hex": text.hex(),
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": fnv1a64(pixels),
+        }
+
+    def wrap_word(value: int) -> int:
+        bits = value & 0xFFFF
+        return bits if bits < 0x8000 else bits - 0x10000
+
+    def add_item(
+        slots: list[tuple[int, int]], item_id: int, count: int
+    ) -> list[tuple[int, int]]:
+        result = slots.copy()
+        found = False
+        for index, (slot_item, slot_count) in enumerate(result):
+            if slot_item == item_id:
+                result[index] = (slot_item, wrap_word(slot_count + count))
+                found = True
+        if not found:
+            for index, (slot_item, slot_count) in enumerate(result):
+                if slot_item == -1:
+                    result[index] = (item_id, wrap_word(slot_count + count))
+                    break
+        return result
+
+    def book_event_ready(fame: int, slots: list[tuple[int, int]]) -> bool:
+        ids = {item_id for item_id, _ in slots}
+        return fame >= 200 and 189 not in ids and all(
+            item_id in ids for item_id in range(144, 158)
+        )
+
+    duplicate_before = [(109, 32767), (109, -32768), (88, 4)] + [(-1, 0)] * 197
+    duplicate_after = add_item(duplicate_before, 109, 1)
+    residual_before = [(50 + index, 1) for index in range(5)] + [(-1, 9)] + [(-1, 0)] * 194
+    residual_after = add_item(residual_before, 57, 1)
+    full_before = [(0, 7)] * 200
+    full_after = add_item(full_before, 109, 1)
+    all_books = [(item_id, 0) for item_id in range(144, 158)] + [(-1, 0)] * 186
+    blocked_by_letter = all_books.copy()
+    blocked_by_letter[14] = (189, 0)
+    missing_last_book = all_books.copy()
+    missing_last_book[13] = (-1, 0)
+    added_last_book = add_item(missing_last_book, 157, 1)
+    assert duplicate_after[:3] == [(109, -32768), (109, -32767), (88, 4)]
+    assert residual_after[5] == (57, 10)
+    assert full_after == full_before
+    assert not book_event_ready(199, all_books)
+    assert book_event_ready(200, all_books)
+    assert not book_event_ready(200, blocked_by_letter)
+    assert not book_event_ready(200, missing_last_book)
+    assert book_event_ready(200, added_last_book)
+
+    occurrence_stream = b"".join(
+        struct.pack(
+            "<4h",
+            int(row["script"]), int(row["pc"]),
+            int(row["item_id"]), int(row["count"]),
+        )
+        for row in opcode_2_occurrences
+    )
+    legal_notice_stream = bytearray()
+    legal_notices = {item_id: item_notice(item_id) for item_id in legal_item_ids}
+    for item_id in legal_item_ids:
+        legal_notice_stream.extend(bytes.fromhex(str(legal_notices[item_id]["frame_fnv1a64"])[2:]))
+    output["opcode_2_item_add"] = {
+        "entry_range": "0x2D678..0x2D841",
+        "size_bytes": 457,
+        "instruction_count": 134,
+        "caller_addresses": ["0x2C40F", "0x3046C"],
+        "caller_owners": ["sub_2C319", "sub_302E0"],
+        "return_value": 0,
+        "inventory_slots": 200,
+        "matching_slots_updated": "all",
+        "new_slot": "first_item_id_minus_one",
+        "new_slot_count": "wrapping_add_existing_count",
+        "remove_or_compact_on_nonpositive_count": False,
+        "full_inventory_still_shows_notice": True,
+        "opcode_2_occurrences": len(opcode_2_occurrences),
+        "occurrence_stream_sha256": sha256(occurrence_stream),
+        "unique_item_ids": legal_item_ids,
+        "count_values": {
+            str(value): count
+            for value, count in sorted(Counter(int(row["count"]) for row in opcode_2_occurrences).items())
+        },
+        "previous_opcode_counts": {
+            str(value): count
+            for value, count in sorted(
+                Counter(row["previous_opcode"] for row in opcode_2_occurrences).items(),
+                key=lambda item: str(item[0]),
+            )
+        },
+        "next_opcode_counts": {
+            str(value): count
+            for value, count in sorted(Counter(int(row["next_opcode"]) for row in opcode_2_occurrences).items())
+        },
+        "all_item_names_nul_terminated": True,
+        "item_name_length_counts": item_name_length_counts,
+        "item_name_byte_range": [min(item_name_lengths), max(item_name_lengths)],
+        "notice_prefix_hex": "b16fa8ec",
+        "notice_prefix_cp950": "得到",
+        "notice_uses_item_name_only": True,
+        "notice_background": "preserve_caller_framebuffer",
+        "notice_repeated_render": "restore_frozen_caller_framebuffer",
+        "notice_random_draws": 0,
+        "machine_outputs": ["notice_present", "wait_any_key", "scene_present"],
+        "modern_outputs": ["notice", "present"],
+        "sample_notices": {
+            str(item_id): legal_notices[item_id] for item_id in (109, 131, 143)
+        },
+        "all_legal_notice_hashes_sha256": sha256(bytes(legal_notice_stream)),
+        "inventory_vectors": {
+            "duplicate_wrapping_after": [list(value) for value in duplicate_after[:3]],
+            "residual_empty_slot_after": list(residual_after[5]),
+            "full_inventory_unchanged": full_after == full_before,
+        },
+        "book_event_gate": {
+            "fame_threshold": 200,
+            "required_item_ids": list(range(144, 158)),
+            "blocking_item_id": 189,
+            "counts_ignored": True,
+            "fame_199": book_event_ready(199, all_books),
+            "fame_200": book_event_ready(200, all_books),
+            "blocking_item_count_zero": book_event_ready(200, blocked_by_letter),
+            "missing_last_book": book_event_ready(200, missing_last_book),
+            "add_last_book_same_call": book_event_ready(200, added_last_book),
+            "event_change": [70, 11, 1, 1, 932, -1, -1, 7968, 7968, 7968, -2, -2, -2],
+        },
+        "tournament_reward": {
+            "item_id": 143,
+            "count": 1,
+            "runs_book_event_gate_before_notice": True,
+        },
+    }
 
     title_lengths = [
         ranger[97_076 + scene * 52 + 2:97_076 + scene * 52 + 12].find(b"\0")

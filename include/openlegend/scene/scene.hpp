@@ -357,6 +357,8 @@ private:
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_dialogue_overlay(
         render::IndexedFramebuffer& framebuffer) const;
+    [[nodiscard]] bool render_item_notice_overlay(
+        render::IndexedFramebuffer& framebuffer) const;
     void cycle_palette();
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
     [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
@@ -396,6 +398,7 @@ private:
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
     void queue_notice(std::vector<std::uint8_t> text, std::int16_t style = 0);
+    void queue_item_notice(std::int16_t item_id);
     void queue_scene_present();
     [[nodiscard]] SceneStepResult emit_queued();
     [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
@@ -491,6 +494,7 @@ private:
     std::vector<std::uint8_t> pending_text_;
     mutable std::optional<render::IndexedFramebuffer> scene_title_base_framebuffer_;
     mutable std::optional<render::IndexedFramebuffer> dialogue_base_framebuffer_;
+    mutable std::optional<render::IndexedFramebuffer> item_notice_base_framebuffer_;
     bool dialogue_redraw_scene_before_{};
     PendingContinuation continuation_{PendingContinuation::none};
     TickContinuation tick_continuation_{TickContinuation::none};

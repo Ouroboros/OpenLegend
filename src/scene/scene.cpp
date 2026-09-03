@@ -55,6 +55,8 @@ constexpr std::array<std::uint8_t, 23> kJoinQuestion{
 constexpr std::array<std::uint8_t, 23> kRestQuestion{
     0xACU, 0x4FU, 0xA7U, 0x5FU, 0xA6U, 0xEDU, 0xB1U, 0x4AU, 0xB9U, 0x4CU, 0xA9U, 0x5DU,
     0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
+constexpr std::array<std::uint8_t, 4> kItemNoticePrefix{0xB1U, 0x6FU, 0xA8U, 0xECU};
+constexpr std::int16_t kItemNoticeStyle = -1;
 constexpr std::array<std::int16_t, 20> kEndingCreditIds{
     6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
     26, 28, 30, 32, 34, 36, 38, 40, 42, 44};
@@ -1015,7 +1017,7 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 3;
             add_inventory(argument(1), argument(2));
             update_book_event_if_ready();
-            queue_notice(ascii_message("item " + std::to_string(argument(1)) + " " + std::to_string(argument(2))));
+            queue_item_notice(argument(1));
             queue_scene_present();
             return emit_queued();
         case 3: {
@@ -2038,8 +2040,7 @@ void SceneSession::add_inventory(const std::int16_t item_id, const std::int16_t 
         if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
             snapshot_.ranger.header.set_inventory(
                 index, model::ItemId{item_id},
-                static_cast<std::int16_t>(
-                    snapshot_.ranger.header.inventory_count(index) + count));
+                wrapping_add(snapshot_.ranger.header.inventory_count(index), count));
             found = true;
         }
     }
@@ -2050,8 +2051,7 @@ void SceneSession::add_inventory(const std::int16_t item_id, const std::int16_t 
         if (snapshot_.ranger.header.inventory_item(index).value == -1) {
             snapshot_.ranger.header.set_inventory(
                 index, model::ItemId{item_id},
-                static_cast<std::int16_t>(
-                    snapshot_.ranger.header.inventory_count(index) + count));
+                wrapping_add(snapshot_.ranger.header.inventory_count(index), count));
             return;
         }
     }
@@ -2217,6 +2217,18 @@ void SceneSession::queue_notice(
     queued_outputs_.push_back(QueuedOutput{result, std::move(text)});
 }
 
+void SceneSession::queue_item_notice(const std::int16_t item_id) {
+    std::vector<std::uint8_t> text{kItemNoticePrefix.begin(), kItemNoticePrefix.end()};
+    if (item_id >= 0 && static_cast<std::size_t>(item_id) < snapshot_.ranger.items.size()) {
+        const auto& bytes = snapshot_.ranger.items[static_cast<std::size_t>(item_id)].bytes;
+        const auto begin = bytes.begin() + static_cast<std::ptrdiff_t>(model::item_word::name_byte);
+        const auto field_end = begin + static_cast<std::ptrdiff_t>(model::item_word::name_bytes);
+        text.insert(text.end(), begin, std::find(begin, field_end, 0U));
+    }
+    text.push_back(0U);
+    queue_notice(std::move(text), kItemNoticeStyle);
+}
+
 void SceneSession::queue_scene_present() {
     queued_outputs_.push_back(QueuedOutput{current_result(SceneStepKind::present), {}});
 }
@@ -2234,6 +2246,7 @@ SceneStepResult SceneSession::emit_queued() {
     pending_ = output.result;
     pending_text_ = std::move(output.text);
     dialogue_base_framebuffer_.reset();
+    item_notice_base_framebuffer_.reset();
     dialogue_redraw_scene_before_ =
         pending_.kind == SceneStepKind::dialogue && output.redraw_scene_before;
     if (pending_.kind == SceneStepKind::shop) {
@@ -3012,7 +3025,8 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
             return emit_queued();
         case TournamentTrialState::Phase::finale_finish:
             add_inventory(143, 1);
-            queue_notice(ascii_message("item 143 1"));
+            update_book_event_if_ready();
+            queue_item_notice(143);
             queue_scene_present();
             tournament_trial_state_->phase = TournamentTrialState::Phase::reward_notice;
             return emit_queued();
@@ -3083,6 +3097,7 @@ void SceneSession::clear_event() noexcept {
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
+    item_notice_base_framebuffer_.reset();
 }
 
 std::int16_t SceneSession::player_frame() const noexcept {
@@ -3222,6 +3237,7 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     if (pending_.kind == SceneStepKind::scene_title) {
         dialogue_base_framebuffer_.reset();
+        item_notice_base_framebuffer_.reset();
         if (scene_title_base_framebuffer_.has_value()) {
             framebuffer = *scene_title_base_framebuffer_;
         } else {
@@ -3231,9 +3247,15 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     scene_title_base_framebuffer_.reset();
     if (pending_.kind == SceneStepKind::dialogue) {
+        item_notice_base_framebuffer_.reset();
         return render_dialogue_overlay(framebuffer);
     }
+    if (pending_.kind == SceneStepKind::notice && pending_.style == kItemNoticeStyle) {
+        dialogue_base_framebuffer_.reset();
+        return render_item_notice_overlay(framebuffer);
+    }
     dialogue_base_framebuffer_.reset();
+    item_notice_base_framebuffer_.reset();
     return render_map(framebuffer) && draw_overlay(framebuffer);
 }
 
@@ -3242,9 +3264,15 @@ bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const
         return false;
     }
     if (pending_.kind == SceneStepKind::dialogue) {
+        item_notice_base_framebuffer_.reset();
         return render_dialogue_overlay(framebuffer);
     }
+    if (pending_.kind == SceneStepKind::notice && pending_.style == kItemNoticeStyle) {
+        dialogue_base_framebuffer_.reset();
+        return render_item_notice_overlay(framebuffer);
+    }
     dialogue_base_framebuffer_.reset();
+    item_notice_base_framebuffer_.reset();
     return draw_overlay(framebuffer);
 }
 
@@ -3257,6 +3285,16 @@ bool SceneSession::render_dialogue_overlay(
             return false;
         }
         dialogue_base_framebuffer_ = framebuffer;
+    }
+    return draw_overlay(framebuffer);
+}
+
+bool SceneSession::render_item_notice_overlay(
+    render::IndexedFramebuffer& framebuffer) const {
+    if (item_notice_base_framebuffer_.has_value()) {
+        framebuffer = *item_notice_base_framebuffer_;
+    } else {
+        item_notice_base_framebuffer_ = framebuffer;
     }
     return draw_overlay(framebuffer);
 }
@@ -3318,6 +3356,21 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         render::Big5GlyphCache cache{big5_font_};
         return render::draw_legacy_text(
             framebuffer, 71, 45, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+    }
+    if (pending_.kind == SceneStepKind::notice && pending_.style == kItemNoticeStyle) {
+        const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
+        const auto text_length = static_cast<int>(
+            std::distance(pending_text_.begin(), terminator));
+        const auto name_length = std::max(0, text_length - static_cast<int>(kItemNoticePrefix.size()));
+        const auto x = 150 - (4 * name_length + 16);
+        constexpr int y = 40;
+        const auto width = 8 * name_length + 52;
+        if (!draw_panel(framebuffer, x, y, width, 27)) {
+            return false;
+        }
+        render::Big5GlyphCache cache{big5_font_};
+        return render::draw_legacy_text(
+            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == 52 || pending_.style == 53)) {
