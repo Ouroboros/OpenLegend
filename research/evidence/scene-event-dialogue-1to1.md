@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`719f395a82f3c546e3ec13de598d5941b242e277c5e4ba60dff5b84c998e0034`
+  - SHA256：`dc9c863db4635e8fb5fd0fa4db5430b1d91302da5bdf0f6124059a5f59d713ad`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -173,7 +173,15 @@ helper把原Big5`是否住宿過夜（Ｙ／Ｎ）`复制到缓冲区，在calle
 
 全KDEF仅7次opcode11且偏移均为`(1,0)`，完整参数流SHA256为`99755f8a57634d2a2d4ae1b53ceb30ffde7bc40daeb84eba58a0395452355399`。synthetic Y/非Y分别直达notice/stay，固定分支方向与按键后无present；首轮完整对照零产品差异。宿主按键continuation替代DOS函数内忙等，归类`platform_adapted`；委托文字和present函数继续按各自closure终审。
 
-### 4.10 添加物品提示与十四书门禁
+### 4.10 队伍休息恢复
+
+`sub_2E1E8`已完成最终汇编→C++ REVIEW。入口为144字节、35条指令；loaded/raw SHA256分别为`bea92342233ace5d16c75fe711c95309f226fbcb7332c656a7b738153356c80a`、`456ef3b7091131fb8e51bd73c7fb56560b5f3392d5e30518e86b7cfc35553a11`，10个差异字节全部是`raw+0x20000`地址重定位。唯一caller为解释器opcode12，固定PC+1且忽略返回0。
+
+helper从team slot1扫描首个signed `<=0`哨兵；若没有哨兵则队伍尾为6。它只处理`[slot0,队伍尾)`，不跨队伍洞；每名角色仅当signed伤势小于33且中毒值恰为0时，依次写伤势0、体力100、内力上限和生命上限。伤势恰33、中毒非零和洞后角色均不恢复。
+
+全KDEF仅7次opcode12，位置流SHA256为`290cc136d68a25418cc28074407fe9dcc421ada2be21a1b9b874ee773e6696a6`。真实script931固定伤势32恢复、中毒不恢复、伤势33不恢复和不跨洞；synthetic无哨兵满六人固定slots0..5全部恢复。首轮完整对照零产品差异；非法role由现代安全边界稳定跳过，归类`platform_adapted`。
+
+### 4.11 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 
@@ -238,7 +246,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
 - 真实 script494 的 opcode8 立即空音频与离场 music3 覆盖；
 - 场景 5 的 300 tick RNG、粒子位置和半透明天气像素；
-- 真实脚本36的背包与十四天书事件解锁、931的条件休息、581的满武功槽与入队清理、950的离队清理；opcode10固定原Big5物品提示、逐物品present后清槽且保持全局item.user，opcode21固定队伍压缩、三件item.user解绑及角色字段清理；
+- 真实脚本36的背包与十四天书事件解锁、931的条件休息、581的满武功槽与入队清理、950的离队清理；opcode10固定原Big5物品提示、逐物品present后清槽且保持全局item.user，opcode12固定伤势32恢复、中毒/伤势33/队伍洞后不恢复及满六人分支，opcode21固定队伍压缩、三件item.user解绑及角色字段清理；
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；

@@ -1311,6 +1311,86 @@
       "item_user_writes": 0,
       "program_counter_formula": "old_pc + 2"
     },
+    "opcode_12_party_rest": {
+      "occurrences": 7,
+      "stream_encoding": "little_endian_<II:script_pc>",
+      "parameter_stream_sha256": "290cc136d68a25418cc28074407fe9dcc421ada2be21a1b9b874ee773e6696a6",
+      "positions": [
+        [
+          235,
+          26
+        ],
+        [
+          480,
+          26
+        ],
+        [
+          502,
+          36
+        ],
+        [
+          575,
+          26
+        ],
+        [
+          658,
+          26
+        ],
+        [
+          664,
+          26
+        ],
+        [
+          931,
+          10
+        ]
+      ],
+      "script_931": {
+        "words": [
+          11,
+          1,
+          0,
+          7,
+          1,
+          2843,
+          0,
+          1,
+          0,
+          14,
+          12,
+          40,
+          3,
+          0,
+          13,
+          1,
+          2844,
+          0,
+          1,
+          0,
+          -1
+        ],
+        "rest_question_pc": 0,
+        "party_rest_pc": 10
+      },
+      "team_end_scan_slots": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "team_end_rule": "first_signed_nonpositive_else_6",
+      "processed_slots": "[0,team_end)",
+      "eligible_hurt": "signed_less_than_33",
+      "eligible_poison": "equals_0",
+      "write_order": [
+        "hurt=0",
+        "physical_power=100",
+        "mp=maximum_mp",
+        "hp=maximum_hp"
+      ],
+      "program_counter_formula": "old_pc + 1"
+    },
     "opcode_21_leave_role": {
       "occurrences": 35,
       "stream_encoding": "little_endian_<IIh:script_pc_role>",

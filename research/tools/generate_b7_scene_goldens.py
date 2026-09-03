@@ -1333,6 +1333,48 @@ def join_role_vectors(scripts: list[bytes], ranger: bytes) -> dict[str, object]:
     }
 
 
+def party_rest_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 12:
+                occurrences.append((script_id, program_counter))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<II", *row) for row in occurrences)
+    script_931 = words(scripts[931])
+    assert occurrences == [
+        (235, 26), (480, 26), (502, 36), (575, 26),
+        (658, 26), (664, 26), (931, 10),
+    ]
+    assert script_931 == (
+        11, 1, 0, 7, 1, 2843, 0, 1, 0, 14, 12, 40, 3, 0, 13,
+        1, 2844, 0, 1, 0, -1,
+    )
+
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<II:script_pc>",
+        "parameter_stream_sha256": sha256(stream),
+        "positions": [list(row) for row in occurrences],
+        "script_931": {
+            "words": list(script_931),
+            "rest_question_pc": 0,
+            "party_rest_pc": 10,
+        },
+        "team_end_scan_slots": [1, 2, 3, 4, 5],
+        "team_end_rule": "first_signed_nonpositive_else_6",
+        "processed_slots": "[0,team_end)",
+        "eligible_hurt": "signed_less_than_33",
+        "eligible_poison": "equals_0",
+        "write_order": ["hurt=0", "physical_power=100", "mp=maximum_mp", "hp=maximum_hp"],
+        "program_counter_formula": "old_pc + 1",
+    }
+
+
 def leave_role_vectors(scripts: list[bytes], ranger: bytes) -> dict[str, object]:
     occurrences: list[tuple[int, int, int]] = []
     opcode_59: list[tuple[int, int]] = []
@@ -3380,6 +3422,7 @@ def main() -> None:
             **coverage,
             "opcode_6_battle_requests": battle_request_vectors(scripts),
             "opcode_10_join_role": join_role_vectors(scripts, ranger),
+            "opcode_12_party_rest": party_rest_vectors(scripts),
             "opcode_21_leave_role": leave_role_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {

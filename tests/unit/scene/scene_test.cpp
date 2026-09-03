@@ -141,6 +141,8 @@ public:
                          6, 77, 8, 5, 1, 7, 7, 7, 7, 7, 2, 214, 1, 2, 215, 1}) {
                     append_i16(group, word);
                 }
+            } else if (script == 19U) {
+                append_i16(group, 12);
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -763,6 +765,36 @@ void check_event_load_menu(const std::filesystem::path& root) {
              result.question == openlegend::scene::SceneQuestion::rest);
     OL_CHECK(rest_no.resume(SceneResponse::no).kind == SceneStepKind::stay);
     OL_CHECK(inventory_count(rest_no_snapshot.ranger, 212) == rest_no_count);
+
+    auto full_rest_snapshot = load_baseline(root);
+    for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+        full_rest_snapshot.ranger.header.set_team_member(
+            slot, openlegend::model::CharacterId{static_cast<std::int16_t>(slot)});
+        auto& role = full_rest_snapshot.ranger.roles[slot];
+        role.set_word(openlegend::model::role_word::hp, static_cast<std::int16_t>(10 + slot));
+        role.set_word(openlegend::model::role_word::maximum_hp,
+                      static_cast<std::int16_t>(90 + slot));
+        role.set_word(openlegend::model::role_word::mp, static_cast<std::int16_t>(20 + slot));
+        role.set_word(openlegend::model::role_word::maximum_mp,
+                      static_cast<std::int16_t>(80 + slot));
+        role.set_word(openlegend::model::role_word::hurt, 32);
+        role.set_word(openlegend::model::role_word::poison, 0);
+        role.set_word(openlegend::model::role_word::physical_power, 30);
+    }
+    openlegend::random::LegacyRandom full_rest_random{1U};
+    openlegend::scene::SceneSession full_rest{
+        data_root, full_rest_snapshot, full_rest_random, 70};
+    OL_CHECK(finish_scene_title(full_rest).kind == SceneStepKind::stay);
+    OL_CHECK(full_rest.begin_event(19, 0, 44, 29).kind == SceneStepKind::stay);
+    for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+        const auto& role = full_rest_snapshot.ranger.roles[slot];
+        OL_CHECK(role.word(openlegend::model::role_word::hp) ==
+                 static_cast<std::int16_t>(90 + slot));
+        OL_CHECK(role.word(openlegend::model::role_word::mp) ==
+                 static_cast<std::int16_t>(80 + slot));
+        OL_CHECK(role.word(openlegend::model::role_word::hurt) == 0);
+        OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 100);
+    }
 }
 
 void check_event_state_write_helpers(const std::filesystem::path& root) {
@@ -3613,10 +3645,19 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     after_gap_role.set_word(openlegend::model::role_word::hurt, 10);
     after_gap_role.set_word(openlegend::model::role_word::poison, 0);
     after_gap_role.set_word(openlegend::model::role_word::physical_power, 9);
+    auto& heavily_hurt_role = rest_snapshot.ranger.roles[3];
+    heavily_hurt_role.set_word(openlegend::model::role_word::hp, 10);
+    heavily_hurt_role.set_word(openlegend::model::role_word::maximum_hp, 99);
+    heavily_hurt_role.set_word(openlegend::model::role_word::mp, 11);
+    heavily_hurt_role.set_word(openlegend::model::role_word::maximum_mp, 89);
+    heavily_hurt_role.set_word(openlegend::model::role_word::hurt, 33);
+    heavily_hurt_role.set_word(openlegend::model::role_word::poison, 0);
+    heavily_hurt_role.set_word(openlegend::model::role_word::physical_power, 12);
     rest_snapshot.ranger.header.set_team_member(0U, openlegend::model::CharacterId{0});
     rest_snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{1});
-    rest_snapshot.ranger.header.set_team_member(2U, openlegend::model::CharacterId{-1});
-    rest_snapshot.ranger.header.set_team_member(3U, openlegend::model::CharacterId{2});
+    rest_snapshot.ranger.header.set_team_member(2U, openlegend::model::CharacterId{3});
+    rest_snapshot.ranger.header.set_team_member(3U, openlegend::model::CharacterId{-1});
+    rest_snapshot.ranger.header.set_team_member(4U, openlegend::model::CharacterId{2});
     openlegend::random::LegacyRandom rest_random{1U};
     openlegend::scene::SceneSession rest_session{
         data_root, rest_snapshot, rest_random, 70};
@@ -3640,6 +3681,10 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(poisoned_role.word(openlegend::model::role_word::mp) == 5);
     OL_CHECK(poisoned_role.word(openlegend::model::role_word::hurt) == 10);
     OL_CHECK(poisoned_role.word(openlegend::model::role_word::physical_power) == 6);
+    OL_CHECK(heavily_hurt_role.word(openlegend::model::role_word::hp) == 10);
+    OL_CHECK(heavily_hurt_role.word(openlegend::model::role_word::mp) == 11);
+    OL_CHECK(heavily_hurt_role.word(openlegend::model::role_word::hurt) == 33);
+    OL_CHECK(heavily_hurt_role.word(openlegend::model::role_word::physical_power) == 12);
     OL_CHECK(after_gap_role.word(openlegend::model::role_word::hp) == 7);
     OL_CHECK(after_gap_role.word(openlegend::model::role_word::mp) == 8);
     OL_CHECK(after_gap_role.word(openlegend::model::role_word::hurt) == 10);
