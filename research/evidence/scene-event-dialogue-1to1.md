@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`e840f6444b464fb8cab9c23a9aacc1cfe3533e3986d1d9af390ed1220034df92`
+  - SHA256：`719f395a82f3c546e3ec13de598d5941b242e277c5e4ba60dff5b84c998e0034`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -165,7 +165,15 @@ helper只扫描team slots1..5，移除首个精确匹配role并左移后续槽�
 
 武林大会caller从物理index6递减到1；index6越过队伍数组并确定性别名inventory item0，现代case59显式保留该来源，再按每次清理后的最新team读取slots5..1。script932用inventory item0=role6固定“不在team仍清个人物品”，script950直接固定队伍左移、尾槽、三条item.user解绑及角色字段清理。首轮完整对照零产品差异；现代只对资产未使用的非法role/item越界访问增加安全拒绝，归类`platform_adapted`。`sub_30559`其余剧情副作用不由本closure提前关闭。
 
-### 4.9 添加物品提示与十四书门禁
+### 4.9 休息问答与真假偏移
+
+`sub_2E155`已完成最终汇编→C++ REVIEW。入口为147字节、37条指令；loaded/raw SHA256分别为`fb29e361de2fee971ffaf9d5c210d25e90f8b91b3060d4d98852278934f79cd3`、`9d4b0c7d1e4ef096ee12bb3e010ca7181a9fb561b9c94eadd27d4edb78a4a5c3`，10个差异字节全部是`raw+0x20000`地址重定位。唯一caller为解释器opcode11。
+
+helper把原Big5`是否住宿過夜（Ｙ／Ｎ）`复制到缓冲区，在caller当前framebuffer的`(61,40,187,27)`绘混色圆角面板，于`(71,45)`以颜色`5/7`绘字并present；阻塞读取前再次清键。只有ASCII大写Y返回true offset，其他任意键立即返回false offset；按键后不重绘或额外present裸场景。caller最终PC为`old_pc+3+selected_offset`。
+
+全KDEF仅7次opcode11且偏移均为`(1,0)`，完整参数流SHA256为`99755f8a57634d2a2d4ae1b53ceb30ffde7bc40daeb84eba58a0395452355399`。synthetic Y/非Y分别直达notice/stay，固定分支方向与按键后无present；首轮完整对照零产品差异。宿主按键continuation替代DOS函数内忙等，归类`platform_adapted`；委托文字和present函数继续按各自closure终审。
+
+### 4.10 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 
@@ -225,7 +233,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
 - 2,977 条 TALK 数量、首尾记录解码、显式三行分页、第三换行后的空白末页与最大344像素行；
 - HDGRP 115帧的记录边界、全部7,568个run、320个角色head域、七类caller锚点逐帧聚合hash，以及真实 scripts1/142/244/515 的 style0/1/2/4、头像、无头像和线性越界 framebuffer hashes；
-- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode3/4/5/6/9/11/13/14/16/17/24/26/68 的状态写入、条件、问题框、同步、载入菜单与 PC 不推进边界；
+- 1,018 条 KDEF 全量终止、opcode 合法域、13,315 条频次，以及 synthetic opcode3/4/5/6/9/11/13/14/16/17/24/26/68 的状态写入、条件、问题框、同步、载入菜单与 PC 不推进边界；其中opcode11另固定全部7个资产调用、原Big5休息问题、仅大写Y为真及按键后不额外present；
 - 四个核心 GRP 的 FNV-1a64；
 - 场景 70 初始像素、碰撞轨迹、入口/主循环/出口/内部跳转 continuation；
 - 真实 script494 的 opcode8 立即空音频与离场 music3 覆盖；

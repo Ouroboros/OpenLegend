@@ -751,6 +751,18 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = rest_question.resume(SceneResponse::yes);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(rest_question_snapshot.ranger, 212) == rest_question_count + 1);
+
+    auto rest_no_snapshot = load_baseline(root);
+    const auto rest_no_count = inventory_count(rest_no_snapshot.ranger, 212);
+    openlegend::random::LegacyRandom rest_no_random{1U};
+    openlegend::scene::SceneSession rest_no{
+        data_root, rest_no_snapshot, rest_no_random, 70};
+    OL_CHECK(finish_scene_title(rest_no).kind == SceneStepKind::stay);
+    result = rest_no.begin_event(9, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::rest);
+    OL_CHECK(rest_no.resume(SceneResponse::no).kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(rest_no_snapshot.ranger, 212) == rest_no_count);
 }
 
 void check_event_state_write_helpers(const std::filesystem::path& root) {

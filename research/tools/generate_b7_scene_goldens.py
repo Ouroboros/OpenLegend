@@ -2263,12 +2263,13 @@ def dialogue_vectors(
 
     opcode_5_occurrences: list[tuple[int, int, int, int]] = []
     opcode_9_occurrences: list[tuple[int, int, int, int]] = []
+    opcode_11_occurrences: list[tuple[int, int, int, int]] = []
     for script_id, script in enumerate(scripts):
         instructions = words(script)
         program_counter = 0
         while instructions[program_counter] != -1:
             opcode = instructions[program_counter]
-            if opcode in (5, 9):
+            if opcode in (5, 9, 11):
                 occurrence = (
                     script_id,
                     program_counter,
@@ -2277,8 +2278,10 @@ def dialogue_vectors(
                 )
                 if opcode == 5:
                     opcode_5_occurrences.append(occurrence)
-                else:
+                elif opcode == 9:
                     opcode_9_occurrences.append(occurrence)
+                else:
+                    opcode_11_occurrences.append(occurrence)
             program_counter += WIDTHS[opcode]
     opcode_5_stream = b"".join(
         struct.pack("<II2h", *row) for row in opcode_5_occurrences
@@ -2327,6 +2330,17 @@ def dialogue_vectors(
             for row in opcode_9_exceptional] == [
                 (304, 0, 47), (306, 0, 47), (307, 0, 42), (308, 0, 42)
             ]
+
+    opcode_11_stream = b"".join(
+        struct.pack("<II2h", *row) for row in opcode_11_occurrences
+    )
+    opcode_11_offset_counts = Counter(
+        (row[2], row[3]) for row in opcode_11_occurrences
+    )
+    assert len(opcode_11_occurrences) == 7
+    assert opcode_11_occurrences[0] == (235, 5, 1, 0)
+    assert opcode_11_occurrences[-1] == (931, 0, 1, 0)
+    assert set(opcode_11_offset_counts) == {(1, 0)}
 
     progress_menu_items = (
         bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 40 00"),
@@ -2542,6 +2556,7 @@ def dialogue_vectors(
             "accepted_key": "uppercase_Y_only",
             "non_y_key": "false_offset_without_filter_loop",
             "battle_post_key": "branch_without_scene_redraw_or_extra_present",
+            "rest_post_key": "branch_without_scene_redraw_or_extra_present",
             "opcode_5_asset_domain": {
                 "occurrences": len(opcode_5_occurrences),
                 "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
@@ -2574,6 +2589,18 @@ def dialogue_vectors(
                     for (true_offset, false_offset), count in sorted(opcode_9_offset_counts.items())
                 },
                 "exceptional_false_offset_calls": opcode_9_exceptional,
+                "program_counter_formula": "old_pc + 3 + selected_offset",
+            },
+            "opcode_11_asset_domain": {
+                "occurrences": len(opcode_11_occurrences),
+                "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
+                "parameter_stream_sha256": sha256(opcode_11_stream),
+                "first": list(opcode_11_occurrences[0]),
+                "last": list(opcode_11_occurrences[-1]),
+                "offset_pair_counts": {
+                    f"{true_offset},{false_offset}": count
+                    for (true_offset, false_offset), count in sorted(opcode_11_offset_counts.items())
+                },
                 "program_counter_formula": "old_pc + 3 + selected_offset",
             },
         },

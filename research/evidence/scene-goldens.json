@@ -5101,6 +5101,7 @@
         "accepted_key": "uppercase_Y_only",
         "non_y_key": "false_offset_without_filter_loop",
         "battle_post_key": "branch_without_scene_redraw_or_extra_present",
+        "rest_post_key": "branch_without_scene_redraw_or_extra_present",
         "opcode_5_asset_domain": {
           "occurrences": 43,
           "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
@@ -5209,6 +5210,27 @@
               "false_offset": 42
             }
           ],
+          "program_counter_formula": "old_pc + 3 + selected_offset"
+        },
+        "opcode_11_asset_domain": {
+          "occurrences": 7,
+          "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
+          "parameter_stream_sha256": "99755f8a57634d2a2d4ae1b53ceb30ffde7bc40daeb84eba58a0395452355399",
+          "first": [
+            235,
+            5,
+            1,
+            0
+          ],
+          "last": [
+            931,
+            0,
+            1,
+            0
+          ],
+          "offset_pair_counts": {
+            "1,0": 7
+          },
           "program_counter_formula": "old_pc + 3 + selected_offset"
         }
       },
