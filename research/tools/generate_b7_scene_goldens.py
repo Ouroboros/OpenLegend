@@ -961,6 +961,10 @@ def state_write_vectors(
         struct.pack("<II3h", row["script"], row["pc"], *row["arguments"])
         for row in opcode_4
     )
+    opcode_17_stream = b"".join(
+        struct.pack("<II5h", row["script"], row["pc"], *row["arguments"])
+        for row in opcode_17
+    )
     opcode_4_scripts = {row["script"] for row in opcode_4}
     opcode_4_event_references: list[dict[str, int]] = []
     for scene_id, payload in enumerate(scene_events):
@@ -1053,7 +1057,28 @@ def state_write_vectors(
         "scene": 83, "event": 24, "field": 3, "script": 1014,
     }
     assert len(opcode_17) == 127
+    assert opcode_17[0] == {
+        "script": 30, "pc": 191, "arguments": [49, 1, 28, 37, 0],
+    }
+    assert opcode_17[-1] == {
+        "script": 1015, "pc": 868, "arguments": [-2, 1, 18, 26, 4062],
+    }
+    assert [row for row in opcode_17 if row["script"] == 274] == [
+        {"script": 274, "pc": 0, "arguments": [-2, 1, 13, 22, 0]},
+        {"script": 274, "pc": 6, "arguments": [-2, 1, 12, 22, 2898]},
+    ]
     assert sorted({row["arguments"][0] for row in opcode_17}) == [-2, 11, 18, 21, 49, 52, 53, 55]
+    assert Counter(row["arguments"][0] for row in opcode_17) == {
+        -2: 99, 11: 5, 18: 6, 21: 1, 49: 3, 52: 3, 53: 5, 55: 5,
+    }
+    assert Counter(row["arguments"][1] for row in opcode_17) == {0: 6, 1: 121}
+    assert all(
+        (row["arguments"][0] == -2 or 0 <= row["arguments"][0] < 100) and
+        0 <= row["arguments"][1] < 6 and
+        0 <= row["arguments"][2] < 64 and
+        0 <= row["arguments"][3] < 64
+        for row in opcode_17
+    )
     assert len(opcode_26) == 121
     assert sum(row["arguments"][0] == -2 for row in opcode_26) == 115
     assert all(row["arguments"][1] not in (-2, -1) for row in opcode_26)
@@ -1152,15 +1177,59 @@ def state_write_vectors(
         },
         "opcode_17_scene_cell": {
             "occurrences": len(opcode_17),
+            "stream_encoding": "little_endian_<II5h:script_pc_scene_layer_x_y_value>",
+            "argument_stream_sha256": sha256(opcode_17_stream),
+            "first_occurrence": opcode_17[0],
+            "last_occurrence": opcode_17[-1],
+            "current_scene_sentinel": -2,
             "current_scene_occurrences": sum(
                 row["arguments"][0] == -2 for row in opcode_17
             ),
+            "explicit_scene_occurrences": sum(
+                row["arguments"][0] != -2 for row in opcode_17
+            ),
+            "scene_id_counts": [
+                [value, count] for value, count in sorted(Counter(
+                    row["arguments"][0] for row in opcode_17
+                ).items())
+            ],
             "explicit_scene_ids": sorted({
                 row["arguments"][0]
                 for row in opcode_17
                 if row["arguments"][0] != -2
             }),
-            "linear_index": "4096*layer + 64*y + x",
+            "layer_counts": [
+                [value, count] for value, count in sorted(Counter(
+                    row["arguments"][1] for row in opcode_17
+                ).items())
+            ],
+            "x_range": [
+                min(row["arguments"][2] for row in opcode_17),
+                max(row["arguments"][2] for row in opcode_17),
+            ],
+            "y_range": [
+                min(row["arguments"][3] for row in opcode_17),
+                max(row["arguments"][3] for row in opcode_17),
+            ],
+            "value_range": [
+                min(row["arguments"][4] for row in opcode_17),
+                max(row["arguments"][4] for row in opcode_17),
+            ],
+            "all_current_asset_arguments_valid": True,
+            "linear_word_index": "4096*layer + 64*y + x",
+            "external_scene_legacy_order": [
+                "flush_current_scene", "load_target_scene", "write_target_word",
+                "persist_target_scene", "reload_current_scene",
+            ],
+            "script_274_current_scene_vectors": [
+                row for row in opcode_17 if row["script"] == 274
+            ],
+            "synthetic_external_vector": {
+                "active_scene": 70, "target_scene": 69, "layer": 1,
+                "x": 2, "y": 3, "value": 456,
+                "active_scene_same_cell": 123,
+                "active_scene_after": 70,
+            },
         },
         "opcode_26_event_script_add": {
             "occurrences": len(opcode_26),

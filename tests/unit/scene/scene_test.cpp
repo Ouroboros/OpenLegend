@@ -4121,6 +4121,7 @@ void check_event_execution(const std::filesystem::path& root) {
     const auto script = assets.script(274U);
     OL_CHECK(script.size() == 14U);
     OL_CHECK(script[0] == 17 && script[1] == -2 && script[2] == 1);
+    OL_CHECK(script[3] == 13 && script[4] == 22 && script[5] == 0);
     OL_CHECK(script[6] == 17 && script[7] == -2 && script[8] == 1);
     OL_CHECK(script[9] == 12 && script[10] == 22 && script[11] == 2898);
     const auto map_result = session.begin_event(274, 0, 44, 29);

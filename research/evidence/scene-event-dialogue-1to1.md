@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`f5fc1d8c3d9f88fa231e7fde5d8d967f9d0d3bf72ed0dcc45ed49db61d038d5f`
+  - SHA256：`19b8d15579fe8de07a561563b8466926f306b64357e04c7dbd716dd54fd4fab8`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -211,7 +211,13 @@ helper不扫描队伍，只判断signed slot5是否严格大于0；全KDEF有82�
 
 helper扫描slots0..199并在首个item ID匹配时停止，完全不读取count。全KDEF仅script37/38两次opcode18，参数流SHA256为`3f25065164137f7c2ec64615393422cc449b804fa50db0183a5ed188bd19ab6f`。真实script37固定slot0 count0仍命中、完全缺失走对话139、仅slot199 count-32768仍命中；现代ID存在判断和PC偏移完全一致，归类`assembly_exact`。
 
-### 4.16 添加物品提示与十四书门禁
+### 4.16 场景图层格写入
+
+`sub_2E337`已完成最终汇编→C++ REVIEW。308字节、85条指令；loaded/raw SHA256分别为`6c1c25cc2e99999f7b1988d692fea01e5b3049f7c8e0da50efdc7c4c3c684a1f`、`1086a5e957eef0bba5d7d11dc4a82ac3e6cef5fb2f2b2b9d427e89c10794a883`，15个差异字节均为绝对地址加`0x20000`的DOS重定位。
+
+`scene==-2`按word索引`4096*layer+64*y+x`直接写当前场景；显式scene在原机先保存当前场景、换入并回写目标场景、再重载当前场景。全KDEF有127次opcode17，参数流SHA256为`14b12ef0f37fd4a7d005791d94c30b376193b1c7c383665940a90b65fb51d526`且场景/层/坐标全合法。现代100场景常驻快照保持目标word和活动场景不变的可观察结果，非法参数稳定拒绝，归类`platform_adapted`；底层归档callee继续独立终审。
+
+### 4.17 添加物品提示与十四书门禁
 
 `sub_2D678`固定扫描全部200个背包槽：所有匹配物品ID的count均做16位回绕加法；完全无匹配时只使用首个ID为`-1`的槽，并在该槽残留count上相加；库存满时不修改但仍继续提示。机器从190字节物品记录byte 2读取名称，以Big5 `得到%s`生成提示；面板按名称字节数`N`取`x=150-(4*N+16)`、`width=8*N+52`，在caller当前framebuffer上绘style4圆角框和index `5/7`文字，等待任意键后恢复裸场景。
 
