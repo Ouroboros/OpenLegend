@@ -957,10 +957,42 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
         row for row in opcode_3
         if row["arguments"][11] != -2 or row["arguments"][12] != -2
     ]
+    opcode_3_stream = b"".join(
+        struct.pack("<II13h", row["script"], row["pc"], *row["arguments"])
+        for row in opcode_3
+    )
+    coordinate_stream = b"".join(
+        struct.pack("<II13h", row["script"], row["pc"], *row["arguments"])
+        for row in coordinate_updates
+    )
+    explicit_scenes = sorted({
+        row["arguments"][0]
+        for row in opcode_3
+        if row["arguments"][0] != -2
+    })
     assert len(opcode_3) == 2_320
+    assert sum(row["arguments"][0] == -2 for row in opcode_3) == 2_009
+    assert sum(row["arguments"][1] == -2 for row in opcode_3) == 461
+    assert all(row["arguments"][1] != -1 for row in opcode_3)
+    assert all(
+        0 <= row["arguments"][0] < 100
+        for row in opcode_3
+        if row["arguments"][0] != -2
+    )
+    assert all(
+        row["arguments"][1] in (-2, -1) or 0 <= row["arguments"][1] < 200
+        for row in opcode_3
+    )
+    assert all(
+        row["arguments"][1] not in (-2, -1)
+        for row in opcode_3
+        if row["arguments"][0] != -2
+    )
     assert len(coordinate_updates) == 30
     assert all(
-        row["arguments"][11] != -2 and row["arguments"][12] != -2
+        row["arguments"][0] == -2 and
+        row["arguments"][11] != -2 and row["arguments"][12] != -2 and
+        0 <= row["arguments"][11] < 64 and 0 <= row["arguments"][12] < 64
         for row in coordinate_updates
     )
     assert coordinate_updates[0] == {
@@ -976,10 +1008,34 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
     return {
         "opcode_3_event_fields": {
             "occurrences": len(opcode_3),
+            "argument_stream_sha256": sha256(opcode_3_stream),
+            "current_scene_occurrences": sum(
+                row["arguments"][0] == -2 for row in opcode_3
+            ),
             "explicit_scene_occurrences": sum(
                 row["arguments"][0] != -2 for row in opcode_3
             ),
+            "explicit_scene_ids": explicit_scenes,
+            "current_event_occurrences": sum(
+                row["arguments"][1] == -2 for row in opcode_3
+            ),
+            "disable_trigger_event_occurrences": sum(
+                row["arguments"][1] == -1 for row in opcode_3
+            ),
+            "explicit_event_range": [
+                min(row["arguments"][1] for row in opcode_3 if row["arguments"][1] >= 0),
+                max(row["arguments"][1] for row in opcode_3 if row["arguments"][1] >= 0),
+            ],
+            "external_scene_event_sentinel_occurrences": sum(
+                row["arguments"][0] != -2 and row["arguments"][1] in (-2, -1)
+                for row in opcode_3
+            ),
+            "field_write_counts": [
+                sum(row["arguments"][field + 2] != -2 for row in opcode_3)
+                for field in range(11)
+            ],
             "coordinate_updates": len(coordinate_updates),
+            "coordinate_stream_sha256": sha256(coordinate_stream),
             "one_axis_coordinate_updates": sum(
                 (row["arguments"][11] == -2) != (row["arguments"][12] == -2)
                 for row in coordinate_updates

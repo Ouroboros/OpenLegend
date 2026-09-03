@@ -2114,7 +2114,9 @@ void SceneSession::close_shop_events() {
     default: break;
     }
     for (const auto event : events) {
-        set_event_field(scene_id_, event, model::SceneEventField::event_3, 939);
+        const std::array<std::int16_t, 13> event_change{
+            -2, event, 0, 0, -1, -1, 939, -1, -1, -1, -2, -2, -2};
+        modify_event(event_change);
     }
 }
 

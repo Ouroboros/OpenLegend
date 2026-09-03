@@ -115,6 +115,16 @@ public:
                 for (const auto word : std::array<std::int16_t, 5>{30, 10, 10, 10, 9}) {
                     append_i16(group, word);
                 }
+            } else if (script == 15U) {
+                for (const auto word : std::array<std::int16_t, 14>{
+                         3, -2, -1, 11, 12, 13, 14, 15, 16, 17, 18, 19, -2, -2}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 16U) {
+                for (const auto word : std::array<std::int16_t, 14>{
+                         3, 69, 5, 101, -2, 103, -2, 105, -2, 107, -2, 109, 30, 31}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -686,6 +696,82 @@ void check_event_state_write_helpers(const std::filesystem::path& root) {
                      70U, SceneLayer::event_index, old_cell).value_or(0) == -1);
         OL_CHECK(snapshot.scene_value(
                      70U, SceneLayer::event_index, new_cell).value_or(-1) == 0);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::size_t event = 5U;
+        constexpr std::size_t trigger_cell = 29U * 64U + 44U;
+        constexpr std::size_t record_cell = 21U * 64U + 20U;
+        for (std::size_t field = 0U; field < 9U; ++field) {
+            OL_CHECK(snapshot.set_event_value(
+                70U, event, static_cast<SceneEventField>(field),
+                static_cast<std::int16_t>(200U + field)));
+        }
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::x, 20));
+        OL_CHECK(snapshot.set_event_value(70U, event, SceneEventField::y, 21));
+        OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, trigger_cell, event));
+        OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, record_cell, event));
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(15, event, 44, 29).kind == SceneStepKind::stay);
+        for (std::size_t field = 0U; field < 9U; ++field) {
+            OL_CHECK(snapshot.event_value(
+                         70U, event, static_cast<SceneEventField>(field)).value_or(-1) ==
+                     static_cast<std::int16_t>(11U + field));
+        }
+        OL_CHECK(snapshot.event_value(70U, event, SceneEventField::x).value_or(-1) == 20);
+        OL_CHECK(snapshot.event_value(70U, event, SceneEventField::y).value_or(-1) == 21);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::event_index, trigger_cell).value_or(0) == -1);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::event_index, record_cell).value_or(-1) == event);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        constexpr std::size_t event = 5U;
+        constexpr std::size_t old_cell = 21U * 64U + 20U;
+        constexpr std::size_t new_cell = 31U * 64U + 30U;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        for (std::size_t field = 0U; field < 9U; ++field) {
+            OL_CHECK(snapshot.set_event_value(
+                69U, event, static_cast<SceneEventField>(field),
+                static_cast<std::int16_t>(200U + field)));
+            OL_CHECK(snapshot.set_event_value(
+                70U, event, static_cast<SceneEventField>(field),
+                static_cast<std::int16_t>(300U + field)));
+        }
+        for (const auto scene : {69U, 70U}) {
+            OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::x, 20));
+            OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::y, 21));
+            OL_CHECK(snapshot.set_scene_value(scene, SceneLayer::event_index, old_cell, event));
+            OL_CHECK(snapshot.set_scene_value(scene, SceneLayer::event_index, new_cell, -1));
+        }
+        OL_CHECK(session.begin_event(16, 0, 44, 29).kind == SceneStepKind::stay);
+        for (std::size_t field = 0U; field < 9U; ++field) {
+            const auto expected = static_cast<std::int16_t>(
+                field % 2U == 0U ? 101U + field : 200U + field);
+            OL_CHECK(snapshot.event_value(
+                         69U, event, static_cast<SceneEventField>(field)).value_or(-1) == expected);
+            OL_CHECK(snapshot.event_value(
+                         70U, event, static_cast<SceneEventField>(field)).value_or(-1) ==
+                     static_cast<std::int16_t>(300U + field));
+        }
+        OL_CHECK(snapshot.event_value(69U, event, SceneEventField::x).value_or(-1) == 30);
+        OL_CHECK(snapshot.event_value(69U, event, SceneEventField::y).value_or(-1) == 31);
+        OL_CHECK(snapshot.event_value(70U, event, SceneEventField::x).value_or(-1) == 20);
+        OL_CHECK(snapshot.event_value(70U, event, SceneEventField::y).value_or(-1) == 21);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::event_index, old_cell).value_or(0) == -1);
+        OL_CHECK(snapshot.scene_value(
+                     70U, SceneLayer::event_index, new_cell).value_or(-1) == event);
+        OL_CHECK(snapshot.scene_value(
+                     69U, SceneLayer::event_index, old_cell).value_or(-1) == event);
+        OL_CHECK(snapshot.scene_value(
+                     69U, SceneLayer::event_index, new_cell).value_or(0) == -1);
+        OL_CHECK(session.scene_id() == 70);
     }
 
     {
@@ -2293,6 +2379,7 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
 }
 
 void check_event_shop_helpers(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
 
@@ -2320,8 +2407,10 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     for (const auto& shop_case : cases) {
         auto snapshot = load_baseline(root);
         for (const auto event : shop_case.close_events) {
-            static_cast<void>(snapshot.set_event_value(
-                shop_case.scene, event, openlegend::model::SceneEventField::event_3, -1));
+            for (std::size_t field = 0U; field < 8U; ++field) {
+                OL_CHECK(snapshot.set_event_value(
+                    shop_case.scene, event, static_cast<SceneEventField>(field), 777));
+            }
         }
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{
@@ -2331,10 +2420,15 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         OL_CHECK(result.shop_id == shop_case.shop);
         result = session.resume(SceneResponse::cancel);
         OL_CHECK(result.kind == SceneStepKind::stay);
+        constexpr std::array<std::int16_t, 8> expected_fields{
+            0, 0, -1, -1, 939, -1, -1, -1};
         for (const auto event : shop_case.close_events) {
-            OL_CHECK(snapshot.event_value(
-                         shop_case.scene, event,
-                         openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
+            for (std::size_t field = 0U; field < expected_fields.size(); ++field) {
+                OL_CHECK(snapshot.event_value(
+                             shop_case.scene, event,
+                             static_cast<SceneEventField>(field)).value_or(-2) ==
+                         expected_fields[field]);
+            }
         }
     }
 

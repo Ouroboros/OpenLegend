@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`ededfe7b1f9cdfee98109be9112ce7ba9fc3a6a796be81454e554d9e106e3fbf`
+  - SHA256：`9d47773dc4fe02407a802a64b00ccf9c3983b7edc5f45e260fd17d4e7e7a8065`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -84,14 +84,15 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 
 ### 4.1 场景与事件状态写入
 
-逐基本块对照 `sub_2D841/sub_2DBF4/sub_2E337` 后固定：
+`sub_2D841`已完成最终汇编→C++ REVIEW。入口为947字节、224条指令；IDA加载字节与原始`Z.DAT`字节SHA256分别为`440fa743904d2e706164bdb13f2e93b07c3f64e305576de29fdea2dcac133882`、`c21b05d61621b5bae5da0af482bcec71b1cc853d58092d63531369263b809f77`，53个差异字节全部由DOS加载基址重定位解释。完整xref含65个callsite、11个owner，覆盖解释器、四类动画、十四书门禁、武林大会、结尾事件禁用、商店退出和商人刷新。
 
-- opcode3 对十一事件字段逐项把 `-2` 解释为保持原值；场景 `-2` 与事件 `-2` 指向当前上下文，事件 `-1` 还会先清触发格；
-- 坐标修改必须在写新 x/y 前保存旧值，再清当前工作场景旧事件格并写新格。全资产2,320次 opcode3 中有30次坐标修改且均成对给出 x/y；修复前 C++ 会在写后读取坐标，导致旧格残留；
-- opcode26 对 event_1/2/3 做16位回绕加法，并支持事件 `-2` 当前事件哨兵；当前121次真实调用未使用该哨兵，由 synthetic `32767+1→-32768` 向量补齐；
-- opcode17 以 `4096*layer + 64*y + x` 写场景单元；显式外部场景路径原本执行当前 flush、目标载入/回写和当前 reload，现代常驻100场景 snapshot 直接写目标且保持当前场景不变；当前资产共127次调用。
+- opcode3 对十一事件字段逐项把 `-2` 解释为保持原值；当前归档中scene `-2`与event `-2`指向当前上下文，event `-1`还会先清实际触发格；外部归档路径直接使用显式event并整区读改写4,400字节事件数据；
+- 坐标修改必须在写新x/y前保存旧值，再清当前工作scene旧事件格并写新格；即使事件记录属于外部scene，地图副作用仍固定落在当前工作scene；
+- 全资产2,320次opcode3的完整参数流SHA256为`b2f3719272af716d0428a923b56d213e0c9bb7acc8e4ce5daf2dff1bd47ebee0`：2,009次当前scene、311次显式scene、461次当前event；30次坐标修改全部成对提供x/y且目标当前scene，坐标流SHA256为`c4ce5ae5c8b844ef50f3c618232b9e9ffb34b3d79efb491267a128e0c3673921`；
+- 首轮对照发现`sub_312A6`的现代商店退出只写event_3=939，而机器6个callsite实际把fields0..7重置为`0,0,-1,-1,939,-1,-1,-1`；修正后作废首轮结论并从入口重审，第二轮零新增差异；
+- 现代100场景常驻snapshot替代外部归档即时I/O，并安全拒绝真实资产未使用的外部负event、单轴坐标和越界参数，归类`platform_adapted`。
 
-synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前事件与16位回绕及外部 scene69 写入后 scene70 不变、opcode17 外部 scene69 写入且 scene70 同格和会话不变；真实 script274 继续固定当前场景两次 opcode17 后的独立 present。
+synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清触发格并保持记录坐标；外部scene69选择性修改事件字段/坐标但只更新当前scene70地图。商店六个scene的取消路径把fields0..7预置777后核对完整复位。`sub_2DBF4` opcode26和`sub_2E337` opcode17仍按各自后续closure独立终审：现有实现分别覆盖16位回绕加法及`4096*layer + 64*y + x`写入，不能由本helper提前关闭。
 
 ### 4.2 已复核的角色与物品副作用
 
