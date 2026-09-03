@@ -719,6 +719,24 @@ void check_event_load_menu(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(join_question_snapshot.ranger, 211) == join_question_count + 1);
 
+    auto join_no_snapshot = load_baseline(root);
+    const auto join_no_count = inventory_count(join_no_snapshot.ranger, 211);
+    openlegend::random::LegacyRandom join_no_random{1U};
+    openlegend::scene::SceneSession join_no{
+        data_root, join_no_snapshot, join_no_random, 70};
+    OL_CHECK(finish_scene_title(join_no).kind == SceneStepKind::stay);
+    OL_CHECK(join_no.render(bare_scene));
+    const auto join_no_bare_hash = fnv1a64(bare_scene.pixels());
+    result = join_no.begin_event(8, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::join);
+    result = join_no.resume(SceneResponse::no);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(join_no.render(frame));
+    OL_CHECK(fnv1a64(frame.pixels()) == join_no_bare_hash);
+    OL_CHECK(join_no.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(inventory_count(join_no_snapshot.ranger, 211) == join_no_count);
+
     auto rest_question_snapshot = load_baseline(root);
     const auto rest_question_count = inventory_count(rest_question_snapshot.ranger, 212);
     openlegend::random::LegacyRandom rest_question_random{1U};

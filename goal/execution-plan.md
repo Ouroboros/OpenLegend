@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=168/349`，`unique_any=124/284`，`unique_all=122/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=32` 邀请入队问答与偏移helper；状态为等待`audit_order=31` 场景退出音乐切换工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=32` 收口后进入同表 `audit_order=33` 角色加入队伍与携带物品helper
+已发布进度：`closure=169/349`，`unique_any=125/284`，`unique_all=122/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=33` 角色加入队伍与携带物品helper；状态为等待`audit_order=32` 邀请入队问答与偏移工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=33` 收口后进入同表 `audit_order=34` 角色离队与装备解绑helper
 
 ## 0. 唯一正确性真值
 

@@ -4067,6 +4067,74 @@
             }
           ],
           "program_counter_formula": "old_pc + 3 + selected_offset"
+        },
+        "opcode_9_asset_domain": {
+          "occurrences": 81,
+          "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
+          "parameter_stream_sha256": "8be8acd438f85e423576e905d78fbbb4f4c2aba1daf78ff85330b14a217c018c",
+          "first": [
+            10,
+            101,
+            1,
+            0
+          ],
+          "last": [
+            999,
+            5,
+            6,
+            0
+          ],
+          "true_offset_counts": {
+            "0": 4,
+            "1": 14,
+            "6": 49,
+            "7": 1,
+            "11": 10,
+            "16": 2,
+            "20": 1
+          },
+          "false_offset_counts": {
+            "0": 77,
+            "42": 2,
+            "47": 2
+          },
+          "offset_pair_counts": {
+            "0,42": 2,
+            "0,47": 2,
+            "1,0": 14,
+            "6,0": 49,
+            "7,0": 1,
+            "11,0": 10,
+            "16,0": 2,
+            "20,0": 1
+          },
+          "exceptional_false_offset_calls": [
+            {
+              "script": 304,
+              "program_counter": 44,
+              "true_offset": 0,
+              "false_offset": 47
+            },
+            {
+              "script": 306,
+              "program_counter": 5,
+              "true_offset": 0,
+              "false_offset": 47
+            },
+            {
+              "script": 307,
+              "program_counter": 80,
+              "true_offset": 0,
+              "false_offset": 42
+            },
+            {
+              "script": 308,
+              "program_counter": 61,
+              "true_offset": 0,
+              "false_offset": 42
+            }
+          ],
+          "program_counter_formula": "old_pc + 3 + selected_offset"
         }
       },
       "opcode_24_load_menu": {
