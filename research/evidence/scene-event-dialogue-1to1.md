@@ -295,7 +295,15 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 集成测试固定验证 `世界 → 场景 70 标题 → 场景四项菜单 → 场景 → 右侧出口 → 世界`，并检查 `in_sub_map` 清零和 scene request 回收。
 
-## 8. 当前验证
+## 8. 死亡菜单
+
+`sub_2E659` 的两个物理caller为 `sub_2C319:0x2C5D8` opcode15和 `sub_30480:0x30500` 五轮试炼非胜利出口；前者转发指令参数，后者固定传83，callee不读取该参数。旧证据“当前KDEF没有opcode15”错误：当前1,018条KDEF实际有114次，参数全部为83，完整 `(script,PC,arg)` 流SHA256为 `1dfc4c31f6ed8cedaa09a0f99ad21dc6f8a3e7fc091ba356b41c2fb5ec289d9d`。
+
+完整1264字节物理范围的loaded/raw SHA256分别为 `e9350b3775deca2ee7ec049f92d20f411f1f1a1a6c3b33f493bcaaec85ca9826`、`832743bec15c92ed76da1680bce82e80485330dba141da442ba5634fb5b936d5`；79个差异字节全部由79个32位绝对地址 `+0x20000` 重定位解释。函数读取64000字节 `DEAD.BIG`，在当前palette上绘role0姓名、本地日期、三行固定文字、四项载入/退出菜单；主panel和确认panel按原RGB6→RGB4暗化与圆角边线绘制。Down/Up循环选择，Enter/Space/keypad Enter激活；前三项写0-based读档槽、清屏并present，第四项只有uppercase `Y` shutdown并退出，lowercase `y`及任意其他键均重建底图后回到selection3。
+
+现代 `DeathMenuState`、scene step/result和runtime pending I/O替代DOS全局与直接进程退出，合法域像素和状态顺序一致，因此归类`platform_adapted`。固定日期下selection0..3帧为 `0x9da84526f6317a4a`、`0x5f72cf3141ce8b24`、`0xb2db9b6f5ea184de`、`0x11f91fd0e5becceb`，确认帧 `0x4ba394e637cc051e`，黑帧 `0xdd14fcc6528cab25`；真实script190覆盖opcode15 caller，script936覆盖试炼caller，载入失败恢复原selection和帧。
+
+## 9. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -308,6 +316,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景 5 的 300 tick RNG、粒子位置和半透明天气像素；
 - 真实脚本36的背包与十四天书事件解锁、931的条件休息、581的满武功槽与入队清理、950的离队清理；opcode10固定原Big5物品提示、逐物品present后清槽且保持全局item.user，opcode12固定伤势32恢复、中毒/伤势33/队伍洞后不恢复及满六人分支，opcode21固定队伍压缩、三件item.user解绑及角色字段清理；
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
+- 死亡菜单完整DEAD/font/palette/name/text/panel像素、114次opcode15位置流、script190解释器caller、script936试炼caller、方向wrap、三类确认键、大小写Y、0-based读档槽及载入失败回收；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

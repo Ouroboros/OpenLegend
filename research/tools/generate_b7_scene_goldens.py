@@ -3498,6 +3498,7 @@ def death_menu_sequence(
     root: Path,
     palette: list[tuple[int, int, int]],
     ranger: bytes,
+    scripts: list[bytes],
 ) -> dict[str, object]:
     image = (root / "DEAD.BIG").read_bytes()
     assert len(image) == 64000
@@ -3515,6 +3516,22 @@ def death_menu_sequence(
     another = bytes.fromhex("a4 53 a6 68 a4 46 a4 40 b5 a7 a1 44 a1 44 a1 44 00")
     exit_prompt = bytes.fromhex(
         "af 75 ad 6e c2 f7 b6 7d b9 43 c0 b8 a1 5d a2 e7 a1 fe a2 dc a1 5e 00"
+    )
+    opcode_15_occurrences: list[tuple[int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 15:
+                opcode_15_occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_15_occurrences) == 114
+    assert all(row[2] == 83 for row in opcode_15_occurrences)
+    opcode_15_stream = b"".join(
+        struct.pack("<IIh", *row) for row in opcode_15_occurrences
     )
 
     def blend(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
@@ -3581,13 +3598,68 @@ def death_menu_sequence(
             draw_legacy_text(pixels, 75, 182, exit_prompt, ascii_font, big5_font, 0x05, 0x07)
         return bytes(pixels)
 
+    name_field = ranger[836 + 8:836 + 8 + 10]
     return {
+        "entry_range": "0x2E659..0x2EB49",
+        "size_bytes": 1264,
+        "ida_instruction_count": 330,
+        "unreachable_post_exit_bytes": "83c404e90efeffff",
+        "physical_callers": [
+            "sub_2C319:0x2C5D8 opcode15",
+            "sub_30480:0x30500 tournament_battle_defeat",
+        ],
+        "opcode_15_occurrences": len(opcode_15_occurrences),
+        "opcode_15_stream_encoding": "little_endian_<IIh:script,pc,ignored_argument>",
+        "opcode_15_stream_sha256": sha256(opcode_15_stream),
+        "opcode_15_first": list(opcode_15_occurrences[0]),
+        "opcode_15_last": list(opcode_15_occurrences[-1]),
+        "opcode_15_argument_values": [83],
+        "tournament_caller_argument_ignored": 83,
+        "image_bytes": len(image),
         "image_sha256": sha256(image),
+        "palette_sha256": sha256((root / "MMAP.COL").read_bytes()),
+        "ascii_font_sha256": sha256(ascii_font),
+        "big5_font_sha256": sha256(big5_font),
+        "protagonist_name_field_hex": name_field.hex(),
+        "color_encoding": "[right_shadow_palette_index,foreground_palette_index]",
+        "protagonist_name_position": [97, 46],
+        "protagonist_name_colors": [110, 108],
         "fixed_date": [1996, 1, 1],
+        "date_format": "  %4d/%2d/%2d  ",
+        "date_position": [190, 8],
+        "static_captions_hex": [location.hex(), missing.hex(), another.hex()],
+        "static_caption_positions": [[190, 28], [190, 48], [190, 68]],
+        "static_caption_colors": [23, 21],
+        "menu_panel": [205, 90, 101, 90],
+        "menu_item_positions": [[215, 95 + index * 20] for index in range(4)],
+        "menu_unselected_colors": [33, 35],
+        "menu_selected_colors": [99, 102],
         "selected_frame_fnv1a64": [fnv1a64(render(index)) for index in range(4)],
+        "confirm_panel": [71, 180, 177, 20],
+        "confirm_text_hex": exit_prompt.hex(),
+        "confirm_text_position": [75, 182],
+        "confirm_text_colors": [5, 7],
         "confirm_frame_fnv1a64": fnv1a64(render(3, True)),
         "cleared_frame_fnv1a64": fnv1a64(bytes(64000)),
         "menu_items_hex": [item.hex() for item in menu_items],
+        "key_map": {
+            "down": 152,
+            "up": 158,
+            "activate": [13, 32, 150],
+            "quit_confirmation_yes": 89,
+            "all_other_confirmation_keys": "return_to_selection_3",
+        },
+        "selection_wrap": {"down_3": 0, "up_0": 3},
+        "load_slots": [0, 1, 2],
+        "load_request_globals": {
+            "word_D2954": 0,
+            "word_544E0": 0,
+            "word_D2950": "selected_zero_based_slot",
+        },
+        "load_outputs": ["clear", "present", "return_load_request"],
+        "quit_outputs": ["confirm_present", "wait_key", "shutdown_input_video", "exit_0"],
+        "rejected_quit_redraws_base_image": True,
+        "panel_blend": "palette_index_0_div8_plus_destination_div8_then_rgb4_lookup",
     }
 
 
@@ -3988,7 +4060,7 @@ def main() -> None:
                 "delay_300_ticks": 300 // 40 + 1,
                 "disabled_event_range": [24, 72],
                 "reward_item": 143,
-                "death_menu": death_menu_sequence(root, palette, ranger),
+                "death_menu": death_menu_sequence(root, palette, ranger, scripts),
             },
             "opcode_64_script_938": {
                 "script_id": 938,

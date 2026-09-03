@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=183/349`，`unique_any=139/284`，`unique_all=135/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=47` 死亡菜单；状态为等待`audit_order=46` 角色用毒能力写入工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=47` 收口后跳过已关闭的`audit_order=48`，进入同表 `audit_order=49` 场景平移动画
+已发布进度：`closure=184/349`，`unique_any=140/284`，`unique_all=135/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=49` 场景平移动画；状态为等待`audit_order=47` 死亡菜单工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=49` 收口后进入同表 `audit_order=50` 事件图片动画
 
 ## 0. 唯一正确性真值
 

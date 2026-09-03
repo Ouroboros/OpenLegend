@@ -3273,6 +3273,12 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     OL_CHECK(death_hash() == selected_hashes[3]);
     defeat = defeat_session.resume(SceneResponse::acknowledge, 0x20);
     OL_CHECK(defeat.death_confirm);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, static_cast<int>('y'));
+    OL_CHECK(defeat.kind == SceneStepKind::death_menu);
+    OL_CHECK(defeat.menu_index == 3);
+    OL_CHECK(!defeat.death_confirm);
+    defeat = defeat_session.resume(SceneResponse::acknowledge, 0x96);
+    OL_CHECK(defeat.death_confirm);
     defeat = defeat_session.resume(SceneResponse::acknowledge, static_cast<int>('Y'));
     OL_CHECK(defeat.kind == SceneStepKind::quit);
     OL_CHECK(defeat_random.state() == 0x41C67EA6U);
@@ -3317,6 +3323,21 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     OL_CHECK(load_result.menu_index == 2);
     OL_CHECK(load_session.render(cleared));
     OL_CHECK(fnv1a64(cleared.pixels()) == selected_hashes[2]);
+
+    auto opcode_15_result = load_session.begin_event(190, 0, 0, 0);
+    for (int step = 0; step < 8 && opcode_15_result.kind != SceneStepKind::battle; ++step) {
+        OL_CHECK(
+            opcode_15_result.kind == SceneStepKind::dialogue ||
+            opcode_15_result.kind == SceneStepKind::present);
+        opcode_15_result = load_session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(opcode_15_result.kind == SceneStepKind::battle);
+    OL_CHECK(opcode_15_result.battle_id == 28);
+    opcode_15_result = load_session.resume(SceneResponse::battle_defeat);
+    OL_CHECK(opcode_15_result.kind == SceneStepKind::fade_from_black);
+    opcode_15_result = load_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(opcode_15_result.kind == SceneStepKind::death_menu);
+    OL_CHECK(opcode_15_result.menu_index == 0);
 }
 
 void check_event_finale_party_cleanup(const std::filesystem::path& root) {
