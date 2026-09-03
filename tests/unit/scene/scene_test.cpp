@@ -3075,6 +3075,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     auto result = session.begin_event(936, 72, 33, 26);
     std::size_t battle_index = 0U;
     int interround_holds = 0;
+    int fade_from_black_steps = 0;
     SceneStepKind previous_kind = SceneStepKind::stay;
     std::int16_t last_talk_id = -1;
     bool expect_reward_restore = false;
@@ -3104,6 +3105,9 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
         } else if (result.kind == SceneStepKind::notice ||
                    result.kind == SceneStepKind::present ||
                    result.kind == SceneStepKind::fade_from_black) {
+            if (result.kind == SceneStepKind::fade_from_black) {
+                ++fade_from_black_steps;
+            }
             if (result.kind == SceneStepKind::notice) {
                 constexpr std::array<std::uint8_t, 9> expected_reward_notice{
                     0xB1U, 0x6FU, 0xA8U, 0xECU, 0xAFU, 0xABU, 0xA7U, 0xFAU, 0x00U};
@@ -3123,6 +3127,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::stay);
     OL_CHECK(battle_index == expected_battles.size());
     OL_CHECK(interround_holds == 4);
+    OL_CHECK(fade_from_black_steps == 20);
     OL_CHECK(random.state() == 0xE95678E2U);
     OL_CHECK(role.word(openlegend::model::role_word::hurt) == 0);
     OL_CHECK(role.word(openlegend::model::role_word::hp) == 100);

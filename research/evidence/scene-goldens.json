@@ -1391,6 +1391,48 @@
       ],
       "program_counter_formula": "old_pc + 1"
     },
+    "opcode_13_fade_from_black": {
+      "occurrences": 346,
+      "stream_encoding": "little_endian_<II:script_pc>",
+      "position_stream_sha256": "719e01b8842f5d467f82cd3160e1cfcdbbf35e7ba602ca2148f6aa6920dd935e",
+      "first": [
+        2,
+        20
+      ],
+      "last": [
+        1016,
+        128
+      ],
+      "machine_callers": [
+        {
+          "address": "0x2C5BB",
+          "owner": "sub_2C319",
+          "role": "opcode_13"
+        },
+        {
+          "address": "0x30381",
+          "owner": "sub_302E0",
+          "role": "interround"
+        },
+        {
+          "address": "0x3044A",
+          "owner": "sub_302E0",
+          "role": "finale"
+        },
+        {
+          "address": "0x304DC",
+          "owner": "sub_30480",
+          "role": "battle_victory"
+        }
+      ],
+      "tournament_success_fades": {
+        "battle_victory": 15,
+        "interround": 4,
+        "finale": 1,
+        "total": 20
+      },
+      "program_counter_formula": "old_pc + 1"
+    },
     "opcode_21_leave_role": {
       "occurrences": 35,
       "stream_encoding": "little_endian_<IIh:script_pc_role>",
