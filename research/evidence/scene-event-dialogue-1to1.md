@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`522f0739c8061ac301083825d2398948cf4996e0be6bfde5a85f5f59ef06928f`
+  - SHA256：`f15a0f5a0eac3013fd4e89434c719bfddae13f0c95f2ff775b392f97977a9580`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -128,6 +128,16 @@ synthetic KDEF 分别固定 opcode3 旧格清除/新格写入、opcode26 当前�
 
 独立oracle逐帧验证全部115个HDGRP记录：IDX末偏移恰覆盖249,276字节GRP，共7,568个run、226,957个非透明像素；七类caller锚点上逐个绘制所有记录后的串联SHA256为 `92ec7ccffd3068c0c04831d6eaebec18e917892ddfcd27cdc2e5792150d2b0db`。RANGER的320个角色head ID范围0..109且全部有效；3,561次opcode1中实际绘制style的head ID也无越界。现代一次性缓存archive并拒绝损坏资源/非法ID，替代机器共享IDX类型缓存及越界访问，合法静态资产输出一致。
 
+### 4.6 显式裸场景呈现
+
+`sub_2D653`固定先调用`sub_29D2D`重绘scene，再经`sub_3D6D1` tail-jump到`sub_20039`，从全局buffer向VGA `0xA0000`复制`0x3E80`个dword，恰覆盖64,000个index8像素字节，最后返回0。完整xref为48个callsite、19个owner，不限于KDEF opcode0；独立oracle与IDA报告逐地址相等，并分为10处模态关闭恢复、22处延迟动画帧、1处脚本行走站立终帧、12处武林大会边界和3处商店反馈边界。
+
+首轮汇编→C++ REVIEW修正三类差异：物品/能力/品德notice关闭后补裸场景present；opcode30清零行走offset并恢复方向基础图后补无额外延迟的站立present；商店成功/失败反馈改为`present→dialogue→present`。这同时保证下一条dialogue首屏冻结的是裸场景或站立帧，而不是旧notice、shop或最后行走帧。视口平移、图片/雕像/结尾动画和武林大会既有present数量与延迟未发现产品差异。
+
+真实script343最后五个wait3行走帧后新增位置`(28,19)`、方向0、图号5002、wait1站立帧，FNV-1a64为`0x83bc0f8904252115`；正常与阻挡路径均在该帧之后才进入talk1248。scripts36/149/581/825、world菜单物品事件、武林大会奖励及商店成功/失败测试固定全部恢复顺序；opcode53声望查询因机器无此恢复调用，仍直接结束。
+
+现代以同步`SceneStepKind::present`运输，`LegacyGameRuntime`重绘64,000字节indexed framebuffer，SDL完成RGBA转换、纹理上传及`SDL_RenderPresent`后才恢复事件；不写VGA地址及render/upload错误返回属于平台适配，合法像素与阻塞顺序一致。
+
 ## 5. TALK 分页
 
 `sub_2CC21` 在固定 `218×57` 对话框内调用文本例程并在每页后阻塞等待输入。当前资产使用 ASCII `'*'` 作为显式换行；Big5 trail byte 合法范围不包含 `0x2A`，因此可无歧义识别。
@@ -187,6 +197,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景 5 的 300 tick RNG、粒子位置和半透明天气像素；
 - 真实脚本 36 的背包与十四天书事件解锁、931 的条件休息、581 的满武功槽与入队清理、950 的离队清理；
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
+- 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
 
 同一14项包含上述场景同步链、全部既有模块测试和 SDL dummy smoke。

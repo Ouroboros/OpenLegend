@@ -325,6 +325,163 @@
       "invalid_opcode": "machine_and_modern_keep_pc_unchanged",
       "opcode_62": "sub_30B81_does_not_return_via_sub_30C3D"
     },
+    "explicit_scene_present": {
+      "start": "0x2D653",
+      "end": "0x2D678",
+      "size_bytes": 37,
+      "instruction_count": 9,
+      "return_value": 0,
+      "call_count": 48,
+      "owner_count": 19,
+      "owners": {
+        "0x2D678": [
+          "0x2D790"
+        ],
+        "0x2DE7D": [
+          "0x2DEF6"
+        ],
+        "0x2DF0E": [
+          "0x2E025"
+        ],
+        "0x2ED8D": [
+          "0x2EE43",
+          "0x2EE89",
+          "0x2EED2",
+          "0x2EF18",
+          "0x2EF61",
+          "0x2EFA7",
+          "0x2EFF0",
+          "0x2F036"
+        ],
+        "0x2F053": [
+          "0x2F09D",
+          "0x2F0DD"
+        ],
+        "0x2F171": [
+          "0x2F205",
+          "0x2F229",
+          "0x2F250",
+          "0x2F274",
+          "0x2F29B",
+          "0x2F2BF",
+          "0x2F2E3",
+          "0x2F307",
+          "0x2F342"
+        ],
+        "0x2F3F0": [
+          "0x2F51C"
+        ],
+        "0x2F526": [
+          "0x2F626"
+        ],
+        "0x2F9F2": [
+          "0x2FA82"
+        ],
+        "0x2FAB7": [
+          "0x2FBB7"
+        ],
+        "0x2FBC0": [
+          "0x2FC94"
+        ],
+        "0x2FC9D": [
+          "0x2FD9D"
+        ],
+        "0x2FDA6": [
+          "0x2FEB3"
+        ],
+        "0x2FFB3": [
+          "0x3002D"
+        ],
+        "0x301D1": [
+          "0x301F4",
+          "0x302B2"
+        ],
+        "0x302E0": [
+          "0x30365",
+          "0x30397",
+          "0x303B7",
+          "0x303CD",
+          "0x303E3",
+          "0x303F9",
+          "0x3040F",
+          "0x30445",
+          "0x30460"
+        ],
+        "0x30480": [
+          "0x304BB",
+          "0x304D7",
+          "0x304F2"
+        ],
+        "0x30B81": [
+          "0x30C08"
+        ],
+        "0x312A6": [
+          "0x3177A",
+          "0x3178A",
+          "0x317A0"
+        ]
+      },
+      "categories": {
+        "modal_restore_after_wait": [
+          "0x2D790",
+          "0x2DEF6",
+          "0x2E025",
+          "0x2F51C",
+          "0x2F626",
+          "0x2FBB7",
+          "0x2FC94",
+          "0x2FD9D",
+          "0x2FEB3",
+          "0x3002D"
+        ],
+        "animation_delayed_frames": [
+          "0x2EE43",
+          "0x2EE89",
+          "0x2EED2",
+          "0x2EF18",
+          "0x2EF61",
+          "0x2EFA7",
+          "0x2EFF0",
+          "0x2F036",
+          "0x2F09D",
+          "0x2F0DD",
+          "0x2F205",
+          "0x2F229",
+          "0x2F250",
+          "0x2F274",
+          "0x2F29B",
+          "0x2F2BF",
+          "0x2F2E3",
+          "0x2F307",
+          "0x2FA82",
+          "0x301F4",
+          "0x302B2",
+          "0x30C08"
+        ],
+        "scripted_walk_final_standing_frame": [
+          "0x2F342"
+        ],
+        "tournament_boundaries": [
+          "0x30365",
+          "0x30397",
+          "0x303B7",
+          "0x303CD",
+          "0x303E3",
+          "0x303F9",
+          "0x3040F",
+          "0x30445",
+          "0x30460",
+          "0x304BB",
+          "0x304D7",
+          "0x304F2"
+        ],
+        "shop_feedback_boundaries": [
+          "0x3177A",
+          "0x3178A",
+          "0x317A0"
+        ]
+      }
+    },
     "opcode_25_script_30": {
       "arguments": [
         41,
@@ -447,7 +604,15 @@
           "wait_ticks": 3,
           "frame_fnv1a64": "0xf2a1e35490a4f647"
         }
-      ]
+      ],
+      "final_standing_present": {
+        "x": 28,
+        "y": 19,
+        "direction": 0,
+        "player_picture": 5002,
+        "wait_ticks": 1,
+        "frame_fnv1a64": "0x83bc0f8904252115"
+      }
     },
     "opcode_44_script_534": {
       "scene_id": 53,
@@ -1385,6 +1550,12 @@
       "currency_item": 174,
       "success_talk": 2976,
       "failure_talk": 2975,
+      "purchase_feedback_outputs": [
+        "present",
+        "dialogue",
+        "present",
+        "stay"
+      ],
       "close_event_3": 939
     },
     "opcode_65_script_939": {
@@ -2110,6 +2281,7 @@
         "positive_script_caller_outputs": [
           "event_present",
           "notice_style_52",
+          "notice_restore_present",
           "scene_tail_present",
           "stay"
         ],
@@ -2200,7 +2372,9 @@
         ],
         "event_script_825": [
           "present",
-          "notice_style_52"
+          "notice_style_52",
+          "notice_restore_present",
+          "stay"
         ]
       },
       "item_menu_call_chain": {
@@ -2272,6 +2446,7 @@
             "restore_scene_present",
             "item_event_present",
             "notice_style_52",
+            "notice_restore_present",
             "open_ui_main_scene"
           ]
         },
@@ -2289,6 +2464,7 @@
             "restore_world_present",
             "item_event_present_over_world_buffer",
             "notice_style_52",
+            "notice_restore_present",
             "open_ui_main_world"
           ],
           "requires_retained_scene_state": true
@@ -2312,7 +2488,9 @@
         ],
         "event_script_825": [
           "present",
-          "notice_style_52"
+          "notice_style_52",
+          "notice_restore_present",
+          "stay"
         ],
         "function_order_with_trigger": [
           "probe_current_event",
@@ -3452,7 +3630,11 @@
           5,
           7
         ],
-        "frame_fnv1a64": "0x1cc47112086c10e7"
+        "frame_fnv1a64": "0x1cc47112086c10e7",
+        "post_ack_outputs": [
+          "present",
+          "stay"
+        ]
       },
       "opcode_53_script_828": {
         "value": 123,
@@ -3471,7 +3653,10 @@
           5,
           7
         ],
-        "frame_fnv1a64": "0x5678c57a93ec10c4"
+        "frame_fnv1a64": "0x5678c57a93ec10c4",
+        "post_ack_outputs": [
+          "stay"
+        ]
       },
       "scene_70_title": {
         "text_hex": "a544a8a4aabaae6100",

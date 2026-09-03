@@ -562,6 +562,65 @@ def scripted_walk_trace(
     return result
 
 
+def explicit_scene_present_vectors() -> dict[str, object]:
+    owners = {
+        "0x2D678": [0x2D790],
+        "0x2DE7D": [0x2DEF6],
+        "0x2DF0E": [0x2E025],
+        "0x2ED8D": [0x2EE43, 0x2EE89, 0x2EED2, 0x2EF18, 0x2EF61, 0x2EFA7, 0x2EFF0, 0x2F036],
+        "0x2F053": [0x2F09D, 0x2F0DD],
+        "0x2F171": [0x2F205, 0x2F229, 0x2F250, 0x2F274, 0x2F29B, 0x2F2BF, 0x2F2E3, 0x2F307, 0x2F342],
+        "0x2F3F0": [0x2F51C],
+        "0x2F526": [0x2F626],
+        "0x2F9F2": [0x2FA82],
+        "0x2FAB7": [0x2FBB7],
+        "0x2FBC0": [0x2FC94],
+        "0x2FC9D": [0x2FD9D],
+        "0x2FDA6": [0x2FEB3],
+        "0x2FFB3": [0x3002D],
+        "0x301D1": [0x301F4, 0x302B2],
+        "0x302E0": [0x30365, 0x30397, 0x303B7, 0x303CD, 0x303E3, 0x303F9, 0x3040F, 0x30445, 0x30460],
+        "0x30480": [0x304BB, 0x304D7, 0x304F2],
+        "0x30B81": [0x30C08],
+        "0x312A6": [0x3177A, 0x3178A, 0x317A0],
+    }
+    categories = {
+        "modal_restore_after_wait": [
+            0x2D790, 0x2DEF6, 0x2E025, 0x2F51C, 0x2F626,
+            0x2FBB7, 0x2FC94, 0x2FD9D, 0x2FEB3, 0x3002D,
+        ],
+        "animation_delayed_frames": [
+            0x2EE43, 0x2EE89, 0x2EED2, 0x2EF18, 0x2EF61, 0x2EFA7, 0x2EFF0, 0x2F036,
+            0x2F09D, 0x2F0DD,
+            0x2F205, 0x2F229, 0x2F250, 0x2F274, 0x2F29B, 0x2F2BF, 0x2F2E3, 0x2F307,
+            0x2FA82, 0x301F4, 0x302B2, 0x30C08,
+        ],
+        "scripted_walk_final_standing_frame": [0x2F342],
+        "tournament_boundaries": [
+            0x30365, 0x30397, 0x303B7, 0x303CD, 0x303E3, 0x303F9,
+            0x3040F, 0x30445, 0x30460, 0x304BB, 0x304D7, 0x304F2,
+        ],
+        "shop_feedback_boundaries": [0x3177A, 0x3178A, 0x317A0],
+    }
+    calls = [address for addresses in owners.values() for address in addresses]
+    categorized = [address for addresses in categories.values() for address in addresses]
+    assert len(calls) == len(set(calls)) == 48
+    assert sorted(calls) == sorted(categorized)
+    return {
+        "start": "0x2D653",
+        "end": "0x2D678",
+        "size_bytes": 37,
+        "instruction_count": 9,
+        "return_value": 0,
+        "call_count": len(calls),
+        "owner_count": len(owners),
+        "owners": {owner: [f"0x{address:X}" for address in addresses]
+                   for owner, addresses in owners.items()},
+        "categories": {name: [f"0x{address:X}" for address in addresses]
+                       for name, addresses in categories.items()},
+    }
+
+
 def movement_trace(
     scene_words: tuple[int, ...], event_words: tuple[int, ...], x: int, y: int
 ) -> list[dict[str, object]]:
@@ -1401,6 +1460,7 @@ def scene_animation_vectors(
             "positive_script_caller_outputs": [
                 "event_present",
                 "notice_style_52",
+                "notice_restore_present",
                 "scene_tail_present",
                 "stay",
             ],
@@ -1431,7 +1491,12 @@ def scene_animation_vectors(
         "item_event_outputs": {
             "no_event": ["stay"],
             "event_script_0": ["present", "stay"],
-            "event_script_825": ["present", "notice_style_52"],
+            "event_script_825": [
+                "present",
+                "notice_style_52",
+                "notice_restore_present",
+                "stay",
+            ],
         },
         "item_menu_call_chain": {
             "selected_value": "inventory_item_id",
@@ -1460,6 +1525,7 @@ def scene_animation_vectors(
                     "restore_scene_present",
                     "item_event_present",
                     "notice_style_52",
+                    "notice_restore_present",
                     "open_ui_main_scene",
                 ],
             },
@@ -1474,6 +1540,7 @@ def scene_animation_vectors(
                     "restore_world_present",
                     "item_event_present_over_world_buffer",
                     "notice_style_52",
+                    "notice_restore_present",
                     "open_ui_main_world",
                 ],
                 "requires_retained_scene_state": True,
@@ -1485,7 +1552,12 @@ def scene_animation_vectors(
             "event_script_minus_1": ["fallback"],
             "event_script_minus_2": ["present", "stay"],
             "event_script_0": ["present", "stay"],
-            "event_script_825": ["present", "notice_style_52"],
+            "event_script_825": [
+                "present",
+                "notice_style_52",
+                "notice_restore_present",
+                "stay",
+            ],
             "function_order_with_trigger": [
                 "probe_current_event",
                 "probe_event_3",
@@ -2072,6 +2144,7 @@ def status_notice_vectors(
             "text_position": [x + 10, 45],
             "colors": [5, 7],
             "frame_fnv1a64": fnv1a64(pixels),
+            "post_ack_outputs": ["present", "stay"] if opcode == 52 else ["stay"],
         }
 
     title_lengths = [
@@ -2429,6 +2502,17 @@ def main() -> None:
     opcode_30_script_343 = scripted_walk_trace(
         walk_map, walk_events, walk_sprites, 28, 24, script_343[31:35]
     )
+    walk_final = opcode_30_script_343[-1]
+    walk_final_direction = int(walk_final["direction"])
+    walk_final_frame = render_scene(
+        walk_map,
+        walk_events,
+        walk_sprites,
+        int(walk_final["x"]),
+        int(walk_final["y"]),
+        walk_final_direction,
+        player_picture=FRAME_BASE[walk_final_direction],
+    )
 
     script_534 = words(scripts[534])
     assert script_534[120:127] == (44, 1, 6486, 6520, 2, 6450, 6484)
@@ -2544,6 +2628,7 @@ def main() -> None:
         },
         "kdef": {
             **coverage,
+            "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),
                 "frames": opcode_25_script_30,
@@ -2559,6 +2644,14 @@ def main() -> None:
                 "scene_id": walk_scene_id,
                 "arguments": list(script_343[31:35]),
                 "frames": opcode_30_script_343,
+                "final_standing_present": {
+                    "x": int(walk_final["x"]),
+                    "y": int(walk_final["y"]),
+                    "direction": walk_final_direction,
+                    "player_picture": FRAME_BASE[walk_final_direction],
+                    "wait_ticks": 1,
+                    "frame_fnv1a64": fnv1a64(walk_final_frame),
+                },
             },
             "opcode_44_script_534": {
                 "scene_id": animation_scene_id,
@@ -2602,6 +2695,12 @@ def main() -> None:
                 "currency_item": 174,
                 "success_talk": 2976,
                 "failure_talk": 2975,
+                "purchase_feedback_outputs": [
+                    "present",
+                    "dialogue",
+                    "present",
+                    "stay",
+                ],
                 "close_event_3": 939,
             },
             "opcode_65_script_939": {

@@ -1543,6 +1543,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     advance_rendered_frames(new_game, 1U);
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
     new_game.handle_key(0x0DU, false, false);
+    advance_rendered_frames(new_game, 1U);
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);

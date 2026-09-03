@@ -968,8 +968,11 @@ void check_scene_movement_idle_state(const std::filesystem::path& root) {
     OL_CHECK(counter.scene_y() == 9);
     OL_CHECK(counter.direction() == SceneDirection::up);
     OL_CHECK(counter.player_frame() == 5004);
-    OL_CHECK(counter.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    const auto standing = counter.resume(SceneResponse::acknowledge);
+    OL_CHECK(standing.kind == SceneStepKind::present);
+    OL_CHECK(standing.wait_ticks == 1U);
     OL_CHECK(counter.player_frame() == 5002);
+    OL_CHECK(counter.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
     OL_CHECK(counter_random.state() == 1U);
     idle_once(counter);
     OL_CHECK(counter_random.state() == 0x41C67EA6U);
@@ -1068,6 +1071,7 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(result.style == 52);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 
     auto empty_snapshot = load_baseline(root);
@@ -1132,6 +1136,8 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
     OL_CHECK(item_session.use_item(123).kind == SceneStepKind::present);
     const auto item_notice = item_session.resume(SceneResponse::acknowledge);
     OL_CHECK(item_notice.kind == SceneStepKind::notice && item_notice.style == 52);
+    OL_CHECK(item_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(item_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 
     auto menu_item_snapshot = load_baseline(root);
     OL_CHECK(menu_item_snapshot.set_scene_value(
@@ -1150,6 +1156,8 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
              SceneStepKind::present);
     const auto menu_item_notice = menu_item_session.resume(SceneResponse::acknowledge);
     OL_CHECK(menu_item_notice.kind == SceneStepKind::notice && menu_item_notice.style == 52);
+    OL_CHECK(menu_item_session.resume(SceneResponse::acknowledge).kind ==
+             SceneStepKind::present);
     OL_CHECK(menu_item_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::open_ui);
     OL_CHECK(menu_item_session.resume(SceneResponse::acknowledge).kind ==
@@ -1282,6 +1290,8 @@ void check_scene_item_and_auto_event_present(const std::filesystem::path& root) 
              SceneStepKind::present);
     const auto auto_notice = active_auto.resume(SceneResponse::acknowledge);
     OL_CHECK(auto_notice.kind == SceneStepKind::notice && auto_notice.style == 52);
+    OL_CHECK(active_auto.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(active_auto.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 }
 
 void check_scene_loop_transitions(const std::filesystem::path& root) {
@@ -1324,6 +1334,7 @@ void check_scene_loop_transitions(const std::filesystem::path& root) {
     OL_CHECK(exit_session.player_frame() == 5016);
     OL_CHECK(exit_session.event_item_id() == 123);
     OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::notice);
+    OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
     OL_CHECK(exit_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::fade_to_black);
     OL_CHECK(exit_snapshot.ranger.header.word(openlegend::model::header_word::in_sub_map) == 1);
@@ -1786,6 +1797,13 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
         OL_CHECK(actual_hash == expected_hashes[index]);
         result = session.resume(SceneResponse::acknowledge);
     }
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(result.wait_ticks == 1U);
+    OL_CHECK(session.player_frame() == 5002);
+    openlegend::render::IndexedFramebuffer standing_framebuffer;
+    OL_CHECK(session.render_map(standing_framebuffer));
+    OL_CHECK(fnv1a64(standing_framebuffer.pixels()) == 0x83BC0F8904252115ULL);
+    result = session.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 1248);
     OL_CHECK(session.player_frame() == 5002);
@@ -1820,6 +1838,10 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
         OL_CHECK(blocked.player_frame() == frame);
         blocked_result = blocked.resume(SceneResponse::acknowledge);
     }
+    OL_CHECK(blocked_result.kind == SceneStepKind::present);
+    OL_CHECK(blocked_result.wait_ticks == 1U);
+    OL_CHECK(blocked.player_frame() == 5002);
+    blocked_result = blocked.resume(SceneResponse::acknowledge);
     OL_CHECK(blocked_result.kind == SceneStepKind::dialogue);
     OL_CHECK(blocked_result.talk_id == 1248);
     OL_CHECK(blocked.scene_y() == 23);
@@ -2333,6 +2355,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     auto purchase = open_shop(purchase_session);
     OL_CHECK(purchase.kind == SceneStepKind::shop);
     purchase = purchase_session.resume(SceneResponse::yes, 0);
+    OL_CHECK(purchase.kind == SceneStepKind::present);
+    purchase = purchase_session.resume(SceneResponse::acknowledge);
     OL_CHECK(purchase.kind == SceneStepKind::dialogue);
     OL_CHECK(purchase.talk_id == 2976);
     OL_CHECK(purchase_snapshot.event_value(
@@ -2340,6 +2364,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     for (int step = 0; step < 16 && purchase.kind == SceneStepKind::dialogue; ++step) {
         purchase = purchase_session.resume(SceneResponse::acknowledge);
     }
+    OL_CHECK(purchase.kind == SceneStepKind::present);
+    purchase = purchase_session.resume(SceneResponse::acknowledge);
     OL_CHECK(purchase.kind == SceneStepKind::stay);
     OL_CHECK(shop.word(openlegend::model::shop_word::total_begin) == 1);
     bool found_currency = false;
@@ -2375,12 +2401,17 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     auto split_purchase = open_shop(split_money_session);
     OL_CHECK(split_purchase.kind == SceneStepKind::shop);
     split_purchase = split_money_session.resume(SceneResponse::yes, 0);
+    OL_CHECK(split_purchase.kind == SceneStepKind::present);
+    split_purchase = split_money_session.resume(SceneResponse::acknowledge);
     OL_CHECK(split_purchase.kind == SceneStepKind::dialogue);
     OL_CHECK(split_purchase.talk_id == 2975);
     OL_CHECK(split_money_shop.word(openlegend::model::shop_word::total_begin) == 2);
     OL_CHECK(split_money_snapshot.ranger.header.inventory_count(0U) == 5);
     OL_CHECK(split_money_snapshot.ranger.header.inventory_count(1U) == 100);
     OL_CHECK(inventory_count(split_money_snapshot.ranger, 42) == item_count_before);
+    split_purchase = split_money_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(split_purchase.kind == SceneStepKind::present);
+    OL_CHECK(split_money_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 
     const std::array<std::pair<std::int16_t, std::vector<std::int16_t>>, 6> hide_cases{
         std::pair<std::int16_t, std::vector<std::int16_t>>{0, {}},
@@ -2763,7 +2794,12 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     int interround_holds = 0;
     SceneStepKind previous_kind = SceneStepKind::stay;
     std::int16_t last_talk_id = -1;
+    bool expect_reward_restore = false;
     for (int step = 0; step < 4096 && result.kind != SceneStepKind::stay; ++step) {
+        if (expect_reward_restore) {
+            OL_CHECK(result.kind == SceneStepKind::present);
+        }
+        expect_reward_restore = result.kind == SceneStepKind::notice;
         if (result.kind == SceneStepKind::dialogue) {
             last_talk_id = result.talk_id;
             previous_kind = result.kind;
@@ -2791,6 +2827,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
             break;
         }
     }
+    OL_CHECK(!expect_reward_restore);
     OL_CHECK(result.kind == SceneStepKind::stay);
     OL_CHECK(battle_index == expected_battles.size());
     OL_CHECK(interround_holds == 4);
@@ -3326,8 +3363,13 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(finish_scene_title(join_session).kind ==
              openlegend::scene::SceneStepKind::stay);
     auto join_result = join_session.begin_event(581, 0, 44, 29);
+    bool expect_notice_restore = false;
     for (int step = 0; step < 128 && join_result.kind != openlegend::scene::SceneStepKind::stay;
          ++step) {
+        if (expect_notice_restore) {
+            OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::present);
+        }
+        expect_notice_restore = join_result.kind == openlegend::scene::SceneStepKind::notice;
         const auto resumable = join_result.kind == openlegend::scene::SceneStepKind::dialogue ||
                                join_result.kind == openlegend::scene::SceneStepKind::notice ||
                                join_result.kind == openlegend::scene::SceneStepKind::present ||
@@ -3339,6 +3381,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
         }
         join_result = join_session.resume(openlegend::scene::SceneResponse::acknowledge);
     }
+    OL_CHECK(!expect_notice_restore);
     OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::stay);
     OL_CHECK(join_snapshot.ranger.header.team_member(1U).value == 49);
     OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_mp) == 1200);
@@ -3416,6 +3459,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
         const auto notice = session.begin_event(149, 0, 44, 29);
         OL_CHECK(notice.kind == SceneStepKind::notice);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
         OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::morality) == after);
     }
@@ -3592,7 +3636,8 @@ void check_event_status_notices(const std::filesystem::path& root) {
                                   const std::int16_t value,
                                   const std::int16_t style,
                                   const std::span<const std::uint8_t> expected_text,
-                                  const std::uint64_t expected_hash) {
+                                  const std::uint64_t expected_hash,
+                                  const bool restores_scene) {
         auto snapshot = load_baseline(root);
         snapshot.ranger.roles[0].set_word(field, value);
         openlegend::random::LegacyRandom random{1U};
@@ -3606,14 +3651,19 @@ void check_event_status_notices(const std::filesystem::path& root) {
         openlegend::render::IndexedFramebuffer framebuffer;
         OL_CHECK(session.render(framebuffer));
         OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_hash);
-        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+        auto tail = session.resume(SceneResponse::acknowledge);
+        if (restores_scene) {
+            OL_CHECK(tail.kind == SceneStepKind::present);
+            tail = session.resume(SceneResponse::acknowledge);
+        }
+        OL_CHECK(tail.kind == SceneStepKind::stay);
     };
     check_notice(
         825, openlegend::model::role_word::morality, 7, 52, morality_text,
-        0x1CC47112086C10E7ULL);
+        0x1CC47112086C10E7ULL, true);
     check_notice(
         828, openlegend::model::role_word::fame, 123, 53, fame_text,
-        0x5678C57A93EC10C4ULL);
+        0x5678C57A93EC10C4ULL, false);
 }
 
 void check_event_map_replace_and_random_talk(const std::filesystem::path& root) {
@@ -3665,6 +3715,8 @@ void check_event_execution(const std::filesystem::path& root) {
     const auto item_result = session.begin_event(36, 0, 44, 29);
     OL_CHECK(item_result.kind == openlegend::scene::SceneStepKind::notice);
     OL_CHECK(inventory_count(snapshot.ranger, 173) == before + 1);
+    OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
+             openlegend::scene::SceneStepKind::present);
     OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
              openlegend::scene::SceneStepKind::stay);
 

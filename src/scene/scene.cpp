@@ -917,10 +917,13 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
                 shop.set_word(
                     model::shop_word::total_begin + slot,
                     static_cast<std::int16_t>(stock - 1));
+                queue_scene_present();
                 queue_dialogue(2976, 111, 0);
             } else {
+                queue_scene_present();
                 queue_dialogue(2975, 111, 0);
             }
+            queue_scene_present();
             has_feedback = true;
         }
         if (has_feedback) {
@@ -1013,6 +1016,7 @@ SceneStepResult SceneSession::run_event() {
             add_inventory(argument(1), argument(2));
             update_book_event_if_ready();
             queue_notice(ascii_message("item " + std::to_string(argument(1)) + " " + std::to_string(argument(2))));
+            queue_scene_present();
             return emit_queued();
         case 3: {
             std::array<std::int16_t, 13> arguments{};
@@ -1079,6 +1083,7 @@ SceneStepResult SceneSession::run_event() {
                     role.set_word(model::role_word::taking_item_begin + slot, -1);
                     role.set_word(model::role_word::taking_item_count_begin + slot, 0);
                     queue_notice(ascii_message("item " + std::to_string(item_id) + " " + std::to_string(count)));
+                    queue_scene_present();
                 }
                 clear_role_personal_items(argument(1));
             }
@@ -1260,6 +1265,7 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 4;
             if (argument(3) == 0) {
                 queue_notice(ascii_message("learn " + std::to_string(argument(2))));
+                queue_scene_present();
                 return emit_queued();
             }
             break;
@@ -1278,6 +1284,7 @@ SceneStepResult SceneSession::run_event() {
                 role.set_word(field, after);
                 if (after > before) {
                     queue_notice(ascii_message("role " + std::to_string(role_id) + " +" + std::to_string(after - before)));
+                    queue_scene_present();
                 }
             }
             program_counter_ += 3;
@@ -1304,6 +1311,7 @@ SceneStepResult SceneSession::run_event() {
                 if (gain > 0 && (opcode == 46 || party_contains(role_id))) {
                     queue_notice(ascii_message(
                         "role " + std::to_string(role_id) + " +" + std::to_string(gain)));
+                    queue_scene_present();
                 }
             }
             program_counter_ += 3;
@@ -1428,6 +1436,9 @@ SceneStepResult SceneSession::run_event() {
             const auto value = snapshot_.ranger.roles.empty() ? 0 : snapshot_.ranger.roles[0].word(field);
             program_counter_ += 1;
             queue_notice(status_notice_message(fame, value), opcode);
+            if (!fame) {
+                queue_scene_present();
+            }
             return emit_queued();
         }
         case 54:
@@ -2206,6 +2217,10 @@ void SceneSession::queue_notice(
     queued_outputs_.push_back(QueuedOutput{result, std::move(text)});
 }
 
+void SceneSession::queue_scene_present() {
+    queued_outputs_.push_back(QueuedOutput{current_result(SceneStepKind::present), {}});
+}
+
 SceneStepResult SceneSession::emit_queued() {
     if (queued_outputs_.empty()) {
         pending_ = current_result(SceneStepKind::stay);
@@ -2277,7 +2292,8 @@ std::optional<SceneStepResult> SceneSession::advance_scripted_walk_frame() {
         player_frame_override_.reset();
         commit_header();
         scripted_walk_state_.reset();
-        return std::nullopt;
+        pending_ = current_result(SceneStepKind::present);
+        return pending_;
     }
     pending_ = current_result(SceneStepKind::present);
     pending_.wait_ticks = 3U;
@@ -2997,6 +3013,7 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
         case TournamentTrialState::Phase::finale_finish:
             add_inventory(143, 1);
             queue_notice(ascii_message("item 143 1"));
+            queue_scene_present();
             tournament_trial_state_->phase = TournamentTrialState::Phase::reward_notice;
             return emit_queued();
         case TournamentTrialState::Phase::reward_notice:

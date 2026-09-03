@@ -396,6 +396,7 @@ private:
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
     void queue_notice(std::vector<std::uint8_t> text, std::int16_t style = 0);
+    void queue_scene_present();
     [[nodiscard]] SceneStepResult emit_queued();
     [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
     [[nodiscard]] std::optional<SceneStepResult> advance_picture_animation_frame();
