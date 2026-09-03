@@ -3386,6 +3386,24 @@
         "opcode_8_override_compares_current_music": false,
         "opcode_66_compares_current_music": false
       },
+      "opcode_8_exit_music_summary": {
+        "occurrences": 15,
+        "stream_encoding": "little_endian_<IIh:script_pc_music>",
+        "parameter_stream_sha256": "c95fb3ed14b8cc28ac093196b62e813315e12ce56fc9fe4a8c89e7453238261b",
+        "first": {
+          "script": 30,
+          "pc": 241,
+          "music": 3
+        },
+        "last": {
+          "script": 635,
+          "pc": 119,
+          "music": 3
+        },
+        "music_counts": {
+          "3": 15
+        }
+      },
       "opcode_8_exit_music_overrides": [
         {
           "script": 30,

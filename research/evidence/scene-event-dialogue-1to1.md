@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`7c1402a3222149de96630a1e5d39cba0e171fd3de368ea5b52f708f32c3b5062`
+  - SHA256：`f0d8c6cf8fd430e8612cd731b0b4470cc43fd188989bde716d040033bbbe50f4`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -99,6 +99,8 @@ synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清
 `sub_2DD45` opcode4已完成最终汇编→C++ REVIEW。入口为50字节、11条指令；loaded/raw SHA256分别为`9761e098dd4e85e0fac653e44db28a12dc85e5d991ff117d58c5959bd85eafd6`、`c224a06282aa4d8827a79d7eb8d16b8ac82f16101e9bc83a3e267e989dec8696`，3个差异字节全部是DOS重定位。唯一caller把expected item ID、真偏移、假偏移传入，固定执行`PC+4+返回偏移`。机器按最后确认的实际库存slot重读当前item ID，命中时写无人读取的`word_54B7A=1`并返回真偏移，失败仅返回假偏移；相邻地址逐字节xref排除了重叠dword读取。全资产167次opcode4均为PC0、真偏移1、假偏移0，完整参数流SHA256为`89690e50d4231de72f458f6e5c5f1aae8390024b7872323674258ce752ef3e96`；40条ALLDEF引用流SHA256为`8ecd2bae575f1720bdabf6b7e5656a9d6c57cca80180c9c55706eb6e3986207b`，且全部位于event_2物品使用脚本。现代在确认slot时保存item ID，当前合法域比较前没有库存变化；省略死写并安全拒绝非法索引，归类`platform_adapted`，synthetic命中/失败偏移通过，首轮完整复核零新增产品差异。
 
 `sub_2DD77` opcode5已完成最终汇编→C++ REVIEW。入口为140字节、36条指令；loaded/raw SHA256分别为`029ba93c5d02ac74cde1c9cd81457e1b7a2d5d03fa5dd57ab9bb1148b2982e50`、`224f32fa14859850cd390ce56d0e8e6a15b4e15a3c392cad7c08ddad40953cb9`，9个差异字节逐一对应9个`raw+0x20000`线性地址重定位operand。唯一caller有符号压入真假offset，固定执行`PC+3+返回偏移`。机器在当前底图依次绘制`(61,40,187,27)`面板和`(71,45)`问句，使用阴影5/前景7，present一次后阻塞读取任意非零翻译键；仅大写Y返回真offset，其余键不经过过滤循环而立即返回假offset，按键后不额外重绘或present。全资产43次opcode5参数流SHA256为`97dfd093e7b5e3a8338317bb4f8a63820643e5795e6ea2587d339507b5c64d82`；除常见`(N,0)`外，script307 PC10和script308 PC5使用`(0,52)`反向布局。现代原文、panel、frame `0x5d8fc752d48d9a98`、真假选择和PC公式均一致；宿主帧循环替代函数内同步阻塞，归类`platform_adapted`。synthetic普通/异常真假向量通过，首轮完整复核零新增产品差异；文字与present wrapper自身仍由各自后续closure独立终审。
+
+`sub_2DE39` opcode8已完成最终汇编→C++ REVIEW。入口为26字节、6条指令；loaded/raw SHA256分别为`5012c8521831e2ed1dfa774f797ca3a7cc4c1a2480d4b0d21db2d800fa7232d5`、`1e3041382c346c484567b5d4e21d23d2f3acd70478a1a044679e594c3395eabf`，唯一差异是`word_D2952` operand由raw `0xB2952`重定位为loaded `0xD2952`。唯一caller有符号压入music word、固定PC+2并忽略helper返回；helper只写覆盖字，不立即播放。`word_D2952`全部4条xref固定场景入口置-1、opcode覆盖、离场读取和强制播放后复位；覆盖分支不比较当前音乐，只有metadata离场音乐才比较`dword_C0B9C`并抑制相同曲目。后者全部5条xref又证明`sub_3E1B2`是唯一运行期写者。全资产15次opcode8均为music3，参数流SHA256为`c95fb3ed14b8cc28ac093196b62e813315e12ce56fc9fe4a8c89e7453238261b`。现代延迟到scene-exit发`force=true`命令，在下一帧world呈现前跳过current-music比较；script494与普通metadata出口回归固定即时无声、离场强制3和普通非强制10。调度归类`platform_adapted`，首轮完整复核零新增产品差异；delegated scene/audio主体仍按自身closure独立终审。
 
 ### 4.2 已复核的角色与物品副作用
 

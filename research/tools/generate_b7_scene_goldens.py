@@ -1401,7 +1401,15 @@ def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]
             if opcode == 8:
                 opcode_8.append({"script": script_id, "pc": pc, "music": code[pc + 1]})
             pc += WIDTHS[opcode]
+    opcode_8_stream = b"".join(
+        struct.pack("<IIh", row["script"], row["pc"], row["music"])
+        for row in opcode_8
+    )
+    opcode_8_music_counts = Counter(row["music"] for row in opcode_8)
     assert len(opcode_8) == 15
+    assert opcode_8[0] == {"script": 30, "pc": 241, "music": 3}
+    assert opcode_8[-1] == {"script": 635, "pc": 119, "music": 3}
+    assert opcode_8_music_counts == Counter({3: 15})
     return {
         "entry_outputs": [
             "fade_from_black",
@@ -1461,6 +1469,17 @@ def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]
             "metadata_compares_current_music": True,
             "opcode_8_override_compares_current_music": False,
             "opcode_66_compares_current_music": False,
+        },
+        "opcode_8_exit_music_summary": {
+            "occurrences": len(opcode_8),
+            "stream_encoding": "little_endian_<IIh:script_pc_music>",
+            "parameter_stream_sha256": sha256(opcode_8_stream),
+            "first": opcode_8[0],
+            "last": opcode_8[-1],
+            "music_counts": {
+                str(music): count
+                for music, count in sorted(opcode_8_music_counts.items())
+            },
         },
         "opcode_8_exit_music_overrides": opcode_8,
     }
