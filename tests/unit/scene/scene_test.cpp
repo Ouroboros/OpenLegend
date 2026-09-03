@@ -136,6 +136,11 @@ public:
                 for (const auto word : std::array<std::int16_t, 5>{6, 72, 0, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script == 18U) {
+                for (const auto word : std::array<std::int16_t, 16>{
+                         6, 77, 8, 5, 1, 7, 7, 7, 7, 7, 2, 214, 1, 2, 215, 1}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -617,6 +622,32 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = battle_loss.resume(SceneResponse::battle_defeat);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(battle_loss_snapshot.ranger, 203) == loss_count_before + 1);
+
+    auto battle_offset_win_snapshot = load_baseline(root);
+    const auto offset_win_count = inventory_count(battle_offset_win_snapshot.ranger, 215);
+    openlegend::random::LegacyRandom battle_offset_win_random{1U};
+    openlegend::scene::SceneSession battle_offset_win{
+        data_root, battle_offset_win_snapshot, battle_offset_win_random, 70};
+    OL_CHECK(finish_scene_title(battle_offset_win).kind == SceneStepKind::stay);
+    result = battle_offset_win.begin_event(18, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 77);
+    OL_CHECK(result.battle_get_exp == 1);
+    result = battle_offset_win.resume(SceneResponse::battle_victory);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(battle_offset_win_snapshot.ranger, 215) == offset_win_count + 1);
+
+    auto battle_offset_loss_snapshot = load_baseline(root);
+    const auto offset_loss_count = inventory_count(battle_offset_loss_snapshot.ranger, 214);
+    openlegend::random::LegacyRandom battle_offset_loss_random{1U};
+    openlegend::scene::SceneSession battle_offset_loss{
+        data_root, battle_offset_loss_snapshot, battle_offset_loss_random, 70};
+    OL_CHECK(finish_scene_title(battle_offset_loss).kind == SceneStepKind::stay);
+    result = battle_offset_loss.begin_event(18, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 77);
+    OL_CHECK(result.battle_get_exp == 1);
+    result = battle_offset_loss.resume(SceneResponse::battle_defeat);
+    OL_CHECK(result.kind == SceneStepKind::notice);
+    OL_CHECK(inventory_count(battle_offset_loss_snapshot.ranger, 214) == offset_loss_count + 1);
 
     auto battle_question_snapshot = load_baseline(root);
     const auto battle_question_count = inventory_count(battle_question_snapshot.ranger, 210);

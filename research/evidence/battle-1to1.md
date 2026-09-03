@@ -10,7 +10,7 @@
 
 ## 2. scene ↔ battle 入口合同
 
-`sub_2DE03 @ 0x2DE03..0x2DE2C` 依次把 KDEF battle id 与 get-exp word 压栈调用 `sub_31C75`。调用返回后只执行一次 `cmp eax,1`：严格等于1时返回真偏移，否则返回假偏移。
+`sub_2DE03 @ 0x2DE03..0x2DE2C` 已完成最终汇编→C++ REVIEW。41字节、12条指令的loaded/raw机器码完全相同，SHA256均为`eaa12eafb11dd75089bee3d4d81fbc331e646de5f19b50e4804fbcc144a4ffff`。唯一caller依次有符号压入get-exp、假偏移、真偏移和battle ID；wrapper只把battle ID与get-exp传给`sub_31C75`，调用返回后严格执行一次`cmp eax,1`，等于1时返回真偏移，否则返回假偏移，最终PC为`old_pc+5+selected_offset`。限域xref审计证明`sub_31C75`返回`word_E6ED2-1`，raw结果1显示`戰鬥失敗`、raw结果2显示`戰鬥勝利`，且结果word没有第三个终局写值。全KDEF共145次opcode6，参数流SHA256为`7558e4efa98b78c11e4d94643b990547801d751976fd76bb8016107a25011779`；battle ID均在0..135，get-exp仅0/1，19种offset pair含单条`(8,5)`。现代runtime持有异步`BattleSession`，但合法域的battle ID、经验bool、typed Victory/Defeat回收和脚本PC等价，归类`platform_adapted`；新增两侧非零offset synthetic向量通过，首轮完整复核零新增产品差异。
 
 `sub_31C75 @ 0x31C75..0x31DA0`：
 
@@ -22,7 +22,7 @@
 6. 淡出，关闭 SMP/SDX，并按主角记录决定停止或恢复原音乐；
 7. 写运行模式1，返回 `word_E6ED2 - 1`。
 
-`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。runtime跨battle保留完整`BattleRenderState`；队伍确认后才加载战斗专属WDX/WMP/EFT，首帧实际present后按WAR word8发战斗music命令，随后Session排序并重定位fade视角。消息队列耗尽后保存本场最终battle render globals、销毁battle资源，按当前scene metadata word7恢复场景music（负值按机器分支转0），再以严格`Victory`映射`battle_victory`，`Defeat`映射`battle_defeat`恢复解释器真假PC。AI逃跑是动作11的回合内移动/休息handler，不是第三种battle返回值。`sub_2DE03/sub_31C75`均保持`implemented_pending_review`。
+`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。runtime跨battle保留完整`BattleRenderState`；队伍确认后才加载战斗专属WDX/WMP/EFT，首帧实际present后按WAR word8发战斗music命令，随后Session排序并重定位fade视角。消息队列耗尽后保存本场最终battle render globals、销毁battle资源，按当前scene metadata word7恢复场景music（负值按机器分支转0），再以严格`Victory`映射`battle_victory`，`Defeat`映射`battle_defeat`恢复解释器真假PC。AI逃跑是动作11的回合内移动/休息handler，不是第三种battle返回值。`sub_2DE03`现为`platform_adapted / converged_no_new_differences`；`sub_31C75`及完整battle生命周期仍保持`implemented_pending_review`，由其自身后续closure独立终审。
 
 ## 3. 资产 oracle
 

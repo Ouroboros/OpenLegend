@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`2e600c875ac13d04b56b9bc4c54c1f1a177411d8b67bd1cc0267fc16228db958`
+  - SHA256：`7c1402a3222149de96630a1e5d39cba0e171fd3de368ea5b52f708f32c3b5062`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 

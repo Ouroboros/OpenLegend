@@ -1200,6 +1200,65 @@ def state_write_vectors(
     }
 
 
+def battle_request_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 6:
+                occurrences.append((
+                    script_id,
+                    program_counter,
+                    code[program_counter + 1],
+                    code[program_counter + 2],
+                    code[program_counter + 3],
+                    code[program_counter + 4],
+                ))
+            program_counter += WIDTHS[opcode]
+
+    stream = b"".join(struct.pack("<II4h", *row) for row in occurrences)
+    battle_ids = [row[2] for row in occurrences]
+    true_offsets = Counter(row[3] for row in occurrences)
+    false_offsets = Counter(row[4] for row in occurrences)
+    offset_pairs = Counter((row[3], row[4]) for row in occurrences)
+    get_experience = Counter(row[5] for row in occurrences)
+    assert len(occurrences) == 145
+    assert occurrences[0] == (2, 14, 0, 0, 74, 1)
+    assert occurrences[-1] == (1015, 686, 134, 3, 0, 0)
+    assert min(battle_ids) == 0 and max(battle_ids) == 135
+    assert all(0 <= battle_id < 140 for battle_id in battle_ids)
+    assert get_experience == Counter({0: 115, 1: 30})
+    assert all(row[3] >= 0 and row[4] >= 0 for row in occurrences)
+
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<II4h:script_pc_battle_true_false_get_exp>",
+        "parameter_stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "battle_id_range": [min(battle_ids), max(battle_ids)],
+        "unique_battle_ids": len(set(battle_ids)),
+        "invalid_battle_ids_for_war_sta": [],
+        "true_offset_counts": {
+            str(offset): count for offset, count in sorted(true_offsets.items())
+        },
+        "false_offset_counts": {
+            str(offset): count for offset, count in sorted(false_offsets.items())
+        },
+        "offset_pair_counts": {
+            f"{true_offset},{false_offset}": count
+            for (true_offset, false_offset), count in sorted(offset_pairs.items())
+        },
+        "all_offsets_nonnegative": True,
+        "get_experience_counts": {
+            str(value): count for value, count in sorted(get_experience.items())
+        },
+        "program_counter_formula": "old_pc + 5 + selected_offset",
+    }
+
+
 def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     script_2 = words(scripts[2])
     script_28 = words(scripts[28])
@@ -3053,6 +3112,7 @@ def main() -> None:
         },
         "kdef": {
             **coverage,
+            "opcode_6_battle_requests": battle_request_vectors(scripts),
             "explicit_scene_present": explicit_scene_present_vectors(),
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),

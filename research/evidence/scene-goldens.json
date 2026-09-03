@@ -325,6 +325,85 @@
       "invalid_opcode": "machine_and_modern_keep_pc_unchanged",
       "opcode_62": "sub_30B81_does_not_return_via_sub_30C3D"
     },
+    "opcode_6_battle_requests": {
+      "occurrences": 145,
+      "stream_encoding": "little_endian_<II4h:script_pc_battle_true_false_get_exp>",
+      "parameter_stream_sha256": "7558e4efa98b78c11e4d94643b990547801d751976fd76bb8016107a25011779",
+      "first": [
+        2,
+        14,
+        0,
+        0,
+        74,
+        1
+      ],
+      "last": [
+        1015,
+        686,
+        134,
+        3,
+        0,
+        0
+      ],
+      "battle_id_range": [
+        0,
+        135
+      ],
+      "unique_battle_ids": 106,
+      "invalid_battle_ids_for_war_sta": [],
+      "true_offset_counts": {
+        "0": 22,
+        "3": 110,
+        "8": 6,
+        "13": 2,
+        "22": 1,
+        "50": 2,
+        "66": 1,
+        "69": 1
+      },
+      "false_offset_counts": {
+        "0": 122,
+        "5": 1,
+        "13": 1,
+        "22": 1,
+        "23": 2,
+        "24": 4,
+        "25": 1,
+        "35": 6,
+        "47": 2,
+        "52": 1,
+        "58": 1,
+        "61": 1,
+        "74": 2
+      },
+      "offset_pair_counts": {
+        "0,13": 1,
+        "0,22": 1,
+        "0,23": 2,
+        "0,24": 4,
+        "0,25": 1,
+        "0,35": 6,
+        "0,47": 2,
+        "0,52": 1,
+        "0,58": 1,
+        "0,61": 1,
+        "0,74": 2,
+        "3,0": 110,
+        "8,0": 5,
+        "8,5": 1,
+        "13,0": 2,
+        "22,0": 1,
+        "50,0": 2,
+        "66,0": 1,
+        "69,0": 1
+      },
+      "all_offsets_nonnegative": true,
+      "get_experience_counts": {
+        "0": 115,
+        "1": 30
+      },
+      "program_counter_formula": "old_pc + 5 + selected_offset"
+    },
     "explicit_scene_present": {
       "start": "0x2D653",
       "end": "0x2D678",
