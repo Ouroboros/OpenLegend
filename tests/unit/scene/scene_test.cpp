@@ -125,6 +125,17 @@ public:
                          3, 69, 5, 101, -2, 103, -2, 105, -2, 107, -2, 109, 30, 31}) {
                     append_i16(group, word);
                 }
+            } else if (script == 17U) {
+                for (const auto word : std::array<std::int16_t, 8>{5, 0, 52, 6, 71, 0, 0, 0}) {
+                    append_i16(group, word);
+                }
+                for (std::size_t program_counter = 8U; program_counter < 55U;
+                     ++program_counter) {
+                    append_i16(group, 7);
+                }
+                for (const auto word : std::array<std::int16_t, 5>{6, 72, 0, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -632,6 +643,28 @@ void check_event_load_menu(const std::filesystem::path& root) {
     result = battle_yes.resume(SceneResponse::yes);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(inventory_count(battle_yes_snapshot.ranger, 210) == battle_yes_count + 1);
+
+    auto exceptional_yes_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom exceptional_yes_random{1U};
+    openlegend::scene::SceneSession exceptional_yes{
+        data_root, exceptional_yes_snapshot, exceptional_yes_random, 70};
+    OL_CHECK(finish_scene_title(exceptional_yes).kind == SceneStepKind::stay);
+    result = exceptional_yes.begin_event(17, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::battle);
+    result = exceptional_yes.resume(SceneResponse::yes);
+    OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 71);
+
+    auto exceptional_no_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom exceptional_no_random{1U};
+    openlegend::scene::SceneSession exceptional_no{
+        data_root, exceptional_no_snapshot, exceptional_no_random, 70};
+    OL_CHECK(finish_scene_title(exceptional_no).kind == SceneStepKind::stay);
+    result = exceptional_no.begin_event(17, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::question &&
+             result.question == openlegend::scene::SceneQuestion::battle);
+    result = exceptional_no.resume(SceneResponse::no);
+    OL_CHECK(result.kind == SceneStepKind::battle && result.battle_id == 72);
 
     auto join_question_snapshot = load_baseline(root);
     const auto join_question_count = inventory_count(join_question_snapshot.ranger, 211);

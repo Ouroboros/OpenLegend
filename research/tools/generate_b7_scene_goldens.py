@@ -2016,6 +2016,42 @@ def dialogue_vectors(
         draw_text_linear(pixels, 71, 45, text, 0x05, 0x07)
         question_frames[question] = fnv1a64(pixels)
 
+    opcode_5_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, script in enumerate(scripts):
+        instructions = words(script)
+        program_counter = 0
+        while instructions[program_counter] != -1:
+            opcode = instructions[program_counter]
+            if opcode == 5:
+                opcode_5_occurrences.append((
+                    script_id,
+                    program_counter,
+                    instructions[program_counter + 1],
+                    instructions[program_counter + 2],
+                ))
+            program_counter += WIDTHS[opcode]
+    opcode_5_stream = b"".join(
+        struct.pack("<II2h", *row) for row in opcode_5_occurrences
+    )
+    opcode_5_offset_counts = Counter(
+        (row[2], row[3]) for row in opcode_5_occurrences
+    )
+    opcode_5_exceptional = [
+        {
+            "script": script_id,
+            "program_counter": program_counter,
+            "true_offset": true_offset,
+            "false_offset": false_offset,
+        }
+        for script_id, program_counter, true_offset, false_offset in opcode_5_occurrences
+        if false_offset != 0
+    ]
+    assert len(opcode_5_occurrences) == 43
+    assert opcode_5_occurrences[0] == (2, 5, 1, 0)
+    assert opcode_5_occurrences[-1] == (637, 39, 1, 0)
+    assert [(row["script"], row["true_offset"], row["false_offset"])
+            for row in opcode_5_exceptional] == [(307, 0, 52), (308, 0, 52)]
+
     progress_menu_items = (
         bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 40 00"),
         bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 47 00"),
@@ -2219,12 +2255,30 @@ def dialogue_vectors(
         "cases": style_cases,
         "question_prompts": {
             "strings_hex": {key: value.hex() for key, value in question_texts.items()},
+            "string_sha256": {
+                key: sha256(value) for key, value in question_texts.items()
+            },
             "panel": [61, 40, 187, 27],
             "text_position": [71, 45],
             "colors": [0x05, 0x07],
             "frames": question_frames,
             "join_post_key": "bare_scene_present_before_branch",
             "accepted_key": "uppercase_Y_only",
+            "non_y_key": "false_offset_without_filter_loop",
+            "battle_post_key": "branch_without_scene_redraw_or_extra_present",
+            "opcode_5_asset_domain": {
+                "occurrences": len(opcode_5_occurrences),
+                "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
+                "parameter_stream_sha256": sha256(opcode_5_stream),
+                "first": list(opcode_5_occurrences[0]),
+                "last": list(opcode_5_occurrences[-1]),
+                "offset_pair_counts": {
+                    f"{true_offset},{false_offset}": count
+                    for (true_offset, false_offset), count in sorted(opcode_5_offset_counts.items())
+                },
+                "exceptional_false_offset_calls": opcode_5_exceptional,
+                "program_counter_formula": "old_pc + 3 + selected_offset",
+            },
         },
         "opcode_24_load_menu": {
             "items_hex": [item.hex() for item in progress_menu_items],

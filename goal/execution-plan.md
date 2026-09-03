@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=165/349`，`unique_any=121/284`，`unique_all=120/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=29` 战斗前问答与偏移helper；状态为等待`audit_order=28` 物品ID条件跳转工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=29` 收口后进入同表 `audit_order=30` 战斗请求与真假偏移helper
+已发布进度：`closure=166/349`，`unique_any=122/284`，`unique_all=120/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=30` 战斗请求与真假偏移helper；状态为等待`audit_order=29` 战斗前问答工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=30` 收口后进入同表 `audit_order=31` 场景退出音乐切换helper
 
 ## 0. 唯一正确性真值
 

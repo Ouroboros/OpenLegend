@@ -3901,6 +3901,11 @@
           "join": "ac4fa75fad6ea844a55ba44aa15da2e7a1fea2dca15e00",
           "rest": "ac4fa75fa6edb14ab94ca95da15da2e7a1fea2dca15e00"
         },
+        "string_sha256": {
+          "battle": "d5e80b15335ab658bd695847ada0be5146e3140b9bfed72ff8c0b2e417134434",
+          "join": "e04a8043ef8f9f1bde2d94ed6635eb775b881187eb9722666a70626bcc53d4a6",
+          "rest": "1849fb7ca2a0b15a7f6513f883c0d75c9a893f4deb1ca9eabd70823894cce167"
+        },
         "panel": [
           61,
           40,
@@ -3921,7 +3926,51 @@
           "rest": "0xd070227a07492883"
         },
         "join_post_key": "bare_scene_present_before_branch",
-        "accepted_key": "uppercase_Y_only"
+        "accepted_key": "uppercase_Y_only",
+        "non_y_key": "false_offset_without_filter_loop",
+        "battle_post_key": "branch_without_scene_redraw_or_extra_present",
+        "opcode_5_asset_domain": {
+          "occurrences": 43,
+          "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
+          "parameter_stream_sha256": "97dfd093e7b5e3a8338317bb4f8a63820643e5795e6ea2587d339507b5c64d82",
+          "first": [
+            2,
+            5,
+            1,
+            0
+          ],
+          "last": [
+            637,
+            39,
+            1,
+            0
+          ],
+          "offset_pair_counts": {
+            "0,52": 2,
+            "1,0": 22,
+            "6,0": 9,
+            "11,0": 4,
+            "15,0": 2,
+            "20,0": 1,
+            "25,0": 2,
+            "62,0": 1
+          },
+          "exceptional_false_offset_calls": [
+            {
+              "script": 307,
+              "program_counter": 10,
+              "true_offset": 0,
+              "false_offset": 52
+            },
+            {
+              "script": 308,
+              "program_counter": 5,
+              "true_offset": 0,
+              "false_offset": 52
+            }
+          ],
+          "program_counter_formula": "old_pc + 3 + selected_offset"
+        }
       },
       "opcode_24_load_menu": {
         "items_hex": [

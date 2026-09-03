@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`9cc8cd0e52d551782140e0cb2d363bb651b955111b37ece2b378547467c66a7d`
+  - SHA256：`2e600c875ac13d04b56b9bc4c54c1f1a177411d8b67bd1cc0267fc16228db958`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -97,6 +97,8 @@ synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清
 `sub_2DBF4` opcode26已完成最终汇编→C++ REVIEW。入口为337字节、83条指令；loaded/raw函数SHA256分别为`d2e9050a19528c43b63e2eb23b5e0bba12d90d42e14016c994e20d9d763574d2`、`e00185c2c24269ac8363297748f1b62ccb6d0aca63330049ab12c475a47755dc`，21个差异字节全部是DOS重定位。唯一caller为解释器case26：有符号载入5个参数，返回后回收20字节并固定PC+6。当前路径解析scene/event `-2`，外部归档路径整区读改写目标scene的4,400字节事件区；两条路径均依次对event_1/2/3执行低16位回绕加法并返回0。全资产121次opcode26的参数流SHA256为`5637e9a38a976f3ad7d1aa8aa1eb0e54d039ecf305cfece583e8b28d82660b9c`：115次当前scene、6次显式scene，event无哨兵，delta仅为`(0,0,1)`21次和`(0,1,0)`100次。现代常驻snapshot与显式`wrapping_add`在合法域一致，并安全拒绝外部负event和越界索引，归类`platform_adapted`；现有synthetic当前event回绕与外部scene隔离向量均通过，首轮完整复核零新增产品差异。
 
 `sub_2DD45` opcode4已完成最终汇编→C++ REVIEW。入口为50字节、11条指令；loaded/raw SHA256分别为`9761e098dd4e85e0fac653e44db28a12dc85e5d991ff117d58c5959bd85eafd6`、`c224a06282aa4d8827a79d7eb8d16b8ac82f16101e9bc83a3e267e989dec8696`，3个差异字节全部是DOS重定位。唯一caller把expected item ID、真偏移、假偏移传入，固定执行`PC+4+返回偏移`。机器按最后确认的实际库存slot重读当前item ID，命中时写无人读取的`word_54B7A=1`并返回真偏移，失败仅返回假偏移；相邻地址逐字节xref排除了重叠dword读取。全资产167次opcode4均为PC0、真偏移1、假偏移0，完整参数流SHA256为`89690e50d4231de72f458f6e5c5f1aae8390024b7872323674258ce752ef3e96`；40条ALLDEF引用流SHA256为`8ecd2bae575f1720bdabf6b7e5656a9d6c57cca80180c9c55706eb6e3986207b`，且全部位于event_2物品使用脚本。现代在确认slot时保存item ID，当前合法域比较前没有库存变化；省略死写并安全拒绝非法索引，归类`platform_adapted`，synthetic命中/失败偏移通过，首轮完整复核零新增产品差异。
+
+`sub_2DD77` opcode5已完成最终汇编→C++ REVIEW。入口为140字节、36条指令；loaded/raw SHA256分别为`029ba93c5d02ac74cde1c9cd81457e1b7a2d5d03fa5dd57ab9bb1148b2982e50`、`224f32fa14859850cd390ce56d0e8e6a15b4e15a3c392cad7c08ddad40953cb9`，9个差异字节逐一对应9个`raw+0x20000`线性地址重定位operand。唯一caller有符号压入真假offset，固定执行`PC+3+返回偏移`。机器在当前底图依次绘制`(61,40,187,27)`面板和`(71,45)`问句，使用阴影5/前景7，present一次后阻塞读取任意非零翻译键；仅大写Y返回真offset，其余键不经过过滤循环而立即返回假offset，按键后不额外重绘或present。全资产43次opcode5参数流SHA256为`97dfd093e7b5e3a8338317bb4f8a63820643e5795e6ea2587d339507b5c64d82`；除常见`(N,0)`外，script307 PC10和script308 PC5使用`(0,52)`反向布局。现代原文、panel、frame `0x5d8fc752d48d9a98`、真假选择和PC公式均一致；宿主帧循环替代函数内同步阻塞，归类`platform_adapted`。synthetic普通/异常真假向量通过，首轮完整复核零新增产品差异；文字与present wrapper自身仍由各自后续closure独立终审。
 
 ### 4.2 已复核的角色与物品副作用
 
