@@ -2226,6 +2226,46 @@
       },
       "opcode_26_event_script_add": {
         "occurrences": 121,
+        "argument_stream_sha256": "5637e9a38a976f3ad7d1aa8aa1eb0e54d039ecf305cfece583e8b28d82660b9c",
+        "current_scene_occurrences": 115,
+        "explicit_scene_occurrences": 6,
+        "scene_event_occurrence_counts": [
+          {
+            "scene": -2,
+            "event": 0,
+            "occurrences": 50
+          },
+          {
+            "scene": -2,
+            "event": 1,
+            "occurrences": 50
+          },
+          {
+            "scene": -2,
+            "event": 4,
+            "occurrences": 5
+          },
+          {
+            "scene": -2,
+            "event": 5,
+            "occurrences": 5
+          },
+          {
+            "scene": -2,
+            "event": 6,
+            "occurrences": 5
+          },
+          {
+            "scene": 27,
+            "event": 0,
+            "occurrences": 4
+          },
+          {
+            "scene": 73,
+            "event": 2,
+            "occurrences": 2
+          }
+        ],
         "current_event_sentinel_occurrences": 0,
         "event_ids": [
           0,
@@ -2234,6 +2274,92 @@
           4,
           5,
           6
+        ],
+        "delta_patterns": [
+          {
+            "deltas": [
+              0,
+              0,
+              1
+            ],
+            "occurrences": 21
+          },
+          {
+            "deltas": [
+              0,
+              1,
+              0
+            ],
+            "occurrences": 100
+          }
+        ],
+        "external_occurrences": [
+          {
+            "script": 95,
+            "pc": 88,
+            "arguments": [
+              73,
+              2,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "script": 109,
+            "pc": 119,
+            "arguments": [
+              73,
+              2,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "script": 170,
+            "pc": 49,
+            "arguments": [
+              27,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "script": 176,
+            "pc": 62,
+            "arguments": [
+              27,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "script": 195,
+            "pc": 137,
+            "arguments": [
+              27,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "script": 232,
+            "pc": 62,
+            "arguments": [
+              27,
+              0,
+              0,
+              0,
+              1
+            ]
+          }
         ],
         "updated_fields": [
           2,

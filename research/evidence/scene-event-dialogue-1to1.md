@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`9d47773dc4fe02407a802a64b00ccf9c3983b7edc5f45e260fd17d4e7e7a8065`
+  - SHA256：`ee33a2024e75aaa9d90d37b4b62db4d9ec6b12c8ea01cb9c5169b37e12cab03f`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -92,7 +92,9 @@ IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` �
 - 首轮对照发现`sub_312A6`的现代商店退出只写event_3=939，而机器6个callsite实际把fields0..7重置为`0,0,-1,-1,939,-1,-1,-1`；修正后作废首轮结论并从入口重审，第二轮零新增差异；
 - 现代100场景常驻snapshot替代外部归档即时I/O，并安全拒绝真实资产未使用的外部负event、单轴坐标和越界参数，归类`platform_adapted`。
 
-synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清触发格并保持记录坐标；外部scene69选择性修改事件字段/坐标但只更新当前scene70地图。商店六个scene的取消路径把fields0..7预置777后核对完整复位。`sub_2DBF4` opcode26和`sub_2E337` opcode17仍按各自后续closure独立终审：现有实现分别覆盖16位回绕加法及`4096*layer + 64*y + x`写入，不能由本helper提前关闭。
+synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清触发格并保持记录坐标；外部scene69选择性修改事件字段/坐标但只更新当前scene70地图。商店六个scene的取消路径把fields0..7预置777后核对完整复位。`sub_2E337` opcode17仍按自身后续closure独立终审；其`4096*layer + 64*y + x`写入不能由本helper提前关闭。
+
+`sub_2DBF4` opcode26已完成最终汇编→C++ REVIEW。入口为337字节、83条指令；loaded/raw函数SHA256分别为`d2e9050a19528c43b63e2eb23b5e0bba12d90d42e14016c994e20d9d763574d2`、`e00185c2c24269ac8363297748f1b62ccb6d0aca63330049ab12c475a47755dc`，21个差异字节全部是DOS重定位。唯一caller为解释器case26：有符号载入5个参数，返回后回收20字节并固定PC+6。当前路径解析scene/event `-2`，外部归档路径整区读改写目标scene的4,400字节事件区；两条路径均依次对event_1/2/3执行低16位回绕加法并返回0。全资产121次opcode26的参数流SHA256为`5637e9a38a976f3ad7d1aa8aa1eb0e54d039ecf305cfece583e8b28d82660b9c`：115次当前scene、6次显式scene，event无哨兵，delta仅为`(0,0,1)`21次和`(0,1,0)`100次。现代常驻snapshot与显式`wrapping_add`在合法域一致，并安全拒绝外部负event和越界索引，归类`platform_adapted`；现有synthetic当前event回绕与外部scene隔离向量均通过，首轮完整复核零新增产品差异。
 
 ### 4.2 已复核的角色与物品副作用
 

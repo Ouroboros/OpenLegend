@@ -953,6 +953,13 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
     opcode_3 = occurrences[3]
     opcode_17 = occurrences[17]
     opcode_26 = occurrences[26]
+    opcode_26_stream = b"".join(
+        struct.pack("<II5h", row["script"], row["pc"], *row["arguments"])
+        for row in opcode_26
+    )
+    opcode_26_external = [
+        row for row in opcode_26 if row["arguments"][0] != -2
+    ]
     coordinate_updates = [
         row for row in opcode_3
         if row["arguments"][11] != -2 or row["arguments"][12] != -2
@@ -1003,7 +1010,20 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
     assert len(opcode_17) == 127
     assert sorted({row["arguments"][0] for row in opcode_17}) == [-2, 11, 18, 21, 49, 52, 53, 55]
     assert len(opcode_26) == 121
-    assert all(row["arguments"][1] != -2 for row in opcode_26)
+    assert sum(row["arguments"][0] == -2 for row in opcode_26) == 115
+    assert all(row["arguments"][1] not in (-2, -1) for row in opcode_26)
+    assert Counter(tuple(row["arguments"][2:]) for row in opcode_26) == {
+        (0, 0, 1): 21,
+        (0, 1, 0): 100,
+    }
+    assert opcode_26_external == [
+        {"script": 95, "pc": 88, "arguments": [73, 2, 0, 0, 1]},
+        {"script": 109, "pc": 119, "arguments": [73, 2, 0, 0, 1]},
+        {"script": 170, "pc": 49, "arguments": [27, 0, 0, 0, 1]},
+        {"script": 176, "pc": 62, "arguments": [27, 0, 0, 0, 1]},
+        {"script": 195, "pc": 137, "arguments": [27, 0, 0, 0, 1]},
+        {"script": 232, "pc": 62, "arguments": [27, 0, 0, 0, 1]},
+    ]
 
     return {
         "opcode_3_event_fields": {
@@ -1062,10 +1082,36 @@ def state_write_vectors(scripts: list[bytes]) -> dict[str, object]:
         },
         "opcode_26_event_script_add": {
             "occurrences": len(opcode_26),
+            "argument_stream_sha256": sha256(opcode_26_stream),
+            "current_scene_occurrences": sum(
+                row["arguments"][0] == -2 for row in opcode_26
+            ),
+            "explicit_scene_occurrences": len(opcode_26_external),
+            "scene_event_occurrence_counts": [
+                {
+                    "scene": scene,
+                    "event": event,
+                    "occurrences": count,
+                }
+                for (scene, event), count in sorted(Counter(
+                    (row["arguments"][0], row["arguments"][1])
+                    for row in opcode_26
+                ).items())
+            ],
             "current_event_sentinel_occurrences": sum(
                 row["arguments"][1] == -2 for row in opcode_26
             ),
             "event_ids": sorted({row["arguments"][1] for row in opcode_26}),
+            "delta_patterns": [
+                {
+                    "deltas": list(deltas),
+                    "occurrences": count,
+                }
+                for deltas, count in sorted(Counter(
+                    tuple(row["arguments"][2:]) for row in opcode_26
+                ).items())
+            ],
+            "external_occurrences": opcode_26_external,
             "updated_fields": [2, 3, 4],
             "addition_width_bits": 16,
         },
