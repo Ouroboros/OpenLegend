@@ -5914,6 +5914,52 @@ def main() -> None:
         script_1017[6:12],
         -86,
     )
+    opcode_62_occurrences: list[tuple[int, int, int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 62:
+                opcode_62_occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 7])
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_62_occurrences == [(1017, 5, 0, 8054, 8128, 1, 8130, 8204)]
+    opcode_62_call_stream = b"".join(
+        struct.pack("<II6h", *row) for row in opcode_62_occurrences
+    )
+    opcode_62_picture_stream = b"".join(
+        struct.pack("<hh", int(frame["first_picture"]), int(frame["second_picture"]))
+        for frame in opcode_62_script_1017
+    )
+    opcode_62_trace_stream = b"".join(
+        struct.pack(
+            "<hhQ", int(frame["first_picture"]), int(frame["second_picture"]),
+            int(str(frame["frame_fnv1a64"]), 16),
+        )
+        for frame in opcode_62_script_1017
+    )
+    opcode_62_event_argument_stream = b""
+    for trace_frame in opcode_62_script_1017:
+        for event, picture in (
+            (script_1017[6], int(trace_frame["first_picture"])),
+            (script_1017[9], int(trace_frame["second_picture"])),
+        ):
+            opcode_62_event_argument_stream += struct.pack(
+                "<13h", -2, event, -2, -2, -2, -2, -2,
+                picture, picture, picture, -2, -2, -2,
+            )
+    for second_end in (-32768, 8204, 32767):
+        counterfactual = list(script_1017[6:12])
+        counterfactual[5] = second_end
+        assert dual_picture_animation_trace(
+            ending_map, ending_events, ending_sprites, 22, 41, 1, (11, 30),
+            tuple(counterfactual), -86,
+        ) == opcode_62_script_1017
+    opcode_62_script_stream = struct.pack(f"<{len(script_1017)}h", *script_1017)
+    opcode_62_raw = (root / "Z.DAT").read_bytes()[0x2A581:0x2A638]
+    assert len(opcode_62_raw) == 183
 
     opcode_58_occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -6257,10 +6303,44 @@ def main() -> None:
                 "frames": opcode_57_script_655,
             },
             "opcode_62_script_1017": {
+                "entry_range": "0x30b81..0x30c38",
+                "size_bytes": 183,
+                "instruction_count": 63,
+                "raw_function_offset": "0x2a581",
+                "raw_function_sha256": sha256(opcode_62_raw),
+                "stack_probe_bytes": 72,
+                "occurrences": len(opcode_62_occurrences),
+                "positions": [list(row) for row in opcode_62_occurrences],
+                "call_stream_encoding": "little_endian_<II6h:script,pc,first_event,first_start,first_end,second_event,second_start,second_end>",
+                "call_stream_sha256": sha256(opcode_62_call_stream),
+                "script_1017_sha256": sha256(opcode_62_script_stream),
                 "scene_id": ending_scene_id,
                 "player_x": 22,
                 "player_y": 41,
+                "view_origin": [11, 30],
+                "player_picture": -86,
                 "arguments": list(script_1017[6:12]),
+                "second_end_read": False,
+                "second_end_counterexamples": [-32768, 8204, 32767],
+                "event_skip_sentinel": -1,
+                "event_update_order": ["first", "second"],
+                "event_update_arguments": "[-2,event,-2,-2,-2,-2,-2,picture,picture,picture,-2,-2,-2]",
+                "event_argument_stream_encoding": "per_frame_two_consecutive_little_endian_<13h>",
+                "event_argument_stream_sha256": sha256(opcode_62_event_argument_stream),
+                "first_range": [8054, 8128, 2],
+                "second_range": [8130, 8204, 2],
+                "frame_count": len(opcode_62_script_1017),
+                "per_frame_order": [
+                    "capture_tick", "update_first_event", "update_second_event",
+                    "increment_both_pictures_by_2", "render", "delay_50",
+                    "wait_until_tick_differs", "increment_first_control_by_2",
+                ],
+                "delay_ticks": 2,
+                "picture_stream_encoding": "little_endian_<hh:first_picture,second_picture>",
+                "picture_stream_sha256": sha256(opcode_62_picture_stream),
+                "trace_stream_encoding": "little_endian_<hhQ:first_picture,second_picture,frame_fnv1a64>",
+                "trace_stream_sha256": sha256(opcode_62_trace_stream),
+                "transfer": "call_sub_30C3D_noreturn",
                 "frames": opcode_62_script_1017,
                 "ending": ending_sequence(root),
             },
