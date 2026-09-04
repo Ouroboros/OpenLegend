@@ -333,7 +333,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 首轮REVIEW发现C++零距离路径因没有单步helper而遗漏机器终止块的20-tick计数清零；最小修正后从475字节150条指令入口重审，覆盖函数内6项和外置jump table 4项重定位、四象限、8个移动callsite、唯一caller及PC+5尾部，零新增差异。全KDEF只有7次opcode30，共42个延迟帧；参数流SHA256 `7f08ff5adfff43a75bba265b08398ad21b673961fe919b88c61e87c6e8e0ee05`。真实script343固定5帧像素和阻挡反例；合成向量固定四象限、x-before-y、offset回卷、source/实时坐标分离及零距离终止计数。
 
-## 14. 当前验证
+## 14. 首个同ID物品数量读取
+
+`sub_2F34C` 固定扫描200个库存槽，首次命中物品174就读取该槽signed count并结束；只在found且 `first_count>=required` 时返回true offset。opcode31通过返回offset执行PC+4+offset，商店caller传 `(price,1,0)`并只接受1。重复槽不汇总，缺失物品对任何signed阈值都必假。
+
+首轮REVIEW发现opcode31和商店都用 `value_or(0)`丢失found位，导致缺失物品在required/price≤0时误成功；两个caller改为存在且数量足够后，从80字节25条指令入口重审，覆盖2项重定位、首匹配短路、found门禁、signed比较、两个caller和共享PC尾部，零新增差异。全KDEF 8次opcode31参数流SHA256 `3efc7df130cc0779da14b7101313c587ceb3a5e12747d00e421591711f148086`；真实script234固定重复首槽，合成向量固定缺失+零/负阈值及零价商店。
+
+## 15. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -352,6 +358,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 伦理值条件22次真实opcode28参数流、角色word56 signed闭区间、true/false偏移和PC宽度叠加，以及script636的79/80/100/101与signed极值边界；
 - 攻击力条件5次真实opcode29参数流、角色word43 signed下限包含、第三参数未读、共享PC偏移，以及script655和合成script24的89/90/1000/2000与signed极值；
 - 场景脚本移动7次真实opcode30参数流、42个延迟帧、四象限x-before-y、source counter独立、阻挡仍消费帧、offset回卷、零距离终止计数，以及script343逐帧像素；
+- 首个同ID物品数量的200槽短路、8次真实opcode31参数流、首槽signed阈值、缺失必假、重复金钱反例及零价商店缺钱路径；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

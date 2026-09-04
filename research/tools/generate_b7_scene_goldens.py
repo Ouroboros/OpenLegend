@@ -742,6 +742,80 @@ def advance_event_animation(
     return tuple(mutable_events)
 
 
+def first_inventory_count_vectors(
+    scripts: list[bytes], ranger: bytes
+) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 31:
+                occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 4])
+                )
+            program_counter += WIDTHS[opcode]
+    assert occurrences == [
+        (234, 5, 10, 6, 0),
+        (235, 9, 100, 7, 0),
+        (480, 9, 50, 7, 0),
+        (502, 19, 200, 7, 0),
+        (575, 9, 20, 7, 0),
+        (592, 5, 100, 7, 0),
+        (658, 9, 40, 7, 0),
+        (664, 9, 20, 7, 0),
+    ]
+    stream = b"".join(struct.pack("<IIhhh", *row) for row in occurrences)
+    header = words(ranger[:836])
+    inventory = [(header[18 + slot * 2], header[19 + slot * 2]) for slot in range(200)]
+    baseline_money = [
+        [slot, count] for slot, (item_id, count) in enumerate(inventory) if item_id == 174
+    ]
+    shop_rows = []
+    for shop_id in range(5):
+        shop = words(ranger[114_092 + shop_id * 30:114_122 + shop_id * 30])
+        for slot in range(5):
+            shop_rows.append([shop_id, slot, shop[slot], shop[5 + slot], shop[10 + slot]])
+    assert not baseline_money
+    assert all(stock <= 0 or price > 0 for _, _, _, stock, price in shop_rows)
+    required_counts = Counter(row[2] for row in occurrences)
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhh:script,pc,required,true_offset,false_offset>",
+        "stream_sha256": sha256(stream),
+        "positions": [list(row) for row in occurrences],
+        "argument_minimums": [10, 6, 0],
+        "argument_maximums": [200, 7, 0],
+        "required_counts": {
+            str(value): count for value, count in sorted(required_counts.items())
+        },
+        "inventory_slots_scanned": 200,
+        "target_item_id": 174,
+        "matching_count": "first_slot_only",
+        "match_short_circuits_scan": True,
+        "comparison": "found_and_signed_first_count>=required",
+        "absent_result": "false_for_every_signed_required_value",
+        "program_counter_formula": "old_pc + 4 + selected_offset",
+        "baseline_item_174_slots": baseline_money,
+        "shop_caller": {
+            "return_offsets": [1, 0],
+            "success_value": 1,
+            "rows": shop_rows,
+            "all_in_stock_prices_positive": True,
+        },
+        "synthetic_vectors": [
+            {"slots": [], "required": 0, "result": False},
+            {"slots": [], "required": -32768, "result": False},
+            {"slots": [[174, -1]], "required": 0, "result": False},
+            {"slots": [[174, 0]], "required": 0, "result": True},
+            {"slots": [[174, -32768]], "required": -32768, "result": True},
+            {"slots": [[174, 5], [174, 10]], "required": 10, "result": False},
+            {"slots": [[174, 10], [174, 20]], "required": 10, "result": True},
+        ],
+    }
+
+
 def scripted_walk_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int, int, int, int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -4112,6 +4186,7 @@ def main() -> None:
     opcode_28_morality_range = morality_range_vectors(scripts)
     opcode_29_attack_minimum = attack_minimum_vectors(scripts)
     opcode_30_scripted_walk = scripted_walk_vectors(scripts)
+    opcode_31_first_inventory_count = first_inventory_count_vectors(scripts, ranger)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4333,6 +4408,7 @@ def main() -> None:
                     "frame_fnv1a64": fnv1a64(walk_final_frame),
                 },
             },
+            "opcode_31_first_inventory_count": opcode_31_first_inventory_count,
             "opcode_44_script_534": {
                 "scene_id": animation_scene_id,
                 "arguments": list(script_534[121:127]),

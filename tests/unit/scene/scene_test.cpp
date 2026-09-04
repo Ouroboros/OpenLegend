@@ -193,6 +193,13 @@ public:
                 for (const auto word : std::array<std::int16_t, 5>{30, 0, 0, 2, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script == 32U || script == 33U) {
+                const auto required = script == 32U ? std::int16_t{0} : std::int16_t{-32768};
+                for (const auto word : std::array<std::int16_t, 8>{
+                         31, required, 0, 4,
+                         1, 100, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -2874,6 +2881,28 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     OL_CHECK(split_purchase.kind == SceneStepKind::present);
     OL_CHECK(split_money_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 
+    auto absent_money_snapshot = load_baseline(root);
+    auto& absent_money_shop = absent_money_snapshot.ranger.shops[1];
+    absent_money_shop.set_word(openlegend::model::shop_word::item_id_begin, 42);
+    absent_money_shop.set_word(openlegend::model::shop_word::total_begin, 2);
+    absent_money_shop.set_word(openlegend::model::shop_word::price_begin, 0);
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        absent_money_snapshot.ranger.header.set_inventory(
+            slot, openlegend::model::ItemId{-1}, 0);
+    }
+    openlegend::random::LegacyRandom absent_money_random{1U};
+    openlegend::scene::SceneSession absent_money_session{
+        data_root, absent_money_snapshot, absent_money_random, 3};
+    auto absent_purchase = open_shop(absent_money_session);
+    OL_CHECK(absent_purchase.kind == SceneStepKind::shop);
+    absent_purchase = absent_money_session.resume(SceneResponse::yes, 0);
+    OL_CHECK(absent_purchase.kind == SceneStepKind::present);
+    absent_purchase = absent_money_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(absent_purchase.kind == SceneStepKind::dialogue);
+    OL_CHECK(absent_purchase.talk_id == 2975);
+    OL_CHECK(absent_money_shop.word(openlegend::model::shop_word::total_begin) == 2);
+    OL_CHECK(inventory_count(absent_money_snapshot.ranger, 42) == 0);
+
     const std::array<std::pair<std::int16_t, std::vector<std::int16_t>>, 6> hide_cases{
         std::pair<std::int16_t, std::vector<std::int16_t>>{0, {}},
         {1, {16, 17, 18}},
@@ -3078,6 +3107,30 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     using openlegend::scene::SceneStepKind;
 
     const openlegend::resource::DataRoot data_root{root};
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot synthetic_data_root{synthetic.path()};
+    const auto money_condition_succeeds = [&synthetic_data_root, &root](
+                                              const int script,
+                                              const std::optional<std::int16_t> count) {
+        auto snapshot = load_baseline(root);
+        for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+            snapshot.ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+        }
+        if (count.has_value()) {
+            snapshot.ranger.header.set_inventory(
+                0U, openlegend::model::ItemId{174}, *count);
+        }
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{
+            synthetic_data_root, snapshot, random, 70};
+        const auto result = session.begin_event(script, 0, 0, 0);
+        return result.kind == SceneStepKind::dialogue && result.talk_id == 100;
+    };
+    OL_CHECK(!money_condition_succeeds(32, std::nullopt));
+    OL_CHECK(!money_condition_succeeds(32, -1));
+    OL_CHECK(money_condition_succeeds(32, 0));
+    OL_CHECK(!money_condition_succeeds(33, std::nullopt));
+    OL_CHECK(money_condition_succeeds(33, -32768));
     auto money_snapshot = load_baseline(root);
     money_snapshot.ranger.header.set_inventory(
         0U, openlegend::model::ItemId{174}, 5);

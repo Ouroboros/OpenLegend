@@ -919,7 +919,8 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
             const auto item_id = shop.word(model::shop_word::item_id_begin + slot);
             const auto stock = shop.word(model::shop_word::total_begin + slot);
             const auto price = shop.word(model::shop_word::price_begin + slot);
-            if (stock > 0 && first_inventory_count(174).value_or(0) >= price) {
+            const auto money = first_inventory_count(174);
+            if (stock > 0 && money.has_value() && *money >= price) {
                 change_first_inventory(174, static_cast<std::int16_t>(-price));
                 add_inventory(item_id, 1);
                 shop.set_word(
@@ -1236,11 +1237,13 @@ SceneStepResult SceneSession::run_event() {
                 return *frame;
             }
             break;
-        case 31:
+        case 31: {
+            const auto count = first_inventory_count(174);
             conditional(
-                first_inventory_count(174).value_or(0) >= argument(1),
+                count.has_value() && *count >= argument(1),
                 4U, argument(2), argument(3));
             break;
+        }
         case 32:
             change_first_inventory(argument(1), argument(2));
             program_counter_ += 3;
