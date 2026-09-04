@@ -6301,6 +6301,41 @@
         3,
         69
       ],
+      "single_match": {
+        "entry_range": "0x30480..0x30510",
+        "size_bytes": 144,
+        "instruction_count": 45,
+        "raw_function_offset": "0x29e80",
+        "raw_function_sha256": "687495828da4589aef75232397d1c7b305850074aa7ad87ad25a5ffc76ed908a",
+        "head_table_copy_bytes": 60,
+        "head_table_raw_offset": "0x25bcd",
+        "head_table_sha256": "da210a8c9e15450215093fd7fa556dc26de3d321bbdb1a1a0cb62f405014e115",
+        "valid_caller_cell_range": [
+          0,
+          29
+        ],
+        "talk_id_formula": "2854 + cell",
+        "talk_style": 0,
+        "render_before_battle": true,
+        "battle_id_formula": "102 + cell",
+        "battle_get_exp": 0,
+        "victory_comparison": "return_value == 1",
+        "victory_outputs": [
+          "render",
+          "fade_from_black",
+          [
+            "dialogue",
+            2890,
+            0,
+            1
+          ],
+          "render"
+        ],
+        "defeat_menu_argument": 83,
+        "defeat_menu_argument_is_read": false,
+        "return_on_victory": 1,
+        "return_on_other_result": 0
+      },
       "stop_after_first_match_failure": true,
       "final_rng_state": "0xe95678e2",
       "interround_count": 4,

@@ -5929,6 +5929,15 @@ def main() -> None:
     )
     script_936 = words(scripts[936])
     assert script_936[54] == 58
+    z_dat = (root / "Z.DAT").read_bytes()
+    tournament_single_match_raw = z_dat[0x29E80:0x29F10]
+    assert len(tournament_single_match_raw) == 144
+    tournament_head_table_raw = z_dat[0x25BCD:0x25BCD + 60]
+    tournament_head_ids = list(struct.unpack("<30h", tournament_head_table_raw))
+    assert tournament_head_ids == [
+        8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
+        22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69,
+    ]
     tournament_state = 1
     tournament_draws: list[dict[str, object]] = []
     tournament_selected: list[dict[str, int]] = []
@@ -6208,10 +6217,32 @@ def main() -> None:
                 "visible_dialogue_page_stream_encoding": "little_endian_<h:talk_id>",
                 "visible_dialogue_page_stream_sha256": sha256(tournament_dialogue_page_stream),
                 "visible_dialogue_page_ids": tournament_dialogue_pages,
-                "head_ids": [
-                    8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
-                    22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69,
-                ],
+                "head_ids": tournament_head_ids,
+                "single_match": {
+                    "entry_range": "0x30480..0x30510",
+                    "size_bytes": 144,
+                    "instruction_count": 45,
+                    "raw_function_offset": "0x29e80",
+                    "raw_function_sha256": sha256(tournament_single_match_raw),
+                    "head_table_copy_bytes": 60,
+                    "head_table_raw_offset": "0x25bcd",
+                    "head_table_sha256": sha256(tournament_head_table_raw),
+                    "valid_caller_cell_range": [0, 29],
+                    "talk_id_formula": "2854 + cell",
+                    "talk_style": 0,
+                    "render_before_battle": True,
+                    "battle_id_formula": "102 + cell",
+                    "battle_get_exp": 0,
+                    "victory_comparison": "return_value == 1",
+                    "victory_outputs": [
+                        "render", "fade_from_black",
+                        ["dialogue", 2890, 0, 1], "render",
+                    ],
+                    "defeat_menu_argument": 83,
+                    "defeat_menu_argument_is_read": False,
+                    "return_on_victory": 1,
+                    "return_on_other_result": 0,
+                },
                 "stop_after_first_match_failure": True,
                 "final_rng_state": f"0x{tournament_state:08x}",
                 "interround_count": 4,

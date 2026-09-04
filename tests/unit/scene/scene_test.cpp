@@ -3712,6 +3712,8 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     constexpr std::array<std::int16_t, 15> expected_battles{
         104, 106, 105, 109, 113, 108, 117, 114, 115, 125, 120, 123, 129, 126, 128};
+    constexpr std::array<std::int16_t, 15> expected_heads{
+        23, 32, 31, 11, 34, 7, 22, 10, 12, 71, 13, 67, 64, 26, 60};
     constexpr std::array<std::uint32_t, 15> expected_rng_states{
         0x41C67EA6U, 0x967EB0E7U, 0x2781E494U,
         0xC46B9B3DU, 0x95FB7483U, 0xD9E2B600U,
@@ -3779,6 +3781,15 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
             if (result.talk_id >= 2854) {
                 talk_ids.push_back(result.talk_id);
             }
+            if (result.talk_id >= 2854 && result.talk_id <= 2883) {
+                OL_CHECK(battle_index < expected_heads.size());
+                OL_CHECK(result.head_id == expected_heads[battle_index]);
+                OL_CHECK(result.style == 0);
+            } else if (result.talk_id == 2890) {
+                OL_CHECK(result.head_id == 0);
+                OL_CHECK(result.style == 1);
+                OL_CHECK(previous_kind == SceneStepKind::fade_from_black);
+            }
             previous_kind = result.kind;
             result = session.resume(SceneResponse::acknowledge);
         } else if (result.kind == SceneStepKind::battle) {
@@ -3790,6 +3801,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
             ++battle_index;
             previous_kind = result.kind;
             result = session.resume(SceneResponse::battle_victory);
+            OL_CHECK(result.kind == SceneStepKind::present);
         } else if (result.kind == SceneStepKind::fade_to_black) {
             ++fade_to_black_steps;
             if (result.wait_ticks == 9U) {
@@ -3889,6 +3901,10 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
             defeat.kind == SceneStepKind::present ||
             defeat.kind == SceneStepKind::fade_from_black ||
             defeat.kind == SceneStepKind::fade_to_black) {
+            if (defeat.kind == SceneStepKind::dialogue && defeat.talk_id == 2856) {
+                OL_CHECK(defeat.head_id == 23);
+                OL_CHECK(defeat.style == 0);
+            }
             defeat = defeat_session.resume(SceneResponse::acknowledge);
         } else {
             break;
