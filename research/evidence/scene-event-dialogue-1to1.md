@@ -345,7 +345,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 首轮REVIEW发现C++依赖超范围signed窄化表达机器word回绕；改为显式`wrapping_add`后，从84字节24条指令入口重审，覆盖3项重定位、200槽、首匹配、signed非正删除、78字节删除路径、完整尾移、两个caller和共享返回，零新增差异。全KDEF 160次opcode32参数流SHA256 `62823aae358eda4187c49b13797fecbdc02f2fb15801a88ce90f1c5cd3420a35`；真实script234固定删除首个金钱槽后暴露未修改重复槽，合成向量固定不存在、首槽正更新、零/负删除、越空槽完整压缩、slot199删除及两向回绕。
 
-## 16. 当前验证
+## 16. 角色学习武功与习得提示
+
+`sub_2F3F0`扫描角色十个武功ID槽，首个ID0槽写入目标武功并把对应等级写0；十槽全满时覆盖slot0/level0。写入先于silent判断，任意非零silent都直接返回；silent0用角色byte8和武功byte2 C串拼原Big5 `%s 學會 %s`，按两项名称总字节长度计算圆角面板，在caller framebuffer呈现、等任意键后恢复裸场景。opcode33传三个signed word并固定PC+4。
+
+首轮REVIEW发现C++仅显示ASCII `learn <id>`，并使用固定黑色矩形、颜色21/23和重绘后的scene底图；改为原角色/武功名字节、动态圆角面板、颜色5/7和冻结caller底图后，从310字节86条指令入口重审，覆盖14项重定位、首空/满槽、写序、silent两路、C串、几何、呈现/等待/恢复、共享返回和caller，零新增差异。全KDEF 7次opcode33参数流SHA256 `1ae0f0599adadfa792887f9ed9841da56236643427c8c0a34f8cbfed84688f8e`；五条可见原文和帧全部固化，script581实际观察`虛竹 學會 天山六陽掌`，合成向量固定首空、满槽与两种非零silent。
+
+## 17. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -366,6 +372,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景脚本移动7次真实opcode30参数流、42个延迟帧、四象限x-before-y、source counter独立、阻挡仍消费帧、offset回卷、零距离终止计数，以及script343逐帧像素；
 - 首个同ID物品数量的200槽短路、8次真实opcode31参数流、首槽signed阈值、缺失必假、重复金钱反例及零价商店缺钱路径；
 - 首个同ID物品数量修改的160次真实opcode32参数流、低16位回绕、首槽短路、无匹配无写入、signed非正删除、完整尾移、末槽清空与商店扣款caller；
+- 角色学习武功的7次真实opcode33参数流、首空槽/满槽覆盖、等级清零、silent两路、五条原Big5习得提示、动态面板像素和确认后裸场景恢复；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

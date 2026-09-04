@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=191/349`，`unique_any=147/284`，`unique_all=141/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=56` 角色学习武功写入首个空槽；状态为等待`audit_order=55` 首个同ID物品数量修改工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=56` 收口后进入同表 `audit_order=57` 增加角色资质
+已发布进度：`closure=192/349`，`unique_any=148/284`，`unique_all=142/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=57` 增加角色资质；状态为等待`audit_order=56` 角色学习武功写入首个空槽工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=57` 收口后进入同表 `audit_order=58` 角色指定或自动武功槽写入
 
 ## 0. 唯一正确性真值
 

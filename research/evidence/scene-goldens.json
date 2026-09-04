@@ -8703,6 +8703,277 @@
           "stay"
         ]
       },
+      "opcode_33_learn_magic": {
+        "entry_range": "0x2F3F0..0x2F526",
+        "size_bytes": 310,
+        "instruction_count": 86,
+        "occurrences": 7,
+        "stream_encoding": "little_endian_<IIhhh:script,pc,role_id,magic_id,silent>",
+        "stream_sha256": "1ae0f0599adadfa792887f9ed9841da56236643427c8c0a34f8cbfed84688f8e",
+        "positions": [
+          [
+            284,
+            175,
+            35,
+            61,
+            0
+          ],
+          [
+            363,
+            458,
+            38,
+            23,
+            0
+          ],
+          [
+            436,
+            241,
+            58,
+            24,
+            1
+          ],
+          [
+            436,
+            474,
+            58,
+            24,
+            1
+          ],
+          [
+            484,
+            175,
+            53,
+            29,
+            0
+          ],
+          [
+            536,
+            203,
+            49,
+            15,
+            0
+          ],
+          [
+            581,
+            43,
+            49,
+            15,
+            0
+          ]
+        ],
+        "role_ids": [
+          35,
+          38,
+          49,
+          53,
+          58
+        ],
+        "magic_ids": [
+          15,
+          23,
+          24,
+          29,
+          61
+        ],
+        "silent_counts": {
+          "0": 5,
+          "1": 2
+        },
+        "all_role_and_magic_ids_valid": true,
+        "destination": "first_magic_id_zero_else_slot_0",
+        "magic_level_after_write": 0,
+        "write_before_notice": true,
+        "silent_rule": "any_nonzero_skips_notice_and_scene_restore",
+        "message_format_hex": "257320bec7b77c20257300",
+        "message_format_cp950": "%s 學會 %s",
+        "notice_background": "preserve_caller_framebuffer",
+        "machine_visible_outputs": [
+          "notice_present",
+          "wait_any_key",
+          "scene_present"
+        ],
+        "modern_visible_outputs": [
+          "notice",
+          "present"
+        ],
+        "return_value": 0,
+        "program_counter_increment": 4,
+        "visible_notices": [
+          {
+            "script": 284,
+            "pc": 175,
+            "role_id": 35,
+            "magic_id": 61,
+            "role_name_hex": "a54faab0a852",
+            "magic_name_hex": "bf57a974a445bc43",
+            "text_hex": "a54faab0a85220bec7b77c20bf57a974a445bc4300",
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xcdd7ac90504b60b7"
+          },
+          {
+            "script": 363,
+            "pc": 458,
+            "role_id": 38,
+            "magic_id": 23,
+            "role_name_hex": "a5dbaf7da4d1",
+            "magic_name_hex": "a4d3a5c8afaba55c",
+            "text_hex": "a5dbaf7da4d120bec7b77c20a4d3a5c8afaba55c00",
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x3e5e6fdea7463fb7"
+          },
+          {
+            "script": 484,
+            "pc": 175,
+            "role_id": 53,
+            "magic_id": 29,
+            "role_name_hex": "ac71c541",
+            "magic_name_hex": "a55faddfafaba55c",
+            "text_hex": "ac71c54120bec7b77c20a55faddfafaba55c00",
+            "panel": [
+              78,
+              40,
+              164,
+              27
+            ],
+            "text_position": [
+              88,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x0c9d409bf70d43d3"
+          },
+          {
+            "script": 536,
+            "pc": 203,
+            "role_id": 49,
+            "magic_id": 15,
+            "role_name_hex": "b5eaa6cb",
+            "magic_name_hex": "a4d1a473a4bbb6a7b478",
+            "text_hex": "b5eaa6cb20bec7b77c20a4d1a473a4bbb6a7b47800",
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x7c2b94da4729e581"
+          },
+          {
+            "script": 581,
+            "pc": 43,
+            "role_id": 49,
+            "magic_id": 15,
+            "role_name_hex": "b5eaa6cb",
+            "magic_name_hex": "a4d1a473a4bbb6a7b478",
+            "text_hex": "b5eaa6cb20bec7b77c20a4d1a473a4bbb6a7b47800",
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x7c2b94da4729e581"
+          }
+        ],
+        "visible_frame_hashes_sha256": "00c9c879e9258caa470821ce7b72a8e9eed9bcdc138c7d766668db9edcd41ad0",
+        "synthetic_vectors": {
+          "first_empty_destination": 2,
+          "first_empty_ids": [
+            40,
+            41,
+            15,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49
+          ],
+          "first_empty_levels": [
+            100,
+            100,
+            0,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ],
+          "full_destination": 0,
+          "full_ids": [
+            15,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49
+          ],
+          "full_levels": [
+            0,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        }
+      },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",
         "size_bytes": 457,

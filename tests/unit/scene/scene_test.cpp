@@ -205,6 +205,13 @@ public:
                          32, 109, script == 34U ? std::int16_t{1} : std::int16_t{-1}}) {
                     append_i16(group, word);
                 }
+            } else if (script >= 36U && script <= 38U) {
+                const auto silent = script == 36U ? std::int16_t{0}
+                                  : script == 37U ? std::int16_t{1}
+                                                  : std::int16_t{-32768};
+                for (const auto word : std::array<std::int16_t, 4>{33, 49, 15, silent}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -3392,6 +3399,89 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     OL_CHECK(absent.talk_id == 2380);
 }
 
+void check_event_learn_magic(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    const auto fill_magic_slots = [](openlegend::model::RoleRecord& role) {
+        for (std::size_t slot = 0U; slot < openlegend::model::role_word::magic_count; ++slot) {
+            role.set_word(
+                openlegend::model::role_word::magic_id_begin + slot,
+                static_cast<std::int16_t>(40 + slot));
+            role.set_word(openlegend::model::role_word::magic_level_begin + slot, 100);
+        }
+    };
+    constexpr std::array<std::uint8_t, 21> expected_notice{
+        0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xBEU, 0xC7U,
+        0xB7U, 0x7CU, 0x20U, 0xA4U, 0xD1U, 0xA4U, 0x73U,
+        0xA4U, 0xBBU, 0xB6U, 0xA7U, 0xB4U, 0x78U, 0x00U};
+
+    auto empty_snapshot = load_baseline(root);
+    auto& empty_role = empty_snapshot.ranger.roles[49];
+    fill_magic_slots(empty_role);
+    empty_role.set_word(openlegend::model::role_word::magic_id_begin + 2U, 0);
+    openlegend::random::LegacyRandom empty_random{1U};
+    openlegend::scene::SceneSession empty_session{
+        data_root, empty_snapshot, empty_random, 70};
+    OL_CHECK(finish_scene_title(empty_session).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer empty_frame;
+    OL_CHECK(empty_session.render_map(empty_frame));
+    const auto random_before_notice = empty_random.state();
+    auto empty_result = empty_session.begin_event(36, 0, 0, 0);
+    OL_CHECK(empty_result.kind == SceneStepKind::notice);
+    OL_CHECK(empty_result.style == -2);
+    OL_CHECK(empty_session.pending_text().size() == expected_notice.size());
+    OL_CHECK(std::equal(
+        empty_session.pending_text().begin(), empty_session.pending_text().end(),
+        expected_notice.begin()));
+    OL_CHECK(empty_role.word(openlegend::model::role_word::magic_id_begin + 2U) == 15);
+    OL_CHECK(empty_role.word(openlegend::model::role_word::magic_level_begin + 2U) == 0);
+    OL_CHECK(empty_role.word(openlegend::model::role_word::magic_id_begin) == 40);
+    OL_CHECK(empty_role.word(openlegend::model::role_word::magic_level_begin) == 100);
+    OL_CHECK(empty_session.render(empty_frame));
+    const auto notice_hash = fnv1a64(empty_frame.pixels());
+    OL_CHECK(notice_hash == 0x7C2B94DA4729E581ULL);
+    OL_CHECK(empty_random.state() == random_before_notice);
+    OL_CHECK(empty_session.render(empty_frame));
+    OL_CHECK(fnv1a64(empty_frame.pixels()) == notice_hash);
+    OL_CHECK(empty_random.state() == random_before_notice);
+    OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+
+    auto full_snapshot = load_baseline(root);
+    auto& full_role = full_snapshot.ranger.roles[49];
+    fill_magic_slots(full_role);
+    openlegend::random::LegacyRandom full_random{1U};
+    openlegend::scene::SceneSession full_session{data_root, full_snapshot, full_random, 70};
+    OL_CHECK(finish_scene_title(full_session).kind == SceneStepKind::stay);
+    const auto full_result = full_session.begin_event(36, 0, 0, 0);
+    OL_CHECK(full_result.kind == SceneStepKind::notice);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_id_begin) == 15);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_level_begin) == 0);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_id_begin + 1U) == 41);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_level_begin + 1U) == 100);
+
+    for (const auto [script, silent] : std::array<std::pair<int, std::int16_t>, 2>{
+             std::pair{37, std::int16_t{1}},
+             std::pair{38, std::int16_t{-32768}}}) {
+        auto silent_snapshot = load_baseline(root);
+        auto& silent_role = silent_snapshot.ranger.roles[49];
+        fill_magic_slots(silent_role);
+        silent_role.set_word(openlegend::model::role_word::magic_id_begin + 4U, 0);
+        openlegend::random::LegacyRandom silent_random{1U};
+        openlegend::scene::SceneSession silent_session{
+            data_root, silent_snapshot, silent_random, 70};
+        OL_CHECK(finish_scene_title(silent_session).kind == SceneStepKind::stay);
+        OL_CHECK(silent_session.begin_event(script, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(silent_role.word(openlegend::model::role_word::magic_id_begin + 4U) == 15);
+        OL_CHECK(silent_role.word(openlegend::model::role_word::magic_level_begin + 4U) == 0);
+        OL_CHECK(silent != 0);
+        OL_CHECK(silent_session.pending_text().empty());
+    }
+}
+
 void check_event_all_book_pictures_condition(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -4183,6 +4273,10 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(after_gap_role.word(openlegend::model::role_word::hurt) == 10);
     OL_CHECK(after_gap_role.word(openlegend::model::role_word::physical_power) == 9);
 
+    constexpr std::array<std::uint8_t, 21> expected_learn_notice{
+        0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xBEU, 0xC7U,
+        0xB7U, 0x7CU, 0x20U, 0xA4U, 0xD1U, 0xA4U, 0x73U,
+        0xA4U, 0xBBU, 0xB6U, 0xA7U, 0xB4U, 0x78U, 0x00U};
     auto join_snapshot = load_baseline(root);
     for (std::size_t slot = 1U; slot < openlegend::model::kTeamMemberCount; ++slot) {
         join_snapshot.ranger.header.set_team_member(slot, openlegend::model::CharacterId{-1});
@@ -4219,10 +4313,18 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
              openlegend::scene::SceneStepKind::stay);
     auto join_result = join_session.begin_event(581, 0, 44, 29);
     bool expect_notice_restore = false;
+    bool saw_learn_notice = false;
     for (int step = 0; step < 128 && join_result.kind != openlegend::scene::SceneStepKind::stay;
          ++step) {
         if (expect_notice_restore) {
             OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::present);
+        }
+        if (join_result.kind == openlegend::scene::SceneStepKind::notice &&
+            join_session.pending_text().size() == expected_learn_notice.size() &&
+            std::equal(
+                join_session.pending_text().begin(), join_session.pending_text().end(),
+                expected_learn_notice.begin())) {
+            saw_learn_notice = true;
         }
         expect_notice_restore = join_result.kind == openlegend::scene::SceneStepKind::notice;
         const auto resumable = join_result.kind == openlegend::scene::SceneStepKind::dialogue ||
@@ -4237,6 +4339,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
         join_result = join_session.resume(openlegend::scene::SceneResponse::acknowledge);
     }
     OL_CHECK(!expect_notice_restore);
+    OL_CHECK(saw_learn_notice);
     OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::stay);
     OL_CHECK(join_snapshot.ranger.header.team_member(1U).value == 49);
     OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_mp) == 1200);
@@ -4652,6 +4755,7 @@ int main() {
     check_event_role_stat_conditions(root);
     check_event_attack_condition_boundaries(root);
     check_event_inventory_condition_edge_cases(root);
+    check_event_learn_magic(root);
     check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);

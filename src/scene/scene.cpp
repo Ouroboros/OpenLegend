@@ -56,7 +56,10 @@ constexpr std::array<std::uint8_t, 23> kRestQuestion{
     0xACU, 0x4FU, 0xA7U, 0x5FU, 0xA6U, 0xEDU, 0xB1U, 0x4AU, 0xB9U, 0x4CU, 0xA9U, 0x5DU,
     0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
 constexpr std::array<std::uint8_t, 4> kItemNoticePrefix{0xB1U, 0x6FU, 0xA8U, 0xECU};
+constexpr std::array<std::uint8_t, 6> kLearnMagicNoticeInfix{
+    0x20U, 0xBEU, 0xC7U, 0xB7U, 0x7CU, 0x20U};
 constexpr std::int16_t kItemNoticeStyle = -1;
+constexpr std::int16_t kLearnMagicNoticeStyle = -2;
 constexpr std::array<std::int16_t, 20> kEndingCreditIds{
     6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
     26, 28, 30, 32, 34, 36, 38, 40, 42, 44};
@@ -1250,7 +1253,10 @@ SceneStepResult SceneSession::run_event() {
             break;
         case 33: {
             const auto role_id = argument(1);
-            if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
+            const auto magic_id = argument(2);
+            const auto role_is_valid =
+                role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size();
+            if (role_is_valid) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
                 std::size_t destination = 0U;
                 for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
@@ -1259,12 +1265,33 @@ SceneStepResult SceneSession::run_event() {
                         break;
                     }
                 }
-                role.set_word(model::role_word::magic_id_begin + destination, argument(2));
+                role.set_word(model::role_word::magic_id_begin + destination, magic_id);
                 role.set_word(model::role_word::magic_level_begin + destination, 0);
             }
             program_counter_ += 4;
             if (argument(3) == 0) {
-                queue_notice(ascii_message("learn " + std::to_string(argument(2))));
+                std::vector<std::uint8_t> text;
+                const auto append_name = [&text](
+                                             const auto& bytes,
+                                             const std::size_t offset) {
+                    const auto begin = bytes.begin() + static_cast<std::ptrdiff_t>(offset);
+                    text.insert(text.end(), begin, std::find(begin, bytes.end(), 0U));
+                };
+                if (role_is_valid) {
+                    append_name(
+                        snapshot_.ranger.roles[static_cast<std::size_t>(role_id)].bytes,
+                        model::role_word::name_byte);
+                }
+                text.insert(
+                    text.end(), kLearnMagicNoticeInfix.begin(), kLearnMagicNoticeInfix.end());
+                if (magic_id >= 0 &&
+                    static_cast<std::size_t>(magic_id) < snapshot_.ranger.magics.size()) {
+                    append_name(
+                        snapshot_.ranger.magics[static_cast<std::size_t>(magic_id)].bytes,
+                        model::magic_word::name_byte);
+                }
+                text.push_back(0U);
+                queue_notice(std::move(text), kLearnMagicNoticeStyle);
                 queue_scene_present();
                 return emit_queued();
             }
@@ -3293,7 +3320,9 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         item_notice_base_framebuffer_.reset();
         return render_dialogue_overlay(framebuffer);
     }
-    if (pending_.kind == SceneStepKind::notice && pending_.style == kItemNoticeStyle) {
+    if (pending_.kind == SceneStepKind::notice &&
+        (pending_.style == kItemNoticeStyle ||
+         pending_.style == kLearnMagicNoticeStyle)) {
         dialogue_base_framebuffer_.reset();
         return render_item_notice_overlay(framebuffer);
     }
@@ -3310,7 +3339,9 @@ bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const
         item_notice_base_framebuffer_.reset();
         return render_dialogue_overlay(framebuffer);
     }
-    if (pending_.kind == SceneStepKind::notice && pending_.style == kItemNoticeStyle) {
+    if (pending_.kind == SceneStepKind::notice &&
+        (pending_.style == kItemNoticeStyle ||
+         pending_.style == kLearnMagicNoticeStyle)) {
         dialogue_base_framebuffer_.reset();
         return render_item_notice_overlay(framebuffer);
     }
@@ -3400,14 +3431,23 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         return render::draw_legacy_text(
             framebuffer, 71, 45, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
-    if (pending_.kind == SceneStepKind::notice && pending_.style == kItemNoticeStyle) {
+    if (pending_.kind == SceneStepKind::notice &&
+        (pending_.style == kItemNoticeStyle ||
+         pending_.style == kLearnMagicNoticeStyle)) {
         const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
         const auto text_length = static_cast<int>(
             std::distance(pending_text_.begin(), terminator));
-        const auto name_length = std::max(0, text_length - static_cast<int>(kItemNoticePrefix.size()));
-        const auto x = 150 - (4 * name_length + 16);
+        const auto fixed_length = pending_.style == kItemNoticeStyle
+                                      ? static_cast<int>(kItemNoticePrefix.size())
+                                      : static_cast<int>(kLearnMagicNoticeInfix.size());
+        const auto name_length = std::max(0, text_length - fixed_length);
+        const auto x = pending_.style == kItemNoticeStyle
+                           ? 150 - (4 * name_length + 16)
+                           : 150 - (4 * name_length + 24);
         constexpr int y = 40;
-        const auto width = 8 * name_length + 52;
+        const auto width = pending_.style == kItemNoticeStyle
+                               ? 8 * name_length + 52
+                               : 8 * name_length + 68;
         if (!draw_panel(framebuffer, x, y, width, 27)) {
             return false;
         }

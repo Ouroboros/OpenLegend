@@ -3726,6 +3726,127 @@ def status_notice_vectors(
             "post_ack_outputs": ["present", "stay"] if opcode == 52 else ["stay"],
         }
 
+    opcode_33_occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 33:
+                opcode_33_occurrences.append(
+                    (script_id, pc, code[pc + 1], code[pc + 2], code[pc + 3])
+                )
+            pc += WIDTHS[opcode]
+    assert opcode_33_occurrences == [
+        (284, 175, 35, 61, 0),
+        (363, 458, 38, 23, 0),
+        (436, 241, 58, 24, 1),
+        (436, 474, 58, 24, 1),
+        (484, 175, 53, 29, 0),
+        (536, 203, 49, 15, 0),
+        (581, 43, 49, 15, 0),
+    ]
+    opcode_33_stream = b"".join(
+        struct.pack("<IIhhh", *row) for row in opcode_33_occurrences
+    )
+
+    def record_name(record: bytes, offset: int) -> bytes:
+        field = record[offset:]
+        terminator = field.find(b"\0")
+        assert terminator >= 0
+        return field[:terminator]
+
+    learn_magic_notices = []
+    learn_magic_hash_stream = bytearray()
+    for script_id, pc, role_id, magic_id, silent in opcode_33_occurrences:
+        assert 0 <= role_id < 320 and 0 <= magic_id < 93
+        if silent != 0:
+            continue
+        role = ranger[836 + role_id * 182:836 + (role_id + 1) * 182]
+        magic = ranger[101_444 + magic_id * 136:101_444 + (magic_id + 1) * 136]
+        role_name = record_name(role, 8)
+        magic_name = record_name(magic, 2)
+        text = role_name + bytes.fromhex("20 be c7 b7 7c 20") + magic_name + b"\0"
+        name_length = len(role_name) + len(magic_name)
+        x = 150 - (4 * name_length + 24)
+        width = 8 * name_length + 68
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(
+            pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07
+        )
+        frame_hash = fnv1a64(pixels)
+        learn_magic_hash_stream.extend(bytes.fromhex(frame_hash[2:]))
+        learn_magic_notices.append({
+            "script": script_id,
+            "pc": pc,
+            "role_id": role_id,
+            "magic_id": magic_id,
+            "role_name_hex": role_name.hex(),
+            "magic_name_hex": magic_name.hex(),
+            "text_hex": text.hex(),
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": frame_hash,
+        })
+
+    def learn_magic_slots(
+        ids: list[int], levels: list[int], magic_id: int
+    ) -> tuple[list[int], list[int], int]:
+        destination = next((slot for slot, value in enumerate(ids) if value == 0), 0)
+        result_ids = ids.copy()
+        result_levels = levels.copy()
+        result_ids[destination] = magic_id
+        result_levels[destination] = 0
+        return result_ids, result_levels, destination
+
+    empty_ids, empty_levels, empty_destination = learn_magic_slots(
+        [40, 41, 0, 43, 44, 45, 46, 47, 48, 49], [100] * 10, 15
+    )
+    full_ids, full_levels, full_destination = learn_magic_slots(
+        list(range(40, 50)), [100] * 10, 15
+    )
+    assert empty_destination == 2 and empty_ids[2] == 15 and empty_levels[2] == 0
+    assert full_destination == 0 and full_ids[0] == 15 and full_levels[0] == 0
+    output["opcode_33_learn_magic"] = {
+        "entry_range": "0x2F3F0..0x2F526",
+        "size_bytes": 310,
+        "instruction_count": 86,
+        "occurrences": len(opcode_33_occurrences),
+        "stream_encoding": "little_endian_<IIhhh:script,pc,role_id,magic_id,silent>",
+        "stream_sha256": sha256(opcode_33_stream),
+        "positions": [list(row) for row in opcode_33_occurrences],
+        "role_ids": sorted({row[2] for row in opcode_33_occurrences}),
+        "magic_ids": sorted({row[3] for row in opcode_33_occurrences}),
+        "silent_counts": {
+            str(value): count
+            for value, count in sorted(Counter(row[4] for row in opcode_33_occurrences).items())
+        },
+        "all_role_and_magic_ids_valid": True,
+        "destination": "first_magic_id_zero_else_slot_0",
+        "magic_level_after_write": 0,
+        "write_before_notice": True,
+        "silent_rule": "any_nonzero_skips_notice_and_scene_restore",
+        "message_format_hex": "257320bec7b77c20257300",
+        "message_format_cp950": "%s 學會 %s",
+        "notice_background": "preserve_caller_framebuffer",
+        "machine_visible_outputs": ["notice_present", "wait_any_key", "scene_present"],
+        "modern_visible_outputs": ["notice", "present"],
+        "return_value": 0,
+        "program_counter_increment": 4,
+        "visible_notices": learn_magic_notices,
+        "visible_frame_hashes_sha256": sha256(bytes(learn_magic_hash_stream)),
+        "synthetic_vectors": {
+            "first_empty_destination": empty_destination,
+            "first_empty_ids": empty_ids,
+            "first_empty_levels": empty_levels,
+            "full_destination": full_destination,
+            "full_ids": full_ids,
+            "full_levels": full_levels,
+        },
+    }
+
     opcode_2_occurrences: list[dict[str, int | str]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
