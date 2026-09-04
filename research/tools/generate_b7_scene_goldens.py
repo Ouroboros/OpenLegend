@@ -3752,6 +3752,7 @@ def dialogue_vectors(
     palette: list[tuple[int, int, int]],
     decoded_talks: list[bytes],
     scripts: list[bytes],
+    ranger: bytes,
 ) -> dict[str, object]:
     ascii_font = (root / "FONT.X16").read_bytes()
     big5_font = (root / "FONT.C16").read_bytes()
@@ -4035,6 +4036,96 @@ def dialogue_vectors(
     draw_progress_menu(load_menu_pixels, 3)
     load_menu_frames["non_y_returns_with_prompt_pixels"] = fnv1a64(load_menu_pixels)
 
+    shop_dialogue_pages = dialogue_pages(decoded_talks[2974])
+    assert len(shop_dialogue_pages) == 1
+    shop_dialogue_pixels = bytearray(320 * 200)
+    background(shop_dialogue_pixels, 94, 17, 218, 57)
+    border(shop_dialogue_pixels, 94, 17, 218, 57)
+    background(shop_dialogue_pixels, 23, 12, 60, 62)
+    draw_sprite(shop_dialogue_pixels, portraits[111], 25, 71)
+    border(shop_dialogue_pixels, 23, 12, 60, 62)
+    for line_index, line in enumerate(shop_dialogue_pages[0][:-1].split(b"*")):
+        if line:
+            draw_text_linear(
+                shop_dialogue_pixels,
+                107,
+                20 + line_index * 17,
+                line + b"\0",
+            )
+
+    shop_records = [
+        struct.unpack_from("<15h", ranger, 114_092 + shop_id * 30)
+        for shop_id in range(5)
+    ]
+    shop_rows: list[list[dict[str, object]]] = []
+    for record in shop_records:
+        rows: list[dict[str, object]] = []
+        for slot in range(5):
+            item_id = record[slot]
+            stock = record[5 + slot]
+            price = record[10 + slot]
+            if stock <= 0:
+                continue
+            item_offset = 59_076 + item_id * 190
+            item_name = ranger[item_offset + 2:item_offset + 22].split(b"\0", 1)[0]
+            rows.append({
+                "slot": slot,
+                "item_id": item_id,
+                "stock": stock,
+                "price": price,
+                "name_hex": item_name.hex(),
+            })
+        shop_rows.append(rows)
+
+    def shop_frame(
+        shop_id: int,
+        selection: int,
+        rows_override: list[dict[str, object]] | None = None,
+    ) -> str:
+        pixels = bytearray(shop_dialogue_pixels)
+        rows = shop_rows[shop_id] if rows_override is None else rows_override
+        background(pixels, 94, 80, 140, len(rows) * 20 + 20)
+        border(pixels, 94, 80, 140, len(rows) * 20 + 20)
+        for index, row in enumerate(rows):
+            colors = (0x05, 0x07) if index == selection else (0x21, 0x23)
+            item_name = bytes.fromhex(str(row["name_hex"])) + b"\0"
+            price_text = f'{int(row["price"]):3d}'.encode("ascii") + b"\0"
+            draw_text_linear(pixels, 104, 90 + index * 20, item_name, *colors)
+            draw_text_linear(pixels, 200, 90 + index * 20, price_text, *colors)
+        return fnv1a64(pixels)
+
+    shop_selection_frames = [
+        [shop_frame(shop_id, selection) for selection in range(len(rows))]
+        for shop_id, rows in enumerate(shop_rows)
+    ]
+    shop_selection_frame_stream = b"".join(
+        struct.pack("<Q", int(frame, 16))
+        for frames in shop_selection_frames
+        for frame in frames
+    )
+    shop_overlay = {
+        "intro_talk": [2974, 111, 0],
+        "intro_page_count": len(shop_dialogue_pages),
+        "intro_frame_fnv1a64": fnv1a64(shop_dialogue_pixels),
+        "base_policy": "overlay_on_final_dialogue_framebuffer",
+        "panel": [94, 80, 140, "visible_count*20+20"],
+        "name_position": [104, "90+visible_index*20"],
+        "price_position": [200, "90+visible_index*20"],
+        "normal_colors": [0x21, 0x23],
+        "selected_colors": [0x05, 0x07],
+        "empty_selection_frame": shop_frame(0, 0, []),
+        "selection_frame_stream_encoding": "little_endian_<25Q>",
+        "selection_frame_stream_sha256": sha256(shop_selection_frame_stream),
+        "shops": [
+            {
+                "shop": shop_id,
+                "rows": rows,
+                "selection_frames": shop_selection_frames[shop_id],
+            }
+            for shop_id, rows in enumerate(shop_rows)
+        ],
+    }
+
     style_cases = {
         "style_0_script_1_pc_0": render_case(0, 1, 0),
         "style_1_script_1_pc_5": render_case(1, 0, 1),
@@ -4198,6 +4289,7 @@ def dialogue_vectors(
             "positions": [[23, 12], [237, 125], [237, 12], [23, 125]],
         },
         "cases": style_cases,
+        "shop_overlay": shop_overlay,
         "question_prompts": {
             "strings_hex": {key: value.hex() for key, value in question_texts.items()},
             "string_sha256": {
@@ -6089,14 +6181,30 @@ def main() -> None:
     script_939 = words(scripts[939])
     assert script_938 == (64, -1)
     assert script_939 == (65, -1)
+    opcode_64_raw = z_dat[0x2ACA6:0x2B32E]
+    assert len(opcode_64_raw) == 1672
+    opcode_64_script_stream = struct.pack("<2h", *script_938)
+    shop_record_stream = ranger[114_092:114_242]
+    assert len(shop_record_stream) == 150
     shop_cases = [
-        {"scene": 0, "shop": 0, "close_events": []},
         {"scene": 1, "shop": 0, "close_events": [17, 18]},
         {"scene": 3, "shop": 1, "close_events": [15, 16]},
         {"scene": 40, "shop": 2, "close_events": [21, 22]},
         {"scene": 60, "shop": 3, "close_events": [17, 18]},
         {"scene": 61, "shop": 4, "close_events": [10, 11, 12]},
     ]
+    shop_records = [
+        list(struct.unpack_from("<15h", shop_record_stream, shop_id * 30))
+        for shop_id in range(5)
+    ]
+    assert all(all(value > 0 for value in record[5:10]) for record in shop_records)
+    shop_close_arguments = {
+        str(case["scene"]): [
+            [-2, event, 0, 0, -1, -1, 939, -1, -1, -1, -2, -2, -2]
+            for event in case["close_events"]
+        ]
+        for case in shop_cases
+    }
     merchant_hide_cases = [
         {"scene": 0, "events": []},
         {"scene": 1, "events": [16, 17, 18]},
@@ -6490,9 +6598,67 @@ def main() -> None:
                 "death_menu": death_menu_sequence(root, palette, ranger, scripts),
             },
             "opcode_64_script_938": {
+                "entry_range": "0x312a6..0x3192e",
+                "size_bytes": 1672,
+                "instruction_count": 473,
+                "raw_function_offset": "0x2aca6",
+                "raw_function_sha256": sha256(opcode_64_raw),
+                "loaded_function_sha256": "a8ac857e29c681aa581f539506ce0055526b3b5cccad17619ec46deae4a22980",
+                "relocation_count": 68,
+                "normalized_loaded_equals_raw": True,
+                "stack_probe_argument": 112,
+                "local_stack_bytes": 40,
                 "script_id": 938,
+                "script_words": list(script_938),
+                "script_stream_sha256": sha256(opcode_64_script_stream),
+                "initial_event_references": [],
+                "activation_source": "opcode65_script939",
+                "program_counter_increment": 1,
+                "return_value": 1,
+                "caller_uses_return": False,
                 "shop_cases": shop_cases,
+                "undefined_scene_zero_shop_local": True,
+                "modern_invalid_scene_shop": -1,
+                "shop_record_bytes": 30,
+                "shop_records_sha256": sha256(shop_record_stream),
+                "shop_records": shop_records,
+                "physical_slots": 5,
+                "visible_slot_condition": "signed_stock > 0",
+                "visible_slot_count": 25,
+                "selection_uses_compacted_visible_index": True,
+                "initial_selection": 0,
+                "empty_list_direct_confirm_physical_slot": 0,
+                "purchase_checks_stock_again": False,
+                "down_key": 0x98,
+                "up_key": 0x9E,
+                "confirm_keys": [0x0D, 0x20, 0x96],
+                "cancel_key": 0x1B,
+                "selection_wraps": True,
+                "panel": [94, 80, 140, "visible_count*20+20"],
+                "name_position": [104, "90+visible_index*20"],
+                "price_format": "%3d",
+                "price_position": [200, "90+visible_index*20"],
+                "normal_colors": [0x21, 0x23],
+                "selected_colors": [0x05, 0x07],
+                "base_policy": "overlay_on_final_talk2974_framebuffer",
+                "intro_talk": [2974, 111, 0],
                 "currency_item": 174,
+                "money_lookup": "first_item174_slot_only",
+                "success_order": [
+                    "decrement_stock",
+                    "change_first_money_slot",
+                    "add_item",
+                    "render_scene",
+                    "talk2976",
+                    "render_scene",
+                    "close_events",
+                ],
+                "failure_order": [
+                    "render_scene",
+                    "talk2975",
+                    "render_scene",
+                    "close_events",
+                ],
                 "success_talk": 2976,
                 "failure_talk": 2975,
                 "purchase_feedback_outputs": [
@@ -6501,7 +6667,7 @@ def main() -> None:
                     "present",
                     "stay",
                 ],
-                "close_event_3": 939,
+                "close_event_arguments": shop_close_arguments,
             },
             "opcode_65_script_939": {
                 "script_id": 939,
@@ -6531,6 +6697,7 @@ def main() -> None:
                 palette,
                 decoded_talks,
                 scripts,
+                ranger,
             ),
             "status_notice_vectors": status_notice_vectors(
                 root, frame, palette, scripts, ranger

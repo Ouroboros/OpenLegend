@@ -307,6 +307,13 @@ private:
         int day{};
     };
 
+    struct ShopState {
+        std::int16_t shop_id{-1};
+        std::array<std::int16_t, model::shop_word::item_count> slots{};
+        std::size_t count{};
+        std::size_t selection{};
+    };
+
     struct EndingState {
         enum class Phase {
             title_draw,
@@ -365,6 +372,8 @@ private:
     [[nodiscard]] bool render_dialogue_overlay(
         render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_item_notice_overlay(
+        render::IndexedFramebuffer& framebuffer) const;
+    [[nodiscard]] bool render_shop_overlay(
         render::IndexedFramebuffer& framebuffer) const;
     void cycle_palette();
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
@@ -525,6 +534,7 @@ private:
     std::optional<LoadMenuState> load_menu_state_;
     std::optional<std::int16_t> pending_load_slot_;
     std::optional<DeathMenuState> death_menu_state_;
+    std::optional<ShopState> shop_state_;
     std::optional<EndingState> ending_state_;
     std::optional<TournamentTrialState> tournament_trial_state_;
     std::deque<QueuedOutput> queued_outputs_;

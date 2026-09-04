@@ -6811,13 +6811,28 @@
       }
     },
     "opcode_64_script_938": {
+      "entry_range": "0x312a6..0x3192e",
+      "size_bytes": 1672,
+      "instruction_count": 473,
+      "raw_function_offset": "0x2aca6",
+      "raw_function_sha256": "b5eb765deb1994347ca33820aaf9b78b75a29c8da36d712ef4d2a1fdda289597",
+      "loaded_function_sha256": "a8ac857e29c681aa581f539506ce0055526b3b5cccad17619ec46deae4a22980",
+      "relocation_count": 68,
+      "normalized_loaded_equals_raw": true,
+      "stack_probe_argument": 112,
+      "local_stack_bytes": 40,
       "script_id": 938,
+      "script_words": [
+        64,
+        -1
+      ],
+      "script_stream_sha256": "df53d68c8b6ccc9346ed3ff3e2a4dbdf86eb26185f17ceac0a01d9a459774f1f",
+      "initial_event_references": [],
+      "activation_source": "opcode65_script939",
+      "program_counter_increment": 1,
+      "return_value": 1,
+      "caller_uses_return": false,
       "shop_cases": [
-        {
-          "scene": 0,
-          "shop": 0,
-          "close_events": []
-        },
         {
           "scene": 1,
           "shop": 0,
@@ -6860,7 +6875,159 @@
           ]
         }
       ],
+      "undefined_scene_zero_shop_local": true,
+      "modern_invalid_scene_shop": -1,
+      "shop_record_bytes": 30,
+      "shop_records_sha256": "4a564910f1975cf21dbf9696a116ecba1d7d5206069a9e1a18b13f40afb909fa",
+      "shop_records": [
+        [
+          7,
+          104,
+          16,
+          111,
+          59,
+          1000,
+          1000,
+          1000,
+          1,
+          1,
+          80,
+          100,
+          150,
+          400,
+          700
+        ],
+        [
+          1,
+          8,
+          36,
+          118,
+          85,
+          1000,
+          1000,
+          1,
+          1,
+          1,
+          20,
+          150,
+          500,
+          400,
+          600
+        ],
+        [
+          26,
+          5,
+          35,
+          120,
+          71,
+          1000,
+          1000,
+          1,
+          1,
+          1,
+          100,
+          60,
+          500,
+          800,
+          300
+        ],
+        [
+          9,
+          20,
+          97,
+          114,
+          55,
+          1000,
+          1000,
+          1000,
+          1,
+          1,
+          200,
+          250,
+          10,
+          300,
+          250
+        ],
+        [
+          19,
+          13,
+          28,
+          119,
+          51,
+          1000,
+          1000,
+          1,
+          1,
+          1,
+          250,
+          50,
+          400,
+          500,
+          300
+        ]
+      ],
+      "physical_slots": 5,
+      "visible_slot_condition": "signed_stock > 0",
+      "visible_slot_count": 25,
+      "selection_uses_compacted_visible_index": true,
+      "initial_selection": 0,
+      "empty_list_direct_confirm_physical_slot": 0,
+      "purchase_checks_stock_again": false,
+      "down_key": 152,
+      "up_key": 158,
+      "confirm_keys": [
+        13,
+        32,
+        150
+      ],
+      "cancel_key": 27,
+      "selection_wraps": true,
+      "panel": [
+        94,
+        80,
+        140,
+        "visible_count*20+20"
+      ],
+      "name_position": [
+        104,
+        "90+visible_index*20"
+      ],
+      "price_format": "%3d",
+      "price_position": [
+        200,
+        "90+visible_index*20"
+      ],
+      "normal_colors": [
+        33,
+        35
+      ],
+      "selected_colors": [
+        5,
+        7
+      ],
+      "base_policy": "overlay_on_final_talk2974_framebuffer",
+      "intro_talk": [
+        2974,
+        111,
+        0
+      ],
       "currency_item": 174,
+      "money_lookup": "first_item174_slot_only",
+      "success_order": [
+        "decrement_stock",
+        "change_first_money_slot",
+        "add_item",
+        "render_scene",
+        "talk2976",
+        "render_scene",
+        "close_events"
+      ],
+      "failure_order": [
+        "render_scene",
+        "talk2975",
+        "render_scene",
+        "close_events"
+      ],
       "success_talk": 2976,
       "failure_talk": 2975,
       "purchase_feedback_outputs": [
@@ -6869,7 +7036,183 @@
         "present",
         "stay"
       ],
-      "close_event_3": 939
+      "close_event_arguments": {
+        "1": [
+          [
+            -2,
+            17,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ],
+          [
+            -2,
+            18,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ]
+        ],
+        "3": [
+          [
+            -2,
+            15,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ],
+          [
+            -2,
+            16,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ]
+        ],
+        "40": [
+          [
+            -2,
+            21,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ],
+          [
+            -2,
+            22,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ]
+        ],
+        "60": [
+          [
+            -2,
+            17,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ],
+          [
+            -2,
+            18,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ]
+        ],
+        "61": [
+          [
+            -2,
+            10,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ],
+          [
+            -2,
+            11,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ],
+          [
+            -2,
+            12,
+            0,
+            0,
+            -1,
+            -1,
+            939,
+            -1,
+            -1,
+            -1,
+            -2,
+            -2,
+            -2
+          ]
+        ]
+      }
     },
     "opcode_65_script_939": {
       "script_id": 939,
@@ -12070,6 +12413,278 @@
             "0x372fe4647b884671"
           ]
         }
+      },
+      "shop_overlay": {
+        "intro_talk": [
+          2974,
+          111,
+          0
+        ],
+        "intro_page_count": 1,
+        "intro_frame_fnv1a64": "0x36897306f557ddd0",
+        "base_policy": "overlay_on_final_dialogue_framebuffer",
+        "panel": [
+          94,
+          80,
+          140,
+          "visible_count*20+20"
+        ],
+        "name_position": [
+          104,
+          "90+visible_index*20"
+        ],
+        "price_position": [
+          200,
+          "90+visible_index*20"
+        ],
+        "normal_colors": [
+          33,
+          35
+        ],
+        "selected_colors": [
+          5,
+          7
+        ],
+        "empty_selection_frame": "0x07d10d3767118b68",
+        "selection_frame_stream_encoding": "little_endian_<25Q>",
+        "selection_frame_stream_sha256": "d01163cb9a4a77db2384f3fb7f37578419a7aa1d7cbefcf8e062327f8fc2ee0c",
+        "shops": [
+          {
+            "shop": 0,
+            "rows": [
+              {
+                "slot": 0,
+                "item_id": 7,
+                "stock": 1000,
+                "price": 80,
+                "name_hex": "a5c9c646b4b2"
+              },
+              {
+                "slot": 1,
+                "item_id": 104,
+                "stock": 1000,
+                "price": 100,
+                "name_hex": "a642be7abbc8b077"
+              },
+              {
+                "slot": 2,
+                "item_id": 16,
+                "stock": 1000,
+                "price": 150,
+                "name_hex": "a445c2e0bab5b344a459"
+              },
+              {
+                "slot": 3,
+                "item_id": 111,
+                "stock": 1,
+                "price": 400,
+                "name_hex": "beaebad1bc43"
+              },
+              {
+                "slot": 4,
+                "item_id": 59,
+                "stock": 1,
+                "price": 700,
+                "name_hex": "c073b648afebad59a55c"
+              }
+            ],
+            "selection_frames": [
+              "0x2b6c116d379227c5",
+              "0xd74e57cbf3d9e7e1",
+              "0x2daa0fb9a649a3f9",
+              "0x04a36c7056ee8825",
+              "0x5216ba7513e3f34d"
+            ]
+          },
+          {
+            "shop": 1,
+            "rows": [
+              {
+                "slot": 0,
+                "item_id": 1,
+                "stock": 1000,
+                "price": 20,
+                "name_hex": "baebaef0a459"
+              },
+              {
+                "slot": 1,
+                "item_id": 8,
+                "stock": 1000,
+                "price": 150,
+                "name_hex": "a4d1adbbc25fc4f2bda6"
+              },
+              {
+                "slot": 2,
+                "item_id": 36,
+                "stock": 1,
+                "price": 500,
+                "name_hex": "b371b552a661c073a459"
+              },
+              {
+                "slot": 3,
+                "item_id": 118,
+                "stock": 1,
+                "price": 400,
+                "name_hex": "baf1aa69adbbc553a44d"
+              },
+              {
+                "slot": 4,
+                "item_id": 85,
+                "stock": 1,
+                "price": 600,
+                "name_hex": "c552c645a44daa6b"
+              }
+            ],
+            "selection_frames": [
+              "0x80bdf80e0f3d002f",
+              "0xb4f905b3a4c5eca3",
+              "0xa5a2ad9dd0f2a25b",
+              "0xc08306496d184123",
+              "0xcc0442b553350dbf"
+            ]
+          },
+          {
+            "shop": 2,
+            "rows": [
+              {
+                "slot": 0,
+                "item_id": 26,
+                "stock": 1000,
+                "price": 100,
+                "name_hex": "a4bbb6a7a5bfaef0a4a6"
+              },
+              {
+                "slot": 1,
+                "item_id": 5,
+                "stock": 1000,
+                "price": 60,
+                "name_hex": "a5c9af75b4b2"
+              },
+              {
+                "slot": 2,
+                "item_id": 35,
+                "stock": 1,
+                "price": 500,
+                "name_hex": "a4d1a473b3b7bdac"
+              },
+              {
+                "slot": 3,
+                "item_id": 120,
+                "stock": 1,
+                "price": 800,
+                "name_hex": "b36ee7b3a5d2"
+              },
+              {
+                "slot": 4,
+                "item_id": 71,
+                "stock": 1,
+                "price": 300,
+                "name_hex": "a8e2bbf6bc43aa6b"
+              }
+            ],
+            "selection_frames": [
+              "0xbe43d0f1eb0bec5e",
+              "0xb7b2179dd88c297e",
+              "0x9e33f35b0ac6951a",
+              "0x4058267e1fd44a5e",
+              "0x9fe98b2e7d90efae"
+            ]
+          },
+          {
+            "shop": 3,
+            "rows": [
+              {
+                "slot": 0,
+                "item_id": 9,
+                "stock": 1000,
+                "price": 200,
+                "name_hex": "b6c2a5c9c25fc4f2bb49"
+              },
+              {
+                "slot": 1,
+                "item_id": 20,
+                "stock": 1000,
+                "price": 250,
+                "name_hex": "a4d1a4fdab4fa952a4a6"
+              },
+              {
+                "slot": 2,
+                "item_id": 97,
+                "stock": 1000,
+                "price": 10,
+                "name_hex": "aaf7bffac3f0"
+              },
+              {
+                "slot": 3,
+                "item_id": 114,
+                "stock": 1,
+                "price": 300,
+                "name_hex": "a950a4bdbc43"
+              },
+              {
+                "slot": 4,
+                "item_id": 55,
+                "stock": 1,
+                "price": 250,
+                "name_hex": "a443b6cbaeb1c3d0"
+              }
+            ],
+            "selection_frames": [
+              "0xe18453b0049e3223",
+              "0x32c7997793f664f3",
+              "0xf7aed138a5c6adbb",
+              "0x6828663ec474bd57",
+              "0xd59f9bcdc24e7cdf"
+            ]
+          },
+          {
+            "shop": 4,
+            "rows": [
+              {
+                "slot": 0,
+                "item_id": 19,
+                "stock": 1000,
+                "price": 250,
+                "name_hex": "a5cda5cdb379a4c6a4a6"
+              },
+              {
+                "slot": 1,
+                "item_id": 13,
+                "stock": 1000,
+                "price": 50,
+                "name_hex": "a445aae1a5c9c553a459"
+              },
+              {
+                "slot": 2,
+                "item_id": 28,
+                "stock": 1,
+                "price": 400,
+                "name_hex": "a5f1ad64adbaaf51a459"
+              },
+              {
+                "slot": 3,
+                "item_id": 119,
+                "stock": 1,
+                "price": 500,
+                "name_hex": "c552c645a867a44d"
+              },
+              {
+                "slot": 4,
+                "item_id": 51,
+                "stock": 1,
+                "price": 300,
+                "name_hex": "a4adac72afb5b6c7"
+              }
+            ],
+            "selection_frames": [
+              "0x76ee55d49d2fcd61",
+              "0x0c190b4b65326c35",
+              "0xda95048eb7de27c5",
+              "0xa6375f73e2019911",
+              "0x31fd475ab0a88bcd"
+            ]
+          }
+        ]
       },
       "question_prompts": {
         "strings_hex": {

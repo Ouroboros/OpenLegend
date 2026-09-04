@@ -505,14 +505,10 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                     ? scene::SceneResponse::yes
                     : scene::SceneResponse::no));
         } else if (pending_kind == scene::SceneStepKind::shop) {
-            if (translated_key >= static_cast<std::uint8_t>('1') &&
-                translated_key <= static_cast<std::uint8_t>('5')) {
-                handle_scene_result(scene_session_->resume(
-                    scene::SceneResponse::yes,
-                    static_cast<int>(translated_key - static_cast<std::uint8_t>('1'))));
-            } else if (translated_key == 0x1BU) {
-                handle_scene_result(scene_session_->resume(scene::SceneResponse::cancel));
-            }
+            key_state_reset = menu_key_state_reset(translated_key);
+            handle_scene_result(scene_session_->resume(
+                scene::SceneResponse::acknowledge,
+                static_cast<int>(translated_key)));
         } else if (pending_kind == scene::SceneStepKind::load_menu ||
                    pending_kind == scene::SceneStepKind::death_menu) {
             handle_scene_result(scene_session_->resume(

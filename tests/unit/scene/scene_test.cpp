@@ -2898,9 +2898,14 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     using openlegend::scene::SceneStepKind;
 
     const openlegend::resource::DataRoot data_root{root};
-    const auto open_shop = [](openlegend::scene::SceneSession& session) {
+    const auto open_shop =
+        [](openlegend::scene::SceneSession& session,
+           openlegend::render::IndexedFramebuffer* framebuffer = nullptr) {
         auto result = session.begin_event(938, 0, 0, 0);
         for (int step = 0; step < 16 && result.kind == SceneStepKind::dialogue; ++step) {
+            if (framebuffer != nullptr) {
+                OL_CHECK(session.render(*framebuffer));
+            }
             result = session.resume(SceneResponse::acknowledge);
         }
         return result;
@@ -2911,12 +2916,26 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         std::vector<std::int16_t> close_events;
     };
     const std::array<ShopCase, 6> cases{
-        ShopCase{0, 0, {}},
+        ShopCase{0, -1, {}},
         {1, 0, {17, 18}},
         {3, 1, {15, 16}},
         {40, 2, {21, 22}},
         {60, 3, {17, 18}},
         {61, 4, {10, 11, 12}},
+    };
+    constexpr std::array<std::uint64_t, 5> first_row_frames{
+        0x2B6C116D379227C5ULL,
+        0x80BDF80E0F3D002FULL,
+        0xBE43D0F1EB0BEC5EULL,
+        0xE18453B0049E3223ULL,
+        0x76EE55D49D2FCD61ULL,
+    };
+    constexpr std::array<std::uint64_t, 5> last_row_frames{
+        0x5216BA7513E3F34DULL,
+        0xCC0442B553350DBFULL,
+        0x9FE98B2E7D90EFAEULL,
+        0xD59F9BCDC24E7CDFULL,
+        0x31FD475AB0A88BCDULL,
     };
     for (const auto& shop_case : cases) {
         auto snapshot = load_baseline(root);
@@ -2929,10 +2948,31 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{
             data_root, snapshot, random, shop_case.scene};
-        auto result = open_shop(session);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        auto result =
+            open_shop(session, shop_case.shop >= 0 ? &framebuffer : nullptr);
         OL_CHECK(result.kind == SceneStepKind::shop);
         OL_CHECK(result.shop_id == shop_case.shop);
-        result = session.resume(SceneResponse::cancel);
+        OL_CHECK(result.menu_index == (shop_case.shop >= 0 ? 0 : -1));
+        if (shop_case.shop >= 0) {
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x36897306F557DDD0ULL);
+            OL_CHECK(session.render(framebuffer));
+            const auto shop_index = static_cast<std::size_t>(shop_case.shop);
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == first_row_frames[shop_index]);
+            OL_CHECK(session.render(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == first_row_frames[shop_index]);
+            result = session.resume(SceneResponse::acknowledge, 0x9E);
+            OL_CHECK(result.kind == SceneStepKind::shop);
+            OL_CHECK(result.menu_index == 4);
+            OL_CHECK(session.render(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == last_row_frames[shop_index]);
+            result = session.resume(SceneResponse::acknowledge, 0x98);
+            OL_CHECK(result.kind == SceneStepKind::shop);
+            OL_CHECK(result.menu_index == 0);
+            OL_CHECK(session.render(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == first_row_frames[shop_index]);
+        }
+        result = session.resume(SceneResponse::acknowledge, 0x1B);
         OL_CHECK(result.kind == SceneStepKind::stay);
         constexpr std::array<std::int16_t, 8> expected_fields{
             0, 0, -1, -1, 939, -1, -1, -1};
@@ -2946,11 +2986,52 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         }
     }
 
+    auto empty_snapshot = load_baseline(root);
+    auto& empty_shop = empty_snapshot.ranger.shops[0];
+    const auto empty_item = empty_shop.word(openlegend::model::shop_word::item_id_begin);
+    const auto empty_price = empty_shop.word(openlegend::model::shop_word::price_begin);
+    for (std::size_t slot = 0U; slot < openlegend::model::shop_word::item_count; ++slot) {
+        empty_shop.set_word(openlegend::model::shop_word::total_begin + slot, 0);
+    }
+    for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+        empty_snapshot.ranger.header.set_inventory(
+            slot, openlegend::model::ItemId{-1}, 0);
+    }
+    empty_snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{174}, 100);
+    empty_snapshot.ranger.header.set_inventory(1U, openlegend::model::ItemId{-1}, 0);
+    openlegend::random::LegacyRandom empty_random{1U};
+    openlegend::scene::SceneSession empty_session{
+        data_root, empty_snapshot, empty_random, 1};
+    openlegend::render::IndexedFramebuffer empty_framebuffer;
+    auto empty_purchase = open_shop(empty_session, &empty_framebuffer);
+    OL_CHECK(empty_purchase.kind == SceneStepKind::shop);
+    OL_CHECK(empty_purchase.menu_index == -1);
+    OL_CHECK(empty_session.render(empty_framebuffer));
+    OL_CHECK(fnv1a64(empty_framebuffer.pixels()) == 0x07D10D3767118B68ULL);
+    empty_purchase = empty_session.resume(SceneResponse::acknowledge, 0x0D);
+    OL_CHECK(empty_purchase.kind == SceneStepKind::present);
+    OL_CHECK(empty_shop.word(openlegend::model::shop_word::total_begin) == -1);
+    OL_CHECK(empty_snapshot.ranger.header.inventory_count(0U) == 100 - empty_price);
+    OL_CHECK(empty_snapshot.ranger.header.inventory_item(1U).value == empty_item);
+    OL_CHECK(empty_snapshot.ranger.header.inventory_count(1U) == 1);
+    empty_purchase = empty_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(empty_purchase.kind == SceneStepKind::dialogue);
+    OL_CHECK(empty_purchase.talk_id == 2976);
+    for (int step = 0; step < 16 && empty_purchase.kind == SceneStepKind::dialogue; ++step) {
+        empty_purchase = empty_session.resume(SceneResponse::acknowledge);
+    }
+    OL_CHECK(empty_purchase.kind == SceneStepKind::present);
+    OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+
     auto purchase_snapshot = load_baseline(root);
     auto& shop = purchase_snapshot.ranger.shops[1];
-    shop.set_word(openlegend::model::shop_word::item_id_begin, 42);
-    shop.set_word(openlegend::model::shop_word::total_begin, 2);
-    shop.set_word(openlegend::model::shop_word::price_begin, 7);
+    for (std::size_t slot = 0U; slot < openlegend::model::shop_word::item_count; ++slot) {
+        shop.set_word(openlegend::model::shop_word::total_begin + slot, 0);
+    }
+    constexpr std::size_t purchased_slot = 3U;
+    shop.set_word(openlegend::model::shop_word::item_id_begin + purchased_slot, 42);
+    shop.set_word(openlegend::model::shop_word::total_begin + purchased_slot, 2);
+    shop.set_word(openlegend::model::shop_word::price_begin + purchased_slot, 7);
     purchase_snapshot.ranger.header.set_inventory(
         0U, openlegend::model::ItemId{174}, 10);
     purchase_snapshot.ranger.header.set_inventory(
@@ -2968,7 +3049,7 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         data_root, purchase_snapshot, purchase_random, 3};
     auto purchase = open_shop(purchase_session);
     OL_CHECK(purchase.kind == SceneStepKind::shop);
-    purchase = purchase_session.resume(SceneResponse::yes, 0);
+    purchase = purchase_session.resume(SceneResponse::acknowledge, 0x0D);
     OL_CHECK(purchase.kind == SceneStepKind::present);
     purchase = purchase_session.resume(SceneResponse::acknowledge);
     OL_CHECK(purchase.kind == SceneStepKind::dialogue);
@@ -2981,7 +3062,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     OL_CHECK(purchase.kind == SceneStepKind::present);
     purchase = purchase_session.resume(SceneResponse::acknowledge);
     OL_CHECK(purchase.kind == SceneStepKind::stay);
-    OL_CHECK(shop.word(openlegend::model::shop_word::total_begin) == 1);
+    OL_CHECK(shop.word(openlegend::model::shop_word::total_begin) == 0);
+    OL_CHECK(shop.word(openlegend::model::shop_word::total_begin + purchased_slot) == 1);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_item(0U).value == 174);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_count(0U) == 3);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_item(1U).value == 42);
@@ -3010,7 +3092,7 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         data_root, split_money_snapshot, split_money_random, 3};
     auto split_purchase = open_shop(split_money_session);
     OL_CHECK(split_purchase.kind == SceneStepKind::shop);
-    split_purchase = split_money_session.resume(SceneResponse::yes, 0);
+    split_purchase = split_money_session.resume(SceneResponse::acknowledge, 0x20);
     OL_CHECK(split_purchase.kind == SceneStepKind::present);
     split_purchase = split_money_session.resume(SceneResponse::acknowledge);
     OL_CHECK(split_purchase.kind == SceneStepKind::dialogue);
@@ -3037,7 +3119,7 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         data_root, absent_money_snapshot, absent_money_random, 3};
     auto absent_purchase = open_shop(absent_money_session);
     OL_CHECK(absent_purchase.kind == SceneStepKind::shop);
-    absent_purchase = absent_money_session.resume(SceneResponse::yes, 0);
+    absent_purchase = absent_money_session.resume(SceneResponse::acknowledge, 0x96);
     OL_CHECK(absent_purchase.kind == SceneStepKind::present);
     absent_purchase = absent_money_session.resume(SceneResponse::acknowledge);
     OL_CHECK(absent_purchase.kind == SceneStepKind::dialogue);

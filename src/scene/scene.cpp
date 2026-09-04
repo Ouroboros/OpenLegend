@@ -768,6 +768,8 @@ bool SceneSession::prepare_event(
     three_statue_animation_state_.reset();
     load_menu_state_.reset();
     death_menu_state_.reset();
+    shop_state_.reset();
+    dialogue_base_framebuffer_.reset();
     ending_state_.reset();
     tournament_trial_state_.reset();
     queued_outputs_.clear();
@@ -924,22 +926,52 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         program_counter_ += victory ? true_offset_ : false_offset_;
         continuation_ = PendingContinuation::none;
     } else if (continuation_ == PendingContinuation::shop) {
+        bool purchase_requested = false;
+        std::optional<std::size_t> selected_slot;
+        if (response == SceneResponse::acknowledge &&
+            previous_kind == SceneStepKind::shop && shop_state_.has_value()) {
+            auto& state = *shop_state_;
+            if (value == 0x98 && state.count > 0U) {
+                state.selection = (state.selection + 1U) % state.count;
+            } else if (value == 0x9E && state.count > 0U) {
+                state.selection =
+                    state.selection == 0U ? state.count - 1U : state.selection - 1U;
+            } else if (value == 0x0D || value == 0x20 || value == 0x96) {
+                purchase_requested = true;
+                selected_slot = state.count > 0U
+                                    ? static_cast<std::size_t>(state.slots[state.selection])
+                                    : 0U;
+            } else if (value != 0x1B) {
+                pending_ = current_result(SceneStepKind::shop);
+                pending_.shop_id = state.shop_id;
+                pending_.menu_index = state.count > 0U
+                                          ? static_cast<std::int16_t>(state.selection)
+                                          : static_cast<std::int16_t>(-1);
+                return pending_;
+            }
+            if (!purchase_requested && value != 0x1B) {
+                pending_ = current_result(SceneStepKind::shop);
+                pending_.shop_id = state.shop_id;
+                pending_.menu_index = static_cast<std::int16_t>(state.selection);
+                return pending_;
+            }
+        }
+
         bool has_feedback = false;
-        if (response == SceneResponse::yes && previous_shop_id >= 0 &&
-            static_cast<std::size_t>(previous_shop_id) < snapshot_.ranger.shops.size() &&
-            value >= 0 && value < 5) {
+        if (purchase_requested && selected_slot.has_value() && previous_shop_id >= 0 &&
+            static_cast<std::size_t>(previous_shop_id) < snapshot_.ranger.shops.size()) {
             auto& shop = snapshot_.ranger.shops[static_cast<std::size_t>(previous_shop_id)];
-            const auto slot = static_cast<std::size_t>(value);
+            const auto slot = *selected_slot;
             const auto item_id = shop.word(model::shop_word::item_id_begin + slot);
             const auto stock = shop.word(model::shop_word::total_begin + slot);
             const auto price = shop.word(model::shop_word::price_begin + slot);
             const auto money = first_inventory_count(174);
-            if (stock > 0 && money.has_value() && *money >= price) {
-                change_first_inventory(174, static_cast<std::int16_t>(-price));
-                add_inventory(item_id, 1);
+            if (money.has_value() && *money >= price) {
                 shop.set_word(
                     model::shop_word::total_begin + slot,
                     static_cast<std::int16_t>(stock - 1));
+                change_first_inventory(174, static_cast<std::int16_t>(-price));
+                add_inventory(item_id, 1);
                 queue_scene_present();
                 queue_dialogue(2976, 111, 0);
             } else {
@@ -949,6 +981,8 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
             queue_scene_present();
             has_feedback = true;
         }
+        shop_state_.reset();
+        dialogue_base_framebuffer_.reset();
         if (has_feedback) {
             continuation_ = PendingContinuation::shop_feedback;
         } else {
@@ -1615,11 +1649,30 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 3;
             break;
         case 64: {
-            const auto shop_id = scene_id_ <= 1 ? 0 : scene_id_ == 3 ? 1 : scene_id_ == 40 ? 2 : scene_id_ == 60 ? 3 : scene_id_ == 61 ? 4 : -1;
+            const auto shop_id = scene_id_ == 1    ? 0
+                                 : scene_id_ == 3  ? 1
+                                 : scene_id_ == 40 ? 2
+                                 : scene_id_ == 60 ? 3
+                                 : scene_id_ == 61 ? 4
+                                                   : -1;
+            ShopState state;
+            state.shop_id = static_cast<std::int16_t>(shop_id);
+            if (shop_id >= 0 &&
+                static_cast<std::size_t>(shop_id) < snapshot_.ranger.shops.size()) {
+                const auto& record =
+                    snapshot_.ranger.shops[static_cast<std::size_t>(shop_id)];
+                for (std::size_t slot = 0U; slot < model::shop_word::item_count; ++slot) {
+                    if (record.word(model::shop_word::total_begin + slot) > 0) {
+                        state.slots[state.count++] = static_cast<std::int16_t>(slot);
+                    }
+                }
+            }
+            shop_state_ = state;
             program_counter_ += 1;
             queue_dialogue(2974, 111, 0);
             auto shop = current_result(SceneStepKind::shop);
-            shop.shop_id = static_cast<std::int16_t>(shop_id);
+            shop.shop_id = state.shop_id;
+            shop.menu_index = state.count > 0U ? 0 : -1;
             queued_outputs_.push_back(QueuedOutput{shop, {}});
             return emit_queued();
         }
@@ -2361,6 +2414,7 @@ SceneStepResult SceneSession::emit_queued() {
     dialogue_redraw_scene_before_ =
         pending_.kind == SceneStepKind::dialogue && output.redraw_scene_before;
     if (pending_.kind == SceneStepKind::shop) {
+        dialogue_base_framebuffer_.reset();
         continuation_ = PendingContinuation::shop;
     }
     return pending_;
@@ -3213,10 +3267,12 @@ void SceneSession::clear_event() noexcept {
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
     tournament_trial_state_.reset();
+    shop_state_.reset();
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
     item_notice_base_framebuffer_.reset();
+    dialogue_base_framebuffer_.reset();
 }
 
 std::int16_t SceneSession::player_frame() const noexcept {
@@ -3354,6 +3410,10 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         framebuffer = ending_framebuffer_;
         return true;
     }
+    if (pending_.kind == SceneStepKind::shop) {
+        item_notice_base_framebuffer_.reset();
+        return render_shop_overlay(framebuffer);
+    }
     if (pending_.kind == SceneStepKind::scene_title) {
         dialogue_base_framebuffer_.reset();
         item_notice_base_framebuffer_.reset();
@@ -3384,6 +3444,10 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
 bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (!valid()) {
         return false;
+    }
+    if (pending_.kind == SceneStepKind::shop) {
+        item_notice_base_framebuffer_.reset();
+        return render_shop_overlay(framebuffer);
     }
     if (pending_.kind == SceneStepKind::dialogue) {
         item_notice_base_framebuffer_.reset();
@@ -3422,6 +3486,62 @@ bool SceneSession::render_item_notice_overlay(
         item_notice_base_framebuffer_ = framebuffer;
     }
     return draw_overlay(framebuffer);
+}
+
+bool SceneSession::render_shop_overlay(
+    render::IndexedFramebuffer& framebuffer) const {
+    if (dialogue_base_framebuffer_.has_value()) {
+        framebuffer = *dialogue_base_framebuffer_;
+    } else {
+        dialogue_base_framebuffer_ = framebuffer;
+    }
+    if (!shop_state_.has_value()) {
+        return true;
+    }
+    const auto& state = *shop_state_;
+    if (!draw_panel(
+            framebuffer,
+            94,
+            80,
+            140,
+            static_cast<int>(state.count) * 20 + 20)) {
+        return false;
+    }
+    if (state.shop_id < 0 ||
+        static_cast<std::size_t>(state.shop_id) >= snapshot_.ranger.shops.size()) {
+        return true;
+    }
+
+    const auto& shop = snapshot_.ranger.shops[static_cast<std::size_t>(state.shop_id)];
+    render::Big5GlyphCache cache{big5_font_};
+    for (std::size_t index = 0U; index < state.count; ++index) {
+        const auto slot = static_cast<std::size_t>(state.slots[index]);
+        const auto item_id = shop.word(model::shop_word::item_id_begin + slot);
+        std::array<std::uint8_t, model::item_word::name_bytes + 1U> item_name{};
+        if (item_id >= 0 && static_cast<std::size_t>(item_id) < snapshot_.ranger.items.size()) {
+            const auto& item = snapshot_.ranger.items[static_cast<std::size_t>(item_id)];
+            std::copy_n(
+                item.bytes.begin() + static_cast<std::ptrdiff_t>(model::item_word::name_byte),
+                model::item_word::name_bytes,
+                item_name.begin());
+        }
+        const auto price = shop.word(model::shop_word::price_begin + slot);
+        std::array<char, 16> formatted_price{};
+        std::snprintf(
+            formatted_price.data(), formatted_price.size(), "%3d", static_cast<int>(price));
+        const auto price_text = ascii_message(formatted_price.data());
+        const auto selected = index == state.selection;
+        const auto shadow = static_cast<std::uint8_t>(selected ? 0x05U : 0x21U);
+        const auto foreground = static_cast<std::uint8_t>(selected ? 0x07U : 0x23U);
+        const auto y = 90 + static_cast<int>(index) * 20;
+        if (!render::draw_legacy_text(
+                framebuffer, 104, y, item_name, ascii_font_, cache, shadow, foreground) ||
+            !render::draw_legacy_text(
+                framebuffer, 200, y, price_text, ascii_font_, cache, shadow, foreground)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool SceneSession::draw_sprite(
