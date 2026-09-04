@@ -2422,7 +2422,6 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     script_434 = words(scripts[434])
     script_445 = words(scripts[445])
     script_464 = words(scripts[464])
-    script_673 = words(scripts[673])
     script_692 = words(scripts[692])
     assert script_2[90:92] == (56, 1)
     assert script_28[65:68] == (23, 4, 99)
@@ -2433,7 +2432,6 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     assert script_434[:5] == (38, -2, 0, 990, 994)
     assert script_445[24:27] == (42, 6, 0)
     assert script_464[28:33] == (55, 2, -1, 14, 0)
-    assert script_673[74:77] == (34, 0, 3)
     assert script_692 == (51, -1)
 
     opcode_23_occurrences: list[tuple[int, int, int, int]] = []
@@ -2487,13 +2485,6 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "written_word_index": 47,
             "written_value_semantics": "low_signed_int16",
             "program_counter_formula": "old_pc + 3",
-        },
-        "opcode_34_script_673": {
-            "arguments": list(script_673[74:77]),
-            "cases": [
-                {"before": value, "after": wrapped_clamped_add(value, 3)}
-                for value in (99, 32766)
-            ],
         },
         "opcode_36_script_328": {
             "arguments": list(script_328[:4]),
@@ -3845,6 +3836,126 @@ def status_notice_vectors(
             "full_ids": full_ids,
             "full_levels": full_levels,
         },
+    }
+
+    opcode_34_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 34:
+                opcode_34_occurrences.append(
+                    (script_id, pc, code[pc + 1], code[pc + 2])
+                )
+            pc += WIDTHS[opcode]
+    assert opcode_34_occurrences == [
+        (284, 179, 35, 10),
+        (284, 185, 0, 5),
+        (484, 185, 53, 20),
+        (673, 74, 0, 3),
+    ]
+    opcode_34_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_34_occurrences
+    )
+    iq_notice_infix = bytes.fromhex("20 b8 ea bd e8 bc 57 a5 5b 20")
+
+    def wrapped_clamped_iq(value: int, delta: int) -> int:
+        bits = (value + delta) & 0xFFFF
+        signed = bits if bits < 0x8000 else bits - 0x10000
+        return min(max(signed, 0), 100)
+
+    def render_iq_notice(role_id: int, gain: int) -> dict[str, object]:
+        role = ranger[836 + role_id * 182:836 + (role_id + 1) * 182]
+        role_name = record_name(role, 8)
+        text = role_name + iq_notice_infix + str(gain).encode("ascii") + b"\0"
+        layout_length = len(role_name) + 10
+        x = 150 - (4 * layout_length + 24)
+        width = 8 * layout_length + 68
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(
+            pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07
+        )
+        return {
+            "role_id": role_id,
+            "role_name_hex": role_name.hex(),
+            "gain": gain,
+            "text_hex": text.hex(),
+            "layout_length": layout_length,
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": fnv1a64(pixels),
+        }
+
+    baseline_iq_notices = []
+    for script_id, pc, role_id, delta in opcode_34_occurrences:
+        before = struct.unpack_from("<h", ranger, 836 + role_id * 182 + 120)[0]
+        after = wrapped_clamped_iq(before, delta)
+        assert after > before
+        notice = render_iq_notice(role_id, after - before)
+        baseline_iq_notices.append({
+            "script": script_id,
+            "pc": pc,
+            "delta": delta,
+            "before": before,
+            "after": after,
+            **notice,
+        })
+
+    synthetic_iq_inputs = [
+        (99, 3),
+        (32766, 3),
+        (-10, 0),
+        (-32768, -1),
+        (32767, 1),
+    ]
+    synthetic_iq_cases = []
+    iq_hash_stream = bytearray()
+    for before, delta in synthetic_iq_inputs:
+        after = wrapped_clamped_iq(before, delta)
+        row: dict[str, object] = {
+            "before": before,
+            "delta": delta,
+            "after": after,
+            "notice": after > before,
+        }
+        if after > before:
+            notice = render_iq_notice(0, after - before)
+            row.update(notice)
+            iq_hash_stream.extend(bytes.fromhex(str(notice["frame_fnv1a64"])[2:]))
+        synthetic_iq_cases.append(row)
+
+    output["opcode_34_role_iq"] = {
+        "entry_range": "0x2F526..0x2F62F",
+        "size_bytes": 265,
+        "instruction_count": 67,
+        "occurrences": len(opcode_34_occurrences),
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": sha256(opcode_34_stream),
+        "positions": [list(row) for row in opcode_34_occurrences],
+        "role_ids": sorted({row[2] for row in opcode_34_occurrences}),
+        "deltas": sorted({row[3] for row in opcode_34_occurrences}),
+        "all_role_ids_valid": True,
+        "written_role_word": "iq",
+        "written_word_index": 60,
+        "arithmetic": "signed_int16_wrapping_add_then_signed_clamp_0_100",
+        "notice_condition": "clamped_after_greater_than_original_before",
+        "notice_gain": "clamped_after_minus_original_before",
+        "message_format_hex": "257320b8eabde8bc57a55b20256400",
+        "message_format_cp950": "%s 資質增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "machine_visible_outputs_when_gain_positive": [
+            "notice_present", "wait_any_key", "scene_present"
+        ],
+        "modern_visible_outputs_when_gain_positive": ["notice", "present"],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_notices": baseline_iq_notices,
+        "synthetic_cases": synthetic_iq_cases,
+        "synthetic_visible_frame_hashes_sha256": sha256(bytes(iq_hash_stream)),
     }
 
     opcode_2_occurrences: list[dict[str, int | str]] = []

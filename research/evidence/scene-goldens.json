@@ -6036,23 +6036,6 @@
         "written_value_semantics": "low_signed_int16",
         "program_counter_formula": "old_pc + 3"
       },
-      "opcode_34_script_673": {
-        "arguments": [
-          34,
-          0,
-          3
-        ],
-        "cases": [
-          {
-            "before": 99,
-            "after": 100
-          },
-          {
-            "before": 32766,
-            "after": 0
-          }
-        ]
-      },
       "opcode_36_script_328": {
         "arguments": [
           36,
@@ -8973,6 +8956,275 @@
             100
           ]
         }
+      },
+      "opcode_34_role_iq": {
+        "entry_range": "0x2F526..0x2F62F",
+        "size_bytes": 265,
+        "instruction_count": 67,
+        "occurrences": 4,
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": "94d52336ff60b9eea2fa7387558ce60cdf63e656efe40d17b0616a27aa0a73ee",
+        "positions": [
+          [
+            284,
+            179,
+            35,
+            10
+          ],
+          [
+            284,
+            185,
+            0,
+            5
+          ],
+          [
+            484,
+            185,
+            53,
+            20
+          ],
+          [
+            673,
+            74,
+            0,
+            3
+          ]
+        ],
+        "role_ids": [
+          0,
+          35,
+          53
+        ],
+        "deltas": [
+          3,
+          5,
+          10,
+          20
+        ],
+        "all_role_ids_valid": true,
+        "written_role_word": "iq",
+        "written_word_index": 60,
+        "arithmetic": "signed_int16_wrapping_add_then_signed_clamp_0_100",
+        "notice_condition": "clamped_after_greater_than_original_before",
+        "notice_gain": "clamped_after_minus_original_before",
+        "message_format_hex": "257320b8eabde8bc57a55b20256400",
+        "message_format_cp950": "%s 資質增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "machine_visible_outputs_when_gain_positive": [
+          "notice_present",
+          "wait_any_key",
+          "scene_present"
+        ],
+        "modern_visible_outputs_when_gain_positive": [
+          "notice",
+          "present"
+        ],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_notices": [
+          {
+            "script": 284,
+            "pc": 179,
+            "delta": 10,
+            "before": 80,
+            "after": 90,
+            "role_id": 35,
+            "role_name_hex": "a54faab0a852",
+            "gain": 10,
+            "text_hex": "a54faab0a85220b8eabde8bc57a55b20313000",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xa5997a2d32b0becf"
+          },
+          {
+            "script": 284,
+            "pc": 185,
+            "delta": 5,
+            "before": 50,
+            "after": 55,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 5,
+            "text_hex": "ae7da470ab4c20b8eabde8bc57a55b203500",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x0c6cf84b4a6d2828"
+          },
+          {
+            "script": 484,
+            "pc": 185,
+            "delta": 20,
+            "before": 47,
+            "after": 67,
+            "role_id": 53,
+            "role_name_hex": "ac71c541",
+            "gain": 20,
+            "text_hex": "ac71c54120b8eabde8bc57a55b20323000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x7b8ed9e35cf3ab40"
+          },
+          {
+            "script": 673,
+            "pc": 74,
+            "delta": 3,
+            "before": 50,
+            "after": 53,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 3,
+            "text_hex": "ae7da470ab4c20b8eabde8bc57a55b203300",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x238f0fed026137f1"
+          }
+        ],
+        "synthetic_cases": [
+          {
+            "before": 99,
+            "delta": 3,
+            "after": 100,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 1,
+            "text_hex": "ae7da470ab4c20b8eabde8bc57a55b203100",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x6e7fe3eb3d0961b7"
+          },
+          {
+            "before": 32766,
+            "delta": 3,
+            "after": 0,
+            "notice": false
+          },
+          {
+            "before": -10,
+            "delta": 0,
+            "after": 0,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 10,
+            "text_hex": "ae7da470ab4c20b8eabde8bc57a55b20313000",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x4e4523ee5f7afda0"
+          },
+          {
+            "before": -32768,
+            "delta": -1,
+            "after": 100,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 32868,
+            "text_hex": "ae7da470ab4c20b8eabde8bc57a55b20333238363800",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x225ecf10614f7cb8"
+          },
+          {
+            "before": 32767,
+            "delta": 1,
+            "after": 0,
+            "notice": false
+          }
+        ],
+        "synthetic_visible_frame_hashes_sha256": "a0386afac0565c3002f5b51d53f9a9b4325ddc4681e50d2458a5cefb8603b89d"
       },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",

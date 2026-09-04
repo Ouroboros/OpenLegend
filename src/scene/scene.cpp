@@ -58,8 +58,11 @@ constexpr std::array<std::uint8_t, 23> kRestQuestion{
 constexpr std::array<std::uint8_t, 4> kItemNoticePrefix{0xB1U, 0x6FU, 0xA8U, 0xECU};
 constexpr std::array<std::uint8_t, 6> kLearnMagicNoticeInfix{
     0x20U, 0xBEU, 0xC7U, 0xB7U, 0x7CU, 0x20U};
+constexpr std::array<std::uint8_t, 10> kRoleIqNoticeInfix{
+    0x20U, 0xB8U, 0xEAU, 0xBDU, 0xE8U, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
 constexpr std::int16_t kItemNoticeStyle = -1;
 constexpr std::int16_t kLearnMagicNoticeStyle = -2;
+constexpr std::int16_t kRoleIqNoticeStyle = -3;
 constexpr std::array<std::int16_t, 20> kEndingCreditIds{
     6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
     26, 28, 30, 32, 34, 36, 38, 40, 42, 44};
@@ -1310,7 +1313,25 @@ SceneStepResult SceneSession::run_event() {
                 const auto after = clamped_add(before, argument(2), 0, 100);
                 role.set_word(field, after);
                 if (after > before) {
-                    queue_notice(ascii_message("role " + std::to_string(role_id) + " +" + std::to_string(after - before)));
+                    if (opcode == 34) {
+                        std::vector<std::uint8_t> text;
+                        const auto name_begin =
+                            role.bytes.begin() +
+                            static_cast<std::ptrdiff_t>(model::role_word::name_byte);
+                        text.insert(
+                            text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
+                        text.insert(
+                            text.end(), kRoleIqNoticeInfix.begin(), kRoleIqNoticeInfix.end());
+                        const auto gain = std::to_string(
+                            static_cast<int>(after) - static_cast<int>(before));
+                        text.insert(text.end(), gain.begin(), gain.end());
+                        text.push_back(0U);
+                        queue_notice(std::move(text), kRoleIqNoticeStyle);
+                    } else {
+                        queue_notice(ascii_message(
+                            "role " + std::to_string(role_id) + " +" +
+                            std::to_string(after - before)));
+                    }
                     queue_scene_present();
                 }
             }
@@ -3322,7 +3343,8 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == kItemNoticeStyle ||
-         pending_.style == kLearnMagicNoticeStyle)) {
+         pending_.style == kLearnMagicNoticeStyle ||
+         pending_.style == kRoleIqNoticeStyle)) {
         dialogue_base_framebuffer_.reset();
         return render_item_notice_overlay(framebuffer);
     }
@@ -3341,7 +3363,8 @@ bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == kItemNoticeStyle ||
-         pending_.style == kLearnMagicNoticeStyle)) {
+         pending_.style == kLearnMagicNoticeStyle ||
+         pending_.style == kRoleIqNoticeStyle)) {
         dialogue_base_framebuffer_.reset();
         return render_item_notice_overlay(framebuffer);
     }
@@ -3430,6 +3453,28 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         render::Big5GlyphCache cache{big5_font_};
         return render::draw_legacy_text(
             framebuffer, 71, 45, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+    }
+    if (pending_.kind == SceneStepKind::notice &&
+        pending_.style == kRoleIqNoticeStyle) {
+        const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
+        auto layout_length = static_cast<int>(
+            std::distance(pending_text_.begin(), terminator));
+        while (layout_length > 0 &&
+               pending_text_[static_cast<std::size_t>(layout_length - 1)] >=
+                   static_cast<std::uint8_t>('0') &&
+               pending_text_[static_cast<std::size_t>(layout_length - 1)] <=
+                   static_cast<std::uint8_t>('9')) {
+            --layout_length;
+        }
+        const auto x = 150 - (4 * layout_length + 24);
+        constexpr int y = 40;
+        const auto width = 8 * layout_length + 68;
+        if (!draw_panel(framebuffer, x, y, width, 27)) {
+            return false;
+        }
+        render::Big5GlyphCache cache{big5_font_};
+        return render::draw_legacy_text(
+            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == kItemNoticeStyle ||
