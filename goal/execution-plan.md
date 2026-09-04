@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=207/349`，`unique_any=163/284`，`unique_all=156/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=72` 角色内力属性写入；状态为等待`audit_order=71` 角色最大生命增加工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=72` 收口后进入同表 `audit_order=73` 物品数量归零
+已发布进度：`closure=208/349`，`unique_any=164/284`，`unique_all=157/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=73` 五种物品存在条件判断；状态为等待`audit_order=72` 角色内力属性写入工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=73` 收口后进入同表 `audit_order=74` 随机对话选择
 
 ## 0. 唯一正确性真值
 

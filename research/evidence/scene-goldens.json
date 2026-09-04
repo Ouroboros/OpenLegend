@@ -12050,6 +12050,74 @@
         ],
         "synthetic_visible_frame_hashes_sha256": "680e31fe85d9209b74750606984612d5f00041776173c5ff83f105642d72982b"
       },
+      "opcode_49_role_mp_type_write": {
+        "entry_range": "0x2FEBF..0x2FEDF",
+        "size_bytes": 32,
+        "instruction_count": 7,
+        "occurrences": 3,
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,value>",
+        "stream_sha256": "7e110f5178ae6bdd0edf6d87c37ffdbc74d3a428d99240a0e43db831b794cc84",
+        "positions": [
+          [
+            484,
+            188,
+            53,
+            2
+          ],
+          [
+            536,
+            207,
+            49,
+            2
+          ],
+          [
+            581,
+            47,
+            49,
+            2
+          ]
+        ],
+        "written_word_index": 40,
+        "write": "low_16_bits_direct_assignment_without_clamp",
+        "notice": false,
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_cases": [
+          {
+            "script": 484,
+            "pc": 188,
+            "role_id": 53,
+            "before": 0,
+            "after": 2
+          },
+          {
+            "script": 536,
+            "pc": 207,
+            "role_id": 49,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "script": 581,
+            "pc": 47,
+            "role_id": 49,
+            "before": 1,
+            "after": 2
+          }
+        ],
+        "synthetic_values": [
+          32767,
+          -32768,
+          0
+        ],
+        "invalid_modern_vectors": [
+          {
+            "role": -1,
+            "value": 2,
+            "write": false
+          }
+        ]
+      },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",
         "size_bytes": 457,

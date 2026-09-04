@@ -314,6 +314,13 @@ public:
                 for (const auto value : arguments[script - 95U]) {
                     append_i16(group, value);
                 }
+            } else if (script >= 101U && script <= 104U) {
+                constexpr std::array<std::array<std::int16_t, 2>, 4> arguments{{
+                    {0, 32767}, {0, -32768}, {0, 0}, {-1, 2}}};
+                append_i16(group, 49);
+                for (const auto value : arguments[script - 101U]) {
+                    append_i16(group, value);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -5154,6 +5161,25 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(100, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+    }
+
+    for (const auto [script, value] :
+         std::array<std::pair<std::int16_t, std::int16_t>, 3>{
+             std::pair<std::int16_t, std::int16_t>{101, 32767}, {102, -32768}, {103, 0}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::mp_type, 123);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(script, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::mp_type) == value);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        const auto before = snapshot.ranger.roles[0].bytes;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(104, 0, 0, 0).kind == SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 

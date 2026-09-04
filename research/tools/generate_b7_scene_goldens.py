@@ -4939,6 +4939,57 @@ def status_notice_vectors(
         "synthetic_visible_frame_hashes_sha256": sha256(bytes(hp_hash_stream)),
     }
 
+    opcode_49_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 49:
+                opcode_49_occurrences.append(
+                    (script_id, pc, code[pc + 1], code[pc + 2])
+                )
+            pc += WIDTHS[opcode]
+    assert opcode_49_occurrences == [
+        (484, 188, 53, 2),
+        (536, 207, 49, 2),
+        (581, 47, 49, 2),
+    ]
+    opcode_49_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_49_occurrences
+    )
+    baseline_mp_type_cases = []
+    for script_id, pc, role_id, value in opcode_49_occurrences:
+        role_offset = 836 + role_id * 182
+        baseline_mp_type_cases.append(
+            {
+                "script": script_id,
+                "pc": pc,
+                "role_id": role_id,
+                "before": struct.unpack_from("<h", ranger, role_offset + 80)[0],
+                "after": value,
+            }
+        )
+    output["opcode_49_role_mp_type_write"] = {
+        "entry_range": "0x2FEBF..0x2FEDF",
+        "size_bytes": 32,
+        "instruction_count": 7,
+        "occurrences": len(opcode_49_occurrences),
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,value>",
+        "stream_sha256": sha256(opcode_49_stream),
+        "positions": [list(row) for row in opcode_49_occurrences],
+        "written_word_index": 40,
+        "write": "low_16_bits_direct_assignment_without_clamp",
+        "notice": False,
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_cases": baseline_mp_type_cases,
+        "synthetic_values": [32767, -32768, 0],
+        "invalid_modern_vectors": [
+            {"role": -1, "value": 2, "write": False}
+        ],
+    }
+
     opcode_2_occurrences: list[dict[str, int | str]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
