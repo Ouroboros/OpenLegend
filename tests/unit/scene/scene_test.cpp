@@ -244,6 +244,10 @@ public:
                          38, 7, 5, 123, -32768}) {
                     append_i16(group, word);
                 }
+            } else if (script >= 58U && script <= 61U) {
+                constexpr std::array<std::int16_t, 4> scenes{0, 83, -1, 84};
+                append_i16(group, 39);
+                append_i16(group, scenes[script - 58U]);
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4646,6 +4650,34 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         }
         OL_CHECK(snapshot.scene_value(7U, layer, 65U).value_or(0) == 124);
         OL_CHECK(snapshot.scene_value(70U, layer, 0U).value_or(0) == 123);
+    }
+
+    for (const auto [script, scene, before] :
+         std::array<std::array<std::int16_t, 3>, 2>{
+             std::array<std::int16_t, 3>{58, 0, -32768}, {59, 83, 32767}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.scenes[static_cast<std::size_t>(scene)].set_word(
+            openlegend::model::scene_metadata_word::entrance_condition, before);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(script, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.scenes[static_cast<std::size_t>(scene)].word(
+                     openlegend::model::scene_metadata_word::entrance_condition) == 0);
+    }
+
+    for (const auto script : std::array<std::int16_t, 2>{60, 61}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.scenes[0].set_word(
+            openlegend::model::scene_metadata_word::entrance_condition, 111);
+        snapshot.ranger.scenes[83].set_word(
+            openlegend::model::scene_metadata_word::entrance_condition, 222);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(script, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.scenes[0].word(
+                     openlegend::model::scene_metadata_word::entrance_condition) == 111);
+        OL_CHECK(snapshot.ranger.scenes[83].word(
+                     openlegend::model::scene_metadata_word::entrance_condition) == 222);
     }
 
     for (const auto [event_1, expected_event_1] :

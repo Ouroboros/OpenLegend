@@ -2554,6 +2554,26 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIhhhh", *row) for row in opcode_38_occurrences
     )
 
+    opcode_39_occurrences: list[tuple[int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 39:
+                opcode_39_occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1])
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_39_occurrences == [
+        (409, 320, 80),
+        (420, 24, 75),
+        (423, 24, 75),
+    ]
+    opcode_39_stream = b"".join(
+        struct.pack("<IIh", *row) for row in opcode_39_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2746,9 +2766,33 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             },
             "external_scene_architecture": "direct_snapshot_span_replaces_flush_read_modify_write_reload_work_archive",
         },
-        "opcode_39_script_420": {
-            "arguments": list(script_420[24:26]),
-            "scene_75_entrance_condition": 0,
+        "opcode_39_scene_entrance_clear": {
+            "entry_range": "0x2F890..0x2F8AB",
+            "size_bytes": 27,
+            "instruction_count": 6,
+            "occurrences": len(opcode_39_occurrences),
+            "stream_encoding": "little_endian_<IIh:script,pc,scene>",
+            "stream_sha256": sha256(opcode_39_stream),
+            "positions": [list(row) for row in opcode_39_occurrences],
+            "scenes": sorted({row[2] for row in opcode_39_occurrences}),
+            "all_real_scenes_valid": True,
+            "scene_count": 84,
+            "record_bytes": 52,
+            "written_word": "entrance_condition",
+            "written_word_index": 0,
+            "written_value": 0,
+            "return_value": 0,
+            "program_counter_increment": 2,
+            "script_420_arguments": list(script_420[24:26]),
+            "real_vector": {"scene": 75, "before": 777, "after": 0},
+            "synthetic_valid_vectors": [
+                {"scene": 0, "before": -32768, "after": 0},
+                {"scene": 83, "before": 32767, "after": 0},
+            ],
+            "synthetic_invalid_vectors": [
+                {"scene": -1, "result": "no_write"},
+                {"scene": 84, "result": "no_write"},
+            ],
         },
         "opcode_42_script_445": {
             "arguments": list(script_445[24:27]),

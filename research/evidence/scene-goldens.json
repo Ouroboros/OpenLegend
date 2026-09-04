@@ -7263,12 +7263,73 @@
         },
         "external_scene_architecture": "direct_snapshot_span_replaces_flush_read_modify_write_reload_work_archive"
       },
-      "opcode_39_script_420": {
-        "arguments": [
+      "opcode_39_scene_entrance_clear": {
+        "entry_range": "0x2F890..0x2F8AB",
+        "size_bytes": 27,
+        "instruction_count": 6,
+        "occurrences": 3,
+        "stream_encoding": "little_endian_<IIh:script,pc,scene>",
+        "stream_sha256": "12e3351df86fb83d3bf39ab24eea4ec4ca1eebef1ffabc6aa8d4185a2e9850d7",
+        "positions": [
+          [
+            409,
+            320,
+            80
+          ],
+          [
+            420,
+            24,
+            75
+          ],
+          [
+            423,
+            24,
+            75
+          ]
+        ],
+        "scenes": [
+          75,
+          80
+        ],
+        "all_real_scenes_valid": true,
+        "scene_count": 84,
+        "record_bytes": 52,
+        "written_word": "entrance_condition",
+        "written_word_index": 0,
+        "written_value": 0,
+        "return_value": 0,
+        "program_counter_increment": 2,
+        "script_420_arguments": [
           39,
           75
         ],
-        "scene_75_entrance_condition": 0
+        "real_vector": {
+          "scene": 75,
+          "before": 777,
+          "after": 0
+        },
+        "synthetic_valid_vectors": [
+          {
+            "scene": 0,
+            "before": -32768,
+            "after": 0
+          },
+          {
+            "scene": 83,
+            "before": 32767,
+            "after": 0
+          }
+        ],
+        "synthetic_invalid_vectors": [
+          {
+            "scene": -1,
+            "result": "no_write"
+          },
+          {
+            "scene": 84,
+            "result": "no_write"
+          }
+        ]
       },
       "opcode_42_script_445": {
         "arguments": [
