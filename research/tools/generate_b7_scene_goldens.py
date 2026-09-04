@@ -3714,11 +3714,27 @@ def scene_animation_vectors(
 
 
 def scene_archive_state_vectors(
+    root: Path,
+    z_dat: bytes,
     ranger: bytes,
     scene_maps: list[bytes],
     scene_events: list[bytes],
     scripts: list[bytes],
 ) -> dict[str, object]:
+    scene_archives_open_raw = z_dat[0x22D91:0x22EAD]
+    shared_close_tail_raw = z_dat[0x22FC2:0x22FD0]
+    assert len(scene_archives_open_raw) == 284
+    assert len(shared_close_tail_raw) == 14
+    allsin_index = (root / "ALLSIN.IDX").read_bytes()
+    allsinbk_index = (root / "ALLSINBK.IDX").read_bytes()
+    allsinbk_group = (root / "ALLSINBK.GRP").read_bytes()
+    alldef_index = (root / "ALLDEF.IDX").read_bytes()
+    alldefbk_index = (root / "ALLDEFBK.IDX").read_bytes()
+    alldefbk_group = (root / "ALLDEFBK.GRP").read_bytes()
+    assert allsin_index == allsinbk_index
+    assert alldef_index == alldefbk_index
+    assert allsinbk_group == b"".join(scene_maps)
+    assert alldefbk_group == b"".join(scene_events)
     scene_id = 70
     metadata = struct.unpack_from("<26h", ranger, 97_076 + scene_id * 52)
     map_words = words(scene_maps[scene_id])
@@ -3752,6 +3768,62 @@ def scene_archive_state_vectors(
         if value != -2:
             event_after[field] = value
     return {
+        "scene_archives_open_machine": {
+            "entry_range": "0x29391..0x294ad",
+            "size_bytes": len(scene_archives_open_raw),
+            "instruction_count": 66,
+            "raw_function_offset": "0x22d91",
+            "raw_function_sha256": sha256(scene_archives_open_raw),
+            "loaded_function_sha256": "61dc1c778dc57f70bd0fad4723406d252ffc6bf0c9c0e4c61f36e56331fbb5f9",
+            "relocation_count": 18,
+            "relocation_delta": 0x20000,
+            "normalized_loaded_equals_raw": True,
+            "direct_callers": ["0x26d8d", "0x28e8c", "0x291f9"],
+            "map": {
+                "index_file": "ALLSIN.IDX",
+                "working_group_file": "ALLSINBK.GRP",
+                "index_cache_tag": 2,
+                "record_bytes": 49_152,
+                "closes_locally": True,
+            },
+            "event": {
+                "index_file": "ALLDEF.IDX",
+                "working_group_file": "ALLDEFBK.GRP",
+                "index_cache_tag": 3,
+                "record_bytes": 4_400,
+                "closes_via_shared_tail": True,
+            },
+            "shared_close_tail": {
+                "entry_range": "0x295c2..0x295d0",
+                "size_bytes": len(shared_close_tail_raw),
+                "raw_sha256": sha256(shared_close_tail_raw),
+                "close_then_return": True,
+            },
+            "index_open_failure": "print_original_message_then_fatal_exit",
+            "modern_error_boundary": "structured_load_error_before_session_creation",
+            "modern_archive_ownership": "eager_100_scene_snapshot",
+        },
+        "working_archive_assets": {
+            "scene_count": 100,
+            "allsin_index_sha256": sha256(allsin_index),
+            "allsinbk_index_sha256": sha256(allsinbk_index),
+            "allsin_index_matches_working_index": True,
+            "allsinbk_group_sha256": sha256(allsinbk_group),
+            "allsinbk_group_bytes": len(allsinbk_group),
+            "alldef_index_sha256": sha256(alldef_index),
+            "alldefbk_index_sha256": sha256(alldefbk_index),
+            "alldef_index_matches_working_index": True,
+            "alldefbk_group_sha256": sha256(alldefbk_group),
+            "alldefbk_group_bytes": len(alldefbk_group),
+            "working_groups_match_parsed_baseline_archives": True,
+            "sample_records": {
+                str(sample_scene): {
+                    "map_sha256": sha256(scene_maps[sample_scene]),
+                    "event_sha256": sha256(scene_events[sample_scene]),
+                }
+                for sample_scene in (0, 70, 99)
+            },
+        },
         "scene_70_asset_entry": {
             "normal": [metadata[14], metadata[15]],
             "jump": [metadata[24], metadata[25]],
@@ -7059,7 +7131,7 @@ def main() -> None:
                 scene_maps, scene_events, sprites, scripts
             ),
             "scene_archive_state_vectors": scene_archive_state_vectors(
-                ranger, scene_maps, scene_events, scripts
+                root, z_dat, ranger, scene_maps, scene_events, scripts
             ),
             "scene_loop_vectors": scene_loop_vectors(z_dat, ranger, scripts),
             "dialogue_vectors": dialogue_vectors(

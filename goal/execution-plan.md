@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=231/349`，`unique_any=187/284`，`unique_all=175/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=3` 场景档案打开；order2场景主循环已恢复入口/内部跳转目标场景前置黑帧与65帧淡入的1+65序列，并通过唯一world caller、tick边界、双golden与Linux app Debug 14/14
-下一任务指针：同表 `audit_order=4` 场景档案交换读取
+已发布进度：`closure=232/349`，`unique_any=188/284`，`unique_all=176/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=4` 场景档案交换读取；order3场景档案打开已收敛基准索引/工作副本组配对、固定记录长度与共享关闭尾，并通过三处caller、双golden与Linux app Debug 14/14
+下一任务指针：同表 `audit_order=5` 场景档案交换写回
 
 ## 0. 唯一正确性真值
 
@@ -286,7 +286,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 范围：`scene`
 
-当前状态：`scene-event-closure.tsv` 96/100已完成最终汇编→C++ REVIEW；`audit_order=2`场景主循环已按机器顺序恢复入口/内部跳转的目标场景黑色present→65帧fade-from-black，总计66次present；唯一world caller、固定输入优先级、五tick周期、自动事件、出口/跳转和tick等待均完成单向复审，双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=3`场景档案打开。
+当前状态：`scene-event-closure.tsv` 97/100已完成最终汇编→C++ REVIEW；`audit_order=3`场景档案打开已确认基准IDX寻址工作副本GRP、地图/事件固定记录尺寸、三类caller和事件档案共享关闭尾；现代100场景快照所有权及结构化错误返回属于平台适配，双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=4`场景档案交换读取。
 
 交付：
 
