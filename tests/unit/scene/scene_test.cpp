@@ -384,6 +384,7 @@ private:
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
     if (session.pending().kind == SceneStepKind::fade_from_black) {
+        OL_CHECK(session.pending().repeat_initial_fade_frame);
         const auto title = session.resume(SceneResponse::acknowledge);
         OL_CHECK(title.kind == SceneStepKind::scene_title);
     } else {
@@ -1803,8 +1804,9 @@ void check_scene_loop_transitions(const std::filesystem::path& root) {
     OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
              SceneStepKind::fade_to_black);
     OL_CHECK(jump_session.periodic_counter() == 4);
-    OL_CHECK(jump_session.resume(SceneResponse::acknowledge).kind ==
-             SceneStepKind::fade_from_black);
+    const auto jump_fade_from_black = jump_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(jump_fade_from_black.kind == SceneStepKind::fade_from_black);
+    OL_CHECK(jump_fade_from_black.repeat_initial_fade_frame);
     OL_CHECK(jump_session.scene_id() == 71);
     OL_CHECK(jump_session.periodic_counter() == 4);
     OL_CHECK(jump_session.scene_x() == 12 && jump_session.scene_y() == 13);

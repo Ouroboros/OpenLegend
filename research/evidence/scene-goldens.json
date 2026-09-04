@@ -12319,12 +12319,45 @@
       }
     },
     "scene_loop_vectors": {
+      "machine": {
+        "entry_range": "0x28e40..0x29391",
+        "size_bytes": 1361,
+        "instruction_count": 306,
+        "raw_function_offset": "0x22840",
+        "raw_function_sha256": "4ca1197f1af89ce93f7b887260730437847af1f87e3028b8c9a5220dfb7c3d10",
+        "loaded_function_sha256": "a624e39a305269b5e7904058dafcaa0466dd6f54e74f53463d23ae1f203ab500",
+        "relocation_count": 116,
+        "relocation_delta": 131072,
+        "normalized_loaded_equals_raw": true,
+        "direct_callers": [
+          "0x25a2a"
+        ],
+        "world_caller": {
+          "entry_range": "0x25911..0x25ab7",
+          "size_bytes": 422,
+          "instruction_count": 104,
+          "raw_function_offset": "0x1f311",
+          "raw_function_sha256": "73e9cef477c2d348134f7e03231565f005edf085d2feb9166dde9729cb53b866",
+          "loaded_function_sha256": "660a6187a62a56d45dbc36f0c22ce24b32dcf7d4c6e5919b00b9c1832f8b0501",
+          "relocation_count": 25,
+          "relocation_delta": 131072,
+          "normalized_loaded_equals_raw": true,
+          "direct_callers": [
+            "0x23d71",
+            "0x2401b"
+          ]
+        }
+      },
       "entry_outputs": [
+        "present_initial_scene_with_black_palette",
         "fade_from_black",
         "scene_title",
         "present",
         "auto_event_check"
       ],
+      "entry_pre_fade_present_frames": 1,
+      "entry_fade_from_black_frames": 65,
+      "entry_total_fade_side_present_frames": 66,
       "loop_order": [
         "event_animation",
         "one_input_action",
@@ -12351,6 +12384,11 @@
         11,
         16
       ],
+      "tick_boundary": {
+        "read_before_input": true,
+        "wait_after_transition_checks": true,
+        "wait_until_tick_changes": true
+      },
       "exit_outputs_after_auto_event": [
         "auto_event_outputs",
         "fade_to_black",
@@ -12359,11 +12397,15 @@
       "internal_jump_outputs": [
         "fade_to_black",
         "load_target_scene",
+        "present_target_scene_with_black_palette",
         "fade_from_black",
         "scene_title",
         "present",
         "auto_event_check"
       ],
+      "internal_jump_pre_fade_present_frames": 1,
+      "internal_jump_fade_from_black_frames": 65,
+      "internal_jump_total_fade_side_present_frames": 66,
       "world_direction_after_scene": [
         3,
         2,

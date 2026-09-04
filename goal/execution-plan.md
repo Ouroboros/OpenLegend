@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=230/349`，`unique_any=186/284`，`unique_all=175/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=2` 场景主循环；order98场景战斗入口已恢复双64帧淡出、分段资源加载、黑色首帧/音乐及1+65帧初始序列，并通过真实script691 battle4生命周期、双golden与Linux app Debug 14/14
-下一任务指针：同表 `audit_order=3` 场景档案打开
+已发布进度：`closure=231/349`，`unique_any=187/284`，`unique_all=175/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=3` 场景档案打开；order2场景主循环已恢复入口/内部跳转目标场景前置黑帧与65帧淡入的1+65序列，并通过唯一world caller、tick边界、双golden与Linux app Debug 14/14
+下一任务指针：同表 `audit_order=4` 场景档案交换读取
 
 ## 0. 唯一正确性真值
 
@@ -286,7 +286,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 范围：`scene`
 
-当前状态：`scene-event-closure.tsv` 95/100已完成最终汇编→C++ REVIEW；`audit_order=98`场景战斗入口已按机器顺序恢复WDX/WMP→64帧scene淡出→EFT→黑色首帧→音乐→排序黑帧+65帧淡入，以及保留最终battle framebuffer的64帧出口淡出后才恢复scene/music/result；真实script691 battle4生命周期、双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=2`场景主循环。
+当前状态：`scene-event-closure.tsv` 96/100已完成最终汇编→C++ REVIEW；`audit_order=2`场景主循环已按机器顺序恢复入口/内部跳转的目标场景黑色present→65帧fade-from-black，总计66次present；唯一world caller、固定输入优先级、五tick周期、自动事件、出口/跳转和tick等待均完成单向复审，双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=3`场景档案打开。
 
 交付：
 

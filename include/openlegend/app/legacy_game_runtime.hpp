@@ -199,7 +199,10 @@ private:
     void complete_battle_after_fade();
     void handle_scene_result(const scene::SceneStepResult& result);
     [[nodiscard]] bool advance_scene_effect();
-    void begin_scene_effect(SceneEffectKind kind, std::uint16_t wait_ticks = 1U);
+    void begin_scene_effect(
+        SceneEffectKind kind,
+        std::uint16_t wait_ticks = 1U,
+        bool repeat_initial_fade_frame = false);
     void clear_scene_effect() noexcept;
     void update_menu_counts();
     void set_view(LegacyGameView view, std::string_view reason);
@@ -263,6 +266,7 @@ private:
     std::int16_t physical_power_counter_{};
     std::int16_t scene_event_item_id_{};
     bool scene_effect_presented_{};
+    bool scene_effect_repeat_initial_frame_{};
     bool world_step_processed_{};
     bool pending_world_exit_{};
     std::optional<scene::SceneDirection> scene_direction_input_;

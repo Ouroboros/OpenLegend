@@ -241,7 +241,25 @@ void finish_world_scene_transition(openlegend::app::LegacyGameRuntime& game) {
 }
 
 void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
-    advance_rendered_frames(game, 65U);
+    std::uint64_t initial_black_pixels{};
+    for (std::size_t frame = 0U; frame < 66U; ++frame) {
+        OL_CHECK(game.render());
+        if (frame < 2U) {
+            OL_CHECK(std::all_of(
+                game.framebuffer().palette().begin(),
+                game.framebuffer().palette().end(),
+                [](const auto& color) {
+                    return color.red == 0U && color.green == 0U && color.blue == 0U;
+                }));
+            const auto pixels = fnv1a64(game.framebuffer().pixels());
+            if (frame == 0U) {
+                initial_black_pixels = pixels;
+            } else {
+                OL_CHECK(pixels == initial_black_pixels);
+            }
+        }
+        game.advance();
+    }
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
     game.handle_key(0x0DU, false, false);
     advance_rendered_frames(game, 1U);
@@ -1851,10 +1869,10 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     static_cast<void>(game.take_scene_audio_commands());
 
     std::uint64_t frozen_scene_hash = 0U;
-    for (std::size_t frame = 0U; frame < 65U; ++frame) {
+    for (std::size_t frame = 0U; frame < 66U; ++frame) {
         OL_CHECK(game.view() == app::LegacyGameView::scene);
         OL_CHECK(game.render());
-        if (frame == 64U) {
+        if (frame == 65U) {
             frozen_scene_hash = fnv1a64(game.framebuffer().pixels());
             OL_CHECK(std::ranges::any_of(
                 game.framebuffer().palette(),
@@ -2014,7 +2032,7 @@ void check_scene_load_runtime(const std::filesystem::path& data_root) {
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
 
-    advance_rendered_frames(game, 65U);
+    advance_rendered_frames(game, 66U);
     advance_rendered_frames(game, 65U);
     OL_CHECK(game.view() == app::LegacyGameView::scene);
     OL_CHECK(game.render());

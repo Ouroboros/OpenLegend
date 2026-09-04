@@ -112,6 +112,7 @@ struct SceneStepResult {
     std::int16_t save_slot{-1};
     std::uint16_t wait_ticks{1U};
     SceneQuestion question{SceneQuestion::none};
+    bool repeat_initial_fade_frame{};
     bool death_confirm{};
     bool ending_complete{};
 

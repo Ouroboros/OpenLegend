@@ -768,6 +768,10 @@ bool LegacyGameRuntime::render() {
         if (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
             scene_effect_palettes_.empty()) {
             scene_effect_palettes_ = render::legacy_fade_from_black(framebuffer_.palette());
+            if (scene_effect_repeat_initial_frame_ && !scene_effect_palettes_.empty()) {
+                scene_effect_palettes_.insert(
+                    scene_effect_palettes_.begin(), scene_effect_palettes_.front());
+            }
         } else if (scene_effect_kind_ == SceneEffectKind::fade_to_black &&
                    scene_effect_palettes_.empty()) {
             scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
@@ -1365,7 +1369,10 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         begin_scene_effect(SceneEffectKind::present, result.wait_ticks);
         break;
     case scene::SceneStepKind::fade_from_black:
-        begin_scene_effect(SceneEffectKind::fade_from_black, result.wait_ticks);
+        begin_scene_effect(
+            SceneEffectKind::fade_from_black,
+            result.wait_ticks,
+            result.repeat_initial_fade_frame);
         break;
     case scene::SceneStepKind::fade_to_black:
         if (scene_session_ != nullptr && scene_session_->exit_transition_pending()) {
@@ -1624,12 +1631,15 @@ bool LegacyGameRuntime::advance_scene_effect() {
 }
 
 void LegacyGameRuntime::begin_scene_effect(
-    const SceneEffectKind kind, const std::uint16_t wait_ticks) {
+    const SceneEffectKind kind,
+    const std::uint16_t wait_ticks,
+    const bool repeat_initial_fade_frame) {
     scene_effect_kind_ = kind;
     scene_effect_palettes_.clear();
     scene_effect_frame_ = 0U;
     scene_effect_wait_ticks_ = std::max<std::uint16_t>(wait_ticks, 1U);
     scene_effect_presented_ = false;
+    scene_effect_repeat_initial_frame_ = repeat_initial_fade_frame;
 }
 
 void LegacyGameRuntime::clear_scene_effect() noexcept {
@@ -1638,6 +1648,7 @@ void LegacyGameRuntime::clear_scene_effect() noexcept {
     scene_effect_frame_ = 0U;
     scene_effect_wait_ticks_ = 1U;
     scene_effect_presented_ = false;
+    scene_effect_repeat_initial_frame_ = false;
 }
 
 std::vector<scene::SceneAudioCommand> LegacyGameRuntime::take_scene_audio_commands() {

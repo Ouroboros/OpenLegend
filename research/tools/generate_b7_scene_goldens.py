@@ -3190,7 +3190,13 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
-def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]:
+def scene_loop_vectors(
+    z_dat: bytes, ranger: bytes, scripts: list[bytes]
+) -> dict[str, object]:
+    scene_main_loop_raw = z_dat[0x22840:0x22D91]
+    world_caller_raw = z_dat[0x1F311:0x1F4B7]
+    assert len(scene_main_loop_raw) == 1_361
+    assert len(world_caller_raw) == 422
     metadata = [
         words(ranger[97_076 + scene * 52:97_076 + (scene + 1) * 52])
         for scene in range(84)
@@ -3233,12 +3239,40 @@ def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]
     assert opcode_8[-1] == {"script": 635, "pc": 119, "music": 3}
     assert opcode_8_music_counts == Counter({3: 15})
     return {
+        "machine": {
+            "entry_range": "0x28e40..0x29391",
+            "size_bytes": len(scene_main_loop_raw),
+            "instruction_count": 306,
+            "raw_function_offset": "0x22840",
+            "raw_function_sha256": sha256(scene_main_loop_raw),
+            "loaded_function_sha256": "a624e39a305269b5e7904058dafcaa0466dd6f54e74f53463d23ae1f203ab500",
+            "relocation_count": 116,
+            "relocation_delta": 0x20000,
+            "normalized_loaded_equals_raw": True,
+            "direct_callers": ["0x25a2a"],
+            "world_caller": {
+                "entry_range": "0x25911..0x25ab7",
+                "size_bytes": len(world_caller_raw),
+                "instruction_count": 104,
+                "raw_function_offset": "0x1f311",
+                "raw_function_sha256": sha256(world_caller_raw),
+                "loaded_function_sha256": "660a6187a62a56d45dbc36f0c22ce24b32dcf7d4c6e5919b00b9c1832f8b0501",
+                "relocation_count": 25,
+                "relocation_delta": 0x20000,
+                "normalized_loaded_equals_raw": True,
+                "direct_callers": ["0x23d71", "0x2401b"],
+            },
+        },
         "entry_outputs": [
+            "present_initial_scene_with_black_palette",
             "fade_from_black",
             "scene_title",
             "present",
             "auto_event_check",
         ],
+        "entry_pre_fade_present_frames": 1,
+        "entry_fade_from_black_frames": 65,
+        "entry_total_fade_side_present_frames": 66,
         "loop_order": [
             "event_animation",
             "one_input_action",
@@ -3260,6 +3294,11 @@ def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]
             "idle_update",
         ],
         "periodic_update_ticks_first_20": [tick for tick in range(1, 21) if tick % 5 == 1],
+        "tick_boundary": {
+            "read_before_input": True,
+            "wait_after_transition_checks": True,
+            "wait_until_tick_changes": True,
+        },
         "exit_outputs_after_auto_event": [
             "auto_event_outputs",
             "fade_to_black",
@@ -3268,11 +3307,15 @@ def scene_loop_vectors(ranger: bytes, scripts: list[bytes]) -> dict[str, object]
         "internal_jump_outputs": [
             "fade_to_black",
             "load_target_scene",
+            "present_target_scene_with_black_palette",
             "fade_from_black",
             "scene_title",
             "present",
             "auto_event_check",
         ],
+        "internal_jump_pre_fade_present_frames": 1,
+        "internal_jump_fade_from_black_frames": 65,
+        "internal_jump_total_fade_side_present_frames": 66,
         "world_direction_after_scene": [3, 2, 1, 0],
         "metadata_jump_count": len(jumps),
         "metadata_jumps": jumps,
@@ -7018,7 +7061,7 @@ def main() -> None:
             "scene_archive_state_vectors": scene_archive_state_vectors(
                 ranger, scene_maps, scene_events, scripts
             ),
-            "scene_loop_vectors": scene_loop_vectors(ranger, scripts),
+            "scene_loop_vectors": scene_loop_vectors(z_dat, ranger, scripts),
             "dialogue_vectors": dialogue_vectors(
                 root,
                 frame,

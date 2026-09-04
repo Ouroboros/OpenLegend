@@ -515,6 +515,7 @@ SceneSession::SceneSession(
     advance_event_pictures();
     continuation_ = PendingContinuation::scene_entry;
     pending_ = current_result(SceneStepKind::fade_from_black);
+    pending_.repeat_initial_fade_frame = true;
 }
 
 bool SceneSession::exit_transition_pending() const noexcept {
@@ -1859,6 +1860,7 @@ SceneStepResult SceneSession::complete_scene_jump() {
     advance_event_pictures();
     continuation_ = PendingContinuation::scene_entry;
     pending_ = current_result(SceneStepKind::fade_from_black);
+    pending_.repeat_initial_fade_frame = true;
     return pending_;
 }
 
