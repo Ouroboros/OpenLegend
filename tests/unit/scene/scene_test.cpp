@@ -5364,32 +5364,68 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
             snapshot.ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
         }
+        OL_CHECK(snapshot.set_event_value(
+            70U, 11U, openlegend::model::SceneEventField::event_1, 111));
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
         OL_CHECK(advance_to_stay(session, session.begin_event(2, 0, 44, 29)).kind ==
                  SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::fame) == -32768);
+        OL_CHECK(snapshot.event_value(
+                     70U, 11U, openlegend::model::SceneEventField::event_1).value_or(-1) == 111);
     }
 
-    {
+    const auto prepare_book_snapshot = [&root](const bool include_letter) {
         auto snapshot = load_baseline(root);
         snapshot.ranger.roles[0].set_word(openlegend::model::role_word::fame, 199);
         for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
             snapshot.ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
         }
+        if (include_letter) {
+            snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{189}, 0);
+        }
         for (std::int16_t item_id = 144; item_id <= 157; ++item_id) {
             snapshot.ranger.header.set_inventory(
-                static_cast<std::size_t>(item_id - 144), openlegend::model::ItemId{item_id}, 0);
+                openlegend::model::kInventoryCount - 14U +
+                    static_cast<std::size_t>(item_id - 144),
+                openlegend::model::ItemId{item_id},
+                static_cast<std::int16_t>(item_id - 150));
         }
-        OL_CHECK(snapshot.set_event_value(
-            70U, 11U, openlegend::model::SceneEventField::event_1, -1));
+        for (std::size_t field = 0U; field < openlegend::model::kSceneEventWordCount; ++field) {
+            OL_CHECK(snapshot.set_event_value(
+                70U, 11U, static_cast<openlegend::model::SceneEventField>(field),
+                static_cast<std::int16_t>(1000 + field)));
+        }
+        return snapshot;
+    };
+
+    {
+        auto snapshot = prepare_book_snapshot(false);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(advance_to_stay(session, session.begin_event(2, 0, 44, 29)).kind ==
+                 SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::fame) == 200);
+        constexpr std::array<std::int16_t, openlegend::model::kSceneEventWordCount> expected{
+            1, 1, 932, -1, -1, 7968, 7968, 7968, 1008, 1009, 1010};
+        for (std::size_t field = 0U; field < expected.size(); ++field) {
+            OL_CHECK(snapshot.event_value(
+                         70U, 11U,
+                         static_cast<openlegend::model::SceneEventField>(field)).value_or(-1) ==
+                     expected[field]);
+        }
+    }
+
+    {
+        auto snapshot = prepare_book_snapshot(true);
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
         OL_CHECK(advance_to_stay(session, session.begin_event(2, 0, 44, 29)).kind ==
                  SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::fame) == 200);
         OL_CHECK(snapshot.event_value(
-                     70U, 11U, openlegend::model::SceneEventField::event_1).value_or(-1) == 932);
+                     70U, 11U, openlegend::model::SceneEventField::event_1).value_or(-1) ==
+                 1002);
     }
 }
 

@@ -2688,6 +2688,7 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
 
     opcode_54_occurrences: list[tuple[int, int]] = []
     opcode_55_occurrences: list[tuple[int, int, int, int, int, int]] = []
+    opcode_56_occurrences: list[tuple[int, int, int]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
         program_counter = 0
@@ -2699,15 +2700,24 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 opcode_55_occurrences.append(
                     (script_id, program_counter, *code[program_counter + 1:program_counter + 5])
                 )
+            elif opcode == 56:
+                opcode_56_occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1])
+                )
             program_counter += WIDTHS[opcode]
     assert opcode_54_occurrences == [(821, 145)]
     assert len(opcode_55_occurrences) == 28
     assert all(row[3:] == (-1, 14, 0) for row in opcode_55_occurrences)
+    assert len(opcode_56_occurrences) == 105
+    assert all(row[2] > 0 for row in opcode_56_occurrences)
     opcode_54_stream = b"".join(
         struct.pack("<II", *row) for row in opcode_54_occurrences
     )
     opcode_55_stream = b"".join(
         struct.pack("<IIhhhh", *row) for row in opcode_55_occurrences
+    )
+    opcode_56_stream = b"".join(
+        struct.pack("<IIh", *row) for row in opcode_56_occurrences
     )
     open_scene_conditions = [0] * 84
     for scene, condition in ((2, 2), (38, 2), (75, 1), (80, 1)):
@@ -3131,11 +3141,50 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "head_id": 114,
             "style": 0,
         },
-        "opcode_56_script_2": {
-            "arguments": list(script_2[90:92]),
-            "cases": [
-                {"fame_before": 199, "fame_after": 200, "book_event_1": 932},
-                {"fame_before": 32767, "fame_after": wrapped_add(32767, 1), "book_event_1": -1},
+        "opcode_56_fame_and_book_event": {
+            "entry_range": "0x300FF..0x301D1",
+            "size_bytes": 210,
+            "instruction_count": 59,
+            "occurrences": len(opcode_56_occurrences),
+            "positions": [list(row) for row in opcode_56_occurrences],
+            "stream_encoding": "little_endian_<IIh:script,pc,fame_delta>",
+            "stream_sha256": sha256(opcode_56_stream),
+            "delta_counts": {
+                str(value): count
+                for value, count in sorted(Counter(row[2] for row in opcode_56_occurrences).items())
+            },
+            "program_counter_increment": 2,
+            "fame_addition": "low16_wrapping_then_signed_compare",
+            "fame_threshold": 200,
+            "inventory_slots": 200,
+            "inventory_slot_bytes": 4,
+            "inventory_scan": "one_complete_pass",
+            "inventory_word_read": "item_id_only",
+            "counts_ignored": True,
+            "required_item_ids": list(range(144, 158)),
+            "blocking_item_id": 189,
+            "event_change": [70, 11, 1, 1, 932, -1, -1, 7968, 7968, 7968, -2, -2, -2],
+            "script_2_arguments": list(script_2[90:92]),
+            "script_2_cases": [
+                {
+                    "fame_before": 199,
+                    "fame_after": 200,
+                    "book_slots": list(range(186, 200)),
+                    "book_counts": [item_id - 150 for item_id in range(144, 158)],
+                    "event_words_before": [1000 + field for field in range(11)],
+                    "event_words_after": [1, 1, 932, -1, -1, 7968, 7968, 7968, 1008, 1009, 1010],
+                },
+                {
+                    "fame_before": 199,
+                    "fame_after": 200,
+                    "blocking_item_count": 0,
+                    "event_1_before_and_after": 1002,
+                },
+                {
+                    "fame_before": 32767,
+                    "fame_after": wrapped_add(32767, 1),
+                    "event_1_before_and_after": 111,
+                },
             ],
         },
     }
