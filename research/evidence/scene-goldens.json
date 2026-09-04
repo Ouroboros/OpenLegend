@@ -8061,24 +8061,288 @@
         "return_value": 0,
         "program_counter_increment": 1
       },
-      "opcode_55_script_464": {
-        "arguments": [
+      "opcode_55_event_field_condition": {
+        "entry_range": "0x300D9..0x300FF",
+        "size_bytes": 38,
+        "instruction_count": 10,
+        "occurrences": 28,
+        "positions": [
+          [
+            10,
+            61,
+            2,
+            -1,
+            14,
+            0
+          ],
+          [
+            10,
+            80,
+            3,
+            -1,
+            14,
+            0
+          ],
+          [
+            32,
+            7,
+            10,
+            -1,
+            14,
+            0
+          ],
+          [
+            95,
+            94,
+            3,
+            -1,
+            14,
+            0
+          ],
+          [
+            95,
+            113,
+            4,
+            -1,
+            14,
+            0
+          ],
+          [
+            95,
+            132,
+            5,
+            -1,
+            14,
+            0
+          ],
+          [
+            286,
+            93,
+            3,
+            -1,
+            14,
+            0
+          ],
+          [
+            286,
+            112,
+            4,
+            -1,
+            14,
+            0
+          ],
+          [
+            303,
+            5,
+            1,
+            -1,
+            14,
+            0
+          ],
+          [
+            303,
+            24,
+            2,
+            -1,
+            14,
+            0
+          ],
+          [
+            303,
+            43,
+            3,
+            -1,
+            14,
+            0
+          ],
+          [
+            303,
+            62,
+            4,
+            -1,
+            14,
+            0
+          ],
+          [
+            464,
+            28,
+            2,
+            -1,
+            14,
+            0
+          ],
+          [
+            464,
+            47,
+            3,
+            -1,
+            14,
+            0
+          ],
+          [
+            464,
+            66,
+            4,
+            -1,
+            14,
+            0
+          ],
+          [
+            464,
+            85,
+            5,
+            -1,
+            14,
+            0
+          ],
+          [
+            466,
+            70,
+            3,
+            -1,
+            14,
+            0
+          ],
+          [
+            466,
+            89,
+            4,
+            -1,
+            14,
+            0
+          ],
+          [
+            511,
+            117,
+            17,
+            -1,
+            14,
+            0
+          ],
+          [
+            511,
+            136,
+            18,
+            -1,
+            14,
+            0
+          ],
+          [
+            511,
+            155,
+            19,
+            -1,
+            14,
+            0
+          ],
+          [
+            511,
+            174,
+            20,
+            -1,
+            14,
+            0
+          ],
+          [
+            511,
+            193,
+            21,
+            -1,
+            14,
+            0
+          ],
+          [
+            513,
+            78,
+            17,
+            -1,
+            14,
+            0
+          ],
+          [
+            513,
+            97,
+            18,
+            -1,
+            14,
+            0
+          ],
+          [
+            513,
+            116,
+            19,
+            -1,
+            14,
+            0
+          ],
+          [
+            513,
+            135,
+            20,
+            -1,
+            14,
+            0
+          ],
+          [
+            513,
+            154,
+            21,
+            -1,
+            14,
+            0
+          ]
+        ],
+        "stream_encoding": "little_endian_<IIhhhh:script,pc,event,value,yes,no>",
+        "stream_sha256": "36e9a210a73a87273f25aadd1e3689d3c727a9f1098f9569e2173c50d539dd76",
+        "callee_reads": [
+          "event_index",
+          "comparison_value",
+          "yes_offset",
+          "no_offset"
+        ],
+        "caller_forwarding": [
+          "argument_1",
+          "argument_2",
+          "argument_2",
+          "argument_2"
+        ],
+        "caller_unread_words": [
+          "argument_3",
+          "argument_4"
+        ],
+        "returned_offset": "argument_2_for_both_comparison_results",
+        "program_counter_formula": "old_pc + 5 + signed_argument_2",
+        "all_real_argument_2": -1,
+        "all_real_machine_next_pc": "old_pc + 4_points_to_argument_4_opcode_0",
+        "script_464_arguments": [
           55,
           2,
           -1,
           14,
           0
         ],
-        "cases": [
+        "script_464_cases": [
           {
-            "event_1_before": -1,
-            "event_1_after": -1,
-            "current_picture": 1234
+            "event_2_event_1_before": -1,
+            "present_count": 4,
+            "events_2_to_5_event_1_after": [
+              862,
+              863,
+              864,
+              865
+            ],
+            "event_2_current_picture": 1234
           },
           {
-            "event_1_before": 999,
-            "event_1_after": 862,
-            "current_picture": 1234
+            "event_2_event_1_before": 999,
+            "present_count": 4,
+            "events_2_to_5_event_1_after": [
+              862,
+              863,
+              864,
+              865
+            ],
+            "event_2_current_picture": 1234
           }
         ]
       },

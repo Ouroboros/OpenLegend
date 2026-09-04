@@ -2687,6 +2687,7 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     )
 
     opcode_54_occurrences: list[tuple[int, int]] = []
+    opcode_55_occurrences: list[tuple[int, int, int, int, int, int]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
         program_counter = 0
@@ -2694,10 +2695,19 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             opcode = code[program_counter]
             if opcode == 54:
                 opcode_54_occurrences.append((script_id, program_counter))
+            elif opcode == 55:
+                opcode_55_occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 5])
+                )
             program_counter += WIDTHS[opcode]
     assert opcode_54_occurrences == [(821, 145)]
+    assert len(opcode_55_occurrences) == 28
+    assert all(row[3:] == (-1, 14, 0) for row in opcode_55_occurrences)
     opcode_54_stream = b"".join(
         struct.pack("<II", *row) for row in opcode_54_occurrences
+    )
+    opcode_55_stream = b"".join(
+        struct.pack("<IIhhhh", *row) for row in opcode_55_occurrences
     )
     open_scene_conditions = [0] * 84
     for scene, condition in ((2, 2), (38, 2), (75, 1), (80, 1)):
@@ -3082,11 +3092,35 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "return_value": 0,
             "program_counter_increment": 1,
         },
-        "opcode_55_script_464": {
-            "arguments": list(script_464[28:33]),
-            "cases": [
-                {"event_1_before": -1, "event_1_after": -1, "current_picture": 1234},
-                {"event_1_before": 999, "event_1_after": 862, "current_picture": 1234},
+        "opcode_55_event_field_condition": {
+            "entry_range": "0x300D9..0x300FF",
+            "size_bytes": 38,
+            "instruction_count": 10,
+            "occurrences": len(opcode_55_occurrences),
+            "positions": [list(row) for row in opcode_55_occurrences],
+            "stream_encoding": "little_endian_<IIhhhh:script,pc,event,value,yes,no>",
+            "stream_sha256": sha256(opcode_55_stream),
+            "callee_reads": ["event_index", "comparison_value", "yes_offset", "no_offset"],
+            "caller_forwarding": ["argument_1", "argument_2", "argument_2", "argument_2"],
+            "caller_unread_words": ["argument_3", "argument_4"],
+            "returned_offset": "argument_2_for_both_comparison_results",
+            "program_counter_formula": "old_pc + 5 + signed_argument_2",
+            "all_real_argument_2": -1,
+            "all_real_machine_next_pc": "old_pc + 4_points_to_argument_4_opcode_0",
+            "script_464_arguments": list(script_464[28:33]),
+            "script_464_cases": [
+                {
+                    "event_2_event_1_before": -1,
+                    "present_count": 4,
+                    "events_2_to_5_event_1_after": [862, 863, 864, 865],
+                    "event_2_current_picture": 1234,
+                },
+                {
+                    "event_2_event_1_before": 999,
+                    "present_count": 4,
+                    "events_2_to_5_event_1_after": [862, 863, 864, 865],
+                    "event_2_current_picture": 1234,
+                },
             ],
         },
         "opcode_51_script_692": {

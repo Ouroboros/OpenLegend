@@ -5230,9 +5230,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(run_five_item_condition(snapshot, 107) == 1574);
     }
 
-    for (const auto [event_1, expected_event_1] :
-         std::array<std::pair<std::int16_t, std::int16_t>, 2>{
-             std::pair<std::int16_t, std::int16_t>{-1, -1}, {999, 862}}) {
+    for (const auto event_1 : std::array<std::int16_t, 2>{-1, 999}) {
         auto snapshot = load_baseline(root);
         for (std::size_t event = 2U; event <= 5U; ++event) {
             OL_CHECK(snapshot.set_event_value(
@@ -5243,10 +5241,17 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
             70U, 2U, openlegend::model::SceneEventField::current_picture, 1234));
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
-        OL_CHECK(session.begin_event(464, 0, 44, 29).kind == SceneStepKind::stay);
-        OL_CHECK(snapshot.event_value(
-                     70U, 2U, openlegend::model::SceneEventField::event_1).value_or(-2) ==
-                 expected_event_1);
+        auto result = session.begin_event(464, 0, 44, 29);
+        for (int present = 0; present < 4; ++present) {
+            OL_CHECK(result.kind == SceneStepKind::present);
+            result = session.resume(SceneResponse::acknowledge);
+        }
+        OL_CHECK(result.kind == SceneStepKind::stay);
+        for (std::size_t event = 2U; event <= 5U; ++event) {
+            OL_CHECK(snapshot.event_value(
+                         70U, event, openlegend::model::SceneEventField::event_1).value_or(-2) ==
+                     static_cast<std::int16_t>(860 + event));
+        }
         OL_CHECK(snapshot.event_value(
                      70U, 2U, openlegend::model::SceneEventField::current_picture).value_or(-2) ==
                  1234);

@@ -1527,7 +1527,7 @@ SceneStepResult SceneSession::run_event() {
             break;
         case 55:
             conditional(event_field(scene_id_, argument(1), model::SceneEventField::event_1).value_or(0) == argument(2),
-                        5U, argument(3), argument(4));
+                        5U, argument(2), argument(2));
             break;
         case 56:
             if (!snapshot_.ranger.roles.empty()) {
