@@ -227,6 +227,13 @@ public:
                          35, 0, slots[index], magics[index], levels[index]}) {
                     append_i16(group, word);
                 }
+            } else if (script == 50U) {
+                for (const auto word : std::array<std::int16_t, 12>{
+                         36, -32768, 4, 0,
+                         1, 1122, 0, 0,
+                         1, 1123, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4564,6 +4571,20 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
         const auto result = session.begin_event(328, 0, 44, 29);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == talk_id);
+    }
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot synthetic_root{synthetic.path()};
+    for (const auto [sexual, talk_id] :
+         std::array<std::pair<std::int16_t, std::int16_t>, 2>{
+             std::pair<std::int16_t, std::int16_t>{-32768, 1123}, {32767, 1122}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::sexual, sexual);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        const auto result = session.begin_event(50, 0, 0, 0);
         OL_CHECK(result.kind == SceneStepKind::dialogue);
         OL_CHECK(result.talk_id == talk_id);
     }

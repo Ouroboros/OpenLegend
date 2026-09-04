@@ -363,7 +363,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 汇编→C++终审在合法role/slot域内零产品差异；原机非法索引别名写由现代边界保护稳定拒绝，归类`platform_adapted`。从147字节41条指令入口复核7项重定位、显式/自动分支、十槽短路、满槽fallback、两项word写入、return0和caller，零新增差异。全KDEF 8次opcode35参数流SHA256 `8b0fccc493845279fc52d6c1468f25bec65121acf18d1a9de30b16621cc6895c`；全部真实调用均为合法显式槽，合成向量固定显式signed边界、首空、满槽、magic0及现代非法槽保护。
 
-## 19. 当前验证
+## 19. 角色性别条件与脚本偏移
+
+`sub_2F6C2`读取角色0 word14 sexual，与expected做signed精确相等比较；相等原样返回true offset，否则返回false offset。opcode36 caller清理三个参数，先PC+4再叠加返回偏移；函数无状态写入或其他输出。
+
+汇编→C++终审在合法快照域零产品差异；空角色集合的现代稳定值替代原机无效读取，归类`platform_adapted`。从33字节9条指令入口复核唯一重定位、signed比较、两项返回和caller偏移回收，零新增差异。全KDEF仅script328一次opcode36，参数流SHA256 `d81b351b35d2e14a14e3ba8a39497d27f8fba32a7d0c356e7d230df9f332d03a`；真实sexual2/1和合成signed极值两路均固定到对应对话。
+
+## 20. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -387,6 +393,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 角色学习武功的7次真实opcode33参数流、首空槽/满槽覆盖、等级清零、silent两路、五条原Big5习得提示、动态面板像素和确认后裸场景恢复；
 - 角色资质增加的4次真实opcode34参数流、16位回绕后signed钳位、实际gain门、四条基线原Big5提示、五个合成边界、动态面板像素和确认后裸场景恢复；
 - 角色武功槽写入的8次真实opcode35参数流、显式槽直写、自动首空/满槽覆盖、ID和等级signed边界、magic0写等级及现代非法槽保护；
+- 角色性别条件的唯一真实opcode36参数流、角色0固定字段、signed精确比较、true/false偏移返回、PC先固定宽度再叠加偏移及signed极值分支；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

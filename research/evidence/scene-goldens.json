@@ -6254,21 +6254,55 @@
           }
         }
       },
-      "opcode_36_script_328": {
-        "arguments": [
+      "opcode_36_sexual_condition": {
+        "entry_range": "0x2F6C2..0x2F6E3",
+        "size_bytes": 33,
+        "instruction_count": 9,
+        "occurrences": 1,
+        "stream_encoding": "little_endian_<IIhhh:script,pc,sexual,true_offset,false_offset>",
+        "stream_sha256": "d81b351b35d2e14a14e3ba8a39497d27f8fba32a7d0c356e7d230df9f332d03a",
+        "positions": [
+          [
+            328,
+            0,
+            2,
+            6,
+            0
+          ]
+        ],
+        "script_328_arguments": [
           36,
           2,
           6,
           0
         ],
+        "read_role": 0,
+        "read_role_word": "sexual",
+        "read_word_index": 14,
+        "comparison": "signed_int16_exact_equality",
+        "return_when_equal": "true_offset_signed_int16",
+        "return_when_not_equal": "false_offset_signed_int16",
+        "program_counter_formula": "old_pc + 4 + returned_offset",
         "cases": [
           {
             "sexual": 2,
+            "returned_offset": 6,
             "talk_id": 1123
           },
           {
             "sexual": 1,
+            "returned_offset": 0,
             "talk_id": 1122
+          },
+          {
+            "sexual": -32768,
+            "expected": -32768,
+            "returned_offset": 4
+          },
+          {
+            "sexual": 32767,
+            "expected": -32768,
+            "returned_offset": 0
           }
         ]
       },

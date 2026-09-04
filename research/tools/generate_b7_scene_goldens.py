@@ -2487,6 +2487,28 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIhhhh", *row) for row in opcode_35_occurrences
     )
 
+    opcode_36_occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 36:
+                opcode_36_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                        code[program_counter + 3],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_36_occurrences == [(328, 0, 2, 6, 0)]
+    opcode_36_stream = b"".join(
+        struct.pack("<IIhhh", *row) for row in opcode_36_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2589,11 +2611,27 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 },
             },
         },
-        "opcode_36_script_328": {
-            "arguments": list(script_328[:4]),
+        "opcode_36_sexual_condition": {
+            "entry_range": "0x2F6C2..0x2F6E3",
+            "size_bytes": 33,
+            "instruction_count": 9,
+            "occurrences": len(opcode_36_occurrences),
+            "stream_encoding": "little_endian_<IIhhh:script,pc,sexual,true_offset,false_offset>",
+            "stream_sha256": sha256(opcode_36_stream),
+            "positions": [list(row) for row in opcode_36_occurrences],
+            "script_328_arguments": list(script_328[:4]),
+            "read_role": 0,
+            "read_role_word": "sexual",
+            "read_word_index": 14,
+            "comparison": "signed_int16_exact_equality",
+            "return_when_equal": "true_offset_signed_int16",
+            "return_when_not_equal": "false_offset_signed_int16",
+            "program_counter_formula": "old_pc + 4 + returned_offset",
             "cases": [
-                {"sexual": 2, "talk_id": 1123},
-                {"sexual": 1, "talk_id": 1122},
+                {"sexual": 2, "returned_offset": 6, "talk_id": 1123},
+                {"sexual": 1, "returned_offset": 0, "talk_id": 1122},
+                {"sexual": -32768, "expected": -32768, "returned_offset": 4},
+                {"sexual": 32767, "expected": -32768, "returned_offset": 0},
             ],
         },
         "opcode_37_script_149": {
