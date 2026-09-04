@@ -4822,6 +4822,74 @@
       }
     },
     "opcode_44_script_534": {
+      "entry_range": "0x2F9F2..0x2FAB7",
+      "size_bytes": 197,
+      "instruction_count": 71,
+      "occurrences": 6,
+      "stream_encoding": "little_endian_<IIhhhhhh:script,pc,first_event,first_start,first_end,second_event,second_start,second_end>",
+      "stream_sha256": "3261a421b7f4bc68691ba6c590451cefd773d308a22a43e59a66930470a88f7a",
+      "positions": [
+        [
+          534,
+          120,
+          1,
+          6486,
+          6520,
+          2,
+          6450,
+          6484
+        ],
+        [
+          534,
+          127,
+          1,
+          6486,
+          6520,
+          2,
+          6450,
+          6484
+        ],
+        [
+          534,
+          134,
+          1,
+          6486,
+          6520,
+          2,
+          6450,
+          6484
+        ],
+        [
+          676,
+          95,
+          2,
+          7536,
+          7578,
+          3,
+          7580,
+          7622
+        ],
+        [
+          676,
+          102,
+          2,
+          7536,
+          7578,
+          3,
+          7580,
+          7622
+        ],
+        [
+          676,
+          109,
+          2,
+          7536,
+          7578,
+          3,
+          7580,
+          7622
+        ]
+      ],
       "scene_id": 53,
       "arguments": [
         1,
@@ -4831,6 +4899,23 @@
         6450,
         6484
       ],
+      "loop_control": "signed_int32_first_picture_less_or_equal_first_end",
+      "picture_step": 2,
+      "second_end_is_read": false,
+      "write_order": [
+        "first_event",
+        "second_event"
+      ],
+      "event_picture_fields": [
+        "current",
+        "end",
+        "begin"
+      ],
+      "player_event_sentinel": -1,
+      "present_per_frame": true,
+      "wait_ticks": 2,
+      "return_value": 1,
+      "program_counter_increment": 7,
       "frames": [
         {
           "first_picture": 6486,
@@ -4921,6 +5006,63 @@
           "first_picture": 6520,
           "second_picture": 6484,
           "frame_fnv1a64": "0xf0453734925d7d4b"
+        }
+      ],
+      "synthetic_vectors": [
+        {
+          "arguments": [
+            -1,
+            1,
+            0,
+            -1,
+            100,
+            999
+          ],
+          "player_frames": []
+        },
+        {
+          "arguments": [
+            -1,
+            10,
+            12,
+            -1,
+            100,
+            -30000
+          ],
+          "player_frames": [
+            100,
+            102
+          ],
+          "second_overwrites_first": true
+        },
+        {
+          "arguments": [
+            -1,
+            32767,
+            32767,
+            -1,
+            -32768,
+            0
+          ],
+          "player_frames": [
+            -32768
+          ],
+          "counter_does_not_wrap_at_int16": true
+        },
+        {
+          "arguments": [
+            -1,
+            10,
+            13,
+            -1,
+            200,
+            200
+          ],
+          "player_frames": [
+            200,
+            202
+          ],
+          "unreached_odd_endpoint": 13
         }
       ]
     },

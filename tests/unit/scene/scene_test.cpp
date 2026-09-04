@@ -276,6 +276,16 @@ public:
                          0, 4, 1, 1574, 0, 0, 1, 1575, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script >= 78U && script <= 81U) {
+                constexpr std::array<std::array<std::int16_t, 6>, 4> arguments{{
+                    {-1, 1, 0, -1, 100, 999},
+                    {-1, 10, 12, -1, 100, -30000},
+                    {-1, 32767, 32767, -1, -32768, 0},
+                    {-1, 10, 13, -1, 200, 200}}};
+                append_i16(group, 44);
+                for (const auto value : arguments[script - 78U]) {
+                    append_i16(group, value);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4871,6 +4881,44 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         const auto result = run_inventory_condition(snapshot, 77);
         OL_CHECK(result.kind == SceneStepKind::dialogue);
         OL_CHECK(result.talk_id == 1574);
+    }
+
+    {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(78, 0, 0, 0).kind == SceneStepKind::stay);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        auto result = session.begin_event(79, 0, 0, 0);
+        OL_CHECK(result.kind == SceneStepKind::present && result.wait_ticks == 2U);
+        OL_CHECK(session.player_frame() == 100);
+        result = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(result.kind == SceneStepKind::present && result.wait_ticks == 2U);
+        OL_CHECK(session.player_frame() == 102);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        const auto result = session.begin_event(80, 0, 0, 0);
+        OL_CHECK(result.kind == SceneStepKind::present && result.wait_ticks == 2U);
+        OL_CHECK(session.player_frame() == -32768);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        auto result = session.begin_event(81, 0, 0, 0);
+        OL_CHECK(result.kind == SceneStepKind::present && session.player_frame() == 200);
+        result = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(result.kind == SceneStepKind::present && session.player_frame() == 202);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
     }
 
     for (const auto [event_1, expected_event_1] :

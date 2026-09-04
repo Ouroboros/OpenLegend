@@ -411,7 +411,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 汇编→C++终审发现 `inventory_contains_id` 首命中早返；改为累计found并读完200槽后，从61字节21条指令入口重审唯一重定位、读取边界、两个返回和caller `old_PC+4+offset`，零新增差异，归类`assembly_exact`。全KDEF 5次opcode43参数流SHA256 `378da76b7261ad81b28c5a584068764b0462a39d547dd82827e4acbaa814e9db`；真实count0命中与合成末槽负count、完全缺失、查询-1均固定。
 
-## 27. 当前验证
+## 27. 双图片动画帧推进
+
+`sub_2F9F2`的六个参数仅前五个被读；first序列以32位signed counter在闭区间内每次加2，second_end无效。每帧先first后second写玩家或事件三图片字段，再present、50ms delay并等待BIOS tick变化；双玩家写时second覆盖first。
+
+C++合法资产帧序、字段和PC+7一致；同步渲染/忙等被协作式present与2-tick状态机替代，归类`platform_adapted`。从197字节71条指令入口复核六项重定位、三helper边界、32位循环和return1，零新增差异。全KDEF 6次opcode44参数流SHA256 `3261a421b7f4bc68691ba6c590451cefd773d308a22a43e59a66930470a88f7a`；真实18帧hash及零帧、奇偶终点、双玩家覆盖、second_end忽略与32767边界均固定。
+
+## 28. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -443,6 +449,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 角色携带物增加的6次真实opcode41参数流、两阶段四槽扫描、首命中短路、16位回绕、精确负一空槽、零/负新增、满槽及非法角色保护；
 - 女性队员条件的2次真实opcode42参数流、完整六槽无短路扫描、signed空槽、sexual精确1、offset组合及损坏角色保护；
 - 背包物品ID条件的5次真实opcode43参数流、200槽stride4完整无短路扫描、count无关、负一ID及PC组合；
+- 双图片动画的6次真实opcode44参数流、五参数读取、32位闭区间加二、两事件写序、逐帧呈现等待及边界帧；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

@@ -5119,6 +5119,22 @@ def main() -> None:
         player_picture=FRAME_BASE[walk_final_direction],
     )
 
+    opcode_44_occurrences: list[tuple[int, int, int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 44:
+                opcode_44_occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 7])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_44_occurrences) == 6
+    opcode_44_stream = b"".join(
+        struct.pack("<IIhhhhhh", *row) for row in opcode_44_occurrences
+    )
+
     script_534 = words(scripts[534])
     assert script_534[120:127] == (44, 1, 6486, 6520, 2, 6450, 6484)
     opcode_44_script_534 = dual_picture_animation_trace(
@@ -5279,9 +5295,47 @@ def main() -> None:
             "opcode_31_first_inventory_count": opcode_31_first_inventory_count,
             "opcode_32_change_first_inventory": opcode_32_change_first_inventory,
             "opcode_44_script_534": {
+                "entry_range": "0x2F9F2..0x2FAB7",
+                "size_bytes": 197,
+                "instruction_count": 71,
+                "occurrences": len(opcode_44_occurrences),
+                "stream_encoding": "little_endian_<IIhhhhhh:script,pc,first_event,first_start,first_end,second_event,second_start,second_end>",
+                "stream_sha256": sha256(opcode_44_stream),
+                "positions": [list(row) for row in opcode_44_occurrences],
                 "scene_id": animation_scene_id,
                 "arguments": list(script_534[121:127]),
+                "loop_control": "signed_int32_first_picture_less_or_equal_first_end",
+                "picture_step": 2,
+                "second_end_is_read": False,
+                "write_order": ["first_event", "second_event"],
+                "event_picture_fields": ["current", "end", "begin"],
+                "player_event_sentinel": -1,
+                "present_per_frame": True,
+                "wait_ticks": 2,
+                "return_value": 1,
+                "program_counter_increment": 7,
                 "frames": opcode_44_script_534,
+                "synthetic_vectors": [
+                    {
+                        "arguments": [-1, 1, 0, -1, 100, 999],
+                        "player_frames": [],
+                    },
+                    {
+                        "arguments": [-1, 10, 12, -1, 100, -30000],
+                        "player_frames": [100, 102],
+                        "second_overwrites_first": True,
+                    },
+                    {
+                        "arguments": [-1, 32767, 32767, -1, -32768, 0],
+                        "player_frames": [-32768],
+                        "counter_does_not_wrap_at_int16": True,
+                    },
+                    {
+                        "arguments": [-1, 10, 13, -1, 200, 200],
+                        "player_frames": [200, 202],
+                        "unreached_odd_endpoint": 13,
+                    },
+                ],
             },
             "opcode_57_script_655": {
                 "scene_id": statue_scene_id,
