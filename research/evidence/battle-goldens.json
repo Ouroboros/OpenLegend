@@ -1,5 +1,92 @@
 {
   "format": "openlegend-b8-battle-goldens-v1",
+  "battle_entry": {
+    "address": "0x31c75",
+    "end": "0x31da0",
+    "raw_offset": "0x2b675",
+    "size": 299,
+    "instruction_count": 72,
+    "raw_sha256": "8f3e6d11d5d85a9c7882511546962fdd2793c5c3a11c8d580fc62bbec2e113b6",
+    "loaded_sha256": "634a5e34a676f54ebc829e443e2bafcced1d3117dbf73eaa0a71485d802bdb64",
+    "relocation_count": 24,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x31c7a",
+      "0x31c9e",
+      "0x31caf",
+      "0x31cb4",
+      "0x31cdf",
+      "0x31ce7",
+      "0x31d09",
+      "0x31d11",
+      "0x31d21",
+      "0x31d31",
+      "0x31d39",
+      "0x31d3e",
+      "0x31d63",
+      "0x31d86"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x31da0",
+      "0x31eb9",
+      "0x3265c",
+      "0x3d6e0",
+      "0x3cc97",
+      "0x3d6e0",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x3e1b2",
+      "0x3271e",
+      "0x3cc97",
+      "0x3d6e0",
+      "0x3e1b2"
+    ],
+    "call_contract": [
+      "stack_probe",
+      "load_war_and_battlefield",
+      "initialize_party",
+      "append_enemies",
+      "load_wdx_wmp",
+      "fade_scene_to_black",
+      "load_eft",
+      "draw_battlefield",
+      "present_black_battlefield",
+      "start_battle_music",
+      "run_battle_loop",
+      "fade_battle_to_black",
+      "load_sdx_smp",
+      "restore_scene_music"
+    ],
+    "callers": [
+      "0x2de15",
+      "0x304ca"
+    ],
+    "caller_result_compare": "eax == 1",
+    "result_word": {
+      "storage": "signed_int16",
+      "transient": 0,
+      "defeat": 1,
+      "victory": 2,
+      "return_expression": "result_word - 1",
+      "returned_defeat": 0,
+      "returned_victory": 1
+    },
+    "mode_word": {
+      "during_battle": 2,
+      "after_battle": 1
+    },
+    "argument_storage": {
+      "battle_id": "signed_int16",
+      "grant_experience": "signed_int16"
+    },
+    "transition_frames": {
+      "scene_fade_to_black": 64,
+      "black_battlefield_present": 1,
+      "battle_initial_fade_after_present": 66,
+      "battle_exit_fade_to_black": 64
+    }
+  },
   "war_sta": {
     "record_size": 186,
     "record_count": 140,

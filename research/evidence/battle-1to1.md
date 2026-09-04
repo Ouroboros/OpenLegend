@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：`implemented_pending_review`；81项功能实现已接入，最终汇编↔C++ REVIEW 尚未开始。
+状态：B8统一最终汇编→C++ REVIEW已完成1/81；场景战斗入口的battle-owner已收敛为`platform_adapted`，其余80项保持`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、81项为 `implemented_pending_review`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、80项为 `implemented_pending_review`、1项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -24,11 +24,13 @@
 
 现代`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`建立并拥有`BattleSession`，以宿主过渡状态持有两次必须冻结caller像素的64帧淡出，并在过渡期间屏蔽输入。`BattleRenderer`分阶段加载WDX/WMP与EFT；首个黑色battle present完成后才发音乐，Session随后执行机器的排序黑帧与65帧淡入。战后必须完成冻结最终战斗像素的64帧淡出，才保存render globals、释放Session、复用仍持有的`SceneSession`并恢复场景音乐，再以严格`Victory`/`Defeat`恢复事件真假PC。复用已加载scene资源替代机器重开SMP/SDX，合法域的结果与顺序一致，归类`platform_adapted`。
 
-真实runtime测试由scene70 script691 opcode6实际发出battle4，覆盖入口、音乐、1+65帧初始序列、真实胜利结算、出口与场景音乐恢复；全140条WAR记录的battlefield id 0..25均有WDX/WMP，音乐只为5/6/7。双次独立scene golden逐字节一致，正式SHA256为`1095242e7cfeb92d3b8619cf0663054013400987e450dc9a662fff90276e24b8`；Linux app Debug 14/14通过。AI逃跑仍是动作11的回合内handler，不是第三种battle返回值。`scene-event-closure.tsv`的`target_owner=scene`入口已收敛关闭；同址B8 owner与`sub_31DA0/sub_31EB9/sub_3265C/sub_3271E/sub_3AA85`等callee不传播关闭，继续由`battle-closure.tsv`独立终审。
+真实runtime测试由scene70 script691 opcode6实际发出battle4，覆盖入口、音乐、1+65帧初始序列、真实胜利结算、出口与场景音乐恢复；全140条WAR记录的battlefield id 0..25均有WDX/WMP，音乐只为5/6/7。battle golden现从只读Z.DAT独立提取入口299字节、14个near-call、24项重定位、两个caller的`eax == 1`判定和返回编码，并记录64帧入口淡出、黑色首帧、66帧delegated初始序列及64帧出口淡出；双次生成及与正式文件逐字节一致。Linux app Debug 14/14通过。AI逃跑仍是动作11的回合内handler，不是第三种battle返回值。`scene-event-closure.tsv`的`target_owner=scene`与`battle-closure.tsv`的同址battle-owner现已分别独立收敛关闭；`sub_31DA0/sub_31EB9/sub_3265C/sub_3271E/sub_3AA85`等callee仍不传播closure。
+
+从机器入口重新执行完整battle-owner复核后，现有`BattleSession`分阶段资产所有权、`LegacyGameRuntime`宿主过渡、首帧后音乐、战后资源释放与typed结果回收均与上述机器顺序等价，本轮没有新增产品差异，最终归类`platform_adapted / converged_no_new_differences`。
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致。正式 `research/evidence/battle-goldens.json` SHA256 为 `bf6b45f17a774645b4f4bca4bddc7d937fa401eea0d3e11b28d6244d9086c232`。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `fbfbaf5a9a5ade84c2e2bd56885eac9603f7f1b2498bab2eae4c645968c56c95`；新增`battle_entry`节保存机器入口、调用、caller、返回值和呈现时序合同。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 

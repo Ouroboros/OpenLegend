@@ -12,6 +12,18 @@ from pathlib import Path
 
 
 WAR_RECORD_SIZE = 186
+Z_DAT_LOAD_BASE = 0x6600
+BATTLE_ENTRY_ADDRESS = 0x31C75
+BATTLE_ENTRY_END = 0x31DA0
+BATTLE_ENTRY_CALL_OFFSETS = (
+    0x05, 0x29, 0x3A, 0x3F, 0x6A, 0x72, 0x94,
+    0x9C, 0xAC, 0xBC, 0xC4, 0xC9, 0xEE, 0x111,
+)
+BATTLE_ENTRY_RELOCATION_OFFSETS = (
+    0x10, 0x17, 0x23, 0x34, 0x46, 0x4D, 0x55, 0x5D,
+    0x65, 0x78, 0x85, 0x8B, 0x90, 0xA3, 0xA8, 0xB7,
+    0xD0, 0xD9, 0xE1, 0xE9, 0xF9, 0x103, 0x11C, 0x125,
+)
 Z_DAT_EFFECT_FRAME_COUNTS_OFFSET = 324_814
 Z_DAT_AI_SPECIAL_ATTACK_OFFSET = 324_920
 EFFECT_FRAME_COUNT = 53
@@ -33,6 +45,97 @@ BLOCKED_TILE_RANGES = (
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def relative_call_target(code: bytes, offset: int, address: int) -> int:
+    if code[offset] != 0xE8:
+        raise ValueError(f"expected near call opcode at {address + offset:#x}")
+    displacement = struct.unpack_from("<i", code, offset + 1)[0]
+    return address + offset + 5 + displacement
+
+
+def battle_entry_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    raw_offset = BATTLE_ENTRY_ADDRESS - Z_DAT_LOAD_BASE
+    raw = z_dat_bytes[raw_offset:raw_offset + BATTLE_ENTRY_END - BATTLE_ENTRY_ADDRESS]
+    if len(raw) != 299:
+        raise ValueError("Z.DAT does not contain the complete battle entry function")
+    call_targets = [
+        relative_call_target(raw, offset, BATTLE_ENTRY_ADDRESS)
+        for offset in BATTLE_ENTRY_CALL_OFFSETS
+    ]
+    expected_targets = [
+        0x3ED1E, 0x31DA0, 0x31EB9, 0x3265C, 0x3D6E0, 0x3CC97, 0x3D6E0,
+        0x3AA85, 0x3D6D1, 0x3E1B2, 0x3271E, 0x3CC97, 0x3D6E0, 0x3E1B2,
+    ]
+    if call_targets != expected_targets:
+        raise ValueError("Z.DAT battle entry call sequence changed")
+    relocated = bytearray(raw)
+    for offset in BATTLE_ENTRY_RELOCATION_OFFSETS:
+        raw_value = struct.unpack_from("<I", raw, offset)[0]
+        struct.pack_into("<I", relocated, offset, raw_value + 0x20000)
+    caller_sites = (0x2DE15, 0x304CA)
+    caller_targets = []
+    caller_post_call_bytes = []
+    for site in caller_sites:
+        site_offset = site - Z_DAT_LOAD_BASE
+        caller_targets.append(
+            relative_call_target(z_dat_bytes, site_offset, Z_DAT_LOAD_BASE)
+        )
+        caller_post_call_bytes.append(
+            z_dat_bytes[site_offset + 5:site_offset + 11].hex()
+        )
+    if caller_targets != [BATTLE_ENTRY_ADDRESS, BATTLE_ENTRY_ADDRESS]:
+        raise ValueError("Z.DAT battle entry caller target changed")
+    if caller_post_call_bytes != ["83c40883f801", "83c40883f801"]:
+        raise ValueError("Z.DAT battle entry caller result comparison changed")
+    return {
+        "address": hex(BATTLE_ENTRY_ADDRESS),
+        "end": hex(BATTLE_ENTRY_END),
+        "raw_offset": hex(raw_offset),
+        "size": len(raw),
+        "instruction_count": 72,
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(bytes(relocated)),
+        "relocation_count": len(BATTLE_ENTRY_RELOCATION_OFFSETS),
+        "relocation_delta": 0x20000,
+        "call_sites": [hex(BATTLE_ENTRY_ADDRESS + offset) for offset in BATTLE_ENTRY_CALL_OFFSETS],
+        "call_targets": [hex(target) for target in call_targets],
+        "call_contract": [
+            "stack_probe",
+            "load_war_and_battlefield",
+            "initialize_party",
+            "append_enemies",
+            "load_wdx_wmp",
+            "fade_scene_to_black",
+            "load_eft",
+            "draw_battlefield",
+            "present_black_battlefield",
+            "start_battle_music",
+            "run_battle_loop",
+            "fade_battle_to_black",
+            "load_sdx_smp",
+            "restore_scene_music",
+        ],
+        "callers": [hex(site) for site in caller_sites],
+        "caller_result_compare": "eax == 1",
+        "result_word": {
+            "storage": "signed_int16",
+            "transient": 0,
+            "defeat": 1,
+            "victory": 2,
+            "return_expression": "result_word - 1",
+            "returned_defeat": 0,
+            "returned_victory": 1,
+        },
+        "mode_word": {"during_battle": 2, "after_battle": 1},
+        "argument_storage": {"battle_id": "signed_int16", "grant_experience": "signed_int16"},
+        "transition_frames": {
+            "scene_fade_to_black": 64,
+            "black_battlefield_present": 1,
+            "battle_initial_fade_after_present": 66,
+            "battle_exit_fade_to_black": 64,
+        },
+    }
 
 
 def cumulative_entries(index_bytes: bytes, group_bytes: bytes) -> list[bytes]:
@@ -2444,6 +2547,7 @@ def build(data_root: Path) -> dict[str, object]:
 
     return {
         "format": "openlegend-b8-battle-goldens-v1",
+        "battle_entry": battle_entry_contract(z_dat_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
             "record_count": len(war_records),
