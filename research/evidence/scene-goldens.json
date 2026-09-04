@@ -6336,6 +6336,120 @@
         "return_on_victory": 1,
         "return_on_other_result": 0
       },
+      "interround_restore": {
+        "entry_range": "0x30510..0x30559",
+        "size_bytes": 73,
+        "instruction_count": 13,
+        "raw_function_offset": "0x29f10",
+        "raw_function_sha256": "1e68e908a51a4e7cafa6d8e0763c8e02a9acba1a53a8fa3b73b9dad3291446e5",
+        "role_id": 0,
+        "condition": "signed_hurt < 50 and poison == 0",
+        "writes_in_order": [
+          [
+            "hurt",
+            0
+          ],
+          [
+            "physical_power",
+            100
+          ],
+          [
+            "mp",
+            "maximum_mp"
+          ],
+          [
+            "hp",
+            "maximum_hp"
+          ]
+        ],
+        "other_roles_unchanged": true,
+        "vectors": [
+          {
+            "before": {
+              "hurt": -32768,
+              "poison": 0,
+              "hp": 111,
+              "maximum_hp": -123,
+              "mp": 222,
+              "maximum_mp": -32768,
+              "physical_power": 7
+            },
+            "restores": true,
+            "after": {
+              "hurt": 0,
+              "poison": 0,
+              "hp": -123,
+              "maximum_hp": -123,
+              "mp": -32768,
+              "maximum_mp": -32768,
+              "physical_power": 100
+            }
+          },
+          {
+            "before": {
+              "hurt": 49,
+              "poison": 0,
+              "hp": 111,
+              "maximum_hp": -123,
+              "mp": 222,
+              "maximum_mp": -32768,
+              "physical_power": 7
+            },
+            "restores": true,
+            "after": {
+              "hurt": 0,
+              "poison": 0,
+              "hp": -123,
+              "maximum_hp": -123,
+              "mp": -32768,
+              "maximum_mp": -32768,
+              "physical_power": 100
+            }
+          },
+          {
+            "before": {
+              "hurt": 50,
+              "poison": 0,
+              "hp": 111,
+              "maximum_hp": -123,
+              "mp": 222,
+              "maximum_mp": -32768,
+              "physical_power": 7
+            },
+            "restores": false,
+            "after": {
+              "hurt": 50,
+              "poison": 0,
+              "hp": 111,
+              "maximum_hp": -123,
+              "mp": 222,
+              "maximum_mp": -32768,
+              "physical_power": 7
+            }
+          },
+          {
+            "before": {
+              "hurt": -32768,
+              "poison": -1,
+              "hp": 111,
+              "maximum_hp": -123,
+              "mp": 222,
+              "maximum_mp": -32768,
+              "physical_power": 7
+            },
+            "restores": false,
+            "after": {
+              "hurt": -32768,
+              "poison": -1,
+              "hp": 111,
+              "maximum_hp": -123,
+              "mp": 222,
+              "maximum_mp": -32768,
+              "physical_power": 7
+            }
+          }
+        ]
+      },
       "stop_after_first_match_failure": true,
       "final_rng_state": "0xe95678e2",
       "interround_count": 4,

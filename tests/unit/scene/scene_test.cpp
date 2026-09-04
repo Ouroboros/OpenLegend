@@ -4017,6 +4017,76 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     OL_CHECK(opcode_15_result.menu_index == 0);
 }
 
+void check_event_tournament_interround_restore(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    const auto check_restore = [&](const std::int16_t hurt,
+                                   const std::int16_t poison,
+                                   const bool restores) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.scenes[25].set_word(
+            openlegend::model::scene_metadata_word::entrance_x, 33);
+        snapshot.ranger.scenes[25].set_word(
+            openlegend::model::scene_metadata_word::entrance_y, 26);
+        auto& role = snapshot.ranger.roles[0];
+        role.set_word(openlegend::model::role_word::hurt, hurt);
+        role.set_word(openlegend::model::role_word::poison, poison);
+        role.set_word(openlegend::model::role_word::hp, 111);
+        role.set_word(openlegend::model::role_word::maximum_hp, -123);
+        role.set_word(openlegend::model::role_word::mp, 222);
+        role.set_word(openlegend::model::role_word::maximum_mp, -32768);
+        role.set_word(openlegend::model::role_word::physical_power, 7);
+        auto& other = snapshot.ranger.roles[1];
+        other.set_word(openlegend::model::role_word::hurt, 12);
+        other.set_word(openlegend::model::role_word::poison, 13);
+        other.set_word(openlegend::model::role_word::hp, 14);
+        other.set_word(openlegend::model::role_word::mp, 15);
+        other.set_word(openlegend::model::role_word::physical_power, 16);
+
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 25};
+        auto result = session.begin_event(936, 72, 33, 26);
+        bool reached_interround = false;
+        for (int step = 0; step < 1024 && result.kind != SceneStepKind::stay; ++step) {
+            if (result.kind == SceneStepKind::battle) {
+                result = session.resume(SceneResponse::battle_victory);
+            } else if (result.kind == SceneStepKind::fade_to_black &&
+                       result.wait_ticks == 9U) {
+                result = session.resume(SceneResponse::acknowledge);
+                reached_interround = true;
+                break;
+            } else if (result.kind == SceneStepKind::dialogue ||
+                       result.kind == SceneStepKind::present ||
+                       result.kind == SceneStepKind::fade_from_black ||
+                       result.kind == SceneStepKind::fade_to_black) {
+                result = session.resume(SceneResponse::acknowledge);
+            } else {
+                break;
+            }
+        }
+        OL_CHECK(reached_interround);
+        OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+        OL_CHECK(role.word(openlegend::model::role_word::hurt) == (restores ? 0 : hurt));
+        OL_CHECK(role.word(openlegend::model::role_word::poison) == poison);
+        OL_CHECK(role.word(openlegend::model::role_word::hp) == (restores ? -123 : 111));
+        OL_CHECK(role.word(openlegend::model::role_word::mp) == (restores ? -32768 : 222));
+        OL_CHECK(role.word(openlegend::model::role_word::physical_power) ==
+                 (restores ? 100 : 7));
+        OL_CHECK(other.word(openlegend::model::role_word::hurt) == 12);
+        OL_CHECK(other.word(openlegend::model::role_word::poison) == 13);
+        OL_CHECK(other.word(openlegend::model::role_word::hp) == 14);
+        OL_CHECK(other.word(openlegend::model::role_word::mp) == 15);
+        OL_CHECK(other.word(openlegend::model::role_word::physical_power) == 16);
+    };
+
+    check_restore(-32768, 0, true);
+    check_restore(49, 0, true);
+    check_restore(50, 0, false);
+    check_restore(-32768, -1, false);
+}
+
 void check_event_finale_party_cleanup(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -5696,6 +5766,7 @@ int main() {
     check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);
     check_event_tournament_trial(root);
+    check_event_tournament_interround_restore(root);
     check_event_finale_party_cleanup(root);
     check_event_role_iq_clamp(root);
     check_event_magic_slot_write(root);

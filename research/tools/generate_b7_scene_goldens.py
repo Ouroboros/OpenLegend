@@ -5938,6 +5938,29 @@ def main() -> None:
         8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
         22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69,
     ]
+    tournament_restore_raw = z_dat[0x29F10:0x29F59]
+    assert len(tournament_restore_raw) == 73
+    tournament_restore_vectors: list[dict[str, object]] = []
+    for hurt, poison in [(-32768, 0), (49, 0), (50, 0), (-32768, -1)]:
+        restores = hurt < 50 and poison == 0
+        tournament_restore_vectors.append({
+            "before": {
+                "hurt": hurt, "poison": poison,
+                "hp": 111, "maximum_hp": -123,
+                "mp": 222, "maximum_mp": -32768,
+                "physical_power": 7,
+            },
+            "restores": restores,
+            "after": {
+                "hurt": 0 if restores else hurt,
+                "poison": poison,
+                "hp": -123 if restores else 111,
+                "maximum_hp": -123,
+                "mp": -32768 if restores else 222,
+                "maximum_mp": -32768,
+                "physical_power": 100 if restores else 7,
+            },
+        })
     tournament_state = 1
     tournament_draws: list[dict[str, object]] = []
     tournament_selected: list[dict[str, int]] = []
@@ -6242,6 +6265,21 @@ def main() -> None:
                     "defeat_menu_argument_is_read": False,
                     "return_on_victory": 1,
                     "return_on_other_result": 0,
+                },
+                "interround_restore": {
+                    "entry_range": "0x30510..0x30559",
+                    "size_bytes": 73,
+                    "instruction_count": 13,
+                    "raw_function_offset": "0x29f10",
+                    "raw_function_sha256": sha256(tournament_restore_raw),
+                    "role_id": 0,
+                    "condition": "signed_hurt < 50 and poison == 0",
+                    "writes_in_order": [
+                        ["hurt", 0], ["physical_power", 100],
+                        ["mp", "maximum_mp"], ["hp", "maximum_hp"],
+                    ],
+                    "other_roles_unchanged": True,
+                    "vectors": tournament_restore_vectors,
                 },
                 "stop_after_first_match_failure": True,
                 "final_rng_state": f"0x{tournament_state:08x}",
