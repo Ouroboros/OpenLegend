@@ -12368,6 +12368,94 @@
         "current_asset_external_opcode17_calls": 28,
         "current_asset_external_opcode38_calls": 0
       },
+      "scene_backup_archives_open_machine": {
+        "entry_range": "0x295d0..0x296e6",
+        "size_bytes": 278,
+        "instruction_count": 64,
+        "raw_function_offset": "0x22fd0",
+        "raw_function_sha256": "e93441c116a58af53f95bbeed7a5bc9ef381b3ba0c50c3c645c136edad45ccb9",
+        "loaded_function_sha256": "69dc6258b73653b3ecfb2f7e3341ab9226b9bf2f7d1b949d9f59bb8908c2e833",
+        "relocation_count": 18,
+        "relocation_delta": 131072,
+        "normalized_loaded_equals_raw": true,
+        "direct_callers": [
+          "0x27069",
+          "0x29182",
+          "0x292d8"
+        ],
+        "caller_paths": [
+          "new_game_scene_exit",
+          "normal_scene_exit",
+          "internal_scene_jump"
+        ],
+        "caller_gate": "pending_load_slot_equals_minus_one",
+        "map": {
+          "index_file": "ALLSINBK.IDX",
+          "working_group_file": "ALLSINBK.GRP",
+          "index_cache_tag": 4,
+          "record_bytes": 49152,
+          "closes_locally": true
+        },
+        "event": {
+          "index_file": "ALLDEFBK.IDX",
+          "working_group_file": "ALLDEFBK.GRP",
+          "index_cache_tag": 5,
+          "record_bytes": 4400,
+          "writes_via_shared_tail": true
+        },
+        "group_open_mode": 514,
+        "operation_order": [
+          "write_map",
+          "close_map",
+          "write_event",
+          "close_event"
+        ],
+        "shared_write_close_tail": {
+          "entry_range": "0x295bc..0x295d0",
+          "size_bytes": 20,
+          "raw_sha256": "563c4e411155e841d3026f42505afb5dc3b1dda1e6a9f3530b778cd68b634cba",
+          "operation_order": [
+            "write",
+            "close",
+            "return"
+          ]
+        },
+        "index_open_failure": "print_original_message_then_fatal_exit",
+        "caller_result": "ignored",
+        "modern_archive_ownership": "direct_snapshot_spans_without_exit_flush"
+      },
+      "scene_backup_archives_flush_vector": {
+        "active_scene": 70,
+        "map": {
+          "layer": 1,
+          "coordinate": [
+            2,
+            3
+          ],
+          "linear_tile": 194,
+          "before_value": 0,
+          "after_value": -32768,
+          "buffer_sha256": "181845aceb91639fd7fc107932116cc5f902dc96fff82b37d0674d9d5a17a97e",
+          "archive_after_flush_sha256": "181845aceb91639fd7fc107932116cc5f902dc96fff82b37d0674d9d5a17a97e",
+          "snapshot_after_immediate_write_sha256": "181845aceb91639fd7fc107932116cc5f902dc96fff82b37d0674d9d5a17a97e"
+        },
+        "event": {
+          "event_index": 5,
+          "field": 0,
+          "before_value": 1,
+          "after_value": 32767,
+          "buffer_sha256": "3c5a47f29179bf3162ac6fbe0b091e252a4deeb923094b4200a4626077aeba1d",
+          "archive_after_flush_sha256": "3c5a47f29179bf3162ac6fbe0b091e252a4deeb923094b4200a4626077aeba1d",
+          "snapshot_after_immediate_write_sha256": "3c5a47f29179bf3162ac6fbe0b091e252a4deeb923094b4200a4626077aeba1d"
+        },
+        "write_order": [
+          "map",
+          "event"
+        ],
+        "normal_exit_and_jump_flush": true,
+        "pending_load_slot_skips_old_scene_flush": true,
+        "current_asset_external_event_mutations": 311
+      },
       "working_archive_assets": {
         "scene_count": 100,
         "allsin_index_sha256": "6d35d9c9b233cd389261d58ca2f17d4f12f6dba1f429ac8ff6217ce3b10ab94a",

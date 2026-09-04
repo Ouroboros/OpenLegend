@@ -3725,11 +3725,15 @@ def scene_archive_state_vectors(
     shared_map_read_close_tail_raw = z_dat[0x22EA2:0x22EAD]
     scene_archive_swap_open_raw = z_dat[0x22EAD:0x22F37]
     scene_archive_swap_close_raw = z_dat[0x22F37:0x22FD0]
+    shared_write_close_tail_raw = z_dat[0x22FBC:0x22FD0]
+    scene_backup_archives_open_raw = z_dat[0x22FD0:0x230E6]
     shared_close_tail_raw = z_dat[0x22FC2:0x22FD0]
     assert len(scene_archives_open_raw) == 284
     assert len(shared_map_read_close_tail_raw) == 11
     assert len(scene_archive_swap_open_raw) == 138
     assert len(scene_archive_swap_close_raw) == 153
+    assert len(shared_write_close_tail_raw) == 20
+    assert len(scene_backup_archives_open_raw) == 278
     assert len(shared_close_tail_raw) == 14
     allsin_index = (root / "ALLSIN.IDX").read_bytes()
     allsinbk_index = (root / "ALLSINBK.IDX").read_bytes()
@@ -3794,6 +3798,19 @@ def scene_archive_state_vectors(
     )[0]
     struct.pack_into(
         "<h", synthetic_active_buffer, synthetic_word_offset, synthetic_flush_value
+    )
+    synthetic_event_index = 5
+    synthetic_event_field = 0
+    synthetic_event_value = 32_767
+    synthetic_event_word_offset = (
+        synthetic_event_index * 11 + synthetic_event_field
+    ) * 2
+    synthetic_event_buffer = bytearray(scene_events[synthetic_active_scene])
+    synthetic_event_before = struct.unpack_from(
+        "<h", synthetic_event_buffer, synthetic_event_word_offset
+    )[0]
+    struct.pack_into(
+        "<h", synthetic_event_buffer, synthetic_event_word_offset, synthetic_event_value
     )
     event_before = list(words(scene_events[7])[6 * 11:7 * 11])
     event_after = event_before.copy()
@@ -3922,6 +3939,75 @@ def scene_archive_state_vectors(
             ),
             "current_asset_external_opcode17_calls": external_map_writes,
             "current_asset_external_opcode38_calls": external_map_mutations,
+        },
+        "scene_backup_archives_open_machine": {
+            "entry_range": "0x295d0..0x296e6",
+            "size_bytes": len(scene_backup_archives_open_raw),
+            "instruction_count": 64,
+            "raw_function_offset": "0x22fd0",
+            "raw_function_sha256": sha256(scene_backup_archives_open_raw),
+            "loaded_function_sha256": "69dc6258b73653b3ecfb2f7e3341ab9226b9bf2f7d1b949d9f59bb8908c2e833",
+            "relocation_count": 18,
+            "relocation_delta": 0x20000,
+            "normalized_loaded_equals_raw": True,
+            "direct_callers": ["0x27069", "0x29182", "0x292d8"],
+            "caller_paths": [
+                "new_game_scene_exit",
+                "normal_scene_exit",
+                "internal_scene_jump",
+            ],
+            "caller_gate": "pending_load_slot_equals_minus_one",
+            "map": {
+                "index_file": "ALLSINBK.IDX",
+                "working_group_file": "ALLSINBK.GRP",
+                "index_cache_tag": 4,
+                "record_bytes": 49_152,
+                "closes_locally": True,
+            },
+            "event": {
+                "index_file": "ALLDEFBK.IDX",
+                "working_group_file": "ALLDEFBK.GRP",
+                "index_cache_tag": 5,
+                "record_bytes": 4_400,
+                "writes_via_shared_tail": True,
+            },
+            "group_open_mode": 0x202,
+            "operation_order": ["write_map", "close_map", "write_event", "close_event"],
+            "shared_write_close_tail": {
+                "entry_range": "0x295bc..0x295d0",
+                "size_bytes": len(shared_write_close_tail_raw),
+                "raw_sha256": sha256(shared_write_close_tail_raw),
+                "operation_order": ["write", "close", "return"],
+            },
+            "index_open_failure": "print_original_message_then_fatal_exit",
+            "caller_result": "ignored",
+            "modern_archive_ownership": "direct_snapshot_spans_without_exit_flush",
+        },
+        "scene_backup_archives_flush_vector": {
+            "active_scene": synthetic_active_scene,
+            "map": {
+                "layer": synthetic_layer,
+                "coordinate": [synthetic_x, synthetic_y],
+                "linear_tile": synthetic_linear_tile,
+                "before_value": synthetic_active_before,
+                "after_value": synthetic_flush_value,
+                "buffer_sha256": sha256(bytes(synthetic_active_buffer)),
+                "archive_after_flush_sha256": sha256(bytes(synthetic_active_buffer)),
+                "snapshot_after_immediate_write_sha256": sha256(bytes(synthetic_active_buffer)),
+            },
+            "event": {
+                "event_index": synthetic_event_index,
+                "field": synthetic_event_field,
+                "before_value": synthetic_event_before,
+                "after_value": synthetic_event_value,
+                "buffer_sha256": sha256(bytes(synthetic_event_buffer)),
+                "archive_after_flush_sha256": sha256(bytes(synthetic_event_buffer)),
+                "snapshot_after_immediate_write_sha256": sha256(bytes(synthetic_event_buffer)),
+            },
+            "write_order": ["map", "event"],
+            "normal_exit_and_jump_flush": True,
+            "pending_load_slot_skips_old_scene_flush": True,
+            "current_asset_external_event_mutations": external_event_mutations,
         },
         "working_archive_assets": {
             "scene_count": 100,

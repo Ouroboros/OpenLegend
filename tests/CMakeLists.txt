@@ -80,7 +80,8 @@ target_link_libraries(
     PRIVATE openlegend_persistence openlegend_resource openlegend_scene
 )
 if(WIN32)
-    target_link_options(openlegend_scene_tests PRIVATE -Wl,/STACK:8388608)
+    # Clang Debug retains separate stack slots for the many large SceneSession fixtures.
+    target_link_options(openlegend_scene_tests PRIVATE -Wl,/STACK:67108864)
 endif()
 add_test(NAME openlegend.scene COMMAND openlegend_scene_tests)
 
