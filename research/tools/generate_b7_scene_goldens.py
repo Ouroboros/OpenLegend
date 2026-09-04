@@ -2614,6 +2614,27 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIhhh", *row) for row in opcode_41_occurrences
     )
 
+    opcode_42_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 42:
+                opcode_42_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_42_occurrences) == 2
+    opcode_42_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_42_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2933,6 +2954,40 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "synthetic_invalid_vectors": [
                 {"scene": -1, "result": "no_write"},
                 {"scene": 84, "result": "no_write"},
+            ],
+        },
+        "opcode_42_female_party": {
+            "entry_range": "0x2F966..0x2F9B5",
+            "size_bytes": 79,
+            "instruction_count": 24,
+            "occurrences": len(opcode_42_occurrences),
+            "stream_encoding": "little_endian_<IIhh:script,pc,true_offset,false_offset>",
+            "stream_sha256": sha256(opcode_42_stream),
+            "positions": [list(row) for row in opcode_42_occurrences],
+            "team_slots_scanned": 6,
+            "scan_short_circuits": False,
+            "occupied_rule": "signed_role_id_greater_or_equal_zero",
+            "female_rule": "role_word_14_sexual_equals_one",
+            "true_return": "first_argument_signed_offset",
+            "false_return": "second_argument_signed_offset",
+            "program_counter_formula": "old_pc + 3 + returned_signed_offset",
+            "script_445_arguments": list(script_445[24:27]),
+            "real_vectors": [
+                {"female_present": False, "talk_id": 1575},
+                {"female_present": True, "last_party_slot": -1, "talk_id": 1574},
+            ],
+            "synthetic_vectors": [
+                {"team": [-1, -1, -1, -1, -1, -1], "talk_id": 1575},
+                {"female_slot": 5, "sexual": 1, "talk_id": 1574},
+                {"female_slot": 5, "sexual": 2, "talk_id": 1575},
+                {"female_slot": 0, "sexual": 1, "talk_id": 1574},
+            ],
+            "invalid_modern_vectors": [
+                {
+                    "team": [0, -1, -1, -1, -1, 32767],
+                    "role_0_sexual": 1,
+                    "talk_id": 1574,
+                }
             ],
         },
         "opcode_42_script_445": {

@@ -399,7 +399,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 汇编→C++终审发现已有count相加依赖超范围整数窄化；改为显式`wrapping_add`后从149字节44条指令入口重审五项重定位、两个四槽循环、首命中短路、found分支、字段写入、return0和caller，零新增差异。非法role的现代无写入保护替代原机越界访问，归类`platform_adapted`。全KDEF 6次opcode41参数流SHA256 `a31c9f47f5dc7ca7071430567ca5d405c0cecf6bd1a4e2637d57b457a8406cf8`；真实count均为1，另固定重复ID、双向回绕、精确-1空槽、零/负新增、满槽和item自身为-1。
 
-## 25. 当前验证
+## 25. 六槽女性队员条件分支
+
+`sub_2F966`固定遍历全部六个队伍槽，signed负ID跳过，非负ID按182-byte角色记录读取word14 `sexual`；仅值精确等于1置命中，命中后仍继续后续槽。最终返回true或false signed offset，caller按 `old_PC+3+offset` 组合下一PC。
+
+汇编→C++终审确认六槽、无break、负槽跳过、sexual精确1和offset选择在合法角色域一致，零产品差异。非负越界role由现代上界保护替代原机越界读取，归类`platform_adapted`。从79字节24条指令入口复核三项重定位、六槽循环、命中标志、两个返回和caller，零新增差异。全KDEF 2次opcode42参数流SHA256 `0a3894fb1e8ff92f7c8e0dbc15a3e73b601f522f076b9ca4179822c6fd9e2e96`；真实两路与合成全空、尾槽女性、sexual2、首槽女性和损坏ID保护均固定。
+
+## 26. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -429,6 +435,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景入口条件清零的3次真实opcode39参数流、52字节记录寻址、word0无条件写0、首末合法场景与非法负一/八十四边界保护；
 - 主角场景朝向设置的12次真实opcode40参数流、四项基础图片、临时/步行帧复位、snapshot镜像同步及非法负一/四钳位；
 - 角色携带物增加的6次真实opcode41参数流、两阶段四槽扫描、首命中短路、16位回绕、精确负一空槽、零/负新增、满槽及非法角色保护；
+- 女性队员条件的2次真实opcode42参数流、完整六槽无短路扫描、signed空槽、sexual精确1、offset组合及损坏角色保护；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

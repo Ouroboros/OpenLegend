@@ -7693,6 +7693,93 @@
           }
         ]
       },
+      "opcode_42_female_party": {
+        "entry_range": "0x2F966..0x2F9B5",
+        "size_bytes": 79,
+        "instruction_count": 24,
+        "occurrences": 2,
+        "stream_encoding": "little_endian_<IIhh:script,pc,true_offset,false_offset>",
+        "stream_sha256": "0a3894fb1e8ff92f7c8e0dbc15a3e73b601f522f076b9ca4179822c6fd9e2e96",
+        "positions": [
+          [
+            444,
+            158,
+            6,
+            0
+          ],
+          [
+            445,
+            24,
+            6,
+            0
+          ]
+        ],
+        "team_slots_scanned": 6,
+        "scan_short_circuits": false,
+        "occupied_rule": "signed_role_id_greater_or_equal_zero",
+        "female_rule": "role_word_14_sexual_equals_one",
+        "true_return": "first_argument_signed_offset",
+        "false_return": "second_argument_signed_offset",
+        "program_counter_formula": "old_pc + 3 + returned_signed_offset",
+        "script_445_arguments": [
+          42,
+          6,
+          0
+        ],
+        "real_vectors": [
+          {
+            "female_present": false,
+            "talk_id": 1575
+          },
+          {
+            "female_present": true,
+            "last_party_slot": -1,
+            "talk_id": 1574
+          }
+        ],
+        "synthetic_vectors": [
+          {
+            "team": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ],
+            "talk_id": 1575
+          },
+          {
+            "female_slot": 5,
+            "sexual": 1,
+            "talk_id": 1574
+          },
+          {
+            "female_slot": 5,
+            "sexual": 2,
+            "talk_id": 1575
+          },
+          {
+            "female_slot": 0,
+            "sexual": 1,
+            "talk_id": 1574
+          }
+        ],
+        "invalid_modern_vectors": [
+          {
+            "team": [
+              0,
+              -1,
+              -1,
+              -1,
+              -1,
+              32767
+            ],
+            "role_0_sexual": 1,
+            "talk_id": 1574
+          }
+        ]
+      },
       "opcode_42_script_445": {
         "arguments": [
           42,

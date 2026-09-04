@@ -265,6 +265,11 @@ public:
                 for (const auto value : arguments[script - 68U]) {
                     append_i16(group, value);
                 }
+            } else if (script == 75U) {
+                for (const auto word :
+                     std::array<std::int16_t, 11>{42, 0, 4, 1, 1574, 0, 0, 1, 1575, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4782,6 +4787,44 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         const auto before = snapshot.ranger.roles[0].bytes;
         OL_CHECK(run_item_script(snapshot, 72) == SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+    }
+
+    const auto run_female_condition = [&synthetic_root](
+                                          openlegend::model::GameSnapshot& snapshot) {
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        return session.begin_event(75, 0, 0, 0);
+    };
+    for (const auto [slot, sexual, expected_talk] :
+         std::array<std::tuple<std::int16_t, std::int16_t, std::int16_t>, 4>{
+             std::tuple<std::int16_t, std::int16_t, std::int16_t>{-1, 0, 1575},
+             {5, 1, 1574},
+             {5, 2, 1575},
+             {0, 1, 1574}}) {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kTeamMemberCount; ++index) {
+            snapshot.ranger.header.set_team_member(index, openlegend::model::CharacterId{-1});
+        }
+        if (slot >= 0) {
+            snapshot.ranger.header.set_team_member(
+                static_cast<std::size_t>(slot), openlegend::model::CharacterId{2});
+            snapshot.ranger.roles[2].set_word(openlegend::model::role_word::sexual, sexual);
+        }
+        const auto result = run_female_condition(snapshot);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == expected_talk);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kTeamMemberCount; ++index) {
+            snapshot.ranger.header.set_team_member(index, openlegend::model::CharacterId{-1});
+        }
+        snapshot.ranger.header.set_team_member(0U, openlegend::model::CharacterId{0});
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::sexual, 1);
+        snapshot.ranger.header.set_team_member(5U, openlegend::model::CharacterId{32767});
+        const auto result = run_female_condition(snapshot);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == 1574);
     }
 
     for (const auto [event_1, expected_event_1] :
