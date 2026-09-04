@@ -263,6 +263,11 @@ def words(data: bytes) -> tuple[int, ...]:
     return struct.unpack(f"<{len(data) // 2}h", data)
 
 
+def signed_word(value: int) -> int:
+    bits = value & 0xFFFF
+    return bits if bits < 0x8000 else bits - 0x10000
+
+
 def scene_value(scene_words: tuple[int, ...], layer: int, x: int, y: int) -> int:
     return scene_words[layer * 4096 + y * 64 + x]
 
@@ -342,7 +347,7 @@ def pan_trace(
     result: list[dict[str, object]] = []
     step_x = -1 if target_x < source_x else 1
     for x in range(source_x, target_x, step_x):
-        origin_x = min(max(x - 11, 0), 36)
+        origin_x = min(max(signed_word(x - 11), 0), 36)
         frame = render_scene(
             scene_words, event_words, sprites, player_x, player_y, direction,
             (origin_x, origin_y),
@@ -354,7 +359,7 @@ def pan_trace(
         })
     step_y = -1 if target_y < source_y else 1
     for y in range(source_y, target_y, step_y):
-        origin_y = min(max(y - 11, 0), 36)
+        origin_y = min(max(signed_word(y - 11), 0), 36)
         frame = render_scene(
             scene_words, event_words, sprites, player_x, player_y, direction,
             (origin_x, origin_y),
@@ -365,6 +370,55 @@ def pan_trace(
             "frame_fnv1a64": fnv1a64(frame),
         })
     return result
+
+
+def camera_pan_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 25:
+                occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 5])
+                )
+            program_counter += WIDTHS[opcode]
+    frame_counts = [
+        abs(target_x - source_x) + abs(target_y - source_y)
+        for _, _, source_x, source_y, target_x, target_y in occurrences
+    ]
+    assert len(occurrences) == 52
+    assert occurrences[0] == (30, 0, 41, 31, 34, 31)
+    assert occurrences[-1] == (936, 34, 21, 26, 33, 26)
+    assert [min(row[index] for row in occurrences) for index in range(2, 6)] == [17, 14, 17, 14]
+    assert [max(row[index] for row in occurrences) for index in range(2, 6)] == [48, 54, 48, 54]
+    assert sum(frame_counts) == 460
+    assert max(frame_counts) == 16
+    stream = b"".join(struct.pack("<IIhhhh", *row) for row in occurrences)
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhhh:script,pc,source_x,source_y,target_x,target_y>",
+        "stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "argument_minimums": [17, 14, 17, 14],
+        "argument_maximums": [48, 54, 48, 54],
+        "total_present_frames": sum(frame_counts),
+        "maximum_present_frames": max(frame_counts),
+        "maximum_frame_occurrence": list(occurrences[frame_counts.index(max(frame_counts))]),
+        "axis_order": ["x", "y"],
+        "target_coordinate_presented": False,
+        "wait_argument": 50,
+        "wait_ticks": 2,
+        "view_origin_formula": "clamp(int16(coordinate-11),0,36)",
+        "word_wrap_vectors": [
+            {"coordinate": -32768, "word_after_subtract_11": 32757, "origin": 36},
+            {"coordinate": -32757, "word_after_subtract_11": -32768, "origin": 0},
+            {"coordinate": 47, "word_after_subtract_11": 36, "origin": 36},
+            {"coordinate": 48, "word_after_subtract_11": 37, "origin": 36},
+        ],
+    }
 
 
 def picture_animation_trace(
@@ -3810,6 +3864,7 @@ def main() -> None:
     ] == [(4, 3), (44, 2), (80, 2)]
     decoded_talks = [bytes(value ^ 0xFF for value in entry[:-1]) + b"\0" for entry in talks]
     coverage = opcode_coverage(scripts)
+    opcode_25_camera_pan = camera_pan_vectors(scripts)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4002,6 +4057,7 @@ def main() -> None:
             "opcode_22_clear_party_mp": clear_party_mp_vectors(scripts),
             "shared_inventory_add_helper": inventory_add_helper_vectors(scripts, ranger),
             "explicit_scene_present": explicit_scene_present_vectors(),
+            "opcode_25_camera_pan": opcode_25_camera_pan,
             "opcode_25_script_30": {
                 "arguments": list(script_30[1:5]),
                 "frames": opcode_25_script_30,

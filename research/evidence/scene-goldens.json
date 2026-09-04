@@ -2741,6 +2741,79 @@
         ]
       }
     },
+    "opcode_25_camera_pan": {
+      "occurrences": 52,
+      "stream_encoding": "little_endian_<IIhhhh:script,pc,source_x,source_y,target_x,target_y>",
+      "stream_sha256": "70c2620ff731c246ddfe4481c4261a560b2aa32c6331e6c161723a83b000c116",
+      "first": [
+        30,
+        0,
+        41,
+        31,
+        34,
+        31
+      ],
+      "last": [
+        936,
+        34,
+        21,
+        26,
+        33,
+        26
+      ],
+      "argument_minimums": [
+        17,
+        14,
+        17,
+        14
+      ],
+      "argument_maximums": [
+        48,
+        54,
+        48,
+        54
+      ],
+      "total_present_frames": 460,
+      "maximum_present_frames": 16,
+      "maximum_frame_occurrence": [
+        534,
+        115,
+        17,
+        28,
+        24,
+        19
+      ],
+      "axis_order": [
+        "x",
+        "y"
+      ],
+      "target_coordinate_presented": false,
+      "wait_argument": 50,
+      "wait_ticks": 2,
+      "view_origin_formula": "clamp(int16(coordinate-11),0,36)",
+      "word_wrap_vectors": [
+        {
+          "coordinate": -32768,
+          "word_after_subtract_11": 32757,
+          "origin": 36
+        },
+        {
+          "coordinate": -32757,
+          "word_after_subtract_11": -32768,
+          "origin": 0
+        },
+        {
+          "coordinate": 47,
+          "word_after_subtract_11": 36,
+          "origin": 36
+        },
+        {
+          "coordinate": 48,
+          "word_after_subtract_11": 37,
+          "origin": 36
+        }
+      ]
+    },
     "opcode_25_script_30": {
       "arguments": [
         41,

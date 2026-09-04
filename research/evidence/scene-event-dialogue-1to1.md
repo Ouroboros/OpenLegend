@@ -303,7 +303,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 现代 `DeathMenuState`、scene step/result和runtime pending I/O替代DOS全局与直接进程退出，合法域像素和状态顺序一致，因此归类`platform_adapted`。固定日期下selection0..3帧为 `0x9da84526f6317a4a`、`0x5f72cf3141ce8b24`、`0xb2db9b6f5ea184de`、`0x11f91fd0e5becceb`，确认帧 `0x4ba394e637cc051e`，黑帧 `0xdd14fcc6528cab25`；真实script190覆盖opcode15 caller，script936覆盖试炼caller，载入失败恢复原selection和帧。
 
-## 9. 当前验证
+## 9. 场景平移动画
+
+`sub_2ED8D` 由opcode25唯一caller传入 `(source_x,source_y,target_x,target_y)`。函数外 `0x2ED7D..0x2ED8D` 四项jump table按x/y增减符号选择四象限；每项都先走完x再走y，从source生成帧而不呈现target。每帧只更新当前视口轴，完整重绘场景，再按参数50等待2个BIOS ticks；不修改玩家场景坐标。
+
+最终REVIEW发现旧C++把 `coordinate-11` 在32位域直接钳位，但机器先把低16位写入word，再按signed int16钳位。例如 `-32768-11` 回绕为32757，原版视口为36而不是0。现代实现已改为 `wrapping_add(int16,-11)` 后钳位，并从710字节函数入口重新审计至零新增差异。当前52次真实opcode25共460帧，参数范围17..54，完整参数流SHA256 `70c2620ff731c246ddfe4481c4261a560b2aa32c6331e6c161723a83b000c116`；script30固定7帧像素，script225覆盖四方向和两轴顺序，合成极值固定两轴word回绕。
+
+## 10. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -317,6 +323,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 真实脚本36的背包与十四天书事件解锁、931的条件休息、581的满武功槽与入队清理、950的离队清理；opcode10固定原Big5物品提示、逐物品present后清槽且保持全局item.user，opcode12固定伤势32恢复、中毒/伤势33/队伍洞后不恢复及满六人分支，opcode21固定队伍压缩、三件item.user解绑及角色字段清理；
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 死亡菜单完整DEAD/font/palette/name/text/panel像素、114次opcode15位置流、script190解释器caller、script936试炼caller、方向wrap、三类确认键、大小写Y、0-based读档槽及载入失败回收；
+- 场景平移动画52次真实opcode25参数流、460个present帧、x-before-y、四方向、终点不含、每帧2 ticks、script30像素及极小负值先按word回绕再钳位；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

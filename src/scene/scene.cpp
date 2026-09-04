@@ -2292,10 +2292,16 @@ std::optional<SceneStepResult> SceneSession::advance_pan_frame() {
         return std::nullopt;
     }
     if (pan_state_->x != pan_state_->target_x) {
-        view_origin_x_ = std::clamp(pan_state_->x - 11, 0, kSceneMaximumViewOrigin);
+        const auto origin = wrapping_add(
+            static_cast<std::int16_t>(pan_state_->x), -11);
+        view_origin_x_ = std::clamp(
+            static_cast<int>(origin), 0, kSceneMaximumViewOrigin);
         pan_state_->x += pan_state_->step_x;
     } else if (pan_state_->y != pan_state_->target_y) {
-        view_origin_y_ = std::clamp(pan_state_->y - 11, 0, kSceneMaximumViewOrigin);
+        const auto origin = wrapping_add(
+            static_cast<std::int16_t>(pan_state_->y), -11);
+        view_origin_y_ = std::clamp(
+            static_cast<int>(origin), 0, kSceneMaximumViewOrigin);
         pan_state_->y += pan_state_->step_y;
     } else {
         pan_state_.reset();

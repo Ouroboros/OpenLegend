@@ -151,6 +151,11 @@ public:
                 for (const auto word : std::array<std::int16_t, 3>{19, 32767, -32768}) {
                     append_i16(group, word);
                 }
+            } else if (script == 22U) {
+                for (const auto word : std::array<std::int16_t, 5>{
+                         25, -32768, -32768, -32767, -32767}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -1921,6 +1926,31 @@ void check_event_camera_pan(const std::filesystem::path& root) {
         OL_CHECK(diagonal.view_origin_y() == origin[1]);
         diagonal_result = diagonal.resume(SceneResponse::acknowledge);
     }
+}
+
+void check_event_camera_pan_word_wrap(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+
+    auto result = session.begin_event(22, 0, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(result.wait_ticks == 2U);
+    OL_CHECK(session.view_origin_x() == 36);
+    OL_CHECK(session.view_origin_y() == 18);
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(result.wait_ticks == 2U);
+    OL_CHECK(session.view_origin_x() == 36);
+    OL_CHECK(session.view_origin_y() == 36);
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(session.scene_x() == 44 && session.scene_y() == 29);
 }
 
 void check_event_picture_animation(const std::filesystem::path& root) {
@@ -4223,6 +4253,7 @@ int main() {
     check_scene_event_animation(root);
     check_scene_weather(root);
     check_event_camera_pan(root);
+    check_event_camera_pan_word_wrap(root);
     check_event_picture_animation(root);
     check_event_scripted_walk(root);
     check_event_dual_picture_animation(root);
