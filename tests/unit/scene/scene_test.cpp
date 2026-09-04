@@ -2904,10 +2904,12 @@ void check_event_role_stat_conditions(const std::filesystem::path& root) {
         }
         return false;
     };
+    OL_CHECK(!reaches_success_dialogue(-32768));
     OL_CHECK(!reaches_success_dialogue(79));
     OL_CHECK(reaches_success_dialogue(80));
     OL_CHECK(reaches_success_dialogue(100));
     OL_CHECK(!reaches_success_dialogue(101));
+    OL_CHECK(!reaches_success_dialogue(32767));
 }
 
 void check_event_inventory_condition_edge_cases(const std::filesystem::path& root) {

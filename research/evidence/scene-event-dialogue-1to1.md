@@ -315,7 +315,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 最终REVIEW逐条覆盖180字节59条指令、9项绝对地址重定位、共享返回尾部和caller PC+4，未发现产品差异。当前43次真实opcode27共579帧，22次玩家分支、21次事件分支，参数流SHA256 `57cc371fa34d035af8fbce4c1180000270dcc06f2cd212a86389af0e41652e22`；script535固定四帧事件像素，script20固定十帧玩家图片，合成script23固定`-2`当前事件别名、32767单帧、空区间和奇数跨度。现代可恢复present/tick与非法event保护属于平台适配；同址input-font和三个delegated callee closure均不传播关闭。
 
-## 11. 当前验证
+## 11. 伦理值区间条件
+
+`sub_2F107` 由opcode28唯一caller传入 `(role,minimum,maximum,true_offset,false_offset)`。机器按角色记录182字节步长读取word56 morality，sign-extend后依次执行 `<minimum` 与 `>maximum`，因此区间两端都走true offset；caller先增加指令宽度6，再叠加返回offset。
+
+最终REVIEW逐条覆盖47字节12条指令、唯一绝对地址重定位、caller五参数和公共PC尾部，未发现产品差异。当前22次真实opcode28全部读取role0，无反向或单点区间，完整参数流SHA256 `e5773f5e4df3672f148f34104f8d0268444a7b36fb42284389576340119345e3`；script636固定80/100为真、79/101为假，并扩展signed极值验证。现代非法role保护属于平台适配。
+
+## 12. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -331,6 +337,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 死亡菜单完整DEAD/font/palette/name/text/panel像素、114次opcode15位置流、script190解释器caller、script936试炼caller、方向wrap、三类确认键、大小写Y、0-based读档槽及载入失败回收；
 - 场景平移动画52次真实opcode25参数流、460个present帧、x-before-y、四方向、终点不含、每帧2 ticks、script30像素及极小负值先按word回绕再钳位；
 - 事件图片动画43次真实opcode27参数流、579个present帧、玩家/事件分支、三图片字段同步、终点包含、每帧2 ticks、script535四帧像素及32位32767/空区间/奇数跨度边界；
+- 伦理值条件22次真实opcode28参数流、角色word56 signed闭区间、true/false偏移和PC宽度叠加，以及script636的79/80/100/101与signed极值边界；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

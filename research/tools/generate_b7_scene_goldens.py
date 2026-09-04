@@ -488,6 +488,65 @@ def picture_animation_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def morality_range_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 28:
+                occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 6])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(occurrences) == 22
+    assert occurrences[0] == (155, 45, 0, 50, 100, 6, 0)
+    assert occurrences[-1] == (1015, 89, 0, 0, 50, 386, 0)
+    assert [min(row[index] for row in occurrences) for index in range(2, 7)] == [
+        0, 0, 40, 0, 0,
+    ]
+    assert [max(row[index] for row in occurrences) for index in range(2, 7)] == [
+        0, 90, 100, 386, 37,
+    ]
+    inverted_ranges = sum(
+        minimum > maximum for _, _, _, minimum, maximum, _, _ in occurrences
+    )
+    equal_ranges = sum(
+        minimum == maximum for _, _, _, minimum, maximum, _, _ in occurrences
+    )
+    assert inverted_ranges == equal_ranges == 0
+    stream = b"".join(struct.pack("<IIhhhhh", *row) for row in occurrences)
+    script_636 = next(row for row in occurrences if row[:2] == (636, 20))
+    _, _, role, minimum, maximum, true_offset, false_offset = script_636
+    boundary_values = [-32768, 79, 80, 100, 101, 32767]
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhhhh:script,pc,role,min,max,true_offset,false_offset>",
+        "stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "argument_minimums": [0, 0, 40, 0, 0],
+        "argument_maximums": [0, 90, 100, 386, 37],
+        "role_counts": {"0": len(occurrences)},
+        "inverted_range_occurrences": inverted_ranges,
+        "equal_range_occurrences": equal_ranges,
+        "comparison": "signed_morality>=minimum_and_morality<=maximum",
+        "script_636": {
+            "arguments": [role, minimum, maximum, true_offset, false_offset],
+            "boundary_vectors": [
+                {
+                    "morality": value,
+                    "selected_offset": (
+                        true_offset if minimum <= value <= maximum else false_offset
+                    ),
+                }
+                for value in boundary_values
+            ],
+        },
+    }
+
+
 def picture_animation_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -3933,6 +3992,7 @@ def main() -> None:
     coverage = opcode_coverage(scripts)
     opcode_25_camera_pan = camera_pan_vectors(scripts)
     opcode_27_picture_animation = picture_animation_vectors(scripts)
+    opcode_28_morality_range = morality_range_vectors(scripts)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4138,6 +4198,7 @@ def main() -> None:
                 "arguments": list(script_535[1:4]),
                 "frames": opcode_27_script_535,
             },
+            "opcode_28_morality_range": opcode_28_morality_range,
             "opcode_30_script_343": {
                 "scene_id": walk_scene_id,
                 "arguments": list(script_343[31:35]),

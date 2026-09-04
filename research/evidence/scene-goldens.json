@@ -2971,6 +2971,84 @@
         }
       ]
     },
+    "opcode_28_morality_range": {
+      "occurrences": 22,
+      "stream_encoding": "little_endian_<IIhhhhh:script,pc,role,min,max,true_offset,false_offset>",
+      "stream_sha256": "e5773f5e4df3672f148f34104f8d0268444a7b36fb42284389576340119345e3",
+      "first": [
+        155,
+        45,
+        0,
+        50,
+        100,
+        6,
+        0
+      ],
+      "last": [
+        1015,
+        89,
+        0,
+        0,
+        50,
+        386,
+        0
+      ],
+      "argument_minimums": [
+        0,
+        0,
+        40,
+        0,
+        0
+      ],
+      "argument_maximums": [
+        0,
+        90,
+        100,
+        386,
+        37
+      ],
+      "role_counts": {
+        "0": 22
+      },
+      "inverted_range_occurrences": 0,
+      "equal_range_occurrences": 0,
+      "comparison": "signed_morality>=minimum_and_morality<=maximum",
+      "script_636": {
+        "arguments": [
+          0,
+          80,
+          100,
+          0,
+          23
+        ],
+        "boundary_vectors": [
+          {
+            "morality": -32768,
+            "selected_offset": 23
+          },
+          {
+            "morality": 79,
+            "selected_offset": 23
+          },
+          {
+            "morality": 80,
+            "selected_offset": 0
+          },
+          {
+            "morality": 100,
+            "selected_offset": 0
+          },
+          {
+            "morality": 101,
+            "selected_offset": 23
+          },
+          {
+            "morality": 32767,
+            "selected_offset": 23
+          }
+        ]
+      }
+    },
     "opcode_30_script_343": {
       "scene_id": 39,
       "arguments": [
