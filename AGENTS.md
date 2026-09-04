@@ -38,6 +38,15 @@
 
 ## 2. 仓库与数据边界
 
+### 2.0 IDA批处理限制
+
+- 逆向导出只能使用命令行批处理程序 `D:\Dev\Crack\IDA\idat.exe`；禁止以任何理由运行 `ida.exe`。
+- 从WSL启动时必须直接执行 `/mnt/d/Dev/Crack/IDA/idat.exe`，不得套用 `cmd.exe /c` 或其他命令解释器包装。
+- 使用 `-A` 启用无交互批处理，使用单一 `-S<脚本路径>` 参数执行仓库 `tmp/` 内的IDAPython脚本；每次命令只处理一个数据库和一个脚本。
+- 已验证命令形态为：`/mnt/d/Dev/Crack/IDA/idat.exe -A '-SE:\Game\金庸群侠传\OpenLegend\tmp\SCRIPT.py' 'E:\Game\金庸群侠传\OpenLegend\tmp\DATABASE.i64'`。
+- `idat.exe -v` 不是有效自检方式，当前安装会返回 `Library initialization failed with result: 2`；必须以实际 `-A -S... DATABASE.i64` 任务的退出码和脚本输出文件验证可用性。
+- IDAT只能打开仓库 `tmp/` 内的数据库副本；正式IDB和原版资产保持只读。脚本必须显式写入仓库 `tmp/`，成功时自行 `qexit(0)`，异常时输出traceback并 `qexit(1)`。
+
 - 产品代码、工具和研究产物只放在本仓库。
 - 原版游戏文件保持只读，且不得复制或提交到本仓库。
 - 构建产物、本地工具、用户环境输出和原版 EXE/COM/DAT 不得误提交。
