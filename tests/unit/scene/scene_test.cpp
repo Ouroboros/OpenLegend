@@ -252,6 +252,19 @@ public:
                 constexpr std::array<std::int16_t, 6> directions{0, 1, 2, 3, -1, 4};
                 append_i16(group, 40);
                 append_i16(group, directions[script - 62U]);
+            } else if (script >= 68U && script <= 74U) {
+                constexpr std::array<std::array<std::int16_t, 3>, 7> arguments{{
+                    {0, 78, 1},
+                    {0, 78, -1},
+                    {0, 99, 0},
+                    {0, 99, -7},
+                    {-1, 99, 1},
+                    {0, 99, 1},
+                    {0, -1, 5}}};
+                append_i16(group, 41);
+                for (const auto value : arguments[script - 68U]) {
+                    append_i16(group, value);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4700,6 +4713,75 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(session.player_frame() == frame);
         OL_CHECK(snapshot.ranger.header.word(
                      openlegend::model::header_word::face_towards) == direction);
+    }
+
+    const auto run_item_script = [&synthetic_root](
+                                     openlegend::model::GameSnapshot& snapshot,
+                                     const std::int16_t script) {
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        return session.begin_event(script, 0, 0, 0).kind;
+    };
+    const auto set_role_items = [](openlegend::model::RoleRecord& role,
+                                   const std::array<std::int16_t, 4>& ids,
+                                   const std::array<std::int16_t, 4>& counts) {
+        for (std::size_t index = 0U; index < ids.size(); ++index) {
+            role.set_word(openlegend::model::role_word::taking_item_begin + index, ids[index]);
+            role.set_word(
+                openlegend::model::role_word::taking_item_count_begin + index,
+                counts[index]);
+        }
+    };
+    for (const auto [script, before, after] :
+         std::array<std::tuple<std::int16_t, std::int16_t, std::int16_t>, 2>{
+             std::tuple<std::int16_t, std::int16_t, std::int16_t>{68, 32767, -32768},
+             {69, -32768, 32767}}) {
+        auto snapshot = load_baseline(root);
+        auto& role = snapshot.ranger.roles[0];
+        set_role_items(role, {78, 78, -1, -1}, {before, 5, 0, 0});
+        OL_CHECK(run_item_script(snapshot, script) == SceneStepKind::stay);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == 78);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin) == after);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin + 1U) == 5);
+    }
+    for (const auto [script, count] :
+         std::array<std::pair<std::int16_t, std::int16_t>, 2>{
+             std::pair<std::int16_t, std::int16_t>{70, 0},
+             {71, -7}}) {
+        auto snapshot = load_baseline(root);
+        auto& role = snapshot.ranger.roles[0];
+        set_role_items(role, {-2, -1, -1, -1}, {11, 22, 33, 44});
+        OL_CHECK(run_item_script(snapshot, script) == SceneStepKind::stay);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == -2);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin) == 11);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin + 1U) == 99);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin + 1U) == count);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        auto& role = snapshot.ranger.roles[0];
+        set_role_items(role, {1, 2, 3, 4}, {11, 22, 33, 44});
+        OL_CHECK(run_item_script(snapshot, 73) == SceneStepKind::stay);
+        for (std::size_t index = 0U; index < 4U; ++index) {
+            OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin + index) ==
+                     static_cast<std::int16_t>(index + 1U));
+            OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin + index) ==
+                     static_cast<std::int16_t>((index + 1U) * 11U));
+        }
+    }
+    {
+        auto snapshot = load_baseline(root);
+        auto& role = snapshot.ranger.roles[0];
+        set_role_items(role, {-1, -1, -1, -1}, {7, 0, 0, 0});
+        OL_CHECK(run_item_script(snapshot, 74) == SceneStepKind::stay);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == -1);
+        OL_CHECK(role.word(openlegend::model::role_word::taking_item_count_begin) == 12);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        const auto before = snapshot.ranger.roles[0].bytes;
+        OL_CHECK(run_item_script(snapshot, 72) == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 
     for (const auto [event_1, expected_event_1] :

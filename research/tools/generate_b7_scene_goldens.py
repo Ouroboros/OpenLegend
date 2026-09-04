@@ -2591,6 +2591,29 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIh", *row) for row in opcode_40_occurrences
     )
 
+    opcode_41_occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 41:
+                opcode_41_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                        code[program_counter + 3],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_41_occurrences) == 6
+    assert all(row[4] == 1 for row in opcode_41_occurrences)
+    opcode_41_stream = b"".join(
+        struct.pack("<IIhhh", *row) for row in opcode_41_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2662,6 +2685,81 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "invalid_modern_vectors": [
                 {"input": -1, "clamped_direction": 0, "player_frame": 5002},
                 {"input": 4, "clamped_direction": 3, "player_frame": 5044},
+            ],
+        },
+        "opcode_41_role_item": {
+            "entry_range": "0x2F8D1..0x2F966",
+            "size_bytes": 149,
+            "instruction_count": 44,
+            "occurrences": len(opcode_41_occurrences),
+            "stream_encoding": "little_endian_<IIhhh:script,pc,role,item,count>",
+            "stream_sha256": sha256(opcode_41_stream),
+            "positions": [list(row) for row in opcode_41_occurrences],
+            "all_real_counts": sorted({row[4] for row in opcode_41_occurrences}),
+            "role_record_bytes": 182,
+            "item_id_words": [83, 84, 85, 86],
+            "item_count_words": [87, 88, 89, 90],
+            "existing_scan": "first_equal_item_id_of_four_slots",
+            "existing_count_rule": "low_signed_int16(existing_count + count)",
+            "empty_scan": "first_item_id_exactly_minus_one_of_four_slots",
+            "new_count_rule": "count_low_signed_int16_without_filter",
+            "full_inventory_rule": "no_write",
+            "return_value": 0,
+            "program_counter_increment": 4,
+            "real_script_289": {
+                "arguments": list(words(scripts[289])[103:107]),
+                "existing_item_78_count_before": -1,
+                "existing_item_78_count_after": 0,
+                "item_id_retained": True,
+            },
+            "synthetic_existing_vectors": [
+                {
+                    "item_ids": [78, 78, -1, -1],
+                    "counts_before": [32767, 5, 0, 0],
+                    "delta": 1,
+                    "counts_after": [-32768, 5, 0, 0],
+                },
+                {
+                    "item_ids": [78, 78, -1, -1],
+                    "counts_before": [-32768, 5, 0, 0],
+                    "delta": -1,
+                    "counts_after": [32767, 5, 0, 0],
+                },
+                {
+                    "item_ids": [-1, -1, -1, -1],
+                    "counts_before": [7, 0, 0, 0],
+                    "item": -1,
+                    "delta": 5,
+                    "counts_after": [12, 0, 0, 0],
+                },
+            ],
+            "synthetic_new_vectors": [
+                {
+                    "item_ids_before": [-2, -1, -1, -1],
+                    "counts_before": [11, 22, 33, 44],
+                    "item": 99,
+                    "count": 0,
+                    "item_ids_after": [-2, 99, -1, -1],
+                    "counts_after": [11, 0, 33, 44],
+                },
+                {
+                    "item_ids_before": [-2, -1, -1, -1],
+                    "counts_before": [11, 22, 33, 44],
+                    "item": 99,
+                    "count": -7,
+                    "item_ids_after": [-2, 99, -1, -1],
+                    "counts_after": [11, -7, 33, 44],
+                },
+            ],
+            "synthetic_full_vector": {
+                "item_ids": [1, 2, 3, 4],
+                "counts": [11, 22, 33, 44],
+                "item": 99,
+                "count": 1,
+                "unchanged": True,
+            },
+            "invalid_modern_vectors": [
+                {"role": -1, "item": 99, "count": 1, "write": False}
             ],
         },
         "opcode_23_script_28": {

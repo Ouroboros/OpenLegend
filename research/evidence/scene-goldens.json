@@ -6139,6 +6139,241 @@
           }
         ]
       },
+      "opcode_41_role_item": {
+        "entry_range": "0x2F8D1..0x2F966",
+        "size_bytes": 149,
+        "instruction_count": 44,
+        "occurrences": 6,
+        "stream_encoding": "little_endian_<IIhhh:script,pc,role,item,count>",
+        "stream_sha256": "a31c9f47f5dc7ca7071430567ca5d405c0cecf6bd1a4e2637d57b457a8406cf8",
+        "positions": [
+          [
+            289,
+            103,
+            36,
+            78,
+            1
+          ],
+          [
+            436,
+            245,
+            58,
+            61,
+            1
+          ],
+          [
+            436,
+            478,
+            58,
+            61,
+            1
+          ],
+          [
+            536,
+            147,
+            49,
+            128,
+            1
+          ],
+          [
+            536,
+            151,
+            49,
+            56,
+            1
+          ],
+          [
+            536,
+            155,
+            49,
+            40,
+            1
+          ]
+        ],
+        "all_real_counts": [
+          1
+        ],
+        "role_record_bytes": 182,
+        "item_id_words": [
+          83,
+          84,
+          85,
+          86
+        ],
+        "item_count_words": [
+          87,
+          88,
+          89,
+          90
+        ],
+        "existing_scan": "first_equal_item_id_of_four_slots",
+        "existing_count_rule": "low_signed_int16(existing_count + count)",
+        "empty_scan": "first_item_id_exactly_minus_one_of_four_slots",
+        "new_count_rule": "count_low_signed_int16_without_filter",
+        "full_inventory_rule": "no_write",
+        "return_value": 0,
+        "program_counter_increment": 4,
+        "real_script_289": {
+          "arguments": [
+            41,
+            36,
+            78,
+            1
+          ],
+          "existing_item_78_count_before": -1,
+          "existing_item_78_count_after": 0,
+          "item_id_retained": true
+        },
+        "synthetic_existing_vectors": [
+          {
+            "item_ids": [
+              78,
+              78,
+              -1,
+              -1
+            ],
+            "counts_before": [
+              32767,
+              5,
+              0,
+              0
+            ],
+            "delta": 1,
+            "counts_after": [
+              -32768,
+              5,
+              0,
+              0
+            ]
+          },
+          {
+            "item_ids": [
+              78,
+              78,
+              -1,
+              -1
+            ],
+            "counts_before": [
+              -32768,
+              5,
+              0,
+              0
+            ],
+            "delta": -1,
+            "counts_after": [
+              32767,
+              5,
+              0,
+              0
+            ]
+          },
+          {
+            "item_ids": [
+              -1,
+              -1,
+              -1,
+              -1
+            ],
+            "counts_before": [
+              7,
+              0,
+              0,
+              0
+            ],
+            "item": -1,
+            "delta": 5,
+            "counts_after": [
+              12,
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "synthetic_new_vectors": [
+          {
+            "item_ids_before": [
+              -2,
+              -1,
+              -1,
+              -1
+            ],
+            "counts_before": [
+              11,
+              22,
+              33,
+              44
+            ],
+            "item": 99,
+            "count": 0,
+            "item_ids_after": [
+              -2,
+              99,
+              -1,
+              -1
+            ],
+            "counts_after": [
+              11,
+              0,
+              33,
+              44
+            ]
+          },
+          {
+            "item_ids_before": [
+              -2,
+              -1,
+              -1,
+              -1
+            ],
+            "counts_before": [
+              11,
+              22,
+              33,
+              44
+            ],
+            "item": 99,
+            "count": -7,
+            "item_ids_after": [
+              -2,
+              99,
+              -1,
+              -1
+            ],
+            "counts_after": [
+              11,
+              -7,
+              33,
+              44
+            ]
+          }
+        ],
+        "synthetic_full_vector": {
+          "item_ids": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "counts": [
+            11,
+            22,
+            33,
+            44
+          ],
+          "item": 99,
+          "count": 1,
+          "unchanged": true
+        },
+        "invalid_modern_vectors": [
+          {
+            "role": -1,
+            "item": 99,
+            "count": 1,
+            "write": false
+          }
+        ]
+      },
       "opcode_23_script_28": {
         "occurrences": 1,
         "stream_encoding": "little_endian_<IIhh:script,pc,role,value>",

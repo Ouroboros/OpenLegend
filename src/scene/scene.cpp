@@ -2269,8 +2269,8 @@ void SceneSession::add_role_item(
     role.set_word(
         model::role_word::taking_item_count_begin + index,
         existing
-            ? static_cast<std::int16_t>(
-                  role.word(model::role_word::taking_item_count_begin + index) + count)
+            ? wrapping_add(
+                  role.word(model::role_word::taking_item_count_begin + index), count)
             : count);
 }
 

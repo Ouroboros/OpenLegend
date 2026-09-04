@@ -393,7 +393,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 汇编→C++终审在合法0..3方向域零产品差异；现代清图片override、归零步行offset并同步snapshot方向镜像，得到同一运行图片和存档状态。非法signed表索引由现代0..3钳位替代，归类`platform_adapted`。从38字节9条指令入口复核三项重定位、朝向写入、signed表索引、当前图片覆盖、return0和caller，零新增差异。全KDEF 12次opcode40参数流SHA256 `ebe741b0fba8a9a93cc06ed0b0ede392ba5f2f054df0f9cc94c8dbe17bb2165b`；四个合法方向、四项基础图片和非法-1/4现代边界均固定。
 
-## 24. 当前验证
+## 24. 角色四槽携带物增加
+
+`sub_2F8D1`先扫描word83..86的首个同item槽，并对对应word87..90 count做低16位加法后短路；未命中才重新扫描首个ID精确等于-1的槽，原样写入item和count。零/负结果保留，-2等其它负ID不算空槽，四槽全满不写。
+
+汇编→C++终审发现已有count相加依赖超范围整数窄化；改为显式`wrapping_add`后从149字节44条指令入口重审五项重定位、两个四槽循环、首命中短路、found分支、字段写入、return0和caller，零新增差异。非法role的现代无写入保护替代原机越界访问，归类`platform_adapted`。全KDEF 6次opcode41参数流SHA256 `a31c9f47f5dc7ca7071430567ca5d405c0cecf6bd1a4e2637d57b457a8406cf8`；真实count均为1，另固定重复ID、双向回绕、精确-1空槽、零/负新增、满槽和item自身为-1。
+
+## 25. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -422,6 +428,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景图层批量替换的3次真实opcode38参数流、当前/外部场景路径、4096-word全层扫描、全部匹配/非匹配值、外部末层持久修改及当前场景保持；
 - 场景入口条件清零的3次真实opcode39参数流、52字节记录寻址、word0无条件写0、首末合法场景与非法负一/八十四边界保护；
 - 主角场景朝向设置的12次真实opcode40参数流、四项基础图片、临时/步行帧复位、snapshot镜像同步及非法负一/四钳位；
+- 角色携带物增加的6次真实opcode41参数流、两阶段四槽扫描、首命中短路、16位回绕、精确负一空槽、零/负新增、满槽及非法角色保护；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
