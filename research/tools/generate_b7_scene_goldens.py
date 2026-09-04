@@ -3757,6 +3757,21 @@ def dialogue_vectors(
     ascii_font = (root / "FONT.X16").read_bytes()
     big5_font = (root / "FONT.C16").read_bytes()
     portraits = packed((root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes())
+    raw_talks = packed((root / "TALK.IDX").read_bytes(), (root / "TALK.GRP").read_bytes())
+    z_dat = (root / "Z.DAT").read_bytes()
+    text_renderer_raw = z_dat[0x37350:0x37440]
+    assert len(text_renderer_raw) == 240
+    assert len(raw_talks) == len(decoded_talks) == 2_977
+    assert all(record and record[-1] == 0 and record.count(0) == 1 for record in raw_talks)
+    assert all(0xFF not in record[:-1] for record in raw_talks)
+    for decoded in decoded_talks:
+        cursor = 0
+        while cursor < len(decoded) - 1:
+            if decoded[cursor] > 0x7F:
+                assert cursor + 1 < len(decoded) - 1
+                cursor += 2
+            else:
+                cursor += 1
     lookup = rgb4_lookup(palette)
 
     def blend(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
@@ -3881,6 +3896,8 @@ def dialogue_vectors(
                     panel_x + 13,
                     panel_y + 3 + line_index * 17,
                     line + b"\0",
+                    0,
+                    100,
                 )
             page_frames.append(fnv1a64(pixels))
         return {
@@ -3894,7 +3911,7 @@ def dialogue_vectors(
             "portrait_panel": None if portrait_position is None else [*portrait_position, 60, 62],
             "portrait_anchor": None if portrait_position is None else [portrait_position[0] + 2, portrait_position[1] + 59],
             "text_position": [panel_x + 13, panel_y + 3],
-            "colors": [0x17, 0x15],
+            "colors": [0, 100],
             "frame_fnv1a64": page_frames,
         }
 
@@ -4051,6 +4068,8 @@ def dialogue_vectors(
                 107,
                 20 + line_index * 17,
                 line + b"\0",
+                0,
+                100,
             )
 
     shop_records = [
@@ -4198,7 +4217,53 @@ def dialogue_vectors(
         if text[-2:-1] == b"*" and text[:-1].count(b"*") % 3 == 0:
             empty_final_page_talks.append(talk_id)
 
+    renderer_call_count = sum(
+        page_count * record_count
+        for page_count, record_count in page_count_distribution.items()
+    )
+    assert renderer_call_count == 4_246
+    assert renderer_call_count - len(decoded_talks) == 1_269
+
     return {
+        "text_renderer_contract": {
+            "entry_range": "0x3d950..0x3da40",
+            "size_bytes": 240,
+            "instruction_count": 81,
+            "raw_function_offset": "0x37350",
+            "raw_function_sha256": sha256(text_renderer_raw),
+            "loaded_function_sha256": "dfea54a7d2537976d191678a04182b14f244470737414bc18ca3e96cc565b38c",
+            "relocations": [
+                ["0x3d9d8", "0xc7f3c", "0xe7f3c"],
+                ["0x3da07", "0xc6f3c", "0xe6f3c"],
+            ],
+            "normalized_loaded_equals_raw": True,
+            "stack_probe_argument": 48,
+            "caller": "sub_2cc21:0x2cdea",
+            "arguments": [
+                "x", "y", "xor_ff_text", "unused_framebuffer",
+                "packed_colors", "unused_glyph_height",
+            ],
+            "caller_arguments": [
+                "panel_x+13", "panel_y+3", "talk_buffer+page_offset",
+                "active_framebuffer", 100, 16,
+            ],
+            "packed_color_division": "signed_quotient_and_remainder_by_256",
+            "right_shadow": 0,
+            "foreground": 100,
+            "raw_zero_return": 0,
+            "third_asterisk_return": "consumed_bytes_including_asterisk",
+            "ascii_width": 8,
+            "big5_width": 16,
+            "line_advance": 17,
+            "lines_per_call": 3,
+            "raw_talk_records": len(raw_talks),
+            "single_terminal_raw_zero": True,
+            "internal_raw_ff_count": 0,
+            "malformed_big5_lead_count": 0,
+            "total_renderer_calls": renderer_call_count,
+            "nonzero_return_count": renderer_call_count - len(decoded_talks),
+            "zero_return_count": len(decoded_talks),
+        },
         "hdgrp_entry_count": len(portraits),
         "hdgrp_sha256": sha256((root / "HDGRP.GRP").read_bytes()),
         "talk_14_page_count": len(dialogue_pages(decoded_talks[14])),

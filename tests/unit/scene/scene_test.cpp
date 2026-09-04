@@ -501,7 +501,7 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 0 && result.head_id == 1 && result.style == 0);
     OL_CHECK(paired.render(style_0_frame));
-    OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0x1510F9342DE536C3ULL);
+    OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0xEFFADD71E1D6F7AFULL);
 
     result = paired.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::present);
@@ -510,7 +510,7 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 1 && result.head_id == 0 && result.style == 1);
     OL_CHECK(paired.render(style_0_frame));
-    OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0xFD2A5CB6664410E1ULL);
+    OL_CHECK(fnv1a64(style_0_frame.pixels()) == 0x76626AB1A43F91FCULL);
 
     auto style_2_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom style_2_random{1U};
@@ -523,7 +523,7 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::dialogue);
     OL_CHECK(result.talk_id == 796 && result.head_id == 200 && result.style == 2);
     OL_CHECK(style_2.render(style_2_frame));
-    OL_CHECK(fnv1a64(style_2_frame.pixels()) == 0x961BBDDC3FC79F35ULL);
+    OL_CHECK(fnv1a64(style_2_frame.pixels()) == 0x6336E5C800C1065AULL);
 
     auto style_4_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom style_4_random{1U};
@@ -550,11 +550,11 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     OL_CHECK(result.talk_id == 547 && result.head_id == 77 && result.style == 4);
     OL_CHECK(style_4.render(style_4_frame));
     const auto style_4_hash = fnv1a64(style_4_frame.pixels());
-    if (style_4_hash != 0xD66E3B67975125A2ULL) {
-        std::cerr << "style 4 dialogue frame: expected 0xd66e3b67975125a2, actual 0x"
+    if (style_4_hash != 0x6E639382A4DD8D1AULL) {
+        std::cerr << "style 4 dialogue frame: expected 0x6e639382a4dd8d1a, actual 0x"
                   << std::hex << style_4_hash << std::dec << '\n';
     }
-    OL_CHECK(style_4_hash == 0xD66E3B67975125A2ULL);
+    OL_CHECK(style_4_hash == 0x6E639382A4DD8D1AULL);
 
     auto long_line_snapshot = load_baseline(root);
     long_line_snapshot.ranger.header.set_team_member(
@@ -576,7 +576,7 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
     }
     OL_CHECK(result.kind == SceneStepKind::dialogue && result.talk_id == 1841);
     OL_CHECK(long_line.render(long_line_frame));
-    OL_CHECK(fnv1a64(long_line_frame.pixels()) == 0xF420561DCB42E981ULL);
+    OL_CHECK(fnv1a64(long_line_frame.pixels()) == 0x9600C0A0E15D1F8DULL);
 }
 
 void check_new_game_entry(const std::filesystem::path& root) {
@@ -1991,7 +1991,7 @@ void check_scene_weather(const std::filesystem::path& root) {
     const auto first_page_random_state = random.state();
     OL_CHECK(session.render(weather_frame));
     const auto first_page_hash = fnv1a64(weather_frame.pixels());
-    OL_CHECK(first_page_hash == 0x8D9F538B1482E95EULL);
+    OL_CHECK(first_page_hash == 0xC5633B797B57D0ABULL);
     OL_CHECK(random.state() == first_page_random_state);
     OL_CHECK(session.render(weather_frame));
     OL_CHECK(fnv1a64(weather_frame.pixels()) == first_page_hash);
@@ -2005,7 +2005,7 @@ void check_scene_weather(const std::filesystem::path& root) {
     static_cast<void>(expected_second_page.bounded(7));
     OL_CHECK(session.render(weather_frame));
     const auto second_page_hash = fnv1a64(weather_frame.pixels());
-    OL_CHECK(second_page_hash == 0x372FE4647B884671ULL);
+    OL_CHECK(second_page_hash == 0x000AF7DFDF2CF81FULL);
     OL_CHECK(random.state() == expected_second_page.state());
     OL_CHECK(session.render(weather_frame));
     OL_CHECK(fnv1a64(weather_frame.pixels()) == second_page_hash);
@@ -2959,18 +2959,18 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         {61, 4, {10, 11, 12}},
     };
     constexpr std::array<std::uint64_t, 5> first_row_frames{
-        0x2B6C116D379227C5ULL,
-        0x80BDF80E0F3D002FULL,
-        0xBE43D0F1EB0BEC5EULL,
-        0xE18453B0049E3223ULL,
-        0x76EE55D49D2FCD61ULL,
+        0x9FF513954985695BULL,
+        0x8BED5DE64D764DD9ULL,
+        0x71A25CB03B3DAC9CULL,
+        0x960E9C11D5672DB9ULL,
+        0xAECE6648568972EFULL,
     };
     constexpr std::array<std::uint64_t, 5> last_row_frames{
-        0x5216BA7513E3F34DULL,
-        0xCC0442B553350DBFULL,
-        0x9FE98B2E7D90EFAEULL,
-        0xD59F9BCDC24E7CDFULL,
-        0x31FD475AB0A88BCDULL,
+        0x31F73A2D373D7223ULL,
+        0x39251FED2BBDD0C1ULL,
+        0xB6F648F4D4EB333CULL,
+        0x1BA33F6D38D86B25ULL,
+        0xDB50FCDA4E4F75A3ULL,
     };
     for (const auto& shop_case : cases) {
         auto snapshot = load_baseline(root);
@@ -2990,7 +2990,7 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         OL_CHECK(result.shop_id == shop_case.shop);
         OL_CHECK(result.menu_index == (shop_case.shop >= 0 ? 0 : -1));
         if (shop_case.shop >= 0) {
-            OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x36897306F557DDD0ULL);
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xD297239BDFB5DCFAULL);
             OL_CHECK(session.render(framebuffer));
             const auto shop_index = static_cast<std::size_t>(shop_case.shop);
             OL_CHECK(fnv1a64(framebuffer.pixels()) == first_row_frames[shop_index]);
@@ -3042,7 +3042,7 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     OL_CHECK(empty_purchase.kind == SceneStepKind::shop);
     OL_CHECK(empty_purchase.menu_index == -1);
     OL_CHECK(empty_session.render(empty_framebuffer));
-    OL_CHECK(fnv1a64(empty_framebuffer.pixels()) == 0x07D10D3767118B68ULL);
+    OL_CHECK(fnv1a64(empty_framebuffer.pixels()) == 0x77E428322150E6B2ULL);
     empty_purchase = empty_session.resume(SceneResponse::acknowledge, 0x0D);
     OL_CHECK(empty_purchase.kind == SceneStepKind::present);
     OL_CHECK(empty_shop.word(openlegend::model::shop_word::total_begin) == -1);

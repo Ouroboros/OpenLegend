@@ -12540,6 +12540,61 @@
       ]
     },
     "dialogue_vectors": {
+      "text_renderer_contract": {
+        "entry_range": "0x3d950..0x3da40",
+        "size_bytes": 240,
+        "instruction_count": 81,
+        "raw_function_offset": "0x37350",
+        "raw_function_sha256": "707456da0b92b8f1eb25b282a0a913d18a1a30a1bb5108fd712d64ad11dcc9af",
+        "loaded_function_sha256": "dfea54a7d2537976d191678a04182b14f244470737414bc18ca3e96cc565b38c",
+        "relocations": [
+          [
+            "0x3d9d8",
+            "0xc7f3c",
+            "0xe7f3c"
+          ],
+          [
+            "0x3da07",
+            "0xc6f3c",
+            "0xe6f3c"
+          ]
+        ],
+        "normalized_loaded_equals_raw": true,
+        "stack_probe_argument": 48,
+        "caller": "sub_2cc21:0x2cdea",
+        "arguments": [
+          "x",
+          "y",
+          "xor_ff_text",
+          "unused_framebuffer",
+          "packed_colors",
+          "unused_glyph_height"
+        ],
+        "caller_arguments": [
+          "panel_x+13",
+          "panel_y+3",
+          "talk_buffer+page_offset",
+          "active_framebuffer",
+          100,
+          16
+        ],
+        "packed_color_division": "signed_quotient_and_remainder_by_256",
+        "right_shadow": 0,
+        "foreground": 100,
+        "raw_zero_return": 0,
+        "third_asterisk_return": "consumed_bytes_including_asterisk",
+        "ascii_width": 8,
+        "big5_width": 16,
+        "line_advance": 17,
+        "lines_per_call": 3,
+        "raw_talk_records": 2977,
+        "single_terminal_raw_zero": true,
+        "internal_raw_ff_count": 0,
+        "malformed_big5_lead_count": 0,
+        "total_renderer_calls": 4246,
+        "nonzero_return_count": 1269,
+        "zero_return_count": 2977
+      },
       "hdgrp_entry_count": 115,
       "hdgrp_sha256": "9b3ea687e0a2d82cc0dd83f580cff6a5cb48e7b62b6fd98dc4b63dad93a9c037",
       "talk_14_page_count": 5,
@@ -12847,11 +12902,11 @@
             20
           ],
           "colors": [
-            23,
-            21
+            0,
+            100
           ],
           "frame_fnv1a64": [
-            "0x1510f9342de536c3"
+            "0xeffadd71e1d6f7af"
           ]
         },
         "style_1_script_1_pc_5": {
@@ -12887,11 +12942,11 @@
             133
           ],
           "colors": [
-            23,
-            21
+            0,
+            100
           ],
           "frame_fnv1a64": [
-            "0xfd2a5cb6664410e1"
+            "0x76626ab1a43f91fc"
           ]
         },
         "style_2_script_244_pc_0": {
@@ -12919,11 +12974,11 @@
             20
           ],
           "colors": [
-            23,
-            21
+            0,
+            100
           ],
           "frame_fnv1a64": [
-            "0x961bbddc3fc79f35"
+            "0x6336e5c800c1065a"
           ]
         },
         "style_4_script_142_pc_10": {
@@ -12959,11 +13014,11 @@
             20
           ],
           "colors": [
-            23,
-            21
+            0,
+            100
           ],
           "frame_fnv1a64": [
-            "0xd66e3b67975125a2"
+            "0x6e639382a4dd8d1a"
           ]
         },
         "long_line_script_515_pc_65": {
@@ -12999,11 +13054,11 @@
             133
           ],
           "colors": [
-            23,
-            21
+            0,
+            100
           ],
           "frame_fnv1a64": [
-            "0xf420561dcb42e981"
+            "0x9600c0a0e15d1f8d"
           ]
         },
         "weather_script_18_pc_0": {
@@ -13040,12 +13095,12 @@
             20
           ],
           "colors": [
-            23,
-            21
+            0,
+            100
           ],
           "frame_fnv1a64": [
-            "0x8d9f538b1482e95e",
-            "0x372fe4647b884671"
+            "0xc5633b797b57d0ab",
+            "0x000af7dfdf2cf81f"
           ]
         }
       },
@@ -13056,7 +13111,7 @@
           0
         ],
         "intro_page_count": 1,
-        "intro_frame_fnv1a64": "0x36897306f557ddd0",
+        "intro_frame_fnv1a64": "0xd297239bdfb5dcfa",
         "base_policy": "overlay_on_final_dialogue_framebuffer",
         "panel": [
           94,
@@ -13080,9 +13135,9 @@
           5,
           7
         ],
-        "empty_selection_frame": "0x07d10d3767118b68",
+        "empty_selection_frame": "0x77e428322150e6b2",
         "selection_frame_stream_encoding": "little_endian_<25Q>",
-        "selection_frame_stream_sha256": "d01163cb9a4a77db2384f3fb7f37578419a7aa1d7cbefcf8e062327f8fc2ee0c",
+        "selection_frame_stream_sha256": "ede25bf5c50d24a32a17fd770a2cd4af6e3d3301eb79bd1d6009e302da933e32",
         "shops": [
           {
             "shop": 0,
@@ -13124,11 +13179,11 @@
               }
             ],
             "selection_frames": [
-              "0x2b6c116d379227c5",
-              "0xd74e57cbf3d9e7e1",
-              "0x2daa0fb9a649a3f9",
-              "0x04a36c7056ee8825",
-              "0x5216ba7513e3f34d"
+              "0x9ff513954985695b",
+              "0x03d9a942f451c8f7",
+              "0x8a4338cbcadf766f",
+              "0xf3427ec4526ba7eb",
+              "0x31f73a2d373d7223"
             ]
           },
           {
@@ -13171,11 +13226,11 @@
               }
             ],
             "selection_frames": [
-              "0x80bdf80e0f3d002f",
-              "0xb4f905b3a4c5eca3",
-              "0xa5a2ad9dd0f2a25b",
-              "0xc08306496d184123",
-              "0xcc0442b553350dbf"
+              "0x8bed5de64d764dd9",
+              "0x1eb7866793168305",
+              "0xa8fbcebd681a178d",
+              "0x52521907bb266395",
+              "0x39251fed2bbdd0c1"
             ]
           },
           {
@@ -13218,11 +13273,11 @@
               }
             ],
             "selection_frames": [
-              "0xbe43d0f1eb0bec5e",
-              "0xb7b2179dd88c297e",
-              "0x9e33f35b0ac6951a",
-              "0x4058267e1fd44a5e",
-              "0x9fe98b2e7d90efae"
+              "0x71a25cb03b3dac9c",
+              "0x0825a2a15c2df064",
+              "0x72509798376b3980",
+              "0x31b8482dcaa84694",
+              "0xb6f648f4d4eb333c"
             ]
           },
           {
@@ -13265,11 +13320,11 @@
               }
             ],
             "selection_frames": [
-              "0xe18453b0049e3223",
-              "0x32c7997793f664f3",
-              "0xf7aed138a5c6adbb",
-              "0x6828663ec474bd57",
-              "0xd59f9bcdc24e7cdf"
+              "0x960e9c11d5672db9",
+              "0xf3f94d9abaa8e371",
+              "0xceb0d31d0c9cb9a9",
+              "0x5157037f69d177fd",
+              "0x1ba33f6d38d86b25"
             ]
           },
           {
@@ -13312,11 +13367,11 @@
               }
             ],
             "selection_frames": [
-              "0x76ee55d49d2fcd61",
-              "0x0c190b4b65326c35",
-              "0xda95048eb7de27c5",
-              "0xa6375f73e2019911",
-              "0x31fd475ab0a88bcd"
+              "0xaece6648568972ef",
+              "0x181f3a676a149723",
+              "0xdf1f407595181dc3",
+              "0x8975ed326e989aa7",
+              "0xdb50fcda4e4f75a3"
             ]
           }
         ]

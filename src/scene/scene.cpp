@@ -3757,8 +3757,8 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
                                         line,
                                         ascii_font_,
                                         cache,
-                                        0x17U,
-                                        0x15U)
+                                        0U,
+                                        100U)
                                   : render::draw_legacy_text(
                                         framebuffer,
                                         text_x,
