@@ -4584,6 +4584,127 @@ def status_notice_vectors(
         "synthetic_visible_frame_hashes_sha256": sha256(bytes(speed_hash_stream)),
     }
 
+    opcode_46_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 46:
+                opcode_46_occurrences.append(
+                    (script_id, pc, code[pc + 1], code[pc + 2])
+                )
+            pc += WIDTHS[opcode]
+    assert opcode_46_occurrences == [(536, 191, 49, 300), (581, 31, 49, 300)]
+    opcode_46_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_46_occurrences
+    )
+    mp_notice_infix = bytes.fromhex("20 a4 ba a4 4f bc 57 a5 5b 20")
+
+    def wrapped_i16(value: int) -> int:
+        bits = value & 0xFFFF
+        return bits if bits < 0x8000 else bits - 0x10000
+
+    def render_mp_notice(role_id: int, gain: int) -> dict[str, object]:
+        role = ranger[836 + role_id * 182:836 + (role_id + 1) * 182]
+        role_name = record_name(role, 8)
+        text = role_name + mp_notice_infix + str(gain).encode("ascii") + b"\0"
+        layout_length = len(role_name) + 10
+        x = 150 - (4 * layout_length + 24)
+        width = 8 * layout_length + 68
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(
+            pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07
+        )
+        return {
+            "role_id": role_id,
+            "role_name_hex": role_name.hex(),
+            "gain": gain,
+            "text_hex": text.hex(),
+            "layout_length": layout_length,
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": fnv1a64(pixels),
+        }
+
+    baseline_mp_notices = []
+    for script_id, pc, role_id, delta in opcode_46_occurrences:
+        role_offset = 836 + role_id * 182
+        before_current = struct.unpack_from("<h", ranger, role_offset + 52)[0]
+        before_maximum = struct.unpack_from("<h", ranger, role_offset + 54)[0]
+        after = wrapped_i16(before_maximum + delta)
+        gain = after - before_current
+        row: dict[str, object] = {
+            "script": script_id,
+            "pc": pc,
+            "delta": delta,
+            "before_current": before_current,
+            "before_maximum": before_maximum,
+            "after_current_and_maximum": after,
+            "gain": gain,
+            "notice": gain > 0,
+        }
+        if gain > 0:
+            row.update(render_mp_notice(role_id, gain))
+        baseline_mp_notices.append(row)
+
+    synthetic_mp_inputs = [
+        (32767, -32768, 1),
+        (-32768, -32768, -1),
+        (100, 0, 0),
+        (100, 100, -10),
+    ]
+    synthetic_mp_cases = []
+    mp_hash_stream = bytearray()
+    for before_maximum, before_current, delta in synthetic_mp_inputs:
+        after = wrapped_i16(before_maximum + delta)
+        gain = after - before_current
+        row = {
+            "before_maximum": before_maximum,
+            "before_current": before_current,
+            "delta": delta,
+            "after_current_and_maximum": after,
+            "gain": gain,
+            "notice": gain > 0,
+        }
+        if gain > 0:
+            notice = render_mp_notice(0, gain)
+            row.update(notice)
+            mp_hash_stream.extend(bytes.fromhex(str(notice["frame_fnv1a64"])[2:]))
+        synthetic_mp_cases.append(row)
+
+    output["opcode_46_role_maximum_mp_panel"] = {
+        "entry_range": "0x2FBC0..0x2FC9D",
+        "size_bytes": 221,
+        "instruction_count": 61,
+        "occurrences": len(opcode_46_occurrences),
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": sha256(opcode_46_stream),
+        "positions": [list(row) for row in opcode_46_occurrences],
+        "current_mp_word_index": 26,
+        "maximum_mp_word_index": 27,
+        "maximum_arithmetic": "signed_int16_wrapping_add_without_clamp",
+        "current_write": "assign_wrapped_new_maximum",
+        "notice_condition": "new_maximum_minus_old_current_mp_greater_than_zero",
+        "notice_gain": "signed_int32(new_maximum - old_current_mp)",
+        "party_membership_required": False,
+        "message_format_hex": "257320a4baa44fbc57a55b20256400",
+        "message_format_cp950": "%s 內力增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "colors": [5, 7],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_notices": baseline_mp_notices,
+        "synthetic_cases": synthetic_mp_cases,
+        "invalid_modern_vectors": [
+            {"role": -1, "delta": 1, "write": False, "notice": False}
+        ],
+        "synthetic_visible_frame_hashes_sha256": sha256(bytes(mp_hash_stream)),
+    }
+
     opcode_2_occurrences: list[dict[str, int | str]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
