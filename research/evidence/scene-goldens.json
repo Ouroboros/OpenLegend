@@ -5843,9 +5843,261 @@
       }
     },
     "opcode_58_script_936": {
+      "entry_range": "0x302E0..0x30480",
+      "size_bytes": 416,
+      "instruction_count": 131,
       "script_id": 936,
       "program_counter": 54,
+      "occurrences": 1,
+      "positions": [
+        [
+          936,
+          54
+        ]
+      ],
+      "call_stream_encoding": "little_endian_<II:script,pc>",
+      "call_stream_sha256": "95db4aa4debf7b3cb402c3fb789f96cbafdf24e52da6ec0eedf5a0e395ce9f77",
+      "program_counter_increment_after_completion": 1,
       "seed": 1,
+      "selection_table_shape": [
+        6,
+        6
+      ],
+      "active_group_count": 5,
+      "victories_per_group": 3,
+      "random_upper_bound": 6,
+      "total_random_draws": 21,
+      "duplicate_random_draws": 6,
+      "random_draw_stream_encoding": "little_endian_<BBBI:group,opponent,accepted,state>",
+      "random_draw_stream_sha256": "45ace9a3d0b5722b57d9e534431549cb5e3538bf06353e6a270af7090fac627f",
+      "random_draws": [
+        {
+          "draw": 0,
+          "group": 0,
+          "opponent": 2,
+          "accepted": true,
+          "state": "0x41c67ea6"
+        },
+        {
+          "draw": 1,
+          "group": 0,
+          "opponent": 4,
+          "accepted": true,
+          "state": "0x967eb0e7"
+        },
+        {
+          "draw": 2,
+          "group": 0,
+          "opponent": 3,
+          "accepted": true,
+          "state": "0x2781e494"
+        },
+        {
+          "draw": 3,
+          "group": 1,
+          "opponent": 1,
+          "accepted": true,
+          "state": "0xc46b9b3d"
+        },
+        {
+          "draw": 4,
+          "group": 1,
+          "opponent": 1,
+          "accepted": false,
+          "state": "0xf94bdf32"
+        },
+        {
+          "draw": 5,
+          "group": 1,
+          "opponent": 5,
+          "accepted": true,
+          "state": "0x95fb7483"
+        },
+        {
+          "draw": 6,
+          "group": 1,
+          "opponent": 0,
+          "accepted": true,
+          "state": "0xd9e2b600"
+        },
+        {
+          "draw": 7,
+          "group": 2,
+          "opponent": 3,
+          "accepted": true,
+          "state": "0x9cfbae39"
+        },
+        {
+          "draw": 8,
+          "group": 2,
+          "opponent": 0,
+          "accepted": true,
+          "state": "0xbf54bc7e"
+        },
+        {
+          "draw": 9,
+          "group": 2,
+          "opponent": 0,
+          "accepted": false,
+          "state": "0x0ff6d5df"
+        },
+        {
+          "draw": 10,
+          "group": 2,
+          "opponent": 1,
+          "accepted": true,
+          "state": "0x0abd322c"
+        },
+        {
+          "draw": 11,
+          "group": 3,
+          "opponent": 5,
+          "accepted": true,
+          "state": "0x31dff4f5"
+        },
+        {
+          "draw": 12,
+          "group": 3,
+          "opponent": 0,
+          "accepted": true,
+          "state": "0x237c228a"
+        },
+        {
+          "draw": 13,
+          "group": 3,
+          "opponent": 0,
+          "accepted": false,
+          "state": "0xaf1cf0fb"
+        },
+        {
+          "draw": 14,
+          "group": 3,
+          "opponent": 5,
+          "accepted": false,
+          "state": "0x7de14518"
+        },
+        {
+          "draw": 15,
+          "group": 3,
+          "opponent": 5,
+          "accepted": false,
+          "state": "0xc487eb71"
+        },
+        {
+          "draw": 16,
+          "group": 3,
+          "opponent": 3,
+          "accepted": true,
+          "state": "0xe201dd56"
+        },
+        {
+          "draw": 17,
+          "group": 4,
+          "opponent": 3,
+          "accepted": true,
+          "state": "0xd2bfa1d7"
+        },
+        {
+          "draw": 18,
+          "group": 4,
+          "opponent": 3,
+          "accepted": false,
+          "state": "0xe2319ac4"
+        },
+        {
+          "draw": 19,
+          "group": 4,
+          "opponent": 0,
+          "accepted": true,
+          "state": "0xe3decdad"
+        },
+        {
+          "draw": 20,
+          "group": 4,
+          "opponent": 2,
+          "accepted": true,
+          "state": "0xe95678e2"
+        }
+      ],
+      "selected_stream_encoding": "bytes_<BBB:group,opponent,cell>",
+      "selected_stream_sha256": "e6ea5b488afacfa3929dabe6f064deb3cf7946e44faf70bd8a12227002f5129f",
+      "selected": [
+        {
+          "group": 0,
+          "opponent": 2,
+          "cell": 2
+        },
+        {
+          "group": 0,
+          "opponent": 4,
+          "cell": 4
+        },
+        {
+          "group": 0,
+          "opponent": 3,
+          "cell": 3
+        },
+        {
+          "group": 1,
+          "opponent": 1,
+          "cell": 7
+        },
+        {
+          "group": 1,
+          "opponent": 5,
+          "cell": 11
+        },
+        {
+          "group": 1,
+          "opponent": 0,
+          "cell": 6
+        },
+        {
+          "group": 2,
+          "opponent": 3,
+          "cell": 15
+        },
+        {
+          "group": 2,
+          "opponent": 0,
+          "cell": 12
+        },
+        {
+          "group": 2,
+          "opponent": 1,
+          "cell": 13
+        },
+        {
+          "group": 3,
+          "opponent": 5,
+          "cell": 23
+        },
+        {
+          "group": 3,
+          "opponent": 0,
+          "cell": 18
+        },
+        {
+          "group": 3,
+          "opponent": 3,
+          "cell": 21
+        },
+        {
+          "group": 4,
+          "opponent": 3,
+          "cell": 27
+        },
+        {
+          "group": 4,
+          "opponent": 0,
+          "cell": 24
+        },
+        {
+          "group": 4,
+          "opponent": 2,
+          "cell": 26
+        }
+      ],
       "selected_indices": [
         2,
         4,
@@ -5862,6 +6114,23 @@
         27,
         24,
         26
+      ],
+      "accepted_rng_states": [
+        "0x41c67ea6",
+        "0x967eb0e7",
+        "0x2781e494",
+        "0xc46b9b3d",
+        "0x95fb7483",
+        "0xd9e2b600",
+        "0x9cfbae39",
+        "0xbf54bc7e",
+        "0x0abd322c",
+        "0x31dff4f5",
+        "0x237c228a",
+        "0xe201dd56",
+        "0xd2bfa1d7",
+        "0xe3decdad",
+        "0xe95678e2"
       ],
       "battle_ids": [
         104,
@@ -5897,6 +6166,109 @@
         2878,
         2880
       ],
+      "dialogue_call_stream_encoding": "little_endian_<h:talk_id>",
+      "dialogue_call_stream_sha256": "27440bffc95176137d958fb6099d75f0e8e037f3b9902938d0eb53b99fcc5965",
+      "dialogue_call_ids": [
+        2856,
+        2890,
+        2858,
+        2890,
+        2857,
+        2890,
+        2891,
+        2892,
+        2861,
+        2890,
+        2865,
+        2890,
+        2860,
+        2890,
+        2891,
+        2892,
+        2869,
+        2890,
+        2866,
+        2890,
+        2867,
+        2890,
+        2891,
+        2892,
+        2877,
+        2890,
+        2872,
+        2890,
+        2875,
+        2890,
+        2891,
+        2892,
+        2881,
+        2890,
+        2878,
+        2890,
+        2880,
+        2890,
+        2884,
+        2885,
+        2886,
+        2887,
+        2888,
+        2889
+      ],
+      "visible_dialogue_page_stream_encoding": "little_endian_<h:talk_id>",
+      "visible_dialogue_page_stream_sha256": "a62621d4e42f2730e26ae45d19d25b82d650455a9838bd1cafd00a84315b5ccb",
+      "visible_dialogue_page_ids": [
+        2856,
+        2890,
+        2858,
+        2890,
+        2857,
+        2890,
+        2891,
+        2892,
+        2861,
+        2890,
+        2865,
+        2890,
+        2860,
+        2890,
+        2891,
+        2892,
+        2869,
+        2890,
+        2866,
+        2890,
+        2867,
+        2890,
+        2891,
+        2892,
+        2877,
+        2890,
+        2872,
+        2890,
+        2875,
+        2890,
+        2891,
+        2892,
+        2881,
+        2890,
+        2878,
+        2890,
+        2880,
+        2890,
+        2884,
+        2884,
+        2884,
+        2885,
+        2885,
+        2885,
+        2885,
+        2886,
+        2887,
+        2888,
+        2889,
+        2889,
+        2889
+      ],
       "head_ids": [
         8,
         21,
@@ -5929,13 +6301,76 @@
         3,
         69
       ],
+      "stop_after_first_match_failure": true,
       "final_rng_state": "0xe95678e2",
+      "interround_count": 4,
+      "interround_dialogues": [
+        [
+          2891,
+          70,
+          0
+        ],
+        [
+          2892,
+          0,
+          1
+        ]
+      ],
       "delay_300_ticks": 8,
+      "finale_dialogues": [
+        [
+          2884,
+          0,
+          1
+        ],
+        [
+          2885,
+          70,
+          0
+        ],
+        [
+          2886,
+          12,
+          0
+        ],
+        [
+          2887,
+          64,
+          4
+        ],
+        [
+          2888,
+          19,
+          0
+        ],
+        [
+          2889,
+          0,
+          1
+        ]
+      ],
       "disabled_event_range": [
         24,
         72
       ],
+      "disabled_event_arguments": [
+        -2,
+        "event_24_through_72",
+        0,
+        0,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -2,
+        -2,
+        -2
+      ],
       "reward_item": 143,
+      "reward_count": 1,
+      "return_on_success": 1,
       "death_menu": {
         "entry_range": "0x2E659..0x2EB49",
         "size_bytes": 1264,

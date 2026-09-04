@@ -3712,6 +3712,22 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     constexpr std::array<std::int16_t, 15> expected_battles{
         104, 106, 105, 109, 113, 108, 117, 114, 115, 125, 120, 123, 129, 126, 128};
+    constexpr std::array<std::uint32_t, 15> expected_rng_states{
+        0x41C67EA6U, 0x967EB0E7U, 0x2781E494U,
+        0xC46B9B3DU, 0x95FB7483U, 0xD9E2B600U,
+        0x9CFBAE39U, 0xBF54BC7EU, 0x0ABD322CU,
+        0x31DFF4F5U, 0x237C228AU, 0xE201DD56U,
+        0xD2BFA1D7U, 0xE3DECDADU, 0xE95678E2U,
+    };
+    constexpr std::array<std::int16_t, 51> expected_dialogue_pages{
+        2856, 2890, 2858, 2890, 2857, 2890, 2891, 2892,
+        2861, 2890, 2865, 2890, 2860, 2890, 2891, 2892,
+        2869, 2890, 2866, 2890, 2867, 2890, 2891, 2892,
+        2877, 2890, 2872, 2890, 2875, 2890, 2891, 2892,
+        2881, 2890, 2878, 2890, 2880, 2890,
+        2884, 2884, 2884, 2885, 2885, 2885, 2885,
+        2886, 2887, 2888, 2889, 2889, 2889,
+    };
 
     auto snapshot = load_baseline(root);
     auto& metadata = snapshot.ranger.scenes[25];
@@ -3751,6 +3767,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     int fade_to_black_steps = 0;
     SceneStepKind previous_kind = SceneStepKind::stay;
     std::int16_t last_talk_id = -1;
+    std::vector<std::int16_t> talk_ids;
     bool expect_reward_restore = false;
     for (int step = 0; step < 4096 && result.kind != SceneStepKind::stay; ++step) {
         if (expect_reward_restore) {
@@ -3759,6 +3776,9 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
         expect_reward_restore = result.kind == SceneStepKind::notice;
         if (result.kind == SceneStepKind::dialogue) {
             last_talk_id = result.talk_id;
+            if (result.talk_id >= 2854) {
+                talk_ids.push_back(result.talk_id);
+            }
             previous_kind = result.kind;
             result = session.resume(SceneResponse::acknowledge);
         } else if (result.kind == SceneStepKind::battle) {
@@ -3766,6 +3786,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
             OL_CHECK(result.battle_id == expected_battles[battle_index]);
             OL_CHECK(last_talk_id == result.battle_id + 2752);
             OL_CHECK(previous_kind == SceneStepKind::present);
+            OL_CHECK(random.state() == expected_rng_states[battle_index]);
             ++battle_index;
             previous_kind = result.kind;
             result = session.resume(SceneResponse::battle_victory);
@@ -3802,6 +3823,17 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     OL_CHECK(!expect_reward_restore);
     OL_CHECK(result.kind == SceneStepKind::stay);
     OL_CHECK(battle_index == expected_battles.size());
+    if (talk_ids.size() != expected_dialogue_pages.size() ||
+        !std::equal(talk_ids.begin(), talk_ids.end(), expected_dialogue_pages.begin())) {
+        std::cerr << "tournament talks (" << talk_ids.size() << "):";
+        for (const auto talk_id : talk_ids) {
+            std::cerr << ' ' << talk_id;
+        }
+        std::cerr << '\n';
+    }
+    OL_CHECK(talk_ids.size() == expected_dialogue_pages.size());
+    OL_CHECK(std::equal(
+        talk_ids.begin(), talk_ids.end(), expected_dialogue_pages.begin()));
     OL_CHECK(interround_holds == 4);
     OL_CHECK(fade_from_black_steps == 20);
     OL_CHECK(fade_to_black_steps == 5);

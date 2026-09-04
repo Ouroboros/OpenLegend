@@ -5915,19 +5915,78 @@ def main() -> None:
         -86,
     )
 
+    opcode_58_occurrences: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            if code[program_counter] == 58:
+                opcode_58_occurrences.append((script_id, program_counter))
+            program_counter += WIDTHS[code[program_counter]]
+    assert opcode_58_occurrences == [(936, 54)]
+    opcode_58_stream = b"".join(
+        struct.pack("<II", *row) for row in opcode_58_occurrences
+    )
     script_936 = words(scripts[936])
     assert script_936[54] == 58
     tournament_state = 1
-    tournament_indices: list[int] = []
+    tournament_draws: list[dict[str, object]] = []
+    tournament_selected: list[dict[str, int]] = []
+    tournament_rng_states: list[str] = []
     for group in range(5):
         chosen: set[int] = set()
         while len(chosen) < 3:
             tournament_state = (tournament_state * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
             opponent = ((tournament_state >> 16) & 0x7FFF) % 6
-            if opponent in chosen:
+            accepted = opponent not in chosen
+            tournament_draws.append({
+                "draw": len(tournament_draws),
+                "group": group,
+                "opponent": opponent,
+                "accepted": accepted,
+                "state": f"0x{tournament_state:08x}",
+            })
+            if not accepted:
                 continue
             chosen.add(opponent)
-            tournament_indices.append(group * 6 + opponent)
+            tournament_selected.append({
+                "group": group,
+                "opponent": opponent,
+                "cell": group * 6 + opponent,
+            })
+            tournament_rng_states.append(f"0x{tournament_state:08x}")
+    tournament_indices = [row["cell"] for row in tournament_selected]
+    tournament_draw_stream = b"".join(
+        struct.pack(
+            "<BBBI", int(row["group"]), int(row["opponent"]),
+            int(bool(row["accepted"])), int(str(row["state"]), 16),
+        )
+        for row in tournament_draws
+    )
+    tournament_selected_stream = b"".join(
+        struct.pack("<BBB", row["group"], row["opponent"], row["cell"])
+        for row in tournament_selected
+    )
+    tournament_dialogue_calls: list[int] = []
+    for group in range(5):
+        for row in tournament_selected[group * 3:(group + 1) * 3]:
+            tournament_dialogue_calls.extend([2854 + row["cell"], 2890])
+        if group < 4:
+            tournament_dialogue_calls.extend([2891, 2892])
+    tournament_dialogue_calls.extend([2884, 2885, 2886, 2887, 2888, 2889])
+    assert len(tournament_dialogue_calls) == 44
+    tournament_dialogue_pages = [
+        talk_id
+        for talk_id in tournament_dialogue_calls
+        for _ in dialogue_pages(decoded_talks[talk_id])
+    ]
+    assert len(tournament_dialogue_pages) == 51
+    tournament_dialogue_call_stream = b"".join(
+        struct.pack("<h", talk_id) for talk_id in tournament_dialogue_calls
+    )
+    tournament_dialogue_page_stream = b"".join(
+        struct.pack("<h", talk_id) for talk_id in tournament_dialogue_pages
+    )
 
     script_938 = words(scripts[938])
     script_939 = words(scripts[939])
@@ -6114,20 +6173,64 @@ def main() -> None:
                 "ending": ending_sequence(root),
             },
             "opcode_58_script_936": {
+                "entry_range": "0x302E0..0x30480",
+                "size_bytes": 416,
+                "instruction_count": 131,
                 "script_id": 936,
                 "program_counter": 54,
+                "occurrences": len(opcode_58_occurrences),
+                "positions": [list(row) for row in opcode_58_occurrences],
+                "call_stream_encoding": "little_endian_<II:script,pc>",
+                "call_stream_sha256": sha256(opcode_58_stream),
+                "program_counter_increment_after_completion": 1,
                 "seed": 1,
+                "selection_table_shape": [6, 6],
+                "active_group_count": 5,
+                "victories_per_group": 3,
+                "random_upper_bound": 6,
+                "total_random_draws": len(tournament_draws),
+                "duplicate_random_draws": sum(
+                    not bool(row["accepted"]) for row in tournament_draws
+                ),
+                "random_draw_stream_encoding": "little_endian_<BBBI:group,opponent,accepted,state>",
+                "random_draw_stream_sha256": sha256(tournament_draw_stream),
+                "random_draws": tournament_draws,
+                "selected_stream_encoding": "bytes_<BBB:group,opponent,cell>",
+                "selected_stream_sha256": sha256(tournament_selected_stream),
+                "selected": tournament_selected,
                 "selected_indices": tournament_indices,
+                "accepted_rng_states": tournament_rng_states,
                 "battle_ids": [102 + index for index in tournament_indices],
                 "talk_ids": [2854 + index for index in tournament_indices],
+                "dialogue_call_stream_encoding": "little_endian_<h:talk_id>",
+                "dialogue_call_stream_sha256": sha256(tournament_dialogue_call_stream),
+                "dialogue_call_ids": tournament_dialogue_calls,
+                "visible_dialogue_page_stream_encoding": "little_endian_<h:talk_id>",
+                "visible_dialogue_page_stream_sha256": sha256(tournament_dialogue_page_stream),
+                "visible_dialogue_page_ids": tournament_dialogue_pages,
                 "head_ids": [
                     8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
                     22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69,
                 ],
+                "stop_after_first_match_failure": True,
                 "final_rng_state": f"0x{tournament_state:08x}",
+                "interround_count": 4,
+                "interround_dialogues": [
+                    [2891, 70, 0], [2892, 0, 1],
+                ],
                 "delay_300_ticks": 300 // 40 + 1,
+                "finale_dialogues": [
+                    [2884, 0, 1], [2885, 70, 0], [2886, 12, 0],
+                    [2887, 64, 4], [2888, 19, 0], [2889, 0, 1],
+                ],
                 "disabled_event_range": [24, 72],
+                "disabled_event_arguments": [
+                    -2, "event_24_through_72", 0, 0,
+                    -1, -1, -1, -1, -1, -1, -2, -2, -2,
+                ],
                 "reward_item": 143,
+                "reward_count": 1,
+                "return_on_success": 1,
                 "death_menu": death_menu_sequence(root, palette, ranger, scripts),
             },
             "opcode_64_script_938": {
