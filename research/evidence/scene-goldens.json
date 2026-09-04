@@ -12321,6 +12321,53 @@
         "current_asset_external_opcode38_calls": 0,
         "opcode38_external_path": "synthetic_regression_only"
       },
+      "scene_archive_swap_close_machine": {
+        "entry_range": "0x29537..0x295d0",
+        "size_bytes": 153,
+        "instruction_count": 38,
+        "raw_function_offset": "0x22f37",
+        "raw_function_sha256": "dc433fc35fa2b4ebb8ab486995b4de8863b49bb6c5f8f09ee410270f12df6404",
+        "loaded_function_sha256": "e5d103d4ba35b736a4e3b4aa9143805971b94a8d7ddfc22c721f97b535092d64",
+        "relocation_count": 9,
+        "relocation_delta": 131072,
+        "normalized_loaded_equals_raw": true,
+        "direct_callers": [
+          "0x2e37a",
+          "0x2f783"
+        ],
+        "index_file": "ALLSINBK.IDX",
+        "working_group_file": "ALLSINBK.GRP",
+        "index_cache_tag": 4,
+        "record_bytes": 49152,
+        "group_open_mode": 514,
+        "scene_argument": "current_scene_id",
+        "write_source": "current_scene_map_buffer",
+        "operation_order": [
+          "seek",
+          "write_full_record",
+          "close"
+        ],
+        "index_open_failure": "print_original_message_then_fatal_exit",
+        "caller_result": "ignored",
+        "modern_archive_ownership": "direct_snapshot_span_write_without_physical_flush"
+      },
+      "scene_archive_swap_flush_vector": {
+        "active_scene": 70,
+        "layer": 1,
+        "coordinate": [
+          2,
+          3
+        ],
+        "linear_tile": 194,
+        "archive_record_before_value": 0,
+        "current_buffer_value": -32768,
+        "archive_record_before_sha256": "db153483bb5d0d062021df1bc9bc46be8df5e01a2280fca0374c9244d02c7f88",
+        "current_buffer_sha256": "181845aceb91639fd7fc107932116cc5f902dc96fff82b37d0674d9d5a17a97e",
+        "archive_record_after_flush_sha256": "181845aceb91639fd7fc107932116cc5f902dc96fff82b37d0674d9d5a17a97e",
+        "snapshot_active_span_after_immediate_write_sha256": "181845aceb91639fd7fc107932116cc5f902dc96fff82b37d0674d9d5a17a97e",
+        "current_asset_external_opcode17_calls": 28,
+        "current_asset_external_opcode38_calls": 0
+      },
       "working_archive_assets": {
         "scene_count": 100,
         "allsin_index_sha256": "6d35d9c9b233cd389261d58ca2f17d4f12f6dba1f429ac8ff6217ce3b10ab94a",

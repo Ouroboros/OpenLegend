@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=233/349`，`unique_any=189/284`，`unique_all=177/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=5` 场景档案交换写回；order4场景档案交换读取已收敛外部场景修改后重载当前地图的两个caller链与共享读取/关闭尾，并通过双golden与Linux app Debug 14/14
-下一任务指针：同表 `audit_order=6` 场景备份档案打开
+已发布进度：`closure=234/349`，`unique_any=190/284`，`unique_all=178/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=6` 场景备份档案打开；order5场景档案交换写回已收敛外部目标修改前完整写回当前地图的两个caller链，并通过整记录flush双golden与Linux app Debug 14/14
+下一任务指针：B7关闭后进入B8战斗队列首个待审工作包
 
 ## 0. 唯一正确性真值
 
@@ -286,7 +286,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 范围：`scene`
 
-当前状态：`scene-event-closure.tsv` 98/100已完成最终汇编→C++ REVIEW；`audit_order=4`场景档案交换读取已确认显式目标场景修改结束后按全局当前场景号重载地图、两条caller顺序及两段共享尾；现代快照直接修改目标span并保持活动scene不变属于平台适配，双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=5`场景档案交换写回。
+当前状态：`scene-event-closure.tsv` 99/100已完成最终汇编→C++ REVIEW；`audit_order=5`场景档案交换写回已确认显式目标修改前按全局当前场景号把完整地图记录写入工作档案、两条caller顺序及本地写入/关闭尾；现代快照即时写span属于平台适配，双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=6`场景备份档案打开。
 
 交付：
 

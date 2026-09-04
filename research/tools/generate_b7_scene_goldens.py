@@ -3724,10 +3724,12 @@ def scene_archive_state_vectors(
     scene_archives_open_raw = z_dat[0x22D91:0x22EAD]
     shared_map_read_close_tail_raw = z_dat[0x22EA2:0x22EAD]
     scene_archive_swap_open_raw = z_dat[0x22EAD:0x22F37]
+    scene_archive_swap_close_raw = z_dat[0x22F37:0x22FD0]
     shared_close_tail_raw = z_dat[0x22FC2:0x22FD0]
     assert len(scene_archives_open_raw) == 284
     assert len(shared_map_read_close_tail_raw) == 11
     assert len(scene_archive_swap_open_raw) == 138
+    assert len(scene_archive_swap_close_raw) == 153
     assert len(shared_close_tail_raw) == 14
     allsin_index = (root / "ALLSIN.IDX").read_bytes()
     allsinbk_index = (root / "ALLSINBK.IDX").read_bytes()
@@ -3784,6 +3786,14 @@ def scene_archive_state_vectors(
     )[0]
     struct.pack_into(
         "<h", synthetic_target_after, synthetic_word_offset, synthetic_value
+    )
+    synthetic_flush_value = -32_768
+    synthetic_active_buffer = bytearray(scene_maps[synthetic_active_scene])
+    synthetic_active_before = struct.unpack_from(
+        "<h", synthetic_active_buffer, synthetic_word_offset
+    )[0]
+    struct.pack_into(
+        "<h", synthetic_active_buffer, synthetic_word_offset, synthetic_flush_value
     )
     event_before = list(words(scene_events[7])[6 * 11:7 * 11])
     event_after = event_before.copy()
@@ -3873,6 +3883,45 @@ def scene_archive_state_vectors(
             "current_asset_external_opcode17_calls": external_map_writes,
             "current_asset_external_opcode38_calls": external_map_mutations,
             "opcode38_external_path": "synthetic_regression_only",
+        },
+        "scene_archive_swap_close_machine": {
+            "entry_range": "0x29537..0x295d0",
+            "size_bytes": len(scene_archive_swap_close_raw),
+            "instruction_count": 38,
+            "raw_function_offset": "0x22f37",
+            "raw_function_sha256": sha256(scene_archive_swap_close_raw),
+            "loaded_function_sha256": "e5d103d4ba35b736a4e3b4aa9143805971b94a8d7ddfc22c721f97b535092d64",
+            "relocation_count": 9,
+            "relocation_delta": 0x20000,
+            "normalized_loaded_equals_raw": True,
+            "direct_callers": ["0x2e37a", "0x2f783"],
+            "index_file": "ALLSINBK.IDX",
+            "working_group_file": "ALLSINBK.GRP",
+            "index_cache_tag": 4,
+            "record_bytes": 49_152,
+            "group_open_mode": 0x202,
+            "scene_argument": "current_scene_id",
+            "write_source": "current_scene_map_buffer",
+            "operation_order": ["seek", "write_full_record", "close"],
+            "index_open_failure": "print_original_message_then_fatal_exit",
+            "caller_result": "ignored",
+            "modern_archive_ownership": "direct_snapshot_span_write_without_physical_flush",
+        },
+        "scene_archive_swap_flush_vector": {
+            "active_scene": synthetic_active_scene,
+            "layer": synthetic_layer,
+            "coordinate": [synthetic_x, synthetic_y],
+            "linear_tile": synthetic_linear_tile,
+            "archive_record_before_value": synthetic_active_before,
+            "current_buffer_value": synthetic_flush_value,
+            "archive_record_before_sha256": sha256(scene_maps[synthetic_active_scene]),
+            "current_buffer_sha256": sha256(bytes(synthetic_active_buffer)),
+            "archive_record_after_flush_sha256": sha256(bytes(synthetic_active_buffer)),
+            "snapshot_active_span_after_immediate_write_sha256": sha256(
+                bytes(synthetic_active_buffer)
+            ),
+            "current_asset_external_opcode17_calls": external_map_writes,
+            "current_asset_external_opcode38_calls": external_map_mutations,
         },
         "working_archive_assets": {
             "scene_count": 100,
