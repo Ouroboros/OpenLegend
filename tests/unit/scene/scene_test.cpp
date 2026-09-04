@@ -169,6 +169,30 @@ public:
                          1, 100, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script >= 25U && script <= 28U) {
+                constexpr std::array<std::array<std::int16_t, 5>, 4> walks{{
+                    {30, 10, 10, 12, 12},
+                    {30, 10, 10, 12, 8},
+                    {30, 10, 10, 8, 12},
+                    {30, 10, 10, 8, 8},
+                }};
+                for (const auto word : walks[script - 25U]) {
+                    append_i16(group, word);
+                }
+            } else if (script == 29U) {
+                for (const auto word : std::array<std::int16_t, 9>{
+                         30, 10, 10, 10, 10,
+                         27, -1, 10, 10}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 30U) {
+                for (const auto word : std::array<std::int16_t, 5>{30, 10, 10, 18, 10}) {
+                    append_i16(group, word);
+                }
+            } else if (script == 31U) {
+                for (const auto word : std::array<std::int16_t, 5>{30, 0, 0, 2, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -2162,6 +2186,116 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     OL_CHECK(blocked_result.kind == SceneStepKind::dialogue);
     OL_CHECK(blocked_result.talk_id == 1248);
     OL_CHECK(blocked.scene_y() == 23);
+}
+
+void check_event_scripted_walk_boundaries(const std::filesystem::path& root) {
+    using openlegend::model::SceneLayer;
+    using openlegend::scene::SceneDirection;
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    const auto check_walk = [&data_root, &root](
+                                const int script,
+                                const std::span<const std::array<int, 4>> expected) {
+        auto snapshot = load_baseline(root);
+        auto& metadata = snapshot.ranger.scenes[70];
+        metadata.set_word(openlegend::model::scene_metadata_word::entrance_x, 10);
+        metadata.set_word(openlegend::model::scene_metadata_word::entrance_y, 10);
+        metadata.set_word(openlegend::model::scene_metadata_word::jump_scene, -1);
+        for (std::size_t index = 0U;
+             index < openlegend::model::scene_metadata_word::exit_count;
+             ++index) {
+            metadata.set_word(openlegend::model::scene_metadata_word::exit_x_begin + index, -1);
+            metadata.set_word(openlegend::model::scene_metadata_word::exit_y_begin + index, -1);
+        }
+        for (int y = 8; y <= 12; ++y) {
+            for (int x = 8; x <= 18; ++x) {
+                const auto cell = static_cast<std::size_t>(y * 64 + x);
+                OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::earth, cell, 0));
+                OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building, cell, 0));
+                OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::event_index, cell, -1));
+                OL_CHECK(snapshot.set_scene_value(70U, SceneLayer::building_height, cell, 0));
+            }
+        }
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        if (script == 29) {
+            for (int tick = 0; tick < 20; ++tick) {
+                OL_CHECK(session.tick(std::nullopt, false, false).kind == SceneStepKind::present);
+                OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+            }
+        }
+        auto result = session.begin_event(script, 0, 0, 0);
+        std::vector<std::array<int, 4>> actual;
+        while (result.kind == SceneStepKind::present && result.wait_ticks == 3U) {
+            actual.push_back({
+                session.scene_x(), session.scene_y(),
+                static_cast<int>(session.direction()), session.player_frame(),
+            });
+            result = session.resume(SceneResponse::acknowledge);
+        }
+        OL_CHECK(actual.size() == expected.size());
+        if (actual.size() == expected.size()) {
+            OL_CHECK(std::equal(actual.begin(), actual.end(), expected.begin()));
+        }
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 1U);
+        if (script != 29) {
+            OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+            return;
+        }
+        result = session.resume(SceneResponse::acknowledge);
+        OL_CHECK(result.kind == SceneStepKind::present);
+        OL_CHECK(result.wait_ticks == 2U);
+        OL_CHECK(session.player_frame() == 10);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+        OL_CHECK(session.tick(std::nullopt, false, false).kind == SceneStepKind::present);
+        OL_CHECK(session.player_frame() == 10);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    };
+
+    check_walk(25, std::array<std::array<int, 4>, 4>{{
+                       {11, 10, static_cast<int>(SceneDirection::right), 5018},
+                       {12, 10, static_cast<int>(SceneDirection::right), 5020},
+                       {12, 11, static_cast<int>(SceneDirection::down), 5050},
+                       {12, 12, static_cast<int>(SceneDirection::down), 5052},
+                   }});
+    check_walk(26, std::array<std::array<int, 4>, 4>{{
+                       {11, 10, static_cast<int>(SceneDirection::right), 5018},
+                       {12, 10, static_cast<int>(SceneDirection::right), 5020},
+                       {12, 9, static_cast<int>(SceneDirection::up), 5008},
+                       {12, 8, static_cast<int>(SceneDirection::up), 5010},
+                   }});
+    check_walk(27, std::array<std::array<int, 4>, 4>{{
+                       {9, 10, static_cast<int>(SceneDirection::left), 5032},
+                       {8, 10, static_cast<int>(SceneDirection::left), 5034},
+                       {8, 11, static_cast<int>(SceneDirection::down), 5050},
+                       {8, 12, static_cast<int>(SceneDirection::down), 5052},
+                   }});
+    check_walk(28, std::array<std::array<int, 4>, 4>{{
+                       {9, 10, static_cast<int>(SceneDirection::left), 5032},
+                       {8, 10, static_cast<int>(SceneDirection::left), 5034},
+                       {8, 9, static_cast<int>(SceneDirection::up), 5008},
+                       {8, 8, static_cast<int>(SceneDirection::up), 5010},
+                   }});
+    check_walk(29, std::array<std::array<int, 4>, 0>{});
+    check_walk(30, std::array<std::array<int, 4>, 8>{{
+                       {11, 10, static_cast<int>(SceneDirection::right), 5018},
+                       {12, 10, static_cast<int>(SceneDirection::right), 5020},
+                       {13, 10, static_cast<int>(SceneDirection::right), 5022},
+                       {14, 10, static_cast<int>(SceneDirection::right), 5024},
+                       {15, 10, static_cast<int>(SceneDirection::right), 5026},
+                       {16, 10, static_cast<int>(SceneDirection::right), 5028},
+                       {17, 10, static_cast<int>(SceneDirection::right), 5018},
+                       {18, 10, static_cast<int>(SceneDirection::right), 5020},
+                   }});
+    check_walk(31, std::array<std::array<int, 4>, 2>{{
+                       {11, 10, static_cast<int>(SceneDirection::right), 5018},
+                       {12, 10, static_cast<int>(SceneDirection::right), 5020},
+                   }});
 }
 
 void check_event_dual_picture_animation(const std::filesystem::path& root) {
@@ -4327,6 +4461,7 @@ int main() {
     check_event_picture_animation(root);
     check_event_picture_animation_boundaries(root);
     check_event_scripted_walk(root);
+    check_event_scripted_walk_boundaries(root);
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);
     check_event_ending_prelude_animation(root);

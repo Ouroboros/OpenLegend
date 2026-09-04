@@ -3137,6 +3137,124 @@
         ]
       }
     },
+    "opcode_30_scripted_walk": {
+      "occurrences": 7,
+      "stream_encoding": "little_endian_<IIhhhh:script,pc,source_x,source_y,target_x,target_y>",
+      "stream_sha256": "7f08ff5adfff43a75bba265b08398ad21b673961fe919b88c61e87c6e8e0ee05",
+      "positions": [
+        [
+          206,
+          95,
+          41,
+          29,
+          35,
+          29
+        ],
+        [
+          214,
+          95,
+          41,
+          28,
+          35,
+          28
+        ],
+        [
+          219,
+          95,
+          41,
+          29,
+          35,
+          29
+        ],
+        [
+          220,
+          95,
+          41,
+          28,
+          35,
+          28
+        ],
+        [
+          343,
+          30,
+          28,
+          24,
+          28,
+          19
+        ],
+        [
+          344,
+          30,
+          29,
+          24,
+          29,
+          19
+        ],
+        [
+          936,
+          44,
+          33,
+          26,
+          25,
+          26
+        ]
+      ],
+      "argument_minimums": [
+        28,
+        24,
+        25,
+        19
+      ],
+      "argument_maximums": [
+        41,
+        29,
+        35,
+        29
+      ],
+      "quadrant_counts_equal_uses_positive": {
+        "x+_y-": 2,
+        "x-_y+": 5
+      },
+      "x_equal": 2,
+      "y_equal": 5,
+      "both_axes_move": 0,
+      "total_delayed_frames": 42,
+      "maximum_delayed_frames": 8,
+      "axis_order": "x_then_y",
+      "loop_counter_source": "KDEF_source_coordinates_not_live_player_coordinates",
+      "target_exclusive": true,
+      "blocked_steps_still_consume_frame_and_delay": true,
+      "walk_offsets": [
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        2,
+        4
+      ],
+      "frame_wait_ticks": 3,
+      "completion": {
+        "walk_offset": 0,
+        "player_idle_20_tick_counter": 0,
+        "picture": "direction_base",
+        "render_without_legacy_delay": true
+      },
+      "synthetic_vectors": {
+        "quadrants": [
+          "x+_y+",
+          "x+_y-",
+          "x-_y+",
+          "x-_y-"
+        ],
+        "zero_distance_delayed_frames": 0,
+        "source_0_to_2_with_live_player_10": [
+          11,
+          12
+        ]
+      }
+    },
     "opcode_30_script_343": {
       "scene_id": 39,
       "arguments": [

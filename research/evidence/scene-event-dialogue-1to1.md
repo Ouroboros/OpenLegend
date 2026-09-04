@@ -327,7 +327,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 最终REVIEW逐条覆盖41字节10条指令、唯一绝对地址重定位、caller参数和公共PC尾部，未发现产品差异。当前只有5次真实opcode29，全部读取role0，完整参数流SHA256 `e11e00a27a44cc39a6f6dee704b143fbf0f2a26d87111292dda40a1580aa4dd2`；script655的第三参数1000由attack2000成功路径否定为上限，合成script24固定89/90下限、signed极值和1000/2000反例。现代非法role保护属于平台适配。
 
-## 13. 当前验证
+## 13. 场景脚本移动
+
+`sub_2F171` 的函数外四项jump table按target/source signed关系覆盖四个象限；四分支均先完整执行x轴、再执行y轴。循环counter取KDEF source而非实时玩家坐标，终点不含；每步调用横/纵移动helper、present并等待3 ticks，阻挡仍消费循环帧。完成块无条件清walk offset和20-tick玩家计数、恢复当前方向基础图片并额外present。
+
+首轮REVIEW发现C++零距离路径因没有单步helper而遗漏机器终止块的20-tick计数清零；最小修正后从475字节150条指令入口重审，覆盖函数内6项和外置jump table 4项重定位、四象限、8个移动callsite、唯一caller及PC+5尾部，零新增差异。全KDEF只有7次opcode30，共42个延迟帧；参数流SHA256 `7f08ff5adfff43a75bba265b08398ad21b673961fe919b88c61e87c6e8e0ee05`。真实script343固定5帧像素和阻挡反例；合成向量固定四象限、x-before-y、offset回卷、source/实时坐标分离及零距离终止计数。
+
+## 14. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -345,6 +351,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 事件图片动画43次真实opcode27参数流、579个present帧、玩家/事件分支、三图片字段同步、终点包含、每帧2 ticks、script535四帧像素及32位32767/空区间/奇数跨度边界；
 - 伦理值条件22次真实opcode28参数流、角色word56 signed闭区间、true/false偏移和PC宽度叠加，以及script636的79/80/100/101与signed极值边界；
 - 攻击力条件5次真实opcode29参数流、角色word43 signed下限包含、第三参数未读、共享PC偏移，以及script655和合成script24的89/90/1000/2000与signed极值；
+- 场景脚本移动7次真实opcode30参数流、42个延迟帧、四象限x-before-y、source counter独立、阻挡仍消费帧、offset回卷、零距离终止计数，以及script343逐帧像素；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

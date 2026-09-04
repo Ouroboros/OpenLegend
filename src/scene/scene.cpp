@@ -2340,6 +2340,7 @@ std::optional<SceneStepResult> SceneSession::advance_scripted_walk_frame() {
         scripted_walk_state_->y += scripted_walk_state_->step_y;
     } else {
         walk_frame_offset_ = 0;
+        player_idle_counter_ = 0;
         player_frame_override_.reset();
         commit_header();
         scripted_walk_state_.reset();

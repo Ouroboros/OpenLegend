@@ -742,6 +742,72 @@ def advance_event_animation(
     return tuple(mutable_events)
 
 
+def scripted_walk_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 30:
+                occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 5])
+                )
+            program_counter += WIDTHS[opcode]
+    assert occurrences == [
+        (206, 95, 41, 29, 35, 29),
+        (214, 95, 41, 28, 35, 28),
+        (219, 95, 41, 29, 35, 29),
+        (220, 95, 41, 28, 35, 28),
+        (343, 30, 28, 24, 28, 19),
+        (344, 30, 29, 24, 29, 19),
+        (936, 44, 33, 26, 25, 26),
+    ]
+    stream = b"".join(struct.pack("<IIhhhh", *row) for row in occurrences)
+    frame_counts = [
+        abs(target_x - source_x) + abs(target_y - source_y)
+        for _, _, source_x, source_y, target_x, target_y in occurrences
+    ]
+    quadrant_counts = Counter(
+        f"x{'-' if target_x < source_x else '+'}_y{'-' if target_y < source_y else '+'}"
+        for _, _, source_x, source_y, target_x, target_y in occurrences
+    )
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhhh:script,pc,source_x,source_y,target_x,target_y>",
+        "stream_sha256": sha256(stream),
+        "positions": [list(row) for row in occurrences],
+        "argument_minimums": [28, 24, 25, 19],
+        "argument_maximums": [41, 29, 35, 29],
+        "quadrant_counts_equal_uses_positive": dict(sorted(quadrant_counts.items())),
+        "x_equal": sum(source_x == target_x for _, _, source_x, _, target_x, _ in occurrences),
+        "y_equal": sum(source_y == target_y for _, _, _, source_y, _, target_y in occurrences),
+        "both_axes_move": sum(
+            source_x != target_x and source_y != target_y
+            for _, _, source_x, source_y, target_x, target_y in occurrences
+        ),
+        "total_delayed_frames": sum(frame_counts),
+        "maximum_delayed_frames": max(frame_counts),
+        "axis_order": "x_then_y",
+        "loop_counter_source": "KDEF_source_coordinates_not_live_player_coordinates",
+        "target_exclusive": True,
+        "blocked_steps_still_consume_frame_and_delay": True,
+        "walk_offsets": [2, 4, 6, 8, 10, 12, 2, 4],
+        "frame_wait_ticks": 3,
+        "completion": {
+            "walk_offset": 0,
+            "player_idle_20_tick_counter": 0,
+            "picture": "direction_base",
+            "render_without_legacy_delay": True,
+        },
+        "synthetic_vectors": {
+            "quadrants": ["x+_y+", "x+_y-", "x-_y+", "x-_y-"],
+            "zero_distance_delayed_frames": 0,
+            "source_0_to_2_with_live_player_10": [11, 12],
+        },
+    }
+
+
 def scripted_walk_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -4045,6 +4111,7 @@ def main() -> None:
     opcode_27_picture_animation = picture_animation_vectors(scripts)
     opcode_28_morality_range = morality_range_vectors(scripts)
     opcode_29_attack_minimum = attack_minimum_vectors(scripts)
+    opcode_30_scripted_walk = scripted_walk_vectors(scripts)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4252,6 +4319,7 @@ def main() -> None:
             },
             "opcode_28_morality_range": opcode_28_morality_range,
             "opcode_29_attack_minimum": opcode_29_attack_minimum,
+            "opcode_30_scripted_walk": opcode_30_scripted_walk,
             "opcode_30_script_343": {
                 "scene_id": walk_scene_id,
                 "arguments": list(script_343[31:35]),
