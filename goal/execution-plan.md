@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=195/349`，`unique_any=151/284`，`unique_all=145/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=60` 主角伦理值修改；状态为等待`audit_order=59` 角色性别条件分支工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=60` 收口后进入同表 `audit_order=61` 场景图层值批量替换
+已发布进度：`closure=196/349`，`unique_any=152/284`，`unique_all=146/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=61` 场景图层值批量替换；状态为等待`audit_order=60` 主角伦理值修改工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=61` 收口后进入同表 `audit_order=62` 场景入口条件清零
 
 ## 0. 唯一正确性真值
 

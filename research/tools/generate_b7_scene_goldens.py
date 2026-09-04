@@ -2509,6 +2509,24 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIhhh", *row) for row in opcode_36_occurrences
     )
 
+    opcode_37_occurrences: list[tuple[int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 37:
+                opcode_37_occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_37_occurrences) == 156
+    assert opcode_37_occurrences[0] == (10, 99, 2)
+    assert opcode_37_occurrences[-1] == (940, 87, 3)
+    opcode_37_stream = b"".join(
+        struct.pack("<IIh", *row) for row in opcode_37_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2634,11 +2652,36 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 {"sexual": 32767, "expected": -32768, "returned_offset": 0},
             ],
         },
-        "opcode_37_script_149": {
-            "arguments": list(script_149[59:61]),
-            "cases": [
-                {"before": value, "after": wrapped_clamped_add(value, -5)}
-                for value in (3, -32768)
+        "opcode_37_morality_add": {
+            "entry_range": "0x2F6E3..0x2F721",
+            "size_bytes": 62,
+            "instruction_count": 12,
+            "occurrences": len(opcode_37_occurrences),
+            "stream_encoding": "little_endian_<IIh:script,pc,delta>",
+            "stream_sha256": sha256(opcode_37_stream),
+            "positions": [list(row) for row in opcode_37_occurrences],
+            "deltas": sorted({row[2] for row in opcode_37_occurrences}),
+            "delta_counts": dict(Counter(row[2] for row in opcode_37_occurrences)),
+            "script_149_arguments": list(script_149[59:61]),
+            "written_role": 0,
+            "written_role_word": "morality",
+            "written_word_index": 56,
+            "arithmetic": "signed_int16_after_low16_wrapping_add",
+            "clamp_order": ["signed_maximum_100", "signed_minimum_0"],
+            "return_value": 0,
+            "program_counter_increment": 2,
+            "vectors": [
+                {"before": value, "delta": delta, "after": wrapped_clamped_add(value, delta)}
+                for value, delta in (
+                    (3, -5),
+                    (-32768, -5),
+                    (99, 5),
+                    (32767, 1),
+                    (-32768, -1),
+                    (100, 32767),
+                    (0, -32768),
+                    (-1, 0),
+                )
             ],
         },
         "opcode_38_script_434": {

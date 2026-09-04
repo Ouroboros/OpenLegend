@@ -234,6 +234,11 @@ public:
                          1, 1123, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script >= 51U && script <= 56U) {
+                constexpr std::array<std::int16_t, 6> deltas{
+                    5, 1, -1, 32767, -32768, 0};
+                append_i16(group, 37);
+                append_i16(group, deltas[script - 51U]);
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4600,6 +4605,22 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(notice.kind == SceneStepKind::notice);
         OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
         OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::morality) == after);
+    }
+
+    for (const auto [script, before, after] :
+         std::array<std::array<std::int16_t, 3>, 6>{
+             std::array<std::int16_t, 3>{51, 99, 100},
+             {52, 32767, 0},
+             {53, -32768, 100},
+             {54, 100, 0},
+             {55, 0, 0},
+             {56, -1, 0}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::morality, before);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(script, 0, 0, 0).kind == SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::morality) == after);
     }
 
