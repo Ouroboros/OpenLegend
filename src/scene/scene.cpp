@@ -2062,8 +2062,8 @@ void SceneSession::change_first_inventory(
         if (snapshot_.ranger.header.inventory_item(index).value != item_id) {
             continue;
         }
-        const auto changed = static_cast<std::int16_t>(
-            snapshot_.ranger.header.inventory_count(index) + count);
+        const auto changed = wrapping_add(
+            snapshot_.ranger.header.inventory_count(index), count);
         if (changed > 0) {
             snapshot_.ranger.header.set_inventory(index, model::ItemId{item_id}, changed);
             return;

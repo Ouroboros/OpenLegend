@@ -339,7 +339,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 首轮REVIEW发现opcode31和商店都用 `value_or(0)`丢失found位，导致缺失物品在required/price≤0时误成功；两个caller改为存在且数量足够后，从80字节25条指令入口重审，覆盖2项重定位、首匹配短路、found门禁、signed比较、两个caller和共享PC尾部，零新增差异。全KDEF 8次opcode31参数流SHA256 `3efc7df130cc0779da14b7101313c587ceb3a5e12747d00e421591711f148086`；真实script234固定重复首槽，合成向量固定缺失+零/负阈值及零价商店。
 
-## 15. 当前验证
+## 15. 首个同ID物品数量修改
+
+`sub_2F39C`扫描200个库存槽，首次命中目标ID后以delta低16位对count做signed int16回绕；结果严格大于0就只保留该槽，结果非正则调用删除helper，把全部后续ID/count槽左移且不因空槽停止，最后写slot199为`(-1,0)`。首次处理后立即终止，后续重复ID不变；不存在则完全不写库存。opcode32传两个signed word并固定PC+3，商店传物品174和signed价格的取负结果。
+
+首轮REVIEW发现C++依赖超范围signed窄化表达机器word回绕；改为显式`wrapping_add`后，从84字节24条指令入口重审，覆盖3项重定位、200槽、首匹配、signed非正删除、78字节删除路径、完整尾移、两个caller和共享返回，零新增差异。全KDEF 160次opcode32参数流SHA256 `62823aae358eda4187c49b13797fecbdc02f2fb15801a88ce90f1c5cd3420a35`；真实script234固定删除首个金钱槽后暴露未修改重复槽，合成向量固定不存在、首槽正更新、零/负删除、越空槽完整压缩、slot199删除及两向回绕。
+
+## 16. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -359,6 +365,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 攻击力条件5次真实opcode29参数流、角色word43 signed下限包含、第三参数未读、共享PC偏移，以及script655和合成script24的89/90/1000/2000与signed极值；
 - 场景脚本移动7次真实opcode30参数流、42个延迟帧、四象限x-before-y、source counter独立、阻挡仍消费帧、offset回卷、零距离终止计数，以及script343逐帧像素；
 - 首个同ID物品数量的200槽短路、8次真实opcode31参数流、首槽signed阈值、缺失必假、重复金钱反例及零价商店缺钱路径；
+- 首个同ID物品数量修改的160次真实opcode32参数流、低16位回绕、首槽短路、无匹配无写入、signed非正删除、完整尾移、末槽清空与商店扣款caller；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

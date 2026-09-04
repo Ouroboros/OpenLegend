@@ -200,6 +200,11 @@ public:
                          1, 100, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script == 34U || script == 35U) {
+                for (const auto word : std::array<std::int16_t, 3>{
+                         32, 109, script == 34U ? std::int16_t{1} : std::int16_t{-1}}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -3152,6 +3157,129 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     OL_CHECK(first_money.talk_id == 791);
     OL_CHECK(money_snapshot.ranger.header.inventory_item(0U).value == 174);
     OL_CHECK(money_snapshot.ranger.header.inventory_count(0U) == 20);
+
+    const auto clear_inventory = [](openlegend::model::GameSnapshot& snapshot) {
+        for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+            snapshot.ranger.header.set_inventory(
+                slot, openlegend::model::ItemId{-1}, 0);
+        }
+    };
+    auto absent_change_snapshot = load_baseline(root);
+    clear_inventory(absent_change_snapshot);
+    absent_change_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{88}, 4);
+    absent_change_snapshot.ranger.header.set_inventory(
+        openlegend::model::kInventoryCount - 1U,
+        openlegend::model::ItemId{77}, 5);
+    openlegend::random::LegacyRandom absent_change_random{1U};
+    openlegend::scene::SceneSession absent_change_session{
+        synthetic_data_root, absent_change_snapshot, absent_change_random, 70};
+    OL_CHECK(absent_change_session.begin_event(34, 0, 0, 0).kind == SceneStepKind::stay);
+    OL_CHECK(absent_change_snapshot.ranger.header.inventory_item(0U).value == 88);
+    OL_CHECK(absent_change_snapshot.ranger.header.inventory_count(0U) == 4);
+    OL_CHECK(absent_change_snapshot.ranger.header.inventory_item(
+                 openlegend::model::kInventoryCount - 1U).value == 77);
+    OL_CHECK(absent_change_snapshot.ranger.header.inventory_count(
+                 openlegend::model::kInventoryCount - 1U) == 5);
+
+    auto positive_change_snapshot = load_baseline(root);
+    clear_inventory(positive_change_snapshot);
+    positive_change_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{109}, 1);
+    positive_change_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{109}, 7);
+    positive_change_snapshot.ranger.header.set_inventory(
+        2U, openlegend::model::ItemId{88}, 4);
+    openlegend::random::LegacyRandom positive_change_random{1U};
+    openlegend::scene::SceneSession positive_change_session{
+        synthetic_data_root, positive_change_snapshot, positive_change_random, 70};
+    OL_CHECK(positive_change_session.begin_event(34, 0, 0, 0).kind == SceneStepKind::stay);
+    OL_CHECK(positive_change_snapshot.ranger.header.inventory_count(0U) == 2);
+    OL_CHECK(positive_change_snapshot.ranger.header.inventory_count(1U) == 7);
+    OL_CHECK(positive_change_snapshot.ranger.header.inventory_item(2U).value == 88);
+    OL_CHECK(positive_change_snapshot.ranger.header.inventory_count(2U) == 4);
+
+    auto compact_change_snapshot = load_baseline(root);
+    clear_inventory(compact_change_snapshot);
+    compact_change_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{109}, -1);
+    compact_change_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{109}, 7);
+    compact_change_snapshot.ranger.header.set_inventory(
+        2U, openlegend::model::ItemId{88}, 4);
+    compact_change_snapshot.ranger.header.set_inventory(
+        3U, openlegend::model::ItemId{-1}, 9);
+    compact_change_snapshot.ranger.header.set_inventory(
+        openlegend::model::kInventoryCount - 1U,
+        openlegend::model::ItemId{77}, 5);
+    openlegend::random::LegacyRandom compact_change_random{1U};
+    openlegend::scene::SceneSession compact_change_session{
+        synthetic_data_root, compact_change_snapshot, compact_change_random, 70};
+    OL_CHECK(compact_change_session.begin_event(34, 0, 0, 0).kind == SceneStepKind::stay);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_item(0U).value == 109);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_count(0U) == 7);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_item(1U).value == 88);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_count(1U) == 4);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_item(2U).value == -1);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_count(2U) == 9);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_item(
+                 openlegend::model::kInventoryCount - 2U).value == 77);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_count(
+                 openlegend::model::kInventoryCount - 2U) == 5);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_item(
+                 openlegend::model::kInventoryCount - 1U).value == -1);
+    OL_CHECK(compact_change_snapshot.ranger.header.inventory_count(
+                 openlegend::model::kInventoryCount - 1U) == 0);
+
+    auto wrapping_change_snapshot = load_baseline(root);
+    clear_inventory(wrapping_change_snapshot);
+    wrapping_change_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{109}, 32767);
+    wrapping_change_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{88}, 4);
+    openlegend::random::LegacyRandom wrapping_change_random{1U};
+    openlegend::scene::SceneSession wrapping_change_session{
+        synthetic_data_root, wrapping_change_snapshot, wrapping_change_random, 70};
+    OL_CHECK(wrapping_change_session.begin_event(34, 0, 0, 0).kind == SceneStepKind::stay);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_item(0U).value == 88);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_count(0U) == 4);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_item(1U).value == -1);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_count(1U) == 0);
+
+    auto negative_wrap_snapshot = load_baseline(root);
+    clear_inventory(negative_wrap_snapshot);
+    negative_wrap_snapshot.ranger.header.set_inventory(
+        0U, openlegend::model::ItemId{109}, -32768);
+    negative_wrap_snapshot.ranger.header.set_inventory(
+        1U, openlegend::model::ItemId{109}, 7);
+    openlegend::random::LegacyRandom negative_wrap_random{1U};
+    openlegend::scene::SceneSession negative_wrap_session{
+        synthetic_data_root, negative_wrap_snapshot, negative_wrap_random, 70};
+    OL_CHECK(negative_wrap_session.begin_event(35, 0, 0, 0).kind == SceneStepKind::stay);
+    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_item(0U).value == 109);
+    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_count(0U) == 32767);
+    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_count(1U) == 7);
+
+    auto tail_change_snapshot = load_baseline(root);
+    clear_inventory(tail_change_snapshot);
+    tail_change_snapshot.ranger.header.set_inventory(
+        openlegend::model::kInventoryCount - 2U,
+        openlegend::model::ItemId{88}, 4);
+    tail_change_snapshot.ranger.header.set_inventory(
+        openlegend::model::kInventoryCount - 1U,
+        openlegend::model::ItemId{109}, -1);
+    openlegend::random::LegacyRandom tail_change_random{1U};
+    openlegend::scene::SceneSession tail_change_session{
+        synthetic_data_root, tail_change_snapshot, tail_change_random, 70};
+    OL_CHECK(tail_change_session.begin_event(34, 0, 0, 0).kind == SceneStepKind::stay);
+    OL_CHECK(tail_change_snapshot.ranger.header.inventory_item(
+                 openlegend::model::kInventoryCount - 2U).value == 88);
+    OL_CHECK(tail_change_snapshot.ranger.header.inventory_count(
+                 openlegend::model::kInventoryCount - 2U) == 4);
+    OL_CHECK(tail_change_snapshot.ranger.header.inventory_item(
+                 openlegend::model::kInventoryCount - 1U).value == -1);
+    OL_CHECK(tail_change_snapshot.ranger.header.inventory_count(
+                 openlegend::model::kInventoryCount - 1U) == 0);
 
     auto duplicate_snapshot = load_baseline(root);
     duplicate_snapshot.ranger.header.set_inventory(

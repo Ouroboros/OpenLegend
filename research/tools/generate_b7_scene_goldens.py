@@ -816,6 +816,112 @@ def first_inventory_count_vectors(
     }
 
 
+def change_first_inventory_vectors(
+    scripts: list[bytes], ranger: bytes
+) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 32:
+                occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1], code[program_counter + 2])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(occurrences) == 160
+    assert occurrences[0] == (10, 33, 133, -1)
+    assert occurrences[-1] == (1014, 5, 157, -1)
+    item_ids = Counter(row[2] for row in occurrences)
+    deltas = Counter(row[3] for row in occurrences)
+    assert deltas == {-1: 152, -10: 1, -20: 2, -40: 1, -50: 1, -100: 2, -200: 1}
+    assert item_ids[174] == 9 and item_ids[186] == 100
+    stream = b"".join(struct.pack("<IIhh", *row) for row in occurrences)
+
+    def apply(
+        slots: list[tuple[int, int]], item_id: int, delta: int
+    ) -> list[tuple[int, int]]:
+        result = list(slots) + [(-1, 0)] * (200 - len(slots))
+        assert len(result) == 200
+        for index, (candidate, count) in enumerate(result):
+            if candidate != item_id:
+                continue
+            changed = signed_word(count + delta)
+            if changed > 0:
+                result[index] = (candidate, changed)
+            else:
+                result[index:199] = result[index + 1:200]
+                result[199] = (-1, 0)
+            break
+        return result
+
+    absent = apply([(88, 4), (-1, 9)], 109, 1)
+    positive = apply([(109, 1), (109, 7), (88, 4)], 109, 1)
+    compact = apply([(109, -1), (109, 7), (88, 4), (-1, 9)], 109, 1)
+    wrap_delete = apply([(109, 32767), (88, 4)], 109, 1)
+    wrap_positive = apply([(109, -32768), (109, 7)], 109, -1)
+    tail_before = [(-1, 0)] * 198 + [(88, 4), (109, -1)]
+    tail = apply(tail_before, 109, 1)
+    real_234 = apply([(174, 10), (174, 20)], 174, -10)
+    assert absent[:2] == [(88, 4), (-1, 9)]
+    assert positive[:3] == [(109, 2), (109, 7), (88, 4)]
+    assert compact[:4] == [(109, 7), (88, 4), (-1, 9), (-1, 0)]
+    assert wrap_delete[:2] == [(88, 4), (-1, 0)]
+    assert wrap_positive[:2] == [(109, 32767), (109, 7)]
+    assert tail[198:] == [(88, 4), (-1, 0)]
+    assert real_234[:2] == [(174, 20), (-1, 0)]
+
+    header = words(ranger[:836])
+    baseline_inventory = [
+        [slot, header[18 + slot * 2], header[19 + slot * 2]]
+        for slot in range(200)
+        if header[18 + slot * 2] != -1
+    ]
+    shop_words = words(ranger[114_092:114_242])
+    in_stock_prices = [
+        shop_words[shop * 15 + 10 + slot]
+        for shop in range(5)
+        for slot in range(5)
+        if shop_words[shop * 15 + 5 + slot] > 0
+    ]
+    assert all(price > 0 for price in in_stock_prices)
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhh:script,pc,item_id,delta>",
+        "stream_sha256": sha256(stream),
+        "positions": [list(row) for row in occurrences],
+        "argument_minimums": [37, -200],
+        "argument_maximums": [194, -1],
+        "item_ids": {str(value): count for value, count in sorted(item_ids.items())},
+        "deltas": {str(value): count for value, count in sorted(deltas.items())},
+        "inventory_slots_scanned": 200,
+        "matching_count": "first_slot_only",
+        "match_short_circuits_scan": True,
+        "count_arithmetic": "signed_int16_wrapping_add_then_signed_greater_than_zero",
+        "nonpositive_result": "delete_first_match_and_shift_every_later_slot_left",
+        "last_slot_after_delete": [-1, 0],
+        "absent_result": "no_change",
+        "return_value": 1,
+        "program_counter_increment": 3,
+        "baseline_inventory": baseline_inventory,
+        "shop_caller": {
+            "currency_item": 174,
+            "delta": "signed_low16_of_negated_price",
+            "in_stock_price_range": [min(in_stock_prices), max(in_stock_prices)],
+        },
+        "synthetic_vectors": {
+            "absent_first_two": [list(row) for row in absent[:2]],
+            "positive_first_three": [list(row) for row in positive[:3]],
+            "compact_first_four": [list(row) for row in compact[:4]],
+            "wrap_delete_first_two": [list(row) for row in wrap_delete[:2]],
+            "wrap_positive_first_two": [list(row) for row in wrap_positive[:2]],
+            "tail_last_two": [list(row) for row in tail[198:]],
+            "real_script_234_first_two": [list(row) for row in real_234[:2]],
+        },
+    }
+
+
 def scripted_walk_vectors(scripts: list[bytes]) -> dict[str, object]:
     occurrences: list[tuple[int, int, int, int, int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -4187,6 +4293,7 @@ def main() -> None:
     opcode_29_attack_minimum = attack_minimum_vectors(scripts)
     opcode_30_scripted_walk = scripted_walk_vectors(scripts)
     opcode_31_first_inventory_count = first_inventory_count_vectors(scripts, ranger)
+    opcode_32_change_first_inventory = change_first_inventory_vectors(scripts, ranger)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4409,6 +4516,7 @@ def main() -> None:
                 },
             },
             "opcode_31_first_inventory_count": opcode_31_first_inventory_count,
+            "opcode_32_change_first_inventory": opcode_32_change_first_inventory,
             "opcode_44_script_534": {
                 "scene_id": animation_scene_id,
                 "arguments": list(script_534[121:127]),
