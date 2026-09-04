@@ -4807,6 +4807,138 @@ def status_notice_vectors(
         "synthetic_visible_frame_hashes_sha256": sha256(bytes(attack_hash_stream)),
     }
 
+    opcode_48_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 48:
+                opcode_48_occurrences.append(
+                    (script_id, pc, code[pc + 1], code[pc + 2])
+                )
+            pc += WIDTHS[opcode]
+    assert opcode_48_occurrences == [
+        (115, 54, 10, 200),
+        (115, 57, 11, 200),
+        (115, 60, 12, 200),
+        (115, 63, 13, 200),
+        (115, 66, 14, 200),
+        (115, 69, 15, 200),
+        (536, 194, 49, 200),
+        (581, 34, 49, 200),
+    ]
+    opcode_48_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_48_occurrences
+    )
+    hp_notice_infix = bytes.fromhex("20 a5 cd a9 52 bc 57 a5 5b 20")
+    baseline_party = list(struct.unpack_from("<6h", ranger, 24))
+
+    def render_hp_notice(role_id: int, gain: int) -> dict[str, object]:
+        role = ranger[836 + role_id * 182:836 + (role_id + 1) * 182]
+        role_name = record_name(role, 8)
+        text = role_name + hp_notice_infix + str(gain).encode("ascii") + b"\0"
+        layout_length = len(role_name) + 10
+        x = 150 - (4 * layout_length + 24)
+        width = 8 * layout_length + 68
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(
+            pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07
+        )
+        return {
+            "role_id": role_id,
+            "role_name_hex": role_name.hex(),
+            "gain": gain,
+            "text_hex": text.hex(),
+            "layout_length": layout_length,
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": fnv1a64(pixels),
+        }
+
+    baseline_hp_cases = []
+    for script_id, pc, role_id, delta in opcode_48_occurrences:
+        role_offset = 836 + role_id * 182
+        before_current = struct.unpack_from("<h", ranger, role_offset + 34)[0]
+        before_maximum = struct.unpack_from("<h", ranger, role_offset + 36)[0]
+        after = wrapped_i16(before_maximum + delta)
+        gain = after - before_current
+        in_party = role_id in baseline_party
+        row: dict[str, object] = {
+            "script": script_id,
+            "pc": pc,
+            "delta": delta,
+            "before_current": before_current,
+            "before_maximum": before_maximum,
+            "after_current_and_maximum": after,
+            "gain": gain,
+            "in_baseline_party": in_party,
+            "notice": gain > 0 and in_party,
+        }
+        if gain > 0 and in_party:
+            row.update(render_hp_notice(role_id, gain))
+        baseline_hp_cases.append(row)
+
+    synthetic_hp_inputs = [
+        (32767, -32768, 1, True),
+        (-32768, -32768, -1, True),
+        (100, 0, 0, True),
+        (100, 100, -10, True),
+        (100, 0, 1, False),
+    ]
+    synthetic_hp_cases = []
+    hp_hash_stream = bytearray()
+    for before_maximum, before_current, delta, in_party in synthetic_hp_inputs:
+        after = wrapped_i16(before_maximum + delta)
+        gain = after - before_current
+        row = {
+            "before_maximum": before_maximum,
+            "before_current": before_current,
+            "delta": delta,
+            "after_current_and_maximum": after,
+            "gain": gain,
+            "in_party": in_party,
+            "notice": gain > 0 and in_party,
+        }
+        if gain > 0 and in_party:
+            notice = render_hp_notice(0, gain)
+            row.update(notice)
+            hp_hash_stream.extend(bytes.fromhex(str(notice["frame_fnv1a64"])[2:]))
+        synthetic_hp_cases.append(row)
+
+    output["opcode_48_role_maximum_hp_panel"] = {
+        "entry_range": "0x2FDA6..0x2FEBF",
+        "size_bytes": 281,
+        "instruction_count": 78,
+        "occurrences": len(opcode_48_occurrences),
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": sha256(opcode_48_stream),
+        "positions": [list(row) for row in opcode_48_occurrences],
+        "current_hp_word_index": 17,
+        "maximum_hp_word_index": 18,
+        "maximum_arithmetic": "signed_int16_wrapping_add_without_clamp",
+        "current_write": "assign_wrapped_new_maximum",
+        "party_scan": "all_6_slots_without_short_circuit",
+        "baseline_party": baseline_party,
+        "notice_condition": "new_maximum_minus_old_current_hp_greater_than_zero_and_role_in_party",
+        "notice_gain": "signed_int32(new_maximum - old_current_hp)",
+        "message_format_hex": "257320a5cda952bc57a55b20256400",
+        "message_format_cp950": "%s 生命增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "colors": [5, 7],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_cases": baseline_hp_cases,
+        "synthetic_cases": synthetic_hp_cases,
+        "invalid_modern_vectors": [
+            {"role": -1, "delta": 1, "write": False, "notice": False}
+        ],
+        "synthetic_visible_frame_hashes_sha256": sha256(bytes(hp_hash_stream)),
+    }
+
     opcode_2_occurrences: list[dict[str, int | str]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)

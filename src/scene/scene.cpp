@@ -66,6 +66,8 @@ constexpr std::array<std::uint8_t, 10> kRoleMpNoticeInfix{
     0x20U, 0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
 constexpr std::array<std::uint8_t, 10> kRoleAttackNoticeInfix{
     0x20U, 0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
+constexpr std::array<std::uint8_t, 10> kRoleHpNoticeInfix{
+    0x20U, 0xA5U, 0xCDU, 0xA9U, 0x52U, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
 constexpr std::int16_t kItemNoticeStyle = -1;
 constexpr std::int16_t kLearnMagicNoticeStyle = -2;
 constexpr std::int16_t kRoleIqNoticeStyle = -3;
@@ -1362,24 +1364,20 @@ SceneStepResult SceneSession::run_event() {
                 role.set_word(current_field, maximum);
                 const auto gain = static_cast<int>(maximum) - static_cast<int>(before);
                 if (gain > 0 && (opcode == 46 || party_contains(role_id))) {
-                    if (opcode == 46) {
-                        std::vector<std::uint8_t> text;
-                        const auto name_begin =
-                            role.bytes.begin() +
-                            static_cast<std::ptrdiff_t>(model::role_word::name_byte);
-                        text.insert(
-                            text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
-                        text.insert(
-                            text.end(), kRoleMpNoticeInfix.begin(), kRoleMpNoticeInfix.end());
-                        const auto gain_text = std::to_string(gain);
-                        text.insert(text.end(), gain_text.begin(), gain_text.end());
-                        text.push_back(0U);
-                        queue_notice(std::move(text), kRoleIqNoticeStyle);
-                    } else {
-                        queue_notice(ascii_message(
-                            "role " + std::to_string(role_id) + " +" +
-                            std::to_string(gain)));
-                    }
+                    std::vector<std::uint8_t> text;
+                    const auto name_begin =
+                        role.bytes.begin() +
+                        static_cast<std::ptrdiff_t>(model::role_word::name_byte);
+                    text.insert(
+                        text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
+                    const auto infix = opcode == 46
+                                           ? std::span<const std::uint8_t>{kRoleMpNoticeInfix}
+                                           : std::span<const std::uint8_t>{kRoleHpNoticeInfix};
+                    text.insert(text.end(), infix.begin(), infix.end());
+                    const auto gain_text = std::to_string(gain);
+                    text.insert(text.end(), gain_text.begin(), gain_text.end());
+                    text.push_back(0U);
+                    queue_notice(std::move(text), kRoleIqNoticeStyle);
                     queue_scene_present();
                 }
             }
@@ -2064,12 +2062,13 @@ std::int16_t SceneSession::scene_value(
 }
 
 bool SceneSession::party_contains(const std::int16_t role_id) const noexcept {
+    bool found = false;
     for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
         if (snapshot_.ranger.header.team_member(index).value == role_id) {
-            return true;
+            found = true;
         }
     }
-    return false;
+    return found;
 }
 
 bool SceneSession::inventory_contains_id(const std::int16_t item_id) const noexcept {

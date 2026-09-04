@@ -11783,6 +11783,273 @@
         ],
         "synthetic_visible_frame_hashes_sha256": "0cb6b8fc6a6dccb0aed841ac8942bd31ce3951d8b1da4d57bbe103929070dc7f"
       },
+      "opcode_48_role_maximum_hp_panel": {
+        "entry_range": "0x2FDA6..0x2FEBF",
+        "size_bytes": 281,
+        "instruction_count": 78,
+        "occurrences": 8,
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": "4d64ef2844e5443472d446cd76426f0c3d5e5cfab53af6c3d952bfebaf1e908f",
+        "positions": [
+          [
+            115,
+            54,
+            10,
+            200
+          ],
+          [
+            115,
+            57,
+            11,
+            200
+          ],
+          [
+            115,
+            60,
+            12,
+            200
+          ],
+          [
+            115,
+            63,
+            13,
+            200
+          ],
+          [
+            115,
+            66,
+            14,
+            200
+          ],
+          [
+            115,
+            69,
+            15,
+            200
+          ],
+          [
+            536,
+            194,
+            49,
+            200
+          ],
+          [
+            581,
+            34,
+            49,
+            200
+          ]
+        ],
+        "current_hp_word_index": 17,
+        "maximum_hp_word_index": 18,
+        "maximum_arithmetic": "signed_int16_wrapping_add_without_clamp",
+        "current_write": "assign_wrapped_new_maximum",
+        "party_scan": "all_6_slots_without_short_circuit",
+        "baseline_party": [
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "notice_condition": "new_maximum_minus_old_current_hp_greater_than_zero_and_role_in_party",
+        "notice_gain": "signed_int32(new_maximum - old_current_hp)",
+        "message_format_hex": "257320a5cda952bc57a55b20256400",
+        "message_format_cp950": "%s 生命增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "colors": [
+          5,
+          7
+        ],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_cases": [
+          {
+            "script": 115,
+            "pc": 54,
+            "delta": 200,
+            "before_current": 419,
+            "before_maximum": 419,
+            "after_current_and_maximum": 619,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 115,
+            "pc": 57,
+            "delta": 200,
+            "before_current": 308,
+            "before_maximum": 308,
+            "after_current_and_maximum": 508,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 115,
+            "pc": 60,
+            "delta": 200,
+            "before_current": 275,
+            "before_maximum": 275,
+            "after_current_and_maximum": 475,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 115,
+            "pc": 63,
+            "delta": 200,
+            "before_current": 365,
+            "before_maximum": 365,
+            "after_current_and_maximum": 565,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 115,
+            "pc": 66,
+            "delta": 200,
+            "before_current": 200,
+            "before_maximum": 200,
+            "after_current_and_maximum": 400,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 115,
+            "pc": 69,
+            "delta": 200,
+            "before_current": 230,
+            "before_maximum": 230,
+            "after_current_and_maximum": 430,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 536,
+            "pc": 194,
+            "delta": 200,
+            "before_current": 38,
+            "before_maximum": 38,
+            "after_current_and_maximum": 238,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          },
+          {
+            "script": 581,
+            "pc": 34,
+            "delta": 200,
+            "before_current": 38,
+            "before_maximum": 38,
+            "after_current_and_maximum": 238,
+            "gain": 200,
+            "in_baseline_party": false,
+            "notice": false
+          }
+        ],
+        "synthetic_cases": [
+          {
+            "before_maximum": 32767,
+            "before_current": -32768,
+            "delta": 1,
+            "after_current_and_maximum": -32768,
+            "gain": 0,
+            "in_party": true,
+            "notice": false
+          },
+          {
+            "before_maximum": -32768,
+            "before_current": -32768,
+            "delta": -1,
+            "after_current_and_maximum": 32767,
+            "gain": 65535,
+            "in_party": true,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "text_hex": "ae7da470ab4c20a5cda952bc57a55b20363535333500",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xa5ad1328bffe69df"
+          },
+          {
+            "before_maximum": 100,
+            "before_current": 0,
+            "delta": 0,
+            "after_current_and_maximum": 100,
+            "gain": 100,
+            "in_party": true,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "text_hex": "ae7da470ab4c20a5cda952bc57a55b2031303000",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x831ad6f0707bcda1"
+          },
+          {
+            "before_maximum": 100,
+            "before_current": 100,
+            "delta": -10,
+            "after_current_and_maximum": 90,
+            "gain": -10,
+            "in_party": true,
+            "notice": false
+          },
+          {
+            "before_maximum": 100,
+            "before_current": 0,
+            "delta": 1,
+            "after_current_and_maximum": 101,
+            "gain": 101,
+            "in_party": false,
+            "notice": false
+          }
+        ],
+        "invalid_modern_vectors": [
+          {
+            "role": -1,
+            "delta": 1,
+            "write": false,
+            "notice": false
+          }
+        ],
+        "synthetic_visible_frame_hashes_sha256": "680e31fe85d9209b74750606984612d5f00041776173c5ff83f105642d72982b"
+      },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",
         "size_bytes": 457,
