@@ -10607,6 +10607,23 @@
           "stay"
         ]
       },
+      "opcode_52_signed_word_boundaries": [
+        {
+          "value": -32768,
+          "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb02d333237363800",
+          "frame_fnv1a64": "0xd6e8a2c917f2ada7"
+        },
+        {
+          "value": 0,
+          "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb0202020203000",
+          "frame_fnv1a64": "0x1e6d8da21b3bb12f"
+        },
+        {
+          "value": 32767,
+          "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb0333237363700",
+          "frame_fnv1a64": "0x4bf7246d16058dad"
+        }
+      ],
       "opcode_33_learn_magic": {
         "entry_range": "0x2F3F0..0x2F526",
         "size_bytes": 310,

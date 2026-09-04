@@ -4246,6 +4246,19 @@ def status_notice_vectors(
             "post_ack_outputs": ["present", "stay"] if opcode == 52 else ["stay"],
         }
 
+    morality_prefix = bytes.fromhex("a741b27ba662aabaab7ebc77abfcbcc6acb0")
+    output["opcode_52_signed_word_boundaries"] = []
+    for value in (-32768, 0, 32767):
+        text = morality_prefix + f"{value:5d}".encode("ascii") + b"\0"
+        pixels = bytearray(base_frame)
+        panel(pixels, 54, 40, 212, 27)
+        draw_legacy_text(pixels, 64, 45, text, ascii_font, big5_font, 0x05, 0x07)
+        output["opcode_52_signed_word_boundaries"].append({
+            "value": value,
+            "text_hex": text.hex(),
+            "frame_fnv1a64": fnv1a64(pixels),
+        })
+
     opcode_33_occurrences: list[tuple[int, int, int, int, int]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
