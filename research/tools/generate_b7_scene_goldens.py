@@ -6090,6 +6090,27 @@ def main() -> None:
     alldefbk_group = (root / "ALLDEFBK.GRP").read_bytes()
     assert alldefbk_index == (root / "ALLDEF.IDX").read_bytes()
     assert alldefbk_group == (root / "ALLDEF.GRP").read_bytes()
+    opcode_61_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 61:
+                opcode_61_occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 3])
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_61_occurrences == [
+        (script_id, 23, 1, 0) for script_id in range(1001, 1015)
+    ]
+    opcode_61_stream = b"".join(
+        struct.pack("<II2h", *row) for row in opcode_61_occurrences
+    )
+    opcode_61_raw = z_dat[0x2A545:0x2A581]
+    assert len(opcode_61_raw) == 60
+    script_1001_words = words(scripts[1001])
+    script_1001_stream = struct.pack(f"<{len(script_1001_words)}h", *script_1001_words)
 
     output = {
         "format": 1,
@@ -6484,6 +6505,61 @@ def main() -> None:
                         "scene": 80, "event": 1, "expected": 6068,
                         "current": 6068, "end": 100, "begin": 100,
                         "equal": True, "script": 990,
+                    },
+                ],
+            },
+            "opcode_61_all_book_pictures_condition": {
+                "entry_range": "0x30b45..0x30b81",
+                "size_bytes": 60,
+                "instruction_count": 20,
+                "raw_function_offset": "0x2a545",
+                "raw_function_sha256": sha256(opcode_61_raw),
+                "stack_probe_bytes": 8,
+                "occurrences": len(opcode_61_occurrences),
+                "call_stream_encoding": "little_endian_<II2h:script,pc,yes,no>",
+                "call_stream_sha256": sha256(opcode_61_stream),
+                "calls": [list(row) for row in opcode_61_occurrences],
+                "scripts": list(range(1001, 1015)),
+                "script_1001_sha256": sha256(script_1001_stream),
+                "parameters": ["yes_offset", "no_offset"],
+                "event_first": 11,
+                "event_last_inclusive": 24,
+                "event_count": 14,
+                "event_record_stride_bytes": 22,
+                "compared_word_offset": 10,
+                "compared_field": "current_picture",
+                "expected_picture": 4664,
+                "comparison": "all_signed_int16_current_pictures_equal_4664",
+                "full_scan_after_mismatch": True,
+                "end_picture_is_read": False,
+                "begin_picture_is_read": False,
+                "return_value": "yes_offset_if_all_equal_else_no_offset",
+                "program_counter_formula": "old_pc + 3 + signed_return_offset",
+                "counterexamples": [
+                    {
+                        "missing_event": 12,
+                        "current": 100,
+                        "end": 4664,
+                        "begin": 4664,
+                        "all_equal": False,
+                        "script": 1001,
+                    },
+                    {
+                        "missing_event": 24,
+                        "current": 100,
+                        "end": 100,
+                        "begin": 100,
+                        "all_equal": False,
+                        "script": 1001,
+                    },
+                    {
+                        "missing_event": None,
+                        "current_events_11_through_24": 4664,
+                        "end_and_begin": 100,
+                        "all_equal": True,
+                        "script": 1001,
+                        "wave": 23,
+                        "dialogue": 2914,
                     },
                 ],
             },

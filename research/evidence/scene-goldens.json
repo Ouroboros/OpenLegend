@@ -15238,6 +15238,164 @@
           "script": 990
         }
       ]
+    },
+    "opcode_61_all_book_pictures_condition": {
+      "entry_range": "0x30b45..0x30b81",
+      "size_bytes": 60,
+      "instruction_count": 20,
+      "raw_function_offset": "0x2a545",
+      "raw_function_sha256": "f9fe9c788f655e7cf5a721c27565b8097dfebf6f078cdc78f420b7006f1f4363",
+      "stack_probe_bytes": 8,
+      "occurrences": 14,
+      "call_stream_encoding": "little_endian_<II2h:script,pc,yes,no>",
+      "call_stream_sha256": "4f3e13244ddc92602afd594fd3e9624e2b48c4cfb471a23388b0c6dc26f09926",
+      "calls": [
+        [
+          1001,
+          23,
+          1,
+          0
+        ],
+        [
+          1002,
+          23,
+          1,
+          0
+        ],
+        [
+          1003,
+          23,
+          1,
+          0
+        ],
+        [
+          1004,
+          23,
+          1,
+          0
+        ],
+        [
+          1005,
+          23,
+          1,
+          0
+        ],
+        [
+          1006,
+          23,
+          1,
+          0
+        ],
+        [
+          1007,
+          23,
+          1,
+          0
+        ],
+        [
+          1008,
+          23,
+          1,
+          0
+        ],
+        [
+          1009,
+          23,
+          1,
+          0
+        ],
+        [
+          1010,
+          23,
+          1,
+          0
+        ],
+        [
+          1011,
+          23,
+          1,
+          0
+        ],
+        [
+          1012,
+          23,
+          1,
+          0
+        ],
+        [
+          1013,
+          23,
+          1,
+          0
+        ],
+        [
+          1014,
+          23,
+          1,
+          0
+        ]
+      ],
+      "scripts": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010,
+        1011,
+        1012,
+        1013,
+        1014
+      ],
+      "script_1001_sha256": "5dabeeabec59dbb785a1662e686de8b8ad91e06d935f6c756858cc609340b97e",
+      "parameters": [
+        "yes_offset",
+        "no_offset"
+      ],
+      "event_first": 11,
+      "event_last_inclusive": 24,
+      "event_count": 14,
+      "event_record_stride_bytes": 22,
+      "compared_word_offset": 10,
+      "compared_field": "current_picture",
+      "expected_picture": 4664,
+      "comparison": "all_signed_int16_current_pictures_equal_4664",
+      "full_scan_after_mismatch": true,
+      "end_picture_is_read": false,
+      "begin_picture_is_read": false,
+      "return_value": "yes_offset_if_all_equal_else_no_offset",
+      "program_counter_formula": "old_pc + 3 + signed_return_offset",
+      "counterexamples": [
+        {
+          "missing_event": 12,
+          "current": 100,
+          "end": 4664,
+          "begin": 4664,
+          "all_equal": false,
+          "script": 1001
+        },
+        {
+          "missing_event": 24,
+          "current": 100,
+          "end": 100,
+          "begin": 100,
+          "all_equal": false,
+          "script": 1001
+        },
+        {
+          "missing_event": null,
+          "current_events_11_through_24": 4664,
+          "end_and_begin": 100,
+          "all_equal": true,
+          "script": 1001,
+          "wave": 23,
+          "dialogue": 2914
+        }
+      ]
     }
   },
   "scene_render_buffer_preservation": {

@@ -1592,7 +1592,9 @@ SceneStepResult SceneSession::run_event() {
         case 61: {
             bool all = true;
             for (std::int16_t event = 11; event < 25; ++event) {
-                all = all && event_field(scene_id_, event, model::SceneEventField::current_picture).value_or(-1) == 4664;
+                const auto current_picture =
+                    event_field(scene_id_, event, model::SceneEventField::current_picture).value_or(-1);
+                all = all && current_picture == 4664;
             }
             conditional(all, 3U, argument(1), argument(2));
             break;

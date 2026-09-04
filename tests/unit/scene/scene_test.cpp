@@ -3641,6 +3641,17 @@ void check_event_all_book_pictures_condition(const std::filesystem::path& root) 
     miss = miss_session.resume(SceneResponse::acknowledge);
     OL_CHECK(miss.kind == SceneStepKind::stay);
 
+    auto last_miss_snapshot = make_snapshot();
+    static_cast<void>(last_miss_snapshot.set_event_value(
+        70U, 24U, openlegend::model::SceneEventField::current_picture, 100));
+    openlegend::random::LegacyRandom last_miss_random{1U};
+    openlegend::scene::SceneSession last_miss_session{
+        data_root, last_miss_snapshot, last_miss_random, 70};
+    auto last_miss = last_miss_session.begin_event(1001, 11, 0, 0, 144);
+    OL_CHECK(last_miss.kind == SceneStepKind::present);
+    last_miss = last_miss_session.resume(SceneResponse::acknowledge);
+    OL_CHECK(last_miss.kind == SceneStepKind::stay);
+
     auto match_snapshot = make_snapshot();
     openlegend::random::LegacyRandom match_random{1U};
     openlegend::scene::SceneSession match_session{
