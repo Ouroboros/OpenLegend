@@ -357,7 +357,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 首轮REVIEW发现状态与PC一致，但C++仍显示ASCII角色编号，并使用固定黑框、颜色21/23和重绘scene底图；仅为opcode34新增原名字节、动态圆角面板、颜色5/7和冻结底图样式后，从265字节67条指令入口重审，覆盖15项重定位、回绕/钳位/实际gain、可见条件、格式串、几何、呈现/等待/恢复、return0和caller，零新增差异。全KDEF 4次opcode34参数流SHA256 `94d52336ff60b9eea2fa7387558ce60cdf63e656efe40d17b0616a27aa0a73ee`；四条基线原文与像素、五个回绕边界及三帧合成像素全部固化。
 
-## 18. 当前验证
+## 18. 角色指定或自动武功槽写入
+
+`sub_2F62F`在slot不等于-1时直接写指定武功ID/等级槽，不判空或重复；slot严格等于-1时扫描首个ID0槽，十槽全满则覆盖slot0。两项值均直接写低16位，magic0仍会写level并结束扫描；函数无UI并固定返回0。opcode35传四个signed word并固定PC+5。
+
+汇编→C++终审在合法role/slot域内零产品差异；原机非法索引别名写由现代边界保护稳定拒绝，归类`platform_adapted`。从147字节41条指令入口复核7项重定位、显式/自动分支、十槽短路、满槽fallback、两项word写入、return0和caller，零新增差异。全KDEF 8次opcode35参数流SHA256 `8b0fccc493845279fc52d6c1468f25bec65121acf18d1a9de30b16621cc6895c`；全部真实调用均为合法显式槽，合成向量固定显式signed边界、首空、满槽、magic0及现代非法槽保护。
+
+## 19. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -380,6 +386,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 首个同ID物品数量修改的160次真实opcode32参数流、低16位回绕、首槽短路、无匹配无写入、signed非正删除、完整尾移、末槽清空与商店扣款caller；
 - 角色学习武功的7次真实opcode33参数流、首空槽/满槽覆盖、等级清零、silent两路、五条原Big5习得提示、动态面板像素和确认后裸场景恢复；
 - 角色资质增加的4次真实opcode34参数流、16位回绕后signed钳位、实际gain门、四条基线原Big5提示、五个合成边界、动态面板像素和确认后裸场景恢复；
+- 角色武功槽写入的8次真实opcode35参数流、显式槽直写、自动首空/满槽覆盖、ID和等级signed边界、magic0写等级及现代非法槽保护；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

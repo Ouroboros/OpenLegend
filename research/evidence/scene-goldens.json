@@ -6036,6 +6036,224 @@
         "written_value_semantics": "low_signed_int16",
         "program_counter_formula": "old_pc + 3"
       },
+      "opcode_35_magic_slot": {
+        "entry_range": "0x2F62F..0x2F6C2",
+        "size_bytes": 147,
+        "instruction_count": 41,
+        "occurrences": 8,
+        "stream_encoding": "little_endian_<IIhhhh:script,pc,role_id,slot,magic_id,level>",
+        "stream_sha256": "8b0fccc493845279fc52d6c1468f25bec65121acf18d1a9de30b16621cc6895c",
+        "positions": [
+          [
+            115,
+            19,
+            10,
+            0,
+            10,
+            900
+          ],
+          [
+            115,
+            24,
+            11,
+            0,
+            50,
+            900
+          ],
+          [
+            115,
+            29,
+            12,
+            0,
+            9,
+            900
+          ],
+          [
+            115,
+            34,
+            13,
+            0,
+            6,
+            900
+          ],
+          [
+            115,
+            39,
+            13,
+            1,
+            92,
+            900
+          ],
+          [
+            115,
+            44,
+            14,
+            0,
+            8,
+            900
+          ],
+          [
+            115,
+            49,
+            15,
+            0,
+            85,
+            900
+          ],
+          [
+            289,
+            98,
+            36,
+            0,
+            60,
+            100
+          ]
+        ],
+        "role_ids": [
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          36
+        ],
+        "slots": [
+          0,
+          1
+        ],
+        "magic_ids": [
+          6,
+          8,
+          9,
+          10,
+          50,
+          60,
+          85,
+          92
+        ],
+        "levels": [
+          100,
+          900
+        ],
+        "all_role_ids_valid": true,
+        "all_explicit_slots_valid": true,
+        "explicit_rule": "write_requested_slot_without_empty_or_duplicate_check",
+        "automatic_rule": "first_magic_id_zero_else_slot_0",
+        "written_values": "magic_id_and_level_low_signed_int16_without_clamp",
+        "return_value": 0,
+        "program_counter_increment": 5,
+        "synthetic_vectors": {
+          "explicit": {
+            "destination": 9,
+            "ids": [
+              40,
+              41,
+              42,
+              43,
+              44,
+              45,
+              46,
+              47,
+              48,
+              -32768
+            ],
+            "levels": [
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              32767
+            ]
+          },
+          "first_empty": {
+            "destination": 2,
+            "ids": [
+              40,
+              41,
+              60,
+              43,
+              44,
+              45,
+              46,
+              47,
+              48,
+              49
+            ],
+            "levels": [
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100
+            ]
+          },
+          "full_fallback": {
+            "destination": 0,
+            "ids": [
+              60,
+              41,
+              42,
+              43,
+              44,
+              45,
+              46,
+              47,
+              48,
+              49
+            ],
+            "levels": [
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100,
+              100
+            ]
+          },
+          "zero_magic": {
+            "destination": 4,
+            "ids": [
+              40,
+              41,
+              42,
+              43,
+              0,
+              45,
+              46,
+              47,
+              48,
+              49
+            ],
+            "levels": [
+              100,
+              100,
+              100,
+              100,
+              -32768,
+              100,
+              100,
+              100,
+              100,
+              100
+            ]
+          }
+        }
+      },
       "opcode_36_script_328": {
         "arguments": [
           36,

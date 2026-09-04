@@ -218,6 +218,15 @@ public:
                      std::array<std::int16_t, 3>{34, 0, deltas[script - 39U]}) {
                     append_i16(group, word);
                 }
+            } else if (script >= 44U && script <= 49U) {
+                constexpr std::array<std::int16_t, 6> slots{9, -1, -1, -1, -2, 10};
+                constexpr std::array<std::int16_t, 6> magics{-32768, 60, 60, 0, 60, 60};
+                constexpr std::array<std::int16_t, 6> levels{32767, 100, 100, -32768, 100, 100};
+                const auto index = script - 44U;
+                for (const auto word : std::array<std::int16_t, 5>{
+                         35, 0, slots[index], magics[index], levels[index]}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4055,6 +4064,72 @@ void check_event_role_iq_clamp(const std::filesystem::path& root) {
     }
 }
 
+void check_event_magic_slot_write(const std::filesystem::path& root) {
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    const auto fill_slots = [](openlegend::model::RoleRecord& role) {
+        for (std::size_t slot = 0U; slot < openlegend::model::role_word::magic_count; ++slot) {
+            role.set_word(
+                openlegend::model::role_word::magic_id_begin + slot,
+                static_cast<std::int16_t>(40 + slot));
+            role.set_word(openlegend::model::role_word::magic_level_begin + slot, 100);
+        }
+    };
+    const auto run = [&data_root](
+                         openlegend::model::GameSnapshot& snapshot,
+                         const std::int16_t script) {
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        return session.begin_event(script, 0, 0, 0).kind;
+    };
+
+    auto explicit_snapshot = load_baseline(root);
+    auto& explicit_role = explicit_snapshot.ranger.roles[0];
+    fill_slots(explicit_role);
+    OL_CHECK(run(explicit_snapshot, 44) == SceneStepKind::stay);
+    OL_CHECK(explicit_role.word(openlegend::model::role_word::magic_id_begin + 9U) == -32768);
+    OL_CHECK(explicit_role.word(openlegend::model::role_word::magic_level_begin + 9U) == 32767);
+    OL_CHECK(explicit_role.word(openlegend::model::role_word::magic_id_begin) == 40);
+    OL_CHECK(explicit_role.word(openlegend::model::role_word::magic_level_begin) == 100);
+
+    auto first_empty_snapshot = load_baseline(root);
+    auto& first_empty_role = first_empty_snapshot.ranger.roles[0];
+    fill_slots(first_empty_role);
+    first_empty_role.set_word(openlegend::model::role_word::magic_id_begin + 2U, 0);
+    OL_CHECK(run(first_empty_snapshot, 45) == SceneStepKind::stay);
+    OL_CHECK(first_empty_role.word(openlegend::model::role_word::magic_id_begin + 2U) == 60);
+    OL_CHECK(first_empty_role.word(openlegend::model::role_word::magic_level_begin + 2U) == 100);
+    OL_CHECK(first_empty_role.word(openlegend::model::role_word::magic_id_begin) == 40);
+
+    auto full_snapshot = load_baseline(root);
+    auto& full_role = full_snapshot.ranger.roles[0];
+    fill_slots(full_role);
+    OL_CHECK(run(full_snapshot, 46) == SceneStepKind::stay);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_id_begin) == 60);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_level_begin) == 100);
+    OL_CHECK(full_role.word(openlegend::model::role_word::magic_id_begin + 1U) == 41);
+
+    auto zero_snapshot = load_baseline(root);
+    auto& zero_role = zero_snapshot.ranger.roles[0];
+    fill_slots(zero_role);
+    zero_role.set_word(openlegend::model::role_word::magic_id_begin + 4U, 0);
+    OL_CHECK(run(zero_snapshot, 47) == SceneStepKind::stay);
+    OL_CHECK(zero_role.word(openlegend::model::role_word::magic_id_begin + 4U) == 0);
+    OL_CHECK(zero_role.word(openlegend::model::role_word::magic_level_begin + 4U) == -32768);
+    OL_CHECK(zero_role.word(openlegend::model::role_word::magic_id_begin) == 40);
+
+    for (const auto script : std::array<std::int16_t, 2>{48, 49}) {
+        auto guarded_snapshot = load_baseline(root);
+        auto& guarded_role = guarded_snapshot.ranger.roles[0];
+        fill_slots(guarded_role);
+        const auto before = guarded_role.bytes;
+        OL_CHECK(run(guarded_snapshot, script) == SceneStepKind::stay);
+        OL_CHECK(guarded_role.bytes == before);
+    }
+}
+
 void check_event_open_all_scenes(const std::filesystem::path& root) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -4842,6 +4917,7 @@ int main() {
     check_event_tournament_trial(root);
     check_event_finale_party_cleanup(root);
     check_event_role_iq_clamp(root);
+    check_event_magic_slot_write(root);
     check_event_open_all_scenes(root);
     check_event_clear_party_mp(root);
     check_event_join_helper(root);

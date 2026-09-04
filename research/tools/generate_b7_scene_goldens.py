@@ -2455,6 +2455,67 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIhh", *row) for row in opcode_23_occurrences
     )
 
+    opcode_35_occurrences: list[tuple[int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 35:
+                opcode_35_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                        code[program_counter + 3],
+                        code[program_counter + 4],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_35_occurrences == [
+        (115, 19, 10, 0, 10, 900),
+        (115, 24, 11, 0, 50, 900),
+        (115, 29, 12, 0, 9, 900),
+        (115, 34, 13, 0, 6, 900),
+        (115, 39, 13, 1, 92, 900),
+        (115, 44, 14, 0, 8, 900),
+        (115, 49, 15, 0, 85, 900),
+        (289, 98, 36, 0, 60, 100),
+    ]
+    opcode_35_stream = b"".join(
+        struct.pack("<IIhhhh", *row) for row in opcode_35_occurrences
+    )
+
+    def write_magic_slot(
+        ids: list[int], levels: list[int], slot: int, magic: int, level: int
+    ) -> tuple[list[int], list[int], int]:
+        destination = slot
+        if destination == -1:
+            destination = next((index for index, value in enumerate(ids) if value == 0), 0)
+        result_ids = ids.copy()
+        result_levels = levels.copy()
+        result_ids[destination] = magic
+        result_levels[destination] = level
+        return result_ids, result_levels, destination
+
+    full_magic_ids = list(range(40, 50))
+    full_magic_levels = [100] * 10
+    explicit_ids, explicit_levels, explicit_destination = write_magic_slot(
+        full_magic_ids, full_magic_levels, 9, -32768, 32767
+    )
+    first_empty_ids, first_empty_levels, first_empty_destination = write_magic_slot(
+        [40, 41, 0, 43, 44, 45, 46, 47, 48, 49], full_magic_levels,
+        -1, 60, 100,
+    )
+    fallback_ids, fallback_levels, fallback_destination = write_magic_slot(
+        full_magic_ids, full_magic_levels, -1, 60, 100
+    )
+    zero_ids, zero_levels, zero_destination = write_magic_slot(
+        [40, 41, 42, 43, 0, 45, 46, 47, 48, 49], full_magic_levels,
+        -1, 0, -32768,
+    )
+
     random_state = (0x41C64E6D + 0x3039) & 0xFFFFFFFF
     random_talk_id = 2547 + (((random_state >> 16) & 0x7FFF) % 18)
 
@@ -2485,6 +2546,48 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "written_word_index": 47,
             "written_value_semantics": "low_signed_int16",
             "program_counter_formula": "old_pc + 3",
+        },
+        "opcode_35_magic_slot": {
+            "entry_range": "0x2F62F..0x2F6C2",
+            "size_bytes": 147,
+            "instruction_count": 41,
+            "occurrences": len(opcode_35_occurrences),
+            "stream_encoding": "little_endian_<IIhhhh:script,pc,role_id,slot,magic_id,level>",
+            "stream_sha256": sha256(opcode_35_stream),
+            "positions": [list(row) for row in opcode_35_occurrences],
+            "role_ids": sorted({row[2] for row in opcode_35_occurrences}),
+            "slots": sorted({row[3] for row in opcode_35_occurrences}),
+            "magic_ids": sorted({row[4] for row in opcode_35_occurrences}),
+            "levels": sorted({row[5] for row in opcode_35_occurrences}),
+            "all_role_ids_valid": True,
+            "all_explicit_slots_valid": True,
+            "explicit_rule": "write_requested_slot_without_empty_or_duplicate_check",
+            "automatic_rule": "first_magic_id_zero_else_slot_0",
+            "written_values": "magic_id_and_level_low_signed_int16_without_clamp",
+            "return_value": 0,
+            "program_counter_increment": 5,
+            "synthetic_vectors": {
+                "explicit": {
+                    "destination": explicit_destination,
+                    "ids": explicit_ids,
+                    "levels": explicit_levels,
+                },
+                "first_empty": {
+                    "destination": first_empty_destination,
+                    "ids": first_empty_ids,
+                    "levels": first_empty_levels,
+                },
+                "full_fallback": {
+                    "destination": fallback_destination,
+                    "ids": fallback_ids,
+                    "levels": fallback_levels,
+                },
+                "zero_magic": {
+                    "destination": zero_destination,
+                    "ids": zero_ids,
+                    "levels": zero_levels,
+                },
+            },
         },
         "opcode_36_script_328": {
             "arguments": list(script_328[:4]),
