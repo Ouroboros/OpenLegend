@@ -4705,6 +4705,108 @@ def status_notice_vectors(
         "synthetic_visible_frame_hashes_sha256": sha256(bytes(mp_hash_stream)),
     }
 
+    opcode_47_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 47:
+                opcode_47_occurrences.append(
+                    (script_id, pc, code[pc + 1], code[pc + 2])
+                )
+            pc += WIDTHS[opcode]
+    assert opcode_47_occurrences == [
+        (284, 182, 35, 5),
+        (363, 462, 38, 10),
+        (484, 182, 53, 10),
+        (536, 197, 49, 30),
+        (581, 37, 49, 30),
+    ]
+    opcode_47_stream = b"".join(
+        struct.pack("<IIhh", *row) for row in opcode_47_occurrences
+    )
+    attack_notice_infix = bytes.fromhex("20 aa 5a a4 4f bc 57 a5 5b 20")
+
+    def render_attack_notice(role_id: int, gain: int) -> dict[str, object]:
+        role = ranger[836 + role_id * 182:836 + (role_id + 1) * 182]
+        role_name = record_name(role, 8)
+        text = role_name + attack_notice_infix + str(gain).encode("ascii") + b"\0"
+        layout_length = len(role_name) + 10
+        x = 150 - (4 * layout_length + 24)
+        width = 8 * layout_length + 68
+        pixels = bytearray(base_frame)
+        panel(pixels, x, 40, width, 27)
+        draw_legacy_text(
+            pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07
+        )
+        return {
+            "role_id": role_id,
+            "role_name_hex": role_name.hex(),
+            "gain": gain,
+            "text_hex": text.hex(),
+            "layout_length": layout_length,
+            "panel": [x, 40, width, 27],
+            "text_position": [x + 10, 45],
+            "colors": [5, 7],
+            "frame_fnv1a64": fnv1a64(pixels),
+        }
+
+    baseline_attack_notices = []
+    for script_id, pc, role_id, delta in opcode_47_occurrences:
+        before = struct.unpack_from("<h", ranger, 836 + role_id * 182 + 86)[0]
+        after = wrapped_clamped_iq(before, delta)
+        row: dict[str, object] = {
+            "script": script_id,
+            "pc": pc,
+            "delta": delta,
+            "before": before,
+            "after": after,
+            "notice": after > before,
+        }
+        if after > before:
+            row.update(render_attack_notice(role_id, after - before))
+        baseline_attack_notices.append(row)
+
+    synthetic_attack_cases = []
+    attack_hash_stream = bytearray()
+    for before, delta in [(32767, 1), (-32768, -1), (-1, 0)]:
+        after = wrapped_clamped_iq(before, delta)
+        row = {"before": before, "delta": delta, "after": after, "notice": after > before}
+        if after > before:
+            notice = render_attack_notice(0, after - before)
+            row.update(notice)
+            attack_hash_stream.extend(bytes.fromhex(str(notice["frame_fnv1a64"])[2:]))
+        synthetic_attack_cases.append(row)
+
+    output["opcode_47_role_attack_panel"] = {
+        "entry_range": "0x2FC9D..0x2FDA6",
+        "size_bytes": 265,
+        "instruction_count": 67,
+        "occurrences": len(opcode_47_occurrences),
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": sha256(opcode_47_stream),
+        "positions": [list(row) for row in opcode_47_occurrences],
+        "written_role_word": "attack",
+        "written_word_index": 43,
+        "arithmetic": "signed_int16_wrapping_add_then_signed_clamp_0_100",
+        "notice_condition": "clamped_after_greater_than_original_before",
+        "notice_gain": "clamped_after_minus_original_before",
+        "message_format_hex": "257320aa5aa44fbc57a55b20256400",
+        "message_format_cp950": "%s 武力增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "colors": [5, 7],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_notices": baseline_attack_notices,
+        "synthetic_cases": synthetic_attack_cases,
+        "invalid_modern_vectors": [
+            {"role": -1, "delta": 1, "write": False, "notice": False}
+        ],
+        "synthetic_visible_frame_hashes_sha256": sha256(bytes(attack_hash_stream)),
+    }
+
     opcode_2_occurrences: list[dict[str, int | str]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)

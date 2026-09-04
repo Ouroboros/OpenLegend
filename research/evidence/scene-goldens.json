@@ -11517,6 +11517,272 @@
         ],
         "synthetic_visible_frame_hashes_sha256": "7953d2c3690e41895d91aef79f6596dda9e216017499f3208894130ecd9af3c7"
       },
+      "opcode_47_role_attack_panel": {
+        "entry_range": "0x2FC9D..0x2FDA6",
+        "size_bytes": 265,
+        "instruction_count": 67,
+        "occurrences": 5,
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": "bf1a04f156f7db9fa1c8ff13929f1b4b2e8d3623c7329ad38e50290b5466a8ab",
+        "positions": [
+          [
+            284,
+            182,
+            35,
+            5
+          ],
+          [
+            363,
+            462,
+            38,
+            10
+          ],
+          [
+            484,
+            182,
+            53,
+            10
+          ],
+          [
+            536,
+            197,
+            49,
+            30
+          ],
+          [
+            581,
+            37,
+            49,
+            30
+          ]
+        ],
+        "written_role_word": "attack",
+        "written_word_index": 43,
+        "arithmetic": "signed_int16_wrapping_add_then_signed_clamp_0_100",
+        "notice_condition": "clamped_after_greater_than_original_before",
+        "notice_gain": "clamped_after_minus_original_before",
+        "message_format_hex": "257320aa5aa44fbc57a55b20256400",
+        "message_format_cp950": "%s 武力增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "colors": [
+          5,
+          7
+        ],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_notices": [
+          {
+            "script": 284,
+            "pc": 182,
+            "delta": 5,
+            "before": 53,
+            "after": 58,
+            "notice": true,
+            "role_id": 35,
+            "role_name_hex": "a54faab0a852",
+            "gain": 5,
+            "text_hex": "a54faab0a85220aa5aa44fbc57a55b203500",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xeddab5104e45a1bc"
+          },
+          {
+            "script": 363,
+            "pc": 462,
+            "delta": 10,
+            "before": 42,
+            "after": 52,
+            "notice": true,
+            "role_id": 38,
+            "role_name_hex": "a5dbaf7da4d1",
+            "gain": 10,
+            "text_hex": "a5dbaf7da4d120aa5aa44fbc57a55b20313000",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xc9d2ed810ffb30fd"
+          },
+          {
+            "script": 484,
+            "pc": 182,
+            "delta": 10,
+            "before": 24,
+            "after": 34,
+            "notice": true,
+            "role_id": 53,
+            "role_name_hex": "ac71c541",
+            "gain": 10,
+            "text_hex": "ac71c54120aa5aa44fbc57a55b20313000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x07bb43ede04a56cc"
+          },
+          {
+            "script": 536,
+            "pc": 197,
+            "delta": 30,
+            "before": 14,
+            "after": 44,
+            "notice": true,
+            "role_id": 49,
+            "role_name_hex": "b5eaa6cb",
+            "gain": 30,
+            "text_hex": "b5eaa6cb20aa5aa44fbc57a55b20333000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x0e0aee18584ddabe"
+          },
+          {
+            "script": 581,
+            "pc": 37,
+            "delta": 30,
+            "before": 14,
+            "after": 44,
+            "notice": true,
+            "role_id": 49,
+            "role_name_hex": "b5eaa6cb",
+            "gain": 30,
+            "text_hex": "b5eaa6cb20aa5aa44fbc57a55b20333000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x0e0aee18584ddabe"
+          }
+        ],
+        "synthetic_cases": [
+          {
+            "before": 32767,
+            "delta": 1,
+            "after": 0,
+            "notice": false
+          },
+          {
+            "before": -32768,
+            "delta": -1,
+            "after": 100,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 32868,
+            "text_hex": "ae7da470ab4c20aa5aa44fbc57a55b20333238363800",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x02f03b6e246a4973"
+          },
+          {
+            "before": -1,
+            "delta": 0,
+            "after": 0,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 1,
+            "text_hex": "ae7da470ab4c20aa5aa44fbc57a55b203100",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x9e3c9a177d228048"
+          }
+        ],
+        "invalid_modern_vectors": [
+          {
+            "role": -1,
+            "delta": 1,
+            "write": false,
+            "notice": false
+          }
+        ],
+        "synthetic_visible_frame_hashes_sha256": "0cb6b8fc6a6dccb0aed841ac8942bd31ce3951d8b1da4d57bbe103929070dc7f"
+      },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",
         "size_bytes": 457,

@@ -300,6 +300,13 @@ public:
                 for (const auto value : arguments[script - 86U]) {
                     append_i16(group, value);
                 }
+            } else if (script >= 91U && script <= 94U) {
+                constexpr std::array<std::array<std::int16_t, 2>, 4> arguments{{
+                    {0, 1}, {0, -1}, {0, 0}, {-1, 1}}};
+                append_i16(group, 47);
+                for (const auto value : arguments[script - 91U]) {
+                    append_i16(group, value);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4512,6 +4519,9 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     constexpr std::array<std::uint8_t, 19> expected_mp_notice{
         0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xA4U, 0xBAU, 0xA4U, 0x4FU,
         0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x31U, 0x31U, 0x30U, 0x30U, 0x00U};
+    constexpr std::array<std::uint8_t, 17> expected_attack_notice{
+        0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xAAU, 0x5AU, 0xA4U, 0x4FU,
+        0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x31U, 0x30U, 0x00U};
     auto join_snapshot = load_baseline(root);
     for (std::size_t slot = 1U; slot < openlegend::model::kTeamMemberCount; ++slot) {
         join_snapshot.ranger.header.set_team_member(slot, openlegend::model::CharacterId{-1});
@@ -4551,6 +4561,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     bool saw_learn_notice = false;
     bool saw_speed_notice = false;
     bool saw_mp_notice = false;
+    bool saw_attack_notice = false;
     for (int step = 0; step < 128 && join_result.kind != openlegend::scene::SceneStepKind::stay;
          ++step) {
         if (expect_notice_restore) {
@@ -4579,6 +4590,14 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
             OL_CHECK(join_result.style == -3);
             saw_mp_notice = true;
         }
+        if (join_result.kind == openlegend::scene::SceneStepKind::notice &&
+            join_session.pending_text().size() == expected_attack_notice.size() &&
+            std::equal(
+                join_session.pending_text().begin(), join_session.pending_text().end(),
+                expected_attack_notice.begin())) {
+            OL_CHECK(join_result.style == -3);
+            saw_attack_notice = true;
+        }
         expect_notice_restore = join_result.kind == openlegend::scene::SceneStepKind::notice;
         const auto resumable = join_result.kind == openlegend::scene::SceneStepKind::dialogue ||
                                join_result.kind == openlegend::scene::SceneStepKind::notice ||
@@ -4595,6 +4614,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(saw_learn_notice);
     OL_CHECK(saw_speed_notice);
     OL_CHECK(saw_mp_notice);
+    OL_CHECK(saw_attack_notice);
     OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::stay);
     OL_CHECK(join_snapshot.ranger.header.team_member(1U).value == 49);
     OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_mp) == 1200);
@@ -5032,6 +5052,41 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(90, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+    }
+
+    for (const auto [script, before, after, notice, frame_hash] :
+         std::array<
+             std::tuple<std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
+             3>{
+             std::tuple<
+                 std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>{
+                 91, 32767, 0, false, 0},
+             {92, -32768, 100, true, 0x02F03B6E246A4973ULL},
+             {93, -1, 0, true, 0x9E3C9A177D228048ULL}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, before);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render(framebuffer));
+        const auto result = session.begin_event(script, 0, 0, 0);
+        OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::attack) == after);
+        OL_CHECK(result.kind ==
+                 (notice ? SceneStepKind::notice : SceneStepKind::stay));
+        if (notice) {
+            OL_CHECK(result.style == -3);
+            OL_CHECK(session.render(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+        }
+    }
+    {
+        auto snapshot = load_baseline(root);
+        const auto before = snapshot.ranger.roles[0].bytes;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(94, 0, 0, 0).kind == SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 

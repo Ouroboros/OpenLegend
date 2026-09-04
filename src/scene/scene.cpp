@@ -64,6 +64,8 @@ constexpr std::array<std::uint8_t, 10> kRoleSpeedNoticeInfix{
     0x20U, 0xBBU, 0xB4U, 0xA5U, 0x5CU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
 constexpr std::array<std::uint8_t, 10> kRoleMpNoticeInfix{
     0x20U, 0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
+constexpr std::array<std::uint8_t, 10> kRoleAttackNoticeInfix{
+    0x20U, 0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
 constexpr std::int16_t kItemNoticeStyle = -1;
 constexpr std::int16_t kLearnMagicNoticeStyle = -2;
 constexpr std::int16_t kRoleIqNoticeStyle = -3;
@@ -1317,27 +1319,24 @@ SceneStepResult SceneSession::run_event() {
                 const auto after = clamped_add(before, argument(2), 0, 100);
                 role.set_word(field, after);
                 if (after > before) {
-                    if (opcode == 34 || opcode == 45) {
-                        std::vector<std::uint8_t> text;
-                        const auto name_begin =
-                            role.bytes.begin() +
-                            static_cast<std::ptrdiff_t>(model::role_word::name_byte);
-                        text.insert(
-                            text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
-                        const auto infix = opcode == 34
-                                               ? std::span<const std::uint8_t>{kRoleIqNoticeInfix}
-                                               : std::span<const std::uint8_t>{kRoleSpeedNoticeInfix};
-                        text.insert(text.end(), infix.begin(), infix.end());
-                        const auto gain = std::to_string(
-                            static_cast<int>(after) - static_cast<int>(before));
-                        text.insert(text.end(), gain.begin(), gain.end());
-                        text.push_back(0U);
-                        queue_notice(std::move(text), kRoleIqNoticeStyle);
-                    } else {
-                        queue_notice(ascii_message(
-                            "role " + std::to_string(role_id) + " +" +
-                            std::to_string(after - before)));
+                    std::vector<std::uint8_t> text;
+                    const auto name_begin =
+                        role.bytes.begin() +
+                        static_cast<std::ptrdiff_t>(model::role_word::name_byte);
+                    text.insert(
+                        text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
+                    auto infix = std::span<const std::uint8_t>{kRoleAttackNoticeInfix};
+                    if (opcode == 34) {
+                        infix = std::span<const std::uint8_t>{kRoleIqNoticeInfix};
+                    } else if (opcode == 45) {
+                        infix = std::span<const std::uint8_t>{kRoleSpeedNoticeInfix};
                     }
+                    text.insert(text.end(), infix.begin(), infix.end());
+                    const auto gain = std::to_string(
+                        static_cast<int>(after) - static_cast<int>(before));
+                    text.insert(text.end(), gain.begin(), gain.end());
+                    text.push_back(0U);
+                    queue_notice(std::move(text), kRoleIqNoticeStyle);
                     queue_scene_present();
                 }
             }
