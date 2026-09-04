@@ -2574,6 +2574,23 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIh", *row) for row in opcode_39_occurrences
     )
 
+    opcode_40_occurrences: list[tuple[int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 40:
+                opcode_40_occurrences.append(
+                    (script_id, program_counter, code[program_counter + 1])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_40_occurrences) == 12
+    assert sorted({row[2] for row in opcode_40_occurrences}) == [0, 1, 2, 3]
+    opcode_40_stream = b"".join(
+        struct.pack("<IIh", *row) for row in opcode_40_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2620,6 +2637,32 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "view_origin": [3, 3],
             "direction": 3,
             "player_frame": 5044,
+        },
+        "opcode_40_player_direction": {
+            "entry_range": "0x2F8AB..0x2F8D1",
+            "size_bytes": 38,
+            "instruction_count": 9,
+            "occurrences": len(opcode_40_occurrences),
+            "stream_encoding": "little_endian_<IIh:script,pc,direction>",
+            "stream_sha256": sha256(opcode_40_stream),
+            "positions": [list(row) for row in opcode_40_occurrences],
+            "directions": sorted({row[2] for row in opcode_40_occurrences}),
+            "direction_counts": dict(Counter(row[2] for row in opcode_40_occurrences)),
+            "all_real_directions_valid": True,
+            "base_frames": [5002, 5016, 5030, 5044],
+            "script_235_arguments": list(script_235[33:35]),
+            "written_direction": "low_signed_int16",
+            "current_frame_rule": "base_frame_table[direction]",
+            "return_value": 0,
+            "program_counter_increment": 2,
+            "valid_vectors": [
+                {"direction": direction, "player_frame": frame}
+                for direction, frame in enumerate((5002, 5016, 5030, 5044))
+            ],
+            "invalid_modern_vectors": [
+                {"input": -1, "clamped_direction": 0, "player_frame": 5002},
+                {"input": 4, "clamped_direction": 3, "player_frame": 5044},
+            ],
         },
         "opcode_23_script_28": {
             "occurrences": len(opcode_23_occurrences),

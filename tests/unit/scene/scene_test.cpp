@@ -248,6 +248,10 @@ public:
                 constexpr std::array<std::int16_t, 4> scenes{0, 83, -1, 84};
                 append_i16(group, 39);
                 append_i16(group, scenes[script - 58U]);
+            } else if (script >= 62U && script <= 67U) {
+                constexpr std::array<std::int16_t, 6> directions{0, 1, 2, 3, -1, 4};
+                append_i16(group, 40);
+                append_i16(group, directions[script - 62U]);
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4678,6 +4682,24 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
                      openlegend::model::scene_metadata_word::entrance_condition) == 111);
         OL_CHECK(snapshot.ranger.scenes[83].word(
                      openlegend::model::scene_metadata_word::entrance_condition) == 222);
+    }
+
+    for (const auto [script, direction, frame] :
+         std::array<std::array<std::int16_t, 3>, 6>{
+             std::array<std::int16_t, 3>{62, 0, 5002},
+             {63, 1, 5016},
+             {64, 2, 5030},
+             {65, 3, 5044},
+             {66, 0, 5002},
+             {67, 3, 5044}}) {
+        auto snapshot = load_baseline(root);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(script, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(static_cast<std::int16_t>(session.direction()) == direction);
+        OL_CHECK(session.player_frame() == frame);
+        OL_CHECK(snapshot.ranger.header.word(
+                     openlegend::model::header_word::face_towards) == direction);
     }
 
     for (const auto [event_1, expected_event_1] :

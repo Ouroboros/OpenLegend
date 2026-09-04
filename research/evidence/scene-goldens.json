@@ -6012,6 +6012,133 @@
         "direction": 3,
         "player_frame": 5044
       },
+      "opcode_40_player_direction": {
+        "entry_range": "0x2F8AB..0x2F8D1",
+        "size_bytes": 38,
+        "instruction_count": 9,
+        "occurrences": 12,
+        "stream_encoding": "little_endian_<IIh:script,pc,direction>",
+        "stream_sha256": "ebe741b0fba8a9a93cc06ed0b0ede392ba5f2f054df0f9cc94c8dbe17bb2165b",
+        "positions": [
+          [
+            235,
+            33,
+            3
+          ],
+          [
+            462,
+            47,
+            2
+          ],
+          [
+            480,
+            33,
+            3
+          ],
+          [
+            502,
+            43,
+            3
+          ],
+          [
+            575,
+            33,
+            3
+          ],
+          [
+            658,
+            33,
+            3
+          ],
+          [
+            664,
+            33,
+            3
+          ],
+          [
+            676,
+            91,
+            0
+          ],
+          [
+            691,
+            41,
+            0
+          ],
+          [
+            931,
+            11,
+            3
+          ],
+          [
+            1015,
+            246,
+            1
+          ],
+          [
+            1015,
+            632,
+            1
+          ]
+        ],
+        "directions": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "direction_counts": {
+          "3": 7,
+          "2": 1,
+          "0": 2,
+          "1": 2
+        },
+        "all_real_directions_valid": true,
+        "base_frames": [
+          5002,
+          5016,
+          5030,
+          5044
+        ],
+        "script_235_arguments": [
+          40,
+          3
+        ],
+        "written_direction": "low_signed_int16",
+        "current_frame_rule": "base_frame_table[direction]",
+        "return_value": 0,
+        "program_counter_increment": 2,
+        "valid_vectors": [
+          {
+            "direction": 0,
+            "player_frame": 5002
+          },
+          {
+            "direction": 1,
+            "player_frame": 5016
+          },
+          {
+            "direction": 2,
+            "player_frame": 5030
+          },
+          {
+            "direction": 3,
+            "player_frame": 5044
+          }
+        ],
+        "invalid_modern_vectors": [
+          {
+            "input": -1,
+            "clamped_direction": 0,
+            "player_frame": 5002
+          },
+          {
+            "input": 4,
+            "clamped_direction": 3,
+            "player_frame": 5044
+          }
+        ]
+      },
       "opcode_23_script_28": {
         "occurrences": 1,
         "stream_encoding": "little_endian_<IIhh:script,pc,role,value>",

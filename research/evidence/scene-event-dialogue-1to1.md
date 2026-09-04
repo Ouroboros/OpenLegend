@@ -387,7 +387,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 汇编→C++终审在合法84场景域零产品差异；负数或不小于84的机器别名/越界写由现代边界保护拒绝，归类`platform_adapted`。从27字节6条指令入口复核唯一重定位、记录步长、字段写入、return0和caller，零新增差异。全KDEF 3次opcode39参数流SHA256 `12e3351df86fb83d3bf39ab24eea4ec4ca1eebef1ffabc6aa8d4185a2e9850d7`；真实scene75与合成scene0/83、非法-1/84均固定。
 
-## 23. 当前验证
+## 23. 主角场景朝向与基础图片
+
+`sub_2F8AB`把参数低16位写入当前朝向，再sign-extend该word索引四项基础图片表 `[5002,5016,5030,5044]`，立即覆盖当前玩家图片并返回0。opcode40 caller清理栈并把PC增加2；函数不present或等待输入。
+
+汇编→C++终审在合法0..3方向域零产品差异；现代清图片override、归零步行offset并同步snapshot方向镜像，得到同一运行图片和存档状态。非法signed表索引由现代0..3钳位替代，归类`platform_adapted`。从38字节9条指令入口复核三项重定位、朝向写入、signed表索引、当前图片覆盖、return0和caller，零新增差异。全KDEF 12次opcode40参数流SHA256 `ebe741b0fba8a9a93cc06ed0b0ede392ba5f2f054df0f9cc94c8dbe17bb2165b`；四个合法方向、四项基础图片和非法-1/4现代边界均固定。
+
+## 24. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -415,6 +421,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 主角伦理值修改的156次真实opcode37参数流、角色0固定字段、低16位回绕、signed上限后下限钳位、return0及八组回绕/钳位边界；
 - 场景图层批量替换的3次真实opcode38参数流、当前/外部场景路径、4096-word全层扫描、全部匹配/非匹配值、外部末层持久修改及当前场景保持；
 - 场景入口条件清零的3次真实opcode39参数流、52字节记录寻址、word0无条件写0、首末合法场景与非法负一/八十四边界保护；
+- 主角场景朝向设置的12次真实opcode40参数流、四项基础图片、临时/步行帧复位、snapshot镜像同步及非法负一/四钳位；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

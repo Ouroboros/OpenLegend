@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=198/349`，`unique_any=154/284`，`unique_all=148/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=63` 主角场景朝向设置；状态为等待`audit_order=62` 场景入口条件清零工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=63` 收口后进入同表 `audit_order=64` 角色携带物品增加
+已发布进度：`closure=199/349`，`unique_any=155/284`，`unique_all=149/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=64` 角色携带物品增加；状态为等待`audit_order=63` 主角场景朝向设置工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=64` 收口后进入同表 `audit_order=65` 队伍女性角色条件分支
 
 ## 0. 唯一正确性真值
 
