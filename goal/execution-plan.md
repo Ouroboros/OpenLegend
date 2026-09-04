@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=215/349`，`unique_any=171/284`，`unique_all=164/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=80` 三雕像事件动画；状态为等待`audit_order=79` 增加主角声望并检查十四天书事件工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=80` 收口后进入同表 `audit_order=81` 武林大会十五场试炼
+已发布进度：`closure=216/349`，`unique_any=172/284`，`unique_all=164/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=81` 武林大会十五场试炼；状态为等待`audit_order=80` 三雕像事件动画工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=81` 收口后进入同表 `audit_order=82` 武林大会单场战斗
 
 ## 0. 唯一正确性真值
 

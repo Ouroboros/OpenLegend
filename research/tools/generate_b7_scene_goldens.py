@@ -5864,11 +5864,36 @@ def main() -> None:
     statue_sprites = sentinel(
         (root / "SDX014").read_bytes(), (root / "SMP014").read_bytes()
     )
+    opcode_57_occurrences: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            if code[program_counter] == 57:
+                opcode_57_occurrences.append((script_id, program_counter))
+            program_counter += WIDTHS[code[program_counter]]
+    assert opcode_57_occurrences == [(655, 47)]
+    opcode_57_stream = b"".join(
+        struct.pack("<II", *row) for row in opcode_57_occurrences
+    )
     script_655 = words(scripts[655])
     assert script_655[47] == 57
     opcode_57_script_655 = three_statue_animation_trace(
         statue_map, statue_events, statue_sprites, 32, 15, 1
     )
+    assert len(opcode_57_script_655) == 35
+    opcode_57_trace_stream = b"".join(
+        struct.pack(
+            "<BhhhhQ",
+            int(frame["phase"]), int(frame["player_picture"]),
+            *(int(value) for value in frame["event_pictures"]),
+            int(str(frame["frame_fnv1a64"]), 16),
+        )
+        for frame in opcode_57_script_655
+    )
+    statue_initial_events = [
+        list(statue_events[event * 11:(event + 1) * 11]) for event in (2, 3, 4)
+    ]
 
     ending_scene_id = 83
     ending_map = words(scene_maps[ending_scene_id])
@@ -6048,9 +6073,36 @@ def main() -> None:
                 ],
             },
             "opcode_57_script_655": {
+                "entry_range": "0x301D1..0x302E0",
+                "size_bytes": 271,
+                "instruction_count": 90,
+                "occurrences": len(opcode_57_occurrences),
+                "positions": [list(row) for row in opcode_57_occurrences],
+                "call_stream_encoding": "little_endian_<II:script,pc>",
+                "call_stream_sha256": sha256(opcode_57_stream),
+                "program_counter_increment_after_completion": 1,
                 "scene_id": statue_scene_id,
                 "player_x": 32,
                 "player_y": 15,
+                "event_ids": [2, 3, 4],
+                "event_coordinates": [[33, 16], [33, 15], [33, 14]],
+                "initial_event_words": statue_initial_events,
+                "phase_0_player_range": [7664, 7674, 2],
+                "phase_0_frame_count": 6,
+                "phase_1_counter_range": [0, 56, 2],
+                "phase_1_frame_count": 29,
+                "player_freeze_comparison": "signed_less_than_7688",
+                "event_picture_bases": [7690, 7748, 7806],
+                "event_picture_fields": [5, 6, 7],
+                "per_frame_order": [
+                    "capture_tick", "update_player_and_events", "render",
+                    "delay_50", "wait_until_tick_differs", "increment_by_2",
+                ],
+                "delay_ticks": 2,
+                "final_player_picture": 7688,
+                "final_event_pictures": [7746, 7804, 7862],
+                "trace_stream_encoding": "little_endian_<BhhhhQ:phase,player,event2,event3,event4,frame_fnv1a64>",
+                "trace_stream_sha256": sha256(opcode_57_trace_stream),
                 "frames": opcode_57_script_655,
             },
             "opcode_62_script_1017": {

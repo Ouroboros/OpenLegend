@@ -5067,9 +5067,122 @@
       ]
     },
     "opcode_57_script_655": {
+      "entry_range": "0x301D1..0x302E0",
+      "size_bytes": 271,
+      "instruction_count": 90,
+      "occurrences": 1,
+      "positions": [
+        [
+          655,
+          47
+        ]
+      ],
+      "call_stream_encoding": "little_endian_<II:script,pc>",
+      "call_stream_sha256": "09d3a95aa4379601d167e041d3e98651e478fe12dde36e9118a11e0b0f51c700",
+      "program_counter_increment_after_completion": 1,
       "scene_id": 14,
       "player_x": 32,
       "player_y": 15,
+      "event_ids": [
+        2,
+        3,
+        4
+      ],
+      "event_coordinates": [
+        [
+          33,
+          16
+        ],
+        [
+          33,
+          15
+        ],
+        [
+          33,
+          14
+        ]
+      ],
+      "initial_event_words": [
+        [
+          1,
+          2,
+          -1,
+          -1,
+          -1,
+          7690,
+          7690,
+          7690,
+          0,
+          33,
+          16
+        ],
+        [
+          1,
+          3,
+          655,
+          -1,
+          -1,
+          7748,
+          7748,
+          7748,
+          0,
+          33,
+          15
+        ],
+        [
+          1,
+          4,
+          -1,
+          -1,
+          -1,
+          7806,
+          7806,
+          7806,
+          0,
+          33,
+          14
+        ]
+      ],
+      "phase_0_player_range": [
+        7664,
+        7674,
+        2
+      ],
+      "phase_0_frame_count": 6,
+      "phase_1_counter_range": [
+        0,
+        56,
+        2
+      ],
+      "phase_1_frame_count": 29,
+      "player_freeze_comparison": "signed_less_than_7688",
+      "event_picture_bases": [
+        7690,
+        7748,
+        7806
+      ],
+      "event_picture_fields": [
+        5,
+        6,
+        7
+      ],
+      "per_frame_order": [
+        "capture_tick",
+        "update_player_and_events",
+        "render",
+        "delay_50",
+        "wait_until_tick_differs",
+        "increment_by_2"
+      ],
+      "delay_ticks": 2,
+      "final_player_picture": 7688,
+      "final_event_pictures": [
+        7746,
+        7804,
+        7862
+      ],
+      "trace_stream_encoding": "little_endian_<BhhhhQ:phase,player,event2,event3,event4,frame_fnv1a64>",
+      "trace_stream_sha256": "8cf0a9274a8549457160fbb8ec526bf7d61592a1f5cd4b7a678da8043b7b1647",
       "frames": [
         {
           "phase": 0,
