@@ -547,6 +547,57 @@ def morality_range_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def attack_minimum_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 29:
+                occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 6])
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(occurrences) == 5
+    assert occurrences[0] == (155, 57, 0, 0, 100, 6, 0)
+    assert occurrences[-1] == (655, 0, 0, 90, 1000, 6, 0)
+    assert [min(row[index] for row in occurrences) for index in range(2, 7)] == [
+        0, 0, 100, 6, 0,
+    ]
+    assert [max(row[index] for row in occurrences) for index in range(2, 7)] == [
+        0, 90, 1000, 11, 0,
+    ]
+    stream = b"".join(struct.pack("<IIhhhhh", *row) for row in occurrences)
+    script_655 = occurrences[-1]
+    _, _, role, minimum, unused, true_offset, false_offset = script_655
+    boundary_values = [-32768, 89, 90, 1000, 2000, 32767]
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhhhh:script,pc,role,minimum,unused,true_offset,false_offset>",
+        "stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "argument_minimums": [0, 0, 100, 6, 0],
+        "argument_maximums": [0, 90, 1000, 11, 0],
+        "role_counts": {"0": len(occurrences)},
+        "minimum_counts": {"0": 1, "40": 1, "75": 1, "80": 1, "90": 1},
+        "unused_argument_counts": {"100": 3, "1000": 2},
+        "unused_argument_read": False,
+        "comparison": "signed_attack>=minimum",
+        "script_655": {
+            "arguments": [role, minimum, unused, true_offset, false_offset],
+            "boundary_vectors": [
+                {
+                    "attack": value,
+                    "selected_offset": true_offset if value >= minimum else false_offset,
+                }
+                for value in boundary_values
+            ],
+        },
+    }
+
+
 def picture_animation_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -3993,6 +4044,7 @@ def main() -> None:
     opcode_25_camera_pan = camera_pan_vectors(scripts)
     opcode_27_picture_animation = picture_animation_vectors(scripts)
     opcode_28_morality_range = morality_range_vectors(scripts)
+    opcode_29_attack_minimum = attack_minimum_vectors(scripts)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4199,6 +4251,7 @@ def main() -> None:
                 "frames": opcode_27_script_535,
             },
             "opcode_28_morality_range": opcode_28_morality_range,
+            "opcode_29_attack_minimum": opcode_29_attack_minimum,
             "opcode_30_script_343": {
                 "scene_id": walk_scene_id,
                 "arguments": list(script_343[31:35]),

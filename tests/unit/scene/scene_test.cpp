@@ -163,6 +163,12 @@ public:
                          27, -1, 10, 11}) {
                     append_i16(group, word);
                 }
+            } else if (script == 24U) {
+                for (const auto word : std::array<std::int16_t, 10>{
+                         29, 0, 90, 1000, 0, 4,
+                         1, 100, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -2912,6 +2918,28 @@ void check_event_role_stat_conditions(const std::filesystem::path& root) {
     OL_CHECK(!reaches_success_dialogue(32767));
 }
 
+void check_event_attack_condition_boundaries(const std::filesystem::path& root) {
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    const auto attack_succeeds = [&data_root, &root](const std::int16_t attack) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, attack);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        const auto result = session.begin_event(24, 0, 0, 0);
+        return result.kind == SceneStepKind::dialogue && result.talk_id == 100;
+    };
+    OL_CHECK(!attack_succeeds(-32768));
+    OL_CHECK(!attack_succeeds(89));
+    OL_CHECK(attack_succeeds(90));
+    OL_CHECK(attack_succeeds(1000));
+    OL_CHECK(attack_succeeds(2000));
+    OL_CHECK(attack_succeeds(32767));
+}
+
 void check_event_inventory_condition_edge_cases(const std::filesystem::path& root) {
     using openlegend::scene::SceneStepKind;
 
@@ -4306,6 +4334,7 @@ int main() {
     check_event_shop_helpers(root);
     check_event_presence_and_party_tail_conditions(root);
     check_event_role_stat_conditions(root);
+    check_event_attack_condition_boundaries(root);
     check_event_inventory_condition_edge_cases(root);
     check_event_all_book_pictures_condition(root);
     check_event_current_picture_condition(root);

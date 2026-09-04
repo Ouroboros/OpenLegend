@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=187/349`，`unique_any=143/284`，`unique_all=137/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=52` 攻击力条件；状态为等待`audit_order=51` 伦理值区间条件工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=52` 收口后进入同表 `audit_order=53` 场景脚本移动
+已发布进度：`closure=188/349`，`unique_any=144/284`，`unique_all=138/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=53` 场景脚本移动；状态为等待`audit_order=52` 攻击力下限条件工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=53` 收口后进入同表 `audit_order=54` 首个同ID物品数量读取
 
 ## 0. 唯一正确性真值
 

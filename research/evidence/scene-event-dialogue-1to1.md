@@ -321,7 +321,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 最终REVIEW逐条覆盖47字节12条指令、唯一绝对地址重定位、caller五参数和公共PC尾部，未发现产品差异。当前22次真实opcode28全部读取role0，无反向或单点区间，完整参数流SHA256 `e5773f5e4df3672f148f34104f8d0268444a7b36fb42284389576340119345e3`；script636固定80/100为真、79/101为假，并扩展signed极值验证。现代非法role保护属于平台适配。
 
-## 12. 当前验证
+## 12. 攻击力下限条件
+
+`sub_2F136` 由opcode29唯一caller传入五个signed word，但机器只读取 `(role,minimum,true_offset,false_offset)`：按182字节步长取角色word43 attack，`attack<minimum`返回false offset，否则返回true offset；第三个KDEF数值完全未读，不是上限。caller复用opcode28尾部，先增加宽度6再叠加返回offset。
+
+最终REVIEW逐条覆盖41字节10条指令、唯一绝对地址重定位、caller参数和公共PC尾部，未发现产品差异。当前只有5次真实opcode29，全部读取role0，完整参数流SHA256 `e11e00a27a44cc39a6f6dee704b143fbf0f2a26d87111292dda40a1580aa4dd2`；script655的第三参数1000由attack2000成功路径否定为上限，合成script24固定89/90下限、signed极值和1000/2000反例。现代非法role保护属于平台适配。
+
+## 13. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -338,6 +344,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 场景平移动画52次真实opcode25参数流、460个present帧、x-before-y、四方向、终点不含、每帧2 ticks、script30像素及极小负值先按word回绕再钳位；
 - 事件图片动画43次真实opcode27参数流、579个present帧、玩家/事件分支、三图片字段同步、终点包含、每帧2 ticks、script535四帧像素及32位32767/空区间/奇数跨度边界；
 - 伦理值条件22次真实opcode28参数流、角色word56 signed闭区间、true/false偏移和PC宽度叠加，以及script636的79/80/100/101与signed极值边界；
+- 攻击力条件5次真实opcode29参数流、角色word43 signed下限包含、第三参数未读、共享PC偏移，以及script655和合成script24的89/90/1000/2000与signed极值；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。

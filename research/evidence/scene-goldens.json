@@ -3049,6 +3049,94 @@
         ]
       }
     },
+    "opcode_29_attack_minimum": {
+      "occurrences": 5,
+      "stream_encoding": "little_endian_<IIhhhhh:script,pc,role,minimum,unused,true_offset,false_offset>",
+      "stream_sha256": "e11e00a27a44cc39a6f6dee704b143fbf0f2a26d87111292dda40a1580aa4dd2",
+      "first": [
+        155,
+        57,
+        0,
+        0,
+        100,
+        6,
+        0
+      ],
+      "last": [
+        655,
+        0,
+        0,
+        90,
+        1000,
+        6,
+        0
+      ],
+      "argument_minimums": [
+        0,
+        0,
+        100,
+        6,
+        0
+      ],
+      "argument_maximums": [
+        0,
+        90,
+        1000,
+        11,
+        0
+      ],
+      "role_counts": {
+        "0": 5
+      },
+      "minimum_counts": {
+        "0": 1,
+        "40": 1,
+        "75": 1,
+        "80": 1,
+        "90": 1
+      },
+      "unused_argument_counts": {
+        "100": 3,
+        "1000": 2
+      },
+      "unused_argument_read": false,
+      "comparison": "signed_attack>=minimum",
+      "script_655": {
+        "arguments": [
+          0,
+          90,
+          1000,
+          6,
+          0
+        ],
+        "boundary_vectors": [
+          {
+            "attack": -32768,
+            "selected_offset": 0
+          },
+          {
+            "attack": 89,
+            "selected_offset": 0
+          },
+          {
+            "attack": 90,
+            "selected_offset": 6
+          },
+          {
+            "attack": 1000,
+            "selected_offset": 6
+          },
+          {
+            "attack": 2000,
+            "selected_offset": 6
+          },
+          {
+            "attack": 32767,
+            "selected_offset": 6
+          }
+        ]
+      }
+    },
     "opcode_30_script_343": {
       "scene_id": 39,
       "arguments": [
