@@ -2686,6 +2686,23 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         -1, 0, -32768,
     )
 
+    opcode_54_occurrences: list[tuple[int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 54:
+                opcode_54_occurrences.append((script_id, program_counter))
+            program_counter += WIDTHS[opcode]
+    assert opcode_54_occurrences == [(821, 145)]
+    opcode_54_stream = b"".join(
+        struct.pack("<II", *row) for row in opcode_54_occurrences
+    )
+    open_scene_conditions = [0] * 84
+    for scene, condition in ((2, 2), (38, 2), (75, 1), (80, 1)):
+        open_scene_conditions[scene] = condition
+
     random_state = (0x41C64E6D + 0x3039) & 0xFFFFFFFF
     random_talk_id = 2547 + (((random_state >> 16) & 0x7FFF) % 18)
 
@@ -3045,6 +3062,25 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 {"item_110_absent": True, "talk_id": 1575},
                 {"slot": 100, "item": -1, "count": 32767, "query": -1, "talk_id": 1574},
             ],
+        },
+        "opcode_54_open_all_scenes": {
+            "entry_range": "0x30094..0x300D9",
+            "size_bytes": 69,
+            "instruction_count": 14,
+            "occurrences": len(opcode_54_occurrences),
+            "positions": [list(row) for row in opcode_54_occurrences],
+            "stream_encoding": "little_endian_<II:script,pc>",
+            "stream_sha256": sha256(opcode_54_stream),
+            "scene_count": 84,
+            "record_bytes": 52,
+            "cleared_word": "entrance_condition",
+            "initial_sentinel": 777,
+            "zero_scene_count": 80,
+            "special_conditions": {"2": 2, "38": 2, "75": 1, "80": 1},
+            "result_stream_encoding": "little_endian_<84h>",
+            "result_stream_sha256": sha256(struct.pack("<84h", *open_scene_conditions)),
+            "return_value": 0,
+            "program_counter_increment": 1,
         },
         "opcode_55_script_464": {
             "arguments": list(script_464[28:33]),

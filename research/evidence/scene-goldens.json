@@ -8032,6 +8032,35 @@
           }
         ]
       },
+      "opcode_54_open_all_scenes": {
+        "entry_range": "0x30094..0x300D9",
+        "size_bytes": 69,
+        "instruction_count": 14,
+        "occurrences": 1,
+        "positions": [
+          [
+            821,
+            145
+          ]
+        ],
+        "stream_encoding": "little_endian_<II:script,pc>",
+        "stream_sha256": "0e2d7c1475a48b05d9f2c47d7bb245f87d23a929f9e38a51bb9234298d77f4d5",
+        "scene_count": 84,
+        "record_bytes": 52,
+        "cleared_word": "entrance_condition",
+        "initial_sentinel": 777,
+        "zero_scene_count": 80,
+        "special_conditions": {
+          "2": 2,
+          "38": 2,
+          "75": 1,
+          "80": 1
+        },
+        "result_stream_encoding": "little_endian_<84h>",
+        "result_stream_sha256": "0ab5bc8a2f315a8c30460744a7cbc42329873810f9d4082c97c327c292335745",
+        "return_value": 0,
+        "program_counter_increment": 1
+      },
       "opcode_55_script_464": {
         "arguments": [
           55,

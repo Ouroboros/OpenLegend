@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=212/349`，`unique_any=168/284`，`unique_all=161/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=77` 开放进入所有场景；状态为等待`audit_order=76` 显示当前个人声望指数工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=77` 收口后进入同表 `audit_order=78` 场景事件字段条件跳转
+已发布进度：`closure=213/349`，`unique_any=169/284`，`unique_all=162/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=78` 场景事件字段条件跳转；状态为等待`audit_order=77` 开放进入所有场景工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=78` 收口后进入同表 `audit_order=79` 增加主角声望并检查十四天书事件
 
 ## 0. 唯一正确性真值
 

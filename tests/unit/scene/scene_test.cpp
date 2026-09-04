@@ -4263,20 +4263,18 @@ void check_event_open_all_scenes(const std::filesystem::path& root) {
         }
     }
     OL_CHECK(result.kind == SceneStepKind::stay);
-    OL_CHECK(snapshot.ranger.scenes[0].word(
-                 openlegend::model::scene_metadata_word::entrance_condition) == 0);
-    OL_CHECK(snapshot.ranger.scenes[2].word(
-                 openlegend::model::scene_metadata_word::entrance_condition) == 2);
-    OL_CHECK(snapshot.ranger.scenes[38].word(
-                 openlegend::model::scene_metadata_word::entrance_condition) == 2);
-    OL_CHECK(snapshot.ranger.scenes[75].word(
-                 openlegend::model::scene_metadata_word::entrance_condition) == 1);
-    OL_CHECK(snapshot.ranger.scenes[80].word(
-                 openlegend::model::scene_metadata_word::entrance_condition) == 1);
     OL_CHECK(snapshot.ranger.scenes.size() == openlegend::model::kSceneMetadataCount);
     OL_CHECK(snapshot.ranger.scenes.size() == 84U);
-    OL_CHECK(snapshot.ranger.scenes[83].word(
-                 openlegend::model::scene_metadata_word::entrance_condition) == 0);
+    for (std::size_t scene = 0; scene < snapshot.ranger.scenes.size(); ++scene) {
+        std::int16_t expected = 0;
+        if (scene == 2U || scene == 38U) {
+            expected = 2;
+        } else if (scene == 75U || scene == 80U) {
+            expected = 1;
+        }
+        OL_CHECK(snapshot.ranger.scenes[scene].word(
+                     openlegend::model::scene_metadata_word::entrance_condition) == expected);
+    }
 }
 
 void check_event_clear_party_mp(const std::filesystem::path& root) {
