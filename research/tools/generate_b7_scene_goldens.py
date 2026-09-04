@@ -5960,6 +5960,25 @@ def main() -> None:
     opcode_62_script_stream = struct.pack(f"<{len(script_1017)}h", *script_1017)
     opcode_62_raw = (root / "Z.DAT").read_bytes()[0x2A581:0x2A638]
     assert len(opcode_62_raw) == 183
+    opcode_63_occurrences: list[tuple[int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 63:
+                opcode_63_occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 3])
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_63_occurrences == [(289, 107, 36, 2)]
+    opcode_63_stream = b"".join(
+        struct.pack("<II2h", *row) for row in opcode_63_occurrences
+    )
+    script_289 = words(scripts[289])
+    opcode_63_script_stream = struct.pack(f"<{len(script_289)}h", *script_289)
+    opcode_63_raw = (root / "Z.DAT").read_bytes()[0x2AC84:0x2ACA6]
+    assert len(opcode_63_raw) == 34
 
     opcode_58_occurrences: list[tuple[int, int]] = []
     for script_id, payload in enumerate(scripts):
@@ -6343,6 +6362,34 @@ def main() -> None:
                 "transfer": "call_sub_30C3D_noreturn",
                 "frames": opcode_62_script_1017,
                 "ending": ending_sequence(root),
+            },
+            "opcode_63_role_sexual_write": {
+                "entry_range": "0x31284..0x312a6",
+                "size_bytes": 34,
+                "instruction_count": 6,
+                "raw_function_offset": "0x2ac84",
+                "raw_function_sha256": sha256(opcode_63_raw),
+                "stack_probe_bytes": 4,
+                "occurrences": len(opcode_63_occurrences),
+                "positions": [list(row) for row in opcode_63_occurrences],
+                "call_stream_encoding": "little_endian_<II2h:script,pc,role,value>",
+                "call_stream_sha256": sha256(opcode_63_stream),
+                "script_289_sha256": sha256(opcode_63_script_stream),
+                "parameters": ["role_id", "value"],
+                "role_record_bytes": 182,
+                "role_record_words": 91,
+                "write_byte_offset": 28,
+                "write_word_offset": 14,
+                "write_field": "sexual",
+                "write_value": "low16_of_sign_extended_argument",
+                "old_value_read": False,
+                "bounds_check": False,
+                "return_value": 1,
+                "caller_uses_return": False,
+                "program_counter_increment": 3,
+                "legal_write": {"role": 36, "before": 0, "after": 2},
+                "value_vectors": [-32768, 0, 2, 32767],
+                "invalid_role_behavior": "undefined_machine_access_modern_guard",
             },
             "opcode_58_script_936": {
                 "entry_range": "0x302E0..0x30480",

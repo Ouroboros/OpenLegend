@@ -5910,6 +5910,53 @@
         "wait_key_count": 2
       }
     },
+    "opcode_63_role_sexual_write": {
+      "entry_range": "0x31284..0x312a6",
+      "size_bytes": 34,
+      "instruction_count": 6,
+      "raw_function_offset": "0x2ac84",
+      "raw_function_sha256": "48bbf62ff4dfb1627ead50e1200d66d0005434348aea081a9efd4ea19e01ffde",
+      "stack_probe_bytes": 4,
+      "occurrences": 1,
+      "positions": [
+        [
+          289,
+          107,
+          36,
+          2
+        ]
+      ],
+      "call_stream_encoding": "little_endian_<II2h:script,pc,role,value>",
+      "call_stream_sha256": "a7554cc7164559be88b236dfcf6b92d76e2cb60678f6fe857d71d6e8d5d744f2",
+      "script_289_sha256": "c191d39636c89da677c8e221d7e1df3be20ef390a7f9991612e2bc27aa387c4b",
+      "parameters": [
+        "role_id",
+        "value"
+      ],
+      "role_record_bytes": 182,
+      "role_record_words": 91,
+      "write_byte_offset": 28,
+      "write_word_offset": 14,
+      "write_field": "sexual",
+      "write_value": "low16_of_sign_extended_argument",
+      "old_value_read": false,
+      "bounds_check": false,
+      "return_value": 1,
+      "caller_uses_return": false,
+      "program_counter_increment": 3,
+      "legal_write": {
+        "role": 36,
+        "before": 0,
+        "after": 2
+      },
+      "value_vectors": [
+        -32768,
+        0,
+        2,
+        32767
+      ],
+      "invalid_role_behavior": "undefined_machine_access_modern_guard"
+    },
     "opcode_58_script_936": {
       "entry_range": "0x302E0..0x30480",
       "size_bytes": 416,

@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=223/349`，`unique_any=179/284`，`unique_all=170/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=90` 角色字段写入；状态为等待`audit_order=87` 结局双图片同步动画工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=90` 收口后进入同表 `audit_order=91` 场景商店购买流程
+已发布进度：`closure=224/349`，`unique_any=180/284`，`unique_all=171/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=91` 场景商店购买流程；状态为等待`audit_order=90` 角色字段写入工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=91` 收口后进入同表 `audit_order=92` 商店随机刷新
 
 ## 0. 唯一正确性真值
 

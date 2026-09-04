@@ -2833,10 +2833,14 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     auto role_snapshot = load_baseline(root);
     auto& role = role_snapshot.ranger.roles[36];
     role.set_word(openlegend::model::role_word::sexual, 0);
+    role.set_word(openlegend::model::role_word::level, 123);
+    role_snapshot.ranger.roles[35].set_word(openlegend::model::role_word::sexual, -123);
     role.set_word(openlegend::model::role_word::taking_item_begin, 78);
     role.set_word(openlegend::model::role_word::taking_item_count_begin, -1);
     OL_CHECK(run_role_script(role_snapshot) == SceneStepKind::stay);
     OL_CHECK(role.word(openlegend::model::role_word::sexual) == 2);
+    OL_CHECK(role.word(openlegend::model::role_word::level) == 123);
+    OL_CHECK(role_snapshot.ranger.roles[35].word(openlegend::model::role_word::sexual) == -123);
     OL_CHECK(role.word(openlegend::model::role_word::magic_id_begin) == 60);
     OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin) == 100);
     OL_CHECK(role.word(openlegend::model::role_word::taking_item_begin) == 78);
