@@ -1485,11 +1485,18 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 3;
             break;
         case 50: {
-            bool all = true;
-            for (std::size_t index = 1U; index <= 5U; ++index) {
-                all = all && inventory_contains_id(argument(index));
+            std::array<bool, 5> found{};
+            for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+                for (std::size_t index = 0U; index < found.size(); ++index) {
+                    if (snapshot_.ranger.header.inventory_item(slot).value ==
+                        argument(index + 1U)) {
+                        found[index] = true;
+                    }
+                }
             }
-            conditional(all, 8U, argument(6), argument(7));
+            conditional(
+                std::all_of(found.begin(), found.end(), [](const bool value) { return value; }),
+                8U, argument(6), argument(7));
             break;
         }
         case 51:

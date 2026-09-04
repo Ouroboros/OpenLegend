@@ -321,6 +321,21 @@ public:
                 for (const auto value : arguments[script - 101U]) {
                     append_i16(group, value);
                 }
+            } else if (script >= 105U && script <= 107U) {
+                constexpr std::array<std::array<std::int16_t, 5>, 3> item_ids{{
+                    {110, 111, 112, 113, 114},
+                    {110, 110, 110, 110, 110},
+                    {-1, -1, -1, -1, -1}}};
+                append_i16(group, 50);
+                for (const auto value : item_ids[script - 105U]) {
+                    append_i16(group, value);
+                }
+                append_i16(group, 0);
+                append_i16(group, 4);
+                for (const auto word :
+                     std::array<std::int16_t, 8>{1, 1574, 0, 0, 1, 1575, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -5181,6 +5196,40 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(104, 0, 0, 0).kind == SceneStepKind::stay);
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+    }
+
+    const auto run_five_item_condition = [&synthetic_root](
+                                             openlegend::model::GameSnapshot& snapshot,
+                                             const std::int16_t script) {
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        const auto result = session.begin_event(script, 0, 0, 0);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        return result.talk_id;
+    };
+    {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < 5U; ++index) {
+            snapshot.ranger.header.set_inventory(
+                index, openlegend::model::ItemId{static_cast<std::int16_t>(110 + index)}, 0);
+        }
+        OL_CHECK(run_five_item_condition(snapshot, 105) == 1574);
+        snapshot.ranger.header.set_inventory(4U, openlegend::model::ItemId{1}, 32767);
+        OL_CHECK(run_five_item_condition(snapshot, 105) == 1575);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kInventoryCount; ++index) {
+            snapshot.ranger.header.set_inventory(index, openlegend::model::ItemId{1}, 0);
+        }
+        snapshot.ranger.header.set_inventory(
+            openlegend::model::kInventoryCount - 1U,
+            openlegend::model::ItemId{110}, -32768);
+        OL_CHECK(run_five_item_condition(snapshot, 106) == 1574);
+        snapshot.ranger.header.set_inventory(
+            openlegend::model::kInventoryCount - 1U,
+            openlegend::model::ItemId{-1}, 0);
+        OL_CHECK(run_five_item_condition(snapshot, 107) == 1574);
     }
 
     for (const auto [event_1, expected_event_1] :

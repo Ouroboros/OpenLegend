@@ -12118,6 +12118,107 @@
           }
         ]
       },
+      "opcode_50_five_item_presence_condition": {
+        "entry_range": "0x2FEDF..0x2FF87",
+        "size_bytes": 168,
+        "instruction_count": 57,
+        "occurrences": 1,
+        "stream_encoding": "little_endian_<IIhhhhhhh:script,pc,item1,item2,item3,item4,item5,true_offset,false_offset>",
+        "stream_sha256": "8e3d5db592bf2544c322c1a43af196237d6b5de14481fcd12d7af95204e1744f",
+        "positions": [
+          [
+            676,
+            0,
+            138,
+            139,
+            140,
+            141,
+            142,
+            6,
+            0
+          ]
+        ],
+        "inventory_slots": 200,
+        "slot_stride_bytes": 4,
+        "read_field": "item_id_only",
+        "count_field": "never_read",
+        "scan": "all_200_slots_times_all_5_arguments_without_short_circuit",
+        "found_flags": "five_independent_latched_flags",
+        "duplicate_arguments": "one_matching_slot_can_set_multiple_flags",
+        "comparison": "signed_int16_exact_equality_including_minus_one",
+        "return": "true_offset_if_all_five_flags_equal_one_else_false_offset",
+        "program_counter": "add_8_words_then_add_signed_returned_offset",
+        "baseline_case": {
+          "item_ids": [
+            138,
+            139,
+            140,
+            141,
+            142
+          ],
+          "found": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "selected_offset": 0
+        },
+        "synthetic_cases": [
+          {
+            "name": "five_distinct_ids_with_zero_counts",
+            "counts": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "found": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "selected_offset": 0
+          },
+          {
+            "name": "fifth_id_missing",
+            "found": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "selected_offset": 4
+          },
+          {
+            "name": "five_duplicate_arguments_one_matching_slot_negative_count",
+            "found": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "selected_offset": 0
+          },
+          {
+            "name": "five_minus_one_arguments_one_matching_slot",
+            "found": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "selected_offset": 0
+          }
+        ]
+      },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",
         "size_bytes": 457,

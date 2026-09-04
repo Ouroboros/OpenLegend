@@ -4990,6 +4990,78 @@ def status_notice_vectors(
         ],
     }
 
+    opcode_50_occurrences: list[tuple[int, ...]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        pc = 0
+        while code[pc] != -1:
+            opcode = code[pc]
+            if opcode == 50:
+                opcode_50_occurrences.append((script_id, pc, *code[pc + 1:pc + 8]))
+            pc += WIDTHS[opcode]
+    assert opcode_50_occurrences == [
+        (676, 0, 138, 139, 140, 141, 142, 6, 0)
+    ]
+    opcode_50_stream = b"".join(
+        struct.pack("<IIhhhhhhh", *row) for row in opcode_50_occurrences
+    )
+    baseline_inventory = [
+        struct.unpack_from("<hh", ranger, 36 + slot * 4)
+        for slot in range(200)
+    ]
+    item_ids = list(opcode_50_occurrences[0][2:7])
+    baseline_found = [
+        any(stored_id == wanted for stored_id, _ in baseline_inventory)
+        for wanted in item_ids
+    ]
+    output["opcode_50_five_item_presence_condition"] = {
+        "entry_range": "0x2FEDF..0x2FF87",
+        "size_bytes": 168,
+        "instruction_count": 57,
+        "occurrences": len(opcode_50_occurrences),
+        "stream_encoding": "little_endian_<IIhhhhhhh:script,pc,item1,item2,item3,item4,item5,true_offset,false_offset>",
+        "stream_sha256": sha256(opcode_50_stream),
+        "positions": [list(row) for row in opcode_50_occurrences],
+        "inventory_slots": 200,
+        "slot_stride_bytes": 4,
+        "read_field": "item_id_only",
+        "count_field": "never_read",
+        "scan": "all_200_slots_times_all_5_arguments_without_short_circuit",
+        "found_flags": "five_independent_latched_flags",
+        "duplicate_arguments": "one_matching_slot_can_set_multiple_flags",
+        "comparison": "signed_int16_exact_equality_including_minus_one",
+        "return": "true_offset_if_all_five_flags_equal_one_else_false_offset",
+        "program_counter": "add_8_words_then_add_signed_returned_offset",
+        "baseline_case": {
+            "item_ids": item_ids,
+            "found": baseline_found,
+            "selected_offset": 6 if all(baseline_found) else 0,
+        },
+        "synthetic_cases": [
+            {
+                "name": "five_distinct_ids_with_zero_counts",
+                "counts": [0, 0, 0, 0, 0],
+                "found": [True, True, True, True, True],
+                "selected_offset": 0,
+            },
+            {
+                "name": "fifth_id_missing",
+                "found": [True, True, True, True, False],
+                "selected_offset": 4,
+            },
+            {
+                "name": "five_duplicate_arguments_one_matching_slot_negative_count",
+                "found": [True, True, True, True, True],
+                "selected_offset": 0,
+            },
+            {
+                "name": "five_minus_one_arguments_one_matching_slot",
+                "found": [True, True, True, True, True],
+                "selected_offset": 0,
+            },
+        ],
+    }
+
     opcode_2_occurrences: list[dict[str, int | str]] = []
     for script_id, payload in enumerate(scripts):
         code = words(payload)
