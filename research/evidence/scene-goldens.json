@@ -7215,7 +7215,47 @@
       }
     },
     "opcode_65_script_939": {
+      "entry_range": "0x31945..0x31c2f",
+      "size_bytes": 746,
+      "instruction_count": 285,
+      "raw_function_offset": "0x2b345",
+      "raw_function_sha256": "b0f8f6498d790ade1f8b52e8c363ec4c32b1c319049d330a9fa0942a72c2406a",
+      "loaded_function_sha256": "1b5fb963b4274567cf6ff1224b73706423387e352b5b622e3734c59335558340",
+      "function_relocations": [
+        [
+          "0x31951",
+          "0xb295e",
+          "0xd295e"
+        ],
+        [
+          "0x31b55",
+          "0x11931",
+          "0x31931"
+        ]
+      ],
+      "normalized_loaded_equals_raw": true,
+      "jump_table_range": "0x31931..0x31945",
+      "jump_table_raw_offset": "0x2b331",
+      "jump_table_raw_sha256": "b63a08266599de359eaed2d0d5a8be693d1ea871effe611a38ad6dbb7d06c4db",
+      "jump_table_loaded_sha256": "9a96d10e9c2dc9033495b7ee2c3eee401221b7611ec7517dae0a8b4dfd9cc06b",
+      "jump_table_relocations": 5,
+      "jump_table_targets": [
+        "0x31b59",
+        "0x31b84",
+        "0x31bac",
+        "0x31bd4",
+        "0x31bfc"
+      ],
+      "stack_probe_argument": 56,
       "script_id": 939,
+      "script_words": [
+        65,
+        -1
+      ],
+      "script_stream_sha256": "eb86f522c70e4a0e4d6e6a643a77935b555f9cb8345e2333b958ed38e5de17f7",
+      "program_counter_increment": 1,
+      "return_value": 1,
+      "caller_uses_return": false,
       "hide_cases": [
         {
           "scene": 0,
@@ -7273,12 +7313,282 @@
         -1,
         -1
       ],
-      "seed_1_random_value": 3,
-      "activated_target": [
-        60,
-        16
+      "hide_preserved_fields": [
+        "picture_delay",
+        "x",
+        "y"
       ],
-      "activated_fields": [
+      "hide_machine_callsite_count": 10,
+      "hide_case_argument_count": 16,
+      "hide_argument_stream_encoding": "little_endian_<13h>",
+      "hide_argument_stream_sha256": "99473be7aad0c8e4e00fe61bec16d884de30f6c5709e25d89c4ac902c26bd39f",
+      "hide_arguments": [
+        [
+          -2,
+          16,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          17,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          18,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          14,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          15,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          16,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          20,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          21,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          22,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          16,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          17,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          18,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          9,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          10,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          11,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          -2,
+          12,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -2,
+          -2,
+          -2
+        ]
+      ],
+      "random_bound": 5,
+      "random_calls": 1,
+      "activation_targets": [
+        [
+          1,
+          16
+        ],
+        [
+          3,
+          14
+        ],
+        [
+          40,
+          20
+        ],
+        [
+          60,
+          16
+        ],
+        [
+          61,
+          9
+        ]
+      ],
+      "activation_fields": [
         1,
         1,
         938,
@@ -7287,7 +7597,332 @@
         8256,
         8256,
         8256
+      ],
+      "activation_preserved_fields": [
+        "picture_delay",
+        "x",
+        "y"
+      ],
+      "activation_argument_stream_encoding": "little_endian_<13h>",
+      "activation_argument_stream_sha256": "c21f23a413e70ecef0d8efb7d1e53ee0a071055ba26791a59adf539507599ce0",
+      "activation_arguments": [
+        [
+          1,
+          16,
+          1,
+          1,
+          938,
+          -1,
+          -1,
+          8256,
+          8256,
+          8256,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          3,
+          14,
+          1,
+          1,
+          938,
+          -1,
+          -1,
+          8256,
+          8256,
+          8256,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          40,
+          20,
+          1,
+          1,
+          938,
+          -1,
+          -1,
+          8256,
+          8256,
+          8256,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          60,
+          16,
+          1,
+          1,
+          938,
+          -1,
+          -1,
+          8256,
+          8256,
+          8256,
+          -2,
+          -2,
+          -2
+        ],
+        [
+          61,
+          9,
+          1,
+          1,
+          938,
+          -1,
+          -1,
+          8256,
+          8256,
+          8256,
+          -2,
+          -2,
+          -2
+        ]
+      ],
+      "seed_vectors": [
+        {
+          "seed": 0,
+          "state": 12345,
+          "raw_random": 0,
+          "value": 0,
+          "target": [
+            1,
+            16
+          ]
+        },
+        {
+          "seed": 6,
+          "state": 2326136519,
+          "raw_random": 2726,
+          "value": 1,
+          "target": [
+            3,
+            14
+          ]
+        },
+        {
+          "seed": 3,
+          "state": 3310558080,
+          "raw_random": 17747,
+          "value": 2,
+          "target": [
+            40,
+            20
+          ]
+        },
+        {
+          "seed": 1,
+          "state": 1103527590,
+          "raw_random": 16838,
+          "value": 3,
+          "target": [
+            60,
+            16
+          ]
+        },
+        {
+          "seed": 7,
+          "state": 3429651764,
+          "raw_random": 19564,
+          "value": 4,
+          "target": [
+            61,
+            9
+          ]
+        }
       ]
+    },
+    "opcode_66_music": {
+      "entry_range": "0x31c2f..0x31c4a",
+      "size_bytes": 27,
+      "instruction_count": 6,
+      "raw_function_offset": "0x2b62f",
+      "raw_function_sha256": "a089c3d1d8b6a2d7513d1916723bff9856ae0bffa043afcffe37188b616081ca",
+      "relocation_count": 0,
+      "loaded_equals_raw": true,
+      "stack_probe_argument": 8,
+      "occurrences": 1,
+      "positions": [
+        [
+          531,
+          26,
+          9
+        ]
+      ],
+      "call_stream_encoding": "little_endian_<IIh:script,pc,music_id>",
+      "call_stream_sha256": "0ef94f5d19631b8f5b643be16a63bd609b9a5b2d3e8d7c5a3f248b33177e1769",
+      "script_531_sha256": "6e203fe9ed597f8fc2c89a3f52f760f114a59574ae829caf258b4a28dea04ff3",
+      "parameter": "signed_int16_music_id",
+      "callee": "sub_3e1b2(music_id)",
+      "program_counter_increment": 2,
+      "return_value": 1,
+      "caller_uses_return": false,
+      "modern_command": [
+        "music",
+        9,
+        true
+      ]
+    },
+    "opcode_67_wave": {
+      "entry_range": "0x31c4a..0x31c75",
+      "size_bytes": 43,
+      "instruction_count": 11,
+      "raw_function_offset": "0x2b64a",
+      "raw_function_sha256": "ee262a1f420f5d1fb0b01699e355c8fa1d506441fbc16ae60bc27b2239ec60c9",
+      "relocation_count": 0,
+      "loaded_equals_raw": true,
+      "stack_probe_argument": 12,
+      "occurrences": 20,
+      "positions": [
+        [
+          389,
+          0,
+          22
+        ],
+        [
+          484,
+          279,
+          21
+        ],
+        [
+          486,
+          0,
+          21
+        ],
+        [
+          691,
+          44,
+          24
+        ],
+        [
+          1001,
+          27,
+          23
+        ],
+        [
+          1002,
+          27,
+          23
+        ],
+        [
+          1003,
+          27,
+          23
+        ],
+        [
+          1004,
+          27,
+          23
+        ],
+        [
+          1005,
+          27,
+          23
+        ],
+        [
+          1006,
+          27,
+          23
+        ],
+        [
+          1007,
+          27,
+          23
+        ],
+        [
+          1008,
+          27,
+          23
+        ],
+        [
+          1009,
+          27,
+          23
+        ],
+        [
+          1010,
+          27,
+          23
+        ],
+        [
+          1011,
+          27,
+          23
+        ],
+        [
+          1012,
+          27,
+          23
+        ],
+        [
+          1013,
+          27,
+          23
+        ],
+        [
+          1014,
+          27,
+          23
+        ],
+        [
+          1015,
+          453,
+          23
+        ],
+        [
+          1015,
+          854,
+          23
+        ]
+      ],
+      "call_stream_encoding": "little_endian_<IIh:script,pc,wave_id>",
+      "call_stream_sha256": "ffeb229bacc242612d3cb763bcf7b51b43de577a3b4ccb38dc3af49fccfe3050",
+      "script_sha256": {
+        "389": "c26999181644dc7e98e32767e2990a24fb2bef87e87ea0376d4194552b473709",
+        "484": "27b5d846e1c2fb64ad18310f85964f1ef6eb6c74e4470154af12bd3c8de6d485",
+        "486": "dc76f7c884ff9413b4f090196b32de8f20e9e3f337e5321c38097261d3bb2de1",
+        "691": "25d951834ce4a1b9f9bbd4893480667fe5df6d24e12991656fe02b3fd23876d9",
+        "1001": "5dabeeabec59dbb785a1662e686de8b8ad91e06d935f6c756858cc609340b97e",
+        "1002": "6157baa2705bad48bece554f1ac961628b7a60c2f3e5266d430642151ce6ef12",
+        "1003": "757339a36ac19eb4d7e893d2d3c111927c4de3f33c652aac240020131ff69b99",
+        "1004": "3ecc540c3ff285bf595faa423b3d3c82b6f8b70db96fd8495f08c2687d495cd6",
+        "1005": "85ca0ebf5e9cace2fee4d75be85a281822a26676b6a27af92847d27111531937",
+        "1006": "d99016175bcdd8f791e049ef9a85f0b05688f664b0dd094505db715d91dad646",
+        "1007": "9defbf65d864cb8c5ca625d73d926c5a919d62dd7acb662ea897d7228e9bd98a",
+        "1008": "50477f697936bd901f38a4d982e05e69233f2d18aed6cd84de87d3e6f4da442f",
+        "1009": "42ba6ee42aba94cd3a780ef0892b58035c220a4f97337d0184d9993a34221bae",
+        "1010": "7a3d16387eec674cd462bc7a00f7f1ad34e4bea92e3d39ca9d914461b3f0ef1c",
+        "1011": "e61aad19594016ac13f499e9b42c977416aff2b9a34c77ece45ed78ae01632b7",
+        "1012": "852e51ac99351f24fa9cdf28f80631f320e7146c911b47cb7dd6a71b03089e5c",
+        "1013": "8e35a59e98089a80c195ba9d6a15b45ce961bb0a7bb811fbfcc19cde3547bfc1",
+        "1014": "103c3f2b5b61e0dfcee44a203943e50b83a14f956c37c3952d0c5ab212d4e8df",
+        "1015": "2e05a23e6447cc7c8bea66412befeaa26ef1a0cf8e333ddb9f34d289e11cbf2d"
+      },
+      "wave_ids": {
+        "21": 2,
+        "22": 1,
+        "23": 16,
+        "24": 1
+      },
+      "parameter": "signed_int16_wave_id",
+      "machine_calls": [
+        "sub_3e2e2(1,wave_id)",
+        "sub_3e288(1,wave_id)"
+      ],
+      "call_order": "load_then_dispatch",
+      "program_counter_increment": 2,
+      "return_value": 1,
+      "caller_uses_return": false,
+      "modern_command_ids": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "load_failure_policy": "modern_controller_short_circuits_dispatch"
     },
     "basic_helper_vectors": {
       "opcode_19_and_40_script_235": {

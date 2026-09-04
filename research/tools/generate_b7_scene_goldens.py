@@ -6213,6 +6213,85 @@ def main() -> None:
         {"scene": 60, "events": [16, 17, 18]},
         {"scene": 61, "events": [9, 10, 11, 12]},
     ]
+    merchant_targets = [(1, 16), (3, 14), (40, 20), (60, 16), (61, 9)]
+    opcode_65_raw = z_dat[0x2B345:0x2B62F]
+    assert len(opcode_65_raw) == 746
+    opcode_65_jump_table_raw = z_dat[0x2B331:0x2B345]
+    opcode_65_jump_table_loaded = struct.pack(
+        "<5I", 0x31B59, 0x31B84, 0x31BAC, 0x31BD4, 0x31BFC
+    )
+    assert [
+        loaded - raw
+        for loaded, raw in zip(
+            struct.unpack("<5I", opcode_65_jump_table_loaded),
+            struct.unpack("<5I", opcode_65_jump_table_raw),
+        )
+    ] == [0x20000] * 5
+    opcode_65_script_stream = struct.pack("<2h", *script_939)
+    merchant_hide_arguments = [
+        [-2, event, 0, 0, -1, -1, -1, -1, -1, -1, -2, -2, -2]
+        for case in merchant_hide_cases[1:]
+        for event in case["events"]
+    ]
+    merchant_activation_arguments = [
+        [scene, event, 1, 1, 938, -1, -1, 8256, 8256, 8256, -2, -2, -2]
+        for scene, event in merchant_targets
+    ]
+    merchant_hide_argument_stream = b"".join(
+        struct.pack("<13h", *arguments) for arguments in merchant_hide_arguments
+    )
+    merchant_activation_argument_stream = b"".join(
+        struct.pack("<13h", *arguments) for arguments in merchant_activation_arguments
+    )
+    merchant_seed_vectors = []
+    for seed in (0, 6, 3, 1, 7):
+        state = (seed * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
+        raw_random = (state >> 16) & 0x7FFF
+        value = raw_random % 5
+        merchant_seed_vectors.append({
+            "seed": seed,
+            "state": state,
+            "raw_random": raw_random,
+            "value": value,
+            "target": list(merchant_targets[value]),
+        })
+    assert [vector["value"] for vector in merchant_seed_vectors] == list(range(5))
+
+    opcode_audio_occurrences: dict[int, list[tuple[int, int, int]]] = {66: [], 67: []}
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode in opcode_audio_occurrences:
+                opcode_audio_occurrences[opcode].append(
+                    (script_id, program_counter, code[program_counter + 1])
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_audio_occurrences[66] == [(531, 26, 9)]
+    assert opcode_audio_occurrences[67] == [
+        (389, 0, 22),
+        (484, 279, 21),
+        (486, 0, 21),
+        (691, 44, 24),
+        *((script_id, 27, 23) for script_id in range(1001, 1015)),
+        (1015, 453, 23),
+        (1015, 854, 23),
+    ]
+    opcode_66_raw = z_dat[0x2B62F:0x2B64A]
+    opcode_67_raw = z_dat[0x2B64A:0x2B675]
+    assert len(opcode_66_raw) == 27
+    assert len(opcode_67_raw) == 43
+    opcode_audio_streams = {
+        opcode: b"".join(
+            struct.pack("<IIh", *row) for row in opcode_audio_occurrences[opcode]
+        )
+        for opcode in (66, 67)
+    }
+    opcode_67_script_hashes = {
+        str(script_id): sha256(scripts[script_id])
+        for script_id in sorted({row[0] for row in opcode_audio_occurrences[67]})
+    }
 
     script_932 = words(scripts[932])
     assert script_932[38] == 59
@@ -6670,12 +6749,96 @@ def main() -> None:
                 "close_event_arguments": shop_close_arguments,
             },
             "opcode_65_script_939": {
+                "entry_range": "0x31945..0x31c2f",
+                "size_bytes": 746,
+                "instruction_count": 285,
+                "raw_function_offset": "0x2b345",
+                "raw_function_sha256": sha256(opcode_65_raw),
+                "loaded_function_sha256": "1b5fb963b4274567cf6ff1224b73706423387e352b5b622e3734c59335558340",
+                "function_relocations": [
+                    ["0x31951", "0xb295e", "0xd295e"],
+                    ["0x31b55", "0x11931", "0x31931"],
+                ],
+                "normalized_loaded_equals_raw": True,
+                "jump_table_range": "0x31931..0x31945",
+                "jump_table_raw_offset": "0x2b331",
+                "jump_table_raw_sha256": sha256(opcode_65_jump_table_raw),
+                "jump_table_loaded_sha256": sha256(opcode_65_jump_table_loaded),
+                "jump_table_relocations": 5,
+                "jump_table_targets": [
+                    "0x31b59", "0x31b84", "0x31bac", "0x31bd4", "0x31bfc",
+                ],
+                "stack_probe_argument": 56,
                 "script_id": 939,
+                "script_words": list(script_939),
+                "script_stream_sha256": sha256(opcode_65_script_stream),
+                "program_counter_increment": 1,
+                "return_value": 1,
+                "caller_uses_return": False,
                 "hide_cases": merchant_hide_cases,
                 "hide_fields": [0, 0, -1, -1, -1, -1, -1, -1],
-                "seed_1_random_value": 3,
-                "activated_target": [60, 16],
-                "activated_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
+                "hide_preserved_fields": ["picture_delay", "x", "y"],
+                "hide_machine_callsite_count": 10,
+                "hide_case_argument_count": len(merchant_hide_arguments),
+                "hide_argument_stream_encoding": "little_endian_<13h>",
+                "hide_argument_stream_sha256": sha256(merchant_hide_argument_stream),
+                "hide_arguments": merchant_hide_arguments,
+                "random_bound": 5,
+                "random_calls": 1,
+                "activation_targets": [list(target) for target in merchant_targets],
+                "activation_fields": [1, 1, 938, -1, -1, 8256, 8256, 8256],
+                "activation_preserved_fields": ["picture_delay", "x", "y"],
+                "activation_argument_stream_encoding": "little_endian_<13h>",
+                "activation_argument_stream_sha256": sha256(
+                    merchant_activation_argument_stream
+                ),
+                "activation_arguments": merchant_activation_arguments,
+                "seed_vectors": merchant_seed_vectors,
+            },
+            "opcode_66_music": {
+                "entry_range": "0x31c2f..0x31c4a",
+                "size_bytes": 27,
+                "instruction_count": 6,
+                "raw_function_offset": "0x2b62f",
+                "raw_function_sha256": sha256(opcode_66_raw),
+                "relocation_count": 0,
+                "loaded_equals_raw": True,
+                "stack_probe_argument": 8,
+                "occurrences": len(opcode_audio_occurrences[66]),
+                "positions": [list(row) for row in opcode_audio_occurrences[66]],
+                "call_stream_encoding": "little_endian_<IIh:script,pc,music_id>",
+                "call_stream_sha256": sha256(opcode_audio_streams[66]),
+                "script_531_sha256": sha256(scripts[531]),
+                "parameter": "signed_int16_music_id",
+                "callee": "sub_3e1b2(music_id)",
+                "program_counter_increment": 2,
+                "return_value": 1,
+                "caller_uses_return": False,
+                "modern_command": ["music", 9, True],
+            },
+            "opcode_67_wave": {
+                "entry_range": "0x31c4a..0x31c75",
+                "size_bytes": 43,
+                "instruction_count": 11,
+                "raw_function_offset": "0x2b64a",
+                "raw_function_sha256": sha256(opcode_67_raw),
+                "relocation_count": 0,
+                "loaded_equals_raw": True,
+                "stack_probe_argument": 12,
+                "occurrences": len(opcode_audio_occurrences[67]),
+                "positions": [list(row) for row in opcode_audio_occurrences[67]],
+                "call_stream_encoding": "little_endian_<IIh:script,pc,wave_id>",
+                "call_stream_sha256": sha256(opcode_audio_streams[67]),
+                "script_sha256": opcode_67_script_hashes,
+                "wave_ids": dict(sorted(Counter(row[2] for row in opcode_audio_occurrences[67]).items())),
+                "parameter": "signed_int16_wave_id",
+                "machine_calls": ["sub_3e2e2(1,wave_id)", "sub_3e288(1,wave_id)"],
+                "call_order": "load_then_dispatch",
+                "program_counter_increment": 2,
+                "return_value": 1,
+                "caller_uses_return": False,
+                "modern_command_ids": [21, 22, 23, 24],
+                "load_failure_policy": "modern_controller_short_circuits_dispatch",
             },
             "basic_helper_vectors": basic_helper_vectors(scripts),
             "main_loop_dispatch_vectors": main_loop_dispatch_vectors(palette_bytes),

@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=225/349`，`unique_any=181/284`，`unique_all=171/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=92` 商店随机刷新；状态为等待`audit_order=91` 场景商店购买工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=92` 收口后进入同表 `audit_order=93` 场景淡出与音乐切换
+已发布进度：`closure=228/349`，`unique_any=184/284`，`unique_all=174/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=97` 对话文本渲染；状态为等待`audit_order=92–94` 商店刷新与场景音频工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=97` 收口后进入同表 `audit_order=98` 场景战斗入口
 
 ## 0. 唯一正确性真值
 
@@ -285,6 +285,8 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 ### B7 · 场景、事件与对话
 
 范围：`scene`
+
+当前状态：`scene-event-closure.tsv` 93/100已完成最终汇编→C++ REVIEW；`audit_order=92–94`商店刷新、音乐切换与音效播放已收敛并通过双oracle和Linux app Debug 14/14，下一工作包为`audit_order=97`对话文本渲染。
 
 交付：
 

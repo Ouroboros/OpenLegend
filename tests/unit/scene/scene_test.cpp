@@ -2869,6 +2869,41 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
               std::vector<openlegend::scene::SceneAudioCommand>{
                   {openlegend::scene::SceneAudioCommand::Kind::wave, 22}}));
 
+    auto wave_21_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom wave_21_random{1U};
+    openlegend::scene::SceneSession wave_21_session{
+        data_root, wave_21_snapshot, wave_21_random, 53};
+    const auto wave_21_result = wave_21_session.begin_event(486, 0, 0, 0);
+    OL_CHECK(wave_21_result.kind == SceneStepKind::dialogue);
+    OL_CHECK(wave_21_result.talk_id == 1688);
+    OL_CHECK((wave_21_session.take_audio_commands() ==
+              std::vector<openlegend::scene::SceneAudioCommand>{
+                  {openlegend::scene::SceneAudioCommand::Kind::wave, 21}}));
+
+    auto wave_24_snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom wave_24_random{1U};
+    openlegend::scene::SceneSession wave_24_session{
+        data_root, wave_24_snapshot, wave_24_random, 53};
+    auto wave_24_result = wave_24_session.begin_event(691, 0, 0, 0);
+    OL_CHECK(wave_24_result.kind == SceneStepKind::dialogue);
+    OL_CHECK(wave_24_result.talk_id == 2520);
+    auto wave_24_commands = wave_24_session.take_audio_commands();
+    for (int step = 0; step < 128 && wave_24_commands.empty(); ++step) {
+        OL_CHECK(
+            wave_24_result.kind == SceneStepKind::dialogue ||
+            wave_24_result.kind == SceneStepKind::notice ||
+            wave_24_result.kind == SceneStepKind::present ||
+            wave_24_result.kind == SceneStepKind::fade_from_black ||
+            wave_24_result.kind == SceneStepKind::fade_to_black ||
+            wave_24_result.kind == SceneStepKind::scene_title ||
+            wave_24_result.kind == SceneStepKind::wait_key);
+        wave_24_result = wave_24_session.resume(SceneResponse::acknowledge);
+        wave_24_commands = wave_24_session.take_audio_commands();
+    }
+    OL_CHECK((wave_24_commands ==
+              std::vector<openlegend::scene::SceneAudioCommand>{
+                  {openlegend::scene::SceneAudioCommand::Kind::wave, 24}}));
+
     auto music_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom music_random{1U};
     openlegend::scene::SceneSession music_session{
@@ -3181,6 +3216,59 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
                          60U, 16U,
                          static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
                      activated[field]);
+        }
+    }
+
+    struct ActivationVector {
+        std::uint32_t seed;
+        std::uint32_t expected_state;
+        std::int16_t scene;
+        std::int16_t event;
+    };
+    constexpr std::array<ActivationVector, 5> activation_vectors{
+        ActivationVector{0U, 0x00003039U, 1, 16},
+        {6U, 0x8AA606C7U, 3, 14},
+        {3U, 0xC5531B80U, 40, 20},
+        {1U, 0x41C67EA6U, 60, 16},
+        {7U, 0xCC6C5534U, 61, 9},
+    };
+    constexpr std::array<std::pair<std::int16_t, std::int16_t>, 5> activation_targets{
+        std::pair<std::int16_t, std::int16_t>{1, 16},
+        {3, 14},
+        {40, 20},
+        {60, 16},
+        {61, 9},
+    };
+    constexpr std::array<std::int16_t, 11> activated_fields{
+        1, 1, 938, -1, -1, 8256, 8256, 8256, 777, 777, 777};
+    constexpr std::array<std::int16_t, 11> unchanged_fields{
+        777, 777, 777, 777, 777, 777, 777, 777, 777, 777, 777};
+    for (const auto& vector : activation_vectors) {
+        auto snapshot = load_baseline(root);
+        for (const auto& [scene, event] : activation_targets) {
+            for (std::size_t field = 0U; field < unchanged_fields.size(); ++field) {
+                OL_CHECK(snapshot.set_event_value(
+                    scene,
+                    event,
+                    static_cast<openlegend::model::SceneEventField>(field),
+                    unchanged_fields[field]));
+            }
+        }
+        openlegend::random::LegacyRandom random{vector.seed};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 0};
+        OL_CHECK(session.begin_event(939, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(random.state() == vector.expected_state);
+        for (const auto& [scene, event] : activation_targets) {
+            const auto& expected = scene == vector.scene && event == vector.event
+                                       ? activated_fields
+                                       : unchanged_fields;
+            for (std::size_t field = 0U; field < expected.size(); ++field) {
+                OL_CHECK(snapshot.event_value(
+                             scene,
+                             event,
+                             static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
+                         expected[field]);
+            }
         }
     }
 }
