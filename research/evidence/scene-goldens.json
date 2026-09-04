@@ -12267,6 +12267,60 @@
         "modern_error_boundary": "structured_load_error_before_session_creation",
         "modern_archive_ownership": "eager_100_scene_snapshot"
       },
+      "scene_archive_swap_open_machine": {
+        "entry_range": "0x294ad..0x29537",
+        "size_bytes": 138,
+        "instruction_count": 31,
+        "raw_function_offset": "0x22ead",
+        "raw_function_sha256": "681ba97e73a71589325a5a018220a9b3b9b4b43fa42baf71234c859b5ea55a64",
+        "loaded_function_sha256": "71b4746ff7ced935dd90ec73b04166ecec75db870ef8af3c5a660da06b2da85a",
+        "relocation_count": 9,
+        "relocation_delta": 131072,
+        "normalized_loaded_equals_raw": true,
+        "direct_callers": [
+          "0x2e45e",
+          "0x2f886"
+        ],
+        "index_file": "ALLSIN.IDX",
+        "working_group_file": "ALLSINBK.GRP",
+        "index_cache_tag": 2,
+        "record_bytes": 49152,
+        "group_open_mode": 514,
+        "scene_argument": "current_scene_id",
+        "shared_read_tail": {
+          "entry_range": "0x294a2..0x294ad",
+          "size_bytes": 11,
+          "raw_sha256": "b93e580b123be58ae74c29ccffef9f2438eef3d618de1cc4ca00c6de6ef0a3ae",
+          "read_then_jump_to_shared_close": true
+        },
+        "shared_close_tail": {
+          "entry_range": "0x295c2..0x295d0",
+          "size_bytes": 14,
+          "raw_sha256": "ebe39eaf5fad2b9dd012622ca937bf6d848a262b66cf239ef16b4d65840e3ab6",
+          "close_then_return": true
+        },
+        "caller_result": "ignored",
+        "modern_archive_ownership": "direct_target_span_preserves_active_scene"
+      },
+      "scene_archive_swap_restore_vector": {
+        "active_scene": 70,
+        "target_scene": 69,
+        "layer": 1,
+        "coordinate": [
+          2,
+          3
+        ],
+        "linear_tile": 194,
+        "target_before": 0,
+        "target_after": 456,
+        "target_map_before_sha256": "e188bd216554d4ae36c329369743965dc958e8c987a6c9334a08f62a74266081",
+        "target_map_after_sha256": "aee401a9fbb153f45be883497508be3b89c2d1ebb23b16d6d04171e69be6b751",
+        "active_map_before_sha256": "db153483bb5d0d062021df1bc9bc46be8df5e01a2280fca0374c9244d02c7f88",
+        "active_map_after_reload_sha256": "db153483bb5d0d062021df1bc9bc46be8df5e01a2280fca0374c9244d02c7f88",
+        "current_asset_external_opcode17_calls": 28,
+        "current_asset_external_opcode38_calls": 0,
+        "opcode38_external_path": "synthetic_regression_only"
+      },
       "working_archive_assets": {
         "scene_count": 100,
         "allsin_index_sha256": "6d35d9c9b233cd389261d58ca2f17d4f12f6dba1f429ac8ff6217ce3b10ab94a",
@@ -12336,7 +12390,9 @@
       "event_cell_count": 12,
       "external_mutation_counts": {
         "event": 311,
-        "map": 0
+        "map": 0,
+        "map_write": 28,
+        "map_replace": 0
       },
       "external_event_script_436": {
         "arguments": [

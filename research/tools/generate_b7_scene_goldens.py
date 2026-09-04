@@ -3722,8 +3722,12 @@ def scene_archive_state_vectors(
     scripts: list[bytes],
 ) -> dict[str, object]:
     scene_archives_open_raw = z_dat[0x22D91:0x22EAD]
+    shared_map_read_close_tail_raw = z_dat[0x22EA2:0x22EAD]
+    scene_archive_swap_open_raw = z_dat[0x22EAD:0x22F37]
     shared_close_tail_raw = z_dat[0x22FC2:0x22FD0]
     assert len(scene_archives_open_raw) == 284
+    assert len(shared_map_read_close_tail_raw) == 11
+    assert len(scene_archive_swap_open_raw) == 138
     assert len(shared_close_tail_raw) == 14
     allsin_index = (root / "ALLSIN.IDX").read_bytes()
     allsinbk_index = (root / "ALLSINBK.IDX").read_bytes()
@@ -3746,6 +3750,7 @@ def scene_archive_state_vectors(
         3, 7, 6, 0, 0, -1, -1, -1, -1, -1, -1, 0, -2, -2
     )
     external_event_mutations = 0
+    external_map_writes = 0
     external_map_mutations = 0
     for payload in scripts:
         script = words(payload)
@@ -3757,11 +3762,29 @@ def scene_archive_state_vectors(
             assert index + width <= len(script)
             if opcode == 3 and script[index + 1] != -2:
                 external_event_mutations += 1
+            if opcode == 17 and script[index + 1] != -2:
+                external_map_writes += 1
             if opcode == 38 and script[index + 1] != -2:
                 external_map_mutations += 1
             index += width
     assert external_event_mutations == 311
+    assert external_map_writes == 28
     assert external_map_mutations == 0
+    synthetic_target_scene = 69
+    synthetic_active_scene = 70
+    synthetic_layer = 1
+    synthetic_x = 2
+    synthetic_y = 3
+    synthetic_value = 456
+    synthetic_linear_tile = synthetic_y * 64 + synthetic_x
+    synthetic_word_offset = (synthetic_layer * 4096 + synthetic_linear_tile) * 2
+    synthetic_target_after = bytearray(scene_maps[synthetic_target_scene])
+    synthetic_target_before = struct.unpack_from(
+        "<h", synthetic_target_after, synthetic_word_offset
+    )[0]
+    struct.pack_into(
+        "<h", synthetic_target_after, synthetic_word_offset, synthetic_value
+    )
     event_before = list(words(scene_events[7])[6 * 11:7 * 11])
     event_after = event_before.copy()
     for field, value in enumerate(script_436[3:14]):
@@ -3802,6 +3825,54 @@ def scene_archive_state_vectors(
             "index_open_failure": "print_original_message_then_fatal_exit",
             "modern_error_boundary": "structured_load_error_before_session_creation",
             "modern_archive_ownership": "eager_100_scene_snapshot",
+        },
+        "scene_archive_swap_open_machine": {
+            "entry_range": "0x294ad..0x29537",
+            "size_bytes": len(scene_archive_swap_open_raw),
+            "instruction_count": 31,
+            "raw_function_offset": "0x22ead",
+            "raw_function_sha256": sha256(scene_archive_swap_open_raw),
+            "loaded_function_sha256": "71b4746ff7ced935dd90ec73b04166ecec75db870ef8af3c5a660da06b2da85a",
+            "relocation_count": 9,
+            "relocation_delta": 0x20000,
+            "normalized_loaded_equals_raw": True,
+            "direct_callers": ["0x2e45e", "0x2f886"],
+            "index_file": "ALLSIN.IDX",
+            "working_group_file": "ALLSINBK.GRP",
+            "index_cache_tag": 2,
+            "record_bytes": 49_152,
+            "group_open_mode": 0x202,
+            "scene_argument": "current_scene_id",
+            "shared_read_tail": {
+                "entry_range": "0x294a2..0x294ad",
+                "size_bytes": len(shared_map_read_close_tail_raw),
+                "raw_sha256": sha256(shared_map_read_close_tail_raw),
+                "read_then_jump_to_shared_close": True,
+            },
+            "shared_close_tail": {
+                "entry_range": "0x295c2..0x295d0",
+                "size_bytes": len(shared_close_tail_raw),
+                "raw_sha256": sha256(shared_close_tail_raw),
+                "close_then_return": True,
+            },
+            "caller_result": "ignored",
+            "modern_archive_ownership": "direct_target_span_preserves_active_scene",
+        },
+        "scene_archive_swap_restore_vector": {
+            "active_scene": synthetic_active_scene,
+            "target_scene": synthetic_target_scene,
+            "layer": synthetic_layer,
+            "coordinate": [synthetic_x, synthetic_y],
+            "linear_tile": synthetic_linear_tile,
+            "target_before": synthetic_target_before,
+            "target_after": synthetic_value,
+            "target_map_before_sha256": sha256(scene_maps[synthetic_target_scene]),
+            "target_map_after_sha256": sha256(bytes(synthetic_target_after)),
+            "active_map_before_sha256": sha256(scene_maps[synthetic_active_scene]),
+            "active_map_after_reload_sha256": sha256(scene_maps[synthetic_active_scene]),
+            "current_asset_external_opcode17_calls": external_map_writes,
+            "current_asset_external_opcode38_calls": external_map_mutations,
+            "opcode38_external_path": "synthetic_regression_only",
         },
         "working_archive_assets": {
             "scene_count": 100,
@@ -3848,6 +3919,8 @@ def scene_archive_state_vectors(
         "external_mutation_counts": {
             "event": external_event_mutations,
             "map": external_map_mutations,
+            "map_write": external_map_writes,
+            "map_replace": external_map_mutations,
         },
         "external_event_script_436": {
             "arguments": list(script_436[:14]),
