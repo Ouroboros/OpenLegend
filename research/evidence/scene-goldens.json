@@ -11147,6 +11147,196 @@
         ],
         "synthetic_visible_frame_hashes_sha256": "a0386afac0565c3002f5b51d53f9a9b4325ddc4681e50d2458a5cefb8603b89d"
       },
+      "opcode_45_role_speed_panel": {
+        "entry_range": "0x2FAB7..0x2FBC0",
+        "size_bytes": 265,
+        "instruction_count": 67,
+        "occurrences": 3,
+        "stream_encoding": "little_endian_<IIhh:script,pc,role_id,delta>",
+        "stream_sha256": "6f4b605be4790b2b6b9da4ffa8f57a41adce87dd59248efc5cdfa28291518bf3",
+        "positions": [
+          [
+            484,
+            179,
+            53,
+            30
+          ],
+          [
+            536,
+            200,
+            49,
+            20
+          ],
+          [
+            581,
+            40,
+            49,
+            20
+          ]
+        ],
+        "written_role_word": "speed",
+        "written_word_index": 44,
+        "arithmetic": "signed_int16_wrapping_add_then_signed_clamp_0_100",
+        "notice_condition": "clamped_after_greater_than_original_before",
+        "notice_gain": "clamped_after_minus_original_before",
+        "message_format_hex": "257320bbb4a55cbc57a55b20256400",
+        "message_format_cp950": "%s 輕功增加 %d",
+        "panel_layout_length": "role_name_bytes_plus_10_excluding_decimal_gain_digits",
+        "notice_background": "preserve_caller_framebuffer",
+        "colors": [
+          5,
+          7
+        ],
+        "return_value": 0,
+        "program_counter_increment": 3,
+        "baseline_single_call_notices": [
+          {
+            "script": 484,
+            "pc": 179,
+            "delta": 30,
+            "before": 38,
+            "after": 68,
+            "notice": true,
+            "role_id": 53,
+            "role_name_hex": "ac71c541",
+            "gain": 30,
+            "text_hex": "ac71c54120bbb4a55cbc57a55b20333000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xca05da16dedc9e31"
+          },
+          {
+            "script": 536,
+            "pc": 200,
+            "delta": 20,
+            "before": 30,
+            "after": 50,
+            "notice": true,
+            "role_id": 49,
+            "role_name_hex": "b5eaa6cb",
+            "gain": 20,
+            "text_hex": "b5eaa6cb20bbb4a55cbc57a55b20323000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xafb2996c4455f825"
+          },
+          {
+            "script": 581,
+            "pc": 40,
+            "delta": 20,
+            "before": 30,
+            "after": 50,
+            "notice": true,
+            "role_id": 49,
+            "role_name_hex": "b5eaa6cb",
+            "gain": 20,
+            "text_hex": "b5eaa6cb20bbb4a55cbc57a55b20323000",
+            "layout_length": 14,
+            "panel": [
+              70,
+              40,
+              180,
+              27
+            ],
+            "text_position": [
+              80,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0xafb2996c4455f825"
+          }
+        ],
+        "synthetic_cases": [
+          {
+            "before": 32767,
+            "delta": 1,
+            "after": 0,
+            "notice": false
+          },
+          {
+            "before": -32768,
+            "delta": -1,
+            "after": 100,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 32868,
+            "text_hex": "ae7da470ab4c20bbb4a55cbc57a55b20333238363800",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x4b693c807a3f6ee2"
+          },
+          {
+            "before": -1,
+            "delta": 0,
+            "after": 0,
+            "notice": true,
+            "role_id": 0,
+            "role_name_hex": "ae7da470ab4c",
+            "gain": 1,
+            "text_hex": "ae7da470ab4c20bbb4a55cbc57a55b203100",
+            "layout_length": 16,
+            "panel": [
+              62,
+              40,
+              196,
+              27
+            ],
+            "text_position": [
+              72,
+              45
+            ],
+            "colors": [
+              5,
+              7
+            ],
+            "frame_fnv1a64": "0x112ab8f9e491ec4d"
+          }
+        ],
+        "synthetic_visible_frame_hashes_sha256": "cb35e133337fd40c1560d9bfc197a18250a2af872cebb4b467b0a21cad83bd32"
+      },
       "opcode_2_item_add": {
         "entry_range": "0x2D678..0x2D841",
         "size_bytes": 457,

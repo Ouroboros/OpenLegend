@@ -286,6 +286,13 @@ public:
                 for (const auto value : arguments[script - 78U]) {
                     append_i16(group, value);
                 }
+            } else if (script >= 82U && script <= 85U) {
+                constexpr std::array<std::array<std::int16_t, 2>, 4> arguments{{
+                    {0, 1}, {0, -1}, {0, 0}, {-1, 1}}};
+                append_i16(group, 45);
+                for (const auto value : arguments[script - 82U]) {
+                    append_i16(group, value);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4492,6 +4499,9 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
         0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xBEU, 0xC7U,
         0xB7U, 0x7CU, 0x20U, 0xA4U, 0xD1U, 0xA4U, 0x73U,
         0xA4U, 0xBBU, 0xB6U, 0xA7U, 0xB4U, 0x78U, 0x00U};
+    constexpr std::array<std::uint8_t, 17> expected_speed_notice{
+        0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xBBU, 0xB4U, 0xA5U, 0x5CU,
+        0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x31U, 0x30U, 0x00U};
     auto join_snapshot = load_baseline(root);
     for (std::size_t slot = 1U; slot < openlegend::model::kTeamMemberCount; ++slot) {
         join_snapshot.ranger.header.set_team_member(slot, openlegend::model::CharacterId{-1});
@@ -4529,6 +4539,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     auto join_result = join_session.begin_event(581, 0, 44, 29);
     bool expect_notice_restore = false;
     bool saw_learn_notice = false;
+    bool saw_speed_notice = false;
     for (int step = 0; step < 128 && join_result.kind != openlegend::scene::SceneStepKind::stay;
          ++step) {
         if (expect_notice_restore) {
@@ -4540,6 +4551,14 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
                 join_session.pending_text().begin(), join_session.pending_text().end(),
                 expected_learn_notice.begin())) {
             saw_learn_notice = true;
+        }
+        if (join_result.kind == openlegend::scene::SceneStepKind::notice &&
+            join_session.pending_text().size() == expected_speed_notice.size() &&
+            std::equal(
+                join_session.pending_text().begin(), join_session.pending_text().end(),
+                expected_speed_notice.begin())) {
+            OL_CHECK(join_result.style == -3);
+            saw_speed_notice = true;
         }
         expect_notice_restore = join_result.kind == openlegend::scene::SceneStepKind::notice;
         const auto resumable = join_result.kind == openlegend::scene::SceneStepKind::dialogue ||
@@ -4555,6 +4574,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     }
     OL_CHECK(!expect_notice_restore);
     OL_CHECK(saw_learn_notice);
+    OL_CHECK(saw_speed_notice);
     OL_CHECK(join_result.kind == openlegend::scene::SceneStepKind::stay);
     OL_CHECK(join_snapshot.ranger.header.team_member(1U).value == 49);
     OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_mp) == 1200);
@@ -4919,6 +4939,41 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         result = session.resume(SceneResponse::acknowledge);
         OL_CHECK(result.kind == SceneStepKind::present && session.player_frame() == 202);
         OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    }
+
+    for (const auto [script, before, after, notice, frame_hash] :
+         std::array<
+             std::tuple<std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
+             3>{
+             std::tuple<
+                 std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>{
+                 82, 32767, 0, false, 0},
+             {83, -32768, 100, true, 0x4B693C807A3F6EE2ULL},
+             {84, -1, 0, true, 0x112AB8F9E491EC4DULL}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(openlegend::model::role_word::speed, before);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render(framebuffer));
+        const auto result = session.begin_event(script, 0, 0, 0);
+        OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::speed) == after);
+        OL_CHECK(result.kind ==
+                 (notice ? SceneStepKind::notice : SceneStepKind::stay));
+        if (notice) {
+            OL_CHECK(result.style == -3);
+            OL_CHECK(session.render(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+        }
+    }
+    {
+        auto snapshot = load_baseline(root);
+        const auto before = snapshot.ranger.roles[0].bytes;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        OL_CHECK(session.begin_event(85, 0, 0, 0).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 
     for (const auto [event_1, expected_event_1] :

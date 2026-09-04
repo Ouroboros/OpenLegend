@@ -60,6 +60,8 @@ constexpr std::array<std::uint8_t, 6> kLearnMagicNoticeInfix{
     0x20U, 0xBEU, 0xC7U, 0xB7U, 0x7CU, 0x20U};
 constexpr std::array<std::uint8_t, 10> kRoleIqNoticeInfix{
     0x20U, 0xB8U, 0xEAU, 0xBDU, 0xE8U, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
+constexpr std::array<std::uint8_t, 10> kRoleSpeedNoticeInfix{
+    0x20U, 0xBBU, 0xB4U, 0xA5U, 0x5CU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
 constexpr std::int16_t kItemNoticeStyle = -1;
 constexpr std::int16_t kLearnMagicNoticeStyle = -2;
 constexpr std::int16_t kRoleIqNoticeStyle = -3;
@@ -1313,15 +1315,17 @@ SceneStepResult SceneSession::run_event() {
                 const auto after = clamped_add(before, argument(2), 0, 100);
                 role.set_word(field, after);
                 if (after > before) {
-                    if (opcode == 34) {
+                    if (opcode == 34 || opcode == 45) {
                         std::vector<std::uint8_t> text;
                         const auto name_begin =
                             role.bytes.begin() +
                             static_cast<std::ptrdiff_t>(model::role_word::name_byte);
                         text.insert(
                             text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
-                        text.insert(
-                            text.end(), kRoleIqNoticeInfix.begin(), kRoleIqNoticeInfix.end());
+                        const auto infix = opcode == 34
+                                               ? std::span<const std::uint8_t>{kRoleIqNoticeInfix}
+                                               : std::span<const std::uint8_t>{kRoleSpeedNoticeInfix};
+                        text.insert(text.end(), infix.begin(), infix.end());
                         const auto gain = std::to_string(
                             static_cast<int>(after) - static_cast<int>(before));
                         text.insert(text.end(), gain.begin(), gain.end());
