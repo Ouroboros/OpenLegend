@@ -7186,21 +7186,82 @@
           }
         ]
       },
-      "opcode_38_script_434": {
-        "arguments": [
+      "opcode_38_scene_layer_replace": {
+        "entry_range": "0x2F721..0x2F890",
+        "size_bytes": 367,
+        "instruction_count": 105,
+        "occurrences": 3,
+        "stream_encoding": "little_endian_<IIhhhh:script,pc,scene,layer,old,new>",
+        "stream_sha256": "543f15968ca9914ad3068245bf950fe5e3983cc27df7299e5b5cc4aae46e9e48",
+        "positions": [
+          [
+            416,
+            11,
+            -2,
+            0,
+            994,
+            990
+          ],
+          [
+            432,
+            84,
+            -2,
+            0,
+            990,
+            994
+          ],
+          [
+            434,
+            0,
+            -2,
+            0,
+            990,
+            994
+          ]
+        ],
+        "all_real_targets_current_scene": true,
+        "all_real_layers": [
+          0
+        ],
+        "current_scene_sentinel": -2,
+        "layer_words": 4096,
+        "scene_bytes": 49152,
+        "match_rule": "signed_int16_exact_equality",
+        "replacement_rule": "replace_every_matching_word",
+        "program_counter_increment": 5,
+        "script_434_arguments": [
           38,
           -2,
           0,
           990,
           994
         ],
-        "changed_indices": [
-          0,
-          63,
-          4095
-        ],
-        "unchanged_index": 64,
-        "unchanged_value": 123
+        "current_scene_vector": {
+          "changed_indices": [
+            0,
+            63,
+            4095
+          ],
+          "unchanged_index": 64,
+          "unchanged_value": 123
+        },
+        "external_scene_vector": {
+          "session_scene": 70,
+          "target_scene": 7,
+          "layer": 5,
+          "old": 123,
+          "new": -32768,
+          "changed_indices": [
+            0,
+            63,
+            64,
+            4095
+          ],
+          "unchanged_index": 65,
+          "unchanged_value": 124,
+          "session_scene_matching_value_after": 123
+        },
+        "external_scene_architecture": "direct_snapshot_span_replaces_flush_read_modify_write_reload_work_archive"
       },
       "opcode_39_script_420": {
         "arguments": [

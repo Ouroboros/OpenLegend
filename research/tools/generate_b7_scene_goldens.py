@@ -2527,6 +2527,33 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIh", *row) for row in opcode_37_occurrences
     )
 
+    opcode_38_occurrences: list[tuple[int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 38:
+                opcode_38_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                        code[program_counter + 3],
+                        code[program_counter + 4],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_38_occurrences == [
+        (416, 11, -2, 0, 994, 990),
+        (432, 84, -2, 0, 990, 994),
+        (434, 0, -2, 0, 990, 994),
+    ]
+    opcode_38_stream = b"".join(
+        struct.pack("<IIhhhh", *row) for row in opcode_38_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2684,11 +2711,40 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
                 )
             ],
         },
-        "opcode_38_script_434": {
-            "arguments": list(script_434[:5]),
-            "changed_indices": [0, 63, 4095],
-            "unchanged_index": 64,
-            "unchanged_value": 123,
+        "opcode_38_scene_layer_replace": {
+            "entry_range": "0x2F721..0x2F890",
+            "size_bytes": 367,
+            "instruction_count": 105,
+            "occurrences": len(opcode_38_occurrences),
+            "stream_encoding": "little_endian_<IIhhhh:script,pc,scene,layer,old,new>",
+            "stream_sha256": sha256(opcode_38_stream),
+            "positions": [list(row) for row in opcode_38_occurrences],
+            "all_real_targets_current_scene": True,
+            "all_real_layers": [0],
+            "current_scene_sentinel": -2,
+            "layer_words": 4096,
+            "scene_bytes": 49152,
+            "match_rule": "signed_int16_exact_equality",
+            "replacement_rule": "replace_every_matching_word",
+            "program_counter_increment": 5,
+            "script_434_arguments": list(script_434[:5]),
+            "current_scene_vector": {
+                "changed_indices": [0, 63, 4095],
+                "unchanged_index": 64,
+                "unchanged_value": 123,
+            },
+            "external_scene_vector": {
+                "session_scene": 70,
+                "target_scene": 7,
+                "layer": 5,
+                "old": 123,
+                "new": -32768,
+                "changed_indices": [0, 63, 64, 4095],
+                "unchanged_index": 65,
+                "unchanged_value": 124,
+                "session_scene_matching_value_after": 123,
+            },
+            "external_scene_architecture": "direct_snapshot_span_replaces_flush_read_modify_write_reload_work_archive",
         },
         "opcode_39_script_420": {
             "arguments": list(script_420[24:26]),
