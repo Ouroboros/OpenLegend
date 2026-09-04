@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=219/349`，`unique_any=175/284`，`unique_all=167/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=84` 终局离队与三十六处事件清理；状态为等待`audit_order=83` 武林大会轮间角色恢复工作包提交、push、TG与规则重读后开始机器码独立审计
-下一任务指针：`audit_order=84` 收口后进入同表 `audit_order=85` 当前事件图片条件跳转
+已发布进度：`closure=220/349`，`unique_any=176/284`，`unique_all=168/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=85` 当前事件图片条件跳转；状态为等待`audit_order=84` 终局离队与三十六处事件清理工作包提交、push、TG与规则重读后开始机器码独立审计
+下一任务指针：`audit_order=85` 收口后进入同表 `audit_order=86` 十四处事件图片全齐条件
 
 ## 0. 唯一正确性真值
 

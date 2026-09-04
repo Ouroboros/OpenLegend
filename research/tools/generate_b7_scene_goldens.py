@@ -6051,6 +6051,18 @@ def main() -> None:
         [18, 0], [18, 1], [69, 0], [69, 1], [45, 0], [52, 2],
         [42, 6], [42, 7], [8, 8], [7, 6], [80, 1],
     ]
+    opcode_59_raw = z_dat[0x29F59:0x2A45A]
+    assert len(opcode_59_raw) == 1281
+    opcode_59_event_arguments = [
+        target + [0, 0, -1, -1, -1, -1, -1, -1, 0, -2, -2]
+        for target in opcode_59_targets
+    ]
+    opcode_59_event_stream = b"".join(
+        struct.pack("<13h", *arguments) for arguments in opcode_59_event_arguments
+    )
+    opcode_59_script_stream = struct.pack(
+        f"<{len(script_932)}h", *script_932
+    )
 
     output = {
         "format": 1,
@@ -6349,12 +6361,46 @@ def main() -> None:
                 root, frame, palette, scripts, ranger
             ),
             "opcode_59_script_932": {
+                "entry_range": "0x30559..0x30a5a",
+                "size_bytes": 1281,
+                "instruction_count": 557,
+                "raw_function_offset": "0x29f59",
+                "raw_function_sha256": sha256(opcode_59_raw),
+                "stack_probe_bytes": 60,
                 "script_id": 932,
                 "program_counter": 38,
+                "occurrences": 1,
+                "script_word_count": len(script_932),
+                "script_word_stream_sha256": sha256(opcode_59_script_stream),
+                "program_counter_increment_after_completion": 1,
+                "machine_return_value": 1,
+                "caller_uses_return_value": False,
                 "party_source_indices": [6, 5, 4, 3, 2, 1],
+                "party_sources": [
+                    ["inventory_item", 0], ["team_member", 5],
+                    ["team_member", 4], ["team_member", 3],
+                    ["team_member", 2], ["team_member", 1],
+                ],
                 "index_6_source": "inventory_item_0",
+                "role_comparison": "signed_int16_greater_than_0",
+                "read_each_source_after_previous_delegated_removal": True,
+                "delegated_leave_role_entry": "0x2e078",
+                "event_argument_count": len(opcode_59_event_arguments),
+                "event_argument_stream_encoding": "little_endian_<13h>",
+                "event_argument_stream_sha256": sha256(opcode_59_event_stream),
+                "event_arguments": opcode_59_event_arguments,
                 "disabled_event_fields": [0, 0, -1, -1, -1, -1, -1, -1, 0],
+                "preserved_event_fields": ["x", "y"],
+                "delegated_modify_event_entry": "0x2d841",
                 "targets": opcode_59_targets,
+                "side_effect_vector": {
+                    "team_before": [0, 1, 2, 3, 4, 5],
+                    "inventory_item_0": 6,
+                    "delegated_role_order": [6, 5, 4, 3, 2, 1],
+                    "team_after": [0, -1, -1, -1, -1, -1],
+                    "protagonist_unchanged": True,
+                    "unlisted_events_unchanged": True,
+                },
             },
         },
         "scene_render_buffer_preservation": {
