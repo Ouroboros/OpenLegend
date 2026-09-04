@@ -2052,12 +2052,13 @@ bool SceneSession::party_contains(const std::int16_t role_id) const noexcept {
 }
 
 bool SceneSession::inventory_contains_id(const std::int16_t item_id) const noexcept {
+    bool found = false;
     for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
         if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
-            return true;
+            found = true;
         }
     }
-    return false;
+    return found;
 }
 
 std::optional<std::int16_t> SceneSession::first_inventory_count(

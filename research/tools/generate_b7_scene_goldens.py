@@ -2635,6 +2635,28 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
         struct.pack("<IIhh", *row) for row in opcode_42_occurrences
     )
 
+    opcode_43_occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 43:
+                opcode_43_occurrences.append(
+                    (
+                        script_id,
+                        program_counter,
+                        code[program_counter + 1],
+                        code[program_counter + 2],
+                        code[program_counter + 3],
+                    )
+                )
+            program_counter += WIDTHS[opcode]
+    assert len(opcode_43_occurrences) == 5
+    opcode_43_stream = b"".join(
+        struct.pack("<IIhhh", *row) for row in opcode_43_occurrences
+    )
+
     def write_magic_slot(
         ids: list[int], levels: list[int], slot: int, magic: int, level: int
     ) -> tuple[list[int], list[int], int]:
@@ -2995,6 +3017,33 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
             "cases": [
                 {"female_present": False, "talk_id": 1575},
                 {"female_present": True, "last_party_slot": -1, "talk_id": 1574},
+            ],
+        },
+        "opcode_43_inventory_id": {
+            "entry_range": "0x2F9B5..0x2F9F2",
+            "size_bytes": 61,
+            "instruction_count": 21,
+            "occurrences": len(opcode_43_occurrences),
+            "stream_encoding": "little_endian_<IIhhh:script,pc,item,true_offset,false_offset>",
+            "stream_sha256": sha256(opcode_43_stream),
+            "positions": [list(row) for row in opcode_43_occurrences],
+            "inventory_slots_scanned": 200,
+            "slot_stride_bytes": 4,
+            "scan_short_circuits": False,
+            "comparison": "signed_item_id_equals_argument",
+            "count_is_read": False,
+            "true_return": "second_argument_signed_offset",
+            "false_return": "third_argument_signed_offset",
+            "program_counter_formula": "old_pc + 4 + returned_signed_offset",
+            "script_636_arguments": list(words(scripts[636])[:4]),
+            "real_vectors": [
+                {"slot": 0, "item": 110, "count": 0, "talk_id": 2381},
+                {"slot": 0, "item": -1, "query": 110, "talk_id": 2380},
+            ],
+            "synthetic_vectors": [
+                {"slot": 199, "item": 110, "count": -32768, "talk_id": 1574},
+                {"item_110_absent": True, "talk_id": 1575},
+                {"slot": 100, "item": -1, "count": 32767, "query": -1, "talk_id": 1574},
             ],
         },
         "opcode_55_script_464": {

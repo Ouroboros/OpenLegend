@@ -270,6 +270,12 @@ public:
                      std::array<std::int16_t, 11>{42, 0, 4, 1, 1574, 0, 0, 1, 1575, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script == 76U || script == 77U) {
+                for (const auto word : std::array<std::int16_t, 12>{
+                         43, script == 76U ? std::int16_t{110} : std::int16_t{-1},
+                         0, 4, 1, 1574, 0, 0, 1, 1575, 0, 0}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -4823,6 +4829,46 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         snapshot.ranger.roles[0].set_word(openlegend::model::role_word::sexual, 1);
         snapshot.ranger.header.set_team_member(5U, openlegend::model::CharacterId{32767});
         const auto result = run_female_condition(snapshot);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == 1574);
+    }
+
+    const auto run_inventory_condition = [&synthetic_root](
+                                             openlegend::model::GameSnapshot& snapshot,
+                                             const std::int16_t script) {
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
+        return session.begin_event(script, 0, 0, 0);
+    };
+    {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kInventoryCount; ++index) {
+            snapshot.ranger.header.set_inventory(
+                index, openlegend::model::ItemId{1}, static_cast<std::int16_t>(index));
+        }
+        snapshot.ranger.header.set_inventory(
+            openlegend::model::kInventoryCount - 1U,
+            openlegend::model::ItemId{110}, -32768);
+        const auto result = run_inventory_condition(snapshot, 76);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == 1574);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kInventoryCount; ++index) {
+            snapshot.ranger.header.set_inventory(index, openlegend::model::ItemId{1}, 0);
+        }
+        const auto result = run_inventory_condition(snapshot, 76);
+        OL_CHECK(result.kind == SceneStepKind::dialogue);
+        OL_CHECK(result.talk_id == 1575);
+    }
+    {
+        auto snapshot = load_baseline(root);
+        for (std::size_t index = 0U; index < openlegend::model::kInventoryCount; ++index) {
+            snapshot.ranger.header.set_inventory(index, openlegend::model::ItemId{1}, 0);
+        }
+        snapshot.ranger.header.set_inventory(100U, openlegend::model::ItemId{-1}, 32767);
+        const auto result = run_inventory_condition(snapshot, 77);
         OL_CHECK(result.kind == SceneStepKind::dialogue);
         OL_CHECK(result.talk_id == 1574);
     }

@@ -7798,6 +7798,98 @@
           }
         ]
       },
+      "opcode_43_inventory_id": {
+        "entry_range": "0x2F9B5..0x2F9F2",
+        "size_bytes": 61,
+        "instruction_count": 21,
+        "occurrences": 5,
+        "stream_encoding": "little_endian_<IIhhh:script,pc,item,true_offset,false_offset>",
+        "stream_sha256": "378da76b7261ad81b28c5a584068764b0462a39d547dd82827e4acbaa814e9db",
+        "positions": [
+          [
+            528,
+            94,
+            183,
+            1,
+            0
+          ],
+          [
+            636,
+            0,
+            110,
+            6,
+            0
+          ],
+          [
+            655,
+            12,
+            106,
+            26,
+            0
+          ],
+          [
+            655,
+            22,
+            109,
+            16,
+            0
+          ],
+          [
+            655,
+            32,
+            117,
+            6,
+            0
+          ]
+        ],
+        "inventory_slots_scanned": 200,
+        "slot_stride_bytes": 4,
+        "scan_short_circuits": false,
+        "comparison": "signed_item_id_equals_argument",
+        "count_is_read": false,
+        "true_return": "second_argument_signed_offset",
+        "false_return": "third_argument_signed_offset",
+        "program_counter_formula": "old_pc + 4 + returned_signed_offset",
+        "script_636_arguments": [
+          43,
+          110,
+          6,
+          0
+        ],
+        "real_vectors": [
+          {
+            "slot": 0,
+            "item": 110,
+            "count": 0,
+            "talk_id": 2381
+          },
+          {
+            "slot": 0,
+            "item": -1,
+            "query": 110,
+            "talk_id": 2380
+          }
+        ],
+        "synthetic_vectors": [
+          {
+            "slot": 199,
+            "item": 110,
+            "count": -32768,
+            "talk_id": 1574
+          },
+          {
+            "item_110_absent": true,
+            "talk_id": 1575
+          },
+          {
+            "slot": 100,
+            "item": -1,
+            "count": 32767,
+            "query": -1,
+            "talk_id": 1574
+          }
+        ]
+      },
       "opcode_55_script_464": {
         "arguments": [
           55,
