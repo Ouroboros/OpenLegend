@@ -10604,6 +10604,7 @@
         ],
         "frame_fnv1a64": "0x5678c57a93ec10c4",
         "post_ack_outputs": [
+          "present",
           "stay"
         ]
       },
@@ -10622,6 +10623,23 @@
           "value": 32767,
           "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb0333237363700",
           "frame_fnv1a64": "0x4bf7246d16058dad"
+        }
+      ],
+      "opcode_53_signed_word_boundaries": [
+        {
+          "value": -32768,
+          "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb02d333237363800",
+          "frame_fnv1a64": "0x430d455d1ea59a8d"
+        },
+        {
+          "value": 0,
+          "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb02020203000",
+          "frame_fnv1a64": "0xe16cfc1b1bf9ed80"
+        },
+        {
+          "value": 32767,
+          "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb0333237363700",
+          "frame_fnv1a64": "0x362ea896d68ba3c6"
         }
       ],
       "opcode_33_learn_magic": {

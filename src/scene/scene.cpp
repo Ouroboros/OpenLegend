@@ -1510,9 +1510,7 @@ SceneStepResult SceneSession::run_event() {
             const auto value = snapshot_.ranger.roles.empty() ? 0 : snapshot_.ranger.roles[0].word(field);
             program_counter_ += 1;
             queue_notice(status_notice_message(fame, value), opcode);
-            if (!fame) {
-                queue_scene_present();
-            }
+            queue_scene_present();
             return emit_queued();
         }
         case 54:

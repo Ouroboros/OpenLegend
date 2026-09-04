@@ -4243,21 +4243,24 @@ def status_notice_vectors(
             "text_position": [x + 10, 45],
             "colors": [5, 7],
             "frame_fnv1a64": fnv1a64(pixels),
-            "post_ack_outputs": ["present", "stay"] if opcode == 52 else ["stay"],
+            "post_ack_outputs": ["present", "stay"],
         }
 
-    morality_prefix = bytes.fromhex("a741b27ba662aabaab7ebc77abfcbcc6acb0")
-    output["opcode_52_signed_word_boundaries"] = []
-    for value in (-32768, 0, 32767):
-        text = morality_prefix + f"{value:5d}".encode("ascii") + b"\0"
-        pixels = bytearray(base_frame)
-        panel(pixels, 54, 40, 212, 27)
-        draw_legacy_text(pixels, 64, 45, text, ascii_font, big5_font, 0x05, 0x07)
-        output["opcode_52_signed_word_boundaries"].append({
-            "value": value,
-            "text_hex": text.hex(),
-            "frame_fnv1a64": fnv1a64(pixels),
-        })
+    for opcode, prefix, field_width, x, width in (
+        (52, bytes.fromhex("a741b27ba662aabaab7ebc77abfcbcc6acb0"), 5, 54, 212),
+        (53, bytes.fromhex("a741b27ba662add3a448c16eb1e6abfcbcc6acb0"), 4, 50, 220),
+    ):
+        output[f"opcode_{opcode}_signed_word_boundaries"] = []
+        for value in (-32768, 0, 32767):
+            text = prefix + f"{value:{field_width}d}".encode("ascii") + b"\0"
+            pixels = bytearray(base_frame)
+            panel(pixels, x, 40, width, 27)
+            draw_legacy_text(pixels, x + 10, 45, text, ascii_font, big5_font, 0x05, 0x07)
+            output[f"opcode_{opcode}_signed_word_boundaries"].append({
+                "value": value,
+                "text_hex": text.hex(),
+                "frame_fnv1a64": fnv1a64(pixels),
+            })
 
     opcode_33_occurrences: list[tuple[int, int, int, int, int]] = []
     for script_id, payload in enumerate(scripts):
