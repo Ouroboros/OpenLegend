@@ -15111,6 +15111,133 @@
         "protagonist_unchanged": true,
         "unlisted_events_unchanged": true
       }
+    },
+    "opcode_60_current_picture_condition": {
+      "entry_range": "0x30a5a..0x30b45",
+      "size_bytes": 235,
+      "instruction_count": 61,
+      "raw_function_offset": "0x2a45a",
+      "raw_function_sha256": "e882f2a6d5e6d8e1c7f855c87fb65097fdaf12686e9b95d8a02460e032394688",
+      "stack_probe_bytes": 24,
+      "occurrences": 5,
+      "call_stream_encoding": "little_endian_<II5h:script,pc,scene,event,expected,yes,no>",
+      "call_stream_sha256": "fc934f1236cf8c97588f1680d94d0fbb1b6cf2f17bb91fb6309137b8abfcfd44",
+      "calls": [
+        [
+          491,
+          5,
+          -2,
+          2,
+          6298,
+          1,
+          0
+        ],
+        [
+          530,
+          79,
+          52,
+          3,
+          6310,
+          0,
+          14
+        ],
+        [
+          530,
+          223,
+          -2,
+          23,
+          6298,
+          1,
+          0
+        ],
+        [
+          530,
+          250,
+          -2,
+          24,
+          6314,
+          46,
+          0
+        ],
+        [
+          990,
+          0,
+          80,
+          1,
+          6068,
+          0,
+          21
+        ]
+      ],
+      "parameters": [
+        "scene",
+        "event",
+        "expected_current_picture",
+        "yes_offset",
+        "no_offset"
+      ],
+      "local_scene_sentinel": -2,
+      "event_record_stride_bytes": 22,
+      "compared_word_offset": 10,
+      "compared_field": "current_picture",
+      "comparison": "signed_int16_current_picture_equals_signed_int16_expected",
+      "end_picture_is_read": false,
+      "begin_picture_is_read": false,
+      "return_value": "yes_offset_if_equal_else_no_offset",
+      "program_counter_formula": "old_pc + 6 + signed_return_offset",
+      "external_archive": {
+        "index_file": "ALLDEFBK.IDX",
+        "index_sha256": "99ad387b0ec7790ea684e3d9edf4777b35273703108b1c2ba0d584ddffc51c20",
+        "group_file": "ALLDEFBK.GRP",
+        "group_sha256": "3633122f6a43f0b5dd390c2fa2516766d735a064ca955c8766b73232230a4480",
+        "scene_record_bytes": 4400,
+        "open_seek_read_close": true,
+        "close_on_match": true,
+        "close_on_miss": true,
+        "matches_initial_ALLDEF": true
+      },
+      "current_field_counterexamples": [
+        {
+          "scene": 52,
+          "event": 2,
+          "expected": 6298,
+          "current": 100,
+          "end": 6298,
+          "begin": 6298,
+          "equal": false,
+          "script": 491
+        },
+        {
+          "scene": 52,
+          "event": 2,
+          "expected": 6298,
+          "current": 6298,
+          "end": 100,
+          "begin": 100,
+          "equal": true,
+          "script": 491
+        },
+        {
+          "scene": 80,
+          "event": 1,
+          "expected": 6068,
+          "current": 100,
+          "end": 6068,
+          "begin": 6068,
+          "equal": false,
+          "script": 990
+        },
+        {
+          "scene": 80,
+          "event": 1,
+          "expected": 6068,
+          "current": 6068,
+          "end": 100,
+          "begin": 100,
+          "equal": true,
+          "script": 990
+        }
+      ]
     }
   },
   "scene_render_buffer_preservation": {

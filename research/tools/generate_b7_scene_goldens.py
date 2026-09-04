@@ -6063,6 +6063,33 @@ def main() -> None:
     opcode_59_script_stream = struct.pack(
         f"<{len(script_932)}h", *script_932
     )
+    opcode_60_occurrences: list[tuple[int, int, int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 60:
+                opcode_60_occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 6])
+                )
+            program_counter += WIDTHS[opcode]
+    assert opcode_60_occurrences == [
+        (491, 5, -2, 2, 6298, 1, 0),
+        (530, 79, 52, 3, 6310, 0, 14),
+        (530, 223, -2, 23, 6298, 1, 0),
+        (530, 250, -2, 24, 6314, 46, 0),
+        (990, 0, 80, 1, 6068, 0, 21),
+    ]
+    opcode_60_stream = b"".join(
+        struct.pack("<II5h", *row) for row in opcode_60_occurrences
+    )
+    opcode_60_raw = z_dat[0x2A45A:0x2A545]
+    assert len(opcode_60_raw) == 235
+    alldefbk_index = (root / "ALLDEFBK.IDX").read_bytes()
+    alldefbk_group = (root / "ALLDEFBK.GRP").read_bytes()
+    assert alldefbk_index == (root / "ALLDEF.IDX").read_bytes()
+    assert alldefbk_group == (root / "ALLDEF.GRP").read_bytes()
 
     output = {
         "format": 1,
@@ -6401,6 +6428,64 @@ def main() -> None:
                     "protagonist_unchanged": True,
                     "unlisted_events_unchanged": True,
                 },
+            },
+            "opcode_60_current_picture_condition": {
+                "entry_range": "0x30a5a..0x30b45",
+                "size_bytes": 235,
+                "instruction_count": 61,
+                "raw_function_offset": "0x2a45a",
+                "raw_function_sha256": sha256(opcode_60_raw),
+                "stack_probe_bytes": 24,
+                "occurrences": len(opcode_60_occurrences),
+                "call_stream_encoding": "little_endian_<II5h:script,pc,scene,event,expected,yes,no>",
+                "call_stream_sha256": sha256(opcode_60_stream),
+                "calls": [list(row) for row in opcode_60_occurrences],
+                "parameters": [
+                    "scene", "event", "expected_current_picture",
+                    "yes_offset", "no_offset",
+                ],
+                "local_scene_sentinel": -2,
+                "event_record_stride_bytes": 22,
+                "compared_word_offset": 10,
+                "compared_field": "current_picture",
+                "comparison": "signed_int16_current_picture_equals_signed_int16_expected",
+                "end_picture_is_read": False,
+                "begin_picture_is_read": False,
+                "return_value": "yes_offset_if_equal_else_no_offset",
+                "program_counter_formula": "old_pc + 6 + signed_return_offset",
+                "external_archive": {
+                    "index_file": "ALLDEFBK.IDX",
+                    "index_sha256": sha256(alldefbk_index),
+                    "group_file": "ALLDEFBK.GRP",
+                    "group_sha256": sha256(alldefbk_group),
+                    "scene_record_bytes": 4400,
+                    "open_seek_read_close": True,
+                    "close_on_match": True,
+                    "close_on_miss": True,
+                    "matches_initial_ALLDEF": True,
+                },
+                "current_field_counterexamples": [
+                    {
+                        "scene": 52, "event": 2, "expected": 6298,
+                        "current": 100, "end": 6298, "begin": 6298,
+                        "equal": False, "script": 491,
+                    },
+                    {
+                        "scene": 52, "event": 2, "expected": 6298,
+                        "current": 6298, "end": 100, "begin": 100,
+                        "equal": True, "script": 491,
+                    },
+                    {
+                        "scene": 80, "event": 1, "expected": 6068,
+                        "current": 100, "end": 6068, "begin": 6068,
+                        "equal": False, "script": 990,
+                    },
+                    {
+                        "scene": 80, "event": 1, "expected": 6068,
+                        "current": 6068, "end": 100, "begin": 100,
+                        "equal": True, "script": 990,
+                    },
+                ],
             },
         },
         "scene_render_buffer_preservation": {
