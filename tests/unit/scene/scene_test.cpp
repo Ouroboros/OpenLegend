@@ -156,6 +156,13 @@ public:
                          25, -32768, -32768, -32767, -32767}) {
                     append_i16(group, word);
                 }
+            } else if (script == 23U) {
+                for (const auto word : std::array<std::int16_t, 12>{
+                         27, -2, 32767, 32767,
+                         27, -1, 11, 10,
+                         27, -1, 10, 11}) {
+                    append_i16(group, word);
+                }
             }
             append_i16(group, -1);
             append_u32(index, static_cast<std::uint32_t>(group.size()));
@@ -2013,6 +2020,39 @@ void check_event_picture_animation(const std::filesystem::path& root) {
     }
     OL_CHECK(player_result.kind == SceneStepKind::fade_to_black);
     OL_CHECK(player_session.player_frame() == 6012);
+}
+
+void check_event_picture_animation_boundaries(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    auto snapshot = load_baseline(root);
+    for (const auto field : {
+             openlegend::model::SceneEventField::current_picture,
+             openlegend::model::SceneEventField::end_picture,
+             openlegend::model::SceneEventField::begin_picture}) {
+        OL_CHECK(snapshot.set_event_value(70U, 4U, field, -123));
+    }
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+    OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+
+    auto result = session.begin_event(23, 4, 44, 29);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(result.wait_ticks == 2U);
+    for (const auto field : {
+             openlegend::model::SceneEventField::current_picture,
+             openlegend::model::SceneEventField::end_picture,
+             openlegend::model::SceneEventField::begin_picture}) {
+        OL_CHECK(snapshot.event_value(70U, 4U, field).value_or(-1) == 32767);
+    }
+    result = session.resume(SceneResponse::acknowledge);
+    OL_CHECK(result.kind == SceneStepKind::present);
+    OL_CHECK(result.wait_ticks == 2U);
+    OL_CHECK(session.player_frame() == 10);
+    OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 }
 
 void check_event_scripted_walk(const std::filesystem::path& root) {
@@ -4255,6 +4295,7 @@ int main() {
     check_event_camera_pan(root);
     check_event_camera_pan_word_wrap(root);
     check_event_picture_animation(root);
+    check_event_picture_animation_boundaries(root);
     check_event_scripted_walk(root);
     check_event_dual_picture_animation(root);
     check_event_three_statue_animation(root);

@@ -421,6 +421,73 @@ def camera_pan_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def picture_animation_vectors(scripts: list[bytes]) -> dict[str, object]:
+    occurrences: list[tuple[int, int, int, int, int]] = []
+    for script_id, payload in enumerate(scripts):
+        code = words(payload)
+        program_counter = 0
+        while code[program_counter] != -1:
+            opcode = code[program_counter]
+            if opcode == 27:
+                occurrences.append(
+                    (script_id, program_counter, *code[program_counter + 1:program_counter + 4])
+                )
+            program_counter += WIDTHS[opcode]
+    frame_counts = [
+        0 if start > end else (end - start) // 2 + 1
+        for _, _, _, start, end in occurrences
+    ]
+    assert len(occurrences) == 43
+    assert occurrences[0] == (20, 5, -1, 5994, 6012)
+    assert occurrences[-1] == (691, 55, 1, 6862, 6888)
+    assert [min(row[index] for row in occurrences) for index in range(2, 5)] == [
+        -1, 5468, 5496,
+    ]
+    assert [max(row[index] for row in occurrences) for index in range(2, 5)] == [
+        13, 7864, 7964,
+    ]
+    zero_frame_occurrences = sum(count == 0 for count in frame_counts)
+    odd_span_occurrences = sum(
+        start <= end and (end - start) % 2 != 0
+        for _, _, _, start, end in occurrences
+    )
+    assert sum(frame_counts) == 579
+    assert max(frame_counts) == 51
+    assert zero_frame_occurrences == 0
+    assert odd_span_occurrences == 0
+    stream = b"".join(struct.pack("<IIhhh", *row) for row in occurrences)
+    event_counts = {
+        str(event): sum(row[2] == event for row in occurrences)
+        for event in sorted({row[2] for row in occurrences})
+    }
+    return {
+        "occurrences": len(occurrences),
+        "stream_encoding": "little_endian_<IIhhh:script,pc,event,start,end>",
+        "stream_sha256": sha256(stream),
+        "first": list(occurrences[0]),
+        "last": list(occurrences[-1]),
+        "argument_minimums": [-1, 5468, 5496],
+        "argument_maximums": [13, 7864, 7964],
+        "event_counts": event_counts,
+        "zero_frame_occurrences": zero_frame_occurrences,
+        "odd_span_occurrences": odd_span_occurrences,
+        "total_present_frames": sum(frame_counts),
+        "maximum_present_frames": max(frame_counts),
+        "maximum_frame_occurrence": list(occurrences[frame_counts.index(max(frame_counts))]),
+        "frame_step": 2,
+        "end_frame_presented": True,
+        "event_picture_fields": ["current_picture", "end_picture", "begin_picture"],
+        "player_event_selector": -1,
+        "wait_argument": 50,
+        "wait_ticks": 2,
+        "boundary_vectors": [
+            {"start": 32767, "end": 32767, "pictures": [32767]},
+            {"start": 11, "end": 10, "pictures": []},
+            {"start": 10, "end": 11, "pictures": [10]},
+        ],
+    }
+
+
 def picture_animation_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -3865,6 +3932,7 @@ def main() -> None:
     decoded_talks = [bytes(value ^ 0xFF for value in entry[:-1]) + b"\0" for entry in talks]
     coverage = opcode_coverage(scripts)
     opcode_25_camera_pan = camera_pan_vectors(scripts)
+    opcode_27_picture_animation = picture_animation_vectors(scripts)
     script_30 = words(scripts[30])
     assert script_30[:5] == (25, 41, 31, 34, 31)
     opcode_25_script_30 = pan_trace(
@@ -4062,6 +4130,7 @@ def main() -> None:
                 "arguments": list(script_30[1:5]),
                 "frames": opcode_25_script_30,
             },
+            "opcode_27_picture_animation": opcode_27_picture_animation,
             "opcode_27_script_535": {
                 "scene_id": animation_scene_id,
                 "player_x": animation_x,

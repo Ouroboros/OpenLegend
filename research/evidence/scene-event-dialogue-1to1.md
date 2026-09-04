@@ -309,7 +309,13 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 最终REVIEW发现旧C++把 `coordinate-11` 在32位域直接钳位，但机器先把低16位写入word，再按signed int16钳位。例如 `-32768-11` 回绕为32757，原版视口为36而不是0。现代实现已改为 `wrapping_add(int16,-11)` 后钳位，并从710字节函数入口重新审计至零新增差异。当前52次真实opcode25共460帧，参数范围17..54，完整参数流SHA256 `70c2620ff731c246ddfe4481c4261a560b2aa32c6331e6c161723a83b000c116`；script30固定7帧像素，script225覆盖四方向和两轴顺序，合成极值固定两轴word回绕。
 
-## 10. 当前验证
+## 10. 事件图片动画
+
+`sub_2F053` 由opcode27唯一caller传入 `(event,start,end)`。event严格等于`-1`时逐帧覆盖玩家图片word，其他值通过`sub_2D841`把事件的current/end/begin picture三字段同步写为当前帧；帧值在32位域从start按2递增并按signed `<=end`判断，每帧先写状态、绘制，再等待2个BIOS ticks。起点呈现，终点仅在同奇偶时呈现，start>end零帧。
+
+最终REVIEW逐条覆盖180字节59条指令、9项绝对地址重定位、共享返回尾部和caller PC+4，未发现产品差异。当前43次真实opcode27共579帧，22次玩家分支、21次事件分支，参数流SHA256 `57cc371fa34d035af8fbce4c1180000270dcc06f2cd212a86389af0e41652e22`；script535固定四帧事件像素，script20固定十帧玩家图片，合成script23固定`-2`当前事件别名、32767单帧、空区间和奇数跨度。现代可恢复present/tick与非法event保护属于平台适配；同址input-font和三个delegated callee closure均不传播关闭。
+
+## 11. 当前验证
 
 Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 
@@ -324,6 +330,7 @@ Linux app Debug BUILD 脚本：14/14 测试通过，包括：
 - 真实脚本 274 的场景层写入和 opcode 0 呈现边界、931 的 opcode 13/14 淡入淡出顺序、69 的 TALK 暂停/恢复；
 - 死亡菜单完整DEAD/font/palette/name/text/panel像素、114次opcode15位置流、script190解释器caller、script936试炼caller、方向wrap、三类确认键、大小写Y、0-based读档槽及载入失败回收；
 - 场景平移动画52次真实opcode25参数流、460个present帧、x-before-y、四方向、终点不含、每帧2 ticks、script30像素及极小负值先按word回绕再钳位；
+- 事件图片动画43次真实opcode27参数流、579个present帧、玩家/事件分支、三图片字段同步、终点包含、每帧2 ticks、script535四帧像素及32位32767/空区间/奇数跨度边界；
 - 48个显式scene present callsite的完整地址集与五类无重复分区，script343站立终帧像素，notice/商店/武林大会恢复序列及world菜单回收；
 - 325条opcode2和大会奖励caller的库存word回绕、Big5物品名动态面板、caller底图/RNG不重绘，以及十四书与武林帖ID presence门禁；
 - 所有既有 model/resource/render/world/persistence/ui/audio/core 测试无回归。
