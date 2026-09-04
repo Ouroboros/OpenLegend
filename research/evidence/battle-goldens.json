@@ -87,6 +87,80 @@
       "battle_exit_fade_to_black": 64
     }
   },
+  "battle_data_loader": {
+    "address": "0x31da0",
+    "end": "0x31eb9",
+    "raw_offset": "0x2b7a0",
+    "size": 281,
+    "instruction_count": 80,
+    "raw_sha256": "df4cdea3b29f83fef687997157ccfa786e5e3bccdf7a92876040cacf6774480b",
+    "loaded_sha256": "b066ca9a83fab8017129e73a9638af51d42563ae24e45d4851e8628c98d7436a",
+    "relocation_count": 14,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x31da5",
+      "0x31db1",
+      "0x31dd5",
+      "0x31de8",
+      "0x31df1",
+      "0x31e25",
+      "0x31e37",
+      "0x31e3f",
+      "0x31e52",
+      "0x31e69",
+      "0x31e7c",
+      "0x31e85"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3da66",
+      "0x3db07",
+      "0x3dabf",
+      "0x3db2b",
+      "0x3cf45",
+      "0x3ef96",
+      "0x20c32",
+      "0x3da66",
+      "0x3db07",
+      "0x3dabf",
+      "0x3db2b"
+    ],
+    "call_contract": [
+      "stack_probe",
+      "open_war_sta",
+      "seek_war_record",
+      "read_war_record",
+      "close_war_sta",
+      "load_warfld_idx_if_cache_miss",
+      "print_warfld_idx_error",
+      "terminate_after_warfld_idx_error",
+      "open_warfld_grp",
+      "seek_warfld_entry",
+      "read_battlefield_prefix",
+      "close_warfld_grp"
+    ],
+    "callers": [
+      "0x31c9e"
+    ],
+    "battle_id_storage": "signed_int16",
+    "war_record": {
+      "size": 186,
+      "offset_expression": "sign_extend_i16(battle_id) * 186",
+      "battlefield_id_word": 6
+    },
+    "warfld": {
+      "cache_tag": 6,
+      "index_layout": "synthetic_zero_then_cumulative_ends",
+      "seek_expression": "offsets[sign_extend_i16(battlefield_id)]",
+      "battlefield_prefix_size": 16384
+    },
+    "occupancy": {
+      "width": 64,
+      "height": 64,
+      "loop_order": "y_then_x",
+      "fill_value": -1
+    }
+  },
   "war_sta": {
     "record_size": 186,
     "record_count": 140,

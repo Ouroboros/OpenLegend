@@ -24,6 +24,16 @@ BATTLE_ENTRY_RELOCATION_OFFSETS = (
     0x65, 0x78, 0x85, 0x8B, 0x90, 0xA3, 0xA8, 0xB7,
     0xD0, 0xD9, 0xE1, 0xE9, 0xF9, 0x103, 0x11C, 0x125,
 )
+BATTLE_DATA_LOADER_ADDRESS = 0x31DA0
+BATTLE_DATA_LOADER_END = 0x31EB9
+BATTLE_DATA_LOADER_CALL_OFFSETS = (
+    0x05, 0x11, 0x35, 0x48, 0x51, 0x85,
+    0x97, 0x9F, 0xB2, 0xC9, 0xDC, 0xE5,
+)
+BATTLE_DATA_LOADER_RELOCATION_OFFSETS = (
+    0x0D, 0x43, 0x5C, 0x63, 0x6A, 0x73, 0x7C,
+    0x81, 0x93, 0xA7, 0xAE, 0xC4, 0xD7, 0x102,
+)
 Z_DAT_EFFECT_FRAME_COUNTS_OFFSET = 324_814
 Z_DAT_AI_SPECIAL_ATTACK_OFFSET = 324_920
 EFFECT_FRAME_COUNT = 53
@@ -134,6 +144,85 @@ def battle_entry_contract(z_dat_bytes: bytes) -> dict[str, object]:
             "black_battlefield_present": 1,
             "battle_initial_fade_after_present": 66,
             "battle_exit_fade_to_black": 64,
+        },
+    }
+
+
+def battle_data_loader_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    raw_offset = BATTLE_DATA_LOADER_ADDRESS - Z_DAT_LOAD_BASE
+    raw = z_dat_bytes[
+        raw_offset:raw_offset + BATTLE_DATA_LOADER_END - BATTLE_DATA_LOADER_ADDRESS
+    ]
+    if len(raw) != 281:
+        raise ValueError("Z.DAT does not contain the complete battle data loader")
+    call_targets = [
+        relative_call_target(raw, offset, BATTLE_DATA_LOADER_ADDRESS)
+        for offset in BATTLE_DATA_LOADER_CALL_OFFSETS
+    ]
+    expected_targets = [
+        0x3ED1E, 0x3DA66, 0x3DB07, 0x3DABF, 0x3DB2B, 0x3CF45,
+        0x3EF96, 0x20C32, 0x3DA66, 0x3DB07, 0x3DABF, 0x3DB2B,
+    ]
+    if call_targets != expected_targets:
+        raise ValueError("Z.DAT battle data loader call sequence changed")
+    relocated = bytearray(raw)
+    for offset in BATTLE_DATA_LOADER_RELOCATION_OFFSETS:
+        raw_value = struct.unpack_from("<I", raw, offset)[0]
+        struct.pack_into("<I", relocated, offset, raw_value + 0x20000)
+    caller_site = 0x31C9E
+    caller_offset = caller_site - Z_DAT_LOAD_BASE
+    if (
+        relative_call_target(z_dat_bytes, caller_offset, Z_DAT_LOAD_BASE)
+        != BATTLE_DATA_LOADER_ADDRESS
+    ):
+        raise ValueError("Z.DAT battle data loader caller target changed")
+    return {
+        "address": hex(BATTLE_DATA_LOADER_ADDRESS),
+        "end": hex(BATTLE_DATA_LOADER_END),
+        "raw_offset": hex(raw_offset),
+        "size": len(raw),
+        "instruction_count": 80,
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(bytes(relocated)),
+        "relocation_count": len(BATTLE_DATA_LOADER_RELOCATION_OFFSETS),
+        "relocation_delta": 0x20000,
+        "call_sites": [
+            hex(BATTLE_DATA_LOADER_ADDRESS + offset)
+            for offset in BATTLE_DATA_LOADER_CALL_OFFSETS
+        ],
+        "call_targets": [hex(target) for target in call_targets],
+        "call_contract": [
+            "stack_probe",
+            "open_war_sta",
+            "seek_war_record",
+            "read_war_record",
+            "close_war_sta",
+            "load_warfld_idx_if_cache_miss",
+            "print_warfld_idx_error",
+            "terminate_after_warfld_idx_error",
+            "open_warfld_grp",
+            "seek_warfld_entry",
+            "read_battlefield_prefix",
+            "close_warfld_grp",
+        ],
+        "callers": [hex(caller_site)],
+        "battle_id_storage": "signed_int16",
+        "war_record": {
+            "size": WAR_RECORD_SIZE,
+            "offset_expression": "sign_extend_i16(battle_id) * 186",
+            "battlefield_id_word": 6,
+        },
+        "warfld": {
+            "cache_tag": 6,
+            "index_layout": "synthetic_zero_then_cumulative_ends",
+            "seek_expression": "offsets[sign_extend_i16(battlefield_id)]",
+            "battlefield_prefix_size": 0x4000,
+        },
+        "occupancy": {
+            "width": 64,
+            "height": 64,
+            "loop_order": "y_then_x",
+            "fill_value": -1,
         },
     }
 
@@ -2548,6 +2637,7 @@ def build(data_root: Path) -> dict[str, object]:
     return {
         "format": "openlegend-b8-battle-goldens-v1",
         "battle_entry": battle_entry_contract(z_dat_bytes),
+        "battle_data_loader": battle_data_loader_contract(z_dat_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
             "record_count": len(war_records),

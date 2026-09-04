@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW已完成1/81；场景战斗入口的battle-owner已收敛为`platform_adapted`，其余80项保持`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW已完成2/81；场景战斗入口与战斗数据载入已收敛为`platform_adapted`，其余79项保持`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、80项为 `implemented_pending_review`、1项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、79项为 `implemented_pending_review`、2项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `fbfbaf5a9a5ade84c2e2bd56885eac9603f7f1b2498bab2eae4c645968c56c95`；新增`battle_entry`节保存机器入口、调用、caller、返回值和呈现时序合同。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `06e14b9aa2c18da6dfe2be6806f85d5c3781ff8c344655151b9bf014c4474235`；`battle_entry`与`battle_data_loader`节分别保存入口生命周期，以及机器载入函数、调用、重定位、记录/索引公式和occupancy清零合同。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -55,9 +55,11 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 
 ## 5. WAR/WARFLD 载入实现
 
-`sub_31DA0 @ 0x31DA0..0x31EB9` 已映射为 `openlegend::battle::BattleData`：按 `battle_id*186` 解码93个 signed word，以 definition word6 选择 WARFLD cumulative archive entry，只取前16,384字节为8,192个战场 word，并在成功读取后把4,096个 occupancy word清成-1；随后`BattleSetup`初始化26槽，不再冗余清空occupancy。真实 battle 0..139 全部通过；-1和140由现代安全适配拒绝；battle 0/4/93/139 的记录和战场哈希固定。Linux Debug BUILD 14/14。
+`sub_31DA0 @ 0x31DA0..0x31EB9` 最终机器范围为281字节、80条指令；raw偏移`0x2B7A0`，raw/loaded SHA256分别为`df4cdea3b29f83fef687997157ccfa786e5e3bccdf7a92876040cacf6774480b`、`b066ca9a83fab8017129e73a9638af51d42563ae24e45d4851e8628c98d7436a`，14项绝对地址均为`raw+0x20000` relocation并归一化一致。唯一直接caller是已关闭入口中的一次同步调用；12个直接调用依次覆盖WAR打开/定位/读取/关闭、WARFLD IDX缓存缺失载入及失败终止、WARFLD GRP打开/定位/读取/关闭。
 
-该函数只标 `implemented_pending_review`；错误路径属于现代安全适配，未标 `assembly_exact`。
+现代`openlegend::battle::BattleData`按有符号battle id选择186字节WAR记录并解码93个signed word，以definition word6选择WARFLD cumulative archive entry，只取前16,384字节为8,192个战场word，并在全部成功后把4,096个occupancy word清成-1。`PackedArchive`以`begin=0`及前一累计end形成entry起点，等价于机器在IDX缓冲前置合成0后用`offsets[field_id]`定位；每次现代构造读取受检archive替代机器cache tag 6。真实battle 0..139全部通过；battle 0/4/93/139的记录和战场哈希固定；-1、140、短entry及无效archive由现代安全适配返回错误而非沿用原机未受检I/O/终止行为。
+
+从入口重新独立复核后，合法当前资产域的记录偏移、累计索引起点、固定前缀、signed word解码和y外/x内清零结果与C++逐项一致，本轮无新增产品差异。独立battle golden双生成及正式比较逐字节一致；Linux app Debug 14/14通过。最终归类`platform_adapted / converged_no_new_differences`。
 
 ## 6. 参战者建立单元
 
