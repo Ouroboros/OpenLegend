@@ -20,6 +20,131 @@
     "record_0_hex": "a470a553a7cca141a8eca6b9b448a4d1b3b7a661a1412aa4a3aabea6b3a6f3abfcb1d0a14800",
     "record_2976_sha256": "fe033130443ae209ec7b611fd46114db2bfc5cd7a503ca1cb2f141334f219383"
   },
+  "battle_entry": {
+    "entry_range": "0x31c75..0x31da0",
+    "size_bytes": 299,
+    "instruction_count": 72,
+    "raw_function_offset": "0x2b675",
+    "raw_function_sha256": "8f3e6d11d5d85a9c7882511546962fdd2793c5c3a11c8d580fc62bbec2e113b6",
+    "loaded_function_sha256": "634a5e34a676f54ebc829e443e2bafcced1d3117dbf73eaa0a71485d802bdb64",
+    "relocation_count": 24,
+    "relocation_delta": 131072,
+    "normalized_loaded_equals_raw": true,
+    "stack_probe_argument": 20,
+    "callers": [
+      {
+        "entry_range": "0x2de03..0x2de2c",
+        "callsite": "0x2de15",
+        "raw_function_sha256": "eaa12eafb11dd75089bee3d4d81fbc331e646de5f19b50e4804fbcc144a4ffff",
+        "arguments": [
+          "battle_id",
+          "get_exp"
+        ],
+        "victory_comparison": "return_value == 1",
+        "victory_result": "true_offset",
+        "other_result": "false_offset"
+      },
+      {
+        "entry_range": "0x30480..0x30510",
+        "callsite": "0x304ca",
+        "raw_function_sha256": "687495828da4589aef75232397d1c7b305850074aa7ad87ad25a5ffc76ed908a",
+        "battle_id_formula": "102 + cell",
+        "get_exp": 0,
+        "victory_comparison": "return_value == 1",
+        "other_result": "death_menu"
+      }
+    ],
+    "call_sequence": [
+      "stack_probe",
+      "load_battle_definition",
+      "initialize_party",
+      "finalize_party_selection",
+      "load_wdx_wmp",
+      "fade_to_black",
+      "load_eft",
+      "render_retained_battle_view",
+      "present_initial_black_frame",
+      "play_battle_music",
+      "run_battle_loop",
+      "fade_to_black",
+      "load_scene_smp_sdx",
+      "restore_scene_music"
+    ],
+    "entry_state_writes": [
+      [
+        "get_exp",
+        "argument_1"
+      ],
+      [
+        "mode",
+        2
+      ],
+      [
+        "battle_id",
+        "argument_0"
+      ],
+      [
+        "battle_counter",
+        0
+      ]
+    ],
+    "battlefield_load_before_entry_fade": true,
+    "effect_load_after_entry_fade": true,
+    "entry_fade_to_black_frames": 64,
+    "initial_retained_view_present_palette": "black",
+    "battle_music_after_initial_present": true,
+    "battle_music_parameter": "WAR.STA word 8 signed_int16",
+    "delegated_initial_sorted_black_present_frames": 1,
+    "delegated_initial_fade_from_black_frames": 65,
+    "delegated_initial_total_present_frames": 66,
+    "exit_fade_to_black_frames": 64,
+    "scene_restore_music": "scene metadata word 7; -1 maps to 0",
+    "exit_mode": 1,
+    "raw_result_values": {
+      "defeat": 1,
+      "victory": 2
+    },
+    "return_values": {
+      "defeat": 0,
+      "victory": 1
+    },
+    "escape_result": false,
+    "battle_record_count": 140,
+    "battle_record_bytes": 186,
+    "war_sta_sha256": "98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6",
+    "asset_stream_encoding": "little_endian_<hhh:battle_id,battlefield_id,music_id>",
+    "asset_stream_sha256": "66fff3aeae96b6238785ab7d2767cfff35d2118959afb88196c56ad23edb4efb",
+    "battlefield_id_counts": {
+      "0": 5,
+      "1": 7,
+      "2": 3,
+      "3": 3,
+      "4": 10,
+      "5": 16,
+      "6": 4,
+      "7": 1,
+      "8": 3,
+      "10": 3,
+      "11": 4,
+      "13": 2,
+      "14": 1,
+      "16": 2,
+      "17": 7,
+      "19": 2,
+      "20": 2,
+      "21": 47,
+      "22": 3,
+      "23": 4,
+      "24": 9,
+      "25": 2
+    },
+    "music_id_counts": {
+      "5": 49,
+      "6": 65,
+      "7": 26
+    },
+    "all_wdx_wmp_pairs_exist": true
+  },
   "kdef": {
     "terminated_scripts": 1018,
     "used_opcodes": [

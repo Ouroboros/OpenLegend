@@ -221,11 +221,11 @@ BattleRenderer::BattleRenderer(
     build_rgb4_lookup();
 }
 
-bool BattleRenderer::load_battle_assets() {
+bool BattleRenderer::load_battlefield_assets() {
     if (!valid()) {
         return false;
     }
-    if (battle_assets_loaded_) {
+    if (battlefield_assets_loaded_) {
         return true;
     }
 
@@ -268,14 +268,29 @@ bool BattleRenderer::load_battle_assets() {
         previous = value;
     }
     battlefield_group_ = battlefield_group.bytes;
+    battlefield_assets_loaded_ = true;
+    return true;
+}
+
+bool BattleRenderer::load_effect_assets() {
+    if (!valid()) {
+        return false;
+    }
+    if (effect_assets_loaded_) {
+        return true;
+    }
     effect_sprites_ = resource::PackedArchive::open(
         data_root_.path() / "EFT.IDX", data_root_.path() / "EFT.GRP");
     if (!effect_sprites_.valid()) {
         error_ = effect_sprites_.error();
         return false;
     }
-    battle_assets_loaded_ = true;
+    effect_assets_loaded_ = true;
     return true;
+}
+
+bool BattleRenderer::load_battle_assets() {
+    return load_battlefield_assets() && load_effect_assets();
 }
 
 void BattleRenderer::build_rgb4_lookup() noexcept {
@@ -305,7 +320,7 @@ void BattleRenderer::build_rgb4_lookup() noexcept {
 bool BattleRenderer::render(
     const BattleRenderPlan& plan,
     render::IndexedFramebuffer& framebuffer) {
-    if (!valid() || !battle_assets_loaded_) {
+    if (!valid() || !battlefield_assets_loaded_ || !effect_assets_loaded_) {
         return false;
     }
     framebuffer.clear(0U);

@@ -259,6 +259,7 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
         world_session_->idle_animation_tick();
     } else if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
         battle_session_->advance(bios_tick);
+        begin_battle_transition_if_ready();
         finish_battle_if_ready();
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                scene_session_->pending().kind == scene::SceneStepKind::stay) {
@@ -302,6 +303,12 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
     if (load_transition_phase_ != LoadTransitionPhase::none ||
         title_startup_phase_ != TitleStartupPhase::none ||
         pending_title_result_.has_value()) {
+        if (scene_effect_kind_ != SceneEffectKind::none) {
+            scene_effect_presented_ = true;
+        }
+        return;
+    }
+    if (battle_transition_phase_ != BattleTransitionPhase::none) {
         if (scene_effect_kind_ != SceneEffectKind::none) {
             scene_effect_presented_ = true;
         }
@@ -362,6 +369,7 @@ bool LegacyGameRuntime::handle_world_input(
     const bool menu_requested) {
     if (!valid() || pending_world_exit_ || world_scene_transition_pending_ ||
         world_scene_return_pending_ || load_transition_phase_ != LoadTransitionPhase::none ||
+        battle_transition_phase_ != BattleTransitionPhase::none ||
         world_menu_event_phase_ != WorldMenuEventPhase::none ||
         scene_leave_event_phase_ != SceneLeaveEventPhase::none ||
         leave_protagonist_notice_pending_ ||
@@ -427,6 +435,7 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
     if (!valid() || translated_key == 0U || view_ == LegacyGameView::exited ||
         pending_world_exit_ || world_scene_transition_pending_ || world_scene_return_pending_ ||
         load_transition_phase_ != LoadTransitionPhase::none ||
+        battle_transition_phase_ != BattleTransitionPhase::none ||
         title_startup_phase_ != TitleStartupPhase::none ||
         pending_title_result_.has_value() || pending_name_accept_ ||
         pending_new_game_wait_present_ || pending_new_game_scene_start_) {
@@ -539,6 +548,7 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 key_state_reset = menu_key_state_reset(translated_key);
             }
             static_cast<void>(battle_session_->handle_key(translated_key, bios_tick));
+            begin_battle_transition_if_ready();
             finish_battle_if_ready();
         }
         break;
@@ -637,6 +647,20 @@ bool LegacyGameRuntime::render() {
         if (view_ != LegacyGameView::attributes ||
             scene_effect_kind_ != SceneEffectKind::fade_to_black ||
             !title_renderer_->render_new_game_wait(framebuffer_)) {
+            return false;
+        }
+        if (scene_effect_palettes_.empty()) {
+            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
+        }
+        if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
+            return false;
+        }
+        framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
+        scene_effect_presented_ = true;
+        return true;
+    }
+    if (battle_transition_phase_ != BattleTransitionPhase::none) {
+        if (scene_effect_kind_ != SceneEffectKind::fade_to_black) {
             return false;
         }
         if (scene_effect_palettes_.empty()) {
@@ -906,6 +930,7 @@ void LegacyGameRuntime::begin_new_game() {
     scene_session_.reset();
     world_menu_event_session_.reset();
     battle_session_.reset();
+    battle_transition_phase_ = BattleTransitionPhase::none;
     scene_request_.reset();
     battle_request_.reset();
     pending_menu_item_slot_.reset();
@@ -1022,6 +1047,7 @@ bool LegacyGameRuntime::activate_pending_load() {
     scene_session_.reset();
     world_menu_event_session_.reset();
     battle_session_.reset();
+    battle_transition_phase_ = BattleTransitionPhase::none;
     scene_request_.reset();
     battle_request_.reset();
     pending_menu_item_slot_.reset();
@@ -1058,6 +1084,7 @@ bool LegacyGameRuntime::activate_pending_load() {
 bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
     scene_request_.reset();
     battle_request_.reset();
+    battle_transition_phase_ = BattleTransitionPhase::none;
     world_scene_transition_pending_ = false;
     world_scene_transition_presented_ = false;
     world_scene_return_pending_ = false;
@@ -1120,6 +1147,7 @@ bool LegacyGameRuntime::start_scene(
     }
     battle_session_.reset();
     battle_request_.reset();
+    battle_transition_phase_ = BattleTransitionPhase::none;
     clear_scene_effect();
     scene_direction_input_.reset();
     scene_interact_requested_ = false;
@@ -1165,6 +1193,7 @@ bool LegacyGameRuntime::start_battle(
         show_error("No game state is available for battle", LegacyGameView::scene);
         return false;
     }
+    battle_transition_phase_ = BattleTransitionPhase::none;
     clear_scene_effect();
     battle_session_ = std::make_unique<battle::BattleSession>(
         data_root_,
@@ -1179,16 +1208,43 @@ bool LegacyGameRuntime::start_battle(
         return false;
     }
     set_view(LegacyGameView::battle, "battle session started");
+    begin_battle_transition_if_ready();
     diagnostics::log_info(
         "battle session ready id=" + std::to_string(battle_id) +
         " phase=" +
         (battle_session_->phase() == battle::BattleSessionPhase::party_selection
              ? std::string{"party_selection"}
-             : std::string{"initial_present"}));
+             : std::string{"initial_fade_to_black"}));
     return true;
 }
 
+void LegacyGameRuntime::begin_battle_transition_if_ready() {
+    if (battle_transition_phase_ != BattleTransitionPhase::none ||
+        battle_session_ == nullptr ||
+        battle_session_->phase() != battle::BattleSessionPhase::initial_fade_to_black) {
+        return;
+    }
+    battle_transition_phase_ =
+        BattleTransitionPhase::fade_to_black_before_initial_present;
+    begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
+    diagnostics::log_info(
+        "battle pre-entry fade started id=" +
+        std::to_string(battle_session_->battle_id()));
+}
+
 void LegacyGameRuntime::finish_battle_if_ready() {
+    if (battle_transition_phase_ != BattleTransitionPhase::none ||
+        battle_session_ == nullptr || !battle_session_->finished()) {
+        return;
+    }
+    battle_transition_phase_ = BattleTransitionPhase::fade_to_black_after_complete;
+    begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
+    diagnostics::log_info(
+        "battle post-completion fade started id=" +
+        std::to_string(battle_session_->battle_id()));
+}
+
+void LegacyGameRuntime::complete_battle_after_fade() {
     if (battle_session_ == nullptr || !battle_session_->finished()) {
         return;
     }
@@ -1377,7 +1433,23 @@ bool LegacyGameRuntime::advance_scene_effect() {
         return true;
     }
     clear_scene_effect();
-    if (pending_name_accept_) {
+    if (battle_transition_phase_ ==
+        BattleTransitionPhase::fade_to_black_before_initial_present) {
+        battle_transition_phase_ = BattleTransitionPhase::none;
+        if (battle_session_ == nullptr) {
+            battle_request_.reset();
+            show_error("No battle session is available after entry fade", LegacyGameView::scene);
+        } else if (!battle_session_->finish_initial_fade_to_black()) {
+            const auto error = battle_session_->error();
+            battle_session_.reset();
+            battle_request_.reset();
+            show_error(error, LegacyGameView::scene);
+        }
+    } else if (battle_transition_phase_ ==
+               BattleTransitionPhase::fade_to_black_after_complete) {
+        battle_transition_phase_ = BattleTransitionPhase::none;
+        complete_battle_after_fade();
+    } else if (pending_name_accept_) {
         pending_name_accept_ = false;
         auto* ranger = game_state_.ranger();
         if (ranger == nullptr) {

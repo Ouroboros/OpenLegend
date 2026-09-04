@@ -6358,6 +6358,107 @@ def main() -> None:
         for script_id in sorted({row[0] for row in opcode_audio_occurrences[67]})
     }
 
+    battle_entry_raw = z_dat[0x2B675:0x2B7A0]
+    battle_opcode_6_wrapper_raw = z_dat[0x27803:0x2782C]
+    assert len(battle_entry_raw) == 299
+    assert len(battle_opcode_6_wrapper_raw) == 41
+    war_sta = (root / "WAR.STA").read_bytes()
+    battle_record_bytes = 93 * 2
+    assert len(war_sta) == 140 * battle_record_bytes
+    battle_records = [
+        struct.unpack_from("<93h", war_sta, offset)
+        for offset in range(0, len(war_sta), battle_record_bytes)
+    ]
+    battle_asset_rows = [
+        (battle_id, record[6], record[8])
+        for battle_id, record in enumerate(battle_records)
+    ]
+    assert all(0 <= battlefield_id <= 999 for _, battlefield_id, _ in battle_asset_rows)
+    assert all((root / f"WDX{battlefield_id:03d}").is_file()
+               for _, battlefield_id, _ in battle_asset_rows)
+    assert all((root / f"WMP{battlefield_id:03d}").is_file()
+               for _, battlefield_id, _ in battle_asset_rows)
+    battle_asset_stream = b"".join(
+        struct.pack("<hhh", *row) for row in battle_asset_rows
+    )
+    battle_entry_vectors = {
+        "entry_range": "0x31c75..0x31da0",
+        "size_bytes": 299,
+        "instruction_count": 72,
+        "raw_function_offset": "0x2b675",
+        "raw_function_sha256": sha256(battle_entry_raw),
+        "loaded_function_sha256": "634a5e34a676f54ebc829e443e2bafcced1d3117dbf73eaa0a71485d802bdb64",
+        "relocation_count": 24,
+        "relocation_delta": 0x20000,
+        "normalized_loaded_equals_raw": True,
+        "stack_probe_argument": 20,
+        "callers": [
+            {
+                "entry_range": "0x2de03..0x2de2c",
+                "callsite": "0x2de15",
+                "raw_function_sha256": sha256(battle_opcode_6_wrapper_raw),
+                "arguments": ["battle_id", "get_exp"],
+                "victory_comparison": "return_value == 1",
+                "victory_result": "true_offset",
+                "other_result": "false_offset",
+            },
+            {
+                "entry_range": "0x30480..0x30510",
+                "callsite": "0x304ca",
+                "raw_function_sha256": sha256(tournament_single_match_raw),
+                "battle_id_formula": "102 + cell",
+                "get_exp": 0,
+                "victory_comparison": "return_value == 1",
+                "other_result": "death_menu",
+            },
+        ],
+        "call_sequence": [
+            "stack_probe",
+            "load_battle_definition",
+            "initialize_party",
+            "finalize_party_selection",
+            "load_wdx_wmp",
+            "fade_to_black",
+            "load_eft",
+            "render_retained_battle_view",
+            "present_initial_black_frame",
+            "play_battle_music",
+            "run_battle_loop",
+            "fade_to_black",
+            "load_scene_smp_sdx",
+            "restore_scene_music",
+        ],
+        "entry_state_writes": [
+            ["get_exp", "argument_1"],
+            ["mode", 2],
+            ["battle_id", "argument_0"],
+            ["battle_counter", 0],
+        ],
+        "battlefield_load_before_entry_fade": True,
+        "effect_load_after_entry_fade": True,
+        "entry_fade_to_black_frames": 64,
+        "initial_retained_view_present_palette": "black",
+        "battle_music_after_initial_present": True,
+        "battle_music_parameter": "WAR.STA word 8 signed_int16",
+        "delegated_initial_sorted_black_present_frames": 1,
+        "delegated_initial_fade_from_black_frames": 65,
+        "delegated_initial_total_present_frames": 66,
+        "exit_fade_to_black_frames": 64,
+        "scene_restore_music": "scene metadata word 7; -1 maps to 0",
+        "exit_mode": 1,
+        "raw_result_values": {"defeat": 1, "victory": 2},
+        "return_values": {"defeat": 0, "victory": 1},
+        "escape_result": False,
+        "battle_record_count": len(battle_records),
+        "battle_record_bytes": battle_record_bytes,
+        "war_sta_sha256": sha256(war_sta),
+        "asset_stream_encoding": "little_endian_<hhh:battle_id,battlefield_id,music_id>",
+        "asset_stream_sha256": sha256(battle_asset_stream),
+        "battlefield_id_counts": dict(sorted(Counter(row[1] for row in battle_asset_rows).items())),
+        "music_id_counts": dict(sorted(Counter(row[2] for row in battle_asset_rows).items())),
+        "all_wdx_wmp_pairs_exist": True,
+    }
+
     script_932 = words(scripts[932])
     assert script_932[38] == 59
     opcode_59_targets = [
@@ -6451,6 +6552,7 @@ def main() -> None:
             "record_0_hex": decoded_talks[0].hex(),
             "record_2976_sha256": sha256(decoded_talks[2976]),
         },
+        "battle_entry": battle_entry_vectors,
         "kdef": {
             **coverage,
             "opcode_6_battle_requests": battle_request_vectors(scripts),

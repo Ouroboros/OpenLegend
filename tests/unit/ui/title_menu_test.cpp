@@ -16,6 +16,16 @@
 #include "openlegend/ui/title_menu.hpp"
 #include "test_support.hpp"
 
+namespace openlegend::app {
+
+struct LegacyGameRuntimeTestAccess {
+    static battle::BattleSession* battle_session(LegacyGameRuntime& runtime) noexcept {
+        return runtime.battle_session_.get();
+    }
+};
+
+}  // namespace openlegend::app
+
 namespace {
 
 [[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
@@ -56,7 +66,31 @@ namespace {
     return true;
 }
 
-[[nodiscard]] bool install_opcode24_initial_script(const std::filesystem::path& root) {
+[[nodiscard]] bool prepare_battle_runtime_fixture(
+    const std::filesystem::path& source, const std::filesystem::path& destination) {
+    if (!prepare_runtime_fixture(source, destination)) {
+        return false;
+    }
+    constexpr std::array<std::string_view, 7> files{
+        "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX002", "WMP002",
+        "EFT.IDX", "EFT.GRP"};
+    std::error_code error;
+    for (const auto file : files) {
+        std::filesystem::copy_file(
+            source / file,
+            destination / file,
+            std::filesystem::copy_options::overwrite_existing,
+            error);
+        if (error) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool install_initial_script(
+    const std::filesystem::path& root,
+    const std::span<const std::int16_t> initial_script) {
     std::vector<std::uint8_t> index;
     std::vector<std::uint8_t> group;
     index.reserve(openlegend::scene::kEventScriptCount * 4U);
@@ -72,9 +106,12 @@ namespace {
     };
     for (std::size_t script = 0U; script < openlegend::scene::kEventScriptCount; ++script) {
         if (script == 691U) {
-            append_i16(24);
+            for (const auto word : initial_script) {
+                append_i16(word);
+            }
+        } else {
+            append_i16(-1);
         }
-        append_i16(-1);
         append_u32(static_cast<std::uint32_t>(group.size()));
     }
     const auto write = [](const std::filesystem::path& path,
@@ -86,6 +123,16 @@ namespace {
         return output.good();
     };
     return write(root / "KDEF.IDX", index) && write(root / "KDEF.GRP", group);
+}
+
+[[nodiscard]] bool install_opcode24_initial_script(const std::filesystem::path& root) {
+    constexpr std::array<std::int16_t, 2> script{24, -1};
+    return install_initial_script(root, script);
+}
+
+[[nodiscard]] bool install_battle_initial_script(const std::filesystem::path& root) {
+    constexpr std::array<std::int16_t, 6> script{6, 4, 0, 0, 0, -1};
+    return install_initial_script(root, script);
 }
 
 void advance_rendered_frames(
@@ -1760,6 +1807,179 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(load_game.render());
 }
 
+void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    using app::LegacyGameRuntimeTestAccess;
+    using battle::BattlePlayerAction;
+    using battle::BattleSessionPhase;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b7-battle-entry-runtime";
+    OL_CHECK(prepare_battle_runtime_fixture(data_root, output_root));
+    OL_CHECK(install_battle_initial_script(output_root));
+
+    app::LegacyGameRuntime game{output_root, 0U};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    game.handle_key(0x20U, true, false);
+    game.handle_key('A', false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    for (int tick = 0; tick < 30; ++tick) {
+        game.advance();
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::attributes);
+    game.handle_key('Y', false, false);
+    finish_new_game_scene_transition(game);
+
+    auto* ranger = const_cast<model::GameState&>(game.game_state()).ranger();
+    OL_CHECK(ranger != nullptr);
+    if (ranger == nullptr) {
+        return;
+    }
+    ranger->roles[1U].set_word(model::role_word::hp, 100);
+    ranger->roles[1U].set_word(model::role_word::maximum_hp, 100);
+    ranger->roles[1U].set_word(model::role_word::speed, 100);
+    ranger->roles[3U].set_word(model::role_word::hp, 0);
+    ranger->roles[3U].set_word(model::role_word::maximum_hp, 100);
+    ranger->roles[3U].set_word(model::role_word::speed, 0);
+    const auto scene_music = std::max<std::int16_t>(
+        ranger->scenes[70U].word(model::scene_metadata_word::entrance_music), 0);
+    static_cast<void>(game.take_scene_audio_commands());
+
+    std::uint64_t frozen_scene_hash = 0U;
+    for (std::size_t frame = 0U; frame < 65U; ++frame) {
+        OL_CHECK(game.view() == app::LegacyGameView::scene);
+        OL_CHECK(game.render());
+        if (frame == 64U) {
+            frozen_scene_hash = fnv1a64(game.framebuffer().pixels());
+            OL_CHECK(std::ranges::any_of(
+                game.framebuffer().palette(),
+                [](const auto& color) {
+                    return color.red != 0U || color.green != 0U || color.blue != 0U;
+                }));
+        }
+        game.advance();
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::battle);
+    OL_CHECK(game.battle_request().value_or(-1) == 4);
+    auto* session = LegacyGameRuntimeTestAccess::battle_session(game);
+    OL_CHECK(session != nullptr);
+    OL_CHECK(session != nullptr &&
+             session->phase() == BattleSessionPhase::initial_fade_to_black);
+    OL_CHECK(game.handle_key(0x0DU, false, false) == app::LegacyKeyStateReset::none);
+
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        OL_CHECK(game.view() == app::LegacyGameView::battle);
+        OL_CHECK(game.render());
+        OL_CHECK(fnv1a64(game.framebuffer().pixels()) == frozen_scene_hash);
+        if (frame == 63U) {
+            OL_CHECK(std::ranges::all_of(
+                game.framebuffer().palette(),
+                [](const auto& color) {
+                    return color.red == 0U && color.green == 0U && color.blue == 0U;
+                }));
+        }
+        game.advance(100U);
+    }
+    session = LegacyGameRuntimeTestAccess::battle_session(game);
+    OL_CHECK(session != nullptr);
+    OL_CHECK(session != nullptr && session->phase() == BattleSessionPhase::initial_present);
+    OL_CHECK(game.take_scene_audio_commands().empty());
+
+    OL_CHECK(game.render());
+    OL_CHECK(std::ranges::all_of(
+        game.framebuffer().palette(),
+        [](const auto& color) {
+            return color.red == 0U && color.green == 0U && color.blue == 0U;
+        }));
+    game.finish_presented_tick(100U);
+    const auto battle_music = game.take_scene_audio_commands();
+    OL_CHECK((battle_music == std::vector<scene::SceneAudioCommand>{
+        {scene::SceneAudioCommand::Kind::music, 7, false}}));
+    OL_CHECK(session != nullptr && session->phase() == BattleSessionPhase::initial_fade);
+    if (session == nullptr) {
+        return;
+    }
+    OL_CHECK(session->fade_frame_count() == 66U);
+    for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
+        OL_CHECK(game.render());
+        if (frame <= 1U) {
+            OL_CHECK(std::ranges::all_of(
+                game.framebuffer().palette(),
+                [](const auto& color) {
+                    return color.red == 0U && color.green == 0U && color.blue == 0U;
+                }));
+        }
+        game.finish_presented_tick(100U);
+    }
+    OL_CHECK(session->phase() == BattleSessionPhase::round_start);
+
+    game.advance(100U);
+    OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
+    OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+    std::size_t wait_ordinal = 0U;
+    for (std::size_t action = 0U;
+         action < static_cast<std::size_t>(BattlePlayerAction::wait);
+         ++action) {
+        if (session->player_action_menu().available[action] == 1) {
+            ++wait_ordinal;
+        }
+    }
+    while (session->player_action_menu().cursor != wait_ordinal) {
+        game.handle_key(0x98U, false, false, 100U);
+    }
+    game.handle_key(0x0DU, false, false, 100U);
+    OL_CHECK(session->phase() == BattleSessionPhase::battle_outcome);
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
+    OL_CHECK(session->phase() == BattleSessionPhase::battle_outcome_wait);
+    game.handle_key(0x0DU, false, false, 100U);
+
+    for (std::size_t guard = 0U; session != nullptr && !session->finished() && guard < 64U;
+         ++guard) {
+        if (session->phase() == BattleSessionPhase::post_battle_message_present) {
+            OL_CHECK(game.render());
+            game.finish_presented_tick(100U);
+        } else if (session->phase() == BattleSessionPhase::post_battle_message_wait) {
+            game.handle_key(0x0DU, false, false, 100U);
+        } else {
+            OL_CHECK(false);
+            break;
+        }
+        session = LegacyGameRuntimeTestAccess::battle_session(game);
+    }
+    session = LegacyGameRuntimeTestAccess::battle_session(game);
+    OL_CHECK(session != nullptr && session->finished());
+    OL_CHECK(game.view() == app::LegacyGameView::battle);
+    OL_CHECK(game.take_scene_audio_commands().empty());
+    const auto frozen_battle_hash = fnv1a64(game.framebuffer().pixels());
+
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        OL_CHECK(game.render());
+        OL_CHECK(fnv1a64(game.framebuffer().pixels()) == frozen_battle_hash);
+        OL_CHECK(game.battle_request().value_or(-1) == 4);
+        if (frame == 63U) {
+            OL_CHECK(std::ranges::all_of(
+                game.framebuffer().palette(),
+                [](const auto& color) {
+                    return color.red == 0U && color.green == 0U && color.blue == 0U;
+                }));
+        }
+        game.advance(100U);
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::scene);
+    OL_CHECK(!game.battle_request().has_value());
+    OL_CHECK(LegacyGameRuntimeTestAccess::battle_session(game) == nullptr);
+    OL_CHECK((game.take_scene_audio_commands() == std::vector<scene::SceneAudioCommand>{
+        {scene::SceneAudioCommand::Kind::music, scene_music, false}}));
+}
+
 void check_scene_load_runtime(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
@@ -2081,6 +2301,7 @@ int main() {
     check_name_editor(data_root);
     check_startup_resource_cache(data_root);
     check_game_runtime(data_root);
+    check_battle_runtime_transitions(data_root);
     check_scene_load_runtime(data_root);
     check_runtime_persistence(data_root);
     check_renderer(data_root);

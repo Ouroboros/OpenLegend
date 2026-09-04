@@ -109,6 +109,7 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     const BattleSessionPhase phase) noexcept {
     switch (phase) {
     case BattleSessionPhase::party_selection: return "party_selection";
+    case BattleSessionPhase::initial_fade_to_black: return "initial_fade_to_black";
     case BattleSessionPhase::initial_present: return "initial_present";
     case BattleSessionPhase::initial_fade: return "initial_fade";
     case BattleSessionPhase::round_start: return "round_start";
@@ -255,6 +256,11 @@ BattleSession::BattleSession(
         return;
     }
     fade_palettes_ = render::legacy_fade_from_black(renderer_.palette());
+    if (!fade_palettes_.empty()) {
+        // sub_3271E presents the sorted battlefield at black once, then sub_3CD17
+        // presents its 64 increasing palettes and the final source palette.
+        fade_palettes_.insert(fade_palettes_.begin(), fade_palettes_.front());
+    }
     diagnostics::log_info(
         "battle session initialized id=" + std::to_string(battle_id) +
         " battlefield=" + std::to_string(data_.battlefield_id()) +
@@ -263,7 +269,7 @@ BattleSession::BattleSession(
         (setup_.waiting_for_party_selection() ? std::string{"true"} : std::string{"false"}) +
         " combatants=" + std::to_string(setup_.combatant_count()));
     if (!setup_.waiting_for_party_selection()) {
-        static_cast<void>(begin_initial_battle());
+        static_cast<void>(prepare_initial_fade_to_black());
     }
 }
 
@@ -400,7 +406,7 @@ BattleSessionInputResult BattleSession::handle_key(
             [](const std::int16_t state) { return state != 0; })) +
         " result=" + std::to_string(static_cast<int>(result)));
     if (result == PartySelectionResult::complete) {
-        if (!begin_initial_battle()) {
+        if (!prepare_initial_fade_to_black()) {
             diagnostics::log_error(
                 "battle party selection completion failed id=" +
                 std::to_string(battle_id()) + " reason=" + error_);
@@ -414,6 +420,19 @@ BattleSessionInputResult BattleSession::handle_key(
     return result == PartySelectionResult::changed
         ? BattleSessionInputResult::changed
         : BattleSessionInputResult::ignored;
+}
+
+bool BattleSession::finish_initial_fade_to_black() {
+    if (!valid() || phase_ != BattleSessionPhase::initial_fade_to_black) {
+        return false;
+    }
+    if (!begin_initial_battle()) {
+        diagnostics::log_error(
+            "battle initial fade handoff failed id=" + std::to_string(battle_id()) +
+            " reason=" + error_);
+        return false;
+    }
+    return true;
 }
 
 std::vector<BattleAudioCommand> BattleSession::take_audio_commands() {
@@ -468,6 +487,10 @@ bool BattleSession::render(
         return false;
     }
     bool rendered = false;
+    if (phase_ == BattleSessionPhase::initial_fade_to_black) {
+        frame_rendered_ = false;
+        return true;
+    }
     if (phase_ == BattleSessionPhase::party_selection) {
         rendered = render_party_selection(framebuffer, party_selection_background_redrawn);
     } else if (phase_ == BattleSessionPhase::battle_outcome ||
@@ -509,8 +532,11 @@ bool BattleSession::render(
         rendered = render_player_attack_level(framebuffer);
     } else {
         rendered = render_battlefield(framebuffer);
-        if (rendered && phase_ == BattleSessionPhase::initial_fade &&
-            fade_frame_ < fade_palettes_.size()) {
+        if (rendered && phase_ == BattleSessionPhase::initial_present &&
+            !fade_palettes_.empty()) {
+            framebuffer.set_palette(fade_palettes_.front());
+        } else if (rendered && phase_ == BattleSessionPhase::initial_fade &&
+                   fade_frame_ < fade_palettes_.size()) {
             framebuffer.set_palette(fade_palettes_[fade_frame_]);
         }
     }
@@ -824,12 +850,25 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     }
 }
 
-bool BattleSession::begin_initial_battle() {
+bool BattleSession::prepare_initial_fade_to_black() {
     if (setup_.combatant_count() <= 0) {
         error_ = "battle has no combatants after setup";
         return false;
     }
-    if (!renderer_.load_battle_assets()) {
+    if (!renderer_.load_battlefield_assets()) {
+        error_ = renderer_.error();
+        return false;
+    }
+    phase_ = BattleSessionPhase::initial_fade_to_black;
+    selection_background_captured_ = false;
+    frame_rendered_ = false;
+    diagnostics::log_info(
+        "battle battlefield ready before fade id=" + std::to_string(battle_id()));
+    return true;
+}
+
+bool BattleSession::begin_initial_battle() {
+    if (!renderer_.load_effect_assets()) {
         error_ = renderer_.error();
         return false;
     }
@@ -841,7 +880,6 @@ bool BattleSession::begin_initial_battle() {
         " slot=0 role=" + std::to_string(actor[combatant_word::role_id]) +
         " view=" + std::to_string(render_state_.view_x) + "," +
         std::to_string(render_state_.view_y));
-    selection_background_captured_ = false;
     frame_rendered_ = false;
     return true;
 }

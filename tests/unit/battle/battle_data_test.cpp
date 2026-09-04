@@ -195,6 +195,13 @@ openlegend::model::RangerState make_ranger(
     return ranger;
 }
 
+void finish_battle_entry_fade(openlegend::battle::BattleSession& session) {
+    using namespace openlegend::battle;
+    OL_CHECK(session.phase() == BattleSessionPhase::initial_fade_to_black);
+    OL_CHECK(session.finish_initial_fade_to_black());
+    OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+}
+
 void run_movement_step_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -2029,6 +2036,9 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(renderer.valid());
     OL_CHECK(!renderer.render(*plan, framebuffer));
+    OL_CHECK(renderer.load_battlefield_assets());
+    OL_CHECK(!renderer.render(*plan, framebuffer));
+    OL_CHECK(renderer.load_effect_assets());
     OL_CHECK(renderer.load_battle_assets());
     OL_CHECK(renderer.render(*plan, framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x7d8a5211fe8c4eb0ULL);
@@ -2139,7 +2149,7 @@ void run_player_support_session_test(
 
     const auto reach_player_action = [&](BattleSession& session) {
         OL_CHECK(session.valid());
-        OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+        finish_battle_entry_fade(session);
         OL_CHECK(session.render(*framebuffer));
         session.finish_presented_tick(400U);
         for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {
@@ -2321,7 +2331,7 @@ void run_player_item_session_test(
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     const auto reach_player_action = [&](BattleSession& session) {
         OL_CHECK(session.valid());
-        OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+        finish_battle_entry_fade(session);
         OL_CHECK(session.render(*framebuffer));
         session.finish_presented_tick(800U);
         for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {
@@ -2752,7 +2762,7 @@ void run_player_status_session_test(
     auto session = std::make_unique<BattleSession>(
         data_root, *ranger, random, 4, false);
     OL_CHECK(session->valid());
-    OL_CHECK(session->phase() == BattleSessionPhase::initial_present);
+    finish_battle_entry_fade(*session);
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(900U);
     for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
@@ -2916,6 +2926,7 @@ void run_player_attack_session_test(
         auto session = std::make_unique<BattleSession>(
             data_root, *ranger, random, 4, false);
         OL_CHECK(session->valid());
+        finish_battle_entry_fade(*session);
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(initial_tick);
         for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
@@ -3126,7 +3137,7 @@ void run_ai_attack_session_test(
         data_root, *ranger, random, 4, false);
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     OL_CHECK(session->valid());
-    OL_CHECK(session->phase() == BattleSessionPhase::initial_present);
+    finish_battle_entry_fade(*session);
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'200U);
     for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
@@ -3272,6 +3283,7 @@ void run_ai_attack_session_test(
     auto movement_session = std::make_unique<BattleSession>(
         data_root, *movement_ranger, movement_random, 4, false);
     OL_CHECK(movement_session->valid());
+    finish_battle_entry_fade(*movement_session);
     OL_CHECK(movement_session->render(*framebuffer));
     movement_session->finish_presented_tick(1'300U);
     for (std::size_t frame = 0U;
@@ -3417,6 +3429,7 @@ void run_ai_poison_session_test(
         data_root, *ranger, random, 4, false);
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     OL_CHECK(session->valid());
+    finish_battle_entry_fade(*session);
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'400U);
     for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
@@ -3536,6 +3549,7 @@ void run_ai_poison_session_test(
     auto fallback_session = std::make_unique<BattleSession>(
         data_root, *fallback_ranger, fallback_random, 4, false);
     OL_CHECK(fallback_session->valid());
+    finish_battle_entry_fade(*fallback_session);
     OL_CHECK(fallback_session->render(*framebuffer));
     fallback_session->finish_presented_tick(1'500U);
     for (std::size_t frame = 0U;
@@ -3650,7 +3664,7 @@ void run_ai_item_session_test(
     };
     const auto reach_ai_action = [&](BattleSession& session, const std::uint32_t tick) {
         OL_CHECK(session.valid());
-        OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+        finish_battle_entry_fade(session);
         OL_CHECK(session.render(*framebuffer));
         session.finish_presented_tick(tick);
         for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {
@@ -4207,6 +4221,7 @@ void run_ai_support_session_test(
         auto framebuffer =
             std::make_unique<openlegend::render::IndexedFramebuffer>();
         OL_CHECK(session->valid());
+        finish_battle_entry_fade(*session);
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(initial_tick);
         for (std::size_t frame = 0U;
@@ -4378,6 +4393,7 @@ void run_ai_support_movement_session_test(
     }
     OL_CHECK(session->handle_key(0x0DU) ==
              BattleSessionInputResult::selection_complete);
+    finish_battle_entry_fade(*session);
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'900U);
     for (std::size_t frame = 0U;
@@ -4595,7 +4611,7 @@ void run_ai_request_session_test(
     }
     OL_CHECK(session->handle_key(0x0DU) ==
              BattleSessionInputResult::selection_complete);
-    OL_CHECK(session->phase() == BattleSessionPhase::initial_present);
+    finish_battle_entry_fade(*session);
     OL_CHECK(session->setup().combatant_count() == 4);
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'800U);
@@ -4819,7 +4835,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     }
     OL_CHECK(session.setup().cursor() == session.setup().party_prefix_length());
     OL_CHECK(session.handle_key(0x0DU) == BattleSessionInputResult::selection_complete);
-    OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+    finish_battle_entry_fade(session);
     OL_CHECK(session.setup().combatant_count() == 4);
     constexpr std::array<std::int16_t, 4> kExpectedRoles{0, 1, 2, 4};
     for (std::size_t slot = 0U; slot < kExpectedRoles.size(); ++slot) {
@@ -4930,7 +4946,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
 
     const auto reach_player_action = [&](BattleSession& target) {
         OL_CHECK(target.valid());
-        OL_CHECK(target.phase() == BattleSessionPhase::initial_present);
+        finish_battle_entry_fade(target);
         OL_CHECK(target.render(framebuffer));
         target.finish_presented_tick();
         for (std::size_t frame = 0U; frame < target.fade_frame_count(); ++frame) {
@@ -5307,6 +5323,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     }
     OL_CHECK(escape_session.handle_key(0x0DU) ==
              BattleSessionInputResult::selection_complete);
+    finish_battle_entry_fade(escape_session);
     OL_CHECK(escape_session.render(framebuffer));
     escape_session.finish_presented_tick(300U);
     for (std::size_t frame = 0U; frame < escape_session.fade_frame_count(); ++frame) {
@@ -6534,7 +6551,7 @@ void run_initial_presentation_order_test(
     auto session = std::make_unique<BattleSession>(
         data_root, *ranger, random, 4, false, inherited_state);
     OL_CHECK(session->valid());
-    OL_CHECK(session->phase() == BattleSessionPhase::initial_present);
+    finish_battle_entry_fade(*session);
     OL_CHECK(session->view_x() == 17);
     OL_CHECK(session->view_y() == 19);
     OL_CHECK(session->setup().combatant_count() == 2);
@@ -6542,6 +6559,11 @@ void run_initial_presentation_order_test(
 
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     OL_CHECK(session->render(*framebuffer));
+    OL_CHECK(std::ranges::all_of(
+        framebuffer->palette(),
+        [](const auto& color) {
+            return color.red == 0U && color.green == 0U && color.blue == 0U;
+        }));
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
     session->finish_presented_tick(10U);
     OL_CHECK(session->phase() == BattleSessionPhase::initial_fade);
@@ -6629,7 +6651,7 @@ void run_battle_outcome_session_test(
     openlegend::render::IndexedFramebuffer framebuffer;
     const auto prepare_player_action = [&](BattleSession& session) {
         OL_CHECK(session.valid());
-        OL_CHECK(session.phase() == BattleSessionPhase::initial_present);
+        finish_battle_entry_fade(session);
         OL_CHECK(session.render(framebuffer));
         session.finish_presented_tick();
         for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {

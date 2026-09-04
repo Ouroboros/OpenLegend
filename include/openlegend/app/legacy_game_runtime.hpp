@@ -85,6 +85,8 @@ enum class LegacyGameView {
 };
 
 class LegacyGameRuntime {
+    friend struct LegacyGameRuntimeTestAccess;
+
 public:
     LegacyGameRuntime(std::filesystem::path data_root, std::uint32_t random_seed);
 
@@ -154,6 +156,12 @@ private:
         fade_from_black,
     };
 
+    enum class BattleTransitionPhase {
+        none,
+        fade_to_black_before_initial_present,
+        fade_to_black_after_complete,
+    };
+
     enum class WorldMenuEventPhase {
         none,
         running,
@@ -186,7 +194,9 @@ private:
         std::optional<scene::SceneEntryOverride> entry_override = std::nullopt);
     [[nodiscard]] bool start_battle(
         std::int16_t battle_id, bool grant_experience);
+    void begin_battle_transition_if_ready();
     void finish_battle_if_ready();
+    void complete_battle_after_fade();
     void handle_scene_result(const scene::SceneStepResult& result);
     [[nodiscard]] bool advance_scene_effect();
     void begin_scene_effect(SceneEffectKind kind, std::uint16_t wait_ticks = 1U);
@@ -231,6 +241,7 @@ private:
     std::uint8_t pending_slot_{};
     LoadTransitionPhase load_transition_phase_{LoadTransitionPhase::none};
     TitleStartupPhase title_startup_phase_{TitleStartupPhase::none};
+    BattleTransitionPhase battle_transition_phase_{BattleTransitionPhase::none};
     LegacyGameView load_return_view_{LegacyGameView::title};
     std::optional<model::GameSnapshot> pending_loaded_snapshot_;
     std::optional<ui::TitleResult> pending_title_result_;

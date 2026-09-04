@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=229/349`，`unique_any=185/284`，`unique_all=175/284`
-当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=98` 场景战斗入口；order97对话文本渲染已恢复机器正文颜色、重开受影响caller/商店closure并通过双oracle与Linux app Debug 14/14
-下一任务指针：`audit_order=98` 收口后回到同表 `audit_order=2` 场景主循环
+已发布进度：`closure=230/349`，`unique_any=186/284`，`unique_all=175/284`
+当前任务指针：B7 `research/inventory/scene-event-closure.tsv` `audit_order=2` 场景主循环；order98场景战斗入口已恢复双64帧淡出、分段资源加载、黑色首帧/音乐及1+65帧初始序列，并通过真实script691 battle4生命周期、双golden与Linux app Debug 14/14
+下一任务指针：同表 `audit_order=3` 场景档案打开
 
 ## 0. 唯一正确性真值
 
@@ -286,7 +286,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 范围：`scene`
 
-当前状态：`scene-event-closure.tsv` 94/100已完成最终汇编→C++ REVIEW；`audit_order=97`对话文本渲染恢复caller packed值100对应的右阴影0/前景100，受影响的对话caller与商店closure已从入口重开收敛，双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=98`场景战斗入口。
+当前状态：`scene-event-closure.tsv` 95/100已完成最终汇编→C++ REVIEW；`audit_order=98`场景战斗入口已按机器顺序恢复WDX/WMP→64帧scene淡出→EFT→黑色首帧→音乐→排序黑帧+65帧淡入，以及保留最终battle framebuffer的64帧出口淡出后才恢复scene/music/result；真实script691 battle4生命周期、双oracle逐字节一致且Linux app Debug 14/14通过；下一工作包为`audit_order=2`场景主循环。
 
 交付：
 

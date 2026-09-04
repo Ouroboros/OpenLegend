@@ -21,6 +21,7 @@ namespace openlegend::battle {
 
 enum class BattleSessionPhase {
     party_selection,
+    initial_fade_to_black,
     initial_present,
     initial_fade,
     round_start,
@@ -211,6 +212,7 @@ public:
     [[nodiscard]] BattleSessionInputResult handle_key(
         std::uint8_t translated_key,
         std::optional<std::uint32_t> bios_tick = std::nullopt);
+    [[nodiscard]] bool finish_initial_fade_to_black();
     [[nodiscard]] std::vector<BattleAudioCommand> take_audio_commands();
     void advance(std::uint32_t bios_tick = 0U);
     [[nodiscard]] bool render(
@@ -243,6 +245,7 @@ private:
         throwing_weapon,
     };
 
+    [[nodiscard]] bool prepare_initial_fade_to_black();
     [[nodiscard]] bool begin_initial_battle();
     [[nodiscard]] bool begin_round(std::uint32_t bios_tick);
     [[nodiscard]] bool begin_ai_action();

@@ -12,17 +12,19 @@
 
 `sub_2DE03 @ 0x2DE03..0x2DE2C` 已完成最终汇编→C++ REVIEW。41字节、12条指令的loaded/raw机器码完全相同，SHA256均为`eaa12eafb11dd75089bee3d4d81fbc331e646de5f19b50e4804fbcc144a4ffff`。唯一caller依次有符号压入get-exp、假偏移、真偏移和battle ID；wrapper只把battle ID与get-exp传给`sub_31C75`，调用返回后严格执行一次`cmp eax,1`，等于1时返回真偏移，否则返回假偏移，最终PC为`old_pc+5+selected_offset`。限域xref审计证明`sub_31C75`返回`word_E6ED2-1`，raw结果1显示`戰鬥失敗`、raw结果2显示`戰鬥勝利`，且结果word没有第三个终局写值。全KDEF共145次opcode6，参数流SHA256为`7558e4efa98b78c11e4d94643b990547801d751976fd76bb8016107a25011779`；battle ID均在0..135，get-exp仅0/1，19种offset pair含单条`(8,5)`。现代runtime持有异步`BattleSession`，但合法域的battle ID、经验bool、typed Victory/Defeat回收和脚本PC等价，归类`platform_adapted`；新增两侧非零offset synthetic向量通过，首轮完整复核零新增产品差异。
 
-`sub_31C75 @ 0x31C75..0x31DA0`：
+`sub_31C75 @ 0x31C75..0x31DA0`为299字节、72条指令；raw/loaded SHA256分别为`8f3e6d11d5d85a9c7882511546962fdd2793c5c3a11c8d580fc62bbec2e113b6`与`634a5e34a676f54ebc829e443e2bafcced1d3117dbf73eaa0a71485d802bdb64`，24项绝对地址均按`raw+0x20000` relocation归一化一致。其14个直接调用与状态顺序为：
 
-1. 保存 get-exp 到 battle global，写运行模式2，保存 battle id；
-2. 调 `sub_31DA0` 载入 `WAR.STA` 记录和 `WARFLD` 战场；
-3. 调 `sub_31EB9/sub_3265C` 建立参战者和瞬时态；
-4. 队伍选择完成后打开对应 WMP/WDX 与 EFT，使用跨战保留的battle render globals绘制并呈现首帧；
-5. 首帧present后启动战斗音乐，再调用 `sub_3271E` 执行首次排序、重定位、fade与主状态机；
-6. 淡出，关闭 SMP/SDX，并按主角记录决定停止或恢复原音乐；
-7. 写运行模式1，返回 `word_E6ED2 - 1`。
+1. 保存get-exp，写运行模式2并保存battle id；
+2. 调`sub_31DA0`载入WAR记录与WARFLD，调`sub_31EB9/sub_3265C`建立瞬时态与队伍；
+3. 队伍选择完成后先打开WDX/WMP，再对进入battle前的scene framebuffer执行`sub_3CC97` 64帧淡出；
+4. 淡出完成后才打开EFT，使用跨战保留的render globals绘制并以黑色palette呈现首个battle framebuffer；
+5. 首帧实际present后按WAR word8启动音乐，再调用`sub_3271E`；该入口排序、重定位、重画并present一个黑帧，随后`sub_3CD17` present 64个递增palette帧和最终原palette，共1+65=66次；
+6. 主循环返回后保留最终battle framebuffer执行`sub_3CC97` 64帧淡出，之后恢复当前scene SMP/SDX与scene metadata word7音乐，值-1时传0；
+7. 写运行模式1，返回有符号`word_E6ED2-1`。
 
-`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`在opcode6请求后建立并拥有`BattleSession`，切换battle view，实际驱动render、present完成回调、翻译键盘输入和轮首advance。runtime跨battle保留完整`BattleRenderState`；队伍确认后才加载战斗专属WDX/WMP/EFT，首帧实际present后按WAR word8发战斗music命令，随后Session排序并重定位fade视角。消息队列耗尽后保存本场最终battle render globals、销毁battle资源，按当前scene metadata word7恢复场景music（负值按机器分支转0），再以严格`Victory`映射`battle_victory`，`Defeat`映射`battle_defeat`恢复解释器真假PC。AI逃跑是动作11的回合内移动/休息handler，不是第三种battle返回值。`sub_2DE03`现为`platform_adapted / converged_no_new_differences`；`sub_31C75`及完整battle生命周期仍保持`implemented_pending_review`，由其自身后续closure独立终审。
+现代`SceneStepResult`携带battle id与get-exp word；`LegacyGameRuntime`建立并拥有`BattleSession`，以宿主过渡状态持有两次必须冻结caller像素的64帧淡出，并在过渡期间屏蔽输入。`BattleRenderer`分阶段加载WDX/WMP与EFT；首个黑色battle present完成后才发音乐，Session随后执行机器的排序黑帧与65帧淡入。战后必须完成冻结最终战斗像素的64帧淡出，才保存render globals、释放Session、复用仍持有的`SceneSession`并恢复场景音乐，再以严格`Victory`/`Defeat`恢复事件真假PC。复用已加载scene资源替代机器重开SMP/SDX，合法域的结果与顺序一致，归类`platform_adapted`。
+
+真实runtime测试由scene70 script691 opcode6实际发出battle4，覆盖入口、音乐、1+65帧初始序列、真实胜利结算、出口与场景音乐恢复；全140条WAR记录的battlefield id 0..25均有WDX/WMP，音乐只为5/6/7。双次独立scene golden逐字节一致，正式SHA256为`1095242e7cfeb92d3b8619cf0663054013400987e450dc9a662fff90276e24b8`；Linux app Debug 14/14通过。AI逃跑仍是动作11的回合内handler，不是第三种battle返回值。`scene-event-closure.tsv`的`target_owner=scene`入口已收敛关闭；同址B8 owner与`sub_31DA0/sub_31EB9/sub_3265C/sub_3271E/sub_3AA85`等callee不传播关闭，继续由`battle-closure.tsv`独立终审。
 
 ## 3. 资产 oracle
 
