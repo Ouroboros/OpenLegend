@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=253/349`，`unique_any=208/284`，`unique_all=194/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=19` AI攻击目标选择
-下一任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=20` AI最高攻击目标
+当前有效进度：`closure=254/349`，`unique_any=209/284`，`unique_all=195/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=20` AI最高攻击目标
+下一任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=21` AI最低攻击目标
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中18项已完成最终汇编→C++ REVIEW，其余63项为`implemented_pending_review`。order18 `sub_34C47`机器身份为1044 bytes、248条指令、42条分支、73处重定位、6个caller和10次direct call；packed magic槽、magic先于目标的RNG顺序、七项特殊加成末项覆盖、unsigned熟练度/100、三次targeting判定、mode0/1/2、signed行动值短路、automatic flag1、休息与统一action_done尾均已逐块审计。首轮修正了两个stale-target差异：selector未写时复用合法旧目标，以及移动后nearest未写时保留旧目标并落入rest；非法线性索引继续由现代安全拒绝。修正后从入口完整重审零新增差异，独立原资产golden双生成一致，SHA256为`cf98384f461753277742b56dd0fb0692e7064391eafbc148ef794575913cd241`，Linux app Debug 14/14通过。当前推进order19 AI攻击目标选择。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中19项已完成最终汇编→C++ REVIEW，其余62项为`implemented_pending_review`。order18 `sub_34C47`机器身份为1044 bytes、248条指令、42条分支、73处重定位、6个caller和10次direct call；packed magic槽、magic先于目标的RNG顺序、七项特殊加成末项覆盖、unsigned熟练度/100、三次targeting判定、mode0/1/2、signed行动值短路、automatic flag1、休息与统一action_done尾均已逐块审计。首轮修正了两个stale-target差异：selector未写时复用合法旧目标，以及移动后nearest未写时保留旧目标并落入rest；非法线性索引继续由现代安全拒绝。order19 `sub_3505B`机器身份为223 bytes、63条指令、9条分支、6处重定位、2个caller和8次direct call；signed morality高低门槛、IQ门槛、每段`bounded(10)<7`、实际0至2次RNG、命中策略未写目标不回退及无RNG nearest尾均已逐块审计，seed3结果7和signed最小morality边界已锁定。两个owner修正或对照后均从入口重审零新增差异；最新独立原资产golden双生成一致，SHA256为`296c8c9a0f8f790a165d701ca2b4a9b506657e9654d48a3bb67dbe5b2a3240c3`，Linux app Debug 14/14通过。当前推进order20 AI最高攻击目标。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

@@ -78,6 +78,15 @@ BATTLE_AI_ATTACK_HANDLER_RELOCATION_OFFSETS = (
 BATTLE_AI_ATTACK_HANDLER_CALLER_SITES = (
     0x33BD7, 0x35430, 0x35980, 0x36200, 0x36398, 0x364F9,
 )
+BATTLE_AI_ATTACK_TARGET_ADDRESS = 0x3505B
+BATTLE_AI_ATTACK_TARGET_END = 0x3513A
+BATTLE_AI_ATTACK_TARGET_CALL_OFFSETS = (
+    0x005, 0x02F, 0x03D, 0x06F, 0x07D, 0x0AF, 0x0BD, 0x0D4,
+)
+BATTLE_AI_ATTACK_TARGET_RELOCATION_OFFSETS = (
+    0x019, 0x026, 0x059, 0x066, 0x099, 0x0A6,
+)
+BATTLE_AI_ATTACK_TARGET_CALLER_SITES = (0x34D61, 0x3583E)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -557,6 +566,45 @@ def battle_ai_attack_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "target_range_rechecks": 3,
         "attack_automatic_flag": 1,
         "action_done_shared_tail": True,
+    }
+
+
+def battle_ai_attack_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_ATTACK_TARGET_ADDRESS,
+        end=BATTLE_AI_ATTACK_TARGET_END,
+        call_offsets=BATTLE_AI_ATTACK_TARGET_CALL_OFFSETS,
+        expected_call_targets=(
+            0x3ED1E, 0x3D612, 0x3513A, 0x3D612,
+            0x351A7, 0x3D612, 0x35217, 0x35372,
+        ),
+        relocation_offsets=BATTLE_AI_ATTACK_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_ATTACK_TARGET_CALLER_SITES,
+        instruction_count=63,
+        branch_count=9,
+    )
+    if contract["raw_sha256"] != (
+        "10afcc5cd8f924d80d1749c1fe5f2e906fa60b9a191767fb15436d50e6bae992"
+    ):
+        raise ValueError("Z.DAT battle AI attack-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "bbbf59bbdc65946d1c1e0d2e093cb5ccb4d46d831002dd285ae13720f8f9bbdf"
+    ):
+        raise ValueError("Z.DAT battle AI attack-target relocation image changed")
+    return {
+        **contract,
+        "strategy_order": [
+            "signed morality >= 75",
+            "signed morality <= 25",
+            "signed IQ >= 70",
+            "nearest fallback",
+        ],
+        "random_bound": 10,
+        "random_success_predicate": "result < 7",
+        "reachable_random_draw_counts": [0, 1, 2],
+        "selected_strategy_falls_back_when_target_not_written": False,
+        "nearest_fallback_consumes_random": False,
     }
 
 
@@ -3286,6 +3334,10 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     seed9_roll, seed9_state = legacy_bounded(9, 10)
     cascade_first, cascade_state = legacy_bounded(1, 10)
     cascade_second, cascade_state = legacy_bounded(cascade_state, 10)
+    cutoff_success, cutoff_success_state = legacy_bounded(6, 10)
+    cutoff_failure, cutoff_failure_state = legacy_bounded(3, 10)
+    if cutoff_success != 6 or cutoff_failure != 7:
+        raise ValueError("AI attack-target cutoff seeds changed")
     return {
         "strongest": {
             "morality": 75,
@@ -3329,6 +3381,28 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
             "attacks": [0, 0],
             "target_slot": -1,
             "falls_back": False,
+        },
+        "roll_cutoff": {
+            "success": {
+                "seed": 6,
+                "rng_output": cutoff_success,
+                "rng_state_after": cutoff_success_state,
+                "selected_strategy": "strongest_attack",
+            },
+            "failure": {
+                "seed": 3,
+                "rng_output": cutoff_failure,
+                "rng_state_after": cutoff_failure_state,
+                "fallback_strategy": "nearest",
+            },
+        },
+        "signed_minimum_morality": {
+            "morality": -32768,
+            "seed": 6,
+            "rng_output": cutoff_success,
+            "rng_state_after": cutoff_success_state,
+            "selected_strategy": "weakest_attack",
+            "target_slot": weakest,
         },
         "strict_comparisons_preserve_first_tie": True,
         "hidden_opponents_skipped": True,
@@ -3661,6 +3735,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_rest_wrapper_machine": battle_rest_wrapper_contract(z_dat_bytes),
         "battle_escape_plan_machine": battle_escape_plan_contract(z_dat_bytes),
         "battle_ai_attack_handler_machine": battle_ai_attack_handler_contract(z_dat_bytes),
+        "battle_ai_attack_target_machine": battle_ai_attack_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

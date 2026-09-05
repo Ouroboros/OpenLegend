@@ -423,6 +423,57 @@
     "attack_automatic_flag": 1,
     "action_done_shared_tail": true
   },
+  "battle_ai_attack_target_machine": {
+    "address": "0x3505b",
+    "end": "0x3513a",
+    "raw_offset": "0x2ea5b",
+    "size": 223,
+    "instruction_count": 63,
+    "branch_count": 9,
+    "raw_sha256": "10afcc5cd8f924d80d1749c1fe5f2e906fa60b9a191767fb15436d50e6bae992",
+    "loaded_sha256": "bbbf59bbdc65946d1c1e0d2e093cb5ccb4d46d831002dd285ae13720f8f9bbdf",
+    "relocation_count": 6,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35060",
+      "0x3508a",
+      "0x35098",
+      "0x350ca",
+      "0x350d8",
+      "0x3510a",
+      "0x35118",
+      "0x3512f"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x3513a",
+      "0x3d612",
+      "0x351a7",
+      "0x3d612",
+      "0x35217",
+      "0x35372"
+    ],
+    "callers": [
+      "0x34d61",
+      "0x3583e"
+    ],
+    "strategy_order": [
+      "signed morality >= 75",
+      "signed morality <= 25",
+      "signed IQ >= 70",
+      "nearest fallback"
+    ],
+    "random_bound": 10,
+    "random_success_predicate": "result < 7",
+    "reachable_random_draw_counts": [
+      0,
+      1,
+      2
+    ],
+    "selected_strategy_falls_back_when_target_not_written": false,
+    "nearest_fallback_consumes_random": false
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3301,6 +3352,28 @@
           ],
           "target_slot": -1,
           "falls_back": false
+        },
+        "roll_cutoff": {
+          "success": {
+            "seed": 6,
+            "rng_output": 6,
+            "rng_state_after": 2326136519,
+            "selected_strategy": "strongest_attack"
+          },
+          "failure": {
+            "seed": 3,
+            "rng_output": 7,
+            "rng_state_after": 3310558080,
+            "fallback_strategy": "nearest"
+          }
+        },
+        "signed_minimum_morality": {
+          "morality": -32768,
+          "seed": 6,
+          "rng_output": 6,
+          "rng_state_after": 2326136519,
+          "selected_strategy": "weakest_attack",
+          "target_slot": 3
         },
         "strict_comparisons_preserve_first_tie": true,
         "hidden_opponents_skipped": true

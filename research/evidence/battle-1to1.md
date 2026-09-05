@@ -215,11 +215,13 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 23. 自动攻击目标策略
 
-`sub_3505B`按morality与IQ调度四种目标策略。morality>=75、morality<=25、IQ>=70分支各自在条件成立时消费一次`bounded(10)`并要求结果<7；命中后分别调用最高攻击、最低攻击和专长selector，三者均未命中才无RNG选择最近目标。一旦策略门槛命中，即使selector没有写目标也不回退。seed9输出2、终态1341714958；morality75与IQ70在seed1下依次失败`[8,8]`后选最近目标，终态2524885223。
+`sub_3505B`机器身份固定为223 bytes、63条指令、9个显式跳转和6处重定位；raw/loaded SHA256为`10afcc5cd8f924d80d1749c1fe5f2e906fa60b9a191767fb15436d50e6bae992`与`bbbf59bbdc65946d1c1e0d2e093cb5ccb4d46d831002dd285ae13720f8f9bbdf`。攻击handler与暗器handler两个caller均传signed actor槽且不消费返回值；八次direct call顺序为栈检查、三次RNG及最高攻击/最低攻击/专长/最近四个selector。
 
-`sub_3513A/sub_351A7`只扫描不同side且未隐藏目标，分别以best 0/1000选择signed attack严格最大/最小值，同值保留早槽；最高攻击策略面对`[0,0]`不写word11，顶层仍停止。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。
+控制流按signed morality>=75、morality<=25、IQ>=70依次短路；每个成立门槛才消费一次`bounded(10)`，结果严格<7才命中对应属性策略，全部未命中才无RNG选择最近目标。命中属性策略后无条件停止，即使delegated selector未写word11也不回退。高低morality不能同时成立，因此一次调用虽有三个RNG调用点，实际只消费0、1或2次。seed3首轮输出7必须失败并回退nearest，终态3310558080；signed morality最小值在seed6输出6时命中最低攻击，终态2326136519。既有seed9与seed1向量继续锁定一次命中和两次失败。
 
-`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。固定detox`[30,0]`先暂选slot3，最终按attack`[50,10]`改为slot4。五个函数均为 `implemented_pending_review`。
+现代`choose_ai_attack_target`逐块保持属性顺序、含等号方向、短路RNG、roll边界、未写目标不回退与最终nearest；仅对非法actor/role及delegated selector内部索引错误安全返回。入口重审全部63条指令零新增差异，正式原资产golden双生成一致，SHA256为`296c8c9a0f8f790a165d701ca2b4a9b506657e9654d48a3bb67dbe5b2a3240c3`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
+
+`sub_3513A/sub_351A7`只扫描不同side且未隐藏目标，分别以best 0/1000选择signed attack严格最大/最小值，同值保留早槽；最高攻击策略面对`[0,0]`不写word11，顶层仍停止。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。四个delegated selector继续为`implemented_pending_review`，不由本owner传播关闭。
 
 ## 24. 自动攻击主handler计划
 

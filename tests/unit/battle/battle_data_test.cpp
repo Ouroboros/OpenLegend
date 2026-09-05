@@ -6723,6 +6723,27 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(no_strongest_random.state() == 1'341'714'958U);
 
     reset();
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    openlegend::random::LegacyRandom cutoff_failure_random{3U};
+    target = setup.choose_ai_attack_target(0U, cutoff_failure_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(cutoff_failure_random.state() == 3'310'558'080U);
+
+    reset();
+    ranger.roles[0U].set_word(
+        role_word::morality, std::numeric_limits<std::int16_t>::min());
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, 50);
+    openlegend::random::LegacyRandom signed_morality_random{6U};
+    target = setup.choose_ai_attack_target(0U, signed_morality_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(signed_morality_random.state() == 2'326'136'519U);
+
+    reset();
     ranger.magics[0U].set_word(magic_word::select_distance_begin, 0);
     ranger.magics[0U].set_word(magic_word::attack_area_type, 0);
     openlegend::random::LegacyRandom zero_magic_random{1U};
