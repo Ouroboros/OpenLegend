@@ -227,7 +227,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_35217`机器身份固定为347 bytes、91条指令、19个显式跳转和19处重定位；raw/loaded SHA256为`461f8b3d53f24104b1ca7305af927bd28945715d425f93bd48e793ab423f6916`与`cdb3563325b0382c5bf05d0f4744cc041519d55d94120fc35b6fcc3ad5f4216c`。唯一caller调用后直接置策略命中且不读EAX；业务callee仅尾部最低攻击selector。第一段扫描全部同side槽且不排除自身、hidden或HP0，以signed `use_poison>20`置触发flag；触发后以shared signed best0选可见敌方strict最大detoxification，更新先写word11再以值`>=20`置独立detox flag。detox flag置位会跳过medicine，但尾部只检查独立medicine flag，因此必然调用最低攻击fallback。detox未达20时medicine扫描不重置best，继续以strict更大值写目标并按`>=20`置medicine flag；阈值下暂写最终也由fallback覆盖。隐藏死亡盟友触发、detox20加高medicine仍fallback、shared best15阻止medicine14/12、detox10后medicine20成功、medicine同值HP0早槽及negative hidden敌人均已锁定。现代逐块一致，仅对非法role安全返回；入口重审91条指令零新增差异，独立golden SHA256为`1c9de1701b9b7290c61029c0c53bb40521e98cc086551b548b6d5dd99bd8d85d`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
 
-`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG；该delegated selector继续为`implemented_pending_review`，不由order22传播关闭。
+`sub_35372`机器身份固定为156 bytes、39条指令、5个显式跳转和12处重定位；raw/loaded SHA256为`c20a0bad9f0b84b7d6c757dd0f2338f9bf6427e022c3c7644c8a378d06ff17f1`与`d5a95b43e79f688fad6798458fd71c41bc91e1e00aaa225b380e22a24e8a457c`。两个caller均只依赖word11且不读EAX。函数按signed槽序筛选不同side且hidden严格等于0的目标，不读HP；best为signed 1000，每个合格候选都以相同actor坐标重建targeting图，再按candidate坐标读取signed距离，仅strict更小时写目标，同距保留早槽。现代将确定性图合并为单次构建，正常域全部距离与最终结果相同，且无RNG或宿主时序差异；越界坐标安全映射为blocked555。真实距离`[6,8]`、同距HP0早槽、negative hidden、无候选stale word11及原资产blocked格`(23,9)`距离555可选均已锁定。入口重审39条指令零新增差异，独立golden SHA256为`83376071c3aa86e8fcae0a8221bae7b64cbe36bd33abdad12dc99211a65b31f1`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
 
 ## 24. 自动攻击主handler计划
 

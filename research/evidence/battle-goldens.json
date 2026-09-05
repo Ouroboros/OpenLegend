@@ -596,6 +596,46 @@
     "consumes_random": false,
     "caller_uses_return": false
   },
+  "battle_ai_nearest_target_machine": {
+    "address": "0x35372",
+    "end": "0x3540e",
+    "raw_offset": "0x2ed72",
+    "size": 156,
+    "instruction_count": 39,
+    "branch_count": 5,
+    "raw_sha256": "c20a0bad9f0b84b7d6c757dd0f2338f9bf6427e022c3c7644c8a378d06ff17f1",
+    "loaded_sha256": "d5a95b43e79f688fad6798458fd71c41bc91e1e00aaa225b380e22a24e8a457c",
+    "relocation_count": 12,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35377",
+      "0x353cf"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e7f"
+    ],
+    "callers": [
+      "0x34f59",
+      "0x3512f"
+    ],
+    "slot_loop_comparison": "signed int16 slot < combatant_count",
+    "candidate_filters": [
+      "side != actor side",
+      "hidden == 0"
+    ],
+    "best_initial": 1000,
+    "path_mode": "targeting",
+    "path_rebuild": "once per qualifying candidate from actor coordinates",
+    "distance_lookup": "signed int16 path[candidate_y * 64 + candidate_x]",
+    "distance_comparison": "signed candidate < best",
+    "ties_preserve_first_slot": true,
+    "blocked_distance_555_can_write_target": true,
+    "no_candidate_preserves_target": true,
+    "reads_hp": false,
+    "consumes_random": false,
+    "callers_use_return": false
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3598,8 +3638,62 @@
             6,
             8
           ],
+          "best_distance": 6,
           "target_slot": 3,
+          "target_written": true,
           "rng_consumed": false
+        },
+        "nearest_first_tie_with_dead_first_candidate": {
+          "coordinates": [
+            [
+              13,
+              23
+            ],
+            [
+              13,
+              23
+            ]
+          ],
+          "hp": [
+            0,
+            100
+          ],
+          "best_distance": 6,
+          "target_slot": 3,
+          "target_written": true
+        },
+        "nearest_negative_hidden_candidate_skipped": {
+          "hidden": [
+            -1,
+            0
+          ],
+          "distances": [
+            6,
+            8
+          ],
+          "best_distance": 8,
+          "target_slot": 4,
+          "target_written": true
+        },
+        "nearest_no_candidate_preserves_stale_target": {
+          "hidden": [
+            1,
+            -1
+          ],
+          "initial_target": 4,
+          "best_distance": 1000,
+          "target_slot": 4,
+          "target_written": false
+        },
+        "nearest_blocked_distance_555_is_selectable": {
+          "coordinate": [
+            23,
+            9
+          ],
+          "hidden_other_candidate": -1,
+          "best_distance": 555,
+          "target_slot": 3,
+          "target_written": true
         },
         "failed_high_morality_then_failed_iq": {
           "rng_outputs": [

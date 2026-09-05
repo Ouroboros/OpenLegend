@@ -6766,7 +6766,56 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.has_value());
     OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
     OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
     OL_CHECK(nearest_random.state() == 1U);
+
+    reset();
+    setup.combatants()[4U].words[combatant_word::x] =
+        setup.combatants()[3U].words[combatant_word::x];
+    setup.combatants()[4U].words[combatant_word::y] =
+        setup.combatants()[3U].words[combatant_word::y];
+    ranger.roles[3U].set_word(role_word::hp, 0);
+    openlegend::random::LegacyRandom nearest_tie_random{1U};
+    target = setup.choose_ai_attack_target(0U, nearest_tie_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
+    OL_CHECK(nearest_tie_random.state() == 1U);
+
+    reset();
+    setup.combatants()[3U].words[combatant_word::occupancy_hidden] = -1;
+    openlegend::random::LegacyRandom nearest_hidden_random{1U};
+    target = setup.choose_ai_attack_target(0U, nearest_hidden_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(target->target_written);
+    OL_CHECK(nearest_hidden_random.state() == 1U);
+
+    reset();
+    setup.combatants()[3U].words[combatant_word::occupancy_hidden] = 1;
+    setup.combatants()[4U].words[combatant_word::occupancy_hidden] = -1;
+    setup.combatants()[0U].words[combatant_word::ai_target] = 4;
+    openlegend::random::LegacyRandom nearest_stale_random{1U};
+    target = setup.choose_ai_attack_target(0U, nearest_stale_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(!target->target_written);
+    OL_CHECK(nearest_stale_random.state() == 1U);
+
+    reset();
+    setup.combatants()[3U].words[combatant_word::x] = 23;
+    setup.combatants()[3U].words[combatant_word::y] = 9;
+    setup.combatants()[4U].words[combatant_word::occupancy_hidden] = -1;
+    openlegend::random::LegacyRandom nearest_blocked_random{1U};
+    target = setup.choose_ai_attack_target(0U, nearest_blocked_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
+    OL_CHECK(nearest_blocked_random.state() == 1U);
 
     reset();
     ranger.roles[0U].set_word(role_word::morality, 75);

@@ -110,6 +110,14 @@ BATTLE_AI_SPECIALIST_TARGET_RELOCATION_OFFSETS = (
     0x13A,
 )
 BATTLE_AI_SPECIALIST_TARGET_CALLER_SITES = (0x35118,)
+BATTLE_AI_NEAREST_TARGET_ADDRESS = 0x35372
+BATTLE_AI_NEAREST_TARGET_END = 0x3540E
+BATTLE_AI_NEAREST_TARGET_CALL_OFFSETS = (0x005, 0x05D)
+BATTLE_AI_NEAREST_TARGET_RELOCATION_OFFSETS = (
+    0x02C, 0x033, 0x03C, 0x046, 0x04C, 0x053,
+    0x059, 0x065, 0x06F, 0x077, 0x084, 0x08F,
+)
+BATTLE_AI_NEAREST_TARGET_CALLER_SITES = (0x34F59, 0x3512F)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -750,6 +758,44 @@ def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object
         "reads_hp": False,
         "consumes_random": False,
         "caller_uses_return": False,
+    }
+
+
+def battle_ai_nearest_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_NEAREST_TARGET_ADDRESS,
+        end=BATTLE_AI_NEAREST_TARGET_END,
+        call_offsets=BATTLE_AI_NEAREST_TARGET_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x36E7F),
+        relocation_offsets=BATTLE_AI_NEAREST_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_NEAREST_TARGET_CALLER_SITES,
+        instruction_count=39,
+        branch_count=5,
+    )
+    if contract["raw_sha256"] != (
+        "c20a0bad9f0b84b7d6c757dd0f2338f9bf6427e022c3c7644c8a378d06ff17f1"
+    ):
+        raise ValueError("Z.DAT battle AI nearest-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "d5a95b43e79f688fad6798458fd71c41bc91e1e00aaa225b380e22a24e8a457c"
+    ):
+        raise ValueError("Z.DAT battle AI nearest-target relocation image changed")
+    return {
+        **contract,
+        "slot_loop_comparison": "signed int16 slot < combatant_count",
+        "candidate_filters": ["side != actor side", "hidden == 0"],
+        "best_initial": 1000,
+        "path_mode": "targeting",
+        "path_rebuild": "once per qualifying candidate from actor coordinates",
+        "distance_lookup": "signed int16 path[candidate_y * 64 + candidate_x]",
+        "distance_comparison": "signed candidate < best",
+        "ties_preserve_first_slot": True,
+        "blocked_distance_555_can_write_target": True,
+        "no_candidate_preserves_target": True,
+        "reads_hp": False,
+        "consumes_random": False,
+        "callers_use_return": False,
     }
 
 
@@ -3576,6 +3622,28 @@ def specialist_target_oracle(
     }
 
 
+def nearest_target_oracle(
+    combatants: list[dict[str, int]],
+    path_values: list[int],
+    *,
+    actor_slot: int = 0,
+    initial_target: int = -1,
+) -> dict[str, object]:
+    actor_side = combatants[actor_slot]["side"]
+    best = 1000
+    target = initial_target
+    written = False
+    for slot, combatant in enumerate(combatants):
+        if combatant["side"] == actor_side or combatant["hidden"] != 0:
+            continue
+        distance = wrapping_i16(path_values[combatant["y"] * 64 + combatant["x"]])
+        if distance < best:
+            best = distance
+            target = slot
+            written = True
+    return {"best_distance": best, "target_slot": target, "target_written": written}
+
+
 def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     combatants = [
         {"side": 0, "hidden": 0, "x": 10, "y": 20},
@@ -3681,6 +3749,27 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
         [0, 0, 0, 20, 100],
         attacks,
     )
+    nearest_vector = nearest_target_oracle(combatants, targeting)
+    nearest_tie_combatants = [dict(combatant) for combatant in combatants]
+    nearest_tie_combatants[4]["x"] = nearest_tie_combatants[3]["x"]
+    nearest_tie_combatants[4]["y"] = nearest_tie_combatants[3]["y"]
+    nearest_tie_vector = nearest_target_oracle(nearest_tie_combatants, targeting)
+    nearest_hidden_combatants = [dict(combatant) for combatant in combatants]
+    nearest_hidden_combatants[3]["hidden"] = -1
+    nearest_hidden_vector = nearest_target_oracle(nearest_hidden_combatants, targeting)
+    nearest_stale_combatants = [dict(combatant) for combatant in combatants]
+    nearest_stale_combatants[3]["hidden"] = 1
+    nearest_stale_combatants[4]["hidden"] = -1
+    nearest_stale_vector = nearest_target_oracle(
+        nearest_stale_combatants, targeting, initial_target=4
+    )
+    nearest_blocked_combatants = [dict(combatant) for combatant in combatants]
+    nearest_blocked_combatants[3]["x"] = 23
+    nearest_blocked_combatants[3]["y"] = 9
+    nearest_blocked_combatants[4]["hidden"] = -1
+    nearest_blocked_vector = nearest_target_oracle(nearest_blocked_combatants, targeting)
+    if nearest_blocked_vector["best_distance"] != 555:
+        raise ValueError("battle 3 fixed blocked target no longer has distance 555")
     return {
         "strongest": {
             "morality": 75,
@@ -3740,8 +3829,28 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
             "targeting_distances": [
                 targeting[c["y"] * 64 + c["x"]] for c in combatants[3:]
             ],
-            "target_slot": nearest,
+            **nearest_vector,
             "rng_consumed": False,
+        },
+        "nearest_first_tie_with_dead_first_candidate": {
+            "coordinates": [[13, 23], [13, 23]],
+            "hp": [0, 100],
+            **nearest_tie_vector,
+        },
+        "nearest_negative_hidden_candidate_skipped": {
+            "hidden": [-1, 0],
+            "distances": [6, 8],
+            **nearest_hidden_vector,
+        },
+        "nearest_no_candidate_preserves_stale_target": {
+            "hidden": [1, -1],
+            "initial_target": 4,
+            **nearest_stale_vector,
+        },
+        "nearest_blocked_distance_555_is_selectable": {
+            "coordinate": [23, 9],
+            "hidden_other_candidate": -1,
+            **nearest_blocked_vector,
         },
         "failed_high_morality_then_failed_iq": {
             "rng_outputs": [cascade_first, cascade_second],
@@ -4152,6 +4261,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_strongest_target_machine": battle_ai_strongest_target_contract(z_dat_bytes),
         "battle_ai_weakest_target_machine": battle_ai_weakest_target_contract(z_dat_bytes),
         "battle_ai_specialist_target_machine": battle_ai_specialist_target_contract(z_dat_bytes),
+        "battle_ai_nearest_target_machine": battle_ai_nearest_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
