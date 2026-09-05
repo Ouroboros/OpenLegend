@@ -296,6 +296,46 @@
       "duplicate_occupancy": "later_write_wins"
     }
   },
+  "battle_rest_wrapper_machine": {
+    "address": "0x34ad3",
+    "end": "0x34aec",
+    "raw_offset": "0x2e4d3",
+    "size": 25,
+    "instruction_count": 7,
+    "branch_count": 0,
+    "raw_sha256": "2aad66b5c996733006f51f3887c3d1eff17c7e7b8324c0207851533ce2453ca3",
+    "loaded_sha256": "2aad66b5c996733006f51f3887c3d1eff17c7e7b8324c0207851533ce2453ca3",
+    "relocation_count": 0,
+    "call_sites": [
+      "0x34ad8",
+      "0x34ae3"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3a8a4"
+    ],
+    "callers": [
+      "0x33bb1",
+      "0x34c37",
+      "0x3503c",
+      "0x355f3",
+      "0x363a0",
+      "0x36504"
+    ],
+    "stack_probe_bytes": 8,
+    "actor_argument": "signed int16",
+    "delegated_core": "0x3a8a4",
+    "wrapper_state_writes": 0,
+    "return_value": "delegated core eax unchanged",
+    "caller_roles": [
+      "ai none-or-wait dispatch",
+      "escape or item-reposition tail when parameter is zero",
+      "attack fallback",
+      "poison fallback",
+      "medicine fallback",
+      "detox fallback"
+    ]
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

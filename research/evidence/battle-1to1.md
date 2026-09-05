@@ -209,7 +209,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 22. AI休息与逃跑目的格
 
-动作0/7的`sub_34AD3`仅做遗留栈清理并直接调用`sub_3A8A4`，现代完整映射到`rest_actor`，无额外状态，标为 `implemented_pending_review`。
+动作0/7的`sub_34AD3`机器身份已固定为25 bytes、7条指令、0分支与0重定位。它仅作8字节Watcom栈空间检查，把signed actor参数原样调用一次`sub_3A8A4`并原样返回核心结果；六个caller覆盖AI休息dispatch、逃跑/物品重定位尾及攻击、用毒、医疗、解毒回退。现代省略编译器栈检查，把wrapper合并映射为`rest_actor`，六类接线均通过`finish_ai_handler(...,true)`保留休息后统一完成顺序。独立`Z.DAT`机器golden、全部caller和唯一出口最终重审零新增差异，归类`platform_adapted / converged_no_new_differences`；休息状态核心`sub_3A8A4`仍按order69独立待审。
 
 动作11的`sub_34AEC`先以actor坐标建立movement图，再只扫描路径值恰等于round value的格。扫描严格为x外层、y内层；候选分数是与全部不同side combatant的曼哈顿距离和，不跳过隐藏或死亡槽；仅strict更大才替换，故同分保留早格。真实field2 synthetic向量source `(10,20)`、round value 3、敌方 `(13,23)/(14,24)`选择`(7,20)`，最大和20。入口参数0表示移动后休息，物品wrapper传1表示只重定位。`BattleSession`现对两种入口均实际逐格移动、render/present并在每格等待两次BIOS tick变化；参数0随后休息并完成actor，参数1恢复物品typed计划而不休息。真实battle2逃跑从`(30,24)`三格移动到`(31,22)`并验证局部动作11不写word10；该函数推进为 `implemented_pending_review`。
 

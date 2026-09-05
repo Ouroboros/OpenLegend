@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=250/349`，`unique_any=205/284`，`unique_all=191/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=16` 休息动作封装
-下一任务指针：B8 `audit_order=17` 逃跑目的格规划
+当前有效进度：`closure=251/349`，`unique_any=206/284`，`unique_all=192/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=17` 逃跑目的格规划
+下一任务指针：B8 `audit_order=18` AI攻击执行
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中15项已完成最终汇编→C++ REVIEW，其余66项为`implemented_pending_review`。order15攻势selector最终重审确认冻结态势的两项strict援助门、医疗优先、固定用毒RNG、side特定暗器及体力/最小MP攻击门；首轮发现医疗缺失生命应先以32位差值比较、命中后才回绕保存，修正并补齐溢出、等号、短路、零数量和无武功MP1000原BUG回归后，从入口复核328条指令零新增差异。独立golden双生成及最新Linux app Debug 14/14通过。当前推进order16休息动作封装。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中16项已完成最终汇编→C++ REVIEW，其余65项为`implemented_pending_review`。order16休息wrapper最终重审确认其仅作8字节Watcom栈检查，将signed actor参数原样调用休息状态核心并返回；六个caller覆盖AI休息dispatch、逃跑/物品重定位及攻击、用毒、医疗、解毒回退，现代合并映射保留休息后统一完成顺序，产品无需修正。独立原资产机器golden双生成及最新Linux app Debug 14/14通过；休息核心仍保留至order69独立审计。当前推进order17逃跑目的格规划。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

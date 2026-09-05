@@ -44,6 +44,12 @@ BATTLE_PARTY_SETUP_CALL_OFFSETS = (
 BATTLE_ENEMY_SETUP_ADDRESS = 0x3265C
 BATTLE_ENEMY_SETUP_END = 0x3271E
 BATTLE_ENEMY_SETUP_CALL_OFFSETS = (0x05, 0x6F)
+BATTLE_REST_WRAPPER_ADDRESS = 0x34AD3
+BATTLE_REST_WRAPPER_END = 0x34AEC
+BATTLE_REST_WRAPPER_CALL_OFFSETS = (0x05, 0x10)
+BATTLE_REST_WRAPPER_CALLER_SITES = (
+    0x33BB1, 0x34C37, 0x3503C, 0x355F3, 0x363A0, 0x36504,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -424,6 +430,43 @@ def relocated_machine_function_contract(
         "call_sites": [hex(address + offset) for offset in call_offsets],
         "call_targets": [hex(target) for target in call_targets],
         "callers": [hex(site) for site in caller_sites],
+    }
+
+
+def battle_rest_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    raw_offset = BATTLE_REST_WRAPPER_ADDRESS - Z_DAT_LOAD_BASE
+    raw = z_dat_bytes[
+        raw_offset:raw_offset + BATTLE_REST_WRAPPER_END - BATTLE_REST_WRAPPER_ADDRESS
+    ]
+    if raw.hex() != "6808000000e841a200000fbf44240450e8bc5d000083c404c3":
+        raise ValueError("Z.DAT battle rest wrapper changed")
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_REST_WRAPPER_ADDRESS,
+        end=BATTLE_REST_WRAPPER_END,
+        call_offsets=BATTLE_REST_WRAPPER_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x3A8A4),
+        relocation_offsets=(),
+        caller_sites=BATTLE_REST_WRAPPER_CALLER_SITES,
+        instruction_count=7,
+        branch_count=0,
+    )
+    del contract["relocation_delta"]
+    return {
+        **contract,
+        "stack_probe_bytes": 8,
+        "actor_argument": "signed int16",
+        "delegated_core": "0x3a8a4",
+        "wrapper_state_writes": 0,
+        "return_value": "delegated core eax unchanged",
+        "caller_roles": [
+            "ai none-or-wait dispatch",
+            "escape or item-reposition tail when parameter is zero",
+            "attack fallback",
+            "poison fallback",
+            "medicine fallback",
+            "detox fallback",
+        ],
     }
 
 
@@ -3480,6 +3523,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_entry": battle_entry_contract(z_dat_bytes),
         "battle_data_loader": battle_data_loader_contract(z_dat_bytes),
         "battle_setup_machine": battle_setup_machine_contract(z_dat_bytes),
+        "battle_rest_wrapper_machine": battle_rest_wrapper_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
