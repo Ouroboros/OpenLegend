@@ -83,7 +83,18 @@ if(WIN32)
     # Clang Debug retains separate stack slots for the many large SceneSession fixtures.
     target_link_options(openlegend_scene_tests PRIVATE -Wl,/STACK:67108864)
 endif()
-add_test(NAME openlegend.scene COMMAND openlegend_scene_tests)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Linux ignores the ELF GNU_STACK size for its initial thread. Raise the process
+    # limit before ASan or a Debug test function reserves its large stack frame.
+    find_program(OPENLEGEND_PRLIMIT_EXECUTABLE NAMES prlimit REQUIRED)
+    add_test(
+        NAME openlegend.scene
+        COMMAND ${OPENLEGEND_PRLIMIT_EXECUTABLE} --stack=67108864
+                $<TARGET_FILE:openlegend_scene_tests>
+    )
+else()
+    add_test(NAME openlegend.scene COMMAND openlegend_scene_tests)
+endif()
 
 add_executable(openlegend_battle_tests unit/battle/battle_data_test.cpp)
 target_compile_definitions(
@@ -94,6 +105,10 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
+if(WIN32)
+    # Clang Debug retains separate stack slots for the many large BattleSession fixtures.
+    target_link_options(openlegend_battle_tests PRIVATE -Wl,/STACK:67108864)
+endif()
 add_test(NAME openlegend.battle COMMAND openlegend_battle_tests)
 
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)

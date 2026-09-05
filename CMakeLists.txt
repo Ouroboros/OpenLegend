@@ -82,6 +82,10 @@ if(OPENLEGEND_ENABLE_SANITIZERS)
             INTERFACE -fsanitize=address,undefined -fno-omit-frame-pointer
         )
         target_link_options(openlegend_project_options INTERFACE -fsanitize=address,undefined)
+        # Keep MSVC STL container annotations consistent across the final executable.
+        target_compile_options(
+            ADLMIDI_static PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer
+        )
     else()
         message(FATAL_ERROR "OPENLEGEND_ENABLE_SANITIZERS requires Clang or GCC")
     endif()

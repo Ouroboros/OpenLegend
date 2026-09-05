@@ -26,8 +26,19 @@ class BuildToolTest(unittest.TestCase):
         self.assertEqual(build.parse_args(["APP", "--config", "Release"]).target, "app")
 
     def test_accepts_sanitizer_gate(self) -> None:
-        self.assertTrue(build.parse_args(["app", "--sanitizers"]).sanitizers)
-        self.assertFalse(build.parse_args(["app"]).sanitizers)
+        sanitized = build.parse_args(["app", "--sanitizers"])
+        ordinary = build.parse_args(["app"])
+        self.assertTrue(sanitized.sanitizers)
+        self.assertEqual(sanitized.config, "Release")
+        self.assertFalse(ordinary.sanitizers)
+        self.assertEqual(ordinary.config, "Debug")
+
+    def test_rejects_windows_debug_sanitizers(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "does not support the Windows Debug CRT"):
+            build.validate_configuration("windows", "Debug", True)
+        build.validate_configuration("windows", "Release", True)
+        build.validate_configuration("windows", "Debug", False)
+        build.validate_configuration("linux", "Debug", True)
 
     def test_rejects_nonpositive_parallelism(self) -> None:
         with self.assertRaisesRegex(argparse.ArgumentTypeError, "positive integer"):
@@ -73,6 +84,44 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn("-DCMAKE_C_COMPILER:FILEPATH=clang", command)
         self.assertIn("-DOPENLEGEND_ENABLE_SANITIZERS:BOOL=ON", command)
 
+    def test_locates_clang_windows_sanitizer_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            resource_directory = Path(directory) / "lib" / "clang" / "21"
+            runtime_directory = resource_directory / "lib" / "windows"
+            runtime_directory.mkdir(parents=True)
+            (runtime_directory / "clang_rt.asan_dynamic-x86_64.dll").write_bytes(b"")
+            completed = mock.Mock(stdout=str(resource_directory) + "\n")
+            with mock.patch.object(build.subprocess, "run", return_value=completed) as runner:
+                self.assertEqual(
+                    build.sanitizer_runtime_directory("clang++"), runtime_directory
+                )
+            runner.assert_called_once_with(
+                ["clang++", "-print-resource-dir"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+    def test_prepends_windows_sanitizer_runtime_to_test_path(self) -> None:
+        runtime_directory = Path("runtime")
+        with mock.patch.object(
+            build, "sanitizer_runtime_directory", return_value=runtime_directory
+        ):
+            environment = build.sanitizer_test_environment(
+                "clang++", {"PATH": "existing", "KEEP": "value"}
+            )
+        self.assertEqual(
+            environment["PATH"], str(runtime_directory) + os.pathsep + "existing"
+        )
+        self.assertEqual(environment["KEEP"], "value")
+
+    def test_rejects_missing_windows_sanitizer_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            completed = mock.Mock(stdout=directory + "\n")
+            with mock.patch.object(build.subprocess, "run", return_value=completed):
+                with self.assertRaisesRegex(RuntimeError, "runtime was not found"):
+                    build.sanitizer_runtime_directory("clang++")
+
     def test_requires_complete_tool_override_set(self) -> None:
         with mock.patch.dict(
             os.environ,
@@ -110,6 +159,28 @@ class BuildToolTest(unittest.TestCase):
             )
             self.assertEqual(build.cached_generator(cache), "Ninja Multi-Config")
 
+    def test_reads_cached_tool_value(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "CMakeCache.txt"
+            cache.write_text(
+                "CMAKE_MAKE_PROGRAM:FILEPATH=CMAKE_MAKE_PROGRAM-NOTFOUND\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                build.cached_value(cache, "CMAKE_MAKE_PROGRAM"),
+                "CMAKE_MAKE_PROGRAM-NOTFOUND",
+            )
+
+    def test_detects_changed_compiler_path(self) -> None:
+        with mock.patch.object(
+            build.shutil, "which", side_effect=lambda value: "/usr/bin/clang++-23"
+        ):
+            self.assertFalse(
+                build.compiler_path_changed("/usr/bin/clang++-23", "clang++-23")
+            )
+        self.assertTrue(build.compiler_path_changed("/usr/bin/c++", "/usr/bin/clang++-23"))
+        self.assertFalse(build.compiler_path_changed(None, "clang++-23"))
+
     def test_reads_cached_bool(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             cache = Path(directory) / "CMakeCache.txt"
@@ -138,6 +209,13 @@ class BuildToolTest(unittest.TestCase):
                 configuration.read_text(encoding="utf-8"), "[window]\nwidth = 960\n"
             )
             self.assertFalse((build_dir / "CMakeCache.txt").exists())
+
+    def test_linux_shell_requires_clang_23_by_default(self) -> None:
+        shell = (PROJECT_ROOT / "build.sh").read_text(encoding="utf-8")
+        self.assertIn('export CC="${CC:-clang-23}"', shell)
+        self.assertIn('export CXX="${CXX:-clang++-23}"', shell)
+        self.assertIn("OpenLegend Linux builds require Clang", shell)
+        self.assertNotIn("command -v clang-23", shell)
 
     def test_windows_batch_uses_locked_tools_and_long_path(self) -> None:
         batch = (PROJECT_ROOT / "build.bat").read_text(encoding="utf-8")

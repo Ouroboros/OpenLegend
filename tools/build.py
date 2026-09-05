@@ -32,6 +32,14 @@ def normalize_target(target: str) -> str:
     return "app" if target == "sdl" else target
 
 
+def validate_configuration(platform_name: str, config: str, sanitizers: bool) -> None:
+    if platform_name == "windows" and sanitizers and config == "Debug":
+        raise RuntimeError(
+            "Upstream LLVM AddressSanitizer does not support the Windows Debug CRT; "
+            "use --config Release --sanitizers"
+        )
+
+
 def project_root_path(script_file: Path) -> Path:
     if configured := os.environ.get("OPENLEGEND_PROJECT_ROOT"):
         return Path(configured)
@@ -44,7 +52,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "target", type=str.lower, choices=("core", "app", "sdl"), nargs="?", default="core"
     )
-    parser.add_argument("--config", choices=("Debug", "Release"), default="Debug")
+    parser.add_argument("--config", choices=("Debug", "Release"))
     parser.add_argument(
         "--jobs",
         type=positive_integer,
@@ -58,7 +66,10 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--configure-only", action="store_true")
     parser.add_argument("--skip-tests", action="store_true")
     parser.add_argument("--sanitizers", action="store_true")
-    return parser.parse_args(arguments)
+    result = parser.parse_args(arguments)
+    if result.config is None:
+        result.config = "Release" if result.sanitizers else "Debug"
+    return result
 
 
 def executable_name(name: str) -> str:
@@ -128,9 +139,38 @@ def ensure_tools(project_root: Path) -> tuple[Path, Path, Path]:
     return cmake, ninja, ctest
 
 
-def run(command: list[str], cwd: Path) -> None:
+def run(
+    command: list[str], cwd: Path, environment: dict[str, str] | None = None
+) -> None:
     print("+", subprocess.list2cmdline(command), flush=True)
-    subprocess.run(command, cwd=cwd, check=True)
+    subprocess.run(command, cwd=cwd, check=True, env=environment)
+
+
+def sanitizer_runtime_directory(cxx_compiler: str | None) -> Path:
+    if not cxx_compiler:
+        raise RuntimeError("CXX is required to locate the Windows sanitizer runtime")
+    result = subprocess.run(
+        [cxx_compiler, "-print-resource-dir"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    resource_directory = Path(result.stdout.strip())
+    runtime_directory = resource_directory / "lib" / "windows"
+    if not any(runtime_directory.glob("clang_rt.asan_dynamic-*.dll")):
+        raise RuntimeError(
+            f"Clang AddressSanitizer runtime was not found under {runtime_directory}"
+        )
+    return runtime_directory
+
+
+def sanitizer_test_environment(
+    cxx_compiler: str | None, environment: dict[str, str]
+) -> dict[str, str]:
+    runtime_directory = sanitizer_runtime_directory(cxx_compiler)
+    result = dict(environment)
+    result["PATH"] = str(runtime_directory) + os.pathsep + result.get("PATH", "")
+    return result
 
 
 def configure_command(
@@ -169,22 +209,22 @@ def configure_command(
     return command
 
 
-def cached_generator(cache_file: Path) -> str | None:
+def cached_value(cache_file: Path, name: str) -> str | None:
     if not cache_file.is_file():
         return None
+    prefix = f"{name}:"
     for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("CMAKE_GENERATOR:INTERNAL="):
+        if line.startswith(prefix) and "=" in line:
             return line.split("=", 1)[1]
     return None
+
+
+def cached_generator(cache_file: Path) -> str | None:
+    return cached_value(cache_file, "CMAKE_GENERATOR")
 
 
 def cached_home_directory(cache_file: Path) -> str | None:
-    if not cache_file.is_file():
-        return None
-    for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("CMAKE_HOME_DIRECTORY:INTERNAL="):
-            return line.split("=", 1)[1]
-    return None
+    return cached_value(cache_file, "CMAKE_HOME_DIRECTORY")
 
 
 def cached_bool(cache_file: Path, name: str) -> bool | None:
@@ -195,6 +235,19 @@ def cached_bool(cache_file: Path, name: str) -> bool | None:
         if line.startswith(prefix):
             return line.removeprefix(prefix).upper() == "ON"
     return None
+
+
+def resolved_tool_path(command: str) -> str:
+    located = shutil.which(command)
+    return os.path.normcase(str(Path(located or command).resolve()))
+
+
+def compiler_path_changed(current: str | None, requested: str | None) -> bool:
+    return bool(
+        current
+        and requested
+        and resolved_tool_path(current) != resolved_tool_path(requested)
+    )
 
 
 def reset_build_directory(build_dir: Path) -> None:
@@ -220,12 +273,18 @@ def main() -> int:
         print("[OpenLegend] 'sdl' is a compatibility alias; prefer 'app'.", flush=True)
 
     platform_name = "windows" if os.name == "nt" else "linux"
+    validate_configuration(platform_name, args.config, args.sanitizers)
     build_dir = project_root / "build" / f"{platform_name}-{target}"
     cache_file = build_dir / "CMakeCache.txt"
     build_file = build_dir / "build.ninja"
     reconfigure = os.environ.get("OPENLEGEND_RECONFIGURE", "0") == "1"
     current_generator = cached_generator(cache_file)
     current_home = cached_home_directory(cache_file)
+    current_make_program = cached_value(cache_file, "CMAKE_MAKE_PROGRAM")
+    current_cxx_compiler = cached_value(cache_file, "CMAKE_CXX_COMPILER")
+    current_c_compiler = cached_value(cache_file, "CMAKE_C_COMPILER")
+    requested_cxx_compiler = os.environ.get("CXX")
+    requested_c_compiler = os.environ.get("CC") if target == "app" else None
     current_sanitizers = cached_bool(cache_file, "OPENLEGEND_ENABLE_SANITIZERS")
     if current_generator is not None and current_generator != EXPECTED_GENERATOR:
         print(
@@ -234,9 +293,28 @@ def main() -> int:
         )
         reset_build_directory(build_dir)
         reconfigure = True
+    elif current_make_program is not None and (
+        current_make_program.endswith("-NOTFOUND") or not Path(current_make_program).is_file()
+    ):
+        print(
+            f"[OpenLegend] Reset invalid Ninja cache: {current_make_program}",
+            flush=True,
+        )
+        reset_build_directory(build_dir)
+        reconfigure = True
     elif os.name == "nt" and current_home is not None and "~" in current_home:
         print(
             f"[OpenLegend] Reset legacy 8.3 source path: {current_home}",
+            flush=True,
+        )
+        reset_build_directory(build_dir)
+        reconfigure = True
+    elif compiler_path_changed(current_cxx_compiler, requested_cxx_compiler) or (
+        target == "app" and compiler_path_changed(current_c_compiler, requested_c_compiler)
+    ):
+        print(
+            f"[OpenLegend] Reset compiler: "
+            f"{current_cxx_compiler or '<unset>'} -> {requested_cxx_compiler or '<default>'}",
             flush=True,
         )
         reset_build_directory(build_dir)
@@ -260,6 +338,13 @@ def main() -> int:
         enable_sanitizers=args.sanitizers,
     )
     process_cwd = Path(sys.executable).parent if os.name == "nt" else project_root
+    test_environment = None
+    if args.sanitizers and os.name == "nt":
+        test_environment = sanitizer_test_environment(os.environ.get("CXX"), dict(os.environ))
+        print(
+            f"[OpenLegend] Sanitizer runtime: {test_environment['PATH'].split(os.pathsep, 1)[0]}",
+            flush=True,
+        )
 
     if reconfigure or not cache_file.is_file() or not build_file.is_file():
         print(f"[OpenLegend] Configure: {platform_name}-{target}", flush=True)
@@ -304,6 +389,7 @@ def main() -> int:
                 "--output-on-failure",
             ],
             process_cwd,
+            test_environment,
         )
 
     print(f"[OpenLegend] Build and tests completed: {build_dir} ({args.config})")
