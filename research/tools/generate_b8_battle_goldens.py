@@ -1541,8 +1541,45 @@ def ai_selector_vectors() -> dict[str, object]:
         },
         "low_hp": {
             "self": {"medicine": 21, "hurt": 50, "physical_power": 50, "action": 5},
-            "inventory": {"add_hp": 1, "inventory_slot": 2, "action": 6},
+            "self_minimum": {
+                "medicine": 20,
+                "hurt": 49,
+                "physical_power": 50,
+                "action": 5,
+            },
+            "self_strict_reject": {
+                "medicine": 20,
+                "hurt": 50,
+                "physical_power": 50,
+                "action": 0,
+                "writes_action_code": False,
+            },
+            "self_power_reject": {
+                "medicine": 100,
+                "hurt": 50,
+                "physical_power": 49,
+                "action": 0,
+            },
+            "inventory": {
+                "add_hp": 1,
+                "inventory_slot": 2,
+                "quantity": 0,
+                "action": 6,
+            },
+            "enemy_carried": {
+                "add_hp": 1,
+                "carried_slot": 2,
+                "quantity": 0,
+                "action": 6,
+            },
             "request": {"hurt": 80, "ally_medicine": 51, "target_slot": 1, "action": 8},
+            "hidden_request_skip": {
+                "hurt": 80,
+                "hidden_slot": 1,
+                "ally_medicine": 51,
+                "target_slot": 2,
+                "action": 8,
+            },
         },
         "poisoned": {
             "self": {"detoxification": 22, "poison": 51, "physical_power": 51, "action": 4},
