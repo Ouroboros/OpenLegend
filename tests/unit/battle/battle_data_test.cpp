@@ -6602,6 +6602,47 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(!reposition_plan->rest_after_move);
 
     reset();
+    std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+    auto& tie_actor = setup.combatants()[0U].words;
+    const auto tie_source_index = static_cast<std::size_t>(tie_actor[combatant_word::y]) * 64U +
+        static_cast<std::size_t>(tie_actor[combatant_word::x]);
+    data.occupancy()[tie_source_index] = 0;
+    tie_actor[combatant_word::round_value] = 1;
+    setup.combatants()[1U].words[combatant_word::side] = 0;
+    setup.combatants()[2U].words[combatant_word::side] = 0;
+    setup.combatants()[3U].words[combatant_word::side] = 1;
+    setup.combatants()[3U].words[combatant_word::x] = tie_actor[combatant_word::x];
+    setup.combatants()[3U].words[combatant_word::y] = tie_actor[combatant_word::y];
+    setup.combatants()[3U].words[combatant_word::occupancy_hidden] = 1;
+    ranger.roles[3U].set_word(role_word::hp, 0);
+    setup.combatants()[4U].words[combatant_word::side] = 0;
+    const auto hidden_dead_tie_plan = setup.ai_escape_plan(0U, true);
+    OL_CHECK(hidden_dead_tie_plan.has_value());
+    OL_CHECK((hidden_dead_tie_plan->destination == BattlePathCoord{9, 20}));
+    OL_CHECK(hidden_dead_tie_plan->maximum_enemy_distance_sum == 1);
+    OL_CHECK(hidden_dead_tie_plan->rest_after_move);
+
+    setup.combatants()[3U].words[combatant_word::side] = 0;
+    const auto no_opponent_plan = setup.ai_escape_plan(0U, true);
+    OL_CHECK(no_opponent_plan.has_value());
+    OL_CHECK(!no_opponent_plan->destination.has_value());
+    OL_CHECK(no_opponent_plan->maximum_enemy_distance_sum == 0);
+
+    reset();
+    std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+    auto& zero_round_actor = setup.combatants()[0U].words;
+    const auto zero_round_source_index =
+        static_cast<std::size_t>(zero_round_actor[combatant_word::y]) * 64U +
+        static_cast<std::size_t>(zero_round_actor[combatant_word::x]);
+    data.occupancy()[zero_round_source_index] = 0;
+    zero_round_actor[combatant_word::round_value] = 0;
+    const auto zero_round_plan = setup.ai_escape_plan(0U, false);
+    OL_CHECK(zero_round_plan.has_value());
+    OL_CHECK((zero_round_plan->destination == BattlePathCoord{10, 20}));
+    OL_CHECK(zero_round_plan->maximum_enemy_distance_sum == 14);
+    OL_CHECK(!zero_round_plan->rest_after_move);
+
+    reset();
     ranger.roles[0U].set_word(role_word::morality, 75);
     ranger.roles[3U].set_word(role_word::attack, 30);
     ranger.roles[4U].set_word(role_word::attack, 50);

@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=251/349`，`unique_any=206/284`，`unique_all=192/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=17` 逃跑目的格规划
-下一任务指针：B8 `audit_order=18` AI攻击执行
+当前有效进度：`closure=252/349`，`unique_any=207/284`，`unique_all=193/284`
+当前任务指针：用户优先任务 Windows编译问题复现与修复
+下一任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=18` AI攻击执行
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中16项已完成最终汇编→C++ REVIEW，其余65项为`implemented_pending_review`。order16休息wrapper最终重审确认其仅作8字节Watcom栈检查，将signed actor参数原样调用休息状态核心并返回；六个caller覆盖AI休息dispatch、逃跑/物品重定位及攻击、用毒、医疗、解毒回退，现代合并映射保留休息后统一完成顺序，产品无需修正。独立原资产机器golden双生成及最新Linux app Debug 14/14通过；休息核心仍保留至order69独立审计。当前推进order17逃跑目的格规划。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中17项已完成最终汇编→C++ REVIEW，其余64项为`implemented_pending_review`。order17逃跑目的格规划最终重审确认movement path必须恰等于行动值，按x外/y内扫描并对全部异side槽累计32位曼哈顿距离，strict同分保留首格、零分无目的；隐藏死亡、四格同分、无敌方和行动值0原地目的均有独立回归，逃跑休息与物品重定位继续使用的typed顺序一致，产品无需修正。独立原资产golden双生成及最新Linux app Debug 14/14通过。按用户指示，本次提交后先处理Windows编译问题，完成后返回order18 AI攻击执行。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

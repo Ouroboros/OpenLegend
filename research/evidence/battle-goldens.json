@@ -336,6 +336,38 @@
       "detox fallback"
     ]
   },
+  "battle_escape_plan_machine": {
+    "address": "0x34aec",
+    "end": "0x34c47",
+    "raw_offset": "0x2e4ec",
+    "size": 347,
+    "instruction_count": 92,
+    "branch_count": 9,
+    "raw_sha256": "6e0f72a5051e1073414fade410106d3632865629b3acebc78382eb027e960831",
+    "loaded_sha256": "93623d56fd7d837faae5f2326a6bae3f9cd643f168f1ebfb83283810c59669c0",
+    "relocation_count": 13,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x34af1",
+      "0x34b28",
+      "0x34b97",
+      "0x34baf",
+      "0x34c22",
+      "0x34c37"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e06",
+      "0x3f50b",
+      "0x3f50b",
+      "0x3650e",
+      "0x34ad3"
+    ],
+    "callers": [
+      "0x33c31",
+      "0x35816"
+    ]
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3102,7 +3134,52 @@
         ],
         "maximum_enemy_distance_sum": 20,
         "rest_after_move_for_escape_action": true,
-        "rest_after_move_for_item_reposition": false
+        "rest_after_move_for_item_reposition": false,
+        "hidden_dead_tie": {
+          "round_value": 1,
+          "enemy": {
+            "x": 10,
+            "y": 20,
+            "hidden": 1,
+            "hp": 0
+          },
+          "tied_best": [
+            [
+              9,
+              20
+            ],
+            [
+              10,
+              19
+            ],
+            [
+              10,
+              21
+            ],
+            [
+              11,
+              20
+            ]
+          ],
+          "destination": [
+            9,
+            20
+          ],
+          "maximum_enemy_distance_sum": 1
+        },
+        "no_opponents": {
+          "round_value": 1,
+          "destination": null,
+          "maximum_enemy_distance_sum": 0
+        },
+        "zero_round": {
+          "round_value": 0,
+          "destination": [
+            10,
+            20
+          ],
+          "maximum_enemy_distance_sum": 14
+        }
       },
       "ai_attack_target_vectors": {
         "strongest": {

@@ -50,6 +50,14 @@ BATTLE_REST_WRAPPER_CALL_OFFSETS = (0x05, 0x10)
 BATTLE_REST_WRAPPER_CALLER_SITES = (
     0x33BB1, 0x34C37, 0x3503C, 0x355F3, 0x363A0, 0x36504,
 )
+BATTLE_ESCAPE_PLAN_ADDRESS = 0x34AEC
+BATTLE_ESCAPE_PLAN_END = 0x34C47
+BATTLE_ESCAPE_PLAN_CALL_OFFSETS = (0x005, 0x03C, 0x0AB, 0x0C3, 0x136, 0x14B)
+BATTLE_ESCAPE_PLAN_RELOCATION_OFFSETS = (
+    0x024, 0x02B, 0x032, 0x038, 0x06B, 0x072, 0x090,
+    0x097, 0x0A0, 0x0B8, 0x0D3, 0x11F, 0x128,
+)
+BATTLE_ESCAPE_PLAN_CALLER_SITES = (0x33C31, 0x35816)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -468,6 +476,29 @@ def battle_rest_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
             "detox fallback",
         ],
     }
+
+
+def battle_escape_plan_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_ESCAPE_PLAN_ADDRESS,
+        end=BATTLE_ESCAPE_PLAN_END,
+        call_offsets=BATTLE_ESCAPE_PLAN_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x36E06, 0x3F50B, 0x3F50B, 0x3650E, 0x34AD3),
+        relocation_offsets=BATTLE_ESCAPE_PLAN_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_ESCAPE_PLAN_CALLER_SITES,
+        instruction_count=92,
+        branch_count=9,
+    )
+    if contract["raw_sha256"] != (
+        "6e0f72a5051e1073414fade410106d3632865629b3acebc78382eb027e960831"
+    ):
+        raise ValueError("Z.DAT battle escape-plan raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "93623d56fd7d837faae5f2326a6bae3f9cd643f168f1ebfb83283810c59669c0"
+    ):
+        raise ValueError("Z.DAT battle escape-plan relocation image changed")
+    return contract
 
 
 def battle_round_machine_contract(
@@ -2894,21 +2925,35 @@ def ai_escape_vector(field_words: list[int]) -> dict[str, object]:
     source = (10, 20)
     occupied = {c["y"] * 64 + c["x"] for c in combatants}
     values = build_path_map(field_words, source, "movement", occupied)
+
+    def select(
+        path_values: list[int], round_value: int, opponents: list[tuple[int, int]]
+    ) -> tuple[list[int] | None, int, list[list[int]]]:
+        best_score = 0
+        destination: list[int] | None = None
+        tied_best: list[list[int]] = []
+        for x in range(64):
+            for y in range(64):
+                if path_values[y * 64 + x] != round_value:
+                    continue
+                score = sum(abs(x - enemy_x) + abs(y - enemy_y) for enemy_x, enemy_y in opponents)
+                if score > best_score:
+                    best_score = score
+                    destination = [x, y]
+                    tied_best = [[x, y]]
+                elif score == best_score and score > 0:
+                    tied_best.append([x, y])
+        return destination, best_score, tied_best
+
     round_value = 3
-    best_score = 0
-    destination: list[int] | None = None
-    for x in range(64):
-        for y in range(64):
-            if values[y * 64 + x] != round_value:
-                continue
-            score = sum(
-                abs(x - c["x"]) + abs(y - c["y"])
-                for c in combatants
-                if c["side"] != 0
-            )
-            if score > best_score:
-                best_score = score
-                destination = [x, y]
+    opponents = [(c["x"], c["y"]) for c in combatants if c["side"] != 0]
+    destination, best_score, _ = select(values, round_value, opponents)
+    sparse_values = build_path_map(
+        field_words, source, "movement", {source[1] * 64 + source[0]}
+    )
+    tie_destination, tie_score, tied_best = select(sparse_values, 1, [source])
+    no_opponent_destination, no_opponent_score, _ = select(sparse_values, 1, [])
+    zero_destination, zero_score, _ = select(sparse_values, 0, [(13, 23), (14, 24)])
     return {
         "battle_id": 3,
         "battlefield_id": 2,
@@ -2921,6 +2966,23 @@ def ai_escape_vector(field_words: list[int]) -> dict[str, object]:
         "maximum_enemy_distance_sum": best_score,
         "rest_after_move_for_escape_action": True,
         "rest_after_move_for_item_reposition": False,
+        "hidden_dead_tie": {
+            "round_value": 1,
+            "enemy": {"x": 10, "y": 20, "hidden": 1, "hp": 0},
+            "tied_best": tied_best,
+            "destination": tie_destination,
+            "maximum_enemy_distance_sum": tie_score,
+        },
+        "no_opponents": {
+            "round_value": 1,
+            "destination": no_opponent_destination,
+            "maximum_enemy_distance_sum": no_opponent_score,
+        },
+        "zero_round": {
+            "round_value": 0,
+            "destination": zero_destination,
+            "maximum_enemy_distance_sum": zero_score,
+        },
     }
 
 
@@ -3524,6 +3586,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_data_loader": battle_data_loader_contract(z_dat_bytes),
         "battle_setup_machine": battle_setup_machine_contract(z_dat_bytes),
         "battle_rest_wrapper_machine": battle_rest_wrapper_contract(z_dat_bytes),
+        "battle_escape_plan_machine": battle_escape_plan_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
