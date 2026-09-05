@@ -101,6 +101,15 @@ BATTLE_AI_WEAKEST_TARGET_RELOCATION_OFFSETS = (
     0x029, 0x030, 0x039, 0x043, 0x050, 0x05E, 0x066,
 )
 BATTLE_AI_WEAKEST_TARGET_CALLER_SITES = (0x350D8, 0x35363)
+BATTLE_AI_SPECIALIST_TARGET_ADDRESS = 0x35217
+BATTLE_AI_SPECIALIST_TARGET_END = 0x35372
+BATTLE_AI_SPECIALIST_TARGET_CALL_OFFSETS = (0x005, 0x14C)
+BATTLE_AI_SPECIALIST_TARGET_RELOCATION_OFFSETS = (
+    0x034, 0x03B, 0x044, 0x051, 0x064, 0x085, 0x08C, 0x095, 0x09F,
+    0x0AC, 0x0BA, 0x0CF, 0x0EF, 0x0F6, 0x0FF, 0x109, 0x116, 0x124,
+    0x13A,
+)
+BATTLE_AI_SPECIALIST_TARGET_CALLER_SITES = (0x35118,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -686,6 +695,61 @@ def battle_ai_weakest_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "negative_attack_can_write_target": True,
         "reads_hp": False,
         "consumes_random": False,
+    }
+
+
+def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_SPECIALIST_TARGET_ADDRESS,
+        end=BATTLE_AI_SPECIALIST_TARGET_END,
+        call_offsets=BATTLE_AI_SPECIALIST_TARGET_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x351A7),
+        relocation_offsets=BATTLE_AI_SPECIALIST_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_SPECIALIST_TARGET_CALLER_SITES,
+        instruction_count=91,
+        branch_count=19,
+    )
+    if contract["raw_sha256"] != (
+        "461f8b3d53f24104b1ca7305af927bd28945715d425f93bd48e793ab423f6916"
+    ):
+        raise ValueError("Z.DAT battle AI specialist-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "cdb3563325b0382c5bf05d0f4744cc041519d55d94120fc35b6fcc3ad5f4216c"
+    ):
+        raise ValueError("Z.DAT battle AI specialist-target relocation image changed")
+    return {
+        **contract,
+        "slot_loop_comparison": "signed int16 slot < combatant_count",
+        "trigger_scan": {
+            "candidate_filter": "side == actor side only",
+            "checks_hidden_or_hp": False,
+            "role_field": "use_poison",
+            "comparison": "signed value > 20",
+            "early_exit": False,
+        },
+        "detoxification_scan": {
+            "candidate_filters": ["side != actor side", "hidden == 0"],
+            "best_initial": 0,
+            "comparison": "signed detoxification > best",
+            "target_write_before_threshold": True,
+            "threshold": "selected value >= 20",
+        },
+        "medicine_scan": {
+            "candidate_filters": ["side != actor side", "hidden == 0"],
+            "best_initial": "inherited detoxification best or 0",
+            "comparison": "signed medicine > inherited best",
+            "target_write_before_threshold": True,
+            "threshold": "selected value >= 20",
+        },
+        "independent_flag_bug": (
+            "detoxification >= 20 skips medicine but final check still tests only "
+            "medicine flag and therefore calls weakest-attack fallback"
+        ),
+        "ties_preserve_first_slot": True,
+        "reads_hp": False,
+        "consumes_random": False,
+        "caller_uses_return": False,
     }
 
 
@@ -3439,6 +3503,79 @@ def weakest_attack_target_oracle(
     return {"best_attack": best, "target_slot": target, "target_written": written}
 
 
+def specialist_target_oracle(
+    combatants: list[dict[str, int]],
+    use_poison: list[int],
+    detoxification: list[int],
+    medicine: list[int],
+    attacks: list[int],
+    *,
+    actor_slot: int = 0,
+    initial_target: int = -1,
+) -> dict[str, object]:
+    actor_side = combatants[actor_slot]["side"]
+    ally_can_poison = False
+    for slot, combatant in enumerate(combatants):
+        if combatant["side"] == actor_side and wrapping_i16(use_poison[slot]) > 20:
+            ally_can_poison = True
+
+    best = 0
+    target = initial_target
+    detox_target = None
+    detox_target_at_least_20 = False
+    if ally_can_poison:
+        for slot, combatant in enumerate(combatants):
+            if combatant["side"] == actor_side or combatant["hidden"] != 0:
+                continue
+            value = wrapping_i16(detoxification[slot])
+            if value > best:
+                best = value
+                target = slot
+                detox_target = slot
+                if value >= 20:
+                    detox_target_at_least_20 = True
+
+    medicine_start_best = best
+    medicine_target = None
+    medicine_target_at_least_20 = False
+    medicine_ran = not detox_target_at_least_20
+    if medicine_ran:
+        for slot, combatant in enumerate(combatants):
+            if combatant["side"] == actor_side or combatant["hidden"] != 0:
+                continue
+            value = wrapping_i16(medicine[slot])
+            if value > best:
+                best = value
+                target = slot
+                medicine_target = slot
+                if value >= 20:
+                    medicine_target_at_least_20 = True
+
+    fallback_called = not medicine_target_at_least_20
+    fallback_written = False
+    if fallback_called:
+        fallback = weakest_attack_target_oracle(
+            combatants, attacks, actor_slot=actor_slot, initial_target=target
+        )
+        target = fallback["target_slot"]
+        fallback_written = fallback["target_written"]
+    return {
+        "ally_can_poison": ally_can_poison,
+        "detoxification_ran": ally_can_poison,
+        "detoxification_target": detox_target,
+        "detoxification_best": medicine_start_best,
+        "detoxification_at_least_20": detox_target_at_least_20,
+        "medicine_ran": medicine_ran,
+        "medicine_start_best": medicine_start_best,
+        "medicine_target": medicine_target,
+        "final_best": best,
+        "medicine_at_least_20": medicine_target_at_least_20,
+        "fallback_called": fallback_called,
+        "fallback_written": fallback_written,
+        "target_slot": target,
+    }
+
+
 def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     combatants = [
         {"side": 0, "hidden": 0, "x": 10, "y": 20},
@@ -3490,6 +3627,60 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     weakest_stale_vector = weakest_attack_target_oracle(
         combatants, [10, 10, 10, 1000, 1001], initial_target=4
     )
+    specialist_zeroes = [0, 0, 0, 0, 0]
+    specialist_medicine_vector = specialist_target_oracle(
+        combatants,
+        specialist_zeroes,
+        specialist_zeroes,
+        [0, 0, 0, 30, 10],
+        attacks,
+    )
+    specialist_hidden_ally_combatants = [dict(combatant) for combatant in combatants]
+    specialist_hidden_ally_combatants[1]["hidden"] = -1
+    specialist_hidden_ally_vector = specialist_target_oracle(
+        specialist_hidden_ally_combatants,
+        [0, 21, 0, 0, 0],
+        specialist_zeroes,
+        specialist_zeroes,
+        attacks,
+    )
+    specialist_detox_bug_vector = specialist_target_oracle(
+        combatants,
+        [0, 21, 0, 0, 0],
+        [0, 0, 0, 20, 0],
+        [0, 0, 0, 0, 100],
+        [10, 10, 10, 50, 10],
+    )
+    specialist_shared_best_vector = specialist_target_oracle(
+        combatants,
+        [0, 21, 0, 0, 0],
+        [0, 0, 0, 15, 0],
+        [0, 0, 0, 14, 12],
+        [10, 10, 10, 50, 10],
+    )
+    specialist_medicine_after_detox_vector = specialist_target_oracle(
+        combatants,
+        [0, 21, 0, 0, 0],
+        [0, 0, 0, 10, 0],
+        [0, 0, 0, 0, 20],
+        attacks,
+    )
+    specialist_tie_vector = specialist_target_oracle(
+        combatants,
+        specialist_zeroes,
+        specialist_zeroes,
+        [0, 0, 0, 20, 20],
+        attacks,
+    )
+    specialist_hidden_enemy_combatants = [dict(combatant) for combatant in combatants]
+    specialist_hidden_enemy_combatants[4]["hidden"] = -1
+    specialist_hidden_enemy_vector = specialist_target_oracle(
+        specialist_hidden_enemy_combatants,
+        specialist_zeroes,
+        specialist_zeroes,
+        [0, 0, 0, 20, 100],
+        attacks,
+    )
     return {
         "strongest": {
             "morality": 75,
@@ -3508,14 +3699,42 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
         "specialist_medicine": {
             "iq": 70,
             "medicine": [30, 10],
-            "target_slot": 3,
+            **specialist_medicine_vector,
+        },
+        "specialist_hidden_dead_ally_triggers": {
+            "trigger_ally_slot": 1,
+            "trigger_ally_hidden": -1,
+            "trigger_ally_hp": 0,
+            "ally_use_poison": 21,
+            **specialist_hidden_ally_vector,
         },
         "specialist_detox_fallback_bug": {
             "ally_use_poison": 21,
-            "detoxification": [30, 0],
+            "detoxification": [20, 0],
+            "medicine": [0, 100],
             "attacks": [50, 10],
-            "provisional_detox_target": 3,
-            "final_target_slot": 4,
+            **specialist_detox_bug_vector,
+        },
+        "specialist_shared_best_below_threshold": {
+            "detoxification": [15, 0],
+            "medicine": [14, 12],
+            "attacks": [50, 10],
+            **specialist_shared_best_vector,
+        },
+        "specialist_medicine_after_detox": {
+            "detoxification": [10, 0],
+            "medicine": [0, 20],
+            **specialist_medicine_after_detox_vector,
+        },
+        "specialist_medicine_first_tie_with_dead_first_candidate": {
+            "medicine": [20, 20],
+            "hp": [0, 100],
+            **specialist_tie_vector,
+        },
+        "specialist_negative_hidden_enemy_skipped": {
+            "medicine": [20, 100],
+            "hidden": [0, -1],
+            **specialist_hidden_enemy_vector,
         },
         "nearest": {
             "targeting_distances": [
@@ -3932,6 +4151,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_attack_target_machine": battle_ai_attack_target_contract(z_dat_bytes),
         "battle_ai_strongest_target_machine": battle_ai_strongest_target_contract(z_dat_bytes),
         "battle_ai_weakest_target_machine": battle_ai_weakest_target_contract(z_dat_bytes),
+        "battle_ai_specialist_target_machine": battle_ai_specialist_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

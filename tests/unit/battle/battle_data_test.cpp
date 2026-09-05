@@ -6683,7 +6683,10 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     reset();
     ranger.roles[0U].set_word(role_word::iq, 70);
     ranger.roles[1U].set_word(role_word::use_poison, 21);
-    ranger.roles[3U].set_word(role_word::detoxification, 30);
+    ranger.roles[1U].set_word(role_word::hp, 0);
+    setup.combatants()[1U].words[combatant_word::occupancy_hidden] = -1;
+    ranger.roles[3U].set_word(role_word::detoxification, 20);
+    ranger.roles[4U].set_word(role_word::medicine, 100);
     ranger.roles[3U].set_word(role_word::attack, 50);
     ranger.roles[4U].set_word(role_word::attack, 10);
     openlegend::random::LegacyRandom specialist_bug_random{9U};
@@ -6691,7 +6694,71 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.has_value());
     OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
     OL_CHECK(target->target_slot == 4);
+    OL_CHECK(target->target_written);
     OL_CHECK(specialist_bug_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    ranger.roles[1U].set_word(role_word::use_poison, 21);
+    ranger.roles[3U].set_word(role_word::detoxification, 15);
+    ranger.roles[3U].set_word(role_word::medicine, 14);
+    ranger.roles[4U].set_word(role_word::medicine, 12);
+    ranger.roles[3U].set_word(role_word::attack, 50);
+    ranger.roles[4U].set_word(role_word::attack, 10);
+    openlegend::random::LegacyRandom specialist_shared_best_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_shared_best_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(target->target_written);
+    OL_CHECK(specialist_shared_best_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    ranger.roles[1U].set_word(role_word::use_poison, 21);
+    ranger.roles[3U].set_word(role_word::detoxification, 10);
+    ranger.roles[4U].set_word(role_word::medicine, 20);
+    openlegend::random::LegacyRandom specialist_medicine_after_detox_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_medicine_after_detox_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(target->target_written);
+    OL_CHECK(specialist_medicine_after_detox_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    ranger.roles[3U].set_word(role_word::medicine, 20);
+    ranger.roles[3U].set_word(role_word::hp, 0);
+    ranger.roles[4U].set_word(role_word::medicine, 20);
+    openlegend::random::LegacyRandom specialist_tie_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_tie_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
+    OL_CHECK(specialist_tie_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    ranger.roles[3U].set_word(role_word::medicine, 20);
+    ranger.roles[4U].set_word(role_word::medicine, 100);
+    setup.combatants()[4U].words[combatant_word::occupancy_hidden] = -1;
+    openlegend::random::LegacyRandom specialist_hidden_enemy_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_hidden_enemy_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::specialist);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
+    OL_CHECK(specialist_hidden_enemy_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::iq, 70);
+    setup.combatants()[1U].words[combatant_word::role_id] = -1;
+    openlegend::random::LegacyRandom specialist_invalid_ally_random{9U};
+    target = setup.choose_ai_attack_target(0U, specialist_invalid_ally_random);
+    OL_CHECK(!target.has_value());
+    OL_CHECK(specialist_invalid_ally_random.state() == 1'341'714'958U);
 
     reset();
     openlegend::random::LegacyRandom nearest_random{1U};

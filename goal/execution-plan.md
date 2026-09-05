@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=256/349`，`unique_any=211/284`，`unique_all=197/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=22` AI专长目标
-下一任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=23` AI最近目标
+当前有效进度：`closure=257/349`，`unique_any=212/284`，`unique_all=198/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=23` AI最近目标
+下一任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=24` AI用毒handler
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中21项已完成最终汇编→C++ REVIEW，其余60项为`implemented_pending_review`。order18 `sub_34C47`机器身份为1044 bytes、248条指令、42条分支、73处重定位、6个caller和10次direct call；packed magic槽、magic先于目标的RNG顺序、七项特殊加成末项覆盖、unsigned熟练度/100、三次targeting判定、mode0/1/2、signed行动值短路、automatic flag1、休息与统一action_done尾均已逐块审计。首轮修正了两个stale-target差异：selector未写时复用合法旧目标，以及移动后nearest未写时保留旧目标并落入rest；非法线性索引继续由现代安全拒绝。order19 `sub_3505B`机器身份为223 bytes、63条指令、9条分支、6处重定位、2个caller和8次direct call；signed morality高低门槛、IQ门槛、每段`bounded(10)<7`、实际0至2次RNG、命中策略未写目标不回退及无RNG nearest尾均已逐块审计。order20/21最高与最低攻击selector分别固定为109/112 bytes、32/32条指令、5/5条分支、7/7处重定位；均按signed全槽扫描、same-side/任意非零hidden过滤、无HP过滤、strict比较与first-tie写目标。最高攻击best0且非正值保留stale目标；最低攻击best1000，负值可选而等于/高于1000保留stale目标。四个owner修正或对照后均从入口重审零新增差异；最新独立原资产golden双生成一致，SHA256为`86772ef8670b75ef913c55dc83268d316a73116f595fa9536c4865327e27df47`，Linux app Debug 14/14通过。当前推进order22 AI专长目标。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中22项已完成最终汇编→C++ REVIEW，其余59项为`implemented_pending_review`。order18 `sub_34C47`机器身份为1044 bytes、248条指令、42条分支、73处重定位、6个caller和10次direct call；packed magic槽、magic先于目标的RNG顺序、七项特殊加成末项覆盖、unsigned熟练度/100、三次targeting判定、mode0/1/2、signed行动值短路、automatic flag1、休息与统一action_done尾均已逐块审计。首轮修正了两个stale-target差异：selector未写时复用合法旧目标，以及移动后nearest未写时保留旧目标并落入rest；非法线性索引继续由现代安全拒绝。order19 `sub_3505B`机器身份为223 bytes、63条指令、9条分支、6处重定位、2个caller和8次direct call；signed morality高低门槛、IQ门槛、每段`bounded(10)<7`、实际0至2次RNG、命中策略未写目标不回退及无RNG nearest尾均已逐块审计。order20/21最高与最低攻击selector分别固定为109/112 bytes、32/32条指令、5/5条分支、7/7处重定位；均按signed全槽扫描、same-side/任意非零hidden过滤、无HP过滤、strict比较与first-tie写目标。最高攻击best0且非正值保留stale目标；最低攻击best1000，负值可选而等于/高于1000保留stale目标。order22专长selector固定为347 bytes、91条指令、19条分支和19处重定位；同方用毒触发扫描不排除hidden/HP0，敌方解毒与医疗共享signed best，独立flag BUG使detox达到20仍跳过medicine后调用最低攻击，只有medicine达到20才保留专长目标。五个owner修正或对照后均从入口重审零新增差异；最新独立原资产golden双生成一致，SHA256为`1c9de1701b9b7290c61029c0c53bb40521e98cc086551b548b6d5dd99bd8d85d`，Linux app Debug 14/14通过。当前推进order23 AI最近目标。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

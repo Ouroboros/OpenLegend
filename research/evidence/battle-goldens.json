@@ -540,6 +540,62 @@
     "reads_hp": false,
     "consumes_random": false
   },
+  "battle_ai_specialist_target_machine": {
+    "address": "0x35217",
+    "end": "0x35372",
+    "raw_offset": "0x2ec17",
+    "size": 347,
+    "instruction_count": 91,
+    "branch_count": 19,
+    "raw_sha256": "461f8b3d53f24104b1ca7305af927bd28945715d425f93bd48e793ab423f6916",
+    "loaded_sha256": "cdb3563325b0382c5bf05d0f4744cc041519d55d94120fc35b6fcc3ad5f4216c",
+    "relocation_count": 19,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3521c",
+      "0x35363"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x351a7"
+    ],
+    "callers": [
+      "0x35118"
+    ],
+    "slot_loop_comparison": "signed int16 slot < combatant_count",
+    "trigger_scan": {
+      "candidate_filter": "side == actor side only",
+      "checks_hidden_or_hp": false,
+      "role_field": "use_poison",
+      "comparison": "signed value > 20",
+      "early_exit": false
+    },
+    "detoxification_scan": {
+      "candidate_filters": [
+        "side != actor side",
+        "hidden == 0"
+      ],
+      "best_initial": 0,
+      "comparison": "signed detoxification > best",
+      "target_write_before_threshold": true,
+      "threshold": "selected value >= 20"
+    },
+    "medicine_scan": {
+      "candidate_filters": [
+        "side != actor side",
+        "hidden == 0"
+      ],
+      "best_initial": "inherited detoxification best or 0",
+      "comparison": "signed medicine > inherited best",
+      "target_write_before_threshold": true,
+      "threshold": "selected value >= 20"
+    },
+    "independent_flag_bug": "detoxification >= 20 skips medicine but final check still tests only medicine flag and therefore calls weakest-attack fallback",
+    "ties_preserve_first_slot": true,
+    "reads_hp": false,
+    "consumes_random": false,
+    "caller_uses_return": false
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3380,20 +3436,162 @@
             30,
             10
           ],
+          "ally_can_poison": false,
+          "detoxification_ran": false,
+          "detoxification_target": null,
+          "detoxification_best": 0,
+          "detoxification_at_least_20": false,
+          "medicine_ran": true,
+          "medicine_start_best": 0,
+          "medicine_target": 3,
+          "final_best": 30,
+          "medicine_at_least_20": true,
+          "fallback_called": false,
+          "fallback_written": false,
+          "target_slot": 3
+        },
+        "specialist_hidden_dead_ally_triggers": {
+          "trigger_ally_slot": 1,
+          "trigger_ally_hidden": -1,
+          "trigger_ally_hp": 0,
+          "ally_use_poison": 21,
+          "ally_can_poison": true,
+          "detoxification_ran": true,
+          "detoxification_target": null,
+          "detoxification_best": 0,
+          "detoxification_at_least_20": false,
+          "medicine_ran": true,
+          "medicine_start_best": 0,
+          "medicine_target": null,
+          "final_best": 0,
+          "medicine_at_least_20": false,
+          "fallback_called": true,
+          "fallback_written": true,
           "target_slot": 3
         },
         "specialist_detox_fallback_bug": {
           "ally_use_poison": 21,
           "detoxification": [
-            30,
+            20,
             0
+          ],
+          "medicine": [
+            0,
+            100
           ],
           "attacks": [
             50,
             10
           ],
-          "provisional_detox_target": 3,
-          "final_target_slot": 4
+          "ally_can_poison": true,
+          "detoxification_ran": true,
+          "detoxification_target": 3,
+          "detoxification_best": 20,
+          "detoxification_at_least_20": true,
+          "medicine_ran": false,
+          "medicine_start_best": 20,
+          "medicine_target": null,
+          "final_best": 20,
+          "medicine_at_least_20": false,
+          "fallback_called": true,
+          "fallback_written": true,
+          "target_slot": 4
+        },
+        "specialist_shared_best_below_threshold": {
+          "detoxification": [
+            15,
+            0
+          ],
+          "medicine": [
+            14,
+            12
+          ],
+          "attacks": [
+            50,
+            10
+          ],
+          "ally_can_poison": true,
+          "detoxification_ran": true,
+          "detoxification_target": 3,
+          "detoxification_best": 15,
+          "detoxification_at_least_20": false,
+          "medicine_ran": true,
+          "medicine_start_best": 15,
+          "medicine_target": null,
+          "final_best": 15,
+          "medicine_at_least_20": false,
+          "fallback_called": true,
+          "fallback_written": true,
+          "target_slot": 4
+        },
+        "specialist_medicine_after_detox": {
+          "detoxification": [
+            10,
+            0
+          ],
+          "medicine": [
+            0,
+            20
+          ],
+          "ally_can_poison": true,
+          "detoxification_ran": true,
+          "detoxification_target": 3,
+          "detoxification_best": 10,
+          "detoxification_at_least_20": false,
+          "medicine_ran": true,
+          "medicine_start_best": 10,
+          "medicine_target": 4,
+          "final_best": 20,
+          "medicine_at_least_20": true,
+          "fallback_called": false,
+          "fallback_written": false,
+          "target_slot": 4
+        },
+        "specialist_medicine_first_tie_with_dead_first_candidate": {
+          "medicine": [
+            20,
+            20
+          ],
+          "hp": [
+            0,
+            100
+          ],
+          "ally_can_poison": false,
+          "detoxification_ran": false,
+          "detoxification_target": null,
+          "detoxification_best": 0,
+          "detoxification_at_least_20": false,
+          "medicine_ran": true,
+          "medicine_start_best": 0,
+          "medicine_target": 3,
+          "final_best": 20,
+          "medicine_at_least_20": true,
+          "fallback_called": false,
+          "fallback_written": false,
+          "target_slot": 3
+        },
+        "specialist_negative_hidden_enemy_skipped": {
+          "medicine": [
+            20,
+            100
+          ],
+          "hidden": [
+            0,
+            -1
+          ],
+          "ally_can_poison": false,
+          "detoxification_ran": false,
+          "detoxification_target": null,
+          "detoxification_best": 0,
+          "detoxification_at_least_20": false,
+          "medicine_ran": true,
+          "medicine_start_best": 0,
+          "medicine_target": 3,
+          "final_best": 20,
+          "medicine_at_least_20": true,
+          "fallback_called": false,
+          "fallback_written": false,
+          "target_slot": 3
         },
         "nearest": {
           "targeting_distances": [
