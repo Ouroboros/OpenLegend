@@ -5706,6 +5706,43 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice.has_value());
     OL_CHECK(choice->action == BattleAiAction::detox);
     OL_CHECK(choice->target_slot == 0);
+    OL_CHECK((choice->target == BattlePathCoord{10, 20}));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 4);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 21);
+    ranger.roles[0U].set_word(role_word::poison, 50);
+    ranger.roles[0U].set_word(role_word::physical_power, 51);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 0);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 20);
+    ranger.roles[0U].set_word(role_word::poison, 49);
+    ranger.roles[0U].set_word(role_word::physical_power, 51);
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 21);
+    ranger.roles[0U].set_word(role_word::poison, 51);
+    ranger.roles[0U].set_word(role_word::physical_power, 51);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 100);
+    ranger.roles[0U].set_word(role_word::poison, 50);
+    ranger.roles[0U].set_word(role_word::physical_power, 50);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
 
     reset();
     ranger.items[6U].set_word(item_word::add_poison, -1);
@@ -5719,16 +5756,72 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice->action == BattleAiAction::item);
     OL_CHECK(choice->item_source == BattleAiItemSource::inventory);
     OL_CHECK(choice->item_slot == 1);
+    OL_CHECK(choice->target_slot == 0);
+    OL_CHECK((choice->target == BattlePathCoord{10, 20}));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 6);
 
     reset();
-    setup.combatants()[0U].words[combatant_word::side] = 1;
+    setup.combatants()[0U].words[combatant_word::side] = -1;
     ranger.roles[0U].set_word(role_word::taking_item_begin + 2U, 6);
+    ranger.roles[0U].set_word(role_word::taking_item_count_begin + 2U, 0);
+    ranger.items[6U].set_word(item_word::add_use_poison, -1);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
     ranger.items[6U].set_word(item_word::add_poison, -1);
     choice = setup.choose_ai_poisoned_action(0U);
     OL_CHECK(choice.has_value());
     OL_CHECK(choice->action == BattleAiAction::item);
     OL_CHECK(choice->item_source == BattleAiItemSource::carried);
     OL_CHECK(choice->item_slot == 2);
+    OL_CHECK(choice->target_slot == 0);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::poison, 80);
+    ranger.roles[1U].set_word(role_word::detoxification, 51);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::request_detox);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK((choice->target == BattlePathCoord{11, 21}));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 9);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::poison, 80);
+    ranger.roles[1U].set_word(role_word::detoxification, 51);
+    ranger.roles[2U].set_word(role_word::detoxification, 51);
+    setup.combatants()[1U].words[combatant_word::occupancy_hidden] = 1;
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::request_detox);
+    OL_CHECK(choice->target_slot == 2);
+    OL_CHECK((choice->target == BattlePathCoord{12, 22}));
+
+    reset();
+    ranger.roles[0U].set_word(role_word::poison, 80);
+    ranger.roles[1U].set_word(role_word::detoxification, 51);
+    ranger.roles[2U].set_word(role_word::detoxification, 51);
+    setup.combatants()[1U].words[combatant_word::side] = 1;
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::request_detox);
+    OL_CHECK(choice->target_slot == 2);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::poison, 49);
+    ranger.roles[1U].set_word(role_word::detoxification, 20);
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::poison, 51);
+    ranger.roles[1U].set_word(role_word::detoxification, 21);
+    choice = setup.choose_ai_poisoned_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
 
     reset();
     for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
