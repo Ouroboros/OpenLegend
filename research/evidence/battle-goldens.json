@@ -2937,7 +2937,12 @@
           "available_count": 10,
           "cursor": 0,
           "selected_action": -1,
-          "pixel_hash": "0x7d062c289e7f933a"
+          "actor_cursor": [
+            30,
+            24
+          ],
+          "actor_cursor_visible": true,
+          "pixel_hash": "0x648d1a4f7c02fdbc"
         }
       },
       "wait_auto_render_vector": {

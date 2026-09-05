@@ -1960,7 +1960,9 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
     for slot, (_, x, y, _) in enumerate(combatants):
         occupancy[y * 64 + x] = slot
 
-    def render_commands(view_x: int, view_y: int) -> list[list[int]]:
+    def render_commands(
+        view_x: int, view_y: int, actor_cursor_visible: bool = False
+    ) -> list[list[int]]:
         commands: list[list[int]] = []
         for local_x in range(32):
             for local_y in range(32):
@@ -1979,6 +1981,12 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
                 cell = map_y * 64 + map_x
                 screen_x = 18 * local_x - 18 * local_y + 145
                 screen_y = 9 * local_x + 9 * local_y - 81
+                # 3AC0C..3AC7B: 556F0==1 draws CLOUD frame5/style3 at
+                # E6EE4/E6EE2 before upper terrain and the occupant.
+                if actor_cursor_visible and (map_x, map_y) == combatants[0][1:3]:
+                    commands.append([
+                        1, map_x, map_y, screen_x - 18, screen_y, 0, 1, 3, 0,
+                    ])
                 object_sprite = field_words[4096 + cell]
                 if object_sprite not in (0, 15000):
                     commands.append([
@@ -1996,7 +2004,7 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
     initial_view_x, initial_view_y = 0, 0
     initial_commands = render_commands(initial_view_x, initial_view_y)
     initial_hash, _, _ = battle_pixel_hashes(root, 1, initial_commands)
-    action_commands = render_commands(19, 13)
+    action_commands = render_commands(19, 13, actor_cursor_visible=True)
     _, _, action_pixels = battle_pixel_hashes(root, 1, action_commands)
     pixels = bytearray(action_pixels)
     draw_panel(20, 19, 42, 180)
@@ -2020,8 +2028,11 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
             label + b"\0",
             ascii_font,
             big5_font,
-            0x6663 if ordinal == 0 else 0x2321,
+            0x2321,
         )
+    draw_battle_text(
+        pixels, 25, 24, action_labels[0] + b"\0", ascii_font, big5_font, 0x6663
+    )
     draw_panel(220, 19, 100, 140)
     portraits = cumulative_entries(
         (root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes()
@@ -2062,6 +2073,8 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
             "available_count": 10,
             "cursor": 0,
             "selected_action": -1,
+            "actor_cursor": list(combatants[0][1:3]),
+            "actor_cursor_visible": True,
             "pixel_hash": action_menu_hash,
         },
     }

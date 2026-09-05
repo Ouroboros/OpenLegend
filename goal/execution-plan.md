@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=242/349`，`unique_any=197/284`，`unique_all=184/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=8` 玩家行动菜单与分派；回合主循环、速度排序与参战者交换已完成最终汇编→C++ REVIEW
-下一任务指针：B8 `audit_order=9` AI回合入口与行动分派
+当前有效进度：`closure=243/349`，`unique_any=198/284`，`unique_all=184/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=9` AI回合入口与行动分派
+下一任务指针：B8 `audit_order=10` AI低生命动作选择
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：功能实现100%，入口实现差异审计5/5已修正，Linux/Windows core/app × Debug/Release完整矩阵通过；81项closure中7项已完成统一最终汇编→C++ REVIEW，其余74项为`implemented_pending_review`，统一最终REVIEW为7/81。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中8项已完成最终汇编→C++ REVIEW，其余73项为`implemented_pending_review`。order5回合核心与order8玩家菜单联合重审已修正次光标所有权、菜单可见生命周期、完整/轮询present边界、宿主当前键态运输及菜单尾部重复胜负扫描；机器、独立golden、静态门和最新Linux app Debug 14/14通过。当前推进order9 AI回合入口与行动分派。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

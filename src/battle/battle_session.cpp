@@ -114,6 +114,8 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     case BattleSessionPhase::initial_fade: return "initial_fade";
     case BattleSessionPhase::round_start: return "round_start";
     case BattleSessionPhase::actor_present: return "actor_present";
+    case BattleSessionPhase::player_action_initial_present: return "player_action_initial_present";
+    case BattleSessionPhase::player_action_return_present: return "player_action_return_present";
     case BattleSessionPhase::player_action: return "player_action";
     case BattleSessionPhase::player_action_selected: return "player_action_selected";
     case BattleSessionPhase::player_magic_selection: return "player_magic_selection";
@@ -355,7 +357,7 @@ BattleSessionInputResult BattleSession::handle_key(
             " item=" + std::to_string(player_item_->selected_item_id) +
             " effects=" + std::to_string(player_item_->effect_result->effect_count));
         player_item_.reset();
-        if (!finish_current_actor(BattlePlayerAction::item)) {
+        if (!finish_player_action_call()) {
             return BattleSessionInputResult::ignored;
         }
         return BattleSessionInputResult::item_effect_acknowledged;
@@ -515,7 +517,7 @@ bool BattleSession::render(
     } else if (phase_ == BattleSessionPhase::post_battle_message_present ||
                phase_ == BattleSessionPhase::post_battle_message_wait) {
         rendered = render_post_battle_message(framebuffer);
-    } else if (phase_ == BattleSessionPhase::player_action) {
+    } else if (player_menu_uses_key_states()) {
         rendered = render_player_action_menu(framebuffer);
     } else if (phase_ == BattleSessionPhase::ai_prelude_present ||
                phase_ == BattleSessionPhase::ai_wait) {
@@ -570,6 +572,24 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     frame_rendered_ = false;
+    if (phase_ == BattleSessionPhase::player_action_initial_present) {
+        phase_ = BattleSessionPhase::player_action;
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_action_return_present) {
+        static_cast<void>(finish_player_action_call(true));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_action) {
+        if (player_menu_down_state_) {
+            static_cast<void>(handle_player_action_key(kDown));
+        } else if (player_menu_up_state_) {
+            static_cast<void>(handle_player_action_key(kUp));
+        } else if (confirmation_state_) {
+            static_cast<void>(handle_player_action_key(kEnter));
+        }
+        return;
+    }
     if (phase_ == BattleSessionPhase::initial_present) {
         if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
             error_ = setup_.valid()
@@ -583,7 +603,7 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
         render_state_.view_y = static_cast<std::int16_t>(
             std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
-        render_state_.primary_cursor = {
+        render_state_.secondary_cursor = {
             actor[combatant_word::x], actor[combatant_word::y]};
         if (fade_palettes_.empty()) {
             phase_ = BattleSessionPhase::round_start;
@@ -944,7 +964,7 @@ bool BattleSession::begin_round(const std::uint32_t bios_tick) {
         std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
     render_state_.view_y = static_cast<std::int16_t>(
         std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
-    render_state_.primary_cursor = {
+    render_state_.secondary_cursor = {
         actor[combatant_word::x], actor[combatant_word::y]};
     phase_ = BattleSessionPhase::actor_present;
     diagnostics::log_info(
@@ -1909,6 +1929,10 @@ bool BattleSession::finish_ai_handler(
         error_ = "battle AI turn completion failed";
         return false;
     }
+    if (player_automatic_action_) {
+        player_automatic_action_ = false;
+        return finish_player_action_call();
+    }
     return finish_current_actor(action);
 }
 
@@ -1923,7 +1947,8 @@ bool BattleSession::begin_player_action_menu() {
         static_cast<std::size_t>(availability->available_count);
     player_action_menu_.cursor = 0U;
     player_action_menu_.selected_action = -1;
-    phase_ = BattleSessionPhase::player_action;
+    render_state_.secondary_cursor_visible = true;
+    phase_ = BattleSessionPhase::player_action_initial_present;
     diagnostics::log_info(
         "battle player action menu ready id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
@@ -1985,8 +2010,9 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
     }
     if (result == BattleMagicSelectionResult::cancelled) {
         player_magic_selection_.reset();
-        player_action_menu_.selected_action = -1;
-        phase_ = BattleSessionPhase::player_action;
+        if (!finish_player_action_call()) {
+            return BattleSessionInputResult::ignored;
+        }
         diagnostics::log_info(
             "battle player magic selection cancelled id=" +
             std::to_string(battle_id()) +
@@ -2246,8 +2272,9 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
             "battle player item selection cancelled id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_));
         player_item_.reset();
-        player_action_menu_.selected_action = -1;
-        phase_ = BattleSessionPhase::player_action;
+        if (!finish_player_action_call()) {
+            return BattleSessionInputResult::ignored;
+        }
         return BattleSessionInputResult::item_cancelled;
     } else if (!confirms(translated_key)) {
         return BattleSessionInputResult::ignored;
@@ -2302,8 +2329,7 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
                     return BattleSessionInputResult::ignored;
                 }
                 player_item_.reset();
-                player_action_menu_.selected_action = -1;
-                if (!finish_current_actor(BattlePlayerAction::item)) {
+                if (!finish_player_action_call()) {
                     return BattleSessionInputResult::ignored;
                 }
                 return BattleSessionInputResult::item_selected;
@@ -2365,8 +2391,9 @@ BattleSessionInputResult BattleSession::handle_player_status_selection_key(
             "battle player status selection cancelled id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_));
         player_status_.reset();
-        player_action_menu_.selected_action = -1;
-        phase_ = BattleSessionPhase::player_action;
+        if (!finish_player_action_call()) {
+            return BattleSessionInputResult::ignored;
+        }
         return BattleSessionInputResult::status_cancelled;
     } else if (!confirms(translated_key)) {
         return BattleSessionInputResult::ignored;
@@ -2412,8 +2439,9 @@ BattleSessionInputResult BattleSession::handle_player_status_page_key(
         " slot=" + std::to_string(current_actor_slot_) +
         " role=" + std::to_string(player_status_->role_id));
     player_status_.reset();
-    player_action_menu_.selected_action = -1;
-    phase_ = BattleSessionPhase::player_action;
+    if (!finish_player_action_call()) {
+        return BattleSessionInputResult::ignored;
+    }
     return BattleSessionInputResult::status_closed;
 }
 
@@ -2571,8 +2599,9 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
             static_cast<std::int16_t>(BattlePlayerAction::item)) {
             player_item_.reset();
         }
-        player_action_menu_.selected_action = -1;
-        phase_ = BattleSessionPhase::player_action;
+        if (!finish_player_action_call()) {
+            return BattleSessionInputResult::ignored;
+        }
         diagnostics::log_info(
             "battle player targeting cancelled id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_));
@@ -2634,9 +2663,7 @@ bool BattleSession::begin_player_target_effect(
                 std::to_string(target.y));
             selected_player_target_.reset();
             player_item_.reset();
-            player_action_menu_.selected_action = -1;
-            phase_ = BattleSessionPhase::player_action;
-            return true;
+            return finish_player_action_call();
         }
         if (!thrown->effect_id.has_value()) {
             error_ = "battle player throwing-weapon effect id is absent";
@@ -3016,7 +3043,7 @@ bool BattleSession::finish_player_target_effect() {
         }
         return finish_ai_handler(action, false);
     }
-    return finish_current_actor(action);
+    return finish_player_action_call();
 }
 
 bool BattleSession::advance_player_attack_commit_wait(
@@ -3146,7 +3173,7 @@ bool BattleSession::finish_player_attack_iteration() {
         ai_attack_plan_.reset();
         return finish_ai_handler(BattlePlayerAction::attack, false);
     }
-    return finish_current_actor(BattlePlayerAction::attack);
+    return finish_player_action_call();
 }
 
 bool BattleSession::advance_player_movement_step() {
@@ -3200,36 +3227,28 @@ bool BattleSession::advance_player_movement_wait(const std::uint32_t bios_tick) 
 }
 
 bool BattleSession::rebuild_player_menu_after_movement() {
-    const auto availability = setup_.player_action_availability(current_actor_slot_);
-    if (!availability.has_value()) {
-        error_ = "battle player movement availability recheck failed";
+    const auto& words = setup_.combatants()[current_actor_slot_].words;
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "battle player movement role id is outside RANGER records";
         return false;
     }
-    const auto old_movement = player_action_menu_.available[0U];
-    const auto new_movement = availability->available[0U];
-    if (old_movement != new_movement) {
-        player_action_menu_.available[0U] = new_movement;
-        if (new_movement == 0 && player_action_menu_.available_count > 0U) {
-            --player_action_menu_.available_count;
-        } else if (new_movement == 1) {
-            ++player_action_menu_.available_count;
-        }
+    const auto new_movement = static_cast<std::int16_t>(
+        ranger_.roles[static_cast<std::size_t>(role_id)]
+                .word(model::role_word::physical_power) > 5 &&
+            words[combatant_word::round_value] > 0 ? 1 : 0);
+    player_action_menu_.available[0U] = new_movement;
+    if (new_movement == 0) {
+        --player_action_menu_.available_count;
     }
-    player_action_menu_.cursor = std::min(
-        player_action_menu_.cursor,
-        player_action_menu_.available_count > 0U
-            ? player_action_menu_.available_count - 1U
-            : 0U);
-    player_action_menu_.selected_action = -1;
     render_state_.path_limit = 0;
-    phase_ = BattleSessionPhase::player_action;
     diagnostics::log_info(
         "battle player action menu rebuilt after movement id=" +
         std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
         " movement=" + std::to_string(new_movement) +
         " available=" + std::to_string(player_action_menu_.available_count));
-    return player_action_menu_.available_count > 0U;
+    return finish_player_action_call();
 }
 
 std::optional<std::size_t> BattleSession::action_for_ordinal(
@@ -3255,6 +3274,8 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
         return BattleSessionInputResult::ignored;
     }
     if (translated_key == kDown) {
+        player_menu_down_state_ = false;
+        clear_player_menu_direction_requested_ = kDown;
         player_action_menu_.cursor =
             player_action_menu_.cursor + 1U == player_action_menu_.available_count
             ? 0U
@@ -3266,6 +3287,8 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
         return BattleSessionInputResult::action_changed;
     }
     if (translated_key == kUp) {
+        player_menu_up_state_ = false;
+        clear_player_menu_direction_requested_ = kUp;
         player_action_menu_.cursor = player_action_menu_.cursor == 0U
             ? player_action_menu_.available_count - 1U
             : player_action_menu_.cursor - 1U;
@@ -3284,6 +3307,7 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
     }
     confirmation_state_ = false;
     clear_confirmation_states_requested_ = true;
+    render_state_.secondary_cursor_visible = false;
     player_action_menu_.selected_action = static_cast<std::int16_t>(*action);
     phase_ = BattleSessionPhase::player_action_selected;
     diagnostics::log_info(
@@ -3311,14 +3335,15 @@ bool BattleSession::dispatch_selected_player_action() {
             error_ = setup_.error();
             return false;
         }
-        return finish_current_actor(action);
+        return finish_player_action_call();
     case BattlePlayerAction::rest:
         if (!setup_.rest_actor(current_actor_slot_, random_).has_value()) {
             error_ = setup_.error();
             return false;
         }
-        return finish_current_actor(action);
+        return finish_player_action_call();
     case BattlePlayerAction::automatic:
+        player_automatic_action_ = true;
         phase_ = BattleSessionPhase::automatic_present;
         return true;
     case BattlePlayerAction::movement:
@@ -3336,6 +3361,32 @@ bool BattleSession::dispatch_selected_player_action() {
     }
     error_ = "battle player action id is invalid";
     return false;
+}
+
+bool BattleSession::finish_player_action_call(const bool redraw_completed) {
+    const auto done = setup_.combatants()[current_actor_slot_]
+                          .words[combatant_word::action_done];
+    if (!redraw_completed && done == 0) {
+        phase_ = BattleSessionPhase::player_action_return_present;
+        return true;
+    }
+    const auto selected = player_action_menu_.selected_action >= 0
+        ? std::optional<std::size_t>{
+              static_cast<std::size_t>(player_action_menu_.selected_action)}
+        : std::nullopt;
+    if (!selected.has_value() || *selected >= player_action_menu_.available.size()) {
+        error_ = "battle player action return ordinal is invalid";
+        return false;
+    }
+    const auto action = static_cast<BattlePlayerAction>(*selected);
+    if (done == 1 || outcome_ != BattleOutcome::ongoing ||
+        action == BattlePlayerAction::wait) {
+        render_state_.secondary_cursor_visible = false;
+        return finish_current_actor(action);
+    }
+    player_action_menu_.selected_action = -1;
+    phase_ = BattleSessionPhase::player_action;
+    return true;
 }
 
 void BattleSession::consume_actor_confirmation_state() noexcept {
@@ -3631,7 +3682,7 @@ bool BattleSession::begin_actor_present() {
         std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
     render_state_.view_y = static_cast<std::int16_t>(
         std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
-    render_state_.primary_cursor = {
+    render_state_.secondary_cursor = {
         actor[combatant_word::x], actor[combatant_word::y]};
     phase_ = BattleSessionPhase::actor_present;
     diagnostics::log_info(
@@ -4029,14 +4080,24 @@ bool BattleSession::render_player_status_page(
 bool BattleSession::render_player_action_menu(
     render::IndexedFramebuffer& framebuffer) {
     if (player_action_menu_.available_count == 0U ||
-        player_action_menu_.cursor >= player_action_menu_.available_count ||
-        !render_battlefield(framebuffer)) {
+        player_action_menu_.cursor >= player_action_menu_.available_count) {
         return false;
     }
-    const auto panel_height = static_cast<std::uint16_t>(
-        17U * player_action_menu_.available_count + 10U);
-    if (!renderer_.draw_box(framebuffer, 20, 19, 42U, panel_height)) {
-        return false;
+    const bool full_redraw = phase_ != BattleSessionPhase::player_action;
+    if (full_redraw) {
+        const auto panel_height = static_cast<std::uint16_t>(
+            17U * player_action_menu_.available_count + 10U);
+        if (!render_battlefield(framebuffer) ||
+            !renderer_.draw_box(framebuffer, 20, 19, 42U, panel_height)) {
+            return false;
+        }
+    } else {
+        if (!player_action_frame_) {
+            return false;
+        }
+        // The polling loop retains the last complete menu frame and only
+        // overwrites labels. It does not reread battlefield or actor status.
+        framebuffer = *player_action_frame_;
     }
     std::size_t ordinal = 0U;
     for (std::size_t action = 0U; action < player_action_menu_.available.size(); ++action) {
@@ -4048,14 +4109,30 @@ bool BattleSession::render_player_action_menu(
                 25,
                 24 + static_cast<int>(17U * ordinal),
                 kPlayerActionLabels[action],
-                ordinal == player_action_menu_.cursor ? 0x6663U : 0x2321U)) {
+                0x2321U)) {
             return false;
         }
         ++ordinal;
     }
-    const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
-    return status_panel.has_value() &&
-        renderer_.render_status_panel(*status_panel, framebuffer);
+    const auto selected = action_for_ordinal(player_action_menu_.cursor);
+    if (!selected.has_value() || !renderer_.draw_text(
+            framebuffer, 25,
+            24 + static_cast<int>(17U * player_action_menu_.cursor),
+            kPlayerActionLabels[*selected], 0x6663U)) {
+        return false;
+    }
+    if (full_redraw) {
+        const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
+        if (!status_panel.has_value() ||
+            !renderer_.render_status_panel(*status_panel, framebuffer)) {
+            return false;
+        }
+        if (!player_action_frame_) {
+            player_action_frame_ = std::make_unique<render::IndexedFramebuffer>();
+        }
+        *player_action_frame_ = framebuffer;
+    }
+    return true;
 }
 
 bool BattleSession::render_battle_outcome(

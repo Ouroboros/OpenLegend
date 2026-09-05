@@ -288,8 +288,14 @@ int main(const int argc, const char* const* argv) {
         if (game.take_clear_battle_confirmation_states_request()) {
             keyboard.clear_confirmation_states();
         }
+        const auto direction = game.take_clear_battle_menu_direction_request();
+        if (direction != 0U) {
+            keyboard.clear_state(direction);
+        }
         game.set_battle_confirmation_state(
             keyboard.down(0x0DU) || keyboard.down(0x20U) || keyboard.down(0x96U));
+        game.set_battle_menu_direction_states(
+            keyboard.down(0x98U), keyboard.down(0x9EU));
     };
     timing::SteadyBiosTickSource tick_source;
     bool running = true;
@@ -311,7 +317,7 @@ int main(const int argc, const char* const* argv) {
                 if (translated_key != 0U) {
                     const bool defer_world_menu =
                         translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
-                    if (!defer_world_menu) {
+                    if (!defer_world_menu && !game.battle_menu_uses_key_states()) {
                         const auto key_state_reset = game.handle_key(
                             translated_key,
                             keyboard.down(0x82U),

@@ -233,6 +233,23 @@ void LegacyGameRuntime::set_battle_confirmation_state(const bool active) noexcep
     }
 }
 
+void LegacyGameRuntime::set_battle_menu_direction_states(
+    const bool down, const bool up) noexcept {
+    if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
+        battle_session_->set_player_menu_direction_states(down, up);
+    }
+}
+
+bool LegacyGameRuntime::battle_menu_uses_key_states() const noexcept {
+    return view_ == LegacyGameView::battle && battle_session_ != nullptr &&
+        battle_session_->player_menu_uses_key_states();
+}
+
+std::uint8_t LegacyGameRuntime::take_clear_battle_menu_direction_request() noexcept {
+    return battle_session_ != nullptr
+        ? battle_session_->take_clear_player_menu_direction_request() : 0U;
+}
+
 bool LegacyGameRuntime::take_clear_battle_confirmation_states_request() noexcept {
     return battle_session_ != nullptr &&
         battle_session_->take_clear_confirmation_states_request();

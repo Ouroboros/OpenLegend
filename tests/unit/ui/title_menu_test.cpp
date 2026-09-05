@@ -1945,6 +1945,15 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(!game.take_clear_battle_confirmation_states_request());
     game.set_battle_confirmation_state(false);
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(!game.battle_menu_uses_key_states());
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
+    OL_CHECK(session->phase() == BattleSessionPhase::player_action_initial_present);
+    OL_CHECK(game.battle_menu_uses_key_states());
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
+    OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+    OL_CHECK(game.battle_menu_uses_key_states());
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action);
@@ -1957,12 +1966,20 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
         }
     }
     while (session->player_action_menu().cursor != wait_ordinal) {
-        game.handle_key(0x98U, false, false, 100U);
+        game.set_battle_menu_direction_states(true, false);
+        OL_CHECK(game.render());
+        game.finish_presented_tick(100U);
+        OL_CHECK(game.take_clear_battle_menu_direction_request() == 0x98U);
+        game.set_battle_menu_direction_states(false, false);
     }
     game.set_battle_confirmation_state(true);
-    game.handle_key(0x0DU, false, false, 100U);
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
     OL_CHECK(game.take_clear_battle_confirmation_states_request());
     game.set_battle_confirmation_state(false);
+    OL_CHECK(session->phase() == BattleSessionPhase::player_action_return_present);
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::battle_outcome);
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);

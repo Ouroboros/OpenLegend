@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW已完成7/81；场景战斗入口、数据载入、参战者建立及回合主循环/排序/交换已收敛为`platform_adapted`，其余74项保持`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为8/81；场景战斗入口、数据载入、参战者建立、回合主循环、排序/交换及玩家行动菜单已收敛为`platform_adapted`，其余73项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、74项为 `implemented_pending_review`、7项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、73项为 `implemented_pending_review`、8项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `98a79533ed22e37b7ffb7dcb5ab434df20619da574538c719943c493b1edc9de`；`battle_entry`、`battle_data_loader`、`battle_setup_machine`与`battle_round_machine`分别保存入口、载入、参战者建立和回合核心的raw/loaded identity、caller、call及语义合同。回合核心键为本包新增，全部旧键保持不变。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `aa606cc4949dc4c5da8e39edf42ad9e9c32dfa9aec85aa43b6a4fecdc12dfc22`；`battle_entry`、`battle_data_loader`、`battle_setup_machine`与`battle_round_machine`分别保存入口、载入、参战者建立和回合核心的raw/loaded identity、caller、call及语义合同。回合核心键为本包新增，全部旧键保持不变。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -77,22 +77,24 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 7. 回合排序、玩家菜单与胜负核心
 
-`sub_3271E/sub_32A51/sub_32B78`已完成本包最终汇编→C++ REVIEW；玩家菜单、胜负检查及其他callee仍按独立closure待审。三函数分别为819/295/695字节、166/69/131条指令、69/19/68项重定位，完整identity见各函数证据；主循环还覆盖物理范围外的共享返回尾。`BattleSetup`现实现：
+`sub_3271E/sub_32A51/sub_32B78/sub_32E59`已完成本轮最终汇编→C++ REVIEW；胜负检查及动作callee仍按独立closure待审。四函数分别为819/295/695/1806字节、166/69/131/476条指令、69/19/68/79项重定位，完整identity见各函数证据；主循环还覆盖物理范围外的共享返回尾，菜单另核对10项跳转表和32个直接调用。`BattleSetup`现实现：
 
 - 基础speed加两件装备word53，每次加法16位回绕；固定first与所有later逐对signed比较，first<later才交换。不是稳定冒泡：等值不直接交换，但跨槽交换可把`A10,B10,C20`变成`C20,B10,A10`；
 - 交换时按原顺序复制 word0..7/9..13、逐槽写 occupancy、最后重算两槽 word8；
 - 每轮 word6=`max(0,effective_speed/15-role.hurt/40)`，signed division toward zero；
 - hp<=0且未 hidden 的槽清 occupancy并写 word5=1；无队伍为 raw1/`戰鬥失敗`，无敌方为 raw2/`戰鬥勝利`，双方皆空由 raw2覆盖。
 
-`BattleSession`现已在建队后使用跨战保留的battle render globals实际绘制首帧；首帧present并排入music后才首次排序、按slot0计算clamp视图原点并执行黑场淡入。随后轮首先保存tick，仅排序一次，再只清effect帧偏移、effect可见和highlight模式三个globals（不额外清路径范围），完成全部slot的word6计算。每槽先采样三确认键当前状态，必要时清三键与automatic，再跳过hidden或更新主光标、居中present；present之后才清word7/10并按side/automatic进入player或AI。Session清键请求经runtime接到SDL键盘模型，key-up可以撤销边界前已释放的按键；菜单确认在自身清键边界消费。玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，Enter/Space/keypad Insert确认后再扫描映射原action id。菜单每帧重绘战场、圆角混色框、原Big5文字和右侧actor状态面板；十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x7d062c289e7f933a`。
+`BattleSession`在建队后使用跨战保留的battle render globals绘制首帧；首帧present并排入music后才首次排序、把slot0写入`secondary_cursor`、按signed clamp计算视图原点并执行黑场淡入，继承的`primary_cursor`不被覆盖。随后轮首先保存tick，仅排序一次，再只清effect帧偏移、effect可见和highlight模式三个globals（不额外清路径范围），完成全部slot的word6计算。每槽先采样三确认键当前状态，必要时清三键与automatic，再跳过hidden或更新次光标、居中present；present之后才清word7/10并按side/automatic进入player或AI。
 
-等待动作现实际把当前actor逐槽交换到队尾，并保持外层索引继续处理交换后占据同槽的actor；休息实际提交原RNG体力/HP/MP恢复和action-done后推进下一槽。两项完成后均按原顺序执行胜负检查、当前参战槽隐藏目标清理、隐藏槽跳过和下一actor居中present；每个actor present后再清word7/word10。最后一槽后调用轮末异常状态，并仅在本轮开始时捕获的BIOS tick发生变化后开始下一轮。
+玩家分支按原条件建立「移動、攻擊、用毒、解毒、醫療、物品、等待、狀態、休息、自動」十项0/1表，保留无武功时最低耗内哨兵1000；cursor严格是可用项ordinal，上下回绕，确认后再扫描映射原action id。菜单入口置次光标可见，完整绘制战场、圆角框、全部2321文字、6663选中文字和actor状态面板并present；输入轮只在保留帧上重画两遍文字并再次present，然后按down→up→Enter/Space/keypad Insert采样当前键态。确认清三键并关闭次光标；动作返回不重新开启。runtime/SDL运输make/break状态而非事件队列，present前释放不会触发，同帧down优先up和确认。十项全可用、cursor0时独立Python oracle与C++整帧FNV64均为`0x648d1a4f7c02fdbc`。
+
+等待动作实际把当前actor逐槽交换到队尾且不写word7；机器要求先完整重画菜单/present，再因action6退出，外层索引继续处理交换后占据同槽的actor。休息提交原RNG体力/HP/MP恢复并写word7=1，直接退出菜单。共同尾对word7严格区分0、1和其他非零：0完整重绘，1退出，其他非零只跳过重绘而继续输入；菜单只读既有结果状态，不额外调用胜负扫描。返回外层后才按原顺序执行一次胜负检查、当前参战槽隐藏目标清理、hidden槽压缩与下一actor居中present。最后一槽后调用轮末异常状态，并仅在本轮开始时捕获的BIOS tick发生变化后开始下一轮。
 
 玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98/sub_36AF7/sub_37355`均推进为`implemented_pending_review`。
 
 状态动作现按`sub_22066(...,2)`进入队伍前缀选择，执行圆角标题/列表、角色名NUL对齐、上下回绕、Escape取消和三确认键；确认后在battle背景上依次呈现`sub_22A59`两页角色状态，每页各等待任意非零键。第一页保留伤势/中毒/内力分档、非法内力类型复用中毒色、装备加成和30级阈值；第二页保留两件装备、修炼物经验分母与十项武功等级。动作返回菜单但不结束actor、不消费RNG。独立Python直接读取原WARFLD、HDGRP和字体资产复算，选择页/第一页/第二页与C++整帧FNV64分别一致为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`；逐块回审修正了最大生命中毒色、修炼所需经验普通色和分母系数读取资质而非修炼经验三处差异。
 
-自动动作实际重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；随后实际累计双方int16态势、重绘战场并按`sub_33599`第三个调用点叠加当前actor状态面板、present、按原延迟参数300等待八次BIOS tick变化，再执行严格selector。动作0/7的休息handler及动作1..6、8..11全部进入逐actor后处理。结果命中时，`sub_3B238`内部的战果panel/present、任意键与全部战后结算消息必须先完成，返回主循环后才清隐藏目标、执行一次轮末异常状态，再保持当前画面等待轮首tick发生变化，最后发布typed结果供入口淡出回收。hidden槽同样执行这条公共尾。独立golden双生成一致，回归覆盖顺序、状态仅执行一次、同tick/BIOS日界回绕及等待画面保持；Linux app Debug 14/14、机器及映射门通过，最终复核零新增差异。`sub_32E59/sub_33599/sub_3B238/sub_3C6D3`仍为`implemented_pending_review`，输入专属同址owner也不传播关闭。AI prelude整帧FNV64固定为`0xb02104139829a80d`。
+自动动作重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；AI全部返回后回到玩家菜单共同尾。结果命中时，`sub_3B238`内部的战果panel/present、任意键与全部战后结算消息必须先完成，返回主循环后才清隐藏目标、执行一次轮末异常状态，再保持当前画面等待轮首tick发生变化，最后发布typed结果供入口淡出回收；hidden槽同样执行这条公共尾。独立golden双生成一致且正式SHA256为`aa606cc4949dc4c5da8e39edf42ad9e9c32dfa9aec85aa43b6a4fecdc12dfc22`；order5/8机器门、联合静态/golden门及最新Linux app Debug 14/14通过。从两入口重新逐块审计零新增差异，`sub_3271E/sub_32E59`最终归类`platform_adapted / converged_no_new_differences`。`sub_33599/sub_3B238/sub_3C6D3`及输入专属同址owner仍为独立待审项，不传播关闭。AI prelude整帧FNV64固定为`0xb02104139829a80d`。
 
 ## 8. 战场路径图与最短路回溯
 
@@ -179,9 +181,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3AA17` 已映射为 `defer_turn_to_end`：从当前slot开始连续调用原swap语义，把角色逐槽移动到combatant尾并返回最终slot，不直接写action-done。真实battle3完成队伍选择后，slot1的角色由`[0,101,102,103,104]`移动为`[0,102,103,104,101]`并返回4；该函数为 `implemented_pending_review`。
 
-`sub_3AA4B` 的顺序为完整战场重绘、present、自动flag写1、调用当前actor的AI。`BattleSession`已按该顺序实际重绘/present，在present前保持flag0、present完成后写flag1并以同一actor进入AI前导；后续已执行态势累计、第二次重绘/present及参数300的八次BIOS tick变化。其余AI效果handler未完成，因此该函数保持 `pending_implementation`。
+`sub_3AA4B` 的顺序为完整战场重绘、present、自动flag写1、调用当前actor的AI。`BattleSession`已按该顺序实际重绘/present，在present前保持flag0、present完成后写flag1并以同一actor进入AI前导；后续执行态势累计、第二次重绘/present、参数300的八次BIOS tick变化及全部typed handler，AI返回后再进入玩家菜单共同尾。该callee实现已完整但仍保持自身`implemented_pending_review`，不随order8关闭。
 
-`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体，并从MMAP实际绘制物品图标；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present、玩家动作/武功/物品菜单、状态选择与两页界面、movement/targeting路径光标、每个玩家/AI移动步，以及全部玩家攻击/支持/物品、AI自动攻击、AI用毒和AI医疗/解毒的逐帧FIGHT/EFT与damage动画实际调用并由runtime present；状态三帧hash为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`，攻击方向提示与升级框整帧hash分别为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。AI普通物品面板与AI暗器前奏/EFT/damage及移动后效果现也实际调用renderer并执行present；固定AI普通物品面板hash为`0xa7542240e4172664`。结果调用点仍由结果owner待接入，但绘制函数本体及当前全部调用类型已实现，`sub_3AA85`推进为`implemented_pending_review`。
+`sub_3AA85` 已恢复为严格两次local-x外层/local-y内层的32×32命令计划：第一pass绘制WARFLD layer0；第二pass依次加入path overlay、主/副cursor、非0且非15000的layer1、normal或三种调色高亮角色、effect以及五种damage文字。path overlay与主cursor同受range严格大于0保护，secondary cursor由独立flag控制。普通sprite锚点为`145+18*(x-y), -81+9*(x+y)`；overlay左移18，damage再按offset上移。独立oracle以真实battle4资产和非对称view/cursor生成1,157条命令，哈希`0xb9f8a428699b3712`，C++逐字段复算一致；零range向量不产生cursor命令。`BattleRenderer`现按机器常量pointer基址0/6500/8000解析WDX/WMP、EFT与动态FIGHT，实际执行普通RLE、单色高亮、CLOUD第4/5帧alpha混色和damage字体，并从MMAP实际绘制物品图标；独立资产oracle与C++整帧FNV64均为`0x7d8a5211fe8c4eb0`。BattleSession已在初始战场、actor-present、玩家动作/武功/物品菜单、状态选择与两页界面、movement/targeting路径光标、每个玩家/AI移动步，以及全部玩家攻击/支持/物品、AI自动攻击、AI用毒和AI医疗/解毒的逐帧FIGHT/EFT与damage动画实际调用并由runtime present；状态三帧hash为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`，攻击方向提示与升级框整帧hash分别为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。AI普通物品面板与AI暗器前奏/EFT/damage及移动后效果现也实际调用renderer并执行present；固定AI普通物品面板hash为`0xa7542240e4172664`。结果调用点已由回合结果continuation接入；绘制函数本体及当前全部调用类型已实现，`sub_3AA85`仍保持自身`implemented_pending_review`。
 
 ## 20. AI六个候选selector
 

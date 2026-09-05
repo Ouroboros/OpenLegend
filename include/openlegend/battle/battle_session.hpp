@@ -26,6 +26,8 @@ enum class BattleSessionPhase {
     initial_fade,
     round_start,
     actor_present,
+    player_action_initial_present,
+    player_action_return_present,
     player_action,
     player_action_selected,
     player_magic_selection,
@@ -183,6 +185,20 @@ public:
     [[nodiscard]] BattleSetup& setup() noexcept { return setup_; }
     [[nodiscard]] const BattleData& data() const noexcept { return data_; }
     void set_confirmation_state(bool active) noexcept { confirmation_state_ = active; }
+    void set_player_menu_direction_states(bool down, bool up) noexcept {
+        player_menu_down_state_ = down;
+        player_menu_up_state_ = up;
+    }
+    [[nodiscard]] bool player_menu_uses_key_states() const noexcept {
+        return phase_ == BattleSessionPhase::player_action_initial_present ||
+            phase_ == BattleSessionPhase::player_action_return_present ||
+            phase_ == BattleSessionPhase::player_action;
+    }
+    std::uint8_t take_clear_player_menu_direction_request() noexcept {
+        const auto key = clear_player_menu_direction_requested_;
+        clear_player_menu_direction_requested_ = 0U;
+        return key;
+    }
     bool take_clear_confirmation_states_request() noexcept {
         const auto requested = clear_confirmation_states_requested_;
         clear_confirmation_states_requested_ = false;
@@ -328,6 +344,7 @@ private:
     [[nodiscard]] BattleSessionInputResult handle_player_action_key(
         std::uint8_t translated_key);
     [[nodiscard]] bool dispatch_selected_player_action();
+    [[nodiscard]] bool finish_player_action_call(bool redraw_completed = false);
     [[nodiscard]] bool finish_current_actor(BattlePlayerAction action);
     [[nodiscard]] bool begin_battle_outcome(BattleOutcome outcome);
     [[nodiscard]] bool finish_outcome_round();
@@ -432,6 +449,11 @@ private:
     std::size_t current_actor_slot_{};
     bool confirmation_state_{};
     bool clear_confirmation_states_requested_{};
+    bool player_menu_down_state_{};
+    bool player_menu_up_state_{};
+    std::uint8_t clear_player_menu_direction_requested_{};
+    std::unique_ptr<render::IndexedFramebuffer> player_action_frame_;
+    bool player_automatic_action_{};
     BattleOutcome outcome_{BattleOutcome::ongoing};
     BattleStepResult result_{BattleStepResult::stay};
     std::optional<BattlePostBattleResult> post_battle_result_;
