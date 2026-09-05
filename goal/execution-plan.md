@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=249/349`，`unique_any=204/284`，`unique_all=190/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=15` AI攻势动作选择
-下一任务指针：B8 `audit_order=16` 休息动作封装
+当前有效进度：`closure=250/349`，`unique_any=205/284`，`unique_all=191/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=16` 休息动作封装
+下一任务指针：B8 `audit_order=17` 逃跑目的格规划
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中14项已完成最终汇编→C++ REVIEW，其余67项为`implemented_pending_review`。order14解毒目标selector最终重审确认同side可见目标过滤、解毒能力strict门位于请求优先之前、10/20/30三级概率短路及>40确定回退均按机器顺序消费随机数；产品实现无需修正，补齐零至三次消费和全部边界回归及独立golden后，机器、静态、closure和最新Linux app Debug 14/14通过。当前推进order15 AI攻势动作选择。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中15项已完成最终汇编→C++ REVIEW，其余66项为`implemented_pending_review`。order15攻势selector最终重审确认冻结态势的两项strict援助门、医疗优先、固定用毒RNG、side特定暗器及体力/最小MP攻击门；首轮发现医疗缺失生命应先以32位差值比较、命中后才回绕保存，修正并补齐溢出、等号、短路、零数量和无武功MP1000原BUG回归后，从入口复核328条指令零新增差异。独立golden双生成及最新Linux app Debug 14/14通过。当前推进order16休息动作封装。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

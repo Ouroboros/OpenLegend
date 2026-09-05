@@ -1544,6 +1544,26 @@ def ai_selector_vectors() -> dict[str, object]:
     poison_roll, poison_state = legacy_bounded(poison_state, 150)
     throwing_gate, throwing_state = legacy_bounded(1, 50)
     throwing_roll, throwing_state = legacy_bounded(throwing_state, 100)
+    party_roll_boundary_outputs: list[int] = []
+    party_roll_boundary_state = 51
+    for bound in (50, 100):
+        value, party_roll_boundary_state = legacy_bounded(party_roll_boundary_state, bound)
+        party_roll_boundary_outputs.append(value)
+    party_poison_fallback_outputs: list[int] = []
+    party_poison_fallback_state = 6
+    for bound in (50, 100, 10):
+        value, party_poison_fallback_state = legacy_bounded(party_poison_fallback_state, bound)
+        party_poison_fallback_outputs.append(value)
+    carried_throwing_outputs: list[int] = []
+    carried_throwing_state = 6
+    for bound in (50, 10):
+        value, carried_throwing_state = legacy_bounded(carried_throwing_state, bound)
+        carried_throwing_outputs.append(value)
+    carried_poison_outputs: list[int] = []
+    carried_poison_state = 14
+    for bound in (50, 10):
+        value, carried_poison_state = legacy_bounded(carried_poison_state, bound)
+        carried_poison_outputs.append(value)
     attack_gate, attack_state = legacy_bounded(1, 50)
     return {
         "action_codes": {
@@ -1868,6 +1888,65 @@ def ai_selector_vectors() -> dict[str, object]:
                 "target_slot": 2,
                 "action": 5,
                 "rng_consumed": False,
+                "missing_wrap": {
+                    "allied_total": wrapping_i16(2 - 1 + 1000),
+                    "opponent_total": 400,
+                    "opponent_count": 2,
+                    "actor_hp_plus_attack": 2,
+                    "candidate_missing_hp_i32": 32_767 - (-1),
+                    "stored_best_i16": wrapping_i16(32_767 - (-1)),
+                    "hidden_counted_slot": 2,
+                    "target_slot": 1,
+                    "action": 5,
+                    "rng_consumed": False,
+                    "next_candidate_replaces": {
+                        "allied_total": wrapping_i16(2 - 1 + 999),
+                        "first_missing_hp_i32": 32_767 - (-1),
+                        "first_stored_best_i16": wrapping_i16(32_767 - (-1)),
+                        "second_missing_hp_i32": 1_000 - 999,
+                        "target_slot": 2,
+                        "action": 5,
+                        "rng_consumed": False,
+                    },
+                },
+                "detox_tie": {
+                    "medicine": 19,
+                    "detoxification": 20,
+                    "physical_power": 50,
+                    "poison_values": [40, 40],
+                    "target_slot": 1,
+                    "action": 4,
+                    "rng_consumed": False,
+                },
+                "medicine_precedence": {
+                    "medicine": 20,
+                    "detoxification": 100,
+                    "full_hp": True,
+                    "poison_values": [100, 100],
+                    "rng_outputs_after_no_aid": [attack_gate],
+                    "rng_state_after": attack_state,
+                    "action": 0,
+                },
+                "actor_power_boundary": {
+                    "allied_total": 902,
+                    "opponent_total": 400,
+                    "opponent_count": 2,
+                    "opponent_average_half": trunc_div(trunc_div(400, 2), 2),
+                    "actor_hp_plus_attack": 100,
+                    "rng_outputs_after_no_aid": [attack_gate],
+                    "rng_state_after": attack_state,
+                    "action": 0,
+                },
+                "allied_total_boundary": {
+                    "allied_total": 400,
+                    "opponent_total": 200,
+                    "opponent_count": 2,
+                    "actor_hp_plus_attack": 2,
+                    "doubled_opponent_total": 2 * 200,
+                    "rng_outputs_after_no_aid": [attack_gate],
+                    "rng_state_after": attack_state,
+                    "action": 0,
+                },
             },
             "poison": {
                 "use_poison": 100,
@@ -1876,6 +1955,21 @@ def ai_selector_vectors() -> dict[str, object]:
                 "rng_outputs": [poison_gate, poison_roll],
                 "rng_state_after": poison_state,
                 "action": 3,
+                "advantage_boundary": {
+                    "use_poison": 48,
+                    "attack": 10,
+                    "advantage": 38,
+                    "rng_outputs": [poison_gate],
+                    "rng_state_after": attack_state,
+                    "action": 0,
+                },
+                "roll_boundary": {
+                    "use_poison": 58,
+                    "attack": 0,
+                    "rng_outputs": [poison_gate, poison_roll],
+                    "rng_state_after": poison_state,
+                    "action": 0,
+                },
             },
             "party_throwing": {
                 "add_hp": -100,
@@ -1885,7 +1979,66 @@ def ai_selector_vectors() -> dict[str, object]:
                 "rng_outputs": [throwing_gate, throwing_roll],
                 "rng_state_after": throwing_state,
                 "inventory_slot": 4,
+                "quantity": 0,
                 "action": 10,
+                "threshold_boundary": {
+                    "add_hp": -15,
+                    "attack": 10,
+                    "threshold": trunc_div(3 * 10, 2),
+                    "rng_outputs": [attack_gate],
+                    "rng_state_after": attack_state,
+                    "action": 0,
+                },
+                "roll_boundary": {
+                    "seed": 51,
+                    "add_hp": -100,
+                    "hidden_weapon": 100,
+                    "rng_outputs": party_roll_boundary_outputs,
+                    "rng_state_after": party_roll_boundary_state,
+                    "action": 0,
+                },
+                "poison_fallback": {
+                    "seed": 6,
+                    "add_hp": -100,
+                    "add_poison": 100,
+                    "rng_outputs": party_poison_fallback_outputs,
+                    "rng_state_after": party_poison_fallback_state,
+                    "inventory_slot": 0,
+                    "action": 10,
+                },
+            },
+            "carried_throwing": {
+                "seed": 6,
+                "side": -1,
+                "item_id": 0,
+                "add_hp": -11,
+                "attack": 10,
+                "quantity": 0,
+                "rng_outputs": carried_throwing_outputs,
+                "rng_state_after": carried_throwing_state,
+                "carried_slot": 2,
+                "action": 10,
+                "threshold_boundary": {
+                    "side": -1,
+                    "item_id": 0,
+                    "add_hp": -10,
+                    "attack": 10,
+                    "rng_outputs": [attack_gate],
+                    "rng_state_after": attack_state,
+                    "action": 0,
+                },
+                "poison": {
+                    "seed": 14,
+                    "side": 1,
+                    "item_id": 0,
+                    "add_poison": 11,
+                    "attack": 10,
+                    "quantity": 0,
+                    "rng_outputs": carried_poison_outputs,
+                    "rng_state_after": carried_poison_state,
+                    "carried_slot": 1,
+                    "action": 10,
+                },
             },
             "attack": {
                 "physical_power": 100,
@@ -1896,6 +2049,26 @@ def ai_selector_vectors() -> dict[str, object]:
                 "rng_state_after": attack_state,
                 "writes_action_code": False,
                 "action": 2,
+                "physical_power_boundary": {
+                    "physical_power": 10,
+                    "current_mp": 1000,
+                    "action": 0,
+                    "writes_action_code": False,
+                },
+                "no_magic_reject": {
+                    "physical_power": 11,
+                    "current_mp": 999,
+                    "initial_minimum_need_mp": 1000,
+                    "action": 0,
+                    "writes_action_code": False,
+                },
+                "no_magic_accept": {
+                    "physical_power": 11,
+                    "current_mp": 1000,
+                    "initial_minimum_need_mp": 1000,
+                    "action": 2,
+                    "writes_action_code": False,
+                },
             },
         },
     }

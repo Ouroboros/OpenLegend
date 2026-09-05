@@ -2086,7 +2086,78 @@
             ],
             "target_slot": 2,
             "action": 5,
-            "rng_consumed": false
+            "rng_consumed": false,
+            "missing_wrap": {
+              "allied_total": 1001,
+              "opponent_total": 400,
+              "opponent_count": 2,
+              "actor_hp_plus_attack": 2,
+              "candidate_missing_hp_i32": 32768,
+              "stored_best_i16": -32768,
+              "hidden_counted_slot": 2,
+              "target_slot": 1,
+              "action": 5,
+              "rng_consumed": false,
+              "next_candidate_replaces": {
+                "allied_total": 1000,
+                "first_missing_hp_i32": 32768,
+                "first_stored_best_i16": -32768,
+                "second_missing_hp_i32": 1,
+                "target_slot": 2,
+                "action": 5,
+                "rng_consumed": false
+              }
+            },
+            "detox_tie": {
+              "medicine": 19,
+              "detoxification": 20,
+              "physical_power": 50,
+              "poison_values": [
+                40,
+                40
+              ],
+              "target_slot": 1,
+              "action": 4,
+              "rng_consumed": false
+            },
+            "medicine_precedence": {
+              "medicine": 20,
+              "detoxification": 100,
+              "full_hp": true,
+              "poison_values": [
+                100,
+                100
+              ],
+              "rng_outputs_after_no_aid": [
+                38
+              ],
+              "rng_state_after": 1103527590,
+              "action": 0
+            },
+            "actor_power_boundary": {
+              "allied_total": 902,
+              "opponent_total": 400,
+              "opponent_count": 2,
+              "opponent_average_half": 100,
+              "actor_hp_plus_attack": 100,
+              "rng_outputs_after_no_aid": [
+                38
+              ],
+              "rng_state_after": 1103527590,
+              "action": 0
+            },
+            "allied_total_boundary": {
+              "allied_total": 400,
+              "opponent_total": 200,
+              "opponent_count": 2,
+              "actor_hp_plus_attack": 2,
+              "doubled_opponent_total": 400,
+              "rng_outputs_after_no_aid": [
+                38
+              ],
+              "rng_state_after": 1103527590,
+              "action": 0
+            }
           },
           "poison": {
             "use_poison": 100,
@@ -2100,7 +2171,27 @@
               58
             ],
             "rng_state_after": 2524885223,
-            "action": 3
+            "action": 3,
+            "advantage_boundary": {
+              "use_poison": 48,
+              "attack": 10,
+              "advantage": 38,
+              "rng_outputs": [
+                38
+              ],
+              "rng_state_after": 1103527590,
+              "action": 0
+            },
+            "roll_boundary": {
+              "use_poison": 58,
+              "attack": 0,
+              "rng_outputs": [
+                38,
+                58
+              ],
+              "rng_state_after": 2524885223,
+              "action": 0
+            }
           },
           "party_throwing": {
             "add_hp": -100,
@@ -2116,7 +2207,83 @@
             ],
             "rng_state_after": 2524885223,
             "inventory_slot": 4,
-            "action": 10
+            "quantity": 0,
+            "action": 10,
+            "threshold_boundary": {
+              "add_hp": -15,
+              "attack": 10,
+              "threshold": 15,
+              "rng_outputs": [
+                38
+              ],
+              "rng_state_after": 1103527590,
+              "action": 0
+            },
+            "roll_boundary": {
+              "seed": 51,
+              "add_hp": -100,
+              "hidden_weapon": 100,
+              "rng_outputs": [
+                35,
+                20
+              ],
+              "rng_state_after": 2587941225,
+              "action": 0
+            },
+            "poison_fallback": {
+              "seed": 6,
+              "add_hp": -100,
+              "add_poison": 100,
+              "rng_outputs": [
+                26,
+                15,
+                2
+              ],
+              "rng_state_after": 2851509277,
+              "inventory_slot": 0,
+              "action": 10
+            }
+          },
+          "carried_throwing": {
+            "seed": 6,
+            "side": -1,
+            "item_id": 0,
+            "add_hp": -11,
+            "attack": 10,
+            "quantity": 0,
+            "rng_outputs": [
+              26,
+              5
+            ],
+            "rng_state_after": 1672197364,
+            "carried_slot": 2,
+            "action": 10,
+            "threshold_boundary": {
+              "side": -1,
+              "item_id": 0,
+              "add_hp": -10,
+              "attack": 10,
+              "rng_outputs": [
+                38
+              ],
+              "rng_state_after": 1103527590,
+              "action": 0
+            },
+            "poison": {
+              "seed": 14,
+              "side": 1,
+              "item_id": 0,
+              "add_poison": 11,
+              "attack": 10,
+              "quantity": 0,
+              "rng_outputs": [
+                10,
+                2
+              ],
+              "rng_state_after": 2025883708,
+              "carried_slot": 1,
+              "action": 10
+            }
           },
           "attack": {
             "physical_power": 100,
@@ -2130,7 +2297,27 @@
             ],
             "rng_state_after": 1103527590,
             "writes_action_code": false,
-            "action": 2
+            "action": 2,
+            "physical_power_boundary": {
+              "physical_power": 10,
+              "current_mp": 1000,
+              "action": 0,
+              "writes_action_code": false
+            },
+            "no_magic_reject": {
+              "physical_power": 11,
+              "current_mp": 999,
+              "initial_minimum_need_mp": 1000,
+              "action": 0,
+              "writes_action_code": false
+            },
+            "no_magic_accept": {
+              "physical_power": 11,
+              "current_mp": 1000,
+              "initial_minimum_need_mp": 1000,
+              "action": 2,
+              "writes_action_code": false
+            }
           }
         }
       },

@@ -3334,11 +3334,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                 const auto role_id = combatants_[slot].words[combatant_word::role_id];
                 const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
                 if (role.word(model::role_word::hp) < role.word(model::role_word::maximum_hp)) {
-                    const auto missing = wrapping_i16(
+                    const auto missing =
                         static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) -
-                        role.word(model::role_word::hp));
+                        role.word(model::role_word::hp);
                     if (missing > best_value) {
-                        best_value = missing;
+                        best_value = wrapping_i16(missing);
                         best_slot = static_cast<std::int16_t>(slot);
                         aid_action = BattleAiAction::medicine;
                     }
