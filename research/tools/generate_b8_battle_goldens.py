@@ -1508,10 +1508,18 @@ def ai_entry_vectors() -> dict[str, object]:
 
 def ai_selector_vectors() -> dict[str, object]:
     medicine_outputs: list[int] = []
+    medicine_states: list[int] = []
     state = 1
     for _ in range(3):
         value, state = legacy_bounded(state, 10)
         medicine_outputs.append(value)
+        medicine_states.append(state)
+    medicine_half_accept, medicine_half_accept_state = legacy_bounded(5, 10)
+    medicine_fifth_outputs: list[int] = []
+    medicine_fifth_state = 331
+    for _ in range(3):
+        value, medicine_fifth_state = legacy_bounded(medicine_fifth_state, 10)
+        medicine_fifth_outputs.append(value)
 
     detox_outputs: list[int] = []
     detox_state = 1
@@ -1681,6 +1689,67 @@ def ai_selector_vectors() -> dict[str, object]:
             "action": 6,
         },
         "medicine_target": {
+            "filter_skip": {
+                "actor_hp": 1,
+                "hidden_slot": 1,
+                "different_side_slot": 2,
+                "action": 0,
+                "rng_state_after": 1,
+                "writes_action_code": False,
+            },
+            "capability_strict_reject": {
+                "medicine": 20,
+                "target_hurt": 50,
+                "target_hp": 1,
+                "action": 0,
+                "rng_state_after": 1,
+                "writes_action_code": False,
+            },
+            "request_priority": {
+                "request_action": 8,
+                "target_slot": 1,
+                "action": 5,
+                "rng_state_after": 1,
+            },
+            "hp_direct": {"hp": 19, "action": 5, "rng_state_after": 1},
+            "direct_boundaries": {
+                "medicine": 11,
+                "hp": 20,
+                "maximum_hp": 20,
+                "hurt": 40,
+                "action": 0,
+                "rng_state_after": 1,
+            },
+            "hurt_direct": {
+                "medicine": 12,
+                "hurt": 41,
+                "action": 5,
+                "rng_state_after": 1,
+            },
+            "half_accept": {
+                "seed": 5,
+                "hp": 49,
+                "maximum_hp": 100,
+                "rng_output": medicine_half_accept,
+                "rng_state_after": medicine_half_accept_state,
+                "action": 5,
+            },
+            "half_reject": {
+                "seed": 1,
+                "hp": 49,
+                "maximum_hp": 100,
+                "rng_outputs": medicine_outputs[:1],
+                "rng_state_after": medicine_states[0],
+                "action": 0,
+            },
+            "third_reject": {
+                "seed": 1,
+                "hp": 32,
+                "maximum_hp": 100,
+                "rng_outputs": medicine_outputs[:2],
+                "rng_state_after": medicine_states[1],
+                "action": 0,
+            },
             "hp": 24,
             "maximum_hp": 100,
             "rng_bounds": [10, 10, 10],
@@ -1688,6 +1757,15 @@ def ai_selector_vectors() -> dict[str, object]:
             "rng_state_after": state,
             "target_slot": 1,
             "action": 5,
+            "fifth_fallback": {
+                "seed": 331,
+                "hp": 20,
+                "maximum_hp": 105,
+                "rng_outputs": medicine_fifth_outputs,
+                "rng_state_after": medicine_fifth_state,
+                "target_slot": 1,
+                "action": 5,
+            },
         },
         "detox_target": {
             "poison": 35,

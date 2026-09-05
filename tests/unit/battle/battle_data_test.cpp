@@ -5892,6 +5892,103 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice->target_slot == 0);
 
     reset();
+    ranger.roles[0U].set_word(role_word::hp, 1);
+    ranger.roles[1U].set_word(role_word::hp, 1);
+    ranger.roles[2U].set_word(role_word::hp, 1);
+    setup.combatants()[1U].words[combatant_word::occupancy_hidden] = 1;
+    setup.combatants()[2U].words[combatant_word::side] = 1;
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    openlegend::random::LegacyRandom medicine_filter_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_filter_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(medicine_filter_random.state() == 1U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::medicine, 20);
+    ranger.roles[1U].set_word(role_word::hp, 1);
+    ranger.roles[1U].set_word(role_word::hurt, 50);
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    openlegend::random::LegacyRandom medicine_gate_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_gate_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(medicine_gate_random.state() == 1U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    setup.combatants()[1U].words[combatant_word::ai_action] =
+        static_cast<std::int16_t>(BattleAiAction::request_medicine);
+    openlegend::random::LegacyRandom medicine_request_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_request_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK((choice->target == BattlePathCoord{11, 21}));
+    OL_CHECK(medicine_request_random.state() == 1U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 5);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::hp, 19);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom medicine_hp_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_hp_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(medicine_hp_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::medicine, 11);
+    ranger.roles[1U].set_word(role_word::hp, 20);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 20);
+    ranger.roles[1U].set_word(role_word::hurt, 40);
+    openlegend::random::LegacyRandom medicine_direct_boundary_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_direct_boundary_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(medicine_direct_boundary_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::medicine, 12);
+    ranger.roles[1U].set_word(role_word::hurt, 41);
+    openlegend::random::LegacyRandom medicine_hurt_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_hurt_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(medicine_hurt_random.state() == 1U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::hp, 49);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom medicine_half_accept_random{5U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_half_accept_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(medicine_half_accept_random.state() == 1'222'621'274U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::hp, 49);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom medicine_half_reject_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_half_reject_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(medicine_half_reject_random.state() == 1'103'527'590U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::hp, 32);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom medicine_third_reject_random{1U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_third_reject_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(medicine_third_reject_random.state() == 2'524'885'223U);
+
+    reset();
     ranger.roles[0U].set_word(role_word::medicine, 80);
     ranger.roles[1U].set_word(role_word::hp, 24);
     ranger.roles[1U].set_word(role_word::maximum_hp, 100);
@@ -5901,6 +5998,16 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice->action == BattleAiAction::medicine);
     OL_CHECK(choice->target_slot == 1);
     OL_CHECK(medicine_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::hp, 20);
+    ranger.roles[1U].set_word(role_word::maximum_hp, 105);
+    openlegend::random::LegacyRandom medicine_fifth_random{331U};
+    choice = setup.choose_ai_medicine_target(0U, medicine_fifth_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::medicine);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(medicine_fifth_random.state() == 3'382'126'054U);
 
     reset();
     ranger.roles[0U].set_word(role_word::detoxification, 80);
