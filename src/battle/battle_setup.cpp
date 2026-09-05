@@ -3997,8 +3997,7 @@ std::optional<BattleAiAttackPlan> BattleSetup::begin_ai_attack_plan(
     if (!target) {
         return std::nullopt;
     }
-    if (!target->target_written || target->target_slot < 0 ||
-        target->target_slot >= combatant_count_) {
+    if (target->target_slot < 0 || target->target_slot >= combatant_count_) {
         error_ = "battle AI attack target is outside combatant slots";
         return std::nullopt;
     }
@@ -4045,8 +4044,7 @@ std::optional<BattleAiAttackPlan> BattleSetup::resume_ai_attack_after_move(
     }
 
     const auto reselected = choose_ai_nearest_target(actor_slot);
-    if (!reselected || !*reselected) {
-        error_ = "battle AI attack could not reselect a nearest target";
+    if (!reselected.has_value()) {
         return std::nullopt;
     }
     const auto target_slot = combatants_[actor_slot].words[combatant_word::ai_target];
@@ -4055,7 +4053,7 @@ std::optional<BattleAiAttackPlan> BattleSetup::resume_ai_attack_after_move(
         return std::nullopt;
     }
     plan.target_strategy = BattleAiTargetStrategy::nearest;
-    plan.target_reselected = true;
+    plan.target_reselected = *reselected;
     plan.next_step = update_ai_attack_target_range(
         actor_slot, static_cast<std::size_t>(target_slot), plan)
         ? BattleAiAttackNextStep::attack

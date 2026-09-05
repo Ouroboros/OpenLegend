@@ -305,6 +305,10 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(profile->attack_count == 2);
     OL_CHECK(profile->need_mp == 4);
 
+    role.set_word(openlegend::model::role_word::magic_level_begin + 2U, -1);
+    OL_CHECK(!setup.attack_profile(0U, 2).has_value());
+    role.set_word(openlegend::model::role_word::magic_level_begin + 2U, 299);
+
     OL_CHECK(setup.commit_attack_iteration(0U, 2, 3, random));
     OL_CHECK(random.state() == 1'103'527'590U);
     OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin + 2U) == 300);
@@ -6719,6 +6723,36 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(no_strongest_random.state() == 1'341'714'958U);
 
     reset();
+    ranger.magics[0U].set_word(magic_word::select_distance_begin, 0);
+    ranger.magics[0U].set_word(magic_word::attack_area_type, 0);
+    openlegend::random::LegacyRandom zero_magic_random{1U};
+    const auto zero_magic_plan = setup.begin_ai_attack_plan(0U, zero_magic_random);
+    OL_CHECK(zero_magic_plan.has_value());
+    OL_CHECK(zero_magic_plan->magic_slot == 0);
+    OL_CHECK(zero_magic_plan->magic_id == 0);
+    OL_CHECK(zero_magic_plan->next_step == BattleAiAttackNextStep::finish);
+    OL_CHECK(zero_magic_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
+    ranger.roles[3U].set_word(role_word::attack, 0);
+    ranger.roles[4U].set_word(role_word::attack, 0);
+    ranger.magics[1U].set_word(magic_word::select_distance_begin, 6);
+    ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
+    setup.combatants()[0U].words[combatant_word::ai_target] = 3;
+    openlegend::random::LegacyRandom stale_target_random{9U};
+    const auto stale_target_plan =
+        setup.begin_ai_attack_plan(0U, stale_target_random);
+    OL_CHECK(stale_target_plan.has_value());
+    OL_CHECK(stale_target_plan->target_strategy ==
+             BattleAiTargetStrategy::strongest_attack);
+    OL_CHECK(stale_target_plan->target_slot == 3);
+    OL_CHECK(stale_target_plan->target_distance == 6);
+    OL_CHECK(stale_target_plan->next_step == BattleAiAttackNextStep::attack);
+    OL_CHECK(stale_target_random.state() == 1'341'714'958U);
+
+    reset();
     ranger.roles[0U].set_word(role_word::morality, 75);
     ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
     ranger.roles[0U].set_word(role_word::magic_id_begin + 1U, 2);
@@ -6861,6 +6895,24 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(resumed_attack_plan->target_slot == 3);
     OL_CHECK(resumed_attack_plan->target_distance == 6);
     OL_CHECK(resumed_attack_plan->target_reselected);
+    OL_CHECK(resumed_attack_plan->next_step == BattleAiAttackNextStep::rest);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
+    ranger.magics[1U].set_word(magic_word::select_distance_begin, 1);
+    ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
+    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    openlegend::random::LegacyRandom stale_after_move_random{1U};
+    attack_plan = setup.begin_ai_attack_plan(0U, stale_after_move_random);
+    OL_CHECK(attack_plan.has_value());
+    OL_CHECK(attack_plan->target_slot == 3);
+    OL_CHECK(attack_plan->next_step == BattleAiAttackNextStep::move);
+    setup.combatants()[3U].words[combatant_word::occupancy_hidden] = 1;
+    setup.combatants()[4U].words[combatant_word::occupancy_hidden] = 1;
+    resumed_attack_plan = setup.resume_ai_attack_after_move(0U, *attack_plan);
+    OL_CHECK(resumed_attack_plan.has_value());
+    OL_CHECK(resumed_attack_plan->target_slot == 3);
+    OL_CHECK(!resumed_attack_plan->target_reselected);
     OL_CHECK(resumed_attack_plan->next_step == BattleAiAttackNextStep::rest);
 
     reset();
@@ -7121,6 +7173,17 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(throwing_plan->target_distance == 8);
     OL_CHECK(throwing_plan->range_check_count == 2);
     OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::attack_fallback);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 75);
+    ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
+    ranger.roles[3U].set_word(role_word::attack, 0);
+    ranger.roles[4U].set_word(role_word::attack, 0);
+    ranger.magics[1U].set_word(magic_word::select_distance_begin, 6);
+    ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
+    openlegend::random::LegacyRandom invalid_stale_target_random{9U};
+    OL_CHECK(!setup.begin_ai_attack_plan(0U, invalid_stale_target_random).has_value());
+    OL_CHECK(invalid_stale_target_random.state() == 1'341'714'958U);
 }
 
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {

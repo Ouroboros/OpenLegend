@@ -223,11 +223,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 24. 自动攻击主handler计划
 
-`sub_34C47`先统计正magic id并用`bounded(count)`直接选槽，再执行目标策略，因此两次RNG顺序不可互换。seed9、两个已学槽先得magic槽0，再得目标roll5，终态2878571567。特殊攻击表从Z.DAT file offset324920直接解析；首列是角色第一装备槽word23，不是角色ID，七组装备/武功/加成为`106/57/100`、`107/49/50`、`108/49/50`、`110/54/80`、`115/63/50`、`116/67/70`、`119/68/100`。
+`sub_34C47`机器身份固定为1044 bytes、248条指令、42条显式分支和73处重定位；raw/loaded SHA256为`16f17deba817156bdfe4744fa5f49e8bdcabb30d7724f734b953d6698b593af0`与`3cd7c4306cfd7df22a3569f3a658f7c91aedf3efd876eefcaec69cd8f23cb213`。六个caller均传signed actor槽，十次direct call序列为栈检查、RNG、目标策略、三次targeting图、攻击、移动、最近目标与休息。入口统计十个magic id中严格正值的数量并调用`bounded(count)`，结果直接作为packed槽；计数0/1返回槽0且不耗RNG。熟练度按unsigned word除100，magic记录步长136字节。seed9、两个已学槽先得magic槽0，再得目标roll5，终态2878571567。七项特殊攻击表来自Z.DAT file offset324920，匹配不提前退出，重复键末项覆盖。
 
-area type0/3在targeting距离不大于select distance时命中并传movement mode1；type1/2还必须同x或同y并传mode2；其他type永不直接命中并传mode0。初次命中调用automatic flag1攻击；未命中且round value<=0直接结束而不休息，否则移动。移动后先复检原目标，仍失败才强制改选最近目标；二次命中则攻击，否则休息。固定field2初始距离为6/8，相邻重选距离1。
+area type0/3在signed targeting距离不大于select distance时命中并传movement mode1；type1/2还必须同x或同y并传mode2；其他type永不命中并传mode0。首次命中调用automatic flag1攻击；未命中且signed round value<=0直接结束而不休息，否则调用移动。移动后先完整复检原目标，失败才调用最近目标selector、重读word11并作第三次完整复检，命中攻击，否则休息；全部出口统一写action_done。
 
-现代`begin_ai_attack_plan/resume_ai_attack_after_move`已恢复全部typed决策及尾部action_done要求；`BattleSession`按area type传mode1/2或其他type的mode0，逐格执行移动状态、render/present与两次BIOS tick变化，移动后复检/重选，恢复结果为rest时实际休息。命中时现按automatic flag1自动决定方向，执行对应area伤害、10帧FIGHT/EFT、双bank音效、10帧damage、sprite刷新、重画/present/wait17、熟练度/MP提交、升级框wait500和体力尾部，再由AI外层写action-done并推进actor；直接命中与mode1移动一格后命中均有Session回归。因此`sub_34C47`推进为 `implemented_pending_review`。目标selector未写slot时现代安全拒绝原版slot -1线性越界读取，留待最终REVIEW。
+首轮REVIEW修正两项stale-target差异：目标策略未写新槽但旧word11合法时，现代不再因`target_written=false`拒绝；移动后最近目标selector未写时，现代不再报错，而是保留合法旧槽执行第三次判定并落入rest。非法负数或越界索引仍由现代安全拒绝。修正后从入口重审全部248条指令零新增差异。`BattleSession`继续按mode0/1/2逐格render/present及两次tick等待，命中后执行自动方向、area伤害、10帧FIGHT/EFT、双bank音效、10帧damage、sprite刷新、提交、升级等待、体力尾和外层action-done；直接与移动后攻击回归保持五个整帧hash。正式原资产golden双生成一致，SHA256为`cf98384f461753277742b56dd0fb0692e7064391eafbc148ef794575913cd241`；Linux app Debug 14/14通过。故`sub_34C47`归类`platform_adapted / converged_no_new_differences`，各delegated callee继续按owner独立待审。
 
 ## 25. AI用毒handler计划
 

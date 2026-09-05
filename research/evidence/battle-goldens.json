@@ -368,6 +368,61 @@
       "0x35816"
     ]
   },
+  "battle_ai_attack_handler_machine": {
+    "address": "0x34c47",
+    "end": "0x3505b",
+    "raw_offset": "0x2e647",
+    "size": 1044,
+    "instruction_count": 248,
+    "branch_count": 42,
+    "raw_sha256": "16f17deba817156bdfe4744fa5f49e8bdcabb30d7724f734b953d6698b593af0",
+    "loaded_sha256": "3cd7c4306cfd7df22a3569f3a658f7c91aedf3efd876eefcaec69cd8f23cb213",
+    "relocation_count": 73,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x34c4c",
+      "0x34c96",
+      "0x34d61",
+      "0x34daf",
+      "0x34e52",
+      "0x34e80",
+      "0x34ec7",
+      "0x34f59",
+      "0x34faa",
+      "0x3503c"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x3505b",
+      "0x36e7f",
+      "0x37734",
+      "0x3650e",
+      "0x36e7f",
+      "0x35372",
+      "0x36e7f",
+      "0x34ad3"
+    ],
+    "callers": [
+      "0x33bd7",
+      "0x35430",
+      "0x35980",
+      "0x36200",
+      "0x36398",
+      "0x364f9"
+    ],
+    "magic_slot_scan_count": 10,
+    "learned_magic_predicate": "magic_id > 0",
+    "selected_slot": "bounded(learned_count) used as direct packed slot index",
+    "special_bonus_entry_count": 7,
+    "special_bonus_match_policy": "last matching entry wins",
+    "magic_level_word": "unsigned int16",
+    "magic_level_divisor": 100,
+    "magic_record_bytes": 136,
+    "target_range_rechecks": 3,
+    "attack_automatic_flag": 1,
+    "action_done_shared_tail": true
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3293,6 +3348,16 @@
             }
           ]
         },
+        "magic_selection_edges": {
+          "zero_learned_count_slot": 0,
+          "zero_learned_count_state_after": 1,
+          "packed_slots_required": true,
+          "selected_count_rank_used_as_direct_slot": true,
+          "magic_level_word_unsigned": true,
+          "magic_level_divisor": 100,
+          "magic_record_bytes": 136,
+          "invalid_linear_reads": "modern safety rejection"
+        },
         "magic_then_target_rng": {
           "seed": 9,
           "learned_magic_count": 2,
@@ -3351,7 +3416,10 @@
           "handler_writes_action_done_after_step": true,
           "reselected_adjacent_distance": 1,
           "reselected_adjacent_result": "attack",
-          "reselected_distance_6_result_for_range_1": "rest"
+          "reselected_distance_6_result_for_range_1": "rest",
+          "selector_no_write_valid_stale_target": "reuse stale target",
+          "selector_no_write_invalid_target": "modern safety rejection",
+          "nearest_no_write_after_move": "retain stale target then rest"
         }
       },
       "ai_poison_handler_vectors": {

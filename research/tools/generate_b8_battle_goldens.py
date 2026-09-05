@@ -58,6 +58,26 @@ BATTLE_ESCAPE_PLAN_RELOCATION_OFFSETS = (
     0x097, 0x0A0, 0x0B8, 0x0D3, 0x11F, 0x128,
 )
 BATTLE_ESCAPE_PLAN_CALLER_SITES = (0x33C31, 0x35816)
+BATTLE_AI_ATTACK_HANDLER_ADDRESS = 0x34C47
+BATTLE_AI_ATTACK_HANDLER_END = 0x3505B
+BATTLE_AI_ATTACK_HANDLER_CALL_OFFSETS = (
+    0x005, 0x04F, 0x11A, 0x168, 0x20B, 0x239, 0x280, 0x312, 0x363, 0x3F5,
+)
+BATTLE_AI_ATTACK_HANDLER_RELOCATION_OFFSETS = (
+    0x02B, 0x03C, 0x059, 0x060, 0x073, 0x080, 0x08E, 0x095,
+    0x09E, 0x0A5, 0x0AE, 0x0B4, 0x0C8, 0x0D5, 0x0E0, 0x0F5,
+    0x109, 0x115, 0x125, 0x12B, 0x136, 0x13D, 0x144, 0x14A,
+    0x151, 0x157, 0x15E, 0x164, 0x170, 0x17A, 0x184, 0x18C,
+    0x1D6, 0x1DD, 0x1E6, 0x1ED, 0x221, 0x244, 0x24E, 0x255,
+    0x25C, 0x262, 0x269, 0x26F, 0x276, 0x27C, 0x288, 0x292,
+    0x29C, 0x2A4, 0x2E2, 0x2E9, 0x2F2, 0x2F9, 0x320, 0x326,
+    0x331, 0x338, 0x33F, 0x345, 0x34C, 0x352, 0x359, 0x35F,
+    0x36B, 0x375, 0x37F, 0x387, 0x3C5, 0x3CC, 0x3D5, 0x3DC,
+    0x406,
+)
+BATTLE_AI_ATTACK_HANDLER_CALLER_SITES = (
+    0x33BD7, 0x35430, 0x35980, 0x36200, 0x36398, 0x364F9,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -499,6 +519,45 @@ def battle_escape_plan_contract(z_dat_bytes: bytes) -> dict[str, object]:
     ):
         raise ValueError("Z.DAT battle escape-plan relocation image changed")
     return contract
+
+
+def battle_ai_attack_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_ATTACK_HANDLER_ADDRESS,
+        end=BATTLE_AI_ATTACK_HANDLER_END,
+        call_offsets=BATTLE_AI_ATTACK_HANDLER_CALL_OFFSETS,
+        expected_call_targets=(
+            0x3ED1E, 0x3D612, 0x3505B, 0x36E7F, 0x37734,
+            0x3650E, 0x36E7F, 0x35372, 0x36E7F, 0x34AD3,
+        ),
+        relocation_offsets=BATTLE_AI_ATTACK_HANDLER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_ATTACK_HANDLER_CALLER_SITES,
+        instruction_count=248,
+        branch_count=42,
+    )
+    if contract["raw_sha256"] != (
+        "16f17deba817156bdfe4744fa5f49e8bdcabb30d7724f734b953d6698b593af0"
+    ):
+        raise ValueError("Z.DAT battle AI attack-handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "3cd7c4306cfd7df22a3569f3a658f7c91aedf3efd876eefcaec69cd8f23cb213"
+    ):
+        raise ValueError("Z.DAT battle AI attack-handler relocation image changed")
+    return {
+        **contract,
+        "magic_slot_scan_count": 10,
+        "learned_magic_predicate": "magic_id > 0",
+        "selected_slot": "bounded(learned_count) used as direct packed slot index",
+        "special_bonus_entry_count": AI_SPECIAL_ATTACK_COUNT,
+        "special_bonus_match_policy": "last matching entry wins",
+        "magic_level_word": "unsigned int16",
+        "magic_level_divisor": 100,
+        "magic_record_bytes": 136,
+        "target_range_rechecks": 3,
+        "attack_automatic_flag": 1,
+        "action_done_shared_tail": True,
+    }
 
 
 def battle_round_machine_contract(
@@ -3002,6 +3061,7 @@ def ai_attack_handler_vectors(
         }
         for index in range(AI_SPECIAL_ATTACK_COUNT)
     ]
+    zero_magic_roll, zero_magic_state = legacy_bounded(1, 0)
     magic_roll, state = legacy_bounded(9, 2)
     target_roll, state = legacy_bounded(state, 10)
     targeting = build_path_map(field_words, (10, 20), "targeting")
@@ -3014,6 +3074,16 @@ def ai_attack_handler_vectors(
             "entry_count": AI_SPECIAL_ATTACK_COUNT,
             "bytes_sha256": sha256(table_bytes),
             "entries": table,
+        },
+        "magic_selection_edges": {
+            "zero_learned_count_slot": zero_magic_roll,
+            "zero_learned_count_state_after": zero_magic_state,
+            "packed_slots_required": True,
+            "selected_count_rank_used_as_direct_slot": True,
+            "magic_level_word_unsigned": True,
+            "magic_level_divisor": 100,
+            "magic_record_bytes": 136,
+            "invalid_linear_reads": "modern safety rejection",
         },
         "magic_then_target_rng": {
             "seed": 9,
@@ -3045,6 +3115,9 @@ def ai_attack_handler_vectors(
             "reselected_adjacent_distance": adjacent_targeting[20 * 64 + 11],
             "reselected_adjacent_result": "attack",
             "reselected_distance_6_result_for_range_1": "rest",
+            "selector_no_write_valid_stale_target": "reuse stale target",
+            "selector_no_write_invalid_target": "modern safety rejection",
+            "nearest_no_write_after_move": "retain stale target then rest",
         },
     }
 
@@ -3587,6 +3660,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_setup_machine": battle_setup_machine_contract(z_dat_bytes),
         "battle_rest_wrapper_machine": battle_rest_wrapper_contract(z_dat_bytes),
         "battle_escape_plan_machine": battle_escape_plan_contract(z_dat_bytes),
+        "battle_ai_attack_handler_machine": battle_ai_attack_handler_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

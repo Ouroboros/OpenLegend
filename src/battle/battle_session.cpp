@@ -1816,6 +1816,7 @@ bool BattleSession::finish_ai_movement() {
             return false;
         }
         if (ai_attack_plan_->next_step == BattleAiAttackNextStep::rest) {
+            ai_attack_plan_.reset();
             return finish_ai_handler(BattlePlayerAction::rest, true);
         }
         if (ai_attack_plan_->next_step == BattleAiAttackNextStep::finish) {
