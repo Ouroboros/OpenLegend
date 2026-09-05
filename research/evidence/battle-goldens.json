@@ -1973,6 +1973,69 @@
           }
         },
         "detox_target": {
+          "filter_skip": {
+            "actor_poison": 50,
+            "hidden_slot": 1,
+            "different_side_slot": 2,
+            "action": 0,
+            "rng_state_after": 1,
+            "writes_action_code": false
+          },
+          "capability_strict_reject": {
+            "detoxification": 20,
+            "target_poison": 50,
+            "action": 0,
+            "rng_state_after": 1,
+            "writes_action_code": false
+          },
+          "request_priority": {
+            "request_action": 9,
+            "target_slot": 1,
+            "action": 4,
+            "rng_state_after": 1
+          },
+          "first_boundary": {
+            "poison": 10,
+            "action": 0,
+            "rng_state_after": 1
+          },
+          "first_accept": {
+            "seed": 9,
+            "poison": 11,
+            "rng_output": 2,
+            "rng_state_after": 1341714958,
+            "action": 4
+          },
+          "second_boundary": {
+            "seed": 1,
+            "poison": 20,
+            "rng_outputs": [
+              8
+            ],
+            "rng_state_after": 1103527590,
+            "action": 0
+          },
+          "second_accept": {
+            "seed": 6,
+            "poison": 21,
+            "rng_outputs": [
+              6,
+              5
+            ],
+            "rng_state_after": 1672197364,
+            "action": 4
+          },
+          "third_boundary": {
+            "seed": 1,
+            "detoxification": 1,
+            "poison": 30,
+            "rng_outputs": [
+              8,
+              8
+            ],
+            "rng_state_after": 2524885223,
+            "action": 0
+          },
           "poison": 35,
           "rng_bounds": [
             10,
@@ -1986,7 +2049,30 @@
           ],
           "rng_state_after": 662824084,
           "target_slot": 1,
-          "action": 4
+          "action": 4,
+          "fallback_boundary": {
+            "seed": 331,
+            "poison": 40,
+            "rng_outputs": [
+              9,
+              9,
+              9
+            ],
+            "rng_state_after": 3382126054,
+            "action": 0
+          },
+          "fallback": {
+            "seed": 331,
+            "poison": 41,
+            "rng_outputs": [
+              9,
+              9,
+              9
+            ],
+            "rng_state_after": 3382126054,
+            "target_slot": 1,
+            "action": 4
+          }
         },
         "offensive": {
           "aid": {

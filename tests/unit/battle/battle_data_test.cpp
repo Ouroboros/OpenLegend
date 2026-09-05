@@ -6011,6 +6011,87 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
 
     reset();
     ranger.roles[0U].set_word(role_word::detoxification, 80);
+    ranger.roles[0U].set_word(role_word::poison, 50);
+    ranger.roles[1U].set_word(role_word::poison, 50);
+    ranger.roles[2U].set_word(role_word::poison, 50);
+    setup.combatants()[1U].words[combatant_word::occupancy_hidden] = 1;
+    setup.combatants()[2U].words[combatant_word::side] = 1;
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    openlegend::random::LegacyRandom detox_filter_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_filter_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(detox_filter_random.state() == 1U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 20);
+    ranger.roles[1U].set_word(role_word::poison, 50);
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    openlegend::random::LegacyRandom detox_gate_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_gate_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(detox_gate_random.state() == 1U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    setup.combatants()[1U].words[combatant_word::ai_action] =
+        static_cast<std::int16_t>(BattleAiAction::request_detox);
+    openlegend::random::LegacyRandom detox_request_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_request_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK((choice->target == BattlePathCoord{11, 21}));
+    OL_CHECK(detox_request_random.state() == 1U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 4);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::poison, 10);
+    openlegend::random::LegacyRandom detox_first_boundary_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_first_boundary_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(detox_first_boundary_random.state() == 1U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::poison, 11);
+    openlegend::random::LegacyRandom detox_first_accept_random{9U};
+    choice = setup.choose_ai_detox_target(0U, detox_first_accept_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(detox_first_accept_random.state() == 1'341'714'958U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::poison, 20);
+    openlegend::random::LegacyRandom detox_second_boundary_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_second_boundary_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(detox_second_boundary_random.state() == 1'103'527'590U);
+
+    reset();
+    ranger.roles[1U].set_word(role_word::poison, 21);
+    openlegend::random::LegacyRandom detox_second_accept_random{6U};
+    choice = setup.choose_ai_detox_target(0U, detox_second_accept_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(detox_second_accept_random.state() == 1'672'197'364U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 1);
+    ranger.roles[1U].set_word(role_word::poison, 30);
+    openlegend::random::LegacyRandom detox_third_boundary_random{1U};
+    choice = setup.choose_ai_detox_target(0U, detox_third_boundary_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(detox_third_boundary_random.state() == 2'524'885'223U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 80);
     ranger.roles[1U].set_word(role_word::poison, 35);
     openlegend::random::LegacyRandom detox_random{1U};
     choice = setup.choose_ai_detox_target(0U, detox_random);
@@ -6018,6 +6099,25 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice->action == BattleAiAction::detox);
     OL_CHECK(choice->target_slot == 1);
     OL_CHECK(detox_random.state() == 662'824'084U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 80);
+    ranger.roles[1U].set_word(role_word::poison, 40);
+    openlegend::random::LegacyRandom detox_fallback_boundary_random{331U};
+    choice = setup.choose_ai_detox_target(0U, detox_fallback_boundary_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(detox_fallback_boundary_random.state() == 3'382'126'054U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::detoxification, 80);
+    ranger.roles[1U].set_word(role_word::poison, 41);
+    openlegend::random::LegacyRandom detox_fallback_random{331U};
+    choice = setup.choose_ai_detox_target(0U, detox_fallback_random);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::detox);
+    OL_CHECK(choice->target_slot == 1);
+    OL_CHECK(detox_fallback_random.state() == 3'382'126'054U);
 
     reset();
     ranger.roles[0U].set_word(role_word::hp, 1);

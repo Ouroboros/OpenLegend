@@ -1522,10 +1522,23 @@ def ai_selector_vectors() -> dict[str, object]:
         medicine_fifth_outputs.append(value)
 
     detox_outputs: list[int] = []
+    detox_states: list[int] = []
     detox_state = 1
     for _ in range(3):
         value, detox_state = legacy_bounded(detox_state, 10)
         detox_outputs.append(value)
+        detox_states.append(detox_state)
+    detox_first_accept, detox_first_accept_state = legacy_bounded(9, 10)
+    detox_second_outputs: list[int] = []
+    detox_second_state = 6
+    for _ in range(2):
+        value, detox_second_state = legacy_bounded(detox_second_state, 10)
+        detox_second_outputs.append(value)
+    detox_fallback_outputs: list[int] = []
+    detox_fallback_state = 331
+    for _ in range(3):
+        value, detox_fallback_state = legacy_bounded(detox_fallback_state, 10)
+        detox_fallback_outputs.append(value)
 
     poison_gate, poison_state = legacy_bounded(1, 50)
     poison_roll, poison_state = legacy_bounded(poison_state, 150)
@@ -1768,12 +1781,82 @@ def ai_selector_vectors() -> dict[str, object]:
             },
         },
         "detox_target": {
+            "filter_skip": {
+                "actor_poison": 50,
+                "hidden_slot": 1,
+                "different_side_slot": 2,
+                "action": 0,
+                "rng_state_after": 1,
+                "writes_action_code": False,
+            },
+            "capability_strict_reject": {
+                "detoxification": 20,
+                "target_poison": 50,
+                "action": 0,
+                "rng_state_after": 1,
+                "writes_action_code": False,
+            },
+            "request_priority": {
+                "request_action": 9,
+                "target_slot": 1,
+                "action": 4,
+                "rng_state_after": 1,
+            },
+            "first_boundary": {
+                "poison": 10,
+                "action": 0,
+                "rng_state_after": 1,
+            },
+            "first_accept": {
+                "seed": 9,
+                "poison": 11,
+                "rng_output": detox_first_accept,
+                "rng_state_after": detox_first_accept_state,
+                "action": 4,
+            },
+            "second_boundary": {
+                "seed": 1,
+                "poison": 20,
+                "rng_outputs": detox_outputs[:1],
+                "rng_state_after": detox_states[0],
+                "action": 0,
+            },
+            "second_accept": {
+                "seed": 6,
+                "poison": 21,
+                "rng_outputs": detox_second_outputs,
+                "rng_state_after": detox_second_state,
+                "action": 4,
+            },
+            "third_boundary": {
+                "seed": 1,
+                "detoxification": 1,
+                "poison": 30,
+                "rng_outputs": detox_outputs[:2],
+                "rng_state_after": detox_states[1],
+                "action": 0,
+            },
             "poison": 35,
             "rng_bounds": [10, 10, 10],
             "rng_outputs": detox_outputs,
             "rng_state_after": detox_state,
             "target_slot": 1,
             "action": 4,
+            "fallback_boundary": {
+                "seed": 331,
+                "poison": 40,
+                "rng_outputs": detox_fallback_outputs,
+                "rng_state_after": detox_fallback_state,
+                "action": 0,
+            },
+            "fallback": {
+                "seed": 331,
+                "poison": 41,
+                "rng_outputs": detox_fallback_outputs,
+                "rng_state_after": detox_fallback_state,
+                "target_slot": 1,
+                "action": 4,
+            },
         },
         "offensive": {
             "aid": {
