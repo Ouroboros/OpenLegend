@@ -474,6 +474,38 @@
     "selected_strategy_falls_back_when_target_not_written": false,
     "nearest_fallback_consumes_random": false
   },
+  "battle_ai_strongest_target_machine": {
+    "address": "0x3513a",
+    "end": "0x351a7",
+    "raw_offset": "0x2eb3a",
+    "size": 109,
+    "instruction_count": 32,
+    "branch_count": 5,
+    "raw_sha256": "ab91c4c972a5a17b4db00ceea5a803d7d0e5f6d949c4bccd0b37c97fe7dbcb0c",
+    "loaded_sha256": "786b1e5e58c1c76dae493c53978e0f2568c230ec67c48fd9a9a55a4c140188ea",
+    "relocation_count": 7,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3513f"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x35098"
+    ],
+    "slot_loop_comparison": "signed int16 slot < combatant_count",
+    "candidate_filters": [
+      "side != actor side",
+      "hidden == 0"
+    ],
+    "best_initial": 0,
+    "attack_comparison": "signed candidate > best",
+    "ties_preserve_first_slot": true,
+    "nonpositive_attacks_write_target": false,
+    "reads_hp": false,
+    "consumes_random": false
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3374,6 +3406,46 @@
           "rng_state_after": 2326136519,
           "selected_strategy": "weakest_attack",
           "target_slot": 3
+        },
+        "strongest_selector": {
+          "strict_first_tie_with_dead_first_candidate": {
+            "attacks": [
+              50,
+              50
+            ],
+            "hp": [
+              0,
+              100
+            ],
+            "best_attack": 50,
+            "target_slot": 3,
+            "target_written": true
+          },
+          "negative_hidden_flag_skips_stronger_candidate": {
+            "attacks": [
+              30,
+              100
+            ],
+            "hidden": [
+              0,
+              -1
+            ],
+            "best_attack": 30,
+            "target_slot": 3,
+            "target_written": true
+          },
+          "nonpositive_attacks_preserve_stale_target": {
+            "attacks": [
+              0,
+              -1
+            ],
+            "initial_target": 4,
+            "best_attack": 0,
+            "target_slot": 4,
+            "target_written": false
+          },
+          "same_side_candidates_skipped": true,
+          "consumes_random": false
         },
         "strict_comparisons_preserve_first_tie": true,
         "hidden_opponents_skipped": true

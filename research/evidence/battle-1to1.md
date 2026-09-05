@@ -221,7 +221,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 现代`choose_ai_attack_target`逐块保持属性顺序、含等号方向、短路RNG、roll边界、未写目标不回退与最终nearest；仅对非法actor/role及delegated selector内部索引错误安全返回。入口重审全部63条指令零新增差异，正式原资产golden双生成一致，SHA256为`296c8c9a0f8f790a165d701ca2b4a9b506657e9654d48a3bb67dbe5b2a3240c3`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
 
-`sub_3513A/sub_351A7`只扫描不同side且未隐藏目标，分别以best 0/1000选择signed attack严格最大/最小值，同值保留早槽；最高攻击策略面对`[0,0]`不写word11，顶层仍停止。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。四个delegated selector继续为`implemented_pending_review`，不由本owner传播关闭。
+`sub_3513A`机器身份固定为109 bytes、32条指令、5个显式跳转和7处重定位；raw/loaded SHA256为`ab91c4c972a5a17b4db00ceea5a803d7d0e5f6d949c4bccd0b37c97fe7dbcb0c`与`786b1e5e58c1c76dae493c53978e0f2568c230ec67c48fd9a9a55a4c140188ea`。唯一caller命中本策略后无条件停止且不消费EAX。函数按signed槽序扫描不同side且hidden严格等于0的目标，以signed best=0起步，仅attack严格大于best时写actor word11并继续扫描；不读HP，同值保留早槽，全部attack<=0时保留旧目标。现代逐块一致，仅对非法候选role安全返回。dead早槽tie、negative hidden、非正attack保留stale target和same-side过滤均已锁定；入口重审32条指令零新增差异，独立golden SHA256为`bfe4f2a9d4e7dcbef19679d7cff681c5bf91fa61810104f2b6c63919adf40e6b`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
+
+`sub_351A7`以best 1000选择signed attack严格最小值，同值保留早槽。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。三个delegated selector继续为`implemented_pending_review`，不由order20传播关闭。
 
 ## 24. 自动攻击主handler计划
 
