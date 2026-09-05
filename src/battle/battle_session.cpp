@@ -499,8 +499,9 @@ bool BattleSession::render(
     if (!valid()) {
         return false;
     }
-    if (phase_ == BattleSessionPhase::round_wait) {
-        // The original tick spin does not redraw the buffer left by the callee.
+    if (phase_ == BattleSessionPhase::round_wait ||
+        phase_ == BattleSessionPhase::ai_wait) {
+        // The original tick spins do not redraw the buffer left by the callee.
         frame_rendered_ = true;
         return true;
     }
@@ -519,8 +520,7 @@ bool BattleSession::render(
         rendered = render_post_battle_message(framebuffer);
     } else if (player_menu_uses_key_states()) {
         rendered = render_player_action_menu(framebuffer);
-    } else if (phase_ == BattleSessionPhase::ai_prelude_present ||
-               phase_ == BattleSessionPhase::ai_wait) {
+    } else if (phase_ == BattleSessionPhase::ai_prelude_present) {
         const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
         rendered = render_battlefield(framebuffer) && status_panel.has_value() &&
             renderer_.render_status_panel(*status_panel, framebuffer);
@@ -1008,7 +1008,8 @@ bool BattleSession::advance_ai_wait(const std::uint32_t bios_tick) {
         return true;
     }
 
-    ai_turn_decision_ = setup_.choose_ai_turn_action(current_actor_slot_, random_);
+    ai_turn_decision_ = setup_.choose_ai_turn_action(
+        current_actor_slot_, *ai_turn_prelude_, random_);
     if (!ai_turn_decision_.has_value()) {
         error_ = "battle AI action selection failed";
         return false;

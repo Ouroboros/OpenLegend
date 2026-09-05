@@ -195,11 +195,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 21. AI入口typed同步合同
 
-`sub_33599`已拆成三个严格边界：`begin_ai_turn`在任何绘制前按actor side对全部combatant的`HP+attack`进行int16回绕累计，并要求后续依次重绘、present、等待300 tick；`choose_ai_turn_action`在该等待后按低HP、中毒、低MP、医疗队友、解毒队友、逃跑、攻势selector顺序执行；`finish_ai_turn`仅在对应动作handler返回后写combatant word7为1。
+`sub_33599`当前机器身份固定为1716 bytes、440条指令、64条分支、78处重定位与39个direct call；raw/loaded SHA256分别为`fe66621722777e5ada2987c67e39b5a56dc275feacc48e53684467ad4bbdeb68`和`d5a59d8b4e7fd757b088169c19223937575ea33ac11fcfb26676bee7f3ce77aa`。前置12项dispatch表hash为`4ff226b5a41d10d4d7b96fd71c4072ef0b3fef190c91194134e725ce8be6b8f0`，动作0与7共享rest入口。
 
-低HP四档RNG阈值为3/5/7/9，中毒入口无条件消费一次`bounded(10)`并与`poison/10`比较，低MP四档为2/4/6/8；医疗和解毒能力20/40/60分别比较4/6/8，80最终无RNG兜底；逃跑先比较5，再按HP的1/4和1/5档比较6/8。保留原顺序BUG：体力<10先选等待7，但低HP selector若被调用后返回0，会把等待清零并继续后续决策。固定seed1清零等待向量为`[8,8,13]`、终态662824084；seed10逃跑向量为`[3,4]`、终态1849040536。
+入口按actor side对全部combatant的attack后HP逐项int16回绕累计，并在绘制前冻结双方总值与人数；随后只执行一次战场/status重绘和present，再按参数300等待八次BIOS tick变化，等待期不重绘。selector按低HP、中毒、低MP、医疗队友、解毒队友、逃跑、攻势顺序；低HP四档RNG阈值为3/5/7/9，中毒入口无条件消费一次`bounded(10)`并与signed `poison/10`比较，低MP四档为2/4/6/8，医疗/解毒20/40/60分别比较4/6/8且80无RNG兜底，逃跑先比较5再按HP的1/4和1/5档比较6/8。保留体力<10先置等待7、随后可被低HP selector返回0清除的原顺序BUG。
 
-动作0/7共享休息handler，其余1..6、8..11逐项映射移动、攻击、用毒、解毒、医疗、物品、请求医疗、请求解毒、暗器和逃跑。`BattleSession`已实际执行态势累计、重绘/present、参数300的八次BIOS tick变化、selector、休息handler，以及所有typed handler入口；mode0..3移动分支已逐格重绘/present并在每格等待两次BIOS tick变化，移动后恢复原typed计划。动作2自动攻击和动作3用毒已完成直接/移动后状态、动画、提交、回退与外层actor continuation；动作4/5解毒/医疗也完成直接/移动后支持效果、无flash动画、攻击/休息回退与外层完成；动作8/9请求在可选mode0移动后无条件进入完整自动攻击并保留请求动作码。动作6普通物品按原先执行mode0重定位，再绘制共享效果面板、任意键确认并等待九次BIOS tick变化后延后提交队伍inventory或敌方carried slot；固定面板hash为`0xa7542240e4172664`、RNG终态`662824084`。动作10暗器保持原目标做首次射程、可选mode1移动和同目标二次检查；命中执行sample13前奏、EFT、damage与延后来源提交，二次超距不消费暗器并调用完整自动攻击入口。全部handler返回后才写word7并推进actor，因此`sub_33599/sub_35803/sub_3582B/sub_3598C`推进为`implemented_pending_review`。
+动作0/7共享休息handler，其余1..6、8..11逐项映射移动、攻击、用毒、解毒、医疗、物品、请求医疗、请求解毒、暗器和逃跑；所有typed continuation语义完成后才写word7并推进actor。逐块重审修正了两项共享时序差异：`ai_wait`原会重复重画，现冻结已present缓冲；攻势selector原会在延迟后重算双方值，现显式读取入口保存的prelude。等待期把可重算总值从330/220改为1530/620后仍按冻结值选择攻击2而非医疗5，四次RNG输出`[8,8,3,15]`、终态3295386429；正式golden双生成逐字节一致，SHA256为`f80e016364dc2512ae6a3294e9e1c72e4080f5a6afcae82d30d33954d46bf691`。两次修正均作废当轮结论，第三轮从入口覆盖全部机器范围、两个caller、RNG、12路dispatch及统一尾后零新增差异，故`sub_33599`归类`platform_adapted / converged_no_new_differences`；各handler内部仍按owner独立待审，不传播closure。
 
 ## 22. AI休息与逃跑目的格
 

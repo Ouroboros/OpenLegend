@@ -1969,6 +1969,35 @@
           "writes_action_code": false,
           "action": 2
         },
+        "frozen_prelude": {
+          "totals_before_present": [
+            330,
+            220,
+            3,
+            2
+          ],
+          "mutated_totals_during_wait": [
+            1530,
+            620,
+            3,
+            2
+          ],
+          "rng_bounds": [
+            10,
+            10,
+            10,
+            50
+          ],
+          "rng_outputs": [
+            8,
+            8,
+            3,
+            15
+          ],
+          "rng_state_after": 3295386429,
+          "action_with_frozen_totals": 2,
+          "action_if_totals_were_recomputed": 5
+        },
         "handler_by_action": {
           "0": "rest",
           "1": "move",

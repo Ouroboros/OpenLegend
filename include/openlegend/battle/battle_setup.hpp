@@ -845,6 +845,7 @@ public:
         std::size_t actor_slot) const noexcept;
     [[nodiscard]] std::optional<BattleAiTurnDecision> choose_ai_turn_action(
         std::size_t actor_slot,
+        const BattleAiTurnPrelude& prelude,
         random::LegacyRandom& random);
     [[nodiscard]] bool finish_ai_turn(std::size_t actor_slot) noexcept;
     [[nodiscard]] std::optional<BattleAiEscapePlan> ai_escape_plan(
@@ -983,6 +984,10 @@ private:
         BattleAiItemSource item_source = BattleAiItemSource::none,
         std::int16_t item_slot = -1,
         bool write_action_code = true) noexcept;
+    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_offensive_action(
+        std::size_t actor_slot,
+        const BattleAiTurnPrelude& prelude,
+        random::LegacyRandom& random);
     [[nodiscard]] std::optional<bool> choose_ai_strongest_attack_target(
         std::size_t actor_slot);
     [[nodiscard]] std::optional<bool> choose_ai_weakest_attack_target(

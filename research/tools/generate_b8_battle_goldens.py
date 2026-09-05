@@ -1402,6 +1402,7 @@ def ai_entry_vectors() -> dict[str, object]:
     cleared_wait_outputs, cleared_wait_state = consume(1, [10, 10, 50])
     attack_outputs, attack_state = consume(1, [10, 10, 50])
     escape_outputs, escape_state = consume(10, [10, 10])
+    frozen_outputs, frozen_state = consume(1, [10, 10, 10, 50])
     return {
         "prelude": {
             "allied_total": 330,
@@ -1477,6 +1478,15 @@ def ai_entry_vectors() -> dict[str, object]:
             "rng_state_after": attack_state,
             "writes_action_code": False,
             "action": 2,
+        },
+        "frozen_prelude": {
+            "totals_before_present": [330, 220, 3, 2],
+            "mutated_totals_during_wait": [1530, 620, 3, 2],
+            "rng_bounds": [10, 10, 10, 50],
+            "rng_outputs": frozen_outputs,
+            "rng_state_after": frozen_state,
+            "action_with_frozen_totals": 2,
+            "action_if_totals_were_recomputed": 5,
         },
         "handler_by_action": {
             "0": "rest",

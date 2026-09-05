@@ -3287,6 +3287,17 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
 std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
     const std::size_t actor_slot,
     random::LegacyRandom& random) {
+    const auto prelude = begin_ai_turn(actor_slot);
+    if (!prelude.has_value()) {
+        return std::nullopt;
+    }
+    return choose_ai_offensive_action(actor_slot, *prelude, random);
+}
+
+std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
+    const std::size_t actor_slot,
+    const BattleAiTurnPrelude& prelude,
+    random::LegacyRandom& random) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
@@ -3296,27 +3307,13 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
     }
     const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
     const auto side = combatants_[actor_slot].words[combatant_word::side];
-    std::int16_t allied_total = 0;
-    std::int16_t opponent_total = 0;
-    std::int16_t allied_count = 0;
-    std::int16_t opponent_count = 0;
-    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto role_id = combatants_[slot].words[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-            return std::nullopt;
-        }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        auto& total = combatants_[slot].words[combatant_word::side] == side ? allied_total :
-                                                                          opponent_total;
-        auto& count = combatants_[slot].words[combatant_word::side] == side ? allied_count :
-                                                                          opponent_count;
-        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::attack));
-        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::hp));
-        count = wrapping_i16(static_cast<std::int32_t>(count) + 1);
-    }
-    if (opponent_count == 0) {
+    if (prelude.opponent_count == 0) {
         return std::nullopt;
     }
+
+    const auto allied_total = prelude.allied_total;
+    const auto opponent_total = prelude.opponent_total;
+    const auto opponent_count = prelude.opponent_count;
 
     const auto opponent_average_half =
         (static_cast<std::int32_t>(opponent_total) / opponent_count) / 2;
@@ -3519,6 +3516,7 @@ std::optional<BattleAiTurnPrelude> BattleSetup::begin_ai_turn(
 
 std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
     const std::size_t actor_slot,
+    const BattleAiTurnPrelude& prelude,
     random::LegacyRandom& random) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
@@ -3662,7 +3660,7 @@ std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
     }
 
     if (choice.action == BattleAiAction::none) {
-        const auto selected = choose_ai_offensive_action(actor_slot, random);
+        const auto selected = choose_ai_offensive_action(actor_slot, prelude, random);
         if (!selected) {
             return std::nullopt;
         }
