@@ -5844,12 +5844,52 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(!setup.remove_carried_item_slot(3U, role_word::taking_item_count));
 
     reset();
+    ranger.items[5U].set_word(item_word::add_mp, 0);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{5}, 0);
+    setup.combatants()[0U].words[combatant_word::ai_action] = 77;
+    choice = setup.choose_ai_low_mp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::none);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 77);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::mp, 100);
+    ranger.roles[0U].set_word(role_word::maximum_mp, 100);
+    ranger.items[5U].set_word(item_word::add_mp, -1);
     ranger.items[7U].set_word(item_word::add_mp, 1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{5}, 0);
     ranger.header.set_inventory(3U, openlegend::model::ItemId{7}, 0);
     choice = setup.choose_ai_low_mp_action(0U);
     OL_CHECK(choice.has_value());
     OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_source == BattleAiItemSource::inventory);
     OL_CHECK(choice->item_slot == 3);
+    OL_CHECK(choice->target_slot == 0);
+    OL_CHECK((choice->target == BattlePathCoord{10, 20}));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::ai_action] == 6);
+
+    reset();
+    ranger.items[5U].set_word(item_word::add_mp, 1);
+    ranger.items[7U].set_word(item_word::add_mp, 2);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{5}, 0);
+    ranger.header.set_inventory(3U, openlegend::model::ItemId{7}, 0);
+    choice = setup.choose_ai_low_mp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_source == BattleAiItemSource::inventory);
+    OL_CHECK(choice->item_slot == 1);
+
+    reset();
+    setup.combatants()[0U].words[combatant_word::side] = -1;
+    ranger.roles[0U].set_word(role_word::taking_item_begin + 2U, 7);
+    ranger.roles[0U].set_word(role_word::taking_item_count_begin + 2U, 0);
+    ranger.items[7U].set_word(item_word::add_mp, 1);
+    choice = setup.choose_ai_low_mp_action(0U);
+    OL_CHECK(choice.has_value());
+    OL_CHECK(choice->action == BattleAiAction::item);
+    OL_CHECK(choice->item_source == BattleAiItemSource::carried);
+    OL_CHECK(choice->item_slot == 2);
+    OL_CHECK(choice->target_slot == 0);
 
     reset();
     ranger.roles[0U].set_word(role_word::medicine, 80);

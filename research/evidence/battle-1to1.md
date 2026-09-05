@@ -191,11 +191,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_33E93`中毒selector的机器身份已固定为582 bytes、118条指令、25条分支与48处重定位。它依次选择自身解毒4、队伍200槽或任意非零side四个随身槽的首个解毒物品6、首个同side未隐藏且解毒能力达标的求援目标9；自身与求援门均保留严格比较。队伍物品检查item word56为负，非零side随身物品检查word47为负，两者均忽略数量。三项strict边界、负side、零数量、字段分歧、隐藏/异side跳过及无动作保留均有回归，最终重审零新增差异，归类`platform_adapted / converged_no_new_differences`。
 
-`sub_340D9`已恢复低MP候选，按side使用队伍200库存或敌方4个随身物品，首个命中即返回，仍为`implemented_pending_review`。
+`sub_340D9`低内力selector的机器身份已固定为285 bytes、68条指令、11条分支与22处重定位。该owner本身不读取当前/最大MP，只按side扫描队伍200库存或任意非零side角色4个随身物品；item word50必须严格大于0，数量完全忽略，首个命中写用物品动作6，无命中不改动作。满MP直调、零/负属性、队伍首命中、负side随身零数量及无动作保留均有回归，最终重审零新增差异，归类`platform_adapted / converged_no_new_differences`。
 
 `sub_341F6/sub_343DA` 已恢复医疗/解毒目标选择：按combatant槽序扫描同side未隐藏目标，请求动作优先；其后分别按HP或poison四档短路。固定HP24/100和poison35均以seed1消费三次`bounded(10)`得到`[8,8,3]`、终态662824084，再选择slot1；早档命中不得消费后续RNG。
 
-`sub_34550` 已恢复攻势selector。双方`HP+attack`按int16逐次回绕累计且不跳过隐藏槽；危险条件成立时选择缺HP或中毒值最大的同伴。否则固定先执行用毒的`bounded(50)`，条件成立才继续`bounded(150)`；随后按side使用不同暗器强度和RNG门槛。无暗器后，体力严格大于10且当前MP不少于十槽非零武功的最小need_mp才返回攻击2。原函数对攻击2只返回而不写word10，动作3/4/5/10才写入。`sub_33C4D/sub_33E93`已分别关闭；其余四个selector仍为`implemented_pending_review`。
+`sub_34550` 已恢复攻势selector。双方`HP+attack`按int16逐次回绕累计且不跳过隐藏槽；危险条件成立时选择缺HP或中毒值最大的同伴。否则固定先执行用毒的`bounded(50)`，条件成立才继续`bounded(150)`；随后按side使用不同暗器强度和RNG门槛。无暗器后，体力严格大于10且当前MP不少于十槽非零武功的最小need_mp才返回攻击2。原函数对攻击2只返回而不写word10，动作3/4/5/10才写入。`sub_33C4D/sub_33E93/sub_340D9`已分别关闭；其余三个selector仍为`implemented_pending_review`。
 
 ## 21. AI入口typed同步合同
 

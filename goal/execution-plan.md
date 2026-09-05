@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=246/349`，`unique_any=201/284`，`unique_all=187/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=12` AI低内力动作选择
-下一任务指针：B8 `audit_order=13` AI医疗目标选择
+当前有效进度：`closure=247/349`，`unique_any=202/284`，`unique_all=188/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=13` AI医疗目标选择
+下一任务指针：B8 `audit_order=14` AI解毒目标选择
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中11项已完成最终汇编→C++ REVIEW，其余70项为`implemented_pending_review`。order11中毒selector最终重审确认三项strict自解毒门、队伍/任意非零side物品字段分歧、零数量选择与首个可见同伴求援均按机器顺序执行；产品实现无需修正，补齐边界回归与独立golden后，机器、静态、closure和最新Linux app Debug 14/14通过。当前推进order12 AI低内力动作选择。
+当前状态：已有完整功能映射与历史Linux/Windows构建矩阵；81项closure中12项已完成最终汇编→C++ REVIEW，其余69项为`implemented_pending_review`。order12低内力selector最终重审确认该owner不自行读取当前MP，队伍/任意非零side分别扫描200/4个物品槽，严格正`add_mp`首命中且忽略数量；产品实现无需修正，补齐零/负属性、满MP直调、首命中和负side回归及独立golden后，机器、静态、closure和最新Linux app Debug 14/14通过。当前推进order13 AI医疗目标选择。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 
