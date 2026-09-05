@@ -6770,6 +6770,65 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(strongest_invalid_role_random.state() == 2'326'136'519U);
 
     reset();
+    ranger.roles[0U].set_word(role_word::morality, 25);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[3U].set_word(role_word::hp, 0);
+    ranger.roles[4U].set_word(role_word::attack, 30);
+    openlegend::random::LegacyRandom weakest_tie_random{6U};
+    target = setup.choose_ai_attack_target(0U, weakest_tie_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
+    OL_CHECK(weakest_tie_random.state() == 2'326'136'519U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 25);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, -100);
+    setup.combatants()[4U].words[combatant_word::occupancy_hidden] = -1;
+    openlegend::random::LegacyRandom weakest_hidden_random{6U};
+    target = setup.choose_ai_attack_target(0U, weakest_hidden_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+    OL_CHECK(target->target_slot == 3);
+    OL_CHECK(target->target_written);
+    OL_CHECK(weakest_hidden_random.state() == 2'326'136'519U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 25);
+    ranger.roles[3U].set_word(role_word::attack, -1);
+    ranger.roles[4U].set_word(role_word::attack, -2);
+    openlegend::random::LegacyRandom weakest_signed_random{6U};
+    target = setup.choose_ai_attack_target(0U, weakest_signed_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(target->target_written);
+    OL_CHECK(weakest_signed_random.state() == 2'326'136'519U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 25);
+    ranger.roles[3U].set_word(role_word::attack, 1'000);
+    ranger.roles[4U].set_word(role_word::attack, 1'001);
+    setup.combatants()[0U].words[combatant_word::ai_target] = 4;
+    openlegend::random::LegacyRandom weakest_stale_random{6U};
+    target = setup.choose_ai_attack_target(0U, weakest_stale_random);
+    OL_CHECK(target.has_value());
+    OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+    OL_CHECK(target->target_slot == 4);
+    OL_CHECK(!target->target_written);
+    OL_CHECK(weakest_stale_random.state() == 2'326'136'519U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::morality, 25);
+    setup.combatants()[3U].words[combatant_word::role_id] = -1;
+    openlegend::random::LegacyRandom weakest_invalid_role_random{6U};
+    target = setup.choose_ai_attack_target(0U, weakest_invalid_role_random);
+    OL_CHECK(!target.has_value());
+    OL_CHECK(weakest_invalid_role_random.state() == 2'326'136'519U);
+
+    reset();
     ranger.roles[0U].set_word(role_word::morality, 75);
     openlegend::random::LegacyRandom cutoff_failure_random{3U};
     target = setup.choose_ai_attack_target(0U, cutoff_failure_random);

@@ -94,6 +94,13 @@ BATTLE_AI_STRONGEST_TARGET_RELOCATION_OFFSETS = (
     0x026, 0x02D, 0x036, 0x040, 0x04D, 0x05B, 0x063,
 )
 BATTLE_AI_STRONGEST_TARGET_CALLER_SITES = (0x35098,)
+BATTLE_AI_WEAKEST_TARGET_ADDRESS = 0x351A7
+BATTLE_AI_WEAKEST_TARGET_END = 0x35217
+BATTLE_AI_WEAKEST_TARGET_CALL_OFFSETS = (0x005,)
+BATTLE_AI_WEAKEST_TARGET_RELOCATION_OFFSETS = (
+    0x029, 0x030, 0x039, 0x043, 0x050, 0x05E, 0x066,
+)
+BATTLE_AI_WEAKEST_TARGET_CALLER_SITES = (0x350D8, 0x35363)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -643,6 +650,40 @@ def battle_ai_strongest_target_contract(z_dat_bytes: bytes) -> dict[str, object]
         "attack_comparison": "signed candidate > best",
         "ties_preserve_first_slot": True,
         "nonpositive_attacks_write_target": False,
+        "reads_hp": False,
+        "consumes_random": False,
+    }
+
+
+def battle_ai_weakest_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_WEAKEST_TARGET_ADDRESS,
+        end=BATTLE_AI_WEAKEST_TARGET_END,
+        call_offsets=BATTLE_AI_WEAKEST_TARGET_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E,),
+        relocation_offsets=BATTLE_AI_WEAKEST_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_WEAKEST_TARGET_CALLER_SITES,
+        instruction_count=32,
+        branch_count=5,
+    )
+    if contract["raw_sha256"] != (
+        "56611048416b38e1eca2c1cf738e488175de001df5cc2b851ef947fa85ec398f"
+    ):
+        raise ValueError("Z.DAT battle AI weakest-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "76408936111ba57a30049c0dd11814af62191e1b81797757cee29e8f48488b46"
+    ):
+        raise ValueError("Z.DAT battle AI weakest-target relocation image changed")
+    return {
+        **contract,
+        "slot_loop_comparison": "signed int16 slot < combatant_count",
+        "candidate_filters": ["side != actor side", "hidden == 0"],
+        "best_initial": 1000,
+        "attack_comparison": "signed candidate < best",
+        "ties_preserve_first_slot": True,
+        "attack_at_or_above_1000_writes_target": False,
+        "negative_attack_can_write_target": True,
         "reads_hp": False,
         "consumes_random": False,
     }
@@ -3376,6 +3417,28 @@ def strongest_attack_target_oracle(
     return {"best_attack": best, "target_slot": target, "target_written": written}
 
 
+def weakest_attack_target_oracle(
+    combatants: list[dict[str, int]],
+    attacks: list[int],
+    *,
+    actor_slot: int = 0,
+    initial_target: int = -1,
+) -> dict[str, object]:
+    actor_side = combatants[actor_slot]["side"]
+    best = 1000
+    target = initial_target
+    written = False
+    for slot, combatant in enumerate(combatants):
+        if combatant["side"] == actor_side or combatant["hidden"] != 0:
+            continue
+        attack = wrapping_i16(attacks[slot])
+        if attack < best:
+            best = attack
+            target = slot
+            written = True
+    return {"best_attack": best, "target_slot": target, "target_written": written}
+
+
 def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     combatants = [
         {"side": 0, "hidden": 0, "x": 10, "y": 20},
@@ -3389,7 +3452,7 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
         i for i, c in enumerate(combatants) if c["side"] != 0 and c["hidden"] == 0
     ]
     strongest = strongest_attack_target_oracle(combatants, attacks)["target_slot"]
-    weakest = min(visible_enemies, key=lambda i: attacks[i])
+    weakest = weakest_attack_target_oracle(combatants, attacks)["target_slot"]
     targeting = build_path_map(field_words, (10, 20), "targeting")
     nearest = min(
         visible_enemies,
@@ -3412,6 +3475,20 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
     )
     stale_vector = strongest_attack_target_oracle(
         combatants, [10, 10, 10, 0, -1], initial_target=4
+    )
+    weakest_tie_vector = weakest_attack_target_oracle(
+        combatants, [10, 10, 10, 30, 30]
+    )
+    weakest_hidden_combatants = [dict(combatant) for combatant in combatants]
+    weakest_hidden_combatants[4]["hidden"] = -1
+    weakest_hidden_vector = weakest_attack_target_oracle(
+        weakest_hidden_combatants, [10, 10, 10, 30, -100]
+    )
+    weakest_signed_vector = weakest_attack_target_oracle(
+        combatants, [10, 10, 10, -1, -2]
+    )
+    weakest_stale_vector = weakest_attack_target_oracle(
+        combatants, [10, 10, 10, 1000, 1001], initial_target=4
     )
     return {
         "strongest": {
@@ -3494,6 +3571,29 @@ def ai_attack_target_vectors(field_words: list[int]) -> dict[str, object]:
                 "attacks": [0, -1],
                 "initial_target": 4,
                 **stale_vector,
+            },
+            "same_side_candidates_skipped": True,
+            "consumes_random": False,
+        },
+        "weakest_selector": {
+            "strict_first_tie_with_dead_first_candidate": {
+                "attacks": [30, 30],
+                "hp": [0, 100],
+                **weakest_tie_vector,
+            },
+            "negative_hidden_flag_skips_lower_candidate": {
+                "attacks": [30, -100],
+                "hidden": [0, -1],
+                **weakest_hidden_vector,
+            },
+            "signed_negative_attacks": {
+                "attacks": [-1, -2],
+                **weakest_signed_vector,
+            },
+            "at_or_above_1000_preserves_stale_target": {
+                "attacks": [1000, 1001],
+                "initial_target": 4,
+                **weakest_stale_vector,
             },
             "same_side_candidates_skipped": True,
             "consumes_random": False,
@@ -3831,6 +3931,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_attack_handler_machine": battle_ai_attack_handler_contract(z_dat_bytes),
         "battle_ai_attack_target_machine": battle_ai_attack_target_contract(z_dat_bytes),
         "battle_ai_strongest_target_machine": battle_ai_strongest_target_contract(z_dat_bytes),
+        "battle_ai_weakest_target_machine": battle_ai_weakest_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

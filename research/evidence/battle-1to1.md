@@ -223,7 +223,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3513A`机器身份固定为109 bytes、32条指令、5个显式跳转和7处重定位；raw/loaded SHA256为`ab91c4c972a5a17b4db00ceea5a803d7d0e5f6d949c4bccd0b37c97fe7dbcb0c`与`786b1e5e58c1c76dae493c53978e0f2568c230ec67c48fd9a9a55a4c140188ea`。唯一caller命中本策略后无条件停止且不消费EAX。函数按signed槽序扫描不同side且hidden严格等于0的目标，以signed best=0起步，仅attack严格大于best时写actor word11并继续扫描；不读HP，同值保留早槽，全部attack<=0时保留旧目标。现代逐块一致，仅对非法候选role安全返回。dead早槽tie、negative hidden、非正attack保留stale target和same-side过滤均已锁定；入口重审32条指令零新增差异，独立golden SHA256为`bfe4f2a9d4e7dcbef19679d7cff681c5bf91fa61810104f2b6c63919adf40e6b`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
 
-`sub_351A7`以best 1000选择signed attack严格最小值，同值保留早槽。`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。三个delegated selector继续为`implemented_pending_review`，不由order20传播关闭。
+`sub_351A7`机器身份固定为112 bytes、32条指令、5个显式跳转和7处重定位；raw/loaded SHA256为`56611048416b38e1eca2c1cf738e488175de001df5cc2b851ef947fa85ec398f`与`76408936111ba57a30049c0dd11814af62191e1b81797757cee29e8f48488b46`。两个caller均不消费EAX。函数按signed槽序扫描不同side且hidden严格等于0的目标，以signed best=1000起步，仅attack严格小于best时写actor word11并继续扫描；不读HP，同值保留早槽，负attack可选，attack等于或高于1000时保留旧目标。现代逐块一致，仅对非法候选role安全返回。dead早槽tie、negative hidden、signed负值、1000边界stale目标和same-side过滤均已锁定；入口重审32条指令零新增差异，独立golden SHA256为`86772ef8670b75ef913c55dc83268d316a73116f595fa9536c4865327e27df47`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`。
+
+`sub_35372`使用targeting图的strict最短距离，真实field2距离`[6,8]`选slot3且无RNG。`sub_35217`保留独立flag BUG：发现同side任意use_poison>20后先找detoxification最大敌人；即使该值达到20并暂写目标，medicine达到flag仍为0，函数尾仍调用最低攻击selector覆盖它。两个delegated selector继续为`implemented_pending_review`，不由order21传播关闭。
 
 ## 24. 自动攻击主handler计划
 

@@ -506,6 +506,40 @@
     "reads_hp": false,
     "consumes_random": false
   },
+  "battle_ai_weakest_target_machine": {
+    "address": "0x351a7",
+    "end": "0x35217",
+    "raw_offset": "0x2eba7",
+    "size": 112,
+    "instruction_count": 32,
+    "branch_count": 5,
+    "raw_sha256": "56611048416b38e1eca2c1cf738e488175de001df5cc2b851ef947fa85ec398f",
+    "loaded_sha256": "76408936111ba57a30049c0dd11814af62191e1b81797757cee29e8f48488b46",
+    "relocation_count": 7,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x351ac"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x350d8",
+      "0x35363"
+    ],
+    "slot_loop_comparison": "signed int16 slot < combatant_count",
+    "candidate_filters": [
+      "side != actor side",
+      "hidden == 0"
+    ],
+    "best_initial": 1000,
+    "attack_comparison": "signed candidate < best",
+    "ties_preserve_first_slot": true,
+    "attack_at_or_above_1000_writes_target": false,
+    "negative_attack_can_write_target": true,
+    "reads_hp": false,
+    "consumes_random": false
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3441,6 +3475,55 @@
             ],
             "initial_target": 4,
             "best_attack": 0,
+            "target_slot": 4,
+            "target_written": false
+          },
+          "same_side_candidates_skipped": true,
+          "consumes_random": false
+        },
+        "weakest_selector": {
+          "strict_first_tie_with_dead_first_candidate": {
+            "attacks": [
+              30,
+              30
+            ],
+            "hp": [
+              0,
+              100
+            ],
+            "best_attack": 30,
+            "target_slot": 3,
+            "target_written": true
+          },
+          "negative_hidden_flag_skips_lower_candidate": {
+            "attacks": [
+              30,
+              -100
+            ],
+            "hidden": [
+              0,
+              -1
+            ],
+            "best_attack": 30,
+            "target_slot": 3,
+            "target_written": true
+          },
+          "signed_negative_attacks": {
+            "attacks": [
+              -1,
+              -2
+            ],
+            "best_attack": -2,
+            "target_slot": 4,
+            "target_written": true
+          },
+          "at_or_above_1000_preserves_stale_target": {
+            "attacks": [
+              1000,
+              1001
+            ],
+            "initial_target": 4,
+            "best_attack": 1000,
             "target_slot": 4,
             "target_written": false
           },
