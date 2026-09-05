@@ -1090,7 +1090,10 @@ bool BattleSession::dispatch_selected_ai_action() {
         const auto stale_target = setup_.combatants()[current_actor_slot_]
                                       .words[combatant_word::ai_poison_target];
         ai_poison_plan_ = setup_.begin_ai_poison_plan(
-            current_actor_slot_, static_cast<std::size_t>(stale_target), random_);
+            current_actor_slot_,
+            static_cast<std::size_t>(stale_target),
+            *ai_turn_prelude_,
+            random_);
         if (!ai_poison_plan_.has_value()) {
             error_ = setup_.valid() ? "battle AI poison plan failed" : setup_.error();
             return false;

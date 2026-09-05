@@ -4208,45 +4208,18 @@ bool BattleSetup::update_ai_poison_target_range(
 
 bool BattleSetup::update_ai_poison_fallback(
     const std::size_t actor_slot,
-    const std::size_t target_slot,
     BattleAiPoisonPlan& plan) {
-    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
-    std::int16_t allied_total = 0;
-    std::int16_t allied_count = 0;
-    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto& combatant = combatants_[slot].words;
-        if (combatant[combatant_word::side] != actor_side) {
-            continue;
-        }
-        const auto role_id = combatant[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-            error_ = "battle AI poison ally is outside ranger records";
-            return false;
-        }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        allied_total = wrapping_i16(
-            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::attack));
-        allied_total = wrapping_i16(
-            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::hp));
-        allied_count = wrapping_i16(static_cast<std::int32_t>(allied_count) + 1);
-    }
-    if (allied_count == 0) {
-        error_ = "battle AI poison has no allied combatants";
+    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
+    if (plan.allied_count == 0 || actor_role_id < 0 ||
+        static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI poison fallback state is invalid";
         return false;
     }
-    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
-    if (target_role_id < 0 ||
-        static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
-        error_ = "battle AI poison target is outside ranger records";
-        return false;
-    }
-    plan.allied_total = allied_total;
-    plan.allied_count = allied_count;
-    plan.doubled_target_attack = 2 * static_cast<std::int32_t>(
-        ranger_.roles[static_cast<std::size_t>(target_role_id)].word(model::role_word::attack));
+    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(
+        ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(model::role_word::attack));
     plan.doubled_allied_average =
-        2 * static_cast<std::int32_t>(allied_total) / allied_count;
-    plan.next_step = plan.doubled_target_attack > plan.doubled_allied_average
+        2 * static_cast<std::int32_t>(plan.allied_total) / plan.allied_count;
+    plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
         ? BattleAiPoisonNextStep::attack_fallback
         : BattleAiPoisonNextStep::rest;
     return true;
@@ -4255,6 +4228,7 @@ bool BattleSetup::update_ai_poison_fallback(
 std::optional<BattleAiPoisonPlan> BattleSetup::begin_ai_poison_plan(
     const std::size_t actor_slot,
     const std::size_t stale_target_slot,
+    const BattleAiTurnPrelude& prelude,
     random::LegacyRandom& random) {
     const auto selection = choose_ai_poison_target(actor_slot, stale_target_slot, random);
     if (!selection) {
@@ -4262,6 +4236,8 @@ std::optional<BattleAiPoisonPlan> BattleSetup::begin_ai_poison_plan(
     }
     BattleAiPoisonPlan plan{};
     plan.target_strategy = selection->strategy;
+    plan.allied_total = prelude.allied_total;
+    plan.allied_count = prelude.allied_count;
     if (!selection->target_written) {
         return plan;
     }
@@ -4280,7 +4256,7 @@ std::optional<BattleAiPoisonPlan> BattleSetup::begin_ai_poison_plan(
         plan.next_step = BattleAiPoisonNextStep::move;
     } else if (update_ai_poison_target_range(actor_slot, target_slot, plan)) {
         plan.next_step = BattleAiPoisonNextStep::poison;
-    } else if (!update_ai_poison_fallback(actor_slot, target_slot, plan)) {
+    } else if (!update_ai_poison_fallback(actor_slot, plan)) {
         return std::nullopt;
     }
     return plan;
@@ -4297,7 +4273,7 @@ std::optional<BattleAiPoisonPlan> BattleSetup::resume_ai_poison_after_move(
     const auto target_slot = static_cast<std::size_t>(plan.target_slot);
     if (update_ai_poison_target_range(actor_slot, target_slot, plan)) {
         plan.next_step = BattleAiPoisonNextStep::poison;
-    } else if (!update_ai_poison_fallback(actor_slot, target_slot, plan)) {
+    } else if (!update_ai_poison_fallback(actor_slot, plan)) {
         return std::nullopt;
     }
     return plan;

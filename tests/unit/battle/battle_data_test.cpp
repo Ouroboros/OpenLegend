@@ -7201,7 +7201,8 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[4U].set_word(role_word::anti_poison, 80);
     setup.combatants()[0U].words[combatant_word::ai_poison_target] = 4;
     openlegend::random::LegacyRandom no_poison_target_random{1U};
-    auto poison_plan = setup.begin_ai_poison_plan(0U, 99U, no_poison_target_random);
+    auto poison_plan = setup.begin_ai_poison_plan(
+        0U, 99U, *prelude, no_poison_target_random);
     OL_CHECK(poison_plan.has_value());
     OL_CHECK(poison_plan->target_slot == -1);
     OL_CHECK(poison_plan->target_strategy == BattleAiPoisonTargetStrategy::none);
@@ -7211,7 +7212,8 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     reset();
     ranger.roles[0U].set_word(role_word::use_poison, 80);
     openlegend::random::LegacyRandom immediate_poison_random{1U};
-    poison_plan = setup.begin_ai_poison_plan(0U, 4U, immediate_poison_random);
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 4U, *prelude, immediate_poison_random);
     OL_CHECK(poison_plan.has_value());
     OL_CHECK(poison_plan->target_slot == 3);
     OL_CHECK(poison_plan->targeting_range == 6);
@@ -7222,10 +7224,25 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(poison_plan->outer_marks_action_done_after_handler);
 
     reset();
+    ranger.roles[0U].set_word(role_word::use_poison, -16);
+    ranger.roles[3U].set_word(role_word::anti_poison, -20);
+    ranger.roles[4U].set_word(role_word::anti_poison, -20);
+    openlegend::random::LegacyRandom signed_poison_range_random{1U};
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 4U, *prelude, signed_poison_range_random);
+    OL_CHECK(poison_plan.has_value());
+    OL_CHECK(poison_plan->target_slot == 3);
+    OL_CHECK(poison_plan->targeting_range == 0);
+    OL_CHECK(poison_plan->target_distance == 6);
+    OL_CHECK(poison_plan->range_check_count == 2);
+    OL_CHECK(poison_plan->next_step == BattleAiPoisonNextStep::rest);
+
+    reset();
     ranger.roles[0U].set_word(role_word::use_poison, 80);
     setup.combatants()[0U].words[combatant_word::round_value] = -1;
     openlegend::random::LegacyRandom negative_round_poison_random{1U};
-    poison_plan = setup.begin_ai_poison_plan(0U, 4U, negative_round_poison_random);
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 4U, *prelude, negative_round_poison_random);
     OL_CHECK(poison_plan.has_value());
     OL_CHECK(poison_plan->target_distance == 6);
     OL_CHECK(poison_plan->range_check_count == 2);
@@ -7237,12 +7254,13 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[3U].set_word(role_word::attack, 30);
     ranger.roles[4U].set_word(role_word::attack, 50);
     openlegend::random::LegacyRandom zero_round_fallback_random{9U};
-    poison_plan = setup.begin_ai_poison_plan(0U, 3U, zero_round_fallback_random);
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 3U, *prelude, zero_round_fallback_random);
     OL_CHECK(poison_plan.has_value());
     OL_CHECK(poison_plan->target_slot == 4);
     OL_CHECK(poison_plan->target_distance == 8);
     OL_CHECK(poison_plan->range_check_count == 2);
-    OL_CHECK(poison_plan->doubled_target_attack == 100);
+    OL_CHECK(poison_plan->doubled_actor_attack == 20);
     OL_CHECK(poison_plan->doubled_allied_average == 220);
     OL_CHECK(poison_plan->next_step == BattleAiPoisonNextStep::rest);
 
@@ -7250,7 +7268,8 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::use_poison, 80);
     setup.combatants()[0U].words[combatant_word::round_value] = 3;
     openlegend::random::LegacyRandom poison_move_random{1U};
-    poison_plan = setup.begin_ai_poison_plan(0U, 4U, poison_move_random);
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 4U, *prelude, poison_move_random);
     OL_CHECK(poison_plan.has_value());
     OL_CHECK(poison_plan->target_distance == 6);
     OL_CHECK(poison_plan->range_check_count == 1);
@@ -7267,32 +7286,61 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[4U].set_word(role_word::attack, 50);
     setup.combatants()[0U].words[combatant_word::round_value] = 3;
     openlegend::random::LegacyRandom poison_rest_random{9U};
-    poison_plan = setup.begin_ai_poison_plan(0U, 3U, poison_rest_random);
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 3U, *prelude, poison_rest_random);
     OL_CHECK(poison_plan.has_value());
     OL_CHECK(poison_plan->target_slot == 4);
     OL_CHECK(poison_plan->target_distance == 8);
     OL_CHECK(poison_plan->next_step == BattleAiPoisonNextStep::move);
+    ranger.roles[1U].set_word(role_word::hp, 1'000);
     resumed_poison_plan = setup.resume_ai_poison_after_move(0U, *poison_plan);
     OL_CHECK(resumed_poison_plan.has_value());
     OL_CHECK(resumed_poison_plan->allied_total == 330);
     OL_CHECK(resumed_poison_plan->allied_count == 3);
-    OL_CHECK(resumed_poison_plan->doubled_target_attack == 100);
+    OL_CHECK(resumed_poison_plan->doubled_actor_attack == 20);
     OL_CHECK(resumed_poison_plan->doubled_allied_average == 220);
     OL_CHECK(resumed_poison_plan->next_step == BattleAiPoisonNextStep::rest);
 
     reset();
     ranger.roles[0U].set_word(role_word::use_poison, 80);
     ranger.roles[0U].set_word(role_word::iq, 61);
+    ranger.roles[0U].set_word(role_word::attack, 160);
     ranger.roles[3U].set_word(role_word::attack, 30);
-    ranger.roles[4U].set_word(role_word::attack, 200);
+    ranger.roles[4U].set_word(role_word::attack, 50);
     setup.combatants()[0U].words[combatant_word::round_value] = 3;
-    openlegend::random::LegacyRandom poison_attack_random{9U};
-    poison_plan = setup.begin_ai_poison_plan(0U, 3U, poison_attack_random);
+    const auto poison_equal_prelude = setup.begin_ai_turn(0U);
+    OL_CHECK(poison_equal_prelude.has_value());
+    openlegend::random::LegacyRandom poison_equal_random{9U};
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 3U, *poison_equal_prelude, poison_equal_random);
     OL_CHECK(poison_plan.has_value());
     resumed_poison_plan = setup.resume_ai_poison_after_move(0U, *poison_plan);
     OL_CHECK(resumed_poison_plan.has_value());
-    OL_CHECK(resumed_poison_plan->doubled_target_attack == 400);
-    OL_CHECK(resumed_poison_plan->doubled_allied_average == 220);
+    OL_CHECK(resumed_poison_plan->allied_total == 480);
+    OL_CHECK(resumed_poison_plan->allied_count == 3);
+    OL_CHECK(resumed_poison_plan->doubled_actor_attack == 320);
+    OL_CHECK(resumed_poison_plan->doubled_allied_average == 320);
+    OL_CHECK(resumed_poison_plan->next_step == BattleAiPoisonNextStep::rest);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::use_poison, 80);
+    ranger.roles[0U].set_word(role_word::iq, 61);
+    ranger.roles[0U].set_word(role_word::attack, 200);
+    ranger.roles[3U].set_word(role_word::attack, 30);
+    ranger.roles[4U].set_word(role_word::attack, 50);
+    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    const auto poison_attack_prelude = setup.begin_ai_turn(0U);
+    OL_CHECK(poison_attack_prelude.has_value());
+    openlegend::random::LegacyRandom poison_attack_random{9U};
+    poison_plan = setup.begin_ai_poison_plan(
+        0U, 3U, *poison_attack_prelude, poison_attack_random);
+    OL_CHECK(poison_plan.has_value());
+    resumed_poison_plan = setup.resume_ai_poison_after_move(0U, *poison_plan);
+    OL_CHECK(resumed_poison_plan.has_value());
+    OL_CHECK(resumed_poison_plan->allied_total == 520);
+    OL_CHECK(resumed_poison_plan->allied_count == 3);
+    OL_CHECK(resumed_poison_plan->doubled_actor_attack == 400);
+    OL_CHECK(resumed_poison_plan->doubled_allied_average == 346);
     OL_CHECK(resumed_poison_plan->next_step == BattleAiPoisonNextStep::attack_fallback);
 
     reset();

@@ -243,9 +243,11 @@ area type0/3在signed targeting距离不大于select distance时命中并传move
 
 `sub_3570F`并非最近目标：循环对每个合格候选都重复建立targeting图，再错误读取陈旧全局目标slot的距离。固定stale slot4距离8、候选真实距离`[6,8]`时，两次比较值相同，strict更新仅让slot3首个合格目标写入。无合格候选时原版不读取stale slot。seed9输出2、终态1341714958；IQ恰60无RNG。
 
-`sub_3540E`的射程为signed use_poison除15加1。round value恰0且在射程首次检查直接用毒；round value>0时即使已在射程仍请求movement mode3；负值跳过移动并重复建立targeting图后在第二次检查用毒。移动后只复检原目标，不重选。仍超距时比较`2*target attack`与wrapped int16己方`attack+HP`总和的`2*total/count`，strict更大回退自动攻击，否则休息。固定total330/count3阈值220，target attack50休息、200攻击。
+`sub_3540E`机器身份固定为497 bytes、115条指令、8个显式跳转和40处重定位；raw/loaded SHA256为`d153ed4a0997bc2735ea31b5a00ecc62ad634b9f574ce57dcf06c867c9546e1a`与`8be7484923c0296d3c6060e77fe945fe29440cc56df79a3c8b8c545ae2c4c335`。唯一caller不读EAX，十次direct call依次为栈检查、目标selector、自动攻击、两次无副作用abs、targeting图、用毒、mode3移动、targeting图和休息。射程为signed use_poison除15向零截断加1；round value恰0且首次在射程直接用毒，正值即使已命中仍移动，负值跳移动但执行第二次同目标检查。移动后只复检原目标，不重选。
 
-现代已恢复三个selector及typed handler计划；`BattleSession`对move分支按mode3逐格执行移动状态、render/present与两次BIOS tick变化，随后复检原目标。命中时调用共享用毒状态核心，执行11帧effect30、双bank音效、10帧damage与共享提交，再由AI外层推进actor；无合法目标或强敌条件命中时重新进入完整自动攻击，rest分支仍按原休息。真实battle4 seed2直接向量锁定目标poison0→25、体力100→98、word13加1、最终RNG 2993822286，首magic/damage整帧hash为`0x47286fa4af30fce4`/`0xd76de7fa195a1ac3`；另一路固定poison95无合法目标，保留动作码3并进入attack effect sample0。因此`sub_3540E`推进为`implemented_pending_review`。
+fallback在`0x3556F`已把EBX覆写为actor记录偏移，故严格比较`2*actor.attack`与AI外层在handler前冻结的wrapped int16己方总值`2*total/count`，不是target.attack，也不在移动后重扫。首轮REVIEW修正target/actor字段差异，第二轮重审修正宿主resume时重算总值差异；第三轮从入口覆盖115条指令零新增差异。回归锁定use_poison-16射程0、移动等待中盟友HP100→1000仍使用冻结330/3、actor attack160使320==320休息、target attack50而actor attack200使400>346自动攻击。
+
+`BattleSession`对mode3逐格执行render/present与两次tick，命中后执行共享用毒状态、11帧effect30、双bank音效、10帧damage及外层完成；真实battle4 seed2保持poison0→25、体力100→98、word13加1、最终RNG2993822286，首magic/damage hash为`0x47286fa4af30fce4`/`0xd76de7fa195a1ac3`。正式原资产golden双生成SHA256为`cf647cc258b768f4b0ddc1162a5f9d1b7a3364a6bb59e0624fa3805555ccf890`，Linux app Debug 14/14通过，故本owner归类`platform_adapted / converged_no_new_differences`；`sub_355FF/sub_3570F`及其他callee继续独立待审。
 
 ## 26. AI物品与暗器handler计划
 

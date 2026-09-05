@@ -636,6 +636,60 @@
     "consumes_random": false,
     "callers_use_return": false
   },
+  "battle_ai_poison_handler_machine": {
+    "address": "0x3540e",
+    "end": "0x355ff",
+    "raw_offset": "0x2ee0e",
+    "size": 497,
+    "instruction_count": 115,
+    "branch_count": 8,
+    "raw_sha256": "d153ed4a0997bc2735ea31b5a00ecc62ad634b9f574ce57dcf06c867c9546e1a",
+    "loaded_sha256": "8be7484923c0296d3c6060e77fe945fe29440cc56df79a3c8b8c545ae2c4c335",
+    "relocation_count": 40,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35413",
+      "0x35421",
+      "0x35430",
+      "0x3549e",
+      "0x354c1",
+      "0x354e3",
+      "0x3551b",
+      "0x3553e",
+      "0x3558c",
+      "0x355f3"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x355ff",
+      "0x34c47",
+      "0x3f50b",
+      "0x3f50b",
+      "0x36e7f",
+      "0x397e5",
+      "0x3650e",
+      "0x36e7f",
+      "0x34ad3"
+    ],
+    "callers": [
+      "0x33be2"
+    ],
+    "selector_minus_one_fallback": "automatic attack",
+    "selected_target_source": "actor word12 copied to shared target slot",
+    "range": "wrapping int16(signed actor use_poison / 15 + 1)",
+    "discarded_absolute_value_calls": 2,
+    "targeting_map_calls": 2,
+    "range_comparison": "signed target distance <= range",
+    "round_zero_in_range": "poison after first range check",
+    "round_positive": "movement mode3 then same-target recheck",
+    "round_nonpositive_without_first_hit": "same-target second range check without movement",
+    "fallback_attack_value": "2 * signed actor attack",
+    "fallback_average": "2 * frozen outer allied_total_i16 / allied_count_i16",
+    "fallback_comparison": "strictly greater attacks; otherwise rests",
+    "direct_random_calls": 0,
+    "caller_uses_return": false,
+    "outer_marks_action_done_after_handler": true
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3999,13 +4053,21 @@
           }
         },
         "out_of_range_fallback": {
-          "allied_total_i16": 330,
-          "allied_count_i16": 3,
-          "doubled_allied_average": 220,
-          "target_attack_50_doubled": 100,
-          "target_attack_50_result": "rest",
-          "target_attack_200_doubled": 400,
-          "target_attack_200_result": "attack",
+          "frozen_outer_totals": true,
+          "actor_attack_10": {
+            "allied_total_i16": 330,
+            "allied_count_i16": 3,
+            "doubled_allied_average": 220,
+            "doubled_actor_attack": 20,
+            "result": "rest"
+          },
+          "actor_attack_200": {
+            "allied_total_i16": 520,
+            "allied_count_i16": 3,
+            "doubled_allied_average": 346,
+            "doubled_actor_attack": 400,
+            "result": "attack"
+          },
           "comparison": "strictly_greater"
         },
         "selector_initializes_word12_to": -1,

@@ -260,7 +260,7 @@ struct BattleAiPoisonPlan {
     std::int16_t movement_mode{3};
     std::int16_t allied_total{};
     std::int16_t allied_count{};
-    std::int32_t doubled_target_attack{};
+    std::int32_t doubled_actor_attack{};
     std::int32_t doubled_allied_average{};
     BattleAiPoisonTargetStrategy target_strategy{BattleAiPoisonTargetStrategy::none};
     BattleAiPoisonNextStep next_step{BattleAiPoisonNextStep::attack_fallback};
@@ -867,6 +867,7 @@ public:
     [[nodiscard]] std::optional<BattleAiPoisonPlan> begin_ai_poison_plan(
         std::size_t actor_slot,
         std::size_t stale_target_slot,
+        const BattleAiTurnPrelude& prelude,
         random::LegacyRandom& random);
     [[nodiscard]] std::optional<BattleAiPoisonPlan> resume_ai_poison_after_move(
         std::size_t actor_slot,
@@ -1010,7 +1011,6 @@ private:
         BattleAiPoisonPlan& plan) const;
     [[nodiscard]] bool update_ai_poison_fallback(
         std::size_t actor_slot,
-        std::size_t target_slot,
         BattleAiPoisonPlan& plan);
     [[nodiscard]] bool update_ai_support_target_range(
         std::size_t actor_slot,

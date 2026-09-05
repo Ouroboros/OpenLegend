@@ -118,6 +118,20 @@ BATTLE_AI_NEAREST_TARGET_RELOCATION_OFFSETS = (
     0x059, 0x065, 0x06F, 0x077, 0x084, 0x08F,
 )
 BATTLE_AI_NEAREST_TARGET_CALLER_SITES = (0x34F59, 0x3512F)
+BATTLE_AI_POISON_HANDLER_ADDRESS = 0x3540E
+BATTLE_AI_POISON_HANDLER_END = 0x355FF
+BATTLE_AI_POISON_HANDLER_CALL_OFFSETS = (
+    0x005, 0x013, 0x022, 0x090, 0x0B3,
+    0x0D5, 0x10D, 0x130, 0x17E, 0x1E5,
+)
+BATTLE_AI_POISON_HANDLER_RELOCATION_OFFSETS = (
+    0x032, 0x038, 0x045, 0x04B, 0x052, 0x058, 0x05F, 0x06C,
+    0x082, 0x089, 0x09B, 0x0A5, 0x0AC, 0x0BE, 0x0C4, 0x0CB,
+    0x0D1, 0x0DD, 0x0E7, 0x0F1, 0x0F9, 0x105, 0x122, 0x13B,
+    0x145, 0x14B, 0x152, 0x158, 0x167, 0x16D, 0x174, 0x17A,
+    0x186, 0x190, 0x19A, 0x1A2, 0x1B2, 0x1BF, 0x1C8, 0x1D1,
+)
+BATTLE_AI_POISON_HANDLER_CALLER_SITES = (0x33BE2,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -703,6 +717,49 @@ def battle_ai_weakest_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "negative_attack_can_write_target": True,
         "reads_hp": False,
         "consumes_random": False,
+    }
+
+
+def battle_ai_poison_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_POISON_HANDLER_ADDRESS,
+        end=BATTLE_AI_POISON_HANDLER_END,
+        call_offsets=BATTLE_AI_POISON_HANDLER_CALL_OFFSETS,
+        expected_call_targets=(
+            0x3ED1E, 0x355FF, 0x34C47, 0x3F50B, 0x3F50B,
+            0x36E7F, 0x397E5, 0x3650E, 0x36E7F, 0x34AD3,
+        ),
+        relocation_offsets=BATTLE_AI_POISON_HANDLER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_POISON_HANDLER_CALLER_SITES,
+        instruction_count=115,
+        branch_count=8,
+    )
+    if contract["raw_sha256"] != (
+        "d153ed4a0997bc2735ea31b5a00ecc62ad634b9f574ce57dcf06c867c9546e1a"
+    ):
+        raise ValueError("Z.DAT battle AI poison-handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "8be7484923c0296d3c6060e77fe945fe29440cc56df79a3c8b8c545ae2c4c335"
+    ):
+        raise ValueError("Z.DAT battle AI poison-handler relocation image changed")
+    return {
+        **contract,
+        "selector_minus_one_fallback": "automatic attack",
+        "selected_target_source": "actor word12 copied to shared target slot",
+        "range": "wrapping int16(signed actor use_poison / 15 + 1)",
+        "discarded_absolute_value_calls": 2,
+        "targeting_map_calls": 2,
+        "range_comparison": "signed target distance <= range",
+        "round_zero_in_range": "poison after first range check",
+        "round_positive": "movement mode3 then same-target recheck",
+        "round_nonpositive_without_first_hit": "same-target second range check without movement",
+        "fallback_attack_value": "2 * signed actor attack",
+        "fallback_average": "2 * frozen outer allied_total_i16 / allied_count_i16",
+        "fallback_comparison": "strictly greater attacks; otherwise rests",
+        "direct_random_calls": 0,
+        "caller_uses_return": False,
+        "outer_marks_action_done_after_handler": True,
     }
 
 
@@ -3490,13 +3547,21 @@ def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
             },
         },
         "out_of_range_fallback": {
-            "allied_total_i16": allied_total,
-            "allied_count_i16": allied_count,
-            "doubled_allied_average": doubled_average,
-            "target_attack_50_doubled": 100,
-            "target_attack_50_result": "rest",
-            "target_attack_200_doubled": 400,
-            "target_attack_200_result": "attack",
+            "frozen_outer_totals": True,
+            "actor_attack_10": {
+                "allied_total_i16": allied_total,
+                "allied_count_i16": allied_count,
+                "doubled_allied_average": doubled_average,
+                "doubled_actor_attack": 20,
+                "result": "rest",
+            },
+            "actor_attack_200": {
+                "allied_total_i16": 520,
+                "allied_count_i16": 3,
+                "doubled_allied_average": trunc_div(2 * 520, 3),
+                "doubled_actor_attack": 400,
+                "result": "attack",
+            },
             "comparison": "strictly_greater",
         },
         "selector_initializes_word12_to": -1,
@@ -4262,6 +4327,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_weakest_target_machine": battle_ai_weakest_target_contract(z_dat_bytes),
         "battle_ai_specialist_target_machine": battle_ai_specialist_target_contract(z_dat_bytes),
         "battle_ai_nearest_target_machine": battle_ai_nearest_target_contract(z_dat_bytes),
+        "battle_ai_poison_handler_machine": battle_ai_poison_handler_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
