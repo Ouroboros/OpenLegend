@@ -918,6 +918,7 @@ public:
         BattleAiMovementPlan& plan);
     [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
+    void disable_automatic_mode() noexcept { automatic_enabled_ = false; }
     [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
     [[nodiscard]] std::optional<BattleRenderPlan> battle_render_plan(
         const BattleRenderState& state,

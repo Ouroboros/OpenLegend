@@ -5251,9 +5251,12 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(
         automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
 
+    automatic_session.set_confirmation_state(true); // Arrives after the slot input poll.
     OL_CHECK(automatic_session.render(framebuffer));
     automatic_session.finish_presented_tick(108U);
+    OL_CHECK(automatic_session.setup().automatic_enabled());
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_action);
+    automatic_session.set_confirmation_state(false); // Released before the next slot.
     automatic_session.advance(108U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_prelude_present);
     OL_CHECK(automatic_session.render(framebuffer));
@@ -5268,15 +5271,22 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(automatic_ranger.roles[3U].word(role_word::physical_power) == 4);
     OL_CHECK(
         automatic_session.setup().combatants()[1U].words[combatant_word::action_done] == 1);
+    automatic_session.set_confirmation_state(true);
     automatic_session.advance(0U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(automatic_session.setup().automatic_enabled());
     automatic_session.advance(1U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::actor_present);
     OL_CHECK(automatic_session.current_actor_slot() == 0U);
     OL_CHECK(
         automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(!automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_session.take_clear_confirmation_states_request());
+    OL_CHECK(!automatic_session.take_clear_confirmation_states_request());
     OL_CHECK(automatic_session.render(framebuffer));
     automatic_session.finish_presented_tick(1U);
+    OL_CHECK(!automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::player_action);
     OL_CHECK(
         automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(automatic_session.setup().combatants()[0U].words[combatant_word::ai_action] == 0);
@@ -6550,6 +6560,11 @@ void run_initial_presentation_order_test(
     BattleRenderState inherited_state{};
     inherited_state.view_x = 17;
     inherited_state.view_y = 19;
+    inherited_state.path_limit = -5; // Disabled range; no path-map fixture is needed.
+    inherited_state.effect_frame_offset = 6;
+    inherited_state.effect_id = kBattleEffectPointerBase;
+    inherited_state.effect_visible = true;
+    inherited_state.highlight_mode = 3;
     auto session = std::make_unique<BattleSession>(
         data_root, *ranger, random, 4, false, inherited_state);
     OL_CHECK(session->valid());
@@ -6575,6 +6590,19 @@ void run_initial_presentation_order_test(
              std::clamp(static_cast<int>(first[combatant_word::x]) - 11, 0, 32));
     OL_CHECK(session->view_y() ==
              std::clamp(static_cast<int>(first[combatant_word::y]) - 11, 0, 32));
+    for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(10U);
+    }
+    OL_CHECK(session->phase() == BattleSessionPhase::round_start);
+    session->advance(11U);
+    OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(session->render_state().path_limit == -5);
+    OL_CHECK(session->render_state().effect_frame_offset == 0);
+    OL_CHECK(!session->render_state().effect_visible);
+    OL_CHECK(session->render_state().highlight_mode == 0);
+    OL_CHECK((session->render_state().primary_cursor == BattlePathCoord{
+        first[combatant_word::x], first[combatant_word::y]}));
 }
 
 void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
@@ -6602,6 +6630,7 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[1U].set_word(openlegend::model::role_word::speed, 20);
     ranger.roles[1U].set_word(openlegend::model::role_word::hurt, 40);
     ranger.roles[3U].set_word(openlegend::model::role_word::hurt, 200);
+    OL_CHECK(setup.sort_by_effective_speed());
     OL_CHECK(setup.prepare_round());
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::round_value] == 2);
@@ -6611,6 +6640,162 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5132);
     OL_CHECK(data.occupancy()[24U * 64U + 26U] == 0);
     OL_CHECK(data.occupancy()[26U * 64U + 26U] == -1);
+
+    // Computing word6 is separate from sorting and must not change slot order.
+    ranger.roles[3U].set_word(openlegend::model::role_word::speed, 100);
+    OL_CHECK(setup.prepare_round());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 1);
+    setup.combatants()[1U].words[combatant_word::y] = 24;
+    for (const auto word : {7U, 9U, 10U, 11U, 12U, 13U}) {
+        setup.combatants()[0U].words[word] = static_cast<std::int16_t>(100U + word);
+        setup.combatants()[1U].words[word] = static_cast<std::int16_t>(200U + word);
+    }
+    setup.combatants()[0U].words[combatant_word::sprite] = -123;
+    setup.combatants()[1U].words[combatant_word::sprite] = -456;
+    const auto before_first = setup.combatants()[0U].words;
+    const auto before_second = setup.combatants()[1U].words;
+    OL_CHECK(setup.sort_by_effective_speed());
+    for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
+        if (word != combatant_word::sprite) {
+            OL_CHECK(setup.combatants()[0U].words[word] == before_second[word]);
+            OL_CHECK(setup.combatants()[1U].words[word] == before_first[word]);
+        }
+    }
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5132);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5118);
+    OL_CHECK(data.occupancy()[24U * 64U + 26U] == 1);
+    ranger.roles[1U].set_word(openlegend::model::role_word::speed, 200);
+    OL_CHECK(setup.sort_by_effective_speed());
+    OL_CHECK(data.occupancy()[24U * 64U + 26U] == -1);
+    ranger.roles[1U].set_word(openlegend::model::role_word::speed, 32760);
+    OL_CHECK(setup.sort_by_effective_speed()); // 32760 + 30 wraps negative.
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 3);
+    OL_CHECK(setup.prepare_round());
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 0);
+
+    auto hidden_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    openlegend::random::LegacyRandom hidden_random{1U};
+    BattleSession hidden_session{data_root, hidden_ranger, hidden_random, 51, false};
+    OL_CHECK(hidden_session.valid());
+    OL_CHECK(hidden_session.setup().combatant_count() >= 3);
+    for (const auto& combatant : hidden_session.setup().combatants().first(
+             static_cast<std::size_t>(hidden_session.setup().combatant_count()))) {
+        const auto role_id = static_cast<std::size_t>(
+            combatant.words[combatant_word::role_id]);
+        auto& role = hidden_ranger.roles[role_id];
+        role.set_word(openlegend::model::role_word::hp, 100);
+        role.set_word(openlegend::model::role_word::speed, 0);
+        for (std::size_t equipment = 0U;
+             equipment < openlegend::model::role_word::equipment_count;
+             ++equipment) {
+            role.set_word(
+                openlegend::model::role_word::equipment_begin + equipment, -1);
+        }
+    }
+    const std::array stable_role_ids{
+        hidden_session.setup().combatants()[0U].words[combatant_word::role_id],
+        hidden_session.setup().combatants()[1U].words[combatant_word::role_id],
+        hidden_session.setup().combatants()[2U].words[combatant_word::role_id],
+    };
+    hidden_ranger.roles[static_cast<std::size_t>(stable_role_ids[0U])].set_word(
+        openlegend::model::role_word::speed, 10);
+    hidden_ranger.roles[static_cast<std::size_t>(stable_role_ids[1U])].set_word(
+        openlegend::model::role_word::speed, 10);
+    hidden_ranger.roles[static_cast<std::size_t>(stable_role_ids[2U])].set_word(
+        openlegend::model::role_word::speed, 20);
+    OL_CHECK(hidden_session.setup().sort_by_effective_speed());
+    OL_CHECK(hidden_session.setup().combatants()[0U].words[combatant_word::role_id] ==
+             stable_role_ids[2U]);
+    // Equal speeds are not swapped directly, but a faster later slot exchanges
+    // with the first slot, reversing these equal-speed actors indirectly.
+    OL_CHECK(hidden_session.setup().combatants()[1U].words[combatant_word::role_id] ==
+             stable_role_ids[1U]);
+    OL_CHECK(hidden_session.setup().combatants()[2U].words[combatant_word::role_id] ==
+             stable_role_ids[0U]);
+    const auto hidden_role_id = static_cast<std::size_t>(
+        hidden_session.setup().combatants()[1U].words[combatant_word::role_id]);
+    hidden_ranger.roles[hidden_role_id].set_word(
+        openlegend::model::role_word::speed, 30'000);
+    hidden_session.setup().combatants()[1U]
+        .words[combatant_word::occupancy_hidden] = 1;
+    const auto reach_round_start = [](BattleSession& session) {
+        finish_battle_entry_fade(session);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render(framebuffer));
+        session.finish_presented_tick();
+        for (std::size_t frame = 0U; frame < session.fade_frame_count(); ++frame) {
+            OL_CHECK(session.render(framebuffer));
+            session.finish_presented_tick();
+        }
+        OL_CHECK(session.phase() == BattleSessionPhase::round_start);
+    };
+    reach_round_start(hidden_session);
+    hidden_session.setup().enable_automatic_mode();
+    hidden_session.set_confirmation_state(true);
+    hidden_session.set_confirmation_state(false); // Released before the actor boundary.
+    hidden_session.advance(7U);
+    OL_CHECK(hidden_session.setup().automatic_enabled());
+    OL_CHECK(!hidden_session.take_clear_confirmation_states_request());
+    OL_CHECK(hidden_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(hidden_session.setup().combatants()[0U]
+                 .words[combatant_word::occupancy_hidden] == 1);
+    OL_CHECK(hidden_session.current_actor_slot() == 1U);
+    OL_CHECK(hidden_session.setup().combatants()[hidden_session.current_actor_slot()]
+                 .words[combatant_word::occupancy_hidden] == 0);
+
+    auto hidden_outcome = std::make_unique<BattleSession>(
+        data_root, hidden_ranger, hidden_random, 51, false);
+    OL_CHECK(hidden_outcome->valid());
+    const auto outcome_role = static_cast<std::size_t>(
+        hidden_outcome->setup().combatants()[0U].words[combatant_word::role_id]);
+    for (auto& combatant : hidden_outcome->setup().combatants().first(
+             static_cast<std::size_t>(hidden_outcome->setup().combatant_count()))) {
+        combatant.words[combatant_word::occupancy_hidden] = 1;
+        auto& role = hidden_ranger.roles[static_cast<std::size_t>(
+            combatant.words[combatant_word::role_id])];
+        role.set_word(openlegend::model::role_word::hp, 100);
+        role.set_word(openlegend::model::role_word::hurt, 20);
+        role.set_word(openlegend::model::role_word::poison, 0);
+        role.set_word(openlegend::model::role_word::level, 30);
+        role.set_word(openlegend::model::role_word::practice_item, -1);
+        combatant.words[combatant_word::ai_target] = 0;
+    }
+    reach_round_start(*hidden_outcome);
+    hidden_outcome->setup().enable_automatic_mode();
+    hidden_outcome->set_confirmation_state(true);
+    hidden_outcome->advance(0x1800AFU);
+    OL_CHECK(!hidden_outcome->setup().automatic_enabled());
+    OL_CHECK(hidden_outcome->take_clear_confirmation_states_request());
+    OL_CHECK(hidden_outcome->phase() == BattleSessionPhase::battle_outcome);
+    OL_CHECK(hidden_outcome->outcome() == BattleOutcome::victory);
+    OL_CHECK(hidden_ranger.roles[outcome_role].word(openlegend::model::role_word::hp) == 100);
+    OL_CHECK(hidden_outcome->setup().combatants()[0U].words[combatant_word::ai_target] == 0);
+    openlegend::render::IndexedFramebuffer outcome_frame;
+    OL_CHECK(hidden_outcome->render(outcome_frame));
+    hidden_outcome->finish_presented_tick(0x1800AFU);
+    OL_CHECK(hidden_outcome->handle_key(0x20U) ==
+             BattleSessionInputResult::outcome_acknowledged);
+    for (std::size_t guard = 0U;
+         hidden_outcome->phase() == BattleSessionPhase::post_battle_message_present &&
+             guard < 128U;
+         ++guard) {
+        OL_CHECK(hidden_ranger.roles[outcome_role].word(openlegend::model::role_word::hp) == 100);
+        OL_CHECK(hidden_outcome->render(outcome_frame));
+        hidden_outcome->finish_presented_tick(0x1800AFU);
+        OL_CHECK(hidden_outcome->handle_key(0x20U) ==
+                 BattleSessionInputResult::post_battle_message_acknowledged);
+    }
+    OL_CHECK(hidden_outcome->phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(hidden_outcome->setup().combatants()[0U].words[combatant_word::ai_target] == -1);
+    OL_CHECK(hidden_ranger.roles[outcome_role].word(openlegend::model::role_word::hp) == 99);
+    hidden_outcome->advance(0x1800AFU);
+    OL_CHECK(hidden_outcome->phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(hidden_ranger.roles[outcome_role].word(openlegend::model::role_word::hp) == 99);
+    hidden_outcome->advance(0U); // BIOS day rollover is still a tick change.
+    OL_CHECK(hidden_outcome->phase() == BattleSessionPhase::complete);
+    OL_CHECK(hidden_outcome->result() == BattleStepResult::victory);
+    OL_CHECK(hidden_ranger.roles[outcome_role].word(openlegend::model::role_word::hp) == 99);
 }
 
 void run_outcome_test(const openlegend::resource::DataRoot& data_root) {
@@ -6808,6 +6993,13 @@ void run_battle_outcome_session_test(
     OL_CHECK(role_result->practice.practice_message_required);
     OL_CHECK(role_result->practice.magic_message_required);
     OL_CHECK(role_result->craft.message_required);
+    OL_CHECK(victory.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(!victory.finished());
+    victory.advance();
+    OL_CHECK(victory.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(victory.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == post_battle_hashes.back());
+    victory.advance(1U);
     OL_CHECK(victory.phase() == BattleSessionPhase::complete);
     OL_CHECK(victory.finished());
     OL_CHECK(victory.result() == BattleStepResult::victory);
@@ -6852,6 +7044,11 @@ void run_battle_outcome_session_test(
              BattleSessionInputResult::outcome_acknowledged);
     OL_CHECK(defeat.post_battle_result().has_value());
     OL_CHECK(defeat.post_battle_message_count() == 0U);
+    OL_CHECK(defeat.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(!defeat.finished());
+    defeat.advance();
+    OL_CHECK(defeat.phase() == BattleSessionPhase::round_wait);
+    defeat.advance(1U);
     OL_CHECK(defeat.phase() == BattleSessionPhase::complete);
     OL_CHECK(defeat.finished());
     OL_CHECK(defeat.result() == BattleStepResult::defeat);

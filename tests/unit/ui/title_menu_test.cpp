@@ -1936,7 +1936,14 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     }
     OL_CHECK(session->phase() == BattleSessionPhase::round_start);
 
+    session->setup().enable_automatic_mode();
+    game.set_battle_confirmation_state(true);
+    OL_CHECK(!game.take_clear_battle_confirmation_states_request());
     game.advance(100U);
+    OL_CHECK(!session->setup().automatic_enabled());
+    OL_CHECK(game.take_clear_battle_confirmation_states_request());
+    OL_CHECK(!game.take_clear_battle_confirmation_states_request());
+    game.set_battle_confirmation_state(false);
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
@@ -1952,7 +1959,10 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     while (session->player_action_menu().cursor != wait_ordinal) {
         game.handle_key(0x98U, false, false, 100U);
     }
+    game.set_battle_confirmation_state(true);
     game.handle_key(0x0DU, false, false, 100U);
+    OL_CHECK(game.take_clear_battle_confirmation_states_request());
+    game.set_battle_confirmation_state(false);
     OL_CHECK(session->phase() == BattleSessionPhase::battle_outcome);
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
@@ -1966,6 +1976,13 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
             game.finish_presented_tick(100U);
         } else if (session->phase() == BattleSessionPhase::post_battle_message_wait) {
             game.handle_key(0x0DU, false, false, 100U);
+        } else if (session->phase() == BattleSessionPhase::round_wait) {
+            const auto last_frame = fnv1a64(game.framebuffer().pixels());
+            game.advance(100U);
+            OL_CHECK(session->phase() == BattleSessionPhase::round_wait);
+            OL_CHECK(game.render());
+            OL_CHECK(fnv1a64(game.framebuffer().pixels()) == last_frame);
+            game.advance(101U);
         } else {
             OL_CHECK(false);
             break;

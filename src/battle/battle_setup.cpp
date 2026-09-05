@@ -735,7 +735,7 @@ bool BattleSetup::sort_by_effective_speed() {
 }
 
 bool BattleSetup::prepare_round() {
-    if (!sort_by_effective_speed()) {
+    if (!valid()) {
         return false;
     }
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {

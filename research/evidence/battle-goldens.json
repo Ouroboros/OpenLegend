@@ -296,6 +296,344 @@
       "duplicate_occupancy": "later_write_wins"
     }
   },
+  "battle_round_machine": {
+    "round_loop": {
+      "address": "0x3271e",
+      "end": "0x32a51",
+      "raw_offset": "0x2c11e",
+      "size": 819,
+      "instruction_count": 166,
+      "branch_count": 27,
+      "raw_sha256": "d8e0befe7bfaa838fb81780210ec2814c6f3898b005fc6f6342e4a64906997dc",
+      "loaded_sha256": "03fb8619f4d161ca82d1c6b26f20c3b08f56b129855f65af27771a8fe24328b3",
+      "relocation_count": 69,
+      "relocation_delta": 131072,
+      "call_sites": [
+        "0x32723",
+        "0x3273e",
+        "0x327bb",
+        "0x327cb",
+        "0x327d3",
+        "0x327ef",
+        "0x329a9",
+        "0x329b9",
+        "0x329ee",
+        "0x329f9",
+        "0x32a08",
+        "0x32a0d",
+        "0x32a38"
+      ],
+      "call_targets": [
+        "0x3ed1e",
+        "0x32a51",
+        "0x3aa85",
+        "0x3d6d1",
+        "0x3cd17",
+        "0x32a51",
+        "0x3aa85",
+        "0x3d6d1",
+        "0x32e59",
+        "0x33599",
+        "0x3b238",
+        "0x3c672",
+        "0x3c563"
+      ],
+      "callers": [
+        "0x31d39"
+      ],
+      "round_value_vectors": [
+        {
+          "label": "ordinary",
+          "base_speed": 100,
+          "equipment_add_speed": [
+            7,
+            -10
+          ],
+          "hurt": 79,
+          "effective_speed": 97,
+          "round_value": 5
+        },
+        {
+          "label": "positive_wrap",
+          "base_speed": 32760,
+          "equipment_add_speed": [
+            20
+          ],
+          "hurt": 0,
+          "effective_speed": -32756,
+          "round_value": 0
+        },
+        {
+          "label": "negative_wrap",
+          "base_speed": -32760,
+          "equipment_add_speed": [
+            -20
+          ],
+          "hurt": -79,
+          "effective_speed": 32756,
+          "round_value": 2184
+        }
+      ],
+      "sequence": [
+        "initial_sort",
+        "initial_actor_present",
+        "initial_fade",
+        "capture_tick",
+        "round_sort_once",
+        "clear_render_globals",
+        "compute_round_values",
+        "actor_loop",
+        "round_status",
+        "wait_until_tick_differs",
+        "repeat_or_return"
+      ],
+      "confirm_state_offsets": [
+        13,
+        32,
+        150
+      ],
+      "confirm_keys": [
+        "enter",
+        "space",
+        "keypad_insert"
+      ],
+      "confirm_effect": "sample current key states before each slot hidden check; clear all three and disable automatic mode before actor rendering",
+      "shared_exit": {
+        "address": "0x35407",
+        "end": "0x3540e",
+        "bytes": "83c4045f5e5bc3"
+      },
+      "released_confirmation": "a key released before the slot boundary does not cancel automatic mode",
+      "hidden_actor": "skip dispatch, then evaluate outcome and clear hidden AI targets",
+      "action_result_six": "decrement actor index before common post-action calls",
+      "outcome_boundary": [
+        "evaluate_result",
+        "result_screen_present",
+        "wait_for_key",
+        "complete_post_battle_settlement_and_messages",
+        "clear_hidden_ai_targets",
+        "apply_round_status_once",
+        "wait_until_tick_differs_without_redraw",
+        "return_to_battle_entry"
+      ],
+      "outcome_callee_boundary_calls": {
+        "0x3b300": "0x3aa85",
+        "0x3b371": "0x3d6d1",
+        "0x3b379": "0x20c32",
+        "0x3b37e": "0x3b387"
+      }
+    },
+    "speed_sort": {
+      "address": "0x32a51",
+      "end": "0x32b78",
+      "raw_offset": "0x2c451",
+      "size": 295,
+      "instruction_count": 69,
+      "branch_count": 9,
+      "raw_sha256": "db96219a6c8da281549570eaa5368b919b5b5c5b66df755ff9f4c8196d6cb125",
+      "loaded_sha256": "da296c26c4afc941329f205877efa581e6507aa9f548f683d67057d678f4f74a",
+      "relocation_count": 19,
+      "relocation_delta": 131072,
+      "call_sites": [
+        "0x32a56",
+        "0x32b52"
+      ],
+      "call_targets": [
+        "0x3ed1e",
+        "0x32b78"
+      ],
+      "callers": [
+        "0x3273e",
+        "0x327ef"
+      ],
+      "algorithm": "pairwise exchange sort, fixed first slot against every later slot, descending signed effective speed",
+      "swap_condition": "first_speed < second_speed",
+      "equal_speed_order": "no direct swap on equality; indirect exchanges may reverse equal-speed actors",
+      "input": [
+        {
+          "label": "equal_a",
+          "speed": 10
+        },
+        {
+          "label": "equal_b",
+          "speed": 10
+        },
+        {
+          "label": "fast",
+          "speed": 20
+        },
+        {
+          "label": "slow",
+          "speed": -3
+        }
+      ],
+      "swap_trace": [
+        [
+          0,
+          2
+        ]
+      ],
+      "output": [
+        {
+          "label": "fast",
+          "speed": 20
+        },
+        {
+          "label": "equal_b",
+          "speed": 10
+        },
+        {
+          "label": "equal_a",
+          "speed": 10
+        },
+        {
+          "label": "slow",
+          "speed": -3
+        }
+      ]
+    },
+    "combatant_swap": {
+      "address": "0x32b78",
+      "end": "0x32e2f",
+      "raw_offset": "0x2c578",
+      "size": 695,
+      "instruction_count": 131,
+      "branch_count": 4,
+      "raw_sha256": "d2dc4bd1aa1cedeef1cd85a5a4d15385d2ba4b52986a639901ebfe5eb511c8b9",
+      "loaded_sha256": "9b65a53377fc8a303ca17e1d22ffab6bc2132106bda434a63b27ef7a9c6f1032",
+      "relocation_count": 68,
+      "relocation_delta": 131072,
+      "call_sites": [
+        "0x32b7d",
+        "0x32dfc",
+        "0x32e16"
+      ],
+      "call_targets": [
+        "0x3ed1e",
+        "0x3b1e6",
+        "0x3b1e6"
+      ],
+      "callers": [
+        "0x32b52",
+        "0x3aa30"
+      ],
+      "copied_word_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "excluded_word_index": 8,
+      "occupancy_write_order": "first_slot_then_second_slot",
+      "sprite_recompute_order": "first_slot_then_second_slot",
+      "vector": {
+        "input": [
+          [
+            10,
+            0,
+            12,
+            13,
+            2,
+            0,
+            7,
+            8,
+            6000,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          [
+            20,
+            1,
+            12,
+            13,
+            3,
+            0,
+            17,
+            18,
+            6100,
+            19,
+            20,
+            21,
+            22,
+            23
+          ]
+        ],
+        "asset_initial_sprite_globals": [
+          0,
+          5106
+        ],
+        "asset_head_role_ids": [
+          20,
+          10
+        ],
+        "delegated_sprite_results": [
+          5272,
+          5190
+        ],
+        "occupancy_writes": [
+          {
+            "slot": 0,
+            "x": 12,
+            "y": 13,
+            "value": 0
+          },
+          {
+            "slot": 1,
+            "x": 12,
+            "y": 13,
+            "value": 1
+          }
+        ],
+        "final": [
+          [
+            20,
+            1,
+            12,
+            13,
+            3,
+            0,
+            17,
+            18,
+            5272,
+            19,
+            20,
+            21,
+            22,
+            23
+          ],
+          [
+            10,
+            0,
+            12,
+            13,
+            2,
+            0,
+            7,
+            8,
+            5190,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        ],
+        "same_coordinate_final_occupancy": 1
+      }
+    }
+  },
   "war_sta": {
     "record_size": 186,
     "record_count": 140,

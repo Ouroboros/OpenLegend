@@ -182,6 +182,12 @@ public:
     [[nodiscard]] const BattleSetup& setup() const noexcept { return setup_; }
     [[nodiscard]] BattleSetup& setup() noexcept { return setup_; }
     [[nodiscard]] const BattleData& data() const noexcept { return data_; }
+    void set_confirmation_state(bool active) noexcept { confirmation_state_ = active; }
+    bool take_clear_confirmation_states_request() noexcept {
+        const auto requested = clear_confirmation_states_requested_;
+        clear_confirmation_states_requested_ = false;
+        return requested;
+    }
     [[nodiscard]] const BattlePlayerActionMenuState& player_action_menu() const noexcept {
         return player_action_menu_;
     }
@@ -323,6 +329,9 @@ private:
         std::uint8_t translated_key);
     [[nodiscard]] bool dispatch_selected_player_action();
     [[nodiscard]] bool finish_current_actor(BattlePlayerAction action);
+    [[nodiscard]] bool begin_battle_outcome(BattleOutcome outcome);
+    [[nodiscard]] bool finish_outcome_round();
+    void consume_actor_confirmation_state() noexcept;
     [[nodiscard]] bool begin_actor_present();
     [[nodiscard]] bool begin_post_battle_settlement();
     [[nodiscard]] bool begin_post_battle_role();
@@ -421,6 +430,8 @@ private:
     std::vector<compat::LegacyPalette> fade_palettes_;
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
+    bool confirmation_state_{};
+    bool clear_confirmation_states_requested_{};
     BattleOutcome outcome_{BattleOutcome::ongoing};
     BattleStepResult result_{BattleStepResult::stay};
     std::optional<BattlePostBattleResult> post_battle_result_;

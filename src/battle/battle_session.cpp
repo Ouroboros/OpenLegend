@@ -476,7 +476,18 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
                phase_ == BattleSessionPhase::ai_attack_level_wait) {
         static_cast<void>(advance_player_attack_level_wait(bios_tick));
     } else if (phase_ == BattleSessionPhase::round_wait && bios_tick != round_tick_) {
-        static_cast<void>(begin_round(bios_tick));
+        if (outcome_ != BattleOutcome::ongoing) {
+            result_ = outcome_ == BattleOutcome::victory
+                ? BattleStepResult::victory : BattleStepResult::defeat;
+            phase_ = BattleSessionPhase::complete;
+            frame_rendered_ = false;
+            diagnostics::log_info(
+                "battle session complete id=" + std::to_string(battle_id()) +
+                " result=" + std::to_string(static_cast<int>(result_)) +
+                " messages=" + std::to_string(post_battle_messages_.size()));
+        } else {
+            static_cast<void>(begin_round(bios_tick));
+        }
     }
 }
 
@@ -485,6 +496,11 @@ bool BattleSession::render(
     const bool party_selection_background_redrawn) {
     if (!valid()) {
         return false;
+    }
+    if (phase_ == BattleSessionPhase::round_wait) {
+        // The original tick spin does not redraw the buffer left by the callee.
+        frame_rendered_ = true;
+        return true;
     }
     bool rendered = false;
     if (phase_ == BattleSessionPhase::initial_fade_to_black) {
@@ -885,22 +901,51 @@ bool BattleSession::begin_initial_battle() {
 }
 
 bool BattleSession::begin_round(const std::uint32_t bios_tick) {
-    if (!setup_.sort_by_effective_speed() || !setup_.prepare_round() ||
-        setup_.combatant_count() <= 0) {
-        error_ = setup_.valid() ? "battle round preparation failed" : setup_.error();
+    round_tick_ = bios_tick;
+    if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
+        error_ = setup_.valid() ? "battle round sorting failed" : setup_.error();
         return false;
     }
-    round_tick_ = bios_tick;
     render_state_.effect_frame_offset = 0;
     render_state_.effect_visible = false;
     render_state_.highlight_mode = 0;
+    if (!setup_.prepare_round()) {
+        error_ = setup_.valid() ? "battle round value preparation failed" : setup_.error();
+        return false;
+    }
     current_actor_slot_ = 0U;
-    const auto& actor = setup_.combatants()[current_actor_slot_]
-                            .words;
+    consume_actor_confirmation_state();
+    while (current_actor_slot_ < static_cast<std::size_t>(setup_.combatant_count()) &&
+           setup_.combatants()[current_actor_slot_]
+                   .words[combatant_word::occupancy_hidden] != 0) {
+        const auto skipped_outcome = setup_.evaluate_outcome();
+        if (skipped_outcome != BattleOutcome::ongoing) {
+            return begin_battle_outcome(skipped_outcome);
+        }
+        if (!setup_.clear_hidden_ai_targets().has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        ++current_actor_slot_;
+    }
+    if (current_actor_slot_ >= static_cast<std::size_t>(setup_.combatant_count())) {
+        if (!setup_.apply_round_status_damage().has_value()) {
+            error_ = setup_.error();
+            return false;
+        }
+        phase_ = BattleSessionPhase::round_wait;
+        diagnostics::log_info(
+            "battle round actions complete id=" + std::to_string(battle_id()) +
+            " phase=" + std::string{phase_name(phase_)});
+        return true;
+    }
+    const auto& actor = setup_.combatants()[current_actor_slot_].words;
     render_state_.view_x = static_cast<std::int16_t>(
         std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
     render_state_.view_y = static_cast<std::int16_t>(
         std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
+    render_state_.primary_cursor = {
+        actor[combatant_word::x], actor[combatant_word::y]};
     phase_ = BattleSessionPhase::actor_present;
     diagnostics::log_info(
         "battle round actor ready id=" + std::to_string(battle_id()) +
@@ -3237,6 +3282,8 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
     if (!action.has_value()) {
         return BattleSessionInputResult::ignored;
     }
+    confirmation_state_ = false;
+    clear_confirmation_states_requested_ = true;
     player_action_menu_.selected_action = static_cast<std::int16_t>(*action);
     phase_ = BattleSessionPhase::player_action_selected;
     diagnostics::log_info(
@@ -3291,38 +3338,63 @@ bool BattleSession::dispatch_selected_player_action() {
     return false;
 }
 
+void BattleSession::consume_actor_confirmation_state() noexcept {
+    if (confirmation_state_) {
+        confirmation_state_ = false;
+        clear_confirmation_states_requested_ = true;
+        setup_.disable_automatic_mode();
+    }
+}
+
+bool BattleSession::begin_battle_outcome(const BattleOutcome outcome) {
+    outcome_ = outcome;
+    phase_ = BattleSessionPhase::battle_outcome;
+    diagnostics::log_info(
+        "battle outcome reached id=" + std::to_string(battle_id()) +
+        " outcome=" + std::to_string(static_cast<int>(outcome_)));
+    return true;
+}
+
+bool BattleSession::finish_outcome_round() {
+    // sub_3B238 includes the result screen and all of sub_3B387. Only after
+    // that synchronous callee returns does the round loop execute these calls.
+    if (!setup_.clear_hidden_ai_targets().has_value() ||
+        !setup_.apply_round_status_damage().has_value()) {
+        error_ = setup_.error();
+        return false;
+    }
+    phase_ = BattleSessionPhase::round_wait;
+    diagnostics::log_info(
+        "battle outcome pending round tick id=" + std::to_string(battle_id()) +
+        " outcome=" + std::to_string(static_cast<int>(outcome_)));
+    return true;
+}
+
 bool BattleSession::finish_current_actor(const BattlePlayerAction action) {
     const auto outcome = setup_.evaluate_outcome();
+    if (outcome != BattleOutcome::ongoing) {
+        return begin_battle_outcome(outcome);
+    }
     if (!setup_.clear_hidden_ai_targets().has_value()) {
         error_ = setup_.error();
         return false;
     }
-    if (outcome != BattleOutcome::ongoing) {
-        outcome_ = outcome;
-        phase_ = BattleSessionPhase::battle_outcome;
-        diagnostics::log_info(
-            "battle outcome reached id=" + std::to_string(battle_id()) +
-            " outcome=" + std::to_string(static_cast<int>(outcome_)));
-        return true;
-    }
     if (action != BattlePlayerAction::wait) {
         ++current_actor_slot_;
+    }
+    if (current_actor_slot_ < static_cast<std::size_t>(setup_.combatant_count())) {
+        consume_actor_confirmation_state();
     }
     while (current_actor_slot_ < static_cast<std::size_t>(setup_.combatant_count()) &&
            setup_.combatants()[current_actor_slot_]
                    .words[combatant_word::occupancy_hidden] != 0) {
         const auto skipped_outcome = setup_.evaluate_outcome();
+        if (skipped_outcome != BattleOutcome::ongoing) {
+            return begin_battle_outcome(skipped_outcome);
+        }
         if (!setup_.clear_hidden_ai_targets().has_value()) {
             error_ = setup_.error();
             return false;
-        }
-        if (skipped_outcome != BattleOutcome::ongoing) {
-            outcome_ = skipped_outcome;
-            phase_ = BattleSessionPhase::battle_outcome;
-            diagnostics::log_info(
-                "battle outcome reached id=" + std::to_string(battle_id()) +
-                " outcome=" + std::to_string(static_cast<int>(outcome_)));
-            return true;
         }
         ++current_actor_slot_;
     }
@@ -3400,15 +3472,7 @@ bool BattleSession::begin_post_battle_role() {
         }
         ++post_battle_role_index_;
     }
-    result_ = outcome_ == BattleOutcome::victory
-        ? BattleStepResult::victory
-        : BattleStepResult::defeat;
-    phase_ = BattleSessionPhase::complete;
-    diagnostics::log_info(
-        "battle session complete id=" + std::to_string(battle_id()) +
-        " result=" + std::to_string(static_cast<int>(result_)) +
-        " messages=" + std::to_string(post_battle_messages_.size()));
-    return true;
+    return finish_outcome_round();
 }
 
 std::optional<BattleLevelUpResult> BattleSession::preview_post_battle_level(
@@ -3567,7 +3631,6 @@ bool BattleSession::begin_actor_present() {
         std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
     render_state_.view_y = static_cast<std::int16_t>(
         std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
-    render_state_.path_limit = 0;
     render_state_.primary_cursor = {
         actor[combatant_word::x], actor[combatant_word::y]};
     phase_ = BattleSessionPhase::actor_present;

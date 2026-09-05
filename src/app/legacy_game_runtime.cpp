@@ -227,6 +227,17 @@ LegacyGameRuntime::LegacyGameRuntime(
     }
 }
 
+void LegacyGameRuntime::set_battle_confirmation_state(const bool active) noexcept {
+    if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
+        battle_session_->set_confirmation_state(active);
+    }
+}
+
+bool LegacyGameRuntime::take_clear_battle_confirmation_states_request() noexcept {
+    return battle_session_ != nullptr &&
+        battle_session_->take_clear_confirmation_states_request();
+}
+
 void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     if (pending_io_ != PendingIo::none) {
         if (!pending_io_wait_presented_) {

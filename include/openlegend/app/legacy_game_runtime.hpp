@@ -103,6 +103,8 @@ public:
         bool right,
         bool menu_requested = false);
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
+    void set_battle_confirmation_state(bool active) noexcept;
+    bool take_clear_battle_confirmation_states_request() noexcept;
     [[nodiscard]] bool render();
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }

@@ -284,6 +284,13 @@ int main(const int argc, const char* const* argv) {
     }
 
     input::LegacyKeyboard keyboard;
+    const auto sync_battle_confirmation = [&game, &keyboard]() {
+        if (game.take_clear_battle_confirmation_states_request()) {
+            keyboard.clear_confirmation_states();
+        }
+        game.set_battle_confirmation_state(
+            keyboard.down(0x0DU) || keyboard.down(0x20U) || keyboard.down(0x96U));
+    };
     timing::SteadyBiosTickSource tick_source;
     bool running = true;
     while (running) {
@@ -295,6 +302,7 @@ int main(const int argc, const char* const* argv) {
                 running = false;
             } else if (event.type == compat::HostEventType::key_down) {
                 keyboard.handle_host_key(event.key, true);
+                sync_battle_confirmation();
                 const auto translated_key = keyboard.last_key();
                 diagnostics::log_debug(
                     "host key_down key=" + std::to_string(static_cast<int>(event.key)) +
@@ -330,7 +338,9 @@ int main(const int argc, const char* const* argv) {
                 diagnostics::log_debug(
                     "host key_up key=" + std::to_string(static_cast<int>(event.key)));
             }
+            sync_battle_confirmation();
         }
+        sync_battle_confirmation();
         const auto world_direction = keyboard.world_direction();
         using input::LegacyWorldDirectionInput;
         const bool directional_input_consumed = game.handle_world_input(
@@ -346,6 +356,7 @@ int main(const int argc, const char* const* argv) {
             keyboard.consume_edge(0x1BU);
         }
         game.advance(frame_tick);
+        sync_battle_confirmation();
         if (game.take_clear_scene_exit_key_states_request()) {
             keyboard.clear_scene_exit_key_states();
         }
@@ -389,6 +400,7 @@ int main(const int argc, const char* const* argv) {
                 return 7;
             }
             game.finish_presented_tick(tick_source.tick());
+            sync_battle_confirmation();
             diagnostics::log_trace(
                 "frame presented tick=" + std::to_string(frame_tick) +
                 " view=" + std::to_string(static_cast<int>(game.view())));

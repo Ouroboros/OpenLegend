@@ -44,6 +44,43 @@ BATTLE_PARTY_SETUP_CALL_OFFSETS = (
 BATTLE_ENEMY_SETUP_ADDRESS = 0x3265C
 BATTLE_ENEMY_SETUP_END = 0x3271E
 BATTLE_ENEMY_SETUP_CALL_OFFSETS = (0x05, 0x6F)
+BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
+BATTLE_ROUND_LOOP_END = 0x32A51
+BATTLE_ROUND_LOOP_CALL_OFFSETS = (
+    0x005, 0x020, 0x09D, 0x0AD, 0x0B5, 0x0D1, 0x28B,
+    0x29B, 0x2D0, 0x2DB, 0x2EA, 0x2EF, 0x31A,
+)
+BATTLE_ROUND_LOOP_RELOCATION_OFFSETS = (
+    0x01A, 0x027, 0x02D, 0x033, 0x039, 0x03F, 0x048, 0x054, 0x05D,
+    0x067, 0x06F, 0x078, 0x084, 0x08D, 0x097, 0x0A4, 0x0A9, 0x0C6,
+    0x0CD, 0x0D9, 0x0E2, 0x0EB, 0x101, 0x10E, 0x115, 0x11F, 0x12C,
+    0x139, 0x146, 0x150, 0x15D, 0x16A, 0x177, 0x19D, 0x1A9, 0x1B3,
+    0x1C6, 0x1CF, 0x1D8, 0x1E1, 0x1E8, 0x1EF, 0x1F7, 0x206, 0x214,
+    0x21A, 0x221, 0x227, 0x22D, 0x236, 0x242, 0x24B, 0x255, 0x25D,
+    0x266, 0x272, 0x27B, 0x285, 0x292, 0x297, 0x2AC, 0x2B5, 0x2BE,
+    0x2C8, 0x2F7, 0x308, 0x310, 0x321, 0x326,
+)
+BATTLE_SPEED_SORT_ADDRESS = 0x32A51
+BATTLE_SPEED_SORT_END = 0x32B78
+BATTLE_SPEED_SORT_CALL_OFFSETS = (0x005, 0x101)
+BATTLE_SPEED_SORT_RELOCATION_OFFSETS = (
+    0x010, 0x02B, 0x038, 0x03F, 0x049, 0x056, 0x063, 0x070, 0x07A,
+    0x087, 0x094, 0x0A1, 0x0A8, 0x0B2, 0x0BF, 0x0CC, 0x0D9, 0x0E3,
+    0x0F0,
+)
+BATTLE_COMBATANT_SWAP_ADDRESS = 0x32B78
+BATTLE_COMBATANT_SWAP_END = 0x32E2F
+BATTLE_COMBATANT_SWAP_CALL_OFFSETS = (0x005, 0x284, 0x29E)
+BATTLE_COMBATANT_SWAP_RELOCATION_OFFSETS = (
+    0x019, 0x024, 0x02F, 0x03A, 0x044, 0x04F, 0x05A, 0x065, 0x070,
+    0x07B, 0x086, 0x091, 0x09C, 0x0AB, 0x0B2, 0x0B9, 0x0C0, 0x0C7,
+    0x0CE, 0x0D5, 0x0DC, 0x0E3, 0x0EA, 0x0F1, 0x0F8, 0x0FF, 0x106,
+    0x10D, 0x114, 0x11B, 0x122, 0x129, 0x130, 0x137, 0x13E, 0x145,
+    0x14C, 0x153, 0x15A, 0x161, 0x16B, 0x175, 0x184, 0x18D, 0x197,
+    0x19F, 0x1B4, 0x1BF, 0x1CA, 0x1D4, 0x1DF, 0x1EA, 0x1F5, 0x200,
+    0x20B, 0x216, 0x221, 0x22C, 0x233, 0x23A, 0x244, 0x24E, 0x25D,
+    0x266, 0x270, 0x278, 0x294, 0x2AE,
+)
 Z_DAT_EFFECT_FRAME_COUNTS_OFFSET = 324_814
 Z_DAT_AI_SPECIAL_ATTACK_OFFSET = 324_920
 EFFECT_FRAME_COUNT = 53
@@ -336,6 +373,214 @@ def battle_setup_machine_contract(z_dat_bytes: bytes) -> dict[str, object]:
                 "role_id", "side", "x", "y", "initial_mode", "sprite", "occupancy", "count",
             ],
             "duplicate_occupancy": "later_write_wins",
+        },
+    }
+
+
+def relocated_machine_function_contract(
+    z_dat_bytes: bytes,
+    *,
+    address: int,
+    end: int,
+    call_offsets: tuple[int, ...],
+    expected_call_targets: tuple[int, ...],
+    relocation_offsets: tuple[int, ...],
+    caller_sites: tuple[int, ...],
+    instruction_count: int,
+    branch_count: int,
+) -> dict[str, object]:
+    raw_offset = address - Z_DAT_LOAD_BASE
+    raw = z_dat_bytes[raw_offset:raw_offset + end - address]
+    if len(raw) != end - address:
+        raise ValueError(f"Z.DAT does not contain the complete function at {address:#x}")
+    call_targets = tuple(
+        relative_call_target(raw, offset, address) for offset in call_offsets
+    )
+    if call_targets != expected_call_targets:
+        raise ValueError(f"Z.DAT call sequence changed at {address:#x}")
+    caller_targets = tuple(
+        relative_call_target(
+            z_dat_bytes, caller_site - Z_DAT_LOAD_BASE, Z_DAT_LOAD_BASE
+        )
+        for caller_site in caller_sites
+    )
+    if caller_targets != (address,) * len(caller_sites):
+        raise ValueError(f"Z.DAT caller set changed at {address:#x}")
+    relocated = bytearray(raw)
+    for offset in relocation_offsets:
+        raw_value = struct.unpack_from("<I", raw, offset)[0]
+        struct.pack_into("<I", relocated, offset, raw_value + 0x20000)
+    return {
+        "address": hex(address),
+        "end": hex(end),
+        "raw_offset": hex(raw_offset),
+        "size": len(raw),
+        "instruction_count": instruction_count,
+        "branch_count": branch_count,
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(bytes(relocated)),
+        "relocation_count": len(relocation_offsets),
+        "relocation_delta": 0x20000,
+        "call_sites": [hex(address + offset) for offset in call_offsets],
+        "call_targets": [hex(target) for target in call_targets],
+        "callers": [hex(site) for site in caller_sites],
+    }
+
+
+def battle_round_machine_contract(
+    z_dat_bytes: bytes, ranger_group_bytes: bytes
+) -> dict[str, object]:
+    round_values = []
+    for label, base_speed, equipment_speeds, hurt in (
+        ("ordinary", 100, [7, -10], 79),
+        ("positive_wrap", 32760, [20], 0),
+        ("negative_wrap", -32760, [-20], -79),
+    ):
+        effective_speed = base_speed
+        for item_speed in equipment_speeds:
+            effective_speed = wrapping_i16(effective_speed + item_speed)
+        value = trunc_div(effective_speed, 15) - trunc_div(hurt, 40)
+        round_values.append({
+            "label": label,
+            "base_speed": base_speed,
+            "equipment_add_speed": equipment_speeds,
+            "hurt": hurt,
+            "effective_speed": effective_speed,
+            "round_value": max(value, 0),
+        })
+
+    speed_entries = [
+        {"label": "equal_a", "speed": 10},
+        {"label": "equal_b", "speed": 10},
+        {"label": "fast", "speed": 20},
+        {"label": "slow", "speed": -3},
+    ]
+    sorted_entries = [dict(entry) for entry in speed_entries]
+    swap_trace = []
+    for first in range(len(sorted_entries) - 1):
+        for second in range(first + 1, len(sorted_entries)):
+            if sorted_entries[first]["speed"] < sorted_entries[second]["speed"]:
+                swap_trace.append([first, second])
+                sorted_entries[first], sorted_entries[second] = (
+                    sorted_entries[second], sorted_entries[first]
+                )
+
+    first = [10, 0, 12, 13, 2, 0, 7, 8, 6000, 9, 10, 11, 12, 13]
+    second = [20, 1, 12, 13, 3, 0, 17, 18, 6100, 19, 20, 21, 22, 23]
+    copied_words = [*range(0, 8), *range(9, 14)]
+    exchanged_first = list(first)
+    exchanged_second = list(second)
+    for word in copied_words:
+        exchanged_first[word] = second[word]
+    occupancy_writes = [{"slot": 0, "x": second[2], "y": second[3], "value": 0}]
+    for word in copied_words:
+        exchanged_second[word] = first[word]
+    occupancy_writes.append({"slot": 1, "x": first[2], "y": first[3], "value": 1})
+    sprite_globals = [
+        struct.unpack_from("<h", z_dat_bytes, address - Z_DAT_LOAD_BASE)[0]
+        for address in (0x556CC, 0x556D4)
+    ]
+    sprite_results = []
+    for words in (exchanged_first, exchanged_second):
+        head = struct.unpack_from("<h", ranger_group_bytes, 836 + words[0] * 182 + 2)[0]
+        words[8] = wrapping_i16(head * 8 + sprite_globals[0] * 2 + sprite_globals[1] + words[4] * 2)
+        sprite_results.append(words[8])
+
+    outcome_calls = {
+        site: relative_call_target(z_dat_bytes, site - Z_DAT_LOAD_BASE, Z_DAT_LOAD_BASE)
+        for site in (0x3B300, 0x3B371, 0x3B379, 0x3B37E)
+    }
+    if list(outcome_calls.values()) != [0x3AA85, 0x3D6D1, 0x20C32, 0x3B387]:
+        raise ValueError("Z.DAT result display/wait/settlement boundary changed")
+    shared_exit = z_dat_bytes[0x35407 - Z_DAT_LOAD_BASE:0x3540E - Z_DAT_LOAD_BASE]
+    if shared_exit.hex() != "83c4045f5e5bc3":
+        raise ValueError("Z.DAT battle loop shared return changed")
+
+    return {
+        "round_loop": {
+            **relocated_machine_function_contract(
+                z_dat_bytes,
+                address=BATTLE_ROUND_LOOP_ADDRESS,
+                end=BATTLE_ROUND_LOOP_END,
+                call_offsets=BATTLE_ROUND_LOOP_CALL_OFFSETS,
+                expected_call_targets=(
+                    0x3ED1E, 0x32A51, 0x3AA85, 0x3D6D1, 0x3CD17,
+                    0x32A51, 0x3AA85, 0x3D6D1, 0x32E59, 0x33599,
+                    0x3B238, 0x3C672, 0x3C563,
+                ),
+                relocation_offsets=BATTLE_ROUND_LOOP_RELOCATION_OFFSETS,
+                caller_sites=(0x31D39,),
+                instruction_count=166,
+                branch_count=27,
+            ),
+            "round_value_vectors": round_values,
+            "sequence": [
+                "initial_sort", "initial_actor_present", "initial_fade",
+                "capture_tick", "round_sort_once", "clear_render_globals",
+                "compute_round_values", "actor_loop", "round_status",
+                "wait_until_tick_differs", "repeat_or_return",
+            ],
+            "confirm_state_offsets": [0x0D, 0x20, 0x96],
+            "confirm_keys": ["enter", "space", "keypad_insert"],
+            "confirm_effect": "sample current key states before each slot hidden check; clear all three and disable automatic mode before actor rendering",
+            "shared_exit": {"address": "0x35407", "end": "0x3540e", "bytes": shared_exit.hex()},
+            "released_confirmation": "a key released before the slot boundary does not cancel automatic mode",
+            "hidden_actor": "skip dispatch, then evaluate outcome and clear hidden AI targets",
+            "action_result_six": "decrement actor index before common post-action calls",
+            "outcome_boundary": [
+                "evaluate_result", "result_screen_present", "wait_for_key",
+                "complete_post_battle_settlement_and_messages",
+                "clear_hidden_ai_targets", "apply_round_status_once",
+                "wait_until_tick_differs_without_redraw", "return_to_battle_entry",
+            ],
+            "outcome_callee_boundary_calls": {
+                hex(site): hex(target) for site, target in outcome_calls.items()
+            },
+        },
+        "speed_sort": {
+            **relocated_machine_function_contract(
+                z_dat_bytes,
+                address=BATTLE_SPEED_SORT_ADDRESS,
+                end=BATTLE_SPEED_SORT_END,
+                call_offsets=BATTLE_SPEED_SORT_CALL_OFFSETS,
+                expected_call_targets=(0x3ED1E, 0x32B78),
+                relocation_offsets=BATTLE_SPEED_SORT_RELOCATION_OFFSETS,
+                caller_sites=(0x3273E, 0x327EF),
+                instruction_count=69,
+                branch_count=9,
+            ),
+            "algorithm": "pairwise exchange sort, fixed first slot against every later slot, descending signed effective speed",
+            "swap_condition": "first_speed < second_speed",
+            "equal_speed_order": "no direct swap on equality; indirect exchanges may reverse equal-speed actors",
+            "input": speed_entries,
+            "swap_trace": swap_trace,
+            "output": sorted_entries,
+        },
+        "combatant_swap": {
+            **relocated_machine_function_contract(
+                z_dat_bytes,
+                address=BATTLE_COMBATANT_SWAP_ADDRESS,
+                end=BATTLE_COMBATANT_SWAP_END,
+                call_offsets=BATTLE_COMBATANT_SWAP_CALL_OFFSETS,
+                expected_call_targets=(0x3ED1E, 0x3B1E6, 0x3B1E6),
+                relocation_offsets=BATTLE_COMBATANT_SWAP_RELOCATION_OFFSETS,
+                caller_sites=(0x32B52, 0x3AA30),
+                instruction_count=131,
+                branch_count=4,
+            ),
+            "copied_word_indexes": copied_words,
+            "excluded_word_index": 8,
+            "occupancy_write_order": "first_slot_then_second_slot",
+            "sprite_recompute_order": "first_slot_then_second_slot",
+            "vector": {
+                "input": [first, second],
+                "asset_initial_sprite_globals": sprite_globals,
+                "asset_head_role_ids": [20, 10],
+                "delegated_sprite_results": sprite_results,
+                "occupancy_writes": occupancy_writes,
+                "final": [exchanged_first, exchanged_second],
+                "same_coordinate_final_occupancy": 1,
+            },
         },
     }
 
@@ -2752,6 +2997,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_entry": battle_entry_contract(z_dat_bytes),
         "battle_data_loader": battle_data_loader_contract(z_dat_bytes),
         "battle_setup_machine": battle_setup_machine_contract(z_dat_bytes),
+        "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
             "record_count": len(war_records),
