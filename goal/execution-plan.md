@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-已发布进度：`closure=237/349`，`unique_any=192/284`，`unique_all=181/284`
-当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=3` 战斗队伍建立与选择；B8战斗数据载入已完成最终汇编→C++ REVIEW并以独立battle golden固化
-下一任务指针：B8 `audit_order=4` 战斗队列下一工作包
+已发布进度：`closure=239/349`，`unique_any=194/284`，`unique_all=182/284`
+当前任务指针：B8 `research/inventory/battle-closure.tsv` `audit_order=5` 战斗回合主循环；队伍初始化/选择与敌方追加已完成最终汇编→C++ REVIEW并以独立battle golden固化
+下一任务指针：B8 `audit_order=6` 战斗速度排序
 
 ## 0. 唯一正确性真值
 
@@ -307,7 +307,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - 战后状态提交；
 - `Victory / Defeat` battle出口；AI `Escape`为回合内动作11，不是battle级第三出口。
 
-当前状态：功能实现100%，入口实现差异审计5/5已修正，Linux/Windows core/app × Debug/Release完整矩阵通过；81项closure中2项已完成统一最终汇编→C++ REVIEW，其余79项为`implemented_pending_review`，统一最终REVIEW为2/81。
+当前状态：功能实现100%，入口实现差异审计5/5已修正，Linux/Windows core/app × Debug/Release完整矩阵通过；81项closure中4项已完成统一最终汇编→C++ REVIEW，其余77项为`implemented_pending_review`，统一最终REVIEW为4/81。
 
 验收：92 个 FIGHT 包、所有当前可达战斗建立、行动、AI、伤害、状态、物品、胜负和逃跑分支闭环；整数公式和 RNG 消费按汇编验证，不以一场战斗可运行代替完成。
 

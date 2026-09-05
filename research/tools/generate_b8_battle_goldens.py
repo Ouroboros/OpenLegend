@@ -34,6 +34,16 @@ BATTLE_DATA_LOADER_RELOCATION_OFFSETS = (
     0x0D, 0x43, 0x5C, 0x63, 0x6A, 0x73, 0x7C,
     0x81, 0x93, 0xA7, 0xAE, 0xC4, 0xD7, 0x102,
 )
+BATTLE_PARTY_SETUP_ADDRESS = 0x31EB9
+BATTLE_PARTY_SETUP_END = 0x3265C
+BATTLE_PARTY_SETUP_CALL_OFFSETS = (
+    0x005, 0x0C5, 0x178, 0x247, 0x2E9, 0x307, 0x319,
+    0x336, 0x358, 0x38B, 0x457, 0x483, 0x49F, 0x4C4,
+    0x4FD, 0x5D8, 0x5F4, 0x607, 0x705,
+)
+BATTLE_ENEMY_SETUP_ADDRESS = 0x3265C
+BATTLE_ENEMY_SETUP_END = 0x3271E
+BATTLE_ENEMY_SETUP_CALL_OFFSETS = (0x05, 0x6F)
 Z_DAT_EFFECT_FRAME_COUNTS_OFFSET = 324_814
 Z_DAT_AI_SPECIAL_ATTACK_OFFSET = 324_920
 EFFECT_FRAME_COUNT = 53
@@ -223,6 +233,109 @@ def battle_data_loader_contract(z_dat_bytes: bytes) -> dict[str, object]:
             "height": 64,
             "loop_order": "y_then_x",
             "fill_value": -1,
+        },
+    }
+
+
+def battle_setup_machine_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    party_raw_offset = BATTLE_PARTY_SETUP_ADDRESS - Z_DAT_LOAD_BASE
+    party_raw = z_dat_bytes[
+        party_raw_offset:party_raw_offset + BATTLE_PARTY_SETUP_END - BATTLE_PARTY_SETUP_ADDRESS
+    ]
+    if len(party_raw) != 1955:
+        raise ValueError("Z.DAT does not contain the complete battle party setup")
+    party_calls = [
+        relative_call_target(party_raw, offset, BATTLE_PARTY_SETUP_ADDRESS)
+        for offset in BATTLE_PARTY_SETUP_CALL_OFFSETS
+    ]
+    expected_party_calls = [
+        0x3ED1E, 0x3B1E6, 0x3B1E6, 0x3B1E6, 0x29D2D, 0x2CEBF,
+        0x3EF4A, 0x3D832, 0x2CEBF, 0x3EF4A, 0x3D832, 0x3D832,
+        0x3EF4A, 0x3D832, 0x3EF4A, 0x3EF4A, 0x3D832, 0x3D6D1, 0x3B1E6,
+    ]
+    if party_calls != expected_party_calls:
+        raise ValueError("Z.DAT battle party setup call sequence changed")
+    party_caller = 0x31CAF
+    if (
+        relative_call_target(
+            z_dat_bytes, party_caller - Z_DAT_LOAD_BASE, Z_DAT_LOAD_BASE
+        )
+        != BATTLE_PARTY_SETUP_ADDRESS
+    ):
+        raise ValueError("Z.DAT battle party setup caller target changed")
+
+    enemy_raw_offset = BATTLE_ENEMY_SETUP_ADDRESS - Z_DAT_LOAD_BASE
+    enemy_raw = z_dat_bytes[
+        enemy_raw_offset:enemy_raw_offset + BATTLE_ENEMY_SETUP_END - BATTLE_ENEMY_SETUP_ADDRESS
+    ]
+    if len(enemy_raw) != 194:
+        raise ValueError("Z.DAT does not contain the complete battle enemy setup")
+    enemy_calls = [
+        relative_call_target(enemy_raw, offset, BATTLE_ENEMY_SETUP_ADDRESS)
+        for offset in BATTLE_ENEMY_SETUP_CALL_OFFSETS
+    ]
+    if enemy_calls != [0x3ED1E, 0x3B1E6]:
+        raise ValueError("Z.DAT battle enemy setup call sequence changed")
+    enemy_caller = 0x31CB4
+    if (
+        relative_call_target(
+            z_dat_bytes, enemy_caller - Z_DAT_LOAD_BASE, Z_DAT_LOAD_BASE
+        )
+        != BATTLE_ENEMY_SETUP_ADDRESS
+    ):
+        raise ValueError("Z.DAT battle enemy setup caller target changed")
+
+    return {
+        "party": {
+            "address": hex(BATTLE_PARTY_SETUP_ADDRESS),
+            "end": hex(BATTLE_PARTY_SETUP_END),
+            "raw_offset": hex(party_raw_offset),
+            "size": len(party_raw),
+            "instruction_count": 453,
+            "raw_sha256": sha256(party_raw),
+            "ida_loaded_sha256": "6743a9d962317bde209fd1a6c36b54a60678d374fa9ca5a90dfa6b9a934feb0f",
+            "ida_relocation_count": 144,
+            "call_sites": [
+                hex(BATTLE_PARTY_SETUP_ADDRESS + offset)
+                for offset in BATTLE_PARTY_SETUP_CALL_OFFSETS
+            ],
+            "call_targets": [hex(target) for target in party_calls],
+            "callers": [hex(party_caller)],
+            "combatant_slots": 26,
+            "combatant_words": 14,
+            "party_slots": 6,
+            "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",
+            "fixed_party_words": [15, 20],
+            "preset_party_words": [9, 14],
+            "preset_rule": "append every non--1 preset before scanning the party prefix only to mark matching mandatory states",
+            "party_coordinate_words": [[21, 26], [27, 32]],
+            "selection_states": {"unselected": 0, "selected": 1, "mandatory": 2},
+            "confirm_index": "party_prefix_length",
+            "confirm_requires_nonempty_combatants": True,
+        },
+        "enemy": {
+            "address": hex(BATTLE_ENEMY_SETUP_ADDRESS),
+            "end": hex(BATTLE_ENEMY_SETUP_END),
+            "raw_offset": hex(enemy_raw_offset),
+            "size": len(enemy_raw),
+            "instruction_count": 42,
+            "raw_sha256": sha256(enemy_raw),
+            "ida_loaded_sha256": "dd7d372cd20ca5f93ab279c9f30d6ec874aa1e695bb2b367c4112c11a6c8de3a",
+            "ida_relocation_count": 17,
+            "call_sites": [
+                hex(BATTLE_ENEMY_SETUP_ADDRESS + offset)
+                for offset in BATTLE_ENEMY_SETUP_CALL_OFFSETS
+            ],
+            "call_targets": [hex(target) for target in enemy_calls],
+            "callers": [hex(enemy_caller)],
+            "enemy_slots": 20,
+            "empty_sentinel": -1,
+            "enemy_words": [33, 52],
+            "enemy_coordinate_words": [[53, 72], [73, 92]],
+            "write_order": [
+                "role_id", "side", "x", "y", "initial_mode", "sprite", "occupancy", "count",
+            ],
+            "duplicate_occupancy": "later_write_wins",
         },
     }
 
@@ -2638,6 +2751,7 @@ def build(data_root: Path) -> dict[str, object]:
         "format": "openlegend-b8-battle-goldens-v1",
         "battle_entry": battle_entry_contract(z_dat_bytes),
         "battle_data_loader": battle_data_loader_contract(z_dat_bytes),
+        "battle_setup_machine": battle_setup_machine_contract(z_dat_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
             "record_count": len(war_records),

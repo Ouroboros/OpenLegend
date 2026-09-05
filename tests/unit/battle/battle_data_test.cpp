@@ -6469,6 +6469,8 @@ void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 0);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5110);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5098);
+    OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::changed);
+    OL_CHECK(setup.selection_states()[0U] == 2);
 
     OL_CHECK(setup.apply(PartySelectionAction::previous) == PartySelectionResult::changed);
     OL_CHECK(setup.cursor() == 3U);

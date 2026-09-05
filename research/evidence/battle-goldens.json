@@ -161,6 +161,141 @@
       "fill_value": -1
     }
   },
+  "battle_setup_machine": {
+    "party": {
+      "address": "0x31eb9",
+      "end": "0x3265c",
+      "raw_offset": "0x2b8b9",
+      "size": 1955,
+      "instruction_count": 453,
+      "raw_sha256": "04dbdb0cdb56c248d69df22853e4a21aa8939152839f778631b51cd5602608ae",
+      "ida_loaded_sha256": "6743a9d962317bde209fd1a6c36b54a60678d374fa9ca5a90dfa6b9a934feb0f",
+      "ida_relocation_count": 144,
+      "call_sites": [
+        "0x31ebe",
+        "0x31f7e",
+        "0x32031",
+        "0x32100",
+        "0x321a2",
+        "0x321c0",
+        "0x321d2",
+        "0x321ef",
+        "0x32211",
+        "0x32244",
+        "0x32310",
+        "0x3233c",
+        "0x32358",
+        "0x3237d",
+        "0x323b6",
+        "0x32491",
+        "0x324ad",
+        "0x324c0",
+        "0x325be"
+      ],
+      "call_targets": [
+        "0x3ed1e",
+        "0x3b1e6",
+        "0x3b1e6",
+        "0x3b1e6",
+        "0x29d2d",
+        "0x2cebf",
+        "0x3ef4a",
+        "0x3d832",
+        "0x2cebf",
+        "0x3ef4a",
+        "0x3d832",
+        "0x3d832",
+        "0x3ef4a",
+        "0x3d832",
+        "0x3ef4a",
+        "0x3ef4a",
+        "0x3d832",
+        "0x3d6d1",
+        "0x3b1e6"
+      ],
+      "callers": [
+        "0x31caf"
+      ],
+      "combatant_slots": 26,
+      "combatant_words": 14,
+      "party_slots": 6,
+      "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",
+      "fixed_party_words": [
+        15,
+        20
+      ],
+      "preset_party_words": [
+        9,
+        14
+      ],
+      "preset_rule": "append every non--1 preset before scanning the party prefix only to mark matching mandatory states",
+      "party_coordinate_words": [
+        [
+          21,
+          26
+        ],
+        [
+          27,
+          32
+        ]
+      ],
+      "selection_states": {
+        "unselected": 0,
+        "selected": 1,
+        "mandatory": 2
+      },
+      "confirm_index": "party_prefix_length",
+      "confirm_requires_nonempty_combatants": true
+    },
+    "enemy": {
+      "address": "0x3265c",
+      "end": "0x3271e",
+      "raw_offset": "0x2c05c",
+      "size": 194,
+      "instruction_count": 42,
+      "raw_sha256": "ea791c1d11fb53632d54ca0fbb75f232fb47d894bbb75344e1b219cf1c7bf351",
+      "ida_loaded_sha256": "dd7d372cd20ca5f93ab279c9f30d6ec874aa1e695bb2b367c4112c11a6c8de3a",
+      "ida_relocation_count": 17,
+      "call_sites": [
+        "0x32661",
+        "0x326cb"
+      ],
+      "call_targets": [
+        "0x3ed1e",
+        "0x3b1e6"
+      ],
+      "callers": [
+        "0x31cb4"
+      ],
+      "enemy_slots": 20,
+      "empty_sentinel": -1,
+      "enemy_words": [
+        33,
+        52
+      ],
+      "enemy_coordinate_words": [
+        [
+          53,
+          72
+        ],
+        [
+          73,
+          92
+        ]
+      ],
+      "write_order": [
+        "role_id",
+        "side",
+        "x",
+        "y",
+        "initial_mode",
+        "sprite",
+        "occupancy",
+        "count"
+      ],
+      "duplicate_occupancy": "later_write_wins"
+    }
+  },
   "war_sta": {
     "record_size": 186,
     "record_count": 140,
