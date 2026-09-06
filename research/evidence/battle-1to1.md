@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为31/81；其余50项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为32/81；其余49项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -273,7 +273,7 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 
 入口REVIEW共修正五项差异：队伍来源/payload槽分离、AI面板移除输入等待、暗器状态延后到EFT后、随机后add_hp中间word回绕、damage helper固定kind0。真实source item102/payload item96向量得到effect30、damage19、HP100→81、hurt40→44、poison10不变；add_hp=-32768向量得到damage10921。完整Session锁定动画前状态不变、动画后提交和来源延后；普通物品面板、暗器前奏/首EFT/首damage、移动后首EFT hash为`0xa7542240e4172664`、`0x49aac6569a28fe89`、`0xc65b523bd75389e2`、`0x5bb5153963b97c5e`、`0x16a8f10ce319622b`。修正后入口重审零新增差异；正式原资产golden双生成SHA256为`4b238a115b125d7126e233673e5dff5487d3b798265cae21bc3870bb3f559078`，Linux app Debug 14/14通过。`sub_35803`、`sub_3582B`与`sub_3598C`均按各自独立owner关闭；delegated callee与共享尾caller不传播closure。
 
-`sub_361AC`请求医疗与`sub_36209`请求解毒实际共享同一函数体；后者仅建立相同栈帧后跳入前者。actor行动值严格大于0时先调用`sub_3650E(actor, mode0, value0)`，零或负值跳过；随后无条件从请求目标槽恢复x/y并调用`sub_34C47`自动攻击。现代Session保留move→automatic_attack同步边界、两项零参数和请求目标恢复，现已执行mode0逐格render/present/tick、完整自动攻击及外层完成。真实battle2正行动值请求医疗向量以round value1执行mode0一格移动并恢复请求目标，保留动作码8，首magic整帧hash`0xcc6a249ebb919a23`、最终RNG3295386429、MP20→15、体力100→99→96；两函数均推进为`implemented_pending_review`。
+`sub_361AC`请求医疗owner机器身份固定为93 bytes、22条指令、1个signed分支和6处重定位；raw/loaded SHA256为`717b2ff358eec5fc59796f2eff00fa93a0662ef80c4a4ed99e0dbc021c4255cb`与`a92c3af77c368fcb219065d9a1e1cef84d0a4388fffdccfb50d4eaa2d2d41aa9`。唯一直接caller为`sub_33599`动作8case，忽略EAX并在共享尾写action_done；独立`sub_36209`请求解毒owner自行压栈后跳入`0x361B1`复用主体，但不传播closure。actor signed行动值严格大于0时调用`sub_3650E(actor,mode0,value0)`并忽略返回，零或负值跳过；汇合后重读全局请求目标槽及当前x/y，再无条件调用完整`sub_34C47`自动攻击。现代typed plan、实际逐格Session continuation及外层完成逐块等价；补齐目标移动后重读、正/零/负行动值和非法域回归后，两轮入口审计均零产品差异。真实battle2继续锁定mode0一格移动、请求目标恢复、动作码8、首magic hash`0xcc6a249ebb919a23`及RNG3295386429。正式原资产golden双生成SHA256为`5c491aa130bc3b016f38d4dcea71df94a1a02a893344aa4b01398e86fe0be8f4`，Linux app Debug 14/14通过；本项关闭，`sub_36209`仍待order33独立REVIEW。
 
 `sub_36210` AI医疗与`sub_363AC` AI解毒使用各自ability signed除15加1为射程；首轮目标图命中即执行动作，超距且行动值严格正时调用`sub_3650E(actor,mode1,value=range)`，移动后恢复同一目标再建图。零/负行动值虽然不移动，仍执行第二次建图。第二次仍超距时仅当`2*actor.attack`严格大于`2*wrapped_allied_total/allied_count`才自动攻击，否则休息。完整callee汇编确认IDIV余数和医疗分支两次`sub_3F50B`返回值均无行为效果。现代Session已执行直接与移动后支持状态、FIGHT/EFT双bank、无flash damage及AI外层完成；直接医疗/解毒首magic分别为`0xbec9ef2738ca79b4`/`0xae0f13fbbc4c8083`，医疗距离6/range2移动4格后首magic为`0x2138cfdf8041c6bb`。攻击/休息回退进入完整共享continuation；两函数均推进为`implemented_pending_review`。
 

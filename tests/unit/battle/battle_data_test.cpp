@@ -1281,13 +1281,35 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(medicine_plan->restore_request_target_before_attack);
     OL_CHECK(medicine_plan->outer_marks_action_done_after_handler);
 
+    setup.combatants()[1U].words[combatant_word::x] = static_cast<std::int16_t>(
+        setup.combatants()[1U].words[combatant_word::x] + 2);
+    setup.combatants()[1U].words[combatant_word::y] = static_cast<std::int16_t>(
+        setup.combatants()[1U].words[combatant_word::y] - 1);
     auto resumed = setup.resume_ai_request_after_move(0U, *medicine_plan);
     OL_CHECK(resumed.has_value());
     OL_CHECK(resumed->next_step == BattleAiRequestNextStep::automatic_attack);
     OL_CHECK(resumed->target_slot == 1);
     OL_CHECK(resumed->target.x == setup.combatants()[1U].words[combatant_word::x]);
     OL_CHECK(resumed->target.y == setup.combatants()[1U].words[combatant_word::y]);
+    OL_CHECK(resumed->target.x != medicine_plan->target.x);
+    OL_CHECK(resumed->target.y != medicine_plan->target.y);
     OL_CHECK(!setup.resume_ai_request_after_move(0U, *resumed).has_value());
+
+    setup.combatants()[0U].words[combatant_word::round_value] = 0;
+    const auto zero_medicine_plan = setup.begin_ai_request_plan(0U, medicine_request);
+    OL_CHECK(zero_medicine_plan.has_value());
+    OL_CHECK(zero_medicine_plan->request_action == BattleAiAction::request_medicine);
+    OL_CHECK(zero_medicine_plan->next_step == BattleAiRequestNextStep::automatic_attack);
+    OL_CHECK(zero_medicine_plan->movement_mode == 0);
+    OL_CHECK(zero_medicine_plan->movement_value == 0);
+
+    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    const auto negative_medicine_plan = setup.begin_ai_request_plan(0U, medicine_request);
+    OL_CHECK(negative_medicine_plan.has_value());
+    OL_CHECK(negative_medicine_plan->request_action == BattleAiAction::request_medicine);
+    OL_CHECK(negative_medicine_plan->next_step == BattleAiRequestNextStep::automatic_attack);
+    OL_CHECK(negative_medicine_plan->movement_mode == 0);
+    OL_CHECK(negative_medicine_plan->movement_value == 0);
 
     setup.combatants()[0U].words[combatant_word::round_value] = 0;
     const BattleAiChoice detox_request{
@@ -1306,6 +1328,10 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     BattleAiChoice invalid = medicine_request;
     invalid.action = BattleAiAction::medicine;
     OL_CHECK(!setup.begin_ai_request_plan(0U, invalid).has_value());
+    invalid = medicine_request;
+    invalid.target_slot = -1;
+    OL_CHECK(!setup.begin_ai_request_plan(0U, invalid).has_value());
+    OL_CHECK(!setup.begin_ai_request_plan(99U, medicine_request).has_value());
 }
 
 void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root) {

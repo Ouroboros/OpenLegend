@@ -1033,6 +1033,54 @@
     "invalid_domain": "negative slot/invalid actor or role performs legacy linear access; modern safety rejection allowed",
     "delegated_boundaries": "sub_3ED1E stack probe remains independent owner"
   },
+  "battle_ai_request_medicine_machine": {
+    "address": "0x361ac",
+    "end": "0x36209",
+    "raw_offset": "0x2fbac",
+    "size": 93,
+    "instruction_count": 22,
+    "branch_count": 1,
+    "raw_sha256": "717b2ff358eec5fc59796f2eff00fa93a0662ef80c4a4ed99e0dbc021c4255cb",
+    "loaded_sha256": "a92c3af77c368fcb219065d9a1e1cef84d0a4388fffdccfb50d4eaa2d2d41aa9",
+    "relocation_count": 6,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x361b1",
+      "0x361cd",
+      "0x36200"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3650e",
+      "0x34c47"
+    ],
+    "callers": [
+      "0x33c0e"
+    ],
+    "branch_sites": [
+      "0x361c6"
+    ],
+    "argument": "actor slot is consumed as signed low word through MOVSX",
+    "entry_owner": "sub_33599 action case8 request_medicine",
+    "caller": "sub_33599 ignores EAX, cleans actor argument and later writes actor action_done word13=1",
+    "shared_entry": {
+      "address": "0x361b1",
+      "owner": "sub_36209 request_detox",
+      "jump_sites": [
+        "0x3620e"
+      ],
+      "closure_propagated": false
+    },
+    "movement_gate": "signed combatant round/action word6 > 0 calls sub_3650E(actor, mode=0, value=0); zero or negative skips",
+    "movement_result": "sub_3650E EAX is ignored and both paths reconverge at 0x361D5",
+    "request_target": "signed word_E6EE0 is re-read after movement/skip; target words2/3 overwrite word_556DA/word_556DC",
+    "attack": "sub_34C47(actor) is always called after request target coordinates are restored",
+    "return": "sub_34C47 EAX passes through RET but sub_33599 ignores it",
+    "direct_writes": "only global target x/y coordinates; no direct action, action_done, facing or RNG-state write",
+    "direct_rng_draws": 0,
+    "invalid_domain": "signed actor and request-target indices are unchecked legacy linear accesses; modern safety rejection allowed",
+    "delegated_boundaries": "sub_3ED1E, sub_3650E, sub_34C47 and shared-entry owner sub_36209 remain independent closures"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3366,6 +3414,16 @@
           "request_medicine",
           "request_detox"
         ],
+        "entry_owners": {
+          "request_medicine": {
+            "address": "0x361ac",
+            "action": 8
+          },
+          "request_detox": {
+            "address": "0x36209",
+            "action": 9
+          }
+        },
         "target_slot": 1,
         "target": [
           13,
@@ -3388,7 +3446,10 @@
           "movement_called": false
         },
         "restore_request_target_before_attack": true,
+        "target_slot_reread_after_move": true,
+        "movement_return_ignored": true,
         "automatic_attack_after_move_or_skip": true,
+        "automatic_attack_return_ignored_by_outer": true,
         "outer_marks_action_done_after_handler": true,
         "rng_consumed_before_automatic_attack": false
       },

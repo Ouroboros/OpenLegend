@@ -200,6 +200,15 @@ BATTLE_CARRIED_ITEM_REMOVE_RELOCATION_OFFSETS = (
     0x01E, 0x032, 0x039, 0x040, 0x047, 0x05B, 0x068, 0x071,
 )
 BATTLE_CARRIED_ITEM_REMOVE_CALLER_SITES = (0x36124,)
+BATTLE_AI_REQUEST_MEDICINE_ADDRESS = 0x361AC
+BATTLE_AI_REQUEST_MEDICINE_END = 0x36209
+BATTLE_AI_REQUEST_MEDICINE_CALL_OFFSETS = (0x005, 0x021, 0x054)
+BATTLE_AI_REQUEST_MEDICINE_RELOCATION_OFFSETS = (
+    0x015, 0x02C, 0x036, 0x03D, 0x044, 0x04A,
+)
+BATTLE_AI_REQUEST_MEDICINE_CALLER_SITES = (0x33C0E,)
+BATTLE_AI_REQUEST_SHARED_ENTRY = 0x361B1
+BATTLE_AI_REQUEST_DETOX_JUMP_SITES = (0x3620E,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1183,6 +1192,56 @@ def battle_carried_item_remove_contract(z_dat_bytes: bytes) -> dict[str, object]
     }
 
 
+def battle_ai_request_medicine_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_REQUEST_MEDICINE_ADDRESS,
+        end=BATTLE_AI_REQUEST_MEDICINE_END,
+        call_offsets=BATTLE_AI_REQUEST_MEDICINE_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x3650E, 0x34C47),
+        relocation_offsets=BATTLE_AI_REQUEST_MEDICINE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_REQUEST_MEDICINE_CALLER_SITES,
+        instruction_count=22,
+        branch_count=1,
+    )
+    if contract["raw_sha256"] != (
+        "717b2ff358eec5fc59796f2eff00fa93a0662ef80c4a4ed99e0dbc021c4255cb"
+    ):
+        raise ValueError("Z.DAT request-medicine handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "a92c3af77c368fcb219065d9a1e1cef84d0a4388fffdccfb50d4eaa2d2d41aa9"
+    ):
+        raise ValueError("Z.DAT request-medicine handler relocation image changed")
+    return {
+        **contract,
+        "branch_sites": ["0x361c6"],
+        "argument": "actor slot is consumed as signed low word through MOVSX",
+        "entry_owner": "sub_33599 action case8 request_medicine",
+        "caller":
+            "sub_33599 ignores EAX, cleans actor argument and later writes actor action_done word13=1",
+        "shared_entry": {
+            "address": hex(BATTLE_AI_REQUEST_SHARED_ENTRY),
+            "owner": "sub_36209 request_detox",
+            "jump_sites": [hex(site) for site in BATTLE_AI_REQUEST_DETOX_JUMP_SITES],
+            "closure_propagated": False,
+        },
+        "movement_gate":
+            "signed combatant round/action word6 > 0 calls sub_3650E(actor, mode=0, value=0); zero or negative skips",
+        "movement_result": "sub_3650E EAX is ignored and both paths reconverge at 0x361D5",
+        "request_target":
+            "signed word_E6EE0 is re-read after movement/skip; target words2/3 overwrite word_556DA/word_556DC",
+        "attack": "sub_34C47(actor) is always called after request target coordinates are restored",
+        "return": "sub_34C47 EAX passes through RET but sub_33599 ignores it",
+        "direct_writes":
+            "only global target x/y coordinates; no direct action, action_done, facing or RNG-state write",
+        "direct_rng_draws": 0,
+        "invalid_domain":
+            "signed actor and request-target indices are unchecked legacy linear accesses; modern safety rejection allowed",
+        "delegated_boundaries":
+            "sub_3ED1E, sub_3650E, sub_34C47 and shared-entry owner sub_36209 remain independent closures",
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -1790,6 +1849,10 @@ def shared_item_effect_vector(
 def ai_request_vectors() -> dict[str, object]:
     return {
         "entry_aliases": ["request_medicine", "request_detox"],
+        "entry_owners": {
+            "request_medicine": {"address": "0x361ac", "action": 8},
+            "request_detox": {"address": "0x36209", "action": 9},
+        },
         "target_slot": 1,
         "target": [13, 23],
         "positive_round_value": {
@@ -1809,7 +1872,10 @@ def ai_request_vectors() -> dict[str, object]:
             "movement_called": False,
         },
         "restore_request_target_before_attack": True,
+        "target_slot_reread_after_move": True,
+        "movement_return_ignored": True,
         "automatic_attack_after_move_or_skip": True,
+        "automatic_attack_return_ignored_by_outer": True,
         "outer_marks_action_done_after_handler": True,
         "rng_consumed_before_automatic_attack": False,
     }
@@ -4877,6 +4943,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_throwing_handler_machine": battle_ai_throwing_handler_contract(z_dat_bytes),
         "battle_ai_item_executor_machine": battle_ai_item_executor_contract(z_dat_bytes),
         "battle_carried_item_remove_machine": battle_carried_item_remove_contract(z_dat_bytes),
+        "battle_ai_request_medicine_machine": battle_ai_request_medicine_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
