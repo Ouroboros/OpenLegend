@@ -2118,6 +2118,80 @@ void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& dat
         OL_CHECK(radial->first_reachability_passed);
         OL_CHECK(radial->second_reachability_passed);
         OL_CHECK(radial->path_marked);
+
+        actor[combatant_word::round_value] = 1;
+        const auto outside_turn =
+            setup.begin_ai_movement_plan(0U, 1, requested_target, 2, 0);
+        OL_CHECK(outside_turn.has_value());
+        OL_CHECK(!outside_turn->preliminary_within_turn_range);
+        OL_CHECK(
+            outside_turn->selection ==
+            BattleAiMovementSelection::generic_reachable_neighbor);
+        OL_CHECK((outside_turn->destination == BattlePathCoord{26, 25}));
+        OL_CHECK(outside_turn->selected_distance_layer == -1);
+        OL_CHECK(outside_turn->movement_map_build_count == 3);
+        OL_CHECK(outside_turn->first_reachability_passed);
+        OL_CHECK(outside_turn->second_reachability_passed);
+        OL_CHECK(outside_turn->path_marked);
+
+        actor[combatant_word::round_value] = 8;
+        const auto second_pass = setup.begin_ai_movement_plan(
+            0U, -1, BattlePathCoord{28, 26}, 0, 0);
+        OL_CHECK(second_pass.has_value());
+        OL_CHECK(
+            second_pass->selection ==
+            BattleAiMovementSelection::generic_reachable_neighbor);
+        OL_CHECK((second_pass->destination == BattlePathCoord{28, 25}));
+        OL_CHECK(second_pass->movement_map_build_count == 7);
+        OL_CHECK(second_pass->first_reachability_passed);
+        OL_CHECK(second_pass->second_reachability_passed);
+        OL_CHECK(second_pass->path_marked);
+        OL_CHECK((
+            second_pass->pathing.next_marked_step(second_pass->source) ==
+            BattlePathCoord{27, 24}));
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        const auto& actor = setup.combatants()[0U].words;
+        const auto& target = setup.combatants()[1U].words;
+        const BattlePathCoord source{
+            actor[combatant_word::x],
+            actor[combatant_word::y],
+        };
+        const BattlePathCoord requested_target{
+            target[combatant_word::x],
+            target[combatant_word::y],
+        };
+        std::fill(data.occupancy().begin(), data.occupancy().end(), 0);
+
+        const auto retreated =
+            setup.begin_ai_movement_plan(0U, -1, requested_target, 0, 0);
+        OL_CHECK(retreated.has_value());
+        OL_CHECK(
+            retreated->selection ==
+            BattleAiMovementSelection::generic_reachable_neighbor);
+        OL_CHECK(retreated->destination == source);
+        OL_CHECK(retreated->movement_map_build_count == 10);
+        OL_CHECK(!retreated->first_reachability_passed);
+        OL_CHECK(!retreated->second_reachability_passed);
+        OL_CHECK(!retreated->path_marked);
+        OL_CHECK(retreated->complete);
+
+        const auto no_layer =
+            setup.begin_ai_movement_plan(0U, -1, requested_target, 3, 2);
+        OL_CHECK(no_layer.has_value());
+        OL_CHECK(no_layer->selection == BattleAiMovementSelection::range_layer);
+        OL_CHECK(no_layer->selected_distance_layer == -1);
+        OL_CHECK(no_layer->destination == requested_target);
+        OL_CHECK(no_layer->movement_map_build_count == 2);
+        OL_CHECK(no_layer->first_reachability_passed);
+        OL_CHECK(!no_layer->second_reachability_passed);
+        OL_CHECK(!no_layer->path_marked);
+        OL_CHECK(no_layer->complete);
     }
 
     {

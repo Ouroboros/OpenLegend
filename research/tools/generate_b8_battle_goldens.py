@@ -323,6 +323,132 @@ BATTLE_AI_SUPPORT_DETOX_RELOCATION_OFFSETS = (
     0x13D,
 )
 BATTLE_AI_SUPPORT_DETOX_CALLER_SITES = (0x33BED,)
+BATTLE_AI_MOVEMENT_ADDRESS = 0x3650E
+BATTLE_AI_MOVEMENT_END = 0x36A98
+BATTLE_AI_MOVEMENT_CALL_OFFSETS = (
+    0x005,
+    0x059,
+    0x0EA,
+    0x15F,
+    0x176,
+    0x229,
+    0x24B,
+    0x264,
+    0x2B6,
+    0x31D,
+    0x331,
+    0x3CD,
+    0x413,
+    0x48E,
+)
+BATTLE_AI_MOVEMENT_CALL_TARGETS = (
+    0x3ED1E,
+    0x36E7F,
+    0x36E06,
+    0x3F50B,
+    0x3F50B,
+    0x36E06,
+    0x37245,
+    0x37355,
+    0x36E06,
+    0x3F50B,
+    0x3F50B,
+    0x36E06,
+    0x36E06,
+    0x36E06,
+)
+BATTLE_AI_MOVEMENT_RELOCATION_OFFSETS = (
+    0x02E,
+    0x039,
+    0x043,
+    0x049,
+    0x04F,
+    0x055,
+    0x06F,
+    0x076,
+    0x090,
+    0x09A,
+    0x0BF,
+    0x0CA,
+    0x0D4,
+    0x0DA,
+    0x0E0,
+    0x0E6,
+    0x127,
+    0x135,
+    0x13E,
+    0x1CC,
+    0x1D6,
+    0x1E0,
+    0x1EA,
+    0x1F0,
+    0x1F7,
+    0x1FF,
+    0x206,
+    0x20F,
+    0x219,
+    0x221,
+    0x231,
+    0x23B,
+    0x243,
+    0x28B,
+    0x296,
+    0x2A0,
+    0x2A6,
+    0x2AC,
+    0x2B2,
+    0x2FA,
+    0x383,
+    0x38D,
+    0x397,
+    0x3A1,
+    0x3B5,
+    0x3BC,
+    0x3C3,
+    0x3C9,
+    0x3F8,
+    0x400,
+    0x407,
+    0x40F,
+    0x425,
+    0x430,
+    0x439,
+    0x442,
+    0x449,
+    0x473,
+    0x47B,
+    0x482,
+    0x48A,
+    0x4A0,
+    0x4AB,
+    0x4B2,
+    0x4D8,
+    0x4DF,
+    0x4ED,
+    0x4F8,
+    0x4FF,
+    0x50E,
+    0x516,
+    0x51D,
+    0x52B,
+    0x533,
+    0x53A,
+    0x549,
+    0x559,
+    0x560,
+    0x56C,
+    0x573,
+)
+BATTLE_AI_MOVEMENT_CALLER_SITES = (
+    0x33BC6,
+    0x34C22,
+    0x34E80,
+    0x3553E,
+    0x358FF,
+    0x361CD,
+    0x362AB,
+    0x36447,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1498,6 +1624,67 @@ def battle_ai_support_detox_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_ai_movement_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_MOVEMENT_ADDRESS,
+        end=BATTLE_AI_MOVEMENT_END,
+        call_offsets=BATTLE_AI_MOVEMENT_CALL_OFFSETS,
+        expected_call_targets=BATTLE_AI_MOVEMENT_CALL_TARGETS,
+        relocation_offsets=BATTLE_AI_MOVEMENT_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_MOVEMENT_CALLER_SITES,
+        instruction_count=311,
+        branch_count=57,
+    )
+    if contract["raw_sha256"] != (
+        "31785d54867d026266133cad9cd3ae56f0d9efe11b6627ef1bb62781029a97f7"
+    ):
+        raise ValueError("Z.DAT AI movement raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "cf5d93c2bda18388199c1a72e5c0cf20207281276bf2a360cb0f304ac2d65e63"
+    ):
+        raise ValueError("Z.DAT AI movement relocation image changed")
+    direction_words = struct.unpack_from("<8h", z_dat_bytes, 0x556DE - Z_DAT_LOAD_BASE)
+    if direction_words != (0, 1, -1, 0, -1, 0, 0, 1):
+        raise ValueError("Z.DAT AI movement direction deltas changed")
+    return {
+        **contract,
+        "direction_deltas": [[0, -1], [1, 0], [-1, 0], [0, 1]],
+        "normal_callers": [
+            {"site": "0x33bc6", "role": "direct AI move", "mode": 0},
+            {"site": "0x34c22", "role": "AI item relocation", "mode": 0},
+            {"site": "0x34e80", "role": "automatic attack", "mode": "computed 0/1/2"},
+            {"site": "0x3553e", "role": "AI poison", "mode": 3},
+            {"site": "0x358ff", "role": "AI throwing weapon", "mode": 1},
+            {"site": "0x361cd", "role": "request medicine/detox", "mode": 0},
+            {"site": "0x362ab", "role": "AI medicine", "mode": 1},
+            {"site": "0x36447", "role": "AI detox", "mode": 1},
+        ],
+        "external_internal_entry": {
+            "site": "0x36ba7",
+            "target": "0x3677e",
+            "role": "sub_36AF7 shared pop EDI/ESI/EBX/RET; preceding BX=1 makes JNZ untaken",
+        },
+        "arguments":
+            "actor, mode and range are signed low words; requested target is word_556DA/word_556DC",
+        "preliminary":
+            "target-source targeting distance at actor minus signed actor round <= signed range sets within-turn flag",
+        "mode2":
+            "mode2 plus within-turn uses descending exact range layers aligned with target x or y; otherwise generic selection",
+        "mode3": "mode3 always uses descending exact range layers without alignment",
+        "layer_scan":
+            "x outer/y inner scan, strict nearest Manhattan with first tie and signed layer decrement until zero",
+        "generic":
+            "actor-source movement map; up/right/left/down target neighbors first require actor-axis alignment, then accept any path<128, else x-priority/y target retreat repeats",
+        "reachability":
+            "source==destination exits; otherwise current-map path<128, rebuilt actor-map path<128, shortest-path mark, then movement delegation",
+        "movement_delegation": "sub_37355(actor,ai_flag1,mode,range); EAX is not branched on",
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_3ED1E, sub_36E7F, sub_36E06, sub_3F50B, sub_37245, sub_37355 and sub_36AF7 shared tail remain independent owners",
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -2356,6 +2543,7 @@ def ai_movement_vectors(
 ) -> dict[str, object]:
     source = (26, 24)
     target = (26, 26)
+    fully_occupied = set(range(4096))
     return {
         "battle_id": 4,
         "battlefield_id": 2,
@@ -2375,6 +2563,22 @@ def ai_movement_vectors(
         "mode_3": ai_movement_plan_vector(
             field_words, occupied, source=source, target=target,
             round_value=20, mode=3, range_value=3,
+        ),
+        "mode_2_outside_turn": ai_movement_plan_vector(
+            field_words, occupied, source=source, target=target,
+            round_value=1, mode=2, range_value=0,
+        ),
+        "generic_second_pass": ai_movement_plan_vector(
+            field_words, occupied, source=source, target=(28, 26),
+            round_value=8, mode=0, range_value=0,
+        ),
+        "generic_axis_retreat_to_source": ai_movement_plan_vector(
+            field_words, fully_occupied, source=source, target=target,
+            round_value=8, mode=0, range_value=0,
+        ),
+        "mode_3_no_layer_second_reachability_failure": ai_movement_plan_vector(
+            field_words, fully_occupied, source=source, target=target,
+            round_value=20, mode=3, range_value=2,
         ),
         "first_step_state": {
             "source_path_after_step": 255,
@@ -5238,6 +5442,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_request_detox_machine": battle_ai_request_detox_contract(z_dat_bytes),
         "battle_ai_support_medicine_machine": battle_ai_support_medicine_contract(z_dat_bytes),
         "battle_ai_support_detox_machine": battle_ai_support_detox_contract(z_dat_bytes),
+        "battle_ai_movement_machine": battle_ai_movement_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

@@ -1273,6 +1273,135 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_3ED1E, sub_36E7F, sub_39B8E, sub_3650E, sub_34C47, sub_34AD3 and loc_39A3E remain independent owners"
   },
+  "battle_ai_movement_machine": {
+    "address": "0x3650e",
+    "end": "0x36a98",
+    "raw_offset": "0x2ff0e",
+    "size": 1418,
+    "instruction_count": 311,
+    "branch_count": 57,
+    "raw_sha256": "31785d54867d026266133cad9cd3ae56f0d9efe11b6627ef1bb62781029a97f7",
+    "loaded_sha256": "cf5d93c2bda18388199c1a72e5c0cf20207281276bf2a360cb0f304ac2d65e63",
+    "relocation_count": 80,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36513",
+      "0x36567",
+      "0x365f8",
+      "0x3666d",
+      "0x36684",
+      "0x36737",
+      "0x36759",
+      "0x36772",
+      "0x367c4",
+      "0x3682b",
+      "0x3683f",
+      "0x368db",
+      "0x36921",
+      "0x3699c"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e7f",
+      "0x36e06",
+      "0x3f50b",
+      "0x3f50b",
+      "0x36e06",
+      "0x37245",
+      "0x37355",
+      "0x36e06",
+      "0x3f50b",
+      "0x3f50b",
+      "0x36e06",
+      "0x36e06",
+      "0x36e06"
+    ],
+    "callers": [
+      "0x33bc6",
+      "0x34c22",
+      "0x34e80",
+      "0x3553e",
+      "0x358ff",
+      "0x361cd",
+      "0x362ab",
+      "0x36447"
+    ],
+    "direction_deltas": [
+      [
+        0,
+        -1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "normal_callers": [
+      {
+        "site": "0x33bc6",
+        "role": "direct AI move",
+        "mode": 0
+      },
+      {
+        "site": "0x34c22",
+        "role": "AI item relocation",
+        "mode": 0
+      },
+      {
+        "site": "0x34e80",
+        "role": "automatic attack",
+        "mode": "computed 0/1/2"
+      },
+      {
+        "site": "0x3553e",
+        "role": "AI poison",
+        "mode": 3
+      },
+      {
+        "site": "0x358ff",
+        "role": "AI throwing weapon",
+        "mode": 1
+      },
+      {
+        "site": "0x361cd",
+        "role": "request medicine/detox",
+        "mode": 0
+      },
+      {
+        "site": "0x362ab",
+        "role": "AI medicine",
+        "mode": 1
+      },
+      {
+        "site": "0x36447",
+        "role": "AI detox",
+        "mode": 1
+      }
+    ],
+    "external_internal_entry": {
+      "site": "0x36ba7",
+      "target": "0x3677e",
+      "role": "sub_36AF7 shared pop EDI/ESI/EBX/RET; preceding BX=1 makes JNZ untaken"
+    },
+    "arguments": "actor, mode and range are signed low words; requested target is word_556DA/word_556DC",
+    "preliminary": "target-source targeting distance at actor minus signed actor round <= signed range sets within-turn flag",
+    "mode2": "mode2 plus within-turn uses descending exact range layers aligned with target x or y; otherwise generic selection",
+    "mode3": "mode3 always uses descending exact range layers without alignment",
+    "layer_scan": "x outer/y inner scan, strict nearest Manhattan with first tie and signed layer decrement until zero",
+    "generic": "actor-source movement map; up/right/left/down target neighbors first require actor-axis alignment, then accept any path<128, else x-priority/y target retreat repeats",
+    "reachability": "source==destination exits; otherwise current-map path<128, rebuilt actor-map path<128, shortest-path mark, then movement delegation",
+    "movement_delegation": "sub_37355(actor,ai_flag1,mode,range); EAX is not branched on",
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_3ED1E, sub_36E7F, sub_36E06, sub_3F50B, sub_37245, sub_37355 and sub_36AF7 shared tail remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3852,6 +3981,120 @@
             25,
             24
           ]
+        },
+        "mode_2_outside_turn": {
+          "mode": 2,
+          "range": 0,
+          "round_value": 1,
+          "selection": "generic_reachable_neighbor",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": false,
+          "destination": [
+            26,
+            25
+          ],
+          "selected_distance_layer": -1,
+          "movement_map_build_count": 3,
+          "first_reachability_passed": true,
+          "second_reachability_passed": true,
+          "path_marked": true,
+          "marked_path_hash": "0xbb9bb90a2b318db7",
+          "first_step": [
+            26,
+            25
+          ]
+        },
+        "generic_second_pass": {
+          "mode": 0,
+          "range": 0,
+          "round_value": 8,
+          "selection": "generic_reachable_neighbor",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            28,
+            26
+          ],
+          "target_distance": 4,
+          "within_turn_range": true,
+          "destination": [
+            28,
+            25
+          ],
+          "selected_distance_layer": -1,
+          "movement_map_build_count": 7,
+          "first_reachability_passed": true,
+          "second_reachability_passed": true,
+          "path_marked": true,
+          "marked_path_hash": "0x55618ad3802bf866",
+          "first_step": [
+            27,
+            24
+          ]
+        },
+        "generic_axis_retreat_to_source": {
+          "mode": 0,
+          "range": 0,
+          "round_value": 8,
+          "selection": "generic_reachable_neighbor",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": true,
+          "destination": [
+            26,
+            24
+          ],
+          "selected_distance_layer": -1,
+          "movement_map_build_count": 10,
+          "first_reachability_passed": false,
+          "second_reachability_passed": false,
+          "path_marked": false,
+          "marked_path_hash": "0x5b08c4108d12daa4",
+          "first_step": null
+        },
+        "mode_3_no_layer_second_reachability_failure": {
+          "mode": 3,
+          "range": 2,
+          "round_value": 20,
+          "selection": "range_layer",
+          "source": [
+            26,
+            24
+          ],
+          "target": [
+            26,
+            26
+          ],
+          "target_distance": 2,
+          "within_turn_range": true,
+          "destination": [
+            26,
+            26
+          ],
+          "selected_distance_layer": -1,
+          "movement_map_build_count": 2,
+          "first_reachability_passed": true,
+          "second_reachability_passed": false,
+          "path_marked": false,
+          "marked_path_hash": "0x5b08c4108d12daa4",
+          "first_step": null
         },
         "first_step_state": {
           "source_path_after_step": 255,
