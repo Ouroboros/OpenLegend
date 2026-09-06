@@ -728,6 +728,16 @@ BATTLE_HP_DAMAGE_CALLER_SITES = (
     0x38A7F, 0x38B77, 0x38C6F, 0x38D6C,
 )
 BATTLE_HP_DAMAGE_SHARED_TAIL_ADDRESS = 0x3612C
+BATTLE_MP_DAMAGE_ADDRESS = 0x395EC
+BATTLE_MP_DAMAGE_END = 0x39776
+BATTLE_MP_DAMAGE_CALL_OFFSETS = (0x005, 0x04E, 0x05A, 0x0A7, 0x0FC, 0x108)
+BATTLE_MP_DAMAGE_CALL_TARGETS = (0x3ED1E, 0x3D612, 0x3D612, 0x3D612, 0x3D612, 0x3D612)
+BATTLE_MP_DAMAGE_RELOCATION_OFFSETS = (
+    0x01F, 0x03A, 0x068, 0x07B, 0x082, 0x08A, 0x099, 0x0B2,
+    0x0B9, 0x0C4, 0x0D8, 0x0DF, 0x0E6, 0x0EF, 0x0F6, 0x131,
+    0x144, 0x14B, 0x152, 0x159, 0x163, 0x177,
+)
+BATTLE_MP_DAMAGE_CALLER_SITES = (0x37B76,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -5339,6 +5349,245 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_mp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_MP_DAMAGE_ADDRESS,
+        end=BATTLE_MP_DAMAGE_END,
+        call_offsets=BATTLE_MP_DAMAGE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_MP_DAMAGE_CALL_TARGETS,
+        relocation_offsets=BATTLE_MP_DAMAGE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_MP_DAMAGE_CALLER_SITES,
+        instruction_count=96,
+        branch_count=3,
+    )
+    if contract["raw_sha256"] != (
+        "ce826212a2e10ca85304d3fc172700a76764ea80f571dfa9dbcd01f604007cc1"
+    ):
+        raise ValueError("Z.DAT MP-damage raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "df416c290c6f739366caa15baf2e1a5696f197aa875e740fcc4fbcd9d66a7eb0"
+    ):
+        raise ValueError("Z.DAT MP-damage relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("caller_dispatch", 0x37B11, 0x37B8F,
+         "bde05b33cfcea0b74b9287ee16e7e4fae60743a83ecc00d23a43a48dbad323f1"),
+        ("entry_level_variance", 0x395EC, 0x39650,
+         "2a70b978157e6eba7f24a2d78fa3f6deaac3502ff5282818fe59494f19780ac7"),
+        ("actor_mp_growth", 0x39650, 0x396B6,
+         "2af3ff52e7d0b392792f997d81ab948f90bce5b7beaec877f1435057d309cb81"),
+        ("actor_variance_clamp", 0x396B6, 0x396E6,
+         "f9a5de07436a647f1748eee634f8283da6b84df6a85613e85fc9cef4f694d3c6"),
+        ("target_drain", 0x396E6, 0x39755,
+         "517572f980f9227c8995c963278a2b7349d7c62baec506f811df1001cd2ef634"),
+        ("return", 0x39755, 0x39776,
+         "6c97b11751a3c0b9d0c8d2c2a1720f8896a6a4620f8175ff1187294a0624ddcc"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT MP-damage {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def simulate(
+        *,
+        actor_mp: int = 10,
+        actor_max_mp: int = 20,
+        target_mp: int = 50,
+        proficiency: int = 299,
+        add_mp_levels: list[int] | None = None,
+        hurt_mp_levels: list[int] | None = None,
+        seed: int = 1,
+    ) -> dict[str, object]:
+        add_levels = [20] * 10 if add_mp_levels is None else add_mp_levels
+        hurt_levels = [15] * 10 if hurt_mp_levels is None else hurt_mp_levels
+        if len(add_levels) != 10 or len(hurt_levels) != 10:
+            raise ValueError("MP-damage vectors require ten magic levels")
+        level = (proficiency & 0xFFFF) // 100
+        if level >= 10:
+            raise ValueError("MP-damage vector left the ten-level asset domain")
+        add_mp = wrapping_i16(add_levels[level])
+        hurt_mp = wrapping_i16(hurt_levels[level])
+        calls = []
+
+        def draw(state: int, bound: int) -> tuple[int, int]:
+            before = state
+            value, state = legacy_bounded(state, bound)
+            calls.append([bound, value, state != before])
+            return value, state
+
+        first, seed = draw(seed, 3)
+        second, seed = draw(seed, 3)
+        actor_variance = first - second
+
+        actor_mp = wrapping_i16(wrapping_i16(actor_mp) + add_mp)
+        maximum_bound = trunc_div(add_mp, 2)
+        maximum_gain, seed = draw(seed, maximum_bound)
+        actor_max_mp = wrapping_i16(wrapping_i16(actor_max_mp) + maximum_gain)
+        if actor_max_mp >= 999:
+            actor_max_mp = 999
+        actor_mp = wrapping_i16(actor_mp + actor_variance)
+        if actor_mp >= actor_max_mp:
+            actor_mp = actor_max_mp
+
+        first, seed = draw(seed, 3)
+        second, seed = draw(seed, 3)
+        target_variance = first - second
+        target_before = wrapping_i16(target_mp)
+        target_mp = wrapping_i16(target_before - hurt_mp)
+        target_mp = wrapping_i16(target_mp - target_variance)
+        if target_mp <= 0:
+            target_mp = 0
+        drained = target_before - target_mp
+        return {
+            "level": level,
+            "add_mp": add_mp,
+            "hurt_mp": hurt_mp,
+            "rng_calls": calls,
+            "rng_state": seed,
+            "actor_variance": actor_variance,
+            "maximum_gain": maximum_gain,
+            "target_variance": target_variance,
+            "actor_mp": actor_mp,
+            "actor_max_mp": actor_max_mp,
+            "target_mp": target_mp,
+            "drained": drained,
+            "caller_damage_word": wrapping_i16(drained),
+        }
+
+    vectors = {
+        "baseline": simulate(),
+        "add_zero_skips_third_rng": simulate(add_mp_levels=[0] * 10),
+        "add_three_bound_one_skips": simulate(add_mp_levels=[3] * 10),
+        "add_four_bound_two_consumes": simulate(add_mp_levels=[4] * 10),
+        "negative_add_mp": simulate(add_mp_levels=[-3] * 10),
+        "maximum_cap": simulate(actor_max_mp=998),
+        "current_mp_wrap": simulate(
+            actor_mp=32767,
+            actor_max_mp=998,
+            add_mp_levels=[1] * 10,
+        ),
+        "maximum_mp_wrap_clamps_current": simulate(actor_max_mp=32767),
+        "target_exact_zero": simulate(target_mp=15),
+        "target_under_zero": simulate(target_mp=14),
+        "seed_two_target_variance": simulate(seed=2),
+        "target_positive_wrap_clamps": simulate(
+            target_mp=32767,
+            add_mp_levels=[0] * 10,
+            hurt_mp_levels=[-1] * 10,
+        ),
+        "target_negative_wrap_clamps": simulate(
+            target_mp=-32768,
+            add_mp_levels=[0] * 10,
+            hurt_mp_levels=[1] * 10,
+        ),
+    }
+    if vectors["baseline"] != {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+            [3, 2, True], [3, 1, True], [10, 3, True],
+            [3, 1, True], [3, 1, True],
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 3,
+        "target_variance": 0,
+        "actor_mp": 23,
+        "actor_max_mp": 23,
+        "target_mp": 35,
+        "drained": 15,
+        "caller_damage_word": 15,
+    }:
+        raise ValueError("MP-damage baseline vector changed")
+    if vectors["add_zero_skips_third_rng"]["rng_state"] != 3295386429 or (
+        vectors["add_zero_skips_third_rng"]["drained"] != 14
+    ):
+        raise ValueError("MP-damage zero add_mp RNG boundary changed")
+    if vectors["add_three_bound_one_skips"]["rng_calls"][2] != [1, 0, False] or (
+        vectors["add_four_bound_two_consumes"]["rng_calls"][2] != [2, 1, True]
+    ):
+        raise ValueError("MP-damage third RNG consumption boundary changed")
+    if vectors["negative_add_mp"]["actor_mp"] != 8:
+        raise ValueError("MP-damage negative add_mp signed division changed")
+    if vectors["maximum_cap"]["actor_max_mp"] != 999 or (
+        vectors["current_mp_wrap"]["actor_mp"] != -32767
+    ) or vectors["maximum_mp_wrap_clamps_current"]["actor_mp"] != -32766:
+        raise ValueError("MP-damage actor MP cap or wrapping changed")
+    if vectors["target_exact_zero"]["drained"] != 15 or (
+        vectors["target_under_zero"]["drained"] != 14
+    ):
+        raise ValueError("MP-damage target zero clamp changed")
+    if vectors["seed_two_target_variance"]["drained"] != 16:
+        raise ValueError("MP-damage target variance changed")
+    if vectors["target_positive_wrap_clamps"]["drained"] != 32767 or (
+        vectors["target_negative_wrap_clamps"]["drained"] != -32768
+    ):
+        raise ValueError("MP-damage target wrapping or signed return changed")
+
+    vector_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "b3eaaa9b520a536c2a1f2d00956a2bbb33c83c9b748e5dcc542889d99ac4c67f":
+        raise ValueError("MP-damage independent vector set changed")
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_MP_DAMAGE_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 28,
+        "local_return_sites": ["0x39775"],
+        "machine_slices": machine_slices,
+        "arguments": {
+            "actor_combatant": "passed by caller but never read",
+            "target_combatant": "passed by caller but never read",
+            "attacker_role": "signed low16",
+            "target_role": "signed low16",
+            "magic_slot": "signed low16",
+            "distance": "passed by caller but never read",
+        },
+        "level": "unsigned proficiency/100; valid ten-level asset domain is 0..9",
+        "rng_order": [3, 3, "signed add_mp/2", 3, 3],
+        "rng_consumption": (
+            "all five helper calls execute; the third does not advance state when its bound "
+            "is <=1 or >30000"
+        ),
+        "actor_writes": (
+            "current MP += add_mp with low16 wrap; maximum MP += third RNG result with "
+            "low16 wrap and signed >=999 cap; current MP += first-second and signed "
+            ">= maximum clamps to maximum; no lower clamp"
+        ),
+        "target_writes": (
+            "current MP subtracts hurt_mp then fourth-fifth RNG difference through two low16 "
+            "writes; signed <=0 clears to zero"
+        ),
+        "return_contract": (
+            "signed target MP before minus signed final target MP in EAX; sole caller writes AX "
+            "to target combatant word9"
+        ),
+        "caller_contract": (
+            "square hurt-type1 dispatch sets effect kind3, passes six arguments, reclaims 24 "
+            "bytes and writes returned AX as displayed damage"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code may reject invalid combatant, role, magic, slot and unsigned level "
+            "indices that make the machine access outside loaded records"
+        ),
+        "closure_boundary": "stack probe, RNG helper and square-area caller remain independent",
+    }
+
+
 def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -9272,6 +9521,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_magic_selection_machine":
             battle_magic_selection_contract(z_dat_bytes, magic_bytes),
         "battle_hp_damage_machine": battle_hp_damage_contract(z_dat_bytes),
+        "battle_mp_damage_machine": battle_mp_damage_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

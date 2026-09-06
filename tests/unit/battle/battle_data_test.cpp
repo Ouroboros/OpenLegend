@@ -8577,6 +8577,134 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 23);
     OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
 
+    const auto reset_mp_case = [&] {
+        actor.set_word(openlegend::model::role_word::magic_id_begin + 2U, 5);
+        actor.set_word(openlegend::model::role_word::magic_level_begin + 2U, 200);
+        actor.set_word(openlegend::model::role_word::mp, 10);
+        actor.set_word(openlegend::model::role_word::maximum_mp, 20);
+        target.set_word(openlegend::model::role_word::mp, 50);
+        magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 20);
+        magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 15);
+        mp_random.seed(1U);
+    };
+
+    reset_mp_case();
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 0);
+    const auto zero_add_mp = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(zero_add_mp == 14);
+    OL_CHECK(mp_random.state() == 3'295'386'429U);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 11);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 20);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 36);
+
+    reset_mp_case();
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 3);
+    const auto bound_one_add_mp = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(bound_one_add_mp == 14);
+    OL_CHECK(mp_random.state() == 3'295'386'429U);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 14);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 20);
+
+    reset_mp_case();
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 4);
+    const auto bound_two_add_mp = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(bound_two_add_mp == 15);
+    OL_CHECK(mp_random.state() == 4'182'499'122U);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 15);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 21);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
+
+    reset_mp_case();
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, -3);
+    const auto negative_add_mp = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(negative_add_mp == 14);
+    OL_CHECK(mp_random.state() == 3'295'386'429U);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 8);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 20);
+
+    reset_mp_case();
+    actor.set_word(openlegend::model::role_word::maximum_mp, 998);
+    const auto maximum_mp_cap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(maximum_mp_cap == 15);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 31);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 999);
+
+    reset_mp_case();
+    actor.set_word(openlegend::model::role_word::mp, std::numeric_limits<std::int16_t>::max());
+    actor.set_word(openlegend::model::role_word::maximum_mp, 998);
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 1);
+    const auto current_mp_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(current_mp_wrap == 14);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == -32767);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 998);
+
+    reset_mp_case();
+    actor.set_word(
+        openlegend::model::role_word::maximum_mp,
+        std::numeric_limits<std::int16_t>::max());
+    const auto maximum_mp_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(maximum_mp_wrap == 15);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == -32766);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == -32766);
+
+    reset_mp_case();
+    target.set_word(openlegend::model::role_word::mp, 15);
+    const auto exact_zero_mp = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(exact_zero_mp == 15);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 0);
+
+    reset_mp_case();
+    target.set_word(openlegend::model::role_word::mp, 14);
+    const auto under_zero_mp = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(under_zero_mp == 14);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 0);
+
+    reset_mp_case();
+    mp_random.seed(2U);
+    const auto target_variance = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(target_variance == 16);
+    OL_CHECK(mp_random.state() == 3'840'747'375U);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 29);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 29);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 34);
+
+    reset_mp_case();
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 0);
+    magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, -1);
+    target.set_word(
+        openlegend::model::role_word::mp,
+        std::numeric_limits<std::int16_t>::max());
+    const auto positive_target_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(positive_target_wrap == std::numeric_limits<std::int16_t>::max());
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 0);
+
+    reset_mp_case();
+    magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 0);
+    magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 1);
+    target.set_word(
+        openlegend::model::role_word::mp,
+        std::numeric_limits<std::int16_t>::min());
+    const auto negative_target_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(negative_target_wrap == std::numeric_limits<std::int16_t>::min());
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 0);
+
+    reset_mp_case();
+    const auto target_role_before = setup.combatants()[1U].words[combatant_word::role_id];
+    setup.combatants()[1U].words[combatant_word::role_id] =
+        setup.combatants()[0U].words[combatant_word::role_id];
+    const auto aliased_role = setup.apply_mp_damage(0U, 1U, 2, mp_random);
+    OL_CHECK(aliased_role == 2);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 8);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 23);
+    setup.combatants()[1U].words[combatant_word::role_id] = target_role_before;
+
+    reset_mp_case();
+    const auto invalid_mp_state = mp_random.state();
+    OL_CHECK(!setup.apply_mp_damage(99U, 1U, 2, mp_random).has_value());
+    OL_CHECK(!setup.apply_mp_damage(0U, 99U, 2, mp_random).has_value());
+    OL_CHECK(!setup.apply_mp_damage(0U, 1U, 10, mp_random).has_value());
+    OL_CHECK(mp_random.state() == invalid_mp_state);
+
     const auto invalid_state = hp_random.state();
     OL_CHECK(!setup.apply_hp_damage(99U, 1U, 2, 1, 0, hp_random).has_value());
     OL_CHECK(!setup.apply_hp_damage(0U, 99U, 2, 1, 0, hp_random).has_value());

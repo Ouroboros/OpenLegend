@@ -7984,6 +7984,662 @@
     "platform_adaptation_boundary": "modern code may reject invalid combatant, role, magic, equipment, level and other malformed indices that make the machine access outside loaded records",
     "closure_boundary": "stack probe, RNG helper, square/cross/line callers, shared cost-scale consumer and shared-tail owner remain independent"
   },
+  "battle_mp_damage_machine": {
+    "address": "0x395ec",
+    "end": "0x39776",
+    "raw_offset": "0x32fec",
+    "size": 394,
+    "instruction_count": 96,
+    "branch_count": 3,
+    "raw_sha256": "ce826212a2e10ca85304d3fc172700a76764ea80f571dfa9dbcd01f604007cc1",
+    "loaded_sha256": "df416c290c6f739366caa15baf2e1a5696f197aa875e740fcc4fbcd9d66a7eb0",
+    "relocation_count": 22,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x395f1",
+      "0x3963a",
+      "0x39646",
+      "0x39693",
+      "0x396e8",
+      "0x396f4"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612"
+    ],
+    "callers": [
+      "0x37b76"
+    ],
+    "relocation_offsets": [
+      "0x1f",
+      "0x3a",
+      "0x68",
+      "0x7b",
+      "0x82",
+      "0x8a",
+      "0x99",
+      "0xb2",
+      "0xb9",
+      "0xc4",
+      "0xd8",
+      "0xdf",
+      "0xe6",
+      "0xef",
+      "0xf6",
+      "0x131",
+      "0x144",
+      "0x14b",
+      "0x152",
+      "0x159",
+      "0x163",
+      "0x177"
+    ],
+    "stack_probe_bytes": 28,
+    "local_return_sites": [
+      "0x39775"
+    ],
+    "machine_slices": {
+      "caller_dispatch": {
+        "address": "0x37b11",
+        "end": "0x37b8f",
+        "size": 126,
+        "sha256": "bde05b33cfcea0b74b9287ee16e7e4fae60743a83ecc00d23a43a48dbad323f1"
+      },
+      "entry_level_variance": {
+        "address": "0x395ec",
+        "end": "0x39650",
+        "size": 100,
+        "sha256": "2a70b978157e6eba7f24a2d78fa3f6deaac3502ff5282818fe59494f19780ac7"
+      },
+      "actor_mp_growth": {
+        "address": "0x39650",
+        "end": "0x396b6",
+        "size": 102,
+        "sha256": "2af3ff52e7d0b392792f997d81ab948f90bce5b7beaec877f1435057d309cb81"
+      },
+      "actor_variance_clamp": {
+        "address": "0x396b6",
+        "end": "0x396e6",
+        "size": 48,
+        "sha256": "f9a5de07436a647f1748eee634f8283da6b84df6a85613e85fc9cef4f694d3c6"
+      },
+      "target_drain": {
+        "address": "0x396e6",
+        "end": "0x39755",
+        "size": 111,
+        "sha256": "517572f980f9227c8995c963278a2b7349d7c62baec506f811df1001cd2ef634"
+      },
+      "return": {
+        "address": "0x39755",
+        "end": "0x39776",
+        "size": 33,
+        "sha256": "6c97b11751a3c0b9d0c8d2c2a1720f8896a6a4620f8175ff1187294a0624ddcc"
+      }
+    },
+    "arguments": {
+      "actor_combatant": "passed by caller but never read",
+      "target_combatant": "passed by caller but never read",
+      "attacker_role": "signed low16",
+      "target_role": "signed low16",
+      "magic_slot": "signed low16",
+      "distance": "passed by caller but never read"
+    },
+    "level": "unsigned proficiency/100; valid ten-level asset domain is 0..9",
+    "rng_order": [
+      3,
+      3,
+      "signed add_mp/2",
+      3,
+      3
+    ],
+    "rng_consumption": "all five helper calls execute; the third does not advance state when its bound is <=1 or >30000",
+    "actor_writes": "current MP += add_mp with low16 wrap; maximum MP += third RNG result with low16 wrap and signed >=999 cap; current MP += first-second and signed >= maximum clamps to maximum; no lower clamp",
+    "target_writes": "current MP subtracts hurt_mp then fourth-fifth RNG difference through two low16 writes; signed <=0 clears to zero",
+    "return_contract": "signed target MP before minus signed final target MP in EAX; sole caller writes AX to target combatant word9",
+    "caller_contract": "square hurt-type1 dispatch sets effect kind3, passes six arguments, reclaims 24 bytes and writes returned AX as displayed damage",
+    "vectors": {
+      "baseline": {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            10,
+            3,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 3,
+        "target_variance": 0,
+        "actor_mp": 23,
+        "actor_max_mp": 23,
+        "target_mp": 35,
+        "drained": 15,
+        "caller_damage_word": 15
+      },
+      "add_zero_skips_third_rng": {
+        "level": 2,
+        "add_mp": 0,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            0,
+            0,
+            false
+          ],
+          [
+            3,
+            0,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_variance": 1,
+        "maximum_gain": 0,
+        "target_variance": -1,
+        "actor_mp": 11,
+        "actor_max_mp": 20,
+        "target_mp": 36,
+        "drained": 14,
+        "caller_damage_word": 14
+      },
+      "add_three_bound_one_skips": {
+        "level": 2,
+        "add_mp": 3,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            1,
+            0,
+            false
+          ],
+          [
+            3,
+            0,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_variance": 1,
+        "maximum_gain": 0,
+        "target_variance": -1,
+        "actor_mp": 14,
+        "actor_max_mp": 20,
+        "target_mp": 36,
+        "drained": 14,
+        "caller_damage_word": 14
+      },
+      "add_four_bound_two_consumes": {
+        "level": 2,
+        "add_mp": 4,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            2,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 1,
+        "target_variance": 0,
+        "actor_mp": 15,
+        "actor_max_mp": 21,
+        "target_mp": 35,
+        "drained": 15,
+        "caller_damage_word": 15
+      },
+      "negative_add_mp": {
+        "level": 2,
+        "add_mp": -3,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            -1,
+            0,
+            false
+          ],
+          [
+            3,
+            0,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_variance": 1,
+        "maximum_gain": 0,
+        "target_variance": -1,
+        "actor_mp": 8,
+        "actor_max_mp": 20,
+        "target_mp": 36,
+        "drained": 14,
+        "caller_damage_word": 14
+      },
+      "maximum_cap": {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            10,
+            3,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 3,
+        "target_variance": 0,
+        "actor_mp": 31,
+        "actor_max_mp": 999,
+        "target_mp": 35,
+        "drained": 15,
+        "caller_damage_word": 15
+      },
+      "current_mp_wrap": {
+        "level": 2,
+        "add_mp": 1,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            0,
+            0,
+            false
+          ],
+          [
+            3,
+            0,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_variance": 1,
+        "maximum_gain": 0,
+        "target_variance": -1,
+        "actor_mp": -32767,
+        "actor_max_mp": 998,
+        "target_mp": 36,
+        "drained": 14,
+        "caller_damage_word": 14
+      },
+      "maximum_mp_wrap_clamps_current": {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            10,
+            3,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 3,
+        "target_variance": 0,
+        "actor_mp": -32766,
+        "actor_max_mp": -32766,
+        "target_mp": 35,
+        "drained": 15,
+        "caller_damage_word": 15
+      },
+      "target_exact_zero": {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            10,
+            3,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 3,
+        "target_variance": 0,
+        "actor_mp": 23,
+        "actor_max_mp": 23,
+        "target_mp": 0,
+        "drained": 15,
+        "caller_damage_word": 15
+      },
+      "target_under_zero": {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            10,
+            3,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 4182499122,
+        "actor_variance": 1,
+        "maximum_gain": 3,
+        "target_variance": 0,
+        "actor_mp": 23,
+        "actor_max_mp": 23,
+        "target_mp": 0,
+        "drained": 14,
+        "caller_damage_word": 14
+      },
+      "seed_two_target_variance": {
+        "level": 2,
+        "add_mp": 20,
+        "hurt_mp": 15,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            10,
+            9,
+            true
+          ],
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3840747375,
+        "actor_variance": 0,
+        "maximum_gain": 9,
+        "target_variance": 1,
+        "actor_mp": 29,
+        "actor_max_mp": 29,
+        "target_mp": 34,
+        "drained": 16,
+        "caller_damage_word": 16
+      },
+      "target_positive_wrap_clamps": {
+        "level": 2,
+        "add_mp": 0,
+        "hurt_mp": -1,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            0,
+            0,
+            false
+          ],
+          [
+            3,
+            0,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_variance": 1,
+        "maximum_gain": 0,
+        "target_variance": -1,
+        "actor_mp": 11,
+        "actor_max_mp": 20,
+        "target_mp": 0,
+        "drained": 32767,
+        "caller_damage_word": 32767
+      },
+      "target_negative_wrap_clamps": {
+        "level": 2,
+        "add_mp": 0,
+        "hurt_mp": 1,
+        "rng_calls": [
+          [
+            3,
+            2,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ],
+          [
+            0,
+            0,
+            false
+          ],
+          [
+            3,
+            0,
+            true
+          ],
+          [
+            3,
+            1,
+            true
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_variance": 1,
+        "maximum_gain": 0,
+        "target_variance": -1,
+        "actor_mp": 11,
+        "actor_max_mp": 20,
+        "target_mp": 0,
+        "drained": -32768,
+        "caller_damage_word": -32768
+      }
+    },
+    "vector_sha256": "b3eaaa9b520a536c2a1f2d00956a2bbb33c83c9b748e5dcc542889d99ac4c67f",
+    "platform_adaptation_boundary": "modern code may reject invalid combatant, role, magic, slot and unsigned level indices that make the machine access outside loaded records",
+    "closure_boundary": "stack probe, RNG helper and square-area caller remain independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
