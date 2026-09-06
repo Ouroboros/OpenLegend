@@ -811,6 +811,43 @@
     "stale_target_storage": "word_E6EE0 is independent from actor word12",
     "handler_write_order": "sub_3540E copies selected actor word12 to word_E6EE0 only after sub_355FF returns"
   },
+  "battle_ai_item_handler_machine": {
+    "address": "0x35803",
+    "end": "0x3582b",
+    "raw_offset": "0x2f203",
+    "size": 40,
+    "instruction_count": 14,
+    "branch_count": 0,
+    "raw_sha256": "59b666e9af54bafb5ba99c95859d8e3a9bcda425348fa15267ef3bfdfb9a2bc5",
+    "loaded_sha256": "59b666e9af54bafb5ba99c95859d8e3a9bcda425348fa15267ef3bfdfb9a2bc5",
+    "relocation_count": 0,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35808",
+      "0x35816",
+      "0x35821"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x34aec",
+      "0x3598c"
+    ],
+    "callers": [
+      "0x33c03"
+    ],
+    "actor_argument": "entry int16 sign-extended once into EBX",
+    "first_call": "sub_34AEC(actor, 1)",
+    "first_call_result": "ignored",
+    "second_call": "sub_3598C(actor, 0)",
+    "second_call_execution": "unconditional after sub_34AEC returns",
+    "function_result": "EAX from sub_3598C passes through RET",
+    "caller_result_use": "sole caller sub_33599 ignores EAX",
+    "direct_rng_draws": 0,
+    "direct_state_writes": 0,
+    "branches": 0,
+    "outer_action_done": "written by sole caller after handler returns",
+    "delegated_boundaries": "sub_34AEC and sub_3598C retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -4300,7 +4337,12 @@
           "use_mode": 0,
           "next_step_with_destination": "move",
           "next_step_after_relocation": "use_item",
-          "use_after_relocation_even_without_destination": true
+          "use_after_relocation_even_without_destination": true,
+          "zero_enemy_score": {
+            "maximum_enemy_distance_sum": 0,
+            "destination": null,
+            "next_step": "use_item"
+          }
         },
         "throwing_weapon": {
           "target_selector_runs_before_range": true,

@@ -7467,6 +7467,19 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(resumed_item_plan->next_step == BattleAiItemNextStep::use_item);
 
     reset();
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(setup.combatant_count()); ++slot) {
+        setup.combatants()[slot].words[combatant_word::side] = 0;
+    }
+    ranger.header.set_inventory(2U, openlegend::model::ItemId{5}, 0);
+    const auto immediate_item_plan = setup.begin_ai_item_plan(0U, item_choice);
+    OL_CHECK(immediate_item_plan.has_value());
+    OL_CHECK(!immediate_item_plan->relocation_destination.has_value());
+    OL_CHECK(immediate_item_plan->maximum_enemy_distance_sum == 0);
+    OL_CHECK(immediate_item_plan->use_mode == 0);
+    OL_CHECK(immediate_item_plan->next_step == BattleAiItemNextStep::use_item);
+    OL_CHECK(immediate_item_plan->outer_marks_action_done_after_handler);
+
+    reset();
     ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
     ranger.roles[0U].set_word(role_word::hidden_weapon, 80);
     const BattleAiChoice throwing_choice{

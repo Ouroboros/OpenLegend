@@ -152,6 +152,10 @@ BATTLE_AI_FIRST_POISON_TARGET_RELOCATION_OFFSETS = (
     0x086, 0x08D, 0x093, 0x09F, 0x0A9, 0x0B3, 0x0BB, 0x0C7, 0x0D1,
 )
 BATTLE_AI_FIRST_POISON_TARGET_CALLER_SITES = (0x35657,)
+BATTLE_AI_ITEM_HANDLER_ADDRESS = 0x35803
+BATTLE_AI_ITEM_HANDLER_END = 0x3582B
+BATTLE_AI_ITEM_HANDLER_CALL_OFFSETS = (0x005, 0x013, 0x01E)
+BATTLE_AI_ITEM_HANDLER_CALLER_SITES = (0x33C03,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -909,6 +913,41 @@ def battle_ai_first_poison_target_contract(z_dat_bytes: bytes) -> dict[str, obje
         "stale_target_storage": "word_E6EE0 is independent from actor word12",
         "handler_write_order":
             "sub_3540E copies selected actor word12 to word_E6EE0 only after sub_355FF returns",
+    }
+
+
+def battle_ai_item_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_ITEM_HANDLER_ADDRESS,
+        end=BATTLE_AI_ITEM_HANDLER_END,
+        call_offsets=BATTLE_AI_ITEM_HANDLER_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x34AEC, 0x3598C),
+        relocation_offsets=(),
+        caller_sites=BATTLE_AI_ITEM_HANDLER_CALLER_SITES,
+        instruction_count=14,
+        branch_count=0,
+    )
+    if contract["raw_sha256"] != (
+        "59b666e9af54bafb5ba99c95859d8e3a9bcda425348fa15267ef3bfdfb9a2bc5"
+    ):
+        raise ValueError("Z.DAT AI item-handler raw bytes changed")
+    if contract["loaded_sha256"] != contract["raw_sha256"]:
+        raise ValueError("Z.DAT AI item-handler unexpectedly changed while loading")
+    return {
+        **contract,
+        "actor_argument": "entry int16 sign-extended once into EBX",
+        "first_call": "sub_34AEC(actor, 1)",
+        "first_call_result": "ignored",
+        "second_call": "sub_3598C(actor, 0)",
+        "second_call_execution": "unconditional after sub_34AEC returns",
+        "function_result": "EAX from sub_3598C passes through RET",
+        "caller_result_use": "sole caller sub_33599 ignores EAX",
+        "direct_rng_draws": 0,
+        "direct_state_writes": 0,
+        "branches": 0,
+        "outer_action_done": "written by sole caller after handler returns",
+        "delegated_boundaries": "sub_34AEC and sub_3598C retain independent owners",
     }
 
 
@@ -3582,6 +3621,11 @@ def ai_item_handler_vectors(field_words: list[int]) -> dict[str, object]:
             "next_step_with_destination": "move",
             "next_step_after_relocation": "use_item",
             "use_after_relocation_even_without_destination": True,
+            "zero_enemy_score": {
+                "maximum_enemy_distance_sum": 0,
+                "destination": None,
+                "next_step": "use_item",
+            },
         },
         "throwing_weapon": {
             "target_selector_runs_before_range": True,
@@ -4538,6 +4582,7 @@ def build(data_root: Path) -> dict[str, object]:
             battle_ai_strongest_poison_target_contract(z_dat_bytes),
         "battle_ai_first_poison_target_machine":
             battle_ai_first_poison_target_contract(z_dat_bytes),
+        "battle_ai_item_handler_machine": battle_ai_item_handler_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
