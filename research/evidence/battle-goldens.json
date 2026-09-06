@@ -13386,6 +13386,82 @@
     "platform_adaptation_boundary": "modern code safely rejects invalid setup and actor slots and returns a structured optional; legal slots preserve the exact adjacent-swap sequence",
     "closure_boundary": "stack probe, the already-closed combatant-swap owner, player dispatcher and common completion path retain independent owners"
   },
+  "battle_enable_automatic_machine": {
+    "address": "0x3aa4b",
+    "end": "0x3aa85",
+    "raw_offset": "0x3444b",
+    "size": 58,
+    "instruction_count": 13,
+    "branch_count": 0,
+    "raw_sha256": "d43cf928ed39315528b674f667b9f711dadf2e259d7a20b23adf5a9a599b99e6",
+    "loaded_sha256": "2609df1b59233d641c8c84fddd71754d3419c841317d51f99a3c0666fc19354a",
+    "relocation_count": 3,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3aa50",
+      "0x3aa55",
+      "0x3aa65",
+      "0x3aa7c"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x33599"
+    ],
+    "callers": [
+      "0x333d6"
+    ],
+    "basic_block_count": 1,
+    "conditional_branch_count": 0,
+    "unconditional_jump_count": 0,
+    "relocation_offsets": [
+      "0x11",
+      "0x16",
+      "0x25"
+    ],
+    "local_return_sites": [
+      "0x3aa84"
+    ],
+    "sequence_contract": "render the battlefield, present the current framebuffer while automatic flag is0, write automatic flag1, then call AI entry with the signed actor slot",
+    "return_contract": "the AI entry EAX is incidentally forwarded through RET, but the sole player-action9 caller ignores it and checks the actor action_done word",
+    "host_contract": "modern automatic_present renders with the public flag0; only its presentation completion writes flag1, and the next host advance begins same-slot AI",
+    "vectors": {
+      "first_actor": {
+        "actor_slot": 0,
+        "automatic_flag_during_render": 0,
+        "automatic_flag_during_present": 0,
+        "automatic_flag_during_ai_entry": 1,
+        "events": [
+          "battle_render",
+          "present",
+          "automatic_flag=1",
+          "ai_entry(0)"
+        ],
+        "ai_return": 0,
+        "function_return": 0,
+        "caller_consumes_return": false
+      },
+      "later_actor": {
+        "actor_slot": 3,
+        "automatic_flag_during_render": 0,
+        "automatic_flag_during_present": 0,
+        "automatic_flag_during_ai_entry": 1,
+        "events": [
+          "battle_render",
+          "present",
+          "automatic_flag=1",
+          "ai_entry(3)"
+        ],
+        "ai_return": -1,
+        "function_return": -1,
+        "caller_consumes_return": false
+      }
+    },
+    "vector_sha256": "4a37e849a035425b8ae019458b0f2edcebce0cddeb6115136726ab022c14c20e",
+    "platform_adaptation_boundary": "modern code splits synchronous present and AI continuation into explicit host phases without exposing input or reordering observable state",
+    "closure_boundary": "stack probe, two-pass renderer, present backend, AI handler and player dispatcher retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

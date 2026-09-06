@@ -864,6 +864,12 @@ BATTLE_DEFER_TURN_CALL_OFFSETS = (0x005, 0x019)
 BATTLE_DEFER_TURN_CALL_TARGETS = (0x3ED1E, 0x32B78)
 BATTLE_DEFER_TURN_RELOCATION_OFFSETS = (0x026,)
 BATTLE_DEFER_TURN_CALLER_SITES = (0x333B5,)
+BATTLE_ENABLE_AUTOMATIC_ADDRESS = 0x3AA4B
+BATTLE_ENABLE_AUTOMATIC_END = 0x3AA85
+BATTLE_ENABLE_AUTOMATIC_CALL_OFFSETS = (0x005, 0x00A, 0x01A, 0x031)
+BATTLE_ENABLE_AUTOMATIC_CALL_TARGETS = (0x3ED1E, 0x3AA85, 0x3D6D1, 0x33599)
+BATTLE_ENABLE_AUTOMATIC_RELOCATION_OFFSETS = (0x011, 0x016, 0x025)
+BATTLE_ENABLE_AUTOMATIC_CALLER_SITES = (0x333D6,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -8080,6 +8086,92 @@ def battle_defer_turn_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_enable_automatic_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_ENABLE_AUTOMATIC_ADDRESS,
+        end=BATTLE_ENABLE_AUTOMATIC_END,
+        call_offsets=BATTLE_ENABLE_AUTOMATIC_CALL_OFFSETS,
+        expected_call_targets=BATTLE_ENABLE_AUTOMATIC_CALL_TARGETS,
+        relocation_offsets=BATTLE_ENABLE_AUTOMATIC_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_ENABLE_AUTOMATIC_CALLER_SITES,
+        instruction_count=13,
+        branch_count=0,
+    )
+    if contract["raw_sha256"] != (
+        "d43cf928ed39315528b674f667b9f711dadf2e259d7a20b23adf5a9a599b99e6"
+    ):
+        raise ValueError("Z.DAT automatic-mode raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "2609df1b59233d641c8c84fddd71754d3419c841317d51f99a3c0666fc19354a"
+    ):
+        raise ValueError("Z.DAT automatic-mode relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("render_present", 0x3AA4B, 0x3AA6D,
+         "1579fae7d647fc6043768a952e9aa94f5237d7cf504d737f57869825ed0dee2f"),
+        ("flag_write", 0x3AA6D, 0x3AA76,
+         "d379119650f6bb2d521f35e36ab2a578696fdb317d69d7e6b5739cb4969f810e"),
+        ("ai_tail", 0x3AA76, 0x3AA85,
+         "d1e34c85789702341985dddc10bc978af227df9c2d622fc08785de3db89f3085"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT automatic-mode {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    vectors = {
+        "first_actor": automatic_mode_vector(0, 0),
+        "later_actor": automatic_mode_vector(3, -1),
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8"))
+    if vector_sha256 != "4a37e849a035425b8ae019458b0f2edcebce0cddeb6115136726ab022c14c20e":
+        raise ValueError("automatic-mode independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 1,
+        "conditional_branch_count": 0,
+        "unconditional_jump_count": 0,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_ENABLE_AUTOMATIC_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3aa84"],
+        "sequence_contract": (
+            "render the battlefield, present the current framebuffer while automatic flag is0, "
+            "write automatic flag1, then call AI entry with the signed actor slot"
+        ),
+        "return_contract": (
+            "the AI entry EAX is incidentally forwarded through RET, but the sole player-action9 "
+            "caller ignores it and checks the actor action_done word"
+        ),
+        "host_contract": (
+            "modern automatic_present renders with the public flag0; only its presentation "
+            "completion writes flag1, and the next host advance begins same-slot AI"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code splits synchronous present and AI continuation into explicit host phases "
+            "without exposing input or reordering observable state"
+        ),
+        "closure_boundary": (
+            "stack probe, two-pass renderer, present backend, AI handler and player dispatcher "
+            "retain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -9467,6 +9559,24 @@ def defer_turn_vector(
         "swap_pairs": swaps,
         "roles_after": reordered,
         "return_slot": current,
+    }
+
+
+def automatic_mode_vector(actor_slot: int, ai_return: int) -> dict[str, object]:
+    return {
+        "actor_slot": actor_slot,
+        "automatic_flag_during_render": 0,
+        "automatic_flag_during_present": 0,
+        "automatic_flag_during_ai_entry": 1,
+        "events": [
+            "battle_render",
+            "present",
+            "automatic_flag=1",
+            f"ai_entry({actor_slot})",
+        ],
+        "ai_return": ai_return,
+        "function_return": ai_return,
+        "caller_consumes_return": False,
     }
 
 
@@ -12198,6 +12308,7 @@ def build(data_root: Path) -> dict[str, object]:
             battle_throwing_weapon_action_contract(z_dat_bytes),
         "battle_rest_action_machine": battle_rest_action_contract(z_dat_bytes),
         "battle_defer_turn_machine": battle_defer_turn_contract(z_dat_bytes),
+        "battle_enable_automatic_machine": battle_enable_automatic_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

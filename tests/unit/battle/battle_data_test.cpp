@@ -6727,10 +6727,24 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         automatic_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::automatic_present);
     OL_CHECK(!automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_random.state() == 1U);
+    OL_CHECK(
+        automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 0);
+    automatic_session.advance(100U);
+    OL_CHECK(automatic_session.phase() == BattleSessionPhase::automatic_present);
+    OL_CHECK(!automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_random.state() == 1U);
     OL_CHECK(automatic_session.render(framebuffer));
+    const auto automatic_present_hash = fnv1a_bytes(framebuffer.pixels());
+    OL_CHECK(!automatic_session.setup().automatic_enabled());
+    OL_CHECK(automatic_random.state() == 1U);
     automatic_session.finish_presented_tick(100U);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == automatic_present_hash);
     OL_CHECK(automatic_session.setup().automatic_enabled());
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_action);
+    OL_CHECK(automatic_random.state() == 1U);
+    OL_CHECK(
+        automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 0);
     automatic_session.advance(100U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_prelude_present);
     OL_CHECK(automatic_session.render(framebuffer));
