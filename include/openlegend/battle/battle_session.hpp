@@ -227,6 +227,11 @@ public:
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
             : std::nullopt;
     }
+    [[nodiscard]] std::uint8_t cursor_presentations_before_input() const noexcept {
+        return player_cursor_selection_.has_value()
+            ? cursor_presentations_before_input_
+            : 0U;
+    }
     [[nodiscard]] std::optional<BattlePathCoord> selected_player_target() const noexcept {
         return selected_player_target_;
     }
@@ -483,6 +488,7 @@ private:
     BattlePlayerActionMenuState player_action_menu_{};
     std::optional<BattleMagicSelectionState> player_magic_selection_;
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
+    std::uint8_t cursor_presentations_before_input_{};
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerAttackState> player_attack_;
     std::unique_ptr<PlayerItemState> player_item_;

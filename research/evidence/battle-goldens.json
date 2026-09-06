@@ -1439,6 +1439,72 @@
     "direct_state_writes": "local cancel only; selector, path marker and movement own external state",
     "closure_boundary": "sub_3ED1E, sub_36AF7, sub_37245 and sub_37355 remain independent owners"
   },
+  "battle_cursor_handler_machine": {
+    "address": "0x36af7",
+    "end": "0x36e06",
+    "raw_offset": "0x304f7",
+    "size": 783,
+    "instruction_count": 157,
+    "branch_count": 35,
+    "raw_sha256": "880246a653a60137ff63b21d437f2722ffbfb14bb4a0dfa6f4b06d64d34215e9",
+    "loaded_sha256": "cb0b440727ac96038276f0de9a9b139c820184b9dba7a5772b45c4b4800ed9de",
+    "relocation_count": 72,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36afc",
+      "0x36b65",
+      "0x36b72",
+      "0x36b86",
+      "0x36b96",
+      "0x36bad",
+      "0x36bbd"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e06",
+      "0x36e7f",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x3aa85",
+      "0x3d6d1"
+    ],
+    "callers": [
+      "0x36ac3",
+      "0x37951",
+      "0x397bc",
+      "0x39b65",
+      "0x39ece",
+      "0x3a35a"
+    ],
+    "arguments": "signed actor slot, signed path limit, signed mode, cancel-word pointer",
+    "path_modes": {
+      "0": "movement map via sub_36E06",
+      "1": "targeting map via sub_36E7F"
+    },
+    "presentation": {
+      "before_first_input": 2,
+      "after_direction_or_rejected_confirmation": 1,
+      "sequence": "draw battlefield then present before every input scan"
+    },
+    "input_priority": [
+      "down",
+      "right",
+      "left",
+      "up",
+      "cancel",
+      "activate"
+    ],
+    "direction_rule": "signed 64-column linear index; move when path<=limit or aliased occupancy!=-1",
+    "cancel": "clear path limit, write cancel word 1 and exit",
+    "confirm": "require signed path<=limit and additionally path>0 in mode0 or path>=0 in mode1",
+    "shared_exit": {
+      "site": "0x36ba7",
+      "target": "0x3677e",
+      "role": "independently owned shared pop EDI/ESI/EBX/RET tail"
+    },
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_36E06, sub_36E7F, sub_3AA85, sub_3D6D1 and shared tail 0x3677E remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -4168,6 +4234,11 @@
           "cancel",
           "activate"
         ],
+        "presentation_gate": {
+          "before_first_input": 2,
+          "after_direction": 1,
+          "after_rejected_confirmation": 1
+        },
         "movement": {
           "source_activation_selects": false,
           "first_down": [

@@ -455,6 +455,24 @@ BATTLE_PLAYER_MOVEMENT_CALL_OFFSETS = (0x05, 0x2B, 0x44, 0x50)
 BATTLE_PLAYER_MOVEMENT_CALL_TARGETS = (0x3ED1E, 0x36AF7, 0x37245, 0x37355)
 BATTLE_PLAYER_MOVEMENT_RELOCATION_OFFSETS = (0x25,)
 BATTLE_PLAYER_MOVEMENT_CALLER_SITES = (0x33323,)
+BATTLE_CURSOR_HANDLER_ADDRESS = 0x36AF7
+BATTLE_CURSOR_HANDLER_END = 0x36E06
+BATTLE_CURSOR_HANDLER_CALL_OFFSETS = (0x05, 0x6E, 0x7B, 0x8F, 0x9F, 0xB6, 0xC6)
+BATTLE_CURSOR_HANDLER_CALL_TARGETS = (
+    0x3ED1E, 0x36E06, 0x36E7F, 0x3AA85, 0x3D6D1, 0x3AA85, 0x3D6D1,
+)
+BATTLE_CURSOR_HANDLER_RELOCATION_OFFSETS = (
+    0x17, 0x1E, 0x25, 0x35, 0x3C, 0x43, 0x4A, 0x51, 0x58, 0x5F, 0x65,
+    0x8B, 0x96, 0x9B, 0xBD, 0xC2, 0xD0, 0xD9, 0xE2, 0xE9, 0xF1, 0xFB,
+    0x106, 0x10D, 0x116, 0x122, 0x12A, 0x133, 0x13C, 0x143, 0x14B, 0x155,
+    0x160, 0x167, 0x170, 0x180, 0x18B, 0x194, 0x19D, 0x1A4, 0x1AC, 0x1B6,
+    0x1C1, 0x1C8, 0x1D1, 0x1E1, 0x1EC, 0x1F5, 0x1FE, 0x205, 0x20D, 0x217,
+    0x222, 0x229, 0x232, 0x242, 0x24D, 0x256, 0x25E, 0x272, 0x27B, 0x284,
+    0x291, 0x298, 0x29F, 0x2A7, 0x2B1, 0x2BC, 0x2E2, 0x2EC, 0x2F4, 0x302,
+)
+BATTLE_CURSOR_HANDLER_CALLER_SITES = (
+    0x36AC3, 0x37951, 0x397BC, 0x39B65, 0x39ECE, 0x3A35A,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1734,6 +1752,52 @@ def battle_player_movement_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_cursor_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_CURSOR_HANDLER_ADDRESS,
+        end=BATTLE_CURSOR_HANDLER_END,
+        call_offsets=BATTLE_CURSOR_HANDLER_CALL_OFFSETS,
+        expected_call_targets=BATTLE_CURSOR_HANDLER_CALL_TARGETS,
+        relocation_offsets=BATTLE_CURSOR_HANDLER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_CURSOR_HANDLER_CALLER_SITES,
+        instruction_count=157,
+        branch_count=35,
+    )
+    if contract["raw_sha256"] != (
+        "880246a653a60137ff63b21d437f2722ffbfb14bb4a0dfa6f4b06d64d34215e9"
+    ):
+        raise ValueError("Z.DAT battle cursor handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "cb0b440727ac96038276f0de9a9b139c820184b9dba7a5772b45c4b4800ed9de"
+    ):
+        raise ValueError("Z.DAT battle cursor handler relocation image changed")
+    return {
+        **contract,
+        "arguments": "signed actor slot, signed path limit, signed mode, cancel-word pointer",
+        "path_modes": {"0": "movement map via sub_36E06", "1": "targeting map via sub_36E7F"},
+        "presentation": {
+            "before_first_input": 2,
+            "after_direction_or_rejected_confirmation": 1,
+            "sequence": "draw battlefield then present before every input scan",
+        },
+        "input_priority": ["down", "right", "left", "up", "cancel", "activate"],
+        "direction_rule":
+            "signed 64-column linear index; move when path<=limit or aliased occupancy!=-1",
+        "cancel": "clear path limit, write cancel word 1 and exit",
+        "confirm":
+            "require signed path<=limit and additionally path>0 in mode0 or path>=0 in mode1",
+        "shared_exit": {
+            "site": "0x36ba7",
+            "target": "0x3677e",
+            "role": "independently owned shared pop EDI/ESI/EBX/RET tail",
+        },
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_36E06, sub_36E7F, sub_3AA85, sub_3D6D1 and shared tail 0x3677E remain independent owners",
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -2662,6 +2726,11 @@ def player_cursor_vectors(
         "source": list(source),
         "path_limit": 2,
         "input_priority": ["down", "right", "left", "up", "cancel", "activate"],
+        "presentation_gate": {
+            "before_first_input": 2,
+            "after_direction": 1,
+            "after_rejected_confirmation": 1,
+        },
         "movement": {
             "source_activation_selects": False,
             "first_down": list(destination),
@@ -5493,6 +5562,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_support_detox_machine": battle_ai_support_detox_contract(z_dat_bytes),
         "battle_ai_movement_machine": battle_ai_movement_contract(z_dat_bytes),
         "battle_player_movement_machine": battle_player_movement_contract(z_dat_bytes),
+        "battle_cursor_handler_machine": battle_cursor_handler_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

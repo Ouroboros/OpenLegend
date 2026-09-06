@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为37/81；其余44项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为38/81；其余43项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -90,7 +90,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 等待动作实际把当前actor逐槽交换到队尾且不写word7；机器要求先完整重画菜单/present，再因action6退出，外层索引继续处理交换后占据同槽的actor。休息提交原RNG体力/HP/MP恢复并写word7=1，直接退出菜单。共同尾对word7严格区分0、1和其他非零：0完整重绘，1退出，其他非零只跳过重绘而继续输入；菜单只读既有结果状态，不额外调用胜负扫描。返回外层后才按原顺序执行一次胜负检查、当前参战槽隐藏目标清理、hidden槽压缩与下一actor居中present。最后一槽后调用轮末异常状态，并仅在本轮开始时捕获的BIOS tick发生变化后开始下一轮。
 
-玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98/sub_36AF7/sub_37355`均推进为`implemented_pending_review`。
+玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98`与`sub_36AF7`已完成最终审计，`sub_37355`仍为`implemented_pending_review`。
 
 状态动作现按`sub_22066(...,2)`进入队伍前缀选择，执行圆角标题/列表、角色名NUL对齐、上下回绕、Escape取消和三确认键；确认后在battle背景上依次呈现`sub_22A59`两页角色状态，每页各等待任意非零键。第一页保留伤势/中毒/内力分档、非法内力类型复用中毒色、装备加成和30级阈值；第二页保留两件装备、修炼物经验分母与十项武功等级。动作返回菜单但不结束actor、不消费RNG。独立Python直接读取原WARFLD、HDGRP和字体资产复算，选择页/第一页/第二页与C++整帧FNV64分别一致为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`；逐块回审修正了最大生命中毒色、修炼所需经验普通色和分母系数读取资质而非修炼经验三处差异。
 
@@ -285,7 +285,7 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 
 `sub_36A98`玩家移动wrapper机器身份固定为95 bytes、32条指令、1个JNZ、1处重定位、唯一caller及4次direct call；raw/loaded SHA256为`b750d0562b8ff3c8f0a518ff963fa69f417a3fa55b51f55f16acebc125734b84`与`b3383e9b8b3d33025818f2bf512f47b48c4d938a59c55115aa5abf74e5c4a79e`。入口将signed actor行动值、mode0和cancel local地址传给`sub_36AF7`；local low word恰等于1时不标路、不移动并返回-1，否则依次调用`sub_37245`与`sub_37355(actor,0,0,0)`并固定返回0。唯一玩家动作0 caller随即以IMUL覆盖EAX，返回值不控制菜单尾。现代取消直接重建菜单且不创建移动plan，确认后复制选择期路径图、标路并逐格present/参数40两tick；新增取消前后坐标`(26,24)`、行动值2和体力10不变回归。入口REVIEW零产品差异；正式golden双生成SHA256为`b37f083ef1430a2477fff897853899915a5dbc49952e8baff88acb85bca6ba34`，Linux app Debug 14/14通过，本wrapper独立关闭，三个业务callee继续独立审计。
 
-`sub_36AF7`通用玩家光标选择已恢复为typed状态：入口按mode建立movement或targeting图，方向优先级下、右、左、上；相邻path不大于上限即可移动，path超限但occupancy非空仍可悬停；movement确认严格要求`0<path<=limit`，targeting允许`0<=path<=limit`，Escape清path上限并写取消结果。`sub_36A98`以actor行动值启动mode0选择，取消返回-1，否则复制选择期路径图、标最短路并逐格移动。battle4已实际接入movement与targeting的四方向/Escape/三确认键和每轮路径/光标重画present；movement继续逐格重画present与两次BIOS tick变化，targeting现由玩家用毒/解毒/医疗按各自能力射程进入，取消保持原菜单ordinal，确认敌方占位格`(26,26)`并保存目标。攻击与暗器在各自武功/物品选择接入后复用同一相位；`b8-battle-targeting.log`保留三入口、取消、逐格光标和最终确认的完整可读轨迹，Linux与Windows Debug完整BUILD全部14项测试及逆向validator通过；本函数推进为`implemented_pending_review`。
+`sub_36AF7`通用玩家光标handler机器身份固定为783 bytes、157条指令、35个分支、72处重定位、六个正常caller和7次direct call；raw/loaded SHA256为`880246a653a60137ff63b21d437f2722ffbfb14bb4a0dfa6f4b06d64d34215e9`与`cb0b440727ac96038276f0de9a9b139c820184b9dba7a5772b45c4b4800ed9de`。入口按mode0/1建立movement/targeting图，方向优先级下、右、左、上，signed 64列线性索引允许边缘别名；path不大于上限或occupancy非空可移动，mode0确认严格要求`0<path<=limit`，mode1允许`0<=path<=limit`，Escape清path上限并写cancel word1。首轮发现现代Session首键前只present一次，而机器在首键前present两次且每次移动/拒绝确认后再present一次；现以入口计数2、后续计数1修正，并增加两次早期Escape被忽略及source拒绝确认后立即方向被忽略的完整Session回归。修正后从入口重新审计157条指令和全部出口，零剩余产品差异；非法mode/actor和真正存储越界安全拒绝归类平台适配。正式golden双生成SHA256为`36ff2d77f9602e6501a11a54dc89e19d8cfd87877df6f3bdb2a039a6ca5fc78b`，Linux app Debug 14/14通过，本handler独立关闭，两个路径图callee、render/present callee及共享`0x3677E`尾继续独立审计。
 
 `sub_3B387..sub_3C2AC`战后进度状态与同步UI均已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利经验均分、队伍HP/体力下限、角色/练功/制造经验封顶，以及等级、练功、武功升级、制造RNG/状态均保持原顺序。`BattleSession`依次执行经验固定框、升级固定框、练功动态框、武功等级动态框和制造固定框，每项重画战场、present并等待任意非零键。经验在其消息前提交；升级和练功以副本/RNG副本预演，按键后才执行真实提交；制造配方选择在消息前消费共享RNG，库存及数量RNG在按键后提交，保留原同步可观察边界；五帧FNV64依次为`0xa699bf683f037936`、`0xef2c8987fe26a127`、`0xdd4c7e74171e8ee5`、`0x0f4783440328986e`、`0xb980de17004d5b6c`。四函数均推进为`implemented_pending_review`。
 

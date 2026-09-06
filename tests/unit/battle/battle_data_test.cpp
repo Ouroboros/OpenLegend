@@ -87,6 +87,17 @@ void finish_player_menu_redraw(openlegend::battle::BattleSession& session) {
     }
 }
 
+void finish_cursor_presentations(openlegend::battle::BattleSession& session) {
+    OL_CHECK(session.cursor_presentations_before_input() <= 2U);
+    openlegend::render::IndexedFramebuffer frame;
+    while (session.cursor_presentations_before_input() > 0U) {
+        const auto previous = session.cursor_presentations_before_input();
+        OL_CHECK(session.render(frame));
+        session.finish_presented_tick();
+        OL_CHECK(session.cursor_presentations_before_input() + 1U == previous);
+    }
+}
+
 void run_real_asset_fixtures(const openlegend::resource::DataRoot& data_root) {
     struct Fixture {
         std::int16_t battle_id;
@@ -2519,9 +2530,11 @@ void run_player_support_session_test(
         OL_CHECK(session->handle_key(0x20U) ==
                  BattleSessionInputResult::action_selected);
         OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
+        finish_cursor_presentations(*session);
         for (std::size_t step = 0U; step < target_down_steps; ++step) {
             OL_CHECK(session->handle_key(0x98U) ==
                      BattleSessionInputResult::cursor_changed);
+            finish_cursor_presentations(*session);
         }
         OL_CHECK(session->handle_key(0x0DU) ==
                  BattleSessionInputResult::cursor_selected);
@@ -2861,8 +2874,10 @@ void run_player_item_session_test(
                  BattleSessionInputResult::action_selected);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::item_selected);
         OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
+        finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
         OL_CHECK((session->active_cursor() == BattlePathCoord{26, 25}));
+        finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::cursor_selected);
         finish_player_menu_redraw(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::player_action);
@@ -2874,6 +2889,7 @@ void run_player_item_session_test(
                  BattleSessionInputResult::action_selected);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::item_selected);
         OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
+        finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x1BU) == BattleSessionInputResult::cursor_cancelled);
         finish_player_menu_redraw(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::player_action);
@@ -2883,9 +2899,12 @@ void run_player_item_session_test(
         OL_CHECK(session->handle_key(0x0DU) ==
                  BattleSessionInputResult::action_selected);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::item_selected);
+        finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
+        finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
         OL_CHECK((session->active_cursor() == BattlePathCoord{26, 26}));
+        finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::cursor_selected);
         OL_CHECK(session->phase() == BattleSessionPhase::player_effect_prelude_present);
         OL_CHECK(target.word(role_word::hp) == 79);
@@ -3292,6 +3311,7 @@ void run_player_attack_session_test(
 
         if (area_type == 0 || area_type == 3) {
             OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
+            finish_cursor_presentations(*session);
             if (area_type == 0) {
                 OL_CHECK(session->handle_key(0x1BU) ==
                          BattleSessionInputResult::cursor_cancelled);
@@ -3302,12 +3322,15 @@ void run_player_attack_session_test(
                          BattleSessionInputResult::action_selected);
                 OL_CHECK(session->phase() ==
                          BattleSessionPhase::player_targeting_select);
+                finish_cursor_presentations(*session);
             }
             OL_CHECK(session->handle_key(0x98U) ==
                      BattleSessionInputResult::cursor_changed);
+            finish_cursor_presentations(*session);
             OL_CHECK(session->handle_key(0x98U) ==
                      BattleSessionInputResult::cursor_changed);
             OL_CHECK((session->active_cursor() == BattlePathCoord{26, 26}));
+            finish_cursor_presentations(*session);
             OL_CHECK(session->handle_key(0x20U) ==
                      BattleSessionInputResult::cursor_selected);
             OL_CHECK((session->selected_player_target() == BattlePathCoord{26, 26}));
@@ -5495,8 +5518,15 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(movement_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
     OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_select);
     OL_CHECK((movement_session.active_cursor() == BattlePathCoord{26, 24}));
+    OL_CHECK(movement_session.cursor_presentations_before_input() == 2U);
+    OL_CHECK(movement_session.handle_key(0x1BU) == BattleSessionInputResult::ignored);
     OL_CHECK(movement_session.render(framebuffer));
     movement_session.finish_presented_tick(200U);
+    OL_CHECK(movement_session.cursor_presentations_before_input() == 1U);
+    OL_CHECK(movement_session.handle_key(0x1BU) == BattleSessionInputResult::ignored);
+    OL_CHECK(movement_session.render(framebuffer));
+    movement_session.finish_presented_tick(200U);
+    OL_CHECK(movement_session.cursor_presentations_before_input() == 0U);
     OL_CHECK(movement_session.handle_key(0x1BU) ==
              BattleSessionInputResult::cursor_cancelled);
     OL_CHECK((BattlePathCoord{
@@ -5511,13 +5541,16 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(movement_session.player_action_menu().available[0U] == 1);
 
     OL_CHECK(movement_session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
-    OL_CHECK(movement_session.render(framebuffer));
-    movement_session.finish_presented_tick(200U);
+    finish_cursor_presentations(movement_session);
+    OL_CHECK(movement_session.handle_key(0x0DU) == BattleSessionInputResult::ignored);
+    OL_CHECK(movement_session.cursor_presentations_before_input() == 1U);
+    OL_CHECK(movement_session.handle_key(0x98U) == BattleSessionInputResult::ignored);
+    OL_CHECK((movement_session.active_cursor() == BattlePathCoord{26, 24}));
+    finish_cursor_presentations(movement_session);
     OL_CHECK(movement_session.handle_key(0x98U) ==
              BattleSessionInputResult::cursor_changed);
     OL_CHECK((movement_session.active_cursor() == BattlePathCoord{26, 25}));
-    OL_CHECK(movement_session.render(framebuffer));
-    movement_session.finish_presented_tick(200U);
+    finish_cursor_presentations(movement_session);
     OL_CHECK(movement_session.handle_key(0x0DU) ==
              BattleSessionInputResult::cursor_selected);
     OL_CHECK(movement_session.phase() ==
@@ -5539,11 +5572,11 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(movement_session.player_action_menu().available[0U] == 1);
 
     OL_CHECK(movement_session.handle_key(0x96U) == BattleSessionInputResult::action_selected);
-    OL_CHECK(movement_session.render(framebuffer));
-    movement_session.finish_presented_tick(202U);
+    finish_cursor_presentations(movement_session);
     OL_CHECK(movement_session.handle_key(0x9AU) ==
              BattleSessionInputResult::cursor_changed);
     OL_CHECK((movement_session.active_cursor() == BattlePathCoord{25, 25}));
+    finish_cursor_presentations(movement_session);
     OL_CHECK(movement_session.handle_key(0x20U) ==
              BattleSessionInputResult::cursor_selected);
     OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::x] == 25);
@@ -5602,8 +5635,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
              BattleSessionInputResult::action_selected);
     OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_targeting_select);
     OL_CHECK((targeting_session->active_cursor() == BattlePathCoord{26, 24}));
-    OL_CHECK(targeting_session->render(framebuffer));
-    targeting_session->finish_presented_tick(250U);
+    finish_cursor_presentations(*targeting_session);
     OL_CHECK(targeting_session->handle_key(0x1BU) ==
              BattleSessionInputResult::cursor_cancelled);
     finish_player_menu_redraw(*targeting_session);
@@ -5620,8 +5652,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_targeting_select);
     OL_CHECK(targeting_session->player_action_menu().selected_action ==
              static_cast<std::int16_t>(BattlePlayerAction::detoxification));
-    OL_CHECK(targeting_session->render(framebuffer));
-    targeting_session->finish_presented_tick(250U);
+    finish_cursor_presentations(*targeting_session);
     OL_CHECK(targeting_session->handle_key(0x1BU) ==
              BattleSessionInputResult::cursor_cancelled);
     OL_CHECK(targeting_session->player_action_menu().cursor == 1U);
@@ -5635,8 +5666,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(targeting_session->phase() == BattleSessionPhase::player_targeting_select);
     OL_CHECK(targeting_session->player_action_menu().selected_action ==
              static_cast<std::int16_t>(BattlePlayerAction::medicine));
-    OL_CHECK(targeting_session->render(framebuffer));
-    targeting_session->finish_presented_tick(250U);
+    finish_cursor_presentations(*targeting_session);
     OL_CHECK(targeting_session->handle_key(0x1BU) ==
              BattleSessionInputResult::cursor_cancelled);
     OL_CHECK(targeting_session->player_action_menu().cursor == 2U);
@@ -5649,18 +5679,15 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(targeting_session->player_action_menu().cursor == 0U);
     OL_CHECK(targeting_session->handle_key(0x20U) ==
              BattleSessionInputResult::action_selected);
-    OL_CHECK(targeting_session->render(framebuffer));
-    targeting_session->finish_presented_tick(250U);
+    finish_cursor_presentations(*targeting_session);
     OL_CHECK(targeting_session->handle_key(0x98U) ==
              BattleSessionInputResult::cursor_changed);
     OL_CHECK((targeting_session->active_cursor() == BattlePathCoord{26, 25}));
-    OL_CHECK(targeting_session->render(framebuffer));
-    targeting_session->finish_presented_tick(250U);
+    finish_cursor_presentations(*targeting_session);
     OL_CHECK(targeting_session->handle_key(0x98U) ==
              BattleSessionInputResult::cursor_changed);
     OL_CHECK((targeting_session->active_cursor() == BattlePathCoord{26, 26}));
-    OL_CHECK(targeting_session->render(framebuffer));
-    targeting_session->finish_presented_tick(250U);
+    finish_cursor_presentations(*targeting_session);
     OL_CHECK(targeting_session->handle_key(0x20U) ==
              BattleSessionInputResult::cursor_selected);
     OL_CHECK(targeting_session->phase() ==

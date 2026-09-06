@@ -575,6 +575,13 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         }
         return;
     }
+    if ((phase_ == BattleSessionPhase::player_movement_select ||
+         phase_ == BattleSessionPhase::player_targeting_select) &&
+        player_cursor_selection_.has_value() &&
+        cursor_presentations_before_input_ > 0U) {
+        --cursor_presentations_before_input_;
+        return;
+    }
     if (phase_ == BattleSessionPhase::initial_present) {
         if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
             error_ = setup_.valid()
@@ -2261,6 +2268,7 @@ bool BattleSession::begin_player_movement() {
         return false;
     }
     player_cursor_selection_.emplace(std::move(*selection));
+    cursor_presentations_before_input_ = 2U;
     player_movement_plan_.reset();
     render_state_.path_limit = player_cursor_selection_->path_limit;
     render_state_.primary_cursor = player_cursor_selection_->cursor;
@@ -2527,6 +2535,7 @@ bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
         return false;
     }
     player_cursor_selection_.emplace(std::move(*selection));
+    cursor_presentations_before_input_ = 2U;
     selected_player_target_.reset();
     render_state_.path_limit = player_cursor_selection_->path_limit;
     render_state_.primary_cursor = player_cursor_selection_->cursor;
@@ -2543,7 +2552,8 @@ bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
 
 BattleSessionInputResult BattleSession::handle_player_movement_key(
     const std::uint8_t translated_key) {
-    if (!player_cursor_selection_.has_value()) {
+    if (!player_cursor_selection_.has_value() ||
+        cursor_presentations_before_input_ > 0U) {
         return BattleSessionInputResult::ignored;
     }
     std::optional<BattleCursorSelectionAction> action;
@@ -2564,6 +2574,10 @@ BattleSessionInputResult BattleSession::handle_player_movement_key(
     }
 
     const auto result = setup_.apply_cursor_selection(*player_cursor_selection_, *action);
+    if (result == BattleCursorSelectionResult::moved ||
+        result == BattleCursorSelectionResult::unchanged) {
+        cursor_presentations_before_input_ = 1U;
+    }
     if (result == BattleCursorSelectionResult::moved) {
         render_state_.primary_cursor = player_cursor_selection_->cursor;
         diagnostics::log_debug(
@@ -2575,6 +2589,7 @@ BattleSessionInputResult BattleSession::handle_player_movement_key(
     }
     if (result == BattleCursorSelectionResult::cancelled) {
         render_state_.path_limit = 0;
+        cursor_presentations_before_input_ = 0U;
         player_cursor_selection_.reset();
         if (!rebuild_player_menu_after_movement()) {
             return BattleSessionInputResult::ignored;
@@ -2596,6 +2611,7 @@ BattleSessionInputResult BattleSession::handle_player_movement_key(
     const auto destination = plan->destination;
     player_movement_plan_.emplace(std::move(*plan));
     render_state_.path_limit = 0;
+    cursor_presentations_before_input_ = 0U;
     player_cursor_selection_.reset();
     diagnostics::log_info(
         "battle player movement selected id=" + std::to_string(battle_id()) +
@@ -2614,7 +2630,8 @@ BattleSessionInputResult BattleSession::handle_player_movement_key(
 
 BattleSessionInputResult BattleSession::handle_player_targeting_key(
     const std::uint8_t translated_key) {
-    if (!player_cursor_selection_.has_value()) {
+    if (!player_cursor_selection_.has_value() ||
+        cursor_presentations_before_input_ > 0U) {
         return BattleSessionInputResult::ignored;
     }
     std::optional<BattleCursorSelectionAction> action;
@@ -2635,6 +2652,10 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
     }
 
     const auto result = setup_.apply_cursor_selection(*player_cursor_selection_, *action);
+    if (result == BattleCursorSelectionResult::moved ||
+        result == BattleCursorSelectionResult::unchanged) {
+        cursor_presentations_before_input_ = 1U;
+    }
     if (result == BattleCursorSelectionResult::moved) {
         render_state_.primary_cursor = player_cursor_selection_->cursor;
         diagnostics::log_debug(
@@ -2646,6 +2667,7 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
     }
     if (result == BattleCursorSelectionResult::cancelled) {
         render_state_.path_limit = 0;
+        cursor_presentations_before_input_ = 0U;
         player_cursor_selection_.reset();
         selected_player_target_.reset();
         if (player_action_menu_.selected_action ==
@@ -2670,6 +2692,7 @@ BattleSessionInputResult BattleSession::handle_player_targeting_key(
 
     const auto target = player_cursor_selection_->cursor;
     selected_player_target_ = target;
+    cursor_presentations_before_input_ = 0U;
     render_state_.primary_cursor = target;
     diagnostics::log_info(
         "battle player target selected id=" + std::to_string(battle_id()) +
