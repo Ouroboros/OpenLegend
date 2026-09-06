@@ -137,6 +137,13 @@ BATTLE_AI_POISON_TARGET_END = 0x35667
 BATTLE_AI_POISON_TARGET_CALL_OFFSETS = (0x005, 0x032, 0x040, 0x058)
 BATTLE_AI_POISON_TARGET_RELOCATION_OFFSETS = (0x01C, 0x029)
 BATTLE_AI_POISON_TARGET_CALLER_SITES = (0x35421,)
+BATTLE_AI_STRONGEST_POISON_TARGET_ADDRESS = 0x35667
+BATTLE_AI_STRONGEST_POISON_TARGET_END = 0x3570F
+BATTLE_AI_STRONGEST_POISON_TARGET_CALL_OFFSETS = (0x005,)
+BATTLE_AI_STRONGEST_POISON_TARGET_RELOCATION_OFFSETS = (
+    0x027, 0x02E, 0x037, 0x041, 0x04E, 0x058, 0x065, 0x06C, 0x075, 0x083, 0x08B,
+)
+BATTLE_AI_STRONGEST_POISON_TARGET_CALLER_SITES = (0x3563F,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -802,6 +809,47 @@ def battle_ai_poison_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": "zero or one",
         "caller": "branches on return -1; otherwise reads actor word12",
         "delegated_word12_writes_only": True,
+    }
+
+
+def battle_ai_strongest_poison_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_STRONGEST_POISON_TARGET_ADDRESS,
+        end=BATTLE_AI_STRONGEST_POISON_TARGET_END,
+        call_offsets=BATTLE_AI_STRONGEST_POISON_TARGET_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E,),
+        relocation_offsets=BATTLE_AI_STRONGEST_POISON_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_STRONGEST_POISON_TARGET_CALLER_SITES,
+        instruction_count=46,
+        branch_count=8,
+    )
+    if contract["raw_sha256"] != (
+        "a8d1da0042ee44038243a0bb88e57f997936834ebfdc210d6bce7efe90996b93"
+    ):
+        raise ValueError("Z.DAT strongest poison-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "12572b96cfa2b9999aee3f02ba635490c26c9cf6268d83fe2a2ce04a34d9912d"
+    ):
+        raise ValueError("Z.DAT strongest poison-target relocation image changed")
+    return {
+        **contract,
+        "best_attack_initial": 0,
+        "slot_loop": "signed int16 from zero while slot < combatant_count",
+        "candidate_side": "must differ from actor side",
+        "candidate_hidden": "must equal zero",
+        "candidate_poison": "signed value < 95",
+        "candidate_anti_poison": "signed value < actor signed use_poison",
+        "candidate_attack": "signed value strictly > current signed best",
+        "attack_zero_or_negative": "never selected while best starts at zero",
+        "equal_attack": "first selected slot remains",
+        "candidate_hp_read": False,
+        "writes_actor_word12": "candidate slot on every strict improvement",
+        "no_selection_word12": "preserved",
+        "success_return": 1,
+        "failure_return": -1,
+        "direct_rng_draws": 0,
+        "caller": "sub_355FF uses return only to decide fallback",
     }
 
 
@@ -3570,6 +3618,27 @@ def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
             "strategy": "first_eligible_stale_distance",
             "target_slot": 3,
         },
+        "strongest_dead_first_tie": {
+            "hit_points": [0, 100],
+            "attacks": [50, 50],
+            "reads_hit_points": False,
+            "comparison": "strictly_greater",
+            "target_slot": 3,
+        },
+        "strongest_negative_hidden": {
+            "hidden": [-1, 0],
+            "attacks": [100, 50],
+            "hidden_rule": "equals_zero",
+            "target_slot": 4,
+        },
+        "strongest_signed_eligibility": {
+            "actor_use_poison": -10,
+            "candidate_poison": [-1, -1],
+            "candidate_anti_poison": [-20, -10],
+            "attacks": [30, 50],
+            "anti_poison_rule": "strictly_less_than_actor_use_poison",
+            "target_slot": 3,
+        },
         "stale_distance_first_eligible_bug": {
             "strongest_attacks": [0, 0],
             "stale_target_slot": 4,
@@ -4382,6 +4451,8 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_nearest_target_machine": battle_ai_nearest_target_contract(z_dat_bytes),
         "battle_ai_poison_handler_machine": battle_ai_poison_handler_contract(z_dat_bytes),
         "battle_ai_poison_target_machine": battle_ai_poison_target_contract(z_dat_bytes),
+        "battle_ai_strongest_poison_target_machine":
+            battle_ai_strongest_poison_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

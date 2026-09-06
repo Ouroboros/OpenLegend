@@ -729,6 +729,43 @@
     "caller": "branches on return -1; otherwise reads actor word12",
     "delegated_word12_writes_only": true
   },
+  "battle_ai_strongest_poison_target_machine": {
+    "address": "0x35667",
+    "end": "0x3570f",
+    "raw_offset": "0x2f067",
+    "size": 168,
+    "instruction_count": 46,
+    "branch_count": 8,
+    "raw_sha256": "a8d1da0042ee44038243a0bb88e57f997936834ebfdc210d6bce7efe90996b93",
+    "loaded_sha256": "12572b96cfa2b9999aee3f02ba635490c26c9cf6268d83fe2a2ce04a34d9912d",
+    "relocation_count": 11,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3566c"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x3563f"
+    ],
+    "best_attack_initial": 0,
+    "slot_loop": "signed int16 from zero while slot < combatant_count",
+    "candidate_side": "must differ from actor side",
+    "candidate_hidden": "must equal zero",
+    "candidate_poison": "signed value < 95",
+    "candidate_anti_poison": "signed value < actor signed use_poison",
+    "candidate_attack": "signed value strictly > current signed best",
+    "attack_zero_or_negative": "never selected while best starts at zero",
+    "equal_attack": "first selected slot remains",
+    "candidate_hp_read": false,
+    "writes_actor_word12": "candidate slot on every strict improvement",
+    "no_selection_word12": "preserved",
+    "success_return": 1,
+    "failure_return": -1,
+    "direct_rng_draws": 0,
+    "caller": "sub_355FF uses return only to decide fallback"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -4061,6 +4098,48 @@
           "rng_state_after": 3310558080,
           "rng_threshold": 7,
           "strategy": "first_eligible_stale_distance",
+          "target_slot": 3
+        },
+        "strongest_dead_first_tie": {
+          "hit_points": [
+            0,
+            100
+          ],
+          "attacks": [
+            50,
+            50
+          ],
+          "reads_hit_points": false,
+          "comparison": "strictly_greater",
+          "target_slot": 3
+        },
+        "strongest_negative_hidden": {
+          "hidden": [
+            -1,
+            0
+          ],
+          "attacks": [
+            100,
+            50
+          ],
+          "hidden_rule": "equals_zero",
+          "target_slot": 4
+        },
+        "strongest_signed_eligibility": {
+          "actor_use_poison": -10,
+          "candidate_poison": [
+            -1,
+            -1
+          ],
+          "candidate_anti_poison": [
+            -20,
+            -10
+          ],
+          "attacks": [
+            30,
+            50
+          ],
+          "anti_poison_rule": "strictly_less_than_actor_use_poison",
           "target_slot": 3
         },
         "stale_distance_first_eligible_bug": {
