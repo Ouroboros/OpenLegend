@@ -526,6 +526,15 @@ BATTLE_FLOOD_DIRECTION_X_ADDRESS = 0x556DE
 BATTLE_FLOOD_DIRECTION_Y_ADDRESS = 0x556E6
 BATTLE_FLOOD_SHARED_TAIL_ADDRESS = 0x3612C
 BATTLE_FLOOD_SHARED_TAIL_END = 0x36133
+BATTLE_DEQUEUE_ADDRESS = 0x37166
+BATTLE_DEQUEUE_END = 0x371AE
+BATTLE_DEQUEUE_CALL_OFFSETS = (0x05,)
+BATTLE_DEQUEUE_CALL_TARGETS = (0x3ED1E,)
+BATTLE_DEQUEUE_RELOCATION_OFFSETS = (0x16, 0x28)
+BATTLE_DEQUEUE_CALLER_SITES = (0x3708F, 0x370D5)
+BATTLE_DEQUEUE_X_WORDS_ADDRESS = 0xE6ABE
+BATTLE_DEQUEUE_Y_WORDS_ADDRESS = 0xE6CBC
+BATTLE_DEQUEUE_READ_INDEX_ADDRESS = 0xE6ED4
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -2221,6 +2230,99 @@ def battle_flood_step_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_37166, sub_371AE, sub_371F7, sub_3721E and shared tail owner sub_3598C remain independent owners",
+    }
+
+
+def battle_dequeue_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_DEQUEUE_ADDRESS,
+        end=BATTLE_DEQUEUE_END,
+        call_offsets=BATTLE_DEQUEUE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_DEQUEUE_CALL_TARGETS,
+        relocation_offsets=BATTLE_DEQUEUE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_DEQUEUE_CALLER_SITES,
+        instruction_count=21,
+        branch_count=0,
+    )
+    if contract["raw_sha256"] != (
+        "1fab3fba7ceae1e002dce08eebdcf2e7b48ce91dc7ccc61ef494e40a27ccdf9b"
+    ):
+        raise ValueError("Z.DAT dequeue raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "3bd60c28edc86229bb6609c2dfac3809e6b1a6d4077a2e5af4295a0ddc7d2e6a"
+    ):
+        raise ValueError("Z.DAT dequeue relocation image changed")
+    caller_continuations = {
+        "0x3708f": z_dat_bytes[0x37094 - Z_DAT_LOAD_BASE:0x3709F - Z_DAT_LOAD_BASE].hex(),
+        "0x370d5": z_dat_bytes[0x370DA - Z_DAT_LOAD_BASE:0x370E5 - Z_DAT_LOAD_BASE].hex(),
+    }
+    if caller_continuations != {
+        "0x3708f": "83c40c66837c2404007d50",
+        "0x370d5": "83c40c66837c2404007d0a",
+    }:
+        raise ValueError("Z.DAT dequeue caller continuation changed")
+
+    x_queue = [0] * 255
+    y_queue = [0] * 255
+    x_queue[0], y_queue[0] = -32768, 32767
+    x_queue[253], y_queue[253] = 1234, -1234
+    x_queue[254], y_queue[254] = 32767, -32768
+    read_index = 253
+    synthetic_wrap_trace = []
+    for _ in range(3):
+        old_index = read_index
+        x = x_queue[read_index]
+        y = y_queue[read_index]
+        dividend = read_index + 1
+        quotient = int(dividend / 255)
+        read_index = dividend - quotient * 255
+        synthetic_wrap_trace.append({
+            "old_index": old_index,
+            "x": x,
+            "y": y,
+            "quotient_return": quotient,
+            "new_index": read_index,
+        })
+    expected_trace = [
+        {"old_index": 253, "x": 1234, "y": -1234,
+         "quotient_return": 0, "new_index": 254},
+        {"old_index": 254, "x": 32767, "y": -32768,
+         "quotient_return": 1, "new_index": 0},
+        {"old_index": 0, "x": -32768, "y": 32767,
+         "quotient_return": 0, "new_index": 1},
+    ]
+    if synthetic_wrap_trace != expected_trace:
+        raise ValueError("dequeue synthetic wrap trace changed")
+
+    return {
+        **contract,
+        "stack_probe_bytes": 8,
+        "queue_layout": {
+            "slots": 255,
+            "x_words": {
+                "address": hex(BATTLE_DEQUEUE_X_WORDS_ADDRESS),
+                "end": hex(BATTLE_DEQUEUE_Y_WORDS_ADDRESS),
+            },
+            "y_words": {
+                "address": hex(BATTLE_DEQUEUE_Y_WORDS_ADDRESS),
+                "end": hex(BATTLE_DEQUEUE_Y_WORDS_ADDRESS + 255 * 2),
+            },
+            "read_index": hex(BATTLE_DEQUEUE_READ_INDEX_ADDRESS),
+        },
+        "caller_arguments":
+            "both callers pass distinct x local, y local and shared read-index pointer",
+        "write_order": "x output, then y output, then read-index remainder",
+        "index_math":
+            "signed int16 index reloaded for x, y and update; (index+1) signed idiv 255",
+        "legal_index_domain": "wrappers initialize 0 and modulo update preserves 0..254",
+        "synthetic_wrap_trace": synthetic_wrap_trace,
+        "return": "signed division quotient: 1 only for legal index 254, otherwise 0",
+        "caller_continuations": caller_continuations,
+        "caller_uses_return": False,
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_37070 caller remains independently closed; sub_371AE enqueue remains independent",
     }
 
 
@@ -5996,6 +6098,7 @@ def build(data_root: Path) -> dict[str, object]:
             {occupied_coordinate[1] * 64 + occupied_coordinate[0]},
         )
         targeting_before_mark = fnv1a_words(targeting)
+        targeting_reachable_cells = sum(1 for value in targeting if 0 <= value < 128)
         targeting_blocked_source_index = next(
             index
             for index in range(4096)
@@ -6029,6 +6132,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "occupied_coordinate": list(occupied_coordinate),
                 "movement_occupied_hash": fnv1a_words(movement_occupied),
                 "targeting_hash": targeting_before_mark,
+                "targeting_reachable_cells": targeting_reachable_cells,
                 "targeting_occupied_hash": fnv1a_words(targeting_occupied),
                 "targeting_occupied_value": targeting_occupied[
                     occupied_coordinate[1] * 64 + occupied_coordinate[0]
@@ -6140,6 +6244,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_movement_initializer_machine": battle_movement_initializer_contract(z_dat_bytes),
         "battle_targeting_initializer_machine": battle_targeting_initializer_contract(z_dat_bytes),
         "battle_flood_step_machine": battle_flood_step_contract(z_dat_bytes),
+        "battle_dequeue_machine": battle_dequeue_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

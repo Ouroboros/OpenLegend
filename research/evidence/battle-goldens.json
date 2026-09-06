@@ -2094,6 +2094,76 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_37166, sub_371AE, sub_371F7, sub_3721E and shared tail owner sub_3598C remain independent owners"
   },
+  "battle_dequeue_machine": {
+    "address": "0x37166",
+    "end": "0x371ae",
+    "raw_offset": "0x30b66",
+    "size": 72,
+    "instruction_count": 21,
+    "branch_count": 0,
+    "raw_sha256": "1fab3fba7ceae1e002dce08eebdcf2e7b48ce91dc7ccc61ef494e40a27ccdf9b",
+    "loaded_sha256": "3bd60c28edc86229bb6609c2dfac3809e6b1a6d4077a2e5af4295a0ddc7d2e6a",
+    "relocation_count": 2,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3716b"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x3708f",
+      "0x370d5"
+    ],
+    "stack_probe_bytes": 8,
+    "queue_layout": {
+      "slots": 255,
+      "x_words": {
+        "address": "0xe6abe",
+        "end": "0xe6cbc"
+      },
+      "y_words": {
+        "address": "0xe6cbc",
+        "end": "0xe6eba"
+      },
+      "read_index": "0xe6ed4"
+    },
+    "caller_arguments": "both callers pass distinct x local, y local and shared read-index pointer",
+    "write_order": "x output, then y output, then read-index remainder",
+    "index_math": "signed int16 index reloaded for x, y and update; (index+1) signed idiv 255",
+    "legal_index_domain": "wrappers initialize 0 and modulo update preserves 0..254",
+    "synthetic_wrap_trace": [
+      {
+        "old_index": 253,
+        "x": 1234,
+        "y": -1234,
+        "quotient_return": 0,
+        "new_index": 254
+      },
+      {
+        "old_index": 254,
+        "x": 32767,
+        "y": -32768,
+        "quotient_return": 1,
+        "new_index": 0
+      },
+      {
+        "old_index": 0,
+        "x": -32768,
+        "y": 32767,
+        "quotient_return": 0,
+        "new_index": 1
+      }
+    ],
+    "return": "signed division quotient: 1 only for legal index 254, otherwise 0",
+    "caller_continuations": {
+      "0x3708f": "83c40c66837c2404007d50",
+      "0x370d5": "83c40c66837c2404007d0a"
+    },
+    "caller_uses_return": false,
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_37070 caller remains independently closed; sub_371AE enqueue remains independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -6585,6 +6655,7 @@
           ],
           "movement_occupied_hash": "0x8b3c54e9cbef5eff",
           "targeting_hash": "0x773478cb5fde310d",
+          "targeting_reachable_cells": 457,
           "targeting_occupied_hash": "0x773478cb5fde310d",
           "targeting_occupied_value": 1,
           "targeting_blocked_source": [
@@ -6618,6 +6689,7 @@
           ],
           "movement_occupied_hash": "0x407e0a6bb5fd7397",
           "targeting_hash": "0xc4e9944b25f2c2bb",
+          "targeting_reachable_cells": 822,
           "targeting_occupied_hash": "0xc4e9944b25f2c2bb",
           "targeting_occupied_value": 1,
           "targeting_blocked_source": [

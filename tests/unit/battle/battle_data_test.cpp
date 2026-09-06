@@ -140,6 +140,7 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         std::uint64_t source_occupied_hash;
         std::uint64_t occupied_hash;
         std::uint64_t targeting_hash;
+        std::size_t targeting_reachable_cells;
         std::uint64_t marked_hash;
     };
     constexpr std::array fixtures{
@@ -154,6 +155,7 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
             0x773478cb5fde310dULL,
             0x8b3c54e9cbef5effULL,
             0x773478cb5fde310dULL,
+            457U,
             0x3555eec69bfdbfc0ULL,
         },
         Fixture{
@@ -167,6 +169,7 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
             0xc4e9944b25f2c2bbULL,
             0x407e0a6bb5fd7397ULL,
             0xc4e9944b25f2c2bbULL,
+            822U,
             0x6760d37356a2b33aULL,
         },
     };
@@ -210,6 +213,10 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         data.occupancy()[occupied_index] = std::numeric_limits<std::int16_t>::min();
         pathing.build(fixture.source, BattlePathMode::targeting);
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
+        OL_CHECK(static_cast<std::size_t>(std::ranges::count_if(
+            pathing.values(), [](const std::int16_t value) {
+                return value >= 0 && value < 128;
+            })) == fixture.targeting_reachable_cells);
         OL_CHECK(pathing.value(fixture.occupied) == 1);
         OL_CHECK(pathing.value(fixture.target) == fixture.target_distance);
         constexpr std::array layer_directions{
