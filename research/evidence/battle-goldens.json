@@ -11188,6 +11188,509 @@
     "platform_adaptation_boundary": "modern code may reject invalid actor and role indices that make the machine read outside loaded combatant or role records",
     "closure_boundary": "stack probe, cursor selector, medicine action and sole action-menu caller remain independent owners"
   },
+  "battle_medicine_action_machine": {
+    "address": "0x39ef7",
+    "end": "0x3a10c",
+    "raw_offset": "0x338f7",
+    "size": 533,
+    "instruction_count": 132,
+    "branch_count": 22,
+    "raw_sha256": "0b47a665b7ce2cb420ed0ee46f9f070c6f38dc9f8f1360089d363e16da376ad2",
+    "loaded_sha256": "9eea49d981caba4f24cc52a013c3a72ebdab71a7a3a6b57b89f360d5702d5f85",
+    "relocation_count": 35,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x39efc",
+      "0x39f22",
+      "0x39f40",
+      "0x3a093",
+      "0x3a0c8",
+      "0x3a0db",
+      "0x3a0eb"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3f50b",
+      "0x3f50b",
+      "0x3a10c",
+      "0x3859e",
+      "0x38910",
+      "0x3b1e6"
+    ],
+    "callers": [
+      "0x36290",
+      "0x39ee8"
+    ],
+    "conditional_branch_count": 15,
+    "unconditional_jump_count": 7,
+    "relocation_offsets": [
+      "0x1d",
+      "0x24",
+      "0x3b",
+      "0x42",
+      "0x6c",
+      "0x73",
+      "0x80",
+      "0x8b",
+      "0x9c",
+      "0xa3",
+      "0xb0",
+      "0xbb",
+      "0xd6",
+      "0xed",
+      "0xfb",
+      "0x109",
+      "0x117",
+      "0x125",
+      "0x12f",
+      "0x137",
+      "0x147",
+      "0x14e",
+      "0x15c",
+      "0x166",
+      "0x16e",
+      "0x178",
+      "0x187",
+      "0x195",
+      "0x1a9",
+      "0x1b3",
+      "0x1bb",
+      "0x1c5",
+      "0x1dc",
+      "0x202",
+      "0x20a"
+    ],
+    "stack_probe_bytes": 36,
+    "local_return_sites": [],
+    "machine_slices": {
+      "ai_caller_dispatch": {
+        "address": "0x3628f",
+        "end": "0x3629a",
+        "size": 11,
+        "sha256": "01f5228ea2f2b726d4ba4aab7c43ebdd3e38f913816562bdb839f55249f92329"
+      },
+      "player_caller_dispatch": {
+        "address": "0x39ee7",
+        "end": "0x39ef7",
+        "size": 16,
+        "sha256": "829ab8aaef45004e78d64ef40e99df489d75eda2b638c7397d013f6fde9292dd"
+      },
+      "entry_direction": {
+        "address": "0x39ef7",
+        "end": "0x39fb8",
+        "size": 193,
+        "sha256": "58bf0a433c2b559f8bb4b98864c4bded8f520cd0883f36054a51b2a0bdd7961c"
+      },
+      "effect_clear": {
+        "address": "0x39fb8",
+        "end": "0x39fe1",
+        "size": 41,
+        "sha256": "347a78c8c3d7453ee490b186ac4c01e5f785ee9c66ba0f03b8f8071ed07befad"
+      },
+      "bounds_target": {
+        "address": "0x39fe1",
+        "end": "0x3a050",
+        "size": 111,
+        "sha256": "b02ca9fb37b8183fafbaeae39db5b46d32eabb041741df685f1ad95a7f341f20"
+      },
+      "effect_medicine": {
+        "address": "0x3a050",
+        "end": "0x3a0c0",
+        "size": 112,
+        "sha256": "6ec3b435824aeeefbd0a432e152e41b01d315bf75e00f5f8c6004fd2aab0eac3"
+      },
+      "animation": {
+        "address": "0x3a0c0",
+        "end": "0x3a0e7",
+        "size": 39,
+        "sha256": "8d62baeb912b17ec32e2e2cfe8e6ccddaf96538f6d619381cdb4cd04beae39b9"
+      },
+      "sprite_refresh": {
+        "address": "0x3a0e7",
+        "end": "0x3a107",
+        "size": 32,
+        "sha256": "1bfd66de0d9416a30fc5b8791f6e5b0c82887733cd820fbf907100ed55fa592b"
+      },
+      "action_commit": {
+        "address": "0x399fe",
+        "end": "0x39a3e",
+        "size": 64,
+        "sha256": "43f2440c9830bf28e494fe78ef9bc1135f9d98a7a4d25846304e8c1fb50e226a"
+      },
+      "epilogue": {
+        "address": "0x39a3e",
+        "end": "0x39a45",
+        "size": 7,
+        "sha256": "1012c6f763e4f0298e5468a7124dbe719ceea622ed4c78f35b47708a904443ae"
+      }
+    },
+    "direction": "two abs calls; same coordinate retains direction; signed abs-y > abs-x chooses vertical, tie chooses horizontal; positive delta chooses right/down",
+    "effect_clear": "signed nested 0..63 loops clear all 4096 words before target checks",
+    "bounds_bug": "x>=0, x<64, y>=0, then x<64 repeated; y>=64 is not rejected",
+    "target_contract": "enemy nonempty skips; empty marks effect1 after transient slot-minus-one side read; friendly marks effect1, calls sub_3A10C and stores returned low16 to damage word",
+    "animation_contract": "always sub_3859E(actor,0,0), damage kind4 and sub_38910(1), including bounds, enemy and empty paths",
+    "sprite_contract": "signed slot loop 0..<combatant_count calls sub_3B1E6 and stores returned low16",
+    "commit_contract": "external 0x399FE tail writes action_done1; attack-counter int16 increment; role physical-power int16 subtract2 then signed-negative clamp0; EAX0",
+    "caller_contract": "AI sub_36210 passes EAX through cleanup but its sole caller ignores it; player sub_39E88 cleans the argument then overwrites EAX with0",
+    "shared_entry_sites": {
+      "action_tail_0x399fe": [
+        "0x39d9e",
+        "0x3a107"
+      ],
+      "epilogue_0x39a3e": [
+        "0x36431",
+        "0x364fe",
+        "0x36509",
+        "0x36ff4",
+        "0x3b6ee",
+        "0x3ba71",
+        "0x3ba80"
+      ]
+    },
+    "direct_rng_calls": 0,
+    "vectors": {
+      "friendly_down": {
+        "actor": 0,
+        "actor_coordinate": [
+          26,
+          24
+        ],
+        "target_coordinate": [
+          26,
+          26
+        ],
+        "direction_before": 1,
+        "direction_after": 3,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "medicine_value_called": true,
+        "medicine_damage_word": 63,
+        "area_effect_kind": 4,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          123,
+          456
+        ],
+        "action_done": 1,
+        "attack_counter_after": 1,
+        "physical_power_after_shared_tail": 47,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(2)",
+          "sub_3A10C(actor=0,target=1,actor_role,target_role)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "empty_same_retain": {
+        "actor": 0,
+        "actor_coordinate": [
+          26,
+          24
+        ],
+        "target_coordinate": [
+          26,
+          24
+        ],
+        "direction_before": 2,
+        "direction_after": 2,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "medicine_value_called": false,
+        "medicine_damage_word": null,
+        "area_effect_kind": null,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          -32768
+        ],
+        "action_done": 1,
+        "attack_counter_after": 0,
+        "physical_power_after_shared_tail": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(0)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)"
+        ]
+      },
+      "enemy_right_tie_skip": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          11,
+          11
+        ],
+        "direction_before": 0,
+        "direction_after": 1,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "medicine_value_called": false,
+        "medicine_damage_word": null,
+        "area_effect_kind": null,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          1,
+          2
+        ],
+        "action_done": 1,
+        "attack_counter_after": 7,
+        "physical_power_after_shared_tail": 1,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(1)",
+          "sub_3F50B(1)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "friendly_left_tie_wrapping_commit": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          9,
+          9
+        ],
+        "direction_before": 3,
+        "direction_after": 2,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "medicine_value_called": true,
+        "medicine_damage_word": 9029,
+        "area_effect_kind": 4,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          32767,
+          -2
+        ],
+        "action_done": 1,
+        "attack_counter_after": -32768,
+        "physical_power_after_shared_tail": 32766,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(-1)",
+          "sub_3F50B(-1)",
+          "sub_3A10C(actor=0,target=1,actor_role,target_role)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "friendly_up": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          10,
+          7
+        ],
+        "direction_before": 3,
+        "direction_after": 0,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "medicine_value_called": true,
+        "medicine_damage_word": 17,
+        "area_effect_kind": 4,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          5,
+          6
+        ],
+        "action_done": 1,
+        "attack_counter_after": -32767,
+        "physical_power_after_shared_tail": 32765,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(-3)",
+          "sub_3A10C(actor=0,target=1,actor_role,target_role)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "out_x_negative": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          -1,
+          10
+        ],
+        "direction_before": 3,
+        "direction_after": 2,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "medicine_value_called": false,
+        "medicine_damage_word": null,
+        "area_effect_kind": null,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          7
+        ],
+        "action_done": 1,
+        "attack_counter_after": 11,
+        "physical_power_after_shared_tail": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(-11)",
+          "sub_3F50B(0)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)"
+        ]
+      },
+      "out_x_high": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          64,
+          10
+        ],
+        "direction_before": 2,
+        "direction_after": 1,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "medicine_value_called": false,
+        "medicine_damage_word": null,
+        "area_effect_kind": null,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          8
+        ],
+        "action_done": 1,
+        "attack_counter_after": 12,
+        "physical_power_after_shared_tail": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(54)",
+          "sub_3F50B(0)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)"
+        ]
+      },
+      "out_y_negative": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          10,
+          -1
+        ],
+        "direction_before": 1,
+        "direction_after": 0,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "medicine_value_called": false,
+        "medicine_damage_word": null,
+        "area_effect_kind": null,
+        "magic_type": 0,
+        "magic_effect_id": 0,
+        "damage_display_kind": 4,
+        "damage_suppress_low_word": 1,
+        "sprite_writes": [
+          9
+        ],
+        "action_done": 1,
+        "attack_counter_after": 13,
+        "physical_power_after_shared_tail": 32767,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(-11)",
+          "sub_3859E(actor=0,magic_type=0,effect=0)",
+          "sub_38910(suppress=1)",
+          "sub_3B1E6(slot=0)"
+        ]
+      }
+    },
+    "upper_y_bug": {
+      "target": [
+        10,
+        64
+      ],
+      "machine_checks": [
+        "x>=0",
+        "x<64",
+        "y>=0",
+        "x<64 repeated"
+      ],
+      "machine_accepts_bounds": true,
+      "machine_linear_occupancy_index": 4106,
+      "modern_safe_rejection": true
+    },
+    "empty_negative_read": {
+      "occupant": -1,
+      "machine_transient_side_read_slot": -1,
+      "observable_target_effect": 1,
+      "medicine_value_called": false,
+      "modern_avoids_invalid_read": true
+    },
+    "vector_sha256": "1958639fc75bb68858498f3eeaf860f0589ed6fd170095ba86a59141e7329b9a",
+    "platform_adaptation_boundary": "modern code safely rejects invalid actor, role, occupancy and y>=64 targets; it also avoids the machine empty-cell slot-minus-one side read",
+    "closure_boundary": "stack probe, abs, medicine value, magic animation, damage animation, sprite helper, both callers and external shared tails remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
