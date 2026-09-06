@@ -449,6 +449,12 @@ BATTLE_AI_MOVEMENT_CALLER_SITES = (
     0x362AB,
     0x36447,
 )
+BATTLE_PLAYER_MOVEMENT_ADDRESS = 0x36A98
+BATTLE_PLAYER_MOVEMENT_END = 0x36AF7
+BATTLE_PLAYER_MOVEMENT_CALL_OFFSETS = (0x05, 0x2B, 0x44, 0x50)
+BATTLE_PLAYER_MOVEMENT_CALL_TARGETS = (0x3ED1E, 0x36AF7, 0x37245, 0x37355)
+BATTLE_PLAYER_MOVEMENT_RELOCATION_OFFSETS = (0x25,)
+BATTLE_PLAYER_MOVEMENT_CALLER_SITES = (0x33323,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1682,6 +1688,49 @@ def battle_ai_movement_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_3ED1E, sub_36E7F, sub_36E06, sub_3F50B, sub_37245, sub_37355 and sub_36AF7 shared tail remain independent owners",
+    }
+
+
+def battle_player_movement_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_PLAYER_MOVEMENT_ADDRESS,
+        end=BATTLE_PLAYER_MOVEMENT_END,
+        call_offsets=BATTLE_PLAYER_MOVEMENT_CALL_OFFSETS,
+        expected_call_targets=BATTLE_PLAYER_MOVEMENT_CALL_TARGETS,
+        relocation_offsets=BATTLE_PLAYER_MOVEMENT_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_PLAYER_MOVEMENT_CALLER_SITES,
+        instruction_count=32,
+        branch_count=1,
+    )
+    if contract["raw_sha256"] != (
+        "b750d0562b8ff3c8f0a518ff963fa69f417a3fa55b51f55f16acebc125734b84"
+    ):
+        raise ValueError("Z.DAT player movement wrapper raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "b3383e9b8b3d33025818f2bf512f47b48c4d938a59c55115aa5abf74e5c4a79e"
+    ):
+        raise ValueError("Z.DAT player movement wrapper relocation image changed")
+    post_call_offset = 0x33328 - Z_DAT_LOAD_BASE
+    if z_dat_bytes[post_call_offset:post_call_offset + 6].hex() != "83c4046bc31c":
+        raise ValueError("Z.DAT player movement caller no longer discards EAX")
+    return {
+        **contract,
+        "stack_probe_bytes": 28,
+        "argument": "actor slot is consumed as a signed low word and retained in EBX",
+        "selector_call": "sub_36AF7(actor, signed actor round word6, mode0, &cancel_word)",
+        "cancel_local":
+            "32-bit local starts at zero; only its low word is compared exactly with 1 after selector return",
+        "cancel_exit":
+            "cancel word 1 skips path marking and movement and returns EAX=-1",
+        "selected_exit":
+            "every other value calls sub_37245 then sub_37355(actor,player_flag0,mode0,range0), ignores their EAX values and returns zero",
+        "sole_caller":
+            "sub_32E59 action0 cleans the actor argument then IMUL overwrites EAX, so wrapper result does not control the menu tail",
+        "direct_rng_draws": 0,
+        "direct_state_writes": "local cancel only; selector, path marker and movement own external state",
+        "closure_boundary":
+            "sub_3ED1E, sub_36AF7, sub_37245 and sub_37355 remain independent owners",
     }
 
 
@@ -5443,6 +5492,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_support_medicine_machine": battle_ai_support_medicine_contract(z_dat_bytes),
         "battle_ai_support_detox_machine": battle_ai_support_detox_contract(z_dat_bytes),
         "battle_ai_movement_machine": battle_ai_movement_contract(z_dat_bytes),
+        "battle_player_movement_machine": battle_player_movement_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

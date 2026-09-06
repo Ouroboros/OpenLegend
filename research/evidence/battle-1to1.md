@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为36/81；其余45项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为37/81；其余44项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -282,6 +282,8 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 `sub_36210` AI医疗与`sub_363AC` AI解毒使用各自ability signed除15加1为射程；首轮目标图命中即执行动作，超距且行动值严格正时调用`sub_3650E(actor,mode1,value=range)`，移动后恢复同一目标再建图。零/负行动值虽然不移动，仍执行第二次建图。第二次仍超距时仅当`2*actor.attack`严格大于`2*wrapped_allied_total/allied_count`才自动攻击，否则休息。完整callee汇编确认IDIV余数和医疗分支两次`sub_3F50B`返回值均无行为效果。现代Session已执行直接与移动后支持状态、FIGHT/EFT双bank、无flash damage及AI外层完成；直接医疗/解毒首magic分别为`0xbec9ef2738ca79b4`/`0xae0f13fbbc4c8083`，医疗距离6/range2移动4格后首magic为`0x2138cfdf8041c6bb`。攻击/休息回退进入完整共享continuation；两个owner均已独立完成入口审计并关闭。
 
 `sub_3650E`机器身份固定为1418 bytes、311条指令、57个分支、80处重定位、8个正常入口和14次direct call；raw/loaded SHA256为`31785d54867d026266133cad9cd3ae56f0d9efe11b6627ef1bb62781029a97f7`与`cf5d93c2bda18388199c1a72e5c0cf20207281276bf2a360cb0f304ac2d65e63`。完整目的格合同为：mode2仅在signed `target_distance-round<=range`时按range向下找轴向exact layer，mode3无轴向限制，其他分支从目标周围按上、右、左、下先找actor同轴可达格、再找任意可达格，仍失败则x优先/y逐格退向actor；射程层按x外/y内扫描并以strict Manhattan保留首tie。目的格须连续通过当前图和重建actor movement图两次signed `path<128`检查，再标最短路并delegated调用`sub_37355(actor,1,mode,range)`。新增mode2超出本回合转generic、非同轴第二轮、全占用退回source和降层终止后二检失败四组独立oracle回归；首轮入口REVIEW零产品差异。`advance_ai_movement`与`BattleSession`边界继续锁定每格path255、occupancy、坐标、方向、sprite、体力/行动值、render/present及参数40的两次BIOS tick后恢复八类typed continuation；delegated `sub_37355`仍为独立owner。正式golden双生成SHA256为`a96e3edb9de949cc441fd9fd5818ccb0c8a4b3423214cd86505be0d008e00ab7`，Linux app Debug 14/14通过，本owner独立关闭。
+
+`sub_36A98`玩家移动wrapper机器身份固定为95 bytes、32条指令、1个JNZ、1处重定位、唯一caller及4次direct call；raw/loaded SHA256为`b750d0562b8ff3c8f0a518ff963fa69f417a3fa55b51f55f16acebc125734b84`与`b3383e9b8b3d33025818f2bf512f47b48c4d938a59c55115aa5abf74e5c4a79e`。入口将signed actor行动值、mode0和cancel local地址传给`sub_36AF7`；local low word恰等于1时不标路、不移动并返回-1，否则依次调用`sub_37245`与`sub_37355(actor,0,0,0)`并固定返回0。唯一玩家动作0 caller随即以IMUL覆盖EAX，返回值不控制菜单尾。现代取消直接重建菜单且不创建移动plan，确认后复制选择期路径图、标路并逐格present/参数40两tick；新增取消前后坐标`(26,24)`、行动值2和体力10不变回归。入口REVIEW零产品差异；正式golden双生成SHA256为`b37f083ef1430a2477fff897853899915a5dbc49952e8baff88acb85bca6ba34`，Linux app Debug 14/14通过，本wrapper独立关闭，三个业务callee继续独立审计。
 
 `sub_36AF7`通用玩家光标选择已恢复为typed状态：入口按mode建立movement或targeting图，方向优先级下、右、左、上；相邻path不大于上限即可移动，path超限但occupancy非空仍可悬停；movement确认严格要求`0<path<=limit`，targeting允许`0<=path<=limit`，Escape清path上限并写取消结果。`sub_36A98`以actor行动值启动mode0选择，取消返回-1，否则复制选择期路径图、标最短路并逐格移动。battle4已实际接入movement与targeting的四方向/Escape/三确认键和每轮路径/光标重画present；movement继续逐格重画present与两次BIOS tick变化，targeting现由玩家用毒/解毒/医疗按各自能力射程进入，取消保持原菜单ordinal，确认敌方占位格`(26,26)`并保存目标。攻击与暗器在各自武功/物品选择接入后复用同一相位；`b8-battle-targeting.log`保留三入口、取消、逐格光标和最终确认的完整可读轨迹，Linux与Windows Debug完整BUILD全部14项测试及逆向validator通过；本函数推进为`implemented_pending_review`。
 

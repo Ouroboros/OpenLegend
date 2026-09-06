@@ -5499,6 +5499,13 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     movement_session.finish_presented_tick(200U);
     OL_CHECK(movement_session.handle_key(0x1BU) ==
              BattleSessionInputResult::cursor_cancelled);
+    OL_CHECK((BattlePathCoord{
+                  movement_session.setup().combatants()[0U].words[combatant_word::x],
+                  movement_session.setup().combatants()[0U].words[combatant_word::y]} ==
+              BattlePathCoord{26, 24}));
+    OL_CHECK(
+        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 2);
+    OL_CHECK(movement_ranger.roles[1U].word(role_word::physical_power) == 10);
     finish_player_menu_redraw(movement_session);
     OL_CHECK(movement_session.phase() == BattleSessionPhase::player_action);
     OL_CHECK(movement_session.player_action_menu().available[0U] == 1);

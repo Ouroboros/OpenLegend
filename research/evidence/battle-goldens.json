@@ -1402,6 +1402,43 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_3ED1E, sub_36E7F, sub_36E06, sub_3F50B, sub_37245, sub_37355 and sub_36AF7 shared tail remain independent owners"
   },
+  "battle_player_movement_machine": {
+    "address": "0x36a98",
+    "end": "0x36af7",
+    "raw_offset": "0x30498",
+    "size": 95,
+    "instruction_count": 32,
+    "branch_count": 1,
+    "raw_sha256": "b750d0562b8ff3c8f0a518ff963fa69f417a3fa55b51f55f16acebc125734b84",
+    "loaded_sha256": "b3383e9b8b3d33025818f2bf512f47b48c4d938a59c55115aa5abf74e5c4a79e",
+    "relocation_count": 1,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36a9d",
+      "0x36ac3",
+      "0x36adc",
+      "0x36ae8"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36af7",
+      "0x37245",
+      "0x37355"
+    ],
+    "callers": [
+      "0x33323"
+    ],
+    "stack_probe_bytes": 28,
+    "argument": "actor slot is consumed as a signed low word and retained in EBX",
+    "selector_call": "sub_36AF7(actor, signed actor round word6, mode0, &cancel_word)",
+    "cancel_local": "32-bit local starts at zero; only its low word is compared exactly with 1 after selector return",
+    "cancel_exit": "cancel word 1 skips path marking and movement and returns EAX=-1",
+    "selected_exit": "every other value calls sub_37245 then sub_37355(actor,player_flag0,mode0,range0), ignores their EAX values and returns zero",
+    "sole_caller": "sub_32E59 action0 cleans the actor argument then IMUL overwrites EAX, so wrapper result does not control the menu tail",
+    "direct_rng_draws": 0,
+    "direct_state_writes": "local cancel only; selector, path marker and movement own external state",
+    "closure_boundary": "sub_3ED1E, sub_36AF7, sub_37245 and sub_37355 remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
