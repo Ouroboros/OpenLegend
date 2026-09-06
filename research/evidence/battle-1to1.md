@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为34/81；其余47项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为35/81；其余46项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -276,6 +276,8 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 `sub_361AC`请求医疗owner机器身份固定为93 bytes、22条指令、1个signed分支和6处重定位；raw/loaded SHA256为`717b2ff358eec5fc59796f2eff00fa93a0662ef80c4a4ed99e0dbc021c4255cb`与`a92c3af77c368fcb219065d9a1e1cef84d0a4388fffdccfb50d4eaa2d2d41aa9`。唯一直接caller为`sub_33599`动作8case，忽略EAX并在共享尾写action_done；独立`sub_36209`请求解毒owner自行压栈后跳入`0x361B1`复用主体，但不传播closure。actor signed行动值严格大于0时调用`sub_3650E(actor,mode0,value0)`并忽略返回，零或负值跳过；汇合后重读全局请求目标槽及当前x/y，再无条件调用完整`sub_34C47`自动攻击。现代typed plan、实际逐格Session continuation及外层完成逐块等价；补齐目标移动后重读、正/零/负行动值和非法域回归后，两轮入口审计均零产品差异。真实battle2继续锁定mode0一格移动、请求目标恢复、动作码8、首magic hash`0xcc6a249ebb919a23`及RNG3295386429。order32正式原资产golden双生成SHA256为`5c491aa130bc3b016f38d4dcea71df94a1a02a893344aa4b01398e86fe0be8f4`并已独立关闭。`sub_36209`请求解毒owner另由`68 10 00 00 00 EB A1`组成，严格7 bytes/2条指令/1个short jump、零fixup/call/local RET，raw/loaded SHA256同为`39c017dd2b811b83553060d2eafb40e83c07e19d3e6685c6382075fffa133f09`；唯一caller是动作9case，尾跳`0x361B1`的栈形状和最终返回与请求医疗入口完全相同。动作9正/零/负行动值、移动后坐标重读和非法域回归补齐后，两轮wrapper入口审计零产品差异；其closure不反向复制order32主体。最新正式golden双生成SHA256为`4849e78fac9f2808920b8d20adf386c20e6dc229c7754e15e28d074eaeacb0b5`，Linux app Debug 14/14通过，两项owner现均独立关闭。
 
 `sub_36210` AI医疗handler固定为412 bytes、97条指令、6个分支、33处重定位、唯一caller及9次direct call；signed medicine/15向零截断+1、两次signed距离比较、只在signed行动值正数时mode1/range移动、移动后目标坐标重读、两个无副作用abs返回丢弃、live actor attack及入口冻结己方总值/人数的strict回退门均已逐块审计。首轮发现现代在移动continuation后重扫队友attack/HP，修正为计划携带`sub_33599`入口prelude的wrapped total/count；区分向量锁定冻结平均300时actor双攻600选择攻击，而错误重扫会得到2300并休息。修正后从入口覆盖全部指令和三种delegated出口，零新增差异；动作5正/零/负行动值、signed负医术、目标重读、冻结突变及非法域测试补齐。最新正式golden双生成SHA256为`56dd722def3f65427014e232ada7b12d3345a12ec4bdf45dd9edfb472453fa6a`，Linux app Debug 14/14通过，本owner独立关闭。
+
+`sub_363AC` AI解毒handler固定为354 bytes、79条指令、7个分支、28处重定位、唯一caller及7次direct call；signed detoxification/15向零截断+1、两次signed距离比较、只在signed行动值正数时mode1/range移动、移动后目标坐标重读，以及live actor attack对入口冻结己方总值/人数的strict回退门均已逐块审计。该owner与医疗入口不同，不调用`sub_3F50B`，且解毒、攻击、休息三路都尾跳外部`loc_39A3E`丢弃delegated参数并恢复寄存器后返回。现代共享support plan已正确携带入口prelude总值/人数；动作4正/零/负行动值、signed负解毒、目标重读、冻结突变、wrapped阈值和非法域回归补齐，首轮入口审计零产品差异。最新正式golden双生成SHA256为`7358979c860b6dc41acde03c5213306e5bba6c821a38db385e7dc63f31758041`，Linux app Debug 14/14通过，本owner独立关闭。
 
 `sub_36210` AI医疗与`sub_363AC` AI解毒使用各自ability signed除15加1为射程；首轮目标图命中即执行动作，超距且行动值严格正时调用`sub_3650E(actor,mode1,value=range)`，移动后恢复同一目标再建图。零/负行动值虽然不移动，仍执行第二次建图。第二次仍超距时仅当`2*actor.attack`严格大于`2*wrapped_allied_total/allied_count`才自动攻击，否则休息。完整callee汇编确认IDIV余数和医疗分支两次`sub_3F50B`返回值均无行为效果。现代Session已执行直接与移动后支持状态、FIGHT/EFT双bank、无flash damage及AI外层完成；直接医疗/解毒首magic分别为`0xbec9ef2738ca79b4`/`0xae0f13fbbc4c8083`，医疗距离6/range2移动4格后首magic为`0x2138cfdf8041c6bb`。攻击/休息回退进入完整共享continuation；两函数均推进为`implemented_pending_review`。
 

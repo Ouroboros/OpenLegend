@@ -1192,6 +1192,87 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_3ED1E, sub_36E7F, sub_39EF7, sub_3650E, sub_3F50B, sub_34C47 and sub_34AD3 remain independent owners"
   },
+  "battle_ai_support_detox_machine": {
+    "address": "0x363ac",
+    "end": "0x3650e",
+    "raw_offset": "0x2fdac",
+    "size": 354,
+    "instruction_count": 79,
+    "branch_count": 7,
+    "raw_sha256": "31cc8176adbb3df2976334035fa8a1d10adf44ecdb639d389f1b541c659c0acd",
+    "loaded_sha256": "892ef6cd06154bd14bb479526d94cccfab365ec97a2061d23ca5e3dfbdcc08f4",
+    "relocation_count": 28,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x363b1",
+      "0x363fe",
+      "0x3642c",
+      "0x36447",
+      "0x36496",
+      "0x364f9",
+      "0x36504"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e7f",
+      "0x39b8e",
+      "0x3650e",
+      "0x36e7f",
+      "0x34c47",
+      "0x34ad3"
+    ],
+    "callers": [
+      "0x33bed"
+    ],
+    "branches": [
+      {
+        "site": "0x36429",
+        "target": "0x36436",
+        "condition": "signed range < distance"
+      },
+      {
+        "site": "0x36431",
+        "target": "0x39a3e",
+        "condition": "detox shared-epilogue exit"
+      },
+      {
+        "site": "0x3643e",
+        "target": "0x3644f",
+        "condition": "signed round <= 0"
+      },
+      {
+        "site": "0x364c1",
+        "target": "0x3642b",
+        "condition": "signed range >= rebuilt distance"
+      },
+      {
+        "site": "0x364f6",
+        "target": "0x36503",
+        "condition": "actor doubled attack <= doubled allied average"
+      },
+      {
+        "site": "0x364fe",
+        "target": "0x39a3e",
+        "condition": "automatic-attack shared-epilogue exit"
+      },
+      {
+        "site": "0x36509",
+        "target": "0x39a3e",
+        "condition": "rest shared-epilogue exit"
+      }
+    ],
+    "entry_owner": "sub_33599 action case4 detox",
+    "caller": "sub_33599 pushes signed actor, ignores EAX, cleans one actor argument and later writes actor action_done word13=1",
+    "range": "signed actor-role detoxification is IDIV 15 toward zero then incremented; signed DI retains the range and EDX remainder is discarded",
+    "initial_range_check": "actor x/y become targeting source, sub_36E7F builds values and signed range >= signed target distance enters sub_39B8E detox",
+    "movement": "only signed actor round word6 > 0 calls sub_3650E(actor,mode1,range); zero or negative skips and EAX is ignored",
+    "second_range_check": "target slot/current x/y are re-read, actor source and targeting values are rebuilt and signed range >= distance re-enters detox",
+    "fallback": "2*signed live actor attack is strict-greater compared with signed IDIV of 2*signed AI-entry-frozen allied total by its frozen allied count; attack else rest",
+    "return": "detox, attack and rest all tail-jump to loc_39A3E, which drops the delegated actor argument, restores EDI/ESI/EBX and returns; sub_33599 ignores EAX",
+    "absolute_value_calls": 0,
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_3ED1E, sub_36E7F, sub_39B8E, sub_3650E, sub_34C47, sub_34AD3 and loc_39A3E remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3609,6 +3690,11 @@
           "minus_14": 1,
           "plus_30": 3
         },
+        "signed_detoxification_range": {
+          "minus_30": -1,
+          "minus_14": 1,
+          "plus_45": 4
+        },
         "fallback": {
           "allied_total_wrapped": 14464,
           "allied_count": 2,
@@ -3632,7 +3718,9 @@
         },
         "restore_same_target_after_move": true,
         "target_coordinates_reread_after_move": true,
-        "discarded_absolute_value_calls": 2,
+        "medicine_discarded_absolute_value_calls": 2,
+        "detox_discarded_absolute_value_calls": 0,
+        "detox_all_exits_use_shared_epilogue": "0x39a3e",
         "rng_consumed_before_support_or_fallback": false,
         "outer_marks_action_done_after_handler": true
       },

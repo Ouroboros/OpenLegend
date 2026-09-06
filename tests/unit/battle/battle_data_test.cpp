@@ -1550,6 +1550,96 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(!setup.begin_ai_support_plan(
                   actor_slot, medicine_choice, *valid_prelude).has_value());
     actor[combatant_word::role_id] = saved_actor_role;
+
+    ranger.roles[actor_role_id].set_word(role_word::detoxification, 0);
+    ranger.roles[actor_role_id].set_word(role_word::attack, 300);
+    ranger.roles[actor_role_id].set_word(role_word::hp, 0);
+    ranger.roles[target_role_id].set_word(role_word::attack, 0);
+    ranger.roles[target_role_id].set_word(role_word::hp, 0);
+    target[combatant_word::x] = distant->x;
+    target[combatant_word::y] = distant->y;
+    actor[combatant_word::round_value] = 3;
+    plan = begin_support_plan(detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->support_action == BattleAiAction::detox);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::move);
+    OL_CHECK(plan->movement_mode == 1);
+    OL_CHECK(plan->movement_value == plan->targeting_range);
+    target[combatant_word::x] = adjacent->x;
+    target[combatant_word::y] = adjacent->y;
+    reloaded_target_plan = setup.resume_ai_support_after_move(actor_slot, *plan);
+    OL_CHECK(reloaded_target_plan.has_value());
+    OL_CHECK(reloaded_target_plan->range_check_count == 2);
+    OL_CHECK(reloaded_target_plan->target.x == adjacent->x);
+    OL_CHECK(reloaded_target_plan->target.y == adjacent->y);
+    OL_CHECK(reloaded_target_plan->next_step == BattleAiSupportNextStep::apply_support);
+
+    target[combatant_word::x] = distant->x;
+    target[combatant_word::y] = distant->y;
+    plan = begin_support_plan(detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::move);
+    const auto frozen_detox_allied_total = plan->allied_total;
+    const auto frozen_detox_allied_count = plan->allied_count;
+    ranger.roles[target_role_id].set_word(role_word::attack, 1'000);
+    ranger.roles[target_role_id].set_word(role_word::hp, 1'000);
+    plan = setup.resume_ai_support_after_move(actor_slot, *plan);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->allied_total == frozen_detox_allied_total);
+    OL_CHECK(plan->allied_count == frozen_detox_allied_count);
+    OL_CHECK(plan->doubled_actor_attack == 600);
+    OL_CHECK(plan->doubled_allied_average == 300);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
+
+    ranger.roles[target_role_id].set_word(role_word::attack, 0);
+    ranger.roles[target_role_id].set_word(role_word::hp, 0);
+    ranger.roles[actor_role_id].set_word(role_word::attack, 0);
+    actor[combatant_word::round_value] = 0;
+    plan = begin_support_plan(detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->range_check_count == 2);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::rest);
+    actor[combatant_word::round_value] = -1;
+    plan = begin_support_plan(detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->range_check_count == 2);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::rest);
+
+    ranger.roles[actor_role_id].set_word(role_word::attack, 30'000);
+    ranger.roles[actor_role_id].set_word(role_word::hp, 30'000);
+    ranger.roles[target_role_id].set_word(role_word::attack, 10'000);
+    ranger.roles[target_role_id].set_word(role_word::hp, 10'000);
+    plan = begin_support_plan(detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->allied_total == 14'464);
+    OL_CHECK(plan->allied_count == 2);
+    OL_CHECK(plan->doubled_actor_attack == 60'000);
+    OL_CHECK(plan->doubled_allied_average == 14'464);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
+
+    ranger.roles[actor_role_id].set_word(role_word::detoxification, -30);
+    actor[combatant_word::round_value] = 0;
+    plan = begin_support_plan(detox_choice);
+    OL_CHECK(plan.has_value());
+    OL_CHECK(plan->targeting_range == -1);
+    OL_CHECK(plan->range_check_count == 2);
+    ranger.roles[actor_role_id].set_word(role_word::detoxification, 0);
+
+    const auto detox_prelude = setup.begin_ai_turn(actor_slot);
+    OL_CHECK(detox_prelude.has_value());
+    invalid = detox_choice;
+    invalid.target_slot = -1;
+    OL_CHECK(!setup.begin_ai_support_plan(
+                  actor_slot, invalid, *detox_prelude).has_value());
+    invalid.target_slot = setup.combatant_count();
+    OL_CHECK(!setup.begin_ai_support_plan(
+                  actor_slot, invalid, *detox_prelude).has_value());
+    OL_CHECK(!setup.begin_ai_support_plan(
+                  99U, detox_choice, *detox_prelude).has_value());
+    actor[combatant_word::role_id] = -1;
+    OL_CHECK(!setup.begin_ai_support_plan(
+                  actor_slot, detox_choice, *detox_prelude).has_value());
+    actor[combatant_word::role_id] = saved_actor_role;
 }
 
 void run_post_battle_progression_test(const openlegend::resource::DataRoot& data_root) {

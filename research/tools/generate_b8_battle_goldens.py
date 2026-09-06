@@ -272,6 +272,57 @@ BATTLE_AI_SUPPORT_MEDICINE_RELOCATION_OFFSETS = (
     0x178,
 )
 BATTLE_AI_SUPPORT_MEDICINE_CALLER_SITES = (0x33BF8,)
+BATTLE_AI_SUPPORT_DETOX_ADDRESS = 0x363AC
+BATTLE_AI_SUPPORT_DETOX_END = 0x3650E
+BATTLE_AI_SUPPORT_DETOX_CALL_OFFSETS = (
+    0x05,
+    0x52,
+    0x80,
+    0x9B,
+    0xEA,
+    0x14D,
+    0x158,
+)
+BATTLE_AI_SUPPORT_DETOX_CALL_TARGETS = (
+    0x3ED1E,
+    0x36E7F,
+    0x39B8E,
+    0x3650E,
+    0x36E7F,
+    0x34C47,
+    0x34AD3,
+)
+BATTLE_AI_SUPPORT_DETOX_RELOCATION_OFFSETS = (
+    0x18,
+    0x25,
+    0x3B,
+    0x41,
+    0x48,
+    0x4E,
+    0x5A,
+    0x64,
+    0x6E,
+    0x76,
+    0x8D,
+    0xA6,
+    0xB0,
+    0xB7,
+    0xBE,
+    0xC4,
+    0xD3,
+    0xD9,
+    0xE0,
+    0xE6,
+    0xF2,
+    0xFC,
+    0x106,
+    0x10E,
+    0x11E,
+    0x12B,
+    0x134,
+    0x13D,
+)
+BATTLE_AI_SUPPORT_DETOX_CALLER_SITES = (0x33BED,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1394,6 +1445,59 @@ def battle_ai_support_medicine_contract(z_dat_bytes: bytes) -> dict[str, object]
     }
 
 
+def battle_ai_support_detox_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_SUPPORT_DETOX_ADDRESS,
+        end=BATTLE_AI_SUPPORT_DETOX_END,
+        call_offsets=BATTLE_AI_SUPPORT_DETOX_CALL_OFFSETS,
+        expected_call_targets=BATTLE_AI_SUPPORT_DETOX_CALL_TARGETS,
+        relocation_offsets=BATTLE_AI_SUPPORT_DETOX_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_SUPPORT_DETOX_CALLER_SITES,
+        instruction_count=79,
+        branch_count=7,
+    )
+    if contract["raw_sha256"] != (
+        "31cc8176adbb3df2976334035fa8a1d10adf44ecdb639d389f1b541c659c0acd"
+    ):
+        raise ValueError("Z.DAT AI detox handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "892ef6cd06154bd14bb479526d94cccfab365ec97a2061d23ca5e3dfbdcc08f4"
+    ):
+        raise ValueError("Z.DAT AI detox handler relocation image changed")
+    return {
+        **contract,
+        "branches": [
+            {"site": "0x36429", "target": "0x36436", "condition": "signed range < distance"},
+            {"site": "0x36431", "target": "0x39a3e", "condition": "detox shared-epilogue exit"},
+            {"site": "0x3643e", "target": "0x3644f", "condition": "signed round <= 0"},
+            {"site": "0x364c1", "target": "0x3642b", "condition": "signed range >= rebuilt distance"},
+            {"site": "0x364f6", "target": "0x36503", "condition": "actor doubled attack <= doubled allied average"},
+            {"site": "0x364fe", "target": "0x39a3e", "condition": "automatic-attack shared-epilogue exit"},
+            {"site": "0x36509", "target": "0x39a3e", "condition": "rest shared-epilogue exit"},
+        ],
+        "entry_owner": "sub_33599 action case4 detox",
+        "caller":
+            "sub_33599 pushes signed actor, ignores EAX, cleans one actor argument and later writes actor action_done word13=1",
+        "range":
+            "signed actor-role detoxification is IDIV 15 toward zero then incremented; signed DI retains the range and EDX remainder is discarded",
+        "initial_range_check":
+            "actor x/y become targeting source, sub_36E7F builds values and signed range >= signed target distance enters sub_39B8E detox",
+        "movement":
+            "only signed actor round word6 > 0 calls sub_3650E(actor,mode1,range); zero or negative skips and EAX is ignored",
+        "second_range_check":
+            "target slot/current x/y are re-read, actor source and targeting values are rebuilt and signed range >= distance re-enters detox",
+        "fallback":
+            "2*signed live actor attack is strict-greater compared with signed IDIV of 2*signed AI-entry-frozen allied total by its frozen allied count; attack else rest",
+        "return":
+            "detox, attack and rest all tail-jump to loc_39A3E, which drops the delegated actor argument, restores EDI/ESI/EBX and returns; sub_33599 ignores EAX",
+        "absolute_value_calls": 0,
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_3ED1E, sub_36E7F, sub_39B8E, sub_3650E, sub_34C47, sub_34AD3 and loc_39A3E remain independent owners",
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -2080,6 +2184,11 @@ def ai_support_vectors() -> dict[str, object]:
             "minus_14": trunc_div(-14, 15) + 1,
             "plus_30": medicine_range,
         },
+        "signed_detoxification_range": {
+            "minus_30": trunc_div(-30, 15) + 1,
+            "minus_14": trunc_div(-14, 15) + 1,
+            "plus_45": detox_range,
+        },
         "fallback": {
             "allied_total_wrapped": allied_total,
             "allied_count": allied_count,
@@ -2103,7 +2212,9 @@ def ai_support_vectors() -> dict[str, object]:
         },
         "restore_same_target_after_move": True,
         "target_coordinates_reread_after_move": True,
-        "discarded_absolute_value_calls": 2,
+        "medicine_discarded_absolute_value_calls": 2,
+        "detox_discarded_absolute_value_calls": 0,
+        "detox_all_exits_use_shared_epilogue": "0x39a3e",
         "rng_consumed_before_support_or_fallback": False,
         "outer_marks_action_done_after_handler": True,
     }
@@ -5126,6 +5237,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_request_medicine_machine": battle_ai_request_medicine_contract(z_dat_bytes),
         "battle_ai_request_detox_machine": battle_ai_request_detox_contract(z_dat_bytes),
         "battle_ai_support_medicine_machine": battle_ai_support_medicine_contract(z_dat_bytes),
+        "battle_ai_support_detox_machine": battle_ai_support_detox_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
