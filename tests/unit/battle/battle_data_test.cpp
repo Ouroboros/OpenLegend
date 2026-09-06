@@ -190,10 +190,22 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
 
         const auto occupied_index = static_cast<std::size_t>(fixture.occupied.y) * 64U +
             static_cast<std::size_t>(fixture.occupied.x);
-        data.occupancy()[occupied_index] = 7;
+        constexpr std::array blocking_occupancy_values{
+            std::numeric_limits<std::int16_t>::min(),
+            static_cast<std::int16_t>(-2),
+            static_cast<std::int16_t>(0),
+            std::numeric_limits<std::int16_t>::max(),
+        };
+        for (const auto occupancy_value : blocking_occupancy_values) {
+            data.occupancy()[occupied_index] = occupancy_value;
+            pathing.build(fixture.source, BattlePathMode::movement);
+            OL_CHECK(fnv1a_words(pathing.values()) == fixture.occupied_hash);
+            OL_CHECK(pathing.value(fixture.occupied) == kBattlePathBlocked);
+        }
+        data.occupancy()[occupied_index] = -1;
         pathing.build(fixture.source, BattlePathMode::movement);
-        OL_CHECK(fnv1a_words(pathing.values()) == fixture.occupied_hash);
-        OL_CHECK(pathing.value(fixture.occupied) == kBattlePathBlocked);
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.movement_hash);
+        OL_CHECK(pathing.value(fixture.occupied) == 1);
 
         pathing.build(fixture.source, BattlePathMode::targeting);
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);

@@ -498,6 +498,17 @@ BATTLE_TARGETING_PATH_CALLER_SITES = (
     0x3558C, 0x357A6, 0x358B2, 0x3594E, 0x36262,
     0x36335, 0x363FE, 0x36496, 0x36567, 0x36B72,
 )
+BATTLE_MOVEMENT_INITIALIZER_ADDRESS = 0x36EF8
+BATTLE_MOVEMENT_INITIALIZER_END = 0x36FF9
+BATTLE_MOVEMENT_INITIALIZER_CALL_OFFSETS = (0x05,)
+BATTLE_MOVEMENT_INITIALIZER_RELOCATION_OFFSETS = (
+    0x25, 0x57, 0x65, 0x8E, 0x95, 0x9E, 0xCB, 0xE0,
+)
+BATTLE_MOVEMENT_INITIALIZER_CALLER_SITES = (0x36E10,)
+BATTLE_PATH_TILE_BEGIN_ADDRESS = 0x5456A
+BATTLE_PATH_TILE_END_ADDRESS = 0x5457C
+BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_ADDRESS = 0x39A3E
+BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_END = 0x39A45
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1880,6 +1891,109 @@ def battle_movement_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "caller_uses_return": False,
         "direct_rng_draws": 0,
         "closure_boundary": "sub_36EF8 and sub_37070 remain independent owners",
+    }
+
+
+def battle_movement_initializer_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_MOVEMENT_INITIALIZER_ADDRESS,
+        end=BATTLE_MOVEMENT_INITIALIZER_END,
+        call_offsets=BATTLE_MOVEMENT_INITIALIZER_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E,),
+        relocation_offsets=BATTLE_MOVEMENT_INITIALIZER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_MOVEMENT_INITIALIZER_CALLER_SITES,
+        instruction_count=72,
+        branch_count=17,
+    )
+    if contract["raw_sha256"] != (
+        "aef811e34f5552d31e095f5560b3f72ef0a9eab77c0242f7e30e7820f8b32209"
+    ):
+        raise ValueError("Z.DAT movement initializer raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "12da496f917b4551ba90a0d82da8a2a5676632e533e16993c625714a4a8ee97d"
+    ):
+        raise ValueError("Z.DAT movement initializer relocation image changed")
+
+    caller_continuation = z_dat_bytes[
+        0x36E15 - Z_DAT_LOAD_BASE:0x36E1C - Z_DAT_LOAD_BASE
+    ].hex()
+    if caller_continuation != "0fbf15d8560300":
+        raise ValueError("Z.DAT movement initializer caller continuation changed")
+
+    tile_begin = struct.unpack_from(
+        "<9h", z_dat_bytes, BATTLE_PATH_TILE_BEGIN_ADDRESS - Z_DAT_LOAD_BASE
+    )
+    tile_end = struct.unpack_from(
+        "<9h", z_dat_bytes, BATTLE_PATH_TILE_END_ADDRESS - Z_DAT_LOAD_BASE
+    )
+    tile_ranges = tuple(zip(tile_begin, tile_end))
+    if tile_ranges != BLOCKED_TILE_RANGES:
+        raise ValueError("Z.DAT movement blocked tile ranges changed")
+
+    shared_tail = z_dat_bytes[
+        BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE:
+        BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_END - Z_DAT_LOAD_BASE
+    ]
+    if shared_tail.hex() != "83c4045f5e5bc3":
+        raise ValueError("Z.DAT movement initializer shared tail changed")
+
+    def classify(upper_layer: int, occupancy: int, ground_tile: int) -> int:
+        blocked_ground = any(begin <= ground_tile <= end for begin, end in tile_ranges)
+        return 555 if upper_layer != 0 or occupancy != -1 or blocked_ground else 254
+
+    tile_boundary_vectors = []
+    for begin, end in tile_ranges:
+        tile_boundary_vectors.append(
+            {
+                "begin": begin,
+                "end": end,
+                "below_begin": classify(0, -1, begin - 1),
+                "at_begin": classify(0, -1, begin),
+                "at_end": classify(0, -1, end),
+                "above_end": classify(0, -1, end + 1),
+            }
+        )
+
+    return {
+        **contract,
+        "stack_probe_bytes": 20,
+        "arguments": "none; battlefield ground/upper layers and occupancy are shared globals",
+        "clear_pass": "64x64 path words set to zero with outer y and inner x",
+        "scan_pass": "64x64 with outer x and inner y; each cell receives exactly one final value",
+        "cell_index": "signed y*64+x",
+        "predicate_order": ["upper_layer != 0", "occupancy != -1", "signed ground tile in range"],
+        "unblocked_value": 254,
+        "blocked_value": 555,
+        "tile_ranges": [[begin, end] for begin, end in tile_ranges],
+        "predicate_vectors": {
+            "upper_layer": [
+                {"value": value, "result": classify(value, -1, 0)}
+                for value in (-32768, -1, 0, 1, 32767)
+            ],
+            "occupancy": [
+                {"value": value, "result": classify(0, value, 0)}
+                for value in (-32768, -2, -1, 0, 32767)
+            ],
+            "signed_ground_outside_ranges": [
+                {"value": value, "result": classify(0, -1, value)}
+                for value in (-32768, -1, 0, 32767)
+            ],
+            "tile_boundaries": tile_boundary_vectors,
+        },
+        "caller_continuation": caller_continuation,
+        "caller_uses_return": False,
+        "shared_tail": {
+            "address": hex(BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_ADDRESS),
+            "end": hex(BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_END),
+            "bytes": shared_tail.hex(),
+            "sha256": sha256(shared_tail),
+            "semantics": "add esp,4; pop edi; pop esi; pop ebx; ret; EAX unchanged",
+        },
+        "return": "normal completion reaches the shared tail with EAX=63",
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "shared tail 0x39A3E and its independent owner sub_397E5 are not closed here",
     }
 
 
@@ -5743,6 +5857,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_cursor_handler_machine": battle_cursor_handler_contract(z_dat_bytes),
         "battle_movement_path_machine": battle_movement_path_contract(z_dat_bytes),
         "battle_targeting_path_machine": battle_targeting_path_contract(z_dat_bytes),
+        "battle_movement_initializer_machine": battle_movement_initializer_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

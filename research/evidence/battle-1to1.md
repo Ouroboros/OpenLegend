@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为40/81；其余41项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为41/81；其余40项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、41项为 `implemented_pending_review`、40项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、40项为 `implemented_pending_review`、41项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -105,7 +105,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 - 回溯从 target 开始写250，每层用 `(distance+127)%128` 并按同一方向顺序选择首个前驱；消费标记255由后续移动单元使用；
 - `sub_37070` 的坐标比较允许64，现代仅保留线性 index仍在0..4095的别名，index>=4096安全拒绝；不可达回溯返回false而不进入原死循环。
 
-独立 oracle 固定 battle0/93 空 occupancy、movement source occupancy强制归零、相邻单格占位、targeting upper-layer阻挡source强制归零、target距离14/22、回溯前后完整 FNV-1a 与首步 `(31,20)/(33,29)`；Linux Debug 14/14。`sub_36E06/sub_36E7F`已完成最终入口审计并归类`platform_adapted`，其余八项保持`implemented_pending_review`。
+独立 oracle 固定 battle0/93 空 occupancy、movement source occupancy强制归零、相邻单格占位、targeting upper-layer阻挡source强制归零、target距离14/22、回溯前后完整 FNV-1a 与首步 `(31,20)/(33,29)`；Linux Debug 14/14。`sub_36EF8`进一步固定为257 bytes、72条指令、17个跳转和8处重定位：先把64×64 path全部写0，再按x外/y内扫描；upper layer非0、occupancy非-1或signed ground命中九段原资产闭区间时写555，否则写254。现代省略不可观察的预清零并改用独立格线性扫描，最终4096 words一致；共享尾`0x39A3E`只回收ABI状态，唯一caller忽略返回63。`sub_36E06/sub_36E7F/sub_36EF8`已完成最终入口审计并归类`platform_adapted`，其余七项保持`implemented_pending_review`。
 
 `sub_37355` 另以每次一个同步边界实现逐格核心：旧 path=255、occupancy 搬移、x/y、方向、sprite、条件体力 DEC、行动值 DEC依机器顺序写入；destination、Manhattan range、aligned range和行动值耗尽停止规则也已映射。连续左移两格固定 direction2、sprite5110、physical power 1→0、round 5→4→3。玩家路径和AI mode0..3均已实际执行每格视图更新、render/present与参数40对应的两次BIOS tick变化等待；函数推进为 `implemented_pending_review`。
 

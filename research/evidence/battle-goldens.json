@@ -1653,6 +1653,227 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_36FF9 and sub_37070 remain independent owners"
   },
+  "battle_movement_initializer_machine": {
+    "address": "0x36ef8",
+    "end": "0x36ff9",
+    "raw_offset": "0x308f8",
+    "size": 257,
+    "instruction_count": 72,
+    "branch_count": 17,
+    "raw_sha256": "aef811e34f5552d31e095f5560b3f72ef0a9eab77c0242f7e30e7820f8b32209",
+    "loaded_sha256": "12da496f917b4551ba90a0d82da8a2a5676632e533e16993c625714a4a8ee97d",
+    "relocation_count": 8,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36efd"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x36e10"
+    ],
+    "stack_probe_bytes": 20,
+    "arguments": "none; battlefield ground/upper layers and occupancy are shared globals",
+    "clear_pass": "64x64 path words set to zero with outer y and inner x",
+    "scan_pass": "64x64 with outer x and inner y; each cell receives exactly one final value",
+    "cell_index": "signed y*64+x",
+    "predicate_order": [
+      "upper_layer != 0",
+      "occupancy != -1",
+      "signed ground tile in range"
+    ],
+    "unblocked_value": 254,
+    "blocked_value": 555,
+    "tile_ranges": [
+      [
+        358,
+        362
+      ],
+      [
+        374,
+        380
+      ],
+      [
+        458,
+        464
+      ],
+      [
+        506,
+        610
+      ],
+      [
+        818,
+        824
+      ],
+      [
+        838,
+        838
+      ],
+      [
+        934,
+        936
+      ],
+      [
+        1016,
+        1022
+      ],
+      [
+        1324,
+        1348
+      ]
+    ],
+    "predicate_vectors": {
+      "upper_layer": [
+        {
+          "value": -32768,
+          "result": 555
+        },
+        {
+          "value": -1,
+          "result": 555
+        },
+        {
+          "value": 0,
+          "result": 254
+        },
+        {
+          "value": 1,
+          "result": 555
+        },
+        {
+          "value": 32767,
+          "result": 555
+        }
+      ],
+      "occupancy": [
+        {
+          "value": -32768,
+          "result": 555
+        },
+        {
+          "value": -2,
+          "result": 555
+        },
+        {
+          "value": -1,
+          "result": 254
+        },
+        {
+          "value": 0,
+          "result": 555
+        },
+        {
+          "value": 32767,
+          "result": 555
+        }
+      ],
+      "signed_ground_outside_ranges": [
+        {
+          "value": -32768,
+          "result": 254
+        },
+        {
+          "value": -1,
+          "result": 254
+        },
+        {
+          "value": 0,
+          "result": 254
+        },
+        {
+          "value": 32767,
+          "result": 254
+        }
+      ],
+      "tile_boundaries": [
+        {
+          "begin": 358,
+          "end": 362,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 374,
+          "end": 380,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 458,
+          "end": 464,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 506,
+          "end": 610,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 818,
+          "end": 824,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 838,
+          "end": 838,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 934,
+          "end": 936,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 1016,
+          "end": 1022,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        },
+        {
+          "begin": 1324,
+          "end": 1348,
+          "below_begin": 254,
+          "at_begin": 555,
+          "at_end": 555,
+          "above_end": 254
+        }
+      ]
+    },
+    "caller_continuation": "0fbf15d8560300",
+    "caller_uses_return": false,
+    "shared_tail": {
+      "address": "0x39a3e",
+      "end": "0x39a45",
+      "bytes": "83c4045f5e5bc3",
+      "sha256": "1012c6f763e4f0298e5468a7124dbe719ceea622ed4c78f35b47708a904443ae",
+      "semantics": "add esp,4; pop edi; pop esi; pop ebx; ret; EAX unchanged"
+    },
+    "return": "normal completion reaches the shared tail with EAX=63",
+    "direct_rng_draws": 0,
+    "closure_boundary": "shared tail 0x39A3E and its independent owner sub_397E5 are not closed here"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
