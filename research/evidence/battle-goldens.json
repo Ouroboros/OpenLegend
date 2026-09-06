@@ -1572,6 +1572,87 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_36EF8 and sub_37070 remain independent owners"
   },
+  "battle_targeting_path_machine": {
+    "address": "0x36e7f",
+    "end": "0x36ef8",
+    "raw_offset": "0x3087f",
+    "size": 121,
+    "instruction_count": 20,
+    "branch_count": 1,
+    "raw_sha256": "7de2240639b89bd98d88ad212cdce7dadf53b0d35255af2524d7155fcda890a6",
+    "loaded_sha256": "7de0062638c1709694717aef2703770addcd76495c6ee171a327d8cfd69d5610",
+    "relocation_count": 12,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36e84",
+      "0x36e89",
+      "0x36eee"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36ff9",
+      "0x37070"
+    ],
+    "callers": [
+      "0x34daf",
+      "0x34ec7",
+      "0x34faa",
+      "0x353cf",
+      "0x354e3",
+      "0x3558c",
+      "0x357a6",
+      "0x358b2",
+      "0x3594e",
+      "0x36262",
+      "0x36335",
+      "0x363fe",
+      "0x36496",
+      "0x36567",
+      "0x36b72"
+    ],
+    "stack_probe_bytes": 4,
+    "arguments": "none; source x/y are read as signed int16 globals",
+    "initializer": "sub_36FF9 targeting blocking map",
+    "source": {
+      "x_global": "0x556d6",
+      "y_global": "0x556d8",
+      "index": "signed y*64 + signed x",
+      "forced_value": 0
+    },
+    "queue": {
+      "slots": 255,
+      "read_index": 0,
+      "write_index": 2,
+      "distance": 0,
+      "slot0": [
+        0,
+        -1
+      ],
+      "slot1": "source"
+    },
+    "loop": "call sub_37070 until EAX is nonzero",
+    "return": "first nonzero EAX from sub_37070 passes through RET",
+    "caller_post_call_until_eax_overwrite": {
+      "0x34daf": "0fbf05e06e0c00",
+      "0x34ec7": "0fbf05e06e0c00",
+      "0x34faa": "0fbf05e06e0c00",
+      "0x353cf": "0fbf8332c70b00",
+      "0x354e3": "0fbf0de06e0c006bc91c0fbf9132c70b00c1e2070fbf8130c70b00",
+      "0x3558c": "0fbf0de06e0c006bc91c0fbf9132c70b00c1e2070fbf8130c70b00",
+      "0x357a6": "0fbf05e06e0c00",
+      "0x358b2": "0fbf05e06e0c00",
+      "0x3594e": "0fbf05e06e0c00",
+      "0x36262": "0fbf05e06e0c00",
+      "0x36335": "0fbf05e06e0c00",
+      "0x363fe": "0fbf05e06e0c00",
+      "0x36496": "0fbf05e06e0c00",
+      "0x36567": "0fbf54240cc1e2070fbf442408",
+      "0x36b72": "66c70600008b442414"
+    },
+    "caller_uses_return": false,
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_36FF9 and sub_37070 remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -6030,6 +6111,11 @@
           ],
           "movement_occupied_hash": "0x8b3c54e9cbef5eff",
           "targeting_hash": "0x773478cb5fde310d",
+          "targeting_blocked_source": [
+            19,
+            11
+          ],
+          "targeting_blocked_source_hash": "0x27f67ce66dece4d6",
           "targeting_marked": true,
           "targeting_marked_hash": "0x3555eec69bfdbfc0",
           "first_marked_step": [
@@ -6056,6 +6142,11 @@
           ],
           "movement_occupied_hash": "0x407e0a6bb5fd7397",
           "targeting_hash": "0xc4e9944b25f2c2bb",
+          "targeting_blocked_source": [
+            2,
+            0
+          ],
+          "targeting_blocked_source_hash": "0x804d8a6ca5fb4034",
           "targeting_marked": true,
           "targeting_marked_hash": "0x6760d37356a2b33a",
           "first_marked_step": [

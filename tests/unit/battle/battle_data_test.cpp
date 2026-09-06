@@ -204,6 +204,27 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         pathing.consume(fixture.source);
         OL_CHECK(pathing.value(fixture.source) == kBattlePathConsumed);
     }
+
+    struct BlockedSourceFixture {
+        std::int16_t battle_id;
+        BattlePathCoord source;
+        std::uint64_t targeting_hash;
+    };
+    constexpr std::array blocked_source_fixtures{
+        BlockedSourceFixture{0, {19, 11}, 0x27f67ce66dece4d6ULL},
+        BlockedSourceFixture{93, {2, 0}, 0x804d8a6ca5fb4034ULL},
+    };
+    for (const auto& fixture : blocked_source_fixtures) {
+        BattleData data{data_root, fixture.battle_id};
+        OL_CHECK(data.valid());
+        const auto source_index = static_cast<std::size_t>(fixture.source.y) * 64U +
+            static_cast<std::size_t>(fixture.source.x);
+        OL_CHECK(data.battlefield()[kBattleOccupancyCells + source_index] != 0);
+        BattlePathing pathing{data};
+        pathing.build(fixture.source, BattlePathMode::targeting);
+        OL_CHECK(pathing.value(fixture.source) == 0);
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
+    }
 }
 
 void initialize_ranger(

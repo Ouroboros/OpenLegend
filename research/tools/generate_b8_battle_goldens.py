@@ -485,6 +485,19 @@ BATTLE_MOVEMENT_PATH_CALLER_SITES = (
     0x34B28, 0x365F8, 0x36737, 0x367C4,
     0x368DB, 0x36921, 0x3699C, 0x36B65,
 )
+BATTLE_TARGETING_PATH_ADDRESS = 0x36E7F
+BATTLE_TARGETING_PATH_END = 0x36EF8
+BATTLE_TARGETING_PATH_CALL_OFFSETS = (0x05, 0x0A, 0x6F)
+BATTLE_TARGETING_PATH_CALL_TARGETS = (0x3ED1E, 0x36FF9, 0x37070)
+BATTLE_TARGETING_PATH_RELOCATION_OFFSETS = (
+    0x12, 0x1C, 0x24, 0x2D, 0x36, 0x3F,
+    0x48, 0x51, 0x59, 0x5F, 0x65, 0x6B,
+)
+BATTLE_TARGETING_PATH_CALLER_SITES = (
+    0x34DAF, 0x34EC7, 0x34FAA, 0x353CF, 0x354E3,
+    0x3558C, 0x357A6, 0x358B2, 0x3594E, 0x36262,
+    0x36335, 0x363FE, 0x36496, 0x36567, 0x36B72,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1867,6 +1880,78 @@ def battle_movement_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "caller_uses_return": False,
         "direct_rng_draws": 0,
         "closure_boundary": "sub_36EF8 and sub_37070 remain independent owners",
+    }
+
+
+def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_TARGETING_PATH_ADDRESS,
+        end=BATTLE_TARGETING_PATH_END,
+        call_offsets=BATTLE_TARGETING_PATH_CALL_OFFSETS,
+        expected_call_targets=BATTLE_TARGETING_PATH_CALL_TARGETS,
+        relocation_offsets=BATTLE_TARGETING_PATH_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_TARGETING_PATH_CALLER_SITES,
+        instruction_count=20,
+        branch_count=1,
+    )
+    if contract["raw_sha256"] != (
+        "7de2240639b89bd98d88ad212cdce7dadf53b0d35255af2524d7155fcda890a6"
+    ):
+        raise ValueError("Z.DAT targeting path wrapper raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "7de0062638c1709694717aef2703770addcd76495c6ee171a327d8cfd69d5610"
+    ):
+        raise ValueError("Z.DAT targeting path wrapper relocation image changed")
+    expected_post_call_until_eax_overwrite = {
+        0x34DAF: "0fbf05e06e0c00",
+        0x34EC7: "0fbf05e06e0c00",
+        0x34FAA: "0fbf05e06e0c00",
+        0x353CF: "0fbf8332c70b00",
+        0x354E3: "0fbf0de06e0c006bc91c0fbf9132c70b00c1e2070fbf8130c70b00",
+        0x3558C: "0fbf0de06e0c006bc91c0fbf9132c70b00c1e2070fbf8130c70b00",
+        0x357A6: "0fbf05e06e0c00",
+        0x358B2: "0fbf05e06e0c00",
+        0x3594E: "0fbf05e06e0c00",
+        0x36262: "0fbf05e06e0c00",
+        0x36335: "0fbf05e06e0c00",
+        0x363FE: "0fbf05e06e0c00",
+        0x36496: "0fbf05e06e0c00",
+        0x36567: "0fbf54240cc1e2070fbf442408",
+        0x36B72: "66c70600008b442414",
+    }
+    actual_post_call_until_eax_overwrite = {}
+    for site, expected in expected_post_call_until_eax_overwrite.items():
+        offset = site - Z_DAT_LOAD_BASE + 5
+        actual = z_dat_bytes[offset:offset + len(bytes.fromhex(expected))].hex()
+        if actual != expected:
+            raise ValueError(f"Z.DAT targeting path caller continuation changed at {site:#x}")
+        actual_post_call_until_eax_overwrite[hex(site)] = actual
+    return {
+        **contract,
+        "stack_probe_bytes": 4,
+        "arguments": "none; source x/y are read as signed int16 globals",
+        "initializer": "sub_36FF9 targeting blocking map",
+        "source": {
+            "x_global": "0x556d6",
+            "y_global": "0x556d8",
+            "index": "signed y*64 + signed x",
+            "forced_value": 0,
+        },
+        "queue": {
+            "slots": 255,
+            "read_index": 0,
+            "write_index": 2,
+            "distance": 0,
+            "slot0": [0, -1],
+            "slot1": "source",
+        },
+        "loop": "call sub_37070 until EAX is nonzero",
+        "return": "first nonzero EAX from sub_37070 passes through RET",
+        "caller_post_call_until_eax_overwrite": actual_post_call_until_eax_overwrite,
+        "caller_uses_return": False,
+        "direct_rng_draws": 0,
+        "closure_boundary": "sub_36FF9 and sub_37070 remain independent owners",
     }
 
 
@@ -5564,6 +5649,18 @@ def build(data_root: Path) -> dict[str, object]:
         )
         targeting = build_path_map(field_words, source, "targeting")
         targeting_before_mark = fnv1a_words(targeting)
+        targeting_blocked_source_index = next(
+            index
+            for index in range(4096)
+            if field_words[4096 + index] != 0
+        )
+        targeting_blocked_source = (
+            targeting_blocked_source_index % 64,
+            targeting_blocked_source_index // 64,
+        )
+        targeting_from_blocked_source = build_path_map(
+            field_words, targeting_blocked_source, "targeting"
+        )
         path_marked = mark_path(targeting, source, target)
         first_marked_step = next(
             (
@@ -5585,6 +5682,8 @@ def build(data_root: Path) -> dict[str, object]:
                 "occupied_coordinate": list(occupied_coordinate),
                 "movement_occupied_hash": fnv1a_words(movement_occupied),
                 "targeting_hash": targeting_before_mark,
+                "targeting_blocked_source": list(targeting_blocked_source),
+                "targeting_blocked_source_hash": fnv1a_words(targeting_from_blocked_source),
                 "targeting_marked": path_marked,
                 "targeting_marked_hash": fnv1a_words(targeting),
                 "first_marked_step": first_marked_step,
@@ -5643,6 +5742,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_player_movement_machine": battle_player_movement_contract(z_dat_bytes),
         "battle_cursor_handler_machine": battle_cursor_handler_contract(z_dat_bytes),
         "battle_movement_path_machine": battle_movement_path_contract(z_dat_bytes),
+        "battle_targeting_path_machine": battle_targeting_path_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
