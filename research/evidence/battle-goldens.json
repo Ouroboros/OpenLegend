@@ -1874,6 +1874,64 @@
     "direct_rng_draws": 0,
     "closure_boundary": "shared tail 0x39A3E and its independent owner sub_397E5 are not closed here"
   },
+  "battle_targeting_initializer_machine": {
+    "address": "0x36ff9",
+    "end": "0x37070",
+    "raw_offset": "0x309f9",
+    "size": 119,
+    "instruction_count": 39,
+    "branch_count": 10,
+    "raw_sha256": "bd2a44e6f71689d02b361c3ce4efdff3d14927ab43b509e9c2bfd4cb6ae67e0d",
+    "loaded_sha256": "c36d21be447066b7fd6ba9c2b113e67a63c965cac16c285363eb1316405c1b4b",
+    "relocation_count": 4,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36ffe"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x36e89"
+    ],
+    "stack_probe_bytes": 8,
+    "arguments": "none; battlefield upper layer and path map are shared globals",
+    "clear_pass": "64x64 path words set to zero with outer y and inner x",
+    "scan_pass": "64x64 with outer x and inner y; each cell receives exactly one final value",
+    "cell_index": "signed y*64+x",
+    "predicate": "upper_layer != 0",
+    "unblocked_value": 254,
+    "blocked_value": 555,
+    "upper_layer_vectors": [
+      {
+        "value": -32768,
+        "result": 555
+      },
+      {
+        "value": -1,
+        "result": 555
+      },
+      {
+        "value": 0,
+        "result": 254
+      },
+      {
+        "value": 1,
+        "result": 555
+      },
+      {
+        "value": 32767,
+        "result": 555
+      }
+    ],
+    "occupancy_reads": 0,
+    "ground_reads": 0,
+    "caller_continuation": "0fbf15d8560300",
+    "caller_uses_return": false,
+    "return": "normal completion returns EAX=8190, the final cell byte offset",
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_36E7F caller and sub_37070 flood step remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -6313,6 +6371,24 @@
         },
         "consumed_value": 255
       },
+      "targeting_ground_only": {
+        "battle_id": 89,
+        "battlefield_id": 13,
+        "source": [
+          25,
+          18
+        ],
+        "coordinate": [
+          26,
+          18
+        ],
+        "ground_tile": 358,
+        "upper_layer": 0,
+        "movement_value": 555,
+        "movement_hash": "0x49229d1428a78825",
+        "targeting_value": 1,
+        "targeting_hash": "0xd5b471aa864a88ca"
+      },
       "records": [
         {
           "battle_id": 0,
@@ -6332,6 +6408,8 @@
           ],
           "movement_occupied_hash": "0x8b3c54e9cbef5eff",
           "targeting_hash": "0x773478cb5fde310d",
+          "targeting_occupied_hash": "0x773478cb5fde310d",
+          "targeting_occupied_value": 1,
           "targeting_blocked_source": [
             19,
             11
@@ -6363,6 +6441,8 @@
           ],
           "movement_occupied_hash": "0x407e0a6bb5fd7397",
           "targeting_hash": "0xc4e9944b25f2c2bb",
+          "targeting_occupied_hash": "0xc4e9944b25f2c2bb",
+          "targeting_occupied_value": 1,
           "targeting_blocked_source": [
             2,
             0

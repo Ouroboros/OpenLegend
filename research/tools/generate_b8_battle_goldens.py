@@ -509,6 +509,11 @@ BATTLE_PATH_TILE_BEGIN_ADDRESS = 0x5456A
 BATTLE_PATH_TILE_END_ADDRESS = 0x5457C
 BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_ADDRESS = 0x39A3E
 BATTLE_MOVEMENT_INITIALIZER_SHARED_TAIL_END = 0x39A45
+BATTLE_TARGETING_INITIALIZER_ADDRESS = 0x36FF9
+BATTLE_TARGETING_INITIALIZER_END = 0x37070
+BATTLE_TARGETING_INITIALIZER_CALL_OFFSETS = (0x05,)
+BATTLE_TARGETING_INITIALIZER_RELOCATION_OFFSETS = (0x20, 0x4C, 0x56, 0x61)
+BATTLE_TARGETING_INITIALIZER_CALLER_SITES = (0x36E89,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1994,6 +1999,60 @@ def battle_movement_initializer_contract(z_dat_bytes: bytes) -> dict[str, object
         "direct_rng_draws": 0,
         "closure_boundary":
             "shared tail 0x39A3E and its independent owner sub_397E5 are not closed here",
+    }
+
+
+def battle_targeting_initializer_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_TARGETING_INITIALIZER_ADDRESS,
+        end=BATTLE_TARGETING_INITIALIZER_END,
+        call_offsets=BATTLE_TARGETING_INITIALIZER_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E,),
+        relocation_offsets=BATTLE_TARGETING_INITIALIZER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_TARGETING_INITIALIZER_CALLER_SITES,
+        instruction_count=39,
+        branch_count=10,
+    )
+    if contract["raw_sha256"] != (
+        "bd2a44e6f71689d02b361c3ce4efdff3d14927ab43b509e9c2bfd4cb6ae67e0d"
+    ):
+        raise ValueError("Z.DAT targeting initializer raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "c36d21be447066b7fd6ba9c2b113e67a63c965cac16c285363eb1316405c1b4b"
+    ):
+        raise ValueError("Z.DAT targeting initializer relocation image changed")
+    caller_continuation = z_dat_bytes[
+        0x36E8E - Z_DAT_LOAD_BASE:0x36E95 - Z_DAT_LOAD_BASE
+    ].hex()
+    if caller_continuation != "0fbf15d8560300":
+        raise ValueError("Z.DAT targeting initializer caller continuation changed")
+
+    def classify(upper_layer: int) -> int:
+        return 555 if upper_layer != 0 else 254
+
+    return {
+        **contract,
+        "stack_probe_bytes": 8,
+        "arguments": "none; battlefield upper layer and path map are shared globals",
+        "clear_pass": "64x64 path words set to zero with outer y and inner x",
+        "scan_pass": "64x64 with outer x and inner y; each cell receives exactly one final value",
+        "cell_index": "signed y*64+x",
+        "predicate": "upper_layer != 0",
+        "unblocked_value": 254,
+        "blocked_value": 555,
+        "upper_layer_vectors": [
+            {"value": value, "result": classify(value)}
+            for value in (-32768, -1, 0, 1, 32767)
+        ],
+        "occupancy_reads": 0,
+        "ground_reads": 0,
+        "caller_continuation": caller_continuation,
+        "caller_uses_return": False,
+        "return": "normal completion returns EAX=8190, the final cell byte offset",
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_36E7F caller and sub_37070 flood step remain independent owners",
     }
 
 
@@ -5762,6 +5821,12 @@ def build(data_root: Path) -> dict[str, object]:
             {occupied_coordinate[1] * 64 + occupied_coordinate[0]},
         )
         targeting = build_path_map(field_words, source, "targeting")
+        targeting_occupied = build_path_map(
+            field_words,
+            source,
+            "targeting",
+            {occupied_coordinate[1] * 64 + occupied_coordinate[0]},
+        )
         targeting_before_mark = fnv1a_words(targeting)
         targeting_blocked_source_index = next(
             index
@@ -5796,6 +5861,10 @@ def build(data_root: Path) -> dict[str, object]:
                 "occupied_coordinate": list(occupied_coordinate),
                 "movement_occupied_hash": fnv1a_words(movement_occupied),
                 "targeting_hash": targeting_before_mark,
+                "targeting_occupied_hash": fnv1a_words(targeting_occupied),
+                "targeting_occupied_value": targeting_occupied[
+                    occupied_coordinate[1] * 64 + occupied_coordinate[0]
+                ],
                 "targeting_blocked_source": list(targeting_blocked_source),
                 "targeting_blocked_source_hash": fnv1a_words(targeting_from_blocked_source),
                 "targeting_marked": path_marked,
@@ -5806,6 +5875,36 @@ def build(data_root: Path) -> dict[str, object]:
                 ],
             }
         )
+
+    targeting_ground_setup = setup_records[89]
+    if int(targeting_ground_setup["battlefield_id"]) != 13:
+        raise ValueError("battle89 targeting ground-only fixture battlefield changed")
+    targeting_ground_words = list(struct.unpack("<8192h", warfld_entries[13][:16384]))
+    targeting_ground_source = (25, 18)
+    targeting_ground_coordinate = (26, 18)
+    targeting_ground_index = targeting_ground_coordinate[1] * 64 + targeting_ground_coordinate[0]
+    if targeting_ground_words[targeting_ground_index] != 0x0166:
+        raise ValueError("battle89 targeting ground-only fixture tile changed")
+    if targeting_ground_words[4096 + targeting_ground_index] != 0:
+        raise ValueError("battle89 targeting ground-only fixture upper layer changed")
+    targeting_ground_movement = build_path_map(
+        targeting_ground_words, targeting_ground_source, "movement"
+    )
+    targeting_ground_targeting = build_path_map(
+        targeting_ground_words, targeting_ground_source, "targeting"
+    )
+    targeting_ground_vector = {
+        "battle_id": 89,
+        "battlefield_id": 13,
+        "source": list(targeting_ground_source),
+        "coordinate": list(targeting_ground_coordinate),
+        "ground_tile": targeting_ground_words[targeting_ground_index],
+        "upper_layer": targeting_ground_words[4096 + targeting_ground_index],
+        "movement_value": targeting_ground_movement[targeting_ground_index],
+        "movement_hash": fnv1a_words(targeting_ground_movement),
+        "targeting_value": targeting_ground_targeting[targeting_ground_index],
+        "targeting_hash": fnv1a_words(targeting_ground_targeting),
+    }
 
     battle_session = battle_session_vector(
         data_root,
@@ -5858,6 +5957,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_movement_path_machine": battle_movement_path_contract(z_dat_bytes),
         "battle_targeting_path_machine": battle_targeting_path_contract(z_dat_bytes),
         "battle_movement_initializer_machine": battle_movement_initializer_contract(z_dat_bytes),
+        "battle_targeting_initializer_machine": battle_targeting_initializer_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
@@ -6297,6 +6397,7 @@ def build(data_root: Path) -> dict[str, object]:
                     },
                     "consumed_value": 255,
                 },
+                "targeting_ground_only": targeting_ground_vector,
                 "records": pathing_records,
             },
             "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",

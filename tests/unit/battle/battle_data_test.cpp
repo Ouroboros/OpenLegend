@@ -207,8 +207,10 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.movement_hash);
         OL_CHECK(pathing.value(fixture.occupied) == 1);
 
+        data.occupancy()[occupied_index] = std::numeric_limits<std::int16_t>::min();
         pathing.build(fixture.source, BattlePathMode::targeting);
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
+        OL_CHECK(pathing.value(fixture.occupied) == 1);
         OL_CHECK(pathing.value(fixture.target) == fixture.target_distance);
         OL_CHECK(pathing.mark_shortest_path(fixture.source, fixture.target));
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.marked_hash);
@@ -237,6 +239,23 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(pathing.value(fixture.source) == 0);
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
     }
+
+    BattleData ground_only_data{data_root, 89};
+    OL_CHECK(ground_only_data.valid());
+    OL_CHECK(ground_only_data.battlefield_id() == 13);
+    constexpr BattlePathCoord ground_only_source{25, 18};
+    constexpr BattlePathCoord ground_only_coordinate{26, 18};
+    constexpr auto ground_only_index = 18U * 64U + 26U;
+    OL_CHECK(ground_only_data.battlefield()[ground_only_index] == 0x0166);
+    OL_CHECK(
+        ground_only_data.battlefield()[kBattleOccupancyCells + ground_only_index] == 0);
+    BattlePathing ground_only_pathing{ground_only_data};
+    ground_only_pathing.build(ground_only_source, BattlePathMode::movement);
+    OL_CHECK(ground_only_pathing.value(ground_only_coordinate) == kBattlePathBlocked);
+    OL_CHECK(fnv1a_words(ground_only_pathing.values()) == 0x49229d1428a78825ULL);
+    ground_only_pathing.build(ground_only_source, BattlePathMode::targeting);
+    OL_CHECK(ground_only_pathing.value(ground_only_coordinate) == 1);
+    OL_CHECK(fnv1a_words(ground_only_pathing.values()) == 0xd5b471aa864a88caULL);
 }
 
 void initialize_ranger(
