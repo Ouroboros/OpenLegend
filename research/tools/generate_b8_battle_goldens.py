@@ -559,6 +559,19 @@ BATTLE_PATH_READ_CALL_TARGETS = (0x3ED1E,)
 BATTLE_PATH_READ_RELOCATION_OFFSETS = (0x1B, 0x21)
 BATTLE_PATH_READ_CALLER_SITES = (0x3712D, 0x37266, 0x37319, 0x373D2)
 BATTLE_PATH_READ_SCRATCH_ADDRESS = 0xE6ECE
+BATTLE_PATH_MARK_ADDRESS = 0x37245
+BATTLE_PATH_MARK_END = 0x37355
+BATTLE_PATH_MARK_CALL_OFFSETS = (0x05, 0x21, 0x42, 0xD4, 0xEF)
+BATTLE_PATH_MARK_CALL_TARGETS = (0x3ED1E, 0x3721E, 0x371F7, 0x3721E, 0x371F7)
+BATTLE_PATH_MARK_RELOCATION_OFFSETS = (
+    0x14, 0x1C, 0x35, 0x3D, 0x4C, 0x56, 0x65, 0x72, 0xA3, 0xAF,
+)
+BATTLE_PATH_MARK_CALLER_SITES = (0x36759, 0x36ADC)
+BATTLE_PATH_MARK_SOURCE_X_ADDRESS = 0x556D6
+BATTLE_PATH_MARK_SOURCE_Y_ADDRESS = 0x556D8
+BATTLE_PATH_MARK_TARGET_X_ADDRESS = 0x556DA
+BATTLE_PATH_MARK_TARGET_Y_ADDRESS = 0x556DC
+BATTLE_PATH_MARK_SHARED_TAIL_ADDRESS = 0x34ACB
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -2690,6 +2703,267 @@ def battle_path_read_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_37070, sub_37245, and sub_37355 callers remain independent owners",
+    }
+
+
+def battle_path_mark_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_PATH_MARK_ADDRESS,
+        end=BATTLE_PATH_MARK_END,
+        call_offsets=BATTLE_PATH_MARK_CALL_OFFSETS,
+        expected_call_targets=BATTLE_PATH_MARK_CALL_TARGETS,
+        relocation_offsets=BATTLE_PATH_MARK_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_PATH_MARK_CALLER_SITES,
+        instruction_count=75,
+        branch_count=10,
+    )
+    if contract["raw_sha256"] != (
+        "7e87f0821e6915f00b3d5c5aceee8d131dfd822cb2a6909b879e8c928ba09f4c"
+    ):
+        raise ValueError("Z.DAT shortest-path marking raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "63725cf01080f6e5e365eae1baa68ccd719dfa4b8aa651af56a50e024bf3c02e"
+    ):
+        raise ValueError("Z.DAT shortest-path marking relocation image changed")
+
+    direction_x = list(struct.unpack_from(
+        "<4h", z_dat_bytes, BATTLE_FLOOD_DIRECTION_X_ADDRESS - Z_DAT_LOAD_BASE
+    ))
+    direction_y = list(struct.unpack_from(
+        "<4h", z_dat_bytes, BATTLE_FLOOD_DIRECTION_Y_ADDRESS - Z_DAT_LOAD_BASE
+    ))
+    directions = list(zip(direction_x, direction_y))
+    if directions != [(0, -1), (1, 0), (-1, 0), (0, 1)]:
+        raise ValueError("path marking direction table changed")
+    shared_tail = z_dat_bytes[
+        BATTLE_PATH_MARK_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE:
+        0x34AD3 - Z_DAT_LOAD_BASE
+    ].hex()
+    if shared_tail != "83c4105d5f5e5bc3":
+        raise ValueError("path marking shared epilogue changed")
+    caller_precheck_bytes = z_dat_bytes[
+        0x3674D - Z_DAT_LOAD_BASE:0x36759 - Z_DAT_LOAD_BASE
+    ].hex()
+    if caller_precheck_bytes != "6681bc5004ca0b0080007d21":
+        raise ValueError("AI path marking caller precheck changed")
+    caller_continuations = {
+        "0x36759": z_dat_bytes[0x3675E - Z_DAT_LOAD_BASE:0x3676C - Z_DAT_LOAD_BASE].hex(),
+        "0x36adc": z_dat_bytes[0x36AE1 - Z_DAT_LOAD_BASE:0x36AF2 - Z_DAT_LOAD_BASE].hex(),
+    }
+    if caller_continuations != {
+        "0x36759": "0fbf44243c500fbf44243c506a01",
+        "0x36adc": "6a006a006a0053e86808000083c41031c0",
+    }:
+        raise ValueError("path marking caller continuation changed")
+
+    def signed_word(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    def trunc_remainder(dividend: int, divisor: int) -> int:
+        quotient = abs(dividend) // abs(divisor)
+        if (dividend < 0) != (divisor < 0):
+            quotient = -quotient
+        return dividend - quotient * divisor
+
+    def machine_mark(
+        initial: dict[tuple[int, int], int],
+        source: tuple[int, int],
+        target: tuple[int, int],
+        max_outer_steps: int,
+    ) -> dict[str, object]:
+        values = [555] * BATTLE_PATH_WORD_COUNT
+        for coordinate, value in initial.items():
+            values[coordinate[1] * 64 + coordinate[0]] = signed_word(value)
+        distance = signed_word(values[target[1] * 64 + target[0]])
+        values[target[1] * 64 + target[0]] = 250
+        current = (signed_word(target[0]), signed_word(target[1]))
+        marked = [list(target)]
+        distances = []
+        chosen_direction_indices = []
+        next_currents = []
+        for _ in range(max_outer_steps):
+            if current == source:
+                return {
+                    "completed": True,
+                    "marked": marked,
+                    "distances": distances,
+                    "chosen_direction_indices": chosen_direction_indices,
+                    "next_currents": next_currents,
+                    "eax_low_word": source[1] & 0xFFFF,
+                }
+            distance = signed_word(trunc_remainder(signed_word(distance) + 127, 128))
+            distances.append(distance)
+            chosen = None
+            last = None
+            for direction_index, (dx, dy) in enumerate(directions):
+                candidate = (
+                    signed_word(current[0] + dx), signed_word(current[1] + dy)
+                )
+                last = candidate
+                inside = 0 <= candidate[0] < 64 and 0 <= candidate[1] < 64
+                if inside and signed_word(values[candidate[1] * 64 + candidate[0]]) == distance:
+                    values[candidate[1] * 64 + candidate[0]] = 250
+                    marked.append(list(candidate))
+                    chosen = candidate
+                    chosen_direction_indices.append(direction_index)
+                    break
+            current = chosen if chosen is not None else last
+            if chosen is None:
+                chosen_direction_indices.append(-1)
+            next_currents.append(list(current))
+        return {
+            "completed": current == source,
+            "marked": marked,
+            "distances": distances,
+            "chosen_direction_indices": chosen_direction_indices,
+            "next_currents": next_currents,
+            "eax_low_word": source[1] & 0xFFFF if current == source else None,
+        }
+
+    straight = machine_mark(
+        {(1, 1): 0, (1, 2): 1, (1, 3): 2}, (1, 1), (1, 3), 4
+    )
+    tie = machine_mark(
+        {(2, 2): 0, (3, 2): 1, (2, 3): 1, (3, 3): 2},
+        (2, 2), (3, 3), 4,
+    )
+    wrapped = machine_mark(
+        {(2, 0): 126, (2, 1): 127, (2, 2): 0}, (2, 0), (2, 2), 4
+    )
+    same = machine_mark({(5, 5): 0}, (5, 5), (5, 5), 1)
+    malformed = machine_mark({(0, 0): 0, (1, 0): 5}, (0, 0), (1, 0), 4)
+    synthetic_vectors = {
+        "straight_up": {
+            "completed": straight["completed"],
+            "marked": straight["marked"],
+            "distances": straight["distances"],
+            "chosen_direction_indices": straight["chosen_direction_indices"],
+            "eax_low_word": straight["eax_low_word"],
+        },
+        "up_before_left_tie": {
+            "completed": tie["completed"],
+            "marked": tie["marked"],
+            "distances": tie["distances"],
+            "chosen_direction_indices": tie["chosen_direction_indices"],
+        },
+        "distance_zero_wraps_to_127": {
+            "completed": wrapped["completed"],
+            "marked": wrapped["marked"],
+            "distances": wrapped["distances"],
+        },
+        "source_equals_target": {
+            "completed": same["completed"],
+            "marked": same["marked"],
+            "distances": same["distances"],
+            "chosen_direction_indices": same["chosen_direction_indices"],
+            "next_currents": same["next_currents"],
+            "eax_low_word": same["eax_low_word"],
+        },
+        "malformed_no_predecessor": {
+            "completed_after_four_rounds": malformed["completed"],
+            "marked": malformed["marked"],
+            "first_four_distances": malformed["distances"],
+            "first_four_currents": malformed["next_currents"],
+            "machine_nontermination_invariant": (
+                "x remains 1; only source candidate occurs at current (1,0) with required distance 4, "
+                "but source value is 0; all other candidate values are 555/250, so machine never exits"
+            ),
+        },
+    }
+    expected_vectors = {
+        "straight_up": {
+            "completed": True,
+            "marked": [[1, 3], [1, 2], [1, 1]],
+            "distances": [1, 0],
+            "chosen_direction_indices": [0, 0],
+            "eax_low_word": 1,
+        },
+        "up_before_left_tie": {
+            "completed": True,
+            "marked": [[3, 3], [3, 2], [2, 2]],
+            "distances": [1, 0],
+            "chosen_direction_indices": [0, 2],
+        },
+        "distance_zero_wraps_to_127": {
+            "completed": True,
+            "marked": [[2, 2], [2, 1], [2, 0]],
+            "distances": [127, 126],
+        },
+        "source_equals_target": {
+            "completed": True,
+            "marked": [[5, 5]],
+            "distances": [],
+            "chosen_direction_indices": [],
+            "next_currents": [],
+            "eax_low_word": 5,
+        },
+        "malformed_no_predecessor": {
+            "completed_after_four_rounds": False,
+            "marked": [[1, 0]],
+            "first_four_distances": [4, 3, 2, 1],
+            "first_four_currents": [[1, 1], [1, 2], [1, 3], [1, 4]],
+            "machine_nontermination_invariant": (
+                "x remains 1; only source candidate occurs at current (1,0) with required distance 4, "
+                "but source value is 0; all other candidate values are 555/250, so machine never exits"
+            ),
+        },
+    }
+    if synthetic_vectors != expected_vectors:
+        raise ValueError("path marking synthetic vectors changed")
+
+    return {
+        **contract,
+        "stack_probe_bytes": 48,
+        "globals": {
+            "source": {
+                "x": hex(BATTLE_PATH_MARK_SOURCE_X_ADDRESS),
+                "y": hex(BATTLE_PATH_MARK_SOURCE_Y_ADDRESS),
+            },
+            "target": {
+                "x": hex(BATTLE_PATH_MARK_TARGET_X_ADDRESS),
+                "y": hex(BATTLE_PATH_MARK_TARGET_Y_ADDRESS),
+            },
+            "direction_x": hex(BATTLE_FLOOD_DIRECTION_X_ADDRESS),
+            "direction_y": hex(BATTLE_FLOOD_DIRECTION_Y_ADDRESS),
+        },
+        "directions": [list(direction) for direction in directions],
+        "initialization":
+            "read signed target value, mark target 250, then copy target coordinates",
+        "outer_stop": "compare current low x/y words with source globals before decrement",
+        "distance_step": "signed int16 (distance + 127) IDIV 128 remainder",
+        "candidate_bounds": "signed 0 <= x < 64 and 0 <= y < 64",
+        "candidate_order": "up, right, left, down; first matching signed path word wins",
+        "matching_effect": "mark predecessor 250 and force direction counter past loop",
+        "no_match_effect":
+            "last down candidate becomes current and outer loop continues without a bound",
+        "completion_return": (
+            "shared tail preserves EAX; low AX is source y, high word is inherited from target path-write "
+            "byte offset and is zero for legal in-storage target"
+        ),
+        "shared_tail": {
+            "address": hex(BATTLE_PATH_MARK_SHARED_TAIL_ADDRESS),
+            "bytes": shared_tail,
+            "effect": "add esp,16; pop ebp,edi,esi,ebx; ret; preserve EAX",
+            "owner": "external shared epilogue also used by sub_34550",
+        },
+        "caller_roles": {
+            "0x36759":
+                "AI movement; signed path word < 128 precheck; immediately overwrites EAX",
+            "0x36adc":
+                "player movement after cursor confirmation; ignores EAX then calls movement core",
+        },
+        "caller_precheck_bytes": caller_precheck_bytes,
+        "caller_continuations": caller_continuations,
+        "caller_uses_return": False,
+        "synthetic_vectors": synthetic_vectors,
+        "valid_graph_bound":
+            "for a BFS map each chosen neighbor has true distance exactly one lower; at most 4095 steps",
+        "direct_rng_draws": 0,
+        "closure_boundary": (
+            "sub_3721E reads, sub_371F7 writes, both callers, and shared-tail owner remain independent"
+        ),
     }
 
 
@@ -6615,6 +6889,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_enqueue_machine": battle_enqueue_contract(z_dat_bytes),
         "battle_path_write_machine": battle_path_write_contract(z_dat_bytes),
         "battle_path_read_machine": battle_path_read_contract(z_dat_bytes),
+        "battle_path_mark_machine": battle_path_mark_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
