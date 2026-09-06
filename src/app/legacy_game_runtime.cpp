@@ -1233,7 +1233,8 @@ bool LegacyGameRuntime::start_battle(
         random_,
         battle_id,
         grant_experience,
-        retained_battle_render_state_);
+        retained_battle_render_state_,
+        &legacy_player_item_slot_);
     if (!battle_session_->valid()) {
         show_error(battle_session_->error(), LegacyGameView::scene);
         battle_session_.reset();
@@ -1895,6 +1896,7 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
             game_menu_.show_items();
             return;
         }
+        legacy_player_item_slot_ = static_cast<std::int16_t>(result.index);
         const auto item_type = item.word(model::item_word::item_type);
         if (item_type == 0) {
             clear_pending();

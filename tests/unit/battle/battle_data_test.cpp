@@ -858,7 +858,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     };
     random.seed(1U);
     const auto ai_party_result = setup.apply_ai_throwing_weapon_target(
-        0U, BattlePathCoord{26, 26}, party_throwing_choice, random);
+        0U, BattlePathCoord{26, 26}, party_throwing_choice, random, 0);
     OL_CHECK(ai_party_result.has_value());
     OL_CHECK(ai_party_result->hit_count == 1);
     OL_CHECK(ai_party_result->effect_id == 30);
@@ -878,7 +878,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     target.set_word(openlegend::model::role_word::poison, 10);
     random.seed(2U);
     const auto ai_plain_result = setup.apply_ai_throwing_weapon_target(
-        0U, BattlePathCoord{26, 26}, party_throwing_choice, random);
+        0U, BattlePathCoord{26, 26}, party_throwing_choice, random, 0);
     OL_CHECK(ai_plain_result.has_value());
     OL_CHECK(ai_plain_result->damage == 16);
     OL_CHECK(random.state() == 2'207'042'835U);
@@ -887,6 +887,46 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 
+    ranger.header.set_inventory(0U, openlegend::model::ItemId{102}, 1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{96}, 2);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::maximum_hp, 200);
+    target.set_word(openlegend::model::role_word::hurt, 40);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    random.seed(1U);
+    const auto stale_payload_result = setup.apply_ai_throwing_weapon_target(
+        0U, BattlePathCoord{26, 26}, party_throwing_choice, random, 1, false);
+    OL_CHECK(stale_payload_result.has_value());
+    OL_CHECK(stale_payload_result->effect_id == 30);
+    OL_CHECK(stale_payload_result->damage == 19);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 81);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 44);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
+    OL_CHECK(ranger.header.inventory_item(0U).value == 102);
+    OL_CHECK(ranger.header.inventory_count(0U) == 1);
+
+    auto& wrapping_payload = ranger.items[150U];
+    wrapping_payload.set_word(openlegend::model::item_word::add_hp, -32768);
+    wrapping_payload.set_word(openlegend::model::item_word::add_poison, 0);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{150}, 2);
+    actor.set_word(openlegend::model::role_word::hidden_weapon, 0);
+    target.set_word(openlegend::model::role_word::hp, 100);
+    target.set_word(openlegend::model::role_word::maximum_hp, 30000);
+    target.set_word(openlegend::model::role_word::hurt, 67);
+    target.set_word(openlegend::model::role_word::poison, 10);
+    random.seed(1U);
+    const auto wrapping_payload_result = setup.apply_ai_throwing_weapon_target(
+        0U, BattlePathCoord{26, 26}, party_throwing_choice, random, 1, false);
+    OL_CHECK(wrapping_payload_result.has_value());
+    OL_CHECK(wrapping_payload_result->effect_id == 30);
+    OL_CHECK(wrapping_payload_result->damage == 10'921);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 11'021);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 0);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
+
+    actor.set_word(openlegend::model::role_word::hidden_weapon, 20);
     setup.combatants()[0U].words[combatant_word::side] = 1;
     setup.combatants()[1U].words[combatant_word::side] = 0;
     target.set_word(openlegend::model::role_word::hp, 100);
@@ -904,7 +944,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     };
     random.seed(1U);
     const auto ai_carried_result = setup.apply_ai_throwing_weapon_target(
-        0U, BattlePathCoord{26, 26}, carried_throwing_choice, random);
+        0U, BattlePathCoord{26, 26}, carried_throwing_choice, random, -1);
     OL_CHECK(ai_carried_result.has_value());
     OL_CHECK(ai_carried_result->damage == 21);
     OL_CHECK(random.state() == 1'103'527'590U);
@@ -3834,13 +3874,11 @@ void run_ai_item_session_test(
         OL_CHECK(session->render(*framebuffer));
         item_effect_hash = fnv1a_bytes(framebuffer->pixels());
         session->finish_presented_tick(tick);
-        OL_CHECK(session->phase() == BattleSessionPhase::ai_item_effect_wait);
+        OL_CHECK(session->phase() == BattleSessionPhase::ai_item_post_effect_wait);
         OL_CHECK(ranger->header.inventory_item(0U).value == 10);
         OL_CHECK(ranger->header.inventory_count(0U) == 1);
-        tick += 5U;
         OL_CHECK(session->handle_key(0x98U, tick) ==
-                 BattleSessionInputResult::item_effect_acknowledged);
-        OL_CHECK(session->phase() == BattleSessionPhase::ai_item_post_effect_wait);
+                 BattleSessionInputResult::ignored);
         session->advance(tick);
         for (std::uint32_t change = 1U; change < 9U; ++change) {
             session->advance(tick + change);
@@ -3899,9 +3937,9 @@ void run_ai_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::ai_effect_prelude_present);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::ai_action] ==
                  static_cast<std::int16_t>(BattleAiAction::throwing_weapon));
-        OL_CHECK(target.word(role_word::hp) == 80);
-        OL_CHECK(target.word(role_word::hurt) == 45);
-        OL_CHECK(target.word(role_word::poison) == 50);
+        OL_CHECK(target.word(role_word::hp) == 100);
+        OL_CHECK(target.word(role_word::hurt) == 40);
+        OL_CHECK(target.word(role_word::poison) == 10);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
         OL_CHECK((session->take_audio_commands() ==
@@ -3939,6 +3977,9 @@ void run_ai_item_session_test(
         }
         OL_CHECK(effect_frames == 11U);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
+        OL_CHECK(target.word(role_word::hp) == 80);
+        OL_CHECK(target.word(role_word::hurt) == 45);
+        OL_CHECK(target.word(role_word::poison) == 50);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
 
@@ -4023,7 +4064,9 @@ void run_ai_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::ai_movement_wait);
         session->advance(++tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_effect_prelude_present);
-        OL_CHECK(target.word(role_word::hp) == 80);
+        OL_CHECK(target.word(role_word::hp) == 100);
+        OL_CHECK(target.word(role_word::hurt) == 40);
+        OL_CHECK(target.word(role_word::poison) == 10);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
         OL_CHECK((session->take_audio_commands() ==
@@ -4054,6 +4097,10 @@ void run_ai_item_session_test(
             ++effect_frames;
         }
         OL_CHECK(effect_frames == 11U);
+        OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
+        OL_CHECK(target.word(role_word::hp) == 80);
+        OL_CHECK(target.word(role_word::hurt) == 45);
+        OL_CHECK(target.word(role_word::poison) == 50);
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_damage_frame_present &&
                damage_frames < 20U) {
@@ -4166,7 +4213,7 @@ void run_ai_item_session_test(
     OL_CHECK(item_effect_hash == 0xa7542240e4172664ULL);
     OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0xc65b523bd75389e2ULL);
-    OL_CHECK(throwing_damage_hash == 0x335fd35ea7e3f367ULL);
+    OL_CHECK(throwing_damage_hash == 0x5bb5153963b97c5eULL);
     OL_CHECK(moved_throwing_effect_hash == 0x16a8f10ce319622bULL);
     OL_CHECK(item_random_state == 662'824'084U);
     OL_CHECK(throwing_random_state == 2'516'284'547U);
@@ -4179,7 +4226,7 @@ void run_ai_item_session_test(
                  "battle AI item effect ready id=4 slot=0 target=0 item=10") !=
              std::string::npos);
     OL_CHECK(log_text.find(
-                 "battle AI item effect acknowledged id=4 slot=0 item=10 effects=1 wait_tick_changes=9") !=
+                 "battle AI item effect presented id=4 slot=0 item=10 effects=1 wait_tick_changes=9") !=
              std::string::npos);
     OL_CHECK(log_text.find(
                  "battle AI item consumed id=4 slot=0 item=10 use_mode=0") !=
@@ -4188,7 +4235,10 @@ void run_ai_item_session_test(
                  "battle AI throwing-weapon effect ready id=4 slot=0 target=1") !=
              std::string::npos);
     OL_CHECK(log_text.find(
-                 "effect=30 damage=20 frames=11 consumed=false") !=
+                 "effect=30 frames=11 state=pending consumed=false") !=
+             std::string::npos);
+    OL_CHECK(log_text.find(
+                 "battle AI throwing-weapon state committed id=4 slot=0 target=1 item=102 payload_slot=-1 damage=20 consumed=false") !=
              std::string::npos);
     OL_CHECK(log_text.find(
                  "battle AI effect prelude presented id=4 slot=0 wait_tick_changes=3") !=

@@ -168,6 +168,31 @@ BATTLE_AI_THROWING_HANDLER_RELOCATION_OFFSETS = (
     0x119, 0x11F, 0x12B, 0x135, 0x13F, 0x147,
 )
 BATTLE_AI_THROWING_HANDLER_CALLER_SITES = (0x33C24,)
+BATTLE_AI_ITEM_EXECUTOR_ADDRESS = 0x3598C
+BATTLE_AI_ITEM_EXECUTOR_END = 0x36133
+BATTLE_AI_ITEM_EXECUTOR_CALL_OFFSETS = (
+    0x005, 0x09B, 0x0A8, 0x0CF, 0x102, 0x10F, 0x199, 0x21C, 0x2A9,
+    0x39B, 0x44F, 0x49E, 0x528, 0x5B5, 0x6A5, 0x75D, 0x798,
+)
+BATTLE_AI_ITEM_EXECUTOR_RELOCATION_OFFSETS = (
+    0x025, 0x03C, 0x046, 0x050, 0x058, 0x074, 0x07E, 0x086, 0x08E,
+    0x096, 0x0B3, 0x0BB, 0x0C3, 0x0DF, 0x0EC, 0x0F4, 0x0FC, 0x11A,
+    0x127, 0x131, 0x139, 0x156, 0x164, 0x16E, 0x176, 0x17F, 0x187,
+    0x194, 0x1A4, 0x1AE, 0x1B6, 0x1C0, 0x1C7, 0x1D2, 0x1DA, 0x1EA,
+    0x1F4, 0x207, 0x22E, 0x241, 0x25F, 0x269, 0x27C, 0x297, 0x2B4,
+    0x2C8, 0x302, 0x30B, 0x318, 0x32A, 0x334, 0x346, 0x34D, 0x354,
+    0x35D, 0x364, 0x374, 0x37E, 0x390, 0x3A8, 0x3B2, 0x3BA, 0x3C4,
+    0x3D0, 0x3E2, 0x3F9, 0x41A, 0x421, 0x42B, 0x43D, 0x447, 0x45C,
+    0x466, 0x46E, 0x477, 0x484, 0x48C, 0x499, 0x4A9, 0x4B3, 0x4BB,
+    0x4C5, 0x4CC, 0x4DE, 0x4E6, 0x4F6, 0x500, 0x513, 0x53A, 0x54D,
+    0x56B, 0x575, 0x588, 0x5A3, 0x5C0, 0x5D4, 0x60C, 0x615, 0x622,
+    0x634, 0x63E, 0x650, 0x657, 0x65E, 0x667, 0x66E, 0x67E, 0x688,
+    0x69A, 0x6B2, 0x6BC, 0x6C4, 0x6CE, 0x6DA, 0x6EC, 0x703, 0x728,
+    0x72F, 0x739, 0x74B, 0x755, 0x770, 0x77D, 0x787, 0x78F,
+)
+BATTLE_AI_ITEM_EXECUTOR_CALLER_SITES = (0x35821, 0x358E2)
+BATTLE_AI_ITEM_EXECUTOR_SHARED_EPILOGUE = 0x3612C
+BATTLE_AI_ITEM_EXECUTOR_EPILOGUE_JUMP_SITES = (0x370EA, 0x37161, 0x395E7)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1021,6 +1046,94 @@ def battle_ai_throwing_handler_contract(z_dat_bytes: bytes) -> dict[str, object]
     }
 
 
+def battle_ai_item_executor_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_ITEM_EXECUTOR_ADDRESS,
+        end=BATTLE_AI_ITEM_EXECUTOR_END,
+        call_offsets=BATTLE_AI_ITEM_EXECUTOR_CALL_OFFSETS,
+        expected_call_targets=(
+            0x3ED1E, 0x2B483, 0x3DB83, 0x2B227, 0x2B483, 0x3DB83,
+            0x3884A, 0x3D612, 0x3D612, 0x3F50B, 0x38910, 0x3884A,
+            0x3D612, 0x3D612, 0x3F50B, 0x38910, 0x36133,
+        ),
+        relocation_offsets=BATTLE_AI_ITEM_EXECUTOR_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_ITEM_EXECUTOR_CALLER_SITES,
+        instruction_count=440,
+        branch_count=47,
+    )
+    if contract["raw_sha256"] != (
+        "039adfbd48a1e5a282cbddce9a80b7499745277228c1c432cbf4a590263ed2a5"
+    ):
+        raise ValueError("Z.DAT AI item executor raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "a1318ae160d72c1a5093248aaa7c60dc601be62adc83b6114a30b3dad8895e47"
+    ):
+        raise ValueError("Z.DAT AI item executor relocation image changed")
+    epilogue_jump_targets = []
+    for site in BATTLE_AI_ITEM_EXECUTOR_EPILOGUE_JUMP_SITES:
+        offset = site - Z_DAT_LOAD_BASE
+        if z_dat_bytes[offset] != 0xE9:
+            raise ValueError(f"expected AI item shared-epilogue jump at {site:#x}")
+        displacement = struct.unpack_from("<i", z_dat_bytes, offset + 1)[0]
+        epilogue_jump_targets.append(site + 5 + displacement)
+    if epilogue_jump_targets != [BATTLE_AI_ITEM_EXECUTOR_SHARED_EPILOGUE] * 3:
+        raise ValueError("Z.DAT AI item shared-epilogue targets changed")
+    stale_slot_initial = struct.unpack_from(
+        "<h", z_dat_bytes, 0x54B74 - Z_DAT_LOAD_BASE
+    )[0]
+    if stale_slot_initial != -1:
+        raise ValueError("Z.DAT stale player item slot initial value changed")
+    return {
+        **contract,
+        "external_internal_entries": [
+            {
+                "site": hex(site),
+                "target": hex(BATTLE_AI_ITEM_EXECUTOR_SHARED_EPILOGUE),
+            }
+            for site in BATTLE_AI_ITEM_EXECUTOR_EPILOGUE_JUMP_SITES
+        ],
+        "effect_map_entry":
+            "clear all 64x64 words then mark the word_E6EE0 combatant coordinate",
+        "mode0": {
+            "party_source": "word_E6EDE inventory item/count pair",
+            "enemy_source": "word_E6EDE actor carried item/count pair",
+            "effect_call": "sub_2B483(actor role, target role, source item)",
+            "delay": "sub_3DB83(340) = 9 BIOS tick changes",
+            "reads_input": False,
+            "count_update": "signed-word decrement after the delay",
+            "party_exhaustion": "sub_2B227(word_E6EDE)",
+            "enemy_exhaustion": "sub_36133(actor, word_E6EDE)",
+        },
+        "mode1": {
+            "source_effect_item": "word_E6EDE source item passed to sub_3884A",
+            "party_payload_item": "inventory item at stale word_54B74",
+            "enemy_payload_item": "actor carried item at word_E6EDE",
+            "stale_party_slot_initial": stale_slot_initial,
+            "stale_party_slot_writer":
+                "only sub_2A86C:0x2A9BF after valid show-introduction confirmation",
+            "order": [
+                "mark target", "complete sub_3884A", "apply HP/hurt/poison",
+                "complete sub_38910(0)", "decrement source",
+            ],
+            "hurt_tiers": "signed 0:/4, 1..33:/3, 34..66:/2, >66:/1",
+            "normal_domain_rng": "one bounded(5) after hurt-tier division",
+            "randomized_base_storage":
+                "tiered add_hp minus bounded(5) truncates to signed word before hidden-weapon scaling",
+            "hp_delta": "(signed-word randomized base - 2*actor.hidden_weapon) / 3",
+            "poison":
+                "nonnegative add_poison direct; negative (add_poison-hidden_weapon)/2; no anti-poison or extra RNG",
+        },
+        "changes_facing": False,
+        "writes_action_done": False,
+        "shared_epilogue_owner_propagation": False,
+        "delegated_boundaries": (
+            "sub_2B483/sub_3DB83/sub_2B227/sub_3884A/sub_3D612/"
+            "sub_3F50B/sub_38910/sub_36133 retain independent owners"
+        ),
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -1406,6 +1519,7 @@ def throwing_weapon_vector(
 def ai_throwing_weapon_vector(
     item: bytes,
     *,
+    source_item: bytes | None = None,
     seed: int,
     hidden_weapon: int,
     hp: int,
@@ -1414,10 +1528,13 @@ def ai_throwing_weapon_vector(
     poison: int,
 ) -> dict[str, object]:
     word = lambda index: struct.unpack_from("<h", item, index * 2)[0]
+    source_word = lambda index: struct.unpack_from(
+        "<h", source_item if source_item is not None else item, index * 2
+    )[0]
     divisor = 4 if hurt == 0 else 3 if hurt <= 33 else 2 if hurt <= 66 else 1
     damage_random, state = legacy_bounded(seed, 5)
-    base_delta = trunc_div(word(45), divisor) - damage_random
-    hp_delta = wrapping_i16(trunc_div(base_delta - 2 * hidden_weapon, 3))
+    randomized_base = wrapping_i16(trunc_div(word(45), divisor) - damage_random)
+    hp_delta = wrapping_i16(trunc_div(randomized_base - 2 * hidden_weapon, 3))
     hurt_after = min(99, max(0, wrapping_i16(hurt - trunc_div(hp_delta, 4))))
     hp_after = wrapping_i16(hp + hp_delta)
     if hp_after >= maximum_hp:
@@ -1438,9 +1555,10 @@ def ai_throwing_weapon_vector(
     if poison_after <= 0:
         poison_after = 0
     return {
-        "item_id": word(0),
-        "item_type": word(41),
-        "effect_id": word(37),
+        "item_id": source_word(0),
+        "payload_item_id": word(0),
+        "item_type": source_word(41),
+        "effect_id": source_word(37),
         "add_hp": word(45),
         "add_poison": item_poison,
         "rng_seed": seed,
@@ -1451,6 +1569,7 @@ def ai_throwing_weapon_vector(
         "maximum_hp": maximum_hp,
         "hurt_before": hurt,
         "poison_before": poison,
+        "randomized_base_word": randomized_base,
         "hp_delta": hp_delta,
         "damage": damage,
         "hp_after": hp_after,
@@ -4487,6 +4606,16 @@ def build(data_root: Path) -> dict[str, object]:
         hurt=0,
         poison=10,
     )
+    ai_stale_payload_throw = ai_throwing_weapon_vector(
+        item_records[96],
+        source_item=item_records[102],
+        seed=1,
+        hidden_weapon=20,
+        hp=100,
+        maximum_hp=200,
+        hurt=40,
+        poison=10,
+    )
     shared_role = [0] * 91
     shared_role[17] = 100
     shared_role[18] = 200
@@ -4513,6 +4642,8 @@ def build(data_root: Path) -> dict[str, object]:
         raise ValueError("RANGER.GRP item 102 is not the expected throwing weapon")
     if plain_throw["item_id"] != 96 or plain_throw["item_type"] != 4:
         raise ValueError("RANGER.GRP item 96 is not the expected throwing weapon")
+    if (ai_stale_payload_throw["item_id"], ai_stale_payload_throw["payload_item_id"]) != (102, 96):
+        raise ValueError("RANGER.GRP stale AI throwing-weapon vector changed identity")
     if shared_item_19["item_id"] != 19 or shared_item_19["item_type"] != 3:
         raise ValueError("RANGER.GRP item 19 is not the expected shared-use item")
     if shared_item_91["item_id"] != 91 or shared_item_40["item_id"] != 40:
@@ -4665,6 +4796,7 @@ def build(data_root: Path) -> dict[str, object]:
             battle_ai_first_poison_target_contract(z_dat_bytes),
         "battle_ai_item_handler_machine": battle_ai_item_handler_contract(z_dat_bytes),
         "battle_ai_throwing_handler_machine": battle_ai_throwing_handler_contract(z_dat_bytes),
+        "battle_ai_item_executor_machine": battle_ai_item_executor_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
@@ -4908,6 +5040,12 @@ def build(data_root: Path) -> dict[str, object]:
                     "ai_throwing": {
                         "poisoned_state_vector": ai_poisoned_throw,
                         "plain_state_vector": ai_plain_throw,
+                        "party_stale_payload_vector": ai_stale_payload_throw,
+                        "source_effect_and_payload_order": [
+                            "source effect animation", "payload state commit",
+                            "damage animation", "source consumption",
+                        ],
+                        "state_committed_after_effect_animation": True,
                         "effect_cell_marked": True,
                         "actor_direction_unchanged": True,
                         "action_done_before_outer_ai_finish": 0,
@@ -4929,7 +5067,7 @@ def build(data_root: Path) -> dict[str, object]:
                             "row_value_x": 187,
                             "row_y_formula": "18 * visible_index + 45",
                             "battle_redraw_when_effect_count_positive": True,
-                            "wait_for_input_when_effect_count_positive": True,
+                            "wait_for_input_when_effect_count_positive": False,
                             "post_effect_tick_changes": 340 // 40 + 1,
                         },
                         "effect_cell_marked": True,

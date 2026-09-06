@@ -57,7 +57,6 @@ enum class BattleSessionPhase {
     ai_prelude_present,
     ai_wait,
     ai_item_effect_present,
-    ai_item_effect_wait,
     ai_item_post_effect_wait,
     ai_effect_prelude_present,
     ai_effect_prelude_wait,
@@ -151,7 +150,8 @@ public:
         random::LegacyRandom& random,
         std::int16_t battle_id,
         bool grant_experience,
-        BattleRenderState initial_render_state = {});
+        BattleRenderState initial_render_state = {},
+        std::int16_t* legacy_player_item_slot = nullptr);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -283,6 +283,7 @@ private:
     [[nodiscard]] bool continue_ai_item_plan();
     [[nodiscard]] bool begin_ai_item_execution();
     [[nodiscard]] bool begin_ai_throwing_weapon_execution();
+    [[nodiscard]] bool commit_ai_throwing_weapon_effect();
     [[nodiscard]] bool begin_ai_item_post_effect_wait();
     [[nodiscard]] bool advance_ai_item_post_effect_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool finish_ai_item_action();
@@ -448,6 +449,8 @@ private:
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
     std::int16_t legacy_ai_target_slot_{};
+    std::int16_t owned_legacy_player_item_slot_{-1};
+    std::int16_t* legacy_player_item_slot_{};
     bool confirmation_state_{};
     bool clear_confirmation_states_requested_{};
     bool player_menu_down_state_{};

@@ -154,7 +154,6 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     case BattleSessionPhase::ai_prelude_present: return "ai_prelude_present";
     case BattleSessionPhase::ai_wait: return "ai_wait";
     case BattleSessionPhase::ai_item_effect_present: return "ai_item_effect_present";
-    case BattleSessionPhase::ai_item_effect_wait: return "ai_item_effect_wait";
     case BattleSessionPhase::ai_item_post_effect_wait: return "ai_item_post_effect_wait";
     case BattleSessionPhase::ai_effect_prelude_present:
         return "ai_effect_prelude_present";
@@ -235,7 +234,8 @@ BattleSession::BattleSession(
     random::LegacyRandom& random,
     const std::int16_t battle_id,
     const bool grant_experience,
-    const BattleRenderState initial_render_state)
+    const BattleRenderState initial_render_state,
+    std::int16_t* const legacy_player_item_slot)
     : ranger_(ranger),
       random_(random),
       data_(data_root, battle_id),
@@ -243,6 +243,9 @@ BattleSession::BattleSession(
       pathing_(data_),
       renderer_(data_root, data_.battlefield_id()),
       render_state_(initial_render_state),
+      legacy_player_item_slot_(legacy_player_item_slot != nullptr
+              ? legacy_player_item_slot
+              : &owned_legacy_player_item_slot_),
       grants_experience_(grant_experience) {
     if (!data_.valid()) {
         error_ = data_.error();
@@ -360,23 +363,6 @@ BattleSessionInputResult BattleSession::handle_key(
         if (!finish_player_action_call()) {
             return BattleSessionInputResult::ignored;
         }
-        return BattleSessionInputResult::item_effect_acknowledged;
-    }
-    if (phase_ == BattleSessionPhase::ai_item_effect_wait) {
-        if (bios_tick.has_value()) {
-            ai_item_wait_tick_ = *bios_tick;
-        }
-        if (!player_item_ || !player_item_->effect_result.has_value() ||
-            !begin_ai_item_post_effect_wait()) {
-            return BattleSessionInputResult::ignored;
-        }
-        diagnostics::log_info(
-            "battle AI item effect acknowledged id=" + std::to_string(battle_id()) +
-            " slot=" + std::to_string(current_actor_slot_) +
-            " item=" + std::to_string(player_item_->selected_item_id) +
-            " effects=" + std::to_string(player_item_->effect_result->effect_count) +
-            " wait_tick_changes=" +
-            std::to_string(ai_item_wait_tick_changes_remaining_));
         return BattleSessionInputResult::item_effect_acknowledged;
     }
     if (phase_ == BattleSessionPhase::player_movement_select) {
@@ -531,7 +517,6 @@ bool BattleSession::render(
     } else if (phase_ == BattleSessionPhase::player_item_effect_present ||
                phase_ == BattleSessionPhase::player_item_effect_wait ||
                phase_ == BattleSessionPhase::ai_item_effect_present ||
-               phase_ == BattleSessionPhase::ai_item_effect_wait ||
                (phase_ == BattleSessionPhase::ai_item_post_effect_wait &&
                 player_item_ && player_item_->effect_result.has_value() &&
                 player_item_->effect_result->has_effect)) {
@@ -689,12 +674,16 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             return;
         }
         ai_item_wait_tick_ = bios_tick;
-        phase_ = BattleSessionPhase::ai_item_effect_wait;
+        if (!begin_ai_item_post_effect_wait()) {
+            return;
+        }
         diagnostics::log_info(
             "battle AI item effect presented id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
             " item=" + std::to_string(player_item_->selected_item_id) +
-            " effects=" + std::to_string(player_item_->effect_result->effect_count));
+            " effects=" + std::to_string(player_item_->effect_result->effect_count) +
+            " wait_tick_changes=" +
+            std::to_string(ai_item_wait_tick_changes_remaining_));
         return;
     }
     if (phase_ == BattleSessionPhase::player_effect_prelude_present ||
@@ -1531,16 +1520,15 @@ bool BattleSession::begin_ai_throwing_weapon_execution() {
         .item_slot = ai_item_plan_->item_slot,
         .action_code_written = true,
     };
-    const auto thrown = setup_.apply_ai_throwing_weapon_target(
-        current_actor_slot_, target, choice, random_, false);
-    if (!thrown.has_value() || thrown->hit_count != 1 ||
-        !thrown->effect_id.has_value()) {
+    const auto effect_id = setup_.prepare_ai_throwing_weapon_target(
+        current_actor_slot_, target, choice);
+    if (!effect_id.has_value()) {
         error_ = setup_.valid()
-            ? "battle AI throwing-weapon state application failed"
+            ? "battle AI throwing-weapon target preparation failed"
             : setup_.error();
         return false;
     }
-    auto animation = BattleSetup::effect_animation_plan(*thrown->effect_id);
+    auto animation = BattleSetup::effect_animation_plan(*effect_id);
     if (!animation.has_value()) {
         error_ = "battle AI throwing-weapon effect animation is invalid";
         return false;
@@ -1551,8 +1539,8 @@ bool BattleSession::begin_ai_throwing_weapon_execution() {
             .ai_controlled = true,
             .magic_animation = {},
             .effect_animation = std::move(*animation),
-            .effect_id = *thrown->effect_id,
-            .damage_kind = static_cast<std::int16_t>(thrown->damage == 0 ? 0 : 1),
+            .effect_id = *effect_id,
+            .damage_kind = 0,
             .damage_suppress_flash = false,
             .audio_commands = {},
         });
@@ -1579,12 +1567,62 @@ bool BattleSession::begin_ai_throwing_weapon_execution() {
         " source=" +
         std::to_string(static_cast<std::int16_t>(ai_item_plan_->item_source)) +
         " item_slot=" + std::to_string(ai_item_plan_->item_slot) +
-        " effect=" + std::to_string(*thrown->effect_id) +
-        " damage=" + std::to_string(thrown->damage) +
+        " effect=" + std::to_string(*effect_id) +
         " frames=" + std::to_string(
             player_target_effect_->effect_animation->frames.size()) +
-        " consumed=false");
+        " state=pending consumed=false");
     return true;
+}
+
+bool BattleSession::commit_ai_throwing_weapon_effect() {
+    if (!ai_item_plan_.has_value() || !player_target_effect_ ||
+        !player_target_effect_->effect_animation.has_value() ||
+        ai_item_plan_->next_step != BattleAiItemNextStep::use_item ||
+        ai_item_plan_->use_mode != 1 || ai_item_plan_->target_slot < 0 ||
+        ai_item_plan_->target_slot >= setup_.combatant_count() ||
+        legacy_player_item_slot_ == nullptr) {
+        error_ = "battle AI throwing-weapon state continuation is invalid";
+        return false;
+    }
+    const auto target_slot = static_cast<std::size_t>(ai_item_plan_->target_slot);
+    const auto& target_words = setup_.combatants()[target_slot].words;
+    const BattlePathCoord target{
+        target_words[combatant_word::x], target_words[combatant_word::y]};
+    const BattleAiChoice choice{
+        .action = BattleAiAction::throwing_weapon,
+        .target_slot = ai_item_plan_->target_slot,
+        .target = target,
+        .item_source = ai_item_plan_->item_source,
+        .item_slot = ai_item_plan_->item_slot,
+        .action_code_written = true,
+    };
+    const auto thrown = setup_.apply_ai_throwing_weapon_target(
+        current_actor_slot_,
+        target,
+        choice,
+        random_,
+        *legacy_player_item_slot_,
+        false,
+        true);
+    if (!thrown.has_value() || thrown->hit_count != 1 ||
+        !thrown->effect_id.has_value() ||
+        *thrown->effect_id != player_target_effect_->effect_id) {
+        error_ = setup_.valid()
+            ? "battle AI throwing-weapon state application failed"
+            : setup_.error();
+        return false;
+    }
+    player_target_effect_->damage_kind = 0;
+    diagnostics::log_info(
+        "battle AI throwing-weapon state committed id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " target=" + std::to_string(ai_item_plan_->target_slot) +
+        " item=" + std::to_string(ai_item_plan_->item_id) +
+        " payload_slot=" + std::to_string(*legacy_player_item_slot_) +
+        " damage=" + std::to_string(thrown->damage) +
+        " consumed=false");
+    return begin_player_damage_animation();
 }
 
 bool BattleSession::begin_ai_item_post_effect_wait() {
@@ -2318,6 +2356,7 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
         }
         item.selected_inventory_slot = static_cast<std::size_t>(inventory_slot);
         item.selected_item_id = item_id;
+        *legacy_player_item_slot_ = inventory_slot;
         const auto item_type = record.word(model::item_word::item_type);
         diagnostics::log_info(
             "battle player item selected id=" + std::to_string(battle_id()) +
@@ -2910,6 +2949,10 @@ bool BattleSession::advance_player_magic_wait(const std::uint32_t bios_tick) {
             : prepare_player_magic_frame();
     }
     render_state_.effect_visible = false;
+    if (effect.ai_controlled && effect.effect_animation.has_value() &&
+        ai_item_plan_.has_value() && ai_item_plan_->use_mode == 1) {
+        return commit_ai_throwing_weapon_effect();
+    }
     return begin_player_damage_animation();
 }
 

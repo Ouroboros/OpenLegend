@@ -270,6 +270,7 @@ private:
     std::int16_t periodic_counter_{};
     std::int16_t physical_power_counter_{};
     std::int16_t scene_event_item_id_{};
+    std::int16_t legacy_player_item_slot_{-1};
     bool scene_effect_presented_{};
     bool scene_effect_repeat_initial_frame_{};
     bool world_step_processed_{};

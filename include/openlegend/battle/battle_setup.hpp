@@ -812,12 +812,18 @@ public:
     [[nodiscard]] bool finish_throwing_weapon_action(
         std::size_t actor_slot,
         std::size_t inventory_slot) noexcept;
+    [[nodiscard]] std::optional<std::int16_t> prepare_ai_throwing_weapon_target(
+        std::size_t actor_slot,
+        BattlePathCoord target,
+        const BattleAiChoice& choice);
     [[nodiscard]] std::optional<BattleThrownItemResult> apply_ai_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         const BattleAiChoice& choice,
         random::LegacyRandom& random,
-        bool consume_item = true);
+        std::int16_t legacy_party_item_slot,
+        bool consume_item = true,
+        bool target_prepared = false);
     [[nodiscard]] std::optional<BattleItemEffectResult> apply_ai_item_effect(
         std::size_t actor_slot,
         const BattleAiChoice& choice,

@@ -899,6 +899,108 @@
     "direct_state_writes": "word_E6EE0 target scratch plus path source/target coordinate globals",
     "delegated_boundaries": "sub_3505B, sub_36E7F, sub_3598C, sub_3650E and sub_34C47 retain independent owners"
   },
+  "battle_ai_item_executor_machine": {
+    "address": "0x3598c",
+    "end": "0x36133",
+    "raw_offset": "0x2f38c",
+    "size": 1959,
+    "instruction_count": 440,
+    "branch_count": 47,
+    "raw_sha256": "039adfbd48a1e5a282cbddce9a80b7499745277228c1c432cbf4a590263ed2a5",
+    "loaded_sha256": "a1318ae160d72c1a5093248aaa7c60dc601be62adc83b6114a30b3dad8895e47",
+    "relocation_count": 125,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35991",
+      "0x35a27",
+      "0x35a34",
+      "0x35a5b",
+      "0x35a8e",
+      "0x35a9b",
+      "0x35b25",
+      "0x35ba8",
+      "0x35c35",
+      "0x35d27",
+      "0x35ddb",
+      "0x35e2a",
+      "0x35eb4",
+      "0x35f41",
+      "0x36031",
+      "0x360e9",
+      "0x36124"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x2b483",
+      "0x3db83",
+      "0x2b227",
+      "0x2b483",
+      "0x3db83",
+      "0x3884a",
+      "0x3d612",
+      "0x3d612",
+      "0x3f50b",
+      "0x38910",
+      "0x3884a",
+      "0x3d612",
+      "0x3d612",
+      "0x3f50b",
+      "0x38910",
+      "0x36133"
+    ],
+    "callers": [
+      "0x35821",
+      "0x358e2"
+    ],
+    "external_internal_entries": [
+      {
+        "site": "0x370ea",
+        "target": "0x3612c"
+      },
+      {
+        "site": "0x37161",
+        "target": "0x3612c"
+      },
+      {
+        "site": "0x395e7",
+        "target": "0x3612c"
+      }
+    ],
+    "effect_map_entry": "clear all 64x64 words then mark the word_E6EE0 combatant coordinate",
+    "mode0": {
+      "party_source": "word_E6EDE inventory item/count pair",
+      "enemy_source": "word_E6EDE actor carried item/count pair",
+      "effect_call": "sub_2B483(actor role, target role, source item)",
+      "delay": "sub_3DB83(340) = 9 BIOS tick changes",
+      "reads_input": false,
+      "count_update": "signed-word decrement after the delay",
+      "party_exhaustion": "sub_2B227(word_E6EDE)",
+      "enemy_exhaustion": "sub_36133(actor, word_E6EDE)"
+    },
+    "mode1": {
+      "source_effect_item": "word_E6EDE source item passed to sub_3884A",
+      "party_payload_item": "inventory item at stale word_54B74",
+      "enemy_payload_item": "actor carried item at word_E6EDE",
+      "stale_party_slot_initial": -1,
+      "stale_party_slot_writer": "only sub_2A86C:0x2A9BF after valid show-introduction confirmation",
+      "order": [
+        "mark target",
+        "complete sub_3884A",
+        "apply HP/hurt/poison",
+        "complete sub_38910(0)",
+        "decrement source"
+      ],
+      "hurt_tiers": "signed 0:/4, 1..33:/3, 34..66:/2, >66:/1",
+      "normal_domain_rng": "one bounded(5) after hurt-tier division",
+      "randomized_base_storage": "tiered add_hp minus bounded(5) truncates to signed word before hidden-weapon scaling",
+      "hp_delta": "(signed-word randomized base - 2*actor.hidden_weapon) / 3",
+      "poison": "nonnegative add_poison direct; negative (add_poison-hidden_weapon)/2; no anti-poison or extra RNG"
+    },
+    "changes_facing": false,
+    "writes_action_done": false,
+    "shared_epilogue_owner_propagation": false,
+    "delegated_boundaries": "sub_2B483/sub_3DB83/sub_2B227/sub_3884A/sub_3D612/sub_3F50B/sub_38910/sub_36133 retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -1895,6 +1997,7 @@
         "ai_throwing": {
           "poisoned_state_vector": {
             "item_id": 102,
+            "payload_item_id": 102,
             "item_type": 4,
             "effect_id": 30,
             "add_hp": -40,
@@ -1909,6 +2012,7 @@
             "maximum_hp": 200,
             "hurt_before": 40,
             "poison_before": 10,
+            "randomized_base_word": -23,
             "hp_delta": -21,
             "damage": 21,
             "hp_after": 79,
@@ -1918,6 +2022,7 @@
           },
           "plain_state_vector": {
             "item_id": 96,
+            "payload_item_id": 96,
             "item_type": 4,
             "effect_id": 23,
             "add_hp": -30,
@@ -1932,6 +2037,7 @@
             "maximum_hp": 200,
             "hurt_before": 0,
             "poison_before": 10,
+            "randomized_base_word": -10,
             "hp_delta": -16,
             "damage": 16,
             "hp_after": 84,
@@ -1939,6 +2045,38 @@
             "poison_delta": 0,
             "poison_after": 10
           },
+          "party_stale_payload_vector": {
+            "item_id": 102,
+            "payload_item_id": 96,
+            "item_type": 4,
+            "effect_id": 30,
+            "add_hp": -30,
+            "add_poison": 0,
+            "rng_seed": 1,
+            "rng_outputs": [
+              3
+            ],
+            "rng_state_after": 1103527590,
+            "hidden_weapon": 20,
+            "hp_before": 100,
+            "maximum_hp": 200,
+            "hurt_before": 40,
+            "poison_before": 10,
+            "randomized_base_word": -18,
+            "hp_delta": -19,
+            "damage": 19,
+            "hp_after": 81,
+            "hurt_after": 44,
+            "poison_delta": 0,
+            "poison_after": 10
+          },
+          "source_effect_and_payload_order": [
+            "source effect animation",
+            "payload state commit",
+            "damage animation",
+            "source consumption"
+          ],
+          "state_committed_after_effect_animation": true,
           "effect_cell_marked": true,
           "actor_direction_unchanged": true,
           "action_done_before_outer_ai_finish": 0,
@@ -2227,7 +2365,7 @@
             "row_value_x": 187,
             "row_y_formula": "18 * visible_index + 45",
             "battle_redraw_when_effect_count_positive": true,
-            "wait_for_input_when_effect_count_positive": true,
+            "wait_for_input_when_effect_count_positive": false,
             "post_effect_tick_changes": 9
           },
           "effect_cell_marked": true,

@@ -2682,29 +2682,20 @@ bool BattleSetup::consume_ai_item(
     return remaining > 0 || remove_carried_item_slot(actor_slot, slot);
 }
 
-std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_target(
+std::optional<std::int16_t> BattleSetup::prepare_ai_throwing_weapon_target(
     const std::size_t actor_slot,
     const BattlePathCoord target,
-    const BattleAiChoice& choice,
-    random::LegacyRandom& random,
-    const bool consume_item) {
+    const BattleAiChoice& choice) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
         choice.action != BattleAiAction::throwing_weapon) {
         error_ = "battle AI throwing-weapon action is outside legacy state";
         return std::nullopt;
     }
-    const auto item_id = ai_item_id(actor_slot, choice);
-    if (!item_id) {
+    const auto source_item_id = ai_item_id(actor_slot, choice);
+    if (!source_item_id) {
         error_ = "battle AI throwing-weapon item is outside legacy records";
         return std::nullopt;
     }
-    auto& actor_words = combatants_[actor_slot].words;
-    const auto actor_role_id = actor_words[combatant_word::role_id];
-    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
-        error_ = "battle AI throwing-weapon actor role is outside ranger records";
-        return std::nullopt;
-    }
-
     clear_attack_effects();
     if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
         target.y >= static_cast<std::int16_t>(kBattleExtent)) {
@@ -2714,6 +2705,46 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
     const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
         static_cast<std::size_t>(target.x);
     attack_effects_[cell] = 1;
+    return ranger_.items[static_cast<std::size_t>(*source_item_id)].word(
+        model::item_word::hidden_weapon_effect_id);
+}
+
+std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_target(
+    const std::size_t actor_slot,
+    const BattlePathCoord target,
+    const BattleAiChoice& choice,
+    random::LegacyRandom& random,
+    const std::int16_t legacy_party_item_slot,
+    const bool consume_item,
+    const bool target_prepared) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
+        choice.action != BattleAiAction::throwing_weapon) {
+        error_ = "battle AI throwing-weapon action is outside legacy state";
+        return std::nullopt;
+    }
+    const auto source_item_id = ai_item_id(actor_slot, choice);
+    if (!source_item_id) {
+        error_ = "battle AI throwing-weapon item is outside legacy records";
+        return std::nullopt;
+    }
+    if (!target_prepared &&
+        !prepare_ai_throwing_weapon_target(actor_slot, target, choice).has_value()) {
+        return std::nullopt;
+    }
+    if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
+        target.y >= static_cast<std::int16_t>(kBattleExtent)) {
+        error_ = "battle AI throwing-weapon target is outside battlefield";
+        return std::nullopt;
+    }
+    auto& actor_words = combatants_[actor_slot].words;
+    const auto actor_role_id = actor_words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle AI throwing-weapon actor role is outside ranger records";
+        return std::nullopt;
+    }
+
+    const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
+        static_cast<std::size_t>(target.x);
     const auto target_slot = data_.occupancy()[cell];
     if (target_slot < 0 || target_slot >= combatant_count_) {
         error_ = "battle AI throwing-weapon occupancy is outside combatant slots";
@@ -2729,7 +2760,22 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
 
     auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
     auto& target_role = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    const auto& item = ranger_.items[static_cast<std::size_t>(*item_id)];
+    auto payload_item_id = *source_item_id;
+    if (actor_words[combatant_word::side] == 0) {
+        if (legacy_party_item_slot < 0 ||
+            static_cast<std::size_t>(legacy_party_item_slot) >= model::kInventoryCount) {
+            error_ = "battle AI throwing-weapon stale player item slot is outside inventory";
+            return std::nullopt;
+        }
+        payload_item_id = ranger_.header.inventory_item(
+            static_cast<std::size_t>(legacy_party_item_slot)).value;
+        if (payload_item_id < 0 ||
+            static_cast<std::size_t>(payload_item_id) >= ranger_.items.size()) {
+            error_ = "battle AI throwing-weapon stale player item is outside legacy records";
+            return std::nullopt;
+        }
+    }
+    const auto& item = ranger_.items[static_cast<std::size_t>(payload_item_id)];
     const auto hurt = target_role.word(model::role_word::hurt);
     if (hurt < 0) {
         error_ = "battle AI throwing-weapon target hurt is outside legacy domain";
@@ -2743,11 +2789,11 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
     } else if (hurt <= 66) {
         divisor = 2;
     }
-    const auto base_delta =
+    const auto randomized_base = wrapping_i16(
         static_cast<std::int32_t>(item.word(model::item_word::add_hp)) / divisor -
-        random.bounded(5);
+        random.bounded(5));
     const auto hp_delta = wrapping_i16(
-        (base_delta -
+        (static_cast<std::int32_t>(randomized_base) -
          2 * static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon))) /
         3);
 
@@ -2797,7 +2843,8 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
 
     BattleThrownItemResult result{};
     result.hit_count = 1;
-    result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
+    result.effect_id = ranger_.items[static_cast<std::size_t>(*source_item_id)].word(
+        model::item_word::hidden_weapon_effect_id);
     result.damage = damage;
     result.inventory_consumed = consume_item;
     return result;
