@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为67/81；其余14项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为68/81；其余13项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、14项为 `implemented_pending_review`、67项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、13项为 `implemented_pending_review`、68项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -207,7 +207,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器AX为4才进入暗器目标，低word为1直接结束actor行动，其他值不改`action_done`。现代Session实际执行战场重画、三个共享框、5×3 MMAP图标、上下箭头、名称/简介、数量条件、四方向/PageUp/PageDown、Escape和三确认键。首轮最终REVIEW发现初始及导航frame可在present前接收同批下一键，现以一次物品presentation门恢复机器render→present→input顺序；修正后从入口重审零剩余合法域差异。16项count2/count1菜单整帧FNV64为`0x68c3b70dfec20bba`/`0x17b6845a718a6cf8`。type3固定当前actor自用；非零效果执行23项状态、面板present、库存提交及任意键等待，面板FNV64为`0xd518fb664f3e0e3c`；全零效果不画面板、不扣库存、不消费RNG但仍结束行动。该wrapper已归类`platform_adapted / converged_after_timing_fix`。
 
-`sub_3A30B` 以signed `hidden_weapon/15+1`选择目标；友军不标记，空格只标effect，敌方才执行暗器effect、伤害、中毒、damage kind1显示、库存减一和行动结束。HP负增量先按target hurt的0、1..33、34..66、>66四档取item `add_hp`的`1/4、1/3、1/2、1`并减一次`bounded(5)`，再以`(值-2*hidden_weapon)/3`结算；hurt按负增量四分之一上升。正`add_poison`分支不消费额外RNG，非正分支严格再消费两次`bounded(5)`，所以无毒暗器仍可能随机改变poison。Session已覆盖目标取消、空目标返回、敌方确认、sample13/100前奏/effect sample/11帧EFT/10帧damage、延后库存提交、sprite刷新与下一actor；前奏、首EFT和首damage FNV64为`0xdbee20f394fd7219`、`0x370a4078e9de6172`、`0xd41fa068222d444a`。库存数量按int16减一，不大于0时把后续槽全部左移并清尾槽。该函数推进为 `implemented_pending_review`。
+`sub_3A30B` 以signed `hidden_weapon/15+1`选择目标；水平绝对值tie含同格明确写方向2，友军不标记，空格只标effect，敌方才继续。机器先读取当前item effect id并完整执行sample13/100前奏、effect sample及EFT；返回后重新读取目标occupancy、role与当前库存item，才提交伤害、中毒和RNG。HP增量按target hurt的0、1..33、34..66、>66四档取item `add_hp`的`1/4、1/3、1/2、1`并减一次`bounded(5)`，随机基数先回绕signed低16位，再以`(值-2*hidden_weapon)/3`结算；hurt按负增量四分之一上升。正`add_poison`不消费额外RNG，非正分支严格再消费两次`bounded(5)`。首轮最终REVIEW修正同格保向、随机基数缺少int16回绕及玩家状态/RNG早于整段EFT提交三项差异；修正后从入口重审零剩余合法域差异。Session锁定target确认和全部11帧EFT期间状态/RNG不变，转入首damage帧时才得到damage21、HP79、hurt45、poison12；10帧damage结束后才扣库存、写action-done、刷新sprite并推进actor。前奏、首EFT和首damage FNV64为`0xdbee20f394fd7219`、`0x370a4078e9de6172`、`0xd41fa068222d444a`。该函数已归类`platform_adapted / converged_after_timing_and_wrap_fix`。
 
 `sub_3A8A4` 已映射为 `rest_actor`：先结束行动，按round value是否等于signed `speed/10`执行`bounded(3)+3/+2`恢复体力并只夹上限100；更新后体力不少于30时，以`physical_power/10-2`为bound严格依次恢复HP与MP，各加`bounded(bound)+3`并只封顶。固定向量得到体力50→55、HP95→99、MP48→50；低体力向量25→29且不消费后两次RNG。该函数为 `implemented_pending_review`。
 
@@ -384,6 +384,16 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 首轮逐块对照发现现代SDL可在初始物品frame或导航后新frame尚未present时，从同一host event批次读取下一键。现以一次物品presentation计数门修正：begin及每个已识别导航后置1，实际`finish_presented_tick`后减为0，非零时忽略输入，离开物品相位时清零。修正后废弃首轮结论并从入口复核全部33条指令、5块、2分支、5次调用、RET及caller，合法域零剩余差异；非法actor/role/item安全拒绝归类平台适配。
 
 新增回归锁定首帧present前方向忽略、present后Escape不置行动完成、重新进入及每个导航后必须present；既有type3非零效果的面板/库存/任意键顺序、零效果不消费但完成、type4目标取消/确认及菜单hash继续通过。独立向量SHA256为`9657c3c342df26368b3e944dcff5923946ea64026a02bdab8fb0d61ceea270a5`；正式原资产Golden三生成逐字节一致，新增唯一键且历史60键不变，SHA256为`bbafb835c53f40faaa872d1052ceff7b63930ac2949420e43723003af41ceccd`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_after_timing_fix`；过滤、renderer/present、selector、type3效果、暗器target与caller均不传播closure。
+
+## 33. 玩家暗器动作最终REVIEW
+
+`sub_3A30B @ 0x3A30B..0x3A8A4`机器身份固定为1433 bytes、340条连续指令、62个基本块、31个条件分支、11个无条件跳转、85处重定位、13次direct call、唯一caller和本地RET；raw/loaded SHA256为`8958cd95aa8764fe422c784e74ff1a40933a2c7e5cdd191931a55517618b5d9c`与`b34fb5b6496f43631d89d5e68ebfa5d10e061a5871c6a17854e1d6232b9533f6`。85处loaded DWORD均严格增加`0x20000`并可逐字节归一化；唯一入口xref为`sub_3A29C:0x3A2E6`。
+
+入口按signed暗器能力生成targeting range；取消返回-1。确认后按strict纵向/横向tie分派方向，同格写2，清4,096格effect；友军无标记退出、空格标1退出、敌军标1继续。完整EFT前读取effect id；EFT后重读target与库存payload，再按四档hurt、一次必经RNG、随机基数低字回绕计算HP增量，依次写hurt、HP、damage及正/非正两类poison公式。damage动画完成后才按int16扣库存并按需压缩，随后写action-done并刷新全slot sprite。
+
+首轮对照发现三项合法域差异：同格未写方向2、随机基数未先回绕int16、玩家状态/RNG在EFT前过早提交。现代现拆分`prepare_throwing_weapon_target`与`apply_throwing_weapon_payload`，保持准备→完整EFT→payload→完整damage→库存/action/sprite顺序。修正后废弃首轮结论并从入口覆盖全部340条指令、62块、42个跳转、13次call、RET及caller，零剩余合法域差异。机器漏检upper-y、empty负槽side读及非法记录由现代安全拒绝，归类平台适配。
+
+同格方向、`add_hp=-32768`回绕、EFT期间状态/RNG不变及EFT后damage21状态提交回归通过。独立向量SHA256为`4de5134d6363b727de38a09d0b2cc7cc335dd0cf70831c0e9d498e6a663decd1`；正式原资产Golden三生成逐字节一致，新增唯一键且历史61键不变，SHA256为`cc94651bde1b784f51f2b9173cf1b8e0c0ec07330cba4c674734878a11614c8a`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_after_timing_and_wrap_fix`；cursor、EFT、RNG、damage、库存、sprite及caller均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

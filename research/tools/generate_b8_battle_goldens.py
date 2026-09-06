@@ -825,6 +825,29 @@ BATTLE_PLAYER_ITEM_WRAPPER_CALL_OFFSETS = (0x005, 0x010, 0x01E, 0x038, 0x04A)
 BATTLE_PLAYER_ITEM_WRAPPER_CALL_TARGETS = (0x3ED1E, 0x2A10F, 0x2A186, 0x2A86C, 0x3A30B)
 BATTLE_PLAYER_ITEM_WRAPPER_RELOCATION_OFFSETS = (0x031, 0x064)
 BATTLE_PLAYER_ITEM_WRAPPER_CALLER_SITES = (0x333A8,)
+BATTLE_THROWING_WEAPON_ACTION_ADDRESS = 0x3A30B
+BATTLE_THROWING_WEAPON_ACTION_END = 0x3A8A4
+BATTLE_THROWING_WEAPON_ACTION_CALL_OFFSETS = (
+    0x005, 0x04F, 0x07A, 0x095, 0x1DB, 0x26D, 0x304,
+    0x3F5, 0x4D0, 0x4DC, 0x530, 0x553, 0x574,
+)
+BATTLE_THROWING_WEAPON_ACTION_CALL_TARGETS = (
+    0x3ED1E, 0x36AF7, 0x3F50B, 0x3F50B, 0x3884A, 0x3D612, 0x3D612,
+    0x3F50B, 0x3D612, 0x3D612, 0x38910, 0x2B227, 0x3B1E6,
+)
+BATTLE_THROWING_WEAPON_ACTION_RELOCATION_OFFSETS = (
+    0x023, 0x030, 0x06C, 0x073, 0x087, 0x08E, 0x0A5, 0x0AC, 0x0B9,
+    0x0C4, 0x0CF, 0x0D6, 0x0E3, 0x0EE, 0x109, 0x120, 0x12E, 0x13C,
+    0x14A, 0x158, 0x162, 0x16A, 0x17C, 0x183, 0x195, 0x19F, 0x1A7,
+    0x1B1, 0x1C1, 0x1C9, 0x1D6, 0x1E6, 0x1F0, 0x1F8, 0x202, 0x211,
+    0x21C, 0x224, 0x238, 0x243, 0x258, 0x283, 0x298, 0x2B6, 0x2C0,
+    0x2D5, 0x2F0, 0x30F, 0x323, 0x35B, 0x364, 0x371, 0x383, 0x38D,
+    0x39F, 0x3A6, 0x3AD, 0x3B6, 0x3BD, 0x3CD, 0x3D7, 0x3E9, 0x402,
+    0x40C, 0x414, 0x41E, 0x42A, 0x447, 0x45E, 0x465, 0x487, 0x4B1,
+    0x4BA, 0x4E9, 0x4F2, 0x502, 0x50C, 0x51E, 0x528, 0x53B, 0x543,
+    0x54B, 0x566, 0x582, 0x58A,
+)
+BATTLE_THROWING_WEAPON_ACTION_CALLER_SITES = (0x3A2E6,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -7625,6 +7648,223 @@ def battle_player_item_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]
     }
 
 
+def battle_throwing_weapon_action_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_THROWING_WEAPON_ACTION_ADDRESS,
+        end=BATTLE_THROWING_WEAPON_ACTION_END,
+        call_offsets=BATTLE_THROWING_WEAPON_ACTION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_THROWING_WEAPON_ACTION_CALL_TARGETS,
+        relocation_offsets=BATTLE_THROWING_WEAPON_ACTION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_THROWING_WEAPON_ACTION_CALLER_SITES,
+        instruction_count=340,
+        branch_count=42,
+    )
+    if contract["raw_sha256"] != (
+        "8958cd95aa8764fe422c784e74ff1a40933a2c7e5cdd191931a55517618b5d9c"
+    ):
+        raise ValueError("Z.DAT throwing-weapon action raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "b34fb5b6496f43631d89d5e68ebfa5d10e061a5871c6a17854e1d6232b9533f6"
+    ):
+        raise ValueError("Z.DAT throwing-weapon action relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("entry_cursor", 0x3A30B, 0x3A374,
+         "7ffad109583c99ee13f0911ebb9f5085af166a456ef1c41b60156d68696c3ba6"),
+        ("direction_clear", 0x3A374, 0x3A430,
+         "fdb9cb6799a6a069535d37b54c48f790069cd2829d997fc7e26d4e9f670e1729"),
+        ("target_gate", 0x3A430, 0x3A4E6,
+         "fd5df9aa10ebbc146dc299835de64f8a5c24cdd377544abe0fcceb7babf46768"),
+        ("effect_to_hp", 0x3A4E6, 0x3A620,
+         "54abf411870878ef65e0ce0d95aad6fe8936556d7ab62772401c62bc4569f346"),
+        ("hp_hurt_damage", 0x3A620, 0x3A73B,
+         "f68588b5a63939018001c315c038659ae7f41b47a2a5c0612ecec1bcf0ed7da5"),
+        ("poison", 0x3A73B, 0x3A839,
+         "6689e0e219f0991659569095472a9f9ab7ed735fbd66d37868fed201bd8efa97"),
+        ("damage_commit", 0x3A839, 0x3A8A4,
+         "ae80cf872b799e9fb8facbf2e34505a3d2ab5bf4d8d679b86262fae395640d8d"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT throwing-weapon action {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def direction(delta_x: int, delta_y: int) -> int:
+        if abs(delta_x) >= abs(delta_y):
+            return 1 if delta_x > 0 else 2
+        return 3 if delta_y > 0 else 0
+
+    def payload(
+        *, actor_hidden: int, item_hp: int, item_poison: int, hp: int,
+        maximum_hp: int, hurt: int, poison: int, anti_poison: int,
+        draws: list[int],
+    ) -> dict[str, object]:
+        draw_index = 0
+
+        def bounded5() -> int:
+            nonlocal draw_index
+            value = draws[draw_index]
+            draw_index += 1
+            return value
+
+        divisor = 4 if hurt == 0 else 3 if hurt <= 33 else 2 if hurt <= 66 else 1
+        randomized_base = wrapping_i16(trunc_div(item_hp, divisor) - bounded5())
+        hp_delta = wrapping_i16(trunc_div(
+            wrapping_i16(randomized_base) - 2 * wrapping_i16(actor_hidden), 3
+        ))
+        changed_hurt = wrapping_i16(
+            wrapping_i16(hurt) - trunc_div(hp_delta, 4)
+        )
+        changed_hurt = min(99, max(0, changed_hurt))
+        changed_hp = wrapping_i16(wrapping_i16(hp) + hp_delta)
+        if changed_hp >= wrapping_i16(maximum_hp):
+            changed_hp = wrapping_i16(maximum_hp)
+        if changed_hp <= 0:
+            changed_hp = 0
+        damage = wrapping_i16(abs(changed_hp - wrapping_i16(hp)))
+        if wrapping_i16(item_poison) > 0:
+            poison_delta = wrapping_i16(
+                trunc_div(
+                    wrapping_i16(item_poison) - wrapping_i16(actor_hidden), 2
+                ) - wrapping_i16(anti_poison)
+            )
+            if wrapping_i16(anti_poison) >= 100 or poison_delta < 0:
+                poison_delta = 0
+            poison_delta = trunc_div(wrapping_i16(poison_delta), 2)
+        else:
+            poison_delta = (
+                trunc_div(wrapping_i16(item_poison), 2) + bounded5() - bounded5()
+            )
+        changed_poison = wrapping_i16(wrapping_i16(poison) + poison_delta)
+        if changed_poison >= 99:
+            changed_poison = 99
+        if changed_poison <= 0:
+            changed_poison = 0
+        return {
+            "hp_delta": hp_delta,
+            "hp": changed_hp,
+            "hurt": changed_hurt,
+            "damage": damage,
+            "poison_delta": poison_delta,
+            "poison": changed_poison,
+            "rng_draws": draw_index,
+        }
+
+    vectors = {
+        "range_signed_positive": wrapping_i16(trunc_div(20, 15) + 1),
+        "range_signed_negative": wrapping_i16(trunc_div(-16, 15) + 1),
+        "directions": {
+            "same_cell": direction(0, 0),
+            "horizontal_tie_positive": direction(2, 2),
+            "horizontal_tie_negative": direction(-2, -2),
+            "vertical_positive": direction(1, 2),
+            "vertical_negative": direction(-1, -2),
+        },
+        "hurt_0_plain": payload(
+            actor_hidden=20, item_hp=-30, item_poison=0, hp=100,
+            maximum_hp=200, hurt=0, poison=10, anti_poison=0,
+            draws=[4, 1, 3],
+        ),
+        "hurt_33": payload(
+            actor_hidden=20, item_hp=-40, item_poison=40, hp=100,
+            maximum_hp=200, hurt=33, poison=10, anti_poison=5, draws=[4],
+        ),
+        "hurt_34": payload(
+            actor_hidden=20, item_hp=-40, item_poison=40, hp=100,
+            maximum_hp=200, hurt=34, poison=10, anti_poison=5, draws=[4],
+        ),
+        "hurt_66": payload(
+            actor_hidden=20, item_hp=-40, item_poison=40, hp=100,
+            maximum_hp=200, hurt=66, poison=10, anti_poison=5, draws=[4],
+        ),
+        "hurt_67_wrapped_base": payload(
+            actor_hidden=0, item_hp=-32768, item_poison=1, hp=100,
+            maximum_hp=30000, hurt=67, poison=10, anti_poison=100, draws=[4],
+        ),
+        "zero_damage_clamps": payload(
+            actor_hidden=-10, item_hp=40, item_poison=1, hp=200,
+            maximum_hp=200, hurt=0, poison=99, anti_poison=100, draws=[0],
+        ),
+        "timing": [
+            "targeting_direction_and_effect_mark",
+            "sub_3884A_complete",
+            "payload_state_and_rng_commit",
+            "sub_38910_complete",
+            "inventory_decrement_or_compaction",
+            "action_done_write",
+            "all_sprite_refresh",
+        ],
+        "returns": {"cursor_cancel": -1, "all_non_cancel_paths": 0},
+        "platform_adaptations": [
+            "reject_y_at_or_above_64_despite_machine_rechecking_x",
+            "avoid_combatants_minus_one_side_read_on_empty_cell",
+            "reject_negative_hurt_and_invalid_records",
+        ],
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8"))
+    if vector_sha256 != "4de5134d6363b727de38a09d0b2cc7cc335dd0cf70831c0e9d498e6a663decd1":
+        raise ValueError("throwing-weapon action independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 62,
+        "conditional_branch_count": 31,
+        "unconditional_jump_count": 11,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_THROWING_WEAPON_ACTION_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3a8a3"],
+        "machine_slices": machine_slices,
+        "targeting_contract": (
+            "range is int16(actor.hidden_weapon/15+1); cancel returns -1; every confirmed "
+            "target writes horizontal direction on absolute-value ties, including direction2 "
+            "for the actor cell, then clears all 4096 effect words"
+        ),
+        "target_gate_contract": (
+            "friendly occupancy exits without marking; empty occupancy marks effect1 then "
+            "exits; enemy occupancy marks effect1 and continues; the machine repeats x<64 "
+            "instead of checking y<64 and briefly reads combatants[-1].side on empty"
+        ),
+        "damage_contract": (
+            "after the complete sub_3884A effect animation, signed hurt bands 0/1..33/34..66/"
+            ">66 divide item.add_hp by4/3/2/1, subtract one bounded(5), wrap the randomized "
+            "base to int16, then compute int16((base-2*actor.hidden_weapon)/3)"
+        ),
+        "state_contract": (
+            "hurt subtracts hp_delta/4 and clamps0..99; HP adds low16 delta and clamps0..max; "
+            "damage is abs(clamped HP-old HP); positive item poison uses no more RNG while "
+            "nonpositive poison consumes exactly two additional bounded(5) calls"
+        ),
+        "completion_contract": (
+            "sub_38910(0) completes before selected inventory count decrements; count<=0 "
+            "delegates slot compaction; actor action_done is then written1 and every combatant "
+            "sprite is refreshed before return0"
+        ),
+        "direct_rng_calls": "exactly1 for a valid enemy; exactly3 when item.add_poison<=0",
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code safely rejects y>=64, invalid records, invalid occupancy and negative "
+            "hurt rather than reproducing the machine's out-of-bounds accesses"
+        ),
+        "closure_boundary": (
+            "stack probe, cursor selector, effect animation, RNG, damage animation, inventory "
+            "compaction, sprite lookup and item-wrapper caller retain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -8170,8 +8410,8 @@ def throwing_weapon_vector(
     word = lambda index: struct.unpack_from("<h", item, index * 2)[0]
     divisor = 4 if hurt == 0 else 3 if hurt <= 33 else 2 if hurt <= 66 else 1
     damage_random, state = legacy_bounded(seed, 5)
-    base_delta = trunc_div(word(45), divisor) - damage_random
-    hp_delta = wrapping_i16(trunc_div(base_delta - 2 * hidden_weapon, 3))
+    randomized_base = wrapping_i16(trunc_div(word(45), divisor) - damage_random)
+    hp_delta = wrapping_i16(trunc_div(randomized_base - 2 * hidden_weapon, 3))
     hurt_after = min(99, max(0, wrapping_i16(hurt - trunc_div(hp_delta, 4))))
     hp_after = wrapping_i16(hp + hp_delta)
     if hp_after >= maximum_hp:
@@ -11715,6 +11955,8 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_medicine_value_machine": battle_medicine_value_contract(z_dat_bytes),
         "battle_player_item_wrapper_machine":
             battle_player_item_wrapper_contract(z_dat_bytes),
+        "battle_throwing_weapon_action_machine":
+            battle_throwing_weapon_action_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

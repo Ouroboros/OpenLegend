@@ -2808,17 +2808,17 @@ bool BattleSession::begin_player_target_effect(
             return false;
         }
         const auto inventory_slot = *player_item_->selected_inventory_slot;
-        const auto thrown = setup_.apply_throwing_weapon_target(
-            current_actor_slot_, target, inventory_slot, random_);
-        if (!thrown.has_value()) {
+        const auto prepared = setup_.prepare_throwing_weapon_target(
+            current_actor_slot_, target, inventory_slot);
+        if (!prepared.has_value()) {
             error_ = setup_.valid()
-                ? "battle player throwing-weapon state application failed"
+                ? "battle player throwing-weapon target preparation failed"
                 : setup_.error();
             return false;
         }
         player_cursor_selection_.reset();
         render_state_.path_limit = 0;
-        if (thrown->hit_count == 0) {
+        if (prepared->hit_count == 0) {
             diagnostics::log_info(
                 "battle player throwing-weapon target rejected id=" +
                 std::to_string(battle_id()) +
@@ -2829,11 +2829,11 @@ bool BattleSession::begin_player_target_effect(
             player_item_.reset();
             return finish_player_action_call();
         }
-        if (!thrown->effect_id.has_value()) {
+        if (!prepared->effect_id.has_value()) {
             error_ = "battle player throwing-weapon effect id is absent";
             return false;
         }
-        auto animation = BattleSetup::effect_animation_plan(*thrown->effect_id);
+        auto animation = BattleSetup::effect_animation_plan(*prepared->effect_id);
         if (!animation.has_value()) {
             error_ = "battle player throwing-weapon effect animation is invalid";
             return false;
@@ -2843,8 +2843,8 @@ bool BattleSession::begin_player_target_effect(
                 .action = BattlePlayerAction::item,
                 .magic_animation = {},
                 .effect_animation = std::move(*animation),
-                .effect_id = *thrown->effect_id,
-                .damage_kind = static_cast<std::int16_t>(thrown->damage == 0 ? 0 : 1),
+                .effect_id = *prepared->effect_id,
+                .damage_kind = 0,
                 .damage_suppress_flash = false,
                 .audio_commands = {},
             });
@@ -2876,10 +2876,10 @@ bool BattleSession::begin_player_target_effect(
             " inventory_slot=" + std::to_string(inventory_slot) +
             " target=" + std::to_string(target.x) + "," +
             std::to_string(target.y) +
-            " effect=" + std::to_string(*thrown->effect_id) +
-            " damage=" + std::to_string(thrown->damage) +
+            " effect=" + std::to_string(*prepared->effect_id) +
             " frames=" + std::to_string(
-                player_target_effect_->effect_animation->frames.size()));
+                player_target_effect_->effect_animation->frames.size()) +
+            " state=pending consumed=false");
         return true;
     }
 
@@ -3058,6 +3058,38 @@ bool BattleSession::prepare_player_magic_frame() {
     return true;
 }
 
+bool BattleSession::commit_player_throwing_weapon_effect() {
+    if (!player_item_ || !player_item_->selected_inventory_slot.has_value() ||
+        !selected_player_target_.has_value() || !player_target_effect_ ||
+        !player_target_effect_->effect_animation.has_value() ||
+        player_target_effect_->action != BattlePlayerAction::item ||
+        player_target_effect_->ai_controlled) {
+        error_ = "battle player throwing-weapon state continuation is invalid";
+        return false;
+    }
+    const auto inventory_slot = *player_item_->selected_inventory_slot;
+    const auto thrown = setup_.apply_throwing_weapon_payload(
+        current_actor_slot_, *selected_player_target_, inventory_slot, random_);
+    if (!thrown.has_value() || thrown->hit_count != 1) {
+        error_ = setup_.valid()
+            ? "battle player throwing-weapon state application failed"
+            : setup_.error();
+        return false;
+    }
+    player_target_effect_->damage_kind = static_cast<std::int16_t>(
+        thrown->damage == 0 ? 0 : 1);
+    diagnostics::log_info(
+        "battle player throwing-weapon state committed id=" +
+        std::to_string(battle_id()) +
+        " slot=" + std::to_string(current_actor_slot_) +
+        " inventory_slot=" + std::to_string(inventory_slot) +
+        " target=" + std::to_string(selected_player_target_->x) + "," +
+        std::to_string(selected_player_target_->y) +
+        " damage=" + std::to_string(thrown->damage) +
+        " consumed=false");
+    return begin_player_damage_animation();
+}
+
 bool BattleSession::advance_player_magic_wait(const std::uint32_t bios_tick) {
     if (!player_target_effect_) {
         error_ = "battle player target effect continuation is absent";
@@ -3084,9 +3116,14 @@ bool BattleSession::advance_player_magic_wait(const std::uint32_t bios_tick) {
             : prepare_player_magic_frame();
     }
     render_state_.effect_visible = false;
-    if (effect.ai_controlled && effect.effect_animation.has_value() &&
-        ai_item_plan_.has_value() && ai_item_plan_->use_mode == 1) {
-        return commit_ai_throwing_weapon_effect();
+    if (effect.effect_animation.has_value()) {
+        if (effect.ai_controlled && ai_item_plan_.has_value() &&
+            ai_item_plan_->use_mode == 1) {
+            return commit_ai_throwing_weapon_effect();
+        }
+        if (!effect.ai_controlled && effect.action == BattlePlayerAction::item) {
+            return commit_player_throwing_weapon_effect();
+        }
     }
     return begin_player_damage_animation();
 }

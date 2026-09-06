@@ -346,6 +346,7 @@ private:
         std::uint8_t translated_key);
     [[nodiscard]] bool begin_player_target_effect(
         BattlePlayerAction action, BattlePathCoord target);
+    [[nodiscard]] bool commit_player_throwing_weapon_effect();
     [[nodiscard]] bool prepare_player_magic_frame();
     [[nodiscard]] bool advance_player_effect_prelude_wait(std::uint32_t bios_tick);
     [[nodiscard]] bool prepare_player_effect_frame();

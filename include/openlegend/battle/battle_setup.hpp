@@ -807,6 +807,15 @@ public:
         std::size_t item_slot) noexcept;
     [[nodiscard]] std::optional<std::int16_t> throwing_weapon_targeting_range(
         std::size_t actor_slot) const noexcept;
+    [[nodiscard]] std::optional<BattleThrownItemResult> prepare_throwing_weapon_target(
+        std::size_t actor_slot,
+        BattlePathCoord target,
+        std::size_t inventory_slot);
+    [[nodiscard]] std::optional<BattleThrownItemResult> apply_throwing_weapon_payload(
+        std::size_t actor_slot,
+        BattlePathCoord target,
+        std::size_t inventory_slot,
+        random::LegacyRandom& random);
     [[nodiscard]] std::optional<BattleThrownItemResult> apply_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,

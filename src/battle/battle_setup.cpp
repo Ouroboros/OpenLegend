@@ -2493,11 +2493,10 @@ std::optional<std::int16_t> BattleSetup::throwing_weapon_targeting_range(
         1);
 }
 
-std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
+std::optional<BattleThrownItemResult> BattleSetup::prepare_throwing_weapon_target(
     const std::size_t actor_slot,
     const BattlePathCoord target,
-    const std::size_t inventory_slot,
-    random::LegacyRandom& random) {
+    const std::size_t inventory_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle throwing-weapon actor is outside combatant slots";
         return std::nullopt;
@@ -2518,12 +2517,10 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
 
     const auto delta_x = static_cast<std::int32_t>(target.x) - actor_words[combatant_word::x];
     const auto delta_y = static_cast<std::int32_t>(target.y) - actor_words[combatant_word::y];
-    if (delta_x != 0 || delta_y != 0) {
-        if (std::abs(delta_y) > std::abs(delta_x)) {
-            actor_words[combatant_word::initial_mode] = delta_y <= 0 ? 0 : 3;
-        } else {
-            actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
-        }
+    if (std::abs(delta_y) > std::abs(delta_x)) {
+        actor_words[combatant_word::initial_mode] = delta_y <= 0 ? 0 : 3;
+    } else {
+        actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
     }
     clear_attack_effects();
     BattleThrownItemResult result{};
@@ -2534,22 +2531,69 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
     }
     const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
         static_cast<std::size_t>(target.x);
-    const auto target_slot = data_.occupancy()[cell];
-    if (target_slot != -1) {
-        if (target_slot < 0 || target_slot >= combatant_count_) {
+    const auto checked_target_slot = data_.occupancy()[cell];
+    if (checked_target_slot != -1) {
+        if (checked_target_slot < 0 || checked_target_slot >= combatant_count_) {
             error_ = "battle throwing-weapon occupancy is outside combatant slots";
             return std::nullopt;
         }
-        if (combatants_[static_cast<std::size_t>(target_slot)].words[combatant_word::side] ==
-            actor_words[combatant_word::side]) {
+        if (combatants_[static_cast<std::size_t>(checked_target_slot)]
+                .words[combatant_word::side] == actor_words[combatant_word::side]) {
             refresh_sprites();
             return result;
         }
     }
     attack_effects_[cell] = 1;
+    const auto target_slot = data_.occupancy()[cell];
     if (target_slot == -1) {
         refresh_sprites();
         return result;
+    }
+    if (target_slot < 0 || target_slot >= combatant_count_) {
+        error_ = "battle throwing-weapon confirmed occupancy is outside combatant slots";
+        return std::nullopt;
+    }
+    if (inventory_slot >= model::kInventoryCount) {
+        error_ = "battle throwing-weapon inventory slot is outside ranger header";
+        return std::nullopt;
+    }
+    const auto item_id = ranger_.header.inventory_item(inventory_slot).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+        error_ = "battle throwing-weapon item is outside ranger records";
+        return std::nullopt;
+    }
+    result.hit_count = 1;
+    result.effect_id = ranger_.items[static_cast<std::size_t>(item_id)].word(
+        model::item_word::hidden_weapon_effect_id);
+    return result;
+}
+
+std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_payload(
+    const std::size_t actor_slot,
+    const BattlePathCoord target,
+    const std::size_t inventory_slot,
+    random::LegacyRandom& random) {
+    if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
+        error_ = "battle throwing-weapon actor is outside combatant slots";
+        return std::nullopt;
+    }
+    const auto& actor_words = combatants_[actor_slot].words;
+    const auto actor_role_id = actor_words[combatant_word::role_id];
+    if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
+        error_ = "battle throwing-weapon actor role is outside ranger records";
+        return std::nullopt;
+    }
+    if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
+        target.y >= static_cast<std::int16_t>(kBattleExtent)) {
+        error_ = "battle throwing-weapon payload target is outside battlefield";
+        return std::nullopt;
+    }
+    const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
+        static_cast<std::size_t>(target.x);
+    const auto target_slot = data_.occupancy()[cell];
+    if (target_slot < 0 || target_slot >= combatant_count_) {
+        error_ = "battle throwing-weapon payload occupancy is outside combatant slots";
+        return std::nullopt;
     }
     if (inventory_slot >= model::kInventoryCount) {
         error_ = "battle throwing-weapon inventory slot is outside ranger header";
@@ -2585,11 +2629,11 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
     } else if (hurt <= 66) {
         divisor = 2;
     }
-    const auto base_delta =
+    const auto randomized_base = wrapping_i16(
         static_cast<std::int32_t>(item.word(model::item_word::add_hp)) / divisor -
-        random.bounded(5);
+        random.bounded(5));
     const auto hp_delta = wrapping_i16(
-        (base_delta -
+        (static_cast<std::int32_t>(randomized_base) -
          2 * static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon))) /
         3);
 
@@ -2642,11 +2686,24 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
     }
     target_role.set_word(model::role_word::poison, changed_poison);
 
+    BattleThrownItemResult result{};
     result.hit_count = 1;
     result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
     result.damage = damage;
     result.inventory_consumed = false;
     return result;
+}
+
+std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_target(
+    const std::size_t actor_slot,
+    const BattlePathCoord target,
+    const std::size_t inventory_slot,
+    random::LegacyRandom& random) {
+    auto prepared = prepare_throwing_weapon_target(actor_slot, target, inventory_slot);
+    if (!prepared.has_value() || prepared->hit_count == 0) {
+        return prepared;
+    }
+    return apply_throwing_weapon_payload(actor_slot, target, inventory_slot, random);
 }
 
 bool BattleSetup::finish_throwing_weapon_action(
