@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为30/81；其余51项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为31/81；其余50项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -261,7 +261,7 @@ fallback在`0x3556F`已把EBX覆写为actor记录偏移，故严格比较`2*acto
 
 `sub_3582B`机器身份固定为353 bytes、84条指令、3个显式条件跳转和30处重定位；raw/loaded SHA256为`4dbe948d5cbd3b588e9638016ce6a44c3b24f99d014071eeabb9200b7e471ded`与`f0d4f1e000b8ae30590805156b76ceda27c2e93672876ca5fce4989a796e60b2`。唯一caller不读EAX并在返回后统一写action_done；七次call为栈探测、一次攻击目标策略、首次targeting、暗器、mode1移动、同目标第二次targeting和自动攻击。selector返回后actor word11无条件复制到独立scratch，故未写时合法stale目标仍固定使用；射程为signed hidden_weapon IDIV15向零截断加1，DI/path作signed比较。首检命中直接use_mode1；未命中且signed round value>0才移动，零/负值跳移动但仍二检；二检不重选，命中用暗器，否则不消费物品并回退完整自动攻击。hidden_weapon80得range6的直接/移动后命中/移动后二检失败、round0二检、attack全0 stale目标均已锁定；新增hidden_weapon=-16得range0且round=-1跳移动仍二检，以及Session回退保留动作码10。入口REVIEW零产品差异，正式原资产golden双生成SHA256为`edee6ce7fa23eaffa84d26f33b564ef50b2378b47d500ee1828d85415cdce977`，Linux app Debug 14/14通过；五个callee均不传播closure。
 
-`sub_36133`在敌方携带物品数量耗尽后，从指定slot起同步左移后续item ID和数量并清空第4槽；`[5,6,7,8]/[1,2,3,4]`删除slot1严格得到`[5,7,8,-1]/[1,3,4,0]`，已完整映射为`remove_carried_item_slot`。
+`sub_36133`机器身份固定为121 bytes、28条指令、2个显式跳转和8处重定位；raw/loaded SHA256为`589cedb4fed28fa00c4fbe852d4111d772f44dc3454354d697161d47f4cd493c`与`761bb81a8e1063e29e693892d293c56d63cb9995aedaa7ee645e15f505f2b331`。唯一caller只在敌方当前携带槽signed数量减至`<=0`时调用并忽略EAX；唯一call为独立栈探测。函数以signed DX<3控制前向循环，将每个后续item ID和匹配数量同步复制到前槽，最后无条件清第4槽`[-1,0]`；slot0/1/2/3分别循环3/2/1/0次。现代一次role查找等价于机器逐轮重读，bool返回在typed caller有效域等价；高槽、负槽及非法actor/role安全拒绝归为异常域适配。四个合法槽、无效槽不变及非法actor/role回归补齐后，首轮入口REVIEW零产品差异。正式原资产golden双生成SHA256为`2569d16082a63705fdfe2ee6d68235dc806a5c0fe4d982c1684a6917ef3eb639`，Linux app Debug 14/14通过；callee与caller均不传播closure。
 
 `sub_3598C`的AI mode1暗器状态与手动`sub_3A30B`并不共用毒值公式：item add_poison非负时直接加到目标poison，负值才算`(add_poison-hidden_weapon)/2`，两者都不读取anti_poison且不追加RNG。真实item102在seed1下伤害21、hurt40→45、HP100→79、poison10→50，仅消费一次RNG；无毒item96在seed2下伤害16、poison10保持10，也仅消费一次RNG。队伍方耗尽200槽inventory后左移，敌方耗尽4槽taking-item后调用`sub_36133`；AI分支不改actor方向且不提前写action_done。
 

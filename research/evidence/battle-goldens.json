@@ -1001,6 +1001,38 @@
     "shared_epilogue_owner_propagation": false,
     "delegated_boundaries": "sub_2B483/sub_3DB83/sub_2B227/sub_3884A/sub_3D612/sub_3F50B/sub_38910/sub_36133 retain independent owners"
   },
+  "battle_carried_item_remove_machine": {
+    "address": "0x36133",
+    "end": "0x361ac",
+    "raw_offset": "0x2fb33",
+    "size": 121,
+    "instruction_count": 28,
+    "branch_count": 2,
+    "raw_sha256": "589cedb4fed28fa00c4fbe852d4111d772f44dc3454354d697161d47f4cd493c",
+    "loaded_sha256": "761bb81a8e1063e29e693892d293c56d63cb9995aedaa7ee645e15f505f2b331",
+    "relocation_count": 8,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36138"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x36124"
+    ],
+    "arguments": "actor slot and deletion slot are consumed through signed low words CX and DX",
+    "caller": "sole caller sub_3598C invokes only for exhausted enemy carried source and ignores EAX",
+    "loop": "initial jump then signed int16 DX < 3; legal slot0..2 shifts successors and increments full EDX",
+    "role_lookup": "each iteration and terminal clear re-read signed combatant role_id",
+    "item_shift": "taking-item ID at slot+1 copies to slot",
+    "count_shift": "matching taking-item quantity at slot+1 copies to slot",
+    "terminal_clear": "always writes item ID -1 and quantity 0 to slot3, including initial slot3 or >=3",
+    "return": "EAX equals signed role_id * 182; sole caller does not read it",
+    "direct_rng_draws": 0,
+    "invalid_domain": "negative slot/invalid actor or role performs legacy linear access; modern safety rejection allowed",
+    "delegated_boundaries": "sub_3ED1E stack probe remains independent owner"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -1993,6 +2025,94 @@
             ]
           ],
           "decrement_wraps_to_int16": true
+        },
+        "enemy_carried_removal": {
+          "item_ids_before": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "quantities_before": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "legal_slots": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "vectors": [
+            {
+              "deletion_slot": 0,
+              "item_ids_after": [
+                6,
+                7,
+                8,
+                -1
+              ],
+              "quantities_after": [
+                2,
+                3,
+                4,
+                0
+              ],
+              "loop_iterations": 3
+            },
+            {
+              "deletion_slot": 1,
+              "item_ids_after": [
+                5,
+                7,
+                8,
+                -1
+              ],
+              "quantities_after": [
+                1,
+                3,
+                4,
+                0
+              ],
+              "loop_iterations": 2
+            },
+            {
+              "deletion_slot": 2,
+              "item_ids_after": [
+                5,
+                6,
+                8,
+                -1
+              ],
+              "quantities_after": [
+                1,
+                2,
+                4,
+                0
+              ],
+              "loop_iterations": 1
+            },
+            {
+              "deletion_slot": 3,
+              "item_ids_after": [
+                5,
+                6,
+                7,
+                -1
+              ],
+              "quantities_after": [
+                1,
+                2,
+                3,
+                0
+              ],
+              "loop_iterations": 0
+            }
+          ],
+          "pairing_preserved": true,
+          "slot3_always_cleared": true
         },
         "ai_throwing": {
           "poisoned_state_vector": {

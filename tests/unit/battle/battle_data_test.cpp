@@ -5884,24 +5884,50 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(choice->action == BattleAiAction::none);
 
     reset();
-    for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
-        ranger.roles[3U].set_word(
-            role_word::taking_item_begin + slot,
-            static_cast<std::int16_t>(5 + slot));
-        ranger.roles[3U].set_word(
-            role_word::taking_item_count_begin + slot,
-            static_cast<std::int16_t>(1 + slot));
+    constexpr std::array<std::array<std::int16_t, 4U>, 4U> kCarriedIdsAfter{{
+        {{6, 7, 8, -1}},
+        {{5, 7, 8, -1}},
+        {{5, 6, 8, -1}},
+        {{5, 6, 7, -1}},
+    }};
+    constexpr std::array<std::array<std::int16_t, 4U>, 4U> kCarriedCountsAfter{{
+        {{2, 3, 4, 0}},
+        {{1, 3, 4, 0}},
+        {{1, 2, 4, 0}},
+        {{1, 2, 3, 0}},
+    }};
+    const auto reset_carried_items = [&ranger]() {
+        for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
+            ranger.roles[3U].set_word(
+                role_word::taking_item_begin + slot,
+                static_cast<std::int16_t>(5 + slot));
+            ranger.roles[3U].set_word(
+                role_word::taking_item_count_begin + slot,
+                static_cast<std::int16_t>(1 + slot));
+        }
+    };
+    for (std::size_t deletion_slot = 0U;
+         deletion_slot < role_word::taking_item_count;
+         ++deletion_slot) {
+        reset_carried_items();
+        OL_CHECK(setup.remove_carried_item_slot(3U, deletion_slot));
+        for (std::size_t slot = 0U; slot < role_word::taking_item_count; ++slot) {
+            OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + slot) ==
+                     kCarriedIdsAfter[deletion_slot][slot]);
+            OL_CHECK(ranger.roles[3U].word(
+                         role_word::taking_item_count_begin + slot) ==
+                     kCarriedCountsAfter[deletion_slot][slot]);
+        }
     }
-    OL_CHECK(setup.remove_carried_item_slot(3U, 1U));
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin) == 5);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 1U) == 7);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 2U) == 8);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 3U) == -1);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin) == 1);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 1U) == 3);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 2U) == 4);
-    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 3U) == 0);
+    reset_carried_items();
     OL_CHECK(!setup.remove_carried_item_slot(3U, role_word::taking_item_count));
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_begin + 3U) == 8);
+    OL_CHECK(ranger.roles[3U].word(role_word::taking_item_count_begin + 3U) == 4);
+    OL_CHECK(!setup.remove_carried_item_slot(99U, 0U));
+    const auto carried_role = setup.combatants()[3U].words[combatant_word::role_id];
+    setup.combatants()[3U].words[combatant_word::role_id] = -1;
+    OL_CHECK(!setup.remove_carried_item_slot(3U, 0U));
+    setup.combatants()[3U].words[combatant_word::role_id] = carried_role;
 
     reset();
     ranger.items[5U].set_word(item_word::add_mp, 0);

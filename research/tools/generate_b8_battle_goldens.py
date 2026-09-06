@@ -193,6 +193,13 @@ BATTLE_AI_ITEM_EXECUTOR_RELOCATION_OFFSETS = (
 BATTLE_AI_ITEM_EXECUTOR_CALLER_SITES = (0x35821, 0x358E2)
 BATTLE_AI_ITEM_EXECUTOR_SHARED_EPILOGUE = 0x3612C
 BATTLE_AI_ITEM_EXECUTOR_EPILOGUE_JUMP_SITES = (0x370EA, 0x37161, 0x395E7)
+BATTLE_CARRIED_ITEM_REMOVE_ADDRESS = 0x36133
+BATTLE_CARRIED_ITEM_REMOVE_END = 0x361AC
+BATTLE_CARRIED_ITEM_REMOVE_CALL_OFFSETS = (0x005,)
+BATTLE_CARRIED_ITEM_REMOVE_RELOCATION_OFFSETS = (
+    0x01E, 0x032, 0x039, 0x040, 0x047, 0x05B, 0x068, 0x071,
+)
+BATTLE_CARRIED_ITEM_REMOVE_CALLER_SITES = (0x36124,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1134,6 +1141,48 @@ def battle_ai_item_executor_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_carried_item_remove_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_CARRIED_ITEM_REMOVE_ADDRESS,
+        end=BATTLE_CARRIED_ITEM_REMOVE_END,
+        call_offsets=BATTLE_CARRIED_ITEM_REMOVE_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E,),
+        relocation_offsets=BATTLE_CARRIED_ITEM_REMOVE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_CARRIED_ITEM_REMOVE_CALLER_SITES,
+        instruction_count=28,
+        branch_count=2,
+    )
+    if contract["raw_sha256"] != (
+        "589cedb4fed28fa00c4fbe852d4111d772f44dc3454354d697161d47f4cd493c"
+    ):
+        raise ValueError("Z.DAT carried-item removal raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "761bb81a8e1063e29e693892d293c56d63cb9995aedaa7ee645e15f505f2b331"
+    ):
+        raise ValueError("Z.DAT carried-item removal relocation image changed")
+    return {
+        **contract,
+        "arguments":
+            "actor slot and deletion slot are consumed through signed low words CX and DX",
+        "caller":
+            "sole caller sub_3598C invokes only for exhausted enemy carried source and ignores EAX",
+        "loop":
+            "initial jump then signed int16 DX < 3; legal slot0..2 shifts successors and increments full EDX",
+        "role_lookup":
+            "each iteration and terminal clear re-read signed combatant role_id",
+        "item_shift": "taking-item ID at slot+1 copies to slot",
+        "count_shift": "matching taking-item quantity at slot+1 copies to slot",
+        "terminal_clear":
+            "always writes item ID -1 and quantity 0 to slot3, including initial slot3 or >=3",
+        "return": "EAX equals signed role_id * 182; sole caller does not read it",
+        "direct_rng_draws": 0,
+        "invalid_domain":
+            "negative slot/invalid actor or role performs legacy linear access; modern safety rejection allowed",
+        "delegated_boundaries": "sub_3ED1E stack probe remains independent owner",
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -1576,6 +1625,36 @@ def ai_throwing_weapon_vector(
         "hurt_after": hurt_after,
         "poison_delta": poison_delta,
         "poison_after": poison_after,
+    }
+
+
+def carried_item_removal_vectors() -> dict[str, object]:
+    source_ids = [5, 6, 7, 8]
+    source_counts = [1, 2, 3, 4]
+    vectors = []
+    for deletion_slot in range(4):
+        ids = list(source_ids)
+        counts = list(source_counts)
+        for slot in range(deletion_slot, 3):
+            ids[slot] = ids[slot + 1]
+            counts[slot] = counts[slot + 1]
+        ids[3] = -1
+        counts[3] = 0
+        vectors.append(
+            {
+                "deletion_slot": deletion_slot,
+                "item_ids_after": ids,
+                "quantities_after": counts,
+                "loop_iterations": 3 - deletion_slot,
+            }
+        )
+    return {
+        "item_ids_before": source_ids,
+        "quantities_before": source_counts,
+        "legal_slots": [0, 1, 2, 3],
+        "vectors": vectors,
+        "pairing_preserved": True,
+        "slot3_always_cleared": True,
     }
 
 
@@ -4797,6 +4876,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_item_handler_machine": battle_ai_item_handler_contract(z_dat_bytes),
         "battle_ai_throwing_handler_machine": battle_ai_throwing_handler_contract(z_dat_bytes),
         "battle_ai_item_executor_machine": battle_ai_item_executor_contract(z_dat_bytes),
+        "battle_carried_item_remove_machine": battle_carried_item_remove_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
@@ -5037,6 +5117,7 @@ def build(data_root: Path) -> dict[str, object]:
                         "after_consuming_slot_0": [[97, 2], [10, 0], [-1, 0], [-1, 0]],
                         "decrement_wraps_to_int16": True,
                     },
+                    "enemy_carried_removal": carried_item_removal_vectors(),
                     "ai_throwing": {
                         "poisoned_state_vector": ai_poisoned_throw,
                         "plain_state_vector": ai_plain_throw,
