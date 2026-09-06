@@ -144,6 +144,14 @@ BATTLE_AI_STRONGEST_POISON_TARGET_RELOCATION_OFFSETS = (
     0x027, 0x02E, 0x037, 0x041, 0x04E, 0x058, 0x065, 0x06C, 0x075, 0x083, 0x08B,
 )
 BATTLE_AI_STRONGEST_POISON_TARGET_CALLER_SITES = (0x3563F,)
+BATTLE_AI_FIRST_POISON_TARGET_ADDRESS = 0x3570F
+BATTLE_AI_FIRST_POISON_TARGET_END = 0x35803
+BATTLE_AI_FIRST_POISON_TARGET_CALL_OFFSETS = (0x005, 0x097)
+BATTLE_AI_FIRST_POISON_TARGET_RELOCATION_OFFSETS = (
+    0x02A, 0x031, 0x03E, 0x04C, 0x059, 0x063, 0x070, 0x077, 0x080,
+    0x086, 0x08D, 0x093, 0x09F, 0x0A9, 0x0B3, 0x0BB, 0x0C7, 0x0D1,
+)
+BATTLE_AI_FIRST_POISON_TARGET_CALLER_SITES = (0x35657,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -850,6 +858,57 @@ def battle_ai_strongest_poison_target_contract(z_dat_bytes: bytes) -> dict[str, 
         "failure_return": -1,
         "direct_rng_draws": 0,
         "caller": "sub_355FF uses return only to decide fallback",
+    }
+
+
+def battle_ai_first_poison_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_FIRST_POISON_TARGET_ADDRESS,
+        end=BATTLE_AI_FIRST_POISON_TARGET_END,
+        call_offsets=BATTLE_AI_FIRST_POISON_TARGET_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x36E7F),
+        relocation_offsets=BATTLE_AI_FIRST_POISON_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_FIRST_POISON_TARGET_CALLER_SITES,
+        instruction_count=56,
+        branch_count=8,
+    )
+    if contract["raw_sha256"] != (
+        "3bf9b8e1b03074465262d0a5b08257cde7d2ce0243a56f51cef7892cee30562e"
+    ):
+        raise ValueError("Z.DAT first poison-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "b06d503b356f1c7587888e743a9dfcda7851d38e86999acf2d7098156322d2b9"
+    ):
+        raise ValueError("Z.DAT first poison-target relocation image changed")
+    return {
+        **contract,
+        "best_distance_initial": 1000,
+        "slot_loop": "signed int16 from zero while slot < combatant_count",
+        "candidate_side": "must differ from actor side",
+        "candidate_hidden": "must equal zero",
+        "candidate_poison": "signed value < 95",
+        "candidate_anti_poison": "signed value < actor signed use_poison",
+        "candidate_hp_read": False,
+        "path_source": "actor x/y copied before every eligible-candidate path build",
+        "path_builds": "once per eligible candidate",
+        "distance_target": "global signed word_E6EE0 stale target slot, not candidate slot",
+        "distance_comparison": "signed distance strictly < current signed best",
+        "first_eligible_bug":
+            "all eligible candidates query the same stale target distance, so the first writes and later ties do not",
+        "distance_below_1000":
+            "first eligible candidate writes actor word12 and result is success",
+        "distance_at_or_above_1000":
+            "no candidate writes actor word12 and result is failure",
+        "writes_actor_word12": "candidate slot on strict improvement",
+        "no_selection_word12": "preserved",
+        "success_return": 1,
+        "failure_return": -1,
+        "direct_rng_draws": 0,
+        "caller": "sub_355FF invokes this for roll >= 7 or strongest-selector failure",
+        "stale_target_storage": "word_E6EE0 is independent from actor word12",
+        "handler_write_order":
+            "sub_3540E copies selected actor word12 to word_E6EE0 only after sub_355FF returns",
     }
 
 
@@ -3652,6 +3711,30 @@ def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
             "rebuilds_targeting_map_for_each_eligible_candidate": True,
             "no_eligible_target_does_not_read_stale_slot": True,
         },
+        "first_negative_hidden_dead_target": {
+            "hidden": [-1, 0],
+            "hit_points": [100, 0],
+            "reads_hit_points": False,
+            "stale_target_slot": 4,
+            "stale_target_distance": targeting[24 * 64 + 14],
+            "target_slot": 4,
+        },
+        "first_signed_eligibility": {
+            "actor_use_poison": -10,
+            "candidate_poison": [-1, -1],
+            "candidate_anti_poison": [-20, -10],
+            "anti_poison_rule": "strictly_less_than_actor_use_poison",
+            "stale_target_slot": 4,
+            "stale_target_distance": targeting[24 * 64 + 14],
+            "target_slot": 3,
+        },
+        "session_stale_target_storage": {
+            "legacy_scratch_initial": 0,
+            "actor_word12_before": 99,
+            "selector_source": "independent_session_scratch",
+            "target_slot": 1,
+            "actor_word12_after": 1,
+        },
         "range_and_round": {
             "actor_use_poison": 80,
             "targeting_range": trunc_div(80, 15) + 1,
@@ -4453,6 +4536,8 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_poison_target_machine": battle_ai_poison_target_contract(z_dat_bytes),
         "battle_ai_strongest_poison_target_machine":
             battle_ai_strongest_poison_target_contract(z_dat_bytes),
+        "battle_ai_first_poison_target_machine":
+            battle_ai_first_poison_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

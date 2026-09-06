@@ -447,6 +447,7 @@ private:
     std::vector<compat::LegacyPalette> fade_palettes_;
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
+    std::int16_t legacy_ai_target_slot_{};
     bool confirmation_state_{};
     bool clear_confirmation_states_requested_{};
     bool player_menu_down_state_{};

@@ -1014,6 +1014,10 @@ bool BattleSession::advance_ai_wait(const std::uint32_t bios_tick) {
         error_ = "battle AI action selection failed";
         return false;
     }
+    const auto selected_target_slot = ai_turn_decision_->choice.target_slot;
+    if (selected_target_slot >= 0 && selected_target_slot < setup_.combatant_count()) {
+        legacy_ai_target_slot_ = selected_target_slot;
+    }
     diagnostics::log_info(
         "battle AI action selected id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
@@ -1087,16 +1091,18 @@ bool BattleSession::dispatch_selected_ai_action() {
     case BattleAiHandler::attack:
         return begin_ai_attack_action();
     case BattleAiHandler::use_poison: {
-        const auto stale_target = setup_.combatants()[current_actor_slot_]
-                                      .words[combatant_word::ai_poison_target];
         ai_poison_plan_ = setup_.begin_ai_poison_plan(
             current_actor_slot_,
-            static_cast<std::size_t>(stale_target),
+            static_cast<std::size_t>(legacy_ai_target_slot_),
             *ai_turn_prelude_,
             random_);
         if (!ai_poison_plan_.has_value()) {
             error_ = setup_.valid() ? "battle AI poison plan failed" : setup_.error();
             return false;
+        }
+        if (ai_poison_plan_->target_slot >= 0 &&
+            ai_poison_plan_->target_slot < setup_.combatant_count()) {
+            legacy_ai_target_slot_ = ai_poison_plan_->target_slot;
         }
         if (ai_poison_plan_->next_step == BattleAiPoisonNextStep::move) {
             return begin_targeted_movement(
@@ -1161,6 +1167,10 @@ bool BattleSession::dispatch_selected_ai_action() {
             error_ = setup_.valid() ? "battle AI throwing-weapon plan failed" : setup_.error();
             return false;
         }
+        if (ai_item_plan_->target_slot >= 0 &&
+            ai_item_plan_->target_slot < setup_.combatant_count()) {
+            legacy_ai_target_slot_ = ai_item_plan_->target_slot;
+        }
         if (ai_item_plan_->next_step == BattleAiItemNextStep::move) {
             return begin_targeted_movement(
                 ai_item_plan_->target_slot,
@@ -1180,6 +1190,7 @@ bool BattleSession::begin_ai_attack_action() {
         error_ = setup_.valid() ? "battle AI attack plan failed" : setup_.error();
         return false;
     }
+    legacy_ai_target_slot_ = ai_attack_plan_->target_slot;
     if (ai_attack_plan_->next_step == BattleAiAttackNextStep::move) {
         const auto target_slot = ai_attack_plan_->target_slot;
         if (target_slot < 0 || target_slot >= setup_.combatant_count()) {
@@ -1818,6 +1829,7 @@ bool BattleSession::finish_ai_movement() {
             error_ = setup_.valid() ? "battle AI attack continuation failed" : setup_.error();
             return false;
         }
+        legacy_ai_target_slot_ = ai_attack_plan_->target_slot;
         if (ai_attack_plan_->next_step == BattleAiAttackNextStep::rest) {
             ai_attack_plan_.reset();
             return finish_ai_handler(BattlePlayerAction::rest, true);

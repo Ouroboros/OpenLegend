@@ -3471,7 +3471,7 @@ void run_ai_poison_session_test(
         session->finish_presented_tick(1'400U);
     }
     session->setup().combatants()[0U]
-        .words[combatant_word::ai_poison_target] = 1;
+        .words[combatant_word::ai_poison_target] = 99;
     session->setup().enable_automatic_mode();
     session->advance(1'400U);
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
@@ -3494,6 +3494,8 @@ void run_ai_poison_session_test(
     OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::ai_action] ==
              static_cast<std::int16_t>(BattleAiAction::use_poison));
+    OL_CHECK(session->setup().combatants()[0U]
+                 .words[combatant_word::ai_poison_target] == 1);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(enemy.word(role_word::poison) == 25);
     OL_CHECK((session->take_audio_commands() ==
@@ -7251,6 +7253,37 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(poison_target->target_slot == 3);
     OL_CHECK(poison_target->stale_target_distance == 8);
     OL_CHECK(poison_first_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::use_poison, 80);
+    ranger.roles[0U].set_word(role_word::iq, 60);
+    ranger.roles[3U].set_word(role_word::attack, 100);
+    ranger.roles[4U].set_word(role_word::hp, 0);
+    setup.combatants()[3U].words[combatant_word::occupancy_hidden] = -1;
+    openlegend::random::LegacyRandom poison_first_hidden_dead_random{1U};
+    poison_target = setup.choose_ai_poison_target(0U, 4U, poison_first_hidden_dead_random);
+    OL_CHECK(poison_target.has_value());
+    OL_CHECK(
+        poison_target->strategy == BattleAiPoisonTargetStrategy::first_eligible_stale_distance);
+    OL_CHECK(poison_target->target_slot == 4);
+    OL_CHECK(poison_target->stale_target_distance == 8);
+    OL_CHECK(poison_first_hidden_dead_random.state() == 1U);
+
+    reset();
+    ranger.roles[0U].set_word(role_word::use_poison, -10);
+    ranger.roles[0U].set_word(role_word::iq, 60);
+    ranger.roles[3U].set_word(role_word::poison, -1);
+    ranger.roles[3U].set_word(role_word::anti_poison, -20);
+    ranger.roles[4U].set_word(role_word::poison, -1);
+    ranger.roles[4U].set_word(role_word::anti_poison, -10);
+    openlegend::random::LegacyRandom poison_first_signed_random{1U};
+    poison_target = setup.choose_ai_poison_target(0U, 4U, poison_first_signed_random);
+    OL_CHECK(poison_target.has_value());
+    OL_CHECK(
+        poison_target->strategy == BattleAiPoisonTargetStrategy::first_eligible_stale_distance);
+    OL_CHECK(poison_target->target_slot == 3);
+    OL_CHECK(poison_target->stale_target_distance == 8);
+    OL_CHECK(poison_first_signed_random.state() == 1U);
 
     reset();
     ranger.roles[0U].set_word(role_word::use_poison, 80);

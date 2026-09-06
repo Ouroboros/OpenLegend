@@ -766,6 +766,51 @@
     "direct_rng_draws": 0,
     "caller": "sub_355FF uses return only to decide fallback"
   },
+  "battle_ai_first_poison_target_machine": {
+    "address": "0x3570f",
+    "end": "0x35803",
+    "raw_offset": "0x2f10f",
+    "size": 244,
+    "instruction_count": 56,
+    "branch_count": 8,
+    "raw_sha256": "3bf9b8e1b03074465262d0a5b08257cde7d2ce0243a56f51cef7892cee30562e",
+    "loaded_sha256": "b06d503b356f1c7587888e743a9dfcda7851d38e86999acf2d7098156322d2b9",
+    "relocation_count": 18,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35714",
+      "0x357a6"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e7f"
+    ],
+    "callers": [
+      "0x35657"
+    ],
+    "best_distance_initial": 1000,
+    "slot_loop": "signed int16 from zero while slot < combatant_count",
+    "candidate_side": "must differ from actor side",
+    "candidate_hidden": "must equal zero",
+    "candidate_poison": "signed value < 95",
+    "candidate_anti_poison": "signed value < actor signed use_poison",
+    "candidate_hp_read": false,
+    "path_source": "actor x/y copied before every eligible-candidate path build",
+    "path_builds": "once per eligible candidate",
+    "distance_target": "global signed word_E6EE0 stale target slot, not candidate slot",
+    "distance_comparison": "signed distance strictly < current signed best",
+    "first_eligible_bug": "all eligible candidates query the same stale target distance, so the first writes and later ties do not",
+    "distance_below_1000": "first eligible candidate writes actor word12 and result is success",
+    "distance_at_or_above_1000": "no candidate writes actor word12 and result is failure",
+    "writes_actor_word12": "candidate slot on strict improvement",
+    "no_selection_word12": "preserved",
+    "success_return": 1,
+    "failure_return": -1,
+    "direct_rng_draws": 0,
+    "caller": "sub_355FF invokes this for roll >= 7 or strongest-selector failure",
+    "stale_target_storage": "word_E6EE0 is independent from actor word12",
+    "handler_write_order": "sub_3540E copies selected actor word12 to word_E6EE0 only after sub_355FF returns"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -4157,6 +4202,42 @@
           "strict_tie_keeps_first": true,
           "rebuilds_targeting_map_for_each_eligible_candidate": true,
           "no_eligible_target_does_not_read_stale_slot": true
+        },
+        "first_negative_hidden_dead_target": {
+          "hidden": [
+            -1,
+            0
+          ],
+          "hit_points": [
+            100,
+            0
+          ],
+          "reads_hit_points": false,
+          "stale_target_slot": 4,
+          "stale_target_distance": 8,
+          "target_slot": 4
+        },
+        "first_signed_eligibility": {
+          "actor_use_poison": -10,
+          "candidate_poison": [
+            -1,
+            -1
+          ],
+          "candidate_anti_poison": [
+            -20,
+            -10
+          ],
+          "anti_poison_rule": "strictly_less_than_actor_use_poison",
+          "stale_target_slot": 4,
+          "stale_target_distance": 8,
+          "target_slot": 3
+        },
+        "session_stale_target_storage": {
+          "legacy_scratch_initial": 0,
+          "actor_word12_before": 99,
+          "selector_source": "independent_session_scratch",
+          "target_slot": 1,
+          "actor_word12_after": 1
         },
         "range_and_round": {
           "actor_use_poison": 80,
