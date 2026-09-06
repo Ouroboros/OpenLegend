@@ -13236,6 +13236,156 @@
     "platform_adaptation_boundary": "modern code rejects invalid actor and role indices and returns a structured optional; all legal callers observe only the exact state changes, RNG order and completion",
     "closure_boundary": "stack probe, RNG helper, player dispatcher, AI wrapper and common completion paths retain independent owners"
   },
+  "battle_defer_turn_machine": {
+    "address": "0x3aa17",
+    "end": "0x3aa4b",
+    "raw_offset": "0x34417",
+    "size": 52,
+    "instruction_count": 20,
+    "branch_count": 2,
+    "raw_sha256": "a7100e83ca62a4ee61a31e9c419a9b3b44e25e6b7bcdeed0ef5a1a8fdc2d509e",
+    "loaded_sha256": "7220b7565737cb856925c5495ebb6417fb4cf80c9957e231a56db323897bb4d6",
+    "relocation_count": 1,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3aa1c",
+      "0x3aa30"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x32b78"
+    ],
+    "callers": [
+      "0x333b5"
+    ],
+    "basic_block_count": 4,
+    "conditional_branch_count": 1,
+    "unconditional_jump_count": 1,
+    "relocation_offsets": [
+      "0x26"
+    ],
+    "local_return_sites": [
+      "0x3aa4a"
+    ],
+    "machine_slices": {
+      "entry": {
+        "address": "0x3aa17",
+        "end": "0x3aa28",
+        "size": 17,
+        "sha256": "32a4b4d800f3868c49118581e50a344390ad7df46c4b424c560f61ebfd088280"
+      },
+      "swap_body": {
+        "address": "0x3aa28",
+        "end": "0x3aa3a",
+        "size": 18,
+        "sha256": "a12ac76f8987c4996ef8e071f16df91d730418c2bfce0611e4f68a7ac520c70f"
+      },
+      "loop_test_exit": {
+        "address": "0x3aa3a",
+        "end": "0x3aa4b",
+        "size": 17,
+        "sha256": "87b76c352f5598e8cbe0a027d59bdb8911bd6b990a72116aee344100e2880781"
+      }
+    },
+    "loop_contract": "the sole caller passes a sign-extended actor-slot word; compare signed low16 current against signed combatant_count-1, then swap each adjacent pair in order",
+    "return_contract": "return the final tail slot in EAX; an already-tail slot performs zero swaps and returns the input slot unchanged; the caller ignores EAX",
+    "caller_contract": "player action6 checks action_done at the original slot now holding the next combatant, redraws when it is zero, and keeps the same actor index for wait",
+    "vectors": {
+      "middle_to_tail": {
+        "combatant_count": 5,
+        "actor_slot": 1,
+        "roles_before": [
+          0,
+          101,
+          102,
+          103,
+          104
+        ],
+        "swap_pairs": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "roles_after": [
+          0,
+          102,
+          103,
+          104,
+          101
+        ],
+        "return_slot": 4
+      },
+      "first_to_tail": {
+        "combatant_count": 3,
+        "actor_slot": 0,
+        "roles_before": [
+          1,
+          2,
+          3
+        ],
+        "swap_pairs": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            2
+          ]
+        ],
+        "roles_after": [
+          2,
+          3,
+          1
+        ],
+        "return_slot": 2
+      },
+      "already_tail": {
+        "combatant_count": 5,
+        "actor_slot": 4,
+        "roles_before": [
+          0,
+          101,
+          102,
+          103,
+          104
+        ],
+        "swap_pairs": [],
+        "roles_after": [
+          0,
+          101,
+          102,
+          103,
+          104
+        ],
+        "return_slot": 4
+      },
+      "single_combatant": {
+        "combatant_count": 1,
+        "actor_slot": 0,
+        "roles_before": [
+          7
+        ],
+        "swap_pairs": [],
+        "roles_after": [
+          7
+        ],
+        "return_slot": 0
+      }
+    },
+    "vector_sha256": "c12dfc863630909d2a1b7b6edf08e5f688a525d7cddf061cf8c882612d5f5eab",
+    "platform_adaptation_boundary": "modern code safely rejects invalid setup and actor slots and returns a structured optional; legal slots preserve the exact adjacent-swap sequence",
+    "closure_boundary": "stack probe, the already-closed combatant-swap owner, player dispatcher and common completion path retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

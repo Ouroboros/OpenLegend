@@ -2996,6 +2996,24 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
         OL_CHECK(wait_setup.combatants()[slot].words[combatant_word::role_id] == kAfter[slot]);
     }
     OL_CHECK(wait_setup.combatants()[4U].words[combatant_word::action_done] == 0);
+
+    std::array<std::array<std::int16_t, kBattleCombatantWords>, 5> no_op_words{};
+    for (std::size_t slot = 0U; slot < no_op_words.size(); ++slot) {
+        no_op_words[slot] = wait_setup.combatants()[slot].words;
+    }
+    const std::vector<std::int16_t> no_op_occupancy(
+        wait_data.occupancy().begin(), wait_data.occupancy().end());
+    OL_CHECK(wait_setup.defer_turn_to_end(4U) == 4U);
+    for (std::size_t slot = 0U; slot < no_op_words.size(); ++slot) {
+        OL_CHECK(wait_setup.combatants()[slot].words == no_op_words[slot]);
+    }
+    OL_CHECK(std::ranges::equal(wait_data.occupancy(), no_op_occupancy));
+    OL_CHECK(!wait_setup.defer_turn_to_end(5U).has_value());
+    for (std::size_t slot = 0U; slot < no_op_words.size(); ++slot) {
+        OL_CHECK(wait_setup.combatants()[slot].words == no_op_words[slot]);
+    }
+    OL_CHECK(std::ranges::equal(wait_data.occupancy(), no_op_occupancy));
+
     OL_CHECK(!wait_setup.automatic_enabled());
     wait_setup.enable_automatic_mode();
     OL_CHECK(wait_setup.automatic_enabled());
@@ -6444,6 +6462,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     reach_player_action(wait_session);
     OL_CHECK(wait_session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
     OL_CHECK(wait_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
+    OL_CHECK(wait_random.state() == 1U);
     OL_CHECK(wait_session.phase() == BattleSessionPhase::player_action_return_present);
     finish_player_menu_redraw(wait_session);
     OL_CHECK(wait_session.phase() == BattleSessionPhase::actor_present);
@@ -6451,6 +6470,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(wait_session.setup().combatants()[0U].words[combatant_word::role_id] == 3);
     OL_CHECK(wait_session.setup().combatants()[1U].words[combatant_word::role_id] == 1);
     OL_CHECK(wait_session.setup().combatants()[1U].words[combatant_word::action_done] == 0);
+    OL_CHECK(wait_random.state() == 1U);
 
     auto rest_ranger = make_ranger({0, 2, 3, -1, -1, -1});
     rest_ranger.roles[1U].set_word(role_word::hp, 100);

@@ -858,6 +858,12 @@ BATTLE_REST_ACTION_RELOCATION_OFFSETS = (
     0x110, 0x11F, 0x140, 0x147, 0x154, 0x15B, 0x164, 0x16B,
 )
 BATTLE_REST_ACTION_CALLER_SITES = (0x333C9, 0x34AE3)
+BATTLE_DEFER_TURN_ADDRESS = 0x3AA17
+BATTLE_DEFER_TURN_END = 0x3AA4B
+BATTLE_DEFER_TURN_CALL_OFFSETS = (0x005, 0x019)
+BATTLE_DEFER_TURN_CALL_TARGETS = (0x3ED1E, 0x32B78)
+BATTLE_DEFER_TURN_RELOCATION_OFFSETS = (0x026,)
+BATTLE_DEFER_TURN_CALLER_SITES = (0x333B5,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -7985,6 +7991,95 @@ def battle_rest_action_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_defer_turn_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_DEFER_TURN_ADDRESS,
+        end=BATTLE_DEFER_TURN_END,
+        call_offsets=BATTLE_DEFER_TURN_CALL_OFFSETS,
+        expected_call_targets=BATTLE_DEFER_TURN_CALL_TARGETS,
+        relocation_offsets=BATTLE_DEFER_TURN_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_DEFER_TURN_CALLER_SITES,
+        instruction_count=20,
+        branch_count=2,
+    )
+    if contract["raw_sha256"] != (
+        "a7100e83ca62a4ee61a31e9c419a9b3b44e25e6b7bcdeed0ef5a1a8fdc2d509e"
+    ):
+        raise ValueError("Z.DAT defer-turn raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "7220b7565737cb856925c5495ebb6417fb4cf80c9957e231a56db323897bb4d6"
+    ):
+        raise ValueError("Z.DAT defer-turn relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("entry", 0x3AA17, 0x3AA28,
+         "32a4b4d800f3868c49118581e50a344390ad7df46c4b424c560f61ebfd088280"),
+        ("swap_body", 0x3AA28, 0x3AA3A,
+         "a12ac76f8987c4996ef8e071f16df91d730418c2bfce0611e4f68a7ac520c70f"),
+        ("loop_test_exit", 0x3AA3A, 0x3AA4B,
+         "87b76c352f5598e8cbe0a027d59bdb8911bd6b990a72116aee344100e2880781"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT defer-turn {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    vectors = {
+        "middle_to_tail": defer_turn_vector(5, 1, [0, 101, 102, 103, 104]),
+        "first_to_tail": defer_turn_vector(3, 0, [1, 2, 3]),
+        "already_tail": defer_turn_vector(5, 4, [0, 101, 102, 103, 104]),
+        "single_combatant": defer_turn_vector(1, 0, [7]),
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8"))
+    if vector_sha256 != "c12dfc863630909d2a1b7b6edf08e5f688a525d7cddf061cf8c882612d5f5eab":
+        raise ValueError("defer-turn independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 4,
+        "conditional_branch_count": 1,
+        "unconditional_jump_count": 1,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_DEFER_TURN_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3aa4a"],
+        "machine_slices": machine_slices,
+        "loop_contract": (
+            "the sole caller passes a sign-extended actor-slot word; compare signed low16 "
+            "current against signed combatant_count-1, then swap each adjacent pair in order"
+        ),
+        "return_contract": (
+            "return the final tail slot in EAX; an already-tail slot performs zero swaps and "
+            "returns the input slot unchanged; the caller ignores EAX"
+        ),
+        "caller_contract": (
+            "player action6 checks action_done at the original slot now holding the next "
+            "combatant, redraws when it is zero, and keeps the same actor index for wait"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code safely rejects invalid setup and actor slots and returns a structured "
+            "optional; legal slots preserve the exact adjacent-swap sequence"
+        ),
+        "closure_boundary": (
+            "stack probe, the already-closed combatant-swap owner, player dispatcher and common "
+            "completion path retain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -9348,6 +9443,30 @@ def rest_vector(
         "hp_after": hp,
         "mp_after": mp,
         "action_done": 1,
+    }
+
+
+def defer_turn_vector(
+    combatant_count: int,
+    actor_slot: int,
+    roles: list[int],
+) -> dict[str, object]:
+    current = actor_slot
+    reordered = roles.copy()
+    swaps: list[list[int]] = []
+    while current < combatant_count - 1:
+        swaps.append([current, current + 1])
+        reordered[current], reordered[current + 1] = (
+            reordered[current + 1], reordered[current]
+        )
+        current += 1
+    return {
+        "combatant_count": combatant_count,
+        "actor_slot": actor_slot,
+        "roles_before": roles,
+        "swap_pairs": swaps,
+        "roles_after": reordered,
+        "return_slot": current,
     }
 
 
@@ -12078,6 +12197,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_throwing_weapon_action_machine":
             battle_throwing_weapon_action_contract(z_dat_bytes),
         "battle_rest_action_machine": battle_rest_action_contract(z_dat_bytes),
+        "battle_defer_turn_machine": battle_defer_turn_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
