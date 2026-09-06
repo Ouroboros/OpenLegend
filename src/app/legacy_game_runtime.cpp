@@ -1235,7 +1235,8 @@ bool LegacyGameRuntime::start_battle(
         grant_experience,
         retained_battle_render_state_,
         &legacy_player_item_slot_,
-        &legacy_battle_hp_cost_scale_);
+        &legacy_battle_hp_cost_scale_,
+        &legacy_battle_magic_slot_);
     if (!battle_session_->valid()) {
         show_error(battle_session_->error(), LegacyGameView::scene);
         battle_session_.reset();

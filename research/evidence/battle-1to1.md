@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为50/81；其余31项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为51/81；其余30项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、31项为 `implemented_pending_review`、50项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、30项为 `implemented_pending_review`、51项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `b84b7135f491132b28f68fc49c54ebccbb088ea25d9b4e836d290cac87f38363`；本轮新增`battle_movement_step_machine`，固定991-byte raw/loaded identity、61处重定位、11次call、2个caller、逐格写序、视图、render/present/delay40、四类停止规则、四方向/回绕/边界synthetic及无250邻格的畸形机器行为；既有入口、载入、参战者建立、回合核心和全部路径合同均保留。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `83ed22f76e05c7581ac1703035e012da1c8fa60212b2a0b9194521c7ec568912`；本轮新增`battle_fight_animation_machine`，固定684-byte raw/loaded identity、35处重定位、9次call、4个caller、FIGHT/双bank预载、延迟启动、19帧与signed零帧向量、共享武功槽生命周期及throwing owner边界；既有入口、载入、参战者建立、回合、路径和攻击核心合同均保留。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -139,9 +139,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `word_55ACE` 53项effect帧数表已由IDA data address `0x55ACE` 映射到原 `Z.DAT` 文件偏移324,814；表字节SHA256 `4c684877da272f4222fd3b73595971c81599ecfd456644498ac97841050da3a4`，word FNV `0xc35d41f03731784a`。RANGER 93条magic使用effect id 2..52。
 
-`sub_3859E` 的actor sprite、effect frame/visible、channel1/2 sample分派点与每帧17 tick已映射为 `magic_animation_plan`；固定19帧hash `0x5aaffbb1d5697a73`。`sub_3884A` 的固定sample13、100 tick前奏与17帧effect2时间线hash为 `0x2b5c87d8e0c754d5`。`sub_38910` 的10个damage phase、每帧1 tick与前4帧flash hash为 `0x364953a2c8f42144`，抑制flash时为 `0xec7a73890ce825c4`。
+`sub_3859E`机器身份固定为684 bytes、174条指令、13个函数体跳转、35处重定位、9次direct call和四个caller；raw/loaded SHA256为`e83dd2e31acf38e995b2df80d7f0b10b15250b144eca6f85c9c0b68681c22760`与`2806b1582a71c13da4dd2a79322873787ac9efacc89b6126f504dde793530304`。攻击传definition type/effect，用毒/解毒/医疗固定传`(0,30)/(0,36)/(0,0)`，四者均忽略EAX。入口严格先载入FIGHT、attack bank1与effect bank2，再作signed总帧检查；阈值只启动已载入sample。同帧先更新effect状态，再按attack bank1→effect bank2调用，随后render→present→delay17。固定type2/effect2向量共19帧，actor sprite`248..254`，effect从frame2显示`48..80`并启动，attack在frame4启动；总帧0仍预载三项资源但零次render/present/delay/start并清visible。
 
-三项typed时间线均已实现。玩家攻击、用毒、解毒、医疗现已把`sub_3859E/sub_38910`接入BattleSession：按动态FIGHT基址8000与EFT基址6500实际载入/绘制，分派attack/effect双bank音效，每帧present后等待一次BIOS tick变化，并在十帧damage后清显示状态。三条支持动作真实battle4向量分别执行11/9/10帧magic与10帧damage；用毒仅前4帧flash，解毒/医疗全部抑制。攻击每击固定10帧magic与10帧damage、前4帧flash，双击完整重复两组并在每组后执行独立提交等待；AI自动攻击、用毒、医疗和解毒也已接入同一逐帧链并使用独立AI相位日志，移动后医疗另锁定距离6/range2的四步continuation。玩家暗器现把`sub_3884A/sub_38910`接入BattleSession：sample13、100前奏、effect sample、11帧EFT及10帧damage均实际render/present/tick。AI暗器也执行独立AI owner的sample13前奏、effect sample、11帧EFT、10帧damage及动画后来源槽提交；直接前奏/首EFT/首damage和移动后首EFT hash为`0x49aac6569a28fe89`、`0xc65b523bd75389e2`、`0x335fd35ea7e3f367`、`0x16a8f10ce319622b`。`sub_3859E/sub_3884A/sub_38910`推进为`implemented_pending_review`。
+首轮入口REVIEW发现现代在阈值用`play=load+start`，改变旧sample停止时点和零帧边界；现以`BattleAudioAction::load/start_loaded`分离并由SDL调用相应后端。fresh xref又证明`E6ED6`只有玩家选择、攻击入口清0和AI选择三处写，support从不清零且战斗初始化不写；现代原AI毒/医/解清零、每Session丢失和AI仅在真正攻击时晚同步均已修正。runtime现在持有进程期共享武功槽；玩家攻击入口/选择和AI plan建立时同步，support只读。slot0 sample7/slot2 sample8的玩家三新Session、AI毒/医/解、AI移动首格前写入及攻击菜单取消留0回归均通过。修正后从入口重审174条指令、13分支、9个call及唯一出口零剩余产品差异，最终归类`platform_adapted / converged_no_new_differences`。
+
+`sub_3884A` 的固定sample13、100 tick前奏与17帧effect2时间线hash为 `0x2b5c87d8e0c754d5`。`sub_38910` 的10个damage phase、每帧1 tick与前4帧flash hash为 `0x364953a2c8f42144`，抑制flash时为 `0xec7a73890ce825c4`。玩家及AI暗器虽已执行sample13前奏、EFT、damage及延后提交，但`sub_3884A`仍为独立order52；`sub_38910`仍为独立order53，均不由本项传播关闭。
 
 ## 14. 武功选择菜单
 

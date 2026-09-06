@@ -637,6 +637,24 @@ BATTLE_ATTACK_CORE_RELOCATION_OFFSETS = (
 BATTLE_ATTACK_CORE_CALLER_SITES = (0x33371, 0x34E52)
 BATTLE_ATTACK_SPECIAL_TABLE_ADDRESS = 0x55B38
 BATTLE_ATTACK_DYNAMIC_COST_SCALE_ADDRESS = 0xE6EC2
+BATTLE_FIGHT_ANIMATION_ADDRESS = 0x3859E
+BATTLE_FIGHT_ANIMATION_END = 0x3884A
+BATTLE_FIGHT_ANIMATION_CALL_OFFSETS = (
+    0x005, 0x060, 0x096, 0x0A6, 0x244, 0x262, 0x26F, 0x27F, 0x289,
+)
+BATTLE_FIGHT_ANIMATION_CALL_TARGETS = (
+    0x3ED1E, 0x3D6E0, 0x3E2E2, 0x3E2E2, 0x3E288,
+    0x3E288, 0x3AA85, 0x3D6D1, 0x3DB83,
+)
+BATTLE_FIGHT_ANIMATION_RELOCATION_OFFSETS = (
+    0x01D, 0x02A, 0x031, 0x03E, 0x053, 0x05B, 0x06B, 0x078, 0x080,
+    0x08F, 0x0B1, 0x0C7, 0x0D2, 0x0DB, 0x0EA, 0x0FF, 0x110, 0x126,
+    0x137, 0x140, 0x16D, 0x189, 0x196, 0x1A9, 0x1B8, 0x1C1, 0x1D9,
+    0x1EC, 0x219, 0x226, 0x22E, 0x23D, 0x276, 0x27B, 0x29F,
+)
+BATTLE_FIGHT_ANIMATION_CALLER_SITES = (0x382AD, 0x399BF, 0x39D5F, 0x3A0C8)
+BATTLE_FIGHT_POINTER_BASE_ADDRESS = 0x556D0
+BATTLE_SELECTED_MAGIC_SLOT_ADDRESS = 0xE6ED6
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -3630,6 +3648,286 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "closure_boundary": (
             "menu, cursor, line-area, damage kernels, animation/effect helpers, sprite, render, "
             "present, delay, RNG, formatting/drawing helpers and two callers remain independent owners"
+        ),
+    }
+
+
+def battle_fight_animation_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_FIGHT_ANIMATION_ADDRESS,
+        end=BATTLE_FIGHT_ANIMATION_END,
+        call_offsets=BATTLE_FIGHT_ANIMATION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_FIGHT_ANIMATION_CALL_TARGETS,
+        relocation_offsets=BATTLE_FIGHT_ANIMATION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_FIGHT_ANIMATION_CALLER_SITES,
+        instruction_count=174,
+        branch_count=13,
+    )
+    if contract["raw_sha256"] != (
+        "e83dd2e31acf38e995b2df80d7f0b10b15250b144eca6f85c9c0b68681c22760"
+    ):
+        raise ValueError("Z.DAT FIGHT animation raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "2806b1582a71c13da4dd2a79322873787ac9efacc89b6126f504dde793530304"
+    ):
+        raise ValueError("Z.DAT FIGHT animation relocation image changed")
+
+    caller_sequences = {
+        "attack": z_dat_bytes[
+            0x3829F - Z_DAT_LOAD_BASE:0x382B5 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "poison": z_dat_bytes[
+            0x399B7 - Z_DAT_LOAD_BASE:0x399C7 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "detox": z_dat_bytes[
+            0x39D57 - Z_DAT_LOAD_BASE:0x39D67 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "medicine": z_dat_bytes[
+            0x3A0C0 - Z_DAT_LOAD_BASE:0x3A0D0 - Z_DAT_LOAD_BASE
+        ].hex(),
+    }
+    if caller_sequences != {
+        "attack": "0fbf04c5f6f50700500fbfc35052e8ec02000083c40c",
+        "poison": "6a1e6a000fbfc750e8daebffff83c40c",
+        "detox": "6a246a000fbfc750e83ae8ffff83c40c",
+        "medicine": "6a006a000fbfc750e8d1e4ffff83c40c",
+    }:
+        raise ValueError("Z.DAT FIGHT animation caller arguments changed")
+
+    selected_slot_write_bytes = {
+        "player_selection": z_dat_bytes[
+            0x34C9E - Z_DAT_LOAD_BASE:0x34CA4 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "attack_entry_zero": z_dat_bytes[
+            0x37795 - Z_DAT_LOAD_BASE:0x3779E - Z_DAT_LOAD_BASE
+        ].hex(),
+        "ai_selection": z_dat_bytes[
+            0x39150 - Z_DAT_LOAD_BASE:0x39156 - Z_DAT_LOAD_BASE
+        ].hex(),
+    }
+    if selected_slot_write_bytes != {
+        "player_selection": "66a3d66e0c00",
+        "attack_entry_zero": "66c705d66e0c000000",
+        "ai_selection": "66a3d66e0c00",
+    }:
+        raise ValueError("Z.DAT selected-magic-slot write sites changed")
+
+    fight_pointer_base = struct.unpack_from(
+        "<h", z_dat_bytes, BATTLE_FIGHT_POINTER_BASE_ADDRESS - Z_DAT_LOAD_BASE
+    )[0]
+    if fight_pointer_base != 8000:
+        raise ValueError("Z.DAT FIGHT dynamic pointer base changed")
+    effect_lengths = list(struct.unpack_from(
+        "<53h", z_dat_bytes, Z_DAT_EFFECT_FRAME_COUNTS_OFFSET
+    ))
+
+    def signed_word(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    def animation_plan(
+        *,
+        actor_frames: int,
+        prior_actor_frames: list[int],
+        direction: int,
+        effect_start: int,
+        attack_sound_start: int,
+        effect_id: int,
+    ) -> dict[str, object]:
+        total_frames = signed_word(
+            effect_start + effect_lengths[effect_id] - 1
+        )
+        fight_offset = 100 + 4 * sum(prior_actor_frames)
+        effect_frame = signed_word(-2 + 2 * sum(effect_lengths[:effect_id]))
+        effect_visible = False
+        effect_started = False
+        attack_started = False
+        frames = []
+        for frame in range(max(total_frames, 0)):
+            actor_sprite = None
+            if frame < actor_frames:
+                actor_sprite = signed_word(
+                    2 * direction * actor_frames + 2 * fight_offset + 2 * frame
+                )
+            start_effect = False
+            if frame >= effect_start - 1:
+                effect_visible = True
+                effect_frame = signed_word(effect_frame + 2)
+                start_effect = not effect_started
+                effect_started = True
+            start_attack = False
+            if frame >= attack_sound_start - 1:
+                start_attack = not attack_started
+                attack_started = True
+            audio_start_order = []
+            if start_attack:
+                audio_start_order.append("attack_bank1")
+            if start_effect:
+                audio_start_order.append("effect_bank2")
+            frames.append({
+                "frame": frame,
+                "actor_sprite": actor_sprite,
+                "effect_visible": effect_visible,
+                "effect_frame": effect_frame,
+                "start_attack": start_attack,
+                "start_effect": start_effect,
+                "audio_start_order": audio_start_order,
+                "sequence": ["render", "present", "delay17"],
+            })
+        return {
+            "input": {
+                "actor_frames": actor_frames,
+                "prior_actor_frames": prior_actor_frames,
+                "direction": direction,
+                "effect_start": effect_start,
+                "attack_sound_start": attack_sound_start,
+                "effect_id": effect_id,
+                "effect_length": effect_lengths[effect_id],
+            },
+            "total_frames": total_frames,
+            "fight_offset": fight_offset,
+            "initial_effect_frame": signed_word(
+                -2 + 2 * sum(effect_lengths[:effect_id])
+            ),
+            "frames": frames,
+            "final_effect_visible": False,
+        }
+
+    fixed_plan = animation_plan(
+        actor_frames=4,
+        prior_actor_frames=[2, 3],
+        direction=1,
+        effect_start=3,
+        attack_sound_start=5,
+        effect_id=2,
+    )
+    if fixed_plan["total_frames"] != 19:
+        raise ValueError("Z.DAT FIGHT animation fixed frame total changed")
+    if [
+        frame["actor_sprite"] for frame in fixed_plan["frames"]
+        if frame["actor_sprite"] is not None
+    ] != [248, 250, 252, 254]:
+        raise ValueError("Z.DAT FIGHT actor frame sequence changed")
+    if [
+        frame["frame"] for frame in fixed_plan["frames"]
+        if frame["effect_visible"]
+    ] != list(range(2, 19)):
+        raise ValueError("Z.DAT FIGHT effect visibility threshold changed")
+    if [
+        frame["effect_frame"] for frame in fixed_plan["frames"]
+        if frame["effect_visible"]
+    ] != list(range(48, 82, 2)):
+        raise ValueError("Z.DAT FIGHT effect frame sequence changed")
+    if [
+        frame["frame"] for frame in fixed_plan["frames"]
+        if frame["start_attack"]
+    ] != [4]:
+        raise ValueError("Z.DAT FIGHT attack-sample threshold changed")
+    if [
+        frame["frame"] for frame in fixed_plan["frames"]
+        if frame["start_effect"]
+    ] != [2]:
+        raise ValueError("Z.DAT FIGHT effect-sample threshold changed")
+
+    zero_frame_plan = animation_plan(
+        actor_frames=4,
+        prior_actor_frames=[],
+        direction=0,
+        effect_start=-9,
+        attack_sound_start=0,
+        effect_id=0,
+    )
+    if zero_frame_plan["total_frames"] != 0 or zero_frame_plan["frames"]:
+        raise ValueError("Z.DAT FIGHT signed nonpositive frame boundary changed")
+
+    stale_slot_trace = [
+        {"event": "runtime_word_before_battle", "slot": 2},
+        {"event": "poison_reads_without_write", "attack_sample_slot": 2},
+        {"event": "next_battle_reads_same_runtime_word", "slot": 2},
+        {"event": "enter_attack_writes_zero_before_menu", "slot": 0},
+        {"event": "cancel_menu_preserves_zero", "slot": 0},
+        {"event": "medicine_reads_without_write", "attack_sample_slot": 0},
+    ]
+
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_FIGHT_ANIMATION_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 48,
+        "return_sites": ["0x38849"],
+        "arguments": ["signed actor slot", "signed magic type", "signed effect id"],
+        "caller_sequences": caller_sequences,
+        "caller_roles": {
+            "0x382ad": "attack definition magic type and effect id",
+            "0x399bf": "poison fixed type0/effect30",
+            "0x39d5f": "detox fixed type0/effect36",
+            "0x3a0c8": "medicine fixed type0/effect0",
+        },
+        "caller_uses_return": False,
+        "fight_pointer_base": {
+            "address": hex(BATTLE_FIGHT_POINTER_BASE_ADDRESS),
+            "value": fight_pointer_base,
+        },
+        "selected_magic_slot": {
+            "address": hex(BATTLE_SELECTED_MAGIC_SLOT_ADDRESS),
+            "write_site_bytes": selected_slot_write_bytes,
+            "lifetime": (
+                "process-lifetime scratch; attack entry writes 0 and player/AI selection may "
+                "replace it; poison, detox and medicine do not write it, so it persists across "
+                "battle sessions; cancelling the attack menu leaves the entry-written 0"
+            ),
+            "stale_slot_trace": stale_slot_trace,
+        },
+        "resource_sequence": [
+            "load actor role-head FIGHT GRP/IDX at dynamic base",
+            "load current selected-slot magic sample into attack bank1",
+            "load effect-id sample into effect bank2",
+            "test signed total frame count",
+        ],
+        "frame_bounds": {
+            "actor_frames": "role frame[25+magic_type]",
+            "effect_start": "role frame[30+magic_type]",
+            "attack_sound_start": "role frame[35+magic_type]",
+            "total": "int16(effect_start + effect_length[effect_id] - 1)",
+        },
+        "actor_sprite": (
+            "while frame<actor_frames, int16(2*fight_base + "
+            "8*sum(role.frame[25:25+magic_type]) + "
+            "2*actor_frames*direction + 2*frame)"
+        ),
+        "effect_state": (
+            "initial frame int16(-2+2*sum(prior effect lengths)); from loop frame "
+            ">=effect_start-1 set visible and add2; clear visible after loop"
+        ),
+        "audio_sequence": (
+            "preload attack bank1 then effect bank2 before the frame-count test; each threshold "
+            "starts its loaded bank once; if both thresholds fire in one frame, attack bank1 "
+            "starts before effect bank2; render/present/delay17 follow"
+        ),
+        "per_frame_sequence": [
+            "actor sprite update",
+            "effect visibility/frame update and pending flag",
+            "attack bank1 start if pending",
+            "effect bank2 start if pending",
+            "render",
+            "present",
+            "delay17",
+        ],
+        "fixed_plan": fixed_plan,
+        "zero_frame_plan": zero_frame_plan,
+        "zero_frame_behavior": (
+            "FIGHT and both sample banks load first; signed total<=0 renders, presents and delays "
+            "zero times, starts neither sample and clears effect visible"
+        ),
+        "direct_rng_draws": 0,
+        "throwing_boundary": (
+            "sub_3884A has no xref to this entry and remains the independent throwing owner"
+        ),
+        "closure_boundary": (
+            "FIGHT/sample loaders, renderer, present, delay, four direct callers, their player/AI "
+            "upper callers and sub_3884A remain independent owners"
         ),
     }
 
@@ -7559,6 +7857,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_path_mark_machine": battle_path_mark_contract(z_dat_bytes),
         "battle_movement_step_machine": battle_movement_step_contract(z_dat_bytes),
         "battle_attack_core_machine": battle_attack_core_contract(z_dat_bytes),
+        "battle_fight_animation_machine": battle_fight_animation_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

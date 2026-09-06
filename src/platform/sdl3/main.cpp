@@ -387,8 +387,14 @@ int main(const int argc, const char* const* argv) {
             const auto bank = command.bank == battle::BattleAudioBank::attack
                 ? audio::SampleBank::attack
                 : audio::SampleBank::effect;
-            static_cast<void>(legacy_audio.play_sample(
-                bank, static_cast<std::size_t>(command.sample_id)));
+            const auto sample_id = static_cast<std::size_t>(command.sample_id);
+            if (command.action == battle::BattleAudioAction::load) {
+                static_cast<void>(legacy_audio.load_sample(bank, sample_id));
+            } else if (command.action == battle::BattleAudioAction::start_loaded) {
+                static_cast<void>(legacy_audio.start_loaded_sample(bank, sample_id));
+            } else {
+                static_cast<void>(legacy_audio.play_sample(bank, sample_id));
+            }
         }
         running = running && game.running();
         if (running) {

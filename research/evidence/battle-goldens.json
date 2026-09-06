@@ -3519,6 +3519,478 @@
     },
     "closure_boundary": "menu, cursor, line-area, damage kernels, animation/effect helpers, sprite, render, present, delay, RNG, formatting/drawing helpers and two callers remain independent owners"
   },
+  "battle_fight_animation_machine": {
+    "address": "0x3859e",
+    "end": "0x3884a",
+    "raw_offset": "0x31f9e",
+    "size": 684,
+    "instruction_count": 174,
+    "branch_count": 13,
+    "raw_sha256": "e83dd2e31acf38e995b2df80d7f0b10b15250b144eca6f85c9c0b68681c22760",
+    "loaded_sha256": "2806b1582a71c13da4dd2a79322873787ac9efacc89b6126f504dde793530304",
+    "relocation_count": 35,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x385a3",
+      "0x385fe",
+      "0x38634",
+      "0x38644",
+      "0x387e2",
+      "0x38800",
+      "0x3880d",
+      "0x3881d",
+      "0x38827"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d6e0",
+      "0x3e2e2",
+      "0x3e2e2",
+      "0x3e288",
+      "0x3e288",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x3db83"
+    ],
+    "callers": [
+      "0x382ad",
+      "0x399bf",
+      "0x39d5f",
+      "0x3a0c8"
+    ],
+    "relocation_offsets": [
+      "0x1d",
+      "0x2a",
+      "0x31",
+      "0x3e",
+      "0x53",
+      "0x5b",
+      "0x6b",
+      "0x78",
+      "0x80",
+      "0x8f",
+      "0xb1",
+      "0xc7",
+      "0xd2",
+      "0xdb",
+      "0xea",
+      "0xff",
+      "0x110",
+      "0x126",
+      "0x137",
+      "0x140",
+      "0x16d",
+      "0x189",
+      "0x196",
+      "0x1a9",
+      "0x1b8",
+      "0x1c1",
+      "0x1d9",
+      "0x1ec",
+      "0x219",
+      "0x226",
+      "0x22e",
+      "0x23d",
+      "0x276",
+      "0x27b",
+      "0x29f"
+    ],
+    "stack_probe_bytes": 48,
+    "return_sites": [
+      "0x38849"
+    ],
+    "arguments": [
+      "signed actor slot",
+      "signed magic type",
+      "signed effect id"
+    ],
+    "caller_sequences": {
+      "attack": "0fbf04c5f6f50700500fbfc35052e8ec02000083c40c",
+      "poison": "6a1e6a000fbfc750e8daebffff83c40c",
+      "detox": "6a246a000fbfc750e83ae8ffff83c40c",
+      "medicine": "6a006a000fbfc750e8d1e4ffff83c40c"
+    },
+    "caller_roles": {
+      "0x382ad": "attack definition magic type and effect id",
+      "0x399bf": "poison fixed type0/effect30",
+      "0x39d5f": "detox fixed type0/effect36",
+      "0x3a0c8": "medicine fixed type0/effect0"
+    },
+    "caller_uses_return": false,
+    "fight_pointer_base": {
+      "address": "0x556d0",
+      "value": 8000
+    },
+    "selected_magic_slot": {
+      "address": "0xe6ed6",
+      "write_site_bytes": {
+        "player_selection": "66a3d66e0c00",
+        "attack_entry_zero": "66c705d66e0c000000",
+        "ai_selection": "66a3d66e0c00"
+      },
+      "lifetime": "process-lifetime scratch; attack entry writes 0 and player/AI selection may replace it; poison, detox and medicine do not write it, so it persists across battle sessions; cancelling the attack menu leaves the entry-written 0",
+      "stale_slot_trace": [
+        {
+          "event": "runtime_word_before_battle",
+          "slot": 2
+        },
+        {
+          "event": "poison_reads_without_write",
+          "attack_sample_slot": 2
+        },
+        {
+          "event": "next_battle_reads_same_runtime_word",
+          "slot": 2
+        },
+        {
+          "event": "enter_attack_writes_zero_before_menu",
+          "slot": 0
+        },
+        {
+          "event": "cancel_menu_preserves_zero",
+          "slot": 0
+        },
+        {
+          "event": "medicine_reads_without_write",
+          "attack_sample_slot": 0
+        }
+      ]
+    },
+    "resource_sequence": [
+      "load actor role-head FIGHT GRP/IDX at dynamic base",
+      "load current selected-slot magic sample into attack bank1",
+      "load effect-id sample into effect bank2",
+      "test signed total frame count"
+    ],
+    "frame_bounds": {
+      "actor_frames": "role frame[25+magic_type]",
+      "effect_start": "role frame[30+magic_type]",
+      "attack_sound_start": "role frame[35+magic_type]",
+      "total": "int16(effect_start + effect_length[effect_id] - 1)"
+    },
+    "actor_sprite": "while frame<actor_frames, int16(2*fight_base + 8*sum(role.frame[25:25+magic_type]) + 2*actor_frames*direction + 2*frame)",
+    "effect_state": "initial frame int16(-2+2*sum(prior effect lengths)); from loop frame >=effect_start-1 set visible and add2; clear visible after loop",
+    "audio_sequence": "preload attack bank1 then effect bank2 before the frame-count test; each threshold starts its loaded bank once; if both thresholds fire in one frame, attack bank1 starts before effect bank2; render/present/delay17 follow",
+    "per_frame_sequence": [
+      "actor sprite update",
+      "effect visibility/frame update and pending flag",
+      "attack bank1 start if pending",
+      "effect bank2 start if pending",
+      "render",
+      "present",
+      "delay17"
+    ],
+    "fixed_plan": {
+      "input": {
+        "actor_frames": 4,
+        "prior_actor_frames": [
+          2,
+          3
+        ],
+        "direction": 1,
+        "effect_start": 3,
+        "attack_sound_start": 5,
+        "effect_id": 2,
+        "effect_length": 17
+      },
+      "total_frames": 19,
+      "fight_offset": 120,
+      "initial_effect_frame": 46,
+      "frames": [
+        {
+          "frame": 0,
+          "actor_sprite": 248,
+          "effect_visible": false,
+          "effect_frame": 46,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 1,
+          "actor_sprite": 250,
+          "effect_visible": false,
+          "effect_frame": 46,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 2,
+          "actor_sprite": 252,
+          "effect_visible": true,
+          "effect_frame": 48,
+          "start_attack": false,
+          "start_effect": true,
+          "audio_start_order": [
+            "effect_bank2"
+          ],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 3,
+          "actor_sprite": 254,
+          "effect_visible": true,
+          "effect_frame": 50,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 4,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 52,
+          "start_attack": true,
+          "start_effect": false,
+          "audio_start_order": [
+            "attack_bank1"
+          ],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 5,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 54,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 6,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 56,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 7,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 58,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 8,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 60,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 9,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 62,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 10,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 64,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 11,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 66,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 12,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 68,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 13,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 70,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 14,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 72,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 15,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 74,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 16,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 76,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 17,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 78,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        },
+        {
+          "frame": 18,
+          "actor_sprite": null,
+          "effect_visible": true,
+          "effect_frame": 80,
+          "start_attack": false,
+          "start_effect": false,
+          "audio_start_order": [],
+          "sequence": [
+            "render",
+            "present",
+            "delay17"
+          ]
+        }
+      ],
+      "final_effect_visible": false
+    },
+    "zero_frame_plan": {
+      "input": {
+        "actor_frames": 4,
+        "prior_actor_frames": [],
+        "direction": 0,
+        "effect_start": -9,
+        "attack_sound_start": 0,
+        "effect_id": 0,
+        "effect_length": 10
+      },
+      "total_frames": 0,
+      "fight_offset": 100,
+      "initial_effect_frame": -2,
+      "frames": [],
+      "final_effect_visible": false
+    },
+    "zero_frame_behavior": "FIGHT and both sample banks load first; signed total<=0 renders, presents and delays zero times, starts neither sample and clears effect visible",
+    "direct_rng_draws": 0,
+    "throwing_boundary": "sub_3884A has no xref to this entry and remains the independent throwing owner",
+    "closure_boundary": "FIGHT/sample loaders, renderer, present, delay, four direct callers, their player/AI upper callers and sub_3884A remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

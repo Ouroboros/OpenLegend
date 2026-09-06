@@ -51,6 +51,18 @@ std::uint64_t fnv1a_words(const std::span<const std::int16_t> words) {
     return hash;
 }
 
+std::vector<openlegend::battle::BattleAudioCommand> immediate_magic_audio_commands(
+    const std::int16_t attack_sample,
+    const std::int16_t effect_sample) {
+    using namespace openlegend::battle;
+    return {
+        {BattleAudioBank::attack, attack_sample, BattleAudioAction::load},
+        {BattleAudioBank::effect, effect_sample, BattleAudioAction::load},
+        {BattleAudioBank::attack, attack_sample, BattleAudioAction::start_loaded},
+        {BattleAudioBank::effect, effect_sample, BattleAudioAction::start_loaded},
+    };
+}
+
 std::uint64_t fnv1a_render_plan(const openlegend::battle::BattleRenderPlan& plan) {
     std::vector<std::int16_t> words;
     words.reserve(plan.commands.size() * 9U);
@@ -2584,10 +2596,14 @@ void run_player_support_session_test(
     auto& actor = ranger->roles[1U];
     auto& enemy = ranger->roles[3U];
     actor.set_word(role_word::magic_id_begin, 0);
+    actor.set_word(role_word::magic_id_begin + 2U, 1);
     actor.set_word(role_word::frame_begin, 2);
     actor.set_word(role_word::frame_begin + 5U, 1);
     actor.set_word(role_word::frame_begin + 10U, 1);
     ranger->magics[0U].set_word(magic_word::sound_id, 7);
+    ranger->magics[1U].set_word(magic_word::sound_id, 8);
+    ranger->magics[1U].set_word(magic_word::need_mp, 1);
+    std::int16_t legacy_magic_slot = 2;
 
     const auto reach_player_action = [&](BattleSession& session) {
         OL_CHECK(session.valid());
@@ -2615,7 +2631,15 @@ void run_player_support_session_test(
                                 const std::uint32_t initial_tick) {
         openlegend::random::LegacyRandom action_random{1U};
         auto session = std::make_unique<BattleSession>(
-            data_root, *ranger, action_random, 4, false);
+            data_root,
+            *ranger,
+            action_random,
+            4,
+            false,
+            BattleRenderState{},
+            nullptr,
+            nullptr,
+            &legacy_magic_slot);
         reach_player_action(*session);
         for (std::size_t step = 0U; step < ordinal; ++step) {
             OL_CHECK(session->handle_key(0x98U) ==
@@ -2648,10 +2672,9 @@ void run_player_support_session_test(
         }
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::sprite] >=
                  2 * kBattleFightPointerBase);
-        OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{
-                      {BattleAudioBank::attack, 7},
-                      {BattleAudioBank::effect, effect_id}}));
+        OL_CHECK(session->take_audio_commands() ==
+                 immediate_magic_audio_commands(8, effect_id));
+        OL_CHECK(legacy_magic_slot == 2);
 
         const auto effect_plan = BattleSetup::effect_animation_plan(effect_id);
         OL_CHECK(effect_plan.has_value());
@@ -3449,10 +3472,8 @@ void run_player_attack_session_test(
         while (session->phase() != BattleSessionPhase::actor_present &&
                iterations < 3U) {
             OL_CHECK(session->phase() == BattleSessionPhase::player_magic_frame_present);
-            OL_CHECK((session->take_audio_commands() ==
-                      std::vector<BattleAudioCommand>{
-                          {BattleAudioBank::attack, 7},
-                          {BattleAudioBank::effect, 0}}));
+            OL_CHECK(session->take_audio_commands() ==
+                     immediate_magic_audio_commands(7, 0));
             std::size_t magic_frames = 0U;
             while (session->phase() ==
                        BattleSessionPhase::player_magic_frame_present &&
@@ -3531,6 +3552,138 @@ void run_player_attack_session_test(
     run_case(1, 900U, false, 250);
     run_case(2, 1'000U, true, 299);
     run_case(3, 1'100U, false, 250);
+
+    auto delayed_ranger = std::make_unique<openlegend::model::RangerState>();
+    initialize_ranger(*delayed_ranger, {0, 2, 3, -1, -1, -1});
+    auto& delayed_actor = delayed_ranger->roles[1U];
+    auto& delayed_enemy = delayed_ranger->roles[3U];
+    delayed_actor.set_word(role_word::hp, 500);
+    delayed_actor.set_word(role_word::maximum_hp, 500);
+    delayed_actor.set_word(role_word::mp, 20);
+    delayed_actor.set_word(role_word::maximum_mp, 20);
+    delayed_actor.set_word(role_word::physical_power, 100);
+    delayed_actor.set_word(role_word::attack, 50);
+    delayed_actor.set_word(role_word::magic_id_begin, 5);
+    delayed_actor.set_word(role_word::magic_level_begin, 200);
+    delayed_actor.set_word(role_word::frame_begin, 2);
+    delayed_actor.set_word(role_word::frame_begin + 1U, 3);
+    delayed_actor.set_word(role_word::frame_begin + 2U, 4);
+    delayed_actor.set_word(role_word::frame_begin + 7U, 3);
+    delayed_actor.set_word(role_word::frame_begin + 12U, 5);
+    delayed_enemy.set_word(role_word::hp, 5'000);
+    delayed_enemy.set_word(role_word::maximum_hp, 5'000);
+    delayed_enemy.set_word(role_word::defence, 0);
+    auto& delayed_magic = delayed_ranger->magics[5U];
+    delayed_magic.set_word(magic_word::sound_id, 7);
+    delayed_magic.set_word(magic_word::magic_type, 2);
+    delayed_magic.set_word(magic_word::effect_id, 2);
+    delayed_magic.set_word(magic_word::hurt_type, 0);
+    delayed_magic.set_word(magic_word::attack_area_type, 2);
+    delayed_magic.set_word(magic_word::need_mp, 5);
+    delayed_magic.set_word(magic_word::attack_begin + 2U, 20);
+    delayed_magic.set_word(magic_word::select_distance_begin + 2U, 2);
+    delayed_magic.set_word(magic_word::attack_distance_begin + 2U, 2);
+
+    openlegend::random::LegacyRandom delayed_random{1U};
+    BattleSession delayed_session{
+        data_root, *delayed_ranger, delayed_random, 4, false};
+    OL_CHECK(delayed_session.valid());
+    finish_battle_entry_fade(delayed_session);
+    OL_CHECK(delayed_session.render(*framebuffer));
+    delayed_session.finish_presented_tick(1'150U);
+    for (std::size_t frame = 0U;
+         frame < delayed_session.fade_frame_count();
+         ++frame) {
+        OL_CHECK(delayed_session.render(*framebuffer));
+        delayed_session.finish_presented_tick(1'150U);
+    }
+    delayed_session.advance(1'150U);
+    OL_CHECK(delayed_session.render(*framebuffer));
+    delayed_session.finish_presented_tick(1'150U);
+    finish_player_menu_redraw(delayed_session);
+    OL_CHECK(delayed_session.phase() == BattleSessionPhase::player_action);
+    OL_CHECK(delayed_session.handle_key(0x0DU) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(delayed_session.phase() ==
+             BattleSessionPhase::player_magic_frame_present);
+    OL_CHECK((delayed_session.take_audio_commands() ==
+              std::vector<BattleAudioCommand>{
+                  {BattleAudioBank::attack, 7, BattleAudioAction::load},
+                  {BattleAudioBank::effect, 2, BattleAudioAction::load}}));
+
+    std::uint32_t delayed_tick = 1'150U;
+    const auto finish_delayed_frame = [&] {
+        OL_CHECK(delayed_session.render(*framebuffer));
+        delayed_session.finish_presented_tick(delayed_tick);
+        OL_CHECK(delayed_session.phase() == BattleSessionPhase::player_magic_wait);
+        delayed_session.advance(delayed_tick);
+        delayed_session.advance(++delayed_tick);
+        OL_CHECK(delayed_session.phase() ==
+                 BattleSessionPhase::player_magic_frame_present);
+    };
+    finish_delayed_frame();
+    OL_CHECK(delayed_session.take_audio_commands().empty());
+    finish_delayed_frame();
+    OL_CHECK((delayed_session.take_audio_commands() ==
+              std::vector<BattleAudioCommand>{{
+                  BattleAudioBank::effect,
+                  2,
+                  BattleAudioAction::start_loaded}}));
+    finish_delayed_frame();
+    OL_CHECK(delayed_session.take_audio_commands().empty());
+    finish_delayed_frame();
+    OL_CHECK((delayed_session.take_audio_commands() ==
+              std::vector<BattleAudioCommand>{{
+                  BattleAudioBank::attack,
+                  7,
+                  BattleAudioAction::start_loaded}}));
+
+    auto cancel_ranger = std::make_unique<openlegend::model::RangerState>();
+    initialize_ranger(*cancel_ranger, {0, 2, 3, -1, -1, -1});
+    auto& cancel_actor = cancel_ranger->roles[1U];
+    cancel_actor.set_word(role_word::hp, 100);
+    cancel_actor.set_word(role_word::maximum_hp, 100);
+    cancel_actor.set_word(role_word::mp, 100);
+    cancel_actor.set_word(role_word::maximum_mp, 100);
+    cancel_actor.set_word(role_word::physical_power, 100);
+    cancel_actor.set_word(role_word::magic_id_begin, 5);
+    cancel_actor.set_word(role_word::magic_id_begin + 1U, 6);
+    cancel_actor.set_word(role_word::magic_level_begin, 100);
+    cancel_actor.set_word(role_word::magic_level_begin + 1U, 100);
+    std::int16_t cancelled_legacy_magic_slot = 2;
+    openlegend::random::LegacyRandom cancel_random{1U};
+    BattleSession cancel_session{
+        data_root,
+        *cancel_ranger,
+        cancel_random,
+        4,
+        false,
+        BattleRenderState{},
+        nullptr,
+        nullptr,
+        &cancelled_legacy_magic_slot};
+    OL_CHECK(cancel_session.valid());
+    finish_battle_entry_fade(cancel_session);
+    OL_CHECK(cancel_session.render(*framebuffer));
+    cancel_session.finish_presented_tick(1'175U);
+    for (std::size_t frame = 0U;
+         frame < cancel_session.fade_frame_count();
+         ++frame) {
+        OL_CHECK(cancel_session.render(*framebuffer));
+        cancel_session.finish_presented_tick(1'175U);
+    }
+    cancel_session.advance(1'175U);
+    OL_CHECK(cancel_session.render(*framebuffer));
+    cancel_session.finish_presented_tick(1'175U);
+    finish_player_menu_redraw(cancel_session);
+    OL_CHECK(cancel_session.handle_key(0x0DU) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(cancel_session.phase() == BattleSessionPhase::player_magic_selection);
+    OL_CHECK(cancelled_legacy_magic_slot == 0);
+    OL_CHECK(cancel_session.handle_key(0x1BU) ==
+             BattleSessionInputResult::magic_cancelled);
+    OL_CHECK(cancelled_legacy_magic_slot == 0);
+
     openlegend::diagnostics::shutdown_logging();
     std::ifstream log_file{log_path, std::ios::binary};
     const std::string log_text{
@@ -3637,10 +3790,8 @@ void run_ai_attack_session_test(
     OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(enemy.word(role_word::hp) < 5'000);
-    OL_CHECK((session->take_audio_commands() ==
-              std::vector<BattleAudioCommand>{
-                  {BattleAudioBank::attack, 7},
-                  {BattleAudioBank::effect, 0}}));
+    OL_CHECK(session->take_audio_commands() ==
+             immediate_magic_audio_commands(7, 0));
 
     std::uint32_t tick = 1'208U;
     std::size_t magic_frames = 0U;
@@ -3749,8 +3900,17 @@ void run_ai_attack_session_test(
     movement_magic.set_word(magic_word::attack_distance_begin + 2U, 0);
 
     openlegend::random::LegacyRandom movement_random{1U};
+    std::int16_t movement_legacy_magic_slot = 9;
     auto movement_session = std::make_unique<BattleSession>(
-        data_root, *movement_ranger, movement_random, 4, false);
+        data_root,
+        *movement_ranger,
+        movement_random,
+        4,
+        false,
+        BattleRenderState{},
+        nullptr,
+        nullptr,
+        &movement_legacy_magic_slot);
     OL_CHECK(movement_session->valid());
     finish_battle_entry_fade(*movement_session);
     OL_CHECK(movement_session->render(*framebuffer));
@@ -3781,6 +3941,8 @@ void run_ai_attack_session_test(
     movement_session->advance(1'308U);
     OL_CHECK(movement_session->phase() ==
              BattleSessionPhase::ai_movement_step_present);
+    OL_CHECK(movement_legacy_magic_slot == 0);
+    OL_CHECK(movement_session->selected_magic_slot() == 0);
     OL_CHECK((BattlePathCoord{
                   movement_session->setup().combatants()[0U]
                       .words[combatant_word::x],
@@ -3801,10 +3963,8 @@ void run_ai_attack_session_test(
                  .words[combatant_word::round_value] == 1);
     OL_CHECK(movement_actor.word(role_word::physical_power) == 100);
     OL_CHECK(movement_enemy.word(role_word::hp) < 5'000);
-    OL_CHECK((movement_session->take_audio_commands() ==
-              std::vector<BattleAudioCommand>{
-                  {BattleAudioBank::attack, 7},
-                  {BattleAudioBank::effect, 0}}));
+    OL_CHECK(movement_session->take_audio_commands() ==
+             immediate_magic_audio_commands(7, 0));
     OL_CHECK(movement_session->render(*framebuffer));
     const auto moved_magic_hash = fnv1a_bytes(framebuffer->pixels());
     OL_CHECK(moved_magic_hash == 0xacc58834b066ca07ULL);
@@ -3883,6 +4043,7 @@ void run_ai_poison_session_test(
     actor.set_word(role_word::medicine, 0);
     actor.set_word(role_word::detoxification, 0);
     actor.set_word(role_word::magic_id_begin, 5);
+    actor.set_word(role_word::magic_id_begin + 2U, 6);
     actor.set_word(role_word::frame_begin, 2);
     actor.set_word(role_word::frame_begin + 5U, 1);
     actor.set_word(role_word::frame_begin + 10U, 1);
@@ -3892,10 +4053,20 @@ void run_ai_poison_session_test(
     enemy.set_word(role_word::anti_poison, 0);
     auto& magic = ranger->magics[5U];
     magic.set_word(magic_word::sound_id, 7);
+    ranger->magics[6U].set_word(magic_word::sound_id, 8);
 
     openlegend::random::LegacyRandom random{2U};
+    std::int16_t legacy_magic_slot = 2;
     auto session = std::make_unique<BattleSession>(
-        data_root, *ranger, random, 4, false);
+        data_root,
+        *ranger,
+        random,
+        4,
+        false,
+        BattleRenderState{},
+        nullptr,
+        nullptr,
+        &legacy_magic_slot);
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     OL_CHECK(session->valid());
     finish_battle_entry_fade(*session);
@@ -3933,10 +4104,9 @@ void run_ai_poison_session_test(
                  .words[combatant_word::ai_poison_target] == 1);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(enemy.word(role_word::poison) == 25);
-    OL_CHECK((session->take_audio_commands() ==
-              std::vector<BattleAudioCommand>{
-                  {BattleAudioBank::attack, 7},
-                  {BattleAudioBank::effect, 30}}));
+    OL_CHECK(session->take_audio_commands() ==
+             immediate_magic_audio_commands(8, 30));
+    OL_CHECK(legacy_magic_slot == 2);
 
     std::uint32_t tick = 1'408U;
     std::size_t magic_frames = 0U;
@@ -4053,10 +4223,8 @@ void run_ai_poison_session_test(
              static_cast<std::int16_t>(BattleAiAction::use_poison));
     OL_CHECK(fallback_session->setup().combatants()[0U]
                  .words[combatant_word::ai_poison_target] == 1);
-    OL_CHECK((fallback_session->take_audio_commands() ==
-              std::vector<BattleAudioCommand>{
-                  {BattleAudioBank::attack, 7},
-                  {BattleAudioBank::effect, 0}}));
+    OL_CHECK(fallback_session->take_audio_commands() ==
+             immediate_magic_audio_commands(7, 0));
 
     const auto hash_path = log_path.parent_path() / "b8-battle-ai-poison.hash";
     std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
@@ -4692,6 +4860,7 @@ void run_ai_support_session_test(
         actor.set_word(role_word::medicine, medicine ? 100 : 0);
         actor.set_word(role_word::detoxification, medicine ? 0 : 100);
         actor.set_word(role_word::magic_id_begin, 5);
+        actor.set_word(role_word::magic_id_begin + 2U, 6);
         actor.set_word(role_word::frame_begin, 2);
         actor.set_word(role_word::frame_begin + 5U, 1);
         actor.set_word(role_word::frame_begin + 10U, 1);
@@ -4699,10 +4868,20 @@ void run_ai_support_session_test(
         enemy.set_word(role_word::maximum_hp, 5'000);
         auto& magic = ranger->magics[5U];
         magic.set_word(magic_word::sound_id, 7);
+        ranger->magics[6U].set_word(magic_word::sound_id, 8);
 
         openlegend::random::LegacyRandom random{1U};
+        std::int16_t legacy_magic_slot = 2;
         auto session = std::make_unique<BattleSession>(
-            data_root, *ranger, random, 4, false);
+            data_root,
+            *ranger,
+            random,
+            4,
+            false,
+            BattleRenderState{},
+            nullptr,
+            nullptr,
+            &legacy_magic_slot);
         auto framebuffer =
             std::make_unique<openlegend::render::IndexedFramebuffer>();
         OL_CHECK(session->valid());
@@ -4741,11 +4920,10 @@ void run_ai_support_session_test(
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::ai_action] ==
                  static_cast<std::int16_t>(
                      medicine ? BattleAiAction::medicine : BattleAiAction::detox));
-        OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{
-                      {BattleAudioBank::attack, 7},
-                      {BattleAudioBank::effect,
-                       static_cast<std::int16_t>(medicine ? 0 : 36)}}));
+        OL_CHECK(session->take_audio_commands() ==
+                 immediate_magic_audio_commands(
+                     8, static_cast<std::int16_t>(medicine ? 0 : 36)));
+        OL_CHECK(legacy_magic_slot == 2);
         if (medicine) {
             OL_CHECK(actor.word(role_word::hp) == 93);
             OL_CHECK(actor.word(role_word::physical_power) == 98);
@@ -4994,10 +5172,8 @@ void run_ai_support_movement_session_test(
     OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
     OL_CHECK(helper.word(role_word::hp) == 28);
     OL_CHECK(actor.word(role_word::physical_power) == 98);
-    OL_CHECK((session->take_audio_commands() ==
-              std::vector<BattleAudioCommand>{
-                  {BattleAudioBank::attack, 7},
-                  {BattleAudioBank::effect, 0}}));
+    OL_CHECK(session->take_audio_commands() ==
+             immediate_magic_audio_commands(7, 0));
 
     std::size_t magic_frames = 0U;
     std::uint64_t first_magic_hash = 0U;
@@ -5191,10 +5367,8 @@ void run_ai_request_session_test(
     session->advance(1'810U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
     OL_CHECK(actor.word(role_word::physical_power) == 99);
-    OL_CHECK((session->take_audio_commands() ==
-              std::vector<BattleAudioCommand>{
-                  {BattleAudioBank::attack, 7},
-                  {BattleAudioBank::effect, 0}}));
+    OL_CHECK(session->take_audio_commands() ==
+             immediate_magic_audio_commands(7, 0));
 
     std::uint32_t tick = 1'810U;
     std::size_t magic_frames = 0U;

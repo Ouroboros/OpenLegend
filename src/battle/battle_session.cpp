@@ -236,7 +236,8 @@ BattleSession::BattleSession(
     const bool grant_experience,
     const BattleRenderState initial_render_state,
     std::int16_t* const legacy_player_item_slot,
-    std::int16_t* const legacy_hp_cost_scale)
+    std::int16_t* const legacy_hp_cost_scale,
+    std::int16_t* const legacy_magic_slot)
     : ranger_(ranger),
       random_(random),
       data_(data_root, battle_id),
@@ -247,7 +248,11 @@ BattleSession::BattleSession(
       legacy_player_item_slot_(legacy_player_item_slot != nullptr
               ? legacy_player_item_slot
               : &owned_legacy_player_item_slot_),
+      legacy_magic_slot_(legacy_magic_slot),
       grants_experience_(grant_experience) {
+    if (legacy_magic_slot_ != nullptr) {
+        selected_magic_slot_ = *legacy_magic_slot_;
+    }
     if (!data_.valid()) {
         error_ = data_.error();
     } else if (!setup_.valid()) {
@@ -1188,6 +1193,10 @@ bool BattleSession::begin_ai_attack_action() {
         error_ = setup_.valid() ? "battle AI attack plan failed" : setup_.error();
         return false;
     }
+    selected_magic_slot_ = ai_attack_plan_->magic_slot;
+    if (legacy_magic_slot_ != nullptr) {
+        *legacy_magic_slot_ = selected_magic_slot_;
+    }
     legacy_ai_target_slot_ = ai_attack_plan_->target_slot;
     if (ai_attack_plan_->next_step == BattleAiAttackNextStep::move) {
         const auto target_slot = ai_attack_plan_->target_slot;
@@ -1262,7 +1271,6 @@ bool BattleSession::begin_ai_poison_execution() {
         return false;
     }
 
-    selected_magic_slot_ = 0;
     auto animation = setup_.magic_animation_plan(
         current_actor_slot_, selected_magic_slot_, 0, 30, kBattleFightPointerBase);
     if (!animation.has_value()) {
@@ -1284,6 +1292,16 @@ bool BattleSession::begin_ai_poison_execution() {
             .damage_suppress_flash = false,
             .audio_commands = {},
         });
+    player_target_effect_->audio_commands = {
+        BattleAudioCommand{
+            BattleAudioBank::attack,
+            player_target_effect_->magic_animation.magic_sample_id,
+            BattleAudioAction::load},
+        BattleAudioCommand{
+            BattleAudioBank::effect,
+            player_target_effect_->magic_animation.effect_sample_id,
+            BattleAudioAction::load},
+    };
     render_state_.path_limit = 0;
     render_state_.primary_cursor = target;
     render_state_.effect_id = kBattleEffectPointerBase;
@@ -1382,7 +1400,6 @@ bool BattleSession::begin_ai_support_execution() {
                                  : BattlePlayerAction::detoxification;
     const std::int16_t effect_id = medicine ? 0 : 36;
     const std::int16_t damage_kind = medicine ? 4 : 3;
-    selected_magic_slot_ = 0;
     auto animation = setup_.magic_animation_plan(
         current_actor_slot_, selected_magic_slot_, 0, effect_id, kBattleFightPointerBase);
     if (!animation.has_value()) {
@@ -1404,6 +1421,16 @@ bool BattleSession::begin_ai_support_execution() {
             .damage_suppress_flash = true,
             .audio_commands = {},
         });
+    player_target_effect_->audio_commands = {
+        BattleAudioCommand{
+            BattleAudioBank::attack,
+            player_target_effect_->magic_animation.magic_sample_id,
+            BattleAudioAction::load},
+        BattleAudioCommand{
+            BattleAudioBank::effect,
+            player_target_effect_->magic_animation.effect_sample_id,
+            BattleAudioAction::load},
+    };
     render_state_.path_limit = 0;
     render_state_.primary_cursor = target;
     render_state_.effect_id = kBattleEffectPointerBase;
@@ -1741,7 +1768,6 @@ bool BattleSession::begin_ai_attack_execution() {
             direction;
     }
 
-    selected_magic_slot_ = ai_attack_plan_->magic_slot;
     player_attack_ = std::make_unique<PlayerAttackState>(PlayerAttackState{
         .profile = *profile,
         .special_attack_bonus = ai_attack_plan_->special_attack_bonus,
@@ -2021,9 +2047,12 @@ bool BattleSession::begin_player_action_menu() {
 }
 
 bool BattleSession::begin_player_attack() {
+    selected_magic_slot_ = 0;
+    if (legacy_magic_slot_ != nullptr) {
+        *legacy_magic_slot_ = selected_magic_slot_;
+    }
     const auto learned_count = setup_.learned_magic_count(current_actor_slot_);
     if (learned_count == 1U) {
-        selected_magic_slot_ = 0;
         diagnostics::log_info(
             "battle player single magic selected id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
@@ -2089,6 +2118,9 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
     }
 
     selected_magic_slot_ = *player_magic_selection_->selected_slot;
+    if (legacy_magic_slot_ != nullptr) {
+        *legacy_magic_slot_ = selected_magic_slot_;
+    }
     diagnostics::log_info(
         "battle player magic selected id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
@@ -2239,6 +2271,16 @@ bool BattleSession::begin_player_attack_iteration(
             .damage_suppress_flash = false,
             .audio_commands = {},
         });
+    player_target_effect_->audio_commands = {
+        BattleAudioCommand{
+            BattleAudioBank::attack,
+            player_target_effect_->magic_animation.magic_sample_id,
+            BattleAudioAction::load},
+        BattleAudioCommand{
+            BattleAudioBank::effect,
+            player_target_effect_->magic_animation.effect_sample_id,
+            BattleAudioAction::load},
+    };
     player_cursor_selection_.reset();
     render_state_.path_limit = 0;
     render_state_.effect_id = kBattleEffectPointerBase;
@@ -2842,6 +2884,16 @@ bool BattleSession::begin_player_target_effect(
             .damage_suppress_flash = suppress_flash,
             .audio_commands = {},
         });
+    player_target_effect_->audio_commands = {
+        BattleAudioCommand{
+            BattleAudioBank::attack,
+            player_target_effect_->magic_animation.magic_sample_id,
+            BattleAudioAction::load},
+        BattleAudioCommand{
+            BattleAudioBank::effect,
+            player_target_effect_->magic_animation.effect_sample_id,
+            BattleAudioAction::load},
+    };
     player_cursor_selection_.reset();
     render_state_.path_limit = 0;
     render_state_.effect_id = kBattleEffectPointerBase;
@@ -2926,11 +2978,15 @@ bool BattleSession::prepare_player_magic_frame() {
     render_state_.effect_frame_offset = frame.effect_frame;
     if (frame.dispatch_magic_sample) {
         effect.audio_commands.push_back(BattleAudioCommand{
-            BattleAudioBank::attack, effect.magic_animation.magic_sample_id});
+            BattleAudioBank::attack,
+            effect.magic_animation.magic_sample_id,
+            BattleAudioAction::start_loaded});
     }
     if (frame.dispatch_effect_sample) {
         effect.audio_commands.push_back(BattleAudioCommand{
-            BattleAudioBank::effect, effect.magic_animation.effect_sample_id});
+            BattleAudioBank::effect,
+            effect.magic_animation.effect_sample_id,
+            BattleAudioAction::start_loaded});
     }
     const auto ai_controlled = effect.ai_controlled;
     phase_ = ai_controlled ? BattleSessionPhase::ai_magic_frame_present

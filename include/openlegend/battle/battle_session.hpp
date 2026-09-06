@@ -115,9 +115,16 @@ enum class BattleAudioBank : std::int16_t {
     effect,
 };
 
+enum class BattleAudioAction : std::uint8_t {
+    play,
+    load,
+    start_loaded,
+};
+
 struct BattleAudioCommand {
     BattleAudioBank bank{BattleAudioBank::effect};
     std::int16_t sample_id{};
+    BattleAudioAction action{BattleAudioAction::play};
 
     friend bool operator==(const BattleAudioCommand&, const BattleAudioCommand&) = default;
 };
@@ -152,7 +159,8 @@ public:
         bool grant_experience,
         BattleRenderState initial_render_state = {},
         std::int16_t* legacy_player_item_slot = nullptr,
-        std::int16_t* legacy_hp_cost_scale = nullptr);
+        std::int16_t* legacy_hp_cost_scale = nullptr,
+        std::int16_t* legacy_magic_slot = nullptr);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -496,6 +504,7 @@ private:
     std::optional<PlayerStatusState> player_status_;
     std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
     std::int16_t selected_magic_slot_{};
+    std::int16_t* legacy_magic_slot_{};
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;
     std::uint32_t player_movement_wait_tick_{};
     std::int32_t player_movement_wait_tick_changes_remaining_{};
