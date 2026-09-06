@@ -137,6 +137,7 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         BattlePathCoord first_step;
         std::int16_t target_distance;
         std::uint64_t movement_hash;
+        std::uint64_t source_occupied_hash;
         std::uint64_t occupied_hash;
         std::uint64_t targeting_hash;
         std::uint64_t marked_hash;
@@ -150,6 +151,7 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
             {31, 20},
             14,
             0x773478cb5fde310dULL,
+            0x773478cb5fde310dULL,
             0x8b3c54e9cbef5effULL,
             0x773478cb5fde310dULL,
             0x3555eec69bfdbfc0ULL,
@@ -161,6 +163,7 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
             {35, 29},
             {33, 29},
             22,
+            0xc4e9944b25f2c2bbULL,
             0xc4e9944b25f2c2bbULL,
             0x407e0a6bb5fd7397ULL,
             0xc4e9944b25f2c2bbULL,
@@ -176,6 +179,14 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
 
         pathing.build(fixture.source, BattlePathMode::movement);
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.movement_hash);
+
+        const auto source_index = static_cast<std::size_t>(fixture.source.y) * 64U +
+            static_cast<std::size_t>(fixture.source.x);
+        data.occupancy()[source_index] = 7;
+        pathing.build(fixture.source, BattlePathMode::movement);
+        OL_CHECK(fnv1a_words(pathing.values()) == fixture.source_occupied_hash);
+        OL_CHECK(pathing.value(fixture.source) == 0);
+        data.occupancy()[source_index] = -1;
 
         const auto occupied_index = static_cast<std::size_t>(fixture.occupied.y) * 64U +
             static_cast<std::size_t>(fixture.occupied.x);

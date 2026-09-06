@@ -473,6 +473,18 @@ BATTLE_CURSOR_HANDLER_RELOCATION_OFFSETS = (
 BATTLE_CURSOR_HANDLER_CALLER_SITES = (
     0x36AC3, 0x37951, 0x397BC, 0x39B65, 0x39ECE, 0x3A35A,
 )
+BATTLE_MOVEMENT_PATH_ADDRESS = 0x36E06
+BATTLE_MOVEMENT_PATH_END = 0x36E7F
+BATTLE_MOVEMENT_PATH_CALL_OFFSETS = (0x05, 0x0A, 0x6F)
+BATTLE_MOVEMENT_PATH_CALL_TARGETS = (0x3ED1E, 0x36EF8, 0x37070)
+BATTLE_MOVEMENT_PATH_RELOCATION_OFFSETS = (
+    0x12, 0x1C, 0x24, 0x2D, 0x36, 0x3F,
+    0x48, 0x51, 0x59, 0x5F, 0x65, 0x6B,
+)
+BATTLE_MOVEMENT_PATH_CALLER_SITES = (
+    0x34B28, 0x365F8, 0x36737, 0x367C4,
+    0x368DB, 0x36921, 0x3699C, 0x36B65,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1795,6 +1807,66 @@ def battle_cursor_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_36E06, sub_36E7F, sub_3AA85, sub_3D6D1 and shared tail 0x3677E remain independent owners",
+    }
+
+
+def battle_movement_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_MOVEMENT_PATH_ADDRESS,
+        end=BATTLE_MOVEMENT_PATH_END,
+        call_offsets=BATTLE_MOVEMENT_PATH_CALL_OFFSETS,
+        expected_call_targets=BATTLE_MOVEMENT_PATH_CALL_TARGETS,
+        relocation_offsets=BATTLE_MOVEMENT_PATH_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_MOVEMENT_PATH_CALLER_SITES,
+        instruction_count=20,
+        branch_count=1,
+    )
+    if contract["raw_sha256"] != (
+        "776fc38943f45416200cbac30378f6acbfb2fe5d956570ed4d3a2ade0d23dce3"
+    ):
+        raise ValueError("Z.DAT movement path wrapper raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "68e70ab2c5fca8aaed97f6d2bf40562a34dfd90f3e7fe3069e987d05fc5ec860"
+    ):
+        raise ValueError("Z.DAT movement path wrapper relocation image changed")
+    expected_post_call_prefixes = (
+        "c744240c", "895c2418", "0fbf05dc", "c7442418",
+        "c7442418", "0fbfd3c1", "0fbfd3c1", "eb0b6683",
+    )
+    post_call_prefixes = tuple(
+        z_dat_bytes[
+            site - Z_DAT_LOAD_BASE + 5:site - Z_DAT_LOAD_BASE + 9
+        ].hex()
+        for site in BATTLE_MOVEMENT_PATH_CALLER_SITES
+    )
+    if post_call_prefixes != expected_post_call_prefixes:
+        raise ValueError("Z.DAT movement path caller continuation changed")
+    return {
+        **contract,
+        "stack_probe_bytes": 4,
+        "arguments": "none; source x/y are read as signed int16 globals",
+        "initializer": "sub_36EF8 movement blocking map",
+        "source": {
+            "x_global": "0x556d6",
+            "y_global": "0x556d8",
+            "index": "signed y*64 + signed x",
+            "forced_value": 0,
+        },
+        "queue": {
+            "slots": 255,
+            "read_index": 0,
+            "write_index": 2,
+            "distance": 0,
+            "slot0": [0, -1],
+            "slot1": "source",
+        },
+        "loop": "call sub_37070 until EAX is nonzero",
+        "return": "first nonzero EAX from sub_37070 passes through RET",
+        "caller_post_call_prefixes": list(post_call_prefixes),
+        "caller_uses_return": False,
+        "direct_rng_draws": 0,
+        "closure_boundary": "sub_36EF8 and sub_37070 remain independent owners",
     }
 
 
@@ -5477,6 +5549,12 @@ def build(data_root: Path) -> dict[str, object]:
         field_bytes = warfld_entries[int(setup["battlefield_id"])][:16384]
         field_words = list(struct.unpack("<8192h", field_bytes))
         movement = build_path_map(field_words, source, "movement")
+        movement_source_occupied = build_path_map(
+            field_words,
+            source,
+            "movement",
+            {source[1] * 64 + source[0]},
+        )
         occupied_coordinate = (source[0] + 1, source[1])
         movement_occupied = build_path_map(
             field_words,
@@ -5503,6 +5581,7 @@ def build(data_root: Path) -> dict[str, object]:
                 "source": list(source),
                 "target": list(target),
                 "movement_hash": fnv1a_words(movement),
+                "source_occupied_hash": fnv1a_words(movement_source_occupied),
                 "occupied_coordinate": list(occupied_coordinate),
                 "movement_occupied_hash": fnv1a_words(movement_occupied),
                 "targeting_hash": targeting_before_mark,
@@ -5563,6 +5642,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_movement_machine": battle_ai_movement_contract(z_dat_bytes),
         "battle_player_movement_machine": battle_player_movement_contract(z_dat_bytes),
         "battle_cursor_handler_machine": battle_cursor_handler_contract(z_dat_bytes),
+        "battle_movement_path_machine": battle_movement_path_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
