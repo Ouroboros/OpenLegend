@@ -12,6 +12,12 @@ option(
 )
 option(OPENLEGEND_FETCH_ADLMIDI "Fetch the pinned libADLMIDI XMI synthesizer" ON)
 
+# Produce self-contained Windows binaries without the MSVC/UCRT redistributable DLLs.
+# This initializer applies to OpenLegend and all subsequently created dependency targets.
+if(WIN32)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 find_package(tomlplusplus 3.4 CONFIG QUIET)
 if(NOT TARGET tomlplusplus::tomlplusplus)
     if(NOT OPENLEGEND_FETCH_TOMLPLUSPLUS)

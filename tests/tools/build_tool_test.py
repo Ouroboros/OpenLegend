@@ -217,6 +217,14 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn("OpenLegend Linux builds require Clang", shell)
         self.assertNotIn("command -v clang-23", shell)
 
+    def test_windows_build_uses_static_msvc_runtime(self) -> None:
+        cmake = (PROJECT_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn("if(WIN32)", cmake)
+        self.assertIn(
+            'set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")',
+            cmake,
+        )
+
     def test_windows_batch_uses_locked_tools_and_long_path(self) -> None:
         batch = (PROJECT_ROOT / "build.bat").read_text(encoding="utf-8")
         self.assertNotIn(r'D:\Dev\lldb\tools\cmake\bin\cmake.exe', batch)
