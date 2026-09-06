@@ -757,6 +757,14 @@ BATTLE_POISON_ACTION_RELOCATION_OFFSETS = (
     0x247, 0x251,
 )
 BATTLE_POISON_ACTION_CALLER_SITES = (0x3551B, 0x397D6)
+BATTLE_POISON_VALUE_ADDRESS = 0x39A45
+BATTLE_POISON_VALUE_END = 0x39B1F
+BATTLE_POISON_VALUE_CALL_OFFSETS = (0x005,)
+BATTLE_POISON_VALUE_CALL_TARGETS = (0x3ED1E,)
+BATTLE_POISON_VALUE_RELOCATION_OFFSETS = (
+    0x01C, 0x031, 0x069, 0x08B, 0x09D, 0x0A4, 0x0AE, 0x0C2, 0x0CC,
+)
+BATTLE_POISON_VALUE_CALLER_SITES = (0x3998A,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -6006,6 +6014,202 @@ def battle_poison_action_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_poison_value_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_POISON_VALUE_ADDRESS,
+        end=BATTLE_POISON_VALUE_END,
+        call_offsets=BATTLE_POISON_VALUE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_POISON_VALUE_CALL_TARGETS,
+        relocation_offsets=BATTLE_POISON_VALUE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_POISON_VALUE_CALLER_SITES,
+        instruction_count=52,
+        branch_count=5,
+    )
+    if contract["raw_sha256"] != (
+        "1362e94661933be1546599511f67fdd2ceb4d2eedc8c7a30f15693bb754bf622"
+    ):
+        raise ValueError("Z.DAT poison-value raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "e401b2bac12421aba49d0a079cc5df45d2f9e623116171502e3c32af755b5c2a"
+    ):
+        raise ValueError("Z.DAT poison-value relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("caller", 0x39966, 0x399B7,
+         "0559a0d6fb4e919da6de4d4bc9cd710bc0674220804fcfe96a10e3acfa88802e"),
+        ("entry_formula", 0x39A45, 0x39AA0,
+         "896b68aea51f342eac35908f7a615797ceb26fc779238aad7d5627e0fbccb900"),
+        ("capacity", 0x39AA0, 0x39AD4,
+         "2847b27921c99e04b0e02595f2b2ca2f2cfd62dcc86b317b74a3f431621f4caa"),
+        ("write_clamps", 0x39AD4, 0x39B17,
+         "749029e5c5e5f1d1bdf1b49925884ad11a751b41adb88b83cf1a1ae0900c38ea"),
+        ("return", 0x39B17, 0x39B1F,
+         "4b853b2c4605422317fe07debb0e8a2fc40516d55ca294fa2bcec8f3e329b81b"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT poison-value {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def i16(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value & 0x8000 else value
+
+    def trunc_div4(value: int) -> int:
+        return -(abs(value) // 4) if value < 0 else value // 4
+
+    def simulate(
+        *,
+        use_poison: int,
+        anti_poison: int,
+        poison: int,
+        same_role: bool = False,
+    ) -> dict[str, object]:
+        use_poison = i16(use_poison)
+        anti_poison = i16(anti_poison)
+        poison = i16(poison)
+        difference = use_poison - anti_poison
+        quotient = trunc_div4(difference)
+        if not -16383 <= quotient <= 16383:
+            raise ValueError("poison-value quotient escaped int16")
+        amount = i16(quotient)
+        initial_high_clamp = amount > 99
+        if initial_high_clamp:
+            amount = 99
+        initial_low_clamp = amount < 0
+        if initial_low_clamp:
+            amount = 0
+        capacity_clamp = amount + poison > 99
+        if capacity_clamp:
+            amount = i16(99 - poison)
+        stored = i16(poison + amount)
+        final_high_clamp = stored > 99
+        if final_high_clamp:
+            stored = 99
+        final_low_clamp = stored < 0
+        if final_low_clamp:
+            stored = 0
+        return {
+            "input": {
+                "use_poison": use_poison,
+                "anti_poison": anti_poison,
+                "poison": poison,
+                "same_role": same_role,
+            },
+            "difference_i32": difference,
+            "quotient_trunc_zero": quotient,
+            "initial_high_clamp": initial_high_clamp,
+            "initial_low_clamp": initial_low_clamp,
+            "capacity_clamp": capacity_clamp,
+            "returned_amount_i16": amount,
+            "stored_poison_i16": stored,
+            "final_high_clamp": final_high_clamp,
+            "final_low_clamp": final_low_clamp,
+            "direct_rng_calls": 0,
+            "reads": [
+                "actor_role.use_poison",
+                "target_role.anti_poison",
+                "target_role.poison",
+            ],
+            "writes": ["target_role.poison"],
+        }
+
+    vectors = {
+        "standard_capacity": simulate(use_poison=80, anti_poison=20, poison=90),
+        "negative_divisible": simulate(use_poison=0, anti_poison=20, poison=10),
+        "negative_fraction_trunc_zero": simulate(use_poison=0, anti_poison=3, poison=0),
+        "raw_exact_99": simulate(use_poison=396, anti_poison=0, poison=0),
+        "raw_above_99": simulate(use_poison=500, anti_poison=0, poison=0),
+        "capacity_exact_99": simulate(use_poison=36, anti_poison=0, poison=90),
+        "capacity_over_99": simulate(use_poison=36, anti_poison=0, poison=91),
+        "poison_exact_99": simulate(use_poison=40, anti_poison=0, poison=99),
+        "poison_above_99_negative_return": simulate(
+            use_poison=0, anti_poison=0, poison=100
+        ),
+        "poison_max_negative_return": simulate(
+            use_poison=32767, anti_poison=-32768, poison=32767
+        ),
+        "poison_min_final_low_clamp": simulate(
+            use_poison=32767, anti_poison=-32768, poison=-32768
+        ),
+        "poison_negative_zero_amount": simulate(
+            use_poison=0, anti_poison=0, poison=-1
+        ),
+        "difference_min": simulate(
+            use_poison=-32768, anti_poison=32767, poison=10
+        ),
+        "difference_max": simulate(
+            use_poison=32767, anti_poison=-32768, poison=0
+        ),
+        "same_role_alias": simulate(
+            use_poison=100, anti_poison=20, poison=10, same_role=True
+        ),
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+    if vector_sha256 != "fec49732797f1f546f4e3cbcf234d6640e6c4d04a1edb4938d8ea8699e995477":
+        raise ValueError("poison-value independent vector set changed")
+
+    return {
+        **contract,
+        "conditional_branch_count": 5,
+        "unconditional_jump_count": 0,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_POISON_VALUE_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 16,
+        "local_return_sites": ["0x39b1e"],
+        "machine_slices": machine_slices,
+        "argument_contract": (
+            "four signed low16 arguments are passed; only actor-role and target-role "
+            "indices are read"
+        ),
+        "formula_contract": (
+            "signed (use_poison - anti_poison) / 4 truncating toward zero, then "
+            "signed low16 clamp to 0..99"
+        ),
+        "capacity_contract": (
+            "if signed32 amount plus signed target poison exceeds99, amount becomes "
+            "low16(99 - poison)"
+        ),
+        "write_contract": (
+            "target poison adds amount as int16, then signed >99 clamps99 and "
+            "signed <0 clamps0"
+        ),
+        "return_contract": (
+            "EAX is the sign-extended final amount; it can be negative for preexisting "
+            "poison above99 and is not the post-clamp poison delta"
+        ),
+        "caller_contract": (
+            "sub_397E5 pushes target role, actor role, target slot and actor slot; "
+            "it stores returned DX in the target damage word"
+        ),
+        "direct_rng_calls": 0,
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code safely rejects invalid combatant and role indices that make "
+            "the machine read outside combatant or role records"
+        ),
+        "closure_boundary": (
+            "stack probe and sole caller sub_397E5 remain independent owners"
+        ),
+    }
+
+
 def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -9943,6 +10147,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_poison_target_wrapper_machine":
             battle_poison_target_wrapper_contract(z_dat_bytes),
         "battle_poison_action_machine": battle_poison_action_contract(z_dat_bytes),
+        "battle_poison_value_machine": battle_poison_value_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

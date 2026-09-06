@@ -718,6 +718,41 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.apply_poison_value(0U, 1U) == 99);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
 
+    const auto check_poison_value = [&](const std::int16_t use_poison,
+                                        const std::int16_t anti_poison,
+                                        const std::int16_t initial_poison,
+                                        const std::int16_t expected_amount,
+                                        const std::int16_t expected_poison) {
+        actor.set_word(openlegend::model::role_word::use_poison, use_poison);
+        target.set_word(openlegend::model::role_word::anti_poison, anti_poison);
+        target.set_word(openlegend::model::role_word::poison, initial_poison);
+        OL_CHECK(setup.apply_poison_value(0U, 1U) == expected_amount);
+        OL_CHECK(target.word(openlegend::model::role_word::poison) == expected_poison);
+    };
+    check_poison_value(80, 20, 90, 9, 99);
+    check_poison_value(0, 20, 10, 0, 10);
+    check_poison_value(0, 3, 0, 0, 0);
+    check_poison_value(396, 0, 0, 99, 99);
+    check_poison_value(500, 0, 0, 99, 99);
+    check_poison_value(36, 0, 90, 9, 99);
+    check_poison_value(36, 0, 91, 8, 99);
+    check_poison_value(40, 0, 99, 0, 99);
+    check_poison_value(0, 0, 100, -1, 99);
+    check_poison_value(32767, -32768, 32767, -32668, 99);
+    check_poison_value(32767, -32768, -32768, 99, 0);
+    check_poison_value(0, 0, -1, 0, 0);
+    check_poison_value(-32768, 32767, 10, 0, 10);
+    check_poison_value(32767, -32768, 0, 99, 99);
+
+    const auto target_role_id = setup.combatants()[1U].words[combatant_word::role_id];
+    setup.combatants()[1U].words[combatant_word::role_id] = actor_role_id;
+    actor.set_word(openlegend::model::role_word::use_poison, 100);
+    actor.set_word(openlegend::model::role_word::anti_poison, 20);
+    actor.set_word(openlegend::model::role_word::poison, 10);
+    OL_CHECK(setup.apply_poison_value(0U, 1U) == 20);
+    OL_CHECK(actor.word(openlegend::model::role_word::poison) == 30);
+    setup.combatants()[1U].words[combatant_word::role_id] = target_role_id;
+
     data.occupancy()[26U * 64U + 26U] = -1;
     const auto empty = setup.apply_poison_target(0U, BattlePathCoord{25, 24});
     OL_CHECK(empty.has_value());
@@ -811,6 +846,22 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(setup.combatants()[slot].words[combatant_word::sprite] == expected_sprite);
     }
     OL_CHECK(!setup.apply_poison_target(26U, BattlePathCoord{26, 26}).has_value());
+
+    {
+        auto invalid_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData invalid_data{data_root, 4};
+        BattleSetup invalid_setup{invalid_data, invalid_ranger};
+        OL_CHECK(invalid_setup.valid());
+        OL_CHECK(!invalid_setup.apply_poison_value(0U, 26U).has_value());
+    }
+    {
+        auto invalid_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData invalid_data{data_root, 4};
+        BattleSetup invalid_setup{invalid_data, invalid_ranger};
+        OL_CHECK(invalid_setup.valid());
+        invalid_setup.combatants()[1U].words[combatant_word::role_id] = -1;
+        OL_CHECK(!invalid_setup.apply_poison_value(0U, 1U).has_value());
+    }
 }
 
 void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {

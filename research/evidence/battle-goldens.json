@@ -9375,6 +9375,478 @@
     "platform_adaptation_boundary": "modern code safely rejects invalid actor, role, occupancy and y>=64 targets that make the machine read outside valid combatant or 64x64 grid domains",
     "closure_boundary": "stack probe, abs, poison-value, magic animation, damage animation, sprite helper, both callers and external shared-tail entrants remain independent owners"
   },
+  "battle_poison_value_machine": {
+    "address": "0x39a45",
+    "end": "0x39b1f",
+    "raw_offset": "0x33445",
+    "size": 218,
+    "instruction_count": 52,
+    "branch_count": 5,
+    "raw_sha256": "1362e94661933be1546599511f67fdd2ceb4d2eedc8c7a30f15693bb754bf622",
+    "loaded_sha256": "e401b2bac12421aba49d0a079cc5df45d2f9e623116171502e3c32af755b5c2a",
+    "relocation_count": 9,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x39a4a"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x3998a"
+    ],
+    "conditional_branch_count": 5,
+    "unconditional_jump_count": 0,
+    "relocation_offsets": [
+      "0x1c",
+      "0x31",
+      "0x69",
+      "0x8b",
+      "0x9d",
+      "0xa4",
+      "0xae",
+      "0xc2",
+      "0xcc"
+    ],
+    "stack_probe_bytes": 16,
+    "local_return_sites": [
+      "0x39b1e"
+    ],
+    "machine_slices": {
+      "caller": {
+        "address": "0x39966",
+        "end": "0x399b7",
+        "size": 81,
+        "sha256": "0559a0d6fb4e919da6de4d4bc9cd710bc0674220804fcfe96a10e3acfa88802e"
+      },
+      "entry_formula": {
+        "address": "0x39a45",
+        "end": "0x39aa0",
+        "size": 91,
+        "sha256": "896b68aea51f342eac35908f7a615797ceb26fc779238aad7d5627e0fbccb900"
+      },
+      "capacity": {
+        "address": "0x39aa0",
+        "end": "0x39ad4",
+        "size": 52,
+        "sha256": "2847b27921c99e04b0e02595f2b2ca2f2cfd62dcc86b317b74a3f431621f4caa"
+      },
+      "write_clamps": {
+        "address": "0x39ad4",
+        "end": "0x39b17",
+        "size": 67,
+        "sha256": "749029e5c5e5f1d1bdf1b49925884ad11a751b41adb88b83cf1a1ae0900c38ea"
+      },
+      "return": {
+        "address": "0x39b17",
+        "end": "0x39b1f",
+        "size": 8,
+        "sha256": "4b853b2c4605422317fe07debb0e8a2fc40516d55ca294fa2bcec8f3e329b81b"
+      }
+    },
+    "argument_contract": "four signed low16 arguments are passed; only actor-role and target-role indices are read",
+    "formula_contract": "signed (use_poison - anti_poison) / 4 truncating toward zero, then signed low16 clamp to 0..99",
+    "capacity_contract": "if signed32 amount plus signed target poison exceeds99, amount becomes low16(99 - poison)",
+    "write_contract": "target poison adds amount as int16, then signed >99 clamps99 and signed <0 clamps0",
+    "return_contract": "EAX is the sign-extended final amount; it can be negative for preexisting poison above99 and is not the post-clamp poison delta",
+    "caller_contract": "sub_397E5 pushes target role, actor role, target slot and actor slot; it stores returned DX in the target damage word",
+    "direct_rng_calls": 0,
+    "vectors": {
+      "standard_capacity": {
+        "input": {
+          "use_poison": 80,
+          "anti_poison": 20,
+          "poison": 90,
+          "same_role": false
+        },
+        "difference_i32": 60,
+        "quotient_trunc_zero": 15,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": true,
+        "returned_amount_i16": 9,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "negative_divisible": {
+        "input": {
+          "use_poison": 0,
+          "anti_poison": 20,
+          "poison": 10,
+          "same_role": false
+        },
+        "difference_i32": -20,
+        "quotient_trunc_zero": -5,
+        "initial_high_clamp": false,
+        "initial_low_clamp": true,
+        "capacity_clamp": false,
+        "returned_amount_i16": 0,
+        "stored_poison_i16": 10,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "negative_fraction_trunc_zero": {
+        "input": {
+          "use_poison": 0,
+          "anti_poison": 3,
+          "poison": 0,
+          "same_role": false
+        },
+        "difference_i32": -3,
+        "quotient_trunc_zero": 0,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 0,
+        "stored_poison_i16": 0,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "raw_exact_99": {
+        "input": {
+          "use_poison": 396,
+          "anti_poison": 0,
+          "poison": 0,
+          "same_role": false
+        },
+        "difference_i32": 396,
+        "quotient_trunc_zero": 99,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 99,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "raw_above_99": {
+        "input": {
+          "use_poison": 500,
+          "anti_poison": 0,
+          "poison": 0,
+          "same_role": false
+        },
+        "difference_i32": 500,
+        "quotient_trunc_zero": 125,
+        "initial_high_clamp": true,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 99,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "capacity_exact_99": {
+        "input": {
+          "use_poison": 36,
+          "anti_poison": 0,
+          "poison": 90,
+          "same_role": false
+        },
+        "difference_i32": 36,
+        "quotient_trunc_zero": 9,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 9,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "capacity_over_99": {
+        "input": {
+          "use_poison": 36,
+          "anti_poison": 0,
+          "poison": 91,
+          "same_role": false
+        },
+        "difference_i32": 36,
+        "quotient_trunc_zero": 9,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": true,
+        "returned_amount_i16": 8,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "poison_exact_99": {
+        "input": {
+          "use_poison": 40,
+          "anti_poison": 0,
+          "poison": 99,
+          "same_role": false
+        },
+        "difference_i32": 40,
+        "quotient_trunc_zero": 10,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": true,
+        "returned_amount_i16": 0,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "poison_above_99_negative_return": {
+        "input": {
+          "use_poison": 0,
+          "anti_poison": 0,
+          "poison": 100,
+          "same_role": false
+        },
+        "difference_i32": 0,
+        "quotient_trunc_zero": 0,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": true,
+        "returned_amount_i16": -1,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "poison_max_negative_return": {
+        "input": {
+          "use_poison": 32767,
+          "anti_poison": -32768,
+          "poison": 32767,
+          "same_role": false
+        },
+        "difference_i32": 65535,
+        "quotient_trunc_zero": 16383,
+        "initial_high_clamp": true,
+        "initial_low_clamp": false,
+        "capacity_clamp": true,
+        "returned_amount_i16": -32668,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "poison_min_final_low_clamp": {
+        "input": {
+          "use_poison": 32767,
+          "anti_poison": -32768,
+          "poison": -32768,
+          "same_role": false
+        },
+        "difference_i32": 65535,
+        "quotient_trunc_zero": 16383,
+        "initial_high_clamp": true,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 99,
+        "stored_poison_i16": 0,
+        "final_high_clamp": false,
+        "final_low_clamp": true,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "poison_negative_zero_amount": {
+        "input": {
+          "use_poison": 0,
+          "anti_poison": 0,
+          "poison": -1,
+          "same_role": false
+        },
+        "difference_i32": 0,
+        "quotient_trunc_zero": 0,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 0,
+        "stored_poison_i16": 0,
+        "final_high_clamp": false,
+        "final_low_clamp": true,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "difference_min": {
+        "input": {
+          "use_poison": -32768,
+          "anti_poison": 32767,
+          "poison": 10,
+          "same_role": false
+        },
+        "difference_i32": -65535,
+        "quotient_trunc_zero": -16383,
+        "initial_high_clamp": false,
+        "initial_low_clamp": true,
+        "capacity_clamp": false,
+        "returned_amount_i16": 0,
+        "stored_poison_i16": 10,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "difference_max": {
+        "input": {
+          "use_poison": 32767,
+          "anti_poison": -32768,
+          "poison": 0,
+          "same_role": false
+        },
+        "difference_i32": 65535,
+        "quotient_trunc_zero": 16383,
+        "initial_high_clamp": true,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 99,
+        "stored_poison_i16": 99,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      },
+      "same_role_alias": {
+        "input": {
+          "use_poison": 100,
+          "anti_poison": 20,
+          "poison": 10,
+          "same_role": true
+        },
+        "difference_i32": 80,
+        "quotient_trunc_zero": 20,
+        "initial_high_clamp": false,
+        "initial_low_clamp": false,
+        "capacity_clamp": false,
+        "returned_amount_i16": 20,
+        "stored_poison_i16": 30,
+        "final_high_clamp": false,
+        "final_low_clamp": false,
+        "direct_rng_calls": 0,
+        "reads": [
+          "actor_role.use_poison",
+          "target_role.anti_poison",
+          "target_role.poison"
+        ],
+        "writes": [
+          "target_role.poison"
+        ]
+      }
+    },
+    "vector_sha256": "fec49732797f1f546f4e3cbcf234d6640e6c4d04a1edb4938d8ea8699e995477",
+    "platform_adaptation_boundary": "modern code safely rejects invalid combatant and role indices that make the machine read outside combatant or role records",
+    "closure_boundary": "stack probe and sole caller sub_397E5 remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为59/81；其余22项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为60/81；其余21项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、22项为 `implemented_pending_review`、59项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、21项为 `implemented_pending_review`、60项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -181,7 +181,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_39776` 的目标射程已映射为signed `use_poison/15+1`；原函数在目标选择out flag为1时返回-1，否则调用 `sub_397E5`。`sub_397E5` 按目标差更新方向，清4,096格effect；友军格完全跳过、空格只写effect、敌方格写effect kind2并调用 `sub_39A45`，随后重算全部sprite、置actor action_done、word13加1并将体力减2夹0。原函数错误地检查x<64两次而未检查y<64，现代实现对y>=64安全拒绝，登记待最终REVIEW。
 
-`sub_39A45` 已映射为 `apply_poison_value`：signed `(use_poison-anti_poison)/4` 向零截断，先夹0..99，再按目标剩余容量 `99-poison` 限制；不消费RNG。固定use_poison80、anti_poison20、poison90得到raw15、实际9、目标99；射程6、方向3、effect hash `0xab559939923b4f74`、effect kind2、体力1→0、counter0→1，空格标记而友军不标记。`BattleSession`现从targeting确认先提交目标状态，再执行11帧effect30、attack7/effect30双bank音效、10帧damage kind2（前4帧flash）、共享尾部和下一actor；独立Session锁定poison0→7、体力100→98。三函数均推进为 `implemented_pending_review`。
+`sub_39A45 @ 0x39A45..0x39B1F`已完成最终汇编→C++ REVIEW。fresh机器身份为218字节、52条指令、5个条件分支、0个无条件跳转、9处加载时fixup、唯一栈探测call、唯一caller和本地RET；raw/loaded SHA256为`1362e94661933be1546599511f67fdd2ceb4d2eedc8c7a30f15693bb754bf622`与`e401b2bac12421aba49d0a079cc5df45d2f9e623116171502e3c32af755b5c2a`，全部fixup反转`0x20000`后逐字节一致。唯一caller压入target role、actor role、target slot、actor slot，本体只读两个role参数；返回EAX被复制到EDX并以DX写目标damage word。
+
+完整合同为signed `(use_poison-anti_poison)/4`向零截断，先按signed顺序夹0..99，再以strict `amount+current_poison>99`把amount改为low16 `99-current_poison`；目标poison以16位相加，再依次夹`>99`与`<0`，返回最终signed amount而非末次夹值后的真实delta。故poison100返回-1并写99，poison32767可返回-32668；同role别名仍先完成全部源读取。现代合法域逐块一致，无产品源码修改；invalid slot/role安全拒绝归类平台适配。signed除法、初始/容量夹值、poison `99/100/32767/-32768/-1`、差值极值及same-role alias回归通过，向量SHA256为`fec49732797f1f546f4e3cbcf234d6640e6c4d04a1edb4938d8ea8699e995477`。正式Golden三生成一致SHA256为`96406b67eecdda8e638ba945800dd15eab2ef4819a79c388dc756fe7ec38516a`，Linux app Debug 14/14通过；最终归类`platform_adapted / converged_no_new_differences`。`sub_397E5` caller与栈探测保持独立owner。
+
+`BattleSession`从targeting确认先提交目标状态，再执行11帧effect30、attack7/effect30双bank音效、10帧damage kind2（前4帧flash）、共享尾部和下一actor；独立Session锁定poison0→7、体力100→98。`sub_39776/sub_397E5/sub_39A45`三个用毒owner现均已独立关闭。
 
 ## 16. 解毒目标与状态结算
 

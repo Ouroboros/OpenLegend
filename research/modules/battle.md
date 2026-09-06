@@ -3,7 +3,7 @@
 ## 状态
 
 - 实现状态：`implemented_pending_review`（81/81函数均已实现并接入；战果、战后五类同步UI、音乐收尾及scene typed结果已闭环）。
-- 最终 REVIEW：`in_progress`（59/81）。
+- 最终 REVIEW：`in_progress`（60/81）。
 - B8-WP01实现差异审计：5/5差异已修正，Linux/Windows core/app × Debug/Release完整8项BUILD矩阵通过；保留待B0→B9统一最终REVIEW。
 
 ## 范围与非范围
@@ -52,6 +52,6 @@
 
 ## Closure 统计与下一停点
 
-- `battle-closure.tsv`：0项`pending_mapping`、0项`pending_implementation`、22项`implemented_pending_review`、59项`platform_adapted`；统一最终REVIEW为59/81。
+- `battle-closure.tsv`：0项`pending_mapping`、0项`pending_implementation`、21项`implemented_pending_review`、60项`platform_adapted`；统一最终REVIEW为60/81。
 - B7 `sub_2DE03`联合边界已随typed battle result回送推进到`implemented_pending_review`。
-- 下一停点：按`audit_order=60`审计`sub_39A45` poison value kernel；实现/测试通过不替代逐owner最终汇编↔C++ REVIEW门禁。
+- 下一停点：按`audit_order=61`审计`sub_39B1F` detox target wrapper；实现/测试通过不替代逐owner最终汇编↔C++ REVIEW门禁。
