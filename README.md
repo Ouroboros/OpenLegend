@@ -81,10 +81,10 @@ maximized = false
 要求：
 
 - Python 3；
-- GCC、Clang 或 MSVC 的 C++20 工具链；
+- Clang 23 C/C++20 工具链；
 - 首次构建时可访问 Python package index，以及 toml++、libADLMIDI、SDL GitHub release 压缩包。
 
-构建脚本会把固定版本的 CMake 3.31.10 与 Ninja 1.13.0 安装到仓库内已忽略的 `.tools/`，不会修改系统工具链。
+根目录 [`build.py`](build.py) 是唯一构建编排脚本，统一负责参数、配置、缓存目录、编译、测试、Sanitizer运行库和最终产物路径。`build.sh`与`build.bat`只准备各平台编译器/Python环境并原样转发参数。脚本会把固定版本的CMake 3.31.10与Ninja 1.13.0安装到仓库内已忽略的`.tools/`，不会修改系统工具链。
 
 ### Linux / WSL
 
@@ -97,22 +97,21 @@ maximized = false
 
 ### Windows
 
-Windows 构建入口使用固定 Ninja/LLVM 工具布局：
+Windows薄包装器准备固定LLVM/Python环境；CMake、CTest与Ninja仍由根`build.py`统一取得：
 
 ```text
-CMake/CTest  D:\Dev\lldb\tools\cmake\bin
-Ninja       D:\Dev\lldb\tools\ninja\ninja.exe
 Clang       D:\Dev\Compiler\LLVM\x64\bin
-Python      D:\Dev\Python\python.exe，PATH 中的 python 仅作回退
+Python      D:\Dev\Python\python.exe，PATH中的python仅作回退
 ```
 
 ```bat
 build.bat core
 build.bat app
 build.bat app --config Release
+build.bat app --config Release --sanitizers
 ```
 
-`build.bat` 保持仓库根目录的 Unicode 长路径并传给固定工具链；测试侧把 UTF-8 原版资源路径显式转换为 Windows 宽路径。固定工具布局下的 `core/app × Debug/Release` 已在 Linux 与 Windows 原生验证；当前 core 为 13 项 CTest，app 为 14 项 CTest，Linux `--sanitizers` 覆盖全部 14 项 app 测试。
+`build.bat`保持仓库根目录的Unicode长路径并原样转发参数；测试侧把UTF-8原版资源路径显式转换为Windows宽路径。Windows Sanitizer只支持Release，使用LLVM 23官方动态ASan runtime；构建脚本会在测试前把`clang_rt.asan_dynamic-x86_64.dll`复制到应用和每个测试EXE旁，因此产物可直接启动。普通Debug/Release继续使用静态CRT，且不会携带ASan DLL。
 
 可选参数：
 
@@ -124,13 +123,14 @@ build.bat app --config Release
 --sanitizers
 ```
 
-默认构建目录为：
+普通与Sanitizer缓存始终隔离：
 
 ```text
 build/<platform>-<core|app>/
+build/<platform>-<core|app>-asan/
 ```
 
-生成器固定为 **Ninja Multi-Config**，`Debug` 与 `Release` 共用同一 target 构建目录；可用 `--config` 选择配置。构建脚本复用有效的 Ninja cache，设置 `OPENLEGEND_RECONFIGURE=1` 可强制重新配置。
+生成器固定为 **Ninja Multi-Config**，同一Sanitizer变体内的`Debug`与`Release`共用target构建目录；可用`--config`选择配置。构建脚本复用有效的Ninja cache，设置`OPENLEGEND_RECONFIGURE=1`可强制重新配置。完成应用构建后会输出可直接启动的`openlegend`/`openlegend.exe`绝对路径。
 
 兼容旧命令时仍可使用 `sdl`，但它只作为 `app` 的别名：
 
@@ -141,13 +141,13 @@ build/<platform>-<core|app>/
 ## 工程结构
 
 ```text
+build.py              唯一构建编排脚本
 config/               可复制的 openlegend.toml 示例
 include/openlegend/   公共 C++ 接口
 src/                  app、compat、resource、model、persistence、input、time、random、audio、render 与平台实现
 tests/                单元、真实资产与集成测试
 research/             架构、汇编证据、IDA 脚本/报告/数据库
 goal/                 1:1 执行计划与阶段验收真值
-tools/                项目自包含构建入口
 ```
 
 核心模块不暴露 SDL、DOS 或 VGA 宿主类型。SDL3 仅负责窗口、宿主键事件、音频设备和最终纹理上传；BIOS tick、键态、RNG 和 mixer 均在核心。核心画面真值始终是：

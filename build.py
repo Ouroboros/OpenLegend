@@ -43,7 +43,40 @@ def validate_configuration(platform_name: str, config: str, sanitizers: bool) ->
 def project_root_path(script_file: Path) -> Path:
     if configured := os.environ.get("OPENLEGEND_PROJECT_ROOT"):
         return Path(configured)
-    return script_file.resolve().parents[1]
+    return script_file.resolve().parent
+
+
+def compiler_commands(platform_name: str) -> tuple[str, str]:
+    if platform_name == "windows":
+        return os.environ.get("CC", "clang.exe"), os.environ.get("CXX", "clang++.exe")
+    return os.environ.get("CC", "clang-23"), os.environ.get("CXX", "clang++-23")
+
+
+def is_clang_command(command: str, cxx: bool = False) -> bool:
+    name = Path(command).name.casefold()
+    stem = "clang++" if cxx else "clang"
+    executable_names = {stem, stem + ".exe"}
+    return name in executable_names or name.startswith(stem + "-")
+
+
+def validate_compiler_environment(
+    platform_name: str, target: str, c_compiler: str, cxx_compiler: str
+) -> None:
+    if not is_clang_command(cxx_compiler, cxx=True):
+        raise RuntimeError(
+            f"OpenLegend {platform_name} builds require Clang; CXX={cxx_compiler}"
+        )
+    if target == "app" and not is_clang_command(c_compiler):
+        raise RuntimeError(
+            f"OpenLegend {platform_name} app builds require Clang; CC={c_compiler}"
+        )
+
+
+def build_directory(
+    project_root: Path, platform_name: str, target: str, sanitizers: bool
+) -> Path:
+    sanitizer_suffix = "-asan" if sanitizers else ""
+    return project_root / "build" / f"{platform_name}-{target}{sanitizer_suffix}"
 
 
 def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
@@ -165,12 +198,75 @@ def sanitizer_runtime_directory(cxx_compiler: str | None) -> Path:
 
 
 def sanitizer_test_environment(
-    cxx_compiler: str | None, environment: dict[str, str]
+    cxx_compiler: str | None,
+    environment: dict[str, str],
+    runtime_directory: Path | None = None,
 ) -> dict[str, str]:
-    runtime_directory = sanitizer_runtime_directory(cxx_compiler)
+    runtime_directory = runtime_directory or sanitizer_runtime_directory(cxx_compiler)
     result = dict(environment)
     result["PATH"] = str(runtime_directory) + os.pathsep + result.get("PATH", "")
     return result
+
+
+def configuration_executables(build_dir: Path, config: str) -> list[Path]:
+    configuration = config.casefold()
+    return sorted(
+        executable
+        for executable in build_dir.rglob("*.exe")
+        if configuration
+        in {part.casefold() for part in executable.relative_to(build_dir).parts[:-1]}
+    )
+
+
+def remove_windows_sanitizer_runtimes(build_dir: Path, config: str) -> list[Path]:
+    executable_directories = {
+        path.parent for path in configuration_executables(build_dir, config)
+    }
+    removed = []
+    for directory in executable_directories:
+        for runtime_file in directory.glob("clang_rt.asan_dynamic-*.dll"):
+            runtime_file.unlink()
+            removed.append(runtime_file)
+    return sorted(removed)
+
+
+def stage_windows_sanitizer_runtime(
+    runtime_directory: Path, build_dir: Path, config: str
+) -> list[Path]:
+    executable_directories = sorted(
+        {path.parent for path in configuration_executables(build_dir, config)}
+    )
+    if not executable_directories:
+        raise RuntimeError(
+            f"No Windows {config} executable outputs were found under {build_dir}"
+        )
+
+    remove_windows_sanitizer_runtimes(build_dir, config)
+    runtime_files = sorted(runtime_directory.glob("clang_rt.asan_dynamic-*.dll"))
+    if not runtime_files:
+        raise RuntimeError(
+            f"Clang AddressSanitizer runtime was not found under {runtime_directory}"
+        )
+    deployed = []
+    for directory in executable_directories:
+        for runtime_file in runtime_files:
+            destination = directory / runtime_file.name
+            shutil.copy2(runtime_file, destination)
+            deployed.append(destination)
+    return deployed
+
+
+def application_outputs(build_dir: Path, config: str) -> list[Path]:
+    expected_name = executable_name("openlegend").casefold()
+    configuration = config.casefold()
+    return sorted(
+        path
+        for path in build_dir.rglob("*")
+        if path.is_file()
+        and path.name.casefold() == expected_name
+        and configuration
+        in {part.casefold() for part in path.relative_to(build_dir).parts[:-1]}
+    )
 
 
 def configure_command(
@@ -274,7 +370,12 @@ def main() -> int:
 
     platform_name = "windows" if os.name == "nt" else "linux"
     validate_configuration(platform_name, args.config, args.sanitizers)
-    build_dir = project_root / "build" / f"{platform_name}-{target}"
+    requested_c_compiler, requested_cxx_compiler = compiler_commands(platform_name)
+    validate_compiler_environment(
+        platform_name, target, requested_c_compiler, requested_cxx_compiler
+    )
+    configured_c_compiler = requested_c_compiler if target == "app" else None
+    build_dir = build_directory(project_root, platform_name, target, args.sanitizers)
     cache_file = build_dir / "CMakeCache.txt"
     build_file = build_dir / "build.ninja"
     reconfigure = os.environ.get("OPENLEGEND_RECONFIGURE", "0") == "1"
@@ -283,8 +384,6 @@ def main() -> int:
     current_make_program = cached_value(cache_file, "CMAKE_MAKE_PROGRAM")
     current_cxx_compiler = cached_value(cache_file, "CMAKE_CXX_COMPILER")
     current_c_compiler = cached_value(cache_file, "CMAKE_C_COMPILER")
-    requested_cxx_compiler = os.environ.get("CXX")
-    requested_c_compiler = os.environ.get("CC") if target == "app" else None
     current_sanitizers = cached_bool(cache_file, "OPENLEGEND_ENABLE_SANITIZERS")
     if current_generator is not None and current_generator != EXPECTED_GENERATOR:
         print(
@@ -310,11 +409,11 @@ def main() -> int:
         reset_build_directory(build_dir)
         reconfigure = True
     elif compiler_path_changed(current_cxx_compiler, requested_cxx_compiler) or (
-        target == "app" and compiler_path_changed(current_c_compiler, requested_c_compiler)
+        target == "app" and compiler_path_changed(current_c_compiler, configured_c_compiler)
     ):
         print(
             f"[OpenLegend] Reset compiler: "
-            f"{current_cxx_compiler or '<unset>'} -> {requested_cxx_compiler or '<default>'}",
+            f"{current_cxx_compiler or '<unset>'} -> {requested_cxx_compiler}",
             flush=True,
         )
         reset_build_directory(build_dir)
@@ -333,30 +432,32 @@ def main() -> int:
         project_root,
         build_dir,
         target,
-        os.environ.get("CXX"),
-        os.environ.get("CC"),
+        requested_cxx_compiler,
+        configured_c_compiler,
         enable_sanitizers=args.sanitizers,
     )
     process_cwd = Path(sys.executable).parent if os.name == "nt" else project_root
+    sanitizer_runtime = None
     test_environment = None
     if args.sanitizers and os.name == "nt":
-        test_environment = sanitizer_test_environment(os.environ.get("CXX"), dict(os.environ))
-        print(
-            f"[OpenLegend] Sanitizer runtime: {test_environment['PATH'].split(os.pathsep, 1)[0]}",
-            flush=True,
+        sanitizer_runtime = sanitizer_runtime_directory(requested_cxx_compiler)
+        test_environment = sanitizer_test_environment(
+            requested_cxx_compiler, dict(os.environ), sanitizer_runtime
         )
+        print(f"[OpenLegend] Sanitizer runtime: {sanitizer_runtime}", flush=True)
 
+    build_label = build_dir.name
     if reconfigure or not cache_file.is_file() or not build_file.is_file():
-        print(f"[OpenLegend] Configure: {platform_name}-{target}", flush=True)
+        print(f"[OpenLegend] Configure: {build_label}", flush=True)
         run(configure, process_cwd)
     else:
-        print(f"[OpenLegend] Configure: {platform_name}-{target} (reuse Ninja cache)", flush=True)
+        print(f"[OpenLegend] Configure: {build_label} (reuse Ninja cache)", flush=True)
 
     if args.configure_only:
         return 0
 
     print(
-        f"[OpenLegend] Build: {platform_name}-{target}-{args.config.lower()} "
+        f"[OpenLegend] Build: {build_label}-{args.config.lower()} "
         f"(parallel jobs: {args.jobs})",
         flush=True,
     )
@@ -372,6 +473,23 @@ def main() -> int:
         ],
         process_cwd,
     )
+    if os.name == "nt" and args.sanitizers:
+        if sanitizer_runtime is None:
+            raise RuntimeError("Windows sanitizer runtime was not resolved")
+        deployed_runtimes = stage_windows_sanitizer_runtime(
+            sanitizer_runtime, build_dir, args.config
+        )
+        print(
+            f"[OpenLegend] Deployed {len(deployed_runtimes)} sanitizer runtime file(s)",
+            flush=True,
+        )
+    elif os.name == "nt":
+        removed_runtimes = remove_windows_sanitizer_runtimes(build_dir, args.config)
+        if removed_runtimes:
+            print(
+                f"[OpenLegend] Removed {len(removed_runtimes)} stale sanitizer runtime file(s)",
+                flush=True,
+            )
     if not args.skip_tests:
         print(
             f"[OpenLegend] Test: {args.config} (parallel jobs: {args.test_jobs})",
@@ -391,6 +509,15 @@ def main() -> int:
             process_cwd,
             test_environment,
         )
+
+    if target == "app":
+        outputs = application_outputs(build_dir, args.config)
+        if not outputs:
+            raise RuntimeError(
+                f"OpenLegend {args.config} executable was not found under {build_dir}"
+            )
+        for output in outputs:
+            print(f"[OpenLegend] Application: {output}", flush=True)
 
     print(f"[OpenLegend] Build and tests completed: {build_dir} ({args.config})")
     return 0

@@ -9,7 +9,7 @@ import unittest
 from unittest import mock
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-MODULE_PATH = PROJECT_ROOT / "tools" / "build.py"
+MODULE_PATH = PROJECT_ROOT / "build.py"
 SPEC = importlib.util.spec_from_file_location("openlegend_build", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 build = importlib.util.module_from_spec(SPEC)
@@ -24,6 +24,28 @@ class BuildToolTest(unittest.TestCase):
 
     def test_accepts_case_insensitive_target_from_batch(self) -> None:
         self.assertEqual(build.parse_args(["APP", "--config", "Release"]).target, "app")
+
+    def test_resolves_project_root_from_root_build_script(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(build.project_root_path(MODULE_PATH), PROJECT_ROOT)
+
+    def test_defaults_to_clang_and_rejects_non_clang_compilers(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(build.compiler_commands("linux"), ("clang-23", "clang++-23"))
+            self.assertEqual(build.compiler_commands("windows"), ("clang.exe", "clang++.exe"))
+        build.validate_compiler_environment("linux", "app", "clang-23", "clang++-23")
+        with self.assertRaisesRegex(RuntimeError, "require Clang"):
+            build.validate_compiler_environment("linux", "app", "gcc", "g++")
+
+    def test_separates_ordinary_and_sanitizer_build_directories(self) -> None:
+        self.assertEqual(
+            build.build_directory(PROJECT_ROOT, "windows", "app", False),
+            PROJECT_ROOT / "build" / "windows-app",
+        )
+        self.assertEqual(
+            build.build_directory(PROJECT_ROOT, "windows", "app", True),
+            PROJECT_ROOT / "build" / "windows-app-asan",
+        )
 
     def test_accepts_sanitizer_gate(self) -> None:
         sanitized = build.parse_args(["app", "--sanitizers"])
@@ -114,6 +136,52 @@ class BuildToolTest(unittest.TestCase):
             environment["PATH"], str(runtime_directory) + os.pathsep + "existing"
         )
         self.assertEqual(environment["KEEP"], "value")
+
+    def test_stages_windows_sanitizer_runtime_beside_configuration_executables(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime_directory = root / "runtime"
+            runtime_directory.mkdir()
+            runtime_file = runtime_directory / "clang_rt.asan_dynamic-x86_64.dll"
+            runtime_file.write_bytes(b"asan-runtime")
+            build_dir = root / "build"
+            executable_paths = [
+                build_dir / "src" / "platform" / "sdl3" / "Release" / "OpenLegend.exe",
+                build_dir / "tests" / "Release" / "openlegend_core_tests.exe",
+                build_dir / "tests" / "Debug" / "openlegend_core_tests.exe",
+            ]
+            for executable in executable_paths:
+                executable.parent.mkdir(parents=True, exist_ok=True)
+                executable.write_bytes(b"")
+
+            deployed = build.stage_windows_sanitizer_runtime(
+                runtime_directory, build_dir, "Release"
+            )
+            expected = {
+                executable_paths[0].parent / runtime_file.name,
+                executable_paths[1].parent / runtime_file.name,
+            }
+            self.assertEqual(set(deployed), expected)
+            for destination in expected:
+                self.assertEqual(destination.read_bytes(), b"asan-runtime")
+            self.assertFalse((executable_paths[2].parent / runtime_file.name).exists())
+
+            removed = build.remove_windows_sanitizer_runtimes(build_dir, "Release")
+            self.assertEqual(set(removed), expected)
+            self.assertTrue(all(not destination.exists() for destination in expected))
+
+    def test_finds_configured_application_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            build_dir = Path(directory)
+            executable = build.executable_name("openlegend")
+            release = build_dir / "src" / "platform" / "sdl3" / "Release" / executable
+            debug = build_dir / "src" / "platform" / "sdl3" / "Debug" / executable
+            for output in (release, debug):
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(b"")
+            self.assertEqual(build.application_outputs(build_dir, "Release"), [release])
 
     def test_rejects_missing_windows_sanitizer_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -210,12 +278,13 @@ class BuildToolTest(unittest.TestCase):
             )
             self.assertFalse((build_dir / "CMakeCache.txt").exists())
 
-    def test_linux_shell_requires_clang_23_by_default(self) -> None:
+    def test_linux_shell_only_prepares_environment_and_forwards_arguments(self) -> None:
         shell = (PROJECT_ROOT / "build.sh").read_text(encoding="utf-8")
         self.assertIn('export CC="${CC:-clang-23}"', shell)
         self.assertIn('export CXX="${CXX:-clang++-23}"', shell)
-        self.assertIn("OpenLegend Linux builds require Clang", shell)
-        self.assertNotIn("command -v clang-23", shell)
+        self.assertIn('exec python3 "$ROOT/build.py" "$@"', shell)
+        self.assertNotIn("tools/build.py", shell)
+        self.assertNotIn("case ", shell)
 
     def test_windows_build_uses_static_msvc_runtime(self) -> None:
         cmake = (PROJECT_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
@@ -237,6 +306,11 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn('set "OPENLEGEND_CMAKE="', batch)
         self.assertIn('set "OPENLEGEND_CTEST="', batch)
         self.assertIn('set "OPENLEGEND_NINJA="', batch)
+        self.assertIn(r'"%PYTHON%" "%PROJECT_ROOT%\build.py" %*', batch)
+        self.assertNotIn(r"tools\build.py", batch)
+        self.assertNotIn('set "TARGET=', batch)
+        self.assertNotIn(":usage", batch)
+        self.assertNotIn(":missing_tools", batch)
 
 
 if __name__ == "__main__":
