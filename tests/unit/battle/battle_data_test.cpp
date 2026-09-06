@@ -672,7 +672,29 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     BattleData data{data_root, 4};
     BattleSetup setup{data, ranger};
     OL_CHECK(setup.valid());
+    const std::array<std::pair<std::int16_t, std::int16_t>, 10> range_vectors{{
+        {-32768, -2183},
+        {-15, 0},
+        {-14, 1},
+        {-1, 1},
+        {0, 1},
+        {14, 1},
+        {15, 2},
+        {89, 6},
+        {90, 7},
+        {32767, 2185},
+    }};
+    for (const auto [skill, expected] : range_vectors) {
+        actor.set_word(openlegend::model::role_word::use_poison, skill);
+        OL_CHECK(setup.poison_targeting_range(0U) == expected);
+    }
+    actor.set_word(openlegend::model::role_word::use_poison, 80);
     OL_CHECK(setup.poison_targeting_range(0U) == 6);
+    OL_CHECK(!setup.poison_targeting_range(26U).has_value());
+    const auto actor_role_id = setup.combatants()[0U].words[combatant_word::role_id];
+    setup.combatants()[0U].words[combatant_word::role_id] = -1;
+    OL_CHECK(!setup.poison_targeting_range(0U).has_value());
+    setup.combatants()[0U].words[combatant_word::role_id] = actor_role_id;
     const auto result = setup.apply_poison_target(0U, BattlePathCoord{26, 26});
     OL_CHECK(result.has_value());
     OL_CHECK(result->hit_count == 1);

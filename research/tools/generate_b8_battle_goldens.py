@@ -738,6 +738,12 @@ BATTLE_MP_DAMAGE_RELOCATION_OFFSETS = (
     0x144, 0x14B, 0x152, 0x159, 0x163, 0x177,
 )
 BATTLE_MP_DAMAGE_CALLER_SITES = (0x37B76,)
+BATTLE_POISON_TARGET_WRAPPER_ADDRESS = 0x39776
+BATTLE_POISON_TARGET_WRAPPER_END = 0x397E5
+BATTLE_POISON_TARGET_WRAPPER_CALL_OFFSETS = (0x005, 0x046, 0x060)
+BATTLE_POISON_TARGET_WRAPPER_CALL_TARGETS = (0x3ED1E, 0x36AF7, 0x397E5)
+BATTLE_POISON_TARGET_WRAPPER_RELOCATION_OFFSETS = (0x020, 0x02D)
+BATTLE_POISON_TARGET_WRAPPER_CALLER_SITES = (0x33381,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -5588,6 +5594,145 @@ def battle_mp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_poison_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_POISON_TARGET_WRAPPER_ADDRESS,
+        end=BATTLE_POISON_TARGET_WRAPPER_END,
+        call_offsets=BATTLE_POISON_TARGET_WRAPPER_CALL_OFFSETS,
+        expected_call_targets=BATTLE_POISON_TARGET_WRAPPER_CALL_TARGETS,
+        relocation_offsets=BATTLE_POISON_TARGET_WRAPPER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_POISON_TARGET_WRAPPER_CALLER_SITES,
+        instruction_count=36,
+        branch_count=1,
+    )
+    if contract["raw_sha256"] != (
+        "94d03eff4ea1c9da0efeb51a4fbda40bc3bb81426f5aaa5f4067e98faea31609"
+    ):
+        raise ValueError("Z.DAT poison-target wrapper raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "9549158d1cb4e5570427a7aead98a07c073892c1bd7360309eed75441b8dfe7b"
+    ):
+        raise ValueError("Z.DAT poison-target wrapper relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("caller_dispatch", 0x3337B, 0x33388,
+         "185059caadb319e18bd3de1222963d7eb574a5ede859dd08e988213203795ff5"),
+        ("entry_role_skill", 0x39776, 0x397A7,
+         "3ccb8de18d3b4943af40ef901041a74765ce6b4cefc1b91971bc07f3640d525c"),
+        ("signed_range", 0x397A7, 0x397B4,
+         "131cac5c2518c9fc2e3c1791342f0eadabb7e5dc6b95e688100726199a907b9e"),
+        ("cursor_dispatch", 0x397B4, 0x397CB,
+         "6154bbfff1692ae1df20782319a1203be3df74e327c207ebc4489793067a7329"),
+        ("cancel_exit", 0x397CB, 0x397D5,
+         "6d803ccbfc5a9b4fb6eff043d3bad4f41ec709736b2a7d533e95b477d55e1e8a"),
+        ("action_dispatch", 0x397D5, 0x397E5,
+         "829ab8aaef45004e78d64ef40e99df489d75eda2b638c7397d013f6fde9292dd"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT poison-target wrapper {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def simulate(*, actor: int, use_poison: int, cancel_word: int) -> dict[str, object]:
+        actor_signed = wrapping_i16(actor)
+        skill_signed = wrapping_i16(use_poison)
+        targeting_range = wrapping_i16(trunc_div(skill_signed, 15) + 1)
+        cancelled = (cancel_word & 0xFFFF) == 1
+        return {
+            "actor": actor_signed,
+            "use_poison": skill_signed,
+            "targeting_range": targeting_range,
+            "cursor_args": [
+                actor_signed, targeting_range, 1, "cancel_word_pointer",
+            ],
+            "cancel_low_word": cancel_word & 0xFFFF,
+            "poison_action_called": not cancelled,
+            "return": -1 if cancelled else 0,
+            "caller_uses_return": False,
+            "direct_rng_calls": 0,
+        }
+
+    vectors = {
+        "skill_min": simulate(actor=0, use_poison=-32768, cancel_word=1),
+        "negative_divisible": simulate(actor=1, use_poison=-15, cancel_word=0),
+        "negative_fraction": simulate(actor=2, use_poison=-14, cancel_word=2),
+        "zero": simulate(actor=3, use_poison=0, cancel_word=0),
+        "below_step": simulate(actor=4, use_poison=14, cancel_word=0),
+        "one_step": simulate(actor=5, use_poison=15, cancel_word=0),
+        "normal_89": simulate(actor=6, use_poison=89, cancel_word=0),
+        "normal_90": simulate(actor=7, use_poison=90, cancel_word=0),
+        "skill_max": simulate(actor=8, use_poison=32767, cancel_word=0),
+        "cancel_low_word_alias": simulate(
+            actor=9, use_poison=100, cancel_word=0x10001
+        ),
+    }
+    expected_ranges = {
+        "skill_min": -2183,
+        "negative_divisible": 0,
+        "negative_fraction": 1,
+        "zero": 1,
+        "below_step": 1,
+        "one_step": 2,
+        "normal_89": 6,
+        "normal_90": 7,
+        "skill_max": 2185,
+        "cancel_low_word_alias": 7,
+    }
+    if {
+        name: value["targeting_range"] for name, value in vectors.items()
+    } != expected_ranges:
+        raise ValueError("poison-target signed range vectors changed")
+    if vectors["cancel_low_word_alias"]["return"] != -1 or (
+        vectors["negative_fraction"]["poison_action_called"] is not True
+    ):
+        raise ValueError("poison-target cancel or confirmation dispatch changed")
+    vector_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "336881d39e28183cdc37c8970c27b0c2048a88e70ea123334a80b342e9b447d6":
+        raise ValueError("poison-target independent vector set changed")
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_POISON_TARGET_WRAPPER_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 28,
+        "local_return_sites": ["0x397d4", "0x397e4"],
+        "machine_slices": machine_slices,
+        "argument": "actor combatant slot as signed low16",
+        "role_lookup": "signed combatant role word at actor*28",
+        "skill_lookup": "signed role use_poison word at role*182+170",
+        "range": "signed truncation toward zero use_poison/15 + 1, then CWDE",
+        "cursor_call": "sub_36AF7(actor, range, mode1, address of zero local dword)",
+        "cancel_contract": "local low word exactly one returns -1",
+        "confirm_contract": "every other local low word calls sub_397E5(actor) and returns 0",
+        "caller_contract": (
+            "sole sub_32E59 action-case2 caller ignores EAX, cleans the actor argument, "
+            "then reloads actor and tests action_done"
+        ),
+        "direct_rng_calls": 0,
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code may reject invalid actor and role indices that make the machine "
+            "read outside loaded combatant or role records"
+        ),
+        "closure_boundary": (
+            "stack probe, cursor selector, poison action and sole action-menu caller remain "
+            "independent owners"
+        ),
+    }
+
+
 def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -9522,6 +9667,8 @@ def build(data_root: Path) -> dict[str, object]:
             battle_magic_selection_contract(z_dat_bytes, magic_bytes),
         "battle_hp_damage_machine": battle_hp_damage_contract(z_dat_bytes),
         "battle_mp_damage_machine": battle_mp_damage_contract(z_dat_bytes),
+        "battle_poison_target_wrapper_machine":
+            battle_poison_target_wrapper_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

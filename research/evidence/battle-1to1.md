@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为57/81；其余24项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为58/81；其余23项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、24项为 `implemented_pending_review`、57项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、23项为 `implemented_pending_review`、58项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -126,6 +126,10 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 `sub_395EC @ 0x395EC..0x39776`已完成最终汇编→C++ REVIEW。fresh机器身份为394字节、96条指令、3个显式条件跳转、22处加载时fixup、6次direct call、唯一caller和本地RET；raw/loaded SHA256为`ce826212a2e10ca85304d3fc172700a76764ea80f571dfa9dbcd01f604007cc1`与`df416c290c6f739366caa15baf2e1a5696f197aa875e740fcc4fbcd9d66a7eb0`，全部fixup反转`0x20000`后逐字节一致。方形hurt-type1 caller传六参，但本体只读attacker role、target role和magic slot；返回AX写目标word9，effect kind为3。
 
 完整合同锁定unsigned熟练度/100、五次RNG调用顺序`[3,3,add_mp/2,3,3]`、第三次在bound<=1时调用但不推进、actor current/max MP的16位写回与signed夹取、target两次16位扣减、signed `<=0`清零，以及旧目标MP减最终MP的signed32返回。首轮完整对照零产品差异；补齐add_mp0/3/4、负add_mp、maximum999、current/max与target回绕、恰零/低于零、seed2及共享role别名后从入口重审仍零差异。非法索引安全拒绝归类平台适配，最终为`platform_adapted / converged_no_new_differences`。根Debug构建精确14/14，正式Golden三生成逐字节一致SHA256为`fb4d4ec7a49114ca5361904e3f5fff1bff2f32371ba675b85f22709184f1a636`。
+
+`sub_39776 @ 0x39776..0x397E5`已完成最终汇编→C++ REVIEW。fresh机器身份为111字节、36条指令、1个条件分支、2处加载时fixup、3次direct call、唯一caller和两个本地RET；raw/loaded SHA256为`94d03eff4ea1c9da0efeb51a4fbda40bc3bb81426f5aaa5f4067e98faea31609`与`9549158d1cb4e5570427a7aead98a07c073892c1bd7360309eed75441b8dfe7b`，全部fixup反转`0x20000`后逐字节一致。机器以signed actor→role读取`use_poison`，按向零`/15+1`得到射程，固定mode1调用独立光标；local低字恰等于1返回-1，否则调用独立`sub_397E5(actor)`并返回0。唯一动作case2 caller忽略返回值，清栈后重读actor检查action-done。
+
+现代`poison_targeting_range`及Session wrapper在合法caller域逐块一致；同步光标被拆为带入口/输入前present门的状态机，Escape经action-done0返回同一菜单ordinal，确认立即进入用毒continuation。首轮完整对照零产品差异；新增signed skill极值、负除法、14/15与89/90阶梯、非法actor/role回归后从入口重审仍零差异。非法索引安全拒绝及宿主分帧归类平台适配；`sub_36AF7`、`sub_397E5`、栈探测与caller均保持独立。根Debug构建精确14/14，正式Golden三生成逐字节一致SHA256为`30863e17bdd3fa340acfb74b55ea425a33a0c1e7b3146c25ec8c928371a43b71`，vector SHA256为`336881d39e28183cdc37c8970c27b0c2048a88e70ea123334a80b342e9b447d6`；最终为`platform_adapted / converged_no_new_differences`。
 
 ## 11. 武功area扫描
 
