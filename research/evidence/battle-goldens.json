@@ -7401,6 +7401,589 @@
     "platform_adaptation_boundary": "modern code may reject invalid actor/magic ids, malformed name/count data, and the zero-available nonterminating or invalid-selection domain",
     "closure_boundary": "stack probe, battlefield redraw, panel, formatter, text renderer, framebuffer copy, shared magic slot, caller attack pipeline and downstream owners remain independent"
   },
+  "battle_hp_damage_machine": {
+    "address": "0x39188",
+    "end": "0x395ec",
+    "raw_offset": "0x32b88",
+    "size": 1124,
+    "instruction_count": 283,
+    "branch_count": 27,
+    "raw_sha256": "a3590330937932e0cf025fcd9379cc476bdc0345bbe23162ed839c86bf14a1df",
+    "loaded_sha256": "e3caabf8c6099efbbc8a3e5aa1020b894a7ee1b46529a6b83bded3a0b09b3b94",
+    "relocation_count": 56,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3918d",
+      "0x393b1",
+      "0x393bd",
+      "0x393de",
+      "0x393ea"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612"
+    ],
+    "callers": [
+      "0x37b40",
+      "0x37f19",
+      "0x38020",
+      "0x38125",
+      "0x3822a",
+      "0x38a7f",
+      "0x38b77",
+      "0x38c6f",
+      "0x38d6c"
+    ],
+    "relocation_offsets": [
+      "0x19",
+      "0x2a",
+      "0x38",
+      "0x42",
+      "0x4c",
+      "0x5e",
+      "0x65",
+      "0x6e",
+      "0x7b",
+      "0x89",
+      "0xa3",
+      "0xcb",
+      "0xda",
+      "0xf1",
+      "0xfd",
+      "0x120",
+      "0x131",
+      "0x139",
+      "0x140",
+      "0x15c",
+      "0x166",
+      "0x173",
+      "0x185",
+      "0x18f",
+      "0x19c",
+      "0x1a3",
+      "0x1b7",
+      "0x1be",
+      "0x1c8",
+      "0x1d5",
+      "0x1e7",
+      "0x1f1",
+      "0x1fe",
+      "0x288",
+      "0x2ad",
+      "0x316",
+      "0x32e",
+      "0x340",
+      "0x347",
+      "0x351",
+      "0x35a",
+      "0x362",
+      "0x385",
+      "0x38e",
+      "0x39b",
+      "0x3b9",
+      "0x3c8",
+      "0x3cf",
+      "0x3e8",
+      "0x3fc",
+      "0x407",
+      "0x421",
+      "0x42a",
+      "0x437",
+      "0x44b",
+      "0x455"
+    ],
+    "stack_probe_bytes": 28,
+    "local_return_sites": [],
+    "shared_tail": {
+      "address": "0x3612c",
+      "end": "0x36133",
+      "bytes": "83c4085f5e5bc3",
+      "sha256": "c4036b6b3c4c147d0b6f46cbd09bc26821d3c0c1099a8ba4e168731ae8f44e27",
+      "owner": "external shared epilogue"
+    },
+    "machine_slices": {
+      "square_dispatch": {
+        "address": "0x37b11",
+        "end": "0x37b8f",
+        "size": 126,
+        "sha256": "bde05b33cfcea0b74b9287ee16e7e4fae60743a83ecc00d23a43a48dbad323f1"
+      },
+      "cross_all": {
+        "address": "0x37eed",
+        "end": "0x38259",
+        "size": 876,
+        "sha256": "6d540faf04b0a5cee61b5fbf0fc7713f6316af0e7960dd6a40d5ed0718e562cc"
+      },
+      "line_up": {
+        "address": "0x38a54",
+        "end": "0x38aac",
+        "size": 88,
+        "sha256": "e9cf3376203ceded32863e8aab3b9ea75138fd6bf16f0a5177e1d278c5612fe2"
+      },
+      "line_right": {
+        "address": "0x38b4f",
+        "end": "0x38ba6",
+        "size": 87,
+        "sha256": "87d675151677562a0c018f45e81ab11a8019c8480806ae9110c70b8c59b56a6e"
+      },
+      "line_left": {
+        "address": "0x38c44",
+        "end": "0x38ca5",
+        "size": 97,
+        "sha256": "0c61dfcc1e79dc86ae1b79beea128e41ee2b4e55b1b98965ce8071c35bd6841f"
+      },
+      "line_down": {
+        "address": "0x38d44",
+        "end": "0x38d9b",
+        "size": 87,
+        "sha256": "4faac591fcfcd8bb0632f5185db98412965c7cb2d731f677b274baa503d32a00"
+      },
+      "knowledge": {
+        "address": "0x39198",
+        "end": "0x39217",
+        "size": 127,
+        "sha256": "8441768dc916cc88219136d3af5014002863e489c14db804ae2c5f2ef131e5c2"
+      },
+      "cost_scale": {
+        "address": "0x39217",
+        "end": "0x39294",
+        "size": 125,
+        "sha256": "93889f0fa12f0e38d5bd5ca0857c0161858454026268a9313e833778cc59bde5"
+      },
+      "attack_defence": {
+        "address": "0x39294",
+        "end": "0x3938e",
+        "size": 250,
+        "sha256": "f1c4a4d659b44b0a87f36faff5b55988d3dcd6a461f23760f26e7ec6415578c6"
+      },
+      "damage_rng": {
+        "address": "0x3938e",
+        "end": "0x39402",
+        "size": 116,
+        "sha256": "1c71ae017342d5774345f55ccb2e27735b6c38346c752be0a832733ac5150a22"
+      },
+      "modifiers_distance": {
+        "address": "0x39402",
+        "end": "0x39490",
+        "size": 142,
+        "sha256": "55400513c7aa65858b4cee7c9d17a9f4e410b4075aefe47b85906d3ff10df385"
+      },
+      "hp_counter": {
+        "address": "0x39490",
+        "end": "0x394ee",
+        "size": 94,
+        "sha256": "2e809e9baf473b3346a8f855f0ad802d2b278625210a830c3c1eb1cab4868b58"
+      },
+      "hurt": {
+        "address": "0x394ee",
+        "end": "0x39529",
+        "size": 59,
+        "sha256": "53df0eb58580a326092c458a48da67c2d16af71e3fcd9901cd3379538101f41c"
+      },
+      "poison": {
+        "address": "0x39529",
+        "end": "0x395e3",
+        "size": 186,
+        "sha256": "c47e08b9a36ebdf6be1c6b2f7ca1ed972fac5daf9ab60247f9c85ca523947e25"
+      }
+    },
+    "arguments": {
+      "actor_combatant": "signed low16; supplies side and attack counter",
+      "target_combatant": "passed by all callers but never read",
+      "attacker_role": "signed low16",
+      "target_role": "signed low16",
+      "magic_slot": "signed low16",
+      "distance": "signed low16"
+    },
+    "knowledge": "scan signed combatant count; include knowledge>80, HP>0, hidden==0; add twice knowledge to same-side attack or opposing defence",
+    "cost_scale": "start unsigned proficiency/100 and descend until signed MP >= need_mp*((level+1)/2); publish selected level+1",
+    "damage_formula": "attack=(3*role.attack+magic.attack[cost_scale-1])/2+equipment+special+allied knowledge; defence=role.defence+equipment+opposing knowledge; primary=2*(attack-3*defence)/3+bounded(20)-bounded(20); signed low16 <=0 uses attack/10+bounded(4)-bounded(4)",
+    "post_formula": "negative fallback becomes zero and skips physical/hurt/distance; otherwise add physical/15+hurt/20, apply <=10 distance factor (100-3*(d-1))/100 or >10 factor 2/3 by unsigned division, then signed minimum one",
+    "writes": "actor counter += damage/5; target HP -= damage; only signed HP<0 clamps zero and adds level*10; hurt += damage/10 capped when >99; poison changes only when power>anti and anti<90, >100 becomes99, negative becomes0",
+    "rng_order": [
+      20,
+      20,
+      "conditional 4",
+      "conditional 4"
+    ],
+    "caller_contract": "one square dispatch, four cross directions and four line directions pass six arguments; all write returned AX to target combatant word9",
+    "vectors": {
+      "survival": {
+        "damage": 30,
+        "cost_scale": 3,
+        "allied_knowledge": 0,
+        "opposing_knowledge": 0,
+        "attack_total": 60,
+        "defence_total": 5,
+        "used_fallback": false,
+        "skipped_modifiers": false,
+        "rng_calls": [
+          [
+            20,
+            18
+          ],
+          [
+            20,
+            18
+          ]
+        ],
+        "rng_state": 2524885223,
+        "actor_counter": 6,
+        "target_hp": 10,
+        "target_hurt": 3,
+        "target_poison": 4,
+        "kill_reward": 0
+      },
+      "exact_zero": {
+        "damage": 30,
+        "cost_scale": 3,
+        "allied_knowledge": 0,
+        "opposing_knowledge": 0,
+        "attack_total": 60,
+        "defence_total": 5,
+        "used_fallback": false,
+        "skipped_modifiers": false,
+        "rng_calls": [
+          [
+            20,
+            18
+          ],
+          [
+            20,
+            18
+          ]
+        ],
+        "rng_state": 2524885223,
+        "actor_counter": 6,
+        "target_hp": 0,
+        "target_hurt": 3,
+        "target_poison": 4,
+        "kill_reward": 0
+      },
+      "underkill": {
+        "damage": 30,
+        "cost_scale": 3,
+        "allied_knowledge": 0,
+        "opposing_knowledge": 0,
+        "attack_total": 60,
+        "defence_total": 5,
+        "used_fallback": false,
+        "skipped_modifiers": false,
+        "rng_calls": [
+          [
+            20,
+            18
+          ],
+          [
+            20,
+            18
+          ]
+        ],
+        "rng_state": 2524885223,
+        "actor_counter": 46,
+        "target_hp": 0,
+        "target_hurt": 3,
+        "target_poison": 4,
+        "kill_reward": 40
+      },
+      "affordability": {
+        "mp_49": {
+          "damage": 30,
+          "cost_scale": 9,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 10,
+          "target_hurt": 3,
+          "target_poison": 4,
+          "kill_reward": 0
+        },
+        "mp_0": {
+          "damage": 30,
+          "cost_scale": 1,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 10,
+          "target_hurt": 3,
+          "target_poison": 4,
+          "kill_reward": 0
+        }
+      },
+      "fallback_far": {
+        "damage": 14,
+        "cost_scale": 3,
+        "allied_knowledge": 162,
+        "opposing_knowledge": 164,
+        "attack_total": 231,
+        "defence_total": 171,
+        "used_fallback": true,
+        "skipped_modifiers": false,
+        "rng_calls": [
+          [
+            20,
+            18
+          ],
+          [
+            20,
+            18
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            4,
+            3
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_counter": 2,
+        "target_hp": 86,
+        "target_hurt": 1,
+        "target_poison": 0,
+        "kill_reward": 0
+      },
+      "negative_fallback": {
+        "damage": 1,
+        "cost_scale": 3,
+        "allied_knowledge": 0,
+        "opposing_knowledge": 0,
+        "attack_total": 0,
+        "defence_total": 20,
+        "used_fallback": true,
+        "skipped_modifiers": true,
+        "rng_calls": [
+          [
+            20,
+            18
+          ],
+          [
+            20,
+            18
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            4,
+            3
+          ]
+        ],
+        "rng_state": 3295386429,
+        "actor_counter": 0,
+        "target_hp": 99,
+        "target_hurt": 80,
+        "target_poison": 0,
+        "kill_reward": 0
+      },
+      "knowledge_filters": {
+        "inactive": {
+          "damage": 30,
+          "cost_scale": 3,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 10,
+          "target_hurt": 3,
+          "target_poison": 4,
+          "kill_reward": 0
+        },
+        "active": {
+          "damage": 20,
+          "cost_scale": 3,
+          "allied_knowledge": 162,
+          "opposing_knowledge": 164,
+          "attack_total": 222,
+          "defence_total": 169,
+          "used_fallback": true,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              4,
+              3
+            ]
+          ],
+          "rng_state": 3295386429,
+          "actor_counter": 4,
+          "target_hp": 80,
+          "target_hurt": 2,
+          "target_poison": 0,
+          "kill_reward": 0
+        }
+      },
+      "edge_caps": {
+        "hurt": {
+          "damage": 34,
+          "cost_scale": 3,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 66,
+          "target_hurt": 99,
+          "target_poison": 0,
+          "kill_reward": 0
+        },
+        "poison_exact_100": {
+          "damage": 30,
+          "cost_scale": 3,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 70,
+          "target_hurt": 3,
+          "target_poison": 100,
+          "kill_reward": 0
+        },
+        "poison_over_100": {
+          "damage": 30,
+          "cost_scale": 3,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 70,
+          "target_hurt": 3,
+          "target_poison": 99,
+          "kill_reward": 0
+        },
+        "counter_wrap": {
+          "damage": 30,
+          "cost_scale": 3,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": -32763,
+          "target_hp": 70,
+          "target_hurt": 3,
+          "target_poison": 4,
+          "kill_reward": 0
+        }
+      }
+    },
+    "vector_sha256": "5c8739cab30cfae8a5c7f1ccddd32bb47da435e1bd24b9e49d0590d009582da0",
+    "platform_adaptation_boundary": "modern code may reject invalid combatant, role, magic, equipment, level and other malformed indices that make the machine access outside loaded records",
+    "closure_boundary": "stack probe, RNG helper, square/cross/line callers, shared cost-scale consumer and shared-tail owner remain independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

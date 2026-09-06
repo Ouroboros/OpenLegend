@@ -711,6 +711,23 @@ BATTLE_MAGIC_SELECTION_RELOCATION_OFFSETS = (
     0x33F, 0x348, 0x351, 0x35A, 0x361, 0x368, 0x3A6, 0x3B9, 0x3C6,
 )
 BATTLE_MAGIC_SELECTION_CALLER_SITES = (0x377AF,)
+BATTLE_HP_DAMAGE_ADDRESS = 0x39188
+BATTLE_HP_DAMAGE_END = 0x395EC
+BATTLE_HP_DAMAGE_CALL_OFFSETS = (0x005, 0x229, 0x235, 0x256, 0x262)
+BATTLE_HP_DAMAGE_CALL_TARGETS = (0x3ED1E, 0x3D612, 0x3D612, 0x3D612, 0x3D612)
+BATTLE_HP_DAMAGE_RELOCATION_OFFSETS = (
+    0x019, 0x02A, 0x038, 0x042, 0x04C, 0x05E, 0x065, 0x06E, 0x07B, 0x089,
+    0x0A3, 0x0CB, 0x0DA, 0x0F1, 0x0FD, 0x120, 0x131, 0x139, 0x140, 0x15C,
+    0x166, 0x173, 0x185, 0x18F, 0x19C, 0x1A3, 0x1B7, 0x1BE, 0x1C8, 0x1D5,
+    0x1E7, 0x1F1, 0x1FE, 0x288, 0x2AD, 0x316, 0x32E, 0x340, 0x347, 0x351,
+    0x35A, 0x362, 0x385, 0x38E, 0x39B, 0x3B9, 0x3C8, 0x3CF, 0x3E8, 0x3FC,
+    0x407, 0x421, 0x42A, 0x437, 0x44B, 0x455,
+)
+BATTLE_HP_DAMAGE_CALLER_SITES = (
+    0x37B40, 0x37F19, 0x38020, 0x38125, 0x3822A,
+    0x38A7F, 0x38B77, 0x38C6F, 0x38D6C,
+)
+BATTLE_HP_DAMAGE_SHARED_TAIL_ADDRESS = 0x3612C
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -4952,6 +4969,376 @@ def battle_magic_selection_contract(
     }
 
 
+def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_HP_DAMAGE_ADDRESS,
+        end=BATTLE_HP_DAMAGE_END,
+        call_offsets=BATTLE_HP_DAMAGE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_HP_DAMAGE_CALL_TARGETS,
+        relocation_offsets=BATTLE_HP_DAMAGE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_HP_DAMAGE_CALLER_SITES,
+        instruction_count=283,
+        branch_count=27,
+    )
+    if contract["raw_sha256"] != (
+        "a3590330937932e0cf025fcd9379cc476bdc0345bbe23162ed839c86bf14a1df"
+    ):
+        raise ValueError("Z.DAT HP-damage raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "e3caabf8c6099efbbc8a3e5aa1020b894a7ee1b46529a6b83bded3a0b09b3b94"
+    ):
+        raise ValueError("Z.DAT HP-damage relocation image changed")
+
+    slice_specs = {
+        "square_dispatch": (0x37B11, 0x37B8F,
+                            "bde05b33cfcea0b74b9287ee16e7e4fae60743a83ecc00d23a43a48dbad323f1"),
+        "cross_all": (0x37EED, 0x38259,
+                      "6d540faf04b0a5cee61b5fbf0fc7713f6316af0e7960dd6a40d5ed0718e562cc"),
+        "line_up": (0x38A54, 0x38AAC,
+                    "e9cf3376203ceded32863e8aab3b9ea75138fd6bf16f0a5177e1d278c5612fe2"),
+        "line_right": (0x38B4F, 0x38BA6,
+                       "87d675151677562a0c018f45e81ab11a8019c8480806ae9110c70b8c59b56a6e"),
+        "line_left": (0x38C44, 0x38CA5,
+                      "0c61dfcc1e79dc86ae1b79beea128e41ee2b4e55b1b98965ce8071c35bd6841f"),
+        "line_down": (0x38D44, 0x38D9B,
+                      "4faac591fcfcd8bb0632f5185db98412965c7cb2d731f677b274baa503d32a00"),
+        "knowledge": (0x39198, 0x39217,
+                      "8441768dc916cc88219136d3af5014002863e489c14db804ae2c5f2ef131e5c2"),
+        "cost_scale": (0x39217, 0x39294,
+                       "93889f0fa12f0e38d5bd5ca0857c0161858454026268a9313e833778cc59bde5"),
+        "attack_defence": (0x39294, 0x3938E,
+                           "f1c4a4d659b44b0a87f36faff5b55988d3dcd6a461f23760f26e7ec6415578c6"),
+        "damage_rng": (0x3938E, 0x39402,
+                      "1c71ae017342d5774345f55ccb2e27735b6c38346c752be0a832733ac5150a22"),
+        "modifiers_distance": (0x39402, 0x39490,
+                               "55400513c7aa65858b4cee7c9d17a9f4e410b4075aefe47b85906d3ff10df385"),
+        "hp_counter": (0x39490, 0x394EE,
+                       "2e809e9baf473b3346a8f855f0ad802d2b278625210a830c3c1eb1cab4868b58"),
+        "hurt": (0x394EE, 0x39529,
+                 "53df0eb58580a326092c458a48da67c2d16af71e3fcd9901cd3379538101f41c"),
+        "poison": (0x39529, 0x395E3,
+                   "c47e08b9a36ebdf6be1c6b2f7ca1ed972fac5daf9ab60247f9c85ca523947e25"),
+    }
+    machine_slices = {}
+    for name, (slice_start, slice_end, expected_hash) in slice_specs.items():
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT HP-damage {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    shared_tail = z_dat_bytes[
+        BATTLE_HP_DAMAGE_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE:
+        BATTLE_HP_DAMAGE_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE + 7
+    ]
+    if shared_tail.hex() != "83c4085f5e5bc3":
+        raise ValueError("Z.DAT HP-damage shared epilogue changed")
+
+    def simulate(
+        *,
+        target_hp: int = 40,
+        attacker_mp: int = 100,
+        proficiency: int = 299,
+        attacker_attack: int = 30,
+        magic_attacks: list[int] | None = None,
+        need_mp: int = 10,
+        target_defence: int = 5,
+        physical_power: int = 0,
+        target_hurt: int = 0,
+        target_poison: int = 0,
+        anti_poison: int = 30,
+        attack_with_poison: int = 60,
+        target_level: int = 4,
+        actor_counter: int = 0,
+        attacker_equipment: tuple[int, int] = (0, 0),
+        target_equipment: tuple[int, int] = (0, 0),
+        special_bonus: int = 0,
+        distance: int = 1,
+        knowledge_combatants: list[tuple[int, int, int, int]] | None = None,
+        seed: int = 1,
+    ) -> dict[str, object]:
+        attacks = [30] * 10 if magic_attacks is None else magic_attacks
+        if len(attacks) != 10:
+            raise ValueError("HP-damage vectors require ten attack levels")
+        allied_knowledge = 0
+        opposing_knowledge = 0
+        for side, hidden, knowledge, hp in knowledge_combatants or []:
+            if wrapping_i16(knowledge) <= 80 or wrapping_i16(hp) <= 0 or (
+                wrapping_i16(hidden) != 0
+            ):
+                continue
+            if wrapping_i16(side) == 0:
+                allied_knowledge += 2 * wrapping_i16(knowledge)
+            else:
+                opposing_knowledge += 2 * wrapping_i16(knowledge)
+
+        level = (proficiency & 0xFFFF) // 100
+        cost_scale = 0
+        while level >= 0:
+            required_mp = trunc_div(level + 1, 2) * wrapping_i16(need_mp)
+            if wrapping_i16(attacker_mp) >= required_mp:
+                cost_scale = wrapping_i16(level + 1)
+                break
+            level -= 1
+        if cost_scale < 1 or cost_scale > 10:
+            raise ValueError("HP-damage synthetic vector left the asset level domain")
+
+        attack_total = wrapping_i16(
+            trunc_div(
+                3 * wrapping_i16(attacker_attack) +
+                wrapping_i16(attacks[cost_scale - 1]),
+                2,
+            )
+        )
+        for bonus in attacker_equipment:
+            attack_total = wrapping_i16(attack_total + wrapping_i16(bonus))
+        attack_total = wrapping_i16(attack_total + wrapping_i16(special_bonus))
+        attack_total = wrapping_i16(attack_total + allied_knowledge)
+
+        defence_total = wrapping_i16(target_defence)
+        for bonus in reversed(target_equipment):
+            defence_total = wrapping_i16(defence_total + wrapping_i16(bonus))
+        defence_total = wrapping_i16(defence_total + opposing_knowledge)
+
+        rng_calls = []
+        first, seed = legacy_bounded(seed, 20)
+        rng_calls.append([20, first])
+        second, seed = legacy_bounded(seed, 20)
+        rng_calls.append([20, second])
+        damage = wrapping_i16(
+            trunc_div(2 * (attack_total - 3 * defence_total), 3) + first - second
+        )
+        used_fallback = damage <= 0
+        if used_fallback:
+            first, seed = legacy_bounded(seed, 4)
+            rng_calls.append([4, first])
+            second, seed = legacy_bounded(seed, 4)
+            rng_calls.append([4, second])
+            damage = wrapping_i16(trunc_div(attack_total, 10) + first - second)
+
+        skipped_modifiers = damage < 0
+        if skipped_modifiers:
+            damage = 0
+        else:
+            damage = wrapping_i16(
+                damage + trunc_div(wrapping_i16(physical_power), 15) +
+                trunc_div(wrapping_i16(target_hurt), 20)
+            )
+            if wrapping_i16(distance) <= 10:
+                factor = 100 - 3 * (wrapping_i16(distance) - 1)
+                damage = wrapping_i16(
+                    ((damage * factor) & 0xFFFF_FFFF) // 100
+                )
+            else:
+                damage = wrapping_i16(((damage * 2) & 0xFFFF_FFFF) // 3)
+        if damage < 1:
+            damage = 1
+
+        counter = wrapping_i16(actor_counter + trunc_div(damage, 5))
+        hp = wrapping_i16(target_hp - damage)
+        kill_reward = 0
+        if hp < 0:
+            hp = 0
+            kill_reward = wrapping_i16(10 * wrapping_i16(target_level))
+            counter = wrapping_i16(counter + kill_reward)
+        hurt = wrapping_i16(target_hurt + trunc_div(damage, 10))
+        if hurt > 99:
+            hurt = 99
+
+        poison_power = (
+            wrapping_i16(attack_with_poison) +
+            wrapping_i16(attacks[(proficiency & 0xFFFF) // 100])
+        )
+        poison = wrapping_i16(target_poison)
+        if poison_power > wrapping_i16(anti_poison) and wrapping_i16(anti_poison) < 90:
+            poison = wrapping_i16(
+                poison + trunc_div(poison_power - wrapping_i16(anti_poison), 15)
+            )
+            if poison > 100:
+                poison = 99
+            if poison < 0:
+                poison = 0
+        return {
+            "damage": damage,
+            "cost_scale": cost_scale,
+            "allied_knowledge": allied_knowledge,
+            "opposing_knowledge": opposing_knowledge,
+            "attack_total": attack_total,
+            "defence_total": defence_total,
+            "used_fallback": used_fallback,
+            "skipped_modifiers": skipped_modifiers,
+            "rng_calls": rng_calls,
+            "rng_state": seed,
+            "actor_counter": counter,
+            "target_hp": hp,
+            "target_hurt": hurt,
+            "target_poison": poison,
+            "kill_reward": kill_reward,
+        }
+
+    survival = simulate()
+    exact_zero = simulate(target_hp=30)
+    underkill = simulate(target_hp=29)
+    affordability = {
+        "mp_49": simulate(attacker_mp=49, proficiency=999),
+        "mp_0": simulate(attacker_mp=0, proficiency=999),
+    }
+    fallback_far = simulate(
+        target_hp=100,
+        target_defence=5,
+        anti_poison=100,
+        attack_with_poison=0,
+        attacker_equipment=(6, 0),
+        target_equipment=(0, 2),
+        special_bonus=3,
+        distance=11,
+        knowledge_combatants=[(0, 0, 81, 1), (1, 0, 82, 100)],
+    )
+    negative_fallback = simulate(
+        target_hp=100,
+        attacker_attack=0,
+        magic_attacks=[0] * 10,
+        target_defence=20,
+        physical_power=300,
+        target_hurt=80,
+        anti_poison=100,
+        attack_with_poison=0,
+    )
+    knowledge_filters = {
+        "inactive": simulate(
+            knowledge_combatants=[
+                (0, 0, 81, 0), (0, 1, 90, 100), (1, 0, 80, 100)
+            ]
+        ),
+        "active": simulate(
+            target_hp=100,
+            anti_poison=100,
+            attack_with_poison=0,
+            knowledge_combatants=[(0, 0, 81, 1), (1, 0, 82, 100)],
+        ),
+    }
+    edge_caps = {
+        "hurt": simulate(target_hp=100, target_hurt=98, anti_poison=100),
+        "poison_exact_100": simulate(
+            target_hp=100, attack_with_poison=1470, anti_poison=0
+        ),
+        "poison_over_100": simulate(
+            target_hp=100, attack_with_poison=1485, anti_poison=0
+        ),
+        "counter_wrap": simulate(target_hp=100, actor_counter=0x7FFF),
+    }
+    if survival["damage"] != 30 or survival["cost_scale"] != 3:
+        raise ValueError("HP-damage primary formula vector changed")
+    if exact_zero["kill_reward"] != 0 or underkill["kill_reward"] != 40:
+        raise ValueError("HP-damage exact-zero kill threshold changed")
+    if affordability["mp_49"]["cost_scale"] != 9 or (
+        affordability["mp_0"]["cost_scale"] != 1
+    ):
+        raise ValueError("HP-damage MP affordability descent changed")
+    if fallback_far["damage"] != 14 or fallback_far["rng_state"] != 3295386429:
+        raise ValueError("HP-damage positive fallback or distance scaling changed")
+    if negative_fallback["damage"] != 1 or not negative_fallback["skipped_modifiers"]:
+        raise ValueError("HP-damage negative fallback floor changed")
+    if knowledge_filters["inactive"]["allied_knowledge"] != 0 or (
+        knowledge_filters["inactive"]["opposing_knowledge"] != 0
+    ):
+        raise ValueError("HP-damage inactive knowledge filtering changed")
+    if knowledge_filters["active"]["allied_knowledge"] != 162 or (
+        knowledge_filters["active"]["opposing_knowledge"] != 164
+    ):
+        raise ValueError("HP-damage active knowledge accumulation changed")
+    if edge_caps["hurt"]["target_hurt"] != 99 or (
+        edge_caps["poison_exact_100"]["target_poison"] != 100
+    ) or edge_caps["poison_over_100"]["target_poison"] != 99:
+        raise ValueError("HP-damage hurt or poison cap changed")
+    if edge_caps["counter_wrap"]["actor_counter"] != -32763:
+        raise ValueError("HP-damage action-counter wrapping changed")
+
+    vectors = {
+        "survival": survival,
+        "exact_zero": exact_zero,
+        "underkill": underkill,
+        "affordability": affordability,
+        "fallback_far": fallback_far,
+        "negative_fallback": negative_fallback,
+        "knowledge_filters": knowledge_filters,
+        "edge_caps": edge_caps,
+    }
+    vector_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode()
+    )
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_HP_DAMAGE_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 28,
+        "local_return_sites": [],
+        "shared_tail": {
+            "address": hex(BATTLE_HP_DAMAGE_SHARED_TAIL_ADDRESS),
+            "end": hex(BATTLE_HP_DAMAGE_SHARED_TAIL_ADDRESS + len(shared_tail)),
+            "bytes": shared_tail.hex(),
+            "sha256": sha256(shared_tail),
+            "owner": "external shared epilogue",
+        },
+        "machine_slices": machine_slices,
+        "arguments": {
+            "actor_combatant": "signed low16; supplies side and attack counter",
+            "target_combatant": "passed by all callers but never read",
+            "attacker_role": "signed low16",
+            "target_role": "signed low16",
+            "magic_slot": "signed low16",
+            "distance": "signed low16",
+        },
+        "knowledge": (
+            "scan signed combatant count; include knowledge>80, HP>0, hidden==0; "
+            "add twice knowledge to same-side attack or opposing defence"
+        ),
+        "cost_scale": (
+            "start unsigned proficiency/100 and descend until signed MP >= "
+            "need_mp*((level+1)/2); publish selected level+1"
+        ),
+        "damage_formula": (
+            "attack=(3*role.attack+magic.attack[cost_scale-1])/2+equipment+special+"
+            "allied knowledge; defence=role.defence+equipment+opposing knowledge; "
+            "primary=2*(attack-3*defence)/3+bounded(20)-bounded(20); signed low16 <=0 "
+            "uses attack/10+bounded(4)-bounded(4)"
+        ),
+        "post_formula": (
+            "negative fallback becomes zero and skips physical/hurt/distance; otherwise add "
+            "physical/15+hurt/20, apply <=10 distance factor (100-3*(d-1))/100 or "
+            ">10 factor 2/3 by unsigned division, then signed minimum one"
+        ),
+        "writes": (
+            "actor counter += damage/5; target HP -= damage; only signed HP<0 clamps zero "
+            "and adds level*10; hurt += damage/10 capped when >99; poison changes only when "
+            "power>anti and anti<90, >100 becomes99, negative becomes0"
+        ),
+        "rng_order": [20, 20, "conditional 4", "conditional 4"],
+        "caller_contract": (
+            "one square dispatch, four cross directions and four line directions pass six "
+            "arguments; all write returned AX to target combatant word9"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code may reject invalid combatant, role, magic, equipment, level and "
+            "other malformed indices that make the machine access outside loaded records"
+        ),
+        "closure_boundary": (
+            "stack probe, RNG helper, square/cross/line callers, shared cost-scale consumer and "
+            "shared-tail owner remain independent"
+        ),
+    }
+
+
 def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -8884,6 +9271,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_line_attack_machine": battle_line_attack_contract(z_dat_bytes, magic_bytes),
         "battle_magic_selection_machine":
             battle_magic_selection_contract(z_dat_bytes, magic_bytes),
+        "battle_hp_damage_machine": battle_hp_damage_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

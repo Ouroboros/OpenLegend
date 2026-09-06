@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为55/81；其余26项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为56/81；其余25项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、26项为 `implemented_pending_review`、55项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、25项为 `implemented_pending_review`、56项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `4c923e05b6739b8dcc097d1183517ca7f0ef6fcff58118cdde8dd20226f2141c`；本轮新增`battle_magic_selection_machine`，固定988-byte raw/loaded identity、45处重定位、8次call、唯一caller、10槽availability、稀疏显示BUG、Big5布局、多flag优先级/残留、零available异常和输入/presentation边界；既有入口、载入、参战者建立、回合、路径、攻击核心及动画合同均保留。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `ec9ff1431f453f5fa8d2a1ec73ee87dd8c5febe63fe71a6d1d12957a4cd0c86a`；本轮新增`battle_hp_damage_machine`，固定1124-byte raw/loaded identity、56处重定位、5次call、9个caller、外部共享尾、knowledge/cost-scale/公式/写回切片及独立边界向量；向量集SHA256为`5c8739cab30cfae8a5c7f1ccddd32bb47da435e1bd24b9e49d0590d009582da0`。既有入口、载入、参战者建立、回合、路径、攻击核心、动画和武功选择合同均保留。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -119,9 +119,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 10. HP与MP伤害
 
-`sub_39188` 已映射为 `apply_hp_damage`：扫描双方knowledge>80的存活可见参战者，按最高可支付层计算cost scale，合并角色攻防、装备、特殊加成和双方知识；保留两次bounded(20)、非正时两次bounded(4)、距离1..10线性衰减和>10固定2/3。固定damage30下，HP30恰好归零不发击杀奖励，而HP29下溢才加`10*level`；并按原顺序写hurt与poison。
+`sub_39188 @ 0x39188..0x395EC`已完成最终汇编→C++ REVIEW。fresh机器身份为1124字节、283条指令、27个显式跳转、56处加载时fixup、5次direct call、9个caller且无本地RET；raw/loaded SHA256为`a3590330937932e0cf025fcd9379cc476bdc0345bbe23162ed839c86bf14a1df`与`e3caabf8c6099efbbc8a3e5aa1020b894a7ee1b46529a6b83bded3a0b09b3b94`，全部fixup反转`0x20000`后逐字节一致。末尾跳外部`0x3612C`七字节共享epilogue；方形1、十字4、直线4共九个caller均传六参并把返回AX写目标word9，callee不读取target combatant第二参数。
 
-`sub_395EC` 已映射为 `apply_mp_damage`：严格执行bounds `[3,3,add_mp/2,3,3]`，攻击者增加当前/最大内力并封顶，目标扣hurt_mp与随机差。seed1向量输出 `[2,1,3,1,1]`、state4182499122，攻击者10/20→23/23、目标50→35、返回15。两函数Linux Debug 14/14，均为 `implemented_pending_review`。
+完整合同锁定knowledge>80/HP>0/hidden0的双方`2*knowledge`、unsigned熟练度/100向下寻找MP可支付层、scale1零成本底层、角色/装备/特殊加成的16位攻击防御合成、无条件两次bounded(20)与非正时条件两次bounded(4)、负fallback跳过physical/hurt/distance、signed距离门和unsigned除法、最小1、counter→HP/strict underkill reward→hurt→poison的写回顺序，以及poison恰100保留而>100写99。首轮完整对照零产品差异；补齐MP49→scale9、MP0→scale1、knowledge过滤、负fallback、hurt/poison阈值与counter回绕后从入口重审仍零差异。非法索引安全拒绝归类平台适配，最终为`platform_adapted / converged_no_new_differences`。
+
+`sub_395EC` 已映射为 `apply_mp_damage`：严格执行bounds `[3,3,add_mp/2,3,3]`，攻击者增加当前/最大内力并封顶，目标扣hurt_mp与随机差。seed1向量输出 `[2,1,3,1,1]`、state4182499122，攻击者10/20→23/23、目标50→35、返回15；当前仍为`implemented_pending_review`。order56根Debug构建通过精确14/14，正式Golden三生成逐字节一致SHA256为`ec9ff1431f453f5fa8d2a1ec73ee87dd8c5febe63fe71a6d1d12957a4cd0c86a`。
 
 ## 11. 武功area扫描
 
