@@ -535,6 +535,15 @@ BATTLE_DEQUEUE_CALLER_SITES = (0x3708F, 0x370D5)
 BATTLE_DEQUEUE_X_WORDS_ADDRESS = 0xE6ABE
 BATTLE_DEQUEUE_Y_WORDS_ADDRESS = 0xE6CBC
 BATTLE_DEQUEUE_READ_INDEX_ADDRESS = 0xE6ED4
+BATTLE_ENQUEUE_ADDRESS = 0x371AE
+BATTLE_ENQUEUE_END = 0x371F7
+BATTLE_ENQUEUE_CALL_OFFSETS = (0x05,)
+BATTLE_ENQUEUE_CALL_TARGETS = (0x3ED1E,)
+BATTLE_ENQUEUE_RELOCATION_OFFSETS = (0x11, 0x1D, 0x29, 0x40)
+BATTLE_ENQUEUE_CALLER_SITES = (0x370BE, 0x3713E)
+BATTLE_ENQUEUE_X_WORDS_ADDRESS = 0xE6ABE
+BATTLE_ENQUEUE_Y_WORDS_ADDRESS = 0xE6CBC
+BATTLE_ENQUEUE_WRITE_INDEX_ADDRESS = 0xE6ED0
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -2323,6 +2332,105 @@ def battle_dequeue_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_37070 caller remains independently closed; sub_371AE enqueue remains independent",
+    }
+
+
+def battle_enqueue_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_ENQUEUE_ADDRESS,
+        end=BATTLE_ENQUEUE_END,
+        call_offsets=BATTLE_ENQUEUE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_ENQUEUE_CALL_TARGETS,
+        relocation_offsets=BATTLE_ENQUEUE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_ENQUEUE_CALLER_SITES,
+        instruction_count=18,
+        branch_count=0,
+    )
+    if contract["raw_sha256"] != (
+        "b06189eb16e1f2aac51e7242d7f18221427a0f26de02589ef40c835a688c1976"
+    ):
+        raise ValueError("Z.DAT enqueue raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "76a887a959bf8e3c83699ae298131217201ff6f4e59fb84f2e7e3e4ee0d0df92"
+    ):
+        raise ValueError("Z.DAT enqueue relocation image changed")
+    caller_continuations = {
+        "0x370be": z_dat_bytes[0x370C3 - Z_DAT_LOAD_BASE:0x370CF - Z_DAT_LOAD_BASE].hex(),
+        "0x3713e": z_dat_bytes[0x37143 - Z_DAT_LOAD_BASE:0x3714D - Z_DAT_LOAD_BASE].hex(),
+    }
+    if caller_continuations != {
+        "0x370be": "83c40868d46e0c008d442408",
+        "0x3713e": "83c4080fbf05d86e0c00",
+    }:
+        raise ValueError("Z.DAT enqueue caller continuation changed")
+
+    x_queue = [0] * 255
+    y_queue = [0] * 255
+    write_index = 253
+    coordinates = ((1234, -1234), (32767, -32768), (-32768, 32767))
+    synthetic_wrap_trace = []
+    for x, y in coordinates:
+        old_index = write_index
+        x_queue[old_index] = x
+        y_queue[old_index] = y
+        dividend = old_index + 1
+        quotient = int(dividend / 255)
+        write_index = dividend - quotient * 255
+        synthetic_wrap_trace.append({
+            "old_index": old_index,
+            "x": x,
+            "y": y,
+            "quotient_return": quotient,
+            "new_index": write_index,
+        })
+    expected_trace = [
+        {"old_index": 253, "x": 1234, "y": -1234,
+         "quotient_return": 0, "new_index": 254},
+        {"old_index": 254, "x": 32767, "y": -32768,
+         "quotient_return": 1, "new_index": 0},
+        {"old_index": 0, "x": -32768, "y": 32767,
+         "quotient_return": 0, "new_index": 1},
+    ]
+    if synthetic_wrap_trace != expected_trace:
+        raise ValueError("enqueue synthetic wrap trace changed")
+    if [(x_queue[index], y_queue[index]) for index in (253, 254, 0)] != list(coordinates):
+        raise ValueError("enqueue synthetic queue writes changed")
+
+    return {
+        **contract,
+        "stack_probe_bytes": 12,
+        "queue_layout": {
+            "slots": 255,
+            "x_words": {
+                "address": hex(BATTLE_ENQUEUE_X_WORDS_ADDRESS),
+                "end": hex(BATTLE_ENQUEUE_Y_WORDS_ADDRESS),
+            },
+            "y_words": {
+                "address": hex(BATTLE_ENQUEUE_Y_WORDS_ADDRESS),
+                "end": hex(BATTLE_ENQUEUE_Y_WORDS_ADDRESS + 255 * 2),
+            },
+            "write_index": hex(BATTLE_ENQUEUE_WRITE_INDEX_ADDRESS),
+        },
+        "arguments":
+            "first argument x and second argument y are stored as signed 16-bit words",
+        "write_order":
+            "read one signed write index; write x then y to that same slot; update index last",
+        "index_math":
+            "signed int16 index plus one uses signed idiv 255; remainder stored globally",
+        "legal_index_domain":
+            "wrappers initialize 2 and modulo update preserves 0..254; no full guard",
+        "synthetic_wrap_trace": synthetic_wrap_trace,
+        "return": "signed division quotient: 1 only for legal index 254, otherwise 0",
+        "caller_roles": {
+            "0x370be": "enqueue (0,-1) sentinel",
+            "0x3713e": "enqueue candidate (x,y)",
+        },
+        "caller_continuations": caller_continuations,
+        "caller_uses_return": False,
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_37070 caller remains independently closed; sub_371F7 path write remains independent",
     }
 
 
@@ -6245,6 +6353,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_targeting_initializer_machine": battle_targeting_initializer_contract(z_dat_bytes),
         "battle_flood_step_machine": battle_flood_step_contract(z_dat_bytes),
         "battle_dequeue_machine": battle_dequeue_contract(z_dat_bytes),
+        "battle_enqueue_machine": battle_enqueue_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

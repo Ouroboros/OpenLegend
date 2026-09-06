@@ -2164,6 +2164,80 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_37070 caller remains independently closed; sub_371AE enqueue remains independent"
   },
+  "battle_enqueue_machine": {
+    "address": "0x371ae",
+    "end": "0x371f7",
+    "raw_offset": "0x30bae",
+    "size": 73,
+    "instruction_count": 18,
+    "branch_count": 0,
+    "raw_sha256": "b06189eb16e1f2aac51e7242d7f18221427a0f26de02589ef40c835a688c1976",
+    "loaded_sha256": "76a887a959bf8e3c83699ae298131217201ff6f4e59fb84f2e7e3e4ee0d0df92",
+    "relocation_count": 4,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x371b3"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x370be",
+      "0x3713e"
+    ],
+    "stack_probe_bytes": 12,
+    "queue_layout": {
+      "slots": 255,
+      "x_words": {
+        "address": "0xe6abe",
+        "end": "0xe6cbc"
+      },
+      "y_words": {
+        "address": "0xe6cbc",
+        "end": "0xe6eba"
+      },
+      "write_index": "0xe6ed0"
+    },
+    "arguments": "first argument x and second argument y are stored as signed 16-bit words",
+    "write_order": "read one signed write index; write x then y to that same slot; update index last",
+    "index_math": "signed int16 index plus one uses signed idiv 255; remainder stored globally",
+    "legal_index_domain": "wrappers initialize 2 and modulo update preserves 0..254; no full guard",
+    "synthetic_wrap_trace": [
+      {
+        "old_index": 253,
+        "x": 1234,
+        "y": -1234,
+        "quotient_return": 0,
+        "new_index": 254
+      },
+      {
+        "old_index": 254,
+        "x": 32767,
+        "y": -32768,
+        "quotient_return": 1,
+        "new_index": 0
+      },
+      {
+        "old_index": 0,
+        "x": -32768,
+        "y": 32767,
+        "quotient_return": 0,
+        "new_index": 1
+      }
+    ],
+    "return": "signed division quotient: 1 only for legal index 254, otherwise 0",
+    "caller_roles": {
+      "0x370be": "enqueue (0,-1) sentinel",
+      "0x3713e": "enqueue candidate (x,y)"
+    },
+    "caller_continuations": {
+      "0x370be": "83c40868d46e0c008d442408",
+      "0x3713e": "83c4080fbf05d86e0c00"
+    },
+    "caller_uses_return": false,
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_37070 caller remains independently closed; sub_371F7 path write remains independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
