@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为65/81；其余16项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为66/81；其余15项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、16项为 `implemented_pending_review`、65项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、15项为 `implemented_pending_review`、66项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -366,6 +366,14 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 `sub_39EF7 @ 0x39EF7..0x3A10C`机器身份固定为533 bytes、132条指令、28个IDA flow block（含外部尾终止块）、15个条件分支、7个无条件跳转、35处重定位、7次direct call、2个入口xref且无本地RET；raw/loaded SHA256为`0b47a665b7ce2cb420ed0ee46f9f070c6f38dc9f8f1360089d363e16da376ad2`与`9eea49d981caba4f24cc52a013c3a72ebdab71a7a3a6b57b89f360d5702d5f85`，35处DWORD均严格增加`0x20000`并可逐字节归一化。入口按signed坐标计算方向，同格保持、`abs(y)>abs(x)`选纵向、tie选横向；随后先清全部4,096格effect。空格与友方写effect1，只有友方调用独立`sub_3A10C`并把EAX低字写damage word9，敌方不标记；所有路径仍固定执行effect0/type0、damage kind4/suppress1、全combatant sprite刷新，再尾跳外部`0x399FE`共享行动提交。
 
 原机器边界重复检查`x<64`而漏掉`y<64`，空格还短暂读取`combatants[-1].side`；现代完整坐标验证与空格先判定避免无效访问，非法actor/occupancy/role同样安全拒绝，均只影响机器不安全域并归类平台适配。合法域逐条REVIEW零产品差异。新增回归锁定同格/四方向、纵向strict与横向tie、空/友/敌、4,096格清零、x/y边界含`y=64`、非法slot/role/occupancy、无kernel路径不消费RNG、全sprite写回及counter/体力回绕；既有完整玩家/AI Session继续锁定状态先提交、effect0帧、双bank音频、10帧无flash damage和完成continuation。独立向量SHA256为`1958639fc75bb68858498f3eeaf860f0589ed6fd170095ba86a59141e7329b9a`；正式原资产Golden三生成逐字节一致，SHA256为`ebfc177795f318f87b3e6535a9325a131b48348376e82b1ccafd9edaab37caaa`，历史58键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；7个callee、两名caller及共享尾owner均不传播closure。
+
+## 31. 医疗值kernel最终REVIEW
+
+`sub_3A10C @ 0x3A10C..0x3A29C`机器身份固定为400 bytes、103条指令、25个基本块、12个条件分支、3个无条件跳转、20处重定位、2次direct call、2个入口xref和1个本地RET；raw/loaded SHA256为`d5f8fa8f412f555f98c496abb0dbe933fbf58591b98298da0729ceeb17293868`与`0eafabf1a8517ec451a14e08ddc29135e94e68fcb0767003c1e41a281ad315f8`，20处DWORD均严格增加`0x20000`并可逐字节归一化。机器忽略两个slot参数，只消费两个signed role id；菜单caller传`-1,-1`并保存完整EAX，战斗动作传真实slot但只保存DX。
+
+signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在local夹0，按signed target hurt的`<=25/26..50/51..75/>75`分别计算`4/5、3/4、2/3、1/2`，再无条件消费一次`bounded(5)`。strict `hurt>raw_medicine+20`同时清治疗和减伤量；signed HP cap可令完整EAX小于-32768，HP只加BX低字并回绕，hurt减SI低字后仅负值夹0，actor体力word减2不夹值。合法域逐块对照role级kernel和BattleSetup wrapper零产品差异；非法role/slot提前拒绝且不消费RNG归类平台适配。
+
+新增回归锁定体力49/50、全部hurt分界、strict门槛、负medicine、signed极值、hurt正向回绕、负治疗返回与EAX=-65535/AX=1、same-role alias及非法role RNG不推进。独立向量SHA256为`f758d1f4dae67a61868a007a13336a7c94e1c11ed21332904c6f7b26b5b1f472`；正式原资产Golden三生成逐字节一致，SHA256为`0d3a179c201f2d65dd29181e2db715c818b57be1f05e3724cf1d338745d08067`，历史59键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；栈探测、RNG helper、菜单与战斗caller均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

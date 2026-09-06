@@ -1159,47 +1159,93 @@ void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(setup.combatants()[slot].words[combatant_word::sprite] == expected_sprite);
     }
 
-    actor.set_word(openlegend::model::role_word::medicine, 20);
-    actor.set_word(openlegend::model::role_word::physical_power, 60);
-    target.set_word(openlegend::model::role_word::hp, 100);
-    target.set_word(openlegend::model::role_word::maximum_hp, 200);
-    target.set_word(openlegend::model::role_word::hurt, 41);
-    random.seed(1U);
-    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 0);
-    OL_CHECK(random.state() == 1'103'527'590U);
-    OL_CHECK(target.word(openlegend::model::role_word::hp) == 100);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 41);
-    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 58);
+    const auto check_medicine_value =
+        [&](const std::int16_t medicine,
+            const std::int16_t physical_power,
+            const std::int16_t hp,
+            const std::int16_t maximum_hp,
+            const std::int16_t hurt,
+            const std::int32_t expected_amount,
+            const std::int16_t expected_hp,
+            const std::int16_t expected_hurt,
+            const std::int16_t expected_physical_power) {
+            actor.set_word(openlegend::model::role_word::medicine, medicine);
+            actor.set_word(openlegend::model::role_word::physical_power, physical_power);
+            target.set_word(openlegend::model::role_word::hp, hp);
+            target.set_word(openlegend::model::role_word::maximum_hp, maximum_hp);
+            target.set_word(openlegend::model::role_word::hurt, hurt);
+            random.seed(1U);
+            const auto value = setup.apply_medicine_value(0U, 1U, random);
+            OL_CHECK(value.has_value());
+            OL_CHECK(*value == expected_amount);
+            OL_CHECK(random.state() == 1'103'527'590U);
+            OL_CHECK(target.word(openlegend::model::role_word::hp) == expected_hp);
+            OL_CHECK(target.word(openlegend::model::role_word::hurt) == expected_hurt);
+            OL_CHECK(
+                actor.word(openlegend::model::role_word::physical_power) ==
+                expected_physical_power);
+        };
 
-    actor.set_word(openlegend::model::role_word::medicine, 80);
-    actor.set_word(openlegend::model::role_word::physical_power, 49);
-    random.seed(1U);
-    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 0);
-    OL_CHECK(random.state() == 1U);
-    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
-
-    constexpr std::array<std::pair<std::int16_t, std::int32_t>, 4> kHurtBands{{
+    check_medicine_value(80, 50, 100, 200, 40, 63, 163, 0, 48);
+    constexpr std::array<std::pair<std::int16_t, std::int32_t>, 6> kHurtBands{{
         {25, 67},
         {26, 63},
+        {50, 63},
         {51, 56},
+        {75, 56},
         {76, 43},
     }};
     for (const auto [hurt, expected] : kHurtBands) {
-        actor.set_word(openlegend::model::role_word::physical_power, 60);
-        target.set_word(openlegend::model::role_word::hp, 0);
-        target.set_word(openlegend::model::role_word::maximum_hp, 1'000);
-        target.set_word(openlegend::model::role_word::hurt, hurt);
-        random.seed(1U);
-        OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == expected);
+        check_medicine_value(
+            80,
+            60,
+            0,
+            1'000,
+            hurt,
+            expected,
+            static_cast<std::int16_t>(expected),
+            0,
+            58);
     }
+    check_medicine_value(20, 60, 100, 200, 40, 18, 118, 20, 58);
+    check_medicine_value(20, 60, 100, 200, 41, 0, 100, 41, 58);
+    check_medicine_value(-1, 60, 100, 200, 19, 3, 103, 19, 58);
+    check_medicine_value(-1, 60, 100, 200, 20, 0, 100, 20, 58);
+    check_medicine_value(-32768, 60, 100, 200, 0, 0, 100, 0, 58);
+    check_medicine_value(32767, 32767, 0, 32767, 32767, 16386, 16386, 0, 32765);
+    check_medicine_value(80, 50, 0, 32767, -32768, 67, 67, 32688, 48);
+    check_medicine_value(80, 60, 190, 200, 40, 10, 200, 0, 58);
+    check_medicine_value(80, 60, 200, 100, 40, -100, 100, 0, 58);
+    check_medicine_value(80, 60, 32767, -32768, 40, -65535, -32768, 0, 58);
 
-    actor.set_word(openlegend::model::role_word::physical_power, 60);
-    target.set_word(openlegend::model::role_word::hp, 190);
+    actor.set_word(openlegend::model::role_word::medicine, 80);
+    actor.set_word(openlegend::model::role_word::physical_power, 49);
+    target.set_word(openlegend::model::role_word::hp, 100);
     target.set_word(openlegend::model::role_word::maximum_hp, 200);
     target.set_word(openlegend::model::role_word::hurt, 40);
     random.seed(1U);
-    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 10);
-    OL_CHECK(target.word(openlegend::model::role_word::hp) == 200);
+    OL_CHECK(setup.apply_medicine_value(0U, 1U, random) == 0);
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 100);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 40);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
+
+    actor.set_word(openlegend::model::role_word::medicine, 80);
+    actor.set_word(openlegend::model::role_word::physical_power, 51);
+    actor.set_word(openlegend::model::role_word::hp, 100);
+    actor.set_word(openlegend::model::role_word::maximum_hp, 200);
+    actor.set_word(openlegend::model::role_word::hurt, 40);
+    random.seed(1U);
+    OL_CHECK(apply_role_medicine_value(ranger, 1, 1, random) == 63);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(actor.word(openlegend::model::role_word::hp) == 163);
+    OL_CHECK(actor.word(openlegend::model::role_word::hurt) == 0);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
+    random.seed(1U);
+    OL_CHECK(!apply_role_medicine_value(ranger, -1, 1, random).has_value());
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(!apply_role_medicine_value(ranger, 1, 32767, random).has_value());
+    OL_CHECK(random.state() == 1U);
 
     data.occupancy()[26U * 64U + 26U] = -1;
     random.seed(1U);

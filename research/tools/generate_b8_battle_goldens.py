@@ -809,6 +809,16 @@ BATTLE_MEDICINE_ACTION_RELOCATION_OFFSETS = (
     0x1DC, 0x202, 0x20A,
 )
 BATTLE_MEDICINE_ACTION_CALLER_SITES = (0x36290, 0x39EE8)
+BATTLE_MEDICINE_VALUE_ADDRESS = 0x3A10C
+BATTLE_MEDICINE_VALUE_END = 0x3A29C
+BATTLE_MEDICINE_VALUE_CALL_OFFSETS = (0x005, 0x0CD)
+BATTLE_MEDICINE_VALUE_CALL_TARGETS = (0x3ED1E, 0x3D612)
+BATTLE_MEDICINE_VALUE_RELOCATION_OFFSETS = (
+    0x021, 0x02F, 0x045, 0x067, 0x090, 0x09A, 0x0B7, 0x0E5, 0x0F5,
+    0x110, 0x11A, 0x132, 0x139, 0x140, 0x149, 0x150, 0x160, 0x167,
+    0x171, 0x185,
+)
+BATTLE_MEDICINE_VALUE_CALLER_SITES = (0x2163B, 0x3A093)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -7150,6 +7160,262 @@ def battle_detox_value_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_medicine_value_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_MEDICINE_VALUE_ADDRESS,
+        end=BATTLE_MEDICINE_VALUE_END,
+        call_offsets=BATTLE_MEDICINE_VALUE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_MEDICINE_VALUE_CALL_TARGETS,
+        relocation_offsets=BATTLE_MEDICINE_VALUE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_MEDICINE_VALUE_CALLER_SITES,
+        instruction_count=103,
+        branch_count=15,
+    )
+    if contract["raw_sha256"] != (
+        "d5f8fa8f412f555f98c496abb0dbe933fbf58591b98298da0729ceeb17293868"
+    ):
+        raise ValueError("Z.DAT medicine-value raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "0eafabf1a8517ec451a14e08ddc29135e94e68fcb0767003c1e41a281ad315f8"
+    ):
+        raise ValueError("Z.DAT medicine-value relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("menu_caller", 0x21621, 0x21647,
+         "c36008511e480f6af5066cf841c7f9466f7ede1f309ea795f1e450af05b9151d"),
+        ("battle_caller", 0x3A078, 0x3A0C0,
+         "f854345cf8390df7dd0b72b98d40a0be3e826ae37663c1f6acad57eab95e7fcb"),
+        ("guard_medicine", 0x3A10C, 0x3A145,
+         "9007efb0dfed2953610f28ec86aa756bc82b7490898e1868bcb5a23c8a2688d8"),
+        ("hurt_bands", 0x3A145, 0x3A1D5,
+         "7634d87fe03d7fae3cb8a67d5d36e2ba7c947169eb766b0f741bcc52db5adc0b"),
+        ("rng_threshold", 0x3A1D5, 0x3A210,
+         "ddc9def3413be5526316406eb86b41662e3b1518e9b4f091f044a18fbf296df9"),
+        ("hp_cap_write", 0x3A210, 0x3A260,
+         "f55a3ac8c6a12db5873bff32e92ffc1a7de02fb7fb627092f860194adb256738"),
+        ("hurt_power_return", 0x3A260, 0x3A29C,
+         "e01b6a0cf7dec291d12f4d48dab80db86c63d0cb4dd0b1504c575b555a05ac51"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT medicine-value {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def i16(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value & 0x8000 else value
+
+    def trunc_div(value: int, divisor: int) -> int:
+        return -(abs(value) // divisor) if value < 0 else value // divisor
+
+    def next_random(state: int) -> tuple[int, int]:
+        state = (state * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
+        return state, (state >> 16) & 0x7FFF
+
+    def simulate(
+        medicine: int,
+        physical_power: int,
+        hp: int,
+        maximum_hp: int,
+        hurt: int,
+        seed: int,
+        *,
+        same_role_alias: bool = False,
+    ) -> dict[str, object]:
+        medicine_raw = i16(medicine)
+        power_before = i16(physical_power)
+        hp_before = i16(hp)
+        maximum_before = i16(maximum_hp)
+        hurt_before = i16(hurt)
+        if power_before < 50:
+            return {
+                "medicine_raw": medicine_raw,
+                "physical_power_before": power_before,
+                "hp_before": hp_before,
+                "maximum_hp": maximum_before,
+                "hurt_before": hurt_before,
+                "seed_before": seed,
+                "early_physical_power_guard": True,
+                "rng_outputs": [],
+                "rng_state_after": seed,
+                "base": None,
+                "strict_threshold_zeroed": False,
+                "medicine_for_hurt": None,
+                "amount_before_hp_cap": None,
+                "hp_cap_applied": False,
+                "hp_writes_i16": [],
+                "hurt_writes_i16": [],
+                "physical_power_writes_i16": [],
+                "hp_after": hp_before,
+                "hurt_after": hurt_before,
+                "physical_power_after": power_before,
+                "return_eax_i32": 0,
+                "return_ax_i16": 0,
+                "rng_calls": 0,
+                "same_role_alias": same_role_alias,
+            }
+        medicine_work = max(medicine_raw, 0)
+        if hurt_before <= 25:
+            band = "hurt_le_25"
+            base = trunc_div(4 * medicine_work, 5)
+        elif hurt_before <= 50:
+            band = "hurt_26_50"
+            base = trunc_div(3 * medicine_work, 4)
+        elif hurt_before <= 75:
+            band = "hurt_51_75"
+            base = trunc_div(2 * medicine_work, 3)
+        else:
+            band = "hurt_gt_75"
+            base = trunc_div(medicine_work, 2)
+        state, raw_rng = next_random(seed)
+        rng = raw_rng % 5
+        amount = base + rng
+        amount_before_hp_cap = amount
+        strict_threshold_zeroed = hurt_before > medicine_raw + 20
+        if strict_threshold_zeroed:
+            amount = 0
+            medicine_work = 0
+        hp_cap_applied = hp_before + amount > maximum_before
+        if hp_cap_applied:
+            amount = maximum_before - hp_before
+        hp_first = i16(hp_before + i16(amount))
+        hp_writes = [hp_first]
+        hp_after = hp_first
+        if hp_after > maximum_before:
+            hp_after = maximum_before
+            hp_writes.append(maximum_before)
+        hurt_first = i16(hurt_before - i16(medicine_work))
+        hurt_writes = [hurt_first]
+        hurt_after = hurt_first
+        if hurt_after < 0:
+            hurt_after = 0
+            hurt_writes.append(0)
+        power_after = i16(power_before - 2)
+        return {
+            "medicine_raw": medicine_raw,
+            "physical_power_before": power_before,
+            "hp_before": hp_before,
+            "maximum_hp": maximum_before,
+            "hurt_before": hurt_before,
+            "seed_before": seed,
+            "early_physical_power_guard": False,
+            "hurt_band": band,
+            "base": base,
+            "rng_outputs": [rng],
+            "rng_state_after": state,
+            "strict_threshold_zeroed": strict_threshold_zeroed,
+            "medicine_for_hurt": medicine_work,
+            "amount_before_hp_cap": amount_before_hp_cap,
+            "hp_cap_applied": hp_cap_applied,
+            "hp_writes_i16": hp_writes,
+            "hurt_writes_i16": hurt_writes,
+            "physical_power_writes_i16": [power_after],
+            "hp_after": hp_after,
+            "hurt_after": hurt_after,
+            "physical_power_after": power_after,
+            "return_eax_i32": amount,
+            "return_ax_i16": i16(amount),
+            "rng_calls": 1,
+            "same_role_alias": same_role_alias,
+        }
+
+    vectors = {
+        "normal": simulate(80, 51, 100, 200, 40, 1),
+        "power_49_early": simulate(80, 49, 100, 200, 40, 1),
+        "power_50_exact": simulate(80, 50, 100, 200, 40, 1),
+        "hurt_25": simulate(80, 60, 0, 1000, 25, 1),
+        "hurt_26": simulate(80, 60, 0, 1000, 26, 1),
+        "hurt_50": simulate(80, 60, 0, 1000, 50, 1),
+        "hurt_51": simulate(80, 60, 0, 1000, 51, 1),
+        "hurt_75": simulate(80, 60, 0, 1000, 75, 1),
+        "hurt_76": simulate(80, 60, 0, 1000, 76, 1),
+        "strict_threshold_equal": simulate(20, 60, 100, 200, 40, 1),
+        "strict_threshold_above": simulate(20, 60, 100, 200, 41, 1),
+        "negative_medicine_equal": simulate(-1, 60, 100, 200, 19, 1),
+        "negative_medicine_above": simulate(-1, 60, 100, 200, 20, 1),
+        "medicine_minimum": simulate(-32768, 60, 100, 200, 0, 1),
+        "medicine_maximum_hurt_maximum": simulate(32767, 32767, 0, 32767, 32767, 1),
+        "hurt_minimum_wrap": simulate(80, 50, 0, 32767, -32768, 1),
+        "hp_cap": simulate(80, 60, 190, 200, 40, 1),
+        "hp_above_max_negative_return": simulate(80, 60, 200, 100, 40, 1),
+        "hp_extreme_cap": simulate(80, 60, 32767, -32768, 40, 1),
+        "same_role_alias": simulate(80, 51, 100, 200, 40, 1, same_role_alias=True),
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+    if vector_sha256 != "f758d1f4dae67a61868a007a13336a7c94e1c11ed21332904c6f7b26b5b1f472":
+        raise ValueError("medicine-value independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 25,
+        "conditional_branch_count": 12,
+        "unconditional_jump_count": 3,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_MEDICINE_VALUE_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 20,
+        "local_return_sites": ["0x3a29b"],
+        "machine_slices": machine_slices,
+        "argument_contract": (
+            "four signed low16 arguments are passed; actor-slot and target-slot are "
+            "ignored while actor-role and target-role indices are consumed"
+        ),
+        "physical_power_contract": (
+            "signed power below50 returns0 before RNG or writes; otherwise the final "
+            "power word subtracts2 with int16 wrap and no clamp"
+        ),
+        "formula_contract": (
+            "negative medicine locally clamps0; signed target hurt selects inclusive "
+            "bands <=25 4/5, 26..50 3/4, 51..75 2/3, >75 1/2 with signed division"
+        ),
+        "threshold_contract": (
+            "one unconditional bounded(5) follows the band formula; strict signed hurt "
+            "> raw actor medicine +20 then clears heal and hurt-reduction amounts"
+        ),
+        "hp_contract": (
+            "signed current+amount greater than signed maximum changes full32 EBX to "
+            "maximum-current; HP adds BX low16 with wrap and then strictly clamps to maximum"
+        ),
+        "hurt_contract": (
+            "hurt subtracts the locally clamped medicine low16 with int16 wrap and only "
+            "a signed-negative result clamps0"
+        ),
+        "return_contract": (
+            "EAX preserves full32 EBX after HP cap, including -65535 while AX is1; it is "
+            "not necessarily the observable HP delta"
+        ),
+        "caller_contract": (
+            "sub_21496 passes dummy -1 slots plus actor/target role ids and saves full EAX; "
+            "sub_39EF7 passes real slots plus role ids and stores only DX as damage"
+        ),
+        "direct_rng_calls": "0 on power<50, otherwise exactly1",
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern helpers safely reject invalid role ids without RNG or writes; the battle "
+            "wrapper also rejects invalid slots although the raw kernel ignores slot arguments"
+        ),
+        "closure_boundary": (
+            "stack probe, bounded RNG helper, menu caller and medicine action caller remain "
+            "independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -11237,6 +11503,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_medicine_target_wrapper_machine":
             battle_medicine_target_wrapper_contract(z_dat_bytes),
         "battle_medicine_action_machine": battle_medicine_action_contract(z_dat_bytes),
+        "battle_medicine_value_machine": battle_medicine_value_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

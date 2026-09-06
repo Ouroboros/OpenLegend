@@ -11691,6 +11691,820 @@
     "platform_adaptation_boundary": "modern code safely rejects invalid actor, role, occupancy and y>=64 targets; it also avoids the machine empty-cell slot-minus-one side read",
     "closure_boundary": "stack probe, abs, medicine value, magic animation, damage animation, sprite helper, both callers and external shared tails remain independent owners"
   },
+  "battle_medicine_value_machine": {
+    "address": "0x3a10c",
+    "end": "0x3a29c",
+    "raw_offset": "0x33b0c",
+    "size": 400,
+    "instruction_count": 103,
+    "branch_count": 15,
+    "raw_sha256": "d5f8fa8f412f555f98c496abb0dbe933fbf58591b98298da0729ceeb17293868",
+    "loaded_sha256": "0eafabf1a8517ec451a14e08ddc29135e94e68fcb0767003c1e41a281ad315f8",
+    "relocation_count": 20,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3a111",
+      "0x3a1d9"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612"
+    ],
+    "callers": [
+      "0x2163b",
+      "0x3a093"
+    ],
+    "basic_block_count": 25,
+    "conditional_branch_count": 12,
+    "unconditional_jump_count": 3,
+    "relocation_offsets": [
+      "0x21",
+      "0x2f",
+      "0x45",
+      "0x67",
+      "0x90",
+      "0x9a",
+      "0xb7",
+      "0xe5",
+      "0xf5",
+      "0x110",
+      "0x11a",
+      "0x132",
+      "0x139",
+      "0x140",
+      "0x149",
+      "0x150",
+      "0x160",
+      "0x167",
+      "0x171",
+      "0x185"
+    ],
+    "stack_probe_bytes": 20,
+    "local_return_sites": [
+      "0x3a29b"
+    ],
+    "machine_slices": {
+      "menu_caller": {
+        "address": "0x21621",
+        "end": "0x21647",
+        "size": 38,
+        "sha256": "c36008511e480f6af5066cf841c7f9466f7ede1f309ea795f1e450af05b9151d"
+      },
+      "battle_caller": {
+        "address": "0x3a078",
+        "end": "0x3a0c0",
+        "size": 72,
+        "sha256": "f854345cf8390df7dd0b72b98d40a0be3e826ae37663c1f6acad57eab95e7fcb"
+      },
+      "guard_medicine": {
+        "address": "0x3a10c",
+        "end": "0x3a145",
+        "size": 57,
+        "sha256": "9007efb0dfed2953610f28ec86aa756bc82b7490898e1868bcb5a23c8a2688d8"
+      },
+      "hurt_bands": {
+        "address": "0x3a145",
+        "end": "0x3a1d5",
+        "size": 144,
+        "sha256": "7634d87fe03d7fae3cb8a67d5d36e2ba7c947169eb766b0f741bcc52db5adc0b"
+      },
+      "rng_threshold": {
+        "address": "0x3a1d5",
+        "end": "0x3a210",
+        "size": 59,
+        "sha256": "ddc9def3413be5526316406eb86b41662e3b1518e9b4f091f044a18fbf296df9"
+      },
+      "hp_cap_write": {
+        "address": "0x3a210",
+        "end": "0x3a260",
+        "size": 80,
+        "sha256": "f55a3ac8c6a12db5873bff32e92ffc1a7de02fb7fb627092f860194adb256738"
+      },
+      "hurt_power_return": {
+        "address": "0x3a260",
+        "end": "0x3a29c",
+        "size": 60,
+        "sha256": "e01b6a0cf7dec291d12f4d48dab80db86c63d0cb4dd0b1504c575b555a05ac51"
+      }
+    },
+    "argument_contract": "four signed low16 arguments are passed; actor-slot and target-slot are ignored while actor-role and target-role indices are consumed",
+    "physical_power_contract": "signed power below50 returns0 before RNG or writes; otherwise the final power word subtracts2 with int16 wrap and no clamp",
+    "formula_contract": "negative medicine locally clamps0; signed target hurt selects inclusive bands <=25 4/5, 26..50 3/4, 51..75 2/3, >75 1/2 with signed division",
+    "threshold_contract": "one unconditional bounded(5) follows the band formula; strict signed hurt > raw actor medicine +20 then clears heal and hurt-reduction amounts",
+    "hp_contract": "signed current+amount greater than signed maximum changes full32 EBX to maximum-current; HP adds BX low16 with wrap and then strictly clamps to maximum",
+    "hurt_contract": "hurt subtracts the locally clamped medicine low16 with int16 wrap and only a signed-negative result clamps0",
+    "return_contract": "EAX preserves full32 EBX after HP cap, including -65535 while AX is1; it is not necessarily the observable HP delta",
+    "caller_contract": "sub_21496 passes dummy -1 slots plus actor/target role ids and saves full EAX; sub_39EF7 passes real slots plus role ids and stores only DX as damage",
+    "direct_rng_calls": "0 on power<50, otherwise exactly1",
+    "vectors": {
+      "normal": {
+        "medicine_raw": 80,
+        "physical_power_before": 51,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          163
+        ],
+        "hurt_writes_i16": [
+          -40,
+          0
+        ],
+        "physical_power_writes_i16": [
+          49
+        ],
+        "hp_after": 163,
+        "hurt_after": 0,
+        "physical_power_after": 49,
+        "return_eax_i32": 63,
+        "return_ax_i16": 63,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "power_49_early": {
+        "medicine_raw": 80,
+        "physical_power_before": 49,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": true,
+        "rng_outputs": [],
+        "rng_state_after": 1,
+        "base": null,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": null,
+        "amount_before_hp_cap": null,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [],
+        "hurt_writes_i16": [],
+        "physical_power_writes_i16": [],
+        "hp_after": 100,
+        "hurt_after": 40,
+        "physical_power_after": 49,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 0,
+        "same_role_alias": false
+      },
+      "power_50_exact": {
+        "medicine_raw": 80,
+        "physical_power_before": 50,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          163
+        ],
+        "hurt_writes_i16": [
+          -40,
+          0
+        ],
+        "physical_power_writes_i16": [
+          48
+        ],
+        "hp_after": 163,
+        "hurt_after": 0,
+        "physical_power_after": 48,
+        "return_eax_i32": 63,
+        "return_ax_i16": 63,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_25": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 0,
+        "maximum_hp": 1000,
+        "hurt_before": 25,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_le_25",
+        "base": 64,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 67,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          67
+        ],
+        "hurt_writes_i16": [
+          -55,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 67,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 67,
+        "return_ax_i16": 67,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_26": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 0,
+        "maximum_hp": 1000,
+        "hurt_before": 26,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          63
+        ],
+        "hurt_writes_i16": [
+          -54,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 63,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 63,
+        "return_ax_i16": 63,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_50": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 0,
+        "maximum_hp": 1000,
+        "hurt_before": 50,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          63
+        ],
+        "hurt_writes_i16": [
+          -30,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 63,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 63,
+        "return_ax_i16": 63,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_51": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 0,
+        "maximum_hp": 1000,
+        "hurt_before": 51,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_51_75",
+        "base": 53,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 56,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          56
+        ],
+        "hurt_writes_i16": [
+          -29,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 56,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 56,
+        "return_ax_i16": 56,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_75": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 0,
+        "maximum_hp": 1000,
+        "hurt_before": 75,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_51_75",
+        "base": 53,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 56,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          56
+        ],
+        "hurt_writes_i16": [
+          -5,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 56,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 56,
+        "return_ax_i16": 56,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_76": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 0,
+        "maximum_hp": 1000,
+        "hurt_before": 76,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_gt_75",
+        "base": 40,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 43,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          43
+        ],
+        "hurt_writes_i16": [
+          -4,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 43,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 43,
+        "return_ax_i16": 43,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "strict_threshold_equal": {
+        "medicine_raw": 20,
+        "physical_power_before": 60,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 15,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 20,
+        "amount_before_hp_cap": 18,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          118
+        ],
+        "hurt_writes_i16": [
+          20
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 118,
+        "hurt_after": 20,
+        "physical_power_after": 58,
+        "return_eax_i32": 18,
+        "return_ax_i16": 18,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "strict_threshold_above": {
+        "medicine_raw": 20,
+        "physical_power_before": 60,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 41,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 15,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": true,
+        "medicine_for_hurt": 0,
+        "amount_before_hp_cap": 18,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          100
+        ],
+        "hurt_writes_i16": [
+          41
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 100,
+        "hurt_after": 41,
+        "physical_power_after": 58,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "negative_medicine_equal": {
+        "medicine_raw": -1,
+        "physical_power_before": 60,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 19,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_le_25",
+        "base": 0,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 0,
+        "amount_before_hp_cap": 3,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          103
+        ],
+        "hurt_writes_i16": [
+          19
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 103,
+        "hurt_after": 19,
+        "physical_power_after": 58,
+        "return_eax_i32": 3,
+        "return_ax_i16": 3,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "negative_medicine_above": {
+        "medicine_raw": -1,
+        "physical_power_before": 60,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 20,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_le_25",
+        "base": 0,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": true,
+        "medicine_for_hurt": 0,
+        "amount_before_hp_cap": 3,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          100
+        ],
+        "hurt_writes_i16": [
+          20
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 100,
+        "hurt_after": 20,
+        "physical_power_after": 58,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "medicine_minimum": {
+        "medicine_raw": -32768,
+        "physical_power_before": 60,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 0,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_le_25",
+        "base": 0,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": true,
+        "medicine_for_hurt": 0,
+        "amount_before_hp_cap": 3,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          100
+        ],
+        "hurt_writes_i16": [
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 100,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "medicine_maximum_hurt_maximum": {
+        "medicine_raw": 32767,
+        "physical_power_before": 32767,
+        "hp_before": 0,
+        "maximum_hp": 32767,
+        "hurt_before": 32767,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_gt_75",
+        "base": 16383,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 32767,
+        "amount_before_hp_cap": 16386,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          16386
+        ],
+        "hurt_writes_i16": [
+          0
+        ],
+        "physical_power_writes_i16": [
+          32765
+        ],
+        "hp_after": 16386,
+        "hurt_after": 0,
+        "physical_power_after": 32765,
+        "return_eax_i32": 16386,
+        "return_ax_i16": 16386,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hurt_minimum_wrap": {
+        "medicine_raw": 80,
+        "physical_power_before": 50,
+        "hp_before": 0,
+        "maximum_hp": 32767,
+        "hurt_before": -32768,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_le_25",
+        "base": 64,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 67,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          67
+        ],
+        "hurt_writes_i16": [
+          32688
+        ],
+        "physical_power_writes_i16": [
+          48
+        ],
+        "hp_after": 67,
+        "hurt_after": 32688,
+        "physical_power_after": 48,
+        "return_eax_i32": 67,
+        "return_ax_i16": 67,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hp_cap": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 190,
+        "maximum_hp": 200,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": true,
+        "hp_writes_i16": [
+          200
+        ],
+        "hurt_writes_i16": [
+          -40,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 200,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": 10,
+        "return_ax_i16": 10,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hp_above_max_negative_return": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 200,
+        "maximum_hp": 100,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": true,
+        "hp_writes_i16": [
+          100
+        ],
+        "hurt_writes_i16": [
+          -40,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": 100,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": -100,
+        "return_ax_i16": -100,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "hp_extreme_cap": {
+        "medicine_raw": 80,
+        "physical_power_before": 60,
+        "hp_before": 32767,
+        "maximum_hp": -32768,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": true,
+        "hp_writes_i16": [
+          -32768
+        ],
+        "hurt_writes_i16": [
+          -40,
+          0
+        ],
+        "physical_power_writes_i16": [
+          58
+        ],
+        "hp_after": -32768,
+        "hurt_after": 0,
+        "physical_power_after": 58,
+        "return_eax_i32": -65535,
+        "return_ax_i16": 1,
+        "rng_calls": 1,
+        "same_role_alias": false
+      },
+      "same_role_alias": {
+        "medicine_raw": 80,
+        "physical_power_before": 51,
+        "hp_before": 100,
+        "maximum_hp": 200,
+        "hurt_before": 40,
+        "seed_before": 1,
+        "early_physical_power_guard": false,
+        "hurt_band": "hurt_26_50",
+        "base": 60,
+        "rng_outputs": [
+          3
+        ],
+        "rng_state_after": 1103527590,
+        "strict_threshold_zeroed": false,
+        "medicine_for_hurt": 80,
+        "amount_before_hp_cap": 63,
+        "hp_cap_applied": false,
+        "hp_writes_i16": [
+          163
+        ],
+        "hurt_writes_i16": [
+          -40,
+          0
+        ],
+        "physical_power_writes_i16": [
+          49
+        ],
+        "hp_after": 163,
+        "hurt_after": 0,
+        "physical_power_after": 49,
+        "return_eax_i32": 63,
+        "return_ax_i16": 63,
+        "rng_calls": 1,
+        "same_role_alias": true
+      }
+    },
+    "vector_sha256": "f758d1f4dae67a61868a007a13336a7c94e1c11ed21332904c6f7b26b5b1f472",
+    "platform_adaptation_boundary": "modern helpers safely reject invalid role ids without RNG or writes; the battle wrapper also rejects invalid slots although the raw kernel ignores slot arguments",
+    "closure_boundary": "stack probe, bounded RNG helper, menu caller and medicine action caller remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
