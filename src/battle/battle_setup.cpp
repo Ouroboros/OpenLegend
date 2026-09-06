@@ -5377,7 +5377,8 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
     const auto& area_profile =
         cached_area_profile == nullptr ? *current_profile : *cached_area_profile;
     BattleAreaResult result{};
-    if (direction < 0 || direction > 3 || area_profile.select_distance < 1) {
+    if (direction < 0 || direction > 3 || area_profile.select_distance < 1 ||
+        area_profile.select_distance == std::numeric_limits<std::int16_t>::max()) {
         return result;
     }
     constexpr std::array<BattlePathCoord, 4> kDirections{

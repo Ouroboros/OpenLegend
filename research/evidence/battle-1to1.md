@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为53/81；其余28项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为54/81；其余27项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -131,9 +131,13 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 12. 直线area扫描
 
-`sub_38999` 已映射为 `apply_line_attack_area`。方向0/1/2/3对应上/右/左/下，逐格扫描到select distance；越界只跳过当前格，不终止循环。友军格跳过，空格写effect，敌方格始终调用HP伤害而不读取hurt_type，命中后仍继续后续距离；非法方向无操作。
+`sub_38999`机器身份固定为1043 bytes、248条指令、30个函数体跳转、69处加载时fixup、5次direct call和唯一caller；raw/loaded SHA256为`09606be94f8f5de92ffc88acaa7243b23643604ff6149662fe09afd6de0dace0`与`40d2e7e81e83001485a8b99019f765189b25923fd230eefae2b25d111a66d16e`。前置jump table `0x38989`映射0/1/2/3为上/右/左/下，raw/loaded hash为`466c05e8e910474415b130dc737efb9e70c199a8e1c6b8269a4778c81d91ffa4`与`516aa1e28958ddb5f2d367f72aff891a5d2ba4fa5391777f69d385bbdc67435f`。唯一caller `0x37E19`传缓存profile range、玩家输入或AI主轴方向与actor，忽略返回后续流`0x3826C`；全部出口跳独立共享尾`0x3CBDB`。
 
-固定向量：方向3下方空格+敌方hash `0xae7c1e4e161ac125`、damage29；中间友军跳过后仍命中第二格hash `0xab559939923b4f74`；非法方向空hash `0xb9d103fd6854a325`且不消费seed1。BattleSession现实际绘制方向提示、消费方向键、复用首击方向/缓存范围，并执行伤害与动画提交；提示整帧hash为`0x5e46c805f42677b0`。该函数完整状态边界已随`sub_37734`最终入口REVIEW关闭。
+参数只看低16位；方向其他值直接退出。range按signed word：`<=0`零迭代、`1..32766`精确扫描，`32767`因BX回绕永不返回。全部15条真实area-type1 magic的150个select-distance均在1..7。每格依次执行bounds、occupancy、同方skip、effect1、空格skip、敌方kind1、`sub_39188(...,distance)`及返回damage写目标word9；越界/友军/空格/敌方都不截断后续distance，且不检查HP/hidden、不读取hurt_type、不直接耗RNG。
+
+首轮汇编→C++对照发现现代将机器非终止`range=32767`误作有限32767步执行；现只对该signed值进入前安全拒绝。修正后从入口重新覆盖248条指令、30分支、69处fixup、四方向循环、唯一caller和全部共享尾出口，合法caller状态零剩余产品差异。四方向友军skip+敌方distance3 hash为`0x0c51a09fb032df25/0x80f86a7090dd8f15/0x53328f08db3e6d15/0xdd9b44614652df25`，先越界后重新入界hash `0x32329c4e241f2c3d`；原battle4空格+敌方hash `0xae7c1e4e161ac125`/damage29，友军skip后继续hash `0xab559939923b4f74`，空图hash `0xb9d103fd6854a325`。HP0且hidden1目标、连续两敌人、非法方向/zero/max range、方向不改写及双击复用首轮方向/缓存范围均有区分回归；提示整帧hash `0x5e46c805f42677b0`。
+
+独立Golden三生成逐字节一致，SHA256为`e7c4b24495a6ddab76b449e11473d31dc982705a5bf9d37774a20fc17b9ea276`；Linux Clang 23根`./build.sh app --config Debug`通过14/14。order54独立归类`platform_adapted / converged_after_fix`；jump table、HP damage、direction prompt/input、attack core caller、FIGHT/EFT/damage与共享尾不传播closure。
 
 ## 13. 攻击动画时间线
 

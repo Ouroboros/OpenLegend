@@ -678,6 +678,23 @@ BATTLE_DAMAGE_ANIMATION_RELOCATION_OFFSETS = (
 BATTLE_DAMAGE_ANIMATION_CALLER_SITES = (
     0x35DDB, 0x360E9, 0x382D5, 0x399D2, 0x39D72, 0x3A0DB, 0x3A83B,
 )
+BATTLE_LINE_ATTACK_ADDRESS = 0x38999
+BATTLE_LINE_ATTACK_END = 0x38DAC
+BATTLE_LINE_ATTACK_CALL_OFFSETS = (0x005, 0x0E6, 0x1DE, 0x2D6, 0x3D3)
+BATTLE_LINE_ATTACK_CALL_TARGETS = (0x3ED1E, 0x39188, 0x39188, 0x39188, 0x39188)
+BATTLE_LINE_ATTACK_RELOCATION_OFFSETS = (
+    0x02A, 0x043, 0x05A, 0x062, 0x06C, 0x073, 0x08F, 0x09E, 0x0A9,
+    0x0B2, 0x0BE, 0x0C9, 0x0D4, 0x0DC, 0x0F1, 0x0FD, 0x105, 0x10F,
+    0x139, 0x14E, 0x159, 0x163, 0x16A, 0x182, 0x197, 0x1A4, 0x1AD,
+    0x1B9, 0x1C4, 0x1CF, 0x1D7, 0x1E9, 0x1F3, 0x1FF, 0x209, 0x233,
+    0x247, 0x252, 0x25C, 0x263, 0x27F, 0x28D, 0x299, 0x2A2, 0x2AE,
+    0x2B9, 0x2C4, 0x2CC, 0x2E1, 0x2EF, 0x2FE, 0x308, 0x332, 0x34A,
+    0x352, 0x35C, 0x363, 0x37B, 0x38E, 0x399, 0x3A2, 0x3AE, 0x3B9,
+    0x3C4, 0x3CC, 0x3DE, 0x3EC, 0x3F4, 0x3FE,
+)
+BATTLE_LINE_ATTACK_CALLER_SITES = (0x37E19,)
+BATTLE_LINE_ATTACK_JUMP_TABLE_ADDRESS = 0x38989
+BATTLE_LINE_ATTACK_SHARED_TAIL_ADDRESS = 0x3CBDB
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -4289,6 +4306,261 @@ def battle_damage_animation_contract(z_dat_bytes: bytes) -> dict[str, object]:
         ),
         "closure_boundary": (
             "renderer, present, delay, stack probe and all seven callers remain independent owners"
+        ),
+    }
+
+
+def battle_line_attack_contract(
+    z_dat_bytes: bytes,
+    magic_bytes: bytes,
+) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_LINE_ATTACK_ADDRESS,
+        end=BATTLE_LINE_ATTACK_END,
+        call_offsets=BATTLE_LINE_ATTACK_CALL_OFFSETS,
+        expected_call_targets=BATTLE_LINE_ATTACK_CALL_TARGETS,
+        relocation_offsets=BATTLE_LINE_ATTACK_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_LINE_ATTACK_CALLER_SITES,
+        instruction_count=248,
+        branch_count=30,
+    )
+    if contract["raw_sha256"] != (
+        "09606be94f8f5de92ffc88acaa7243b23643604ff6149662fe09afd6de0dace0"
+    ):
+        raise ValueError("Z.DAT line-attack raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "40d2e7e81e83001485a8b99019f765189b25923fd230eefae2b25d111a66d16e"
+    ):
+        raise ValueError("Z.DAT line-attack relocation image changed")
+
+    jump_table_offset = BATTLE_LINE_ATTACK_JUMP_TABLE_ADDRESS - Z_DAT_LOAD_BASE
+    raw_jump_table = z_dat_bytes[jump_table_offset:jump_table_offset + 16]
+    jump_targets_raw = struct.unpack("<4I", raw_jump_table)
+    loaded_jump_table = struct.pack(
+        "<4I", *(target + 0x20000 for target in jump_targets_raw)
+    )
+    if sha256(raw_jump_table) != (
+        "466c05e8e910474415b130dc737efb9e70c199a8e1c6b8269a4778c81d91ffa4"
+    ):
+        raise ValueError("Z.DAT line-attack jump table raw bytes changed")
+    if sha256(loaded_jump_table) != (
+        "516aa1e28958ddb5f2d367f72aff891a5d2ba4fa5391777f69d385bbdc67435f"
+    ):
+        raise ValueError("Z.DAT line-attack jump table relocation image changed")
+    jump_targets = [target + 0x20000 for target in jump_targets_raw]
+    if jump_targets != [0x389C7, 0x38ABD, 0x38BB7, 0x38CB6]:
+        raise ValueError("Z.DAT line-attack direction targets changed")
+
+    machine_slices = {
+        "caller": z_dat_bytes[0x37E07 - Z_DAT_LOAD_BASE:0x37E26 - Z_DAT_LOAD_BASE].hex(),
+        "direction_dispatch": z_dat_bytes[
+            0x389AE - Z_DAT_LOAD_BASE:0x389C7 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "north_loop": z_dat_bytes[
+            0x389C7 - Z_DAT_LOAD_BASE:0x38ABD - Z_DAT_LOAD_BASE
+        ].hex(),
+        "east_loop": z_dat_bytes[
+            0x38ABD - Z_DAT_LOAD_BASE:0x38BB7 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "west_loop": z_dat_bytes[
+            0x38BB7 - Z_DAT_LOAD_BASE:0x38CB6 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "south_loop": z_dat_bytes[
+            0x38CB6 - Z_DAT_LOAD_BASE:0x38DAC - Z_DAT_LOAD_BASE
+        ].hex(),
+        "shared_tail": z_dat_bytes[
+            BATTLE_LINE_ATTACK_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE:
+            BATTLE_LINE_ATTACK_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE + 8
+        ].hex(),
+    }
+    if machine_slices["caller"] != (
+        "0fbf442428500fbf442420500fbf44244850e87b0b000083c40ce946040000"
+    ):
+        raise ValueError("Z.DAT line-attack caller arguments changed")
+    if machine_slices["direction_dispatch"] != (
+        "66837c2430030f87214200000fb74424302eff248589890100"
+    ):
+        raise ValueError("Z.DAT line-attack direction dispatch changed")
+    if machine_slices["shared_tail"] != "83c4185d5f5e5bc3":
+        raise ValueError("Z.DAT line-attack shared tail changed")
+    loop_hashes = {
+        direction: sha256(bytes.fromhex(machine_slices[f"{direction}_loop"]))
+        for direction in ("north", "east", "west", "south")
+    }
+    if loop_hashes != {
+        "north": "80332d80297c823141dbba270f18c59d8e0d9873b7b0e2b6f35e714597f37cd0",
+        "east": "de510033f91d9277264169a0c6e8873b30b6b91f20b3ca26bfa89e5ab69ef872",
+        "west": "01ae5c284474a7d5893726d130af569b174768c91735f00b84d9a347a1eba97f",
+        "south": "5275828a708f5a9479314ad46b8fb65dcd7f4d2c7d42a5e052ba35eb48309fef",
+    }:
+        raise ValueError("Z.DAT line-attack direction loop bytes changed")
+
+    if len(magic_bytes) != 93 * 136:
+        raise ValueError("RANGER.GRP does not contain 93 complete magic records")
+    line_magic_profiles = []
+    for index in range(93):
+        words = struct.unpack_from("<68h", magic_bytes, index * 136)
+        if words[15] == 1:
+            line_magic_profiles.append({
+                "record_index": index,
+                "magic_id": words[0],
+                "select_distance": list(words[28:38]),
+            })
+    if line_magic_profiles != [
+        {"record_index": 4, "magic_id": 4, "select_distance": [1, 2, 3, 4, 4, 4, 4, 4, 4, 4]},
+        {"record_index": 8, "magic_id": 8, "select_distance": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4]},
+        {"record_index": 12, "magic_id": 12, "select_distance": [2, 2, 3, 3, 4, 4, 5, 5, 6, 6]},
+        {"record_index": 19, "magic_id": 19, "select_distance": [1, 1, 2, 2, 3, 3, 4, 5, 6, 7]},
+        {"record_index": 22, "magic_id": 22, "select_distance": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]},
+        {"record_index": 30, "magic_id": 30, "select_distance": [3, 3, 3, 4, 4, 5, 5, 6, 6, 7]},
+        {"record_index": 39, "magic_id": 39, "select_distance": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4]},
+        {"record_index": 41, "magic_id": 41, "select_distance": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4]},
+        {"record_index": 46, "magic_id": 46, "select_distance": [2, 2, 2, 3, 3, 3, 4, 4, 4, 5]},
+        {"record_index": 48, "magic_id": 48, "select_distance": [2, 2, 3, 3, 4, 4, 5, 5, 6, 6]},
+        {"record_index": 59, "magic_id": 59, "select_distance": [2, 2, 3, 3, 3, 4, 4, 4, 5, 5]},
+        {"record_index": 66, "magic_id": 66, "select_distance": [2, 2, 2, 3, 3, 3, 4, 4, 4, 5]},
+        {"record_index": 74, "magic_id": 74, "select_distance": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4]},
+        {"record_index": 83, "magic_id": 83, "select_distance": [3, 3, 3, 4, 4, 4, 5, 5, 5, 6]},
+        {"record_index": 89, "magic_id": 89, "select_distance": [2, 2, 2, 3, 3, 3, 4, 4, 4, 5]},
+    ]:
+        raise ValueError("RANGER.GRP line-attack profile ranges changed")
+
+    directions = ((0, -1), (1, 0), (-1, 0), (0, 1))
+
+    def simulate_line(
+        actor: tuple[int, int],
+        direction_argument: int,
+        range_argument: int,
+        occupants: dict[tuple[int, int], tuple[int, int]],
+    ) -> dict[str, object]:
+        direction = wrapping_i16(direction_argument)
+        range_word = wrapping_i16(range_argument)
+        if direction < 0 or direction > 3 or range_word <= 0:
+            return {"marked": [], "damage_calls": [], "effect_hash": fnv1a_words([0] * 4096)}
+        if range_word == 0x7FFF:
+            return {"nonterminating_bx_wrap": True}
+        delta_x, delta_y = directions[direction]
+        effects = [0] * 4096
+        marked = []
+        damage_calls = []
+        for distance in range(1, range_word + 1):
+            x = actor[0] + delta_x * distance
+            y = actor[1] + delta_y * distance
+            if x < 0 or x >= 64 or y < 0 or y >= 64:
+                continue
+            occupant, side = occupants.get((x, y), (-1, 0))
+            if occupant != -1 and side == 0:
+                continue
+            effects[y * 64 + x] = 1
+            marked.append([x, y])
+            if occupant != -1:
+                damage_calls.append({
+                    "target_slot": occupant,
+                    "distance": distance,
+                    "damage_kind": 1,
+                    "write_target_word": 9,
+                })
+        return {
+            "marked": marked,
+            "damage_calls": damage_calls,
+            "effect_hash": fnv1a_words(effects),
+        }
+
+    directional_vectors = {
+        str(direction): simulate_line(
+            (10, 10), direction, 3,
+            {
+                (10 + directions[direction][0] * 2,
+                 10 + directions[direction][1] * 2): (0, 0),
+                (10 + directions[direction][0] * 3,
+                 10 + directions[direction][1] * 3): (2, 1),
+            },
+        )
+        for direction in range(4)
+    }
+    if [directional_vectors[str(index)]["effect_hash"] for index in range(4)] != [
+        "0x0c51a09fb032df25",
+        "0x80f86a7090dd8f15",
+        "0x53328f08db3e6d15",
+        "0xdd9b44614652df25",
+    ]:
+        raise ValueError("line-attack direction vectors changed")
+    continue_after_oob = simulate_line((-2, 10), 1, 3, {})
+    if continue_after_oob["marked"] != [[0, 10], [1, 10]]:
+        raise ValueError("line-attack out-of-bounds continuation changed")
+    enemies_do_not_stop = simulate_line(
+        (10, 10), 1, 3,
+        {(11, 10): (1, 1), (13, 10): (2, 1)},
+    )
+    if enemies_do_not_stop["damage_calls"] != [
+        {"target_slot": 1, "distance": 1, "damage_kind": 1, "write_target_word": 9},
+        {"target_slot": 2, "distance": 3, "damage_kind": 1, "write_target_word": 9},
+    ]:
+        raise ValueError("line-attack enemy continuation changed")
+
+    malformed_vectors = {
+        "direction_4": simulate_line((10, 10), 4, 3, {}),
+        "direction_high_word_ignored": simulate_line((10, 10), 0x10003, 1, {}),
+        "range_zero": simulate_line((10, 10), 1, 0, {}),
+        "range_negative": simulate_line((10, 10), 1, 0xFFFF, {}),
+        "range_high_word_ignored": simulate_line((10, 10), 1, 0x10001, {}),
+        "range_32767": simulate_line((10, 10), 1, 0x7FFF, {}),
+    }
+    if malformed_vectors["direction_high_word_ignored"]["marked"] != [[10, 11]]:
+        raise ValueError("line-attack direction high-word handling changed")
+    if malformed_vectors["range_high_word_ignored"]["marked"] != [[11, 10]]:
+        raise ValueError("line-attack range high-word handling changed")
+    if malformed_vectors["range_32767"] != {"nonterminating_bx_wrap": True}:
+        raise ValueError("line-attack BX wrap behavior changed")
+
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_LINE_ATTACK_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 56,
+        "jump_table": {
+            "address": hex(BATTLE_LINE_ATTACK_JUMP_TABLE_ADDRESS),
+            "raw_sha256": sha256(raw_jump_table),
+            "loaded_sha256": sha256(loaded_jump_table),
+            "targets": [hex(target) for target in jump_targets],
+            "direction_map": {"0": "north", "1": "east", "2": "west", "3": "south"},
+        },
+        "loop_slice_sha256": loop_hashes,
+        "caller_sequence": machine_slices["caller"],
+        "caller_role": (
+            "0x37e19 pushes actor, direction, cached signed attack-profile select distance, actor; "
+            "ignores EAX and continues at 0x3826c"
+        ),
+        "argument_words": "direction and range use only signed low 16 bits",
+        "range_semantics": (
+            "signed <=0 performs zero iterations; 1..32766 visits exact distances; 32767 "
+            "increments BX through -32768 and never terminates"
+        ),
+        "cell_order": (
+            "for each distance: bounds; occupancy; same-side skip; effect=1; empty skip; "
+            "damage kind=1; delegated HP damage(distance); reread occupancy; target word9=AX"
+        ),
+        "ray_blocking": "out-of-bounds, friendly, empty and enemy cells never stop later distances",
+        "target_filters": "no HP or occupancy-hidden test",
+        "direct_rng_draws": 0,
+        "delegated_rng_owner": "0x39188 HP damage",
+        "line_magic_profiles": line_magic_profiles,
+        "asset_range_domain": {"minimum": 1, "maximum": 7, "profile_count": 15},
+        "directional_vectors": directional_vectors,
+        "continue_after_out_of_bounds": continue_after_oob,
+        "enemies_do_not_stop": enemies_do_not_stop,
+        "malformed_vectors": malformed_vectors,
+        "shared_tail": {
+            "address": hex(BATTLE_LINE_ATTACK_SHARED_TAIL_ADDRESS),
+            "bytes": machine_slices["shared_tail"],
+            "sha256": sha256(bytes.fromhex(machine_slices["shared_tail"])),
+            "owner": "external shared epilogue",
+        },
+        "closure_boundary": (
+            "jump table, cached-profile caller, HP damage, direction prompt/input, attack animation "
+            "and shared-tail owner remain independent"
         ),
     }
 
@@ -8222,6 +8494,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_throwing_effect_animation_machine":
             battle_throwing_effect_animation_contract(z_dat_bytes),
         "battle_damage_animation_machine": battle_damage_animation_contract(z_dat_bytes),
+        "battle_line_attack_machine": battle_line_attack_contract(z_dat_bytes, magic_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

@@ -5100,6 +5100,564 @@
     "caller_state_boundary": "damage-kind selection, target mutation, sprite refresh, item consumption and action commit remain in the seven independent caller owners",
     "closure_boundary": "renderer, present, delay, stack probe and all seven callers remain independent owners"
   },
+  "battle_line_attack_machine": {
+    "address": "0x38999",
+    "end": "0x38dac",
+    "raw_offset": "0x32399",
+    "size": 1043,
+    "instruction_count": 248,
+    "branch_count": 30,
+    "raw_sha256": "09606be94f8f5de92ffc88acaa7243b23643604ff6149662fe09afd6de0dace0",
+    "loaded_sha256": "40d2e7e81e83001485a8b99019f765189b25923fd230eefae2b25d111a66d16e",
+    "relocation_count": 69,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3899e",
+      "0x38a7f",
+      "0x38b77",
+      "0x38c6f",
+      "0x38d6c"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x39188",
+      "0x39188",
+      "0x39188",
+      "0x39188"
+    ],
+    "callers": [
+      "0x37e19"
+    ],
+    "relocation_offsets": [
+      "0x2a",
+      "0x43",
+      "0x5a",
+      "0x62",
+      "0x6c",
+      "0x73",
+      "0x8f",
+      "0x9e",
+      "0xa9",
+      "0xb2",
+      "0xbe",
+      "0xc9",
+      "0xd4",
+      "0xdc",
+      "0xf1",
+      "0xfd",
+      "0x105",
+      "0x10f",
+      "0x139",
+      "0x14e",
+      "0x159",
+      "0x163",
+      "0x16a",
+      "0x182",
+      "0x197",
+      "0x1a4",
+      "0x1ad",
+      "0x1b9",
+      "0x1c4",
+      "0x1cf",
+      "0x1d7",
+      "0x1e9",
+      "0x1f3",
+      "0x1ff",
+      "0x209",
+      "0x233",
+      "0x247",
+      "0x252",
+      "0x25c",
+      "0x263",
+      "0x27f",
+      "0x28d",
+      "0x299",
+      "0x2a2",
+      "0x2ae",
+      "0x2b9",
+      "0x2c4",
+      "0x2cc",
+      "0x2e1",
+      "0x2ef",
+      "0x2fe",
+      "0x308",
+      "0x332",
+      "0x34a",
+      "0x352",
+      "0x35c",
+      "0x363",
+      "0x37b",
+      "0x38e",
+      "0x399",
+      "0x3a2",
+      "0x3ae",
+      "0x3b9",
+      "0x3c4",
+      "0x3cc",
+      "0x3de",
+      "0x3ec",
+      "0x3f4",
+      "0x3fe"
+    ],
+    "stack_probe_bytes": 56,
+    "jump_table": {
+      "address": "0x38989",
+      "raw_sha256": "466c05e8e910474415b130dc737efb9e70c199a8e1c6b8269a4778c81d91ffa4",
+      "loaded_sha256": "516aa1e28958ddb5f2d367f72aff891a5d2ba4fa5391777f69d385bbdc67435f",
+      "targets": [
+        "0x389c7",
+        "0x38abd",
+        "0x38bb7",
+        "0x38cb6"
+      ],
+      "direction_map": {
+        "0": "north",
+        "1": "east",
+        "2": "west",
+        "3": "south"
+      }
+    },
+    "loop_slice_sha256": {
+      "north": "80332d80297c823141dbba270f18c59d8e0d9873b7b0e2b6f35e714597f37cd0",
+      "east": "de510033f91d9277264169a0c6e8873b30b6b91f20b3ca26bfa89e5ab69ef872",
+      "west": "01ae5c284474a7d5893726d130af569b174768c91735f00b84d9a347a1eba97f",
+      "south": "5275828a708f5a9479314ad46b8fb65dcd7f4d2c7d42a5e052ba35eb48309fef"
+    },
+    "caller_sequence": "0fbf442428500fbf442420500fbf44244850e87b0b000083c40ce946040000",
+    "caller_role": "0x37e19 pushes actor, direction, cached signed attack-profile select distance, actor; ignores EAX and continues at 0x3826c",
+    "argument_words": "direction and range use only signed low 16 bits",
+    "range_semantics": "signed <=0 performs zero iterations; 1..32766 visits exact distances; 32767 increments BX through -32768 and never terminates",
+    "cell_order": "for each distance: bounds; occupancy; same-side skip; effect=1; empty skip; damage kind=1; delegated HP damage(distance); reread occupancy; target word9=AX",
+    "ray_blocking": "out-of-bounds, friendly, empty and enemy cells never stop later distances",
+    "target_filters": "no HP or occupancy-hidden test",
+    "direct_rng_draws": 0,
+    "delegated_rng_owner": "0x39188 HP damage",
+    "line_magic_profiles": [
+      {
+        "record_index": 4,
+        "magic_id": 4,
+        "select_distance": [
+          1,
+          2,
+          3,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ]
+      },
+      {
+        "record_index": 8,
+        "magic_id": 8,
+        "select_distance": [
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4
+        ]
+      },
+      {
+        "record_index": 12,
+        "magic_id": 12,
+        "select_distance": [
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6
+        ]
+      },
+      {
+        "record_index": 19,
+        "magic_id": 19,
+        "select_distance": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      {
+        "record_index": 22,
+        "magic_id": 22,
+        "select_distance": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5
+        ]
+      },
+      {
+        "record_index": 30,
+        "magic_id": 30,
+        "select_distance": [
+          3,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7
+        ]
+      },
+      {
+        "record_index": 39,
+        "magic_id": 39,
+        "select_distance": [
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4
+        ]
+      },
+      {
+        "record_index": 41,
+        "magic_id": 41,
+        "select_distance": [
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4
+        ]
+      },
+      {
+        "record_index": 46,
+        "magic_id": 46,
+        "select_distance": [
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5
+        ]
+      },
+      {
+        "record_index": 48,
+        "magic_id": 48,
+        "select_distance": [
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6
+        ]
+      },
+      {
+        "record_index": 59,
+        "magic_id": 59,
+        "select_distance": [
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5
+        ]
+      },
+      {
+        "record_index": 66,
+        "magic_id": 66,
+        "select_distance": [
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5
+        ]
+      },
+      {
+        "record_index": 74,
+        "magic_id": 74,
+        "select_distance": [
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4
+        ]
+      },
+      {
+        "record_index": 83,
+        "magic_id": 83,
+        "select_distance": [
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          6
+        ]
+      },
+      {
+        "record_index": 89,
+        "magic_id": 89,
+        "select_distance": [
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          5
+        ]
+      }
+    ],
+    "asset_range_domain": {
+      "minimum": 1,
+      "maximum": 7,
+      "profile_count": 15
+    },
+    "directional_vectors": {
+      "0": {
+        "marked": [
+          [
+            10,
+            9
+          ],
+          [
+            10,
+            7
+          ]
+        ],
+        "damage_calls": [
+          {
+            "target_slot": 2,
+            "distance": 3,
+            "damage_kind": 1,
+            "write_target_word": 9
+          }
+        ],
+        "effect_hash": "0x0c51a09fb032df25"
+      },
+      "1": {
+        "marked": [
+          [
+            11,
+            10
+          ],
+          [
+            13,
+            10
+          ]
+        ],
+        "damage_calls": [
+          {
+            "target_slot": 2,
+            "distance": 3,
+            "damage_kind": 1,
+            "write_target_word": 9
+          }
+        ],
+        "effect_hash": "0x80f86a7090dd8f15"
+      },
+      "2": {
+        "marked": [
+          [
+            9,
+            10
+          ],
+          [
+            7,
+            10
+          ]
+        ],
+        "damage_calls": [
+          {
+            "target_slot": 2,
+            "distance": 3,
+            "damage_kind": 1,
+            "write_target_word": 9
+          }
+        ],
+        "effect_hash": "0x53328f08db3e6d15"
+      },
+      "3": {
+        "marked": [
+          [
+            10,
+            11
+          ],
+          [
+            10,
+            13
+          ]
+        ],
+        "damage_calls": [
+          {
+            "target_slot": 2,
+            "distance": 3,
+            "damage_kind": 1,
+            "write_target_word": 9
+          }
+        ],
+        "effect_hash": "0xdd9b44614652df25"
+      }
+    },
+    "continue_after_out_of_bounds": {
+      "marked": [
+        [
+          0,
+          10
+        ],
+        [
+          1,
+          10
+        ]
+      ],
+      "damage_calls": [],
+      "effect_hash": "0x32329c4e241f2c3d"
+    },
+    "enemies_do_not_stop": {
+      "marked": [
+        [
+          11,
+          10
+        ],
+        [
+          12,
+          10
+        ],
+        [
+          13,
+          10
+        ]
+      ],
+      "damage_calls": [
+        {
+          "target_slot": 1,
+          "distance": 1,
+          "damage_kind": 1,
+          "write_target_word": 9
+        },
+        {
+          "target_slot": 2,
+          "distance": 3,
+          "damage_kind": 1,
+          "write_target_word": 9
+        }
+      ],
+      "effect_hash": "0x7cc06d20e5f94944"
+    },
+    "malformed_vectors": {
+      "direction_4": {
+        "marked": [],
+        "damage_calls": [],
+        "effect_hash": "0xb9d103fd6854a325"
+      },
+      "direction_high_word_ignored": {
+        "marked": [
+          [
+            10,
+            11
+          ]
+        ],
+        "damage_calls": [],
+        "effect_hash": "0xed5092f0c927f8f4"
+      },
+      "range_zero": {
+        "marked": [],
+        "damage_calls": [],
+        "effect_hash": "0xb9d103fd6854a325"
+      },
+      "range_negative": {
+        "marked": [],
+        "damage_calls": [],
+        "effect_hash": "0xb9d103fd6854a325"
+      },
+      "range_high_word_ignored": {
+        "marked": [
+          [
+            11,
+            10
+          ]
+        ],
+        "damage_calls": [],
+        "effect_hash": "0x650d485b65bfd95c"
+      },
+      "range_32767": {
+        "nonterminating_bx_wrap": true
+      }
+    },
+    "shared_tail": {
+      "address": "0x3cbdb",
+      "bytes": "83c4185d5f5e5bc3",
+      "sha256": "42180fdd49c1d27e1e5973f23c36803a3a176aaefc1cfc7d4afe512e005109e1",
+      "owner": "external shared epilogue"
+    },
+    "closure_boundary": "jump table, cached-profile caller, HP damage, direction prompt/input, attack animation and shared-tail owner remain independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
