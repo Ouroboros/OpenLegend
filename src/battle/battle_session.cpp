@@ -591,6 +591,11 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         --player_magic_presentations_before_input_;
         return;
     }
+    if (phase_ == BattleSessionPhase::player_item_selection &&
+        player_item_ != nullptr && player_item_presentations_before_input_ > 0U) {
+        --player_item_presentations_before_input_;
+        return;
+    }
     if ((phase_ == BattleSessionPhase::player_movement_select ||
          phase_ == BattleSessionPhase::player_targeting_select) &&
         player_cursor_selection_.has_value() &&
@@ -2366,6 +2371,7 @@ bool BattleSession::begin_player_item_selection() {
         .effect_result = std::nullopt,
         .inventory_consumed = false,
     });
+    player_item_presentations_before_input_ = 1U;
     phase_ = BattleSessionPhase::player_item_selection;
     diagnostics::log_info(
         "battle player item selection ready id=" + std::to_string(battle_id()) +
@@ -2376,7 +2382,7 @@ bool BattleSession::begin_player_item_selection() {
 
 BattleSessionInputResult BattleSession::handle_player_item_key(
     const std::uint8_t translated_key) {
-    if (!player_item_) {
+    if (!player_item_ || player_item_presentations_before_input_ > 0U) {
         return BattleSessionInputResult::ignored;
     }
     auto& item = *player_item_;
@@ -2408,6 +2414,7 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
         diagnostics::log_info(
             "battle player item selection cancelled id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_));
+        player_item_presentations_before_input_ = 0U;
         player_item_.reset();
         if (!finish_player_action_call()) {
             return BattleSessionInputResult::ignored;
@@ -2466,6 +2473,7 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
                     error_ = "battle player zero-effect item completion failed";
                     return BattleSessionInputResult::ignored;
                 }
+                player_item_presentations_before_input_ = 0U;
                 player_item_.reset();
                 if (!finish_player_action_call()) {
                     return BattleSessionInputResult::ignored;
@@ -2473,16 +2481,19 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
                 return BattleSessionInputResult::item_selected;
             }
             item.effect_result = std::move(*effect);
+            player_item_presentations_before_input_ = 0U;
             phase_ = BattleSessionPhase::player_item_effect_present;
             return BattleSessionInputResult::item_selected;
         }
         if (item_type == 4 && begin_player_targeting(BattlePlayerAction::item)) {
+            player_item_presentations_before_input_ = 0U;
             return BattleSessionInputResult::item_selected;
         }
         error_ = "battle player item type is outside filtered records";
         return BattleSessionInputResult::ignored;
     }
 
+    player_item_presentations_before_input_ = 1U;
     diagnostics::log_debug(
         "battle player item cursor id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +

@@ -819,6 +819,12 @@ BATTLE_MEDICINE_VALUE_RELOCATION_OFFSETS = (
     0x171, 0x185,
 )
 BATTLE_MEDICINE_VALUE_CALLER_SITES = (0x2163B, 0x3A093)
+BATTLE_PLAYER_ITEM_WRAPPER_ADDRESS = 0x3A29C
+BATTLE_PLAYER_ITEM_WRAPPER_END = 0x3A30B
+BATTLE_PLAYER_ITEM_WRAPPER_CALL_OFFSETS = (0x005, 0x010, 0x01E, 0x038, 0x04A)
+BATTLE_PLAYER_ITEM_WRAPPER_CALL_TARGETS = (0x3ED1E, 0x2A10F, 0x2A186, 0x2A86C, 0x3A30B)
+BATTLE_PLAYER_ITEM_WRAPPER_RELOCATION_OFFSETS = (0x031, 0x064)
+BATTLE_PLAYER_ITEM_WRAPPER_CALLER_SITES = (0x333A8,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -7416,6 +7422,209 @@ def battle_medicine_value_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_player_item_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_PLAYER_ITEM_WRAPPER_ADDRESS,
+        end=BATTLE_PLAYER_ITEM_WRAPPER_END,
+        call_offsets=BATTLE_PLAYER_ITEM_WRAPPER_CALL_OFFSETS,
+        expected_call_targets=BATTLE_PLAYER_ITEM_WRAPPER_CALL_TARGETS,
+        relocation_offsets=BATTLE_PLAYER_ITEM_WRAPPER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_PLAYER_ITEM_WRAPPER_CALLER_SITES,
+        instruction_count=33,
+        branch_count=2,
+    )
+    if contract["raw_sha256"] != (
+        "eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7"
+    ):
+        raise ValueError("Z.DAT player-item wrapper raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "428460ab48a5ebbbab01f06e88eea25e01ed6d2e8b36ade0862210db547e18d3"
+    ):
+        raise ValueError("Z.DAT player-item wrapper relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("caller_dispatch", 0x333A2, 0x333F4,
+         "4fcd5b8b1947ab448ac366882bb8ffc12a6eb92aeb5000e40b5dc7fdb0d6b440"),
+        ("wrapper_setup", 0x3A29C, 0x3A2C2,
+         "a474ac00dec48a53729d69ebbba642b2208babf9f1cc1c99dc6dcd6881b21d3f"),
+        ("actor_selector_call", 0x3A2C2, 0x3A2EE,
+         "746f87d528446b216a1a81e795bebe8f23059aa60ddde2fe7c1bf65d8bbf7602"),
+        ("result_dispatch", 0x3A2EE, 0x3A30B,
+         "ebf10ff1a8ab35a2837d6ecda057690652dd754a45fde52ec4fda8040f0de9ac"),
+        ("grid_present_tail", 0x2A734, 0x2A74C,
+         "037f34cae19be09d1a7beae5734e95539529f5ed2441cd9f94a7fc5351f2a999"),
+        ("selector_entry", 0x2A86C, 0x2A894,
+         "155c017751dae3466be8ed77d43009557107e2e2dd06eb91d1756bacbc62c7c1"),
+        ("selector_navigation_rerender", 0x2A8C6, 0x2A8E2,
+         "1b77ab5c5f75eaf9b1afeb87c482f0affe75f09b70d164fa7bac4ade971dde11"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT player-item wrapper {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def u16(value: int) -> int:
+        return value & 0xFFFF
+
+    def filter_item_slots(inventory: list[dict[str, int]]) -> list[int]:
+        return [
+            index
+            for index, item in enumerate(inventory)
+            if item["item_id"] >= 0 and item["item_type"] in (3, 4)
+        ]
+
+    def simulate_wrapper(
+        selector_eax: int,
+        *,
+        actor_slot: int = 2,
+        action_done_before: int = 0,
+        delegated_action_done: int | None = None,
+        selector_path: str,
+        inventory_consumed: bool = False,
+        acknowledgment_reads: int = 0,
+    ) -> dict[str, object]:
+        result_word = u16(selector_eax)
+        target_wrapper_called = result_word == 4
+        wrapper_writes_action_done = result_word == 1
+        action_done_after = action_done_before
+        if target_wrapper_called and delegated_action_done is not None:
+            action_done_after = delegated_action_done
+        if wrapper_writes_action_done:
+            action_done_after = 1
+        return {
+            "actor_slot": actor_slot,
+            "selector_eax_i32": selector_eax,
+            "selector_result_low_word": result_word,
+            "selector_path": selector_path,
+            "initial_filter": 4,
+            "initial_grid": {"page": 0, "row": 0, "column": 0},
+            "initial_presentations_before_input": 1,
+            "target_wrapper_called": target_wrapper_called,
+            "target_wrapper_argument": actor_slot if target_wrapper_called else None,
+            "wrapper_writes_action_done": wrapper_writes_action_done,
+            "action_done_before": action_done_before,
+            "action_done_after": action_done_after,
+            "caller_exits_action_loop": action_done_after != 0,
+            "inventory_consumed": inventory_consumed,
+            "acknowledgment_reads": acknowledgment_reads,
+        }
+
+    inventory = [
+        {"item_id": 10, "item_type": 4, "count": 1},
+        {"item_id": 11, "item_type": 2, "count": 9},
+        {"item_id": 12, "item_type": 3, "count": 0},
+        {"item_id": -1, "item_type": 4, "count": 7},
+        {"item_id": 13, "item_type": 4, "count": 0},
+    ]
+    filtered_slots = filter_item_slots(inventory)
+    vectors = {
+        "cancel": simulate_wrapper(0, selector_path="cancel"),
+        "type3_nonzero_effect_after_ack": simulate_wrapper(
+            1,
+            selector_path="type3_nonzero_effect_after_ack",
+            inventory_consumed=True,
+            acknowledgment_reads=1,
+        ),
+        "type3_zero_effect_immediate": simulate_wrapper(
+            1,
+            selector_path="type3_zero_effect_immediate",
+            inventory_consumed=False,
+            acknowledgment_reads=0,
+        ),
+        "type4_target_cancel": simulate_wrapper(
+            4,
+            selector_path="type4_target_cancel",
+            delegated_action_done=0,
+        ),
+        "type4_target_confirm": simulate_wrapper(
+            4,
+            selector_path="type4_target_confirm",
+            delegated_action_done=1,
+            inventory_consumed=True,
+        ),
+        "low_word_four_with_high_bits": simulate_wrapper(
+            0x12340004,
+            selector_path="synthetic_low_word_dispatch",
+            delegated_action_done=0,
+        ),
+        "low_word_one_with_high_bits": simulate_wrapper(
+            -65535,
+            selector_path="synthetic_low_word_dispatch",
+        ),
+        "other_result_preserves_done": simulate_wrapper(
+            2,
+            selector_path="synthetic_other_result",
+            action_done_before=-1,
+        ),
+    }
+    if filtered_slots != [0, 2, 4]:
+        raise ValueError("player-item filter vector changed")
+    vector_sha256 = sha256(json.dumps(
+        {"filtered_slots": filtered_slots, "vectors": vectors},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+    if vector_sha256 != "9657c3c342df26368b3e944dcff5923946ea64026a02bdab8fb0d61ceea270a5":
+        raise ValueError("player-item wrapper independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 5,
+        "conditional_branch_count": 2,
+        "unconditional_jump_count": 0,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_PLAYER_ITEM_WRAPPER_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 24,
+        "local_return_sites": ["0x3a30a"],
+        "machine_slices": machine_slices,
+        "filter_contract": (
+            "sub_2A10F(4) preserves inventory slot order, accepts type3/type4 item ids, "
+            "and does not inspect quantity"
+        ),
+        "presentation_contract": (
+            "sub_2A186(0,0,0) renders and presents exactly once before sub_2A86C can "
+            "read input; each recognized navigation key rerenders and presents before "
+            "the next input"
+        ),
+        "selector_contract": (
+            "sub_2A86C receives filter4 and the signed actor role id; cancel returns0, "
+            "completed type3 returns1, and type4 returns4"
+        ),
+        "dispatch_contract": (
+            "selector comparisons consume only AX: low-word4 delegates actor slot to "
+            "sub_3A30B; low-word1 writes actor action_done=1; every other result leaves it"
+        ),
+        "caller_contract": (
+            "battle action jump-table case5 ignores the wrapper return register and tests "
+            "actor action_done after return"
+        ),
+        "direct_rng_calls": 0,
+        "filtered_inventory": inventory,
+        "filtered_slots": filtered_slots,
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern BattleSession rejects invalid actor and item indices rather than reading "
+            "outside combatant or item tables; valid-domain ordering and state are unchanged"
+        ),
+        "closure_boundary": (
+            "stack probe, list builder, grid renderer/present, selector, type3 effect path, "
+            "throwing target wrapper and action caller retain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -11504,6 +11713,8 @@ def build(data_root: Path) -> dict[str, object]:
             battle_medicine_target_wrapper_contract(z_dat_bytes),
         "battle_medicine_action_machine": battle_medicine_action_contract(z_dat_bytes),
         "battle_medicine_value_machine": battle_medicine_value_contract(z_dat_bytes),
+        "battle_player_item_wrapper_machine":
+            battle_player_item_wrapper_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

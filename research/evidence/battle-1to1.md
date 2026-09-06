@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为66/81；其余15项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为67/81；其余14项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、15项为 `implemented_pending_review`、66项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、14项为 `implemented_pending_review`、67项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -205,7 +205,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 18. 战斗物品与休息状态核心
 
-`sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器返回4才进入暗器目标，返回1直接结束actor行动。现代Session已实际执行战场重画、三个共享框、5×3 MMAP图标、上下箭头、名称/简介、数量条件、四方向/PageUp/PageDown、Escape和三确认键。16项count2/count1菜单整帧FNV64为`0x68c3b70dfec20bba`/`0x17b6845a718a6cf8`。type3固定当前actor自用；非零效果执行23项状态、面板present、库存提交及任意键等待，面板FNV64为`0xd518fb664f3e0e3c`；全零效果不画面板、不扣库存、不消费RNG但仍结束行动。该wrapper推进为 `implemented_pending_review`。
+`sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器AX为4才进入暗器目标，低word为1直接结束actor行动，其他值不改`action_done`。现代Session实际执行战场重画、三个共享框、5×3 MMAP图标、上下箭头、名称/简介、数量条件、四方向/PageUp/PageDown、Escape和三确认键。首轮最终REVIEW发现初始及导航frame可在present前接收同批下一键，现以一次物品presentation门恢复机器render→present→input顺序；修正后从入口重审零剩余合法域差异。16项count2/count1菜单整帧FNV64为`0x68c3b70dfec20bba`/`0x17b6845a718a6cf8`。type3固定当前actor自用；非零效果执行23项状态、面板present、库存提交及任意键等待，面板FNV64为`0xd518fb664f3e0e3c`；全零效果不画面板、不扣库存、不消费RNG但仍结束行动。该wrapper已归类`platform_adapted / converged_after_timing_fix`。
 
 `sub_3A30B` 以signed `hidden_weapon/15+1`选择目标；友军不标记，空格只标effect，敌方才执行暗器effect、伤害、中毒、damage kind1显示、库存减一和行动结束。HP负增量先按target hurt的0、1..33、34..66、>66四档取item `add_hp`的`1/4、1/3、1/2、1`并减一次`bounded(5)`，再以`(值-2*hidden_weapon)/3`结算；hurt按负增量四分之一上升。正`add_poison`分支不消费额外RNG，非正分支严格再消费两次`bounded(5)`，所以无毒暗器仍可能随机改变poison。Session已覆盖目标取消、空目标返回、敌方确认、sample13/100前奏/effect sample/11帧EFT/10帧damage、延后库存提交、sprite刷新与下一actor；前奏、首EFT和首damage FNV64为`0xdbee20f394fd7219`、`0x370a4078e9de6172`、`0xd41fa068222d444a`。库存数量按int16减一，不大于0时把后续槽全部左移并清尾槽。该函数推进为 `implemented_pending_review`。
 
@@ -374,6 +374,16 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在local夹0，按signed target hurt的`<=25/26..50/51..75/>75`分别计算`4/5、3/4、2/3、1/2`，再无条件消费一次`bounded(5)`。strict `hurt>raw_medicine+20`同时清治疗和减伤量；signed HP cap可令完整EAX小于-32768，HP只加BX低字并回绕，hurt减SI低字后仅负值夹0，actor体力word减2不夹值。合法域逐块对照role级kernel和BattleSetup wrapper零产品差异；非法role/slot提前拒绝且不消费RNG归类平台适配。
 
 新增回归锁定体力49/50、全部hurt分界、strict门槛、负medicine、signed极值、hurt正向回绕、负治疗返回与EAX=-65535/AX=1、same-role alias及非法role RNG不推进。独立向量SHA256为`f758d1f4dae67a61868a007a13336a7c94e1c11ed21332904c6f7b26b5b1f472`；正式原资产Golden三生成逐字节一致，SHA256为`0d3a179c201f2d65dd29181e2db715c818b57be1f05e3724cf1d338745d08067`，历史59键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；栈探测、RNG helper、菜单与战斗caller均不传播closure。
+
+## 32. 玩家物品选择wrapper最终REVIEW
+
+`sub_3A29C @ 0x3A29C..0x3A30B`机器身份固定为111 bytes、33条指令、5个基本块、2个条件分支、0个无条件跳转、2处重定位、5次direct call、唯一caller和本地RET；raw/loaded SHA256为`eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7`与`428460ab48a5ebbbab01f06e88eea25e01ed6d2e8b36ade0862210db547e18d3`，两个DWORD均严格增加`0x20000`并可逐字节归一化。
+
+入口固定执行`sub_2A10F(4)`，按库存slot顺序收集type3/type4且不检查数量；随后`sub_2A186(0,0,0)`绘初始5×3网格并由尾部`sub_3D6D1`present，再以signed actor role调用`sub_2A86C(4, role)`。分派仅观察selector返回低word：4调用`sub_3A30B(actor)`且本wrapper不写行动完成，1写actor `action_done=1`，其他值保持原状态。唯一jump-table caller忽略EAX并只检查`action_done`。
+
+首轮逐块对照发现现代SDL可在初始物品frame或导航后新frame尚未present时，从同一host event批次读取下一键。现以一次物品presentation计数门修正：begin及每个已识别导航后置1，实际`finish_presented_tick`后减为0，非零时忽略输入，离开物品相位时清零。修正后废弃首轮结论并从入口复核全部33条指令、5块、2分支、5次调用、RET及caller，合法域零剩余差异；非法actor/role/item安全拒绝归类平台适配。
+
+新增回归锁定首帧present前方向忽略、present后Escape不置行动完成、重新进入及每个导航后必须present；既有type3非零效果的面板/库存/任意键顺序、零效果不消费但完成、type4目标取消/确认及菜单hash继续通过。独立向量SHA256为`9657c3c342df26368b3e944dcff5923946ea64026a02bdab8fb0d61ceea270a5`；正式原资产Golden三生成逐字节一致，新增唯一键且历史60键不变，SHA256为`bbafb835c53f40faaa872d1052ceff7b63930ac2949420e43723003af41ceccd`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_after_timing_fix`；过滤、renderer/present、selector、type3效果、暗器target与caller均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

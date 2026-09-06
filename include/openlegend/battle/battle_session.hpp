@@ -227,6 +227,9 @@ public:
     [[nodiscard]] std::int16_t player_item_page() const noexcept;
     [[nodiscard]] std::int16_t player_item_row() const noexcept;
     [[nodiscard]] std::int16_t player_item_column() const noexcept;
+    [[nodiscard]] std::uint8_t player_item_presentations_before_input() const noexcept {
+        return player_item_ != nullptr ? player_item_presentations_before_input_ : 0U;
+    }
     [[nodiscard]] std::size_t player_status_count() const noexcept;
     [[nodiscard]] std::size_t player_status_cursor() const noexcept;
     [[nodiscard]] std::int16_t player_status_role_id() const noexcept;
@@ -502,6 +505,7 @@ private:
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerAttackState> player_attack_;
     std::unique_ptr<PlayerItemState> player_item_;
+    std::uint8_t player_item_presentations_before_input_{};
     std::optional<PlayerStatusState> player_status_;
     std::unique_ptr<PlayerTargetEffectState> player_target_effect_;
     std::int16_t selected_magic_slot_{};

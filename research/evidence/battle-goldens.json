@@ -12505,6 +12505,301 @@
     "platform_adaptation_boundary": "modern helpers safely reject invalid role ids without RNG or writes; the battle wrapper also rejects invalid slots although the raw kernel ignores slot arguments",
     "closure_boundary": "stack probe, bounded RNG helper, menu caller and medicine action caller remain independent owners"
   },
+  "battle_player_item_wrapper_machine": {
+    "address": "0x3a29c",
+    "end": "0x3a30b",
+    "raw_offset": "0x33c9c",
+    "size": 111,
+    "instruction_count": 33,
+    "branch_count": 2,
+    "raw_sha256": "eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7",
+    "loaded_sha256": "428460ab48a5ebbbab01f06e88eea25e01ed6d2e8b36ade0862210db547e18d3",
+    "relocation_count": 2,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3a2a1",
+      "0x3a2ac",
+      "0x3a2ba",
+      "0x3a2d4",
+      "0x3a2e6"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x2a10f",
+      "0x2a186",
+      "0x2a86c",
+      "0x3a30b"
+    ],
+    "callers": [
+      "0x333a8"
+    ],
+    "basic_block_count": 5,
+    "conditional_branch_count": 2,
+    "unconditional_jump_count": 0,
+    "relocation_offsets": [
+      "0x31",
+      "0x64"
+    ],
+    "stack_probe_bytes": 24,
+    "local_return_sites": [
+      "0x3a30a"
+    ],
+    "machine_slices": {
+      "caller_dispatch": {
+        "address": "0x333a2",
+        "end": "0x333f4",
+        "size": 82,
+        "sha256": "4fcd5b8b1947ab448ac366882bb8ffc12a6eb92aeb5000e40b5dc7fdb0d6b440"
+      },
+      "wrapper_setup": {
+        "address": "0x3a29c",
+        "end": "0x3a2c2",
+        "size": 38,
+        "sha256": "a474ac00dec48a53729d69ebbba642b2208babf9f1cc1c99dc6dcd6881b21d3f"
+      },
+      "actor_selector_call": {
+        "address": "0x3a2c2",
+        "end": "0x3a2ee",
+        "size": 44,
+        "sha256": "746f87d528446b216a1a81e795bebe8f23059aa60ddde2fe7c1bf65d8bbf7602"
+      },
+      "result_dispatch": {
+        "address": "0x3a2ee",
+        "end": "0x3a30b",
+        "size": 29,
+        "sha256": "ebf10ff1a8ab35a2837d6ecda057690652dd754a45fde52ec4fda8040f0de9ac"
+      },
+      "grid_present_tail": {
+        "address": "0x2a734",
+        "end": "0x2a74c",
+        "size": 24,
+        "sha256": "037f34cae19be09d1a7beae5734e95539529f5ed2441cd9f94a7fc5351f2a999"
+      },
+      "selector_entry": {
+        "address": "0x2a86c",
+        "end": "0x2a894",
+        "size": 40,
+        "sha256": "155c017751dae3466be8ed77d43009557107e2e2dd06eb91d1756bacbc62c7c1"
+      },
+      "selector_navigation_rerender": {
+        "address": "0x2a8c6",
+        "end": "0x2a8e2",
+        "size": 28,
+        "sha256": "1b77ab5c5f75eaf9b1afeb87c482f0affe75f09b70d164fa7bac4ade971dde11"
+      }
+    },
+    "filter_contract": "sub_2A10F(4) preserves inventory slot order, accepts type3/type4 item ids, and does not inspect quantity",
+    "presentation_contract": "sub_2A186(0,0,0) renders and presents exactly once before sub_2A86C can read input; each recognized navigation key rerenders and presents before the next input",
+    "selector_contract": "sub_2A86C receives filter4 and the signed actor role id; cancel returns0, completed type3 returns1, and type4 returns4",
+    "dispatch_contract": "selector comparisons consume only AX: low-word4 delegates actor slot to sub_3A30B; low-word1 writes actor action_done=1; every other result leaves it",
+    "caller_contract": "battle action jump-table case5 ignores the wrapper return register and tests actor action_done after return",
+    "direct_rng_calls": 0,
+    "filtered_inventory": [
+      {
+        "item_id": 10,
+        "item_type": 4,
+        "count": 1
+      },
+      {
+        "item_id": 11,
+        "item_type": 2,
+        "count": 9
+      },
+      {
+        "item_id": 12,
+        "item_type": 3,
+        "count": 0
+      },
+      {
+        "item_id": -1,
+        "item_type": 4,
+        "count": 7
+      },
+      {
+        "item_id": 13,
+        "item_type": 4,
+        "count": 0
+      }
+    ],
+    "filtered_slots": [
+      0,
+      2,
+      4
+    ],
+    "vectors": {
+      "cancel": {
+        "actor_slot": 2,
+        "selector_eax_i32": 0,
+        "selector_result_low_word": 0,
+        "selector_path": "cancel",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": false,
+        "target_wrapper_argument": null,
+        "wrapper_writes_action_done": false,
+        "action_done_before": 0,
+        "action_done_after": 0,
+        "caller_exits_action_loop": false,
+        "inventory_consumed": false,
+        "acknowledgment_reads": 0
+      },
+      "type3_nonzero_effect_after_ack": {
+        "actor_slot": 2,
+        "selector_eax_i32": 1,
+        "selector_result_low_word": 1,
+        "selector_path": "type3_nonzero_effect_after_ack",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": false,
+        "target_wrapper_argument": null,
+        "wrapper_writes_action_done": true,
+        "action_done_before": 0,
+        "action_done_after": 1,
+        "caller_exits_action_loop": true,
+        "inventory_consumed": true,
+        "acknowledgment_reads": 1
+      },
+      "type3_zero_effect_immediate": {
+        "actor_slot": 2,
+        "selector_eax_i32": 1,
+        "selector_result_low_word": 1,
+        "selector_path": "type3_zero_effect_immediate",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": false,
+        "target_wrapper_argument": null,
+        "wrapper_writes_action_done": true,
+        "action_done_before": 0,
+        "action_done_after": 1,
+        "caller_exits_action_loop": true,
+        "inventory_consumed": false,
+        "acknowledgment_reads": 0
+      },
+      "type4_target_cancel": {
+        "actor_slot": 2,
+        "selector_eax_i32": 4,
+        "selector_result_low_word": 4,
+        "selector_path": "type4_target_cancel",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": true,
+        "target_wrapper_argument": 2,
+        "wrapper_writes_action_done": false,
+        "action_done_before": 0,
+        "action_done_after": 0,
+        "caller_exits_action_loop": false,
+        "inventory_consumed": false,
+        "acknowledgment_reads": 0
+      },
+      "type4_target_confirm": {
+        "actor_slot": 2,
+        "selector_eax_i32": 4,
+        "selector_result_low_word": 4,
+        "selector_path": "type4_target_confirm",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": true,
+        "target_wrapper_argument": 2,
+        "wrapper_writes_action_done": false,
+        "action_done_before": 0,
+        "action_done_after": 1,
+        "caller_exits_action_loop": true,
+        "inventory_consumed": true,
+        "acknowledgment_reads": 0
+      },
+      "low_word_four_with_high_bits": {
+        "actor_slot": 2,
+        "selector_eax_i32": 305397764,
+        "selector_result_low_word": 4,
+        "selector_path": "synthetic_low_word_dispatch",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": true,
+        "target_wrapper_argument": 2,
+        "wrapper_writes_action_done": false,
+        "action_done_before": 0,
+        "action_done_after": 0,
+        "caller_exits_action_loop": false,
+        "inventory_consumed": false,
+        "acknowledgment_reads": 0
+      },
+      "low_word_one_with_high_bits": {
+        "actor_slot": 2,
+        "selector_eax_i32": -65535,
+        "selector_result_low_word": 1,
+        "selector_path": "synthetic_low_word_dispatch",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": false,
+        "target_wrapper_argument": null,
+        "wrapper_writes_action_done": true,
+        "action_done_before": 0,
+        "action_done_after": 1,
+        "caller_exits_action_loop": true,
+        "inventory_consumed": false,
+        "acknowledgment_reads": 0
+      },
+      "other_result_preserves_done": {
+        "actor_slot": 2,
+        "selector_eax_i32": 2,
+        "selector_result_low_word": 2,
+        "selector_path": "synthetic_other_result",
+        "initial_filter": 4,
+        "initial_grid": {
+          "page": 0,
+          "row": 0,
+          "column": 0
+        },
+        "initial_presentations_before_input": 1,
+        "target_wrapper_called": false,
+        "target_wrapper_argument": null,
+        "wrapper_writes_action_done": false,
+        "action_done_before": -1,
+        "action_done_after": -1,
+        "caller_exits_action_loop": true,
+        "inventory_consumed": false,
+        "acknowledgment_reads": 0
+      }
+    },
+    "vector_sha256": "9657c3c342df26368b3e944dcff5923946ea64026a02bdab8fb0d61ceea270a5",
+    "platform_adaptation_boundary": "modern BattleSession rejects invalid actor and item indices rather than reading outside combatant or item tables; valid-domain ordering and state are unchanged",
+    "closure_boundary": "stack probe, list builder, grid renderer/present, selector, type3 effect path, throwing target wrapper and action caller retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
