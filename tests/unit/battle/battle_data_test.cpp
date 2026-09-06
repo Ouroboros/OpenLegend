@@ -2895,6 +2895,86 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(tired->mp == 48);
     OL_CHECK(random.state() == 1'103'527'590U);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+
+    actor.set_word(openlegend::model::role_word::speed, -19);
+    actor.set_word(openlegend::model::role_word::physical_power, 25);
+    actor.set_word(openlegend::model::role_word::hp, 10);
+    actor.set_word(openlegend::model::role_word::maximum_hp, 100);
+    actor.set_word(openlegend::model::role_word::mp, 20);
+    actor.set_word(openlegend::model::role_word::maximum_mp, 100);
+    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    random.seed(1U);
+    const auto threshold = setup.rest_actor(0U, random);
+    OL_CHECK(threshold.has_value());
+    OL_CHECK(threshold->physical_power == 30);
+    OL_CHECK(threshold->hp == 13);
+    OL_CHECK(threshold->mp == 23);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+
+    actor.set_word(openlegend::model::role_word::speed, 60);
+    actor.set_word(openlegend::model::role_word::physical_power, 32'767);
+    actor.set_word(openlegend::model::role_word::hp, 10);
+    actor.set_word(openlegend::model::role_word::maximum_hp, 100);
+    actor.set_word(openlegend::model::role_word::mp, 20);
+    actor.set_word(openlegend::model::role_word::maximum_mp, 100);
+    setup.combatants()[0U].words[combatant_word::round_value] = 5;
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    random.seed(1U);
+    const auto wrapped_physical_power = setup.rest_actor(0U, random);
+    OL_CHECK(wrapped_physical_power.has_value());
+    OL_CHECK(wrapped_physical_power->physical_power == -32'765);
+    OL_CHECK(wrapped_physical_power->hp == 10);
+    OL_CHECK(wrapped_physical_power->mp == 20);
+    OL_CHECK(random.state() == 1'103'527'590U);
+
+    actor.set_word(openlegend::model::role_word::physical_power, 100);
+    actor.set_word(openlegend::model::role_word::hp, 32'767);
+    actor.set_word(openlegend::model::role_word::maximum_hp, 100);
+    actor.set_word(openlegend::model::role_word::mp, 32'766);
+    actor.set_word(openlegend::model::role_word::maximum_mp, 100);
+    setup.combatants()[0U].words[combatant_word::round_value] = 6;
+    random.seed(1U);
+    const auto wrapped_recovery = setup.rest_actor(0U, random);
+    OL_CHECK(wrapped_recovery.has_value());
+    OL_CHECK(wrapped_recovery->physical_power == 100);
+    OL_CHECK(wrapped_recovery->hp == -32'760);
+    OL_CHECK(wrapped_recovery->mp == -32'766);
+    OL_CHECK(random.state() == 662'824'084U);
+
+    actor.set_word(openlegend::model::role_word::physical_power, 25);
+    actor.set_word(openlegend::model::role_word::hp, 10);
+    actor.set_word(openlegend::model::role_word::mp, 20);
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    setup.combatants()[1U].words[combatant_word::role_id] = 1;
+    setup.combatants()[1U].words[combatant_word::round_value] = 5;
+    setup.combatants()[1U].words[combatant_word::action_done] = 0;
+    random.seed(1U);
+    const auto shared_role = setup.rest_actor(1U, random);
+    OL_CHECK(shared_role.has_value());
+    OL_CHECK(shared_role->physical_power == 29);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 29);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::action_done] == 1);
+
+    random.seed(1U);
+    const auto invalid_actor = setup.rest_actor(
+        static_cast<std::size_t>(setup.combatant_count()), random);
+    OL_CHECK(!invalid_actor.has_value());
+    OL_CHECK(random.state() == 1U);
+
+    auto invalid_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData invalid_data{data_root, 4};
+    BattleSetup invalid_setup{invalid_data, invalid_ranger};
+    OL_CHECK(invalid_setup.valid());
+    invalid_setup.combatants()[1U].words[combatant_word::role_id] = 32'767;
+    invalid_setup.combatants()[1U].words[combatant_word::action_done] = 0;
+    random.seed(1U);
+    const auto invalid_role = invalid_setup.rest_actor(1U, random);
+    OL_CHECK(!invalid_role.has_value());
+    OL_CHECK(random.state() == 1U);
+    OL_CHECK(invalid_setup.combatants()[1U].words[combatant_word::action_done] == 0);
 }
 
 void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) {

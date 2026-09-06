@@ -848,6 +848,16 @@ BATTLE_THROWING_WEAPON_ACTION_RELOCATION_OFFSETS = (
     0x54B, 0x566, 0x582, 0x58A,
 )
 BATTLE_THROWING_WEAPON_ACTION_CALLER_SITES = (0x3A2E6,)
+BATTLE_REST_ACTION_ADDRESS = 0x3A8A4
+BATTLE_REST_ACTION_END = 0x3AA17
+BATTLE_REST_ACTION_CALL_OFFSETS = (0x005, 0x04B, 0x05C, 0x0D5, 0x130)
+BATTLE_REST_ACTION_CALL_TARGETS = (0x3ED1E, 0x3D612, 0x3D612, 0x3D612, 0x3D612)
+BATTLE_REST_ACTION_RELOCATION_OFFSETS = (
+    0x018, 0x021, 0x02E, 0x041, 0x06C, 0x07B, 0x088, 0x092,
+    0x0A3, 0x0B0, 0x0BE, 0x0E5, 0x0EC, 0x0F9, 0x100, 0x109,
+    0x110, 0x11F, 0x140, 0x147, 0x154, 0x15B, 0x164, 0x16B,
+)
+BATTLE_REST_ACTION_CALLER_SITES = (0x333C9, 0x34AE3)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -7865,6 +7875,116 @@ def battle_throwing_weapon_action_contract(z_dat_bytes: bytes) -> dict[str, obje
     }
 
 
+def battle_rest_action_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_REST_ACTION_ADDRESS,
+        end=BATTLE_REST_ACTION_END,
+        call_offsets=BATTLE_REST_ACTION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_REST_ACTION_CALL_TARGETS,
+        relocation_offsets=BATTLE_REST_ACTION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_REST_ACTION_CALLER_SITES,
+        instruction_count=83,
+        branch_count=6,
+    )
+    if contract["raw_sha256"] != (
+        "3097774d3ce72a87fcb377ccafc49d93976447d67ad4f909412a30a44d2085ad"
+    ):
+        raise ValueError("Z.DAT rest action raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "70f7650bd3b925dd224e4f85a74b0ac0fcb6d866ca2efafa832c3b26cb18a7d2"
+    ):
+        raise ValueError("Z.DAT rest action relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("physical_power", 0x3A8A4, 0x3A93C,
+         "713b01ed4b792d45312e58547dc4f88f3a50934a214ba7612100aea0968e4239"),
+        ("hp", 0x3A93C, 0x3A9B8,
+         "743a74c0c1561a3a97881bbdffea3401a63c54aa20d2cec0cf4962e8fe397edc"),
+        ("mp", 0x3A9B8, 0x3AA17,
+         "9652d26b459a2ac27d337f94ea81d1989597b838270e3e919f816272f9ced244"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT rest action {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    vectors = {
+        "ready": rest_vector(
+            seed=1, speed=60, round_value=6, physical_power=50,
+            hp=95, maximum_hp=100, mp=48, maximum_mp=50,
+        ),
+        "tired": rest_vector(
+            seed=1, speed=60, round_value=5, physical_power=25,
+            hp=95, maximum_hp=100, mp=48, maximum_mp=50,
+        ),
+        "negative_speed_threshold": rest_vector(
+            seed=1, speed=-19, round_value=-1, physical_power=25,
+            hp=10, maximum_hp=100, mp=20, maximum_mp=100,
+        ),
+        "physical_power_wrap": rest_vector(
+            seed=1, speed=60, round_value=5, physical_power=32767,
+            hp=10, maximum_hp=100, mp=20, maximum_mp=100,
+        ),
+        "hp_mp_wrap": rest_vector(
+            seed=1, speed=60, round_value=6, physical_power=100,
+            hp=32767, maximum_hp=100, mp=32766, maximum_mp=100,
+        ),
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8"))
+    if vector_sha256 != "ae98253e95a49d58796c472bda36e0a8d4d0b3f74965034e74a5cff4448c8ac8":
+        raise ValueError("rest action independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 11,
+        "conditional_branch_count": 5,
+        "unconditional_jump_count": 1,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_REST_ACTION_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3aa16"],
+        "machine_slices": machine_slices,
+        "physical_power_contract": (
+            "write action_done1 first; consume one bounded(3); add3 when signed round value "
+            "equals signed speed/10, otherwise add2; write the low16 sum and clamp only signed >100"
+        ),
+        "recovery_contract": (
+            "signed physical power below30 skips HP and MP; otherwise bound is signed "
+            "physical_power/10-2 and HP then MP each consume one bounded(bound), add3 through "
+            "low16 wrap and clamp only when signed result is strictly above signed maximum"
+        ),
+        "rng_contract": (
+            "bounded(3) is always state-consuming; both later helper calls are mandatory above "
+            "the threshold, but bound1 returns0 twice without advancing RNG state"
+        ),
+        "caller_contract": (
+            "player action8 and the sub_34AD3 AI wrapper both pass one signed actor slot; the "
+            "player caller ignores EAX, and every wrapper caller ignores the forwarded EAX"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code rejects invalid actor and role indices and returns a structured optional; "
+            "all legal callers observe only the exact state changes, RNG order and completion"
+        ),
+        "closure_boundary": (
+            "stack probe, RNG helper, player dispatcher, AI wrapper and common completion paths "
+            "retain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -11957,6 +12077,7 @@ def build(data_root: Path) -> dict[str, object]:
             battle_player_item_wrapper_contract(z_dat_bytes),
         "battle_throwing_weapon_action_machine":
             battle_throwing_weapon_action_contract(z_dat_bytes),
+        "battle_rest_action_machine": battle_rest_action_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

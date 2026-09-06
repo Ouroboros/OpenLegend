@@ -13074,6 +13074,168 @@
     "platform_adaptation_boundary": "modern code safely rejects y>=64, invalid records, invalid occupancy and negative hurt rather than reproducing the machine's out-of-bounds accesses",
     "closure_boundary": "stack probe, cursor selector, effect animation, RNG, damage animation, inventory compaction, sprite lookup and item-wrapper caller retain independent owners"
   },
+  "battle_rest_action_machine": {
+    "address": "0x3a8a4",
+    "end": "0x3aa17",
+    "raw_offset": "0x342a4",
+    "size": 371,
+    "instruction_count": 83,
+    "branch_count": 6,
+    "raw_sha256": "3097774d3ce72a87fcb377ccafc49d93976447d67ad4f909412a30a44d2085ad",
+    "loaded_sha256": "70f7650bd3b925dd224e4f85a74b0ac0fcb6d866ca2efafa832c3b26cb18a7d2",
+    "relocation_count": 24,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3a8a9",
+      "0x3a8ef",
+      "0x3a900",
+      "0x3a979",
+      "0x3a9d4"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612",
+      "0x3d612"
+    ],
+    "callers": [
+      "0x333c9",
+      "0x34ae3"
+    ],
+    "basic_block_count": 11,
+    "conditional_branch_count": 5,
+    "unconditional_jump_count": 1,
+    "relocation_offsets": [
+      "0x18",
+      "0x21",
+      "0x2e",
+      "0x41",
+      "0x6c",
+      "0x7b",
+      "0x88",
+      "0x92",
+      "0xa3",
+      "0xb0",
+      "0xbe",
+      "0xe5",
+      "0xec",
+      "0xf9",
+      "0x100",
+      "0x109",
+      "0x110",
+      "0x11f",
+      "0x140",
+      "0x147",
+      "0x154",
+      "0x15b",
+      "0x164",
+      "0x16b"
+    ],
+    "local_return_sites": [
+      "0x3aa16"
+    ],
+    "machine_slices": {
+      "physical_power": {
+        "address": "0x3a8a4",
+        "end": "0x3a93c",
+        "size": 152,
+        "sha256": "713b01ed4b792d45312e58547dc4f88f3a50934a214ba7612100aea0968e4239"
+      },
+      "hp": {
+        "address": "0x3a93c",
+        "end": "0x3a9b8",
+        "size": 124,
+        "sha256": "743a74c0c1561a3a97881bbdffea3401a63c54aa20d2cec0cf4962e8fe397edc"
+      },
+      "mp": {
+        "address": "0x3a9b8",
+        "end": "0x3aa17",
+        "size": 95,
+        "sha256": "9652d26b459a2ac27d337f94ea81d1989597b838270e3e919f816272f9ced244"
+      }
+    },
+    "physical_power_contract": "write action_done1 first; consume one bounded(3); add3 when signed round value equals signed speed/10, otherwise add2; write the low16 sum and clamp only signed >100",
+    "recovery_contract": "signed physical power below30 skips HP and MP; otherwise bound is signed physical_power/10-2 and HP then MP each consume one bounded(bound), add3 through low16 wrap and clamp only when signed result is strictly above signed maximum",
+    "rng_contract": "bounded(3) is always state-consuming; both later helper calls are mandatory above the threshold, but bound1 returns0 twice without advancing RNG state",
+    "caller_contract": "player action8 and the sub_34AD3 AI wrapper both pass one signed actor slot; the player caller ignores EAX, and every wrapper caller ignores the forwarded EAX",
+    "vectors": {
+      "ready": {
+        "rng_seed": 1,
+        "rng_outputs": [
+          2,
+          1,
+          0
+        ],
+        "rng_state_after": 662824084,
+        "speed": 60,
+        "round_value": 6,
+        "physical_power_after": 55,
+        "hp_after": 99,
+        "mp_after": 50,
+        "action_done": 1
+      },
+      "tired": {
+        "rng_seed": 1,
+        "rng_outputs": [
+          2
+        ],
+        "rng_state_after": 1103527590,
+        "speed": 60,
+        "round_value": 5,
+        "physical_power_after": 29,
+        "hp_after": 95,
+        "mp_after": 48,
+        "action_done": 1
+      },
+      "negative_speed_threshold": {
+        "rng_seed": 1,
+        "rng_outputs": [
+          2,
+          0,
+          0
+        ],
+        "rng_state_after": 1103527590,
+        "speed": -19,
+        "round_value": -1,
+        "physical_power_after": 30,
+        "hp_after": 13,
+        "mp_after": 23,
+        "action_done": 1
+      },
+      "physical_power_wrap": {
+        "rng_seed": 1,
+        "rng_outputs": [
+          2
+        ],
+        "rng_state_after": 1103527590,
+        "speed": 60,
+        "round_value": 5,
+        "physical_power_after": -32765,
+        "hp_after": 10,
+        "mp_after": 20,
+        "action_done": 1
+      },
+      "hp_mp_wrap": {
+        "rng_seed": 1,
+        "rng_outputs": [
+          2,
+          6,
+          1
+        ],
+        "rng_state_after": 662824084,
+        "speed": 60,
+        "round_value": 6,
+        "physical_power_after": 100,
+        "hp_after": -32760,
+        "mp_after": -32766,
+        "action_done": 1
+      }
+    },
+    "vector_sha256": "ae98253e95a49d58796c472bda36e0a8d4d0b3f74965034e74a5cff4448c8ac8",
+    "platform_adaptation_boundary": "modern code rejects invalid actor and role indices and returns a structured optional; all legal callers observe only the exact state changes, RNG order and completion",
+    "closure_boundary": "stack probe, RNG helper, player dispatcher, AI wrapper and common completion paths retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

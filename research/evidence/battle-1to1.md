@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为68/81；其余13项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为69/81；其余12项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、13项为 `implemented_pending_review`、68项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、12项为 `implemented_pending_review`、69项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `fb4d4ec7a49114ca5361904e3f5fff1bff2f32371ba675b85f22709184f1a636`；本轮新增`battle_mp_damage_machine`，固定394-byte raw/loaded identity、22处重定位、6次call、唯一caller、本地RET、五次RNG顺序与条件消费、actor/target MP写回及signed32返回向量；向量集SHA256为`b3eaaa9b520a536c2a1f2d00956a2bbb33c83c9b748e5dcc542889d99ac4c67f`。既有入口、载入、参战者建立、回合、路径、攻击核心、动画、武功选择和HP伤害合同均保留。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` 共63个顶层键，SHA256为`2fe0a9e0eb676fa9df0bad9c735df4935caeeca90e039d117bb22b7a8cf20a23`；本轮仅新增`battle_rest_action_machine`，固定371-byte raw/loaded identity、24处重定位、5次call、两个caller、体力阈值、三次RNG调用顺序及HP/MP signed低字回绕向量，向量集SHA256为`ae98253e95a49d58796c472bda36e0a8d4d0b3f74965034e74a5cff4448c8ac8`；历史62个顶层键逐值不变。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -394,6 +394,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 首轮对照发现三项合法域差异：同格未写方向2、随机基数未先回绕int16、玩家状态/RNG在EFT前过早提交。现代现拆分`prepare_throwing_weapon_target`与`apply_throwing_weapon_payload`，保持准备→完整EFT→payload→完整damage→库存/action/sprite顺序。修正后废弃首轮结论并从入口覆盖全部340条指令、62块、42个跳转、13次call、RET及caller，零剩余合法域差异。机器漏检upper-y、empty负槽side读及非法记录由现代安全拒绝，归类平台适配。
 
 同格方向、`add_hp=-32768`回绕、EFT期间状态/RNG不变及EFT后damage21状态提交回归通过。独立向量SHA256为`4de5134d6363b727de38a09d0b2cc7cc335dd0cf70831c0e9d498e6a663decd1`；正式原资产Golden三生成逐字节一致，新增唯一键且历史61键不变，SHA256为`cc94651bde1b784f51f2b9173cf1b8e0c0ec07330cba4c674734878a11614c8a`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_after_timing_and_wrap_fix`；cursor、EFT、RNG、damage、库存、sprite及caller均不传播closure。
+
+## 34. 休息动作最终REVIEW
+
+`sub_3A8A4 @ 0x3A8A4..0x3AA17`机器身份固定为371 bytes、83条连续指令、11个基本块、5个条件分支、1个无条件跳转、24处重定位、5次direct call、两个caller和唯一`RETN @ 0x3AA16`；raw/loaded SHA256为`3097774d3ce72a87fcb377ccafc49d93976447d67ad4f909412a30a44d2085ad`与`70f7650bd3b925dd224e4f85a74b0ac0fcb6d866ca2efafa832c3b26cb18a7d2`。24处loaded DWORD均增加`0x20000`，归一化后完整371字节与只读原资产一致。入口xref是玩家动作8分派`0x333C9`与AI休息wrapper `0x34AE3`。
+
+函数立即写actor `action_done=1`，以signed `speed/10`和round相等性选择一次必经`bounded(3)`后加3或2，体力按低16位回绕且只夹signed上界100。更新体力小于30时跳过恢复；否则以signed `physical_power/10-2`为共同bound，严格先生命后内力各调用一次RNG、加3并低字回绕，只在signed结果严格大于maximum时封顶。bound1时两个helper调用必经但不推进RNG状态。机器偶然EAX由玩家caller忽略，并虽经AI wrapper原样转发也不被其六个caller消费。
+
+逐块对照`BattleSetup::rest_actor`及玩家/AI宿主接线后，83条指令、全部分支、RNG、共享role状态、唯一出口和两个caller均无合法域产品差异；非法actor/role安全拒绝和structured optional返回归类平台适配。新增回归锁定negative speed向零除法触发体力30、bound1两次无状态消费、体力32767回绕、HP/MP负回绕、共享role别名及非法索引不消费RNG。向量SHA256为`ae98253e95a49d58796c472bda36e0a8d4d0b3f74965034e74a5cff4448c8ac8`；Golden三生成逐字节一致且历史62键不变，正式SHA256为`2fe0a9e0eb676fa9df0bad9c735df4935caeeca90e039d117bb22b7a8cf20a23`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；栈探测、RNG、玩家分派、AI wrapper和统一动作尾不传播closure。
 
 ## 16. B8 实现差异审计关闭
 
