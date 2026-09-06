@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为61/81；其余20项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为62/81；其余19项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、20项为 `implemented_pending_review`、61项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、19项为 `implemented_pending_review`、62项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -195,7 +195,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_39B8E`与用毒使用同一方向和清effect顺序，但目标条件相反：敌方完全跳过，空格写effect，友方格写effect kind3并调用`sub_39DA3`；随后执行effect36动画、抑制damage flash、重算sprite并跳入用毒的共享行动尾部。原函数同样重复检查x<64而未检查y<64，现代实现对y>=64安全拒绝。`sub_39DA3`已映射为`apply_detox_value`：signed `detoxification/3`后严格依次消费两次`bounded(10)`，计算`quotient+first-second`并夹0..99；目标毒值严格大于`detoxification+20`时归零，再受当前毒值限制。写回后仅poison<0夹0、poison>100夹99，故恰等于100保留。
 
-固定detoxification80、poison90、seed1得到RNG `[8,8]`、state2524885223、解毒26、目标64；射程6、方向3、effect hash `0xab559939923b4f74`、effect kind3、体力1→0、counter0→1。`BattleSession`现从targeting确认先提交目标状态，再执行9帧effect36、attack7/effect36双bank音效、10帧无flash damage kind3、共享尾部和下一actor；独立Session锁定poison20→10、体力100→98。wrapper已独立关闭；`sub_39B8E/sub_39DA3`继续按各自owner保留`implemented_pending_review`，不传播order61状态。
+固定detoxification80、poison90、seed1得到RNG `[8,8]`、state2524885223、解毒26、目标64；射程6、方向3、effect hash `0xab559939923b4f74`、effect kind3、体力1→0、counter0→1。`BattleSession`现从targeting确认先提交目标状态，再执行9帧effect36、attack7/effect36双bank音效、10帧无flash damage kind3、共享尾部和下一actor；独立Session锁定poison20→10、体力100→98。wrapper与`sub_39B8E`已分别独立关闭；`sub_39DA3`继续按自身owner保留`implemented_pending_review`，不传播order61/62状态。
 
 ## 17. 医疗目标与状态核心
 
@@ -340,6 +340,12 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 `sub_3B387..sub_3C2AC`战后进度状态与同步UI均已恢复：敌方满HP/MP、体力100并清内伤/中毒；胜利经验均分、队伍HP/体力下限、角色/练功/制造经验封顶，以及等级、练功、武功升级、制造RNG/状态均保持原顺序。`BattleSession`依次执行经验固定框、升级固定框、练功动态框、武功等级动态框和制造固定框，每项重画战场、present并等待任意非零键。经验在其消息前提交；升级和练功以副本/RNG副本预演，按键后才执行真实提交；制造配方选择在消息前消费共享RNG，库存及数量RNG在按键后提交，保留原同步可观察边界；五帧FNV64依次为`0xa699bf683f037936`、`0xef2c8987fe26a127`、`0xdd4c7e74171e8ee5`、`0x0f4783440328986e`、`0xb980de17004d5b6c`。四函数均推进为`implemented_pending_review`。
 
 `sub_3C563`回合异常状态更新保留`hurt>0`优先分支、poison的HP/体力/hidden门槛、两次有符号除法，以及HP/体力仅严格负值夹1；`sub_3C672`对0..25槽（含当前活动数之外）仅在目标hidden严格等于1时清word11/12。`sub_3C6D3`三个机器码xref均已覆盖：玩家菜单内两处由同一菜单重绘相位执行，AI prelude调用由prelude/wait相位执行；独立面板oracle为`0x630a82d57e1d8715`，Session AI prelude为`0xb02104139829a80d`。三函数均为`implemented_pending_review`。
+
+## 27. 解毒目标动作handler最终REVIEW
+
+`sub_39B8E @ 0x39B8E..0x39DA3`机器身份固定为533 bytes、132条指令、15个条件分支、7个无条件跳转、35处重定位、2个入口xref且无本地RET；raw/loaded SHA256为`9e6023ca65b3c68c1ff802ae357a070e6663cfe09d690e933abf95ff66f3d952`与`78fdc57cddbb7d096e0de2173ca9cb6e98d4f0687411ea22538783e1fbf2718e`，35处DWORD均严格增加`0x20000`并可逐字节归一化。入口按signed坐标计算方向，同格保持、`abs(y)>abs(x)`选纵向、tie选横向；随后先清全部4,096格effect。空格与友方写effect1，只有友方调用独立`sub_39DA3`并写damage word9，敌方不标记；所有路径仍固定执行effect36/type0、damage kind3/suppress1、全combatant sprite刷新，再尾跳外部`0x399FE`共享行动提交。
+
+原机器边界重复检查`x<64`而漏掉`y<64`，空格还短暂读取`combatants[-1].side`；现代完整坐标验证与空格先判定避免无效访问，非法actor/occupancy/role同样安全拒绝，均只影响机器不安全域并归类平台适配。合法域逐条REVIEW无产品差异。新增回归锁定同格/四方向、纵向strict与横向tie、空/友/敌、4096格清零、x/y边界含`y=64`、非法slot、无kernel路径不消费RNG、全sprite写回及counter/体力回绕；既有完整玩家/AI Session继续锁定状态先提交、9帧magic、10帧无flash damage、音频与完成continuation。独立向量SHA256为`1a876ce56e8bd4e7d96e3c66b147165a5227518aebbc56a29a6e136c8f143cd9`；正式原资产Golden三生成逐字节一致，SHA256为`1d77356fefa8e722b6682fa129f9515cb14caea72accece5a0dc2b3405632afe`，55个历史键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；7个callee、两名caller及共享尾owner均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

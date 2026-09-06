@@ -771,6 +771,18 @@ BATTLE_DETOX_TARGET_WRAPPER_CALL_OFFSETS = (0x005, 0x046, 0x060)
 BATTLE_DETOX_TARGET_WRAPPER_CALL_TARGETS = (0x3ED1E, 0x36AF7, 0x39B8E)
 BATTLE_DETOX_TARGET_WRAPPER_RELOCATION_OFFSETS = (0x020, 0x02D)
 BATTLE_DETOX_TARGET_WRAPPER_CALLER_SITES = (0x3338E,)
+BATTLE_DETOX_ACTION_ADDRESS = 0x39B8E
+BATTLE_DETOX_ACTION_END = 0x39DA3
+BATTLE_DETOX_ACTION_CALL_OFFSETS = (0x005, 0x02B, 0x049, 0x19C, 0x1D1, 0x1E4, 0x1F4)
+BATTLE_DETOX_ACTION_CALL_TARGETS = (0x3ED1E, 0x3F50B, 0x3F50B, 0x39DA3, 0x3859E, 0x38910, 0x3B1E6)
+BATTLE_DETOX_ACTION_RELOCATION_OFFSETS = (
+    0x01D, 0x024, 0x03B, 0x042, 0x06C, 0x073, 0x080, 0x08B,
+    0x09C, 0x0A3, 0x0B0, 0x0BB, 0x0D6, 0x0ED, 0x0FB, 0x109,
+    0x117, 0x125, 0x12F, 0x137, 0x147, 0x14E, 0x15C, 0x166,
+    0x16E, 0x178, 0x187, 0x195, 0x1A9, 0x1B3, 0x1BB, 0x1C5,
+    0x1DC, 0x202, 0x20A,
+)
+BATTLE_DETOX_ACTION_CALLER_SITES = (0x3642C, 0x39B7F)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -6355,6 +6367,289 @@ def battle_detox_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object
     }
 
 
+def battle_detox_action_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_DETOX_ACTION_ADDRESS,
+        end=BATTLE_DETOX_ACTION_END,
+        call_offsets=BATTLE_DETOX_ACTION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_DETOX_ACTION_CALL_TARGETS,
+        relocation_offsets=BATTLE_DETOX_ACTION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_DETOX_ACTION_CALLER_SITES,
+        instruction_count=132,
+        branch_count=22,
+    )
+    if contract["raw_sha256"] != (
+        "9e6023ca65b3c68c1ff802ae357a070e6663cfe09d690e933abf95ff66f3d952"
+    ):
+        raise ValueError("Z.DAT detox action raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "78fdc57cddbb7d096e0de2173ca9cb6e98d4f0687411ea22538783e1fbf2718e"
+    ):
+        raise ValueError("Z.DAT detox action relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("ai_caller_dispatch", 0x3642B, 0x36436,
+         "c6cd5844cd9f81cbf9346d713dea0f08286f1b08333fb58af6c4ccc7fae18ed7"),
+        ("player_caller_dispatch", 0x39B7E, 0x39B8E,
+         "829ab8aaef45004e78d64ef40e99df489d75eda2b638c7397d013f6fde9292dd"),
+        ("entry_direction", 0x39B8E, 0x39C4F,
+         "81deb359a6d183f8d4607cb90b772b104f23ebbaee0b27350f34e428cf13a7c2"),
+        ("effect_clear", 0x39C4F, 0x39C78,
+         "347a78c8c3d7453ee490b186ac4c01e5f785ee9c66ba0f03b8f8071ed07befad"),
+        ("bounds_target", 0x39C78, 0x39CE7,
+         "b02ca9fb37b8183fafbaeae39db5b46d32eabb041741df685f1ad95a7f341f20"),
+        ("effect_detox", 0x39CE7, 0x39D57,
+         "6ec3b435824aeeefbd0a432e152e41b01d315bf75e00f5f8c6004fd2aab0eac3"),
+        ("animation", 0x39D57, 0x39D7E,
+         "7c1587c249e7301092320cb7dbe72883eac460871bf2c0b064f7dfb562403510"),
+        ("sprite_refresh", 0x39D7E, 0x39D9E,
+         "0a8c601f7920a58363fc87e13a5c96f8d7065f21c9683eae5e11429c80ee170d"),
+        ("action_commit", 0x399FE, 0x39A3E,
+         "43f2440c9830bf28e494fe78ef9bc1135f9d98a7a4d25846304e8c1fb50e226a"),
+        ("epilogue", 0x39A3E, 0x39A45,
+         "1012c6f763e4f0298e5468a7124dbe719ceea622ed4c78f35b47708a904443ae"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT detox action {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def i16(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    def simulate(
+        *,
+        actor: int,
+        actor_x: int,
+        actor_y: int,
+        actor_side: int,
+        initial_direction: int,
+        target_x: int,
+        target_y: int,
+        occupant: int,
+        occupant_side: int | None,
+        detox_return: int | None,
+        combatant_count: int,
+        sprite_returns: list[int],
+        attack_counter: int,
+        physical_power: int,
+    ) -> dict[str, object]:
+        if not 0 <= actor < combatant_count == len(sprite_returns):
+            raise ValueError("detox action vector has invalid combatant domain")
+        calls = ["sub_3ED1E(36)"]
+        delta_x = int(i16(target_x)) - i16(actor_x)
+        calls.append(f"sub_3F50B({delta_x})")
+        delta_y = int(i16(target_y)) - i16(actor_y)
+        calls.append(f"sub_3F50B({delta_y})")
+        direction = i16(initial_direction)
+        if delta_x != 0 or delta_y != 0:
+            if abs(delta_y) > abs(delta_x):
+                direction = 3 if delta_y > 0 else 0
+            else:
+                direction = 1 if delta_x > 0 else 2
+
+        in_safe_machine_grid = (
+            0 <= i16(target_x) < 64 and 0 <= i16(target_y) < 64
+        )
+        target_effect = 0
+        detox_called = False
+        area_effect_kind = None
+        damage_value = None
+        if in_safe_machine_grid:
+            empty = occupant == -1
+            same_side = (
+                not empty and i16(occupant_side or 0) == i16(actor_side)
+            )
+            if empty or same_side:
+                target_effect = 1
+                if not empty:
+                    detox_called = True
+                    calls.append(
+                        f"sub_39DA3(actor={actor},target={occupant},actor_role,target_role)"
+                    )
+                    damage_value = i16(detox_return or 0)
+                    area_effect_kind = 3
+        calls.extend([
+            f"sub_3859E(actor={actor},magic_type=0,effect=36)",
+            "sub_38910(suppress=1)",
+        ])
+        calls.extend(
+            f"sub_3B1E6(slot={slot})" for slot in range(combatant_count)
+        )
+        return {
+            "actor": actor,
+            "actor_coordinate": [i16(actor_x), i16(actor_y)],
+            "target_coordinate": [i16(target_x), i16(target_y)],
+            "direction_before": i16(initial_direction),
+            "direction_after": direction,
+            "effect_grid_cleared_cells": 4096,
+            "target_effect": target_effect,
+            "detox_value_called": detox_called,
+            "detox_damage_word": damage_value,
+            "area_effect_kind": area_effect_kind,
+            "damage_display_kind": 3,
+            "damage_suppress_low_word": 1,
+            "sprite_writes": [i16(value) for value in sprite_returns],
+            "action_done": 1,
+            "attack_counter_after": i16(attack_counter + 1),
+            "physical_power_after": max(i16(physical_power - 2), 0),
+            "return": 0,
+            "direct_rng_calls": 0,
+            "calls": calls,
+        }
+
+    vectors = {
+        "friendly_down_clamp": simulate(
+            actor=0, actor_x=26, actor_y=24, actor_side=0, initial_direction=1,
+            target_x=26, target_y=26, occupant=1, occupant_side=0,
+            detox_return=26, combatant_count=2, sprite_returns=[123, 456],
+            attack_counter=0, physical_power=1,
+        ),
+        "empty_same_retain": simulate(
+            actor=0, actor_x=26, actor_y=24, actor_side=0, initial_direction=2,
+            target_x=26, target_y=24, occupant=-1, occupant_side=None,
+            detox_return=None, combatant_count=1, sprite_returns=[-32768],
+            attack_counter=-1, physical_power=2,
+        ),
+        "enemy_right_tie_skip": simulate(
+            actor=0, actor_x=10, actor_y=10, actor_side=0, initial_direction=0,
+            target_x=11, target_y=11, occupant=1, occupant_side=1,
+            detox_return=None, combatant_count=2, sprite_returns=[1, 2],
+            attack_counter=6, physical_power=3,
+        ),
+        "friendly_left_tie_wrapping_commit": simulate(
+            actor=0, actor_x=10, actor_y=10, actor_side=0, initial_direction=3,
+            target_x=9, target_y=9, occupant=1, occupant_side=0,
+            detox_return=99, combatant_count=2, sprite_returns=[32767, -2],
+            attack_counter=32767, physical_power=-32768,
+        ),
+        "friendly_up": simulate(
+            actor=0, actor_x=10, actor_y=10, actor_side=0, initial_direction=3,
+            target_x=10, target_y=7, occupant=1, occupant_side=0,
+            detox_return=17, combatant_count=2, sprite_returns=[5, 6],
+            attack_counter=-32768, physical_power=32767,
+        ),
+        "out_x_negative": simulate(
+            actor=0, actor_x=10, actor_y=10, actor_side=0, initial_direction=3,
+            target_x=-1, target_y=10, occupant=-1, occupant_side=None,
+            detox_return=None, combatant_count=1, sprite_returns=[7],
+            attack_counter=10, physical_power=0,
+        ),
+        "out_x_high": simulate(
+            actor=0, actor_x=10, actor_y=10, actor_side=0, initial_direction=2,
+            target_x=64, target_y=10, occupant=-1, occupant_side=None,
+            detox_return=None, combatant_count=1, sprite_returns=[8],
+            attack_counter=11, physical_power=-1,
+        ),
+        "out_y_negative": simulate(
+            actor=0, actor_x=10, actor_y=10, actor_side=0, initial_direction=1,
+            target_x=10, target_y=-1, occupant=-1, occupant_side=None,
+            detox_return=None, combatant_count=1, sprite_returns=[9],
+            attack_counter=12, physical_power=-32767,
+        ),
+    }
+    upper_y_bug = {
+        "target": [10, 64],
+        "machine_checks": ["x>=0", "x<64", "y>=0", "x<64 repeated"],
+        "machine_accepts_bounds": True,
+        "machine_linear_occupancy_index": 64 * 64 + 10,
+        "modern_safe_rejection": True,
+    }
+    empty_negative_read = {
+        "occupant": -1,
+        "machine_transient_side_read_slot": -1,
+        "observable_target_effect": 1,
+        "detox_value_called": False,
+        "modern_avoids_invalid_read": True,
+    }
+    vector_sha256 = sha256(
+        json.dumps(
+            {
+                "vectors": vectors,
+                "upper_y_bug": upper_y_bug,
+                "empty_negative_read": empty_negative_read,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    if vector_sha256 != "1a876ce56e8bd4e7d96e3c66b147165a5227518aebbc56a29a6e136c8f143cd9":
+        raise ValueError("detox action independent vector set changed")
+
+    return {
+        **contract,
+        "conditional_branch_count": 15,
+        "unconditional_jump_count": 7,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_DETOX_ACTION_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 36,
+        "local_return_sites": [],
+        "machine_slices": machine_slices,
+        "direction": (
+            "two abs calls; same coordinate retains direction; signed abs-y > abs-x "
+            "chooses vertical, tie chooses horizontal; positive delta chooses right/down"
+        ),
+        "effect_clear": (
+            "signed nested 0..63 loops clear all 4096 words before target checks"
+        ),
+        "bounds_bug": (
+            "x>=0, x<64, y>=0, then x<64 repeated; y>=64 is not rejected"
+        ),
+        "target_contract": (
+            "enemy nonempty skips; empty marks effect1 after transient slot-minus-one "
+            "side read; friendly marks effect1, calls sub_39DA3 and stores returned "
+            "low16 to damage word"
+        ),
+        "animation_contract": (
+            "always sub_3859E(actor,0,36), damage kind3 and sub_38910(1), including "
+            "bounds, enemy and empty paths"
+        ),
+        "sprite_contract": (
+            "signed slot loop 0..<combatant_count calls sub_3B1E6 and stores returned low16"
+        ),
+        "commit_contract": (
+            "external 0x399FE tail writes action_done1; attack-counter int16 increment; "
+            "role physical-power int16 subtract2 then signed-negative clamp0; EAX0"
+        ),
+        "caller_contract": (
+            "AI sub_363AC jumps to cleanup and its sole action4 caller ignores EAX; "
+            "player sub_39B1F cleans the argument then overwrites EAX with0"
+        ),
+        "shared_entry_sites": {
+            "action_tail_0x399fe": ["0x39d9e", "0x3a107"],
+            "epilogue_0x39a3e": [
+                "0x36431", "0x364fe", "0x36509", "0x36ff4",
+                "0x3b6ee", "0x3ba71", "0x3ba80",
+            ],
+        },
+        "direct_rng_calls": 0,
+        "vectors": vectors,
+        "upper_y_bug": upper_y_bug,
+        "empty_negative_read": empty_negative_read,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code safely rejects invalid actor, role, occupancy and y>=64 targets; "
+            "it also avoids the machine empty-cell slot-minus-one side read"
+        ),
+        "closure_boundary": (
+            "stack probe, abs, detox value, magic animation, damage animation, sprite "
+            "helper, both callers and external shared tails remain independent owners"
+        ),
+    }
+
+
 def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -10295,6 +10590,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_poison_value_machine": battle_poison_value_contract(z_dat_bytes),
         "battle_detox_target_wrapper_machine":
             battle_detox_target_wrapper_contract(z_dat_bytes),
+        "battle_detox_action_machine": battle_detox_action_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
