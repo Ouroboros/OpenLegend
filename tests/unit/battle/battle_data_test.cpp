@@ -734,6 +734,83 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
         return value != 0;
     }));
+
+    const auto check_enemy_direction = [&](const BattlePathCoord coordinate,
+                                           const std::int16_t expected) {
+        std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+        data.occupancy()[static_cast<std::size_t>(coordinate.y) * 64U +
+                         static_cast<std::size_t>(coordinate.x)] = 1;
+        setup.combatants()[0U].words[combatant_word::initial_mode] = 7;
+        actor.set_word(openlegend::model::role_word::use_poison, 80);
+        target.set_word(openlegend::model::role_word::anti_poison, 20);
+        target.set_word(openlegend::model::role_word::poison, 0);
+        const auto directed = setup.apply_poison_target(0U, coordinate);
+        OL_CHECK(directed.has_value());
+        OL_CHECK(directed->hit_count == 1);
+        OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == expected);
+    };
+    check_enemy_direction(BattlePathCoord{27, 25}, 1);
+    check_enemy_direction(BattlePathCoord{25, 23}, 2);
+    check_enemy_direction(BattlePathCoord{26, 23}, 0);
+
+    std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+    data.occupancy()[24U * 64U + 26U] = 0;
+    setup.combatants()[0U].words[combatant_word::initial_mode] = 7;
+    const auto same_coordinate = setup.apply_poison_target(0U, BattlePathCoord{26, 24});
+    OL_CHECK(same_coordinate.has_value());
+    OL_CHECK(same_coordinate->hit_count == 0);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 7);
+    OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
+        return value != 0;
+    }));
+
+    for (const auto coordinate : std::array{
+             BattlePathCoord{-1, 24},
+             BattlePathCoord{64, 24},
+             BattlePathCoord{26, -1},
+             BattlePathCoord{26, 64},
+         }) {
+        const auto outside = setup.apply_poison_target(0U, coordinate);
+        OL_CHECK(outside.has_value());
+        OL_CHECK(outside->hit_count == 0);
+        OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
+            return value != 0;
+        }));
+    }
+
+    std::ranges::fill(data.occupancy(), static_cast<std::int16_t>(-1));
+    data.occupancy()[26U * 64U + 26U] = 1;
+    actor.set_word(openlegend::model::role_word::use_poison, 0);
+    target.set_word(openlegend::model::role_word::anti_poison, 0);
+    target.set_word(openlegend::model::role_word::poison, 100);
+    const auto negative_amount = setup.apply_poison_target(0U, BattlePathCoord{26, 26});
+    OL_CHECK(negative_amount.has_value());
+    OL_CHECK(negative_amount->hit_count == 1);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == -1);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
+
+    setup.combatants()[0U].words[combatant_word::initial_mode] = 3;
+    setup.combatants()[1U].words[combatant_word::initial_mode] = 2;
+    setup.combatants()[0U].words[combatant_word::sprite] = -1;
+    setup.combatants()[1U].words[combatant_word::sprite] = -1;
+    setup.combatants()[0U].words[combatant_word::action_done] = 0;
+    setup.combatants()[0U].words[combatant_word::attack_counter] = 32767;
+    actor.set_word(openlegend::model::role_word::physical_power, -32768);
+    OL_CHECK(setup.finish_poison_action(0U));
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == -32768);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
+    for (std::size_t slot = 0U; slot < 2U; ++slot) {
+        const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
+        const auto head_id = ranger.roles[static_cast<std::size_t>(role_id)].word(
+            openlegend::model::role_word::head_id);
+        const auto expected_sprite = static_cast<std::int16_t>(
+            8 * static_cast<std::int32_t>(head_id) + 5106 +
+            2 * static_cast<std::int32_t>(
+                setup.combatants()[slot].words[combatant_word::initial_mode]));
+        OL_CHECK(setup.combatants()[slot].words[combatant_word::sprite] == expected_sprite);
+    }
+    OL_CHECK(!setup.apply_poison_target(26U, BattlePathCoord{26, 26}).has_value());
 }
 
 void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {

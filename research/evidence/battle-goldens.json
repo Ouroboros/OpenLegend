@@ -8886,6 +8886,495 @@
     "platform_adaptation_boundary": "modern code may reject invalid actor and role indices that make the machine read outside loaded combatant or role records",
     "closure_boundary": "stack probe, cursor selector, poison action and sole action-menu caller remain independent owners"
   },
+  "battle_poison_action_machine": {
+    "address": "0x397e5",
+    "end": "0x39a45",
+    "raw_offset": "0x331e5",
+    "size": 608,
+    "instruction_count": 148,
+    "branch_count": 22,
+    "raw_sha256": "b24698b7078ab75be072d4a388f4fb3f0567bacfc5d5a08c1fb1190530e85937",
+    "loaded_sha256": "8a812a50dbaeb92cd56dd31e9d9f88cbf1c13612744cbb91e7fa44047c1ba81e",
+    "relocation_count": 42,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x397ea",
+      "0x39810",
+      "0x3982e",
+      "0x3998a",
+      "0x399bf",
+      "0x399d2",
+      "0x399e2"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3f50b",
+      "0x3f50b",
+      "0x39a45",
+      "0x3859e",
+      "0x38910",
+      "0x3b1e6"
+    ],
+    "callers": [
+      "0x3551b",
+      "0x397d6"
+    ],
+    "conditional_branch_count": 16,
+    "unconditional_jump_count": 6,
+    "relocation_offsets": [
+      "0x1d",
+      "0x24",
+      "0x3b",
+      "0x42",
+      "0x6c",
+      "0x73",
+      "0x80",
+      "0x8b",
+      "0x9c",
+      "0xa3",
+      "0xb0",
+      "0xbb",
+      "0xd6",
+      "0xed",
+      "0xfb",
+      "0x109",
+      "0x117",
+      "0x125",
+      "0x12f",
+      "0x137",
+      "0x147",
+      "0x14e",
+      "0x15c",
+      "0x166",
+      "0x16e",
+      "0x178",
+      "0x184",
+      "0x190",
+      "0x19e",
+      "0x1b2",
+      "0x1bc",
+      "0x1c4",
+      "0x1ce",
+      "0x1e5",
+      "0x20b",
+      "0x213",
+      "0x222",
+      "0x22b",
+      "0x232",
+      "0x23f",
+      "0x247",
+      "0x251"
+    ],
+    "stack_probe_bytes": 36,
+    "local_return_sites": [
+      "0x39a44"
+    ],
+    "machine_slices": {
+      "ai_caller_dispatch": {
+        "address": "0x3551a",
+        "end": "0x35525",
+        "size": 11,
+        "sha256": "bf899685db46af22f962d867e06d415ccdae1b5403d1904e0bdb2b4a1a237898"
+      },
+      "player_caller_dispatch": {
+        "address": "0x397d5",
+        "end": "0x397e5",
+        "size": 16,
+        "sha256": "829ab8aaef45004e78d64ef40e99df489d75eda2b638c7397d013f6fde9292dd"
+      },
+      "entry_direction": {
+        "address": "0x397e5",
+        "end": "0x398a6",
+        "size": 193,
+        "sha256": "51e8da8dad84fc409d706e8b8ffb169477a9f1a131e4285b85bf12576e94641f"
+      },
+      "effect_clear": {
+        "address": "0x398a6",
+        "end": "0x398cf",
+        "size": 41,
+        "sha256": "347a78c8c3d7453ee490b186ac4c01e5f785ee9c66ba0f03b8f8071ed07befad"
+      },
+      "bounds_target": {
+        "address": "0x398cf",
+        "end": "0x3993e",
+        "size": 111,
+        "sha256": "7ceeaf6eb256a4fbd74bfc1ac6106bc5fcfd04c01df1c6413b05d9a7bc4a346d"
+      },
+      "effect_damage": {
+        "address": "0x3993e",
+        "end": "0x399b7",
+        "size": 121,
+        "sha256": "5d5406964ad8869ff18a52cc52818df46521ea6c3d220db91ea8d009a7e7c49b"
+      },
+      "animation": {
+        "address": "0x399b7",
+        "end": "0x399de",
+        "size": 39,
+        "sha256": "b5d65dcec16b568bfb37746499fc05fe83f9544e46ce29c675073ca53458c2b3"
+      },
+      "sprite_refresh": {
+        "address": "0x399de",
+        "end": "0x399fe",
+        "size": 32,
+        "sha256": "d6a84989b2612c65803106985e4ded1cf7e12f45e85ae8769452a846d34c55a9"
+      },
+      "action_commit": {
+        "address": "0x399fe",
+        "end": "0x39a3e",
+        "size": 64,
+        "sha256": "43f2440c9830bf28e494fe78ef9bc1135f9d98a7a4d25846304e8c1fb50e226a"
+      },
+      "epilogue": {
+        "address": "0x39a3e",
+        "end": "0x39a45",
+        "size": 7,
+        "sha256": "1012c6f763e4f0298e5468a7124dbe719ceea622ed4c78f35b47708a904443ae"
+      }
+    },
+    "direction": "two abs calls; same coordinate retains direction; signed low16 abs-y > abs-x chooses vertical, tie chooses horizontal; positive delta chooses right/down",
+    "effect_clear": "signed nested 0..63 loops clear all 4096 words before target checks",
+    "bounds_bug": "x>=0, x<64, y>=0, then x<64 repeated; y>=64 is not rejected",
+    "target_contract": "friendly nonempty skips; empty marks effect1; enemy marks effect1, sets kind2, calls sub_39A45 and stores returned low16 to damage word",
+    "animation_contract": "always sub_3859E(actor,0,30), damage kind2 and sub_38910(0), including bounds, friendly and empty paths",
+    "sprite_contract": "signed slot loop 0..<combatant_count calls sub_3B1E6 and stores returned low16",
+    "commit_contract": "action_done1; attack-counter int16 increment; role physical-power int16 subtract2 then signed-negative clamp0; EAX0",
+    "caller_contract": "AI sub_3540E jumps to cleanup without reading EAX; player sub_39776 cleans the argument then overwrites EAX with0",
+    "shared_entry_sites": {
+      "action_tail_0x399fe": [
+        "0x39d9e",
+        "0x3a107"
+      ],
+      "epilogue_0x39a3e": [
+        "0x36431",
+        "0x364fe",
+        "0x36509",
+        "0x36ff4",
+        "0x3b6ee",
+        "0x3ba71",
+        "0x3ba80"
+      ]
+    },
+    "direct_rng_calls": 0,
+    "vectors": {
+      "enemy_down_clamp": {
+        "actor": 0,
+        "actor_coordinate": [
+          26,
+          24
+        ],
+        "target_coordinate": [
+          26,
+          26
+        ],
+        "direction_before": 1,
+        "direction_after": 3,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "poison_value_called": true,
+        "poison_damage_word": 9,
+        "effect_kind_after": 2,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          123,
+          456
+        ],
+        "action_done": 1,
+        "attack_counter_after": 1,
+        "physical_power_after": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(2)",
+          "sub_39A45(actor=0,target=1,actor_role,target_role)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "empty_same_retain": {
+        "actor": 0,
+        "actor_coordinate": [
+          26,
+          24
+        ],
+        "target_coordinate": [
+          26,
+          24
+        ],
+        "direction_before": 2,
+        "direction_after": 2,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "poison_value_called": false,
+        "poison_damage_word": null,
+        "effect_kind_after": 4,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          -32768
+        ],
+        "action_done": 1,
+        "attack_counter_after": 0,
+        "physical_power_after": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(0)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)"
+        ]
+      },
+      "friendly_right_tie_skip": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          11,
+          11
+        ],
+        "direction_before": 0,
+        "direction_after": 1,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "poison_value_called": false,
+        "poison_damage_word": null,
+        "effect_kind_after": 4,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          1,
+          2
+        ],
+        "action_done": 1,
+        "attack_counter_after": 7,
+        "physical_power_after": 1,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(1)",
+          "sub_3F50B(1)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "enemy_left_tie_wrapping_commit": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          9,
+          9
+        ],
+        "direction_before": 3,
+        "direction_after": 2,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "poison_value_called": true,
+        "poison_damage_word": -1,
+        "effect_kind_after": 2,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          32767,
+          -2
+        ],
+        "action_done": 1,
+        "attack_counter_after": -32768,
+        "physical_power_after": 32766,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(-1)",
+          "sub_3F50B(-1)",
+          "sub_39A45(actor=0,target=1,actor_role,target_role)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "enemy_up": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          10,
+          7
+        ],
+        "direction_before": 3,
+        "direction_after": 0,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 1,
+        "poison_value_called": true,
+        "poison_damage_word": 17,
+        "effect_kind_after": 2,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          5,
+          6
+        ],
+        "action_done": 1,
+        "attack_counter_after": -32767,
+        "physical_power_after": 32765,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(-3)",
+          "sub_39A45(actor=0,target=1,actor_role,target_role)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)",
+          "sub_3B1E6(slot=1)"
+        ]
+      },
+      "out_x_negative": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          -1,
+          10
+        ],
+        "direction_before": 3,
+        "direction_after": 2,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "poison_value_called": false,
+        "poison_damage_word": null,
+        "effect_kind_after": 3,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          7
+        ],
+        "action_done": 1,
+        "attack_counter_after": 11,
+        "physical_power_after": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(-11)",
+          "sub_3F50B(0)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)"
+        ]
+      },
+      "out_x_high": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          64,
+          10
+        ],
+        "direction_before": 2,
+        "direction_after": 1,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "poison_value_called": false,
+        "poison_damage_word": null,
+        "effect_kind_after": 3,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          8
+        ],
+        "action_done": 1,
+        "attack_counter_after": 12,
+        "physical_power_after": 0,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(54)",
+          "sub_3F50B(0)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)"
+        ]
+      },
+      "out_y_negative": {
+        "actor": 0,
+        "actor_coordinate": [
+          10,
+          10
+        ],
+        "target_coordinate": [
+          10,
+          -1
+        ],
+        "direction_before": 1,
+        "direction_after": 0,
+        "effect_grid_cleared_cells": 4096,
+        "target_effect": 0,
+        "poison_value_called": false,
+        "poison_damage_word": null,
+        "effect_kind_after": 3,
+        "damage_display_kind": 2,
+        "damage_suppress_low_word": 0,
+        "sprite_writes": [
+          9
+        ],
+        "action_done": 1,
+        "attack_counter_after": 13,
+        "physical_power_after": 32767,
+        "return": 0,
+        "direct_rng_calls": 0,
+        "calls": [
+          "sub_3ED1E(36)",
+          "sub_3F50B(0)",
+          "sub_3F50B(-11)",
+          "sub_3859E(actor=0,magic_type=0,effect=30)",
+          "sub_38910(suppress=0)",
+          "sub_3B1E6(slot=0)"
+        ]
+      }
+    },
+    "upper_y_bug": {
+      "target": [
+        10,
+        64
+      ],
+      "machine_checks": [
+        "x>=0",
+        "x<64",
+        "y>=0",
+        "x<64 repeated"
+      ],
+      "machine_accepts_bounds": true,
+      "machine_linear_occupancy_index": 4106,
+      "modern_safe_rejection": true
+    },
+    "vector_sha256": "30c5af17b805884d0d3f1588046fac237ae8f7403d8c12999ac1f8da8be19243",
+    "platform_adaptation_boundary": "modern code safely rejects invalid actor, role, occupancy and y>=64 targets that make the machine read outside valid combatant or 64x64 grid domains",
+    "closure_boundary": "stack probe, abs, poison-value, magic animation, damage animation, sprite helper, both callers and external shared-tail entrants remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

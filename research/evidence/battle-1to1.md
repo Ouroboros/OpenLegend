@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为58/81；其余23项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为59/81；其余22项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、23项为 `implemented_pending_review`、58项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、22项为 `implemented_pending_review`、59项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -130,6 +130,10 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 `sub_39776 @ 0x39776..0x397E5`已完成最终汇编→C++ REVIEW。fresh机器身份为111字节、36条指令、1个条件分支、2处加载时fixup、3次direct call、唯一caller和两个本地RET；raw/loaded SHA256为`94d03eff4ea1c9da0efeb51a4fbda40bc3bb81426f5aaa5f4067e98faea31609`与`9549158d1cb4e5570427a7aead98a07c073892c1bd7360309eed75441b8dfe7b`，全部fixup反转`0x20000`后逐字节一致。机器以signed actor→role读取`use_poison`，按向零`/15+1`得到射程，固定mode1调用独立光标；local低字恰等于1返回-1，否则调用独立`sub_397E5(actor)`并返回0。唯一动作case2 caller忽略返回值，清栈后重读actor检查action-done。
 
 现代`poison_targeting_range`及Session wrapper在合法caller域逐块一致；同步光标被拆为带入口/输入前present门的状态机，Escape经action-done0返回同一菜单ordinal，确认立即进入用毒continuation。首轮完整对照零产品差异；新增signed skill极值、负除法、14/15与89/90阶梯、非法actor/role回归后从入口重审仍零差异。非法索引安全拒绝及宿主分帧归类平台适配；`sub_36AF7`、`sub_397E5`、栈探测与caller均保持独立。根Debug构建精确14/14，正式Golden三生成逐字节一致SHA256为`30863e17bdd3fa340acfb74b55ea425a33a0c1e7b3146c25ec8c928371a43b71`，vector SHA256为`336881d39e28183cdc37c8970c27b0c2048a88e70ea123334a80b342e9b447d6`；最终为`platform_adapted / converged_no_new_differences`。
+
+`sub_397E5 @ 0x397E5..0x39A45`已完成最终汇编→C++ REVIEW。fresh机器身份为608字节、148条指令、16个条件分支、6个无条件跳转、42处加载时fixup、7次direct call、2个正常caller和1个本地RET；raw/loaded SHA256为`b24698b7078ab75be072d4a388f4fb3f0567bacfc5d5a08c1fb1190530e85937`与`8a812a50dbaeb92cd56dd31e9d9f88cbf1c13612744cbb91e7fa44047c1ba81e`，全部fixup反转`0x20000`后逐字节一致。机器同格保方向，strict `abs(y)>abs(x)`才选垂直而tie选水平；清4096格effect后按空格标记、同方skip、敌方kind2/毒值低字分派。机器边界末项错误重复`x<64`而未检查`y<64`，且空格短暂读取负一slot side；现代safe reject归类平台适配。
+
+全部路径随后固定调用effect30动画与kind2 damage、刷新全部combatant sprite，再写action_done、int16 wrapping counter加1、int16 wrapping体力减2并对signed负值夹0，最终EAX0由AI及玩家caller忽略。首轮完整入口对照零合法域产品差异；补齐同格/四方向/tie、x/y边界、upper-y BUG、空/友/敌、负damage低字、全slot sprite、counter/体力回绕和非法actor回归后重审仍零差异。毒值、动画、damage、sprite、caller和两组外部共享尾保持独立owner。根Debug构建精确14/14，正式Golden三生成逐字节一致SHA256为`45fd92b983c702d907797f6d45d70b47287033b2c486ab5e8545a64ae4a9619e`，vector SHA256为`30c5af17b805884d0d3f1588046fac237ae8f7403d8c12999ac1f8da8be19243`；最终为`platform_adapted / converged_no_new_differences`。
 
 ## 11. 武功area扫描
 
