@@ -2238,6 +2238,123 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_37070 caller remains independently closed; sub_371F7 path write remains independent"
   },
+  "battle_path_write_machine": {
+    "address": "0x371f7",
+    "end": "0x3721e",
+    "raw_offset": "0x30bf7",
+    "size": 39,
+    "instruction_count": 10,
+    "branch_count": 0,
+    "raw_sha256": "0f9bcfcda1b52e720a4fb6736dc5e5e0c0b52f40425664a967c5667294755af1",
+    "loaded_sha256": "a84edfc8630f751b1984e24720466eff6228f26a00ab1172c98c99470cc95e01",
+    "relocation_count": 1,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x371fc"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x37150",
+      "0x37287",
+      "0x37334",
+      "0x373fe"
+    ],
+    "stack_probe_bytes": 4,
+    "path_words": {
+      "address": "0xdca04",
+      "count": 4096,
+      "bytes": 8192
+    },
+    "arguments": "x, y, value are stack dwords; x and y are signed-low-word extended; value stores low word",
+    "address_math": "32-bit wrapped byte offset = (signed-int16 y << 7) + 2*signed-int16 x",
+    "write_order": "compute offset; load value dword; write low 16 bits; return byte offset in EAX",
+    "synthetic_linear_vectors": [
+      {
+        "x": 1,
+        "y": 2,
+        "input_value": 305419896,
+        "word_index": 129,
+        "byte_offset_return": 258,
+        "stored_word_unsigned": 22136,
+        "stored_word_signed": 22136,
+        "inside_path_storage": true
+      },
+      {
+        "x": 64,
+        "y": 0,
+        "input_value": -1,
+        "word_index": 64,
+        "byte_offset_return": 128,
+        "stored_word_unsigned": 65535,
+        "stored_word_signed": -1,
+        "inside_path_storage": true
+      },
+      {
+        "x": 0,
+        "y": 1,
+        "input_value": 250,
+        "word_index": 64,
+        "byte_offset_return": 128,
+        "stored_word_unsigned": 250,
+        "stored_word_signed": 250,
+        "inside_path_storage": true
+      },
+      {
+        "x": -1,
+        "y": 1,
+        "input_value": 255,
+        "word_index": 63,
+        "byte_offset_return": 126,
+        "stored_word_unsigned": 255,
+        "stored_word_signed": 255,
+        "inside_path_storage": true
+      },
+      {
+        "x": 0,
+        "y": 64,
+        "input_value": 250,
+        "word_index": 4096,
+        "byte_offset_return": 8192,
+        "stored_word_unsigned": 250,
+        "stored_word_signed": 250,
+        "inside_path_storage": false
+      },
+      {
+        "x": 64,
+        "y": 63,
+        "input_value": -32768,
+        "word_index": 4096,
+        "byte_offset_return": 8192,
+        "stored_word_unsigned": 32768,
+        "stored_word_signed": -32768,
+        "inside_path_storage": false
+      }
+    ],
+    "in_storage_alias": "(64,0) and (0,1) both write word index 64",
+    "unsafe_machine_domain": "negative coordinates can alias storage; (0,64) and (64,63) address one word past path storage",
+    "caller_roles": {
+      "0x37150": "flood candidate writes current distance",
+      "0x37287": "mark target writes 250",
+      "0x37334": "mark predecessor writes 250",
+      "0x373fe": "movement consumes current path word with 255"
+    },
+    "caller_continuations": {
+      "0x37150": "83c40c436683fb047c94",
+      "0x37287": "83c40c66a1da5603008944240866a1dc5603008944240c",
+      "0x37334": "83c40cbb04000000",
+      "0x373fe": "83c40c8b1424c1e2078b442404"
+    },
+    "return_observation": {
+      "0x37150": "ignored; direction loop control follows",
+      "0x37287": "AX is replaced by target x, leaving return high word; legal coordinate offset is below 65536 and later coordinate operations consume low words",
+      "0x37334": "ignored; EBX is set to 4",
+      "0x373fe": "overwritten by coordinate locals before occupancy write"
+    },
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_37070, sub_37245, and sub_37355 callers remain independent owners; sub_3721E path read remains independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

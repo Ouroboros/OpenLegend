@@ -544,6 +544,14 @@ BATTLE_ENQUEUE_CALLER_SITES = (0x370BE, 0x3713E)
 BATTLE_ENQUEUE_X_WORDS_ADDRESS = 0xE6ABE
 BATTLE_ENQUEUE_Y_WORDS_ADDRESS = 0xE6CBC
 BATTLE_ENQUEUE_WRITE_INDEX_ADDRESS = 0xE6ED0
+BATTLE_PATH_WRITE_ADDRESS = 0x371F7
+BATTLE_PATH_WRITE_END = 0x3721E
+BATTLE_PATH_WRITE_CALL_OFFSETS = (0x05,)
+BATTLE_PATH_WRITE_CALL_TARGETS = (0x3ED1E,)
+BATTLE_PATH_WRITE_RELOCATION_OFFSETS = (0x22,)
+BATTLE_PATH_WRITE_CALLER_SITES = (0x37150, 0x37287, 0x37334, 0x373FE)
+BATTLE_PATH_WORDS_ADDRESS = 0xDCA04
+BATTLE_PATH_WORD_COUNT = 64 * 64
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -2431,6 +2439,129 @@ def battle_enqueue_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_37070 caller remains independently closed; sub_371F7 path write remains independent",
+    }
+
+
+def battle_path_write_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_PATH_WRITE_ADDRESS,
+        end=BATTLE_PATH_WRITE_END,
+        call_offsets=BATTLE_PATH_WRITE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_PATH_WRITE_CALL_TARGETS,
+        relocation_offsets=BATTLE_PATH_WRITE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_PATH_WRITE_CALLER_SITES,
+        instruction_count=10,
+        branch_count=0,
+    )
+    if contract["raw_sha256"] != (
+        "0f9bcfcda1b52e720a4fb6736dc5e5e0c0b52f40425664a967c5667294755af1"
+    ):
+        raise ValueError("Z.DAT path write raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "a84edfc8630f751b1984e24720466eff6228f26a00ab1172c98c99470cc95e01"
+    ):
+        raise ValueError("Z.DAT path write relocation image changed")
+    caller_continuations = {
+        "0x37150": z_dat_bytes[0x37155 - Z_DAT_LOAD_BASE:0x3715F - Z_DAT_LOAD_BASE].hex(),
+        "0x37287": z_dat_bytes[0x3728C - Z_DAT_LOAD_BASE:0x372A3 - Z_DAT_LOAD_BASE].hex(),
+        "0x37334": z_dat_bytes[0x37339 - Z_DAT_LOAD_BASE:0x37341 - Z_DAT_LOAD_BASE].hex(),
+        "0x373fe": z_dat_bytes[0x37403 - Z_DAT_LOAD_BASE:0x37410 - Z_DAT_LOAD_BASE].hex(),
+    }
+    if caller_continuations != {
+        "0x37150": "83c40c436683fb047c94",
+        "0x37287": "83c40c66a1da5603008944240866a1dc5603008944240c",
+        "0x37334": "83c40cbb04000000",
+        "0x373fe": "83c40c8b1424c1e2078b442404",
+    }:
+        raise ValueError("Z.DAT path write caller continuation changed")
+
+    def signed_word(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    synthetic_linear_vectors = []
+    for x, y, value in (
+        (1, 2, 0x12345678),
+        (64, 0, -1),
+        (0, 1, 250),
+        (-1, 1, 255),
+        (0, 64, 250),
+        (64, 63, -32768),
+    ):
+        x16 = signed_word(x)
+        y16 = signed_word(y)
+        byte_offset = ((y16 << 7) + (x16 << 1)) & 0xFFFFFFFF
+        if byte_offset >= 0x80000000:
+            byte_offset -= 0x100000000
+        synthetic_linear_vectors.append({
+            "x": x16,
+            "y": y16,
+            "input_value": value,
+            "word_index": byte_offset // 2,
+            "byte_offset_return": byte_offset,
+            "stored_word_unsigned": value & 0xFFFF,
+            "stored_word_signed": signed_word(value),
+            "inside_path_storage": 0 <= byte_offset < 8192,
+        })
+    expected_vectors = [
+        {"x": 1, "y": 2, "input_value": 0x12345678, "word_index": 129,
+         "byte_offset_return": 258, "stored_word_unsigned": 0x5678,
+         "stored_word_signed": 0x5678, "inside_path_storage": True},
+        {"x": 64, "y": 0, "input_value": -1, "word_index": 64,
+         "byte_offset_return": 128, "stored_word_unsigned": 0xFFFF,
+         "stored_word_signed": -1, "inside_path_storage": True},
+        {"x": 0, "y": 1, "input_value": 250, "word_index": 64,
+         "byte_offset_return": 128, "stored_word_unsigned": 250,
+         "stored_word_signed": 250, "inside_path_storage": True},
+        {"x": -1, "y": 1, "input_value": 255, "word_index": 63,
+         "byte_offset_return": 126, "stored_word_unsigned": 255,
+         "stored_word_signed": 255, "inside_path_storage": True},
+        {"x": 0, "y": 64, "input_value": 250, "word_index": 4096,
+         "byte_offset_return": 8192, "stored_word_unsigned": 250,
+         "stored_word_signed": 250, "inside_path_storage": False},
+        {"x": 64, "y": 63, "input_value": -32768, "word_index": 4096,
+         "byte_offset_return": 8192, "stored_word_unsigned": 0x8000,
+         "stored_word_signed": -32768, "inside_path_storage": False},
+    ]
+    if synthetic_linear_vectors != expected_vectors:
+        raise ValueError("path write synthetic linear vectors changed")
+
+    return {
+        **contract,
+        "stack_probe_bytes": 4,
+        "path_words": {
+            "address": hex(BATTLE_PATH_WORDS_ADDRESS),
+            "count": BATTLE_PATH_WORD_COUNT,
+            "bytes": BATTLE_PATH_WORD_COUNT * 2,
+        },
+        "arguments":
+            "x, y, value are stack dwords; x and y are signed-low-word extended; value stores low word",
+        "address_math":
+            "32-bit wrapped byte offset = (signed-int16 y << 7) + 2*signed-int16 x",
+        "write_order":
+            "compute offset; load value dword; write low 16 bits; return byte offset in EAX",
+        "synthetic_linear_vectors": synthetic_linear_vectors,
+        "in_storage_alias": "(64,0) and (0,1) both write word index 64",
+        "unsafe_machine_domain":
+            "negative coordinates can alias storage; (0,64) and (64,63) address one word past path storage",
+        "caller_roles": {
+            "0x37150": "flood candidate writes current distance",
+            "0x37287": "mark target writes 250",
+            "0x37334": "mark predecessor writes 250",
+            "0x373fe": "movement consumes current path word with 255",
+        },
+        "caller_continuations": caller_continuations,
+        "return_observation": {
+            "0x37150": "ignored; direction loop control follows",
+            "0x37287":
+                "AX is replaced by target x, leaving return high word; legal coordinate offset is below 65536 and later coordinate operations consume low words",
+            "0x37334": "ignored; EBX is set to 4",
+            "0x373fe": "overwritten by coordinate locals before occupancy write",
+        },
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_37070, sub_37245, and sub_37355 callers remain independent owners; sub_3721E path read remains independent",
     }
 
 
@@ -6354,6 +6485,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_flood_step_machine": battle_flood_step_contract(z_dat_bytes),
         "battle_dequeue_machine": battle_dequeue_contract(z_dat_bytes),
         "battle_enqueue_machine": battle_enqueue_contract(z_dat_bytes),
+        "battle_path_write_machine": battle_path_write_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
