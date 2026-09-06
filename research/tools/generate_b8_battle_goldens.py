@@ -212,6 +212,66 @@ BATTLE_AI_REQUEST_DETOX_JUMP_SITES = (0x3620E,)
 BATTLE_AI_REQUEST_DETOX_ADDRESS = 0x36209
 BATTLE_AI_REQUEST_DETOX_END = 0x36210
 BATTLE_AI_REQUEST_DETOX_CALLER_SITES = (0x33C19,)
+BATTLE_AI_SUPPORT_MEDICINE_ADDRESS = 0x36210
+BATTLE_AI_SUPPORT_MEDICINE_END = 0x363AC
+BATTLE_AI_SUPPORT_MEDICINE_CALL_OFFSETS = (
+    0x05,
+    0x52,
+    0x80,
+    0x9B,
+    0xE0,
+    0x103,
+    0x125,
+    0x188,
+    0x190,
+)
+BATTLE_AI_SUPPORT_MEDICINE_CALL_TARGETS = (
+    0x3ED1E,
+    0x36E7F,
+    0x39EF7,
+    0x3650E,
+    0x3F50B,
+    0x3F50B,
+    0x36E7F,
+    0x34C47,
+    0x34AD3,
+)
+BATTLE_AI_SUPPORT_MEDICINE_RELOCATION_OFFSETS = (
+    0x18,
+    0x25,
+    0x3B,
+    0x41,
+    0x48,
+    0x4E,
+    0x5A,
+    0x64,
+    0x6E,
+    0x76,
+    0x8D,
+    0xA6,
+    0xB0,
+    0xB6,
+    0xBD,
+    0xC3,
+    0xCA,
+    0xD9,
+    0xEB,
+    0xF5,
+    0xFC,
+    0x10E,
+    0x114,
+    0x11B,
+    0x121,
+    0x12D,
+    0x137,
+    0x141,
+    0x149,
+    0x159,
+    0x166,
+    0x16F,
+    0x178,
+)
+BATTLE_AI_SUPPORT_MEDICINE_CALLER_SITES = (0x33BF8,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1284,6 +1344,56 @@ def battle_ai_request_detox_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_ai_support_medicine_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_SUPPORT_MEDICINE_ADDRESS,
+        end=BATTLE_AI_SUPPORT_MEDICINE_END,
+        call_offsets=BATTLE_AI_SUPPORT_MEDICINE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_AI_SUPPORT_MEDICINE_CALL_TARGETS,
+        relocation_offsets=BATTLE_AI_SUPPORT_MEDICINE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_SUPPORT_MEDICINE_CALLER_SITES,
+        instruction_count=97,
+        branch_count=6,
+    )
+    if contract["raw_sha256"] != (
+        "170152b7fbff2346acf70a92693b0aabe6e58b50b5198769553c9e25bdf92bd3"
+    ):
+        raise ValueError("Z.DAT AI medicine handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "b37845bf6761f6a50de0f11a59e0ca389b2b836d51c50dcb059aee01da735197"
+    ):
+        raise ValueError("Z.DAT AI medicine handler relocation image changed")
+    return {
+        **contract,
+        "branches": [
+            {"site": "0x3628d", "target": "0x3629a", "condition": "signed range < distance"},
+            {"site": "0x36295", "target": "0x363a5", "condition": "medicine exit"},
+            {"site": "0x362a2", "target": "0x362b3", "condition": "signed round <= 0"},
+            {"site": "0x36360", "target": "0x3628f", "condition": "signed range >= rebuilt distance"},
+            {"site": "0x36395", "target": "0x3639f", "condition": "actor doubled attack <= doubled allied average"},
+            {"site": "0x3639d", "target": "0x363a5", "condition": "automatic-attack exit"},
+        ],
+        "entry_owner": "sub_33599 action case5 medicine",
+        "caller":
+            "sub_33599 pushes signed actor, ignores EAX, cleans one actor argument and later writes actor action_done word13=1",
+        "range":
+            "signed actor-role medicine is IDIV 15 toward zero then incremented; signed DI retains the range and EDX remainder is discarded",
+        "initial_range_check":
+            "actor x/y become targeting source, sub_36E7F builds values and signed range >= signed target distance enters sub_39EF7 medicine",
+        "movement":
+            "only signed actor round word6 > 0 calls sub_3650E(actor,mode1,range); zero or negative skips and EAX is ignored",
+        "second_range_check":
+            "target slot/current x/y are re-read, two pure sub_3F50B results are discarded, actor source and targeting values are rebuilt and signed range >= distance re-enters medicine",
+        "fallback":
+            "2*signed live actor attack is strict-greater compared with signed IDIV of 2*signed AI-entry-frozen allied total by its frozen allied count; attack else rest",
+        "return": "delegated medicine, attack or rest EAX reaches RET but sub_33599 ignores it",
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_3ED1E, sub_36E7F, sub_39EF7, sub_3650E, sub_3F50B, sub_34C47 and sub_34AD3 remain independent owners",
+    }
+
+
 def battle_ai_specialist_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -1932,6 +2042,10 @@ def ai_support_vectors() -> dict[str, object]:
     allied_count = 2
     doubled_average = trunc_div(2 * allied_total, allied_count)
     return {
+        "entry_owners": {
+            "medicine": {"address": "0x36210", "action": 5},
+            "detox": {"address": "0x363ac", "action": 4},
+        },
         "medicine": {
             "ability": medicine,
             "targeting_range": medicine_range,
@@ -1956,6 +2070,16 @@ def ai_support_vectors() -> dict[str, object]:
             "range_checks": 2,
             "movement_called": False,
         },
+        "out_of_range_negative_round": {
+            "round_value": -1,
+            "range_checks": 2,
+            "movement_called": False,
+        },
+        "signed_medicine_range": {
+            "minus_30": trunc_div(-30, 15) + 1,
+            "minus_14": trunc_div(-14, 15) + 1,
+            "plus_30": medicine_range,
+        },
         "fallback": {
             "allied_total_wrapped": allied_total,
             "allied_count": allied_count,
@@ -1964,8 +2088,22 @@ def ai_support_vectors() -> dict[str, object]:
             "actor_attack_30000_next_step": "automatic_attack",
             "actor_attack_7232_next_step": "rest",
             "strict_greater_for_attack": True,
+            "allied_total_and_count_frozen_at_ai_entry": True,
+            "live_actor_attack_reread_after_move": True,
+            "frozen_mutation_vector": {
+                "entry_allied_total": 300,
+                "entry_allied_count": 2,
+                "post_entry_ally_attack": 1_000,
+                "post_entry_ally_hp": 1_000,
+                "frozen_doubled_average": 300,
+                "recomputed_doubled_average_would_be": 2_300,
+                "live_actor_doubled_attack": 600,
+                "next_step": "automatic_attack",
+            },
         },
         "restore_same_target_after_move": True,
+        "target_coordinates_reread_after_move": True,
+        "discarded_absolute_value_calls": 2,
         "rng_consumed_before_support_or_fallback": False,
         "outer_marks_action_done_after_handler": True,
     }
@@ -4987,6 +5125,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_carried_item_remove_machine": battle_carried_item_remove_contract(z_dat_bytes),
         "battle_ai_request_medicine_machine": battle_ai_request_medicine_contract(z_dat_bytes),
         "battle_ai_request_detox_machine": battle_ai_request_detox_contract(z_dat_bytes),
+        "battle_ai_support_medicine_machine": battle_ai_support_medicine_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

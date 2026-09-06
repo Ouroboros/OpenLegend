@@ -1136,7 +1136,8 @@ bool BattleSession::dispatch_selected_ai_action() {
         return continue_ai_request_plan();
     case BattleAiHandler::detox:
     case BattleAiHandler::medicine:
-        ai_support_plan_ = setup_.begin_ai_support_plan(current_actor_slot_, choice);
+        ai_support_plan_ = setup_.begin_ai_support_plan(
+            current_actor_slot_, choice, *ai_turn_prelude_);
         if (!ai_support_plan_.has_value()) {
             error_ = setup_.valid() ? "battle AI support plan failed" : setup_.error();
             return false;

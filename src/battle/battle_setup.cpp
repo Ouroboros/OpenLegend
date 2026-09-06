@@ -4534,38 +4534,16 @@ bool BattleSetup::update_ai_support_target_range(
 bool BattleSetup::update_ai_support_fallback(
     const std::size_t actor_slot,
     BattleAiSupportPlan& plan) {
-    const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
-    std::int16_t allied_total = 0;
-    std::int16_t allied_count = 0;
-    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto& combatant = combatants_[slot].words;
-        if (combatant[combatant_word::side] != actor_side) {
-            continue;
-        }
-        const auto role_id = combatant[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-            error_ = "battle AI support ally is outside ranger records";
-            return false;
-        }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        allied_total = wrapping_i16(
-            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::attack));
-        allied_total = wrapping_i16(
-            static_cast<std::int32_t>(allied_total) + role.word(model::role_word::hp));
-        allied_count = wrapping_i16(static_cast<std::int32_t>(allied_count) + 1);
-    }
     const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (allied_count == 0 || actor_role_id < 0 ||
+    if (plan.allied_count == 0 || actor_role_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         error_ = "battle AI support fallback state is invalid";
         return false;
     }
-    plan.allied_total = allied_total;
-    plan.allied_count = allied_count;
     plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(
         ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(model::role_word::attack));
     plan.doubled_allied_average =
-        2 * static_cast<std::int32_t>(allied_total) / allied_count;
+        2 * static_cast<std::int32_t>(plan.allied_total) / plan.allied_count;
     plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
         ? BattleAiSupportNextStep::automatic_attack
         : BattleAiSupportNextStep::rest;
@@ -4574,7 +4552,8 @@ bool BattleSetup::update_ai_support_fallback(
 
 std::optional<BattleAiSupportPlan> BattleSetup::begin_ai_support_plan(
     const std::size_t actor_slot,
-    const BattleAiChoice& choice) {
+    const BattleAiChoice& choice,
+    const BattleAiTurnPrelude& prelude) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
         (choice.action != BattleAiAction::medicine &&
          choice.action != BattleAiAction::detox) ||
@@ -4590,6 +4569,8 @@ std::optional<BattleAiSupportPlan> BattleSetup::begin_ai_support_plan(
     BattleAiSupportPlan plan{};
     plan.support_action = choice.action;
     plan.targeting_range = *targeting_range;
+    plan.allied_total = prelude.allied_total;
+    plan.allied_count = prelude.allied_count;
     plan.movement_mode = 1;
     plan.movement_value = *targeting_range;
     const auto target_slot = static_cast<std::size_t>(choice.target_slot);

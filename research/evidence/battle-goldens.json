@@ -1113,6 +1113,85 @@
     "direct_rng_draws": 0,
     "closure_boundary": "close only sub_36209 wrapper owner; do not duplicate or alter the independent sub_361AC body owner"
   },
+  "battle_ai_support_medicine_machine": {
+    "address": "0x36210",
+    "end": "0x363ac",
+    "raw_offset": "0x2fc10",
+    "size": 412,
+    "instruction_count": 97,
+    "branch_count": 6,
+    "raw_sha256": "170152b7fbff2346acf70a92693b0aabe6e58b50b5198769553c9e25bdf92bd3",
+    "loaded_sha256": "b37845bf6761f6a50de0f11a59e0ca389b2b836d51c50dcb059aee01da735197",
+    "relocation_count": 33,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x36215",
+      "0x36262",
+      "0x36290",
+      "0x362ab",
+      "0x362f0",
+      "0x36313",
+      "0x36335",
+      "0x36398",
+      "0x363a0"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36e7f",
+      "0x39ef7",
+      "0x3650e",
+      "0x3f50b",
+      "0x3f50b",
+      "0x36e7f",
+      "0x34c47",
+      "0x34ad3"
+    ],
+    "callers": [
+      "0x33bf8"
+    ],
+    "branches": [
+      {
+        "site": "0x3628d",
+        "target": "0x3629a",
+        "condition": "signed range < distance"
+      },
+      {
+        "site": "0x36295",
+        "target": "0x363a5",
+        "condition": "medicine exit"
+      },
+      {
+        "site": "0x362a2",
+        "target": "0x362b3",
+        "condition": "signed round <= 0"
+      },
+      {
+        "site": "0x36360",
+        "target": "0x3628f",
+        "condition": "signed range >= rebuilt distance"
+      },
+      {
+        "site": "0x36395",
+        "target": "0x3639f",
+        "condition": "actor doubled attack <= doubled allied average"
+      },
+      {
+        "site": "0x3639d",
+        "target": "0x363a5",
+        "condition": "automatic-attack exit"
+      }
+    ],
+    "entry_owner": "sub_33599 action case5 medicine",
+    "caller": "sub_33599 pushes signed actor, ignores EAX, cleans one actor argument and later writes actor action_done word13=1",
+    "range": "signed actor-role medicine is IDIV 15 toward zero then incremented; signed DI retains the range and EDX remainder is discarded",
+    "initial_range_check": "actor x/y become targeting source, sub_36E7F builds values and signed range >= signed target distance enters sub_39EF7 medicine",
+    "movement": "only signed actor round word6 > 0 calls sub_3650E(actor,mode1,range); zero or negative skips and EAX is ignored",
+    "second_range_check": "target slot/current x/y are re-read, two pure sub_3F50B results are discarded, actor source and targeting values are rebuilt and signed range >= distance re-enters medicine",
+    "fallback": "2*signed live actor attack is strict-greater compared with signed IDIV of 2*signed AI-entry-frozen allied total by its frozen allied count; attack else rest",
+    "return": "delegated medicine, attack or rest EAX reaches RET but sub_33599 ignores it",
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_3ED1E, sub_36E7F, sub_39EF7, sub_3650E, sub_3F50B, sub_34C47 and sub_34AD3 remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -3486,6 +3565,16 @@
         "rng_consumed_before_automatic_attack": false
       },
       "ai_support_vectors": {
+        "entry_owners": {
+          "medicine": {
+            "address": "0x36210",
+            "action": 5
+          },
+          "detox": {
+            "address": "0x363ac",
+            "action": 4
+          }
+        },
         "medicine": {
           "ability": 30,
           "targeting_range": 3,
@@ -3510,6 +3599,16 @@
           "range_checks": 2,
           "movement_called": false
         },
+        "out_of_range_negative_round": {
+          "round_value": -1,
+          "range_checks": 2,
+          "movement_called": false
+        },
+        "signed_medicine_range": {
+          "minus_30": -1,
+          "minus_14": 1,
+          "plus_30": 3
+        },
         "fallback": {
           "allied_total_wrapped": 14464,
           "allied_count": 2,
@@ -3517,9 +3616,23 @@
           "actor_attack_30000_doubled": 60000,
           "actor_attack_30000_next_step": "automatic_attack",
           "actor_attack_7232_next_step": "rest",
-          "strict_greater_for_attack": true
+          "strict_greater_for_attack": true,
+          "allied_total_and_count_frozen_at_ai_entry": true,
+          "live_actor_attack_reread_after_move": true,
+          "frozen_mutation_vector": {
+            "entry_allied_total": 300,
+            "entry_allied_count": 2,
+            "post_entry_ally_attack": 1000,
+            "post_entry_ally_hp": 1000,
+            "frozen_doubled_average": 300,
+            "recomputed_doubled_average_would_be": 2300,
+            "live_actor_doubled_attack": 600,
+            "next_step": "automatic_attack"
+          }
         },
         "restore_same_target_after_move": true,
+        "target_coordinates_reread_after_move": true,
+        "discarded_absolute_value_calls": 2,
         "rng_consumed_before_support_or_fallback": false,
         "outer_marks_action_done_after_handler": true
       },

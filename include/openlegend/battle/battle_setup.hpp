@@ -899,7 +899,8 @@ public:
         BattleAiRequestPlan plan) const noexcept;
     [[nodiscard]] std::optional<BattleAiSupportPlan> begin_ai_support_plan(
         std::size_t actor_slot,
-        const BattleAiChoice& choice);
+        const BattleAiChoice& choice,
+        const BattleAiTurnPrelude& prelude);
     [[nodiscard]] std::optional<BattleAiSupportPlan> resume_ai_support_after_move(
         std::size_t actor_slot,
         BattleAiSupportPlan plan);
