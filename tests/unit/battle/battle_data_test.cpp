@@ -959,26 +959,40 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(setup.combatants()[slot].words[combatant_word::sprite] == expected_sprite);
     }
 
-    actor.set_word(openlegend::model::role_word::detoxification, 20);
-    target.set_word(openlegend::model::role_word::poison, 41);
+    const auto check_detox_value = [&](const std::int16_t detoxification,
+                                        const std::int16_t initial_poison,
+                                        const std::uint32_t seed,
+                                        const std::int16_t expected_amount,
+                                        const std::int16_t expected_poison,
+                                        const std::uint32_t expected_state) {
+        actor.set_word(openlegend::model::role_word::detoxification, detoxification);
+        target.set_word(openlegend::model::role_word::poison, initial_poison);
+        random.seed(seed);
+        OL_CHECK(setup.apply_detox_value(0U, 1U, random) == expected_amount);
+        OL_CHECK(target.word(openlegend::model::role_word::poison) == expected_poison);
+        OL_CHECK(random.state() == expected_state);
+    };
+    check_detox_value(20, 40, 1U, 6, 34, 2'524'885'223U);
+    check_detox_value(20, 41, 1U, 0, 41, 2'524'885'223U);
+    check_detox_value(30, 2, 2U, 2, 0, 1'495'354'192U);
+    check_detox_value(32767, 99, 1U, 99, 0, 2'524'885'223U);
+    check_detox_value(-32768, 10, 1U, 0, 10, 2'524'885'223U);
+    check_detox_value(80, -1, 1U, -1, 0, 2'524'885'223U);
+    check_detox_value(80, -32768, 1U, -32768, 0, 2'524'885'223U);
+    check_detox_value(0, 100, 1U, 0, 100, 2'524'885'223U);
+    check_detox_value(0, 101, 1U, 0, 99, 2'524'885'223U);
+    check_detox_value(0, 32767, 1U, 0, 99, 2'524'885'223U);
+
+    const auto actor_role_id = setup.combatants()[0U].words[combatant_word::role_id];
+    const auto target_role_id = setup.combatants()[1U].words[combatant_word::role_id];
+    setup.combatants()[1U].words[combatant_word::role_id] = actor_role_id;
+    actor.set_word(openlegend::model::role_word::detoxification, 80);
+    actor.set_word(openlegend::model::role_word::poison, 90);
     random.seed(1U);
-    OL_CHECK(setup.apply_detox_value(0U, 1U, random) == 0);
+    OL_CHECK(setup.apply_detox_value(0U, 1U, random) == 26);
+    OL_CHECK(actor.word(openlegend::model::role_word::poison) == 64);
     OL_CHECK(random.state() == 2'524'885'223U);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 41);
-    actor.set_word(openlegend::model::role_word::detoxification, 500);
-    target.set_word(openlegend::model::role_word::poison, 99);
-    random.seed(1U);
-    OL_CHECK(setup.apply_detox_value(0U, 1U, random) == 99);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 0);
-    actor.set_word(openlegend::model::role_word::detoxification, 0);
-    target.set_word(openlegend::model::role_word::poison, 100);
-    random.seed(1U);
-    OL_CHECK(setup.apply_detox_value(0U, 1U, random) == 0);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 100);
-    target.set_word(openlegend::model::role_word::poison, 101);
-    random.seed(1U);
-    OL_CHECK(setup.apply_detox_value(0U, 1U, random) == 0);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
+    setup.combatants()[1U].words[combatant_word::role_id] = target_role_id;
 
     data.occupancy()[26U * 64U + 26U] = -1;
     random.seed(1U);
@@ -1025,6 +1039,12 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(!setup.detox_targeting_range(26U).has_value());
     setup.combatants()[0U].words[combatant_word::role_id] = -1;
     OL_CHECK(!setup.detox_targeting_range(0U).has_value());
+    random.seed(1U);
+    OL_CHECK(!setup.apply_detox_value(0U, 1U, random).has_value());
+    OL_CHECK(random.state() == 1U);
+    random.seed(1U);
+    OL_CHECK(!setup.apply_detox_value(26U, 1U, random).has_value());
+    OL_CHECK(random.state() == 1U);
 
     {
         auto invalid_ranger = make_ranger({0, 2, 3, -1, -1, -1});

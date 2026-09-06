@@ -10574,6 +10574,377 @@
     "platform_adaptation_boundary": "modern code safely rejects invalid actor, role, occupancy and y>=64 targets; it also avoids the machine empty-cell slot-minus-one side read",
     "closure_boundary": "stack probe, abs, detox value, magic animation, damage animation, sprite helper, both callers and external shared tails remain independent owners"
   },
+  "battle_detox_value_machine": {
+    "address": "0x39da3",
+    "end": "0x39e88",
+    "raw_offset": "0x337a3",
+    "size": 229,
+    "instruction_count": 54,
+    "branch_count": 6,
+    "raw_sha256": "d5eca3b1cc278ca4475476773089aaec09af21f540eb9901b161ffeb2d54589c",
+    "loaded_sha256": "8043f993618a3195701a6048029d0b3d1431b8699c8d75e475ffbfe6a83b91ea",
+    "relocation_count": 10,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x39da8",
+      "0x39dd0",
+      "0x39ddc"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x3d612"
+    ],
+    "callers": [
+      "0x21c65",
+      "0x39d2a"
+    ],
+    "basic_block_count": 13,
+    "conditional_branch_count": 6,
+    "unconditional_jump_count": 0,
+    "relocation_offsets": [
+      "0x19",
+      "0x63",
+      "0x75",
+      "0x90",
+      "0x99",
+      "0xab",
+      "0xb2",
+      "0xbc",
+      "0xd0",
+      "0xda"
+    ],
+    "stack_probe_bytes": 12,
+    "local_return_sites": [
+      "0x39e87"
+    ],
+    "machine_slices": {
+      "menu_caller": {
+        "address": "0x21c4b",
+        "end": "0x21c7d",
+        "size": 50,
+        "sha256": "f2137614ab9e99e8c10348e18f1e58570c061687b9ff5ad356c842b5747f0e9b"
+      },
+      "battle_caller": {
+        "address": "0x39d0f",
+        "end": "0x39d57",
+        "size": 72,
+        "sha256": "f854345cf8390df7dd0b72b98d40a0be3e826ae37663c1f6acad57eab95e7fcb"
+      },
+      "formula_rng": {
+        "address": "0x39da3",
+        "end": "0x39de6",
+        "size": 67,
+        "sha256": "b306486913ea9e3d2010bdac6a482a5c49b8e2622b07defd92a345f281c1b1ee"
+      },
+      "amount_clamp": {
+        "address": "0x39de6",
+        "end": "0x39df8",
+        "size": 18,
+        "sha256": "12e1269ed975c70fd8b01fc10df2f58e1750868343be400dcf9e8b6bfaa9ec45"
+      },
+      "threshold": {
+        "address": "0x39df8",
+        "end": "0x39e25",
+        "size": 45,
+        "sha256": "cac8a00df7381e76aa6f965da77bac6c054ab9fc810111022eaf9f1142003f29"
+      },
+      "target_cap": {
+        "address": "0x39e25",
+        "end": "0x39e40",
+        "size": 27,
+        "sha256": "28d4eec42359ec53d872701066f178276197e94a452072190fb4581753a9856b"
+      },
+      "write_and_low_clamp": {
+        "address": "0x39e40",
+        "end": "0x39e65",
+        "size": 37,
+        "sha256": "6ee4902a1665c22a982edd246cf2649d31fe02f4b0326f4985b685b6b8747189"
+      },
+      "high_clamp_and_return": {
+        "address": "0x39e65",
+        "end": "0x39e88",
+        "size": 35,
+        "sha256": "45d659abff58b7cd500f966ac2f10dc198f6f49cd0f6d35ce98c992d2dded84f"
+      }
+    },
+    "argument_contract": "four signed low16 arguments are passed; only actor-role and target-role indices are read",
+    "formula_contract": "signed detoxification / 3 truncating toward zero, then two unconditional ordered bounded(10) calls and signed low16 clamp to 0..99",
+    "threshold_contract": "strict signed poison > detoxification + 20 clears amount after both RNG calls",
+    "target_cap_contract": "signed BX greater than signed target poison copies the poison word into BX",
+    "write_contract": "subtract BX directly from the poison word with int16 wrap; negative result clamps0, then a fresh read strictly above100 clamps99 while exactly100 remains",
+    "return_contract": "EAX is sign-extended BX, independent of final poison clamps; negative initial poison returns that negative value while target poison becomes0",
+    "caller_contract": "sub_21AC0 passes dummy -1 slots plus actor/target role ids and saves full EAX for the result panel; sub_39B8E passes slots plus role ids and stores DX in the target combatant damage word",
+    "direct_rng_calls": 2,
+    "rng_contract": "both bounded(10) calls precede every clamp, threshold, target cap and write",
+    "vectors": {
+      "normal": {
+        "detoxification": 80,
+        "poison_before": 90,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 26,
+        "threshold_zeroed": false,
+        "target_capped": false,
+        "poison_writes_i16": [
+          64
+        ],
+        "poison_after": 64,
+        "return_eax_i32": 26,
+        "return_ax_i16": 26,
+        "rng_calls": 2
+      },
+      "strict_threshold_equal": {
+        "detoxification": 20,
+        "poison_before": 40,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 6,
+        "threshold_zeroed": false,
+        "target_capped": false,
+        "poison_writes_i16": [
+          34
+        ],
+        "poison_after": 34,
+        "return_eax_i32": 6,
+        "return_ax_i16": 6,
+        "rng_calls": 2
+      },
+      "strict_threshold_above": {
+        "detoxification": 20,
+        "poison_before": 41,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 6,
+        "threshold_zeroed": true,
+        "target_capped": false,
+        "poison_writes_i16": [
+          41
+        ],
+        "poison_after": 41,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 2
+      },
+      "high_amount_clamp": {
+        "detoxification": 32767,
+        "poison_before": 99,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 10922,
+        "threshold_zeroed": false,
+        "target_capped": false,
+        "poison_writes_i16": [
+          0
+        ],
+        "poison_after": 0,
+        "return_eax_i32": 99,
+        "return_ax_i16": 99,
+        "rng_calls": 2
+      },
+      "negative_ability": {
+        "detoxification": -32768,
+        "poison_before": 10,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": -10922,
+        "threshold_zeroed": true,
+        "target_capped": false,
+        "poison_writes_i16": [
+          10
+        ],
+        "poison_after": 10,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 2
+      },
+      "target_cap": {
+        "detoxification": 30,
+        "poison_before": 2,
+        "seed_before": 2,
+        "rng_outputs": [
+          8,
+          7
+        ],
+        "rng_state_after": 1495354192,
+        "raw_amount_i32": 11,
+        "threshold_zeroed": false,
+        "target_capped": true,
+        "poison_writes_i16": [
+          0
+        ],
+        "poison_after": 0,
+        "return_eax_i32": 2,
+        "return_ax_i16": 2,
+        "rng_calls": 2
+      },
+      "poison_zero": {
+        "detoxification": 80,
+        "poison_before": 0,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 26,
+        "threshold_zeroed": false,
+        "target_capped": true,
+        "poison_writes_i16": [
+          0
+        ],
+        "poison_after": 0,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 2
+      },
+      "poison_negative_one": {
+        "detoxification": 80,
+        "poison_before": -1,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 26,
+        "threshold_zeroed": false,
+        "target_capped": true,
+        "poison_writes_i16": [
+          0
+        ],
+        "poison_after": 0,
+        "return_eax_i32": -1,
+        "return_ax_i16": -1,
+        "rng_calls": 2
+      },
+      "poison_minimum": {
+        "detoxification": 80,
+        "poison_before": -32768,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 26,
+        "threshold_zeroed": false,
+        "target_capped": true,
+        "poison_writes_i16": [
+          0
+        ],
+        "poison_after": 0,
+        "return_eax_i32": -32768,
+        "return_ax_i16": -32768,
+        "rng_calls": 2
+      },
+      "poison_100_preserved_when_zero_amount": {
+        "detoxification": 0,
+        "poison_before": 100,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 0,
+        "threshold_zeroed": true,
+        "target_capped": false,
+        "poison_writes_i16": [
+          100
+        ],
+        "poison_after": 100,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 2
+      },
+      "poison_101_clamped": {
+        "detoxification": 0,
+        "poison_before": 101,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 0,
+        "threshold_zeroed": true,
+        "target_capped": false,
+        "poison_writes_i16": [
+          101,
+          99
+        ],
+        "poison_after": 99,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 2
+      },
+      "poison_maximum_clamped": {
+        "detoxification": 0,
+        "poison_before": 32767,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 0,
+        "threshold_zeroed": true,
+        "target_capped": false,
+        "poison_writes_i16": [
+          32767,
+          99
+        ],
+        "poison_after": 99,
+        "return_eax_i32": 0,
+        "return_ax_i16": 0,
+        "rng_calls": 2
+      },
+      "same_role_alias_fields": {
+        "detoxification": 80,
+        "poison_before": 90,
+        "seed_before": 1,
+        "rng_outputs": [
+          8,
+          8
+        ],
+        "rng_state_after": 2524885223,
+        "raw_amount_i32": 26,
+        "threshold_zeroed": false,
+        "target_capped": false,
+        "poison_writes_i16": [
+          64
+        ],
+        "poison_after": 64,
+        "return_eax_i32": 26,
+        "return_ax_i16": 26,
+        "rng_calls": 2
+      }
+    },
+    "vector_sha256": "d7abe430906b406543b643d76ba19ea840790d7bbff7d20d4742708e99efc3ea",
+    "platform_adaptation_boundary": "modern code safely rejects invalid combatant and role indices without RNG consumption where the machine reads outside role records",
+    "closure_boundary": "stack probe, bounded RNG helper, menu caller and battle action caller remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

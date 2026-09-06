@@ -783,6 +783,14 @@ BATTLE_DETOX_ACTION_RELOCATION_OFFSETS = (
     0x1DC, 0x202, 0x20A,
 )
 BATTLE_DETOX_ACTION_CALLER_SITES = (0x3642C, 0x39B7F)
+BATTLE_DETOX_VALUE_ADDRESS = 0x39DA3
+BATTLE_DETOX_VALUE_END = 0x39E88
+BATTLE_DETOX_VALUE_CALL_OFFSETS = (0x005, 0x02D, 0x039)
+BATTLE_DETOX_VALUE_CALL_TARGETS = (0x3ED1E, 0x3D612, 0x3D612)
+BATTLE_DETOX_VALUE_RELOCATION_OFFSETS = (
+    0x019, 0x063, 0x075, 0x090, 0x099, 0x0AB, 0x0B2, 0x0BC, 0x0D0, 0x0DA,
+)
+BATTLE_DETOX_VALUE_CALLER_SITES = (0x21C65, 0x39D2A)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -6650,6 +6658,192 @@ def battle_detox_action_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_detox_value_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_DETOX_VALUE_ADDRESS,
+        end=BATTLE_DETOX_VALUE_END,
+        call_offsets=BATTLE_DETOX_VALUE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_DETOX_VALUE_CALL_TARGETS,
+        relocation_offsets=BATTLE_DETOX_VALUE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_DETOX_VALUE_CALLER_SITES,
+        instruction_count=54,
+        branch_count=6,
+    )
+    if contract["raw_sha256"] != (
+        "d5eca3b1cc278ca4475476773089aaec09af21f540eb9901b161ffeb2d54589c"
+    ):
+        raise ValueError("Z.DAT detox-value raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "8043f993618a3195701a6048029d0b3d1431b8699c8d75e475ffbfe6a83b91ea"
+    ):
+        raise ValueError("Z.DAT detox-value relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("menu_caller", 0x21C4B, 0x21C7D,
+         "f2137614ab9e99e8c10348e18f1e58570c061687b9ff5ad356c842b5747f0e9b"),
+        ("battle_caller", 0x39D0F, 0x39D57,
+         "f854345cf8390df7dd0b72b98d40a0be3e826ae37663c1f6acad57eab95e7fcb"),
+        ("formula_rng", 0x39DA3, 0x39DE6,
+         "b306486913ea9e3d2010bdac6a482a5c49b8e2622b07defd92a345f281c1b1ee"),
+        ("amount_clamp", 0x39DE6, 0x39DF8,
+         "12e1269ed975c70fd8b01fc10df2f58e1750868343be400dcf9e8b6bfaa9ec45"),
+        ("threshold", 0x39DF8, 0x39E25,
+         "cac8a00df7381e76aa6f965da77bac6c054ab9fc810111022eaf9f1142003f29"),
+        ("target_cap", 0x39E25, 0x39E40,
+         "28d4eec42359ec53d872701066f178276197e94a452072190fb4581753a9856b"),
+        ("write_and_low_clamp", 0x39E40, 0x39E65,
+         "6ee4902a1665c22a982edd246cf2649d31fe02f4b0326f4985b685b6b8747189"),
+        ("high_clamp_and_return", 0x39E65, 0x39E88,
+         "45d659abff58b7cd500f966ac2f10dc198f6f49cd0f6d35ce98c992d2dded84f"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT detox-value {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def i16(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value & 0x8000 else value
+
+    def trunc_div3(value: int) -> int:
+        return -(abs(value) // 3) if value < 0 else value // 3
+
+    def next_random(state: int) -> tuple[int, int]:
+        state = (state * 0x41C64E6D + 0x3039) & 0xFFFFFFFF
+        return state, (state >> 16) & 0x7FFF
+
+    def simulate(detoxification: int, poison: int, seed: int) -> dict[str, object]:
+        detoxification = i16(detoxification)
+        poison_before = i16(poison)
+        state, raw_first = next_random(seed)
+        first = raw_first % 10
+        state, raw_second = next_random(state)
+        second = raw_second % 10
+        raw_amount = trunc_div3(detoxification) + first - second
+        ebx = raw_amount
+        if i16(ebx) > 99:
+            ebx = 99
+        if i16(ebx) < 0:
+            ebx = 0
+        threshold_zeroed = poison_before > detoxification + 20
+        if threshold_zeroed:
+            ebx = 0
+        target_capped = i16(ebx) > poison_before
+        if target_capped:
+            ebx = (ebx & 0xFFFF0000) | (poison_before & 0xFFFF)
+        amount_word = i16(ebx)
+        poison_after = i16(poison_before - amount_word)
+        writes = [poison_after]
+        if poison_after < 0:
+            poison_after = 0
+            writes.append(0)
+        if poison_after > 100:
+            poison_after = 99
+            writes.append(99)
+        return {
+            "detoxification": detoxification,
+            "poison_before": poison_before,
+            "seed_before": seed,
+            "rng_outputs": [first, second],
+            "rng_state_after": state,
+            "raw_amount_i32": raw_amount,
+            "threshold_zeroed": threshold_zeroed,
+            "target_capped": target_capped,
+            "poison_writes_i16": writes,
+            "poison_after": poison_after,
+            "return_eax_i32": amount_word,
+            "return_ax_i16": amount_word,
+            "rng_calls": 2,
+        }
+
+    vectors = {
+        "normal": simulate(80, 90, 1),
+        "strict_threshold_equal": simulate(20, 40, 1),
+        "strict_threshold_above": simulate(20, 41, 1),
+        "high_amount_clamp": simulate(32767, 99, 1),
+        "negative_ability": simulate(-32768, 10, 1),
+        "target_cap": simulate(30, 2, 2),
+        "poison_zero": simulate(80, 0, 1),
+        "poison_negative_one": simulate(80, -1, 1),
+        "poison_minimum": simulate(80, -32768, 1),
+        "poison_100_preserved_when_zero_amount": simulate(0, 100, 1),
+        "poison_101_clamped": simulate(0, 101, 1),
+        "poison_maximum_clamped": simulate(0, 32767, 1),
+        "same_role_alias_fields": simulate(80, 90, 1),
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8"))
+    if vector_sha256 != "d7abe430906b406543b643d76ba19ea840790d7bbff7d20d4742708e99efc3ea":
+        raise ValueError("detox-value independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 13,
+        "conditional_branch_count": 6,
+        "unconditional_jump_count": 0,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_DETOX_VALUE_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 12,
+        "local_return_sites": ["0x39e87"],
+        "machine_slices": machine_slices,
+        "argument_contract": (
+            "four signed low16 arguments are passed; only actor-role and target-role "
+            "indices are read"
+        ),
+        "formula_contract": (
+            "signed detoxification / 3 truncating toward zero, then two unconditional "
+            "ordered bounded(10) calls and signed low16 clamp to 0..99"
+        ),
+        "threshold_contract": (
+            "strict signed poison > detoxification + 20 clears amount after both RNG calls"
+        ),
+        "target_cap_contract": (
+            "signed BX greater than signed target poison copies the poison word into BX"
+        ),
+        "write_contract": (
+            "subtract BX directly from the poison word with int16 wrap; negative result "
+            "clamps0, then a fresh read strictly above100 clamps99 while exactly100 remains"
+        ),
+        "return_contract": (
+            "EAX is sign-extended BX, independent of final poison clamps; negative initial "
+            "poison returns that negative value while target poison becomes0"
+        ),
+        "caller_contract": (
+            "sub_21AC0 passes dummy -1 slots plus actor/target role ids and saves full EAX "
+            "for the result panel; sub_39B8E passes slots plus role ids and stores DX in "
+            "the target combatant damage word"
+        ),
+        "direct_rng_calls": 2,
+        "rng_contract": (
+            "both bounded(10) calls precede every clamp, threshold, target cap and write"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code safely rejects invalid combatant and role indices without RNG "
+            "consumption where the machine reads outside role records"
+        ),
+        "closure_boundary": (
+            "stack probe, bounded RNG helper, menu caller and battle action caller remain "
+            "independent owners"
+        ),
+    }
+
+
 def battle_targeting_path_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -10591,6 +10785,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_detox_target_wrapper_machine":
             battle_detox_target_wrapper_contract(z_dat_bytes),
         "battle_detox_action_machine": battle_detox_action_contract(z_dat_bytes),
+        "battle_detox_value_machine": battle_detox_value_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

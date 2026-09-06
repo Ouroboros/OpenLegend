@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为62/81；其余19项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为63/81；其余18项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、19项为 `implemented_pending_review`、62项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、18项为 `implemented_pending_review`、63项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -193,9 +193,9 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 现代`detox_targeting_range`及Session wrapper在合法caller域逐块一致；同步光标被拆为带入口/输入前present门的状态机，Escape经action-done0返回同一菜单ordinal1，确认立即进入解毒continuation。完整入口对照零产品差异；新增signed skill极值、负除法、14/15与89/90阶梯、非法actor/role回归后复核仍零差异。非法索引安全拒绝及宿主分帧归类平台适配；`sub_36AF7`、`sub_39B8E`、栈探测与caller均保持独立。正式Golden三生成逐字节一致SHA256为`86bf13f29fa1f1cb6f0a26c85010d73a65757390026d1a89da5401fed6050ff3`，vector SHA256为`e91e030c5e87ada68a90af4c50f221dc8f73c2579a6531bcf97e3f0933bb0d0f`；最终为`platform_adapted / converged_no_new_differences`。
 
-`sub_39B8E`与用毒使用同一方向和清effect顺序，但目标条件相反：敌方完全跳过，空格写effect，友方格写effect kind3并调用`sub_39DA3`；随后执行effect36动画、抑制damage flash、重算sprite并跳入用毒的共享行动尾部。原函数同样重复检查x<64而未检查y<64，现代实现对y>=64安全拒绝。`sub_39DA3`已映射为`apply_detox_value`：signed `detoxification/3`后严格依次消费两次`bounded(10)`，计算`quotient+first-second`并夹0..99；目标毒值严格大于`detoxification+20`时归零，再受当前毒值限制。写回后仅poison<0夹0、poison>100夹99，故恰等于100保留。
+`sub_39B8E`与用毒使用同一方向和清effect顺序，但目标条件相反：敌方完全跳过，空格写effect，友方格写effect kind3并调用`sub_39DA3`；随后执行effect36动画、抑制damage flash、重算sprite并跳入用毒的共享行动尾部。原函数同样重复检查x<64而未检查y<64，现代实现对y>=64安全拒绝。
 
-固定detoxification80、poison90、seed1得到RNG `[8,8]`、state2524885223、解毒26、目标64；射程6、方向3、effect hash `0xab559939923b4f74`、effect kind3、体力1→0、counter0→1。`BattleSession`现从targeting确认先提交目标状态，再执行9帧effect36、attack7/effect36双bank音效、10帧无flash damage kind3、共享尾部和下一actor；独立Session锁定poison20→10、体力100→98。wrapper与`sub_39B8E`已分别独立关闭；`sub_39DA3`继续按自身owner保留`implemented_pending_review`，不传播order61/62状态。
+`sub_39DA3`也已完成独立最终REVIEW：signed `detoxification/3`后无条件依次消费两次`bounded(10)`，以signed BX顺序夹0..99；目标毒值严格大于`detoxification+20`时归零，再受当前signed毒值限制。目标poison直接执行16位减法，负值夹0，随后仅严格大于100才夹99；返回sign-extended BX而不按最终夹值反算delta，所以负初始poison返回其负值并写0。固定detoxification80、poison90、seed1得到RNG `[8,8]`、state2524885223、解毒26、目标64；射程6、方向3、effect hash `0xab559939923b4f74`、effect kind3、体力1→0、counter0→1。`BattleSession`从targeting确认先提交目标状态，再执行9帧effect36、attack7/effect36双bank音效、10帧无flash damage kind3、共享尾部和下一actor；独立Session锁定poison20→10、体力100→98。三个解毒owner现均已独立关闭。
 
 ## 17. 医疗目标与状态核心
 
@@ -346,6 +346,14 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 `sub_39B8E @ 0x39B8E..0x39DA3`机器身份固定为533 bytes、132条指令、15个条件分支、7个无条件跳转、35处重定位、2个入口xref且无本地RET；raw/loaded SHA256为`9e6023ca65b3c68c1ff802ae357a070e6663cfe09d690e933abf95ff66f3d952`与`78fdc57cddbb7d096e0de2173ca9cb6e98d4f0687411ea22538783e1fbf2718e`，35处DWORD均严格增加`0x20000`并可逐字节归一化。入口按signed坐标计算方向，同格保持、`abs(y)>abs(x)`选纵向、tie选横向；随后先清全部4,096格effect。空格与友方写effect1，只有友方调用独立`sub_39DA3`并写damage word9，敌方不标记；所有路径仍固定执行effect36/type0、damage kind3/suppress1、全combatant sprite刷新，再尾跳外部`0x399FE`共享行动提交。
 
 原机器边界重复检查`x<64`而漏掉`y<64`，空格还短暂读取`combatants[-1].side`；现代完整坐标验证与空格先判定避免无效访问，非法actor/occupancy/role同样安全拒绝，均只影响机器不安全域并归类平台适配。合法域逐条REVIEW无产品差异。新增回归锁定同格/四方向、纵向strict与横向tie、空/友/敌、4096格清零、x/y边界含`y=64`、非法slot、无kernel路径不消费RNG、全sprite写回及counter/体力回绕；既有完整玩家/AI Session继续锁定状态先提交、9帧magic、10帧无flash damage、音频与完成continuation。独立向量SHA256为`1a876ce56e8bd4e7d96e3c66b147165a5227518aebbc56a29a6e136c8f143cd9`；正式原资产Golden三生成逐字节一致，SHA256为`1d77356fefa8e722b6682fa129f9515cb14caea72accece5a0dc2b3405632afe`，55个历史键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；7个callee、两名caller及共享尾owner均不传播closure。
+
+## 28. 解毒值kernel最终REVIEW
+
+`sub_39DA3 @ 0x39DA3..0x39E88`机器身份固定为229 bytes、54条指令、13个基本块、6个条件分支、0个无条件跳转、10处重定位、3次direct call、2个入口xref和1个本地RET；raw/loaded SHA256为`d5eca3b1cc278ca4475476773089aaec09af21f540eb9901b161ffeb2d54589c`与`8043f993618a3195701a6048029d0b3d1431b8699c8d75e475ffbfe6a83b91ea`，10处DWORD均严格增加`0x20000`并可逐字节归一化。调用序列为12-byte栈探测及两次`sub_3D612(10)`；菜单`sub_21AC0`与战斗动作`sub_39B8E`是仅有入口xref，前者传两个dummy -1并保存完整EAX显示结果，后者传真实slot并只把DX写目标damage word。本体只读取两个signed role id，完全忽略前两个slot参数。
+
+机器先读取actor detoxification并signed向零除3，无条件依次消费两次RNG，随后按signed BX夹0..99；重新读取actor ability和target poison，strict `poison>ability+20`才清零amount。target cap以signed word比较并把poison复制到BX；目标word直接减BX，再依次执行signed `<0 -> 0`和strict `>100 -> 99`，最后`MOVSX EAX,BX`返回cap后的amount。负poison因此返回原负值并写0，poison100仅在amount为0时保持，poison101会先保留写入再被末级夹99。合法域逐块对照`apply_role_detox_value`、`BattleSetup::apply_detox_value`及两个caller零产品差异；非法slot/role提前拒绝且不消费RNG归类平台适配。
+
+新增回归锁定strict阈值40/41、seed2 target cap、能力与毒值signed极值、负poison返回、100/101/32767末级边界、same-role alias和非法索引RNG不消费。独立向量SHA256为`d7abe430906b406543b643d76ba19ea840790d7bbff7d20d4742708e99efc3ea`；正式原资产Golden三生成逐字节一致，SHA256为`4b5f54db596da762efb3a2f763f358b0f6c2e135ee1b97ffbbdc6a664fe08ea3`，历史56键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；两个caller、栈探测和RNG helper均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 
