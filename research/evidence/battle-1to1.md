@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为63/81；其余18项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为64/81；其余17项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、18项为 `implemented_pending_review`、63项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、17项为 `implemented_pending_review`、64项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -354,6 +354,12 @@ mode0在共享效果面板present后不读键，无论效果数是否为零都�
 机器先读取actor detoxification并signed向零除3，无条件依次消费两次RNG，随后按signed BX夹0..99；重新读取actor ability和target poison，strict `poison>ability+20`才清零amount。target cap以signed word比较并把poison复制到BX；目标word直接减BX，再依次执行signed `<0 -> 0`和strict `>100 -> 99`，最后`MOVSX EAX,BX`返回cap后的amount。负poison因此返回原负值并写0，poison100仅在amount为0时保持，poison101会先保留写入再被末级夹99。合法域逐块对照`apply_role_detox_value`、`BattleSetup::apply_detox_value`及两个caller零产品差异；非法slot/role提前拒绝且不消费RNG归类平台适配。
 
 新增回归锁定strict阈值40/41、seed2 target cap、能力与毒值signed极值、负poison返回、100/101/32767末级边界、same-role alias和非法索引RNG不消费。独立向量SHA256为`d7abe430906b406543b643d76ba19ea840790d7bbff7d20d4742708e99efc3ea`；正式原资产Golden三生成逐字节一致，SHA256为`4b5f54db596da762efb3a2f763f358b0f6c2e135ee1b97ffbbdc6a664fe08ea3`，历史56键逐值不变。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；两个caller、栈探测和RNG helper均不传播closure。
+
+## 29. 医疗目标射程wrapper最终REVIEW
+
+`sub_39E88 @ 0x39E88..0x39EF7`机器身份固定为111 bytes、36条指令、3个基本块、1个条件分支、0个无条件跳转、2处重定位、3次direct call、1个caller和2个本地RET；raw/loaded SHA256为`9bf7f964882ca59aca5e0a35a7a330d6d803317aba46495820b099320452a480`与`61ad50f584df27e27ed8fc8ba6b349a300b2aa9d44a60e6aeb4318d6ec0e29f8`，2处DWORD均严格增加`0x20000`并可逐字节归一化。入口以signed actor读取signed role和medicine，按`medicine/15+1`向零截断后以mode1和零local调用目标光标；local低字恰1时返回-1，其他值调用独立医疗动作并返回0。唯一动作case4 caller无条件清理参数、覆盖EAX并检查action-done。
+
+现代`medicine_targeting_range`及Session wrapper在合法caller域逐块一致；同步光标被拆为带入口/输入前present门的状态机，Escape经action-done0返回同一菜单ordinal2，确认立即进入医疗continuation。完整入口对照零产品差异；新增signed skill极值、负除法、14/15与89/90阶梯、非法actor/role回归后复核仍零差异。非法索引安全拒绝及宿主分帧归类平台适配。独立向量SHA256为`3ebada112102eafaa27d00f9fc365f7dc2c4cb185609a0f764c158480149d039`；正式原资产Golden三生成逐字节一致，SHA256为`ef5c52444a0c3a0cd6643d8ffd4a42fa0955f53e4f48fee47e76b47b6721429a`，历史57键逐值不变。本owner归类`platform_adapted / converged_no_new_differences`；cursor、医疗动作、caller和栈探测均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

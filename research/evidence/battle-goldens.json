@@ -10945,6 +10945,249 @@
     "platform_adaptation_boundary": "modern code safely rejects invalid combatant and role indices without RNG consumption where the machine reads outside role records",
     "closure_boundary": "stack probe, bounded RNG helper, menu caller and battle action caller remain independent owners"
   },
+  "battle_medicine_target_wrapper_machine": {
+    "address": "0x39e88",
+    "end": "0x39ef7",
+    "raw_offset": "0x33888",
+    "size": 111,
+    "instruction_count": 36,
+    "branch_count": 1,
+    "raw_sha256": "9bf7f964882ca59aca5e0a35a7a330d6d803317aba46495820b099320452a480",
+    "loaded_sha256": "61ad50f584df27e27ed8fc8ba6b349a300b2aa9d44a60e6aeb4318d6ec0e29f8",
+    "relocation_count": 2,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x39e8d",
+      "0x39ece",
+      "0x39ee8"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x36af7",
+      "0x39ef7"
+    ],
+    "callers": [
+      "0x3339b"
+    ],
+    "basic_block_count": 3,
+    "conditional_branch_count": 1,
+    "unconditional_jump_count": 0,
+    "relocation_offsets": [
+      "0x20",
+      "0x2d"
+    ],
+    "stack_probe_bytes": 28,
+    "local_return_sites": [
+      "0x39ee6",
+      "0x39ef6"
+    ],
+    "machine_slices": {
+      "caller_dispatch": {
+        "address": "0x33395",
+        "end": "0x333a2",
+        "size": 13,
+        "sha256": "4eff2a561c8e76a909ffa347aeeccb288f5e2b2cfaf282b822efe134023374ab"
+      },
+      "entry_range": {
+        "address": "0x39e88",
+        "end": "0x39ec6",
+        "size": 62,
+        "sha256": "9673ddfad2b96aca963dfb69cccdfed82e6c00b8ce91aaef6de3be10661d4902"
+      },
+      "cursor_dispatch": {
+        "address": "0x39ec6",
+        "end": "0x39edd",
+        "size": 23,
+        "sha256": "19e7d9abc64ed13f46c40cf8944a5b8483ced5d7d6adbed8c1b4ddb3b4535076"
+      },
+      "cancel_exit": {
+        "address": "0x39edd",
+        "end": "0x39ee7",
+        "size": 10,
+        "sha256": "6d803ccbfc5a9b4fb6eff043d3bad4f41ec709736b2a7d533e95b477d55e1e8a"
+      },
+      "action_dispatch": {
+        "address": "0x39ee7",
+        "end": "0x39ef7",
+        "size": 16,
+        "sha256": "829ab8aaef45004e78d64ef40e99df489d75eda2b638c7397d013f6fde9292dd"
+      }
+    },
+    "argument": "actor combatant slot as signed low16",
+    "role_lookup": "signed combatant role word at actor*28",
+    "skill_lookup": "signed role medicine word at role*182+168",
+    "range": "signed truncation toward zero medicine/15 + 1, then CWDE",
+    "cursor_call": "sub_36AF7(actor, range, mode1, address of zero local dword)",
+    "cancel_contract": "local low word exactly one returns -1",
+    "confirm_contract": "every other local low word calls sub_39EF7(actor) and returns 0",
+    "caller_contract": "sole sub_32E59 action-case4 caller ignores EAX, cleans the actor argument, then reloads actor and tests action_done",
+    "direct_rng_calls": 0,
+    "vectors": {
+      "skill_min": {
+        "actor": 0,
+        "medicine": -32768,
+        "targeting_range": -2183,
+        "cursor_args": [
+          0,
+          -2183,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 1,
+        "medicine_action_called": false,
+        "return": -1,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "negative_divisible": {
+        "actor": 1,
+        "medicine": -15,
+        "targeting_range": 0,
+        "cursor_args": [
+          1,
+          0,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "negative_fraction": {
+        "actor": 2,
+        "medicine": -14,
+        "targeting_range": 1,
+        "cursor_args": [
+          2,
+          1,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 2,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "zero": {
+        "actor": 3,
+        "medicine": 0,
+        "targeting_range": 1,
+        "cursor_args": [
+          3,
+          1,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "below_step": {
+        "actor": 4,
+        "medicine": 14,
+        "targeting_range": 1,
+        "cursor_args": [
+          4,
+          1,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "one_step": {
+        "actor": 5,
+        "medicine": 15,
+        "targeting_range": 2,
+        "cursor_args": [
+          5,
+          2,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "normal_89": {
+        "actor": 6,
+        "medicine": 89,
+        "targeting_range": 6,
+        "cursor_args": [
+          6,
+          6,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "normal_90": {
+        "actor": 7,
+        "medicine": 90,
+        "targeting_range": 7,
+        "cursor_args": [
+          7,
+          7,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "skill_max": {
+        "actor": 8,
+        "medicine": 32767,
+        "targeting_range": 2185,
+        "cursor_args": [
+          8,
+          2185,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 0,
+        "medicine_action_called": true,
+        "return": 0,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      },
+      "cancel_low_word_alias": {
+        "actor": 9,
+        "medicine": 100,
+        "targeting_range": 7,
+        "cursor_args": [
+          9,
+          7,
+          1,
+          "cancel_word_pointer"
+        ],
+        "cancel_low_word": 1,
+        "medicine_action_called": false,
+        "return": -1,
+        "caller_uses_return": false,
+        "direct_rng_calls": 0
+      }
+    },
+    "vector_sha256": "3ebada112102eafaa27d00f9fc365f7dc2c4cb185609a0f764c158480149d039",
+    "platform_adaptation_boundary": "modern code may reject invalid actor and role indices that make the machine read outside loaded combatant or role records",
+    "closure_boundary": "stack probe, cursor selector, medicine action and sole action-menu caller remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

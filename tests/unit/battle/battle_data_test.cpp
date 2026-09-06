@@ -1074,7 +1074,26 @@ void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.valid());
     setup.combatants()[1U].words[combatant_word::side] =
         setup.combatants()[0U].words[combatant_word::side];
-    OL_CHECK(setup.medicine_targeting_range(0U) == 6);
+    const auto check_medicine_range = [&](const std::int16_t medicine,
+                                           const std::int16_t expected) {
+        actor.set_word(openlegend::model::role_word::medicine, medicine);
+        OL_CHECK(setup.medicine_targeting_range(0U) == expected);
+    };
+    check_medicine_range(-32768, -2183);
+    check_medicine_range(-15, 0);
+    check_medicine_range(-14, 1);
+    check_medicine_range(0, 1);
+    check_medicine_range(14, 1);
+    check_medicine_range(15, 2);
+    check_medicine_range(89, 6);
+    check_medicine_range(90, 7);
+    check_medicine_range(32767, 2185);
+    OL_CHECK(!setup.medicine_targeting_range(26U).has_value());
+    const auto actor_role_id = setup.combatants()[0U].words[combatant_word::role_id];
+    setup.combatants()[0U].words[combatant_word::role_id] = -1;
+    OL_CHECK(!setup.medicine_targeting_range(0U).has_value());
+    setup.combatants()[0U].words[combatant_word::role_id] = actor_role_id;
+    check_medicine_range(80, 6);
     openlegend::random::LegacyRandom random{1U};
     const auto result = setup.apply_medicine_target(0U, BattlePathCoord{26, 26}, random);
     OL_CHECK(result.has_value());
