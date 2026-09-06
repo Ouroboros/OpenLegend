@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为54/81；其余27项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为55/81；其余26项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、29项为 `implemented_pending_review`、52项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、26项为 `implemented_pending_review`、55项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `d7825efd7d9b9c28cfd3092ffaa35ac4494816b3d6d0e58b303fafaeaa0a7738`；本轮新增`battle_throwing_effect_animation_machine`，固定198-byte raw/loaded identity、9处重定位、9次call、3个caller、双bank预载/启动、无render/present前奏、effect0/2/30帧向量、非法effect边界与独立owner边界；既有入口、载入、参战者建立、回合、路径、攻击核心及FIGHT动画合同均保留。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `4c923e05b6739b8dcc097d1183517ca7f0ef6fcff58118cdde8dd20226f2141c`；本轮新增`battle_magic_selection_machine`，固定988-byte raw/loaded identity、45处重定位、8次call、唯一caller、10槽availability、稀疏显示BUG、Big5布局、多flag优先级/残留、零available异常和输入/presentation边界；既有入口、载入、参战者建立、回合、路径、攻击核心及动画合同均保留。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -157,11 +157,13 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 14. 武功选择菜单
 
-`sub_38DAC` 已映射并执行为 `begin_magic_selection/apply_magic_selection` 与 `BattleSession`独立选择相位。可用mask扫描全部10槽，只接受magic id>0且当前MP≥need_mp；cursor是可用项ordinal，左右在可用数内回绕，确认再次扫描10槽映射到实际slot，取消写out flag1并回到原动作ordinal。Enter、Space、keypad Insert均为确认键。
+`sub_38DAC`机器身份固定为988 bytes、259条指令、52个函数体跳转、45处fixup、8次direct call、唯一caller和本地RET；raw/loaded SHA256为`57ae8494ab7b83a2e4871a11b0cf63c5384b4ab426d4c09a4c7bfdf9cfac6f21`与`4458a76d92ee84dddd18b94410dea5a757202b911bddd20fcc7e18abd4bde181`，全部fixup逆`+0x20000`后与只读原字节一致。唯一caller传actor、正武功数和取消word并忽略返回；恰一项时绕过菜单直接写物理slot0的BUG属于caller边界，不随本owner关闭。
 
-每轮先重画战场，再以 `(20,10,90,17*learned_count+10)` 绘制圆角面板。普通名称颜色`0x2321`、选中名称颜色`0x6663`；Big5名称按长度居中到x=57/49/41/33/25，y=`17*ordinal+15`。普通名称只扫描slot `<learned_count`，但可用mask/确认扫描10槽，故稀疏槽位存在原显示BUG；选中名称仍按实际slot单独重绘。
+可用mask扫描全部10槽，只接受signed magic id>0且signed MP≥signed need_mp；cursor是可用项ordinal，左右回绕，确认再次扫描10槽映射实际slot并写共享`word_E6ED6`，Escape只写取消word1。输入flag优先级严格右→左→三确认→Escape，方向只清自身flag，确认只清三确认flag；未命中的异步flag跨重绘保留。每轮必须先战场重画、面板/名称绘制和present，再扫描输入。
 
-固定slots `[6,0,5,0,7,...]`、MP6得到learned3、available `[0,2]`、状态hash `0xc254d2cd83d7da76`；next→next→previous后确认slot2，取消flag1。Session稀疏slots `[5,0,6,...]` 固定初始菜单FNV64 `0x909332be9671b27c`、cursor1/实际slot2选中菜单 `0x6977ba7a0c3172a6`，并锁定ready/cursor/cancel/selected日志。Linux Debug完整BUILD 14/14；菜单owner仍为`implemented_pending_review`，不随`sub_37734`传播关闭。
+面板固定`(20,10,90,17*learned_count+10)`；普通/选中色`0x2321/0x6663`，Big5长度1..5的x为`57/49/41/33/25`，y=`17*ordinal+15`。普通名称只扫描`slot<learned_count`，但availability、确认和选中名称扫描10槽，故稀疏槽后置武功普通态漏画、选中态显示的原BUG完整保留。零available机器域可负cursor、无效slot0或不终止，现代只对该异常域安全拒绝。
+
+首轮对照发现现代入口及方向后可在对应帧present前继续接受键；现以一次presentation门修正，门前translated event沿用已关闭cursor owner适配而忽略，方向后重新要求present，确认/取消清零门。修正后从入口重审259条指令、52分支、8次call、唯一caller及全部出口，零剩余合法域差异。固定状态/稀疏显示/多flag/零available hash为`0xc254d2cd83d7da76/0x9eeb370071c9a0af/0x7398c6fcaccb922c/0x47d47c419ce4142b`；Session两帧FNV64为`0x909332be9671b27c/0x6977ba7a0c3172a6`。Golden三生成一致SHA256为`4c923e05b6739b8dcc097d1183517ca7f0ef6fcff58118cdde8dd20226f2141c`，Linux Debug 14/14。order55独立归类`platform_adapted / converged_after_fix`；caller、callee、输入owner和后续目标/方向处理不传播closure。
 
 ## 15. 用毒目标与状态结算
 

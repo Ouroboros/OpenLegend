@@ -5658,6 +5658,1749 @@
     },
     "closure_boundary": "jump table, cached-profile caller, HP damage, direction prompt/input, attack animation and shared-tail owner remain independent"
   },
+  "battle_magic_selection_machine": {
+    "address": "0x38dac",
+    "end": "0x39188",
+    "raw_offset": "0x327ac",
+    "size": 988,
+    "instruction_count": 259,
+    "branch_count": 52,
+    "raw_sha256": "57ae8494ab7b83a2e4871a11b0cf63c5384b4ab426d4c09a4c7bfdf9cfac6f21",
+    "loaded_sha256": "4458a76d92ee84dddd18b94410dea5a757202b911bddd20fcc7e18abd4bde181",
+    "relocation_count": 45,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x38db1",
+      "0x38e70",
+      "0x38e99",
+      "0x38f27",
+      "0x38fa0",
+      "0x38ff4",
+      "0x3906f",
+      "0x39082"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3aa85",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d6d1"
+    ],
+    "callers": [
+      "0x377af"
+    ],
+    "relocation_offsets": [
+      "0x3c",
+      "0x51",
+      "0x62",
+      "0x69",
+      "0x72",
+      "0xcc",
+      "0x14c",
+      "0x15a",
+      "0x169",
+      "0x172",
+      "0x177",
+      "0x185",
+      "0x195",
+      "0x1a5",
+      "0x1b5",
+      "0x1c5",
+      "0x1d9",
+      "0x1de",
+      "0x214",
+      "0x227",
+      "0x236",
+      "0x23f",
+      "0x244",
+      "0x252",
+      "0x262",
+      "0x272",
+      "0x282",
+      "0x292",
+      "0x2a6",
+      "0x2ab",
+      "0x2cd",
+      "0x2d2",
+      "0x2e0",
+      "0x2e9",
+      "0x310",
+      "0x319",
+      "0x33f",
+      "0x348",
+      "0x351",
+      "0x35a",
+      "0x361",
+      "0x368",
+      "0x3a6",
+      "0x3b9",
+      "0x3c6"
+    ],
+    "stack_probe_bytes": 88,
+    "return_sites": [
+      "0x39187"
+    ],
+    "machine_slices": {
+      "caller_gate": {
+        "address": "0x37745",
+        "end": "0x377c9",
+        "size": 132,
+        "sha256": "40d2e3434c1e83dcacca628c0dba749d93784c1889f004139eda82c728326682"
+      },
+      "single_or_menu": {
+        "address": "0x3778f",
+        "end": "0x377b7",
+        "size": 40,
+        "sha256": "8d24ca8a929609e0a7b9ae11b095c16b6012e7f2a06b9300324e50182fcb290c"
+      },
+      "availability_and_count": {
+        "address": "0x38dbd",
+        "end": "0x38e64",
+        "size": 167,
+        "sha256": "c6c14f01ee03c7d37a5408aa2852525c953b243af69925858288f1b186360a05"
+      },
+      "loop_gate": {
+        "address": "0x38e53",
+        "end": "0x38e70",
+        "size": 29,
+        "sha256": "65d0d649c88d62e08fdc7a49dcc1de09a37f8641816dd46202d0975f10a341d8"
+      },
+      "render": {
+        "address": "0x38e70",
+        "end": "0x39087",
+        "size": 535,
+        "sha256": "84a2dd7485bee0a8075bc1b40acfc7d8320b6ae9bc2887c929629bb460887429"
+      },
+      "normal_name_x": {
+        "address": "0x38f2f",
+        "end": "0x38f7d",
+        "size": 78,
+        "sha256": "465d4d0cbcc8ae88d0549623c42c3c77e909b2637c9ed720bc0cc36bbcaab37c"
+      },
+      "selected_name_x": {
+        "address": "0x38ffc",
+        "end": "0x3904a",
+        "size": 78,
+        "sha256": "465d4d0cbcc8ae88d0549623c42c3c77e909b2637c9ed720bc0cc36bbcaab37c"
+      },
+      "input": {
+        "address": "0x3908a",
+        "end": "0x39180",
+        "size": 246,
+        "sha256": "a507e856249cc1241fc8b4aced4a92bae12be22f6202a3e99a0c104e5dbed6c7"
+      },
+      "right": {
+        "address": "0x3908a",
+        "end": "0x390ba",
+        "size": 48,
+        "sha256": "66e8e29cd538160d784ca0e3cad18edd223260995388918d20d93d9d2a7e48e3"
+      },
+      "left": {
+        "address": "0x390ba",
+        "end": "0x390e9",
+        "size": 47,
+        "sha256": "0aa26921a24b7c955ff6fd4b556705490315cd245392dc97443ef2e0b80f5d76"
+      },
+      "confirm": {
+        "address": "0x390e9",
+        "end": "0x39163",
+        "size": 122,
+        "sha256": "f2540c7a540a0898305c6dd08d5e57a1dadafe4b73d63120f655807945f8a41d"
+      },
+      "cancel": {
+        "address": "0x39163",
+        "end": "0x39180",
+        "size": 29,
+        "sha256": "3f8029db652092d1d6856b32f1ef53fe4e0386f40587402c22d4f1ed3b7291ce"
+      }
+    },
+    "caller_sequence": "6683fa01750b66c705d66e0c000000eb178d44240c500fbfc2500fbf44244850e8f815000083c40c",
+    "arguments": {
+      "actor": "signed low16 battle participant index",
+      "learned_count": "signed low16 count of positive magic ids supplied by caller",
+      "out_word": "written zero before first render and one only on Escape"
+    },
+    "availability": {
+      "scan": "all ten physical slots in ascending order",
+      "predicate": "signed magic id > 0 and signed current MP >= signed need_mp",
+      "machine_read_order": "need_mp is read through magic id before nonpositive-id rejection",
+      "cursor": "available ordinal remapped across all ten physical slots"
+    },
+    "render_sequence": [
+      "redraw battlefield",
+      "draw panel (20,10,90,17*learned_count+10)",
+      "resolve selected available ordinal across ten slots",
+      "draw ordinary available names only while physical slot < learned_count",
+      "redraw selected actual-slot name",
+      "copy framebuffer before inspecting input flags"
+    ],
+    "name_layout": {
+      "big5_character_count_to_x": {
+        "1": 57,
+        "2": 49,
+        "3": 41,
+        "4": 33,
+        "5": 25
+      },
+      "ordinary_color": "0x2321",
+      "selected_color": "0x6663",
+      "y": "17*available ordinal+15; selected uses cursor ordinal",
+      "sparse_bug": "ordinary scan stops at learned_count, selected scan covers all ten slots"
+    },
+    "input_priority": [
+      "right",
+      "left",
+      "enter-or-space-or-insert",
+      "escape"
+    ],
+    "direction_rule": "clear only the handled direction flag, update cursor, then redraw/present",
+    "confirm_rule": "clear all three confirm flags, remap cursor, write word_E6ED6, return",
+    "cancel_rule": "clear Escape, write out-word one, preserve word_E6ED6, return",
+    "caller": {
+      "site": "0x377af",
+      "positive_magic_scan": "all ten slots",
+      "player_only": true,
+      "single_magic_bug": "learned_count one writes shared physical slot zero",
+      "menu_domain": "learned_count not equal to one, including malformed zero",
+      "uses_return": false,
+      "cancel_result": "out-word one makes caller return -1"
+    },
+    "magic_asset_domain": {
+      "record_count": 93,
+      "records_sha256": "8bdc630705dafacb594b6a59231c4ff7823ae93e3c4f955767dd7d81324b1b76",
+      "ids_equal_indices": true,
+      "name_length_distribution": {
+        "1": 0,
+        "2": 3,
+        "3": 20,
+        "4": 58,
+        "5": 12
+      },
+      "five_character_following_nul": true,
+      "need_mp_minimum": 0,
+      "need_mp_maximum": 10,
+      "records": [
+        {
+          "record_index": 0,
+          "magic_id": 0,
+          "name_bytes": "b4b6b371a7f0c0bb0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 1,
+          "magic_id": 1,
+          "name_bytes": "b3a5b279aeb100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 0
+        },
+        {
+          "record_index": 2,
+          "magic_id": 2,
+          "name_bytes": "aa5ab7edaaf8aeb10000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 3,
+          "magic_id": 3,
+          "name_bytes": "c3b9ba7eaeb100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 1
+        },
+        {
+          "record_index": 4,
+          "magic_id": 4,
+          "name_bytes": "c646b344aeb100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 2
+        },
+        {
+          "record_index": 5,
+          "magic_id": 5,
+          "name_bytes": "afaba4fdac72b4780000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 2
+        },
+        {
+          "record_index": 6,
+          "magic_id": 6,
+          "name_bytes": "a443b6cbaeb100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 3
+        },
+        {
+          "record_index": 7,
+          "magic_id": 7,
+          "name_bytes": "b256a4b8b47800000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 3
+        },
+        {
+          "record_index": 8,
+          "magic_id": 8,
+          "name_bytes": "b448a642baf8b4780000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 9,
+          "magic_id": 9,
+          "name_bytes": "c64ea4f6a55c00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 5
+        },
+        {
+          "record_index": 10,
+          "magic_id": 10,
+          "name_bytes": "b370bbbbb47800000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 4
+        },
+        {
+          "record_index": 11,
+          "magic_id": 11,
+          "name_bytes": "c54bb478000000000000",
+          "terminator_byte": 0,
+          "big5_character_count": 2,
+          "name_x": 49,
+          "need_mp": 3
+        },
+        {
+          "record_index": 12,
+          "magic_id": 12,
+          "name_bytes": "a4dbb3b1abfc00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 6
+        },
+        {
+          "record_index": 13,
+          "magic_id": 13,
+          "name_bytes": "b448a642afabb4780000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 14,
+          "magic_id": 14,
+          "name_bytes": "a464a4e2a670a8d3b478",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 5
+        },
+        {
+          "record_index": 15,
+          "magic_id": 15,
+          "name_bytes": "a4d1a473a4bbb6a7b478",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 5
+        },
+        {
+          "record_index": 16,
+          "magic_id": 16,
+          "name_bytes": "a5c8addfafabb4780000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 6
+        },
+        {
+          "record_index": 17,
+          "magic_id": 17,
+          "name_bytes": "a642c5faac72b4780000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 18,
+          "magic_id": 18,
+          "name_bytes": "c073b648afebad59a55c",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 7
+        },
+        {
+          "record_index": 19,
+          "magic_id": 19,
+          "name_bytes": "a440b6a7abfc00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 7
+        },
+        {
+          "record_index": 20,
+          "magic_id": 20,
+          "name_bytes": "a4d3b7a5aeb100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 4
+        },
+        {
+          "record_index": 21,
+          "magic_id": 21,
+          "name_bytes": "aac5a9faaeb100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 6
+        },
+        {
+          "record_index": 22,
+          "magic_id": 22,
+          "name_bytes": "b5f0c1b0a55c00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 7
+        },
+        {
+          "record_index": 23,
+          "magic_id": 23,
+          "name_bytes": "a4d3a5c8afaba55c0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 8
+        },
+        {
+          "record_index": 24,
+          "magic_id": 24,
+          "name_bytes": "c566b54dbe50bbeeb478",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 7
+        },
+        {
+          "record_index": 25,
+          "magic_id": 25,
+          "name_bytes": "adb0c073a451a44bb478",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 10
+        },
+        {
+          "record_index": 26,
+          "magic_id": 26,
+          "name_bytes": "b8aaaae1afaba55c0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 27,
+          "magic_id": 27,
+          "name_bytes": "a4c6a55ca46aaa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 0
+        },
+        {
+          "record_index": 28,
+          "magic_id": 28,
+          "name_bytes": "a76cac50a46aaa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 0
+        },
+        {
+          "record_index": 29,
+          "magic_id": 29,
+          "name_bytes": "a55faddfafaba55c0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 0
+        },
+        {
+          "record_index": 30,
+          "magic_id": 30,
+          "name_bytes": "a4bbafdfafabbc430000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 31,
+          "magic_id": 31,
+          "name_bytes": "bdf6abcdbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 32,
+          "magic_id": 32,
+          "name_bytes": "ab43abb0bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 33,
+          "magic_id": 33,
+          "name_bytes": "a642b3b7bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 34,
+          "magic_id": 34,
+          "name_bytes": "abeda473bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 35,
+          "magic_id": 35,
+          "name_bytes": "aef5a473bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 36,
+          "magic_id": 36,
+          "name_bytes": "bfc5a473bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 37,
+          "magic_id": 37,
+          "name_bytes": "b5d8a473bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 38,
+          "magic_id": 38,
+          "name_bytes": "b743a473bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 39,
+          "magic_id": 39,
+          "name_bytes": "a5feaf75bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 40,
+          "magic_id": 40,
+          "name_bytes": "ae6fd8ddbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 41,
+          "magic_id": 41,
+          "name_bytes": "aa5ab7edbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 42,
+          "magic_id": 42,
+          "name_bytes": "b855aae1bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 2
+        },
+        {
+          "record_index": 43,
+          "magic_id": 43,
+          "name_bytes": "bce2bea5bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 2
+        },
+        {
+          "record_index": 44,
+          "magic_id": 44,
+          "name_bytes": "b3b7a473bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 2
+        },
+        {
+          "record_index": 45,
+          "magic_id": 45,
+          "name_bytes": "aef5a473a451a44bbd4c",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 2
+        },
+        {
+          "record_index": 46,
+          "magic_id": 46,
+          "name_bytes": "b06aae70b8a8b6adbc43",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 2
+        },
+        {
+          "record_index": 47,
+          "magic_id": 47,
+          "name_bytes": "a8e2bbf6bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 48,
+          "magic_id": 48,
+          "name_bytes": "a4d3a9a8a454ab43ae70",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 3
+        },
+        {
+          "record_index": 49,
+          "magic_id": 49,
+          "name_bytes": "a5c9a46bafc0a4dfbc43",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 3
+        },
+        {
+          "record_index": 50,
+          "magic_id": 50,
+          "name_bytes": "b370bbbbbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 51,
+          "magic_id": 51,
+          "name_bytes": "bc7dae65bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 52,
+          "magic_id": 52,
+          "name_bytes": "adcaa4d1bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 53,
+          "magic_id": 53,
+          "name_bytes": "a443ac50bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 54,
+          "magic_id": 54,
+          "name_bytes": "aaf7b344bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 55,
+          "magic_id": 55,
+          "name_bytes": "ad5dae61bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 56,
+          "magic_id": 56,
+          "name_bytes": "a5c9c2adbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 57,
+          "magic_id": 57,
+          "name_bytes": "a5c8c54bbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 7
+        },
+        {
+          "record_index": 58,
+          "magic_id": 58,
+          "name_bytes": "a4d3b7a5bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 59,
+          "magic_id": 59,
+          "name_bytes": "b946bcafbc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 60,
+          "magic_id": 60,
+          "name_bytes": "b940a8b8bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 61,
+          "magic_id": 61,
+          "name_bytes": "bf57a974a445bc430000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 6
+        },
+        {
+          "record_index": 62,
+          "magic_id": 62,
+          "name_bytes": "a6e8a5caa44daa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 63,
+          "magic_id": 63,
+          "name_bytes": "a6e5a44da46aaa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 2
+        },
+        {
+          "record_index": 64,
+          "magic_id": 64,
+          "name_bytes": "a867adb7a44daa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 65,
+          "magic_id": 65,
+          "name_bytes": "a4cfa8e2bbf6a44daa6b",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 3
+        },
+        {
+          "record_index": 66,
+          "magic_id": 66,
+          "name_bytes": "a4f5bf56a44daa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 4
+        },
+        {
+          "record_index": 67,
+          "magic_id": 67,
+          "name_bytes": "ad4aae61a44daa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 68,
+          "magic_id": 68,
+          "name_bytes": "c552c645a44daa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 5
+        },
+        {
+          "record_index": 69,
+          "magic_id": 69,
+          "name_bytes": "afabc073c2f9a4c40000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 70,
+          "magic_id": 70,
+          "name_bytes": "a46abdfca7faaa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 71,
+          "magic_id": 71,
+          "name_bytes": "a9c7b2a7aa5abeb90000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 72,
+          "magic_id": 72,
+          "name_bytes": "c1e5a4dfbc7500000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 0
+        },
+        {
+          "record_index": 73,
+          "magic_id": 73,
+          "name_bytes": "a573a4c6b4d2aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 74,
+          "magic_id": 74,
+          "name_bytes": "a4f5bf56b56fae67beb9",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 0
+        },
+        {
+          "record_index": 75,
+          "magic_id": 75,
+          "name_bytes": "c673b3bd000000000000",
+          "terminator_byte": 0,
+          "big5_character_count": 2,
+          "name_x": 49,
+          "need_mp": 0
+        },
+        {
+          "record_index": 76,
+          "magic_id": 76,
+          "name_bytes": "a46abb6aaf5d00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 0
+        },
+        {
+          "record_index": 77,
+          "magic_id": 77,
+          "name_bytes": "ac72c073c340aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 2
+        },
+        {
+          "record_index": 78,
+          "magic_id": 78,
+          "name_bytes": "b6c0a846b855a8bdc340",
+          "terminator_byte": 0,
+          "big5_character_count": 5,
+          "name_x": 25,
+          "need_mp": 4
+        },
+        {
+          "record_index": 79,
+          "magic_id": 79,
+          "name_bytes": "b3b7a9c7000000000000",
+          "terminator_byte": 0,
+          "big5_character_count": 2,
+          "name_x": 49,
+          "need_mp": 0
+        },
+        {
+          "record_index": 80,
+          "magic_id": 80,
+          "name_bytes": "a750a978b5a700000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 3
+        },
+        {
+          "record_index": 81,
+          "magic_id": 81,
+          "name_bytes": "abf9b4d1bd4c00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 3
+        },
+        {
+          "record_index": 82,
+          "magic_id": 82,
+          "name_bytes": "a46ab0c5a44d00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 2
+        },
+        {
+          "record_index": 83,
+          "magic_id": 83,
+          "name_bytes": "abf9babdb55e00000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 4
+        },
+        {
+          "record_index": 84,
+          "magic_id": 84,
+          "name_bytes": "a46ac1afb34400000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 0
+        },
+        {
+          "record_index": 85,
+          "magic_id": 85,
+          "name_bytes": "aaf7aae1a7faaa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 86,
+          "magic_id": 86,
+          "name_bytes": "afabc073b3c0a7fa0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 7
+        },
+        {
+          "record_index": 87,
+          "magic_id": 87,
+          "name_bytes": "a5b4aaafb4d2aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 3
+        },
+        {
+          "record_index": 88,
+          "magic_id": 88,
+          "name_bytes": "a4adbdfca46aaa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 7
+        },
+        {
+          "record_index": 89,
+          "magic_id": 89,
+          "name_bytes": "aa51adb7bc43aa6b0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 1
+        },
+        {
+          "record_index": 90,
+          "magic_id": 90,
+          "name_bytes": "b4b6b371a7f0c0bb0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 0
+        },
+        {
+          "record_index": 91,
+          "magic_id": 91,
+          "name_bytes": "b7e0a46ca77100000000",
+          "terminator_byte": 0,
+          "big5_character_count": 3,
+          "name_x": 41,
+          "need_mp": 3
+        },
+        {
+          "record_index": 92,
+          "magic_id": 92,
+          "name_bytes": "a445b6a7afaba55c0000",
+          "terminator_byte": 0,
+          "big5_character_count": 4,
+          "name_x": 33,
+          "need_mp": 10
+        }
+      ]
+    },
+    "vectors": {
+      "fixed": {
+        "magic_slots": [
+          6,
+          0,
+          5,
+          0,
+          25,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mp": 3,
+        "learned_count": 3,
+        "availability_mask": [
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "available_count": 2,
+        "available_slots": [
+          0,
+          2,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "initial_state_hash": "0xc254d2cd83d7da76",
+        "out_flag_initial": 0,
+        "out_flag": 0,
+        "selected_slot": 2,
+        "remaining_flags": [],
+        "frames": [
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              61
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 6,
+                "x": 41,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 2,
+                "magic_id": 5,
+                "x": 33,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 0,
+              "magic_id": 6,
+              "x": 41,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "right"
+            ]
+          },
+          {
+            "cursor": 1,
+            "actual_slot": 2,
+            "panel": [
+              20,
+              10,
+              90,
+              61
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 6,
+                "x": 41,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 2,
+                "magic_id": 5,
+                "x": 33,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 2,
+              "magic_id": 5,
+              "x": 33,
+              "y": 32,
+              "color": "0x6663"
+            },
+            "event": [
+              "right"
+            ]
+          },
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              61
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 6,
+                "x": 41,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 2,
+                "magic_id": 5,
+                "x": 33,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 0,
+              "magic_id": 6,
+              "x": 41,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "left"
+            ]
+          },
+          {
+            "cursor": 1,
+            "actual_slot": 2,
+            "panel": [
+              20,
+              10,
+              90,
+              61
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 6,
+                "x": 41,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 2,
+                "magic_id": 5,
+                "x": 33,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 2,
+              "magic_id": 5,
+              "x": 33,
+              "y": 32,
+              "color": "0x6663"
+            },
+            "event": [
+              "enter"
+            ]
+          }
+        ]
+      },
+      "sparse_display_bug": {
+        "magic_slots": [
+          11,
+          0,
+          14,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mp": 5,
+        "learned_count": 2,
+        "availability_mask": [
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "available_count": 2,
+        "available_slots": [
+          0,
+          2,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "initial_state_hash": "0x9eeb370071c9a0af",
+        "out_flag_initial": 0,
+        "out_flag": 0,
+        "selected_slot": 2,
+        "remaining_flags": [],
+        "frames": [
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 11,
+                "x": 49,
+                "y": 15,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 0,
+              "magic_id": 11,
+              "x": 49,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "right"
+            ]
+          },
+          {
+            "cursor": 1,
+            "actual_slot": 2,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 11,
+                "x": 49,
+                "y": 15,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 2,
+              "magic_id": 14,
+              "x": 25,
+              "y": 32,
+              "color": "0x6663"
+            },
+            "event": [
+              "space"
+            ]
+          }
+        ]
+      },
+      "input_priority": {
+        "magic_slots": [
+          11,
+          14,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mp": 5,
+        "learned_count": 2,
+        "availability_mask": [
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "available_count": 2,
+        "available_slots": [
+          0,
+          1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "initial_state_hash": "0x7398c6fcaccb922c",
+        "out_flag_initial": 0,
+        "out_flag": 0,
+        "selected_slot": 0,
+        "remaining_flags": [
+          "escape"
+        ],
+        "frames": [
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 11,
+                "x": 49,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 1,
+                "magic_id": 14,
+                "x": 25,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 0,
+              "magic_id": 11,
+              "x": 49,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "enter",
+              "escape",
+              "right"
+            ]
+          },
+          {
+            "cursor": 1,
+            "actual_slot": 1,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 11,
+                "x": 49,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 1,
+                "magic_id": 14,
+                "x": 25,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 1,
+              "magic_id": 14,
+              "x": 25,
+              "y": 32,
+              "color": "0x6663"
+            },
+            "event": [
+              "enter",
+              "escape",
+              "insert",
+              "left"
+            ]
+          },
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 11,
+                "x": 49,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 1,
+                "magic_id": 14,
+                "x": 25,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 0,
+              "magic_id": 11,
+              "x": 49,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "enter",
+              "escape",
+              "insert",
+              "space"
+            ]
+          }
+        ]
+      },
+      "zero_available": {
+        "magic_slots": [
+          25,
+          92,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mp": 0,
+        "learned_count": 2,
+        "availability_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "available_count": 0,
+        "available_slots": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "initial_state_hash": "0x47d47c419ce4142b",
+        "out_flag_initial": 0,
+        "out_flag": 0,
+        "selected_slot": 0,
+        "remaining_flags": [],
+        "frames": [
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [],
+            "selected": {
+              "slot": 0,
+              "magic_id": 25,
+              "x": 25,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "left"
+            ]
+          },
+          {
+            "cursor": -1,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [],
+            "selected": {
+              "slot": 0,
+              "magic_id": 25,
+              "x": 25,
+              "y": -2,
+              "color": "0x6663"
+            },
+            "event": [
+              "enter"
+            ]
+          }
+        ]
+      },
+      "cancel": {
+        "magic_slots": [
+          11,
+          14,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mp": 5,
+        "learned_count": 2,
+        "availability_mask": [
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "available_count": 2,
+        "available_slots": [
+          0,
+          1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "initial_state_hash": "0x7398c6fcaccb922c",
+        "out_flag_initial": 0,
+        "out_flag": 1,
+        "selected_slot": null,
+        "remaining_flags": [],
+        "frames": [
+          {
+            "cursor": 0,
+            "actual_slot": 0,
+            "panel": [
+              20,
+              10,
+              90,
+              44
+            ],
+            "normal": [
+              {
+                "slot": 0,
+                "magic_id": 11,
+                "x": 49,
+                "y": 15,
+                "color": "0x2321"
+              },
+              {
+                "slot": 1,
+                "magic_id": 14,
+                "x": 25,
+                "y": 32,
+                "color": "0x2321"
+              }
+            ],
+            "selected": {
+              "slot": 0,
+              "magic_id": 11,
+              "x": 49,
+              "y": 15,
+              "color": "0x6663"
+            },
+            "event": [
+              "escape"
+            ]
+          }
+        ]
+      },
+      "caller_single_magic_slot_bug": {
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "learned_count": 1,
+        "selected_physical_slot": 0
+      },
+      "zero_learned_sentinel": {
+        "slots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mp": 1000,
+        "action_menu_attack_available": true,
+        "menu_available_count": 0,
+        "modern_result": "safety rejection"
+      }
+    },
+    "direct_rng_draws": 0,
+    "host_timing": "each entry and direction update must be rendered and presented before next input",
+    "platform_adaptation_boundary": "modern code may reject invalid actor/magic ids, malformed name/count data, and the zero-available nonterminating or invalid-selection domain",
+    "closure_boundary": "stack probe, battlefield redraw, panel, formatter, text renderer, framebuffer copy, shared magic slot, caller attack pipeline and downstream owners remain independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

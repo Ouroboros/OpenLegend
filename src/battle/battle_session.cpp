@@ -585,6 +585,12 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         }
         return;
     }
+    if (phase_ == BattleSessionPhase::player_magic_selection &&
+        player_magic_selection_.has_value() &&
+        player_magic_presentations_before_input_ > 0U) {
+        --player_magic_presentations_before_input_;
+        return;
+    }
     if ((phase_ == BattleSessionPhase::player_movement_select ||
          phase_ == BattleSessionPhase::player_targeting_select) &&
         player_cursor_selection_.has_value() &&
@@ -2065,6 +2071,7 @@ bool BattleSession::begin_player_action_menu() {
 }
 
 bool BattleSession::begin_player_attack() {
+    player_magic_presentations_before_input_ = 0U;
     selected_magic_slot_ = 0;
     if (legacy_magic_slot_ != nullptr) {
         *legacy_magic_slot_ = selected_magic_slot_;
@@ -2083,6 +2090,7 @@ bool BattleSession::begin_player_attack() {
         error_ = "battle player magic selection is invalid";
         return false;
     }
+    player_magic_presentations_before_input_ = 1U;
     phase_ = BattleSessionPhase::player_magic_selection;
     diagnostics::log_info(
         "battle player magic selection ready id=" + std::to_string(battle_id()) +
@@ -2094,7 +2102,8 @@ bool BattleSession::begin_player_attack() {
 
 BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
     const std::uint8_t translated_key) {
-    if (!player_magic_selection_.has_value()) {
+    if (!player_magic_selection_.has_value() ||
+        player_magic_presentations_before_input_ > 0U) {
         return BattleSessionInputResult::ignored;
     }
     std::optional<BattleMagicSelectionAction> action;
@@ -2113,6 +2122,7 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
     const auto result = BattleSetup::apply_magic_selection(
         *player_magic_selection_, *action);
     if (result == BattleMagicSelectionResult::changed) {
+        player_magic_presentations_before_input_ = 1U;
         diagnostics::log_debug(
             "battle player magic cursor id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
@@ -2120,6 +2130,7 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
         return BattleSessionInputResult::magic_changed;
     }
     if (result == BattleMagicSelectionResult::cancelled) {
+        player_magic_presentations_before_input_ = 0U;
         player_magic_selection_.reset();
         if (!finish_player_action_call()) {
             return BattleSessionInputResult::ignored;
@@ -2135,6 +2146,7 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
         return BattleSessionInputResult::ignored;
     }
 
+    player_magic_presentations_before_input_ = 0U;
     selected_magic_slot_ = *player_magic_selection_->selected_slot;
     if (legacy_magic_slot_ != nullptr) {
         *legacy_magic_slot_ = selected_magic_slot_;

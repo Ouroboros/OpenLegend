@@ -695,6 +695,22 @@ BATTLE_LINE_ATTACK_RELOCATION_OFFSETS = (
 BATTLE_LINE_ATTACK_CALLER_SITES = (0x37E19,)
 BATTLE_LINE_ATTACK_JUMP_TABLE_ADDRESS = 0x38989
 BATTLE_LINE_ATTACK_SHARED_TAIL_ADDRESS = 0x3CBDB
+BATTLE_MAGIC_SELECTION_ADDRESS = 0x38DAC
+BATTLE_MAGIC_SELECTION_END = 0x39188
+BATTLE_MAGIC_SELECTION_CALL_OFFSETS = (
+    0x005, 0x0C4, 0x0ED, 0x17B, 0x1F4, 0x248, 0x2C3, 0x2D6,
+)
+BATTLE_MAGIC_SELECTION_CALL_TARGETS = (
+    0x3ED1E, 0x3AA85, 0x2CEBF, 0x3EF4A, 0x3D832, 0x3EF4A, 0x3D832, 0x3D6D1,
+)
+BATTLE_MAGIC_SELECTION_RELOCATION_OFFSETS = (
+    0x03C, 0x051, 0x062, 0x069, 0x072, 0x0CC, 0x14C, 0x15A, 0x169,
+    0x172, 0x177, 0x185, 0x195, 0x1A5, 0x1B5, 0x1C5, 0x1D9, 0x1DE,
+    0x214, 0x227, 0x236, 0x23F, 0x244, 0x252, 0x262, 0x272, 0x282,
+    0x292, 0x2A6, 0x2AB, 0x2CD, 0x2D2, 0x2E0, 0x2E9, 0x310, 0x319,
+    0x33F, 0x348, 0x351, 0x35A, 0x361, 0x368, 0x3A6, 0x3B9, 0x3C6,
+)
+BATTLE_MAGIC_SELECTION_CALLER_SITES = (0x377AF,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -4561,6 +4577,377 @@ def battle_line_attack_contract(
         "closure_boundary": (
             "jump table, cached-profile caller, HP damage, direction prompt/input, attack animation "
             "and shared-tail owner remain independent"
+        ),
+    }
+
+
+def battle_magic_selection_contract(
+    z_dat_bytes: bytes,
+    magic_bytes: bytes,
+) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_MAGIC_SELECTION_ADDRESS,
+        end=BATTLE_MAGIC_SELECTION_END,
+        call_offsets=BATTLE_MAGIC_SELECTION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_MAGIC_SELECTION_CALL_TARGETS,
+        relocation_offsets=BATTLE_MAGIC_SELECTION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_MAGIC_SELECTION_CALLER_SITES,
+        instruction_count=259,
+        branch_count=52,
+    )
+    if contract["raw_sha256"] != (
+        "57ae8494ab7b83a2e4871a11b0cf63c5384b4ab426d4c09a4c7bfdf9cfac6f21"
+    ):
+        raise ValueError("Z.DAT magic-selection raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "4458a76d92ee84dddd18b94410dea5a757202b911bddd20fcc7e18abd4bde181"
+    ):
+        raise ValueError("Z.DAT magic-selection relocation image changed")
+
+    slice_specs = {
+        "caller_gate": (0x37745, 0x377C9,
+                        "40d2e3434c1e83dcacca628c0dba749d93784c1889f004139eda82c728326682"),
+        "single_or_menu": (0x3778F, 0x377B7,
+                           "8d24ca8a929609e0a7b9ae11b095c16b6012e7f2a06b9300324e50182fcb290c"),
+        "availability_and_count": (0x38DBD, 0x38E64,
+                                   "c6c14f01ee03c7d37a5408aa2852525c953b243af69925858288f1b186360a05"),
+        "loop_gate": (0x38E53, 0x38E70,
+                      "65d0d649c88d62e08fdc7a49dcc1de09a37f8641816dd46202d0975f10a341d8"),
+        "render": (0x38E70, 0x39087,
+                   "84a2dd7485bee0a8075bc1b40acfc7d8320b6ae9bc2887c929629bb460887429"),
+        "normal_name_x": (0x38F2F, 0x38F7D,
+                          "465d4d0cbcc8ae88d0549623c42c3c77e909b2637c9ed720bc0cc36bbcaab37c"),
+        "selected_name_x": (0x38FFC, 0x3904A,
+                            "465d4d0cbcc8ae88d0549623c42c3c77e909b2637c9ed720bc0cc36bbcaab37c"),
+        "input": (0x3908A, 0x39180,
+                  "a507e856249cc1241fc8b4aced4a92bae12be22f6202a3e99a0c104e5dbed6c7"),
+        "right": (0x3908A, 0x390BA,
+                  "66e8e29cd538160d784ca0e3cad18edd223260995388918d20d93d9d2a7e48e3"),
+        "left": (0x390BA, 0x390E9,
+                 "0aa26921a24b7c955ff6fd4b556705490315cd245392dc97443ef2e0b80f5d76"),
+        "confirm": (0x390E9, 0x39163,
+                    "f2540c7a540a0898305c6dd08d5e57a1dadafe4b73d63120f655807945f8a41d"),
+        "cancel": (0x39163, 0x39180,
+                   "3f8029db652092d1d6856b32f1ef53fe4e0386f40587402c22d4f1ed3b7291ce"),
+    }
+    machine_slices = {}
+    for name, (slice_start, slice_end, expected_hash) in slice_specs.items():
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT magic-selection {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+    if machine_slices["normal_name_x"]["sha256"] != (
+        machine_slices["selected_name_x"]["sha256"]
+    ):
+        raise ValueError("Z.DAT magic-selection name-centering copies diverged")
+    caller_sequence = z_dat_bytes[
+        0x3778F - Z_DAT_LOAD_BASE:0x377B7 - Z_DAT_LOAD_BASE
+    ]
+    if caller_sequence.hex() != (
+        "6683fa01750b66c705d66e0c000000eb178d44240c500fbfc2500fbf44244850"
+        "e8f815000083c40c"
+    ):
+        raise ValueError("Z.DAT magic-selection caller argument sequence changed")
+
+    if len(magic_bytes) != 93 * 136:
+        raise ValueError("RANGER.GRP does not contain 93 complete magic records")
+    magic_records = []
+    for index in range(93):
+        record = magic_bytes[index * 136:(index + 1) * 136]
+        words = struct.unpack("<68h", record)
+        if words[0] != index:
+            raise ValueError("RANGER.GRP magic record ids are no longer index-identical")
+        copied_name_stream = record[2:13]
+        character_count = next(
+            (
+                byte // 2
+                for byte in (2, 4, 6, 8, 10)
+                if copied_name_stream[byte] == 0
+            ),
+            None,
+        )
+        if character_count is None:
+            raise ValueError("RANGER.GRP magic name exceeds the machine centering domain")
+        magic_records.append({
+            "record_index": index,
+            "magic_id": words[0],
+            "name_bytes": record[2:12].hex(),
+            "terminator_byte": copied_name_stream[10],
+            "big5_character_count": character_count,
+            "name_x": 65 - 8 * character_count,
+            "need_mp": words[16],
+        })
+    length_distribution = {
+        str(length): sum(
+            item["big5_character_count"] == length for item in magic_records
+        )
+        for length in range(1, 6)
+    }
+    if length_distribution != {"1": 0, "2": 3, "3": 20, "4": 58, "5": 12}:
+        raise ValueError("RANGER.GRP magic-name length distribution changed")
+    if any(item["terminator_byte"] != 0 for item in magic_records):
+        raise ValueError("RANGER.GRP five-character magic names lost their following NUL")
+    if min(item["need_mp"] for item in magic_records) != 0 or (
+        max(item["need_mp"] for item in magic_records) != 10
+    ):
+        raise ValueError("RANGER.GRP magic MP-cost domain changed")
+
+    def resolve_ordinal(mask: list[bool], cursor: int) -> int:
+        ordinal = -1
+        actual_slot = 0
+        for slot in range(10):
+            if mask[slot]:
+                ordinal += 1
+            if (ordinal & 0xFFFF) == (cursor & 0xFFFF):
+                actual_slot = slot
+                break
+        return actual_slot
+
+    def simulate_menu(
+        magic_slots: list[int],
+        mp_argument: int,
+        events: list[set[str]],
+        learned_count_argument: int | None = None,
+    ) -> dict[str, object]:
+        if len(magic_slots) != 10:
+            raise ValueError("magic-selection vectors require ten physical slots")
+        learned_count = wrapping_i16(
+            sum(magic_id > 0 for magic_id in magic_slots)
+            if learned_count_argument is None else learned_count_argument
+        )
+        mp = wrapping_i16(mp_argument)
+        mask = [
+            magic_id > 0 and mp >= magic_records[magic_id]["need_mp"]
+            for magic_id in magic_slots
+        ]
+        available_slots = [slot for slot, available in enumerate(mask) if available]
+        packed_slots = available_slots + [-1] * (10 - len(available_slots))
+        available_count = len(available_slots)
+        cursor = 0
+        out_flag = 0
+        selected_slot = None
+        frames = []
+        latched_flags: set[str] = set()
+        for event in events:
+            latched_flags.update(event)
+            actual_slot = resolve_ordinal(mask, cursor)
+            normal_slots = [
+                slot for slot in range(max(learned_count, 0))
+                if slot < 10 and mask[slot]
+            ]
+            frames.append({
+                "cursor": wrapping_i16(cursor),
+                "actual_slot": actual_slot,
+                "panel": [20, 10, 90, 17 * learned_count + 10],
+                "normal": [
+                    {
+                        "slot": slot,
+                        "magic_id": magic_slots[slot],
+                        "x": magic_records[magic_slots[slot]]["name_x"],
+                        "y": 17 * ordinal + 15,
+                        "color": "0x2321",
+                    }
+                    for ordinal, slot in enumerate(normal_slots)
+                ],
+                "selected": {
+                    "slot": actual_slot,
+                    "magic_id": magic_slots[actual_slot],
+                    "x": magic_records[magic_slots[actual_slot]]["name_x"],
+                    "y": 17 * wrapping_i16(cursor) + 15,
+                    "color": "0x6663",
+                },
+                "event": sorted(latched_flags),
+            })
+            if "right" in latched_flags:
+                latched_flags.remove("right")
+                cursor = 0 if wrapping_i16(cursor) == available_count - 1 else cursor + 1
+                continue
+            if "left" in latched_flags:
+                latched_flags.remove("left")
+                cursor = available_count - 1 if wrapping_i16(cursor) == 0 else cursor - 1
+                continue
+            if latched_flags.intersection({"enter", "space", "insert"}):
+                latched_flags.difference_update({"enter", "space", "insert"})
+                selected_slot = resolve_ordinal(mask, cursor)
+                break
+            if "escape" in latched_flags:
+                latched_flags.remove("escape")
+                out_flag = 1
+                break
+        return {
+            "magic_slots": magic_slots,
+            "mp": mp,
+            "learned_count": learned_count,
+            "availability_mask": [int(available) for available in mask],
+            "available_count": available_count,
+            "available_slots": packed_slots,
+            "initial_state_hash": fnv1a_words(
+                packed_slots + [learned_count, available_count, 0]
+            ),
+            "out_flag_initial": 0,
+            "out_flag": out_flag,
+            "selected_slot": selected_slot,
+            "remaining_flags": sorted(latched_flags),
+            "frames": frames,
+        }
+
+    fixed = simulate_menu(
+        [6, 0, 5, 0, 25, 0, 0, 0, 0, 0],
+        3,
+        [{"right"}, {"right"}, {"left"}, {"enter"}],
+    )
+    if fixed["initial_state_hash"] != "0xc254d2cd83d7da76":
+        raise ValueError("magic-selection fixed state hash changed")
+    if fixed["availability_mask"] != [1, 0, 1, 0, 0, 0, 0, 0, 0, 0]:
+        raise ValueError("magic-selection fixed availability changed")
+    if [frame["cursor"] for frame in fixed["frames"]] != [0, 1, 0, 1]:
+        raise ValueError("magic-selection cursor wrapping changed")
+    if fixed["selected_slot"] != 2 or fixed["frames"][0]["panel"] != [20, 10, 90, 61]:
+        raise ValueError("magic-selection fixed confirmation or panel changed")
+
+    sparse_display = simulate_menu(
+        [11, 0, 14, 0, 0, 0, 0, 0, 0, 0],
+        5,
+        [{"right"}, {"space"}],
+    )
+    if [item["slot"] for item in sparse_display["frames"][0]["normal"]] != [0]:
+        raise ValueError("magic-selection sparse ordinary-name bug changed")
+    if sparse_display["frames"][1]["selected"] != {
+        "slot": 2,
+        "magic_id": 14,
+        "x": 25,
+        "y": 32,
+        "color": "0x6663",
+    }:
+        raise ValueError("magic-selection sparse selected-name path changed")
+
+    priority = simulate_menu(
+        [11, 14, 0, 0, 0, 0, 0, 0, 0, 0],
+        5,
+        [
+            {"right", "enter", "escape"},
+            {"left", "insert"},
+            {"space", "escape"},
+        ],
+    )
+    if [frame["cursor"] for frame in priority["frames"]] != [0, 1, 0] or (
+        priority["selected_slot"] != 0 or priority["out_flag"] != 0 or
+        priority["remaining_flags"] != ["escape"]
+    ):
+        raise ValueError("magic-selection input priority or flag persistence changed")
+
+    zero_available = simulate_menu(
+        [25, 92, 0, 0, 0, 0, 0, 0, 0, 0],
+        0,
+        [{"left"}, {"enter"}],
+    )
+    if [frame["cursor"] for frame in zero_available["frames"]] != [0, -1] or (
+        zero_available["selected_slot"] != 0
+    ):
+        raise ValueError("magic-selection zero-available malformed behavior changed")
+
+    cancel = simulate_menu(
+        [11, 14, 0, 0, 0, 0, 0, 0, 0, 0],
+        5,
+        [{"escape"}],
+    )
+    if cancel["out_flag"] != 1 or cancel["selected_slot"] is not None:
+        raise ValueError("magic-selection cancel behavior changed")
+
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_MAGIC_SELECTION_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 88,
+        "return_sites": ["0x39187"],
+        "machine_slices": machine_slices,
+        "caller_sequence": caller_sequence.hex(),
+        "arguments": {
+            "actor": "signed low16 battle participant index",
+            "learned_count": "signed low16 count of positive magic ids supplied by caller",
+            "out_word": "written zero before first render and one only on Escape",
+        },
+        "availability": {
+            "scan": "all ten physical slots in ascending order",
+            "predicate": "signed magic id > 0 and signed current MP >= signed need_mp",
+            "machine_read_order": "need_mp is read through magic id before nonpositive-id rejection",
+            "cursor": "available ordinal remapped across all ten physical slots",
+        },
+        "render_sequence": [
+            "redraw battlefield",
+            "draw panel (20,10,90,17*learned_count+10)",
+            "resolve selected available ordinal across ten slots",
+            "draw ordinary available names only while physical slot < learned_count",
+            "redraw selected actual-slot name",
+            "copy framebuffer before inspecting input flags",
+        ],
+        "name_layout": {
+            "big5_character_count_to_x": {"1": 57, "2": 49, "3": 41, "4": 33, "5": 25},
+            "ordinary_color": "0x2321",
+            "selected_color": "0x6663",
+            "y": "17*available ordinal+15; selected uses cursor ordinal",
+            "sparse_bug": "ordinary scan stops at learned_count, selected scan covers all ten slots",
+        },
+        "input_priority": ["right", "left", "enter-or-space-or-insert", "escape"],
+        "direction_rule": "clear only the handled direction flag, update cursor, then redraw/present",
+        "confirm_rule": "clear all three confirm flags, remap cursor, write word_E6ED6, return",
+        "cancel_rule": "clear Escape, write out-word one, preserve word_E6ED6, return",
+        "caller": {
+            "site": "0x377af",
+            "positive_magic_scan": "all ten slots",
+            "player_only": True,
+            "single_magic_bug": "learned_count one writes shared physical slot zero",
+            "menu_domain": "learned_count not equal to one, including malformed zero",
+            "uses_return": False,
+            "cancel_result": "out-word one makes caller return -1",
+        },
+        "magic_asset_domain": {
+            "record_count": len(magic_records),
+            "records_sha256": sha256(magic_bytes),
+            "ids_equal_indices": True,
+            "name_length_distribution": length_distribution,
+            "five_character_following_nul": True,
+            "need_mp_minimum": min(item["need_mp"] for item in magic_records),
+            "need_mp_maximum": max(item["need_mp"] for item in magic_records),
+            "records": magic_records,
+        },
+        "vectors": {
+            "fixed": fixed,
+            "sparse_display_bug": sparse_display,
+            "input_priority": priority,
+            "zero_available": zero_available,
+            "cancel": cancel,
+            "caller_single_magic_slot_bug": {
+                "slots": [0, 0, 0, 0, 5, 0, 0, 0, 0, 0],
+                "learned_count": 1,
+                "selected_physical_slot": 0,
+            },
+            "zero_learned_sentinel": {
+                "slots": [0] * 10,
+                "mp": 1000,
+                "action_menu_attack_available": True,
+                "menu_available_count": 0,
+                "modern_result": "safety rejection",
+            },
+        },
+        "direct_rng_draws": 0,
+        "host_timing": "each entry and direction update must be rendered and presented before next input",
+        "platform_adaptation_boundary": (
+            "modern code may reject invalid actor/magic ids, malformed name/count data, and the "
+            "zero-available nonterminating or invalid-selection domain"
+        ),
+        "closure_boundary": (
+            "stack probe, battlefield redraw, panel, formatter, text renderer, framebuffer copy, "
+            "shared magic slot, caller attack pipeline and downstream owners remain independent"
         ),
     }
 
@@ -8495,6 +8882,8 @@ def build(data_root: Path) -> dict[str, object]:
             battle_throwing_effect_animation_contract(z_dat_bytes),
         "battle_damage_animation_machine": battle_damage_animation_contract(z_dat_bytes),
         "battle_line_attack_machine": battle_line_attack_contract(z_dat_bytes, magic_bytes),
+        "battle_magic_selection_machine":
+            battle_magic_selection_contract(z_dat_bytes, magic_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

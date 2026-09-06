@@ -496,6 +496,7 @@ private:
     std::int32_t ai_movement_wait_tick_changes_remaining_{};
     BattlePlayerActionMenuState player_action_menu_{};
     std::optional<BattleMagicSelectionState> player_magic_selection_;
+    std::uint8_t player_magic_presentations_before_input_{};
     std::optional<BattleCursorSelectionState> player_cursor_selection_;
     std::uint8_t cursor_presentations_before_input_{};
     std::optional<BattlePathCoord> selected_player_target_;
