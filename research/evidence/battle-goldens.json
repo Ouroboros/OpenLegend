@@ -2355,6 +2355,132 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_37070, sub_37245, and sub_37355 callers remain independent owners; sub_3721E path read remains independent"
   },
+  "battle_path_read_machine": {
+    "address": "0x3721e",
+    "end": "0x37245",
+    "raw_offset": "0x30c1e",
+    "size": 39,
+    "instruction_count": 9,
+    "branch_count": 0,
+    "raw_sha256": "2244d0f46a9d69c9b7090714a652d300b4bb9fa283aa9557381261d960ef0dd7",
+    "loaded_sha256": "b205961e08547954cf7361471c63c0e6e9517eade4bd0c1d6de4ed30330173ff",
+    "relocation_count": 2,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x37223"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x3712d",
+      "0x37266",
+      "0x37319",
+      "0x373d2"
+    ],
+    "stack_probe_bytes": 4,
+    "path_words": {
+      "address": "0xdca04",
+      "count": 4096,
+      "bytes": 8192
+    },
+    "scratch_word": {
+      "address": "0xe6ece",
+      "effect": "receives the exact 16-bit path word before EAX sign extension"
+    },
+    "arguments": "x and y are stack dwords whose low words are signed-extended",
+    "address_math": "32-bit address uses (signed-int16 y << 7) + 2*signed-int16 x",
+    "read_order": "read path word into AX; copy AX to scratch; sign-extend AX into EAX; return",
+    "synthetic_linear_vectors": [
+      {
+        "x": 1,
+        "y": 2,
+        "word_index": 129,
+        "byte_offset": 258,
+        "path_word_signed": 22136,
+        "scratch_word_unsigned": 22136,
+        "eax_return": 22136,
+        "inside_path_storage": true
+      },
+      {
+        "x": 64,
+        "y": 0,
+        "word_index": 64,
+        "byte_offset": 128,
+        "path_word_signed": -1,
+        "scratch_word_unsigned": 65535,
+        "eax_return": -1,
+        "inside_path_storage": true
+      },
+      {
+        "x": 0,
+        "y": 1,
+        "word_index": 64,
+        "byte_offset": 128,
+        "path_word_signed": -1,
+        "scratch_word_unsigned": 65535,
+        "eax_return": -1,
+        "inside_path_storage": true
+      },
+      {
+        "x": -1,
+        "y": 1,
+        "word_index": 63,
+        "byte_offset": 126,
+        "path_word_signed": 255,
+        "scratch_word_unsigned": 255,
+        "eax_return": 255,
+        "inside_path_storage": true
+      },
+      {
+        "x": 63,
+        "y": 63,
+        "word_index": 4095,
+        "byte_offset": 8190,
+        "path_word_signed": -32768,
+        "scratch_word_unsigned": 32768,
+        "eax_return": -32768,
+        "inside_path_storage": true
+      },
+      {
+        "x": 0,
+        "y": 64,
+        "word_index": 4096,
+        "byte_offset": 8192,
+        "path_word_signed": -32767,
+        "scratch_word_unsigned": 32769,
+        "eax_return": -32767,
+        "inside_path_storage": false
+      },
+      {
+        "x": 64,
+        "y": 63,
+        "word_index": 4096,
+        "byte_offset": 8192,
+        "path_word_signed": -32767,
+        "scratch_word_unsigned": 32769,
+        "eax_return": -32767,
+        "inside_path_storage": false
+      }
+    ],
+    "in_storage_alias": "(64,0) and (0,1) both read word index 64",
+    "unsafe_machine_domain": "negative coordinates can alias storage; (0,64) and (64,63) read one word past path storage",
+    "caller_roles": {
+      "0x3712d": "flood candidate compares signed return with 254",
+      "0x37266": "mark target stores signed return as current distance",
+      "0x37319": "mark predecessor compares signed return with prior distance",
+      "0x373d2": "movement compares signed return with marker 250"
+    },
+    "caller_continuations": {
+      "0x3712d": "83c4083dfe000000751c",
+      "0x37266": "83c40889442404",
+      "0x37319": "83c4080fbf54240439d07517",
+      "0x373d2": "83c4083dfa0000000f8573010000"
+    },
+    "caller_uses_return": true,
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_37070, sub_37245, and sub_37355 callers remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
