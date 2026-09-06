@@ -671,7 +671,10 @@ enum class PartySelectionResult {
 
 class BattleSetup {
 public:
-    BattleSetup(BattleData& data, model::RangerState& ranger);
+    BattleSetup(
+        BattleData& data,
+        model::RangerState& ranger,
+        std::int16_t* legacy_hp_cost_scale = nullptr);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
@@ -937,7 +940,9 @@ public:
         return attack_effects_;
     }
     [[nodiscard]] std::int16_t last_hp_cost_scale() const noexcept {
-        return last_hp_cost_scale_;
+        return legacy_hp_cost_scale_ != nullptr
+            ? *legacy_hp_cost_scale_
+            : last_hp_cost_scale_;
     }
     [[nodiscard]] std::optional<BattleAreaResult> apply_attack_area(
         std::size_t actor_slot,
@@ -1042,6 +1047,7 @@ private:
     std::array<std::int16_t, kBattleOccupancyCells> attack_effects_{};
     std::int16_t combatant_count_{};
     std::int16_t last_hp_cost_scale_{};
+    std::int16_t* legacy_hp_cost_scale_{};
     std::size_t party_prefix_length_{kBattlePartySlots};
     std::size_t cursor_{};
     bool waiting_{};

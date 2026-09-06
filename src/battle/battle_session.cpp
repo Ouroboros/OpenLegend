@@ -235,11 +235,12 @@ BattleSession::BattleSession(
     const std::int16_t battle_id,
     const bool grant_experience,
     const BattleRenderState initial_render_state,
-    std::int16_t* const legacy_player_item_slot)
+    std::int16_t* const legacy_player_item_slot,
+    std::int16_t* const legacy_hp_cost_scale)
     : ranger_(ranger),
       random_(random),
       data_(data_root, battle_id),
-      setup_(data_, ranger_),
+      setup_(data_, ranger_, legacy_hp_cost_scale),
       pathing_(data_),
       renderer_(data_root, data_.battlefield_id()),
       render_state_(initial_render_state),

@@ -519,8 +519,13 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     return result;
 }
 
-BattleSetup::BattleSetup(BattleData& data, model::RangerState& ranger)
-    : data_(data), ranger_(ranger) {
+BattleSetup::BattleSetup(
+    BattleData& data,
+    model::RangerState& ranger,
+    std::int16_t* const legacy_hp_cost_scale)
+    : data_(data),
+      ranger_(ranger),
+      legacy_hp_cost_scale_(legacy_hp_cost_scale) {
     initialize_combatants();
     if (!data_.valid()) {
         error_ = data_.error();
@@ -1881,6 +1886,9 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         }
     }
     last_hp_cost_scale_ = cost_scale;
+    if (legacy_hp_cost_scale_ != nullptr) {
+        *legacy_hp_cost_scale_ = cost_scale;
+    }
 
     const auto equipment_bonus = [this](
                                      const model::RoleRecord& role,

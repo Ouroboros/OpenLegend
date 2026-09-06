@@ -151,7 +151,8 @@ public:
         std::int16_t battle_id,
         bool grant_experience,
         BattleRenderState initial_render_state = {},
-        std::int16_t* legacy_player_item_slot = nullptr);
+        std::int16_t* legacy_player_item_slot = nullptr,
+        std::int16_t* legacy_hp_cost_scale = nullptr);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }

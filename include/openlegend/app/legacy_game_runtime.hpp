@@ -241,6 +241,7 @@ private:
     std::unique_ptr<scene::SceneSession> world_menu_event_session_;
     std::unique_ptr<battle::BattleSession> battle_session_;
     battle::BattleRenderState retained_battle_render_state_{};
+    std::int16_t legacy_battle_hp_cost_scale_{};
     LegacyGameView view_{LegacyGameView::title};
     LegacyGameView menu_return_view_{LegacyGameView::world};
     LegacyGameView error_return_view_{LegacyGameView::title};

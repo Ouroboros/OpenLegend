@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为49/81；其余32项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为50/81；其余31项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、32项为 `implemented_pending_review`、49项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、31项为 `implemented_pending_review`、50项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -111,11 +111,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 9. 武功攻击入口与每轮提交
 
-`sub_37734` 已恢复十槽统计与 magic profile：只统计 ID>0；唯一已学武功时原版仍选 slot0 的 BUG 保留；等级用熟练度 unsigned `/100`，并从 magic words 28+level、38+level、15、14、16读取选择距离、攻击距离、area type、hurt type和 need_mp。attack_twice严格等于1时轮数为2。
+`sub_37734`机器身份固定为3690 bytes、837条指令、106个函数体跳转、226处重定位、34次direct call和两个caller；raw/loaded SHA256分别为`e1e0b9a203500a28d37fbca2eba008c0d3cff9c507104c5ac1ab769a6808f833`与`b1c8388f04bc4660f3d13f0280000900a7e84beb4e5d562f2609487e8945b631`。入口十槽统计只计熟练度>0；唯一已学武功时原版仍选slot0的BUG保留；等级用熟练度unsigned `/100`，并缓存magic words 28+level、38+level、15、14、16的选择距离、攻击距离、area type、hurt type和need_mp。attack_twice严格等于1时轮数为2。
 
 现代每轮提交严格保留 action word7=1、word13加2、`LegacyRandom::bounded(2)+1` 熟练度增长、unsigned 999 cap、跨百升级判定，以及 `(cost_scale/2)*need_mp` 内力扣除后 signed负值夹0；全部轮次后体力减3并夹0。seed1固定 state1103527590、299→300、cost scale3下 mp3→0、999 cap和体力2→0。
 
-`BattleSession`现完整执行攻击入口：多武功菜单确认后，area type0/3进入mode1目标UI并支持Escape返回原ordinal，type1显示方向框并按0/1/2/3映射上/右/左/下，type2直接攻击。每击实际执行area伤害、FIGHT/EFT双bank动画、10帧damage、sprite刷新、重画/present/wait17，随后才提交word7/word13/熟练度/MP；跨百绘制升级框并present/wait500，双击结束后才扣体力并进入共享actor尾部。原版在循环外缓存范围，现代同样缓存初始profile；首击升级后第二击继续命中原范围，但伤害与cost scale按新熟练度重算。固定双击第二击hits1、cost scale4、内力20→15→5；方向提示与升级框整帧hash为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。四种area type、取消、双击和13次升级等待均由battle4 Session覆盖；AI automatic flag1路径也执行自动方向、直接或移动后攻击、10帧FIGHT、10帧damage、17tick提交、升级框13次tick、熟练度/MP/体力和外层action-done。固定AI首FIGHT、首damage、提交战场、升级框及移动后首FIGHT整帧hash分别为`0xe1d1b3cff84bc0c4`、`0x04c528de57fbffa0`、`0xdbee20f394fd7219`、`0xed97f52f9bedb836`、`0xacc58834b066ca07`；`sub_37734`为`implemented_pending_review`。
+`BattleSession`现完整执行攻击入口：多武功菜单确认后，area type0/3进入mode1目标UI并支持Escape返回原ordinal，type1显示方向框并按0/1/2/3映射上/右/左/下，type2直接攻击。每击实际执行area伤害、FIGHT/EFT双bank动画、10帧damage、sprite刷新、重画/present/wait17，随后才提交word7/word13/熟练度/MP；跨百绘制升级框并present/wait500，双击结束后才扣体力并进入共享actor尾部。原版在循环外缓存范围，现代同样缓存初始profile；首击升级后第二击继续命中原范围，但伤害与cost scale按新熟练度重算。固定双击第二击hits1、cost scale4、内力20→15→5；方向提示与升级框整帧hash为`0x5e46c805f42677b0`、`0x1f0048d1945a4948`。四种area type、取消、双击和13次升级等待均由battle4 Session覆盖；AI automatic flag1路径也执行自动方向、直接或移动后攻击、10帧FIGHT、10帧damage、17tick提交、升级框13次tick、熟练度/MP/体力和外层action-done。固定AI首FIGHT、首damage、提交战场、升级框及移动后首FIGHT整帧hash分别为`0xe1d1b3cff84bc0c4`、`0x04c528de57fbffa0`、`0xdbee20f394fd7219`、`0xed97f52f9bedb836`、`0xacc58834b066ca07`。首轮入口REVIEW发现原`E6EC2`仅由HP核写、由HP核和攻击MP提交读且无战斗初始化清零，现代每场`BattleSetup`重置会丢失跨战陈旧scale；现由`LegacyGameRuntime`持有进程期word并经Session绑定Setup，HP核即时同步。新Setup继承scale3并按`(3/2)*need_mp4`把MP20扣至16的区分回归通过；修正后完整入口重审零剩余差异，`sub_37734`归类`platform_adapted / converged_no_new_differences`。
 
 ## 10. HP与MP伤害
 
@@ -127,13 +127,13 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_37734` 的方形与十字单轮状态边界已映射为 `clear_attack_effects/apply_attack_area`。方形按x外/y内扫描并按目标差更新方向；十字逐距离按上、下、左、右扫描且不改方向。友军格完全跳过，空格只写effect=1，敌方格写damage word9。type2忽略hurt_type并强制HP伤害；type0/3按hurt_type 0/1分派HP/MP，其他值只留effect。
 
-固定方形8格hash `0xe5f47b0a810ce2bd`、十字7格hash `0x3144c415023d9464`、单格MP hash `0xab559939923b4f74`；伤害29/29/15，effect kind 1/1/3，MP分支保留上次HP cost scale3。四种area现均接入目标/方向输入、动画、present、提交与双击；area覆盖使用入口缓存profile，伤害函数每次命中仍读取当前熟练度。`sub_37734`为`implemented_pending_review`。
+固定方形8格hash `0xe5f47b0a810ce2bd`、十字7格hash `0x3144c415023d9464`、单格MP hash `0xab559939923b4f74`；伤害29/29/15，effect kind 1/1/3，MP分支保留上次HP cost scale3。四种area现均接入目标/方向输入、动画、present、提交与双击；area覆盖使用入口缓存profile，伤害函数每次命中仍读取当前熟练度。`sub_37734`已完成最终入口REVIEW并归类`platform_adapted / converged_no_new_differences`。
 
 ## 12. 直线area扫描
 
 `sub_38999` 已映射为 `apply_line_attack_area`。方向0/1/2/3对应上/右/左/下，逐格扫描到select distance；越界只跳过当前格，不终止循环。友军格跳过，空格写effect，敌方格始终调用HP伤害而不读取hurt_type，命中后仍继续后续距离；非法方向无操作。
 
-固定向量：方向3下方空格+敌方hash `0xae7c1e4e161ac125`、damage29；中间友军跳过后仍命中第二格hash `0xab559939923b4f74`；非法方向空hash `0xb9d103fd6854a325`且不消费seed1。BattleSession现实际绘制方向提示、消费方向键、复用首击方向/缓存范围，并执行伤害与动画提交；提示整帧hash为`0x5e46c805f42677b0`。函数完整状态边界为 `implemented_pending_review`。
+固定向量：方向3下方空格+敌方hash `0xae7c1e4e161ac125`、damage29；中间友军跳过后仍命中第二格hash `0xab559939923b4f74`；非法方向空hash `0xb9d103fd6854a325`且不消费seed1。BattleSession现实际绘制方向提示、消费方向键、复用首击方向/缓存范围，并执行伤害与动画提交；提示整帧hash为`0x5e46c805f42677b0`。该函数完整状态边界已随`sub_37734`最终入口REVIEW关闭。
 
 ## 13. 攻击动画时间线
 
@@ -149,7 +149,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 每轮先重画战场，再以 `(20,10,90,17*learned_count+10)` 绘制圆角面板。普通名称颜色`0x2321`、选中名称颜色`0x6663`；Big5名称按长度居中到x=57/49/41/33/25，y=`17*ordinal+15`。普通名称只扫描slot `<learned_count`，但可用mask/确认扫描10槽，故稀疏槽位存在原显示BUG；选中名称仍按实际slot单独重绘。
 
-固定slots `[6,0,5,0,7,...]`、MP6得到learned3、available `[0,2]`、状态hash `0xc254d2cd83d7da76`；next→next→previous后确认slot2，取消flag1。Session稀疏slots `[5,0,6,...]` 固定初始菜单FNV64 `0x909332be9671b27c`、cursor1/实际slot2选中菜单 `0x6977ba7a0c3172a6`，并锁定ready/cursor/cancel/selected日志。Linux Debug完整BUILD 14/14，函数推进为 `implemented_pending_review`。
+固定slots `[6,0,5,0,7,...]`、MP6得到learned3、available `[0,2]`、状态hash `0xc254d2cd83d7da76`；next→next→previous后确认slot2，取消flag1。Session稀疏slots `[5,0,6,...]` 固定初始菜单FNV64 `0x909332be9671b27c`、cursor1/实际slot2选中菜单 `0x6977ba7a0c3172a6`，并锁定ready/cursor/cancel/selected日志。Linux Debug完整BUILD 14/14；菜单owner仍为`implemented_pending_review`，不随`sub_37734`传播关闭。
 
 ## 15. 用毒目标与状态结算
 

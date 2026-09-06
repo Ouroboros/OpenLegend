@@ -591,6 +591,52 @@ BATTLE_MOVEMENT_STEP_RELOCATION_OFFSETS = (
 )
 BATTLE_MOVEMENT_STEP_CALLER_SITES = (0x36772, 0x36AE8)
 BATTLE_MOVEMENT_STEP_SHARED_TAIL_ADDRESS = 0x3CBDB
+BATTLE_ATTACK_CORE_ADDRESS = 0x37734
+BATTLE_ATTACK_CORE_END = 0x3859E
+BATTLE_ATTACK_CORE_CALL_OFFSETS = (
+    0x005, 0x07B, 0x21D, 0x24A, 0x265, 0x386, 0x39D, 0x40C, 0x442,
+    0x4C4, 0x4E2, 0x502, 0x515, 0x646, 0x661, 0x6E5, 0x7E5, 0x8EC,
+    0x9F1, 0xAF6, 0xB79, 0xBA1, 0xBB7, 0xBDC, 0xBEC, 0xBF6, 0xC47,
+    0xCBF, 0xD01, 0xD38, 0xD6E, 0xD91, 0xDA4, 0xDB1,
+)
+BATTLE_ATTACK_CORE_CALL_TARGETS = (
+    0x3ED1E, 0x38DAC, 0x36AF7, 0x3F50B, 0x3F50B, 0x3F50B, 0x3F50B,
+    0x39188, 0x395EC, 0x3EF4A, 0x2CEBF, 0x3D832, 0x3D6D1, 0x3F50B,
+    0x3F50B, 0x38999, 0x39188, 0x39188, 0x39188, 0x39188, 0x3859E,
+    0x38910, 0x3B1E6, 0x3AA85, 0x3D6D1, 0x3DB83, 0x3D612, 0x3AA85,
+    0x3EF4A, 0x3EF7D, 0x2CEBF, 0x3D832, 0x3D6D1, 0x3DB83,
+)
+BATTLE_ATTACK_CORE_RELOCATION_OFFSETS = (
+    0x024, 0x037, 0x064, 0x098, 0x0B3, 0x0C0, 0x0D0, 0x0D7, 0x0E0,
+    0x0E7, 0x0F0, 0x0F6, 0x111, 0x11E, 0x129, 0x13E, 0x153, 0x15F,
+    0x16A, 0x18F, 0x1B3, 0x1C0, 0x23C, 0x243, 0x257, 0x25E, 0x275,
+    0x27C, 0x289, 0x294, 0x29F, 0x2A6, 0x2B3, 0x2BE, 0x2C6, 0x2DF,
+    0x323, 0x335, 0x33C, 0x363, 0x36C, 0x37F, 0x395, 0x3B2, 0x3BF,
+    0x3CB, 0x3E0, 0x3EA, 0x3FA, 0x404, 0x416, 0x420, 0x430, 0x43A,
+    0x44D, 0x457, 0x45F, 0x47C, 0x4BB, 0x4C0, 0x4CF, 0x4F2, 0x4F7,
+    0x50C, 0x511, 0x52E, 0x537, 0x540, 0x547, 0x561, 0x56B, 0x574,
+    0x57D, 0x584, 0x59E, 0x5AB, 0x5B4, 0x5BD, 0x5C4, 0x5DE, 0x5EB,
+    0x5F4, 0x601, 0x608, 0x620, 0x638, 0x63F, 0x653, 0x65A, 0x671,
+    0x678, 0x685, 0x690, 0x69B, 0x6A2, 0x6AF, 0x6BA, 0x6CB, 0x71A,
+    0x73B, 0x749, 0x75A, 0x762, 0x76C, 0x773, 0x78D, 0x79E, 0x7A6,
+    0x7B0, 0x7BC, 0x7CB, 0x7D6, 0x7DE, 0x7F2, 0x800, 0x808, 0x812,
+    0x821, 0x840, 0x84E, 0x861, 0x869, 0x873, 0x87A, 0x894, 0x8A5,
+    0x8AD, 0x8B7, 0x8C3, 0x8D2, 0x8DD, 0x8E5, 0x8F9, 0x905, 0x90D,
+    0x917, 0x926, 0x934, 0x942, 0x961, 0x96C, 0x976, 0x97D, 0x997,
+    0x9A7, 0x9B2, 0x9BC, 0x9C8, 0x9D7, 0x9E2, 0x9EA, 0x9FE, 0xA08,
+    0xA12, 0xA1C, 0xA2B, 0xA39, 0xA47, 0xA66, 0xA71, 0xA7B, 0xA82,
+    0xA9C, 0xAAC, 0xAB7, 0xAC1, 0xACD, 0xADC, 0xAE7, 0xAEF, 0xB03,
+    0xB0D, 0xB17, 0xB21, 0xB43, 0xB50, 0xB58, 0xB67, 0xB6F, 0xB84,
+    0xB8E, 0xB99, 0xBC7, 0xBD6, 0xBE3, 0xBE8, 0xC09, 0xC12, 0xC1A,
+    0xC27, 0xC32, 0xC53, 0xC5A, 0xC67, 0xC72, 0xC7D, 0xC8E, 0xC9B,
+    0xCA3, 0xCCB, 0xCD8, 0xCE0, 0xCEF, 0xCF8, 0xCFD, 0xD0C, 0xD19,
+    0xD21, 0xD30, 0xD48, 0xD7E, 0xD83, 0xD9B, 0xDA0, 0xDC4, 0xDD1,
+    0xDD9, 0xDE8, 0xDEF, 0xE02, 0xE0B, 0xE17, 0xE3B, 0xE48, 0xE50,
+    0xE5A,
+)
+BATTLE_ATTACK_CORE_CALLER_SITES = (0x33371, 0x34E52)
+BATTLE_ATTACK_SPECIAL_TABLE_ADDRESS = 0x55B38
+BATTLE_ATTACK_DYNAMIC_COST_SCALE_ADDRESS = 0xE6EC2
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -3306,6 +3352,284 @@ def battle_movement_step_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "closure_boundary": (
             "path read/write, sprite helper, renderer, present, delay, abs helper, two callers and "
             "shared-tail owner remain independent"
+        ),
+    }
+
+
+def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_ATTACK_CORE_ADDRESS,
+        end=BATTLE_ATTACK_CORE_END,
+        call_offsets=BATTLE_ATTACK_CORE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_ATTACK_CORE_CALL_TARGETS,
+        relocation_offsets=BATTLE_ATTACK_CORE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_ATTACK_CORE_CALLER_SITES,
+        instruction_count=837,
+        branch_count=106,
+    )
+    if contract["raw_sha256"] != (
+        "e1e0b9a203500a28d37fbca2eba008c0d3cff9c507104c5ac1ab769a6808f833"
+    ):
+        raise ValueError("Z.DAT attack core raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "b1c8388f04bc4660f3d13f0280000900a7e84beb4e5d562f2609487e8945b631"
+    ):
+        raise ValueError("Z.DAT attack core relocation image changed")
+
+    caller_sequences = {
+        "0x33371": z_dat_bytes[
+            0x33369 - Z_DAT_LOAD_BASE:0x3337B - Z_DAT_LOAD_BASE
+        ].hex(),
+        "0x34e52": z_dat_bytes[
+            0x34E4C - Z_DAT_LOAD_BASE:0x34E5F - Z_DAT_LOAD_BASE
+        ].hex(),
+    }
+    if caller_sequences != {
+        "0x33371": "6a000fbf44243450e8be43000083c408eb63",
+        "0x34e52": "6a010fbfc650e8dd28000083c408e9e5010000",
+    }:
+        raise ValueError("Z.DAT attack core caller arguments changed")
+
+    special_words = struct.unpack_from(
+        "<21h", z_dat_bytes, BATTLE_ATTACK_SPECIAL_TABLE_ADDRESS - Z_DAT_LOAD_BASE
+    )
+    special_attack_bonuses = [
+        {
+            "weapon_id": special_words[index * 3],
+            "magic_id": special_words[index * 3 + 1],
+            "bonus": special_words[index * 3 + 2],
+        }
+        for index in range(7)
+    ]
+    if special_attack_bonuses != [
+        {"weapon_id": 106, "magic_id": 57, "bonus": 100},
+        {"weapon_id": 107, "magic_id": 49, "bonus": 50},
+        {"weapon_id": 108, "magic_id": 49, "bonus": 50},
+        {"weapon_id": 110, "magic_id": 54, "bonus": 80},
+        {"weapon_id": 115, "magic_id": 63, "bonus": 50},
+        {"weapon_id": 116, "magic_id": 67, "bonus": 70},
+        {"weapon_id": 119, "magic_id": 68, "bonus": 100},
+    ]:
+        raise ValueError("Z.DAT attack special-bonus table changed")
+
+    dynamic_cost_scale_access = {
+        "attack_commit_read": z_dat_bytes[
+            0x38520 - Z_DAT_LOAD_BASE:0x38527 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "hp_kernel_zero_write": z_dat_bytes[
+            0x3919E - Z_DAT_LOAD_BASE:0x391A5 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "hp_kernel_scale_write": z_dat_bytes[
+            0x39282 - Z_DAT_LOAD_BASE:0x39289 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "hp_kernel_damage_read": z_dat_bytes[
+            0x392B6 - Z_DAT_LOAD_BASE:0x392BD - Z_DAT_LOAD_BASE
+        ].hex(),
+    }
+    if dynamic_cost_scale_access != {
+        "attack_commit_read": "0fbf15c26e0c00",
+        "hp_kernel_zero_write": "668935c26e0c00",
+        "hp_kernel_scale_write": "66891dc26e0c00",
+        "hp_kernel_damage_read": "0fbf05c26e0c00",
+    }:
+        raise ValueError("Z.DAT dynamic HP cost-scale accesses changed")
+
+    def signed_word(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    def signed_divide_by_two(value: int) -> int:
+        value = signed_word(value)
+        return -(abs(value) // 2) if value < 0 else value // 2
+
+    def selected_slot(positive_slots: list[int], menu_slot: int | None) -> int | None:
+        if len(positive_slots) == 1:
+            return 0
+        return menu_slot
+
+    def facing(actor: tuple[int, int], target: tuple[int, int]) -> int:
+        delta_x = target[0] - actor[0]
+        delta_y = target[1] - actor[1]
+        if abs(delta_x) >= abs(delta_y):
+            return 1 if delta_x > 0 else 2
+        return 3 if delta_y > 0 else 0
+
+    def cell_accepted(
+        cell: tuple[int, int],
+        occupant: int,
+        occupant_side: int | None,
+        actor_side: int,
+    ) -> bool:
+        return 0 <= cell[0] < 64 and 0 <= cell[1] < 64 and (
+            occupant == -1 or occupant_side != actor_side
+        )
+
+    def square_cells(target: tuple[int, int], radius: int) -> list[list[int]]:
+        return [
+            [x, y]
+            for x in range(target[0] - radius, target[0] + radius + 1)
+            for y in range(target[1] - radius, target[1] + radius + 1)
+            if 0 <= x < 64 and 0 <= y < 64
+        ]
+
+    def cross_cells(actor: tuple[int, int], radius: int) -> list[list[int]]:
+        result = []
+        for distance in range(1, radius + 1):
+            for x, y in (
+                (actor[0], actor[1] - distance),
+                (actor[0], actor[1] + distance),
+                (actor[0] - distance, actor[1]),
+                (actor[0] + distance, actor[1]),
+            ):
+                if 0 <= x < 64 and 0 <= y < 64:
+                    result.append([x, y])
+        return result
+
+    def proficiency_after(value: int, random_0_or_1: int) -> list[int]:
+        before = (value & 0xFFFF) // 100 + 1
+        updated = ((value & 0xFFFF) + random_0_or_1 + 1) & 0xFFFF
+        if updated > 999:
+            updated = 999
+        return [updated, before, updated // 100 + 1]
+
+    def mp_after(value: int, base_cost: int, dynamic_scale: int) -> int:
+        product = signed_word(base_cost) * signed_divide_by_two(dynamic_scale)
+        return max(signed_word(signed_word(value) - product), 0)
+
+    def physical_after(value: int) -> int:
+        return max(signed_word(signed_word(value) - 3), 0)
+
+    synthetic_vectors = {
+        "sole_positive_slot_5_forces_slot_0": selected_slot([5], None),
+        "multiple_slots_use_menu_slot": selected_slot([0, 5], 5),
+        "direction_tie_prefers_x": facing((10, 10), (8, 8)),
+        "direction_right": facing((10, 10), (12, 11)),
+        "direction_down": facing((10, 10), (11, 12)),
+        "square_radius_1": square_cells((2, 2), 1),
+        "cross_radius_2": cross_cells((2, 2), 2),
+        "empty_cell_accepted": cell_accepted((2, 2), -1, None, 0),
+        "ally_cell_rejected": cell_accepted((2, 2), 3, 0, 0),
+        "enemy_cell_accepted": cell_accepted((2, 2), 3, 1, 0),
+        "proficiency_99_roll0_levels": proficiency_after(99, 0),
+        "proficiency_999_roll1_clamps": proficiency_after(999, 1),
+        "proficiency_65535_roll0_wraps": proficiency_after(65535, 0),
+        "mp_positive_scale": mp_after(20, 3, 4),
+        "mp_negative_result_clamps": mp_after(5, 3, 4),
+        "mp_min_wraps_positive": mp_after(-32768, 1, 2),
+        "physical_two_to_zero": physical_after(2),
+        "physical_min_wraps_positive": physical_after(-32768),
+        "single_hit_rng_draws": 1,
+        "double_hit_rng_draws": 2,
+    }
+    expected_vectors = {
+        "sole_positive_slot_5_forces_slot_0": 0,
+        "multiple_slots_use_menu_slot": 5,
+        "direction_tie_prefers_x": 2,
+        "direction_right": 1,
+        "direction_down": 3,
+        "square_radius_1": [
+            [1, 1], [1, 2], [1, 3], [2, 1], [2, 2],
+            [2, 3], [3, 1], [3, 2], [3, 3],
+        ],
+        "cross_radius_2": [
+            [2, 1], [2, 3], [1, 2], [3, 2],
+            [2, 0], [2, 4], [0, 2], [4, 2],
+        ],
+        "empty_cell_accepted": True,
+        "ally_cell_rejected": False,
+        "enemy_cell_accepted": True,
+        "proficiency_99_roll0_levels": [100, 1, 2],
+        "proficiency_999_roll1_clamps": [999, 10, 10],
+        "proficiency_65535_roll0_wraps": [0, 656, 1],
+        "mp_positive_scale": 14,
+        "mp_negative_result_clamps": 0,
+        "mp_min_wraps_positive": 32767,
+        "physical_two_to_zero": 0,
+        "physical_min_wraps_positive": 32765,
+        "single_hit_rng_draws": 1,
+        "double_hit_rng_draws": 2,
+    }
+    if synthetic_vectors != expected_vectors:
+        raise ValueError("attack core synthetic vectors changed")
+
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_ATTACK_CORE_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 96,
+        "caller_sequences": caller_sequences,
+        "caller_roles": {
+            "0x33371": (
+                "player action pushes 0 then signed actor; ignores return and rejoins action switch"
+            ),
+            "0x34e52": (
+                "AI attack pushes 1 then signed actor; ignores return and rejoins AI handler tail"
+            ),
+        },
+        "caller_uses_return": False,
+        "selection": (
+            "count ten positive learned-level words; sole positive count forces selected slot 0; "
+            "otherwise player menu may cancel with -1; AI uses preselected slot"
+        ),
+        "profile_cache": (
+            "magic id and unsigned proficiency/100 level select definition fields once before "
+            "the one/two-hit loop"
+        ),
+        "special_attack_bonuses": special_attack_bonuses,
+        "area_types": {
+            "0_or_3": (
+                "player first hit targets with mode1 cursor; square x outer/y inner around target; "
+                "direction uses abs-x >= abs-y tie"
+            ),
+            "1": (
+                "player first hit draws direction prompt and polls keys; AI derives the same "
+                "dominant-axis direction; delegate line area"
+            ),
+            "2": "center on actor; for distance 1..range visit up, down, left, right",
+            "other": "no area construction before animation",
+        },
+        "area_cell_rule": (
+            "in-bounds empty or opposite-side cell is marked 1; same-side occupied cell is skipped; "
+            "occupied opposite-side cell gets delegated damage and word9 write"
+        ),
+        "damage_dispatch": (
+            "definition formula 0 sets global type1 and calls 0x39188; formula1 sets type3 and "
+            "calls 0x395EC; line helper is 0x38999"
+        ),
+        "animation": (
+            "call 0x3859E with actor and definition FIGHT bounds; set flash kind5 iff global damage "
+            "type3 else1; call 0x38910(0); refresh all sprites; render, present, delay17"
+        ),
+        "per_hit_commit": (
+            "actor word7=1; actor word13 +=2; one RNG(2) then proficiency += return+1 with "
+            "16-bit wrap and unsigned clamp999; show level box and delay500 only when unsigned "
+            "/100+1 rises; subtract base MP cost times signed dynamic-scale IDIV2 with 16-bit "
+            "wrap then signed-negative clamp0"
+        ),
+        "dynamic_cost_scale": {
+            "address": hex(BATTLE_ATTACK_DYNAMIC_COST_SCALE_ADDRESS),
+            "access_bytes": dynamic_cost_scale_access,
+            "lifetime": (
+                "only HP kernel zero/select writes; attack commit and HP damage read; no battle "
+                "initialization write, so the last HP scale persists across battle sessions"
+            ),
+            "mp_damage_write": False,
+        },
+        "hit_count": (
+            "cached before loop: role word at 0x901C0 exactly 1 means two hits, otherwise one; "
+            "targeting/direction only occur on first player hit"
+        ),
+        "final_commit": (
+            "after all hits physical power word 0x90176 -=3 with 16-bit wrap then signed-negative "
+            "clamp0; return 0; player cancel returns -1"
+        ),
+        "direct_rng_draws": "one sub_3D612(2) per hit",
+        "synthetic_vectors": synthetic_vectors,
+        "closure_boundary": (
+            "menu, cursor, line-area, damage kernels, animation/effect helpers, sprite, render, "
+            "present, delay, RNG, formatting/drawing helpers and two callers remain independent owners"
         ),
     }
 
@@ -7234,6 +7558,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_path_read_machine": battle_path_read_contract(z_dat_bytes),
         "battle_path_mark_machine": battle_path_mark_contract(z_dat_bytes),
         "battle_movement_step_machine": battle_movement_step_contract(z_dat_bytes),
+        "battle_attack_core_machine": battle_attack_core_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

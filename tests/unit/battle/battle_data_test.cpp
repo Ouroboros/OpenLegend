@@ -8190,7 +8190,8 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 15);
 
     BattleData data{data_root, 4};
-    BattleSetup setup{data, ranger};
+    std::int16_t legacy_hp_cost_scale = 0;
+    BattleSetup setup{data, ranger, &legacy_hp_cost_scale};
     OL_CHECK(setup.valid());
     data.occupancy()[25U * 64U + 25U] = 0;
     setup.clear_attack_effects();
@@ -8207,6 +8208,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 2);
     OL_CHECK(setup.last_hp_cost_scale() == 3);
+    OL_CHECK(legacy_hp_cost_scale == 3);
     OL_CHECK(random.state() == 2'524'885'223U);
 
     magic.set_word(openlegend::model::magic_word::attack_area_type, 2);
@@ -8249,6 +8251,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 23);
     OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
     OL_CHECK(setup.last_hp_cost_scale() == 3);
+    OL_CHECK(legacy_hp_cost_scale == 3);
     OL_CHECK(random.state() == 4'182'499'122U);
 
     magic.set_word(openlegend::model::magic_word::attack_area_type, 1);
@@ -8293,6 +8296,16 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(!invalid_direction->effect_kind.has_value());
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xb9d103fd6854a325ULL);
     OL_CHECK(random.state() == 1U);
+
+    actor.set_word(openlegend::model::role_word::mp, 20);
+    BattleData continued_data{data_root, 4};
+    BattleSetup continued{continued_data, ranger, &legacy_hp_cost_scale};
+    OL_CHECK(continued.valid());
+    OL_CHECK(continued.last_hp_cost_scale() == 3);
+    OL_CHECK(!continued.commit_attack_iteration(
+        0U, 2, continued.last_hp_cost_scale(), random));
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 16);
+    OL_CHECK(legacy_hp_cost_scale == 3);
 }
 
 void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
