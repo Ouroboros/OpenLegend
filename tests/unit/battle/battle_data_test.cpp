@@ -878,6 +878,23 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.valid());
     setup.combatants()[1U].words[combatant_word::side] =
         setup.combatants()[0U].words[combatant_word::side];
+    constexpr std::array<std::pair<std::int16_t, std::int16_t>, 9>
+        kDetoxTargetingRanges{{
+            {-32768, -2183},
+            {-15, 0},
+            {-14, 1},
+            {0, 1},
+            {14, 1},
+            {15, 2},
+            {89, 6},
+            {90, 7},
+            {32767, 2185},
+        }};
+    for (const auto [detoxification, expected_range] : kDetoxTargetingRanges) {
+        actor.set_word(openlegend::model::role_word::detoxification, detoxification);
+        OL_CHECK(setup.detox_targeting_range(0U) == expected_range);
+    }
+    actor.set_word(openlegend::model::role_word::detoxification, 80);
     OL_CHECK(setup.detox_targeting_range(0U) == 6);
     openlegend::random::LegacyRandom random{1U};
     const auto result = setup.apply_detox_target(0U, BattlePathCoord{26, 26}, random);
@@ -936,6 +953,9 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(std::ranges::none_of(setup.attack_effects(), [](const std::int16_t value) {
         return value != 0;
     }));
+    OL_CHECK(!setup.detox_targeting_range(26U).has_value());
+    setup.combatants()[0U].words[combatant_word::role_id] = -1;
+    OL_CHECK(!setup.detox_targeting_range(0U).has_value());
 }
 
 void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
