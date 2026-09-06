@@ -1081,6 +1081,38 @@
     "invalid_domain": "signed actor and request-target indices are unchecked legacy linear accesses; modern safety rejection allowed",
     "delegated_boundaries": "sub_3ED1E, sub_3650E, sub_34C47 and shared-entry owner sub_36209 remain independent closures"
   },
+  "battle_ai_request_detox_machine": {
+    "address": "0x36209",
+    "end": "0x36210",
+    "raw_offset": "0x2fc09",
+    "size": 7,
+    "instruction_count": 2,
+    "branch_count": 1,
+    "raw_sha256": "39c017dd2b811b83553060d2eafb40e83c07e19d3e6685c6382075fffa133f09",
+    "loaded_sha256": "39c017dd2b811b83553060d2eafb40e83c07e19d3e6685c6382075fffa133f09",
+    "relocation_count": 0,
+    "relocation_delta": 131072,
+    "call_sites": [],
+    "call_targets": [],
+    "callers": [
+      "0x33c19"
+    ],
+    "branch_sites": [
+      "0x3620e"
+    ],
+    "branch_targets": [
+      "0x361b1"
+    ],
+    "entry_owner": "sub_33599 action case9 request_detox",
+    "caller": "sub_33599 pushes signed actor, ignores delegated EAX, cleans one actor argument and later writes actor action_done word13=1",
+    "stack": "push immediate 16 duplicates sub_361AC stack-probe setup before entering 0x361B1",
+    "transfer": "short jump from 0x3620E to order32 internal address 0x361B1; no local call or RET",
+    "delegated_body": "0x361B1..0x36209 performs stack probe, signed round>0 optional sub_3650E(actor,0,0), request-target coordinate restore, unconditional sub_34C47(actor), then RET",
+    "return": "delegated RET returns directly to sub_33599 and its EAX is ignored",
+    "direct_writes": "none in the 7-byte owner",
+    "direct_rng_draws": 0,
+    "closure_boundary": "close only sub_36209 wrapper owner; do not duplicate or alter the independent sub_361AC body owner"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

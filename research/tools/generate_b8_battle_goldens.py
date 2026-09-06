@@ -209,6 +209,9 @@ BATTLE_AI_REQUEST_MEDICINE_RELOCATION_OFFSETS = (
 BATTLE_AI_REQUEST_MEDICINE_CALLER_SITES = (0x33C0E,)
 BATTLE_AI_REQUEST_SHARED_ENTRY = 0x361B1
 BATTLE_AI_REQUEST_DETOX_JUMP_SITES = (0x3620E,)
+BATTLE_AI_REQUEST_DETOX_ADDRESS = 0x36209
+BATTLE_AI_REQUEST_DETOX_END = 0x36210
+BATTLE_AI_REQUEST_DETOX_CALLER_SITES = (0x33C19,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -1239,6 +1242,45 @@ def battle_ai_request_medicine_contract(z_dat_bytes: bytes) -> dict[str, object]
             "signed actor and request-target indices are unchecked legacy linear accesses; modern safety rejection allowed",
         "delegated_boundaries":
             "sub_3ED1E, sub_3650E, sub_34C47 and shared-entry owner sub_36209 remain independent closures",
+    }
+
+
+def battle_ai_request_detox_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_REQUEST_DETOX_ADDRESS,
+        end=BATTLE_AI_REQUEST_DETOX_END,
+        call_offsets=(),
+        expected_call_targets=(),
+        relocation_offsets=(),
+        caller_sites=BATTLE_AI_REQUEST_DETOX_CALLER_SITES,
+        instruction_count=2,
+        branch_count=1,
+    )
+    if contract["raw_sha256"] != (
+        "39c017dd2b811b83553060d2eafb40e83c07e19d3e6685c6382075fffa133f09"
+    ):
+        raise ValueError("Z.DAT request-detox wrapper raw bytes changed")
+    if contract["loaded_sha256"] != contract["raw_sha256"]:
+        raise ValueError("Z.DAT request-detox wrapper unexpectedly relocates")
+    return {
+        **contract,
+        "branch_sites": ["0x3620e"],
+        "branch_targets": [hex(BATTLE_AI_REQUEST_SHARED_ENTRY)],
+        "entry_owner": "sub_33599 action case9 request_detox",
+        "caller":
+            "sub_33599 pushes signed actor, ignores delegated EAX, cleans one actor argument and later writes actor action_done word13=1",
+        "stack":
+            "push immediate 16 duplicates sub_361AC stack-probe setup before entering 0x361B1",
+        "transfer":
+            "short jump from 0x3620E to order32 internal address 0x361B1; no local call or RET",
+        "delegated_body":
+            "0x361B1..0x36209 performs stack probe, signed round>0 optional sub_3650E(actor,0,0), request-target coordinate restore, unconditional sub_34C47(actor), then RET",
+        "return": "delegated RET returns directly to sub_33599 and its EAX is ignored",
+        "direct_writes": "none in the 7-byte owner",
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "close only sub_36209 wrapper owner; do not duplicate or alter the independent sub_361AC body owner",
     }
 
 
@@ -4944,6 +4986,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_item_executor_machine": battle_ai_item_executor_contract(z_dat_bytes),
         "battle_carried_item_remove_machine": battle_carried_item_remove_contract(z_dat_bytes),
         "battle_ai_request_medicine_machine": battle_ai_request_medicine_contract(z_dat_bytes),
+        "battle_ai_request_detox_machine": battle_ai_request_detox_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

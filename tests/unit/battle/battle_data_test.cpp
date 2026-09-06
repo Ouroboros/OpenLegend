@@ -1323,6 +1323,37 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(detox_plan->next_step == BattleAiRequestNextStep::automatic_attack);
     OL_CHECK(detox_plan->movement_mode == 0);
     OL_CHECK(detox_plan->movement_value == 0);
+
+    setup.combatants()[0U].words[combatant_word::round_value] = 2;
+    const auto moving_detox_plan = setup.begin_ai_request_plan(0U, detox_request);
+    OL_CHECK(moving_detox_plan.has_value());
+    OL_CHECK(moving_detox_plan->request_action == BattleAiAction::request_detox);
+    OL_CHECK(moving_detox_plan->next_step == BattleAiRequestNextStep::move);
+    OL_CHECK(moving_detox_plan->movement_mode == 0);
+    OL_CHECK(moving_detox_plan->movement_value == 0);
+    setup.combatants()[1U].words[combatant_word::x] = static_cast<std::int16_t>(
+        setup.combatants()[1U].words[combatant_word::x] + 1);
+    setup.combatants()[1U].words[combatant_word::y] = static_cast<std::int16_t>(
+        setup.combatants()[1U].words[combatant_word::y] + 1);
+    const auto resumed_detox =
+        setup.resume_ai_request_after_move(0U, *moving_detox_plan);
+    OL_CHECK(resumed_detox.has_value());
+    OL_CHECK(resumed_detox->request_action == BattleAiAction::request_detox);
+    OL_CHECK(resumed_detox->next_step == BattleAiRequestNextStep::automatic_attack);
+    OL_CHECK(resumed_detox->target.x ==
+             setup.combatants()[1U].words[combatant_word::x]);
+    OL_CHECK(resumed_detox->target.y ==
+             setup.combatants()[1U].words[combatant_word::y]);
+    OL_CHECK(resumed_detox->target.x != moving_detox_plan->target.x);
+    OL_CHECK(resumed_detox->target.y != moving_detox_plan->target.y);
+
+    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    const auto negative_detox_plan = setup.begin_ai_request_plan(0U, detox_request);
+    OL_CHECK(negative_detox_plan.has_value());
+    OL_CHECK(negative_detox_plan->request_action == BattleAiAction::request_detox);
+    OL_CHECK(negative_detox_plan->next_step == BattleAiRequestNextStep::automatic_attack);
+    OL_CHECK(negative_detox_plan->movement_mode == 0);
+    OL_CHECK(negative_detox_plan->movement_value == 0);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 
     BattleAiChoice invalid = medicine_request;
@@ -1332,6 +1363,10 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     invalid.target_slot = -1;
     OL_CHECK(!setup.begin_ai_request_plan(0U, invalid).has_value());
     OL_CHECK(!setup.begin_ai_request_plan(99U, medicine_request).has_value());
+    invalid = detox_request;
+    invalid.target_slot = -1;
+    OL_CHECK(!setup.begin_ai_request_plan(0U, invalid).has_value());
+    OL_CHECK(!setup.begin_ai_request_plan(99U, detox_request).has_value());
 }
 
 void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root) {
