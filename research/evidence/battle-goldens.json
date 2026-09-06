@@ -3991,6 +3991,644 @@
     "throwing_boundary": "sub_3884A has no xref to this entry and remains the independent throwing owner",
     "closure_boundary": "FIGHT/sample loaders, renderer, present, delay, four direct callers, their player/AI upper callers and sub_3884A remain independent owners"
   },
+  "battle_throwing_effect_animation_machine": {
+    "address": "0x3884a",
+    "end": "0x38910",
+    "raw_offset": "0x3224a",
+    "size": 198,
+    "instruction_count": 56,
+    "branch_count": 4,
+    "raw_sha256": "8a04b6dee92962bfdab94f0480f09d34b7d012866679e1e76370dcc737fe6126",
+    "loaded_sha256": "c5feba51e0559ba30d74cb1797847e4f5815a758b683ee5ac35612521799c460",
+    "relocation_count": 9,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3884f",
+      "0x3885e",
+      "0x3886c",
+      "0x38878",
+      "0x38882",
+      "0x3888d",
+      "0x388d4",
+      "0x388e4",
+      "0x388ee"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3e2e2",
+      "0x3e2e2",
+      "0x3e288",
+      "0x3db83",
+      "0x3e288",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x3db83"
+    ],
+    "callers": [
+      "0x35b25",
+      "0x35e2a",
+      "0x3a4e6"
+    ],
+    "relocation_offsets": [
+      "0x4e",
+      "0x57",
+      "0x68",
+      "0x71",
+      "0x82",
+      "0x91",
+      "0x96",
+      "0xaf",
+      "0xbd"
+    ],
+    "stack_probe_bytes": 20,
+    "return_sites": [
+      "0x3890f"
+    ],
+    "argument": "signed low-16-bit item effect id",
+    "caller_sequences": {
+      "ai_party": "0fbf05de6e0c000fbf04852cfe060069c0be0000000fbf808e27080050e8202d000083c404",
+      "ai_enemy": "0fbf05de6e0c000fbf8442f201070069c0be0000000fbf808e27080050e81b2a000083c404",
+      "player": "0fbf05744b03000fbf04852cfe060069c0be0000000fbf808e27080050e85fe3ffff83c404"
+    },
+    "caller_roles": {
+      "0x35b25": "AI party-inventory throwing effect id",
+      "0x35e2a": "AI enemy-carried throwing effect id",
+      "0x3a4e6": "player confirmed-inventory throwing effect id"
+    },
+    "caller_uses_return": false,
+    "resource_sequence": [
+      "load fixed sample13 into attack bank1",
+      "load signed effect-id sample into effect bank2",
+      "start loaded attack bank1 sample13",
+      "delay100 without render or present",
+      "start loaded effect bank2 sample"
+    ],
+    "prelude_render_present_calls": 0,
+    "effect_table": {
+      "address": "0x55ace",
+      "sha256": "4c684877da272f4222fd3b73595971c81599ecfd456644498ac97841050da3a4",
+      "lengths": [
+        10,
+        14,
+        17,
+        9,
+        13,
+        17,
+        17,
+        17,
+        18,
+        19,
+        19,
+        15,
+        13,
+        10,
+        10,
+        15,
+        21,
+        16,
+        9,
+        11,
+        8,
+        9,
+        8,
+        8,
+        7,
+        8,
+        8,
+        9,
+        12,
+        19,
+        11,
+        14,
+        12,
+        17,
+        8,
+        11,
+        9,
+        13,
+        10,
+        19,
+        14,
+        17,
+        19,
+        14,
+        21,
+        16,
+        13,
+        18,
+        14,
+        17,
+        17,
+        16,
+        7
+      ],
+      "valid_effect_ids": [
+        0,
+        52
+      ],
+      "minimum_frame_count": 7,
+      "maximum_frame_count": 21
+    },
+    "effect_state": "set visible=1 and frame=0 after the prelude; add twice each prior effect length; render every current effect frame, then add2; clear visible after all frames",
+    "per_frame_sequence": [
+      "render",
+      "present",
+      "delay17",
+      "effect frame add2"
+    ],
+    "vectors": {
+      "effect0": {
+        "effect_id": 0,
+        "effect_sample_id": 0,
+        "prelude_wait_ticks": 100,
+        "first_effect_frame": 0,
+        "effect_frame_count": 10,
+        "frames": [
+          {
+            "index": 0,
+            "effect_visible": true,
+            "effect_frame": 0,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 1,
+            "effect_visible": true,
+            "effect_frame": 2,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 2,
+            "effect_visible": true,
+            "effect_frame": 4,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 3,
+            "effect_visible": true,
+            "effect_frame": 6,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 4,
+            "effect_visible": true,
+            "effect_frame": 8,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 5,
+            "effect_visible": true,
+            "effect_frame": 10,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 6,
+            "effect_visible": true,
+            "effect_frame": 12,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 7,
+            "effect_visible": true,
+            "effect_frame": 14,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 8,
+            "effect_visible": true,
+            "effect_frame": 16,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 9,
+            "effect_visible": true,
+            "effect_frame": 18,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          }
+        ],
+        "final_effect_visible": false
+      },
+      "effect2": {
+        "effect_id": 2,
+        "effect_sample_id": 2,
+        "prelude_wait_ticks": 100,
+        "first_effect_frame": 48,
+        "effect_frame_count": 17,
+        "frames": [
+          {
+            "index": 0,
+            "effect_visible": true,
+            "effect_frame": 48,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 1,
+            "effect_visible": true,
+            "effect_frame": 50,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 2,
+            "effect_visible": true,
+            "effect_frame": 52,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 3,
+            "effect_visible": true,
+            "effect_frame": 54,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 4,
+            "effect_visible": true,
+            "effect_frame": 56,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 5,
+            "effect_visible": true,
+            "effect_frame": 58,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 6,
+            "effect_visible": true,
+            "effect_frame": 60,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 7,
+            "effect_visible": true,
+            "effect_frame": 62,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 8,
+            "effect_visible": true,
+            "effect_frame": 64,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 9,
+            "effect_visible": true,
+            "effect_frame": 66,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 10,
+            "effect_visible": true,
+            "effect_frame": 68,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 11,
+            "effect_visible": true,
+            "effect_frame": 70,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 12,
+            "effect_visible": true,
+            "effect_frame": 72,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 13,
+            "effect_visible": true,
+            "effect_frame": 74,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 14,
+            "effect_visible": true,
+            "effect_frame": 76,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 15,
+            "effect_visible": true,
+            "effect_frame": 78,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 16,
+            "effect_visible": true,
+            "effect_frame": 80,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          }
+        ],
+        "final_effect_visible": false
+      },
+      "effect30": {
+        "effect_id": 30,
+        "effect_sample_id": 30,
+        "prelude_wait_ticks": 100,
+        "first_effect_frame": 772,
+        "effect_frame_count": 11,
+        "frames": [
+          {
+            "index": 0,
+            "effect_visible": true,
+            "effect_frame": 772,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 1,
+            "effect_visible": true,
+            "effect_frame": 774,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 2,
+            "effect_visible": true,
+            "effect_frame": 776,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 3,
+            "effect_visible": true,
+            "effect_frame": 778,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 4,
+            "effect_visible": true,
+            "effect_frame": 780,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 5,
+            "effect_visible": true,
+            "effect_frame": 782,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 6,
+            "effect_visible": true,
+            "effect_frame": 784,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 7,
+            "effect_visible": true,
+            "effect_frame": 786,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 8,
+            "effect_visible": true,
+            "effect_frame": 788,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 9,
+            "effect_visible": true,
+            "effect_frame": 790,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          },
+          {
+            "index": 10,
+            "effect_visible": true,
+            "effect_frame": 792,
+            "wait_ticks": 17,
+            "sequence": [
+              "render",
+              "present",
+              "delay17",
+              "effect_frame_add2"
+            ]
+          }
+        ],
+        "final_effect_visible": false
+      }
+    },
+    "direct_rng_draws": 0,
+    "invalid_effect_boundary": "negative or >=53 effects index outside the original table; modern checked rejection is the platform adaptation",
+    "caller_state_boundary": "AI and player state mutation/consumption surrounding this call belongs to their independent caller owners",
+    "closure_boundary": "three throwing callers plus stack probe, sample load/start, render, present and delay callees remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

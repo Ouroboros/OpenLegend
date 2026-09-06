@@ -655,6 +655,19 @@ BATTLE_FIGHT_ANIMATION_RELOCATION_OFFSETS = (
 BATTLE_FIGHT_ANIMATION_CALLER_SITES = (0x382AD, 0x399BF, 0x39D5F, 0x3A0C8)
 BATTLE_FIGHT_POINTER_BASE_ADDRESS = 0x556D0
 BATTLE_SELECTED_MAGIC_SLOT_ADDRESS = 0xE6ED6
+BATTLE_THROWING_EFFECT_ANIMATION_ADDRESS = 0x3884A
+BATTLE_THROWING_EFFECT_ANIMATION_END = 0x38910
+BATTLE_THROWING_EFFECT_ANIMATION_CALL_OFFSETS = (
+    0x005, 0x014, 0x022, 0x02E, 0x038, 0x043, 0x08A, 0x09A, 0x0A4,
+)
+BATTLE_THROWING_EFFECT_ANIMATION_CALL_TARGETS = (
+    0x3ED1E, 0x3E2E2, 0x3E2E2, 0x3E288, 0x3DB83,
+    0x3E288, 0x3AA85, 0x3D6D1, 0x3DB83,
+)
+BATTLE_THROWING_EFFECT_ANIMATION_RELOCATION_OFFSETS = (
+    0x04E, 0x057, 0x068, 0x071, 0x082, 0x091, 0x096, 0x0AF, 0x0BD,
+)
+BATTLE_THROWING_EFFECT_ANIMATION_CALLER_SITES = (0x35B25, 0x35E2A, 0x3A4E6)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -3928,6 +3941,173 @@ def battle_fight_animation_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "closure_boundary": (
             "FIGHT/sample loaders, renderer, present, delay, four direct callers, their player/AI "
             "upper callers and sub_3884A remain independent owners"
+        ),
+    }
+
+
+def battle_throwing_effect_animation_contract(
+    z_dat_bytes: bytes,
+) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_THROWING_EFFECT_ANIMATION_ADDRESS,
+        end=BATTLE_THROWING_EFFECT_ANIMATION_END,
+        call_offsets=BATTLE_THROWING_EFFECT_ANIMATION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_THROWING_EFFECT_ANIMATION_CALL_TARGETS,
+        relocation_offsets=BATTLE_THROWING_EFFECT_ANIMATION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_THROWING_EFFECT_ANIMATION_CALLER_SITES,
+        instruction_count=56,
+        branch_count=4,
+    )
+    if contract["raw_sha256"] != (
+        "8a04b6dee92962bfdab94f0480f09d34b7d012866679e1e76370dcc737fe6126"
+    ):
+        raise ValueError("Z.DAT throwing effect animation raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "c5feba51e0559ba30d74cb1797847e4f5815a758b683ee5ac35612521799c460"
+    ):
+        raise ValueError("Z.DAT throwing effect animation relocation image changed")
+
+    caller_sequences = {
+        "ai_party": z_dat_bytes[
+            0x35B08 - Z_DAT_LOAD_BASE:0x35B2D - Z_DAT_LOAD_BASE
+        ].hex(),
+        "ai_enemy": z_dat_bytes[
+            0x35E0D - Z_DAT_LOAD_BASE:0x35E32 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "player": z_dat_bytes[
+            0x3A4C9 - Z_DAT_LOAD_BASE:0x3A4EE - Z_DAT_LOAD_BASE
+        ].hex(),
+    }
+    if caller_sequences != {
+        "ai_party": (
+            "0fbf05de6e0c000fbf04852cfe060069c0be0000000fbf808e27080050"
+            "e8202d000083c404"
+        ),
+        "ai_enemy": (
+            "0fbf05de6e0c000fbf8442f201070069c0be0000000fbf808e27080050"
+            "e81b2a000083c404"
+        ),
+        "player": (
+            "0fbf05744b03000fbf04852cfe060069c0be0000000fbf808e27080050"
+            "e85fe3ffff83c404"
+        ),
+    }:
+        raise ValueError("Z.DAT throwing effect animation caller arguments changed")
+
+    effect_lengths = list(struct.unpack_from(
+        "<53h", z_dat_bytes, Z_DAT_EFFECT_FRAME_COUNTS_OFFSET
+    ))
+    effect_table = z_dat_bytes[
+        Z_DAT_EFFECT_FRAME_COUNTS_OFFSET:Z_DAT_EFFECT_FRAME_COUNTS_OFFSET + 106
+    ]
+    if sha256(effect_table) != (
+        "4c684877da272f4222fd3b73595971c81599ecfd456644498ac97841050da3a4"
+    ):
+        raise ValueError("Z.DAT throwing effect frame-count table changed")
+    if len(effect_lengths) != 53 or min(effect_lengths) != 7 or max(effect_lengths) != 21:
+        raise ValueError("Z.DAT throwing effect frame-count domain changed")
+
+    def animation_vector(effect_id: int) -> dict[str, object]:
+        first_frame = 2 * sum(effect_lengths[:effect_id])
+        frame_count = effect_lengths[effect_id]
+        return {
+            "effect_id": effect_id,
+            "effect_sample_id": effect_id,
+            "prelude_wait_ticks": 100,
+            "first_effect_frame": first_frame,
+            "effect_frame_count": frame_count,
+            "frames": [
+                {
+                    "index": index,
+                    "effect_visible": True,
+                    "effect_frame": first_frame + 2 * index,
+                    "wait_ticks": 17,
+                    "sequence": ["render", "present", "delay17", "effect_frame_add2"],
+                }
+                for index in range(frame_count)
+            ],
+            "final_effect_visible": False,
+        }
+
+    vectors = {
+        "effect0": animation_vector(0),
+        "effect2": animation_vector(2),
+        "effect30": animation_vector(30),
+    }
+    if (
+        vectors["effect0"]["effect_frame_count"],
+        vectors["effect0"]["first_effect_frame"],
+        vectors["effect0"]["frames"][-1]["effect_frame"],
+    ) != (10, 0, 18):
+        raise ValueError("Z.DAT throwing effect0 vector changed")
+    if (
+        vectors["effect2"]["effect_frame_count"],
+        vectors["effect2"]["first_effect_frame"],
+        vectors["effect2"]["frames"][-1]["effect_frame"],
+    ) != (17, 48, 80):
+        raise ValueError("Z.DAT throwing effect2 vector changed")
+    if (
+        vectors["effect30"]["effect_frame_count"],
+        vectors["effect30"]["first_effect_frame"],
+        vectors["effect30"]["frames"][-1]["effect_frame"],
+    ) != (11, 772, 792):
+        raise ValueError("Z.DAT throwing effect30 vector changed")
+
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_THROWING_EFFECT_ANIMATION_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 20,
+        "return_sites": ["0x3890f"],
+        "argument": "signed low-16-bit item effect id",
+        "caller_sequences": caller_sequences,
+        "caller_roles": {
+            "0x35b25": "AI party-inventory throwing effect id",
+            "0x35e2a": "AI enemy-carried throwing effect id",
+            "0x3a4e6": "player confirmed-inventory throwing effect id",
+        },
+        "caller_uses_return": False,
+        "resource_sequence": [
+            "load fixed sample13 into attack bank1",
+            "load signed effect-id sample into effect bank2",
+            "start loaded attack bank1 sample13",
+            "delay100 without render or present",
+            "start loaded effect bank2 sample",
+        ],
+        "prelude_render_present_calls": 0,
+        "effect_table": {
+            "address": "0x55ace",
+            "sha256": sha256(effect_table),
+            "lengths": effect_lengths,
+            "valid_effect_ids": [0, 52],
+            "minimum_frame_count": min(effect_lengths),
+            "maximum_frame_count": max(effect_lengths),
+        },
+        "effect_state": (
+            "set visible=1 and frame=0 after the prelude; add twice each prior effect length; "
+            "render every current effect frame, then add2; clear visible after all frames"
+        ),
+        "per_frame_sequence": [
+            "render",
+            "present",
+            "delay17",
+            "effect frame add2",
+        ],
+        "vectors": vectors,
+        "direct_rng_draws": 0,
+        "invalid_effect_boundary": (
+            "negative or >=53 effects index outside the original table; modern checked rejection "
+            "is the platform adaptation"
+        ),
+        "caller_state_boundary": (
+            "AI and player state mutation/consumption surrounding this call belongs to their "
+            "independent caller owners"
+        ),
+        "closure_boundary": (
+            "three throwing callers plus stack probe, sample load/start, render, present and delay "
+            "callees remain independent owners"
         ),
     }
 
@@ -7858,6 +8038,8 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_movement_step_machine": battle_movement_step_contract(z_dat_bytes),
         "battle_attack_core_machine": battle_attack_core_contract(z_dat_bytes),
         "battle_fight_animation_machine": battle_fight_animation_contract(z_dat_bytes),
+        "battle_throwing_effect_animation_machine":
+            battle_throwing_effect_animation_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

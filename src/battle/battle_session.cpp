@@ -492,7 +492,11 @@ bool BattleSession::render(
         return false;
     }
     if (phase_ == BattleSessionPhase::round_wait ||
-        phase_ == BattleSessionPhase::ai_wait) {
+        phase_ == BattleSessionPhase::ai_wait ||
+        phase_ == BattleSessionPhase::player_effect_prelude_present ||
+        phase_ == BattleSessionPhase::player_effect_prelude_wait ||
+        phase_ == BattleSessionPhase::ai_effect_prelude_present ||
+        phase_ == BattleSessionPhase::ai_effect_prelude_wait) {
         // The original tick spins do not redraw the buffer left by the callee.
         frame_rendered_ = true;
         return true;
@@ -1580,10 +1584,21 @@ bool BattleSession::begin_ai_throwing_weapon_execution() {
             .damage_suppress_flash = false,
             .audio_commands = {},
         });
+    player_target_effect_->audio_commands = {
+        BattleAudioCommand{
+            BattleAudioBank::attack,
+            player_target_effect_->effect_animation->magic_sample_id,
+            BattleAudioAction::load},
+        BattleAudioCommand{
+            BattleAudioBank::effect,
+            player_target_effect_->effect_animation->effect_sample_id,
+            BattleAudioAction::load},
+    };
     if (player_target_effect_->effect_animation->dispatch_magic_before_prelude) {
         player_target_effect_->audio_commands.push_back(BattleAudioCommand{
             BattleAudioBank::attack,
-            player_target_effect_->effect_animation->magic_sample_id});
+            player_target_effect_->effect_animation->magic_sample_id,
+            BattleAudioAction::start_loaded});
     }
     render_state_.path_limit = 0;
     render_state_.primary_cursor = target;
@@ -2807,10 +2822,21 @@ bool BattleSession::begin_player_target_effect(
                 .damage_suppress_flash = false,
                 .audio_commands = {},
             });
+        player_target_effect_->audio_commands = {
+            BattleAudioCommand{
+                BattleAudioBank::attack,
+                player_target_effect_->effect_animation->magic_sample_id,
+                BattleAudioAction::load},
+            BattleAudioCommand{
+                BattleAudioBank::effect,
+                player_target_effect_->effect_animation->effect_sample_id,
+                BattleAudioAction::load},
+        };
         if (player_target_effect_->effect_animation->dispatch_magic_before_prelude) {
             player_target_effect_->audio_commands.push_back(BattleAudioCommand{
                 BattleAudioBank::attack,
-                player_target_effect_->effect_animation->magic_sample_id});
+                player_target_effect_->effect_animation->magic_sample_id,
+                BattleAudioAction::start_loaded});
         }
         render_state_.effect_id = kBattleEffectPointerBase;
         render_state_.effect_visible = false;
@@ -2932,7 +2958,9 @@ bool BattleSession::advance_player_effect_prelude_wait(
     }
     if (effect.effect_animation->dispatch_effect_after_prelude) {
         effect.audio_commands.push_back(BattleAudioCommand{
-            BattleAudioBank::effect, effect.effect_animation->effect_sample_id});
+            BattleAudioBank::effect,
+            effect.effect_animation->effect_sample_id,
+            BattleAudioAction::start_loaded});
     }
     effect.magic_frame = 0U;
     return prepare_player_effect_frame();

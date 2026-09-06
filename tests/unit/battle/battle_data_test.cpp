@@ -63,6 +63,16 @@ std::vector<openlegend::battle::BattleAudioCommand> immediate_magic_audio_comman
     };
 }
 
+std::vector<openlegend::battle::BattleAudioCommand> throwing_prelude_audio_commands(
+    const std::int16_t effect_sample) {
+    using namespace openlegend::battle;
+    return {
+        {BattleAudioBank::attack, 13, BattleAudioAction::load},
+        {BattleAudioBank::effect, effect_sample, BattleAudioAction::load},
+        {BattleAudioBank::attack, 13, BattleAudioAction::start_loaded},
+    };
+}
+
 std::uint64_t fnv1a_render_plan(const openlegend::battle::BattleRenderPlan& plan) {
     std::vector<std::int16_t> words;
     words.reserve(plan.commands.size() * 9U);
@@ -573,6 +583,17 @@ void run_attack_animation_test(const openlegend::resource::DataRoot& data_root) 
              static_cast<std::int16_t>(frame.effect_visible)});
     }
     OL_CHECK(fnv1a_words(effect_words) == 0x2b5c87d8e0c754d5ULL);
+    const auto effect_zero = BattleSetup::effect_animation_plan(0);
+    OL_CHECK(effect_zero.has_value());
+    OL_CHECK(effect_zero->frames.size() == 10U);
+    OL_CHECK(effect_zero->frames.front().effect_frame == 0);
+    OL_CHECK(effect_zero->frames.back().effect_frame == 18);
+    const auto effect_thirty = BattleSetup::effect_animation_plan(30);
+    OL_CHECK(effect_thirty.has_value());
+    OL_CHECK(effect_thirty->frames.size() == 11U);
+    OL_CHECK(effect_thirty->frames.front().effect_frame == 772);
+    OL_CHECK(effect_thirty->frames.back().effect_frame == 792);
+    OL_CHECK(!BattleSetup::effect_animation_plan(-1).has_value());
     OL_CHECK(!BattleSetup::effect_animation_plan(53).has_value());
 
     const auto damage = BattleSetup::damage_animation_frames(false);
@@ -3022,6 +3043,7 @@ void run_player_item_session_test(
         OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
         OL_CHECK((session->active_cursor() == BattlePathCoord{26, 26}));
         finish_cursor_presentations(*session);
+        const auto throwing_caller_frame_hash = fnv1a_bytes(framebuffer->pixels());
         OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::cursor_selected);
         OL_CHECK(session->phase() == BattleSessionPhase::player_effect_prelude_present);
         OL_CHECK(target.word(role_word::hp) == 79);
@@ -3029,12 +3051,13 @@ void run_player_item_session_test(
         OL_CHECK(target.word(role_word::poison) == 12);
         OL_CHECK(ranger->header.inventory_count(0U) == 1);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 0);
-        OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{{BattleAudioBank::attack, 13}}));
+        OL_CHECK(session->take_audio_commands() ==
+                 throwing_prelude_audio_commands(30));
 
         std::uint32_t tick = 900U;
         OL_CHECK(session->render(*framebuffer));
         throwing_prelude_hash = fnv1a_bytes(framebuffer->pixels());
+        OL_CHECK(throwing_prelude_hash == throwing_caller_frame_hash);
         session->finish_presented_tick(tick);
         OL_CHECK(session->phase() == BattleSessionPhase::player_effect_prelude_wait);
         session->advance(tick);
@@ -3047,7 +3070,10 @@ void run_player_item_session_test(
         OL_CHECK(prelude_tick_changes == 3U);
         OL_CHECK(session->phase() == BattleSessionPhase::player_magic_frame_present);
         OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{{BattleAudioBank::effect, 30}}));
+                  std::vector<BattleAudioCommand>{{
+                      BattleAudioBank::effect,
+                      30,
+                      BattleAudioAction::start_loaded}}));
 
         std::size_t effect_frames = 0U;
         while (session->phase() == BattleSessionPhase::player_magic_frame_present &&
@@ -3097,7 +3123,7 @@ void run_player_item_session_test(
     OL_CHECK(item_menu_hash == 0x68c3b70dfec20bbaULL);
     OL_CHECK(item_menu_single_hash == 0x17b6845a718a6cf8ULL);
     OL_CHECK(item_effect_hash == 0xd518fb664f3e0e3cULL);
-    OL_CHECK(throwing_prelude_hash == 0xdbee20f394fd7219ULL);
+    OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0x370a4078e9de6172ULL);
     OL_CHECK(throwing_damage_hash == 0xd41fa068222d444aULL);
 
@@ -4497,6 +4523,7 @@ void run_ai_item_session_test(
         session->setup().combatants()[0U].words[combatant_word::side] = 1;
         session->setup().combatants()[1U].words[combatant_word::side] = 0;
         const auto tick_after_selection = reach_ai_action(*session, 1'700U);
+        const auto throwing_caller_frame_hash = fnv1a_bytes(framebuffer->pixels());
         OL_CHECK(session->phase() == BattleSessionPhase::ai_effect_prelude_present);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::ai_action] ==
                  static_cast<std::int16_t>(BattleAiAction::throwing_weapon));
@@ -4505,12 +4532,13 @@ void run_ai_item_session_test(
         OL_CHECK(target.word(role_word::poison) == 10);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
-        OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{{BattleAudioBank::attack, 13}}));
+        OL_CHECK(session->take_audio_commands() ==
+                 throwing_prelude_audio_commands(30));
 
         std::uint32_t tick = tick_after_selection;
         OL_CHECK(session->render(*framebuffer));
         throwing_prelude_hash = fnv1a_bytes(framebuffer->pixels());
+        OL_CHECK(throwing_prelude_hash == throwing_caller_frame_hash);
         session->finish_presented_tick(tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_effect_prelude_wait);
         session->advance(tick);
@@ -4523,7 +4551,10 @@ void run_ai_item_session_test(
         OL_CHECK(prelude_tick_changes == 3U);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
         OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{{BattleAudioBank::effect, 30}}));
+                  std::vector<BattleAudioCommand>{{
+                      BattleAudioBank::effect,
+                      30,
+                      BattleAudioAction::start_loaded}}));
 
         std::size_t effect_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_magic_frame_present &&
@@ -4632,9 +4663,11 @@ void run_ai_item_session_test(
         OL_CHECK(target.word(role_word::poison) == 10);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
-        OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{{BattleAudioBank::attack, 13}}));
+        OL_CHECK(session->take_audio_commands() ==
+                 throwing_prelude_audio_commands(30));
+        const auto moved_throwing_caller_frame_hash = fnv1a_bytes(framebuffer->pixels());
         OL_CHECK(session->render(*framebuffer));
+        OL_CHECK(fnv1a_bytes(framebuffer->pixels()) == moved_throwing_caller_frame_hash);
         session->finish_presented_tick(tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_effect_prelude_wait);
         session->advance(tick);
@@ -4646,7 +4679,10 @@ void run_ai_item_session_test(
         }
         OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
         OL_CHECK((session->take_audio_commands() ==
-                  std::vector<BattleAudioCommand>{{BattleAudioBank::effect, 30}}));
+                  std::vector<BattleAudioCommand>{{
+                      BattleAudioBank::effect,
+                      30,
+                      BattleAudioAction::start_loaded}}));
         std::size_t effect_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_magic_frame_present &&
                effect_frames < 100U) {
@@ -4774,7 +4810,7 @@ void run_ai_item_session_test(
     hash_file.close();
     OL_CHECK(hash_file.good());
     OL_CHECK(item_effect_hash == 0xa7542240e4172664ULL);
-    OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
+    OL_CHECK(throwing_prelude_hash == 0x3f498f66e6357fffULL);
     OL_CHECK(throwing_effect_hash == 0xc65b523bd75389e2ULL);
     OL_CHECK(throwing_damage_hash == 0x5bb5153963b97c5eULL);
     OL_CHECK(moved_throwing_effect_hash == 0x16a8f10ce319622bULL);
