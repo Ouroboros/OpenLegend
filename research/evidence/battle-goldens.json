@@ -4629,6 +4629,477 @@
     "caller_state_boundary": "AI and player state mutation/consumption surrounding this call belongs to their independent caller owners",
     "closure_boundary": "three throwing callers plus stack probe, sample load/start, render, present and delay callees remain independent owners"
   },
+  "battle_damage_animation_machine": {
+    "address": "0x38910",
+    "end": "0x38988",
+    "raw_offset": "0x32310",
+    "size": 120,
+    "instruction_count": 31,
+    "branch_count": 5,
+    "raw_sha256": "bf23e1ade78c9c29d28bc79fd6e4805f3d5d4716102e66fff1961b59b8ee16c6",
+    "loaded_sha256": "6fd5bc6baae469b2ccbbc81d073c4961c0e214a83fcd9a091b43b0b3f12494c5",
+    "relocation_count": 7,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x38915",
+      "0x3894c",
+      "0x3895c",
+      "0x3896d"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x3db83"
+    ],
+    "callers": [
+      "0x35ddb",
+      "0x360e9",
+      "0x382d5",
+      "0x399d2",
+      "0x39d72",
+      "0x3a0db",
+      "0x3a83b"
+    ],
+    "relocation_offsets": [
+      "0x13",
+      "0x2b",
+      "0x36",
+      "0x43",
+      "0x48",
+      "0x59",
+      "0x6f"
+    ],
+    "stack_probe_bytes": 20,
+    "return_sites": [
+      "0x38987"
+    ],
+    "argument": "only the low 16 bits suppress flash: zero permits frames0..3; any nonzero word suppresses all ten frames",
+    "caller_sequences": {
+      "ai_party_throwing": "6a00e8302b0000e954fcffff",
+      "ai_enemy_throwing": "6a00e82228000083c404",
+      "attack": "6a00e83606000083c404",
+      "poison": "6a00e839efffff83c404",
+      "detox": "6a01e899ebffff83c404",
+      "medicine": "6a01e830e8ffff83c404",
+      "player_throwing": "6a00e8d0e0ffff83c404"
+    },
+    "caller_suppress_words": {
+      "ai_party_throwing": 0,
+      "ai_enemy_throwing": 0,
+      "attack": 0,
+      "poison": 0,
+      "detox": 1,
+      "medicine": 1,
+      "player_throwing": 0
+    },
+    "caller_uses_return": false,
+    "kind_sequences": {
+      "ai_party_nonzero_damage": "6685d2740966c705f45603000100",
+      "ai_enemy_nonzero_damage": "6685d2740966c705f45603000100",
+      "attack_type3_else": "66833dbc6e0c0003750b66c705f45603000500eb0966c705f45603000100",
+      "poison": "66c705f45603000200",
+      "detox": "66c705f45603000300",
+      "medicine": "66c705f45603000400",
+      "player_throwing_nonzero_damage": "6685d2740966c705f45603000100"
+    },
+    "kind_rules": {
+      "ai_party_throwing": "kind1 iff computed damage word is nonzero",
+      "ai_enemy_throwing": "kind1 iff computed damage word is nonzero",
+      "attack": "kind5 iff damage type is exactly3, otherwise kind1",
+      "poison": 2,
+      "detox": 3,
+      "medicine": 4,
+      "player_throwing": "kind1 iff computed damage word is nonzero"
+    },
+    "normal_timeline": [
+      {
+        "index": 0,
+        "render_phase": 0,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 1
+      },
+      {
+        "index": 1,
+        "render_phase": 1,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 2
+      },
+      {
+        "index": 2,
+        "render_phase": 2,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 3
+      },
+      {
+        "index": 3,
+        "render_phase": 3,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 4
+      },
+      {
+        "index": 4,
+        "render_phase": 4,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 5
+      },
+      {
+        "index": 5,
+        "render_phase": 5,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 6
+      },
+      {
+        "index": 6,
+        "render_phase": 6,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 7
+      },
+      {
+        "index": 7,
+        "render_phase": 7,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 8
+      },
+      {
+        "index": 8,
+        "render_phase": 8,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 9
+      },
+      {
+        "index": 9,
+        "render_phase": 9,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 10
+      }
+    ],
+    "suppressed_timeline": [
+      {
+        "index": 0,
+        "render_phase": 0,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 1
+      },
+      {
+        "index": 1,
+        "render_phase": 1,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 2
+      },
+      {
+        "index": 2,
+        "render_phase": 2,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 3
+      },
+      {
+        "index": 3,
+        "render_phase": 3,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 4
+      },
+      {
+        "index": 4,
+        "render_phase": 4,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 5
+      },
+      {
+        "index": 5,
+        "render_phase": 5,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 6
+      },
+      {
+        "index": 6,
+        "render_phase": 6,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 7
+      },
+      {
+        "index": 7,
+        "render_phase": 7,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 8
+      },
+      {
+        "index": 8,
+        "render_phase": 8,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 9
+      },
+      {
+        "index": 9,
+        "render_phase": 9,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 10
+      }
+    ],
+    "high_word_only_timeline": [
+      {
+        "index": 0,
+        "render_phase": 0,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 1
+      },
+      {
+        "index": 1,
+        "render_phase": 1,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 2
+      },
+      {
+        "index": 2,
+        "render_phase": 2,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 3
+      },
+      {
+        "index": 3,
+        "render_phase": 3,
+        "flash": true,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 4
+      },
+      {
+        "index": 4,
+        "render_phase": 4,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 5
+      },
+      {
+        "index": 5,
+        "render_phase": 5,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 6
+      },
+      {
+        "index": 6,
+        "render_phase": 6,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 7
+      },
+      {
+        "index": 7,
+        "render_phase": 7,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 8
+      },
+      {
+        "index": 8,
+        "render_phase": 8,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 9
+      },
+      {
+        "index": 9,
+        "render_phase": 9,
+        "flash": false,
+        "sequence": [
+          "render",
+          "present",
+          "phase_increment",
+          "delay1"
+        ],
+        "phase_during_delay": 10
+      }
+    ],
+    "final_phase": 10,
+    "final_flash": false,
+    "final_damage_kind": 0,
+    "renderer_consumer": {
+      "flash_slice": [
+        "0x3ad19",
+        "0x3ad35"
+      ],
+      "flash_slice_sha256": "5479274cd4f3a19770fac2cc200b03eda96e5937641342c09a83a0da5a847545",
+      "damage_slice": [
+        "0x3aeaa",
+        "0x3b1c8"
+      ],
+      "damage_slice_sha256": "5bc2e1a9c5568f5261d02a84aeab9db3fb943914a64d8d1a867a91913cfe0226",
+      "flash_rule": "flag==1 and effect-cell==1 highlights the living target",
+      "damage_rule": "positive kind1..5 selects -,-,+,+,- and packed colors 0x1014,0x3032,0x9193,0x0705,0x5053",
+      "phase_rule": "all kind1..5 text y positions subtract twice the display phase"
+    },
+    "direct_rng_draws": 0,
+    "caller_state_boundary": "damage-kind selection, target mutation, sprite refresh, item consumption and action commit remain in the seven independent caller owners",
+    "closure_boundary": "renderer, present, delay, stack probe and all seven callers remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

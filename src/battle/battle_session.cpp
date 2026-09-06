@@ -763,9 +763,11 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             return;
         }
         auto& effect = *player_target_effect_;
+        const auto& frame = effect.damage_animation[effect.damage_frame];
         effect.animation_wait_tick = bios_tick;
-        effect.animation_wait_tick_changes_remaining = timing::legacy_delay_tick_count(
-            effect.damage_animation[effect.damage_frame].wait_ticks);
+        effect.animation_wait_tick_changes_remaining =
+            timing::legacy_delay_tick_count(frame.wait_ticks);
+        render_state_.damage_text_offset = static_cast<std::int16_t>(frame.phase + 1);
         phase_ = ai_controlled ? BattleSessionPhase::ai_damage_wait
                                : BattleSessionPhase::player_damage_wait;
         diagnostics::log_debug(
@@ -1663,7 +1665,8 @@ bool BattleSession::commit_ai_throwing_weapon_effect() {
             : setup_.error();
         return false;
     }
-    player_target_effect_->damage_kind = 0;
+    player_target_effect_->damage_kind = static_cast<std::int16_t>(
+        thrown->damage == 0 ? 0 : 1);
     diagnostics::log_info(
         "battle AI throwing-weapon state committed id=" +
         std::to_string(battle_id()) +

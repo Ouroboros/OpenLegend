@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为52/81；其余29项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为53/81；其余28项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -145,7 +145,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3884A`机器身份固定为198 bytes、56条指令、4个函数体跳转、9处重定位、9次direct call和三个caller；raw/loaded SHA256为`8a04b6dee92962bfdab94f0480f09d34b7d012866679e1e76370dcc737fe6126`与`c5feba51e0559ba30d74cb1797847e4f5815a758b683ee5ac35612521799c460`。入口严格load bank1 sample13→load bank2 effect→start-loaded bank1→delay100，期间没有render/present；随后只start-loaded bank2，再置effect visible/frame并逐帧render→present→delay17→frame+2，最后清visible。effect0/2/30分别为10/17/11帧，起始frame 0/48/772；负或>=53的原线性越界由现代安全拒绝。
 
-首轮入口REVIEW发现现代默认play破坏双bank预载/启动边界，且前奏相位错误重绘无光标战场；现玩家/AI入口均排入`load, load, start_loaded`，100 tick后只`start_loaded` effect，prelude render保持caller framebuffer不变。玩家caller/prelude hash为`0x49aac6569a28fe89`，AI直接为`0x3f498f66e6357fff`；两路effect30/damage首帧hash分别为`0x370a4078e9de6172`/`0xd41fa068222d444a`和`0xc65b523bd75389e2`/`0x5bb5153963b97c5e`，AI移动后effect为`0x16a8f10ce319622b`。修正后从入口重审全部56条指令、两循环、唯一出口及三个caller零剩余owner差异，归类`platform_adapted / converged_after_fix`。`sub_38910` damage animation仍为独立order53；玩家状态提交属于order68 caller，均不传播关闭。
+首轮入口REVIEW发现现代默认play破坏双bank预载/启动边界，且前奏相位错误重绘无光标战场；现玩家/AI入口均排入`load, load, start_loaded`，100 tick后只`start_loaded` effect，prelude render保持caller framebuffer不变。玩家caller/prelude hash为`0x49aac6569a28fe89`，AI直接为`0x3f498f66e6357fff`；两路effect30/damage首帧hash分别为`0x370a4078e9de6172`/`0xd41fa068222d444a`和`0xc65b523bd75389e2`/`0x335fd35ea7e3f367`，AI移动后effect为`0x16a8f10ce319622b`。修正后从入口重审全部56条指令、两循环、唯一出口及三个caller零剩余owner差异，归类`platform_adapted / converged_after_fix`。玩家状态提交属于order68 caller，不随本owner传播关闭。
+
+`sub_38910`机器身份固定为120 bytes、31条指令、5个函数体跳转、7处重定位、4次direct call和7个caller；raw/loaded SHA256为`bf23e1ade78c9c29d28bc79fd6e4805f3d5d4716102e66fff1961b59b8ee16c6`与`6fd5bc6baae469b2ccbbc81d073c4961c0e214a83fcd9a091b43b0b3f12494c5`。入口phase清0，固定10帧；每帧先按`frame<4 && low16(suppress)==0`写flash，再render→present→phase++→delay1。故renderer消费phase0..9、wait期间phase为1..10；最终kind清0。高16位不影响suppress，函数零RNG。
+
+七个caller的suppress低字依次为`0,0,0,0,1,1,0`：AI两条暗器、attack、poison均normal，detox/medicine suppressed，玩家暗器normal；kind分别为AI/玩家暗器damage非零时1、attack type3时5否则1、poison2、detox3、medicine4。首轮对照发现AI暗器caller错误无条件清kind0，以及present确认后现代phase直到delay完成才递增两项差异；现恢复`damage!=0 ? 1 : 0`并在present确认时推进公开display phase。玩家支持/暗器及AI直接/移动暗器逐帧回归锁定present前phase0..9、wait phase1..10、flash、kind和终态清理；修正后重新覆盖order53全部31条指令、5分支、7个caller，并从受影响`sub_3598C`入口复核440条指令与全部出口，零剩余差异。原资产Golden三生成逐字节一致，SHA256为`a6e7c3adccb1cedd5c74296b305cba84da73dfb784906e0a28b6208974e46b1b`；Linux Debug 14/14。order53归类`platform_adapted / converged_after_fix`，renderer/present/delay及caller保持独立owner。
 
 ## 14. 武功选择菜单
 
@@ -273,9 +277,9 @@ fallback在`0x3556F`已把EBX覆写为actor记录偏移，故严格比较`2*acto
 
 `sub_3598C`机器身份固定为1959 bytes、440条指令、47个显式分支和125处重定位；raw/loaded SHA256为`039adfbd48a1e5a282cbddce9a80b7499745277228c1c432cbf4a590263ed2a5`与`a1318ae160d72c1a5093248aaa7c60dc601be62adc83b6114a30b3dad8895e47`。两个正常入口为mode0 `0x35821`和mode1 `0x358E2`，另有三个外部owner跳入共享epilogue `0x3612C`，不传播closure；17次call覆盖两侧物品效果、延迟、EFT、互斥RNG路径、绝对值、damage和两种来源压缩。
 
-mode0在共享效果面板present后不读键，无论效果数是否为零都执行`sub_3DB83(340)`的9次tick变化，再signed减来源数量。mode1中两侧动画和扣减均取当前AI来源槽；敌方payload也取来源槽，但队伍payload错误地读取初值-1且只由有效玩家物品确认写入的陈旧`word_54B74`。状态算术保留hurt四档、恰一次`bounded(5)`、随机化add_hp先截signed word、hidden-weapon缩放、hurt/HP/damage、无anti-poison的毒值公式；完整EFT后才提交状态，固定`sub_38910(0)`的10帧damage前4帧闪烁，之后才消费来源。
+mode0在共享效果面板present后不读键，无论效果数是否为零都执行`sub_3DB83(340)`的9次tick变化，再signed减来源数量。mode1中两侧动画和扣减均取当前AI来源槽；敌方payload也取来源槽，但队伍payload错误地读取初值-1且只由有效玩家物品确认写入的陈旧`word_54B74`。状态算术保留hurt四档、恰一次`bounded(5)`、随机化add_hp先截signed word、hidden-weapon缩放、hurt/HP/damage、无anti-poison的毒值公式；完整EFT后才提交状态，damage非零写kind1且固定调用`sub_38910(0)`，10帧damage前4帧闪烁，之后才消费来源。order53 caller交叉审计纠正了先前把“固定suppress0”误实现成“固定kind0”的回归。
 
-入口REVIEW共修正五项差异：队伍来源/payload槽分离、AI面板移除输入等待、暗器状态延后到EFT后、随机后add_hp中间word回绕、damage helper固定kind0。真实source item102/payload item96向量得到effect30、damage19、HP100→81、hurt40→44、poison10不变；add_hp=-32768向量得到damage10921。完整Session锁定动画前状态不变、动画后提交和来源延后；普通物品面板、暗器前奏/首EFT/首damage、移动后首EFT hash为`0xa7542240e4172664`、`0x49aac6569a28fe89`、`0xc65b523bd75389e2`、`0x5bb5153963b97c5e`、`0x16a8f10ce319622b`。修正后入口重审零新增差异；正式原资产golden双生成SHA256为`4b238a115b125d7126e233673e5dff5487d3b798265cae21bc3870bb3f559078`，Linux app Debug 14/14通过。`sub_35803`、`sub_3582B`与`sub_3598C`均按各自独立owner关闭；delegated callee与共享尾caller不传播closure。
+入口REVIEW修正队伍来源/payload槽分离、AI面板移除输入等待、暗器状态延后到EFT后及随机后add_hp中间word回绕；随后正确锁定damage helper的suppress参数固定0，但曾误把它实现为damage kind固定0。order53现恢复两条caller的`damage!=0 ? kind1 : kind0`。真实source item102/payload item96向量得到effect30、damage19、HP100→81、hurt40→44、poison10不变；add_hp=-32768向量得到damage10921。完整Session锁定动画前状态不变、动画后提交和来源延后；普通物品面板、暗器前奏/首EFT/首damage、移动后首EFT hash为`0xa7542240e4172664`、`0x3f498f66e6357fff`、`0xc65b523bd75389e2`、`0x335fd35ea7e3f367`、`0x16a8f10ce319622b`。纠错后从入口重审440条指令、47个分支、125处fixup、17次call及全部出口，零剩余差异；当前正式原资产golden SHA256为`a6e7c3adccb1cedd5c74296b305cba84da73dfb784906e0a28b6208974e46b1b`，Linux app Debug 14/14通过。`sub_35803`、`sub_3582B`与`sub_3598C`均按各自独立owner关闭；delegated callee与共享尾caller不传播closure。
 
 `sub_361AC`请求医疗owner机器身份固定为93 bytes、22条指令、1个signed分支和6处重定位；raw/loaded SHA256为`717b2ff358eec5fc59796f2eff00fa93a0662ef80c4a4ed99e0dbc021c4255cb`与`a92c3af77c368fcb219065d9a1e1cef84d0a4388fffdccfb50d4eaa2d2d41aa9`。唯一直接caller为`sub_33599`动作8case，忽略EAX并在共享尾写action_done；独立`sub_36209`请求解毒owner自行压栈后跳入`0x361B1`复用主体，但不传播closure。actor signed行动值严格大于0时调用`sub_3650E(actor,mode0,value0)`并忽略返回，零或负值跳过；汇合后重读全局请求目标槽及当前x/y，再无条件调用完整`sub_34C47`自动攻击。现代typed plan、实际逐格Session continuation及外层完成逐块等价；补齐目标移动后重读、正/零/负行动值和非法域回归后，两轮入口审计均零产品差异。真实battle2继续锁定mode0一格移动、请求目标恢复、动作码8、首magic hash`0xcc6a249ebb919a23`及RNG3295386429。order32正式原资产golden双生成SHA256为`5c491aa130bc3b016f38d4dcea71df94a1a02a893344aa4b01398e86fe0be8f4`并已独立关闭。`sub_36209`请求解毒owner另由`68 10 00 00 00 EB A1`组成，严格7 bytes/2条指令/1个short jump、零fixup/call/local RET，raw/loaded SHA256同为`39c017dd2b811b83553060d2eafb40e83c07e19d3e6685c6382075fffa133f09`；唯一caller是动作9case，尾跳`0x361B1`的栈形状和最终返回与请求医疗入口完全相同。动作9正/零/负行动值、移动后坐标重读和非法域回归补齐后，两轮wrapper入口审计零产品差异；其closure不反向复制order32主体。最新正式golden双生成SHA256为`4849e78fac9f2808920b8d20adf386c20e6dc229c7754e15e28d074eaeacb0b5`，Linux app Debug 14/14通过，两项owner现均独立关闭。
 

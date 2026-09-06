@@ -668,6 +668,16 @@ BATTLE_THROWING_EFFECT_ANIMATION_RELOCATION_OFFSETS = (
     0x04E, 0x057, 0x068, 0x071, 0x082, 0x091, 0x096, 0x0AF, 0x0BD,
 )
 BATTLE_THROWING_EFFECT_ANIMATION_CALLER_SITES = (0x35B25, 0x35E2A, 0x3A4E6)
+BATTLE_DAMAGE_ANIMATION_ADDRESS = 0x38910
+BATTLE_DAMAGE_ANIMATION_END = 0x38988
+BATTLE_DAMAGE_ANIMATION_CALL_OFFSETS = (0x005, 0x03C, 0x04C, 0x05D)
+BATTLE_DAMAGE_ANIMATION_CALL_TARGETS = (0x3ED1E, 0x3AA85, 0x3D6D1, 0x3DB83)
+BATTLE_DAMAGE_ANIMATION_RELOCATION_OFFSETS = (
+    0x013, 0x02B, 0x036, 0x043, 0x048, 0x059, 0x06F,
+)
+BATTLE_DAMAGE_ANIMATION_CALLER_SITES = (
+    0x35DDB, 0x360E9, 0x382D5, 0x399D2, 0x39D72, 0x3A0DB, 0x3A83B,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -4108,6 +4118,177 @@ def battle_throwing_effect_animation_contract(
         "closure_boundary": (
             "three throwing callers plus stack probe, sample load/start, render, present and delay "
             "callees remain independent owners"
+        ),
+    }
+
+
+def battle_damage_animation_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_DAMAGE_ANIMATION_ADDRESS,
+        end=BATTLE_DAMAGE_ANIMATION_END,
+        call_offsets=BATTLE_DAMAGE_ANIMATION_CALL_OFFSETS,
+        expected_call_targets=BATTLE_DAMAGE_ANIMATION_CALL_TARGETS,
+        relocation_offsets=BATTLE_DAMAGE_ANIMATION_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_DAMAGE_ANIMATION_CALLER_SITES,
+        instruction_count=31,
+        branch_count=5,
+    )
+    if contract["raw_sha256"] != (
+        "bf23e1ade78c9c29d28bc79fd6e4805f3d5d4716102e66fff1961b59b8ee16c6"
+    ):
+        raise ValueError("Z.DAT damage animation raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "6fd5bc6baae469b2ccbbc81d073c4961c0e214a83fcd9a091b43b0b3f12494c5"
+    ):
+        raise ValueError("Z.DAT damage animation relocation image changed")
+
+    caller_ranges = {
+        "ai_party_throwing": (0x35DD9, 0x35DE5),
+        "ai_enemy_throwing": (0x360E7, 0x360F1),
+        "attack": (0x382D3, 0x382DD),
+        "poison": (0x399D0, 0x399DA),
+        "detox": (0x39D70, 0x39D7A),
+        "medicine": (0x3A0D9, 0x3A0E3),
+        "player_throwing": (0x3A839, 0x3A843),
+    }
+    caller_sequences = {
+        name: z_dat_bytes[begin - Z_DAT_LOAD_BASE:finish - Z_DAT_LOAD_BASE].hex()
+        for name, (begin, finish) in caller_ranges.items()
+    }
+    if caller_sequences != {
+        "ai_party_throwing": "6a00e8302b0000e954fcffff",
+        "ai_enemy_throwing": "6a00e82228000083c404",
+        "attack": "6a00e83606000083c404",
+        "poison": "6a00e839efffff83c404",
+        "detox": "6a01e899ebffff83c404",
+        "medicine": "6a01e830e8ffff83c404",
+        "player_throwing": "6a00e8d0e0ffff83c404",
+    }:
+        raise ValueError("Z.DAT damage animation caller arguments changed")
+
+    kind_ranges = {
+        "ai_party_nonzero_damage": (0x35D54, 0x35D62),
+        "ai_enemy_nonzero_damage": (0x3605E, 0x3606C),
+        "attack_type3_else": (0x382B5, 0x382D3),
+        "poison": (0x399C7, 0x399D0),
+        "detox": (0x39D67, 0x39D70),
+        "medicine": (0x3A0D0, 0x3A0D9),
+        "player_throwing_nonzero_damage": (0x3A72D, 0x3A73B),
+    }
+    kind_sequences = {
+        name: z_dat_bytes[begin - Z_DAT_LOAD_BASE:finish - Z_DAT_LOAD_BASE].hex()
+        for name, (begin, finish) in kind_ranges.items()
+    }
+    conditional_kind = "6685d2740966c705f45603000100"
+    if kind_sequences != {
+        "ai_party_nonzero_damage": conditional_kind,
+        "ai_enemy_nonzero_damage": conditional_kind,
+        "attack_type3_else": (
+            "66833dbc6e0c0003750b66c705f45603000500eb0966c705f45603000100"
+        ),
+        "poison": "66c705f45603000200",
+        "detox": "66c705f45603000300",
+        "medicine": "66c705f45603000400",
+        "player_throwing_nonzero_damage": conditional_kind,
+    }:
+        raise ValueError("Z.DAT damage animation kind writers changed")
+
+    renderer_flash = z_dat_bytes[
+        0x3AD19 - Z_DAT_LOAD_BASE:0x3AD35 - Z_DAT_LOAD_BASE
+    ]
+    renderer_damage = z_dat_bytes[
+        0x3AEAA - Z_DAT_LOAD_BASE:0x3B1C8 - Z_DAT_LOAD_BASE
+    ]
+    if sha256(renderer_flash) != (
+        "5479274cd4f3a19770fac2cc200b03eda96e5937641342c09a83a0da5a847545"
+    ):
+        raise ValueError("Z.DAT battle renderer flash consumer changed")
+    if sha256(renderer_damage) != (
+        "5bc2e1a9c5568f5261d02a84aeab9db3fb943914a64d8d1a867a91913cfe0226"
+    ):
+        raise ValueError("Z.DAT battle renderer damage consumer changed")
+
+    def timeline(suppress_argument: int) -> list[dict[str, object]]:
+        suppress_word = suppress_argument & 0xFFFF
+        return [
+            {
+                "index": index,
+                "render_phase": index,
+                "flash": index < 4 and suppress_word == 0,
+                "sequence": ["render", "present", "phase_increment", "delay1"],
+                "phase_during_delay": index + 1,
+            }
+            for index in range(10)
+        ]
+
+    normal = timeline(0)
+    suppressed = timeline(1)
+    high_word_only = timeline(0x10000)
+    if [frame["flash"] for frame in normal] != [True] * 4 + [False] * 6:
+        raise ValueError("Z.DAT normal damage flash timeline changed")
+    if any(frame["flash"] for frame in suppressed):
+        raise ValueError("Z.DAT suppressed damage flash timeline changed")
+    if high_word_only != normal:
+        raise ValueError("Z.DAT damage suppression unexpectedly observes high argument bits")
+
+    return {
+        **contract,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_DAMAGE_ANIMATION_RELOCATION_OFFSETS
+        ],
+        "stack_probe_bytes": 20,
+        "return_sites": ["0x38987"],
+        "argument": (
+            "only the low 16 bits suppress flash: zero permits frames0..3; any nonzero word "
+            "suppresses all ten frames"
+        ),
+        "caller_sequences": caller_sequences,
+        "caller_suppress_words": {
+            "ai_party_throwing": 0,
+            "ai_enemy_throwing": 0,
+            "attack": 0,
+            "poison": 0,
+            "detox": 1,
+            "medicine": 1,
+            "player_throwing": 0,
+        },
+        "caller_uses_return": False,
+        "kind_sequences": kind_sequences,
+        "kind_rules": {
+            "ai_party_throwing": "kind1 iff computed damage word is nonzero",
+            "ai_enemy_throwing": "kind1 iff computed damage word is nonzero",
+            "attack": "kind5 iff damage type is exactly3, otherwise kind1",
+            "poison": 2,
+            "detox": 3,
+            "medicine": 4,
+            "player_throwing": "kind1 iff computed damage word is nonzero",
+        },
+        "normal_timeline": normal,
+        "suppressed_timeline": suppressed,
+        "high_word_only_timeline": high_word_only,
+        "final_phase": 10,
+        "final_flash": False,
+        "final_damage_kind": 0,
+        "renderer_consumer": {
+            "flash_slice": ["0x3ad19", "0x3ad35"],
+            "flash_slice_sha256": sha256(renderer_flash),
+            "damage_slice": ["0x3aeaa", "0x3b1c8"],
+            "damage_slice_sha256": sha256(renderer_damage),
+            "flash_rule": "flag==1 and effect-cell==1 highlights the living target",
+            "damage_rule": (
+                "positive kind1..5 selects -,-,+,+,- and packed colors "
+                "0x1014,0x3032,0x9193,0x0705,0x5053"
+            ),
+            "phase_rule": "all kind1..5 text y positions subtract twice the display phase",
+        },
+        "direct_rng_draws": 0,
+        "caller_state_boundary": (
+            "damage-kind selection, target mutation, sprite refresh, item consumption and action "
+            "commit remain in the seven independent caller owners"
+        ),
+        "closure_boundary": (
+            "renderer, present, delay, stack probe and all seven callers remain independent owners"
         ),
     }
 
@@ -8040,6 +8221,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_fight_animation_machine": battle_fight_animation_contract(z_dat_bytes),
         "battle_throwing_effect_animation_machine":
             battle_throwing_effect_animation_contract(z_dat_bytes),
+        "battle_damage_animation_machine": battle_damage_animation_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

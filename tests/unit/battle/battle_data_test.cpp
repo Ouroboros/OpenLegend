@@ -73,6 +73,37 @@ std::vector<openlegend::battle::BattleAudioCommand> throwing_prelude_audio_comma
     };
 }
 
+void check_damage_present_state(
+    const openlegend::battle::BattleSession& session,
+    const std::size_t frame,
+    const std::int16_t damage_kind,
+    const bool suppress_flash) {
+    const auto& state = session.render_state();
+    OL_CHECK(state.damage_kind == damage_kind);
+    OL_CHECK(state.damage_text_offset == static_cast<std::int16_t>(frame));
+    OL_CHECK(state.highlight_enabled == (!suppress_flash && frame < 4U));
+    OL_CHECK(state.highlight_mode == (damage_kind == 2 ? 2 : 1));
+}
+
+void check_damage_wait_state(
+    const openlegend::battle::BattleSession& session,
+    const std::size_t frame,
+    const std::int16_t damage_kind,
+    const bool suppress_flash) {
+    const auto& state = session.render_state();
+    OL_CHECK(state.damage_kind == damage_kind);
+    OL_CHECK(state.damage_text_offset == static_cast<std::int16_t>(frame + 1U));
+    OL_CHECK(state.highlight_enabled == (!suppress_flash && frame < 4U));
+    OL_CHECK(state.highlight_mode == (damage_kind == 2 ? 2 : 1));
+}
+
+void check_damage_complete_state(const openlegend::battle::BattleSession& session) {
+    const auto& state = session.render_state();
+    OL_CHECK(state.damage_kind == 0);
+    OL_CHECK(state.damage_text_offset == 10);
+    OL_CHECK(!state.highlight_enabled);
+}
+
 std::uint64_t fnv1a_render_plan(const openlegend::battle::BattleRenderPlan& plan) {
     std::vector<std::int16_t> words;
     words.reserve(plan.commands.size() * 9U);
@@ -2716,19 +2747,31 @@ void run_player_support_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::player_damage_frame_present);
         OL_CHECK(session->take_audio_commands().empty());
 
+        const auto expected_damage_kind = static_cast<std::int16_t>(
+            action == BattlePlayerAction::use_poison
+                ? 2
+                : (action == BattlePlayerAction::detoxification ? 3 : 4));
+        const auto suppress_damage_flash = action != BattlePlayerAction::use_poison;
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::player_damage_frame_present &&
                damage_frames < 20U) {
+            check_damage_present_state(
+                *session, damage_frames, expected_damage_kind, suppress_damage_flash);
             OL_CHECK(session->render(*framebuffer));
             session->finish_presented_tick(tick);
             OL_CHECK(session->phase() == BattleSessionPhase::player_damage_wait);
+            check_damage_wait_state(
+                *session, damage_frames, expected_damage_kind, suppress_damage_flash);
             session->advance(tick);
             OL_CHECK(session->phase() == BattleSessionPhase::player_damage_wait);
+            check_damage_wait_state(
+                *session, damage_frames, expected_damage_kind, suppress_damage_flash);
             session->advance(++tick);
             ++damage_frames;
         }
         OL_CHECK(damage_frames == 10U);
         OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+        check_damage_complete_state(*session);
         OL_CHECK(session->current_actor_slot() == 1U);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 1);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::attack_counter] == 1);
@@ -3094,18 +3137,22 @@ void run_player_item_session_test(
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::player_damage_frame_present &&
                damage_frames < 20U) {
+            check_damage_present_state(*session, damage_frames, 1, false);
             OL_CHECK(session->render(*framebuffer));
             if (damage_frames == 0U) {
                 throwing_damage_hash = fnv1a_bytes(framebuffer->pixels());
             }
             session->finish_presented_tick(tick);
             OL_CHECK(session->phase() == BattleSessionPhase::player_damage_wait);
+            check_damage_wait_state(*session, damage_frames, 1, false);
             session->advance(tick);
+            check_damage_wait_state(*session, damage_frames, 1, false);
             session->advance(++tick);
             ++damage_frames;
         }
         OL_CHECK(damage_frames == 10U);
         OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+        check_damage_complete_state(*session);
         OL_CHECK(session->current_actor_slot() == 1U);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 1);
         OL_CHECK(ranger->header.inventory_item(0U).value == -1);
@@ -4580,18 +4627,22 @@ void run_ai_item_session_test(
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_damage_frame_present &&
                damage_frames < 20U) {
+            check_damage_present_state(*session, damage_frames, 1, false);
             OL_CHECK(session->render(*framebuffer));
             if (damage_frames == 0U) {
                 throwing_damage_hash = fnv1a_bytes(framebuffer->pixels());
             }
             session->finish_presented_tick(tick);
             OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_wait);
+            check_damage_wait_state(*session, damage_frames, 1, false);
             session->advance(tick);
+            check_damage_wait_state(*session, damage_frames, 1, false);
             session->advance(++tick);
             ++damage_frames;
         }
         OL_CHECK(damage_frames == 10U);
         OL_CHECK(session->valid());
+        check_damage_complete_state(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
         OL_CHECK(session->current_actor_slot() == 1U);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 97);
@@ -4703,14 +4754,19 @@ void run_ai_item_session_test(
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_damage_frame_present &&
                damage_frames < 20U) {
+            check_damage_present_state(*session, damage_frames, 1, false);
             OL_CHECK(session->render(*framebuffer));
             session->finish_presented_tick(tick);
+            OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_wait);
+            check_damage_wait_state(*session, damage_frames, 1, false);
             session->advance(tick);
+            check_damage_wait_state(*session, damage_frames, 1, false);
             session->advance(++tick);
             ++damage_frames;
         }
         OL_CHECK(damage_frames == 10U);
         OL_CHECK(session->valid());
+        check_damage_complete_state(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
         OL_CHECK(session->current_actor_slot() == 1U);
         OL_CHECK(actor.word(role_word::taking_item_begin) == -1);
@@ -4812,7 +4868,7 @@ void run_ai_item_session_test(
     OL_CHECK(item_effect_hash == 0xa7542240e4172664ULL);
     OL_CHECK(throwing_prelude_hash == 0x3f498f66e6357fffULL);
     OL_CHECK(throwing_effect_hash == 0xc65b523bd75389e2ULL);
-    OL_CHECK(throwing_damage_hash == 0x5bb5153963b97c5eULL);
+    OL_CHECK(throwing_damage_hash == 0x335fd35ea7e3f367ULL);
     OL_CHECK(moved_throwing_effect_hash == 0x16a8f10ce319622bULL);
     OL_CHECK(item_random_state == 662'824'084U);
     OL_CHECK(throwing_random_state == 2'516'284'547U);
