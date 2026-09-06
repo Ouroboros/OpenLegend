@@ -132,6 +132,11 @@ BATTLE_AI_POISON_HANDLER_RELOCATION_OFFSETS = (
     0x186, 0x190, 0x19A, 0x1A2, 0x1B2, 0x1BF, 0x1C8, 0x1D1,
 )
 BATTLE_AI_POISON_HANDLER_CALLER_SITES = (0x33BE2,)
+BATTLE_AI_POISON_TARGET_ADDRESS = 0x355FF
+BATTLE_AI_POISON_TARGET_END = 0x35667
+BATTLE_AI_POISON_TARGET_CALL_OFFSETS = (0x005, 0x032, 0x040, 0x058)
+BATTLE_AI_POISON_TARGET_RELOCATION_OFFSETS = (0x01C, 0x029)
+BATTLE_AI_POISON_TARGET_CALLER_SITES = (0x35421,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -760,6 +765,43 @@ def battle_ai_poison_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_random_calls": 0,
         "caller_uses_return": False,
         "outer_marks_action_done_after_handler": True,
+    }
+
+
+def battle_ai_poison_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_POISON_TARGET_ADDRESS,
+        end=BATTLE_AI_POISON_TARGET_END,
+        call_offsets=BATTLE_AI_POISON_TARGET_CALL_OFFSETS,
+        expected_call_targets=(0x3ED1E, 0x3D612, 0x35667, 0x3570F),
+        relocation_offsets=BATTLE_AI_POISON_TARGET_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_POISON_TARGET_CALLER_SITES,
+        instruction_count=32,
+        branch_count=3,
+    )
+    if contract["raw_sha256"] != (
+        "7821ab41dc1724bec3b199715ed04e2cd819aa105b5b69e59810f583e088afe7"
+    ):
+        raise ValueError("Z.DAT battle AI poison-target raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "940a59f0582883b27b20b1f91cdc27c3326670fbe0053281a1cfae35e2d038cc"
+    ):
+        raise ValueError("Z.DAT battle AI poison-target relocation image changed")
+    return {
+        **contract,
+        "local_result_initial": -1,
+        "writes_actor_word12_directly": False,
+        "iq_gate": "signed actor iq > 60",
+        "rng_call": "bounded(10) only after IQ gate",
+        "rng_comparison": "signed result < 7",
+        "strongest_selector": "called only when IQ gate and RNG gate both pass",
+        "strongest_minus_one_fallback": "first-eligible stale-distance selector",
+        "rng_gate_failure_fallback": "first-eligible stale-distance selector",
+        "final_return": "callee EAX truncated to int16 then sign-extended",
+        "direct_rng_draws": "zero or one",
+        "caller": "branches on return -1; otherwise reads actor word12",
+        "delegated_word12_writes_only": True,
     }
 
 
@@ -3494,6 +3536,7 @@ def ai_item_handler_vectors(field_words: list[int]) -> dict[str, object]:
 def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
     targeting = build_path_map(field_words, (10, 20), "targeting")
     high_iq_roll, high_iq_state = legacy_bounded(9, 10)
+    boundary_roll, boundary_state = legacy_bounded(3, 10)
     allied_total = wrapping_i16(0 + 10)
     allied_total = wrapping_i16(allied_total + 100)
     allied_total = wrapping_i16(allied_total + 10)
@@ -3517,6 +3560,15 @@ def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
             "rng_threshold": 7,
             "attacks": [30, 50],
             "target_slot": 4,
+        },
+        "high_iq_roll_7_fallback": {
+            "iq": 61,
+            "rng_seed": 3,
+            "rng_output": boundary_roll,
+            "rng_state_after": boundary_state,
+            "rng_threshold": 7,
+            "strategy": "first_eligible_stale_distance",
+            "target_slot": 3,
         },
         "stale_distance_first_eligible_bug": {
             "strongest_attacks": [0, 0],
@@ -3564,7 +3616,8 @@ def ai_poison_handler_vectors(field_words: list[int]) -> dict[str, object]:
             },
             "comparison": "strictly_greater",
         },
-        "selector_initializes_word12_to": -1,
+        "no_target_stale_word12": 99,
+        "no_target_preserves_actor_word12": True,
         "no_target_result": "attack",
         "outer_ai_marks_action_done_after_handler": True,
     }
@@ -4328,6 +4381,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_specialist_target_machine": battle_ai_specialist_target_contract(z_dat_bytes),
         "battle_ai_nearest_target_machine": battle_ai_nearest_target_contract(z_dat_bytes),
         "battle_ai_poison_handler_machine": battle_ai_poison_handler_contract(z_dat_bytes),
+        "battle_ai_poison_target_machine": battle_ai_poison_target_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

@@ -4154,7 +4154,6 @@ std::optional<BattleAiPoisonTargetSelection> BattleSetup::choose_ai_poison_targe
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
-    combatants_[actor_slot].words[combatant_word::ai_poison_target] = -1;
     const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;

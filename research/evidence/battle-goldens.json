@@ -690,6 +690,45 @@
     "caller_uses_return": false,
     "outer_marks_action_done_after_handler": true
   },
+  "battle_ai_poison_target_machine": {
+    "address": "0x355ff",
+    "end": "0x35667",
+    "raw_offset": "0x2efff",
+    "size": 104,
+    "instruction_count": 32,
+    "branch_count": 3,
+    "raw_sha256": "7821ab41dc1724bec3b199715ed04e2cd819aa105b5b69e59810f583e088afe7",
+    "loaded_sha256": "940a59f0582883b27b20b1f91cdc27c3326670fbe0053281a1cfae35e2d038cc",
+    "relocation_count": 2,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x35604",
+      "0x35631",
+      "0x3563f",
+      "0x35657"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d612",
+      "0x35667",
+      "0x3570f"
+    ],
+    "callers": [
+      "0x35421"
+    ],
+    "local_result_initial": -1,
+    "writes_actor_word12_directly": false,
+    "iq_gate": "signed actor iq > 60",
+    "rng_call": "bounded(10) only after IQ gate",
+    "rng_comparison": "signed result < 7",
+    "strongest_selector": "called only when IQ gate and RNG gate both pass",
+    "strongest_minus_one_fallback": "first-eligible stale-distance selector",
+    "rng_gate_failure_fallback": "first-eligible stale-distance selector",
+    "final_return": "callee EAX truncated to int16 then sign-extended",
+    "direct_rng_draws": "zero or one",
+    "caller": "branches on return -1; otherwise reads actor word12",
+    "delegated_word12_writes_only": true
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -4015,6 +4054,15 @@
           ],
           "target_slot": 4
         },
+        "high_iq_roll_7_fallback": {
+          "iq": 61,
+          "rng_seed": 3,
+          "rng_output": 7,
+          "rng_state_after": 3310558080,
+          "rng_threshold": 7,
+          "strategy": "first_eligible_stale_distance",
+          "target_slot": 3
+        },
         "stale_distance_first_eligible_bug": {
           "strongest_attacks": [
             0,
@@ -4070,7 +4118,8 @@
           },
           "comparison": "strictly_greater"
         },
-        "selector_initializes_word12_to": -1,
+        "no_target_stale_word12": 99,
+        "no_target_preserves_actor_word12": true,
         "no_target_result": "attack",
         "outer_ai_marks_action_done_after_handler": true
       },

@@ -239,9 +239,9 @@ area type0/3在signed targeting距离不大于select distance时命中并传move
 
 ## 25. AI用毒handler计划
 
-`sub_355FF`仅在actor IQ严格大于60时消费一次`bounded(10)`；结果<7先选合格目标中signed attack严格最大者，否则及最大selector未写目标时回退`sub_3570F`。合格条件为敌对、未隐藏、poison<95且target anti_poison严格小于actor use_poison。最高攻击best从0开始，同值保留早槽，所有attack<=0时不写word12。
+`sub_355FF`机器身份固定为104 bytes、32条指令、3个显式跳转和2处重定位；raw/loaded SHA256为`7821ab41dc1724bec3b199715ed04e2cd819aa105b5b69e59810f583e088afe7`与`940a59f0582883b27b20b1f91cdc27c3326670fbe0053281a1cfae35e2d038cc`。唯一caller在返回sign-extend后与-1比较，四次direct call依次为栈探测、RNG、最高攻击用毒目标selector和陈旧距离selector。函数仅把局部EBX初始化为-1，不直接写actor word12；IQ按signed严格大于60才消费一次`bounded(10)`，roll按signed严格小于7才调用最高攻击selector，否则以及其返回-1时调用陈旧距离selector。两个callee返回均经BX低16位截断再sign-extend，单次直接消费0或1次RNG。
 
-`sub_3570F`并非最近目标：循环对每个合格候选都重复建立targeting图，再错误读取陈旧全局目标slot的距离。固定stale slot4距离8、候选真实距离`[6,8]`时，两次比较值相同，strict更新仅让slot3首个合格目标写入。无合格候选时原版不读取stale slot。seed9输出2、终态1341714958；IQ恰60无RNG。
+首轮REVIEW发现现代把局部EBX=-1误实现为入口清actor word12，已删除该写入；修正后从入口覆盖全部32条指令和出口零新增差异。seed3固定IQ61、roll恰7、终态3310558080并走fallback slot3；seed9固定roll2、终态1341714958并选最高攻击slot4；最高攻击全0固定-1后fallback，IQ60固定不消费RNG。无目标plan以word12=99及完整Session以word12=1分别证明返回-1触发自动攻击但不清旧word12。两个selector内部候选规则与陈旧共享目标来源保持order26/27独立owner，不从本项传播closure。正式原资产golden双生成SHA256为`8953f9289c39431a59f777cb84a09da4140f7d28011ef9b81853f77093ff07b6`，Linux app Debug 14/14通过。
 
 `sub_3540E`机器身份固定为497 bytes、115条指令、8个显式跳转和40处重定位；raw/loaded SHA256为`d153ed4a0997bc2735ea31b5a00ecc62ad634b9f574ce57dcf06c867c9546e1a`与`8be7484923c0296d3c6060e77fe945fe29440cc56df79a3c8b8c545ae2c4c335`。唯一caller不读EAX，十次direct call依次为栈检查、目标selector、自动攻击、两次无副作用abs、targeting图、用毒、mode3移动、targeting图和休息。射程为signed use_poison除15向零截断加1；round value恰0且首次在射程直接用毒，正值即使已命中仍移动，负值跳移动但执行第二次同目标检查。移动后只复检原目标，不重选。
 
