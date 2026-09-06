@@ -1932,6 +1932,168 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_36E7F caller and sub_37070 flood step remain independent owners"
   },
+  "battle_flood_step_machine": {
+    "address": "0x37070",
+    "end": "0x37166",
+    "raw_offset": "0x30a70",
+    "size": 246,
+    "instruction_count": 76,
+    "branch_count": 11,
+    "raw_sha256": "0f08f89615cfeef431df99ad4136751a7dd8264ce0e724472b5926e51ba0116d",
+    "loaded_sha256": "2230edd43668c7b5259fd41f3e68a03316edcb1adb6c67597f94fd0569e1473e",
+    "relocation_count": 7,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x37075",
+      "0x3708f",
+      "0x370be",
+      "0x370d5",
+      "0x3712d",
+      "0x3713e",
+      "0x37150"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x37166",
+      "0x371ae",
+      "0x37166",
+      "0x3721e",
+      "0x371ae",
+      "0x371f7"
+    ],
+    "callers": [
+      "0x36e75",
+      "0x36eee"
+    ],
+    "stack_probe_bytes": 36,
+    "arguments": "none; queue, read/write indexes, distance and path map are shared globals",
+    "dequeue": "dequeue x/y; any signed y<0 is a layer sentinel",
+    "sentinel": "distance=(signed int16(distance)+1)%128; enqueue (0,-1); dequeue again; return -1 if second y<0",
+    "directions": [
+      [
+        0,
+        -1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "coordinate_math": "int16 x/y additions; accept each coordinate in signed inclusive range 0..64",
+    "expansion": "when delegated path read equals exactly 254, enqueue coordinate then write current signed distance",
+    "synthetic_trace": [
+      {
+        "result": 0,
+        "sentinel": true,
+        "processed": [
+          32,
+          20
+        ],
+        "enqueued": [
+          [
+            32,
+            19
+          ],
+          [
+            33,
+            20
+          ],
+          [
+            31,
+            20
+          ],
+          [
+            32,
+            21
+          ]
+        ],
+        "distance": 1,
+        "read_index": 2,
+        "write_index": 7
+      },
+      {
+        "result": 0,
+        "sentinel": true,
+        "processed": [
+          32,
+          19
+        ],
+        "enqueued": [],
+        "distance": 2,
+        "read_index": 4,
+        "write_index": 8
+      },
+      {
+        "result": 0,
+        "sentinel": false,
+        "processed": [
+          33,
+          20
+        ],
+        "enqueued": [],
+        "distance": 2,
+        "read_index": 5,
+        "write_index": 8
+      },
+      {
+        "result": 0,
+        "sentinel": false,
+        "processed": [
+          31,
+          20
+        ],
+        "enqueued": [],
+        "distance": 2,
+        "read_index": 6,
+        "write_index": 8
+      },
+      {
+        "result": 0,
+        "sentinel": false,
+        "processed": [
+          32,
+          21
+        ],
+        "enqueued": [],
+        "distance": 2,
+        "read_index": 7,
+        "write_index": 8
+      },
+      {
+        "result": -1,
+        "sentinel": true,
+        "processed": null,
+        "enqueued": [],
+        "distance": 3,
+        "read_index": 9,
+        "write_index": 9
+      }
+    ],
+    "normal_return": 0,
+    "finished_return": -1,
+    "caller_continuations": {
+      "0x36e75": "85c074f7c3",
+      "0x36eee": "85c074f7c3"
+    },
+    "caller_control": "both callers loop only while EAX is zero",
+    "shared_tail": {
+      "address": "0x3612c",
+      "end": "0x36133",
+      "bytes": "83c4085f5e5bc3",
+      "sha256": "c4036b6b3c4c147d0b6f46cbd09bc26821d3c0c1099a8ba4e168731ae8f44e27",
+      "semantics": "add esp,8; pop edi; pop esi; pop ebx; ret; EAX unchanged"
+    },
+    "direct_rng_draws": 0,
+    "closure_boundary": "sub_37166, sub_371AE, sub_371F7, sub_3721E and shared tail owner sub_3598C remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -6388,6 +6550,21 @@
         "movement_hash": "0x49229d1428a78825",
         "targeting_value": 1,
         "targeting_hash": "0xd5b471aa864a88ca"
+      },
+      "x64_alias": {
+        "battle_id": 0,
+        "battlefield_id": 0,
+        "source": [
+          64,
+          0
+        ],
+        "aliased_coordinate": [
+          0,
+          1
+        ],
+        "source_value": 0,
+        "aliased_value": 0,
+        "targeting_hash": "0x7e0528a84512f654"
       },
       "records": [
         {

@@ -514,6 +514,18 @@ BATTLE_TARGETING_INITIALIZER_END = 0x37070
 BATTLE_TARGETING_INITIALIZER_CALL_OFFSETS = (0x05,)
 BATTLE_TARGETING_INITIALIZER_RELOCATION_OFFSETS = (0x20, 0x4C, 0x56, 0x61)
 BATTLE_TARGETING_INITIALIZER_CALLER_SITES = (0x36E89,)
+BATTLE_FLOOD_STEP_ADDRESS = 0x37070
+BATTLE_FLOOD_STEP_END = 0x37166
+BATTLE_FLOOD_STEP_CALL_OFFSETS = (0x05, 0x1F, 0x4E, 0x65, 0xBD, 0xCE, 0xE0)
+BATTLE_FLOOD_STEP_CALL_TARGETS = (
+    0x3ED1E, 0x37166, 0x371AE, 0x37166, 0x3721E, 0x371AE, 0x371F7,
+)
+BATTLE_FLOOD_STEP_RELOCATION_OFFSETS = (0x11, 0x32, 0x46, 0x57, 0x8D, 0x99, 0xD9)
+BATTLE_FLOOD_STEP_CALLER_SITES = (0x36E75, 0x36EEE)
+BATTLE_FLOOD_DIRECTION_X_ADDRESS = 0x556DE
+BATTLE_FLOOD_DIRECTION_Y_ADDRESS = 0x556E6
+BATTLE_FLOOD_SHARED_TAIL_ADDRESS = 0x3612C
+BATTLE_FLOOD_SHARED_TAIL_END = 0x36133
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -2053,6 +2065,162 @@ def battle_targeting_initializer_contract(z_dat_bytes: bytes) -> dict[str, objec
         "direct_rng_draws": 0,
         "closure_boundary":
             "sub_36E7F caller and sub_37070 flood step remain independent owners",
+    }
+
+
+def battle_flood_step_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_FLOOD_STEP_ADDRESS,
+        end=BATTLE_FLOOD_STEP_END,
+        call_offsets=BATTLE_FLOOD_STEP_CALL_OFFSETS,
+        expected_call_targets=BATTLE_FLOOD_STEP_CALL_TARGETS,
+        relocation_offsets=BATTLE_FLOOD_STEP_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_FLOOD_STEP_CALLER_SITES,
+        instruction_count=76,
+        branch_count=11,
+    )
+    if contract["raw_sha256"] != (
+        "0f08f89615cfeef431df99ad4136751a7dd8264ce0e724472b5926e51ba0116d"
+    ):
+        raise ValueError("Z.DAT flood step raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "2230edd43668c7b5259fd41f3e68a03316edcb1adb6c67597f94fd0569e1473e"
+    ):
+        raise ValueError("Z.DAT flood step relocation image changed")
+
+    direction_x = struct.unpack_from(
+        "<4h", z_dat_bytes, BATTLE_FLOOD_DIRECTION_X_ADDRESS - Z_DAT_LOAD_BASE
+    )
+    direction_y = struct.unpack_from(
+        "<4h", z_dat_bytes, BATTLE_FLOOD_DIRECTION_Y_ADDRESS - Z_DAT_LOAD_BASE
+    )
+    directions = tuple(zip(direction_x, direction_y))
+    if directions != PATH_DIRECTIONS:
+        raise ValueError("Z.DAT flood step direction order changed")
+    caller_continuations = {
+        "0x36e75": z_dat_bytes[0x36E7A - Z_DAT_LOAD_BASE:0x36E7F - Z_DAT_LOAD_BASE].hex(),
+        "0x36eee": z_dat_bytes[0x36EF3 - Z_DAT_LOAD_BASE:0x36EF8 - Z_DAT_LOAD_BASE].hex(),
+    }
+    if set(caller_continuations.values()) != {"85c074f7c3"}:
+        raise ValueError("Z.DAT flood step caller continuation changed")
+    shared_tail = z_dat_bytes[
+        BATTLE_FLOOD_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE:
+        BATTLE_FLOOD_SHARED_TAIL_END - Z_DAT_LOAD_BASE
+    ]
+    if shared_tail.hex() != "83c4085f5e5bc3":
+        raise ValueError("Z.DAT flood step shared tail changed")
+
+    values = [555] * 4096
+    source = (32, 20)
+    values[source[1] * 64 + source[0]] = 0
+    for dx, dy in directions:
+        values[(source[1] + dy) * 64 + source[0] + dx] = 254
+    queue = [(0, 0)] * 255
+    queue[0] = (0, -1)
+    queue[1] = source
+    read_index = 0
+    write_index = 2
+    distance = 0
+
+    def enqueue(coordinate: tuple[int, int]) -> None:
+        nonlocal write_index
+        queue[write_index] = coordinate
+        write_index = (write_index + 1) % 255
+
+    def dequeue() -> tuple[int, int]:
+        nonlocal read_index
+        coordinate = queue[read_index]
+        read_index = (read_index + 1) % 255
+        return coordinate
+
+    def step() -> dict[str, object]:
+        nonlocal distance
+        current = dequeue()
+        sentinel = current[1] < 0
+        if sentinel:
+            distance = (distance + 1) % 128
+            enqueue((0, -1))
+            current = dequeue()
+            if current[1] < 0:
+                return {
+                    "result": -1,
+                    "sentinel": True,
+                    "processed": None,
+                    "enqueued": [],
+                    "distance": distance,
+                    "read_index": read_index,
+                    "write_index": write_index,
+                }
+        enqueued = []
+        for dx, dy in directions:
+            coordinate = (current[0] + dx, current[1] + dy)
+            x, y = coordinate
+            if not (0 <= x <= 64 and 0 <= y <= 64):
+                continue
+            index = y * 64 + x
+            if 0 <= index < 4096 and values[index] == 254:
+                enqueue(coordinate)
+                values[index] = distance
+                enqueued.append(list(coordinate))
+        return {
+            "result": 0,
+            "sentinel": sentinel,
+            "processed": list(current),
+            "enqueued": enqueued,
+            "distance": distance,
+            "read_index": read_index,
+            "write_index": write_index,
+        }
+
+    synthetic_trace = []
+    while not synthetic_trace or synthetic_trace[-1]["result"] == 0:
+        synthetic_trace.append(step())
+    expected_trace = [
+        {"result": 0, "sentinel": True, "processed": [32, 20],
+         "enqueued": [[32, 19], [33, 20], [31, 20], [32, 21]],
+         "distance": 1, "read_index": 2, "write_index": 7},
+        {"result": 0, "sentinel": True, "processed": [32, 19], "enqueued": [],
+         "distance": 2, "read_index": 4, "write_index": 8},
+        {"result": 0, "sentinel": False, "processed": [33, 20], "enqueued": [],
+         "distance": 2, "read_index": 5, "write_index": 8},
+        {"result": 0, "sentinel": False, "processed": [31, 20], "enqueued": [],
+         "distance": 2, "read_index": 6, "write_index": 8},
+        {"result": 0, "sentinel": False, "processed": [32, 21], "enqueued": [],
+         "distance": 2, "read_index": 7, "write_index": 8},
+        {"result": -1, "sentinel": True, "processed": None, "enqueued": [],
+         "distance": 3, "read_index": 9, "write_index": 9},
+    ]
+    if synthetic_trace != expected_trace:
+        raise ValueError("flood step synthetic trace changed")
+
+    return {
+        **contract,
+        "stack_probe_bytes": 36,
+        "arguments": "none; queue, read/write indexes, distance and path map are shared globals",
+        "dequeue": "dequeue x/y; any signed y<0 is a layer sentinel",
+        "sentinel":
+            "distance=(signed int16(distance)+1)%128; enqueue (0,-1); dequeue again; return -1 if second y<0",
+        "directions": [list(value) for value in directions],
+        "coordinate_math":
+            "int16 x/y additions; accept each coordinate in signed inclusive range 0..64",
+        "expansion":
+            "when delegated path read equals exactly 254, enqueue coordinate then write current signed distance",
+        "synthetic_trace": synthetic_trace,
+        "normal_return": 0,
+        "finished_return": -1,
+        "caller_continuations": caller_continuations,
+        "caller_control": "both callers loop only while EAX is zero",
+        "shared_tail": {
+            "address": hex(BATTLE_FLOOD_SHARED_TAIL_ADDRESS),
+            "end": hex(BATTLE_FLOOD_SHARED_TAIL_END),
+            "bytes": shared_tail.hex(),
+            "sha256": sha256(shared_tail),
+            "semantics": "add esp,8; pop edi; pop esi; pop ebx; ret; EAX unchanged",
+        },
+        "direct_rng_draws": 0,
+        "closure_boundary":
+            "sub_37166, sub_371AE, sub_371F7, sub_3721E and shared tail owner sub_3598C remain independent owners",
     }
 
 
@@ -5906,6 +6074,19 @@ def build(data_root: Path) -> dict[str, object]:
         "targeting_hash": fnv1a_words(targeting_ground_targeting),
     }
 
+    x64_alias_words = list(struct.unpack("<8192h", warfld_entries[0][:16384]))
+    x64_alias_source = (64, 0)
+    x64_alias_targeting = build_path_map(x64_alias_words, x64_alias_source, "targeting")
+    x64_alias_vector = {
+        "battle_id": 0,
+        "battlefield_id": 0,
+        "source": list(x64_alias_source),
+        "aliased_coordinate": [0, 1],
+        "source_value": x64_alias_targeting[64],
+        "aliased_value": x64_alias_targeting[64],
+        "targeting_hash": fnv1a_words(x64_alias_targeting),
+    }
+
     battle_session = battle_session_vector(
         data_root,
         list(struct.unpack("<8192h", warfld_entries[int(setup_records[2]["battlefield_id"])][:16384])),
@@ -5958,6 +6139,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_targeting_path_machine": battle_targeting_path_contract(z_dat_bytes),
         "battle_movement_initializer_machine": battle_movement_initializer_contract(z_dat_bytes),
         "battle_targeting_initializer_machine": battle_targeting_initializer_contract(z_dat_bytes),
+        "battle_flood_step_machine": battle_flood_step_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
@@ -6398,6 +6580,7 @@ def build(data_root: Path) -> dict[str, object]:
                     "consumed_value": 255,
                 },
                 "targeting_ground_only": targeting_ground_vector,
+                "x64_alias": x64_alias_vector,
                 "records": pathing_records,
             },
             "party_prefix_rule": "slot0 unconditional; first slot 1..5 with signed id <= 0 ends prefix; otherwise 6",

@@ -212,6 +212,22 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
         OL_CHECK(pathing.value(fixture.occupied) == 1);
         OL_CHECK(pathing.value(fixture.target) == fixture.target_distance);
+        constexpr std::array layer_directions{
+            BattlePathCoord{0, -1},
+            BattlePathCoord{1, 0},
+            BattlePathCoord{-1, 0},
+            BattlePathCoord{0, 1},
+        };
+        for (const auto direction : layer_directions) {
+            OL_CHECK(pathing.value(BattlePathCoord{
+                static_cast<std::int16_t>(fixture.source.x + direction.x),
+                static_cast<std::int16_t>(fixture.source.y + direction.y),
+            }) == 1);
+            OL_CHECK(pathing.value(BattlePathCoord{
+                static_cast<std::int16_t>(fixture.source.x + direction.x * 2),
+                static_cast<std::int16_t>(fixture.source.y + direction.y * 2),
+            }) == 2);
+        }
         OL_CHECK(pathing.mark_shortest_path(fixture.source, fixture.target));
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.marked_hash);
         OL_CHECK(pathing.next_marked_step(fixture.source) == fixture.first_step);
@@ -239,6 +255,14 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(pathing.value(fixture.source) == 0);
         OL_CHECK(fnv1a_words(pathing.values()) == fixture.targeting_hash);
     }
+
+    BattleData x64_alias_data{data_root, 0};
+    OL_CHECK(x64_alias_data.valid());
+    BattlePathing x64_alias_pathing{x64_alias_data};
+    x64_alias_pathing.build(BattlePathCoord{64, 0}, BattlePathMode::targeting);
+    OL_CHECK(x64_alias_pathing.value(BattlePathCoord{64, 0}) == 0);
+    OL_CHECK(x64_alias_pathing.value(BattlePathCoord{0, 1}) == 0);
+    OL_CHECK(fnv1a_words(x64_alias_pathing.values()) == 0x7e0528a84512f654ULL);
 
     BattleData ground_only_data{data_root, 89};
     OL_CHECK(ground_only_data.valid());
