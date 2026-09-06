@@ -156,6 +156,18 @@ BATTLE_AI_ITEM_HANDLER_ADDRESS = 0x35803
 BATTLE_AI_ITEM_HANDLER_END = 0x3582B
 BATTLE_AI_ITEM_HANDLER_CALL_OFFSETS = (0x005, 0x013, 0x01E)
 BATTLE_AI_ITEM_HANDLER_CALLER_SITES = (0x33C03,)
+BATTLE_AI_THROWING_HANDLER_ADDRESS = 0x3582B
+BATTLE_AI_THROWING_HANDLER_END = 0x3598C
+BATTLE_AI_THROWING_HANDLER_CALL_OFFSETS = (
+    0x005, 0x013, 0x087, 0x0B7, 0x0D4, 0x123, 0x155,
+)
+BATTLE_AI_THROWING_HANDLER_RELOCATION_OFFSETS = (
+    0x021, 0x027, 0x032, 0x039, 0x040, 0x046, 0x04D, 0x05A,
+    0x070, 0x076, 0x07D, 0x083, 0x08F, 0x099, 0x0A3, 0x0AB,
+    0x0C6, 0x0DF, 0x0E9, 0x0F0, 0x0F7, 0x0FD, 0x10C, 0x112,
+    0x119, 0x11F, 0x12B, 0x135, 0x13F, 0x147,
+)
+BATTLE_AI_THROWING_HANDLER_CALLER_SITES = (0x33C24,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -948,6 +960,64 @@ def battle_ai_item_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "branches": 0,
         "outer_action_done": "written by sole caller after handler returns",
         "delegated_boundaries": "sub_34AEC and sub_3598C retain independent owners",
+    }
+
+
+def battle_ai_throwing_handler_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_AI_THROWING_HANDLER_ADDRESS,
+        end=BATTLE_AI_THROWING_HANDLER_END,
+        call_offsets=BATTLE_AI_THROWING_HANDLER_CALL_OFFSETS,
+        expected_call_targets=(
+            0x3ED1E, 0x3505B, 0x36E7F, 0x3598C, 0x3650E, 0x36E7F, 0x34C47,
+        ),
+        relocation_offsets=BATTLE_AI_THROWING_HANDLER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_AI_THROWING_HANDLER_CALLER_SITES,
+        instruction_count=84,
+        branch_count=3,
+    )
+    if contract["raw_sha256"] != (
+        "4dbe948d5cbd3b588e9638016ce6a44c3b24f99d014071eeabb9200b7e471ded"
+    ):
+        raise ValueError("Z.DAT AI throwing-handler raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "f0d4f1e000b8ae30590805156b76ceda27c2e93672876ca5fce4989a796e60b2"
+    ):
+        raise ValueError("Z.DAT AI throwing-handler relocation image changed")
+    return {
+        **contract,
+        "actor_argument": "entry int16 sign-extended into ESI",
+        "target_selection": "sub_3505B(actor) runs once before all range checks",
+        "target_scratch_write":
+            "actor word11 copied to word_E6EE0 even when selector retained stale word11",
+        "target_reselection_after_move": False,
+        "range_formula":
+            "signed actor hidden_weapon / 15 truncating toward zero, then +1",
+        "range_storage_and_compare":
+            "range retained in EDI; DI and path word compared signed",
+        "first_check":
+            "range >= signed path distance calls sub_3598C(actor,1) and returns",
+        "movement_gate":
+            "only first distance miss with signed round_value > 0 calls sub_3650E(actor,1,range)",
+        "movement_result": "ignored",
+        "second_check":
+            "always rebuilds actor-source targeting map against same word_E6EE0 target, even when movement skipped",
+        "second_hit":
+            "range >= signed path distance reuses shared sub_3598C(actor,1) exit",
+        "second_miss":
+            "calls sub_34C47(actor) automatic attack and returns without direct item consumption",
+        "direct_rng_draws": 0,
+        "delegated_rng_draws":
+            "sub_3505B owns 0..2 selection draws; action callees retain their own RNG",
+        "function_result":
+            "EAX from sub_3598C or sub_34C47 passes through RET; movement EAX never controls flow",
+        "caller_result_use":
+            "sole caller sub_33599 ignores EAX and writes outer action_done after handler returns",
+        "direct_state_writes":
+            "word_E6EE0 target scratch plus path source/target coordinate globals",
+        "delegated_boundaries":
+            "sub_3505B, sub_36E7F, sub_3598C, sub_3650E and sub_34C47 retain independent owners",
     }
 
 
@@ -3659,6 +3729,17 @@ def ai_item_handler_vectors(field_words: list[int]) -> dict[str, object]:
                 "result": "attack_fallback",
                 "range_checks": 2,
             },
+            "signed_negative_range_and_round": {
+                "hidden_weapon": -16,
+                "targeting_range": trunc_div(-16, 15) + 1,
+                "round_value": -1,
+                "movement_skipped": True,
+                "target_slot": 3,
+                "distance": targeting[23 * 64 + 13],
+                "result": "attack_fallback",
+                "range_checks": 2,
+                "rng_consumed": False,
+            },
             "stale_target_bug": {
                 "strategy_gate_hit": True,
                 "eligible_attacks": [0, 0],
@@ -4583,6 +4664,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_ai_first_poison_target_machine":
             battle_ai_first_poison_target_contract(z_dat_bytes),
         "battle_ai_item_handler_machine": battle_ai_item_handler_contract(z_dat_bytes),
+        "battle_ai_throwing_handler_machine": battle_ai_throwing_handler_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

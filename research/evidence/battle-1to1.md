@@ -1,6 +1,6 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为28/81；其余53项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为29/81；其余52项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
@@ -259,7 +259,7 @@ fallback在`0x3556F`已把EBX覆写为actor记录偏移，故严格比较`2*acto
 
 `sub_35803`机器身份固定为40 bytes、14条指令、0个显式跳转和0处重定位；raw/loaded SHA256均为`59b666e9af54bafb5ba99c95859d8e3a9bcda425348fa15267ef3bfdfb9a2bc5`。唯一caller不读EAX并在返回后统一写action_done；三次call严格为栈探测、`sub_34AEC(actor,1)`和`sub_3598C(actor,0)`。重定位callee返回值被忽略，mode0物品callee无条件执行，其EAX仅透传；wrapper无直接RNG或状态写入。现代有目的时按mode0/value0逐格移动、完成后resume并使用，无目的时直接使用，两路均不休息。完整Session覆盖效果面板、任意键、九次tick内来源不变、随后扣减/左移来源及外层完成；新增全同side最大敌方距离和0、无目的、直接use_item回归。入口REVIEW零产品差异，正式原资产golden双生成SHA256为`4092e3040d55a902a18093af2fd72c47ee9fd432c2588a68d2c4b5bc21d3d09d`，Linux app Debug 14/14通过；`sub_34AEC`和`sub_3598C`均不传播closure。
 
-`sub_3582B`先调用攻击目标策略，再按actor hidden_weapon signed除15加1计算射程；首次targeting距离命中即调用`sub_3598C(actor,1)`，超距且round value>0请求movement mode1，移动后只复检同一目标，仍超距回退`sub_34C47`。round value<=0跳过移动但重复第二次targeting检查。hidden_weapon80得射程6；最近slot3距离6立即使用且无RNG；morality75、seed9输出2选slot4距离8，移动前1次检查，未改变位置后累计2次并回退攻击，移动到`(13,23)`后距离2则使用。最高攻击门槛命中但attack均为0时不写word11，原版继续使用合法stale target。
+`sub_3582B`机器身份固定为353 bytes、84条指令、3个显式条件跳转和30处重定位；raw/loaded SHA256为`4dbe948d5cbd3b588e9638016ce6a44c3b24f99d014071eeabb9200b7e471ded`与`f0d4f1e000b8ae30590805156b76ceda27c2e93672876ca5fce4989a796e60b2`。唯一caller不读EAX并在返回后统一写action_done；七次call为栈探测、一次攻击目标策略、首次targeting、暗器、mode1移动、同目标第二次targeting和自动攻击。selector返回后actor word11无条件复制到独立scratch，故未写时合法stale目标仍固定使用；射程为signed hidden_weapon IDIV15向零截断加1，DI/path作signed比较。首检命中直接use_mode1；未命中且signed round value>0才移动，零/负值跳移动但仍二检；二检不重选，命中用暗器，否则不消费物品并回退完整自动攻击。hidden_weapon80得range6的直接/移动后命中/移动后二检失败、round0二检、attack全0 stale目标均已锁定；新增hidden_weapon=-16得range0且round=-1跳移动仍二检，以及Session回退保留动作码10。入口REVIEW零产品差异，正式原资产golden双生成SHA256为`edee6ce7fa23eaffa84d26f33b564ef50b2378b47d500ee1828d85415cdce977`，Linux app Debug 14/14通过；五个callee均不传播closure。
 
 `sub_36133`在敌方携带物品数量耗尽后，从指定slot起同步左移后续item ID和数量并清空第4槽；`[5,6,7,8]/[1,2,3,4]`删除slot1严格得到`[5,7,8,-1]/[1,3,4,0]`，已完整映射为`remove_carried_item_slot`。
 
@@ -267,7 +267,7 @@ fallback在`0x3556F`已把EBX覆写为actor记录偏移，故严格比较`2*acto
 
 `sub_2B483`共享物品效果已恢复23项状态数组：HP正负分支各自保留严格第二次RNG短路，毒值正负公式、HP/MP/体力/上限夹取和13项能力signed相加均按机器码执行；add_morality与add_attack_twice只进入显示数组却不写角色字段的BUG保留。真实item19在seed1下得到HP100→200、hurt40→0、poison50→0、体力30→100、MP10→100，三次RNG终态662824084。typed结果锁定battle重绘、`(70,18,148,20*n+30)`效果面板、等待输入及调用者固定9次tick等待。
 
-现代现完整执行两个handler：AI mode0先按逃跑算法逐格重定位，再应用共享物品状态、实际绘制效果面板、present、任意键确认、等待九次BIOS tick变化并延后提交队伍inventory或敌方carried slot；AI mode1保持原目标做首次射程、可选逐格移动与同目标二次检查，命中时执行sample13前奏、EFT、damage与动画后来源提交，仍超距时不消费暗器并调用完整`sub_34C47`自动攻击入口。固定普通物品面板、暗器前奏/首EFT/首damage、移动后首EFT hash为`0xa7542240e4172664`、`0x49aac6569a28fe89`、`0xc65b523bd75389e2`、`0x335fd35ea7e3f367`、`0x16a8f10ce319622b`；外层仅在handler完成后写action_done。`sub_35803`已按上述独立owner关闭；`sub_3582B`与`sub_3598C`仍为`implemented_pending_review`。
+现代现完整执行两个handler：AI mode0先按逃跑算法逐格重定位，再应用共享物品状态、实际绘制效果面板、present、任意键确认、等待九次BIOS tick变化并延后提交队伍inventory或敌方carried slot；AI mode1保持原目标做首次射程、可选逐格移动与同目标二次检查，命中时执行sample13前奏、EFT、damage与动画后来源提交，仍超距时不消费暗器并调用完整`sub_34C47`自动攻击入口。固定普通物品面板、暗器前奏/首EFT/首damage、移动后首EFT hash为`0xa7542240e4172664`、`0x49aac6569a28fe89`、`0xc65b523bd75389e2`、`0x335fd35ea7e3f367`、`0x16a8f10ce319622b`；外层仅在handler完成后写action_done。`sub_35803`与`sub_3582B`已按各自独立owner关闭；`sub_3598C`仍为`implemented_pending_review`。
 
 `sub_361AC`请求医疗与`sub_36209`请求解毒实际共享同一函数体；后者仅建立相同栈帧后跳入前者。actor行动值严格大于0时先调用`sub_3650E(actor, mode0, value0)`，零或负值跳过；随后无条件从请求目标槽恢复x/y并调用`sub_34C47`自动攻击。现代Session保留move→automatic_attack同步边界、两项零参数和请求目标恢复，现已执行mode0逐格render/present/tick、完整自动攻击及外层完成。真实battle2正行动值请求医疗向量以round value1执行mode0一格移动并恢复请求目标，保留动作码8，首magic整帧hash`0xcc6a249ebb919a23`、最终RNG3295386429、MP20→15、体力100→99→96；两函数均推进为`implemented_pending_review`。
 

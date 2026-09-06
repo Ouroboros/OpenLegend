@@ -4143,6 +4143,8 @@ void run_ai_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
+        OL_CHECK(session->setup().combatants()[0U].words[combatant_word::ai_action] ==
+                 static_cast<std::int16_t>(BattleAiAction::throwing_weapon));
         OL_CHECK(session->setup().combatants()[0U]
                      .words[combatant_word::action_done] == 1);
         OL_CHECK(session->take_audio_commands().empty());
@@ -7550,6 +7552,22 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(throwing_plan->target_distance == 8);
     OL_CHECK(throwing_plan->range_check_count == 2);
     OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::attack_fallback);
+
+    reset();
+    ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
+    ranger.roles[0U].set_word(role_word::hidden_weapon, -16);
+    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    openlegend::random::LegacyRandom negative_range_throwing_random{1U};
+    throwing_plan = setup.begin_ai_throwing_weapon_plan(
+        0U, throwing_choice, negative_range_throwing_random);
+    OL_CHECK(throwing_plan.has_value());
+    OL_CHECK(throwing_plan->target_slot == 3);
+    OL_CHECK(throwing_plan->target_strategy == BattleAiTargetStrategy::nearest);
+    OL_CHECK(throwing_plan->targeting_range == 0);
+    OL_CHECK(throwing_plan->target_distance == 6);
+    OL_CHECK(throwing_plan->range_check_count == 2);
+    OL_CHECK(throwing_plan->next_step == BattleAiItemNextStep::attack_fallback);
+    OL_CHECK(negative_range_throwing_random.state() == 1U);
 
     reset();
     ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
