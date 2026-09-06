@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为48/81；其余33项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为49/81；其余32项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、33项为 `implemented_pending_review`、48项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、32项为 `implemented_pending_review`、49项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `94cb55ff4a200ddb35d840435805c45dbaafe0768998063acdfff59b912caa35`；本轮新增`battle_dequeue_machine`，固定dequeue的raw/loaded identity、caller/call、255-slot双数组、signed模255、EAX商及253→254→0 trace，并为battle0/93记录回溯前457/822个可达格；既有入口、载入、参战者建立、回合核心和路径合同全部保留。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；双生成逐字节一致并与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` SHA256 为 `b84b7135f491132b28f68fc49c54ebccbb088ea25d9b4e836d290cac87f38363`；本轮新增`battle_movement_step_machine`，固定991-byte raw/loaded identity、61处重定位、11次call、2个caller、逐格写序、视图、render/present/delay40、四类停止规则、四方向/回绕/边界synthetic及无250邻格的畸形机器行为；既有入口、载入、参战者建立、回合核心和全部路径合同均保留。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -90,7 +90,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 等待动作实际把当前actor逐槽交换到队尾且不写word7；机器要求先完整重画菜单/present，再因action6退出，外层索引继续处理交换后占据同槽的actor。休息提交原RNG体力/HP/MP恢复并写word7=1，直接退出菜单。共同尾对word7严格区分0、1和其他非零：0完整重绘，1退出，其他非零只跳过重绘而继续输入；菜单只读既有结果状态，不额外调用胜负扫描。返回外层后才按原顺序执行一次胜负检查、当前参战槽隐藏目标清理、hidden槽压缩与下一actor居中present。最后一槽后调用轮末异常状态，并仅在本轮开始时捕获的BIOS tick发生变化后开始下一轮。
 
-玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98`与`sub_36AF7`已完成最终审计，`sub_37355`仍为`implemented_pending_review`。
+玩家移动现实际执行movement路径图光标、四方向翻译键、Escape/三确认键、路径范围与主光标重画/present；确认后清路径上限、标记最短路并逐格提交状态，每格重画/present后按参数40等待两次BIOS tick变化。返回菜单时仅重检移动项，不重算其余九项。battle4 Session覆盖取消、`(26,24)→(26,25)→(25,25)`、word6 2→1→0及移动项失效；`sub_36A98`、`sub_36AF7`与`sub_37355`均已完成最终审计。
 
 状态动作现按`sub_22066(...,2)`进入队伍前缀选择，执行圆角标题/列表、角色名NUL对齐、上下回绕、Escape取消和三确认键；确认后在battle背景上依次呈现`sub_22A59`两页角色状态，每页各等待任意非零键。第一页保留伤势/中毒/内力分档、非法内力类型复用中毒色、装备加成和30级阈值；第二页保留两件装备、修炼物经验分母与十项武功等级。动作返回菜单但不结束actor、不消费RNG。独立Python直接读取原WARFLD、HDGRP和字体资产复算，选择页/第一页/第二页与C++整帧FNV64分别一致为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`；逐块回审修正了最大生命中毒色、修炼所需经验普通色和分母系数读取资质而非修炼经验三处差异。
 
@@ -107,7 +107,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 独立 oracle 固定 battle0/93 空 occupancy、movement source occupancy强制归零、相邻单格占位、targeting upper-layer阻挡source强制归零、target距离14/22、回溯前后完整 FNV-1a 与首步 `(31,20)/(33,29)`；Linux Debug 14/14。`sub_36EF8`进一步固定为257 bytes、72条指令、17个跳转和8处重定位：先把64×64 path全部写0，再按x外/y内扫描；upper layer非0、occupancy非-1或signed ground命中九段原资产闭区间时写555，否则写254。现代省略不可观察的预清零并改用独立格线性扫描，最终4096 words一致；共享尾`0x39A3E`只回收ABI状态，唯一caller忽略返回63。`sub_36FF9`固定为119 bytes、39条指令、10个跳转和4处重定位；同样预清零并按x外/y内扫描，但只读upper layer，零写254、任一非零写555，完全不读occupancy或ground。唯一caller忽略返回8190；battle0/93非空occupancy和battle89 ground-only tile `0x166`区分向量均通过。`sub_37070`固定为246 bytes、76条指令、11个跳转和7处重定位；每step按sentinel使distance执行signed `%128`、上右左下扫描、signed坐标`0..64`、path恰254时先入队再写距离，正常返回0、连续sentinel返回-1，两个wrapper均据此回环或结束。现代内联全部step、私有化共享队列及void返回不可观察，真正线性越界安全拒绝归类平台适配；中心十字六步trace、一二层距离和battle0 `x=64`别名hash均通过。`sub_37166`固定为72 bytes、21条指令、0跳转和2处重定位；按同一signed读下标从255-word x/y双队列依次写出，第三次重读下标后signed `idiv 255`回写余数并返回商，合法254→0时商1、其他商0，两个caller均只读写出的y而忽略EAX。现代交错coordinate队列、私有index及省略商不可观察；253→254→0 trace和真实图457/822个可达格锁定环绕。`sub_371AE`固定为73 bytes、18条指令、0跳转和4处重定位；一次signed读取write index后，把x/y低16位依次写入255-word双数组同一slot，无full guard，再以signed `idiv255`回写余数并返回商。sentinel与候选caller均忽略EAX；现代交错coordinate、私有index与不可观察半写状态等价。253→254→0 signed极值trace和真实图457/822个可达格锁定write环绕。`sub_371F7`固定为39 bytes、10条指令、0跳转和1处重定位；以signed `2*(y*64+x)`字节偏移写value低16位并返回偏移，四caller分别写distance、250、250与255。现代直接word写与机器一致，x64存储内别名保留，负坐标和真正index>=4096安全拒绝归类平台适配；线性别名/越界向量及真实distance/marked/consume hash通过。`sub_3721E`固定为39 bytes、9条指令、0跳转和2处重定位；按signed `y*64+x`读取word，先写无读xref的scratch再`cwde`返回，四caller分别判254、保存distance、判distance和判250。现代signed int16读取一致，省略scratch不可观察；x64别名保留，负坐标和真正越界安全拒绝。`sub_37245`固定为272 bytes、75条指令、10跳转和10处重定位；target先标250，distance按signed `(d+127)%128`降层，上右左下首个匹配前驱及source均标250，正常经共享尾退出。现代合法BFS域一致，无前驱false与4096步上限替代机器无界回环。`sub_36E06/sub_36E7F/sub_36EF8/sub_36FF9/sub_37070/sub_37166/sub_371AE/sub_371F7/sub_3721E/sub_37245`十个pathing owner均已完成最终入口审计并归类`platform_adapted`。
 
-`sub_37355` 另以每次一个同步边界实现逐格核心：旧 path=255、occupancy 搬移、x/y、方向、sprite、条件体力 DEC、行动值 DEC依机器顺序写入；destination、Manhattan range、aligned range和行动值耗尽停止规则也已映射。连续左移两格固定 direction2、sprite5110、physical power 1→0、round 5→4→3。玩家路径和AI mode0..3均已实际执行每格视图更新、render/present与参数40对应的两次BIOS tick变化等待；函数推进为 `implemented_pending_review`。
+`sub_37355`固定为991 bytes、215条指令、38个函数体跳转、61处重定位、11次direct call和两个caller；raw/loaded SHA256分别为`52f1523f186cd8da70fd563c4f9a50f861887289a0e04738ba7d6fb5bc143063`与`a267ef00226ba24e6842d195303e5e4f409b909c027dc66ee5b27e98f812a82c`。每格严格以上、右、左、下选择首个250邻格，并按旧path=255、旧occupancy=-1、新occupancy=actor、x/y、direction、sprite、条件physical-power 16位DEC+负夹0、round 16位DEC的顺序提交；随后更新view中心及`coordinate-11`到0..32夹值、render、present和参数40 delay，包括最终格也先完整呈现再判停。player只按destination停；AI mode0/3再看signed round<=0，mode1看Manhattan<=range，mode2还要求同x或同y。合法AI矩阵穷举一致，玩家合法`path_length<=initial_round`证明现代额外round stop冗余；无250邻格checked终止替代机器无界重试/伪destination停止。四方向、view、`INT16_MIN`回绕、完整stop矩阵、battle0/battle4/battle2 Session均通过；首轮完整入口REVIEW零产品差异，最终归类`platform_adapted / converged_no_new_differences`。
 
 ## 9. 武功攻击入口与每轮提交
 

@@ -2690,6 +2690,341 @@
     "direct_rng_draws": 0,
     "closure_boundary": "sub_3721E reads, sub_371F7 writes, both callers, and shared-tail owner remain independent"
   },
+  "battle_movement_step_machine": {
+    "address": "0x37355",
+    "end": "0x37734",
+    "raw_offset": "0x30d55",
+    "size": 991,
+    "instruction_count": 215,
+    "branch_count": 38,
+    "raw_sha256": "52f1523f186cd8da70fd563c4f9a50f861887289a0e04738ba7d6fb5bc143063",
+    "loaded_sha256": "a267ef00226ba24e6842d195303e5e4f409b909c027dc66ee5b27e98f812a82c",
+    "relocation_count": 61,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3735a",
+      "0x373d2",
+      "0x373fe",
+      "0x37449",
+      "0x37526",
+      "0x37536",
+      "0x37540",
+      "0x37638",
+      "0x3765d",
+      "0x376ca",
+      "0x376ef"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3721e",
+      "0x371f7",
+      "0x3b1e6",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x3db83",
+      "0x3f50b",
+      "0x3f50b",
+      "0x3f50b",
+      "0x3f50b"
+    ],
+    "callers": [
+      "0x36772",
+      "0x36ae8"
+    ],
+    "stack_probe_bytes": 56,
+    "globals": {
+      "source": {
+        "x": "0x556d6",
+        "y": "0x556d8"
+      },
+      "destination": {
+        "x": "0x556da",
+        "y": "0x556dc"
+      },
+      "target_slot": "0xe6ee0",
+      "view_center": {
+        "x": "0xe6ee4",
+        "y": "0xe6ee2"
+      },
+      "view_offset": {
+        "x": "0xe6eea",
+        "y": "0xe6ee8"
+      }
+    },
+    "directions": [
+      [
+        0,
+        -1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "initial_current": "signed low words of path source globals",
+    "candidate_bounds": "signed 0 <= x < 64 and 0 <= y < 64",
+    "candidate_order": "up, right, left, down; first signed path word 250 wins",
+    "step_write_order": [
+      "path_old=255",
+      "occupancy_old=-1",
+      "occupancy_new=slot",
+      "combatant_x",
+      "combatant_y",
+      "direction",
+      "sprite",
+      "conditional_physical_power",
+      "round_value--",
+      "view_center",
+      "view_clamp",
+      "render",
+      "present",
+      "delay_40"
+    ],
+    "physical_power_condition": "signed round value equals signed role speed IDIV 10 quotient",
+    "physical_power_update": "16-bit DEC then signed negative clamp to zero",
+    "round_update": "unconditional 16-bit DEC after physical-power branch",
+    "view_update": "center=new coordinate; signed low-word clamp of coordinate-11 to 0..32",
+    "frame_sequence": "render, present E87BC with C0B98, delay parameter 40 after every moved step including final",
+    "stop_rules": {
+      "player_flag_0": "destination only",
+      "ai_mode_0_or_3": "destination or signed round value <= 0",
+      "ai_mode_1": "mode0 conditions or signed Manhattan distance <= range",
+      "ai_mode_2": "mode0 conditions or distance <= range and same x or same y as target slot E6EE0",
+      "other_player_flag_or_mode": "continue without an additional stop rule"
+    },
+    "no_marked_neighbor": "machine keeps stored current unchanged, leaves candidate registers at down neighbor, applies stop rules to that candidate, and otherwise repeats without a bound; modern checked failure replaces malformed behavior",
+    "shared_tail": {
+      "address": "0x3cbdb",
+      "bytes": "83c4185d5f5e5bc3",
+      "effect": "add esp,24; pop ebp,edi,esi,ebx; ret; preserve EAX",
+      "owner": "external jumptable default epilogue of sub_389BF"
+    },
+    "caller_sequences": {
+      "0x36772": "0fbf44243c500fbf44243c506a010fbf44244050e8de0b0000",
+      "0x36ae8": "6a006a006a0053e86808000083c41031c0"
+    },
+    "caller_roles": {
+      "0x36772": "AI movement pushes signed range, signed mode, 1, signed actor; ignores return and exits",
+      "0x36ae8": "player movement pushes 0, 0, 0, actor; overwrites EAX with zero after return"
+    },
+    "caller_uses_return": false,
+    "synthetic_vectors": {
+      "up_before_other_marked_neighbors": {
+        "moved": true,
+        "from": [
+          10,
+          10
+        ],
+        "to": [
+          10,
+          9
+        ],
+        "direction": 0,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 3,
+        "speed_step": 10,
+        "physical_power": 9,
+        "round_value": 9,
+        "view_center": [
+          10,
+          9
+        ],
+        "view": [
+          0,
+          0
+        ]
+      },
+      "right_direction_and_view_floor": {
+        "moved": true,
+        "from": [
+          0,
+          0
+        ],
+        "to": [
+          1,
+          0
+        ],
+        "direction": 1,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 4,
+        "speed_step": 9,
+        "physical_power": 7,
+        "round_value": 8,
+        "view_center": [
+          1,
+          0
+        ],
+        "view": [
+          0,
+          0
+        ]
+      },
+      "left_direction_and_view_ceiling": {
+        "moved": true,
+        "from": [
+          44,
+          63
+        ],
+        "to": [
+          43,
+          63
+        ],
+        "direction": 2,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 5,
+        "speed_step": 10,
+        "physical_power": 7,
+        "round_value": 8,
+        "view_center": [
+          43,
+          63
+        ],
+        "view": [
+          32,
+          32
+        ]
+      },
+      "down_direction": {
+        "moved": true,
+        "from": [
+          5,
+          5
+        ],
+        "to": [
+          5,
+          6
+        ],
+        "direction": 3,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 6,
+        "speed_step": 10,
+        "physical_power": 7,
+        "round_value": 8,
+        "view_center": [
+          5,
+          6
+        ],
+        "view": [
+          0,
+          0
+        ]
+      },
+      "physical_zero_clamps": {
+        "moved": true,
+        "from": [
+          1,
+          1
+        ],
+        "to": [
+          1,
+          2
+        ],
+        "direction": 3,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 1,
+        "speed_step": 10,
+        "physical_power": 0,
+        "round_value": 9,
+        "view_center": [
+          1,
+          2
+        ],
+        "view": [
+          0,
+          0
+        ]
+      },
+      "physical_min_wraps_positive": {
+        "moved": true,
+        "from": [
+          1,
+          1
+        ],
+        "to": [
+          1,
+          2
+        ],
+        "direction": 3,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 1,
+        "speed_step": 10,
+        "physical_power": 32767,
+        "round_value": 9,
+        "view_center": [
+          1,
+          2
+        ],
+        "view": [
+          0,
+          0
+        ]
+      },
+      "round_min_wraps_max": {
+        "moved": true,
+        "from": [
+          1,
+          1
+        ],
+        "to": [
+          1,
+          2
+        ],
+        "direction": 3,
+        "path_old": 255,
+        "occupancy_old": -1,
+        "occupancy_new": 1,
+        "speed_step": 10,
+        "physical_power": 10,
+        "round_value": 32767,
+        "view_center": [
+          1,
+          2
+        ],
+        "view": [
+          0,
+          0
+        ]
+      },
+      "no_marked_neighbor": {
+        "moved": false,
+        "current_remains": [
+          1,
+          1
+        ],
+        "stop_candidate": [
+          1,
+          2
+        ]
+      },
+      "stop_matrix": {
+        "player_destination": true,
+        "player_ignores_exhaustion": false,
+        "ai_mode0_exhausted": true,
+        "ai_mode3_destination": true,
+        "ai_mode1_in_range": true,
+        "ai_mode1_out_of_range": false,
+        "ai_mode2_in_range_off_axis": false,
+        "ai_mode2_in_range_same_x": true,
+        "ai_mode2_in_range_same_y": true
+      }
+    },
+    "direct_rng_draws": 0,
+    "closure_boundary": "path read/write, sprite helper, renderer, present, delay, abs helper, two callers and shared-tail owner remain independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

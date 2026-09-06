@@ -572,6 +572,25 @@ BATTLE_PATH_MARK_SOURCE_Y_ADDRESS = 0x556D8
 BATTLE_PATH_MARK_TARGET_X_ADDRESS = 0x556DA
 BATTLE_PATH_MARK_TARGET_Y_ADDRESS = 0x556DC
 BATTLE_PATH_MARK_SHARED_TAIL_ADDRESS = 0x34ACB
+BATTLE_MOVEMENT_STEP_ADDRESS = 0x37355
+BATTLE_MOVEMENT_STEP_END = 0x37734
+BATTLE_MOVEMENT_STEP_CALL_OFFSETS = (
+    0x005, 0x07D, 0x0A9, 0x0F4, 0x1D1, 0x1E1, 0x1EB, 0x2E3, 0x308, 0x375, 0x39A,
+)
+BATTLE_MOVEMENT_STEP_CALL_TARGETS = (
+    0x3ED1E, 0x3721E, 0x371F7, 0x3B1E6, 0x3AA85, 0x3D6D1,
+    0x3DB83, 0x3F50B, 0x3F50B, 0x3F50B, 0x3F50B,
+)
+BATTLE_MOVEMENT_STEP_RELOCATION_OFFSETS = (
+    0x013, 0x01D, 0x03F, 0x04B, 0x0BF, 0x0D2, 0x0DD, 0x0E4, 0x0EF, 0x0FF,
+    0x106, 0x113, 0x126, 0x131, 0x138, 0x142, 0x153, 0x15A, 0x160, 0x167,
+    0x16D, 0x173, 0x17C, 0x188, 0x191, 0x19B, 0x1A3, 0x1AC, 0x1B8, 0x1C1,
+    0x1CB, 0x1D8, 0x1DD, 0x228, 0x231, 0x266, 0x26F, 0x280, 0x297, 0x2A0,
+    0x2B1, 0x2C3, 0x2CD, 0x2DC, 0x2F0, 0x2FA, 0x301, 0x329, 0x332, 0x343,
+    0x355, 0x35F, 0x36E, 0x382, 0x38C, 0x393, 0x3B1, 0x3BB, 0x3C2, 0x3CF, 0x3D6,
+)
+BATTLE_MOVEMENT_STEP_CALLER_SITES = (0x36772, 0x36AE8)
+BATTLE_MOVEMENT_STEP_SHARED_TAIL_ADDRESS = 0x3CBDB
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -2963,6 +2982,330 @@ def battle_path_mark_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "direct_rng_draws": 0,
         "closure_boundary": (
             "sub_3721E reads, sub_371F7 writes, both callers, and shared-tail owner remain independent"
+        ),
+    }
+
+
+def battle_movement_step_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_MOVEMENT_STEP_ADDRESS,
+        end=BATTLE_MOVEMENT_STEP_END,
+        call_offsets=BATTLE_MOVEMENT_STEP_CALL_OFFSETS,
+        expected_call_targets=BATTLE_MOVEMENT_STEP_CALL_TARGETS,
+        relocation_offsets=BATTLE_MOVEMENT_STEP_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_MOVEMENT_STEP_CALLER_SITES,
+        instruction_count=215,
+        branch_count=38,
+    )
+    if contract["raw_sha256"] != (
+        "52f1523f186cd8da70fd563c4f9a50f861887289a0e04738ba7d6fb5bc143063"
+    ):
+        raise ValueError("Z.DAT per-step movement raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "a267ef00226ba24e6842d195303e5e4f409b909c027dc66ee5b27e98f812a82c"
+    ):
+        raise ValueError("Z.DAT per-step movement relocation image changed")
+
+    direction_x = list(struct.unpack_from(
+        "<4h", z_dat_bytes, BATTLE_FLOOD_DIRECTION_X_ADDRESS - Z_DAT_LOAD_BASE
+    ))
+    direction_y = list(struct.unpack_from(
+        "<4h", z_dat_bytes, BATTLE_FLOOD_DIRECTION_Y_ADDRESS - Z_DAT_LOAD_BASE
+    ))
+    directions = list(zip(direction_x, direction_y))
+    if directions != [(0, -1), (1, 0), (-1, 0), (0, 1)]:
+        raise ValueError("per-step movement direction table changed")
+    shared_tail = z_dat_bytes[
+        BATTLE_MOVEMENT_STEP_SHARED_TAIL_ADDRESS - Z_DAT_LOAD_BASE:
+        0x3CBE3 - Z_DAT_LOAD_BASE
+    ].hex()
+    if shared_tail != "83c4185d5f5e5bc3":
+        raise ValueError("per-step movement shared epilogue changed")
+    caller_sequences = {
+        "0x36772": z_dat_bytes[
+            0x3675E - Z_DAT_LOAD_BASE:0x36777 - Z_DAT_LOAD_BASE
+        ].hex(),
+        "0x36ae8": z_dat_bytes[
+            0x36AE1 - Z_DAT_LOAD_BASE:0x36AF2 - Z_DAT_LOAD_BASE
+        ].hex(),
+    }
+    if caller_sequences != {
+        "0x36772": "0fbf44243c500fbf44243c506a010fbf44244050e8de0b0000",
+        "0x36ae8": "6a006a006a0053e86808000083c41031c0",
+    }:
+        raise ValueError("per-step movement caller arguments changed")
+
+    def signed_word(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    def signed_divide_by_ten(value: int) -> int:
+        value = signed_word(value)
+        return -(abs(value) // 10) if value < 0 else value // 10
+
+    def view_offset(value: int) -> int:
+        return min(32, max(0, signed_word(value - 11)))
+
+    def machine_step(
+        current: tuple[int, int],
+        marked: set[tuple[int, int]],
+        slot: int,
+        role_speed: int,
+        physical_power: int,
+        round_value: int,
+    ) -> dict[str, object]:
+        next_coordinate = None
+        direction_index = None
+        last_candidate = None
+        for index, direction in enumerate(directions):
+            candidate = (
+                signed_word(current[0] + direction[0]),
+                signed_word(current[1] + direction[1]),
+            )
+            last_candidate = candidate
+            if (
+                0 <= candidate[0] < 64 and 0 <= candidate[1] < 64
+                and candidate in marked
+            ):
+                next_coordinate = candidate
+                direction_index = index
+                break
+        if next_coordinate is None:
+            return {
+                "moved": False,
+                "current_remains": list(current),
+                "stop_candidate": list(last_candidate),
+            }
+        speed_step = signed_divide_by_ten(role_speed)
+        new_physical_power = signed_word(physical_power)
+        if signed_word(round_value) == speed_step:
+            new_physical_power = signed_word(new_physical_power - 1)
+            if new_physical_power < 0:
+                new_physical_power = 0
+        return {
+            "moved": True,
+            "from": list(current),
+            "to": list(next_coordinate),
+            "direction": direction_index,
+            "path_old": 255,
+            "occupancy_old": -1,
+            "occupancy_new": signed_word(slot),
+            "speed_step": speed_step,
+            "physical_power": new_physical_power,
+            "round_value": signed_word(round_value - 1),
+            "view_center": list(next_coordinate),
+            "view": [view_offset(next_coordinate[0]), view_offset(next_coordinate[1])],
+        }
+
+    def machine_should_stop(
+        player_flag: int,
+        mode: int,
+        destination: tuple[int, int],
+        current: tuple[int, int],
+        round_value: int,
+        target: tuple[int, int],
+        range_value: int,
+    ) -> bool:
+        if player_flag == 0:
+            return current == destination
+        if player_flag != 1:
+            return False
+        if mode in (0, 3):
+            return current == destination or signed_word(round_value) <= 0
+        distance = abs(target[0] - current[0]) + abs(target[1] - current[1])
+        if mode == 1:
+            return (
+                current == destination or signed_word(round_value) <= 0
+                or distance <= range_value
+            )
+        if mode == 2:
+            return (
+                current == destination or signed_word(round_value) <= 0
+                or (
+                    distance <= range_value
+                    and (target[0] == current[0] or target[1] == current[1])
+                )
+            )
+        return False
+
+    synthetic_vectors = {
+        "up_before_other_marked_neighbors": machine_step(
+            (10, 10), {(10, 9), (11, 10), (9, 10), (10, 11)}, 3, 100, 10, 10
+        ),
+        "right_direction_and_view_floor": machine_step(
+            (0, 0), {(1, 0)}, 4, 90, 8, 9
+        ),
+        "left_direction_and_view_ceiling": machine_step(
+            (44, 63), {(43, 63)}, 5, 100, 7, 9
+        ),
+        "down_direction": machine_step((5, 5), {(5, 6)}, 6, 100, 7, 9),
+        "physical_zero_clamps": machine_step((1, 1), {(1, 2)}, 1, 100, 0, 10),
+        "physical_min_wraps_positive": machine_step(
+            (1, 1), {(1, 2)}, 1, 100, -32768, 10
+        ),
+        "round_min_wraps_max": machine_step(
+            (1, 1), {(1, 2)}, 1, 100, 10, -32768
+        ),
+        "no_marked_neighbor": machine_step((1, 1), set(), 1, 100, 10, 10),
+        "stop_matrix": {
+            "player_destination": machine_should_stop(
+                0, 0, (2, 1), (2, 1), 5, (0, 0), 0
+            ),
+            "player_ignores_exhaustion": machine_should_stop(
+                0, 0, (9, 9), (2, 1), 0, (0, 0), 0
+            ),
+            "ai_mode0_exhausted": machine_should_stop(
+                1, 0, (9, 9), (2, 1), 0, (0, 0), 0
+            ),
+            "ai_mode3_destination": machine_should_stop(
+                1, 3, (2, 1), (2, 1), 5, (0, 0), 0
+            ),
+            "ai_mode1_in_range": machine_should_stop(
+                1, 1, (9, 9), (2, 1), 5, (4, 2), 3
+            ),
+            "ai_mode1_out_of_range": machine_should_stop(
+                1, 1, (9, 9), (2, 1), 5, (5, 2), 3
+            ),
+            "ai_mode2_in_range_off_axis": machine_should_stop(
+                1, 2, (9, 9), (2, 1), 5, (4, 2), 3
+            ),
+            "ai_mode2_in_range_same_x": machine_should_stop(
+                1, 2, (9, 9), (2, 1), 5, (2, 4), 3
+            ),
+            "ai_mode2_in_range_same_y": machine_should_stop(
+                1, 2, (9, 9), (2, 1), 5, (5, 1), 3
+            ),
+        },
+    }
+    expected_vectors = {
+        "up_before_other_marked_neighbors": {
+            "moved": True, "from": [10, 10], "to": [10, 9], "direction": 0,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 3,
+            "speed_step": 10, "physical_power": 9, "round_value": 9,
+            "view_center": [10, 9], "view": [0, 0],
+        },
+        "right_direction_and_view_floor": {
+            "moved": True, "from": [0, 0], "to": [1, 0], "direction": 1,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 4,
+            "speed_step": 9, "physical_power": 7, "round_value": 8,
+            "view_center": [1, 0], "view": [0, 0],
+        },
+        "left_direction_and_view_ceiling": {
+            "moved": True, "from": [44, 63], "to": [43, 63], "direction": 2,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 5,
+            "speed_step": 10, "physical_power": 7, "round_value": 8,
+            "view_center": [43, 63], "view": [32, 32],
+        },
+        "down_direction": {
+            "moved": True, "from": [5, 5], "to": [5, 6], "direction": 3,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 6,
+            "speed_step": 10, "physical_power": 7, "round_value": 8,
+            "view_center": [5, 6], "view": [0, 0],
+        },
+        "physical_zero_clamps": {
+            "moved": True, "from": [1, 1], "to": [1, 2], "direction": 3,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 1,
+            "speed_step": 10, "physical_power": 0, "round_value": 9,
+            "view_center": [1, 2], "view": [0, 0],
+        },
+        "physical_min_wraps_positive": {
+            "moved": True, "from": [1, 1], "to": [1, 2], "direction": 3,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 1,
+            "speed_step": 10, "physical_power": 32767, "round_value": 9,
+            "view_center": [1, 2], "view": [0, 0],
+        },
+        "round_min_wraps_max": {
+            "moved": True, "from": [1, 1], "to": [1, 2], "direction": 3,
+            "path_old": 255, "occupancy_old": -1, "occupancy_new": 1,
+            "speed_step": 10, "physical_power": 10, "round_value": 32767,
+            "view_center": [1, 2], "view": [0, 0],
+        },
+        "no_marked_neighbor": {
+            "moved": False, "current_remains": [1, 1], "stop_candidate": [1, 2],
+        },
+        "stop_matrix": {
+            "player_destination": True,
+            "player_ignores_exhaustion": False,
+            "ai_mode0_exhausted": True,
+            "ai_mode3_destination": True,
+            "ai_mode1_in_range": True,
+            "ai_mode1_out_of_range": False,
+            "ai_mode2_in_range_off_axis": False,
+            "ai_mode2_in_range_same_x": True,
+            "ai_mode2_in_range_same_y": True,
+        },
+    }
+    if synthetic_vectors != expected_vectors:
+        raise ValueError("per-step movement synthetic vectors changed")
+
+    return {
+        **contract,
+        "stack_probe_bytes": 56,
+        "globals": {
+            "source": {
+                "x": hex(BATTLE_PATH_MARK_SOURCE_X_ADDRESS),
+                "y": hex(BATTLE_PATH_MARK_SOURCE_Y_ADDRESS),
+            },
+            "destination": {
+                "x": hex(BATTLE_PATH_MARK_TARGET_X_ADDRESS),
+                "y": hex(BATTLE_PATH_MARK_TARGET_Y_ADDRESS),
+            },
+            "target_slot": "0xe6ee0",
+            "view_center": {"x": "0xe6ee4", "y": "0xe6ee2"},
+            "view_offset": {"x": "0xe6eea", "y": "0xe6ee8"},
+        },
+        "directions": [list(direction) for direction in directions],
+        "initial_current": "signed low words of path source globals",
+        "candidate_bounds": "signed 0 <= x < 64 and 0 <= y < 64",
+        "candidate_order": "up, right, left, down; first signed path word 250 wins",
+        "step_write_order": [
+            "path_old=255", "occupancy_old=-1", "occupancy_new=slot",
+            "combatant_x", "combatant_y", "direction", "sprite",
+            "conditional_physical_power", "round_value--", "view_center",
+            "view_clamp", "render", "present", "delay_40",
+        ],
+        "physical_power_condition":
+            "signed round value equals signed role speed IDIV 10 quotient",
+        "physical_power_update": "16-bit DEC then signed negative clamp to zero",
+        "round_update": "unconditional 16-bit DEC after physical-power branch",
+        "view_update":
+            "center=new coordinate; signed low-word clamp of coordinate-11 to 0..32",
+        "frame_sequence": (
+            "render, present E87BC with C0B98, delay parameter 40 after every moved step including final"
+        ),
+        "stop_rules": {
+            "player_flag_0": "destination only",
+            "ai_mode_0_or_3": "destination or signed round value <= 0",
+            "ai_mode_1": "mode0 conditions or signed Manhattan distance <= range",
+            "ai_mode_2":
+                "mode0 conditions or distance <= range and same x or same y as target slot E6EE0",
+            "other_player_flag_or_mode": "continue without an additional stop rule",
+        },
+        "no_marked_neighbor": (
+            "machine keeps stored current unchanged, leaves candidate registers at down neighbor, "
+            "applies stop rules to that candidate, and otherwise repeats without a bound; modern checked "
+            "failure replaces malformed behavior"
+        ),
+        "shared_tail": {
+            "address": hex(BATTLE_MOVEMENT_STEP_SHARED_TAIL_ADDRESS),
+            "bytes": shared_tail,
+            "effect": "add esp,24; pop ebp,edi,esi,ebx; ret; preserve EAX",
+            "owner": "external jumptable default epilogue of sub_389BF",
+        },
+        "caller_sequences": caller_sequences,
+        "caller_roles": {
+            "0x36772":
+                "AI movement pushes signed range, signed mode, 1, signed actor; ignores return and exits",
+            "0x36ae8":
+                "player movement pushes 0, 0, 0, actor; overwrites EAX with zero after return",
+        },
+        "caller_uses_return": False,
+        "synthetic_vectors": synthetic_vectors,
+        "direct_rng_draws": 0,
+        "closure_boundary": (
+            "path read/write, sprite helper, renderer, present, delay, abs helper, two callers and "
+            "shared-tail owner remain independent"
         ),
     }
 
@@ -6890,6 +7233,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_path_write_machine": battle_path_write_contract(z_dat_bytes),
         "battle_path_read_machine": battle_path_read_contract(z_dat_bytes),
         "battle_path_mark_machine": battle_path_mark_contract(z_dat_bytes),
+        "battle_movement_step_machine": battle_movement_step_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
