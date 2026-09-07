@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为80/81；其余1项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为81/81，全部owner关闭。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、1项为 `implemented_pending_review`、80项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、0项为 `implemented_pending_review`、81项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -492,6 +492,16 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 逐块对照`BattleSetup::clear_hidden_ai_targets`及正常动作、wait同槽、hidden槽跳过、战果结算后四类Session续行未发现合法caller域产品差异；机器唯一调用顺序为结果检查后cleanup、actor索引续行前cleanup，完整actor循环结束后才执行回合状态扣血。现代返回两个清除计数但Session只检查optional；非法setup安全拒绝。原机器对任意signed目标执行`target*28`读取，现代对`<-1`或`>25`安全保留且不读取数组外；实际初始化与selector合法写域为`-1`或活动槽号，归类平台安全适配。
 
 多活动源、攻击/用毒独立、同目标与自目标、hidden 0/1/2/负值、slot0/slot25、inactive target、inactive source、`-1/-2/26/32767`安全边界和无效role不参与回归通过；hidden-skip Session锁定全部活动源目标在推进前清除，outcome Session锁定战后消息确认后cleanup先于状态扣血。独立向量SHA256=`f596fa71372d63877c7acbd25eb4afce8a877d59b327144858399669ea06e084`；Golden三生成一致且历史73键逐值不变，74键SHA256=`2c2cd200fd7a5558f11b8bc515f80c3b69aef2d3fffacedf4351d05292ad3734`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；栈探测、结果/结算、caller轮循环、actor索引续行和回合状态扣血不传播closure。
+
+## 46. 战斗状态面板最终REVIEW
+
+`sub_3C6D3 @ 0x3C6D3..0x3CBE3`机器身份固定为1296 bytes、338条连续指令、39个IDA flow block、17个条件分支、14个无条件跳转、87处重定位、22次direct call、三个入口xref及唯一`RETN @ 0x3CBE2`；raw/loaded SHA256为`7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2`与`bf86a5a30d9179987631eb70fd8e4cc88005313fd8901ccb8aa60f7493762e1a`。全部fixup逆`+0x20000`后逐字节等于原资产。函数末端`0x3CBDB..0x3CBE3`另有12个外部owner直接跳入，本owner不向共享尾入口传播closure。
+
+机器以side恰0/非0选择右/左侧偏移0/220，依次绘100×140面板、头像、可选名称及体力/生命/内力三行。名称只扫描格式化scratch byte1..8的首个NUL并以`270-4*index-offset`居中，无NUL则不绘；所有数值用signed `%3d`且宽度不截断。当前HP颜色按hurt `<=33/34..66/>=67`，最大HP颜色按poison `==0/非零且<50/>=50`；MP type 0/1/2使用三组固定色，其他值保留EBX并精确复用上一段poison颜色。最大名称路径固定1次框、1次头像、6次格式化和13次文字调用。
+
+两个`sub_32E59`入口分别在玩家菜单初次与handler返回完整重绘后调用面板并present，轮询期间机器不再经过完整call site；现代缓存完整菜单帧并只覆写label。`sub_33599`入口在AI态势统计后叠加面板、present并等待300参数，现代等价重建未变化战场，`ai_wait`不重绘。逐块对照`BattleSetup::status_panel_plan`、`BattleRenderer::render_status_panel`和三条Session路径未发现合法caller域产品差异；非法slot/role/portrait安全拒绝、私有scratch和宿主分相归类平台适配。
+
+独立向量覆盖side signed边界、名称NUL 1..8/无NUL、signed `%3d`超宽、hurt/poison阈值及非法MP残值，SHA256为`f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0`。独立原资产绘制从非均匀保留帧生成party/enemy面板FNV64=`0x87ff9c43d54b7bca`/`0x0f803235628e69e5`，C++计划与像素逐值一致。Golden三生成逐字节一致且历史74键不变，正式75键SHA256=`07de27463eb6b7639caf4e9256bff9b93f4b9de8093aa4a007c86313cd6dd199`；Linux/Windows `core/app × Debug/Release`模块关闭八项矩阵全部通过，core各13/13、app各14/14。本owner归类`platform_adapted / converged_no_new_differences`，B8最终81/81关闭。
 
 ## 16. B8 实现差异审计关闭
 

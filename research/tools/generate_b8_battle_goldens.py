@@ -1033,6 +1033,33 @@ BATTLE_HIDDEN_TARGET_CLEANUP_RELOCATION_OFFSETS = (
     0x018, 0x022, 0x02C, 0x03B, 0x045, 0x04F, 0x059,
 )
 BATTLE_HIDDEN_TARGET_CLEANUP_CALLER_SITES = (0x32A0D,)
+BATTLE_STATUS_PANEL_ADDRESS = 0x3C6D3
+BATTLE_STATUS_PANEL_END = 0x3CBE3
+BATTLE_STATUS_PANEL_CALL_OFFSETS = (
+    0x005, 0x04B, 0x07F, 0x0A7, 0x1D0, 0x1F6, 0x225, 0x248,
+    0x26B, 0x28E, 0x2AA, 0x2D1, 0x32A, 0x34D, 0x37C, 0x3D5,
+    0x444, 0x473, 0x498, 0x4BA, 0x4E1, 0x503,
+)
+BATTLE_STATUS_PANEL_CALL_TARGETS = (
+    0x3ED1E, 0x2CEBF, 0x2D590, 0x3EF4A, 0x3D832, 0x3D832,
+    0x3EF4A, 0x3D832, 0x3D832, 0x3D832, 0x3D832, 0x3EF4A,
+    0x3D832, 0x3D832, 0x3EF4A, 0x3D832, 0x3D832, 0x3EF4A,
+    0x3D832, 0x3D832, 0x3EF4A, 0x3D832,
+)
+BATTLE_STATUS_PANEL_RELOCATION_OFFSETS = (
+    0x019, 0x02C, 0x054, 0x063, 0x070, 0x08A, 0x095, 0x09E,
+    0x0A3, 0x0B1, 0x0C0, 0x0C5, 0x0DA, 0x0E9, 0x0EE, 0x0FD,
+    0x10C, 0x111, 0x120, 0x12F, 0x134, 0x143, 0x152, 0x157,
+    0x169, 0x178, 0x17D, 0x18F, 0x19E, 0x1A3, 0x1AE, 0x1BD,
+    0x1C2, 0x1E0, 0x1E5, 0x209, 0x216, 0x21C, 0x221, 0x235,
+    0x23A, 0x258, 0x25D, 0x27B, 0x280, 0x29E, 0x2A3, 0x2B5,
+    0x2C2, 0x2C8, 0x2CD, 0x2DC, 0x2E9, 0x2FA, 0x314, 0x319,
+    0x33A, 0x33F, 0x360, 0x36D, 0x373, 0x378, 0x387, 0x394,
+    0x3A5, 0x3BF, 0x3C4, 0x3E8, 0x3F5, 0x406, 0x417, 0x42B,
+    0x430, 0x457, 0x464, 0x46A, 0x46F, 0x482, 0x487, 0x4A4,
+    0x4A9, 0x4C5, 0x4D2, 0x4D8, 0x4DD, 0x4ED, 0x4F2,
+)
+BATTLE_STATUS_PANEL_CALLER_SITES = (0x33140, 0x33502, 0x33668)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -10725,6 +10752,389 @@ def battle_hidden_target_cleanup_contract(z_dat_bytes: bytes) -> dict[str, objec
     }
 
 
+def battle_status_panel_contract(
+    z_dat_bytes: bytes, data_root: Path
+) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_STATUS_PANEL_ADDRESS,
+        end=BATTLE_STATUS_PANEL_END,
+        call_offsets=BATTLE_STATUS_PANEL_CALL_OFFSETS,
+        expected_call_targets=BATTLE_STATUS_PANEL_CALL_TARGETS,
+        relocation_offsets=BATTLE_STATUS_PANEL_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_STATUS_PANEL_CALLER_SITES,
+        instruction_count=338,
+        branch_count=31,
+    )
+    if contract["raw_sha256"] != (
+        "7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2"
+    ):
+        raise ValueError("Z.DAT status-panel raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "bf86a5a30d9179987631eb70fd8e4cc88005313fd8901ccb8aa60f7493762e1a"
+    ):
+        raise ValueError("Z.DAT status-panel relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("side_panel_portrait", 0x3C6E1, 0x3C75A,
+         "6e8b25e616c41161ee14c6f16043dcb108c5009d728f7f14d96464913f0044d7"),
+        ("name_layout", 0x3C75A, 0x3C8AB,
+         "599b1fbb22bfc1bca17a4a6087b5163f94d5236be64712c3d841d7f2f44bb390"),
+        ("power_row", 0x3C8AB, 0x3C923,
+         "d159bbd8b8a49812307ee366d1c44b025dfc2e0953448459206861d5229df0a5"),
+        ("hp_row", 0x3C923, 0x3CA28,
+         "a41f58e8001743e6b3106f2c6aa396f6918f8c1435ee100b989dbd7b188f0e86"),
+        ("mp_row", 0x3CA28, 0x3CBDB,
+         "3547fc7fc62f044a17062b9903dabfd66979fdb5d54fe9a32484edff1707c732"),
+        ("shared_epilogue", 0x3CBDB, 0x3CBE3,
+         "42180fdd49c1d27e1e5973f23c36803a3a176aaefc1cfc7d4afe512e005109e1"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT status-panel {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    caller_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("player_initial_full_redraw", 0x33063, 0x33158,
+         "48de8f8465d0092e993fab5cf94f8276a8f33140d6c2478858d2a84f1cee86c9"),
+        ("player_post_action_full_redraw", 0x333F4, 0x3351A,
+         "9187657b6af59c65c2557198b1abe23f569609040938d4091529c5436fc256ed"),
+        ("ai_prelude_present_wait", 0x335D8, 0x3368D,
+         "6a5e3f4657d575ff21d6e02cf4b263f1bcd20e5fd6f3746854148daf551b3c7c"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT status-panel caller {name} bytes changed")
+        caller_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def c_string(address: int) -> bytes:
+        start = address - Z_DAT_LOAD_BASE
+        end = z_dat_bytes.index(0, start)
+        return z_dat_bytes[start:end]
+
+    string_contract = {
+        "name_format": c_string(0x58A81).hex(),
+        "power_label": c_string(0x58B00).hex(),
+        "number_format": c_string(0x58B06).hex(),
+        "slash": c_string(0x58B0A).hex(),
+        "hundred": c_string(0x58B0C).hex(),
+        "life_label": c_string(0x58B10).hex(),
+        "mp_label": c_string(0x58B16).hex(),
+    }
+    expected_strings = {
+        "name_format": "2573",
+        "power_label": "ca5ea44f20",
+        "number_format": "253364",
+        "slash": "2f",
+        "hundred": "313030",
+        "life_label": "a5cda95220",
+        "mp_label": "a4baa44f20",
+    }
+    if string_contract != expected_strings:
+        raise ValueError("Z.DAT status-panel format or label strings changed")
+
+    def plan_vector(
+        *,
+        side: int,
+        name: bytes,
+        portrait_id: int,
+        physical_power: int,
+        hp: int,
+        maximum_hp: int,
+        hurt: int,
+        poison: int,
+        mp_type: int,
+        mp: int,
+        maximum_mp: int,
+    ) -> dict[str, object]:
+        side = wrapping_i16(side)
+        portrait_id = wrapping_i16(portrait_id)
+        physical_power = wrapping_i16(physical_power)
+        hp = wrapping_i16(hp)
+        maximum_hp = wrapping_i16(maximum_hp)
+        hurt = wrapping_i16(hurt)
+        poison = wrapping_i16(poison)
+        mp_type = wrapping_i16(mp_type)
+        mp = wrapping_i16(mp)
+        maximum_mp = wrapping_i16(maximum_mp)
+        side_offset = 0 if side == 0 else 220
+        null_index = next((index for index in range(1, 9) if name[index] == 0), None)
+        hurt_color = 5142 if hurt > 66 else 3600 if hurt > 33 else 1797
+        poison_color = 8993 if poison == 0 else 13623 if poison >= 50 else 12338
+        mp_color = {0: 20558, 1: 1797, 2: 26211}.get(mp_type, poison_color)
+        return {
+            "side": side,
+            "side_offset": side_offset,
+            "panel_origin": [220 - side_offset, 19],
+            "panel_size": [100, 140],
+            "portrait_origin": [242 - side_offset, 82],
+            "portrait_id": portrait_id,
+            "name_hex": name.hex(),
+            "name_null_index": null_index,
+            "name_x": None if null_index is None else 270 - 4 * null_index - side_offset,
+            "name_y": 84,
+            "physical_power": physical_power,
+            "hp": hp,
+            "maximum_hp": maximum_hp,
+            "mp": mp,
+            "maximum_mp": maximum_mp,
+            "formatted": {
+                "physical_power": f"{physical_power:3d}",
+                "hp": f"{hp:3d}",
+                "maximum_hp": f"{maximum_hp:3d}",
+                "mp": f"{mp:3d}",
+                "maximum_mp": f"{maximum_mp:3d}",
+            },
+            "hurt": hurt,
+            "poison": poison,
+            "mp_type": mp_type,
+            "hurt_color": hurt_color,
+            "poison_color": poison_color,
+            "mp_color": mp_color,
+        }
+
+    common = {
+        "portrait_id": 1,
+        "physical_power": 77,
+        "hp": 55,
+        "maximum_hp": 100,
+        "hurt": 34,
+        "poison": 50,
+        "mp_type": 3,
+        "mp": 22,
+        "maximum_mp": 80,
+    }
+    party_plan = plan_vector(side=0, name=b"AB\0XXXXXXX", **common)
+    enemy_plan = plan_vector(
+        side=-1,
+        name=b"ABCDEFGH\0X",
+        portrait_id=2,
+        physical_power=-32768,
+        hp=32767,
+        maximum_hp=-1,
+        hurt=67,
+        poison=-1,
+        mp_type=-1,
+        mp=-1234,
+        maximum_mp=32767,
+    )
+
+    palette_bytes = (data_root / "MMAP.COL").read_bytes()
+    palette = [tuple(palette_bytes[index:index + 3]) for index in range(0, 768, 3)]
+    rgb4_lookup = []
+    for red in range(16):
+        for green in range(16):
+            for blue in range(16):
+                target = (red * 4 + 2, green * 4 + 2, blue * 4 + 2)
+                rgb4_lookup.append(min(
+                    range(256),
+                    key=lambda index: sum(
+                        (target[channel] - palette[index][channel]) ** 2
+                        for channel in range(3)
+                    ),
+                ))
+    portraits = cumulative_entries(
+        (data_root / "HDGRP.IDX").read_bytes(),
+        (data_root / "HDGRP.GRP").read_bytes(),
+    )
+    ascii_font = (data_root / "FONT.X16").read_bytes()
+    big5_font = (data_root / "FONT.C16").read_bytes()
+
+    def render_pixels(plan: dict[str, object]) -> str:
+        pixels = bytearray(index % 251 for index in range(320 * 200))
+        panel_x, panel_y = plan["panel_origin"]
+        width, height = plan["panel_size"]
+
+        def blend_rectangle(x: int, y: int, rectangle_width: int, rectangle_height: int) -> None:
+            for destination_y in range(max(y, 0), min(y + rectangle_height, 200)):
+                for destination_x in range(max(x, 0), min(x + rectangle_width, 320)):
+                    offset = destination_y * 320 + destination_x
+                    destination_rgb = palette[pixels[offset]]
+                    source_rgb = palette[0]
+                    components = tuple(
+                        source_rgb[index] // 8 + destination_rgb[index] // 8
+                        for index in range(3)
+                    )
+                    pixels[offset] = rgb4_lookup[
+                        components[0] * 256 + components[1] * 16 + components[2]
+                    ]
+
+        for rectangle in (
+            (panel_x + 5, panel_y, width - 10, 1),
+            (panel_x + 4, panel_y + 1, width - 8, 1),
+            (panel_x + 3, panel_y + 2, width - 6, 1),
+            (panel_x + 2, panel_y + 3, width - 4, 1),
+            (panel_x + 1, panel_y + 4, width - 2, 1),
+            (panel_x, panel_y + 5, width, height - 10),
+            (panel_x + 1, panel_y + height - 5, width - 2, 1),
+            (panel_x + 2, panel_y + height - 4, width - 4, 1),
+            (panel_x + 3, panel_y + height - 3, width - 6, 1),
+            (panel_x + 4, panel_y + height - 2, width - 8, 1),
+            (panel_x + 5, panel_y + height - 1, width - 10, 1),
+        ):
+            blend_rectangle(*rectangle)
+        for left, top, rectangle_width, rectangle_height in (
+            (panel_x + 5, panel_y + 1, width - 10, 1),
+            (panel_x + 4, panel_y + 2, 1, 2),
+            (panel_x + width - 5, panel_y + 2, 1, 2),
+            (panel_x + 2, panel_y + 4, 2, 1),
+            (panel_x + width - 4, panel_y + 4, 2, 1),
+            (panel_x + 1, panel_y + 5, 1, height - 10),
+            (panel_x + width - 2, panel_y + 5, 1, height - 10),
+            (panel_x + 2, panel_y + height - 5, 2, 1),
+            (panel_x + width - 4, panel_y + height - 5, 2, 1),
+            (panel_x + 4, panel_y + height - 4, 1, 2),
+            (panel_x + width - 5, panel_y + height - 4, 1, 2),
+            (panel_x + 5, panel_y + height - 2, width - 10, 1),
+        ):
+            for row in range(top, top + rectangle_height):
+                begin = row * 320 + left
+                pixels[begin:begin + rectangle_width] = bytes([0xFF]) * rectangle_width
+        draw_battle_sprite(
+            pixels,
+            portraits[int(plan["portrait_id"])],
+            int(plan["portrait_origin"][0]),
+            int(plan["portrait_origin"][1]),
+        )
+        name_x = plan["name_x"]
+        if name_x is not None:
+            name = bytes.fromhex(str(plan["name_hex"]))
+            draw_battle_text(
+                pixels,
+                int(name_x),
+                int(plan["name_y"]),
+                name.split(b"\0", 1)[0] + b"\0",
+                ascii_font,
+                big5_font,
+                0x0705,
+            )
+        side_offset = int(plan["side_offset"])
+        labels = (
+            (225, 101, bytes.fromhex(expected_strings["power_label"]), 0x2321),
+            (262, 101, str(plan["formatted"]["physical_power"]).encode(), 0x0705),
+            (285, 101, b"/", 0x6663),
+            (292, 101, b"100", 0x2321),
+            (225, 118, bytes.fromhex(expected_strings["life_label"]), 0x2321),
+            (262, 118, str(plan["formatted"]["hp"]).encode(), int(plan["hurt_color"])),
+            (285, 118, b"/", 0x6663),
+            (292, 118, str(plan["formatted"]["maximum_hp"]).encode(), int(plan["poison_color"])),
+            (225, 135, bytes.fromhex(expected_strings["mp_label"]), 0x2321),
+            (262, 135, str(plan["formatted"]["mp"]).encode(), int(plan["mp_color"])),
+            (285, 135, b"/", int(plan["mp_color"])),
+            (292, 135, str(plan["formatted"]["maximum_mp"]).encode(), int(plan["mp_color"])),
+        )
+        for x, y, text, colors in labels:
+            draw_battle_text(
+                pixels, x - side_offset, y, text + b"\0",
+                ascii_font, big5_font, colors,
+            )
+        return fnv1a_bytes(pixels)
+
+    name_positions = {}
+    for null_index in range(1, 9):
+        name = bytearray(b"ABCDEFGHIJ")
+        name[null_index] = 0
+        name_positions[str(null_index)] = plan_vector(
+            side=0, name=bytes(name), **common
+        )["name_x"]
+    name_positions["none_in_1_to_8"] = plan_vector(
+        side=0, name=b"ABCDEFGHIJ", **common
+    )["name_x"]
+    hurt_colors = {
+        str(value): plan_vector(side=0, name=b"AB\0XXXXXXX", **{
+            **common, "hurt": value
+        })["hurt_color"]
+        for value in (-32768, 33, 34, 66, 67, 32767)
+    }
+    poison_colors = {
+        str(value): plan_vector(side=0, name=b"AB\0XXXXXXX", **{
+            **common, "poison": value
+        })["poison_color"]
+        for value in (-32768, 0, 1, 49, 50, 32767)
+    }
+    mp_colors = {
+        str(value): plan_vector(side=0, name=b"AB\0XXXXXXX", **{
+            **common, "poison": -1, "mp_type": value
+        })["mp_color"]
+        for value in (-32768, 0, 1, 2, 3, 32767)
+    }
+    vectors = {
+        "side_offsets": {
+            str(value): plan_vector(side=value, name=b"AB\0XXXXXXX", **common)[
+                "side_offset"
+            ]
+            for value in (-32768, -1, 0, 1, 32767)
+        },
+        "name_positions": name_positions,
+        "hurt_colors": hurt_colors,
+        "poison_colors": poison_colors,
+        "mp_colors_with_negative_poison_fallback": mp_colors,
+        "format_width_three": {
+            str(value): f"{wrapping_i16(value):3d}"
+            for value in (-32768, -1234, -1, 0, 999, 1000, 32767)
+        },
+        "party_plan": party_plan,
+        "enemy_plan": enemy_plan,
+        "party_pixel_hash": render_pixels(party_plan),
+        "enemy_pixel_hash": render_pixels(enemy_plan),
+    }
+    vector_bytes = json.dumps(
+        vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    vector_sha256 = sha256(vector_bytes)
+    if vector_sha256 != "f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0":
+        raise ValueError(
+            f"battle status-panel independent vector set changed: {vector_sha256}"
+        )
+
+    return {
+        **contract,
+        "basic_block_count": 39,
+        "conditional_branch_count": 17,
+        "unconditional_jump_count": 14,
+        "local_return_sites": ["0x3cbe2"],
+        "machine_slices": machine_slices,
+        "caller_slices": caller_slices,
+        "string_contract": string_contract,
+        "row_order": [
+            "box", "portrait", "optional_name",
+            "power_label", "physical_power", "power_slash", "fixed_100",
+            "life_label", "hp", "life_slash", "maximum_hp",
+            "mp_label", "mp", "mp_slash", "maximum_mp",
+        ],
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "direct_rng_calls": 0,
+        "machine_return": "EAX renderer residue ignored at all three call sites",
+        "platform_adaptation_boundary": (
+            "modern host safely rejects invalid combatant or role indices and invalid portrait "
+            "assets, uses private formatting storage and deterministic empty-name handling, and "
+            "splits present/wait phases; legal actor data, draw order, packed colors and pixels "
+            "are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, box/portrait/text helpers, two caller owners and the shared epilogue's "
+            "twelve other incoming owner edges remain independent"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -14980,6 +15390,8 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_round_status_damage_machine": battle_round_status_damage_contract(z_dat_bytes),
         "battle_hidden_target_cleanup_machine":
             battle_hidden_target_cleanup_contract(z_dat_bytes),
+        "battle_status_panel_machine":
+            battle_status_panel_contract(z_dat_bytes, data_root),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

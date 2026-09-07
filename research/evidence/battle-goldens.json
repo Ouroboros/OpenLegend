@@ -20787,6 +20787,299 @@
     "platform_adaptation_boundary": "modern host preserves invalid targets outside 0..25 without performing the original out-of-bounds occupancy read and rejects an invalid setup; legal -1 or slot target state, source/field order and exact hidden-one writes are preserved",
     "closure_boundary": "stack probe, sole round-loop caller, outcome/result handling, actor-index continuation and round-status damage remain independent owners"
   },
+  "battle_status_panel_machine": {
+    "address": "0x3c6d3",
+    "end": "0x3cbe3",
+    "raw_offset": "0x360d3",
+    "size": 1296,
+    "instruction_count": 338,
+    "branch_count": 31,
+    "raw_sha256": "7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2",
+    "loaded_sha256": "bf86a5a30d9179987631eb70fd8e4cc88005313fd8901ccb8aa60f7493762e1a",
+    "relocation_count": 87,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3c6d8",
+      "0x3c71e",
+      "0x3c752",
+      "0x3c77a",
+      "0x3c8a3",
+      "0x3c8c9",
+      "0x3c8f8",
+      "0x3c91b",
+      "0x3c93e",
+      "0x3c961",
+      "0x3c97d",
+      "0x3c9a4",
+      "0x3c9fd",
+      "0x3ca20",
+      "0x3ca4f",
+      "0x3caa8",
+      "0x3cb17",
+      "0x3cb46",
+      "0x3cb6b",
+      "0x3cb8d",
+      "0x3cbb4",
+      "0x3cbd6"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x2cebf",
+      "0x2d590",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d832",
+      "0x3d832",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832"
+    ],
+    "callers": [
+      "0x33140",
+      "0x33502",
+      "0x33668"
+    ],
+    "basic_block_count": 39,
+    "conditional_branch_count": 17,
+    "unconditional_jump_count": 14,
+    "local_return_sites": [
+      "0x3cbe2"
+    ],
+    "machine_slices": {
+      "side_panel_portrait": {
+        "address": "0x3c6e1",
+        "end": "0x3c75a",
+        "size": 121,
+        "sha256": "6e8b25e616c41161ee14c6f16043dcb108c5009d728f7f14d96464913f0044d7"
+      },
+      "name_layout": {
+        "address": "0x3c75a",
+        "end": "0x3c8ab",
+        "size": 337,
+        "sha256": "599b1fbb22bfc1bca17a4a6087b5163f94d5236be64712c3d841d7f2f44bb390"
+      },
+      "power_row": {
+        "address": "0x3c8ab",
+        "end": "0x3c923",
+        "size": 120,
+        "sha256": "d159bbd8b8a49812307ee366d1c44b025dfc2e0953448459206861d5229df0a5"
+      },
+      "hp_row": {
+        "address": "0x3c923",
+        "end": "0x3ca28",
+        "size": 261,
+        "sha256": "a41f58e8001743e6b3106f2c6aa396f6918f8c1435ee100b989dbd7b188f0e86"
+      },
+      "mp_row": {
+        "address": "0x3ca28",
+        "end": "0x3cbdb",
+        "size": 435,
+        "sha256": "3547fc7fc62f044a17062b9903dabfd66979fdb5d54fe9a32484edff1707c732"
+      },
+      "shared_epilogue": {
+        "address": "0x3cbdb",
+        "end": "0x3cbe3",
+        "size": 8,
+        "sha256": "42180fdd49c1d27e1e5973f23c36803a3a176aaefc1cfc7d4afe512e005109e1"
+      }
+    },
+    "caller_slices": {
+      "player_initial_full_redraw": {
+        "address": "0x33063",
+        "end": "0x33158",
+        "size": 245,
+        "sha256": "48de8f8465d0092e993fab5cf94f8276a8f33140d6c2478858d2a84f1cee86c9"
+      },
+      "player_post_action_full_redraw": {
+        "address": "0x333f4",
+        "end": "0x3351a",
+        "size": 294,
+        "sha256": "9187657b6af59c65c2557198b1abe23f569609040938d4091529c5436fc256ed"
+      },
+      "ai_prelude_present_wait": {
+        "address": "0x335d8",
+        "end": "0x3368d",
+        "size": 181,
+        "sha256": "6a5e3f4657d575ff21d6e02cf4b263f1bcd20e5fd6f3746854148daf551b3c7c"
+      }
+    },
+    "string_contract": {
+      "name_format": "2573",
+      "power_label": "ca5ea44f20",
+      "number_format": "253364",
+      "slash": "2f",
+      "hundred": "313030",
+      "life_label": "a5cda95220",
+      "mp_label": "a4baa44f20"
+    },
+    "row_order": [
+      "box",
+      "portrait",
+      "optional_name",
+      "power_label",
+      "physical_power",
+      "power_slash",
+      "fixed_100",
+      "life_label",
+      "hp",
+      "life_slash",
+      "maximum_hp",
+      "mp_label",
+      "mp",
+      "mp_slash",
+      "maximum_mp"
+    ],
+    "vectors": {
+      "side_offsets": {
+        "-32768": 220,
+        "-1": 220,
+        "0": 0,
+        "1": 220,
+        "32767": 220
+      },
+      "name_positions": {
+        "1": 266,
+        "2": 262,
+        "3": 258,
+        "4": 254,
+        "5": 250,
+        "6": 246,
+        "7": 242,
+        "8": 238,
+        "none_in_1_to_8": null
+      },
+      "hurt_colors": {
+        "-32768": 1797,
+        "33": 1797,
+        "34": 3600,
+        "66": 3600,
+        "67": 5142,
+        "32767": 5142
+      },
+      "poison_colors": {
+        "-32768": 12338,
+        "0": 8993,
+        "1": 12338,
+        "49": 12338,
+        "50": 13623,
+        "32767": 13623
+      },
+      "mp_colors_with_negative_poison_fallback": {
+        "-32768": 12338,
+        "0": 20558,
+        "1": 1797,
+        "2": 26211,
+        "3": 12338,
+        "32767": 12338
+      },
+      "format_width_three": {
+        "-32768": "-32768",
+        "-1234": "-1234",
+        "-1": " -1",
+        "0": "  0",
+        "999": "999",
+        "1000": "1000",
+        "32767": "32767"
+      },
+      "party_plan": {
+        "side": 0,
+        "side_offset": 0,
+        "panel_origin": [
+          220,
+          19
+        ],
+        "panel_size": [
+          100,
+          140
+        ],
+        "portrait_origin": [
+          242,
+          82
+        ],
+        "portrait_id": 1,
+        "name_hex": "41420058585858585858",
+        "name_null_index": 2,
+        "name_x": 262,
+        "name_y": 84,
+        "physical_power": 77,
+        "hp": 55,
+        "maximum_hp": 100,
+        "mp": 22,
+        "maximum_mp": 80,
+        "formatted": {
+          "physical_power": " 77",
+          "hp": " 55",
+          "maximum_hp": "100",
+          "mp": " 22",
+          "maximum_mp": " 80"
+        },
+        "hurt": 34,
+        "poison": 50,
+        "mp_type": 3,
+        "hurt_color": 3600,
+        "poison_color": 13623,
+        "mp_color": 13623
+      },
+      "enemy_plan": {
+        "side": -1,
+        "side_offset": 220,
+        "panel_origin": [
+          0,
+          19
+        ],
+        "panel_size": [
+          100,
+          140
+        ],
+        "portrait_origin": [
+          22,
+          82
+        ],
+        "portrait_id": 2,
+        "name_hex": "41424344454647480058",
+        "name_null_index": 8,
+        "name_x": 18,
+        "name_y": 84,
+        "physical_power": -32768,
+        "hp": 32767,
+        "maximum_hp": -1,
+        "mp": -1234,
+        "maximum_mp": 32767,
+        "formatted": {
+          "physical_power": "-32768",
+          "hp": "32767",
+          "maximum_hp": " -1",
+          "mp": "-1234",
+          "maximum_mp": "32767"
+        },
+        "hurt": 67,
+        "poison": -1,
+        "mp_type": -1,
+        "hurt_color": 5142,
+        "poison_color": 12338,
+        "mp_color": 12338
+      },
+      "party_pixel_hash": "0x87ff9c43d54b7bca",
+      "enemy_pixel_hash": "0x0f803235628e69e5"
+    },
+    "vector_sha256": "f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0",
+    "direct_rng_calls": 0,
+    "machine_return": "EAX renderer residue ignored at all three call sites",
+    "platform_adaptation_boundary": "modern host safely rejects invalid combatant or role indices and invalid portrait assets, uses private formatting storage and deterministic empty-name handling, and splits present/wait phases; legal actor data, draw order, packed colors and pixels are preserved",
+    "closure_boundary": "stack probe, box/portrait/text helpers, two caller owners and the shared epilogue's twelve other incoming owner edges remain independent"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
