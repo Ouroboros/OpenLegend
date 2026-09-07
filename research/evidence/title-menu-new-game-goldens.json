@@ -122,6 +122,450 @@
     },
     "contract_sha256": "59bb83d28586b8871cf9446349b0d1cd1840488e990a88e1f14c0e061cf4b389"
   },
+  "game_menu_item_selector_machine": {
+    "raw_range": "Z.DAT[0x2426c:0x24c27]",
+    "loaded_range": "0x2a86c..0x2b227",
+    "size_bytes": 2491,
+    "instruction_count": 548,
+    "basic_block_count": 137,
+    "conditional_branch_count": 77,
+    "unconditional_jump_count": 35,
+    "call_count": 47,
+    "call_targets": [
+      "0x3ed1e",
+      "0x2a186",
+      "0x2558b",
+      "0x29d2d",
+      "0x3aa85",
+      "0x3d6d1",
+      "0x2b288",
+      "0x22090",
+      "0x2bd8b",
+      "0x2558b",
+      "0x29d2d",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d6d1",
+      "0x2558b",
+      "0x29d2d",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d6d1",
+      "0x20c32",
+      "0x22090",
+      "0x2558b",
+      "0x29d2d",
+      "0x2cebf",
+      "0x2bd8b",
+      "0x2558b",
+      "0x29d2d",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d6d1",
+      "0x20c32",
+      "0x2558b",
+      "0x29d2d",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x22090",
+      "0x2b483",
+      "0x2b227",
+      "0x20c32",
+      "0x2b483"
+    ],
+    "fixup_count": 167,
+    "relocation_delta": "0x20000",
+    "raw_sha256": "7494f3fde6bf4003b02830c6fb99e3899e2332bb3ccf94367f4eaf254347ae9f",
+    "loaded_sha256": "813c4e3369973a4ed502e1c2193d4574d8f64340aadc0623769a07d092b4fd98",
+    "normalized_loaded_equals_raw": true,
+    "entry_xrefs": [
+      "sub_2a0d9:0x2a106",
+      "sub_3a29c:0x3a2d4"
+    ],
+    "external_internal_entries": [],
+    "last_key_write_addresses": [
+      "0x2a88b",
+      "0x2a8c6",
+      "0x2a90f",
+      "0x2a924",
+      "0x2a93b",
+      "0x2a950",
+      "0x2a968",
+      "0x2a980",
+      "0x2a9d3",
+      "0x2a9e1",
+      "0x2adc0",
+      "0x2afe5",
+      "0x2b1dc",
+      "0x2b218"
+    ],
+    "last_key_selector_reads": [
+      "0x2a8ea"
+    ],
+    "last_key_uppercase_y_reads": [
+      "0x2adcc",
+      "0x2aff1"
+    ],
+    "shared_tail": {
+      "range": "0x2a0d1..0x2a0d9",
+      "bytes_sha256": "b389950002ba37dbf8ee72e175c575064b3a60d86d656fbc1a0aebbdf240f405",
+      "other_owner": "sub_29d2d",
+      "other_entries": [
+        "0x2a0ce",
+        "0x2a055",
+        "0x2a0bc"
+      ]
+    },
+    "caller_raw_sha256": {
+      "sub_2a0d9": "1fd36ede5cb17507e24e83bc883074f6205a911ee34359aad6514b6280a2f383",
+      "sub_3a29c": "eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7"
+    },
+    "contract": {
+      "accepted_keys": {
+        "confirm": [
+          "0x0d",
+          "0x20"
+        ],
+        "escape": "0x1b",
+        "movement": [
+          "0x98",
+          "0x99",
+          "0x9a",
+          "0x9c",
+          "0x9e",
+          "0x9f"
+        ],
+        "keypad_insert_0x96": "ignored_not_confirm"
+      },
+      "strict_visible_item_gate": "show_introduction == 1",
+      "last_key": {
+        "write_zero_count": 14,
+        "selector_read_count": 1,
+        "uppercase_y_read_count": 2
+      },
+      "callers": {
+        "0x2a0d9:0x2a106": "arguments_0_minus_1_return_ignored",
+        "0x3a29c:0x3a2d4": "arguments_4_actor_return_4_targets_return_1_action_done"
+      },
+      "exit": "0x2b222_jumps_shared_tail_0x2a0d1",
+      "owner_boundary": "input_only_ui_draw_effect_and_shared_tail_remain_separate"
+    },
+    "contract_sha256": "32629e0bed2b0284822887666be436db69ac8e37f75dcb3770533ca7e40ab4c1",
+    "vectors": [
+      {
+        "before": [
+          0,
+          0,
+          0
+        ],
+        "key": "0x9a",
+        "show_introduction": true,
+        "after": [
+          0,
+          0,
+          4
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          0,
+          0,
+          3
+        ],
+        "key": "0x9a",
+        "show_introduction": true,
+        "after": [
+          0,
+          0,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          0,
+          0,
+          4
+        ],
+        "key": "0x9c",
+        "show_introduction": true,
+        "after": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          0,
+          0,
+          2
+        ],
+        "key": "0x9c",
+        "show_introduction": true,
+        "after": [
+          0,
+          0,
+          3
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          4,
+          0,
+          2
+        ],
+        "key": "0x98",
+        "show_introduction": true,
+        "after": [
+          4,
+          1,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          4,
+          2,
+          2
+        ],
+        "key": "0x98",
+        "show_introduction": true,
+        "after": [
+          5,
+          2,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          37,
+          2,
+          2
+        ],
+        "key": "0x98",
+        "show_introduction": true,
+        "after": [
+          37,
+          2,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          4,
+          2,
+          2
+        ],
+        "key": "0x9e",
+        "show_introduction": true,
+        "after": [
+          4,
+          1,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          4,
+          0,
+          2
+        ],
+        "key": "0x9e",
+        "show_introduction": true,
+        "after": [
+          3,
+          0,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          0,
+          0,
+          2
+        ],
+        "key": "0x9e",
+        "show_introduction": true,
+        "after": [
+          0,
+          0,
+          2
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          34,
+          1,
+          1
+        ],
+        "key": "0x99",
+        "show_introduction": true,
+        "after": [
+          37,
+          1,
+          1
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          35,
+          1,
+          1
+        ],
+        "key": "0x99",
+        "show_introduction": true,
+        "after": [
+          35,
+          1,
+          1
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          3,
+          1,
+          1
+        ],
+        "key": "0x9f",
+        "show_introduction": true,
+        "after": [
+          0,
+          1,
+          1
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          2,
+          1,
+          1
+        ],
+        "key": "0x9f",
+        "show_introduction": true,
+        "after": [
+          2,
+          1,
+          1
+        ],
+        "outcome": "redraw"
+      },
+      {
+        "before": [
+          2,
+          1,
+          3
+        ],
+        "key": "0x0d",
+        "show_introduction": true,
+        "grid_index": 18,
+        "mapped_inventory_slot": 37,
+        "after": [
+          2,
+          1,
+          3
+        ],
+        "outcome": "return_1"
+      },
+      {
+        "before": [
+          2,
+          1,
+          3
+        ],
+        "key": "0x20",
+        "show_introduction": true,
+        "grid_index": 18,
+        "mapped_inventory_slot": 37,
+        "after": [
+          2,
+          1,
+          3
+        ],
+        "outcome": "return_1"
+      },
+      {
+        "before": [
+          2,
+          1,
+          3
+        ],
+        "key": "0x0d",
+        "show_introduction": false,
+        "after": [
+          2,
+          1,
+          3
+        ],
+        "outcome": "wait"
+      },
+      {
+        "before": [
+          2,
+          1,
+          3
+        ],
+        "key": "0x96",
+        "show_introduction": true,
+        "after": [
+          2,
+          1,
+          3
+        ],
+        "outcome": "wait"
+      },
+      {
+        "before": [
+          2,
+          1,
+          3
+        ],
+        "key": "0x1b",
+        "show_introduction": true,
+        "after": [
+          2,
+          1,
+          3
+        ],
+        "outcome": "return_0"
+      },
+      {
+        "before": [
+          2,
+          1,
+          3
+        ],
+        "key": "0x41",
+        "show_introduction": true,
+        "after": [
+          2,
+          1,
+          3
+        ],
+        "outcome": "wait"
+      }
+    ],
+    "vectors_sha256": "f80f863c607a8d9aea5b9a678e7a9bb644608cc6c57d838d014479df2f49f09a"
+  },
   "runtime_ui_regression_fnv1a64": {
     "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
     "status_selector": "85fc6aad255a1c1b",

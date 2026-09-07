@@ -119,9 +119,9 @@ wait   = 7333253ca7400de6
 
 现代实现由`BattleRenderer`单一拥有参数0/1/2/6选择框、医疗/解毒能力列表与两页状态像素；`BattleSession`与`LegacyGameRuntime`分别提供战斗及世界/场景背景。参数0以`%3d/%3d`显示生命，参数1以`%3d`显示中毒，参数2保留纯姓名状态选择；`GameMenuController`保存过滤后的party slot、嵌套施术者/目标状态和`status_page=0/1`两次同步返回合同。全部值直接读取当前RANGER的`int16`/raw bits，不拥有或复制第二份角色状态。旧`BasicUiRenderer`简化状态页已删除。世界整帧回归固定医疗、解毒、状态选择与结果，场景回归确认框/面板之外逐像素保持场景背景。
 
-物品入口 `sub_2A0D9` 依次调用 reset/draw/select，机器从header的200格物品/数量对建立5×3图标网格，并处理左右列回绕、上下行/滚页、PageUp/PageDown、Escape、三确认键、上下箭头、secondary name、简介及数量。共享 `sub_2D501` 四边框primitive已映射到 `IndexedFramebuffer::outline_rectangle`，battle物品选择按原几何接线；当前world/scene的 `BasicUiRenderer::render_items` 实际仍为8行文字列表，未实现同一5×3网格。
+物品入口 `sub_2A0D9` 依次调用 reset/draw/select，机器从header的200格物品/数量对建立5×3图标网格，并处理左右列回绕、上下行/滚页、PageUp/PageDown、Escape、Enter/Space确认、上下箭头、secondary name、简介及数量；keypad Insert`0x96`不确认物品。共享 `sub_2D501` 四边框primitive已映射到 `IndexedFramebuffer::outline_rectangle`，battle物品选择按原几何接线；当前world/scene的 `BasicUiRenderer::render_items` 实际仍为8行文字列表，未实现同一5×3网格。
 
-`sub_2A0D9`的input-font owner现已独立终审：wrapper在caller预清last-key及三确认键后再次清last-key，现代把两次相邻写零合并到不可重入的SDL事件返回边界，下一事件前清理且中间无last-key读，零产品差异。该结论不关闭同址UI owner；`sub_2A10F` reset、`sub_2A186` draw/present、`sub_2A86C` selection loop及装备/修炼/消耗品或事件分支继续按各自owner最终审计。
+`sub_2A0D9`的input-font owner已独立终审：wrapper在caller预清last-key及三确认键态后再次清last-key，现代把两次相邻写零合并到不可重入的SDL事件返回边界，下一事件前清理且中间无last-key读，零产品差异。`sub_2A86C`的input-font owner也已从2491字节机器入口终审：首轮发现world/scene与battle物品选择错误接受Insert，现仅在物品选择上下文收窄为Enter/Space；修正后重审548条指令和137块零新增差异。该结论不关闭同址UI owner；`sub_2A10F` reset、`sub_2A186` draw/present、物品选择UI绘制及装备/修炼/消耗品或事件分支继续按各自owner最终审计。
 
 ## 7. 失败、所有权与阶段边界
 

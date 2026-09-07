@@ -4780,6 +4780,14 @@ void run_player_item_session_test(
         ranger->header.set_inventory(0U, openlegend::model::ItemId{10}, 2);
         session->finish_presented_tick(800U);
 
+        OL_CHECK(session->handle_key(0x96U) == BattleSessionInputResult::ignored);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_selection);
+        OL_CHECK(session->player_item_selection() != nullptr);
+        OL_CHECK(session->player_item_page() == 0);
+        OL_CHECK(session->player_item_row() == 0);
+        OL_CHECK(session->player_item_column() == 0);
+        OL_CHECK(actor.word(role_word::hp) == 50);
+        OL_CHECK(ranger->header.inventory_count(0U) == 2);
         OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::item_selected);
         OL_CHECK(session->phase() == BattleSessionPhase::player_item_effect_present);
         OL_CHECK(std::ranges::count(session->setup().attack_effects(), 1) == 0);

@@ -72,7 +72,17 @@ IRQ 体严格按以下顺序执行：
 
 现代`GameMenuController`在selection 2确认时切到items并把page/row/column归零；`LegacyGameRuntime`按dispatch前保存的main screen回报`confirmation_group`。SDL在同步回调返回后清三个确认键态并无条件`clear_last_key()`，然后才轮询下一事件。该不可重入边界合并了机器caller与包装器两次相邻清零，且中间现代代码不读取last-key，input owner无可观察差异。初始物品reset/draw/present/select及world/scene物品画面仍是同址UI与delegated callee的独立owner，不从本项传播closure。
 
-机器合同SHA256为`59bb83d28586b8871cf9446349b0d1cd1840488e990a88e1f14c0e061cf4b389`；正式`title-menu-new-game-goldens.json`经三次一致生成后SHA256为`257e36bc9078c4c57f14b06c5d87c9b6130efabedd6e7e43ec6a5fa45307bc7b`。
+机器合同SHA256为`59bb83d28586b8871cf9446349b0d1cd1840488e990a88e1f14c0e061cf4b389`；Order19关闭时的`title-menu-new-game-goldens.json`经三次一致生成后SHA256为`257e36bc9078c4c57f14b06c5d87c9b6130efabedd6e7e43ec6a5fa45307bc7b`。
+
+### 2.5 物品选择只接受Enter与Space
+
+`sub_2A86C @ 0x2A86C..0x2B227`为2491 bytes、548条指令、137个基本块、77个条件分支、35个无条件跳转（34个本地、1个共享尾出口）和47次call。167项重定位均为`+0x20000`；raw/loaded SHA256分别为`7494f3fde6bf4003b02830c6fb99e3899e2332bb3ccf94367f4eaf254347ae9f`与`813c4e3369973a4ed502e1c2193d4574d8f64340aadc0623769a07d092b4fd98`。函数没有本地`RET`，最终跳到归属`sub_29D2D`的共享清理尾`0x2A0D1..0x2A0D9`，本项不传播共享尾closure。
+
+选择循环精确接受Enter`0x0D`、Space`0x20`、Escape`0x1B`、Down/PageDown/Left/Right/Up/PageUp`0x98/0x99/0x9A/0x9C/0x9E/0x9F`。keypad Insert`0x96`沿小于Down但不等于Enter/Space的失败路径继续等待，**不确认物品**。方向与翻页按5列、3行及page 0..37边界更新；确认索引为`5 * (page + row) + column`，并严格要求映射item的`show_introduction == 1`。
+
+首轮对照发现world/scene的`GameMenuController`和battle的`BattleSession`都错误接受Insert确认物品。现仅在这两个物品选择上下文把确认集合收窄为Enter/Space，其他菜单和战斗动作的Insert确认不变。修正后从入口重新覆盖548条指令和全部137块，14次last-key写0、选择循环读取、两次严格大写Y读取、两个caller及全部出口零新增input owner差异。
+
+机器合同SHA256为`32629e0bed2b0284822887666be436db69ac8e37f75dcb3770533ca7e40ab4c1`，20组状态向量SHA256为`f80f863c607a8d9aea5b9a678e7a9bb644608cc6c57d838d014479df2f49f09a`。两份临时Golden与正式第三次生成逐字节一致；当前`title-menu-new-game-goldens.json` SHA256为`33f8bd403715655e0a49b3f287e0c4ff9c2d8ca2cf0a2b9239f8c6a96e469d04`。同址UI绘制、物品资格/效果、库存、事件与共享尾owner继续独立审计。
 
 ## 3. 时间边界
 

@@ -468,6 +468,11 @@ void check_game_menu_controller() {
     OL_CHECK(items.item_selection() == 0U);
     static_cast<void>(items.handle_key(0x9CU));
     static_cast<void>(items.handle_key(0x9CU));
+    result = items.handle_key(0x96U);
+    OL_CHECK(result.command == GameMenuCommand::none);
+    OL_CHECK(result.index == 0U);
+    OL_CHECK(items.screen() == GameMenuScreen::items);
+    OL_CHECK(items.item_selection() == 2U);
     result = items.handle_key(0x0DU);
     OL_CHECK(result.command == GameMenuCommand::items);
     OL_CHECK(result.index == 2U);

@@ -236,7 +236,8 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             return {};
         }
     }
-    if (!confirms(translated_key)) {
+    if (!confirms(translated_key) ||
+        (screen_ == GameMenuScreen::items && translated_key == kKeypadInsert)) {
         return {};
     }
 

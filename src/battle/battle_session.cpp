@@ -2420,7 +2420,7 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
             return BattleSessionInputResult::ignored;
         }
         return BattleSessionInputResult::item_cancelled;
-    } else if (!confirms(translated_key)) {
+    } else if (translated_key != kEnter && translated_key != kSpace) {
         return BattleSessionInputResult::ignored;
     } else {
         const auto list_index = static_cast<std::int32_t>(

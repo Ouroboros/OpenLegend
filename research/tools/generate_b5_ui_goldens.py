@@ -640,6 +640,229 @@ def game_menu_item_entry_machine(z_dat: bytes) -> dict[str, object]:
     }
 
 
+def game_menu_item_selector_machine(z_dat: bytes) -> dict[str, object]:
+    loaded_start = 0x2A86C
+    raw = z_dat[0x2426C:0x24C27]
+    assert len(raw) == 2491
+    assert sha256(raw) == "7494f3fde6bf4003b02830c6fb99e3899e2332bb3ccf94367f4eaf254347ae9f"
+
+    fixup_offsets = (
+        0x21, 0x5C, 0x7F, 0xA5, 0xBA, 0xD1, 0xE6, 0xFE, 0x116, 0x12C,
+        0x134, 0x141, 0x14F, 0x155, 0x169, 0x177, 0x17F, 0x190, 0x1A1,
+        0x1AF, 0x1B4, 0x1CD, 0x1D5, 0x1E5, 0x210, 0x224, 0x246, 0x24F,
+        0x268, 0x270, 0x27D, 0x28B, 0x293, 0x2A0, 0x2AA, 0x2B2, 0x2BF,
+        0x2CC, 0x2D6, 0x2E3, 0x2ED, 0x2FA, 0x303, 0x30B, 0x319, 0x326,
+        0x32D, 0x33E, 0x345, 0x351, 0x359, 0x366, 0x370, 0x378, 0x385,
+        0x392, 0x39C, 0x3A9, 0x3B3, 0x3C0, 0x3C9, 0x3D1, 0x3DF, 0x3EC,
+        0x3F3, 0x3FF, 0x410, 0x41F, 0x43E, 0x443, 0x457, 0x45C, 0x46E,
+        0x473, 0x487, 0x497, 0x4A5, 0x4B6, 0x4C5, 0x4E4, 0x4E9, 0x4FD,
+        0x502, 0x513, 0x518, 0x52C, 0x531, 0x543, 0x548, 0x556, 0x562,
+        0x593, 0x5A5, 0x5AD, 0x5BA, 0x5C1, 0x5D5, 0x5DD, 0x5EA, 0x5F7,
+        0x604, 0x612, 0x623, 0x632, 0x651, 0x65D, 0x666, 0x67F, 0x687,
+        0x694, 0x69E, 0x6AD, 0x6BA, 0x6CA, 0x6DB, 0x6EA, 0x709, 0x70E,
+        0x722, 0x727, 0x738, 0x73D, 0x751, 0x756, 0x768, 0x76D, 0x77B,
+        0x787, 0x797, 0x7A4, 0x7BD, 0x7C5, 0x7D3, 0x7E0, 0x7E7, 0x802,
+        0x80B, 0x815, 0x822, 0x834, 0x83E, 0x84B, 0x853, 0x860, 0x867,
+        0x86E, 0x875, 0x87C, 0x885, 0x893, 0x8A4, 0x8B3, 0x8D2, 0x8D7,
+        0x8EB, 0x8F0, 0x900, 0x922, 0x92A, 0x935, 0x94B, 0x953, 0x95B,
+        0x972, 0x97C, 0x99E, 0x9AE,
+    )
+    loaded = bytearray(raw)
+    for offset in fixup_offsets:
+        (raw_address,) = struct.unpack_from("<I", raw, offset)
+        struct.pack_into("<I", loaded, offset, raw_address + 0x20000)
+    assert sha256(loaded) == "813c4e3369973a4ed502e1c2193d4574d8f64340aadc0623769a07d092b4fd98"
+
+    calls = (
+        (0x005, 0x3ED1E), (0x06E, 0x2A186), (0x186, 0x2558B),
+        (0x197, 0x29D2D), (0x1A8, 0x3AA85), (0x1B8, 0x3D6D1),
+        (0x217, 0x2B288), (0x231, 0x22090), (0x254, 0x2BD8B),
+        (0x406, 0x2558B), (0x417, 0x29D2D), (0x435, 0x2CEBF),
+        (0x447, 0x3EF4A), (0x464, 0x3D832), (0x477, 0x3D6D1),
+        (0x4AC, 0x2558B), (0x4BD, 0x29D2D), (0x4DB, 0x2CEBF),
+        (0x4ED, 0x3EF4A), (0x50A, 0x3D832), (0x51C, 0x3EF4A),
+        (0x539, 0x3D832), (0x54C, 0x3D6D1), (0x55B, 0x20C32),
+        (0x579, 0x22090), (0x619, 0x2558B), (0x62A, 0x29D2D),
+        (0x648, 0x2CEBF), (0x66B, 0x2BD8B), (0x6D1, 0x2558B),
+        (0x6E2, 0x29D2D), (0x700, 0x2CEBF), (0x712, 0x3EF4A),
+        (0x72F, 0x3D832), (0x741, 0x3EF4A), (0x75E, 0x3D832),
+        (0x771, 0x3D6D1), (0x780, 0x20C32), (0x89A, 0x2558B),
+        (0x8AB, 0x29D2D), (0x8C9, 0x2CEBF), (0x8DB, 0x3EF4A),
+        (0x90D, 0x22090), (0x93B, 0x2B483), (0x963, 0x2B227),
+        (0x96B, 0x20C32), (0x98C, 0x2B483),
+    )
+    for offset, target in calls:
+        assert raw[offset] == 0xE8
+        (displacement,) = struct.unpack_from("<i", raw, offset + 1)
+        assert loaded_start + offset + 5 + displacement == target
+
+    raw_last_key = struct.pack("<I", 0x31B6B)
+    write_pattern = b"\xC6\x05" + raw_last_key + b"\x00"
+    selector_read_pattern = b"\xA0" + raw_last_key
+    yes_read_pattern = b"\x80\x3D" + raw_last_key + b"\x59"
+    last_key_writes = [
+        loaded_start + offset
+        for offset in range(len(raw))
+        if raw.startswith(write_pattern, offset)
+    ]
+    selector_reads = [
+        loaded_start + offset
+        for offset in range(len(raw))
+        if raw.startswith(selector_read_pattern, offset)
+    ]
+    yes_reads = [
+        loaded_start + offset
+        for offset in range(len(raw))
+        if raw.startswith(yes_read_pattern, offset)
+    ]
+    assert last_key_writes == [
+        0x2A88B, 0x2A8C6, 0x2A90F, 0x2A924, 0x2A93B, 0x2A950,
+        0x2A968, 0x2A980, 0x2A9D3, 0x2A9E1, 0x2ADC0, 0x2AFE5,
+        0x2B1DC, 0x2B218,
+    ]
+    assert selector_reads == [0x2A8EA]
+    assert yes_reads == [0x2ADCC, 0x2AFF1]
+
+    def transition(
+        page: int,
+        row: int,
+        column: int,
+        key: int,
+        show_introduction: bool = True,
+        mapped_slot: int = 0,
+    ) -> dict[str, object]:
+        result: dict[str, object] = {
+            "before": [page, row, column],
+            "key": f"0x{key:02x}",
+            "show_introduction": show_introduction,
+        }
+        if key == 0x9A:
+            column = 4 if column == 0 else column - 1
+            outcome = "redraw"
+        elif key == 0x9C:
+            column = 0 if column == 4 else column + 1
+            outcome = "redraw"
+        elif key == 0x98:
+            if row < 2:
+                row += 1
+            elif page < 37:
+                page += 1
+            outcome = "redraw"
+        elif key == 0x9E:
+            if row > 0:
+                row -= 1
+            elif page > 0:
+                page -= 1
+            outcome = "redraw"
+        elif key == 0x99:
+            if page < 35:
+                page += 3
+            outcome = "redraw"
+        elif key == 0x9F:
+            if page > 2:
+                page -= 3
+            outcome = "redraw"
+        elif key == 0x1B:
+            outcome = "return_0"
+        elif key in (0x0D, 0x20):
+            if show_introduction:
+                outcome = "return_1"
+                result["grid_index"] = 5 * (page + row) + column
+                result["mapped_inventory_slot"] = mapped_slot
+            else:
+                outcome = "wait"
+        else:
+            outcome = "wait"
+        result["after"] = [page, row, column]
+        result["outcome"] = outcome
+        return result
+
+    vector_inputs = (
+        (0, 0, 0, 0x9A, True, 0), (0, 0, 3, 0x9A, True, 0),
+        (0, 0, 4, 0x9C, True, 0), (0, 0, 2, 0x9C, True, 0),
+        (4, 0, 2, 0x98, True, 0), (4, 2, 2, 0x98, True, 0),
+        (37, 2, 2, 0x98, True, 0), (4, 2, 2, 0x9E, True, 0),
+        (4, 0, 2, 0x9E, True, 0), (0, 0, 2, 0x9E, True, 0),
+        (34, 1, 1, 0x99, True, 0), (35, 1, 1, 0x99, True, 0),
+        (3, 1, 1, 0x9F, True, 0), (2, 1, 1, 0x9F, True, 0),
+        (2, 1, 3, 0x0D, True, 37), (2, 1, 3, 0x20, True, 37),
+        (2, 1, 3, 0x0D, False, 37), (2, 1, 3, 0x96, True, 37),
+        (2, 1, 3, 0x1B, True, 37), (2, 1, 3, 0x41, True, 37),
+    )
+    vectors = [transition(*values) for values in vector_inputs]
+    vectors_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert vectors_sha256 == "f80f863c607a8d9aea5b9a678e7a9bb644608cc6c57d838d014479df2f49f09a"
+
+    shared_tail = z_dat[0x23AD1:0x23AD9]
+    assert shared_tail == bytes.fromhex("83c4045d5f5e5bc3")
+    entry_caller = z_dat[0x23AD9:0x23B0F]
+    battle_caller = z_dat[0x33C9C:0x33D0B]
+    assert sha256(entry_caller) == "1fd36ede5cb17507e24e83bc883074f6205a911ee34359aad6514b6280a2f383"
+    assert sha256(battle_caller) == "eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7"
+
+    contract = {
+        "accepted_keys": {
+            "confirm": ["0x0d", "0x20"],
+            "escape": "0x1b",
+            "movement": ["0x98", "0x99", "0x9a", "0x9c", "0x9e", "0x9f"],
+            "keypad_insert_0x96": "ignored_not_confirm",
+        },
+        "strict_visible_item_gate": "show_introduction == 1",
+        "last_key": {
+            "write_zero_count": len(last_key_writes),
+            "selector_read_count": len(selector_reads),
+            "uppercase_y_read_count": len(yes_reads),
+        },
+        "callers": {
+            "0x2a0d9:0x2a106": "arguments_0_minus_1_return_ignored",
+            "0x3a29c:0x3a2d4": "arguments_4_actor_return_4_targets_return_1_action_done",
+        },
+        "exit": "0x2b222_jumps_shared_tail_0x2a0d1",
+        "owner_boundary": "input_only_ui_draw_effect_and_shared_tail_remain_separate",
+    }
+    contract_sha256 = sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert contract_sha256 == "32629e0bed2b0284822887666be436db69ac8e37f75dcb3770533ca7e40ab4c1"
+    return {
+        "raw_range": "Z.DAT[0x2426c:0x24c27]",
+        "loaded_range": "0x2a86c..0x2b227",
+        "size_bytes": len(raw),
+        "instruction_count": 548,
+        "basic_block_count": 137,
+        "conditional_branch_count": 77,
+        "unconditional_jump_count": 35,
+        "call_count": len(calls),
+        "call_targets": [f"0x{target:x}" for _, target in calls],
+        "fixup_count": len(fixup_offsets),
+        "relocation_delta": "0x20000",
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(loaded),
+        "normalized_loaded_equals_raw": True,
+        "entry_xrefs": ["sub_2a0d9:0x2a106", "sub_3a29c:0x3a2d4"],
+        "external_internal_entries": [],
+        "last_key_write_addresses": [f"0x{address:x}" for address in last_key_writes],
+        "last_key_selector_reads": [f"0x{address:x}" for address in selector_reads],
+        "last_key_uppercase_y_reads": [f"0x{address:x}" for address in yes_reads],
+        "shared_tail": {
+            "range": "0x2a0d1..0x2a0d9",
+            "bytes_sha256": sha256(shared_tail),
+            "other_owner": "sub_29d2d",
+            "other_entries": ["0x2a0ce", "0x2a055", "0x2a0bc"],
+        },
+        "caller_raw_sha256": {
+            "sub_2a0d9": sha256(entry_caller),
+            "sub_3a29c": sha256(battle_caller),
+        },
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+        "vectors": vectors,
+        "vectors_sha256": vectors_sha256,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-root", type=Path, required=True)
@@ -782,6 +1005,7 @@ def main() -> int:
             ),
         },
         "game_menu_item_entry_machine": game_menu_item_entry_machine(z_dat),
+        "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
         "runtime_ui_regression_fnv1a64": {
             "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
             "status_selector": "85fc6aad255a1c1b",
