@@ -20023,6 +20023,508 @@
     "platform_adaptation_boundary": "modern host safely rejects invalid role/item indices and splits the synchronous message/input pause into prepare/present/commit; legal caller-domain RNG, word arithmetic, inventory mutation order and full-inventory behavior are preserved",
     "closure_boundary": "stack probe, flag clear, RNG, renderer, format/box/text/present/input, inventory delete, sole settlement caller and shared tail remain independent owners"
   },
+  "battle_round_status_damage_machine": {
+    "address": "0x3c563",
+    "end": "0x3c672",
+    "raw_offset": "0x35f63",
+    "size": 271,
+    "instruction_count": 58,
+    "branch_count": 9,
+    "raw_sha256": "e35f7e568ef22c53843f9d8404e08447a4b300b4d3f10fe49c15b6a4208dcc35",
+    "loaded_sha256": "a6505c9625d9804448ddbb6818d8d8d8f9f63e0fea8594b48490745b4cdf8252",
+    "relocation_count": 19,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3c568"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x32a38"
+    ],
+    "machine_slices": {
+      "caller_round_tail": {
+        "address": "0x32a08",
+        "end": "0x32a51",
+        "size": 73,
+        "sha256": "af44fd7da6ae5de876e1bf093fd607a95928fb80c76b2eef21f51f223a79b604"
+      },
+      "qualification": {
+        "address": "0x3c576",
+        "end": "0x3c5cb",
+        "size": 85,
+        "sha256": "0440996b4d081538049a082c3ef0b08bb687832dec28cb34647adffe7fcadf2c"
+      },
+      "damage_and_floors": {
+        "address": "0x3c5cb",
+        "end": "0x3c661",
+        "size": 150,
+        "sha256": "df5b37410a5f7425401b39da93164cf1ccd091961c62ef39fcac85a38e5e28c6"
+      }
+    },
+    "combatant_loop": {
+      "counter": "signed low word from zero while less than combatant count",
+      "combatant_record_size": 28,
+      "role_record_size": 182,
+      "slot_order": "ascending; duplicate role ids observe prior slot writes"
+    },
+    "qualification": {
+      "hurt": "signed hurt > 0 bypasses every poison-path gate",
+      "poison": "signed poison > 0 and hp > 0 and physical power > 0",
+      "visibility": "poison path additionally requires occupancy-hidden exactly zero"
+    },
+    "damage": {
+      "order": [
+        "signed hurt/20",
+        "signed poison/10"
+      ],
+      "division": "signed truncation toward zero",
+      "writes": "HP low word is written after each subtraction",
+      "floors": "physical power then HP; signed value strictly below zero becomes one",
+      "zero_floor": "zero is preserved"
+    },
+    "vectors": {
+      "hurt_bypasses_dead_hidden_and_power_gates": {
+        "label": "hurt_bypasses_dead_hidden_and_power_gates",
+        "roles_before": [
+          {
+            "hp": 0,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": -1
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 1
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": 0,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": -1,
+            "poison_damage": 0,
+            "hp_after_poison_word": -1,
+            "physical_power_floored": true,
+            "hp_floored": true,
+            "hp_after": 1
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 1,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 1
+          }
+        ]
+      },
+      "visible_living_poison": {
+        "label": "visible_living_poison",
+        "roles_before": [
+          {
+            "hp": 100,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 100
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": 100,
+            "hurt_damage": 0,
+            "hp_after_hurt_word": 100,
+            "poison_damage": 2,
+            "hp_after_poison_word": 98,
+            "physical_power_floored": false,
+            "hp_floored": false,
+            "hp_after": 98
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 98,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 100
+          }
+        ]
+      },
+      "hidden_poison_skips": {
+        "label": "hidden_poison_skips",
+        "roles_before": [
+          {
+            "hp": 100,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 100
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": -1
+          }
+        ],
+        "entries": [],
+        "roles_after": [
+          {
+            "hp": 100,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 100
+          }
+        ]
+      },
+      "zero_hp_poison_skips": {
+        "label": "zero_hp_poison_skips",
+        "roles_before": [
+          {
+            "hp": 0,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 100
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          }
+        ],
+        "entries": [],
+        "roles_after": [
+          {
+            "hp": 0,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 100
+          }
+        ]
+      },
+      "zero_power_poison_skips": {
+        "label": "zero_power_poison_skips",
+        "roles_before": [
+          {
+            "hp": 100,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 0
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          }
+        ],
+        "entries": [],
+        "roles_after": [
+          {
+            "hp": 100,
+            "hurt": 0,
+            "poison": 20,
+            "physical_power": 0
+          }
+        ]
+      },
+      "zero_floors_are_strict": {
+        "label": "zero_floors_are_strict",
+        "roles_before": [
+          {
+            "hp": 1,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 0
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 9
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": 1,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": 0,
+            "poison_damage": 0,
+            "hp_after_poison_word": 0,
+            "physical_power_floored": false,
+            "hp_floored": false,
+            "hp_after": 0
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 0,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 0
+          }
+        ]
+      },
+      "negative_damage_quotients": {
+        "label": "negative_damage_quotients",
+        "roles_before": [
+          {
+            "hp": 100,
+            "hurt": -20,
+            "poison": 10,
+            "physical_power": 1
+          },
+          {
+            "hp": 100,
+            "hurt": 20,
+            "poison": -19,
+            "physical_power": -1
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          },
+          {
+            "role_id": 1,
+            "occupancy_hidden": 9
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": 100,
+            "hurt_damage": -1,
+            "hp_after_hurt_word": 101,
+            "poison_damage": 1,
+            "hp_after_poison_word": 100,
+            "physical_power_floored": false,
+            "hp_floored": false,
+            "hp_after": 100
+          },
+          {
+            "combatant_slot": 1,
+            "role_id": 1,
+            "hp_before": 100,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": 99,
+            "poison_damage": -1,
+            "hp_after_poison_word": 100,
+            "physical_power_floored": true,
+            "hp_floored": false,
+            "hp_after": 100
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 100,
+            "hurt": -20,
+            "poison": 10,
+            "physical_power": 1
+          },
+          {
+            "hp": 100,
+            "hurt": 20,
+            "poison": -19,
+            "physical_power": 1
+          }
+        ]
+      },
+      "first_hp_write_wraps": {
+        "label": "first_hp_write_wraps",
+        "roles_before": [
+          {
+            "hp": -32768,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 1
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": -1
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": -32768,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": 32767,
+            "poison_damage": 0,
+            "hp_after_poison_word": 32767,
+            "physical_power_floored": false,
+            "hp_floored": false,
+            "hp_after": 32767
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 32767,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 1
+          }
+        ]
+      },
+      "second_hp_write_wraps_then_floors": {
+        "label": "second_hp_write_wraps_then_floors",
+        "roles_before": [
+          {
+            "hp": -32768,
+            "hurt": 20,
+            "poison": -19,
+            "physical_power": 1
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": -1
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": -32768,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": 32767,
+            "poison_damage": -1,
+            "hp_after_poison_word": -32768,
+            "physical_power_floored": false,
+            "hp_floored": true,
+            "hp_after": 1
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 1,
+            "hurt": 20,
+            "poison": -19,
+            "physical_power": 1
+          }
+        ]
+      },
+      "duplicate_role_accumulates_by_slot": {
+        "label": "duplicate_role_accumulates_by_slot",
+        "roles_before": [
+          {
+            "hp": 2,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 1
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          },
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": 2,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": 1,
+            "poison_damage": 0,
+            "hp_after_poison_word": 1,
+            "physical_power_floored": false,
+            "hp_floored": false,
+            "hp_after": 1
+          },
+          {
+            "combatant_slot": 1,
+            "role_id": 0,
+            "hp_before": 1,
+            "hurt_damage": 1,
+            "hp_after_hurt_word": 0,
+            "poison_damage": 0,
+            "hp_after_poison_word": 0,
+            "physical_power_floored": false,
+            "hp_floored": false,
+            "hp_after": 0
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 0,
+            "hurt": 20,
+            "poison": 0,
+            "physical_power": 1
+          }
+        ]
+      },
+      "minimum_hurt_signed_division": {
+        "label": "minimum_hurt_signed_division",
+        "roles_before": [
+          {
+            "hp": 32767,
+            "hurt": -32768,
+            "poison": 10,
+            "physical_power": 1
+          }
+        ],
+        "combatants": [
+          {
+            "role_id": 0,
+            "occupancy_hidden": 0
+          }
+        ],
+        "entries": [
+          {
+            "combatant_slot": 0,
+            "role_id": 0,
+            "hp_before": 32767,
+            "hurt_damage": -1638,
+            "hp_after_hurt_word": -31131,
+            "poison_damage": 1,
+            "hp_after_poison_word": -31132,
+            "physical_power_floored": false,
+            "hp_floored": true,
+            "hp_after": 1
+          }
+        ],
+        "roles_after": [
+          {
+            "hp": 1,
+            "hurt": -32768,
+            "poison": 10,
+            "physical_power": 1
+          }
+        ]
+      }
+    },
+    "vector_sha256": "fda21d81b051395e7b2cac5d012d0181658ca5aaf4588d6aebf337861df37eda",
+    "direct_rng_calls": 0,
+    "platform_adaptation_boundary": "modern host safely rejects invalid combatant role ids, coalesces the two HP stores around an equivalent int16 local with no intervening observation, and splits the caller's BIOS-tick wait into a round-wait phase; legal signed word arithmetic, slot order and status commit before the wait are preserved",
+    "closure_boundary": "stack probe, sole round-loop caller, result/settlement, hidden-target cleanup and BIOS-tick wait remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

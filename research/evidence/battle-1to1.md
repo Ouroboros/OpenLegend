@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为78/81；其余3项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为79/81；其余2项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、3项为 `implemented_pending_review`、78项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、2项为 `implemented_pending_review`、79项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -474,6 +474,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 机器以signed `7-IQ/15`和一次32位乘法计算制造需求，角色经验按unsigned word比较且原需求还须signed大于0；只取200槽中首个材料ID匹配槽。五配方以signed数量比较和产物ID非-1标记可用项，再重复`bounded(5)`直到抽中可用配方。参数1非零在选择RNG后退出；正常路径先完成战场重画、Big5 `%s 製造出 %s`、固定框/文字、present和新非零键等待，之后才修改库存。已有产物消费`bounded(3)+1`并加数量word；新产物写首个ID=-1槽并把旧count word只加1。随后按记住的材料槽扣数量，signed结果不大于0时调用独立删除owner左移，成功最后清制造经验；满库存时提示已经显示，但不消费数量RNG、不扣材料、不清经验。
 
 逐基本块对照`BattleSetup::apply_battle_crafting`、`commit_battle_crafting`与`BattleSession`未发现合法caller域产品差异；宿主把同步UI拆成prepare/present/input/commit，但配方RNG在提示前、库存和已有产物数量RNG在确认后，保留机器可观察顺序。新增首材料槽、抑制RNG、新槽旧count+1、满库存零提交、材料删除左移、negative requirement/signed材料、数量回绕及材料/产物同槽别名回归；Session进一步锁定确认前库存不变、确认后材料3→1/产物4→6、制造经验0和共享RNG终态`4182499122`。独立向量SHA256=`8a3918fd77b1c109714d70b3b0c2a51eb8e01c8ae3d22560f3221beaa698c50f`；Golden三生成一致且历史71键逐值不变，72键SHA256=`c9963790de069ce61cd899976114187d608561644e75e70b7ab8ae2dc65736b4`。本owner归类`platform_adapted / converged_no_new_differences`，caller、UI/RNG helper、库存删除和共享尾不传播closure。
+
+## 44. 回合内伤与中毒扣血最终REVIEW
+
+`sub_3C563 @ 0x3C563..0x3C672`机器身份固定为271 bytes、58条连续指令、13个IDA flow block、8个条件分支、1个无条件跳转、19处重定位、1次栈探测call、唯一caller `0x32A38`和本地`RET @ 0x3C671`；raw/loaded SHA256为`e35f7e568ef22c53843f9d8404e08447a4b300b4d3f10fe49c15b6a4208dcc35`与`a6505c9625d9804448ddbb6818d8d8d8f9f63e0fea8594b48490745b4cdf8252`。全部fixup逆`+0x20000`后逐字节等于原资产，无共享尾。
+
+机器按signed slot顺序扫描；`hurt>0`直接绕过死亡、体力和hidden门，否则须同时满足`poison>0 && hp>0 && physical_power>0 && occupancy_hidden==0`。提交固定先以signed向零`hurt/20`减HP并写word，再从该中间word以signed向零`poison/10`继续减并再写word；负商可加HP且两次写入分别回绕。随后体力与HP只有signed严格`<0`才写1，等于0保持；重复role按slot累积前槽写回。
+
+逐块对照`BattleSetup::apply_round_status_damage`及正常轮末、战果结算后、全hidden轮末三个Session入口未发现合法caller域产品差异；宿主`round_wait`只替代caller的同步BIOS tick自旋，状态仍在等待前每轮提交一次。hurt绕门、poison四门、严格零、负商、两次回绕、重复role、非法role安全拒绝、正常Session `100→99`和既有战果hidden hurt回归通过。独立向量SHA256=`fda21d81b051395e7b2cac5d012d0181658ca5aaf4588d6aebf337861df37eda`；Golden三生成一致且历史72键逐值不变，73键SHA256=`158e6c36bc46f9f1052934502b47a13272112310b345e360b87bd613489418c4`；Linux app Debug 14/14通过。现代以`int16`局部保留第一次回绕并合并机器两次无观察点的连续HP store，后续slot观察值不变。本owner归类`platform_adapted / converged_no_new_differences`；栈探测、结果/结算、隐藏目标清理、caller轮循环和tick等待不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

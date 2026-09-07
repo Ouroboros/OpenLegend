@@ -1015,6 +1015,16 @@ BATTLE_CRAFTING_RELOCATION_OFFSETS = (
     0x245, 0x25F, 0x266, 0x26D, 0x274, 0x27C, 0x284, 0x2A4,
 )
 BATTLE_CRAFTING_CALLER_SITES = (0x3B6A1,)
+BATTLE_ROUND_STATUS_ADDRESS = 0x3C563
+BATTLE_ROUND_STATUS_END = 0x3C672
+BATTLE_ROUND_STATUS_CALL_OFFSETS = (0x005,)
+BATTLE_ROUND_STATUS_CALL_TARGETS = (0x3ED1E,)
+BATTLE_ROUND_STATUS_RELOCATION_OFFSETS = (
+    0x01C, 0x029, 0x033, 0x041, 0x04F, 0x05D, 0x071, 0x07E,
+    0x093, 0x09C, 0x0A3, 0x0B8, 0x0C1, 0x0C8, 0x0D2, 0x0E1,
+    0x0EE, 0x0F8, 0x102,
+)
+BATTLE_ROUND_STATUS_CALLER_SITES = (0x32A38,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -10252,6 +10262,258 @@ def battle_crafting_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_round_status_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_ROUND_STATUS_ADDRESS,
+        end=BATTLE_ROUND_STATUS_END,
+        call_offsets=BATTLE_ROUND_STATUS_CALL_OFFSETS,
+        expected_call_targets=BATTLE_ROUND_STATUS_CALL_TARGETS,
+        relocation_offsets=BATTLE_ROUND_STATUS_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_ROUND_STATUS_CALLER_SITES,
+        instruction_count=58,
+        branch_count=9,
+    )
+    if contract["raw_sha256"] != (
+        "e35f7e568ef22c53843f9d8404e08447a4b300b4d3f10fe49c15b6a4208dcc35"
+    ):
+        raise ValueError("Z.DAT round-status damage raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "a6505c9625d9804448ddbb6818d8d8d8f9f63e0fea8594b48490745b4cdf8252"
+    ):
+        raise ValueError("Z.DAT round-status damage relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("caller_round_tail", 0x32A08, 0x32A51,
+         "af44fd7da6ae5de876e1bf093fd607a95928fb80c76b2eef21f51f223a79b604"),
+        ("qualification", 0x3C576, 0x3C5CB,
+         "0440996b4d081538049a082c3ef0b08bb687832dec28cb34647adffe7fcadf2c"),
+        ("damage_and_floors", 0x3C5CB, 0x3C661,
+         "df5b37410a5f7425401b39da93164cf1ccd091961c62ef39fcac85a38e5e28c6"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT round-status damage {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def simulate(
+        label: str,
+        *,
+        roles: list[dict[str, int]],
+        combatants: list[dict[str, int]],
+    ) -> dict[str, object]:
+        role_state = [
+            {
+                "hp": wrapping_i16(role["hp"]),
+                "hurt": wrapping_i16(role["hurt"]),
+                "poison": wrapping_i16(role["poison"]),
+                "physical_power": wrapping_i16(role["physical_power"]),
+            }
+            for role in roles
+        ]
+        combatant_state = [
+            {
+                "role_id": wrapping_i16(combatant["role_id"]),
+                "occupancy_hidden": wrapping_i16(combatant["occupancy_hidden"]),
+            }
+            for combatant in combatants
+        ]
+        before = [role.copy() for role in role_state]
+        entries = []
+        for slot, combatant in enumerate(combatant_state):
+            role_id = combatant["role_id"]
+            role = role_state[role_id]
+            hurt = role["hurt"]
+            poison = role["poison"]
+            qualified = hurt > 0 or (
+                poison > 0 and role["hp"] > 0 and role["physical_power"] > 0
+                and combatant["occupancy_hidden"] == 0
+            )
+            if not qualified:
+                continue
+            hp_before = role["hp"]
+            hurt_damage = wrapping_i16(trunc_div(hurt, 20))
+            poison_damage = wrapping_i16(trunc_div(poison, 10))
+            role["hp"] = wrapping_i16(role["hp"] - hurt_damage)
+            hp_after_hurt = role["hp"]
+            role["hp"] = wrapping_i16(role["hp"] - poison_damage)
+            hp_after_poison = role["hp"]
+            physical_power_floored = role["physical_power"] < 0
+            if physical_power_floored:
+                role["physical_power"] = 1
+            hp_floored = role["hp"] < 0
+            if hp_floored:
+                role["hp"] = 1
+            entries.append({
+                "combatant_slot": slot,
+                "role_id": role_id,
+                "hp_before": hp_before,
+                "hurt_damage": hurt_damage,
+                "hp_after_hurt_word": hp_after_hurt,
+                "poison_damage": poison_damage,
+                "hp_after_poison_word": hp_after_poison,
+                "physical_power_floored": physical_power_floored,
+                "hp_floored": hp_floored,
+                "hp_after": role["hp"],
+            })
+        return {
+            "label": label,
+            "roles_before": before,
+            "combatants": combatant_state,
+            "entries": entries,
+            "roles_after": [role.copy() for role in role_state],
+        }
+
+    vectors = {
+        "hurt_bypasses_dead_hidden_and_power_gates": simulate(
+            "hurt_bypasses_dead_hidden_and_power_gates",
+            roles=[{"hp": 0, "hurt": 20, "poison": 0, "physical_power": -1}],
+            combatants=[{"role_id": 0, "occupancy_hidden": 1}],
+        ),
+        "visible_living_poison": simulate(
+            "visible_living_poison",
+            roles=[{"hp": 100, "hurt": 0, "poison": 20, "physical_power": 100}],
+            combatants=[{"role_id": 0, "occupancy_hidden": 0}],
+        ),
+        "hidden_poison_skips": simulate(
+            "hidden_poison_skips",
+            roles=[{"hp": 100, "hurt": 0, "poison": 20, "physical_power": 100}],
+            combatants=[{"role_id": 0, "occupancy_hidden": -1}],
+        ),
+        "zero_hp_poison_skips": simulate(
+            "zero_hp_poison_skips",
+            roles=[{"hp": 0, "hurt": 0, "poison": 20, "physical_power": 100}],
+            combatants=[{"role_id": 0, "occupancy_hidden": 0}],
+        ),
+        "zero_power_poison_skips": simulate(
+            "zero_power_poison_skips",
+            roles=[{"hp": 100, "hurt": 0, "poison": 20, "physical_power": 0}],
+            combatants=[{"role_id": 0, "occupancy_hidden": 0}],
+        ),
+        "zero_floors_are_strict": simulate(
+            "zero_floors_are_strict",
+            roles=[{"hp": 1, "hurt": 20, "poison": 0, "physical_power": 0}],
+            combatants=[{"role_id": 0, "occupancy_hidden": 9}],
+        ),
+        "negative_damage_quotients": simulate(
+            "negative_damage_quotients",
+            roles=[
+                {"hp": 100, "hurt": -20, "poison": 10, "physical_power": 1},
+                {"hp": 100, "hurt": 20, "poison": -19, "physical_power": -1},
+            ],
+            combatants=[
+                {"role_id": 0, "occupancy_hidden": 0},
+                {"role_id": 1, "occupancy_hidden": 9},
+            ],
+        ),
+        "first_hp_write_wraps": simulate(
+            "first_hp_write_wraps",
+            roles=[{"hp": -32768, "hurt": 20, "poison": 0, "physical_power": 1}],
+            combatants=[{"role_id": 0, "occupancy_hidden": -1}],
+        ),
+        "second_hp_write_wraps_then_floors": simulate(
+            "second_hp_write_wraps_then_floors",
+            roles=[{"hp": -32768, "hurt": 20, "poison": -19, "physical_power": 1}],
+            combatants=[{"role_id": 0, "occupancy_hidden": -1}],
+        ),
+        "duplicate_role_accumulates_by_slot": simulate(
+            "duplicate_role_accumulates_by_slot",
+            roles=[{"hp": 2, "hurt": 20, "poison": 0, "physical_power": 1}],
+            combatants=[
+                {"role_id": 0, "occupancy_hidden": 0},
+                {"role_id": 0, "occupancy_hidden": 0},
+            ],
+        ),
+        "minimum_hurt_signed_division": simulate(
+            "minimum_hurt_signed_division",
+            roles=[{"hp": 32767, "hurt": -32768, "poison": 10, "physical_power": 1}],
+            combatants=[{"role_id": 0, "occupancy_hidden": 0}],
+        ),
+    }
+    if vectors["hurt_bypasses_dead_hidden_and_power_gates"]["roles_after"] != [
+        {"hp": 1, "hurt": 20, "poison": 0, "physical_power": 1}
+    ]:
+        raise ValueError("round-status hurt bypass vector changed")
+    if vectors["visible_living_poison"]["roles_after"][0]["hp"] != 98:
+        raise ValueError("round-status poison vector changed")
+    for name in ("hidden_poison_skips", "zero_hp_poison_skips", "zero_power_poison_skips"):
+        if vectors[name]["entries"]:
+            raise ValueError(f"round-status {name} gate changed")
+    zero_floor = vectors["zero_floors_are_strict"]["entries"][0]
+    if zero_floor["hp_after"] != 0 or zero_floor["hp_floored"]:
+        raise ValueError("round-status strict zero floor changed")
+    negative = vectors["negative_damage_quotients"]["entries"]
+    if [(entry["hurt_damage"], entry["poison_damage"], entry["hp_after"])
+            for entry in negative] != [(-1, 1, 100), (1, -1, 100)]:
+        raise ValueError("round-status signed division vector changed")
+    first_wrap = vectors["first_hp_write_wraps"]["entries"][0]
+    if first_wrap["hp_after_hurt_word"] != 32767 or first_wrap["hp_after"] != 32767:
+        raise ValueError("round-status first write wrapping changed")
+    second_wrap = vectors["second_hp_write_wraps_then_floors"]["entries"][0]
+    if second_wrap["hp_after_poison_word"] != -32768 or (
+        second_wrap["hp_after"] != 1 or not second_wrap["hp_floored"]
+    ):
+        raise ValueError("round-status second write wrapping changed")
+    duplicate = vectors["duplicate_role_accumulates_by_slot"]
+    if [entry["hp_before"] for entry in duplicate["entries"]] != [2, 1] or (
+        duplicate["roles_after"][0]["hp"] != 0
+    ):
+        raise ValueError("round-status duplicate-role order changed")
+
+    vector_bytes = json.dumps(
+        vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    vector_sha256 = sha256(vector_bytes)
+    if vector_sha256 != "fda21d81b051395e7b2cac5d012d0181658ca5aaf4588d6aebf337861df37eda":
+        raise ValueError(
+            f"battle round-status independent vector set changed: {vector_sha256}"
+        )
+
+    return {
+        **contract,
+        "machine_slices": machine_slices,
+        "combatant_loop": {
+            "counter": "signed low word from zero while less than combatant count",
+            "combatant_record_size": 28,
+            "role_record_size": 182,
+            "slot_order": "ascending; duplicate role ids observe prior slot writes",
+        },
+        "qualification": {
+            "hurt": "signed hurt > 0 bypasses every poison-path gate",
+            "poison": "signed poison > 0 and hp > 0 and physical power > 0",
+            "visibility": "poison path additionally requires occupancy-hidden exactly zero",
+        },
+        "damage": {
+            "order": ["signed hurt/20", "signed poison/10"],
+            "division": "signed truncation toward zero",
+            "writes": "HP low word is written after each subtraction",
+            "floors": "physical power then HP; signed value strictly below zero becomes one",
+            "zero_floor": "zero is preserved",
+        },
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "direct_rng_calls": 0,
+        "platform_adaptation_boundary": (
+            "modern host safely rejects invalid combatant role ids, coalesces the two HP stores "
+            "around an equivalent int16 local with no intervening observation, and splits the "
+            "caller's BIOS-tick wait into a round-wait phase; legal signed word arithmetic, "
+            "slot order and status commit before the wait are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, sole round-loop caller, result/settlement, hidden-target cleanup and "
+            "BIOS-tick wait remain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -14504,6 +14766,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_level_up_machine": battle_level_up_contract(z_dat_bytes),
         "battle_practice_machine": battle_practice_contract(z_dat_bytes),
         "battle_crafting_machine": battle_crafting_contract(z_dat_bytes),
+        "battle_round_status_damage_machine": battle_round_status_damage_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

@@ -3218,6 +3218,184 @@ void run_battle_crafting_review_test(
     }
 }
 
+void run_battle_round_status_damage_review_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        auto& first_role = ranger.roles[static_cast<std::size_t>(
+            first[combatant_word::role_id])];
+        auto& second_role = ranger.roles[static_cast<std::size_t>(
+            second[combatant_word::role_id])];
+        first_role.set_word(role_word::hp, 1);
+        first_role.set_word(role_word::hurt, 20);
+        first_role.set_word(role_word::poison, 0);
+        first_role.set_word(role_word::physical_power, 0);
+        first[combatant_word::occupancy_hidden] = -7;
+        second_role.set_word(role_word::hp, 100);
+        second_role.set_word(role_word::hurt, 0);
+        second_role.set_word(role_word::poison, 20);
+        second_role.set_word(role_word::physical_power, 100);
+        second[combatant_word::occupancy_hidden] = -1;
+
+        const auto result = setup.apply_round_status_damage();
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->entries.size() == 1U);
+        OL_CHECK(result->entries[0U].combatant_slot == 0U);
+        OL_CHECK(result->entries[0U].hp_before == 1);
+        OL_CHECK(result->entries[0U].hurt_damage == 1);
+        OL_CHECK(result->entries[0U].poison_damage == 0);
+        OL_CHECK(!result->entries[0U].physical_power_floored);
+        OL_CHECK(!result->entries[0U].hp_floored);
+        OL_CHECK(result->entries[0U].hp_after == 0);
+        OL_CHECK(first_role.word(role_word::hp) == 0);
+        OL_CHECK(first_role.word(role_word::physical_power) == 0);
+        OL_CHECK(second_role.word(role_word::hp) == 100);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        auto& first_role = ranger.roles[static_cast<std::size_t>(
+            first[combatant_word::role_id])];
+        auto& second_role = ranger.roles[static_cast<std::size_t>(
+            second[combatant_word::role_id])];
+        first_role.set_word(role_word::hp, 0);
+        first_role.set_word(role_word::hurt, 0);
+        first_role.set_word(role_word::poison, 20);
+        first_role.set_word(role_word::physical_power, 100);
+        first[combatant_word::occupancy_hidden] = 0;
+        second_role.set_word(role_word::hp, 100);
+        second_role.set_word(role_word::hurt, 0);
+        second_role.set_word(role_word::poison, 20);
+        second_role.set_word(role_word::physical_power, 0);
+        second[combatant_word::occupancy_hidden] = 0;
+
+        const auto result = setup.apply_round_status_damage();
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->entries.empty());
+        OL_CHECK(first_role.word(role_word::hp) == 0);
+        OL_CHECK(second_role.word(role_word::hp) == 100);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        auto& first_role = ranger.roles[static_cast<std::size_t>(
+            first[combatant_word::role_id])];
+        auto& second_role = ranger.roles[static_cast<std::size_t>(
+            second[combatant_word::role_id])];
+        first_role.set_word(role_word::hp, 100);
+        first_role.set_word(role_word::hurt, -20);
+        first_role.set_word(role_word::poison, 10);
+        first_role.set_word(role_word::physical_power, 1);
+        first[combatant_word::occupancy_hidden] = 0;
+        second_role.set_word(role_word::hp, 100);
+        second_role.set_word(role_word::hurt, 20);
+        second_role.set_word(role_word::poison, -19);
+        second_role.set_word(role_word::physical_power, -1);
+        second[combatant_word::occupancy_hidden] = 9;
+
+        const auto result = setup.apply_round_status_damage();
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->entries.size() == 2U);
+        OL_CHECK(result->entries[0U].hurt_damage == -1);
+        OL_CHECK(result->entries[0U].poison_damage == 1);
+        OL_CHECK(result->entries[0U].hp_after == 100);
+        OL_CHECK(result->entries[1U].hurt_damage == 1);
+        OL_CHECK(result->entries[1U].poison_damage == -1);
+        OL_CHECK(result->entries[1U].hp_after == 100);
+        OL_CHECK(result->entries[1U].physical_power_floored);
+        OL_CHECK(second_role.word(role_word::physical_power) == 1);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        auto& first_role = ranger.roles[static_cast<std::size_t>(
+            first[combatant_word::role_id])];
+        auto& second_role = ranger.roles[static_cast<std::size_t>(
+            second[combatant_word::role_id])];
+        first_role.set_word(role_word::hp, -32768);
+        first_role.set_word(role_word::hurt, 20);
+        first_role.set_word(role_word::poison, 0);
+        first_role.set_word(role_word::physical_power, 1);
+        first[combatant_word::occupancy_hidden] = -1;
+        second_role.set_word(role_word::hp, -32768);
+        second_role.set_word(role_word::hurt, 20);
+        second_role.set_word(role_word::poison, -19);
+        second_role.set_word(role_word::physical_power, 1);
+        second[combatant_word::occupancy_hidden] = -1;
+        const auto result = setup.apply_round_status_damage();
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->entries.size() == 2U);
+        OL_CHECK(result->entries[0U].hp_before == -32768);
+        OL_CHECK(result->entries[0U].hp_after == 32767);
+        OL_CHECK(!result->entries[0U].hp_floored);
+        OL_CHECK(first_role.word(role_word::hp) == 32767);
+        OL_CHECK(result->entries[1U].hp_before == -32768);
+        OL_CHECK(result->entries[1U].hurt_damage == 1);
+        OL_CHECK(result->entries[1U].poison_damage == -1);
+        OL_CHECK(result->entries[1U].hp_after == 1);
+        OL_CHECK(result->entries[1U].hp_floored);
+        OL_CHECK(second_role.word(role_word::hp) == 1);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        second[combatant_word::role_id] = first[combatant_word::role_id];
+        first[combatant_word::occupancy_hidden] = 0;
+        second[combatant_word::occupancy_hidden] = 0;
+        auto& shared_role = ranger.roles[static_cast<std::size_t>(
+            first[combatant_word::role_id])];
+        shared_role.set_word(role_word::hp, 2);
+        shared_role.set_word(role_word::hurt, 20);
+        shared_role.set_word(role_word::poison, 0);
+        shared_role.set_word(role_word::physical_power, 1);
+
+        const auto result = setup.apply_round_status_damage();
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->entries.size() == 2U);
+        OL_CHECK(result->entries[0U].hp_before == 2);
+        OL_CHECK(result->entries[0U].hp_after == 1);
+        OL_CHECK(result->entries[1U].hp_before == 1);
+        OL_CHECK(result->entries[1U].hp_after == 0);
+        OL_CHECK(!result->entries[1U].hp_floored);
+        OL_CHECK(shared_role.word(role_word::hp) == 0);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        setup.combatants()[0U].words[combatant_word::role_id] = -1;
+        OL_CHECK(!setup.apply_round_status_damage().has_value());
+        OL_CHECK(setup.error() == "round-status combatant role is outside ranger records");
+    }
+}
+
 void run_player_movement_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
@@ -7563,17 +7741,27 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         automatic_session.advance(tick);
         OL_CHECK(automatic_session.phase() == BattleSessionPhase::ai_wait);
     }
+    const auto automatic_status_role_id = static_cast<std::size_t>(
+        automatic_session.setup().combatants()[1U].words[combatant_word::role_id]);
+    auto& automatic_status_role = automatic_ranger.roles[automatic_status_role_id];
+    automatic_status_role.set_word(role_word::hp, 100);
+    automatic_status_role.set_word(role_word::maximum_hp, 100);
+    automatic_status_role.set_word(role_word::hurt, 20);
+    automatic_status_role.set_word(role_word::poison, 0);
     automatic_session.advance(116U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(automatic_status_role.word(role_word::hp) == 99);
     OL_CHECK(automatic_ranger.roles[3U].word(role_word::physical_power) == 4);
     OL_CHECK(
         automatic_session.setup().combatants()[1U].words[combatant_word::action_done] == 1);
     automatic_session.set_confirmation_state(true);
     automatic_session.advance(0U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::round_wait);
+    OL_CHECK(automatic_status_role.word(role_word::hp) == 99);
     OL_CHECK(automatic_session.setup().automatic_enabled());
     automatic_session.advance(1U);
     OL_CHECK(automatic_session.phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(automatic_status_role.word(role_word::hp) == 99);
     OL_CHECK(automatic_session.current_actor_slot() == 0U);
     OL_CHECK(
         automatic_session.setup().combatants()[0U].words[combatant_word::action_done] == 1);
@@ -11226,6 +11414,7 @@ int main() {
     run_post_battle_progression_test(data_root);
     run_battle_practice_review_test(data_root);
     run_battle_crafting_review_test(data_root);
+    run_battle_round_status_damage_review_test(data_root);
     run_player_movement_selection_test(data_root);
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
