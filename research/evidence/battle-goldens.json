@@ -13462,6 +13462,381 @@
     "platform_adaptation_boundary": "modern code splits synchronous present and AI continuation into explicit host phases without exposing input or reordering observable state",
     "closure_boundary": "stack probe, two-pass renderer, present backend, AI handler and player dispatcher retain independent owners"
   },
+  "battle_renderer_machine": {
+    "address": "0x3aa85",
+    "end": "0x3b1e6",
+    "raw_offset": "0x34485",
+    "size": 1889,
+    "instruction_count": 527,
+    "branch_count": 40,
+    "raw_sha256": "72c3fd2b4edc3d5e96a0d23f96a0496ded2a2cbf160473bfc33896483bc4eded",
+    "loaded_sha256": "4f4af841cf9157f4eee76d7df295ad617092bc1abe3ee1183c66ff947b1df556",
+    "relocation_count": 116,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3aa8a",
+      "0x3aaef",
+      "0x3ab84",
+      "0x3ac04",
+      "0x3ac73",
+      "0x3ace4",
+      "0x3ada6",
+      "0x3ae2a",
+      "0x3aea2",
+      "0x3af19",
+      "0x3af5f",
+      "0x3afad",
+      "0x3affa",
+      "0x3b048",
+      "0x3b08f",
+      "0x3b0dd",
+      "0x3b124",
+      "0x3b172",
+      "0x3b1c0"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d643",
+      "0x3d88a",
+      "0x3d88a",
+      "0x3d88a",
+      "0x3d643",
+      "0x3d68a",
+      "0x3d643",
+      "0x3d643",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832"
+    ],
+    "callers": [
+      "0x22256",
+      "0x22a97",
+      "0x2347f",
+      "0x2a1f0",
+      "0x2aa14",
+      "0x2bbf8",
+      "0x31d11",
+      "0x327bb",
+      "0x329a9",
+      "0x33063",
+      "0x333f4",
+      "0x36b86",
+      "0x36bad",
+      "0x37526",
+      "0x38310",
+      "0x383f3",
+      "0x3880d",
+      "0x388d4",
+      "0x3894c",
+      "0x38e70",
+      "0x3aa55",
+      "0x3b300",
+      "0x3b5b9",
+      "0x3b726",
+      "0x3bbac",
+      "0x3c3c1"
+    ],
+    "basic_block_count": 58,
+    "conditional_branch_count": 32,
+    "unconditional_jump_count": 8,
+    "relocation_offsets": [
+      "0x1a",
+      "0x1f",
+      "0x29",
+      "0x38",
+      "0x42",
+      "0x91",
+      "0xa2",
+      "0xb1",
+      "0xbe",
+      "0xc5",
+      "0xd5",
+      "0xdb",
+      "0x10d",
+      "0x117",
+      "0x125",
+      "0x12f",
+      "0x15a",
+      "0x164",
+      "0x16a",
+      "0x173",
+      "0x179",
+      "0x18a",
+      "0x197",
+      "0x1a1",
+      "0x1af",
+      "0x1b9",
+      "0x1c4",
+      "0x1ca",
+      "0x1fc",
+      "0x20b",
+      "0x218",
+      "0x222",
+      "0x22b",
+      "0x230",
+      "0x237",
+      "0x26d",
+      "0x27c",
+      "0x289",
+      "0x297",
+      "0x2a5",
+      "0x2b3",
+      "0x2bd",
+      "0x2ca",
+      "0x301",
+      "0x30e",
+      "0x313",
+      "0x31a",
+      "0x331",
+      "0x33f",
+      "0x34b",
+      "0x350",
+      "0x35a",
+      "0x369",
+      "0x373",
+      "0x37d",
+      "0x3b0",
+      "0x3bd",
+      "0x3cc",
+      "0x3d6",
+      "0x3de",
+      "0x3e3",
+      "0x3ea",
+      "0x3f3",
+      "0x428",
+      "0x439",
+      "0x448",
+      "0x455",
+      "0x463",
+      "0x471",
+      "0x47b",
+      "0x485",
+      "0x48b",
+      "0x490",
+      "0x4a4",
+      "0x4a9",
+      "0x4c0",
+      "0x4e5",
+      "0x4f6",
+      "0x505",
+      "0x50f",
+      "0x519",
+      "0x51f",
+      "0x524",
+      "0x538",
+      "0x53d",
+      "0x554",
+      "0x580",
+      "0x591",
+      "0x5a0",
+      "0x5aa",
+      "0x5b4",
+      "0x5ba",
+      "0x5bf",
+      "0x5d3",
+      "0x5d8",
+      "0x5ef",
+      "0x615",
+      "0x626",
+      "0x635",
+      "0x63f",
+      "0x649",
+      "0x64f",
+      "0x654",
+      "0x668",
+      "0x66d",
+      "0x684",
+      "0x6aa",
+      "0x6bb",
+      "0x6ca",
+      "0x6d4",
+      "0x6de",
+      "0x6e4",
+      "0x6e9",
+      "0x6fd",
+      "0x702",
+      "0x71a"
+    ],
+    "local_return_sites": [
+      "0x3b1e5"
+    ],
+    "caller_site_count": 26,
+    "unique_caller_count": 21,
+    "machine_slices": {
+      "ground_pass": {
+        "address": "0x3aa85",
+        "end": "0x3ab05",
+        "size": 128,
+        "sha256": "e3cbe2181e691d462e44cfe0a101a0e0b89d8ddc961e663cc672286b3e900b8d"
+      },
+      "path_and_cursors": {
+        "address": "0x3ab05",
+        "end": "0x3ac7b",
+        "size": 374,
+        "sha256": "c9061bb65eb2dd1a04d9d7c0bf8e66eda898d9732ed1e1425d5fcb0d2596ceaf"
+      },
+      "object_layer": {
+        "address": "0x3ac7b",
+        "end": "0x3acec",
+        "size": 113,
+        "sha256": "29b571e43b461615fb82c2bf540f244e60ddc1bcbbefa452301c76d13d0653c3"
+      },
+      "combatant_layer": {
+        "address": "0x3acec",
+        "end": "0x3ae32",
+        "size": 326,
+        "sha256": "74d98e6ec10118b816b04967fdc13e29a9a94aa355230f6933c78463f3f22c06"
+      },
+      "effect_layer": {
+        "address": "0x3ae32",
+        "end": "0x3aeaa",
+        "size": 120,
+        "sha256": "6e3f1bfc12a25f0f93b96777f96dae03cd6d35e6149e2596f772c5236773f69a"
+      },
+      "damage_layer": {
+        "address": "0x3aeaa",
+        "end": "0x3b1c8",
+        "size": 798,
+        "sha256": "5bc2e1a9c5568f5261d02a84aeab9db3fb943914a64d8d1a867a91913cfe0226"
+      },
+      "loop_tail": {
+        "address": "0x3b1c8",
+        "end": "0x3b1e6",
+        "size": 30,
+        "sha256": "91c57396ceed55fdd9f7ae9993b47e2817bbae580eb5f17b2df6b966ca7129a2"
+      }
+    },
+    "pass_contract": "signed local_x outer and local_y inner loops each cover32x32; pass1 draws ground, pass2 orders path overlays, primary cursor, secondary cursor, object, combatant, effect and damage for each cell",
+    "cursor_contract": "path_limit must be signed-positive; values strictly above the limit except555 draw primary variant0/style3, and the primary cursor remains inside this gate; secondary cursor requires flag exactly1 and draws variant1/style3 independently",
+    "combatant_contract": "highlight requires flag1, effect-cell1 and role HP signed-nonnegative; modes1/2/3 draw colors255/47/78, while any other mode suppresses both tinted and normal sprite",
+    "damage_contract": "signed-positive kind plus occupied effect-cell1 gates five independent kind checks; kinds1..5 format -%3d,-%3d,+%3d,+%3d,-%3d with packed colors 0x1014,0x3032,0x9193,0x0705,0x5053",
+    "framebuffer_contract": "the owner never clears the framebuffer; pass1 normally overwrites the display, but transparent RLE holes retain pixels from the preceding rendered frame",
+    "return_contract": "EAX is incidental final index/draw-helper state and every one of the26 call sites starts a new operation without consuming it",
+    "vectors": {
+      "framebuffer_retention": {
+        "battlefield_id": 13,
+        "battle_ids": [
+          89,
+          90
+        ],
+        "source_view": [
+          15,
+          16
+        ],
+        "target_view": [
+          16,
+          16
+        ],
+        "source_draw_count": 1354,
+        "target_draw_count": 1363,
+        "source_hash": "0xbfe0bae5a6318a74",
+        "clean_target_hash": "0x19901317cdab6f40",
+        "retained_target_hash": "0x93fe58505f03d134",
+        "difference_count": 4,
+        "differences": [
+          {
+            "coordinate": [
+              240,
+              8
+            ],
+            "retained": 181,
+            "cleared": 0
+          },
+          {
+            "coordinate": [
+              168,
+              44
+            ],
+            "retained": 181,
+            "cleared": 0
+          },
+          {
+            "coordinate": [
+              78,
+              89
+            ],
+            "retained": 181,
+            "cleared": 0
+          },
+          {
+            "coordinate": [
+              42,
+              107
+            ],
+            "retained": 181,
+            "cleared": 0
+          }
+        ]
+      },
+      "damage_formats": [
+        {
+          "kind": 1,
+          "text": "- 17",
+          "packed_color": "0x1014"
+        },
+        {
+          "kind": 2,
+          "text": "- 17",
+          "packed_color": "0x3032"
+        },
+        {
+          "kind": 3,
+          "text": "+ 17",
+          "packed_color": "0x9193"
+        },
+        {
+          "kind": 4,
+          "text": "+ 17",
+          "packed_color": "0x705"
+        },
+        {
+          "kind": 5,
+          "text": "- 17",
+          "packed_color": "0x5053"
+        }
+      ],
+      "invalid_damage_kind": {
+        "kind": 6,
+        "draw_calls": 0
+      },
+      "sprite_id_aliases": [
+        {
+          "ids": [
+            0,
+            1
+          ],
+          "pointer_index": 0
+        },
+        {
+          "ids": [
+            2,
+            3
+          ],
+          "pointer_index": 1
+        },
+        {
+          "ids": [
+            32766
+          ],
+          "pointer_index": 16383
+        }
+      ],
+      "invalid_sprite_ids": [
+        -1,
+        32767
+      ]
+    },
+    "vector_sha256": "8b48906cd33c7fae6ae308f6f8924d6613bcaf83e9804e16a5b616c6e3bd75d0",
+    "platform_adaptation_boundary": "modern code rejects invalid view, path spans, occupancy, roles and unloaded assets; legal original assets preserve command and pixel order",
+    "closure_boundary": "stack probe, sprite, overlay, tint, format/text helpers and all26 callers retain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
@@ -17449,8 +17824,8 @@
             "3": 1
           },
           "command_hash": "0xb9f8a428699b3712",
-          "pixel_hash": "0x7d8a5211fe8c4eb0",
-          "status_panel_pixel_hash": "0x630a82d57e1d8715",
+          "pixel_hash": "0x19cc52eb01d4bb4d",
+          "status_panel_pixel_hash": "0x4a9f39bbe9629b58",
           "first_command": [
             0,
             15,

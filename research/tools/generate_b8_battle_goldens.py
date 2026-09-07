@@ -870,6 +870,38 @@ BATTLE_ENABLE_AUTOMATIC_CALL_OFFSETS = (0x005, 0x00A, 0x01A, 0x031)
 BATTLE_ENABLE_AUTOMATIC_CALL_TARGETS = (0x3ED1E, 0x3AA85, 0x3D6D1, 0x33599)
 BATTLE_ENABLE_AUTOMATIC_RELOCATION_OFFSETS = (0x011, 0x016, 0x025)
 BATTLE_ENABLE_AUTOMATIC_CALLER_SITES = (0x333D6,)
+BATTLE_RENDERER_ADDRESS = 0x3AA85
+BATTLE_RENDERER_END = 0x3B1E6
+BATTLE_RENDERER_CALL_OFFSETS = (
+    0x005, 0x06A, 0x0FF, 0x17F, 0x1EE, 0x25F, 0x321, 0x3A5, 0x41D,
+    0x494, 0x4DA, 0x528, 0x575, 0x5C3, 0x60A, 0x658, 0x69F, 0x6ED, 0x73B,
+)
+BATTLE_RENDERER_CALL_TARGETS = (
+    0x3ED1E, 0x3D643, 0x3D88A, 0x3D88A, 0x3D88A, 0x3D643, 0x3D68A,
+    0x3D643, 0x3D643, 0x3EF4A, 0x3D832, 0x3EF4A, 0x3D832, 0x3EF4A,
+    0x3D832, 0x3EF4A, 0x3D832, 0x3EF4A, 0x3D832,
+)
+BATTLE_RENDERER_RELOCATION_OFFSETS = (
+    0x01A, 0x01F, 0x029, 0x038, 0x042, 0x091, 0x0A2, 0x0B1, 0x0BE,
+    0x0C5, 0x0D5, 0x0DB, 0x10D, 0x117, 0x125, 0x12F, 0x15A, 0x164,
+    0x16A, 0x173, 0x179, 0x18A, 0x197, 0x1A1, 0x1AF, 0x1B9, 0x1C4,
+    0x1CA, 0x1FC, 0x20B, 0x218, 0x222, 0x22B, 0x230, 0x237, 0x26D,
+    0x27C, 0x289, 0x297, 0x2A5, 0x2B3, 0x2BD, 0x2CA, 0x301, 0x30E,
+    0x313, 0x31A, 0x331, 0x33F, 0x34B, 0x350, 0x35A, 0x369, 0x373,
+    0x37D, 0x3B0, 0x3BD, 0x3CC, 0x3D6, 0x3DE, 0x3E3, 0x3EA, 0x3F3,
+    0x428, 0x439, 0x448, 0x455, 0x463, 0x471, 0x47B, 0x485, 0x48B,
+    0x490, 0x4A4, 0x4A9, 0x4C0, 0x4E5, 0x4F6, 0x505, 0x50F, 0x519,
+    0x51F, 0x524, 0x538, 0x53D, 0x554, 0x580, 0x591, 0x5A0, 0x5AA,
+    0x5B4, 0x5BA, 0x5BF, 0x5D3, 0x5D8, 0x5EF, 0x615, 0x626, 0x635,
+    0x63F, 0x649, 0x64F, 0x654, 0x668, 0x66D, 0x684, 0x6AA, 0x6BB,
+    0x6CA, 0x6D4, 0x6DE, 0x6E4, 0x6E9, 0x6FD, 0x702, 0x71A,
+)
+BATTLE_RENDERER_CALLER_SITES = (
+    0x22256, 0x22A97, 0x2347F, 0x2A1F0, 0x2AA14, 0x2BBF8, 0x31D11,
+    0x327BB, 0x329A9, 0x33063, 0x333F4, 0x36B86, 0x36BAD, 0x37526,
+    0x38310, 0x383F3, 0x3880D, 0x388D4, 0x3894C, 0x38E70, 0x3AA55,
+    0x3B300, 0x3B5B9, 0x3B726, 0x3BBAC, 0x3C3C1,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -8172,6 +8204,138 @@ def battle_enable_automatic_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_renderer_contract(
+    z_dat_bytes: bytes,
+    retention_vector: dict[str, object],
+) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_RENDERER_ADDRESS,
+        end=BATTLE_RENDERER_END,
+        call_offsets=BATTLE_RENDERER_CALL_OFFSETS,
+        expected_call_targets=BATTLE_RENDERER_CALL_TARGETS,
+        relocation_offsets=BATTLE_RENDERER_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_RENDERER_CALLER_SITES,
+        instruction_count=527,
+        branch_count=40,
+    )
+    if contract["raw_sha256"] != (
+        "72c3fd2b4edc3d5e96a0d23f96a0496ded2a2cbf160473bfc33896483bc4eded"
+    ):
+        raise ValueError("Z.DAT battle renderer raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "4f4af841cf9157f4eee76d7df295ad617092bc1abe3ee1183c66ff947b1df556"
+    ):
+        raise ValueError("Z.DAT battle renderer relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("ground_pass", 0x3AA85, 0x3AB05,
+         "e3cbe2181e691d462e44cfe0a101a0e0b89d8ddc961e663cc672286b3e900b8d"),
+        ("path_and_cursors", 0x3AB05, 0x3AC7B,
+         "c9061bb65eb2dd1a04d9d7c0bf8e66eda898d9732ed1e1425d5fcb0d2596ceaf"),
+        ("object_layer", 0x3AC7B, 0x3ACEC,
+         "29b571e43b461615fb82c2bf540f244e60ddc1bcbbefa452301c76d13d0653c3"),
+        ("combatant_layer", 0x3ACEC, 0x3AE32,
+         "74d98e6ec10118b816b04967fdc13e29a9a94aa355230f6933c78463f3f22c06"),
+        ("effect_layer", 0x3AE32, 0x3AEAA,
+         "6e3f1bfc12a25f0f93b96777f96dae03cd6d35e6149e2596f772c5236773f69a"),
+        ("damage_layer", 0x3AEAA, 0x3B1C8,
+         "5bc2e1a9c5568f5261d02a84aeab9db3fb943914a64d8d1a867a91913cfe0226"),
+        ("loop_tail", 0x3B1C8, 0x3B1E6,
+         "91c57396ceed55fdd9f7ae9993b47e2817bbae580eb5f17b2df6b966ca7129a2"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT battle renderer {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    damage_formats = [
+        {"kind": kind, "text": sign + f"{17:3d}", "packed_color": hex(color)}
+        for kind, sign, color in (
+            (1, "-", 0x1014),
+            (2, "-", 0x3032),
+            (3, "+", 0x9193),
+            (4, "+", 0x0705),
+            (5, "-", 0x5053),
+        )
+    ]
+    vectors = {
+        "framebuffer_retention": retention_vector,
+        "damage_formats": damage_formats,
+        "invalid_damage_kind": {"kind": 6, "draw_calls": 0},
+        "sprite_id_aliases": [
+            {"ids": [0, 1], "pointer_index": 0},
+            {"ids": [2, 3], "pointer_index": 1},
+            {"ids": [0x7FFE], "pointer_index": 0x3FFF},
+        ],
+        "invalid_sprite_ids": [-1, 0x7FFF],
+    }
+    vector_sha256 = sha256(json.dumps(
+        vectors, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8"))
+    if vector_sha256 != "8b48906cd33c7fae6ae308f6f8924d6613bcaf83e9804e16a5b616c6e3bd75d0":
+        raise ValueError("battle renderer independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 58,
+        "conditional_branch_count": 32,
+        "unconditional_jump_count": 8,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_RENDERER_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3b1e5"],
+        "caller_site_count": 26,
+        "unique_caller_count": 21,
+        "machine_slices": machine_slices,
+        "pass_contract": (
+            "signed local_x outer and local_y inner loops each cover32x32; pass1 draws "
+            "ground, pass2 orders path overlays, primary cursor, secondary cursor, object, "
+            "combatant, effect and damage for each cell"
+        ),
+        "cursor_contract": (
+            "path_limit must be signed-positive; values strictly above the limit except555 "
+            "draw primary variant0/style3, and the primary cursor remains inside this gate; "
+            "secondary cursor requires flag exactly1 and draws variant1/style3 independently"
+        ),
+        "combatant_contract": (
+            "highlight requires flag1, effect-cell1 and role HP signed-nonnegative; modes1/2/3 "
+            "draw colors255/47/78, while any other mode suppresses both tinted and normal sprite"
+        ),
+        "damage_contract": (
+            "signed-positive kind plus occupied effect-cell1 gates five independent kind checks; "
+            "kinds1..5 format -%3d,-%3d,+%3d,+%3d,-%3d with packed colors "
+            "0x1014,0x3032,0x9193,0x0705,0x5053"
+        ),
+        "framebuffer_contract": (
+            "the owner never clears the framebuffer; pass1 normally overwrites the display, "
+            "but transparent RLE holes retain pixels from the preceding rendered frame"
+        ),
+        "return_contract": (
+            "EAX is incidental final index/draw-helper state and every one of the26 call sites "
+            "starts a new operation without consuming it"
+        ),
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern code rejects invalid view, path spans, occupancy, roles and unloaded assets; "
+            "legal original assets preserve command and pixel order"
+        ),
+        "closure_boundary": (
+            "stack probe, sprite, overlay, tint, format/text helpers and all26 callers retain "
+            "independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -10416,7 +10580,7 @@ def battle_pixel_hashes(
     for command in commands:
         kind, _, _, screen_x, screen_y, sprite_id, variant, style, value = command
         if kind in (0, 2):
-            if sprite_id < 0 or sprite_id > 0x7FFE or sprite_id & 1:
+            if sprite_id < 0 or sprite_id > 0x7FFE:
                 continue
             index = sprite_id // 2
             if index >= len(battlefield):
@@ -10446,7 +10610,7 @@ def battle_pixel_hashes(
                 pixels,
                 screen_x,
                 screen_y,
-                sign + str(value).encode("ascii") + b"\0",
+                sign + f"{value:3d}".encode("ascii") + b"\0",
                 ascii_font,
                 big5_font,
                 style & 0xFFFF,
@@ -10742,6 +10906,106 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
             "pixel_hash": action_menu_hash,
         },
     }
+
+
+def battle_renderer_retention_vector(
+    root: Path,
+    field_words: list[int],
+) -> dict[str, object]:
+    battlefield_id = 13
+    battlefield = sentinel_entries(
+        (root / f"WDX{battlefield_id:03d}").read_bytes(),
+        (root / f"WMP{battlefield_id:03d}").read_bytes(),
+    )
+
+    def draw_legacy(pixels: bytearray, sprite_id: int, x: int, y: int) -> None:
+        if sprite_id < 0 or sprite_id > 0x7FFE:
+            return
+        index = trunc_div(sprite_id, 2)
+        if index < 0 or index >= len(battlefield):
+            raise ValueError("battle13 renderer sprite pointer is outside WDX013")
+        draw_battle_sprite(pixels, battlefield[index], x, y)
+
+    def render_base(pixels: bytearray, view_x: int, view_y: int) -> int:
+        draw_count = 0
+        for local_x in range(32):
+            for local_y in range(32):
+                cell = (local_y + view_y) * 64 + local_x + view_x
+                draw_legacy(
+                    pixels,
+                    field_words[cell],
+                    18 * local_x - 18 * local_y + 145,
+                    9 * local_x + 9 * local_y - 81,
+                )
+                draw_count += 1
+        for local_x in range(32):
+            for local_y in range(32):
+                cell = (local_y + view_y) * 64 + local_x + view_x
+                object_sprite = field_words[4096 + cell]
+                if object_sprite not in (0, 15000):
+                    draw_legacy(
+                        pixels,
+                        object_sprite,
+                        18 * local_x - 18 * local_y + 145,
+                        9 * local_x + 9 * local_y - 81,
+                    )
+                    draw_count += 1
+        return draw_count
+
+    source_view = (15, 16)
+    target_view = (16, 16)
+    source_pixels = bytearray(320 * 200)
+    source_draw_count = render_base(source_pixels, *source_view)
+    clean_target_pixels = bytearray(320 * 200)
+    target_draw_count = render_base(clean_target_pixels, *target_view)
+    retained_target_pixels = bytearray(source_pixels)
+    retained_draw_count = render_base(retained_target_pixels, *target_view)
+    if retained_draw_count != target_draw_count:
+        raise ValueError("battle13 renderer target draw count changed between runs")
+    differences = [
+        {
+            "coordinate": [index % 320, index // 320],
+            "retained": retained,
+            "cleared": clean,
+        }
+        for index, (retained, clean) in enumerate(
+            zip(retained_target_pixels, clean_target_pixels)
+        )
+        if retained != clean
+    ]
+    expected_differences = [
+        {"coordinate": [240, 8], "retained": 181, "cleared": 0},
+        {"coordinate": [168, 44], "retained": 181, "cleared": 0},
+        {"coordinate": [78, 89], "retained": 181, "cleared": 0},
+        {"coordinate": [42, 107], "retained": 181, "cleared": 0},
+    ]
+    if differences != expected_differences:
+        raise ValueError("battle13 renderer retained-pixel coordinates changed")
+    result = {
+        "battlefield_id": battlefield_id,
+        "battle_ids": [89, 90],
+        "source_view": list(source_view),
+        "target_view": list(target_view),
+        "source_draw_count": source_draw_count,
+        "target_draw_count": target_draw_count,
+        "source_hash": fnv1a_bytes(source_pixels),
+        "clean_target_hash": fnv1a_bytes(clean_target_pixels),
+        "retained_target_hash": fnv1a_bytes(retained_target_pixels),
+        "difference_count": len(differences),
+        "differences": differences,
+    }
+    expected_hashes = (
+        "0xbfe0bae5a6318a74",
+        "0x19901317cdab6f40",
+        "0x93fe58505f03d134",
+    )
+    if (
+        result["source_hash"],
+        result["clean_target_hash"],
+        result["retained_target_hash"],
+    ) != expected_hashes:
+        raise ValueError("battle13 renderer retained-frame hashes changed")
+    return result
 
 
 def battle_render_plan_vector(
@@ -12230,6 +12494,10 @@ def build(data_root: Path) -> dict[str, object]:
         list(struct.unpack("<8192h", warfld_entries[int(setup_records[4]["battlefield_id"])][:16384])),
         setup_records[4],
     )
+    renderer_retention = battle_renderer_retention_vector(
+        data_root,
+        list(struct.unpack("<8192h", warfld_entries[13][:16384])),
+    )
     battle3_field_words = list(
         struct.unpack("<8192h", warfld_entries[int(setup_records[3]["battlefield_id"])][:16384])
     )
@@ -12309,6 +12577,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_rest_action_machine": battle_rest_action_contract(z_dat_bytes),
         "battle_defer_turn_machine": battle_defer_turn_contract(z_dat_bytes),
         "battle_enable_automatic_machine": battle_enable_automatic_contract(z_dat_bytes),
+        "battle_renderer_machine": battle_renderer_contract(z_dat_bytes, renderer_retention),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

@@ -323,7 +323,6 @@ bool BattleRenderer::render(
     if (!valid() || !battlefield_assets_loaded_ || !effect_assets_loaded_) {
         return false;
     }
-    framebuffer.clear(0U);
     framebuffer.set_palette(palette_);
     for (const auto& command : plan.commands) {
         switch (command.kind) {
@@ -1080,7 +1079,7 @@ bool BattleRenderer::load_fight_package(const std::int16_t fight_head_id) {
 
 std::span<const std::uint8_t> BattleRenderer::fight_entry(
     const std::int32_t legacy_id) const {
-    if (legacy_id < 0 || legacy_id > 0x7FFE || legacy_id % 2 != 0) {
+    if (legacy_id < 0 || legacy_id > 0x7FFE) {
         return {};
     }
     const auto pointer_index = static_cast<std::size_t>(legacy_id / 2);
@@ -1201,7 +1200,7 @@ bool BattleRenderer::draw_damage_text(
     const BattleRenderCommand& command) {
     std::vector<std::uint8_t> text;
     text.push_back(command.overlay_variant < 0 ? '-' : '+');
-    const auto number = decimal_text(command.value);
+    const auto number = decimal_text(command.value, 3);
     text.insert(text.end(), number.begin(), number.end());
     return draw_text(
         framebuffer,

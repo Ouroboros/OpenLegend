@@ -3106,6 +3106,93 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(target_commands[3U].style == static_cast<std::int16_t>(0x9193U));
     OL_CHECK(target_commands[3U].value == 17);
 
+    auto alternate_cursor_state = state;
+    alternate_cursor_state.primary_cursor_alternate = true;
+    const auto alternate_cursor_plan =
+        render_setup.battle_render_plan(alternate_cursor_state, path_values);
+    OL_CHECK(alternate_cursor_plan.has_value());
+    const auto alternate_cursor = std::ranges::find_if(
+        alternate_cursor_plan->commands,
+        [](const BattleRenderCommand& command) {
+            return command.kind == BattleRenderCommandKind::cursor_overlay &&
+                command.map_x == 27 && command.map_y == 26;
+        });
+    OL_CHECK(alternate_cursor != alternate_cursor_plan->commands.end());
+    if (alternate_cursor != alternate_cursor_plan->commands.end()) {
+        OL_CHECK(alternate_cursor->overlay_variant == 1 && alternate_cursor->style == 3);
+    }
+
+    auto branch_state = state;
+    branch_state.highlight_enabled = false;
+    branch_state.effect_visible = false;
+    static constexpr std::array<std::int16_t, 6> kExpectedDamageSigns{
+        0, -1, -1, 1, 1, -1};
+    static constexpr std::array<std::int16_t, 6> kExpectedDamageColors{
+        0,
+        static_cast<std::int16_t>(0x1014U),
+        static_cast<std::int16_t>(0x3032U),
+        static_cast<std::int16_t>(0x9193U),
+        static_cast<std::int16_t>(0x0705U),
+        static_cast<std::int16_t>(0x5053U)};
+    for (std::int16_t kind = 1; kind <= 6; ++kind) {
+        branch_state.damage_kind = kind;
+        const auto branch_plan = render_setup.battle_render_plan(branch_state, path_values);
+        OL_CHECK(branch_plan.has_value());
+        std::vector<BattleRenderCommand> branch_target_commands;
+        std::ranges::copy_if(
+            branch_plan->commands,
+            std::back_inserter(branch_target_commands),
+            [](const BattleRenderCommand& command) {
+                return command.map_x == 26 && command.map_y == 26;
+            });
+        OL_CHECK(branch_target_commands.size() >= 2U);
+        if (branch_target_commands.size() < 2U) {
+            continue;
+        }
+        OL_CHECK(branch_target_commands[0U].sprite_id == 8);
+        OL_CHECK(branch_target_commands[1U].kind == BattleRenderCommandKind::legacy_sprite);
+        OL_CHECK(branch_target_commands[1U].sprite_id == 5'132);
+        if (kind <= 5) {
+            OL_CHECK(branch_target_commands.size() == 3U);
+            if (branch_target_commands.size() == 3U) {
+                OL_CHECK(branch_target_commands[2U].kind == BattleRenderCommandKind::damage_text);
+                OL_CHECK(branch_target_commands[2U].overlay_variant ==
+                    kExpectedDamageSigns[static_cast<std::size_t>(kind)]);
+                OL_CHECK(branch_target_commands[2U].style ==
+                    kExpectedDamageColors[static_cast<std::size_t>(kind)]);
+            }
+        } else {
+            OL_CHECK(branch_target_commands.size() == 2U);
+        }
+    }
+
+    branch_state.damage_kind = 0;
+    branch_state.highlight_enabled = true;
+    branch_state.highlight_mode = 4;
+    const auto invalid_highlight_plan =
+        render_setup.battle_render_plan(branch_state, path_values);
+    OL_CHECK(invalid_highlight_plan.has_value());
+    OL_CHECK(std::ranges::count_if(
+        invalid_highlight_plan->commands,
+        [](const BattleRenderCommand& command) {
+            return command.map_x == 26 && command.map_y == 26;
+        }) == 1);
+    render_ranger.roles[3U].set_word(openlegend::model::role_word::hp, -1);
+    branch_state.highlight_mode = 2;
+    const auto negative_hp_plan = render_setup.battle_render_plan(branch_state, path_values);
+    OL_CHECK(negative_hp_plan.has_value());
+    const auto negative_hp_combatant = std::ranges::find_if(
+        negative_hp_plan->commands,
+        [](const BattleRenderCommand& command) {
+            return command.map_x == 26 && command.map_y == 26 &&
+                command.sprite_id == 5'132;
+        });
+    OL_CHECK(negative_hp_combatant != negative_hp_plan->commands.end());
+    if (negative_hp_combatant != negative_hp_plan->commands.end()) {
+        OL_CHECK(negative_hp_combatant->kind == BattleRenderCommandKind::legacy_sprite);
+    }
+    render_ranger.roles[3U].set_word(openlegend::model::role_word::hp, 0);
+
     BattleRenderer renderer{data_root, render_data.battlefield_id()};
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(renderer.valid());
@@ -3114,12 +3201,37 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(!renderer.render(*plan, framebuffer));
     OL_CHECK(renderer.load_effect_assets());
     OL_CHECK(renderer.load_battle_assets());
+
+    BattleRenderPlan even_sprite_plan;
+    even_sprite_plan.commands.push_back(target_commands[0U]);
+    auto odd_sprite_plan = even_sprite_plan;
+    odd_sprite_plan.commands[0U].sprite_id += 1;
+    openlegend::render::IndexedFramebuffer even_sprite_framebuffer;
+    openlegend::render::IndexedFramebuffer odd_sprite_framebuffer;
+    OL_CHECK(renderer.render(even_sprite_plan, even_sprite_framebuffer));
+    OL_CHECK(renderer.render(odd_sprite_plan, odd_sprite_framebuffer));
+    OL_CHECK(fnv1a_bytes(even_sprite_framebuffer.pixels()) ==
+        fnv1a_bytes(odd_sprite_framebuffer.pixels()));
+    OL_CHECK(fnv1a_bytes(even_sprite_framebuffer.pixels()) !=
+        fnv1a_bytes(openlegend::render::IndexedFramebuffer{}.pixels()));
+
+    BattleRenderPlan even_highlight_plan;
+    even_highlight_plan.commands.push_back(target_commands[1U]);
+    auto odd_highlight_plan = even_highlight_plan;
+    odd_highlight_plan.commands[0U].sprite_id += 1;
+    openlegend::render::IndexedFramebuffer even_highlight_framebuffer;
+    openlegend::render::IndexedFramebuffer odd_highlight_framebuffer;
+    OL_CHECK(renderer.render(even_highlight_plan, even_highlight_framebuffer));
+    OL_CHECK(renderer.render(odd_highlight_plan, odd_highlight_framebuffer));
+    OL_CHECK(fnv1a_bytes(even_highlight_framebuffer.pixels()) ==
+        fnv1a_bytes(odd_highlight_framebuffer.pixels()));
+
     OL_CHECK(renderer.render(*plan, framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x7d8a5211fe8c4eb0ULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x19cc52eb01d4bb4dULL);
     const auto status_panel = render_setup.status_panel_plan(0U);
     OL_CHECK(status_panel.has_value());
     OL_CHECK(renderer.render_status_panel(*status_panel, framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x630a82d57e1d8715ULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x4a9f39bbe9629b58ULL);
 
     auto no_range_state = state;
     no_range_state.path_limit = 0;
@@ -3130,6 +3242,39 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(std::ranges::none_of(no_range_plan->commands, [](const BattleRenderCommand& command) {
         return command.kind == BattleRenderCommandKind::cursor_overlay;
     }));
+
+    auto retention_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    BattleData retention_data{data_root, 89};
+    BattleSetup retention_setup{retention_data, retention_ranger};
+    OL_CHECK(retention_setup.valid());
+    std::ranges::fill(retention_data.occupancy(), static_cast<std::int16_t>(-1));
+    const BattleRenderState retention_source_state{.view_x = 15, .view_y = 16};
+    const BattleRenderState retention_target_state{.view_x = 16, .view_y = 16};
+    const auto retention_source_plan =
+        retention_setup.battle_render_plan(retention_source_state, {});
+    const auto retention_target_plan =
+        retention_setup.battle_render_plan(retention_target_state, {});
+    OL_CHECK(retention_source_plan.has_value());
+    OL_CHECK(retention_target_plan.has_value());
+    BattleRenderer retention_renderer{data_root, retention_data.battlefield_id()};
+    OL_CHECK(retention_renderer.load_battle_assets());
+    openlegend::render::IndexedFramebuffer retention_framebuffer;
+    OL_CHECK(retention_renderer.render(*retention_source_plan, retention_framebuffer));
+    OL_CHECK(fnv1a_bytes(retention_framebuffer.pixels()) == 0xbfe0bae5a6318a74ULL);
+    OL_CHECK(retention_renderer.render(*retention_target_plan, retention_framebuffer));
+    OL_CHECK(fnv1a_bytes(retention_framebuffer.pixels()) == 0x93fe58505f03d134ULL);
+    for (const auto index : std::array<std::size_t, 4>{
+             8U * 320U + 240U,
+             44U * 320U + 168U,
+             89U * 320U + 78U,
+             107U * 320U + 42U}) {
+        OL_CHECK(retention_framebuffer.pixels()[index] == 181U);
+    }
+    openlegend::render::IndexedFramebuffer clean_target_framebuffer;
+    OL_CHECK(retention_renderer.render(*retention_target_plan, clean_target_framebuffer));
+    OL_CHECK(fnv1a_bytes(clean_target_framebuffer.pixels()) == 0x19901317cdab6f40ULL);
+    OL_CHECK(fnv1a_bytes(retention_framebuffer.pixels()) !=
+        fnv1a_bytes(clean_target_framebuffer.pixels()));
 }
 
 void run_player_action_availability_test(
@@ -3773,7 +3918,7 @@ void run_player_item_session_test(
     OL_CHECK(item_effect_hash == 0xd518fb664f3e0e3cULL);
     OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0x370a4078e9de6172ULL);
-    OL_CHECK(throwing_damage_hash == 0xd41fa068222d444aULL);
+    OL_CHECK(throwing_damage_hash == 0xde5838c214d40974ULL);
 
     openlegend::diagnostics::shutdown_logging();
     std::ifstream log_file{log_path, std::ios::binary};
@@ -4544,7 +4689,7 @@ void run_ai_attack_session_test(
     OL_CHECK(random.state() == 3'655'513'600U);
     OL_CHECK(ai_prelude_hash == 0xb02104139829a80dULL);
     OL_CHECK(first_magic_hash == 0xe1d1b3cff84bc0c4ULL);
-    OL_CHECK(first_damage_hash == 0x04c528de57fbffa0ULL);
+    OL_CHECK(first_damage_hash == 0x92f642095cfebac7ULL);
     OL_CHECK(commit_hash == 0xdbee20f394fd7219ULL);
     OL_CHECK(level_hash == 0xed97f52f9bedb836ULL);
 
@@ -4831,7 +4976,7 @@ void run_ai_poison_session_test(
                  .words[combatant_word::attack_counter] ==
              initial_attack_counter + 1);
     OL_CHECK(first_magic_hash == 0x47286fa4af30fce4ULL);
-    OL_CHECK(first_damage_hash == 0xd76de7fa195a1ac3ULL);
+    OL_CHECK(first_damage_hash == 0x480732c63399ff48ULL);
     OL_CHECK(random.state() == 2'993'822'286U);
 
     auto fallback_ranger = std::make_unique<openlegend::model::RangerState>();
@@ -5476,7 +5621,7 @@ void run_ai_item_session_test(
     OL_CHECK(item_effect_hash == 0xa7542240e4172664ULL);
     OL_CHECK(throwing_prelude_hash == 0x3f498f66e6357fffULL);
     OL_CHECK(throwing_effect_hash == 0xc65b523bd75389e2ULL);
-    OL_CHECK(throwing_damage_hash == 0x335fd35ea7e3f367ULL);
+    OL_CHECK(throwing_damage_hash == 0x23fd88f5e1341c3bULL);
     OL_CHECK(moved_throwing_effect_hash == 0x16a8f10ce319622bULL);
     OL_CHECK(item_random_state == 662'824'084U);
     OL_CHECK(throwing_random_state == 2'516'284'547U);
@@ -5685,9 +5830,9 @@ void run_ai_support_session_test(
     OL_CHECK(detox.hp == 500);
     OL_CHECK(detox.poison == 62);
     OL_CHECK(medicine.first_magic_hash == 0xbec9ef2738ca79b4ULL);
-    OL_CHECK(medicine.first_damage_hash == 0xa962994ff58c7064ULL);
+    OL_CHECK(medicine.first_damage_hash == 0x15d70b71e92ead8eULL);
     OL_CHECK(detox.first_magic_hash == 0xae0f13fbbc4c8083ULL);
-    OL_CHECK(detox.first_damage_hash == 0xa9cb56cb87bcbf4dULL);
+    OL_CHECK(detox.first_damage_hash == 0xac56919209b8ea9bULL);
 
     const auto hash_path = log_path.parent_path() / "b8-battle-ai-support.hash";
     std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
