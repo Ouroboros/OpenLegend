@@ -620,20 +620,6 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     if (phase_ == BattleSessionPhase::initial_present) {
-        if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
-            error_ = setup_.valid()
-                ? "battle has no combatants after initial presentation"
-                : setup_.error();
-            return;
-        }
-        current_actor_slot_ = 0U;
-        const auto& actor = setup_.combatants()[0U].words;
-        render_state_.view_x = static_cast<std::int16_t>(
-            std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
-        render_state_.view_y = static_cast<std::int16_t>(
-            std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
-        render_state_.secondary_cursor = {
-            actor[combatant_word::x], actor[combatant_word::y]};
         if (fade_palettes_.empty()) {
             phase_ = BattleSessionPhase::round_start;
             diagnostics::log_info(
@@ -943,8 +929,20 @@ bool BattleSession::begin_initial_battle() {
         error_ = renderer_.error();
         return false;
     }
+    if (!setup_.sort_by_effective_speed() || setup_.combatant_count() <= 0) {
+        error_ = setup_.valid()
+            ? "battle has no combatants before initial presentation"
+            : setup_.error();
+        return false;
+    }
     current_actor_slot_ = 0U;
     const auto& actor = setup_.combatants()[0U].words;
+    render_state_.view_x = static_cast<std::int16_t>(
+        std::clamp(static_cast<int>(actor[combatant_word::x]) - 11, 0, 32));
+    render_state_.view_y = static_cast<std::int16_t>(
+        std::clamp(static_cast<int>(actor[combatant_word::y]) - 11, 0, 32));
+    render_state_.secondary_cursor = {
+        actor[combatant_word::x], actor[combatant_word::y]};
     phase_ = BattleSessionPhase::initial_present;
     diagnostics::log_info(
         "battle initial view ready id=" + std::to_string(battle_id()) +

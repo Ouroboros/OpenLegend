@@ -7431,9 +7431,9 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(session.setup().combatants()[slot].words[combatant_word::role_id] ==
                  kExpectedRoles[slot]);
     }
-    OL_CHECK(session.view_x() == 0 && session.view_y() == 0);
+    OL_CHECK(session.view_x() == 19 && session.view_y() == 13);
     OL_CHECK(session.render(framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x568240847c97700cULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x03446a8a41ef2ec6ULL);
 
     session.finish_presented_tick();
     OL_CHECK(session.phase() == BattleSessionPhase::initial_fade);
@@ -10970,11 +10970,20 @@ void run_initial_presentation_order_test(
     auto session = std::make_unique<BattleSession>(
         data_root, *ranger, random, 4, false, inherited_state);
     OL_CHECK(session->valid());
-    finish_battle_entry_fade(*session);
     OL_CHECK(session->view_x() == 17);
     OL_CHECK(session->view_y() == 19);
     OL_CHECK(session->setup().combatant_count() == 2);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
+
+    finish_battle_entry_fade(*session);
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 3);
+    const auto& first = session->setup().combatants()[0U].words;
+    OL_CHECK(session->view_x() ==
+             std::clamp(static_cast<int>(first[combatant_word::x]) - 11, 0, 32));
+    OL_CHECK(session->view_y() ==
+             std::clamp(static_cast<int>(first[combatant_word::y]) - 11, 0, 32));
+    OL_CHECK((session->render_state().secondary_cursor == BattlePathCoord{
+        first[combatant_word::x], first[combatant_word::y]}));
 
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     OL_CHECK(session->render(*framebuffer));
@@ -10983,15 +10992,9 @@ void run_initial_presentation_order_test(
         [](const auto& color) {
             return color.red == 0U && color.green == 0U && color.blue == 0U;
         }));
-    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
+    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 3);
     session->finish_presented_tick(10U);
     OL_CHECK(session->phase() == BattleSessionPhase::initial_fade);
-    OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 3);
-    const auto& first = session->setup().combatants()[0U].words;
-    OL_CHECK(session->view_x() ==
-             std::clamp(static_cast<int>(first[combatant_word::x]) - 11, 0, 32));
-    OL_CHECK(session->view_y() ==
-             std::clamp(static_cast<int>(first[combatant_word::y]) - 11, 0, 32));
     for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(10U);

@@ -13753,9 +13753,19 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
                     ])
         return commands
 
+    # sub_31C75 draws the inherited view before fading to black. After that fade,
+    # sub_3271E sorts first and derives the first actor view before its own black
+    # present. Keep both independently generated frames so their owners cannot be
+    # conflated again.
     initial_view_x, initial_view_y = 0, 0
     initial_commands = render_commands(initial_view_x, initial_view_y)
     initial_hash, _, _ = battle_pixel_hashes(root, 1, initial_commands)
+    round_initial_view_x = max(0, min(32, combatants[0][1] - 11))
+    round_initial_view_y = max(0, min(32, combatants[0][2] - 11))
+    if (round_initial_view_x, round_initial_view_y) != (19, 13):
+        raise ValueError("battle2 round-loop initial actor view changed")
+    round_initial_commands = render_commands(round_initial_view_x, round_initial_view_y)
+    round_initial_hash, _, _ = battle_pixel_hashes(root, 1, round_initial_commands)
     action_commands = render_commands(19, 13, actor_cursor_visible=True)
     _, _, action_pixels = battle_pixel_hashes(root, 1, action_commands)
     pixels = bytearray(action_pixels)
@@ -13820,6 +13830,9 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
         "initial_view": [initial_view_x, initial_view_y],
         "initial_command_count": len(initial_commands),
         "initial_pixel_hash": initial_hash,
+        "round_loop_initial_view": [round_initial_view_x, round_initial_view_y],
+        "round_loop_initial_command_count": len(round_initial_commands),
+        "round_loop_initial_pixel_hash": round_initial_hash,
         "action_menu": {
             "availability": [1] * 10,
             "available_count": 10,

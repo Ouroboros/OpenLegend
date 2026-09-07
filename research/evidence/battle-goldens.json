@@ -25386,6 +25386,12 @@
         ],
         "initial_command_count": 1130,
         "initial_pixel_hash": "0x568240847c97700c",
+        "round_loop_initial_view": [
+          19,
+          13
+        ],
+        "round_loop_initial_command_count": 1185,
+        "round_loop_initial_pixel_hash": "0x03446a8a41ef2ec6",
         "action_menu": {
           "availability": [
             1,

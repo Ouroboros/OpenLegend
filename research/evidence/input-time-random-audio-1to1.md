@@ -214,6 +214,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 独立`battle_setup_machine.party.input`的10组向量覆盖无输入、首尾回绕、多flag优先级、三确认清理、mandatory、选择切换、空确认与非空确认，向量SHA256为`ab7b7329846275c9fed00e71c4cf20142b7fbdf2a6838dd8f824b4e824851238`。两份临时Golden和正式第三次生成逐字节一致，正式75键`battle-goldens.json` SHA256为`1f063b707ad9924e872a2224596baf499baa21fffbe7093f6f3bc43c54349ac6`。同址battle owner、caller、紧邻`sub_3265C`和7个callee owner保持独立；本轮只关闭`input-font-closure.tsv audit_order=32`。发现差异后废弃旧结论并从入口重审86块/453条指令，未发现新增差异。
 
+### 3.9 战斗回合槽入口确认态与首黑帧排序
+
+`sub_3271E @ 0x3271E..0x32A51`由Order33独立临时IDB冻结为819字节、166条指令、47个基本块、23个条件分支、4个无条件跳转、13次call、69项HIGHLOW重定位且零本地RET。raw/loaded SHA256分别为`d8e0befe7bfaa838fb81780210ec2814c6f3898b005fc6f6342e4a64906997dc`与`03fb8619f4d161ca82d1c6b26f20c3b08f56b129855f65af27771a8fe24328b3`；唯一caller为`sub_31C75:0x31D39`，`0x327DD`条件出口使用共享`0x35407..0x3540E`。
+
+每个slot入口依次检查Enter `0x51B7A`、Space `0x51B8D`、keypad Insert `0x51C03`的当前byte state。任一非零即在hidden检查前清三项并把automatic清0；按键若在slot边界前已释放则不取消automatic。hidden槽跳过绘制/动作但仍执行战果与隐藏目标清理；可见槽先定位次光标和相机，再render/present、清action/AI scratch，并仅在side恰0且automatic恰0时进入玩家菜单，否则进入AI。动作返回6抵消公共slot递增；全槽结束后轮末状态只执行一次，并以轮首保存tick无重绘等待变化。
+
+首轮C++对照发现`initial_present`此前先绘制/present黑色indexed frame，回调后才排序和定位；机器严格为`sort -> slot0定位 -> render -> present`。全黑调色板虽遮蔽RGB，indexed framebuffer与setup状态仍可观察。最小修正把排序和定位前移到`begin_initial_battle()`，不改变淡入帧数。独立原资产Golden同时保留caller继承`view=0,0`帧，并新增回合入口`view=19,13`、1185命令、FNV64=`0x03446a8a41ef2ec6`的首黑帧区分向量；双生成和正式第三次生成一致，正式`battle-goldens.json` SHA256为`c8a083ec57902eec86d71a3086c365a6370d65fc8f49767e40f529e36e66ba7c`。Linux app Debug 14/14通过。
+
+本轮只关闭`input-font-closure.tsv audit_order=33`；同址battle owner、caller、共享尾、排序/交换、玩家/AI动作、战果、hidden清理、轮末状态、render/present/fade及time owner均不传播。修正后从入口重审47块/166条指令及全部出口，未发现其他合法域差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：
