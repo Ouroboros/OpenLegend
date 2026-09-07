@@ -902,6 +902,15 @@ BATTLE_RENDERER_CALLER_SITES = (
     0x38310, 0x383F3, 0x3880D, 0x388D4, 0x3894C, 0x38E70, 0x3AA55,
     0x3B300, 0x3B5B9, 0x3B726, 0x3BBAC, 0x3C3C1,
 )
+BATTLE_SPRITE_WORD_ADDRESS = 0x3B1E6
+BATTLE_SPRITE_WORD_END = 0x3B238
+BATTLE_SPRITE_WORD_CALL_OFFSETS = (0x005,)
+BATTLE_SPRITE_WORD_CALL_TARGETS = (0x3ED1E,)
+BATTLE_SPRITE_WORD_RELOCATION_OFFSETS = (0x018, 0x025, 0x032, 0x03B, 0x045)
+BATTLE_SPRITE_WORD_CALLER_SITES = (
+    0x31F7E, 0x32031, 0x32100, 0x325BE, 0x326CB, 0x32DFC, 0x32E16,
+    0x37449, 0x382EB, 0x399E2, 0x39D82, 0x3A0EB, 0x3A87F,
+)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -8336,6 +8345,131 @@ def battle_renderer_contract(
     }
 
 
+def battle_sprite_word_contract(
+    z_dat_bytes: bytes,
+    ranger_groups: dict[str, bytes],
+) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_SPRITE_WORD_ADDRESS,
+        end=BATTLE_SPRITE_WORD_END,
+        call_offsets=BATTLE_SPRITE_WORD_CALL_OFFSETS,
+        expected_call_targets=BATTLE_SPRITE_WORD_CALL_TARGETS,
+        relocation_offsets=BATTLE_SPRITE_WORD_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_SPRITE_WORD_CALLER_SITES,
+        instruction_count=20,
+        branch_count=0,
+    )
+    if contract["raw_sha256"] != (
+        "985aa8b7a31a9cb2162f8bb491d66c7679aef3faaa3adf7802cd0081f81838f6"
+    ):
+        raise ValueError("Z.DAT battle sprite-word raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "7128954c4011c4368e7a7da78881964187e8819414265ed5e071aa68307abb86"
+    ):
+        raise ValueError("Z.DAT battle sprite-word relocation image changed")
+
+    archive_frame_offset, sprite_base = (
+        struct.unpack_from("<h", z_dat_bytes, address - Z_DAT_LOAD_BASE)[0]
+        for address in (0x556CC, 0x556D4)
+    )
+    if archive_frame_offset != 0 or sprite_base != 5106:
+        raise ValueError("Z.DAT battle sprite-word constants changed")
+
+    def sprite_word(head_id: int, initial_mode: int) -> int:
+        return wrapping_i16(
+            8 * wrapping_i16(head_id)
+            + 2 * archive_frame_offset
+            + sprite_base
+            + 2 * wrapping_i16(initial_mode)
+        )
+
+    vectors = [
+        {
+            "slot": slot,
+            "role_id": role_id,
+            "head_id": head_id,
+            "initial_mode": initial_mode,
+            "sprite_word": sprite_word(head_id, initial_mode),
+        }
+        for slot, role_id, head_id, initial_mode in (
+            (0, 0, -1, 0),
+            (25, 319, 0, 0),
+            (1, 1, 0, 1),
+            (2, 2, 7, 2),
+            (3, 3, -1, -1),
+            (24, 318, 32767, 32767),
+            (25, 319, -32768, -32768),
+        )
+    ]
+    vector_sha256 = sha256(json.dumps(
+        vectors, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8"))
+    if vector_sha256 != "887993d4e883fec6a1c5f07e859f0c09443a6e17f52c12138a1de776fab4d3b9":
+        raise ValueError("battle sprite-word independent vector set changed")
+
+    alias_byte_offset = 836 - 182 + 2
+    stock_empty_aliases = []
+    for name in ("RANGER.GRP", "R1.GRP", "R2.GRP", "R3.GRP"):
+        value = ranger_groups[name]
+        if len(value) != 114_242:
+            raise ValueError(f"{name} does not contain the complete Ranger layout")
+        alias_head_id = struct.unpack_from("<h", value, alias_byte_offset)[0]
+        stock_empty_aliases.append({
+            "name": name,
+            "sha256": sha256(value),
+            "header_byte_offset": alias_byte_offset,
+            "header_word": alias_byte_offset // 2,
+            "inventory_slot": (alias_byte_offset // 2 - 18) // 2,
+            "item_id": alias_head_id,
+            "sprite_word": sprite_word(alias_head_id, 0),
+        })
+    if any(
+        value["inventory_slot"] != 155
+        or value["item_id"] != -1
+        or value["sprite_word"] != 5098
+        for value in stock_empty_aliases
+    ):
+        raise ValueError("stock Ranger empty-slot sprite alias changed")
+
+    return {
+        **contract,
+        "basic_block_count": 1,
+        "conditional_branch_count": 0,
+        "unconditional_jump_count": 0,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_SPRITE_WORD_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3b237"],
+        "caller_site_count": len(BATTLE_SPRITE_WORD_CALLER_SITES),
+        "unique_caller_count": 9,
+        "caller_writeback": "all 13 call sites store returned AX into combatant word8",
+        "constants": {
+            "archive_frame_offset": archive_frame_offset,
+            "sprite_base": sprite_base,
+        },
+        "formula": (
+            "int16(8*role.head_id + 2*archive_frame_offset + "
+            "sprite_base + 2*combatant.initial_mode)"
+        ),
+        "empty_slot_alias": (
+            "role_id -1 indexes 182 bytes before role0, so role word1 aliases "
+            "Ranger header inventory slot155 item_id"
+        ),
+        "stock_empty_aliases": stock_empty_aliases,
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "return_contract": "CWDE sign-extends final AX",
+        "platform_adaptation_boundary": (
+            "modern code rejects invalid slot and role indices; the legal empty role -1 "
+            "header alias and signed low16 arithmetic are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe and all nine caller owners retain independent closure"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -12208,7 +12342,11 @@ def build(data_root: Path) -> dict[str, object]:
     if any(value <= 0 for value in effect_counts):
         raise ValueError("battle effect frame-count table contains a non-positive value")
 
-    ranger_group_bytes = (data_root / "RANGER.GRP").read_bytes()
+    ranger_groups = {
+        name: (data_root / name).read_bytes()
+        for name in ("RANGER.GRP", "R1.GRP", "R2.GRP", "R3.GRP")
+    }
+    ranger_group_bytes = ranger_groups["RANGER.GRP"]
     magic_bytes = ranger_group_bytes[101_444:114_092]
     if len(magic_bytes) != 93 * 136:
         raise ValueError("RANGER.GRP does not contain 93 complete magic records")
@@ -12578,6 +12716,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_defer_turn_machine": battle_defer_turn_contract(z_dat_bytes),
         "battle_enable_automatic_machine": battle_enable_automatic_contract(z_dat_bytes),
         "battle_renderer_machine": battle_renderer_contract(z_dat_bytes, renderer_retention),
+        "battle_sprite_word_machine": battle_sprite_word_contract(z_dat_bytes, ranger_groups),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

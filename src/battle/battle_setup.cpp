@@ -28,6 +28,7 @@ constexpr std::size_t kEnemyBegin = 33U;
 constexpr std::size_t kEnemyXBegin = 53U;
 constexpr std::size_t kEnemyYBegin = 73U;
 constexpr std::int16_t kBattleSpriteBase = 5106;
+constexpr std::size_t kEmptySpriteAliasInventorySlot = 155U;
 constexpr std::array<std::int16_t, 53> kBattleEffectFrameCounts{
     10, 14, 17, 9,  13, 17, 17, 17, 18, 19, 19, 15, 13, 10, 10, 15, 21, 16,
     9,  11, 8,  9,  8,  8,  7,  8,  8,  9,  12, 19, 11, 14, 12, 17, 8,  11,
@@ -539,8 +540,13 @@ BattleSetup::BattleSetup(
 }
 
 void BattleSetup::initialize_combatants() {
+    const auto empty_sprite = wrapping_i16(
+        8 * static_cast<std::int32_t>(
+                ranger_.header.inventory_item(kEmptySpriteAliasInventorySlot).value) +
+        kBattleSpriteBase);
     for (auto& combatant : combatants_) {
         combatant.words = kInitialCombatantWords;
+        combatant.words[combatant_word::sprite] = empty_sprite;
     }
 }
 

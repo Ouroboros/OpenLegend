@@ -9751,7 +9751,7 @@ void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.selection_states()[0U] == 2);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 0);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5110);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5098);
+    OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5106);
     OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::changed);
     OL_CHECK(setup.selection_states()[0U] == 2);
 
@@ -9783,6 +9783,38 @@ void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(data.occupancy()[17U * 64U + 36U] == 1);
     OL_CHECK(data.occupancy()[20U * 64U + 35U] == 2);
     OL_CHECK(data.occupancy()[23U * 64U + 21U] == 3);
+
+    auto aliased_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    aliased_ranger.header.set_inventory(
+        155U, openlegend::model::ItemId{7}, static_cast<std::int16_t>(1));
+    BattleData aliased_data{data_root, 0};
+    BattleSetup aliased_setup{aliased_data, aliased_ranger};
+    OL_CHECK(aliased_setup.valid());
+    OL_CHECK(aliased_setup.combatant_count() == 1);
+    OL_CHECK(aliased_setup.combatants()[1U].words[combatant_word::role_id] == -1);
+    OL_CHECK(aliased_setup.combatants()[1U].words[combatant_word::initial_mode] == 0);
+    OL_CHECK(aliased_setup.combatants()[1U].words[combatant_word::sprite] == 5162);
+
+    auto stock_alias_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    stock_alias_ranger.header.set_inventory(
+        155U, openlegend::model::ItemId{-1}, static_cast<std::int16_t>(0));
+    BattleData stock_alias_data{data_root, 0};
+    BattleSetup stock_alias_setup{stock_alias_data, stock_alias_ranger};
+    OL_CHECK(stock_alias_setup.valid());
+    OL_CHECK(stock_alias_setup.combatants()[1U].words[combatant_word::sprite] == 5098);
+
+    auto boundary_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    boundary_ranger.roles[1U].set_word(
+        openlegend::model::role_word::head_id,
+        std::numeric_limits<std::int16_t>::max());
+    boundary_ranger.roles[3U].set_word(
+        openlegend::model::role_word::head_id,
+        std::numeric_limits<std::int16_t>::min());
+    BattleData boundary_data{data_root, 4};
+    BattleSetup boundary_setup{boundary_data, boundary_ranger};
+    OL_CHECK(boundary_setup.valid());
+    OL_CHECK(boundary_setup.combatants()[0U].words[combatant_word::sprite] == 5102);
+    OL_CHECK(boundary_setup.combatants()[1U].words[combatant_word::sprite] == 5108);
 }
 
 void run_fixed_and_duplicate_tests(const openlegend::resource::DataRoot& data_root) {

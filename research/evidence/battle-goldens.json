@@ -13837,6 +13837,154 @@
     "platform_adaptation_boundary": "modern code rejects invalid view, path spans, occupancy, roles and unloaded assets; legal original assets preserve command and pixel order",
     "closure_boundary": "stack probe, sprite, overlay, tint, format/text helpers and all26 callers retain independent owners"
   },
+  "battle_sprite_word_machine": {
+    "address": "0x3b1e6",
+    "end": "0x3b238",
+    "raw_offset": "0x34be6",
+    "size": 82,
+    "instruction_count": 20,
+    "branch_count": 0,
+    "raw_sha256": "985aa8b7a31a9cb2162f8bb491d66c7679aef3faaa3adf7802cd0081f81838f6",
+    "loaded_sha256": "7128954c4011c4368e7a7da78881964187e8819414265ed5e071aa68307abb86",
+    "relocation_count": 5,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3b1eb"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x31f7e",
+      "0x32031",
+      "0x32100",
+      "0x325be",
+      "0x326cb",
+      "0x32dfc",
+      "0x32e16",
+      "0x37449",
+      "0x382eb",
+      "0x399e2",
+      "0x39d82",
+      "0x3a0eb",
+      "0x3a87f"
+    ],
+    "basic_block_count": 1,
+    "conditional_branch_count": 0,
+    "unconditional_jump_count": 0,
+    "relocation_offsets": [
+      "0x18",
+      "0x25",
+      "0x32",
+      "0x3b",
+      "0x45"
+    ],
+    "local_return_sites": [
+      "0x3b237"
+    ],
+    "caller_site_count": 13,
+    "unique_caller_count": 9,
+    "caller_writeback": "all 13 call sites store returned AX into combatant word8",
+    "constants": {
+      "archive_frame_offset": 0,
+      "sprite_base": 5106
+    },
+    "formula": "int16(8*role.head_id + 2*archive_frame_offset + sprite_base + 2*combatant.initial_mode)",
+    "empty_slot_alias": "role_id -1 indexes 182 bytes before role0, so role word1 aliases Ranger header inventory slot155 item_id",
+    "stock_empty_aliases": [
+      {
+        "name": "RANGER.GRP",
+        "sha256": "07b99e3c1676e18691f00d6dfe713121faa6f7429e43666bc83e1568cecb68ab",
+        "header_byte_offset": 656,
+        "header_word": 328,
+        "inventory_slot": 155,
+        "item_id": -1,
+        "sprite_word": 5098
+      },
+      {
+        "name": "R1.GRP",
+        "sha256": "6dc1bf2801f3a474d2611cc70f59e7029ab3fb2fa61862af55146d2657850ee5",
+        "header_byte_offset": 656,
+        "header_word": 328,
+        "inventory_slot": 155,
+        "item_id": -1,
+        "sprite_word": 5098
+      },
+      {
+        "name": "R2.GRP",
+        "sha256": "714e861b5cbe1cb3a793a14334cef8a30852168f1fa98aa9a39cd438f737c712",
+        "header_byte_offset": 656,
+        "header_word": 328,
+        "inventory_slot": 155,
+        "item_id": -1,
+        "sprite_word": 5098
+      },
+      {
+        "name": "R3.GRP",
+        "sha256": "1256244075722e807b0efdbc8663f5949ec35870a6703a457f56dfce93f618af",
+        "header_byte_offset": 656,
+        "header_word": 328,
+        "inventory_slot": 155,
+        "item_id": -1,
+        "sprite_word": 5098
+      }
+    ],
+    "vectors": [
+      {
+        "slot": 0,
+        "role_id": 0,
+        "head_id": -1,
+        "initial_mode": 0,
+        "sprite_word": 5098
+      },
+      {
+        "slot": 25,
+        "role_id": 319,
+        "head_id": 0,
+        "initial_mode": 0,
+        "sprite_word": 5106
+      },
+      {
+        "slot": 1,
+        "role_id": 1,
+        "head_id": 0,
+        "initial_mode": 1,
+        "sprite_word": 5108
+      },
+      {
+        "slot": 2,
+        "role_id": 2,
+        "head_id": 7,
+        "initial_mode": 2,
+        "sprite_word": 5166
+      },
+      {
+        "slot": 3,
+        "role_id": 3,
+        "head_id": -1,
+        "initial_mode": -1,
+        "sprite_word": 5096
+      },
+      {
+        "slot": 24,
+        "role_id": 318,
+        "head_id": 32767,
+        "initial_mode": 32767,
+        "sprite_word": 5096
+      },
+      {
+        "slot": 25,
+        "role_id": 319,
+        "head_id": -32768,
+        "initial_mode": -32768,
+        "sprite_word": 5106
+      }
+    ],
+    "vector_sha256": "887993d4e883fec6a1c5f07e859f0c09443a6e17f52c12138a1de776fab4d3b9",
+    "return_contract": "CWDE sign-extends final AX",
+    "platform_adaptation_boundary": "modern code rejects invalid slot and role indices; the legal empty role -1 header alias and signed low16 arithmetic are preserved",
+    "closure_boundary": "stack probe and all nine caller owners retain independent closure"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

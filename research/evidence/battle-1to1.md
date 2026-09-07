@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为72/81；其余9项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为73/81；其余8项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、9项为 `implemented_pending_review`、72项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、8项为 `implemented_pending_review`、73项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -30,7 +30,7 @@
 
 ## 3. 资产 oracle
 
-`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` 共65个顶层键，SHA256为`eea9c95ac51769a9ab16c3aea8867a3319cdc8a7330dad4fed01954c95b94174`；本轮仅新增`battle_enable_automatic_machine`，固定58-byte raw/loaded identity、3处重定位、4次call、唯一caller及render→present→flag1→同actor AI顺序向量，向量集SHA256为`4a37e849a035425b8ae019458b0f2edcebce0cddeb6115136726ab022c14c20e`；历史64个顶层键逐值不变。
+`research/tools/generate_b8_battle_goldens.py` 只读取原版字节，不链接 OpenLegend C++；两次独立生成逐字节一致后才更新正式文件，第三次生成再与正式文件逐字节相同。正式 `research/evidence/battle-goldens.json` 共67个顶层键，SHA256为`03ed0086cd490bc790a1e26e342207c2f7aa6ae9dc725c46e3c62a78dcb0fde2`；本轮仅新增`battle_sprite_word_machine`，固定82-byte raw/loaded identity、5处重定位、13个call site、四套Ranger空槽别名及signed边界，向量集SHA256为`887993d4e883fec6a1c5f07e859f0c09443a6e17f52c12138a1de776fab4d3b9`；历史66个顶层键逐值不变。
 
 `research/tools/generate_b8_player_status_golden.py` 独立读取WAR、WARFLD、WDX/WMP、HDGRP、字体与palette，并从固定角色/装备/武功字节直接复算状态选择和两页像素；正式输出为`research/evidence/battle-player-status-golden.json`，SHA256为`833ad96506b856e9c58638c94f2a24ebd46900884d755f1a11379f62442b4a15`，不链接或调用OpenLegend C++；双生成及与正式文件逐字节一致。
 
@@ -69,11 +69,11 @@ B8 报告记录253个 data target。battle transient 的高密度 xref 簇位于
 - 固定队伍看 WAR words15..20，一旦任一非-1便完全跳过预置队伍和选择 UI；否则先建 WAR words9..14，再允许队伍前缀中的非 mandatory 成员切换0/1；
 - 队伍写 side word=0、word4=2；敌方写 side word=1、word4=1；每次插入重算 word8、写 occupancy，再按16位递增 count；
 - occupancy 以 `y*64+x` 寻址，无范围、重复或容量检查；战斗93证明重复格必须后写覆盖；
-- `sub_3B1E6` 返回 `int16(8*role.word1 + word_556D4 + 2*word_556CC + 2*combatant.word4)`；空槽初始化会以 role=-1 对角色表前182字节读取。
+- `sub_3B1E6` 返回 `int16(8*role.word1 + word_556D4 + 2*word_556CC + 2*combatant.word4)`；空槽role=-1会从角色表前182字节读取，并精确别名Ranger header inventory slot155 item ID。
 
 `BattleSetup` 已实现26槽完整初值、固定/预置队伍、host-neutral cursor/0·1·2选择状态、按当前 count 取坐标追加、敌方建立、sprite word 和后写 occupancy 覆盖。预置角色先按WAR下标无条件追加，再扫描队伍前缀只标记所有匹配的mandatory状态；本轮完整基本块复核确认现实现顺序一致。`BattleSession`实际绘制圆角混色选择框、原Big5标题/确认文字、角色名和星号，逐键执行上下回绕与确认；runtime每轮先重绘scene背景，无scene caller的独立入口才恢复冻结背景。真实battle0 mandatory/手选顺序、battle4固定队伍、battle93 slot9→slot11覆盖及全140条记录均通过。
 
-battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0,1,2]`并追加敌方4；建队完成不排序也不覆盖battle render globals。机器选择循环每轮调用scene renderer重绘背景后直接叠面板；现代runtime保持该路径，无scene caller的独立BattleSession入口才使用冻结背景回退。选择菜单的独立Python oracle/C++ FNV64均为`0x83f943240d14bb33`；程序初始globals为零时，确认后的首个战场帧使用`view=(0,0)`，FNV64均为`0x568240847c97700c`。机器identity/重定位/call序列、独立golden及Linux app Debug 14/14均通过，`sub_31EB9/sub_3265C`最终归类`platform_adapted / converged_no_new_differences`；`sub_3B1E6`仍为独立`audit_order=73`，不传播关闭。
+battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0,1,2]`并追加敌方4；建队完成不排序也不覆盖battle render globals。机器选择循环每轮调用scene renderer重绘背景后直接叠面板；现代runtime保持该路径，无scene caller的独立BattleSession入口才使用冻结背景回退。选择菜单的独立Python oracle/C++ FNV64均为`0x83f943240d14bb33`；程序初始globals为零时，确认后的首个战场帧使用`view=(0,0)`，FNV64均为`0x568240847c97700c`。机器identity/重定位/call序列、独立Golden及Linux app Debug 14/14均通过。order73首轮发现现代空槽sprite固定5098而未保留合法header别名；初始化现按slot155 item ID动态计算，值7得到5162，修正后从`sub_31EB9`入口重审零剩余差异。`sub_31EB9/sub_3265C/sub_3B1E6`均最终归类`platform_adapted / converged_no_new_differences`，各owner独立关闭。
 
 ## 7. 回合排序、玩家菜单与胜负核心
 
@@ -426,6 +426,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 首轮对照发现机器owner不清屏而现代入口清0；真实battle13从view`(15,16)`切`(16,16)`时，原行为会在`(240,8),(168,44),(78,89),(42,107)`保留前帧值181。另发现damage漏掉`%3d`宽度，以及battle专用sprite loader额外拒绝机器合法的奇数ID；普通/高亮wrapper实际均以向零除2让0/1、2/3共享pointer。三项最小修正后废弃旧结论并从入口重新覆盖全部527条指令、58块、40分支、调用、唯一RET及26个caller续行，零剩余合法域差异；非法view/path/slot/role/archive安全拒绝归类平台适配。
 
 独立原资产向量锁定连续帧source/clean/retained FNV64=`0xbfe0bae5a6318a74`/`0x19901317cdab6f40`/`0x93fe58505f03d134`及四个差异像素；battle4命令仍为1,157条和`0xb9f8a428699b3712`，damage宽度修正后整帧/status为`0x19cc52eb01d4bb4d`/`0x4a9f39bbe9629b58`。alternate cursor、零range、负HP、非法highlight mode、effect隐藏damage、kind1..6和偶/奇同帧回归均通过。Golden三生成逐字节一致，66键SHA256=`8dafbc86668a6bc17180df43950b57c0c3f53a4a0dab9c451b46c2e86f1e5efb`，Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；六个callee和所有caller不传播closure。
+
+## 38. 参战者sprite word最终REVIEW
+
+`sub_3B1E6 @ 0x3B1E6..0x3B238`机器身份固定为82 bytes、20条连续指令、1个基本块、0分支、5处重定位、1次栈探测call、13个call site、9个caller owner和唯一`RETN @ 0x3B237`；raw/loaded SHA256为`985aa8b7a31a9cb2162f8bb491d66c7679aef3faaa3adf7802cd0081f81838f6`与`7128954c4011c4368e7a7da78881964187e8819414265ed5e071aa68307abb86`，5处DWORD均增加`0x20000`且归一化后完整匹配raw。机器按signed slot的28-byte记录读取role ID与initial mode，再按182-byte role记录读取head ID，返回`int16(8*head+2*word_556CC+word_556D4+2*mode)`并以`CWDE`符号扩展；13个caller均把AX写入combatant word8。
+
+完整data xref锁定常量0/5106且无写入。`sub_31EB9`初始化role=-1时，角色word1访问实际别名Ranger header byte656 / word328 / inventory slot155 item ID；四套原始Ranger资产均为-1，故stock结果5098，但合法存档值7应得5162。首轮对照发现现代把空槽固定5098，现以slot155动态值及signed 16-bit回绕最小修正。修正后从受影响`sub_31EB9`入口重审26槽初始化、队伍三路径、敌方追加及所有出口，其他八个caller owner无需改动，零剩余合法域差异。
+
+回归覆盖slot155值7、stock -1、合成零值及head signed极值；独立向量SHA256=`887993d4e883fec6a1c5f07e859f0c09443a6e17f52c12138a1de776fab4d3b9`。Golden两次临时生成与第三次正式生成逐字节一致，67键SHA256=`03ed0086cd490bc790a1e26e342207c2f7aa6ae9dc725c46e3c62a78dcb0fde2`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；栈探测和九个caller owner不传播closure。
 
 ## 16. B8 实现差异审计关闭
 
