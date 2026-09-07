@@ -351,9 +351,13 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
         battle_session_->finish_presented_tick(bios_tick);
         return;
     }
-    if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
-        scene_session_->pending().kind == scene::SceneStepKind::question) {
-        scene_question_presented_ = true;
+    if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+        const auto pending_kind = scene_session_->pending().kind;
+        if (pending_kind == scene::SceneStepKind::question) {
+            scene_question_presented_ = true;
+        } else if (pending_kind == scene::SceneStepKind::death_menu) {
+            scene_death_menu_presented_ = true;
+        }
     }
     if (view_ != LegacyGameView::world || world_session_ == nullptr) {
         return;
@@ -589,8 +593,12 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             handle_scene_result(scene_session_->resume(
                 scene::SceneResponse::acknowledge,
                 static_cast<int>(translated_key)));
-        } else if (pending_kind == scene::SceneStepKind::load_menu ||
-                   pending_kind == scene::SceneStepKind::death_menu) {
+        } else if (pending_kind == scene::SceneStepKind::load_menu) {
+            handle_scene_result(scene_session_->resume(
+                scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
+        } else if (pending_kind == scene::SceneStepKind::death_menu &&
+                   scene_death_menu_presented_) {
+            scene_death_menu_presented_ = false;
             handle_scene_result(scene_session_->resume(
                 scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
         } else if (pending_kind == scene::SceneStepKind::dialogue ||
@@ -1476,11 +1484,13 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::question:
         scene_question_presented_ = false;
         break;
+    case scene::SceneStepKind::death_menu:
+        scene_death_menu_presented_ = false;
+        break;
     case scene::SceneStepKind::scene_title:
     case scene::SceneStepKind::dialogue:
     case scene::SceneStepKind::wait_key:
     case scene::SceneStepKind::load_menu:
-    case scene::SceneStepKind::death_menu:
     case scene::SceneStepKind::notice:
     case scene::SceneStepKind::shop:
         break;

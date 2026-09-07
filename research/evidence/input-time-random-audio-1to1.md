@@ -112,7 +112,17 @@ input owner首轮对照发现SDL一帧会排空多个事件，现代问句生成
 
 现代共同问句present门同样覆盖rest：问句首帧成功present前拒绝同批keydown，present后大写Y为yes、其他translated非零键为no。rest不进入join专用`conditional_after_present`，selected offset立即应用，后续脚本输出直接成为pending。机器相邻两次pre-wait清零在现代不可重入事件边界合并为一次，没有中间观察点。
 
-宿主回归把opcode5/9/11串联，固定join恢复present后rest问句重新关门、render后但present前拒绝Y、present后keypad Insert按任意非Y键直接结束脚本且不产生present。最终入口/出口、唯一caller、等待helper、7条资产和两条宿主路由复核零新增差异。三次Golden逐字节一致，正式`scene-goldens.json` SHA256为`42c4008cf235d4fb1894dd39bb3a6db677b0fd01310a07d4fce37d381fa3895c`；同址scene owner和delegated UI/render owner状态均不传播。
+宿主回归把opcode5/9/11串联，固定join恢复present后rest问句重新关门、render后但present前拒绝Y、present后keypad Insert按任意非Y键直接结束脚本且不产生present。最终入口/出口、唯一caller、等待helper、7条资产和两条宿主路由复核零新增差异。三次Golden逐字节一致，Order24关闭时`scene-goldens.json` SHA256为`42c4008cf235d4fb1894dd39bb3a6db677b0fd01310a07d4fce37d381fa3895c`；同址scene owner和delegated UI/render owner状态均不传播。
+
+### 2.9 死亡菜单每次显示只接收一个键
+
+`sub_2E659 @ 0x2E659..0x2EB49`为1264字节、330条指令、28个FlowChart行、42 calls、15个条件分支、8个无条件跳转、79项HIGHLOW重定位和零本地`RET`。raw/loaded SHA256分别为`832743bec15c92ed76da1680bce82e80485330dba141da442ba5634fb5b936d5`与`e9350b3775deca2ee7ec049f92d20f411f1f1a1a6c3b33f493bcaaec85ca9826`；两个物理caller为opcode15 dispatch和五轮试炼非胜利出口，另有`0x555F8`表引用，无外部内部入口。
+
+input机器合同固定每轮先present菜单，再读取一个last-key byte。Down `0x98`、Up `0x9E`、Enter `0x0D`、Space `0x20`及keypad Enter `0x96`按原分派处理，其他值保持selection；无论方向键、未知键还是确认键，下一次读取前都先重绘并present。前三项清屏present后经共享epilogue返回0-based读档槽。selection3先present确认框并经两次相邻清键等待非零键，仅uppercase `Y`退出；其他键重建selection3后重新present。
+
+首轮现代对照发现宿主会把同一SDL事件批内的多个death-menu按键连续送入`SceneSession`，中间frame尚未present。预修复构建`proc_6a1a`直接证明render后、actual present前的Down已改变选择。最小修正增加death-menu专用present门，每个新菜单结果关闭、`finish_presented_tick`打开、消费一个键前再次关闭；问题、读档菜单和底层菜单业务不变。
+
+修正后从入口重新审计全部330条指令，没有第二处差异。宿主回归覆盖首帧前、render-before-present、未知键、连续方向键、确认框、lowercase y、keypad Enter与uppercase Y；最终Linux app Debug `proc_c46f`通过14/14。三次Golden逐字节一致，正式`scene-goldens.json` SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`；同址scene、共享退出及delegated owner状态不传播。
 
 ## 3. 时间边界
 

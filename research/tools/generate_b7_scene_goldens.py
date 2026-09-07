@@ -6156,6 +6156,11 @@ def death_menu_sequence(
 ) -> dict[str, object]:
     image = (root / "DEAD.BIG").read_bytes()
     assert len(image) == 64000
+    z_dat = (root / "Z.DAT").read_bytes()
+    input_machine_raw = z_dat[0x28059:0x28549]
+    assert len(input_machine_raw) == 1264
+    assert sha256(input_machine_raw) == \
+        "832743bec15c92ed76da1680bce82e80485330dba141da442ba5634fb5b936d5"
     ascii_font = (root / "FONT.X16").read_bytes()
     big5_font = (root / "FONT.C16").read_bytes()
     lookup = rgb4_lookup(palette)
@@ -6255,9 +6260,31 @@ def death_menu_sequence(
     name_field = ranger[836 + 8:836 + 8 + 10]
     return {
         "entry_range": "0x2E659..0x2EB49",
-        "size_bytes": 1264,
+        "file_offset": "0x28059",
+        "size_bytes": len(input_machine_raw),
+        "raw_sha256": sha256(input_machine_raw),
+        "loaded_sha256": "e9350b3775deca2ee7ec049f92d20f411f1f1a1a6c3b33f493bcaaec85ca9826",
         "ida_instruction_count": 330,
+        "ida_basic_block_count": 28,
+        "call_count": 42,
+        "conditional_branch_count": 15,
+        "unconditional_jump_count": 8,
+        "highlow_fixup_count": 79,
+        "local_return_count": 0,
         "unreachable_post_exit_bytes": "83c404e90efeffff",
+        "input_machine": {
+            "initial_last_key_clear": "0x2E837",
+            "menu_present_call": "0x2E8D8",
+            "menu_last_key_read": "0x2E8E0",
+            "recognized_key_clears": ["0x2E911", "0x2E92A", "0x2E945"],
+            "load_black_present_call": "0x2E985",
+            "quit_entry_last_key_clear": "0x2E992",
+            "quit_confirmation_present_call": "0x2E9FA",
+            "quit_pre_wait_last_key_clear": "0x2EA02",
+            "clear_and_wait_nonzero_call": "0x2EA09",
+            "uppercase_y_compare": "0x2EA0E",
+            "cycle": "menu_present_then_one_last_key_read_then_redraw_before_next_read",
+        },
         "physical_callers": [
             "sub_2C319:0x2C5D8 opcode15",
             "sub_30480:0x30500 tournament_battle_defeat",
@@ -6312,6 +6339,12 @@ def death_menu_sequence(
         },
         "load_outputs": ["clear", "present", "return_load_request"],
         "quit_outputs": ["confirm_present", "wait_key", "shutdown_input_video", "exit_0"],
+        "wait_helper_sha256": "d1f87751e3589507ed555b84cc4a8e5523937fd67282944b568b34e6eeaa3a55",
+        "shared_load_epilogue_sha256": "f0534761893f006065f54d3ab46b1430fd9067fb0d7955374335ad622a97cd3c",
+        "host_input_timing": "one_nonzero_key_per_successfully_presented_menu_frame",
+        "rejected_quit_next_input": "after_rebuilt_selection_3_frame_present",
+        "accepted_quit_next_input": "none_exit_0",
+
         "rejected_quit_redraws_base_image": True,
         "panel_blend": "palette_index_0_div8_plus_destination_div8_then_rgb4_lookup",
     }

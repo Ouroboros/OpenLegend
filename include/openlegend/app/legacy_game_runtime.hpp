@@ -301,6 +301,7 @@ private:
     bool scene_ui_requested_{};
     bool scene_idle_skip_requested_{};
     bool scene_question_presented_{};
+    bool scene_death_menu_presented_{};
     scene::SceneInputReset scene_input_reset_request_{scene::SceneInputReset::none};
     bool clear_scene_exit_key_states_requested_{};
     bool ending_complete_{};
