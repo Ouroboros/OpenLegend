@@ -188,7 +188,11 @@ namespace {
 
 [[nodiscard]] bool install_picture_animation_initial_script(
     const std::filesystem::path& root) {
-    constexpr std::array<std::int16_t, 5> script{27, -1, 5002, 5006, -1};
+    constexpr std::array<std::int16_t, 12> script{
+        27, -1, 5002, 5006,
+        44, -1, 5002, 5006, -1, 5016, -30000,
+        -1,
+    };
     return install_initial_script(root, script);
 }
 
@@ -1999,7 +2003,7 @@ void check_question_present_gate(const std::filesystem::path& data_root) {
     OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
 }
 
-void check_picture_animation_tick_gate(const std::filesystem::path& data_root) {
+void check_picture_animation_tick_gates(const std::filesystem::path& data_root) {
     using namespace openlegend;
     using app::LegacyGameRuntimeTestAccess;
 
@@ -2055,8 +2059,34 @@ void check_picture_animation_tick_gate(const std::filesystem::path& data_root) {
     game.advance();
     OL_CHECK(
         LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::present);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5016);
+
+    game.advance();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5016);
+    OL_CHECK(game.render());
+    game.advance();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5016);
+    OL_CHECK(game.render());
+    game.advance();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5018);
+
+    OL_CHECK(game.render());
+    game.advance();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5018);
+    OL_CHECK(game.render());
+    game.advance();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5020);
+
+    OL_CHECK(game.render());
+    game.advance();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5020);
+    OL_CHECK(game.render());
+    game.advance();
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
         scene::SceneStepKind::stay);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5006);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5020);
 }
 
 void check_death_menu_present_gate(const std::filesystem::path& data_root) {
@@ -2695,7 +2725,7 @@ int main() {
     check_startup_resource_cache(data_root);
     check_game_runtime(data_root);
     check_question_present_gate(data_root);
-    check_picture_animation_tick_gate(data_root);
+    check_picture_animation_tick_gates(data_root);
     check_death_menu_present_gate(data_root);
     check_battle_runtime_transitions(data_root);
     check_scene_load_runtime(data_root);

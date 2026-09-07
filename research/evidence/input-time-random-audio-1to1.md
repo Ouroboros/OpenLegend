@@ -162,6 +162,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 本轮只独立关闭`input-font-closure.tsv audit_order=27`的tick引用/宿主时序owner；同址scene owner此前已独立关闭，`sub_3DB83`完整time owner、两个scene callee、编译器栈探测及共享尾owner均不传播状态。入口59条指令、全部14块、唯一caller、两个分支和全部出口最终重审无产品差异。
 
+### 3.4 opcode44双图片动画的tick边界
+
+`sub_2F9F2 @ 0x2F9F2..0x2FAB7`为197字节、71条指令、12个CFG块、5次call、4个条件分支、3个无条件跳转、6项HIGHLOW重定位和1个本地`RET`。raw/loaded SHA256分别为`e294edd4540be60f0979db3fe6c9c7154a08c342a0dba3d0c6718fe8eecca882`与`d9e2c1cd2614ef204601d60d2724eab9897956fa3c010ab62c6d74079cb197b5`；唯一物理caller是opcode44，另有`0x5566C`地址表引用。caller传入六个sign-extended word，callee完全不读`second_end`，本地返回尾SHA256为`bbe999c7b5b6b5ce26bc05b647d0bccb2d042eb83e9797d27928d655fbcab3dd`，caller清理24字节并把PC推进7 words。
+
+循环只由signed 32-bit `first_counter<=first_end`控制；first/second图片和独立counter每帧都加2，图片仅在写word时截低16位。每帧先捕获tick，严格按first后second写两个目标：event精确等于`-1`才写玩家图片，其他值交给事件callee。两个目标同为玩家或同一事件时，second在render前覆盖first，因此只显示second；两张图片都在完整场景render调用前先执行寄存器`+2`，但渲染读取已经写入内存的旧值。随后`sub_3DB83(50)`等待2 ticks并确认tick已离开帧首值。`first_start>first_end`时零写入、零render、零tick等待。
+
+现代opcode44只把前五个参数构造为`DualPictureAnimationState`，两个控制bool默认false；因此两个`-1`都调用`set_animated_picture`且second覆盖first，第六参数自然无读。`advance_dual_picture_animation_frame`以C++ `int`执行first终点判断和两图片`+2`，每帧返回`present(wait_ticks=2)`；宿主成功render后才开始两tick倒计时，第二tick才恢复下一帧或已推进7 words的PC。真实opcode27/44串联回归固定5016/5018/5020第二序列、无视`second_end=-30000`、未render不推进和每帧恰好两tick。
+
+独立Golden覆盖6次真实opcode44调用、script534的18个双事件逐像素帧及start>end、双玩家覆盖、32767后32位退出和奇数终点四组合成边界；参数流SHA256为`3261a421b7f4bc68691ba6c590451cefd773d308a22a43e59a66930470a88f7a`。三次生成逐字节一致，正式`scene-goldens.json` SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`。本轮只独立关闭`input-font-closure.tsv audit_order=28`，同址scene、四个callee和本地返回尾均保持owner隔离；最终入口重审无产品差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：
