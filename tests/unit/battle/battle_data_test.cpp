@@ -7543,6 +7543,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(session.player_action_menu().cursor == 1U);
     OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
     OL_CHECK(session.phase() == BattleSessionPhase::player_magic_selection);
+    OL_CHECK(session.player_menu_uses_key_states());
     OL_CHECK(session.player_action_menu().selected_action ==
              static_cast<std::int16_t>(BattlePlayerAction::attack));
     OL_CHECK(!session.render_state().secondary_cursor_visible);
@@ -7551,30 +7552,35 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(session.player_magic_selection()->available_count == 2);
     OL_CHECK(session.player_magic_selection()->available_slots[0U] == 0);
     OL_CHECK(session.player_magic_selection()->available_slots[1U] == 2);
-    OL_CHECK(session.handle_key(0x9CU) == BattleSessionInputResult::ignored);
+    OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::ignored);
     OL_CHECK(session.player_magic_selection()->cursor == 0);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x909332be9671b27cULL);
     session.finish_presented_tick();
-    OL_CHECK(session.handle_key(0x9CU) == BattleSessionInputResult::magic_changed);
-    OL_CHECK(session.player_magic_selection()->cursor == 1);
     OL_CHECK(session.handle_key(0x9CU) == BattleSessionInputResult::ignored);
+    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::ignored);
+    OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.player_magic_selection()->cursor == 1);
+    OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::ignored);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x6977ba7a0c3172a6ULL);
     session.finish_presented_tick();
-    OL_CHECK(session.handle_key(0x9CU) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::magic_changed);
     OL_CHECK(session.player_magic_selection()->cursor == 0);
-    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::ignored);
+    OL_CHECK(session.handle_key(0x9EU) == BattleSessionInputResult::ignored);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x909332be9671b27cULL);
     session.finish_presented_tick();
-    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::magic_changed);
+    OL_CHECK(session.handle_key(0x9EU) == BattleSessionInputResult::magic_changed);
     OL_CHECK(session.player_magic_selection()->cursor == 1);
     OL_CHECK(session.handle_key(0x1BU) == BattleSessionInputResult::ignored);
+    session.set_cursor_selection_input_states(false, false, false, false, true);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x6977ba7a0c3172a6ULL);
     session.finish_presented_tick();
-    OL_CHECK(session.handle_key(0x1BU) == BattleSessionInputResult::magic_cancelled);
+    OL_CHECK(session.phase() == BattleSessionPhase::player_action_return_present);
+    OL_CHECK(session.take_clear_cursor_selection_key_request() == 0x1BU);
+    session.set_cursor_selection_input_states(false, false, false, false, false);
     finish_player_menu_redraw(session);
     OL_CHECK(session.phase() == BattleSessionPhase::player_action);
     OL_CHECK(!session.render_state().secondary_cursor_visible);
@@ -7582,19 +7588,43 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(session.player_action_menu().selected_action == -1);
     OL_CHECK(session.handle_key(0x20U) == BattleSessionInputResult::action_selected);
     OL_CHECK(session.phase() == BattleSessionPhase::player_magic_selection);
-    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::ignored);
+    static_cast<void>(session.take_clear_confirmation_states_request());
+
+    session.set_player_menu_direction_states(true, true);
+    session.set_cursor_selection_input_states(false, false, false, false, true);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x909332be9671b27cULL);
     session.finish_presented_tick();
-    OL_CHECK(session.handle_key(0x9AU) == BattleSessionInputResult::magic_changed);
-    OL_CHECK(session.handle_key(0x0DU) == BattleSessionInputResult::ignored);
+    OL_CHECK(session.player_magic_selection()->cursor == 1);
+    OL_CHECK(session.take_clear_player_menu_direction_request() == 0x98U);
+    OL_CHECK(session.take_clear_cursor_selection_key_request() == 0U);
+    OL_CHECK(!session.take_clear_confirmation_states_request());
+
+    session.set_player_menu_direction_states(false, true);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x6977ba7a0c3172a6ULL);
     session.finish_presented_tick();
-    OL_CHECK(session.handle_key(0x0DU) == BattleSessionInputResult::magic_selected);
+    OL_CHECK(session.player_magic_selection()->cursor == 0);
+    OL_CHECK(session.take_clear_player_menu_direction_request() == 0x9EU);
+    OL_CHECK(session.take_clear_cursor_selection_key_request() == 0U);
+
+    session.set_player_menu_direction_states(true, false);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x909332be9671b27cULL);
+    session.finish_presented_tick();
+    OL_CHECK(session.player_magic_selection()->cursor == 1);
+    OL_CHECK(session.take_clear_player_menu_direction_request() == 0x98U);
+
+    session.set_player_menu_direction_states(false, false);
+    session.set_confirmation_state(true);
+    OL_CHECK(session.render(framebuffer));
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x6977ba7a0c3172a6ULL);
+    session.finish_presented_tick();
     OL_CHECK(session.phase() == BattleSessionPhase::player_targeting_select);
     OL_CHECK(session.selected_magic_slot() == 2);
     OL_CHECK(!session.player_magic_selection().has_value());
+    OL_CHECK(session.take_clear_confirmation_states_request());
+    OL_CHECK(session.take_clear_cursor_selection_key_request() == 0U);
 
     openlegend::diagnostics::shutdown_logging();
     std::ifstream log_file{log_path, std::ios::binary};

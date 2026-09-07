@@ -6334,13 +6334,13 @@
         "size": 246,
         "sha256": "a507e856249cc1241fc8b4aced4a92bae12be22f6202a3e99a0c104e5dbed6c7"
       },
-      "right": {
+      "down": {
         "address": "0x3908a",
         "end": "0x390ba",
         "size": 48,
         "sha256": "66e8e29cd538160d784ca0e3cad18edd223260995388918d20d93d9d2a7e48e3"
       },
-      "left": {
+      "up": {
         "address": "0x390ba",
         "end": "0x390e9",
         "size": 47,
@@ -6392,13 +6392,21 @@
       "y": "17*available ordinal+15; selected uses cursor ordinal",
       "sparse_bug": "ordinary scan stops at learned_count, selected scan covers all ten slots"
     },
+    "input_state_addresses": {
+      "down_0x98": "0x51c05",
+      "up_0x9e": "0x51c0b",
+      "enter_0x0d": "0x51b7a",
+      "space_0x20": "0x51b8d",
+      "insert_0x96": "0x51c03",
+      "escape_0x1b": "0x51b88"
+    },
     "input_priority": [
-      "right",
-      "left",
+      "down",
+      "up",
       "enter-or-space-or-insert",
       "escape"
     ],
-    "direction_rule": "clear only the handled direction flag, update cursor, then redraw/present",
+    "direction_rule": "clear only handled Down 0x98 or Up 0x9E, update cursor, then redraw/present",
     "confirm_rule": "clear all three confirm flags, remap cursor, write word_E6ED6, return",
     "cancel_rule": "clear Escape, write out-word one, preserve word_E6ED6, return",
     "caller": {
@@ -7344,7 +7352,7 @@
               "color": "0x6663"
             },
             "event": [
-              "right"
+              "down"
             ]
           },
           {
@@ -7380,7 +7388,7 @@
               "color": "0x6663"
             },
             "event": [
-              "right"
+              "down"
             ]
           },
           {
@@ -7416,7 +7424,7 @@
               "color": "0x6663"
             },
             "event": [
-              "left"
+              "up"
             ]
           },
           {
@@ -7529,7 +7537,7 @@
               "color": "0x6663"
             },
             "event": [
-              "right"
+              "down"
             ]
           },
           {
@@ -7644,9 +7652,9 @@
               "color": "0x6663"
             },
             "event": [
+              "down",
               "enter",
-              "escape",
-              "right"
+              "escape"
             ]
           },
           {
@@ -7685,7 +7693,7 @@
               "enter",
               "escape",
               "insert",
-              "left"
+              "up"
             ]
           },
           {
@@ -7793,7 +7801,7 @@
               "color": "0x6663"
             },
             "event": [
-              "left"
+              "up"
             ]
           },
           {
@@ -7939,7 +7947,7 @@
       }
     },
     "direct_rng_draws": 0,
-    "host_timing": "each entry and direction update must be rendered and presented before next input",
+    "host_timing": "after each entry/direction present, scan persistent states in Down > Up > confirmation > Escape priority and consume at most one group",
     "platform_adaptation_boundary": "modern code may reject invalid actor/magic ids, malformed name/count data, and the zero-available nonterminating or invalid-selection domain",
     "closure_boundary": "stack probe, battlefield redraw, panel, formatter, text renderer, framebuffer copy, shared magic slot, caller attack pipeline and downstream owners remain independent"
   },

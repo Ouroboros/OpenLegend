@@ -169,13 +169,13 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 ## 14. 武功选择菜单
 
-`sub_38DAC`机器身份固定为988 bytes、259条指令、52个函数体跳转、45处fixup、8次direct call、唯一caller和本地RET；raw/loaded SHA256为`57ae8494ab7b83a2e4871a11b0cf63c5384b4ab426d4c09a4c7bfdf9cfac6f21`与`4458a76d92ee84dddd18b94410dea5a757202b911bddd20fcc7e18abd4bde181`，全部fixup逆`+0x20000`后与只读原字节一致。唯一caller传actor、正武功数和取消word并忽略返回；恰一项时绕过菜单直接写物理slot0的BUG属于caller边界，不随本owner关闭。
+`sub_38DAC`机器身份固定为988 bytes、259条指令、70个CFG基本块、52个函数体跳转、45处fixup、8次direct call、唯一caller和本地RET；70块按六段`15+9+13+12+20+1`唯一覆盖。raw/loaded SHA256为`57ae8494ab7b83a2e4871a11b0cf63c5384b4ab426d4c09a4c7bfdf9cfac6f21`与`4458a76d92ee84dddd18b94410dea5a757202b911bddd20fcc7e18abd4bde181`，全部fixup逆`+0x20000`后与只读原字节一致。唯一caller传actor、正武功数和取消word并忽略返回；恰一项时绕过菜单直接写物理slot0的BUG属于caller边界，不随本owner关闭。
 
-可用mask扫描全部10槽，只接受signed magic id>0且signed MP≥signed need_mp；cursor是可用项ordinal，左右回绕，确认再次扫描10槽映射实际slot并写共享`word_E6ED6`，Escape只写取消word1。输入flag优先级严格右→左→三确认→Escape，方向只清自身flag，确认只清三确认flag；未命中的异步flag跨重绘保留。每轮必须先战场重画、面板/名称绘制和present，再扫描输入。
+可用mask扫描全部10槽，只接受signed magic id>0且signed MP≥signed need_mp；cursor是可用项ordinal，上下回绕，确认再次扫描10槽映射实际slot并写共享`word_E6ED6`，Escape只写取消word1。键盘state base为`0x51B6D`；函数实际读取`byte_51C05=base+0x98` Down与`byte_51C0B=base+0x9E` Up，不读取Right/Left。输入优先级严格Down→Up→三确认→Escape，方向只清自身单键，确认只清三确认键；未命中的持久状态跨重绘保留。每轮必须先战场重画、面板/名称绘制和present，再扫描输入。
 
 面板固定`(20,10,90,17*learned_count+10)`；普通/选中色`0x2321/0x6663`，Big5长度1..5的x为`57/49/41/33/25`，y=`17*ordinal+15`。普通名称只扫描`slot<learned_count`，但availability、确认和选中名称扫描10槽，故稀疏槽后置武功普通态漏画、选中态显示的原BUG完整保留。零available机器域可负cursor、无效slot0或不终止，现代只对该异常域安全拒绝。
 
-首轮对照发现现代入口及方向后可在对应帧present前继续接受键；现以一次presentation门修正，门前translated event沿用已关闭cursor owner适配而忽略，方向后重新要求present，确认/取消清零门。修正后从入口重审259条指令、52分支、8次call、唯一caller及全部出口，零剩余合法域差异。固定状态/稀疏显示/多flag/零available hash为`0xc254d2cd83d7da76/0x9eeb370071c9a0af/0x7398c6fcaccb922c/0x47d47c419ce4142b`；Session两帧FNV64为`0x909332be9671b27c/0x6977ba7a0c3172a6`。Golden三生成一致SHA256为`4c923e05b6739b8dcc097d1183517ca7f0ef6fcff58118cdde8dd20226f2141c`，Linux Debug 14/14。order55独立归类`platform_adapted / converged_after_fix`；caller、callee、输入owner和后续目标/方向处理不传播closure。
+battle Order55首轮曾以一次presentation门修正跳帧差异，但误把两个状态地址解释为Right/Left，并丢弃present前translated event。input-font Order37独立重建状态地址后废弃该输入结论：现代改为Down/Up，并在每次成功present后按Down→Up→确认→Escape扫描持久状态，每帧最多消费一组，低优先状态保留。修正后从入口重审259条指令、70/70块、52分支、8次call、唯一caller及全部出口，零剩余合法域差异。固定状态/稀疏显示/多状态/零available hash为`0xc254d2cd83d7da76/0x9eeb370071c9a0af/0x7398c6fcaccb922c/0x47d47c419ce4142b`；Session两帧FNV64为`0x909332be9671b27c/0x6977ba7a0c3172a6`。Golden三生成一致SHA256为`cae592a562fd3022c47ac2167c8f0d7eda302101e83eab2e2d5a9a463dc42799`，Linux Debug 14/14。Order37独立归类`platform_adapted / converged_after_fix`；caller、callee、battle owner和后续目标/方向处理不传播input closure。
 
 ## 15. 用毒目标与状态结算
 

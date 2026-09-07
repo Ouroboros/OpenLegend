@@ -5238,10 +5238,10 @@ def battle_magic_selection_contract(
                             "465d4d0cbcc8ae88d0549623c42c3c77e909b2637c9ed720bc0cc36bbcaab37c"),
         "input": (0x3908A, 0x39180,
                   "a507e856249cc1241fc8b4aced4a92bae12be22f6202a3e99a0c104e5dbed6c7"),
-        "right": (0x3908A, 0x390BA,
-                  "66e8e29cd538160d784ca0e3cad18edd223260995388918d20d93d9d2a7e48e3"),
-        "left": (0x390BA, 0x390E9,
-                 "0aa26921a24b7c955ff6fd4b556705490315cd245392dc97443ef2e0b80f5d76"),
+        "down": (0x3908A, 0x390BA,
+                 "66e8e29cd538160d784ca0e3cad18edd223260995388918d20d93d9d2a7e48e3"),
+        "up": (0x390BA, 0x390E9,
+               "0aa26921a24b7c955ff6fd4b556705490315cd245392dc97443ef2e0b80f5d76"),
         "confirm": (0x390E9, 0x39163,
                     "f2540c7a540a0898305c6dd08d5e57a1dadafe4b73d63120f655807945f8a41d"),
         "cancel": (0x39163, 0x39180,
@@ -5382,12 +5382,12 @@ def battle_magic_selection_contract(
                 },
                 "event": sorted(latched_flags),
             })
-            if "right" in latched_flags:
-                latched_flags.remove("right")
+            if "down" in latched_flags:
+                latched_flags.remove("down")
                 cursor = 0 if wrapping_i16(cursor) == available_count - 1 else cursor + 1
                 continue
-            if "left" in latched_flags:
-                latched_flags.remove("left")
+            if "up" in latched_flags:
+                latched_flags.remove("up")
                 cursor = available_count - 1 if wrapping_i16(cursor) == 0 else cursor - 1
                 continue
             if latched_flags.intersection({"enter", "space", "insert"}):
@@ -5418,7 +5418,7 @@ def battle_magic_selection_contract(
     fixed = simulate_menu(
         [6, 0, 5, 0, 25, 0, 0, 0, 0, 0],
         3,
-        [{"right"}, {"right"}, {"left"}, {"enter"}],
+        [{"down"}, {"down"}, {"up"}, {"enter"}],
     )
     if fixed["initial_state_hash"] != "0xc254d2cd83d7da76":
         raise ValueError("magic-selection fixed state hash changed")
@@ -5432,7 +5432,7 @@ def battle_magic_selection_contract(
     sparse_display = simulate_menu(
         [11, 0, 14, 0, 0, 0, 0, 0, 0, 0],
         5,
-        [{"right"}, {"space"}],
+        [{"down"}, {"space"}],
     )
     if [item["slot"] for item in sparse_display["frames"][0]["normal"]] != [0]:
         raise ValueError("magic-selection sparse ordinary-name bug changed")
@@ -5449,8 +5449,8 @@ def battle_magic_selection_contract(
         [11, 14, 0, 0, 0, 0, 0, 0, 0, 0],
         5,
         [
-            {"right", "enter", "escape"},
-            {"left", "insert"},
+            {"down", "enter", "escape"},
+            {"up", "insert"},
             {"space", "escape"},
         ],
     )
@@ -5463,7 +5463,7 @@ def battle_magic_selection_contract(
     zero_available = simulate_menu(
         [25, 92, 0, 0, 0, 0, 0, 0, 0, 0],
         0,
-        [{"left"}, {"enter"}],
+        [{"up"}, {"enter"}],
     )
     if [frame["cursor"] for frame in zero_available["frames"]] != [0, -1] or (
         zero_available["selected_slot"] != 0
@@ -5513,8 +5513,16 @@ def battle_magic_selection_contract(
             "y": "17*available ordinal+15; selected uses cursor ordinal",
             "sparse_bug": "ordinary scan stops at learned_count, selected scan covers all ten slots",
         },
-        "input_priority": ["right", "left", "enter-or-space-or-insert", "escape"],
-        "direction_rule": "clear only the handled direction flag, update cursor, then redraw/present",
+        "input_state_addresses": {
+            "down_0x98": "0x51c05",
+            "up_0x9e": "0x51c0b",
+            "enter_0x0d": "0x51b7a",
+            "space_0x20": "0x51b8d",
+            "insert_0x96": "0x51c03",
+            "escape_0x1b": "0x51b88",
+        },
+        "input_priority": ["down", "up", "enter-or-space-or-insert", "escape"],
+        "direction_rule": "clear only handled Down 0x98 or Up 0x9E, update cursor, then redraw/present",
         "confirm_rule": "clear all three confirm flags, remap cursor, write word_E6ED6, return",
         "cancel_rule": "clear Escape, write out-word one, preserve word_E6ED6, return",
         "caller": {
@@ -5556,7 +5564,10 @@ def battle_magic_selection_contract(
             },
         },
         "direct_rng_draws": 0,
-        "host_timing": "each entry and direction update must be rendered and presented before next input",
+        "host_timing": (
+            "after each entry/direction present, scan persistent states in Down > Up > "
+            "confirmation > Escape priority and consume at most one group"
+        ),
         "platform_adaptation_boundary": (
             "modern code may reject invalid actor/magic ids, malformed name/count data, and the "
             "zero-available nonterminating or invalid-selection domain"

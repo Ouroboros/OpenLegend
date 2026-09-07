@@ -210,7 +210,8 @@ public:
         return phase_ == BattleSessionPhase::party_selection ||
             phase_ == BattleSessionPhase::player_action_initial_present ||
             phase_ == BattleSessionPhase::player_action_return_present ||
-            phase_ == BattleSessionPhase::player_action;
+            phase_ == BattleSessionPhase::player_action ||
+            phase_ == BattleSessionPhase::player_magic_selection;
     }
     [[nodiscard]] bool cursor_selection_uses_key_states() const noexcept {
         return phase_ == BattleSessionPhase::player_attack_direction ||

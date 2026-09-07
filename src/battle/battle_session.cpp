@@ -519,14 +519,14 @@ bool BattleSession::render(
     } else if (phase_ == BattleSessionPhase::post_battle_message_present ||
                phase_ == BattleSessionPhase::post_battle_message_wait) {
         rendered = render_post_battle_message(framebuffer);
+    } else if (phase_ == BattleSessionPhase::player_magic_selection) {
+        rendered = render_player_magic_selection(framebuffer);
     } else if (player_menu_uses_key_states()) {
         rendered = render_player_action_menu(framebuffer);
     } else if (phase_ == BattleSessionPhase::ai_prelude_present) {
         const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
         rendered = render_battlefield(framebuffer) && status_panel.has_value() &&
             renderer_.render_status_panel(*status_panel, framebuffer);
-    } else if (phase_ == BattleSessionPhase::player_magic_selection) {
-        rendered = render_player_magic_selection(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_item_selection) {
         rendered = render_player_item_selection(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_item_effect_present ||
@@ -607,9 +607,30 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     if (phase_ == BattleSessionPhase::player_magic_selection &&
-        player_magic_selection_.has_value() &&
-        player_magic_presentations_before_input_ > 0U) {
-        --player_magic_presentations_before_input_;
+        player_magic_selection_.has_value()) {
+        if (player_magic_presentations_before_input_ > 0U) {
+            --player_magic_presentations_before_input_;
+            if (player_magic_presentations_before_input_ > 0U) {
+                return;
+            }
+        }
+        if (player_menu_down_state_) {
+            player_menu_down_state_ = false;
+            clear_player_menu_direction_requested_ = kDown;
+            static_cast<void>(handle_player_magic_selection_key(kDown));
+        } else if (player_menu_up_state_) {
+            player_menu_up_state_ = false;
+            clear_player_menu_direction_requested_ = kUp;
+            static_cast<void>(handle_player_magic_selection_key(kUp));
+        } else if (confirmation_state_) {
+            confirmation_state_ = false;
+            clear_confirmation_states_requested_ = true;
+            static_cast<void>(handle_player_magic_selection_key(kEnter));
+        } else if (cursor_escape_state_) {
+            cursor_escape_state_ = false;
+            clear_cursor_selection_key_requested_ = kEscape;
+            static_cast<void>(handle_player_magic_selection_key(kEscape));
+        }
         return;
     }
     if (phase_ == BattleSessionPhase::player_item_selection &&
@@ -2171,9 +2192,9 @@ BattleSessionInputResult BattleSession::handle_player_magic_selection_key(
         return BattleSessionInputResult::ignored;
     }
     std::optional<BattleMagicSelectionAction> action;
-    if (translated_key == kRight) {
+    if (translated_key == kDown) {
         action = BattleMagicSelectionAction::next;
-    } else if (translated_key == kLeft) {
+    } else if (translated_key == kUp) {
         action = BattleMagicSelectionAction::previous;
     } else if (confirms(translated_key)) {
         action = BattleMagicSelectionAction::activate;
