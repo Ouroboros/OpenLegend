@@ -1317,6 +1317,114 @@ def battle_setup_machine_contract(z_dat_bytes: bytes) -> dict[str, object]:
     ):
         raise ValueError("Z.DAT battle party setup caller target changed")
 
+    input_instructions = (
+        ("last_key_clear", 0x2D6, "c6056b1b030000"),
+        ("present", 0x607, "e80cb20000"),
+        ("down_test", 0x60F, "803d051c0300007424"),
+        ("down_clear", 0x618, "c605051c030000"),
+        ("up_test", 0x63C, "803d0b1c0300007421"),
+        ("up_clear", 0x645, "c6050b1c030000"),
+        ("enter_test", 0x666, "803d7a1b0300007516"),
+        ("space_test", 0x66F, "803d8d1b030000750d"),
+        ("keypad_insert_test", 0x678, "803d031c0300000f8458fcffff"),
+        ("enter_clear", 0x685, "c6057a1b030000"),
+        ("space_clear", 0x68C, "c6058d1b030000"),
+        ("keypad_insert_clear", 0x693, "c605031c030000"),
+    )
+    for name, offset, expected in input_instructions:
+        actual = party_raw[offset:offset + len(expected) // 2].hex()
+        if actual != expected:
+            raise ValueError(f"Z.DAT battle party input instruction changed: {name}")
+    if relative_call_target(party_raw, 0x607, BATTLE_PARTY_SETUP_ADDRESS) != 0x3D6D1:
+        raise ValueError("Z.DAT battle party input present target changed")
+
+    def input_step(
+        cursor: int,
+        party_length: int,
+        states: list[int],
+        count: int,
+        *,
+        down: bool = False,
+        up: bool = False,
+        enter: bool = False,
+        space: bool = False,
+        keypad_insert: bool = False,
+    ) -> dict[str, object]:
+        result = {
+            "cursor_before": cursor,
+            "cursor_after": cursor,
+            "party_length": party_length,
+            "states_before": list(states),
+            "states_after": list(states),
+            "count_before": count,
+            "count_after": count,
+            "input_before": {
+                "down": down,
+                "up": up,
+                "enter": enter,
+                "space": space,
+                "keypad_insert": keypad_insert,
+            },
+            "input_after": {
+                "down": down,
+                "up": up,
+                "enter": enter,
+                "space": space,
+                "keypad_insert": keypad_insert,
+            },
+            "cleared": [],
+            "selected_party_indices": [],
+            "result": "waiting",
+        }
+        after = result["input_after"]
+        if down:
+            result["cursor_after"] = 0 if cursor == party_length else cursor + 1
+            after["down"] = False
+            result["cleared"] = ["down"]
+            result["result"] = "changed"
+            return result
+        if up:
+            result["cursor_after"] = party_length if cursor == 0 else cursor - 1
+            after["up"] = False
+            result["cleared"] = ["up"]
+            result["result"] = "changed"
+            return result
+        if not (enter or space or keypad_insert):
+            return result
+        after["enter"] = False
+        after["space"] = False
+        after["keypad_insert"] = False
+        result["cleared"] = ["enter", "space", "keypad_insert"]
+        if cursor == party_length:
+            selected = [index for index, state in enumerate(states) if state == 1]
+            result["selected_party_indices"] = selected
+            result["count_after"] = count + len(selected)
+            result["result"] = "complete" if result["count_after"] != 0 else "waiting"
+            return result
+        if states[cursor] != 2:
+            result["states_after"][cursor] = (states[cursor] + 1) % 2
+            result["result"] = "changed"
+        return result
+
+    input_vectors = [
+        input_step(0, 2, [0, 0], 0),
+        input_step(2, 2, [0, 0], 0, down=True),
+        input_step(
+            0, 2, [0, 0], 0,
+            down=True, up=True, enter=True, space=True, keypad_insert=True,
+        ),
+        input_step(0, 2, [0, 0], 0, up=True),
+        input_step(1, 2, [0, 0], 0, space=True, keypad_insert=True),
+        input_step(0, 1, [2], 1, enter=True),
+        input_step(0, 1, [1], 0, keypad_insert=True),
+        input_step(1, 1, [0], 0, enter=True),
+        input_step(2, 2, [1, 0], 0, space=True),
+        input_step(1, 1, [2], 1, keypad_insert=True),
+    ]
+    input_vector_sha256 = sha256(json.dumps(
+        input_vectors, sort_keys=True, separators=(",", ":")
+    ).encode())
+
     enemy_raw_offset = BATTLE_ENEMY_SETUP_ADDRESS - Z_DAT_LOAD_BASE
     enemy_raw = z_dat_bytes[
         enemy_raw_offset:enemy_raw_offset + BATTLE_ENEMY_SETUP_END - BATTLE_ENEMY_SETUP_ADDRESS
@@ -1365,6 +1473,23 @@ def battle_setup_machine_contract(z_dat_bytes: bytes) -> dict[str, object]:
             "selection_states": {"unselected": 0, "selected": 1, "mandatory": 2},
             "confirm_index": "party_prefix_length",
             "confirm_requires_nonempty_combatants": True,
+            "input": {
+                "entry_last_key_clear": "0x3218f",
+                "present_call": {"site": "0x324c0", "target": "0x3d6d1"},
+                "dispatch_order": ["down", "up", "enter_or_space_or_keypad_insert"],
+                "direction_flags": {
+                    "down": {"address": "0x51c05", "test": "0x324c8", "clear": "0x324d1"},
+                    "up": {"address": "0x51c0b", "test": "0x324f5", "clear": "0x324fe"},
+                },
+                "confirmation_flags": [
+                    {"key": "enter", "address": "0x51b7a", "test": "0x3251f", "clear": "0x3253e"},
+                    {"key": "space", "address": "0x51b8d", "test": "0x32528", "clear": "0x32545"},
+                    {"key": "keypad_insert", "address": "0x51c03", "test": "0x32531", "clear": "0x3254c"},
+                ],
+                "per_present_contract": "render and present before testing flags; consume at most one direction or confirmation group, then redraw before the next test",
+                "vectors": input_vectors,
+                "vector_sha256": input_vector_sha256,
+            },
         },
         "enemy": {
             "address": hex(BATTLE_ENEMY_SETUP_ADDRESS),

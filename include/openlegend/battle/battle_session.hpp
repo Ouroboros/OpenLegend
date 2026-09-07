@@ -199,7 +199,8 @@ public:
         player_menu_up_state_ = up;
     }
     [[nodiscard]] bool player_menu_uses_key_states() const noexcept {
-        return phase_ == BattleSessionPhase::player_action_initial_present ||
+        return phase_ == BattleSessionPhase::party_selection ||
+            phase_ == BattleSessionPhase::player_action_initial_present ||
             phase_ == BattleSessionPhase::player_action_return_present ||
             phase_ == BattleSessionPhase::player_action;
     }

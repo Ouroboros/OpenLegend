@@ -567,6 +567,22 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     frame_rendered_ = false;
+    if (phase_ == BattleSessionPhase::party_selection) {
+        if (player_menu_down_state_) {
+            player_menu_down_state_ = false;
+            clear_player_menu_direction_requested_ = kDown;
+            static_cast<void>(handle_key(kDown));
+        } else if (player_menu_up_state_) {
+            player_menu_up_state_ = false;
+            clear_player_menu_direction_requested_ = kUp;
+            static_cast<void>(handle_key(kUp));
+        } else if (confirmation_state_) {
+            confirmation_state_ = false;
+            clear_confirmation_states_requested_ = true;
+            static_cast<void>(handle_key(kEnter));
+        }
+        return;
+    }
     if (phase_ == BattleSessionPhase::player_action_initial_present) {
         phase_ = BattleSessionPhase::player_action;
         return;

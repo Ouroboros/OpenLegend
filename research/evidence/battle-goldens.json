@@ -245,7 +245,399 @@
         "mandatory": 2
       },
       "confirm_index": "party_prefix_length",
-      "confirm_requires_nonempty_combatants": true
+      "confirm_requires_nonempty_combatants": true,
+      "input": {
+        "entry_last_key_clear": "0x3218f",
+        "present_call": {
+          "site": "0x324c0",
+          "target": "0x3d6d1"
+        },
+        "dispatch_order": [
+          "down",
+          "up",
+          "enter_or_space_or_keypad_insert"
+        ],
+        "direction_flags": {
+          "down": {
+            "address": "0x51c05",
+            "test": "0x324c8",
+            "clear": "0x324d1"
+          },
+          "up": {
+            "address": "0x51c0b",
+            "test": "0x324f5",
+            "clear": "0x324fe"
+          }
+        },
+        "confirmation_flags": [
+          {
+            "key": "enter",
+            "address": "0x51b7a",
+            "test": "0x3251f",
+            "clear": "0x3253e"
+          },
+          {
+            "key": "space",
+            "address": "0x51b8d",
+            "test": "0x32528",
+            "clear": "0x32545"
+          },
+          {
+            "key": "keypad_insert",
+            "address": "0x51c03",
+            "test": "0x32531",
+            "clear": "0x3254c"
+          }
+        ],
+        "per_present_contract": "render and present before testing flags; consume at most one direction or confirmation group, then redraw before the next test",
+        "vectors": [
+          {
+            "cursor_before": 0,
+            "cursor_after": 0,
+            "party_length": 2,
+            "states_before": [
+              0,
+              0
+            ],
+            "states_after": [
+              0,
+              0
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [],
+            "selected_party_indices": [],
+            "result": "waiting"
+          },
+          {
+            "cursor_before": 2,
+            "cursor_after": 0,
+            "party_length": 2,
+            "states_before": [
+              0,
+              0
+            ],
+            "states_after": [
+              0,
+              0
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": true,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "down"
+            ],
+            "selected_party_indices": [],
+            "result": "changed"
+          },
+          {
+            "cursor_before": 0,
+            "cursor_after": 1,
+            "party_length": 2,
+            "states_before": [
+              0,
+              0
+            ],
+            "states_after": [
+              0,
+              0
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": true,
+              "up": true,
+              "enter": true,
+              "space": true,
+              "keypad_insert": true
+            },
+            "input_after": {
+              "down": false,
+              "up": true,
+              "enter": true,
+              "space": true,
+              "keypad_insert": true
+            },
+            "cleared": [
+              "down"
+            ],
+            "selected_party_indices": [],
+            "result": "changed"
+          },
+          {
+            "cursor_before": 0,
+            "cursor_after": 2,
+            "party_length": 2,
+            "states_before": [
+              0,
+              0
+            ],
+            "states_after": [
+              0,
+              0
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": false,
+              "up": true,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "up"
+            ],
+            "selected_party_indices": [],
+            "result": "changed"
+          },
+          {
+            "cursor_before": 1,
+            "cursor_after": 1,
+            "party_length": 2,
+            "states_before": [
+              0,
+              0
+            ],
+            "states_after": [
+              0,
+              1
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": true,
+              "keypad_insert": true
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "enter",
+              "space",
+              "keypad_insert"
+            ],
+            "selected_party_indices": [],
+            "result": "changed"
+          },
+          {
+            "cursor_before": 0,
+            "cursor_after": 0,
+            "party_length": 1,
+            "states_before": [
+              2
+            ],
+            "states_after": [
+              2
+            ],
+            "count_before": 1,
+            "count_after": 1,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": true,
+              "space": false,
+              "keypad_insert": false
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "enter",
+              "space",
+              "keypad_insert"
+            ],
+            "selected_party_indices": [],
+            "result": "waiting"
+          },
+          {
+            "cursor_before": 0,
+            "cursor_after": 0,
+            "party_length": 1,
+            "states_before": [
+              1
+            ],
+            "states_after": [
+              0
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": true
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "enter",
+              "space",
+              "keypad_insert"
+            ],
+            "selected_party_indices": [],
+            "result": "changed"
+          },
+          {
+            "cursor_before": 1,
+            "cursor_after": 1,
+            "party_length": 1,
+            "states_before": [
+              0
+            ],
+            "states_after": [
+              0
+            ],
+            "count_before": 0,
+            "count_after": 0,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": true,
+              "space": false,
+              "keypad_insert": false
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "enter",
+              "space",
+              "keypad_insert"
+            ],
+            "selected_party_indices": [],
+            "result": "waiting"
+          },
+          {
+            "cursor_before": 2,
+            "cursor_after": 2,
+            "party_length": 2,
+            "states_before": [
+              1,
+              0
+            ],
+            "states_after": [
+              1,
+              0
+            ],
+            "count_before": 0,
+            "count_after": 1,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": true,
+              "keypad_insert": false
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "enter",
+              "space",
+              "keypad_insert"
+            ],
+            "selected_party_indices": [
+              0
+            ],
+            "result": "complete"
+          },
+          {
+            "cursor_before": 1,
+            "cursor_after": 1,
+            "party_length": 1,
+            "states_before": [
+              2
+            ],
+            "states_after": [
+              2
+            ],
+            "count_before": 1,
+            "count_after": 1,
+            "input_before": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": true
+            },
+            "input_after": {
+              "down": false,
+              "up": false,
+              "enter": false,
+              "space": false,
+              "keypad_insert": false
+            },
+            "cleared": [
+              "enter",
+              "space",
+              "keypad_insert"
+            ],
+            "selected_party_indices": [],
+            "result": "complete"
+          }
+        ],
+        "vector_sha256": "ab7b7329846275c9fed00e71c4cf20142b7fbdf2a6838dd8f824b4e824851238"
+      }
     },
     "enemy": {
       "address": "0x3265c",

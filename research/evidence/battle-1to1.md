@@ -503,6 +503,8 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 
 独立向量覆盖side signed边界、名称NUL 1..8/无NUL、signed `%3d`超宽、hurt/poison阈值及非法MP残值，SHA256为`f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0`。独立原资产绘制从非均匀保留帧生成party/enemy面板FNV64=`0x87ff9c43d54b7bca`/`0x0f803235628e69e5`，C++计划与像素逐值一致。Golden三生成逐字节一致且历史74键不变，正式75键SHA256=`07de27463eb6b7639caf4e9256bff9b93f4b9de8093aa4a007c86313cd6dd199`；Linux/Windows `core/app × Debug/Release`模块关闭八项矩阵全部通过，core各13/13、app各14/14。本owner归类`platform_adapted / converged_no_new_differences`，B8最终81/81关闭。
 
+后续B9 input-font order32独立复审同址`sub_31EB9`的输入flag与宿主呈现边界，修正party selection为每次成功present只按down > up > confirmation消费一个锁存组；该input owner不反向传播或改写已关闭battle owner。新增10组原资产输入向量后，正式文件仍为75键，当前SHA256=`1f063b707ad9924e872a2224596baf499baa21fffbe7093f6f3bc43c54349ac6`；Linux app Debug 14/14通过。
+
 ## 16. B8 实现差异审计关闭
 
 B9前的B8入口实现审计从`sub_31C75`机器顺序发现并修正五处差异：首帧present后才排battle music；手选确认后才加载WDX/WMP/EFT；WAR/WARFLD成功读取后清occupancy且不重复清空；首帧present后、fade前才首次速度排序；首帧继承跨battle保留的完整render globals，present后才按排序后slot0重定位。对应回归锁定延迟battle资源加载、首帧插入顺序、present后排序、继承视角与独立`view=(0,0)`首帧hash。

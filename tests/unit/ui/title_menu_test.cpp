@@ -73,6 +73,19 @@ struct LegacyGameRuntimeTestAccess {
                runtime.scene_session_->pending().death_confirm;
     }
 
+    static bool begin_battle_in_scene(
+        LegacyGameRuntime& runtime, const std::int16_t battle_id) {
+        if (!runtime.start_scene(
+                70,
+                LegacyGameView::scene,
+                scene::SceneEntryOverride{
+                    32, 15, scene::SceneDirection::right, -1, -1})) {
+            return false;
+        }
+        runtime.clear_scene_effect();
+        return runtime.start_battle(battle_id, false);
+    }
+
     static bool begin_scene_event(
         LegacyGameRuntime& runtime,
         const std::int16_t scene_id,
@@ -201,9 +214,9 @@ namespace {
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
     }
-    constexpr std::array<std::string_view, 7> files{
-        "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX002", "WMP002",
-        "EFT.IDX", "EFT.GRP"};
+    constexpr std::array<std::string_view, 9> files{
+        "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX000", "WMP000",
+        "WDX002", "WMP002", "EFT.IDX", "EFT.GRP"};
     std::error_code error;
     for (const auto file : files) {
         std::filesystem::copy_file(
@@ -2576,6 +2589,88 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
         scene::SceneStepKind::quit);
 }
 
+void check_battle_party_selection_input_timing(
+    const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    using app::LegacyGameRuntimeTestAccess;
+    using battle::BattleSessionPhase;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-battle-party-input";
+    OL_CHECK(prepare_battle_runtime_fixture(data_root, output_root));
+
+    app::LegacyGameRuntime game{output_root, 0U};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    const auto baseline = persistence::load_baseline(output_root);
+    OL_CHECK(static_cast<bool>(baseline));
+    if (!baseline) {
+        return;
+    }
+    auto& game_state = const_cast<model::GameState&>(game.game_state());
+    OL_CHECK(game_state.import_snapshot(*baseline.snapshot));
+    auto* ranger = game_state.ranger();
+    OL_CHECK(ranger != nullptr);
+    if (ranger == nullptr) {
+        return;
+    }
+    ranger->header.set_team_member(0U, model::CharacterId{0});
+    for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
+        ranger->header.set_team_member(slot, model::CharacterId{-1});
+    }
+    OL_CHECK(LegacyGameRuntimeTestAccess::begin_battle_in_scene(game, 0));
+    auto* session = LegacyGameRuntimeTestAccess::battle_session(game);
+    OL_CHECK(session != nullptr);
+    if (session == nullptr) {
+        return;
+    }
+    OL_CHECK(session->phase() == BattleSessionPhase::party_selection);
+    OL_CHECK(session->setup().party_prefix_length() == 1U);
+    OL_CHECK(session->setup().cursor() == 0U);
+    OL_CHECK(game.battle_menu_uses_key_states());
+
+    game.set_battle_menu_direction_states(true, true);
+    game.finish_presented_tick();
+    OL_CHECK(session->setup().cursor() == 0U);
+    OL_CHECK(game.take_clear_battle_menu_direction_request() == 0U);
+
+    OL_CHECK(session->render(game.framebuffer(), true));
+    game.finish_presented_tick();
+    OL_CHECK(session->setup().cursor() == 1U);
+    OL_CHECK(game.take_clear_battle_menu_direction_request() == 0x98U);
+    game.finish_presented_tick();
+    OL_CHECK(session->setup().cursor() == 1U);
+
+    game.set_battle_menu_direction_states(false, true);
+    OL_CHECK(session->render(game.framebuffer(), true));
+    game.finish_presented_tick();
+    OL_CHECK(session->setup().cursor() == 0U);
+    OL_CHECK(game.take_clear_battle_menu_direction_request() == 0x9EU);
+    game.set_battle_menu_direction_states(false, false);
+
+    game.set_battle_confirmation_state(true);
+    game.finish_presented_tick();
+    OL_CHECK(!game.take_clear_battle_confirmation_states_request());
+    OL_CHECK(session->render(game.framebuffer(), true));
+    game.finish_presented_tick();
+    OL_CHECK(game.take_clear_battle_confirmation_states_request());
+    OL_CHECK(session->phase() == BattleSessionPhase::party_selection);
+    OL_CHECK(session->setup().selection_states()[0U] == 2);
+    game.set_battle_confirmation_state(false);
+
+    game.set_battle_menu_direction_states(true, false);
+    OL_CHECK(session->render(game.framebuffer(), true));
+    game.finish_presented_tick();
+    OL_CHECK(session->setup().cursor() == 1U);
+    OL_CHECK(game.take_clear_battle_menu_direction_request() == 0x98U);
+    game.set_battle_menu_direction_states(false, false);
+    game.set_battle_confirmation_state(true);
+    OL_CHECK(session->render(game.framebuffer(), true));
+    game.finish_presented_tick();
+    OL_CHECK(game.take_clear_battle_confirmation_states_request());
+    OL_CHECK(session->phase() == BattleSessionPhase::initial_fade_to_black);
+}
+
 void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     using namespace openlegend;
     using app::LegacyGameRuntimeTestAccess;
@@ -3111,6 +3206,7 @@ int main() {
     check_ending_prelude_animation_tick_gates(data_root);
     check_shop_input_present_gate(data_root);
     check_death_menu_present_gate(data_root);
+    check_battle_party_selection_input_timing(data_root);
     check_battle_runtime_transitions(data_root);
     check_scene_load_runtime(data_root);
     check_runtime_persistence(data_root);

@@ -204,6 +204,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 商店五场景映射、压缩槽、面板、价格、购买时序、对话、事件关闭及库存primitive由scene和各callee owner独立关闭；本轮只关闭`input-font-closure.tsv audit_order=31`的last-key与宿主呈现职责，不传播共享尾或callee状态。修正后废弃旧结论并从入口重审79块/473条指令，未发现新增差异。
 
+### 3.8 战斗队伍选择的flag优先级与逐呈现消费
+
+`sub_31EB9 @ 0x31EB9..0x3265C`为1955字节、453条指令、86个IDA flow block、19次call、40个条件分支、25个无条件跳转、144项HIGHLOW重定位和1个本地`RET @ 0x3265B`。raw/loaded SHA256分别为`04dbdb0cdb56c248d69df22853e4a21aa8939152839f778631b51cd5602608ae`与`6743a9d962317bde209fd1a6c36b54a60678d374fa9ca5a90dfa6b9a934feb0f`，144个loaded dword各减`0x20000`后与raw逐字节一致；唯一caller为`sub_31C75:0x31CAF`。
+
+输入循环在`0x3218F`只清last-key；每轮先重画场景与选择UI，并在`0x324C0`调用present，再按down `0x51C05`、up `0x51C0B`、Enter/Space/keypad Insert `0x51B7A/0x51B8D/0x51C03`顺序检查。down只清down，up只清up；三确认键任一命中都清整个确认组。每次命中均回到重画入口，因此一次成功present最多消费一个方向或确认组；并发flag严格按down > up > confirmation逐帧处理。方向循环、mandatory不切换、状态0/1切换、按当前combatant count取坐标、空确认重画及非空确认返回均由本函数完整机器合同锁定。
+
+首轮现代对照发现party selection未使用battle key-state路径，可在成功呈现前改选并于同一SDL事件批次连续消费多键。最小修正将该phase纳入现有键状态通道，并在`BattleSession::finish_presented_tick`确认成功render后按机器优先级消费一个锁存组、发出对应精确清键请求；预呈现按键保留到首个成功present。真实battle0宿主回归覆盖未render不消费、并发down/up分两帧按优先级处理、三确认合并清理、mandatory稳定与非空确认退出。
+
+独立`battle_setup_machine.party.input`的10组向量覆盖无输入、首尾回绕、多flag优先级、三确认清理、mandatory、选择切换、空确认与非空确认，向量SHA256为`ab7b7329846275c9fed00e71c4cf20142b7fbdf2a6838dd8f824b4e824851238`。两份临时Golden和正式第三次生成逐字节一致，正式75键`battle-goldens.json` SHA256为`1f063b707ad9924e872a2224596baf499baa21fffbe7093f6f3bc43c54349ac6`。同址battle owner、caller、紧邻`sub_3265C`和7个callee owner保持独立；本轮只关闭`input-font-closure.tsv audit_order=32`。发现差异后废弃旧结论并从入口重审86块/453条指令，未发现新增差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：
