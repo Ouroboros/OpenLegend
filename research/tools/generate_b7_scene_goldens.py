@@ -660,6 +660,29 @@ def dual_picture_animation_trace(
     return result
 
 
+def ending_prelude_contract(
+    arguments: tuple[int, int, int, int, int, int],
+) -> list[dict[str, object]]:
+    first_event, first_picture, first_end, second_event, second_picture, _ = arguments
+    first_control = first_picture
+    frames: list[dict[str, object]] = []
+    while first_control <= first_end:
+        event_writes: list[list[int]] = []
+        if first_event != -1:
+            event_writes.append([first_event, signed_word(first_picture)])
+        if second_event != -1:
+            event_writes.append([second_event, signed_word(second_picture)])
+        frames.append({
+            "event_writes": event_writes,
+            "first_picture_register": first_picture,
+            "second_picture_register": second_picture,
+        })
+        first_picture += 2
+        second_picture += 2
+        first_control += 2
+    return frames
+
+
 def three_statue_animation_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -7297,6 +7320,28 @@ def main() -> None:
                 "trace_stream_sha256": sha256(opcode_62_trace_stream),
                 "transfer": "call_sub_30C3D_noreturn",
                 "frames": opcode_62_script_1017,
+                "synthetic_vectors": [
+                    {
+                        "arguments": [-1, 10, 12, 1, 100, -30000],
+                        "frames": ending_prelude_contract((-1, 10, 12, 1, 100, -30000)),
+                        "first_event_skipped": True,
+                    },
+                    {
+                        "arguments": [0, 10, 12, 0, 100, 0],
+                        "frames": ending_prelude_contract((0, 10, 12, 0, 100, 0)),
+                        "second_write_wins_same_event": True,
+                    },
+                    {
+                        "arguments": [0, 1, 0, 1, 100, 32767],
+                        "frames": ending_prelude_contract((0, 1, 0, 1, 100, 32767)),
+                        "player_picture_before_transfer": -86,
+                    },
+                    {
+                        "arguments": [0, 32767, 32767, -1, -32768, -32768],
+                        "frames": ending_prelude_contract((0, 32767, 32767, -1, -32768, -32768)),
+                        "first_control_does_not_wrap_at_int16": True,
+                    },
+                ],
                 "ending": ending_sequence(root),
             },
             "opcode_63_role_sexual_write": {

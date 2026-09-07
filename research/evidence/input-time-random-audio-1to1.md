@@ -182,6 +182,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 独立Golden固定唯一真实script655 PC47、scene14事件2/3/4坐标与初始字、35个玩家/三事件/逐像素帧；调用流SHA256为`09d3a95aa4379601d167e041d3e98651e478fe12dde36e9118a11e0b0f51c700`，35帧trace SHA256为`8cf0a9274a8549457160fbb8ec526bf7d61592a1f5cd4b7a678da8043b7b1647`。三次生成逐字节一致，正式`scene-goldens.json` SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`。scene14最小`57,-1`脚本宿主回归进一步逐帧固定未render不推进和两个成功呈现tick；原始script655路径仍由独立scene测试与Golden覆盖。scene owner此前独立关闭；本轮只关闭`input-font-closure.tsv audit_order=29`，事件、render、time、栈探测和本地返回尾owner不传播状态，最终入口重审无产品差异。
 
+### 3.6 opcode62结局前置动画的tick边界
+
+`sub_30B81 @ 0x30B81..0x30C38`为183字节、63条指令、10个CFG块、6次call、4个条件分支、1个无条件跳转、5项HIGHLOW重定位且无本地`RET`。raw/loaded SHA256分别为`a02fbf9c48bdf528c673f9c7e3917e42f58e6662f5a22abd5b0f5a3629a436ee`与`8bb744ce90e6740072386328c6f49a888098cc6e42612c14f8a811d0d247d592`；唯一物理caller为opcode62 `sub_2C319:0x2CBA7`，另有`0x556B4`地址表引用。caller压入六个sign-extended word，但callee完全不读`second_end`；末尾无栈回收、无PC推进、无返回，直接`call sub_30C3D`转交完整结局，五字节SHA256为`3c94ca4056d7f52660e0aae426bd783a03702f3e8903ef2d1d0008ce98192d53`。
+
+函数在任何循环判定前先把玩家图片写为signed `-86`。循环只由sign-extended first_start与first_end的signed 32-bit闭区间控制，第一、第二图片值每帧各加2，第六参数不参与。每帧先捕获tick；first/second event各自只有精确等于`-1`时跳过，否则严格按first后second调用事件primitive，同步current/end/begin三图片，其他八个事件字段参数和场景选择参数为`-2`保持；因此同一事件由second覆盖first。两图片寄存器在render前加2，但本帧内存图片仍是旧值；随后render、`sub_3DB83(50)`等待2 ticks、确认tick离开帧首值，最后first控制计数才加2。start>end时零动画帧但仍隐藏玩家并转交结局。
+
+现代case62先写`player_frame_override_=-86`，只把前五参数保存为`DualPictureAnimationState`，并置`skip_negative_events=true`、`quit_after=true`；`advance_dual_picture_animation_frame`保持first范围、两图片32位状态、精确`-1`跳过、first→second写序和两tickpresent。PC+7虽预先保存，但动画状态优先且结局不返回，机器无回收/无PC推进的中间值不可观察；最后一帧第二tick后直接`start_ending()`，等价于无返回调用相邻结局。
+
+独立Golden固定唯一真实script1017 PC5、38帧8054..8128与8130..8204图片、76组事件参数和逐像素画面；调用/图片/事件参数/帧流SHA256分别为`21848ec618b479c85562cc0ae4602b6934a31f6d7324957eff94cf54686274e8`、`f4b057366e7eae4fa207716b3842548150b0d0943fd31e8acb3e38111a2b0430`、`bec4a864813a27c7d5695ce5de579b245777de7338fbd2d90dbd2fc48ee796a6`、`50b9832fc97d5f03be8847a59ba1197487ad15c73594d3d11405049d6a7404ef`。三组second_end反例完全相同；四组合成向量再覆盖`-1`跳过、同事件后写覆盖、start>end与32767后32位退出。三次生成逐字节一致，正式`scene-goldens.json` SHA256为`6f04fa857b4477525553b24f04e6c51b249e725757d2b697c2c7f0a8297ae878`。scene83最小opcode62宿主回归逐38帧固定未render不推进、两个成功呈现tick及末帧结局淡出。scene owner此前独立关闭；本轮只关闭`input-font-closure.tsv audit_order=30`，事件、render、time、栈探测、结局及caller后续物理字节owner均不传播状态，最终入口重审无产品差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：

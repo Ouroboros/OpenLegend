@@ -5933,6 +5933,117 @@
           "frame_fnv1a64": "0x677ce26188ba524a"
         }
       ],
+      "synthetic_vectors": [
+        {
+          "arguments": [
+            -1,
+            10,
+            12,
+            1,
+            100,
+            -30000
+          ],
+          "frames": [
+            {
+              "event_writes": [
+                [
+                  1,
+                  100
+                ]
+              ],
+              "first_picture_register": 10,
+              "second_picture_register": 100
+            },
+            {
+              "event_writes": [
+                [
+                  1,
+                  102
+                ]
+              ],
+              "first_picture_register": 12,
+              "second_picture_register": 102
+            }
+          ],
+          "first_event_skipped": true
+        },
+        {
+          "arguments": [
+            0,
+            10,
+            12,
+            0,
+            100,
+            0
+          ],
+          "frames": [
+            {
+              "event_writes": [
+                [
+                  0,
+                  10
+                ],
+                [
+                  0,
+                  100
+                ]
+              ],
+              "first_picture_register": 10,
+              "second_picture_register": 100
+            },
+            {
+              "event_writes": [
+                [
+                  0,
+                  12
+                ],
+                [
+                  0,
+                  102
+                ]
+              ],
+              "first_picture_register": 12,
+              "second_picture_register": 102
+            }
+          ],
+          "second_write_wins_same_event": true
+        },
+        {
+          "arguments": [
+            0,
+            1,
+            0,
+            1,
+            100,
+            32767
+          ],
+          "frames": [],
+          "player_picture_before_transfer": -86
+        },
+        {
+          "arguments": [
+            0,
+            32767,
+            32767,
+            -1,
+            -32768,
+            -32768
+          ],
+          "frames": [
+            {
+              "event_writes": [
+                [
+                  0,
+                  32767
+                ]
+              ],
+              "first_picture_register": 32767,
+              "second_picture_register": -32768
+            }
+          ],
+          "first_control_does_not_wrap_at_int16": true
+        }
+      ],
       "ending": {
         "palette_sha256": "edff0d5361792a68d6238eb6000837993b833050027b9b7cc92a4599f35a1ecc",
         "title_frame_fnv1a64": "0x20420db943fd8def",
