@@ -1579,10 +1579,18 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             70U, model::SceneLayer::event_index, *world_item_target, -1));
     }
     const auto select_world_event_item = [&new_game]() {
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(
+            new_game.handle_key(0x1BU, false, false) ==
+            app::LegacyKeyStateReset::none);
+        OL_CHECK(
+            new_game.handle_key(0x98U, false, false) ==
+            app::LegacyKeyStateReset::down_translated);
+        OL_CHECK(
+            new_game.handle_key(0x98U, false, false) ==
+            app::LegacyKeyStateReset::down_translated);
+        OL_CHECK(
+            new_game.handle_key(0x0DU, false, false) ==
+            app::LegacyKeyStateReset::confirmation_group);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
     };

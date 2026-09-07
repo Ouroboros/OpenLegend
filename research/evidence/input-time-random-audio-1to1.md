@@ -66,6 +66,14 @@ IRQ 体严格按以下顺序执行：
 
 首轮最终对照发现SDL/runtime曾把三类非方向keydown锁存到跨tick布尔量并过早回收键态，导致已keyup的低优先动作仍会补触发。现改为每tick直接从`LegacyKeyboard`采样：方向先选并在movement前清别名；其余三类只记录当tick获胜动作，reset token延迟到同步场景continuation返回后、公共scene-tail present前应用。修正后从函数入口重审全部306条指令与68个基本块无新增差异。独立9组向量SHA256为`33247c06e5fc4480904d29eead2f7efde47fd0a40c97b01209882fbf09b77abb`，正式`scene-goldens.json` SHA256为`6deadaf03021c564c167ff47d4ac49ed7b8fda6f0b443b2a691f349b5569bec3`。
 
+### 2.4 主菜单进入物品页的旧键清理
+
+`sub_2A0D9 @ 0x2A0D9..0x2A10F`是54字节单基本块包装器。唯一caller `sub_212C0:0x21433`在主菜单selection严格等于2时进入；caller已经清last-key和Enter/Space/Insert三项键态，包装器在栈探测后再次无条件清last-key，随后才依次调用物品reset、初始draw/present和selection loop。包装器内不读取last-key，selector返回值也被caller忽略。
+
+现代`GameMenuController`在selection 2确认时切到items并把page/row/column归零；`LegacyGameRuntime`按dispatch前保存的main screen回报`confirmation_group`。SDL在同步回调返回后清三个确认键态并无条件`clear_last_key()`，然后才轮询下一事件。该不可重入边界合并了机器caller与包装器两次相邻清零，且中间现代代码不读取last-key，input owner无可观察差异。初始物品reset/draw/present/select及world/scene物品画面仍是同址UI与delegated callee的独立owner，不从本项传播closure。
+
+机器合同SHA256为`59bb83d28586b8871cf9446349b0d1cd1840488e990a88e1f14c0e061cf4b389`；正式`title-menu-new-game-goldens.json`经三次一致生成后SHA256为`257e36bc9078c4c57f14b06c5d87c9b6130efabedd6e7e43ec6a5fa45307bc7b`。
+
 ## 3. 时间边界
 
 ### 3.1 tick 来源与主循环

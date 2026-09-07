@@ -547,12 +547,106 @@ def protagonist_roll(seed: int, level: int) -> dict[str, int | str]:
     return result
 
 
+def game_menu_item_entry_machine(z_dat: bytes) -> dict[str, object]:
+    loaded_start = 0x2A0D9
+    raw = z_dat[0x23AD9:0x23B0F]
+    assert len(raw) == 54
+    assert raw.hex() == (
+        "6810000000e83b4c0100c6056b1b0300006a00e81e00000083c404"
+        "6a006a006a00e88700000083c40c6aff6a00e86107000083c408c3"
+    )
+
+    call_offsets = (5, 19, 33, 45)
+    call_targets = []
+    for offset in call_offsets:
+        assert raw[offset] == 0xE8
+        (displacement,) = struct.unpack_from("<i", raw, offset + 1)
+        call_targets.append(loaded_start + offset + 5 + displacement)
+    assert call_targets == [0x3ED1E, 0x2A10F, 0x2A186, 0x2A86C]
+
+    (raw_last_key_address,) = struct.unpack_from("<I", raw, 12)
+    assert raw_last_key_address == 0x31B6B
+    loaded = bytearray(raw)
+    struct.pack_into("<I", loaded, 12, raw_last_key_address + 0x20000)
+    assert sha256(raw) == "1fd36ede5cb17507e24e83bc883074f6205a911ee34359aad6514b6280a2f383"
+    assert sha256(loaded) == "ed5269e0ae12171d13068702b67735cd621e9984a90560a9da73e0bf1949bc2e"
+
+    caller = z_dat[0x1ACC0:0x1AE96]
+    assert len(caller) == 470
+    assert sha256(caller) == "d50c9629b28d74a41330b5641d7fc86755c722a46768c66a97fbe078f5d2cfb0"
+    for offset, target in (
+        (0x128, 0x31B6B),
+        (0x12F, 0x31B7A),
+        (0x136, 0x31B8D),
+        (0x13D, 0x31C03),
+    ):
+        assert caller[offset : offset + 2] == b"\xC6\x05"
+        assert struct.unpack_from("<I", caller, offset + 2)[0] == target
+        assert caller[offset + 6] == 0
+    caller_call_offset = 0x21433 - 0x212C0
+    assert caller[caller_call_offset] == 0xE8
+    (caller_displacement,) = struct.unpack_from("<i", caller, caller_call_offset + 1)
+    assert 0x21433 + 5 + caller_displacement == loaded_start
+
+    contract = {
+        "operation_order": [
+            "stack_probe_16",
+            "clear_last_key",
+            "reset_items_0",
+            "draw_items_0_0_0",
+            "select_items_0_minus_1",
+            "return_selector_eax",
+        ],
+        "caller": {
+            "address": "0x212c0:0x21433",
+            "selection": 2,
+            "clears_before_call": [
+                "last_key",
+                "enter_state",
+                "space_state",
+                "insert_state",
+            ],
+            "return_value": "ignored_then_jump_main_menu_loop",
+        },
+        "input_owner": {
+            "last_key_write": "unconditional_zero_before_delegated_calls",
+            "internal_last_key_reads": 0,
+            "delegated_ui_owners": ["0x2a10f", "0x2a186", "0x2a86c"],
+        },
+    }
+    contract_sha256 = sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    return {
+        "raw_range": "Z.DAT[0x23ad9:0x23b0f]",
+        "loaded_range": "0x2a0d9..0x2a10f",
+        "size_bytes": len(raw),
+        "instruction_count": 16,
+        "basic_block_count": 1,
+        "branch_count": 0,
+        "call_offsets": [f"0x{loaded_start + offset:x}" for offset in call_offsets],
+        "call_targets": [f"0x{target:x}" for target in call_targets],
+        "fixups": ["0x2a0e5"],
+        "relocation_delta": "0x20000",
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(loaded),
+        "normalized_loaded_equals_raw": True,
+        "entry_xref": "sub_212c0:0x21433",
+        "external_internal_entries": [],
+        "local_return": "0x2a10e",
+        "caller_raw_sha256": sha256(caller),
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
+    z_dat = (args.data_root / "Z.DAT").read_bytes()
     title_index = (args.data_root / "title.idx").read_bytes()
     title_group = (args.data_root / "title.grp").read_bytes()
     title_big = (args.data_root / "title.big").read_bytes()
@@ -581,6 +675,7 @@ def main() -> int:
     output = {
         "oracle": "independent Python little-endian/RLE implementation",
         "assets": {
+            "Z.DAT": {"bytes": len(z_dat), "sha256": sha256(z_dat)},
             "title.idx": {"bytes": len(title_index), "sha256": sha256(title_index)},
             "title.grp": {"bytes": len(title_group), "sha256": sha256(title_group)},
             "title.big": {"bytes": len(title_big), "sha256": sha256(title_big)},
@@ -686,6 +781,7 @@ def main() -> int:
                 )
             ),
         },
+        "game_menu_item_entry_machine": game_menu_item_entry_machine(z_dat),
         "runtime_ui_regression_fnv1a64": {
             "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
             "status_selector": "85fc6aad255a1c1b",

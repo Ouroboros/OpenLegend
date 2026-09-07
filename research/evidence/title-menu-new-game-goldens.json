@@ -1,6 +1,10 @@
 {
   "oracle": "independent Python little-endian/RLE implementation",
   "assets": {
+    "Z.DAT": {
+      "bytes": 343217,
+      "sha256": "0034f836def2b287e62b0902f08cab22b61b397f24d44d6038274f1750a007ce"
+    },
     "title.idx": {
       "bytes": 36,
       "sha256": "a481baf8c061c59497b661afbf9e3fbfeb9d1f6a2f55d303e37124d7b591f32a"
@@ -55,6 +59,68 @@
     "alphanumeric_a_cursor_7": "446d93db98ea6270",
     "alphanumeric_single_backspace_ghost_cursor_7": "2d1d57b78908ed6c",
     "accepted_alphanumeric_a": "a5d18b00944a30f3"
+  },
+  "game_menu_item_entry_machine": {
+    "raw_range": "Z.DAT[0x23ad9:0x23b0f]",
+    "loaded_range": "0x2a0d9..0x2a10f",
+    "size_bytes": 54,
+    "instruction_count": 16,
+    "basic_block_count": 1,
+    "branch_count": 0,
+    "call_offsets": [
+      "0x2a0de",
+      "0x2a0ec",
+      "0x2a0fa",
+      "0x2a106"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x2a10f",
+      "0x2a186",
+      "0x2a86c"
+    ],
+    "fixups": [
+      "0x2a0e5"
+    ],
+    "relocation_delta": "0x20000",
+    "raw_sha256": "1fd36ede5cb17507e24e83bc883074f6205a911ee34359aad6514b6280a2f383",
+    "loaded_sha256": "ed5269e0ae12171d13068702b67735cd621e9984a90560a9da73e0bf1949bc2e",
+    "normalized_loaded_equals_raw": true,
+    "entry_xref": "sub_212c0:0x21433",
+    "external_internal_entries": [],
+    "local_return": "0x2a10e",
+    "caller_raw_sha256": "d50c9629b28d74a41330b5641d7fc86755c722a46768c66a97fbe078f5d2cfb0",
+    "contract": {
+      "operation_order": [
+        "stack_probe_16",
+        "clear_last_key",
+        "reset_items_0",
+        "draw_items_0_0_0",
+        "select_items_0_minus_1",
+        "return_selector_eax"
+      ],
+      "caller": {
+        "address": "0x212c0:0x21433",
+        "selection": 2,
+        "clears_before_call": [
+          "last_key",
+          "enter_state",
+          "space_state",
+          "insert_state"
+        ],
+        "return_value": "ignored_then_jump_main_menu_loop"
+      },
+      "input_owner": {
+        "last_key_write": "unconditional_zero_before_delegated_calls",
+        "internal_last_key_reads": 0,
+        "delegated_ui_owners": [
+          "0x2a10f",
+          "0x2a186",
+          "0x2a86c"
+        ]
+      }
+    },
+    "contract_sha256": "59bb83d28586b8871cf9446349b0d1cd1840488e990a88e1f14c0e061cf4b389"
   },
   "runtime_ui_regression_fnv1a64": {
     "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
