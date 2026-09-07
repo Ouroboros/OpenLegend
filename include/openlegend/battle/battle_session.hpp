@@ -213,7 +213,8 @@ public:
             phase_ == BattleSessionPhase::player_action;
     }
     [[nodiscard]] bool cursor_selection_uses_key_states() const noexcept {
-        return phase_ == BattleSessionPhase::player_movement_select ||
+        return phase_ == BattleSessionPhase::player_attack_direction ||
+            phase_ == BattleSessionPhase::player_movement_select ||
             phase_ == BattleSessionPhase::player_targeting_select;
     }
     std::uint8_t take_clear_player_menu_direction_request() noexcept {
@@ -343,6 +344,7 @@ private:
         std::uint8_t translated_key);
     [[nodiscard]] BattleSessionInputResult handle_player_attack_direction_key(
         std::uint8_t translated_key);
+    void poll_player_attack_direction_states();
     [[nodiscard]] bool begin_player_attack_iteration(
         std::optional<BattlePathCoord> target = std::nullopt);
     [[nodiscard]] bool advance_player_attack_commit_wait(std::uint32_t bios_tick);
@@ -531,6 +533,7 @@ private:
     std::uint8_t cursor_presentations_before_input_{};
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerAttackState> player_attack_;
+    std::uint8_t player_attack_direction_presentations_before_input_{};
     std::unique_ptr<PlayerItemState> player_item_;
     std::uint8_t player_item_presentations_before_input_{};
     std::optional<PlayerStatusState> player_status_;

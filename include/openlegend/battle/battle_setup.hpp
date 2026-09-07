@@ -752,8 +752,11 @@ public:
     [[nodiscard]] bool commit_attack_iteration(
         std::size_t slot,
         std::int16_t magic_slot,
-        std::int16_t cost_scale,
         random::LegacyRandom& random);
+    [[nodiscard]] bool commit_attack_mp_cost(
+        std::size_t slot,
+        std::int16_t magic_slot,
+        std::int16_t cost_scale);
     [[nodiscard]] std::optional<BattleHpDamageResult> apply_hp_damage(
         std::size_t actor_slot,
         std::size_t target_slot,

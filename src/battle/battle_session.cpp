@@ -442,7 +442,10 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
     if (!valid()) {
         return;
     }
-    if (phase_ == BattleSessionPhase::round_start) {
+    if (phase_ == BattleSessionPhase::player_attack_direction &&
+        player_attack_direction_presentations_before_input_ == 0U) {
+        poll_player_attack_direction_states();
+    } else if (phase_ == BattleSessionPhase::round_start) {
         static_cast<void>(begin_round(bios_tick));
     } else if (phase_ == BattleSessionPhase::ai_action) {
         static_cast<void>(begin_ai_action());
@@ -493,11 +496,13 @@ bool BattleSession::render(
     }
     if (phase_ == BattleSessionPhase::round_wait ||
         phase_ == BattleSessionPhase::ai_wait ||
+        (phase_ == BattleSessionPhase::player_attack_direction &&
+         player_attack_direction_presentations_before_input_ == 0U) ||
         phase_ == BattleSessionPhase::player_effect_prelude_present ||
         phase_ == BattleSessionPhase::player_effect_prelude_wait ||
         phase_ == BattleSessionPhase::ai_effect_prelude_present ||
         phase_ == BattleSessionPhase::ai_effect_prelude_wait) {
-        // The original tick spins do not redraw the buffer left by the callee.
+        // The original input and tick spins do not redraw the current buffer.
         frame_rendered_ = true;
         return true;
     }
@@ -610,6 +615,16 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     if (phase_ == BattleSessionPhase::player_item_selection &&
         player_item_ != nullptr && player_item_presentations_before_input_ > 0U) {
         --player_item_presentations_before_input_;
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_attack_direction && player_attack_) {
+        if (player_attack_direction_presentations_before_input_ > 0U) {
+            --player_attack_direction_presentations_before_input_;
+            if (player_attack_direction_presentations_before_input_ > 0U) {
+                return;
+            }
+        }
+        poll_player_attack_direction_states();
         return;
     }
     if ((phase_ == BattleSessionPhase::player_movement_select ||
@@ -2231,6 +2246,7 @@ bool BattleSession::begin_player_attack_execution() {
     });
     setup_.clear_attack_effects();
     selected_player_target_.reset();
+    player_attack_direction_presentations_before_input_ = 0U;
     render_state_.path_limit = 0;
     diagnostics::log_info(
         "battle player attack ready id=" + std::to_string(battle_id()) +
@@ -2243,15 +2259,36 @@ bool BattleSession::begin_player_attack_execution() {
         return begin_player_targeting(BattlePlayerAction::attack);
     }
     if (profile->area_type == 1) {
+        player_attack_direction_presentations_before_input_ = 1U;
         phase_ = BattleSessionPhase::player_attack_direction;
         return true;
     }
     return begin_player_attack_iteration();
 }
 
+void BattleSession::poll_player_attack_direction_states() {
+    if (cursor_down_state_) {
+        cursor_down_state_ = false;
+        clear_cursor_selection_key_requested_ = kDown;
+        static_cast<void>(handle_key(kDown));
+    } else if (cursor_right_state_) {
+        cursor_right_state_ = false;
+        clear_cursor_selection_key_requested_ = kRight;
+        static_cast<void>(handle_key(kRight));
+    } else if (cursor_left_state_) {
+        cursor_left_state_ = false;
+        clear_cursor_selection_key_requested_ = kLeft;
+        static_cast<void>(handle_key(kLeft));
+    } else if (cursor_up_state_) {
+        cursor_up_state_ = false;
+        clear_cursor_selection_key_requested_ = kUp;
+        static_cast<void>(handle_key(kUp));
+    }
+}
+
 BattleSessionInputResult BattleSession::handle_player_attack_direction_key(
     const std::uint8_t translated_key) {
-    if (!player_attack_) {
+    if (!player_attack_ || player_attack_direction_presentations_before_input_ > 0U) {
         return BattleSessionInputResult::ignored;
     }
     std::optional<std::int16_t> direction;
@@ -2266,6 +2303,7 @@ BattleSessionInputResult BattleSession::handle_player_attack_direction_key(
     } else {
         return BattleSessionInputResult::ignored;
     }
+    player_attack_direction_presentations_before_input_ = 0U;
     player_attack_->direction = *direction;
     setup_.combatants()[current_actor_slot_].words[combatant_word::initial_mode] =
         *direction;
@@ -3352,10 +3390,7 @@ bool BattleSession::commit_player_attack_iteration() {
         return false;
     }
     const auto level_up = setup_.commit_attack_iteration(
-        current_actor_slot_,
-        selected_magic_slot_,
-        setup_.last_hp_cost_scale(),
-        random_);
+        current_actor_slot_, selected_magic_slot_, random_);
     diagnostics::log_info(
         std::string{"battle "} + (player_attack_->ai_controlled ? "AI" : "player") +
         " attack iteration committed id=" + std::to_string(battle_id()) +
@@ -3364,6 +3399,13 @@ bool BattleSession::commit_player_attack_iteration() {
         " cost_scale=" + std::to_string(setup_.last_hp_cost_scale()) +
         " level_up=" + (level_up ? std::string{"true"} : std::string{"false"}));
     if (!level_up) {
+        if (!setup_.commit_attack_mp_cost(
+                current_actor_slot_,
+                selected_magic_slot_,
+                setup_.last_hp_cost_scale())) {
+            error_ = "battle player attack MP cost commit failed";
+            return false;
+        }
         return finish_player_attack_iteration();
     }
 
@@ -3423,6 +3465,13 @@ bool BattleSession::advance_player_attack_level_wait(
     }
     if (effect.animation_wait_tick_changes_remaining > 0) {
         return true;
+    }
+    if (!setup_.commit_attack_mp_cost(
+            current_actor_slot_,
+            selected_magic_slot_,
+            setup_.last_hp_cost_scale())) {
+        error_ = "battle player attack MP cost commit failed";
+        return false;
     }
     return finish_player_attack_iteration();
 }

@@ -234,6 +234,20 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 独立原资产Golden新增`cursor_selection.input_state_transport`合同；两份临时结果与第三次正式生成逐字节一致，正式`battle-goldens.json` SHA256为`11ed531110466abaff4fdd599f733385041093e6542eaa51f61bc0162ccf82bd`。本轮只关闭input-font order35；同址battle owner及caller、路径图、render/present与共享尾不传播closure。
 
+### 3.11 玩家直线攻击方向的首帧门与固定优先级
+
+`sub_37734 @ 0x37734..0x3859E`由input-font Order36使用独立临时IDB冻结为3690字节、837条指令、135个CFG块、81个条件分支、25个无条件跳转、34次direct call、226项HIGHLOW重定位和唯一`RETN @ 0x3859D`。raw/loaded SHA256分别为`e1e0b9a203500a28d37fbca2eba008c0d3cff9c507104c5ac1ab769a6808f833`与`b1c8388f04bc4660f3d13f0280000900a7e84beb4e5d562f2609487e8945b631`；226项loaded值逆减`0x20000`后逐字节还原原始`Z.DAT+0x31134`。玩家caller `0x33371`压`mode=0`，AI caller `0x34E52`压`mode=1`，二者均不观察返回值。
+
+只有`mode==0 && area_type==1 && hit_index==0`进入方向输入。机器先绘制方向框并恰present一次，入口不清方向状态；随后无键只在`0x37C56..0x37D5B`忙等，不再调用render、present或delay。扫描固定为`down > right > left > up`，方向映射为`3/1/2/0`；对应状态对依次为`51C04/51C05`、`51C06/51C09`、`51C0A/51C07`、`51C0C/51C0B`。每个byte任意非零均有效，命中后只清对应双别名并保留低优先状态；没有Escape或确认分支。AI按目标差值自动定向，双击第二击复用首击方向，均不重新读取键态。
+
+首轮现代对照发现`player_attack_direction`仍由单个SDL `KEYDOWN`立即分派，可在方向帧成功present前生效，且多键结果取决于事件到达顺序。此前同址battle owner“共享scale修正后零差异”的结论随之作废。最小修正把该phase纳入已有cursor持续键态传输，设置一帧成功present门；首帧回调按down/right/left/up顺序消费预按的一组，首帧无键时后续host advance直接扫描并复用已呈现方向框，不要求第二次方向present。命中后请求SDL调用`consume_world_direction`成对清理；入口不清方向，Escape和确认保持未消费，AI与第二击路径不变。
+
+方向修正后的入口重审又发现现代在返回“熟练度升级”前已扣MP，而机器严格在升级框present及参数500等待之后才扣，并于此时重新读取selected slot的当前magic id与定义need MP。现拆分熟练度/RNG提交与MP提交；升级路径把MP提交延后到等待结束并按slot重新解析profile。独立HP/MP伤害callee每次命中也自行重读当前熟练度/need MP，所以首击升级可改变第二击伤害scale；外层只缓存几何/hurt/hit count。机器`0x378B0..0x378DA`还证明4096个effect word只在hit loop前清一次，当前C++本已如此，旧“每击清零”仅为证据文字错误。
+
+全部修正后重新从入口覆盖837条指令和135块。12个半开地址阶段的块数为11、13、31、17、8、1、36、6、3、1、3、5，合计135且没有未分组块；34个call、两个caller、菜单取消和正常返回全部复核，未发现新增差异。回归锁定首帧前直接事件忽略、预按五态按down优先、首帧无键后right/left/up由host advance直接扫描且无第二次方向present、方向word写回、精确清理请求，以及升级present/等待期间MP保持、AI单击伤害完成后在等待中把定义need MP从5改为30并在等待结束时按重读值扣到MP0。方向判别向量SHA256为`c5e62579350f961039ec5a328798de022c31e8bcafb0f8f05f6ed9290902ecd9`；两份临时Golden与第三次正式生成逐字节一致，正式`battle-goldens.json` SHA256为`e23151ba9ed10c41131475cf0901cc24f3b5681b253ea56db01bd70ffe4dbf1b`；Linux app Debug通过14/14。
+
+本轮只关闭`input-font-closure.tsv audit_order=36`。同址battle owner既有状态只作为交叉核对，两个caller、18个不同callee地址、目标/直线area、伤害、动画、renderer、present、delay、RNG及共享状态owner均不传播closure；原程序动态runtime oracle仍登记为`blocked_runtime_oracle`。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：

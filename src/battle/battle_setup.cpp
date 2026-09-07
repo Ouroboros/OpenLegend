@@ -1825,7 +1825,6 @@ BattleMagicSelectionResult BattleSetup::apply_magic_selection(
 bool BattleSetup::commit_attack_iteration(
     const std::size_t slot,
     const std::int16_t magic_slot,
-    const std::int16_t cost_scale,
     random::LegacyRandom& random) {
     const auto profile = attack_profile(slot, magic_slot);
     if (!profile) {
@@ -1848,14 +1847,28 @@ bool BattleSetup::commit_attack_iteration(
     }
     role.set_word(experience_word, static_cast<std::int16_t>(experience));
     const auto current_rank = experience / 100U + 1U;
+    return current_rank > previous_rank;
+}
 
-    const auto cost = static_cast<std::int32_t>(cost_scale / 2) * profile->need_mp;
+bool BattleSetup::commit_attack_mp_cost(
+    const std::size_t slot,
+    const std::int16_t magic_slot,
+    const std::int16_t cost_scale) {
+    const auto profile = attack_profile(slot, magic_slot);
+    if (!profile) {
+        error_ = "battle attack MP cost profile is outside ranger records";
+        return false;
+    }
+    const auto role_id = combatants_[slot].words[combatant_word::role_id];
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto cost =
+        static_cast<std::int32_t>(cost_scale / 2) * profile->need_mp;
     auto mp = wrapping_i16(static_cast<std::int32_t>(role.word(model::role_word::mp)) - cost);
     if (mp < 0) {
         mp = 0;
     }
     role.set_word(model::role_word::mp, mp);
-    return current_rank > previous_rank;
+    return true;
 }
 
 std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(

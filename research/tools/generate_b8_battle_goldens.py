@@ -4027,6 +4027,74 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }:
         raise ValueError("Z.DAT dynamic HP cost-scale accesses changed")
 
+    direction_input_ranges = {
+        "player_first_hit_gate": (0x37BCD, 0x37BEE),
+        "prompt_and_present": (0x37BEE, 0x37C51),
+        "state_dispatch": (0x37C51, 0x37D61),
+        "line_area_call": (0x37E07, 0x37E26),
+    }
+    direction_input_hashes = {
+        name: hashlib.sha256(z_dat_bytes[
+            begin - Z_DAT_LOAD_BASE:end - Z_DAT_LOAD_BASE
+        ]).hexdigest()
+        for name, (begin, end) in direction_input_ranges.items()
+    }
+    if direction_input_hashes != {
+        "player_first_hit_gate": "104189d96d99a53459c2cdf1d07d09d8f5bbe91d3ab569281ab23dd22b364694",
+        "prompt_and_present": "8292f8bf33045491bdaaff4e64a72c2713da9f7d15044920a231571eed32df72",
+        "state_dispatch": "817d67fa0dc2ca5ab5064ed80cb8e279fd3d74df74f6e3c235e1f0ad8d969227",
+        "line_area_call": "f871e50d75724c8e60f38e37350bc27622b1cc97fb24663abf1786ad13a1e1cc",
+    }:
+        raise ValueError("Z.DAT player attack direction input bytes changed")
+
+    direction_pairs = {
+        "down": ("down_a", "down_b", 3),
+        "right": ("right_a", "right_b", 1),
+        "left": ("left_a", "left_b", 2),
+        "up": ("up_a", "up_b", 0),
+    }
+
+    def scan_direction_input(state: dict[str, int]) -> dict[str, object]:
+        remaining = dict(state)
+        for direction in ("down", "right", "left", "up"):
+            first, second, code = direction_pairs[direction]
+            if state.get(first, 0) != 0 or state.get(second, 0) != 0:
+                remaining[first] = 0
+                remaining[second] = 0
+                return {
+                    "direction": code,
+                    "consumed": [first, second],
+                    "remaining": remaining,
+                }
+        return {"direction": None, "consumed": [], "remaining": remaining}
+
+    direction_input_vectors = {
+        "no_key_busy_waits_without_present": scan_direction_input({}),
+        "nonzero_byte_is_active": scan_direction_input({"right_b": 0x80}),
+        "aliases_are_cleared_together": scan_direction_input(
+            {"left_a": 2, "left_b": 3}
+        ),
+        "priority_down_over_all": scan_direction_input(
+            {"down_b": 1, "right_a": 1, "left_a": 1, "up_a": 1}
+        ),
+        "priority_right_over_left_up": scan_direction_input(
+            {"right_b": 1, "left_b": 1, "up_b": 1}
+        ),
+        "priority_left_over_up": scan_direction_input(
+            {"left_a": 1, "up_a": 1}
+        ),
+    }
+    direction_input_vectors_sha256 = hashlib.sha256(json.dumps(
+        direction_input_vectors,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()).hexdigest()
+    if direction_input_vectors_sha256 != (
+        "c5e62579350f961039ec5a328798de022c31e8bcafb0f8f05f6ed9290902ecd9"
+    ):
+        raise ValueError("player attack direction input vectors changed")
+
     def signed_word(value: int) -> int:
         value &= 0xFFFF
         return value - 0x10000 if value >= 0x8000 else value
@@ -4109,6 +4177,7 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "mp_positive_scale": mp_after(20, 3, 4),
         "mp_negative_result_clamps": mp_after(5, 3, 4),
         "mp_min_wraps_positive": mp_after(-32768, 1, 2),
+        "mp_reread_need_30_after_level_delay": mp_after(20, 30, 3),
         "physical_two_to_zero": physical_after(2),
         "physical_min_wraps_positive": physical_after(-32768),
         "single_hit_rng_draws": 1,
@@ -4137,6 +4206,7 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "mp_positive_scale": 14,
         "mp_negative_result_clamps": 0,
         "mp_min_wraps_positive": 32767,
+        "mp_reread_need_30_after_level_delay": 0,
         "physical_two_to_zero": 0,
         "physical_min_wraps_positive": 32765,
         "single_hit_rng_draws": 1,
@@ -4162,14 +4232,20 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
         },
         "caller_uses_return": False,
         "selection": (
-            "count ten positive learned-level words; sole positive count forces selected slot 0; "
+            "count ten positive magic-id words; sole positive count forces selected slot 0; "
             "otherwise player menu may cancel with -1; AI uses preselected slot"
         ),
         "profile_cache": (
-            "magic id and unsigned proficiency/100 level select definition fields once before "
-            "the one/two-hit loop"
+            "owner-local geometry, hurt type and hit count are selected once before the "
+            "one/two-hit loop; independent HP/MP damage callees re-read current proficiency "
+            "and need MP on each target hit, and the per-hit MP commit re-reads selected-slot "
+            "magic id and need MP after the optional level delay"
         ),
         "special_attack_bonuses": special_attack_bonuses,
+        "effect_clear": (
+            "signed nested 0..63 loops clear all 4096 effect words once before "
+            "initializing the one/two-hit loop"
+        ),
         "area_types": {
             "0_or_3": (
                 "player first hit targets with mode1 cursor; square x outer/y inner around target; "
@@ -4197,8 +4273,8 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
         "per_hit_commit": (
             "actor word7=1; actor word13 +=2; one RNG(2) then proficiency += return+1 with "
             "16-bit wrap and unsigned clamp999; show level box and delay500 only when unsigned "
-            "/100+1 rises; subtract base MP cost times signed dynamic-scale IDIV2 with 16-bit "
-            "wrap then signed-negative clamp0"
+            "/100+1 rises; re-read selected-slot magic id and base need MP, then subtract cost "
+            "times signed dynamic-scale IDIV2 with 16-bit wrap and signed-negative clamp0"
         ),
         "dynamic_cost_scale": {
             "address": hex(BATTLE_ATTACK_DYNAMIC_COST_SCALE_ADDRESS),
@@ -4208,6 +4284,28 @@ def battle_attack_core_contract(z_dat_bytes: bytes) -> dict[str, object]:
                 "initialization write, so the last HP scale persists across battle sessions"
             ),
             "mp_damage_write": False,
+        },
+        "direction_input": {
+            "machine_slice_sha256": direction_input_hashes,
+            "entry": "player mode, line area type and first hit only",
+            "presentations_before_poll": 1,
+            "entry_preserves_direction_states": True,
+            "busy_wait_render_present_calls": 0,
+            "priority": ["down", "right", "left", "up"],
+            "direction_map": {"down": 3, "right": 1, "left": 2, "up": 0},
+            "direction_state_pairs": [
+                ["0x51c04", "0x51c05"],
+                ["0x51c06", "0x51c09"],
+                ["0x51c0a", "0x51c07"],
+                ["0x51c0c", "0x51c0b"],
+            ],
+            "accepts_any_nonzero_byte": True,
+            "selected_alias_pair_cleared": True,
+            "lower_priority_states_preserved": True,
+            "escape_or_confirmation_branch": False,
+            "line_area_call_count_after_selection": 1,
+            "vectors": direction_input_vectors,
+            "vectors_sha256": direction_input_vectors_sha256,
         },
         "hit_count": (
             "cached before loop: role word at 0x901C0 exactly 1 means two hits, otherwise one; "

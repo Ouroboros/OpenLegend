@@ -3774,8 +3774,8 @@
       "0x34e52": "AI attack pushes 1 then signed actor; ignores return and rejoins AI handler tail"
     },
     "caller_uses_return": false,
-    "selection": "count ten positive learned-level words; sole positive count forces selected slot 0; otherwise player menu may cancel with -1; AI uses preselected slot",
-    "profile_cache": "magic id and unsigned proficiency/100 level select definition fields once before the one/two-hit loop",
+    "selection": "count ten positive magic-id words; sole positive count forces selected slot 0; otherwise player menu may cancel with -1; AI uses preselected slot",
+    "profile_cache": "owner-local geometry, hurt type and hit count are selected once before the one/two-hit loop; independent HP/MP damage callees re-read current proficiency and need MP on each target hit, and the per-hit MP commit re-reads selected-slot magic id and need MP after the optional level delay",
     "special_attack_bonuses": [
       {
         "weapon_id": 106,
@@ -3813,6 +3813,7 @@
         "bonus": 100
       }
     ],
+    "effect_clear": "signed nested 0..63 loops clear all 4096 effect words once before initializing the one/two-hit loop",
     "area_types": {
       "0_or_3": "player first hit targets with mode1 cursor; square x outer/y inner around target; direction uses abs-x >= abs-y tie",
       "1": "player first hit draws direction prompt and polls keys; AI derives the same dominant-axis direction; delegate line area",
@@ -3822,7 +3823,7 @@
     "area_cell_rule": "in-bounds empty or opposite-side cell is marked 1; same-side occupied cell is skipped; occupied opposite-side cell gets delegated damage and word9 write",
     "damage_dispatch": "definition formula 0 sets global type1 and calls 0x39188; formula1 sets type3 and calls 0x395EC; line helper is 0x38999",
     "animation": "call 0x3859E with actor and definition FIGHT bounds; set flash kind5 iff global damage type3 else1; call 0x38910(0); refresh all sprites; render, present, delay17",
-    "per_hit_commit": "actor word7=1; actor word13 +=2; one RNG(2) then proficiency += return+1 with 16-bit wrap and unsigned clamp999; show level box and delay500 only when unsigned /100+1 rises; subtract base MP cost times signed dynamic-scale IDIV2 with 16-bit wrap then signed-negative clamp0",
+    "per_hit_commit": "actor word7=1; actor word13 +=2; one RNG(2) then proficiency += return+1 with 16-bit wrap and unsigned clamp999; show level box and delay500 only when unsigned /100+1 rises; re-read selected-slot magic id and base need MP, then subtract cost times signed dynamic-scale IDIV2 with 16-bit wrap and signed-negative clamp0",
     "dynamic_cost_scale": {
       "address": "0xe6ec2",
       "access_bytes": {
@@ -3833,6 +3834,122 @@
       },
       "lifetime": "only HP kernel zero/select writes; attack commit and HP damage read; no battle initialization write, so the last HP scale persists across battle sessions",
       "mp_damage_write": false
+    },
+    "direction_input": {
+      "machine_slice_sha256": {
+        "player_first_hit_gate": "104189d96d99a53459c2cdf1d07d09d8f5bbe91d3ab569281ab23dd22b364694",
+        "prompt_and_present": "8292f8bf33045491bdaaff4e64a72c2713da9f7d15044920a231571eed32df72",
+        "state_dispatch": "817d67fa0dc2ca5ab5064ed80cb8e279fd3d74df74f6e3c235e1f0ad8d969227",
+        "line_area_call": "f871e50d75724c8e60f38e37350bc27622b1cc97fb24663abf1786ad13a1e1cc"
+      },
+      "entry": "player mode, line area type and first hit only",
+      "presentations_before_poll": 1,
+      "entry_preserves_direction_states": true,
+      "busy_wait_render_present_calls": 0,
+      "priority": [
+        "down",
+        "right",
+        "left",
+        "up"
+      ],
+      "direction_map": {
+        "down": 3,
+        "right": 1,
+        "left": 2,
+        "up": 0
+      },
+      "direction_state_pairs": [
+        [
+          "0x51c04",
+          "0x51c05"
+        ],
+        [
+          "0x51c06",
+          "0x51c09"
+        ],
+        [
+          "0x51c0a",
+          "0x51c07"
+        ],
+        [
+          "0x51c0c",
+          "0x51c0b"
+        ]
+      ],
+      "accepts_any_nonzero_byte": true,
+      "selected_alias_pair_cleared": true,
+      "lower_priority_states_preserved": true,
+      "escape_or_confirmation_branch": false,
+      "line_area_call_count_after_selection": 1,
+      "vectors": {
+        "no_key_busy_waits_without_present": {
+          "direction": null,
+          "consumed": [],
+          "remaining": {}
+        },
+        "nonzero_byte_is_active": {
+          "direction": 1,
+          "consumed": [
+            "right_a",
+            "right_b"
+          ],
+          "remaining": {
+            "right_b": 0,
+            "right_a": 0
+          }
+        },
+        "aliases_are_cleared_together": {
+          "direction": 2,
+          "consumed": [
+            "left_a",
+            "left_b"
+          ],
+          "remaining": {
+            "left_a": 0,
+            "left_b": 0
+          }
+        },
+        "priority_down_over_all": {
+          "direction": 3,
+          "consumed": [
+            "down_a",
+            "down_b"
+          ],
+          "remaining": {
+            "down_b": 0,
+            "right_a": 1,
+            "left_a": 1,
+            "up_a": 1,
+            "down_a": 0
+          }
+        },
+        "priority_right_over_left_up": {
+          "direction": 1,
+          "consumed": [
+            "right_a",
+            "right_b"
+          ],
+          "remaining": {
+            "right_b": 0,
+            "left_b": 1,
+            "up_b": 1,
+            "right_a": 0
+          }
+        },
+        "priority_left_over_up": {
+          "direction": 2,
+          "consumed": [
+            "left_a",
+            "left_b"
+          ],
+          "remaining": {
+            "left_a": 0,
+            "up_a": 1,
+            "left_b": 0
+          }
+        }
+      },
+      "vectors_sha256": "c5e62579350f961039ec5a328798de022c31e8bcafb0f8f05f6ed9290902ecd9"
     },
     "hit_count": "cached before loop: role word at 0x901C0 exactly 1 means two hits, otherwise one; targeting/direction only occur on first player hit",
     "final_commit": "after all hits physical power word 0x90176 -=3 with 16-bit wrap then signed-negative clamp0; return 0; player cancel returns -1",
@@ -3936,6 +4053,7 @@
       "mp_positive_scale": 14,
       "mp_negative_result_clamps": 0,
       "mp_min_wraps_positive": 32767,
+      "mp_reread_need_30_after_level_delay": 0,
       "physical_two_to_zero": 0,
       "physical_min_wraps_positive": 32765,
       "single_hit_rng_draws": 1,
