@@ -198,15 +198,32 @@ public:
         player_menu_down_state_ = down;
         player_menu_up_state_ = up;
     }
+    void set_cursor_selection_input_states(
+        bool down, bool right, bool left, bool up, bool escape) noexcept {
+        cursor_down_state_ = down;
+        cursor_right_state_ = right;
+        cursor_left_state_ = left;
+        cursor_up_state_ = up;
+        cursor_escape_state_ = escape;
+    }
     [[nodiscard]] bool player_menu_uses_key_states() const noexcept {
         return phase_ == BattleSessionPhase::party_selection ||
             phase_ == BattleSessionPhase::player_action_initial_present ||
             phase_ == BattleSessionPhase::player_action_return_present ||
             phase_ == BattleSessionPhase::player_action;
     }
+    [[nodiscard]] bool cursor_selection_uses_key_states() const noexcept {
+        return phase_ == BattleSessionPhase::player_movement_select ||
+            phase_ == BattleSessionPhase::player_targeting_select;
+    }
     std::uint8_t take_clear_player_menu_direction_request() noexcept {
         const auto key = clear_player_menu_direction_requested_;
         clear_player_menu_direction_requested_ = 0U;
+        return key;
+    }
+    std::uint8_t take_clear_cursor_selection_key_request() noexcept {
+        const auto key = clear_cursor_selection_key_requested_;
+        clear_cursor_selection_key_requested_ = 0U;
         return key;
     }
     bool take_clear_confirmation_states_request() noexcept {
@@ -476,6 +493,12 @@ private:
     bool player_menu_down_state_{};
     bool player_menu_up_state_{};
     std::uint8_t clear_player_menu_direction_requested_{};
+    bool cursor_down_state_{};
+    bool cursor_right_state_{};
+    bool cursor_left_state_{};
+    bool cursor_up_state_{};
+    bool cursor_escape_state_{};
+    std::uint8_t clear_cursor_selection_key_requested_{};
     std::unique_ptr<render::IndexedFramebuffer> player_action_frame_;
     bool player_action_retain_callee_frame_{};
     bool player_automatic_action_{};

@@ -7855,6 +7855,78 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
                  "battle player action menu rebuilt after movement id=4") !=
              std::string::npos);
 
+    auto cursor_input_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    cursor_input_ranger.roles[1U].set_word(role_word::hp, 100);
+    cursor_input_ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    cursor_input_ranger.roles[1U].set_word(role_word::physical_power, 10);
+    cursor_input_ranger.roles[1U].set_word(role_word::speed, 30);
+    cursor_input_ranger.roles[3U].set_word(role_word::hp, 100);
+    cursor_input_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom cursor_input_random{1U};
+    BattleSession cursor_input_session{
+        data_root, cursor_input_ranger, cursor_input_random, 4, false};
+    reach_player_action(cursor_input_session);
+    OL_CHECK(cursor_input_session.handle_key(0x0DU) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(cursor_input_session.phase() == BattleSessionPhase::player_movement_select);
+    OL_CHECK(cursor_input_session.cursor_selection_uses_key_states());
+    OL_CHECK(cursor_input_session.take_clear_confirmation_states_request());
+    OL_CHECK(!cursor_input_session.take_clear_confirmation_states_request());
+    cursor_input_session.set_cursor_selection_input_states(
+        true, true, true, true, true);
+    cursor_input_session.set_confirmation_state(true);
+    OL_CHECK(cursor_input_session.render(framebuffer));
+    cursor_input_session.finish_presented_tick(300U);
+    OL_CHECK(cursor_input_session.cursor_presentations_before_input() == 1U);
+    OL_CHECK(cursor_input_session.take_clear_cursor_selection_key_request() == 0U);
+    OL_CHECK((cursor_input_session.active_cursor() == BattlePathCoord{26, 24}));
+    OL_CHECK(cursor_input_session.render(framebuffer));
+    cursor_input_session.finish_presented_tick(300U);
+    OL_CHECK(cursor_input_session.take_clear_cursor_selection_key_request() == 0x98U);
+    OL_CHECK((cursor_input_session.active_cursor() == BattlePathCoord{26, 25}));
+    for (const auto expected_key : std::array<std::uint8_t, 3>{0x9CU, 0x9AU, 0x9EU}) {
+        OL_CHECK(cursor_input_session.render(framebuffer));
+        cursor_input_session.finish_presented_tick(300U);
+        OL_CHECK(cursor_input_session.take_clear_cursor_selection_key_request() ==
+                 expected_key);
+        OL_CHECK(cursor_input_session.phase() == BattleSessionPhase::player_movement_select);
+    }
+    OL_CHECK(cursor_input_session.render(framebuffer));
+    cursor_input_session.finish_presented_tick(300U);
+    OL_CHECK(cursor_input_session.take_clear_cursor_selection_key_request() == 0x1BU);
+    OL_CHECK(cursor_input_session.phase() ==
+             BattleSessionPhase::player_action_return_present);
+    OL_CHECK(!cursor_input_session.take_clear_confirmation_states_request());
+
+    auto rejected_confirmation_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    rejected_confirmation_ranger.roles[1U].set_word(role_word::hp, 100);
+    rejected_confirmation_ranger.roles[1U].set_word(role_word::maximum_hp, 100);
+    rejected_confirmation_ranger.roles[1U].set_word(role_word::physical_power, 10);
+    rejected_confirmation_ranger.roles[1U].set_word(role_word::speed, 30);
+    rejected_confirmation_ranger.roles[3U].set_word(role_word::hp, 100);
+    rejected_confirmation_ranger.roles[3U].set_word(role_word::maximum_hp, 100);
+    openlegend::random::LegacyRandom rejected_confirmation_random{1U};
+    BattleSession rejected_confirmation_session{
+        data_root,
+        rejected_confirmation_ranger,
+        rejected_confirmation_random,
+        4,
+        false};
+    reach_player_action(rejected_confirmation_session);
+    OL_CHECK(rejected_confirmation_session.handle_key(0x0DU) ==
+             BattleSessionInputResult::action_selected);
+    OL_CHECK(rejected_confirmation_session.take_clear_confirmation_states_request());
+    rejected_confirmation_session.set_confirmation_state(true);
+    OL_CHECK(rejected_confirmation_session.render(framebuffer));
+    rejected_confirmation_session.finish_presented_tick(301U);
+    OL_CHECK(rejected_confirmation_session.cursor_presentations_before_input() == 1U);
+    OL_CHECK(!rejected_confirmation_session.take_clear_confirmation_states_request());
+    OL_CHECK(rejected_confirmation_session.render(framebuffer));
+    rejected_confirmation_session.finish_presented_tick(301U);
+    OL_CHECK(rejected_confirmation_session.take_clear_confirmation_states_request());
+    OL_CHECK(rejected_confirmation_session.cursor_presentations_before_input() == 1U);
+    OL_CHECK((rejected_confirmation_session.active_cursor() == BattlePathCoord{26, 24}));
+
     const auto targeting_log_path = log_path.parent_path() / "b8-battle-targeting.log";
     std::filesystem::remove(targeting_log_path, log_error);
     OL_CHECK(openlegend::diagnostics::initialize_logging(

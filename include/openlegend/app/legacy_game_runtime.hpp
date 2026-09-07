@@ -109,8 +109,11 @@ public:
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
     void set_battle_confirmation_state(bool active) noexcept;
     void set_battle_menu_direction_states(bool down, bool up) noexcept;
+    void set_battle_cursor_input_states(
+        bool down, bool right, bool left, bool up, bool escape) noexcept;
     [[nodiscard]] bool battle_menu_uses_key_states() const noexcept;
     std::uint8_t take_clear_battle_menu_direction_request() noexcept;
+    std::uint8_t take_clear_battle_cursor_key_request() noexcept;
     bool take_clear_battle_confirmation_states_request() noexcept;
     [[nodiscard]] bool render();
 

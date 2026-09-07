@@ -224,6 +224,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 本轮只关闭`input-font-closure.tsv audit_order=33`；同址battle owner、caller、共享尾、排序/交换、玩家/AI动作、战果、hidden清理、轮末状态、render/present/fade及time owner均不传播。修正后从入口重审47块/166条指令及全部出口，未发现其他合法域差异。
 
+### 3.10 战斗光标的持续键态、优先级与呈现门
+
+`sub_36AF7 @ 0x36AF7..0x36E06`由input-font Order35独立临时IDB重新冻结为783字节、157条指令、38个CFG块、28个条件分支、7个无条件跳转、7次call、72项HIGHLOW重定位且零本地RET；raw/loaded SHA256分别为`880246a653a60137ff63b21d437f2722ffbfb14bb4a0dfa6f4b06d64d34215e9`与`cb0b440727ac96038276f0de9a9b139c820184b9dba7a5772b45c4b4800ed9de`。六个caller与唯一`0x36BA7 -> 0x3677E`共享尾出口分别保留owner边界。
+
+入口只清Enter、Space、keypad Insert三个确认byte，保留方向和Escape；先完成两次`render -> present`才进行首次键态扫描。其后每次成功present最多按`down -> right -> left -> up -> Escape -> confirmation`消费一组。四方向分别接受两种翻译键码并在路径判断前成对清零；方向接受或拒绝、确认拒绝都会回到下一次present，Escape或接受确认则不额外present。signed `y*64+x`、`+64/+1/-1/-64`线性别名、path上限、occupancy悬停、movement `path>0`与targeting `path>=0`确认条件保持不变。
+
+首轮只修正了首键前少一次present；随后完整SDL边界复查发现事件到达顺序仍会替代机器的固定多键优先级。该“仅一项差异且已收敛”结论已废弃。最终实现由`BattleSession`在成功present后扫描持续键态并请求清理一个状态组，`LegacyGameRuntime`转发，SDL持续采样八个方向别名、Escape与三确认键并成组清理。入口确认清理、预先按住、多键优先、每帧一组、Escape和拒绝确认回归均通过。修正后重新从入口覆盖完整157条指令、38块、全部分支/call/caller和共享尾，零新增合法域差异。
+
+独立原资产Golden新增`cursor_selection.input_state_transport`合同；两份临时结果与第三次正式生成逐字节一致，正式`battle-goldens.json` SHA256为`11ed531110466abaff4fdd599f733385041093e6542eaa51f61bc0162ccf82bd`。本轮只关闭input-font order35；同址battle owner及caller、路径图、render/present与共享尾不传播closure。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：

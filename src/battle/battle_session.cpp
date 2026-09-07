@@ -614,9 +614,38 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     }
     if ((phase_ == BattleSessionPhase::player_movement_select ||
          phase_ == BattleSessionPhase::player_targeting_select) &&
-        player_cursor_selection_.has_value() &&
-        cursor_presentations_before_input_ > 0U) {
-        --cursor_presentations_before_input_;
+        player_cursor_selection_.has_value()) {
+        if (cursor_presentations_before_input_ > 0U) {
+            --cursor_presentations_before_input_;
+            if (cursor_presentations_before_input_ > 0U) {
+                return;
+            }
+        }
+        if (cursor_down_state_) {
+            cursor_down_state_ = false;
+            clear_cursor_selection_key_requested_ = kDown;
+            static_cast<void>(handle_key(kDown));
+        } else if (cursor_right_state_) {
+            cursor_right_state_ = false;
+            clear_cursor_selection_key_requested_ = kRight;
+            static_cast<void>(handle_key(kRight));
+        } else if (cursor_left_state_) {
+            cursor_left_state_ = false;
+            clear_cursor_selection_key_requested_ = kLeft;
+            static_cast<void>(handle_key(kLeft));
+        } else if (cursor_up_state_) {
+            cursor_up_state_ = false;
+            clear_cursor_selection_key_requested_ = kUp;
+            static_cast<void>(handle_key(kUp));
+        } else if (cursor_escape_state_) {
+            cursor_escape_state_ = false;
+            clear_cursor_selection_key_requested_ = kEscape;
+            static_cast<void>(handle_key(kEscape));
+        } else if (confirmation_state_) {
+            confirmation_state_ = false;
+            clear_confirmation_states_requested_ = true;
+            static_cast<void>(handle_key(kEnter));
+        }
         return;
     }
     if (phase_ == BattleSessionPhase::initial_present) {
@@ -2361,6 +2390,8 @@ bool BattleSession::begin_player_movement() {
         return false;
     }
     player_cursor_selection_.emplace(std::move(*selection));
+    confirmation_state_ = false;
+    clear_confirmation_states_requested_ = true;
     cursor_presentations_before_input_ = 2U;
     player_movement_plan_.reset();
     render_state_.path_limit = player_cursor_selection_->path_limit;
@@ -2634,6 +2665,8 @@ bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
         return false;
     }
     player_cursor_selection_.emplace(std::move(*selection));
+    confirmation_state_ = false;
+    clear_confirmation_states_requested_ = true;
     cursor_presentations_before_input_ = 2U;
     selected_player_target_.reset();
     render_state_.path_limit = player_cursor_selection_->path_limit;

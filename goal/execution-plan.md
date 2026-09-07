@@ -2,9 +2,9 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=331/349`，`unique_any=273/284`，`unique_all=266/284`
-当前任务指针：input-font `research/inventory/input-font-closure.tsv` `audit_order=35` `sub_36AF7`
-下一任务指针：input-font `research/inventory/input-font-closure.tsv` `audit_order=36` `sub_37734`
+当前有效进度：`closure=332/349`，`unique_any=273/284`，`unique_all=267/284`
+当前任务指针：input-font `research/inventory/input-font-closure.tsv` `audit_order=36` `sub_37734`
+下一任务指针：input-font `research/inventory/input-font-closure.tsv` `audit_order=37` `sub_38DAC`
 
 ## 0. 唯一正确性真值
 

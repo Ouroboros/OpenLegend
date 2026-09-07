@@ -292,10 +292,31 @@ int main(const int argc, const char* const* argv) {
         if (direction != 0U) {
             keyboard.clear_state(direction);
         }
+        const auto cursor_key = game.take_clear_battle_cursor_key_request();
+        if (cursor_key == input::kLegacyDownKey) {
+            keyboard.consume_world_direction(input::LegacyWorldDirectionInput::down);
+        } else if (cursor_key == input::kLegacyRightKey) {
+            keyboard.consume_world_direction(input::LegacyWorldDirectionInput::right);
+        } else if (cursor_key == input::kLegacyLeftKey) {
+            keyboard.consume_world_direction(input::LegacyWorldDirectionInput::left);
+        } else if (cursor_key == input::kLegacyUpKey) {
+            keyboard.consume_world_direction(input::LegacyWorldDirectionInput::up);
+        } else if (cursor_key != 0U) {
+            keyboard.clear_state(cursor_key);
+        }
+        const auto any_down = [&keyboard](const auto& keys) {
+            return keyboard.down(keys[0]) || keyboard.down(keys[1]);
+        };
         game.set_battle_confirmation_state(
             keyboard.down(0x0DU) || keyboard.down(0x20U) || keyboard.down(0x96U));
         game.set_battle_menu_direction_states(
             keyboard.down(0x98U), keyboard.down(0x9EU));
+        game.set_battle_cursor_input_states(
+            any_down(input::kLegacyWorldDownKeys),
+            any_down(input::kLegacyWorldRightKeys),
+            any_down(input::kLegacyWorldLeftKeys),
+            any_down(input::kLegacyWorldUpKeys),
+            keyboard.down(0x1BU));
     };
     const auto sync_scene_input_reset = [&game, &keyboard]() {
         switch (game.take_scene_input_reset_request()) {

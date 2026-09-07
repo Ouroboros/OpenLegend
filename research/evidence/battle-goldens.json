@@ -1886,6 +1886,38 @@
       "cancel",
       "activate"
     ],
+    "input_state_transport": {
+      "entry_clears_confirmation_keys": [
+        13,
+        32,
+        150
+      ],
+      "entry_preserves_direction_and_escape": true,
+      "direction_key_pairs": [
+        [
+          151,
+          152
+        ],
+        [
+          153,
+          156
+        ],
+        [
+          157,
+          154
+        ],
+        [
+          159,
+          158
+        ]
+      ],
+      "direction_pair_cleared_before_move_test": true,
+      "escape_key": 27,
+      "escape_state_cleared_before_exit": true,
+      "confirmation_group_cleared_before_test": true,
+      "nonzero_byte_state": true,
+      "one_group_per_presented_scan": true
+    },
     "direction_rule": "signed 64-column linear index; move when path<=limit or aliased occupancy!=-1",
     "cancel": "clear path limit, write cancel word 1 and exit",
     "confirm": "require signed path<=limit and additionally path>0 in mode0 or path>=0 in mode1",
@@ -24767,10 +24799,43 @@
           "cancel",
           "activate"
         ],
+        "input_state_transport": {
+          "entry_clears_confirmation_keys": [
+            13,
+            32,
+            150
+          ],
+          "entry_preserves_direction_and_escape": true,
+          "direction_key_pairs": [
+            [
+              151,
+              152
+            ],
+            [
+              153,
+              156
+            ],
+            [
+              157,
+              154
+            ],
+            [
+              159,
+              158
+            ]
+          ],
+          "direction_pair_cleared_before_move_test": true,
+          "escape_key": 27,
+          "escape_state_cleared_before_exit": true,
+          "confirmation_group_cleared_before_test": true,
+          "nonzero_byte_state": true,
+          "one_group_per_presented_scan": true
+        },
         "presentation_gate": {
           "before_first_input": 2,
           "after_direction": 1,
-          "after_rejected_confirmation": 1
+          "after_rejected_confirmation": 1,
+          "scan_after_successful_present": true
         },
         "movement": {
           "source_activation_selects": false,

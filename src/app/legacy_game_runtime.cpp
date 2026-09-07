@@ -240,14 +240,32 @@ void LegacyGameRuntime::set_battle_menu_direction_states(
     }
 }
 
+void LegacyGameRuntime::set_battle_cursor_input_states(
+    const bool down,
+    const bool right,
+    const bool left,
+    const bool up,
+    const bool escape) noexcept {
+    if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
+        battle_session_->set_cursor_selection_input_states(
+            down, right, left, up, escape);
+    }
+}
+
 bool LegacyGameRuntime::battle_menu_uses_key_states() const noexcept {
     return view_ == LegacyGameView::battle && battle_session_ != nullptr &&
-        battle_session_->player_menu_uses_key_states();
+        (battle_session_->player_menu_uses_key_states() ||
+         battle_session_->cursor_selection_uses_key_states());
 }
 
 std::uint8_t LegacyGameRuntime::take_clear_battle_menu_direction_request() noexcept {
     return battle_session_ != nullptr
         ? battle_session_->take_clear_player_menu_direction_request() : 0U;
+}
+
+std::uint8_t LegacyGameRuntime::take_clear_battle_cursor_key_request() noexcept {
+    return battle_session_ != nullptr
+        ? battle_session_->take_clear_cursor_selection_key_request() : 0U;
 }
 
 bool LegacyGameRuntime::take_clear_battle_confirmation_states_request() noexcept {
