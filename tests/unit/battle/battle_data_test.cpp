@@ -10115,7 +10115,9 @@ void run_outcome_test(const openlegend::resource::DataRoot& data_root) {
         BattleData data{data_root, 4};
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.evaluate_outcome() == BattleOutcome::ongoing);
-        ranger.roles[3U].set_word(openlegend::model::role_word::hp, 0);
+        setup.combatants()[1U].words[combatant_word::side] = -1;
+        OL_CHECK(setup.evaluate_outcome() == BattleOutcome::ongoing);
+        ranger.roles[3U].set_word(openlegend::model::role_word::hp, -1);
         OL_CHECK(setup.evaluate_outcome() == BattleOutcome::victory);
         OL_CHECK(setup.combatants()[1U].words[combatant_word::occupancy_hidden] == 1);
         OL_CHECK(data.occupancy()[26U * 64U + 26U] == -1);
@@ -10135,6 +10137,22 @@ void run_outcome_test(const openlegend::resource::DataRoot& data_root) {
         BattleData data{data_root, 4};
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.evaluate_outcome() == BattleOutcome::victory);
+    }
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        ranger.roles[1U].set_word(openlegend::model::role_word::hp, 1);
+        ranger.roles[3U].set_word(openlegend::model::role_word::hp, -1);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        auto& hidden_enemy = setup.combatants()[1U].words;
+        hidden_enemy[combatant_word::occupancy_hidden] = 2;
+        const auto occupancy_index =
+            static_cast<std::size_t>(hidden_enemy[combatant_word::y]) * 64U +
+            static_cast<std::size_t>(hidden_enemy[combatant_word::x]);
+        data.occupancy()[occupancy_index] = 17;
+        OL_CHECK(setup.evaluate_outcome() == BattleOutcome::victory);
+        OL_CHECK(hidden_enemy[combatant_word::occupancy_hidden] == 2);
+        OL_CHECK(data.occupancy()[occupancy_index] == 17);
     }
 }
 
@@ -10257,10 +10275,14 @@ void run_battle_outcome_session_test(
     select_wait(victory);
     OL_CHECK(victory.phase() == BattleSessionPhase::battle_outcome);
     OL_CHECK(victory.outcome() == BattleOutcome::victory);
+    OL_CHECK(victory.handle_key(0x20U) == BattleSessionInputResult::ignored);
+    OL_CHECK(!victory.post_battle_result().has_value());
     OL_CHECK(victory.render(framebuffer));
     const auto victory_outcome_hash = fnv1a_bytes(framebuffer.pixels());
     victory.finish_presented_tick();
     OL_CHECK(victory.phase() == BattleSessionPhase::battle_outcome_wait);
+    OL_CHECK(victory.handle_key(0U) == BattleSessionInputResult::ignored);
+    OL_CHECK(!victory.post_battle_result().has_value());
     OL_CHECK(victory.handle_key(0x20U) ==
              BattleSessionInputResult::outcome_acknowledged);
     OL_CHECK(victory.post_battle_result().has_value());

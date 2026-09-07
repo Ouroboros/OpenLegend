@@ -13985,6 +13985,473 @@
     "platform_adaptation_boundary": "modern code rejects invalid slot and role indices; the legal empty role -1 header alias and signed low16 arithmetic are preserved",
     "closure_boundary": "stack probe and all nine caller owners retain independent closure"
   },
+  "battle_outcome_machine": {
+    "address": "0x3b238",
+    "end": "0x3b387",
+    "raw_offset": "0x34c38",
+    "size": 335,
+    "instruction_count": 84,
+    "branch_count": 14,
+    "raw_sha256": "095632b28f8f9948c43b3c5474cf8549260a0c06eb109276cd2e368bb872c734",
+    "loaded_sha256": "8f39712cb70d426d029c1d7d04137bd30c0e3c676e1a3206e2b3f1aa6d6a407e",
+    "relocation_count": 23,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3b23d",
+      "0x3b300",
+      "0x3b31b",
+      "0x3b33e",
+      "0x3b35e",
+      "0x3b371",
+      "0x3b379",
+      "0x3b37e"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3aa85",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d6d1",
+      "0x20c32",
+      "0x3b387"
+    ],
+    "callers": [
+      "0x32a08"
+    ],
+    "basic_block_count": 23,
+    "conditional_branch_count": 10,
+    "unconditional_jump_count": 4,
+    "relocation_offsets": [
+      "0x1e",
+      "0x2b",
+      "0x35",
+      "0x3f",
+      "0x49",
+      "0x51",
+      "0x5a",
+      "0x64",
+      "0x77",
+      "0x81",
+      "0x98",
+      "0xa6",
+      "0xb4",
+      "0xbd",
+      "0xd0",
+      "0xee",
+      "0xf6",
+      "0xfd",
+      "0x102",
+      "0x116",
+      "0x11b",
+      "0x130",
+      "0x135"
+    ],
+    "local_return_sites": [
+      "0x3b386"
+    ],
+    "result_word": {
+      "storage": "signed_int16 global",
+      "entry_reset_address": "0x32735",
+      "entry_reset_bytes": "66c705d26e0c000000",
+      "ongoing": 0,
+      "defeat": 1,
+      "victory": 2
+    },
+    "death_scan": "for each signed-low16 active slot: signed HP<=0 and hidden exactly0 writes occupancy[y*64+x]=-1 then hidden=1",
+    "alive_scan": "hidden exactly0 and side exactly0 sets party alive; any nonzero side sets enemy alive",
+    "outcome_order": "no party writes1, then no enemy writes2; simultaneous absence ends as victory2",
+    "outcome_text": {
+      "defeat": {
+        "address": "0x58ab3",
+        "bytes": "bed4b0aba5a2b1d100",
+        "text": "戰鬥失敗"
+      },
+      "victory": {
+        "address": "0x58abc",
+        "bytes": "bed4b0abb3d3a75100",
+        "text": "戰鬥勝利"
+      }
+    },
+    "panel": {
+      "x": 118,
+      "y": 30,
+      "width": 85,
+      "height": 27
+    },
+    "text_draw": {
+      "x": 128,
+      "y": 35,
+      "colors": "0x0705",
+      "height": 16
+    },
+    "call_sequence": [
+      "stack_probe",
+      "battle_render",
+      "draw_box",
+      "copy_outcome_text",
+      "draw_outcome_text",
+      "present",
+      "clear_last_key_and_wait_nonzero",
+      "settle_battle_and_messages"
+    ],
+    "caller": {
+      "site": "0x32a08",
+      "function": "0x3271e",
+      "continuation_end": "0x32a3d",
+      "continuation_sha256": "71a280298cfa5187ae71633078cdf48c266ff247d96ea48ed39e70220489698c",
+      "sequence": [
+        "evaluate_outcome",
+        "clear_hidden_ai_targets",
+        "stop_actor_loop_when_result>=1",
+        "apply_round_status_once",
+        "wait_until_tick_changes"
+      ]
+    },
+    "vectors": {
+      "ongoing": {
+        "label": "ongoing",
+        "input": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [],
+        "party_alive": true,
+        "enemy_alive": true,
+        "result_word": 0,
+        "result_text": "",
+        "screen_presented": false,
+        "settlement_called_after_new_key": false
+      },
+      "negative_side_is_enemy": {
+        "label": "negative_side_is_enemy",
+        "input": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": -1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": -1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [],
+        "party_alive": true,
+        "enemy_alive": true,
+        "result_word": 0,
+        "result_text": "",
+        "screen_presented": false,
+        "settlement_called_after_new_key": false
+      },
+      "enemy_negative_hp": {
+        "label": "enemy_negative_hp",
+        "input": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": -1,
+            "hidden": 0,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": -1,
+            "hidden": 1,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [
+          {
+            "slot": 1,
+            "x": 20,
+            "y": 21,
+            "index": 1364,
+            "value": -1
+          }
+        ],
+        "party_alive": true,
+        "enemy_alive": false,
+        "result_word": 2,
+        "result_text": "戰鬥勝利",
+        "screen_presented": true,
+        "settlement_called_after_new_key": true
+      },
+      "party_zero_hp": {
+        "label": "party_zero_hp",
+        "input": [
+          {
+            "hp": 0,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 0,
+            "hidden": 1,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [
+          {
+            "slot": 0,
+            "x": 10,
+            "y": 11,
+            "index": 714,
+            "value": -1
+          }
+        ],
+        "party_alive": false,
+        "enemy_alive": true,
+        "result_word": 1,
+        "result_text": "戰鬥失敗",
+        "screen_presented": true,
+        "settlement_called_after_new_key": true
+      },
+      "both_dead_victory_overwrite": {
+        "label": "both_dead_victory_overwrite",
+        "input": [
+          {
+            "hp": 0,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 0,
+            "hidden": 0,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 0,
+            "hidden": 1,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 0,
+            "hidden": 1,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [
+          {
+            "slot": 0,
+            "x": 10,
+            "y": 11,
+            "index": 714,
+            "value": -1
+          },
+          {
+            "slot": 1,
+            "x": 20,
+            "y": 21,
+            "index": 1364,
+            "value": -1
+          }
+        ],
+        "party_alive": false,
+        "enemy_alive": false,
+        "result_word": 2,
+        "result_text": "戰鬥勝利",
+        "screen_presented": true,
+        "settlement_called_after_new_key": true
+      },
+      "already_hidden_dead_enemy": {
+        "label": "already_hidden_dead_enemy",
+        "input": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": -1,
+            "hidden": 2,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 1,
+            "hidden": 0,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": -1,
+            "hidden": 2,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [],
+        "party_alive": true,
+        "enemy_alive": false,
+        "result_word": 2,
+        "result_text": "戰鬥勝利",
+        "screen_presented": true,
+        "settlement_called_after_new_key": true
+      },
+      "all_alive_but_hidden": {
+        "label": "all_alive_but_hidden",
+        "input": [
+          {
+            "hp": 1,
+            "hidden": 1,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 1,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "output_combatants": [
+          {
+            "hp": 1,
+            "hidden": 1,
+            "side": 0,
+            "x": 10,
+            "y": 11
+          },
+          {
+            "hp": 1,
+            "hidden": 1,
+            "side": 1,
+            "x": 20,
+            "y": 21
+          }
+        ],
+        "occupancy_writes": [],
+        "party_alive": false,
+        "enemy_alive": false,
+        "result_word": 2,
+        "result_text": "戰鬥勝利",
+        "screen_presented": true,
+        "settlement_called_after_new_key": true
+      },
+      "zero_combatants": {
+        "label": "zero_combatants",
+        "input": [],
+        "output_combatants": [],
+        "occupancy_writes": [],
+        "party_alive": false,
+        "enemy_alive": false,
+        "result_word": 2,
+        "result_text": "戰鬥勝利",
+        "screen_presented": true,
+        "settlement_called_after_new_key": true
+      }
+    },
+    "vector_sha256": "766509d8a783efbed81fc98fb240f340c2ba8243fc7897ba3c1391e4f9e1bc41",
+    "input_boundary": "present first; sub_20C32 then clears last-key and waits for a new nonzero key",
+    "platform_adaptation_boundary": "modern host represents the result as a typed enum and splits synchronous render/present/input/settlement into phases; validated legal caller state and call order are preserved",
+    "closure_boundary": "stack probe, renderer, box/text/present/input, settlement and caller tail remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

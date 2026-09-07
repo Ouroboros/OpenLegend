@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为73/81；其余8项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为74/81；其余7项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、8项为 `implemented_pending_review`、73项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、7项为 `implemented_pending_review`、74项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -94,7 +94,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 状态动作现按`sub_22066(...,2)`进入队伍前缀选择，执行圆角标题/列表、角色名NUL对齐、上下回绕、Escape取消和三确认键；确认后在battle背景上依次呈现`sub_22A59`两页角色状态，每页各等待任意非零键。第一页保留伤势/中毒/内力分档、非法内力类型复用中毒色、装备加成和30级阈值；第二页保留两件装备、修炼物经验分母与十项武功等级。动作返回菜单但不结束actor、不消费RNG。独立Python直接读取原WARFLD、HDGRP和字体资产复算，选择页/第一页/第二页与C++整帧FNV64分别一致为`0xfa1b21403051335c`、`0x1c5e879ce61d5b34`、`0x9592da33a3c151d4`；逐块回审修正了最大生命中毒色、修炼所需经验普通色和分母系数读取资质而非修炼经验三处差异。
 
-自动动作重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；AI全部返回后回到玩家菜单共同尾。结果命中时，`sub_3B238`内部的战果panel/present、任意键与全部战后结算消息必须先完成，返回主循环后才清隐藏目标、执行一次轮末异常状态，再保持当前画面等待轮首tick发生变化，最后发布typed结果供入口淡出回收；hidden槽同样执行这条公共尾。独立golden双生成一致且正式SHA256为`aa606cc4949dc4c5da8e39edf42ad9e9c32dfa9aec85aa43b6a4fecdc12dfc22`；order5/8机器门、联合静态/golden门及最新Linux app Debug 14/14通过。从两入口重新逐块审计零新增差异，`sub_3271E/sub_32E59`最终归类`platform_adapted / converged_no_new_differences`。`sub_33599/sub_3B238/sub_3C6D3`及输入专属同址owner仍为独立待审项，不传播关闭。AI prelude整帧FNV64固定为`0xb02104139829a80d`。
+自动动作重画并present时flag仍为0，present完成回调后才置flag并进入同actor AI；AI全部返回后回到玩家菜单共同尾。结果命中时，`sub_3B238`内部的战果panel/present、present后清旧last-key并等待新非零键、全部战后结算消息必须先完成，返回主循环后才清隐藏目标、执行一次轮末异常状态，再保持当前画面等待轮首tick发生变化，最后发布typed结果供入口淡出回收；hidden槽同样执行这条公共尾。独立golden双生成一致且正式SHA256为`aa606cc4949dc4c5da8e39edf42ad9e9c32dfa9aec85aa43b6a4fecdc12dfc22`；order5/8机器门、联合静态/golden门及最新Linux app Debug 14/14通过。从两入口重新逐块审计零新增差异，`sub_3271E/sub_32E59`最终归类`platform_adapted / converged_no_new_differences`。order74又从`sub_3B238`入口独立覆盖335字节、84条指令、8次调用、唯一caller及唯一RET，确认上述同步边界并关闭该owner；`sub_33599/sub_3C6D3`及输入专属同址owner仍保持各自closure，不传播关闭。AI prelude整帧FNV64固定为`0xb02104139829a80d`。
 
 ## 8. 战场路径图与最短路回溯
 
@@ -434,6 +434,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 完整data xref锁定常量0/5106且无写入。`sub_31EB9`初始化role=-1时，角色word1访问实际别名Ranger header byte656 / word328 / inventory slot155 item ID；四套原始Ranger资产均为-1，故stock结果5098，但合法存档值7应得5162。首轮对照发现现代把空槽固定5098，现以slot155动态值及signed 16-bit回绕最小修正。修正后从受影响`sub_31EB9`入口重审26槽初始化、队伍三路径、敌方追加及所有出口，其他八个caller owner无需改动，零剩余合法域差异。
 
 回归覆盖slot155值7、stock -1、合成零值及head signed极值；独立向量SHA256=`887993d4e883fec6a1c5f07e859f0c09443a6e17f52c12138a1de776fab4d3b9`。Golden两次临时生成与第三次正式生成逐字节一致，67键SHA256=`03ed0086cd490bc790a1e26e342207c2f7aa6ae9dc725c46e3c62a78dcb0fde2`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；栈探测和九个caller owner不传播closure。
+
+## 39. 战斗结果门最终REVIEW
+
+`sub_3B238 @ 0x3B238..0x3B387`机器身份固定为335 bytes、84条连续指令、23个IDA flow block、10个条件分支、4个无条件跳转、23处重定位、8次direct call、唯一caller `0x32A08`和唯一`RETN @ 0x3B386`；raw/loaded SHA256为`095632b28f8f9948c43b3c5474cf8549260a0c06eb109276cd2e368bb872c734`与`8f39712cb70d426d029c1d7d04137bd30c0e3c676e1a3206e2b3f1aa6d6a407e`，全部fixup均为`+0x20000`且逆变换后匹配raw。
+
+机器第一遍按signed active count扫描，只有signed HP<=0且hidden恰0才依次清`occupancy[y*64+x]`并写hidden1；第二遍只看hidden0，side恰0为队伍、任意非0为敌方。无队伍先写result1，无敌方随后写result2，因此双方同时为空最终为胜利。正结果严格执行战场重画、`(118,30,85,27)`结果框、原Big5胜败文字、present、清旧last-key并等待新非零键、`sub_3B387`结算；返回唯一caller后才清隐藏目标、执行一次轮末状态并等待轮首tick变化。
+
+`BattleSetup::evaluate_outcome`与`BattleSession`的outcome/render/present/input/settlement/round-tail相位逐块对照零合法域产品差异；typed enum、同步调用的宿主分相及已验证caller状态归类平台适配。新增回归锁定negative HP、negative side、already-hidden death不改occupancy、both-dead victory覆盖、present前非零键无效与present后零键无效。独立向量SHA256=`766509d8a783efbed81fc98fb240f340c2ba8243fc7897ba3c1391e4f9e1bc41`；Golden三生成逐字节一致，68键SHA256=`49f87783bb154a386bced732f9c4bb61a62ee89582246180cae616d15eefcec9`且历史67键逐值不变；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；renderer、box/text、present/input、settlement及caller尾不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

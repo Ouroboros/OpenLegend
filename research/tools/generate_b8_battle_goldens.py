@@ -911,6 +911,18 @@ BATTLE_SPRITE_WORD_CALLER_SITES = (
     0x31F7E, 0x32031, 0x32100, 0x325BE, 0x326CB, 0x32DFC, 0x32E16,
     0x37449, 0x382EB, 0x399E2, 0x39D82, 0x3A0EB, 0x3A87F,
 )
+BATTLE_OUTCOME_ADDRESS = 0x3B238
+BATTLE_OUTCOME_END = 0x3B387
+BATTLE_OUTCOME_CALL_OFFSETS = (0x005, 0x0C8, 0x0E3, 0x106, 0x126, 0x139, 0x141, 0x146)
+BATTLE_OUTCOME_CALL_TARGETS = (
+    0x3ED1E, 0x3AA85, 0x2CEBF, 0x3EF4A, 0x3D832, 0x3D6D1, 0x20C32, 0x3B387,
+)
+BATTLE_OUTCOME_RELOCATION_OFFSETS = (
+    0x01E, 0x02B, 0x035, 0x03F, 0x049, 0x051, 0x05A, 0x064,
+    0x077, 0x081, 0x098, 0x0A6, 0x0B4, 0x0BD, 0x0D0, 0x0EE,
+    0x0F6, 0x0FD, 0x102, 0x116, 0x11B, 0x130, 0x135,
+)
+BATTLE_OUTCOME_CALLER_SITES = (0x32A08,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -8470,6 +8482,232 @@ def battle_sprite_word_contract(
     }
 
 
+def battle_outcome_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_OUTCOME_ADDRESS,
+        end=BATTLE_OUTCOME_END,
+        call_offsets=BATTLE_OUTCOME_CALL_OFFSETS,
+        expected_call_targets=BATTLE_OUTCOME_CALL_TARGETS,
+        relocation_offsets=BATTLE_OUTCOME_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_OUTCOME_CALLER_SITES,
+        instruction_count=84,
+        branch_count=14,
+    )
+    if contract["raw_sha256"] != (
+        "095632b28f8f9948c43b3c5474cf8549260a0c06eb109276cd2e368bb872c734"
+    ):
+        raise ValueError("Z.DAT battle outcome raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "8f39712cb70d426d029c1d7d04137bd30c0e3c676e1a3206e2b3f1aa6d6a407e"
+    ):
+        raise ValueError("Z.DAT battle outcome relocation image changed")
+
+    defeat_text = z_dat_bytes[
+        0x58AB3 - Z_DAT_LOAD_BASE:0x58ABC - Z_DAT_LOAD_BASE
+    ]
+    victory_text = z_dat_bytes[
+        0x58ABC - Z_DAT_LOAD_BASE:0x58AC5 - Z_DAT_LOAD_BASE
+    ]
+    if defeat_text != bytes.fromhex("bed4b0aba5a2b1d100"):
+        raise ValueError("Z.DAT battle defeat text changed")
+    if victory_text != bytes.fromhex("bed4b0abb3d3a75100"):
+        raise ValueError("Z.DAT battle victory text changed")
+
+    result_reset = z_dat_bytes[
+        0x32735 - Z_DAT_LOAD_BASE:0x3273E - Z_DAT_LOAD_BASE
+    ]
+    if result_reset.hex() != "66c705d26e0c000000":
+        raise ValueError("Z.DAT battle outcome entry reset changed")
+    caller_slice = z_dat_bytes[
+        0x32A08 - Z_DAT_LOAD_BASE:0x32A3D - Z_DAT_LOAD_BASE
+    ]
+    caller_sha256 = sha256(caller_slice)
+    if caller_sha256 != "71a280298cfa5187ae71633078cdf48c266ff247d96ea48ed39e70220489698c":
+        raise ValueError("Z.DAT battle outcome caller continuation changed")
+
+    def simulate(
+        label: str, source: list[dict[str, int]]
+    ) -> dict[str, object]:
+        combatants = [
+            {
+                **entry,
+                "hp": wrapping_i16(entry["hp"]),
+                "hidden": wrapping_i16(entry["hidden"]),
+                "side": wrapping_i16(entry["side"]),
+                "x": wrapping_i16(entry["x"]),
+                "y": wrapping_i16(entry["y"]),
+            }
+            for entry in source
+        ]
+        occupancy_writes = []
+        for slot, entry in enumerate(combatants):
+            if entry["hp"] <= 0 and entry["hidden"] == 0:
+                occupancy_writes.append({
+                    "slot": slot,
+                    "x": entry["x"],
+                    "y": entry["y"],
+                    "index": entry["y"] * 64 + entry["x"],
+                    "value": -1,
+                })
+                entry["hidden"] = 1
+
+        party_alive = False
+        enemy_alive = False
+        for entry in combatants:
+            if entry["hidden"] != 0:
+                continue
+            if entry["side"] == 0:
+                party_alive = True
+            else:
+                enemy_alive = True
+        result_word = 0
+        if not party_alive:
+            result_word = 1
+        if not enemy_alive:
+            result_word = 2
+        return {
+            "label": label,
+            "input": source,
+            "output_combatants": combatants,
+            "occupancy_writes": occupancy_writes,
+            "party_alive": party_alive,
+            "enemy_alive": enemy_alive,
+            "result_word": result_word,
+            "result_text": (
+                "戰鬥失敗" if result_word == 1
+                else "戰鬥勝利" if result_word > 0
+                else ""
+            ),
+            "screen_presented": result_word > 0,
+            "settlement_called_after_new_key": result_word > 0,
+        }
+
+    ordinary = [
+        {"hp": 1, "hidden": 0, "side": 0, "x": 10, "y": 11},
+        {"hp": 1, "hidden": 0, "side": 1, "x": 20, "y": 21},
+    ]
+    vectors = {
+        "ongoing": simulate("ongoing", ordinary),
+        "negative_side_is_enemy": simulate(
+            "negative_side_is_enemy",
+            [ordinary[0], {**ordinary[1], "side": -1}],
+        ),
+        "enemy_negative_hp": simulate(
+            "enemy_negative_hp",
+            [ordinary[0], {**ordinary[1], "hp": -1}],
+        ),
+        "party_zero_hp": simulate(
+            "party_zero_hp",
+            [{**ordinary[0], "hp": 0}, ordinary[1]],
+        ),
+        "both_dead_victory_overwrite": simulate(
+            "both_dead_victory_overwrite",
+            [{**ordinary[0], "hp": 0}, {**ordinary[1], "hp": 0}],
+        ),
+        "already_hidden_dead_enemy": simulate(
+            "already_hidden_dead_enemy",
+            [ordinary[0], {**ordinary[1], "hp": -1, "hidden": 2}],
+        ),
+        "all_alive_but_hidden": simulate(
+            "all_alive_but_hidden",
+            [{**ordinary[0], "hidden": 1}, {**ordinary[1], "hidden": 1}],
+        ),
+        "zero_combatants": simulate("zero_combatants", []),
+    }
+    expected_results = {
+        "ongoing": 0,
+        "negative_side_is_enemy": 0,
+        "enemy_negative_hp": 2,
+        "party_zero_hp": 1,
+        "both_dead_victory_overwrite": 2,
+        "already_hidden_dead_enemy": 2,
+        "all_alive_but_hidden": 2,
+        "zero_combatants": 2,
+    }
+    if {
+        name: value["result_word"] for name, value in vectors.items()
+    } != expected_results:
+        raise ValueError("battle outcome result ordering changed")
+    if vectors["already_hidden_dead_enemy"]["occupancy_writes"] != []:
+        raise ValueError("battle outcome rewrote an already hidden death")
+    if [
+        value["index"]
+        for value in vectors["both_dead_victory_overwrite"]["occupancy_writes"]
+    ] != [714, 1364]:
+        raise ValueError("battle outcome death occupancy order changed")
+    vector_sha256 = sha256(
+        json.dumps(vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "766509d8a783efbed81fc98fb240f340c2ba8243fc7897ba3c1391e4f9e1bc41":
+        raise ValueError("battle outcome independent vector set changed")
+
+    return {
+        **contract,
+        "basic_block_count": 23,
+        "conditional_branch_count": 10,
+        "unconditional_jump_count": 4,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_OUTCOME_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3b386"],
+        "result_word": {
+            "storage": "signed_int16 global",
+            "entry_reset_address": "0x32735",
+            "entry_reset_bytes": result_reset.hex(),
+            "ongoing": 0,
+            "defeat": 1,
+            "victory": 2,
+        },
+        "death_scan": (
+            "for each signed-low16 active slot: signed HP<=0 and hidden exactly0 "
+            "writes occupancy[y*64+x]=-1 then hidden=1"
+        ),
+        "alive_scan": (
+            "hidden exactly0 and side exactly0 sets party alive; any nonzero side sets enemy alive"
+        ),
+        "outcome_order": (
+            "no party writes1, then no enemy writes2; simultaneous absence ends as victory2"
+        ),
+        "outcome_text": {
+            "defeat": {"address": "0x58ab3", "bytes": defeat_text.hex(), "text": "戰鬥失敗"},
+            "victory": {"address": "0x58abc", "bytes": victory_text.hex(), "text": "戰鬥勝利"},
+        },
+        "panel": {"x": 118, "y": 30, "width": 85, "height": 27},
+        "text_draw": {"x": 128, "y": 35, "colors": "0x0705", "height": 16},
+        "call_sequence": [
+            "stack_probe", "battle_render", "draw_box", "copy_outcome_text",
+            "draw_outcome_text", "present", "clear_last_key_and_wait_nonzero",
+            "settle_battle_and_messages",
+        ],
+        "caller": {
+            "site": "0x32a08",
+            "function": "0x3271e",
+            "continuation_end": "0x32a3d",
+            "continuation_sha256": caller_sha256,
+            "sequence": [
+                "evaluate_outcome", "clear_hidden_ai_targets",
+                "stop_actor_loop_when_result>=1", "apply_round_status_once",
+                "wait_until_tick_changes",
+            ],
+        },
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "input_boundary": (
+            "present first; sub_20C32 then clears last-key and waits for a new nonzero key"
+        ),
+        "platform_adaptation_boundary": (
+            "modern host represents the result as a typed enum and splits synchronous "
+            "render/present/input/settlement into phases; validated legal caller state and "
+            "call order are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, renderer, box/text/present/input, settlement and caller tail remain "
+            "independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -12717,6 +12955,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_enable_automatic_machine": battle_enable_automatic_contract(z_dat_bytes),
         "battle_renderer_machine": battle_renderer_contract(z_dat_bytes, renderer_retention),
         "battle_sprite_word_machine": battle_sprite_word_contract(z_dat_bytes, ranger_groups),
+        "battle_outcome_machine": battle_outcome_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
