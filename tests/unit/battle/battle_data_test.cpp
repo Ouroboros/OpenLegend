@@ -2404,6 +2404,168 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
 
     {
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& role = ranger.roles[0U];
+        const auto reset_level_role = [&role](const std::int16_t iq) {
+            role.bytes.fill(0U);
+            role.set_word(role_word::level, 1);
+            role.set_word(role_word::experience, 50);
+            role.set_word(role_word::increased_life, 2);
+            role.set_word(role_word::iq, iq);
+            role.set_word(role_word::hp, 10);
+            role.set_word(role_word::maximum_hp, 100);
+            role.set_word(role_word::hurt, 9);
+            role.set_word(role_word::poison, 8);
+            role.set_word(role_word::physical_power, 7);
+            role.set_word(role_word::mp, 6);
+            role.set_word(role_word::maximum_mp, 80);
+            role.set_word(role_word::attack, 30);
+            role.set_word(role_word::speed, 30);
+            role.set_word(role_word::defence, 30);
+            role.set_word(role_word::medicine, 20);
+            role.set_word(role_word::use_poison, 20);
+            role.set_word(role_word::detoxification, 20);
+            role.set_word(role_word::anti_poison, 77);
+            role.set_word(role_word::fist, 20);
+            role.set_word(role_word::sword, 20);
+            role.set_word(role_word::knife, 20);
+            role.set_word(role_word::unusual, 66);
+            role.set_word(role_word::hidden_weapon, 20);
+        };
+
+        reset_level_role(90);
+        role.set_word(role_word::experience, 49);
+        openlegend::random::LegacyRandom no_upgrade_random{0x12345678U};
+        const auto no_upgrade = setup.apply_battle_level_up(
+            0U, false, no_upgrade_random);
+        OL_CHECK(no_upgrade.has_value());
+        OL_CHECK(!no_upgrade->changed);
+        OL_CHECK(no_upgrade->old_level == 1);
+        OL_CHECK(no_upgrade->new_level == 1);
+        OL_CHECK(no_upgrade_random.state() == 0x12345678U);
+        OL_CHECK(role.word(role_word::maximum_hp) == 100);
+        OL_CHECK(role.word(role_word::hurt) == 9);
+
+        reset_level_role(-32768);
+        role.set_word(role_word::level, 0);
+        role.set_word(role_word::experience, 0);
+        openlegend::random::LegacyRandom zero_level_random{2U};
+        const auto zero_level = setup.apply_battle_level_up(
+            0U, false, zero_level_random);
+        OL_CHECK(zero_level.has_value());
+        OL_CHECK(zero_level->changed);
+        OL_CHECK(zero_level->new_level == 1);
+        OL_CHECK(zero_level->growth_roll == 1);
+        OL_CHECK(role.word(role_word::maximum_hp) == 112);
+        OL_CHECK(role.word(role_word::maximum_mp) == 112);
+        OL_CHECK(zero_level_random.state() == 2'818'548'041U);
+
+        reset_level_role(29);
+        role.set_word(role_word::level, 29);
+        role.set_word(
+            role_word::experience,
+            static_cast<std::int16_t>(static_cast<std::uint16_t>(52'000U)));
+        openlegend::random::LegacyRandom maximum_level_random{3U};
+        const auto maximum_level = setup.apply_battle_level_up(
+            0U, false, maximum_level_random);
+        OL_CHECK(maximum_level.has_value());
+        OL_CHECK(maximum_level->new_level == 30);
+        OL_CHECK(maximum_level->growth_roll == 2);
+        OL_CHECK(role.word(role_word::maximum_hp) == 106);
+        OL_CHECK(role.word(role_word::maximum_mp) == 108);
+        OL_CHECK(maximum_level_random.state() == 679'304'702U);
+
+        struct IqBoundary {
+            std::int16_t iq{};
+            std::int16_t growth_roll{};
+        };
+        for (const auto boundary : std::array<IqBoundary, 8>{
+                 IqBoundary{29, 1}, IqBoundary{30, 3}, IqBoundary{49, 3},
+                 IqBoundary{50, 3}, IqBoundary{69, 3}, IqBoundary{70, 4},
+                 IqBoundary{89, 4}, IqBoundary{90, 3},
+             }) {
+            reset_level_role(boundary.iq);
+            openlegend::random::LegacyRandom boundary_random{1U};
+            const auto level_up = setup.apply_battle_level_up(
+                0U, false, boundary_random);
+            OL_CHECK(level_up.has_value());
+            OL_CHECK(level_up->changed);
+            OL_CHECK(level_up->growth_roll == boundary.growth_roll);
+            OL_CHECK(boundary_random.state() == 662'824'084U);
+        }
+
+        reset_level_role(90);
+        role.set_word(role_word::medicine, 21);
+        role.set_word(role_word::use_poison, 21);
+        role.set_word(role_word::detoxification, 21);
+        role.set_word(role_word::fist, 21);
+        role.set_word(role_word::sword, 21);
+        role.set_word(role_word::knife, 21);
+        openlegend::random::LegacyRandom skill_random{1U};
+        const auto skill_growth = setup.apply_battle_level_up(
+            0U, false, skill_random);
+        OL_CHECK(skill_growth.has_value());
+        OL_CHECK(role.word(role_word::medicine) == 21);
+        OL_CHECK(role.word(role_word::use_poison) == 22);
+        OL_CHECK(role.word(role_word::detoxification) == 22);
+        OL_CHECK(role.word(role_word::fist) == 23);
+        OL_CHECK(role.word(role_word::sword) == 21);
+        OL_CHECK(role.word(role_word::knife) == 21);
+        OL_CHECK(role.word(role_word::hidden_weapon) == 20);
+        OL_CHECK(skill_random.state() == 3'210'001'534U);
+
+        reset_level_role(90);
+        role.set_word(role_word::increased_life, -32768);
+        role.set_word(role_word::maximum_hp, 32767);
+        role.set_word(role_word::maximum_mp, 32767);
+        role.set_word(role_word::attack, 100);
+        role.set_word(role_word::speed, 32767);
+        role.set_word(role_word::defence, -32768);
+        role.set_word(role_word::use_poison, 21);
+        role.set_word(role_word::detoxification, 100);
+        role.set_word(role_word::fist, 32767);
+        role.set_word(role_word::sword, -1);
+        role.set_word(role_word::knife, 21);
+        role.set_word(role_word::hidden_weapon, 100);
+        openlegend::random::LegacyRandom wrapping_random{0xFFFFFFFFU};
+        const auto wrapping = setup.apply_battle_level_up(
+            0U, false, wrapping_random);
+        OL_CHECK(wrapping.has_value());
+        OL_CHECK(wrapping->growth_roll == 6);
+        OL_CHECK(role.word(role_word::maximum_hp) == 5);
+        OL_CHECK(role.word(role_word::maximum_mp) == -32757);
+        OL_CHECK(role.word(role_word::attack) == 100);
+        OL_CHECK(role.word(role_word::speed) == -32763);
+        OL_CHECK(role.word(role_word::defence) == -32762);
+        OL_CHECK(role.word(role_word::medicine) == 20);
+        OL_CHECK(role.word(role_word::use_poison) == 22);
+        OL_CHECK(role.word(role_word::detoxification) == 100);
+        OL_CHECK(role.word(role_word::fist) == -32768);
+        OL_CHECK(role.word(role_word::sword) == -1);
+        OL_CHECK(role.word(role_word::knife) == 23);
+        OL_CHECK(role.word(role_word::hidden_weapon) == 100);
+        OL_CHECK(role.word(role_word::anti_poison) == 77);
+        OL_CHECK(role.word(role_word::unusual) == 66);
+        OL_CHECK(wrapping_random.state() == 2'742'554'614U);
+
+        reset_level_role(90);
+        role.set_word(role_word::experience, 150);
+        openlegend::random::LegacyRandom suppressed_random{7U};
+        const auto suppressed = setup.apply_battle_level_up(
+            0U, true, suppressed_random);
+        OL_CHECK(suppressed.has_value());
+        OL_CHECK(suppressed->changed);
+        OL_CHECK(suppressed->new_level == 3);
+        OL_CHECK(!suppressed->message_required);
+        OL_CHECK(!suppressed->present_required);
+        OL_CHECK(!suppressed->wait_for_input);
+        OL_CHECK(suppressed_random.state() == 712'265'938U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
         BattleData data{data_root, 2};
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.valid());
@@ -10422,8 +10584,18 @@ void run_battle_outcome_session_test(
         post_battle_hashes.push_back(fnv1a_bytes(framebuffer.pixels()));
         victory.finish_presented_tick();
         OL_CHECK(victory.phase() == BattleSessionPhase::post_battle_message_wait);
+        if (message == 1U) {
+            OL_CHECK(victory.handle_key(0U) == BattleSessionInputResult::ignored);
+            OL_CHECK(victory.phase() == BattleSessionPhase::post_battle_message_wait);
+            OL_CHECK(victory_ranger.roles[progress_role_id].word(role_word::level) == 1);
+            OL_CHECK(victory_random.state() == 1U);
+        }
         OL_CHECK(victory.handle_key(0x0DU) ==
                  BattleSessionInputResult::post_battle_message_acknowledged);
+        if (message == 1U) {
+            OL_CHECK(victory_ranger.roles[progress_role_id].word(role_word::level) == 3);
+            OL_CHECK(victory_random.state() == 662'824'084U);
+        }
         if (message == 2U) {
             OL_CHECK(victory_ranger.roles[progress_role_id].word(
                          role_word::magic_level_begin) == 299);

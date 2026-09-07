@@ -943,6 +943,29 @@ BATTLE_SETTLEMENT_RELOCATION_OFFSETS = (
     0x2DF, 0x2EE, 0x305, 0x314, 0x326,
 )
 BATTLE_SETTLEMENT_CALLER_SITES = (0x3B37E,)
+BATTLE_LEVEL_UP_ADDRESS = 0x3B6BE
+BATTLE_LEVEL_UP_END = 0x3BA85
+BATTLE_LEVEL_UP_CALL_OFFSETS = (
+    0x005, 0x068, 0x081, 0x09F, 0x0BC, 0x0CF, 0x0D7, 0x11C,
+    0x139, 0x1FF, 0x220, 0x241, 0x262, 0x283, 0x2A4, 0x2BB,
+)
+BATTLE_LEVEL_UP_CALL_TARGETS = (
+    0x3ED1E, 0x3AA85, 0x3EF4A, 0x2CEBF, 0x3D832, 0x3D6D1, 0x20C32,
+    0x3D612, 0x3D612, 0x3D612, 0x3D612, 0x3D612, 0x3D612, 0x3D612, 0x3D612,
+    0x3D612,
+)
+BATTLE_LEVEL_UP_RELOCATION_OFFSETS = (
+    0x01D, 0x024, 0x02C, 0x03F, 0x047, 0x06F, 0x078, 0x07D,
+    0x08C, 0x0AF, 0x0B4, 0x0C6, 0x0CB, 0x0E5, 0x0F3, 0x101,
+    0x10F, 0x133, 0x144, 0x154, 0x15B, 0x166, 0x175, 0x17C,
+    0x183, 0x18C, 0x195, 0x1AE, 0x1B5, 0x1C0, 0x1CF, 0x1D6,
+    0x1E1, 0x1E8, 0x1EF, 0x1F6, 0x20A, 0x217, 0x22B, 0x238,
+    0x24C, 0x259, 0x26D, 0x27A, 0x28E, 0x29B, 0x2AF, 0x2C6,
+    0x2CD, 0x2D7, 0x2E6, 0x2F0, 0x2FF, 0x309, 0x318, 0x322,
+    0x331, 0x33B, 0x34A, 0x354, 0x363, 0x36D, 0x37C, 0x386,
+    0x395, 0x39F, 0x3AE, 0x3BC,
+)
+BATTLE_LEVEL_UP_CALLER_SITES = (0x3B655,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -9066,6 +9089,329 @@ def battle_settlement_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_level_up_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_LEVEL_UP_ADDRESS,
+        end=BATTLE_LEVEL_UP_END,
+        call_offsets=BATTLE_LEVEL_UP_CALL_OFFSETS,
+        expected_call_targets=BATTLE_LEVEL_UP_CALL_TARGETS,
+        relocation_offsets=BATTLE_LEVEL_UP_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_LEVEL_UP_CALLER_SITES,
+        instruction_count=201,
+        branch_count=32,
+    )
+    if contract["raw_sha256"] != (
+        "88a20006a2348013356818dea6ff5d72f1ad289aabf2ee57413919a2893aa02d"
+    ):
+        raise ValueError("Z.DAT battle level-up raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "9c6e1e546d6860fa3139e7782c57708d63deb4c9265fb44b4f6008aeb8bb4db4"
+    ):
+        raise ValueError("Z.DAT battle level-up relocation image changed")
+
+    thresholds = list(struct.unpack_from(
+        "<30H", z_dat_bytes, 0x5458E - Z_DAT_LOAD_BASE
+    ))
+    expected_thresholds = [
+        0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2250,
+        2750, 3850, 5050, 6350, 7750, 9250, 10850, 12550, 14350, 16750,
+        18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000,
+    ]
+    if thresholds != expected_thresholds:
+        raise ValueError("Z.DAT battle level-up thresholds changed")
+    level_text = z_dat_bytes[
+        0x58AD8 - Z_DAT_LOAD_BASE:0x58AE2 - Z_DAT_LOAD_BASE
+    ]
+    if level_text != bytes.fromhex("257320a4c9afc5a44600"):
+        raise ValueError("Z.DAT battle level-up text changed")
+    shared_tail = z_dat_bytes[
+        0x39A3E - Z_DAT_LOAD_BASE:0x39A45 - Z_DAT_LOAD_BASE
+    ]
+    if shared_tail != bytes.fromhex("83c4045f5e5bc3"):
+        raise ValueError("Z.DAT battle level-up shared tail changed")
+    caller = z_dat_bytes[
+        0x3B590 - Z_DAT_LOAD_BASE:0x3B65D - Z_DAT_LOAD_BASE
+    ]
+    caller_sha256 = sha256(caller)
+    if caller_sha256 != "5e2cb47ae445448de9fc75791b956d25692c0fd1ab87135a4ceb38ef5766c7d1":
+        raise ValueError("Z.DAT battle level-up caller gate changed")
+
+    default_role = {
+        "level": 1,
+        "experience": 50,
+        "increased_life": 2,
+        "iq": 90,
+        "hp": 10,
+        "maximum_hp": 100,
+        "hurt": 9,
+        "poison": 8,
+        "physical_power": 7,
+        "mp": 6,
+        "maximum_mp": 80,
+        "attack": 30,
+        "speed": 30,
+        "defence": 30,
+        "medicine": 20,
+        "use_poison": 20,
+        "detoxification": 20,
+        "fist": 20,
+        "sword": 20,
+        "knife": 20,
+        "hidden_weapon": 20,
+        "anti_poison": 77,
+        "unusual": 66,
+    }
+
+    def simulate(
+        label: str,
+        *,
+        seed: int,
+        suppress_message: int = 0,
+        changes: dict[str, int] | None = None,
+    ) -> dict[str, object]:
+        role = {
+            name: (
+                int(value) & 0xFFFF if name == "experience"
+                else wrapping_i16(int(value))
+            )
+            for name, value in {**default_role, **(changes or {})}.items()
+        }
+        before = dict(role)
+        state = seed & 0xFFFFFFFF
+        rng_calls: list[dict[str, int | str]] = []
+
+        def draw(name: str, upper: int) -> int:
+            nonlocal state
+            value, state = legacy_bounded(state, upper)
+            rng_calls.append({"name": name, "upper": upper, "value": value})
+            return value
+
+        old_level = role["level"]
+        if old_level < 0 or old_level >= 30:
+            raise ValueError("battle level-up oracle accepts only the machine caller level domain")
+        if role["experience"] < thresholds[old_level]:
+            return {
+                "label": label,
+                "seed": seed & 0xFFFFFFFF,
+                "suppress_message": wrapping_i16(suppress_message),
+                "before": before,
+                "after": role,
+                "changed": False,
+                "old_level": old_level,
+                "new_level": old_level,
+                "levels_gained": 0,
+                "growth_roll": 0,
+                "message_calls": [],
+                "rng_calls": rng_calls,
+                "rng_state_after": state,
+            }
+
+        new_level = old_level
+        for level in range(old_level, 30):
+            if role["experience"] >= thresholds[level]:
+                new_level = level + 1
+        levels_gained = new_level - old_level
+        message_calls = []
+        if wrapping_i16(suppress_message) == 0:
+            message_calls = [
+                "battle_render", "format_level_text", "draw_box", "draw_text",
+                "present", "clear_last_key_and_wait_nonzero",
+            ]
+
+        iq = role["iq"]
+        growth_bound = 2 if iq < 30 else 3 if iq < 50 else 4 if iq < 70 else 5 if iq < 90 else 6
+        growth_roll = draw("growth", growth_bound) + 1
+        role["level"] = wrapping_i16(role["level"] + levels_gained)
+
+        hp_random = draw("maximum_hp", 3)
+        hp_product_low = (
+            ((role["increased_life"] & 0xFFFF) + hp_random) * 3 * levels_gained
+        ) & 0xFFFF
+        maximum_hp = wrapping_i16(role["maximum_hp"] + hp_product_low)
+        if maximum_hp > 999:
+            maximum_hp = 999
+        role["maximum_hp"] = maximum_hp
+        role["hp"] = maximum_hp
+        role["hurt"] = 0
+        role["poison"] = 0
+        role["physical_power"] = 100
+
+        maximum_mp = wrapping_i16(
+            role["maximum_mp"] + (9 - growth_roll) * 4 * levels_gained
+        )
+        if maximum_mp > 999:
+            maximum_mp = 999
+        role["maximum_mp"] = maximum_mp
+        role["mp"] = maximum_mp
+
+        primary_gain = growth_roll * levels_gained
+        for name in ("attack", "speed", "defence"):
+            role[name] = wrapping_i16(role[name] + primary_gain)
+        for name in (
+            "medicine", "use_poison", "detoxification", "fist", "sword", "knife",
+        ):
+            if role[name] > 20:
+                role[name] = wrapping_i16(role[name] + draw(name, 3))
+        role["hidden_weapon"] = wrapping_i16(
+            role["hidden_weapon"] + draw("hidden_weapon", 3)
+        )
+        for name in (
+            "attack", "speed", "defence", "medicine", "use_poison",
+            "detoxification", "hidden_weapon", "fist", "sword", "knife",
+        ):
+            if role[name] > 100:
+                role[name] = 100
+
+        return {
+            "label": label,
+            "seed": seed & 0xFFFFFFFF,
+            "suppress_message": wrapping_i16(suppress_message),
+            "before": before,
+            "after": role,
+            "changed": True,
+            "old_level": old_level,
+            "new_level": role["level"],
+            "levels_gained": levels_gained,
+            "growth_roll": growth_roll,
+            "message_calls": message_calls,
+            "rng_calls": rng_calls,
+            "rng_state_after": state,
+        }
+
+    vectors = {
+        "no_upgrade_no_rng": simulate(
+            "no_upgrade_no_rng", seed=0x12345678,
+            changes={"level": 1, "experience": 49},
+        ),
+        "level_zero_threshold_zero": simulate(
+            "level_zero_threshold_zero", seed=2,
+            changes={"level": 0, "experience": 0, "iq": -32768},
+        ),
+        "level_29_exact_threshold": simulate(
+            "level_29_exact_threshold", seed=3,
+            changes={"level": 29, "experience": 52000, "iq": 29},
+        ),
+        "iq_29": simulate("iq_29", seed=1, changes={"iq": 29}),
+        "iq_30": simulate("iq_30", seed=1, changes={"iq": 30}),
+        "iq_49": simulate("iq_49", seed=1, changes={"iq": 49}),
+        "iq_50": simulate("iq_50", seed=1, changes={"iq": 50}),
+        "iq_69": simulate("iq_69", seed=1, changes={"iq": 69}),
+        "iq_70": simulate("iq_70", seed=1, changes={"iq": 70}),
+        "iq_89": simulate("iq_89", seed=1, changes={"iq": 89}),
+        "iq_90": simulate("iq_90", seed=1, changes={"iq": 90}),
+        "existing_fixed_progression": simulate(
+            "existing_fixed_progression", seed=1,
+            changes={
+                "experience": 150, "medicine": 21, "use_poison": 20,
+                "detoxification": 22, "fist": 23, "sword": 24,
+                "knife": 25, "hidden_weapon": 26,
+            },
+        ),
+        "all_conditional_skills": simulate(
+            "all_conditional_skills", seed=1,
+            changes={
+                "medicine": 21, "use_poison": 21, "detoxification": 21,
+                "fist": 21, "sword": 21, "knife": 21,
+            },
+        ),
+        "signed_wrap_and_caps": simulate(
+            "signed_wrap_and_caps", seed=0xFFFFFFFF,
+            changes={
+                "increased_life": -32768, "maximum_hp": 32767,
+                "maximum_mp": 32767, "attack": 100, "speed": 32767,
+                "defence": -32768, "medicine": 20, "use_poison": 21,
+                "detoxification": 100, "fist": 32767, "sword": -1,
+                "knife": 21, "hidden_weapon": 100,
+            },
+        ),
+        "suppressed_message": simulate(
+            "suppressed_message", seed=7, suppress_message=9,
+            changes={"level": 1, "experience": 150},
+        ),
+    }
+    if vectors["no_upgrade_no_rng"]["rng_calls"] != [] or (
+        vectors["no_upgrade_no_rng"]["rng_state_after"] != 0x12345678
+    ):
+        raise ValueError("battle level-up early-exit RNG behavior changed")
+    if vectors["level_zero_threshold_zero"]["new_level"] != 1:
+        raise ValueError("battle level-up zero threshold changed")
+    if vectors["level_29_exact_threshold"]["new_level"] != 30:
+        raise ValueError("battle level-up maximum level transition changed")
+    if [
+        call["upper"] for call in vectors["existing_fixed_progression"]["rng_calls"]
+    ] != [6, 3, 3, 3, 3, 3, 3, 3] or (
+        vectors["existing_fixed_progression"]["rng_state_after"] != 2_633_739_833
+    ):
+        raise ValueError("battle level-up fixed progression vector changed")
+    if [
+        call["upper"] for call in vectors["all_conditional_skills"]["rng_calls"]
+    ] != [6, 3, 3, 3, 3, 3, 3, 3, 3]:
+        raise ValueError("battle level-up conditional RNG order changed")
+    if vectors["suppressed_message"]["message_calls"] != []:
+        raise ValueError("battle level-up suppress-message gate changed")
+    if vectors["signed_wrap_and_caps"]["after"]["anti_poison"] != 77 or (
+        vectors["signed_wrap_and_caps"]["after"]["unusual"] != 66
+    ):
+        raise ValueError("battle level-up touched excluded skill words")
+
+    vector_sha256 = sha256(
+        json.dumps(vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "9c35ab92bd1521ce8237f95a2e9a21ba355bb9ba2ec472dc5576d0c44380d1fd":
+        raise ValueError("battle level-up independent vector set changed: " + vector_sha256)
+
+    return {
+        **contract,
+        "basic_block_count": 54,
+        "conditional_branch_count": 26,
+        "unconditional_jump_count": 6,
+        "relocation_offsets": [hex(offset) for offset in BATTLE_LEVEL_UP_RELOCATION_OFFSETS],
+        "local_return_sites": [],
+        "shared_tail": {
+            "address": "0x39a3e", "end": "0x39a45", "bytes": shared_tail.hex(),
+            "contract": "add esp,4; pop edi; pop esi; pop ebx; ret",
+            "exit_sites": ["0x3b6ee", "0x3ba71", "0x3ba80"],
+        },
+        "caller": {
+            "site": "0x3b655", "function": "0x3b387",
+            "gate_slice": ["0x3b590", "0x3b65d"], "gate_sha256": caller_sha256,
+            "reachable_arg1": 0,
+            "reason": "nonzero side skips before side is passed as arg1",
+        },
+        "level_thresholds": thresholds,
+        "level_text": {
+            "address": "0x58ad8", "bytes": level_text.hex(), "text": "%s 升級了",
+        },
+        "panel": {"x": 100, "y": 30, "width": 120, "height": 27},
+        "text_draw": {"x": 107, "y": 35, "colors": "0x0705", "height": 16},
+        "message_sequence": [
+            "battle_render", "format_level_text", "draw_box", "draw_text",
+            "present", "clear_last_key_and_wait_nonzero",
+        ],
+        "state_sequence": [
+            "scan_last_satisfied_threshold", "growth_rng_by_signed_iq",
+            "write_level_low16", "maximum_hp_rng_and_low16_then_signed_cap999",
+            "refill_hp_clear_hurt_poison_set_power100",
+            "maximum_mp_low16_then_signed_cap999_and_refill",
+            "add_primary_stats_low16", "conditionally_add_six_skills",
+            "always_add_hidden_weapon", "signed_cap_ten_stats_at100",
+        ],
+        "rng_call_count": {"minimum": 3, "maximum": 9},
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern host safely rejects invalid role/negative-level indexing and splits the "
+            "synchronous pre-RNG message into preview/present/input/commit phases; legal caller "
+            "word arithmetic, shared RNG and observable order are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, bounded RNG, renderer, box/text/present/input, caller, practice/crafting "
+            "and the shared tail remain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -13315,6 +13661,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_sprite_word_machine": battle_sprite_word_contract(z_dat_bytes, ranger_groups),
         "battle_outcome_machine": battle_outcome_contract(z_dat_bytes),
         "battle_settlement_machine": battle_settlement_contract(z_dat_bytes),
+        "battle_level_up_machine": battle_level_up_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,
