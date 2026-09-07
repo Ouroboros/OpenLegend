@@ -152,6 +152,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 - `-79..-40 -> 0 ticks`；
 - 不按毫秒重新解释参数，不修正约 18.2 Hz 与除数 40 的历史失配。
 
+### 3.3 opcode27图片动画的tick边界
+
+`sub_2F053 @ 0x2F053..0x2F107`为180字节、59条指令、14个CFG块、6次call、5个条件分支、4个无条件跳转、9项HIGHLOW重定位且无本地`RET`。raw/loaded SHA256分别为`7bfb0b81ff77dc3bc3544b6e692b4b177e21c58e7f5007367bb090a2b9675bdb`与`cc5c53f5a16319098f5bfa8813a847dc50a72dcda23eb377d54f792d7af5556d`；唯一物理caller为opcode27 dispatch，另有`0x55628`地址表引用。两个正常出口都跳入前一函数`0x2F04A..0x2F053`共享尾，其SHA256为`f7d57baaeaca8f29028fb0af30bc53418bee7a398b4188a9c960681e3dd7e2b5`。
+
+本input/tick owner不读键盘状态。每个有效图片帧都严格按以下顺序运行：先保存`*dword_544D8`，再写玩家图片低16位或调用事件修改callee写三个图片word，然后完整重绘场景，调用`sub_3DB83(50)`等待2个BIOS ticks，最后仍自旋直到当前tick不等于帧首保存值。正常单调时钟中2-tick helper已经满足末尾条件，因此没有固定第三tick；零帧路径完全不读tick。循环值按signed 32-bit执行`+2`和`<=end`，只有图片写入截低16位。
+
+现代`SceneSession::advance_picture_animation_frame`先写图片状态再返回`present(wait_ticks=2)`；`LegacyGameRuntime::render`只有成功绘制该状态后才把present effect标记为已显示，`advance_scene_effect`在首个宿主tick仅把2减为1，第二个tick才恢复解释器并生成下一图片或继续已提前推进4 words的PC。新增真实opcode27宿主回归固定未render不能推进、5002/5004/5006每帧恰好两tick及末帧后续PC；既有独立Golden覆盖43次真实资产调用、579帧、event `-1`/非`-1`分支、`-2`别名、32767边界、零帧和奇数跨度。三次Golden逐字节一致，正式`scene-goldens.json` SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`。
+
+本轮只独立关闭`input-font-closure.tsv audit_order=27`的tick引用/宿主时序owner；同址scene owner此前已独立关闭，`sub_3DB83`完整time owner、两个scene callee、编译器栈探测及共享尾owner均不传播状态。入口59条指令、全部14块、唯一caller、两个分支和全部出口最终重审无产品差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：
