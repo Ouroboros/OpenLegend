@@ -131,7 +131,7 @@ namespace {
 }
 
 [[nodiscard]] bool install_battle_initial_script(const std::filesystem::path& root) {
-    constexpr std::array<std::int16_t, 6> script{6, 4, 0, 0, 0, -1};
+    constexpr std::array<std::int16_t, 6> script{6, 4, 0, 0, 9, -1};
     return install_initial_script(root, script);
 }
 
@@ -1886,6 +1886,7 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(game.battle_request().value_or(-1) == 4);
     auto* session = LegacyGameRuntimeTestAccess::battle_session(game);
     OL_CHECK(session != nullptr);
+    OL_CHECK(session != nullptr && !session->grants_experience());
     OL_CHECK(session != nullptr &&
              session->phase() == BattleSessionPhase::initial_fade_to_black);
     OL_CHECK(game.handle_key(0x0DU, false, false) == app::LegacyKeyStateReset::none);

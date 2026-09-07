@@ -2492,6 +2492,106 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.valid());
         OL_CHECK(setup.combatant_count() == 2);
+        auto& party = setup.combatants()[0U].words;
+        auto& non_enemy = setup.combatants()[1U].words;
+        OL_CHECK(party[combatant_word::side] == 0);
+        OL_CHECK(non_enemy[combatant_word::side] == 1);
+        auto& party_role = ranger.roles[static_cast<std::size_t>(
+            party[combatant_word::role_id])];
+        auto& non_enemy_role = ranger.roles[static_cast<std::size_t>(
+            non_enemy[combatant_word::role_id])];
+        party_role.set_word(role_word::hp, 100);
+        party_role.set_word(role_word::maximum_hp, 100);
+        non_enemy[combatant_word::side] = -1;
+        non_enemy_role.set_word(role_word::hp, 11);
+        non_enemy_role.set_word(role_word::maximum_hp, 200);
+        non_enemy_role.set_word(role_word::mp, 3);
+        non_enemy_role.set_word(role_word::maximum_mp, 90);
+        non_enemy_role.set_word(role_word::physical_power, 7);
+        non_enemy_role.set_word(role_word::hurt, 8);
+        non_enemy_role.set_word(role_word::poison, 9);
+        party[combatant_word::reward_experience] = 5;
+        non_enemy[combatant_word::reward_experience] = 7;
+        const auto prepared = setup.prepare_battle_settlement(BattleOutcome::victory);
+        OL_CHECK(prepared.has_value());
+        OL_CHECK(prepared->living_party_count == 2);
+        OL_CHECK(prepared->shared_experience ==
+                 static_cast<std::int16_t>(data.definition()[7U] / 2));
+        OL_CHECK(party[combatant_word::reward_experience] ==
+                 static_cast<std::int16_t>(5 + prepared->shared_experience));
+        OL_CHECK(non_enemy[combatant_word::reward_experience] == 7);
+        OL_CHECK(non_enemy_role.word(role_word::hp) == 11);
+        OL_CHECK(non_enemy_role.word(role_word::mp) == 3);
+        OL_CHECK(non_enemy_role.word(role_word::physical_power) == 7);
+        OL_CHECK(non_enemy_role.word(role_word::hurt) == 8);
+        OL_CHECK(non_enemy_role.word(role_word::poison) == 9);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& words = setup.combatants()[0U].words;
+        auto& role = ranger.roles[static_cast<std::size_t>(
+            words[combatant_word::role_id])];
+        words[combatant_word::side] = 0;
+        words[combatant_word::reward_experience] = -1;
+        role.set_word(role_word::experience, 0);
+        role.set_word(role_word::item_experience, 0);
+        role.set_word(role_word::make_item_experience, 0);
+        auto applied = setup.apply_post_battle_experience(
+            0U, BattleOutcome::defeat, false);
+        OL_CHECK(applied.has_value());
+        OL_CHECK(applied->experience_gained == -1);
+        OL_CHECK(!applied->experience_message_required);
+        OL_CHECK(role.unsigned_word(role_word::experience) == 60'000U);
+        OL_CHECK(role.unsigned_word(role_word::item_experience) == 39'320U);
+        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 39'320U);
+
+        words[combatant_word::reward_experience] = 1'000;
+        role.set_word(role_word::experience, -536);
+        role.set_word(role_word::item_experience, -536);
+        role.set_word(role_word::make_item_experience, -536);
+        applied = setup.apply_post_battle_experience(
+            0U, BattleOutcome::defeat, false);
+        OL_CHECK(applied.has_value());
+        OL_CHECK(role.unsigned_word(role_word::experience) == 464U);
+        OL_CHECK(role.unsigned_word(role_word::item_experience) == 264U);
+        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 264U);
+
+        words[combatant_word::reward_experience] = 2'000;
+        role.set_word(role_word::experience, -6'536);
+        role.set_word(role_word::item_experience, -6'536);
+        role.set_word(role_word::make_item_experience, -6'536);
+        applied = setup.apply_post_battle_experience(
+            0U, BattleOutcome::defeat, true);
+        OL_CHECK(applied.has_value());
+        OL_CHECK(applied->experience_message_required);
+        OL_CHECK(role.unsigned_word(role_word::experience) == 60'000U);
+        OL_CHECK(role.unsigned_word(role_word::item_experience) == 60'000U);
+        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 60'000U);
+
+        words[combatant_word::side] = 1;
+        words[combatant_word::reward_experience] = 9;
+        role.set_word(role_word::experience, 0);
+        role.set_word(role_word::item_experience, 0);
+        role.set_word(role_word::make_item_experience, 0);
+        applied = setup.apply_post_battle_experience(
+            0U, BattleOutcome::defeat, true);
+        OL_CHECK(applied.has_value());
+        OL_CHECK(!applied->experience_message_required);
+        OL_CHECK(role.unsigned_word(role_word::experience) == 9U);
+        OL_CHECK(role.unsigned_word(role_word::item_experience) == 7U);
+        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 7U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        OL_CHECK(setup.combatant_count() == 2);
         auto& first = setup.combatants()[0U].words;
         auto& second = setup.combatants()[1U].words;
         auto& first_role = ranger.roles[static_cast<std::size_t>(

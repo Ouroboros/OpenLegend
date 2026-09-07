@@ -1394,7 +1394,7 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         break;
     case scene::SceneStepKind::battle:
         battle_request_ = result.battle_id;
-        static_cast<void>(start_battle(result.battle_id, result.battle_get_exp != 0));
+        static_cast<void>(start_battle(result.battle_id, result.battle_get_exp == 1));
         break;
     case scene::SceneStepKind::present:
         begin_scene_effect(SceneEffectKind::present, result.wait_ticks);

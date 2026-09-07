@@ -923,6 +923,26 @@ BATTLE_OUTCOME_RELOCATION_OFFSETS = (
     0x0F6, 0x0FD, 0x102, 0x116, 0x11B, 0x130, 0x135,
 )
 BATTLE_OUTCOME_CALLER_SITES = (0x32A08,)
+BATTLE_SETTLEMENT_ADDRESS = 0x3B387
+BATTLE_SETTLEMENT_END = 0x3B6BE
+BATTLE_SETTLEMENT_CALL_OFFSETS = (
+    0x005, 0x232, 0x25D, 0x27E, 0x29B, 0x2AE, 0x2B6, 0x2CE, 0x2F4, 0x31A,
+)
+BATTLE_SETTLEMENT_CALL_TARGETS = (
+    0x3ED1E, 0x3AA85, 0x3EF4A, 0x2CEBF, 0x3D832,
+    0x3D6D1, 0x20C32, 0x3B6BE, 0x3BA85, 0x3C2AC,
+)
+BATTLE_SETTLEMENT_RELOCATION_OFFSETS = (
+    0x01A, 0x027, 0x031, 0x038, 0x03F, 0x046, 0x04D, 0x056,
+    0x05F, 0x06A, 0x076, 0x081, 0x094, 0x0A6, 0x0B2, 0x0B9,
+    0x0C9, 0x0D3, 0x0E9, 0x0F0, 0x100, 0x10A, 0x11D, 0x128,
+    0x131, 0x144, 0x14B, 0x155, 0x15F, 0x178, 0x185, 0x18C,
+    0x1A4, 0x1AD, 0x1B4, 0x1BD, 0x1C4, 0x1CF, 0x1DE, 0x1E9,
+    0x1F8, 0x203, 0x20F, 0x21D, 0x227, 0x23D, 0x249, 0x254,
+    0x259, 0x268, 0x28E, 0x293, 0x2A5, 0x2AA, 0x2BE, 0x2C8,
+    0x2DF, 0x2EE, 0x305, 0x314, 0x326,
+)
+BATTLE_SETTLEMENT_CALLER_SITES = (0x3B37E,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -8708,6 +8728,344 @@ def battle_outcome_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_settlement_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_SETTLEMENT_ADDRESS,
+        end=BATTLE_SETTLEMENT_END,
+        call_offsets=BATTLE_SETTLEMENT_CALL_OFFSETS,
+        expected_call_targets=BATTLE_SETTLEMENT_CALL_TARGETS,
+        relocation_offsets=BATTLE_SETTLEMENT_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_SETTLEMENT_CALLER_SITES,
+        instruction_count=194,
+        branch_count=29,
+    )
+    if contract["raw_sha256"] != (
+        "bc96bb312a2beb8f0aa52bb8a229d36fc94ea03d272d9c53bb0cc1f9c776a164"
+    ):
+        raise ValueError("Z.DAT battle settlement raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "e147e1633843da05bed92c0cb77700634664971f8cf287ee21fb7391a6fa0414"
+    ):
+        raise ValueError("Z.DAT battle settlement relocation image changed")
+
+    experience_text = z_dat_bytes[
+        0x58AC5 - Z_DAT_LOAD_BASE:0x58AD8 - Z_DAT_LOAD_BASE
+    ]
+    expected_text = bytes.fromhex("257320c0f2b16fb867c5e7c249bcc625356400")
+    if experience_text != expected_text:
+        raise ValueError("Z.DAT battle settlement experience text changed")
+
+    def add_word_then_unsigned_cap(current: int, amount: int) -> int:
+        changed = ((current & 0xFFFF) + (amount & 0xFFFF)) & 0xFFFF
+        return 60_000 if changed > 60_000 else changed
+
+    def simulate(
+        label: str,
+        result_word: int,
+        battle_get_exp: int,
+        total_experience: int,
+        source: list[dict[str, object]],
+    ) -> dict[str, object]:
+        combatants = []
+        for source_entry in source:
+            source_role = source_entry["role"]
+            if not isinstance(source_role, dict):
+                raise ValueError("battle settlement vector role is invalid")
+            role = {
+                "hp": wrapping_i16(int(source_role["hp"])),
+                "maximum_hp": wrapping_i16(int(source_role["maximum_hp"])),
+                "mp": wrapping_i16(int(source_role["mp"])),
+                "maximum_mp": wrapping_i16(int(source_role["maximum_mp"])),
+                "physical_power": wrapping_i16(int(source_role["physical_power"])),
+                "hurt": wrapping_i16(int(source_role["hurt"])),
+                "poison": wrapping_i16(int(source_role["poison"])),
+                "level": wrapping_i16(int(source_role["level"])),
+                "practice_item": wrapping_i16(int(source_role["practice_item"])),
+                "experience": int(source_role["experience"]) & 0xFFFF,
+                "item_experience": int(source_role["item_experience"]) & 0xFFFF,
+                "make_item_experience":
+                    int(source_role["make_item_experience"]) & 0xFFFF,
+            }
+            combatants.append({
+                "name": str(source_entry["name"]),
+                "side": wrapping_i16(int(source_entry["side"])),
+                "reward": wrapping_i16(int(source_entry["reward"])),
+                "role": role,
+            })
+
+        living_non_enemy_count = 0
+        for entry in combatants:
+            role = entry["role"]
+            if entry["side"] == 1:
+                role["hp"] = role["maximum_hp"]
+                role["mp"] = role["maximum_mp"]
+                role["physical_power"] = 100
+                role["hurt"] = 0
+                role["poison"] = 0
+            elif role["hp"] > 0:
+                living_non_enemy_count += 1
+
+        division_count = living_non_enemy_count
+        shared_experience = 0
+        if result_word == 2:
+            if division_count == 0:
+                division_count = 1
+            shared_experience = wrapping_i16(
+                trunc_div(wrapping_i16(total_experience), division_count)
+            )
+            for entry in combatants:
+                if entry["side"] == 0 and entry["role"]["hp"] > 0:
+                    entry["reward"] = wrapping_i16(
+                        entry["reward"] + shared_experience
+                    )
+
+        for entry in combatants:
+            if entry["side"] != 0:
+                continue
+            role = entry["role"]
+            floor_hp = wrapping_i16(trunc_div(role["maximum_hp"], 5))
+            if role["hp"] > 0:
+                if role["hp"] < floor_hp:
+                    role["hp"] = floor_hp
+            else:
+                role["hp"] = floor_hp
+                if role["physical_power"] < 10:
+                    role["physical_power"] = 10
+
+        messages = []
+        for slot, entry in enumerate(combatants):
+            role = entry["role"]
+            reward = entry["reward"]
+            role["experience"] = add_word_then_unsigned_cap(
+                role["experience"], reward
+            )
+            shifted_reward = ((reward & 0xFFFFFFFF) << 3) & 0xFFFFFFFF
+            training_reward = shifted_reward // 10
+            role["item_experience"] = add_word_then_unsigned_cap(
+                role["item_experience"], training_reward
+            )
+            role["make_item_experience"] = add_word_then_unsigned_cap(
+                role["make_item_experience"], training_reward
+            )
+            if entry["side"] != 0 or not (
+                wrapping_i16(battle_get_exp) == 1 or result_word == 2
+            ):
+                continue
+            calls = [
+                "battle_render", "format_experience_text", "draw_box", "draw_text",
+                "present", "clear_last_key_and_wait_nonzero",
+            ]
+            if role["level"] < 30:
+                calls.append("level_up")
+            if role["practice_item"] != -1:
+                calls.extend(["practice", "craft"])
+            messages.append({
+                "slot": slot,
+                "name": entry["name"],
+                "reward": reward,
+                "text": f"{entry['name']} 獲得經驗點數{reward:5d}",
+                "calls": calls,
+            })
+
+        return {
+            "label": label,
+            "result_word": wrapping_i16(result_word),
+            "battle_get_exp": wrapping_i16(battle_get_exp),
+            "total_experience": wrapping_i16(total_experience),
+            "living_non_enemy_count": living_non_enemy_count,
+            "division_count": division_count,
+            "shared_experience": shared_experience,
+            "combatants": combatants,
+            "messages": messages,
+        }
+
+    def role(
+        hp: int = 100,
+        maximum_hp: int = 100,
+        mp: int = 50,
+        maximum_mp: int = 50,
+        physical_power: int = 50,
+        hurt: int = 0,
+        poison: int = 0,
+        level: int = 30,
+        practice_item: int = -1,
+        experience: int = 0,
+        item_experience: int = 0,
+        make_item_experience: int = 0,
+    ) -> dict[str, int]:
+        return {
+            "hp": hp, "maximum_hp": maximum_hp,
+            "mp": mp, "maximum_mp": maximum_mp,
+            "physical_power": physical_power, "hurt": hurt, "poison": poison,
+            "level": level, "practice_item": practice_item,
+            "experience": experience, "item_experience": item_experience,
+            "make_item_experience": make_item_experience,
+        }
+
+    vectors = {
+        "victory_signed_share_and_side_domain": simulate(
+            "victory_signed_share_and_side_domain", 2, 0, -11,
+            [
+                {"name": "P", "side": 0, "reward": 3,
+                 "role": role(hp=5, maximum_hp=100, level=29, practice_item=4)},
+                {"name": "N", "side": -1, "reward": 7,
+                 "role": role(hp=11, maximum_hp=200, mp=3, maximum_mp=90,
+                              physical_power=7, hurt=8, poison=9)},
+                {"name": "E", "side": 1, "reward": 9,
+                 "role": role(hp=-1, maximum_hp=123, mp=2, maximum_mp=77,
+                              physical_power=1, hurt=22, poison=33)},
+            ],
+        ),
+        "victory_zero_count_and_dead_party": simulate(
+            "victory_zero_count_and_dead_party", 2, 0, -32768,
+            [
+                {"name": "D", "side": 0, "reward": 5,
+                 "role": role(hp=0, maximum_hp=101, physical_power=-1,
+                              level=30, practice_item=-1)},
+                {"name": "E", "side": 1, "reward": 0,
+                 "role": role(hp=0, maximum_hp=80)},
+            ],
+        ),
+        "defeat_get_exp_exact_one": simulate(
+            "defeat_get_exp_exact_one", 1, 1, 100,
+            [{"name": "P", "side": 0, "reward": 9,
+              "role": role(level=29, practice_item=4)}],
+        ),
+        "defeat_get_exp_non_one": simulate(
+            "defeat_get_exp_non_one", 1, 9, 100,
+            [{"name": "P", "side": 0, "reward": 9, "role": role()}],
+        ),
+        "negative_reward_unsigned_training": simulate(
+            "negative_reward_unsigned_training", 1, 0, 0,
+            [{"name": "P", "side": 0, "reward": -1, "role": role()}],
+        ),
+        "word_wrap_before_cap": simulate(
+            "word_wrap_before_cap", 1, 0, 0,
+            [{"name": "P", "side": 0, "reward": 1000,
+              "role": role(experience=65000, item_experience=65000,
+                           make_item_experience=65000)}],
+        ),
+        "unsigned_cap_after_write": simulate(
+            "unsigned_cap_after_write", 1, 0, 0,
+            [{"name": "P", "side": 0, "reward": 2000,
+              "role": role(experience=59000, item_experience=59000,
+                           make_item_experience=59000)}],
+        ),
+        "negative_maximum_hp_floor": simulate(
+            "negative_maximum_hp_floor", 1, 0, 0,
+            [{"name": "P", "side": 0, "reward": 0,
+              "role": role(hp=-1, maximum_hp=-11, physical_power=9)}],
+        ),
+    }
+    expected = {
+        "victory_signed_share_and_side_domain": {
+            "living": 2, "division": 2, "shared": -5,
+            "rewards": [-2, 7, 9], "hp": [20, 11, 123],
+            "messages": 1,
+        },
+        "victory_zero_count_and_dead_party": {
+            "living": 0, "division": 1, "shared": -32768,
+            "rewards": [5, 0], "hp": [20, 80], "messages": 1,
+        },
+        "defeat_get_exp_exact_one": {"messages": 1},
+        "defeat_get_exp_non_one": {"messages": 0},
+        "negative_reward_unsigned_training": {
+            "experience": 60000, "item": 39320, "make": 39320,
+        },
+        "word_wrap_before_cap": {"experience": 464, "item": 264, "make": 264},
+        "unsigned_cap_after_write": {
+            "experience": 60000, "item": 60000, "make": 60000,
+        },
+        "negative_maximum_hp_floor": {"hp": [-2], "physical_power": 10},
+    }
+    for name, checks in expected.items():
+        vector = vectors[name]
+        if "living" in checks and vector["living_non_enemy_count"] != checks["living"]:
+            raise ValueError(f"battle settlement living count changed: {name}")
+        if "division" in checks and vector["division_count"] != checks["division"]:
+            raise ValueError(f"battle settlement division count changed: {name}")
+        if "shared" in checks and vector["shared_experience"] != checks["shared"]:
+            raise ValueError(f"battle settlement signed share changed: {name}")
+        if "rewards" in checks and [
+            entry["reward"] for entry in vector["combatants"]
+        ] != checks["rewards"]:
+            raise ValueError(f"battle settlement reward distribution changed: {name}")
+        if "hp" in checks and [
+            entry["role"]["hp"] for entry in vector["combatants"]
+        ] != checks["hp"]:
+            raise ValueError(f"battle settlement HP handling changed: {name}")
+        if "messages" in checks and len(vector["messages"]) != checks["messages"]:
+            raise ValueError(f"battle settlement message gate changed: {name}")
+        first_role = vector["combatants"][0]["role"]
+        if "experience" in checks and first_role["experience"] != checks["experience"]:
+            raise ValueError(f"battle settlement experience cap changed: {name}")
+        if "item" in checks and first_role["item_experience"] != checks["item"]:
+            raise ValueError(f"battle settlement item experience changed: {name}")
+        if "make" in checks and first_role["make_item_experience"] != checks["make"]:
+            raise ValueError(f"battle settlement make experience changed: {name}")
+        if "physical_power" in checks and (
+            first_role["physical_power"] != checks["physical_power"]
+        ):
+            raise ValueError(f"battle settlement physical power floor changed: {name}")
+
+    exact_one_calls = vectors["defeat_get_exp_exact_one"]["messages"][0]["calls"]
+    if exact_one_calls != [
+        "battle_render", "format_experience_text", "draw_box", "draw_text",
+        "present", "clear_last_key_and_wait_nonzero", "level_up", "practice", "craft",
+    ]:
+        raise ValueError("battle settlement delegated call order changed")
+    vector_sha256 = sha256(
+        json.dumps(vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "499fd7109920c8f9eee8f31015e158e1af76d7eb984da2be29ab9073c2bcabcd":
+        raise ValueError(
+            "battle settlement independent vector set changed: " + vector_sha256
+        )
+
+    return {
+        **contract,
+        "basic_block_count": 44,
+        "conditional_branch_count": 23,
+        "unconditional_jump_count": 6,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_SETTLEMENT_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": ["0x3b6bd"],
+        "experience_text": {
+            "address": "0x58ac5", "bytes": experience_text.hex(),
+            "text": "%s 獲得經驗點數%5d",
+        },
+        "settlement_order": [
+            "reset_exact_side1_and_count_living_non_enemy",
+            "victory_signed_share_to_living_exact_side0",
+            "exact_side0_hp_and_physical_power_floor",
+            "all_slots_experience_add_then_message_and_delegated_calls",
+        ],
+        "experience_arithmetic": {
+            "role_experience": "add reward word, write low16, unsigned cap at 60000",
+            "training": (
+                "sign-extend reward word, shift-left 3 in uint32, unsigned divide by 10, "
+                "add low16, write low16, unsigned cap at 60000"
+            ),
+        },
+        "message_gate": (
+            "side exactly0 and (battle_get_exp exactly1 or result exactly victory2)"
+        ),
+        "message_call_sequence": exact_one_calls,
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "validated slot/role indices and phased render/present/input are host safety and "
+            "scheduling adaptations; legal word arithmetic and observable order are preserved"
+        ),
+        "closure_boundary": (
+            "level-up, practice, crafting, renderer, present/input and the caller remain "
+            "independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -12956,6 +13314,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_renderer_machine": battle_renderer_contract(z_dat_bytes, renderer_retention),
         "battle_sprite_word_machine": battle_sprite_word_contract(z_dat_bytes, ranger_groups),
         "battle_outcome_machine": battle_outcome_contract(z_dat_bytes),
+        "battle_settlement_machine": battle_settlement_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

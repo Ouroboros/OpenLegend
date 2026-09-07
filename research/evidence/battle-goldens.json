@@ -14452,6 +14452,502 @@
     "platform_adaptation_boundary": "modern host represents the result as a typed enum and splits synchronous render/present/input/settlement into phases; validated legal caller state and call order are preserved",
     "closure_boundary": "stack probe, renderer, box/text/present/input, settlement and caller tail remain independent owners"
   },
+  "battle_settlement_machine": {
+    "address": "0x3b387",
+    "end": "0x3b6be",
+    "raw_offset": "0x34d87",
+    "size": 823,
+    "instruction_count": 194,
+    "branch_count": 29,
+    "raw_sha256": "bc96bb312a2beb8f0aa52bb8a229d36fc94ea03d272d9c53bb0cc1f9c776a164",
+    "loaded_sha256": "e147e1633843da05bed92c0cb77700634664971f8cf287ee21fb7391a6fa0414",
+    "relocation_count": 61,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3b38c",
+      "0x3b5b9",
+      "0x3b5e4",
+      "0x3b605",
+      "0x3b622",
+      "0x3b635",
+      "0x3b63d",
+      "0x3b655",
+      "0x3b67b",
+      "0x3b6a1"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3aa85",
+      "0x3ef4a",
+      "0x2cebf",
+      "0x3d832",
+      "0x3d6d1",
+      "0x20c32",
+      "0x3b6be",
+      "0x3ba85",
+      "0x3c2ac"
+    ],
+    "callers": [
+      "0x3b37e"
+    ],
+    "basic_block_count": 44,
+    "conditional_branch_count": 23,
+    "unconditional_jump_count": 6,
+    "relocation_offsets": [
+      "0x1a",
+      "0x27",
+      "0x31",
+      "0x38",
+      "0x3f",
+      "0x46",
+      "0x4d",
+      "0x56",
+      "0x5f",
+      "0x6a",
+      "0x76",
+      "0x81",
+      "0x94",
+      "0xa6",
+      "0xb2",
+      "0xb9",
+      "0xc9",
+      "0xd3",
+      "0xe9",
+      "0xf0",
+      "0x100",
+      "0x10a",
+      "0x11d",
+      "0x128",
+      "0x131",
+      "0x144",
+      "0x14b",
+      "0x155",
+      "0x15f",
+      "0x178",
+      "0x185",
+      "0x18c",
+      "0x1a4",
+      "0x1ad",
+      "0x1b4",
+      "0x1bd",
+      "0x1c4",
+      "0x1cf",
+      "0x1de",
+      "0x1e9",
+      "0x1f8",
+      "0x203",
+      "0x20f",
+      "0x21d",
+      "0x227",
+      "0x23d",
+      "0x249",
+      "0x254",
+      "0x259",
+      "0x268",
+      "0x28e",
+      "0x293",
+      "0x2a5",
+      "0x2aa",
+      "0x2be",
+      "0x2c8",
+      "0x2df",
+      "0x2ee",
+      "0x305",
+      "0x314",
+      "0x326"
+    ],
+    "local_return_sites": [
+      "0x3b6bd"
+    ],
+    "experience_text": {
+      "address": "0x58ac5",
+      "bytes": "257320c0f2b16fb867c5e7c249bcc625356400",
+      "text": "%s 獲得經驗點數%5d"
+    },
+    "settlement_order": [
+      "reset_exact_side1_and_count_living_non_enemy",
+      "victory_signed_share_to_living_exact_side0",
+      "exact_side0_hp_and_physical_power_floor",
+      "all_slots_experience_add_then_message_and_delegated_calls"
+    ],
+    "experience_arithmetic": {
+      "role_experience": "add reward word, write low16, unsigned cap at 60000",
+      "training": "sign-extend reward word, shift-left 3 in uint32, unsigned divide by 10, add low16, write low16, unsigned cap at 60000"
+    },
+    "message_gate": "side exactly0 and (battle_get_exp exactly1 or result exactly victory2)",
+    "message_call_sequence": [
+      "battle_render",
+      "format_experience_text",
+      "draw_box",
+      "draw_text",
+      "present",
+      "clear_last_key_and_wait_nonzero",
+      "level_up",
+      "practice",
+      "craft"
+    ],
+    "vectors": {
+      "victory_signed_share_and_side_domain": {
+        "label": "victory_signed_share_and_side_domain",
+        "result_word": 2,
+        "battle_get_exp": 0,
+        "total_experience": -11,
+        "living_non_enemy_count": 2,
+        "division_count": 2,
+        "shared_experience": -5,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": -2,
+            "role": {
+              "hp": 20,
+              "maximum_hp": 100,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 50,
+              "hurt": 0,
+              "poison": 0,
+              "level": 29,
+              "practice_item": 4,
+              "experience": 60000,
+              "item_experience": 39320,
+              "make_item_experience": 39320
+            }
+          },
+          {
+            "name": "N",
+            "side": -1,
+            "reward": 7,
+            "role": {
+              "hp": 11,
+              "maximum_hp": 200,
+              "mp": 3,
+              "maximum_mp": 90,
+              "physical_power": 7,
+              "hurt": 8,
+              "poison": 9,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 7,
+              "item_experience": 5,
+              "make_item_experience": 5
+            }
+          },
+          {
+            "name": "E",
+            "side": 1,
+            "reward": 9,
+            "role": {
+              "hp": 123,
+              "maximum_hp": 123,
+              "mp": 77,
+              "maximum_mp": 77,
+              "physical_power": 100,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 9,
+              "item_experience": 7,
+              "make_item_experience": 7
+            }
+          }
+        ],
+        "messages": [
+          {
+            "slot": 0,
+            "name": "P",
+            "reward": -2,
+            "text": "P 獲得經驗點數   -2",
+            "calls": [
+              "battle_render",
+              "format_experience_text",
+              "draw_box",
+              "draw_text",
+              "present",
+              "clear_last_key_and_wait_nonzero",
+              "level_up",
+              "practice",
+              "craft"
+            ]
+          }
+        ]
+      },
+      "victory_zero_count_and_dead_party": {
+        "label": "victory_zero_count_and_dead_party",
+        "result_word": 2,
+        "battle_get_exp": 0,
+        "total_experience": -32768,
+        "living_non_enemy_count": 0,
+        "division_count": 1,
+        "shared_experience": -32768,
+        "combatants": [
+          {
+            "name": "D",
+            "side": 0,
+            "reward": 5,
+            "role": {
+              "hp": 20,
+              "maximum_hp": 101,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 10,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 5,
+              "item_experience": 4,
+              "make_item_experience": 4
+            }
+          },
+          {
+            "name": "E",
+            "side": 1,
+            "reward": 0,
+            "role": {
+              "hp": 80,
+              "maximum_hp": 80,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 100,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 0,
+              "item_experience": 0,
+              "make_item_experience": 0
+            }
+          }
+        ],
+        "messages": [
+          {
+            "slot": 0,
+            "name": "D",
+            "reward": 5,
+            "text": "D 獲得經驗點數    5",
+            "calls": [
+              "battle_render",
+              "format_experience_text",
+              "draw_box",
+              "draw_text",
+              "present",
+              "clear_last_key_and_wait_nonzero"
+            ]
+          }
+        ]
+      },
+      "defeat_get_exp_exact_one": {
+        "label": "defeat_get_exp_exact_one",
+        "result_word": 1,
+        "battle_get_exp": 1,
+        "total_experience": 100,
+        "living_non_enemy_count": 1,
+        "division_count": 1,
+        "shared_experience": 0,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": 9,
+            "role": {
+              "hp": 100,
+              "maximum_hp": 100,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 50,
+              "hurt": 0,
+              "poison": 0,
+              "level": 29,
+              "practice_item": 4,
+              "experience": 9,
+              "item_experience": 7,
+              "make_item_experience": 7
+            }
+          }
+        ],
+        "messages": [
+          {
+            "slot": 0,
+            "name": "P",
+            "reward": 9,
+            "text": "P 獲得經驗點數    9",
+            "calls": [
+              "battle_render",
+              "format_experience_text",
+              "draw_box",
+              "draw_text",
+              "present",
+              "clear_last_key_and_wait_nonzero",
+              "level_up",
+              "practice",
+              "craft"
+            ]
+          }
+        ]
+      },
+      "defeat_get_exp_non_one": {
+        "label": "defeat_get_exp_non_one",
+        "result_word": 1,
+        "battle_get_exp": 9,
+        "total_experience": 100,
+        "living_non_enemy_count": 1,
+        "division_count": 1,
+        "shared_experience": 0,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": 9,
+            "role": {
+              "hp": 100,
+              "maximum_hp": 100,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 50,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 9,
+              "item_experience": 7,
+              "make_item_experience": 7
+            }
+          }
+        ],
+        "messages": []
+      },
+      "negative_reward_unsigned_training": {
+        "label": "negative_reward_unsigned_training",
+        "result_word": 1,
+        "battle_get_exp": 0,
+        "total_experience": 0,
+        "living_non_enemy_count": 1,
+        "division_count": 1,
+        "shared_experience": 0,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": -1,
+            "role": {
+              "hp": 100,
+              "maximum_hp": 100,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 50,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 60000,
+              "item_experience": 39320,
+              "make_item_experience": 39320
+            }
+          }
+        ],
+        "messages": []
+      },
+      "word_wrap_before_cap": {
+        "label": "word_wrap_before_cap",
+        "result_word": 1,
+        "battle_get_exp": 0,
+        "total_experience": 0,
+        "living_non_enemy_count": 1,
+        "division_count": 1,
+        "shared_experience": 0,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": 1000,
+            "role": {
+              "hp": 100,
+              "maximum_hp": 100,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 50,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 464,
+              "item_experience": 264,
+              "make_item_experience": 264
+            }
+          }
+        ],
+        "messages": []
+      },
+      "unsigned_cap_after_write": {
+        "label": "unsigned_cap_after_write",
+        "result_word": 1,
+        "battle_get_exp": 0,
+        "total_experience": 0,
+        "living_non_enemy_count": 1,
+        "division_count": 1,
+        "shared_experience": 0,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": 2000,
+            "role": {
+              "hp": 100,
+              "maximum_hp": 100,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 50,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 60000,
+              "item_experience": 60000,
+              "make_item_experience": 60000
+            }
+          }
+        ],
+        "messages": []
+      },
+      "negative_maximum_hp_floor": {
+        "label": "negative_maximum_hp_floor",
+        "result_word": 1,
+        "battle_get_exp": 0,
+        "total_experience": 0,
+        "living_non_enemy_count": 0,
+        "division_count": 0,
+        "shared_experience": 0,
+        "combatants": [
+          {
+            "name": "P",
+            "side": 0,
+            "reward": 0,
+            "role": {
+              "hp": -2,
+              "maximum_hp": -11,
+              "mp": 50,
+              "maximum_mp": 50,
+              "physical_power": 10,
+              "hurt": 0,
+              "poison": 0,
+              "level": 30,
+              "practice_item": -1,
+              "experience": 0,
+              "item_experience": 0,
+              "make_item_experience": 0
+            }
+          }
+        ],
+        "messages": []
+      }
+    },
+    "vector_sha256": "499fd7109920c8f9eee8f31015e158e1af76d7eb984da2be29ab9073c2bcabcd",
+    "platform_adaptation_boundary": "validated slot/role indices and phased render/present/input are host safety and scheduling adaptations; legal word arithmetic and observable order are preserved",
+    "closure_boundary": "level-up, practice, crafting, renderer, present/input and the caller remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

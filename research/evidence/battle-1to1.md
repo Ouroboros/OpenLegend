@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为74/81；其余7项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为75/81；其余6项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、7项为 `implemented_pending_review`、74项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、6项为 `implemented_pending_review`、75项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -442,6 +442,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 机器第一遍按signed active count扫描，只有signed HP<=0且hidden恰0才依次清`occupancy[y*64+x]`并写hidden1；第二遍只看hidden0，side恰0为队伍、任意非0为敌方。无队伍先写result1，无敌方随后写result2，因此双方同时为空最终为胜利。正结果严格执行战场重画、`(118,30,85,27)`结果框、原Big5胜败文字、present、清旧last-key并等待新非零键、`sub_3B387`结算；返回唯一caller后才清隐藏目标、执行一次轮末状态并等待轮首tick变化。
 
 `BattleSetup::evaluate_outcome`与`BattleSession`的outcome/render/present/input/settlement/round-tail相位逐块对照零合法域产品差异；typed enum、同步调用的宿主分相及已验证caller状态归类平台适配。新增回归锁定negative HP、negative side、already-hidden death不改occupancy、both-dead victory覆盖、present前非零键无效与present后零键无效。独立向量SHA256=`766509d8a783efbed81fc98fb240f340c2ba8243fc7897ba3c1391e4f9e1bc41`；Golden三生成逐字节一致，68键SHA256=`49f87783bb154a386bced732f9c4bb61a62ee89582246180cae616d15eefcec9`且历史67键逐值不变；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；renderer、box/text、present/input、settlement及caller尾不传播closure。
+
+## 40. 战后结算最终REVIEW
+
+`sub_3B387 @ 0x3B387..0x3B6BE`机器身份固定为823 bytes、194条连续指令、44个IDA flow block、23个条件分支、6个无条件跳转、61处重定位、10次direct call、唯一caller `0x3B37E`和唯一`RETN @ 0x3B6BD`；raw/loaded SHA256为`bc96bb312a2beb8f0aa52bb8a229d36fc94ea03d272d9c53bb0cc1f9c776a164`与`e147e1633843da05bed92c0cb77700634664971f8cf287ee21fb7391a6fa0414`，全部fixup均为`+0x20000`且逆变换后匹配raw。
+
+机器先把side恰1角色恢复HP/MP上限、体力100、内伤/中毒0，并统计所有非side1且HP>0者为共享经验分母。仅胜利2以signed `idiv`均分WAR word7，分母0先置1；只给side0且HP>0者的word13增加共享值。随后仅side0按signed最大HP/5补下限，死亡者体力低于10时补10。每个slot不分side均提交word13到角色经验，并以sign-extend→32位左移3→unsigned除10计算练功/制造经验；三个字段都先写low16，再按unsigned大于60000封顶。
+
+经验消息门严格为side0且（get-exp恰1或胜利2），顺序固定为战场重画、`%s 獲得經驗點數%5d`、框/文字、present、清旧键并等待新非零键，再按等级<30、practice item!=-1依次调用等级/练功/制造owner。首轮发现runtime把raw get-exp以`!=0`压成bool，现最小修正为`==1`；修正后从入口重审全部194条指令零剩余合法word域差异。新增side=-1分母、negative reward、word回绕/unsigned cap及synthetic get-exp9回归；独立向量SHA256=`499fd7109920c8f9eee8f31015e158e1af76d7eb984da2be29ab9073c2bcabcd`。Golden三生成逐字节一致，69键SHA256=`a343bfe7d579a8b5de486a63d5654ea3851ade75ea19f0826b94bf7313179c41`且历史68键逐值不变；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_after_fix`；等级、练功、制造、renderer、present/input和caller均不传播closure。
 
 ## 16. B8 实现差异审计关闭
 
