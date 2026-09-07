@@ -172,6 +172,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 独立Golden覆盖6次真实opcode44调用、script534的18个双事件逐像素帧及start>end、双玩家覆盖、32767后32位退出和奇数终点四组合成边界；参数流SHA256为`3261a421b7f4bc68691ba6c590451cefd773d308a22a43e59a66930470a88f7a`。三次生成逐字节一致，正式`scene-goldens.json` SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`。本轮只独立关闭`input-font-closure.tsv audit_order=28`，同址scene、四个callee和本地返回尾均保持owner隔离；最终入口重审无产品差异。
 
+### 3.5 opcode57三雕像动画的tick边界
+
+`sub_301D1 @ 0x301D1..0x302E0`为271字节、90条指令、11个CFG块、8次call、5个条件分支、零无条件跳转、11项HIGHLOW重定位和1个本地`RET`。raw/loaded SHA256分别为`a564d127f7e97066229213af75c152c3b54d326ae7ffe779a8801b52a5764a13`与`bc69b6a118c46a189cbb0b0c4450647230f3f1330fe0a439477c06fe60a73179`；唯一物理caller为opcode57 `sub_2C319:0x2CB0D`，另有`0x556A0`地址表引用。返回0被忽略，caller经公共块把PC推进1 word；本地返回尾SHA256为`d187e6ec96b89e29cf0712d92b3bd72c4fda595d7c6817db2666e557ba741057`。
+
+机器分两阶段。阶段0以signed 32-bit计数执行7664..7674含端点、步长2，共6帧，每帧写玩家图片低16位。阶段1把计数清零，执行0..56含端点、步长2，共29帧；每帧先按signed int16判断当前玩家图片`<7688`，满足时写`counter+7676`，故counter=12写到7688后冻结；再严格按event2、event3、event4顺序把current/end/begin三字段分别写为`counter+7690/7748/7806`，其余八个事件字段参数和场景选择参数均为`-2`保持。两阶段每帧均先捕获BIOS tick，完成图片写入后render、`sub_3DB83(50)`等待2 ticks、确认tick已离开帧首值，最后才把32位计数加2。总计35帧，最终玩家7688，三事件图片7746/7804/7862。
+
+现代`ThreeStatueAnimationState`以C++ `int`保存phase/value；case57建立默认`phase=0,value=7664`并先把PC推进1，但动画状态优先于脚本继续执行。`advance_three_statue_animation_frame`保持6+29帧、signed玩家冻结条件、event2→3→4写序与三字段同步；内部计数提前加2只保存下一帧状态，本帧可见图片不变。每帧返回`present(wait_ticks=2)`；宿主未成功render前不推进，首次成功呈现只消耗第一tick，第二次成功呈现后才恢复下一帧，等价于同步render/delay/tick自旋。
+
+独立Golden固定唯一真实script655 PC47、scene14事件2/3/4坐标与初始字、35个玩家/三事件/逐像素帧；调用流SHA256为`09d3a95aa4379601d167e041d3e98651e478fe12dde36e9118a11e0b0f51c700`，35帧trace SHA256为`8cf0a9274a8549457160fbb8ec526bf7d61592a1f5cd4b7a678da8043b7b1647`。三次生成逐字节一致，正式`scene-goldens.json` SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`。scene14最小`57,-1`脚本宿主回归进一步逐帧固定未render不推进和两个成功呈现tick；原始script655路径仍由独立scene测试与Golden覆盖。scene owner此前独立关闭；本轮只关闭`input-font-closure.tsv audit_order=29`，事件、render、time、栈探测和本地返回尾owner不传播状态，最终入口重审无产品差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：

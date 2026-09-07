@@ -17,7 +17,7 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B6 已完成**：五层世界、128×128 缓存、陆地/船移动、碰撞与入口、待机/天气周期和逐像素世界绘制。
 - **B7 已完成**：场景、事件、对话与场景/世界往返；`scene-event` closure 为100/100。
 - **B8 已完成**：战斗入口、选择、玩家动作、AI、动画、结算与战后提交；battle closure 为81/81。
-- **B9 进行中**：统一最终汇编→C++ REVIEW当前为`closure=325/349`、`unique_any=273/284`、`unique_all=260/284`。剩余owner集中在`input-font`（28/39已关闭）与`ui`（26/39已关闭）。
+- **B9 进行中**：统一最终汇编→C++ REVIEW当前为`closure=326/349`、`unique_any=273/284`、`unique_all=261/284`。剩余owner集中在`input-font`（29/39已关闭）与`ui`（26/39已关闭）。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 

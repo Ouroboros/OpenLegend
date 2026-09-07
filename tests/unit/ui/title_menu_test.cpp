@@ -68,6 +68,26 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.scene_session_ != nullptr &&
                runtime.scene_session_->pending().death_confirm;
     }
+
+    static bool begin_scene_event(
+        LegacyGameRuntime& runtime,
+        const std::int16_t scene_id,
+        const std::int16_t script_id,
+        const std::int16_t event_id,
+        const std::int16_t event_x,
+        const std::int16_t event_y) {
+        if (!runtime.start_scene(
+                scene_id,
+                LegacyGameView::scene,
+                scene::SceneEntryOverride{
+                    32, 15, scene::SceneDirection::right, -1, -1})) {
+            return false;
+        }
+        runtime.clear_scene_effect();
+        runtime.handle_scene_result(
+            runtime.scene_session_->begin_event(script_id, event_id, event_x, event_y));
+        return runtime.scene_session_ != nullptr && runtime.view_ == LegacyGameView::scene;
+    }
 };
 
 }  // namespace openlegend::app
@@ -100,6 +120,25 @@ namespace {
         return false;
     }
     for (const auto file : files) {
+        std::filesystem::copy_file(
+            source / file,
+            destination / file,
+            std::filesystem::copy_options::overwrite_existing,
+            error);
+        if (error) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool prepare_statue_runtime_fixture(
+    const std::filesystem::path& source, const std::filesystem::path& destination) {
+    if (!prepare_runtime_fixture(source, destination)) {
+        return false;
+    }
+    std::error_code error;
+    for (const auto file : {"SDX014", "SMP014"}) {
         std::filesystem::copy_file(
             source / file,
             destination / file,
@@ -193,6 +232,12 @@ namespace {
         44, -1, 5002, 5006, -1, 5016, -30000,
         -1,
     };
+    return install_initial_script(root, script);
+}
+
+[[nodiscard]] bool install_statue_animation_initial_script(
+    const std::filesystem::path& root) {
+    constexpr std::array<std::int16_t, 2> script{57, -1};
     return install_initial_script(root, script);
 }
 
@@ -2089,6 +2134,100 @@ void check_picture_animation_tick_gates(const std::filesystem::path& data_root) 
     OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 5020);
 }
 
+void check_three_statue_animation_tick_gates(
+    const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    using app::LegacyGameRuntimeTestAccess;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-statue-animation-runtime";
+    OL_CHECK(prepare_statue_runtime_fixture(data_root, output_root));
+    OL_CHECK(install_statue_animation_initial_script(output_root));
+
+    app::LegacyGameRuntime game{output_root, 0U};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    game.handle_key(0x20U, true, false);
+    game.handle_key('A', false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    for (int tick = 0; tick < 30; ++tick) {
+        game.advance();
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::attributes);
+    game.handle_key('Y', false, false);
+    finish_new_game_scene_transition(game);
+    OL_CHECK(LegacyGameRuntimeTestAccess::begin_scene_event(
+        game, 14, 691, 3, 33, 15));
+
+    const auto check_frame = [&game](const std::size_t index) {
+        const auto player_picture = index < 6U
+                                        ? static_cast<std::int16_t>(7664 + index * 2U)
+                                        : static_cast<std::int16_t>(
+                                              std::min<std::size_t>(
+                                                  7688, 7676 + (index - 6U) * 2U));
+        OL_CHECK(
+            LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+            scene::SceneStepKind::present);
+        OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == player_picture);
+        const auto* snapshot = game.game_state().snapshot();
+        OL_CHECK(snapshot != nullptr);
+        if (snapshot == nullptr) {
+            return;
+        }
+        std::array<std::int16_t, 3> pictures{7690, 7748, 7806};
+        if (index >= 6U) {
+            const auto offset = static_cast<std::int16_t>((index - 6U) * 2U);
+            pictures = {
+                static_cast<std::int16_t>(7690 + offset),
+                static_cast<std::int16_t>(7748 + offset),
+                static_cast<std::int16_t>(7806 + offset),
+            };
+        }
+        for (std::size_t event = 0U; event < pictures.size(); ++event) {
+            for (const auto field : {
+                     model::SceneEventField::current_picture,
+                     model::SceneEventField::end_picture,
+                     model::SceneEventField::begin_picture}) {
+                OL_CHECK(snapshot->event_value(14U, event + 2U, field).value_or(-1) ==
+                         pictures[event]);
+            }
+        }
+    };
+
+    for (std::size_t frame = 0U; frame < 35U; ++frame) {
+        check_frame(frame);
+        game.advance();
+        check_frame(frame);
+        OL_CHECK(game.render());
+        game.advance();
+        check_frame(frame);
+        OL_CHECK(game.render());
+        game.advance();
+    }
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::stay);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == 7688);
+    const auto* snapshot = game.game_state().snapshot();
+    OL_CHECK(snapshot != nullptr);
+    if (snapshot != nullptr) {
+        constexpr std::array<std::int16_t, 3> final_pictures{7746, 7804, 7862};
+        for (std::size_t event = 0U; event < final_pictures.size(); ++event) {
+            for (const auto field : {
+                     model::SceneEventField::current_picture,
+                     model::SceneEventField::end_picture,
+                     model::SceneEventField::begin_picture}) {
+                OL_CHECK(snapshot->event_value(14U, event + 2U, field).value_or(-1) ==
+                         final_pictures[event]);
+            }
+        }
+    }
+}
+
 void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     using namespace openlegend;
     using app::LegacyGameRuntimeTestAccess;
@@ -2726,6 +2865,7 @@ int main() {
     check_game_runtime(data_root);
     check_question_present_gate(data_root);
     check_picture_animation_tick_gates(data_root);
+    check_three_statue_animation_tick_gates(data_root);
     check_death_menu_present_gate(data_root);
     check_battle_runtime_transitions(data_root);
     check_scene_load_runtime(data_root);
