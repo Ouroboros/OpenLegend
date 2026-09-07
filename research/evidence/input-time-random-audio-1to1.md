@@ -192,6 +192,18 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 独立Golden固定唯一真实script1017 PC5、38帧8054..8128与8130..8204图片、76组事件参数和逐像素画面；调用/图片/事件参数/帧流SHA256分别为`21848ec618b479c85562cc0ae4602b6934a31f6d7324957eff94cf54686274e8`、`f4b057366e7eae4fa207716b3842548150b0d0943fd31e8acb3e38111a2b0430`、`bec4a864813a27c7d5695ce5de579b245777de7338fbd2d90dbd2fc48ee796a6`、`50b9832fc97d5f03be8847a59ba1197487ad15c73594d3d11405049d6a7404ef`。三组second_end反例完全相同；四组合成向量再覆盖`-1`跳过、同事件后写覆盖、start>end与32767后32位退出。三次生成逐字节一致，正式`scene-goldens.json` SHA256为`6f04fa857b4477525553b24f04e6c51b249e725757d2b697c2c7f0a8297ae878`。scene83最小opcode62宿主回归逐38帧固定未render不推进、两个成功呈现tick及末帧结局淡出。scene owner此前独立关闭；本轮只关闭`input-font-closure.tsv audit_order=30`，事件、render、time、栈探测、结局及caller后续物理字节owner均不传播状态，最终入口重审无产品差异。
 
+### 3.7 opcode64商店每帧单键与清键边界
+
+`sub_312A6 @ 0x312A6..0x3192E`为1672字节、473条指令、79个CFG块、34次call、40个条件分支、22个无条件跳转、68项HIGHLOW重定位且无本地`RET`。raw/loaded SHA256分别为`b5eb765deb1994347ca33820aaf9b78b75a29c8da36d712ef4d2a1fdda289597`与`a8ac857e29c681aa581f539506ce0055526b3b5cccad17619ec46deae4a22980`，68个loaded dword各减`0x20000`后与raw逐字节一致。唯一可执行caller为无参数opcode64 `sub_2C319:0x2CBCB`，`0x556BC`是地址表引用；返回`EAX=1`后跳外部共享尾，caller忽略返回并经公共块PC+1。共享尾`0x2D36A..0x2D372` SHA256为`008ac1116ed948abd324b4fcb16f6fb87d6e6c5256e8954e2b3d3673759ac057`，不属于本owner。
+
+函数唯一last-key读取为`0x314DB mov bl,byte_51B6B`。`0x98`下与`0x9E`上按压缩后的可见商品索引回绕；`0x0D`、`0x20`、`0x96`确认；`0x1B`取消；数字`1..5`及其他值不触发选择或购买。下/上分支分别把last-key与对应方向flag清零；三确认键共享出口，清last-key与三项确认组flags；Esc清last-key与escape flag；未知值不清。只要没有确认或取消，机器都会重绘商品列表、调用present primitive，再回到唯一last-key读取；因此初始`last_key=0`也先完成一次可见商店帧，随后每个继续中的键都必须先呈现再读取下一键。
+
+正常五项列表中下键`0→1`、`4→0`，上键`0→4`、`3→2`。全空列表的机器局部可见索引仍初始化0，下键得到1、上键得到-1，随后绘制会发生局部数组越界；现代将空列表显示索引稳定为-1，忽略上下导航但仍按对应translated组清键，分类为平台适配。直接确认空列表仍按机器选择物理slot0且不复核stock。
+
+本轮入口REVIEW发现现代宿主此前可在商店成功呈现前、或同一SDL事件批次内连续消费多键。最小修正新增`scene_shop_presented_`：每次进入/继续shop时关闭，仅在`render`成功并完成presented tick后开启；消费一个键立即关闭。scene1/script938真实宿主回归证明预呈现按键不消费、数字/每个上下键后必须重呈现、首尾回绕、三确认键清理组、Esc清理组及空列表稳定化。12组合成机器向量覆盖`key=0`、数字、普通/边界上下、空列表上下、三确认和取消，向量SHA256为`3dedf37e87641f62bf399b79c1877cd6b656993fc98d4065db39e3013e017515`。两份临时Golden和正式第三次生成逐字节一致，正式`scene-goldens.json` SHA256为`bfc30f29b9f36fd15b808eb83dd070efc98a0ce19fbfac8594969f5053eb3343`。
+
+商店五场景映射、压缩槽、面板、价格、购买时序、对话、事件关闭及库存primitive由scene和各callee owner独立关闭；本轮只关闭`input-font-closure.tsv audit_order=31`的last-key与宿主呈现职责，不传播共享尾或callee状态。修正后废弃旧结论并从入口重审79块/473条指令，未发现新增差异。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：

@@ -357,6 +357,8 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
             scene_question_presented_ = true;
         } else if (pending_kind == scene::SceneStepKind::death_menu) {
             scene_death_menu_presented_ = true;
+        } else if (pending_kind == scene::SceneStepKind::shop) {
+            scene_shop_presented_ = true;
         }
     }
     if (view_ != LegacyGameView::world || world_session_ == nullptr) {
@@ -588,7 +590,9 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 translated_key == static_cast<std::uint8_t>('Y')
                     ? scene::SceneResponse::yes
                     : scene::SceneResponse::no));
-        } else if (pending_kind == scene::SceneStepKind::shop) {
+        } else if (pending_kind == scene::SceneStepKind::shop &&
+                   scene_shop_presented_) {
+            scene_shop_presented_ = false;
             key_state_reset = menu_key_state_reset(translated_key);
             handle_scene_result(scene_session_->resume(
                 scene::SceneResponse::acknowledge,
@@ -1487,12 +1491,14 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::death_menu:
         scene_death_menu_presented_ = false;
         break;
+    case scene::SceneStepKind::shop:
+        scene_shop_presented_ = false;
+        break;
     case scene::SceneStepKind::scene_title:
     case scene::SceneStepKind::dialogue:
     case scene::SceneStepKind::wait_key:
     case scene::SceneStepKind::load_menu:
     case scene::SceneStepKind::notice:
-    case scene::SceneStepKind::shop:
         break;
     }
 }

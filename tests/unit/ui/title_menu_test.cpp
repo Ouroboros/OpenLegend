@@ -56,6 +56,10 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.scene_question_presented_;
     }
 
+    static bool scene_shop_presented(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.scene_shop_presented_;
+    }
+
     static std::int16_t scene_pending_menu_index(
         const LegacyGameRuntime& runtime) noexcept {
         return runtime.scene_session_ != nullptr
@@ -158,6 +162,26 @@ namespace {
     }
     constexpr std::array<std::string_view, 5> files{
         "SDX083", "SMP083", "ENDCOL.COL", "ENDWORD.IDX", "ENDWORD.GRP"};
+    std::error_code error;
+    for (const auto file : files) {
+        std::filesystem::copy_file(
+            source / file,
+            destination / file,
+            std::filesystem::copy_options::overwrite_existing,
+            error);
+        if (error) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool prepare_shop_runtime_fixture(
+    const std::filesystem::path& source, const std::filesystem::path& destination) {
+    if (!prepare_runtime_fixture(source, destination)) {
+        return false;
+    }
+    constexpr std::array<std::string_view, 2> files{"SDX001", "SMP001"};
     std::error_code error;
     for (const auto file : files) {
         std::filesystem::copy_file(
@@ -2326,6 +2350,126 @@ void check_ending_prelude_animation_tick_gates(
     OL_CHECK(LegacyGameRuntimeTestAccess::scene_player_frame(game) == -86);
 }
 
+void check_shop_input_present_gate(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    using app::LegacyGameRuntimeTestAccess;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-shop-input-runtime";
+    OL_CHECK(prepare_shop_runtime_fixture(data_root, output_root));
+
+    app::LegacyGameRuntime game{output_root, 0U};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    game.handle_key(0x20U, true, false);
+    game.handle_key('A', false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    for (int tick = 0; tick < 30; ++tick) {
+        game.advance();
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::attributes);
+    game.handle_key('Y', false, false);
+    finish_new_game_scene_transition(game);
+
+    const auto open_shop = [&game]() {
+        OL_CHECK(LegacyGameRuntimeTestAccess::begin_scene_event(
+            game, 1, 938, 17, 0, 0));
+        OL_CHECK(
+            LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+            scene::SceneStepKind::dialogue);
+        OL_CHECK(
+            game.handle_key(0x0DU, false, false) == app::LegacyKeyStateReset::none);
+        OL_CHECK(
+            LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+            scene::SceneStepKind::shop);
+        OL_CHECK(!LegacyGameRuntimeTestAccess::scene_shop_presented(game));
+    };
+    const auto present_shop = [&game]() {
+        OL_CHECK(game.render());
+        OL_CHECK(!LegacyGameRuntimeTestAccess::scene_shop_presented(game));
+        game.finish_presented_tick();
+        OL_CHECK(LegacyGameRuntimeTestAccess::scene_shop_presented(game));
+    };
+
+    open_shop();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    OL_CHECK(
+        game.handle_key(0x98U, false, false) == app::LegacyKeyStateReset::none);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    present_shop();
+    OL_CHECK(game.handle_key('1', false, false) == app::LegacyKeyStateReset::none);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_shop_presented(game));
+    OL_CHECK(
+        game.handle_key(0x9EU, false, false) == app::LegacyKeyStateReset::none);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x98U, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 1);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x9EU, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x9EU, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 4);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x98U, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x1BU, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::stay);
+
+    auto* ranger = const_cast<model::GameState&>(game.game_state()).ranger();
+    OL_CHECK(ranger != nullptr);
+    if (ranger == nullptr) {
+        return;
+    }
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        if (ranger->header.inventory_item(slot).value == 174) {
+            ranger->header.set_inventory(slot, model::ItemId{174}, 0);
+        }
+    }
+    for (const auto key : std::array<std::uint8_t, 3>{0x0DU, 0x20U, 0x96U}) {
+        open_shop();
+        present_shop();
+        OL_CHECK(
+            game.handle_key(key, false, false) ==
+            app::LegacyKeyStateReset::confirmation_group);
+        OL_CHECK(
+            LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+            scene::SceneStepKind::present);
+    }
+
+    auto& shop = ranger->shops[0U];
+    for (std::size_t slot = 0U; slot < model::shop_word::item_count; ++slot) {
+        shop.set_word(model::shop_word::total_begin + slot, 0);
+    }
+    open_shop();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == -1);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x98U, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == -1);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x9EU, false, false) == app::LegacyKeyStateReset::translated);
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == -1);
+    present_shop();
+    OL_CHECK(
+        game.handle_key(0x1BU, false, false) == app::LegacyKeyStateReset::translated);
+}
+
 void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     using namespace openlegend;
     using app::LegacyGameRuntimeTestAccess;
@@ -2965,6 +3109,7 @@ int main() {
     check_picture_animation_tick_gates(data_root);
     check_three_statue_animation_tick_gates(data_root);
     check_ending_prelude_animation_tick_gates(data_root);
+    check_shop_input_present_gate(data_root);
     check_death_menu_present_gate(data_root);
     check_battle_runtime_transitions(data_root);
     check_scene_load_runtime(data_root);

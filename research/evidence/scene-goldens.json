@@ -7249,6 +7249,164 @@
       ],
       "cancel_key": 27,
       "selection_wraps": true,
+      "input_loop_order": [
+        "read_last_key",
+        "dispatch_or_wait",
+        "redraw_and_present_if_still_active",
+        "read_last_key"
+      ],
+      "input_vectors_sha256": "3dedf37e87641f62bf399b79c1877cd6b656993fc98d4065db39e3013e017515",
+      "input_vectors": [
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 0,
+          "action": "wait",
+          "selection_after": 0,
+          "cleared": [],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 49,
+          "action": "wait",
+          "selection_after": 0,
+          "cleared": [],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 152,
+          "action": "down",
+          "selection_after": 1,
+          "cleared": [
+            "last_key",
+            "down_flag"
+          ],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 4,
+          "key": 152,
+          "action": "down",
+          "selection_after": 0,
+          "cleared": [
+            "last_key",
+            "down_flag"
+          ],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 158,
+          "action": "up",
+          "selection_after": 4,
+          "cleared": [
+            "last_key",
+            "up_flag"
+          ],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 3,
+          "key": 158,
+          "action": "up",
+          "selection_after": 2,
+          "cleared": [
+            "last_key",
+            "up_flag"
+          ],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 0,
+          "selection_before": 0,
+          "key": 152,
+          "action": "down",
+          "selection_after": 1,
+          "cleared": [
+            "last_key",
+            "down_flag"
+          ],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 0,
+          "selection_before": 0,
+          "key": 158,
+          "action": "up",
+          "selection_after": -1,
+          "cleared": [
+            "last_key",
+            "up_flag"
+          ],
+          "redraw_before_next_read": true
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 13,
+          "action": "confirm",
+          "selection_after": 0,
+          "cleared": [
+            "last_key",
+            "confirm_flag",
+            "enter_flag",
+            "insert_flag"
+          ],
+          "redraw_before_next_read": false
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 32,
+          "action": "confirm",
+          "selection_after": 0,
+          "cleared": [
+            "last_key",
+            "confirm_flag",
+            "enter_flag",
+            "insert_flag"
+          ],
+          "redraw_before_next_read": false
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 150,
+          "action": "confirm",
+          "selection_after": 0,
+          "cleared": [
+            "last_key",
+            "confirm_flag",
+            "enter_flag",
+            "insert_flag"
+          ],
+          "redraw_before_next_read": false
+        },
+        {
+          "visible_count": 5,
+          "selection_before": 0,
+          "key": 27,
+          "action": "cancel",
+          "selection_after": 0,
+          "cleared": [
+            "last_key",
+            "escape_flag"
+          ],
+          "redraw_before_next_read": false
+        }
+      ],
+      "undefined_empty_navigation": {
+        "down_from_zero": 1,
+        "up_from_zero": -1,
+        "modern_stable_selection": -1
+      },
       "panel": [
         94,
         80,

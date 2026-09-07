@@ -683,6 +683,49 @@ def ending_prelude_contract(
     return frames
 
 
+def shop_input_contract(
+    visible_count: int,
+    selection: int,
+    key: int,
+) -> dict[str, object]:
+    result: dict[str, object] = {
+        "visible_count": visible_count,
+        "selection_before": selection,
+        "key": key,
+    }
+    last_selection = visible_count - 1
+    if key == 0x98:
+        result["action"] = "down"
+        result["selection_after"] = (
+            selection ^ last_selection if selection == last_selection else selection + 1
+        )
+        result["cleared"] = ["last_key", "down_flag"]
+        result["redraw_before_next_read"] = True
+    elif key == 0x9E:
+        result["action"] = "up"
+        result["selection_after"] = last_selection if selection == 0 else selection - 1
+        result["cleared"] = ["last_key", "up_flag"]
+        result["redraw_before_next_read"] = True
+    elif key in (0x0D, 0x20, 0x96):
+        result["action"] = "confirm"
+        result["selection_after"] = selection
+        result["cleared"] = [
+            "last_key", "confirm_flag", "enter_flag", "insert_flag",
+        ]
+        result["redraw_before_next_read"] = False
+    elif key == 0x1B:
+        result["action"] = "cancel"
+        result["selection_after"] = selection
+        result["cleared"] = ["last_key", "escape_flag"]
+        result["redraw_before_next_read"] = False
+    else:
+        result["action"] = "wait"
+        result["selection_after"] = selection
+        result["cleared"] = []
+        result["redraw_before_next_read"] = True
+    return result
+
+
 def three_statue_animation_trace(
     scene_words: tuple[int, ...],
     event_words: tuple[int, ...],
@@ -6875,6 +6918,26 @@ def main() -> None:
         ]
         for case in shop_cases
     }
+    shop_input_vectors = [
+        shop_input_contract(visible_count, selection, key)
+        for visible_count, selection, key in (
+            (5, 0, 0x00),
+            (5, 0, 0x31),
+            (5, 0, 0x98),
+            (5, 4, 0x98),
+            (5, 0, 0x9E),
+            (5, 3, 0x9E),
+            (0, 0, 0x98),
+            (0, 0, 0x9E),
+            (5, 0, 0x0D),
+            (5, 0, 0x20),
+            (5, 0, 0x96),
+            (5, 0, 0x1B),
+        )
+    ]
+    shop_input_vector_stream = json.dumps(
+        shop_input_vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
     merchant_hide_cases = [
         {"scene": 0, "events": []},
         {"scene": 1, "events": [16, 17, 18]},
@@ -7507,6 +7570,19 @@ def main() -> None:
                 "confirm_keys": [0x0D, 0x20, 0x96],
                 "cancel_key": 0x1B,
                 "selection_wraps": True,
+                "input_loop_order": [
+                    "read_last_key",
+                    "dispatch_or_wait",
+                    "redraw_and_present_if_still_active",
+                    "read_last_key",
+                ],
+                "input_vectors_sha256": sha256(shop_input_vector_stream),
+                "input_vectors": shop_input_vectors,
+                "undefined_empty_navigation": {
+                    "down_from_zero": 1,
+                    "up_from_zero": -1,
+                    "modern_stable_selection": -1,
+                },
                 "panel": [94, 80, 140, "visible_count*20+20"],
                 "name_position": [104, "90+visible_index*20"],
                 "price_format": "%3d",
