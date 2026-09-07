@@ -998,6 +998,23 @@ BATTLE_PRACTICE_RELOCATION_OFFSETS = (
     0x7A4, 0x7A9, 0x7C1, 0x7C6, 0x7FC, 0x80C, 0x813,
 )
 BATTLE_PRACTICE_CALLER_SITES = (0x3B67B,)
+BATTLE_CRAFTING_ADDRESS = 0x3C2AC
+BATTLE_CRAFTING_END = 0x3C563
+BATTLE_CRAFTING_CALL_OFFSETS = (
+    0x005, 0x01A, 0x0F5, 0x115, 0x156, 0x177,
+    0x194, 0x1A7, 0x1AF, 0x1DD, 0x208, 0x28C,
+)
+BATTLE_CRAFTING_CALL_TARGETS = (
+    0x3ED1E, 0x3EEC7, 0x3D612, 0x3AA85, 0x3EF4A, 0x2CEBF,
+    0x3D832, 0x3D6D1, 0x20C32, 0x3D612, 0x2B227, 0x2B227,
+)
+BATTLE_CRAFTING_RELOCATION_OFFSETS = (
+    0x02A, 0x031, 0x051, 0x05B, 0x06A, 0x083, 0x08A, 0x0BC, 0x0C3,
+    0x0CC, 0x128, 0x133, 0x144, 0x14D, 0x152, 0x161, 0x187, 0x18C,
+    0x19E, 0x1A3, 0x1CE, 0x1D5, 0x1E9, 0x1F0, 0x1F8, 0x200, 0x21B,
+    0x245, 0x25F, 0x266, 0x26D, 0x274, 0x27C, 0x284, 0x2A4,
+)
+BATTLE_CRAFTING_CALLER_SITES = (0x3B6A1,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -9852,6 +9869,389 @@ def battle_practice_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_crafting_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_CRAFTING_ADDRESS,
+        end=BATTLE_CRAFTING_END,
+        call_offsets=BATTLE_CRAFTING_CALL_OFFSETS,
+        expected_call_targets=BATTLE_CRAFTING_CALL_TARGETS,
+        relocation_offsets=BATTLE_CRAFTING_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_CRAFTING_CALLER_SITES,
+        instruction_count=171,
+        branch_count=22,
+    )
+    if contract["raw_sha256"] != (
+        "b4d9ca468242ba9ee849d655c3cfd8a14bc3055c9d5b6935c5fe8e14833f248b"
+    ):
+        raise ValueError("Z.DAT battle crafting raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "9bfb26c8efcf38761e0ca9e7cb95c81ffd741a29c3544d2c35b34c13caac6f06"
+    ):
+        raise ValueError("Z.DAT battle crafting relocation image changed")
+
+    crafting_text = z_dat_bytes[
+        0x58AF3 - Z_DAT_LOAD_BASE:0x58B00 - Z_DAT_LOAD_BASE
+    ]
+    if crafting_text != bytes.fromhex("257320bb73b379a55820257300"):
+        raise ValueError("Z.DAT battle crafting success text changed")
+    shared_tail = z_dat_bytes[
+        0x3CBDB - Z_DAT_LOAD_BASE:0x3CBE3 - Z_DAT_LOAD_BASE
+    ]
+    if shared_tail != bytes.fromhex("83c4185d5f5e5bc3"):
+        raise ValueError("Z.DAT battle crafting shared tail changed")
+    caller = z_dat_bytes[
+        0x3B590 - Z_DAT_LOAD_BASE:0x3B6AA - Z_DAT_LOAD_BASE
+    ]
+    caller_sha256 = sha256(caller)
+    if caller_sha256 != "d1d25bea4f5806c40fc98c9c16546f9df27d0a8ea5783653363d881e98180ddc":
+        raise ValueError("Z.DAT battle crafting caller gate changed")
+
+    def signed_i32(value: int) -> int:
+        value &= 0xFFFFFFFF
+        return value - 0x100000000 if value >= 0x80000000 else value
+
+    def multiply_i32(lhs: int, rhs: int) -> int:
+        return signed_i32((lhs & 0xFFFFFFFF) * (rhs & 0xFFFFFFFF))
+
+    def inventory_snapshot(inventory: list[list[int]]) -> dict[str, object]:
+        packed = b"".join(
+            struct.pack("<hh", wrapping_i16(item_id), wrapping_i16(count))
+            for item_id, count in inventory
+        )
+        return {
+            "head": [pair.copy() for pair in inventory[:6]],
+            "tail": [pair.copy() for pair in inventory[-2:]],
+            "nondefault_count": sum(pair != [-1, 0] for pair in inventory),
+            "sha256": sha256(packed),
+        }
+
+    def simulate(
+        label: str,
+        *,
+        seed: int = 1,
+        suppress_message: int = 0,
+        iq: int = 60,
+        make_experience: int = 30,
+        need_experience: int = 10,
+        material_item_id: int = 10,
+        products: list[int] | None = None,
+        material_counts: list[int] | None = None,
+        inventory_changes: list[tuple[int, int, int]] | None = None,
+        full_inventory: bool = False,
+    ) -> dict[str, object]:
+        role_iq = wrapping_i16(iq)
+        role_experience = int(make_experience) & 0xFFFF
+        item_need_experience = wrapping_i16(need_experience)
+        need_material = wrapping_i16(material_item_id)
+        recipe_products = [wrapping_i16(value) for value in (
+            products if products is not None else [20, -1, -1, -1, -1]
+        )]
+        recipe_counts = [wrapping_i16(value) for value in (
+            material_counts if material_counts is not None else [2, 0, 0, 0, 0]
+        )]
+        if len(recipe_products) != 5 or len(recipe_counts) != 5:
+            raise ValueError("battle crafting vectors require five recipes")
+        inventory = [[-1, 0] for _ in range(200)]
+        if full_inventory:
+            inventory = [[wrapping_i16(1000 + slot), 1] for slot in range(200)]
+        for slot, item_id, count in inventory_changes or []:
+            if not 0 <= slot < 200:
+                raise ValueError("battle crafting inventory slot is out of range")
+            inventory[slot] = [wrapping_i16(item_id), wrapping_i16(count)]
+        before = inventory_snapshot(inventory)
+
+        factor = 7 - trunc_div(role_iq, 15)
+        required_experience = multiply_i32(item_need_experience, factor)
+        result: dict[str, object] = {
+            "label": label,
+            "seed": seed & 0xFFFFFFFF,
+            "suppress_message": suppress_message,
+            "role": {
+                "iq": role_iq,
+                "make_item_experience_before": role_experience,
+                "make_item_experience_after": role_experience,
+            },
+            "item": {
+                "need_make_item_experience": item_need_experience,
+                "need_material": need_material,
+                "products": recipe_products,
+                "material_counts": recipe_counts,
+            },
+            "factor": factor,
+            "required_experience": required_experience,
+            "material_slot": -1,
+            "eligible_recipes": [],
+            "selection_rng": [],
+            "selected_recipe": -1,
+            "product_item_id": -1,
+            "message_calls": [],
+            "product_slot": -1,
+            "product_count_added": 0,
+            "material_count_after": None,
+            "material_slot_deleted": False,
+            "inventory_full": False,
+            "crafted": False,
+            "exit": "insufficient_experience",
+            "rng_state_after": seed & 0xFFFFFFFF,
+            "inventory_before": before,
+            "inventory_after": before,
+        }
+        if role_experience < required_experience:
+            return result
+        if item_need_experience <= 0:
+            result["exit"] = "nonpositive_need_experience"
+            return result
+
+        material_slot = next(
+            (slot for slot, pair in enumerate(inventory) if pair[0] == need_material),
+            -1,
+        )
+        result["material_slot"] = material_slot
+        if material_slot < 0:
+            result["exit"] = "material_not_found"
+            return result
+        eligible = [
+            recipe for recipe in range(5)
+            if inventory[material_slot][1] >= recipe_counts[recipe]
+            and recipe_products[recipe] != -1
+        ]
+        result["eligible_recipes"] = eligible
+        if not eligible:
+            result["exit"] = "no_eligible_recipe"
+            return result
+
+        state = seed & 0xFFFFFFFF
+        while True:
+            choice, state = legacy_bounded(state, 5)
+            result["selection_rng"].append(choice)
+            if choice in eligible:
+                break
+        product_item_id = recipe_products[choice]
+        result["selected_recipe"] = choice
+        result["product_item_id"] = product_item_id
+        result["rng_state_after"] = state
+        result["exit"] = "suppressed_after_selection"
+        if suppress_message != 0:
+            return result
+
+        result["message_calls"] = [
+            "battle_render", "format_crafting_text", "draw_box", "draw_text",
+            "present", "clear_last_key_and_wait_nonzero",
+        ]
+        product_slot = next(
+            (slot for slot, pair in enumerate(inventory) if pair[0] == product_item_id),
+            -1,
+        )
+        if product_slot >= 0:
+            addition_zero_based, state = legacy_bounded(state, 3)
+            addition = addition_zero_based + 1
+            inventory[product_slot][1] = wrapping_i16(
+                inventory[product_slot][1] + addition
+            )
+            result["product_slot"] = product_slot
+            result["product_count_added"] = addition
+        else:
+            product_slot = next(
+                (slot for slot, pair in enumerate(inventory) if pair[0] == -1),
+                -1,
+            )
+            if product_slot < 0:
+                result["inventory_full"] = True
+                result["exit"] = "inventory_full_after_message"
+                result["rng_state_after"] = state
+                return result
+            inventory[product_slot][0] = product_item_id
+            inventory[product_slot][1] = wrapping_i16(inventory[product_slot][1] + 1)
+            result["product_slot"] = product_slot
+            result["product_count_added"] = 1
+
+        remaining = wrapping_i16(
+            inventory[material_slot][1] - recipe_counts[choice]
+        )
+        inventory[material_slot][1] = remaining
+        result["material_count_after"] = remaining
+        if remaining <= 0:
+            for source in range(material_slot + 1, 200):
+                inventory[source - 1] = inventory[source].copy()
+            inventory[-1] = [-1, 0]
+            result["material_slot_deleted"] = True
+        role_experience = 0
+        result["role"]["make_item_experience_after"] = role_experience
+        result["crafted"] = True
+        result["exit"] = "crafted"
+        result["rng_state_after"] = state
+        result["inventory_after"] = inventory_snapshot(inventory)
+        return result
+
+    vectors = {
+        "existing_product": simulate(
+            "existing_product",
+            inventory_changes=[(0, 10, 3), (1, 20, 4)],
+        ),
+        "suppressed_after_selection": simulate(
+            "suppressed_after_selection",
+            suppress_message=9,
+            inventory_changes=[(0, 10, 3), (1, 20, 4)],
+        ),
+        "insufficient_experience": simulate(
+            "insufficient_experience",
+            make_experience=29,
+            inventory_changes=[(0, 10, 3), (1, 20, 4)],
+        ),
+        "nonpositive_need_experience": simulate(
+            "nonpositive_need_experience",
+            make_experience=0xFFFF,
+            need_experience=0,
+            inventory_changes=[(0, 10, 3)],
+        ),
+        "first_duplicate_material_blocks_second": simulate(
+            "first_duplicate_material_blocks_second",
+            inventory_changes=[(0, 10, 1), (1, 10, 5), (2, 20, 4)],
+        ),
+        "new_slot_preserves_count_then_adds_one": simulate(
+            "new_slot_preserves_count_then_adds_one",
+            inventory_changes=[(0, 10, 3), (1, -1, 7)],
+        ),
+        "inventory_full_after_message": simulate(
+            "inventory_full_after_message",
+            full_inventory=True,
+            inventory_changes=[(0, 10, 3)],
+        ),
+        "material_delete_shifts_new_product": simulate(
+            "material_delete_shifts_new_product",
+            inventory_changes=[(0, 10, 2), (1, -1, 0)],
+        ),
+        "signed_negative_requirement_material_and_quantity_wrap": simulate(
+            "signed_negative_requirement_material_and_quantity_wrap",
+            iq=32767,
+            make_experience=0,
+            material_counts=[-2, 0, 0, 0, 0],
+            inventory_changes=[(0, 10, -1), (1, 20, 32767)],
+        ),
+        "empty_material_aliases_new_product_slot": simulate(
+            "empty_material_aliases_new_product_slot",
+            material_item_id=-1,
+            material_counts=[1, 0, 0, 0, 0],
+            inventory_changes=[(0, -1, 2)],
+        ),
+    }
+    existing = vectors["existing_product"]
+    if existing["selection_rng"] != [3, 3, 3, 0] or (
+        existing["product_count_added"] != 2
+    ) or existing["material_count_after"] != 1 or (
+        existing["rng_state_after"] != 4_182_499_122
+    ):
+        raise ValueError("battle crafting existing-product vector changed")
+    suppressed = vectors["suppressed_after_selection"]
+    if suppressed["rng_state_after"] != 3_295_386_429 or (
+        suppressed["inventory_after"] != suppressed["inventory_before"]
+    ) or suppressed["role"]["make_item_experience_after"] != 30:
+        raise ValueError("battle crafting suppress-message scope changed")
+    if vectors["first_duplicate_material_blocks_second"]["eligible_recipes"] != []:
+        raise ValueError("battle crafting first-material-slot policy changed")
+    new_slot = vectors["new_slot_preserves_count_then_adds_one"]
+    if new_slot["inventory_after"]["head"][1] != [20, 8] or (
+        new_slot["rng_state_after"] != 3_295_386_429
+    ):
+        raise ValueError("battle crafting new-slot quantity policy changed")
+    full = vectors["inventory_full_after_message"]
+    if not full["inventory_full"] or full["crafted"] or (
+        full["inventory_after"] != full["inventory_before"]
+    ) or full["role"]["make_item_experience_after"] != 30:
+        raise ValueError("battle crafting full-inventory timing changed")
+    deleted = vectors["material_delete_shifts_new_product"]
+    if not deleted["material_slot_deleted"] or (
+        deleted["inventory_after"]["head"][:2] != [[20, 1], [-1, 0]]
+    ):
+        raise ValueError("battle crafting material deletion order changed")
+    signed = vectors["signed_negative_requirement_material_and_quantity_wrap"]
+    if signed["required_experience"] != -21_770 or (
+        signed["material_count_after"] != 1
+    ) or signed["inventory_after"]["head"][1] != [20, -32767]:
+        raise ValueError("battle crafting signed-word arithmetic changed")
+    alias = vectors["empty_material_aliases_new_product_slot"]
+    if alias["product_slot"] != 0 or alias["material_count_after"] != 2 or (
+        alias["inventory_after"]["head"][0] != [20, 2]
+    ):
+        raise ValueError("battle crafting material/product alias order changed")
+
+    vector_sha256 = sha256(
+        json.dumps(vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "8a3918fd77b1c109714d70b3b0c2a51eb8e01c8ae3d22560f3221beaa698c50f":
+        raise ValueError("battle crafting independent vector set changed: " + vector_sha256)
+
+    return {
+        **contract,
+        "basic_block_count": 33,
+        "conditional_branch_count": 20,
+        "unconditional_jump_count": 2,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_CRAFTING_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": [],
+        "shared_tail": {
+            "address": "0x3cbdb", "end": "0x3cbe3", "bytes": shared_tail.hex(),
+            "contract": "add esp,24; pop ebp; pop edi; pop esi; pop ebx; ret",
+            "exit_sites": [
+                "0x3c30d", "0x3c31b", "0x3c392",
+                "0x3c3bb", "0x3c4e1", "0x3c55e",
+            ],
+        },
+        "caller": {
+            "site": "0x3b6a1", "function": "0x3b387",
+            "gate_slice": ["0x3b590", "0x3b6aa"], "gate_sha256": caller_sha256,
+            "reachable_arg1": 0,
+            "reason": "nonzero side and practice-item -1 both skip before the call",
+        },
+        "text": {
+            "address": "0x58af3", "bytes": crafting_text.hex(),
+            "text": "%s 製造出 %s",
+        },
+        "requirement": {
+            "iq_division": "signed truncation toward zero",
+            "factor": "7 - iq/15",
+            "arithmetic": "one signed int32 multiply; full word-domain magnitude is safe",
+            "experience": "unsigned role word compared with signed int32 requirement",
+            "need_experience_gate": "signed word greater than zero after comparison",
+            "material_slot_policy": "first exact item id among 200 slots",
+        },
+        "recipe_selection": {
+            "recipe_count": 5,
+            "quantity_comparison": "signed material quantity >= signed recipe quantity",
+            "product_gate": "product item id is not exactly -1",
+            "random": "repeat bounded(5) until an eligible recipe is selected",
+            "suppression": "nonzero arg1 exits after selection RNG",
+        },
+        "message": {
+            "order": "render, format, box, text, present, new nonzero key, inventory commit",
+            "box": [55, 30, 210, 27],
+            "text_origin": [62, 35],
+            "inventory_full_message_precedes_failure": True,
+        },
+        "inventory_commit": {
+            "existing_product": "first exact id; bounded(3)+1 word addition",
+            "new_product": "first id -1; write id and increment existing count word by one",
+            "material": "remembered slot; word subtraction after product addition",
+            "delete": "signed remaining quantity <=0 calls independent delete owner",
+            "make_item_experience_after_success": 0,
+            "full_inventory": "leave inventory/material/experience unchanged",
+        },
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern host safely rejects invalid role/item indices and splits the synchronous "
+            "message/input pause into prepare/present/commit; legal caller-domain RNG, word "
+            "arithmetic, inventory mutation order and full-inventory behavior are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, flag clear, RNG, renderer, format/box/text/present/input, inventory "
+            "delete, sole settlement caller and shared tail remain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -14103,6 +14503,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_settlement_machine": battle_settlement_contract(z_dat_bytes),
         "battle_level_up_machine": battle_level_up_contract(z_dat_bytes),
         "battle_practice_machine": battle_practice_contract(z_dat_bytes),
+        "battle_crafting_machine": battle_crafting_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

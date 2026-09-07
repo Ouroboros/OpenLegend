@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为77/81；其余4项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为78/81；其余3项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、4项为 `implemented_pending_review`、77项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、3项为 `implemented_pending_review`、78项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -466,6 +466,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 机器以signed `7-IQ/15`、首个同ID槽的unsigned等级/100和两次32位回绕乘法计算需求；练功经验以unsigned word参与signed比较。成功提示及新非零键等待先于全部角色提交。最大HP/MP先word回绕后只做signed 999上限，十四项能力及带毒攻击夹0..100，内力类型只认物品值2，左右互搏只在当前0时原样写入，最后清练功经验。物品武功ID大于0时，提交阶段扫描全部十槽：每个同ID且unsigned等级小于899的槽按序加100并立即各显示一次升级提示；任何同ID槽含满级槽都阻止空槽学习。完全无同ID时仅向首个signed非正槽写武功ID，保留旧等级word。
 
 首轮对照发现现代只更新首个同ID槽，且需求以C++ signed `int32_t`直接连乘；现分别改为全十槽提交和两次显式32位模乘。Session按机器时序在练功提示确认后只保留首个待提示槽写入，后续重复槽在前一武功提示确认后才逐个提交并排下一条消息。修正后从入口重审全部415条指令零新增合法域差异；重复槽`[199,899,898]→[299,899,998]`、需求回绕`-148762224`、满级阻止插槽、空槽保留等级、`magic_id=0`、字段回绕和两条Session武功提示回归通过。独立向量SHA256=`9570d8c53815699a00bd40c42f8a3bd77bf5432adadf93762be56b952138d016`；Golden三生成一致且历史70键逐值不变，71键SHA256=`1d071ae2dcb673d02e0079ae35dcecb3633f053ddd0fa60bd653be15a2c4f31d`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_after_fix`，caller、UI/input helper、制造和共享尾不传播closure。
+
+## 43. 战后制造最终REVIEW
+
+`sub_3C2AC @ 0x3C2AC..0x3C563`机器身份固定为695 bytes、171条连续指令、33个IDA flow block、20个条件分支、2个无条件跳转、35处重定位、12次direct call、唯一caller `0x3B6A1`且无本地RET；raw/loaded SHA256为`b4d9ca468242ba9ee849d655c3cfd8a14bc3055c9d5b6935c5fe8e14833f248b`与`9bfb26c8efcf38761e0ca9e7cb95c81ffd741a29c3544d2c35b34c13caac6f06`。六个出口进入独立共享尾`0x3CBDB`；唯一caller先拒绝非零side与训练物品`-1`，真实提示抑制参数恒0。
+
+机器以signed `7-IQ/15`和一次32位乘法计算制造需求，角色经验按unsigned word比较且原需求还须signed大于0；只取200槽中首个材料ID匹配槽。五配方以signed数量比较和产物ID非-1标记可用项，再重复`bounded(5)`直到抽中可用配方。参数1非零在选择RNG后退出；正常路径先完成战场重画、Big5 `%s 製造出 %s`、固定框/文字、present和新非零键等待，之后才修改库存。已有产物消费`bounded(3)+1`并加数量word；新产物写首个ID=-1槽并把旧count word只加1。随后按记住的材料槽扣数量，signed结果不大于0时调用独立删除owner左移，成功最后清制造经验；满库存时提示已经显示，但不消费数量RNG、不扣材料、不清经验。
+
+逐基本块对照`BattleSetup::apply_battle_crafting`、`commit_battle_crafting`与`BattleSession`未发现合法caller域产品差异；宿主把同步UI拆成prepare/present/input/commit，但配方RNG在提示前、库存和已有产物数量RNG在确认后，保留机器可观察顺序。新增首材料槽、抑制RNG、新槽旧count+1、满库存零提交、材料删除左移、negative requirement/signed材料、数量回绕及材料/产物同槽别名回归；Session进一步锁定确认前库存不变、确认后材料3→1/产物4→6、制造经验0和共享RNG终态`4182499122`。独立向量SHA256=`8a3918fd77b1c109714d70b3b0c2a51eb8e01c8ae3d22560f3221beaa698c50f`；Golden三生成一致且历史71键逐值不变，72键SHA256=`c9963790de069ce61cd899976114187d608561644e75e70b7ab8ae2dc65736b4`。本owner归类`platform_adapted / converged_no_new_differences`，caller、UI/RNG helper、库存删除和共享尾不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

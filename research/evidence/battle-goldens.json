@@ -18536,6 +18536,1493 @@
     "platform_adaptation_boundary": "modern host safely rejects invalid role/item indices and splits synchronous messages into preview/present/input/commit phases; legal role/item word arithmetic, repeated-slot write order and per-slot message timing are preserved",
     "closure_boundary": "stack probe, renderer, text/box/present/input callees, sole settlement caller and the shared tail remain independent owners"
   },
+  "battle_crafting_machine": {
+    "address": "0x3c2ac",
+    "end": "0x3c563",
+    "raw_offset": "0x35cac",
+    "size": 695,
+    "instruction_count": 171,
+    "branch_count": 22,
+    "raw_sha256": "b4d9ca468242ba9ee849d655c3cfd8a14bc3055c9d5b6935c5fe8e14833f248b",
+    "loaded_sha256": "9bfb26c8efcf38761e0ca9e7cb95c81ffd741a29c3544d2c35b34c13caac6f06",
+    "relocation_count": 35,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3c2b1",
+      "0x3c2c6",
+      "0x3c3a1",
+      "0x3c3c1",
+      "0x3c402",
+      "0x3c423",
+      "0x3c440",
+      "0x3c453",
+      "0x3c45b",
+      "0x3c489",
+      "0x3c4b4",
+      "0x3c538"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3eec7",
+      "0x3d612",
+      "0x3aa85",
+      "0x3ef4a",
+      "0x2cebf",
+      "0x3d832",
+      "0x3d6d1",
+      "0x20c32",
+      "0x3d612",
+      "0x2b227",
+      "0x2b227"
+    ],
+    "callers": [
+      "0x3b6a1"
+    ],
+    "basic_block_count": 33,
+    "conditional_branch_count": 20,
+    "unconditional_jump_count": 2,
+    "relocation_offsets": [
+      "0x2a",
+      "0x31",
+      "0x51",
+      "0x5b",
+      "0x6a",
+      "0x83",
+      "0x8a",
+      "0xbc",
+      "0xc3",
+      "0xcc",
+      "0x128",
+      "0x133",
+      "0x144",
+      "0x14d",
+      "0x152",
+      "0x161",
+      "0x187",
+      "0x18c",
+      "0x19e",
+      "0x1a3",
+      "0x1ce",
+      "0x1d5",
+      "0x1e9",
+      "0x1f0",
+      "0x1f8",
+      "0x200",
+      "0x21b",
+      "0x245",
+      "0x25f",
+      "0x266",
+      "0x26d",
+      "0x274",
+      "0x27c",
+      "0x284",
+      "0x2a4"
+    ],
+    "local_return_sites": [],
+    "shared_tail": {
+      "address": "0x3cbdb",
+      "end": "0x3cbe3",
+      "bytes": "83c4185d5f5e5bc3",
+      "contract": "add esp,24; pop ebp; pop edi; pop esi; pop ebx; ret",
+      "exit_sites": [
+        "0x3c30d",
+        "0x3c31b",
+        "0x3c392",
+        "0x3c3bb",
+        "0x3c4e1",
+        "0x3c55e"
+      ]
+    },
+    "caller": {
+      "site": "0x3b6a1",
+      "function": "0x3b387",
+      "gate_slice": [
+        "0x3b590",
+        "0x3b6aa"
+      ],
+      "gate_sha256": "d1d25bea4f5806c40fc98c9c16546f9df27d0a8ea5783653363d881e98180ddc",
+      "reachable_arg1": 0,
+      "reason": "nonzero side and practice-item -1 both skip before the call"
+    },
+    "text": {
+      "address": "0x58af3",
+      "bytes": "257320bb73b379a55820257300",
+      "text": "%s 製造出 %s"
+    },
+    "requirement": {
+      "iq_division": "signed truncation toward zero",
+      "factor": "7 - iq/15",
+      "arithmetic": "one signed int32 multiply; full word-domain magnitude is safe",
+      "experience": "unsigned role word compared with signed int32 requirement",
+      "need_experience_gate": "signed word greater than zero after comparison",
+      "material_slot_policy": "first exact item id among 200 slots"
+    },
+    "recipe_selection": {
+      "recipe_count": 5,
+      "quantity_comparison": "signed material quantity >= signed recipe quantity",
+      "product_gate": "product item id is not exactly -1",
+      "random": "repeat bounded(5) until an eligible recipe is selected",
+      "suppression": "nonzero arg1 exits after selection RNG"
+    },
+    "message": {
+      "order": "render, format, box, text, present, new nonzero key, inventory commit",
+      "box": [
+        55,
+        30,
+        210,
+        27
+      ],
+      "text_origin": [
+        62,
+        35
+      ],
+      "inventory_full_message_precedes_failure": true
+    },
+    "inventory_commit": {
+      "existing_product": "first exact id; bounded(3)+1 word addition",
+      "new_product": "first id -1; write id and increment existing count word by one",
+      "material": "remembered slot; word subtraction after product addition",
+      "delete": "signed remaining quantity <=0 calls independent delete owner",
+      "make_item_experience_after_success": 0,
+      "full_inventory": "leave inventory/material/experience unchanged"
+    },
+    "vectors": {
+      "existing_product": {
+        "label": "existing_product",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 0
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [
+          "battle_render",
+          "format_crafting_text",
+          "draw_box",
+          "draw_text",
+          "present",
+          "clear_last_key_and_wait_nonzero"
+        ],
+        "product_slot": 1,
+        "product_count_added": 2,
+        "material_count_after": 1,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": true,
+        "exit": "crafted",
+        "rng_state_after": 4182499122,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "5a74b5f2fde07d607a4e076b7580d07c04c88dfaaa7b022a6c675a4b86547a9e"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              1
+            ],
+            [
+              20,
+              6
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "ce852be161c991f68e05bb011f822a8f54e08e4d27a2bd35e2ece77749cee9fa"
+        }
+      },
+      "suppressed_after_selection": {
+        "label": "suppressed_after_selection",
+        "seed": 1,
+        "suppress_message": 9,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 30
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [],
+        "product_slot": -1,
+        "product_count_added": 0,
+        "material_count_after": null,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": false,
+        "exit": "suppressed_after_selection",
+        "rng_state_after": 3295386429,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "5a74b5f2fde07d607a4e076b7580d07c04c88dfaaa7b022a6c675a4b86547a9e"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "5a74b5f2fde07d607a4e076b7580d07c04c88dfaaa7b022a6c675a4b86547a9e"
+        }
+      },
+      "insufficient_experience": {
+        "label": "insufficient_experience",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 29,
+          "make_item_experience_after": 29
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": -1,
+        "eligible_recipes": [],
+        "selection_rng": [],
+        "selected_recipe": -1,
+        "product_item_id": -1,
+        "message_calls": [],
+        "product_slot": -1,
+        "product_count_added": 0,
+        "material_count_after": null,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": false,
+        "exit": "insufficient_experience",
+        "rng_state_after": 1,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "5a74b5f2fde07d607a4e076b7580d07c04c88dfaaa7b022a6c675a4b86547a9e"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "5a74b5f2fde07d607a4e076b7580d07c04c88dfaaa7b022a6c675a4b86547a9e"
+        }
+      },
+      "nonpositive_need_experience": {
+        "label": "nonpositive_need_experience",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 65535,
+          "make_item_experience_after": 65535
+        },
+        "item": {
+          "need_make_item_experience": 0,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 0,
+        "material_slot": -1,
+        "eligible_recipes": [],
+        "selection_rng": [],
+        "selected_recipe": -1,
+        "product_item_id": -1,
+        "message_calls": [],
+        "product_slot": -1,
+        "product_count_added": 0,
+        "material_count_after": null,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": false,
+        "exit": "nonpositive_need_experience",
+        "rng_state_after": 1,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 1,
+          "sha256": "2b16b3b0a719fc47b84ddd8f1e64916055a89da1aa4bd41f40f9b780ef2b8e36"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 1,
+          "sha256": "2b16b3b0a719fc47b84ddd8f1e64916055a89da1aa4bd41f40f9b780ef2b8e36"
+        }
+      },
+      "first_duplicate_material_blocks_second": {
+        "label": "first_duplicate_material_blocks_second",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 30
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [],
+        "selection_rng": [],
+        "selected_recipe": -1,
+        "product_item_id": -1,
+        "message_calls": [],
+        "product_slot": -1,
+        "product_count_added": 0,
+        "material_count_after": null,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": false,
+        "exit": "no_eligible_recipe",
+        "rng_state_after": 1,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              1
+            ],
+            [
+              10,
+              5
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 3,
+          "sha256": "b8c599aac9361c0caf906e44b526386a7e18a490c08888920e2c96a3e1687bda"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              1
+            ],
+            [
+              10,
+              5
+            ],
+            [
+              20,
+              4
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 3,
+          "sha256": "b8c599aac9361c0caf906e44b526386a7e18a490c08888920e2c96a3e1687bda"
+        }
+      },
+      "new_slot_preserves_count_then_adds_one": {
+        "label": "new_slot_preserves_count_then_adds_one",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 0
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [
+          "battle_render",
+          "format_crafting_text",
+          "draw_box",
+          "draw_text",
+          "present",
+          "clear_last_key_and_wait_nonzero"
+        ],
+        "product_slot": 1,
+        "product_count_added": 1,
+        "material_count_after": 1,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": true,
+        "exit": "crafted",
+        "rng_state_after": 3295386429,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              -1,
+              7
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "1a198d81c44111f71b215813e6abf31088cc91d590eb40672b9b7eb76e9c9acb"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              1
+            ],
+            [
+              20,
+              8
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "e6d10ff2f4d84cb2fd23f69202814fe2c36aa41bbf7a5a8e1626662e674e4484"
+        }
+      },
+      "inventory_full_after_message": {
+        "label": "inventory_full_after_message",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 30
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [
+          "battle_render",
+          "format_crafting_text",
+          "draw_box",
+          "draw_text",
+          "present",
+          "clear_last_key_and_wait_nonzero"
+        ],
+        "product_slot": -1,
+        "product_count_added": 0,
+        "material_count_after": null,
+        "material_slot_deleted": false,
+        "inventory_full": true,
+        "crafted": false,
+        "exit": "inventory_full_after_message",
+        "rng_state_after": 3295386429,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              1001,
+              1
+            ],
+            [
+              1002,
+              1
+            ],
+            [
+              1003,
+              1
+            ],
+            [
+              1004,
+              1
+            ],
+            [
+              1005,
+              1
+            ]
+          ],
+          "tail": [
+            [
+              1198,
+              1
+            ],
+            [
+              1199,
+              1
+            ]
+          ],
+          "nondefault_count": 200,
+          "sha256": "da4385109a64eeac8150c51da881123d4e0b8f66698d3712dac7643e980e71fd"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              3
+            ],
+            [
+              1001,
+              1
+            ],
+            [
+              1002,
+              1
+            ],
+            [
+              1003,
+              1
+            ],
+            [
+              1004,
+              1
+            ],
+            [
+              1005,
+              1
+            ]
+          ],
+          "tail": [
+            [
+              1198,
+              1
+            ],
+            [
+              1199,
+              1
+            ]
+          ],
+          "nondefault_count": 200,
+          "sha256": "da4385109a64eeac8150c51da881123d4e0b8f66698d3712dac7643e980e71fd"
+        }
+      },
+      "material_delete_shifts_new_product": {
+        "label": "material_delete_shifts_new_product",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 0
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [
+          "battle_render",
+          "format_crafting_text",
+          "draw_box",
+          "draw_text",
+          "present",
+          "clear_last_key_and_wait_nonzero"
+        ],
+        "product_slot": 1,
+        "product_count_added": 1,
+        "material_count_after": 0,
+        "material_slot_deleted": true,
+        "inventory_full": false,
+        "crafted": true,
+        "exit": "crafted",
+        "rng_state_after": 3295386429,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              2
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 1,
+          "sha256": "06513dbd659ab74f9cb0fbe825503e0ca0c0caa43c64e0ff5825dc9eeec73d70"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              20,
+              1
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 1,
+          "sha256": "76b200556817eb58ee4b6be1de2d1aba30425f6f569280acc579a121bc4fbee9"
+        }
+      },
+      "signed_negative_requirement_material_and_quantity_wrap": {
+        "label": "signed_negative_requirement_material_and_quantity_wrap",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 32767,
+          "make_item_experience_before": 0,
+          "make_item_experience_after": 0
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": 10,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            -2,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": -2177,
+        "required_experience": -21770,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [
+          "battle_render",
+          "format_crafting_text",
+          "draw_box",
+          "draw_text",
+          "present",
+          "clear_last_key_and_wait_nonzero"
+        ],
+        "product_slot": 1,
+        "product_count_added": 2,
+        "material_count_after": 1,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": true,
+        "exit": "crafted",
+        "rng_state_after": 4182499122,
+        "inventory_before": {
+          "head": [
+            [
+              10,
+              -1
+            ],
+            [
+              20,
+              32767
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "f7758cec4e77c90f8a1588997b6e20dc2df12987dd579b1397a86f5ba2f9e1c1"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              10,
+              1
+            ],
+            [
+              20,
+              -32767
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 2,
+          "sha256": "a449fc5ec18db6c9868a7c796e18c56ecf1624fc929fbbbbb91c06f269ad5f72"
+        }
+      },
+      "empty_material_aliases_new_product_slot": {
+        "label": "empty_material_aliases_new_product_slot",
+        "seed": 1,
+        "suppress_message": 0,
+        "role": {
+          "iq": 60,
+          "make_item_experience_before": 30,
+          "make_item_experience_after": 0
+        },
+        "item": {
+          "need_make_item_experience": 10,
+          "need_material": -1,
+          "products": [
+            20,
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "material_counts": [
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "factor": 3,
+        "required_experience": 30,
+        "material_slot": 0,
+        "eligible_recipes": [
+          0
+        ],
+        "selection_rng": [
+          3,
+          3,
+          3,
+          0
+        ],
+        "selected_recipe": 0,
+        "product_item_id": 20,
+        "message_calls": [
+          "battle_render",
+          "format_crafting_text",
+          "draw_box",
+          "draw_text",
+          "present",
+          "clear_last_key_and_wait_nonzero"
+        ],
+        "product_slot": 0,
+        "product_count_added": 1,
+        "material_count_after": 2,
+        "material_slot_deleted": false,
+        "inventory_full": false,
+        "crafted": true,
+        "exit": "crafted",
+        "rng_state_after": 3295386429,
+        "inventory_before": {
+          "head": [
+            [
+              -1,
+              2
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 1,
+          "sha256": "e56b4458955157c486dbe2115748a34eb2656d11c0156125d06f5e0ea8c6ff43"
+        },
+        "inventory_after": {
+          "head": [
+            [
+              20,
+              2
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "tail": [
+            [
+              -1,
+              0
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "nondefault_count": 1,
+          "sha256": "7500d85483621ba49ad1cf15aa1e0358f2e3801e133674fd5e1315610f4c50ac"
+        }
+      }
+    },
+    "vector_sha256": "8a3918fd77b1c109714d70b3b0c2a51eb8e01c8ae3d22560f3221beaa698c50f",
+    "platform_adaptation_boundary": "modern host safely rejects invalid role/item indices and splits the synchronous message/input pause into prepare/present/commit; legal caller-domain RNG, word arithmetic, inventory mutation order and full-inventory behavior are preserved",
+    "closure_boundary": "stack probe, flag clear, RNG, renderer, format/box/text/present/input, inventory delete, sole settlement caller and shared tail remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

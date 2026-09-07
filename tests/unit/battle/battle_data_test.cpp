@@ -3039,6 +3039,185 @@ void run_battle_practice_review_test(
     }
 }
 
+void run_battle_crafting_review_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+    const auto configure = [](openlegend::model::RangerState& ranger) {
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::practice_item, 5);
+        role.set_word(role_word::iq, 60);
+        role.set_word(role_word::make_item_experience, 30);
+        item.set_word(item_word::need_make_item_experience, 10);
+        item.set_word(item_word::need_material, 10);
+        for (std::size_t recipe = 0U; recipe < item_word::make_item_count; ++recipe) {
+            item.set_word(item_word::make_item_begin + recipe, -1);
+            item.set_word(item_word::make_item_count_begin + recipe, 0);
+        }
+        item.set_word(item_word::make_item_begin, 20);
+        item.set_word(item_word::make_item_count_begin, 2);
+        for (std::size_t slot = 0U; slot < kInventoryCount; ++slot) {
+            ranger.header.set_inventory(slot, ItemId{-1}, 0);
+        }
+    };
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        ranger.header.set_inventory(0U, ItemId{10}, 3);
+        ranger.header.set_inventory(1U, ItemId{20}, 4);
+        openlegend::random::LegacyRandom random{1U};
+        const auto prepared = setup.apply_battle_crafting(0U, true, random);
+        OL_CHECK(prepared.has_value());
+        OL_CHECK(prepared->recipe_available);
+        OL_CHECK(prepared->recipe_slot == 0);
+        OL_CHECK(!prepared->message_required);
+        OL_CHECK(!prepared->crafted);
+        OL_CHECK(random.state() == 3'295'386'429U);
+        OL_CHECK(ranger.header.inventory_count(0U) == 3);
+        OL_CHECK(ranger.header.inventory_count(1U) == 4);
+        OL_CHECK(ranger.roles[0U].word(role_word::make_item_experience) == 30);
+        const auto committed = setup.commit_battle_crafting(*prepared, random);
+        OL_CHECK(committed.has_value());
+        OL_CHECK(committed->crafted);
+        OL_CHECK(committed->product_count_added == 2);
+        OL_CHECK(ranger.header.inventory_count(0U) == 1);
+        OL_CHECK(ranger.header.inventory_count(1U) == 6);
+        OL_CHECK(ranger.roles[0U].word(role_word::make_item_experience) == 0);
+        OL_CHECK(random.state() == 4'182'499'122U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        ranger.header.set_inventory(0U, ItemId{10}, 1);
+        ranger.header.set_inventory(1U, ItemId{10}, 5);
+        ranger.header.set_inventory(2U, ItemId{20}, 4);
+        openlegend::random::LegacyRandom random{1U};
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        OL_CHECK(result.has_value());
+        OL_CHECK(!result->recipe_available);
+        OL_CHECK(!result->crafted);
+        OL_CHECK(random.state() == 1U);
+        OL_CHECK(ranger.header.inventory_count(0U) == 1);
+        OL_CHECK(ranger.header.inventory_count(1U) == 5);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        ranger.header.set_inventory(0U, ItemId{10}, 3);
+        ranger.header.set_inventory(1U, ItemId{-1}, 7);
+        openlegend::random::LegacyRandom random{1U};
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->crafted);
+        OL_CHECK(result->created_inventory_slot);
+        OL_CHECK(result->product_count_added == 1);
+        OL_CHECK(ranger.header.inventory_item(1U).value == 20);
+        OL_CHECK(ranger.header.inventory_count(1U) == 8);
+        OL_CHECK(ranger.header.inventory_count(0U) == 1);
+        OL_CHECK(random.state() == 3'295'386'429U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        ranger.header.set_inventory(0U, ItemId{10}, 3);
+        for (std::size_t slot = 1U; slot < kInventoryCount; ++slot) {
+            ranger.header.set_inventory(
+                slot,
+                ItemId{static_cast<std::int16_t>(1'000 + slot)},
+                1);
+        }
+        openlegend::random::LegacyRandom random{1U};
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->recipe_available);
+        OL_CHECK(result->message_required);
+        OL_CHECK(result->inventory_full);
+        OL_CHECK(!result->crafted);
+        OL_CHECK(ranger.header.inventory_count(0U) == 3);
+        OL_CHECK(ranger.roles[0U].word(role_word::make_item_experience) == 30);
+        OL_CHECK(random.state() == 3'295'386'429U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        ranger.header.set_inventory(0U, ItemId{10}, 2);
+        ranger.header.set_inventory(1U, ItemId{-1}, 0);
+        openlegend::random::LegacyRandom random{1U};
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->crafted);
+        OL_CHECK(result->created_inventory_slot);
+        OL_CHECK(ranger.header.inventory_item(0U).value == 20);
+        OL_CHECK(ranger.header.inventory_count(0U) == 1);
+        OL_CHECK(ranger.header.inventory_item(1U).value == -1);
+        OL_CHECK(ranger.roles[0U].word(role_word::make_item_experience) == 0);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::iq, 32767);
+        role.set_word(role_word::make_item_experience, 0);
+        item.set_word(item_word::make_item_count_begin, -2);
+        ranger.header.set_inventory(0U, ItemId{10}, -1);
+        ranger.header.set_inventory(1U, ItemId{20}, 32767);
+        openlegend::random::LegacyRandom random{1U};
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->required_experience == -21'770);
+        OL_CHECK(result->crafted);
+        OL_CHECK(result->material_count_removed == -2);
+        OL_CHECK(result->product_count_added == 2);
+        OL_CHECK(ranger.header.inventory_count(0U) == 1);
+        OL_CHECK(ranger.header.inventory_count(1U) == -32767);
+        OL_CHECK(role.word(role_word::make_item_experience) == 0);
+        OL_CHECK(random.state() == 4'182'499'122U);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::make_item_experience, -1);
+        item.set_word(item_word::need_make_item_experience, 0);
+        ranger.header.set_inventory(0U, ItemId{10}, 3);
+        openlegend::random::LegacyRandom random{1U};
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->required_experience == 0);
+        OL_CHECK(!result->recipe_available);
+        OL_CHECK(!result->crafted);
+        OL_CHECK(role.word(role_word::make_item_experience) == -1);
+        OL_CHECK(random.state() == 1U);
+    }
+}
+
 void run_player_movement_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
@@ -10779,6 +10958,11 @@ void run_battle_outcome_session_test(
         if (message >= 2U) {
             OL_CHECK(victory_ranger.header.inventory_count(1U) == 4);
         }
+        if (message == 4U) {
+            OL_CHECK(victory_random.state() == 3'295'386'429U);
+            OL_CHECK(victory_ranger.roles[progress_role_id].word(
+                         role_word::make_item_experience) == 30);
+        }
         OL_CHECK(victory.render(framebuffer));
         post_battle_hashes.push_back(fnv1a_bytes(framebuffer.pixels()));
         victory.finish_presented_tick();
@@ -10804,6 +10988,11 @@ void run_battle_outcome_session_test(
         }
     }
     OL_CHECK(victory.post_battle_message_count() == 5U);
+    OL_CHECK(victory_ranger.header.inventory_count(0U) == 1);
+    OL_CHECK(victory_ranger.header.inventory_count(1U) == 6);
+    OL_CHECK(victory_ranger.roles[progress_role_id].word(
+                 role_word::make_item_experience) == 0);
+    OL_CHECK(victory_random.state() == 4'182'499'122U);
     OL_CHECK(role_result->level_up.message_required);
     OL_CHECK(role_result->practice.practice_message_required);
     OL_CHECK(role_result->practice.magic_message_required);
@@ -11036,6 +11225,7 @@ int main() {
     run_ai_support_handler_test(data_root);
     run_post_battle_progression_test(data_root);
     run_battle_practice_review_test(data_root);
+    run_battle_crafting_review_test(data_root);
     run_player_movement_selection_test(data_root);
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);
