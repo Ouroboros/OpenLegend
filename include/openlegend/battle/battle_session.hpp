@@ -477,6 +477,7 @@ private:
     bool player_menu_up_state_{};
     std::uint8_t clear_player_menu_direction_requested_{};
     std::unique_ptr<render::IndexedFramebuffer> player_action_frame_;
+    bool player_action_retain_callee_frame_{};
     bool player_automatic_action_{};
     BattleOutcome outcome_{BattleOutcome::ongoing};
     BattleStepResult result_{BattleStepResult::stay};

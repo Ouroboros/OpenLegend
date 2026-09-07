@@ -21472,6 +21472,572 @@
     "platform_adaptation_boundary": "modern host safely rejects invalid combatant or role indices and invalid portrait assets, uses private formatting storage and deterministic empty-name handling, and splits present/wait phases; legal actor data, draw order, packed colors and pixels are preserved",
     "closure_boundary": "stack probe, box/portrait/text helpers, two caller owners and the shared epilogue's twelve other incoming owner edges remain independent"
   },
+  "battle_player_action_menu_machine": {
+    "address": "0x32e59",
+    "end": "0x33567",
+    "raw_offset": "0x2c859",
+    "size": 1806,
+    "instruction_count": 476,
+    "branch_count": 74,
+    "raw_sha256": "0edde9f93ab49a1b9a7e6f03cd48084355883b573e291d9f15aef2b2abb5969d",
+    "loaded_sha256": "f582efb9246ac54362948d9eb566a60e28e011a22ef82f6cb50bc71c06cd9eab",
+    "relocation_count": 79,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x32e5e",
+      "0x33063",
+      "0x3308c",
+      "0x330b8",
+      "0x330e1",
+      "0x33109",
+      "0x33132",
+      "0x33140",
+      "0x33153",
+      "0x331bb",
+      "0x331e4",
+      "0x3320c",
+      "0x33235",
+      "0x33248",
+      "0x33323",
+      "0x33371",
+      "0x33381",
+      "0x3338e",
+      "0x3339b",
+      "0x333a8",
+      "0x333b5",
+      "0x333bc",
+      "0x333c9",
+      "0x333d6",
+      "0x333f4",
+      "0x3341d",
+      "0x3347a",
+      "0x334a3",
+      "0x334cb",
+      "0x334f4",
+      "0x33502",
+      "0x33515"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3aa85",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3c6d3",
+      "0x3d6d1",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3d6d1",
+      "0x36a98",
+      "0x37734",
+      "0x39776",
+      "0x39b1f",
+      "0x39e88",
+      "0x3a29c",
+      "0x3aa17",
+      "0x22066",
+      "0x3a8a4",
+      "0x3aa4b",
+      "0x3aa85",
+      "0x2cebf",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3ef4a",
+      "0x3d832",
+      "0x3c6d3",
+      "0x3d6d1"
+    ],
+    "callers": [
+      "0x329ee"
+    ],
+    "basic_block_count": 108,
+    "conditional_branch_count": 49,
+    "unconditional_jump_count": 25,
+    "local_return": "0x33566",
+    "dispatch_table": {
+      "address": "0x32e31",
+      "raw_sha256": "7f325f5e0142386dd4529659374173ed44ea64f249d02beba17cc30d63dcb3b0",
+      "targets": [
+        "0x3331d",
+        "0x33369",
+        "0x3337b",
+        "0x33388",
+        "0x33395",
+        "0x333a2",
+        "0x333af",
+        "0x333bc",
+        "0x333c3",
+        "0x333d0"
+      ]
+    },
+    "labels": [
+      {
+        "index": 0,
+        "bytes": "b2beb0ca"
+      },
+      {
+        "index": 1,
+        "bytes": "a7f0c0bb"
+      },
+      {
+        "index": 2,
+        "bytes": "a5ceac72"
+      },
+      {
+        "index": 3,
+        "bytes": "b8d1ac72"
+      },
+      {
+        "index": 4,
+        "bytes": "c2e5c0f8"
+      },
+      {
+        "index": 5,
+        "bytes": "aaabab7e"
+      },
+      {
+        "index": 6,
+        "bytes": "b5a5abdd"
+      },
+      {
+        "index": 7,
+        "bytes": "aaacba41"
+      },
+      {
+        "index": 8,
+        "bytes": "a5f0aea7"
+      },
+      {
+        "index": 9,
+        "bytes": "a6dbb0ca"
+      }
+    ],
+    "availability_vectors": [
+      {
+        "label": "all_thresholds_locked",
+        "physical_power": 5,
+        "round_value": 0,
+        "mp": 999,
+        "use_poison": 19,
+        "detoxification": 19,
+        "medicine": 19,
+        "magic_costs": [],
+        "minimum_magic_cost": 1000,
+        "available": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 5
+      },
+      {
+        "label": "movement_only_threshold",
+        "physical_power": 6,
+        "round_value": 1,
+        "mp": 999,
+        "use_poison": 19,
+        "detoxification": 19,
+        "medicine": 19,
+        "magic_costs": [],
+        "minimum_magic_cost": 1000,
+        "available": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 6
+      },
+      {
+        "label": "minimum_magic_cost_locked",
+        "physical_power": 11,
+        "round_value": 1,
+        "mp": 19,
+        "use_poison": 19,
+        "detoxification": 20,
+        "medicine": 20,
+        "magic_costs": [
+          25,
+          20
+        ],
+        "minimum_magic_cost": 20,
+        "available": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 6
+      },
+      {
+        "label": "attack_and_poison_threshold",
+        "physical_power": 11,
+        "round_value": 1,
+        "mp": 20,
+        "use_poison": 20,
+        "detoxification": 20,
+        "medicine": 20,
+        "magic_costs": [
+          25,
+          20
+        ],
+        "minimum_magic_cost": 20,
+        "available": [
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 8
+      },
+      {
+        "label": "support_power_locked",
+        "physical_power": 50,
+        "round_value": 1,
+        "mp": 20,
+        "use_poison": 20,
+        "detoxification": 20,
+        "medicine": 20,
+        "magic_costs": [
+          20
+        ],
+        "minimum_magic_cost": 20,
+        "available": [
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 8
+      },
+      {
+        "label": "support_power_enabled",
+        "physical_power": 51,
+        "round_value": 1,
+        "mp": 20,
+        "use_poison": 20,
+        "detoxification": 20,
+        "medicine": 20,
+        "magic_costs": [
+          20
+        ],
+        "minimum_magic_cost": 20,
+        "available": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 10
+      },
+      {
+        "label": "empty_magic_sentinel_locked",
+        "physical_power": 11,
+        "round_value": 1,
+        "mp": 999,
+        "use_poison": 0,
+        "detoxification": 0,
+        "medicine": 0,
+        "magic_costs": [],
+        "minimum_magic_cost": 1000,
+        "available": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 6
+      },
+      {
+        "label": "empty_magic_sentinel_enabled",
+        "physical_power": 11,
+        "round_value": 1,
+        "mp": 1000,
+        "use_poison": 0,
+        "detoxification": 0,
+        "medicine": 0,
+        "magic_costs": [],
+        "minimum_magic_cost": 1000,
+        "available": [
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 7
+      },
+      {
+        "label": "signed_negative_magic_cost",
+        "physical_power": 11,
+        "round_value": 1,
+        "mp": -5,
+        "use_poison": 0,
+        "detoxification": 0,
+        "medicine": 0,
+        "magic_costs": [
+          20,
+          -5
+        ],
+        "minimum_magic_cost": -5,
+        "available": [
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "available_count": 7
+      }
+    ],
+    "input_priority": [
+      "down",
+      "up",
+      "enter_or_space_or_keypad_insert"
+    ],
+    "input_trace": [
+      {
+        "frame": "initial_complete_menu_present",
+        "cursor_before": 0,
+        "states": {
+          "down": 1,
+          "up": 1,
+          "confirm": [
+            1,
+            1,
+            1
+          ]
+        },
+        "consumed": "none",
+        "cursor_after": 0,
+        "selected_action": -1
+      },
+      {
+        "frame": "first_poll_present",
+        "cursor_before": 0,
+        "states": {
+          "down": 1,
+          "up": 1,
+          "confirm": [
+            1,
+            1,
+            1
+          ]
+        },
+        "consumed": "down",
+        "cleared": [
+          "down"
+        ],
+        "cursor_after": 1,
+        "selected_action": -1
+      },
+      {
+        "frame": "second_poll_present",
+        "cursor_before": 1,
+        "states": {
+          "down": 0,
+          "up": 1,
+          "confirm": [
+            1,
+            1,
+            1
+          ]
+        },
+        "consumed": "up",
+        "cleared": [
+          "up"
+        ],
+        "cursor_after": 0,
+        "selected_action": -1
+      },
+      {
+        "frame": "third_poll_present",
+        "cursor_before": 0,
+        "states": {
+          "down": 0,
+          "up": 0,
+          "confirm": [
+            1,
+            1,
+            1
+          ]
+        },
+        "consumed": "confirmation",
+        "cleared": [
+          "enter",
+          "space",
+          "keypad_insert"
+        ],
+        "cursor_after": 0,
+        "selected_action": 0,
+        "secondary_cursor_visible_after": false
+      }
+    ],
+    "wrap_vectors": [
+      {
+        "direction": "down",
+        "cursor": 9,
+        "available_count": 10,
+        "result": 0
+      },
+      {
+        "direction": "up",
+        "cursor": 0,
+        "available_count": 10,
+        "result": 9
+      },
+      {
+        "availability": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "cursor": 0,
+        "selected_action": 5
+      }
+    ],
+    "movement_recheck": [
+      {
+        "new_movement": 1,
+        "available_count_before": 10,
+        "available_count_after": 10,
+        "cursor_unchanged": true
+      },
+      {
+        "new_movement": 0,
+        "available_count_before": 10,
+        "available_count_after": 9,
+        "cursor_unchanged": true
+      }
+    ],
+    "common_tail_vectors": [
+      {
+        "label": "redraw_then_continue",
+        "action_done": 0,
+        "result": 0,
+        "action": 7,
+        "full_redraw_before_exit_test": true,
+        "exit": false,
+        "retain_callee_frame_when_continuing": false
+      },
+      {
+        "label": "redraw_then_result_exit",
+        "action_done": 0,
+        "result": 1,
+        "action": 7,
+        "full_redraw_before_exit_test": true,
+        "exit": true,
+        "retain_callee_frame_when_continuing": false
+      },
+      {
+        "label": "redraw_then_wait_exit",
+        "action_done": 0,
+        "result": 0,
+        "action": 6,
+        "full_redraw_before_exit_test": true,
+        "exit": true,
+        "retain_callee_frame_when_continuing": false
+      },
+      {
+        "label": "done_one_exit_without_redraw",
+        "action_done": 1,
+        "result": 0,
+        "action": 7,
+        "full_redraw_before_exit_test": false,
+        "exit": true,
+        "retain_callee_frame_when_continuing": false
+      },
+      {
+        "label": "done_two_retain_callee_frame",
+        "action_done": 2,
+        "result": 0,
+        "action": 7,
+        "full_redraw_before_exit_test": false,
+        "exit": false,
+        "retain_callee_frame_when_continuing": true
+      },
+      {
+        "label": "done_negative_retain_callee_frame",
+        "action_done": -1,
+        "result": 0,
+        "action": 7,
+        "full_redraw_before_exit_test": false,
+        "exit": false,
+        "retain_callee_frame_when_continuing": true
+      }
+    ],
+    "menu_cursor_visibility_writes": [
+      "entry=1",
+      "confirmation=0",
+      "return=0"
+    ],
+    "escape_exit": false,
+    "random_calls": 0
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",

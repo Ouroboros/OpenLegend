@@ -1060,6 +1060,34 @@ BATTLE_STATUS_PANEL_RELOCATION_OFFSETS = (
     0x4A9, 0x4C5, 0x4D2, 0x4D8, 0x4DD, 0x4ED, 0x4F2,
 )
 BATTLE_STATUS_PANEL_CALLER_SITES = (0x33140, 0x33502, 0x33668)
+BATTLE_PLAYER_ACTION_MENU_ADDRESS = 0x32E59
+BATTLE_PLAYER_ACTION_MENU_END = 0x33567
+BATTLE_PLAYER_ACTION_MENU_CALL_OFFSETS = (
+    0x005, 0x20A, 0x233, 0x25F, 0x288, 0x2B0, 0x2D9, 0x2E7,
+    0x2FA, 0x362, 0x38B, 0x3B3, 0x3DC, 0x3EF, 0x4CA, 0x518,
+    0x528, 0x535, 0x542, 0x54F, 0x55C, 0x563, 0x570, 0x57D,
+    0x59B, 0x5C4, 0x621, 0x64A, 0x672, 0x69B, 0x6A9, 0x6BC,
+)
+BATTLE_PLAYER_ACTION_MENU_CALL_TARGETS = (
+    0x3ED1E, 0x3AA85, 0x2CEBF, 0x3EF4A, 0x3D832, 0x3EF4A, 0x3D832,
+    0x3C6D3, 0x3D6D1, 0x3EF4A, 0x3D832, 0x3EF4A, 0x3D832, 0x3D6D1,
+    0x36A98, 0x37734, 0x39776, 0x39B1F, 0x39E88, 0x3A29C, 0x3AA17,
+    0x22066, 0x3A8A4, 0x3AA4B, 0x3AA85, 0x2CEBF, 0x3EF4A, 0x3D832,
+    0x3EF4A, 0x3D832, 0x3C6D3, 0x3D6D1,
+)
+BATTLE_PLAYER_ACTION_MENU_RELOCATION_OFFSETS = (
+    0x022, 0x047, 0x054, 0x05E, 0x076, 0x083, 0x09D, 0x0B1,
+    0x0BB, 0x0CC, 0x0D5, 0x0EB, 0x0F8, 0x110, 0x11D, 0x127,
+    0x140, 0x14D, 0x157, 0x170, 0x17D, 0x187, 0x212, 0x250,
+    0x256, 0x25B, 0x26F, 0x274, 0x2A1, 0x2A7, 0x2AC, 0x2C0,
+    0x2C5, 0x2F1, 0x2F6, 0x353, 0x359, 0x35E, 0x372, 0x377,
+    0x3A4, 0x3AA, 0x3AF, 0x3C3, 0x3C8, 0x3E6, 0x3EB, 0x3F9,
+    0x402, 0x420, 0x429, 0x43F, 0x448, 0x451, 0x45E, 0x465,
+    0x46C, 0x474, 0x4C0, 0x4D8, 0x4E5, 0x4EF, 0x590, 0x5A3,
+    0x612, 0x618, 0x61D, 0x631, 0x636, 0x663, 0x669, 0x66E,
+    0x682, 0x687, 0x6B3, 0x6B8, 0x6CF, 0x6D9, 0x6FC,
+)
+BATTLE_PLAYER_ACTION_MENU_CALLER_SITES = (0x329EE,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -11567,6 +11595,215 @@ def battle_ai_nearest_target_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_player_action_menu_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_PLAYER_ACTION_MENU_ADDRESS,
+        end=BATTLE_PLAYER_ACTION_MENU_END,
+        call_offsets=BATTLE_PLAYER_ACTION_MENU_CALL_OFFSETS,
+        expected_call_targets=BATTLE_PLAYER_ACTION_MENU_CALL_TARGETS,
+        relocation_offsets=BATTLE_PLAYER_ACTION_MENU_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_PLAYER_ACTION_MENU_CALLER_SITES,
+        instruction_count=476,
+        branch_count=74,
+    )
+    if contract["raw_sha256"] != (
+        "0edde9f93ab49a1b9a7e6f03cd48084355883b573e291d9f15aef2b2abb5969d"
+    ):
+        raise ValueError("Z.DAT player action menu raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "f582efb9246ac54362948d9eb566a60e28e011a22ef82f6cb50bc71c06cd9eab"
+    ):
+        raise ValueError("Z.DAT player action menu relocation image changed")
+
+    dispatch_address = 0x32E31
+    dispatch_raw = z_dat_bytes[
+        dispatch_address - Z_DAT_LOAD_BASE:BATTLE_PLAYER_ACTION_MENU_ADDRESS - Z_DAT_LOAD_BASE
+    ]
+    if len(dispatch_raw) != 40:
+        raise ValueError("Z.DAT player action dispatch table is incomplete")
+    dispatch_targets = [
+        value + 0x20000 for value in struct.unpack("<10I", dispatch_raw)
+    ]
+    expected_dispatch_targets = [
+        0x3331D, 0x33369, 0x3337B, 0x33388, 0x33395,
+        0x333A2, 0x333AF, 0x333BC, 0x333C3, 0x333D0,
+    ]
+    if dispatch_targets != expected_dispatch_targets:
+        raise ValueError("Z.DAT player action dispatch table changed")
+
+    labels = []
+    for index in range(10):
+        start = 0x55A06 - Z_DAT_LOAD_BASE + index * 20
+        raw_label = z_dat_bytes[start:start + 20].split(b"\0", 1)[0]
+        labels.append({"index": index, "bytes": raw_label.hex()})
+    if [entry["bytes"] for entry in labels] != [
+        "b2beb0ca", "a7f0c0bb", "a5ceac72", "b8d1ac72", "c2e5c0f8",
+        "aaabab7e", "b5a5abdd", "aaacba41", "a5f0aea7", "a6dbb0ca",
+    ]:
+        raise ValueError("Z.DAT player action labels changed")
+
+    def availability_vector(
+        label: str,
+        *,
+        physical_power: int,
+        round_value: int,
+        mp: int,
+        use_poison: int,
+        detoxification: int,
+        medicine: int,
+        magic_costs: list[int],
+    ) -> dict[str, object]:
+        minimum_magic_cost = 1000
+        available = [0] * 10
+        available[0] = int(physical_power > 5 and round_value > 0)
+        if physical_power > 10:
+            for cost in magic_costs:
+                if cost < minimum_magic_cost:
+                    minimum_magic_cost = cost
+            available[1] = int(minimum_magic_cost <= mp)
+        available[2] = int(physical_power > 10 and use_poison >= 20)
+        available[3] = int(physical_power > 50 and detoxification >= 20)
+        available[4] = int(physical_power > 50 and medicine >= 20)
+        available[5:] = [1] * 5
+        return {
+            "label": label,
+            "physical_power": physical_power,
+            "round_value": round_value,
+            "mp": mp,
+            "use_poison": use_poison,
+            "detoxification": detoxification,
+            "medicine": medicine,
+            "magic_costs": magic_costs,
+            "minimum_magic_cost": minimum_magic_cost,
+            "available": available,
+            "available_count": sum(value == 1 for value in available),
+        }
+
+    availability_vectors = [
+        availability_vector(
+            "all_thresholds_locked", physical_power=5, round_value=0, mp=999,
+            use_poison=19, detoxification=19, medicine=19, magic_costs=[]),
+        availability_vector(
+            "movement_only_threshold", physical_power=6, round_value=1, mp=999,
+            use_poison=19, detoxification=19, medicine=19, magic_costs=[]),
+        availability_vector(
+            "minimum_magic_cost_locked", physical_power=11, round_value=1, mp=19,
+            use_poison=19, detoxification=20, medicine=20, magic_costs=[25, 20]),
+        availability_vector(
+            "attack_and_poison_threshold", physical_power=11, round_value=1, mp=20,
+            use_poison=20, detoxification=20, medicine=20, magic_costs=[25, 20]),
+        availability_vector(
+            "support_power_locked", physical_power=50, round_value=1, mp=20,
+            use_poison=20, detoxification=20, medicine=20, magic_costs=[20]),
+        availability_vector(
+            "support_power_enabled", physical_power=51, round_value=1, mp=20,
+            use_poison=20, detoxification=20, medicine=20, magic_costs=[20]),
+        availability_vector(
+            "empty_magic_sentinel_locked", physical_power=11, round_value=1, mp=999,
+            use_poison=0, detoxification=0, medicine=0, magic_costs=[]),
+        availability_vector(
+            "empty_magic_sentinel_enabled", physical_power=11, round_value=1, mp=1000,
+            use_poison=0, detoxification=0, medicine=0, magic_costs=[]),
+        availability_vector(
+            "signed_negative_magic_cost", physical_power=11, round_value=1, mp=-5,
+            use_poison=0, detoxification=0, medicine=0, magic_costs=[20, -5]),
+    ]
+
+    input_trace = [
+        {
+            "frame": "initial_complete_menu_present",
+            "cursor_before": 0,
+            "states": {"down": 1, "up": 1, "confirm": [1, 1, 1]},
+            "consumed": "none",
+            "cursor_after": 0,
+            "selected_action": -1,
+        },
+        {
+            "frame": "first_poll_present",
+            "cursor_before": 0,
+            "states": {"down": 1, "up": 1, "confirm": [1, 1, 1]},
+            "consumed": "down",
+            "cleared": ["down"],
+            "cursor_after": 1,
+            "selected_action": -1,
+        },
+        {
+            "frame": "second_poll_present",
+            "cursor_before": 1,
+            "states": {"down": 0, "up": 1, "confirm": [1, 1, 1]},
+            "consumed": "up",
+            "cleared": ["up"],
+            "cursor_after": 0,
+            "selected_action": -1,
+        },
+        {
+            "frame": "third_poll_present",
+            "cursor_before": 0,
+            "states": {"down": 0, "up": 0, "confirm": [1, 1, 1]},
+            "consumed": "confirmation",
+            "cleared": ["enter", "space", "keypad_insert"],
+            "cursor_after": 0,
+            "selected_action": 0,
+            "secondary_cursor_visible_after": False,
+        },
+    ]
+
+    common_tail_vectors = []
+    for label, done, result, action in (
+        ("redraw_then_continue", 0, 0, 7),
+        ("redraw_then_result_exit", 0, 1, 7),
+        ("redraw_then_wait_exit", 0, 0, 6),
+        ("done_one_exit_without_redraw", 1, 0, 7),
+        ("done_two_retain_callee_frame", 2, 0, 7),
+        ("done_negative_retain_callee_frame", -1, 0, 7),
+    ):
+        redraw = done == 0
+        exits = done == 1 or result >= 1 or action == 6
+        common_tail_vectors.append({
+            "label": label,
+            "action_done": done,
+            "result": result,
+            "action": action,
+            "full_redraw_before_exit_test": redraw,
+            "exit": exits,
+            "retain_callee_frame_when_continuing": done != 0 and not exits,
+        })
+
+    return {
+        **contract,
+        "basic_block_count": 108,
+        "conditional_branch_count": 49,
+        "unconditional_jump_count": 25,
+        "local_return": "0x33566",
+        "dispatch_table": {
+            "address": hex(dispatch_address),
+            "raw_sha256": sha256(dispatch_raw),
+            "targets": [hex(value) for value in dispatch_targets],
+        },
+        "labels": labels,
+        "availability_vectors": availability_vectors,
+        "input_priority": ["down", "up", "enter_or_space_or_keypad_insert"],
+        "input_trace": input_trace,
+        "wrap_vectors": [
+            {"direction": "down", "cursor": 9, "available_count": 10, "result": 0},
+            {"direction": "up", "cursor": 0, "available_count": 10, "result": 9},
+            {"availability": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+             "cursor": 0, "selected_action": 5},
+        ],
+        "movement_recheck": [
+            {"new_movement": 1, "available_count_before": 10,
+             "available_count_after": 10, "cursor_unchanged": True},
+            {"new_movement": 0, "available_count_before": 10,
+             "available_count_after": 9, "cursor_unchanged": True},
+        ],
+        "common_tail_vectors": common_tail_vectors,
+        "menu_cursor_visibility_writes": ["entry=1", "confirmation=0", "return=0"],
+        "escape_exit": False,
+        "random_calls": 0,
+    }
+
+
 def battle_round_machine_contract(
     z_dat_bytes: bytes, ranger_group_bytes: bytes
 ) -> dict[str, object]:
@@ -15530,6 +15767,7 @@ def build(data_root: Path) -> dict[str, object]:
             battle_hidden_target_cleanup_contract(z_dat_bytes),
         "battle_status_panel_machine":
             battle_status_panel_contract(z_dat_bytes, data_root),
+        "battle_player_action_menu_machine": battle_player_action_menu_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

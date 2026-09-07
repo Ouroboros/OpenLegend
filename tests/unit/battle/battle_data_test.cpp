@@ -7655,6 +7655,8 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     BattleSession non_one_done_session{
         data_root, non_one_done_ranger, non_one_done_random, 4, false};
     reach_player_action(non_one_done_session);
+    const std::vector<std::uint8_t> non_one_menu_frame{
+        framebuffer.pixels().begin(), framebuffer.pixels().end()};
     non_one_done_session.setup().combatants()[0U]
         .words[combatant_word::action_done] = 2;
     OL_CHECK(non_one_done_session.handle_key(0x98U) ==
@@ -7664,11 +7666,33 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(non_one_done_session.handle_key(0x20U) ==
              BattleSessionInputResult::action_selected);
     OL_CHECK(non_one_done_session.phase() == BattleSessionPhase::player_status_selection);
+    OL_CHECK(non_one_done_session.render(framebuffer));
+    non_one_done_session.finish_presented_tick();
+    const std::vector<std::uint8_t> non_one_callee_frame{
+        framebuffer.pixels().begin(), framebuffer.pixels().end()};
+    const auto menu_height =
+        17U * non_one_done_session.player_action_menu().available_count + 10U;
+    std::size_t retained_pixel = non_one_callee_frame.size();
+    for (std::size_t index = 0U; index < non_one_callee_frame.size(); ++index) {
+        const auto x = index % 320U;
+        const auto y = index / 320U;
+        const auto outside_menu = x < 20U || x >= 62U ||
+            y < 19U || y >= 19U + menu_height;
+        if (outside_menu && non_one_callee_frame[index] != non_one_menu_frame[index]) {
+            retained_pixel = index;
+            break;
+        }
+    }
+    OL_CHECK(retained_pixel < non_one_callee_frame.size());
     OL_CHECK(non_one_done_session.handle_key(0x1BU) ==
              BattleSessionInputResult::status_cancelled);
     OL_CHECK(non_one_done_session.phase() == BattleSessionPhase::player_action);
     OL_CHECK(non_one_done_session.player_action_menu().selected_action == -1);
     OL_CHECK(!non_one_done_session.render_state().secondary_cursor_visible);
+    OL_CHECK(non_one_done_session.render(framebuffer));
+    OL_CHECK(framebuffer.pixels()[retained_pixel] == non_one_callee_frame[retained_pixel]);
+    OL_CHECK(framebuffer.pixels()[retained_pixel] != non_one_menu_frame[retained_pixel]);
+    non_one_done_session.finish_presented_tick();
 
     auto filtered_ranger = make_ranger({0, 2, 3, -1, -1, -1});
     openlegend::random::LegacyRandom filtered_random{1U};

@@ -2080,6 +2080,7 @@ bool BattleSession::begin_player_action_menu() {
         static_cast<std::size_t>(availability->available_count);
     player_action_menu_.cursor = 0U;
     player_action_menu_.selected_action = -1;
+    player_action_retain_callee_frame_ = false;
     render_state_.secondary_cursor_visible = true;
     phase_ = BattleSessionPhase::player_action_initial_present;
     diagnostics::log_info(
@@ -3631,6 +3632,7 @@ bool BattleSession::finish_player_action_call(const bool redraw_completed) {
         return finish_current_actor(action);
     }
     player_action_menu_.selected_action = -1;
+    player_action_retain_callee_frame_ = done != 0;
     phase_ = BattleSessionPhase::player_action;
     return true;
 }
@@ -4374,12 +4376,13 @@ bool BattleSession::render_player_action_menu(
             !renderer_.draw_box(framebuffer, 20, 19, 42U, panel_height)) {
             return false;
         }
-    } else {
+    } else if (!player_action_retain_callee_frame_) {
         if (!player_action_frame_) {
             return false;
         }
-        // The polling loop retains the last complete menu frame and only
-        // overwrites labels. It does not reread battlefield or actor status.
+        // Ordinary polling restores the last complete menu frame and only
+        // overwrites labels. A nonzero, non-one action result instead keeps the
+        // delegated callee's current frame, matching the skipped machine redraw.
         framebuffer = *player_action_frame_;
     }
     std::size_t ordinal = 0U;
@@ -4410,10 +4413,13 @@ bool BattleSession::render_player_action_menu(
             !renderer_.render_status_panel(*status_panel, framebuffer)) {
             return false;
         }
+    }
+    if (full_redraw || player_action_retain_callee_frame_) {
         if (!player_action_frame_) {
             player_action_frame_ = std::make_unique<render::IndexedFramebuffer>();
         }
         *player_action_frame_ = framebuffer;
+        player_action_retain_callee_frame_ = false;
     }
     return true;
 }

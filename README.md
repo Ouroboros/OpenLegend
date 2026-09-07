@@ -17,7 +17,7 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B6 已完成**：五层世界、128×128 缓存、陆地/船移动、碰撞与入口、待机/天气周期和逐像素世界绘制。
 - **B7 已完成**：场景、事件、对话与场景/世界往返；`scene-event` closure 为100/100。
 - **B8 已完成**：战斗入口、选择、玩家动作、AI、动画、结算与战后提交；battle closure 为81/81。
-- **B9 进行中**：统一最终汇编→C++ REVIEW当前为`closure=330/349`、`unique_any=273/284`、`unique_all=265/284`。剩余owner集中在`input-font`（33/39已关闭）与`ui`（26/39已关闭）。
+- **B9 进行中**：统一最终汇编→C++ REVIEW当前为`closure=331/349`、`unique_any=273/284`、`unique_all=266/284`。剩余owner集中在`input-font`（34/39已关闭）与`ui`（26/39已关闭）。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 
@@ -38,7 +38,7 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - 9 个标题帧、主/读档/等待逐像素 hash、CFONT 候选、四组新游戏 RNG 向量、双页状态/物品渲染与三槽成功/损坏/写失败会话链；
 - 五层 128×128 cache hash、固定陆地/船轨迹、场景 70/IQ 条件、初始世界与 300 tick 半透明天气 framebuffer；
 - `ALLSIN` 100个六层场景、`ALLDEF` 100×200条十一字段事件、2,977条对话与1,018份KDEF脚本，以及场景输入、跳转、对话和事件opcode的独立Golden；
-- 140条`WAR.STA`记录、26个战场、92套`FIGHT`资源共4,992帧、26槽参战者状态，以及覆盖战斗入口、行动、AI、伤害、状态面板、结算/升级/练功/制造的75项独立Golden。
+- 140条`WAR.STA`记录、26个战场、92套`FIGHT`资源共4,992帧、26槽参战者状态，以及覆盖战斗入口、行动、AI、伤害、状态面板、结算/升级/练功/制造的76项独立Golden。
 
 对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)、[`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md)、[`research/evidence/title-menu-new-game-1to1.md`](research/evidence/title-menu-new-game-1to1.md)、[`research/evidence/world-map-1to1.md`](research/evidence/world-map-1to1.md)、[`research/evidence/scene-event-dialogue-1to1.md`](research/evidence/scene-event-dialogue-1to1.md) 和 [`research/evidence/battle-1to1.md`](research/evidence/battle-1to1.md)。
 

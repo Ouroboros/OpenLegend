@@ -503,7 +503,9 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 
 独立向量覆盖side signed边界、名称NUL 1..8/无NUL、signed `%3d`超宽、hurt/poison阈值及非法MP残值，SHA256为`f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0`。独立原资产绘制从非均匀保留帧生成party/enemy面板FNV64=`0x87ff9c43d54b7bca`/`0x0f803235628e69e5`，C++计划与像素逐值一致。Golden三生成逐字节一致且历史74键不变，正式75键SHA256=`07de27463eb6b7639caf4e9256bff9b93f4b9de8093aa4a007c86313cd6dd199`；Linux/Windows `core/app × Debug/Release`模块关闭八项矩阵全部通过，core各13/13、app各14/14。本owner归类`platform_adapted / converged_no_new_differences`，B8最终81/81关闭。
 
-后续B9 input-font order32独立复审同址`sub_31EB9`的输入flag与宿主呈现边界，修正party selection为每次成功present只按down > up > confirmation消费一个锁存组；该input owner不反向传播或改写已关闭battle owner。新增10组原资产输入向量后，正式文件仍为75键，order32关闭时SHA256=`1f063b707ad9924e872a2224596baf499baa21fffbe7093f6f3bc43c54349ac6`。input-font order33随后独立复审`sub_3271E`，纠正首次黑色indexed frame排序后置的旧解释，并新增caller `view=0,0`与round-loop `view=19,13`双帧区分向量；当前正式SHA256=`c8a083ec57902eec86d71a3086c365a6370d65fc8f49767e40f529e36e66ba7c`，Linux app Debug 14/14通过。
+后续B9 input-font order32独立复审同址`sub_31EB9`的输入flag与宿主呈现边界，修正party selection为每次成功present只按down > up > confirmation消费一个锁存组；该input owner不反向传播或改写已关闭battle owner。新增10组原资产输入向量后，正式文件仍为75键，order32关闭时SHA256=`1f063b707ad9924e872a2224596baf499baa21fffbe7093f6f3bc43c54349ac6`。input-font order33随后独立复审`sub_3271E`，纠正首次黑色indexed frame排序后置的旧解释，并新增caller `view=0,0`与round-loop `view=19,13`双帧区分向量；order33正式SHA256=`c8a083ec57902eec86d71a3086c365a6370d65fc8f49767e40f529e36e66ba7c`，Linux app Debug 14/14通过。
+
+input-font order34再次独立复审同址`sub_32E59`的键态、呈现和共同尾。机器明确在word7为非0且非1、结果<1且action非等待时跳过完整重绘，并在delegated callee当前framebuffer上覆盖下一轮标签；旧Session虽跳过renderer却恢复旧菜单缓存，现用一次性retain标记保留callee帧并在覆盖标签后更新缓存。修正后从入口重审476条指令、108块和全部出口零新增差异；新增顶层原资产机器合同canonical SHA256=`827286e7505cf427bde6d9838ec27e173cc124f63ef00cbd01fac7d69b532ed5`，历史75键逐值不变，正式76键Golden SHA256=`d4d559f719ac207e7e8e801462416f896c5b24642a3982dbe654205f8334e99c`，Linux app Debug 14/14通过。input owner与既有battle owner继续独立关闭。
 
 ## 16. B8 实现差异审计关闭
 
