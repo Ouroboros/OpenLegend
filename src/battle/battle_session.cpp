@@ -3880,20 +3880,57 @@ bool BattleSession::advance_post_battle_message() {
         return continue_post_battle_practice();
     }
     case PostBattleMessageKind::practice: {
+        const auto saved_role = ranger_.roles[role_id];
         const auto practice = setup_.apply_battle_practice(role_id, false);
         if (!practice.has_value()) {
             error_ = setup_.error();
             return false;
         }
         role_result.practice = *practice;
-        if (practice->magic_message_required) {
+        for (std::size_t index = 1U;
+             index < practice->increased_magic_slot_count;
+             ++index) {
+            const auto slot = practice->increased_magic_slots[index];
+            if (slot < 0 ||
+                static_cast<std::size_t>(slot) >= model::role_word::magic_count) {
+                error_ = "battle post-battle practice magic slot is invalid";
+                return false;
+            }
+            ranger_.roles[role_id].set_word(
+                model::role_word::magic_level_begin + static_cast<std::size_t>(slot),
+                saved_role.word(
+                    model::role_word::magic_level_begin +
+                    static_cast<std::size_t>(slot)));
+        }
+        if (practice->increased_magic_slot_count != 0U) {
             return schedule_post_battle_message(
-                {PostBattleMessageKind::magic_level, post_battle_role_index_});
+                {PostBattleMessageKind::magic_level, post_battle_role_index_, 0U});
         }
         return continue_post_battle_crafting();
     }
-    case PostBattleMessageKind::magic_level:
+    case PostBattleMessageKind::magic_level: {
+        const auto next_index = message.magic_increase_index + 1U;
+        if (next_index < role_result.practice.increased_magic_slot_count) {
+            const auto slot = role_result.practice.increased_magic_slots[next_index];
+            if (slot < 0 ||
+                static_cast<std::size_t>(slot) >= model::role_word::magic_count) {
+                error_ = "battle post-battle practice magic slot is invalid";
+                return false;
+            }
+            const auto word = model::role_word::magic_level_begin +
+                static_cast<std::size_t>(slot);
+            ranger_.roles[role_id].set_word(
+                word,
+                static_cast<std::int16_t>(
+                    static_cast<std::int32_t>(ranger_.roles[role_id].word(word)) + 100));
+            return schedule_post_battle_message({
+                PostBattleMessageKind::magic_level,
+                post_battle_role_index_,
+                next_index,
+            });
+        }
         return continue_post_battle_crafting();
+    }
     case PostBattleMessageKind::craft: {
         const auto crafted = setup_.commit_battle_crafting(role_result.craft, random_);
         if (!crafted.has_value()) {
@@ -4443,7 +4480,12 @@ bool BattleSession::render_post_battle_message(
     }
     case PostBattleMessageKind::magic_level: {
         const auto magic_id = role_result.practice.magic_id;
-        const auto magic_slot = role_result.practice.magic_slot;
+        if (message.magic_increase_index >=
+            role_result.practice.increased_magic_slot_count) {
+            return false;
+        }
+        const auto magic_slot = role_result.practice.increased_magic_slots[
+            message.magic_increase_index];
         if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size() ||
             magic_slot < 0 ||
             static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {

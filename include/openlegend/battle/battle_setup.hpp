@@ -550,6 +550,8 @@ struct BattlePracticeResult {
     std::int16_t item_id{-1};
     std::int16_t magic_id{-1};
     std::int16_t magic_slot{-1};
+    std::array<std::int16_t, model::role_word::magic_count> increased_magic_slots{};
+    std::size_t increased_magic_slot_count{};
     std::int32_t required_experience{};
     bool practiced{};
     bool maximum_magic_level{};

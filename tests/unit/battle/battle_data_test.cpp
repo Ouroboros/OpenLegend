@@ -2840,6 +2840,205 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
     }
 }
 
+void run_battle_practice_review_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+    const auto configure = [](openlegend::model::RangerState& ranger) {
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::practice_item, 5);
+        role.set_word(role_word::iq, 60);
+        role.set_word(role_word::item_experience, 60);
+        role.set_word(role_word::maximum_hp, 100);
+        role.set_word(role_word::mp_type, 0);
+        role.set_word(role_word::maximum_mp, 80);
+        for (std::size_t offset = 0U;
+             offset <= item_word::add_morality - item_word::add_attack;
+             ++offset) {
+            role.set_word(role_word::attack + offset, 50);
+            item.set_word(item_word::add_attack + offset, 0);
+        }
+        role.set_word(role_word::attack, 30);
+        role.set_word(role_word::morality, 50);
+        role.set_word(role_word::attack_twice, 0);
+        role.set_word(role_word::attack_with_poison, 0);
+        for (std::size_t slot = 0U; slot < role_word::magic_count; ++slot) {
+            role.set_word(role_word::magic_id_begin + slot, -1);
+            role.set_word(role_word::magic_level_begin + slot, 0);
+        }
+        role.set_word(role_word::magic_id_begin, 2);
+        role.set_word(role_word::magic_level_begin, 199);
+        item.set_word(item_word::magic_id, 2);
+        item.set_word(item_word::need_experience, 10);
+        item.set_word(item_word::add_maximum_hp, 10);
+        item.set_word(item_word::change_mp_type, 0);
+        item.set_word(item_word::add_maximum_mp, 20);
+        item.set_word(item_word::add_attack, 80);
+        item.set_word(item_word::add_morality, -100);
+        item.set_word(item_word::add_attack_twice, 1);
+        item.set_word(item_word::add_attack_with_poison, 5);
+    };
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        role.set_word(role_word::magic_id_begin + 1U, 2);
+        role.set_word(role_word::magic_level_begin + 1U, 899);
+        role.set_word(role_word::magic_id_begin + 2U, 2);
+        role.set_word(role_word::magic_level_begin + 2U, 898);
+        const auto result = setup.apply_battle_practice(0U, false);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->practiced);
+        OL_CHECK(result->required_experience == 60);
+        OL_CHECK(result->magic_slot == 0);
+        OL_CHECK(result->increased_magic_slot_count == 2U);
+        OL_CHECK(result->increased_magic_slots[0U] == 0);
+        OL_CHECK(result->increased_magic_slots[1U] == 2);
+        OL_CHECK(result->increased_magic_level);
+        OL_CHECK(result->magic_message_required);
+        OL_CHECK(role.word(role_word::magic_level_begin) == 299);
+        OL_CHECK(role.word(role_word::magic_level_begin + 1U) == 899);
+        OL_CHECK(role.word(role_word::magic_level_begin + 2U) == 998);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::iq, -32768);
+        role.set_word(role_word::item_experience, -1);
+        role.set_word(role_word::magic_level_begin, -1);
+        item.set_word(item_word::need_experience, 32767);
+        const auto result = setup.apply_battle_practice(0U, false);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->required_experience == -148'762'224);
+        OL_CHECK(result->maximum_magic_level);
+        OL_CHECK(!result->practiced);
+        OL_CHECK(role.word(role_word::item_experience) == -1);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        role.set_word(role_word::item_experience, 270);
+        role.set_word(role_word::magic_level_begin, 899);
+        role.set_word(role_word::magic_id_begin + 1U, -1);
+        role.set_word(role_word::magic_level_begin + 1U, 777);
+        const auto result = setup.apply_battle_practice(0U, false);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->practiced);
+        OL_CHECK(result->required_experience == 270);
+        OL_CHECK(result->increased_magic_slot_count == 0U);
+        OL_CHECK(!result->learned_magic);
+        OL_CHECK(role.word(role_word::magic_id_begin + 1U) == -1);
+        OL_CHECK(role.word(role_word::magic_level_begin + 1U) == 777);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        role.set_word(role_word::item_experience, 30);
+        const std::array<std::int16_t, role_word::magic_count> ids{
+            3, -2, 4, 5, 6, 7, 8, 9, 10, 11};
+        for (std::size_t slot = 0U; slot < ids.size(); ++slot) {
+            role.set_word(role_word::magic_id_begin + slot, ids[slot]);
+        }
+        role.set_word(role_word::magic_level_begin + 1U, 777);
+        const auto result = setup.apply_battle_practice(0U, false);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->practiced);
+        OL_CHECK(result->required_experience == 30);
+        OL_CHECK(result->learned_magic);
+        OL_CHECK(result->magic_slot == 1);
+        OL_CHECK(role.word(role_word::magic_id_begin + 1U) == 2);
+        OL_CHECK(role.word(role_word::magic_level_begin + 1U) == 777);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::item_experience, 90);
+        role.set_word(role_word::magic_id_begin, 0);
+        role.set_word(role_word::magic_level_begin, 299);
+        item.set_word(item_word::magic_id, 0);
+        const auto result = setup.apply_battle_practice(0U, false);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->practiced);
+        OL_CHECK(result->required_experience == 90);
+        OL_CHECK(result->magic_slot == 0);
+        OL_CHECK(result->increased_magic_slot_count == 0U);
+        OL_CHECK(role.word(role_word::magic_level_begin) == 299);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
+        auto& item = ranger.items[5U];
+        role.set_word(role_word::maximum_hp, 32760);
+        role.set_word(role_word::maximum_mp, -32760);
+        role.set_word(role_word::attack, 32760);
+        role.set_word(role_word::speed, 50);
+        role.set_word(role_word::defence, -50);
+        role.set_word(role_word::attack_twice, 7);
+        role.set_word(role_word::attack_with_poison, 99);
+        item.set_word(item_word::magic_id, -1);
+        item.set_word(item_word::add_maximum_hp, 100);
+        item.set_word(item_word::add_maximum_mp, -100);
+        item.set_word(item_word::add_attack, 100);
+        item.set_word(item_word::add_speed, 50);
+        item.set_word(item_word::add_attack_twice, 9);
+        item.set_word(item_word::add_attack_with_poison, 1);
+        const auto result = setup.apply_battle_practice(0U, false);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->practiced);
+        OL_CHECK(role.word(role_word::maximum_hp) == -32676);
+        OL_CHECK(role.word(role_word::maximum_mp) == 999);
+        OL_CHECK(role.word(role_word::attack) == 0);
+        OL_CHECK(role.word(role_word::speed) == 100);
+        OL_CHECK(role.word(role_word::defence) == 0);
+        OL_CHECK(role.word(role_word::attack_twice) == 7);
+        OL_CHECK(role.word(role_word::attack_with_poison) == 100);
+        OL_CHECK(role.word(role_word::item_experience) == 0);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        const auto result = setup.apply_battle_practice(0U, true);
+        OL_CHECK(result.has_value());
+        OL_CHECK(result->practiced);
+        OL_CHECK(!result->practice_message_required);
+        OL_CHECK(result->magic_message_required);
+        OL_CHECK(result->present_required);
+        OL_CHECK(result->wait_for_input);
+    }
+}
+
 void run_player_movement_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
@@ -10691,6 +10890,99 @@ void run_battle_outcome_session_test(
     hash_file << "craft=0x" << std::hex << post_battle_hashes[4U] << '\n';
     hash_file.close();
     OL_CHECK(hash_file.good());
+
+    auto duplicate_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    set_names(duplicate_ranger);
+    openlegend::random::LegacyRandom duplicate_random{1U};
+    BattleSession duplicate{data_root, duplicate_ranger, duplicate_random, 4, false};
+    prepare_player_action(duplicate);
+    auto& duplicate_item = duplicate_ranger.items[5U];
+    duplicate_item.set_word(item_word::magic_id, 2);
+    duplicate_item.set_word(item_word::need_experience, 10);
+    duplicate_item.set_word(item_word::need_make_item_experience, 32767);
+    for (std::size_t recipe = 0U; recipe < item_word::make_item_count; ++recipe) {
+        duplicate_item.set_word(item_word::make_item_begin + recipe, -1);
+        duplicate_item.set_word(item_word::make_item_count_begin + recipe, 0);
+    }
+    std::optional<std::size_t> duplicate_role_id;
+    for (const auto& combatant : duplicate.setup().combatants().first(
+             static_cast<std::size_t>(duplicate.setup().combatant_count()))) {
+        const auto role_id = static_cast<std::size_t>(
+            combatant.words[combatant_word::role_id]);
+        auto& role = duplicate_ranger.roles[role_id];
+        if (combatant.words[combatant_word::side] == 0) {
+            if (!duplicate_role_id.has_value()) {
+                duplicate_role_id = role_id;
+                role.set_word(role_word::level, 30);
+                role.set_word(role_word::iq, 60);
+                role.set_word(role_word::practice_item, 5);
+                role.set_word(role_word::item_experience, 60);
+                role.set_word(role_word::make_item_experience, 0);
+                role.set_word(role_word::magic_id_begin, 2);
+                role.set_word(role_word::magic_level_begin, 199);
+                role.set_word(role_word::magic_id_begin + 1U, 2);
+                role.set_word(role_word::magic_level_begin + 1U, 399);
+            } else {
+                role.set_word(role_word::level, 30);
+                role.set_word(role_word::practice_item, -1);
+            }
+        } else {
+            role.set_word(role_word::hp, 0);
+        }
+    }
+    OL_CHECK(duplicate_role_id.has_value());
+    select_wait(duplicate);
+    OL_CHECK(duplicate.phase() == BattleSessionPhase::battle_outcome);
+    OL_CHECK(duplicate.outcome() == BattleOutcome::victory);
+    OL_CHECK(duplicate.render(framebuffer));
+    duplicate.finish_presented_tick();
+    OL_CHECK(duplicate.phase() == BattleSessionPhase::battle_outcome_wait);
+    OL_CHECK(duplicate.handle_key(0x20U) ==
+             BattleSessionInputResult::outcome_acknowledged);
+    OL_CHECK(duplicate.post_battle_message_count() == 1U);
+    const auto duplicate_id = *duplicate_role_id;
+    auto& duplicate_role = duplicate_ranger.roles[duplicate_id];
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin) == 199);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin + 1U) == 399);
+
+    OL_CHECK(duplicate.render(framebuffer));
+    duplicate.finish_presented_tick();
+    OL_CHECK(duplicate.handle_key(0x0DU) ==
+             BattleSessionInputResult::post_battle_message_acknowledged);
+    OL_CHECK(duplicate.post_battle_message_count() == 2U);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin) == 199);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin + 1U) == 399);
+
+    OL_CHECK(duplicate.render(framebuffer));
+    duplicate.finish_presented_tick();
+    OL_CHECK(duplicate.handle_key(0x0DU) ==
+             BattleSessionInputResult::post_battle_message_acknowledged);
+    OL_CHECK(duplicate.post_battle_message_count() == 3U);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin) == 299);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin + 1U) == 399);
+    const auto duplicate_result = std::ranges::find_if(
+        duplicate.post_battle_result()->roles,
+        [duplicate_id](const BattlePostBattleRoleResult& role) {
+            return static_cast<std::size_t>(role.role_id) == duplicate_id;
+        });
+    OL_CHECK(duplicate_result != duplicate.post_battle_result()->roles.end());
+    OL_CHECK(duplicate_result->practice.increased_magic_slot_count == 2U);
+    OL_CHECK(duplicate_result->practice.increased_magic_slots[0U] == 0);
+    OL_CHECK(duplicate_result->practice.increased_magic_slots[1U] == 1);
+
+    OL_CHECK(duplicate.render(framebuffer));
+    duplicate.finish_presented_tick();
+    OL_CHECK(duplicate.handle_key(0x0DU) ==
+             BattleSessionInputResult::post_battle_message_acknowledged);
+    OL_CHECK(duplicate.post_battle_message_count() == 4U);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin) == 299);
+    OL_CHECK(duplicate_role.word(role_word::magic_level_begin + 1U) == 499);
+
+    OL_CHECK(duplicate.render(framebuffer));
+    duplicate.finish_presented_tick();
+    OL_CHECK(duplicate.handle_key(0x0DU) ==
+             BattleSessionInputResult::post_battle_message_acknowledged);
+    OL_CHECK(duplicate.phase() == BattleSessionPhase::round_wait);
 }
 
 void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
@@ -10743,6 +11035,7 @@ int main() {
     run_ai_request_handler_test(data_root);
     run_ai_support_handler_test(data_root);
     run_post_battle_progression_test(data_root);
+    run_battle_practice_review_test(data_root);
     run_player_movement_selection_test(data_root);
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);

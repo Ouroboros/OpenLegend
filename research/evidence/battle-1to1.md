@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为76/81；其余5项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为77/81；其余4项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、5项为 `implemented_pending_review`、76项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、4项为 `implemented_pending_review`、77项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -458,6 +458,14 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 机器按unsigned经验扫描全部30项阈值并保留最后满足项；升级提示的战场重画、Big5文字、present及新非零键等待全部先于RNG和角色提交。成长RNG按旧IQ signed分为上界2/3/4/5/6；随后固定HP RNG，六项技能仅在signed `>20`时按医疗→用毒→解毒→拳→剑→刀消费，暗器最后无条件消费，因此总计3..9次。HP/MP与十项能力均先写word low16，再用signed 999/100封顶；回绕成负值不会被封顶。
 
 逐基本块对照`BattleSetup::apply_battle_level_up`与`BattleSession` preview/present/input/commit未发现合法caller域产品差异；非法索引/等级安全拒绝和宿主分相归类平台适配。新增阈值、IQ八边界、技能20/21、3/8/9次RNG、负生命成长、回绕/封顶、抑制参数及共享状态延迟提交回归。独立向量SHA256=`9c35ab92bd1521ce8237f95a2e9a21ba355bb9ba2ec472dc5576d0c44380d1fd`；Golden三生成一致且历史69键逐值不变，70键SHA256=`d08d6315e3f10e808d5b8ece0a06b45b1896cc7baf16c314616f885cd8ce9d17`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`，caller、UI/RNG helper、练功/制造和共享尾不传播closure。
+
+## 42. 战后练功最终REVIEW
+
+`sub_3BA85 @ 0x3BA85..0x3C2AC`机器身份固定为2087 bytes、415条连续指令、94个IDA flow block、49个条件分支、2个无条件跳转、143处重定位、15次direct call、唯一caller `0x3B67B`且无本地RET；raw/loaded SHA256为`6eb228f6db42e545c58c413073ad1b8d6e0ecaf66b01f3acac360bd95953851a`与`1ce457e562fbebd152897154058089708a93d50afdd65fb4f8a75559f019e5cf`。六个出口进入独立共享尾`0x35053`；唯一caller先拒绝非零side与训练物品`-1`，真实调用的提示抑制参数恒0。
+
+机器以signed `7-IQ/15`、首个同ID槽的unsigned等级/100和两次32位回绕乘法计算需求；练功经验以unsigned word参与signed比较。成功提示及新非零键等待先于全部角色提交。最大HP/MP先word回绕后只做signed 999上限，十四项能力及带毒攻击夹0..100，内力类型只认物品值2，左右互搏只在当前0时原样写入，最后清练功经验。物品武功ID大于0时，提交阶段扫描全部十槽：每个同ID且unsigned等级小于899的槽按序加100并立即各显示一次升级提示；任何同ID槽含满级槽都阻止空槽学习。完全无同ID时仅向首个signed非正槽写武功ID，保留旧等级word。
+
+首轮对照发现现代只更新首个同ID槽，且需求以C++ signed `int32_t`直接连乘；现分别改为全十槽提交和两次显式32位模乘。Session按机器时序在练功提示确认后只保留首个待提示槽写入，后续重复槽在前一武功提示确认后才逐个提交并排下一条消息。修正后从入口重审全部415条指令零新增合法域差异；重复槽`[199,899,898]→[299,899,998]`、需求回绕`-148762224`、满级阻止插槽、空槽保留等级、`magic_id=0`、字段回绕和两条Session武功提示回归通过。独立向量SHA256=`9570d8c53815699a00bd40c42f8a3bd77bf5432adadf93762be56b952138d016`；Golden三生成一致且历史70键逐值不变，71键SHA256=`1d071ae2dcb673d02e0079ae35dcecb3633f053ddd0fa60bd653be15a2c4f31d`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_after_fix`，caller、UI/input helper、制造和共享尾不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

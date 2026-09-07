@@ -966,6 +966,38 @@ BATTLE_LEVEL_UP_RELOCATION_OFFSETS = (
     0x395, 0x39F, 0x3AE, 0x3BC,
 )
 BATTLE_LEVEL_UP_CALLER_SITES = (0x3B655,)
+BATTLE_PRACTICE_ADDRESS = 0x3BA85
+BATTLE_PRACTICE_END = 0x3C2AC
+BATTLE_PRACTICE_CALL_OFFSETS = (
+    0x005, 0x127, 0x14F, 0x158, 0x163, 0x198, 0x1BB, 0x1CE,
+    0x1D6, 0x73E, 0x761, 0x794, 0x7B7, 0x7CA, 0x7D2,
+)
+BATTLE_PRACTICE_CALL_TARGETS = (
+    0x3ED1E, 0x3AA85, 0x3EF4A, 0x3EF7D, 0x3EF7D, 0x2CEBF, 0x3D832,
+    0x3D6D1, 0x20C32, 0x3EF4A, 0x3EF7D, 0x2CEBF, 0x3D832, 0x3D6D1,
+    0x20C32,
+)
+BATTLE_PRACTICE_RELOCATION_OFFSETS = (
+    0x01E, 0x025, 0x03D, 0x062, 0x069, 0x072, 0x098, 0x0CD,
+    0x0F6, 0x110, 0x133, 0x13D, 0x146, 0x14B, 0x173, 0x1A8,
+    0x1AD, 0x1C5, 0x1CA, 0x1EA, 0x1F1, 0x1F8, 0x203, 0x212,
+    0x222, 0x237, 0x23E, 0x245, 0x250, 0x265, 0x26C, 0x273,
+    0x27D, 0x28C, 0x296, 0x2AB, 0x2B2, 0x2B9, 0x2C3, 0x2D2,
+    0x2DC, 0x2F1, 0x2F8, 0x2FF, 0x309, 0x318, 0x322, 0x337,
+    0x33E, 0x345, 0x34F, 0x35E, 0x368, 0x37D, 0x384, 0x38B,
+    0x395, 0x3A4, 0x3AE, 0x3C3, 0x3CA, 0x3D1, 0x3DB, 0x3EA,
+    0x3F4, 0x409, 0x410, 0x417, 0x421, 0x430, 0x43A, 0x44F,
+    0x456, 0x45D, 0x467, 0x476, 0x480, 0x495, 0x49C, 0x4A3,
+    0x4AD, 0x4BC, 0x4C6, 0x4DB, 0x4E2, 0x4E9, 0x4F3, 0x502,
+    0x50C, 0x521, 0x528, 0x52F, 0x539, 0x548, 0x552, 0x567,
+    0x56E, 0x575, 0x57F, 0x58E, 0x598, 0x5AD, 0x5B4, 0x5BB,
+    0x5C5, 0x5D4, 0x5DE, 0x5F3, 0x5FA, 0x601, 0x60B, 0x61A,
+    0x624, 0x633, 0x643, 0x64A, 0x65D, 0x664, 0x66B, 0x675,
+    0x684, 0x68E, 0x69D, 0x6AC, 0x6D5, 0x6DC, 0x6F1, 0x700,
+    0x708, 0x71D, 0x72C, 0x735, 0x73A, 0x749, 0x759, 0x76F,
+    0x7A4, 0x7A9, 0x7C1, 0x7C6, 0x7FC, 0x80C, 0x813,
+)
+BATTLE_PRACTICE_CALLER_SITES = (0x3B67B,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -9412,6 +9444,414 @@ def battle_level_up_contract(z_dat_bytes: bytes) -> dict[str, object]:
     }
 
 
+def battle_practice_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_PRACTICE_ADDRESS,
+        end=BATTLE_PRACTICE_END,
+        call_offsets=BATTLE_PRACTICE_CALL_OFFSETS,
+        expected_call_targets=BATTLE_PRACTICE_CALL_TARGETS,
+        relocation_offsets=BATTLE_PRACTICE_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_PRACTICE_CALLER_SITES,
+        instruction_count=415,
+        branch_count=51,
+    )
+    if contract["raw_sha256"] != (
+        "6eb228f6db42e545c58c413073ad1b8d6e0ecaf66b01f3acac360bd95953851a"
+    ):
+        raise ValueError("Z.DAT battle practice raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "1ce457e562fbebd152897154058089708a93d50afdd65fb4f8a75559f019e5cf"
+    ):
+        raise ValueError("Z.DAT battle practice relocation image changed")
+
+    practice_text = z_dat_bytes[
+        0x58AE2 - Z_DAT_LOAD_BASE:0x58AF3 - Z_DAT_LOAD_BASE
+    ]
+    if practice_text != bytes.fromhex("257320add7bd6d20257320a6a8a55c2000"):
+        raise ValueError("Z.DAT battle practice success text changed")
+    magic_level_text = z_dat_bytes[
+        0x58A98 - Z_DAT_LOAD_BASE:0x58AA9 - Z_DAT_LOAD_BASE
+    ]
+    if magic_level_text != bytes.fromhex("257320a4c9acb0b2c42025326420afc500"):
+        raise ValueError("Z.DAT battle practice magic-level text changed")
+    shared_tail = z_dat_bytes[
+        0x35053 - Z_DAT_LOAD_BASE:0x3505B - Z_DAT_LOAD_BASE
+    ]
+    if shared_tail != bytes.fromhex("83c40c5d5f5e5bc3"):
+        raise ValueError("Z.DAT battle practice shared tail changed")
+    caller = z_dat_bytes[
+        0x3B590 - Z_DAT_LOAD_BASE:0x3B683 - Z_DAT_LOAD_BASE
+    ]
+    caller_sha256 = sha256(caller)
+    if caller_sha256 != "5dc66554adae3072bb1933f2b37d57e5352b891c09d37285f4b962466a057912":
+        raise ValueError("Z.DAT battle practice caller gate changed")
+
+    stat_names = (
+        "attack", "speed", "defence", "medicine", "use_poison",
+        "detoxification", "anti_poison", "fist", "sword", "knife",
+        "unusual", "hidden_weapon", "knowledge", "morality",
+    )
+    default_role = {
+        "iq": 60,
+        "item_experience": 60,
+        "maximum_hp": 100,
+        "mp_type": 0,
+        "maximum_mp": 80,
+        "stats": {name: 50 for name in stat_names},
+        "attack_twice": 0,
+        "attack_with_poison": 0,
+        "magic_ids": [2] + [-1] * 9,
+        "magic_levels": [199] + [0] * 9,
+    }
+    default_role["stats"]["attack"] = 30
+    default_role["stats"]["morality"] = 50
+    default_item = {
+        "magic_id": 2,
+        "need_experience": 10,
+        "add_maximum_hp": 10,
+        "change_mp_type": 0,
+        "add_maximum_mp": 20,
+        "stat_additions": {name: 0 for name in stat_names},
+        "add_attack_twice": 1,
+        "add_attack_with_poison": 5,
+    }
+    default_item["stat_additions"]["attack"] = 80
+    default_item["stat_additions"]["morality"] = -100
+
+    def signed_i32(value: int) -> int:
+        value &= 0xFFFFFFFF
+        return value - 0x100000000 if value >= 0x80000000 else value
+
+    def multiply_i32(lhs: int, rhs: int) -> int:
+        return signed_i32((lhs & 0xFFFFFFFF) * (rhs & 0xFFFFFFFF))
+
+    def simulate(
+        label: str,
+        *,
+        suppress_message: int = 0,
+        role_changes: dict[str, object] | None = None,
+        item_changes: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        role = json.loads(json.dumps(default_role))
+        item = json.loads(json.dumps(default_item))
+        for name, value in (role_changes or {}).items():
+            if name == "stats":
+                if not isinstance(value, dict):
+                    raise ValueError("battle practice stat changes must be a mapping")
+                role["stats"].update({key: wrapping_i16(int(word)) for key, word in value.items()})
+            elif name == "item_experience":
+                role[name] = int(value) & 0xFFFF
+            elif name in ("magic_ids", "magic_levels"):
+                words = [wrapping_i16(int(word)) for word in value]
+                if len(words) != 10:
+                    raise ValueError("battle practice vectors require ten magic slots")
+                role[name] = words
+            else:
+                role[name] = wrapping_i16(int(value))
+        for name, value in (item_changes or {}).items():
+            if name == "stat_additions":
+                if not isinstance(value, dict):
+                    raise ValueError("battle practice item stat changes must be a mapping")
+                item[name].update({key: wrapping_i16(int(word)) for key, word in value.items()})
+            else:
+                item[name] = wrapping_i16(int(value))
+        before = json.loads(json.dumps(role))
+
+        magic_id = item["magic_id"]
+        magic_slot = -1
+        magic_rank = 0
+        if magic_id != -1:
+            for slot in range(10):
+                if role["magic_ids"][slot] == magic_id:
+                    magic_slot = slot
+                    magic_rank = (role["magic_levels"][slot] & 0xFFFF) // 100
+                    break
+        factor = 7 - trunc_div(role["iq"], 15)
+        factored_experience = multiply_i32(item["need_experience"], factor)
+        required_experience = multiply_i32(
+            factored_experience, 2 if magic_id == -1 else magic_rank + 1
+        )
+        base = {
+            "label": label,
+            "suppress_message": wrapping_i16(suppress_message),
+            "before": before,
+            "item": item,
+            "factor": factor,
+            "requirement_magic_slot": magic_slot,
+            "requirement_magic_rank": magic_rank,
+            "required_experience": required_experience,
+            "maximum_magic_level": magic_rank >= 9,
+            "practiced": False,
+            "practice_message_calls": [],
+            "magic_messages": [],
+            "learned_magic_slot": -1,
+            "after": role,
+        }
+        if magic_rank >= 9 or role["item_experience"] < required_experience:
+            return base
+
+        if wrapping_i16(suppress_message) == 0:
+            base["practice_message_calls"] = [
+                "battle_render", "format_practice_text", "role_name_length",
+                "item_name_length", "draw_box", "draw_text", "present",
+                "clear_last_key_and_wait_nonzero",
+            ]
+        maximum_hp = wrapping_i16(role["maximum_hp"] + item["add_maximum_hp"])
+        role["maximum_hp"] = 999 if maximum_hp > 999 else maximum_hp
+        if item["change_mp_type"] == 2:
+            role["mp_type"] = 2
+        maximum_mp = wrapping_i16(role["maximum_mp"] + item["add_maximum_mp"])
+        role["maximum_mp"] = 999 if maximum_mp > 999 else maximum_mp
+        for name in stat_names:
+            changed = wrapping_i16(role["stats"][name] + item["stat_additions"][name])
+            if changed >= 100:
+                changed = 100
+            if changed <= 0:
+                changed = 0
+            role["stats"][name] = changed
+        if role["attack_twice"] == 0:
+            role["attack_twice"] = item["add_attack_twice"]
+        attack_with_poison = wrapping_i16(
+            role["attack_with_poison"] + item["add_attack_with_poison"]
+        )
+        if attack_with_poison >= 100:
+            attack_with_poison = 100
+        if attack_with_poison <= 0:
+            attack_with_poison = 0
+        role["attack_with_poison"] = attack_with_poison
+        role["item_experience"] = 0
+        base["practiced"] = True
+
+        if magic_id > 0:
+            found_magic = False
+            for slot in range(10):
+                if role["magic_ids"][slot] != magic_id:
+                    continue
+                found_magic = True
+                level_before = role["magic_levels"][slot]
+                if (level_before & 0xFFFF) >= 899:
+                    continue
+                level_after = wrapping_i16(level_before + 100)
+                role["magic_levels"][slot] = level_after
+                base["magic_messages"].append({
+                    "slot": slot,
+                    "level_before": level_before,
+                    "level_after": level_after,
+                    "display_level": (level_after & 0xFFFF) // 100 + 1,
+                    "calls": [
+                        "format_magic_level_text", "magic_name_length", "draw_box",
+                        "draw_text", "present", "clear_last_key_and_wait_nonzero",
+                    ],
+                })
+            if not found_magic:
+                for slot in range(10):
+                    if role["magic_ids"][slot] <= 0:
+                        role["magic_ids"][slot] = magic_id
+                        base["learned_magic_slot"] = slot
+                        break
+        return base
+
+    vectors = {
+        "existing_single": simulate("existing_single"),
+        "insufficient_unsigned": simulate(
+            "insufficient_unsigned", role_changes={"item_experience": 59}
+        ),
+        "no_magic_minus_one": simulate(
+            "no_magic_minus_one", item_changes={"magic_id": -1}
+        ),
+        "magic_zero_uses_existing_rank": simulate(
+            "magic_zero_uses_existing_rank",
+            role_changes={
+                "item_experience": 90,
+                "magic_ids": [0] + [-1] * 9,
+                "magic_levels": [299] + [0] * 9,
+            },
+            item_changes={"magic_id": 0},
+        ),
+        "duplicate_all_matches": simulate(
+            "duplicate_all_matches",
+            role_changes={
+                "magic_ids": [2, 2, 2] + [-1] * 7,
+                "magic_levels": [199, 899, 898] + [0] * 7,
+            },
+        ),
+        "first_rank_nine_stops": simulate(
+            "first_rank_nine_stops",
+            role_changes={
+                "item_experience": 0xFFFF,
+                "magic_ids": [2, 2] + [-1] * 8,
+                "magic_levels": [900, 100] + [0] * 8,
+            },
+        ),
+        "maxed_match_blocks_empty": simulate(
+            "maxed_match_blocks_empty",
+            role_changes={
+                "item_experience": 270,
+                "magic_ids": [2, -1] + [3] * 8,
+                "magic_levels": [899, 777] + [0] * 8,
+            },
+        ),
+        "learn_first_nonpositive_preserves_level": simulate(
+            "learn_first_nonpositive_preserves_level",
+            role_changes={
+                "item_experience": 30,
+                "magic_ids": [3, -2, 4, 5, 6, 7, 8, 9, 10, 11],
+                "magic_levels": [0, 777] + [0] * 8,
+            },
+        ),
+        "word_wrap_and_field_bounds": simulate(
+            "word_wrap_and_field_bounds",
+            role_changes={
+                "maximum_hp": 32760,
+                "maximum_mp": -32760,
+                "stats": {"attack": 32760, "speed": 50, "defence": -50},
+                "attack_twice": 7,
+                "attack_with_poison": 99,
+            },
+            item_changes={
+                "magic_id": -1,
+                "add_maximum_hp": 100,
+                "add_maximum_mp": -100,
+                "stat_additions": {"attack": 100, "speed": 50},
+                "add_attack_twice": 9,
+                "add_attack_with_poison": 1,
+            },
+        ),
+        "suppressed_practice_keeps_magic_message": simulate(
+            "suppressed_practice_keeps_magic_message", suppress_message=9
+        ),
+        "requirement_i32_wrap_before_max_exit": simulate(
+            "requirement_i32_wrap_before_max_exit",
+            role_changes={
+                "iq": -32768,
+                "item_experience": 0xFFFF,
+                "magic_levels": [-1] + [0] * 9,
+            },
+            item_changes={"need_experience": 32767},
+        ),
+        "all_slots_full_no_learn": simulate(
+            "all_slots_full_no_learn",
+            role_changes={
+                "item_experience": 30,
+                "magic_ids": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                "magic_levels": [0] * 10,
+            },
+        ),
+    }
+    if vectors["existing_single"]["required_experience"] != 60 or (
+        vectors["existing_single"]["after"]["magic_levels"][0] != 299
+    ):
+        raise ValueError("battle practice existing-magic vector changed")
+    if vectors["insufficient_unsigned"]["practiced"] is not False:
+        raise ValueError("battle practice unsigned experience gate changed")
+    if vectors["magic_zero_uses_existing_rank"]["required_experience"] != 90 or (
+        vectors["magic_zero_uses_existing_rank"]["magic_messages"] != []
+    ):
+        raise ValueError("battle practice magic-id zero requirement changed")
+    duplicate = vectors["duplicate_all_matches"]
+    if duplicate["after"]["magic_levels"][:3] != [299, 899, 998] or (
+        [message["slot"] for message in duplicate["magic_messages"]] != [0, 2]
+    ):
+        raise ValueError("battle practice duplicate magic-slot scan changed")
+    if vectors["first_rank_nine_stops"]["practiced"] is not False:
+        raise ValueError("battle practice requirement-stage maximum gate changed")
+    if vectors["maxed_match_blocks_empty"]["after"]["magic_ids"][1] != -1:
+        raise ValueError("battle practice maxed match inserted into empty slot")
+    learned = vectors["learn_first_nonpositive_preserves_level"]
+    if learned["learned_magic_slot"] != 1 or (
+        learned["after"]["magic_levels"][1] != 777
+    ):
+        raise ValueError("battle practice empty-slot level preservation changed")
+    bounded = vectors["word_wrap_and_field_bounds"]["after"]
+    if bounded["maximum_hp"] != -32676 or bounded["maximum_mp"] != 999 or (
+        [bounded["stats"][name] for name in ("attack", "speed", "defence")] !=
+        [0, 100, 0]
+    ) or bounded["attack_twice"] != 7 or bounded["attack_with_poison"] != 100:
+        raise ValueError("battle practice wrapping field bounds changed")
+    suppressed = vectors["suppressed_practice_keeps_magic_message"]
+    if suppressed["practice_message_calls"] != [] or len(suppressed["magic_messages"]) != 1:
+        raise ValueError("battle practice suppress-message scope changed")
+    if vectors["all_slots_full_no_learn"]["learned_magic_slot"] != -1:
+        raise ValueError("battle practice full magic list changed")
+
+    vector_sha256 = sha256(
+        json.dumps(vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    )
+    if vector_sha256 != "9570d8c53815699a00bd40c42f8a3bd77bf5432adadf93762be56b952138d016":
+        raise ValueError("battle practice independent vector set changed: " + vector_sha256)
+
+    return {
+        **contract,
+        "basic_block_count": 94,
+        "conditional_branch_count": 49,
+        "unconditional_jump_count": 2,
+        "relocation_offsets": [
+            hex(offset) for offset in BATTLE_PRACTICE_RELOCATION_OFFSETS
+        ],
+        "local_return_sites": [],
+        "shared_tail": {
+            "address": "0x35053", "end": "0x3505b", "bytes": shared_tail.hex(),
+            "contract": "add esp,12; pop ebp; pop edi; pop esi; pop ebx; ret",
+            "exit_sites": [
+                "0x3bb82", "0x3bb8c", "0x3bb9b", "0x3c136", "0x3c26b", "0x3c2a7",
+            ],
+        },
+        "caller": {
+            "site": "0x3b67b", "function": "0x3b387",
+            "gate_slice": ["0x3b590", "0x3b683"], "gate_sha256": caller_sha256,
+            "reachable_arg1": 0,
+            "reason": "nonzero side and practice-item -1 both skip before the call",
+        },
+        "texts": {
+            "practice": {
+                "address": "0x58ae2", "bytes": practice_text.hex(),
+                "text": "%s 修練 %s 成功 ",
+            },
+            "magic_level": {
+                "address": "0x58a98", "bytes": magic_level_text.hex(),
+                "text": "%s 升為第 %2d 級",
+            },
+        },
+        "requirement": {
+            "iq_division": "signed truncation toward zero",
+            "factor": "7 - iq/15",
+            "no_magic_predicate": "item magic id exactly -1",
+            "matching_slot_policy": "first exact id only",
+            "magic_level": "unsigned word / 100",
+            "arithmetic": "two wrapping signed int32 multiplies",
+            "experience": "unsigned word compared with signed int32 requirement",
+        },
+        "attribute_commit": {
+            "word_addition": "low16 before signed bounds",
+            "maximum_hp_mp": "signed cap only above 999",
+            "fourteen_stats_and_poison_attack": "signed clamp to 0..100",
+            "mp_type": "write 2 only when item field equals 2",
+            "attack_twice": "write raw item word only when role word equals zero",
+            "item_experience_after": 0,
+        },
+        "magic_commit": {
+            "matching_slot_policy": "scan all ten exact-id slots",
+            "increase_predicate": "unsigned level below 899",
+            "increase": "word + 100 followed immediately by one message and input wait",
+            "found_maxed_slot_blocks_learning": True,
+            "empty_slot_predicate": "signed magic id <= 0",
+            "learn_write": "magic id only; preserve existing level word",
+        },
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "platform_adaptation_boundary": (
+            "modern host safely rejects invalid role/item indices and splits synchronous messages "
+            "into preview/present/input/commit phases; legal role/item word arithmetic, repeated-slot "
+            "write order and per-slot message timing are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, renderer, text/box/present/input callees, sole settlement caller and the "
+            "shared tail remain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -13662,6 +14102,7 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_outcome_machine": battle_outcome_contract(z_dat_bytes),
         "battle_settlement_machine": battle_settlement_contract(z_dat_bytes),
         "battle_level_up_machine": battle_level_up_contract(z_dat_bytes),
+        "battle_practice_machine": battle_practice_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

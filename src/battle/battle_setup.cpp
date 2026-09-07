@@ -56,6 +56,13 @@ constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuse
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
 }
 
+[[nodiscard]] constexpr std::int32_t wrapping_multiply_i32(
+    const std::int32_t lhs,
+    const std::int32_t rhs) noexcept {
+    return std::bit_cast<std::int32_t>(
+        static_cast<std::uint32_t>(lhs) * static_cast<std::uint32_t>(rhs));
+}
+
 [[nodiscard]] constexpr std::optional<std::size_t> legacy_cursor_index(
     const BattlePathCoord coordinate) noexcept {
     const auto index = static_cast<std::int32_t>(coordinate.y) *
@@ -956,9 +963,11 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
     }
     result.magic_slot = magic_slot;
     const auto factor = 7 - role.word(model::role_word::iq) / 15;
-    result.required_experience = static_cast<std::int32_t>(
-        item.word(model::item_word::need_experience)) * factor *
-        (magic_id == -1 ? 2 : static_cast<std::int32_t>(magic_rank) + 1);
+    const auto factored_experience = wrapping_multiply_i32(
+        item.word(model::item_word::need_experience), factor);
+    result.required_experience = wrapping_multiply_i32(
+        factored_experience,
+        magic_id == -1 ? 2 : static_cast<std::int32_t>(magic_rank) + 1);
     if (magic_rank >= 9U) {
         result.maximum_magic_level = true;
         return result;
@@ -1023,19 +1032,30 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
     result.present_required = !suppress_message;
     result.wait_for_input = !suppress_message;
     if (magic_id > 0) {
-        if (magic_slot >= 0) {
-            const auto word = model::role_word::magic_level_begin +
-                static_cast<std::size_t>(magic_slot);
-            if (role.unsigned_word(word) < 899U) {
-                role.set_word(
-                    word,
-                    wrapping_i16(static_cast<std::int32_t>(role.word(word)) + 100));
-                result.increased_magic_level = true;
-                result.magic_message_required = true;
-                result.present_required = true;
-                result.wait_for_input = true;
+        bool found_magic = false;
+        for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
+            if (role.word(model::role_word::magic_id_begin + slot) != magic_id) {
+                continue;
             }
-        } else {
+            found_magic = true;
+            const auto word = model::role_word::magic_level_begin + slot;
+            if (role.unsigned_word(word) >= 899U) {
+                continue;
+            }
+            role.set_word(
+                word,
+                wrapping_i16(static_cast<std::int32_t>(role.word(word)) + 100));
+            result.increased_magic_slots[result.increased_magic_slot_count] =
+                static_cast<std::int16_t>(slot);
+            ++result.increased_magic_slot_count;
+        }
+        result.increased_magic_level = result.increased_magic_slot_count != 0U;
+        result.magic_message_required = result.increased_magic_level;
+        if (result.increased_magic_level) {
+            result.present_required = true;
+            result.wait_for_input = true;
+        }
+        if (!found_magic) {
             for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
                 if (role.word(model::role_word::magic_id_begin + slot) <= 0) {
                     role.set_word(model::role_word::magic_id_begin + slot, magic_id);

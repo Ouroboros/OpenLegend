@@ -271,6 +271,7 @@ private:
     struct PostBattleMessage {
         PostBattleMessageKind kind{PostBattleMessageKind::experience};
         std::size_t role_result_index{};
+        std::size_t magic_increase_index{};
     };
 
     enum class AiMovementContinuation {
