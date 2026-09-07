@@ -6926,8 +6926,8 @@
         "image_bytes": 64000,
         "image_sha256": "c2fea09d332a38e5e84ebeb0d7054508021185a6ae8f3130ce8a87b2d7050caa",
         "palette_sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
-        "ascii_font_sha256": "d821d564c90dd6b7dc78ba0cdf6c7052066a5311ffc4b6e308bc0b60af20ecec",
-        "big5_font_sha256": "8d395791f14395b18f8afd98204856e3a836a1b4497de41e4bb701de2fc19c40",
+        "ascii_font_sha256": "4f8d52b1cee139e724cd9bdeca36920334aa8f73aefe29b3a0ff607f3818612f",
+        "big5_font_sha256": "b0235b006fe2d42f818e2a53f667f175822de6bab5942431bff3a94fa69cfcdb",
         "protagonist_name_field_hex": "ae7da470ab4c00000000",
         "color_encoding": "[right_shadow_palette_index,foreground_palette_index]",
         "protagonist_name_position": [
@@ -7004,10 +7004,10 @@
           102
         ],
         "selected_frame_fnv1a64": [
-          "0x9da84526f6317a4a",
-          "0x5f72cf3141ce8b24",
-          "0xb2db9b6f5ea184de",
-          "0x11f91fd0e5becceb"
+          "0xbf1a495a44c62f94",
+          "0x68d745bf90fd7836",
+          "0x1c49028d4de65790",
+          "0xe12cadece73a4625"
         ],
         "confirm_panel": [
           71,
@@ -7024,7 +7024,7 @@
           5,
           7
         ],
-        "confirm_frame_fnv1a64": "0x4ba394e637cc051e",
+        "confirm_frame_fnv1a64": "0xa4cd2662391e2284",
         "cleared_frame_fnv1a64": "0xdd14fcc6528cab25",
         "menu_items_hex": [
           "b8fca44ab669abd7a44000",
@@ -14313,7 +14313,7 @@
         ],
         "empty_selection_frame": "0x77e428322150e6b2",
         "selection_frame_stream_encoding": "little_endian_<25Q>",
-        "selection_frame_stream_sha256": "ede25bf5c50d24a32a17fd770a2cd4af6e3d3301eb79bd1d6009e302da933e32",
+        "selection_frame_stream_sha256": "3d94bde91d37eb9e5c2e39bba74a487a939a87774a0a7060382281d3e2e39e4f",
         "shops": [
           {
             "shop": 0,
@@ -14355,11 +14355,11 @@
               }
             ],
             "selection_frames": [
-              "0x9ff513954985695b",
-              "0x03d9a942f451c8f7",
-              "0x8a4338cbcadf766f",
-              "0xf3427ec4526ba7eb",
-              "0x31f73a2d373d7223"
+              "0x84a28a707fcde0cb",
+              "0x3ed92dfccadd873f",
+              "0xb2719c72b4737ef7",
+              "0x53c5dc047d3ccd07",
+              "0x09db7a029515ef67"
             ]
           },
           {
@@ -14402,11 +14402,11 @@
               }
             ],
             "selection_frames": [
-              "0x8bed5de64d764dd9",
-              "0x1eb7866793168305",
-              "0xa8fbcebd681a178d",
-              "0x52521907bb266395",
-              "0x39251fed2bbdd0c1"
+              "0x23177b66ff9a953d",
+              "0x304fe691a68a1ad9",
+              "0xba1347fbf2566955",
+              "0x3cfe5b8ac206f7ed",
+              "0x31ee420cf0118545"
             ]
           },
           {
@@ -14449,11 +14449,11 @@
               }
             ],
             "selection_frames": [
-              "0x71a25cb03b3dac9c",
-              "0x0825a2a15c2df064",
-              "0x72509798376b3980",
-              "0x31b8482dcaa84694",
-              "0xb6f648f4d4eb333c"
+              "0xead3f791b21a19fb",
+              "0x69280fcfe814758f",
+              "0xd659a18c5cb63973",
+              "0x38b7e33fd0e05707",
+              "0x65ed3e6c63297b8b"
             ]
           },
           {
@@ -14496,11 +14496,11 @@
               }
             ],
             "selection_frames": [
-              "0x960e9c11d5672db9",
-              "0xf3f94d9abaa8e371",
-              "0xceb0d31d0c9cb9a9",
-              "0x5157037f69d177fd",
-              "0x1ba33f6d38d86b25"
+              "0xbec905c180a5cfa9",
+              "0xc9295d58c96fd751",
+              "0x117a4759c046be29",
+              "0x99275fac74a99a31",
+              "0xba5f390a6313ad25"
             ]
           },
           {
@@ -14543,11 +14543,11 @@
               }
             ],
             "selection_frames": [
-              "0xaece6648568972ef",
-              "0x181f3a676a149723",
-              "0xdf1f407595181dc3",
-              "0x8975ed326e989aa7",
-              "0xdb50fcda4e4f75a3"
+              "0x3f0427959860ddbc",
+              "0xcd37a902f022b974",
+              "0xaf16781dc1f49bb8",
+              "0x2801fb9927eaa8fc",
+              "0xec55ed9d773720bc"
             ]
           }
         ]
@@ -14851,7 +14851,7 @@
           5,
           7
         ],
-        "frame_fnv1a64": "0x1cc47112086c10e7",
+        "frame_fnv1a64": "0xfc38b0b5dce5a9c9",
         "post_ack_outputs": [
           "present",
           "stay"
@@ -14874,7 +14874,7 @@
           5,
           7
         ],
-        "frame_fnv1a64": "0x5678c57a93ec10c4",
+        "frame_fnv1a64": "0x16574e827756e45e",
         "post_ack_outputs": [
           "present",
           "stay"
@@ -14884,34 +14884,34 @@
         {
           "value": -32768,
           "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb02d333237363800",
-          "frame_fnv1a64": "0xd6e8a2c917f2ada7"
+          "frame_fnv1a64": "0x55a69028a8c7f2c3"
         },
         {
           "value": 0,
           "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb0202020203000",
-          "frame_fnv1a64": "0x1e6d8da21b3bb12f"
+          "frame_fnv1a64": "0xa4d319a5c7c6e81f"
         },
         {
           "value": 32767,
           "text_hex": "a741b27ba662aabaab7ebc77abfcbcc6acb0333237363700",
-          "frame_fnv1a64": "0x4bf7246d16058dad"
+          "frame_fnv1a64": "0xbaefc213f31da46a"
         }
       ],
       "opcode_53_signed_word_boundaries": [
         {
           "value": -32768,
           "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb02d333237363800",
-          "frame_fnv1a64": "0x430d455d1ea59a8d"
+          "frame_fnv1a64": "0x0a8ffc26925e5fb1"
         },
         {
           "value": 0,
           "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb02020203000",
-          "frame_fnv1a64": "0xe16cfc1b1bf9ed80"
+          "frame_fnv1a64": "0xbe9a84c62f1fd0d1"
         },
         {
           "value": 32767,
           "text_hex": "a741b27ba662add3a448c16eb1e6abfcbcc6acb0333237363700",
-          "frame_fnv1a64": "0x362ea896d68ba3c6"
+          "frame_fnv1a64": "0xa6cd419bd1ed49db"
         }
       ],
       "opcode_33_learn_magic": {
@@ -15276,7 +15276,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xa5997a2d32b0becf"
+            "frame_fnv1a64": "0x4cb42f66b37699ef"
           },
           {
             "script": 284,
@@ -15303,7 +15303,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x0c6cf84b4a6d2828"
+            "frame_fnv1a64": "0xabc28b4b4dc50ab8"
           },
           {
             "script": 484,
@@ -15330,7 +15330,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x7b8ed9e35cf3ab40"
+            "frame_fnv1a64": "0x9e20bdfd035ec410"
           },
           {
             "script": 673,
@@ -15357,7 +15357,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x238f0fed026137f1"
+            "frame_fnv1a64": "0x1c773bcac4dff542"
           }
         ],
         "synthetic_cases": [
@@ -15385,7 +15385,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x6e7fe3eb3d0961b7"
+            "frame_fnv1a64": "0xc6523264a566f3f0"
           },
           {
             "before": 32766,
@@ -15417,7 +15417,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x4e4523ee5f7afda0"
+            "frame_fnv1a64": "0x4a0d7896fe25af68"
           },
           {
             "before": -32768,
@@ -15443,7 +15443,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x225ecf10614f7cb8"
+            "frame_fnv1a64": "0xf81fe182d9ae3780"
           },
           {
             "before": 32767,
@@ -15452,7 +15452,7 @@
             "notice": false
           }
         ],
-        "synthetic_visible_frame_hashes_sha256": "a0386afac0565c3002f5b51d53f9a9b4325ddc4681e50d2458a5cefb8603b89d"
+        "synthetic_visible_frame_hashes_sha256": "a8abce7b267cbfde5432419f6b53e0483885e326b654bf9bc344ef7e135178a7"
       },
       "opcode_45_role_speed_panel": {
         "entry_range": "0x2FAB7..0x2FBC0",
@@ -15523,7 +15523,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xca05da16dedc9e31"
+            "frame_fnv1a64": "0xdf58af2d10e2bd64"
           },
           {
             "script": 536,
@@ -15551,7 +15551,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xafb2996c4455f825"
+            "frame_fnv1a64": "0x5c13a0a8f5a1f6ad"
           },
           {
             "script": 581,
@@ -15579,7 +15579,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xafb2996c4455f825"
+            "frame_fnv1a64": "0x5c13a0a8f5a1f6ad"
           }
         ],
         "synthetic_cases": [
@@ -15613,7 +15613,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x4b693c807a3f6ee2"
+            "frame_fnv1a64": "0xabaced842dddcf62"
           },
           {
             "before": -1,
@@ -15639,10 +15639,10 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x112ab8f9e491ec4d"
+            "frame_fnv1a64": "0xf9cac2622947eaee"
           }
         ],
-        "synthetic_visible_frame_hashes_sha256": "cb35e133337fd40c1560d9bfc197a18250a2af872cebb4b467b0a21cad83bd32"
+        "synthetic_visible_frame_hashes_sha256": "229c73f3435598eee4f9bdf8e36896b680e21badaca2c94a62ae3fb41dc31d68"
       },
       "opcode_46_role_maximum_mp_panel": {
         "entry_range": "0x2FBC0..0x2FC9D",
@@ -15710,7 +15710,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x79d846f4c3c31cb6"
+            "frame_fnv1a64": "0xb372b65a000a1275"
           },
           {
             "script": 581,
@@ -15739,7 +15739,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x79d846f4c3c31cb6"
+            "frame_fnv1a64": "0xb372b65a000a1275"
           }
         ],
         "synthetic_cases": [
@@ -15776,7 +15776,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x4624b5c6c4ca6d16"
+            "frame_fnv1a64": "0xb98021ea433f1e4d"
           },
           {
             "before_maximum": 100,
@@ -15803,7 +15803,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xbbff4e602ca8260c"
+            "frame_fnv1a64": "0x7da5a3d67eae1b43"
           },
           {
             "before_maximum": 100,
@@ -15822,7 +15822,7 @@
             "notice": false
           }
         ],
-        "synthetic_visible_frame_hashes_sha256": "7953d2c3690e41895d91aef79f6596dda9e216017499f3208894130ecd9af3c7"
+        "synthetic_visible_frame_hashes_sha256": "fb174474df2b8a754d6e84b65570f05b67af30422cf394bb501c7b4639fc7c4a"
       },
       "opcode_47_role_attack_panel": {
         "entry_range": "0x2FC9D..0x2FDA6",
@@ -15905,7 +15905,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xeddab5104e45a1bc"
+            "frame_fnv1a64": "0x28e183a92b7be15c"
           },
           {
             "script": 363,
@@ -15933,7 +15933,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xc9d2ed810ffb30fd"
+            "frame_fnv1a64": "0xfa40828feea45365"
           },
           {
             "script": 484,
@@ -15961,7 +15961,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x07bb43ede04a56cc"
+            "frame_fnv1a64": "0x3e85437db9edb8c7"
           },
           {
             "script": 536,
@@ -15989,7 +15989,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x0e0aee18584ddabe"
+            "frame_fnv1a64": "0x8c8c2dd6cf085323"
           },
           {
             "script": 581,
@@ -16017,7 +16017,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x0e0aee18584ddabe"
+            "frame_fnv1a64": "0x8c8c2dd6cf085323"
           }
         ],
         "synthetic_cases": [
@@ -16051,7 +16051,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x02f03b6e246a4973"
+            "frame_fnv1a64": "0xcce679be34f564ef"
           },
           {
             "before": -1,
@@ -16077,7 +16077,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x9e3c9a177d228048"
+            "frame_fnv1a64": "0x583a21a959063fff"
           }
         ],
         "invalid_modern_vectors": [
@@ -16088,7 +16088,7 @@
             "notice": false
           }
         ],
-        "synthetic_visible_frame_hashes_sha256": "0cb6b8fc6a6dccb0aed841ac8942bd31ce3951d8b1da4d57bbe103929070dc7f"
+        "synthetic_visible_frame_hashes_sha256": "64f4dc023a3355247862eed25fae00a2b8c7544d1299939a173200d10dc886e8"
       },
       "opcode_48_role_maximum_hp_panel": {
         "entry_range": "0x2FDA6..0x2FEBF",
@@ -16298,7 +16298,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0xa5ad1328bffe69df"
+            "frame_fnv1a64": "0xd3055444f1d62c70"
           },
           {
             "before_maximum": 100,
@@ -16326,7 +16326,7 @@
               5,
               7
             ],
-            "frame_fnv1a64": "0x831ad6f0707bcda1"
+            "frame_fnv1a64": "0x895b1ee4e06e66ae"
           },
           {
             "before_maximum": 100,
@@ -16355,7 +16355,7 @@
             "notice": false
           }
         ],
-        "synthetic_visible_frame_hashes_sha256": "680e31fe85d9209b74750606984612d5f00041776173c5ff83f105642d72982b"
+        "synthetic_visible_frame_hashes_sha256": "b51fcfaf299b2038c9ab3a7cf1334848f8019d8f2909f4ad548c6309cf925e7d"
       },
       "opcode_49_role_mp_type_write": {
         "entry_range": "0x2FEBF..0x2FEDF",

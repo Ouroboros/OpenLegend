@@ -32,11 +32,11 @@
 
 当前1,018条KDEF只有script825 PC0一次opcode52。按little-endian `<II>` 编码 `(script,PC)` 的完整调用流SHA256为 `b7191338c8ed84796ecd378ccb54c23288c34a90c771b53fc7c89eccfdad3f17`。
 
-真实script825以品德7得到原字节 `a741b27ba662aabaab7ebc77abfcbcc6acb0202020203700`，最终frame FNV1a64 `0x1cc47112086c10e7`，确认后输出present、stay。新增signed word边界覆盖：
+真实script825以品德7得到原字节 `a741b27ba662aabaab7ebc77abfcbcc6acb0202020203700`，最终frame FNV1a64 `0xfc38b0b5dce5a9c9`，确认后输出present、stay。新增signed word边界覆盖：
 
-- `-32768`：文字尾部 `-32768`，frame `0xd6e8a2c917f2ada7`；
-- `0`：四个前导空格后`0`，frame `0x1e6d8da21b3bb12f`；
-- `32767`：五位数字无前导空格，frame `0x4bf7246d16058dad`。
+- `-32768`：文字尾部 `-32768`，frame `0x55a69028a8c7f2c3`；
+- `0`：四个前导空格后`0`，frame `0xa4d319a5c7c6e81f`；
+- `32767`：五位数字无前导空格，frame `0xbaefc213f31da46a`。
 
 独立oracle双次生成逐字节一致；正式 `scene-goldens.json` SHA256 `c9aff6f6aa02c7582eeea9a1f40bb50146e230728ab8404f3e48ac2d7c4158e9`。
 

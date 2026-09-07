@@ -3,6 +3,8 @@
 状态：assembly-reviewed / golden-generated / implementation-pending
 真值：当前 `Z.DAT` 机器码、当前 `title.idx/title.grp/title.big/CFONT/RANGER.GRP` 字节
 
+input-font Order38确认原版唯一启动链固定加载`FONT3.E16/FONT3.C16`，并废弃此前由非启动链字体生成的姓名及菜单像素证明。当前`research/evidence/title-menu-new-game-goldens.json`已从只读FONT3资产执行两份临时生成和正式第三生成，三份逐字节一致，SHA256=`2543ef3cca3099a89dcfaaec6022c64936d5e3fdfb481f98bb7dd0c7cf23b186`；旧文件中仅由C++运行期输出手填的`runtime_ui_regression_fnv1a64`不是独立oracle，现已移出正式Golden，运行期哈希只保留为测试回归锁。非字体状态、输入和RNG字段不变。
+
 ## 1. 证据范围
 
 - `main @ 0x20D35..0x20FA9`：启动资源、标题循环与游戏会话循环；
@@ -137,5 +139,5 @@ wait   = 7333253ca7400de6
 - 标题读档先显示原“请稍候”帧，再在下一逻辑步完整导入 snapshot；失败进入显式错误模态且测试逐字节确认原 `GameState` 不变；
 - 存档测试只复制基线和 UI 资产到 `build/.../tests/generated/<Config>/b5-runtime/`，验证成功写出的 R/S/D snapshot 与内存状态完全相等，并通过删除隔离目录强制证明写失败不会伪报成功；
 - 主角离队返回原 Big5 提示且不修改 snapshot；其他角色的离队事件副作用按汇编边界留给 B7 事件执行器；物品使用/装备/修炼副作用同样留给 B7；
-- 标题主菜单、三槽和等待帧使用独立 Python RLE oracle；姓名输入另以当前`title.big/FONT.X16/FONT.C16/CFONT`固定初始、组合、候选第一页、负页安全适配、无候选、英数A、单ASCII残影和接受帧八项hash；世界菜单参数2选择框、双页精确状态和物品帧锁定 framebuffer FNV-1a 回归值，战斗双页状态另由独立原资产oracle复算，场景调用验证面板外背景逐像素不变；现代提交路径仍为 `indexed8 + RGB6 -> RGBA8 -> SDL nearest integer viewport`；
+- 标题主菜单、三槽和等待帧使用独立 Python RLE oracle；姓名输入另以当前`title.big/FONT3.E16/FONT3.C16/CFONT`固定初始、组合、候选第一页、负页安全适配、无候选、英数A、单ASCII残影和接受帧八项hash；世界菜单参数2选择框、双页精确状态和物品帧锁定 framebuffer FNV-1a 回归值，战斗双页状态另由独立原资产oracle复算，场景调用验证面板外背景逐像素不变；现代提交路径仍为 `indexed8 + RGB6 -> RGBA8 -> SDL nearest integer viewport`；
 - 本次菜单医疗/解毒切片的Linux/Windows app Debug均14/14通过，Linux app ASan+UBSan 14/14通过并已恢复普通Debug cache；独立B5 golden与tracked证据一致，原始`Z.COM/Z.DAT/WAR.STA/WARFLD.IDX/WARFLD.GRP`与阶段前hash合同一致，`research/ida/databases/Z_DAT.i64`无工作树修改。

@@ -21,13 +21,13 @@
       "bytes": 768,
       "sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a"
     },
-    "FONT.X16": {
+    "FONT3.E16": {
       "bytes": 2048,
-      "sha256": "d821d564c90dd6b7dc78ba0cdf6c7052066a5311ffc4b6e308bc0b60af20ecec"
+      "sha256": "4f8d52b1cee139e724cd9bdeca36920334aa8f73aefe29b3a0ff607f3818612f"
     },
-    "FONT.C16": {
+    "FONT3.C16": {
       "bytes": 447136,
-      "sha256": "8d395791f14395b18f8afd98204856e3a836a1b4497de41e4bb701de2fc19c40"
+      "sha256": "b0235b006fe2d42f818e2a53f667f175822de6bab5942431bff3a94fa69cfcdb"
     },
     "CFONT": {
       "bytes": 29674,
@@ -45,20 +45,20 @@
     "new_game_wait": "7333253ca7400de6"
   },
   "game_menu_pixels_fnv1a64": {
-    "source": "independent synthetic indexed background plus current mmap.col/FONT.C16",
+    "source": "independent synthetic indexed background plus current mmap.col/FONT3.C16",
     "world_selection_0": "4821b1c9f78f507d",
     "scene_selection_3": "2d951419c79fa4f8"
   },
   "name_entry_pixels_fnv1a64": {
-    "source": "independent machine-coordinate FONT.X16/FONT.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
-    "initial_zhuyin_cursor_7": "d1cb80f1e6ec5692",
-    "composition_rup_cursor_7": "f75fe18f23c3226b",
-    "candidates_rup_page_0_cursor_7": "b2e1b2b2b13b316c",
-    "candidates_rup_page_minus_1_cursor_7": "2ed4a5f661fa48a1",
-    "no_candidates_initial_1_tone_1_cursor_7": "6f24256f81e60c98",
-    "alphanumeric_a_cursor_7": "446d93db98ea6270",
-    "alphanumeric_single_backspace_ghost_cursor_7": "2d1d57b78908ed6c",
-    "accepted_alphanumeric_a": "a5d18b00944a30f3"
+    "source": "independent machine-coordinate FONT3.E16/FONT3.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
+    "initial_zhuyin_cursor_7": "5e228f916fbca51a",
+    "composition_rup_cursor_7": "5e7ca6575563ee33",
+    "candidates_rup_page_0_cursor_7": "f6be4e7079ef77d7",
+    "candidates_rup_page_minus_1_cursor_7": "e91f546c3328c8e3",
+    "no_candidates_initial_1_tone_1_cursor_7": "34681c6631f4bfc0",
+    "alphanumeric_a_cursor_7": "28e4cf89b0202deb",
+    "alphanumeric_single_backspace_ghost_cursor_7": "25ebc96179fd2703",
+    "accepted_alphanumeric_a": "668ae394d0fa7e13"
   },
   "game_menu_item_entry_machine": {
     "raw_range": "Z.DAT[0x23ad9:0x23b0f]",
@@ -565,13 +565,6 @@
       }
     ],
     "vectors_sha256": "f80f863c607a8d9aea5b9a678e7a9bb644608cc6c57d838d014479df2f49f09a"
-  },
-  "runtime_ui_regression_fnv1a64": {
-    "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-    "status_selector": "85fc6aad255a1c1b",
-    "status_page_0": "76cb48686954de6d",
-    "status_page_1": "a51f2adebe80d31f",
-    "items_page_0": "1f2c81326be42838"
   },
   "title_navigation": {
     "main_labels": [

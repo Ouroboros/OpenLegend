@@ -34,7 +34,7 @@
 ## 5. 验证与结论
 
 - `unk_54294` 九行已逐字节验证为 `floor(component*r/32)`。
-- 独立Python oracle使用当前 `mmap.col`、`FONT.C16`与合成indexed背景，且不导入/执行OpenLegend代码；style3的world/scene主菜单帧与现代C++逐像素比较。
+- 独立Python oracle使用当前 `mmap.col`、`FONT3.C16`与合成indexed背景，且不导入/执行OpenLegend代码；style3的world/scene主菜单帧与现代C++逐像素比较。
 - SceneSession style4的opcode24菜单golden继续固定主面板、退出确认残留及两层退出尾链。
 - 原程序动态差分：`blocked_runtime_oracle`。
 

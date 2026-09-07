@@ -63,8 +63,8 @@ for red in range(16):
             target = (red * 4 + 2, green * 4 + 2, blue * 4 + 2)
             rgb4.append(min(range(256), key=lambda index: sum(
                 (target[channel] - palette[index][channel]) ** 2 for channel in range(3))))
-ascii_font = (ROOT / 'FONT.X16').read_bytes()
-big5_font = (ROOT / 'FONT.C16').read_bytes()
+ascii_font = (ROOT / 'FONT3.E16').read_bytes()
+big5_font = (ROOT / 'FONT3.C16').read_bytes()
 portraits = g.cumulative_entries((ROOT / 'HDGRP.IDX').read_bytes(), (ROOT / 'HDGRP.GRP').read_bytes())
 
 def draw_panel(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
@@ -219,8 +219,8 @@ result = {
             'WMP002',
             'HDGRP.IDX',
             'HDGRP.GRP',
-            'FONT.X16',
-            'FONT.C16',
+            'FONT3.E16',
+            'FONT3.C16',
             'MMAP.COL',
         )
     },

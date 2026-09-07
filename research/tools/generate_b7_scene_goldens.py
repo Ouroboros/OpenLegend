@@ -4300,8 +4300,8 @@ def dialogue_vectors(
     scripts: list[bytes],
     ranger: bytes,
 ) -> dict[str, object]:
-    ascii_font = (root / "FONT.X16").read_bytes()
-    big5_font = (root / "FONT.C16").read_bytes()
+    ascii_font = (root / "FONT3.E16").read_bytes()
+    big5_font = (root / "FONT3.C16").read_bytes()
     portraits = packed((root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes())
     raw_talks = packed((root / "TALK.IDX").read_bytes(), (root / "TALK.GRP").read_bytes())
     z_dat = (root / "Z.DAT").read_bytes()
@@ -5063,8 +5063,8 @@ def status_notice_vectors(
     scripts: list[bytes],
     ranger: bytes,
 ) -> dict[str, object]:
-    ascii_font = (root / "FONT.X16").read_bytes()
-    big5_font = (root / "FONT.C16").read_bytes()
+    ascii_font = (root / "FONT3.E16").read_bytes()
+    big5_font = (root / "FONT3.C16").read_bytes()
     lookup = rgb4_lookup(palette)
 
     def blend(pixels: bytearray, x: int, y: int, width: int, height: int) -> None:
@@ -6227,8 +6227,8 @@ def death_menu_sequence(
     assert len(input_machine_raw) == 1264
     assert sha256(input_machine_raw) == \
         "832743bec15c92ed76da1680bce82e80485330dba141da442ba5634fb5b936d5"
-    ascii_font = (root / "FONT.X16").read_bytes()
-    big5_font = (root / "FONT.C16").read_bytes()
+    ascii_font = (root / "FONT3.E16").read_bytes()
+    big5_font = (root / "FONT3.C16").read_bytes()
     lookup = rgb4_lookup(palette)
     menu_items = (
         bytes.fromhex("b8 fc a4 4a b6 69 ab d7 a4 40 00"),

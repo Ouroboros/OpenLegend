@@ -21621,10 +21621,10 @@
         "poison_color": 12338,
         "mp_color": 12338
       },
-      "party_pixel_hash": "0x87ff9c43d54b7bca",
-      "enemy_pixel_hash": "0x0f803235628e69e5"
+      "party_pixel_hash": "0xcf0f77700cd1e7a1",
+      "enemy_pixel_hash": "0xebce8d4d6d8c1f14"
     },
-    "vector_sha256": "f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0",
+    "vector_sha256": "8a01741539af2e73e7c8f9b601dd944583cb1c79b647c1e7ad9663a7e8b28370",
     "direct_rng_calls": 0,
     "machine_return": "EAX renderer residue ignored at all three call sites",
     "platform_adaptation_boundary": "modern host safely rejects invalid combatant or role indices and invalid portrait assets, uses private formatting storage and deterministic empty-name handling, and splits present/wait phases; legal actor data, draw order, packed colors and pixels are preserved",
@@ -26125,7 +26125,7 @@
           0
         ],
         "selection_cursor": 0,
-        "selection_pixel_hash": "0x83f943240d14bb33",
+        "selection_pixel_hash": "0xa208e017148c08d7",
         "selected_role_ids": [
           0,
           1,
@@ -26170,7 +26170,7 @@
             24
           ],
           "actor_cursor_visible": true,
-          "pixel_hash": "0x648d1a4f7c02fdbc"
+          "pixel_hash": "0xdbdc71330f7ebc12"
         }
       },
       "wait_auto_render_vector": {
@@ -26222,8 +26222,8 @@
             "3": 1
           },
           "command_hash": "0xb9f8a428699b3712",
-          "pixel_hash": "0x19cc52eb01d4bb4d",
-          "status_panel_pixel_hash": "0x4a9f39bbe9629b58",
+          "pixel_hash": "0x5f87e9606f0c1502",
+          "status_panel_pixel_hash": "0xf3fb3a77fd749067",
           "first_command": [
             0,
             15,

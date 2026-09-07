@@ -874,8 +874,8 @@ def main() -> int:
     title_group = (args.data_root / "title.grp").read_bytes()
     title_big = (args.data_root / "title.big").read_bytes()
     palette = (args.data_root / "mmap.col").read_bytes()
-    ascii_font = (args.data_root / "FONT.X16").read_bytes()
-    big5_font = (args.data_root / "FONT.C16").read_bytes()
+    ascii_font = (args.data_root / "FONT3.E16").read_bytes()
+    big5_font = (args.data_root / "FONT3.C16").read_bytes()
     cfont = (args.data_root / "CFONT").read_bytes()
     ranger = (args.data_root / "RANGER.GRP").read_bytes()
     assert len(title_big) == 320 * 200
@@ -903,8 +903,8 @@ def main() -> int:
             "title.grp": {"bytes": len(title_group), "sha256": sha256(title_group)},
             "title.big": {"bytes": len(title_big), "sha256": sha256(title_big)},
             "mmap.col": {"bytes": len(palette), "sha256": sha256(palette)},
-            "FONT.X16": {"bytes": len(ascii_font), "sha256": sha256(ascii_font)},
-            "FONT.C16": {"bytes": len(big5_font), "sha256": sha256(big5_font)},
+            "FONT3.E16": {"bytes": len(ascii_font), "sha256": sha256(ascii_font)},
+            "FONT3.C16": {"bytes": len(big5_font), "sha256": sha256(big5_font)},
             "CFONT": {"bytes": len(cfont), "sha256": sha256(cfont)},
         },
         "title_pixels_fnv1a64": {
@@ -918,7 +918,7 @@ def main() -> int:
             "new_game_wait": fnv1a64(new_game_wait_screen(title_big, frames)),
         },
         "game_menu_pixels_fnv1a64": {
-            "source": "independent synthetic indexed background plus current mmap.col/FONT.C16",
+            "source": "independent synthetic indexed background plus current mmap.col/FONT3.C16",
             "world_selection_0": fnv1a64(
                 game_menu_screen(big5_font, parsed_palette, panel_lookup, 6, 0)
             ),
@@ -927,7 +927,7 @@ def main() -> int:
             ),
         },
         "name_entry_pixels_fnv1a64": {
-            "source": "independent machine-coordinate FONT.X16/FONT.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
+            "source": "independent machine-coordinate FONT3.E16/FONT3.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
             "initial_zhuyin_cursor_7": fnv1a64(
                 name_entry_screen(title_big, ascii_font, big5_font, cfont)
             ),
@@ -1006,13 +1006,6 @@ def main() -> int:
         },
         "game_menu_item_entry_machine": game_menu_item_entry_machine(z_dat),
         "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
-        "runtime_ui_regression_fnv1a64": {
-            "source": "C++ framebuffer regression lock using baseline seed 0 and protagonist name A",
-            "status_selector": "85fc6aad255a1c1b",
-            "status_page_0": "76cb48686954de6d",
-            "status_page_1": "a51f2adebe80d31f",
-            "items_page_0": "1f2c81326be42838",
-        },
         "title_navigation": {
             "main_labels": ["new_game", "load", "exit"],
             "slot_labels_big5_hex": ["a440", "a447", "a454"],

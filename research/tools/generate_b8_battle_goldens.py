@@ -11231,8 +11231,8 @@ def battle_status_panel_contract(
         (data_root / "HDGRP.IDX").read_bytes(),
         (data_root / "HDGRP.GRP").read_bytes(),
     )
-    ascii_font = (data_root / "FONT.X16").read_bytes()
-    big5_font = (data_root / "FONT.C16").read_bytes()
+    ascii_font = (data_root / "FONT3.E16").read_bytes()
+    big5_font = (data_root / "FONT3.C16").read_bytes()
 
     def render_pixels(plan: dict[str, object]) -> str:
         pixels = bytearray(index % 251 for index in range(320 * 200))
@@ -11376,7 +11376,7 @@ def battle_status_panel_contract(
         vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     vector_sha256 = sha256(vector_bytes)
-    if vector_sha256 != "f59c9af65abcb5cbe93ffe902aae397b70449608b3390f7220c3e0f3224cf6b0":
+    if vector_sha256 != "8a01741539af2e73e7c8f9b601dd944583cb1c79b647c1e7ad9663a7e8b28370":
         raise ValueError(
             f"battle status-panel independent vector set changed: {vector_sha256}"
         )
@@ -13877,8 +13877,8 @@ def battle_pixel_hashes(
                         for channel in range(3)
                     ),
                 ))
-    ascii_font = (root / "FONT.X16").read_bytes()
-    big5_font = (root / "FONT.C16").read_bytes()
+    ascii_font = (root / "FONT3.E16").read_bytes()
+    big5_font = (root / "FONT3.C16").read_bytes()
     pixels = bytearray(320 * 200)
     for command in commands:
         kind, _, _, screen_x, screen_y, sprite_id, variant, style, value = command
@@ -14005,8 +14005,8 @@ def battle_session_vector(root: Path, field_words: list[int]) -> dict[str, objec
                         for channel in range(3)
                     ),
                 ))
-    ascii_font = (root / "FONT.X16").read_bytes()
-    big5_font = (root / "FONT.C16").read_bytes()
+    ascii_font = (root / "FONT3.E16").read_bytes()
+    big5_font = (root / "FONT3.C16").read_bytes()
     pixels = bytearray(index % 251 for index in range(320 * 200))
 
     def blend_rectangle(x: int, y: int, width: int, height: int) -> None:

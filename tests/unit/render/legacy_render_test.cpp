@@ -255,6 +255,48 @@ void run_glyph_write_tests() {
     OL_CHECK(framebuffer.row(20)[21] == 5U);
     OL_CHECK(framebuffer.row(20)[28] == 6U);
     OL_CHECK(framebuffer.row(20)[29] == 5U);
+
+    std::array<std::uint8_t, 158U * 32U> synthetic_big5{};
+    for (std::size_t index = 0U; index < 158U; ++index) {
+        synthetic_big5[index * 32U] = static_cast<std::uint8_t>(index);
+    }
+    Big5GlyphCache cache{synthetic_big5};
+    const auto first = cache.resolve(0xA140U);
+    const auto low_trail_end = cache.resolve(0xA17EU);
+    const auto high_trail_begin = cache.resolve(0xA1A1U);
+    const auto lead_end = cache.resolve(0xA1FEU);
+    const auto next_lead = cache.resolve(0xA240U);
+    OL_CHECK(first && (*first)[0] == 0U);
+    OL_CHECK(low_trail_end && (*low_trail_end)[0] == 62U);
+    OL_CHECK(high_trail_begin && (*high_trail_begin)[0] == 63U);
+    OL_CHECK(lead_end && (*lead_end)[0] == 156U);
+    OL_CHECK(next_lead && (*next_lead)[0] == 157U);
+    OL_CHECK(cache.next_replacement_slot() == 5U);
+    OL_CHECK(static_cast<bool>(cache.resolve(0xA140U)));
+    OL_CHECK(cache.next_replacement_slot() == 5U);
+    OL_CHECK(!cache.resolve(0xA17FU));
+    OL_CHECK(!cache.resolve(0xA1A0U));
+    OL_CHECK(!cache.resolve(0xA1FFU));
+    OL_CHECK(!cache.resolve(0xA040U));
+    OL_CHECK(cache.next_replacement_slot() == 5U);
+
+    Big5GlyphCache ring_cache{synthetic_big5};
+    for (std::size_t index = 0U; index < 64U; ++index) {
+        const auto trail = static_cast<std::uint16_t>(
+            index < 63U ? 0x40U + index : 0x62U + index);
+        const auto code = static_cast<std::uint16_t>(0xA100U | trail);
+        const auto glyph = ring_cache.resolve(code);
+        OL_CHECK(glyph && (*glyph)[0] == static_cast<std::uint8_t>(index));
+    }
+    OL_CHECK(ring_cache.next_replacement_slot() == 0U);
+    OL_CHECK(static_cast<bool>(ring_cache.resolve(0xA14AU)));
+    OL_CHECK(ring_cache.next_replacement_slot() == 0U);
+    const auto replacement = ring_cache.resolve(0xA240U);
+    OL_CHECK(replacement && (*replacement)[0] == 157U);
+    OL_CHECK(ring_cache.next_replacement_slot() == 1U);
+    const auto reloaded = ring_cache.resolve(0xA140U);
+    OL_CHECK(reloaded && (*reloaded)[0] == 0U);
+    OL_CHECK(ring_cache.next_replacement_slot() == 2U);
 }
 
 openlegend::resource::SpriteFrameView frame_zero(

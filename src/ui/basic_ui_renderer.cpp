@@ -156,12 +156,12 @@ template <std::size_t ByteCount>
 }  // namespace
 
 BasicUiRenderer::BasicUiRenderer(const resource::DataRoot& data_root) {
-    auto ascii = data_root.read("FONT.X16");
+    auto ascii = data_root.read("FONT3.E16");
     if (!ascii) {
         error_ = ascii.error;
         return;
     }
-    auto big5 = data_root.read("FONT.C16");
+    auto big5 = data_root.read("FONT3.C16");
     if (!big5) {
         error_ = big5.error;
         return;

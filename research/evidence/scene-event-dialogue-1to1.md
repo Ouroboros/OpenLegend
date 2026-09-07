@@ -1,6 +1,6 @@
 # B7 场景、事件与对话证据
 
-状态：进行中。本文已固定 B7 的资源、场景绘制、移动/碰撞、十一处天气场景、KDEF 调度核心和 app 同步进入/返回链；全部高阶剧情副作用和战斗回收仍在后续小提交逐项审计，不能据本文提前宣称 B7 完成。
+状态：B7统一最终汇编→C++ REVIEW为100/100，全部scene-event owner关闭。input-font Order38另按原版启动链重新审计字体来源并三次重生成全部受影响场景像素；该字体修正不传播scene owner closure。
 
 ## 1. 真值与证据
 
@@ -11,7 +11,8 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`
+  - 当前FONT3正式SHA256：`41258dd5f705488da5580b141d83e90f60034123913a9ef02f67a889d30456e8`
+  - 此前各order登记的文件级SHA256只表示当时增量版本；其中依赖旧字体的像素证明已由Order38的两份临时结果与正式第三生成取代，非字体控制流、状态和RNG字段保持。
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -303,7 +304,7 @@ opcode23把第二个signed word直接覆盖到指定角色记录word47，不读�
 
 完整1264字节物理范围的loaded/raw SHA256分别为 `e9350b3775deca2ee7ec049f92d20f411f1f1a1a6c3b33f493bcaaec85ca9826`、`832743bec15c92ed76da1680bce82e80485330dba141da442ba5634fb5b936d5`；79个差异字节全部由79个32位绝对地址 `+0x20000` 重定位解释。函数读取64000字节 `DEAD.BIG`，在当前palette上绘role0姓名、本地日期、三行固定文字、四项载入/退出菜单；主panel和确认panel按原RGB6→RGB4暗化与圆角边线绘制。Down/Up循环选择，Enter/Space/keypad Enter激活；前三项写0-based读档槽、清屏并present，第四项只有uppercase `Y` shutdown并退出，lowercase `y`及任意其他键均重建底图后回到selection3。
 
-现代 `DeathMenuState`、scene step/result和runtime pending I/O替代DOS全局与直接进程退出，合法域像素和状态顺序一致，因此归类`platform_adapted`。固定日期下selection0..3帧为 `0x9da84526f6317a4a`、`0x5f72cf3141ce8b24`、`0xb2db9b6f5ea184de`、`0x11f91fd0e5becceb`，确认帧 `0x4ba394e637cc051e`，黑帧 `0xdd14fcc6528cab25`；真实script190覆盖opcode15 caller，script936覆盖试炼caller，载入失败恢复原selection和帧。
+现代 `DeathMenuState`、scene step/result和runtime pending I/O替代DOS全局与直接进程退出，合法域像素和状态顺序一致，因此归类`platform_adapted`。固定日期下selection0..3帧为 `0xbf1a495a44c62f94`、`0x68d745bf90fd7836`、`0x1c49028d4de65790`、`0xe12cadece73a4625`，确认帧 `0xa4cd2662391e2284`，黑帧 `0xdd14fcc6528cab25`；真实script190覆盖opcode15 caller，script936覆盖试炼caller，载入失败恢复原selection和帧。
 
 后续input owner独立复核全部330条指令，补充锁定菜单循环`present -> 读取一个键 -> 重绘`以及确认框present后才等待回答。首轮宿主对照发现SDL同批事件可在中间菜单frame实际present前连续移动或回答确认；death-menu专用present门修正为每个成功present最多消费一键。预修复`proc_6a1a`稳定复现，最终构建`proc_c46f`通过14/14并从入口重审收敛；正式Golden新增机器身份与输入周期字段，SHA256为`8f78b137f17fc1d614eb84b0afc7201512d67a0d0ffb509397f79958a3ff3bba`。
 

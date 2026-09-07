@@ -248,6 +248,16 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 本轮只关闭`input-font-closure.tsv audit_order=36`。同址battle owner既有状态只作为交叉核对，两个caller、18个不同callee地址、目标/直线area、伤害、动画、renderer、present、delay、RNG及共享状态owner均不传播closure；原程序动态runtime oracle仍登记为`blocked_runtime_oracle`。
 
+### 3.12 Big5字体索引、64槽缓存与启动字体源
+
+`sub_3D27A @ 0x3D27A..0x3D34A`由input-font Order38使用独立临时IDB冻结为208 bytes、63条指令、8个CFG块、3个条件分支、1个无条件跳转、9处HIGHLOW重定位、4次direct call、2个caller和2个本地RET；raw/loaded SHA256分别为`2184f101736a6b043b9275525bd771cf193e0e14aa50bac9a94c73a8890a323d`与`7ae1394fcff40636b1abb15da18eb68a374e4e6617566b686c31b985bec5baf4`。两个caller都以零扩展byte组成`lead<<8|trail`，返回slot只立即用于读取缓存内32-byte字形。
+
+机器按slot0..63升序首命中；hit不seek/read且不推进replacement。miss先写低16位tag，再按`(lead-0xA1)*157 + (trail<0xA1 ? trail-0x40 : trail-0x62)` seek/read 32 bytes，最后以`(slot+1)%64`推进并返回旧slot。当前`FONT3.C16`的13,973个合法编码全部映射为连续index0..13972，映射流SHA256=`4b3ce05fbebaf79ea5a5c7d5197aeb80e362e3a60e401e8745252139169aadaa`；命中、miss、回绕和驱逐trace SHA256=`c7f2602f1c04d455c15cfc3a29d8bb38dec57a28c5ae305bd38928dccc6d8936`。
+
+首轮汇编→C++对照发现`Big5GlyphCache`核心算法一致，但Basic UI、scene和battle加载的字体资产与原版唯一启动链不符；旧零差异结论及相应像素Golden立即废弃。三条产品路径、四个独立生成器和fixture均最小修正为启动链固定的`FONT3.E16/FONT3.C16`。修正后从入口重新覆盖8/8块、4个跳转、4次call、两个caller和两个RET，合法域零剩余产品差异。畸形trail别名、负/EOF seek、短字体与I/O失败由现代显式拒绝；进程全局cache改为renderer/session局部cache且返回span替代slot，在只读合法字体和立即绘制caller下均不可观察，归类平台适配。
+
+B5、B7、B8及battle-player-status分别执行两份临时生成和正式第三生成，每组三份逐字节一致；正式SHA256依次为`2543ef3cca3099a89dcfaaec6022c64936d5e3fdfb481f98bb7dd0c7cf23b186`、`41258dd5f705488da5580b141d83e90f60034123913a9ef02f67a889d30456e8`、`ab3b9a67ceec89430176a5469899e3e3ed318efc7d44a1a4947272115e77d6ab`和`d6d9c58f61afba15cb327da007c6e4cbd1ddc00744897aff70226fe5a8144416`。聚合render证据同时纠正`sub_20615`为Big5、`sub_20663`为ASCII，但两个callee仍按独立owner状态，不传播closure。完整证据见`research/evidence/functions/Z_DAT/0x3D27A.md`；原程序动态runtime oracle继续登记为`blocked_runtime_oracle`。
+
 ## 4. RNG
 
 `sub_3F987` 返回全局 32-bit state；`sub_3F9B0(seed)` 原样覆盖；`sub_3F98D()` 为：

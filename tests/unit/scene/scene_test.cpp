@@ -46,8 +46,8 @@ public:
         OL_CHECK(!error);
         for (const auto name : std::array<std::string_view, 13>{
                  "TALK.IDX", "TALK.GRP", "HDGRP.IDX", "HDGRP.GRP",
-                 "CLOUD.IDX", "CLOUD.GRP", "MMAP.COL", "FONT.X16",
-                 "FONT.C16", "3_shadow.msk", "4_shadow.msk", "SDX070", "SMP070"}) {
+                 "CLOUD.IDX", "CLOUD.GRP", "MMAP.COL", "FONT3.E16",
+                 "FONT3.C16", "3_shadow.msk", "4_shadow.msk", "SDX070", "SMP070"}) {
             error.clear();
             std::filesystem::copy_file(
                 source / name, path_ / name,
@@ -2981,18 +2981,18 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         {61, 4, {10, 11, 12}},
     };
     constexpr std::array<std::uint64_t, 5> first_row_frames{
-        0x9FF513954985695BULL,
-        0x8BED5DE64D764DD9ULL,
-        0x71A25CB03B3DAC9CULL,
-        0x960E9C11D5672DB9ULL,
-        0xAECE6648568972EFULL,
+        0x84a28a707fcde0cbULL,
+        0x23177b66ff9a953dULL,
+        0xead3f791b21a19fbULL,
+        0xbec905c180a5cfa9ULL,
+        0x3f0427959860ddbcULL,
     };
     constexpr std::array<std::uint64_t, 5> last_row_frames{
-        0x31F73A2D373D7223ULL,
-        0x39251FED2BBDD0C1ULL,
-        0xB6F648F4D4EB333CULL,
-        0x1BA33F6D38D86B25ULL,
-        0xDB50FCDA4E4F75A3ULL,
+        0x09db7a029515ef67ULL,
+        0x31ee420cf0118545ULL,
+        0x65ed3e6c63297b8bULL,
+        0xba5f390a6313ad25ULL,
+        0xec55ed9d773720bcULL,
     };
     for (const auto& shop_case : cases) {
         auto snapshot = load_baseline(root);
@@ -4128,15 +4128,15 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
         OL_CHECK(defeat_session.render(death_framebuffer));
         return fnv1a64(death_framebuffer.pixels());
     };
-    OL_CHECK(death_hash() == 0x9DA84526F6317A4AULL);
+    OL_CHECK(death_hash() == 0xbf1a495a44c62f94ULL);
     defeat = defeat_session.resume(SceneResponse::acknowledge);
     OL_CHECK(defeat.kind == SceneStepKind::death_menu);
     OL_CHECK(defeat.menu_index == 0);
     constexpr std::array<std::uint64_t, 4> selected_hashes{
-        0x9DA84526F6317A4AULL,
-        0x5F72CF3141CE8B24ULL,
-        0xB2DB9B6F5EA184DEULL,
-        0x11F91FD0E5BECCEBULL,
+        0xbf1a495a44c62f94ULL,
+        0x68d745bf90fd7836ULL,
+        0x1c49028d4de65790ULL,
+        0xe12cadece73a4625ULL,
     };
     for (int selection = 1; selection < 4; ++selection) {
         defeat = defeat_session.resume(SceneResponse::acknowledge, 0x98);
@@ -4151,7 +4151,7 @@ void check_event_tournament_trial(const std::filesystem::path& root) {
     defeat = defeat_session.resume(SceneResponse::acknowledge, 0x0D);
     OL_CHECK(defeat.kind == SceneStepKind::death_menu);
     OL_CHECK(defeat.death_confirm);
-    OL_CHECK(death_hash() == 0x4BA394E637CC051EULL);
+    OL_CHECK(death_hash() == 0xa4cd2662391e2284ULL);
     defeat = defeat_session.resume(SceneResponse::acknowledge, static_cast<int>('N'));
     OL_CHECK(defeat.kind == SceneStepKind::death_menu);
     OL_CHECK(defeat.menu_index == 3);
@@ -4515,10 +4515,10 @@ void check_event_role_iq_clamp(const std::filesystem::path& root) {
         std::uint64_t frame_hash;
     };
     constexpr std::array<RoleIqCase, 5> cases{{
-        {39, 99, 100, 1, 0x6E7FE3EB3D0961B7ULL},
+        {39, 99, 100, 1, 0xc6523264a566f3f0ULL},
         {40, 32766, 0, -1, 0U},
-        {41, -10, 0, 10, 0x4E4523EE5F7AFDA0ULL},
-        {42, -32768, 100, 32868, 0x225ECF10614F7CB8ULL},
+        {41, -10, 0, 10, 0x4a0d7896fe25af68ULL},
+        {42, -32768, 100, 32868, 0xf81fe182d9ae3780ULL},
         {43, 32767, 0, -1, 0U},
     }};
     for (const auto& test : cases) {
@@ -5412,8 +5412,8 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
              std::tuple<
                  std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>{
                  82, 32767, 0, false, 0},
-             {83, -32768, 100, true, 0x4B693C807A3F6EE2ULL},
-             {84, -1, 0, true, 0x112AB8F9E491EC4DULL}}) {
+             {83, -32768, 100, true, 0xabaced842dddcf62ULL},
+             {84, -1, 0, true, 0xf9cac2622947eaeeULL}}) {
         auto snapshot = load_baseline(root);
         snapshot.ranger.roles[0].set_word(openlegend::model::role_word::speed, before);
         openlegend::random::LegacyRandom random{1U};
@@ -5447,8 +5447,8 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
              std::tuple<
                  std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool,
                  std::uint64_t>{86, 32767, -32768, -32768, false, 0},
-             {87, -32768, -32768, 32767, true, 0x4624B5C6C4CA6D16ULL},
-             {88, 100, 0, 100, true, 0xBBFF4E602CA8260CULL},
+             {87, -32768, -32768, 32767, true, 0xb98021ea433f1e4dULL},
+             {88, 100, 0, 100, true, 0x7da5a3d67eae1b43ULL},
              {89, 100, 100, 90, false, 0}}) {
         auto snapshot = load_baseline(root);
         auto& role = snapshot.ranger.roles[0];
@@ -5486,8 +5486,8 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
              std::tuple<
                  std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>{
                  91, 32767, 0, false, 0},
-             {92, -32768, 100, true, 0x02F03B6E246A4973ULL},
-             {93, -1, 0, true, 0x9E3C9A177D228048ULL}}) {
+             {92, -32768, 100, true, 0xcce679be34f564efULL},
+             {93, -1, 0, true, 0x583a21a959063fffULL}}) {
         auto snapshot = load_baseline(root);
         snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, before);
         openlegend::random::LegacyRandom random{1U};
@@ -5523,8 +5523,8 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
              std::tuple<
                  std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool, bool,
                  std::uint64_t>{95, 32767, -32768, -32768, true, false, 0},
-             {96, -32768, -32768, 32767, true, true, 0xA5AD1328BFFE69DFULL},
-             {97, 100, 0, 100, true, true, 0x831AD6F0707BCDA1ULL},
+             {96, -32768, -32768, 32767, true, true, 0xd3055444f1d62c70ULL},
+             {97, 100, 0, 100, true, true, 0x895b1ee4e06e66aeULL},
              {98, 100, 100, 90, true, false, 0},
              {99, 100, 0, 101, false, false, 0}}) {
         auto snapshot = load_baseline(root);
@@ -5883,28 +5883,28 @@ void check_event_status_notices(const std::filesystem::path& root) {
     };
     check_notice(
         825, openlegend::model::role_word::morality, 7, 52, morality_text,
-        0x1CC47112086C10E7ULL, true);
+        0xfc38b0b5dce5a9c9ULL, true);
     check_notice(
         825, openlegend::model::role_word::morality, -32768, 52, morality_minimum_text,
-        0xD6E8A2C917F2ADA7ULL, true);
+        0x55a69028a8c7f2c3ULL, true);
     check_notice(
         825, openlegend::model::role_word::morality, 0, 52, morality_zero_text,
-        0x1E6D8DA21B3BB12FULL, true);
+        0xa4d319a5c7c6e81fULL, true);
     check_notice(
         825, openlegend::model::role_word::morality, 32767, 52, morality_maximum_text,
-        0x4BF7246D16058DADULL, true);
+        0xbaefc213f31da46aULL, true);
     check_notice(
         828, openlegend::model::role_word::fame, 123, 53, fame_text,
-        0x5678C57A93EC10C4ULL, true);
+        0x16574e827756e45eULL, true);
     check_notice(
         828, openlegend::model::role_word::fame, -32768, 53, fame_minimum_text,
-        0x430D455D1EA59A8DULL, true);
+        0x0a8ffc26925e5fb1ULL, true);
     check_notice(
         828, openlegend::model::role_word::fame, 0, 53, fame_zero_text,
-        0xE16CFC1B1BF9ED80ULL, true);
+        0xbe9a84c62f1fd0d1ULL, true);
     check_notice(
         828, openlegend::model::role_word::fame, 32767, 53, fame_maximum_text,
-        0x362EA896D68BA3C6ULL, true);
+        0xa6cd419bd1ed49dbULL, true);
 }
 
 void check_event_map_replace_and_random_talk(const std::filesystem::path& root) {

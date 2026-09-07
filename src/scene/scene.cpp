@@ -451,8 +451,8 @@ SceneSession::SceneSession(
                 kWeatherSceneIds.end()
             ? 1
             : 0;
-    auto ascii = data_root_.read("FONT.X16");
-    auto big5 = data_root_.read("FONT.C16");
+    auto ascii = data_root_.read("FONT3.E16");
+    auto big5 = data_root_.read("FONT3.C16");
     if (!ascii) {
         error_ = ascii.error;
         return;

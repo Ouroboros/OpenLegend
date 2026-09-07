@@ -201,8 +201,8 @@ BattleRenderer::BattleRenderer(
         return;
     }
     palette_ = palette.palette;
-    auto ascii = data_root.read("FONT.X16");
-    auto big5 = data_root.read("FONT.C16");
+    auto ascii = data_root.read("FONT3.E16");
+    auto big5 = data_root.read("FONT3.C16");
     if (!ascii) {
         error_ = ascii.error;
         return;

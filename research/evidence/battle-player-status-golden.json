@@ -1,7 +1,7 @@
 {
   "asset_sha256": {
-    "FONT.C16": "8d395791f14395b18f8afd98204856e3a836a1b4497de41e4bb701de2fc19c40",
-    "FONT.X16": "d821d564c90dd6b7dc78ba0cdf6c7052066a5311ffc4b6e308bc0b60af20ecec",
+    "FONT3.C16": "b0235b006fe2d42f818e2a53f667f175822de6bab5942431bff3a94fa69cfcdb",
+    "FONT3.E16": "4f8d52b1cee139e724cd9bdeca36920334aa8f73aefe29b3a0ff607f3818612f",
     "HDGRP.GRP": "9b3ea687e0a2d82cc0dd83f580cff6a5cb48e7b62b6fd98dc4b63dad93a9c037",
     "HDGRP.IDX": "4c992c82d1f88fbe7f8cd145222b93c5715ee4b42f540ba6264ba2d22895ca35",
     "MMAP.COL": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
@@ -32,8 +32,8 @@
   },
   "format": "openlegend-b8-player-status-golden-v1",
   "hashes": {
-    "status_page_0": "0x1c5e879ce61d5b34",
-    "status_page_1": "0x9592da33a3c151d4",
+    "status_page_0": "0x0b9c995f4c642a2a",
+    "status_page_1": "0x57be2a96bcd566e4",
     "status_selection": "0xfa1b21403051335c"
   },
   "party": [

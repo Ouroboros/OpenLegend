@@ -20,15 +20,15 @@
 
 ## 3. 字形写入
 
-### ASCII `sub_20615 @ 0x20615`
+### Big5 `sub_20615 @ 0x20615`
 
-- 8×16、每行 1 字节、从 bit 7 到 bit 0。
+- 16×16、每行 2 字节、从每个字节的 bit 7 到 bit 0。
 - 每个置位 bit 先在当前像素写 foreground，再在右侧像素写 right-shadow。
 - 相邻置位 bit 会覆盖前一个 right-shadow；现代实现保留该逐字节覆盖顺序。
 
-### Big5 `sub_20663 @ 0x20663`
+### ASCII `sub_20663 @ 0x20663`
 
-- 16×16、每行 2 字节；每个置位 bit 使用与 ASCII 相同的两像素写法。
+- 8×16、每行 1 字节；每个置位 bit 使用与 Big5 相同的两像素写法。
 
 ### 文本与缓存 `sub_3D1E5 @ 0x3D1E5`、`sub_3D27A @ 0x3D27A`
 
@@ -36,8 +36,11 @@
 - `_` 使用 `FONT3.E16` 第 32 个空白字形但只前进 4 像素。
 - Big5 code 为 `lead<<8 | trail`，前进 16 像素。
 - Big5 索引：`(lead-0xA1)*157 + (trail<0xA1 ? trail-0x40 : trail-0x62)`。
-- `FONT3.C16` miss 时读取 32 字节到 64 槽环形缓存；hit 不推进替换槽。
-- 128 个 ASCII 与 13,973 个 Big5 字形全部绘制；独立 oracle 的序列 FNV-1a 为 `6fa3df724d833333`。
+- `sub_3D27A`固定208 bytes、63条指令、8个CFG块、3个条件分支、1个无条件跳转、9处重定位、4次direct call、2个caller和2个本地RET；raw/loaded SHA256为`2184f101736a6b043b9275525bd771cf193e0e14aa50bac9a94c73a8890a323d`/`7ae1394fcff40636b1abb15da18eb68a374e4e6617566b686c31b985bec5baf4`。
+- `FONT3.C16` miss 时先写tag，再读取 32 字节到当前64槽环形缓存，随后推进replacement；hit返回首个匹配slot且不seek/read、不推进。全部13,973个合法编码映射SHA256为`4b3ce05fbebaf79ea5a5c7d5197aeb80e362e3a60e401e8745252139169aadaa`，cache trace SHA256为`c7f2602f1c04d455c15cfc3a29d8bb38dec57a28c5ae305bd38928dccc6d8936`。
+- 原版启动链固定加载`FONT3.E16/FONT3.C16`；现代Basic UI、scene和battle renderer曾错误加载非3字体，现已修正并从只读FONT3资产三次确定性重生成B5/B7/B8及战斗角色状态Golden。正式文件SHA256依次为`2543ef3cca3099a89dcfaaec6022c64936d5e3fdfb481f98bb7dd0c7cf23b186`、`41258dd5f705488da5580b141d83e90f60034123913a9ef02f67a889d30456e8`、`ab3b9a67ceec89430176a5469899e3e3ed318efc7d44a1a4947272115e77d6ab`、`d6d9c58f61afba15cb327da007c6e4cbd1ddc00744897aff70226fe5a8144416`。
+- 畸形lead/trail、短字体及原DOS seek/read失败继续由现代安全拒绝并归类平台适配；两个caller只立即取得当前32-byte字形，局部cache生命周期及返回span不改变合法只读资产的可观察像素。
+- 128 个 ASCII 与 13,973 个 Big5 字形全部绘制；独立 oracle 的序列 FNV-1a 为 `6fa3df724d833333`。完整owner终审见`research/evidence/functions/Z_DAT/0x3D27A.md`。
 
 ## 4. 调色板
 

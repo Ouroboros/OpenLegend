@@ -2970,7 +2970,7 @@ void run_battle_status_panel_review_test(
     openlegend::render::IndexedFramebuffer party_framebuffer;
     fill_pattern(party_framebuffer);
     OL_CHECK(renderer.render_status_panel(*plan, party_framebuffer));
-    OL_CHECK(fnv1a_bytes(party_framebuffer.pixels()) == 0x87ff9c43d54b7bcaULL);
+    OL_CHECK(fnv1a_bytes(party_framebuffer.pixels()) == 0xcf0f77700cd1e7a1ULL);
 
     set_name(enemy_role, {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 0, 'X'});
     enemy_words[combatant_word::side] = -1;
@@ -2997,7 +2997,7 @@ void run_battle_status_panel_review_test(
     openlegend::render::IndexedFramebuffer enemy_framebuffer;
     fill_pattern(enemy_framebuffer);
     OL_CHECK(renderer.render_status_panel(*enemy_plan, enemy_framebuffer));
-    OL_CHECK(fnv1a_bytes(enemy_framebuffer.pixels()) == 0x0f803235628e69e5ULL);
+    OL_CHECK(fnv1a_bytes(enemy_framebuffer.pixels()) == 0xebce8d4d6d8c1f14ULL);
 }
 
 void run_battle_practice_review_test(
@@ -4308,11 +4308,11 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
         fnv1a_bytes(odd_highlight_framebuffer.pixels()));
 
     OL_CHECK(renderer.render(*plan, framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x19cc52eb01d4bb4dULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x5f87e9606f0c1502ULL);
     const auto status_panel = render_setup.status_panel_plan(0U);
     OL_CHECK(status_panel.has_value());
     OL_CHECK(renderer.render_status_panel(*status_panel, framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x4a9f39bbe9629b58ULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0xf3fb3a77fd749067ULL);
 
     auto no_range_state = state;
     no_range_state.path_limit = 0;
@@ -5002,12 +5002,12 @@ void run_player_item_session_test(
               << item_effect_hash << '\n' << throwing_prelude_hash << '\n'
               << throwing_effect_hash << '\n' << throwing_damage_hash << '\n';
     hash_file.close();
-    OL_CHECK(item_menu_hash == 0x68c3b70dfec20bbaULL);
+    OL_CHECK(item_menu_hash == 0x1a9386291b074e19ULL);
     OL_CHECK(item_menu_single_hash == 0x17b6845a718a6cf8ULL);
-    OL_CHECK(item_effect_hash == 0xd518fb664f3e0e3cULL);
+    OL_CHECK(item_effect_hash == 0x96fce61fed8c957eULL);
     OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0x370a4078e9de6172ULL);
-    OL_CHECK(throwing_damage_hash == 0xde5838c214d40974ULL);
+    OL_CHECK(throwing_damage_hash == 0xd48510d387fe6de2ULL);
 
     openlegend::diagnostics::shutdown_logging();
     std::ifstream log_file{log_path, std::ios::binary};
@@ -5130,16 +5130,16 @@ void run_player_status_session_test(
         *ranger, 2, 1U, unsigned_status_page_1));
     const auto unsigned_status_page_0_hash = fnv1a_bytes(unsigned_status_page_0.pixels());
     const auto unsigned_status_page_1_hash = fnv1a_bytes(unsigned_status_page_1.pixels());
-    if (unsigned_status_page_0_hash != 0x77C7894D66E05F7CULL) {
+    if (unsigned_status_page_0_hash != 0xCD9EA20E60D4413EULL) {
         std::cerr << "unsigned_status_page_0_hash=0x" << std::hex
                   << unsigned_status_page_0_hash << std::dec << '\n';
     }
-    if (unsigned_status_page_1_hash != 0x943CBB1B8EE2C566ULL) {
+    if (unsigned_status_page_1_hash != 0x7DB20CE65A040D95ULL) {
         std::cerr << "unsigned_status_page_1_hash=0x" << std::hex
                   << unsigned_status_page_1_hash << std::dec << '\n';
     }
-    OL_CHECK(unsigned_status_page_0_hash == 0x77C7894D66E05F7CULL);
-    OL_CHECK(unsigned_status_page_1_hash == 0x943CBB1B8EE2C566ULL);
+    OL_CHECK(unsigned_status_page_0_hash == 0xCD9EA20E60D4413EULL);
+    OL_CHECK(unsigned_status_page_1_hash == 0x7DB20CE65A040D95ULL);
     status_role.set_word(role_word::experience, 1'234);
     status_role.set_word(role_word::item_experience, 15);
     const auto status_role_before = status_role.bytes;
@@ -5197,8 +5197,8 @@ void run_player_status_session_test(
     OL_CHECK(session->render(*framebuffer));
     const auto status_page_1_hash = fnv1a_bytes(framebuffer->pixels());
     OL_CHECK(status_selection_hash == 0xfa1b21403051335cULL);
-    OL_CHECK(status_page_0_hash == 0x1c5e879ce61d5b34ULL);
-    OL_CHECK(status_page_1_hash == 0x9592da33a3c151d4ULL);
+    OL_CHECK(status_page_0_hash == 0x0b9c995f4c642a2aULL);
+    OL_CHECK(status_page_1_hash == 0x57be2a96bcd566e4ULL);
     session->finish_presented_tick(902U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_status_page_wait);
     OL_CHECK(session->handle_key('B') == BattleSessionInputResult::status_closed);
@@ -5458,7 +5458,7 @@ void run_player_attack_session_test(
                 OL_CHECK(actor.word(role_word::mp) == 20);
                 OL_CHECK(session->render(*framebuffer));
                 OL_CHECK(fnv1a_bytes(framebuffer->pixels()) ==
-                         0x1f0048d1945a4948ULL);
+                         0xab3664f66fe0ad56ULL);
                 session->finish_presented_tick(tick);
                 OL_CHECK(session->phase() ==
                          BattleSessionPhase::player_attack_level_wait);
@@ -5825,11 +5825,11 @@ void run_ai_attack_session_test(
                                           .words[combatant_word::attack_counter];
     OL_CHECK(final_attack_counter == attack_counter_after_damage + 2);
     OL_CHECK(random.state() == 3'655'513'600U);
-    OL_CHECK(ai_prelude_hash == 0xb02104139829a80dULL);
+    OL_CHECK(ai_prelude_hash == 0x1f8dba4c5c9b1391ULL);
     OL_CHECK(first_magic_hash == 0xe1d1b3cff84bc0c4ULL);
-    OL_CHECK(first_damage_hash == 0x92f642095cfebac7ULL);
+    OL_CHECK(first_damage_hash == 0xe416a67b06a781c7ULL);
     OL_CHECK(commit_hash == 0xdbee20f394fd7219ULL);
-    OL_CHECK(level_hash == 0xed97f52f9bedb836ULL);
+    OL_CHECK(level_hash == 0xe40df81b7c10678cULL);
 
     auto movement_ranger = std::make_unique<openlegend::model::RangerState>();
     initialize_ranger(*movement_ranger, {0, 2, 3, -1, -1, -1});
@@ -6114,7 +6114,7 @@ void run_ai_poison_session_test(
                  .words[combatant_word::attack_counter] ==
              initial_attack_counter + 1);
     OL_CHECK(first_magic_hash == 0x47286fa4af30fce4ULL);
-    OL_CHECK(first_damage_hash == 0x480732c63399ff48ULL);
+    OL_CHECK(first_damage_hash == 0x0867daa53f3f34edULL);
     OL_CHECK(random.state() == 2'993'822'286U);
 
     auto fallback_ranger = std::make_unique<openlegend::model::RangerState>();
@@ -6756,10 +6756,10 @@ void run_ai_item_session_test(
     hash_file << "throwing_random_state=" << throwing_random_state << '\n';
     hash_file.close();
     OL_CHECK(hash_file.good());
-    OL_CHECK(item_effect_hash == 0xa7542240e4172664ULL);
-    OL_CHECK(throwing_prelude_hash == 0x3f498f66e6357fffULL);
+    OL_CHECK(item_effect_hash == 0xe136db527243172eULL);
+    OL_CHECK(throwing_prelude_hash == 0x52047a9f439b554cULL);
     OL_CHECK(throwing_effect_hash == 0xc65b523bd75389e2ULL);
-    OL_CHECK(throwing_damage_hash == 0x23fd88f5e1341c3bULL);
+    OL_CHECK(throwing_damage_hash == 0x2b80a25cf24dd2a3ULL);
     OL_CHECK(moved_throwing_effect_hash == 0x16a8f10ce319622bULL);
     OL_CHECK(item_random_state == 662'824'084U);
     OL_CHECK(throwing_random_state == 2'516'284'547U);
@@ -6968,9 +6968,9 @@ void run_ai_support_session_test(
     OL_CHECK(detox.hp == 500);
     OL_CHECK(detox.poison == 62);
     OL_CHECK(medicine.first_magic_hash == 0xbec9ef2738ca79b4ULL);
-    OL_CHECK(medicine.first_damage_hash == 0x15d70b71e92ead8eULL);
+    OL_CHECK(medicine.first_damage_hash == 0x7158ba584993d9edULL);
     OL_CHECK(detox.first_magic_hash == 0xae0f13fbbc4c8083ULL);
-    OL_CHECK(detox.first_damage_hash == 0xac56919209b8ea9bULL);
+    OL_CHECK(detox.first_damage_hash == 0x5766abef87fd6557ULL);
 
     const auto hash_path = log_path.parent_path() / "b8-battle-ai-support.hash";
     std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
@@ -7459,7 +7459,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     }
     OL_CHECK(session.render(framebuffer));
     const auto selection_hash = fnv1a_bytes(framebuffer.pixels());
-    OL_CHECK(selection_hash == 0x83f943240d14bb33ULL);
+    OL_CHECK(selection_hash == 0xa208e017148c08d7ULL);
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == selection_hash);
     framebuffer.pixels()[0U] = 123U;
@@ -7534,7 +7534,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(session.player_action_menu().cursor == 0U);
     OL_CHECK(session.player_action_menu().selected_action == -1);
     OL_CHECK(session.render(framebuffer));
-    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x648d1a4f7c02fdbcULL);
+    OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0xdbdc71330f7ebc12ULL);
     OL_CHECK(session.handle_key(0x9EU) == BattleSessionInputResult::action_changed);
     OL_CHECK(session.player_action_menu().cursor == 9U);
     OL_CHECK(session.handle_key(0x98U) == BattleSessionInputResult::action_changed);
@@ -11710,11 +11710,11 @@ void run_battle_outcome_session_test(
     OL_CHECK(victory_outcome_hash == 0x52bc7b717bebdba9ULL);
     OL_CHECK(defeat_outcome_hash == 0xf3c79c485413dfe5ULL);
     OL_CHECK((post_battle_hashes == std::vector<std::uint64_t>{
-        0xa699bf683f037936ULL,
-        0xef2c8987fe26a127ULL,
-        0xdd4c7e74171e8ee5ULL,
-        0x0f4783440328986eULL,
-        0xb980de17004d5b6cULL,
+        0xa4287aa7d80636c7ULL,
+        0xc60bf6c071766430ULL,
+        0x9390ec965db3258fULL,
+        0x5a8e1de717d6cfbfULL,
+        0xa331c8d381d3fb1dULL,
     }));
     const auto hash_path = openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
         "b8-battle-outcome.hash";
