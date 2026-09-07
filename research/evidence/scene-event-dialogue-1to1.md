@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`da1d1f35d6c504f6081765b12ebf687e290860a8830dfb78851ea703c8475cdf`
+  - SHA256：`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -102,7 +102,7 @@ synthetic KDEF固定三条独立路径：当前event坐标迁移；event `-1`清
 
 `sub_2DE39` opcode8已完成最终汇编→C++ REVIEW。入口为26字节、6条指令；loaded/raw SHA256分别为`5012c8521831e2ed1dfa774f797ca3a7cc4c1a2480d4b0d21db2d800fa7232d5`、`1e3041382c346c484567b5d4e21d23d2f3acd70478a1a044679e594c3395eabf`，唯一差异是`word_D2952` operand由raw `0xB2952`重定位为loaded `0xD2952`。唯一caller有符号压入music word、固定PC+2并忽略helper返回；helper只写覆盖字，不立即播放。`word_D2952`全部4条xref固定场景入口置-1、opcode覆盖、离场读取和强制播放后复位；覆盖分支不比较当前音乐，只有metadata离场音乐才比较`dword_C0B9C`并抑制相同曲目。后者全部5条xref又证明`sub_3E1B2`是唯一运行期写者。全资产15次opcode8均为music3，参数流SHA256为`c95fb3ed14b8cc28ac093196b62e813315e12ce56fc9fe4a8c89e7453238261b`。现代延迟到scene-exit发`force=true`命令，在下一帧world呈现前跳过current-music比较；script494与普通metadata出口回归固定即时无声、离场强制3和普通非强制10。调度归类`platform_adapted`，首轮完整复核零新增产品差异；delegated scene/audio主体仍按自身closure独立终审。
 
-`sub_2DE7D` opcode9已完成最终汇编→C++ REVIEW。入口为145字节、37条指令；loaded/raw SHA256分别为`bbaddd1162733a447cb95055c3e87a400815b84532ef2d089424440ae6feaed6`、`17f05acd776abbc7b1add52c71897b59e31f4c167d7c0d4642d9201daa6763cb`，9个差异字节全是`raw+0x20000`地址重定位。唯一caller有符号传入真假offset并固定`PC+3+selected_offset`。机器清键、复制23字节`是否要求加入（Ｙ／Ｎ）`、绘制`(61,40,187,27)`面板和`(71,45)`阴影5/前景7文字、present后等待任意非零键；取得键后无条件重绘并present裸场景，再仅以大写Y选择真offset，其他键立即选假offset。全资产81次opcode9参数流SHA256为`8be8acd438f85e423576e905d78fbbb4f4c2aba1daf78ff85330b14a217c018c`，四条反向布局为scripts304/306的`(0,47)`与307/308的`(0,42)`。现代join专用`conditional_after_present`和runtime大写Y映射保持相同顺序；scene70 question frame为`0xbea93863a81cd9e0`，synthetic Y/非Y两路均固定按键后的裸场景present。宿主帧状态归类`platform_adapted`，首轮完整复核零新增产品差异；同址input-font与delegated UI closure继续独立pending。
+`sub_2DE7D` opcode9已完成最终汇编→C++ REVIEW。入口为145字节、37条指令；loaded/raw SHA256分别为`bbaddd1162733a447cb95055c3e87a400815b84532ef2d089424440ae6feaed6`、`17f05acd776abbc7b1add52c71897b59e31f4c167d7c0d4642d9201daa6763cb`，9个差异字节全是`raw+0x20000`地址重定位。唯一caller有符号传入真假offset并固定`PC+3+selected_offset`。机器清键、复制23字节`是否要求加入（Ｙ／Ｎ）`、绘制`(61,40,187,27)`面板和`(71,45)`阴影5/前景7文字、present后等待任意非零键；取得键后无条件重绘并present裸场景，再仅以大写Y选择真offset，其他键立即选假offset。全资产81次opcode9参数流SHA256为`8be8acd438f85e423576e905d78fbbb4f4c2aba1daf78ff85330b14a217c018c`，四条反向布局为scripts304/306的`(0,47)`与307/308的`(0,42)`。现代join专用`conditional_after_present`和runtime大写Y映射保持相同顺序；scene70 question frame为`0xbea93863a81cd9e0`，synthetic Y/非Y两路均固定按键后的裸场景present。宿主帧状态归类`platform_adapted`，首轮完整复核零新增产品差异。后续input owner又以独立IDB、caller共享尾和宿主回归关闭：沿用共同问句首帧present门，并证明选择offset只在按键后的裸场景成功present后应用；本轮Golden仅新增145字节`join_input_machine`节点，正式SHA256为`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`。delegated UI/render owner状态仍不传播。
 
 ### 4.2 既有角色与物品副作用实现
 

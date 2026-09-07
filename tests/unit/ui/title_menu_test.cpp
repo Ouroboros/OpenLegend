@@ -38,6 +38,13 @@ struct LegacyGameRuntimeTestAccess {
             : scene::SceneStepKind::stay;
     }
 
+    static scene::SceneQuestion scene_pending_question(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.scene_session_ != nullptr
+            ? runtime.scene_session_->pending().question
+            : scene::SceneQuestion::none;
+    }
+
     static bool scene_question_presented(const LegacyGameRuntime& runtime) noexcept {
         return runtime.scene_question_presented_;
     }
@@ -155,7 +162,7 @@ namespace {
 }
 
 [[nodiscard]] bool install_question_initial_script(const std::filesystem::path& root) {
-    constexpr std::array<std::int16_t, 4> script{5, 0, 0, -1};
+    constexpr std::array<std::int16_t, 7> script{5, 0, 0, 9, 0, 0, -1};
     return install_initial_script(root, script);
 }
 
@@ -1913,8 +1920,35 @@ void check_question_present_gate(const std::filesystem::path& data_root) {
     game.handle_key(0x96U, false, false);
     OL_CHECK(
         LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
-        scene::SceneStepKind::stay);
+        scene::SceneStepKind::question);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_question(game) ==
+        scene::SceneQuestion::join);
     OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
+
+    OL_CHECK(game.render());
+    game.handle_key('Y', false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::question);
+    game.finish_presented_tick();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_question_presented(game));
+
+    game.handle_key(0x96U, false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::present);
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
+    game.handle_key('Y', false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::present);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::stay);
 }
 
 void check_battle_runtime_transitions(const std::filesystem::path& data_root) {

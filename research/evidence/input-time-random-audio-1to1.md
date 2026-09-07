@@ -92,7 +92,17 @@ IRQ 体严格按以下顺序执行：
 
 input owner首轮对照发现SDL一帧会排空多个事件，现代问句生成后可能在首帧尚未present时被同批后续keydown回答，违反机器`present -> clear/wait`顺序。现仅为scene与world-event问句增加present门：问句产生时关闭，`finish_presented_tick`确认成功present后打开，回答前立即关闭。零翻译键仍在入口忽略，大写Y/其他非零键分支不变；其他菜单和输入不受影响。
 
-修正后从入口重新覆盖全部36条指令、全部3块、唯一caller、两个出口、43条资产调用及两条宿主路由，零新增差异。宿主回归固定问句生成后及render后但present前均拒绝回答，present后keypad Insert作为任意非Y键立即走假分支。两次独立Golden与正式第三次生成逐字节一致，`scene-goldens.json` SHA256为`2dd944ea065671509134cd989aaf0a8cb3b706bcd45827ba196fb298d01c7544`；同址scene绘制/脚本owner保持独立已关闭，不由本项传播closure。
+修正后从入口重新覆盖全部36条指令、全部3块、唯一caller、两个出口、43条资产调用及两条宿主路由，零新增差异。宿主回归固定问句生成后及render后但present前均拒绝回答，present后keypad Insert作为任意非Y键立即走假分支。两次独立Golden与正式第三次生成逐字节一致，Order22关闭时`scene-goldens.json` SHA256为`2dd944ea065671509134cd989aaf0a8cb3b706bcd45827ba196fb298d01c7544`；同址scene绘制/脚本owner保持独立已关闭，不由本项传播closure。
+
+### 2.7 加入问句回答后必须先恢复裸场景
+
+`sub_2DE7D @ 0x2DE7D..0x2DF0E`为145字节、37条指令、3个基本块、7次call、9项HIGHLOW重定位和2个本地`RET`。raw/loaded SHA256分别为`17f05acd776abbc7b1add52c71897b59e31f4c167d7c0d4642d9201daa6763cb`与`bbaddd1162733a447cb95055c3e87a400815b84532ef2d089424440ae6feaed6`；唯一物理caller为`sub_2C319:0x2C57B`，另有跳转表数据引用`0x555E0`，没有外部内部入口。
+
+机器清last-key，复制23字节`是否要求加入（Ｙ／Ｎ）`，在当前底图绘制`(61,40,187,27)`面板和`(71,45)`阴影5/前景7文字并present；`sub_20C32`再次清键并等待第一个非零翻译键。取得键后Y/非Y均无条件调用`sub_2D653`重绘并present裸场景，最后才严格比较大写`Y`并返回真/假signed offset。caller共享尾固定执行`old_pc+3+selected_offset`。等待helper SHA256为`d1f87751e3589507ed555b84cc4a8e5523937fd67282944b568b34e6eeaa3a55`；裸场景present helper SHA256为`51d1df23db48b1b1489112a5356a8138c387a8667fe8050ab726de579b87fc36`。
+
+现代沿用Order22已发布的共同问句present门，因此opcode9首帧在成功present前同样不接键。join专用`conditional_after_present`在回答时只缓存signed offset并返回裸场景present；宿主成功present后才恢复解释器、把offset加到已推进3 words的PC。机器的Y比较发生在裸场景present后，现代不可观察的选择缓存形成于其前，但该present链不读取选择或last-key，脚本状态和副作用也保持阻塞，故可观察顺序一致。
+
+宿主回归串联opcode5/opcode9，固定新join问句重新关闭present门、render后但present前拒绝回答、present后keypad Insert按任意非Y键进入裸场景present、该present完成前继续拒绝Y、完成后才结束脚本。完整入口、所有分支/出口、唯一caller、两个短helper、81条资产调用和scene/world-event两条宿主路由复核未发现新增产品差异。三次Golden逐字节一致，正式`scene-goldens.json` SHA256为`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`；同址scene owner已独立关闭，`sub_2D653`/`sub_3D6D1` owner状态不传播。
 
 ## 3. 时间边界
 

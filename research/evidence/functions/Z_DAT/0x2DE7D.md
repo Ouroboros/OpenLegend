@@ -52,9 +52,21 @@ caller先有符号载入假偏移`word[PC+2]`，再载入真偏移`word[PC+1]`�
 
 ## 5. closure隔离与验证
 
-本行只关闭`scene-event-closure.tsv`中的`sub_2DE7D`职责；同址`input-font-closure.tsv`行及`sub_3D6D1` UI closure仍按自身审计顺序保持pending，不从本helper传播关闭。
+原scene审计只关闭`scene-event-closure.tsv`中的`sub_2DE7D`职责，没有向同址input owner或`sub_3D6D1` UI owner传播状态。input owner随后按自身顺序在第6节独立关闭；`sub_3D6D1` UI closure仍保持自己的审计状态。
 
 - 独立oracle二次生成字节一致：`proc_1aa0`。
 - `./build.sh app --config Debug`：`proc_0622`通过，14/14 tests通过。
 - order32静态门：`proc_8030`通过；同时固定145字节机器身份、9处重定位、唯一caller、完整callee调用顺序、81条资产、两路present与closure隔离。
 - `python3 research/tools/validate_reverse_framework.py`：`proc_4126`通过。
+
+## 6. input owner独立最终REVIEW（audit_order=23）
+
+本轮为`input-font-closure.tsv`重新建立独立临时IDB并导出完整145字节、37条指令、3个基本块、7次call、9项HIGHLOW重定位、2个本地`RET`、唯一物理caller及跳转表数据引用；没有借用scene owner的旧导出作机器门。补充导出的caller共享尾逐指令证明：opcode9先有符号载入假偏移与真偏移，调用`sub_2DE7D`后执行`add esp,8; add ebx,3; add ebx,eax`，故最终PC为`old_pc+3+selected_offset`。
+
+input合同从入口独立恢复为：入口清last-key；问题frame present；`sub_20C32`再次清键并等待第一个非零翻译键；任何键到达后都先调用`sub_2D653`重绘并present裸场景；最后才严格比较大写`Y`，Y返回真偏移、其他非零键返回假偏移。等待helper 19字节SHA256为`d1f87751e3589507ed555b84cc4a8e5523937fd67282944b568b34e6eeaa3a55`；裸场景present helper 37字节SHA256为`51d1df23db48b1b1489112a5356a8138c387a8667fe8050ab726de579b87fc36`。
+
+机器合同冻结后才对照现代输入链。Order22已经发布的`scene_question_presented_`门同时覆盖opcode9，使问句生成和render后但实际present前的同批keydown均不能回答。join专用`conditional_after_present`先缓存selected offset并返回裸场景`present`；宿主成功present后才以`acknowledge`恢复并应用offset。机器在裸场景present后才读取last-key作比较，现代在keydown时先形成不可观察的response；裸场景render/present链不读取response或last-key，且脚本PC、状态副作用和后续输入在present完成前都保持阻塞，因此合法域可观察顺序一致。
+
+宿主回归把opcode5和opcode9串联在同一初始脚本中：前一问句非Y响应后立即产生join问句并重新关闭present门；join问句render后但present前拒绝Y；present后keypad Insert作为任意非Y键进入裸场景present；该present完成前的Y仍被拒绝，完成后才推进到脚本结束。纯`SceneSession`回归继续分别固定Y/非Y两路均先得到裸场景present及最终副作用/偏移。
+
+完整37条指令、3块、7 calls、9项重定位、2出口、唯一caller、等待/裸场景helper、81条资产调用及scene/world-event两条宿主路由对照后没有发现新的产品差异；本input owner归类`platform_adapted / converged_no_new_differences`。两份独立Golden与正式第三次生成逐字节一致，正式`scene-goldens.json` SHA256为`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`，且相对上一版只新增`kdef.dialogue_vectors.question_prompts.join_input_machine`。最终Linux app Debug构建`proc_7be4`通过14/14；首次构建`proc_fb60`只暴露新增测试误用了不同场景坐标的旧像素哈希，删除该越域测试假设后产品代码未修改。原程序动态执行继续登记`blocked_runtime_oracle`。

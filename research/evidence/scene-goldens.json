@@ -14298,6 +14298,18 @@
           "uppercase_y_compare": "0x2DDF0",
           "timing": "question_frame_presented_before_waiting_for_first_nonzero_key"
         },
+        "join_input_machine": {
+          "range": "0x2DE7D..0x2DF0E",
+          "file_offset": "0x2787D",
+          "byte_count": 145,
+          "raw_sha256": "17f05acd776abbc7b1add52c71897b59e31f4c167d7c0d4642d9201daa6763cb",
+          "entry_last_key_clear": "0x2DE87",
+          "question_present_call": "0x2DEE9",
+          "clear_and_wait_nonzero_call": "0x2DEF1",
+          "bare_scene_present_call": "0x2DEF6",
+          "uppercase_y_compare": "0x2DEFB",
+          "timing": "question_present_then_first_nonzero_key_then_bare_scene_present_then_branch"
+        },
         "opcode_5_asset_domain": {
           "occurrences": 43,
           "stream_encoding": "little_endian_<II2h:script_pc_true_false>",
