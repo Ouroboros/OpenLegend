@@ -84,6 +84,16 @@ IRQ 体严格按以下顺序执行：
 
 机器合同SHA256为`32629e0bed2b0284822887666be436db69ac8e37f75dcb3770533ca7e40ab4c1`，20组状态向量SHA256为`f80f863c607a8d9aea5b9a678e7a9bb644608cc6c57d838d014479df2f49f09a`。两份临时Golden与正式第三次生成逐字节一致；当前`title-menu-new-game-goldens.json` SHA256为`33f8bd403715655e0a49b3f287e0c4ff9c2d8ca2cf0a2b9239f8c6a96e469d04`。同址UI绘制、物品资格/效果、库存、事件与共享尾owner继续独立审计。
 
+### 2.6 战斗问句必须先呈现再接受任意键
+
+`sub_2DD77 @ 0x2DD77..0x2DE03`为140字节、36条指令、3个基本块、6次call、9项重定位和2个本地`RET`。raw/loaded SHA256分别为`224f32fa14859850cd390ce56d0e8e6a15b4e15a3c392cad7c08ddad40953cb9`与`029ba93c5d02ac74cde1c9cd81457e1b7a2d5d03fa5dd57ab9bb1148b2982e50`。唯一物理caller `sub_2C319:0x2C4DE`按signed word传入真假offset，并固定执行`old_pc + 3 + returned_offset`。
+
+机器先清last-key，格式化“是否與之過招（Ｙ／Ｎ）”，在当前底图绘制`(61,40,187,27)`面板和`(71,45)`阴影5/前景7文字，再于`0x2DDE3` present。随后`sub_20C32`再次清last-key并等待第一个非零翻译键；`0x2DDF0`只把大写`Y`判真，其他任意非零键立即判假，按键后不额外重绘或present。
+
+input owner首轮对照发现SDL一帧会排空多个事件，现代问句生成后可能在首帧尚未present时被同批后续keydown回答，违反机器`present -> clear/wait`顺序。现仅为scene与world-event问句增加present门：问句产生时关闭，`finish_presented_tick`确认成功present后打开，回答前立即关闭。零翻译键仍在入口忽略，大写Y/其他非零键分支不变；其他菜单和输入不受影响。
+
+修正后从入口重新覆盖全部36条指令、全部3块、唯一caller、两个出口、43条资产调用及两条宿主路由，零新增差异。宿主回归固定问句生成后及render后但present前均拒绝回答，present后keypad Insert作为任意非Y键立即走假分支。两次独立Golden与正式第三次生成逐字节一致，`scene-goldens.json` SHA256为`2dd944ea065671509134cd989aaf0a8cb3b706bcd45827ba196fb298d01c7544`；同址scene绘制/脚本owner保持独立已关闭，不由本项传播closure。
+
 ## 3. 时间边界
 
 ### 3.1 tick 来源与主循环

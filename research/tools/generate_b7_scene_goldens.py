@@ -4239,6 +4239,17 @@ def dialogue_vectors(
     portraits = packed((root / "HDGRP.IDX").read_bytes(), (root / "HDGRP.GRP").read_bytes())
     raw_talks = packed((root / "TALK.IDX").read_bytes(), (root / "TALK.GRP").read_bytes())
     z_dat = (root / "Z.DAT").read_bytes()
+    battle_question_input_raw = z_dat[0x27777:0x27803]
+    assert len(battle_question_input_raw) == 140
+    assert sha256(battle_question_input_raw) == \
+        "224f32fa14859850cd390ce56d0e8e6a15b4e15a3c392cad7c08ddad40953cb9"
+    assert battle_question_input_raw.hex() == (
+        "6824000000e89d0f0100c6056b1b030000684988030068c4070a00e8b3110100"
+        "83c4086a0468bc870c006a0068ff0000006a1b68bb0000006a286a3de807f1ffff"
+        "83c4206a10680507000068bc870c0068c4070a006a2d6a47e85dfa000083c418ff"
+        "35980b0a0068bc870c00e8e9f8000083c408e8422effff803d6b1b03005975058b"
+        "442404c38b442408c3"
+    )
     text_renderer_raw = z_dat[0x37350:0x37440]
     assert len(text_renderer_raw) == 240
     assert len(raw_talks) == len(decoded_talks) == 2_977
@@ -4849,6 +4860,17 @@ def dialogue_vectors(
             "non_y_key": "false_offset_without_filter_loop",
             "battle_post_key": "branch_without_scene_redraw_or_extra_present",
             "rest_post_key": "branch_without_scene_redraw_or_extra_present",
+            "battle_input_machine": {
+                "range": "0x2DD77..0x2DE03",
+                "file_offset": "0x27777",
+                "byte_count": len(battle_question_input_raw),
+                "raw_sha256": sha256(battle_question_input_raw),
+                "entry_last_key_clear": "0x2DD81",
+                "question_present_call": "0x2DDE3",
+                "clear_and_wait_nonzero_call": "0x2DDEB",
+                "uppercase_y_compare": "0x2DDF0",
+                "timing": "question_frame_presented_before_waiting_for_first_nonzero_key",
+            },
             "opcode_5_asset_domain": {
                 "occurrences": len(opcode_5_occurrences),
                 "stream_encoding": "little_endian_<II2h:script_pc_true_false>",

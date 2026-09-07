@@ -351,6 +351,10 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
         battle_session_->finish_presented_tick(bios_tick);
         return;
     }
+    if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
+        scene_session_->pending().kind == scene::SceneStepKind::question) {
+        scene_question_presented_ = true;
+    }
     if (view_ != LegacyGameView::world || world_session_ == nullptr) {
         return;
     }
@@ -361,6 +365,11 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     if (world_menu_event_phase_ != WorldMenuEventPhase::none) {
+        if (world_menu_event_phase_ == WorldMenuEventPhase::running &&
+            world_menu_event_session_ != nullptr &&
+            world_menu_event_session_->pending().kind == scene::SceneStepKind::question) {
+            scene_question_presented_ = true;
+        }
         if (scene_effect_kind_ != SceneEffectKind::none) {
             scene_effect_presented_ = true;
         }
@@ -546,7 +555,9 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 pending_kind == scene::SceneStepKind::wait_key) {
                 handle_world_menu_event_result(
                     world_menu_event_session_->resume(scene::SceneResponse::acknowledge));
-            } else if (pending_kind == scene::SceneStepKind::question) {
+            } else if (pending_kind == scene::SceneStepKind::question &&
+                       scene_question_presented_) {
+                scene_question_presented_ = false;
                 handle_world_menu_event_result(world_menu_event_session_->resume(
                     translated_key == static_cast<std::uint8_t>('Y')
                         ? scene::SceneResponse::yes
@@ -566,7 +577,9 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             break;
         }
         const auto pending_kind = scene_session_->pending().kind;
-        if (pending_kind == scene::SceneStepKind::question) {
+        if (pending_kind == scene::SceneStepKind::question &&
+            scene_question_presented_) {
+            scene_question_presented_ = false;
             handle_scene_result(scene_session_->resume(
                 translated_key == static_cast<std::uint8_t>('Y')
                     ? scene::SceneResponse::yes
@@ -1460,9 +1473,11 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
             begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
         }
         break;
+    case scene::SceneStepKind::question:
+        scene_question_presented_ = false;
+        break;
     case scene::SceneStepKind::scene_title:
     case scene::SceneStepKind::dialogue:
-    case scene::SceneStepKind::question:
     case scene::SceneStepKind::wait_key:
     case scene::SceneStepKind::load_menu:
     case scene::SceneStepKind::death_menu:
@@ -2139,9 +2154,12 @@ void LegacyGameRuntime::handle_world_menu_event_result(
         std::make_move_iterator(commands.begin()),
         std::make_move_iterator(commands.end()));
     switch (result.kind) {
+    case scene::SceneStepKind::question:
+        scene_question_presented_ = false;
+        world_menu_event_phase_ = WorldMenuEventPhase::running;
+        break;
     case scene::SceneStepKind::dialogue:
     case scene::SceneStepKind::notice:
-    case scene::SceneStepKind::question:
     case scene::SceneStepKind::wait_key:
         world_menu_event_phase_ = WorldMenuEventPhase::running;
         break;

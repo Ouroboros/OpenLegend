@@ -30,6 +30,17 @@ struct LegacyGameRuntimeTestAccess {
             runtime.scene_ui_requested_,
             runtime.scene_idle_skip_requested_};
     }
+
+    static scene::SceneStepKind scene_pending_kind(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.scene_session_ != nullptr
+            ? runtime.scene_session_->pending().kind
+            : scene::SceneStepKind::stay;
+    }
+
+    static bool scene_question_presented(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.scene_question_presented_;
+    }
 };
 
 }  // namespace openlegend::app
@@ -140,6 +151,11 @@ namespace {
 
 [[nodiscard]] bool install_battle_initial_script(const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 6> script{6, 4, 0, 0, 9, -1};
+    return install_initial_script(root, script);
+}
+
+[[nodiscard]] bool install_question_initial_script(const std::filesystem::path& root) {
+    constexpr std::array<std::int16_t, 4> script{5, 0, 0, -1};
     return install_initial_script(root, script);
 }
 
@@ -1847,6 +1863,60 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(load_game.render());
 }
 
+void check_question_present_gate(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    using app::LegacyGameRuntimeTestAccess;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-question-present-runtime";
+    OL_CHECK(prepare_runtime_fixture(data_root, output_root));
+    OL_CHECK(install_question_initial_script(output_root));
+
+    app::LegacyGameRuntime game{output_root, 0U};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    game.handle_key(0x20U, true, false);
+    game.handle_key('A', false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    for (int tick = 0; tick < 30; ++tick) {
+        game.advance();
+    }
+    OL_CHECK(game.view() == app::LegacyGameView::attributes);
+    game.handle_key('Y', false, false);
+    finish_new_game_scene_transition(game);
+    advance_rendered_frames(game, 66U);
+
+    OL_CHECK(game.view() == app::LegacyGameView::scene);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::question);
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
+
+    game.handle_key('Y', false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::question);
+    OL_CHECK(game.render());
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
+
+    game.handle_key('Y', false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::question);
+    game.finish_presented_tick();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_question_presented(game));
+
+    game.handle_key(0x96U, false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::stay);
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
+}
+
 void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     using namespace openlegend;
     using app::LegacyGameRuntimeTestAccess;
@@ -2376,6 +2446,7 @@ int main() {
     check_name_editor(data_root);
     check_startup_resource_cache(data_root);
     check_game_runtime(data_root);
+    check_question_present_gate(data_root);
     check_battle_runtime_transitions(data_root);
     check_scene_load_runtime(data_root);
     check_runtime_persistence(data_root);
