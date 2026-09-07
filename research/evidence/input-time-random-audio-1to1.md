@@ -10,7 +10,7 @@
 - `sub_3CDFF @ 0x3CDFF..0x3CF18`：键盘中断、字体和音频初始化；
 - `sub_3CF19 @ 0x3CF19..0x3CF44`：恢复原中断 9；
 - `sub_20C32 @ 0x20C32..0x20C44`：清空并阻塞等待 last-key；
-- `sub_3DB83 @ 0x3DB83..0x3DBBE`：BIOS tick delay；
+- `sub_3DB83 @ 0x3DB83..0x3DBBF`：BIOS tick delay，函数级最终证据见`research/evidence/functions/Z_DAT/0x3DB83.md`；
 - `sub_3D612/sub_3F987/sub_3F98D/sub_3F9B0`：有界随机包装、RNG 状态、next、seed；
 - `sub_3DD66..sub_3E2E2`：游戏侧 Miles music/sample 包装器；
 - `sub_41232..sub_43239`：Miles API 包装器与内嵌函数名；
@@ -138,19 +138,24 @@ input机器合同固定每轮先present菜单，再读取一个last-key byte。D
 
 ### 3.2 `sub_3DB83`
 
-机器码执行有符号 `idiv 40`，然后加 1：
+input-font Order39从独立临时IDB固定`0x3DB83..0x3DBBF`为60 bytes、24条指令、6个CFG块、2个条件分支、1个无条件跳转、2处HIGHLOW重定位、1次栈探测call、37个callsite/16个caller owner和唯一RET。raw/loaded SHA256分别为`6aabd39558b1d8b637a2d2985b8c75ff9e47d686fd3e645473b490726cade438`与`0f5f1b33803d017e02d8f1704c13de5db083011da429dbc7876f9c575bbd87fd`；两处fixup回减`0x20000`后完整还原raw切片。`dword_544D8`原始初值为BIOS Data Area `0x046C`。
+
+机器码执行signed `IDIV 40`并加1：
 
 ```text
 wait_count = trunc_toward_zero(argument / 40) + 1
 ```
 
-仅当 `wait_count > 0` 时，每轮捕获一个 tick 值并等待它变化。必须保留：
+仅当`wait_count > 0`时，每轮捕获一个32-bit tick并等到任意不等值；跳过多个tick或`0x1800AF→0`跨日都只完成一次等待。必须保留：
 
 - `0..39 -> 1 tick`；
 - `40..79 -> 2 ticks`；
 - `-39..-1 -> 1 tick`；
 - `-79..-40 -> 0 ticks`；
-- 不按毫秒重新解释参数，不修正约 18.2 Hz 与除数 40 的历史失配。
+- 37个实际参数的分布`1×1,17×3,30×1,40×1,50×14,100×11,300×2,340×2,500×1,2000×1`；
+- 不按毫秒重新解释参数，不修正约18.2 Hz与除数40的历史失配。
+
+逐块对照`legacy_delay_tick_count`、`wait_for_tick_change`、`wait_for_next_tick`、`legacy_delay`及caller已独立关闭的Session tick continuation，未发现合法域产品差异。steady-clock BIOS频率模拟、相等时宿主yield和同步自旋到可恢复phase的搬运归类平台适配；全部caller忽略机器EAX残值。独立signed/tick trace SHA256为`fe6d0d5c3ea65501da444006026713f1392e9ebca73408770103e6fc6900e3f6`；测试补齐全部实际参数、INT32极值、nonpositive零读取、重复值/跳tick/跨日精确读取序列。函数级完整证据见`research/evidence/functions/Z_DAT/0x3DB83.md`。最终`./build.sh app --config Debug`进程`proc_0a6c`通过Linux app Debug 14/14。
 
 ### 3.3 opcode27图片动画的tick边界
 

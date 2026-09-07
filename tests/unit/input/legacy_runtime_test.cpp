@@ -1,6 +1,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -16,6 +17,7 @@ public:
     explicit SequenceTickSource(std::vector<std::uint32_t> values) : values_(std::move(values)) {}
 
     [[nodiscard]] std::uint32_t tick() const noexcept override {
+        ++tick_count_;
         return values_[position_];
     }
 
@@ -26,6 +28,30 @@ public:
         }
     }
 
+    [[nodiscard]] std::size_t tick_count() const noexcept { return tick_count_; }
+    [[nodiscard]] std::size_t idle_count() const noexcept { return idle_count_; }
+
+private:
+    std::vector<std::uint32_t> values_;
+    mutable std::size_t position_{};
+    mutable std::size_t tick_count_{};
+    std::size_t idle_count_{};
+};
+
+class ReadSequenceTickSource final : public openlegend::timing::TickSource {
+public:
+    explicit ReadSequenceTickSource(std::vector<std::uint32_t> values)
+        : values_(std::move(values)) {}
+
+    [[nodiscard]] std::uint32_t tick() const noexcept override {
+        const auto index = position_ < values_.size() ? position_ : values_.size() - 1U;
+        ++position_;
+        return values_[index];
+    }
+
+    void idle() noexcept override { ++idle_count_; }
+
+    [[nodiscard]] std::size_t tick_count() const noexcept { return position_; }
     [[nodiscard]] std::size_t idle_count() const noexcept { return idle_count_; }
 
 private:
@@ -253,26 +279,59 @@ void run_keyboard_tests() {
 void run_timing_tests() {
     using namespace openlegend::timing;
 
+    constexpr std::array caller_counts{
+        std::pair{1, 1},
+        std::pair{17, 1},
+        std::pair{30, 1},
+        std::pair{40, 2},
+        std::pair{50, 2},
+        std::pair{100, 3},
+        std::pair{300, 8},
+        std::pair{340, 9},
+        std::pair{500, 13},
+        std::pair{2000, 51},
+    };
+    for (const auto [argument, expected] : caller_counts) {
+        OL_CHECK(legacy_delay_tick_count(argument) == expected);
+    }
+
+    OL_CHECK(legacy_delay_tick_count(std::numeric_limits<std::int32_t>::min()) ==
+             -53'687'090);
+    OL_CHECK(legacy_delay_tick_count(-80) == -1);
+    OL_CHECK(legacy_delay_tick_count(-79) == 0);
+    OL_CHECK(legacy_delay_tick_count(-40) == 0);
+    OL_CHECK(legacy_delay_tick_count(-39) == 1);
+    OL_CHECK(legacy_delay_tick_count(-1) == 1);
     OL_CHECK(legacy_delay_tick_count(0) == 1);
     OL_CHECK(legacy_delay_tick_count(39) == 1);
     OL_CHECK(legacy_delay_tick_count(40) == 2);
     OL_CHECK(legacy_delay_tick_count(79) == 2);
-    OL_CHECK(legacy_delay_tick_count(-1) == 1);
-    OL_CHECK(legacy_delay_tick_count(-39) == 1);
-    OL_CHECK(legacy_delay_tick_count(-40) == 0);
-    OL_CHECK(legacy_delay_tick_count(-79) == 0);
-    OL_CHECK(legacy_delay_tick_count(-80) == -1);
+    OL_CHECK(legacy_delay_tick_count(80) == 3);
+    OL_CHECK(legacy_delay_tick_count(std::numeric_limits<std::int32_t>::max()) ==
+             53'687'092);
 
     SequenceTickSource rollover{{kBiosTicksPerDay - 1U, kBiosTicksPerDay - 1U, 0U}};
     OL_CHECK(wait_for_tick_change(rollover, kBiosTicksPerDay - 1U) == 0U);
+    OL_CHECK(rollover.tick_count() == 3U);
     OL_CHECK(rollover.idle_count() == 2U);
 
     SequenceTickSource delay{{100U, 101U, 102U, 103U}};
     legacy_delay(delay, 80);
+    OL_CHECK(delay.tick_count() == 9U);
     OL_CHECK(delay.idle_count() == 3U);
+
+    ReadSequenceTickSource exact_trace{{
+        100U, 100U, 100U, 101U,
+        101U, 101U, 102U,
+        kBiosTicksPerDay - 1U, kBiosTicksPerDay - 1U, 0U,
+    }};
+    legacy_delay(exact_trace, 80);
+    OL_CHECK(exact_trace.tick_count() == 10U);
+    OL_CHECK(exact_trace.idle_count() == 4U);
 
     SequenceTickSource no_delay{{100U}};
     legacy_delay(no_delay, -40);
+    OL_CHECK(no_delay.tick_count() == 0U);
     OL_CHECK(no_delay.idle_count() == 0U);
 }
 

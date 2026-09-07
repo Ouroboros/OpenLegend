@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=335/349`，`unique_any=274/284`，`unique_all=270/284`
-当前任务指针：input-font `research/inventory/input-font-closure.tsv` `audit_order=39` `sub_3DB83`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=26` `sub_2A0D9`
-最近关闭：input-font `audit_order=38` `sub_3D27A`已固定208 bytes、63条指令、8/8 CFG块、4个跳转、4次调用、两个caller和两个出口；原版启动链固定`FONT3.E16/FONT3.C16`，现代三条加载路径已修正，13,973编码映射与64槽缓存trace通过，四份Golden三生成逐字节一致。
+当前有效进度：`closure=336/349`，`unique_any=274/284`，`unique_all=271/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=26` `sub_2A0D9`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=27` `sub_2A10F`
+最近关闭：input-font `audit_order=39` `sub_3DB83`已固定60 bytes、24条指令、6/6 CFG块、3个跳转、2处重定位、1次栈探测call、37个callsite/16个caller owner和唯一RET；signed `IDIV 40 + 1`、nonpositive零tick读取、相等自旋、跳tick与跨日合同均由独立trace及Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 
