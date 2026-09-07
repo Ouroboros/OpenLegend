@@ -581,6 +581,7 @@ void check_event_dialogue_rendering(const std::filesystem::path& root) {
 }
 
 void check_new_game_entry(const std::filesystem::path& root) {
+    using openlegend::scene::SceneInputReset;
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
 
@@ -627,8 +628,11 @@ void check_new_game_entry(const std::filesystem::path& root) {
             44, 29, openlegend::scene::SceneDirection::right, 6890, 0}};
     OL_CHECK(finish_scene_title(menu_session).kind == SceneStepKind::stay);
     OL_CHECK(menu_session.player_frame() == 6890);
-    OL_CHECK(menu_session.open_ui().kind == SceneStepKind::open_ui);
+    OL_CHECK(menu_session.tick(std::nullopt, false, true).kind == SceneStepKind::open_ui);
+    OL_CHECK(menu_session.take_input_reset_request() == SceneInputReset::none);
     OL_CHECK(menu_session.player_frame() == 5016);
+    OL_CHECK(menu_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(menu_session.take_input_reset_request() == SceneInputReset::main_ui_edge);
 
     auto idle_snapshot = load_baseline(root);
     idle_snapshot.ranger.roles[0U].set_word(
@@ -649,6 +653,10 @@ void check_new_game_entry(const std::filesystem::path& root) {
         auto step = idle_session.tick(
             std::nullopt, false, false, skip_player_idle);
         OL_CHECK(step.kind == SceneStepKind::present);
+        OL_CHECK(
+            idle_session.take_input_reset_request() ==
+            (skip_player_idle ? SceneInputReset::weather_disable_edge
+                              : SceneInputReset::none));
         step = idle_session.resume(SceneResponse::acknowledge);
         OL_CHECK(step.kind == SceneStepKind::stay);
     };
@@ -1477,6 +1485,7 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
     using openlegend::model::SceneEventField;
     using openlegend::model::SceneLayer;
     using openlegend::scene::SceneDirection;
+    using openlegend::scene::SceneInputReset;
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
 
@@ -1495,13 +1504,18 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
     OL_CHECK(session.move(SceneDirection::right).kind == SceneStepKind::stay);
     OL_CHECK(session.player_frame() == 5018);
     OL_CHECK(session.tick(std::nullopt, true, false).kind == SceneStepKind::present);
+    OL_CHECK(session.take_input_reset_request() == SceneInputReset::none);
     OL_CHECK(session.player_frame() == 5016);
     auto result = session.resume(SceneResponse::acknowledge);
     OL_CHECK(result.kind == SceneStepKind::notice);
     OL_CHECK(result.style == 52);
+    OL_CHECK(session.take_input_reset_request() == SceneInputReset::none);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(session.take_input_reset_request() == SceneInputReset::none);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+    OL_CHECK(session.take_input_reset_request() == SceneInputReset::confirmation_group);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(session.take_input_reset_request() == SceneInputReset::none);
 
     auto empty_snapshot = load_baseline(root);
     OL_CHECK(empty_snapshot.set_scene_value(
@@ -1511,6 +1525,8 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
         data_root, empty_snapshot, empty_random, 70};
     OL_CHECK(finish_scene_title(empty_session).kind == SceneStepKind::stay);
     OL_CHECK(empty_session.tick(std::nullopt, true, false).kind == SceneStepKind::present);
+    OL_CHECK(
+        empty_session.take_input_reset_request() == SceneInputReset::confirmation_group);
     OL_CHECK(empty_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
 
     constexpr std::array<SceneDirection, 4> directions{
@@ -1536,8 +1552,12 @@ void check_scene_interaction_present(const std::filesystem::path& root) {
         OL_CHECK(finish_scene_title(direction_session).kind == SceneStepKind::stay);
         OL_CHECK(direction_session.tick(std::nullopt, true, false).kind ==
                  SceneStepKind::present);
+        OL_CHECK(direction_session.take_input_reset_request() == SceneInputReset::none);
         OL_CHECK(direction_session.resume(SceneResponse::acknowledge).kind ==
                  SceneStepKind::present);
+        OL_CHECK(
+            direction_session.take_input_reset_request() ==
+            SceneInputReset::confirmation_group);
         OL_CHECK(direction_session.resume(SceneResponse::acknowledge).kind ==
                  SceneStepKind::stay);
     }

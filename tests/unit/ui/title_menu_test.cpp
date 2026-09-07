@@ -22,6 +22,14 @@ struct LegacyGameRuntimeTestAccess {
     static battle::BattleSession* battle_session(LegacyGameRuntime& runtime) noexcept {
         return runtime.battle_session_.get();
     }
+
+    static std::array<bool, 3> scene_input_requests(
+        const LegacyGameRuntime& runtime) noexcept {
+        return {
+            runtime.scene_interact_requested_,
+            runtime.scene_ui_requested_,
+            runtime.scene_idle_skip_requested_};
+    }
 };
 
 }  // namespace openlegend::app
@@ -1377,15 +1385,16 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
     finish_world_scene_transition(new_game);
     finish_scene_entry(new_game);
-    OL_CHECK(
-        new_game.handle_key('L', false, false) ==
-        app::LegacyKeyStateReset::edge);
-    new_game.handle_key(0x1BU, false, false);
     new_game.handle_world_input(false, true, false, false);
+    new_game.set_scene_input_states(false, true, true);
+    OL_CHECK(
+        (app::LegacyGameRuntimeTestAccess::scene_input_requests(new_game) ==
+         std::array<bool, 3>{false, false, false}));
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
     advance_rendered_frames(new_game, 1U);
+    new_game.set_scene_input_states(false, true, true);
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     const auto scene_background = std::vector<std::uint8_t>{

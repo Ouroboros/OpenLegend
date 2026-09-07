@@ -58,6 +58,14 @@ IRQ 体严格按以下顺序执行：
 
 `sub_20C32` 先把 last-key 清零，再自旋到 IRQ 写入非零值；菜单代码还会直接读取、比较和清除此字节。现代输入层必须同时暴露 last-key 和 256 项 byte state，不能只产生一次性高层 action。
 
+### 2.3 scene主循环实时键态分派
+
+`sub_28E40 @ 0x28E40..0x29391` 的稳定循环每tick最多消费一个输入动作，固定优先级为`left -> up -> down -> right -> interact -> main_ui -> weather_disable -> idle_update`。四方向各检查两个别名并按完整非零byte判定；Enter/Space/Insert同样接受任意非零byte。Escape主菜单与L天气关闭只检查bit 0，所以状态2不会触发，状态3会触发并在消费后变为2。
+
+四方向在delegated movement之前清空所选方向的两个别名。interaction、UI和weather的顺序相反：分别在`sub_29C36`、`sub_212C0`或天气状态写0完成后，才清确认组三byte、Escape bit 0或L bit 0。高优先动作不改任何低优先键态；低优先键只有在后续tick仍处于对应live状态时才可触发，期间keyup会清除它。
+
+首轮最终对照发现SDL/runtime曾把三类非方向keydown锁存到跨tick布尔量并过早回收键态，导致已keyup的低优先动作仍会补触发。现改为每tick直接从`LegacyKeyboard`采样：方向先选并在movement前清别名；其余三类只记录当tick获胜动作，reset token延迟到同步场景continuation返回后、公共scene-tail present前应用。修正后从函数入口重审全部306条指令与68个基本块无新增差异。独立9组向量SHA256为`33247c06e5fc4480904d29eead2f7efde47fd0a40c97b01209882fbf09b77abb`，正式`scene-goldens.json` SHA256为`6deadaf03021c564c167ff47d4ac49ed7b8fda6f0b443b2a691f349b5569bec3`。
+
 ## 3. 时间边界
 
 ### 3.1 tick 来源与主循环

@@ -97,6 +97,13 @@ enum class SceneResponse {
     cancel,
 };
 
+enum class SceneInputReset : std::uint8_t {
+    none,
+    confirmation_group,
+    main_ui_edge,
+    weather_disable_edge,
+};
+
 struct SceneStepResult {
     SceneStepKind kind{SceneStepKind::stay};
     std::int16_t scene_id{-1};
@@ -206,6 +213,7 @@ public:
         return pending_text_;
     }
     [[nodiscard]] std::vector<SceneAudioCommand> take_audio_commands();
+    [[nodiscard]] SceneInputReset take_input_reset_request() noexcept;
 
 private:
     enum class PendingContinuation {
@@ -517,6 +525,8 @@ private:
     PendingContinuation continuation_{PendingContinuation::none};
     TickContinuation tick_continuation_{TickContinuation::none};
     SceneStepKind tick_fallback_{SceneStepKind::stay};
+    SceneInputReset input_reset_after_action_{SceneInputReset::none};
+    SceneInputReset input_reset_request_{SceneInputReset::none};
     std::optional<std::int16_t> pending_menu_item_;
     std::optional<std::int16_t> initial_script_;
     bool menu_item_event_active_{};

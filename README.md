@@ -15,7 +15,9 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B4 已完成**：IRQ1/set-1 键态、BIOS tick、原 LCG、Miles 命令顺序、8 槽 raw WAV 与 XMI/OPL3 音频。
 - **B5 已完成**：标题/三槽逐像素流程、CFONT 姓名输入、初始属性、六项菜单、状态/物品基础 UI、隔离存读错误路径与 SDL 会话链。
 - **B6 已完成**：五层世界、128×128 缓存、陆地/船移动、碰撞与入口、待机/天气周期和逐像素世界绘制。
-- **B7–B9 未完成**：场景、战斗与完整集成。
+- **B7 已完成**：场景、事件、对话与场景/世界往返；`scene-event` closure 为100/100。
+- **B8 已完成**：战斗入口、选择、玩家动作、AI、动画、结算与战后提交；battle closure 为81/81。
+- **B9 进行中**：统一最终汇编→C++ REVIEW当前为`closure=317/349`、`unique_any=271/284`、`unique_all=254/284`。剩余owner集中在`input-font`（20/39已关闭）与`ui`（26/39已关闭）。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 
@@ -34,9 +36,11 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - 84-byte 键盘翻译表、tick 舍入/回绕和 4 组独立 RNG 向量；
 - 24 个 `ATK*.WAV`、53 个 `E*.WAV` 与 24 个 `GAME*.XMI`，逐项长度、格式与 XMI PCM 生成；
 - 9 个标题帧、主/读档/等待逐像素 hash、CFONT 候选、四组新游戏 RNG 向量、双页状态/物品渲染与三槽成功/损坏/写失败会话链；
-- 五层 128×128 cache hash、固定陆地/船轨迹、场景 70/IQ 条件、初始世界与 300 tick 半透明天气 framebuffer。
+- 五层 128×128 cache hash、固定陆地/船轨迹、场景 70/IQ 条件、初始世界与 300 tick 半透明天气 framebuffer；
+- `ALLSIN` 100个六层场景、`ALLDEF` 100×200条十一字段事件、2,977条对话与1,018份KDEF脚本，以及场景输入、跳转、对话和事件opcode的独立Golden；
+- 140条`WAR.STA`记录、26个战场、92套`FIGHT`资源共4,992帧、26槽参战者状态，以及覆盖战斗入口、行动、AI、伤害、状态面板、结算/升级/练功/制造的75项独立Golden。
 
-对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)、[`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md)、[`research/evidence/title-menu-new-game-1to1.md`](research/evidence/title-menu-new-game-1to1.md) 和 [`research/evidence/world-map-1to1.md`](research/evidence/world-map-1to1.md)。
+对应汇编证据见 [`research/evidence/resource-loader-1to1.md`](research/evidence/resource-loader-1to1.md)、[`research/evidence/render-1to1.md`](research/evidence/render-1to1.md)、[`research/evidence/model-persistence-1to1.md`](research/evidence/model-persistence-1to1.md)、[`research/evidence/input-time-random-audio-1to1.md`](research/evidence/input-time-random-audio-1to1.md)、[`research/evidence/title-menu-new-game-1to1.md`](research/evidence/title-menu-new-game-1to1.md)、[`research/evidence/world-map-1to1.md`](research/evidence/world-map-1to1.md)、[`research/evidence/scene-event-dialogue-1to1.md`](research/evidence/scene-event-dialogue-1to1.md) 和 [`research/evidence/battle-1to1.md`](research/evidence/battle-1to1.md)。
 
 ## 原版数据目录
 
@@ -137,6 +141,8 @@ build/<platform>-<core|app>-asan/
 ```bash
 ./build.sh sdl
 ```
+
+当前B9工作包最近一次匹配范围验收为Linux app Debug 14/14；完整B9关闭仍需按执行计划重新完成Linux/Windows矩阵、Sanitizer、smoke、资产只读和IDA审计，不能由既往阶段结果替代。
 
 ## 工程结构
 

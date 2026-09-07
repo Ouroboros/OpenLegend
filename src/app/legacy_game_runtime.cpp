@@ -292,20 +292,17 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                scene_session_->pending().kind == scene::SceneStepKind::stay) {
         const auto direction = scene_direction_input_;
+        const auto interact_requested =
+            !direction.has_value() && scene_interact_requested_;
+        const auto ui_requested =
+            !direction.has_value() && !interact_requested && scene_ui_requested_;
+        const auto skip_player_idle =
+            !direction.has_value() && !interact_requested && !ui_requested &&
+            scene_idle_skip_requested_;
         scene_direction_input_.reset();
-        bool interact_requested = false;
-        bool ui_requested = false;
-        bool skip_player_idle = false;
-        if (!direction.has_value() && scene_interact_requested_) {
-            interact_requested = true;
-            scene_interact_requested_ = false;
-        } else if (!direction.has_value() && scene_ui_requested_) {
-            ui_requested = true;
-            scene_ui_requested_ = false;
-        } else if (!direction.has_value() && scene_idle_skip_requested_) {
-            skip_player_idle = true;
-            scene_idle_skip_requested_ = false;
-        }
+        scene_interact_requested_ = false;
+        scene_ui_requested_ = false;
+        scene_idle_skip_requested_ = false;
         handle_scene_result(scene_session_->tick(
             direction, interact_requested, ui_requested, skip_player_idle));
     } else {
@@ -433,6 +430,9 @@ bool LegacyGameRuntime::handle_world_input(
         if (scene_session_->pending().kind == scene::SceneStepKind::stay) {
             scene_direction_input_ = static_cast<scene::SceneDirection>(
                 static_cast<std::int16_t>(*direction));
+            scene_interact_requested_ = false;
+            scene_ui_requested_ = false;
+            scene_idle_skip_requested_ = false;
             return true;
         }
         scene_direction_input_.reset();
@@ -453,6 +453,36 @@ bool LegacyGameRuntime::handle_world_input(
         clear_scene_effect();
     }
     return true;
+}
+
+bool LegacyGameRuntime::scene_loop_uses_key_states() const noexcept {
+    return view_ == LegacyGameView::scene && scene_session_ != nullptr &&
+        scene_session_->pending().kind == scene::SceneStepKind::stay;
+}
+
+void LegacyGameRuntime::set_scene_input_states(
+    const bool interact_down,
+    const bool main_ui_edge,
+    const bool weather_disable_edge) noexcept {
+    scene_interact_requested_ = false;
+    scene_ui_requested_ = false;
+    scene_idle_skip_requested_ = false;
+    if (!scene_loop_uses_key_states() || scene_direction_input_.has_value()) {
+        return;
+    }
+    if (interact_down) {
+        scene_interact_requested_ = true;
+    } else if (main_ui_edge) {
+        scene_ui_requested_ = true;
+    } else if (weather_disable_edge) {
+        scene_idle_skip_requested_ = true;
+    }
+}
+
+scene::SceneInputReset LegacyGameRuntime::take_scene_input_reset_request() noexcept {
+    const auto result = scene_input_reset_request_;
+    scene_input_reset_request_ = scene::SceneInputReset::none;
+    return result;
 }
 
 LegacyKeyStateReset LegacyGameRuntime::handle_key(
@@ -555,17 +585,6 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                    pending_kind == scene::SceneStepKind::scene_title ||
                    pending_kind == scene::SceneStepKind::wait_key) {
             handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));
-        } else if (pending_kind == scene::SceneStepKind::stay) {
-            if (translated_key == 0x1BU) {
-                scene_ui_requested_ = true;
-            } else if (translated_key == 0x0DU || translated_key == 0x20U ||
-                       translated_key == 0x96U) {
-                scene_interact_requested_ = true;
-                key_state_reset = LegacyKeyStateReset::confirmation_group;
-            } else if (translated_key == static_cast<std::uint8_t>('L')) {
-                scene_idle_skip_requested_ = true;
-                key_state_reset = LegacyKeyStateReset::edge;
-            }
         }
         break;
     }
@@ -1324,6 +1343,10 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         " battle=" + std::to_string(result.battle_id) +
         " wait_ticks=" + std::to_string(result.wait_ticks));
     if (scene_session_ != nullptr) {
+        const auto input_reset = scene_session_->take_input_reset_request();
+        if (input_reset != scene::SceneInputReset::none) {
+            scene_input_reset_request_ = input_reset;
+        }
         periodic_counter_ = scene_session_->periodic_counter();
         physical_power_counter_ = scene_session_->physical_power_counter();
         auto commands = scene_session_->take_audio_commands();

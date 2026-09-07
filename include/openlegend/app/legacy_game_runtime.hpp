@@ -102,6 +102,10 @@ public:
         bool down,
         bool right,
         bool menu_requested = false);
+    [[nodiscard]] bool scene_loop_uses_key_states() const noexcept;
+    void set_scene_input_states(
+        bool interact_down, bool main_ui_edge, bool weather_disable_edge) noexcept;
+    [[nodiscard]] scene::SceneInputReset take_scene_input_reset_request() noexcept;
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
     void set_battle_confirmation_state(bool active) noexcept;
     void set_battle_menu_direction_states(bool down, bool up) noexcept;
@@ -296,6 +300,7 @@ private:
     bool scene_interact_requested_{};
     bool scene_ui_requested_{};
     bool scene_idle_skip_requested_{};
+    scene::SceneInputReset scene_input_reset_request_{scene::SceneInputReset::none};
     bool clear_scene_exit_key_states_requested_{};
     bool ending_complete_{};
     bool fade_music_on_exit_{};

@@ -3190,13 +3190,126 @@ def basic_helper_vectors(scripts: list[bytes]) -> dict[str, object]:
     }
 
 
+def scene_input_dispatch_vector(
+    name: str, updates: dict[str, int]
+) -> dict[str, object]:
+    key_names = (
+        "left_9a", "left_9d", "up_9e", "up_9f", "down_97", "down_98",
+        "right_99", "right_9c", "enter_0d", "space_20", "insert_96",
+        "escape_1b", "weather_4c",
+    )
+    states = {key: 0 for key in key_names}
+    states.update(updates)
+    after = dict(states)
+    direction_pairs = (
+        ("left", ("left_9a", "left_9d")),
+        ("up", ("up_9e", "up_9f")),
+        ("down", ("down_97", "down_98")),
+        ("right", ("right_99", "right_9c")),
+    )
+    for action, pair in direction_pairs:
+        if any(states[key] != 0 for key in pair):
+            for key in pair:
+                after[key] = 0
+            return {
+                "name": name,
+                "states": states,
+                "action": action,
+                "operation_order": [f"clear_{action}_pair", f"call_move_{action}"],
+                "states_after": after,
+            }
+    confirmation = ("enter_0d", "space_20", "insert_96")
+    if any(states[key] != 0 for key in confirmation):
+        for key in confirmation:
+            after[key] = 0
+        return {
+            "name": name,
+            "states": states,
+            "action": "interact",
+            "operation_order": ["call_interact", "clear_confirmation_group"],
+            "states_after": after,
+        }
+    if states["escape_1b"] & 1:
+        after["escape_1b"] &= 0xFE
+        return {
+            "name": name,
+            "states": states,
+            "action": "main_ui",
+            "operation_order": ["call_main_ui", "clear_escape_bit_0"],
+            "states_after": after,
+        }
+    if states["weather_4c"] & 1:
+        after["weather_4c"] &= 0xFE
+        return {
+            "name": name,
+            "states": states,
+            "action": "weather_disable",
+            "operation_order": ["write_weather_0", "clear_weather_bit_0"],
+            "states_after": after,
+        }
+    return {
+        "name": name,
+        "states": states,
+        "action": "idle_update",
+        "operation_order": ["call_idle_update"],
+        "states_after": after,
+    }
+
+
 def scene_loop_vectors(
     z_dat: bytes, ranger: bytes, scripts: list[bytes]
 ) -> dict[str, object]:
     scene_main_loop_raw = z_dat[0x22840:0x22D91]
     world_caller_raw = z_dat[0x1F311:0x1F4B7]
+    input_dispatch_raw = z_dat[0x2291A:0x22AA0]
+    exit_keyboard_cleanup_raw = z_dat[0x22CE0:0x22D1F]
     assert len(scene_main_loop_raw) == 1_361
     assert len(world_caller_raw) == 422
+    assert len(input_dispatch_raw) == 390
+    assert sha256(input_dispatch_raw) == "fddf83fdce107f990f26149bb68f68f624bcd1a02c785e494056c33d4caa0e8b"
+    assert len(exit_keyboard_cleanup_raw) == 63
+    assert sha256(exit_keyboard_cleanup_raw) == "70df462ae55a69fcb8672ab92b025cb2bf95055f4cfdec5d09340c990ef6b785"
+    input_dispatch_cases = [
+        scene_input_dispatch_vector(
+            "all_priorities_left",
+            {
+                "left_9a": 2, "up_9f": 255, "down_97": 128, "right_99": 1,
+                "enter_0d": 3, "escape_1b": 3, "weather_4c": 3,
+            },
+        ),
+        scene_input_dispatch_vector(
+            "up_over_lower",
+            {"up_9f": 128, "down_98": 2, "right_9c": 3, "space_20": 1},
+        ),
+        scene_input_dispatch_vector(
+            "down_over_lower", {"down_97": 254, "right_99": 2, "insert_96": 3},
+        ),
+        scene_input_dispatch_vector(
+            "right_over_lower", {"right_9c": 128, "enter_0d": 2, "escape_1b": 3},
+        ),
+        scene_input_dispatch_vector(
+            "interaction_full_byte_even",
+            {"enter_0d": 2, "space_20": 128, "insert_96": 254,
+             "escape_1b": 3, "weather_4c": 3},
+        ),
+        scene_input_dispatch_vector(
+            "menu_edge_over_weather", {"escape_1b": 3, "weather_4c": 3},
+        ),
+        scene_input_dispatch_vector(
+            "menu_even_state_ignored", {"escape_1b": 2, "weather_4c": 3},
+        ),
+        scene_input_dispatch_vector(
+            "weather_even_state_ignored", {"weather_4c": 2},
+        ),
+        scene_input_dispatch_vector("idle_all_zero", {}),
+    ]
+    assert [case["action"] for case in input_dispatch_cases] == [
+        "left", "up", "down", "right", "interact", "main_ui",
+        "weather_disable", "idle_update", "idle_update",
+    ]
+    input_dispatch_stream = json.dumps(
+        input_dispatch_cases, sort_keys=True, separators=(",", ":")
+    ).encode("ascii")
     metadata = [
         words(ranger[97_076 + scene * 52:97_076 + (scene + 1) * 52])
         for scene in range(84)
@@ -3243,13 +3356,41 @@ def scene_loop_vectors(
             "entry_range": "0x28e40..0x29391",
             "size_bytes": len(scene_main_loop_raw),
             "instruction_count": 306,
+            "basic_block_count": 68,
+            "conditional_branch_count": 38,
+            "unconditional_jump_count": 9,
+            "call_count": 40,
             "raw_function_offset": "0x22840",
             "raw_function_sha256": sha256(scene_main_loop_raw),
             "loaded_function_sha256": "a624e39a305269b5e7904058dafcaa0466dd6f54e74f53463d23ae1f203ab500",
+            "call_offsets": [
+                "0x5", "0x4c", "0x73", "0x84", "0xa5", "0xcd", "0xd5", "0xe6",
+                "0xf6", "0xfe", "0x10b", "0x113", "0x14d", "0x174", "0x1a3",
+                "0x20d", "0x232", "0x25b", "0x270", "0x280", "0x2a9", "0x2ae",
+                "0x335", "0x342", "0x3b9", "0x3ca", "0x3f1", "0x409", "0x431",
+                "0x439", "0x43e", "0x44e", "0x456", "0x463", "0x46b", "0x498",
+                "0x4df", "0x4f6", "0x50b", "0x53d",
+            ],
+            "call_targets": [
+                "0x3ed1e", "0x29391", "0x3e1b2", "0x296e6", "0x3d922",
+                "0x3d6e0", "0x29b3c", "0x29d2d", "0x3d6d1", "0x3cd17",
+                "0x2c0bb", "0x2b3b4", "0x29b3c", "0x29819", "0x299a1",
+                "0x29c36", "0x212c0", "0x2399e", "0x29d2d", "0x3d6d1",
+                "0x3cbe3", "0x2b3b4", "0x3cc97", "0x295d0", "0x29391",
+                "0x296e6", "0x3e1b2", "0x3d922", "0x3d6e0", "0x29b3c",
+                "0x29d2d", "0x3d6d1", "0x3cd17", "0x2c0bb", "0x2b3b4",
+                "0x295d0", "0x3cc97", "0x3d6e0", "0x3e1b2", "0x3e1b2",
+            ],
             "relocation_count": 116,
             "relocation_delta": 0x20000,
             "normalized_loaded_equals_raw": True,
             "direct_callers": ["0x25a2a"],
+            "external_internal_entries": [],
+            "local_return": "0x29390",
+            "input_dispatch_range": "0x28f1a..0x290a0",
+            "input_dispatch_raw_sha256": sha256(input_dispatch_raw),
+            "exit_keyboard_cleanup_range": "0x292e0..0x2931f",
+            "exit_keyboard_cleanup_raw_sha256": sha256(exit_keyboard_cleanup_raw),
             "world_caller": {
                 "entry_range": "0x25911..0x25ab7",
                 "size_bytes": len(world_caller_raw),
@@ -3293,6 +3434,22 @@ def scene_loop_vectors(
             "weather_disable",
             "idle_update",
         ],
+        "input_dispatch": {
+            "key_state_base": "0x51b6d",
+            "direction_and_interaction_test": "full_nonzero_byte",
+            "main_ui_and_weather_test": "bit_0_only",
+            "maximum_actions_per_tick": 1,
+            "selected_reset_timing": {
+                "direction": "before_delegated_move",
+                "interact": "after_delegated_interact",
+                "main_ui": "after_delegated_menu",
+                "weather_disable": "after_weather_write",
+            },
+            "lower_priority_states": "preserved_until_future_tick_or_host_release",
+            "vector_encoding": "canonical_json_sort_keys_compact_ascii",
+            "vector_sha256": sha256(input_dispatch_stream),
+            "cases": input_dispatch_cases,
+        },
         "periodic_update_ticks_first_20": [tick for tick in range(1, 21) if tick % 5 == 1],
         "tick_boundary": {
             "read_before_input": True,

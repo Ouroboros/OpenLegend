@@ -576,14 +576,18 @@ SceneStepResult SceneSession::tick(
         return pending_;
     }
     idle_tick();
+    input_reset_after_action_ = SceneInputReset::none;
     auto result = current_result(SceneStepKind::stay);
     if (direction.has_value()) {
         result = move(*direction);
     } else if (interact_requested) {
+        input_reset_after_action_ = SceneInputReset::confirmation_group;
         result = interact();
     } else if (ui_requested) {
+        input_reset_after_action_ = SceneInputReset::main_ui_edge;
         result = open_ui();
     } else if (skip_player_idle) {
+        input_reset_after_action_ = SceneInputReset::weather_disable_edge;
         shadow_state_ = 0;
     } else {
         player_idle_tick();
@@ -1750,6 +1754,8 @@ SceneStepResult SceneSession::run_auto_event(const SceneStepKind fallback) {
 }
 
 SceneStepResult SceneSession::finish_tick_after_action(const SceneStepKind fallback) {
+    input_reset_request_ = input_reset_after_action_;
+    input_reset_after_action_ = SceneInputReset::none;
     tick_continuation_ = TickContinuation::after_scene_present;
     tick_fallback_ = fallback;
     pending_ = current_result(SceneStepKind::present);
@@ -3785,6 +3791,12 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
 std::vector<SceneAudioCommand> SceneSession::take_audio_commands() {
     auto result = std::move(audio_commands_);
     audio_commands_.clear();
+    return result;
+}
+
+SceneInputReset SceneSession::take_input_reset_request() noexcept {
+    const auto result = input_reset_request_;
+    input_reset_request_ = SceneInputReset::none;
     return result;
 }
 

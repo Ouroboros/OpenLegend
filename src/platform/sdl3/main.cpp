@@ -297,6 +297,21 @@ int main(const int argc, const char* const* argv) {
         game.set_battle_menu_direction_states(
             keyboard.down(0x98U), keyboard.down(0x9EU));
     };
+    const auto sync_scene_input_reset = [&game, &keyboard]() {
+        switch (game.take_scene_input_reset_request()) {
+        case scene::SceneInputReset::confirmation_group:
+            keyboard.clear_confirmation_states();
+            break;
+        case scene::SceneInputReset::main_ui_edge:
+            keyboard.consume_edge(0x1BU);
+            break;
+        case scene::SceneInputReset::weather_disable_edge:
+            keyboard.consume_edge(static_cast<std::uint8_t>('L'));
+            break;
+        case scene::SceneInputReset::none:
+            break;
+        }
+    };
     timing::SteadyBiosTickSource tick_source;
     bool running = true;
     while (running) {
@@ -317,7 +332,13 @@ int main(const int argc, const char* const* argv) {
                 if (translated_key != 0U) {
                     const bool defer_world_menu =
                         translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
-                    if (!defer_world_menu && !game.battle_menu_uses_key_states()) {
+                    const bool defer_scene_input = game.scene_loop_uses_key_states() &&
+                        (translated_key == 0x1BU ||
+                         translated_key == static_cast<std::uint8_t>('L') ||
+                         translated_key == 0x0DU || translated_key == 0x20U ||
+                         translated_key == 0x96U);
+                    if (!defer_world_menu && !defer_scene_input &&
+                        !game.battle_menu_uses_key_states()) {
                         const auto key_state_reset = game.handle_key(
                             translated_key,
                             keyboard.down(0x82U),
@@ -344,8 +365,10 @@ int main(const int argc, const char* const* argv) {
                 diagnostics::log_debug(
                     "host key_up key=" + std::to_string(static_cast<int>(event.key)));
             }
+            sync_scene_input_reset();
             sync_battle_confirmation();
         }
+        sync_scene_input_reset();
         sync_battle_confirmation();
         const auto world_direction = keyboard.world_direction();
         using input::LegacyWorldDirectionInput;
@@ -361,7 +384,12 @@ int main(const int argc, const char* const* argv) {
         } else if (directional_input_consumed && keyboard.edge(0x1BU)) {
             keyboard.consume_edge(0x1BU);
         }
+        game.set_scene_input_states(
+            keyboard.down(0x0DU) || keyboard.down(0x20U) || keyboard.down(0x96U),
+            keyboard.edge(0x1BU),
+            keyboard.edge(static_cast<std::uint8_t>('L')));
         game.advance(frame_tick);
+        sync_scene_input_reset();
         sync_battle_confirmation();
         if (game.take_clear_scene_exit_key_states_request()) {
             keyboard.clear_scene_exit_key_states();
