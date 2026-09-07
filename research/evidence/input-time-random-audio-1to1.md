@@ -102,7 +102,17 @@ input owner首轮对照发现SDL一帧会排空多个事件，现代问句生成
 
 现代沿用Order22已发布的共同问句present门，因此opcode9首帧在成功present前同样不接键。join专用`conditional_after_present`在回答时只缓存signed offset并返回裸场景present；宿主成功present后才恢复解释器、把offset加到已推进3 words的PC。机器的Y比较发生在裸场景present后，现代不可观察的选择缓存形成于其前，但该present链不读取选择或last-key，脚本状态和副作用也保持阻塞，故可观察顺序一致。
 
-宿主回归串联opcode5/opcode9，固定新join问句重新关闭present门、render后但present前拒绝回答、present后keypad Insert按任意非Y键进入裸场景present、该present完成前继续拒绝Y、完成后才结束脚本。完整入口、所有分支/出口、唯一caller、两个短helper、81条资产调用和scene/world-event两条宿主路由复核未发现新增产品差异。三次Golden逐字节一致，正式`scene-goldens.json` SHA256为`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`；同址scene owner已独立关闭，`sub_2D653`/`sub_3D6D1` owner状态不传播。
+宿主回归串联opcode5/opcode9，固定新join问句重新关闭present门、render后但present前拒绝回答、present后keypad Insert按任意非Y键进入裸场景present、该present完成前继续拒绝Y、完成后才结束脚本。完整入口、所有分支/出口、唯一caller、两个短helper、81条资产调用和scene/world-event两条宿主路由复核未发现新增产品差异。三次Golden逐字节一致，Order23关闭时`scene-goldens.json` SHA256为`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`；同址scene owner已独立关闭，`sub_2D653`/`sub_3D6D1` owner状态不传播。
+
+### 2.8 住宿问句回答后立即分支
+
+`sub_2E155 @ 0x2E155..0x2E1E8`为147字节、37条指令、3个基本块、6次call、10项HIGHLOW重定位和2个本地`RET`。raw/loaded SHA256分别为`9d4b0c7d1e4ef096ee12bb3e010ca7181a9fb561b9c94eadd27d4edb78a4a5c3`与`fb29e361de2fee971ffaf9d5c210d25e90f8b91b3060d4d98852278934f79cd3`；唯一物理caller为`sub_2C319:0x2C5A7`，另有跳转表数据引用`0x555E8`，没有外部内部入口。
+
+机器清last-key，复制23字节`是否住宿過夜（Ｙ／Ｎ）`，绘制与前两类问句相同的panel/文字并present。present后`0x2E1C9`先显式清键，紧邻的`sub_20C32`入口再清一次并等待首个非零翻译键；两次清零间没有读取、call或其他可观察操作。最后仅大写`Y`选择真signed offset，其他非零键选择假offset；caller共享尾执行`old_pc+3+selected_offset`。回答后不调用裸场景重绘或任何额外present。
+
+现代共同问句present门同样覆盖rest：问句首帧成功present前拒绝同批keydown，present后大写Y为yes、其他translated非零键为no。rest不进入join专用`conditional_after_present`，selected offset立即应用，后续脚本输出直接成为pending。机器相邻两次pre-wait清零在现代不可重入事件边界合并为一次，没有中间观察点。
+
+宿主回归把opcode5/9/11串联，固定join恢复present后rest问句重新关门、render后但present前拒绝Y、present后keypad Insert按任意非Y键直接结束脚本且不产生present。最终入口/出口、唯一caller、等待helper、7条资产和两条宿主路由复核零新增差异。三次Golden逐字节一致，正式`scene-goldens.json` SHA256为`42c4008cf235d4fb1894dd39bb3a6db677b0fd01310a07d4fce37d381fa3895c`；同址scene owner和delegated UI/render owner状态均不传播。
 
 ## 3. 时间边界
 

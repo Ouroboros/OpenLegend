@@ -11,7 +11,7 @@
   - SHA256：`9e2310396c323ba7647fa6afec3ecf27f5081dc7ed9f2a0139430833c977d4a9`
 - 独立 oracle：`research/tools/generate_b7_scene_goldens.py`
 - oracle 输出：`research/evidence/scene-goldens.json`
-  - SHA256：`e03f90d696b38adc17e9917f70a361e78acaf6bbbb7334c272287f726fa1ce61`
+  - SHA256：`42c4008cf235d4fb1894dd39bb3a6db677b0fd01310a07d4fce37d381fa3895c`
 
 IDA 仅通过 `/mnt/d/Dev/Crack/IDA/idat.exe -A` 导出；导出后原 `.i64` 的 incidental 修改已恢复。
 
@@ -172,6 +172,8 @@ helper只扫描team slots1..5，移除首个精确匹配role并左移后续槽�
 helper把原Big5`是否住宿過夜（Ｙ／Ｎ）`复制到缓冲区，在caller当前framebuffer的`(61,40,187,27)`绘混色圆角面板，于`(71,45)`以颜色`5/7`绘字并present；阻塞读取前再次清键。只有ASCII大写Y返回true offset，其他任意键立即返回false offset；按键后不重绘或额外present裸场景。caller最终PC为`old_pc+3+selected_offset`。
 
 全KDEF仅7次opcode11且偏移均为`(1,0)`，完整参数流SHA256为`99755f8a57634d2a2d4ae1b53ceb30ffde7bc40daeb84eba58a0395452355399`。synthetic Y/非Y分别直达notice/stay，固定分支方向与按键后无present；首轮完整对照零产品差异。宿主按键continuation替代DOS函数内忙等，归类`platform_adapted`；委托文字和present函数继续按各自closure终审。
+
+后续input owner以独立IDB重新导出全部37条指令、10项重定位、唯一caller共享尾和19字节等待helper。机器在问题present后有两次相邻last-key清零（显式写0及等待helper入口写0），中间无观察点；现代在不可重入宿主事件边界合并。共同首帧present门覆盖rest，而非join条件回答后立即分支且零额外present。opcode5/9/11串联宿主回归及7条资产域均通过；正式Golden仅新增`rest_input_machine`，SHA256为`42c4008cf235d4fb1894dd39bb3a6db677b0fd01310a07d4fce37d381fa3895c`。
 
 ### 4.10 队伍休息恢复
 

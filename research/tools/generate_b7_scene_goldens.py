@@ -4261,6 +4261,17 @@ def dialogue_vectors(
         "35980b0a0068bc870c00e8e3f7000083c408e83c2dffffe858f7ffff803d6b1b03"
         "005975058b442404c38b442408c3"
     )
+    rest_question_input_raw = z_dat[0x27B55:0x27BE8]
+    assert len(rest_question_input_raw) == 147
+    assert sha256(rest_question_input_raw) == \
+        "9d4b0c7d1e4ef096ee12bb3e010ca7181a9fb561b9c94eadd27d4edb78a4a5c3"
+    assert rest_question_input_raw.hex() == (
+        "6824000000e8bf0b0100c6056b1b030000687788030068c4070a00e8d50d0100"
+        "83c4086a0468bc870c006a0068ff0000006a1b68bb0000006a286a3de829edffff"
+        "83c4206a10680507000068bc870c0068c4070a006a2d6a47e87ff6000083c418ff"
+        "35980b0a0068bc870c00e80bf5000083c408c6056b1b030000e85d2affff803d6b"
+        "1b03005975058b442404c38b442408c3"
+    )
     text_renderer_raw = z_dat[0x37350:0x37440]
     assert len(text_renderer_raw) == 240
     assert len(raw_talks) == len(decoded_talks) == 2_977
@@ -4893,6 +4904,19 @@ def dialogue_vectors(
                 "bare_scene_present_call": "0x2DEF6",
                 "uppercase_y_compare": "0x2DEFB",
                 "timing": "question_present_then_first_nonzero_key_then_bare_scene_present_then_branch",
+            },
+            "rest_input_machine": {
+                "range": "0x2E155..0x2E1E8",
+                "file_offset": "0x27B55",
+                "byte_count": len(rest_question_input_raw),
+                "raw_sha256": sha256(rest_question_input_raw),
+                "entry_last_key_clear": "0x2E15F",
+                "question_present_call": "0x2E1C1",
+                "pre_wait_last_key_clear": "0x2E1C9",
+                "clear_and_wait_nonzero_call": "0x2E1D0",
+                "uppercase_y_compare": "0x2E1D5",
+                "post_key_present_calls": 0,
+                "timing": "question_present_then_redundant_clear_and_first_nonzero_key_then_immediate_branch",
             },
             "opcode_5_asset_domain": {
                 "occurrences": len(opcode_5_occurrences),

@@ -162,7 +162,7 @@ namespace {
 }
 
 [[nodiscard]] bool install_question_initial_script(const std::filesystem::path& root) {
-    constexpr std::array<std::int16_t, 7> script{5, 0, 0, 9, 0, 0, -1};
+    constexpr std::array<std::int16_t, 10> script{5, 0, 0, 9, 0, 0, 11, 0, 0, -1};
     return install_initial_script(root, script);
 }
 
@@ -1948,7 +1948,24 @@ void check_question_present_gate(const std::filesystem::path& data_root) {
     game.advance();
     OL_CHECK(
         LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::question);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_question(game) ==
+        scene::SceneQuestion::rest);
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
+
+    OL_CHECK(game.render());
+    game.handle_key('Y', false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
+        scene::SceneStepKind::question);
+    game.finish_presented_tick();
+    OL_CHECK(LegacyGameRuntimeTestAccess::scene_question_presented(game));
+    game.handle_key(0x96U, false, false);
+    OL_CHECK(
+        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
         scene::SceneStepKind::stay);
+    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_question_presented(game));
 }
 
 void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
