@@ -1025,6 +1025,14 @@ BATTLE_ROUND_STATUS_RELOCATION_OFFSETS = (
     0x0EE, 0x0F8, 0x102,
 )
 BATTLE_ROUND_STATUS_CALLER_SITES = (0x32A38,)
+BATTLE_HIDDEN_TARGET_CLEANUP_ADDRESS = 0x3C672
+BATTLE_HIDDEN_TARGET_CLEANUP_END = 0x3C6D3
+BATTLE_HIDDEN_TARGET_CLEANUP_CALL_OFFSETS = (0x005,)
+BATTLE_HIDDEN_TARGET_CLEANUP_CALL_TARGETS = (0x3ED1E,)
+BATTLE_HIDDEN_TARGET_CLEANUP_RELOCATION_OFFSETS = (
+    0x018, 0x022, 0x02C, 0x03B, 0x045, 0x04F, 0x059,
+)
+BATTLE_HIDDEN_TARGET_CLEANUP_CALLER_SITES = (0x32A0D,)
 BATTLE_ROUND_LOOP_ADDRESS = 0x3271E
 BATTLE_ROUND_LOOP_END = 0x32A51
 BATTLE_ROUND_LOOP_CALL_OFFSETS = (
@@ -10514,6 +10522,209 @@ def battle_round_status_damage_contract(z_dat_bytes: bytes) -> dict[str, object]
     }
 
 
+def battle_hidden_target_cleanup_contract(z_dat_bytes: bytes) -> dict[str, object]:
+    contract = relocated_machine_function_contract(
+        z_dat_bytes,
+        address=BATTLE_HIDDEN_TARGET_CLEANUP_ADDRESS,
+        end=BATTLE_HIDDEN_TARGET_CLEANUP_END,
+        call_offsets=BATTLE_HIDDEN_TARGET_CLEANUP_CALL_OFFSETS,
+        expected_call_targets=BATTLE_HIDDEN_TARGET_CLEANUP_CALL_TARGETS,
+        relocation_offsets=BATTLE_HIDDEN_TARGET_CLEANUP_RELOCATION_OFFSETS,
+        caller_sites=BATTLE_HIDDEN_TARGET_CLEANUP_CALLER_SITES,
+        instruction_count=24,
+        branch_count=4,
+    )
+    if contract["raw_sha256"] != (
+        "743c6fe530a8498dcffdf53dcebd1fbaf639b99f8c4b227f31be2ab6a6d2a2a5"
+    ):
+        raise ValueError("Z.DAT hidden-target cleanup raw bytes changed")
+    if contract["loaded_sha256"] != (
+        "d94dd9860aca3416096d717258f6aba2a1e38a323ec6fd80560137e800d91291"
+    ):
+        raise ValueError("Z.DAT hidden-target cleanup relocation image changed")
+
+    machine_slices = {}
+    for name, slice_start, slice_end, expected_hash in [
+        ("caller_cleanup_position", 0x32A08, 0x32A3D,
+         "71a280298cfa5187ae71633078cdf48c266ff247d96ea48ed39e70220489698c"),
+        ("attack_target", 0x3C681, 0x3C6A4,
+         "5250b7fdb4627edd2b6002f516da1fd5373e07f80942bc6c25433b01bac72aca"),
+        ("poison_target", 0x3C6A4, 0x3C6C7,
+         "0b31fb38b7485b9308d1d2b62bcf1ba9a4c6d4167e5503638f96355025ba85ce"),
+        ("loop_exit", 0x3C6C7, 0x3C6D3,
+         "9b7fb312b262a2228e3143b1ba47df3edf134f309dd24793ef69012b44608293"),
+    ]:
+        value = z_dat_bytes[
+            slice_start - Z_DAT_LOAD_BASE:slice_end - Z_DAT_LOAD_BASE
+        ]
+        if sha256(value) != expected_hash:
+            raise ValueError(f"Z.DAT hidden-target cleanup {name} bytes changed")
+        machine_slices[name] = {
+            "address": hex(slice_start),
+            "end": hex(slice_end),
+            "size": len(value),
+            "sha256": expected_hash,
+        }
+
+    def simulate(
+        label: str,
+        *,
+        combatant_count: int,
+        hidden: dict[int, int],
+        sources: dict[int, tuple[int, int]],
+    ) -> dict[str, object]:
+        occupancy = [0] * 26
+        for slot, value in hidden.items():
+            occupancy[slot] = wrapping_i16(value)
+        state = [
+            {"ai_target": -1, "ai_poison_target": -1}
+            for _ in range(26)
+        ]
+        for slot, (attack_target, poison_target) in sources.items():
+            state[slot] = {
+                "ai_target": wrapping_i16(attack_target),
+                "ai_poison_target": wrapping_i16(poison_target),
+            }
+        before = [entry.copy() for entry in state]
+        attack_cleared = 0
+        poison_cleared = 0
+        for slot in range(combatant_count):
+            attack_target = state[slot]["ai_target"]
+            if 0 <= attack_target < 26 and occupancy[attack_target] == 1:
+                state[slot]["ai_target"] = -1
+                attack_cleared += 1
+            poison_target = state[slot]["ai_poison_target"]
+            if 0 <= poison_target < 26 and occupancy[poison_target] == 1:
+                state[slot]["ai_poison_target"] = -1
+                poison_cleared += 1
+        source_slots = sorted(sources)
+        return {
+            "label": label,
+            "combatant_count": combatant_count,
+            "occupancy_hidden": {
+                str(slot): occupancy[slot] for slot in sorted(hidden)
+            },
+            "sources_before": {
+                str(slot): before[slot] for slot in source_slots
+            },
+            "sources_after": {
+                str(slot): state[slot].copy() for slot in source_slots
+            },
+            "attack_targets_cleared": attack_cleared,
+            "poison_targets_cleared": poison_cleared,
+        }
+
+    vectors = {
+        "mixed_active_sources_and_inactive_targets": simulate(
+            "mixed_active_sources_and_inactive_targets",
+            combatant_count=2,
+            hidden={1: 1, 3: 2, 4: -1, 25: 1},
+            sources={0: (1, 3), 1: (4, 25)},
+        ),
+        "same_target_both_fields_and_self_target": simulate(
+            "same_target_both_fields_and_self_target",
+            combatant_count=2,
+            hidden={1: 1},
+            sources={0: (1, 1), 1: (1, 1)},
+        ),
+        "valid_zero_target": simulate(
+            "valid_zero_target",
+            combatant_count=2,
+            hidden={0: 1},
+            sources={0: (0, 0)},
+        ),
+        "non_one_hidden_values_preserve": simulate(
+            "non_one_hidden_values_preserve",
+            combatant_count=2,
+            hidden={1: 0, 2: 2, 3: -1, 4: 32767},
+            sources={0: (1, 2), 1: (3, 4)},
+        ),
+        "inactive_source_not_scanned": simulate(
+            "inactive_source_not_scanned",
+            combatant_count=2,
+            hidden={1: 1},
+            sources={2: (1, 1)},
+        ),
+        "negative_one_sentinel_preserved": simulate(
+            "negative_one_sentinel_preserved",
+            combatant_count=2,
+            hidden={},
+            sources={0: (-1, -1), 1: (-1, -1)},
+        ),
+    }
+    mixed = vectors["mixed_active_sources_and_inactive_targets"]
+    if mixed["sources_after"] != {
+        "0": {"ai_target": -1, "ai_poison_target": 3},
+        "1": {"ai_target": 4, "ai_poison_target": -1},
+    } or (mixed["attack_targets_cleared"], mixed["poison_targets_cleared"]) != (1, 1):
+        raise ValueError("hidden-target mixed source vector changed")
+    same = vectors["same_target_both_fields_and_self_target"]
+    if same["sources_after"] != {
+        "0": {"ai_target": -1, "ai_poison_target": -1},
+        "1": {"ai_target": -1, "ai_poison_target": -1},
+    } or (same["attack_targets_cleared"], same["poison_targets_cleared"]) != (2, 2):
+        raise ValueError("hidden-target same-target vector changed")
+    zero = vectors["valid_zero_target"]
+    if zero["sources_after"]["0"] != {"ai_target": -1, "ai_poison_target": -1}:
+        raise ValueError("hidden-target slot-zero vector changed")
+    preserved = vectors["non_one_hidden_values_preserve"]
+    if preserved["sources_after"] != preserved["sources_before"]:
+        raise ValueError("hidden-target exact-one gate changed")
+    inactive = vectors["inactive_source_not_scanned"]
+    if inactive["sources_after"]["2"] != {"ai_target": 1, "ai_poison_target": 1}:
+        raise ValueError("hidden-target inactive-source boundary changed")
+
+    vector_bytes = json.dumps(
+        vectors, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    vector_sha256 = sha256(vector_bytes)
+    if vector_sha256 != "f596fa71372d63877c7acbd25eb4afce8a877d59b327144858399669ea06e084":
+        raise ValueError(
+            f"battle hidden-target independent vector set changed: {vector_sha256}"
+        )
+
+    invalid_targets = {}
+    for target in (-2, -1, 26, 32767):
+        invalid_targets[str(target)] = {
+            "byte_displacement": target * 28,
+            "occupancy_address": hex(0xDC736 + target * 28),
+            "inside_26_slots": 0 <= target < 26,
+            "modern_action": "preserve without out-of-bounds read",
+        }
+
+    return {
+        **contract,
+        "machine_slices": machine_slices,
+        "source_loop": {
+            "counter": "signed low word from zero while less than combatant count",
+            "source_slots": "active combatants only, ascending",
+            "combatant_record_size": 28,
+        },
+        "target_fields": {
+            "order": ["ai_target", "ai_poison_target"],
+            "target_index": "signed low word multiplied by 28",
+            "target_slots": "all fixed 0..25 slots, including inactive slots",
+            "clear_condition": "target occupancy-hidden equals exactly one",
+            "clear_value": -1,
+            "ignored_target_state": ["role", "side", "hp"],
+        },
+        "vectors": vectors,
+        "vector_sha256": vector_sha256,
+        "invalid_target_addressing": invalid_targets,
+        "direct_rng_calls": 0,
+        "machine_return": "EAX process residue ignored by the sole caller",
+        "platform_adaptation_boundary": (
+            "modern host preserves invalid targets outside 0..25 without performing the original "
+            "out-of-bounds occupancy read and rejects an invalid setup; legal -1 or slot target "
+            "state, source/field order and exact hidden-one writes are preserved"
+        ),
+        "closure_boundary": (
+            "stack probe, sole round-loop caller, outcome/result handling, actor-index "
+            "continuation and round-status damage remain independent owners"
+        ),
+    }
+
+
 def battle_medicine_target_wrapper_contract(z_dat_bytes: bytes) -> dict[str, object]:
     contract = relocated_machine_function_contract(
         z_dat_bytes,
@@ -14767,6 +14978,8 @@ def build(data_root: Path) -> dict[str, object]:
         "battle_practice_machine": battle_practice_contract(z_dat_bytes),
         "battle_crafting_machine": battle_crafting_contract(z_dat_bytes),
         "battle_round_status_damage_machine": battle_round_status_damage_contract(z_dat_bytes),
+        "battle_hidden_target_cleanup_machine":
+            battle_hidden_target_cleanup_contract(z_dat_bytes),
         "battle_round_machine": battle_round_machine_contract(z_dat_bytes, ranger_group_bytes),
         "war_sta": {
             "record_size": WAR_RECORD_SIZE,

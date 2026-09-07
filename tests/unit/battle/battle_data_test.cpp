@@ -3396,6 +3396,109 @@ void run_battle_round_status_damage_review_test(
     }
 }
 
+void run_battle_hidden_target_cleanup_review_test(
+    const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        OL_CHECK(setup.combatant_count() == 2);
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        auto& inactive_source = setup.combatants()[2U].words;
+        first[combatant_word::role_id] = -1;
+        second[combatant_word::role_id] = -1;
+        setup.combatants()[1U].words[combatant_word::occupancy_hidden] = 1;
+        setup.combatants()[3U].words[combatant_word::occupancy_hidden] = 2;
+        setup.combatants()[4U].words[combatant_word::occupancy_hidden] = -1;
+        setup.combatants()[25U].words[combatant_word::occupancy_hidden] = 1;
+        first[combatant_word::ai_target] = 1;
+        first[combatant_word::ai_poison_target] = 3;
+        second[combatant_word::ai_target] = 4;
+        second[combatant_word::ai_poison_target] = 25;
+        inactive_source[combatant_word::ai_target] = 1;
+        inactive_source[combatant_word::ai_poison_target] = 1;
+
+        const auto cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(cleanup.has_value());
+        OL_CHECK(cleanup->attack_targets_cleared == 1);
+        OL_CHECK(cleanup->poison_targets_cleared == 1);
+        OL_CHECK(first[combatant_word::ai_target] == -1);
+        OL_CHECK(first[combatant_word::ai_poison_target] == 3);
+        OL_CHECK(second[combatant_word::ai_target] == 4);
+        OL_CHECK(second[combatant_word::ai_poison_target] == -1);
+        OL_CHECK(inactive_source[combatant_word::ai_target] == 1);
+        OL_CHECK(inactive_source[combatant_word::ai_poison_target] == 1);
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        auto& first = setup.combatants()[0U].words;
+        auto& second = setup.combatants()[1U].words;
+        second[combatant_word::occupancy_hidden] = 1;
+        first[combatant_word::ai_target] = 1;
+        first[combatant_word::ai_poison_target] = 1;
+        second[combatant_word::ai_target] = 1;
+        second[combatant_word::ai_poison_target] = 1;
+
+        auto cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(cleanup.has_value());
+        OL_CHECK(cleanup->attack_targets_cleared == 2);
+        OL_CHECK(cleanup->poison_targets_cleared == 2);
+        OL_CHECK(first[combatant_word::ai_target] == -1);
+        OL_CHECK(first[combatant_word::ai_poison_target] == -1);
+        OL_CHECK(second[combatant_word::ai_target] == -1);
+        OL_CHECK(second[combatant_word::ai_poison_target] == -1);
+
+        first[combatant_word::occupancy_hidden] = 1;
+        first[combatant_word::ai_target] = 0;
+        first[combatant_word::ai_poison_target] = 0;
+        cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(cleanup.has_value());
+        OL_CHECK(cleanup->attack_targets_cleared == 1);
+        OL_CHECK(cleanup->poison_targets_cleared == 1);
+        OL_CHECK(first[combatant_word::ai_target] == -1);
+        OL_CHECK(first[combatant_word::ai_poison_target] == -1);
+
+        setup.combatants()[1U].words[combatant_word::occupancy_hidden] = 0;
+        setup.combatants()[2U].words[combatant_word::occupancy_hidden] = 2;
+        setup.combatants()[3U].words[combatant_word::occupancy_hidden] = -1;
+        setup.combatants()[4U].words[combatant_word::occupancy_hidden] = 32'767;
+        first[combatant_word::ai_target] = 1;
+        first[combatant_word::ai_poison_target] = 2;
+        second[combatant_word::ai_target] = 3;
+        second[combatant_word::ai_poison_target] = 4;
+        cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(cleanup.has_value());
+        OL_CHECK(cleanup->attack_targets_cleared == 0);
+        OL_CHECK(cleanup->poison_targets_cleared == 0);
+        OL_CHECK(first[combatant_word::ai_target] == 1);
+        OL_CHECK(first[combatant_word::ai_poison_target] == 2);
+        OL_CHECK(second[combatant_word::ai_target] == 3);
+        OL_CHECK(second[combatant_word::ai_poison_target] == 4);
+
+        first[combatant_word::ai_target] = -1;
+        first[combatant_word::ai_poison_target] = -2;
+        second[combatant_word::ai_target] = 26;
+        second[combatant_word::ai_poison_target] = 32'767;
+        cleanup = setup.clear_hidden_ai_targets();
+        OL_CHECK(cleanup.has_value());
+        OL_CHECK(cleanup->attack_targets_cleared == 0);
+        OL_CHECK(cleanup->poison_targets_cleared == 0);
+        OL_CHECK(first[combatant_word::ai_target] == -1);
+        OL_CHECK(first[combatant_word::ai_poison_target] == -2);
+        OL_CHECK(second[combatant_word::ai_target] == 26);
+        OL_CHECK(second[combatant_word::ai_poison_target] == 32'767);
+    }
+}
+
 void run_player_movement_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
@@ -10870,6 +10973,10 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     hidden_session.setup().enable_automatic_mode();
     hidden_session.set_confirmation_state(true);
     hidden_session.set_confirmation_state(false); // Released before the actor boundary.
+    for (auto& combatant : hidden_session.setup().combatants().first(
+             static_cast<std::size_t>(hidden_session.setup().combatant_count()))) {
+        combatant.words[combatant_word::ai_target] = 0;
+    }
     hidden_session.advance(7U);
     OL_CHECK(hidden_session.setup().automatic_enabled());
     OL_CHECK(!hidden_session.take_clear_confirmation_states_request());
@@ -10879,6 +10986,10 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(hidden_session.current_actor_slot() == 1U);
     OL_CHECK(hidden_session.setup().combatants()[hidden_session.current_actor_slot()]
                  .words[combatant_word::occupancy_hidden] == 0);
+    for (const auto& combatant : hidden_session.setup().combatants().first(
+             static_cast<std::size_t>(hidden_session.setup().combatant_count()))) {
+        OL_CHECK(combatant.words[combatant_word::ai_target] == -1);
+    }
 
     auto hidden_outcome = std::make_unique<BattleSession>(
         data_root, hidden_ranger, hidden_random, 51, false);
@@ -10923,7 +11034,10 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
                  BattleSessionInputResult::post_battle_message_acknowledged);
     }
     OL_CHECK(hidden_outcome->phase() == BattleSessionPhase::round_wait);
-    OL_CHECK(hidden_outcome->setup().combatants()[0U].words[combatant_word::ai_target] == -1);
+    for (const auto& combatant : hidden_outcome->setup().combatants().first(
+             static_cast<std::size_t>(hidden_outcome->setup().combatant_count()))) {
+        OL_CHECK(combatant.words[combatant_word::ai_target] == -1);
+    }
     OL_CHECK(hidden_ranger.roles[outcome_role].word(openlegend::model::role_word::hp) == 99);
     hidden_outcome->advance(0x1800AFU);
     OL_CHECK(hidden_outcome->phase() == BattleSessionPhase::round_wait);
@@ -11415,6 +11529,7 @@ int main() {
     run_battle_practice_review_test(data_root);
     run_battle_crafting_review_test(data_root);
     run_battle_round_status_damage_review_test(data_root);
+    run_battle_hidden_target_cleanup_review_test(data_root);
     run_player_movement_selection_test(data_root);
     run_ai_movement_continuation_test(data_root);
     run_rest_action_test(data_root);

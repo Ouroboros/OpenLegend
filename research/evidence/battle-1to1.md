@@ -1,12 +1,12 @@
 # B8 战斗 1:1 证据
 
-状态：B8统一最终汇编→C++ REVIEW为79/81；其余2项为`implemented_pending_review`。
+状态：B8统一最终汇编→C++ REVIEW为80/81；其余1项为`implemented_pending_review`。
 
 ## 1. 物理范围与闭包
 
 `sub_31C75 @ 0x31C75` 是 scene 与五轮试炼调用的 battle 入口。其后连续 battle 实现区间截止 `sub_3C6D3 @ 0x3C6D3..0x3CBE3`；`research/ida/reports/Z_DAT.b8_battle_xrefs.txt` 由当前 `Z_DAT.i64` 和 `idat.exe -A` headless 生成，枚举81个 FUNCTION 记录，报告规范为 LF，SHA256 为 `179b85c68ad87d03f175f7b22ff9af7ffbae68aed758eeaa0f0fe692ab67d488`。
 
-`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、2项为 `implemented_pending_review`、79项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
+`research/inventory/battle-closure.tsv` 以该报告为机械真值，当前0项为 `pending_mapping`、0项为 `pending_implementation`、1项为 `implemented_pending_review`、80项为`platform_adapted`。battle 区间调用到的 resource/render/input/time/random/audio 入口是共享 owner 边界，不随递归调用图吞入 battle closure。
 
 ## 2. scene ↔ battle 入口合同
 
@@ -482,6 +482,16 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 机器按signed slot顺序扫描；`hurt>0`直接绕过死亡、体力和hidden门，否则须同时满足`poison>0 && hp>0 && physical_power>0 && occupancy_hidden==0`。提交固定先以signed向零`hurt/20`减HP并写word，再从该中间word以signed向零`poison/10`继续减并再写word；负商可加HP且两次写入分别回绕。随后体力与HP只有signed严格`<0`才写1，等于0保持；重复role按slot累积前槽写回。
 
 逐块对照`BattleSetup::apply_round_status_damage`及正常轮末、战果结算后、全hidden轮末三个Session入口未发现合法caller域产品差异；宿主`round_wait`只替代caller的同步BIOS tick自旋，状态仍在等待前每轮提交一次。hurt绕门、poison四门、严格零、负商、两次回绕、重复role、非法role安全拒绝、正常Session `100→99`和既有战果hidden hurt回归通过。独立向量SHA256=`fda21d81b051395e7b2cac5d012d0181658ca5aaf4588d6aebf337861df37eda`；Golden三生成一致且历史72键逐值不变，73键SHA256=`158e6c36bc46f9f1052934502b47a13272112310b345e360b87bd613489418c4`；Linux app Debug 14/14通过。现代以`int16`局部保留第一次回绕并合并机器两次无观察点的连续HP store，后续slot观察值不变。本owner归类`platform_adapted / converged_no_new_differences`；栈探测、结果/结算、隐藏目标清理、caller轮循环和tick等待不传播closure。
+
+## 45. 隐藏目标清理最终REVIEW
+
+`sub_3C672 @ 0x3C672..0x3C6D3`机器身份固定为97 bytes、24条连续指令、8个IDA flow block、3个条件分支、1个无条件跳转、7处重定位、1次栈探测call、唯一caller `0x32A0D`和本地`RET @ 0x3C6D2`；raw/loaded SHA256为`743c6fe530a8498dcffdf53dcebd1fbaf639b99f8c4b227f31be2ab6a6d2a2a5`与`d94dd9860aca3416096d717258f6aba2a1e38a323ec6fd80560137e800d91291`。全部fixup逆`+0x20000`后逐字节等于原资产，无共享尾。
+
+机器以signed低字计数升序扫描当前活动源槽，每槽固定先处理word11攻击目标、再处理word12用毒目标；目标word被sign-extend并乘28，目标查找覆盖完整0..25固定数组，即使目标槽不在当前活动数内仍检查。只有目标word5 `occupancy_hidden`严格等于1才把对应字段写`-1`；源槽自身hidden、目标HP/side/role均不参与，hidden为0、2、负值或其他值都保留。活动数之外的源槽不扫描。
+
+逐块对照`BattleSetup::clear_hidden_ai_targets`及正常动作、wait同槽、hidden槽跳过、战果结算后四类Session续行未发现合法caller域产品差异；机器唯一调用顺序为结果检查后cleanup、actor索引续行前cleanup，完整actor循环结束后才执行回合状态扣血。现代返回两个清除计数但Session只检查optional；非法setup安全拒绝。原机器对任意signed目标执行`target*28`读取，现代对`<-1`或`>25`安全保留且不读取数组外；实际初始化与selector合法写域为`-1`或活动槽号，归类平台安全适配。
+
+多活动源、攻击/用毒独立、同目标与自目标、hidden 0/1/2/负值、slot0/slot25、inactive target、inactive source、`-1/-2/26/32767`安全边界和无效role不参与回归通过；hidden-skip Session锁定全部活动源目标在推进前清除，outcome Session锁定战后消息确认后cleanup先于状态扣血。独立向量SHA256=`f596fa71372d63877c7acbd25eb4afce8a877d59b327144858399669ea06e084`；Golden三生成一致且历史73键逐值不变，74键SHA256=`2c2cd200fd7a5558f11b8bc515f80c3b69aef2d3fffacedf4351d05292ad3734`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；栈探测、结果/结算、caller轮循环、actor索引续行和回合状态扣血不传播closure。
 
 ## 16. B8 实现差异审计关闭
 

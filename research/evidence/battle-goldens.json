@@ -20525,6 +20525,268 @@
     "platform_adaptation_boundary": "modern host safely rejects invalid combatant role ids, coalesces the two HP stores around an equivalent int16 local with no intervening observation, and splits the caller's BIOS-tick wait into a round-wait phase; legal signed word arithmetic, slot order and status commit before the wait are preserved",
     "closure_boundary": "stack probe, sole round-loop caller, result/settlement, hidden-target cleanup and BIOS-tick wait remain independent owners"
   },
+  "battle_hidden_target_cleanup_machine": {
+    "address": "0x3c672",
+    "end": "0x3c6d3",
+    "raw_offset": "0x36072",
+    "size": 97,
+    "instruction_count": 24,
+    "branch_count": 4,
+    "raw_sha256": "743c6fe530a8498dcffdf53dcebd1fbaf639b99f8c4b227f31be2ab6a6d2a2a5",
+    "loaded_sha256": "d94dd9860aca3416096d717258f6aba2a1e38a323ec6fd80560137e800d91291",
+    "relocation_count": 7,
+    "relocation_delta": 131072,
+    "call_sites": [
+      "0x3c677"
+    ],
+    "call_targets": [
+      "0x3ed1e"
+    ],
+    "callers": [
+      "0x32a0d"
+    ],
+    "machine_slices": {
+      "caller_cleanup_position": {
+        "address": "0x32a08",
+        "end": "0x32a3d",
+        "size": 53,
+        "sha256": "71a280298cfa5187ae71633078cdf48c266ff247d96ea48ed39e70220489698c"
+      },
+      "attack_target": {
+        "address": "0x3c681",
+        "end": "0x3c6a4",
+        "size": 35,
+        "sha256": "5250b7fdb4627edd2b6002f516da1fd5373e07f80942bc6c25433b01bac72aca"
+      },
+      "poison_target": {
+        "address": "0x3c6a4",
+        "end": "0x3c6c7",
+        "size": 35,
+        "sha256": "0b31fb38b7485b9308d1d2b62bcf1ba9a4c6d4167e5503638f96355025ba85ce"
+      },
+      "loop_exit": {
+        "address": "0x3c6c7",
+        "end": "0x3c6d3",
+        "size": 12,
+        "sha256": "9b7fb312b262a2228e3143b1ba47df3edf134f309dd24793ef69012b44608293"
+      }
+    },
+    "source_loop": {
+      "counter": "signed low word from zero while less than combatant count",
+      "source_slots": "active combatants only, ascending",
+      "combatant_record_size": 28
+    },
+    "target_fields": {
+      "order": [
+        "ai_target",
+        "ai_poison_target"
+      ],
+      "target_index": "signed low word multiplied by 28",
+      "target_slots": "all fixed 0..25 slots, including inactive slots",
+      "clear_condition": "target occupancy-hidden equals exactly one",
+      "clear_value": -1,
+      "ignored_target_state": [
+        "role",
+        "side",
+        "hp"
+      ]
+    },
+    "vectors": {
+      "mixed_active_sources_and_inactive_targets": {
+        "label": "mixed_active_sources_and_inactive_targets",
+        "combatant_count": 2,
+        "occupancy_hidden": {
+          "1": 1,
+          "3": 2,
+          "4": -1,
+          "25": 1
+        },
+        "sources_before": {
+          "0": {
+            "ai_target": 1,
+            "ai_poison_target": 3
+          },
+          "1": {
+            "ai_target": 4,
+            "ai_poison_target": 25
+          }
+        },
+        "sources_after": {
+          "0": {
+            "ai_target": -1,
+            "ai_poison_target": 3
+          },
+          "1": {
+            "ai_target": 4,
+            "ai_poison_target": -1
+          }
+        },
+        "attack_targets_cleared": 1,
+        "poison_targets_cleared": 1
+      },
+      "same_target_both_fields_and_self_target": {
+        "label": "same_target_both_fields_and_self_target",
+        "combatant_count": 2,
+        "occupancy_hidden": {
+          "1": 1
+        },
+        "sources_before": {
+          "0": {
+            "ai_target": 1,
+            "ai_poison_target": 1
+          },
+          "1": {
+            "ai_target": 1,
+            "ai_poison_target": 1
+          }
+        },
+        "sources_after": {
+          "0": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          },
+          "1": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          }
+        },
+        "attack_targets_cleared": 2,
+        "poison_targets_cleared": 2
+      },
+      "valid_zero_target": {
+        "label": "valid_zero_target",
+        "combatant_count": 2,
+        "occupancy_hidden": {
+          "0": 1
+        },
+        "sources_before": {
+          "0": {
+            "ai_target": 0,
+            "ai_poison_target": 0
+          }
+        },
+        "sources_after": {
+          "0": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          }
+        },
+        "attack_targets_cleared": 1,
+        "poison_targets_cleared": 1
+      },
+      "non_one_hidden_values_preserve": {
+        "label": "non_one_hidden_values_preserve",
+        "combatant_count": 2,
+        "occupancy_hidden": {
+          "1": 0,
+          "2": 2,
+          "3": -1,
+          "4": 32767
+        },
+        "sources_before": {
+          "0": {
+            "ai_target": 1,
+            "ai_poison_target": 2
+          },
+          "1": {
+            "ai_target": 3,
+            "ai_poison_target": 4
+          }
+        },
+        "sources_after": {
+          "0": {
+            "ai_target": 1,
+            "ai_poison_target": 2
+          },
+          "1": {
+            "ai_target": 3,
+            "ai_poison_target": 4
+          }
+        },
+        "attack_targets_cleared": 0,
+        "poison_targets_cleared": 0
+      },
+      "inactive_source_not_scanned": {
+        "label": "inactive_source_not_scanned",
+        "combatant_count": 2,
+        "occupancy_hidden": {
+          "1": 1
+        },
+        "sources_before": {
+          "2": {
+            "ai_target": 1,
+            "ai_poison_target": 1
+          }
+        },
+        "sources_after": {
+          "2": {
+            "ai_target": 1,
+            "ai_poison_target": 1
+          }
+        },
+        "attack_targets_cleared": 0,
+        "poison_targets_cleared": 0
+      },
+      "negative_one_sentinel_preserved": {
+        "label": "negative_one_sentinel_preserved",
+        "combatant_count": 2,
+        "occupancy_hidden": {},
+        "sources_before": {
+          "0": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          },
+          "1": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          }
+        },
+        "sources_after": {
+          "0": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          },
+          "1": {
+            "ai_target": -1,
+            "ai_poison_target": -1
+          }
+        },
+        "attack_targets_cleared": 0,
+        "poison_targets_cleared": 0
+      }
+    },
+    "vector_sha256": "f596fa71372d63877c7acbd25eb4afce8a877d59b327144858399669ea06e084",
+    "invalid_target_addressing": {
+      "-2": {
+        "byte_displacement": -56,
+        "occupancy_address": "0xdc6fe",
+        "inside_26_slots": false,
+        "modern_action": "preserve without out-of-bounds read"
+      },
+      "-1": {
+        "byte_displacement": -28,
+        "occupancy_address": "0xdc71a",
+        "inside_26_slots": false,
+        "modern_action": "preserve without out-of-bounds read"
+      },
+      "26": {
+        "byte_displacement": 728,
+        "occupancy_address": "0xdca0e",
+        "inside_26_slots": false,
+        "modern_action": "preserve without out-of-bounds read"
+      },
+      "32767": {
+        "byte_displacement": 917476,
+        "occupancy_address": "0x1bc71a",
+        "inside_26_slots": false,
+        "modern_action": "preserve without out-of-bounds read"
+      }
+    },
+    "direct_rng_calls": 0,
+    "machine_return": "EAX process residue ignored by the sole caller",
+    "platform_adaptation_boundary": "modern host preserves invalid targets outside 0..25 without performing the original out-of-bounds occupancy read and rejects an invalid setup; legal -1 or slot target state, source/field order and exact hidden-one writes are preserved",
+    "closure_boundary": "stack probe, sole round-loop caller, outcome/result handling, actor-index continuation and round-status damage remain independent owners"
+  },
   "battle_round_machine": {
     "round_loop": {
       "address": "0x3271e",
