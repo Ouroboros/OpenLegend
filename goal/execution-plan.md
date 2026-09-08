@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=339/349`，`unique_any=276/284`，`unique_all=274/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=29` `sub_2A86C`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=30` `sub_3C6D3`
-最近关闭：ui `audit_order=28` `sub_2A186`已固定1478 bytes、379条指令、47/47 CFG块、25个条件分支、6个无条件跳转、94处重定位、27次direct call、3个caller和唯一RET；首轮发现world/scene仍为8行文字列表且battle箭头/详情未遵循机器合同，现恢复三面板5×3图标格、原始slot sentinel箭头门、真实slot映射、选中边框及完整详情，并纠正Order27资产oracle偏移；修正后入口重审、独立五帧Golden及Linux app Debug 14/14关闭。
+当前有效进度：`closure=340/349`，`unique_any=276/284`，`unique_all=275/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=30` `sub_3C6D3`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=31` `sub_3CC97`
+最近关闭：ui `audit_order=29` `sub_2A86C`已固定2491 bytes、548条指令、137/137 CFG块、77个条件分支、35个无条件跳转、167处重定位、47次direct call、2个caller及共享尾边界；首轮发现物品确认/Escape后跳过裸world/scene/battle背景present、world/scene中间屏可被同批键越过且消耗品在效果present前扣库存，现以统一deferred dispatch、逐阶段present门、battle context-present阶段及effect-present后库存提交修正；入口重审、独立15向量Golden及Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 

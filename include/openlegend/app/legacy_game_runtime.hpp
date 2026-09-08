@@ -184,7 +184,6 @@ private:
         leave_post_fade_to_black,
         leave_post_redraw_present,
         leave_post_fade_from_black,
-        item_background_present,
     };
 
     enum class SceneLeaveEventPhase {
@@ -271,7 +270,9 @@ private:
     std::optional<std::int16_t> pending_menu_item_id_;
     std::optional<std::int16_t> pending_menu_item_role_;
     std::optional<battle::BattleItemEffectResult> pending_menu_item_effect_;
+    std::optional<ui::GameMenuResult> pending_menu_item_dispatch_;
     bool game_menu_items_presented_{};
+    bool game_menu_item_stage_presented_{};
     std::vector<scene::SceneAudioCommand> scene_audio_commands_;
     SceneEffectKind scene_effect_kind_{SceneEffectKind::none};
     std::vector<compat::LegacyPalette> scene_effect_palettes_;
@@ -288,7 +289,6 @@ private:
     std::optional<scene::SceneDirection> scene_direction_input_;
     std::optional<std::uint8_t> pending_scene_load_slot_;
     std::optional<std::int16_t> retained_scene_id_;
-    std::optional<std::int16_t> pending_world_menu_item_id_;
     std::optional<world::WorldDirection> scene_entry_world_direction_;
     std::optional<world::WorldMoveContinuation> world_move_continuation_;
     bool world_scene_transition_pending_{};

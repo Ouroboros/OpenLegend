@@ -33,6 +33,7 @@ enum class BattleSessionPhase {
     player_magic_selection,
     player_attack_direction,
     player_item_selection,
+    player_item_context_present,
     player_item_effect_present,
     player_item_effect_wait,
     player_status_selection,
@@ -356,6 +357,7 @@ private:
     [[nodiscard]] bool begin_player_item_selection();
     [[nodiscard]] BattleSessionInputResult handle_player_item_key(
         std::uint8_t translated_key);
+    [[nodiscard]] bool continue_player_item_after_context_present();
     [[nodiscard]] bool begin_player_status_selection();
     [[nodiscard]] BattleSessionInputResult handle_player_status_selection_key(
         std::uint8_t translated_key);

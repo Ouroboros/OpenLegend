@@ -121,6 +121,7 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     case BattleSessionPhase::player_magic_selection: return "player_magic_selection";
     case BattleSessionPhase::player_attack_direction: return "player_attack_direction";
     case BattleSessionPhase::player_item_selection: return "player_item_selection";
+    case BattleSessionPhase::player_item_context_present: return "player_item_context_present";
     case BattleSessionPhase::player_item_effect_present: return "player_item_effect_present";
     case BattleSessionPhase::player_item_effect_wait: return "player_item_effect_wait";
     case BattleSessionPhase::player_status_selection: return "player_status_selection";
@@ -776,6 +777,10 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             " slot=" + std::to_string(current_actor_slot_) +
             " role=" + std::to_string(player_status_->role_id) +
             " page=" + std::to_string(player_status_->page));
+        return;
+    }
+    if (phase_ == BattleSessionPhase::player_item_context_present) {
+        static_cast<void>(continue_player_item_after_context_present());
         return;
     }
     if (phase_ == BattleSessionPhase::player_item_effect_present) {
@@ -2556,10 +2561,7 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
             "battle player item selection cancelled id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_));
         player_item_presentations_before_input_ = 0U;
-        player_item_.reset();
-        if (!finish_player_action_call()) {
-            return BattleSessionInputResult::ignored;
-        }
+        phase_ = BattleSessionPhase::player_item_context_present;
         return BattleSessionInputResult::item_cancelled;
     } else if (translated_key != kEnter && translated_key != kSpace) {
         return BattleSessionInputResult::ignored;
@@ -2594,44 +2596,9 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
             " inventory_slot=" + std::to_string(inventory_slot) +
             " item=" + std::to_string(item_id) +
             " type=" + std::to_string(item_type));
-        if (item_type == 3) {
-            auto effect = setup_.apply_player_item_effect(
-                current_actor_slot_, static_cast<std::size_t>(inventory_slot), random_);
-            if (!effect.has_value()) {
-                error_ = setup_.valid()
-                    ? "battle player item state application failed"
-                    : setup_.error();
-                return BattleSessionInputResult::ignored;
-            }
-            if (!effect->has_effect) {
-                diagnostics::log_info(
-                    "battle player item had no visible effect id=" +
-                    std::to_string(battle_id()) +
-                    " slot=" + std::to_string(current_actor_slot_) +
-                    " item=" + std::to_string(item_id) +
-                    " consumed=false action_complete=true");
-                if (!setup_.finish_player_item_action(current_actor_slot_)) {
-                    error_ = "battle player zero-effect item completion failed";
-                    return BattleSessionInputResult::ignored;
-                }
-                player_item_presentations_before_input_ = 0U;
-                player_item_.reset();
-                if (!finish_player_action_call()) {
-                    return BattleSessionInputResult::ignored;
-                }
-                return BattleSessionInputResult::item_selected;
-            }
-            item.effect_result = std::move(*effect);
-            player_item_presentations_before_input_ = 0U;
-            phase_ = BattleSessionPhase::player_item_effect_present;
-            return BattleSessionInputResult::item_selected;
-        }
-        if (item_type == 4 && begin_player_targeting(BattlePlayerAction::item)) {
-            player_item_presentations_before_input_ = 0U;
-            return BattleSessionInputResult::item_selected;
-        }
-        error_ = "battle player item type is outside filtered records";
-        return BattleSessionInputResult::ignored;
+        player_item_presentations_before_input_ = 0U;
+        phase_ = BattleSessionPhase::player_item_context_present;
+        return BattleSessionInputResult::item_selected;
     }
 
     player_item_presentations_before_input_ = 1U;
@@ -2642,6 +2609,57 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
         " row=" + std::to_string(item.row) +
         " column=" + std::to_string(item.column));
     return BattleSessionInputResult::item_changed;
+}
+
+bool BattleSession::continue_player_item_after_context_present() {
+    if (!player_item_) {
+        error_ = "battle player item context continuation is absent";
+        return false;
+    }
+    auto& item = *player_item_;
+    if (!item.selected_inventory_slot.has_value()) {
+        player_item_.reset();
+        return finish_player_action_call(true);
+    }
+    if (item.selected_item_id < 0 ||
+        static_cast<std::size_t>(item.selected_item_id) >= ranger_.items.size()) {
+        error_ = "battle player item context selection is invalid";
+        return false;
+    }
+    const auto item_type = ranger_.items[static_cast<std::size_t>(item.selected_item_id)]
+                               .word(model::item_word::item_type);
+    if (item_type == 3) {
+        auto effect = setup_.apply_player_item_effect(
+            current_actor_slot_, *item.selected_inventory_slot, random_);
+        if (!effect.has_value()) {
+            error_ = setup_.valid()
+                ? "battle player item state application failed"
+                : setup_.error();
+            return false;
+        }
+        if (!effect->has_effect) {
+            diagnostics::log_info(
+                "battle player item had no visible effect id=" +
+                std::to_string(battle_id()) +
+                " slot=" + std::to_string(current_actor_slot_) +
+                " item=" + std::to_string(item.selected_item_id) +
+                " consumed=false action_complete=true");
+            if (!setup_.finish_player_item_action(current_actor_slot_)) {
+                error_ = "battle player zero-effect item completion failed";
+                return false;
+            }
+            player_item_.reset();
+            return finish_player_action_call(true);
+        }
+        item.effect_result = std::move(*effect);
+        phase_ = BattleSessionPhase::player_item_effect_present;
+        return true;
+    }
+    if (item_type == 4 && begin_player_targeting(BattlePlayerAction::item)) {
+        return true;
+    }
+    error_ = "battle player item type is outside filtered records";
+    return false;
 }
 
 bool BattleSession::begin_player_status_selection() {

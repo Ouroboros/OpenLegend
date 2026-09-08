@@ -122,6 +122,18 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
     return menu_key_state_reset(translated_key);
 }
 
+[[nodiscard]] constexpr bool is_item_page_navigation_key(
+    const std::uint8_t translated_key) noexcept {
+    return translated_key == 0x98U || translated_key == 0x99U ||
+        translated_key == 0x9AU || translated_key == 0x9CU ||
+        translated_key == 0x9EU || translated_key == 0x9FU;
+}
+
+[[nodiscard]] constexpr bool is_item_party_navigation_key(
+    const std::uint8_t translated_key) noexcept {
+    return translated_key == 0x98U || translated_key == 0x9EU;
+}
+
 }  // namespace
 
 LegacyStartupResources::LegacyStartupResources(const resource::DataRoot& data_root) {
@@ -369,6 +381,14 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
         battle_session_->finish_presented_tick(bios_tick);
         return;
     }
+    if (view_ == LegacyGameView::game_menu &&
+        pending_menu_item_dispatch_.has_value()) {
+        const auto result = *pending_menu_item_dispatch_;
+        pending_menu_item_dispatch_.reset();
+        handle_game_menu_result(result);
+        game_menu_item_stage_presented_ = false;
+        return;
+    }
     if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
         const auto pending_kind = scene_session_->pending().kind;
         if (pending_kind == scene::SceneStepKind::question) {
@@ -379,9 +399,31 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
             scene_shop_presented_ = true;
         }
     }
-    if (view_ == LegacyGameView::game_menu &&
-        game_menu_.screen() == ui::GameMenuScreen::items) {
-        game_menu_items_presented_ = true;
+    if (view_ == LegacyGameView::game_menu) {
+        const auto screen = game_menu_.screen();
+        if (screen == ui::GameMenuScreen::items) {
+            game_menu_items_presented_ = true;
+        }
+        const auto item_stage =
+            (screen == ui::GameMenuScreen::party_select &&
+             game_menu_.pending_party_command() == ui::GameMenuCommand::items) ||
+            screen == ui::GameMenuScreen::item_confirmation ||
+            screen == ui::GameMenuScreen::item_effect ||
+            (screen == ui::GameMenuScreen::notice &&
+             pending_menu_item_slot_.has_value());
+        if (item_stage) {
+            auto* ranger = game_state_.ranger();
+            if (screen == ui::GameMenuScreen::item_effect && ranger != nullptr &&
+                pending_menu_item_slot_.has_value() &&
+                pending_menu_item_effect_.has_value() &&
+                !pending_menu_item_effect_->item_consumed &&
+                battle::consume_inventory_item_slot(
+                    *ranger, *pending_menu_item_slot_)) {
+                pending_menu_item_effect_->item_consumed = true;
+                update_menu_counts();
+            }
+            game_menu_item_stage_presented_ = true;
+        }
     }
     if (view_ != LegacyGameView::world || world_session_ == nullptr) {
         return;
@@ -647,8 +689,19 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         }
         break;
     case LegacyGameView::game_menu: {
+        if (pending_menu_item_dispatch_.has_value()) {
+            break;
+        }
         const auto screen = game_menu_.screen();
-        if (screen == ui::GameMenuScreen::items && !game_menu_items_presented_) {
+        const auto item_stage =
+            (screen == ui::GameMenuScreen::party_select &&
+             game_menu_.pending_party_command() == ui::GameMenuCommand::items) ||
+            screen == ui::GameMenuScreen::item_confirmation ||
+            screen == ui::GameMenuScreen::item_effect ||
+            (screen == ui::GameMenuScreen::notice &&
+             pending_menu_item_slot_.has_value());
+        if ((screen == ui::GameMenuScreen::items && !game_menu_items_presented_) ||
+            (item_stage && !game_menu_item_stage_presented_)) {
             break;
         }
         if (screen == ui::GameMenuScreen::main) {
@@ -662,11 +715,55 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         if (screen == ui::GameMenuScreen::item_confirmation) {
             handle_menu_item_confirmation(translated_key);
         } else {
-            handle_game_menu_result(game_menu_.handle_key(translated_key));
+            const auto result = game_menu_.handle_key(translated_key);
+            auto defer_item_dispatch =
+                screen == ui::GameMenuScreen::items && translated_key == 0x1BU;
+            if (screen == ui::GameMenuScreen::items &&
+                result.command == ui::GameMenuCommand::items) {
+                auto* ranger = game_state_.ranger();
+                if (ranger != nullptr && result.index < model::kInventoryCount) {
+                    const auto item_id = ranger->header.inventory_item(result.index).value;
+                    if (item_id >= 0 &&
+                        static_cast<std::size_t>(item_id) < ranger->items.size() &&
+                        ranger->items[static_cast<std::size_t>(item_id)].word(
+                            model::item_word::show_introduction) == 1) {
+                        scene_event_item_id_ = item_id;
+                        legacy_player_item_slot_ = static_cast<std::int16_t>(result.index);
+                        if (scene_session_ != nullptr) {
+                            scene_session_->set_event_item_id(item_id);
+                        }
+                        defer_item_dispatch = true;
+                    }
+                }
+            }
+            if (defer_item_dispatch) {
+                pending_menu_item_dispatch_ = result;
+                game_menu_item_stage_presented_ = false;
+            } else {
+                handle_game_menu_result(result);
+            }
         }
+        const auto next_screen = game_menu_.screen();
         if (screen != ui::GameMenuScreen::items &&
-            game_menu_.screen() == ui::GameMenuScreen::items) {
+            next_screen == ui::GameMenuScreen::items) {
             game_menu_items_presented_ = false;
+        } else if (screen == ui::GameMenuScreen::items &&
+                   next_screen == ui::GameMenuScreen::items &&
+                   is_item_page_navigation_key(translated_key)) {
+            game_menu_items_presented_ = false;
+        }
+        const auto next_item_stage =
+            (next_screen == ui::GameMenuScreen::party_select &&
+             game_menu_.pending_party_command() == ui::GameMenuCommand::items) ||
+            next_screen == ui::GameMenuScreen::item_confirmation ||
+            next_screen == ui::GameMenuScreen::item_effect ||
+            (next_screen == ui::GameMenuScreen::notice &&
+             pending_menu_item_slot_.has_value());
+        if (next_item_stage &&
+            (next_screen != screen ||
+             (next_screen == ui::GameMenuScreen::party_select &&
+              is_item_party_navigation_key(translated_key)))) {
+            game_menu_item_stage_presented_ = false;
         }
         break;
     }
@@ -823,7 +920,6 @@ bool LegacyGameRuntime::render() {
             world_menu_event_phase_ == WorldMenuEventPhase::fade_from_black ||
             world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_to_black ||
             world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_from_black ||
-            world_menu_event_phase_ == WorldMenuEventPhase::item_background_present ||
             load_transition_phase_ == LoadTransitionPhase::fade_from_black;
         if (world_effect_presented &&
             scene_effect_kind_ == SceneEffectKind::fade_to_black &&
@@ -900,6 +996,9 @@ bool LegacyGameRuntime::render() {
                                        : world_session_ != nullptr && world_session_->render(framebuffer_);
         if (ranger == nullptr || !base_rendered) {
             return false;
+        }
+        if (pending_menu_item_dispatch_.has_value()) {
+            return true;
         }
         const auto exact_party_selection =
             game_menu_.screen() == ui::GameMenuScreen::party_select;
@@ -1042,8 +1141,10 @@ void LegacyGameRuntime::begin_new_game() {
     pending_menu_item_id_.reset();
     pending_menu_item_role_.reset();
     pending_menu_item_effect_.reset();
+    pending_menu_item_dispatch_.reset();
+    game_menu_items_presented_ = false;
+    game_menu_item_stage_presented_ = false;
     retained_scene_id_.reset();
-    pending_world_menu_item_id_.reset();
     world_menu_item_event_active_ = false;
     world_menu_event_phase_ = WorldMenuEventPhase::none;
     scene_leave_event_phase_ = SceneLeaveEventPhase::none;
@@ -1159,8 +1260,10 @@ bool LegacyGameRuntime::activate_pending_load() {
     pending_menu_item_id_.reset();
     pending_menu_item_role_.reset();
     pending_menu_item_effect_.reset();
+    pending_menu_item_dispatch_.reset();
+    game_menu_items_presented_ = false;
+    game_menu_item_stage_presented_ = false;
     retained_scene_id_.reset();
-    pending_world_menu_item_id_.reset();
     world_menu_item_event_active_ = false;
     world_menu_event_phase_ = WorldMenuEventPhase::none;
     scene_leave_event_phase_ = SceneLeaveEventPhase::none;
@@ -1278,7 +1381,6 @@ bool LegacyGameRuntime::start_scene(
     scene_session_->set_physical_power_counter(physical_power_counter_);
     scene_session_->set_event_item_id(scene_event_item_id_);
     retained_scene_id_ = scene_session_->scene_id();
-    pending_world_menu_item_id_.reset();
     world_menu_item_event_active_ = false;
     game_menu_.set_context(ui::GameMenuContext::scene);
     set_view(LegacyGameView::scene, "scene session started");
@@ -1423,7 +1525,6 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
             retained_scene_id_ = scene_session_->scene_id();
         }
         scene_session_.reset();
-        pending_world_menu_item_id_.reset();
         world_menu_item_event_active_ = false;
 
         const auto retained_world = world_session_ != nullptr && world_map_ != nullptr;
@@ -1495,7 +1596,6 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
             : LegacyGameView::scene;
         if (world_menu_item_event_active_) {
             world_menu_item_event_active_ = false;
-            pending_world_menu_item_id_.reset();
             scene_session_.reset();
         }
         game_menu_.set_context(
@@ -1629,22 +1729,6 @@ bool LegacyGameRuntime::advance_scene_effect() {
             set_view(LegacyGameView::game_menu, "loaded world behind system menu");
         } else {
             return false;
-        }
-    } else if (world_menu_event_phase_ == WorldMenuEventPhase::item_background_present) {
-        world_menu_event_phase_ = WorldMenuEventPhase::none;
-        if (scene_session_ == nullptr || !pending_world_menu_item_id_.has_value()) {
-            world_menu_item_event_active_ = false;
-            pending_world_menu_item_id_.reset();
-            scene_session_.reset();
-            game_menu_.set_context(ui::GameMenuContext::world);
-            game_menu_.show_main();
-            menu_return_view_ = LegacyGameView::world;
-            set_view(LegacyGameView::game_menu, "world item event unavailable");
-        } else {
-            const auto item_id = *pending_world_menu_item_id_;
-            pending_world_menu_item_id_.reset();
-            set_view(LegacyGameView::scene, "world item event target ready");
-            handle_scene_result(scene_session_->use_retained_menu_item(item_id));
         }
     } else if (leave_protagonist_notice_pending_) {
         leave_protagonist_notice_pending_ = false;
@@ -2081,11 +2165,7 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         auto effect = battle::apply_role_item_effect(
             *ranger, role_id, role_id, item_id, random_);
         if (effect.has_value() && effect->has_effect) {
-            if (battle::consume_inventory_item_slot(*ranger, *pending_menu_item_slot_)) {
-                effect->item_consumed = true;
-            }
             pending_menu_item_effect_ = *effect;
-            update_menu_counts();
             game_menu_.show_item_effect();
         } else {
             clear_pending();
@@ -2120,11 +2200,9 @@ bool LegacyGameRuntime::begin_world_menu_item_event(const std::int16_t item_id) 
     }
     scene_session_->set_physical_power_counter(physical_power_counter_);
     scene_session_->set_event_item_id(scene_event_item_id_);
-    pending_world_menu_item_id_ = item_id;
     world_menu_item_event_active_ = true;
-    world_menu_event_phase_ = WorldMenuEventPhase::item_background_present;
-    set_view(LegacyGameView::world, "restore world before item event");
-    begin_scene_effect(SceneEffectKind::present, 1U);
+    set_view(LegacyGameView::scene, "world item event target ready");
+    handle_scene_result(scene_session_->use_retained_menu_item(item_id));
     return true;
 }
 

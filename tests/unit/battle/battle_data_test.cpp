@@ -162,6 +162,16 @@ void finish_player_item_presentation(openlegend::battle::BattleSession& session)
     }
 }
 
+void finish_player_item_context_presentation(
+    openlegend::battle::BattleSession& session) {
+    OL_CHECK(
+        session.phase() ==
+        openlegend::battle::BattleSessionPhase::player_item_context_present);
+    openlegend::render::IndexedFramebuffer frame;
+    OL_CHECK(session.render(frame));
+    session.finish_presented_tick();
+}
+
 void run_real_asset_fixtures(const openlegend::resource::DataRoot& data_root) {
     struct Fixture {
         std::int16_t battle_id;
@@ -4760,9 +4770,11 @@ void run_player_item_session_test(
         OL_CHECK(session->player_item_column() == 0);
         finish_player_item_presentation(*session);
         OL_CHECK(session->handle_key(0x1BU) == BattleSessionInputResult::item_cancelled);
-        OL_CHECK(session->player_item_selection() == nullptr);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_context_present);
+        OL_CHECK(session->player_item_selection() != nullptr);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 0);
-        finish_player_menu_redraw(*session);
+        finish_player_item_context_presentation(*session);
+        OL_CHECK(session->player_item_selection() == nullptr);
         OL_CHECK(session->phase() == BattleSessionPhase::player_action);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::action_selected);
         OL_CHECK(session->player_item_presentations_before_input() == 1U);
@@ -4813,12 +4825,15 @@ void run_player_item_session_test(
         OL_CHECK(actor.word(role_word::hp) == 50);
         OL_CHECK(ranger->header.inventory_count(0U) == 2);
         OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::item_selected);
-        OL_CHECK(session->phase() == BattleSessionPhase::player_item_effect_present);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_context_present);
         OL_CHECK(std::ranges::count(session->setup().attack_effects(), 1) == 0);
-        OL_CHECK(actor.word(role_word::hp) > 50);
+        OL_CHECK(actor.word(role_word::hp) == 50);
         OL_CHECK(ranger->header.inventory_item(0U).value == 10);
         OL_CHECK(ranger->header.inventory_count(0U) == 2);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 0);
+        finish_player_item_context_presentation(*session);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_effect_present);
+        OL_CHECK(actor.word(role_word::hp) > 50);
         OL_CHECK(session->render(*framebuffer));
         item_effect_hash = fnv1a_bytes(framebuffer->pixels());
         session->finish_presented_tick(801U);
@@ -4896,13 +4911,16 @@ void run_player_item_session_test(
                  BattleSessionInputResult::action_selected);
         finish_player_item_presentation(*session);
         OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::item_selected);
-        OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
-        OL_CHECK(session->current_actor_slot() == 1U);
-        OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 1);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_context_present);
+        OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 0);
         OL_CHECK(std::ranges::count(session->setup().attack_effects(), 1) == 0);
         OL_CHECK(ranger->header.inventory_item(0U).value == 11);
         OL_CHECK(ranger->header.inventory_count(0U) == 1);
         OL_CHECK(random.state() == 1U);
+        finish_player_item_context_presentation(*session);
+        OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+        OL_CHECK(session->current_actor_slot() == 1U);
+        OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 1);
     }
 
     {
@@ -4941,6 +4959,8 @@ void run_player_item_session_test(
                  BattleSessionInputResult::action_selected);
         finish_player_item_presentation(*session);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::item_selected);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_context_present);
+        finish_player_item_context_presentation(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
         finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
@@ -4957,6 +4977,8 @@ void run_player_item_session_test(
                  BattleSessionInputResult::action_selected);
         finish_player_item_presentation(*session);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::item_selected);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_context_present);
+        finish_player_item_context_presentation(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
         finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x1BU) == BattleSessionInputResult::cursor_cancelled);
@@ -4969,6 +4991,9 @@ void run_player_item_session_test(
                  BattleSessionInputResult::action_selected);
         finish_player_item_presentation(*session);
         OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::item_selected);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_context_present);
+        finish_player_item_context_presentation(*session);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
         finish_cursor_presentations(*session);
         OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
         finish_cursor_presentations(*session);

@@ -1449,6 +1449,260 @@ def game_menu_item_selector_machine(z_dat: bytes) -> dict[str, object]:
     }
 
 
+def game_menu_item_use_machine(z_dat: bytes) -> dict[str, object]:
+    raw = z_dat[0x2426C:0x24C27]
+    assert len(raw) == 2491
+    assert sha256(raw) == "7494f3fde6bf4003b02830c6fb99e3899e2332bb3ccf94367f4eaf254347ae9f"
+
+    loaded_start = 0x2A86C
+    critical_calls = {
+        0x186: 0x2558B,
+        0x197: 0x29D2D,
+        0x1A8: 0x3AA85,
+        0x1B8: 0x3D6D1,
+        0x217: 0x2B288,
+        0x231: 0x22090,
+        0x254: 0x2BD8B,
+        0x55B: 0x20C32,
+        0x579: 0x22090,
+        0x66B: 0x2BD8B,
+        0x780: 0x20C32,
+        0x90D: 0x22090,
+        0x93B: 0x2B483,
+        0x963: 0x2B227,
+        0x96B: 0x20C32,
+        0x98C: 0x2B483,
+    }
+    for offset, target in critical_calls.items():
+        assert raw[offset] == 0xE8
+        (displacement,) = struct.unpack_from("<i", raw, offset + 1)
+        assert loaded_start + offset + 5 + displacement == target
+
+    shared_tail = z_dat[0x23AD1:0x23AD9]
+    assert shared_tail == bytes.fromhex("83c4045d5f5e5bc3")
+    assert sha256(shared_tail) == "b389950002ba37dbf8ee72e175c575064b3a60d86d656fbc1a0aebbdf240f405"
+
+    contract = {
+        "owned_range": "0x2a86c..0x2b227",
+        "selection_exit": {
+            "accepted_result": "write_real_inventory_slot_and_return_1",
+            "escape_result": 0,
+            "all_exits_before_dispatch": [
+                "clear_last_key",
+                "draw_context_world_scene_or_battle",
+                "present",
+            ],
+            "recognized_navigation": "redraw_and_present_even_at_boundary",
+        },
+        "mode_dispatch": {
+            "0": {"type_0": "event", "type_1": "equip", "type_2": "practice", "type_3": "consume"},
+            "4": {"type_3": "consume_second_argument_role", "type_4": "return_4"},
+            "other_unsigned_values": "return_without_item_business",
+        },
+        "equipment": {
+            "target_selector_argument": 3,
+            "requirement_result": "strict_equal_1",
+            "slot": "equipment_type_0_uses_slot_0_other_values_use_slot_1",
+            "writes": [
+                "old_user_same_slot_minus_1",
+                "target_old_item_user_minus_1",
+                "target_slot_current_record_id",
+                "current_item_user_target_record_id",
+            ],
+            "inventory_consumed": False,
+        },
+        "practice": {
+            "existing_user_prompt": "present_then_wait_uppercase_Y_only",
+            "target_selector_argument": 4,
+            "magic_full": "magic_id_not_minus_1_and_last_slot_gt_0_and_not_known",
+            "requirement_result": "strict_equal_1",
+            "castration": "record_id_78_or_93_and_sexual_0_present_then_uppercase_Y_sets_2",
+            "same_user": "return_without_reset",
+            "writes": [
+                "old_user_practice_item_minus_1",
+                "old_user_item_experience_0",
+                "target_old_item_user_minus_1",
+                "current_item_user_target_record_id",
+                "target_practice_item_current_record_id",
+                "target_item_experience_0",
+                "target_make_item_experience_0",
+            ],
+        },
+        "consumable": {
+            "mode_0_target_selector_argument": 5,
+            "mode_4_target": "second_argument_role",
+            "effect_result_1_order": [
+                "effect_panel_present_inside_callee",
+                "signed_i16_count_decrement",
+                "delete_and_compact_if_count_not_gt_0",
+                "wait_any_new_key",
+            ],
+            "other_effect_result": "no_inventory_change_no_wait",
+        },
+        "returns": {"cancel": 0, "accepted_default": 1, "battle_type_4": 4},
+        "owner_boundary": "ui_use_orchestration_only_callees_callers_and_shared_tail_separate",
+    }
+
+    vectors = [
+        {
+            "name": "escape_world_background_first",
+            "input": {"mode": 0, "selection": "escape", "context": "world"},
+            "trace": ["draw_world", "present", "return_0"],
+            "return": 0,
+        },
+        {
+            "name": "type0_scene_event_after_background",
+            "input": {"mode": 0, "item_type": 0, "context": "scene"},
+            "trace": ["latch_slot", "draw_scene", "present", "item_event"],
+            "return": 1,
+        },
+        {
+            "name": "equipment_slot0_reassigns_both_sides",
+            "input": {
+                "mode": 0,
+                "item_type": 1,
+                "equipment_type": 0,
+                "item_record_id": 17,
+                "item_user": 2,
+                "target_role_id": 1,
+                "target_old_item_id": 18,
+                "requirements": 1,
+            },
+            "trace": ["present_background", "select_role_3", "requirements", "equip"],
+            "final": {
+                "role_2_equipment_0": -1,
+                "item_18_user": -1,
+                "role_1_equipment_0": 17,
+                "item_17_user": 1,
+                "inventory_consumed": False,
+            },
+            "return": 1,
+        },
+        {
+            "name": "equipment_nonzero_uses_slot1",
+            "input": {"mode": 0, "item_type": 1, "equipment_type": -1, "requirements": 1},
+            "final": {"equipment_slot": 1, "inventory_consumed": False},
+            "return": 1,
+        },
+        {
+            "name": "equipment_requirement_notice_waits_after_present",
+            "input": {"mode": 0, "item_type": 1, "requirements": 0},
+            "trace": [
+                "present_background",
+                "select_role_3",
+                "draw_context",
+                "draw_notice",
+                "present_notice",
+                "wait_any_key",
+            ],
+            "final": {"equipment_changed": False, "inventory_consumed": False},
+            "return": 1,
+        },
+        {
+            "name": "practice_reassign_no",
+            "input": {"mode": 0, "item_type": 2, "item_user": 2, "prompt_key": "N"},
+            "trace": ["present_background", "present_reassign_prompt", "wait_key"],
+            "final": {"item_user": 2, "target_selector_called": False},
+            "return": 1,
+        },
+        {
+            "name": "practice_magic_full",
+            "input": {"magic_id": 77, "known": False, "last_magic_slot": 9},
+            "trace": ["present_background", "select_role_4", "present_magic_full_notice", "wait_any_key"],
+            "final": {"practice_changed": False},
+            "return": 1,
+        },
+        {
+            "name": "practice_known_magic_bypasses_full_and_reassigns",
+            "input": {
+                "item_record_id": 20,
+                "item_user": 2,
+                "reassign_key": "Y",
+                "target_role_id": 1,
+                "magic_id": 77,
+                "known": True,
+                "last_magic_slot": 9,
+                "requirements": 1,
+            },
+            "final": {
+                "old_role_practice_item": -1,
+                "old_role_item_experience": 0,
+                "target_old_item_user": -1,
+                "item_user": 1,
+                "target_practice_item": 20,
+                "target_item_experience": 0,
+                "target_make_item_experience": 0,
+            },
+            "return": 1,
+        },
+        {
+            "name": "practice_same_user_preserves_experience",
+            "input": {"item_user": 1, "target_role_id": 1, "item_experience": 12, "make_item_experience": 13},
+            "final": {"item_experience": 12, "make_item_experience": 13},
+            "return": 1,
+        },
+        {
+            "name": "castration_yes_uses_record_id",
+            "input": {"item_array_index": 196, "item_record_id": 93, "sexual": 0, "prompt_key": "Y"},
+            "trace": ["present_castration_prompt", "wait_key", "set_sexual_2", "assign_practice"],
+            "final": {"sexual": 2, "practice_item": 93},
+            "return": 1,
+        },
+        {
+            "name": "consumable_zero_effect",
+            "input": {"mode": 0, "item_type": 3, "effect_result": 0, "count": 1},
+            "trace": ["present_background", "select_role_5", "apply_effect"],
+            "final": {"count": 1, "deleted": False, "wait_called": False},
+            "return": 1,
+        },
+        {
+            "name": "consumable_effect_count_two",
+            "input": {"mode": 0, "item_type": 3, "effect_result": 1, "count": 2},
+            "trace": ["present_background", "select_role_5", "effect_panel_present", "decrement", "wait_any_key"],
+            "final": {"count": 1, "deleted": False},
+            "return": 1,
+        },
+        {
+            "name": "consumable_effect_count_one_deletes",
+            "input": {"mode": 0, "item_type": 3, "effect_result": 1, "count": 1},
+            "trace": ["present_background", "select_role_5", "effect_panel_present", "decrement", "delete_compact", "wait_any_key"],
+            "final": {"count": 0, "deleted": True},
+            "return": 1,
+        },
+        {
+            "name": "battle_type3_uses_second_argument",
+            "input": {"mode": 4, "second_argument_role": 9, "item_type": 3, "effect_result": 0},
+            "trace": ["draw_battle", "present", "apply_effect_actor_9_target_9"],
+            "return": 1,
+        },
+        {
+            "name": "battle_type4_returns_four_after_background",
+            "input": {"mode": 4, "second_argument_role": 9, "item_type": 4},
+            "trace": ["draw_battle", "present", "return_4"],
+            "return": 4,
+        },
+    ]
+    contract_sha256 = sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    vectors_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert contract_sha256 == "a322d31f3ee654f0425ef42899b4057396150339b2fa8ec674cc7dd6faffae97"
+    assert vectors_sha256 == "5647f386cb37172ac2dd355f7e9a2df9520375b2114e6020dbeddb14b7beaeb4"
+    return {
+        "raw_range": "Z.DAT[0x2426c:0x24c27]",
+        "loaded_range": "0x2a86c..0x2b227",
+        "raw_sha256": sha256(raw),
+        "shared_tail_sha256": sha256(shared_tail),
+        "critical_call_targets": [f"0x{target:x}" for target in critical_calls.values()],
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+        "vectors": vectors,
+        "vectors_sha256": vectors_sha256,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-root", type=Path, required=True)
@@ -1614,6 +1868,7 @@ def main() -> int:
         "game_menu_item_reset_machine": game_menu_item_reset_machine(z_dat, ranger),
         "game_menu_item_draw_machine": game_menu_item_draw_machine(z_dat, ranger),
         "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
+        "game_menu_item_use_machine": game_menu_item_use_machine(z_dat),
         "title_navigation": {
             "main_labels": ["new_game", "load", "exit"],
             "slot_labels_big5_hex": ["a440", "a447", "a454"],
