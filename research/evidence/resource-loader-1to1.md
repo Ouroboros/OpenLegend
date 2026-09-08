@@ -5,9 +5,12 @@
 
 ## 1. 全文件读取 `sub_3CF45 @ 0x3CF45`
 
-- 以只读方式打开文件；失败时尝试备用路径。
-- 获取完整文件长度，seek 到 0，一次读取全部字节后关闭。
-- 原失败路径会显示错误并等待特定按键；现代 `resource` 模块只返回失败结果，该交互必须由后续 `app/ui` 在原调用点还原。
+- 173-byte owner含53条指令、5个CFG块、3个条件分支、0个跳转、11个call及5处重定位；36个callsite分属24个owner，无外部跳入内部块。
+- 两个cdecl参数依次为filename与destination，无capacity。机器先构造`global_prefix+filename`，但固定先以flag `0x200`打开裸filename，失败才打开fallback路径。
+- 两次open均失败时，以原filename打印`no this file '%s'....\n`并同步等待uppercase Q；随后仍以handle `-1`落入公共I/O链，不存在安全早退。
+- 公共链取得32-bit完整文件长度、seek到0、一次请求恰该长度的读取、关闭，忽略seek/read/close返回并返回长度查询值。20个IDX caller比较`-1`，1个archive caller消费`size/4`，其余15个忽略返回值。
+- 现代`read_binary_file`一次分配和读取完整byte vector；`DataRoot::read`显式读取选定root下的relative路径。成功原资产域的长度/内容与机器一致；动态容量、完整读检查、稳定错误对象、绝对路径拒绝、显式数据根和省略无效handle Q后续均属`platform_adapted`。
+- 独立机器合同SHA256=`827ce4caf36cda9a6c646d9b41c76afac221d79deb14cb99631f8f32d9b22368`；完整证据见`research/evidence/functions/Z_DAT/0x3CF45.md`。
 
 ## 2. IDX 指针表 `sub_3D6E0 @ 0x3D6E0`
 

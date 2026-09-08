@@ -193,6 +193,20 @@ void run_real_asset_tests() {
         OL_CHECK(static_cast<bool>(parse_vga_palette(palette_file.bytes)));
     }
 
+    const DataRoot data_root{root};
+    const auto rooted_palette_file = data_root.read("MMAP.COL");
+    OL_CHECK(static_cast<bool>(rooted_palette_file));
+    OL_CHECK(rooted_palette_file.bytes.size() == palette_file.bytes.size());
+    OL_CHECK(rooted_palette_file.bytes == palette_file.bytes);
+    const auto missing_file = data_root.read("__OPENLEGEND_MISSING_RAW_FILE__.BIN");
+    OL_CHECK(!static_cast<bool>(missing_file));
+    OL_CHECK(missing_file.bytes.empty());
+    OL_CHECK(!missing_file.error.empty());
+    const auto absolute_file = data_root.read(root / "MMAP.COL");
+    OL_CHECK(!static_cast<bool>(absolute_file));
+    OL_CHECK(absolute_file.bytes.empty());
+    OL_CHECK(absolute_file.error == "data-root reads require a relative path");
+
     const auto ascii_font = read_binary_file(root / "FONT3.E16");
     const auto big5_font = read_binary_file(root / "FONT3.C16");
     OL_CHECK(static_cast<bool>(ascii_font));

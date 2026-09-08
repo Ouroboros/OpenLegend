@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=343/349`，`unique_any=278/284`，`unique_all=278/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=33` `sub_3CF45`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=34` `sub_3D34A`
-最近关闭：ui `audit_order=32` `sub_3CD17`已用新临时IDB固定204 bytes、76条指令、24/24 CFG块、10个条件分支、3个无条件跳转、3处重定位、3次direct call、16个caller site及唯一RET；机器64轮均重新复制768-byte源palette，以64→1次饱和减1及互补的0→63次无效源比较保持每轮64次扫描，再提交64个scratch palette与最终未修改源palette；现代完整RGB6及扩展byte域、源不变和snapshot独立性均零产品差异，无效比较省略与present驱动continuation归类平台适配；独立Golden三生成逐字节一致、旧16节点全不变且仅新增本owner节点，正式SHA256为`9dc0e37b9d6b3bb07ac923f213ee4339b9c9faf71c01595ec7da1eb1efd0ebf9`；Linux app Debug 14/14关闭。
+当前有效进度：`closure=344/349`，`unique_any=279/284`，`unique_all=279/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=34` `sub_3D34A`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=36` `sub_3D6D1`
+最近关闭：ui `audit_order=33` `sub_3CF45`已用新临时IDB固定173 bytes、53条指令、5/5 CFG块、3个条件分支、0个无条件跳转、5处重定位、11次direct call、36个caller site及唯一RET；机器按裸filename→全局前缀fallback打开，成功后查询完整长度、seek0、一次读取、关闭并返回查询长度，双失败则显示原文件名并等待uppercase Q后仍以无效handle续行；现代canonical原资产成功域长度与bytes零产品差异，显式DataRoot、动态容量、完整读检查、稳定错误和不复现无效handle续行归类平台适配；raw-loader路径/错误回归已补齐，Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 
