@@ -271,6 +271,7 @@ private:
     std::optional<std::int16_t> pending_menu_item_id_;
     std::optional<std::int16_t> pending_menu_item_role_;
     std::optional<battle::BattleItemEffectResult> pending_menu_item_effect_;
+    bool game_menu_items_presented_{};
     std::vector<scene::SceneAudioCommand> scene_audio_commands_;
     SceneEffectKind scene_effect_kind_{SceneEffectKind::none};
     std::vector<compat::LegacyPalette> scene_effect_palettes_;

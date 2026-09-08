@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=336/349`，`unique_any=274/284`，`unique_all=271/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=26` `sub_2A0D9`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=27` `sub_2A10F`
-最近关闭：input-font `audit_order=39` `sub_3DB83`已固定60 bytes、24条指令、6/6 CFG块、3个跳转、2处重定位、1次栈探测call、37个callsite/16个caller owner和唯一RET；signed `IDIV 40 + 1`、nonpositive零tick读取、相等自旋、跳tick与跨日合同均由独立trace及Linux app Debug 14/14关闭。
+当前有效进度：`closure=337/349`，`unique_any=274/284`，`unique_all=272/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=27` `sub_2A10F`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=28` `sub_2A186`
+最近关闭：ui `audit_order=26` `sub_2A0D9`已固定54 bytes、16条指令、1/1 CFG块、1处重定位、4次direct call、唯一caller和RET；首轮发现现代可在初始items frame成功present前消费同批下一键，现由runtime initial-present gate恢复机器`reset → draw/present → selector`顺序，修正后入口重审及Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 

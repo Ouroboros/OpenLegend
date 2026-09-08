@@ -60,6 +60,15 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.scene_shop_presented_;
     }
 
+    static bool game_menu_items_presented(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.game_menu_items_presented_;
+    }
+
+    static std::uint16_t game_menu_item_selection(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.game_menu_.item_selection();
+    }
+
     static std::int16_t scene_pending_menu_index(
         const LegacyGameRuntime& runtime) noexcept {
         return runtime.scene_session_ != nullptr
@@ -1262,8 +1271,20 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key('A', false, false);
     new_game.handle_key(0x9EU, false, false);
     new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(!app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
+    new_game.handle_key(0x98U, false, false);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
     OL_CHECK(new_game.render());
+    new_game.handle_key(0x98U, false, false);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0xCC830B73FC9644ECULL);
+    new_game.finish_presented_tick();
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+    new_game.handle_key(0x98U, false, false);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 5U);
+    new_game.handle_key(0x9EU, false, false);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.render());
     auto* leave_prefix_ranger =
@@ -1367,6 +1388,16 @@ void check_game_runtime(const std::filesystem::path& data_root) {
                 item.set_word(field, 0);
             }
         };
+        const auto enter_items = [&]() {
+            new_game.handle_key(0x1BU, false, false);
+            new_game.handle_key(0x98U, false, false);
+            new_game.handle_key(0x98U, false, false);
+            new_game.handle_key(0x0DU, false, false);
+            OL_CHECK(!app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+            OL_CHECK(new_game.render());
+            new_game.finish_presented_tick();
+            OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+        };
         prepare_item(197, 1);
         auto& equipment_item = item_ranger->items[197U];
         equipment_item.set_word(model::item_word::equipment_type, 0);
@@ -1386,10 +1417,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             secondary_name.end(),
             equipment_item.bytes.begin() + 2U * model::item_word::secondary_name_begin);
         item_ranger->header.set_inventory(0U, model::ItemId{197}, 1);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         item_ranger->items[197U].set_word(model::item_word::show_introduction, 1);
         new_game.handle_key(0x0DU, false, false);
@@ -1410,10 +1438,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         prepare_item(198, 2);
         item_ranger->items[198U].set_word(model::item_word::magic_id, -1);
         item_ranger->header.set_inventory(0U, model::ItemId{198}, 1);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         const auto practice_target_hash = fnv1a64(new_game.framebuffer().pixels());
@@ -1433,20 +1458,14 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         item_ranger->roles[1U].set_word(model::role_word::practice_item, 198);
         item_ranger->roles[1U].set_word(model::role_word::item_experience, 9);
         item_ranger->header.set_inventory(0U, model::ItemId{198}, 1);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         new_game.handle_key('N', false, false);
         OL_CHECK(item_ranger->items[198U].word(model::item_word::user) == 1);
         new_game.handle_key(0x1BU, false, false);
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         new_game.handle_key('Y', false, false);
         new_game.handle_key(0x0DU, false, false);
@@ -1464,10 +1483,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
                 model::role_word::magic_id_begin + slot,
                 static_cast<std::int16_t>(slot + 1U));
         }
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
@@ -1479,10 +1495,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         prepare_item(194, 1);
         item_ranger->items[194U].set_word(model::item_word::only_suitable_role, 1);
         item_ranger->header.set_inventory(0U, model::ItemId{194}, 1);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
@@ -1496,10 +1509,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         item_ranger->items[196U].set_word(model::item_word::magic_id, -1);
         item_ranger->roles[0U].set_word(model::role_word::sexual, 0);
         item_ranger->header.set_inventory(0U, model::ItemId{196}, 1);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
@@ -1507,10 +1517,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(item_ranger->roles[0U].word(model::role_word::sexual) == 0);
         new_game.handle_key(0x1BU, false, false);
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         new_game.handle_key(0x0DU, false, false);
         new_game.handle_key('Y', false, false);
@@ -1528,10 +1535,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         item_ranger->items[199U].set_word(model::item_word::add_physical_power, 10);
         item_ranger->roles[0U].set_word(model::role_word::physical_power, 50);
         item_ranger->header.set_inventory(0U, model::ItemId{199}, 1);
-        new_game.handle_key(0x1BU, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x98U, false, false);
-        new_game.handle_key(0x0DU, false, false);
+        enter_items();
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.render());
         const auto consumable_target_hash = fnv1a64(new_game.framebuffer().pixels());
@@ -1699,6 +1703,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(!app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+    OL_CHECK(new_game.render());
+    new_game.finish_presented_tick();
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::scene);
     advance_rendered_frames(new_game, 1U);
@@ -1764,6 +1772,10 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(
             new_game.handle_key(0x0DU, false, false) ==
             app::LegacyKeyStateReset::confirmation_group);
+        OL_CHECK(!app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+        OL_CHECK(new_game.render());
+        new_game.finish_presented_tick();
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
         new_game.handle_key(0x0DU, false, false);
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
     };
