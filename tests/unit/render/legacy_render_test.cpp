@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <span>
 #include <sstream>
 #include <string>
@@ -53,6 +54,31 @@ void run_framebuffer_tests() {
     OL_CHECK(framebuffer.row(22)[10] == 3U);
     OL_CHECK(!framebuffer.fill_rectangle(-1, 0, 1U, 1U, 0U));
     OL_CHECK(!framebuffer.fill_rectangle(319, 199, 2U, 1U, 0U));
+
+    // Independent sub_2010A vectors: 320-byte pitch, inclusive lower-right edge,
+    // full-byte color, and a zero-width REP operation that changes no pixels.
+    framebuffer.clear(7U);
+    OL_CHECK(framebuffer.fill_rectangle(10, 20, 3U, 2U, 9U));
+    OL_CHECK(framebuffer.fill_rectangle(0, 0, 320U, 1U, 21U));
+    OL_CHECK(framebuffer.fill_rectangle(319, 199, 1U, 1U, 255U));
+    OL_CHECK(framebuffer.fill_rectangle(50, 40, 0U, 2U, 99U));
+    OL_CHECK(std::ranges::count_if(framebuffer.pixels(), [](const std::uint8_t value) {
+        return value != 7U;
+    }) == 327);
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xCCA0D464AA7BCF4DULL);
+
+    // The DOS primitive writes unchecked memory and underflows a zero height to
+    // 65,536 rows. The hosted boundary is a stable no-op/rejection instead.
+    const std::vector<std::uint8_t> safe_boundary_before(
+        framebuffer.pixels().begin(), framebuffer.pixels().end());
+    OL_CHECK(framebuffer.fill_rectangle(0, 0, 1U, 0U, 99U));
+    OL_CHECK(!framebuffer.fill_rectangle(
+        std::numeric_limits<int>::max(), 0, 1U, 1U, 99U));
+    OL_CHECK(!framebuffer.fill_rectangle(
+        0, std::numeric_limits<int>::max(), 1U, 1U, 99U));
+    OL_CHECK(!framebuffer.outline_rectangle(
+        std::numeric_limits<int>::max(), 0, 1U, 1U, 99U));
+    OL_CHECK(std::ranges::equal(framebuffer.pixels(), safe_boundary_before));
 
     framebuffer.clear(7U);
     OL_CHECK(framebuffer.outline_rectangle(55, 62, 40U, 40U, 0U));

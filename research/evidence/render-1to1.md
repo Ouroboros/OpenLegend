@@ -117,7 +117,9 @@ screenY =  9*dx +  9*dy - 81
 
 - `sub_3D6D1 @ 0x3D6D1` → `sub_20039` framebuffer提交；fresh机器审计固定107个callsite/62个owner，全部传入同一对死参数但owner/callee只读取active framebuffer global。caller分布为main/title/world/UI 41处、scene/event/ending 41处、battle 25处；完整终审见`research/evidence/functions/Z_DAT/0x3D6D1.md`。
 - `sub_3D832 @ 0x3D832` → Y 坐标 `<0xBA` 后调用 `sub_3D1E5`；
-- `sub_3D8D8 @ 0x3D8D8` → `sub_2010A` 矩形填充；
+- `sub_3D8D8 @ 0x3D8D8..0x3D8FF`是39-byte/10-instruction单块矩形wrapper：六个caller参数中只转发`x,y,width,height,color`，第六dword完全不读；底层`sub_2010A @ 0x2010A..0x20145`为59 bytes/28 instructions，以`u32(global+320*y+x)`为起点，`CLD; REP STOSB`按完整u32 width写color低byte，每行起点加320。行循环后测`DEC BX`，因此行数为`((u16(height)-1) mod 65536)+1`，zero-height会执行65,536行；返回EAX为起始地址低byte替换成color。
+- fresh xref固定71个callsite/11个owner且均清理六个dword；`0x2A7DF/0x2D1BD/0x2D4F1/0x2D587`透传EAX，其余不用于绘制决策。`sub_2A7E8:0x2A867`跳入`0x2A7DA`复用`0x2A7DF`作为上箭头第五次填充和返回。title/name/attribute、上下箭头、圆角/头像白边及item轮廓的正式坐标全在320×200内。
+- 现代`IndexedFramebuffer::fill_rectangle`在合法域保持起点、逐行width字节、320-byte pitch、行顺序和8-bit颜色；显式owner、uint16尺寸、zero-height安全no-op、bool结果、完整越界拒绝及失败短路归类平台适配。本轮把旧signed `x+width/y+height`先加后判改为先比较剩余容量，消除极端宿主坐标在拒绝前溢出；独立四操作整帧FNV-1a64=`0xcca0d464aa7bcf4d`。完整终审见`research/evidence/functions/Z_DAT/0x3D8D8.md`。
 - `sub_3D922 @ 0x3D922` → `sub_2005B` 清屏；
 - `sub_3D939 @ 0x3D939` → `sub_20087` palette 提交；
 - `sub_3D643 @ 0x3D643` → legacy sprite id `<=0x7FFE`，以整数除 2 取得 frame index 后调用 `sub_20354`。

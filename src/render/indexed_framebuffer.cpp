@@ -15,11 +15,12 @@ bool IndexedFramebuffer::fill_rectangle(
     const std::uint16_t rectangle_width,
     const std::uint16_t rectangle_height,
     const std::uint8_t color) noexcept {
-    const auto right = x + static_cast<int>(rectangle_width);
-    const auto bottom = y + static_cast<int>(rectangle_height);
-    if (x < 0 || y < 0 || right > width || bottom > height) {
+    if (x < 0 || y < 0 || x > width || y > height ||
+        static_cast<int>(rectangle_width) > width - x ||
+        static_cast<int>(rectangle_height) > height - y) {
         return false;
     }
+    const auto bottom = y + static_cast<int>(rectangle_height);
     for (auto row_index = y; row_index < bottom; ++row_index) {
         auto* destination = row(row_index) + x;
         std::fill(destination, destination + rectangle_width, color);
@@ -36,11 +37,13 @@ bool IndexedFramebuffer::outline_rectangle(
     if (rectangle_width == 0U || rectangle_height == 0U) {
         return false;
     }
-    const auto right = x + static_cast<int>(rectangle_width);
-    const auto bottom = y + static_cast<int>(rectangle_height);
-    if (x < 0 || y < 0 || right > width || bottom > height) {
+    if (x < 0 || y < 0 || x > width || y > height ||
+        static_cast<int>(rectangle_width) > width - x ||
+        static_cast<int>(rectangle_height) > height - y) {
         return false;
     }
+    const auto right = x + static_cast<int>(rectangle_width);
+    const auto bottom = y + static_cast<int>(rectangle_height);
     return fill_rectangle(x, y, rectangle_width, 1U, color) &&
            fill_rectangle(x, y, 1U, rectangle_height, color) &&
            fill_rectangle(right - 1, y, 1U, rectangle_height, color) &&

@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=347/349`，`unique_any=282/284`，`unique_all=282/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=38` `sub_3D8D8`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=39` `sub_3D939`
-最近关闭：ui `audit_order=37` `sub_3D6E0`已用独立临时IDB固定338 bytes/101 instructions、16块、8条件分支、2跳转、14 calls、11 fixups和1个RET；严格lowercase mmap四byte选择固定读取14,924-byte/3,731-entry有效前缀，普通IDX按signed长度除4向0截断并逆序构造frame-start pointer，SDX/WDX sentinel最后一帧以GRP EOF结束；fresh xref为13个callsite/8个owner且均忽略返回，`sub_3D950`两处外部jump只共享恢复尾而不传播closure；现代PackedArchive/SentinelArchive在canonical域得到相同entry边界和bytes，稳定验证、独立ownership及错误处理归类平台适配；118对普通与110对sentinel原资产oracle、异常IDX回归及Linux app Debug 14/14关闭，机器/资产合同SHA256=`584a43c219142afdc01dffe1689198245e6897ddb77fb0fa3dbf7f46b52a87c2`/`aa0f40cd18a01593961962f7523e07461a1915175fbd539e9ec751c187fc0250`。
+当前有效进度：`closure=348/349`，`unique_any=283/284`，`unique_all=283/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=39` `sub_3D939`
+下一任务指针：最终577-function catalog覆盖分类与B9全集成验收
+最近关闭：ui `audit_order=38` `sub_3D8D8`已用独立临时IDB固定39-byte/10-instruction单块wrapper、2 calls、0分支/跳转/fixup和唯一RET；六个caller dword只转发`x,y,width,height,color`并忽略第六项，独立`sub_2010A`为59 bytes/28 instructions/3块/1个JNZ/1处framebuffer fixup，以`CLD; REP STOSB`按u32 width和320-byte pitch写color低byte，低16位height后测且zero-height为65,536行；fresh xref为71个callsite/11个owner，四处EAX透传且上箭头跨owner复用第五次填充尾；现代合法320×200域逐字节一致，显式ownership、uint16 width、zero-height no-op、bool与越界拒绝归类平台适配；本轮修正极端宿主坐标在signed加法判界前溢出，独立四操作整帧FNV-1a64=`0xcca0d464aa7bcf4d`，机器/向量合同SHA256=`715a546a920f8cfe915f59d9d132beb85d4dfb9255a55ee19aac0b257f813a21`/`a3a231a28353f7a5dfe98f5ce09fec7d8e5d485a76e913f655bbb9f836b5b4b4`，Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 
