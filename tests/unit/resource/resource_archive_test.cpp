@@ -61,6 +61,61 @@ void run_synthetic_archive_tests() {
     append_u32le(index, 3U);
     archive = PackedArchive::parse(index, {1U, 2U, 3U, 4U});
     OL_CHECK(!archive.valid());
+
+    archive = PackedArchive::parse({}, {});
+    OL_CHECK(!archive.valid());
+    archive = PackedArchive::parse(std::array<std::uint8_t, 3>{}, {});
+    OL_CHECK(!archive.valid());
+
+    index.clear();
+    append_u32le(index, 6U);
+    archive = PackedArchive::parse(index, {1U, 2U, 3U, 4U, 5U});
+    OL_CHECK(!archive.valid());
+
+    index.clear();
+    append_u32le(index, 3U);
+    archive = PackedArchive::parse(index, {1U, 2U, 3U, 4U, 5U});
+    OL_CHECK(!archive.valid());
+
+    index.clear();
+    append_u32le(index, 3U);
+    append_u32le(index, 5U);
+    append_u32le(index, 0U);
+    append_u32le(index, 0U);
+    archive = PackedArchive::parse(index, {1U, 2U, 3U, 4U, 5U});
+    OL_CHECK(archive.valid());
+    OL_CHECK(archive.entry_count() == 2U);
+    OL_CHECK(archive.entry(1U).size() == 2U);
+
+    index.clear();
+    append_u32le(index, 3U);
+    append_u32le(index, 0U);
+    append_u32le(index, 5U);
+    archive = PackedArchive::parse(index, {1U, 2U, 3U, 4U, 5U});
+    OL_CHECK(!archive.valid());
+
+    index.clear();
+    append_u32le(index, 0U);
+    append_u32le(index, 2U);
+    archive = PackedArchive::parse(index, {1U, 2U});
+    OL_CHECK(archive.valid());
+    OL_CHECK(archive.entry_count() == 2U);
+    OL_CHECK(archive.entry(0U).empty());
+    OL_CHECK(archive.entry(1U).size() == 2U);
+    OL_CHECK(archive.entry(2U).empty());
+
+    index.clear();
+    append_u32le(index, 2U);
+    append_u32le(index, 5U);
+    sentinel = SentinelArchive::parse(index, {1U, 2U, 3U, 4U, 5U});
+    OL_CHECK(!sentinel.valid());
+
+    index.clear();
+    append_u32le(index, 4U);
+    append_u32le(index, 3U);
+    append_u32le(index, 0U);
+    sentinel = SentinelArchive::parse(index, {1U, 2U, 3U, 4U});
+    OL_CHECK(!sentinel.valid());
 }
 
 void run_synthetic_sprite_tests() {
@@ -152,6 +207,7 @@ void run_real_asset_tests() {
         "CLOUD", "EFT", "ENDWORD", "FBK", "FMAP", "HDGRP", "MMAP", "TITLE"};
     std::size_t pair_count = 0U;
     std::size_t sprite_frames = 0U;
+    std::map<std::string, std::pair<std::size_t, std::size_t>> archive_shapes;
     for (const auto& [stem, index_path] : indexes) {
         const auto group = groups.find(stem);
         if (group == groups.end()) {
@@ -166,6 +222,8 @@ void run_real_asset_tests() {
             continue;
         }
         ++pair_count;
+        archive_shapes.emplace(
+            stem, std::pair{archive.entry_count(), archive.data_size()});
         if (stem.starts_with("FIGHT") || sprite_archives.contains(stem)) {
             validate_sprite_archive(archive, sprite_frames);
         }
@@ -175,6 +233,21 @@ void run_real_asset_tests() {
     }
     OL_CHECK(pair_count == 118U);
     OL_CHECK(sprite_frames == 12'927U);
+    constexpr std::array<std::pair<const char*, std::pair<std::size_t, std::size_t>>, 5>
+        archive_contracts{{
+            {"TITLE", {9U, 8'179U}},
+            {"MMAP", {3'731U, 1'572'545U}},
+            {"ENDWORD", {23U, 75'839U}},
+            {"EFT", {714U, 691'627U}},
+            {"FIGHT000", {236U, 247'429U}},
+        }};
+    for (const auto& [stem, expected] : archive_contracts) {
+        const auto actual = archive_shapes.find(stem);
+        OL_CHECK(actual != archive_shapes.end());
+        if (actual != archive_shapes.end()) {
+            OL_CHECK(actual->second == expected);
+        }
+    }
 
     std::size_t sentinel_frames = 0U;
     for (int index = 0; index < 84; ++index) {
