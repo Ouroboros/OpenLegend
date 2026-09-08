@@ -102,9 +102,13 @@ screenY =  9*dx +  9*dy - 81
 
 ### 淡入 `sub_3CD17 @ 0x3CD17`
 
-- 外层 `i=64..1`，每帧从原 palette 重新复制后把每个通道饱和减 `i`。
-- 共提交 64 个过渡 palette，随后再提交一次未修改原 palette，总计 65 帧。
-- `MMAP.COL` 的淡出 64 帧加淡入 65 帧序列 FNV-1a 为 `a543bf4c501f4124`。
+- 204-byte owner含76条指令、24个CFG块、10个条件分支、3个跳转、3个call和3处palette重定位；16个caller分属11个owner且不消费EAX，无外部跳入内部块。
+- 外层 `i=64..1`。每帧都按颜色0..255、R/G/B顺序从只读源palette重新复制768 bytes，再对scratch执行`i`个饱和减1 pass；第`k`帧严格为`max(initial_byte-(65-k),0)`。
+- 每帧还执行`64-i`个只读源palette的填充扫描，比较结果和flags均不使用；64轮固定49,152次复制、1,597,440次scratch减暗访问及1,548,288次无效源比较。现代省略无状态填充扫描，属于CPU时序平台适配。
+- 共提交64个scratch过渡palette，随后再提交一次未修改源palette，总计65帧。RGB6域第1、2帧均全黑，第64帧为源减1，第65帧恢复源；完整byte域的第1帧可保留0..191。
+- 现代按值保存65个独立snapshot，并只在成功present后推进；scene入口/内部jump及战斗排序后黑帧等caller额外present由caller continuation单独编码，不并入本owner提交数。
+- 独立机器Golden合同/向量SHA256为`ecbbd42daffe04214599fddcc934ef205e41d99004d4ce74f4cf7ad21e912cf6`/`0877f1303d292785c58ac2a1ba5ddf5c20c7e0a2fb7295bba0d0cf615455fa85`；`mmap.col`与synthetic完整65帧串联SHA256为`f82ec722fa1c5eff432011680af9c4e69d54dddeb5789f51cfaf6164e69071a4`/`9c350d4e27059f9776abf9136ce35c08c8ff5b668f44423bf6a3021147bf3bbc`。
+- `MMAP.COL` 的淡出64帧加淡入65帧序列FNV-1a为`a543bf4c501f4124`。
 
 ## 8. Wrapper 归属审计
 
@@ -140,7 +144,7 @@ screenY =  9*dx +  9*dy - 81
 
 对应测试：`tests/unit/render/legacy_render_test.cpp`。
 
-- 合成矩形、直角框内部保持、RLE 左右裁剪、两像素字形覆盖、shadow-mask、fade 和深度旋转向量；
+- 合成矩形、直角框内部保持、RLE 左右裁剪、两像素字形覆盖、shadow-mask、fade和深度旋转向量；淡入/淡出均覆盖完整byte域、源不变及保留帧深拷贝；
 - 原物品格 `(55,62,40,40)` 在背景色7上的普通色0/选中色255边框 FNV-1a：`63eb8c2a7f900ed9` / `e154c07ba899cba5`；
 - `TITLE[0] + CLOUD[0] + MMAP[0] + ASCII/Big5` 组合画面 FNV-1a：`cf173ba0515b7807`；
 - 全部 14,101 个字形序列 FNV-1a：`6fa3df724d833333`；

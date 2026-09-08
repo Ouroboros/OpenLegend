@@ -1869,6 +1869,215 @@ def palette_fade_to_black_machine(z_dat: bytes, palette: bytes) -> dict[str, obj
     }
 
 
+def palette_fade_from_black_machine(z_dat: bytes, palette: bytes) -> dict[str, object]:
+    loaded_start = 0x3CD17
+    raw = z_dat[0x36717:0x367E3]
+    assert len(raw) == 204
+    assert raw.hex() == (
+        "6814030000e8fd1f000053565781ec00030000bf40000000e99000000031c9"
+        "31d289c8c1e00229c801d08a98831c0300881c044283fa037ce84181f90001"
+        "00007cdd31f6eb2631c931d289c8c1e00229c801d0803c04007603fe0c0442"
+        "83fa037ce84181f9000100007cdd4639fe72d6be4000000029feeb2431c931"
+        "d289c8c1e00229c801d080b8831c0300004283fa037cea4181f9000100007c"
+        "df4e85f67fd889e050e8790b000083c4044f85ff0f8768ffffff68831c0300"
+        "e8630b000083c40481c4000300005f5e5bc3"
+    )
+    assert sha256(raw) == "8b13c4432f4275fc16515268b3fb5bf9d19973d37cb604189ad6e5a518a1335f"
+
+    assert raw[0:5] == bytes.fromhex("6814030000")
+    assert raw[13:19] == bytes.fromhex("81ec00030000")
+    private_palette_bytes = struct.unpack_from("<I", raw, 15)[0]
+    assert raw[19] == 0xBF
+    round_count = struct.unpack_from("<I", raw, 20)[0]
+    component_count = 3
+    color_count = 256
+    assert private_palette_bytes == color_count * component_count == 768
+    assert round_count == 64
+    assert raw.count(bytes.fromhex("83fa03")) == 3
+    assert raw.count(bytes.fromhex("81f900010000")) == 3
+
+    calls = ((5, 0x3ED1E), (164, 0x3D939), (186, 0x3D939))
+    for offset, target in calls:
+        assert raw[offset] == 0xE8
+        (displacement,) = struct.unpack_from("<i", raw, offset + 1)
+        assert loaded_start + offset + 5 + displacement == target
+
+    fixup_offsets = (44, 136, 182)
+    loaded = bytearray(raw)
+    for offset in fixup_offsets:
+        (raw_palette_address,) = struct.unpack_from("<I", raw, offset)
+        assert raw_palette_address == 0x31C83
+        struct.pack_into("<I", loaded, offset, raw_palette_address + 0x20000)
+    assert sha256(loaded) == "3ddd272268b0f6e74c2fed1f5c3635b66deab89c95b53243b789f979990ef24e"
+
+    caller_sites = (
+        0x21064, 0x25AAD, 0x25D01, 0x265A1, 0x26E48, 0x27113,
+        0x28F3E, 0x29296, 0x2E282, 0x2E82D, 0x2EB83, 0x30D53,
+        0x30DCD, 0x30EF5, 0x30F9F, 0x327D3,
+    )
+    caller_call_bytes = bytearray()
+    for site in caller_sites:
+        file_offset = site - 0x6600
+        assert z_dat[file_offset] == 0xE8
+        caller_call = z_dat[file_offset:file_offset + 5]
+        (displacement,) = struct.unpack_from("<i", caller_call, 1)
+        assert site + 5 + displacement == loaded_start
+        caller_call_bytes.extend(caller_call)
+    caller_call_bytes_sha256 = sha256(caller_call_bytes)
+    assert caller_call_bytes_sha256 == (
+        "bea5368b540d759642b579477cb8c05ae16bfae5bac3d2f3c5420ed75657a907"
+    )
+
+    copy_component_visits = round_count * private_palette_bytes
+    decrement_pass_count = sum(range(1, round_count + 1))
+    padding_pass_count = sum(round_count - decrement for decrement in range(1, round_count + 1))
+    decrement_component_visits = decrement_pass_count * private_palette_bytes
+    padding_component_visits = padding_pass_count * private_palette_bytes
+    assert copy_component_visits == 49_152
+    assert decrement_pass_count == 2_080
+    assert padding_pass_count == 2_016
+    assert decrement_component_visits == 1_597_440
+    assert padding_component_visits == 1_548_288
+
+    def machine_frames(initial: bytes) -> list[bytes]:
+        assert len(initial) == private_palette_bytes
+        source = bytes(initial)
+        frames: list[bytes] = []
+        for decrement_count in range(round_count, 0, -1):
+            working = bytearray(source)
+            for _step in range(decrement_count):
+                for color in range(color_count):
+                    for component in range(component_count):
+                        offset = color * component_count + component
+                        if working[offset] > 0:
+                            working[offset] -= 1
+            frames.append(bytes(working))
+        frames.append(source)
+        return frames
+
+    def summarize_vector(source: str, initial: bytes) -> dict[str, object]:
+        frames = machine_frames(initial)
+        assert len(frames) == 65
+        return {
+            "source": source,
+            "initial_sha256": sha256(initial),
+            "all_frames_sha256": sha256(b"".join(frames)),
+            "selected_frame_sha256": {
+                str(frame): sha256(frames[frame - 1])
+                for frame in (1, 2, 3, 32, 63, 64, 65)
+            },
+            "first_max_component": max(frames[0]),
+            "first_nonzero_component_count": sum(value != 0 for value in frames[0]),
+            "final_sha256": sha256(frames[-1]),
+            "final_equals_source": frames[-1] == initial,
+        }
+
+    assert len(palette) == private_palette_bytes
+    assert max(palette) <= 63
+    extended_byte_domain = bytes([0, 1, 2, 63, 64, 65, 127, 255]) * 96
+    extended_frames = machine_frames(extended_byte_domain)
+    assert extended_frames[0][:8] == bytes([0, 0, 0, 0, 0, 1, 63, 191])
+    assert extended_frames[1][:8] == bytes([0, 0, 0, 0, 1, 2, 64, 192])
+    assert extended_frames[62][:8] == bytes([0, 0, 0, 61, 62, 63, 125, 253])
+    assert extended_frames[63][:8] == bytes([0, 0, 1, 62, 63, 64, 126, 254])
+    assert extended_frames[64] == extended_byte_domain
+    vectors = {
+        "mmap_col_rgb6": summarize_vector("original mmap.col", palette),
+        "extended_byte_domain": summarize_vector(
+            "synthetic byte-boundary cycle exercising all fade thresholds",
+            extended_byte_domain,
+        ),
+    }
+    assert vectors["mmap_col_rgb6"]["first_max_component"] == 0
+    assert vectors["mmap_col_rgb6"]["first_nonzero_component_count"] == 0
+    assert vectors["mmap_col_rgb6"]["final_equals_source"] is True
+    assert vectors["mmap_col_rgb6"]["all_frames_sha256"] == (
+        "f82ec722fa1c5eff432011680af9c4e69d54dddeb5789f51cfaf6164e69071a4"
+    )
+    assert vectors["extended_byte_domain"]["first_max_component"] == 191
+    assert vectors["extended_byte_domain"]["first_nonzero_component_count"] == 288
+    assert vectors["extended_byte_domain"]["final_equals_source"] is True
+    assert vectors["extended_byte_domain"]["all_frames_sha256"] == (
+        "9c350d4e27059f9776abf9136ce35c08c8ff5b668f44423bf6a3021147bf3bbc"
+    )
+
+    contract = {
+        "source": {
+            "address": "0x51c83",
+            "read_order": "color_0_rgb_to_color_255_rgb",
+            "write_count": 0,
+        },
+        "private_palette_bytes": private_palette_bytes,
+        "round_count": round_count,
+        "color_count": color_count,
+        "component_count": component_count,
+        "component_order": ["red", "green", "blue"],
+        "component_rule": "value == 0 ? 0 : value - 1",
+        "submitted_frame_k": "max(initial_byte - (65 - k), 0), k=1..64",
+        "final_submitted_frame": "unmodified source palette, k=65",
+        "submitted_frame_count": round_count + 1,
+        "scratch_submit_count": round_count,
+        "source_submit_count": 1,
+        "copy_component_visits": copy_component_visits,
+        "decrement_pass_count": decrement_pass_count,
+        "padding_pass_count": padding_pass_count,
+        "decrement_component_visits": decrement_component_visits,
+        "padding_component_visits": padding_component_visits,
+        "timing_scan_component_visits": (
+            decrement_component_visits + padding_component_visits
+        ),
+        "padding_scan_effect": "compare source byte with zero; result and flags discarded",
+        "owner_present_calls": 0,
+        "clock_reads": 0,
+        "input_reads": 0,
+        "rng_calls": 0,
+        "shared_state_writes": 0,
+        "rgb6_first_two_frames": "all black",
+        "extended_byte_first_frame_range": "0..191",
+        "return_value": "ignored by all 16 direct callers",
+    }
+    contract_sha256 = sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    vectors_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert contract_sha256 == "ecbbd42daffe04214599fddcc934ef205e41d99004d4ce74f4cf7ad21e912cf6"
+    assert vectors_sha256 == "0877f1303d292785c58ac2a1ba5ddf5c20c7e0a2fb7295bba0d0cf615455fa85"
+    return {
+        "raw_range": "Z.DAT[0x36717:0x367e3]",
+        "loaded_range": "0x3cd17..0x3cde3",
+        "size_bytes": len(raw),
+        "instruction_count": 76,
+        "basic_block_count": 24,
+        "conditional_branch_count": 10,
+        "unconditional_jump_count": 3,
+        "direct_call_count": len(calls),
+        "call_sites": [f"0x{loaded_start + offset:x}" for offset, _target in calls],
+        "call_targets": [f"0x{target:x}" for _offset, target in calls],
+        "fixup_sites": [f"0x{loaded_start + offset:x}" for offset in fixup_offsets],
+        "fixup_sites_sha256": sha256(
+            b"".join(struct.pack("<I", loaded_start + offset) for offset in fixup_offsets)
+        ),
+        "relocation_delta": "0x20000",
+        "raw_palette_address": "0x31c83",
+        "loaded_palette_address": "0x51c83",
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(loaded),
+        "normalized_loaded_equals_raw": True,
+        "caller_sites": [f"0x{site:x}" for site in caller_sites],
+        "caller_owner_count": 11,
+        "caller_count": len(caller_sites),
+        "caller_call_bytes_sha256": caller_call_bytes_sha256,
+        "external_internal_entries": [],
+        "local_return": "0x3cde2",
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+        "vectors": vectors,
+        "vectors_sha256": vectors_sha256,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-root", type=Path, required=True)
@@ -2036,6 +2245,7 @@ def main() -> int:
         "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
         "game_menu_item_use_machine": game_menu_item_use_machine(z_dat),
         "palette_fade_to_black_machine": palette_fade_to_black_machine(z_dat, palette),
+        "palette_fade_from_black_machine": palette_fade_from_black_machine(z_dat, palette),
         "title_navigation": {
             "main_labels": ["new_game", "load", "exit"],
             "slot_labels_big5_hex": ["a440", "a447", "a454"],

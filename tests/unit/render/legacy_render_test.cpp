@@ -240,6 +240,39 @@ void run_effect_tests() {
     byte_domain_fade[0U][200U].red = 0U;
     OL_CHECK(byte_domain_fade[1U][200U].red == second_frame_red);
     OL_CHECK(byte_domain_palette[200U].red == byte_domain_source[200U].red);
+
+    auto byte_domain_fade_in = legacy_fade_from_black(byte_domain_palette);
+    OL_CHECK(byte_domain_fade_in.size() == 65U);
+    for (std::size_t frame = 0U; frame < byte_domain_fade_in.size(); ++frame) {
+        const auto decrement = static_cast<std::uint16_t>(
+            frame < 64U ? 64U - frame : 0U);
+        const auto expected = [decrement](const std::uint8_t value) {
+            return static_cast<std::uint8_t>(
+                value > decrement ? static_cast<std::uint16_t>(value) - decrement : 0U);
+        };
+        for (std::size_t color = 0U; color < byte_domain_palette.size(); ++color) {
+            OL_CHECK(byte_domain_fade_in[frame][color].red ==
+                     expected(byte_domain_source[color].red));
+            OL_CHECK(byte_domain_fade_in[frame][color].green ==
+                     expected(byte_domain_source[color].green));
+            OL_CHECK(byte_domain_fade_in[frame][color].blue ==
+                     expected(byte_domain_source[color].blue));
+            OL_CHECK(byte_domain_palette[color].red == byte_domain_source[color].red);
+            OL_CHECK(byte_domain_palette[color].green == byte_domain_source[color].green);
+            OL_CHECK(byte_domain_palette[color].blue == byte_domain_source[color].blue);
+        }
+    }
+    OL_CHECK(byte_domain_fade_in.front()[255U].red == 191U);
+    OL_CHECK(byte_domain_fade_in.front()[0U].green == 191U);
+    OL_CHECK(byte_domain_fade_in[1U][64U].red == 1U);
+    OL_CHECK(byte_domain_fade_in[63U][64U].red == 63U);
+    OL_CHECK(byte_domain_fade_in.back()[64U].red == 64U);
+    const auto fade_in_second_frame_red = byte_domain_fade_in[1U][200U].red;
+    const auto fade_in_final_red = byte_domain_fade_in.back()[200U].red;
+    byte_domain_fade_in[0U][200U].red = 0U;
+    OL_CHECK(byte_domain_fade_in[1U][200U].red == fade_in_second_frame_red);
+    OL_CHECK(byte_domain_fade_in.back()[200U].red == fade_in_final_red);
+    OL_CHECK(byte_domain_palette[200U].red == byte_domain_source[200U].red);
 }
 
 void run_synthetic_sprite_tests() {

@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=342/349`，`unique_any=277/284`，`unique_all=277/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=32` `sub_3CD17`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=33` `sub_3CF45`
-最近关闭：ui `audit_order=31` `sub_3CC97`已用新临时IDB固定128 bytes、50条指令、15/15 CFG块、7个条件分支、0个无条件跳转、1处重定位、2次direct call、17个caller site及唯一RET；机器先复制768-byte私有palette，再执行64轮color-major RGB饱和减1与64次提交，49,152次分量访问附带2,457,600次私有忙等递增；现代完整RGB6及扩展byte域均零产品差异，忙等省略与present驱动continuation归类平台适配；独立Golden三生成逐字节一致、旧15节点全不变且仅新增本owner节点，Linux app Debug 14/14关闭。
+当前有效进度：`closure=343/349`，`unique_any=278/284`，`unique_all=278/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=33` `sub_3CF45`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=34` `sub_3D34A`
+最近关闭：ui `audit_order=32` `sub_3CD17`已用新临时IDB固定204 bytes、76条指令、24/24 CFG块、10个条件分支、3个无条件跳转、3处重定位、3次direct call、16个caller site及唯一RET；机器64轮均重新复制768-byte源palette，以64→1次饱和减1及互补的0→63次无效源比较保持每轮64次扫描，再提交64个scratch palette与最终未修改源palette；现代完整RGB6及扩展byte域、源不变和snapshot独立性均零产品差异，无效比较省略与present驱动continuation归类平台适配；独立Golden三生成逐字节一致、旧16节点全不变且仅新增本owner节点，正式SHA256为`9dc0e37b9d6b3bb07ac923f213ee4339b9c9faf71c01595ec7da1eb1efd0ebf9`；Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 
