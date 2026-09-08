@@ -1703,6 +1703,233 @@ def game_menu_item_use_machine(z_dat: bytes) -> dict[str, object]:
     }
 
 
+def palette_dac_submit_machine(z_dat: bytes, palette: bytes) -> dict[str, object]:
+    wrapper_start = 0x3D939
+    wrapper = z_dat[0x37339:0x37350]
+    callee_start = 0x20087
+    callee = z_dat[0x19A87:0x19ABD]
+    probe = z_dat[0x3871E:0x3872E]
+    assert len(wrapper) == 23
+    assert len(callee) == 54
+    assert len(probe) == 16
+    assert wrapper.hex() == "6808000000e8db130000ff742404e83b27feff83c404c3"
+    assert callee.hex() == (
+        "5589e5535152565766bada03eca80874fb8b7508fcb00066bac803eeb900030000"
+        "6642acee9090909090909090e2f45f5e5a595b5dc3"
+    )
+    assert probe.hex() == "87442404e80a0000008b442404c20400"
+    assert sha256(wrapper) == "978715fe9b9dad6ebfac9802e959e33456c6dfcaedf738194dca46faee16a08d"
+    assert sha256(callee) == "989b34e81fcd2356510c04681e0d7f4e39f17571c4576f224c4f1b0bd4257350"
+
+    for offset, target in ((5, 0x3ED1E), (14, callee_start)):
+        assert wrapper[offset] == 0xE8
+        (displacement,) = struct.unpack_from("<i", wrapper, offset + 1)
+        assert wrapper_start + offset + 5 + displacement == target
+
+    caller_sites = (0x20FEF, 0x30D05, 0x3CC8C, 0x3CD00, 0x3CDBB, 0x3CDD1)
+    caller_owners = (0x20FAF, 0x30C3D, 0x3CBE3, 0x3CC97, 0x3CD17, 0x3CD17)
+    caller_call_bytes = bytearray()
+    for site in caller_sites:
+        file_offset = site - 0x6600
+        call = z_dat[file_offset : file_offset + 5]
+        assert call[0] == 0xE8
+        (displacement,) = struct.unpack_from("<i", call, 1)
+        assert site + 5 + displacement == wrapper_start
+        caller_call_bytes.extend(call)
+    assert sha256(caller_call_bytes) == (
+        "fe804e6049ad7ea9e8e9a263104b94dec27da2ba5679e115d82f5d540e776fa8"
+    )
+
+    world_present_then_cycle = z_dat[0x20F42 - 0x6600 : 0x20F7B - 0x6600]
+    scene_present_then_cycle = z_dat[0x290B5 - 0x6600 : 0x290EE - 0x6600]
+    assert world_present_then_cycle.hex() == (
+        "e844460000ff35980b0a0068bc870c00e87ac7010083c4080fbf150a4503004289d0"
+        "c1fa1ff7fb6689150a4503006683fa017505e868bc0100"
+    )
+    assert scene_present_then_cycle.hex() == (
+        "ff35980b0a0068bc870c00e80c46010083c4080fbf150a45030042bb0500000089d0"
+        "c1fa1ff7fb6689150a4503006683fa017505e8f53a0100"
+    )
+    assert sha256(world_present_then_cycle) == (
+        "0d3540e64026c83e5e464275f24c604e33d83af9a0fc75144fb62bd575729110"
+    )
+    assert sha256(scene_present_then_cycle) == (
+        "ee41abebd3c2a7a841f4ac4d660c6a47430a183ff4a5279e7a9b9beb29bd0acc"
+    )
+    for site, target in (
+        (0x20F52, 0x3D6D1),
+        (0x20F76, 0x3CBE3),
+        (0x290C0, 0x3D6D1),
+        (0x290E9, 0x3CBE3),
+    ):
+        call = z_dat[site - 0x6600 : site - 0x6600 + 5]
+        assert call[0] == 0xE8
+        (displacement,) = struct.unpack_from("<i", call, 1)
+        assert site + 5 + displacement == target
+
+    def dac_submit(source: bytes, entry_eax: int, status_samples: list[int]) -> dict[str, object]:
+        assert len(source) == 768
+        assert status_samples and status_samples[-1] & 0x08
+        assert all(sample & 0x08 == 0 for sample in status_samples[:-1])
+        writes = [(0x3C8, 0)] + [(0x3C9, value) for value in source]
+        encoded = b"".join(struct.pack("<HB", port, value) for port, value in writes)
+        return {
+            "status_read_count": len(status_samples),
+            "status_samples": status_samples,
+            "write_count": len(writes),
+            "index_write": {"port": "0x3c8", "value": 0},
+            "data_write_count": len(source),
+            "data_port": "0x3c9",
+            "data_sha256": sha256(source),
+            "data_fnv1a64": "0x" + fnv1a64(source),
+            "encoded_port_stream_sha256": sha256(encoded),
+            "return_eax": f"0x{((entry_eax & 0xFFFFFF00) | source[-1]):08x}",
+        }
+
+    def expand_rgb6(value: int) -> int:
+        value &= 0x3F
+        return ((value << 2) | (value >> 4)) & 0xFF
+
+    assert len(palette) == 768
+    assert max(palette) <= 63
+    synthetic = bytes(range(256)) * 3
+    mmap_immediate = dac_submit(palette, 0x12345678, [0x08])
+    mmap_delayed = dac_submit(palette, 0x89ABCDEF, [0x00, 0x04, 0x08])
+    full_byte_domain = dac_submit(synthetic, 0x10203040, [0x01, 0x02, 0x08])
+    assert mmap_delayed["encoded_port_stream_sha256"] == mmap_immediate["encoded_port_stream_sha256"]
+
+    expanded_palette = bytearray()
+    for offset in range(0, len(palette), 3):
+        expanded_palette.extend(
+            (
+                expand_rgb6(palette[offset]),
+                expand_rgb6(palette[offset + 1]),
+                expand_rgb6(palette[offset + 2]),
+                0xFF,
+            )
+        )
+    index_pixels = bytes(range(256)) * 250
+    expanded_frame = bytearray()
+    for pixel in index_pixels:
+        target = pixel * 4
+        expanded_frame.extend(expanded_palette[target : target + 4])
+    assert len(index_pixels) == 64_000
+    assert len(expanded_palette) == 1_024
+    assert len(expanded_frame) == 256_000
+
+    contract = {
+        "owner": "sub_3D939",
+        "range": ["0x3D939", "0x3D950"],
+        "wrapper_size": 23,
+        "wrapper_instruction_count": 6,
+        "wrapper_cfg_blocks": 1,
+        "wrapper_conditional_branches": 0,
+        "wrapper_unconditional_jumps": 0,
+        "wrapper_fixups": 0,
+        "wrapper_calls": ["sub_3ED1E(8)", "sub_20087(palette_pointer)"],
+        "argument": "pointer to 768 consecutive palette bytes",
+        "callee": {
+            "owner": "sub_20087",
+            "range": ["0x20087", "0x200BD"],
+            "size": 54,
+            "instruction_count": 36,
+            "cfg_blocks": 5,
+            "conditional_branches": 2,
+            "direct_calls": 0,
+            "fixups": 0,
+            "status_wait": "read port 0x3DA until bit 3 is set; at least one read and no timeout",
+            "direction_flag": "cleared before source traversal",
+            "index_write": "write byte 0 to port 0x3C8",
+            "data_write": "LODSB then write source[0..767] in ascending order to port 0x3C9",
+            "source_reads": 768,
+            "data_writes": 768,
+            "nop_count_per_data_write": 8,
+            "preserved_registers": ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"],
+            "return_eax": "incoming EAX high 24 bits with AL replaced by source[767]",
+            "pixel_writes": 0,
+            "source_writes": 0,
+        },
+        "callers": {
+            "callsite_count": 6,
+            "owner_count": 5,
+            "global_palette_sites": ["0x20FEF", "0x30D05", "0x3CC8C", "0x3CDD1"],
+            "stack_scratch_sites": ["0x3CD00", "0x3CDBB"],
+            "tail_eax_passthrough_sites": ["0x3CC8C", "0x3CDD1"],
+            "business_return_consumers": 0,
+            "stack_cleanup": "4 bytes at every direct callsite",
+            "activation_order": {
+                "world": {
+                    "owner": "sub_20D35",
+                    "frame_present_call": "0x20F52 -> sub_3D6D1",
+                    "palette_cycle_call": "0x20F76 -> sub_3CBE3",
+                    "slice_sha256": "0d3540e64026c83e5e464275f24c604e33d83af9a0fc75144fb62bd575729110",
+                },
+                "scene": {
+                    "owner": "sub_28E40",
+                    "frame_present_call": "0x290C0 -> sub_3D6D1",
+                    "palette_cycle_call": "0x290E9 -> sub_3CBE3",
+                    "slice_sha256": "ee41abebd3c2a7a841f4ac4d660c6a47430a183ff4a5279e7a9b9beb29bd0acc",
+                },
+                "observable_effect": "when signed remainder becomes 1, the newly copied indexed frame is recolored by the immediately following DAC submission before tick wait or scene continuation",
+            },
+        },
+        "modern_boundary": {
+            "canonical_domain": "256 colors in RGB order with three six-bit channel bytes per color",
+            "equivalence": "copy all 256 RGB6 colors by value; host present indexes the copied palette without changing indexed pixels; a due post-copy palette cycle is previewed in that host present and committed only after present succeeds",
+            "platform_adapted": [
+                "VGA 0x3DA vertical-retrace polling replaced by host presentation scheduling",
+                "VGA 0x3C8/0x3C9 port writes replaced by an owned LegacyPalette snapshot",
+                "RGB6 channels expanded to RGBA8 only in the host presentation adapter",
+                "invalid channel values and host presentation failures are safely rejected",
+                "incidental EAX is replaced by void palette assignment and bool host present result",
+            ],
+        },
+    }
+    vectors = {
+        "mmap_col": {
+            "source_sha256": sha256(palette),
+            "source_fnv1a64": "0x" + fnv1a64(palette),
+            "immediate_retrace": mmap_immediate,
+            "delayed_retrace": mmap_delayed,
+        },
+        "full_byte_domain": full_byte_domain,
+        "host_adapter": {
+            "pixel_pattern": "index 0..255 repeated 250 times",
+            "indexed_pixels_sha256": sha256(index_pixels),
+            "expanded_palette_rgba_sha256": sha256(expanded_palette),
+            "expanded_palette_rgba_fnv1a64": "0x" + fnv1a64(expanded_palette),
+            "expanded_frame_rgba_sha256": sha256(expanded_frame),
+            "expanded_frame_rgba_fnv1a64": "0x" + fnv1a64(expanded_frame),
+        },
+    }
+    contract_sha256 = sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    vectors_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert contract_sha256 == "570f993bd13b228230d216d9d8864b28d70c2799d94be5914b4f1ecd925867d7"
+    assert vectors_sha256 == "edd329f9d3a0ea9a01d94eca9f49ec5736d21d92b6a36710c5c5bc07fc4e0d74"
+    return {
+        "raw_range": "Z.DAT[0x37339:0x37350]",
+        "loaded_range": "0x3d939..0x3d950",
+        "wrapper_raw_sha256": sha256(wrapper),
+        "wrapper_loaded_sha256": sha256(wrapper),
+        "callee_raw_range": "Z.DAT[0x19a87:0x19abd]",
+        "callee_loaded_range": "0x20087..0x200bd",
+        "callee_raw_sha256": sha256(callee),
+        "callee_loaded_sha256": sha256(callee),
+        "probe_raw_sha256": sha256(probe),
+        "caller_sites": [f"0x{site:x}" for site in caller_sites],
+        "caller_owners": [f"0x{owner:x}" for owner in caller_owners],
+        "caller_call_bytes_sha256": sha256(caller_call_bytes),
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+        "vectors": vectors,
+        "vectors_sha256": vectors_sha256,
+    }
+
+
 def palette_fade_to_black_machine(z_dat: bytes, palette: bytes) -> dict[str, object]:
     loaded_start = 0x3CC97
     raw = z_dat[0x36697:0x36717]
@@ -2244,6 +2471,7 @@ def main() -> int:
         "game_menu_item_draw_machine": game_menu_item_draw_machine(z_dat, ranger),
         "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
         "game_menu_item_use_machine": game_menu_item_use_machine(z_dat),
+        "palette_dac_submit_machine": palette_dac_submit_machine(z_dat, palette),
         "palette_fade_to_black_machine": palette_fade_to_black_machine(z_dat, palette),
         "palette_fade_from_black_machine": palette_fade_from_black_machine(z_dat, palette),
         "title_navigation": {

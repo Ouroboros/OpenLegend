@@ -9,6 +9,7 @@
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
@@ -1232,29 +1233,42 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     finish_numbered_load_transition(new_game, app::LegacyGameView::world);
     const auto* ranger = new_game.game_state().ranger();
     OL_CHECK(ranger != nullptr);
+    const resource::DataRoot world_data{world_fixture};
+    const auto palette_file = world_data.read("mmap.col");
+    OL_CHECK(static_cast<bool>(palette_file));
+    const auto source_palette = resource::parse_vga_palette(palette_file.bytes);
+    OL_CHECK(static_cast<bool>(source_palette));
+
     OL_CHECK(new_game.render());
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0x6F6CF22B7C8CB4B8ULL);
-    const auto palette_before = new_game.framebuffer().palette();
+    const auto first_present_palette = new_game.framebuffer().palette();
+    OL_CHECK(first_present_palette[0].red == source_palette.palette[0].red);
+    OL_CHECK(first_present_palette[224].red == source_palette.palette[231].red);
+    OL_CHECK(first_present_palette[224].green == source_palette.palette[231].green);
+    OL_CHECK(first_present_palette[224].blue == source_palette.palette[231].blue);
+    OL_CHECK(first_present_palette[244].red == source_palette.palette[252].red);
+    OL_CHECK(new_game.render());
+    OL_CHECK(new_game.framebuffer().palette()[224].red == first_present_palette[224].red);
     new_game.finish_presented_tick();
     OL_CHECK(new_game.render());
-    const auto palette_after_first = new_game.framebuffer().palette();
-    OL_CHECK(palette_after_first[224].red == palette_before[231].red);
-    OL_CHECK(palette_after_first[224].green == palette_before[231].green);
-    OL_CHECK(palette_after_first[224].blue == palette_before[231].blue);
+    const auto palette_after_first_commit = new_game.framebuffer().palette();
+    OL_CHECK(palette_after_first_commit[224].red == first_present_palette[224].red);
+    OL_CHECK(palette_after_first_commit[224].green == first_present_palette[224].green);
+    OL_CHECK(palette_after_first_commit[224].blue == first_present_palette[224].blue);
     for (int tick = 0; tick < 4; ++tick) {
         new_game.finish_presented_tick();
     }
     OL_CHECK(new_game.render());
-    const auto palette_after_five = new_game.framebuffer().palette();
-    OL_CHECK(palette_after_five[224].red == palette_after_first[224].red);
-    OL_CHECK(palette_after_five[224].green == palette_after_first[224].green);
-    OL_CHECK(palette_after_five[224].blue == palette_after_first[224].blue);
+    const auto second_present_palette = new_game.framebuffer().palette();
+    OL_CHECK(second_present_palette[224].red == first_present_palette[231].red);
+    OL_CHECK(second_present_palette[224].green == first_present_palette[231].green);
+    OL_CHECK(second_present_palette[224].blue == first_present_palette[231].blue);
     new_game.finish_presented_tick();
     OL_CHECK(new_game.render());
-    const auto palette_after_six = new_game.framebuffer().palette();
-    OL_CHECK(palette_after_six[224].red == palette_after_first[231].red);
-    OL_CHECK(palette_after_six[224].green == palette_after_first[231].green);
-    OL_CHECK(palette_after_six[224].blue == palette_after_first[231].blue);
+    const auto palette_after_second_commit = new_game.framebuffer().palette();
+    OL_CHECK(palette_after_second_commit[224].red == second_present_palette[224].red);
+    OL_CHECK(palette_after_second_commit[224].green == second_present_palette[224].green);
+    OL_CHECK(palette_after_second_commit[224].blue == second_present_palette[224].blue);
     new_game.handle_world_input(false, false, false, true);
     new_game.advance();
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
@@ -1679,6 +1693,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     }
     OL_CHECK(new_game.render());
     const auto world_palette_before_scene = new_game.framebuffer().palette();
+    new_game.finish_presented_tick();
 
     new_game.handle_world_input(true, false, false, false);
     new_game.advance();

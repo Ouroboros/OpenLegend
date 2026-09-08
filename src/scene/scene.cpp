@@ -1782,6 +1782,12 @@ SceneStepResult SceneSession::finish_tick_after_auto_event(const SceneStepKind f
     return resolve_scene_transition(fallback);
 }
 
+bool SceneSession::palette_cycle_after_present() const noexcept {
+    return valid() && pending_.kind == SceneStepKind::present &&
+        tick_continuation_ == TickContinuation::after_scene_present &&
+        static_cast<std::int16_t>((periodic_counter_ + 1) % 5) == 1;
+}
+
 SceneStepResult SceneSession::resolve_scene_transition(const SceneStepKind fallback) {
     if (static_cast<std::size_t>(scene_id_) >= snapshot_.ranger.scenes.size()) {
         return current_result(fallback);
@@ -3446,7 +3452,16 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     dialogue_base_framebuffer_.reset();
     item_notice_base_framebuffer_.reset();
-    return render_map(framebuffer) && draw_overlay(framebuffer);
+    if (!render_map(framebuffer) || !draw_overlay(framebuffer)) {
+        return false;
+    }
+    if (palette_cycle_after_present()) {
+        auto palette = framebuffer.palette();
+        std::rotate(palette.begin() + 224, palette.begin() + 231, palette.begin() + 232);
+        std::rotate(palette.begin() + 244, palette.begin() + 252, palette.begin() + 253);
+        framebuffer.set_palette(palette);
+    }
+    return true;
 }
 
 bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const {

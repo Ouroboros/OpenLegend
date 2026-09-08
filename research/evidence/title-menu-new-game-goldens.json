@@ -2272,6 +2272,200 @@
     ],
     "vectors_sha256": "5647f386cb37172ac2dd355f7e9a2df9520375b2114e6020dbeddb14b7beaeb4"
   },
+  "palette_dac_submit_machine": {
+    "raw_range": "Z.DAT[0x37339:0x37350]",
+    "loaded_range": "0x3d939..0x3d950",
+    "wrapper_raw_sha256": "978715fe9b9dad6ebfac9802e959e33456c6dfcaedf738194dca46faee16a08d",
+    "wrapper_loaded_sha256": "978715fe9b9dad6ebfac9802e959e33456c6dfcaedf738194dca46faee16a08d",
+    "callee_raw_range": "Z.DAT[0x19a87:0x19abd]",
+    "callee_loaded_range": "0x20087..0x200bd",
+    "callee_raw_sha256": "989b34e81fcd2356510c04681e0d7f4e39f17571c4576f224c4f1b0bd4257350",
+    "callee_loaded_sha256": "989b34e81fcd2356510c04681e0d7f4e39f17571c4576f224c4f1b0bd4257350",
+    "probe_raw_sha256": "46f8a1ea596e478b02d93c7b5d00a1b9d5a793868384cf400d72d05f0f12d069",
+    "caller_sites": [
+      "0x20fef",
+      "0x30d05",
+      "0x3cc8c",
+      "0x3cd00",
+      "0x3cdbb",
+      "0x3cdd1"
+    ],
+    "caller_owners": [
+      "0x20faf",
+      "0x30c3d",
+      "0x3cbe3",
+      "0x3cc97",
+      "0x3cd17",
+      "0x3cd17"
+    ],
+    "caller_call_bytes_sha256": "fe804e6049ad7ea9e8e9a263104b94dec27da2ba5679e115d82f5d540e776fa8",
+    "contract": {
+      "owner": "sub_3D939",
+      "range": [
+        "0x3D939",
+        "0x3D950"
+      ],
+      "wrapper_size": 23,
+      "wrapper_instruction_count": 6,
+      "wrapper_cfg_blocks": 1,
+      "wrapper_conditional_branches": 0,
+      "wrapper_unconditional_jumps": 0,
+      "wrapper_fixups": 0,
+      "wrapper_calls": [
+        "sub_3ED1E(8)",
+        "sub_20087(palette_pointer)"
+      ],
+      "argument": "pointer to 768 consecutive palette bytes",
+      "callee": {
+        "owner": "sub_20087",
+        "range": [
+          "0x20087",
+          "0x200BD"
+        ],
+        "size": 54,
+        "instruction_count": 36,
+        "cfg_blocks": 5,
+        "conditional_branches": 2,
+        "direct_calls": 0,
+        "fixups": 0,
+        "status_wait": "read port 0x3DA until bit 3 is set; at least one read and no timeout",
+        "direction_flag": "cleared before source traversal",
+        "index_write": "write byte 0 to port 0x3C8",
+        "data_write": "LODSB then write source[0..767] in ascending order to port 0x3C9",
+        "source_reads": 768,
+        "data_writes": 768,
+        "nop_count_per_data_write": 8,
+        "preserved_registers": [
+          "EBX",
+          "ECX",
+          "EDX",
+          "ESI",
+          "EDI",
+          "EBP"
+        ],
+        "return_eax": "incoming EAX high 24 bits with AL replaced by source[767]",
+        "pixel_writes": 0,
+        "source_writes": 0
+      },
+      "callers": {
+        "callsite_count": 6,
+        "owner_count": 5,
+        "global_palette_sites": [
+          "0x20FEF",
+          "0x30D05",
+          "0x3CC8C",
+          "0x3CDD1"
+        ],
+        "stack_scratch_sites": [
+          "0x3CD00",
+          "0x3CDBB"
+        ],
+        "tail_eax_passthrough_sites": [
+          "0x3CC8C",
+          "0x3CDD1"
+        ],
+        "business_return_consumers": 0,
+        "stack_cleanup": "4 bytes at every direct callsite",
+        "activation_order": {
+          "world": {
+            "owner": "sub_20D35",
+            "frame_present_call": "0x20F52 -> sub_3D6D1",
+            "palette_cycle_call": "0x20F76 -> sub_3CBE3",
+            "slice_sha256": "0d3540e64026c83e5e464275f24c604e33d83af9a0fc75144fb62bd575729110"
+          },
+          "scene": {
+            "owner": "sub_28E40",
+            "frame_present_call": "0x290C0 -> sub_3D6D1",
+            "palette_cycle_call": "0x290E9 -> sub_3CBE3",
+            "slice_sha256": "ee41abebd3c2a7a841f4ac4d660c6a47430a183ff4a5279e7a9b9beb29bd0acc"
+          },
+          "observable_effect": "when signed remainder becomes 1, the newly copied indexed frame is recolored by the immediately following DAC submission before tick wait or scene continuation"
+        }
+      },
+      "modern_boundary": {
+        "canonical_domain": "256 colors in RGB order with three six-bit channel bytes per color",
+        "equivalence": "copy all 256 RGB6 colors by value; host present indexes the copied palette without changing indexed pixels; a due post-copy palette cycle is previewed in that host present and committed only after present succeeds",
+        "platform_adapted": [
+          "VGA 0x3DA vertical-retrace polling replaced by host presentation scheduling",
+          "VGA 0x3C8/0x3C9 port writes replaced by an owned LegacyPalette snapshot",
+          "RGB6 channels expanded to RGBA8 only in the host presentation adapter",
+          "invalid channel values and host presentation failures are safely rejected",
+          "incidental EAX is replaced by void palette assignment and bool host present result"
+        ]
+      }
+    },
+    "contract_sha256": "570f993bd13b228230d216d9d8864b28d70c2799d94be5914b4f1ecd925867d7",
+    "vectors": {
+      "mmap_col": {
+        "source_sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
+        "source_fnv1a64": "0xb7546b614cf2c7cc",
+        "immediate_retrace": {
+          "status_read_count": 1,
+          "status_samples": [
+            8
+          ],
+          "write_count": 769,
+          "index_write": {
+            "port": "0x3c8",
+            "value": 0
+          },
+          "data_write_count": 768,
+          "data_port": "0x3c9",
+          "data_sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
+          "data_fnv1a64": "0xb7546b614cf2c7cc",
+          "encoded_port_stream_sha256": "3a788a1c178051fd10fa30f778860a1529ea12dee90721320ddaa5f4c69ae277",
+          "return_eax": "0x1234563f"
+        },
+        "delayed_retrace": {
+          "status_read_count": 3,
+          "status_samples": [
+            0,
+            4,
+            8
+          ],
+          "write_count": 769,
+          "index_write": {
+            "port": "0x3c8",
+            "value": 0
+          },
+          "data_write_count": 768,
+          "data_port": "0x3c9",
+          "data_sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
+          "data_fnv1a64": "0xb7546b614cf2c7cc",
+          "encoded_port_stream_sha256": "3a788a1c178051fd10fa30f778860a1529ea12dee90721320ddaa5f4c69ae277",
+          "return_eax": "0x89abcd3f"
+        }
+      },
+      "full_byte_domain": {
+        "status_read_count": 3,
+        "status_samples": [
+          1,
+          2,
+          8
+        ],
+        "write_count": 769,
+        "index_write": {
+          "port": "0x3c8",
+          "value": 0
+        },
+        "data_write_count": 768,
+        "data_port": "0x3c9",
+        "data_sha256": "f3a25aa93aa2fbba28d79260535bbd6a5eb0fc1c24a8b0f04e12b484c1dfe363",
+        "data_fnv1a64": "0x4f33c513c2e95c25",
+        "encoded_port_stream_sha256": "30df4d34aff1588e04feb48998d16de83c0ec5395edb30b540222dd7cad8af11",
+        "return_eax": "0x102030ff"
+      },
+      "host_adapter": {
+        "pixel_pattern": "index 0..255 repeated 250 times",
+        "indexed_pixels_sha256": "2683eed3d6de7f352f5ce26d759c279e4e03d574164562ca50f66cae86670e63",
+        "expanded_palette_rgba_sha256": "83e42ce1da1390585de732aa05c2352b400dea33c51359cfdad1f35653aa58f6",
+        "expanded_palette_rgba_fnv1a64": "0x6473bde408eb16da",
+        "expanded_frame_rgba_sha256": "e6a35871439f65deccae9c69a2dfa75a217105b4d4540d48a72ad922847097a9",
+        "expanded_frame_rgba_fnv1a64": "0x20a030c1cef0fc6d"
+      }
+    },
+    "vectors_sha256": "edd329f9d3a0ea9a01d94eca9f49ec5736d21d92b6a36710c5c5bc07fc4e0d74"
+  },
   "palette_fade_to_black_machine": {
     "raw_range": "Z.DAT[0x36697:0x36717]",
     "loaded_range": "0x3cc97..0x3cd17",

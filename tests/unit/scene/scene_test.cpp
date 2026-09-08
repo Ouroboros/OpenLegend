@@ -1390,6 +1390,31 @@ void check_scene_movement_idle_state(const std::filesystem::path& root) {
     idle_once(walk);
     OL_CHECK(walk.player_frame() == 5018);
 
+    auto palette_snapshot = prepare();
+    openlegend::random::LegacyRandom palette_random{1U};
+    openlegend::scene::SceneSession palette_session{
+        data_root, palette_snapshot, palette_random, 70};
+    OL_CHECK(finish_scene_title(palette_session).kind == SceneStepKind::stay);
+    openlegend::render::IndexedFramebuffer source_frame;
+    OL_CHECK(palette_session.render(source_frame));
+    const auto source_palette = source_frame.palette();
+    OL_CHECK(palette_session.tick(std::nullopt, false, false).kind == SceneStepKind::present);
+    openlegend::render::IndexedFramebuffer first_present_frame;
+    OL_CHECK(palette_session.render(first_present_frame));
+    const auto first_present_palette = first_present_frame.palette();
+    OL_CHECK(first_present_palette[224].red == source_palette[231].red);
+    OL_CHECK(first_present_palette[224].green == source_palette[231].green);
+    OL_CHECK(first_present_palette[224].blue == source_palette[231].blue);
+    OL_CHECK(first_present_palette[244].red == source_palette[252].red);
+    OL_CHECK(palette_session.periodic_counter() == 0);
+    OL_CHECK(palette_session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+    OL_CHECK(palette_session.periodic_counter() == 1);
+    openlegend::render::IndexedFramebuffer committed_frame;
+    OL_CHECK(palette_session.render(committed_frame));
+    OL_CHECK(committed_frame.palette()[224].red == first_present_palette[224].red);
+    OL_CHECK(committed_frame.palette()[224].green == first_present_palette[224].green);
+    OL_CHECK(committed_frame.palette()[224].blue == first_present_palette[224].blue);
+
     auto counter_snapshot = prepare();
     openlegend::random::LegacyRandom counter_random{1U};
     openlegend::scene::SceneSession counter{

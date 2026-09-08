@@ -439,13 +439,37 @@ void run_real_asset_golden() {
     const auto palette = parse_vga_palette(palette_file.bytes);
     OL_CHECK(static_cast<bool>(palette));
     if (palette) {
-        framebuffer.set_palette(palette.palette);
-        OL_CHECK(framebuffer.palette()[0].red == palette.palette[0].red);
-        OL_CHECK(framebuffer.palette()[0].green == palette.palette[0].green);
-        OL_CHECK(framebuffer.palette()[0].blue == palette.palette[0].blue);
-        OL_CHECK(framebuffer.palette()[255].red == palette.palette[255].red);
-        OL_CHECK(framebuffer.palette()[255].green == palette.palette[255].green);
-        OL_CHECK(framebuffer.palette()[255].blue == palette.palette[255].blue);
+        auto source_palette = palette.palette;
+        framebuffer.set_palette(source_palette);
+        std::array<std::uint8_t, openlegend::compat::kLegacyPaletteSize * 3U> packed_palette{};
+        for (std::size_t index = 0U; index < source_palette.size(); ++index) {
+            const auto source = source_palette[index];
+            const auto stored = framebuffer.palette()[index];
+            OL_CHECK(stored.red == source.red);
+            OL_CHECK(stored.green == source.green);
+            OL_CHECK(stored.blue == source.blue);
+            packed_palette[index * 3U] = stored.red;
+            packed_palette[index * 3U + 1U] = stored.green;
+            packed_palette[index * 3U + 2U] = stored.blue;
+        }
+        OL_CHECK(fnv1a64(packed_palette) == 0xB7546B614CF2C7CCULL);
+
+        const auto committed_first = framebuffer.palette()[0U];
+        source_palette[0U] = {63U, 63U, 63U};
+        OL_CHECK(framebuffer.palette()[0U].red == committed_first.red);
+        OL_CHECK(framebuffer.palette()[0U].green == committed_first.green);
+        OL_CHECK(framebuffer.palette()[0U].blue == committed_first.blue);
+
+        openlegend::compat::LegacyPixels all_indices{};
+        for (std::size_t index = 0U; index < all_indices.size(); ++index) {
+            all_indices[index] = static_cast<std::uint8_t>(index & 0xFFU);
+        }
+        const auto original_indices = all_indices;
+        openlegend::compat::ModernRgbaPixels expanded{};
+        OL_CHECK(openlegend::compat::convert_indexed_frame_to_rgba(
+            {all_indices, framebuffer.palette()}, expanded));
+        OL_CHECK(all_indices == original_indices);
+        OL_CHECK(fnv1a64(expanded) == 0x20A030C1CEF0FC6DULL);
     }
 
     const auto mmap_frame = frame_zero(mmap);

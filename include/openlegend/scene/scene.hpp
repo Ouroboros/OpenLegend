@@ -368,6 +368,7 @@ private:
     [[nodiscard]] SceneStepResult finish_tick_after_action(SceneStepKind fallback);
     [[nodiscard]] SceneStepResult finish_tick_after_scene_present(SceneStepKind fallback);
     [[nodiscard]] SceneStepResult finish_tick_after_auto_event(SceneStepKind fallback);
+    [[nodiscard]] bool palette_cycle_after_present() const noexcept;
     [[nodiscard]] SceneStepResult resolve_scene_transition(SceneStepKind fallback);
     [[nodiscard]] SceneStepResult complete_scene_jump();
     void queue_scene_music(std::size_t metadata_word);

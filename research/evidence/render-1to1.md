@@ -45,11 +45,12 @@
 
 ## 4. 调色板
 
-- `sub_20087 @ 0x20087` 按 256×RGB6 顺序写 VGA DAC。
-- `sub_3CBE3 @ 0x3CBE3` 把 entries 224..231 与244..252 各右旋一格后提交完整 palette；runtime 持有跨 world/scene 的5 tick相位，成功 present 后推进，scene jump 不重置，模态等待帧不推进。
+- `sub_20087 @ 0x20087` 按 256×RGB6 顺序写 VGA DAC；`sub_3D939` wrapper在回扫bit3置位后从DAC index0开始提交全部768 bytes，不写source或indexed pixels。
+- `sub_3CBE3 @ 0x3CBE3` 把 entries 224..231 与244..252 各右旋一格后提交完整 palette；runtime 持有跨 world/scene 的5 tick相位，scene jump 不重置，模态等待帧不推进。
+- 机器world/scene均先复制当前index帧，再在signed余数1分支写DAC，所以当前帧立即使用旋转后palette。现代在host present前预览该旋转，仅在present成功后提交会话counter/palette；失败和重复render不推进状态。
 - MMAP.COL 首次/第五次右旋后 FNV-1a64 为 `898e23463574ae76`，第六次为 `6055f0cfd75adaa6`。
 - 核心保留 0..63 原值；显示兼容层使用 `(value<<2)|(value>>4)` 展开到 8-bit，不反写核心 palette。
-- 对每个 framebuffer 字节严格执行 `color=palette[index]`，依次输出 `R8,G8,B8,255`；该转换位于 `compat`，与 SDL API 解耦并可独立单测。
+- 对每个 framebuffer 字节严格执行 `color=palette[index]`，依次输出 `R8,G8,B8,255`；该转换位于 `compat`，与 SDL API 解耦并可独立单测。完整MMAP palette FNV-1a64=`0xb7546b614cf2c7cc`，64,000-pixel展开帧FNV-1a64=`0x20a030c1cef0fc6d`。
 
 ## 5. 世界地图投影与深度
 
@@ -121,7 +122,8 @@ screenY =  9*dx +  9*dy - 81
 - fresh xref固定71个callsite/11个owner且均清理六个dword；`0x2A7DF/0x2D1BD/0x2D4F1/0x2D587`透传EAX，其余不用于绘制决策。`sub_2A7E8:0x2A867`跳入`0x2A7DA`复用`0x2A7DF`作为上箭头第五次填充和返回。title/name/attribute、上下箭头、圆角/头像白边及item轮廓的正式坐标全在320×200内。
 - 现代`IndexedFramebuffer::fill_rectangle`在合法域保持起点、逐行width字节、320-byte pitch、行顺序和8-bit颜色；显式owner、uint16尺寸、zero-height安全no-op、bool结果、完整越界拒绝及失败短路归类平台适配。本轮把旧signed `x+width/y+height`先加后判改为先比较剩余容量，消除极端宿主坐标在拒绝前溢出；独立四操作整帧FNV-1a64=`0xcca0d464aa7bcf4d`。完整终审见`research/evidence/functions/Z_DAT/0x3D8D8.md`。
 - `sub_3D922 @ 0x3D922` → `sub_2005B` 清屏；
-- `sub_3D939 @ 0x3D939` → `sub_20087` palette 提交；
+- `sub_3D939 @ 0x3D939..0x3D950`是23-byte/6-instruction单块palette wrapper：0分支/跳转/fixup，依次调用8-byte栈探测和`sub_20087`。callee为54 bytes/36 instructions/5块，轮询`0x3DA`后向`0x3C8`写index0，再按升地址向`0x3C9`写768个source byte，每byte固定8个NOP。
+- fresh xref固定6个callsite/5个owner：四处全局palette、两处栈scratch；两处偶然EAX尾透传且无业务消费者。首轮修正world/scene palette较机器晚一host frame的差异，改为当前present预览且成功后提交；修正后入口重审零新增差异。机器/向量合同SHA256=`570f993bd13b228230d216d9d8864b28d70c2799d94be5914b4f1ecd925867d7`/`edd329f9d3a0ea9a01d94eca9f49ec5736d21d92b6a36710c5c5bc07fc4e0d74`，完整终审见`research/evidence/functions/Z_DAT/0x3D939.md`。
 - `sub_3D643 @ 0x3D643` → legacy sprite id `<=0x7FFE`，以整数除 2 取得 frame index 后调用 `sub_20354`。
 
 `sub_3D88A` 是附加特效对象的业务绘制调用方，其 framebuffer 写入仍由本阶段原语完成；特效状态所有权归后续 world/scene/battle 模块。

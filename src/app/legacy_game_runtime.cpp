@@ -18,6 +18,13 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
     1, 2, 9, 16, 17, 25, 28, 29, 35, 36, 37, 38, 44,
     45, 47, 48, 49, 51, 53, 54, 58, 59, 61, 63, 76};
 
+void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
+    auto palette = framebuffer.palette();
+    std::rotate(palette.begin() + 224, palette.begin() + 231, palette.begin() + 232);
+    std::rotate(palette.begin() + 244, palette.begin() + 252, palette.begin() + 253);
+    framebuffer.set_palette(palette);
+}
+
 [[nodiscard]] persistence::SaveSlot save_slot(const std::uint8_t slot) noexcept {
     return static_cast<persistence::SaveSlot>(slot);
 }
@@ -946,6 +953,22 @@ bool LegacyGameRuntime::render() {
             load_transition_phase_ == LoadTransitionPhase::first_black_present ||
             load_transition_phase_ == LoadTransitionPhase::second_black_present) {
             scene_effect_presented_ = true;
+        }
+        const auto next_periodic_counter =
+            static_cast<std::int16_t>((periodic_counter_ + 1) % 5);
+        const auto palette_cycle_after_present =
+            pending_io_ == PendingIo::none &&
+            load_transition_phase_ == LoadTransitionPhase::none &&
+            title_startup_phase_ == TitleStartupPhase::none &&
+            battle_transition_phase_ == BattleTransitionPhase::none &&
+            !pending_name_accept_ && !pending_title_result_.has_value() &&
+            scene_effect_kind_ == SceneEffectKind::none &&
+            !leave_protagonist_notice_pending_ &&
+            world_menu_event_phase_ == WorldMenuEventPhase::none &&
+            !world_scene_transition_pending_ && !world_scene_return_pending_ &&
+            next_periodic_counter == 1;
+        if (palette_cycle_after_present) {
+            preview_legacy_palette_cycle(framebuffer_);
         }
         return true;
     }
