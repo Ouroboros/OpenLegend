@@ -145,14 +145,15 @@ build.bat app --data-dir "..\data"
 | 参数 | 含义与默认值 |
 | --- | --- |
 | `core` | 只构建无SDL应用的核心目标；未写目标时的默认值。 |
-| `app` | 构建完整SDL应用并运行14项测试及smoke。 |
+| `app` | 构建完整SDL应用；默认不运行CTest。 |
 | `sdl` | `app`的兼容别名；新命令使用`app`。 |
 | `--config Debug\|Release` | 普通BUILD默认`Debug`；启用Sanitizer且未指定配置时默认`Release`。 |
 | `--data-dir PATH` | 原版数据目录；相对路径以仓库根目录为基准。 |
 | `--jobs N` | 编译并发数；默认逻辑CPU数，可由`OPENLEGEND_BUILD_JOBS`设置。通常无需手工传入。 |
-| `--test-jobs N` | 测试并发数；默认逻辑CPU数，可由`OPENLEGEND_TEST_JOBS`设置。通常无需手工传入。 |
+| `--test-jobs N` | 使用`--tests`时的测试并发数；默认逻辑CPU数，可由`OPENLEGEND_TEST_JOBS`设置。通常无需手工传入。 |
 | `--configure-only` | 只生成或刷新配置，不编译、不测试。 |
-| `--skip-tests` | 完成编译但不运行CTest；也跳过BUILD前的数据目录身份检查。 |
+| `--tests` | 编译后运行CTest，并在BUILD前验证原版数据目录；默认不运行。 |
+| `--skip-tests` | 明确跳过CTest和BUILD前的数据目录身份检查；这是默认行为。 |
 | `--sanitizers` | Linux启用ASan+UBSan；Windows启用LLVM动态ASan。 |
 
 ### 4. 日常BUILD
@@ -175,29 +176,29 @@ build.bat app --config Release --data-dir "E:\Game\OpenLegend\data"
 build.bat app --config Release --sanitizers --data-dir "E:\Game\OpenLegend\data"
 ```
 
-Windows Sanitizer只支持Release；`--config Debug --sanitizers`会被BUILD明确拒绝。Sanitizer BUILD会在测试前把LLVM 23的`clang_rt.asan_dynamic-x86_64.dll`部署到应用和每个测试EXE旁。普通Debug/Release使用静态CRT且不会携带ASan DLL。
+日常BUILD默认只编译；需要运行CTest时显式添加`--tests`。Windows Sanitizer只支持Release；`--config Debug --sanitizers`会被BUILD明确拒绝。Sanitizer BUILD会把LLVM 23的`clang_rt.asan_dynamic-x86_64.dll`部署到应用和每个测试EXE旁。普通Debug/Release使用静态CRT且不会携带ASan DLL。
 
 ### 5. 完整验收矩阵
 
 阶段关闭或跨平台基础设施变更后，至少执行：
 
 ```bash
-./build.sh core --config Debug --data-dir ../data
-./build.sh core --config Release --data-dir ../data
-./build.sh app --config Debug --data-dir ../data
-./build.sh app --config Release --data-dir ../data
-./build.sh app --config Debug --sanitizers --data-dir ../data
+./build.sh core --config Debug --data-dir ../data --tests
+./build.sh core --config Release --data-dir ../data --tests
+./build.sh app --config Debug --data-dir ../data --tests
+./build.sh app --config Release --data-dir ../data --tests
+./build.sh app --config Debug --sanitizers --data-dir ../data --tests
 ```
 
 ```bat
-build.bat core --config Debug --data-dir "E:\Game\OpenLegend\data"
-build.bat core --config Release --data-dir "E:\Game\OpenLegend\data"
-build.bat app --config Debug --data-dir "E:\Game\OpenLegend\data"
-build.bat app --config Release --data-dir "E:\Game\OpenLegend\data"
-build.bat app --config Release --sanitizers --data-dir "E:\Game\OpenLegend\data"
+build.bat core --config Debug --data-dir "E:\Game\OpenLegend\data" --tests
+build.bat core --config Release --data-dir "E:\Game\OpenLegend\data" --tests
+build.bat app --config Debug --data-dir "E:\Game\OpenLegend\data" --tests
+build.bat app --config Release --data-dir "E:\Game\OpenLegend\data" --tests
+build.bat app --config Release --sanitizers --data-dir "E:\Game\OpenLegend\data" --tests
 ```
 
-最新最终验收中，Linux/Windows core均为13/13，app均为14/14并包含SDL smoke；Linux ASan+UBSan和Windows Release ASan均为14/14。Windows render、scene与battle测试保持默认1MB PE栈，不允许用链接栈选项掩盖大型fixture。
+当前CTest注册中，core为119项，app为120项并包含SDL smoke。Windows render、scene与battle测试保持默认1MB PE栈，不允许用链接栈选项掩盖大型fixture。
 
 ### 6. 缓存、产物与重配置
 

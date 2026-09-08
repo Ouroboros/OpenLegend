@@ -98,6 +98,11 @@ class BuildToolTest(unittest.TestCase):
         build.validate_configuration("windows", "Debug", False)
         build.validate_configuration("linux", "Debug", True)
 
+    def test_skips_tests_by_default_and_supports_explicit_test_mode(self) -> None:
+        self.assertTrue(build.parse_args(["app"]).skip_tests)
+        self.assertFalse(build.parse_args(["app", "--tests"]).skip_tests)
+        self.assertTrue(build.parse_args(["app", "--skip-tests"]).skip_tests)
+
     def test_rejects_nonpositive_parallelism(self) -> None:
         with self.assertRaisesRegex(argparse.ArgumentTypeError, "positive integer"):
             build.positive_integer("0")

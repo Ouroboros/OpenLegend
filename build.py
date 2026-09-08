@@ -123,7 +123,20 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         default=environment_jobs("OPENLEGEND_TEST_JOBS", processor_count),
     )
     parser.add_argument("--configure-only", action="store_true")
-    parser.add_argument("--skip-tests", action="store_true")
+    test_mode = parser.add_mutually_exclusive_group()
+    test_mode.add_argument(
+        "--tests",
+        dest="skip_tests",
+        action="store_false",
+        help="run CTest after the build (default: skip tests)",
+    )
+    test_mode.add_argument(
+        "--skip-tests",
+        dest="skip_tests",
+        action="store_true",
+        help="skip CTest after the build (default)",
+    )
+    parser.set_defaults(skip_tests=True)
     parser.add_argument("--sanitizers", action="store_true")
     result = parser.parse_args(arguments)
     if result.config is None:
@@ -567,7 +580,8 @@ def main() -> int:
         for output in outputs:
             print(f"[OpenLegend] Application: {output}", flush=True)
 
-    print(f"[OpenLegend] Build and tests completed: {build_dir} ({args.config})")
+    completion = "Build completed" if args.skip_tests else "Build and tests completed"
+    print(f"[OpenLegend] {completion}: {build_dir} ({args.config})")
     return 0
 
 
