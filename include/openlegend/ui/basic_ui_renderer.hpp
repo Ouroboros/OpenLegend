@@ -59,8 +59,8 @@ private:
         std::uint16_t width,
         std::uint16_t height);
     [[nodiscard]] bool render_items(
+        const GameMenuController& menu,
         const model::RangerState& ranger,
-        std::uint16_t selection,
         render::IndexedFramebuffer& framebuffer);
     void update_panel_palette(const compat::LegacyPalette& palette) noexcept;
     [[nodiscard]] std::uint8_t blend_panel_pixel(

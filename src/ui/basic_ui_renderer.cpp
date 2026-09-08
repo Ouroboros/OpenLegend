@@ -360,7 +360,7 @@ bool BasicUiRenderer::render_game_menu(
     case GameMenuScreen::status_panel:
         return false;
     case GameMenuScreen::items:
-        return render_items(ranger, menu.item_selection(), framebuffer);
+        return render_items(menu, ranger, framebuffer);
     case GameMenuScreen::item_confirmation:
         if (!draw_box(framebuffer, 62, 18, 203U, 50U)) {
             return false;
@@ -576,16 +576,19 @@ std::uint8_t BasicUiRenderer::blend_panel_pixel(
 }
 
 bool BasicUiRenderer::render_items(
+    const GameMenuController& menu,
     const model::RangerState& ranger,
-    const std::uint16_t selection,
     render::IndexedFramebuffer& framebuffer) {
     framebuffer.clear(0U);
+    const auto selection = menu.item_selection();
+    const auto inventory_slots = menu.inventory_slots();
     const auto page_begin = static_cast<std::size_t>(selection / 8U) * 8U;
     for (std::size_t row = 0U; row < 8U; ++row) {
-        const auto slot = page_begin + row;
-        if (slot >= model::kInventoryCount) {
+        const auto selection_index = page_begin + row;
+        if (selection_index >= inventory_slots.size()) {
             break;
         }
+        const auto slot = static_cast<std::size_t>(inventory_slots[selection_index]);
         const auto item_id = ranger.header.inventory_item(slot).value;
         if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
             break;
@@ -601,7 +604,7 @@ bool BasicUiRenderer::render_items(
                 20,
                 20 + static_cast<int>(row) * 20,
                 line,
-                slot == selection ? 0x6663U : 0x2321U)) {
+                selection_index == selection ? 0x6663U : 0x2321U)) {
             return false;
         }
     }

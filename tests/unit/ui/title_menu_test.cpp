@@ -69,6 +69,11 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.game_menu_.item_selection();
     }
 
+    static std::span<const std::int16_t> game_menu_inventory_slots(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.game_menu_.inventory_slots();
+    }
+
     static std::int16_t scene_pending_menu_index(
         const LegacyGameRuntime& runtime) noexcept {
         return runtime.scene_session_ != nullptr
@@ -654,6 +659,22 @@ void check_game_menu_controller() {
     OL_CHECK(result.command == GameMenuCommand::items);
     OL_CHECK(result.index == 2U);
     OL_CHECK(items.screen() == GameMenuScreen::main);
+
+    GameMenuController sparse_items;
+    const std::array<std::int16_t, 3U> sparse_inventory_slots{2, 5, 199};
+    sparse_items.set_inventory_slots(sparse_inventory_slots);
+    OL_CHECK(std::ranges::equal(
+        sparse_items.inventory_slots(), sparse_inventory_slots));
+    static_cast<void>(sparse_items.handle_key(0x98U));
+    static_cast<void>(sparse_items.handle_key(0x98U));
+    static_cast<void>(sparse_items.handle_key(0x0DU));
+    static_cast<void>(sparse_items.handle_key(0x9CU));
+    static_cast<void>(sparse_items.handle_key(0x9CU));
+    OL_CHECK(sparse_items.item_selection() == 2U);
+    result = sparse_items.handle_key(0x0DU);
+    OL_CHECK(result.command == GameMenuCommand::items);
+    OL_CHECK(result.index == 199U);
+
     items.set_party_count(2U);
     items.begin_item_target_selection(GameMenuItemTargetKind::equipment);
     OL_CHECK(items.screen() == GameMenuScreen::party_select);
@@ -1241,6 +1262,26 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.render());
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
+
+    auto* sparse_inventory_ranger =
+        const_cast<model::GameState&>(new_game.game_state()).ranger();
+    OL_CHECK(sparse_inventory_ranger != nullptr);
+    const auto saved_sparse_inventory_header = sparse_inventory_ranger->header;
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        sparse_inventory_ranger->header.set_inventory(slot, model::ItemId{-1}, 0);
+    }
+    sparse_inventory_ranger->header.set_inventory(2U, model::ItemId{0}, 0);
+    sparse_inventory_ranger->header.set_inventory(5U, model::ItemId{0}, -1);
+    sparse_inventory_ranger->header.set_inventory(199U, model::ItemId{2}, -32768);
+    new_game.handle_key(0x1BU, false, false);
+    const std::array<std::int16_t, 3U> expected_sparse_slots{2, 5, 199};
+    OL_CHECK(std::ranges::equal(
+        app::LegacyGameRuntimeTestAccess::game_menu_inventory_slots(new_game),
+        expected_sparse_slots));
+    new_game.handle_key(0x1BU, false, false);
+    OL_CHECK(new_game.view() == app::LegacyGameView::world);
+    sparse_inventory_ranger->header = saved_sparse_inventory_header;
+
     OL_CHECK(new_game.handle_world_input(false, false, false, false, true));
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     OL_CHECK(new_game.render());

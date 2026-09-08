@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=337/349`，`unique_any=274/284`，`unique_all=272/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=27` `sub_2A10F`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=28` `sub_2A186`
-最近关闭：ui `audit_order=26` `sub_2A0D9`已固定54 bytes、16条指令、1/1 CFG块、1处重定位、4次direct call、唯一caller和RET；首轮发现现代可在初始items frame成功present前消费同批下一键，现由runtime initial-present gate恢复机器`reset → draw/present → selector`顺序，修正后入口重审及Linux app Debug 14/14关闭。
+当前有效进度：`closure=338/349`，`unique_any=275/284`，`unique_all=273/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=28` `sub_2A186`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=29` `sub_2A86C`
+最近关闭：ui `audit_order=27` `sub_2A10F`已固定119 bytes、34条指令、9/9 CFG块、6个条件分支、6处重定位、2次direct call、2个caller和唯一RET；首轮发现现代world/scene遇中间空槽截断并把逻辑index误作库存slot，现以固定200项slot映射恢复全槽稳定扫描、quantity无关及filter0/type3+4合同，修正后入口重审及Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 

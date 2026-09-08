@@ -1361,6 +1361,25 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(selection.inventory_slots[1U] == 1);
     OL_CHECK(selection.inventory_slots[2U] == 2);
     OL_CHECK(selection.inventory_slots[3U] == -1);
+
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{-1}, 0);
+    ranger.header.set_inventory(2U, openlegend::model::ItemId{-1}, 0);
+    ranger.header.set_inventory(5U, openlegend::model::ItemId{97}, 2);
+    ranger.header.set_inventory(10U, openlegend::model::ItemId{10}, 0);
+    ranger.header.set_inventory(199U, openlegend::model::ItemId{97}, -32768);
+    const auto sparse_selection = setup.begin_item_selection();
+    OL_CHECK(sparse_selection.count == 4);
+    OL_CHECK(sparse_selection.inventory_slots[0U] == 0);
+    OL_CHECK(sparse_selection.inventory_slots[1U] == 5);
+    OL_CHECK(sparse_selection.inventory_slots[2U] == 10);
+    OL_CHECK(sparse_selection.inventory_slots[3U] == 199);
+    OL_CHECK(sparse_selection.inventory_slots[4U] == -1);
+    ranger.header.set_inventory(1U, openlegend::model::ItemId{97}, 2);
+    ranger.header.set_inventory(2U, openlegend::model::ItemId{10}, 0);
+    ranger.header.set_inventory(5U, openlegend::model::ItemId{-1}, 0);
+    ranger.header.set_inventory(10U, openlegend::model::ItemId{-1}, 0);
+    ranger.header.set_inventory(199U, openlegend::model::ItemId{-1}, 0);
+
     OL_CHECK(setup.throwing_weapon_targeting_range(0U) == 2);
 
     openlegend::random::LegacyRandom random{1U};

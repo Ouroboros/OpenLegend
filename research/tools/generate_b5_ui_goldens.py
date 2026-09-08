@@ -640,6 +640,182 @@ def game_menu_item_entry_machine(z_dat: bytes) -> dict[str, object]:
     }
 
 
+def game_menu_item_reset_machine(z_dat: bytes, ranger: bytes) -> dict[str, object]:
+    loaded_start = 0x2A10F
+    raw = z_dat[0x23B0F:0x23B86]
+    assert len(raw) == 119
+    assert raw.hex() == (
+        "680c000000e8054c010053568b74240cb990010000baffffffffb8c0270b00"
+        "e85d4d010031db31d289d0c1e0026683b82cfe0600007c340fbf802cfe06"
+        "0069c0be0000000fbf889627080039f1741385f6740f6683b89627080003"
+        "750e83fe0475096689145dc0270b00434281fac80000007cb45e5bc3"
+    )
+    assert sha256(raw) == "ed0ea131ea4ad455f838bd2a0886c36f9570633e4bdd512caa84612c10643cae"
+
+    fixup_offsets = (0x1B, 0x30, 0x3A, 0x47, 0x56, 0x66)
+    loaded = bytearray(raw)
+    fixups = []
+    for offset in fixup_offsets:
+        (raw_address,) = struct.unpack_from("<I", raw, offset)
+        struct.pack_into("<I", loaded, offset, raw_address + 0x20000)
+        fixups.append(
+            {
+                "site": f"0x{loaded_start + offset:x}",
+                "raw": f"0x{raw_address:x}",
+                "loaded": f"0x{raw_address + 0x20000:x}",
+            }
+        )
+    assert sha256(loaded) == "c14a05e9ecf2998e8362891eb4edb8a0788be7ec2819bcd744c0e93e7a7cacd4"
+
+    calls = ((0x05, 0x3ED1E), (0x1F, 0x3EE90))
+    for offset, target in calls:
+        assert raw[offset] == 0xE8
+        (displacement,) = struct.unpack_from("<i", raw, offset + 1)
+        assert loaded_start + offset + 5 + displacement == target
+
+    entry_caller = z_dat[0x23AD9:0x23B0F]
+    battle_caller = z_dat[0x33C9C:0x33D0B]
+    assert sha256(entry_caller) == "1fd36ede5cb17507e24e83bc883074f6205a911ee34359aad6514b6280a2f383"
+    assert sha256(battle_caller) == "eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7"
+    assert entry_caller[0x11:0x18] == bytes.fromhex("6a00e81e000000")
+    assert battle_caller[0x0E:0x15] == bytes.fromhex("6a04e85efefeff")
+
+    fill_callee = z_dat[0x38890:0x388C1]
+    assert len(fill_callee) == 49
+    assert sha256(fill_callee) == "8bd4126f640ec6f565a8e4069e0dbd027d32ee12da3ec9d6ff52ce2151aa7365"
+
+    def signed_word(value: int) -> int:
+        value &= 0xFFFF
+        return value - 0x10000 if value >= 0x8000 else value
+
+    def machine_filter(
+        filter_value: int,
+        inventory: list[tuple[int, int]],
+        item_types: dict[int, int],
+    ) -> list[int]:
+        assert len(inventory) == 200
+        output = [-1] * 200
+        output_count = 0
+        for slot, (item_id, _quantity) in enumerate(inventory):
+            item_id = signed_word(item_id)
+            if item_id < 0:
+                continue
+            item_type = signed_word(item_types[item_id])
+            if (
+                item_type == filter_value
+                or filter_value == 0
+                or (item_type == 3 and filter_value == 4)
+            ):
+                output[output_count] = slot
+                output_count += 1
+        return output
+
+    header = struct.unpack("<418h", ranger[:836])
+    baseline_inventory = [
+        (header[18 + slot * 2], header[19 + slot * 2]) for slot in range(200)
+    ]
+    baseline_types = {
+        item_id: struct.unpack_from("<h", ranger, 59076 + item_id * 190)[0]
+        for item_id, _quantity in baseline_inventory
+        if item_id >= 0
+    }
+    baseline_zero = machine_filter(0, baseline_inventory, baseline_types)
+    baseline_four = machine_filter(4, baseline_inventory, baseline_types)
+    assert baseline_zero[:5] == [0, 1, 2, 3, -1]
+    assert baseline_four == [-1] * 200
+
+    synthetic_inventory = [(-1, 0)] * 200
+    synthetic_types = {10: 4, 11: 3, 12: 2, 13: 4, 14: -1, 15: 0, 16: 3}
+    for slot, entry in {
+        0: (10, 1),
+        1: (11, 0),
+        2: (12, 0),
+        3: (-32768, 9),
+        4: (13, -32768),
+        5: (10, 7),
+        6: (14, 1),
+        7: (15, 1),
+        8: (16, -1),
+    }.items():
+        synthetic_inventory[slot] = entry
+    synthetic_zero = machine_filter(0, synthetic_inventory, synthetic_types)
+    synthetic_four = machine_filter(4, synthetic_inventory, synthetic_types)
+    assert synthetic_zero[:9] == [0, 1, 2, 4, 5, 6, 7, 8, -1]
+    assert synthetic_four[:6] == [0, 1, 4, 5, 8, -1]
+
+    full_inventory = [
+        (slot % 17, 0 if slot % 2 else -32768) for slot in range(200)
+    ]
+    full_types = {item_id: 4 for item_id in range(17)}
+    full_output = machine_filter(4, full_inventory, full_types)
+    assert full_output == list(range(200))
+
+    contract = {
+        "input": "full 32-bit filter; actual callers pass 0 and 4",
+        "reset": "fill 400 output bytes with 0xff, yielding 200 signed-word -1 sentinels",
+        "scan": "inventory slots 0..199 in ascending order",
+        "item_id": "signed word; negative values skipped; quantity word never read",
+        "item_type": "signed word at item record stride 190",
+        "include": "item_type == filter or filter == 0 or (item_type == 3 and filter == 4)",
+        "output": "accepted inventory slot indices as signed words in stable prefix order",
+        "return": "unstable EAX ignored/overwritten by both callers",
+        "owner_boundary": "stack probe, fill callee, both callers, draw and selector remain independent",
+    }
+    contract_sha256 = sha256(
+        json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert contract_sha256 == "7c020bf7c766d2e55b143a4593fd1e861f15dc4755c6685f7da988b594e45449"
+    vectors = {
+        "baseline_filter_0": baseline_zero,
+        "baseline_filter_4": baseline_four,
+        "synthetic_filter_0": synthetic_zero,
+        "synthetic_filter_4": synthetic_four,
+        "full_200_filter_4": full_output,
+    }
+    vectors_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    assert vectors_sha256 == "af4d291ff7f5cd82a2208ec7156ff298fdda9b983b63908ea6552b2e8b3e6798"
+
+    return {
+        "raw_range": "Z.DAT[0x23b0f:0x23b86]",
+        "loaded_range": "0x2a10f..0x2a186",
+        "size_bytes": len(raw),
+        "instruction_count": 34,
+        "basic_block_count": 9,
+        "conditional_branch_count": 6,
+        "unconditional_jump_count": 0,
+        "calls": [
+            {"site": f"0x{loaded_start + offset:x}", "target": f"0x{target:x}"}
+            for offset, target in calls
+        ],
+        "fixups": fixups,
+        "relocation_delta": "0x20000",
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(loaded),
+        "normalized_loaded_equals_raw": True,
+        "entry_xrefs": ["sub_2a0d9:0x2a0ec", "sub_3a29c:0x3a2ac"],
+        "external_internal_entries": [],
+        "local_return": "0x2a185",
+        "caller_filters": {"sub_2a0d9": 0, "sub_3a29c": 4},
+        "caller_raw_sha256": {
+            "sub_2a0d9": sha256(entry_caller),
+            "sub_3a29c": sha256(battle_caller),
+        },
+        "fill_callee": {
+            "range": "0x3ee90..0x3eec1",
+            "size_bytes": len(fill_callee),
+            "instruction_count": 24,
+            "raw_sha256": sha256(fill_callee),
+            "call_registers": {"eax": "0xd27c0", "ecx": 400, "edx": "0xffffffff"},
+        },
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+        "vectors": vectors,
+        "vectors_sha256": vectors_sha256,
+    }
+
+
 def game_menu_item_selector_machine(z_dat: bytes) -> dict[str, object]:
     loaded_start = 0x2A86C
     raw = z_dat[0x2426C:0x24C27]
@@ -1005,6 +1181,7 @@ def main() -> int:
             ),
         },
         "game_menu_item_entry_machine": game_menu_item_entry_machine(z_dat),
+        "game_menu_item_reset_machine": game_menu_item_reset_machine(z_dat, ranger),
         "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
         "title_navigation": {
             "main_labels": ["new_game", "load", "exit"],

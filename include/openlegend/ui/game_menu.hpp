@@ -82,6 +82,7 @@ public:
         const std::array<std::int16_t, 6U>& medicine,
         const std::array<std::int16_t, 6U>& detoxification) noexcept;
     void set_inventory_count(std::uint16_t count) noexcept;
+    void set_inventory_slots(std::span<const std::int16_t> slots) noexcept;
     void show_main() noexcept {
         screen_ = GameMenuScreen::main;
         selection_ = 0U;
@@ -118,6 +119,17 @@ public:
     [[nodiscard]] constexpr std::uint16_t item_selection() const noexcept {
         return static_cast<std::uint16_t>(
             5 * (item_page_ + item_row_) + item_column_);
+    }
+    [[nodiscard]] constexpr std::span<const std::int16_t> inventory_slots() const noexcept {
+        return std::span<const std::int16_t>{inventory_slots_}.first(inventory_count_);
+    }
+    [[nodiscard]] constexpr std::optional<std::uint16_t>
+        selected_inventory_slot() const noexcept {
+        const auto selection = item_selection();
+        if (selection >= inventory_count_ || inventory_slots_[selection] < 0) {
+            return std::nullopt;
+        }
+        return static_cast<std::uint16_t>(inventory_slots_[selection]);
     }
     [[nodiscard]] constexpr std::uint8_t item_page() const noexcept { return item_page_; }
     [[nodiscard]] constexpr std::uint8_t item_row() const noexcept { return item_row_; }
@@ -165,6 +177,7 @@ private:
     std::uint8_t status_page_{};
     std::uint8_t system_selection_{};
     std::uint8_t slot_selection_{};
+    std::array<std::int16_t, 200U> inventory_slots_{};
     std::uint16_t inventory_count_{};
     std::uint8_t item_page_{};
     std::uint8_t item_row_{};

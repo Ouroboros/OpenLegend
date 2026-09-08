@@ -1801,12 +1801,18 @@ void LegacyGameRuntime::update_menu_counts() {
     }
     game_menu_.set_party_abilities(medicine_abilities, detoxification_abilities);
 
-    std::uint16_t inventory_count = 0U;
-    while (inventory_count < model::kInventoryCount &&
-           ranger->header.inventory_item(inventory_count).value >= 0) {
+    std::array<std::int16_t, model::kInventoryCount> inventory_slots{};
+    std::size_t inventory_count = 0U;
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        const auto item_id = ranger->header.inventory_item(slot).value;
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger->items.size()) {
+            continue;
+        }
+        inventory_slots[inventory_count] = static_cast<std::int16_t>(slot);
         ++inventory_count;
     }
-    game_menu_.set_inventory_count(inventory_count);
+    game_menu_.set_inventory_slots(
+        std::span<const std::int16_t>{inventory_slots}.first(inventory_count));
 }
 
 void LegacyGameRuntime::set_view(

@@ -67,6 +67,18 @@ void GameMenuController::set_party_abilities(
 
 void GameMenuController::set_inventory_count(const std::uint16_t count) noexcept {
     inventory_count_ = std::min<std::uint16_t>(count, 200U);
+    std::ranges::fill(inventory_slots_, static_cast<std::int16_t>(-1));
+    for (std::uint16_t index = 0U; index < inventory_count_; ++index) {
+        inventory_slots_[index] = static_cast<std::int16_t>(index);
+    }
+}
+
+void GameMenuController::set_inventory_slots(
+    const std::span<const std::int16_t> slots) noexcept {
+    inventory_count_ = static_cast<std::uint16_t>(
+        std::min<std::size_t>(slots.size(), inventory_slots_.size()));
+    std::ranges::fill(inventory_slots_, static_cast<std::int16_t>(-1));
+    std::ranges::copy(slots.first(inventory_count_), inventory_slots_.begin());
 }
 
 void GameMenuController::complete_party_action(const std::int32_t amount) noexcept {
@@ -267,16 +279,21 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             return {};
         }
         if (pending_party_command_ == GameMenuCommand::items) {
+            const auto inventory_slot = selected_inventory_slot();
+            if (!inventory_slot.has_value()) {
+                return {};
+            }
             const auto target_slot = selected_party_slot();
             screen_ = GameMenuScreen::main;
-            return {GameMenuCommand::items, target_slot, item_selection()};
+            return {GameMenuCommand::items, target_slot, *inventory_slot};
         }
         screen_ = GameMenuScreen::main;
         return {pending_party_command_, 0U, selected_party_slot()};
     case GameMenuScreen::items:
-        if (item_selection() < inventory_count_) {
+        if (const auto inventory_slot = selected_inventory_slot();
+            inventory_slot.has_value()) {
             screen_ = GameMenuScreen::main;
-            return {GameMenuCommand::items, 0U, item_selection()};
+            return {GameMenuCommand::items, 0U, *inventory_slot};
         }
         return {};
     case GameMenuScreen::system:

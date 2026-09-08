@@ -125,6 +125,8 @@ wait   = 7333253ca7400de6
 
 `sub_2A0D9`的input-font owner已独立终审：wrapper在caller预清last-key及三确认键态后再次清last-key，现代把两次相邻写零合并到不可重入的SDL事件返回边界，下一事件前清理且中间无last-key读，零产品差异。UI Order26随后以新临时IDB独立重启同址wrapper REVIEW，首轮发现现代进入items后可在初始frame成功present前消费同批下一键，违反机器`reset → draw/present → selector`顺序。现由runtime items初始present门修正：进入items关闭，render不打开，只有`finish_presented_tick()`打开；修正后重审16/16条指令、1/1块、四次call、唯一caller和RET无第二处wrapper差异。新UI序列SHA256为`962ae13a3845694f656a57eddcd92543144c72da532fd5b5572eae5c1d9ed5bb`，原资产正式合同SHA256保持`59bb83d28586b8871cf9446349b0d1cd1840488e990a88e1f14c0e061cf4b389`。
 
+UI Order27独立冻结`sub_2A10F`为119 bytes、34条指令、9/9 CFG块、6个条件分支、6处重定位、2次direct call、2个caller和唯一RET。机器先把200个输出word填`-1`，再完整扫描库存slot 0..199；signed负ID跳过，quantity不读，filter0收全部合法ID，filter4收type4/type3并集，并稳定保存原库存slot。首轮对照发现现代world/scene遇中间空槽即截断，且controller/renderer把逻辑网格index误作库存slot；现以固定200项slot映射最小修正，battle原实现无需修改。修正后从入口重审34/34条指令和全部分支无第二处合法域差异；稀疏槽、重复ID、count0、负count与slot199回归通过。正式B5 Golden三生成一致SHA256=`4cb8ef9c58e13f05f64ada8fe4453f96a9c9fbbfe2f8924736dc4fe317d1b3c8`，合同/向量SHA256分别为`7c020bf7c766d2e55b143a4593fd1e861f15dc4755c6685f7da988b594e45449`/`af4d291ff7f5cd82a2208ec7156ff298fdda9b983b63908ea6552b2e8b3e6798`。本项只关闭reset/filter owner；draw与selector保持独立。
+
 `sub_2A86C`的input-font owner也已从2491字节机器入口终审：首轮发现world/scene与battle物品选择错误接受Insert，现仅在物品选择上下文收窄为Enter/Space；修正后重审548条指令和137块零新增差异。上述input/UI wrapper结论均不关闭三个callee；`sub_2A10F` reset、`sub_2A186` 5×3 draw/present、`sub_2A86C` selection loop及装备/修炼/消耗品或事件分支继续按UI Order27、Order28、Order29独立终审，当前8行文字列表差异仍明确保留给Order28。
 
 ## 7. 失败、所有权与阶段边界
