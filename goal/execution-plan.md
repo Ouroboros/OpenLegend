@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=345/349`，`unique_any=280/284`，`unique_all=280/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=36` `sub_3D6D1`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=37` `sub_3D6E0`
-最近关闭：ui `audit_order=34` `sub_3D34A`已用新临时IDB固定207-byte主范围/62条指令及唯一8-byte/6-instruction恢复尾、13个IDA块（12非空）、5个条件分支、1个无条件跳转、1处重定位、1次direct call和唯一caller；机器按RGB4格心、palette index 0..255执行1,048,576次signed平方距离，以初值30000/index0和strict-less首tie写满4096-byte表；world/scene/battle/Basic UI四份现代构造完整byte域零产品差异，私有表生命周期、固定输入容量和same-palette缓存归类平台适配；MMAP.COL完整表SHA256=`654a89e9d122ab12d33656dd53a19c9ac97e82fb03f41c55e94087b3c2396ac4`，三次独立Golden等于正式文件，四份源码30000阈值静态门与合法tie回归已补齐，Linux app Debug 14/14关闭。
+当前有效进度：`closure=346/349`，`unique_any=281/284`，`unique_all=281/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=37` `sub_3D6E0`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=38` `sub_3D8D8`
+最近关闭：ui `audit_order=36` `sub_3D6D1`已用独立临时IDB固定15-byte/3-instruction wrapper、2个IDA块（1非空）、0条件分支、1个tail jump、1个call、0 fixup和无本地RET；独立callee为34 bytes/19 instructions，以`CLD; REP MOVSD`从active global向VGA一次复制16,000 dword=64,000 index bytes；fresh xref为107个callsite/62个owner，全部两参数均被忽略且不消费返回值；现代固定64,000 index输入、完整256色RGBA转换和单次SDL present，只有成功present后才调用`finish_presented_tick`，VGA→SDL、RGB6展开、整数viewport、合法性/失败处理及死参数删除归类平台适配；完整frame/all-index与pre-finish不推进回归已补，机器合同SHA256=`1ac2e9b4b425b546fe4868ff50b06c4fa5cec7d44bcd64b4cb4c101bec90e6ab`，Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 

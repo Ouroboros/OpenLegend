@@ -5,7 +5,8 @@
 
 ## 1. Indexed framebuffer
 
-- `sub_20039 @ 0x20039`：把 64,000 字节后备缓冲提交到 VGA `A000:0000`。
+- `sub_3D6D1 @ 0x3D6D1..0x3D6E0`是15-byte/3-instruction提交wrapper：栈探针后tail-jump到`sub_20039`，没有本地RET、分支、fixup或参数读取。
+- `sub_20039 @ 0x20039..0x2005B`保存通用复制寄存器后执行`CLD`，从`[dword_51C7F]`向线性VGA `0xA0000`一次`REP MOVSD`复制`0x3E80`个dword，恰为64,000个后备缓冲字节，然后RET直接返回wrapper的caller。
 - `sub_2010A @ 0x2010A`：按 320 字节 stride 逐行填充矩形。
 - `sub_2D501 @ 0x2D501`：以上、左、右、下顺序调用四次矩形填充形成1像素直角框，不改内部像素；现代映射为 `IndexedFramebuffer::outline_rectangle`。
 - 核心真值固定为 `320×200×8-bit indexed framebuffer`；DOS index 字节不可直接作为现代颜色提交，宿主 RGBA 只在最终显示兼容层生成。
@@ -114,7 +115,7 @@ screenY =  9*dx +  9*dy - 81
 
 以下入口没有额外像素算法，只保留参数门禁并调用已还原低层原语：
 
-- `sub_3D6D1 @ 0x3D6D1` → `sub_20039` framebuffer 提交；
+- `sub_3D6D1 @ 0x3D6D1` → `sub_20039` framebuffer提交；fresh机器审计固定107个callsite/62个owner，全部传入同一对死参数但owner/callee只读取active framebuffer global。caller分布为main/title/world/UI 41处、scene/event/ending 41处、battle 25处；完整终审见`research/evidence/functions/Z_DAT/0x3D6D1.md`。
 - `sub_3D832 @ 0x3D832` → Y 坐标 `<0xBA` 后调用 `sub_3D1E5`；
 - `sub_3D8D8 @ 0x3D8D8` → `sub_2010A` 矩形填充；
 - `sub_3D922 @ 0x3D922` → `sub_2005B` 清屏；
@@ -138,7 +139,7 @@ screenY =  9*dx +  9*dy - 81
 
 窗口最小尺寸为 `320×200`。视口 scale 为 `min(outputWidth/320, outputHeight/200)` 的正整数，目标尺寸固定为 `320*scale × 200*scale`，余区清黑；不得使用线性过滤、任意小数放大或缩放后回读核心缓冲。当前默认 `960×600` 得到精确 3 倍显示。
 
-这是一条平台兼容要求：它允许 DOS 像素在现代系统显示，但不改变游戏侧逐像素真值。对应纯单元测试覆盖 RGB6 `0/31/63`、任意 palette index、非法帧/输出长度与 `960×600`、带黑边窗口、过小窗口视口。
+这是一条平台兼容要求：它允许 DOS 像素在现代系统显示，但不改变游戏侧逐像素真值。`src/platform/sdl3/main.cpp`只在`SDL_RenderPresent`成功后调用`LegacyGameRuntime::finish_presented_tick`，失败路径返回且不推进UI/scene/battle continuation。对应纯单元测试覆盖 RGB6 `0/31/63`、完整64,000 pixel与全部256个palette index、source不变、非法帧/输出长度，以及`960×600`、带黑边窗口和过小窗口视口；runtime回归另锁定render完成但尚未收到成功present信号时不得推进。
 
 ## 10. 自动门禁
 

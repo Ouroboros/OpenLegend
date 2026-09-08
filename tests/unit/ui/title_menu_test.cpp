@@ -1010,6 +1010,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         intro_game.handle_key(0x0DU, false, false);
         OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
         OL_CHECK(intro_game.render());
+        intro_game.advance();
+        OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
         intro_game.finish_presented_tick();
         for (int tick = 0; tick < 29; ++tick) {
             intro_game.advance();

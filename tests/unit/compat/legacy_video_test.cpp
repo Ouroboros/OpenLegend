@@ -1,4 +1,5 @@
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "openlegend/compat/legacy_video.hpp"
@@ -36,6 +37,31 @@ void run_legacy_video_tests() {
     OL_CHECK(rgba[2] == 4U);
     OL_CHECK(rgba[3] == 255U);
     OL_CHECK(!convert_indexed_frame_to_rgba(frame, std::span<std::uint8_t>{rgba}.first(4U)));
+
+    LegacyPixels full_pixels{};
+    LegacyPalette full_palette{};
+    for (std::size_t index = 0U; index < full_palette.size(); ++index) {
+        full_palette[index] = {
+            static_cast<std::uint8_t>(index & 0x3FU),
+            static_cast<std::uint8_t>((index >> 2U) & 0x3FU),
+            static_cast<std::uint8_t>((index * 5U) & 0x3FU)};
+    }
+    for (std::size_t index = 0U; index < full_pixels.size(); ++index) {
+        full_pixels[index] = static_cast<std::uint8_t>((index * 37U + 11U) & 0xFFU);
+    }
+    const auto source_pixels = full_pixels;
+    const auto full_frame = IndexedFrameView{full_pixels, full_palette};
+    ModernRgbaPixels full_rgba{};
+    OL_CHECK(convert_indexed_frame_to_rgba(full_frame, full_rgba));
+    OL_CHECK(full_pixels == source_pixels);
+    for (std::size_t index = 0U; index < full_pixels.size(); ++index) {
+        const auto color = full_palette[full_pixels[index]];
+        const auto target = index * kModernRgbaBytesPerPixel;
+        OL_CHECK(full_rgba[target] == expand_rgb6(color.red));
+        OL_CHECK(full_rgba[target + 1U] == expand_rgb6(color.green));
+        OL_CHECK(full_rgba[target + 2U] == expand_rgb6(color.blue));
+        OL_CHECK(full_rgba[target + 3U] == 0xFFU);
+    }
 
     constexpr auto exact = integer_viewport(960, 600);
     static_assert(exact.x == 0 && exact.y == 0);
