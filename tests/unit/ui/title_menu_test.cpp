@@ -3479,26 +3479,54 @@ void check_renderer(const std::filesystem::path& data_root) {
     check_highlight_cell(framebuffer.pixels(), 85);
 }
 
+using UiCheck = void (*)(const std::filesystem::path&);
+
+void run_controller_check(const std::filesystem::path&) {
+    check_controller();
+}
+
+void run_game_menu_controller_check(const std::filesystem::path&) {
+    check_game_menu_controller();
+}
+
+void run_attribute_controller_check(const std::filesystem::path&) {
+    check_attribute_controller();
+}
+
+[[gnu::noinline]] void run_ui_check(
+    const UiCheck check,
+    const std::filesystem::path& data_root) {
+    check(data_root);
+}
+
 }  // namespace
 
-int main() {
+int main(const int argc, char* argv[]) {
+    const auto shard = openlegend::test::test_shard(argc, argv);
     const auto data_root = openlegend::test::game_data_root();
-    check_controller();
-    check_game_menu_controller();
-    check_attribute_controller();
-    check_name_editor(data_root);
-    check_startup_resource_cache(data_root);
-    check_game_runtime(data_root);
-    check_question_present_gate(data_root);
-    check_picture_animation_tick_gates(data_root);
-    check_three_statue_animation_tick_gates(data_root);
-    check_ending_prelude_animation_tick_gates(data_root);
-    check_shop_input_present_gate(data_root);
-    check_death_menu_present_gate(data_root);
-    check_battle_party_selection_input_timing(data_root);
-    check_battle_runtime_transitions(data_root);
-    check_scene_load_runtime(data_root);
-    check_runtime_persistence(data_root);
-    check_renderer(data_root);
+    const std::array<UiCheck, 17> checks{
+        run_controller_check,
+        run_game_menu_controller_check,
+        run_attribute_controller_check,
+        check_name_editor,
+        check_startup_resource_cache,
+        check_game_runtime,
+        check_question_present_gate,
+        check_picture_animation_tick_gates,
+        check_three_statue_animation_tick_gates,
+        check_ending_prelude_animation_tick_gates,
+        check_shop_input_present_gate,
+        check_death_menu_present_gate,
+        check_battle_party_selection_input_timing,
+        check_battle_runtime_transitions,
+        check_scene_load_runtime,
+        check_runtime_persistence,
+        check_renderer,
+    };
+    for (std::size_t index = 0U; index < checks.size(); ++index) {
+        if (shard.includes(index)) {
+            run_ui_check(checks[index], data_root);
+        }
+    }
     return openlegend::test::failures == 0 ? 0 : 1;
 }

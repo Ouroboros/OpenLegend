@@ -6036,7 +6036,8 @@ using SceneCheck = void (*)(const std::filesystem::path&);
 
 }  // namespace
 
-int main() {
+int main(const int argc, char* argv[]) {
+    const auto shard = openlegend::test::test_shard(argc, argv);
     const auto root = openlegend::test::game_data_root();
     const std::array<SceneCheck, 47> checks{
         check_assets,
@@ -6087,8 +6088,10 @@ int main() {
         check_event_map_replace_and_random_talk,
         check_event_execution,
     };
-    for (const auto check : checks) {
-        run_scene_check(check, root);
+    for (std::size_t index = 0U; index < checks.size(); ++index) {
+        if (shard.includes(index)) {
+            run_scene_check(checks[index], root);
+        }
     }
     return openlegend::test::failures == 0 ? 0 : 1;
 }

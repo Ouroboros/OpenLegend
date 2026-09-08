@@ -356,6 +356,41 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn("_wdupenv_s(", support)
         self.assertIn('L"OPENLEGEND_GAME_DATA_ROOT"', support)
 
+    def test_large_unit_tests_are_ctest_sharded(self) -> None:
+        cmake = (PROJECT_ROOT / "tests" / "CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        support = (PROJECT_ROOT / "tests" / "support" / "test_support.hpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 17)", cmake
+        )
+        self.assertIn(
+            "add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 47)",
+            cmake,
+        )
+        self.assertIn(
+            "add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 45)",
+            cmake,
+        )
+        self.assertIn("TMP=${TEST_TEMP_ROOT}", cmake)
+        self.assertIn("TEMP=${TEST_TEMP_ROOT}", cmake)
+        self.assertIn("TMPDIR=${TEST_TEMP_ROOT}", cmake)
+        self.assertIn("TestShard", support)
+        self.assertIn("test_shard(const int argc, char* argv[])", support)
+
+        for relative_path in (
+            "unit/ui/title_menu_test.cpp",
+            "unit/scene/scene_test.cpp",
+            "unit/battle/battle_data_test.cpp",
+        ):
+            source = (PROJECT_ROOT / "tests" / relative_path).read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("test_shard(argc, argv)", source)
+            self.assertIn("shard.includes(index)", source)
+
     def test_tests_do_not_mask_large_stack_frames(self) -> None:
         cmake = (PROJECT_ROOT / "tests" / "CMakeLists.txt").read_text(
             encoding="utf-8"

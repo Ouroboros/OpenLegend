@@ -11958,7 +11958,8 @@ using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
 
 }  // namespace
 
-int main() {
+int main(const int argc, char* argv[]) {
+    const auto shard = openlegend::test::test_shard(argc, argv);
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
@@ -12009,8 +12010,10 @@ int main() {
         run_battle_outcome_session_test,
         run_all_definition_tests,
     };
-    for (const auto check : checks) {
-        run_battle_check(check, data_root);
+    for (std::size_t index = 0U; index < checks.size(); ++index) {
+        if (shard.includes(index)) {
+            run_battle_check(checks[index], data_root);
+        }
     }
     return openlegend::test::failures == 0 ? 0 : 1;
 }
