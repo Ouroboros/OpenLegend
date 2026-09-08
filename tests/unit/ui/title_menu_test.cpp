@@ -1319,7 +1319,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.render());
     new_game.handle_key(0x98U, false, false);
     OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
-    OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == 0xCC830B73FC9644ECULL);
+    const auto items_initial_hash = fnv1a64(new_game.framebuffer().pixels());
+    if (items_initial_hash != 0xC3AD5DA7CB5B1E98ULL) {
+        std::cerr << "items_initial_hash=0x" << std::hex << items_initial_hash << std::dec << '\n';
+    }
+    OL_CHECK(items_initial_hash == 0xC3AD5DA7CB5B1E98ULL);
     new_game.finish_presented_tick();
     OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
     new_game.handle_key(0x98U, false, false);
@@ -3210,6 +3214,127 @@ void check_renderer(const std::filesystem::path& data_root) {
     fill_menu_oracle_background();
     OL_CHECK(basic_renderer.render_game_menu_main(scene_game_menu, framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x2D951419C79FA4F8ULL);
+
+    app::LegacyStartupResources item_draw_resources{resource::DataRoot{data_root}};
+    OL_CHECK(item_draw_resources.valid());
+    framebuffer.set_palette(item_draw_resources.palette());
+    const auto clear_item_draw_inventory = [](model::RangerState& ranger) {
+        for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+            ranger.header.set_inventory(slot, model::ItemId{-1}, 0);
+        }
+    };
+    const auto set_fixed_string = [](
+                                      std::span<std::uint8_t> destination,
+                                      const std::span<const std::uint8_t> value) {
+        OL_CHECK(value.size() < destination.size());
+        std::ranges::fill(destination, 0U);
+        std::ranges::copy(value, destination.begin());
+    };
+    const auto render_item_draw_vector = [&](
+                                             const model::RangerState& ranger,
+                                             const std::span<const std::int16_t> slots,
+                                             const std::uint64_t expected,
+                                             const std::string_view label) {
+        ui::GameMenuController menu;
+        menu.set_inventory_slots(slots);
+        menu.show_items();
+        fill_menu_oracle_background();
+        OL_CHECK(basic_renderer.render_game_menu(menu, ranger, framebuffer));
+        const auto actual = fnv1a64(framebuffer.pixels());
+        if (actual != expected) {
+            std::cerr << label << "=0x" << std::hex << actual << std::dec << '\n';
+        }
+        OL_CHECK(actual == expected);
+    };
+
+    auto fifteen_item_ranger = item_draw_resources.ranger();
+    clear_item_draw_inventory(fifteen_item_ranger);
+    constexpr std::array<std::int16_t, 4U> kDrawItemIds{0, 2, 10, 21};
+    std::array<std::int16_t, 15U> fifteen_item_slots{};
+    for (std::size_t slot = 0U; slot < fifteen_item_slots.size(); ++slot) {
+        fifteen_item_ranger.header.set_inventory(
+            slot, model::ItemId{kDrawItemIds[slot % kDrawItemIds.size()]}, 1);
+        fifteen_item_slots[slot] = static_cast<std::int16_t>(slot);
+    }
+    render_item_draw_vector(
+        fifteen_item_ranger,
+        fifteen_item_slots,
+        0x769018ACEB2CFFEBULL,
+        "item_draw_fifteen_hash");
+
+    auto coordinate_item_ranger = item_draw_resources.ranger();
+    clear_item_draw_inventory(coordinate_item_ranger);
+    coordinate_item_ranger.header.set_inventory(0U, model::ItemId{182}, 2);
+    coordinate_item_ranger.header.set_word(model::header_word::main_map_x, -7);
+    coordinate_item_ranger.header.set_word(model::header_word::main_map_y, 23);
+    coordinate_item_ranger.header.set_word(model::header_word::ship_x, -4);
+    coordinate_item_ranger.header.set_word(model::header_word::ship_y, 99);
+    constexpr std::array<std::int16_t, 1U> kFirstInventorySlot{0};
+    render_item_draw_vector(
+        coordinate_item_ranger,
+        kFirstInventorySlot,
+        0x89912D17028C1E49ULL,
+        "item_draw_coordinate_hash");
+
+    auto alternate_item_ranger = item_draw_resources.ranger();
+    clear_item_draw_inventory(alternate_item_ranger);
+    alternate_item_ranger.header.set_inventory(0U, model::ItemId{0}, 1);
+    auto& alternate_item = alternate_item_ranger.items[0U];
+    constexpr std::array<std::uint8_t, 1U> kPrimaryName{'A'};
+    constexpr std::array<std::uint8_t, 2U> kAlternateName{'B', 'C'};
+    constexpr std::array<std::uint8_t, 4U> kItemDescription{'D', 'E', 'S', 'C'};
+    constexpr std::array<std::uint8_t, 1U> kRoleR{'R'};
+    set_fixed_string(
+        std::span<std::uint8_t>{alternate_item.bytes}.subspan(
+            model::item_word::name_byte, model::item_word::name_bytes),
+        kPrimaryName);
+    set_fixed_string(
+        std::span<std::uint8_t>{alternate_item.bytes}.subspan(
+            2U * model::item_word::secondary_name_begin,
+            2U * model::item_word::secondary_name_count),
+        kAlternateName);
+    set_fixed_string(
+        std::span<std::uint8_t>{alternate_item.bytes}.subspan(
+            model::item_word::introduction_byte,
+            model::item_word::introduction_bytes),
+        kItemDescription);
+    alternate_item.set_word(model::item_word::id, 0);
+    alternate_item.set_word(model::item_word::user, 1);
+    alternate_item.set_word(model::item_word::show_introduction, 1);
+    alternate_item.set_word(model::item_word::item_type, 1);
+    set_fixed_string(
+        std::span<std::uint8_t>{alternate_item_ranger.roles[1U].bytes}.subspan(
+            model::role_word::name_byte, model::role_word::name_bytes),
+        kRoleR);
+    render_item_draw_vector(
+        alternate_item_ranger,
+        kFirstInventorySlot,
+        0xCEE9BC25DD4DAA6AULL,
+        "item_draw_alternate_hash");
+
+    auto strict_user_item_ranger = alternate_item_ranger;
+    auto& strict_user_item = strict_user_item_ranger.items[0U];
+    strict_user_item.set_word(model::item_word::user, 0);
+    strict_user_item.set_word(model::item_word::show_introduction, 0);
+    constexpr std::array<std::uint8_t, 1U> kRoleQ{'Q'};
+    set_fixed_string(
+        std::span<std::uint8_t>{strict_user_item_ranger.roles[0U].bytes}.subspan(
+            model::role_word::name_byte, model::role_word::name_bytes),
+        kRoleQ);
+    render_item_draw_vector(
+        strict_user_item_ranger,
+        kFirstInventorySlot,
+        0xC5E39A37695251D7ULL,
+        "item_draw_strict_user_hash");
+
+    auto empty_item_ranger = item_draw_resources.ranger();
+    clear_item_draw_inventory(empty_item_ranger);
+    constexpr std::array<std::int16_t, 0U> kNoInventorySlots{};
+    render_item_draw_vector(
+        empty_item_ranger,
+        kNoInventorySlots,
+        0x464ACC170A231D46ULL,
+        "item_draw_empty_hash");
 
     model::RoleRecord protagonist;
     constexpr std::array<std::uint8_t, 1> name{'A'};

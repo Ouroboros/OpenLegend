@@ -5,6 +5,8 @@
 #include <charconv>
 
 #include "openlegend/model/new_game.hpp"
+#include "openlegend/render/rle_sprite_renderer.hpp"
+#include "openlegend/resource/legacy_sprite.hpp"
 
 namespace openlegend::ui {
 namespace {
@@ -107,7 +109,7 @@ constexpr std::array<AttributeLine, 12> kAttributeLines{{
     return result;
 }
 
-void append_number(std::vector<std::uint8_t>& text, const std::int16_t value, const int width = 0) {
+void append_number(std::vector<std::uint8_t>& text, const std::int32_t value, const int width = 0) {
     std::array<char, 16> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
     const auto count = static_cast<int>(converted.ptr - buffer.data());
@@ -117,6 +119,43 @@ void append_number(std::vector<std::uint8_t>& text, const std::int16_t value, co
     for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
         text.push_back(static_cast<std::uint8_t>(*cursor));
     }
+}
+
+[[nodiscard]] int legacy_item_metric(const model::RangerState& ranger) noexcept {
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        if (ranger.header.inventory_item(slot).value == -1) {
+            return static_cast<int>(slot + 1U);
+        }
+    }
+    return static_cast<int>(model::kInventoryCount);
+}
+
+[[nodiscard]] std::vector<std::uint8_t> coordinate_item_text(
+    const model::RangerState& ranger,
+    const GameMenuContext context) {
+    constexpr std::array<std::uint8_t, 4> kPersonOpen{0xA4U, 0x48U, 0xA1U, 0x5DU};
+    constexpr std::array<std::uint8_t, 2> kComma{0xA1U, 0x41U};
+    constexpr std::array<std::uint8_t, 6> kPersonCloseShipOpen{
+        0xA1U, 0x5EU, 0xB2U, 0xEEU, 0xA1U, 0x5DU};
+    constexpr std::array<std::uint8_t, 2> kClose{0xA1U, 0x5EU};
+    const auto player_x = ranger.header.word(
+        context == GameMenuContext::scene
+            ? model::header_word::sub_map_x
+            : model::header_word::main_map_x);
+    const auto player_y = ranger.header.word(
+        context == GameMenuContext::scene
+            ? model::header_word::sub_map_y
+            : model::header_word::main_map_y);
+    std::vector<std::uint8_t> text{kPersonOpen.begin(), kPersonOpen.end()};
+    append_number(text, player_x, 3);
+    text.insert(text.end(), kComma.begin(), kComma.end());
+    append_number(text, player_y, 3);
+    text.insert(text.end(), kPersonCloseShipOpen.begin(), kPersonCloseShipOpen.end());
+    append_number(text, ranger.header.word(model::header_word::ship_x), 3);
+    text.insert(text.end(), kComma.begin(), kComma.end());
+    append_number(text, ranger.header.word(model::header_word::ship_y), 3);
+    text.insert(text.end(), kClose.begin(), kClose.end());
+    return text;
 }
 
 [[nodiscard]] std::optional<std::array<std::uint8_t, 2>> zhuyin_label(
@@ -155,7 +194,15 @@ template <std::size_t ByteCount>
 
 }  // namespace
 
-BasicUiRenderer::BasicUiRenderer(const resource::DataRoot& data_root) {
+BasicUiRenderer::BasicUiRenderer(const resource::DataRoot& data_root)
+    : item_sprites_(resource::PackedArchive::open(
+          data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")) {
+    if (!item_sprites_.valid() || item_sprites_.entry_count() < model::kItemCount) {
+        error_ = item_sprites_.valid()
+            ? "MMAP archive is missing item icon frames"
+            : item_sprites_.error();
+        return;
+    }
     auto ascii = data_root.read("FONT3.E16");
     if (!ascii) {
         error_ = ascii.error;
@@ -579,35 +626,167 @@ bool BasicUiRenderer::render_items(
     const GameMenuController& menu,
     const model::RangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
-    framebuffer.clear(0U);
-    const auto selection = menu.item_selection();
-    const auto inventory_slots = menu.inventory_slots();
-    const auto page_begin = static_cast<std::size_t>(selection / 8U) * 8U;
-    for (std::size_t row = 0U; row < 8U; ++row) {
-        const auto selection_index = page_begin + row;
-        if (selection_index >= inventory_slots.size()) {
-            break;
-        }
-        const auto slot = static_cast<std::size_t>(inventory_slots[selection_index]);
-        const auto item_id = ranger.header.inventory_item(slot).value;
-        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
-            break;
-        }
-        const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
-        std::vector<std::uint8_t> line;
-        const auto name = fixed_text(item.bytes, model::item_word::name_byte, model::item_word::name_bytes);
-        line.insert(line.end(), name.begin(), name.end());
-        line.insert(line.end(), {' ', 'x', ' '});
-        append_number(line, ranger.header.inventory_count(slot));
-        if (!draw_text(
-                framebuffer,
-                20,
-                20 + static_cast<int>(row) * 20,
-                line,
-                selection_index == selection ? 0x6663U : 0x2321U)) {
+    if (!draw_box(framebuffer, 45, 2, 230U, 23U) ||
+        !draw_box(framebuffer, 45, 27, 230U, 23U) ||
+        !draw_box(framebuffer, 45, 52, 230U, 145U)) {
+        return false;
+    }
+    const auto draw_scroll_line = [&framebuffer](
+                                      const int x,
+                                      const int y,
+                                      const int width,
+                                      const int height) {
+        return framebuffer.fill_rectangle(
+            x,
+            y,
+            static_cast<std::uint16_t>(width),
+            static_cast<std::uint16_t>(height),
+            99U);
+    };
+    const auto item_metric = legacy_item_metric(ranger);
+    const auto page = static_cast<int>(menu.item_page());
+    if (item_metric > 5 * (page + 3)) {
+        if (!draw_scroll_line(267, 175, 2, 1) ||
+            !draw_scroll_line(266, 174, 4, 1) ||
+            !draw_scroll_line(265, 173, 6, 1) ||
+            !draw_scroll_line(264, 172, 8, 1) ||
+            !draw_scroll_line(266, 161, 4, 11)) {
             return false;
         }
     }
+    if (item_metric > 15 && page > 0) {
+        if (!draw_scroll_line(267, 72, 2, 1) ||
+            !draw_scroll_line(266, 73, 4, 1) ||
+            !draw_scroll_line(265, 74, 6, 1) ||
+            !draw_scroll_line(264, 75, 8, 1) ||
+            !draw_scroll_line(266, 76, 4, 11)) {
+            return false;
+        }
+    }
+
+    const auto inventory_slots = menu.inventory_slots();
+    for (int row = 0; row < 3; ++row) {
+        for (int column = 0; column < 5; ++column) {
+            const auto x = 55 + 42 * column;
+            const auto y = 62 + 42 * row;
+            if (!framebuffer.outline_rectangle(x, y, 40U, 40U, 0U)) {
+                return false;
+            }
+            const auto list_index = static_cast<std::size_t>(5 * (page + row) + column);
+            if (list_index >= inventory_slots.size() || inventory_slots[list_index] < 0 ||
+                static_cast<std::size_t>(inventory_slots[list_index]) >= model::kInventoryCount) {
+                continue;
+            }
+            const auto inventory_slot = static_cast<std::size_t>(inventory_slots[list_index]);
+            const auto item_id = ranger.header.inventory_item(inventory_slot).value;
+            if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger.items.size() &&
+                !draw_item_icon(framebuffer, item_id, x, y)) {
+                return false;
+            }
+        }
+    }
+
+    if (!framebuffer.outline_rectangle(
+            55 + 42 * static_cast<int>(menu.item_column()),
+            62 + 42 * static_cast<int>(menu.item_row()),
+            40U,
+            40U,
+            255U)) {
+        return false;
+    }
+    const auto selection = static_cast<std::size_t>(menu.item_selection());
+    if (selection >= inventory_slots.size() || inventory_slots[selection] < 0 ||
+        static_cast<std::size_t>(inventory_slots[selection]) >= model::kInventoryCount) {
+        return true;
+    }
+    const auto inventory_slot = static_cast<std::size_t>(inventory_slots[selection]);
+    const auto item_id = ranger.header.inventory_item(inventory_slot).value;
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+        return true;
+    }
+    const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    const auto name = item.word(model::item_word::show_introduction) == 0
+        ? fixed_text(item.bytes, model::item_word::name_byte, model::item_word::name_bytes)
+        : fixed_text(
+              item.bytes,
+              2U * model::item_word::secondary_name_begin,
+              2U * model::item_word::secondary_name_count);
+    const auto item_type = item.word(model::item_word::item_type);
+    const auto user = item.word(model::item_word::user);
+    const auto name_center =
+        (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
+    if (!draw_text(
+            framebuffer,
+            name_center - 4 * static_cast<int>(name.size()),
+            5,
+            name,
+            0x0705U)) {
+        return false;
+    }
+
+    if (item.word(model::item_word::id) == 0x00B6) {
+        const auto text = coordinate_item_text(ranger, menu.context());
+        if (!draw_text(framebuffer, 48, 30, text, 0x2321U)) {
+            return false;
+        }
+    } else {
+        const auto introduction = fixed_text(
+            item.bytes,
+            model::item_word::introduction_byte,
+            model::item_word::introduction_bytes);
+        if (!draw_text(
+                framebuffer,
+                160 - 4 * static_cast<int>(introduction.size()),
+                30,
+                introduction,
+                0x2321U)) {
+            return false;
+        }
+    }
+
+    if (user >= 0) {
+        if (static_cast<std::size_t>(user) >= ranger.roles.size()) {
+            return false;
+        }
+        const auto role_name = fixed_text(
+            ranger.roles[static_cast<std::size_t>(user)].bytes,
+            model::role_word::name_byte,
+            model::role_word::name_bytes);
+        std::vector<std::uint8_t> user_text{'('};
+        user_text.insert(user_text.end(), role_name.begin(), role_name.end());
+        user_text.push_back(')');
+        if (!draw_text(framebuffer, 205, 5, user_text, 0x2321U)) {
+            return false;
+        }
+    }
+
+    const auto count = ranger.header.inventory_count(inventory_slot);
+    if (count > 1) {
+        constexpr std::array<std::uint8_t, 1> kCountMarker{'X'};
+        std::vector<std::uint8_t> count_text;
+        append_number(count_text, count, 2);
+        if (!draw_text(framebuffer, 215, 5, kCountMarker, 0x2321U) ||
+            !draw_text(framebuffer, 235, 5, count_text, 0x6663U)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BasicUiRenderer::draw_item_icon(
+    render::IndexedFramebuffer& framebuffer,
+    const std::int16_t item_id,
+    const int x,
+    const int y) const {
+    if (item_id < 0 || static_cast<std::size_t>(item_id) >= item_sprites_.entry_count()) {
+        return false;
+    }
+    const auto frame = resource::SpriteFrameView::parse(
+        item_sprites_.entry(static_cast<std::size_t>(item_id)));
+    if (!frame.valid()) {
+        return false;
+    }
+    render::draw_rle_sprite(framebuffer, frame, x, y);
     return true;
 }
 

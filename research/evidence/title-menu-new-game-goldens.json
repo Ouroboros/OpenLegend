@@ -49,6 +49,28 @@
     "world_selection_0": "4821b1c9f78f507d",
     "scene_selection_3": "2d951419c79fa4f8"
   },
+  "game_menu_item_draw_pixels_fnv1a64": {
+    "source": "independent synthetic indexed background plus original RANGER.GRP/MMAP/FONT3 assets",
+    "assets": {
+      "MMAP.IDX": {
+        "bytes": 34924,
+        "sha256": "7d50e9ae0ca9df0bb4d2bb361b83562973f6495af8f537ea8d6d2d5574ac0e6d"
+      },
+      "MMAP.GRP": {
+        "bytes": 1572545,
+        "sha256": "8793acc6761f5ca73e89c0fa21a5f9cac3483ac0fa5864cda3a5549ae2d98594"
+      },
+      "RANGER.GRP": {
+        "bytes": 114242,
+        "sha256": "07b99e3c1676e18691f00d6dfe713121faa6f7429e43666bc83e1568cecb68ab"
+      }
+    },
+    "fifteen_items_page0_draws_down": "769018aceb2cffeb",
+    "item182_world_coordinates_quantity2": "89912d17028c1e49",
+    "alternate_name_type1_positive_role": "cee9bc25dd4daa6a",
+    "primary_name_type1_role_zero": "c5e39a37695251d7",
+    "invalid_selection_border_only": "464acc170a231d46"
+  },
   "name_entry_pixels_fnv1a64": {
     "source": "independent machine-coordinate FONT3.E16/FONT3.C16/CFONT renderer with bounded invalid-glyph platform adaptation",
     "initial_zhuyin_cursor_7": "5e228f916fbca51a",
@@ -206,13 +228,13 @@
       "reset": "fill 400 output bytes with 0xff, yielding 200 signed-word -1 sentinels",
       "scan": "inventory slots 0..199 in ascending order",
       "item_id": "signed word; negative values skipped; quantity word never read",
-      "item_type": "signed word at item record stride 190",
+      "item_type": "signed word at item record byte +82 (word 41), stride 190",
       "include": "item_type == filter or filter == 0 or (item_type == 3 and filter == 4)",
       "output": "accepted inventory slot indices as signed words in stable prefix order",
       "return": "unstable EAX ignored/overwritten by both callers",
       "owner_boundary": "stack probe, fill callee, both callers, draw and selector remain independent"
     },
-    "contract_sha256": "7c020bf7c766d2e55b143a4593fd1e861f15dc4755c6685f7da988b594e45449",
+    "contract_sha256": "b821c125ab79c95c0cd6e9074e6a6b9d4c67cef202e40573fe402a79f24fdb6d",
     "vectors": {
       "baseline_filter_0": [
         0,
@@ -417,10 +439,10 @@
         -1
       ],
       "baseline_filter_4": [
-        -1,
-        -1,
-        -1,
-        -1,
+        0,
+        1,
+        2,
+        3,
         -1,
         -1,
         -1,
@@ -1225,7 +1247,209 @@
         199
       ]
     },
-    "vectors_sha256": "af4d291ff7f5cd82a2208ec7156ff298fdda9b983b63908ea6552b2e8b3e6798"
+    "vectors_sha256": "3fd01787c6d22cd4414b79ca7a947ee75769f49e12a01ad13703a56877fcb76b"
+  },
+  "game_menu_item_draw_machine": {
+    "raw_range": "Z.DAT[0x23b86:0x2414c]",
+    "loaded_range": "0x2a186..0x2a74c",
+    "size_bytes": 1478,
+    "instruction_count": 379,
+    "basic_block_count": 47,
+    "conditional_branch_count": 25,
+    "unconditional_jump_count": 6,
+    "fixup_count": 94,
+    "fixup_sites_sha256": "4b666d15915fc77743e3e31c6156ea131c385b4e0481b9534033256c3d87148d",
+    "raw_sha256": "4343589cfb549849f9e6215c269b3ea45804d94bf6918068a3fc48ec4f5dcec0",
+    "loaded_sha256": "c782243a08c8bd7711ba165b88639e11dfa721ecd61fb46c33cf11e4b42bf0ce",
+    "normalized_loaded_equals_raw": true,
+    "calls": {
+      "sub_3ED1E": [
+        "0x2a18b"
+      ],
+      "sub_2558B": [
+        "0x2a1ce"
+      ],
+      "sub_29D2D": [
+        "0x2a1df"
+      ],
+      "sub_3AA85": [
+        "0x2a1f0"
+      ],
+      "sub_2CEBF": [
+        "0x2a20e",
+        "0x2a22f",
+        "0x2a253"
+      ],
+      "sub_2A74C": [
+        "0x2a26d"
+      ],
+      "sub_2A7E8": [
+        "0x2a27e"
+      ],
+      "sub_2D501": [
+        "0x2a2a0",
+        "0x2a32f"
+      ],
+      "sub_3D643": [
+        "0x2a2f7"
+      ],
+      "sub_3EF4A": [
+        "0x2a3a2",
+        "0x2a47c",
+        "0x2a5a8",
+        "0x2a5da",
+        "0x2a681",
+        "0x2a70c"
+      ],
+      "sub_3EF7D": [
+        "0x2a3c8",
+        "0x2a4a2",
+        "0x2a600"
+      ],
+      "sub_3D832": [
+        "0x2a543",
+        "0x2a626",
+        "0x2a6a1",
+        "0x2a6ea",
+        "0x2a72c"
+      ],
+      "sub_3D6D1": [
+        "0x2a73f"
+      ]
+    },
+    "call_count": 27,
+    "entry_xrefs": [
+      "sub_2a0d9:0x2a0fa",
+      "sub_2a86c:0x2a8da",
+      "sub_3a29c:0x3a2ba"
+    ],
+    "external_internal_entries": [],
+    "local_return": "0x2a74b",
+    "caller_raw_sha256": {
+      "sub_2a0d9": "1fd36ede5cb17507e24e83bc883074f6205a911ee34359aad6514b6280a2f383",
+      "sub_2a86c": "7494f3fde6bf4003b02830c6fb99e3899e2332bb3ccf94367f4eaf254347ae9f",
+      "sub_3a29c": "eb358abcceab4d2b8c735da754e73ff00bc611237a8cf23087e2475bfffad5c7"
+    },
+    "adjacent_arrow_helper_raw_sha256": {
+      "sub_2a74c": "d7606ab37a749fa6e893a8f79524350909dd6c10c99ce2a11fa9968d5fcc7ac3",
+      "sub_2a7e8": "f6dc7bf9f944a0b146288e1ff4f7330169f60a5e594960597430a76d94086476"
+    },
+    "baseline_item_types_at_byte_82": {
+      "0": 3,
+      "2": 3,
+      "10": 3,
+      "21": 3
+    },
+    "contract": {
+      "arguments": "cdecl (page,row,column); wrappers pass 0,0,0",
+      "background": "context 0 world, 1 scene, 2 battle, otherwise no redraw",
+      "panels": [
+        [
+          45,
+          2,
+          230,
+          23
+        ],
+        [
+          45,
+          27,
+          230,
+          23
+        ],
+        [
+          45,
+          52,
+          230,
+          145
+        ]
+      ],
+      "metric": "first exact -1 inventory slot plus one, else 200",
+      "arrows": "down iff metric > 5*(page+3); up iff metric > 15 and page > 0",
+      "grid": "row-major 3x5; origin 55,62; step 42; border 40x40 color 0",
+      "mapping": "word_D27C0 logical list position -> signed real inventory slot",
+      "icon": "frame = 2*item_id + word_54508 at cell origin",
+      "selection": "selected border color 255 before selected-entry validation",
+      "record": "190-byte item stride; id+0 names+2/+22 description+42 role+76 selector+80 type+82",
+      "name": "selector chooses name; x 140 or 160 minus 4*byte_length; y 5",
+      "special": "id 182 formats 人（%3d，%3d）船（%3d，%3d） at 48,30",
+      "description": "ordinary +42 string centered at x=160-4*byte_length,y=30",
+      "role": "nonnegative role index formats 182-byte-stride role name +8 as (%s) at 205,5",
+      "quantity": "signed >1 only: X at 215,5 and %2d at 235,5",
+      "present": "exactly once on every path after rendering",
+      "return": "unstable EAX ignored by all three callers",
+      "boundary": "arrow/background/primitive/string/present callees, reset, selector and callers remain independent"
+    },
+    "contract_sha256": "e2512968dbf346d44b6856095c8f21ea87d0af23cd5626d8fdc40d629fc7f4b1",
+    "vectors": {
+      "metric_exact_15_items": {
+        "inventory_prefix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          -1
+        ],
+        "metric": 16,
+        "page": 0,
+        "down": true,
+        "up": false
+      },
+      "metric_other_negative_does_not_stop": {
+        "inventory_prefix": [
+          0,
+          -2,
+          1,
+          -1
+        ],
+        "metric": 4
+      },
+      "metric_full_table": {
+        "metric": 200
+      },
+      "grid_last_cell_page_2": {
+        "page": 2,
+        "row": 2,
+        "column": 4,
+        "logical_index": 24,
+        "origin": [
+          223,
+          146
+        ]
+      },
+      "selected_invalid": {
+        "border": [
+          55,
+          62,
+          40,
+          40,
+          255
+        ],
+        "details": [],
+        "present": 1
+      },
+      "detail_cases": {
+        "alternate_type1_role1_name_len2_x": 132,
+        "primary_type1_role0_name_len1_x": 156,
+        "item182_description": [
+          48,
+          30
+        ],
+        "quantity1_draws": false,
+        "quantity2_draws": true
+      }
+    },
+    "vectors_sha256": "9ebe37fed73291d35b8254607d12e1d3c81310f0f654e6d9fc2e0e9857655598"
   },
   "game_menu_item_selector_machine": {
     "raw_range": "Z.DAT[0x2426c:0x24c27]",

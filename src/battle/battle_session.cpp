@@ -226,6 +226,42 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     return text;
 }
 
+[[nodiscard]] int legacy_item_metric(const model::RangerState& ranger) noexcept {
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        if (ranger.header.inventory_item(slot).value == -1) {
+            return static_cast<int>(slot + 1U);
+        }
+    }
+    return static_cast<int>(model::kInventoryCount);
+}
+
+[[nodiscard]] std::vector<std::uint8_t> coordinate_item_text(
+    const model::RangerState& ranger) {
+    constexpr std::array<std::uint8_t, 4> kPersonOpen{0xA4U, 0x48U, 0xA1U, 0x5DU};
+    constexpr std::array<std::uint8_t, 2> kComma{0xA1U, 0x41U};
+    constexpr std::array<std::uint8_t, 6> kPersonCloseShipOpen{
+        0xA1U, 0x5EU, 0xB2U, 0xEEU, 0xA1U, 0x5DU};
+    constexpr std::array<std::uint8_t, 2> kClose{0xA1U, 0x5EU};
+    const auto in_sub_map = ranger.header.word(model::header_word::in_sub_map) != 0;
+    const auto player_x = ranger.header.word(
+        in_sub_map ? model::header_word::sub_map_x : model::header_word::main_map_x);
+    const auto player_y = ranger.header.word(
+        in_sub_map ? model::header_word::sub_map_y : model::header_word::main_map_y);
+    std::vector<std::uint8_t> text{kPersonOpen.begin(), kPersonOpen.end()};
+    const auto append = [&text](const std::span<const std::uint8_t> value) {
+        text.insert(text.end(), value.begin(), value.end());
+    };
+    append(decimal_text(player_x, 3));
+    append(kComma);
+    append(decimal_text(player_y, 3));
+    append(kPersonCloseShipOpen);
+    append(decimal_text(ranger.header.word(model::header_word::ship_x), 3));
+    append(kComma);
+    append(decimal_text(ranger.header.word(model::header_word::ship_y), 3));
+    append(kClose);
+    return text;
+}
+
 }  // namespace
 
 BattleSession::BattleSession(
@@ -4270,7 +4306,8 @@ bool BattleSession::render_player_item_selection(
             static_cast<std::uint16_t>(height),
             99U);
     };
-    if (player_item_->selection.count > 5 * (player_item_->page + 3)) {
+    const auto item_metric = legacy_item_metric(ranger_);
+    if (item_metric > 5 * (player_item_->page + 3)) {
         if (!draw_scroll_line(267, 175, 2, 1) ||
             !draw_scroll_line(266, 174, 4, 1) ||
             !draw_scroll_line(265, 173, 6, 1) ||
@@ -4279,7 +4316,7 @@ bool BattleSession::render_player_item_selection(
             return false;
         }
     }
-    if (player_item_->selection.count > 15 && player_item_->page > 0) {
+    if (item_metric > 15 && player_item_->page > 0) {
         if (!draw_scroll_line(267, 72, 2, 1) ||
             !draw_scroll_line(266, 73, 4, 1) ||
             !draw_scroll_line(265, 74, 6, 1) ||
@@ -4342,26 +4379,63 @@ bool BattleSession::render_player_item_selection(
         return true;
     }
     const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
-    const auto name = terminated_name(std::span<const std::uint8_t>{item.bytes}.subspan(
-        2U * model::item_word::secondary_name_begin,
-        2U * model::item_word::secondary_name_count));
-    const auto introduction = terminated_name(
-        std::span<const std::uint8_t>{item.bytes}.subspan(
-            model::item_word::introduction_byte,
-            model::item_word::introduction_bytes));
+    const auto item_bytes = std::span<const std::uint8_t>{item.bytes};
+    const auto name = item.word(model::item_word::show_introduction) == 0
+        ? terminated_name(item_bytes.subspan(
+              model::item_word::name_byte,
+              model::item_word::name_bytes))
+        : terminated_name(item_bytes.subspan(
+              2U * model::item_word::secondary_name_begin,
+              2U * model::item_word::secondary_name_count));
+    const auto item_type = item.word(model::item_word::item_type);
+    const auto user = item.word(model::item_word::user);
+    const auto name_center =
+        (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
     if (!renderer_.draw_text(
             framebuffer,
-            160 - 4 * static_cast<int>(name.size()),
+            name_center - 4 * static_cast<int>(name.size()),
             5,
             name,
-            0x0705U) ||
-        !renderer_.draw_text(
-            framebuffer,
-            160 - 4 * static_cast<int>(introduction.size()),
-            30,
-            introduction,
-            0x2321U)) {
+            0x0705U)) {
         return false;
+    }
+    if (item.word(model::item_word::id) == 0x00B6) {
+        if (!renderer_.draw_text(
+                framebuffer,
+                48,
+                30,
+                coordinate_item_text(ranger_),
+                0x2321U)) {
+            return false;
+        }
+    } else {
+        const auto introduction = terminated_name(item_bytes.subspan(
+            model::item_word::introduction_byte,
+            model::item_word::introduction_bytes));
+        if (!renderer_.draw_text(
+                framebuffer,
+                160 - 4 * static_cast<int>(introduction.size()),
+                30,
+                introduction,
+                0x2321U)) {
+            return false;
+        }
+    }
+    if (user >= 0) {
+        if (static_cast<std::size_t>(user) >= ranger_.roles.size()) {
+            return false;
+        }
+        const auto role_bytes = std::span<const std::uint8_t>{
+            ranger_.roles[static_cast<std::size_t>(user)].bytes};
+        const auto role_name = terminated_name(role_bytes.subspan(
+            model::role_word::name_byte,
+            model::role_word::name_bytes));
+        std::vector<std::uint8_t> user_text{'('};
+        user_text.insert(user_text.end(), role_name.begin(), role_name.end());
+        user_text.push_back(')');
+        if (!renderer_.draw_text(framebuffer, 205, 5, user_text, 0x2321U)) {
+            return false;
+        }
     }
     const auto inventory_count = ranger_.header.inventory_count(
         static_cast<std::size_t>(inventory_slot));

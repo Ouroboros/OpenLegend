@@ -4707,6 +4707,7 @@ void run_player_item_session_test(
 
     std::uint64_t item_menu_hash = 0U;
     std::uint64_t item_menu_single_hash = 0U;
+    std::uint64_t filtered_item_menu_hash = 0U;
     std::uint64_t item_effect_hash = 0U;
     std::uint64_t throwing_prelude_hash = 0U;
     std::uint64_t throwing_effect_hash = 0U;
@@ -4830,6 +4831,46 @@ void run_player_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
         OL_CHECK(session->current_actor_slot() == 1U);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 1);
+    }
+
+    {
+        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
+        clear_inventory(*ranger);
+        auto& actor = ranger->roles[1U];
+        actor.set_word(role_word::hp, 100);
+        actor.set_word(role_word::maximum_hp, 100);
+        actor.set_word(role_word::physical_power, 5);
+        ranger->roles[3U].set_word(role_word::hp, 100);
+        ranger->roles[3U].set_word(role_word::maximum_hp, 100);
+        for (std::size_t slot = 0U; slot < 15U; ++slot) {
+            const auto item_id = 10U + slot;
+            auto& item = ranger->items[item_id];
+            item.set_word(item_word::id, static_cast<std::int16_t>(item_id));
+            item.set_word(item_word::user, -1);
+            item.set_word(item_word::show_introduction, 1);
+            item.set_word(item_word::item_type, slot == 0U ? 3 : 2);
+            ranger->header.set_inventory(
+                slot,
+                openlegend::model::ItemId{static_cast<std::int16_t>(item_id)},
+                1);
+        }
+
+        openlegend::random::LegacyRandom random{1U};
+        auto session = std::make_unique<BattleSession>(
+            data_root, *ranger, random, 4, false);
+        reach_player_action(*session);
+        OL_CHECK(session->handle_key(0x0DU) ==
+                 BattleSessionInputResult::action_selected);
+        OL_CHECK(session->phase() == BattleSessionPhase::player_item_selection);
+        OL_CHECK(session->player_item_selection() != nullptr);
+        OL_CHECK(session->player_item_selection()->count == 1);
+        OL_CHECK(session->render(*framebuffer));
+        filtered_item_menu_hash = fnv1a_bytes(framebuffer->pixels());
+        const auto pixels = framebuffer->pixels();
+        OL_CHECK(pixels[175U * 320U + 267U] == 99U);
+        OL_CHECK(pixels[174U * 320U + 266U] == 99U);
+        OL_CHECK(pixels[161U * 320U + 266U] == 99U);
     }
 
     {
@@ -5018,11 +5059,20 @@ void run_player_item_session_test(
     const auto hash_path = log_path.parent_path() / "b8-battle-player-items.hash";
     std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
     hash_file << std::hex << item_menu_hash << '\n' << item_menu_single_hash << '\n'
-              << item_effect_hash << '\n' << throwing_prelude_hash << '\n'
+              << filtered_item_menu_hash << '\n' << item_effect_hash << '\n'
+              << throwing_prelude_hash << '\n'
               << throwing_effect_hash << '\n' << throwing_damage_hash << '\n';
     hash_file.close();
-    OL_CHECK(item_menu_hash == 0x1a9386291b074e19ULL);
-    OL_CHECK(item_menu_single_hash == 0x17b6845a718a6cf8ULL);
+    if (item_menu_hash != 0x04459EEC5548C797ULL ||
+        item_menu_single_hash != 0x73AF8A5CD79205EDULL ||
+        filtered_item_menu_hash != 0xEFF0BE9F19AD7E3DULL) {
+        std::cerr << "item_menu_hashes=0x" << std::hex << item_menu_hash << ",0x"
+                  << item_menu_single_hash << ",0x" << filtered_item_menu_hash
+                  << std::dec << '\n';
+    }
+    OL_CHECK(item_menu_hash == 0x04459EEC5548C797ULL);
+    OL_CHECK(item_menu_single_hash == 0x73AF8A5CD79205EDULL);
+    OL_CHECK(filtered_item_menu_hash == 0xEFF0BE9F19AD7E3DULL);
     OL_CHECK(item_effect_hash == 0x96fce61fed8c957eULL);
     OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0x370a4078e9de6172ULL);

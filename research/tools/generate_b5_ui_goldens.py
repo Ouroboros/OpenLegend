@@ -29,10 +29,19 @@ def archive_entries(index_bytes: bytes, group_bytes: bytes) -> list[bytes]:
     assert len(index_bytes) % 4 == 0
     result: list[bytes] = []
     begin = 0
+    saw_positive_end = False
+    zero_tail = False
     for (end,) in struct.iter_unpack("<I", index_bytes):
+        if zero_tail:
+            assert end == 0
+            continue
+        if end == 0 and saw_positive_end:
+            zero_tail = True
+            continue
         assert begin <= end <= len(group_bytes)
         result.append(group_bytes[begin:end])
         begin = end
+        saw_positive_end = saw_positive_end or end != 0
     assert begin == len(group_bytes)
     return result
 
@@ -263,6 +272,240 @@ def game_menu_screen(
         pixels, font, 24, 25 + 20 * selection, MAIN_MENU_LABELS[selection], 0x63, 0x66
     )
     return pixels
+
+
+def outline_rectangle(
+    pixels: bytearray, x: int, y: int, width: int, height: int, color: int
+) -> None:
+    fill_rectangle(pixels, x, y, width, 1, color)
+    fill_rectangle(pixels, x, y, 1, height, color)
+    fill_rectangle(pixels, x + width - 1, y, 1, height, color)
+    fill_rectangle(pixels, x, y + height - 1, width, 1, color)
+
+
+def signed_word_at(data: bytes | bytearray, offset: int) -> int:
+    return struct.unpack_from("<h", data, offset)[0]
+
+
+def fixed_c_string(data: bytes | bytearray, offset: int, size: int) -> bytes:
+    return bytes(data[offset : offset + size]).split(b"\0", 1)[0]
+
+
+def game_menu_items_screen(
+    ascii_font: bytes,
+    big5_font: bytes,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+    item_frames: list[bytes],
+    ranger: bytes | bytearray,
+    inventory_slots: list[int],
+    page: int = 0,
+    row: int = 0,
+    column: int = 0,
+    context: str = "world",
+) -> bytearray:
+    assert len(ranger) == 114242
+    assert len(inventory_slots) == 200
+    pixels = bytearray(
+        ((index % 320) * 13 + (index // 320) * 7) & 0xFF
+        for index in range(320 * 200)
+    )
+    for panel in ((45, 2, 230, 23), (45, 27, 230, 23), (45, 52, 230, 145)):
+        draw_rounded_panel(pixels, palette, lookup, *panel)
+
+    metric = 200
+    for slot in range(200):
+        if signed_word_at(ranger, 2 * (18 + 2 * slot)) == -1:
+            metric = slot + 1
+            break
+    if metric > 5 * (page + 3):
+        for rectangle in (
+            (267, 175, 2, 1),
+            (266, 174, 4, 1),
+            (265, 173, 6, 1),
+            (264, 172, 8, 1),
+            (266, 161, 4, 11),
+        ):
+            fill_rectangle(pixels, *rectangle, 99)
+    if metric > 15 and page > 0:
+        for rectangle in (
+            (267, 72, 2, 1),
+            (266, 73, 4, 1),
+            (265, 74, 6, 1),
+            (264, 75, 8, 1),
+            (266, 76, 4, 11),
+        ):
+            fill_rectangle(pixels, *rectangle, 99)
+
+    for grid_row in range(3):
+        for grid_column in range(5):
+            x = 55 + 42 * grid_column
+            y = 62 + 42 * grid_row
+            outline_rectangle(pixels, x, y, 40, 40, 0)
+            list_index = 5 * (page + grid_row) + grid_column
+            inventory_slot = inventory_slots[list_index]
+            if not 0 <= inventory_slot < 200:
+                continue
+            item_id = signed_word_at(ranger, 2 * (18 + 2 * inventory_slot))
+            if 0 <= item_id < len(item_frames):
+                draw_sprite(pixels, item_frames[item_id], x, y)
+
+    outline_rectangle(pixels, 55 + 42 * column, 62 + 42 * row, 40, 40, 255)
+    selected_index = 5 * (page + row) + column
+    selected_slot = inventory_slots[selected_index]
+    if not 0 <= selected_slot < 200:
+        return pixels
+    item_id = signed_word_at(ranger, 2 * (18 + 2 * selected_slot))
+    if not 0 <= item_id < 200:
+        return pixels
+    item_offset = 59076 + item_id * 190
+    selector = signed_word_at(ranger, item_offset + 80)
+    name = fixed_c_string(ranger, item_offset + (2 if selector == 0 else 22), 20)
+    item_type = signed_word_at(ranger, item_offset + 82)
+    user = signed_word_at(ranger, item_offset + 76)
+    name_center = 140 if item_type in (1, 2) and user > 0 else 160
+    draw_legacy_text(
+        pixels, ascii_font, big5_font, name_center - 4 * len(name), 5, name, 5, 7
+    )
+
+    if signed_word_at(ranger, item_offset) == 182:
+        coordinate_words = (
+            (signed_word_at(ranger, 8), signed_word_at(ranger, 10))
+            if context == "scene"
+            else (signed_word_at(ranger, 4), signed_word_at(ranger, 6))
+        )
+        coordinate_text = (
+            bytes.fromhex("a448a15d")
+            + f"{coordinate_words[0]:3d}".encode("ascii")
+            + bytes.fromhex("a141")
+            + f"{coordinate_words[1]:3d}".encode("ascii")
+            + bytes.fromhex("a15eb2eea15d")
+            + f"{signed_word_at(ranger, 14):3d}".encode("ascii")
+            + bytes.fromhex("a141")
+            + f"{signed_word_at(ranger, 16):3d}".encode("ascii")
+            + bytes.fromhex("a15e")
+        )
+        draw_legacy_text(
+            pixels, ascii_font, big5_font, 48, 30, coordinate_text, 0x21, 0x23
+        )
+    else:
+        description = fixed_c_string(ranger, item_offset + 42, 30)
+        draw_legacy_text(
+            pixels,
+            ascii_font,
+            big5_font,
+            160 - 4 * len(description),
+            30,
+            description,
+            0x21,
+            0x23,
+        )
+
+    if user >= 0:
+        role_name = fixed_c_string(ranger, 836 + user * 182 + 8, 10)
+        draw_legacy_text(
+            pixels,
+            ascii_font,
+            big5_font,
+            205,
+            5,
+            b"(" + role_name + b")",
+            0x21,
+            0x23,
+        )
+    quantity = signed_word_at(ranger, 2 * (19 + 2 * selected_slot))
+    if quantity > 1:
+        draw_legacy_text(pixels, ascii_font, big5_font, 215, 5, b"X", 0x21, 0x23)
+        draw_legacy_text(
+            pixels,
+            ascii_font,
+            big5_font,
+            235,
+            5,
+            f"{quantity:2d}".encode("ascii"),
+            0x63,
+            0x66,
+        )
+    return pixels
+
+
+def item_draw_pixel_vectors(
+    ascii_font: bytes,
+    big5_font: bytes,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+    item_frames: list[bytes],
+    ranger: bytes,
+) -> dict[str, str]:
+    def set_word(data: bytearray, byte_offset: int, value: int) -> None:
+        struct.pack_into("<h", data, byte_offset, value)
+
+    def clear_inventory(data: bytearray) -> None:
+        for slot in range(200):
+            set_word(data, 2 * (18 + 2 * slot), -1)
+            set_word(data, 2 * (19 + 2 * slot), 0)
+
+    def set_inventory(data: bytearray, slot: int, item_id: int, quantity: int) -> None:
+        set_word(data, 2 * (18 + 2 * slot), item_id)
+        set_word(data, 2 * (19 + 2 * slot), quantity)
+
+    def set_string(data: bytearray, byte_offset: int, size: int, value: bytes) -> None:
+        assert len(value) < size
+        data[byte_offset : byte_offset + size] = value + bytes(size - len(value))
+
+    def render(data: bytearray, slots: list[int], context: str = "world") -> str:
+        slots = slots + [-1] * (200 - len(slots))
+        return fnv1a64(
+            game_menu_items_screen(
+                ascii_font,
+                big5_font,
+                palette,
+                lookup,
+                item_frames,
+                data,
+                slots,
+                context=context,
+            )
+        )
+
+    fifteen = bytearray(ranger)
+    clear_inventory(fifteen)
+    item_ids = (0, 2, 10, 21)
+    for slot in range(15):
+        set_inventory(fifteen, slot, item_ids[slot % len(item_ids)], 1)
+
+    coordinate = bytearray(ranger)
+    clear_inventory(coordinate)
+    set_inventory(coordinate, 0, 182, 2)
+    for word, value in ((2, -7), (3, 23), (7, -4), (8, 99)):
+        set_word(coordinate, 2 * word, value)
+
+    alternate = bytearray(ranger)
+    clear_inventory(alternate)
+    set_inventory(alternate, 0, 0, 1)
+    item_offset = 59076
+    set_string(alternate, item_offset + 2, 20, b"A")
+    set_string(alternate, item_offset + 22, 20, b"BC")
+    set_string(alternate, item_offset + 42, 30, b"DESC")
+    for offset, value in ((0, 0), (76, 1), (80, 1), (82, 1)):
+        set_word(alternate, item_offset + offset, value)
+    set_string(alternate, 836 + 182 + 8, 10, b"R")
+
+    strict_user = bytearray(alternate)
+    set_string(strict_user, item_offset + 2, 20, b"A")
+    for offset, value in ((76, 0), (80, 0), (82, 1)):
+        set_word(strict_user, item_offset + offset, value)
+    set_string(strict_user, 836 + 8, 10, b"Q")
+
+    empty = bytearray(ranger)
+    clear_inventory(empty)
+    return {
+        "fifteen_items_page0_draws_down": render(fifteen, list(range(15))),
+        "item182_world_coordinates_quantity2": render(coordinate, [0]),
+        "alternate_name_type1_positive_role": render(alternate, [0]),
+        "primary_name_type1_role_zero": render(strict_user, [0]),
+        "invalid_selection_border_only": render(empty, []),
+    }
 
 
 def draw_ascii_glyph(
@@ -715,14 +958,15 @@ def game_menu_item_reset_machine(z_dat: bytes, ranger: bytes) -> dict[str, objec
         (header[18 + slot * 2], header[19 + slot * 2]) for slot in range(200)
     ]
     baseline_types = {
-        item_id: struct.unpack_from("<h", ranger, 59076 + item_id * 190)[0]
+        item_id: struct.unpack_from("<h", ranger, 59076 + item_id * 190 + 82)[0]
         for item_id, _quantity in baseline_inventory
         if item_id >= 0
     }
     baseline_zero = machine_filter(0, baseline_inventory, baseline_types)
     baseline_four = machine_filter(4, baseline_inventory, baseline_types)
     assert baseline_zero[:5] == [0, 1, 2, 3, -1]
-    assert baseline_four == [-1] * 200
+    assert baseline_four[:5] == [0, 1, 2, 3, -1]
+    assert baseline_four[4:] == [-1] * 196
 
     synthetic_inventory = [(-1, 0)] * 200
     synthetic_types = {10: 4, 11: 3, 12: 2, 13: 4, 14: -1, 15: 0, 16: 3}
@@ -755,7 +999,7 @@ def game_menu_item_reset_machine(z_dat: bytes, ranger: bytes) -> dict[str, objec
         "reset": "fill 400 output bytes with 0xff, yielding 200 signed-word -1 sentinels",
         "scan": "inventory slots 0..199 in ascending order",
         "item_id": "signed word; negative values skipped; quantity word never read",
-        "item_type": "signed word at item record stride 190",
+        "item_type": "signed word at item record byte +82 (word 41), stride 190",
         "include": "item_type == filter or filter == 0 or (item_type == 3 and filter == 4)",
         "output": "accepted inventory slot indices as signed words in stable prefix order",
         "return": "unstable EAX ignored/overwritten by both callers",
@@ -764,7 +1008,7 @@ def game_menu_item_reset_machine(z_dat: bytes, ranger: bytes) -> dict[str, objec
     contract_sha256 = sha256(
         json.dumps(contract, sort_keys=True, separators=(",", ":")).encode("utf-8")
     )
-    assert contract_sha256 == "7c020bf7c766d2e55b143a4593fd1e861f15dc4755c6685f7da988b594e45449"
+    assert contract_sha256 == "b821c125ab79c95c0cd6e9074e6a6b9d4c67cef202e40573fe402a79f24fdb6d"
     vectors = {
         "baseline_filter_0": baseline_zero,
         "baseline_filter_4": baseline_four,
@@ -775,7 +1019,7 @@ def game_menu_item_reset_machine(z_dat: bytes, ranger: bytes) -> dict[str, objec
     vectors_sha256 = sha256(
         json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
     )
-    assert vectors_sha256 == "af4d291ff7f5cd82a2208ec7156ff298fdda9b983b63908ea6552b2e8b3e6798"
+    assert vectors_sha256 == "3fd01787c6d22cd4414b79ca7a947ee75769f49e12a01ad13703a56877fcb76b"
 
     return {
         "raw_range": "Z.DAT[0x23b0f:0x23b86]",
@@ -809,6 +1053,172 @@ def game_menu_item_reset_machine(z_dat: bytes, ranger: bytes) -> dict[str, objec
             "raw_sha256": sha256(fill_callee),
             "call_registers": {"eax": "0xd27c0", "ecx": 400, "edx": "0xffffffff"},
         },
+        "contract": contract,
+        "contract_sha256": contract_sha256,
+        "vectors": vectors,
+        "vectors_sha256": vectors_sha256,
+    }
+
+
+def game_menu_item_draw_machine(z_dat: bytes, ranger: bytes) -> dict[str, object]:
+    loaded_start = 0x2A186
+    raw = z_dat[0x23B86:0x2414C]
+    assert len(raw) == 1478
+    assert sha256(raw) == "4343589cfb549849f9e6215c269b3ea45804d94bf6918068a3fc48ec4f5dcec0"
+    fixup_sites = (
+        0x2A19C, 0x2A1C7, 0x2A1D8, 0x2A1E9, 0x2A1F8, 0x2A219, 0x2A23A,
+        0x2A288, 0x2A2BD, 0x2A2C7, 0x2A2D1, 0x2A2D9, 0x2A2DE, 0x2A2E5,
+        0x2A2EE, 0x2A310, 0x2A34F, 0x2A359, 0x2A367, 0x2A375, 0x2A380,
+        0x2A389, 0x2A399, 0x2A39E, 0x2A3AD, 0x2A3B5, 0x2A3C0, 0x2A3D5,
+        0x2A3DD, 0x2A3EA, 0x2A3F4, 0x2A412, 0x2A41A, 0x2A427, 0x2A436,
+        0x2A43B, 0x2A459, 0x2A45E, 0x2A473, 0x2A478, 0x2A487, 0x2A48F,
+        0x2A49A, 0x2A4AF, 0x2A4B7, 0x2A4C4, 0x2A4CE, 0x2A4EC, 0x2A4F4,
+        0x2A501, 0x2A510, 0x2A515, 0x2A52D, 0x2A532, 0x2A565, 0x2A56D,
+        0x2A57A, 0x2A585, 0x2A58D, 0x2A594, 0x2A59A, 0x2A59F, 0x2A5A4,
+        0x2A5B8, 0x2A5BD, 0x2A5C8, 0x2A5D1, 0x2A5D6, 0x2A5E5, 0x2A5ED,
+        0x2A5F8, 0x2A610, 0x2A615, 0x2A645, 0x2A64D, 0x2A65A, 0x2A664,
+        0x2A66F, 0x2A678, 0x2A67D, 0x2A691, 0x2A696, 0x2A6C3, 0x2A6CB,
+        0x2A6DA, 0x2A6DF, 0x2A6F5, 0x2A6FD, 0x2A703, 0x2A708, 0x2A71C,
+        0x2A721, 0x2A736, 0x2A73B,
+    )
+    assert len(fixup_sites) == 94
+    assert sha256(",".join(f"{site:x}" for site in fixup_sites).encode()) == (
+        "4b666d15915fc77743e3e31c6156ea131c385b4e0481b9534033256c3d87148d"
+    )
+    loaded = bytearray(raw)
+    for site in fixup_sites:
+        offset = site - loaded_start
+        raw_address = struct.unpack_from("<I", raw, offset)[0]
+        struct.pack_into("<I", loaded, offset, raw_address + 0x20000)
+    assert sha256(loaded) == "c782243a08c8bd7711ba165b88639e11dfa721ecd61fb46c33cf11e4b42bf0ce"
+    normalized = bytearray(loaded)
+    for site in fixup_sites:
+        offset = site - loaded_start
+        loaded_address = struct.unpack_from("<I", normalized, offset)[0]
+        struct.pack_into("<I", normalized, offset, loaded_address - 0x20000)
+    assert bytes(normalized) == raw
+
+    calls = {
+        "sub_3ED1E": [0x2A18B],
+        "sub_2558B": [0x2A1CE],
+        "sub_29D2D": [0x2A1DF],
+        "sub_3AA85": [0x2A1F0],
+        "sub_2CEBF": [0x2A20E, 0x2A22F, 0x2A253],
+        "sub_2A74C": [0x2A26D],
+        "sub_2A7E8": [0x2A27E],
+        "sub_2D501": [0x2A2A0, 0x2A32F],
+        "sub_3D643": [0x2A2F7],
+        "sub_3EF4A": [0x2A3A2, 0x2A47C, 0x2A5A8, 0x2A5DA, 0x2A681, 0x2A70C],
+        "sub_3EF7D": [0x2A3C8, 0x2A4A2, 0x2A600],
+        "sub_3D832": [0x2A543, 0x2A626, 0x2A6A1, 0x2A6EA, 0x2A72C],
+        "sub_3D6D1": [0x2A73F],
+    }
+    for sites in calls.values():
+        for site in sites:
+            offset = site - loaded_start
+            assert raw[offset] == 0xE8
+    assert sum(map(len, calls.values())) == 27
+
+    header = struct.unpack("<418h", ranger[:836])
+    inventory = [(header[18 + 2 * slot], header[19 + 2 * slot]) for slot in range(200)]
+    baseline_ids = [item_id for item_id, _ in inventory if item_id >= 0]
+    assert baseline_ids == [0, 2, 10, 21]
+    baseline_item_types = {
+        item_id: struct.unpack_from("<h", ranger, 59076 + item_id * 190 + 82)[0]
+        for item_id in baseline_ids
+    }
+    assert baseline_item_types == {0: 3, 2: 3, 10: 3, 21: 3}
+
+    contract = {
+        "arguments": "cdecl (page,row,column); wrappers pass 0,0,0",
+        "background": "context 0 world, 1 scene, 2 battle, otherwise no redraw",
+        "panels": [[45, 2, 230, 23], [45, 27, 230, 23], [45, 52, 230, 145]],
+        "metric": "first exact -1 inventory slot plus one, else 200",
+        "arrows": "down iff metric > 5*(page+3); up iff metric > 15 and page > 0",
+        "grid": "row-major 3x5; origin 55,62; step 42; border 40x40 color 0",
+        "mapping": "word_D27C0 logical list position -> signed real inventory slot",
+        "icon": "frame = 2*item_id + word_54508 at cell origin",
+        "selection": "selected border color 255 before selected-entry validation",
+        "record": "190-byte item stride; id+0 names+2/+22 description+42 role+76 selector+80 type+82",
+        "name": "selector chooses name; x 140 or 160 minus 4*byte_length; y 5",
+        "special": "id 182 formats 人（%3d，%3d）船（%3d，%3d） at 48,30",
+        "description": "ordinary +42 string centered at x=160-4*byte_length,y=30",
+        "role": "nonnegative role index formats 182-byte-stride role name +8 as (%s) at 205,5",
+        "quantity": "signed >1 only: X at 215,5 and %2d at 235,5",
+        "present": "exactly once on every path after rendering",
+        "return": "unstable EAX ignored by all three callers",
+        "boundary": "arrow/background/primitive/string/present callees, reset, selector and callers remain independent",
+    }
+    contract_sha256 = sha256(
+        json.dumps(
+            contract, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    )
+    assert contract_sha256 == "e2512968dbf346d44b6856095c8f21ea87d0af23cd5626d8fdc40d629fc7f4b1"
+    vectors = {
+        "metric_exact_15_items": {
+            "inventory_prefix": [0] * 15 + [-1],
+            "metric": 16,
+            "page": 0,
+            "down": True,
+            "up": False,
+        },
+        "metric_other_negative_does_not_stop": {
+            "inventory_prefix": [0, -2, 1, -1],
+            "metric": 4,
+        },
+        "metric_full_table": {"metric": 200},
+        "grid_last_cell_page_2": {
+            "page": 2,
+            "row": 2,
+            "column": 4,
+            "logical_index": 24,
+            "origin": [223, 146],
+        },
+        "selected_invalid": {
+            "border": [55, 62, 40, 40, 255],
+            "details": [],
+            "present": 1,
+        },
+        "detail_cases": {
+            "alternate_type1_role1_name_len2_x": 132,
+            "primary_type1_role0_name_len1_x": 156,
+            "item182_description": [48, 30],
+            "quantity1_draws": False,
+            "quantity2_draws": True,
+        },
+    }
+    vectors_sha256 = sha256(
+        json.dumps(vectors, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    return {
+        "raw_range": "Z.DAT[0x23b86:0x2414c]",
+        "loaded_range": "0x2a186..0x2a74c",
+        "size_bytes": len(raw),
+        "instruction_count": 379,
+        "basic_block_count": 47,
+        "conditional_branch_count": 25,
+        "unconditional_jump_count": 6,
+        "fixup_count": len(fixup_sites),
+        "fixup_sites_sha256": sha256(",".join(f"{site:x}" for site in fixup_sites).encode()),
+        "raw_sha256": sha256(raw),
+        "loaded_sha256": sha256(loaded),
+        "normalized_loaded_equals_raw": True,
+        "calls": {name: [f"0x{site:x}" for site in sites] for name, sites in calls.items()},
+        "call_count": sum(map(len, calls.values())),
+        "entry_xrefs": ["sub_2a0d9:0x2a0fa", "sub_2a86c:0x2a8da", "sub_3a29c:0x3a2ba"],
+        "external_internal_entries": [],
+        "local_return": "0x2a74b",
+        "caller_raw_sha256": {
+            "sub_2a0d9": sha256(z_dat[0x23AD9:0x23B0F]),
+            "sub_2a86c": sha256(z_dat[0x2426C:0x24C27]),
+            "sub_3a29c": sha256(z_dat[0x33C9C:0x33D0B]),
+        },
+        "adjacent_arrow_helper_raw_sha256": {
+            "sub_2a74c": sha256(z_dat[0x2414C:0x241E8]),
+            "sub_2a7e8": sha256(z_dat[0x241E8:0x2426C]),
+        },
+        "baseline_item_types_at_byte_82": baseline_item_types,
         "contract": contract,
         "contract_sha256": contract_sha256,
         "vectors": vectors,
@@ -1050,6 +1460,8 @@ def main() -> int:
     title_group = (args.data_root / "title.grp").read_bytes()
     title_big = (args.data_root / "title.big").read_bytes()
     palette = (args.data_root / "mmap.col").read_bytes()
+    mmap_index = (args.data_root / "MMAP.IDX").read_bytes()
+    mmap_group = (args.data_root / "MMAP.GRP").read_bytes()
     ascii_font = (args.data_root / "FONT3.E16").read_bytes()
     big5_font = (args.data_root / "FONT3.C16").read_bytes()
     cfont = (args.data_root / "CFONT").read_bytes()
@@ -1061,7 +1473,9 @@ def main() -> int:
     assert len(cfont) == 29674
     assert len(ranger) == 114242
     frames = archive_entries(title_index, title_group)
+    item_frames = archive_entries(mmap_index, mmap_group)
     assert len(frames) == 9
+    assert len(item_frames) >= 200
     protagonist = ranger[836 : 836 + 182]
     (level,) = struct.unpack_from("<h", protagonist, 15 * 2)
     parsed_palette = parse_palette(palette)
@@ -1100,6 +1514,22 @@ def main() -> int:
             ),
             "scene_selection_3": fnv1a64(
                 game_menu_screen(big5_font, parsed_palette, panel_lookup, 4, 3)
+            ),
+        },
+        "game_menu_item_draw_pixels_fnv1a64": {
+            "source": "independent synthetic indexed background plus original RANGER.GRP/MMAP/FONT3 assets",
+            "assets": {
+                "MMAP.IDX": {"bytes": len(mmap_index), "sha256": sha256(mmap_index)},
+                "MMAP.GRP": {"bytes": len(mmap_group), "sha256": sha256(mmap_group)},
+                "RANGER.GRP": {"bytes": len(ranger), "sha256": sha256(ranger)},
+            },
+            **item_draw_pixel_vectors(
+                ascii_font,
+                big5_font,
+                parsed_palette,
+                panel_lookup,
+                item_frames,
+                ranger,
             ),
         },
         "name_entry_pixels_fnv1a64": {
@@ -1182,6 +1612,7 @@ def main() -> int:
         },
         "game_menu_item_entry_machine": game_menu_item_entry_machine(z_dat),
         "game_menu_item_reset_machine": game_menu_item_reset_machine(z_dat, ranger),
+        "game_menu_item_draw_machine": game_menu_item_draw_machine(z_dat, ranger),
         "game_menu_item_selector_machine": game_menu_item_selector_machine(z_dat),
         "title_navigation": {
             "main_labels": ["new_game", "load", "exit"],

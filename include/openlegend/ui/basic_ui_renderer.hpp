@@ -11,6 +11,7 @@
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/packed_archive.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 #include "openlegend/ui/title_menu.hpp"
@@ -62,10 +63,16 @@ private:
         const GameMenuController& menu,
         const model::RangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
+    [[nodiscard]] bool draw_item_icon(
+        render::IndexedFramebuffer& framebuffer,
+        std::int16_t item_id,
+        int x,
+        int y) const;
     void update_panel_palette(const compat::LegacyPalette& palette) noexcept;
     [[nodiscard]] std::uint8_t blend_panel_pixel(
         std::uint8_t destination) const noexcept;
 
+    resource::PackedArchive item_sprites_;
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
     std::optional<render::Big5GlyphCache> big5_cache_;
