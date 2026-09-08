@@ -495,13 +495,13 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 
 ## 46. 战斗状态面板最终REVIEW
 
-`sub_3C6D3 @ 0x3C6D3..0x3CBE3`机器身份固定为1296 bytes、338条连续指令、39个IDA flow block、17个条件分支、14个无条件跳转、87处重定位、22次direct call、三个入口xref及唯一`RETN @ 0x3CBE2`；raw/loaded SHA256为`7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2`与`bf86a5a30d9179987631eb70fd8e4cc88005313fd8901ccb8aa60f7493762e1a`。全部fixup逆`+0x20000`后逐字节等于原资产。函数末端`0x3CBDB..0x3CBE3`另有12个外部owner直接跳入，本owner不向共享尾入口传播closure。
+`sub_3C6D3 @ 0x3C6D3..0x3CBE3`机器身份固定为1296 bytes、338条连续指令、39个IDA flow block、16个条件分支、14个无条件跳转、87处重定位、22次direct call、三个入口xref及唯一`RETN @ 0x3CBE2`；raw/loaded SHA256为`7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2`与`bf86a5a30d9179987631eb70fd8e4cc88005313fd8901ccb8aa60f7493762e1a`。全部fixup逆`+0x20000`后逐字节等于原资产。函数末端`0x3CBDB..0x3CBE3`另有12个外部owner直接跳入，本owner不向共享尾入口传播closure。UI Order30新临时IDB复验发现旧审计把`0x3CBDB`指令注释中的`jumptable`误计为条件跳转；旧17/31计数作废，正确总跳转为30，机器字节、CFG与行为合同不变。
 
 机器以side恰0/非0选择右/左侧偏移0/220，依次绘100×140面板、头像、可选名称及体力/生命/内力三行。名称只扫描格式化scratch byte1..8的首个NUL并以`270-4*index-offset`居中，无NUL则不绘；所有数值用signed `%3d`且宽度不截断。当前HP颜色按hurt `<=33/34..66/>=67`，最大HP颜色按poison `==0/非零且<50/>=50`；MP type 0/1/2使用三组固定色，其他值保留EBX并精确复用上一段poison颜色。最大名称路径固定1次框、1次头像、6次格式化和13次文字调用。
 
 两个`sub_32E59`入口分别在玩家菜单初次与handler返回完整重绘后调用面板并present，轮询期间机器不再经过完整call site；现代缓存完整菜单帧并只覆写label。`sub_33599`入口在AI态势统计后叠加面板、present并等待300参数，现代等价重建未变化战场，`ai_wait`不重绘。逐块对照`BattleSetup::status_panel_plan`、`BattleRenderer::render_status_panel`和三条Session路径未发现合法caller域产品差异；非法slot/role/portrait安全拒绝、私有scratch和宿主分相归类平台适配。
 
-独立向量覆盖side signed边界、名称NUL 1..8/无NUL、signed `%3d`超宽、hurt/poison阈值及非法MP残值，SHA256为`8a01741539af2e73e7c8f9b601dd944583cb1c79b647c1e7ad9663a7e8b28370`。独立原资产绘制从非均匀保留帧生成party/enemy面板FNV64=`0xcf0f77700cd1e7a1`/`0xebce8d4d6d8c1f14`，C++计划与像素逐值一致。Order38改用启动链FONT3资产后三生成逐字节一致，当前76键正式SHA256=`ab3b9a67ceec89430176a5469899e3e3ed318efc7d44a1a4947272115e77d6ab`；非字体合同保持，旧字体像素哈希已废弃；Linux/Windows `core/app × Debug/Release`模块关闭八项矩阵全部通过，core各13/13、app各14/14。本owner归类`platform_adapted / converged_no_new_differences`，B8最终81/81关闭。
+独立向量覆盖side signed边界、名称NUL 1..8/无NUL、signed `%3d`超宽、hurt/poison阈值及非法MP残值，SHA256为`8a01741539af2e73e7c8f9b601dd944583cb1c79b647c1e7ad9663a7e8b28370`。独立原资产绘制从非均匀保留帧生成party/enemy面板FNV64=`0xcf0f77700cd1e7a1`/`0xebce8d4d6d8c1f14`，C++计划与像素逐值一致。UI Order30修正分支计数后再次三生成逐字节一致，反向差分仅有该节点`branch_count 31→30`与`conditional_branch_count 17→16`，当前76键正式SHA256=`f7ae2c8969587a5e5f6e34af9c6d73b4f910149d28493b86c2f0bf0b9ed66b4e`；非字体合同保持；Linux/Windows `core/app × Debug/Release`模块关闭八项矩阵历史结果全部通过，core各13/13、app各14/14。本owner归类`platform_adapted / converged_no_new_differences`，B8最终81/81关闭；UI同址owner由Order30新入口复审独立关闭。
 
 后续B9 input-font order32独立复审同址`sub_31EB9`的输入flag与宿主呈现边界，修正party selection为每次成功present只按down > up > confirmation消费一个锁存组；该input owner不反向传播或改写已关闭battle owner。新增10组原资产输入向量后，正式文件仍为75键，order32关闭时SHA256=`1f063b707ad9924e872a2224596baf499baa21fffbe7093f6f3bc43c54349ac6`。input-font order33随后独立复审`sub_3271E`，纠正首次黑色indexed frame排序后置的旧解释，并新增caller `view=0,0`与round-loop `view=19,13`双帧区分向量；order33正式SHA256=`c8a083ec57902eec86d71a3086c365a6370d65fc8f49767e40f529e36e66ba7c`，Linux app Debug 14/14通过。
 

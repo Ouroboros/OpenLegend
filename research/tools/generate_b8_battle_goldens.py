@@ -11042,7 +11042,7 @@ def battle_status_panel_contract(
         relocation_offsets=BATTLE_STATUS_PANEL_RELOCATION_OFFSETS,
         caller_sites=BATTLE_STATUS_PANEL_CALLER_SITES,
         instruction_count=338,
-        branch_count=31,
+        branch_count=30,
     )
     if contract["raw_sha256"] != (
         "7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2"
@@ -11384,7 +11384,7 @@ def battle_status_panel_contract(
     return {
         **contract,
         "basic_block_count": 39,
-        "conditional_branch_count": 17,
+        "conditional_branch_count": 16,
         "unconditional_jump_count": 14,
         "local_return_sites": ["0x3cbe2"],
         "machine_slices": machine_slices,

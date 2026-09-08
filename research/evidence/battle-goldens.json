@@ -21343,7 +21343,7 @@
     "raw_offset": "0x360d3",
     "size": 1296,
     "instruction_count": 338,
-    "branch_count": 31,
+    "branch_count": 30,
     "raw_sha256": "7b7e43180089ca6cf33a5db5cab51a0bcdbc019d98bee609104363948a7862c2",
     "loaded_sha256": "bf86a5a30d9179987631eb70fd8e4cc88005313fd8901ccb8aa60f7493762e1a",
     "relocation_count": 87,
@@ -21402,7 +21402,7 @@
       "0x33668"
     ],
     "basic_block_count": 39,
-    "conditional_branch_count": 17,
+    "conditional_branch_count": 16,
     "unconditional_jump_count": 14,
     "local_return_sites": [
       "0x3cbe2"

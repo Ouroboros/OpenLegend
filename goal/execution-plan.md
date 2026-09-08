@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=340/349`，`unique_any=276/284`，`unique_all=275/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=30` `sub_3C6D3`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=31` `sub_3CC97`
-最近关闭：ui `audit_order=29` `sub_2A86C`已固定2491 bytes、548条指令、137/137 CFG块、77个条件分支、35个无条件跳转、167处重定位、47次direct call、2个caller及共享尾边界；首轮发现物品确认/Escape后跳过裸world/scene/battle背景present、world/scene中间屏可被同批键越过且消耗品在效果present前扣库存，现以统一deferred dispatch、逐阶段present门、battle context-present阶段及effect-present后库存提交修正；入口重审、独立15向量Golden及Linux app Debug 14/14关闭。
+当前有效进度：`closure=341/349`，`unique_any=276/284`，`unique_all=276/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=31` `sub_3CC97`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=32` `sub_3CD17`
+最近关闭：ui `audit_order=30` `sub_3C6D3`已用新临时IDB固定1296 bytes、338条指令、39/39 CFG块、16个条件分支、14个无条件跳转、87处重定位、22次direct call、3个caller site、唯一RET及共享epilogue边界；合法域产品实现零差异，旧证据把指令注释中的`jumptable`误计为分支，现将17/31口径纠正为16/30；独立Golden三生成逐字节一致、反向差分仅两个计数字段，Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 
