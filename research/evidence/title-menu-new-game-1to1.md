@@ -1,9 +1,9 @@
 # B5 标题、菜单、新游戏与基础 UI 汇编合同
 
-状态：assembly-reviewed / golden-generated / implementation-pending
+状态：B5/UI统一最终汇编→C++ REVIEW为39/39，全部owner关闭；原资产Golden已冻结。
 真值：当前 `Z.DAT` 机器码、当前 `title.idx/title.grp/title.big/CFONT/RANGER.GRP` 字节
 
-input-font Order38确认原版唯一启动链固定加载`FONT3.E16/FONT3.C16`，并废弃此前由非启动链字体生成的姓名及菜单像素证明。当前`research/evidence/title-menu-new-game-goldens.json`已从只读FONT3资产执行两份临时生成和正式第三生成，三份逐字节一致，SHA256=`2543ef3cca3099a89dcfaaec6022c64936d5e3fdfb481f98bb7dd0c7cf23b186`；旧文件中仅由C++运行期输出手填的`runtime_ui_regression_fnv1a64`不是独立oracle，现已移出正式Golden，运行期哈希只保留为测试回归锁。非字体状态、输入和RNG字段不变。
+input-font Order38确认原版唯一启动链固定加载`FONT3.E16/FONT3.C16`，并废弃此前由非启动链字体生成的姓名及菜单像素证明。后续UI owner继续由同一只读资产oracle追加证明；B9最终两次独立生成逐字节一致并反向匹配正式`research/evidence/title-menu-new-game-goldens.json`，当前SHA256=`a4708f93c6793c653e10adf3a0e2c3f24555371ed1c755fa652532e7f673ba54`。旧文件中仅由C++运行期输出手填的`runtime_ui_regression_fnv1a64`不是独立oracle，已移出正式Golden，运行期哈希只保留为测试回归锁。
 
 ## 1. 证据范围
 

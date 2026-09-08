@@ -149,7 +149,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 首轮汇编→C++对照发现现代将机器非终止`range=32767`误作有限32767步执行；现只对该signed值进入前安全拒绝。修正后从入口重新覆盖248条指令、30分支、69处fixup、四方向循环、唯一caller和全部共享尾出口，合法caller状态零剩余产品差异。四方向友军skip+敌方distance3 hash为`0x0c51a09fb032df25/0x80f86a7090dd8f15/0x53328f08db3e6d15/0xdd9b44614652df25`，先越界后重新入界hash `0x32329c4e241f2c3d`；原battle4空格+敌方hash `0xae7c1e4e161ac125`/damage29，友军skip后继续hash `0xab559939923b4f74`，空图hash `0xb9d103fd6854a325`。HP0且hidden1目标、连续两敌人、非法方向/zero/max range、方向不改写及双击复用首轮方向/缓存范围均有区分回归；提示整帧hash `0x5e46c805f42677b0`。
 
-独立Golden三生成逐字节一致，SHA256为`e7c4b24495a6ddab76b449e11473d31dc982705a5bf9d37774a20fc17b9ea276`；Linux Clang 23根`./build.sh app --config Debug`通过14/14。order54独立归类`platform_adapted / converged_after_fix`；jump table、HP damage、direction prompt/input、attack core caller、FIGHT/EFT/damage与共享尾不传播closure。
+独立Golden三生成逐字节一致，SHA256为`e7c4b24495a6ddab76b449e11473d31dc982705a5bf9d37774a20fc17b9ea276`；Linux Clang 23根`./build.sh app --config Debug`通过14/14。order54独立归类`platform_adapted / converged_no_new_differences`；jump table、HP damage、direction prompt/input、attack core caller、FIGHT/EFT/damage与共享尾不传播closure。
 
 ## 13. 攻击动画时间线
 
@@ -161,11 +161,11 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 `sub_3884A`机器身份固定为198 bytes、56条指令、4个函数体跳转、9处重定位、9次direct call和三个caller；raw/loaded SHA256为`8a04b6dee92962bfdab94f0480f09d34b7d012866679e1e76370dcc737fe6126`与`c5feba51e0559ba30d74cb1797847e4f5815a758b683ee5ac35612521799c460`。入口严格load bank1 sample13→load bank2 effect→start-loaded bank1→delay100，期间没有render/present；随后只start-loaded bank2，再置effect visible/frame并逐帧render→present→delay17→frame+2，最后清visible。effect0/2/30分别为10/17/11帧，起始frame 0/48/772；负或>=53的原线性越界由现代安全拒绝。
 
-首轮入口REVIEW发现现代默认play破坏双bank预载/启动边界，且前奏相位错误重绘无光标战场；现玩家/AI入口均排入`load, load, start_loaded`，100 tick后只`start_loaded` effect，prelude render保持caller framebuffer不变。玩家caller/prelude hash为`0x49aac6569a28fe89`，AI直接为`0x3f498f66e6357fff`；两路effect30/damage首帧hash分别为`0x370a4078e9de6172`/`0xde5838c214d40974`和`0xc65b523bd75389e2`/`0x23fd88f5e1341c3b`，AI移动后effect为`0x16a8f10ce319622b`。修正后从入口重审全部56条指令、两循环、唯一出口及三个caller零剩余owner差异，归类`platform_adapted / converged_after_fix`。玩家状态提交属于order68 caller，不随本owner传播关闭。
+首轮入口REVIEW发现现代默认play破坏双bank预载/启动边界，且前奏相位错误重绘无光标战场；现玩家/AI入口均排入`load, load, start_loaded`，100 tick后只`start_loaded` effect，prelude render保持caller framebuffer不变。玩家caller/prelude hash为`0x49aac6569a28fe89`，AI直接为`0x3f498f66e6357fff`；两路effect30/damage首帧hash分别为`0x370a4078e9de6172`/`0xde5838c214d40974`和`0xc65b523bd75389e2`/`0x23fd88f5e1341c3b`，AI移动后effect为`0x16a8f10ce319622b`。修正后从入口重审全部56条指令、两循环、唯一出口及三个caller零剩余owner差异，归类`platform_adapted / converged_no_new_differences`。玩家状态提交属于order68 caller，不随本owner传播关闭。
 
 `sub_38910`机器身份固定为120 bytes、31条指令、5个函数体跳转、7处重定位、4次direct call和7个caller；raw/loaded SHA256为`bf23e1ade78c9c29d28bc79fd6e4805f3d5d4716102e66fff1961b59b8ee16c6`与`6fd5bc6baae469b2ccbbc81d073c4961c0e214a83fcd9a091b43b0b3f12494c5`。入口phase清0，固定10帧；每帧先按`frame<4 && low16(suppress)==0`写flash，再render→present→phase++→delay1。故renderer消费phase0..9、wait期间phase为1..10；最终kind清0。高16位不影响suppress，函数零RNG。
 
-七个caller的suppress低字依次为`0,0,0,0,1,1,0`：AI两条暗器、attack、poison均normal，detox/medicine suppressed，玩家暗器normal；kind分别为AI/玩家暗器damage非零时1、attack type3时5否则1、poison2、detox3、medicine4。首轮对照发现AI暗器caller错误无条件清kind0，以及present确认后现代phase直到delay完成才递增两项差异；现恢复`damage!=0 ? 1 : 0`并在present确认时推进公开display phase。玩家支持/暗器及AI直接/移动暗器逐帧回归锁定present前phase0..9、wait phase1..10、flash、kind和终态清理；修正后重新覆盖order53全部31条指令、5分支、7个caller，并从受影响`sub_3598C`入口复核440条指令与全部出口，零剩余差异。原资产Golden三生成逐字节一致，SHA256为`a6e7c3adccb1cedd5c74296b305cba84da73dfb784906e0a28b6208974e46b1b`；Linux Debug 14/14。order53归类`platform_adapted / converged_after_fix`，renderer/present/delay及caller保持独立owner。
+七个caller的suppress低字依次为`0,0,0,0,1,1,0`：AI两条暗器、attack、poison均normal，detox/medicine suppressed，玩家暗器normal；kind分别为AI/玩家暗器damage非零时1、attack type3时5否则1、poison2、detox3、medicine4。首轮对照发现AI暗器caller错误无条件清kind0，以及present确认后现代phase直到delay完成才递增两项差异；现恢复`damage!=0 ? 1 : 0`并在present确认时推进公开display phase。玩家支持/暗器及AI直接/移动暗器逐帧回归锁定present前phase0..9、wait phase1..10、flash、kind和终态清理；修正后重新覆盖order53全部31条指令、5分支、7个caller，并从受影响`sub_3598C`入口复核440条指令与全部出口，零剩余差异。原资产Golden三生成逐字节一致，SHA256为`a6e7c3adccb1cedd5c74296b305cba84da73dfb784906e0a28b6208974e46b1b`；Linux Debug 14/14。order53归类`platform_adapted / converged_no_new_differences`，renderer/present/delay及caller保持独立owner。
 
 ## 14. 武功选择菜单
 
@@ -175,7 +175,7 @@ battle2队伍角色0/2得到初态`[2,0]`，确认后按原顺序得到队伍`[0
 
 面板固定`(20,10,90,17*learned_count+10)`；普通/选中色`0x2321/0x6663`，Big5长度1..5的x为`57/49/41/33/25`，y=`17*ordinal+15`。普通名称只扫描`slot<learned_count`，但availability、确认和选中名称扫描10槽，故稀疏槽后置武功普通态漏画、选中态显示的原BUG完整保留。零available机器域可负cursor、无效slot0或不终止，现代只对该异常域安全拒绝。
 
-battle Order55首轮曾以一次presentation门修正跳帧差异，但误把两个状态地址解释为Right/Left，并丢弃present前translated event。input-font Order37独立重建状态地址后废弃该输入结论：现代改为Down/Up，并在每次成功present后按Down→Up→确认→Escape扫描持久状态，每帧最多消费一组，低优先状态保留。修正后从入口重审259条指令、70/70块、52分支、8次call、唯一caller及全部出口，零剩余合法域差异。固定状态/稀疏显示/多状态/零available hash为`0xc254d2cd83d7da76/0x9eeb370071c9a0af/0x7398c6fcaccb922c/0x47d47c419ce4142b`；Session两帧FNV64为`0x909332be9671b27c/0x6977ba7a0c3172a6`。Golden三生成一致SHA256为`cae592a562fd3022c47ac2167c8f0d7eda302101e83eab2e2d5a9a463dc42799`，Linux Debug 14/14。Order37独立归类`platform_adapted / converged_after_fix`；caller、callee、battle owner和后续目标/方向处理不传播input closure。
+battle Order55首轮曾以一次presentation门修正跳帧差异，但误把两个状态地址解释为Right/Left，并丢弃present前translated event。input-font Order37独立重建状态地址后废弃该输入结论：现代改为Down/Up，并在每次成功present后按Down→Up→确认→Escape扫描持久状态，每帧最多消费一组，低优先状态保留。修正后从入口重审259条指令、70/70块、52分支、8次call、唯一caller及全部出口，零剩余合法域差异。固定状态/稀疏显示/多状态/零available hash为`0xc254d2cd83d7da76/0x9eeb370071c9a0af/0x7398c6fcaccb922c/0x47d47c419ce4142b`；Session两帧FNV64为`0x909332be9671b27c/0x6977ba7a0c3172a6`。Golden三生成一致SHA256为`cae592a562fd3022c47ac2167c8f0d7eda302101e83eab2e2d5a9a463dc42799`，Linux Debug 14/14。Order37独立归类`platform_adapted / converged_no_new_differences`；caller、callee、battle owner和后续目标/方向处理不传播input closure。
 
 ## 15. 用毒目标与状态结算
 
@@ -205,7 +205,7 @@ battle Order55首轮曾以一次presentation门修正跳帧差异，但误把两
 
 ## 18. 战斗物品与休息状态核心
 
-`sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器AX为4才进入暗器目标，低word为1直接结束actor行动，其他值不改`action_done`。现代Session实际执行战场重画、三个共享框、5×3 MMAP图标、上下箭头、名称/简介、数量条件、四方向/PageUp/PageDown、Escape和三确认键。首轮最终REVIEW发现初始及导航frame可在present前接收同批下一键，现以一次物品presentation门恢复机器render→present→input顺序；修正后从入口重审零剩余合法域差异。16项count2/count1菜单整帧FNV64为`0x68c3b70dfec20bba`/`0x17b6845a718a6cf8`。type3固定当前actor自用；非零效果执行23项状态、面板present、库存提交及任意键等待，面板FNV64为`0xd518fb664f3e0e3c`；全零效果不画面板、不扣库存、不消费RNG但仍结束行动。该wrapper已归类`platform_adapted / converged_after_timing_fix`。
+`sub_3A29C` 固定以参数4调用共享物品过滤，因此原菜单按库存顺序同时列出item type3和4，并且不检查数量；选择器AX为4才进入暗器目标，低word为1直接结束actor行动，其他值不改`action_done`。现代Session实际执行战场重画、三个共享框、5×3 MMAP图标、上下箭头、名称/简介、数量条件、四方向/PageUp/PageDown、Escape和三确认键。首轮最终REVIEW发现初始及导航frame可在present前接收同批下一键，现以一次物品presentation门恢复机器render→present→input顺序；修正后从入口重审零剩余合法域差异。16项count2/count1菜单整帧FNV64为`0x68c3b70dfec20bba`/`0x17b6845a718a6cf8`。type3固定当前actor自用；非零效果执行23项状态、面板present、库存提交及任意键等待，面板FNV64为`0xd518fb664f3e0e3c`；全零效果不画面板、不扣库存、不消费RNG但仍结束行动。该wrapper已归类`platform_adapted / converged_no_new_differences`。
 
 `sub_3A30B` 以signed `hidden_weapon/15+1`选择目标；水平绝对值tie含同格明确写方向2，友军不标记，空格只标effect，敌方才继续。机器先读取当前item effect id并完整执行sample13/100前奏、effect sample及EFT；返回后重新读取目标occupancy、role与当前库存item，才提交伤害、中毒和RNG。HP增量按target hurt的0、1..33、34..66、>66四档取item `add_hp`的`1/4、1/3、1/2、1`并减一次`bounded(5)`，随机基数先回绕signed低16位，再以`(值-2*hidden_weapon)/3`结算；hurt按负增量四分之一上升。正`add_poison`不消费额外RNG，非正分支严格再消费两次`bounded(5)`。首轮最终REVIEW修正同格保向、随机基数缺少int16回绕及玩家状态/RNG早于整段EFT提交三项差异；修正后从入口重审零剩余合法域差异。Session锁定target确认和全部11帧EFT期间状态/RNG不变，转入首damage帧时才得到damage21、HP79、hurt45、poison12；10帧damage结束后才扣库存、写action-done、刷新sprite并推进actor。前奏、首EFT和首damage FNV64为`0xdbee20f394fd7219`、`0x370a4078e9de6172`、`0xde5838c214d40974`。该函数已归类`platform_adapted / converged_after_timing_and_wrap_fix`。
 
@@ -383,7 +383,7 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 
 首轮逐块对照发现现代SDL可在初始物品frame或导航后新frame尚未present时，从同一host event批次读取下一键。现以一次物品presentation计数门修正：begin及每个已识别导航后置1，实际`finish_presented_tick`后减为0，非零时忽略输入，离开物品相位时清零。修正后废弃首轮结论并从入口复核全部33条指令、5块、2分支、5次调用、RET及caller，合法域零剩余差异；非法actor/role/item安全拒绝归类平台适配。
 
-新增回归锁定首帧present前方向忽略、present后Escape不置行动完成、重新进入及每个导航后必须present；既有type3非零效果的面板/库存/任意键顺序、零效果不消费但完成、type4目标取消/确认及菜单hash继续通过。独立向量SHA256为`9657c3c342df26368b3e944dcff5923946ea64026a02bdab8fb0d61ceea270a5`；正式原资产Golden三生成逐字节一致，新增唯一键且历史60键不变，SHA256为`bbafb835c53f40faaa872d1052ceff7b63930ac2949420e43723003af41ceccd`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_after_timing_fix`；过滤、renderer/present、selector、type3效果、暗器target与caller均不传播closure。
+新增回归锁定首帧present前方向忽略、present后Escape不置行动完成、重新进入及每个导航后必须present；既有type3非零效果的面板/库存/任意键顺序、零效果不消费但完成、type4目标取消/确认及菜单hash继续通过。独立向量SHA256为`9657c3c342df26368b3e944dcff5923946ea64026a02bdab8fb0d61ceea270a5`；正式原资产Golden三生成逐字节一致，新增唯一键且历史60键不变，SHA256为`bbafb835c53f40faaa872d1052ceff7b63930ac2949420e43723003af41ceccd`。统一Linux Debug 14/14通过，本owner归类`platform_adapted / converged_no_new_differences`；过滤、renderer/present、selector、type3效果、暗器target与caller均不传播closure。
 
 ## 33. 玩家暗器动作最终REVIEW
 
@@ -449,7 +449,7 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 
 机器先把side恰1角色恢复HP/MP上限、体力100、内伤/中毒0，并统计所有非side1且HP>0者为共享经验分母。仅胜利2以signed `idiv`均分WAR word7，分母0先置1；只给side0且HP>0者的word13增加共享值。随后仅side0按signed最大HP/5补下限，死亡者体力低于10时补10。每个slot不分side均提交word13到角色经验，并以sign-extend→32位左移3→unsigned除10计算练功/制造经验；三个字段都先写low16，再按unsigned大于60000封顶。
 
-经验消息门严格为side0且（get-exp恰1或胜利2），顺序固定为战场重画、`%s 獲得經驗點數%5d`、框/文字、present、清旧键并等待新非零键，再按等级<30、practice item!=-1依次调用等级/练功/制造owner。首轮发现runtime把raw get-exp以`!=0`压成bool，现最小修正为`==1`；修正后从入口重审全部194条指令零剩余合法word域差异。新增side=-1分母、negative reward、word回绕/unsigned cap及synthetic get-exp9回归；独立向量SHA256=`499fd7109920c8f9eee8f31015e158e1af76d7eb984da2be29ab9073c2bcabcd`。Golden三生成逐字节一致，69键SHA256=`a343bfe7d579a8b5de486a63d5654ea3851ade75ea19f0826b94bf7313179c41`且历史68键逐值不变；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_after_fix`；等级、练功、制造、renderer、present/input和caller均不传播closure。
+经验消息门严格为side0且（get-exp恰1或胜利2），顺序固定为战场重画、`%s 獲得經驗點數%5d`、框/文字、present、清旧键并等待新非零键，再按等级<30、practice item!=-1依次调用等级/练功/制造owner。首轮发现runtime把raw get-exp以`!=0`压成bool，现最小修正为`==1`；修正后从入口重审全部194条指令零剩余合法word域差异。新增side=-1分母、negative reward、word回绕/unsigned cap及synthetic get-exp9回归；独立向量SHA256=`499fd7109920c8f9eee8f31015e158e1af76d7eb984da2be29ab9073c2bcabcd`。Golden三生成逐字节一致，69键SHA256=`a343bfe7d579a8b5de486a63d5654ea3851ade75ea19f0826b94bf7313179c41`且历史68键逐值不变；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`；等级、练功、制造、renderer、present/input和caller均不传播closure。
 
 ## 41. 战后升级最终REVIEW
 
@@ -465,7 +465,7 @@ signed体力<50时返回0且无RNG/写回；其余路径把负medicine仅在loca
 
 机器以signed `7-IQ/15`、首个同ID槽的unsigned等级/100和两次32位回绕乘法计算需求；练功经验以unsigned word参与signed比较。成功提示及新非零键等待先于全部角色提交。最大HP/MP先word回绕后只做signed 999上限，十四项能力及带毒攻击夹0..100，内力类型只认物品值2，左右互搏只在当前0时原样写入，最后清练功经验。物品武功ID大于0时，提交阶段扫描全部十槽：每个同ID且unsigned等级小于899的槽按序加100并立即各显示一次升级提示；任何同ID槽含满级槽都阻止空槽学习。完全无同ID时仅向首个signed非正槽写武功ID，保留旧等级word。
 
-首轮对照发现现代只更新首个同ID槽，且需求以C++ signed `int32_t`直接连乘；现分别改为全十槽提交和两次显式32位模乘。Session按机器时序在练功提示确认后只保留首个待提示槽写入，后续重复槽在前一武功提示确认后才逐个提交并排下一条消息。修正后从入口重审全部415条指令零新增合法域差异；重复槽`[199,899,898]→[299,899,998]`、需求回绕`-148762224`、满级阻止插槽、空槽保留等级、`magic_id=0`、字段回绕和两条Session武功提示回归通过。独立向量SHA256=`9570d8c53815699a00bd40c42f8a3bd77bf5432adadf93762be56b952138d016`；Golden三生成一致且历史70键逐值不变，71键SHA256=`1d071ae2dcb673d02e0079ae35dcecb3633f053ddd0fa60bd653be15a2c4f31d`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_after_fix`，caller、UI/input helper、制造和共享尾不传播closure。
+首轮对照发现现代只更新首个同ID槽，且需求以C++ signed `int32_t`直接连乘；现分别改为全十槽提交和两次显式32位模乘。Session按机器时序在练功提示确认后只保留首个待提示槽写入，后续重复槽在前一武功提示确认后才逐个提交并排下一条消息。修正后从入口重审全部415条指令零新增合法域差异；重复槽`[199,899,898]→[299,899,998]`、需求回绕`-148762224`、满级阻止插槽、空槽保留等级、`magic_id=0`、字段回绕和两条Session武功提示回归通过。独立向量SHA256=`9570d8c53815699a00bd40c42f8a3bd77bf5432adadf93762be56b952138d016`；Golden三生成一致且历史70键逐值不变，71键SHA256=`1d071ae2dcb673d02e0079ae35dcecb3633f053ddd0fa60bd653be15a2c4f31d`；Linux app Debug 14/14通过。本owner归类`platform_adapted / converged_no_new_differences`，caller、UI/input helper、制造和共享尾不传播closure。
 
 ## 43. 战后制造最终REVIEW
 

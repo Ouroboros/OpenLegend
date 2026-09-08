@@ -54,6 +54,13 @@ CLOSURE_COLUMNS = (
     "final_review",
     "remaining",
 )
+CLOSED_CLOSURE_STATUSES = {
+    "assembly_exact",
+    "platform_adapted",
+    "cross_module_handoff",
+    "unreachable_current_assets",
+    "external_boundary",
+}
 
 CLOSURE_SOURCES = (
     ("input-font-closure.tsv", "Z_DAT.input_font_xrefs.txt"),
@@ -103,11 +110,13 @@ def read_tsv(path: Path, key_columns: tuple[str, ...]) -> dict[tuple[str, ...], 
 def write_tsv(path: Path, columns: tuple[str, ...], rows: list[dict[str, str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(
-            stream, fieldnames=columns, delimiter="\t", lineterminator="\n", extrasaction="ignore"
-        )
-        writer.writeheader()
-        writer.writerows(rows)
+        writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
+        writer.writerow(columns)
+        for row in rows:
+            values = [row.get(column, "") or "" for column in columns]
+            while values and not values[-1]:
+                values.pop()
+            writer.writerow(values)
 
 
 def function_catalog() -> list[FunctionRow]:
@@ -217,13 +226,16 @@ def build_closure(filename: str, report_filename: str) -> None:
         closure_status = previous.get("closure_status", "pending_mapping")
         if closure_status == "pending_audit":
             closure_status = "pending_mapping"
-        remaining = previous.get("remaining", "")
-        if not remaining or remaining == "independent assembly review and bidirectional convergence":
+        remaining = previous.get("remaining", "") or ""
+        if closure_status in CLOSED_CLOSURE_STATUSES:
+            remaining = ""
+        elif not remaining or remaining == "independent assembly review and bidirectional convergence":
             remaining = "map existing implementation or implement, then complete final review"
         output.append(
             {
                 "audit_order": str(audit_order),
                 **function,
+                "research_name": previous.get("research_name", function["research_name"]),
                 "closure_status": closure_status,
                 "target_owner": previous.get("target_owner", "unresolved"),
                 "implementation_mapping": previous.get("implementation_mapping", ""),

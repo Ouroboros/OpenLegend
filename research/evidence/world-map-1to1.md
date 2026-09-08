@@ -1,6 +1,6 @@
 # B6 世界地图 1:1 证据
 
-状态：`implemented_pending_review`；本文件记录已有实现/测试，不替代最终汇编↔C++ REVIEW。
+状态：B6统一最终汇编→C++ REVIEW为34/34，全部world-map owner关闭。
 
 ## 真值与可复现产物
 
@@ -107,7 +107,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 8. `LegacyGameRuntime`、SDL方向接线、四组成对键码与消费/repeat合同、入口world预present/64级fade、返回world预present/65级fade、scene continuation与world瞬态保留；
 9. 每步 world render 的当前 MMAP 人物帧可见性、raw `in_ship`中心帧分支，以及 app 每步 view/render 稳定性。
 
-当前实现切片门禁（状态仍为`implemented_pending_review`，不代表最终双向REVIEW完成）：
+B6最终模块关闭门禁（后续B9全集成矩阵另行重跑）：
 
 - Linux core Debug/Release：各13/13；
 - Linux app Debug/Release：各14/14；

@@ -41,4 +41,4 @@
 - 两次独立生成逐字节一致后执行第三次正式生成；三份Golden逐字节一致，SHA256均为`cae592a562fd3022c47ac2167c8f0d7eda302101e83eab2e2d5a9a463dc42799`。
 - 修正首轮测试失败为`tests/unit/battle/battle_data_test.cpp:7599: CHECK failed: !session.take_clear_confirmation_states_request()`；根因为测试未先排空更早相位遗留的clear request，不是产品时序差异。修正测试隔离后，Linux app Debug通过`100% tests passed, 0 tests failed out of 14`。
 
-最终归类：`platform_adapted / converged_after_fix`。
+最终归类：`platform_adapted / converged_no_new_differences`。

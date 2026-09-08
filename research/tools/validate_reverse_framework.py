@@ -7,6 +7,7 @@ import csv
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 
@@ -97,7 +98,27 @@ CLOSURE_SOURCES = (
     ("ui-closure.tsv", "Z_DAT.b5_ui_xrefs.txt"),
     ("world-map-closure.tsv", "Z_DAT.b6_world_xrefs.txt"),
     ("scene-event-closure.tsv", "Z_DAT.b7_scene_xrefs.txt"),
+    ("battle-closure.tsv", "Z_DAT.b8_battle_xrefs.txt"),
 )
+PERSISTENCE_CLOSURE_ORDER = (
+    "0x20D35",
+    "0x20FAF",
+    "0x24A02",
+    "0x24C8D",
+    "0x25AB7",
+    "0x25D0E",
+    "0x25F87",
+    "0x26208",
+    "0x265AB",
+    "0x26B5E",
+    "0x2711A",
+    "0x2EB49",
+    "0x30C3D",
+    "0x31241",
+)
+EXPECTED_CLOSURE_ROWS = 349
+EXPECTED_CLOSURE_FUNCTIONS = 284
+EXPECTED_CLOSURE_ORIGINS = Counter({"game_logic": 262, "library_or_platform": 22})
 FUNCTION_PATTERN = re.compile(
     r"^FUNCTION\s+\S+\s+research=\S+\s+start=(?P<start>0x[0-9A-Fa-f]+)\s+"
     r"end=0x[0-9A-Fa-f]+\s+size=\d+$"
@@ -132,6 +153,22 @@ OWNERSHIP_STATUSES = {
     "external_boundary",
     "unreachable_current_assets",
 }
+FINAL_OWNERSHIP_STATUSES = {
+    "assembly_exact",
+    "platform_adapted",
+    "external_boundary",
+    "unreachable_current_assets",
+}
+EXPECTED_FINAL_OWNERSHIP_COUNTS = Counter(
+    {
+        "assembly_exact": 12,
+        "platform_adapted": 282,
+        "external_boundary": 283,
+    }
+)
+LIBRARY_START = 0x3E33D
+MILES_START = 0x3FAD8
+MILES_END = 0x4DE0A
 CLOSURE_STATUSES = {
     "pending_mapping",
     "pending_implementation",
@@ -171,6 +208,10 @@ def read_tsv(path: Path, expected_columns: tuple[str, ...]) -> list[dict[str, st
     if not path.exists():
         raise ValueError(f"missing inventory: {path.relative_to(ROOT)}")
     with path.open("r", encoding="utf-8", newline="") as stream:
+        contents = stream.read()
+        if any(line.endswith("\t") for line in contents.splitlines()):
+            raise ValueError(f"{path.relative_to(ROOT)} contains a trailing tab")
+        stream.seek(0)
         reader = csv.DictReader(stream, delimiter="\t")
         actual = tuple(reader.fieldnames or ())
         if actual != expected_columns:
@@ -240,14 +281,68 @@ def validate_ownership(catalog_keys: set[tuple[str, str]]) -> None:
                 f"module-function-ownership.tsv:{row_number} illegal review status "
                 f"{row['review_status']!r}"
             )
-        if row["review_status"] == "assembly_exact" and (
-            row["module_candidate"] == "unresolved"
-            or row["candidate_confidence"] in {"", "unreviewed"}
-            or row["assignment_basis"] in {"", "mechanical_catalog_only"}
-        ):
+        if row["module_candidate"] == "unresolved":
             raise ValueError(
-                f"module-function-ownership.tsv:{row_number} assembly_exact lacks manual ownership proof"
+                f"module-function-ownership.tsv:{row_number} unresolved final owner"
             )
+        if row["candidate_confidence"] != "high":
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} final owner is not high confidence"
+            )
+        if row["assignment_basis"] in {"", "mechanical_catalog_only"}:
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} lacks manual ownership proof"
+            )
+        if row["review_status"] not in FINAL_OWNERSHIP_STATUSES:
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} non-final review status "
+                f"{row['review_status']!r}"
+            )
+        external_module = row["module_candidate"] in {"external_crt", "external_miles"}
+        if external_module != (row["review_status"] == "external_boundary"):
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} external module/status mismatch"
+            )
+        address = int(row["address"], 16)
+        expected_external = row["binary"] == "Z_DAT" and address >= LIBRARY_START
+        expected_miles = expected_external and MILES_START <= address < MILES_END
+        if expected_external:
+            expected_module = "external_miles" if expected_miles else "external_crt"
+            if row["module_candidate"] != expected_module:
+                raise ValueError(
+                    f"module-function-ownership.tsv:{row_number} library boundary mismatch: "
+                    f"expected {expected_module!r}"
+                )
+        elif external_module:
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} external owner below library boundary"
+            )
+        if external_module and row["code_origin"] != "library_or_platform":
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} external code origin mismatch"
+            )
+        if not external_module and row["code_origin"] != "game_logic":
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} game code origin mismatch"
+            )
+        if not row["follow_up_module"]:
+            raise ValueError(
+                f"module-function-ownership.tsv:{row_number} empty follow-up module"
+            )
+
+    status_counts = Counter(row["review_status"] for row in rows)
+    if status_counts != EXPECTED_FINAL_OWNERSHIP_COUNTS:
+        raise ValueError(
+            "module ownership final status counts differ: "
+            f"actual={dict(status_counts)} expected={dict(EXPECTED_FINAL_OWNERSHIP_COUNTS)}"
+        )
+    module_counts = Counter(row["module_candidate"] for row in rows)
+    if module_counts["external_crt"] != 91 or module_counts["external_miles"] != 192:
+        raise ValueError(
+            "external library classification differs: "
+            f"external_crt={module_counts['external_crt']} "
+            f"external_miles={module_counts['external_miles']}"
+        )
 
 
 def validate_evidence_path(value: str, label: str) -> None:
@@ -317,15 +412,28 @@ def validate_framework_tables() -> None:
             )
 
 
-def validate_closure(filename: str, report_filename: str, zdat_addresses: set[str]) -> int:
+def validate_closure(
+    filename: str,
+    report_filename: str | None,
+    zdat_addresses: set[str],
+    fixed_order: tuple[str, ...] = (),
+) -> int:
     rows = read_tsv(INVENTORY_ROOT / filename, CLOSURE_COLUMNS)
     keys = unique_keys(rows, ("address",), filename)
-    expected_order = report_closure_addresses(REPORT_ROOT / report_filename)
+    if report_filename is None:
+        expected_order = list(fixed_order)
+        source_label = "fixed finite B9 boundary"
+    else:
+        expected_order = report_closure_addresses(REPORT_ROOT / report_filename)
+        source_label = f"{report_filename} FUNCTION entries"
     expected = {(address,) for address in expected_order}
     if keys != expected:
-        raise ValueError(f"{filename} does not exactly match {report_filename} FUNCTION entries")
+        raise ValueError(f"{filename} does not exactly match {source_label}")
     if [row["address"] for row in rows] != expected_order:
-        raise ValueError(f"{filename} audit order differs from source report")
+        raise ValueError(f"{filename} audit order differs from {source_label}")
+    expected_audit_order = [str(index) for index in range(1, len(rows) + 1)]
+    if [row["audit_order"] for row in rows] != expected_audit_order:
+        raise ValueError(f"{filename} audit_order column is not sequential")
 
     pending = 0
     for row_number, row in enumerate(rows, 2):
@@ -373,11 +481,48 @@ def main() -> int:
             filename: validate_closure(filename, report_filename, zdat_addresses)
             for filename, report_filename in CLOSURE_SOURCES
         }
+        pending_by_file["persistence-closure.tsv"] = validate_closure(
+            "persistence-closure.tsv", None, zdat_addresses, PERSISTENCE_CLOSURE_ORDER
+        )
+        closure_tables = {
+            filename: read_tsv(INVENTORY_ROOT / filename, CLOSURE_COLUMNS)
+            for filename in pending_by_file
+        }
+        closure_rows = sum(len(rows) for rows in closure_tables.values())
+        if closure_rows != EXPECTED_CLOSURE_ROWS:
+            raise ValueError(
+                f"closure row count mismatch: expected {EXPECTED_CLOSURE_ROWS}, got {closure_rows}"
+            )
+        closure_addresses = {
+            row["address"] for rows in closure_tables.values() for row in rows
+        }
+        if len(closure_addresses) != EXPECTED_CLOSURE_FUNCTIONS:
+            raise ValueError(
+                "closure physical function count mismatch: "
+                f"expected {EXPECTED_CLOSURE_FUNCTIONS}, got {len(closure_addresses)}"
+            )
+        ownership_rows = read_tsv(
+            INVENTORY_ROOT / "module-function-ownership.tsv", OWNERSHIP_COLUMNS
+        )
+        zdat_origins = {
+            row["address"]: row["code_origin"]
+            for row in ownership_rows
+            if row["binary"] == "Z_DAT"
+        }
+        closure_origins = Counter(zdat_origins[address] for address in closure_addresses)
+        if closure_origins != EXPECTED_CLOSURE_ORIGINS:
+            raise ValueError(
+                "closure code-origin counts differ: "
+                f"actual={dict(closure_origins)} expected={dict(EXPECTED_CLOSURE_ORIGINS)}"
+            )
     except (OSError, ValueError, csv.Error, json.JSONDecodeError) as error:
         print(f"reverse framework validation failed: {error}", file=sys.stderr)
         return 1
 
-    print(f"reverse framework valid: {len(catalog_keys)} catalog/ownership rows")
+    print(
+        f"reverse framework valid: {len(catalog_keys)} catalog/ownership rows, "
+        f"{closure_rows} closure rows/{len(closure_addresses)} physical functions"
+    )
     for filename, pending in pending_by_file.items():
         print(f"{filename}: {pending} pending or unverified")
     return 0

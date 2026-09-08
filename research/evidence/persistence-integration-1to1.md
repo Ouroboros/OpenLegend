@@ -4,8 +4,8 @@
 
 - B9 functional implementation mappings: 14/14.
 - Finite closure: `research/inventory/persistence-closure.tsv`, 14 machine-code boundary functions.
-- Final repeated one-way assembly-to-C++ review: 5/14 terminal (`sub_25D0E` through `sub_26B5E`); 9/14 remain `implemented_pending_review`.
-- Terminal rows are `platform_adapted`: legal-domain observable order is closed, while SDL frame driving, RAII, in-memory working snapshots, and checked I/O remain explicit platform adaptations.
+- Final repeated one-way assembly-to-C++ review: 14/14 are `platform_adapted / converged_no_new_differences`.
+- Legal-domain observable order is closed, while SDL frame driving, RAII, in-memory working snapshots, and checked I/O remain explicit platform adaptations.
 
 ## Primary truth sources
 
@@ -119,7 +119,7 @@ The reviewed call chain is `sub_25D0E -> sub_25F87 -> sub_26208`. `sub_26208` im
 - Scene quit, system quit, title exit, and ending shutdown converge on shared owned-resource release in the modern process lifetime.
 - Ending completion keeps ending-specific terminal output before normal process exit.
 
-The original shared shutdown routine explicitly releases five global resource handles. The modern port does not reproduce raw DOS handles; the equivalent resources are owned objects whose destructors run when their runtime/session owners are reset or when `main` exits. This remains `implemented_pending_review` until the final platform-adaptation review closes every release edge.
+The original shared shutdown routine explicitly releases five global resource handles. The modern port does not reproduce raw DOS handles; the equivalent resources are owned objects whose destructors run when their runtime/session owners are reset or when `main` exits. The final platform-adaptation review closes every release edge.
 
 ## Per-launch diagnostic log compatibility requirement
 
@@ -137,15 +137,16 @@ Official SDL references:
 
 ## Current verification
 
-Completed after the readable PID log name, full prologue entry, system-menu load continuation, and maximum-HP formula corrections:
+Completed after the readable PID log name, full prologue entry, system-menu load continuation, maximum-HP formula correction, and all final REVIEW work:
 
-- Linux ASan+UBSan `./build.sh app --config Debug --sanitizers`: 14/14 tests passed.
-- Latest ordinary `core/app × Debug/Release` matrix: Linux 4/4 and Windows 4/4 BUILD-script invocations passed.
-- Two consecutive Linux SDL smoke launches produced distinct paths matching `openlegend-YYYY-MM-DD_HH-MM-SS-{PID}.log`; the Windows app smoke produced the same timestamp/PID shape.
-- Independent B5 golden generation was byte-identical across two runs and matched the tracked golden.
-- Original `Z.COM`, `Z.DAT`, `WAR.STA`, `WARFLD.IDX`, and `WARFLD.GRP` hashes remained unchanged.
-- The B9 closure audit confirms 14/14 implementation mappings; 5/14 staged final reviews are `converged_no_new_differences` and 9/14 remain `not_started`.
-- Cross-table propagation is 54/349 terminal closure rows (15.5%); 43/284 unique addresses have every duplicate row terminal (15.1%), with four additional addresses still only partially terminal across tables.
+- Linux `core/app × Debug/Release` and app ASan+UBSan: core各13/13，app各14/14。
+- Windows `core/app × Debug/Release`: core各13/13，app各14/14。
+- Linux/Windows SDL smoke均通过并产生互异的timestamp/PID日志路径。
+- B5–B8及battle status五份独立Golden各双生成一致，并与tracked正式文件逐字节一致。
+- 原始 `Z.COM`、`Z.DAT`、`WAR.STA`、`WARFLD.IDX` 和 `WARFLD.GRP` 哈希保持不变。
+- B9 closure为14/14 `platform_adapted / converged_no_new_differences`；全项目七表为349/349 terminal、284/284物理函数全owner关闭。
+- 577-function catalog最终分类为294个游戏函数和283个外部库函数，零未决项。
+- 完整进程、哈希、资产分母与已登记动态oracle边界见`research/evidence/b9-final-acceptance.md`。
 
 The affected tests now cover:
 

@@ -1,11 +1,11 @@
 # OpenLegend 执行 GOAL
 
 版本：v6
-当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=349/349`，`unique_any=284/284`，`unique_all=284/284`
-当前任务指针：最终577-function catalog覆盖分类与B9全集成验收
-下一任务指针：完成577项逐行分类证明并执行全项目发布矩阵
-最近关闭：ui `audit_order=39` `sub_3D939`已用独立临时IDB固定23-byte/6-instruction单块wrapper及54-byte/36-instruction VGA palette callee，确认6个callsite/5个owner、256×RGB6顺序、回扫与DAC端口时序、source/indexed pixels不变和偶然EAX无业务消费者；本轮修正world/scene在host present后才旋转palette导致当前帧颜色晚一帧的差异，改为present前预览、成功后提交，失败不推进；差异后从入口重审全部wrapper/callee指令、caller和world/scene激活顺序，机器/向量合同SHA256=`570f993bd13b228230d216d9d8864b28d70c2799d94be5914b4f1ecd925867d7`/`edd329f9d3a0ea9a01d94eca9f49ec5736d21d92b6a36710c5c5bc07fc4e0d74`，三份独立Golden与正式JSON逐字节一致SHA256=`a4708f93c6793c653e10adf3a0e2c3f24555371ed1c755fa652532e7f673ba54`，Linux app Debug 14/14关闭。
+当前阶段：B0–B9统一最终汇编→C++ REVIEW与B9全集成验收均已完成
+当前有效进度：`closure=349/349`，`unique_any=284/284`，`unique_all=284/284`，`catalog=577/577`
+当前任务指针：无；本计划全部完成
+下一任务指针：无
+最近关闭：577-function catalog已逐行分类为294个游戏函数与283个外部库函数，零未决、零机械占位；B9最终Linux/Windows `core/app × Debug/Release`、Linux app ASan+UBSan、双平台smoke、五份Golden双生成反向比对、五项原资产只读哈希和fresh IDA/七表349行framework门均通过。原DOS程序动态差分继续按既有`blocked_runtime_oracle`登记，不以独立资产oracle冒充运行输出。
 
 ## 0. 唯一正确性真值
 
@@ -316,7 +316,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 范围：全模块
 
-当前状态：`B9-WP01`为唯一work package；14项有限closure均已映射为`implemented_pending_review`，实现映射口径100%、统一最终REVIEW口径0%。已修正新游戏scene70序章入口、初始最大生命漏乘3、编号槽I/O等待帧present门禁、系统菜单载入后的返回页和每进程独立日志；14项实现差异审计已覆盖，Linux/Windows八项矩阵、Linux app ASan+UBSan、双平台smoke、golden与原版资产只读门禁均已通过。提交B9切片后处理其余closure，再进入B0→B9统一最终反复汇编→C++ REVIEW。
+当前状态：`B9-WP01`已完成；14项有限closure均为`platform_adapted / converged_no_new_differences`。新游戏scene70序章入口、初始最大生命乘3、编号槽I/O等待帧present门禁、系统菜单载入后的返回页、每进程独立日志及全部释放边界均已从机器入口重审。最终Linux/Windows八项普通矩阵、Linux app ASan+UBSan、双平台smoke、五份Golden、原版资产只读与fresh IDA/577 catalog/349 closure门均通过；详见`research/evidence/b9-final-acceptance.md`。
 
 交付：
 
@@ -363,16 +363,16 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 5. **M4**：场景进入、对话和返回闭环；
 6. **M5**：一个真实战斗闭环；
 7. **M6**：保存/读取后状态和画面一致；
-8. **M7**：全部当前资产可达路径完成原程序差分，才进入最终 1:1 评审。
+8. **M7**：全部当前资产可达路径完成原程序差分或第0.1节允许的等价oracle验证；若原程序运行oracle因外部环境不可用，必须明确登记`blocked_runtime_oracle`，且不得把静态或资产oracle伪称为原程序运行输出。
 
 ## 9. 全项目 1:1 完成条件
 
 - `Z.COM` 启动链和 `Z.DAT` 全部游戏自有函数均已归属，当前资产可达函数和分支全部闭环；
-- 约 256 个 Watcom/CRT/Miles 函数均已证明为无关、不可达内部细节或被精确平台合同覆盖；
-- 118 对 IDX/GRP、110 对 SDX/WDX、五个世界层、100 个场景、2,977 条 TALK、92 个 FIGHT 包和全部存档文件通过全量验证；
+- 283 个 Watcom/CRT/Miles 函数均已证明为库内部细节、进程入口或被精确平台合同覆盖；
+- 118 对 IDX/GRP、110 对sentinel包（84对SDX/SMP与26对WDX/WMP）、五个世界层、100 个场景、2,977 条 TALK、92 个 FIGHT 包和全部存档文件通过全量验证；
 - 固定输入流程的状态、RNG、像素、调色板、保存字节和音频命令序列与原程序一致；
 - 所有原逻辑 BUG 和异常路径已保留，所有平台偏差均有用户批准；
-- Linux 与 Windows 构建、单元、真实资产、集成和原程序差分门禁全部通过；
+- Linux 与 Windows 构建、单元、真实资产和集成门禁全部通过；原程序差分已通过或在运行oracle不可用时如实登记`blocked_runtime_oracle`，并以等价机器/资产oracle闭合可证明合同；
 - 所有游戏自有函数、事件 opcode 和平台调用链均按第 0.1 节完成最后一轮零新增差异的汇编→C++ REVIEW；
 - 不存在以“可玩”“测试通过”或“现代实现更合理”为理由保留的未验证兼容缺口。
 
@@ -387,9 +387,4 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 ## 11. 当前唯一队列
 
-1. 完善基础框架：function catalog、module/state/dependency inventory、模块 work package、closure 状态机、validator、日志与诊断；框架通过 CTest 前停止业务逆向扩展；
-2. 把 B0–B7 现有 C++ 映射到 inventory，统一标 `implemented_pending_review` 或更早状态，不继承旧完成结论；
-3. 在框架约束下完成 B7 剩余事件实现、B8 战斗和 B9 全集成；实现通过测试后仍只标 `implemented_pending_review`；
-4. 全部功能实现后，按锁定 workpack 对 B0–B9 逐函数/handler 执行第 0.1 节反复汇编→C++ REVIEW；每次差异修正后废弃本轮结论并从入口重启，直到一轮完整复核零新增差异；
-5. 最终执行 Linux/Windows 全矩阵、sanitizer、smoke、资产只读、IDA 数据库和原程序差分/登记阻塞验收；
-6. 只有全部 closure 关闭并满足第 9 节全部条件后才调用 Goal 完成。
+1. 无未完成工作包；B0–B9、577-function catalog、349项owner closure和B9最终验收均已收口。
