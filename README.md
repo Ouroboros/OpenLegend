@@ -17,7 +17,9 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 - **B6 已完成**：五层世界、128×128 缓存、陆地/船移动、碰撞与入口、待机/天气周期和逐像素世界绘制。
 - **B7 已完成**：场景、事件、对话与场景/世界往返；`scene-event` closure 为100/100。
 - **B8 已完成**：战斗入口、选择、玩家动作、AI、动画、结算与战后提交；battle closure 为81/81。
-- **B9 进行中**：统一最终汇编→C++ REVIEW当前为`closure=341/349`、`unique_any=276/284`、`unique_all=276/284`。`input-font`已39/39关闭，`ui`已31/39关闭。战斗状态面板的左右布局、名称居中、signed数值及内伤/中毒/内力颜色均已从机器入口复验，玩家菜单缓存与AI present后等待时序保持原版；本轮仅纠正旧审计把注释误计为分支的证据口径，产品实现无变化，独立Golden三生成一致，Linux app Debug 14/14通过。
+- **B9 已完成**：577项函数catalog全部分类，7张closure表349行对应284个物理函数，全部收敛且pending/unverified为0；Linux/Windows core与app矩阵、Sanitizer、SDL smoke、全量资产、Golden、IDA与原文件哈希门均已通过。
+
+B0–B9执行计划已经关闭。最终验收见[`research/evidence/b9-final-acceptance.md`](research/evidence/b9-final-acceptance.md)，函数分母与分类见[`research/evidence/function-catalog-coverage.md`](research/evidence/function-catalog-coverage.md)。原DOS程序动态运行oracle因当前环境缺少可执行宿主而继续如实登记为`blocked_runtime_oracle`；它不冒充现代CTest或独立资产oracle，也不掩盖未登记的产品差异。
 
 “能够启动”“能够探索”或“一场战斗可运行”只属于中间里程碑，不代表 1:1 还原完成。完整验收条件见 [`goal/execution-plan.md`](goal/execution-plan.md)。
 
@@ -83,72 +85,149 @@ maximized = false
 - 正常退出会回写窗口宽高和最大化状态，同时保留 `[paths]` 与未知 TOML 表；
 - 当前不暴露显示 FPS/世界移动插值字段；B4/B6 已按 BIOS tick 和原始 held-key 状态驱动世界，不增加宿主插值配置。
 
-## 构建
+## 开发环境与BUILD手册
 
-要求：
+所有配置、编译和测试必须从仓库根目录通过平台包装器执行：Linux/WSL使用`./build.sh`，Windows使用`build.bat`。不要直接调用`build.py`、CMake、CTest、Ninja或编译器；根目录[`build.py`](build.py)是唯一BUILD编排实现，两个包装器只准备平台环境并转发参数。
+
+### 1. 新环境准备
+
+共同要求：
 
 - Python 3；
-- Clang 23 C/C++20 工具链；
-- 首次构建时可访问 Python package index，以及 toml++、libADLMIDI、SDL GitHub release 压缩包。
+- Clang 23 C/C++20工具链；
+- 首次BUILD可访问Python package index，以及toml++、libADLMIDI、SDL GitHub release压缩包；
+- 完整`app`测试所需的原版数据，至少应先确认目录中存在`Z.COM`和`Z.DAT`。
 
-根目录 [`build.py`](build.py) 是唯一构建编排脚本，统一负责参数、配置、缓存目录、编译、测试、Sanitizer运行库和最终产物路径。`build.sh`与`build.bat`只准备各平台编译器/Python环境并原样转发参数。脚本会把固定版本的CMake 3.31.10与Ninja 1.13.0安装到仓库内已忽略的`.tools/`，不会修改系统工具链。
+BUILD会把固定版本的CMake 3.31.10与Ninja 1.13.0安装到仓库内已忽略的`.tools/`，不会修改系统工具链。首次成功后会复用本地工具和Ninja cache。
 
-### Linux / WSL
-
-```bash
-./build.sh core                 # 只构建核心库并运行测试
-./build.sh app                  # 默认从仓库父目录读取原版数据
-./build.sh app --data-dir ../data
-./build.sh app --config Release --data-dir /path/to/game/data
-./build.sh app --config Debug --sanitizers  # ASan + UBSan
-```
-
-### Windows
-
-Windows薄包装器准备固定LLVM/Python环境；CMake、CTest与Ninja仍由根`build.py`统一取得：
+Linux/WSL包装器默认使用`clang-23`和`clang++-23`；如环境已经提供其他Clang 23命令，可在调用前设置`CC`与`CXX`。Windows包装器当前使用：
 
 ```text
-Clang       D:\Dev\Compiler\LLVM\x64\bin
-Python      D:\Dev\Python\python.exe，PATH中的python仅作回退
+LLVM        D:\Dev\Compiler\LLVM\x64\bin
+Python      D:\Dev\Python\python.exe；不存在时回退到PATH中的python
+```
+
+Windows路径和原版数据目录可以包含Unicode字符，但命令行中应始终加引号。
+
+### 2. 原版数据目录
+
+BUILD数据目录的优先级为：
+
+1. `--data-dir PATH`；
+2. 环境变量`OPENLEGEND_GAME_DATA_ROOT`；
+3. 仓库父目录。
+
+BUILD命令中的相对路径固定以仓库根目录为基准，不受调用者原工作目录影响。切换数据目录后，现有CMake cache会自动重新配置；路径只在CTest运行时传入，不会编译进UT。原版资产只读使用。
+
+常见布局：
+
+```text
+workspace/
+├── OpenLegend/       # 仓库
+└── data/             # 原版数据
+    ├── Z.COM
+    ├── Z.DAT
+    └── ...
+```
+
+对应命令：
+
+```bash
+./build.sh app --data-dir ../data
 ```
 
 ```bat
-build.bat core
-build.bat app
+build.bat app --data-dir "..\data"
+```
+
+### 3. BUILD参数
+
+| 参数 | 含义与默认值 |
+| --- | --- |
+| `core` | 只构建无SDL应用的核心目标；未写目标时的默认值。 |
+| `app` | 构建完整SDL应用并运行14项测试及smoke。 |
+| `sdl` | `app`的兼容别名；新命令使用`app`。 |
+| `--config Debug\|Release` | 普通BUILD默认`Debug`；启用Sanitizer且未指定配置时默认`Release`。 |
+| `--data-dir PATH` | 原版数据目录；相对路径以仓库根目录为基准。 |
+| `--jobs N` | 编译并发数；默认逻辑CPU数，可由`OPENLEGEND_BUILD_JOBS`设置。通常无需手工传入。 |
+| `--test-jobs N` | 测试并发数；默认逻辑CPU数，可由`OPENLEGEND_TEST_JOBS`设置。通常无需手工传入。 |
+| `--configure-only` | 只生成或刷新配置，不编译、不测试。 |
+| `--skip-tests` | 完成编译但不运行CTest；也跳过BUILD前的数据目录身份检查。 |
+| `--sanitizers` | Linux启用ASan+UBSan；Windows启用LLVM动态ASan。 |
+
+### 4. 日常BUILD
+
+Linux/WSL：
+
+```bash
+./build.sh core --data-dir ../data
+./build.sh app --data-dir ../data
+./build.sh app --config Release --data-dir ../data
+./build.sh app --config Debug --sanitizers --data-dir ../data
+```
+
+Windows：
+
+```bat
+build.bat core --data-dir "E:\Game\OpenLegend\data"
 build.bat app --data-dir "E:\Game\OpenLegend\data"
 build.bat app --config Release --data-dir "E:\Game\OpenLegend\data"
-build.bat app --config Release --sanitizers
+build.bat app --config Release --sanitizers --data-dir "E:\Game\OpenLegend\data"
 ```
 
-`build.bat`保持仓库根目录的Unicode长路径并原样转发参数；测试侧把UTF-8原版资源路径显式转换为Windows宽路径。Windows Sanitizer只支持Release，使用LLVM 23官方动态ASan runtime；构建脚本会在测试前把`clang_rt.asan_dynamic-x86_64.dll`复制到应用和每个测试EXE旁，因此产物可直接启动。普通Debug/Release继续使用静态CRT，且不会携带ASan DLL。
+Windows Sanitizer只支持Release；`--config Debug --sanitizers`会被BUILD明确拒绝。Sanitizer BUILD会在测试前把LLVM 23的`clang_rt.asan_dynamic-x86_64.dll`部署到应用和每个测试EXE旁。普通Debug/Release使用静态CRT且不会携带ASan DLL。
 
-可选参数：
+### 5. 完整验收矩阵
 
-```text
---data-dir PATH
---jobs N
---test-jobs N
---configure-only
---skip-tests
---sanitizers
+阶段关闭或跨平台基础设施变更后，至少执行：
+
+```bash
+./build.sh core --config Debug --data-dir ../data
+./build.sh core --config Release --data-dir ../data
+./build.sh app --config Debug --data-dir ../data
+./build.sh app --config Release --data-dir ../data
+./build.sh app --config Debug --sanitizers --data-dir ../data
 ```
 
-普通与Sanitizer缓存始终隔离：
+```bat
+build.bat core --config Debug --data-dir "E:\Game\OpenLegend\data"
+build.bat core --config Release --data-dir "E:\Game\OpenLegend\data"
+build.bat app --config Debug --data-dir "E:\Game\OpenLegend\data"
+build.bat app --config Release --data-dir "E:\Game\OpenLegend\data"
+build.bat app --config Release --sanitizers --data-dir "E:\Game\OpenLegend\data"
+```
+
+最新最终验收中，Linux/Windows core均为13/13，app均为14/14并包含SDL smoke；Linux ASan+UBSan和Windows Release ASan均为14/14。Windows render、scene与battle测试保持默认1MB PE栈，不允许用链接栈选项掩盖大型fixture。
+
+### 6. 缓存、产物与重配置
+
+普通与Sanitizer缓存隔离：
 
 ```text
 build/<platform>-<core|app>/
 build/<platform>-<core|app>-asan/
 ```
 
-生成器固定为 **Ninja Multi-Config**，同一Sanitizer变体内的`Debug`与`Release`共用target构建目录；可用`--config`选择配置。构建脚本复用有效的Ninja cache，设置`OPENLEGEND_RECONFIGURE=1`可强制重新配置。完成应用构建后会输出可直接启动的`openlegend`/`openlegend.exe`绝对路径。
-
-兼容旧命令时仍可使用 `sdl`，但它只作为 `app` 的别名：
+生成器固定为**Ninja Multi-Config**。BUILD会在生成器、编译器、Ninja路径、Sanitizer状态或数据目录变化时自动重配或重建失效缓存。需要无条件重新配置时：
 
 ```bash
-./build.sh sdl
+OPENLEGEND_RECONFIGURE=1 ./build.sh app --data-dir ../data
 ```
 
-当前B9工作包最近一次匹配范围验收为Linux app Debug 14/14；完整B9关闭仍需按执行计划重新完成Linux/Windows矩阵、Sanitizer、smoke、资产只读和IDA审计，不能由既往阶段结果替代。
+```bat
+set "OPENLEGEND_RECONFIGURE=1" && build.bat app --data-dir "E:\Game\OpenLegend\data"
+```
+
+应用BUILD完成后会输出可直接启动的`openlegend`或`openlegend.exe`绝对路径。用户配置文件`openlegend.toml`位于可执行文件旁；BUILD重置缓存时会保留已有配置内容。
+
+### 7. 常见问题
+
+- `Game data directory was not found`：检查`--data-dir`；BUILD相对路径以仓库根目录为基准。当前所有启用测试的target（包括`core`）都会先执行`Z.COM`/`Z.DAT`身份检查。
+- `missing required file(s): Z.COM, Z.DAT`：传入的不是原版游戏根目录，或资产不完整。
+- Windows提示ASan不支持Debug CRT：改用`--config Release --sanitizers`。
+- 更换Clang、Ninja或数据目录后出现旧缓存信息：先让BUILD自动重配；仍需强制刷新时设置`OPENLEGEND_RECONFIGURE=1`。
+- 首次BUILD无法下载CMake/Ninja或第三方源码：确认Python package index和GitHub release下载可达；不要改为直接调用系统CMake绕过统一入口。
+- 命令提示`unrecognized arguments: --app`：`app`是位置参数，应写成`build.sh app`或`build.bat app`。
 
 ## 工程结构
 
@@ -182,6 +261,8 @@ DOS 索引像素不能直接作为现代窗口像素提交。`openlegend_compat`
 ## 文档入口
 
 - [执行 GOAL](goal/execution-plan.md)
+- [B9最终全集成验收](research/evidence/b9-final-acceptance.md)
+- [577项函数分母与分类](research/evidence/function-catalog-coverage.md)
 - [原程序架构](research/architecture/program-architecture.md)
 - [现代代码所有权与依赖](research/architecture/rewrite-architecture.md)
 - [研究索引](research/README.md)
