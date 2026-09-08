@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=344/349`，`unique_any=279/284`，`unique_all=279/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=34` `sub_3D34A`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=36` `sub_3D6D1`
-最近关闭：ui `audit_order=33` `sub_3CF45`已用新临时IDB固定173 bytes、53条指令、5/5 CFG块、3个条件分支、0个无条件跳转、5处重定位、11次direct call、36个caller site及唯一RET；机器按裸filename→全局前缀fallback打开，成功后查询完整长度、seek0、一次读取、关闭并返回查询长度，双失败则显示原文件名并等待uppercase Q后仍以无效handle续行；现代canonical原资产成功域长度与bytes零产品差异，显式DataRoot、动态容量、完整读检查、稳定错误和不复现无效handle续行归类平台适配；raw-loader路径/错误回归已补齐，Linux app Debug 14/14关闭。
+当前有效进度：`closure=345/349`，`unique_any=280/284`，`unique_all=280/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=36` `sub_3D6D1`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=37` `sub_3D6E0`
+最近关闭：ui `audit_order=34` `sub_3D34A`已用新临时IDB固定207-byte主范围/62条指令及唯一8-byte/6-instruction恢复尾、13个IDA块（12非空）、5个条件分支、1个无条件跳转、1处重定位、1次direct call和唯一caller；机器按RGB4格心、palette index 0..255执行1,048,576次signed平方距离，以初值30000/index0和strict-less首tie写满4096-byte表；world/scene/battle/Basic UI四份现代构造完整byte域零产品差异，私有表生命周期、固定输入容量和same-palette缓存归类平台适配；MMAP.COL完整表SHA256=`654a89e9d122ab12d33656dd53a19c9ac97e82fb03f41c55e94087b3c2396ac4`，三次独立Golden等于正式文件，四份源码30000阈值静态门与合法tie回归已补齐，Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 

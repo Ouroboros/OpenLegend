@@ -357,6 +357,9 @@ def main() -> None:
     cloud_archive = parse_archive(root / "CLOUD.IDX", root / "CLOUD.GRP")
     palette_bytes = (root / "MMAP.COL").read_bytes()
     palette = [tuple(palette_bytes[index:index + 3]) for index in range(0, len(palette_bytes), 3)]
+    lookup_bytes = bytes(rgb4_lookup(palette))
+    lookup_probe_indexes = (0x000, 0x001, 0x00F, 0x010, 0x123, 0x456,
+                            0x789, 0xABC, 0xFED, 0xFFE, 0xFFF)
     frame = initial_frame(caches, archive, origin_x, origin_y, world_x, world_y, header[6])
     frame_300, particles_300, random_state_300 = weather_frame(
         frame, cloud_archive, palette, 300)
@@ -389,6 +392,26 @@ def main() -> None:
             },
             "framebuffer_sha256": sha256_bytes(frame),
             "framebuffer_fnv1a64": fnv1a64(frame),
+        },
+        "rgb4_palette_lookup": {
+            "source_palette_sha256": sha256_bytes(palette_bytes),
+            "table_size": len(lookup_bytes),
+            "distance_evaluations": 16 * 16 * 16 * 256,
+            "cube_order": "red_outer_green_middle_blue_inner",
+            "cube_center": "4*component+2",
+            "initial_best_distance": 30_000,
+            "initial_best_index": 0,
+            "strict_update": "distance<best_distance_equal_keeps_first_index",
+            "table_sha256": sha256_bytes(lookup_bytes),
+            "table_fnv1a64": fnv1a64(lookup_bytes),
+            "first16": list(lookup_bytes[:16]),
+            "last16": list(lookup_bytes[-16:]),
+            "probes": {
+                f"0x{index:03X}": lookup_bytes[index]
+                for index in lookup_probe_indexes
+            },
+            "unique_palette_indexes": len(set(lookup_bytes)),
+            "index0_cells": lookup_bytes.count(0),
         },
         "weather_after_300_ticks": {
             "particles": particles_300,

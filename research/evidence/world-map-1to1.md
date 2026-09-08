@@ -8,8 +8,8 @@
 - IDA：`/mnt/d/Dev/Crack/IDA/idat.exe -A`，仅 headless；每次导出后恢复 `research/ida/databases/Z_DAT.i64`。
 - IDA 脚本：`research/ida/scripts/ida_b6_world_xrefs.py`，SHA256 `b7db49dbd593a9e70b3f2ba5e0d3dd0c8e7c11571a12291e41ab56828db24cc6`。
 - 汇编/伪码报告：`research/ida/reports/Z_DAT.b6_world_xrefs.txt`，332,095 bytes，SHA256 `af02c2699e4cd9f3fea4642e5c09b740c00f93d8fb200a9e699fea3d1b730a53`。
-- 独立 oracle：`research/tools/generate_b6_world_goldens.py`，SHA256 `d9959b905669d506eb6fcb258c6837edee59256b91c3e2a7982f3c58b76f8c0d`。
-- oracle 输出：`research/evidence/world-map-goldens.json`，SHA256 `b906e335fd903a376b0a6d65c26ee09d525a43a43b373def538df4edfbea3d2e`。
+- 独立 oracle：`research/tools/generate_b6_world_goldens.py`，SHA256 `dc379fb650e2af41e7443261ca0d39083cefac5e3e24d10debdf1ed9077b5830`。
+- oracle 输出：`research/evidence/world-map-goldens.json`，SHA256 `53f2238ac967ac538e6b466a44a25b46c90facf2db8e6a5632e07c7535e8bd8e`。
 
 oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓存、累计 IDX、RLE、深度列表、RGB4 最近色、8 级 alpha、LCG 和固定移动轨迹。
 
@@ -76,7 +76,8 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 - 世界人物四方向 28 个 MMAP 行走帧均为合法非空 RLE；每帧含 305–402 个源像素。回归测试在初始位置、四方向轨迹和连续右移 35 步（覆盖完整 2–12 帧循环与 cache 重载）后逐步重绘，并确认当前人物帧至少一个源像素仍存在于 framebuffer 的 `(145,117)` anchor 区域。
 - `LegacyGameRuntime` 同步链在四次方向输入后逐步断言 view 仍为 `world` 且 render 成功；键盘回归另固定四组成对键码、left→up→down→right 优先级、命中整组清零和 repeat 再置位。因此当前固定真实资产路径未复现“移动几步后人物消失”。运行日志另记录 view、坐标、方向、帧号、深度列表是否包含玩家和 present 失败，以捕获真实运行环境中的后续复现。
 - 天气 alpha 表为 `table[weight][rgb6] = floor(rgb6*weight/32)`；source weight 为 6..8，destination weight 为 `8-weight`。
-- RGB4 最近色使用目标 `(component*4+2)` 与当前 RGB6 palette 的平方距离，严格 `<` 保留首个同距 index。
+- RGB4 最近色使用目标`(component*4+2)`与当前RGB6 palette的signed平方距离；`best_distance=30000/best_index=0`，严格`<`保留首个同距index。`sub_3D34A`主范围207 bytes/62条指令，另经唯一jump执行8-byte/6-instruction恢复尾；完成1,048,576次距离计算和4096次写入。
+- 独立`MMAP.COL`完整lookup SHA256=`654a89e9d122ab12d33656dd53a19c9ac97e82fb03f41c55e94087b3c2396ac4`、FNV-1a64=`0x798ccd8e98bec77a`；123个tie cell均取首项，正式Golden三生成逐字节一致。完整机器和现代四实现证据见`research/evidence/functions/Z_DAT/0x3D34A.md`。
 - seed 1、300 tick 的天气粒子和最终像素由 oracle 固定；framebuffer SHA256 `e8a96eda7898d8fc13ca270754b1d10b5cf05e0994db8cc82d3218aecf00a313`，FNV1a64 `0xdff4c0d05bd3426b`。
 - 相机移动时天气位置保留 `sub_24417` 的等角位移；全部粒子 x>500 时同 tick 重新生成。
 - 无输入 tick 保持 `sub_2399E` 判定/恢复→`sub_23B3E` 天气→条件 `sub_23AA6` 待机动画的顺序；20 tick步行frame复位计数只在`in_ship==0`时递增。现代拆分为 `idle_tick()`、`periodic_tick()`、`idle_animation_tick()`，不再把动画推进提前到天气之前。

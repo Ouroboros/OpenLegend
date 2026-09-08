@@ -3244,6 +3244,16 @@ void check_renderer(const std::filesystem::path& data_root) {
     ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.valid());
 
+    compat::LegacyPalette tie_palette{};
+    tie_palette.fill({63U, 63U, 63U});
+    tie_palette[1U] = {6U, 6U, 6U};
+    tie_palette[2U] = {6U, 6U, 6U};
+    tie_palette[3U] = {0U, 0U, 0U};
+    framebuffer.clear(3U);
+    framebuffer.set_palette(tie_palette);
+    OL_CHECK(basic_renderer.render_error({}, framebuffer));
+    OL_CHECK(framebuffer.row(165)[160] == 1U);
+
     ui::NewGameNameEditor initial_name{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.render_name_entry(renderer, initial_name, framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x5e228f916fbca51aULL);
