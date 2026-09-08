@@ -1837,8 +1837,9 @@ void check_scene_loop_transitions(const std::filesystem::path& root) {
     destination.set_word(openlegend::model::scene_metadata_word::jump_return_y, 13);
     destination.set_word(openlegend::model::scene_metadata_word::entrance_x, 20);
     destination.set_word(openlegend::model::scene_metadata_word::entrance_y, 21);
-    jump_snapshot.set_scene_value(70U, SceneLayer::event_index, target, -1);
-    jump_snapshot.set_scene_value(71U, SceneLayer::event_index, 13U * 64U + 12U, -1);
+    OL_CHECK(jump_snapshot.set_scene_value(70U, SceneLayer::event_index, target, -1));
+    OL_CHECK(jump_snapshot.set_scene_value(
+        71U, SceneLayer::event_index, 13U * 64U + 12U, -1));
     openlegend::random::LegacyRandom jump_random{1U};
     openlegend::scene::SceneSession jump_session{
         data_root, jump_snapshot, jump_random, 70, false, std::nullopt, 3};
@@ -2389,7 +2390,7 @@ void check_event_scripted_walk_boundaries(const std::filesystem::path& root) {
     const SyntheticKdefDataRoot synthetic{root};
     const openlegend::resource::DataRoot data_root{synthetic.path()};
     const auto check_walk = [&data_root, &root](
-                                const int script,
+                                const std::int16_t script,
                                 const std::span<const std::array<int, 4>> expected) {
         auto snapshot = load_baseline(root);
         auto& metadata = snapshot.ranger.scenes[70];
@@ -3024,7 +3025,9 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         for (const auto event : shop_case.close_events) {
             for (std::size_t field = 0U; field < 8U; ++field) {
                 OL_CHECK(snapshot.set_event_value(
-                    shop_case.scene, event, static_cast<SceneEventField>(field), 777));
+                    static_cast<std::size_t>(shop_case.scene),
+                    static_cast<std::size_t>(event),
+                    static_cast<SceneEventField>(field), 777));
             }
         }
         openlegend::random::LegacyRandom random{1U};
@@ -3061,7 +3064,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         for (const auto event : shop_case.close_events) {
             for (std::size_t field = 0U; field < expected_fields.size(); ++field) {
                 OL_CHECK(snapshot.event_value(
-                             shop_case.scene, event,
+                             static_cast<std::size_t>(shop_case.scene),
+                             static_cast<std::size_t>(event),
                              static_cast<SceneEventField>(field)).value_or(-2) ==
                          expected_fields[field]);
             }
@@ -3222,7 +3226,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         for (const auto event : hidden_events) {
             for (std::size_t field = 0U; field < 8U; ++field) {
                 static_cast<void>(snapshot.set_event_value(
-                    scene, event,
+                    static_cast<std::size_t>(scene),
+                    static_cast<std::size_t>(event),
                     static_cast<openlegend::model::SceneEventField>(field), 777));
             }
         }
@@ -3244,7 +3249,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
             const std::array<std::int16_t, 8> expected{0, 0, -1, -1, -1, -1, -1, -1};
             for (std::size_t field = 0U; field < expected.size(); ++field) {
                 OL_CHECK(snapshot.event_value(
-                             scene, event,
+                             static_cast<std::size_t>(scene),
+                             static_cast<std::size_t>(event),
                              static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
                          expected[field]);
             }
@@ -3295,8 +3301,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
         for (const auto& [scene, event] : activation_targets) {
             for (std::size_t field = 0U; field < unchanged_fields.size(); ++field) {
                 OL_CHECK(snapshot.set_event_value(
-                    scene,
-                    event,
+                    static_cast<std::size_t>(scene),
+                    static_cast<std::size_t>(event),
                     static_cast<openlegend::model::SceneEventField>(field),
                     unchanged_fields[field]));
             }
@@ -3311,8 +3317,8 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
                                        : unchanged_fields;
             for (std::size_t field = 0U; field < expected.size(); ++field) {
                 OL_CHECK(snapshot.event_value(
-                             scene,
-                             event,
+                             static_cast<std::size_t>(scene),
+                             static_cast<std::size_t>(event),
                              static_cast<openlegend::model::SceneEventField>(field)).value_or(-2) ==
                          expected[field]);
             }
@@ -3469,7 +3475,7 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     const SyntheticKdefDataRoot synthetic{root};
     const openlegend::resource::DataRoot synthetic_data_root{synthetic.path()};
     const auto money_condition_succeeds = [&synthetic_data_root, &root](
-                                              const int script,
+                                              const std::int16_t script,
                                               const std::optional<std::int16_t> count) {
         auto snapshot = load_baseline(root);
         for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
@@ -3810,9 +3816,10 @@ void check_event_learn_magic(const std::filesystem::path& root) {
     OL_CHECK(full_role.word(openlegend::model::role_word::magic_id_begin + 1U) == 41);
     OL_CHECK(full_role.word(openlegend::model::role_word::magic_level_begin + 1U) == 100);
 
-    for (const auto [script, silent] : std::array<std::pair<int, std::int16_t>, 2>{
-             std::pair{37, std::int16_t{1}},
-             std::pair{38, std::int16_t{-32768}}}) {
+    for (const auto [script, silent] :
+         std::array<std::pair<std::int16_t, std::int16_t>, 2>{
+             std::pair<std::int16_t, std::int16_t>{37, 1},
+             {38, -32768}}) {
         auto silent_snapshot = load_baseline(root);
         auto& silent_role = silent_snapshot.ranger.roles[49];
         fill_magic_slots(silent_role);
@@ -4357,8 +4364,8 @@ void check_event_finale_party_cleanup(const std::filesystem::path& root) {
                 openlegend::model::item_word::user, role_id);
         }
     }
-    constexpr std::array<std::pair<std::int16_t, std::int16_t>, 36> targets{
-        std::pair<std::int16_t, std::int16_t>{0, 0},
+    constexpr std::array<std::pair<std::size_t, std::size_t>, 36> targets{
+        std::pair<std::size_t, std::size_t>{0U, 0U},
         {49, 2}, {4, 1}, {44, 0}, {44, 1}, {37, 5}, {30, 0}, {59, 0},
         {40, 3}, {56, 1}, {1, 7}, {1, 8}, {1, 10}, {40, 7}, {40, 8},
         {77, 0}, {54, 0}, {62, 3}, {62, 4}, {60, 2}, {60, 15}, {52, 1},
@@ -5262,7 +5269,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
                 counts[index]);
         }
     };
-    for (const auto [script, before, after] :
+    for (const auto& [script, before, after] :
          std::array<std::tuple<std::int16_t, std::int16_t, std::int16_t>, 2>{
              std::tuple<std::int16_t, std::int16_t, std::int16_t>{68, 32767, -32768},
              {69, -32768, 32767}}) {
@@ -5320,7 +5327,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         return session.begin_event(75, 0, 0, 0);
     };
-    for (const auto [slot, sexual, expected_talk] :
+    for (const auto& [slot, sexual, expected_talk] :
          std::array<std::tuple<std::int16_t, std::int16_t, std::int16_t>, 4>{
              std::tuple<std::int16_t, std::int16_t, std::int16_t>{-1, 0, 1575},
              {5, 1, 1574},
@@ -5430,7 +5437,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
     }
 
-    for (const auto [script, before, after, notice, frame_hash] :
+    for (const auto& [script, before, after, notice, frame_hash] :
          std::array<
              std::tuple<std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
              3>{
@@ -5465,7 +5472,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 
-    for (const auto [script, before_maximum, before_current, after, notice, frame_hash] :
+    for (const auto& [script, before_maximum, before_current, after, notice, frame_hash] :
          std::array<std::tuple<
              std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
              4>{
@@ -5504,7 +5511,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 
-    for (const auto [script, before, after, notice, frame_hash] :
+    for (const auto& [script, before, after, notice, frame_hash] :
          std::array<
              std::tuple<std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
              3>{
@@ -5539,8 +5546,8 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(snapshot.ranger.roles[0].bytes == before);
     }
 
-    for (const auto [script, before_maximum, before_current, after, in_party, notice,
-                     frame_hash] :
+    for (const auto& [script, before_maximum, before_current, after, in_party, notice,
+                      frame_hash] :
          std::array<std::tuple<
              std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool, bool,
              std::uint64_t>,
@@ -6019,56 +6026,69 @@ void check_event_execution(const std::filesystem::path& root) {
     }
 }
 
+using SceneCheck = void (*)(const std::filesystem::path&);
+
+[[gnu::noinline]] void run_scene_check(
+    const SceneCheck check,
+    const std::filesystem::path& root) {
+    check(root);
+}
+
 }  // namespace
 
 int main() {
     const auto root = openlegend::test::game_data_root();
-    check_assets(root);
-    check_event_dialogue_rendering(root);
-    check_new_game_entry(root);
-    check_event_load_menu(root);
-    check_event_state_write_helpers(root);
-    check_scene_render_and_movement(root);
-    check_scene_movement_guards(root);
-    check_scene_movement_idle_state(root);
-    check_scene_entry_state(root);
-    check_scene_archive_ownership(root);
-    check_scene_interaction_present(root);
-    check_scene_item_and_auto_event_present(root);
-    check_scene_loop_transitions(root);
-    check_scene_exit_music_override(root);
-    check_scene_event_animation(root);
-    check_scene_weather(root);
-    check_event_camera_pan(root);
-    check_event_camera_pan_word_wrap(root);
-    check_event_picture_animation(root);
-    check_event_picture_animation_boundaries(root);
-    check_event_scripted_walk(root);
-    check_event_scripted_walk_boundaries(root);
-    check_event_dual_picture_animation(root);
-    check_event_three_statue_animation(root);
-    check_event_ending_prelude_animation(root);
-    check_event_role_sexual_and_audio(root);
-    check_event_shop_helpers(root);
-    check_event_presence_and_party_tail_conditions(root);
-    check_event_role_stat_conditions(root);
-    check_event_attack_condition_boundaries(root);
-    check_event_inventory_condition_edge_cases(root);
-    check_event_learn_magic(root);
-    check_event_all_book_pictures_condition(root);
-    check_event_current_picture_condition(root);
-    check_event_tournament_trial(root);
-    check_event_tournament_interround_restore(root);
-    check_event_finale_party_cleanup(root);
-    check_event_role_iq_clamp(root);
-    check_event_magic_slot_write(root);
-    check_event_open_all_scenes(root);
-    check_event_clear_party_mp(root);
-    check_event_join_helper(root);
-    check_event_state_side_effects(root);
-    check_event_basic_role_and_scene_helpers(root);
-    check_event_status_notices(root);
-    check_event_map_replace_and_random_talk(root);
-    check_event_execution(root);
+    const std::array<SceneCheck, 47> checks{
+        check_assets,
+        check_event_dialogue_rendering,
+        check_new_game_entry,
+        check_event_load_menu,
+        check_event_state_write_helpers,
+        check_scene_render_and_movement,
+        check_scene_movement_guards,
+        check_scene_movement_idle_state,
+        check_scene_entry_state,
+        check_scene_archive_ownership,
+        check_scene_interaction_present,
+        check_scene_item_and_auto_event_present,
+        check_scene_loop_transitions,
+        check_scene_exit_music_override,
+        check_scene_event_animation,
+        check_scene_weather,
+        check_event_camera_pan,
+        check_event_camera_pan_word_wrap,
+        check_event_picture_animation,
+        check_event_picture_animation_boundaries,
+        check_event_scripted_walk,
+        check_event_scripted_walk_boundaries,
+        check_event_dual_picture_animation,
+        check_event_three_statue_animation,
+        check_event_ending_prelude_animation,
+        check_event_role_sexual_and_audio,
+        check_event_shop_helpers,
+        check_event_presence_and_party_tail_conditions,
+        check_event_role_stat_conditions,
+        check_event_attack_condition_boundaries,
+        check_event_inventory_condition_edge_cases,
+        check_event_learn_magic,
+        check_event_all_book_pictures_condition,
+        check_event_current_picture_condition,
+        check_event_tournament_trial,
+        check_event_tournament_interround_restore,
+        check_event_finale_party_cleanup,
+        check_event_role_iq_clamp,
+        check_event_magic_slot_write,
+        check_event_open_all_scenes,
+        check_event_clear_party_mp,
+        check_event_join_helper,
+        check_event_state_side_effects,
+        check_event_basic_role_and_scene_helpers,
+        check_event_status_notices,
+        check_event_map_replace_and_random_talk,
+        check_event_execution,
+    };
+    for (const auto check : checks) {
+        run_scene_check(check, root);
+    }
     return openlegend::test::failures == 0 ? 0 : 1;
 }

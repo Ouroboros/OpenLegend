@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -26,11 +27,19 @@ inline std::filesystem::path utf8_path(const std::string_view value) {
 
 inline std::filesystem::path game_data_root() {
 #if defined(_WIN32)
-    const wchar_t* value = ::_wgetenv(L"OPENLEGEND_GAME_DATA_ROOT");
-    if (value == nullptr || *value == L'\0') {
+    wchar_t* raw_value = nullptr;
+    std::size_t value_size = 0U;
+    const auto result = ::_wdupenv_s(
+        &raw_value, &value_size, L"OPENLEGEND_GAME_DATA_ROOT");
+    const auto value =
+        std::unique_ptr<wchar_t, decltype(&std::free)>{raw_value, &std::free};
+    if (result != 0) {
+        throw std::runtime_error("OPENLEGEND_GAME_DATA_ROOT could not be read");
+    }
+    if (value == nullptr || value_size <= 1U || *value == L'\0') {
         throw std::runtime_error("OPENLEGEND_GAME_DATA_ROOT is not set");
     }
-    return std::filesystem::path{value};
+    return std::filesystem::path{value.get()};
 #else
     const char* value = std::getenv("OPENLEGEND_GAME_DATA_ROOT");
     if (value == nullptr || *value == '\0') {

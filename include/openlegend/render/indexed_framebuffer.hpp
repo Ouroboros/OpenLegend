@@ -1,9 +1,9 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <vector>
 
 #include "openlegend/compat/legacy_video.hpp"
 
@@ -37,7 +37,8 @@ public:
     [[nodiscard]] const openlegend::compat::LegacyPalette& palette() const noexcept { return palette_; }
 
 private:
-    std::array<std::uint8_t, openlegend::compat::kLegacyPixelCount> pixels_{};
+    std::vector<std::uint8_t> pixels_ =
+        std::vector<std::uint8_t>(openlegend::compat::kLegacyPixelCount);
     openlegend::compat::LegacyPalette palette_{};
 };
 

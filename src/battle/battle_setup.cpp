@@ -1540,6 +1540,7 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
         .side_offset = static_cast<std::int16_t>(
             words[combatant_word::side] == 0 ? 0 : 220),
         .portrait_id = role.word(model::role_word::head_id),
+        .name_x = std::nullopt,
         .physical_power = role.word(model::role_word::physical_power),
         .hp = role.word(model::role_word::hp),
         .maximum_hp = role.word(model::role_word::maximum_hp),
@@ -3878,7 +3879,10 @@ std::optional<BattleAiEscapePlan> BattleSetup::ai_escape_plan(
         BattlePathCoord{actor[combatant_word::x], actor[combatant_word::y]},
         BattlePathMode::movement);
 
-    BattleAiEscapePlan plan{.rest_after_move = rest_after_move};
+    BattleAiEscapePlan plan{
+        .destination = std::nullopt,
+        .rest_after_move = rest_after_move,
+    };
     for (std::int16_t x = 0; x < static_cast<std::int16_t>(kBattleExtent); ++x) {
         for (std::int16_t y = 0; y < static_cast<std::int16_t>(kBattleExtent); ++y) {
             const BattlePathCoord coordinate{x, y};

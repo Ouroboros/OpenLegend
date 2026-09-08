@@ -546,7 +546,8 @@ private:
     std::optional<BattlePlayerMovementPlan> player_movement_plan_;
     std::uint32_t player_movement_wait_tick_{};
     std::int32_t player_movement_wait_tick_changes_remaining_{};
-    std::array<std::uint8_t, compat::kLegacyPixelCount> selection_background_{};
+    std::vector<std::uint8_t> selection_background_ =
+        std::vector<std::uint8_t>(compat::kLegacyPixelCount);
     compat::LegacyPalette selection_palette_{};
     bool selection_background_captured_{};
     bool frame_rendered_{};

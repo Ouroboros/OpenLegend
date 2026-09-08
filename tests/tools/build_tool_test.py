@@ -353,7 +353,16 @@ class BuildToolTest(unittest.TestCase):
         )
         self.assertIn('"--data-dir=${OPENLEGEND_GAME_DATA_ROOT}"', cmake)
         self.assertIn("game_data_root()", support)
-        self.assertIn('_wgetenv(L"OPENLEGEND_GAME_DATA_ROOT")', support)
+        self.assertIn("_wdupenv_s(", support)
+        self.assertIn('L"OPENLEGEND_GAME_DATA_ROOT"', support)
+
+    def test_tests_do_not_mask_large_stack_frames(self) -> None:
+        cmake = (PROJECT_ROOT / "tests" / "CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("/STACK:", cmake)
+        self.assertNotIn("prlimit", cmake)
+        self.assertNotIn("--stack=", cmake)
 
     def test_windows_build_uses_static_msvc_runtime(self) -> None:
         cmake = (PROJECT_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")

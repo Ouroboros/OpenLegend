@@ -6,7 +6,7 @@
 namespace openlegend::render {
 
 void IndexedFramebuffer::clear(const std::uint8_t color) noexcept {
-    pixels_.fill(color);
+    std::fill(pixels_.begin(), pixels_.end(), color);
 }
 
 bool IndexedFramebuffer::fill_rectangle(

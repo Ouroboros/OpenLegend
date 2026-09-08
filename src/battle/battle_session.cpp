@@ -355,7 +355,7 @@ std::uint8_t BattleSession::player_status_page() const noexcept {
 
 BattleSessionInputResult BattleSession::handle_key(
     const std::uint8_t translated_key,
-    const std::optional<std::uint32_t> bios_tick) {
+    const std::optional<std::uint32_t>) {
     if (!valid() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
     }

@@ -39,10 +39,18 @@ std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
 
 void run_framebuffer_tests() {
     using openlegend::render::IndexedFramebuffer;
+    static_assert(
+        sizeof(IndexedFramebuffer) <= 1024U,
+        "framebuffer pixel storage must not be allocated inside stack objects");
+
     IndexedFramebuffer framebuffer;
     framebuffer.clear(3U);
     OL_CHECK(framebuffer.pixels().front() == 3U);
     OL_CHECK(framebuffer.pixels().back() == 3U);
+    auto copied_framebuffer = framebuffer;
+    copied_framebuffer.pixels().front() = 4U;
+    OL_CHECK(framebuffer.pixels().front() == 3U);
+    OL_CHECK(copied_framebuffer.pixels().front() == 4U);
     OL_CHECK(framebuffer.fill_rectangle(10, 20, 3U, 2U, 9U));
     OL_CHECK(framebuffer.row(20)[9] == 3U);
     OL_CHECK(framebuffer.row(20)[10] == 9U);

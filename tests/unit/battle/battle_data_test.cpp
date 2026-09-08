@@ -11944,56 +11944,73 @@ void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(!past_end.valid());
 }
 
+void run_shared_menu_item_helper_check(const openlegend::resource::DataRoot&) {
+    run_shared_menu_item_helper_test();
+}
+
+using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
+
+[[gnu::noinline]] void run_battle_check(
+    const BattleCheck check,
+    const openlegend::resource::DataRoot& data_root) {
+    check(data_root);
+}
+
 }  // namespace
 
 int main() {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    run_real_asset_fixtures(data_root);
-    run_pathing_tests(data_root);
-    run_movement_step_test(data_root);
-    run_attack_profile_test(data_root);
-    run_attack_animation_test(data_root);
-    run_poison_action_test(data_root);
-    run_detox_action_test(data_root);
-    run_medicine_action_test(data_root);
-    run_throwing_weapon_action_test(data_root);
-    run_shared_menu_item_helper_test();
-    run_ai_item_effect_test(data_root);
-    run_ai_request_handler_test(data_root);
-    run_ai_support_handler_test(data_root);
-    run_post_battle_progression_test(data_root);
-    run_battle_practice_review_test(data_root);
-    run_battle_crafting_review_test(data_root);
-    run_battle_round_status_damage_review_test(data_root);
-    run_battle_hidden_target_cleanup_review_test(data_root);
-    run_battle_status_panel_review_test(data_root);
-    run_player_movement_selection_test(data_root);
-    run_ai_movement_continuation_test(data_root);
-    run_rest_action_test(data_root);
-    run_wait_auto_render_test(data_root);
-    run_player_action_availability_test(data_root);
-    run_player_support_session_test(data_root);
-    run_player_item_session_test(data_root);
-    run_player_status_session_test(data_root);
-    run_player_attack_session_test(data_root);
-    run_ai_attack_session_test(data_root);
-    run_ai_poison_session_test(data_root);
-    run_ai_item_session_test(data_root);
-    run_ai_support_session_test(data_root);
-    run_ai_support_movement_session_test(data_root);
-    run_ai_request_session_test(data_root);
-    run_battle_session_test(data_root);
-    run_ai_selector_test(data_root);
-    run_damage_formula_test(data_root);
-    run_attack_area_test(data_root);
-    run_party_selection_test(data_root);
-    run_fixed_and_duplicate_tests(data_root);
-    run_initial_presentation_order_test(data_root);
-    run_turn_order_test(data_root);
-    run_outcome_test(data_root);
-    run_battle_outcome_session_test(data_root);
-    run_all_definition_tests(data_root);
+    const std::array<BattleCheck, 45> checks{
+        run_real_asset_fixtures,
+        run_pathing_tests,
+        run_movement_step_test,
+        run_attack_profile_test,
+        run_attack_animation_test,
+        run_poison_action_test,
+        run_detox_action_test,
+        run_medicine_action_test,
+        run_throwing_weapon_action_test,
+        run_shared_menu_item_helper_check,
+        run_ai_item_effect_test,
+        run_ai_request_handler_test,
+        run_ai_support_handler_test,
+        run_post_battle_progression_test,
+        run_battle_practice_review_test,
+        run_battle_crafting_review_test,
+        run_battle_round_status_damage_review_test,
+        run_battle_hidden_target_cleanup_review_test,
+        run_battle_status_panel_review_test,
+        run_player_movement_selection_test,
+        run_ai_movement_continuation_test,
+        run_rest_action_test,
+        run_wait_auto_render_test,
+        run_player_action_availability_test,
+        run_player_support_session_test,
+        run_player_item_session_test,
+        run_player_status_session_test,
+        run_player_attack_session_test,
+        run_ai_attack_session_test,
+        run_ai_poison_session_test,
+        run_ai_item_session_test,
+        run_ai_support_session_test,
+        run_ai_support_movement_session_test,
+        run_ai_request_session_test,
+        run_battle_session_test,
+        run_ai_selector_test,
+        run_damage_formula_test,
+        run_attack_area_test,
+        run_party_selection_test,
+        run_fixed_and_duplicate_tests,
+        run_initial_presentation_order_test,
+        run_turn_order_test,
+        run_outcome_test,
+        run_battle_outcome_session_test,
+        run_all_definition_tests,
+    };
+    for (const auto check : checks) {
+        run_battle_check(check, data_root);
+    }
     return openlegend::test::failures == 0 ? 0 : 1;
 }

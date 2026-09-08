@@ -1546,9 +1546,12 @@ SceneStepResult SceneSession::run_event() {
         case 53: {
             const auto fame = opcode == 53;
             const auto field = fame ? model::role_word::fame : model::role_word::morality;
-            const auto value = snapshot_.ranger.roles.empty() ? 0 : snapshot_.ranger.roles[0].word(field);
+            const auto value = snapshot_.ranger.roles.empty()
+                                   ? std::int16_t{0}
+                                   : snapshot_.ranger.roles[0].word(field);
             program_counter_ += 1;
-            queue_notice(status_notice_message(fame, value), opcode);
+            queue_notice(
+                status_notice_message(fame, value), static_cast<std::int16_t>(opcode));
             queue_scene_present();
             return emit_queued();
         }
