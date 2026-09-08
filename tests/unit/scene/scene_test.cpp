@@ -6022,7 +6022,7 @@ void check_event_execution(const std::filesystem::path& root) {
 }  // namespace
 
 int main() {
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     check_assets(root);
     check_event_dialogue_rendering(root);
     check_new_game_entry(root);

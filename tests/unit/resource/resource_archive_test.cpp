@@ -15,10 +15,6 @@
 #include "openlegend/resource/packed_archive.hpp"
 #include "test_support.hpp"
 
-#ifndef OPENLEGEND_GAME_DATA_ROOT
-#error OPENLEGEND_GAME_DATA_ROOT must name the read-only original data directory
-#endif
-
 namespace {
 
 void append_u32le(std::vector<std::uint8_t>& bytes, const std::uint32_t value) {
@@ -185,7 +181,7 @@ void validate_sentinel_sprite_pair(
 
 void run_real_asset_tests() {
     using namespace openlegend::resource;
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
 
     std::map<std::string, std::filesystem::path> indexes;

@@ -968,7 +968,7 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
 }  // namespace
 
 int main() {
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     check_layers_and_cache(root);
     check_initial_render_and_trace(root);
     check_periodic_rng_and_recovery(root);

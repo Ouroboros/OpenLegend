@@ -26,10 +26,6 @@
 #include "openlegend/resource/packed_archive.hpp"
 #include "test_support.hpp"
 
-#ifndef OPENLEGEND_GAME_DATA_ROOT
-#error OPENLEGEND_GAME_DATA_ROOT must name the read-only original data directory
-#endif
-
 namespace {
 
 std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
@@ -416,7 +412,7 @@ std::string uppercase(std::string value) {
 void run_real_asset_golden() {
     using namespace openlegend::render;
     using namespace openlegend::resource;
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
 
     const auto mmap = PackedArchive::open(root / "MMAP.IDX", root / "MMAP.GRP");
     const auto title = PackedArchive::open(root / "TITLE.IDX", root / "TITLE.GRP");
@@ -530,7 +526,7 @@ std::string three_digit_suffix(const int value) {
 void run_real_palette_fade_golden() {
     using namespace openlegend::render;
     using namespace openlegend::resource;
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     const auto palette_file = read_binary_file(root / "MMAP.COL");
     OL_CHECK(static_cast<bool>(palette_file));
     if (!palette_file) {
@@ -567,7 +563,7 @@ void run_real_palette_fade_golden() {
 void run_all_glyph_golden() {
     using namespace openlegend::render;
     using openlegend::resource::read_binary_file;
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     const auto ascii_font = read_binary_file(root / "FONT3.E16");
     const auto big5_font = read_binary_file(root / "FONT3.C16");
     OL_CHECK(static_cast<bool>(ascii_font));
@@ -622,7 +618,7 @@ void run_all_glyph_golden() {
 void run_all_sprite_corner_golden() {
     using namespace openlegend::render;
     using namespace openlegend::resource;
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     std::array<IndexedFramebuffer, 4> framebuffers;
     for (std::size_t index = 0U; index < framebuffers.size(); ++index) {
         framebuffers[index].clear(static_cast<std::uint8_t>(index + 1U));

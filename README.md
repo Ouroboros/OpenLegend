@@ -44,22 +44,25 @@ OpenLegend 是《金庸群侠传》DOS 版的现代 C++20 还原工程。
 
 ## 原版数据目录
 
-仓库不包含、也不会分发原版游戏文件。当前构建测试要求原版文件位于仓库父目录：
+仓库不包含、也不会分发原版游戏文件。BUILD可用`--data-dir <目录>`指定每台机器上的原版数据目录；相对路径以仓库根目录为基准。未传参数时为兼容旧布局，默认使用仓库父目录。也可设置环境变量`OPENLEGEND_GAME_DATA_ROOT`，命令行参数优先。
+
+例如仓库与数据目录并列时：
 
 ```text
-金庸群侠传/
-├── OpenLegend/       # 本仓库
-├── Z.COM
-├── Z.DAT
-├── RANGER.GRP
-├── MMAP.IDX
-├── MMAP.GRP
-├── FONT3.E16
-├── FONT3.C16
-└── ...               # 其余原版资源
+E:\Game\OpenLegend\
+├── OpenLegend\       # 本仓库
+└── data\             # 原版数据目录
+    ├── Z.COM
+    ├── Z.DAT
+    ├── RANGER.GRP
+    ├── MMAP.IDX
+    ├── MMAP.GRP
+    ├── FONT3.E16
+    ├── FONT3.C16
+    └── ...            # 其余原版资源
 ```
 
-原版文件只读使用；构建、测试和生成物只写入 `OpenLegend/build/` 或其他仓库内已忽略目录。
+对应BUILD命令为`build.bat app --data-dir "E:\Game\OpenLegend\data"`。该路径通过CMake测试配置在CTest运行时传入，不会作为机器路径编译进UT；修改路径后BUILD会自动重新配置现有缓存。原版文件只读使用；构建、测试和生成物只写入仓库内已忽略目录。
 
 ## 配置文件
 
@@ -94,8 +97,9 @@ maximized = false
 
 ```bash
 ./build.sh core                 # 只构建核心库并运行测试
-./build.sh app                  # 构建 SDL3 应用并运行全部测试
-./build.sh app --config Release
+./build.sh app                  # 默认从仓库父目录读取原版数据
+./build.sh app --data-dir ../data
+./build.sh app --config Release --data-dir /path/to/game/data
 ./build.sh app --config Debug --sanitizers  # ASan + UBSan
 ```
 
@@ -111,7 +115,8 @@ Python      D:\Dev\Python\python.exe，PATH中的python仅作回退
 ```bat
 build.bat core
 build.bat app
-build.bat app --config Release
+build.bat app --data-dir "E:\Game\OpenLegend\data"
+build.bat app --config Release --data-dir "E:\Game\OpenLegend\data"
 build.bat app --config Release --sanitizers
 ```
 
@@ -120,6 +125,7 @@ build.bat app --config Release --sanitizers
 可选参数：
 
 ```text
+--data-dir PATH
 --jobs N
 --test-jobs N
 --configure-only

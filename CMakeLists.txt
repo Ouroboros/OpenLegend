@@ -11,6 +11,11 @@ option(
     ON
 )
 option(OPENLEGEND_FETCH_ADLMIDI "Fetch the pinned libADLMIDI XMI synthesizer" ON)
+set(
+    OPENLEGEND_GAME_DATA_ROOT
+    "${PROJECT_SOURCE_DIR}/.."
+    CACHE PATH "Directory containing the original read-only game data"
+)
 
 # Produce self-contained Windows binaries without the MSVC/UCRT redistributable DLLs.
 # This initializer applies to OpenLegend and all subsequently created dependency targets.

@@ -15,10 +15,6 @@
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
 
-#ifndef OPENLEGEND_GAME_DATA_ROOT
-#error OPENLEGEND_GAME_DATA_ROOT must name the original game data directory
-#endif
-
 namespace {
 
 using openlegend::audio::PlaybackStatus;
@@ -295,7 +291,7 @@ void run_mixer_tests() {
 
 int main() {
     const openlegend::resource::DataRoot root{
-        openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT)};
+        openlegend::test::game_data_root()};
     run_controller_tests(root);
     run_asset_tests(root);
     run_mixer_tests();

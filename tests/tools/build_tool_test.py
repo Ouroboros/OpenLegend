@@ -25,6 +25,42 @@ class BuildToolTest(unittest.TestCase):
     def test_accepts_case_insensitive_target_from_batch(self) -> None:
         self.assertEqual(build.parse_args(["APP", "--config", "Release"]).target, "app")
 
+    def test_accepts_game_data_directory_argument_and_environment(self) -> None:
+        configured = r"E:\Game\OpenLegend\data"
+        self.assertEqual(
+            build.parse_args(["app", "--data-dir", configured]).data_dir, configured
+        )
+        with mock.patch.dict(
+            os.environ, {"OPENLEGEND_GAME_DATA_ROOT": configured}, clear=True
+        ):
+            self.assertEqual(build.parse_args(["core"]).data_dir, configured)
+            self.assertEqual(
+                build.parse_args(["app", "--data-dir", "command-line-data"]).data_dir,
+                "command-line-data",
+            )
+
+    def test_resolves_relative_game_data_directory_from_repository_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory) / "OpenLegend"
+            data_root = Path(directory) / "data"
+            project_root.mkdir()
+            data_root.mkdir()
+            self.assertEqual(
+                build.game_data_root_path(project_root, "../data"), data_root.resolve()
+            )
+            self.assertEqual(
+                build.game_data_root_path(project_root, None), Path(directory).resolve()
+            )
+
+    def test_validates_minimum_game_data_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_root = Path(directory)
+            with self.assertRaisesRegex(RuntimeError, "Z.COM, Z.DAT"):
+                build.validate_game_data_root(data_root)
+            (data_root / "Z.COM").write_bytes(b"")
+            (data_root / "Z.DAT").write_bytes(b"")
+            build.validate_game_data_root(data_root)
+
     def test_resolves_project_root_from_root_build_script(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(build.project_root_path(MODULE_PATH), PROJECT_ROOT)
@@ -81,6 +117,7 @@ class BuildToolTest(unittest.TestCase):
             r"D:\Dev\clang++.exe",
             r"D:\Dev\clang.exe",
             r"D:\Dev\python.exe",
+            game_data_root=Path(r"E:\Game\OpenLegend\data"),
         )
         self.assertIn("Ninja Multi-Config", command)
         self.assertIn("-DOPENLEGEND_BUILD_APP:BOOL=OFF", command)
@@ -89,6 +126,9 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn(r"-DCMAKE_CXX_COMPILER:FILEPATH=D:\Dev\clang++.exe", command)
         self.assertNotIn(r"-DCMAKE_C_COMPILER:FILEPATH=D:\Dev\clang.exe", command)
         self.assertIn(r"-DPython3_EXECUTABLE:FILEPATH=D:\Dev\python.exe", command)
+        self.assertIn(
+            r"-DOPENLEGEND_GAME_DATA_ROOT:PATH=E:\Game\OpenLegend\data", command
+        )
 
     def test_builds_app_command_with_c_compiler(self) -> None:
         command = build.configure_command(
@@ -101,10 +141,12 @@ class BuildToolTest(unittest.TestCase):
             "clang",
             "python",
             True,
+            Path("data"),
         )
         self.assertIn("-DOPENLEGEND_BUILD_APP:BOOL=ON", command)
         self.assertIn("-DCMAKE_C_COMPILER:FILEPATH=clang", command)
         self.assertIn("-DOPENLEGEND_ENABLE_SANITIZERS:BOOL=ON", command)
+        self.assertIn("-DOPENLEGEND_GAME_DATA_ROOT:PATH=data", command)
 
     def test_locates_clang_windows_sanitizer_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -249,6 +291,15 @@ class BuildToolTest(unittest.TestCase):
         self.assertTrue(build.compiler_path_changed("/usr/bin/c++", "/usr/bin/clang++-23"))
         self.assertFalse(build.compiler_path_changed(None, "clang++-23"))
 
+    def test_detects_changed_game_data_cache_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_root = Path(directory).resolve()
+            self.assertTrue(build.cached_path_changed(None, data_root))
+            self.assertFalse(build.cached_path_changed(str(data_root), data_root))
+            self.assertTrue(
+                build.cached_path_changed(str(data_root / "old"), data_root)
+            )
+
     def test_reads_cached_bool(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             cache = Path(directory) / "CMakeCache.txt"
@@ -285,6 +336,24 @@ class BuildToolTest(unittest.TestCase):
         self.assertIn('exec python3 "$ROOT/build.py" "$@"', shell)
         self.assertNotIn("tools/build.py", shell)
         self.assertNotIn("case ", shell)
+
+    def test_game_data_path_is_runtime_test_configuration(self) -> None:
+        cmake = (PROJECT_ROOT / "tests" / "CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        support = (PROJECT_ROOT / "tests" / "support" / "test_support.hpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn(
+            'OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."', cmake
+        )
+        self.assertIn(
+            'ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"',
+            cmake,
+        )
+        self.assertIn('"--data-dir=${OPENLEGEND_GAME_DATA_ROOT}"', cmake)
+        self.assertIn("game_data_root()", support)
+        self.assertIn('_wgetenv(L"OPENLEGEND_GAME_DATA_ROOT")', support)
 
     def test_windows_build_uses_static_msvc_runtime(self) -> None:
         cmake = (PROJECT_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")

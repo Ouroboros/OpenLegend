@@ -20,10 +20,6 @@
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
 
-#ifndef OPENLEGEND_GAME_DATA_ROOT
-#error OPENLEGEND_GAME_DATA_ROOT must name the read-only original data directory
-#endif
-
 namespace {
 
 namespace item_word = openlegend::model::item_word;
@@ -11951,7 +11947,7 @@ void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
 }  // namespace
 
 int main() {
-    const auto root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
     run_real_asset_fixtures(data_root);

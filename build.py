@@ -46,6 +46,23 @@ def project_root_path(script_file: Path) -> Path:
     return script_file.resolve().parent
 
 
+def game_data_root_path(project_root: Path, configured: str | None) -> Path:
+    candidate = Path(configured) if configured else project_root.parent
+    if not candidate.is_absolute():
+        candidate = project_root / candidate
+    return candidate.resolve()
+
+
+def validate_game_data_root(game_data_root: Path) -> None:
+    if not game_data_root.is_dir():
+        raise RuntimeError(f"Game data directory was not found: {game_data_root}")
+    missing = [name for name in ("Z.COM", "Z.DAT") if not (game_data_root / name).is_file()]
+    if missing:
+        raise RuntimeError(
+            f"Game data directory is missing required file(s): {', '.join(missing)}"
+        )
+
+
 def compiler_commands(platform_name: str) -> tuple[str, str]:
     if platform_name == "windows":
         return os.environ.get("CC", "clang.exe"), os.environ.get("CXX", "clang++.exe")
@@ -86,6 +103,15 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         "target", type=str.lower, choices=("core", "app", "sdl"), nargs="?", default="core"
     )
     parser.add_argument("--config", choices=("Debug", "Release"))
+    parser.add_argument(
+        "--data-dir",
+        metavar="PATH",
+        default=os.environ.get("OPENLEGEND_GAME_DATA_ROOT"),
+        help=(
+            "original game data directory; relative paths are resolved from the repository root "
+            "(default: repository parent, environment: OPENLEGEND_GAME_DATA_ROOT)"
+        ),
+    )
     parser.add_argument(
         "--jobs",
         type=positive_integer,
@@ -279,6 +305,7 @@ def configure_command(
     c_compiler: str | None = None,
     python_executable: str = sys.executable,
     enable_sanitizers: bool = False,
+    game_data_root: Path | None = None,
 ) -> list[str]:
     command = [
         str(cmake),
@@ -298,6 +325,8 @@ def configure_command(
         "-DOPENLEGEND_FETCH_TOMLPLUSPLUS:BOOL=ON",
         f"-DOPENLEGEND_ENABLE_SANITIZERS:BOOL={'ON' if enable_sanitizers else 'OFF'}",
     ]
+    if game_data_root is not None:
+        command.append(f"-DOPENLEGEND_GAME_DATA_ROOT:PATH={game_data_root}")
     if cxx_compiler:
         command.append(f"-DCMAKE_CXX_COMPILER:FILEPATH={cxx_compiler}")
     if target == "app" and c_compiler:
@@ -346,6 +375,12 @@ def compiler_path_changed(current: str | None, requested: str | None) -> bool:
     )
 
 
+def cached_path_changed(current: str | None, requested: Path) -> bool:
+    return current is None or os.path.normcase(str(Path(current).resolve())) != os.path.normcase(
+        str(requested.resolve())
+    )
+
+
 def reset_build_directory(build_dir: Path) -> None:
     configurations = [
         (path.relative_to(build_dir), path.read_bytes())
@@ -362,6 +397,10 @@ def reset_build_directory(build_dir: Path) -> None:
 def main() -> int:
     args = parse_args()
     project_root = project_root_path(Path(__file__))
+    game_data_root = game_data_root_path(project_root, args.data_dir)
+    if not args.skip_tests and not args.configure_only:
+        validate_game_data_root(game_data_root)
+    print(f"[OpenLegend] Game data: {game_data_root}", flush=True)
     cmake, ninja, ctest = ensure_tools(project_root)
 
     target = normalize_target(args.target)
@@ -385,6 +424,7 @@ def main() -> int:
     current_cxx_compiler = cached_value(cache_file, "CMAKE_CXX_COMPILER")
     current_c_compiler = cached_value(cache_file, "CMAKE_C_COMPILER")
     current_sanitizers = cached_bool(cache_file, "OPENLEGEND_ENABLE_SANITIZERS")
+    current_game_data_root = cached_value(cache_file, "OPENLEGEND_GAME_DATA_ROOT")
     if current_generator is not None and current_generator != EXPECTED_GENERATOR:
         print(
             f"[OpenLegend] Reset generator: {current_generator} -> {EXPECTED_GENERATOR}",
@@ -418,6 +458,13 @@ def main() -> int:
         )
         reset_build_directory(build_dir)
         reconfigure = True
+    elif cache_file.is_file() and cached_path_changed(current_game_data_root, game_data_root):
+        print(
+            f"[OpenLegend] Reconfigure game data: "
+            f"{current_game_data_root or '<unset>'} -> {game_data_root}",
+            flush=True,
+        )
+        reconfigure = True
     elif current_sanitizers is not None and current_sanitizers != args.sanitizers:
         print(
             f"[OpenLegend] Reconfigure sanitizers: "
@@ -435,6 +482,7 @@ def main() -> int:
         requested_cxx_compiler,
         configured_c_compiler,
         enable_sanitizers=args.sanitizers,
+        game_data_root=game_data_root,
     )
     process_cwd = Path(sys.executable).parent if os.name == "nt" else project_root
     sanitizer_runtime = None

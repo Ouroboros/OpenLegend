@@ -20,10 +20,6 @@ target_link_libraries(openlegend_model_tests PRIVATE openlegend_model)
 add_test(NAME openlegend.model COMMAND openlegend_model_tests)
 
 add_executable(openlegend_resource_tests unit/resource/resource_archive_test.cpp)
-target_compile_definitions(
-    openlegend_resource_tests
-    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-)
 target_include_directories(openlegend_resource_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_resource_tests PRIVATE openlegend_resource)
 add_test(NAME openlegend.resource COMMAND openlegend_resource_tests)
@@ -31,37 +27,23 @@ add_test(NAME openlegend.resource COMMAND openlegend_resource_tests)
 add_executable(openlegend_ui_tests unit/ui/title_menu_test.cpp)
 target_compile_definitions(
     openlegend_ui_tests
-    PRIVATE
-        OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-        OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
 )
 target_include_directories(openlegend_ui_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_ui_tests PRIVATE openlegend_app openlegend_ui)
 add_test(NAME openlegend.ui COMMAND openlegend_ui_tests)
 
 add_executable(openlegend_audio_tests unit/audio/legacy_audio_test.cpp)
-target_compile_definitions(
-    openlegend_audio_tests
-    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-)
 target_include_directories(openlegend_audio_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_audio_tests PRIVATE openlegend_audio openlegend_resource)
 add_test(NAME openlegend.audio COMMAND openlegend_audio_tests)
 
 add_executable(openlegend_render_tests unit/render/legacy_render_test.cpp)
-target_compile_definitions(
-    openlegend_render_tests
-    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-)
 target_include_directories(openlegend_render_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_render_tests PRIVATE openlegend_render)
 add_test(NAME openlegend.render COMMAND openlegend_render_tests)
 
 add_executable(openlegend_world_tests unit/world/world_map_test.cpp)
-target_compile_definitions(
-    openlegend_world_tests
-    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-)
 target_include_directories(openlegend_world_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(
     openlegend_world_tests
@@ -70,10 +52,6 @@ target_link_libraries(
 add_test(NAME openlegend.world COMMAND openlegend_world_tests)
 
 add_executable(openlegend_scene_tests unit/scene/scene_test.cpp)
-target_compile_definitions(
-    openlegend_scene_tests
-    PRIVATE OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-)
 target_include_directories(openlegend_scene_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(
     openlegend_scene_tests
@@ -99,9 +77,7 @@ endif()
 add_executable(openlegend_battle_tests unit/battle/battle_data_test.cpp)
 target_compile_definitions(
     openlegend_battle_tests
-    PRIVATE
-        OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-        OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
@@ -114,9 +90,7 @@ add_test(NAME openlegend.battle COMMAND openlegend_battle_tests)
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
 target_compile_definitions(
     openlegend_persistence_tests
-    PRIVATE
-        OPENLEGEND_GAME_DATA_ROOT="${PROJECT_SOURCE_DIR}/.."
-        OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
 )
 target_include_directories(openlegend_persistence_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(
@@ -124,6 +98,18 @@ target_link_libraries(
     PRIVATE openlegend_model openlegend_persistence openlegend_resource
 )
 add_test(NAME openlegend.persistence COMMAND openlegend_persistence_tests)
+
+set_tests_properties(
+    openlegend.resource
+    openlegend.ui
+    openlegend.audio
+    openlegend.render
+    openlegend.world
+    openlegend.scene
+    openlegend.battle
+    openlegend.persistence
+    PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
+)
 
 add_executable(openlegend_diagnostics_tests unit/diagnostics/log_test.cpp)
 target_compile_definitions(
@@ -150,7 +136,7 @@ add_test(
 if(TARGET openlegend)
     add_test(
         NAME openlegend.sdl_smoke
-        COMMAND openlegend --smoke-test --data-dir=${PROJECT_SOURCE_DIR}/..
+        COMMAND openlegend --smoke-test "--data-dir=${OPENLEGEND_GAME_DATA_ROOT}"
     )
     set_tests_properties(
         openlegend.sdl_smoke

@@ -435,7 +435,7 @@ void check_game_state_boundary(const GameSnapshot& baseline) {
 }  // namespace
 
 int main() {
-    const auto game_root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto game_root = openlegend::test::game_data_root();
     const auto output_root = openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT);
     std::filesystem::create_directories(output_root);
 

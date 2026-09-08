@@ -3482,7 +3482,7 @@ void check_renderer(const std::filesystem::path& data_root) {
 }  // namespace
 
 int main() {
-    const auto data_root = openlegend::test::utf8_path(OPENLEGEND_GAME_DATA_ROOT);
+    const auto data_root = openlegend::test::game_data_root();
     check_controller();
     check_game_menu_controller();
     check_attribute_controller();
