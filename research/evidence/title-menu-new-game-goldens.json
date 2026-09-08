@@ -2272,6 +2272,122 @@
     ],
     "vectors_sha256": "5647f386cb37172ac2dd355f7e9a2df9520375b2114e6020dbeddb14b7beaeb4"
   },
+  "palette_fade_to_black_machine": {
+    "raw_range": "Z.DAT[0x36697:0x36717]",
+    "loaded_range": "0x3cc97..0x3cd17",
+    "size_bytes": 128,
+    "instruction_count": 50,
+    "basic_block_count": 15,
+    "conditional_branch_count": 7,
+    "unconditional_jump_count": 0,
+    "direct_call_count": 2,
+    "call_sites": [
+      "0x3cc9c",
+      "0x3cd00"
+    ],
+    "call_targets": [
+      "0x3ed1e",
+      "0x3d939"
+    ],
+    "fixup_sites": [
+      "0x3ccb8"
+    ],
+    "fixup_sites_sha256": "c5d846d4974635f864e94e514c7eeefd0d3727a568b2494963b8c6962f5c3db2",
+    "relocation_delta": "0x20000",
+    "raw_palette_address": "0x31c83",
+    "loaded_palette_address": "0x51c83",
+    "raw_sha256": "fdfc87cd56dab294ca57137b576ea0740b2fd29e6ff85fa1956a63226f905419",
+    "loaded_sha256": "123b2c5a3ed88ef231fe899839bc5e4b3c5a2cd0a85387f8e751341a5fb60214",
+    "normalized_loaded_equals_raw": true,
+    "caller_sites": [
+      "0x21016",
+      "0x25a07",
+      "0x25cd3",
+      "0x2657f",
+      "0x26e22",
+      "0x270b0",
+      "0x29175",
+      "0x2931f",
+      "0x2e294",
+      "0x2ecc5",
+      "0x30d0d",
+      "0x30d78",
+      "0x30e47",
+      "0x30f08",
+      "0x31232",
+      "0x31ce7",
+      "0x31d3e"
+    ],
+    "caller_count": 17,
+    "caller_call_bytes_sha256": "4fed7ed1c12a5f7fed23f23832351d590a391a61cf34fa95d373af3b3f043504",
+    "external_internal_entries": [],
+    "local_return": "0x3cd16",
+    "contract": {
+      "source": {
+        "address": "0x51c83",
+        "read_order": "color_0_rgb_to_color_255_rgb",
+        "write_count": 0
+      },
+      "private_palette_bytes": 768,
+      "round_count": 64,
+      "color_count": 256,
+      "component_count": 3,
+      "component_order": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "component_rule": "value == 0 ? 0 : value - 1",
+      "submitted_frame_n": "max(initial_byte - n, 0), n=1..64",
+      "submitted_frame_count": 64,
+      "submitted_pointer": "same private scratch address for all 64 calls",
+      "busy_increment_count_per_component": 50,
+      "component_visit_count": 49152,
+      "busy_increment_count_total": 2457600,
+      "owner_present_calls": 0,
+      "clock_reads": 0,
+      "input_reads": 0,
+      "rng_calls": 0,
+      "shared_state_writes": 0,
+      "rgb6_final": "all black",
+      "extended_byte_final_range": "0..191",
+      "return_value": "ignored by all 17 callers"
+    },
+    "contract_sha256": "711aaafca30060076a3a1a3a714c7ee200f8eb488d1d49f2f13511722c208584",
+    "vectors": {
+      "mmap_col_rgb6": {
+        "source": "original mmap.col",
+        "initial_sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
+        "all_frames_sha256": "5e41b580b84ec7c840a72119625933e6c0e0b3a3a0e8e42a072af0627f77c576",
+        "selected_frame_sha256": {
+          "1": "772b4bab204d6731f5274ab01338649e051668d4c18664eaead3fe29adc1b294",
+          "2": "53d8ec9df6243466fbf86da0555448512d9dc9f77610828e92be805e6799368b",
+          "32": "87172ff47e3898c5a59bb5beb4c3fd2f18e44389adaf114a69b11a8dfa2a3896",
+          "63": "ef115a0e0c15cdc41958ca46b5b14b456115f4baec5e3ca68599d2a8f435e3b8",
+          "64": "ef115a0e0c15cdc41958ca46b5b14b456115f4baec5e3ca68599d2a8f435e3b8"
+        },
+        "final_sha256": "ef115a0e0c15cdc41958ca46b5b14b456115f4baec5e3ca68599d2a8f435e3b8",
+        "final_max_component": 0,
+        "final_nonzero_component_count": 0
+      },
+      "extended_byte_domain": {
+        "source": "synthetic 0..255 cycle exercising the machine byte domain",
+        "initial_sha256": "f3a25aa93aa2fbba28d79260535bbd6a5eb0fc1c24a8b0f04e12b484c1dfe363",
+        "all_frames_sha256": "1b085f26202b62677c72891e0e0c89e9baec8f788d6905cd36816c4db9a7100c",
+        "selected_frame_sha256": {
+          "1": "33517cdb8c17c0067d93b980a1218a4555c31cce6578ef2a0a5f74e67ca8ec48",
+          "2": "81ae1d4ae03ed7cea7cf46109a4a4d264a1cc3164244aeb027c2dd3fbf930ac3",
+          "32": "7fe001298fce9e6c89b8527ec48262c9017188347e8dd6b199bc2fbc9d067a8e",
+          "63": "5c59cca569fa982770eec1b08dc32fcca0ef64d1cfe7f58bb8da7ddba2261c19",
+          "64": "5a95360752074a92b275bd8bcea81629352894be2e60f48810a021a67892cc45"
+        },
+        "final_sha256": "5a95360752074a92b275bd8bcea81629352894be2e60f48810a021a67892cc45",
+        "final_max_component": 191,
+        "final_nonzero_component_count": 573
+      }
+    },
+    "vectors_sha256": "6f00c364c5c1b814283edd87ad7c91ffec81a9aa7d0b6ecc9a7025c8cb61ebc1"
+  },
   "title_navigation": {
     "main_labels": [
       "new_game",

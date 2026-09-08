@@ -2,10 +2,10 @@
 
 版本：v6
 当前阶段：B0–B9 统一最终汇编→C++ REVIEW
-当前有效进度：`closure=341/349`，`unique_any=276/284`，`unique_all=276/284`
-当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=31` `sub_3CC97`
-下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=32` `sub_3CD17`
-最近关闭：ui `audit_order=30` `sub_3C6D3`已用新临时IDB固定1296 bytes、338条指令、39/39 CFG块、16个条件分支、14个无条件跳转、87处重定位、22次direct call、3个caller site、唯一RET及共享epilogue边界；合法域产品实现零差异，旧证据把指令注释中的`jumptable`误计为分支，现将17/31口径纠正为16/30；独立Golden三生成逐字节一致、反向差分仅两个计数字段，Linux app Debug 14/14关闭。
+当前有效进度：`closure=342/349`，`unique_any=277/284`，`unique_all=277/284`
+当前任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=32` `sub_3CD17`
+下一任务指针：ui `research/inventory/ui-closure.tsv` `audit_order=33` `sub_3CF45`
+最近关闭：ui `audit_order=31` `sub_3CC97`已用新临时IDB固定128 bytes、50条指令、15/15 CFG块、7个条件分支、0个无条件跳转、1处重定位、2次direct call、17个caller site及唯一RET；机器先复制768-byte私有palette，再执行64轮color-major RGB饱和减1与64次提交，49,152次分量访问附带2,457,600次私有忙等递增；现代完整RGB6及扩展byte域均零产品差异，忙等省略与present驱动continuation归类平台适配；独立Golden三生成逐字节一致、旧15节点全不变且仅新增本owner节点，Linux app Debug 14/14关闭。
 
 ## 0. 唯一正确性真值
 
