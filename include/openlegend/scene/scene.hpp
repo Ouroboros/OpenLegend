@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <deque>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -15,6 +16,7 @@
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/resource/packed_archive.hpp"
 
 namespace openlegend::scene {
@@ -482,7 +484,9 @@ private:
     std::optional<SceneDate> death_date_override_;
     SceneAssets assets_;
     resource::PackedArchive portraits_;
-    resource::SentinelArchive sprites_;
+    // Cached pixel spans stay valid when a SceneSession is copied.
+    std::shared_ptr<const resource::SentinelArchive> sprites_;
+    mutable std::vector<std::optional<resource::SpriteFrameView>> sprite_frames_;
     resource::PackedArchive ending_words_;
     resource::PackedArchive ending_frames_;
     compat::LegacyPalette palette_{};

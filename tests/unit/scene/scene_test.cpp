@@ -1238,6 +1238,36 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::face_towards) == 3);
 }
 
+void check_scene_sprite_cache_lifetime(const std::filesystem::path& root) {
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::render::IndexedFramebuffer framebuffer;
+    std::optional<openlegend::scene::SceneSession> copied;
+    // This frame hash comes from the independent original-asset oracle.
+    constexpr std::uint64_t expected_pixels = 0x38FBAA07B733AD79ULL;
+    {
+        openlegend::scene::SceneSession original{
+            data_root, snapshot, random, 70};
+        OL_CHECK(original.valid());
+        for (int repeat = 0; repeat < 3; ++repeat) {
+            framebuffer.clear(0U);
+            OL_CHECK(original.render_map(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_pixels);
+        }
+        copied.emplace(original);
+    }
+    // Warm cached spans must not point into the destroyed original session.
+    framebuffer.clear(0U);
+    OL_CHECK(copied->render_map(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_pixels);
+    openlegend::scene::SceneSession moved{std::move(*copied)};
+    copied.reset();
+    framebuffer.clear(0U);
+    OL_CHECK(moved.render_map(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_pixels);
+}
+
 void check_scene_movement_guards(const std::filesystem::path& root) {
     using openlegend::model::SceneEventField;
     using openlegend::model::SceneLayer;
@@ -6039,13 +6069,14 @@ using SceneCheck = void (*)(const std::filesystem::path&);
 int main(const int argc, char* argv[]) {
     const auto shard = openlegend::test::test_shard(argc, argv);
     const auto root = openlegend::test::game_data_root();
-    const std::array<SceneCheck, 47> checks{
+    const std::array<SceneCheck, 48> checks{
         check_assets,
         check_event_dialogue_rendering,
         check_new_game_entry,
         check_event_load_menu,
         check_event_state_write_helpers,
         check_scene_render_and_movement,
+        check_scene_sprite_cache_lifetime,
         check_scene_movement_guards,
         check_scene_movement_idle_state,
         check_scene_entry_state,
