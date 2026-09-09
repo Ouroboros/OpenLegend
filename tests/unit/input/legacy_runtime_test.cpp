@@ -333,6 +333,11 @@ void run_timing_tests() {
     legacy_delay(no_delay, -40);
     OL_CHECK(no_delay.tick_count() == 0U);
     OL_CHECK(no_delay.idle_count() == 0U);
+
+    SteadyBiosTickSource steady;
+    const auto captured_tick = steady.tick();
+    steady.idle();
+    OL_CHECK(steady.tick() != captured_tick);
 }
 
 void check_random_vector(

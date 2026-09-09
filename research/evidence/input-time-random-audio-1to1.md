@@ -155,7 +155,7 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 - 37个实际参数的分布`1×1,17×3,30×1,40×1,50×14,100×11,300×2,340×2,500×1,2000×1`；
 - 不按毫秒重新解释参数，不修正约18.2 Hz与除数40的历史失配。
 
-逐块对照`legacy_delay_tick_count`、`wait_for_tick_change`、`wait_for_next_tick`、`legacy_delay`及caller已独立关闭的Session tick continuation，未发现合法域产品差异。steady-clock BIOS频率模拟、相等时宿主yield和同步自旋到可恢复phase的搬运归类平台适配；全部caller忽略机器EAX残值。独立signed/tick trace SHA256为`fe6d0d5c3ea65501da444006026713f1392e9ebca73408770103e6fc6900e3f6`；测试补齐全部实际参数、INT32极值、nonpositive零读取、重复值/跳tick/跨日精确读取序列。函数级完整证据见`research/evidence/functions/Z_DAT/0x3DB83.md`。最终`./build.sh app --config Debug`进程`proc_0a6c`通过Linux app Debug 14/14。
+逐块对照`legacy_delay_tick_count`、`wait_for_tick_change`、`wait_for_next_tick`、`legacy_delay`及caller已独立关闭的Session tick continuation，未发现合法域产品差异。steady-clock BIOS频率模拟、相等时休眠到下一模拟tick边界和同步自旋到可恢复phase的搬运归类平台适配；宿主不再以`yield`忙轮询，全部caller仍忽略机器EAX残值。独立signed/tick trace SHA256为`fe6d0d5c3ea65501da444006026713f1392e9ebca73408770103e6fc6900e3f6`；测试补齐全部实际参数、INT32极值、nonpositive零读取、重复值/跳tick/跨日精确读取序列，并确认生产steady idle跨越一个tick。函数级完整证据见`research/evidence/functions/Z_DAT/0x3DB83.md`。
 
 ### 3.3 opcode27图片动画的tick边界
 

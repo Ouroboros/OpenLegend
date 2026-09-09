@@ -18,7 +18,18 @@ std::uint32_t SteadyBiosTickSource::tick() const noexcept {
 }
 
 void SteadyBiosTickSource::idle() noexcept {
-    std::this_thread::yield();
+    const auto elapsed = std::chrono::duration<long double>(
+        std::chrono::steady_clock::now() - origin_);
+    const auto exact_ticks =
+        elapsed.count() * static_cast<long double>(kPitInputFrequency) /
+        static_cast<long double>(kPitDivisor);
+    const auto next_tick = std::floor(exact_ticks) + 1.0L;
+    const auto next_tick_offset = std::chrono::duration<long double>{
+        next_tick * static_cast<long double>(kPitDivisor) /
+        static_cast<long double>(kPitInputFrequency)};
+    const auto deadline = origin_ +
+        std::chrono::ceil<std::chrono::steady_clock::duration>(next_tick_offset);
+    std::this_thread::sleep_until(deadline);
 }
 
 std::int32_t legacy_delay_tick_count(const std::int32_t argument) noexcept {
