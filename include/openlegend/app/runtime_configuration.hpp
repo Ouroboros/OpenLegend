@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -37,6 +38,12 @@ enum class DataDirectoryStatus {
 };
 
 struct DataDirectoryResolution {
+    static constexpr std::string_view toml_table_name = "paths";
+    static constexpr std::string_view data_directory_toml_key = "data_dir";
+    static constexpr std::array<std::string_view, 1U> toml_field_order{
+        data_directory_toml_key,
+    };
+
     DataDirectoryStatus status{DataDirectoryStatus::ready};
     DataDirectorySource source{DataDirectorySource::launch_directory};
     std::filesystem::path directory;
@@ -71,6 +78,16 @@ enum class WindowConfigurationStatus {
 };
 
 struct WindowConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "window";
+    static constexpr std::string_view width_toml_key = "width";
+    static constexpr std::string_view height_toml_key = "height";
+    static constexpr std::string_view maximized_toml_key = "maximized";
+    static constexpr std::array<std::string_view, 3U> toml_field_order{
+        width_toml_key,
+        height_toml_key,
+        maximized_toml_key,
+    };
+
     WindowConfigurationStatus status{WindowConfigurationStatus::ready};
     WindowSize size;
     bool maximized{};
@@ -90,6 +107,64 @@ struct WindowConfigurationLoadResult {
 [[nodiscard]] std::string_view window_configuration_status_message(
     WindowConfigurationStatus status) noexcept;
 
+enum class InputConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_input_table,
+    invalid_movement_repeat_delay,
+};
+
+struct InputConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "input";
+    static constexpr std::string_view movement_repeat_delay_toml_key =
+        "movement_repeat_delay_ms";
+    static constexpr std::array<std::string_view, 1U> toml_field_order{
+        movement_repeat_delay_toml_key,
+    };
+
+    InputConfigurationStatus status{InputConfigurationStatus::ready};
+    std::chrono::milliseconds movement_repeat_delay{};
+    bool loaded_from_file{};
+    std::string detail;
+};
+
+[[nodiscard]] InputConfigurationLoadResult load_input_configuration(
+    const std::filesystem::path& configuration_path,
+    std::chrono::milliseconds fallback_movement_repeat_delay);
+
+[[nodiscard]] std::string_view input_configuration_status_message(
+    InputConfigurationStatus status) noexcept;
+
+enum class TimingConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_timing_table,
+    invalid_fade_frame_delay,
+};
+
+struct TimingConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "timing";
+    static constexpr std::string_view fade_frame_delay_toml_key =
+        "fade_frame_delay_ms";
+    static constexpr std::array<std::string_view, 1U> toml_field_order{
+        fade_frame_delay_toml_key,
+    };
+
+    TimingConfigurationStatus status{TimingConfigurationStatus::ready};
+    std::chrono::nanoseconds fade_frame_delay{};
+    bool loaded_from_file{};
+    std::string detail;
+};
+
+[[nodiscard]] TimingConfigurationLoadResult load_timing_configuration(
+    const std::filesystem::path& configuration_path,
+    std::chrono::nanoseconds fallback_fade_frame_delay);
+
+[[nodiscard]] std::string_view timing_configuration_status_message(
+    TimingConfigurationStatus status) noexcept;
+
 enum class LoggingConfigurationStatus {
     ready,
     read_failed,
@@ -100,6 +175,14 @@ enum class LoggingConfigurationStatus {
 };
 
 struct LoggingConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "logging";
+    static constexpr std::string_view path_toml_key = "path";
+    static constexpr std::string_view level_toml_key = "level";
+    static constexpr std::array<std::string_view, 2U> toml_field_order{
+        path_toml_key,
+        level_toml_key,
+    };
+
     LoggingConfigurationStatus status{LoggingConfigurationStatus::ready};
     std::filesystem::path path;
     diagnostics::LogLevel minimum_level{diagnostics::LogLevel::info};
@@ -112,6 +195,37 @@ struct LoggingConfigurationLoadResult {
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& fallback_path,
     diagnostics::LogLevel fallback_level);
+
+struct RuntimeConfigurationDefaults {
+    std::filesystem::path logging_path;
+    diagnostics::LogLevel logging_level{diagnostics::LogLevel::info};
+    WindowSize window_size;
+    std::chrono::milliseconds movement_repeat_delay{};
+    std::chrono::nanoseconds fade_frame_delay{};
+};
+
+struct RuntimeConfiguration {
+    DataDirectoryResolution data_directory;
+    LoggingConfigurationLoadResult logging;
+    InputConfigurationLoadResult input;
+    TimingConfigurationLoadResult timing;
+    WindowConfigurationLoadResult window;
+
+    static constexpr std::array<std::string_view, 5U> toml_table_order{
+        DataDirectoryResolution::toml_table_name,
+        LoggingConfigurationLoadResult::toml_table_name,
+        InputConfigurationLoadResult::toml_table_name,
+        TimingConfigurationLoadResult::toml_table_name,
+        WindowConfigurationLoadResult::toml_table_name,
+    };
+};
+
+[[nodiscard]] RuntimeConfiguration load_runtime_configuration(
+    std::span<const std::string_view> arguments,
+    const std::filesystem::path& configuration_path,
+    const std::filesystem::path& executable_directory,
+    const std::filesystem::path& launch_directory,
+    const RuntimeConfigurationDefaults& defaults);
 
 [[nodiscard]] std::filesystem::path make_session_log_path(
     const std::filesystem::path& configured_path,

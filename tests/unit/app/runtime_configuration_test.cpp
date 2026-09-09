@@ -129,6 +129,56 @@ void test_configuration_paths_and_window() {
     OL_CHECK(window.loaded_from_file);
 }
 
+void test_runtime_configuration_root() {
+    using namespace openlegend::app;
+    using openlegend::diagnostics::LogLevel;
+    const TemporaryTree tree;
+    const auto relative_data = std::filesystem::relative(
+        tree.configured_directory(), tree.executable_directory());
+    tree.write_configuration(
+        "[paths]\n"
+        "data_dir = '" + utf8_bytes(relative_data) + "'\n"
+        "\n[logging]\n"
+        "path = 'diagnostics/runtime.log'\n"
+        "level = 'debug'\n"
+        "\n[input]\n"
+        "movement_repeat_delay_ms = 25\n"
+        "\n[timing]\n"
+        "fade_frame_delay_ms = 5.5\n"
+        "\n[window]\n"
+        "width = 1280\n"
+        "height = 720\n"
+        "maximized = true\n");
+
+    const auto configuration = load_runtime_configuration(
+        {},
+        tree.configuration_path(),
+        tree.executable_directory(),
+        tree.launch_directory(),
+        RuntimeConfigurationDefaults{
+            tree.executable_directory() / "logs" / "openlegend.log",
+            LogLevel::info,
+            WindowSize{960, 600},
+            std::chrono::milliseconds{500},
+            std::chrono::milliseconds{14}});
+
+    OL_CHECK(configuration.data_directory.status == DataDirectoryStatus::ready);
+    OL_CHECK(configuration.data_directory.source == DataDirectorySource::configuration_file);
+    OL_CHECK(configuration.data_directory.directory ==
+        std::filesystem::absolute(tree.configured_directory()));
+    OL_CHECK(configuration.logging.status == LoggingConfigurationStatus::ready);
+    OL_CHECK(configuration.logging.path ==
+        (tree.executable_directory() / "diagnostics" / "runtime.log").lexically_normal());
+    OL_CHECK(configuration.logging.minimum_level == LogLevel::debug);
+    OL_CHECK(configuration.input.status == InputConfigurationStatus::ready);
+    OL_CHECK(configuration.input.movement_repeat_delay == std::chrono::milliseconds{25});
+    OL_CHECK(configuration.timing.status == TimingConfigurationStatus::ready);
+    OL_CHECK(configuration.timing.fade_frame_delay == std::chrono::microseconds{5500});
+    OL_CHECK(configuration.window.status == WindowConfigurationStatus::ready);
+    OL_CHECK((configuration.window.size == WindowSize{1280, 720}));
+    OL_CHECK(configuration.window.maximized);
+}
+
 void test_logging_configuration() {
     const openlegend::test::ScopedTimeZone time_zone{"PST8"};
     using namespace openlegend::app;
@@ -254,7 +304,7 @@ void test_data_directory_activation() {
     OL_CHECK(!error);
 }
 
-void test_window_errors_and_lossless_other_tables() {
+void test_window_errors_and_schema_writeback() {
     using namespace openlegend::app;
     const TemporaryTree tree;
     constexpr WindowSize fallback{960, 600};
@@ -275,8 +325,9 @@ void test_window_errors_and_lossless_other_tables() {
     const auto relative_data = std::filesystem::relative(
         tree.configured_directory(), tree.executable_directory());
     tree.write_configuration(
-        "[paths]\ndata_dir = '" + utf8_bytes(relative_data) +
-        "'\n\n[future]\nkept = 42\n");
+        "[future]\nkept = 42\n"
+        "\n[window]\ncustom = 'preserved'\n"
+        "\n[paths]\ndata_dir = '" + utf8_bytes(relative_data) + "'\n");
     std::string detail;
     OL_CHECK(save_window_configuration(
                  tree.configuration_path(), WindowSize{1024, 640}, true, detail) ==
@@ -292,8 +343,19 @@ void test_window_errors_and_lossless_other_tables() {
     std::ifstream input{tree.configuration_path(), std::ios::binary};
     const std::string saved{
         std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-    OL_CHECK(saved.find("[future]") != std::string::npos);
-    OL_CHECK(saved.find("kept = 42") != std::string::npos);
+    const auto paths_position = saved.find("[paths]");
+    const auto window_position = saved.find("[window]");
+    OL_CHECK(paths_position != std::string::npos);
+    OL_CHECK(window_position != std::string::npos);
+    OL_CHECK(paths_position < window_position);
+    const auto width_position = saved.find("width = 1024", window_position);
+    const auto height_position = saved.find("height = 640", window_position);
+    const auto maximized_position = saved.find("maximized = true", window_position);
+    OL_CHECK(width_position < height_position);
+    OL_CHECK(height_position < maximized_position);
+    OL_CHECK(saved.find("custom = ") == std::string::npos);
+    OL_CHECK(saved.find("[future]") == std::string::npos);
+    OL_CHECK(saved.find("kept = 42") == std::string::npos);
 
     OL_CHECK(save_window_configuration(
                  tree.configuration_path(), WindowSize{0, 600}, false, detail) ==
@@ -305,9 +367,10 @@ void test_window_errors_and_lossless_other_tables() {
 void run_runtime_configuration_tests() {
     test_missing_configuration_uses_launch_directory();
     test_configuration_paths_and_window();
+    test_runtime_configuration_root();
     test_logging_configuration();
     test_command_line_overrides_configuration();
     test_configuration_errors();
     test_data_directory_activation();
-    test_window_errors_and_lossless_other_tables();
+    test_window_errors_and_schema_writeback();
 }

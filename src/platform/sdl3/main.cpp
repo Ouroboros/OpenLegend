@@ -165,12 +165,33 @@ int main(const int argc, const char* const* argv) {
     const auto executable_root = app::path_from_utf8(base_path);
     const auto configuration_path = executable_root / app::kConfigurationFilename;
 
-    LoggingLifetime logging_lifetime;
-    const auto logging_configuration = app::load_logging_configuration(
+    std::vector<std::string> argument_storage;
+    std::vector<std::string_view> arguments;
+    if (!collect_command_arguments(argc, argv, argument_storage, arguments)) {
+        report_configuration_error("command line", "cannot decode arguments as UTF-8");
+        return 1;
+    }
+    bool smoke_test = false;
+    for (const std::string_view argument : arguments) {
+        smoke_test = smoke_test || argument == "--smoke-test";
+    }
+
+    const auto configuration = app::load_runtime_configuration(
+        arguments,
         configuration_path,
         executable_root,
-        executable_root / "logs" / "openlegend.log",
-        diagnostics::LogLevel::info);
+        launch_directory,
+        app::RuntimeConfigurationDefaults{
+            executable_root / "logs" / "openlegend.log",
+            diagnostics::LogLevel::info,
+            kDefaultWindowSize,
+            std::chrono::milliseconds{},
+            std::chrono::nanoseconds{}});
+    const auto& data_directory = configuration.data_directory;
+    const auto& logging_configuration = configuration.logging;
+    const auto& window_configuration = configuration.window;
+
+    LoggingLifetime logging_lifetime;
     const auto launch_time = std::chrono::system_clock::now();
     const auto session_log_path = app::make_session_log_path(
         logging_configuration.path, launch_time, current_process_id());
@@ -194,19 +215,6 @@ int main(const int argc, const char* const* argv) {
         " config=" + path_utf8(configuration_path) +
         " log=" + path_utf8(session_log_path));
 
-    std::vector<std::string> argument_storage;
-    std::vector<std::string_view> arguments;
-    if (!collect_command_arguments(argc, argv, argument_storage, arguments)) {
-        report_configuration_error("command line", "cannot decode arguments as UTF-8");
-        return 1;
-    }
-    bool smoke_test = false;
-    for (const std::string_view argument : arguments) {
-        smoke_test = smoke_test || argument == "--smoke-test";
-    }
-
-    const auto data_directory =
-        app::resolve_data_directory(arguments, executable_root, launch_directory);
     if (data_directory.status != app::DataDirectoryStatus::ready) {
         report_configuration_error(
             "game data directory",
@@ -214,9 +222,6 @@ int main(const int argc, const char* const* argv) {
             data_directory.detail);
         return 2;
     }
-
-    const auto window_configuration =
-        app::load_window_configuration(configuration_path, kDefaultWindowSize);
     if (window_configuration.status != app::WindowConfigurationStatus::ready) {
         report_configuration_error(
             "window configuration",

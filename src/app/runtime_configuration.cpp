@@ -2,7 +2,9 @@
 
 #include <toml++/toml.hpp>
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <ctime>
@@ -10,6 +12,7 @@
 #include <limits>
 #include <optional>
 #include <utility>
+#include <vector>
 
 namespace openlegend::app {
 
@@ -23,6 +26,18 @@ struct DirectoryCandidate {
     DataDirectorySource source{DataDirectorySource::launch_directory};
     std::filesystem::path path;
     std::filesystem::path relative_base;
+    std::string detail;
+};
+
+enum class ConfigurationDocumentStatus {
+    ready,
+    read_failed,
+    parse_failed,
+};
+
+struct ConfigurationDocument {
+    ConfigurationDocumentStatus status{ConfigurationDocumentStatus::ready};
+    toml::table values;
     std::string detail;
 };
 
@@ -85,41 +100,24 @@ struct DirectoryCandidate {
 }
 
 [[nodiscard]] DirectoryCandidate configuration_candidate(
+    const ConfigurationDocument& document,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& launch_directory) {
-    const auto configuration_path = executable_directory / kConfigurationFilename;
-    std::error_code error;
-    const bool exists = std::filesystem::exists(configuration_path, error);
-    if (error) {
+    if (document.status == ConfigurationDocumentStatus::read_failed) {
         return candidate_error(
             DataDirectoryStatus::configuration_read_failed,
             DataDirectorySource::configuration_file,
-            error.message());
+            document.detail);
     }
-    if (!exists) {
-        return candidate_for_path(
-            DataDirectorySource::launch_directory, launch_directory, launch_directory);
-    }
-
-    std::ifstream input{configuration_path, std::ios::binary};
-    if (!input) {
-        return candidate_error(
-            DataDirectoryStatus::configuration_read_failed,
-            DataDirectorySource::configuration_file,
-            configuration_path.string());
-    }
-
-    toml::table document;
-    try {
-        document = toml::parse(input, configuration_path.string());
-    } catch (const toml::parse_error& parse_error) {
+    if (document.status == ConfigurationDocumentStatus::parse_failed) {
         return candidate_error(
             DataDirectoryStatus::configuration_parse_failed,
             DataDirectorySource::configuration_file,
-            std::string{parse_error.description()});
+            document.detail);
     }
 
-    const toml::node* paths_node = document.get("paths");
+    const toml::node* paths_node =
+        document.values.get(DataDirectoryResolution::toml_table_name);
     if (paths_node == nullptr) {
         return candidate_for_path(
             DataDirectorySource::launch_directory, launch_directory, launch_directory);
@@ -130,7 +128,8 @@ struct DirectoryCandidate {
             DataDirectoryStatus::configuration_paths_not_table,
             DataDirectorySource::configuration_file);
     }
-    const toml::node* data_directory_node = paths->get("data_dir");
+    const toml::node* data_directory_node =
+        paths->get(DataDirectoryResolution::data_directory_toml_key);
     if (data_directory_node == nullptr) {
         return candidate_for_path(
             DataDirectorySource::launch_directory, launch_directory, launch_directory);
@@ -192,36 +191,46 @@ struct DirectoryCandidate {
     return resolution;
 }
 
-template <typename Status>
-[[nodiscard]] bool read_existing_document(
-    const std::filesystem::path& configuration_path,
-    toml::table& document,
-    Status& status,
-    std::string& detail) {
+[[nodiscard]] ConfigurationDocument read_configuration_document(
+    const std::filesystem::path& configuration_path) {
+    ConfigurationDocument document;
     std::error_code error;
     const bool exists = std::filesystem::exists(configuration_path, error);
     if (error) {
-        status = Status::read_failed;
-        detail = error.message();
-        return false;
+        document.status = ConfigurationDocumentStatus::read_failed;
+        document.detail = error.message();
+        return document;
     }
     if (!exists) {
-        return true;
+        return document;
     }
     std::ifstream input{configuration_path, std::ios::binary};
     if (!input) {
-        status = Status::read_failed;
-        detail = configuration_path.string();
-        return false;
+        document.status = ConfigurationDocumentStatus::read_failed;
+        document.detail = configuration_path.string();
+        return document;
     }
     try {
-        document = toml::parse(input, configuration_path.string());
+        document.values = toml::parse(input, configuration_path.string());
     } catch (const toml::parse_error& parse_error) {
-        status = Status::parse_failed;
-        detail = std::string{parse_error.description()};
-        return false;
+        document.status = ConfigurationDocumentStatus::parse_failed;
+        document.detail = std::string{parse_error.description()};
     }
-    return true;
+    return document;
+}
+
+template <typename Status>
+[[nodiscard]] Status configuration_load_status(
+    const ConfigurationDocumentStatus status) noexcept {
+    switch (status) {
+    case ConfigurationDocumentStatus::ready:
+        return Status::ready;
+    case ConfigurationDocumentStatus::read_failed:
+        return Status::read_failed;
+    case ConfigurationDocumentStatus::parse_failed:
+        return Status::parse_failed;
+    }
+    return Status::parse_failed;
 }
 
 [[nodiscard]] bool valid_dimension(const std::int64_t value) noexcept {
@@ -251,6 +260,184 @@ template <typename Status>
     return std::nullopt;
 }
 
+using ConfigurationKeyPath = std::vector<std::string>;
+
+[[nodiscard]] std::span<const std::string_view> configuration_key_order(
+    const ConfigurationKeyPath& table_path) noexcept {
+    if (table_path.empty()) {
+        return RuntimeConfiguration::toml_table_order;
+    }
+    if (table_path.size() != 1U) {
+        return {};
+    }
+    if (table_path.front() == DataDirectoryResolution::toml_table_name) {
+        return DataDirectoryResolution::toml_field_order;
+    }
+    if (table_path.front() == LoggingConfigurationLoadResult::toml_table_name) {
+        return LoggingConfigurationLoadResult::toml_field_order;
+    }
+    if (table_path.front() == InputConfigurationLoadResult::toml_table_name) {
+        return InputConfigurationLoadResult::toml_field_order;
+    }
+    if (table_path.front() == TimingConfigurationLoadResult::toml_table_name) {
+        return TimingConfigurationLoadResult::toml_field_order;
+    }
+    if (table_path.front() == WindowConfigurationLoadResult::toml_table_name) {
+        return WindowConfigurationLoadResult::toml_field_order;
+    }
+    return {};
+}
+
+[[nodiscard]] std::vector<std::string_view> ordered_keys(
+    const toml::table& table, const ConfigurationKeyPath& table_path) {
+    const auto key_order = configuration_key_order(table_path);
+    std::vector<std::string_view> keys;
+    keys.reserve(key_order.size());
+    for (const auto key : key_order) {
+        if (table.get(key) != nullptr) {
+            keys.push_back(key);
+        }
+    }
+    return keys;
+}
+
+[[nodiscard]] bool is_bare_key(const std::string_view key) noexcept {
+    if (key.empty()) {
+        return false;
+    }
+    return std::ranges::all_of(key, [](const unsigned char character) {
+        return (character >= 'A' && character <= 'Z') ||
+            (character >= 'a' && character <= 'z') ||
+            (character >= '0' && character <= '9') || character == '_' || character == '-';
+    });
+}
+
+void write_key(std::ostream& output, const std::string_view key) {
+    if (is_bare_key(key)) {
+        output << key;
+        return;
+    }
+
+    static constexpr std::string_view hexadecimal = "0123456789ABCDEF";
+    output.put('"');
+    for (const char byte : key) {
+        const auto character = static_cast<unsigned char>(byte);
+        switch (character) {
+        case '\b':
+            output << "\\b";
+            break;
+        case '\t':
+            output << "\\t";
+            break;
+        case '\n':
+            output << "\\n";
+            break;
+        case '\f':
+            output << "\\f";
+            break;
+        case '\r':
+            output << "\\r";
+            break;
+        case '"':
+            output << "\\\"";
+            break;
+        case '\\':
+            output << "\\\\";
+            break;
+        default:
+            if (character < 0x20U || character == 0x7FU) {
+                output << "\\u00" << hexadecimal[character >> 4U]
+                       << hexadecimal[character & 0x0FU];
+            } else {
+                output.put(static_cast<char>(character));
+            }
+            break;
+        }
+    }
+    output.put('"');
+}
+
+void write_key_path(std::ostream& output, const ConfigurationKeyPath& key_path) {
+    for (std::size_t index = 0U; index < key_path.size(); ++index) {
+        if (index != 0U) {
+            output.put('.');
+        }
+        write_key(output, key_path[index]);
+    }
+}
+
+[[nodiscard]] bool is_child_table(const toml::node& node) noexcept {
+    const auto* table = node.as_table();
+    return table != nullptr && !table->is_inline();
+}
+
+[[nodiscard]] bool is_table_array(const toml::node& node) noexcept {
+    const auto* array = node.as_array();
+    if (array == nullptr || !array->is_array_of_tables() || array->empty()) {
+        return false;
+    }
+    const auto* first_table = (*array)[0U].as_table();
+    return first_table != nullptr && !first_table->is_inline();
+}
+
+void write_table_contents(
+    std::ostream& output,
+    const toml::table& table,
+    const ConfigurationKeyPath& table_path,
+    bool& has_output) {
+    const auto keys = ordered_keys(table, table_path);
+    for (const auto key : keys) {
+        const toml::node* value = table.get(key);
+        if (value == nullptr || is_child_table(*value) || is_table_array(*value)) {
+            continue;
+        }
+        write_key(output, key);
+        output << " = " << toml::toml_formatter{*value} << '\n';
+        has_output = true;
+    }
+
+    for (const auto key : keys) {
+        const toml::node* value = table.get(key);
+        if (value == nullptr || !is_child_table(*value)) {
+            continue;
+        }
+        auto child_path = table_path;
+        child_path.emplace_back(key);
+        if (has_output) {
+            output.put('\n');
+        }
+        output.put('[');
+        write_key_path(output, child_path);
+        output << "]\n";
+        has_output = true;
+        write_table_contents(output, *value->as_table(), child_path, has_output);
+    }
+
+    for (const auto key : keys) {
+        const toml::node* value = table.get(key);
+        if (value == nullptr || !is_table_array(*value)) {
+            continue;
+        }
+        auto child_path = table_path;
+        child_path.emplace_back(key);
+        for (const auto& element : *value->as_array()) {
+            if (has_output) {
+                output.put('\n');
+            }
+            output << "[[";
+            write_key_path(output, child_path);
+            output << "]]\n";
+            has_output = true;
+            write_table_contents(output, *element.as_table(), child_path, has_output);
+        }
+    }
+}
+
+void write_configuration_document(std::ostream& output, const toml::table& document) {
+    bool has_output = false;
+    write_table_contents(output, document, {}, has_output);
+}
+
 [[nodiscard]] WindowConfigurationLoadResult window_load_error(
     const WindowConfigurationStatus status,
     const WindowSize fallback,
@@ -259,6 +446,164 @@ template <typename Status>
     result.status = status;
     result.size = fallback;
     result.detail = std::move(detail);
+    return result;
+}
+
+[[nodiscard]] WindowConfigurationLoadResult window_configuration_from_document(
+    const toml::table& document, const WindowSize fallback) {
+    const toml::node* window_node =
+        document.get(WindowConfigurationLoadResult::toml_table_name);
+    if (window_node == nullptr) {
+        return WindowConfigurationLoadResult{
+            WindowConfigurationStatus::ready, fallback, false, false, {}};
+    }
+    const toml::table* window = window_node->as_table();
+    if (window == nullptr) {
+        return window_load_error(WindowConfigurationStatus::invalid_window_table, fallback);
+    }
+    const auto width =
+        (*window)[WindowConfigurationLoadResult::width_toml_key].value<std::int64_t>();
+    const auto height =
+        (*window)[WindowConfigurationLoadResult::height_toml_key].value<std::int64_t>();
+    if (!width.has_value() || !height.has_value() || !valid_dimension(*width) ||
+        !valid_dimension(*height)) {
+        return window_load_error(WindowConfigurationStatus::invalid_window_size, fallback);
+    }
+    bool maximized = false;
+    if (const toml::node* maximized_node =
+            window->get(WindowConfigurationLoadResult::maximized_toml_key);
+        maximized_node != nullptr) {
+        const std::optional<bool> value = maximized_node->value<bool>();
+        if (!value.has_value()) {
+            return window_load_error(WindowConfigurationStatus::invalid_window_state, fallback);
+        }
+        maximized = *value;
+    }
+    return WindowConfigurationLoadResult{
+        WindowConfigurationStatus::ready,
+        WindowSize{static_cast<int>(*width), static_cast<int>(*height)},
+        maximized,
+        true,
+        {}};
+}
+
+[[nodiscard]] InputConfigurationLoadResult input_configuration_from_document(
+    const toml::table& document,
+    const std::chrono::milliseconds fallback_movement_repeat_delay) {
+    InputConfigurationLoadResult result;
+    result.movement_repeat_delay = fallback_movement_repeat_delay;
+    const toml::node* input_node =
+        document.get(InputConfigurationLoadResult::toml_table_name);
+    if (input_node == nullptr) {
+        return result;
+    }
+    const toml::table* input = input_node->as_table();
+    if (input == nullptr) {
+        result.status = InputConfigurationStatus::invalid_input_table;
+        return result;
+    }
+    if (const toml::node* delay_node =
+            input->get(InputConfigurationLoadResult::movement_repeat_delay_toml_key);
+        delay_node != nullptr) {
+        const auto delay = delay_node->value<std::int64_t>();
+        if (!delay.has_value() || *delay < 0) {
+            result.status = InputConfigurationStatus::invalid_movement_repeat_delay;
+            return result;
+        }
+        result.movement_repeat_delay = std::chrono::milliseconds{*delay};
+    }
+    result.loaded_from_file = true;
+    return result;
+}
+
+[[nodiscard]] TimingConfigurationLoadResult timing_configuration_from_document(
+    const toml::table& document,
+    const std::chrono::nanoseconds fallback_fade_frame_delay) {
+    TimingConfigurationLoadResult result;
+    result.fade_frame_delay = fallback_fade_frame_delay;
+    const toml::node* timing_node =
+        document.get(TimingConfigurationLoadResult::toml_table_name);
+    if (timing_node == nullptr) {
+        return result;
+    }
+    const toml::table* timing = timing_node->as_table();
+    if (timing == nullptr) {
+        result.status = TimingConfigurationStatus::invalid_timing_table;
+        return result;
+    }
+    if (const toml::node* delay_node =
+            timing->get(TimingConfigurationLoadResult::fade_frame_delay_toml_key);
+        delay_node != nullptr) {
+        std::optional<long double> delay_ms;
+        if (const auto* integer = delay_node->as_integer(); integer != nullptr) {
+            delay_ms = static_cast<long double>(integer->get());
+        } else if (const auto* floating = delay_node->as_floating_point();
+                   floating != nullptr) {
+            delay_ms = static_cast<long double>(floating->get());
+        }
+        const auto maximum_ms = std::chrono::duration<long double, std::milli>{
+            std::chrono::nanoseconds::max()}.count();
+        if (!delay_ms.has_value() || !std::isfinite(*delay_ms) || *delay_ms < 0.0L ||
+            *delay_ms > maximum_ms) {
+            result.status = TimingConfigurationStatus::invalid_fade_frame_delay;
+            return result;
+        }
+        result.fade_frame_delay = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::duration<long double, std::milli>{*delay_ms});
+    }
+    result.loaded_from_file = true;
+    return result;
+}
+
+[[nodiscard]] LoggingConfigurationLoadResult logging_configuration_from_document(
+    const toml::table& document,
+    const std::filesystem::path& executable_directory,
+    const std::filesystem::path& fallback_path,
+    const diagnostics::LogLevel fallback_level) {
+    LoggingConfigurationLoadResult result;
+    result.path = fallback_path;
+    result.minimum_level = fallback_level;
+    const toml::node* logging_node =
+        document.get(LoggingConfigurationLoadResult::toml_table_name);
+    if (logging_node == nullptr) {
+        return result;
+    }
+    const toml::table* logging = logging_node->as_table();
+    if (logging == nullptr) {
+        result.status = LoggingConfigurationStatus::invalid_logging_table;
+        return result;
+    }
+    if (const toml::node* path_node =
+            logging->get(LoggingConfigurationLoadResult::path_toml_key);
+        path_node != nullptr) {
+        const auto value = path_node->value<std::string>();
+        if (!value.has_value() || value->empty()) {
+            result.status = LoggingConfigurationStatus::invalid_log_path;
+            return result;
+        }
+        auto configured_path = path_from_utf8(*value);
+        if (configured_path.is_relative()) {
+            configured_path = executable_directory / configured_path;
+        }
+        result.path = configured_path.lexically_normal();
+    }
+    if (const toml::node* level_node =
+            logging->get(LoggingConfigurationLoadResult::level_toml_key);
+        level_node != nullptr) {
+        const auto value = level_node->value<std::string>();
+        if (!value.has_value()) {
+            result.status = LoggingConfigurationStatus::invalid_log_level;
+            return result;
+        }
+        const auto parsed = parse_log_level(*value);
+        if (!parsed.has_value()) {
+            result.status = LoggingConfigurationStatus::invalid_log_level;
+            result.detail = *value;
+            return result;
+        }
+        result.minimum_level = *parsed;
+    }
+    result.loaded_from_file = true;
     return result;
 }
 
@@ -282,7 +627,9 @@ DataDirectoryResolution resolve_data_directory(
         candidate.source == DataDirectorySource::command_line) {
         return validate_candidate(std::move(candidate));
     }
-    candidate = configuration_candidate(executable_directory, launch_directory);
+    const auto document =
+        read_configuration_document(executable_directory / kConfigurationFilename);
+    candidate = configuration_candidate(document, executable_directory, launch_directory);
     return validate_candidate(std::move(candidate));
 }
 
@@ -320,42 +667,14 @@ std::string_view data_directory_status_message(const DataDirectoryStatus status)
 
 WindowConfigurationLoadResult load_window_configuration(
     const std::filesystem::path& configuration_path, const WindowSize fallback) {
-    toml::table document;
-    WindowConfigurationStatus status = WindowConfigurationStatus::ready;
-    std::string detail;
-    if (!read_existing_document(configuration_path, document, status, detail)) {
-        return window_load_error(status, fallback, std::move(detail));
+    const auto document = read_configuration_document(configuration_path);
+    if (document.status != ConfigurationDocumentStatus::ready) {
+        return window_load_error(
+            configuration_load_status<WindowConfigurationStatus>(document.status),
+            fallback,
+            document.detail);
     }
-    const toml::node* window_node = document.get("window");
-    if (window_node == nullptr) {
-        return WindowConfigurationLoadResult{
-            WindowConfigurationStatus::ready, fallback, false, false, {}};
-    }
-    const toml::table* window = window_node->as_table();
-    if (window == nullptr) {
-        return window_load_error(WindowConfigurationStatus::invalid_window_table, fallback);
-    }
-    const auto width = (*window)["width"].value<std::int64_t>();
-    const auto height = (*window)["height"].value<std::int64_t>();
-    if (!width.has_value() || !height.has_value() || !valid_dimension(*width) ||
-        !valid_dimension(*height)) {
-        return window_load_error(WindowConfigurationStatus::invalid_window_size, fallback);
-    }
-    bool maximized = false;
-    if (const toml::node* maximized_node = window->get("maximized");
-        maximized_node != nullptr) {
-        const std::optional<bool> value = maximized_node->value<bool>();
-        if (!value.has_value()) {
-            return window_load_error(WindowConfigurationStatus::invalid_window_state, fallback);
-        }
-        maximized = *value;
-    }
-    return WindowConfigurationLoadResult{
-        WindowConfigurationStatus::ready,
-        WindowSize{static_cast<int>(*width), static_cast<int>(*height)},
-        maximized,
-        true,
-        {}};
+    return window_configuration_from_document(document.values, fallback);
 }
 
 WindowConfigurationStatus save_window_configuration(
@@ -367,26 +686,30 @@ WindowConfigurationStatus save_window_configuration(
     if (size.width <= 0 || size.height <= 0) {
         return WindowConfigurationStatus::invalid_window_size;
     }
-    toml::table document;
-    WindowConfigurationStatus status = WindowConfigurationStatus::ready;
-    if (!read_existing_document(configuration_path, document, status, detail)) {
-        return status;
+    auto loaded_document = read_configuration_document(configuration_path);
+    if (loaded_document.status != ConfigurationDocumentStatus::ready) {
+        detail = std::move(loaded_document.detail);
+        return configuration_load_status<WindowConfigurationStatus>(loaded_document.status);
     }
-    toml::table* window = document["window"].as_table();
+    auto document = std::move(loaded_document.values);
+    toml::table* window =
+        document[WindowConfigurationLoadResult::toml_table_name].as_table();
     if (window == nullptr) {
-        document.insert_or_assign("window", toml::table{});
-        window = document["window"].as_table();
+        document.insert_or_assign(
+            WindowConfigurationLoadResult::toml_table_name, toml::table{});
+        window = document[WindowConfigurationLoadResult::toml_table_name].as_table();
     }
-    window->insert_or_assign("width", size.width);
-    window->insert_or_assign("height", size.height);
-    window->insert_or_assign("maximized", maximized);
+    window->insert_or_assign(WindowConfigurationLoadResult::width_toml_key, size.width);
+    window->insert_or_assign(WindowConfigurationLoadResult::height_toml_key, size.height);
+    window->insert_or_assign(
+        WindowConfigurationLoadResult::maximized_toml_key, maximized);
 
     std::ofstream output{configuration_path, std::ios::binary | std::ios::trunc};
     if (!output) {
         detail = configuration_path.string();
         return WindowConfigurationStatus::write_failed;
     }
-    output << document << '\n';
+    write_configuration_document(output, document);
     if (!output) {
         detail = configuration_path.string();
         return WindowConfigurationStatus::write_failed;
@@ -394,57 +717,106 @@ WindowConfigurationStatus save_window_configuration(
     return WindowConfigurationStatus::ready;
 }
 
+InputConfigurationLoadResult load_input_configuration(
+    const std::filesystem::path& configuration_path,
+    const std::chrono::milliseconds fallback_movement_repeat_delay) {
+    const auto document = read_configuration_document(configuration_path);
+    if (document.status != ConfigurationDocumentStatus::ready) {
+        InputConfigurationLoadResult result;
+        result.status = configuration_load_status<InputConfigurationStatus>(document.status);
+        result.movement_repeat_delay = fallback_movement_repeat_delay;
+        result.detail = document.detail;
+        return result;
+    }
+    return input_configuration_from_document(
+        document.values, fallback_movement_repeat_delay);
+}
+
+TimingConfigurationLoadResult load_timing_configuration(
+    const std::filesystem::path& configuration_path,
+    const std::chrono::nanoseconds fallback_fade_frame_delay) {
+    const auto document = read_configuration_document(configuration_path);
+    if (document.status != ConfigurationDocumentStatus::ready) {
+        TimingConfigurationLoadResult result;
+        result.status = configuration_load_status<TimingConfigurationStatus>(document.status);
+        result.fade_frame_delay = fallback_fade_frame_delay;
+        result.detail = document.detail;
+        return result;
+    }
+    return timing_configuration_from_document(document.values, fallback_fade_frame_delay);
+}
+
 LoggingConfigurationLoadResult load_logging_configuration(
     const std::filesystem::path& configuration_path,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& fallback_path,
     const diagnostics::LogLevel fallback_level) {
-    LoggingConfigurationLoadResult result;
-    result.path = fallback_path;
-    result.minimum_level = fallback_level;
+    const auto document = read_configuration_document(configuration_path);
+    if (document.status != ConfigurationDocumentStatus::ready) {
+        LoggingConfigurationLoadResult result;
+        result.status = configuration_load_status<LoggingConfigurationStatus>(document.status);
+        result.path = fallback_path;
+        result.minimum_level = fallback_level;
+        result.detail = document.detail;
+        return result;
+    }
+    return logging_configuration_from_document(
+        document.values, executable_directory, fallback_path, fallback_level);
+}
 
-    toml::table document;
-    if (!read_existing_document(
-            configuration_path, document, result.status, result.detail)) {
-        return result;
+RuntimeConfiguration load_runtime_configuration(
+    const std::span<const std::string_view> arguments,
+    const std::filesystem::path& configuration_path,
+    const std::filesystem::path& executable_directory,
+    const std::filesystem::path& launch_directory,
+    const RuntimeConfigurationDefaults& defaults) {
+    const auto document = read_configuration_document(configuration_path);
+
+    RuntimeConfiguration configuration;
+    auto data_directory_candidate = command_line_candidate(arguments, launch_directory);
+    if (data_directory_candidate.status == DataDirectoryStatus::ready &&
+        data_directory_candidate.source != DataDirectorySource::command_line) {
+        data_directory_candidate =
+            configuration_candidate(document, executable_directory, launch_directory);
     }
-    const toml::node* logging_node = document.get("logging");
-    if (logging_node == nullptr) {
-        return result;
+    configuration.data_directory = validate_candidate(std::move(data_directory_candidate));
+
+    if (document.status == ConfigurationDocumentStatus::ready) {
+        configuration.logging = logging_configuration_from_document(
+            document.values,
+            executable_directory,
+            defaults.logging_path,
+            defaults.logging_level);
+        configuration.input = input_configuration_from_document(
+            document.values, defaults.movement_repeat_delay);
+        configuration.timing = timing_configuration_from_document(
+            document.values, defaults.fade_frame_delay);
+        configuration.window =
+            window_configuration_from_document(document.values, defaults.window_size);
+        return configuration;
     }
-    const toml::table* logging = logging_node->as_table();
-    if (logging == nullptr) {
-        result.status = LoggingConfigurationStatus::invalid_logging_table;
-        return result;
-    }
-    if (const toml::node* path_node = logging->get("path"); path_node != nullptr) {
-        const auto value = path_node->value<std::string>();
-        if (!value.has_value() || value->empty()) {
-            result.status = LoggingConfigurationStatus::invalid_log_path;
-            return result;
-        }
-        auto configured_path = path_from_utf8(*value);
-        if (configured_path.is_relative()) {
-            configured_path = executable_directory / configured_path;
-        }
-        result.path = configured_path.lexically_normal();
-    }
-    if (const toml::node* level_node = logging->get("level"); level_node != nullptr) {
-        const auto value = level_node->value<std::string>();
-        if (!value.has_value()) {
-            result.status = LoggingConfigurationStatus::invalid_log_level;
-            return result;
-        }
-        const auto parsed = parse_log_level(*value);
-        if (!parsed.has_value()) {
-            result.status = LoggingConfigurationStatus::invalid_log_level;
-            result.detail = *value;
-            return result;
-        }
-        result.minimum_level = *parsed;
-    }
-    result.loaded_from_file = true;
-    return result;
+
+    configuration.logging.status =
+        configuration_load_status<LoggingConfigurationStatus>(document.status);
+    configuration.logging.path = defaults.logging_path;
+    configuration.logging.minimum_level = defaults.logging_level;
+    configuration.logging.detail = document.detail;
+
+    configuration.input.status =
+        configuration_load_status<InputConfigurationStatus>(document.status);
+    configuration.input.movement_repeat_delay = defaults.movement_repeat_delay;
+    configuration.input.detail = document.detail;
+
+    configuration.timing.status =
+        configuration_load_status<TimingConfigurationStatus>(document.status);
+    configuration.timing.fade_frame_delay = defaults.fade_frame_delay;
+    configuration.timing.detail = document.detail;
+
+    configuration.window = window_load_error(
+        configuration_load_status<WindowConfigurationStatus>(document.status),
+        defaults.window_size,
+        document.detail);
+    return configuration;
 }
 
 std::filesystem::path make_session_log_path(
@@ -503,6 +875,40 @@ std::string_view logging_configuration_status_message(
         return "[logging] level must be trace, debug, info, warning, error, or critical";
     }
     return "unknown logging configuration status";
+}
+
+std::string_view input_configuration_status_message(
+    const InputConfigurationStatus status) noexcept {
+    switch (status) {
+    case InputConfigurationStatus::ready:
+        return "ready";
+    case InputConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case InputConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case InputConfigurationStatus::invalid_input_table:
+        return "[input] must be a TOML table";
+    case InputConfigurationStatus::invalid_movement_repeat_delay:
+        return "[input] movement_repeat_delay_ms must be a non-negative integer";
+    }
+    return "unknown input configuration status";
+}
+
+std::string_view timing_configuration_status_message(
+    const TimingConfigurationStatus status) noexcept {
+    switch (status) {
+    case TimingConfigurationStatus::ready:
+        return "ready";
+    case TimingConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case TimingConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case TimingConfigurationStatus::invalid_timing_table:
+        return "[timing] must be a TOML table";
+    case TimingConfigurationStatus::invalid_fade_frame_delay:
+        return "[timing] fade_frame_delay_ms must be a non-negative number";
+    }
+    return "unknown timing configuration status";
 }
 
 std::string_view window_configuration_status_message(
