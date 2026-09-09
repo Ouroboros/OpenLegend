@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <ctime>
 #include <limits>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -559,11 +560,15 @@ bool SceneSession::load_scene_sprites() {
         error_ = group.error;
         return false;
     }
-    sprites_ = resource::SentinelArchive::parse(index.bytes, std::move(group.bytes));
-    if (!sprites_.valid()) {
-        error_ = sprites_.error();
+    auto sprites = std::make_shared<const resource::SentinelArchive>(
+        resource::SentinelArchive::parse(index.bytes, std::move(group.bytes)));
+    if (!sprites->valid()) {
+        error_ = sprites->error();
         return false;
     }
+    sprites_ = std::move(sprites);
+    sprite_frames_.clear();
+    sprite_frames_.resize(sprites_->entry_count());
     return true;
 }
 
@@ -3580,18 +3585,21 @@ bool SceneSession::draw_sprite(
     const std::int16_t legacy_id,
     const int anchor_x,
     const int anchor_y) const {
-    if (legacy_id < 0) {
+    if (legacy_id < 0 || !sprites_) {
         return false;
     }
     const auto index = render::legacy_sprite_index(static_cast<std::uint16_t>(legacy_id));
-    if (!index.has_value() || *index >= sprites_.entry_count()) {
+    if (!index.has_value() || *index >= sprites_->entry_count()) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(sprites_.entry(*index));
-    if (!frame.valid()) {
+    auto& frame = sprite_frames_[*index];
+    if (!frame.has_value()) {
+        frame.emplace(resource::SpriteFrameView::parse(sprites_->entry(*index)));
+    }
+    if (!frame->valid()) {
         return false;
     }
-    render::draw_rle_sprite(framebuffer, frame, anchor_x, anchor_y);
+    render::draw_rle_sprite(framebuffer, *frame, anchor_x, anchor_y);
     return true;
 }
 
