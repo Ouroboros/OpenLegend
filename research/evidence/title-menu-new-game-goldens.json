@@ -47,7 +47,23 @@
   "game_menu_pixels_fnv1a64": {
     "source": "independent synthetic indexed background plus current mmap.col/FONT3.C16",
     "world_selection_0": "4821b1c9f78f507d",
-    "scene_selection_3": "2d951419c79fa4f8"
+    "scene_selection_3": "2d951419c79fa4f8",
+    "machine_panel_geometry": {
+      "system": [
+        70,
+        18,
+        42,
+        72
+      ],
+      "slots": [
+        120,
+        18,
+        26,
+        72
+      ]
+    },
+    "system_save_selection_1": "3f70c56f2e0deb41",
+    "save_slot_selection_0": "169e23f2c8c26a14"
   },
   "game_menu_item_draw_pixels_fnv1a64": {
     "source": "independent synthetic indexed background plus original RANGER.GRP/MMAP/FONT3 assets",

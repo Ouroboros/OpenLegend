@@ -3360,6 +3360,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     fill_menu_oracle_background();
     OL_CHECK(basic_renderer.render_game_menu(
         layered_menu, item_draw_resources.ranger(), framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x3F70C56F2E0DEB41ULL);
     OL_CHECK(rectangle_matches(main_menu_layer, framebuffer.pixels(), 20, 18, 42, 132));
     const std::vector<std::uint8_t> system_menu_layer{
         framebuffer.pixels().begin(), framebuffer.pixels().end()};
@@ -3368,6 +3369,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     fill_menu_oracle_background();
     OL_CHECK(basic_renderer.render_game_menu(
         layered_menu, item_draw_resources.ranger(), framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x169E23F2C8C26A14ULL);
     OL_CHECK(rectangle_matches(system_menu_layer, framebuffer.pixels(), 20, 18, 42, 132));
     OL_CHECK(rectangle_matches(system_menu_layer, framebuffer.pixels(), 70, 18, 50, 72));
 

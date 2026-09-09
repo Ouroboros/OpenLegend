@@ -384,7 +384,7 @@ bool BasicUiRenderer::render_game_menu(
     const model::RangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
     const auto render_system_menu = [&]() {
-        if (!draw_box(framebuffer, 70, 18, 74U, 72U)) {
+        if (!draw_box(framebuffer, 70, 18, 42U, 72U)) {
             return false;
         }
         for (std::size_t index = 0U; index < kSystemLabels.size(); ++index) {
@@ -461,7 +461,7 @@ bool BasicUiRenderer::render_game_menu(
     case GameMenuScreen::load_slots:
     case GameMenuScreen::save_slots:
         if (!render_game_menu_main(menu, framebuffer) || !render_system_menu() ||
-            !draw_box(framebuffer, 120, 18, 42U, 72U)) {
+            !draw_box(framebuffer, 120, 18, 26U, 72U)) {
             return false;
         }
         for (std::size_t index = 0U; index < kSlotLabels.size(); ++index) {

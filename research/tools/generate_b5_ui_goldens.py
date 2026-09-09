@@ -16,6 +16,10 @@ from pathlib import Path
 Z_DAT_LOAD_BASE = 0x6600
 ITEM_SPRITE_BASE_ADDRESS = 0x54508
 ITEM_COUNT = 200
+SYSTEM_MENU_LABELS_ADDRESS = 0x20D17
+SLOT_MENU_LABELS_ADDRESS = 0x20D26
+SYSTEM_PANEL_CALL_ADDRESS = 0x25D52
+SLOT_PANEL_CALL_ADDRESS = 0x25FB7
 
 
 def sha256(data: bytes) -> str:
@@ -276,6 +280,29 @@ def game_menu_screen(
     draw_big5_text(
         pixels, font, 24, 25 + 20 * selection, MAIN_MENU_LABELS[selection], 0x63, 0x66
     )
+    return pixels
+
+
+def layered_system_slot_menu_screen(
+    font: bytes,
+    palette: list[tuple[int, int, int]],
+    lookup: list[int],
+    system_geometry: tuple[int, int, int, int],
+    slot_geometry: tuple[int, int, int, int],
+    system_labels: tuple[bytes, ...],
+    slot_labels: tuple[bytes, ...],
+    include_slots: bool,
+) -> bytearray:
+    pixels = game_menu_screen(font, palette, lookup, 6, 5)
+    draw_rounded_panel(pixels, palette, lookup, *system_geometry)
+    for index, label in enumerate(system_labels):
+        colors = (0x63, 0x66) if index == 1 else (0x21, 0x23)
+        draw_big5_text(pixels, font, 74, 25 + 20 * index, label, *colors)
+    if include_slots:
+        draw_rounded_panel(pixels, palette, lookup, *slot_geometry)
+        for index, label in enumerate(slot_labels):
+            colors = (0x63, 0x66) if index == 0 else (0x21, 0x23)
+            draw_big5_text(pixels, font, 124, 25 + 20 * index, label, *colors)
     return pixels
 
 
@@ -2345,6 +2372,38 @@ def main() -> int:
     ]
     assert len(frames) == 9
     assert len(item_frames) == ITEM_COUNT
+    system_panel_call = z_dat[
+        SYSTEM_PANEL_CALL_ADDRESS - Z_DAT_LOAD_BASE : 0x25D68 - Z_DAT_LOAD_BASE
+    ]
+    slot_panel_call = z_dat[
+        SLOT_PANEL_CALL_ADDRESS - Z_DAT_LOAD_BASE : 0x25FCC - Z_DAT_LOAD_BASE
+    ]
+    assert system_panel_call.hex() == "6a0368bc870c006a0068ff0000006a486a2a6a126a46"
+    assert slot_panel_call.hex() == "6a0368bc870c005668ff0000006a486a1a6a126a78"
+    system_geometry = (
+        system_panel_call[21], system_panel_call[19], system_panel_call[17], system_panel_call[15]
+    )
+    slot_geometry = (
+        slot_panel_call[20], slot_panel_call[18], slot_panel_call[16], slot_panel_call[14]
+    )
+    assert system_geometry == (70, 18, 42, 72)
+    assert slot_geometry == (120, 18, 26, 72)
+    system_label_bytes = z_dat[
+        SYSTEM_MENU_LABELS_ADDRESS - Z_DAT_LOAD_BASE : SLOT_MENU_LABELS_ADDRESS - Z_DAT_LOAD_BASE
+    ]
+    slot_label_bytes = z_dat[
+        SLOT_MENU_LABELS_ADDRESS - Z_DAT_LOAD_BASE : SLOT_MENU_LABELS_ADDRESS - Z_DAT_LOAD_BASE + 15
+    ]
+    system_labels = tuple(
+        system_label_bytes[index : index + 5].split(b"\0", 1)[0]
+        for index in range(0, len(system_label_bytes), 5)
+    )
+    slot_labels = tuple(
+        slot_label_bytes[index : index + 5].split(b"\0", 1)[0]
+        for index in range(0, len(slot_label_bytes), 5)
+    )
+    assert system_labels == (bytes.fromhex("c5aac0c9"), bytes.fromhex("a673c0c9"), bytes.fromhex("c2f7b67d"))
+    assert slot_labels == (bytes.fromhex("a440"), bytes.fromhex("a447"), bytes.fromhex("a454"))
     protagonist = ranger[836 : 836 + 182]
     (level,) = struct.unpack_from("<h", protagonist, 15 * 2)
     parsed_palette = parse_palette(palette)
@@ -2383,6 +2442,34 @@ def main() -> int:
             ),
             "scene_selection_3": fnv1a64(
                 game_menu_screen(big5_font, parsed_palette, panel_lookup, 4, 3)
+            ),
+            "machine_panel_geometry": {
+                "system": list(system_geometry),
+                "slots": list(slot_geometry),
+            },
+            "system_save_selection_1": fnv1a64(
+                layered_system_slot_menu_screen(
+                    big5_font,
+                    parsed_palette,
+                    panel_lookup,
+                    system_geometry,
+                    slot_geometry,
+                    system_labels,
+                    slot_labels,
+                    False,
+                )
+            ),
+            "save_slot_selection_0": fnv1a64(
+                layered_system_slot_menu_screen(
+                    big5_font,
+                    parsed_palette,
+                    panel_lookup,
+                    system_geometry,
+                    slot_geometry,
+                    system_labels,
+                    slot_labels,
+                    True,
+                )
             ),
         },
         "game_menu_item_draw_pixels_fnv1a64": {
