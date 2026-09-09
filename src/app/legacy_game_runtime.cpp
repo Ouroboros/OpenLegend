@@ -996,10 +996,16 @@ bool LegacyGameRuntime::render() {
         }
         return true;
     }
-    case LegacyGameView::scene:
-        if (scene_session_ == nullptr ||
-            (scene_leave_event_phase_ != SceneLeaveEventPhase::fade_to_black &&
-             !scene_session_->render(framebuffer_))) {
+    case LegacyGameView::scene: {
+        if (scene_session_ == nullptr) {
+            return false;
+        }
+        const bool render_scene =
+            scene_effect_kind_ == SceneEffectKind::none ||
+            scene_effect_kind_ == SceneEffectKind::present ||
+            (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
+             scene_effect_palettes_.empty());
+        if (render_scene && !scene_session_->render(framebuffer_)) {
             return false;
         }
         if (scene_leave_event_phase_ == SceneLeaveEventPhase::redraw_present) {
@@ -1026,6 +1032,7 @@ bool LegacyGameRuntime::render() {
         }
         scene_effect_presented_ = scene_effect_kind_ != SceneEffectKind::none;
         return true;
+    }
     case LegacyGameView::battle:
         if (battle_session_ == nullptr) {
             return false;
