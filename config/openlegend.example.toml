@@ -1,17 +1,25 @@
 [paths]
 
 # Windows paths can use TOML literal strings, so backslashes need no escaping.
-# data_dir = 'E:\Game\金庸群侠传'
+# Relative Linux and macOS paths are supported.
 
-# Linux and macOS example:
+# Windows 路径可使用 TOML 字面量字符串，因此反斜杠无需转义。
+# 支持 Linux 和 macOS 相对路径。
+
+# data_dir = 'E:\Game\金庸群侠传'
 # data_dir = '/home/user/games/jinyong'
 
 [logging]
 
 # Relative paths resolve from the executable directory. The path supplies the
-# PREFIX and extension; every launch writes a separate
+# prefix and extension. Every launch writes a separate
 # PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log file beside it. Every record is flushed
 # immediately. Levels: trace, debug, info, warning, error, critical.
+
+# 相对路径基于可执行文件目录解析。该路径提供文件名前缀和扩展名。每次启动
+# 都会在其旁边写入独立的 PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log 文件。
+# 每条记录都会立即刷新。级别：trace、debug、info、warning、error、critical。
+
 path = "logs/openlegend.log"
 level = "info"
 
@@ -19,18 +27,30 @@ level = "info"
 
 # Delay after the first movement before a held direction starts repeating.
 # Use 0 for immediate continuous movement.
+
+# 首次移动后，按住方向键开始连续移动前的延迟。
+# 设为 0 表示立即连续移动。
+
 movement_repeat_delay_ms = 500
 
 [timing]
 
 # Delay between FI/FO palette frames. The default matches VGA mode 13h.
 # Use 0 to present fade frames without waiting.
+
+# FI/FO 调色板帧之间的延迟。默认值匹配 VGA mode 13h。
+# 设为 0 表示淡变帧之间不等待。
+
 fade_frame_delay_ms = 14.268
 
 [window]
 
 # OpenLegend always renders internally at 320x200. These values only control
 # the restored host window; game content keeps its original aspect ratio.
+
+# OpenLegend 始终以 320x200 进行内部渲染。这些值只控制还原后的宿主窗口；
+# 游戏画面仍保持原始宽高比。
+
 width = 960
 height = 600
 maximized = false
