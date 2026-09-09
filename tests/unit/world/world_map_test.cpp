@@ -5,7 +5,9 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <span>
+#include <utility>
 
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
@@ -162,6 +164,38 @@ void check_layers_and_cache(const std::filesystem::path& root) {
     OL_CHECK(cache.origin_x() == 352);
     OL_CHECK(cache.origin_y() == 352);
     OL_CHECK(!cache.reload(map, 353, 0));
+}
+
+void check_cached_sprite_lifetime(const std::filesystem::path& root) {
+    using namespace openlegend::world;
+    const openlegend::resource::DataRoot data_root{root};
+    const WorldMapData map{data_root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::render::IndexedFramebuffer framebuffer;
+    std::optional<WorldSession> copied;
+    // The initial-frame hash comes from the independent original-asset oracle,
+    // not from a previous rendering by the cached implementation.
+    constexpr std::uint64_t expected_pixels = 0x0604155353F95194ULL;
+    {
+        WorldSession original{data_root, map, snapshot.ranger, random};
+        OL_CHECK(original.valid());
+        for (int repeat = 0; repeat < 3; ++repeat) {
+            framebuffer.clear(0xFFU);
+            OL_CHECK(original.render(framebuffer));
+            OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_pixels);
+        }
+        copied.emplace(original);
+    }
+    // Warm cached spans must not point into the destroyed original session.
+    framebuffer.clear(0xFFU);
+    OL_CHECK(copied->render(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_pixels);
+    WorldSession moved{std::move(*copied)};
+    copied.reset();
+    framebuffer.clear(0xFFU);
+    OL_CHECK(moved.render(framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == expected_pixels);
 }
 
 void check_initial_render_and_trace(const std::filesystem::path& root) {
@@ -1033,6 +1067,7 @@ int main() {
     const auto root = openlegend::test::game_data_root();
     check_layers_and_cache(root);
     check_initial_render_and_trace(root);
+    check_cached_sprite_lifetime(root);
     check_reported_player_depth_coordinates(root);
     check_periodic_rng_and_recovery(root);
     return openlegend::test::failures == 0 ? 0 : 1;

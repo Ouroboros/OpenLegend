@@ -194,8 +194,8 @@ WorldSession::WorldSession(
     : map_(map),
       ranger_(ranger),
       random_(random),
-      sprites_(resource::PackedArchive::open(
-          data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")),
+      sprites_(std::make_shared<const resource::PackedArchive>(resource::PackedArchive::open(
+          data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP"))),
       weather_sprites_(
           startup_weather_sprites != nullptr
               ? *startup_weather_sprites
@@ -205,10 +205,11 @@ WorldSession::WorldSession(
         error_ = map_.error();
         return;
     }
-    if (!sprites_.valid()) {
-        error_ = sprites_.error();
+    if (!sprites_->valid()) {
+        error_ = sprites_->error();
         return;
     }
+    sprite_frames_.resize(sprites_->entry_count());
     if (!weather_sprites_.valid()) {
         error_ = weather_sprites_.error();
         return;
@@ -862,14 +863,17 @@ bool WorldSession::draw_sprite(
         return false;
     }
     const auto index = render::legacy_sprite_index(static_cast<std::uint16_t>(legacy_id));
-    if (!index.has_value() || *index >= sprites_.entry_count()) {
+    if (!index.has_value() || *index >= sprites_->entry_count()) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(sprites_.entry(*index));
-    if (!frame.valid()) {
+    auto& frame = sprite_frames_[*index];
+    if (!frame.has_value()) {
+        frame.emplace(resource::SpriteFrameView::parse(sprites_->entry(*index)));
+    }
+    if (!frame->valid()) {
         return false;
     }
-    render::draw_rle_sprite(framebuffer, frame, anchor_x, anchor_y);
+    render::draw_rle_sprite(framebuffer, *frame, anchor_x, anchor_y);
     return true;
 }
 

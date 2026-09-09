@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -13,6 +14,7 @@
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/resource/packed_archive.hpp"
 
 namespace openlegend::world {
@@ -183,7 +185,9 @@ private:
     model::RangerState& ranger_;
     random::LegacyRandom& random_;
     WorldCache cache_;
-    resource::PackedArchive sprites_;
+    // Cached pixel spans stay valid even when a WorldSession is copied.
+    std::shared_ptr<const resource::PackedArchive> sprites_;
+    mutable std::vector<std::optional<resource::SpriteFrameView>> sprite_frames_;
     resource::PackedArchive weather_sprites_;
     compat::LegacyPalette palette_{};
     std::array<std::uint8_t, 4096> rgb4_lookup_{};
