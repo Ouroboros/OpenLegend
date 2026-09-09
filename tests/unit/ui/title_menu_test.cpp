@@ -367,7 +367,12 @@ void advance_rendered_frames(
 
 void finish_title_startup(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
-    advance_rendered_frames(game, 64U);
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        OL_CHECK(game.render());
+        OL_CHECK(std::ranges::all_of(
+            game.framebuffer().pixels(), [](const auto pixel) { return pixel == 0U; }));
+        game.advance();
+    }
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
     OL_CHECK(game.render());
     OL_CHECK(fnv1a64(game.framebuffer().pixels()) == 0x86690E3B3B68FE20ULL);

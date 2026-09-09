@@ -238,6 +238,7 @@ LegacyGameRuntime::LegacyGameRuntime(
         startup_error_ = "Unable to render title background";
     }
     if (startup_error_.empty()) {
+        framebuffer_.clear(0U);
         title_startup_phase_ = TitleStartupPhase::fade_to_black;
         begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
         diagnostics::log_info("LegacyGameRuntime initialized view=title");
