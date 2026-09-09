@@ -211,7 +211,14 @@ std::string_view ending_terminal_message() noexcept {
 
 LegacyGameRuntime::LegacyGameRuntime(
     std::filesystem::path data_root, const std::uint32_t random_seed)
+    : LegacyGameRuntime(data_root, data_root, random_seed) {}
+
+LegacyGameRuntime::LegacyGameRuntime(
+    std::filesystem::path data_root,
+    std::filesystem::path save_root,
+    const std::uint32_t random_seed)
     : data_root_path_(std::move(data_root)),
+      save_root_path_(std::move(save_root)),
       data_root_(data_root_path_),
       basic_renderer_(data_root_),
       startup_resources_(data_root_),
@@ -1236,7 +1243,7 @@ void LegacyGameRuntime::perform_pending_io() {
     if (operation == PendingIo::load) {
         attribute_controller_.reset();
         auto loaded = persistence::load_numbered_slot(
-            data_root_path_,
+            save_root_path_,
             save_slot(pending_slot_),
             startup_resources_.ranger_index_bytes());
         if (!loaded) {
@@ -1262,7 +1269,7 @@ void LegacyGameRuntime::perform_pending_io() {
         return;
     }
     auto written = persistence::write_numbered_slot_scene_archives(
-        data_root_path_, save_slot(pending_slot_), *scene_snapshot);
+        save_root_path_, save_slot(pending_slot_), *scene_snapshot);
     if (!written) {
         show_error(
             std::string{persistence::persistence_status_message(written.status)},
@@ -1278,7 +1285,7 @@ void LegacyGameRuntime::perform_pending_io() {
         return;
     }
     written = persistence::write_numbered_slot_ranger(
-        data_root_path_, save_slot(pending_slot_), *ranger_snapshot);
+        save_root_path_, save_slot(pending_slot_), *ranger_snapshot);
     if (!written) {
         show_error(
             std::string{persistence::persistence_status_message(written.status)},

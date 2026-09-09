@@ -213,7 +213,8 @@ int main(const int argc, const char* const* argv) {
             kDefaultWindowSize,
             kDefaultMovementRepeatDelay,
             kDefaultFadeFrameDelay});
-    const auto& data_directory = configuration.data_directory;
+    const auto& data_directory = configuration.paths.data_directory;
+    const auto& save_directory_configuration = configuration.paths.save_directory;
     const auto& logging_configuration = configuration.logging;
     const auto& input_configuration = configuration.input;
     const auto& timing_configuration = configuration.timing;
@@ -250,6 +251,15 @@ int main(const int argc, const char* const* argv) {
             data_directory.detail);
         return 2;
     }
+    if (save_directory_configuration.status !=
+        app::SaveDirectoryConfigurationStatus::ready) {
+        report_configuration_error(
+            "save directory configuration",
+            app::save_directory_configuration_status_message(
+                save_directory_configuration.status),
+            save_directory_configuration.detail);
+        return 2;
+    }
     if (window_configuration.status != app::WindowConfigurationStatus::ready) {
         report_configuration_error(
             "window configuration",
@@ -272,6 +282,28 @@ int main(const int argc, const char* const* argv) {
     diagnostics::log_info(
         "resolved data_directory=" + path_utf8(data_directory.directory) +
         " source=" + std::to_string(static_cast<int>(data_directory.source)));
+    auto save_directory = data_directory.directory;
+    if (save_directory_configuration.configured) {
+        save_directory = save_directory_configuration.directory;
+        path_error.clear();
+        static_cast<void>(std::filesystem::create_directories(save_directory, path_error));
+        if (!path_error) {
+            const auto status = std::filesystem::status(save_directory, path_error);
+            if (!path_error && !std::filesystem::is_directory(status)) {
+                path_error = std::make_error_code(std::errc::not_a_directory);
+            }
+        }
+        if (path_error) {
+            report_configuration_error(
+                "save directory", path_error.message(), path_utf8(save_directory));
+            return 3;
+        }
+    }
+    diagnostics::log_info(
+        "resolved save_directory=" + path_utf8(save_directory) +
+        " source=" +
+        (save_directory_configuration.configured ? std::string{"configuration"}
+                                                 : std::string{"data_directory"}));
     diagnostics::log_info(
         "input movement_repeat_delay_ms=" +
         std::to_string(input_configuration.movement_repeat_delay.count()) +
@@ -323,7 +355,8 @@ int main(const int argc, const char* const* argv) {
     const auto random_seed = random::LegacyRandom::dos_time_seed(second, hundredth);
     bool fade_music_on_exit = false;
     {
-    app::LegacyGameRuntime game{std::filesystem::current_path(), random_seed};
+    app::LegacyGameRuntime game{
+        std::filesystem::current_path(), save_directory, random_seed};
     diagnostics::log_info("runtime random_seed=" + std::to_string(random_seed));
     if (!game.valid()) {
         diagnostics::log_critical("game runtime initialization failed: " + game.error());

@@ -89,6 +89,10 @@ class LegacyGameRuntime {
 
 public:
     LegacyGameRuntime(std::filesystem::path data_root, std::uint32_t random_seed);
+    LegacyGameRuntime(
+        std::filesystem::path data_root,
+        std::filesystem::path save_root,
+        std::uint32_t random_seed);
 
     void advance(std::uint32_t bios_tick = 0U);
     LegacyKeyStateReset handle_key(
@@ -231,6 +235,7 @@ private:
     void handle_world_menu_event_result(const scene::SceneStepResult& result);
 
     std::filesystem::path data_root_path_;
+    std::filesystem::path save_root_path_;
     resource::DataRoot data_root_;
     ui::BasicUiRenderer basic_renderer_;
     LegacyStartupResources startup_resources_;

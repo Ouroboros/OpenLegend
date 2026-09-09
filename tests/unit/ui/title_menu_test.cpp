@@ -3176,15 +3176,21 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
     const auto output_root = test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-runtime";
+    const auto save_root = test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-runtime-save";
     OL_CHECK(prepare_runtime_fixture(data_root, output_root));
+    std::error_code error;
+    std::filesystem::remove_all(save_root, error);
+    error.clear();
+    std::filesystem::create_directories(save_root, error);
+    OL_CHECK(!error);
     const auto baseline = persistence::load_baseline(data_root);
     OL_CHECK(static_cast<bool>(baseline));
     if (!baseline.snapshot.has_value()) {
         return;
     }
     OL_CHECK(persistence::write_numbered_slot(
-        output_root, persistence::SaveSlot::one, *baseline.snapshot));
-    app::LegacyGameRuntime game{output_root, 0U};
+        save_root, persistence::SaveSlot::one, *baseline.snapshot));
+    app::LegacyGameRuntime game{output_root, save_root, 0U};
     OL_CHECK(game.valid());
     finish_title_startup(game);
     game.handle_key(0x98U, false, false);
@@ -3220,7 +3226,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     }
     game.advance();
     const auto before_wait_present =
-        persistence::load_numbered_slot(output_root, persistence::SaveSlot::one);
+        persistence::load_numbered_slot(save_root, persistence::SaveSlot::one);
     OL_CHECK(static_cast<bool>(before_wait_present));
     if (before_save.has_value() && before_wait_present.snapshot.has_value()) {
         OL_CHECK(*before_save != *before_wait_present.snapshot);
@@ -3230,9 +3236,12 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::game_menu);
     const auto saved =
-        persistence::load_numbered_slot(output_root, persistence::SaveSlot::one);
+        persistence::load_numbered_slot(save_root, persistence::SaveSlot::one);
     OL_CHECK(static_cast<bool>(saved));
     OL_CHECK(saved.snapshot.has_value());
+    OL_CHECK(!std::filesystem::exists(output_root / "R1.GRP"));
+    OL_CHECK(!std::filesystem::exists(output_root / "S1.GRP"));
+    OL_CHECK(!std::filesystem::exists(output_root / "D1.GRP"));
     const auto after_save = game.game_state().export_snapshot();
     OL_CHECK(after_save.has_value());
     if (before_save.has_value() && saved.snapshot.has_value() && after_save.has_value()) {
@@ -3264,8 +3273,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
 
     game.handle_key(0x0DU, false, false);
     game.handle_key(0x0DU, false, false);
-    std::error_code error;
-    std::filesystem::remove(output_root / "R1.GRP", error);
+    std::filesystem::remove(save_root / "R1.GRP", error);
     OL_CHECK(!error);
     const auto before_failed_load = game.game_state().export_snapshot();
     OL_CHECK(game.render());
@@ -3283,7 +3291,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     game.handle_key(0x98U, false, false);
     game.handle_key(0x0DU, false, false);
-    std::filesystem::remove_all(output_root, error);
+    std::filesystem::remove_all(save_root, error);
     OL_CHECK(!error);
     OL_CHECK(game.render());
     game.finish_presented_tick();

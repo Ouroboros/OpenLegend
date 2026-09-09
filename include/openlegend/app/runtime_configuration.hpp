@@ -38,16 +38,39 @@ enum class DataDirectoryStatus {
 };
 
 struct DataDirectoryResolution {
-    static constexpr std::string_view toml_table_name = "paths";
-    static constexpr std::string_view data_directory_toml_key = "data_dir";
-    static constexpr std::array<std::string_view, 1U> toml_field_order{
-        data_directory_toml_key,
-    };
-
     DataDirectoryStatus status{DataDirectoryStatus::ready};
     DataDirectorySource source{DataDirectorySource::launch_directory};
     std::filesystem::path directory;
     std::string detail;
+};
+
+enum class SaveDirectoryConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_paths_table,
+    invalid_save_directory,
+    directory_query_failed,
+};
+
+struct SaveDirectoryConfigurationLoadResult {
+    SaveDirectoryConfigurationStatus status{SaveDirectoryConfigurationStatus::ready};
+    std::filesystem::path directory;
+    bool configured{};
+    std::string detail;
+};
+
+struct PathsConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "paths";
+    static constexpr std::string_view data_directory_toml_key = "data_dir";
+    static constexpr std::string_view save_directory_toml_key = "save_dir";
+    static constexpr std::array<std::string_view, 2U> toml_field_order{
+        data_directory_toml_key,
+        save_directory_toml_key,
+    };
+
+    DataDirectoryResolution data_directory;
+    SaveDirectoryConfigurationLoadResult save_directory;
 };
 
 [[nodiscard]] DataDirectoryResolution resolve_data_directory(
@@ -59,6 +82,9 @@ struct DataDirectoryResolution {
     const std::filesystem::path& directory, std::error_code& error) noexcept;
 
 [[nodiscard]] std::string_view data_directory_status_message(DataDirectoryStatus status) noexcept;
+
+[[nodiscard]] std::string_view save_directory_configuration_status_message(
+    SaveDirectoryConfigurationStatus status) noexcept;
 
 struct WindowSize {
     int width{};
@@ -205,14 +231,14 @@ struct RuntimeConfigurationDefaults {
 };
 
 struct RuntimeConfiguration {
-    DataDirectoryResolution data_directory;
+    PathsConfigurationLoadResult paths;
     LoggingConfigurationLoadResult logging;
     InputConfigurationLoadResult input;
     TimingConfigurationLoadResult timing;
     WindowConfigurationLoadResult window;
 
     static constexpr std::array<std::string_view, 5U> toml_table_order{
-        DataDirectoryResolution::toml_table_name,
+        PathsConfigurationLoadResult::toml_table_name,
         LoggingConfigurationLoadResult::toml_table_name,
         InputConfigurationLoadResult::toml_table_name,
         TimingConfigurationLoadResult::toml_table_name,

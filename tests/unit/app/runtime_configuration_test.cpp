@@ -27,10 +27,12 @@ public:
         launch_directory_ = root_ / "launch";
         configured_directory_ = root_ / path_from_literal(u8"配置数据");
         command_directory_ = root_ / path_from_literal(u8"命令行数据");
+        save_directory_ = root_ / path_from_literal(u8"独立存档");
         std::filesystem::create_directories(executable_directory_);
         std::filesystem::create_directories(launch_directory_);
         std::filesystem::create_directories(configured_directory_);
         std::filesystem::create_directories(command_directory_);
+        std::filesystem::create_directories(save_directory_);
     }
 
     ~TemporaryTree() {
@@ -57,6 +59,10 @@ public:
         return command_directory_;
     }
 
+    [[nodiscard]] const std::filesystem::path& save_directory() const noexcept {
+        return save_directory_;
+    }
+
     [[nodiscard]] std::filesystem::path configuration_path() const {
         return executable_directory_ / openlegend::app::kConfigurationFilename;
     }
@@ -76,6 +82,7 @@ private:
     std::filesystem::path launch_directory_;
     std::filesystem::path configured_directory_;
     std::filesystem::path command_directory_;
+    std::filesystem::path save_directory_;
 };
 
 [[nodiscard]] std::string utf8_bytes(const std::filesystem::path& path) {
@@ -135,9 +142,12 @@ void test_runtime_configuration_root() {
     const TemporaryTree tree;
     const auto relative_data = std::filesystem::relative(
         tree.configured_directory(), tree.executable_directory());
+    const auto relative_save = std::filesystem::relative(
+        tree.save_directory(), tree.executable_directory());
     tree.write_configuration(
         "[paths]\n"
         "data_dir = '" + utf8_bytes(relative_data) + "'\n"
+        "save_dir = '" + utf8_bytes(relative_save) + "'\n"
         "\n[logging]\n"
         "path = 'diagnostics/runtime.log'\n"
         "level = 'debug'\n"
@@ -162,10 +172,16 @@ void test_runtime_configuration_root() {
             std::chrono::milliseconds{500},
             std::chrono::milliseconds{14}});
 
-    OL_CHECK(configuration.data_directory.status == DataDirectoryStatus::ready);
-    OL_CHECK(configuration.data_directory.source == DataDirectorySource::configuration_file);
-    OL_CHECK(configuration.data_directory.directory ==
+    OL_CHECK(configuration.paths.data_directory.status == DataDirectoryStatus::ready);
+    OL_CHECK(configuration.paths.data_directory.source ==
+        DataDirectorySource::configuration_file);
+    OL_CHECK(configuration.paths.data_directory.directory ==
         std::filesystem::absolute(tree.configured_directory()));
+    OL_CHECK(configuration.paths.save_directory.status ==
+        SaveDirectoryConfigurationStatus::ready);
+    OL_CHECK(configuration.paths.save_directory.configured);
+    OL_CHECK(configuration.paths.save_directory.directory ==
+        std::filesystem::absolute(tree.save_directory()));
     OL_CHECK(configuration.logging.status == LoggingConfigurationStatus::ready);
     OL_CHECK(configuration.logging.path ==
         (tree.executable_directory() / "diagnostics" / "runtime.log").lexically_normal());
@@ -177,6 +193,55 @@ void test_runtime_configuration_root() {
     OL_CHECK(configuration.window.status == WindowConfigurationStatus::ready);
     OL_CHECK((configuration.window.size == WindowSize{1280, 720}));
     OL_CHECK(configuration.window.maximized);
+}
+
+void test_save_directory_configuration() {
+    using namespace openlegend::app;
+    using openlegend::diagnostics::LogLevel;
+    const TemporaryTree tree;
+    const auto load = [&tree]() {
+        return load_runtime_configuration(
+            {},
+            tree.configuration_path(),
+            tree.executable_directory(),
+            tree.launch_directory(),
+            RuntimeConfigurationDefaults{
+                tree.executable_directory() / "logs" / "openlegend.log",
+                LogLevel::info,
+                WindowSize{960, 600},
+                std::chrono::milliseconds{500},
+                std::chrono::milliseconds{14}});
+    };
+
+    const auto missing = load();
+    OL_CHECK(missing.paths.save_directory.status ==
+        SaveDirectoryConfigurationStatus::ready);
+    OL_CHECK(!missing.paths.save_directory.configured);
+    OL_CHECK(missing.paths.save_directory.directory.empty());
+
+    const auto relative_save = std::filesystem::relative(
+        tree.save_directory(), tree.executable_directory());
+    tree.write_configuration(
+        "[paths]\n"
+        "save_dir = '" + utf8_bytes(relative_save) + "'\n");
+    const auto configured = load();
+    OL_CHECK(configured.paths.save_directory.status ==
+        SaveDirectoryConfigurationStatus::ready);
+    OL_CHECK(configured.paths.save_directory.configured);
+    OL_CHECK(configured.paths.save_directory.directory ==
+        std::filesystem::absolute(tree.save_directory()));
+
+    tree.write_configuration("[paths]\nsave_dir = 7\n");
+    OL_CHECK(load().paths.save_directory.status ==
+        SaveDirectoryConfigurationStatus::invalid_save_directory);
+
+    tree.write_configuration("[paths]\nsave_dir = ''\n");
+    OL_CHECK(load().paths.save_directory.status ==
+        SaveDirectoryConfigurationStatus::invalid_save_directory);
+
+    tree.write_configuration("paths = 7\n");
+    OL_CHECK(load().paths.save_directory.status ==
+        SaveDirectoryConfigurationStatus::invalid_paths_table);
 }
 
 void test_logging_configuration() {
@@ -324,10 +389,13 @@ void test_window_errors_and_schema_writeback() {
 
     const auto relative_data = std::filesystem::relative(
         tree.configured_directory(), tree.executable_directory());
+    const auto relative_save = std::filesystem::relative(
+        tree.save_directory(), tree.executable_directory());
     tree.write_configuration(
         "[future]\nkept = 42\n"
         "\n[window]\ncustom = 'preserved'\n"
-        "\n[paths]\ndata_dir = '" + utf8_bytes(relative_data) + "'\n");
+        "\n[paths]\ndata_dir = '" + utf8_bytes(relative_data) + "'\n"
+        "save_dir = '" + utf8_bytes(relative_save) + "'\n");
     std::string detail;
     OL_CHECK(save_window_configuration(
                  tree.configuration_path(), WindowSize{1024, 640}, true, detail) ==
@@ -348,6 +416,10 @@ void test_window_errors_and_schema_writeback() {
     OL_CHECK(paths_position != std::string::npos);
     OL_CHECK(window_position != std::string::npos);
     OL_CHECK(paths_position < window_position);
+    const auto data_directory_position = saved.find("data_dir = ", paths_position);
+    const auto save_directory_position = saved.find("save_dir = ", paths_position);
+    OL_CHECK(data_directory_position < save_directory_position);
+    OL_CHECK(save_directory_position < window_position);
     const auto width_position = saved.find("width = 1024", window_position);
     const auto height_position = saved.find("height = 640", window_position);
     const auto maximized_position = saved.find("maximized = true", window_position);
@@ -368,6 +440,7 @@ void run_runtime_configuration_tests() {
     test_missing_configuration_uses_launch_directory();
     test_configuration_paths_and_window();
     test_runtime_configuration_root();
+    test_save_directory_configuration();
     test_logging_configuration();
     test_command_line_overrides_configuration();
     test_configuration_errors();

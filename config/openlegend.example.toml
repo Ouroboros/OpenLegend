@@ -1,13 +1,13 @@
 [paths]
 
-# Windows paths can use TOML literal strings, so backslashes need no escaping.
-# Relative Linux and macOS paths are supported.
+# Relative paths resolve from the executable directory. If save_dir is omitted,
+# numbered saves remain in data_dir as before.
 
-# Windows 路径可使用 TOML 字面量字符串，因此反斜杠无需转义。
-# 支持 Linux 和 macOS 相对路径。
+# 相对路径以可执行文件目录为基准。未配置 save_dir 时，编号存档仍按原逻辑
+# 保存在 data_dir 中。
 
-# data_dir = 'E:\Game\金庸群侠传'
-# data_dir = '/home/user/games/jinyong'
+# data_dir = './data'
+# save_dir = './save'
 
 [logging]
 

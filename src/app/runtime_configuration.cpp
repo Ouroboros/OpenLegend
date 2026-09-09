@@ -117,7 +117,7 @@ struct ConfigurationDocument {
     }
 
     const toml::node* paths_node =
-        document.values.get(DataDirectoryResolution::toml_table_name);
+        document.values.get(PathsConfigurationLoadResult::toml_table_name);
     if (paths_node == nullptr) {
         return candidate_for_path(
             DataDirectorySource::launch_directory, launch_directory, launch_directory);
@@ -129,7 +129,7 @@ struct ConfigurationDocument {
             DataDirectorySource::configuration_file);
     }
     const toml::node* data_directory_node =
-        paths->get(DataDirectoryResolution::data_directory_toml_key);
+        paths->get(PathsConfigurationLoadResult::data_directory_toml_key);
     if (data_directory_node == nullptr) {
         return candidate_for_path(
             DataDirectorySource::launch_directory, launch_directory, launch_directory);
@@ -150,6 +150,46 @@ struct ConfigurationDocument {
         DataDirectorySource::configuration_file,
         path_from_utf8(value),
         executable_directory);
+}
+
+[[nodiscard]] SaveDirectoryConfigurationLoadResult save_directory_configuration_from_document(
+    const toml::table& document,
+    const std::filesystem::path& executable_directory) {
+    SaveDirectoryConfigurationLoadResult result;
+    const toml::node* paths_node =
+        document.get(PathsConfigurationLoadResult::toml_table_name);
+    if (paths_node == nullptr) {
+        return result;
+    }
+    const toml::table* paths = paths_node->as_table();
+    if (paths == nullptr) {
+        result.status = SaveDirectoryConfigurationStatus::invalid_paths_table;
+        return result;
+    }
+    const toml::node* save_directory_node =
+        paths->get(PathsConfigurationLoadResult::save_directory_toml_key);
+    if (save_directory_node == nullptr) {
+        return result;
+    }
+    const auto value = save_directory_node->value<std::string>();
+    if (!value.has_value() || value->empty()) {
+        result.status = SaveDirectoryConfigurationStatus::invalid_save_directory;
+        return result;
+    }
+    auto directory = path_from_utf8(*value);
+    if (directory.is_relative()) {
+        directory = executable_directory / directory;
+    }
+    std::error_code error;
+    directory = std::filesystem::absolute(directory, error).lexically_normal();
+    if (error) {
+        result.status = SaveDirectoryConfigurationStatus::directory_query_failed;
+        result.detail = error.message();
+        return result;
+    }
+    result.directory = std::move(directory);
+    result.configured = true;
+    return result;
 }
 
 [[nodiscard]] DataDirectoryResolution validate_candidate(DirectoryCandidate candidate) {
@@ -270,8 +310,8 @@ using ConfigurationKeyPath = std::vector<std::string>;
     if (table_path.size() != 1U) {
         return {};
     }
-    if (table_path.front() == DataDirectoryResolution::toml_table_name) {
-        return DataDirectoryResolution::toml_field_order;
+    if (table_path.front() == PathsConfigurationLoadResult::toml_table_name) {
+        return PathsConfigurationLoadResult::toml_field_order;
     }
     if (table_path.front() == LoggingConfigurationLoadResult::toml_table_name) {
         return LoggingConfigurationLoadResult::toml_field_order;
@@ -665,6 +705,25 @@ std::string_view data_directory_status_message(const DataDirectoryStatus status)
     return "unknown data directory error";
 }
 
+std::string_view save_directory_configuration_status_message(
+    const SaveDirectoryConfigurationStatus status) noexcept {
+    switch (status) {
+    case SaveDirectoryConfigurationStatus::ready:
+        return "ready";
+    case SaveDirectoryConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case SaveDirectoryConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case SaveDirectoryConfigurationStatus::invalid_paths_table:
+        return "[paths] must be a TOML table";
+    case SaveDirectoryConfigurationStatus::invalid_save_directory:
+        return "[paths] save_dir must be a non-empty string";
+    case SaveDirectoryConfigurationStatus::directory_query_failed:
+        return "cannot resolve [paths] save_dir";
+    }
+    return "unknown save directory configuration status";
+}
+
 WindowConfigurationLoadResult load_window_configuration(
     const std::filesystem::path& configuration_path, const WindowSize fallback) {
     const auto document = read_configuration_document(configuration_path);
@@ -779,9 +838,12 @@ RuntimeConfiguration load_runtime_configuration(
         data_directory_candidate =
             configuration_candidate(document, executable_directory, launch_directory);
     }
-    configuration.data_directory = validate_candidate(std::move(data_directory_candidate));
+    configuration.paths.data_directory =
+        validate_candidate(std::move(data_directory_candidate));
 
     if (document.status == ConfigurationDocumentStatus::ready) {
+        configuration.paths.save_directory = save_directory_configuration_from_document(
+            document.values, executable_directory);
         configuration.logging = logging_configuration_from_document(
             document.values,
             executable_directory,
@@ -795,6 +857,10 @@ RuntimeConfiguration load_runtime_configuration(
             window_configuration_from_document(document.values, defaults.window_size);
         return configuration;
     }
+
+    configuration.paths.save_directory.status =
+        configuration_load_status<SaveDirectoryConfigurationStatus>(document.status);
+    configuration.paths.save_directory.detail = document.detail;
 
     configuration.logging.status =
         configuration_load_status<LoggingConfigurationStatus>(document.status);
