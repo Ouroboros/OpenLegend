@@ -348,6 +348,13 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     world_step_processed_ = false;
 }
 
+bool LegacyGameRuntime::uses_vga_retrace() const noexcept {
+    return scene_effect_kind_ == SceneEffectKind::fade_to_black ||
+        scene_effect_kind_ == SceneEffectKind::fade_from_black ||
+        (view_ == LegacyGameView::battle && battle_session_ != nullptr &&
+         battle_session_->phase() == battle::BattleSessionPhase::initial_fade);
+}
+
 bool LegacyGameRuntime::needs_immediate_frame(const std::uint32_t bios_tick) const noexcept {
     if (battle_transition_phase_ != BattleTransitionPhase::none) {
         return false;

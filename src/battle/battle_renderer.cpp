@@ -170,6 +170,9 @@ BattleRenderer::BattleRenderer(
           data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
       item_sprites_(resource::PackedArchive::open(
           data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")) {
+    cloud_frame_cache_.resize(cloud_sprites_.entry_count());
+    portrait_frame_cache_.resize(portraits_.entry_count());
+    item_frame_cache_.resize(item_sprites_.entry_count());
     if (battlefield_id_ < 0 || battlefield_id_ > 999) {
         error_ = "battlefield sprite id is outside filename range";
         return;
@@ -288,6 +291,7 @@ bool BattleRenderer::load_effect_assets() {
         error_ = effect_sprites_.error();
         return false;
     }
+    fight_frame_cache_.clear();
     effect_assets_loaded_ = true;
     return true;
 }
@@ -1034,12 +1038,12 @@ bool BattleRenderer::draw_portrait(
     if (portrait_id < 0 || static_cast<std::size_t>(portrait_id) >= portraits_.entry_count()) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(
-        portraits_.entry(static_cast<std::size_t>(portrait_id)));
-    if (!frame.valid()) {
+    const auto* frame = archive_frame(
+        portraits_, portrait_frame_cache_, static_cast<std::size_t>(portrait_id));
+    if (frame == nullptr) {
         return false;
     }
-    render::draw_rle_sprite(framebuffer, frame, x, y);
+    render::draw_rle_sprite(framebuffer, *frame, x, y);
     return true;
 }
 
@@ -1052,11 +1056,11 @@ bool BattleRenderer::draw_item_icon(
     if (!sprite_index.has_value() || *sprite_index >= item_sprites_.entry_count()) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(item_sprites_.entry(*sprite_index));
-    if (!frame.valid()) {
+    const auto* frame = archive_frame(item_sprites_, item_frame_cache_, *sprite_index);
+    if (frame == nullptr) {
         return false;
     }
-    render::draw_rle_sprite(framebuffer, frame, x, y);
+    render::draw_rle_sprite(framebuffer, *frame, x, y);
     return true;
 }
 
@@ -1077,6 +1081,7 @@ bool BattleRenderer::load_fight_package(const std::int16_t fight_head_id) {
         return false;
     }
     fight_sprites_ = std::move(archive);
+    fight_frame_cache_.clear();
     return true;
 }
 
@@ -1114,20 +1119,41 @@ std::span<const std::uint8_t> BattleRenderer::fight_entry(
     return {};
 }
 
+const resource::SpriteFrameView* BattleRenderer::archive_frame(
+    const resource::PackedArchive& archive,
+    std::vector<std::optional<resource::SpriteFrameView>>& cache,
+    const std::size_t index) const {
+    if (index >= archive.entry_count() || index >= cache.size()) {
+        return nullptr;
+    }
+    if (!cache[index].has_value()) {
+        cache[index].emplace(resource::SpriteFrameView::parse(archive.entry(index)));
+    }
+    return cache[index]->valid() ? &*cache[index] : nullptr;
+}
+
+const resource::SpriteFrameView* BattleRenderer::fight_frame(
+    const std::int32_t legacy_id) const {
+    const auto found = fight_frame_cache_.find(legacy_id);
+    if (found != fight_frame_cache_.end()) {
+        return found->second.valid() ? &found->second : nullptr;
+    }
+    const auto [entry, inserted] = fight_frame_cache_.emplace(
+        legacy_id, resource::SpriteFrameView::parse(fight_entry(legacy_id)));
+    static_cast<void>(inserted);
+    return entry->second.valid() ? &entry->second : nullptr;
+}
+
 bool BattleRenderer::draw_fight_sprite(
     render::IndexedFramebuffer& framebuffer,
     const std::int32_t legacy_id,
     const int anchor_x,
     const int anchor_y) const {
-    const auto bytes = fight_entry(legacy_id);
-    if (bytes.empty()) {
+    const auto* frame = fight_frame(legacy_id);
+    if (frame == nullptr) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(bytes);
-    if (!frame.valid()) {
-        return false;
-    }
-    render::draw_rle_sprite(framebuffer, frame, anchor_x, anchor_y);
+    render::draw_rle_sprite(framebuffer, *frame, anchor_x, anchor_y);
     return true;
 }
 
@@ -1137,20 +1163,16 @@ bool BattleRenderer::draw_tinted_fight_sprite(
     const int anchor_x,
     const int anchor_y,
     const std::uint8_t color) const {
-    const auto bytes = fight_entry(legacy_id);
-    if (bytes.empty()) {
+    const auto* frame = fight_frame(legacy_id);
+    if (frame == nullptr) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(bytes);
-    if (!frame.valid()) {
-        return false;
-    }
-    const auto left = anchor_x - static_cast<int>(frame.x_offset());
-    const auto top = anchor_y - static_cast<int>(frame.y_offset());
-    for (std::size_t row_index = 0U; row_index < frame.rows().size(); ++row_index) {
+    const auto left = anchor_x - static_cast<int>(frame->x_offset());
+    const auto top = anchor_y - static_cast<int>(frame->y_offset());
+    for (std::size_t row_index = 0U; row_index < frame->rows().size(); ++row_index) {
         const auto y = top + static_cast<int>(row_index);
         auto x = left;
-        for (const auto& run : frame.rows()[row_index].runs) {
+        for (const auto& run : frame->rows()[row_index].runs) {
             x += static_cast<int>(run.skip);
             for ([[maybe_unused]] const auto pixel : run.pixels) {
                 if (y >= 0 && y < render::IndexedFramebuffer::height &&
@@ -1173,17 +1195,17 @@ bool BattleRenderer::draw_cursor_overlay(
     if (variant < 0 || variant > 1 || source_weight < 0 || source_weight > 8) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(
-        cloud_sprites_.entry(static_cast<std::size_t>(variant) + 4U));
-    if (!frame.valid()) {
+    const auto* frame = archive_frame(
+        cloud_sprites_, cloud_frame_cache_, static_cast<std::size_t>(variant) + 4U);
+    if (frame == nullptr) {
         return false;
     }
-    const auto left = anchor_x - static_cast<int>(frame.x_offset());
-    const auto top = anchor_y - static_cast<int>(frame.y_offset());
-    for (std::size_t row_index = 0U; row_index < frame.rows().size(); ++row_index) {
+    const auto left = anchor_x - static_cast<int>(frame->x_offset());
+    const auto top = anchor_y - static_cast<int>(frame->y_offset());
+    for (std::size_t row_index = 0U; row_index < frame->rows().size(); ++row_index) {
         const auto y = top + static_cast<int>(row_index);
         auto x = left;
-        for (const auto& run : frame.rows()[row_index].runs) {
+        for (const auto& run : frame->rows()[row_index].runs) {
             x += static_cast<int>(run.skip);
             for (const auto source : run.pixels) {
                 if (y >= 0 && y < render::IndexedFramebuffer::height &&

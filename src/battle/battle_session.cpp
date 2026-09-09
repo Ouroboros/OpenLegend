@@ -577,10 +577,25 @@ bool BattleSession::render(
         phase_ == BattleSessionPhase::ai_wait ||
         (phase_ == BattleSessionPhase::player_attack_direction &&
          player_attack_direction_presentations_before_input_ == 0U) ||
+        phase_ == BattleSessionPhase::player_item_effect_wait ||
+        phase_ == BattleSessionPhase::player_status_page_wait ||
         phase_ == BattleSessionPhase::player_effect_prelude_present ||
         phase_ == BattleSessionPhase::player_effect_prelude_wait ||
+        phase_ == BattleSessionPhase::player_magic_wait ||
+        phase_ == BattleSessionPhase::player_damage_wait ||
+        phase_ == BattleSessionPhase::player_attack_commit_wait ||
+        phase_ == BattleSessionPhase::player_attack_level_wait ||
+        phase_ == BattleSessionPhase::player_movement_wait ||
+        phase_ == BattleSessionPhase::ai_item_post_effect_wait ||
         phase_ == BattleSessionPhase::ai_effect_prelude_present ||
-        phase_ == BattleSessionPhase::ai_effect_prelude_wait) {
+        phase_ == BattleSessionPhase::ai_effect_prelude_wait ||
+        phase_ == BattleSessionPhase::ai_magic_wait ||
+        phase_ == BattleSessionPhase::ai_damage_wait ||
+        phase_ == BattleSessionPhase::ai_attack_commit_wait ||
+        phase_ == BattleSessionPhase::ai_attack_level_wait ||
+        phase_ == BattleSessionPhase::ai_movement_wait ||
+        phase_ == BattleSessionPhase::battle_outcome_wait ||
+        phase_ == BattleSessionPhase::post_battle_message_wait) {
         // The original input and tick spins do not redraw the current buffer.
         frame_rendered_ = true;
         return true;
@@ -588,6 +603,16 @@ bool BattleSession::render(
     bool rendered = false;
     if (phase_ == BattleSessionPhase::initial_fade_to_black) {
         frame_rendered_ = false;
+        return true;
+    }
+    if (phase_ == BattleSessionPhase::initial_fade) {
+        if (fade_frame_ >= fade_palettes_.size()) {
+            frame_rendered_ = false;
+            return false;
+        }
+        // sub_3CD17 updates the DAC without redrawing indexed pixels.
+        framebuffer.set_palette(fade_palettes_[fade_frame_]);
+        frame_rendered_ = true;
         return true;
     }
     if (phase_ == BattleSessionPhase::party_selection) {

@@ -1088,6 +1088,24 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(prepare_runtime_fixture(data_root, idle_counter_fixture));
     OL_CHECK(persistence::write_numbered_slot(
         idle_counter_fixture, persistence::SaveSlot::one, idle_counter_snapshot));
+
+    auto continuation_fixture_snapshot = idle_counter_snapshot;
+    continuation_fixture_snapshot.ranger.header.set_word(model::header_word::main_map_x, 357);
+    for (auto& scene : continuation_fixture_snapshot.ranger.scenes) {
+        scene.set_word(model::scene_metadata_word::main_entrance_x_1, -1);
+        scene.set_word(model::scene_metadata_word::main_entrance_y_1, -1);
+        scene.set_word(model::scene_metadata_word::main_entrance_x_2, -1);
+        scene.set_word(model::scene_metadata_word::main_entrance_y_2, -1);
+    }
+    auto& continuation_scene = continuation_fixture_snapshot.ranger.scenes[70U];
+    continuation_scene.set_word(model::scene_metadata_word::main_entrance_x_1, 356);
+    continuation_scene.set_word(model::scene_metadata_word::main_entrance_y_1, 235);
+    continuation_scene.set_word(model::scene_metadata_word::entrance_condition, 0);
+    const auto continuation_fixture =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b9-world-scene-continuation";
+    OL_CHECK(prepare_runtime_fixture(data_root, continuation_fixture));
+    OL_CHECK(persistence::write_numbered_slot(
+        continuation_fixture, persistence::SaveSlot::one, continuation_fixture_snapshot));
     {
         app::LegacyGameRuntime walk{idle_counter_fixture, 0U};
         OL_CHECK(walk.valid());
@@ -1123,6 +1141,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             walk.finish_presented_tick(701U + step);
             OL_CHECK(walk.scene_loop_uses_key_states());
             OL_CHECK(!walk.needs_immediate_frame(701U + step));
+            OL_CHECK(!walk.uses_vga_retrace());
         }
     }
     {
@@ -2152,7 +2171,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
 
-    app::LegacyGameRuntime load_game{data_root, 1U};
+    // Numbered saves in the runtime data directory belong to the player and are mutable.
+    app::LegacyGameRuntime load_game{continuation_fixture, 1U};
     finish_title_startup(load_game);
     load_game.handle_key(0x98U, false, false);
     load_game.handle_key(0x0DU, false, false);
@@ -2174,6 +2194,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         auto& role = continuation_ranger->roles[0U];
         role.set_word(model::role_word::hurt, 51);
         role.set_word(model::role_word::hp, 10);
+        auto& entrance_scene = continuation_ranger->scenes[70U];
+        entrance_scene.set_word(model::scene_metadata_word::entrance_condition, 1);
         for (int pair = 0; pair < 24; ++pair) {
             load_game.handle_world_input(false, false, false, true);
             load_game.advance();
@@ -2181,22 +2203,9 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             load_game.advance();
         }
         OL_CHECK(role.word(model::role_word::hp) == 10);
-
-        auto& entrance_scene = continuation_ranger->scenes[70U];
-        const auto first_is_current_entrance =
-            entrance_scene.word(model::scene_metadata_word::main_entrance_x_1) == 356 &&
-            entrance_scene.word(model::scene_metadata_word::main_entrance_y_1) == 235;
-        if (first_is_current_entrance) {
-            entrance_scene.set_word(model::scene_metadata_word::main_entrance_x_1, 358);
-        } else {
-            OL_CHECK(
-                entrance_scene.word(model::scene_metadata_word::main_entrance_x_2) == 356);
-            OL_CHECK(
-                entrance_scene.word(model::scene_metadata_word::main_entrance_y_2) == 235);
-            entrance_scene.set_word(model::scene_metadata_word::main_entrance_x_2, 358);
-        }
+        entrance_scene.set_word(model::scene_metadata_word::entrance_condition, 0);
     }
-    OL_CHECK(load_game.handle_world_input(false, false, false, true));
+    OL_CHECK(load_game.handle_world_input(true, false, false, false));
     load_game.advance();
     OL_CHECK(load_game.view() == app::LegacyGameView::world);
     finish_world_scene_transition(load_game);

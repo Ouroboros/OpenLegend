@@ -334,9 +334,11 @@ int main(const int argc, const char* const* argv) {
         }
     };
     timing::SteadyBiosTickSource tick_source;
+    timing::SteadyVgaRetraceSource retrace_source;
     bool running = true;
     while (running) {
         const auto frame_tick = tick_source.tick();
+        const auto frame_retrace = retrace_source.tick();
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
@@ -410,6 +412,7 @@ int main(const int argc, const char* const* argv) {
             keyboard.edge(0x1BU),
             keyboard.edge(static_cast<std::uint8_t>('L')));
         game.advance(frame_tick);
+        const bool vga_frame = game.uses_vga_retrace();
         sync_scene_input_reset();
         sync_battle_confirmation();
         if (game.take_clear_scene_exit_key_states_request()) {
@@ -473,7 +476,12 @@ int main(const int argc, const char* const* argv) {
         if (smoke_test) {
             running = false;
         } else if (running && !game.needs_immediate_frame(tick_source.tick())) {
-            static_cast<void>(timing::wait_for_tick_change(tick_source, frame_tick));
+            if (vga_frame) {
+                static_cast<void>(
+                    timing::wait_for_tick_change(retrace_source, frame_retrace));
+            } else {
+                static_cast<void>(timing::wait_for_tick_change(tick_source, frame_tick));
+            }
         }
     }
 

@@ -6,12 +6,14 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/resource/packed_archive.hpp"
 
 namespace openlegend::battle {
@@ -106,6 +108,12 @@ public:
 private:
     [[nodiscard]] std::span<const std::uint8_t> fight_entry(
         std::int32_t legacy_id) const;
+    [[nodiscard]] const resource::SpriteFrameView* fight_frame(
+        std::int32_t legacy_id) const;
+    [[nodiscard]] const resource::SpriteFrameView* archive_frame(
+        const resource::PackedArchive& archive,
+        std::vector<std::optional<resource::SpriteFrameView>>& cache,
+        std::size_t index) const;
     [[nodiscard]] bool draw_fight_sprite(
         render::IndexedFramebuffer& framebuffer,
         std::int32_t legacy_id,
@@ -143,6 +151,10 @@ private:
     resource::PackedArchive cloud_sprites_;
     resource::PackedArchive portraits_;
     resource::PackedArchive item_sprites_;
+    mutable std::unordered_map<std::int32_t, resource::SpriteFrameView> fight_frame_cache_;
+    mutable std::vector<std::optional<resource::SpriteFrameView>> cloud_frame_cache_;
+    mutable std::vector<std::optional<resource::SpriteFrameView>> portrait_frame_cache_;
+    mutable std::vector<std::optional<resource::SpriteFrameView>> item_frame_cache_;
     compat::LegacyPalette palette_{};
     std::array<std::uint8_t, 4'096U> rgb4_lookup_{};
     std::vector<std::uint8_t> ascii_font_;
