@@ -20,8 +20,9 @@ __pycache__/
 # Project-local temporary workspace
 /tmp/
 
-# Regenerable headless IDA runtime logs
+# Regenerable headless IDA runtime logs and unpacked legacy databases
 /research/ida/logs/
+/research/ida/databases/legacy/
 
 # IDE and OS metadata
 /.idea/
