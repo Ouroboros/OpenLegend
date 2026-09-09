@@ -2,10 +2,12 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -13,6 +15,55 @@
 namespace openlegend::test {
 
 inline int failures = 0;
+
+class ScopedTimeZone {
+public:
+    explicit ScopedTimeZone(const std::string_view time_zone)
+        : previous_(read()) {
+        apply(std::string{time_zone}.c_str());
+    }
+
+    ~ScopedTimeZone() {
+        apply(previous_.has_value() ? previous_->c_str() : nullptr, false);
+    }
+
+    ScopedTimeZone(const ScopedTimeZone&) = delete;
+    ScopedTimeZone& operator=(const ScopedTimeZone&) = delete;
+
+private:
+    [[nodiscard]] static std::optional<std::string> read() {
+#if defined(_WIN32)
+        char* raw_value = nullptr;
+        std::size_t value_size = 0U;
+        if (::_dupenv_s(&raw_value, &value_size, "TZ") != 0) {
+            throw std::runtime_error("TZ could not be read");
+        }
+        const auto value = std::unique_ptr<char, decltype(&std::free)>{raw_value, &std::free};
+        if (value == nullptr || value_size <= 1U || *value == '\0') {
+            return std::nullopt;
+        }
+        return std::string{value.get()};
+#else
+        const char* value = std::getenv("TZ");
+        return value == nullptr ? std::nullopt : std::optional<std::string>{value};
+#endif
+    }
+
+    static void apply(const char* value, const bool throw_on_error = true) {
+#if defined(_WIN32)
+        const auto result = ::_putenv_s("TZ", value == nullptr ? "" : value);
+        ::_tzset();
+#else
+        const auto result = value == nullptr ? ::unsetenv("TZ") : ::setenv("TZ", value, 1);
+        ::tzset();
+#endif
+        if (result != 0 && throw_on_error) {
+            throw std::runtime_error("TZ could not be changed");
+        }
+    }
+
+    std::optional<std::string> previous_;
+};
 
 struct TestShard {
     std::size_t index = 0U;

@@ -184,7 +184,10 @@ BattleRenderer::BattleRenderer(
         error_ = portraits_.error();
         return;
     }
-    if (!item_sprites_.valid() || item_sprites_.entry_count() < model::kItemCount) {
+    const auto final_item_sprite = render::legacy_item_sprite_index(
+        static_cast<std::int16_t>(model::kItemCount - 1U));
+    if (!item_sprites_.valid() || !final_item_sprite.has_value() ||
+        item_sprites_.entry_count() <= *final_item_sprite) {
         error_ = item_sprites_.valid()
             ? "MMAP archive is missing item icon frames"
             : item_sprites_.error();
@@ -1045,11 +1048,11 @@ bool BattleRenderer::draw_item_icon(
     const std::int16_t item_id,
     const int x,
     const int y) const {
-    if (item_id < 0 || static_cast<std::size_t>(item_id) >= item_sprites_.entry_count()) {
+    const auto sprite_index = render::legacy_item_sprite_index(item_id);
+    if (!sprite_index.has_value() || *sprite_index >= item_sprites_.entry_count()) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(
-        item_sprites_.entry(static_cast<std::size_t>(item_id)));
+    const auto frame = resource::SpriteFrameView::parse(item_sprites_.entry(*sprite_index));
     if (!frame.valid()) {
         return false;
     }

@@ -39,34 +39,34 @@ struct LoggingState {
     return separator == std::string_view::npos ? path : path.substr(separator + 1U);
 }
 
-[[nodiscard]] std::string utc_timestamp() {
+[[nodiscard]] std::string local_timestamp() {
     const auto now = std::chrono::system_clock::now();
     const auto whole_seconds = std::chrono::floor<std::chrono::seconds>(now);
     const auto milliseconds =
         std::chrono::duration_cast<std::chrono::milliseconds>(now - whole_seconds).count();
     const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
 
-    std::tm utc{};
+    std::tm local{};
 #if defined(_WIN32)
-    const bool converted = gmtime_s(&utc, &seconds) == 0;
+    const bool converted = localtime_s(&local, &seconds) == 0;
 #else
-    const bool converted = gmtime_r(&seconds, &utc) != nullptr;
+    const bool converted = localtime_r(&seconds, &local) != nullptr;
 #endif
     if (!converted) {
-        return "0000-00-00T00:00:00.000Z";
+        return "0000-00-00T00:00:00.000";
     }
 
     char timestamp[32]{};
     static_cast<void>(std::snprintf(
         timestamp,
         sizeof(timestamp),
-        "%04d-%02d-%02dT%02d:%02d:%02d.%03lldZ",
-        utc.tm_year + 1900,
-        utc.tm_mon + 1,
-        utc.tm_mday,
-        utc.tm_hour,
-        utc.tm_min,
-        utc.tm_sec,
+        "%04d-%02d-%02dT%02d:%02d:%02d.%03lld",
+        local.tm_year + 1900,
+        local.tm_mon + 1,
+        local.tm_mday,
+        local.tm_hour,
+        local.tm_min,
+        local.tm_sec,
         static_cast<long long>(milliseconds)));
     return timestamp;
 }
@@ -95,7 +95,7 @@ void append_escaped_message(std::string& output, const std::string_view message)
     const std::string_view message,
     const std::source_location location) {
     std::ostringstream prefix;
-    prefix << utc_timestamp() << " [" << log_level_name(level) << "] [thread="
+    prefix << local_timestamp() << " [" << log_level_name(level) << "] [thread="
            << std::this_thread::get_id() << "] [" << source_filename(location.file_name()) << ':'
            << location.line() << "] ";
 
@@ -133,7 +133,7 @@ void report_initialization_failure(
         write_fallback(format_log_line(LogLevel::error, message, location));
     } catch (...) {
         write_fallback(
-            "0000-00-00T00:00:00.000Z [ERROR] [thread=unknown] "
+            "0000-00-00T00:00:00.000 [ERROR] [thread=unknown] "
             "[log.cpp:0] logging initialization failed\n");
     }
 }
@@ -242,7 +242,7 @@ void log_message(
         write_log_line(state, level, format_log_line(level, message, location));
     } catch (...) {
         write_fallback(
-            "0000-00-00T00:00:00.000Z [ERROR] [thread=unknown] "
+            "0000-00-00T00:00:00.000 [ERROR] [thread=unknown] "
             "[log.cpp:0] logging failed while formatting a message\n");
     }
 }

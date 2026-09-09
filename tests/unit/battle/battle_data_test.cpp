@@ -5084,16 +5084,16 @@ void run_player_item_session_test(
               << throwing_prelude_hash << '\n'
               << throwing_effect_hash << '\n' << throwing_damage_hash << '\n';
     hash_file.close();
-    if (item_menu_hash != 0x04459EEC5548C797ULL ||
-        item_menu_single_hash != 0x73AF8A5CD79205EDULL ||
-        filtered_item_menu_hash != 0xEFF0BE9F19AD7E3DULL) {
+    if (item_menu_hash != 0x439D8DAAB5F6EE8EULL ||
+        item_menu_single_hash != 0xAF567D02F6740A5CULL ||
+        filtered_item_menu_hash != 0x535E02EE9BA3E0E3ULL) {
         std::cerr << "item_menu_hashes=0x" << std::hex << item_menu_hash << ",0x"
                   << item_menu_single_hash << ",0x" << filtered_item_menu_hash
                   << std::dec << '\n';
     }
-    OL_CHECK(item_menu_hash == 0x04459EEC5548C797ULL);
-    OL_CHECK(item_menu_single_hash == 0x73AF8A5CD79205EDULL);
-    OL_CHECK(filtered_item_menu_hash == 0xEFF0BE9F19AD7E3DULL);
+    OL_CHECK(item_menu_hash == 0x439D8DAAB5F6EE8EULL);
+    OL_CHECK(item_menu_single_hash == 0xAF567D02F6740A5CULL);
+    OL_CHECK(filtered_item_menu_hash == 0x535E02EE9BA3E0E3ULL);
     OL_CHECK(item_effect_hash == 0x96fce61fed8c957eULL);
     OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0x370a4078e9de6172ULL);

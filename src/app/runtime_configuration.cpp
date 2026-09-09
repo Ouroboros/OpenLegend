@@ -452,11 +452,11 @@ std::filesystem::path make_session_log_path(
     const std::chrono::system_clock::time_point launch_time,
     const std::uint64_t process_id) {
     const std::time_t seconds = std::chrono::system_clock::to_time_t(launch_time);
-    std::tm utc{};
+    std::tm local{};
 #if defined(_WIN32)
-    const bool converted = gmtime_s(&utc, &seconds) == 0;
+    const bool converted = localtime_s(&local, &seconds) == 0;
 #else
-    const bool converted = gmtime_r(&seconds, &utc) != nullptr;
+    const bool converted = localtime_r(&seconds, &local) != nullptr;
 #endif
 
     char suffix[64]{};
@@ -465,12 +465,12 @@ std::filesystem::path make_session_log_path(
             suffix,
             sizeof(suffix),
             "-%04d-%02d-%02d_%02d-%02d-%02d-%llu",
-            utc.tm_year + 1900,
-            utc.tm_mon + 1,
-            utc.tm_mday,
-            utc.tm_hour,
-            utc.tm_min,
-            utc.tm_sec,
+            local.tm_year + 1900,
+            local.tm_mon + 1,
+            local.tm_mday,
+            local.tm_hour,
+            local.tm_min,
+            local.tm_sec,
             static_cast<unsigned long long>(process_id)));
     } else {
         static_cast<void>(std::snprintf(

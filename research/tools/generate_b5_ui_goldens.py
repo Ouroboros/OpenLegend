@@ -13,6 +13,11 @@ import struct
 from pathlib import Path
 
 
+Z_DAT_LOAD_BASE = 0x6600
+ITEM_SPRITE_BASE_ADDRESS = 0x54508
+ITEM_COUNT = 200
+
+
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -2329,9 +2334,17 @@ def main() -> int:
     assert len(cfont) == 29674
     assert len(ranger) == 114242
     frames = archive_entries(title_index, title_group)
-    item_frames = archive_entries(mmap_index, mmap_group)
+    mmap_frames = archive_entries(mmap_index, mmap_group)
+    (item_sprite_base_id,) = struct.unpack_from(
+        "<h", z_dat, ITEM_SPRITE_BASE_ADDRESS - Z_DAT_LOAD_BASE
+    )
+    assert item_sprite_base_id == 7002
+    item_sprite_base_index = item_sprite_base_id // 2
+    item_frames = mmap_frames[
+        item_sprite_base_index : item_sprite_base_index + ITEM_COUNT
+    ]
     assert len(frames) == 9
-    assert len(item_frames) >= 200
+    assert len(item_frames) == ITEM_COUNT
     protagonist = ranger[836 : 836 + 182]
     (level,) = struct.unpack_from("<h", protagonist, 15 * 2)
     parsed_palette = parse_palette(palette)

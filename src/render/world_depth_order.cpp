@@ -119,7 +119,6 @@ LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& inp
                 continue;
             }
 
-            const auto saved_last = result.entries.back();
             for (auto scan_y = cache_y - 1; scan_y >= scan_floor_y; --scan_y) {
                 const auto scan_index = cache_index(cache_x, scan_y);
                 if (owner_x[scan_index] == 0 && owner_y[scan_index] == 0) {
@@ -130,10 +129,11 @@ LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& inp
                 const auto above_is_found = same_owner(
                     result.entries[found_index], owner_x[scan_index], owner_y[scan_index]);
                 if (!above_is_current && !above_is_found) {
+                    const auto current_last = result.entries.back();
                     for (auto move = result.entries.size() - 1U; move > found_index; --move) {
                         result.entries[move] = result.entries[move - 1U];
                     }
-                    result.entries[found_index] = saved_last;
+                    result.entries[found_index] = current_last;
                 }
             }
             scan_floor_y = cache_y + 1;

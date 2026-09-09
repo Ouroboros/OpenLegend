@@ -55,20 +55,41 @@ private:
     std::filesystem::path root_;
 };
 
+[[nodiscard]] std::string format_local_second(const std::time_t seconds) {
+    std::tm local{};
+#if defined(_WIN32)
+    const bool converted = ::localtime_s(&local, &seconds) == 0;
+#else
+    const bool converted = ::localtime_r(&seconds, &local) != nullptr;
+#endif
+    if (!converted) {
+        return {};
+    }
+    char value[20]{};
+    return std::strftime(value, sizeof(value), "%Y-%m-%dT%H:%M:%S", &local) == 0U
+        ? std::string{}
+        : std::string{value};
+}
+
 void check_metadata_and_flush() {
+    const openlegend::test::ScopedTimeZone time_zone{"PST8"};
     const TestTree tree;
     const auto path = tree.path("metadata/openlegend.log");
     OL_CHECK(initialize_logging(path, LogLevel::trace) ==
              LoggingInitializationStatus::initialized);
     OL_CHECK(logging_to_file());
 
+    const auto before = std::time(nullptr);
     const auto message_line = __LINE__ + 1U;
     log_info("first line\nsecond line");
+    const auto after = std::time(nullptr);
     const auto contents = tree.read(path);
     OL_CHECK(contents.size() > 24U);
+    OL_CHECK(contents.starts_with(format_local_second(before)) ||
+             contents.starts_with(format_local_second(after)));
     OL_CHECK(contents[4] == '-' && contents[7] == '-' && contents[10] == 'T' &&
              contents[13] == ':' && contents[16] == ':' && contents[19] == '.' &&
-             contents[23] == 'Z');
+             contents[23] == ' ');
     OL_CHECK(contents.find(" [INFO] [thread=") != std::string::npos);
     OL_CHECK(contents.find(
                  "[log_test.cpp:" + std::to_string(message_line) +

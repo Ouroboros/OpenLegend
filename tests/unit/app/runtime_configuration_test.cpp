@@ -130,6 +130,7 @@ void test_configuration_paths_and_window() {
 }
 
 void test_logging_configuration() {
+    const openlegend::test::ScopedTimeZone time_zone{"PST8"};
     using namespace openlegend::app;
     using openlegend::diagnostics::LogLevel;
     const TemporaryTree tree;
@@ -147,7 +148,7 @@ void test_logging_configuration() {
         missing.path, std::chrono::system_clock::time_point{}, 43U);
     OL_CHECK(first_session ==
              tree.executable_directory() / "logs" /
-                 "openlegend-1970-01-01_00-00-00-42.log");
+                 "openlegend-1969-12-31_16-00-00-42.log");
     OL_CHECK(second_session != first_session);
 
     tree.write_configuration(
@@ -164,7 +165,7 @@ void test_logging_configuration() {
     OL_CHECK(make_session_log_path(
                  loaded.path, std::chrono::system_clock::time_point{}, 7U) ==
              tree.executable_directory() / "diagnostics" /
-                 "session-1970-01-01_00-00-00-7.log");
+                 "session-1969-12-31_16-00-00-7.log");
 
     tree.write_configuration("logging = 7\n");
     OL_CHECK(load_logging_configuration(

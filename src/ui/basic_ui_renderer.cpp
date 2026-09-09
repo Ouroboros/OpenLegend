@@ -197,7 +197,10 @@ template <std::size_t ByteCount>
 BasicUiRenderer::BasicUiRenderer(const resource::DataRoot& data_root)
     : item_sprites_(resource::PackedArchive::open(
           data_root.path() / "MMAP.IDX", data_root.path() / "MMAP.GRP")) {
-    if (!item_sprites_.valid() || item_sprites_.entry_count() < model::kItemCount) {
+    const auto final_item_sprite = render::legacy_item_sprite_index(
+        static_cast<std::int16_t>(model::kItemCount - 1U));
+    if (!item_sprites_.valid() || !final_item_sprite.has_value() ||
+        item_sprites_.entry_count() <= *final_item_sprite) {
         error_ = item_sprites_.valid()
             ? "MMAP archive is missing item icon frames"
             : item_sprites_.error();
@@ -380,6 +383,23 @@ bool BasicUiRenderer::render_game_menu(
     const GameMenuController& menu,
     const model::RangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
+    const auto render_system_menu = [&]() {
+        if (!draw_box(framebuffer, 70, 18, 74U, 72U)) {
+            return false;
+        }
+        for (std::size_t index = 0U; index < kSystemLabels.size(); ++index) {
+            if (!draw_text(
+                    framebuffer,
+                    74,
+                    25 + static_cast<int>(index) * 20,
+                    kSystemLabels[index],
+                    index == menu.system_selection() ? 0x6663U : 0x2321U)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     switch (menu.screen()) {
     case GameMenuScreen::main:
         return render_game_menu_main(menu, framebuffer);
@@ -437,23 +457,11 @@ bool BasicUiRenderer::render_game_menu(
         }
         return false;
     case GameMenuScreen::system:
-        if (!draw_box(framebuffer, 70, 18, 74U, 72U)) {
-            return false;
-        }
-        for (std::size_t index = 0U; index < kSystemLabels.size(); ++index) {
-            if (!draw_text(
-                    framebuffer,
-                    74,
-                    25 + static_cast<int>(index) * 20,
-                    kSystemLabels[index],
-                    index == menu.system_selection() ? 0x6663U : 0x2321U)) {
-                return false;
-            }
-        }
-        return true;
+        return render_game_menu_main(menu, framebuffer) && render_system_menu();
     case GameMenuScreen::load_slots:
     case GameMenuScreen::save_slots:
-        if (!draw_box(framebuffer, 120, 18, 42U, 72U)) {
+        if (!render_game_menu_main(menu, framebuffer) || !render_system_menu() ||
+            !draw_box(framebuffer, 120, 18, 42U, 72U)) {
             return false;
         }
         for (std::size_t index = 0U; index < kSlotLabels.size(); ++index) {
@@ -468,10 +476,9 @@ bool BasicUiRenderer::render_game_menu(
         }
         return true;
     case GameMenuScreen::quit_confirmation:
-        if (!draw_box(framebuffer, 120, 18, 177U, 31U)) {
-            return false;
-        }
-        return draw_text(framebuffer, 124, 25, kQuitPrompt, 0x0705U);
+        return render_game_menu_main(menu, framebuffer) && render_system_menu() &&
+            draw_box(framebuffer, 120, 18, 177U, 31U) &&
+            draw_text(framebuffer, 124, 25, kQuitPrompt, 0x0705U);
     }
     return false;
 }
@@ -778,11 +785,11 @@ bool BasicUiRenderer::draw_item_icon(
     const std::int16_t item_id,
     const int x,
     const int y) const {
-    if (item_id < 0 || static_cast<std::size_t>(item_id) >= item_sprites_.entry_count()) {
+    const auto sprite_index = render::legacy_item_sprite_index(item_id);
+    if (!sprite_index.has_value() || *sprite_index >= item_sprites_.entry_count()) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(
-        item_sprites_.entry(static_cast<std::size_t>(item_id)));
+    const auto frame = resource::SpriteFrameView::parse(item_sprites_.entry(*sprite_index));
     if (!frame.valid()) {
         return false;
     }

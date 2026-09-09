@@ -127,10 +127,13 @@ void run_depth_order_tests() {
     owner_y[index(0, 0)] = 50;
     owner_x[index(0, 1)] = 41;
     owner_y[index(0, 1)] = 50;
-    owner_x[index(0, 2)] = 40;
+    owner_x[index(0, 2)] = 42;
     owner_y[index(0, 2)] = 50;
+    owner_x[index(0, 3)] = 40;
+    owner_y[index(0, 3)] = 50;
     sprites[index(8, 18)] = 100;
     sprites[index(9, 18)] = 200;
+    sprites[index(10, 18)] = 300;
 
     const LegacyWorldDepthInput input{
         owner_x,
@@ -144,11 +147,12 @@ void run_depth_order_tests() {
         std::nullopt};
     const auto result = build_legacy_world_depth_list(input);
     OL_CHECK(static_cast<bool>(result));
-    OL_CHECK(result.entries.size() == 3U);
-    if (result.entries.size() == 3U) {
+    OL_CHECK(result.entries.size() == 4U);
+    if (result.entries.size() == 4U) {
         OL_CHECK(result.entries[0] == (LegacyDepthEntry{41, 50, 200}));
-        OL_CHECK(result.entries[1] == (LegacyDepthEntry{40, 50, 100}));
-        OL_CHECK(result.entries[2] == (LegacyDepthEntry{60, 61, 5000}));
+        OL_CHECK(result.entries[1] == (LegacyDepthEntry{42, 50, 300}));
+        OL_CHECK(result.entries[2] == (LegacyDepthEntry{40, 50, 100}));
+        OL_CHECK(result.entries[3] == (LegacyDepthEntry{60, 61, 5000}));
     }
 
     auto with_ship = input;
@@ -319,6 +323,9 @@ void run_synthetic_sprite_tests() {
     OL_CHECK(legacy_sprite_index(2U) == 1U);
     OL_CHECK(legacy_sprite_index(0x7FFEU) == 0x3FFFU);
     OL_CHECK(!legacy_sprite_index(0x7FFFU));
+    OL_CHECK(!legacy_item_sprite_index(-1));
+    OL_CHECK(legacy_item_sprite_index(0) == 3'501U);
+    OL_CHECK(legacy_item_sprite_index(199) == 3'700U);
 
     const auto frame = SpriteFrameView::parse(bytes);
     OL_CHECK(frame.valid());

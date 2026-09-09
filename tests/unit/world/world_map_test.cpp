@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -206,12 +207,12 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
             6000}};
     const auto depth = openlegend::render::build_legacy_world_depth_list(depth_input);
     OL_CHECK(static_cast<bool>(depth));
-    OL_CHECK(depth.entries.size() == 65U);
-    OL_CHECK(fnv1a64_depth_entries(depth.entries) == 0x5A1FB9A1B7E72989ULL);
+    OL_CHECK(depth.entries.size() == 63U);
+    OL_CHECK(fnv1a64_depth_entries(depth.entries) == 0x0F154DD75CAA172FULL);
 
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(session.render(framebuffer));
-    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x6F6CF22B7C8CB4B8ULL);
+    OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x0604155353F95194ULL);
     OL_CHECK(sprite_has_visible_pixel(sprites, session.player_frame(), framebuffer, 145, 117));
 
     session.periodic_tick();
@@ -227,10 +228,10 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     constexpr std::array<int, 4> cache_x_after_move{65, 65, 64, 64};
     constexpr std::array<int, 4> cache_y_after_move{64, 63, 63, 64};
     constexpr std::array<std::uint64_t, 4> weather_frame_hashes{
-        0x125A8A4075AEAEA6ULL,
-        0x4AC2406E66E4442AULL,
-        0xE24E0A05CD54064EULL,
-        0x0E14CD607B173F30ULL};
+        0x987098441A0196E3ULL,
+        0x3E463372464B5A70ULL,
+        0x0A5AAD5E5C8A4E5CULL,
+        0x70661C7A58C58790ULL};
     for (std::size_t index = 0U; index < directions.size(); ++index) {
         const auto result = session.move(directions[index]);
         OL_CHECK(result.kind == WorldStepKind::moved);
@@ -745,6 +746,67 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     check_land_collision(458, 311, WorldDirection::right, WorldStepKind::stay);
 }
 
+void check_reported_player_depth_coordinates(const std::filesystem::path& root) {
+    using namespace openlegend::world;
+    const openlegend::resource::DataRoot data_root{root};
+    const WorldMapData map{data_root};
+    const auto sprites = openlegend::resource::PackedArchive::open(
+        root / "MMAP.IDX", root / "MMAP.GRP");
+    OL_CHECK(map.valid());
+    OL_CHECK(sprites.valid());
+    auto snapshot = load_baseline(root);
+    constexpr std::array<std::size_t, 6U> expected_entry_counts{53U, 49U, 43U, 39U, 36U, 35U};
+    constexpr std::array<std::uint64_t, 6U> expected_depth_hashes{
+        0x3F1C0C4AAA355FA6ULL,
+        0xCA1301D37306F245ULL,
+        0x27C220E83A6F018DULL,
+        0x100B096CA3884CC0ULL,
+        0x79F4C7E633D3CA9FULL,
+        0x59DAFBE0BE8870F1ULL};
+
+    for (std::int16_t world_y = 237; world_y <= 242; ++world_y) {
+        snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_x, 357);
+        snapshot.ranger.header.set_word(openlegend::model::header_word::main_map_y, world_y);
+        openlegend::random::LegacyRandom random{1U};
+        WorldSession session{data_root, map, snapshot.ranger, random};
+        OL_CHECK(session.valid());
+
+        const auto ship_x = snapshot.ranger.header.word(openlegend::model::header_word::ship_x);
+        const auto ship_y = snapshot.ranger.header.word(openlegend::model::header_word::ship_y);
+        const openlegend::render::LegacyWorldDepthInput depth_input{
+            session.cache().layer(WorldLayer::build_x),
+            session.cache().layer(WorldLayer::build_y),
+            session.cache().layer(WorldLayer::building),
+            session.cache_x(),
+            session.cache_y(),
+            session.cache().origin_x(),
+            session.cache().origin_y(),
+            {357, world_y, session.cache_x(), session.cache_y(), 5000},
+            openlegend::render::LegacyDepthActor{
+                ship_x,
+                ship_y,
+                static_cast<int>(ship_x) - session.cache().origin_x(),
+                static_cast<int>(ship_y) - session.cache().origin_y(),
+                6000}};
+        const auto depth = openlegend::render::build_legacy_world_depth_list(depth_input);
+        OL_CHECK(static_cast<bool>(depth));
+        const auto expected_index = static_cast<std::size_t>(world_y - 237);
+        OL_CHECK(depth.entries.size() == expected_entry_counts[expected_index]);
+        OL_CHECK(fnv1a64_depth_entries(depth.entries) == expected_depth_hashes[expected_index]);
+        OL_CHECK(std::count_if(
+                     depth.entries.begin(),
+                     depth.entries.end(),
+                     [](const openlegend::render::LegacyDepthEntry& entry) {
+                         return entry.sprite_id == 5000;
+                     }) == 1);
+
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render(framebuffer));
+        OL_CHECK(sprite_has_visible_pixel(
+            sprites, session.player_frame(), framebuffer, 145, 117));
+    }
+}
+
 void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     using namespace openlegend::world;
     const openlegend::resource::DataRoot data_root{root};
@@ -798,7 +860,7 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     }
     openlegend::render::IndexedFramebuffer weather_frame;
     OL_CHECK(weather.render(weather_frame));
-    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0xDFF4C0D05BD3426BULL);
+    OL_CHECK(fnv1a64(weather_frame.pixels()) == 0x13FFDF5A526DF55BULL);
 
     openlegend::random::LegacyRandom idle_random{1U};
     WorldSession idle{data_root, map, snapshot.ranger, idle_random};
@@ -971,6 +1033,7 @@ int main() {
     const auto root = openlegend::test::game_data_root();
     check_layers_and_cache(root);
     check_initial_render_and_trace(root);
+    check_reported_player_depth_coordinates(root);
     check_periodic_rng_and_recovery(root);
     return openlegend::test::failures == 0 ? 0 : 1;
 }

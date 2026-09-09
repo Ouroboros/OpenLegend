@@ -43,9 +43,102 @@
       "BUILDX.002": "0x8a4e260a5a0773ef",
       "BUILDY.002": "0xddc443349d365081"
     },
-    "framebuffer_sha256": "8b925f9bb4d8378cd9a134965e0ae95e56e85360036a38f64387e073a486bc2a",
-    "framebuffer_fnv1a64": "0x6f6cf22b7c8cb4b8"
+    "depth": {
+      "entry_count": 63,
+      "player_entry_count": 1,
+      "sha256_int16le": "cda9d7d70ab1b8949f982c2d5f149e4a37b19f035820d3c76004460d65e78bc6",
+      "fnv1a64_int16le": "0x0f154dd75caa172f"
+    },
+    "framebuffer_independent_of_initial_fill": true,
+    "framebuffer_sha256": "b274413305051568e2a2b1d2885b3a4b747b99423deabc30c8eba19188daf9bd",
+    "framebuffer_fnv1a64": "0x0604155353f95194"
   },
+  "reported_player_depth_coordinates": [
+    {
+      "world": [
+        357,
+        237
+      ],
+      "cache_origin": [
+        293,
+        173
+      ],
+      "entry_count": 53,
+      "player_entry_count": 1,
+      "sha256_int16le": "5e595526c1cd47f25ad6fb64f548dd58f53adc17c7ff0f65cc47adbf95d33247",
+      "fnv1a64_int16le": "0x3f1c0c4aaa355fa6"
+    },
+    {
+      "world": [
+        357,
+        238
+      ],
+      "cache_origin": [
+        293,
+        174
+      ],
+      "entry_count": 49,
+      "player_entry_count": 1,
+      "sha256_int16le": "8652a2fcc2350f61895cb3bd3d27746117e93fa4b426a039f72fb6215f91761e",
+      "fnv1a64_int16le": "0xca1301d37306f245"
+    },
+    {
+      "world": [
+        357,
+        239
+      ],
+      "cache_origin": [
+        293,
+        175
+      ],
+      "entry_count": 43,
+      "player_entry_count": 1,
+      "sha256_int16le": "4df282044cbd103c11af99a226f354fad784b1ce5f92c0977832c5f79551c9df",
+      "fnv1a64_int16le": "0x27c220e83a6f018d"
+    },
+    {
+      "world": [
+        357,
+        240
+      ],
+      "cache_origin": [
+        293,
+        176
+      ],
+      "entry_count": 39,
+      "player_entry_count": 1,
+      "sha256_int16le": "243bc29d4f88620355b1131a92e26efc6fa715626ab6af1a7957fc17b5d027ff",
+      "fnv1a64_int16le": "0x100b096ca3884cc0"
+    },
+    {
+      "world": [
+        357,
+        241
+      ],
+      "cache_origin": [
+        293,
+        177
+      ],
+      "entry_count": 36,
+      "player_entry_count": 1,
+      "sha256_int16le": "ba53e35ec253bd65607abe8c98ccff5f58d1cf9265317d1dca3291c676c86f90",
+      "fnv1a64_int16le": "0x79f4c7e633d3ca9f"
+    },
+    {
+      "world": [
+        357,
+        242
+      ],
+      "cache_origin": [
+        293,
+        178
+      ],
+      "entry_count": 35,
+      "player_entry_count": 1,
+      "sha256_int16le": "af461bd3df53876c8e3f7c07ef424f62ef0f6e82d620c6d93d1eb275428346f6",
+      "fnv1a64_int16le": "0x59dafbe0be8870f1"
+    }
+  ],
   "rgb4_palette_lookup": {
     "source_palette_sha256": "534ac556653edae875a34321baa9d0f63291291f101d346ef1ae75ab25e78f3a",
     "table_size": 4096,
@@ -109,6 +202,48 @@
     "unique_palette_indexes": 235,
     "index0_cells": 0
   },
+  "movement_frames_after_weather_start": [
+    {
+      "direction": "right",
+      "world": [
+        358,
+        235
+      ],
+      "player_frame": 5018,
+      "framebuffer_sha256": "9fe7de0e8b053230e87a1d6161e9878632b1615fe73973530abf30f253cff719",
+      "framebuffer_fnv1a64": "0x987098441a0196e3"
+    },
+    {
+      "direction": "up",
+      "world": [
+        358,
+        234
+      ],
+      "player_frame": 5006,
+      "framebuffer_sha256": "6d103f2b864f5628fa02bd74ab343f953fecdae3c1534aa103afe37407bb5f93",
+      "framebuffer_fnv1a64": "0x3e463372464b5a70"
+    },
+    {
+      "direction": "left",
+      "world": [
+        357,
+        234
+      ],
+      "player_frame": 5036,
+      "framebuffer_sha256": "ab8a8dcc779748d48a59d689946061d2302859b5cdd0dceb071ce8e13e3fbed9",
+      "framebuffer_fnv1a64": "0x0a5aad5e5c8a4e5c"
+    },
+    {
+      "direction": "down",
+      "world": [
+        357,
+        235
+      ],
+      "player_frame": 5052,
+      "framebuffer_sha256": "5cf54975c3c11edac68226b17cbd5f69d62dc0292e0b224808de57a7df6791f5",
+      "framebuffer_fnv1a64": "0x70661c7a58c58790"
+    }
+  ],
   "weather_after_300_ticks": {
     "particles": [
       {
@@ -131,8 +266,8 @@
       }
     ],
     "random_state": "0xaf1cf0fb",
-    "framebuffer_sha256": "e8a96eda7898d8fc13ca270754b1d10b5cf05e0994db8cc82d3218aecf00a313",
-    "framebuffer_fnv1a64": "0xdff4c0d05bd3426b"
+    "framebuffer_sha256": "0b7218a31282f9452192da884d6f92c7db8db7c50560514645d1ac5a74052190",
+    "framebuffer_fnv1a64": "0x13ffdf5a526df55b"
   },
   "initial_left_probe": {
     "target": [
