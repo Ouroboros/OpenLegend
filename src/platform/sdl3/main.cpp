@@ -32,6 +32,31 @@
 namespace {
 
 constexpr openlegend::app::WindowSize kDefaultWindowSize{960, 600};
+constexpr std::chrono::milliseconds kDefaultMovementRepeatDelay{500};
+
+[[nodiscard]] bool is_movement_direction_key(
+    const openlegend::compat::HostKey key) noexcept {
+    using openlegend::compat::HostKey;
+    switch (key) {
+    case HostKey::left:
+    case HostKey::up:
+    case HostKey::down:
+    case HostKey::right:
+    case HostKey::keypad_4:
+    case HostKey::keypad_8:
+    case HostKey::keypad_2:
+    case HostKey::keypad_6:
+        return true;
+    default:
+        return false;
+    }
+}
+
+[[nodiscard]] bool accepts_movement_repeat(
+    const openlegend::app::LegacyGameView view) noexcept {
+    return view == openlegend::app::LegacyGameView::world ||
+        view == openlegend::app::LegacyGameView::scene;
+}
 
 [[nodiscard]] std::uint64_t current_process_id() noexcept {
 #if defined(_WIN32)
@@ -223,10 +248,21 @@ int main(const int argc, const char* const* argv) {
             app::window_configuration_status_message(window_configuration.status),
             window_configuration.detail);
     }
+    const auto input_configuration =
+        app::load_input_configuration(configuration_path, kDefaultMovementRepeatDelay);
+    if (input_configuration.status != app::InputConfigurationStatus::ready) {
+        report_configuration_error(
+            "input configuration",
+            app::input_configuration_status_message(input_configuration.status),
+            input_configuration.detail);
+    }
 
     diagnostics::log_info(
         "resolved data_directory=" + path_utf8(data_directory.directory) +
         " source=" + std::to_string(static_cast<int>(data_directory.source)));
+    diagnostics::log_info(
+        "input movement_repeat_delay_ms=" +
+        std::to_string(input_configuration.movement_repeat_delay.count()));
     if (!app::activate_data_directory(data_directory.directory, path_error)) {
         report_configuration_error("game data directory", path_error.message());
         return 3;
@@ -333,63 +369,97 @@ int main(const int argc, const char* const* argv) {
             break;
         }
     };
+    const auto dispatch_key_down =
+        [&game, &keyboard, &sync_battle_confirmation](
+            const compat::HostKey key,
+            const bool repeat,
+            const std::uint32_t frame_tick) {
+            keyboard.handle_host_key(key, true);
+            sync_battle_confirmation();
+            const auto translated_key = keyboard.last_key();
+            diagnostics::log_debug(
+                "host key_down key=" + std::to_string(static_cast<int>(key)) +
+                " repeat=" + (repeat ? std::string{"true"} : std::string{"false"}) +
+                " translated=" + std::to_string(translated_key));
+            if (translated_key == 0U) {
+                return;
+            }
+            const bool defer_world_menu =
+                translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
+            const bool defer_scene_input = game.scene_loop_uses_key_states() &&
+                (translated_key == 0x1BU ||
+                 translated_key == static_cast<std::uint8_t>('L') ||
+                 translated_key == 0x0DU || translated_key == 0x20U ||
+                 translated_key == 0x96U);
+            if (!defer_world_menu && !defer_scene_input &&
+                !game.battle_menu_uses_key_states()) {
+                const auto key_state_reset = game.handle_key(
+                    translated_key,
+                    keyboard.down(0x82U),
+                    keyboard.down(0x83U) || keyboard.down(0x84U),
+                    frame_tick);
+                if (key_state_reset == app::LegacyKeyStateReset::edge) {
+                    keyboard.consume_edge(translated_key);
+                } else if (key_state_reset == app::LegacyKeyStateReset::translated) {
+                    keyboard.clear_state(translated_key);
+                } else if (key_state_reset == app::LegacyKeyStateReset::down_translated) {
+                    keyboard.clear_state(input::kLegacyDownKey);
+                } else if (key_state_reset == app::LegacyKeyStateReset::confirmation_group) {
+                    keyboard.clear_confirmation_states();
+                } else if (translated_key == 0x1BU) {
+                    keyboard.consume_edge(0x1BU);
+                }
+            }
+            keyboard.clear_last_key();
+        };
+    std::optional<compat::HostKey> held_movement_direction;
+    std::chrono::steady_clock::time_point movement_repeat_at{};
     timing::SteadyBiosTickSource tick_source;
     timing::SteadyVgaRetraceSource retrace_source;
     bool running = true;
     while (running) {
         const auto frame_tick = tick_source.tick();
         const auto frame_retrace = retrace_source.tick();
+        const auto input_now = std::chrono::steady_clock::now();
+        bool movement_direction_pressed{};
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
                 diagnostics::log_info("host quit event");
                 running = false;
             } else if (event.type == compat::HostEventType::key_down) {
-                keyboard.handle_host_key(event.key, true);
-                sync_battle_confirmation();
-                const auto translated_key = keyboard.last_key();
-                diagnostics::log_debug(
-                    "host key_down key=" + std::to_string(static_cast<int>(event.key)) +
-                    " repeat=" + (event.repeat ? std::string{"true"} : std::string{"false"}) +
-                    " translated=" + std::to_string(translated_key));
-                if (translated_key != 0U) {
-                    const bool defer_world_menu =
-                        translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
-                    const bool defer_scene_input = game.scene_loop_uses_key_states() &&
-                        (translated_key == 0x1BU ||
-                         translated_key == static_cast<std::uint8_t>('L') ||
-                         translated_key == 0x0DU || translated_key == 0x20U ||
-                         translated_key == 0x96U);
-                    if (!defer_world_menu && !defer_scene_input &&
-                        !game.battle_menu_uses_key_states()) {
-                        const auto key_state_reset = game.handle_key(
-                            translated_key,
-                            keyboard.down(0x82U),
-                            keyboard.down(0x83U) || keyboard.down(0x84U),
-                            frame_tick);
-                        if (key_state_reset == app::LegacyKeyStateReset::edge) {
-                            keyboard.consume_edge(translated_key);
-                        } else if (key_state_reset == app::LegacyKeyStateReset::translated) {
-                            keyboard.clear_state(translated_key);
-                        } else if (
-                            key_state_reset == app::LegacyKeyStateReset::down_translated) {
-                            keyboard.clear_state(input::kLegacyDownKey);
-                        } else if (
-                            key_state_reset == app::LegacyKeyStateReset::confirmation_group) {
-                            keyboard.clear_confirmation_states();
-                        } else if (translated_key == 0x1BU) {
-                            keyboard.consume_edge(0x1BU);
-                        }
-                    }
-                    keyboard.clear_last_key();
+                const bool controlled_direction =
+                    is_movement_direction_key(event.key) &&
+                    accepts_movement_repeat(game.view());
+                if (controlled_direction && !event.repeat) {
+                    held_movement_direction = event.key;
+                    movement_repeat_at =
+                        input_now + input_configuration.movement_repeat_delay;
+                    movement_direction_pressed = true;
+                }
+                if (!controlled_direction || !event.repeat) {
+                    dispatch_key_down(event.key, event.repeat, frame_tick);
                 }
             } else if (event.type == compat::HostEventType::key_up) {
+                if (held_movement_direction == event.key) {
+                    held_movement_direction.reset();
+                }
                 keyboard.handle_host_key(event.key, false);
                 diagnostics::log_debug(
                     "host key_up key=" + std::to_string(static_cast<int>(event.key)));
             }
             sync_scene_input_reset();
             sync_battle_confirmation();
+        }
+        if (!accepts_movement_repeat(game.view())) {
+            if (held_movement_direction.has_value()) {
+                movement_repeat_at =
+                    input_now + input_configuration.movement_repeat_delay;
+            }
+        } else if (!movement_direction_pressed && held_movement_direction.has_value() &&
+                   std::chrono::steady_clock::now() >= movement_repeat_at) {
+            keyboard.handle_host_key(*held_movement_direction, false);
+            dispatch_key_down(*held_movement_direction, true, frame_tick);
         }
         sync_scene_input_reset();
         sync_battle_confirmation();
@@ -417,6 +487,10 @@ int main(const int argc, const char* const* argv) {
         sync_battle_confirmation();
         if (game.take_clear_scene_exit_key_states_request()) {
             keyboard.clear_scene_exit_key_states();
+            if (held_movement_direction.has_value()) {
+                movement_repeat_at = std::chrono::steady_clock::now() +
+                    input_configuration.movement_repeat_delay;
+            }
         }
         for (const auto& command : game.take_scene_audio_commands()) {
             if (command.id < 0) {

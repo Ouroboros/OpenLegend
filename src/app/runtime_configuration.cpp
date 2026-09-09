@@ -394,6 +394,39 @@ WindowConfigurationStatus save_window_configuration(
     return WindowConfigurationStatus::ready;
 }
 
+InputConfigurationLoadResult load_input_configuration(
+    const std::filesystem::path& configuration_path,
+    const std::chrono::milliseconds fallback_movement_repeat_delay) {
+    InputConfigurationLoadResult result;
+    result.movement_repeat_delay = fallback_movement_repeat_delay;
+
+    toml::table document;
+    if (!read_existing_document(
+            configuration_path, document, result.status, result.detail)) {
+        return result;
+    }
+    const toml::node* input_node = document.get("input");
+    if (input_node == nullptr) {
+        return result;
+    }
+    const toml::table* input = input_node->as_table();
+    if (input == nullptr) {
+        result.status = InputConfigurationStatus::invalid_input_table;
+        return result;
+    }
+    if (const toml::node* delay_node = input->get("movement_repeat_delay_ms");
+        delay_node != nullptr) {
+        const auto delay = delay_node->value<std::int64_t>();
+        if (!delay.has_value() || *delay < 0) {
+            result.status = InputConfigurationStatus::invalid_movement_repeat_delay;
+            return result;
+        }
+        result.movement_repeat_delay = std::chrono::milliseconds{*delay};
+    }
+    result.loaded_from_file = true;
+    return result;
+}
+
 LoggingConfigurationLoadResult load_logging_configuration(
     const std::filesystem::path& configuration_path,
     const std::filesystem::path& executable_directory,
@@ -503,6 +536,23 @@ std::string_view logging_configuration_status_message(
         return "[logging] level must be trace, debug, info, warning, error, or critical";
     }
     return "unknown logging configuration status";
+}
+
+std::string_view input_configuration_status_message(
+    const InputConfigurationStatus status) noexcept {
+    switch (status) {
+    case InputConfigurationStatus::ready:
+        return "ready";
+    case InputConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case InputConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case InputConfigurationStatus::invalid_input_table:
+        return "[input] must be a TOML table";
+    case InputConfigurationStatus::invalid_movement_repeat_delay:
+        return "[input] movement_repeat_delay_ms must be a non-negative integer";
+    }
+    return "unknown input configuration status";
 }
 
 std::string_view window_configuration_status_message(

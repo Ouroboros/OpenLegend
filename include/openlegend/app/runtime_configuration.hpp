@@ -90,6 +90,28 @@ struct WindowConfigurationLoadResult {
 [[nodiscard]] std::string_view window_configuration_status_message(
     WindowConfigurationStatus status) noexcept;
 
+enum class InputConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_input_table,
+    invalid_movement_repeat_delay,
+};
+
+struct InputConfigurationLoadResult {
+    InputConfigurationStatus status{InputConfigurationStatus::ready};
+    std::chrono::milliseconds movement_repeat_delay{};
+    bool loaded_from_file{};
+    std::string detail;
+};
+
+[[nodiscard]] InputConfigurationLoadResult load_input_configuration(
+    const std::filesystem::path& configuration_path,
+    std::chrono::milliseconds fallback_movement_repeat_delay);
+
+[[nodiscard]] std::string_view input_configuration_status_message(
+    InputConfigurationStatus status) noexcept;
+
 enum class LoggingConfigurationStatus {
     ready,
     read_failed,

@@ -15,6 +15,12 @@
 path = "logs/openlegend.log"
 level = "info"
 
+[input]
+
+# Delay after the first movement before a held direction starts repeating.
+# Use 0 for immediate continuous movement.
+movement_repeat_delay_ms = 500
+
 [window]
 
 # OpenLegend always renders internally at 320x200. These values only control
