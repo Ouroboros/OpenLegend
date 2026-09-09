@@ -33,6 +33,7 @@ namespace {
 
 constexpr openlegend::app::WindowSize kDefaultWindowSize{960, 600};
 constexpr std::chrono::milliseconds kDefaultMovementRepeatDelay{500};
+constexpr std::chrono::nanoseconds kDefaultFadeFrameDelay{14'268'123};
 
 [[nodiscard]] bool is_movement_direction_key(
     const openlegend::compat::HostKey key) noexcept {
@@ -256,13 +257,24 @@ int main(const int argc, const char* const* argv) {
             app::input_configuration_status_message(input_configuration.status),
             input_configuration.detail);
     }
+    const auto timing_configuration =
+        app::load_timing_configuration(configuration_path, kDefaultFadeFrameDelay);
+    if (timing_configuration.status != app::TimingConfigurationStatus::ready) {
+        report_configuration_error(
+            "timing configuration",
+            app::timing_configuration_status_message(timing_configuration.status),
+            timing_configuration.detail);
+    }
 
     diagnostics::log_info(
         "resolved data_directory=" + path_utf8(data_directory.directory) +
         " source=" + std::to_string(static_cast<int>(data_directory.source)));
     diagnostics::log_info(
         "input movement_repeat_delay_ms=" +
-        std::to_string(input_configuration.movement_repeat_delay.count()));
+        std::to_string(input_configuration.movement_repeat_delay.count()) +
+        " fade_frame_delay_us=" +
+        std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
+            timing_configuration.fade_frame_delay).count()));
     if (!app::activate_data_directory(data_directory.directory, path_error)) {
         report_configuration_error("game data directory", path_error.message());
         return 3;
@@ -415,7 +427,8 @@ int main(const int argc, const char* const* argv) {
     std::optional<compat::HostKey> held_movement_direction;
     std::chrono::steady_clock::time_point movement_repeat_at{};
     timing::SteadyBiosTickSource tick_source;
-    timing::SteadyVgaRetraceSource retrace_source;
+    timing::SteadyVgaRetraceSource retrace_source{
+        timing_configuration.fade_frame_delay};
     bool running = true;
     while (running) {
         const auto frame_tick = tick_source.tick();
@@ -550,10 +563,11 @@ int main(const int argc, const char* const* argv) {
         if (smoke_test) {
             running = false;
         } else if (running && !game.needs_immediate_frame(tick_source.tick())) {
-            if (vga_frame) {
+            if (vga_frame &&
+                timing_configuration.fade_frame_delay > std::chrono::nanoseconds::zero()) {
                 static_cast<void>(
                     timing::wait_for_tick_change(retrace_source, frame_retrace));
-            } else {
+            } else if (!vga_frame) {
                 static_cast<void>(timing::wait_for_tick_change(tick_source, frame_tick));
             }
         }

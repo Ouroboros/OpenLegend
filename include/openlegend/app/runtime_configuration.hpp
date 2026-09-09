@@ -112,6 +112,28 @@ struct InputConfigurationLoadResult {
 [[nodiscard]] std::string_view input_configuration_status_message(
     InputConfigurationStatus status) noexcept;
 
+enum class TimingConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_timing_table,
+    invalid_fade_frame_delay,
+};
+
+struct TimingConfigurationLoadResult {
+    TimingConfigurationStatus status{TimingConfigurationStatus::ready};
+    std::chrono::nanoseconds fade_frame_delay{};
+    bool loaded_from_file{};
+    std::string detail;
+};
+
+[[nodiscard]] TimingConfigurationLoadResult load_timing_configuration(
+    const std::filesystem::path& configuration_path,
+    std::chrono::nanoseconds fallback_fade_frame_delay);
+
+[[nodiscard]] std::string_view timing_configuration_status_message(
+    TimingConfigurationStatus status) noexcept;
+
 enum class LoggingConfigurationStatus {
     ready,
     read_failed,

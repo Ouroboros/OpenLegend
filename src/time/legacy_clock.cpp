@@ -33,26 +33,30 @@ void SteadyBiosTickSource::idle() noexcept {
 }
 
 SteadyVgaRetraceSource::SteadyVgaRetraceSource() noexcept
-    : origin_(std::chrono::steady_clock::now()) {}
+    : SteadyVgaRetraceSource(std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::duration<long double>{
+              static_cast<long double>(kVgaClocksPerFrame) /
+              static_cast<long double>(kVgaPixelClock)})) {}
+
+SteadyVgaRetraceSource::SteadyVgaRetraceSource(
+    const std::chrono::nanoseconds frame_period) noexcept
+    : origin_(std::chrono::steady_clock::now()),
+      frame_period_(frame_period > std::chrono::nanoseconds::zero()
+              ? frame_period
+              : std::chrono::nanoseconds{1}) {}
 
 std::uint32_t SteadyVgaRetraceSource::tick() const noexcept {
-    const auto elapsed = std::chrono::duration<long double>(
+    const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::steady_clock::now() - origin_);
-    const auto frames = elapsed.count() * static_cast<long double>(kVgaPixelClock) /
-        static_cast<long double>(kVgaClocksPerFrame);
-    return static_cast<std::uint32_t>(static_cast<std::uint64_t>(std::floor(frames)));
+    return static_cast<std::uint32_t>(
+        static_cast<std::uint64_t>(elapsed.count() / frame_period_.count()));
 }
 
 void SteadyVgaRetraceSource::idle() noexcept {
-    const auto elapsed = std::chrono::duration<long double>(
+    const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::steady_clock::now() - origin_);
-    const auto frames = elapsed.count() * static_cast<long double>(kVgaPixelClock) /
-        static_cast<long double>(kVgaClocksPerFrame);
-    const auto next_frame_offset = std::chrono::duration<long double>{
-        (std::floor(frames) + 1.0L) * static_cast<long double>(kVgaClocksPerFrame) /
-        static_cast<long double>(kVgaPixelClock)};
-    std::this_thread::sleep_until(origin_ +
-        std::chrono::ceil<std::chrono::steady_clock::duration>(next_frame_offset));
+    const auto next_frame = elapsed.count() / frame_period_.count() + 1;
+    std::this_thread::sleep_until(origin_ + frame_period_ * next_frame);
 }
 
 std::int32_t legacy_delay_tick_count(const std::int32_t argument) noexcept {

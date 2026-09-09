@@ -3,6 +3,7 @@
 #include <toml++/toml.hpp>
 
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <ctime>
@@ -427,6 +428,49 @@ InputConfigurationLoadResult load_input_configuration(
     return result;
 }
 
+TimingConfigurationLoadResult load_timing_configuration(
+    const std::filesystem::path& configuration_path,
+    const std::chrono::nanoseconds fallback_fade_frame_delay) {
+    TimingConfigurationLoadResult result;
+    result.fade_frame_delay = fallback_fade_frame_delay;
+
+    toml::table document;
+    if (!read_existing_document(
+            configuration_path, document, result.status, result.detail)) {
+        return result;
+    }
+    const toml::node* timing_node = document.get("timing");
+    if (timing_node == nullptr) {
+        return result;
+    }
+    const toml::table* timing = timing_node->as_table();
+    if (timing == nullptr) {
+        result.status = TimingConfigurationStatus::invalid_timing_table;
+        return result;
+    }
+    if (const toml::node* delay_node = timing->get("fade_frame_delay_ms");
+        delay_node != nullptr) {
+        std::optional<long double> delay_ms;
+        if (const auto* integer = delay_node->as_integer(); integer != nullptr) {
+            delay_ms = static_cast<long double>(integer->get());
+        } else if (const auto* floating = delay_node->as_floating_point();
+                   floating != nullptr) {
+            delay_ms = static_cast<long double>(floating->get());
+        }
+        const auto maximum_ms = std::chrono::duration<long double, std::milli>{
+            std::chrono::nanoseconds::max()}.count();
+        if (!delay_ms.has_value() || !std::isfinite(*delay_ms) || *delay_ms < 0.0L ||
+            *delay_ms > maximum_ms) {
+            result.status = TimingConfigurationStatus::invalid_fade_frame_delay;
+            return result;
+        }
+        result.fade_frame_delay = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::duration<long double, std::milli>{*delay_ms});
+    }
+    result.loaded_from_file = true;
+    return result;
+}
+
 LoggingConfigurationLoadResult load_logging_configuration(
     const std::filesystem::path& configuration_path,
     const std::filesystem::path& executable_directory,
@@ -553,6 +597,23 @@ std::string_view input_configuration_status_message(
         return "[input] movement_repeat_delay_ms must be a non-negative integer";
     }
     return "unknown input configuration status";
+}
+
+std::string_view timing_configuration_status_message(
+    const TimingConfigurationStatus status) noexcept {
+    switch (status) {
+    case TimingConfigurationStatus::ready:
+        return "ready";
+    case TimingConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case TimingConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case TimingConfigurationStatus::invalid_timing_table:
+        return "[timing] must be a TOML table";
+    case TimingConfigurationStatus::invalid_fade_frame_delay:
+        return "[timing] fade_frame_delay_ms must be a non-negative number";
+    }
+    return "unknown timing configuration status";
 }
 
 std::string_view window_configuration_status_message(

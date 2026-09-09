@@ -34,12 +34,14 @@ private:
 class SteadyVgaRetraceSource final : public TickSource {
 public:
     SteadyVgaRetraceSource() noexcept;
+    explicit SteadyVgaRetraceSource(std::chrono::nanoseconds frame_period) noexcept;
 
     [[nodiscard]] std::uint32_t tick() const noexcept override;
     void idle() noexcept override;
 
 private:
     std::chrono::steady_clock::time_point origin_;
+    std::chrono::nanoseconds frame_period_;
 };
 
 [[nodiscard]] std::int32_t legacy_delay_tick_count(std::int32_t argument) noexcept;

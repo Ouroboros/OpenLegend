@@ -21,6 +21,12 @@ level = "info"
 # Use 0 for immediate continuous movement.
 movement_repeat_delay_ms = 500
 
+[timing]
+
+# Delay between FI/FO palette frames. The default matches VGA mode 13h.
+# Use 0 to present fade frames without waiting.
+fade_frame_delay_ms = 14.268
+
 [window]
 
 # OpenLegend always renders internally at 320x200. These values only control
