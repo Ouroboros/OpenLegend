@@ -98,6 +98,27 @@ struct LegacyGameRuntimeTestAccess {
                runtime.scene_session_->pending().death_confirm;
     }
 
+    static bool begin_scene_walk(LegacyGameRuntime& runtime) {
+        auto* snapshot = runtime.game_state_.snapshot();
+        if (snapshot == nullptr) {
+            return false;
+        }
+        // Isolate ordinary walking from the inn's exit and automatic events.
+        auto& metadata = snapshot->ranger.scenes[70U];
+        for (std::size_t index = 0U; index < model::scene_metadata_word::exit_count; ++index) {
+            metadata.set_word(model::scene_metadata_word::exit_x_begin + index, -1);
+            metadata.set_word(model::scene_metadata_word::exit_y_begin + index, -1);
+        }
+        metadata.set_word(model::scene_metadata_word::jump_scene, -1);
+        if (!snapshot->set_scene_value(70U, model::SceneLayer::event_index, 29U * 64U + 45U, -1) ||
+            !snapshot->set_scene_value(70U, model::SceneLayer::event_index, 28U * 64U + 45U, -1)) {
+            return false;
+        }
+        return runtime.start_scene(
+            70, LegacyGameView::scene,
+            scene::SceneEntryOverride{44, 29, scene::SceneDirection::right, -1, -1});
+    }
+
     static bool begin_battle_in_scene(
         LegacyGameRuntime& runtime, const std::int16_t battle_id) {
         if (!runtime.start_scene(
@@ -1067,6 +1088,43 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(prepare_runtime_fixture(data_root, idle_counter_fixture));
     OL_CHECK(persistence::write_numbered_slot(
         idle_counter_fixture, persistence::SaveSlot::one, idle_counter_snapshot));
+    {
+        app::LegacyGameRuntime walk{idle_counter_fixture, 0U};
+        OL_CHECK(walk.valid());
+        finish_title_startup(walk);
+        walk.handle_key(0x98U, false, false);
+        walk.handle_key(0x0DU, false, false);
+        walk.handle_key(0x0DU, false, false);
+        finish_title_confirmation(walk);
+        OL_CHECK(walk.render());
+        walk.finish_presented_tick();
+        walk.advance();
+        finish_numbered_load_transition(walk, app::LegacyGameView::world);
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::begin_scene_walk(walk));
+        finish_scene_entry(walk);
+        OL_CHECK(walk.render());
+        walk.finish_presented_tick(700U);
+        // Z.DAT 0x28F66..0x292BB: one movement per loop, one tick wait at
+        // its tail. Present acknowledgement must not occupy the next tick.
+        for (std::uint32_t step = 0U; step < 13U; ++step) {
+            OL_CHECK(walk.scene_loop_uses_key_states());
+            const bool right = step == 0U;
+            const bool up = step % 2U == 1U;
+            const bool down = !right && !up;
+            OL_CHECK(walk.handle_world_input(false, up, down, right));
+            walk.advance(701U + step);
+            const auto* ranger = walk.game_state().ranger();
+            OL_CHECK(ranger != nullptr);
+            if (ranger != nullptr) {
+                OL_CHECK(ranger->header.word(model::header_word::sub_map_x) == 45);
+                OL_CHECK(ranger->header.word(model::header_word::sub_map_y) == (up ? 28 : 29));
+            }
+            OL_CHECK(walk.render());
+            walk.finish_presented_tick(701U + step);
+            OL_CHECK(walk.scene_loop_uses_key_states());
+            OL_CHECK(!walk.needs_immediate_frame(701U + step));
+        }
+    }
     {
         app::LegacyGameRuntime idle_counter{idle_counter_fixture, 0U};
         OL_CHECK(idle_counter.valid());
@@ -2950,14 +3008,17 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(!game.take_clear_battle_confirmation_states_request());
     game.set_battle_confirmation_state(false);
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+    OL_CHECK(game.needs_immediate_frame(100U));
     OL_CHECK(!game.battle_menu_uses_key_states());
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action_initial_present);
+    OL_CHECK(game.needs_immediate_frame(100U));
     OL_CHECK(game.battle_menu_uses_key_states());
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+    OL_CHECK(!game.needs_immediate_frame(100U));
     OL_CHECK(game.battle_menu_uses_key_states());
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);

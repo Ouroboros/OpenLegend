@@ -461,6 +461,10 @@ int main(const int argc, const char* const* argv) {
                 return 7;
             }
             game.finish_presented_tick(tick_source.tick());
+            sync_scene_input_reset();
+            if (game.take_clear_scene_exit_key_states_request()) {
+                keyboard.clear_scene_exit_key_states();
+            }
             sync_battle_confirmation();
             diagnostics::log_trace(
                 "frame presented tick=" + std::to_string(frame_tick) +
@@ -468,7 +472,7 @@ int main(const int argc, const char* const* argv) {
         }
         if (smoke_test) {
             running = false;
-        } else if (running) {
+        } else if (running && !game.needs_immediate_frame(tick_source.tick())) {
             static_cast<void>(timing::wait_for_tick_change(tick_source, frame_tick));
         }
     }

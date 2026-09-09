@@ -188,6 +188,7 @@ public:
     }
     [[nodiscard]] std::size_t fade_frame() const noexcept { return fade_frame_; }
     [[nodiscard]] bool frame_rendered() const noexcept { return frame_rendered_; }
+    [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
     [[nodiscard]] const BattleRenderState& render_state() const noexcept {
         return render_state_;
     }

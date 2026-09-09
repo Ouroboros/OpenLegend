@@ -5818,11 +5818,17 @@ void run_ai_attack_session_test(
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'200U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_action);
+    // 0x329B9 present -> 0x329F9 AI: no intervening BIOS wait.
+    OL_CHECK(session->needs_immediate_frame(1'200U));
     session->advance(1'200U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_prelude_present);
+    OL_CHECK(session->needs_immediate_frame(1'200U));
     OL_CHECK(session->render(*framebuffer));
     const auto ai_prelude_hash = fnv1a_bytes(framebuffer->pixels());
     session->finish_presented_tick(1'200U);
+    OL_CHECK(session->phase() == BattleSessionPhase::ai_wait);
+    OL_CHECK(!session->needs_immediate_frame(1'200U));
+    session->advance(1'200U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_wait);
     const auto actor_hp_before_ai_wait = actor.word(role_word::hp);
     actor.set_word(role_word::hp, 1);
@@ -5832,6 +5838,7 @@ void run_ai_attack_session_test(
     for (std::uint32_t tick = 1'201U; tick < 1'208U; ++tick) {
         session->advance(tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_wait);
+        OL_CHECK(!session->needs_immediate_frame(tick));
     }
     session->advance(1'208U);
     OL_CHECK(session->valid());
@@ -6007,8 +6014,12 @@ void run_ai_attack_session_test(
     OL_CHECK(movement_session->render(*framebuffer));
     movement_session->finish_presented_tick(1'308U);
     OL_CHECK(movement_session->phase() == BattleSessionPhase::ai_movement_wait);
+    OL_CHECK(!movement_session->needs_immediate_frame(1'308U));
+    movement_session->advance(1'308U);
+    OL_CHECK(movement_session->phase() == BattleSessionPhase::ai_movement_wait);
     movement_session->advance(1'309U);
     OL_CHECK(movement_session->phase() == BattleSessionPhase::ai_movement_wait);
+    OL_CHECK(!movement_session->needs_immediate_frame(1'309U));
     movement_session->advance(1'310U);
     OL_CHECK(movement_session->phase() == BattleSessionPhase::ai_magic_frame_present);
     OL_CHECK(movement_session->setup().combatants()[0U]

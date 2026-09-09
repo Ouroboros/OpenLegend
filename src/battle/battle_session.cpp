@@ -475,6 +475,48 @@ std::vector<BattleAudioCommand> BattleSession::take_audio_commands() {
     return commands;
 }
 
+bool BattleSession::needs_immediate_frame(const std::uint32_t bios_tick) const noexcept {
+    if (!valid()) {
+        return false;
+    }
+    // A present is not a BIOS delay. Explicit animation/AI delays become *_wait
+    // in finish_presented_tick; only those phases require a tick boundary.
+    switch (phase_) {
+    case BattleSessionPhase::round_start:
+    case BattleSessionPhase::actor_present:
+    case BattleSessionPhase::player_action_initial_present:
+    case BattleSessionPhase::player_action_return_present:
+    case BattleSessionPhase::player_item_context_present:
+    case BattleSessionPhase::player_item_effect_present:
+    case BattleSessionPhase::player_status_page_present:
+    case BattleSessionPhase::player_effect_prelude_present:
+    case BattleSessionPhase::player_magic_frame_present:
+    case BattleSessionPhase::player_damage_frame_present:
+    case BattleSessionPhase::player_attack_commit_present:
+    case BattleSessionPhase::player_attack_level_present:
+    case BattleSessionPhase::player_movement_step_present:
+    case BattleSessionPhase::automatic_present:
+    case BattleSessionPhase::ai_action:
+    case BattleSessionPhase::ai_prelude_present:
+    case BattleSessionPhase::ai_item_effect_present:
+    case BattleSessionPhase::ai_effect_prelude_present:
+    case BattleSessionPhase::ai_magic_frame_present:
+    case BattleSessionPhase::ai_damage_frame_present:
+    case BattleSessionPhase::ai_attack_commit_present:
+    case BattleSessionPhase::ai_attack_level_present:
+    case BattleSessionPhase::ai_movement_step_present:
+    case BattleSessionPhase::battle_outcome:
+    case BattleSessionPhase::post_battle_message_present:
+        return true;
+    case BattleSessionPhase::round_wait:
+        // sub_3271E captures the tick before the entire round, not at its end.
+        return bios_tick != round_tick_;
+    default:
+        // Keep input polling and fades bounded as well as explicit delays.
+        return false;
+    }
+}
+
 void BattleSession::advance(const std::uint32_t bios_tick) {
     if (!valid()) {
         return;

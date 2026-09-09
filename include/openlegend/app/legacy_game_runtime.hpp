@@ -107,6 +107,7 @@ public:
         bool interact_down, bool main_ui_edge, bool weather_disable_edge) noexcept;
     [[nodiscard]] scene::SceneInputReset take_scene_input_reset_request() noexcept;
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
+    [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
     void set_battle_confirmation_state(bool active) noexcept;
     void set_battle_menu_direction_states(bool down, bool up) noexcept;
     void set_battle_cursor_input_states(

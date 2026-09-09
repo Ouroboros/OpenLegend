@@ -1785,6 +1785,11 @@ SceneStepResult SceneSession::finish_tick_after_auto_event(const SceneStepKind f
     return resolve_scene_transition(fallback);
 }
 
+bool SceneSession::loop_present_pending() const noexcept {
+    return valid() && pending_.kind == SceneStepKind::present &&
+        tick_continuation_ == TickContinuation::after_scene_present;
+}
+
 bool SceneSession::palette_cycle_after_present() const noexcept {
     return valid() && pending_.kind == SceneStepKind::present &&
         tick_continuation_ == TickContinuation::after_scene_present &&

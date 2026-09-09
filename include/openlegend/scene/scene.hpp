@@ -209,6 +209,7 @@ public:
     void set_event_item_id(const std::int16_t item_id) noexcept { event_item_id_ = item_id; }
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
     [[nodiscard]] bool exit_transition_pending() const noexcept;
+    [[nodiscard]] bool loop_present_pending() const noexcept;
     [[nodiscard]] std::span<const std::uint8_t> pending_text() const noexcept {
         return pending_text_;
     }

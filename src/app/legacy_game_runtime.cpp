@@ -348,6 +348,14 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     world_step_processed_ = false;
 }
 
+bool LegacyGameRuntime::needs_immediate_frame(const std::uint32_t bios_tick) const noexcept {
+    if (battle_transition_phase_ != BattleTransitionPhase::none) {
+        return false;
+    }
+    return view_ == LegacyGameView::battle && battle_session_ != nullptr &&
+        battle_session_->needs_immediate_frame(bios_tick);
+}
+
 void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
     if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
         name_editor_->finish_presented_frame();
@@ -397,6 +405,14 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+        if (scene_session_->loop_present_pending() &&
+            scene_effect_kind_ == SceneEffectKind::present &&
+            scene_effect_wait_ticks_ == 1U && scene_effect_presented_) {
+            // sub_28E40 resumes after present in the same iteration; the host
+            // waits once at the loop tail, not once more merely to acknowledge it.
+            static_cast<void>(advance_scene_effect());
+            return;
+        }
         const auto pending_kind = scene_session_->pending().kind;
         if (pending_kind == scene::SceneStepKind::question) {
             scene_question_presented_ = true;
