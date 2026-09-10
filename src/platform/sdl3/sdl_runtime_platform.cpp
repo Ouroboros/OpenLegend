@@ -159,6 +159,7 @@ SdlRuntimePlatform::SdlRuntimePlatform(
 }
 
 SdlRuntimePlatform::~SdlRuntimePlatform() {
+    SDL_DestroyTexture(modern_ui_texture_);
     SDL_DestroyTexture(texture_);
     SDL_DestroyRenderer(renderer_);
     SDL_DestroyWindow(window_);
@@ -176,6 +177,19 @@ bool SdlRuntimePlatform::query_window_state(
     }
     maximized = (SDL_GetWindowFlags(window_) & SDL_WINDOW_MAXIMIZED) != 0U;
     return maximized || SDL_GetWindowSize(window_, &normal_width, &normal_height);
+}
+
+int SdlRuntimePlatform::presentation_scale() const noexcept {
+    if (renderer_ == nullptr) {
+        return 0;
+    }
+    int output_width = 0;
+    int output_height = 0;
+    if (!SDL_GetCurrentRenderOutputSize(
+            renderer_, &output_width, &output_height)) {
+        return 0;
+    }
+    return compat::integer_viewport(output_width, output_height).scale;
 }
 
 bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
@@ -198,8 +212,42 @@ bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
     return true;
 }
 
-bool SdlRuntimePlatform::present(const compat::RgbaFrameView frame) {
-    if (!valid() || !frame.valid()) {
+bool SdlRuntimePlatform::ensure_modern_ui_texture(
+    const int width, const int height) noexcept {
+    if (modern_ui_texture_ != nullptr &&
+        modern_ui_texture_width_ == width &&
+        modern_ui_texture_height_ == height) {
+        return true;
+    }
+
+    auto* replacement = SDL_CreateTexture(
+        renderer_,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        width,
+        height);
+    if (replacement == nullptr ||
+        !SDL_SetTextureBlendMode(
+            replacement, SDL_BLENDMODE_BLEND_PREMULTIPLIED) ||
+        !SDL_SetTextureScaleMode(replacement, SDL_SCALEMODE_NEAREST)) {
+        SDL_DestroyTexture(replacement);
+        return false;
+    }
+
+    SDL_DestroyTexture(modern_ui_texture_);
+    modern_ui_texture_ = replacement;
+    modern_ui_texture_width_ = width;
+    modern_ui_texture_height_ = height;
+    return true;
+}
+
+bool SdlRuntimePlatform::present(
+    const compat::RgbaFrameView frame,
+    const compat::RgbaFrameView modern_ui) {
+    if (!valid() || !frame.valid() || !modern_ui.valid() ||
+        frame.width != static_cast<int>(compat::kLegacyWidth) ||
+        frame.height != static_cast<int>(compat::kLegacyHeight) ||
+        !ensure_modern_ui_texture(modern_ui.width, modern_ui.height)) {
         return false;
     }
 
@@ -207,8 +255,13 @@ bool SdlRuntimePlatform::present(const compat::RgbaFrameView frame) {
             texture_,
             nullptr,
             frame.pixels.data(),
-            static_cast<int>(
-                compat::kLegacyWidth * compat::kModernRgbaBytesPerPixel))) {
+            frame.width * static_cast<int>(compat::kModernRgbaBytesPerPixel)) ||
+        !SDL_UpdateTexture(
+            modern_ui_texture_,
+            nullptr,
+            modern_ui.pixels.data(),
+            modern_ui.width *
+                static_cast<int>(compat::kModernRgbaBytesPerPixel))) {
         return false;
     }
 
@@ -236,7 +289,9 @@ bool SdlRuntimePlatform::present(const compat::RgbaFrameView frame) {
             clear_color.blue,
             clear_color.alpha) ||
         !SDL_RenderClear(renderer_) ||
-        !SDL_RenderTexture(renderer_, texture_, nullptr, &destination)) {
+        !SDL_RenderTexture(renderer_, texture_, nullptr, &destination) ||
+        !SDL_RenderTexture(
+            renderer_, modern_ui_texture_, nullptr, &destination)) {
         return false;
     }
     return SDL_RenderPresent(renderer_);

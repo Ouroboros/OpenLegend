@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 
 #include "openlegend/compat/color.hpp"
@@ -46,9 +47,23 @@ struct IndexedFrameView {
 
 struct RgbaFrameView {
     std::span<const std::uint8_t> pixels;
+    int width{static_cast<int>(kLegacyWidth)};
+    int height{static_cast<int>(kLegacyHeight)};
 
     [[nodiscard]] constexpr bool valid() const noexcept {
-        return pixels.size() == kModernRgbaByteCount;
+        if (width <= 0 || height <= 0) {
+            return false;
+        }
+        const auto unsigned_width = static_cast<std::size_t>(width);
+        const auto unsigned_height = static_cast<std::size_t>(height);
+        if (unsigned_width > std::numeric_limits<std::size_t>::max() /
+                kModernRgbaBytesPerPixel) {
+            return false;
+        }
+        const auto row_bytes = unsigned_width * kModernRgbaBytesPerPixel;
+        return unsigned_height <=
+                std::numeric_limits<std::size_t>::max() / row_bytes &&
+            pixels.size() == row_bytes * unsigned_height;
     }
 };
 

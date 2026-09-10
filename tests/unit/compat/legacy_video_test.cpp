@@ -38,6 +38,12 @@ void run_legacy_video_tests() {
     OL_CHECK(rgba[3] == 255U);
     OL_CHECK(RgbaFrameView{rgba}.valid());
     OL_CHECK(!RgbaFrameView{std::span<const std::uint8_t>{rgba}.first(4U)}.valid());
+    OL_CHECK((RgbaFrameView{
+        std::span<const std::uint8_t>{rgba}.first(16U), 2, 2}.valid()));
+    OL_CHECK((!RgbaFrameView{
+        std::span<const std::uint8_t>{rgba}.first(16U), 0, 2}.valid()));
+    OL_CHECK((!RgbaFrameView{
+        std::span<const std::uint8_t>{rgba}.first(16U), 2, 3}.valid()));
     OL_CHECK(!convert_indexed_frame_to_rgba(frame, std::span<std::uint8_t>{rgba}.first(4U)));
 
     LegacyPixels full_pixels{};

@@ -96,7 +96,8 @@ public:
         GlyphKind kind,
         std::uint16_t glyph_code,
         std::span<const std::uint8_t> packed_glyph,
-        FontSize size);
+        FontSize size,
+        int render_scale);
 
     [[nodiscard]] std::size_t next_replacement_slot() const noexcept {
         return next_slot_;
@@ -107,6 +108,7 @@ private:
         GlyphKind kind{GlyphKind::ascii};
         std::uint16_t glyph_code{};
         FontSize size{};
+        int render_scale{};
         std::uint16_t width{};
         std::uint16_t height{};
         std::vector<std::uint8_t> alpha;
@@ -117,7 +119,8 @@ private:
         Entry& entry,
         GlyphKind kind,
         std::span<const std::uint8_t> packed_glyph,
-        FontSize size);
+        FontSize size,
+        int render_scale);
 
     static constexpr std::size_t capacity = 64U;
 

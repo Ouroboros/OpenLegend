@@ -454,6 +454,7 @@ int main(const int argc, const char* const* argv) {
         input_configuration.movement_repeat_delay,
         kSaveListPageRepeatInterval};
     render::RgbaFramebuffer rgba_framebuffer;
+    render::RgbaFramebuffer modern_ui_framebuffer;
     timing::SteadyBiosTickSource tick_source;
     timing::SteadyVgaRetraceSource retrace_source{
         timing_configuration.fade_frame_delay};
@@ -575,14 +576,29 @@ int main(const int argc, const char* const* argv) {
                     "render", "unable to convert indexed framebuffer to RGBA");
                 return 7;
             }
-            if (!game.render_modern_ui(rgba_framebuffer)) {
+
+            const auto presentation_scale = platform.presentation_scale();
+            if (!modern_ui_framebuffer.set_scale(presentation_scale)) {
+                diagnostics::log_critical(
+                    "modern RGBA UI framebuffer resize failed scale=" +
+                    std::to_string(presentation_scale));
+                report_configuration_error(
+                    "render", "unable to resize modern RGBA UI framebuffer");
+                return 7;
+            }
+            modern_ui_framebuffer.clear({0U, 0U, 0U, 0U});
+            if (!game.render_modern_ui(modern_ui_framebuffer)) {
                 diagnostics::log_critical("modern RGBA UI render failed");
                 report_configuration_error(
                     "render", "unable to render modern RGBA UI");
                 return 7;
             }
             const compat::RgbaFrameView frame{rgba_framebuffer.pixels()};
-            if (!platform.present(frame)) {
+            const compat::RgbaFrameView modern_ui{
+                modern_ui_framebuffer.pixels(),
+                modern_ui_framebuffer.pixel_width(),
+                modern_ui_framebuffer.pixel_height()};
+            if (!platform.present(frame, modern_ui)) {
                 diagnostics::log_critical(
                     std::string{"RGBA framebuffer present failed: "} + SDL_GetError());
                 report_configuration_error(

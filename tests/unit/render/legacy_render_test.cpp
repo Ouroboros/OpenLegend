@@ -142,6 +142,22 @@ void run_framebuffer_tests() {
     OL_CHECK(rgba_framebuffer.row(3)[11] == 4U);
     OL_CHECK(!rgba_framebuffer.blend_pixel(-1, 0, {}));
     OL_CHECK(!rgba_framebuffer.fill_rectangle(319, 199, 2U, 1U, {}));
+    OL_CHECK(rgba_framebuffer.set_scale(2));
+    OL_CHECK(rgba_framebuffer.scale() == 2);
+    OL_CHECK(rgba_framebuffer.pixel_width() == 640);
+    OL_CHECK(rgba_framebuffer.pixel_height() == 400);
+    rgba_framebuffer.clear({0U, 0U, 0U, 0U});
+    OL_CHECK(rgba_framebuffer.blend_pixel(1, 1, {1U, 2U, 3U, 0xFFU}));
+    OL_CHECK(rgba_framebuffer.row(2)[8] == 1U);
+    OL_CHECK(rgba_framebuffer.row(2)[12] == 1U);
+    OL_CHECK(rgba_framebuffer.row(3)[8] == 1U);
+    OL_CHECK(rgba_framebuffer.blend_physical_pixel(
+        0, 0, {4U, 5U, 6U, 0xFFU}));
+    OL_CHECK(rgba_framebuffer.row(0)[0] == 4U);
+    OL_CHECK(!rgba_framebuffer.set_scale(0));
+    OL_CHECK(!rgba_framebuffer.set_scale(
+        openlegend::render::RgbaFramebuffer::maximum_scale + 1));
+    OL_CHECK(rgba_framebuffer.set_scale(1));
 
     using namespace openlegend::render::rgba;
     static_assert(kBaseFontSize.pixel_height == 16U);
@@ -164,13 +180,13 @@ void run_framebuffer_tests() {
     single_pixel_glyph[0] = 0x80U;
     GlyphMaskCache glyph_mask_cache;
     const auto small_mask = glyph_mask_cache.resolve(
-        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{12U});
+        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{12U}, 1);
     OL_CHECK(small_mask.has_value());
     if (small_mask.has_value()) {
         OL_CHECK(small_mask->valid());
         OL_CHECK(small_mask->width == 12U);
         OL_CHECK(small_mask->height == 12U);
-        OL_CHECK(small_mask->alpha[0] == 143U);
+        OL_CHECK(small_mask->alpha[0] == 146U);
         OL_CHECK(small_mask->alpha[1] == 0U);
         OL_CHECK(small_mask->alpha[12] == 0U);
     }
@@ -179,22 +195,38 @@ void run_framebuffer_tests() {
         GlyphKind::big5,
         0xA140U,
         single_pixel_glyph,
-        FontSize{12U}).has_value());
+        FontSize{12U},
+        1).has_value());
     OL_CHECK(glyph_mask_cache.next_replacement_slot() == 1U);
     const auto half_mask = glyph_mask_cache.resolve(
-        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{8U});
+        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{8U}, 1);
     OL_CHECK(half_mask.has_value());
     if (half_mask.has_value()) {
         OL_CHECK(half_mask->width == 8U);
         OL_CHECK(half_mask->height == 8U);
-        OL_CHECK(half_mask->alpha[0] == 64U);
+        OL_CHECK(half_mask->alpha[0] == 57U);
     }
     OL_CHECK(glyph_mask_cache.next_replacement_slot() == 2U);
+    const auto presentation_mask = glyph_mask_cache.resolve(
+        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{10U}, 3);
+    OL_CHECK(presentation_mask.has_value());
+    if (presentation_mask.has_value()) {
+        OL_CHECK(presentation_mask->width == 30U);
+        OL_CHECK(presentation_mask->height == 30U);
+    }
+    OL_CHECK(glyph_mask_cache.next_replacement_slot() == 3U);
     OL_CHECK(!glyph_mask_cache.resolve(
         GlyphKind::big5,
         0xA140U,
         single_pixel_glyph,
-        FontSize{0U}).has_value());
+        FontSize{0U},
+        1).has_value());
+    OL_CHECK(!glyph_mask_cache.resolve(
+        GlyphKind::big5,
+        0xA140U,
+        single_pixel_glyph,
+        FontSize{10U},
+        0).has_value());
 
     OL_CHECK(openlegend::render::project_isometric(0, 0, 160, 100) ==
              (openlegend::render::ScreenPoint{160, 100}));

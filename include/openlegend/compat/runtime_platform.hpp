@@ -136,7 +136,8 @@ public:
     virtual ~RuntimePlatform() = default;
 
     [[nodiscard]] virtual bool poll_event(HostEvent& event) = 0;
-    [[nodiscard]] virtual bool present(RgbaFrameView frame) = 0;
+    [[nodiscard]] virtual bool present(
+        RgbaFrameView frame, RgbaFrameView modern_ui) = 0;
     virtual void delay(std::chrono::milliseconds duration) = 0;
 };
 
