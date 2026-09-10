@@ -98,10 +98,11 @@ bool ModernUiRenderer::render_location_status(
     if (!append_coordinate(location_y)) {
         return false;
     }
+    const auto metrics = font_metrics();
     return draw_text_big5(
         framebuffer,
         4,
-        render::RgbaFramebuffer::height - 20,
+        render::RgbaFramebuffer::height - metrics.line_height - 4,
         text::Big5TextView{std::span<const std::uint8_t>{status}.first(length)},
         text_colors::location_status,
         palette);
@@ -113,7 +114,8 @@ bool ModernUiRenderer::draw_text_utf8(
     const int y,
     const std::u8string_view text,
     const render::TextColors colors,
-    const compat::LegacyPalette& palette) {
+    const compat::LegacyPalette& palette,
+    const render::rgba::FontSize size) {
     if (!big5_cache_.has_value()) {
         return false;
     }
@@ -124,6 +126,8 @@ bool ModernUiRenderer::draw_text_utf8(
         text,
         ascii_font_,
         *big5_cache_,
+        glyph_mask_cache_,
+        size,
         rgba_text_colors(palette, colors));
 }
 
@@ -133,7 +137,8 @@ bool ModernUiRenderer::draw_text_mixed(
     const int y,
     const text::GameText& text,
     const render::TextColors colors,
-    const compat::LegacyPalette& palette) {
+    const compat::LegacyPalette& palette,
+    const render::rgba::FontSize size) {
     if (!big5_cache_.has_value()) {
         return false;
     }
@@ -144,6 +149,8 @@ bool ModernUiRenderer::draw_text_mixed(
         text,
         ascii_font_,
         *big5_cache_,
+        glyph_mask_cache_,
+        size,
         rgba_text_colors(palette, colors));
 }
 
@@ -153,7 +160,8 @@ bool ModernUiRenderer::draw_text_big5(
     const int y,
     const text::Big5TextView text,
     const render::TextColors colors,
-    const compat::LegacyPalette& palette) {
+    const compat::LegacyPalette& palette,
+    const render::rgba::FontSize size) {
     if (!big5_cache_.has_value()) {
         return false;
     }
@@ -164,6 +172,8 @@ bool ModernUiRenderer::draw_text_big5(
         text,
         ascii_font_,
         *big5_cache_,
+        glyph_mask_cache_,
+        size,
         rgba_text_colors(palette, colors));
 }
 

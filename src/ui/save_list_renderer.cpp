@@ -68,12 +68,18 @@ void append_number(std::u8string& text, const std::int32_t value) {
 
 [[nodiscard]] std::span<const std::uint8_t> legacy_text_prefix(
     const std::span<const std::uint8_t> text,
-    const int maximum_pixels) noexcept {
+    const int maximum_pixels,
+    const render::rgba::FontMetrics metrics) noexcept {
     std::size_t bytes = 0U;
     int pixels = 0;
     while (bytes < text.size()) {
-        const bool double_byte = text[bytes] >= 0x80U && bytes + 1U < text.size();
-        const int glyph_pixels = double_byte ? 16 : 8;
+        const auto first = text[bytes];
+        const bool double_byte = first >= 0x80U && bytes + 1U < text.size();
+        const int glyph_pixels = double_byte
+            ? metrics.big5_width
+            : first == static_cast<std::uint8_t>('_')
+                ? metrics.underscore_advance
+                : metrics.ascii_width;
         if (pixels + glyph_pixels > maximum_pixels) {
             break;
         }
@@ -83,10 +89,10 @@ void append_number(std::u8string& text, const std::int32_t value) {
     return text.first(bytes);
 }
 
-[[nodiscard]] SaveListLayout save_list_layout() noexcept {
+[[nodiscard]] SaveListLayout save_list_layout(
+    const render::rgba::FontMetrics metrics) noexcept {
     constexpr int kReferenceWidth = 320;
     constexpr int kReferencePanelHeight = 198;
-    constexpr int kPageTextPixels = 7 * 8;
     constexpr std::array<int, 5> kColumnWeights{40, 72, 24, 87, 88};
     constexpr int kTotalColumnWeight = 311;
     const int framebuffer_width = render::RgbaFramebuffer::width;
@@ -114,14 +120,19 @@ void append_number(std::u8string& text, const std::int32_t value) {
         return outer_y + reference_y * panel_height / kReferencePanelHeight;
     };
     layout.title_y = scaled_y(3);
-    layout.page_x = outer_x + panel_width - inner_x - kPageTextPixels;
+    layout.page_x = outer_x + panel_width - inner_x -
+        7 * static_cast<int>(metrics.ascii_width);
     layout.header_y = scaled_y(21);
     layout.first_row_y = scaled_y(39);
-    layout.row_step = std::max(18, 18 * panel_height / kReferencePanelHeight);
+    layout.row_step = std::max(
+        static_cast<int>(metrics.line_height) + 2,
+        18 * panel_height / kReferencePanelHeight);
     const auto column = [&layout](const SaveListColumn value) {
         return layout.column_x[static_cast<std::size_t>(value)];
     };
-    const int name_gutter = std::max(8, 8 * framebuffer_width / kReferenceWidth);
+    const int name_gutter = std::max(
+        static_cast<int>(metrics.ascii_width),
+        8 * framebuffer_width / kReferenceWidth);
     layout.name_text_pixels = column(SaveListColumn::level) -
         column(SaveListColumn::name) - name_gutter;
     return layout;
@@ -136,7 +147,8 @@ bool SaveListRenderer::render(
     const compat::LegacyPalette& palette,
     ModernUiRenderer& ui_renderer,
     render::RgbaFramebuffer& framebuffer) const {
-    const auto layout = save_list_layout();
+    const auto metrics = ui_renderer.font_metrics();
+    const auto layout = save_list_layout(metrics);
     const auto column = [&layout](const SaveListColumn value) {
         return layout.column_x[static_cast<std::size_t>(value)];
     };
@@ -261,7 +273,9 @@ bool SaveListRenderer::render(
                 column(SaveListColumn::name),
                 y,
                 text::Big5TextView{legacy_text_prefix(
-                    entry.protagonist_name, layout.name_text_pixels)},
+                    entry.protagonist_name,
+                    layout.name_text_pixels,
+                    metrics)},
                 colors,
                 palette) ||
             !ui_renderer.draw_text_utf8(

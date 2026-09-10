@@ -18,6 +18,7 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
+#include "openlegend/render/rgba_font_renderer.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/render/world_depth_order.hpp"
@@ -141,6 +142,59 @@ void run_framebuffer_tests() {
     OL_CHECK(rgba_framebuffer.row(3)[11] == 4U);
     OL_CHECK(!rgba_framebuffer.blend_pixel(-1, 0, {}));
     OL_CHECK(!rgba_framebuffer.fill_rectangle(319, 199, 2U, 1U, {}));
+
+    using namespace openlegend::render::rgba;
+    static_assert(kBaseFontSize.pixel_height == 16U);
+    static_assert(kBaseFontMetrics.pixel_height == 16U);
+    static_assert(kBaseFontMetrics.line_height == 16U);
+    static_assert(kBaseFontMetrics.ascii_width == 8U);
+    static_assert(kBaseFontMetrics.big5_width == 16U);
+    static_assert(kBaseFontMetrics.underscore_advance == 4U);
+    static_assert(kBaseFontMetrics.shadow_offset_x == 1U);
+    constexpr auto small_font_metrics = font_metrics(FontSize{12U});
+    static_assert(small_font_metrics.pixel_height == 12U);
+    static_assert(small_font_metrics.ascii_width == 6U);
+    static_assert(small_font_metrics.big5_width == 12U);
+    static_assert(small_font_metrics.underscore_advance == 3U);
+    static_assert(small_font_metrics.shadow_offset_x == 1U);
+    static_assert(!font_metrics(FontSize{0U}).valid());
+    static_assert(!font_metrics(FontSize{65U}).valid());
+
+    std::array<std::uint8_t, 32> single_pixel_glyph{};
+    single_pixel_glyph[0] = 0x80U;
+    GlyphMaskCache glyph_mask_cache;
+    const auto small_mask = glyph_mask_cache.resolve(
+        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{12U});
+    OL_CHECK(small_mask.has_value());
+    if (small_mask.has_value()) {
+        OL_CHECK(small_mask->valid());
+        OL_CHECK(small_mask->width == 12U);
+        OL_CHECK(small_mask->height == 12U);
+        OL_CHECK(small_mask->alpha[0] == 143U);
+        OL_CHECK(small_mask->alpha[1] == 0U);
+        OL_CHECK(small_mask->alpha[12] == 0U);
+    }
+    OL_CHECK(glyph_mask_cache.next_replacement_slot() == 1U);
+    OL_CHECK(glyph_mask_cache.resolve(
+        GlyphKind::big5,
+        0xA140U,
+        single_pixel_glyph,
+        FontSize{12U}).has_value());
+    OL_CHECK(glyph_mask_cache.next_replacement_slot() == 1U);
+    const auto half_mask = glyph_mask_cache.resolve(
+        GlyphKind::big5, 0xA140U, single_pixel_glyph, FontSize{8U});
+    OL_CHECK(half_mask.has_value());
+    if (half_mask.has_value()) {
+        OL_CHECK(half_mask->width == 8U);
+        OL_CHECK(half_mask->height == 8U);
+        OL_CHECK(half_mask->alpha[0] == 64U);
+    }
+    OL_CHECK(glyph_mask_cache.next_replacement_slot() == 2U);
+    OL_CHECK(!glyph_mask_cache.resolve(
+        GlyphKind::big5,
+        0xA140U,
+        single_pixel_glyph,
+        FontSize{0U}).has_value());
 
     OL_CHECK(openlegend::render::project_isometric(0, 0, 160, 100) ==
              (openlegend::render::ScreenPoint{160, 100}));

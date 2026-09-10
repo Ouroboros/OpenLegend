@@ -24,6 +24,11 @@ public:
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
 
+    [[nodiscard]] static constexpr render::rgba::FontMetrics font_metrics(
+        const render::rgba::FontSize size = {}) noexcept {
+        return render::rgba::font_metrics(size);
+    }
+
     [[nodiscard]] bool render_location_status(
         std::span<const std::uint8_t> legacy_name,
         int location_x,
@@ -37,7 +42,8 @@ public:
         int y,
         std::u8string_view text,
         render::TextColors colors,
-        const compat::LegacyPalette& palette);
+        const compat::LegacyPalette& palette,
+        render::rgba::FontSize size = {});
 
     [[nodiscard]] bool draw_text_mixed(
         render::RgbaFramebuffer& framebuffer,
@@ -45,7 +51,8 @@ public:
         int y,
         const text::GameText& text,
         render::TextColors colors,
-        const compat::LegacyPalette& palette);
+        const compat::LegacyPalette& palette,
+        render::rgba::FontSize size = {});
 
     [[nodiscard]] bool draw_text_big5(
         render::RgbaFramebuffer& framebuffer,
@@ -53,7 +60,8 @@ public:
         int y,
         text::Big5TextView text,
         render::TextColors colors,
-        const compat::LegacyPalette& palette);
+        const compat::LegacyPalette& palette,
+        render::rgba::FontSize size = {});
 
     [[nodiscard]] bool draw_box(
         render::RgbaFramebuffer& framebuffer,
@@ -67,6 +75,7 @@ private:
     std::vector<std::uint8_t> ascii_font_;
     std::vector<std::uint8_t> big5_font_;
     std::optional<render::Big5GlyphCache> big5_cache_;
+    render::rgba::GlyphMaskCache glyph_mask_cache_;
     std::string error_;
 };
 

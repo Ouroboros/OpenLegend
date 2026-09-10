@@ -3449,6 +3449,42 @@ void check_renderer(const std::filesystem::path& data_root) {
         rgba_framebuffer));
     OL_CHECK(fnv1a64(rgba_framebuffer.pixels()) != scene_location_pixels);
 
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.draw_text_utf8(
+        rgba_framebuffer,
+        20,
+        30,
+        u8"A",
+        render::legacy_color::text::normal,
+        framebuffer.palette(),
+        render::rgba::FontSize{12U}));
+    std::size_t scaled_text_ink = 0U;
+    bool scaled_text_ink_outside_bounds = false;
+    for (int y = 0; y < render::RgbaFramebuffer::height; ++y) {
+        for (int x = 0; x < render::RgbaFramebuffer::width; ++x) {
+            const auto* pixel = rgba_framebuffer.row(y) + 4 * x;
+            if (pixel[0] == kRgbaBackground.red &&
+                pixel[1] == kRgbaBackground.green &&
+                pixel[2] == kRgbaBackground.blue &&
+                pixel[3] == kRgbaBackground.alpha) {
+                continue;
+            }
+            ++scaled_text_ink;
+            scaled_text_ink_outside_bounds = scaled_text_ink_outside_bounds ||
+                x < 20 || x >= 27 || y < 30 || y >= 42;
+        }
+    }
+    OL_CHECK(scaled_text_ink > 0U);
+    OL_CHECK(!scaled_text_ink_outside_bounds);
+    OL_CHECK(!modern_renderer.draw_text_utf8(
+        rgba_framebuffer,
+        20,
+        30,
+        u8"A",
+        render::legacy_color::text::normal,
+        framebuffer.palette(),
+        render::rgba::FontSize{0U}));
+
     std::array<ui::SaveListEntry, ui::kSaveListPageSize> save_entries{};
     for (std::size_t row = 0U; row < save_entries.size(); ++row) {
         save_entries[row].slot = static_cast<std::uint16_t>(row);
