@@ -1,17 +1,11 @@
 #include "openlegend/ui/modern_ui_renderer.hpp"
 
-#include <algorithm>
-#include <array>
-#include <charconv>
-#include <cstddef>
-
-#include "openlegend/text/big5.hpp"
+#include <utility>
 
 namespace openlegend::ui {
 namespace {
 
 namespace palette_colors = render::legacy_color;
-namespace text_colors = render::legacy_color::text;
 
 constexpr std::uint8_t kPanelAlpha = 96U;
 
@@ -57,55 +51,6 @@ ModernUiRenderer::ModernUiRenderer(const resource::DataRoot& data_root) {
     ascii_font_ = std::move(ascii.bytes);
     big5_font_ = std::move(big5.bytes);
     big5_cache_.emplace(big5_font_);
-}
-
-bool ModernUiRenderer::render_location_status(
-    const std::span<const std::uint8_t> legacy_name,
-    const int location_x,
-    const int location_y,
-    const compat::LegacyPalette& palette,
-    render::RgbaFramebuffer& framebuffer) {
-    if (!valid()) {
-        return false;
-    }
-    std::array<std::uint8_t, 64> status{};
-    if (legacy_name.size() >= status.size()) {
-        return false;
-    }
-    auto length = legacy_name.size();
-    std::copy(legacy_name.begin(), legacy_name.end(), status.begin());
-    if (!legacy_name.empty()) {
-        status[length++] = static_cast<std::uint8_t>(' ');
-    }
-    const auto append_coordinate = [&status, &length](const int value) {
-        std::array<char, 16> digits{};
-        const auto converted = std::to_chars(
-            digits.data(), digits.data() + digits.size(), value);
-        if (converted.ec != std::errc{} ||
-            length + static_cast<std::size_t>(converted.ptr - digits.data()) >
-                status.size()) {
-            return false;
-        }
-        for (const auto* cursor = digits.data(); cursor != converted.ptr; ++cursor) {
-            status[length++] = static_cast<std::uint8_t>(*cursor);
-        }
-        return true;
-    };
-    if (!append_coordinate(location_x) || length >= status.size()) {
-        return false;
-    }
-    status[length++] = static_cast<std::uint8_t>(',');
-    if (!append_coordinate(location_y)) {
-        return false;
-    }
-    const auto metrics = font_metrics();
-    return draw_text_big5(
-        framebuffer,
-        4,
-        render::RgbaFramebuffer::height - metrics.line_height - 4,
-        text::Big5TextView{std::span<const std::uint8_t>{status}.first(length)},
-        text_colors::location_status,
-        palette);
 }
 
 bool ModernUiRenderer::draw_text_utf8(

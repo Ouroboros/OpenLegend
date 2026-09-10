@@ -29,13 +29,6 @@ public:
         return render::rgba::font_metrics(size);
     }
 
-    [[nodiscard]] bool render_location_status(
-        std::span<const std::uint8_t> legacy_name,
-        int location_x,
-        int location_y,
-        const compat::LegacyPalette& palette,
-        render::RgbaFramebuffer& framebuffer);
-
     [[nodiscard]] bool draw_text_utf8(
         render::RgbaFramebuffer& framebuffer,
         int x,

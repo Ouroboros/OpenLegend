@@ -1353,19 +1353,21 @@ bool LegacyGameRuntime::render_modern_ui(
     switch (view_) {
     case LegacyGameView::world:
         return world_session_ != nullptr &&
-            modern_ui_renderer_.render_location_status(
+            location_status_renderer_.render(
                 std::span<const std::uint8_t>{},
                 world_session_->world_x(),
                 world_session_->world_y(),
                 palette,
+                modern_ui_renderer_,
                 framebuffer);
     case LegacyGameView::scene:
         return scene_session_ != nullptr &&
-            modern_ui_renderer_.render_location_status(
+            location_status_renderer_.render(
                 scene_session_->scene_name().bytes(),
                 scene_session_->scene_x(),
                 scene_session_->scene_y(),
                 palette,
+                modern_ui_renderer_,
                 framebuffer);
     case LegacyGameView::title: {
         const auto screen = title_menu_.screen();

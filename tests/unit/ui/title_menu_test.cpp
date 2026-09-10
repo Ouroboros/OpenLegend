@@ -15,6 +15,7 @@
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 #include "openlegend/ui/game_menu.hpp"
+#include "openlegend/ui/location_status_renderer.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 #include "openlegend/ui/modern_ui_renderer.hpp"
@@ -3400,6 +3401,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     OL_CHECK(basic_renderer.valid());
     ui::ModernUiRenderer modern_renderer{resource::DataRoot{data_root}};
     OL_CHECK(modern_renderer.valid());
+    ui::LocationStatusRenderer location_status_renderer;
     ui::SaveListRenderer save_list_renderer;
     render::RgbaFramebuffer rgba_framebuffer;
     constexpr compat::Rgba8 kRgbaBackground{0U, 0U, 0U, 0xFFU};
@@ -3418,8 +3420,13 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     const std::array<std::uint8_t, 2> location_name{'A', 'B'};
     rgba_framebuffer.clear(kRgbaBackground);
-    OL_CHECK(modern_renderer.render_location_status(
-        location_name, 12, 34, framebuffer.palette(), rgba_framebuffer));
+    OL_CHECK(location_status_renderer.render(
+        location_name,
+        12,
+        34,
+        framebuffer.palette(),
+        modern_renderer,
+        rgba_framebuffer));
     std::size_t location_ink = 0U;
     bool location_ink_outside_bounds = false;
     for (int y = 0; y < render::RgbaFramebuffer::height; ++y) {
@@ -3433,7 +3440,7 @@ void check_renderer(const std::filesystem::path& data_root) {
             }
             ++location_ink;
             location_ink_outside_bounds = location_ink_outside_bounds ||
-                x < 4 || y < render::RgbaFramebuffer::height - 20 ||
+                x < 4 || y < render::RgbaFramebuffer::height - 14 ||
                 y >= render::RgbaFramebuffer::height - 4;
         }
     }
@@ -3441,11 +3448,12 @@ void check_renderer(const std::filesystem::path& data_root) {
     OL_CHECK(!location_ink_outside_bounds);
     const auto scene_location_pixels = fnv1a64(rgba_framebuffer.pixels());
     rgba_framebuffer.clear(kRgbaBackground);
-    OL_CHECK(modern_renderer.render_location_status(
+    OL_CHECK(location_status_renderer.render(
         std::span<const std::uint8_t>{},
         12,
         34,
         framebuffer.palette(),
+        modern_renderer,
         rgba_framebuffer));
     OL_CHECK(fnv1a64(rgba_framebuffer.pixels()) != scene_location_pixels);
 

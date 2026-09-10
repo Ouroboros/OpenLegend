@@ -3,6 +3,7 @@ add_library(
     STATIC
         basic_ui_renderer.cpp
         game_menu.cpp
+        location_status_renderer.cpp
         modern_ui_renderer.cpp
         new_game_attributes.cpp
         new_game_name_editor.cpp
