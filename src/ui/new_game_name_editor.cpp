@@ -3,17 +3,12 @@
 #include <algorithm>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/new_game.hpp"
 
 namespace openlegend::ui {
 namespace {
 
-constexpr std::uint8_t kBackspace = 0x08U;
-constexpr std::uint8_t kEnter = 0x0DU;
-constexpr std::uint8_t kEscape = 0x1BU;
-constexpr std::uint8_t kSpace = 0x20U;
-constexpr std::uint8_t kComma = 0x2CU;
-constexpr std::uint8_t kPeriod = 0x2EU;
 constexpr std::size_t kCandidatesPerPage = 8U;
 constexpr std::size_t kCfontBytes = 29'674U;
 constexpr std::size_t kCfontBoundaryCount = 111U;
@@ -68,17 +63,17 @@ NameEditStatus NewGameNameEditor::handle_key(
     }
 
     if (!candidates_.empty()) {
-        if (translated_key == kEscape) {
+        if (translated_key == input::legacy_key::escape) {
             clear_composition();
         } else if (translated_key >= '1' && translated_key <= '8') {
             commit_candidate(static_cast<std::size_t>(translated_key - '1'));
-        } else if (shift_down && translated_key == kPeriod &&
+        } else if (shift_down && translated_key == input::legacy_key::period &&
                    has_next_candidate_page()) {
             ++candidate_page_;
-        } else if (shift_down && translated_key == kComma &&
+        } else if (shift_down && translated_key == input::legacy_key::comma &&
                    has_previous_candidate_page()) {
             --candidate_page_;
-        } else if (translated_key == kSpace) {
+        } else if (translated_key == input::legacy_key::space) {
             if (has_next_candidate_page()) {
                 ++candidate_page_;
             } else if (has_previous_candidate_page()) {
@@ -88,24 +83,24 @@ NameEditStatus NewGameNameEditor::handle_key(
         return NameEditStatus::editing;
     }
 
-    if (control_down && translated_key == kSpace) {
+    if (control_down && translated_key == input::legacy_key::space) {
         mode_ = mode_ == NameInputMode::zhuyin ? NameInputMode::alphanumeric
                                                : NameInputMode::zhuyin;
         clear_composition();
         return NameEditStatus::editing;
     }
-    if (translated_key == kBackspace) {
+    if (translated_key == input::legacy_key::backspace) {
         erase_last();
         return NameEditStatus::editing;
     }
-    if (translated_key == kEnter) {
+    if (translated_key == input::legacy_key::enter) {
         if (!name_.empty()) {
             accepted_ = true;
             return NameEditStatus::completed;
         }
         return NameEditStatus::editing;
     }
-    if (translated_key == kEscape) {
+    if (translated_key == input::legacy_key::escape) {
         clear_composition();
         return NameEditStatus::editing;
     }
@@ -125,7 +120,7 @@ NameEditStatus NewGameNameEditor::handle_key(
         return NameEditStatus::editing;
     }
 
-    if (translated_key == kSpace) {
+    if (translated_key == input::legacy_key::space) {
         if (has_composition()) {
             lookup_candidates();
         }

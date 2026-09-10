@@ -33,7 +33,14 @@ namespace {
 
 constexpr openlegend::app::WindowSize kDefaultWindowSize{960, 600};
 constexpr std::chrono::milliseconds kDefaultMovementRepeatDelay{500};
+constexpr std::chrono::milliseconds kSaveListPageRepeatInterval{100};
 constexpr std::chrono::nanoseconds kDefaultFadeFrameDelay{14'268'123};
+
+[[nodiscard]] bool is_save_list_page_key(
+    const openlegend::compat::HostKey key) noexcept {
+    using openlegend::compat::HostKey;
+    return key == HostKey::page_up || key == HostKey::page_down;
+}
 
 [[nodiscard]] bool is_movement_direction_key(
     const openlegend::compat::HostKey key) noexcept {
@@ -377,13 +384,13 @@ int main(const int argc, const char* const* argv) {
             keyboard.clear_state(direction);
         }
         const auto cursor_key = game.take_clear_battle_cursor_key_request();
-        if (cursor_key == input::kLegacyDownKey) {
+        if (cursor_key == input::legacy_key::down) {
             keyboard.consume_world_direction(input::LegacyWorldDirectionInput::down);
-        } else if (cursor_key == input::kLegacyRightKey) {
+        } else if (cursor_key == input::legacy_key::right) {
             keyboard.consume_world_direction(input::LegacyWorldDirectionInput::right);
-        } else if (cursor_key == input::kLegacyLeftKey) {
+        } else if (cursor_key == input::legacy_key::left) {
             keyboard.consume_world_direction(input::LegacyWorldDirectionInput::left);
-        } else if (cursor_key == input::kLegacyUpKey) {
+        } else if (cursor_key == input::legacy_key::up) {
             keyboard.consume_world_direction(input::LegacyWorldDirectionInput::up);
         } else if (cursor_key != 0U) {
             keyboard.clear_state(cursor_key);
@@ -392,15 +399,18 @@ int main(const int argc, const char* const* argv) {
             return keyboard.down(keys[0]) || keyboard.down(keys[1]);
         };
         game.set_battle_confirmation_state(
-            keyboard.down(0x0DU) || keyboard.down(0x20U) || keyboard.down(0x96U));
+            keyboard.down(input::legacy_key::enter) ||
+            keyboard.down(input::legacy_key::space) ||
+            keyboard.down(input::legacy_key::keypad_insert));
         game.set_battle_menu_direction_states(
-            keyboard.down(0x98U), keyboard.down(0x9EU));
+            keyboard.down(input::legacy_key::down),
+            keyboard.down(input::legacy_key::up));
         game.set_battle_cursor_input_states(
-            any_down(input::kLegacyWorldDownKeys),
-            any_down(input::kLegacyWorldRightKeys),
-            any_down(input::kLegacyWorldLeftKeys),
-            any_down(input::kLegacyWorldUpKeys),
-            keyboard.down(0x1BU));
+            any_down(input::legacy_key::world_down),
+            any_down(input::legacy_key::world_right),
+            any_down(input::legacy_key::world_left),
+            any_down(input::legacy_key::world_up),
+            keyboard.down(input::legacy_key::escape));
     };
     const auto sync_scene_input_reset = [&game, &keyboard]() {
         switch (game.take_scene_input_reset_request()) {
@@ -408,10 +418,10 @@ int main(const int argc, const char* const* argv) {
             keyboard.clear_confirmation_states();
             break;
         case scene::SceneInputReset::main_ui_edge:
-            keyboard.consume_edge(0x1BU);
+            keyboard.consume_edge(input::legacy_key::escape);
             break;
         case scene::SceneInputReset::weather_disable_edge:
-            keyboard.consume_edge(static_cast<std::uint8_t>('L'));
+            keyboard.consume_edge(input::legacy_key::weather_toggle);
             break;
         case scene::SceneInputReset::none:
             break;
@@ -432,36 +442,40 @@ int main(const int argc, const char* const* argv) {
             if (translated_key == 0U) {
                 return;
             }
-            const bool defer_world_menu =
-                translated_key == 0x1BU && game.view() == app::LegacyGameView::world;
+            const bool defer_world_menu = translated_key == input::legacy_key::escape &&
+                game.view() == app::LegacyGameView::world;
             const bool defer_scene_input = game.scene_loop_uses_key_states() &&
-                (translated_key == 0x1BU ||
-                 translated_key == static_cast<std::uint8_t>('L') ||
-                 translated_key == 0x0DU || translated_key == 0x20U ||
-                 translated_key == 0x96U);
+                (translated_key == input::legacy_key::escape ||
+                 translated_key == input::legacy_key::weather_toggle ||
+                 translated_key == input::legacy_key::enter ||
+                 translated_key == input::legacy_key::space ||
+                 translated_key == input::legacy_key::keypad_insert);
             if (!defer_world_menu && !defer_scene_input &&
                 !game.battle_menu_uses_key_states()) {
                 const auto key_state_reset = game.handle_key(
                     translated_key,
-                    keyboard.down(0x82U),
-                    keyboard.down(0x83U) || keyboard.down(0x84U),
+                    keyboard.down(input::legacy_key::left_control),
+                    keyboard.down(input::legacy_key::left_shift) ||
+                        keyboard.down(input::legacy_key::right_shift),
                     frame_tick);
                 if (key_state_reset == app::LegacyKeyStateReset::edge) {
                     keyboard.consume_edge(translated_key);
                 } else if (key_state_reset == app::LegacyKeyStateReset::translated) {
                     keyboard.clear_state(translated_key);
                 } else if (key_state_reset == app::LegacyKeyStateReset::down_translated) {
-                    keyboard.clear_state(input::kLegacyDownKey);
+                    keyboard.clear_state(input::legacy_key::down);
                 } else if (key_state_reset == app::LegacyKeyStateReset::confirmation_group) {
                     keyboard.clear_confirmation_states();
-                } else if (translated_key == 0x1BU) {
-                    keyboard.consume_edge(0x1BU);
+                } else if (translated_key == input::legacy_key::escape) {
+                    keyboard.consume_edge(input::legacy_key::escape);
                 }
             }
             keyboard.clear_last_key();
         };
     std::optional<compat::HostKey> held_movement_direction;
     std::chrono::steady_clock::time_point movement_repeat_at{};
+    std::optional<compat::HostKey> held_save_list_page_key;
+    std::chrono::steady_clock::time_point save_list_page_repeat_at{};
     timing::SteadyBiosTickSource tick_source;
     timing::SteadyVgaRetraceSource retrace_source{
         timing_configuration.fade_frame_delay};
@@ -471,6 +485,7 @@ int main(const int argc, const char* const* argv) {
         const auto frame_retrace = retrace_source.tick();
         const auto input_now = std::chrono::steady_clock::now();
         bool movement_direction_pressed{};
+        bool save_list_page_key_pressed{};
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
@@ -480,18 +495,30 @@ int main(const int argc, const char* const* argv) {
                 const bool controlled_direction =
                     is_movement_direction_key(event.key) &&
                     accepts_movement_repeat(game.view());
+                const bool controlled_save_list_page =
+                    is_save_list_page_key(event.key) && game.save_list_active();
                 if (controlled_direction && !event.repeat) {
                     held_movement_direction = event.key;
                     movement_repeat_at =
                         input_now + input_configuration.movement_repeat_delay;
                     movement_direction_pressed = true;
                 }
-                if (!controlled_direction || !event.repeat) {
+                if (controlled_save_list_page && !event.repeat) {
+                    held_save_list_page_key = event.key;
+                    save_list_page_repeat_at =
+                        input_now + input_configuration.movement_repeat_delay;
+                    save_list_page_key_pressed = true;
+                }
+                if ((!controlled_direction && !controlled_save_list_page) ||
+                    !event.repeat) {
                     dispatch_key_down(event.key, event.repeat, frame_tick);
                 }
             } else if (event.type == compat::HostEventType::key_up) {
                 if (held_movement_direction == event.key) {
                     held_movement_direction.reset();
+                }
+                if (held_save_list_page_key == event.key) {
+                    held_save_list_page_key.reset();
                 }
                 keyboard.handle_host_key(event.key, false);
                 diagnostics::log_debug(
@@ -510,6 +537,15 @@ int main(const int argc, const char* const* argv) {
             keyboard.handle_host_key(*held_movement_direction, false);
             dispatch_key_down(*held_movement_direction, true, frame_tick);
         }
+        if (!game.save_list_active()) {
+            held_save_list_page_key.reset();
+        } else if (!save_list_page_key_pressed && held_save_list_page_key.has_value() &&
+                   std::chrono::steady_clock::now() >= save_list_page_repeat_at) {
+            keyboard.handle_host_key(*held_save_list_page_key, false);
+            dispatch_key_down(*held_save_list_page_key, true, frame_tick);
+            save_list_page_repeat_at =
+                std::chrono::steady_clock::now() + kSaveListPageRepeatInterval;
+        }
         sync_scene_input_reset();
         sync_battle_confirmation();
         const auto world_direction = keyboard.world_direction();
@@ -519,17 +555,20 @@ int main(const int argc, const char* const* argv) {
             world_direction == LegacyWorldDirectionInput::up,
             world_direction == LegacyWorldDirectionInput::down,
             world_direction == LegacyWorldDirectionInput::right,
-            keyboard.edge(0x1BU));
+            keyboard.edge(input::legacy_key::escape));
         if (directional_input_consumed &&
             world_direction != LegacyWorldDirectionInput::none) {
             keyboard.consume_world_direction(world_direction);
-        } else if (directional_input_consumed && keyboard.edge(0x1BU)) {
-            keyboard.consume_edge(0x1BU);
+        } else if (directional_input_consumed &&
+                   keyboard.edge(input::legacy_key::escape)) {
+            keyboard.consume_edge(input::legacy_key::escape);
         }
         game.set_scene_input_states(
-            keyboard.down(0x0DU) || keyboard.down(0x20U) || keyboard.down(0x96U),
-            keyboard.edge(0x1BU),
-            keyboard.edge(static_cast<std::uint8_t>('L')));
+            keyboard.down(input::legacy_key::enter) ||
+                keyboard.down(input::legacy_key::space) ||
+                keyboard.down(input::legacy_key::keypad_insert),
+            keyboard.edge(input::legacy_key::escape),
+            keyboard.edge(input::legacy_key::weather_toggle));
         game.advance(frame_tick);
         const bool vga_frame = game.uses_vga_retrace();
         sync_scene_input_reset();

@@ -143,10 +143,10 @@ void run_keyboard_tests() {
 
     LegacyKeyboard arrows;
     constexpr std::array<std::pair<HostKey, std::uint8_t>, 4> arrow_states{
-        std::pair{HostKey::left, openlegend::input::kLegacyLeftKey},
-        std::pair{HostKey::up, openlegend::input::kLegacyUpKey},
-        std::pair{HostKey::down, openlegend::input::kLegacyDownKey},
-        std::pair{HostKey::right, openlegend::input::kLegacyRightKey}};
+        std::pair{HostKey::left, openlegend::input::legacy_key::left},
+        std::pair{HostKey::up, openlegend::input::legacy_key::up},
+        std::pair{HostKey::down, openlegend::input::legacy_key::down},
+        std::pair{HostKey::right, openlegend::input::legacy_key::right}};
     constexpr std::array<std::uint8_t, 4> expected_arrow_states{0x9AU, 0x9EU, 0x98U, 0x9CU};
     for (std::size_t index = 0U; index < arrow_states.size(); ++index) {
         OL_CHECK(arrow_states[index].second == expected_arrow_states[index]);
@@ -160,32 +160,32 @@ void run_keyboard_tests() {
 
     LegacyKeyboard consumed_repeat;
     consumed_repeat.handle_host_key(HostKey::down, true);
-    OL_CHECK(consumed_repeat.last_key() == openlegend::input::kLegacyDownKey);
-    consumed_repeat.clear_state(openlegend::input::kLegacyDownKey);
+    OL_CHECK(consumed_repeat.last_key() == openlegend::input::legacy_key::down);
+    consumed_repeat.clear_state(openlegend::input::legacy_key::down);
     consumed_repeat.clear_last_key();
     consumed_repeat.handle_host_key(HostKey::down, true);
-    OL_CHECK(consumed_repeat.last_key() == openlegend::input::kLegacyDownKey);
-    OL_CHECK(consumed_repeat.state(openlegend::input::kLegacyDownKey) == 3U);
+    OL_CHECK(consumed_repeat.last_key() == openlegend::input::legacy_key::down);
+    OL_CHECK(consumed_repeat.state(openlegend::input::legacy_key::down) == 3U);
 
     LegacyKeyboard confirmation_states;
     confirmation_states.handle_host_key(HostKey::enter, true);
     confirmation_states.handle_host_key(HostKey::space, true);
     confirmation_states.handle_host_key(HostKey::insert, true);
-    for (const auto translated_key : openlegend::input::kLegacyConfirmationKeys) {
+    for (const auto translated_key : openlegend::input::legacy_key::confirmation) {
         OL_CHECK(confirmation_states.down(translated_key));
     }
     confirmation_states.clear_confirmation_states();
-    for (const auto translated_key : openlegend::input::kLegacyConfirmationKeys) {
+    for (const auto translated_key : openlegend::input::legacy_key::confirmation) {
         OL_CHECK(!confirmation_states.down(translated_key));
     }
 
-    OL_CHECK(openlegend::input::kLegacyWorldLeftKeys ==
+    OL_CHECK(openlegend::input::legacy_key::world_left ==
              (std::array<std::uint8_t, 2>{0x9AU, 0x9DU}));
-    OL_CHECK(openlegend::input::kLegacyWorldUpKeys ==
+    OL_CHECK(openlegend::input::legacy_key::world_up ==
              (std::array<std::uint8_t, 2>{0x9EU, 0x9FU}));
-    OL_CHECK(openlegend::input::kLegacyWorldDownKeys ==
+    OL_CHECK(openlegend::input::legacy_key::world_down ==
              (std::array<std::uint8_t, 2>{0x97U, 0x98U}));
-    OL_CHECK(openlegend::input::kLegacyWorldRightKeys ==
+    OL_CHECK(openlegend::input::legacy_key::world_right ==
              (std::array<std::uint8_t, 2>{0x99U, 0x9CU}));
 
     LegacyKeyboard keypad_directions;
@@ -235,10 +235,10 @@ void run_keyboard_tests() {
         all_directions.handle_host_key(key, true);
     }
     for (const auto translated_keys : {
-             openlegend::input::kLegacyWorldLeftKeys,
-             openlegend::input::kLegacyWorldUpKeys,
-             openlegend::input::kLegacyWorldDownKeys,
-             openlegend::input::kLegacyWorldRightKeys}) {
+             openlegend::input::legacy_key::world_left,
+             openlegend::input::legacy_key::world_up,
+             openlegend::input::legacy_key::world_down,
+             openlegend::input::legacy_key::world_right}) {
         OL_CHECK(all_directions.down(translated_keys[0]));
         OL_CHECK(all_directions.down(translated_keys[1]));
     }
@@ -247,10 +247,10 @@ void run_keyboard_tests() {
     OL_CHECK(all_directions.last_key() == 0U);
     OL_CHECK(all_directions.world_direction() == LegacyWorldDirectionInput::none);
     for (const auto translated_keys : {
-             openlegend::input::kLegacyWorldLeftKeys,
-             openlegend::input::kLegacyWorldUpKeys,
-             openlegend::input::kLegacyWorldDownKeys,
-             openlegend::input::kLegacyWorldRightKeys}) {
+             openlegend::input::legacy_key::world_left,
+             openlegend::input::legacy_key::world_up,
+             openlegend::input::legacy_key::world_down,
+             openlegend::input::legacy_key::world_right}) {
         OL_CHECK(!all_directions.down(translated_keys[0]));
         OL_CHECK(!all_directions.down(translated_keys[1]));
     }

@@ -29,6 +29,23 @@ constexpr std::array<std::array<std::uint8_t, 2>, 3> kSlotLabels{{
     {0xA4U, 0x47U},
     {0xA4U, 0x54U},
 }};
+constexpr std::array<std::uint8_t, 8> kLoadListTitle{
+    0xC5U, 0xAAU, 0xA8U, 0xFAU, 0xA6U, 0x73U, 0xC0U, 0xC9U};
+constexpr std::array<std::uint8_t, 8> kSaveListTitle{
+    0xC0U, 0x78U, 0xA6U, 0x73U, 0xA6U, 0x73U, 0xC0U, 0xC9U};
+constexpr std::array<std::uint8_t, 4> kSlotNumberHeader{
+    0xBDU, 0x73U, 0xB8U, 0xB9U};
+constexpr std::array<std::uint8_t, 4> kNameHeader{
+    0xA9U, 0x6DU, 0xA6U, 0x57U};
+constexpr std::array<std::uint8_t, 2> kLevelHeader{'L', 'V'};
+constexpr std::array<std::uint8_t, 4> kLocationHeader{
+    0xA6U, 0x61U, 0xC2U, 0x49U};
+constexpr std::array<std::uint8_t, 8> kSavedAtHeader{
+    0xA6U, 0x73U, 0xC0U, 0xC9U, 0xAEU, 0xC9U, 0xB6U, 0xA1U};
+constexpr std::array<std::uint8_t, 4> kEmptySaveLabel{
+    0xAAU, 0xC5U, 0xA5U, 0xD5U};
+constexpr std::array<std::uint8_t, 4> kDamagedSaveLabel{
+    0xB7U, 0x6CU, 0xC3U, 0x61U};
 constexpr std::array<std::uint8_t, 13> kNamePrompt{
     0xBDU, 0xD0U, 0xBFU, 0xE9U, 0xA4U, 0x4AU, 0xA9U,
     0x6DU, 0xA6U, 0x57U, 0x20U, 0x20U, 0x3AU};
@@ -51,6 +68,28 @@ constexpr std::array<std::uint8_t, 22> kQuitPrompt{
     0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U,
     0xC0U, 0xB8U, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU,
     0xA1U, 0x5EU};
+constexpr std::array<std::uint8_t, 8> kDeleteSavePrompt{
+    0xA7U,
+    0x52U,
+    0xB0U,
+    0xA3U,
+    0xA6U,
+    0x73U,
+    0xC0U,
+    0xC9U,
+};
+constexpr std::array<std::uint8_t, 10> kYesNoPrompt{
+    0xA1U,
+    0x5DU,
+    0xA2U,
+    0xE7U,
+    0xA1U,
+    0xFEU,
+    0xA2U,
+    0xDCU,
+    0xA1U,
+    0x5EU,
+};
 constexpr std::array<std::uint8_t, 8> kIoWaitLabel{
     0xBDU, 0xD0U, 0xB5U, 0x79U, 0xADU, 0xD4U, 0xA1U, 0x49U};
 constexpr std::array<std::uint8_t, 26> kLeaveProtagonistNotice{
@@ -119,6 +158,116 @@ void append_number(std::vector<std::uint8_t>& text, const std::int32_t value, co
     for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
         text.push_back(static_cast<std::uint8_t>(*cursor));
     }
+}
+
+[[nodiscard]] std::vector<std::uint8_t> zero_padded_number(
+    const std::uint32_t value, const int width) {
+    std::array<char, 16> buffer{};
+    const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
+    const auto count = static_cast<int>(converted.ptr - buffer.data());
+    std::vector<std::uint8_t> text;
+    text.reserve(static_cast<std::size_t>(std::max(width, count)));
+    for (int index = count; index < width; ++index) {
+        text.push_back('0');
+    }
+    for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
+        text.push_back(static_cast<std::uint8_t>(*cursor));
+    }
+    return text;
+}
+
+[[nodiscard]] std::span<const std::uint8_t> byte_text(const std::string& text) noexcept {
+    return {
+        reinterpret_cast<const std::uint8_t*>(text.data()),
+        text.size()};
+}
+
+[[nodiscard]] std::span<const std::uint8_t> legacy_text_prefix(
+    const std::span<const std::uint8_t> text,
+    const int maximum_pixels) noexcept {
+    std::size_t bytes = 0U;
+    int pixels = 0;
+    while (bytes < text.size()) {
+        const bool double_byte = text[bytes] >= 0x80U && bytes + 1U < text.size();
+        const int glyph_pixels = double_byte ? 16 : 8;
+        if (pixels + glyph_pixels > maximum_pixels) {
+            break;
+        }
+        pixels += glyph_pixels;
+        bytes += double_byte ? 2U : 1U;
+    }
+    return text.first(bytes);
+}
+
+enum class SaveListColumn : std::size_t {
+    slot,
+    name,
+    level,
+    location,
+    saved_at,
+    count,
+};
+
+struct SaveListLayout {
+    int panel_x{};
+    int panel_y{};
+    std::uint16_t panel_width{};
+    std::uint16_t panel_height{};
+    int title_y{};
+    int page_x{};
+    int header_y{};
+    int first_row_y{};
+    int row_step{};
+    int name_text_pixels{};
+    int location_text_pixels{};
+    std::array<int, static_cast<std::size_t>(SaveListColumn::count)> column_x{};
+};
+
+[[nodiscard]] SaveListLayout save_list_layout() noexcept {
+    constexpr int kReferenceWidth = 320;
+    constexpr int kReferencePanelHeight = 198;
+    constexpr int kPageTextPixels = 7 * 8;
+    constexpr std::array<int, 5> kColumnWeights{40, 72, 24, 87, 88};
+    constexpr int kTotalColumnWeight = 311;
+    const int framebuffer_width = render::IndexedFramebuffer::width;
+    const int framebuffer_height = render::IndexedFramebuffer::height;
+    const int outer_x = std::max(1, framebuffer_width / kReferenceWidth);
+    const int outer_y = std::max(1, framebuffer_height / 200);
+    const int inner_x = std::max(6, 6 * framebuffer_width / kReferenceWidth);
+    const int panel_width = framebuffer_width - 2 * outer_x;
+    const int panel_height = framebuffer_height - 2 * outer_y;
+    const int content_x = outer_x + inner_x;
+    const int content_width = panel_width - inner_x - outer_x;
+
+    SaveListLayout layout;
+    layout.panel_x = outer_x;
+    layout.panel_y = outer_y;
+    layout.panel_width = static_cast<std::uint16_t>(panel_width);
+    layout.panel_height = static_cast<std::uint16_t>(panel_height);
+    int accumulated_weight = 0;
+    for (std::size_t column = 0U; column < layout.column_x.size(); ++column) {
+        layout.column_x[column] =
+            content_x + content_width * accumulated_weight / kTotalColumnWeight;
+        accumulated_weight += kColumnWeights[column];
+    }
+    const auto scaled_y = [](const int reference_y) {
+        return outer_y + reference_y * panel_height / kReferencePanelHeight;
+    };
+    layout.title_y = scaled_y(3);
+    layout.page_x = outer_x + panel_width - inner_x - kPageTextPixels;
+    layout.header_y = scaled_y(21);
+    layout.first_row_y = scaled_y(39);
+    layout.row_step = std::max(18, 18 * panel_height / kReferencePanelHeight);
+    const auto column = [&layout](const SaveListColumn value) {
+        return layout.column_x[static_cast<std::size_t>(value)];
+    };
+    const int name_gutter = std::max(8, 8 * framebuffer_width / kReferenceWidth);
+    const int location_gutter = std::max(7, 7 * framebuffer_width / kReferenceWidth);
+    layout.name_text_pixels = column(SaveListColumn::level) -
+        column(SaveListColumn::name) - name_gutter;
+    layout.location_text_pixels = column(SaveListColumn::saved_at) -
+        column(SaveListColumn::location) - location_gutter;
+    return layout;
 }
 
 [[nodiscard]] int legacy_item_metric(const model::RangerState& ranger) noexcept {
@@ -475,12 +624,158 @@ bool BasicUiRenderer::render_game_menu(
             }
         }
         return true;
+    case GameMenuScreen::delete_confirmation:
+        return false;
     case GameMenuScreen::quit_confirmation:
         return render_game_menu_main(menu, framebuffer) && render_system_menu() &&
             draw_box(framebuffer, 120, 18, 177U, 31U) &&
             draw_text(framebuffer, 124, 25, kQuitPrompt, 0x0705U);
     }
     return false;
+}
+
+bool BasicUiRenderer::render_save_list(
+    const SaveListMode mode,
+    const std::uint16_t selection,
+    const std::span<const SaveListEntry> entries,
+    render::IndexedFramebuffer& framebuffer) {
+    const auto layout = save_list_layout();
+    const auto column = [&layout](const SaveListColumn value) {
+        return layout.column_x[static_cast<std::size_t>(value)];
+    };
+    if (entries.size() != kSaveListPageSize ||
+        save_list_page(selection) >= kSaveListPageCount ||
+        !draw_box(
+            framebuffer,
+            layout.panel_x,
+            layout.panel_y,
+            layout.panel_width,
+            layout.panel_height)) {
+        return false;
+    }
+
+    const auto& title = mode == SaveListMode::load ? kLoadListTitle : kSaveListTitle;
+    auto page = zero_padded_number(save_list_page(selection) + 1U, 3);
+    page.push_back('/');
+    const auto page_count = zero_padded_number(kSaveListPageCount, 3);
+    page.insert(page.end(), page_count.begin(), page_count.end());
+    if (!draw_text(
+            framebuffer,
+            column(SaveListColumn::slot),
+            layout.title_y,
+            title,
+            0x0705U) ||
+        !draw_text(framebuffer, layout.page_x, layout.title_y, page, 0x0705U) ||
+        !draw_text(
+            framebuffer,
+            column(SaveListColumn::slot),
+            layout.header_y,
+            kSlotNumberHeader) ||
+        !draw_text(
+            framebuffer,
+            column(SaveListColumn::name),
+            layout.header_y,
+            kNameHeader) ||
+        !draw_text(
+            framebuffer,
+            column(SaveListColumn::level),
+            layout.header_y,
+            kLevelHeader) ||
+        !draw_text(
+            framebuffer,
+            column(SaveListColumn::location),
+            layout.header_y,
+            kLocationHeader) ||
+        !draw_text(
+            framebuffer,
+            column(SaveListColumn::saved_at),
+            layout.header_y,
+            kSavedAtHeader)) {
+        return false;
+    }
+
+    for (std::size_t row = 0U; row < entries.size(); ++row) {
+        const auto& entry = entries[row];
+        if (entry.state == SaveListEntryState::hidden) {
+            continue;
+        }
+        const int y = layout.first_row_y + static_cast<int>(row) * layout.row_step;
+        const std::uint16_t colors = entry.slot == selection ? 0x6663U : 0x2321U;
+        const auto slot = zero_padded_number(
+            static_cast<std::uint32_t>(entry.slot) + 1U, 3);
+        if (!draw_text(framebuffer, column(SaveListColumn::slot), y, slot, colors)) {
+            return false;
+        }
+        if (entry.state == SaveListEntryState::empty) {
+            if (!draw_text(
+                    framebuffer,
+                    column(SaveListColumn::location),
+                    y,
+                    kEmptySaveLabel,
+                    colors)) {
+                return false;
+            }
+            continue;
+        }
+        if (entry.state == SaveListEntryState::damaged) {
+            if (!draw_text(
+                    framebuffer,
+                    column(SaveListColumn::location),
+                    y,
+                    kDamagedSaveLabel,
+                    colors)) {
+                return false;
+            }
+            continue;
+        }
+        std::vector<std::uint8_t> level;
+        append_number(level, entry.level, 2);
+        if (!draw_text(
+                framebuffer,
+                column(SaveListColumn::name),
+                y,
+                legacy_text_prefix(
+                    entry.protagonist_name, layout.name_text_pixels),
+                colors) ||
+            !draw_text(
+                framebuffer,
+                column(SaveListColumn::level),
+                y,
+                level,
+                colors) ||
+            !draw_text(
+                framebuffer,
+                column(SaveListColumn::location),
+                y,
+                legacy_text_prefix(entry.location, layout.location_text_pixels),
+                colors) ||
+            !draw_text(
+                framebuffer,
+                column(SaveListColumn::saved_at),
+                y,
+                byte_text(entry.saved_at),
+                colors)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BasicUiRenderer::render_save_delete_confirmation(
+    const std::uint16_t selection,
+    render::IndexedFramebuffer& framebuffer) {
+    constexpr std::uint16_t kBoxWidth = 196U;
+    constexpr std::uint16_t kBoxHeight = 31U;
+    const int x = (render::IndexedFramebuffer::width - kBoxWidth) / 2;
+    const int y = (render::IndexedFramebuffer::height - kBoxHeight) / 2;
+    std::vector<std::uint8_t> prompt{kDeleteSavePrompt.begin(), kDeleteSavePrompt.end()};
+    prompt.push_back(' ');
+    const auto slot = zero_padded_number(
+        static_cast<std::uint32_t>(selection) + 1U, 3);
+    prompt.insert(prompt.end(), slot.begin(), slot.end());
+    prompt.insert(prompt.end(), kYesNoPrompt.begin(), kYesNoPrompt.end());
+    return draw_box(framebuffer, x, y, kBoxWidth, kBoxHeight) &&
+        draw_text(framebuffer, x + 10, y + 7, prompt, 0x0705U);
 }
 
 bool BasicUiRenderer::render_io_wait(render::IndexedFramebuffer& framebuffer) {

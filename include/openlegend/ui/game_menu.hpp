@@ -5,6 +5,8 @@
 #include <optional>
 #include <span>
 
+#include "openlegend/ui/save_list.hpp"
+
 namespace openlegend::ui {
 
 enum class GameMenuContext {
@@ -24,6 +26,7 @@ enum class GameMenuScreen {
     system,
     load_slots,
     save_slots,
+    delete_confirmation,
     quit_confirmation,
 };
 
@@ -61,12 +64,13 @@ enum class GameMenuCommand {
     leave_party,
     load_slot,
     save_slot,
+    delete_slot,
     exit_game,
 };
 
 struct GameMenuResult {
     GameMenuCommand command{GameMenuCommand::none};
-    std::uint8_t slot{};
+    std::uint16_t slot{};
     std::uint16_t index{};
 };
 
@@ -145,8 +149,11 @@ public:
     [[nodiscard]] constexpr std::uint8_t system_selection() const noexcept {
         return system_selection_;
     }
-    [[nodiscard]] constexpr std::uint8_t slot_selection() const noexcept {
+    [[nodiscard]] constexpr std::uint16_t slot_selection() const noexcept {
         return slot_selection_;
+    }
+    [[nodiscard]] constexpr GameMenuScreen delete_return_screen() const noexcept {
+        return delete_return_screen_;
     }
     [[nodiscard]] constexpr std::uint8_t visible_main_items() const noexcept {
         return context_ == GameMenuContext::world ? 6U : 4U;
@@ -176,7 +183,8 @@ private:
     GameMenuNotice notice_{GameMenuNotice::leave_protagonist};
     std::uint8_t status_page_{};
     std::uint8_t system_selection_{};
-    std::uint8_t slot_selection_{};
+    std::uint16_t slot_selection_{};
+    GameMenuScreen delete_return_screen_{GameMenuScreen::load_slots};
     std::array<std::int16_t, 200U> inventory_slots_{};
     std::uint16_t inventory_count_{};
     std::uint8_t item_page_{};

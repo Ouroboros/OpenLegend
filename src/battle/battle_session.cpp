@@ -11,22 +11,14 @@
 #include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 
 namespace openlegend::battle {
 namespace {
 
-constexpr std::uint8_t kEnter = 0x0DU;
-constexpr std::uint8_t kSpace = 0x20U;
-constexpr std::uint8_t kEscape = 0x1BU;
-constexpr std::uint8_t kKeypadInsert = 0x96U;
-constexpr std::uint8_t kDown = 0x98U;
-constexpr std::uint8_t kPageDown = 0x99U;
-constexpr std::uint8_t kLeft = 0x9AU;
-constexpr std::uint8_t kRight = 0x9CU;
-constexpr std::uint8_t kUp = 0x9EU;
-constexpr std::uint8_t kPageUp = 0x9FU;
+using namespace input::legacy_key;
 constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
     0xBDU, 0xD0U, 0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xB0U, 0xD1U, 0xBBU, 0x50U,
     0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA4U, 0xA7U, 0xA4U, 0x48U, 0xAAU, 0xABU};

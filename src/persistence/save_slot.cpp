@@ -248,15 +248,11 @@ void encode_records(
 }
 
 [[nodiscard]] std::optional<unsigned int> slot_number(const SaveSlot slot) noexcept {
-    switch (slot) {
-    case SaveSlot::one:
-        return 1U;
-    case SaveSlot::two:
-        return 2U;
-    case SaveSlot::three:
-        return 3U;
+    const auto index = static_cast<unsigned int>(slot);
+    if (index >= kNumberedSaveSlotCount) {
+        return std::nullopt;
     }
-    return std::nullopt;
+    return index + 1U;
 }
 
 [[nodiscard]] SaveFileSet make_file_set(
@@ -514,6 +510,35 @@ SnapshotLoadResult load_numbered_slot(
         scene_map_group, scene_event_group, ranger_index, ranger_group);
 }
 
+RangerLoadResult load_numbered_slot_ranger(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const std::span<const std::uint8_t> ranger_index_bytes) {
+    const auto files = numbered_file_set(root, slot);
+    if (!files.has_value()) {
+        return ranger_load_error(PersistenceStatus::invalid_slot, root);
+    }
+    const auto ranger_group = read_required(files->ranger_group);
+    if (ranger_group.status != PersistenceStatus::ready) {
+        return ranger_load_error(
+            ranger_group.status, ranger_group.path, ranger_group.detail);
+    }
+    const LoadedBytes ranger_index{
+        PersistenceStatus::ready,
+        std::vector<std::uint8_t>{ranger_index_bytes.begin(), ranger_index_bytes.end()},
+        root / "RANGER.IDX",
+        {}};
+    model::GameSnapshot snapshot;
+    const auto decoded = decode_ranger(ranger_index, ranger_group, snapshot);
+    if (decoded.status != PersistenceStatus::ready) {
+        return ranger_load_error(decoded.status, decoded.path, decoded.detail);
+    }
+    RangerLoadResult loaded;
+    loaded.ranger = std::move(snapshot.ranger);
+    loaded.index_bytes = ranger_index.bytes;
+    return loaded;
+}
+
 SnapshotWriteResult write_snapshot(
     const SaveFileSet& files, const model::GameSnapshot& snapshot) {
     if (!snapshot.valid()) {
@@ -599,12 +624,42 @@ SnapshotWriteResult write_numbered_slot(
     return write_numbered_slot_ranger(root, slot, snapshot);
 }
 
+SnapshotWriteResult delete_numbered_slot(
+    const std::filesystem::path& root, const SaveSlot slot) {
+    const auto files = numbered_file_set(root, slot);
+    if (!files.has_value()) {
+        return write_error(PersistenceStatus::invalid_slot, root);
+    }
+    const std::array<std::filesystem::path, 3> paths{
+        files->ranger_group,
+        files->scene_map_group,
+        files->scene_event_group,
+    };
+    std::filesystem::path failed_path;
+    std::string failure_detail;
+    for (const auto& path : paths) {
+        std::error_code error;
+        static_cast<void>(std::filesystem::remove(path, error));
+        if (error && failed_path.empty()) {
+            failed_path = path;
+            failure_detail = error.message();
+        }
+    }
+    if (!failed_path.empty()) {
+        return write_error(
+            PersistenceStatus::delete_failed,
+            std::move(failed_path),
+            std::move(failure_detail));
+    }
+    return SnapshotWriteResult{};
+}
+
 std::string_view persistence_status_message(const PersistenceStatus status) noexcept {
     switch (status) {
     case PersistenceStatus::ready:
         return "ready";
     case PersistenceStatus::invalid_slot:
-        return "save slot must be 1, 2, or 3";
+        return "save slot must be between 1 and 999";
     case PersistenceStatus::read_failed:
         return "cannot read save file";
     case PersistenceStatus::invalid_ranger_index_size:
@@ -625,6 +680,8 @@ std::string_view persistence_status_message(const PersistenceStatus status) noex
         return "game snapshot has invalid scene storage";
     case PersistenceStatus::write_failed:
         return "cannot write save file";
+    case PersistenceStatus::delete_failed:
+        return "cannot delete save file";
     }
     return "unknown persistence status";
 }

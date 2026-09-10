@@ -260,6 +260,46 @@ void check_runtime_slot_contract(
             OL_CHECK(*runtime.snapshot == *paired.snapshot);
         }
     }
+    const auto last_slot = static_cast<SaveSlot>(
+        openlegend::persistence::kNumberedSaveSlotCount - 1U);
+    const auto last_files = openlegend::persistence::numbered_file_set(game_root, last_slot);
+    OL_CHECK(last_files.has_value());
+    OL_CHECK(last_files->ranger_group.filename() == "R999.GRP");
+    OL_CHECK(last_files->scene_map_group.filename() == "S999.GRP");
+    OL_CHECK(last_files->scene_event_group.filename() == "D999.GRP");
+
+    const auto delete_root = output_root / "delete-slot";
+    std::filesystem::create_directories(delete_root);
+    const auto delete_files = openlegend::persistence::numbered_file_set(
+        delete_root, SaveSlot::one);
+    OL_CHECK(delete_files.has_value());
+    if (delete_files.has_value()) {
+        write_bytes(
+            delete_files->ranger_group, std::array<std::uint8_t, 1>{1U});
+        write_bytes(
+            delete_files->scene_map_group, std::array<std::uint8_t, 1>{2U});
+        write_bytes(
+            delete_files->scene_event_group, std::array<std::uint8_t, 1>{3U});
+        write_bytes(
+            delete_root / "RANGER.IDX", std::array<std::uint8_t, 1>{4U});
+        OL_CHECK(openlegend::persistence::delete_numbered_slot(
+            delete_root, SaveSlot::one));
+        OL_CHECK(!std::filesystem::exists(delete_files->ranger_group));
+        OL_CHECK(!std::filesystem::exists(delete_files->scene_map_group));
+        OL_CHECK(!std::filesystem::exists(delete_files->scene_event_group));
+        OL_CHECK(std::filesystem::exists(delete_root / "RANGER.IDX"));
+        OL_CHECK(openlegend::persistence::delete_numbered_slot(
+            delete_root, SaveSlot::one));
+    }
+
+    const auto ranger_index = read_bytes(game_root / "RANGER.IDX");
+    const auto summary = openlegend::persistence::load_numbered_slot_ranger(
+        game_root, SaveSlot::one, ranger_index);
+    OL_CHECK(static_cast<bool>(summary));
+    OL_CHECK(summary.ranger.has_value());
+    if (summary.ranger.has_value()) {
+        OL_CHECK(summary.ranger->valid());
+    }
 
     const auto source = openlegend::persistence::load_numbered_slot(game_root, SaveSlot::one);
     OL_CHECK(static_cast<bool>(source));
@@ -394,11 +434,14 @@ void check_malformed_rejection(
     OL_CHECK(openlegend::persistence::write_snapshot(files, invalid_ranger).status ==
              PersistenceStatus::invalid_snapshot);
 
-    const auto invalid_slot = static_cast<SaveSlot>(99U);
+    const auto invalid_slot = static_cast<SaveSlot>(
+        openlegend::persistence::kNumberedSaveSlotCount);
     OL_CHECK(!openlegend::persistence::numbered_file_set(root, invalid_slot).has_value());
     OL_CHECK(openlegend::persistence::load_numbered_slot(root, invalid_slot).status ==
              PersistenceStatus::invalid_slot);
     OL_CHECK(openlegend::persistence::write_numbered_slot(root, invalid_slot, baseline).status ==
+             PersistenceStatus::invalid_slot);
+    OL_CHECK(openlegend::persistence::delete_numbered_slot(root, invalid_slot).status ==
              PersistenceStatus::invalid_slot);
 
     const auto missing = openlegend::persistence::load_baseline(root / "missing");

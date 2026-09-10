@@ -2,11 +2,16 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <ctime>
 #include <iterator>
+#include <limits>
+#include <span>
 #include <string_view>
 #include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/render/legacy_effects.hpp"
@@ -25,8 +30,87 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     framebuffer.set_palette(palette);
 }
 
-[[nodiscard]] persistence::SaveSlot save_slot(const std::uint8_t slot) noexcept {
+[[nodiscard]] persistence::SaveSlot save_slot(const std::uint16_t slot) noexcept {
     return static_cast<persistence::SaveSlot>(slot);
+}
+
+[[nodiscard]] std::vector<std::uint8_t> legacy_field(
+    const std::span<const std::uint8_t> bytes,
+    const std::size_t begin,
+    const std::size_t maximum) {
+    const auto field = bytes.subspan(begin, maximum);
+    const auto end = std::find(field.begin(), field.end(), std::uint8_t{0U});
+    return std::vector<std::uint8_t>(field.begin(), end);
+}
+
+[[nodiscard]] std::vector<std::uint8_t> save_location(
+    const model::RangerState& ranger) {
+    const auto world_x = ranger.header.word(model::header_word::main_map_x);
+    const auto world_y = ranger.header.word(model::header_word::main_map_y);
+    const model::SceneMetadataRecord* closest_scene = nullptr;
+    std::int64_t closest_distance = std::numeric_limits<std::int64_t>::max();
+    for (const auto& scene : ranger.scenes) {
+        if (scene.bytes[model::scene_metadata_word::name_byte] == 0U) {
+            continue;
+        }
+        for (const auto [x_word, y_word] : {
+                 std::pair{
+                     model::scene_metadata_word::main_entrance_x_1,
+                     model::scene_metadata_word::main_entrance_y_1},
+                 std::pair{
+                     model::scene_metadata_word::main_entrance_x_2,
+                     model::scene_metadata_word::main_entrance_y_2},
+             }) {
+            const auto entrance_x = scene.word(x_word);
+            const auto entrance_y = scene.word(y_word);
+            if (entrance_x < 0 || entrance_y < 0) {
+                continue;
+            }
+            const auto delta_x = static_cast<std::int64_t>(entrance_x) - world_x;
+            const auto delta_y = static_cast<std::int64_t>(entrance_y) - world_y;
+            const auto distance = delta_x * delta_x + delta_y * delta_y;
+            if (distance < closest_distance) {
+                closest_distance = distance;
+                closest_scene = &scene;
+            }
+        }
+    }
+    if (closest_scene != nullptr) {
+        return legacy_field(
+            closest_scene->bytes,
+            model::scene_metadata_word::name_byte,
+            model::scene_metadata_word::name_bytes);
+    }
+    constexpr std::array<std::uint8_t, 4> kUnknown{
+        0xA5U, 0xBCU, 0xAAU, 0xBEU};
+    return std::vector<std::uint8_t>(kUnknown.begin(), kUnknown.end());
+}
+
+[[nodiscard]] std::string save_timestamp(const std::filesystem::path& path) {
+    std::error_code error;
+    const auto file_time = std::filesystem::last_write_time(path, error);
+    if (error) {
+        return "--";
+    }
+    const auto system_time = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+        file_time - std::filesystem::file_time_type::clock::now() +
+        std::chrono::system_clock::now());
+    const std::time_t value = std::chrono::system_clock::to_time_t(system_time);
+    std::tm local{};
+#ifdef _WIN32
+    if (localtime_s(&local, &value) != 0) {
+        return "--";
+    }
+#else
+    if (localtime_r(&value, &local) == nullptr) {
+        return "--";
+    }
+#endif
+    std::array<char, 16> text{};
+    if (std::strftime(text.data(), text.size(), "%m-%d %H:%M", &local) == 0U) {
+        return "--";
+    }
+    return text.data();
 }
 
 [[nodiscard]] std::string_view view_name(const LegacyGameView view) noexcept {
@@ -112,10 +196,14 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
 
 [[nodiscard]] constexpr LegacyKeyStateReset menu_key_state_reset(
     const std::uint8_t translated_key) noexcept {
-    if (translated_key == 0x0DU || translated_key == 0x20U || translated_key == 0x96U) {
+    if (translated_key == input::legacy_key::enter ||
+        translated_key == input::legacy_key::space ||
+        translated_key == input::legacy_key::keypad_insert) {
         return LegacyKeyStateReset::confirmation_group;
     }
-    if (translated_key == 0x98U || translated_key == 0x9EU || translated_key == 0x1BU) {
+    if (translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::up ||
+        translated_key == input::legacy_key::escape) {
         return LegacyKeyStateReset::translated;
     }
     return LegacyKeyStateReset::none;
@@ -123,7 +211,8 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
 
 [[nodiscard]] constexpr LegacyKeyStateReset main_game_menu_key_state_reset(
     const std::uint8_t translated_key) noexcept {
-    if (translated_key == 0x98U || translated_key == 0x9EU) {
+    if (translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::up) {
         return LegacyKeyStateReset::down_translated;
     }
     return menu_key_state_reset(translated_key);
@@ -131,14 +220,29 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
 
 [[nodiscard]] constexpr bool is_item_page_navigation_key(
     const std::uint8_t translated_key) noexcept {
-    return translated_key == 0x98U || translated_key == 0x99U ||
-        translated_key == 0x9AU || translated_key == 0x9CU ||
-        translated_key == 0x9EU || translated_key == 0x9FU;
+    return translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::page_down ||
+        translated_key == input::legacy_key::left ||
+        translated_key == input::legacy_key::right ||
+        translated_key == input::legacy_key::up ||
+        translated_key == input::legacy_key::page_up;
 }
 
 [[nodiscard]] constexpr bool is_item_party_navigation_key(
     const std::uint8_t translated_key) noexcept {
-    return translated_key == 0x98U || translated_key == 0x9EU;
+    return translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::up;
+}
+
+[[nodiscard]] bool save_slot_deletable(
+    const std::span<const ui::SaveListEntry> entries,
+    const std::uint16_t selection) noexcept {
+    const auto row = static_cast<std::size_t>(selection % ui::kSaveListPageSize);
+    if (row >= entries.size() || entries[row].slot != selection) {
+        return false;
+    }
+    return entries[row].state == ui::SaveListEntryState::ready ||
+        entries[row].state == ui::SaveListEntryState::damaged;
 }
 
 }  // namespace
@@ -629,10 +733,25 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
 
     auto key_state_reset = LegacyKeyStateReset::none;
     switch (view_) {
-    case LegacyGameView::title:
+    case LegacyGameView::title: {
         key_state_reset = menu_key_state_reset(translated_key);
-        handle_title_result(title_menu_.handle_key(translated_key));
+        const auto previous_screen = title_menu_.screen();
+        const auto previous_page = ui::save_list_page(title_menu_.slot_selection());
+        const bool ignore_empty_delete =
+            previous_screen == ui::TitleScreen::load_slots &&
+            translated_key == input::legacy_key::delete_save &&
+            !save_slot_deletable(save_list_entries_, title_menu_.slot_selection());
+        const auto result = ignore_empty_delete
+            ? ui::TitleResult{}
+            : title_menu_.handle_key(translated_key);
+        if (title_menu_.screen() == ui::TitleScreen::load_slots &&
+            (previous_screen != ui::TitleScreen::load_slots ||
+             previous_page != ui::save_list_page(title_menu_.slot_selection()))) {
+            refresh_save_list(ui::save_list_page(title_menu_.slot_selection()));
+        }
+        handle_title_result(result);
         break;
+    }
     case LegacyGameView::name_entry:
         if (name_editor_.has_value() &&
             name_editor_->handle_key(translated_key, control_down, shift_down) ==
@@ -667,11 +786,11 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                        scene_question_presented_) {
                 scene_question_presented_ = false;
                 handle_world_menu_event_result(world_menu_event_session_->resume(
-                    translated_key == static_cast<std::uint8_t>('Y')
+                    translated_key == input::legacy_key::yes
                         ? scene::SceneResponse::yes
                         : scene::SceneResponse::no));
             }
-        } else if (translated_key == 0x1BU) {
+        } else if (translated_key == input::legacy_key::escape) {
             world_session_->prepare_game_menu_frame();
             update_menu_counts();
             game_menu_.set_context(ui::GameMenuContext::world);
@@ -689,7 +808,7 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             scene_question_presented_) {
             scene_question_presented_ = false;
             handle_scene_result(scene_session_->resume(
-                translated_key == static_cast<std::uint8_t>('Y')
+                translated_key == input::legacy_key::yes
                     ? scene::SceneResponse::yes
                     : scene::SceneResponse::no));
         } else if (pending_kind == scene::SceneStepKind::shop &&
@@ -753,9 +872,27 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         if (screen == ui::GameMenuScreen::item_confirmation) {
             handle_menu_item_confirmation(translated_key);
         } else {
-            const auto result = game_menu_.handle_key(translated_key);
+            const auto previous_page = ui::save_list_page(game_menu_.slot_selection());
+            const bool save_list_screen = screen == ui::GameMenuScreen::load_slots ||
+                screen == ui::GameMenuScreen::save_slots;
+            const bool ignore_empty_delete = save_list_screen &&
+                translated_key == input::legacy_key::delete_save &&
+                !save_slot_deletable(save_list_entries_, game_menu_.slot_selection());
+            const auto result = ignore_empty_delete
+                ? ui::GameMenuResult{}
+                : game_menu_.handle_key(translated_key);
+            const auto next_screen = game_menu_.screen();
+            const auto next_is_save_list =
+                next_screen == ui::GameMenuScreen::load_slots ||
+                next_screen == ui::GameMenuScreen::save_slots;
+            if (next_is_save_list &&
+                (screen != next_screen ||
+                 previous_page != ui::save_list_page(game_menu_.slot_selection()))) {
+                refresh_save_list(ui::save_list_page(game_menu_.slot_selection()));
+            }
             auto defer_item_dispatch =
-                screen == ui::GameMenuScreen::items && translated_key == 0x1BU;
+                screen == ui::GameMenuScreen::items &&
+                translated_key == input::legacy_key::escape;
             if (screen == ui::GameMenuScreen::items &&
                 result.command == ui::GameMenuCommand::items) {
                 auto* ranger = game_state_.ranger();
@@ -831,7 +968,7 @@ bool LegacyGameRuntime::render() {
         return true;
     }
     if (title_startup_phase_ == TitleStartupPhase::black_menu_present) {
-        if (!title_renderer_->render(title_menu_, framebuffer_)) {
+        if (!render_title_view()) {
             return false;
         }
         const auto black = render::legacy_fade_to_black(framebuffer_.palette());
@@ -843,7 +980,7 @@ bool LegacyGameRuntime::render() {
         return true;
     }
     if (title_startup_phase_ == TitleStartupPhase::fade_from_black) {
-        if (!title_renderer_->render(title_menu_, framebuffer_)) {
+        if (!render_title_view()) {
             return false;
         }
         if (scene_effect_palettes_.empty()) {
@@ -911,7 +1048,7 @@ bool LegacyGameRuntime::render() {
     }
     switch (view_) {
     case LegacyGameView::title:
-        return title_renderer_->render(title_menu_, framebuffer_);
+        return render_title_view();
     case LegacyGameView::name_entry:
         return name_editor_.has_value() &&
                basic_renderer_.render_name_entry(
@@ -1159,16 +1296,39 @@ bool LegacyGameRuntime::render() {
                     return false;
                 }
             }
-        } else if (!basic_renderer_.render_game_menu(
-                       game_menu_, *ranger, framebuffer_)) {
-            return false;
+        } else {
+            const auto menu_screen = game_menu_.screen();
+            const bool delete_confirmation =
+                menu_screen == ui::GameMenuScreen::delete_confirmation;
+            const bool save_list = menu_screen == ui::GameMenuScreen::load_slots ||
+                menu_screen == ui::GameMenuScreen::save_slots || delete_confirmation;
+            const auto list_screen = delete_confirmation
+                ? game_menu_.delete_return_screen()
+                : menu_screen;
+            if (save_list) {
+                if (!basic_renderer_.render_save_list(
+                        list_screen == ui::GameMenuScreen::load_slots
+                            ? ui::SaveListMode::load
+                            : ui::SaveListMode::save,
+                        game_menu_.slot_selection(),
+                        save_list_entries_,
+                        framebuffer_) ||
+                    (delete_confirmation &&
+                     !basic_renderer_.render_save_delete_confirmation(
+                         game_menu_.slot_selection(), framebuffer_))) {
+                    return false;
+                }
+            } else if (!basic_renderer_.render_game_menu(
+                           game_menu_, *ranger, framebuffer_)) {
+                return false;
+            }
         }
         return pending_io_ == PendingIo::none || basic_renderer_.render_io_wait(framebuffer_);
     }
     case LegacyGameView::error: {
         bool base_rendered = false;
         if (error_return_view_ == LegacyGameView::title) {
-            base_rendered = title_renderer_->render(title_menu_, framebuffer_);
+            base_rendered = render_title_view();
         } else if ((error_return_view_ == LegacyGameView::scene ||
                     (error_return_view_ == LegacyGameView::game_menu &&
                      menu_return_view_ == LegacyGameView::scene)) &&
@@ -1960,6 +2120,94 @@ void LegacyGameRuntime::update_menu_counts() {
         std::span<const std::int16_t>{inventory_slots}.first(inventory_count));
 }
 
+void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {
+    if (page >= ui::kSaveListPageCount) {
+        return;
+    }
+    const auto first_slot = static_cast<std::uint16_t>(page * ui::kSaveListPageSize);
+    for (std::size_t row = 0U; row < save_list_entries_.size(); ++row) {
+        auto& entry = save_list_entries_[row];
+        entry = {};
+        entry.slot = static_cast<std::uint16_t>(first_slot + row);
+        if (entry.slot >= ui::kSaveSlotCount) {
+            entry.state = ui::SaveListEntryState::hidden;
+            continue;
+        }
+        const auto files = persistence::numbered_file_set(
+            save_root_path_, save_slot(entry.slot));
+        if (!files.has_value()) {
+            entry.state = ui::SaveListEntryState::damaged;
+            continue;
+        }
+
+        const std::array<std::filesystem::path, 3> group_paths{
+            files->ranger_group,
+            files->scene_map_group,
+            files->scene_event_group,
+        };
+        bool any_file = false;
+        bool all_files = true;
+        bool query_failed = false;
+        for (const auto& path : group_paths) {
+            std::error_code error;
+            const bool exists = std::filesystem::exists(path, error);
+            if (error) {
+                query_failed = true;
+                all_files = false;
+                continue;
+            }
+            any_file = any_file || exists;
+            if (!exists || !std::filesystem::is_regular_file(path, error) || error) {
+                query_failed = query_failed || static_cast<bool>(error);
+                all_files = false;
+            }
+        }
+        if (!any_file && !query_failed) {
+            entry.state = ui::SaveListEntryState::empty;
+            continue;
+        }
+        if (!all_files) {
+            entry.state = ui::SaveListEntryState::damaged;
+            continue;
+        }
+
+        auto loaded = persistence::load_numbered_slot_ranger(
+            save_root_path_,
+            save_slot(entry.slot),
+            startup_resources_.ranger_index_bytes());
+        if (!loaded || !loaded.ranger.has_value() || loaded.ranger->roles.empty()) {
+            entry.state = ui::SaveListEntryState::damaged;
+            continue;
+        }
+        const auto& protagonist = loaded.ranger->roles.front();
+        entry.state = ui::SaveListEntryState::ready;
+        entry.protagonist_name = legacy_field(
+            protagonist.bytes,
+            model::role_word::name_byte,
+            model::role_word::name_bytes);
+        entry.level = protagonist.word(model::role_word::level);
+        entry.location = save_location(*loaded.ranger);
+        entry.saved_at = save_timestamp(files->ranger_group);
+    }
+}
+
+bool LegacyGameRuntime::render_title_view() {
+    const auto screen = title_menu_.screen();
+    const bool delete_confirmation = screen == ui::TitleScreen::delete_confirmation;
+    if (screen != ui::TitleScreen::load_slots && !delete_confirmation) {
+        return title_renderer_->render(title_menu_, framebuffer_);
+    }
+    return title_renderer_->render_background(framebuffer_) &&
+        basic_renderer_.render_save_list(
+            ui::SaveListMode::load,
+            title_menu_.slot_selection(),
+            save_list_entries_,
+            framebuffer_) &&
+        (!delete_confirmation ||
+         basic_renderer_.render_save_delete_confirmation(
+             title_menu_.slot_selection(), framebuffer_));
+}
+
 void LegacyGameRuntime::set_view(
     const LegacyGameView view, const std::string_view reason) {
     if (view_ == view) {
@@ -1998,6 +2246,21 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
         pending_title_result_ = result;
         begin_scene_effect(SceneEffectKind::present, 1U);
         break;
+    case ui::TitleCommand::delete_slot: {
+        const auto deleted = persistence::delete_numbered_slot(
+            save_root_path_, save_slot(result.slot));
+        if (!deleted) {
+            show_error(
+                std::string{persistence::persistence_status_message(deleted.status)},
+                LegacyGameView::title);
+            break;
+        }
+        diagnostics::log_info(
+            "deleted save slot=" +
+            std::to_string(static_cast<unsigned int>(result.slot) + 1U));
+        refresh_save_list(ui::save_list_page(result.slot));
+        break;
+    }
     case ui::TitleCommand::exit_game:
         fade_music_on_exit_ = false;
         set_view(LegacyGameView::exited, "title exit");
@@ -2090,6 +2353,21 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         pending_io_wait_presented_ = false;
         error_return_view_ = LegacyGameView::game_menu;
         break;
+    case ui::GameMenuCommand::delete_slot: {
+        const auto deleted = persistence::delete_numbered_slot(
+            save_root_path_, save_slot(result.slot));
+        if (!deleted) {
+            show_error(
+                std::string{persistence::persistence_status_message(deleted.status)},
+                LegacyGameView::game_menu);
+            break;
+        }
+        diagnostics::log_info(
+            "deleted save slot=" +
+            std::to_string(static_cast<unsigned int>(result.slot) + 1U));
+        refresh_save_list(ui::save_list_page(result.slot));
+        break;
+    }
     case ui::GameMenuCommand::exit_game:
         fade_music_on_exit_ = true;
         if (menu_return_view_ == LegacyGameView::world && world_session_ != nullptr) {
@@ -2271,7 +2549,7 @@ void LegacyGameRuntime::handle_menu_item_confirmation(
     const std::uint8_t translated_key) {
     const auto confirmation = game_menu_.item_confirmation();
     auto* ranger = game_state_.ranger();
-    if (translated_key != static_cast<std::uint8_t>('Y') || ranger == nullptr) {
+    if (translated_key != input::legacy_key::yes || ranger == nullptr) {
         pending_menu_item_slot_.reset();
         pending_menu_item_id_.reset();
         pending_menu_item_role_.reset();

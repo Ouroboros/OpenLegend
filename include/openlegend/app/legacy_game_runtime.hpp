@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -128,6 +129,13 @@ public:
     [[nodiscard]] bool ending_complete() const noexcept { return ending_complete_; }
     [[nodiscard]] bool fade_music_on_exit() const noexcept { return fade_music_on_exit_; }
     [[nodiscard]] LegacyGameView view() const noexcept { return view_; }
+    [[nodiscard]] bool save_list_active() const noexcept {
+        return (view_ == LegacyGameView::title &&
+                title_menu_.screen() == ui::TitleScreen::load_slots) ||
+            (view_ == LegacyGameView::game_menu &&
+             (game_menu_.screen() == ui::GameMenuScreen::load_slots ||
+              game_menu_.screen() == ui::GameMenuScreen::save_slots));
+    }
     [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
     [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
     [[nodiscard]] const model::GameState& game_state() const noexcept { return game_state_; }
@@ -222,6 +230,8 @@ private:
         bool repeat_initial_fade_frame = false);
     void clear_scene_effect() noexcept;
     void update_menu_counts();
+    void refresh_save_list(std::uint16_t page);
+    [[nodiscard]] bool render_title_view();
     void set_view(LegacyGameView view, std::string_view reason);
     void show_error(std::string message, LegacyGameView return_view);
     void show_legacy_error(
@@ -246,6 +256,7 @@ private:
     ui::TitleMenuController title_menu_;
     std::unique_ptr<ui::TitleMenuRenderer> title_renderer_;
     ui::GameMenuController game_menu_;
+    std::array<ui::SaveListEntry, ui::kSaveListPageSize> save_list_entries_{};
     std::unique_ptr<battle::BattleRenderer> game_menu_status_renderer_;
     std::optional<ui::NewGameNameEditor> name_editor_;
     std::unique_ptr<ui::NewGameAttributeController> attribute_controller_;
@@ -261,7 +272,7 @@ private:
     LegacyGameView error_return_view_{LegacyGameView::title};
     PendingIo pending_io_{PendingIo::none};
     bool pending_io_wait_presented_{};
-    std::uint8_t pending_slot_{};
+    std::uint16_t pending_slot_{};
     LoadTransitionPhase load_transition_phase_{LoadTransitionPhase::none};
     TitleStartupPhase title_startup_phase_{TitleStartupPhase::none};
     BattleTransitionPhase battle_transition_phase_{BattleTransitionPhase::none};

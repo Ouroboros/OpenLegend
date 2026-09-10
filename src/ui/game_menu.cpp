@@ -2,23 +2,14 @@
 
 #include <algorithm>
 
+#include "openlegend/input/legacy_key.hpp"
+
 namespace openlegend::ui {
 namespace {
 
-constexpr std::uint8_t kEnter = 0x0DU;
-constexpr std::uint8_t kEscape = 0x1BU;
-constexpr std::uint8_t kSpace = 0x20U;
-constexpr std::uint8_t kY = 0x59U;
-constexpr std::uint8_t kKeypadInsert = 0x96U;
-constexpr std::uint8_t kDown = 0x98U;
-constexpr std::uint8_t kPageDown = 0x99U;
-constexpr std::uint8_t kLeft = 0x9AU;
-constexpr std::uint8_t kRight = 0x9CU;
-constexpr std::uint8_t kUp = 0x9EU;
-constexpr std::uint8_t kPageUp = 0x9FU;
-
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
-    return key == kEnter || key == kSpace || key == kKeypadInsert;
+    return key == input::legacy_key::enter || key == input::legacy_key::space ||
+        key == input::legacy_key::keypad_insert;
 }
 
 template <typename Integer>
@@ -38,6 +29,19 @@ void move_up(Integer& selection, const Integer count) noexcept {
                                : static_cast<Integer>(selection - 1);
 }
 
+void move_slot_page_down(std::uint16_t& selection) noexcept {
+    selection = static_cast<std::uint16_t>(
+        std::min<std::uint32_t>(
+            static_cast<std::uint32_t>(selection) + kSaveListPageSize,
+            kSaveSlotCount - 1U));
+}
+
+void move_slot_page_up(std::uint16_t& selection) noexcept {
+    selection = selection < kSaveListPageSize
+        ? 0U
+        : static_cast<std::uint16_t>(selection - kSaveListPageSize);
+}
+
 }  // namespace
 
 void GameMenuController::set_context(const GameMenuContext context) noexcept {
@@ -48,6 +52,7 @@ void GameMenuController::set_context(const GameMenuContext context) noexcept {
     if (context_ == GameMenuContext::scene &&
         (screen_ == GameMenuScreen::system || screen_ == GameMenuScreen::load_slots ||
          screen_ == GameMenuScreen::save_slots ||
+         screen_ == GameMenuScreen::delete_confirmation ||
          screen_ == GameMenuScreen::quit_confirmation)) {
         screen_ = GameMenuScreen::main;
     }
@@ -126,8 +131,19 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
     }
     if (screen_ == GameMenuScreen::quit_confirmation) {
         screen_ = GameMenuScreen::system;
-        if (translated_key == kY) {
+        if (translated_key == input::legacy_key::yes) {
             return {GameMenuCommand::exit_game, 0U, 0U};
+        }
+        return {};
+    }
+    if (screen_ == GameMenuScreen::delete_confirmation) {
+        if (translated_key == input::legacy_key::yes) {
+            screen_ = delete_return_screen_;
+            return {GameMenuCommand::delete_slot, slot_selection_, 0U};
+        }
+        if (translated_key == input::legacy_key::no ||
+            translated_key == input::legacy_key::escape) {
+            screen_ = delete_return_screen_;
         }
         return {};
     }
@@ -152,7 +168,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         return {};
     }
 
-    if (translated_key == kDown) {
+    if (translated_key == input::legacy_key::down) {
         switch (screen_) {
         case GameMenuScreen::main: move_down(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_down(party_selection_, party_option_count_); break;
@@ -165,17 +181,18 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             break;
         case GameMenuScreen::system: move_down(system_selection_, std::uint8_t{3U}); break;
         case GameMenuScreen::load_slots:
-        case GameMenuScreen::save_slots: move_down(slot_selection_, std::uint8_t{3U}); break;
+        case GameMenuScreen::save_slots: move_down(slot_selection_, kSaveSlotCount); break;
         case GameMenuScreen::party_notice:
         case GameMenuScreen::status_panel:
         case GameMenuScreen::item_confirmation:
         case GameMenuScreen::item_effect:
         case GameMenuScreen::notice:
+        case GameMenuScreen::delete_confirmation:
         case GameMenuScreen::quit_confirmation: break;
         }
         return {};
     }
-    if (translated_key == kUp) {
+    if (translated_key == input::legacy_key::up) {
         switch (screen_) {
         case GameMenuScreen::main: move_up(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_up(party_selection_, party_option_count_); break;
@@ -188,17 +205,18 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             break;
         case GameMenuScreen::system: move_up(system_selection_, std::uint8_t{3U}); break;
         case GameMenuScreen::load_slots:
-        case GameMenuScreen::save_slots: move_up(slot_selection_, std::uint8_t{3U}); break;
+        case GameMenuScreen::save_slots: move_up(slot_selection_, kSaveSlotCount); break;
         case GameMenuScreen::party_notice:
         case GameMenuScreen::status_panel:
         case GameMenuScreen::item_confirmation:
         case GameMenuScreen::item_effect:
         case GameMenuScreen::notice:
+        case GameMenuScreen::delete_confirmation:
         case GameMenuScreen::quit_confirmation: break;
         }
         return {};
     }
-    if (translated_key == kEscape) {
+    if (translated_key == input::legacy_key::escape) {
         switch (screen_) {
         case GameMenuScreen::main: return {GameMenuCommand::resume, 0U, 0U};
         case GameMenuScreen::party_select:
@@ -223,25 +241,50 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         case GameMenuScreen::item_confirmation:
         case GameMenuScreen::item_effect:
         case GameMenuScreen::notice:
+        case GameMenuScreen::delete_confirmation:
         case GameMenuScreen::quit_confirmation: break;
         }
     }
+    if (screen_ == GameMenuScreen::load_slots ||
+        screen_ == GameMenuScreen::save_slots) {
+        if (translated_key == input::legacy_key::home) {
+            slot_selection_ = 0U;
+            return {};
+        }
+        if (translated_key == input::legacy_key::end) {
+            slot_selection_ = static_cast<std::uint16_t>(kSaveSlotCount - 1U);
+            return {};
+        }
+        if (translated_key == input::legacy_key::page_down) {
+            move_slot_page_down(slot_selection_);
+            return {};
+        }
+        if (translated_key == input::legacy_key::page_up) {
+            move_slot_page_up(slot_selection_);
+            return {};
+        }
+        if (translated_key == input::legacy_key::delete_save) {
+            delete_return_screen_ = screen_;
+            screen_ = GameMenuScreen::delete_confirmation;
+            return {};
+        }
+    }
     if (screen_ == GameMenuScreen::items) {
-        if (translated_key == kLeft) {
+        if (translated_key == input::legacy_key::left) {
             item_column_ = item_column_ == 0U ? 4U : static_cast<std::uint8_t>(item_column_ - 1U);
             return {};
         }
-        if (translated_key == kRight) {
+        if (translated_key == input::legacy_key::right) {
             item_column_ = item_column_ == 4U ? 0U : static_cast<std::uint8_t>(item_column_ + 1U);
             return {};
         }
-        if (translated_key == kPageDown) {
+        if (translated_key == input::legacy_key::page_down) {
             if (item_page_ < 35U) {
                 item_page_ = static_cast<std::uint8_t>(item_page_ + 3U);
             }
             return {};
         }
-        if (translated_key == kPageUp) {
+        if (translated_key == input::legacy_key::page_up) {
             if (item_page_ > 2U) {
                 item_page_ = static_cast<std::uint8_t>(item_page_ - 3U);
             }
@@ -249,7 +292,8 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
     }
     if (!confirms(translated_key) ||
-        (screen_ == GameMenuScreen::items && translated_key == kKeypadInsert)) {
+        (screen_ == GameMenuScreen::items &&
+         translated_key == input::legacy_key::keypad_insert)) {
         return {};
     }
 
@@ -318,6 +362,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
     case GameMenuScreen::item_confirmation:
     case GameMenuScreen::item_effect:
     case GameMenuScreen::notice:
+    case GameMenuScreen::delete_confirmation:
     case GameMenuScreen::quit_confirmation: return {};
     }
     return {};

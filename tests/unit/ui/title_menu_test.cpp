@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "openlegend/app/legacy_game_runtime.hpp"
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
@@ -156,6 +157,8 @@ struct LegacyGameRuntimeTestAccess {
 }  // namespace openlegend::app
 
 namespace {
+
+namespace input = openlegend::input;
 
 [[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
     std::uint64_t result = 0xCBF29CE484222325ULL;
@@ -539,10 +542,29 @@ void check_controller() {
     OL_CHECK(menu.slot_selection() == 0U);
 
     static_cast<void>(menu.handle_key(0x9EU));
-    OL_CHECK(menu.slot_selection() == 2U);
-    auto result = menu.handle_key(0x20U);
+    OL_CHECK(menu.slot_selection() == 998U);
+    static_cast<void>(menu.handle_key(0x98U));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(0x99U));
+    OL_CHECK(menu.slot_selection() == 8U);
+    static_cast<void>(menu.handle_key(0x9FU));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(0x97U));
+    OL_CHECK(menu.slot_selection() == 998U);
+    static_cast<void>(menu.handle_key(0x9DU));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(input::legacy_key::delete_save));
+    OL_CHECK(menu.screen() == TitleScreen::delete_confirmation);
+    static_cast<void>(menu.handle_key(input::legacy_key::no));
+    OL_CHECK(menu.screen() == TitleScreen::load_slots);
+    static_cast<void>(menu.handle_key(input::legacy_key::delete_save));
+    auto result = menu.handle_key(input::legacy_key::yes);
+    OL_CHECK(result.command == TitleCommand::delete_slot);
+    OL_CHECK(result.slot == 0U);
+    OL_CHECK(menu.screen() == TitleScreen::load_slots);
+    result = menu.handle_key(0x20U);
     OL_CHECK(result.command == TitleCommand::load_slot);
-    OL_CHECK(result.slot == 2U);
+    OL_CHECK(result.slot == 0U);
 
     static_cast<void>(menu.handle_key(0x1BU));
     OL_CHECK(menu.screen() == TitleScreen::main);
@@ -573,10 +595,30 @@ void check_game_menu_controller() {
     static_cast<void>(menu.handle_key(0x20U));
     OL_CHECK(menu.screen() == GameMenuScreen::save_slots);
     static_cast<void>(menu.handle_key(0x9EU));
-    OL_CHECK(menu.slot_selection() == 2U);
-    auto result = menu.handle_key(0x96U);
+    OL_CHECK(menu.slot_selection() == 998U);
+    static_cast<void>(menu.handle_key(0x98U));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(0x99U));
+    OL_CHECK(menu.slot_selection() == 8U);
+    static_cast<void>(menu.handle_key(0x9FU));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(0x97U));
+    OL_CHECK(menu.slot_selection() == 998U);
+    static_cast<void>(menu.handle_key(0x9DU));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(input::legacy_key::delete_save));
+    OL_CHECK(menu.screen() == GameMenuScreen::delete_confirmation);
+    OL_CHECK(menu.delete_return_screen() == GameMenuScreen::save_slots);
+    static_cast<void>(menu.handle_key(input::legacy_key::no));
+    OL_CHECK(menu.screen() == GameMenuScreen::save_slots);
+    static_cast<void>(menu.handle_key(input::legacy_key::delete_save));
+    auto result = menu.handle_key(input::legacy_key::yes);
+    OL_CHECK(result.command == GameMenuCommand::delete_slot);
+    OL_CHECK(result.slot == 0U);
+    OL_CHECK(menu.screen() == GameMenuScreen::save_slots);
+    result = menu.handle_key(0x96U);
     OL_CHECK(result.command == GameMenuCommand::save_slot);
-    OL_CHECK(result.slot == 2U);
+    OL_CHECK(result.slot == 0U);
     OL_CHECK(menu.screen() == GameMenuScreen::save_slots);
     menu.complete_slot_operation();
     OL_CHECK(menu.screen() == GameMenuScreen::system);
@@ -3343,6 +3385,27 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.valid());
+
+    std::array<ui::SaveListEntry, ui::kSaveListPageSize> save_entries{};
+    for (std::size_t row = 0U; row < save_entries.size(); ++row) {
+        save_entries[row].slot = static_cast<std::uint16_t>(row);
+    }
+    save_entries[0].state = ui::SaveListEntryState::ready;
+    save_entries[0].protagonist_name = {'A'};
+    save_entries[0].level = 12;
+    save_entries[0].location = {'W', 'O', 'R', 'L', 'D'};
+    save_entries[0].saved_at = "09-10 03:46";
+    framebuffer.clear(0U);
+    OL_CHECK(basic_renderer.render_save_list(
+        ui::SaveListMode::load, 0U, save_entries, framebuffer));
+    const std::vector<std::uint8_t> first_save_selection{
+        framebuffer.pixels().begin(), framebuffer.pixels().end()};
+    framebuffer.clear(0U);
+    OL_CHECK(basic_renderer.render_save_list(
+        ui::SaveListMode::save, 1U, save_entries, framebuffer));
+    OL_CHECK(!std::ranges::equal(first_save_selection, framebuffer.pixels()));
+    OL_CHECK(basic_renderer.render_save_delete_confirmation(1U, framebuffer));
+    OL_CHECK(!std::ranges::equal(first_save_selection, framebuffer.pixels()));
 
     compat::LegacyPalette tie_palette{};
     tie_palette.fill({63U, 63U, 63U});

@@ -7,12 +7,14 @@
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/packed_archive.hpp"
+#include "openlegend/ui/save_list.hpp"
 
 namespace openlegend::ui {
 
 enum class TitleScreen {
     main,
     load_slots,
+    delete_confirmation,
     please_wait,
 };
 
@@ -20,12 +22,13 @@ enum class TitleCommand {
     none,
     start_new_game,
     load_slot,
+    delete_slot,
     exit_game,
 };
 
 struct TitleResult {
     TitleCommand command{TitleCommand::none};
-    std::uint8_t slot{};
+    std::uint16_t slot{};
 };
 
 class TitleMenuController {
@@ -38,14 +41,14 @@ public:
     [[nodiscard]] constexpr std::uint8_t main_selection() const noexcept {
         return main_selection_;
     }
-    [[nodiscard]] constexpr std::uint8_t slot_selection() const noexcept {
+    [[nodiscard]] constexpr std::uint16_t slot_selection() const noexcept {
         return slot_selection_;
     }
 
 private:
     TitleScreen screen_{TitleScreen::main};
     std::uint8_t main_selection_{};
-    std::uint8_t slot_selection_{};
+    std::uint16_t slot_selection_{};
 };
 
 class TitleMenuRenderer {

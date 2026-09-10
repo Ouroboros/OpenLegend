@@ -5,20 +5,12 @@
 #include <cstdint>
 
 #include "openlegend/compat/runtime_platform.hpp"
+#include "openlegend/input/legacy_key.hpp"
 
 namespace openlegend::input {
 
 inline constexpr std::size_t kLegacyTranslationSize = 84;
 inline constexpr std::size_t kLegacyKeyStateCount = 256;
-inline constexpr std::uint8_t kLegacyLeftKey = 0x9AU;
-inline constexpr std::uint8_t kLegacyUpKey = 0x9EU;
-inline constexpr std::uint8_t kLegacyDownKey = 0x98U;
-inline constexpr std::uint8_t kLegacyRightKey = 0x9CU;
-inline constexpr std::array<std::uint8_t, 2> kLegacyWorldLeftKeys{kLegacyLeftKey, 0x9DU};
-inline constexpr std::array<std::uint8_t, 2> kLegacyWorldUpKeys{kLegacyUpKey, 0x9FU};
-inline constexpr std::array<std::uint8_t, 2> kLegacyWorldDownKeys{0x97U, kLegacyDownKey};
-inline constexpr std::array<std::uint8_t, 2> kLegacyWorldRightKeys{0x99U, kLegacyRightKey};
-inline constexpr std::array<std::uint8_t, 3> kLegacyConfirmationKeys{0x0DU, 0x20U, 0x96U};
 
 enum class LegacyWorldDirectionInput : std::uint8_t {
     none,

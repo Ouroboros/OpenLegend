@@ -12,6 +12,8 @@
 
 namespace openlegend::persistence {
 
+inline constexpr unsigned int kNumberedSaveSlotCount = 999U;
+
 enum class SaveSlot : unsigned int {
     one = 0U,
     two = 1U,
@@ -53,6 +55,7 @@ enum class PersistenceStatus {
     invalid_scene_group_size,
     invalid_snapshot,
     write_failed,
+    delete_failed,
 };
 
 struct SnapshotLoadResult {
@@ -100,6 +103,10 @@ struct SnapshotWriteResult {
     const std::filesystem::path& root,
     SaveSlot slot,
     std::span<const std::uint8_t> ranger_index_bytes);
+[[nodiscard]] RangerLoadResult load_numbered_slot_ranger(
+    const std::filesystem::path& root,
+    SaveSlot slot,
+    std::span<const std::uint8_t> ranger_index_bytes);
 
 [[nodiscard]] SnapshotWriteResult write_snapshot(
     const SaveFileSet& files, const model::GameSnapshot& snapshot);
@@ -109,6 +116,8 @@ struct SnapshotWriteResult {
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
 [[nodiscard]] SnapshotWriteResult write_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
+[[nodiscard]] SnapshotWriteResult delete_numbered_slot(
+    const std::filesystem::path& root, SaveSlot slot);
 
 [[nodiscard]] std::string_view persistence_status_message(PersistenceStatus status) noexcept;
 
