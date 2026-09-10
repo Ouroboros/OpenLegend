@@ -299,6 +299,8 @@ void run_key_repeat_tests() {
     OL_CHECK(!movement.handle_key_down(
         HostKey::left, true, false, false, start + 150ms));
     movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(false, start + 200ms) == std::nullopt);
+    movement.begin_frame();
     OL_CHECK(movement.take_movement_repeat(true, start + 249ms) == std::nullopt);
     OL_CHECK(movement.take_movement_repeat(true, start + 250ms) == HostKey::left);
     movement.handle_key_up(HostKey::left);

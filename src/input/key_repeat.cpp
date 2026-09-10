@@ -118,9 +118,13 @@ std::optional<compat::HostKey> KeyRepeatController::take_movement_repeat(
     const bool active,
     const TimePoint now) noexcept {
     if (!active) {
-        defer_movement_repeat(now);
+        if (movement_repeat_was_active_) {
+            defer_movement_repeat(now);
+        }
+        movement_repeat_was_active_ = false;
         return std::nullopt;
     }
+    movement_repeat_was_active_ = true;
     const auto direction = active_movement_direction();
     if (movement_direction_pressed_ || !direction.has_value() ||
         now < movement_repeat_at_) {

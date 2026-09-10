@@ -51,6 +51,7 @@ private:
     TimePoint movement_repeat_at_{};
     TimePoint save_list_page_repeat_at_{};
     bool movement_direction_pressed_{};
+    bool movement_repeat_was_active_{};
     bool save_list_page_key_pressed_{};
 };
 
