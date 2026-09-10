@@ -335,10 +335,13 @@ LegacyGameRuntime::LegacyGameRuntime(
       save_root_path_(std::move(save_root)),
       data_root_(data_root_path_),
       basic_renderer_(data_root_),
+      modern_ui_renderer_(data_root_),
       startup_resources_(data_root_),
       random_(random_seed) {
     if (!basic_renderer_.valid()) {
         startup_error_ = basic_renderer_.error();
+    } else if (!modern_ui_renderer_.valid()) {
+        startup_error_ = modern_ui_renderer_.error();
     } else if (!startup_resources_.valid()) {
         startup_error_ = startup_resources_.error();
     }
@@ -1076,12 +1079,7 @@ bool LegacyGameRuntime::render() {
         const auto freeze_leave_frame =
             world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_to_black;
         if (world_session_ == nullptr ||
-            (!freeze_leave_frame && !world_session_->render(framebuffer_)) ||
-            !basic_renderer_.render_location_status(
-                std::span<const std::uint8_t>{},
-                world_session_->world_x(),
-                world_session_->world_y(),
-                framebuffer_)) {
+            (!freeze_leave_frame && !world_session_->render(framebuffer_))) {
             return false;
         }
         if (world_menu_event_phase_ == WorldMenuEventPhase::running &&
@@ -1164,13 +1162,7 @@ bool LegacyGameRuntime::render() {
             scene_effect_kind_ == SceneEffectKind::present ||
             (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
              scene_effect_palettes_.empty());
-        if (render_scene &&
-            (!scene_session_->render(framebuffer_) ||
-             !basic_renderer_.render_location_status(
-                 scene_session_->scene_name().bytes(),
-                 scene_session_->scene_x(),
-                 scene_session_->scene_y(),
-                 framebuffer_))) {
+        if (render_scene && !scene_session_->render(framebuffer_)) {
             return false;
         }
         if (scene_leave_event_phase_ == SceneLeaveEventPhase::redraw_present) {
@@ -1319,32 +1311,18 @@ bool LegacyGameRuntime::render() {
             }
         } else {
             const auto menu_screen = game_menu_.screen();
-            const bool delete_confirmation =
-                menu_screen == ui::GameMenuScreen::delete_confirmation;
             const bool save_list = menu_screen == ui::GameMenuScreen::load_slots ||
-                menu_screen == ui::GameMenuScreen::save_slots || delete_confirmation;
-            const auto list_screen = delete_confirmation
-                ? game_menu_.delete_return_screen()
-                : menu_screen;
+                menu_screen == ui::GameMenuScreen::save_slots ||
+                menu_screen == ui::GameMenuScreen::delete_confirmation;
             if (save_list) {
-                if (!basic_renderer_.render_save_list(
-                        list_screen == ui::GameMenuScreen::load_slots
-                            ? ui::SaveListMode::load
-                            : ui::SaveListMode::save,
-                        game_menu_.slot_selection(),
-                        save_list_entries_,
-                        framebuffer_) ||
-                    (delete_confirmation &&
-                     !basic_renderer_.render_save_delete_confirmation(
-                         game_menu_.slot_selection(), framebuffer_))) {
-                    return false;
-                }
-            } else if (!basic_renderer_.render_game_menu(
-                           game_menu_, *ranger, framebuffer_)) {
+                return true;
+            }
+            if (!basic_renderer_.render_game_menu(
+                    game_menu_, *ranger, framebuffer_)) {
                 return false;
             }
         }
-        return pending_io_ == PendingIo::none || basic_renderer_.render_io_wait(framebuffer_);
+        return true;
     }
     case LegacyGameView::error: {
         bool base_rendered = false;
@@ -1360,6 +1338,84 @@ bool LegacyGameRuntime::render() {
         }
         return base_rendered && basic_renderer_.render_error(visible_error_, framebuffer_);
     }
+    case LegacyGameView::exited:
+        return true;
+    }
+    return false;
+}
+
+bool LegacyGameRuntime::render_modern_ui(
+    render::RgbaFramebuffer& framebuffer) {
+    if (!valid() || !modern_ui_renderer_.valid()) {
+        return false;
+    }
+    const auto& palette = framebuffer_.palette();
+    switch (view_) {
+    case LegacyGameView::world:
+        return world_session_ != nullptr &&
+            modern_ui_renderer_.render_location_status(
+                std::span<const std::uint8_t>{},
+                world_session_->world_x(),
+                world_session_->world_y(),
+                palette,
+                framebuffer);
+    case LegacyGameView::scene:
+        return scene_session_ != nullptr &&
+            modern_ui_renderer_.render_location_status(
+                scene_session_->scene_name().bytes(),
+                scene_session_->scene_x(),
+                scene_session_->scene_y(),
+                palette,
+                framebuffer);
+    case LegacyGameView::title: {
+        const auto screen = title_menu_.screen();
+        const bool delete_confirmation =
+            screen == ui::TitleScreen::delete_confirmation;
+        if (screen != ui::TitleScreen::load_slots && !delete_confirmation) {
+            return true;
+        }
+        return modern_ui_renderer_.render_save_list(
+                   ui::SaveListMode::load,
+                   title_menu_.slot_selection(),
+                   save_list_entries_,
+                   palette,
+                   framebuffer) &&
+            (!delete_confirmation ||
+             modern_ui_renderer_.render_save_delete_confirmation(
+                 title_menu_.slot_selection(), palette, framebuffer));
+    }
+    case LegacyGameView::game_menu: {
+        const auto screen = game_menu_.screen();
+        const bool delete_confirmation =
+            screen == ui::GameMenuScreen::delete_confirmation;
+        const bool save_list = screen == ui::GameMenuScreen::load_slots ||
+            screen == ui::GameMenuScreen::save_slots || delete_confirmation;
+        if (!save_list) {
+            return true;
+        }
+        const auto list_screen = delete_confirmation
+            ? game_menu_.delete_return_screen()
+            : screen;
+        if (!modern_ui_renderer_.render_save_list(
+                list_screen == ui::GameMenuScreen::load_slots
+                    ? ui::SaveListMode::load
+                    : ui::SaveListMode::save,
+                game_menu_.slot_selection(),
+                save_list_entries_,
+                palette,
+                framebuffer) ||
+            (delete_confirmation &&
+             !modern_ui_renderer_.render_save_delete_confirmation(
+                 game_menu_.slot_selection(), palette, framebuffer))) {
+            return false;
+        }
+        return pending_io_ == PendingIo::none ||
+            modern_ui_renderer_.render_io_wait(palette, framebuffer);
+    }
+    case LegacyGameView::name_entry:
+    case LegacyGameView::attributes:
+    case LegacyGameView::battle:
+    case LegacyGameView::error:
     case LegacyGameView::exited:
         return true;
     }
@@ -2219,19 +2275,11 @@ void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {
 
 bool LegacyGameRuntime::render_title_view() {
     const auto screen = title_menu_.screen();
-    const bool delete_confirmation = screen == ui::TitleScreen::delete_confirmation;
-    if (screen != ui::TitleScreen::load_slots && !delete_confirmation) {
-        return title_renderer_->render(title_menu_, framebuffer_);
+    if (screen == ui::TitleScreen::load_slots ||
+        screen == ui::TitleScreen::delete_confirmation) {
+        return title_renderer_->render_background(framebuffer_);
     }
-    return title_renderer_->render_background(framebuffer_) &&
-        basic_renderer_.render_save_list(
-            ui::SaveListMode::load,
-            title_menu_.slot_selection(),
-            save_list_entries_,
-            framebuffer_) &&
-        (!delete_confirmation ||
-         basic_renderer_.render_save_delete_confirmation(
-             title_menu_.slot_selection(), framebuffer_));
+    return title_renderer_->render(title_menu_, framebuffer_);
 }
 
 void LegacyGameRuntime::set_view(

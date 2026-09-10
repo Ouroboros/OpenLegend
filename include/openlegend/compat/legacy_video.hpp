@@ -44,6 +44,14 @@ struct IndexedFrameView {
     }
 };
 
+struct RgbaFrameView {
+    std::span<const std::uint8_t> pixels;
+
+    [[nodiscard]] constexpr bool valid() const noexcept {
+        return pixels.size() == kModernRgbaByteCount;
+    }
+};
+
 [[nodiscard]] constexpr std::uint8_t expand_rgb6(const std::uint8_t value) noexcept {
     const auto six_bit = static_cast<std::uint8_t>(value & 0x3FU);
     return static_cast<std::uint8_t>((six_bit << 2U) | (six_bit >> 4U));

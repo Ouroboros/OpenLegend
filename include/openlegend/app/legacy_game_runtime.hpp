@@ -16,6 +16,7 @@
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/packed_archive.hpp"
@@ -24,6 +25,7 @@
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
+#include "openlegend/ui/modern_ui_renderer.hpp"
 #include "openlegend/ui/title_menu.hpp"
 #include "openlegend/world/world_map.hpp"
 
@@ -123,6 +125,7 @@ public:
     std::uint8_t take_clear_battle_cursor_key_request() noexcept;
     bool take_clear_battle_confirmation_states_request() noexcept;
     [[nodiscard]] bool render();
+    [[nodiscard]] bool render_modern_ui(render::RgbaFramebuffer& framebuffer);
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
     [[nodiscard]] bool running() const noexcept { return view_ != LegacyGameView::exited; }
@@ -248,6 +251,7 @@ private:
     std::filesystem::path save_root_path_;
     resource::DataRoot data_root_;
     ui::BasicUiRenderer basic_renderer_;
+    ui::ModernUiRenderer modern_ui_renderer_;
     LegacyStartupResources startup_resources_;
     std::unique_ptr<world::WorldMapData> world_map_;
     random::LegacyRandom random_;

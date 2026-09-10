@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <chrono>
 #include <cstdint>
 
@@ -22,14 +21,13 @@ public:
     [[nodiscard]] bool query_window_state(
         int& normal_width, int& normal_height, bool& maximized) const noexcept;
     [[nodiscard]] bool poll_event(compat::HostEvent& event) override;
-    [[nodiscard]] bool present(compat::IndexedFrameView frame) override;
+    [[nodiscard]] bool present(compat::RgbaFrameView frame) override;
     void delay(std::chrono::milliseconds duration) override;
 
 private:
     SDL_Window* window_{};
     SDL_Renderer* renderer_{};
     SDL_Texture* texture_{};
-    compat::ModernRgbaPixels rgba_pixels_{};
 };
 
 }  // namespace openlegend::platform::sdl3

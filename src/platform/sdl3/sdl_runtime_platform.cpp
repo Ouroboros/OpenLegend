@@ -198,20 +198,17 @@ bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
     return true;
 }
 
-bool SdlRuntimePlatform::present(const compat::IndexedFrameView frame) {
+bool SdlRuntimePlatform::present(const compat::RgbaFrameView frame) {
     if (!valid() || !frame.valid()) {
-        return false;
-    }
-
-    if (!compat::convert_indexed_frame_to_rgba(frame, rgba_pixels_)) {
         return false;
     }
 
     if (!SDL_UpdateTexture(
             texture_,
             nullptr,
-            rgba_pixels_.data(),
-            static_cast<int>(compat::kLegacyWidth * 4U))) {
+            frame.pixels.data(),
+            static_cast<int>(
+                compat::kLegacyWidth * compat::kModernRgbaBytesPerPixel))) {
         return false;
     }
 

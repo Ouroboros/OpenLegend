@@ -4,29 +4,34 @@
 #include <span>
 #include <string_view>
 
-#include "openlegend/render/indexed_framebuffer.hpp"
-#include "openlegend/render/legacy_color.hpp"
+#include "openlegend/compat/color.hpp"
 #include "openlegend/render/legacy_font.hpp"
+#include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/text/game_text.hpp"
 
-namespace openlegend::render {
+namespace openlegend::render::rgba {
+
+struct TextColors {
+    compat::Rgba8 right_shadow{};
+    compat::Rgba8 foreground{};
+};
 
 [[nodiscard]] bool draw_ascii_glyph(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     int x,
     int y,
     std::span<const std::uint8_t, 16> glyph,
     TextColors colors) noexcept;
 
 [[nodiscard]] bool draw_big5_glyph(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     int x,
     int y,
     std::span<const std::uint8_t, 32> glyph,
     TextColors colors) noexcept;
 
 [[nodiscard]] bool draw_text_big5(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     int x,
     int y,
     text::Big5TextView text,
@@ -35,7 +40,7 @@ namespace openlegend::render {
     TextColors colors) noexcept;
 
 [[nodiscard]] bool draw_text_utf8(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     int x,
     int y,
     std::u8string_view text,
@@ -44,7 +49,7 @@ namespace openlegend::render {
     TextColors colors);
 
 [[nodiscard]] bool draw_text_mixed(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     int x,
     int y,
     const text::GameText& text,
@@ -52,4 +57,4 @@ namespace openlegend::render {
     Big5GlyphCache& big5_cache,
     TextColors colors);
 
-}  // namespace openlegend::render
+}  // namespace openlegend::render::rgba

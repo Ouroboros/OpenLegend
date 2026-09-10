@@ -11,11 +11,13 @@
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/resource/binary_file.hpp"
+#include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
+#include "openlegend/ui/modern_ui_renderer.hpp"
 #include "openlegend/ui/title_menu.hpp"
 #include "test_support.hpp"
 
@@ -3395,31 +3397,55 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.valid());
+    ui::ModernUiRenderer modern_renderer{resource::DataRoot{data_root}};
+    OL_CHECK(modern_renderer.valid());
+    render::RgbaFramebuffer rgba_framebuffer;
+    constexpr compat::Rgba8 kRgbaBackground{0U, 0U, 0U, 0xFFU};
+
+    const auto pixel_matches_palette = [&framebuffer, &rgba_framebuffer](
+                                           const int x,
+                                           const int y,
+                                           const render::PaletteIndex index) {
+        const auto expected = framebuffer.palette()[index];
+        const auto* pixel = rgba_framebuffer.row(y) + 4 * x;
+        return pixel[0] == compat::expand_rgb6(expected.red) &&
+            pixel[1] == compat::expand_rgb6(expected.green) &&
+            pixel[2] == compat::expand_rgb6(expected.blue) &&
+            pixel[3] == compat::kOpaqueAlpha;
+    };
 
     const std::array<std::uint8_t, 2> location_name{'A', 'B'};
-    framebuffer.clear(0U);
-    OL_CHECK(basic_renderer.render_location_status(
-        location_name, 12, 34, framebuffer));
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.render_location_status(
+        location_name, 12, 34, framebuffer.palette(), rgba_framebuffer));
     std::size_t location_ink = 0U;
     bool location_ink_outside_bounds = false;
-    for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
-        for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
-            if (framebuffer.row(y)[x] == 0U) {
+    for (int y = 0; y < render::RgbaFramebuffer::height; ++y) {
+        for (int x = 0; x < render::RgbaFramebuffer::width; ++x) {
+            const auto* pixel = rgba_framebuffer.row(y) + 4 * x;
+            if (pixel[0] == kRgbaBackground.red &&
+                pixel[1] == kRgbaBackground.green &&
+                pixel[2] == kRgbaBackground.blue &&
+                pixel[3] == kRgbaBackground.alpha) {
                 continue;
             }
             ++location_ink;
             location_ink_outside_bounds = location_ink_outside_bounds ||
-                x < 4 || y < render::IndexedFramebuffer::height - 20 ||
-                y >= render::IndexedFramebuffer::height - 4;
+                x < 4 || y < render::RgbaFramebuffer::height - 20 ||
+                y >= render::RgbaFramebuffer::height - 4;
         }
     }
     OL_CHECK(location_ink > 0U);
     OL_CHECK(!location_ink_outside_bounds);
-    const auto scene_location_pixels = fnv1a64(framebuffer.pixels());
-    framebuffer.clear(0U);
-    OL_CHECK(basic_renderer.render_location_status(
-        std::span<const std::uint8_t>{}, 12, 34, framebuffer));
-    OL_CHECK(fnv1a64(framebuffer.pixels()) != scene_location_pixels);
+    const auto scene_location_pixels = fnv1a64(rgba_framebuffer.pixels());
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.render_location_status(
+        std::span<const std::uint8_t>{},
+        12,
+        34,
+        framebuffer.palette(),
+        rgba_framebuffer));
+    OL_CHECK(fnv1a64(rgba_framebuffer.pixels()) != scene_location_pixels);
 
     std::array<ui::SaveListEntry, ui::kSaveListPageSize> save_entries{};
     for (std::size_t row = 0U; row < save_entries.size(); ++row) {
@@ -3430,30 +3456,45 @@ void check_renderer(const std::filesystem::path& data_root) {
     save_entries[0].level = 1;
     save_entries[0].location.append_ascii("WORLD");
     save_entries[0].saved_at = "09-10 03:46";
-    framebuffer.clear(0U);
-    OL_CHECK(basic_renderer.render_save_list(
-        ui::SaveListMode::load, 0U, save_entries, framebuffer));
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.render_save_list(
+        ui::SaveListMode::load,
+        0U,
+        save_entries,
+        framebuffer.palette(),
+        rgba_framebuffer));
     constexpr int kSaveListLevelColumn = 119;
     constexpr int kSaveListFirstRowY = 40;
     bool level_starts_at_column = false;
     for (int y = kSaveListFirstRowY; y < kSaveListFirstRowY + 16; ++y) {
         for (int x = kSaveListLevelColumn; x < kSaveListLevelColumn + 8; ++x) {
-            const auto pixel = framebuffer.row(y)[x];
-            if (pixel == render::legacy_color::text::save_list_selected.foreground ||
-                pixel == render::legacy_color::text::save_list_selected.right_shadow) {
-                level_starts_at_column = true;
-            }
+            level_starts_at_column = level_starts_at_column ||
+                pixel_matches_palette(
+                    x,
+                    y,
+                    render::legacy_color::text::save_list_selected.foreground) ||
+                pixel_matches_palette(
+                    x,
+                    y,
+                    render::legacy_color::text::save_list_selected.right_shadow);
         }
     }
     OL_CHECK(level_starts_at_column);
     const std::vector<std::uint8_t> first_save_selection{
-        framebuffer.pixels().begin(), framebuffer.pixels().end()};
-    framebuffer.clear(0U);
-    OL_CHECK(basic_renderer.render_save_list(
-        ui::SaveListMode::save, 1U, save_entries, framebuffer));
-    OL_CHECK(!std::ranges::equal(first_save_selection, framebuffer.pixels()));
-    OL_CHECK(basic_renderer.render_save_delete_confirmation(1U, framebuffer));
-    OL_CHECK(!std::ranges::equal(first_save_selection, framebuffer.pixels()));
+        rgba_framebuffer.pixels().begin(), rgba_framebuffer.pixels().end()};
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.render_save_list(
+        ui::SaveListMode::save,
+        1U,
+        save_entries,
+        framebuffer.palette(),
+        rgba_framebuffer));
+    OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));
+    OL_CHECK(modern_renderer.render_save_delete_confirmation(
+        1U, framebuffer.palette(), rgba_framebuffer));
+    OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));
+    OL_CHECK(modern_renderer.render_io_wait(
+        framebuffer.palette(), rgba_framebuffer));
 
     compat::LegacyPalette tie_palette{};
     tie_palette.fill({63U, 63U, 63U});

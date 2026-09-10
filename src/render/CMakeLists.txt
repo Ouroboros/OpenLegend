@@ -3,7 +3,10 @@ add_library(
     STATIC
         indexed_framebuffer.cpp
         legacy_effects.cpp
+        legacy_font.cpp
         legacy_font_renderer.cpp
+        rgba_font_renderer.cpp
+        rgba_framebuffer.cpp
         rle_sprite_renderer.cpp
         world_depth_order.cpp
 )

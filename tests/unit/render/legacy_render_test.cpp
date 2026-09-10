@@ -18,6 +18,7 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
+#include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/render/world_depth_order.hpp"
 #include "openlegend/render/world_projection.hpp"
@@ -103,6 +104,43 @@ void run_framebuffer_tests() {
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0xE154C07BA899CBA5ULL);
     OL_CHECK(!framebuffer.outline_rectangle(55, 62, 0U, 40U, 0xFFU));
     OL_CHECK(!framebuffer.outline_rectangle(300, 180, 40U, 40U, 0xFFU));
+
+    openlegend::render::RgbaFramebuffer rgba_framebuffer;
+    rgba_framebuffer.clear({10U, 20U, 30U, 0xFFU});
+    OL_CHECK(rgba_framebuffer.row(0)[0] == 10U);
+    OL_CHECK(rgba_framebuffer.row(0)[1] == 20U);
+    OL_CHECK(rgba_framebuffer.row(0)[2] == 30U);
+    OL_CHECK(rgba_framebuffer.row(0)[3] == 0xFFU);
+    OL_CHECK(rgba_framebuffer.blend_pixel(0, 0, {0xFFU, 0U, 0U, 128U}));
+    OL_CHECK(rgba_framebuffer.row(0)[0] == 133U);
+    OL_CHECK(rgba_framebuffer.row(0)[1] == 10U);
+    OL_CHECK(rgba_framebuffer.row(0)[2] == 15U);
+    OL_CHECK(rgba_framebuffer.row(0)[3] == 0xFFU);
+    OL_CHECK(rgba_framebuffer.blend_pixel(0, 0, {1U, 2U, 3U, 0U}));
+    OL_CHECK(rgba_framebuffer.row(0)[0] == 133U);
+    OL_CHECK(rgba_framebuffer.row(0)[1] == 10U);
+    OL_CHECK(rgba_framebuffer.row(0)[2] == 15U);
+    OL_CHECK(rgba_framebuffer.blend_pixel(0, 0, {1U, 2U, 3U, 0xFFU}));
+    OL_CHECK(rgba_framebuffer.row(0)[0] == 1U);
+    OL_CHECK(rgba_framebuffer.row(0)[1] == 2U);
+    OL_CHECK(rgba_framebuffer.row(0)[2] == 3U);
+    OL_CHECK(rgba_framebuffer.row(0)[3] == 0xFFU);
+    rgba_framebuffer.clear({10U, 20U, 30U, 0xFFU});
+    OL_CHECK(rgba_framebuffer.blend_rectangle(
+        5, 6, 2U, 2U, {0xFFU, 0U, 0U, 128U}));
+    OL_CHECK(rgba_framebuffer.row(6)[20] == 133U);
+    OL_CHECK(rgba_framebuffer.row(6)[21] == 10U);
+    OL_CHECK(rgba_framebuffer.row(6)[22] == 15U);
+    OL_CHECK(rgba_framebuffer.row(6)[23] == 0xFFU);
+    OL_CHECK(rgba_framebuffer.row(6)[16] == 10U);
+    OL_CHECK(rgba_framebuffer.fill_rectangle(
+        2, 3, 2U, 2U, {1U, 2U, 3U, 4U}));
+    OL_CHECK(rgba_framebuffer.row(3)[8] == 1U);
+    OL_CHECK(rgba_framebuffer.row(3)[9] == 2U);
+    OL_CHECK(rgba_framebuffer.row(3)[10] == 3U);
+    OL_CHECK(rgba_framebuffer.row(3)[11] == 4U);
+    OL_CHECK(!rgba_framebuffer.blend_pixel(-1, 0, {}));
+    OL_CHECK(!rgba_framebuffer.fill_rectangle(319, 199, 2U, 1U, {}));
 
     OL_CHECK(openlegend::render::project_isometric(0, 0, 160, 100) ==
              (openlegend::render::ScreenPoint{160, 100}));

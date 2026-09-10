@@ -16,7 +16,6 @@
 #include "openlegend/resource/packed_archive.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
-#include "openlegend/ui/save_list.hpp"
 #include "openlegend/ui/title_menu.hpp"
 
 namespace openlegend::ui {
@@ -49,26 +48,8 @@ public:
         const GameMenuController& menu,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool render_save_list(
-        SaveListMode mode,
-        std::uint16_t selection,
-        std::span<const SaveListEntry> entries,
-        render::IndexedFramebuffer& framebuffer);
-
-    [[nodiscard]] bool render_save_delete_confirmation(
-        std::uint16_t selection,
-        render::IndexedFramebuffer& framebuffer);
-
-    [[nodiscard]] bool render_io_wait(render::IndexedFramebuffer& framebuffer);
-
     [[nodiscard]] bool render_error(
         std::span<const std::uint8_t> legacy_message,
-        render::IndexedFramebuffer& framebuffer);
-
-    [[nodiscard]] bool render_location_status(
-        std::span<const std::uint8_t> legacy_name,
-        int location_x,
-        int location_y,
         render::IndexedFramebuffer& framebuffer);
 
 private:

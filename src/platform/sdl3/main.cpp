@@ -26,6 +26,7 @@
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_keyboard.hpp"
+#include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 #include "sdl_audio_device.hpp"
 #include "sdl_runtime_platform.hpp"
@@ -452,6 +453,7 @@ int main(const int argc, const char* const* argv) {
     input::KeyRepeatController key_repeat{
         input_configuration.movement_repeat_delay,
         kSaveListPageRepeatInterval};
+    render::RgbaFramebuffer rgba_framebuffer;
     timing::SteadyBiosTickSource tick_source;
     timing::SteadyVgaRetraceSource retrace_source{
         timing_configuration.fade_frame_delay};
@@ -564,10 +566,27 @@ int main(const int argc, const char* const* argv) {
                 return 6;
             }
             const auto& framebuffer = game.framebuffer();
-            const compat::IndexedFrameView frame{framebuffer.pixels(), framebuffer.palette()};
+            const compat::IndexedFrameView indexed_frame{
+                framebuffer.pixels(), framebuffer.palette()};
+            if (!compat::convert_indexed_frame_to_rgba(
+                    indexed_frame, rgba_framebuffer.pixels())) {
+                diagnostics::log_critical("indexed framebuffer conversion failed");
+                report_configuration_error(
+                    "render", "unable to convert indexed framebuffer to RGBA");
+                return 7;
+            }
+            if (!game.render_modern_ui(rgba_framebuffer)) {
+                diagnostics::log_critical("modern RGBA UI render failed");
+                report_configuration_error(
+                    "render", "unable to render modern RGBA UI");
+                return 7;
+            }
+            const compat::RgbaFrameView frame{rgba_framebuffer.pixels()};
             if (!platform.present(frame)) {
-                diagnostics::log_critical(std::string{"indexed framebuffer present failed: "} + SDL_GetError());
-                report_configuration_error("present", "unable to present indexed framebuffer", SDL_GetError());
+                diagnostics::log_critical(
+                    std::string{"RGBA framebuffer present failed: "} + SDL_GetError());
+                report_configuration_error(
+                    "present", "unable to present RGBA framebuffer", SDL_GetError());
                 return 7;
             }
             game.finish_presented_tick(tick_source.tick());

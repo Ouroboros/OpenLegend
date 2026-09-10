@@ -1,29 +1,31 @@
-#include "openlegend/render/legacy_font_renderer.hpp"
+#include "openlegend/render/rgba_font_renderer.hpp"
 
 #include <cstddef>
 #include <vector>
 
 #include "openlegend/text/big5.hpp"
 
-namespace openlegend::render {
+namespace openlegend::render::rgba {
 
 bool draw_ascii_glyph(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
     const std::span<const std::uint8_t, 16> glyph,
     const TextColors colors) noexcept {
-    if (x < 0 || y < 0 || x + 8 >= IndexedFramebuffer::width || y + 16 > IndexedFramebuffer::height) {
+    if (x < 0 || y < 0 || x + 8 >= RgbaFramebuffer::width ||
+        y + 16 > RgbaFramebuffer::height) {
         return false;
     }
-    for (int row_index = 0; row_index < 16; ++row_index) {
-        const auto bits = glyph[static_cast<std::size_t>(row_index)];
+    for (int row = 0; row < 16; ++row) {
+        const auto bits = glyph[static_cast<std::size_t>(row)];
         auto mask = std::uint8_t{0x80U};
-        auto* destination = framebuffer.row(y + row_index) + x;
         for (int column = 0; column < 8; ++column) {
             if ((bits & mask) != 0U) {
-                destination[column] = colors.foreground;
-                destination[column + 1] = colors.right_shadow;
+                static_cast<void>(framebuffer.blend_pixel(
+                    x + column, y + row, colors.foreground));
+                static_cast<void>(framebuffer.blend_pixel(
+                    x + column + 1, y + row, colors.right_shadow));
             }
             mask = static_cast<std::uint8_t>(mask >> 1U);
         }
@@ -32,24 +34,26 @@ bool draw_ascii_glyph(
 }
 
 bool draw_big5_glyph(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
     const std::span<const std::uint8_t, 32> glyph,
     const TextColors colors) noexcept {
-    if (x < 0 || y < 0 || x + 16 >= IndexedFramebuffer::width || y + 16 > IndexedFramebuffer::height) {
+    if (x < 0 || y < 0 || x + 16 >= RgbaFramebuffer::width ||
+        y + 16 > RgbaFramebuffer::height) {
         return false;
     }
-    for (int row_index = 0; row_index < 16; ++row_index) {
-        auto* destination = framebuffer.row(y + row_index) + x;
-        for (int byte_index = 0; byte_index < 2; ++byte_index) {
-            const auto bits = glyph[static_cast<std::size_t>(row_index * 2 + byte_index)];
+    for (int row = 0; row < 16; ++row) {
+        for (int byte = 0; byte < 2; ++byte) {
+            const auto bits = glyph[static_cast<std::size_t>(row * 2 + byte)];
             auto mask = std::uint8_t{0x80U};
-            for (int bit_index = 0; bit_index < 8; ++bit_index) {
-                const auto column = byte_index * 8 + bit_index;
+            for (int bit = 0; bit < 8; ++bit) {
+                const auto column = byte * 8 + bit;
                 if ((bits & mask) != 0U) {
-                    destination[column] = colors.foreground;
-                    destination[column + 1] = colors.right_shadow;
+                    static_cast<void>(framebuffer.blend_pixel(
+                        x + column, y + row, colors.foreground));
+                    static_cast<void>(framebuffer.blend_pixel(
+                        x + column + 1, y + row, colors.right_shadow));
                 }
                 mask = static_cast<std::uint8_t>(mask >> 1U);
             }
@@ -59,7 +63,7 @@ bool draw_big5_glyph(
 }
 
 bool draw_text_big5(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     int x,
     const int y,
     const text::Big5TextView text,
@@ -82,18 +86,22 @@ bool draw_text_big5(
             }
             const auto second = bytes[index++];
             const auto code = static_cast<std::uint16_t>(
-                static_cast<std::uint16_t>(first) << 8U | static_cast<std::uint16_t>(second));
+                static_cast<std::uint16_t>(first) << 8U |
+                static_cast<std::uint16_t>(second));
             const auto glyph = big5_cache.resolve(code);
-            if (!glyph || !draw_big5_glyph(framebuffer, x, y, *glyph, colors)) {
+            if (!glyph.has_value() ||
+                !draw_big5_glyph(framebuffer, x, y, *glyph, colors)) {
                 return false;
             }
             x += 16;
             continue;
         }
 
-        const auto glyph_index = first == static_cast<std::uint8_t>('_') ? 32U : first;
+        const auto glyph_index =
+            first == static_cast<std::uint8_t>('_') ? 32U : first;
         const auto glyph_offset = static_cast<std::size_t>(glyph_index) * 16U;
-        const auto glyph = std::span<const std::uint8_t, 16>{ascii_font.data() + glyph_offset, 16U};
+        const auto glyph = std::span<const std::uint8_t, 16>{
+            ascii_font.data() + glyph_offset, 16U};
         if (!draw_ascii_glyph(framebuffer, x, y, glyph, colors)) {
             return false;
         }
@@ -103,14 +111,14 @@ bool draw_text_big5(
 }
 
 bool draw_text_utf8(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
     const std::u8string_view text,
     const std::span<const std::uint8_t> ascii_font,
     Big5GlyphCache& big5_cache,
     const TextColors colors) {
-    auto encoded = openlegend::text::encode_big5(text);
+    auto encoded = text::encode_big5(text);
     if (!encoded.has_value()) {
         return false;
     }
@@ -125,7 +133,7 @@ bool draw_text_utf8(
 }
 
 bool draw_text_mixed(
-    IndexedFramebuffer& framebuffer,
+    RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
     const text::GameText& text,
@@ -146,4 +154,4 @@ bool draw_text_mixed(
         colors);
 }
 
-}  // namespace openlegend::render
+}  // namespace openlegend::render::rgba
