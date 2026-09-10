@@ -1,4 +1,4 @@
-add_library(openlegend_input legacy_keyboard.cpp)
+add_library(openlegend_input key_repeat.cpp legacy_keyboard.cpp)
 target_include_directories(openlegend_input PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(
     openlegend_input

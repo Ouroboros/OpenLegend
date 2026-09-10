@@ -24,6 +24,7 @@
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/compat/runtime_platform.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_keyboard.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 #include "sdl_audio_device.hpp"
@@ -35,30 +36,6 @@ constexpr openlegend::app::WindowSize kDefaultWindowSize{960, 600};
 constexpr std::chrono::milliseconds kDefaultMovementRepeatDelay{500};
 constexpr std::chrono::milliseconds kSaveListPageRepeatInterval{100};
 constexpr std::chrono::nanoseconds kDefaultFadeFrameDelay{14'268'123};
-
-[[nodiscard]] bool is_save_list_page_key(
-    const openlegend::compat::HostKey key) noexcept {
-    using openlegend::compat::HostKey;
-    return key == HostKey::page_up || key == HostKey::page_down;
-}
-
-[[nodiscard]] bool is_movement_direction_key(
-    const openlegend::compat::HostKey key) noexcept {
-    using openlegend::compat::HostKey;
-    switch (key) {
-    case HostKey::left:
-    case HostKey::up:
-    case HostKey::down:
-    case HostKey::right:
-    case HostKey::keypad_4:
-    case HostKey::keypad_8:
-    case HostKey::keypad_2:
-    case HostKey::keypad_6:
-        return true;
-    default:
-        return false;
-    }
-}
 
 [[nodiscard]] bool accepts_movement_repeat(
     const openlegend::app::LegacyGameRuntime& game) noexcept {
@@ -472,10 +449,9 @@ int main(const int argc, const char* const* argv) {
             }
             keyboard.clear_last_key();
         };
-    std::optional<compat::HostKey> held_movement_direction;
-    std::chrono::steady_clock::time_point movement_repeat_at{};
-    std::optional<compat::HostKey> held_save_list_page_key;
-    std::chrono::steady_clock::time_point save_list_page_repeat_at{};
+    input::KeyRepeatController key_repeat{
+        input_configuration.movement_repeat_delay,
+        kSaveListPageRepeatInterval};
     timing::SteadyBiosTickSource tick_source;
     timing::SteadyVgaRetraceSource retrace_source{
         timing_configuration.fade_frame_delay};
@@ -484,45 +460,23 @@ int main(const int argc, const char* const* argv) {
         const auto frame_tick = tick_source.tick();
         const auto frame_retrace = retrace_source.tick();
         const auto input_now = std::chrono::steady_clock::now();
-        bool movement_direction_pressed{};
-        bool save_list_page_key_pressed{};
+        key_repeat.begin_frame();
         compat::HostEvent event{};
         while (platform.poll_event(event)) {
             if (event.type == compat::HostEventType::quit) {
                 diagnostics::log_info("host quit event");
                 running = false;
             } else if (event.type == compat::HostEventType::key_down) {
-                const bool movement_direction = is_movement_direction_key(event.key);
-                const bool controlled_direction =
-                    movement_direction && accepts_movement_repeat(game);
-                const bool held_controlled_direction = movement_direction &&
-                    held_movement_direction == event.key;
-                const bool controlled_save_list_page =
-                    is_save_list_page_key(event.key) && game.save_list_active();
-                if (controlled_direction && !event.repeat) {
-                    held_movement_direction = event.key;
-                    movement_repeat_at =
-                        input_now + input_configuration.movement_repeat_delay;
-                    movement_direction_pressed = true;
-                }
-                if (controlled_save_list_page && !event.repeat) {
-                    held_save_list_page_key = event.key;
-                    save_list_page_repeat_at =
-                        input_now + input_configuration.movement_repeat_delay;
-                    save_list_page_key_pressed = true;
-                }
-                if ((!controlled_direction && !held_controlled_direction &&
-                     !controlled_save_list_page) ||
-                    !event.repeat) {
+                if (key_repeat.handle_key_down(
+                        event.key,
+                        event.repeat,
+                        accepts_movement_repeat(game),
+                        game.save_list_active(),
+                        input_now)) {
                     dispatch_key_down(event.key, event.repeat, frame_tick);
                 }
             } else if (event.type == compat::HostEventType::key_up) {
-                if (held_movement_direction == event.key) {
-                    held_movement_direction.reset();
-                }
-                if (held_save_list_page_key == event.key) {
-                    held_save_list_page_key.reset();
-                }
+                key_repeat.handle_key_up(event.key);
                 keyboard.handle_host_key(event.key, false);
                 diagnostics::log_debug(
                     "host key_up key=" + std::to_string(static_cast<int>(event.key)));
@@ -530,24 +484,15 @@ int main(const int argc, const char* const* argv) {
             sync_scene_input_reset();
             sync_battle_confirmation();
         }
-        if (!accepts_movement_repeat(game)) {
-            if (held_movement_direction.has_value()) {
-                movement_repeat_at =
-                    input_now + input_configuration.movement_repeat_delay;
-            }
-        } else if (!movement_direction_pressed && held_movement_direction.has_value() &&
-                   std::chrono::steady_clock::now() >= movement_repeat_at) {
-            keyboard.handle_host_key(*held_movement_direction, false);
-            dispatch_key_down(*held_movement_direction, true, frame_tick);
+        if (const auto repeated_key = key_repeat.take_movement_repeat(
+                accepts_movement_repeat(game), std::chrono::steady_clock::now())) {
+            keyboard.handle_host_key(*repeated_key, false);
+            dispatch_key_down(*repeated_key, true, frame_tick);
         }
-        if (!game.save_list_active()) {
-            held_save_list_page_key.reset();
-        } else if (!save_list_page_key_pressed && held_save_list_page_key.has_value() &&
-                   std::chrono::steady_clock::now() >= save_list_page_repeat_at) {
-            keyboard.handle_host_key(*held_save_list_page_key, false);
-            dispatch_key_down(*held_save_list_page_key, true, frame_tick);
-            save_list_page_repeat_at =
-                std::chrono::steady_clock::now() + kSaveListPageRepeatInterval;
+        if (const auto repeated_key = key_repeat.take_save_list_page_repeat(
+                game.save_list_active(), std::chrono::steady_clock::now())) {
+            keyboard.handle_host_key(*repeated_key, false);
+            dispatch_key_down(*repeated_key, true, frame_tick);
         }
         sync_scene_input_reset();
         sync_battle_confirmation();
@@ -578,10 +523,7 @@ int main(const int argc, const char* const* argv) {
         sync_battle_confirmation();
         if (game.take_clear_scene_exit_key_states_request()) {
             keyboard.clear_scene_exit_key_states();
-            if (held_movement_direction.has_value()) {
-                movement_repeat_at = std::chrono::steady_clock::now() +
-                    input_configuration.movement_repeat_delay;
-            }
+            key_repeat.defer_movement_repeat(std::chrono::steady_clock::now());
         }
         for (const auto& command : game.take_scene_audio_commands()) {
             if (command.id < 0) {

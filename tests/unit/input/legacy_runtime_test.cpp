@@ -1,10 +1,12 @@
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <utility>
 #include <vector>
 
+#include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_keyboard.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/time/legacy_clock.hpp"
@@ -276,6 +278,65 @@ void run_keyboard_tests() {
     OL_CHECK(pause.last_key() == 0U);
 }
 
+void run_key_repeat_tests() {
+    using openlegend::compat::HostKey;
+    using openlegend::input::KeyRepeatController;
+    using namespace std::chrono_literals;
+
+    const KeyRepeatController::TimePoint start{};
+    KeyRepeatController movement{100ms, 40ms};
+    movement.begin_frame();
+    OL_CHECK(movement.handle_key_down(HostKey::left, false, true, false, start));
+    OL_CHECK(!movement.handle_key_down(HostKey::left, true, true, false, start + 50ms));
+    OL_CHECK(!movement.take_movement_repeat(true, start + 100ms).has_value());
+
+    movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(true, start + 99ms) == std::nullopt);
+    OL_CHECK(movement.take_movement_repeat(true, start + 100ms) == HostKey::left);
+
+    movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(false, start + 150ms) == std::nullopt);
+    OL_CHECK(!movement.handle_key_down(
+        HostKey::left, true, false, false, start + 150ms));
+    movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(true, start + 249ms) == std::nullopt);
+    OL_CHECK(movement.take_movement_repeat(true, start + 250ms) == HostKey::left);
+    movement.handle_key_up(HostKey::left);
+    movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(true, start + 500ms) == std::nullopt);
+
+    KeyRepeatController inactive{100ms, 40ms};
+    inactive.begin_frame();
+    OL_CHECK(inactive.handle_key_down(HostKey::left, true, false, false, start));
+    OL_CHECK(inactive.handle_key_down(HostKey::a, true, true, false, start));
+
+    KeyRepeatController immediate{0ms, 40ms};
+    immediate.begin_frame();
+    OL_CHECK(immediate.handle_key_down(HostKey::down, false, true, false, start));
+    OL_CHECK(immediate.take_movement_repeat(true, start) == std::nullopt);
+    immediate.begin_frame();
+    OL_CHECK(immediate.take_movement_repeat(true, start) == HostKey::down);
+
+    KeyRepeatController save_list{100ms, 40ms};
+    save_list.begin_frame();
+    OL_CHECK(save_list.handle_key_down(
+        HostKey::page_down, false, false, true, start));
+    OL_CHECK(!save_list.handle_key_down(
+        HostKey::page_down, true, false, true, start + 50ms));
+    OL_CHECK(save_list.take_save_list_page_repeat(true, start + 100ms) == std::nullopt);
+    save_list.begin_frame();
+    OL_CHECK(save_list.take_save_list_page_repeat(true, start + 99ms) == std::nullopt);
+    OL_CHECK(
+        save_list.take_save_list_page_repeat(true, start + 100ms) == HostKey::page_down);
+    save_list.begin_frame();
+    OL_CHECK(save_list.take_save_list_page_repeat(true, start + 139ms) == std::nullopt);
+    OL_CHECK(
+        save_list.take_save_list_page_repeat(true, start + 140ms) == HostKey::page_down);
+    OL_CHECK(save_list.take_save_list_page_repeat(false, start + 150ms) == std::nullopt);
+    OL_CHECK(save_list.handle_key_down(
+        HostKey::page_down, true, false, false, start + 150ms));
+}
+
 void run_timing_tests() {
     using namespace openlegend::timing;
 
@@ -387,6 +448,7 @@ void run_random_tests() {
 
 void run_legacy_runtime_tests() {
     run_keyboard_tests();
+    run_key_repeat_tests();
     run_timing_tests();
     run_random_tests();
 }
