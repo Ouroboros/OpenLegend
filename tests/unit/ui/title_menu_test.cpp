@@ -18,6 +18,7 @@
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 #include "openlegend/ui/modern_ui_renderer.hpp"
+#include "openlegend/ui/save_list_renderer.hpp"
 #include "openlegend/ui/title_menu.hpp"
 #include "test_support.hpp"
 
@@ -3399,6 +3400,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     OL_CHECK(basic_renderer.valid());
     ui::ModernUiRenderer modern_renderer{resource::DataRoot{data_root}};
     OL_CHECK(modern_renderer.valid());
+    ui::SaveListRenderer save_list_renderer;
     render::RgbaFramebuffer rgba_framebuffer;
     constexpr compat::Rgba8 kRgbaBackground{0U, 0U, 0U, 0xFFU};
 
@@ -3457,11 +3459,12 @@ void check_renderer(const std::filesystem::path& data_root) {
     save_entries[0].location.append_ascii("WORLD");
     save_entries[0].saved_at = "09-10 03:46";
     rgba_framebuffer.clear(kRgbaBackground);
-    OL_CHECK(modern_renderer.render_save_list(
+    OL_CHECK(save_list_renderer.render(
         ui::SaveListMode::load,
         0U,
         save_entries,
         framebuffer.palette(),
+        modern_renderer,
         rgba_framebuffer));
     constexpr int kSaveListLevelColumn = 119;
     constexpr int kSaveListFirstRowY = 40;
@@ -3483,18 +3486,19 @@ void check_renderer(const std::filesystem::path& data_root) {
     const std::vector<std::uint8_t> first_save_selection{
         rgba_framebuffer.pixels().begin(), rgba_framebuffer.pixels().end()};
     rgba_framebuffer.clear(kRgbaBackground);
-    OL_CHECK(modern_renderer.render_save_list(
+    OL_CHECK(save_list_renderer.render(
         ui::SaveListMode::save,
         1U,
         save_entries,
         framebuffer.palette(),
+        modern_renderer,
         rgba_framebuffer));
     OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));
-    OL_CHECK(modern_renderer.render_save_delete_confirmation(
-        1U, framebuffer.palette(), rgba_framebuffer));
+    OL_CHECK(save_list_renderer.render_delete_confirmation(
+        1U, framebuffer.palette(), modern_renderer, rgba_framebuffer));
     OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));
-    OL_CHECK(modern_renderer.render_io_wait(
-        framebuffer.palette(), rgba_framebuffer));
+    OL_CHECK(save_list_renderer.render_io_wait(
+        framebuffer.palette(), modern_renderer, rgba_framebuffer));
 
     compat::LegacyPalette tie_palette{};
     tie_palette.fill({63U, 63U, 63U});

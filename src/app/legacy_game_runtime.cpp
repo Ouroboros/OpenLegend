@@ -1374,15 +1374,19 @@ bool LegacyGameRuntime::render_modern_ui(
         if (screen != ui::TitleScreen::load_slots && !delete_confirmation) {
             return true;
         }
-        return modern_ui_renderer_.render_save_list(
+        return save_list_renderer_.render(
                    ui::SaveListMode::load,
                    title_menu_.slot_selection(),
                    save_list_entries_,
                    palette,
+                   modern_ui_renderer_,
                    framebuffer) &&
             (!delete_confirmation ||
-             modern_ui_renderer_.render_save_delete_confirmation(
-                 title_menu_.slot_selection(), palette, framebuffer));
+             save_list_renderer_.render_delete_confirmation(
+                 title_menu_.slot_selection(),
+                 palette,
+                 modern_ui_renderer_,
+                 framebuffer));
     }
     case LegacyGameView::game_menu: {
         const auto screen = game_menu_.screen();
@@ -1396,21 +1400,26 @@ bool LegacyGameRuntime::render_modern_ui(
         const auto list_screen = delete_confirmation
             ? game_menu_.delete_return_screen()
             : screen;
-        if (!modern_ui_renderer_.render_save_list(
+        if (!save_list_renderer_.render(
                 list_screen == ui::GameMenuScreen::load_slots
                     ? ui::SaveListMode::load
                     : ui::SaveListMode::save,
                 game_menu_.slot_selection(),
                 save_list_entries_,
                 palette,
+                modern_ui_renderer_,
                 framebuffer) ||
             (delete_confirmation &&
-             !modern_ui_renderer_.render_save_delete_confirmation(
-                 game_menu_.slot_selection(), palette, framebuffer))) {
+             !save_list_renderer_.render_delete_confirmation(
+                 game_menu_.slot_selection(),
+                 palette,
+                 modern_ui_renderer_,
+                 framebuffer))) {
             return false;
         }
         return pending_io_ == PendingIo::none ||
-            modern_ui_renderer_.render_io_wait(palette, framebuffer);
+            save_list_renderer_.render_io_wait(
+                palette, modern_ui_renderer_, framebuffer);
     }
     case LegacyGameView::name_entry:
     case LegacyGameView::attributes:

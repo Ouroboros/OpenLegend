@@ -6,6 +6,7 @@ add_library(
         modern_ui_renderer.cpp
         new_game_attributes.cpp
         new_game_name_editor.cpp
+        save_list_renderer.cpp
         title_menu.cpp
 )
 target_include_directories(

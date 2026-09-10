@@ -26,6 +26,7 @@
 #include "openlegend/ui/new_game_attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 #include "openlegend/ui/modern_ui_renderer.hpp"
+#include "openlegend/ui/save_list_renderer.hpp"
 #include "openlegend/ui/title_menu.hpp"
 #include "openlegend/world/world_map.hpp"
 
@@ -252,6 +253,7 @@ private:
     resource::DataRoot data_root_;
     ui::BasicUiRenderer basic_renderer_;
     ui::ModernUiRenderer modern_ui_renderer_;
+    ui::SaveListRenderer save_list_renderer_;
     LegacyStartupResources startup_resources_;
     std::unique_ptr<world::WorldMapData> world_map_;
     random::LegacyRandom random_;
