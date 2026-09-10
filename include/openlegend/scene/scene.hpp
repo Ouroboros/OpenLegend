@@ -184,6 +184,7 @@ public:
     [[nodiscard]] SceneStepResult use_retained_menu_item(std::int16_t item_id);
     [[nodiscard]] SceneStepResult open_ui() noexcept;
     [[nodiscard]] SceneStepResult resume(SceneResponse response, int value = -1);
+    [[nodiscard]] SceneStepResult resume_scene_title_as_overlay();
     [[nodiscard]] SceneStepResult begin_event(
         std::int16_t script_id,
         std::int16_t event_index = -1,
@@ -213,6 +214,10 @@ public:
     [[nodiscard]] std::int16_t event_item_id() const noexcept { return event_item_id_; }
     void set_event_item_id(const std::int16_t item_id) noexcept { event_item_id_ = item_id; }
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
+    [[nodiscard]] bool scene_title_overlay_visible() const noexcept {
+        return scene_title_overlay_visible_;
+    }
+    void hide_scene_title_overlay() noexcept;
     [[nodiscard]] bool exit_transition_pending() const noexcept;
     [[nodiscard]] bool loop_present_pending() const noexcept;
     [[nodiscard]] const text::GameText& pending_game_text() const noexcept {
@@ -389,6 +394,8 @@ private:
         int anchor_x,
         int anchor_y) const;
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
+    [[nodiscard]] bool draw_scene_title_overlay(
+        render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_dialogue_overlay(
         render::IndexedFramebuffer& framebuffer) const;
     [[nodiscard]] bool render_item_notice_overlay(
@@ -534,6 +541,9 @@ private:
     text::GameText pending_text_;
     std::vector<std::uint8_t> pending_encoded_text_;
     std::vector<std::uint8_t> pending_legacy_text_;
+    std::vector<std::uint8_t> scene_title_legacy_text_;
+    bool scene_title_overlay_visible_{};
+    bool retain_scene_title_overlay_on_resume_{};
     mutable std::optional<render::IndexedFramebuffer> scene_title_base_framebuffer_;
     mutable std::optional<render::IndexedFramebuffer> dialogue_base_framebuffer_;
     mutable std::optional<render::IndexedFramebuffer> item_notice_base_framebuffer_;

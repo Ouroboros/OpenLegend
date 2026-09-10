@@ -85,6 +85,9 @@ enum class LegacyGameView {
     exited,
 };
 
+// Nearest whole BIOS/PIT interval to a fixed two-second scene title.
+inline constexpr std::uint32_t kSceneTitleDurationBiosTicks = 37U;
+
 class LegacyGameRuntime {
     friend struct LegacyGameRuntimeTestAccess;
 
@@ -223,6 +226,7 @@ private:
     void finish_battle_if_ready();
     void complete_battle_after_fade();
     void handle_scene_result(const scene::SceneStepResult& result);
+    void update_scene_title_overlay(std::uint32_t bios_tick);
     [[nodiscard]] bool advance_scene_effect();
     void begin_scene_effect(
         SceneEffectKind kind,
@@ -302,6 +306,7 @@ private:
     std::int16_t legacy_player_item_slot_{-1};
     bool scene_effect_presented_{};
     bool scene_effect_repeat_initial_frame_{};
+    std::optional<std::uint32_t> scene_title_start_tick_;
     bool world_step_processed_{};
     bool pending_world_exit_{};
     std::optional<scene::SceneDirection> scene_direction_input_;

@@ -40,6 +40,12 @@ struct LegacyGameRuntimeTestAccess {
             : scene::SceneStepKind::stay;
     }
 
+    static bool scene_title_overlay_visible(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.scene_session_ != nullptr &&
+            runtime.scene_session_->scene_title_overlay_visible();
+    }
+
     static std::int16_t scene_player_frame(
         const LegacyGameRuntime& runtime) noexcept {
         return runtime.scene_session_ != nullptr
@@ -491,8 +497,28 @@ void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
         game.advance();
     }
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
-    game.handle_key(0x0DU, false, false);
+    OL_CHECK(!game.scene_loop_uses_key_states());
+    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
+                 scene_title_overlay_visible(game));
+    OL_CHECK(game.render());
+    game.finish_presented_tick(100U);
+    OL_CHECK(
+        game.handle_key(0x0DU, false, false) ==
+        openlegend::app::LegacyKeyStateReset::none);
+    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
+                 scene_title_overlay_visible(game));
+    game.advance(100U);
+    OL_CHECK(game.scene_loop_uses_key_states());
+    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
+                 scene_title_overlay_visible(game));
+    game.advance(100U + openlegend::app::kSceneTitleDurationBiosTicks - 1U);
+    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
+                 scene_title_overlay_visible(game));
+    game.advance(100U + openlegend::app::kSceneTitleDurationBiosTicks);
+    OL_CHECK(!openlegend::app::LegacyGameRuntimeTestAccess::
+                  scene_title_overlay_visible(game));
     advance_rendered_frames(game, 1U);
+    OL_CHECK(game.scene_loop_uses_key_states());
 }
 
 void advance_scene_idle_ticks(

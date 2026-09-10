@@ -491,7 +491,17 @@ SceneStepResult SceneSession::show_scene_title() {
         static_cast<void>(text::encode_game_text(pending_text_, pending_encoded_text_));
         pending_legacy_text_.push_back(0U);
     }
+    scene_title_legacy_text_ = pending_legacy_text_;
+    scene_title_overlay_visible_ = true;
+    retain_scene_title_overlay_on_resume_ = false;
     return pending_;
+}
+
+void SceneSession::hide_scene_title_overlay() noexcept {
+    scene_title_overlay_visible_ = false;
+    retain_scene_title_overlay_on_resume_ = false;
+    scene_title_legacy_text_.clear();
+    scene_title_base_framebuffer_.reset();
 }
 
 bool SceneSession::load_scene_sprites() {
@@ -737,6 +747,14 @@ bool SceneSession::prepare_event(
     return true;
 }
 
+SceneStepResult SceneSession::resume_scene_title_as_overlay() {
+    if (pending_.kind != SceneStepKind::scene_title) {
+        return pending_;
+    }
+    retain_scene_title_overlay_on_resume_ = true;
+    return resume(SceneResponse::acknowledge);
+}
+
 SceneStepResult SceneSession::resume(const SceneResponse response, const int value) {
     if (!valid()) {
         return current_result(SceneStepKind::stay);
@@ -784,6 +802,10 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         return show_scene_title();
     }
     if (previous_kind == SceneStepKind::scene_title) {
+        if (!retain_scene_title_overlay_on_resume_) {
+            hide_scene_title_overlay();
+        }
+        retain_scene_title_overlay_on_resume_ = false;
         continuation_ = PendingContinuation::scene_title;
         pending_ = current_result(SceneStepKind::present);
         return pending_;
@@ -3487,7 +3509,9 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     dialogue_base_framebuffer_.reset();
     item_notice_base_framebuffer_.reset();
-    if (!render_map(framebuffer) || !draw_overlay(framebuffer)) {
+    if (!render_map(framebuffer) || !draw_overlay(framebuffer) ||
+        (scene_title_overlay_visible_ &&
+         !draw_scene_title_overlay(framebuffer))) {
         return false;
     }
     if (palette_cycle_after_present()) {
@@ -3660,6 +3684,32 @@ bool SceneSession::draw_portrait(
     return true;
 }
 
+bool SceneSession::draw_scene_title_overlay(
+    render::IndexedFramebuffer& framebuffer) const {
+    const auto terminator = std::find(
+        scene_title_legacy_text_.begin(), scene_title_legacy_text_.end(), 0U);
+    const auto length = static_cast<int>(
+        std::distance(scene_title_legacy_text_.begin(), terminator));
+    const auto x = 150 - 4 * length;
+    constexpr int y = 10;
+    const auto width = 8 * length + 20;
+    if (!draw_panel(framebuffer, x, y, width, 27)) {
+        return false;
+    }
+    if (scene_title_legacy_text_.empty()) {
+        return true;
+    }
+    render::Big5GlyphCache cache{big5_font_};
+    return render::draw_text_big5(
+        framebuffer,
+        x + 10,
+        y + 5,
+        text::Big5TextView{scene_title_legacy_text_},
+        ascii_font_,
+        cache,
+        text_colors::notice);
+}
+
 bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (pending_.kind == SceneStepKind::stay || pending_.kind == SceneStepKind::moved ||
         pending_.kind == SceneStepKind::present || pending_.kind == SceneStepKind::wait_key ||
@@ -3757,28 +3807,7 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
             text_colors::notice);
     }
     if (pending_.kind == SceneStepKind::scene_title) {
-        const auto terminator = std::find(
-            pending_legacy_text_.begin(), pending_legacy_text_.end(), 0U);
-        const auto length = static_cast<int>(
-            std::distance(pending_legacy_text_.begin(), terminator));
-        const auto x = 150 - 4 * length;
-        constexpr int y = 10;
-        const auto width = 8 * length + 20;
-        if (!draw_panel(framebuffer, x, y, width, 27)) {
-            return false;
-        }
-        if (pending_legacy_text_.empty()) {
-            return true;
-        }
-        render::Big5GlyphCache cache{big5_font_};
-        return render::draw_text_big5(
-            framebuffer,
-            x + 10,
-            y + 5,
-            text::Big5TextView{pending_legacy_text_},
-            ascii_font_,
-            cache,
-            text_colors::notice);
+        return draw_scene_title_overlay(framebuffer);
     }
     int x = 54;
     int y = 40;
