@@ -11,125 +11,32 @@
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
+#include "openlegend/text/game_strings.hpp"
 
 namespace openlegend::battle {
 namespace {
 
-constexpr std::array<std::uint8_t, 5> kLevelLabel{0xB5U, 0xA5U, 0xAFU, 0xC5U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kPowerLabel{0xCAU, 0x5EU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 5> kLifeLabel{0xA5U, 0xCDU, 0xA9U, 0x52U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kMpLabel{0xA4U, 0xBAU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 5> kExperienceLabel{0xB8U, 0x67U, 0xC5U, 0xE7U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kUpgradeLabel{0xA4U, 0xC9U, 0xAFU, 0xC5U, 0x20U};
-constexpr std::array<std::uint8_t, 7> kAttackLabel{0xA7U, 0xF0U, 0xC0U, 0xBBU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 7> kDefenceLabel{0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 5> kSpeedLabel{0xBBU, 0xB4U, 0xA5U, 0x5CU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kMedicineLabel{0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kUsePoisonLabel{0xA5U, 0xCEU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kDetoxLabel{0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kFistLabel{0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA5U, 0x5CU, 0xA4U, 0xD2U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kSwordLabel{0xB1U, 0x73U, 0xBCU, 0x43U, 0xAFU, 0xE0U, 0xA4U, 0x4FU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kKnifeLabel{0xADU, 0x41U, 0xA4U, 0x4DU, 0xA7U, 0xDEU, 0xA5U, 0xA9U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kUnusualLabel{0xAFU, 0x53U, 0xAEU, 0xEDU, 0xA7U, 0x4CU, 0xBEU, 0xB9U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kHiddenLabel{0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA7U, 0xDEU, 0xA5U, 0xA9U, 0x20U};
-constexpr std::array<std::uint8_t, 9> kEquipmentLabel{0xB8U, 0xCBU, 0xB3U, 0xC6U, 0xAAU, 0xABU, 0xABU, 0x7EU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kPracticeLabel{0xADU, 0xD7U, 0xBDU, 0x6DU, 0xAAU, 0xABU, 0xABU, 0x7EU, 0x20U};
-constexpr std::array<std::uint8_t, 9> kMagicLabel{0xA9U, 0xD2U, 0xB7U, 0x7CU, 0xA5U, 0x5CU, 0xA4U, 0xD2U, 0x20U};
-constexpr std::array<std::uint8_t, 1> kSlash{'/'};
-constexpr std::array<std::uint8_t, 3> kHundred{'1', '0', '0'};
-constexpr std::array<std::uint8_t, 7> kMaximumLevel{' ', ' ', ' ', '=', ' ', ' ', ' '};
-constexpr std::array<std::uint8_t, 3> kMaximumPractice{' ', '=', ' '};
-constexpr std::array<std::uint8_t, 8> kMedicineTargetTitle{
-    0xADU, 0x6EU, 0xC2U, 0xE5U, 0xAAU, 0x76U, 0xBDU, 0xD6U};
-constexpr std::array<std::uint8_t, 8> kDetoxificationTargetTitle{
-    0xB4U, 0xC0U, 0xBDU, 0xD6U, 0xB8U, 0xD1U, 0xACU, 0x72U};
-constexpr std::array<std::uint8_t, 14> kStatusSelectionTitle{
-    0xADU, 0x6EU, 0xACU, 0x64U, 0xBEU, 0x5CU, 0xBDU,
-    0xD6U, 0xAAU, 0xBAU, 0xAAU, 0xACU, 0xBAU, 0x41U};
-constexpr std::array<std::uint8_t, 8> kEquipmentTargetTitle{
-    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xB0U, 0x74U, 0xB3U, 0xC6U};
-constexpr std::array<std::uint8_t, 8> kPracticeTargetTitle{
-    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xADU, 0xD7U, 0xBDU, 0x6DU};
-constexpr std::array<std::uint8_t, 8> kItemTargetTitle{
-    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xA8U, 0xCFU, 0xA5U, 0xCEU};
-constexpr std::array<std::uint8_t, 10> kLeavePartyTitle{
-    0xADU, 0x6EU, 0xA8U, 0x44U, 0xBDU, 0xD6U, 0xC2U, 0xF7U, 0xB6U, 0xA4U};
-constexpr std::array<std::uint8_t, 8> kLifePointsLabel{
-    0xA5U, 0xCDU, 0xA9U, 0x52U, 0xC2U, 0x49U, 0xBCU, 0xC6U};
-constexpr std::array<std::uint8_t, 8> kPoisonLevelLabel{
-    0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U};
-constexpr std::array<std::uint8_t, 5> kUseItemPrefix{
-    0xA8U, 0xCFU, 0xA5U, 0xCEU, 0x20U};
-constexpr std::array<std::uint8_t, 4> kItemIncrease{
-    0xB4U, 0xA3U, 0xA4U, 0xC9U};
-constexpr std::array<std::uint8_t, 4> kItemDecrease{
-    0xB4U, 0xEEU, 0xA4U, 0xD6U};
-constexpr std::array<std::uint8_t, 20> kItemMpTypeChanged{
-    0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U, 0xA7U, 0xEFU,
-    0xACU, 0xB0U, 0x20U, 0x20U, 0xB3U, 0xB1U, 0xB6U, 0xA7U, 0xA6U, 0x58U};
-constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
-    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xADU, 0xC8U},
-    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
-    {0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U},
-    {0xCAU, 0x5EU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
-    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U},
-    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
-    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
-    {0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
-    {0xBBU, 0xB4U, 0xA5U, 0xADU, 0xC8U},
-    {0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA4U, 0x4FU},
-    {0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xA8U, 0xCFU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xA7U, 0xDCU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA5U, 0xA4U, 0xD2U},
-    {0xB1U, 0x73U, 0xBCU, 0x43U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xADU, 0x41U, 0xA4U, 0x4DU, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
-    {0xAFU, 0x53U, 0xAEU, 0xEDU, 0xA7U, 0x4CU, 0xBEU, 0xB9U},
-    {0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
-    {0xAAU, 0x5AU, 0xBEU, 0xC7U, 0xB1U, 0x60U, 0xC3U, 0xD1U},
-    {0xA4U, 0x48U, 0xA9U, 0xCAU},
-    {0xA7U, 0xF0U, 0xC0U, 0xBBU, 0xA6U, 0xB8U, 0xBCU, 0xC6U},
-    {0xA5U, 0xA4U, 0xD2U, 0xB1U, 0x61U, 0xACU, 0x72U},
-}};
-constexpr std::array<std::uint8_t, 18> kNoMedicineUser{
-    0xB6U, 0xA4U, 0xADU, 0xFBU, 0xA4U, 0xA4U, 0xB5U, 0x4CU, 0xA4U,
-    0x48U, 0xC2U, 0xE5U, 0xB3U, 0x4EU, 0xB0U, 0xF7U, 0xAEU, 0xE6U};
-constexpr std::array<std::uint8_t, 12> kMedicineUserTitle{
-    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xA8U, 0xCFU, 0xA5U, 0xCEU,
-    0xC2U, 0xE5U, 0xB3U, 0x4EU};
-constexpr std::array<std::uint8_t, 8> kMedicineAbilityLabel{
-    0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU};
-constexpr std::array<std::uint8_t, 8> kMedicineResultLabel{
-    0xABU, 0xECU, 0xB4U, 0x5FU, 0xA5U, 0xCDU, 0xA9U, 0x52U};
-constexpr std::array<std::uint8_t, 18> kNoDetoxificationUser{
-    0xB6U, 0xA4U, 0xADU, 0xFBU, 0xA4U, 0xA4U, 0xB5U, 0x4CU, 0xA4U,
-    0x48U, 0xB8U, 0xD1U, 0xACU, 0x72U, 0xB0U, 0xF7U, 0xAEU, 0xE6U};
-constexpr std::array<std::uint8_t, 12> kDetoxificationUserTitle{
-    0xBDU, 0xD6U, 0xADU, 0x6EU, 0xC0U, 0xB0U, 0xA4U, 0x48U,
-    0xB8U, 0xD1U, 0xACU, 0x72U};
-constexpr std::array<std::uint8_t, 8> kDetoxificationAbilityLabel{
-    0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU};
-constexpr std::array<std::uint8_t, 8> kDetoxificationResultLabel{
-    0xC0U, 0xB0U, 0xA7U, 0x55U, 0xB8U, 0xD1U, 0xACU, 0x72U};
+using namespace openlegend::text::game_strings;
+namespace palette_colors = render::legacy_color;
+namespace text_colors = render::legacy_color::text;
 constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
     0,     50,    150,   300,   500,   750,   1050,  1400,  1800,  2250,
     2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
     18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000};
 
-[[nodiscard]] std::vector<std::uint8_t> decimal_text(
+[[nodiscard]] std::u8string decimal_text(
     const std::int32_t value,
     const int width = 0) {
     std::array<char, 16> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
-    std::vector<std::uint8_t> result;
+    std::u8string result;
     const auto count = static_cast<int>(converted.ptr - buffer.data());
     result.reserve(static_cast<std::size_t>(std::max(width, count)));
     for (int index = count; index < width; ++index) {
-        result.push_back(static_cast<std::uint8_t>(' '));
+        result.push_back(u8' ');
     }
     for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
-        result.push_back(static_cast<std::uint8_t>(*cursor));
+        result.push_back(static_cast<char8_t>(*cursor));
     }
     return result;
 }
@@ -381,12 +288,12 @@ bool BattleRenderer::render_status_panel(
         return false;
     }
     if (plan.name_x.has_value() &&
-        !draw_text(
+        !draw_text_big5(
             framebuffer,
             *plan.name_x,
             plan.name_y,
-            zero_terminated_prefix(plan.name_bytes),
-            0x0705U)) {
+            text::Big5TextView{zero_terminated_prefix(plan.name_bytes)},
+            text_colors::notice)) {
         return false;
     }
     const auto power = decimal_text(plan.physical_power, 3);
@@ -397,43 +304,43 @@ bool BattleRenderer::render_status_panel(
     const auto x = [offset = plan.side_offset](const int value) {
         return value - offset;
     };
-    return draw_text(framebuffer, x(225), 101, kPowerLabel, 0x2321U) &&
-        draw_text(framebuffer, x(262), 101, power, 0x0705U) &&
-        draw_text(framebuffer, x(285), 101, kSlash, 0x6663U) &&
-        draw_text(framebuffer, x(292), 101, kHundred, 0x2321U) &&
-        draw_text(framebuffer, x(225), 118, kLifeLabel, 0x2321U) &&
-        draw_text(
+    return draw_text_utf8(framebuffer, x(225), 101, kPowerLabel, text_colors::menu_normal) &&
+        draw_text_utf8(framebuffer, x(262), 101, power, text_colors::notice) &&
+        draw_text_utf8(framebuffer, x(285), 101, kSlash, text_colors::selected) &&
+        draw_text_utf8(framebuffer, x(292), 101, kHundred, text_colors::menu_normal) &&
+        draw_text_utf8(framebuffer, x(225), 118, kLifeLabel, text_colors::menu_normal) &&
+        draw_text_utf8(
             framebuffer,
             x(262),
             118,
             hp,
-            static_cast<std::uint16_t>(plan.hurt_color)) &&
-        draw_text(framebuffer, x(285), 118, kSlash, 0x6663U) &&
-        draw_text(
+            plan.hurt_color) &&
+        draw_text_utf8(framebuffer, x(285), 118, kSlash, text_colors::selected) &&
+        draw_text_utf8(
             framebuffer,
             x(292),
             118,
             maximum_hp,
-            static_cast<std::uint16_t>(plan.poison_color)) &&
-        draw_text(framebuffer, x(225), 135, kMpLabel, 0x2321U) &&
-        draw_text(
+            plan.poison_color) &&
+        draw_text_utf8(framebuffer, x(225), 135, kMpLabel, text_colors::menu_normal) &&
+        draw_text_utf8(
             framebuffer,
             x(262),
             135,
             mp,
-            static_cast<std::uint16_t>(plan.mp_color)) &&
-        draw_text(
+            plan.mp_color) &&
+        draw_text_utf8(
             framebuffer,
             x(285),
             135,
             kSlash,
-            static_cast<std::uint16_t>(plan.mp_color)) &&
-        draw_text(
+            plan.mp_color) &&
+        draw_text_utf8(
             framebuffer,
             x(292),
             135,
             maximum_mp,
-            static_cast<std::uint16_t>(plan.mp_color));
+            plan.mp_color);
 }
 
 bool BattleRenderer::render_character_selection(
@@ -449,8 +356,8 @@ bool BattleRenderer::render_character_selection(
             break;
         }
     }
-    std::span<const std::uint8_t> title;
-    std::span<const std::uint8_t> subtitle;
+    std::u8string_view title;
+    std::u8string_view subtitle;
     std::uint16_t list_width = 62U;
     switch (kind) {
     case PartySelectionKind::medicine_target:
@@ -485,16 +392,23 @@ bool BattleRenderer::render_character_selection(
             2U * model::item_word::secondary_name_begin,
             2U * model::item_word::secondary_name_count);
     }
+    const auto encoded_title = text::encode_big5(title);
+    if (!encoded_title.has_value()) {
+        return false;
+    }
     const auto title_width = static_cast<std::uint16_t>(
-        8U * (title.size() + item_name.size()) + (has_item_title ? 28U : 12U));
+        8U * (encoded_title->size() + item_name.size()) +
+        (has_item_title ? 28U : 12U));
     const auto list_height = static_cast<std::uint16_t>(
         20U * party_count + (has_details ? 30U : 10U));
     if (!valid() || party_count == 0U || cursor >= party_count ||
         !draw_box(framebuffer, 70, 18, title_width, 26U) ||
-        !draw_text(framebuffer, 75, 22, title, 0x0705U) ||
-        (has_item_title && !draw_text(framebuffer, 145, 22, item_name, 0x1014U)) ||
+        !draw_text_utf8(framebuffer, 75, 22, title, text_colors::notice) ||
+        (has_item_title &&
+         !draw_text_big5(
+             framebuffer, 145, 22, text::Big5TextView{item_name}, text_colors::negative_value)) ||
         !draw_box(framebuffer, 70, 45, list_width, list_height) ||
-        (has_details && !draw_text(framebuffer, 75, 52, subtitle, 0x0705U))) {
+        (has_details && !draw_text_utf8(framebuffer, 75, 52, subtitle, text_colors::notice))) {
         return false;
     }
     for (std::size_t slot = 0U; slot < party_count; ++slot) {
@@ -506,32 +420,33 @@ bool BattleRenderer::render_character_selection(
         const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
             model::role_word::name_byte, model::role_word::name_bytes);
         const auto selected = slot == cursor;
-        const auto color = selected ? std::uint16_t{0x6663U} : std::uint16_t{0x2321U};
+        const auto color = selected ? text_colors::selected : text_colors::menu_normal;
         const auto y = (has_details ? 72 : 52) + 20 * static_cast<int>(slot);
         const auto name_extent = legacy_name_extent(name_storage);
         if (name_extent.has_value() &&
-            !draw_text(
+            !draw_text_big5(
                 framebuffer,
                 99 - 4 * *name_extent,
                 y,
-                zero_terminated_prefix(name_storage),
+                text::Big5TextView{zero_terminated_prefix(name_storage)},
                 color)) {
             return false;
         }
         if (kind == PartySelectionKind::medicine_target) {
             const auto hurt = role.word(model::role_word::hurt);
-            const auto hp_color = selected ? std::uint16_t{0x6663U}
-                : hurt > 66 ? std::uint16_t{0x1416U}
-                : hurt > 33 ? std::uint16_t{0x0E10U}
-                            : std::uint16_t{0x0705U};
-            if (!draw_text(
+            const auto hp_color = selected ? text_colors::selected
+                : hurt > 66 ? text_colors::severe_injury
+                : hurt > 33 ? text_colors::moderate_injury
+                            : text_colors::notice;
+            if (!draw_text_utf8(
                     framebuffer,
                     127,
                     y,
                     decimal_text(role.word(model::role_word::hp), 3),
                     hp_color) ||
-                !draw_text(framebuffer, 149, y, kSlash, selected ? 0x6663U : 0x2322U) ||
-                !draw_text(
+                !draw_text_utf8(
+                    framebuffer, 149, y, kSlash, selected ? text_colors::selected : text_colors::hp_separator) ||
+                !draw_text_utf8(
                     framebuffer,
                     155,
                     y,
@@ -540,7 +455,7 @@ bool BattleRenderer::render_character_selection(
                 return false;
             }
         } else if (kind == PartySelectionKind::detoxification_target &&
-                   !draw_text(
+                   !draw_text_utf8(
                        framebuffer,
                        127,
                        y,
@@ -567,24 +482,24 @@ bool BattleRenderer::render_party_ability_selection(
     const PartyAbilityKind kind,
     render::IndexedFramebuffer& framebuffer) {
     const auto title = kind == PartyAbilityKind::medicine
-        ? std::span<const std::uint8_t>{kMedicineUserTitle}
-        : std::span<const std::uint8_t>{kDetoxificationUserTitle};
+        ? kMedicineUserTitle
+        : kDetoxificationUserTitle;
     const auto subtitle = kind == PartyAbilityKind::medicine
-        ? std::span<const std::uint8_t>{kMedicineAbilityLabel}
-        : std::span<const std::uint8_t>{kDetoxificationAbilityLabel};
+        ? kMedicineAbilityLabel
+        : kDetoxificationAbilityLabel;
     const auto ability_word = kind == PartyAbilityKind::medicine
         ? model::role_word::medicine
         : model::role_word::detoxification;
     if (!valid() || party_slots.empty() || cursor >= party_slots.size() ||
         !draw_box(framebuffer, 70, 18, 108U, 26U) ||
-        !draw_text(framebuffer, 75, 22, title, 0x0705U) ||
+        !draw_text_utf8(framebuffer, 75, 22, title, text_colors::notice) ||
         !draw_box(
             framebuffer,
             70,
             45,
             90U,
             static_cast<std::uint16_t>(20U * party_slots.size() + 30U)) ||
-        !draw_text(framebuffer, 75, 52, subtitle, 0x0705U)) {
+        !draw_text_utf8(framebuffer, 75, 52, subtitle, text_colors::notice)) {
         return false;
     }
     for (std::size_t index = 0U; index < party_slots.size(); ++index) {
@@ -599,17 +514,20 @@ bool BattleRenderer::render_party_ability_selection(
         const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
         const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
             model::role_word::name_byte, model::role_word::name_bytes);
-        const auto color = index == cursor ? std::uint16_t{0x6663U} : std::uint16_t{0x2321U};
+        const auto color = index == cursor
+            ? text_colors::selected
+            : text_colors::menu_normal;
         const auto y = 72 + 20 * static_cast<int>(index);
         const auto name_extent = legacy_name_extent(name_storage);
         if ((name_extent.has_value() &&
-             !draw_text(
+             !draw_text_big5(
                  framebuffer,
                  99 - 4 * *name_extent,
                  y,
-                 zero_terminated_prefix(name_storage),
+                 text::Big5TextView{zero_terminated_prefix(name_storage)},
                  color)) ||
-            !draw_text(framebuffer, 130, y, decimal_text(role.word(ability_word), 2), color)) {
+            !draw_text_utf8(
+                framebuffer, 130, y, decimal_text(role.word(ability_word), 2), color)) {
             return false;
         }
     }
@@ -625,17 +543,17 @@ bool BattleRenderer::render_party_action_notice(
     }
     if (!amount.has_value()) {
         const auto message = kind == PartyAbilityKind::medicine
-            ? std::span<const std::uint8_t>{kNoMedicineUser}
-            : std::span<const std::uint8_t>{kNoDetoxificationUser};
+            ? kNoMedicineUser
+            : kNoDetoxificationUser;
         return draw_box(framebuffer, 70, 18, 154U, 26U) &&
-            draw_text(framebuffer, 75, 22, message, 0x0705U);
+            draw_text_utf8(framebuffer, 75, 22, message, text_colors::notice);
     }
     const auto label = kind == PartyAbilityKind::medicine
-        ? std::span<const std::uint8_t>{kMedicineResultLabel}
-        : std::span<const std::uint8_t>{kDetoxificationResultLabel};
+        ? kMedicineResultLabel
+        : kDetoxificationResultLabel;
     return draw_box(framebuffer, 112, 47, 96U, 26U) &&
-        draw_text(framebuffer, 117, 51, label, 0x6663U) &&
-        draw_text(framebuffer, 181, 51, decimal_text(*amount, 3), 0x0705U);
+        draw_text_utf8(framebuffer, 117, 51, label, text_colors::selected) &&
+        draw_text_utf8(framebuffer, 181, 51, decimal_text(*amount, 3), text_colors::notice);
 }
 
 bool BattleRenderer::render_character_status(
@@ -660,12 +578,12 @@ bool BattleRenderer::render_character_status(
     }
     const auto name_extent = legacy_name_extent(name_storage);
     if (name_extent.has_value() &&
-        !draw_text(
+        !draw_text_big5(
             framebuffer,
             104 - 4 * *name_extent,
             70,
-            zero_terminated_prefix(name_storage),
-            0x6663U)) {
+            text::Big5TextView{zero_terminated_prefix(name_storage)},
+            text_colors::selected)) {
         return false;
     }
 
@@ -674,52 +592,52 @@ bool BattleRenderer::render_character_status(
                                  const int y,
                                  const std::int32_t value,
                                  const int width,
-                                 const std::uint16_t color = 0x0705U) {
-        return draw_text(framebuffer, x, y, decimal_text(value, width), color);
+                                 const render::TextColors color = text_colors::notice) {
+        return draw_text_utf8(framebuffer, x, y, decimal_text(value, width), color);
     };
     if (page == 0U) {
         const auto hurt = role.word(model::role_word::hurt);
-        const auto hurt_color = hurt > 66 ? std::uint16_t{0x1416U}
-            : hurt > 33 ? std::uint16_t{0x0E10U}
-                        : std::uint16_t{0x0705U};
+        const auto hurt_color = hurt > 66 ? text_colors::severe_injury
+            : hurt > 33 ? text_colors::moderate_injury
+                        : text_colors::notice;
         const auto poison = role.word(model::role_word::poison);
-        const auto poison_color = poison == 0 ? std::uint16_t{0x2321U}
-            : poison >= 50 ? std::uint16_t{0x3537U}
-                           : std::uint16_t{0x3032U};
+        const auto poison_color = poison == 0 ? text_colors::menu_normal
+            : poison >= 50 ? text_colors::severe_poison
+                           : text_colors::poison;
         auto mp_color = poison_color;
         switch (role.word(model::role_word::mp_type)) {
-        case 0: mp_color = 0x504EU; break;
-        case 1: mp_color = 0x0705U; break;
-        case 2: mp_color = 0x6663U; break;
+        case 0: mp_color = text_colors::yin_mp; break;
+        case 1: mp_color = text_colors::notice; break;
+        case 2: mp_color = text_colors::selected; break;
         default: break;
         }
-        if (!draw_text(framebuffer, 60, 90, kLevelLabel, 0x2321U) ||
+        if (!draw_text_utf8(framebuffer, 60, 90, kLevelLabel, text_colors::menu_normal) ||
             !draw_number(100, 90, role.word(model::role_word::level), 3) ||
-            !draw_text(framebuffer, 60, 107, kLifeLabel, 0x2321U) ||
+            !draw_text_utf8(framebuffer, 60, 107, kLifeLabel, text_colors::menu_normal) ||
             !draw_number(97, 107, role.word(model::role_word::hp), 3, hurt_color) ||
-            !draw_text(framebuffer, 120, 107, kSlash, 0x6663U) ||
+            !draw_text_utf8(framebuffer, 120, 107, kSlash, text_colors::selected) ||
             !draw_number(
                 127,
                 107,
                 role.word(model::role_word::maximum_hp),
                 3,
                 poison_color) ||
-            !draw_text(framebuffer, 60, 124, kMpLabel, 0x2321U) ||
+            !draw_text_utf8(framebuffer, 60, 124, kMpLabel, text_colors::menu_normal) ||
             !draw_number(97, 124, role.word(model::role_word::mp), 3, mp_color) ||
-            !draw_text(framebuffer, 120, 124, kSlash, mp_color) ||
+            !draw_text_utf8(framebuffer, 120, 124, kSlash, mp_color) ||
             !draw_number(127, 124, role.word(model::role_word::maximum_mp), 3, mp_color) ||
-            !draw_text(framebuffer, 60, 141, kPowerLabel, 0x2321U) ||
+            !draw_text_utf8(framebuffer, 60, 141, kPowerLabel, text_colors::menu_normal) ||
             !draw_number(97, 141, role.word(model::role_word::physical_power), 3) ||
-            !draw_text(framebuffer, 120, 141, kSlash, 0x6663U) ||
-            !draw_text(framebuffer, 127, 141, kHundred, 0x2321U) ||
-            !draw_text(framebuffer, 60, 158, kExperienceLabel, 0x2321U) ||
+            !draw_text_utf8(framebuffer, 120, 141, kSlash, text_colors::selected) ||
+            !draw_text_utf8(framebuffer, 127, 141, kHundred, text_colors::menu_normal) ||
+            !draw_text_utf8(framebuffer, 60, 158, kExperienceLabel, text_colors::menu_normal) ||
             !draw_number(97, 158, role.unsigned_word(model::role_word::experience), 6) ||
-            !draw_text(framebuffer, 60, 175, kUpgradeLabel, 0x2321U)) {
+            !draw_text_utf8(framebuffer, 60, 175, kUpgradeLabel, text_colors::menu_normal)) {
             return false;
         }
         const auto level = role.word(model::role_word::level);
         if (level >= 30) {
-            if (!draw_text(framebuffer, 97, 175, kMaximumLevel, 0x0705U)) {
+            if (!draw_text_utf8(framebuffer, 97, 175, kMaximumLevel, text_colors::notice)) {
                 return false;
             }
         } else if (level < 0 ||
@@ -744,7 +662,7 @@ bool BattleRenderer::render_character_status(
             return value;
         };
         struct RightField {
-            std::span<const std::uint8_t> label;
+            std::u8string_view label;
             std::int32_t value;
         };
         const std::array<RightField, 11> fields{{
@@ -765,7 +683,7 @@ bool BattleRenderer::render_character_status(
         }};
         for (std::size_t index = 0U; index < fields.size(); ++index) {
             const auto y = 5 + 17 * static_cast<int>(index);
-            if (!draw_text(framebuffer, 160, y, fields[index].label, 0x6663U) ||
+            if (!draw_text_utf8(framebuffer, 160, y, fields[index].label, text_colors::selected) ||
                 !draw_number(230, y, fields[index].value, 3)) {
                 return false;
             }
@@ -773,48 +691,48 @@ bool BattleRenderer::render_character_status(
         return true;
     }
 
-    if (!draw_text(framebuffer, 60, 90, kEquipmentLabel, 0x2321U)) {
+    if (!draw_text_utf8(framebuffer, 60, 90, kEquipmentLabel, text_colors::menu_normal)) {
         return false;
     }
     for (std::size_t slot = 0U; slot < model::role_word::equipment_count; ++slot) {
         const auto item_id = role.word(model::role_word::equipment_begin + slot);
         if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger.items.size()) {
             const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
-            if (!draw_text(
+            if (!draw_text_big5(
                     framebuffer,
                     60,
                     107 + 17 * static_cast<int>(slot),
-                    fixed_text(
+                    text::Big5TextView{fixed_text(
                         item.bytes,
                         model::item_word::secondary_name_begin * 2U,
-                        model::item_word::secondary_name_count * 2U),
-                    0x0705U)) {
+                        model::item_word::secondary_name_count * 2U)},
+                    text_colors::notice)) {
                 return false;
             }
         }
     }
-    if (!draw_text(framebuffer, 60, 141, kPracticeLabel, 0x2321U)) {
+    if (!draw_text_utf8(framebuffer, 60, 141, kPracticeLabel, text_colors::menu_normal)) {
         return false;
     }
     const auto practice_item_id = role.word(model::role_word::practice_item);
     if (practice_item_id >= 0 &&
         static_cast<std::size_t>(practice_item_id) < ranger.items.size()) {
         const auto& item = ranger.items[static_cast<std::size_t>(practice_item_id)];
-        if (!draw_text(
+        if (!draw_text_big5(
                 framebuffer,
                 60,
                 158,
-                fixed_text(
+                text::Big5TextView{fixed_text(
                     item.bytes,
                     model::item_word::secondary_name_begin * 2U,
-                    model::item_word::secondary_name_count * 2U),
-                0x0705U) ||
+                    model::item_word::secondary_name_count * 2U)},
+                text_colors::notice) ||
             !draw_number(
                 60,
                 175,
                 role.unsigned_word(model::role_word::item_experience),
                 5) ||
-            !draw_text(framebuffer, 100, 175, kSlash, 0x6663U)) {
+            !draw_text_utf8(framebuffer, 100, 175, kSlash, text_colors::selected)) {
             return false;
         }
         const auto experience_factor =
@@ -843,14 +761,14 @@ bool BattleRenderer::render_character_status(
             }
         }
         if (maximum_magic_level) {
-            if (!draw_text(framebuffer, 107, 175, kMaximumPractice, 0x2321U)) {
+            if (!draw_text_utf8(framebuffer, 107, 175, kMaximumPractice, text_colors::menu_normal)) {
                 return false;
             }
-        } else if (!draw_number(108, 175, required_experience, 5, 0x2321U)) {
+        } else if (!draw_number(108, 175, required_experience, 5, text_colors::menu_normal)) {
             return false;
         }
     }
-    if (!draw_text(framebuffer, 160, 5, kMagicLabel, 0x2321U)) {
+    if (!draw_text_utf8(framebuffer, 160, 5, kMagicLabel, text_colors::menu_normal)) {
         return false;
     }
     for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
@@ -859,22 +777,22 @@ bool BattleRenderer::render_character_status(
             continue;
         }
         const auto y = 22 + 17 * static_cast<int>(slot);
-        if (!draw_text(
+        if (!draw_text_big5(
                 framebuffer,
                 160,
                 y,
-                fixed_text(
+                text::Big5TextView{fixed_text(
                     ranger.magics[static_cast<std::size_t>(magic_id)].bytes,
                     model::magic_word::name_byte,
-                    model::magic_word::name_bytes),
-                0x0705U) ||
+                    model::magic_word::name_bytes)},
+                text_colors::notice) ||
             !draw_number(
                 242,
                 y,
                 static_cast<std::int32_t>(
                     role.unsigned_word(model::role_word::magic_level_begin + slot) / 100U + 1U),
                 2,
-                0x6663U)) {
+                text_colors::selected)) {
             return false;
         }
     }
@@ -900,9 +818,10 @@ bool BattleRenderer::render_item_effect(
         item.bytes,
         2U * model::item_word::secondary_name_begin,
         2U * model::item_word::secondary_name_count);
-    std::vector<std::uint8_t> header{kUseItemPrefix.begin(), kUseItemPrefix.end()};
-    header.insert(header.end(), name.begin(), name.end());
-    if (!draw_text(framebuffer, 75, 25, header, 0x6663U)) {
+    text::GameText header;
+    header.append_utf8(kUseItemPrefix);
+    header.append_legacy(text::Big5TextView{name});
+    if (!draw_text_mixed(framebuffer, 75, 25, header, text_colors::selected)) {
         return false;
     }
     std::int16_t visible_row = 0;
@@ -912,32 +831,32 @@ bool BattleRenderer::render_item_effect(
             continue;
         }
         const auto y = 45 + 18 * visible_row;
-        if (!draw_text(
+        if (!draw_text_utf8(
                 framebuffer,
                 75,
                 y,
-                zero_terminated_prefix(kItemEffectLabels[index]),
-                0x0705U)) {
+                kItemEffectLabels[index],
+                text_colors::notice)) {
             return false;
         }
         if (index == 4U) {
-            if (!draw_text(framebuffer, 155, y, kItemMpTypeChanged, 0x0705U)) {
+            if (!draw_text_utf8(framebuffer, 155, y, kItemMpTypeChanged, text_colors::notice)) {
                 return false;
             }
         } else {
-            if (!draw_text(
+            if (!draw_text_utf8(
                     framebuffer,
                     155,
                     y,
-                    delta > 0 ? std::span<const std::uint8_t>{kItemIncrease}
-                              : std::span<const std::uint8_t>{kItemDecrease},
-                    delta > 0 ? 0x0705U : 0x1014U)) {
+                    delta > 0 ? kItemIncrease : kItemDecrease,
+                    delta > 0 ? text_colors::notice : text_colors::negative_value)) {
                 return false;
             }
             const auto magnitude = delta < 0
                 ? -static_cast<std::int32_t>(delta)
                 : static_cast<std::int32_t>(delta);
-            if (!draw_text(framebuffer, 187, y, decimal_text(magnitude, 3), 0x0705U)) {
+            if (!draw_text_utf8(
+                    framebuffer, 187, y, decimal_text(magnitude, 3), text_colors::notice)) {
                 return false;
             }
         }
@@ -969,7 +888,7 @@ bool BattleRenderer::draw_box(
         for (int destination_y = begin_y; destination_y < end_y; ++destination_y) {
             for (int destination_x = begin_x; destination_x < end_x; ++destination_x) {
                 auto& destination = framebuffer.row(destination_y)[destination_x];
-                destination = blend_pixel(0U, destination, 4);
+                destination = blend_pixel(palette_colors::black, destination, 4);
             }
         }
     };
@@ -997,7 +916,7 @@ bool BattleRenderer::draw_box(
             top,
             static_cast<std::uint16_t>(rectangle_width),
             static_cast<std::uint16_t>(rectangle_height),
-            0xFFU);
+            palette_colors::panel_outline);
     };
     return fill(x + 5, y + 1, w - 10, 1) &&
         fill(x + 4, y + 2, 1, 2) && fill(x + w - 5, y + 2, 1, 2) &&
@@ -1008,26 +927,61 @@ bool BattleRenderer::draw_box(
         fill(x + 5, y + h - 2, w - 10, 1);
 }
 
-bool BattleRenderer::draw_text(
+bool BattleRenderer::draw_text_utf8(
     render::IndexedFramebuffer& framebuffer,
     const int x,
     const int y,
-    const std::span<const std::uint8_t> text,
-    const std::uint16_t packed_colors) {
+    const std::u8string_view text,
+    const render::TextColors colors) {
     if (!big5_cache_.has_value()) {
         return false;
     }
-    std::vector<std::uint8_t> terminated(text.begin(), text.end());
-    terminated.push_back(0U);
-    return render::draw_legacy_text(
+    return render::draw_text_utf8(
         framebuffer,
         x,
         y,
-        terminated,
+        text,
         ascii_font_,
         *big5_cache_,
-        static_cast<std::uint8_t>(packed_colors & 0xFFU),
-        static_cast<std::uint8_t>(packed_colors >> 8U));
+        colors);
+}
+
+bool BattleRenderer::draw_text_mixed(
+    render::IndexedFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const text::GameText& text,
+    const render::TextColors colors) {
+    if (!big5_cache_.has_value()) {
+        return false;
+    }
+    return render::draw_text_mixed(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        colors);
+}
+
+bool BattleRenderer::draw_text_big5(
+    render::IndexedFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const text::Big5TextView text,
+    const render::TextColors colors) {
+    if (!big5_cache_.has_value()) {
+        return false;
+    }
+    return render::draw_text_big5(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        colors);
 }
 
 bool BattleRenderer::draw_portrait(
@@ -1162,7 +1116,7 @@ bool BattleRenderer::draw_tinted_fight_sprite(
     const std::int32_t legacy_id,
     const int anchor_x,
     const int anchor_y,
-    const std::uint8_t color) const {
+    const render::PaletteIndex color) const {
     const auto* frame = fight_frame(legacy_id);
     if (frame == nullptr) {
         return false;
@@ -1223,16 +1177,16 @@ bool BattleRenderer::draw_cursor_overlay(
 bool BattleRenderer::draw_damage_text(
     render::IndexedFramebuffer& framebuffer,
     const BattleRenderCommand& command) {
-    std::vector<std::uint8_t> text;
-    text.push_back(command.overlay_variant < 0 ? '-' : '+');
-    const auto number = decimal_text(command.value, 3);
-    text.insert(text.end(), number.begin(), number.end());
-    return draw_text(
+    std::u8string text;
+    text.push_back(command.overlay_variant < 0 ? u8'-' : u8'+');
+    text.append(decimal_text(command.value, 3));
+    return draw_text_utf8(
         framebuffer,
         command.screen_x,
         command.screen_y,
         text,
-        std::bit_cast<std::uint16_t>(command.style));
+        render::TextColors::from_legacy_packed(
+            std::bit_cast<std::uint16_t>(command.style)));
 }
 
 std::uint8_t BattleRenderer::blend_pixel(

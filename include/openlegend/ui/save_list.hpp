@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/text/game_text.hpp"
 
 namespace openlegend::ui {
 
@@ -31,7 +32,7 @@ struct SaveListEntry {
     SaveListEntryState state{SaveListEntryState::empty};
     std::vector<std::uint8_t> protagonist_name;
     std::int16_t level{};
-    std::vector<std::uint8_t> location;
+    text::GameText location;
     std::string saved_at;
 };
 

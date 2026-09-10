@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
 namespace openlegend::ui {
@@ -47,8 +48,10 @@ public:
     [[nodiscard]] bool has_next_candidate_page() const noexcept;
     [[nodiscard]] bool no_candidates() const noexcept { return no_candidates_; }
     [[nodiscard]] bool accepted() const noexcept { return accepted_; }
-    [[nodiscard]] std::uint8_t cursor_color() const noexcept {
-        return cursor_bright_ ? 9U : 7U;
+    [[nodiscard]] render::PaletteIndex cursor_color() const noexcept {
+        return cursor_bright_
+            ? render::legacy_color::name_cursor_bright
+            : render::legacy_color::name_cursor_dim;
     }
     void finish_presented_frame() noexcept;
     [[nodiscard]] std::int16_t initial() const noexcept { return initial_; }

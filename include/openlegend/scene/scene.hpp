@@ -9,12 +9,15 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/legacy_color.hpp"
+#include "openlegend/text/game_text.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/resource/packed_archive.hpp"
@@ -212,8 +215,11 @@ public:
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
     [[nodiscard]] bool exit_transition_pending() const noexcept;
     [[nodiscard]] bool loop_present_pending() const noexcept;
-    [[nodiscard]] std::span<const std::uint8_t> pending_text() const noexcept {
+    [[nodiscard]] const text::GameText& pending_game_text() const noexcept {
         return pending_text_;
+    }
+    [[nodiscard]] const std::vector<std::uint8_t>& pending_text() const noexcept {
+        return pending_encoded_text_;
     }
     [[nodiscard]] std::vector<SceneAudioCommand> take_audio_commands();
     [[nodiscard]] SceneInputReset take_input_reset_request() noexcept;
@@ -254,7 +260,8 @@ private:
 
     struct QueuedOutput {
         SceneStepResult result;
-        std::vector<std::uint8_t> text;
+        text::GameText text;
+        std::vector<std::uint8_t> legacy_text;
         bool redraw_scene_before{};
     };
 
@@ -427,7 +434,8 @@ private:
     [[nodiscard]] std::optional<SceneStepResult> advance_join_role_items();
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
-    void queue_notice(std::vector<std::uint8_t> text, std::int16_t style = 0);
+    void queue_notice_utf8(std::u8string_view text, std::int16_t style = 0);
+    void queue_notice_mixed(text::GameText text, std::int16_t style = 0);
     void queue_item_notice(std::int16_t item_id);
     void queue_scene_present();
     [[nodiscard]] SceneStepResult emit_queued();
@@ -523,7 +531,9 @@ private:
     std::ptrdiff_t program_counter_{};
     bool event_active_{};
     SceneStepResult pending_{};
-    std::vector<std::uint8_t> pending_text_;
+    text::GameText pending_text_;
+    std::vector<std::uint8_t> pending_encoded_text_;
+    std::vector<std::uint8_t> pending_legacy_text_;
     mutable std::optional<render::IndexedFramebuffer> scene_title_base_framebuffer_;
     mutable std::optional<render::IndexedFramebuffer> dialogue_base_framebuffer_;
     mutable std::optional<render::IndexedFramebuffer> item_notice_base_framebuffer_;

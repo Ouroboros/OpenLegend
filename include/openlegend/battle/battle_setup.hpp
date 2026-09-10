@@ -12,6 +12,7 @@
 #include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
+#include "openlegend/render/legacy_color.hpp"
 
 namespace openlegend::battle {
 
@@ -646,9 +647,9 @@ struct BattleStatusPanelPlan {
     std::int16_t maximum_hp{};
     std::int16_t mp{};
     std::int16_t maximum_mp{};
-    std::int16_t hurt_color{};
-    std::int16_t poison_color{};
-    std::int16_t mp_color{};
+    render::TextColors hurt_color{};
+    render::TextColors poison_color{};
+    render::TextColors mp_color{};
     bool render_required{true};
 };
 

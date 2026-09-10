@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "openlegend/input/legacy_key.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -190,7 +191,8 @@ bool TitleMenuRenderer::render_background(render::IndexedFramebuffer& framebuffe
 bool TitleMenuRenderer::render_new_game_wait(
     render::IndexedFramebuffer& framebuffer) const {
     return render_background(framebuffer) &&
-        framebuffer.fill_rectangle(0, 135, 320U, 65U, 0U) &&
+        framebuffer.fill_rectangle(
+            0, 135, 320U, 65U, render::legacy_color::menu_background) &&
         draw_legacy_id(framebuffer, 16U, 120, 160);
 }
 
@@ -222,7 +224,8 @@ bool TitleMenuRenderer::render(
             framebuffer, 10U + slot * 2U, 117, 137 + static_cast<int>(slot) * 20);
     }
     case TitleScreen::please_wait:
-        if (!framebuffer.fill_rectangle(115, 135, 135U, 65U, 0U)) {
+        if (!framebuffer.fill_rectangle(
+                115, 135, 135U, 65U, render::legacy_color::menu_background)) {
             return false;
         }
         return draw_legacy_id(framebuffer, 16U, 120, 160);

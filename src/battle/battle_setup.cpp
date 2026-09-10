@@ -9,8 +9,12 @@
 #include <limits>
 #include <utility>
 
+#include "openlegend/render/legacy_color.hpp"
+
 namespace openlegend::battle {
 namespace {
+
+namespace text_colors = render::legacy_color::text;
 
 constexpr std::array<std::int16_t, kBattleCombatantWords> kInitialCombatantWords{
     -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, 0, -1, -1, 0};
@@ -1561,18 +1565,22 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
         }
     }
     const auto hurt = role.word(model::role_word::hurt);
-    plan.hurt_color = hurt > 66 ? 5'142 : hurt > 33 ? 3'600 : 1'797;
+    plan.hurt_color = hurt > 66 ? text_colors::severe_injury
+                                : hurt > 33 ? text_colors::moderate_injury
+                                            : text_colors::notice;
     const auto poison = role.word(model::role_word::poison);
-    plan.poison_color = poison == 0 ? 8'993 : poison >= 50 ? 13'623 : 12'338;
+    plan.poison_color = poison == 0 ? text_colors::menu_normal
+                                    : poison >= 50 ? text_colors::severe_poison
+                                                   : text_colors::poison;
     switch (role.word(model::role_word::mp_type)) {
     case 0:
-        plan.mp_color = 20'558;
+        plan.mp_color = text_colors::yin_mp;
         break;
     case 1:
-        plan.mp_color = 1'797;
+        plan.mp_color = text_colors::notice;
         break;
     case 2:
-        plan.mp_color = 26'211;
+        plan.mp_color = text_colors::selected;
         break;
     default:
         plan.mp_color = plan.poison_color;
@@ -5260,15 +5268,15 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                 const auto highlighted = state.highlight_enabled && attack_effects_[cell] == 1 &&
                     ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hp) >= 0;
                 if (highlighted) {
-                    std::int16_t color = 0;
+                    std::optional<render::PaletteIndex> color;
                     if (state.highlight_mode == 1) {
-                        color = 255;
+                        color = render::legacy_color::battle_flash_standard;
                     } else if (state.highlight_mode == 2) {
-                        color = 47;
+                        color = render::legacy_color::battle_flash_damage_kind_two;
                     } else if (state.highlight_mode == 3) {
-                        color = 78;
+                        color = render::legacy_color::battle_flash_alternate;
                     }
-                    if (color != 0) {
+                    if (color.has_value()) {
                         append_sprite(
                             BattleRenderCommandKind::highlighted_sprite,
                             map_x,
@@ -5277,7 +5285,7 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                             screen_y,
                             words[combatant_word::sprite],
                             0,
-                            color);
+                            static_cast<std::int16_t>(*color));
                     }
                 } else {
                     append_sprite(
@@ -5302,9 +5310,14 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
             }
 
             if (state.damage_kind > 0 && occupant >= 0 && attack_effects_[cell] == 1) {
-                static constexpr std::array<std::uint16_t, 6> kDamageColors{
-                    0x0000U, 0x1014U, 0x3032U, 0x9193U, 0x0705U, 0x5053U};
-                static constexpr std::array<std::int16_t, 6> kDamageSigns{0, -1, -1, 1, 1, -1};
+                static constexpr std::array<std::int16_t, 6> kDamageSigns{
+                    0,
+                    -1,
+                    -1,
+                    1,
+                    1,
+                    -1,
+                };
                 if (state.damage_kind <= 5) {
                     const auto combatant = static_cast<std::size_t>(occupant);
                     append_sprite(
@@ -5317,7 +5330,10 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                             2 * static_cast<std::int32_t>(state.damage_text_offset),
                         0,
                         kDamageSigns[static_cast<std::size_t>(state.damage_kind)],
-                        wrapping_i16(kDamageColors[static_cast<std::size_t>(state.damage_kind)]),
+                        wrapping_i16(
+                            render::legacy_color::text::battle_damage_numbers[
+                                static_cast<std::size_t>(state.damage_kind)]
+                                .legacy_packed()),
                         combatants_[combatant].words[combatant_word::damage_value]);
                 }
             }

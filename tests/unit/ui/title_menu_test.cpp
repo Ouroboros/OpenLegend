@@ -3393,7 +3393,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     save_entries[0].state = ui::SaveListEntryState::ready;
     save_entries[0].protagonist_name = {'A'};
     save_entries[0].level = 12;
-    save_entries[0].location = {'W', 'O', 'R', 'L', 'D'};
+    save_entries[0].location.append_ascii("WORLD");
     save_entries[0].saved_at = "09-10 03:46";
     framebuffer.clear(0U);
     OL_CHECK(basic_renderer.render_save_list(

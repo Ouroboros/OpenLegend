@@ -5,10 +5,12 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/packed_archive.hpp"
@@ -56,12 +58,24 @@ public:
         render::IndexedFramebuffer& framebuffer);
 
 private:
-    [[nodiscard]] bool draw_text(
+    [[nodiscard]] bool draw_text_utf8(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
-        std::span<const std::uint8_t> text,
-        std::uint16_t packed_colors = 0x1715U);
+        std::u8string_view text,
+        render::TextColors colors = render::legacy_color::text::normal);
+    [[nodiscard]] bool draw_text_mixed(
+        render::IndexedFramebuffer& framebuffer,
+        int x,
+        int y,
+        const text::GameText& text,
+        render::TextColors colors = render::legacy_color::text::normal);
+    [[nodiscard]] bool draw_text_big5(
+        render::IndexedFramebuffer& framebuffer,
+        int x,
+        int y,
+        text::Big5TextView text,
+        render::TextColors colors = render::legacy_color::text::normal);
     [[nodiscard]] bool draw_box(
         render::IndexedFramebuffer& framebuffer,
         int x,

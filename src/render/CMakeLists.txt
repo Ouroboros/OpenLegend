@@ -15,5 +15,10 @@ target_include_directories(
 )
 target_link_libraries(
     openlegend_render
-    PUBLIC openlegend_compat openlegend_resource openlegend_project_options openlegend_project_warnings
+    PUBLIC
+        openlegend_compat
+        openlegend_resource
+        openlegend_text
+        openlegend_project_options
+        openlegend_project_warnings
 )

@@ -14,7 +14,9 @@
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
+#include "openlegend/text/game_strings.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -25,8 +27,14 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
 
 void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     auto palette = framebuffer.palette();
-    std::rotate(palette.begin() + 224, palette.begin() + 231, palette.begin() + 232);
-    std::rotate(palette.begin() + 244, palette.begin() + 252, palette.begin() + 253);
+    std::rotate(
+        palette.begin() + render::legacy_color::first_palette_cycle_begin,
+        palette.begin() + render::legacy_color::first_palette_cycle_pivot,
+        palette.begin() + render::legacy_color::first_palette_cycle_end);
+    std::rotate(
+        palette.begin() + render::legacy_color::second_palette_cycle_begin,
+        palette.begin() + render::legacy_color::second_palette_cycle_pivot,
+        palette.begin() + render::legacy_color::second_palette_cycle_end);
     framebuffer.set_palette(palette);
 }
 
@@ -43,7 +51,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return std::vector<std::uint8_t>(field.begin(), end);
 }
 
-[[nodiscard]] std::vector<std::uint8_t> save_location(
+[[nodiscard]] text::GameText save_location(
     const model::RangerState& ranger) {
     const auto world_x = ranger.header.word(model::header_word::main_map_x);
     const auto world_y = ranger.header.word(model::header_word::main_map_y);
@@ -75,15 +83,17 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
             }
         }
     }
+    text::GameText location;
     if (closest_scene != nullptr) {
-        return legacy_field(
+        const auto name = legacy_field(
             closest_scene->bytes,
             model::scene_metadata_word::name_byte,
             model::scene_metadata_word::name_bytes);
+        location.append_legacy(text::Big5TextView{name});
+    } else {
+        location.append_utf8(text::game_strings::kUnknown);
     }
-    constexpr std::array<std::uint8_t, 4> kUnknown{
-        0xA5U, 0xBCU, 0xAAU, 0xBEU};
-    return std::vector<std::uint8_t>(kUnknown.begin(), kUnknown.end());
+    return location;
 }
 
 [[nodiscard]] std::string save_timestamp(const std::filesystem::path& path) {
@@ -349,7 +359,7 @@ LegacyGameRuntime::LegacyGameRuntime(
         startup_error_ = "Unable to render title background";
     }
     if (startup_error_.empty()) {
-        framebuffer_.clear(0U);
+        framebuffer_.clear(render::legacy_color::black);
         title_startup_phase_ = TitleStartupPhase::fade_to_black;
         begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
         diagnostics::log_info("LegacyGameRuntime initialized view=title");
@@ -2040,7 +2050,7 @@ bool LegacyGameRuntime::advance_scene_effect() {
             pending_io_ = PendingIo::load;
             pending_io_wait_presented_ = true;
             error_return_view_ = LegacyGameView::world;
-            framebuffer_.clear(0U);
+            framebuffer_.clear(render::legacy_color::black);
             perform_pending_io();
         }
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {

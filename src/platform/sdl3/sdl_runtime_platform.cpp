@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "openlegend/compat/color.hpp"
+
 namespace openlegend::platform::sdl3 {
 namespace {
 
@@ -229,7 +231,14 @@ bool SdlRuntimePlatform::present(const compat::IndexedFrameView frame) {
         static_cast<float>(viewport.width),
         static_cast<float>(viewport.height)};
 
-    if (!SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255) || !SDL_RenderClear(renderer_) ||
+    constexpr auto clear_color = compat::kRuntimeClearColor;
+    if (!SDL_SetRenderDrawColor(
+            renderer_,
+            clear_color.red,
+            clear_color.green,
+            clear_color.blue,
+            clear_color.alpha) ||
+        !SDL_RenderClear(renderer_) ||
         !SDL_RenderTexture(renderer_, texture_, nullptr, &destination)) {
         return false;
     }
