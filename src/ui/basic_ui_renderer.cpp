@@ -7,117 +7,40 @@
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
+#include "openlegend/text/big5.hpp"
+#include "openlegend/text/game_strings.hpp"
 
 namespace openlegend::ui {
 namespace {
 
-constexpr std::array<std::array<std::uint8_t, 4>, 6> kMainLabels{{
-    {0xC2U, 0xE5U, 0xC0U, 0xF8U},
-    {0xB8U, 0xD1U, 0xACU, 0x72U},
-    {0xAAU, 0xABU, 0xABU, 0x7EU},
-    {0xAAU, 0xACU, 0xBAU, 0x41U},
-    {0xC2U, 0xF7U, 0xB6U, 0xA4U},
-    {0xA8U, 0x74U, 0xB2U, 0xCEU},
-}};
-constexpr std::array<std::array<std::uint8_t, 4>, 3> kSystemLabels{{
-    {0xC5U, 0xAAU, 0xC0U, 0xC9U},
-    {0xA6U, 0x73U, 0xC0U, 0xC9U},
-    {0xC2U, 0xF7U, 0xB6U, 0x7DU},
-}};
-constexpr std::array<std::array<std::uint8_t, 2>, 3> kSlotLabels{{
-    {0xA4U, 0x40U},
-    {0xA4U, 0x47U},
-    {0xA4U, 0x54U},
-}};
-constexpr std::array<std::uint8_t, 13> kNamePrompt{
-    0xBDU, 0xD0U, 0xBFU, 0xE9U, 0xA4U, 0x4AU, 0xA9U,
-    0x6DU, 0xA6U, 0x57U, 0x20U, 0x20U, 0x3AU};
-constexpr std::array<std::uint8_t, 10> kZhuyinPrompt{
-    0xA1U, 0x5DU, 0xAAU, 0x60U, 0xADU, 0xB5U, 0xA1U, 0x5EU, 0xA1U, 0x47U};
-constexpr std::array<std::uint8_t, 10> kAlnumPrompt{
-    0xA1U, 0x5DU, 0xADU, 0x5EU, 0xBCU, 0xC6U, 0xA1U, 0x5EU, 0xA1U, 0x47U};
-constexpr std::array<std::uint8_t, 6> kNoNameCandidates{
-    0xB5U, 0x4CU, 0xA6U, 0xB9U, 0xA6U, 0x72U};
-constexpr std::array<std::uint8_t, 6> kCandidateBothPages{
-    0xA1U, 0xD5U, 0xA1U, 0xFEU, 0xA1U, 0xD6U};
-constexpr std::array<std::uint8_t, 2> kCandidatePreviousPage{0xA1U, 0xD5U};
-constexpr std::array<std::uint8_t, 2> kCandidateNextPage{0xA1U, 0xD6U};
-constexpr std::array<std::uint8_t, 31> kAttributeQuestion{
-    0x20U, 0x20U, 0x20U, 0xB3U, 0x6FU, 0xBCU, 0xCBU, 0xAAU, 0xBAU, 0xC4U,
-    0xDDU, 0xA9U, 0xCAU, 0xBAU, 0xA1U, 0xB7U, 0x4EU, 0xB6U, 0xDCU, 0xA1U,
-    0x48U, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U,
-    0x5EU};
-constexpr std::array<std::uint8_t, 22> kQuitPrompt{
-    0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U,
-    0xC0U, 0xB8U, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU,
-    0xA1U, 0x5EU};
-constexpr std::array<std::uint8_t, 8> kIoWaitLabel{
-    0xBDU, 0xD0U, 0xB5U, 0x79U, 0xADU, 0xD4U, 0xA1U, 0x49U};
-constexpr std::array<std::uint8_t, 26> kLeaveProtagonistNotice{
-    0xA9U, 0xEAU, 0xBAU, 0x70U, 0xA1U, 0x49U, 0xA8U, 0x53U, 0xA6U,
-    0xB3U, 0xA7U, 0x41U, 0xB9U, 0x43U, 0xC0U, 0xB8U, 0xB6U, 0x69U,
-    0xA6U, 0xE6U, 0xA4U, 0xA3U, 0xA4U, 0x55U, 0xA5U, 0x68U};
-constexpr std::array<std::uint8_t, 20> kEquipmentUnsuitableNotice{
-    0xA6U, 0xB9U, 0xA4U, 0x48U, 0xA4U, 0xA3U, 0xBEU, 0x41U, 0xA6U, 0x58U,
-    0xB0U, 0x74U, 0xB3U, 0xC6U, 0xA6U, 0xB9U, 0xAAU, 0xABU, 0xABU, 0x7EU};
-constexpr std::array<std::uint8_t, 24> kPracticeAssignedNotice{
-    0xA6U, 0xB9U, 0xAAU, 0xABU, 0xABU, 0x7EU, 0xB2U, 0x7BU, 0xA6U, 0x62U,
-    0xA4U, 0x77U, 0xB8U, 0x67U, 0xA6U, 0xB3U, 0xA4U, 0x48U, 0xADU, 0xD7U,
-    0xBDU, 0x6DU, 0xA4U, 0x46U};
-constexpr std::array<std::uint8_t, 24> kPracticeReassignQuestion{
-    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xADU, 0x6EU, 0xB4U, 0xABU, 0xA4U, 0x48U,
-    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU,
-    0xA2U, 0xDCU, 0xA1U, 0x5EU};
-constexpr std::array<std::uint8_t, 20> kPracticeMagicFullNotice{
-    0xA4U, 0x40U, 0xA4U, 0x48U, 0xA5U, 0x75U, 0xAFU, 0xE0U, 0xADU, 0xD7U,
-    0xBDU, 0x6DU, 0xA4U, 0x51U, 0xBAU, 0xD8U, 0xA5U, 0x5CU, 0xA4U, 0xD2U};
-constexpr std::array<std::uint8_t, 24> kPracticeCastrationNotice{
-    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA6U, 0xB9U, 0xAEU, 0xD1U, 0xA5U, 0xB2U,
-    0xB6U, 0xB7U, 0xA5U, 0xFDU, 0xA6U, 0xE6U, 0xB4U, 0xA7U, 0xBCU, 0x43U,
-    0xA6U, 0xDBU, 0xAEU, 0x63U};
-constexpr std::array<std::uint8_t, 24> kPracticeCastrationQuestion{
-    0xA7U, 0x41U, 0xACU, 0x4FU, 0xA7U, 0x5FU, 0xA4U, 0xB4U, 0xADU, 0x6EU,
-    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU,
-    0xA2U, 0xDCU, 0xA1U, 0x5EU};
-constexpr std::array<std::uint8_t, 20> kPracticeUnsuitableNotice{
-    0xA6U, 0xB9U, 0xA4U, 0x48U, 0xA4U, 0xA3U, 0xBEU, 0x41U, 0xA6U, 0x58U,
-    0xADU, 0xD7U, 0xBDU, 0x6DU, 0xA6U, 0xB9U, 0xAAU, 0xABU, 0xABU, 0x7EU};
+using namespace openlegend::text::game_strings;
+namespace palette_colors = render::legacy_color;
+namespace text_colors = render::legacy_color::text;
 
-struct AttributeLine {
-    std::array<std::uint8_t, 6> label;
-    std::size_t word;
+constexpr std::array<std::size_t, 12> kAttributeWords{
+    model::role_word::maximum_mp,
+    model::role_word::attack,
+    model::role_word::speed,
+    model::role_word::defence,
+    model::role_word::maximum_hp,
+    model::role_word::medicine,
+    model::role_word::use_poison,
+    model::role_word::detoxification,
+    model::role_word::fist,
+    model::role_word::sword,
+    model::role_word::knife,
+    model::role_word::hidden_weapon,
 };
 
-constexpr std::array<AttributeLine, 12> kAttributeLines{{
-    {{{0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xA1U, 0x47U}}, model::role_word::maximum_mp},
-    {{{0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xA1U, 0x47U}}, model::role_word::attack},
-    {{{0xBBU, 0xB4U, 0xA5U, 0x5CU, 0xA1U, 0x47U}}, model::role_word::speed},
-    {{{0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA1U, 0x47U}}, model::role_word::defence},
-    {{{0xA5U, 0xCDU, 0xA9U, 0x52U, 0xA1U, 0x47U}}, model::role_word::maximum_hp},
-    {{{0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xA1U, 0x47U}}, model::role_word::medicine},
-    {{{0xA8U, 0xCFU, 0xACU, 0x72U, 0xA1U, 0x47U}}, model::role_word::use_poison},
-    {{{0xB8U, 0xD1U, 0xACU, 0x72U, 0xA1U, 0x47U}}, model::role_word::detoxification},
-    {{{0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA1U, 0x47U}}, model::role_word::fist},
-    {{{0xBCU, 0x43U, 0xB3U, 0x4EU, 0xA1U, 0x47U}}, model::role_word::sword},
-    {{{0xA4U, 0x4DU, 0xB3U, 0x4EU, 0xA1U, 0x47U}}, model::role_word::knife},
-    {{{0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA1U, 0x47U}}, model::role_word::hidden_weapon},
-}};
-
-[[nodiscard]] std::vector<std::uint8_t> terminated(std::span<const std::uint8_t> text) {
-    std::vector<std::uint8_t> result(text.begin(), text.end());
-    result.push_back(0U);
-    return result;
-}
-
-void append_number(std::vector<std::uint8_t>& text, const std::int32_t value, const int width = 0) {
+void append_number(std::u8string& text, const std::int32_t value, const int width = 0) {
     std::array<char, 16> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
     const auto count = static_cast<int>(converted.ptr - buffer.data());
     for (int index = count; index < width; ++index) {
-        text.push_back(' ');
+        text.push_back(u8' ');
     }
     for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
-        text.push_back(static_cast<std::uint8_t>(*cursor));
+        text.push_back(static_cast<char8_t>(*cursor));
     }
 }
 
@@ -130,14 +53,9 @@ void append_number(std::vector<std::uint8_t>& text, const std::int32_t value, co
     return static_cast<int>(model::kInventoryCount);
 }
 
-[[nodiscard]] std::vector<std::uint8_t> coordinate_item_text(
+[[nodiscard]] std::u8string coordinate_item_text(
     const model::RangerState& ranger,
     const GameMenuContext context) {
-    constexpr std::array<std::uint8_t, 4> kPersonOpen{0xA4U, 0x48U, 0xA1U, 0x5DU};
-    constexpr std::array<std::uint8_t, 2> kComma{0xA1U, 0x41U};
-    constexpr std::array<std::uint8_t, 6> kPersonCloseShipOpen{
-        0xA1U, 0x5EU, 0xB2U, 0xEEU, 0xA1U, 0x5DU};
-    constexpr std::array<std::uint8_t, 2> kClose{0xA1U, 0x5EU};
     const auto player_x = ranger.header.word(
         context == GameMenuContext::scene
             ? model::header_word::sub_map_x
@@ -146,15 +64,15 @@ void append_number(std::vector<std::uint8_t>& text, const std::int32_t value, co
         context == GameMenuContext::scene
             ? model::header_word::sub_map_y
             : model::header_word::main_map_y);
-    std::vector<std::uint8_t> text{kPersonOpen.begin(), kPersonOpen.end()};
+    std::u8string text{kPersonOpen};
     append_number(text, player_x, 3);
-    text.insert(text.end(), kComma.begin(), kComma.end());
+    text.append(kComma);
     append_number(text, player_y, 3);
-    text.insert(text.end(), kPersonCloseShipOpen.begin(), kPersonCloseShipOpen.end());
+    text.append(kPersonCloseShipOpen);
     append_number(text, ranger.header.word(model::header_word::ship_x), 3);
-    text.insert(text.end(), kComma.begin(), kComma.end());
+    text.append(kComma);
     append_number(text, ranger.header.word(model::header_word::ship_y), 3);
-    text.insert(text.end(), kClose.begin(), kClose.end());
+    text.append(kClose);
     return text;
 }
 
@@ -230,20 +148,24 @@ bool BasicUiRenderer::render_name_entry(
     const NewGameNameEditor& editor,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid() || !title.render_background(framebuffer) ||
-        !framebuffer.fill_rectangle(0, 140, 320U, 60U, 0U)) {
+        !framebuffer.fill_rectangle(
+            0, 140, 320U, 60U, palette_colors::menu_background)) {
         return false;
     }
     const auto has_candidates = !editor.candidates().empty();
-    if (!draw_text(framebuffer, 48, 141, kNamePrompt) ||
-        !draw_text(
+    if (!draw_text_utf8(framebuffer, 48, 141, kNamePrompt) ||
+        !draw_text_utf8(
             framebuffer,
             3,
             161,
-            editor.mode() == NameInputMode::zhuyin
-                ? std::span<const std::uint8_t>{kZhuyinPrompt}
-                : std::span<const std::uint8_t>{kAlnumPrompt},
-            has_candidates ? 0x1719U : 0x1715U) ||
-        !draw_text(framebuffer, 158, 141, editor.display_name(), 0x0503U)) {
+            editor.mode() == NameInputMode::zhuyin ? kZhuyinPrompt : kAlnumPrompt,
+            has_candidates ? text_colors::candidate : text_colors::new_game_prompt_inactive) ||
+        !draw_text_big5(
+            framebuffer,
+            158,
+            141,
+            text::Big5TextView{editor.display_name()},
+            text_colors::name_value)) {
         return false;
     }
     if (!editor.accepted() && editor.name().size() < model::kNewGameNameMaximumBytes &&
@@ -266,26 +188,30 @@ bool BasicUiRenderer::render_name_entry(
             auto x = 30 * static_cast<int>(index + 1U);
             const std::array<std::uint8_t, 1> digit{
                 static_cast<std::uint8_t>('1' + index)};
-            if (!draw_text(framebuffer, x, 180, digit, 0x1719U)) {
+            if (!draw_text_big5(
+                    framebuffer, x, 180, text::Big5TextView{digit}, text_colors::candidate)) {
                 return false;
             }
             x += 8;
             if ((*candidate)[0] <= 0x7FU) {
                 const std::array<std::uint8_t, 1> first{(*candidate)[0]};
-                if (!draw_text(framebuffer, x, 180, first, 0x1719U)) {
+                if (!draw_text_big5(
+                        framebuffer, x, 180, text::Big5TextView{first}, text_colors::candidate)) {
                     return false;
                 }
                 x += 8;
                 if ((*candidate)[1] <= 0x7FU) {
                     const std::array<std::uint8_t, 1> second{(*candidate)[1]};
-                    if (!draw_text(framebuffer, x, 180, second, 0x1719U)) {
+                    if (!draw_text_big5(
+                            framebuffer, x, 180, text::Big5TextView{second}, text_colors::candidate)) {
                         return false;
                     }
                 }
             } else {
                 const std::array<std::uint8_t, 2> pair{
                     (*candidate)[0], (*candidate)[1]};
-                if (!draw_text(framebuffer, x, 180, pair, 0x1719U) &&
+                if (!draw_text_big5(
+                        framebuffer, x, 180, text::Big5TextView{pair}, text_colors::candidate) &&
                     editor.candidate_page() >= 0) {
                     return false;
                 }
@@ -293,12 +219,12 @@ bool BasicUiRenderer::render_name_entry(
         }
         if (editor.candidate_page() == 0) {
             return !editor.has_next_candidate_page() ||
-                draw_text(framebuffer, 300, 180, kCandidateNextPage, 0x1719U);
+                draw_text_utf8(framebuffer, 300, 180, kCandidateNextPage, text_colors::candidate);
         }
         if (editor.has_next_candidate_page()) {
-            return draw_text(framebuffer, 270, 180, kCandidateBothPages, 0x1719U);
+            return draw_text_utf8(framebuffer, 270, 180, kCandidateBothPages, text_colors::candidate);
         }
-        return draw_text(framebuffer, 300, 180, kCandidatePreviousPage, 0x1719U);
+        return draw_text_utf8(framebuffer, 300, 180, kCandidatePreviousPage, text_colors::candidate);
     }
 
     const std::array<std::int16_t, 4> composition{
@@ -306,12 +232,16 @@ bool BasicUiRenderer::render_name_entry(
     for (std::size_t index = 0U; index < composition.size(); ++index) {
         const auto label = zhuyin_label(static_cast<int>(index + 1U), composition[index]);
         if (label.has_value() &&
-            !draw_text(framebuffer, 100 + static_cast<int>(index) * 20, 161, *label)) {
+            !draw_text_big5(
+                framebuffer,
+                100 + static_cast<int>(index) * 20,
+                161,
+                text::Big5TextView{*label})) {
             return false;
         }
     }
     return !editor.no_candidates() ||
-        draw_text(framebuffer, 240, 161, kNoNameCandidates, 0x0705U);
+        draw_text_utf8(framebuffer, 240, 161, kNoNameCandidates, text_colors::notice);
 }
 
 bool BasicUiRenderer::render_attributes(
@@ -320,35 +250,41 @@ bool BasicUiRenderer::render_attributes(
     const std::span<const std::uint8_t> name,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid() || !title.render_background(framebuffer) ||
-        !framebuffer.fill_rectangle(0, 135, 320U, 65U, 0U)) {
+        !framebuffer.fill_rectangle(
+            0, 135, 320U, 65U, palette_colors::menu_background)) {
         return false;
     }
-    std::vector<std::uint8_t> question(name.begin(), name.end());
-    question.insert(question.end(), kAttributeQuestion.begin(), kAttributeQuestion.end());
-    if (!draw_text(framebuffer, 10, 135, question, 0x0806U)) {
+    text::GameText question;
+    question.append_legacy(text::Big5TextView{name});
+    question.append_utf8(kAttributeQuestion);
+    if (!draw_text_mixed(framebuffer, 10, 135, question, text_colors::attribute_question)) {
         return false;
     }
-    for (std::size_t index = 0U; index < kAttributeLines.size(); ++index) {
-        std::vector<std::uint8_t> line(
-            kAttributeLines[index].label.begin(), kAttributeLines[index].label.end());
-        append_number(line, protagonist.word(kAttributeLines[index].word), 2);
+    for (std::size_t index = 0U; index < kAttributeWords.size(); ++index) {
+        std::u8string line{kAttributeLabels[index]};
+        append_number(line, protagonist.word(kAttributeWords[index]), 2);
         const auto column = index % 4U;
         const auto row = index / 4U;
         const auto x = 10 + static_cast<int>(column) * 75;
         const auto y = 152 + static_cast<int>(row) * 16;
-        const auto value = protagonist.word(kAttributeLines[index].word);
+        const auto value = protagonist.word(kAttributeWords[index]);
         const auto highlighted =
-            (kAttributeLines[index].word == model::role_word::maximum_mp && value == 40) ||
-            (kAttributeLines[index].word == model::role_word::maximum_hp && value == 50) ||
-            (kAttributeLines[index].word != model::role_word::maximum_mp &&
-             kAttributeLines[index].word != model::role_word::maximum_hp && value == 30);
-        if ((highlighted && !framebuffer.fill_rectangle(x, y + 1, 64U, 15U, 21U)) ||
-            !draw_text(
+            (kAttributeWords[index] == model::role_word::maximum_mp && value == 40) ||
+            (kAttributeWords[index] == model::role_word::maximum_hp && value == 50) ||
+            (kAttributeWords[index] != model::role_word::maximum_mp &&
+             kAttributeWords[index] != model::role_word::maximum_hp && value == 30);
+        if ((highlighted && !framebuffer.fill_rectangle(
+                x,
+                y + 1,
+                64U,
+                15U,
+                palette_colors::attribute_highlight_background)) ||
+            !draw_text_utf8(
                 framebuffer,
                 x,
                 y,
                 line,
-                highlighted ? 0x1F1DU : 0x1715U)) {
+                highlighted ? text_colors::attribute_highlight : text_colors::attribute_normal)) {
             return false;
         }
     }
@@ -367,12 +303,12 @@ bool BasicUiRenderer::render_game_menu_main(
         return false;
     }
     for (std::size_t index = 0U; index < menu.visible_main_items(); ++index) {
-        if (!draw_text(
+        if (!draw_text_utf8(
                 framebuffer,
                 24,
                 25 + static_cast<int>(index) * 20,
                 kMainLabels[index],
-                index == menu.selection() ? 0x6663U : 0x2321U)) {
+                index == menu.selection() ? text_colors::selected : text_colors::menu_normal)) {
             return false;
         }
     }
@@ -388,12 +324,12 @@ bool BasicUiRenderer::render_game_menu(
             return false;
         }
         for (std::size_t index = 0U; index < kSystemLabels.size(); ++index) {
-            if (!draw_text(
+            if (!draw_text_utf8(
                     framebuffer,
                     74,
                     25 + static_cast<int>(index) * 20,
                     kSystemLabels[index],
-                    index == menu.system_selection() ? 0x6663U : 0x2321U)) {
+                    index == menu.system_selection() ? text_colors::selected : text_colors::menu_normal)) {
                 return false;
             }
         }
@@ -413,12 +349,15 @@ bool BasicUiRenderer::render_game_menu(
                 break;
             }
             const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-            if (!draw_text(
+            if (!draw_text_big5(
                     framebuffer,
                     74,
                     25 + static_cast<int>(index) * 20,
-                    fixed_text(role.bytes, model::role_word::name_byte, model::role_word::name_bytes),
-                    index == menu.party_selection() ? 0x6663U : 0x2321U)) {
+                    text::Big5TextView{fixed_text(
+                        role.bytes,
+                        model::role_word::name_byte,
+                        model::role_word::name_bytes)},
+                    index == menu.party_selection() ? text_colors::selected : text_colors::menu_normal)) {
                 return false;
             }
         }
@@ -433,27 +372,35 @@ bool BasicUiRenderer::render_game_menu(
             return false;
         }
         if (menu.item_confirmation() == GameMenuItemConfirmation::practice_reassign) {
-            return draw_text(framebuffer, 67, 25, kPracticeAssignedNotice, 0x0705U) &&
-                draw_text(framebuffer, 67, 45, kPracticeReassignQuestion, 0x0705U);
+            return draw_text_utf8(
+                       framebuffer, 67, 25, kPracticeAssignedNotice, text_colors::notice) &&
+                draw_text_utf8(
+                       framebuffer, 67, 45, kPracticeReassignQuestion, text_colors::notice);
         }
-        return draw_text(framebuffer, 67, 25, kPracticeCastrationNotice, 0x0705U) &&
-            draw_text(framebuffer, 67, 45, kPracticeCastrationQuestion, 0x0705U);
+        return draw_text_utf8(
+                   framebuffer, 67, 25, kPracticeCastrationNotice, text_colors::notice) &&
+            draw_text_utf8(
+                   framebuffer, 67, 45, kPracticeCastrationQuestion, text_colors::notice);
     case GameMenuScreen::item_effect:
         return false;
     case GameMenuScreen::notice:
         switch (menu.notice()) {
         case GameMenuNotice::leave_protagonist:
             return draw_box(framebuffer, 40, 40, 228U, 27U) &&
-                draw_text(framebuffer, 50, 45, kLeaveProtagonistNotice, 0x0705U);
+                draw_text_utf8(
+                    framebuffer, 50, 45, kLeaveProtagonistNotice, text_colors::notice);
         case GameMenuNotice::equipment_unsuitable:
             return draw_box(framebuffer, 70, 18, 170U, 30U) &&
-                draw_text(framebuffer, 75, 25, kEquipmentUnsuitableNotice, 0x0705U);
+                draw_text_utf8(
+                    framebuffer, 75, 25, kEquipmentUnsuitableNotice, text_colors::notice);
         case GameMenuNotice::practice_magic_full:
             return draw_box(framebuffer, 70, 18, 170U, 30U) &&
-                draw_text(framebuffer, 75, 25, kPracticeMagicFullNotice, 0x0705U);
+                draw_text_utf8(
+                    framebuffer, 75, 25, kPracticeMagicFullNotice, text_colors::notice);
         case GameMenuNotice::practice_unsuitable:
             return draw_box(framebuffer, 70, 18, 180U, 30U) &&
-                draw_text(framebuffer, 80, 25, kPracticeUnsuitableNotice, 0x0705U);
+                draw_text_utf8(
+                    framebuffer, 80, 25, kPracticeUnsuitableNotice, text_colors::notice);
         }
         return false;
     case GameMenuScreen::system:
@@ -465,12 +412,12 @@ bool BasicUiRenderer::render_game_menu(
             return false;
         }
         for (std::size_t index = 0U; index < kSlotLabels.size(); ++index) {
-            if (!draw_text(
+            if (!draw_text_utf8(
                     framebuffer,
                     124,
                     25 + static_cast<int>(index) * 20,
                     kSlotLabels[index],
-                    index == menu.slot_selection() ? 0x6663U : 0x2321U)) {
+                    index == menu.slot_selection() ? text_colors::selected : text_colors::menu_normal)) {
                 return false;
             }
         }
@@ -478,7 +425,7 @@ bool BasicUiRenderer::render_game_menu(
     case GameMenuScreen::quit_confirmation:
         return render_game_menu_main(menu, framebuffer) && render_system_menu() &&
             draw_box(framebuffer, 120, 18, 177U, 31U) &&
-            draw_text(framebuffer, 124, 25, kQuitPrompt, 0x0705U);
+            draw_text_utf8(framebuffer, 124, 25, kQuitPrompt, text_colors::notice);
     }
     return false;
 }
@@ -487,7 +434,7 @@ bool BasicUiRenderer::render_io_wait(render::IndexedFramebuffer& framebuffer) {
     if (!draw_box(framebuffer, 154, 18, 68U, 31U)) {
         return false;
     }
-    return draw_text(framebuffer, 158, 25, kIoWaitLabel, 0x0705U);
+    return draw_text_utf8(framebuffer, 158, 25, kIoWaitLabel, text_colors::notice);
 }
 
 bool BasicUiRenderer::render_error(
@@ -496,28 +443,65 @@ bool BasicUiRenderer::render_error(
     if (!draw_box(framebuffer, 20, 150, 280U, 31U)) {
         return false;
     }
-    return draw_text(framebuffer, 24, 157, legacy_message, 0x0705U);
+    return draw_text_big5(
+        framebuffer, 24, 157, text::Big5TextView{legacy_message}, text_colors::notice);
 }
 
-bool BasicUiRenderer::draw_text(
+bool BasicUiRenderer::draw_text_utf8(
     render::IndexedFramebuffer& framebuffer,
     const int x,
     const int y,
-    const std::span<const std::uint8_t> text,
-    const std::uint16_t packed_colors) {
+    const std::u8string_view text,
+    const render::TextColors colors) {
     if (!big5_cache_.has_value()) {
         return false;
     }
-    const auto value = terminated(text);
-    return render::draw_legacy_text(
+    return render::draw_text_utf8(
         framebuffer,
         x,
         y,
-        value,
+        text,
         ascii_font_,
         *big5_cache_,
-        static_cast<std::uint8_t>(packed_colors & 0xFFU),
-        static_cast<std::uint8_t>(packed_colors >> 8U));
+        colors);
+}
+
+bool BasicUiRenderer::draw_text_mixed(
+    render::IndexedFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const text::GameText& text,
+    const render::TextColors colors) {
+    if (!big5_cache_.has_value()) {
+        return false;
+    }
+    return render::draw_text_mixed(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        colors);
+}
+
+bool BasicUiRenderer::draw_text_big5(
+    render::IndexedFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const text::Big5TextView text,
+    const render::TextColors colors) {
+    if (!big5_cache_.has_value()) {
+        return false;
+    }
+    return render::draw_text_big5(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        colors);
 }
 
 bool BasicUiRenderer::draw_box(
@@ -568,7 +552,7 @@ bool BasicUiRenderer::draw_box(
             top,
             static_cast<std::uint16_t>(rectangle_width),
             static_cast<std::uint16_t>(rectangle_height),
-            0xFFU);
+            palette_colors::panel_outline);
     };
     return fill(x + 5, y + 1, w - 10, 1) &&
         fill(x + 4, y + 2, 1, 2) && fill(x + w - 5, y + 2, 1, 2) &&
@@ -620,7 +604,7 @@ std::uint8_t BasicUiRenderer::blend_panel_pixel(
     const auto blend_component = [](const std::uint8_t source, const std::uint8_t target) {
         return static_cast<std::uint8_t>(3 * source / 32 + 5 * target / 32);
     };
-    const auto source = panel_palette_[0U];
+    const auto source = panel_palette_[palette_colors::black];
     const auto target = panel_palette_[destination];
     const auto red = blend_component(source.red, target.red);
     const auto green = blend_component(source.green, target.green);
@@ -648,7 +632,7 @@ bool BasicUiRenderer::render_items(
             y,
             static_cast<std::uint16_t>(width),
             static_cast<std::uint16_t>(height),
-            99U);
+            palette_colors::scroll_indicator);
     };
     const auto item_metric = legacy_item_metric(ranger);
     const auto page = static_cast<int>(menu.item_page());
@@ -676,7 +660,8 @@ bool BasicUiRenderer::render_items(
         for (int column = 0; column < 5; ++column) {
             const auto x = 55 + 42 * column;
             const auto y = 62 + 42 * row;
-            if (!framebuffer.outline_rectangle(x, y, 40U, 40U, 0U)) {
+            if (!framebuffer.outline_rectangle(
+                    x, y, 40U, 40U, palette_colors::inventory_outline)) {
                 return false;
             }
             const auto list_index = static_cast<std::size_t>(5 * (page + row) + column);
@@ -698,7 +683,7 @@ bool BasicUiRenderer::render_items(
             62 + 42 * static_cast<int>(menu.item_row()),
             40U,
             40U,
-            255U)) {
+            palette_colors::inventory_selection_outline)) {
         return false;
     }
     const auto selection = static_cast<std::size_t>(menu.item_selection());
@@ -722,18 +707,18 @@ bool BasicUiRenderer::render_items(
     const auto user = item.word(model::item_word::user);
     const auto name_center =
         (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
-    if (!draw_text(
+    if (!draw_text_big5(
             framebuffer,
             name_center - 4 * static_cast<int>(name.size()),
             5,
-            name,
-            0x0705U)) {
+            text::Big5TextView{name},
+            text_colors::notice)) {
         return false;
     }
 
     if (item.word(model::item_word::id) == 0x00B6) {
         const auto text = coordinate_item_text(ranger, menu.context());
-        if (!draw_text(framebuffer, 48, 30, text, 0x2321U)) {
+        if (!draw_text_utf8(framebuffer, 48, 30, text, text_colors::menu_normal)) {
             return false;
         }
     } else {
@@ -741,12 +726,12 @@ bool BasicUiRenderer::render_items(
             item.bytes,
             model::item_word::introduction_byte,
             model::item_word::introduction_bytes);
-        if (!draw_text(
+        if (!draw_text_big5(
                 framebuffer,
                 160 - 4 * static_cast<int>(introduction.size()),
                 30,
-                introduction,
-                0x2321U)) {
+                text::Big5TextView{introduction},
+                text_colors::menu_normal)) {
             return false;
         }
     }
@@ -759,21 +744,21 @@ bool BasicUiRenderer::render_items(
             ranger.roles[static_cast<std::size_t>(user)].bytes,
             model::role_word::name_byte,
             model::role_word::name_bytes);
-        std::vector<std::uint8_t> user_text{'('};
-        user_text.insert(user_text.end(), role_name.begin(), role_name.end());
-        user_text.push_back(')');
-        if (!draw_text(framebuffer, 205, 5, user_text, 0x2321U)) {
+        text::GameText user_text;
+        user_text.append_utf8(kOpenParenthesis);
+        user_text.append_legacy(text::Big5TextView{role_name});
+        user_text.append_utf8(kCloseParenthesis);
+        if (!draw_text_mixed(framebuffer, 205, 5, user_text, text_colors::menu_normal)) {
             return false;
         }
     }
 
     const auto count = ranger.header.inventory_count(inventory_slot);
     if (count > 1) {
-        constexpr std::array<std::uint8_t, 1> kCountMarker{'X'};
-        std::vector<std::uint8_t> count_text;
+        std::u8string count_text;
         append_number(count_text, count, 2);
-        if (!draw_text(framebuffer, 215, 5, kCountMarker, 0x2321U) ||
-            !draw_text(framebuffer, 235, 5, count_text, 0x6663U)) {
+        if (!draw_text_utf8(framebuffer, 215, 5, kCountMarker, text_colors::menu_normal) ||
+            !draw_text_utf8(framebuffer, 235, 5, count_text, text_colors::selected)) {
             return false;
         }
     }

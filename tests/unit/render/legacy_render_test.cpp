@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
@@ -27,6 +28,9 @@
 #include "test_support.hpp"
 
 namespace {
+
+constexpr openlegend::render::TextColors kTestTextColors{12U, 250U};
+constexpr openlegend::render::TextColors kTestBig5TextColors{5U, 6U};
 
 std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
     auto hash = std::uint64_t{0xCBF29CE484222325ULL};
@@ -350,7 +354,7 @@ void run_glyph_write_tests() {
     ascii[0] = 0xC0U;
     IndexedFramebuffer framebuffer;
     framebuffer.clear(0U);
-    OL_CHECK(draw_ascii_glyph(framebuffer, 10, 10, ascii, 12U, 250U));
+    OL_CHECK(draw_ascii_glyph(framebuffer, 10, 10, ascii, kTestTextColors));
     OL_CHECK(framebuffer.row(10)[10] == 250U);
     OL_CHECK(framebuffer.row(10)[11] == 250U);
     OL_CHECK(framebuffer.row(10)[12] == 12U);
@@ -359,7 +363,7 @@ void run_glyph_write_tests() {
     big5[0] = 0x80U;
     big5[1] = 0x80U;
     framebuffer.clear(0U);
-    OL_CHECK(draw_big5_glyph(framebuffer, 20, 20, big5, 5U, 6U));
+    OL_CHECK(draw_big5_glyph(framebuffer, 20, 20, big5, kTestBig5TextColors));
     OL_CHECK(framebuffer.row(20)[20] == 6U);
     OL_CHECK(framebuffer.row(20)[21] == 5U);
     OL_CHECK(framebuffer.row(20)[28] == 6U);
@@ -422,6 +426,75 @@ std::string uppercase(std::string value) {
         return static_cast<char>(std::toupper(ch));
     });
     return value;
+}
+
+void run_text_encoding_tests() {
+    using namespace openlegend::text;
+
+    static_assert(
+        openlegend::render::legacy_color::text::notice.legacy_packed() == 0x0705U);
+    static_assert(
+        openlegend::render::legacy_color::text::selected.legacy_packed() == 0x6663U);
+    static_assert(
+        openlegend::render::legacy_color::panel_outline == 0xFFU);
+
+    const auto mapped = encode_big5(u8"個前德指望目聲道");
+    const std::array<std::uint8_t, 16> expected_mapped{
+        0xADU,
+        0xD3U,
+        0xABU,
+        0x65U,
+        0xBCU,
+        0x77U,
+        0xABU,
+        0xFCU,
+        0xB1U,
+        0xE6U,
+        0xA5U,
+        0xD8U,
+        0xC1U,
+        0x6EU,
+        0xB9U,
+        0x44U,
+    };
+    OL_CHECK(mapped.has_value());
+    OL_CHECK(mapped.has_value() && std::ranges::equal(*mapped, expected_mapped));
+
+    std::vector<std::uint8_t> rollback{'A'};
+    const auto original = rollback;
+    const std::array<char8_t, 2> invalid_utf8{
+        static_cast<char8_t>(0xC0U),
+        static_cast<char8_t>(0xAFU),
+    };
+    OL_CHECK(!append_big5(
+        rollback,
+        std::u8string_view{invalid_utf8.data(), invalid_utf8.size()}));
+    OL_CHECK(rollback == original);
+
+    const std::array<std::uint8_t, 2> legacy_name{
+        0xA4U,
+        0x40U,
+    };
+    GameText mixed;
+    mixed.append_utf8(u8"得到");
+    mixed.append_legacy(Big5TextView{legacy_name});
+    mixed.append_ascii("123");
+    std::vector<std::uint8_t> encoded;
+    OL_CHECK(encode_game_text(mixed, encoded));
+    const std::array<std::uint8_t, 9> expected_mixed{
+        0xB1U,
+        0x6FU,
+        0xA8U,
+        0xECU,
+        0xA4U,
+        0x40U,
+        '1',
+        '2',
+        '3',
+    };
+    OL_CHECK(std::ranges::equal(encoded, expected_mixed));
+    OL_CHECK(mixed.legacy_width_units() == 9U);
+    OL_CHECK(mixed.trailing_ascii_digit_count() == 3U);
 }
 
 void run_real_asset_golden() {
@@ -492,10 +565,55 @@ void run_real_asset_golden() {
 
     Big5GlyphCache cache{big5_font.bytes};
     const std::array<std::uint8_t, 6> text{'A', '_', 'Z', 0xA4U, 0x40U, 0U};
-    OL_CHECK(draw_legacy_text(framebuffer, 20, 80, text, ascii_font.bytes, cache, 12U, 250U));
+    OL_CHECK(draw_text_big5(
+        framebuffer,
+        20,
+        80,
+        openlegend::text::Big5TextView{text},
+        ascii_font.bytes,
+        cache,
+        kTestTextColors));
     OL_CHECK(cache.next_replacement_slot() == 1U);
     OL_CHECK(static_cast<bool>(cache.resolve(0xA440U)));
     OL_CHECK(cache.next_replacement_slot() == 1U);
+
+    IndexedFramebuffer big5_text_framebuffer;
+    IndexedFramebuffer utf8_text_framebuffer;
+    IndexedFramebuffer mixed_text_framebuffer;
+    const std::array<std::uint8_t, 2> legacy_one{
+        0xA4U,
+        0x40U,
+    };
+    openlegend::text::GameText mixed_one;
+    mixed_one.append_utf8(u8"一");
+    OL_CHECK(draw_text_big5(
+        big5_text_framebuffer,
+        20,
+        80,
+        openlegend::text::Big5TextView{legacy_one},
+        ascii_font.bytes,
+        cache,
+        kTestTextColors));
+    OL_CHECK(draw_text_utf8(
+        utf8_text_framebuffer,
+        20,
+        80,
+        u8"一",
+        ascii_font.bytes,
+        cache,
+        kTestTextColors));
+    OL_CHECK(draw_text_mixed(
+        mixed_text_framebuffer,
+        20,
+        80,
+        mixed_one,
+        ascii_font.bytes,
+        cache,
+        kTestTextColors));
+    OL_CHECK(std::ranges::equal(
+        big5_text_framebuffer.pixels(), utf8_text_framebuffer.pixels()));
+    OL_CHECK(std::ranges::equal(
+        big5_text_framebuffer.pixels(), mixed_text_framebuffer.pixels()));
 
     const auto hash = fnv1a64(framebuffer.pixels());
     if (hash != 0xCF173BA0515B7807ULL) {
@@ -602,7 +720,7 @@ void run_all_glyph_golden() {
         OL_CHECK(framebuffer.fill_rectangle(0, 0, 17U, 16U, 0U));
         const auto glyph = std::span<const std::uint8_t, 16>{
             ascii_font.bytes.data() + static_cast<std::ptrdiff_t>(index * 16U), 16U};
-        OL_CHECK(draw_ascii_glyph(framebuffer, 0, 0, glyph, 12U, 250U));
+        OL_CHECK(draw_ascii_glyph(framebuffer, 0, 0, glyph, kTestTextColors));
         hash_region();
     }
 
@@ -618,7 +736,7 @@ void run_all_glyph_golden() {
         OL_CHECK(static_cast<bool>(glyph));
         OL_CHECK(framebuffer.fill_rectangle(0, 0, 17U, 16U, 0U));
         if (glyph) {
-            OL_CHECK(draw_big5_glyph(framebuffer, 0, 0, *glyph, 12U, 250U));
+            OL_CHECK(draw_big5_glyph(framebuffer, 0, 0, *glyph, kTestTextColors));
         }
         hash_region();
     }
@@ -697,6 +815,7 @@ int main() {
     run_effect_tests();
     run_synthetic_sprite_tests();
     run_glyph_write_tests();
+    run_text_encoding_tests();
     run_real_asset_golden();
     run_real_palette_fade_golden();
     run_all_glyph_golden();

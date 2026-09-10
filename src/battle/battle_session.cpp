@@ -7,15 +7,21 @@
 #include <cstdlib>
 #include <iterator>
 #include <span>
+#include <string>
 #include <string_view>
 #include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/render/legacy_effects.hpp"
+#include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 
 namespace openlegend::battle {
 namespace {
+
+using namespace openlegend::text::game_strings;
+namespace palette_colors = render::legacy_color;
+namespace text_colors = render::legacy_color::text;
 
 constexpr std::uint8_t kEnter = 0x0DU;
 constexpr std::uint8_t kSpace = 0x20U;
@@ -27,80 +33,6 @@ constexpr std::uint8_t kLeft = 0x9AU;
 constexpr std::uint8_t kRight = 0x9CU;
 constexpr std::uint8_t kUp = 0x9EU;
 constexpr std::uint8_t kPageUp = 0x9FU;
-constexpr std::array<std::uint8_t, 20> kPartySelectionTitle{
-    0xBDU, 0xD0U, 0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xB0U, 0xD1U, 0xBBU, 0x50U,
-    0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA4U, 0xA7U, 0xA4U, 0x48U, 0xAAU, 0xABU};
-constexpr std::array<std::uint8_t, 1> kSelectedMarker{'*'};
-constexpr std::array<std::uint8_t, 4> kConfirmLabel{0xB5U, 0xB2U, 0xA7U, 0xF4U};
-constexpr std::array<std::uint8_t, 12> kAttackDirectionPrompt{
-    0xBFU, 0xEFU, 0xBEU, 0xDCU, 0xA7U, 0xF0U,
-    0xC0U, 0xBBU, 0xA4U, 0xE8U, 0xA6U, 0x56U};
-constexpr std::array<std::array<std::uint8_t, 4>, 10> kPlayerActionLabels{{
-    {0xB2U, 0xBEU, 0xB0U, 0xCAU},
-    {0xA7U, 0xF0U, 0xC0U, 0xBBU},
-    {0xA5U, 0xCEU, 0xACU, 0x72U},
-    {0xB8U, 0xD1U, 0xACU, 0x72U},
-    {0xC2U, 0xE5U, 0xC0U, 0xF8U},
-    {0xAAU, 0xABU, 0xABU, 0x7EU},
-    {0xB5U, 0xA5U, 0xABU, 0xDDU},
-    {0xAAU, 0xACU, 0xBAU, 0x41U},
-    {0xA5U, 0xF0U, 0xAEU, 0xA7U},
-    {0xA6U, 0xDBU, 0xB0U, 0xCAU},
-}};
-constexpr std::array<std::uint8_t, 8> kBattleDefeatText{
-    0xBEU, 0xD4U, 0xB0U, 0xABU, 0xA5U, 0xA2U, 0xB1U, 0xD1U};
-constexpr std::array<std::uint8_t, 8> kBattleVictoryText{
-    0xBEU, 0xD4U, 0xB0U, 0xABU, 0xB3U, 0xD3U, 0xA7U, 0x51U};
-constexpr std::array<std::uint8_t, 13> kExperienceGainedText{
-    0x20U, 0xC0U, 0xF2U, 0xB1U, 0x6FU, 0xB8U, 0x67U, 0xC5U,
-    0xE7U, 0xC2U, 0x49U, 0xBCU, 0xC6U};
-constexpr std::array<std::uint8_t, 7> kLevelUpText{
-    0x20U, 0xA4U, 0xC9U, 0xAFU, 0xC5U, 0xA4U, 0x46U};
-constexpr std::array<std::uint8_t, 6> kPracticePrefix{
-    0x20U, 0xADU, 0xD7U, 0xBDU, 0x6DU, 0x20U};
-constexpr std::array<std::uint8_t, 6> kPracticeSuffix{
-    0x20U, 0xA6U, 0xA8U, 0xA5U, 0x5CU, 0x20U};
-constexpr std::array<std::uint8_t, 8> kMagicLevelPrefix{
-    0x20U, 0xA4U, 0xC9U, 0xAFU, 0xC5U, 0xA4U, 0x46U, 0x20U};
-constexpr std::array<std::uint8_t, 3> kMagicLevelSuffix{
-    0x20U, 0xAFU, 0xC5U};
-constexpr std::array<std::uint8_t, 8> kCraftedItemText{
-    0x20U, 0xBBU, 0x73U, 0xB3U, 0x79U, 0xA5U, 0x58U, 0x20U};
-constexpr std::array<std::uint8_t, 5> kUseItemPrefix{
-    0xA8U, 0xCFU, 0xA5U, 0xCEU, 0x20U};
-constexpr std::array<std::uint8_t, 4> kItemIncrease{
-    0xB4U, 0xA3U, 0xA4U, 0xC9U};
-constexpr std::array<std::uint8_t, 4> kItemDecrease{
-    0xB4U, 0xEEU, 0xA4U, 0xD6U};
-constexpr std::array<std::uint8_t, 20> kItemMpTypeChanged{
-    0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U, 0xA7U, 0xEFU,
-    0xACU, 0xB0U, 0x20U, 0x20U, 0xB3U, 0xB1U, 0xB6U, 0xA7U, 0xA6U, 0x58U};
-constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
-    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xADU, 0xC8U},
-    {0xA5U, 0xCDU, 0xA9U, 0x52U, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
-    {0xA4U, 0xA4U, 0xACU, 0x72U, 0xB5U, 0x7BU, 0xABU, 0xD7U},
-    {0xCAU, 0x5EU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
-    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xAAU, 0xF9U, 0xB8U, 0xF4U},
-    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
-    {0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xB3U, 0xCCU, 0xA4U, 0x6AU, 0xADU, 0xC8U},
-    {0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xADU, 0xC8U},
-    {0xBBU, 0xB4U, 0xA5U, 0xADU, 0xC8U},
-    {0xA8U, 0xBEU, 0xBFU, 0x6DU, 0xA4U, 0x4FU},
-    {0xC2U, 0xE5U, 0xC0U, 0xF8U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xA8U, 0xCFU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xB8U, 0xD1U, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xA7U, 0xDCU, 0xACU, 0x72U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xAEU, 0xB1U, 0xB4U, 0x78U, 0xA5U, 0xA4U, 0xD2U},
-    {0xB1U, 0x73U, 0xBCU, 0x43U, 0xAFU, 0xE0U, 0xA4U, 0x4FU},
-    {0xADU, 0x41U, 0xA4U, 0x4DU, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
-    {0xAFU, 0x53U, 0xAEU, 0xEDU, 0xA7U, 0x4CU, 0xBEU, 0xB9U},
-    {0xB7U, 0x74U, 0xBEU, 0xB9U, 0xA7U, 0xDEU, 0xA5U, 0xA9U},
-    {0xAAU, 0x5AU, 0xBEU, 0xC7U, 0xB1U, 0x60U, 0xC3U, 0xD1U},
-    {0xA4U, 0x48U, 0xA9U, 0xCAU},
-    {0xA7U, 0xF0U, 0xC0U, 0xBBU, 0xA6U, 0xB8U, 0xBCU, 0xC6U},
-    {0xA5U, 0xA4U, 0xD2U, 0xB1U, 0x61U, 0xACU, 0x72U},
-}};
-
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == kEnter || key == kSpace || key == kKeypadInsert;
 }
@@ -210,19 +142,19 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     return 25;
 }
 
-[[nodiscard]] std::vector<std::uint8_t> decimal_text(
+[[nodiscard]] std::u8string decimal_text(
     const std::int32_t value,
     const int width = 0) {
     std::array<char, 16> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
     const auto count = static_cast<int>(converted.ptr - buffer.data());
-    std::vector<std::uint8_t> text;
+    std::u8string text;
     text.reserve(static_cast<std::size_t>(std::max(width, count)));
     for (int index = count; index < width; ++index) {
-        text.push_back(static_cast<std::uint8_t>(' '));
+        text.push_back(u8' ');
     }
     for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
-        text.push_back(static_cast<std::uint8_t>(*cursor));
+        text.push_back(static_cast<char8_t>(*cursor));
     }
     return text;
 }
@@ -236,30 +168,22 @@ constexpr std::array<std::array<std::uint8_t, 20>, 23> kItemEffectLabels{{
     return static_cast<int>(model::kInventoryCount);
 }
 
-[[nodiscard]] std::vector<std::uint8_t> coordinate_item_text(
+[[nodiscard]] std::u8string coordinate_item_text(
     const model::RangerState& ranger) {
-    constexpr std::array<std::uint8_t, 4> kPersonOpen{0xA4U, 0x48U, 0xA1U, 0x5DU};
-    constexpr std::array<std::uint8_t, 2> kComma{0xA1U, 0x41U};
-    constexpr std::array<std::uint8_t, 6> kPersonCloseShipOpen{
-        0xA1U, 0x5EU, 0xB2U, 0xEEU, 0xA1U, 0x5DU};
-    constexpr std::array<std::uint8_t, 2> kClose{0xA1U, 0x5EU};
     const auto in_sub_map = ranger.header.word(model::header_word::in_sub_map) != 0;
     const auto player_x = ranger.header.word(
         in_sub_map ? model::header_word::sub_map_x : model::header_word::main_map_x);
     const auto player_y = ranger.header.word(
         in_sub_map ? model::header_word::sub_map_y : model::header_word::main_map_y);
-    std::vector<std::uint8_t> text{kPersonOpen.begin(), kPersonOpen.end()};
-    const auto append = [&text](const std::span<const std::uint8_t> value) {
-        text.insert(text.end(), value.begin(), value.end());
-    };
-    append(decimal_text(player_x, 3));
-    append(kComma);
-    append(decimal_text(player_y, 3));
-    append(kPersonCloseShipOpen);
-    append(decimal_text(ranger.header.word(model::header_word::ship_x), 3));
-    append(kComma);
-    append(decimal_text(ranger.header.word(model::header_word::ship_y), 3));
-    append(kClose);
+    std::u8string text{kPersonOpen};
+    text.append(decimal_text(player_x, 3));
+    text.append(kComma);
+    text.append(decimal_text(player_y, 3));
+    text.append(kPersonCloseShipOpen);
+    text.append(decimal_text(ranger.header.word(model::header_word::ship_x), 3));
+    text.append(kComma);
+    text.append(decimal_text(ranger.header.word(model::header_word::ship_y), 3));
+    text.append(kClose);
     return text;
 }
 
@@ -3567,24 +3491,19 @@ bool BattleSession::commit_player_attack_iteration() {
     const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
     const auto name = std::span<const std::uint8_t>{magic.bytes}.subspan(
         model::magic_word::name_byte, model::magic_word::name_bytes);
-    auto& text = player_attack_->level_text;
+    auto& level_text = player_attack_->level_text;
     const auto visible_name = terminated_name(name);
-    text.assign(visible_name.begin(), visible_name.end());
-    constexpr std::array<std::uint8_t, 8> kLevelPrefix{
-        0x20U, 0xA4U, 0xC9U, 0xACU, 0xB0U, 0xB2U, 0xC4U, 0x20U};
-    constexpr std::array<std::uint8_t, 3> kLevelSuffix{0x20U, 0xAFU, 0xC5U};
-    text.insert(text.end(), kLevelPrefix.begin(), kLevelPrefix.end());
+    level_text.clear();
+    level_text.append_legacy(text::Big5TextView{visible_name});
+    level_text.append_utf8(kLevelPrefix);
     const auto rank = static_cast<std::uint16_t>(
         role.unsigned_word(
             model::role_word::magic_level_begin +
             static_cast<std::size_t>(selected_magic_slot_)) /
             100U +
         1U);
-    text.push_back(rank < 10U
-                       ? static_cast<std::uint8_t>(' ')
-                       : static_cast<std::uint8_t>('0' + rank / 10U));
-    text.push_back(static_cast<std::uint8_t>('0' + rank % 10U));
-    text.insert(text.end(), kLevelSuffix.begin(), kLevelSuffix.end());
+    level_text.append_utf8(decimal_text(rank, 2));
+    level_text.append_utf8(kLevelSuffix);
     phase_ = player_attack_->ai_controlled
         ? BattleSessionPhase::ai_attack_level_present
         : BattleSessionPhase::player_attack_level_present;
@@ -4217,7 +4136,8 @@ bool BattleSession::render_party_selection(
     }
     const auto count = setup_.party_prefix_length();
     if (!renderer_.draw_box(framebuffer, 64, 17, 180U, 30U) ||
-        !renderer_.draw_text(framebuffer, 69, 25, kPartySelectionTitle, 0x0705U) ||
+        !renderer_.draw_text_utf8(
+            framebuffer, 69, 25, kPartySelectionTitle, text_colors::notice) ||
         !renderer_.draw_box(
             framebuffer,
             64,
@@ -4238,25 +4158,30 @@ bool BattleSession::render_party_selection(
         const auto name_x = centered_name_x(name);
         const auto y = 55 + static_cast<int>(20U * index);
         if (name_x.has_value() &&
-            !renderer_.draw_text(
+            !renderer_.draw_text_big5(
                 framebuffer,
                 *name_x,
                 y,
-                terminated_name(name),
-                setup_.cursor() == index ? 0x6663U : 0x2321U)) {
+                text::Big5TextView{terminated_name(name)},
+                setup_.cursor() == index
+                    ? text_colors::selected
+                    : text_colors::menu_normal)) {
             return false;
         }
         if (states[index] != 0 &&
-            !renderer_.draw_text(framebuffer, 67, y, kSelectedMarker, 0x0705U)) {
+            !renderer_.draw_text_utf8(
+                framebuffer, 67, y, kSelectedMarker, text_colors::notice)) {
             return false;
         }
     }
-    return renderer_.draw_text(
+    return renderer_.draw_text_utf8(
         framebuffer,
         83,
         55 + static_cast<int>(20U * count),
         kConfirmLabel,
-        setup_.cursor() == count ? 0x6663U : 0x2321U);
+        setup_.cursor() == count
+            ? text_colors::selected
+            : text_colors::menu_normal);
 }
 
 bool BattleSession::render_battlefield(
@@ -4272,8 +4197,8 @@ bool BattleSession::render_player_attack_direction(
     render::IndexedFramebuffer& framebuffer) {
     return player_attack_ && render_battlefield(framebuffer) &&
         renderer_.draw_box(framebuffer, 122, 40, 116U, 27U) &&
-        renderer_.draw_text(
-            framebuffer, 132, 45, kAttackDirectionPrompt, 0x0705U);
+        renderer_.draw_text_utf8(
+            framebuffer, 132, 45, kAttackDirectionPrompt, text_colors::notice);
 }
 
 bool BattleSession::render_player_attack_level(
@@ -4282,19 +4207,23 @@ bool BattleSession::render_player_attack_level(
         !render_battlefield(framebuffer)) {
         return false;
     }
-    const auto length = static_cast<int>(player_attack_->level_text.size());
+    const auto width_units = player_attack_->level_text.legacy_width_units();
+    if (!width_units.has_value()) {
+        return false;
+    }
+    const auto length = static_cast<int>(*width_units);
     return renderer_.draw_box(
                framebuffer,
                150 - 4 * length,
                40,
                static_cast<std::uint16_t>(8 * length + 20),
                27U) &&
-        renderer_.draw_text(
+        renderer_.draw_text_mixed(
             framebuffer,
             160 - 4 * length,
             45,
             player_attack_->level_text,
-            0x0705U);
+            text_colors::notice);
 }
 
 bool BattleSession::render_player_magic_selection(
@@ -4318,7 +4247,7 @@ bool BattleSession::render_player_magic_selection(
     const auto draw_magic_name = [this, &framebuffer, &role](
                                      const std::int16_t magic_slot,
                                      const int y,
-                                     const std::uint16_t colors) {
+                                     const render::TextColors colors) {
         if (magic_slot < 0 ||
             static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
             return false;
@@ -4331,11 +4260,11 @@ bool BattleSession::render_player_magic_selection(
         const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
         const auto name = std::span<const std::uint8_t>{magic.bytes}.subspan(
             model::magic_word::name_byte, model::magic_word::name_bytes);
-        return renderer_.draw_text(
+        return renderer_.draw_text_big5(
             framebuffer,
             centered_magic_name_x(name),
             y,
-            terminated_name(name),
+            text::Big5TextView{terminated_name(name)},
             colors);
     };
 
@@ -4357,7 +4286,8 @@ bool BattleSession::render_player_magic_selection(
                 player_magic_selection_->available_count) {
             continue;
         }
-        if (!draw_magic_name(magic_slot, 17 * ordinal + 15, 0x2321U)) {
+        if (!draw_magic_name(
+                magic_slot, 17 * ordinal + 15, text_colors::menu_normal)) {
             return false;
         }
         ++ordinal;
@@ -4368,7 +4298,7 @@ bool BattleSession::render_player_magic_selection(
     return draw_magic_name(
         selected_slot,
         17 * player_magic_selection_->cursor + 15,
-        0x6663U);
+        text_colors::selected);
 }
 
 bool BattleSession::render_player_item_selection(
@@ -4389,7 +4319,7 @@ bool BattleSession::render_player_item_selection(
             y,
             static_cast<std::uint16_t>(width),
             static_cast<std::uint16_t>(height),
-            99U);
+            palette_colors::scroll_indicator);
     };
     const auto item_metric = legacy_item_metric(ranger_);
     if (item_metric > 5 * (player_item_->page + 3)) {
@@ -4415,7 +4345,8 @@ bool BattleSession::render_player_item_selection(
         for (std::int16_t column = 0; column < 5; ++column) {
             const auto x = 55 + 42 * column;
             const auto y = 62 + 42 * row;
-            if (!framebuffer.outline_rectangle(x, y, 40U, 40U, 0U)) {
+            if (!framebuffer.outline_rectangle(
+                    x, y, 40U, 40U, palette_colors::inventory_outline)) {
                 return false;
             }
             const auto list_index = static_cast<std::int32_t>(
@@ -4443,7 +4374,7 @@ bool BattleSession::render_player_item_selection(
             62 + 42 * player_item_->row,
             40U,
             40U,
-            255U)) {
+            palette_colors::inventory_selection_outline)) {
         return false;
     }
 
@@ -4476,33 +4407,33 @@ bool BattleSession::render_player_item_selection(
     const auto user = item.word(model::item_word::user);
     const auto name_center =
         (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
-    if (!renderer_.draw_text(
+    if (!renderer_.draw_text_big5(
             framebuffer,
             name_center - 4 * static_cast<int>(name.size()),
             5,
-            name,
-            0x0705U)) {
+            text::Big5TextView{name},
+            text_colors::notice)) {
         return false;
     }
     if (item.word(model::item_word::id) == 0x00B6) {
-        if (!renderer_.draw_text(
+        if (!renderer_.draw_text_utf8(
                 framebuffer,
                 48,
                 30,
                 coordinate_item_text(ranger_),
-                0x2321U)) {
+                text_colors::menu_normal)) {
             return false;
         }
     } else {
         const auto introduction = terminated_name(item_bytes.subspan(
             model::item_word::introduction_byte,
             model::item_word::introduction_bytes));
-        if (!renderer_.draw_text(
+        if (!renderer_.draw_text_big5(
                 framebuffer,
                 160 - 4 * static_cast<int>(introduction.size()),
                 30,
-                introduction,
-                0x2321U)) {
+                text::Big5TextView{introduction},
+                text_colors::menu_normal)) {
             return false;
         }
     }
@@ -4515,10 +4446,12 @@ bool BattleSession::render_player_item_selection(
         const auto role_name = terminated_name(role_bytes.subspan(
             model::role_word::name_byte,
             model::role_word::name_bytes));
-        std::vector<std::uint8_t> user_text{'('};
-        user_text.insert(user_text.end(), role_name.begin(), role_name.end());
-        user_text.push_back(')');
-        if (!renderer_.draw_text(framebuffer, 205, 5, user_text, 0x2321U)) {
+        text::GameText user_text;
+        user_text.append_utf8(kOpenParenthesis);
+        user_text.append_legacy(text::Big5TextView{role_name});
+        user_text.append_utf8(kCloseParenthesis);
+        if (!renderer_.draw_text_mixed(
+                framebuffer, 205, 5, user_text, text_colors::menu_normal)) {
             return false;
         }
     }
@@ -4527,14 +4460,14 @@ bool BattleSession::render_player_item_selection(
     if (inventory_count <= 1) {
         return true;
     }
-    constexpr std::array<std::uint8_t, 1> kCountMarker{'X'};
-    return renderer_.draw_text(framebuffer, 215, 5, kCountMarker, 0x2321U) &&
-        renderer_.draw_text(
+    return renderer_.draw_text_utf8(
+               framebuffer, 215, 5, kCountMarker, text_colors::menu_normal) &&
+        renderer_.draw_text_utf8(
             framebuffer,
             235,
             5,
             decimal_text(inventory_count, 2U),
-            0x6663U);
+            text_colors::selected);
 }
 
 bool BattleSession::render_player_item_effect(
@@ -4558,9 +4491,11 @@ bool BattleSession::render_player_item_effect(
     const auto name = terminated_name(std::span<const std::uint8_t>{item.bytes}.subspan(
         2U * model::item_word::secondary_name_begin,
         2U * model::item_word::secondary_name_count));
-    std::vector<std::uint8_t> header{kUseItemPrefix.begin(), kUseItemPrefix.end()};
-    header.insert(header.end(), name.begin(), name.end());
-    if (!renderer_.draw_text(framebuffer, 75, 25, header, 0x6663U)) {
+    text::GameText header;
+    header.append_utf8(kUseItemPrefix);
+    header.append_legacy(text::Big5TextView{name});
+    if (!renderer_.draw_text_mixed(
+            framebuffer, 75, 25, header, text_colors::selected)) {
         return false;
     }
     std::int16_t visible_row = 0;
@@ -4570,37 +4505,37 @@ bool BattleSession::render_player_item_effect(
             continue;
         }
         const auto y = 45 + 18 * visible_row;
-        if (!renderer_.draw_text(
+        if (!renderer_.draw_text_utf8(
                 framebuffer,
                 75,
                 y,
-                terminated_name(kItemEffectLabels[index]),
-                0x0705U)) {
+                kItemEffectLabels[index],
+                text_colors::notice)) {
             return false;
         }
         if (index == 4U) {
-            if (!renderer_.draw_text(framebuffer, 155, y, kItemMpTypeChanged, 0x0705U)) {
+            if (!renderer_.draw_text_utf8(
+                    framebuffer, 155, y, kItemMpTypeChanged, text_colors::notice)) {
                 return false;
             }
         } else {
-            if (!renderer_.draw_text(
+            if (!renderer_.draw_text_utf8(
                     framebuffer,
                     155,
                     y,
-                    delta > 0 ? std::span<const std::uint8_t>{kItemIncrease}
-                              : std::span<const std::uint8_t>{kItemDecrease},
-                    delta > 0 ? 0x0705U : 0x1014U)) {
+                    delta > 0 ? kItemIncrease : kItemDecrease,
+                    delta > 0 ? text_colors::notice : text_colors::negative_value)) {
                 return false;
             }
             const auto magnitude = delta < 0
                 ? -static_cast<std::int32_t>(delta)
                 : static_cast<std::int32_t>(delta);
-            if (!renderer_.draw_text(
+            if (!renderer_.draw_text_utf8(
                     framebuffer,
                     187,
                     y,
                     decimal_text(magnitude, 3),
-                    0x0705U)) {
+                    text_colors::notice)) {
                 return false;
             }
         }
@@ -4652,21 +4587,21 @@ bool BattleSession::render_player_action_menu(
         if (player_action_menu_.available[action] != 1) {
             continue;
         }
-        if (!renderer_.draw_text(
+        if (!renderer_.draw_text_utf8(
                 framebuffer,
                 25,
                 24 + static_cast<int>(17U * ordinal),
                 kPlayerActionLabels[action],
-                0x2321U)) {
+                text_colors::menu_normal)) {
             return false;
         }
         ++ordinal;
     }
     const auto selected = action_for_ordinal(player_action_menu_.cursor);
-    if (!selected.has_value() || !renderer_.draw_text(
+    if (!selected.has_value() || !renderer_.draw_text_utf8(
             framebuffer, 25,
             24 + static_cast<int>(17U * player_action_menu_.cursor),
-            kPlayerActionLabels[*selected], 0x6663U)) {
+            kPlayerActionLabels[*selected], text_colors::selected)) {
         return false;
     }
     if (full_redraw) {
@@ -4693,9 +4628,10 @@ bool BattleSession::render_battle_outcome(
         return false;
     }
     const auto text = outcome_ == BattleOutcome::victory
-        ? std::span<const std::uint8_t>{kBattleVictoryText}
-        : std::span<const std::uint8_t>{kBattleDefeatText};
-    return renderer_.draw_text(framebuffer, 128, 35, text, 0x0705U);
+        ? kBattleVictoryText
+        : kBattleDefeatText;
+    return renderer_.draw_text_utf8(
+        framebuffer, 128, 35, text, text_colors::notice);
 }
 
 bool BattleSession::render_post_battle_message(
@@ -4718,24 +4654,23 @@ bool BattleSession::render_post_battle_message(
     const auto role_name = terminated_name(
         std::span<const std::uint8_t>{role.bytes}.subspan(
             model::role_word::name_byte, model::role_word::name_bytes));
-    std::vector<std::uint8_t> text;
-    const auto append = [&text](const std::span<const std::uint8_t> bytes) {
-        text.insert(text.end(), bytes.begin(), bytes.end());
-    };
+    text::GameText display_text;
 
     switch (message.kind) {
     case PostBattleMessageKind::experience: {
-        append(role_name);
-        append(kExperienceGainedText);
-        append(decimal_text(role_result.experience_gained, 5));
+        display_text.append_legacy(text::Big5TextView{role_name});
+        display_text.append_utf8(kExperienceGainedText);
+        display_text.append_utf8(decimal_text(role_result.experience_gained, 5));
         return renderer_.draw_box(framebuffer, 60, 30, 200U, 27U) &&
-            renderer_.draw_text(framebuffer, 63, 35, text, 0x0705U);
+            renderer_.draw_text_mixed(
+                framebuffer, 63, 35, display_text, text_colors::notice);
     }
     case PostBattleMessageKind::level_up:
-        append(role_name);
-        append(kLevelUpText);
+        display_text.append_legacy(text::Big5TextView{role_name});
+        display_text.append_utf8(kLevelUpText);
         return renderer_.draw_box(framebuffer, 100, 30, 120U, 27U) &&
-            renderer_.draw_text(framebuffer, 107, 35, text, 0x0705U);
+            renderer_.draw_text_mixed(
+                framebuffer, 107, 35, display_text, text_colors::notice);
     case PostBattleMessageKind::practice: {
         const auto item_id = role_result.practice.item_id;
         if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
@@ -4746,19 +4681,27 @@ bool BattleSession::render_post_battle_message(
                 ranger_.items[static_cast<std::size_t>(item_id)].bytes}.subspan(
                     2U * model::item_word::secondary_name_begin,
                     2U * model::item_word::secondary_name_count));
-        append(role_name);
-        append(kPracticePrefix);
-        append(item_name);
-        append(kPracticeSuffix);
-        const auto width_units = static_cast<int>(role_name.size() + item_name.size() + 12U);
+        display_text.append_legacy(text::Big5TextView{role_name});
+        display_text.append_utf8(kPracticePrefix);
+        display_text.append_legacy(text::Big5TextView{item_name});
+        display_text.append_utf8(kPracticeSuffix);
+        const auto width = display_text.legacy_width_units();
+        if (!width.has_value()) {
+            return false;
+        }
+        const auto width_units = static_cast<int>(*width);
         return renderer_.draw_box(
                    framebuffer,
                    150 - width_units * 4,
                    40,
                    static_cast<std::uint16_t>(width_units * 8 + 20),
                    27U) &&
-            renderer_.draw_text(
-                framebuffer, 160 - width_units * 4, 45, text, 0x0705U);
+            renderer_.draw_text_mixed(
+                framebuffer,
+                160 - width_units * 4,
+                45,
+                display_text,
+                text_colors::notice);
     }
     case PostBattleMessageKind::magic_level: {
         const auto magic_id = role_result.practice.magic_id;
@@ -4783,19 +4726,27 @@ bool BattleSession::render_post_battle_message(
                 static_cast<std::size_t>(magic_slot)) /
                 100U +
             1U);
-        append(magic_name);
-        append(kMagicLevelPrefix);
-        append(decimal_text(level, 2));
-        append(kMagicLevelSuffix);
-        const auto width_units = static_cast<int>(magic_name.size() + 13U);
+        display_text.append_legacy(text::Big5TextView{magic_name});
+        display_text.append_utf8(kMagicLevelPrefix);
+        display_text.append_utf8(decimal_text(level, 2));
+        display_text.append_utf8(kMagicLevelSuffix);
+        const auto width = display_text.legacy_width_units();
+        if (!width.has_value()) {
+            return false;
+        }
+        const auto width_units = static_cast<int>(*width);
         return renderer_.draw_box(
                    framebuffer,
                    150 - width_units * 4,
                    80,
                    static_cast<std::uint16_t>(width_units * 8 + 20),
                    27U) &&
-            renderer_.draw_text(
-                framebuffer, 160 - width_units * 4, 85, text, 0x0705U);
+            renderer_.draw_text_mixed(
+                framebuffer,
+                160 - width_units * 4,
+                85,
+                display_text,
+                text_colors::notice);
     }
     case PostBattleMessageKind::craft: {
         const auto product_id = role_result.craft.product_item_id;
@@ -4808,11 +4759,12 @@ bool BattleSession::render_post_battle_message(
                 ranger_.items[static_cast<std::size_t>(product_id)].bytes}.subspan(
                     2U * model::item_word::secondary_name_begin,
                     2U * model::item_word::secondary_name_count));
-        append(role_name);
-        append(kCraftedItemText);
-        append(product_name);
+        display_text.append_legacy(text::Big5TextView{role_name});
+        display_text.append_utf8(kCraftedItemText);
+        display_text.append_legacy(text::Big5TextView{product_name});
         return renderer_.draw_box(framebuffer, 55, 30, 210U, 27U) &&
-            renderer_.draw_text(framebuffer, 62, 35, text, 0x0705U);
+            renderer_.draw_text_mixed(
+                framebuffer, 62, 35, display_text, text_colors::notice);
     }
     }
     return false;

@@ -2857,9 +2857,9 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(party_panel->portrait_x == 242);
         OL_CHECK(party_panel->portrait_id == 123);
         OL_CHECK(party_panel->name_x == 262);
-        OL_CHECK(party_panel->hurt_color == 3'600);
-        OL_CHECK(party_panel->poison_color == 13'623);
-        OL_CHECK(party_panel->mp_color == 13'623);
+        OL_CHECK(party_panel->hurt_color.legacy_packed() == 3'600);
+        OL_CHECK(party_panel->poison_color.legacy_packed() == 13'623);
+        OL_CHECK(party_panel->mp_color.legacy_packed() == 13'623);
         OL_CHECK(party_panel->render_required);
         const auto enemy_panel = setup.status_panel_plan(1U);
         OL_CHECK(enemy_panel.has_value());
@@ -2931,7 +2931,7 @@ void run_battle_status_panel_review_test(
         party_role.set_word(role_word::hurt, hurt);
         plan = setup.status_panel_plan(0U);
         OL_CHECK(plan.has_value());
-        OL_CHECK(plan->hurt_color == expected);
+        OL_CHECK(plan->hurt_color.legacy_packed() == expected);
     }
     for (const auto [poison, expected] : std::array<std::pair<std::int16_t, std::int16_t>, 6>{
              std::pair<std::int16_t, std::int16_t>{-32'768, 12'338},
@@ -2943,7 +2943,7 @@ void run_battle_status_panel_review_test(
         party_role.set_word(role_word::poison, poison);
         plan = setup.status_panel_plan(0U);
         OL_CHECK(plan.has_value());
-        OL_CHECK(plan->poison_color == expected);
+        OL_CHECK(plan->poison_color.legacy_packed() == expected);
     }
     party_role.set_word(role_word::poison, -1);
     for (const auto [mp_type, expected] : std::array<std::pair<std::int16_t, std::int16_t>, 6>{
@@ -2956,7 +2956,7 @@ void run_battle_status_panel_review_test(
         party_role.set_word(role_word::mp_type, mp_type);
         plan = setup.status_panel_plan(0U);
         OL_CHECK(plan.has_value());
-        OL_CHECK(plan->mp_color == expected);
+        OL_CHECK(plan->mp_color.legacy_packed() == expected);
     }
 
     const auto original_party_role = party_words[combatant_word::role_id];
@@ -3011,9 +3011,9 @@ void run_battle_status_panel_review_test(
     const auto enemy_plan = setup.status_panel_plan(1U);
     OL_CHECK(enemy_plan.has_value());
     OL_CHECK(enemy_plan->name_x == 18);
-    OL_CHECK(enemy_plan->hurt_color == 5'142);
-    OL_CHECK(enemy_plan->poison_color == 12'338);
-    OL_CHECK(enemy_plan->mp_color == 12'338);
+    OL_CHECK(enemy_plan->hurt_color.legacy_packed() == 5'142);
+    OL_CHECK(enemy_plan->poison_color.legacy_packed() == 12'338);
+    OL_CHECK(enemy_plan->mp_color.legacy_packed() == 12'338);
     OL_CHECK(enemy_plan->physical_power == -32'768);
     OL_CHECK(enemy_plan->hp == 32'767);
     OL_CHECK(enemy_plan->maximum_hp == -1);

@@ -8,6 +8,7 @@
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/render/world_depth_order.hpp"
 #include "openlegend/render/world_projection.hpp"
@@ -566,8 +567,14 @@ void WorldSession::cycle_palette() {
     if (!valid()) {
         return;
     }
-    std::rotate(palette_.begin() + 224, palette_.begin() + 231, palette_.begin() + 232);
-    std::rotate(palette_.begin() + 244, palette_.begin() + 252, palette_.begin() + 253);
+    std::rotate(
+        palette_.begin() + render::legacy_color::first_palette_cycle_begin,
+        palette_.begin() + render::legacy_color::first_palette_cycle_pivot,
+        palette_.begin() + render::legacy_color::first_palette_cycle_end);
+    std::rotate(
+        palette_.begin() + render::legacy_color::second_palette_cycle_begin,
+        palette_.begin() + render::legacy_color::second_palette_cycle_pivot,
+        palette_.begin() + render::legacy_color::second_palette_cycle_end);
 }
 
 void WorldSession::prepare_game_menu_frame() noexcept {
@@ -578,7 +585,7 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
     if (!valid()) {
         return false;
     }
-    framebuffer.clear(0U);
+    framebuffer.clear(render::legacy_color::black);
     framebuffer.set_palette(palette_);
     const auto view_x = cache_x();
     const auto view_y = cache_y();

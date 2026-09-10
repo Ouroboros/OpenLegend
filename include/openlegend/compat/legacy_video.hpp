@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <span>
 
+#include "openlegend/compat/color.hpp"
+
 namespace openlegend::compat {
 
 inline constexpr std::size_t kLegacyWidth = 320;
@@ -88,7 +90,7 @@ using ModernRgbaPixels = std::array<std::uint8_t, kModernRgbaByteCount>;
         rgba[target] = expand_rgb6(color.red);
         rgba[target + 1U] = expand_rgb6(color.green);
         rgba[target + 2U] = expand_rgb6(color.blue);
-        rgba[target + 3U] = 0xFFU;
+        rgba[target + 3U] = kOpaqueAlpha;
     }
     return true;
 }

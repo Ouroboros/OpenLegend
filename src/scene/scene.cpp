@@ -19,6 +19,7 @@
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
+#include "openlegend/text/game_strings.hpp"
 
 namespace openlegend::scene {
 namespace {
@@ -32,43 +33,9 @@ constexpr std::array<std::int16_t, 11> kWeatherSceneIds{5, 7, 10, 41, 42, 46, 65
 constexpr std::array<std::int16_t, 30> kTournamentHeadIds{
     8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
     22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69};
-constexpr std::array<std::array<std::uint8_t, 11>, 4> kProgressMenuItems{{
-    {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x40U, 0x00U},
-    {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x47U, 0x00U},
-    {0xB8U, 0xFCU, 0xA4U, 0x4AU, 0xB6U, 0x69U, 0xABU, 0xD7U, 0xA4U, 0x54U, 0x00U},
-    {0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xBAU, 0xCEU, 0xC4U, 0xB1U, 0xA5U, 0x68U, 0x00U},
-}};
-constexpr std::array<std::uint8_t, 13> kDeathLocationText{
-    0xA6U, 0x62U, 0xA6U, 0x61U, 0xB2U, 0x79U, 0xAAU, 0xBAU, 0xACU, 0x59U, 0xB3U, 0x42U, 0x00U};
-constexpr std::array<std::uint8_t, 17> kDeathMissingText{
-    0xB7U, 0xEDU, 0xA6U, 0x61U, 0xA4U, 0x48U, 0xA4U, 0x66U, 0xAAU, 0xBAU, 0xA5U, 0xA2U, 0xC2U, 0xDCU, 0xBCU, 0xC6U, 0x00U};
-constexpr std::array<std::uint8_t, 17> kDeathAnotherText{
-    0xA4U, 0x53U, 0xA6U, 0x68U, 0xA4U, 0x46U, 0xA4U, 0x40U, 0xB5U, 0xA7U, 0xA1U, 0x44U, 0xA1U, 0x44U, 0xA1U, 0x44U, 0x00U};
-constexpr std::array<std::uint8_t, 23> kExitPrompt{
-    0xAFU, 0x75U, 0xADU, 0x6EU, 0xC2U, 0xF7U, 0xB6U, 0x7DU, 0xB9U, 0x43U, 0xC0U, 0xB8U,
-    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
-constexpr std::array<std::uint8_t, 23> kBattleQuestion{
-    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xBBU, 0x50U, 0xA4U, 0xA7U, 0xB9U, 0x4CU, 0xA9U, 0xDBU,
-    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
-constexpr std::array<std::uint8_t, 23> kJoinQuestion{
-    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xADU, 0x6EU, 0xA8U, 0x44U, 0xA5U, 0x5BU, 0xA4U, 0x4AU,
-    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
-constexpr std::array<std::uint8_t, 23> kRestQuestion{
-    0xACU, 0x4FU, 0xA7U, 0x5FU, 0xA6U, 0xEDU, 0xB1U, 0x4AU, 0xB9U, 0x4CU, 0xA9U, 0x5DU,
-    0xA1U, 0x5DU, 0xA2U, 0xE7U, 0xA1U, 0xFEU, 0xA2U, 0xDCU, 0xA1U, 0x5EU, 0x00U};
-constexpr std::array<std::uint8_t, 4> kItemNoticePrefix{0xB1U, 0x6FU, 0xA8U, 0xECU};
-constexpr std::array<std::uint8_t, 6> kLearnMagicNoticeInfix{
-    0x20U, 0xBEU, 0xC7U, 0xB7U, 0x7CU, 0x20U};
-constexpr std::array<std::uint8_t, 10> kRoleIqNoticeInfix{
-    0x20U, 0xB8U, 0xEAU, 0xBDU, 0xE8U, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
-constexpr std::array<std::uint8_t, 10> kRoleSpeedNoticeInfix{
-    0x20U, 0xBBU, 0xB4U, 0xA5U, 0x5CU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
-constexpr std::array<std::uint8_t, 10> kRoleMpNoticeInfix{
-    0x20U, 0xA4U, 0xBAU, 0xA4U, 0x4FU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
-constexpr std::array<std::uint8_t, 10> kRoleAttackNoticeInfix{
-    0x20U, 0xAAU, 0x5AU, 0xA4U, 0x4FU, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
-constexpr std::array<std::uint8_t, 10> kRoleHpNoticeInfix{
-    0x20U, 0xA5U, 0xCDU, 0xA9U, 0x52U, 0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U};
+using namespace openlegend::text::game_strings;
+namespace palette_colors = render::legacy_color;
+namespace text_colors = render::legacy_color::text;
 constexpr std::int16_t kItemNoticeStyle = -1;
 constexpr std::int16_t kLearnMagicNoticeStyle = -2;
 constexpr std::int16_t kRoleIqNoticeStyle = -3;
@@ -142,38 +109,14 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return false;
 }
 
-[[nodiscard]] std::vector<std::uint8_t> ascii_message(const std::string& text) {
-    std::vector<std::uint8_t> result;
-    result.reserve(text.size() + 1U);
-    for (const auto character : text) {
-        result.push_back(static_cast<std::uint8_t>(static_cast<unsigned char>(character)));
-    }
-    result.push_back(0U);
-    return result;
-}
-
-[[nodiscard]] std::vector<std::uint8_t> status_notice_message(
+[[nodiscard]] std::u8string status_notice_message(
     const bool fame,
     const std::int16_t value) {
-    constexpr std::array<std::uint8_t, 18> morality_prefix{
-        0xA7U, 0x41U, 0xB2U, 0x7BU, 0xA6U, 0x62U, 0xAAU, 0xBAU, 0xABU,
-        0x7EU, 0xBCU, 0x77U, 0xABU, 0xFCU, 0xBCU, 0xC6U, 0xACU, 0xB0U};
-    constexpr std::array<std::uint8_t, 20> fame_prefix{
-        0xA7U, 0x41U, 0xB2U, 0x7BU, 0xA6U, 0x62U, 0xADU, 0xD3U, 0xA4U, 0x48U,
-        0xC1U, 0x6EU, 0xB1U, 0xE6U, 0xABU, 0xFCU, 0xBCU, 0xC6U, 0xACU, 0xB0U};
-    std::vector<std::uint8_t> result;
-    const auto prefix = fame ? std::span<const std::uint8_t>{fame_prefix}
-                             : std::span<const std::uint8_t>{morality_prefix};
-    result.assign(prefix.begin(), prefix.end());
+    std::u8string result{fame ? kFameNoticePrefix : kMoralityNoticePrefix};
     std::array<char, 16> formatted{};
     std::snprintf(
         formatted.data(), formatted.size(), fame ? "%4d" : "%5d", static_cast<int>(value));
-    for (const auto character : formatted) {
-        result.push_back(static_cast<std::uint8_t>(static_cast<unsigned char>(character)));
-        if (character == '\0') {
-            break;
-        }
-    }
+    result.append(text::utf8_from_ascii(formatted.data()));
     return result;
 }
 
@@ -198,15 +141,14 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     render::IndexedFramebuffer& framebuffer,
     int x,
     const int y,
-    const std::span<const std::uint8_t> zero_terminated_text,
+    const text::Big5TextView text,
     const std::span<const std::uint8_t> ascii_font,
     render::Big5GlyphCache& big5_cache,
-    const std::uint8_t right_shadow,
-    const std::uint8_t foreground) noexcept {
+    const render::TextColors colors) noexcept {
     if (ascii_font.size() < 128U * 16U) {
         return false;
     }
-    const auto draw_glyph = [&framebuffer, y, right_shadow, foreground](
+    const auto draw_glyph = [&framebuffer, y, colors](
                                 const int glyph_x,
                                 const std::span<const std::uint8_t> glyph,
                                 const int glyph_width) {
@@ -225,24 +167,25 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
                         static_cast<std::size_t>(destination + 1) >= pixels.size()) {
                         return false;
                     }
-                    pixels[static_cast<std::size_t>(destination)] = foreground;
-                    pixels[static_cast<std::size_t>(destination + 1)] = right_shadow;
+                    pixels[static_cast<std::size_t>(destination)] = colors.foreground;
+                    pixels[static_cast<std::size_t>(destination + 1)] = colors.right_shadow;
                 }
             }
         }
         return true;
     };
 
-    for (std::size_t index = 0U; index < zero_terminated_text.size();) {
-        const auto first = zero_terminated_text[index++];
+    const auto bytes = text.bytes();
+    for (std::size_t index = 0U; index < bytes.size();) {
+        const auto first = bytes[index++];
         if (first == 0U) {
             return true;
         }
         if (first > 0x7FU) {
-            if (index >= zero_terminated_text.size()) {
+            if (index >= bytes.size()) {
                 return false;
             }
-            const auto second = zero_terminated_text[index++];
+            const auto second = bytes[index++];
             const auto code = static_cast<std::uint16_t>(
                 static_cast<std::uint16_t>(first) << 8U | static_cast<std::uint16_t>(second));
             const auto glyph = big5_cache.resolve(code);
@@ -536,11 +479,17 @@ SceneStepResult SceneSession::current_result(const SceneStepKind kind) const noe
 SceneStepResult SceneSession::show_scene_title() {
     pending_ = current_result(SceneStepKind::scene_title);
     pending_text_.clear();
+    pending_encoded_text_.clear();
+    pending_legacy_text_.clear();
     scene_title_base_framebuffer_.reset();
     if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
         const auto& bytes = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].bytes;
-        pending_text_.assign(bytes.begin() + 2, bytes.begin() + 12);
-        pending_text_.push_back(0U);
+        const auto begin = bytes.begin() + 2;
+        const auto end = std::find(begin, bytes.begin() + 12, 0U);
+        pending_legacy_text_.assign(begin, end);
+        pending_text_.append_legacy(text::Big5TextView{pending_legacy_text_});
+        static_cast<void>(text::encode_game_text(pending_text_, pending_encoded_text_));
+        pending_legacy_text_.push_back(0U);
     }
     return pending_;
 }
@@ -769,6 +718,8 @@ bool SceneSession::prepare_event(
     event_active_ = true;
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
+    pending_encoded_text_.clear();
+    pending_legacy_text_.clear();
     continuation_ = PendingContinuation::none;
     join_role_state_.reset();
     pan_state_.reset();
@@ -795,6 +746,8 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
     const auto previous_shop_id = pending_.shop_id;
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
+    pending_encoded_text_.clear();
+    pending_legacy_text_.clear();
 
     if (previous_kind == SceneStepKind::fade_to_black &&
         continuation_ == PendingContinuation::scene_jump) {
@@ -1107,9 +1060,12 @@ SceneStepResult SceneSession::run_event() {
             pending_ = current_result(SceneStepKind::question);
             pending_.question = opcode == 5 ? SceneQuestion::battle
                                             : (opcode == 9 ? SceneQuestion::join : SceneQuestion::rest);
-            const auto& question_text = opcode == 5 ? kBattleQuestion
-                                        : (opcode == 9 ? kJoinQuestion : kRestQuestion);
-            pending_text_.assign(question_text.begin(), question_text.end());
+            const auto question_text = opcode == 5 ? kBattleQuestion
+                                     : (opcode == 9 ? kJoinQuestion : kRestQuestion);
+            pending_text_.clear();
+            pending_encoded_text_.clear();
+            pending_text_.append_utf8(question_text);
+            pending_legacy_text_.clear();
             return pending_;
         }
         case 6:
@@ -1325,28 +1281,28 @@ SceneStepResult SceneSession::run_event() {
             }
             program_counter_ += 4;
             if (argument(3) == 0) {
-                std::vector<std::uint8_t> text;
-                const auto append_name = [&text](
+                text::GameText display_text;
+                const auto append_name = [&display_text](
                                              const auto& bytes,
                                              const std::size_t offset) {
                     const auto begin = bytes.begin() + static_cast<std::ptrdiff_t>(offset);
-                    text.insert(text.end(), begin, std::find(begin, bytes.end(), 0U));
+                    const auto end = std::find(begin, bytes.end(), 0U);
+                    display_text.append_legacy(text::Big5TextView{
+                        std::span<const std::uint8_t>{begin, end}});
                 };
                 if (role_is_valid) {
                     append_name(
                         snapshot_.ranger.roles[static_cast<std::size_t>(role_id)].bytes,
                         model::role_word::name_byte);
                 }
-                text.insert(
-                    text.end(), kLearnMagicNoticeInfix.begin(), kLearnMagicNoticeInfix.end());
+                display_text.append_utf8(kLearnMagicNoticeInfix);
                 if (magic_id >= 0 &&
                     static_cast<std::size_t>(magic_id) < snapshot_.ranger.magics.size()) {
                     append_name(
                         snapshot_.ranger.magics[static_cast<std::size_t>(magic_id)].bytes,
                         model::magic_word::name_byte);
                 }
-                text.push_back(0U);
-                queue_notice(std::move(text), kLearnMagicNoticeStyle);
+                queue_notice_mixed(std::move(display_text), kLearnMagicNoticeStyle);
                 queue_scene_present();
                 return emit_queued();
             }
@@ -1365,24 +1321,23 @@ SceneStepResult SceneSession::run_event() {
                 const auto after = clamped_add(before, argument(2), 0, 100);
                 role.set_word(field, after);
                 if (after > before) {
-                    std::vector<std::uint8_t> text;
+                    text::GameText display_text;
                     const auto name_begin =
                         role.bytes.begin() +
                         static_cast<std::ptrdiff_t>(model::role_word::name_byte);
-                    text.insert(
-                        text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
-                    auto infix = std::span<const std::uint8_t>{kRoleAttackNoticeInfix};
+                    const auto name_end = std::find(name_begin, role.bytes.end(), 0U);
+                    display_text.append_legacy(text::Big5TextView{
+                        std::span<const std::uint8_t>{name_begin, name_end}});
+                    auto infix = kRoleAttackNoticeInfix;
                     if (opcode == 34) {
-                        infix = std::span<const std::uint8_t>{kRoleIqNoticeInfix};
+                        infix = kRoleIqNoticeInfix;
                     } else if (opcode == 45) {
-                        infix = std::span<const std::uint8_t>{kRoleSpeedNoticeInfix};
+                        infix = kRoleSpeedNoticeInfix;
                     }
-                    text.insert(text.end(), infix.begin(), infix.end());
-                    const auto gain = std::to_string(
-                        static_cast<int>(after) - static_cast<int>(before));
-                    text.insert(text.end(), gain.begin(), gain.end());
-                    text.push_back(0U);
-                    queue_notice(std::move(text), kRoleIqNoticeStyle);
+                    display_text.append_utf8(infix);
+                    display_text.append_ascii(std::to_string(
+                        static_cast<int>(after) - static_cast<int>(before)));
+                    queue_notice_mixed(std::move(display_text), kRoleIqNoticeStyle);
                     queue_scene_present();
                 }
             }
@@ -1408,20 +1363,17 @@ SceneStepResult SceneSession::run_event() {
                 role.set_word(current_field, maximum);
                 const auto gain = static_cast<int>(maximum) - static_cast<int>(before);
                 if (gain > 0 && (opcode == 46 || party_contains(role_id))) {
-                    std::vector<std::uint8_t> text;
+                    text::GameText display_text;
                     const auto name_begin =
                         role.bytes.begin() +
                         static_cast<std::ptrdiff_t>(model::role_word::name_byte);
-                    text.insert(
-                        text.end(), name_begin, std::find(name_begin, role.bytes.end(), 0U));
-                    const auto infix = opcode == 46
-                                           ? std::span<const std::uint8_t>{kRoleMpNoticeInfix}
-                                           : std::span<const std::uint8_t>{kRoleHpNoticeInfix};
-                    text.insert(text.end(), infix.begin(), infix.end());
-                    const auto gain_text = std::to_string(gain);
-                    text.insert(text.end(), gain_text.begin(), gain_text.end());
-                    text.push_back(0U);
-                    queue_notice(std::move(text), kRoleIqNoticeStyle);
+                    const auto name_end = std::find(name_begin, role.bytes.end(), 0U);
+                    display_text.append_legacy(text::Big5TextView{
+                        std::span<const std::uint8_t>{name_begin, name_end}});
+                    display_text.append_utf8(
+                        opcode == 46 ? kRoleMpNoticeInfix : kRoleHpNoticeInfix);
+                    display_text.append_ascii(std::to_string(gain));
+                    queue_notice_mixed(std::move(display_text), kRoleIqNoticeStyle);
                     queue_scene_present();
                 }
             }
@@ -1555,7 +1507,7 @@ SceneStepResult SceneSession::run_event() {
                                    ? std::int16_t{0}
                                    : snapshot_.ranger.roles[0].word(field);
             program_counter_ += 1;
-            queue_notice(
+            queue_notice_utf8(
                 status_notice_message(fame, value), static_cast<std::int16_t>(opcode));
             queue_scene_present();
             return emit_queued();
@@ -1686,7 +1638,7 @@ SceneStepResult SceneSession::run_event() {
             auto shop = current_result(SceneStepKind::shop);
             shop.shop_id = state.shop_id;
             shop.menu_index = state.count > 0U ? 0 : -1;
-            queued_outputs_.push_back(QueuedOutput{shop, {}});
+            queued_outputs_.push_back(QueuedOutput{shop, {}, {}, false});
             return emit_queued();
         }
         case 65: {
@@ -1902,8 +1854,14 @@ void SceneSession::queue_scene_music(const std::size_t metadata_word) {
 }
 
 void SceneSession::cycle_palette() {
-    std::rotate(palette_.begin() + 224, palette_.begin() + 231, palette_.begin() + 232);
-    std::rotate(palette_.begin() + 244, palette_.begin() + 252, palette_.begin() + 253);
+    std::rotate(
+        palette_.begin() + palette_colors::first_palette_cycle_begin,
+        palette_.begin() + palette_colors::first_palette_cycle_pivot,
+        palette_.begin() + palette_colors::first_palette_cycle_end);
+    std::rotate(
+        palette_.begin() + palette_colors::second_palette_cycle_begin,
+        palette_.begin() + palette_colors::second_palette_cycle_pivot,
+        palette_.begin() + palette_colors::second_palette_cycle_end);
 }
 
 void SceneSession::idle_tick() {
@@ -2395,39 +2353,63 @@ void SceneSession::queue_dialogue(
                           : std::vector<std::uint8_t>{0U};
     bool first_page = true;
     for (auto& page : paginate_dialogue(text)) {
-        queued_outputs_.push_back(QueuedOutput{result, std::move(page), !first_page});
+        text::GameText display_text;
+        display_text.append_legacy(text::Big5TextView{page});
+        queued_outputs_.push_back(QueuedOutput{
+            result,
+            std::move(display_text),
+            std::move(page),
+            !first_page,
+        });
         first_page = false;
     }
 }
 
-void SceneSession::queue_notice(
-    std::vector<std::uint8_t> text,
+void SceneSession::queue_notice_utf8(
+    const std::u8string_view text,
+    const std::int16_t style) {
+    text::GameText display_text;
+    display_text.append_utf8(text);
+    queue_notice_mixed(std::move(display_text), style);
+}
+
+void SceneSession::queue_notice_mixed(
+    text::GameText text,
     const std::int16_t style) {
     auto result = current_result(SceneStepKind::notice);
     result.style = style;
-    queued_outputs_.push_back(QueuedOutput{result, std::move(text)});
+    queued_outputs_.push_back(QueuedOutput{result, std::move(text), {}, false});
 }
 
 void SceneSession::queue_item_notice(const std::int16_t item_id) {
-    std::vector<std::uint8_t> text{kItemNoticePrefix.begin(), kItemNoticePrefix.end()};
+    text::GameText display_text;
+    display_text.append_utf8(kItemNoticePrefix);
     if (item_id >= 0 && static_cast<std::size_t>(item_id) < snapshot_.ranger.items.size()) {
         const auto& bytes = snapshot_.ranger.items[static_cast<std::size_t>(item_id)].bytes;
         const auto begin = bytes.begin() + static_cast<std::ptrdiff_t>(model::item_word::name_byte);
         const auto field_end = begin + static_cast<std::ptrdiff_t>(model::item_word::name_bytes);
-        text.insert(text.end(), begin, std::find(begin, field_end, 0U));
+        const auto end = std::find(begin, field_end, 0U);
+        display_text.append_legacy(text::Big5TextView{
+            std::span<const std::uint8_t>{begin, end}});
     }
-    text.push_back(0U);
-    queue_notice(std::move(text), kItemNoticeStyle);
+    queue_notice_mixed(std::move(display_text), kItemNoticeStyle);
 }
 
 void SceneSession::queue_scene_present() {
-    queued_outputs_.push_back(QueuedOutput{current_result(SceneStepKind::present), {}});
+    queued_outputs_.push_back(QueuedOutput{
+        current_result(SceneStepKind::present),
+        {},
+        {},
+        false,
+    });
 }
 
 SceneStepResult SceneSession::emit_queued() {
     if (queued_outputs_.empty()) {
         pending_ = current_result(SceneStepKind::stay);
         pending_text_.clear();
+        pending_encoded_text_.clear();
+        pending_legacy_text_.clear();
         dialogue_base_framebuffer_.reset();
         dialogue_redraw_scene_before_ = false;
         return pending_;
@@ -2436,6 +2418,11 @@ SceneStepResult SceneSession::emit_queued() {
     queued_outputs_.pop_front();
     pending_ = output.result;
     pending_text_ = std::move(output.text);
+    pending_encoded_text_.clear();
+    if (!text::encode_game_text(pending_text_, pending_encoded_text_)) {
+        error_ = "Unable to encode queued scene text as Big5";
+    }
+    pending_legacy_text_ = std::move(output.legacy_text);
     dialogue_base_framebuffer_.reset();
     item_notice_base_framebuffer_.reset();
     dialogue_redraw_scene_before_ =
@@ -2577,7 +2564,7 @@ std::optional<SceneStepResult> SceneSession::advance_three_statue_animation_fram
 }
 
 SceneStepResult SceneSession::start_load_menu() {
-    load_menu_framebuffer_.clear(0U);
+    load_menu_framebuffer_.clear(palette_colors::black);
     load_menu_framebuffer_.set_palette(palette_);
     load_menu_state_ = LoadMenuState{};
     pending_ = current_result(SceneStepKind::fade_from_black);
@@ -2636,34 +2623,41 @@ bool SceneSession::render_load_menu() {
         return false;
     }
     render::Big5GlyphCache cache{big5_font_};
-    const auto draw_text = [this, &cache](
-                               const int x,
-                               const int y,
-                               const std::span<const std::uint8_t> text,
-                               const std::uint16_t colors) {
-        return render::draw_legacy_text(
-            load_menu_framebuffer_, x, y, text, ascii_font_, cache,
-            static_cast<std::uint8_t>(colors & 0xFFU),
-            static_cast<std::uint8_t>(colors >> 8U));
+    const auto draw_text_utf8 = [this, &cache](
+                                    const int x,
+                                    const int y,
+                                    const std::u8string_view text,
+                                    const render::TextColors colors) {
+        return render::draw_text_utf8(
+            load_menu_framebuffer_,
+            x,
+            y,
+            text,
+            ascii_font_,
+            cache,
+            colors);
     };
     if (load_menu_state_->phase == LoadMenuState::Phase::confirm) {
         return draw_panel(load_menu_framebuffer_, 71, 140, 177, 31) &&
-               draw_text(75, 145, kExitPrompt, 0x0705U);
+               draw_text_utf8(75, 145, kExitPrompt, text_colors::notice);
     }
     if (!draw_panel(load_menu_framebuffer_, 109, 40, 101, 90)) {
         return false;
     }
     for (std::size_t index = 0U; index < kProgressMenuItems.size(); ++index) {
-        if (!draw_text(
-                119, 45 + static_cast<int>(index) * 20,
-                kProgressMenuItems[index], 0x2321U)) {
+        if (!draw_text_utf8(
+                119,
+                45 + static_cast<int>(index) * 20,
+                kProgressMenuItems[index],
+                text_colors::menu_normal)) {
             return false;
         }
     }
-    if (!draw_text(
-            119, 45 + static_cast<int>(load_menu_state_->selection) * 20,
+    if (!draw_text_utf8(
+            119,
+            45 + static_cast<int>(load_menu_state_->selection) * 20,
             kProgressMenuItems[static_cast<std::size_t>(load_menu_state_->selection)],
-            0x6663U)) {
+            text_colors::selected)) {
         return false;
     }
     return true;
@@ -2717,7 +2711,7 @@ SceneStepResult SceneSession::advance_death_menu(const int translated_key) {
         if (state.selection < 3) {
             state.selected_slot = state.selection;
             state.phase = DeathMenuState::Phase::load_slot_clear;
-            death_framebuffer_.clear(0U);
+            death_framebuffer_.clear(palette_colors::black);
             death_framebuffer_.set_palette(palette_);
             pending_ = current_result(SceneStepKind::present);
             return pending_;
@@ -2758,7 +2752,7 @@ void SceneSession::blend_panel_rectangle(
     const int y,
     const int width,
     const int height) const {
-    const auto source = palette_[0U];
+    const auto source = palette_[palette_colors::black];
     const auto begin_x = std::max(x, 0);
     const auto end_x = std::min(x + width, render::IndexedFramebuffer::width);
     const auto begin_y = std::max(y, 0);
@@ -2806,7 +2800,11 @@ bool SceneSession::draw_panel_border(
     const int height) const {
     const auto fill = [&framebuffer](const int left, const int top, const int w, const int h) {
         return framebuffer.fill_rectangle(
-            left, top, static_cast<std::uint16_t>(w), static_cast<std::uint16_t>(h), 0xFFU);
+            left,
+            top,
+            static_cast<std::uint16_t>(w),
+            static_cast<std::uint16_t>(h),
+            palette_colors::panel_outline);
     };
     return fill(x + 5, y + 1, width - 10, 1) &&
            fill(x + 4, y + 2, 1, 2) && fill(x + width - 5, y + 2, 1, 2) &&
@@ -2848,48 +2846,70 @@ bool SceneSession::render_death_menu() {
     std::copy(death_image_.begin(), death_image_.end(), death_framebuffer_.pixels().begin());
     death_framebuffer_.set_palette(palette_);
     render::Big5GlyphCache cache{big5_font_};
-    const auto draw_text = [this, &cache](
-                               const int x,
-                               const int y,
-                               const std::span<const std::uint8_t> text,
-                               const std::uint16_t colors) {
-        return render::draw_legacy_text(
-            death_framebuffer_, x, y, text, ascii_font_, cache,
-            static_cast<std::uint8_t>(colors & 0xFFU),
-            static_cast<std::uint8_t>(colors >> 8U));
+    const auto draw_text_big5 = [this, &cache](
+                                    const int x,
+                                    const int y,
+                                    const text::Big5TextView text,
+                                    const render::TextColors colors) {
+        return render::draw_text_big5(
+            death_framebuffer_,
+            x,
+            y,
+            text,
+            ascii_font_,
+            cache,
+            colors);
+    };
+    const auto draw_text_utf8 = [this, &cache](
+                                    const int x,
+                                    const int y,
+                                    const std::u8string_view text,
+                                    const render::TextColors colors) {
+        return render::draw_text_utf8(
+            death_framebuffer_,
+            x,
+            y,
+            text,
+            ascii_font_,
+            cache,
+            colors);
     };
     const auto& protagonist = snapshot_.ranger.roles[0].bytes;
-    std::vector<std::uint8_t> name(
-        protagonist.begin() + static_cast<std::ptrdiff_t>(model::role_word::name_byte),
-        protagonist.end());
-    name.push_back(0U);
-    std::array<std::uint8_t, 32> date{};
+    const auto name = std::span<const std::uint8_t>{protagonist}.subspan(
+        model::role_word::name_byte,
+        model::role_word::name_bytes);
+    std::array<char, 32> date_buffer{};
     std::snprintf(
-        reinterpret_cast<char*>(date.data()), date.size(), "  %4d/%2d/%2d  ",
+        date_buffer.data(), date_buffer.size(), "  %4d/%2d/%2d  ",
         death_menu_state_->year, death_menu_state_->month, death_menu_state_->day);
-    if (!draw_text(97, 46, name, 0x6C6EU) ||
-        !draw_text(190, 8, date, 0x1517U) ||
-        !draw_text(190, 28, kDeathLocationText, 0x1517U) ||
-        !draw_text(190, 48, kDeathMissingText, 0x1517U) ||
-        !draw_text(190, 68, kDeathAnotherText, 0x1517U) ||
+    const auto date = text::utf8_from_ascii(date_buffer.data());
+    if (!draw_text_big5(97, 46, text::Big5TextView{name}, text_colors::death_name) ||
+        !draw_text_utf8(190, 8, date, text_colors::death_detail) ||
+        !draw_text_utf8(190, 28, kDeathLocationText, text_colors::death_detail) ||
+        !draw_text_utf8(190, 48, kDeathMissingText, text_colors::death_detail) ||
+        !draw_text_utf8(190, 68, kDeathAnotherText, text_colors::death_detail) ||
         !draw_death_panel(205, 90, 101, 90)) {
         return false;
     }
     for (std::size_t index = 0U; index < kProgressMenuItems.size(); ++index) {
-        if (!draw_text(215, 95 + static_cast<int>(index) * 20,
-                       kProgressMenuItems[index], 0x2321U)) {
+        if (!draw_text_utf8(
+                215,
+                95 + static_cast<int>(index) * 20,
+                kProgressMenuItems[index],
+                text_colors::menu_normal)) {
             return false;
         }
     }
-    if (!draw_text(
-            215, 95 + static_cast<int>(death_menu_state_->selection) * 20,
+    if (!draw_text_utf8(
+            215,
+            95 + static_cast<int>(death_menu_state_->selection) * 20,
             kProgressMenuItems[static_cast<std::size_t>(death_menu_state_->selection)],
-            0x6663U)) {
+            text_colors::selected)) {
         return false;
     }
     if (death_menu_state_->phase == DeathMenuState::Phase::confirm) {
         return draw_death_panel(71, 180, 177, 20) &&
-               draw_text(75, 182, kExitPrompt, 0x0705U);
+               draw_text_utf8(75, 182, kExitPrompt, text_colors::notice);
     }
     return true;
 }
@@ -2935,7 +2955,7 @@ bool SceneSession::load_ending_assets() {
         return false;
     }
     ending_palette_ = parsed_palette.palette;
-    ending_framebuffer_.clear(0U);
+    ending_framebuffer_.clear(palette_colors::black);
     ending_framebuffer_.set_palette(ending_palette_);
     return true;
 }
@@ -2997,7 +3017,7 @@ bool SceneSession::draw_ending_credits() {
     if (!ending_state_.has_value()) {
         return false;
     }
-    ending_framebuffer_.clear(0U);
+    ending_framebuffer_.clear(palette_colors::black);
     ending_framebuffer_.set_palette(ending_palette_);
     for (std::size_t index = 0U; index < kEndingCreditIds.size(); ++index) {
         if (!draw_ending_word(
@@ -3021,7 +3041,7 @@ SceneStepResult SceneSession::advance_ending() {
     };
     switch (state.phase) {
     case EndingState::Phase::title_draw:
-        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.clear(palette_colors::black);
         ending_framebuffer_.set_palette(ending_palette_);
         if (!draw_ending_word(0, 94, 90)) {
             return fail();
@@ -3035,7 +3055,7 @@ SceneStepResult SceneSession::advance_ending() {
         pending_ = current_result(SceneStepKind::fade_to_black);
         return pending_;
     case EndingState::Phase::word_scroll_setup:
-        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.clear(palette_colors::black);
         ending_framebuffer_.set_palette(ending_palette_);
         if (!draw_ending_word(2, 44, state.word_first_y) ||
             !draw_ending_word(4, 44, state.word_second_y)) {
@@ -3046,7 +3066,7 @@ SceneStepResult SceneSession::advance_ending() {
         return pending_;
     case EndingState::Phase::word_scroll:
         if (state.word_second_y > -130) {
-            ending_framebuffer_.clear(0U);
+            ending_framebuffer_.clear(palette_colors::black);
             ending_framebuffer_.set_palette(ending_palette_);
             if (!draw_ending_word(2, 44, state.word_first_y) ||
                 !draw_ending_word(4, 44, state.word_second_y)) {
@@ -3058,7 +3078,7 @@ SceneStepResult SceneSession::advance_ending() {
             pending_.wait_ticks = legacy_delay_ticks(100);
             return pending_;
         }
-        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.clear(palette_colors::black);
         ending_framebuffer_.set_palette(ending_palette_);
         state.phase = EndingState::Phase::kend_setup;
         pending_ = current_result(SceneStepKind::fade_to_black);
@@ -3087,7 +3107,7 @@ SceneStepResult SceneSession::advance_ending() {
         pending_ = current_result(SceneStepKind::fade_to_black);
         return pending_;
     case EndingState::Phase::credits_setup:
-        ending_framebuffer_.clear(0U);
+        ending_framebuffer_.clear(palette_colors::black);
         ending_framebuffer_.set_palette(ending_palette_);
         for (std::size_t index = 0U; index < 4U; ++index) {
             if (!draw_ending_word(
@@ -3131,7 +3151,7 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
     const auto queue_step = [this](const SceneStepKind kind, const std::uint16_t wait_ticks = 1U) {
         auto step = current_result(kind);
         step.wait_ticks = wait_ticks;
-        queued_outputs_.push_back(QueuedOutput{step, {}});
+        queued_outputs_.push_back(QueuedOutput{step, {}, {}, false});
     };
     while (tournament_trial_state_.has_value()) {
         switch (tournament_trial_state_->phase) {
@@ -3149,7 +3169,7 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
             queue_step(SceneStepKind::present);
             auto battle = current_result(SceneStepKind::battle);
             battle.battle_id = static_cast<std::int16_t>(102 + index);
-            queued_outputs_.push_back(QueuedOutput{battle, {}});
+            queued_outputs_.push_back(QueuedOutput{battle, {}, {}, false});
             tournament_trial_state_->phase = TournamentTrialState::Phase::awaiting_battle;
             return emit_queued();
         }
@@ -3298,6 +3318,8 @@ void SceneSession::clear_event() noexcept {
     event_context_ = {};
     pending_ = current_result(SceneStepKind::stay);
     pending_text_.clear();
+    pending_encoded_text_.clear();
+    pending_legacy_text_.clear();
     item_notice_base_framebuffer_.reset();
     dialogue_base_framebuffer_.reset();
 }
@@ -3470,8 +3492,14 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     if (palette_cycle_after_present()) {
         auto palette = framebuffer.palette();
-        std::rotate(palette.begin() + 224, palette.begin() + 231, palette.begin() + 232);
-        std::rotate(palette.begin() + 244, palette.begin() + 252, palette.begin() + 253);
+        std::rotate(
+            palette.begin() + palette_colors::first_palette_cycle_begin,
+            palette.begin() + palette_colors::first_palette_cycle_pivot,
+            palette.begin() + palette_colors::first_palette_cycle_end);
+        std::rotate(
+            palette.begin() + palette_colors::second_palette_cycle_begin,
+            palette.begin() + palette_colors::second_palette_cycle_pivot,
+            palette.begin() + palette_colors::second_palette_cycle_end);
         framebuffer.set_palette(palette);
     }
     return true;
@@ -3565,15 +3593,27 @@ bool SceneSession::render_shop_overlay(
         std::array<char, 16> formatted_price{};
         std::snprintf(
             formatted_price.data(), formatted_price.size(), "%3d", static_cast<int>(price));
-        const auto price_text = ascii_message(formatted_price.data());
-        const auto selected = index == state.selection;
-        const auto shadow = static_cast<std::uint8_t>(selected ? 0x05U : 0x21U);
-        const auto foreground = static_cast<std::uint8_t>(selected ? 0x07U : 0x23U);
+        const auto price_text = text::utf8_from_ascii(formatted_price.data());
+        const auto colors = index == state.selection
+            ? text_colors::selected
+            : text_colors::menu_normal;
         const auto y = 90 + static_cast<int>(index) * 20;
-        if (!render::draw_legacy_text(
-                framebuffer, 104, y, item_name, ascii_font_, cache, shadow, foreground) ||
-            !render::draw_legacy_text(
-                framebuffer, 200, y, price_text, ascii_font_, cache, shadow, foreground)) {
+        if (!render::draw_text_big5(
+                framebuffer,
+                104,
+                y,
+                text::Big5TextView{item_name},
+                ascii_font_,
+                cache,
+                colors) ||
+            !render::draw_text_utf8(
+                framebuffer,
+                200,
+                y,
+                price_text,
+                ascii_font_,
+                cache,
+                colors)) {
             return false;
         }
     }
@@ -3638,21 +3678,23 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
             return false;
         }
         render::Big5GlyphCache cache{big5_font_};
-        return render::draw_legacy_text(
-            framebuffer, 71, 45, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+        return render::draw_text_mixed(
+            framebuffer,
+            71,
+            45,
+            pending_text_,
+            ascii_font_,
+            cache,
+            text_colors::notice);
     }
     if (pending_.kind == SceneStepKind::notice &&
         pending_.style == kRoleIqNoticeStyle) {
-        const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
-        auto layout_length = static_cast<int>(
-            std::distance(pending_text_.begin(), terminator));
-        while (layout_length > 0 &&
-               pending_text_[static_cast<std::size_t>(layout_length - 1)] >=
-                   static_cast<std::uint8_t>('0') &&
-               pending_text_[static_cast<std::size_t>(layout_length - 1)] <=
-                   static_cast<std::uint8_t>('9')) {
-            --layout_length;
+        const auto total_width = pending_text_.legacy_width_units();
+        if (!total_width.has_value()) {
+            return false;
         }
+        const auto layout_length = static_cast<int>(
+            *total_width - pending_text_.trailing_ascii_digit_count());
         const auto x = 150 - (4 * layout_length + 24);
         constexpr int y = 40;
         const auto width = 8 * layout_length + 68;
@@ -3660,32 +3702,38 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
             return false;
         }
         render::Big5GlyphCache cache{big5_font_};
-        return render::draw_legacy_text(
-            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+        return render::draw_text_mixed(
+            framebuffer,
+            x + 10,
+            y + 5,
+            pending_text_,
+            ascii_font_,
+            cache,
+            text_colors::notice);
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == kItemNoticeStyle ||
          pending_.style == kLearnMagicNoticeStyle)) {
-        const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
-        const auto text_length = static_cast<int>(
-            std::distance(pending_text_.begin(), terminator));
-        const auto fixed_length = pending_.style == kItemNoticeStyle
-                                      ? static_cast<int>(kItemNoticePrefix.size())
-                                      : static_cast<int>(kLearnMagicNoticeInfix.size());
-        const auto name_length = std::max(0, text_length - fixed_length);
-        const auto x = pending_.style == kItemNoticeStyle
-                           ? 150 - (4 * name_length + 16)
-                           : 150 - (4 * name_length + 24);
+        const auto text_width = pending_text_.legacy_width_units();
+        if (!text_width.has_value()) {
+            return false;
+        }
+        const auto width_units = static_cast<int>(*text_width);
+        const auto x = 150 - 4 * width_units;
         constexpr int y = 40;
-        const auto width = pending_.style == kItemNoticeStyle
-                               ? 8 * name_length + 52
-                               : 8 * name_length + 68;
+        const auto width = 8 * width_units + 20;
         if (!draw_panel(framebuffer, x, y, width, 27)) {
             return false;
         }
         render::Big5GlyphCache cache{big5_font_};
-        return render::draw_legacy_text(
-            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+        return render::draw_text_mixed(
+            framebuffer,
+            x + 10,
+            y + 5,
+            pending_text_,
+            ascii_font_,
+            cache,
+            text_colors::notice);
     }
     if (pending_.kind == SceneStepKind::notice &&
         (pending_.style == 52 || pending_.style == 53)) {
@@ -3699,25 +3747,38 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
             return true;
         }
         render::Big5GlyphCache cache{big5_font_};
-        return render::draw_legacy_text(
-            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+        return render::draw_text_mixed(
+            framebuffer,
+            x + 10,
+            y + 5,
+            pending_text_,
+            ascii_font_,
+            cache,
+            text_colors::notice);
     }
     if (pending_.kind == SceneStepKind::scene_title) {
-        const auto terminator = std::find(pending_text_.begin(), pending_text_.end(), 0U);
+        const auto terminator = std::find(
+            pending_legacy_text_.begin(), pending_legacy_text_.end(), 0U);
         const auto length = static_cast<int>(
-            std::distance(pending_text_.begin(), terminator));
+            std::distance(pending_legacy_text_.begin(), terminator));
         const auto x = 150 - 4 * length;
         constexpr int y = 10;
         const auto width = 8 * length + 20;
         if (!draw_panel(framebuffer, x, y, width, 27)) {
             return false;
         }
-        if (pending_text_.empty()) {
+        if (pending_legacy_text_.empty()) {
             return true;
         }
         render::Big5GlyphCache cache{big5_font_};
-        return render::draw_legacy_text(
-            framebuffer, x + 10, y + 5, pending_text_, ascii_font_, cache, 0x05U, 0x07U);
+        return render::draw_text_big5(
+            framebuffer,
+            x + 10,
+            y + 5,
+            text::Big5TextView{pending_legacy_text_},
+            ascii_font_,
+            cache,
+            text_colors::notice);
     }
     int x = 54;
     int y = 40;
@@ -3771,18 +3832,21 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         }
         text_x = x + 13;
     } else if (!framebuffer.fill_rectangle(
-                   x, y, static_cast<std::uint16_t>(width),
-                   static_cast<std::uint16_t>(height), 0U)) {
+                   x,
+                   y,
+                   static_cast<std::uint16_t>(width),
+                   static_cast<std::uint16_t>(height),
+                   palette_colors::black)) {
         return false;
     }
-    if (pending_text_.empty()) {
+    if (pending_legacy_text_.empty()) {
         return true;
     }
     render::Big5GlyphCache cache{big5_font_};
     std::vector<std::uint8_t> line;
-    line.reserve(pending_text_.size());
+    line.reserve(pending_legacy_text_.size());
     int line_index = 0;
-    for (const auto value : pending_text_) {
+    for (const auto value : pending_legacy_text_) {
         if (value != static_cast<std::uint8_t>('*') && value != 0U) {
             line.push_back(value);
             continue;
@@ -3793,20 +3857,18 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
                                         framebuffer,
                                         text_x,
                                         y + 3 + line_index * 17,
-                                        line,
+                                        text::Big5TextView{line},
                                         ascii_font_,
                                         cache,
-                                        0U,
-                                        100U)
-                                  : render::draw_legacy_text(
+                                        text_colors::scene_dialogue)
+                                  : render::draw_text_big5(
                                         framebuffer,
                                         text_x,
                                         y + 3 + line_index * 17,
-                                        line,
+                                        text::Big5TextView{line},
                                         ascii_font_,
                                         cache,
-                                        0x17U,
-                                        0x15U);
+                                        text_colors::death_detail);
         if (!rendered) {
             return false;
         }

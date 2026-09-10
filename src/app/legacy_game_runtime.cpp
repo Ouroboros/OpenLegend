@@ -9,7 +9,9 @@
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
+#include "openlegend/text/game_strings.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -20,8 +22,14 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
 
 void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     auto palette = framebuffer.palette();
-    std::rotate(palette.begin() + 224, palette.begin() + 231, palette.begin() + 232);
-    std::rotate(palette.begin() + 244, palette.begin() + 252, palette.begin() + 253);
+    std::rotate(
+        palette.begin() + render::legacy_color::first_palette_cycle_begin,
+        palette.begin() + render::legacy_color::first_palette_cycle_pivot,
+        palette.begin() + render::legacy_color::first_palette_cycle_end);
+    std::rotate(
+        palette.begin() + render::legacy_color::second_palette_cycle_begin,
+        palette.begin() + render::legacy_color::second_palette_cycle_pivot,
+        palette.begin() + render::legacy_color::second_palette_cycle_end);
     framebuffer.set_palette(palette);
 }
 
@@ -238,7 +246,7 @@ LegacyGameRuntime::LegacyGameRuntime(
         startup_error_ = "Unable to render title background";
     }
     if (startup_error_.empty()) {
-        framebuffer_.clear(0U);
+        framebuffer_.clear(render::legacy_color::black);
         title_startup_phase_ = TitleStartupPhase::fade_to_black;
         begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
         diagnostics::log_info("LegacyGameRuntime initialized view=title");
@@ -1866,7 +1874,7 @@ bool LegacyGameRuntime::advance_scene_effect() {
             pending_io_ = PendingIo::load;
             pending_io_wait_presented_ = true;
             error_return_view_ = LegacyGameView::world;
-            framebuffer_.clear(0U);
+            framebuffer_.clear(render::legacy_color::black);
             perform_pending_io();
         }
     } else if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {

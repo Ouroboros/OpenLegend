@@ -6,11 +6,13 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -88,12 +90,24 @@ public:
         int y,
         std::uint16_t width,
         std::uint16_t height) const noexcept;
-    [[nodiscard]] bool draw_text(
+    [[nodiscard]] bool draw_text_utf8(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
-        std::span<const std::uint8_t> text,
-        std::uint16_t packed_colors = 0x0705U);
+        std::u8string_view text,
+        render::TextColors colors = render::legacy_color::text::notice);
+    [[nodiscard]] bool draw_text_mixed(
+        render::IndexedFramebuffer& framebuffer,
+        int x,
+        int y,
+        const text::GameText& text,
+        render::TextColors colors = render::legacy_color::text::notice);
+    [[nodiscard]] bool draw_text_big5(
+        render::IndexedFramebuffer& framebuffer,
+        int x,
+        int y,
+        text::Big5TextView text,
+        render::TextColors colors = render::legacy_color::text::notice);
     [[nodiscard]] bool draw_portrait(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t portrait_id,
@@ -124,7 +138,7 @@ private:
         std::int32_t legacy_id,
         int anchor_x,
         int anchor_y,
-        std::uint8_t color) const;
+        render::PaletteIndex color) const;
     [[nodiscard]] bool draw_cursor_overlay(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t variant,

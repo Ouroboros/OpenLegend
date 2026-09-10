@@ -443,7 +443,7 @@ private:
         bool ai_controlled{};
         std::optional<BattlePathCoord> target;
         std::int16_t direction{-1};
-        std::vector<std::uint8_t> level_text;
+        text::GameText level_text;
     };
 
     struct PlayerItemState {
