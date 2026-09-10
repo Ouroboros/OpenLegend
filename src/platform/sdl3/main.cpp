@@ -61,9 +61,9 @@ constexpr std::chrono::nanoseconds kDefaultFadeFrameDelay{14'268'123};
 }
 
 [[nodiscard]] bool accepts_movement_repeat(
-    const openlegend::app::LegacyGameView view) noexcept {
-    return view == openlegend::app::LegacyGameView::world ||
-        view == openlegend::app::LegacyGameView::scene;
+    const openlegend::app::LegacyGameRuntime& game) noexcept {
+    return game.view() == openlegend::app::LegacyGameView::world ||
+        game.scene_loop_uses_key_states();
 }
 
 [[nodiscard]] std::uint64_t current_process_id() noexcept {
@@ -492,9 +492,11 @@ int main(const int argc, const char* const* argv) {
                 diagnostics::log_info("host quit event");
                 running = false;
             } else if (event.type == compat::HostEventType::key_down) {
+                const bool movement_direction = is_movement_direction_key(event.key);
                 const bool controlled_direction =
-                    is_movement_direction_key(event.key) &&
-                    accepts_movement_repeat(game.view());
+                    movement_direction && accepts_movement_repeat(game);
+                const bool held_controlled_direction = movement_direction &&
+                    held_movement_direction == event.key;
                 const bool controlled_save_list_page =
                     is_save_list_page_key(event.key) && game.save_list_active();
                 if (controlled_direction && !event.repeat) {
@@ -509,7 +511,8 @@ int main(const int argc, const char* const* argv) {
                         input_now + input_configuration.movement_repeat_delay;
                     save_list_page_key_pressed = true;
                 }
-                if ((!controlled_direction && !controlled_save_list_page) ||
+                if ((!controlled_direction && !held_controlled_direction &&
+                     !controlled_save_list_page) ||
                     !event.repeat) {
                     dispatch_key_down(event.key, event.repeat, frame_tick);
                 }
@@ -527,7 +530,7 @@ int main(const int argc, const char* const* argv) {
             sync_scene_input_reset();
             sync_battle_confirmation();
         }
-        if (!accepts_movement_repeat(game.view())) {
+        if (!accepts_movement_repeat(game)) {
             if (held_movement_direction.has_value()) {
                 movement_repeat_at =
                     input_now + input_configuration.movement_repeat_delay;
