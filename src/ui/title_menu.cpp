@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
@@ -10,15 +11,9 @@
 namespace openlegend::ui {
 namespace {
 
-constexpr std::uint8_t kEnter = 0x0DU;
-constexpr std::uint8_t kEscape = 0x1BU;
-constexpr std::uint8_t kSpace = 0x20U;
-constexpr std::uint8_t kKeypadInsert = 0x96U;
-constexpr std::uint8_t kDown = 0x98U;
-constexpr std::uint8_t kUp = 0x9EU;
-
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
-    return key == kEnter || key == kSpace || key == kKeypadInsert;
+    return key == input::legacy_key::enter || key == input::legacy_key::space ||
+        key == input::legacy_key::keypad_insert;
 }
 
 void move_down(std::uint8_t& selection) noexcept {
@@ -37,16 +32,17 @@ TitleResult TitleMenuController::handle_key(const std::uint8_t translated_key) n
     }
 
     auto& selection = screen_ == TitleScreen::main ? main_selection_ : slot_selection_;
-    if (translated_key == kDown) {
+    if (translated_key == input::legacy_key::down) {
         move_down(selection);
         return {};
     }
-    if (translated_key == kUp) {
+    if (translated_key == input::legacy_key::up) {
         move_up(selection);
         return {};
     }
 
-    if (screen_ == TitleScreen::load_slots && translated_key == kEscape) {
+    if (screen_ == TitleScreen::load_slots &&
+        translated_key == input::legacy_key::escape) {
         screen_ = TitleScreen::main;
         main_selection_ = 1U;
         return {};

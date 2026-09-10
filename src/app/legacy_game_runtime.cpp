@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/render/legacy_color.hpp"
@@ -120,10 +121,14 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
 
 [[nodiscard]] constexpr LegacyKeyStateReset menu_key_state_reset(
     const std::uint8_t translated_key) noexcept {
-    if (translated_key == 0x0DU || translated_key == 0x20U || translated_key == 0x96U) {
+    if (translated_key == input::legacy_key::enter ||
+        translated_key == input::legacy_key::space ||
+        translated_key == input::legacy_key::keypad_insert) {
         return LegacyKeyStateReset::confirmation_group;
     }
-    if (translated_key == 0x98U || translated_key == 0x9EU || translated_key == 0x1BU) {
+    if (translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::up ||
+        translated_key == input::legacy_key::escape) {
         return LegacyKeyStateReset::translated;
     }
     return LegacyKeyStateReset::none;
@@ -131,7 +136,8 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
 
 [[nodiscard]] constexpr LegacyKeyStateReset main_game_menu_key_state_reset(
     const std::uint8_t translated_key) noexcept {
-    if (translated_key == 0x98U || translated_key == 0x9EU) {
+    if (translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::up) {
         return LegacyKeyStateReset::down_translated;
     }
     return menu_key_state_reset(translated_key);
@@ -139,14 +145,18 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
 
 [[nodiscard]] constexpr bool is_item_page_navigation_key(
     const std::uint8_t translated_key) noexcept {
-    return translated_key == 0x98U || translated_key == 0x99U ||
-        translated_key == 0x9AU || translated_key == 0x9CU ||
-        translated_key == 0x9EU || translated_key == 0x9FU;
+    return translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::page_down ||
+        translated_key == input::legacy_key::left ||
+        translated_key == input::legacy_key::right ||
+        translated_key == input::legacy_key::up ||
+        translated_key == input::legacy_key::page_up;
 }
 
 [[nodiscard]] constexpr bool is_item_party_navigation_key(
     const std::uint8_t translated_key) noexcept {
-    return translated_key == 0x98U || translated_key == 0x9EU;
+    return translated_key == input::legacy_key::down ||
+        translated_key == input::legacy_key::up;
 }
 
 }  // namespace

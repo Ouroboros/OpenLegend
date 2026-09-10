@@ -2,23 +2,14 @@
 
 #include <algorithm>
 
+#include "openlegend/input/legacy_key.hpp"
+
 namespace openlegend::ui {
 namespace {
 
-constexpr std::uint8_t kEnter = 0x0DU;
-constexpr std::uint8_t kEscape = 0x1BU;
-constexpr std::uint8_t kSpace = 0x20U;
-constexpr std::uint8_t kY = 0x59U;
-constexpr std::uint8_t kKeypadInsert = 0x96U;
-constexpr std::uint8_t kDown = 0x98U;
-constexpr std::uint8_t kPageDown = 0x99U;
-constexpr std::uint8_t kLeft = 0x9AU;
-constexpr std::uint8_t kRight = 0x9CU;
-constexpr std::uint8_t kUp = 0x9EU;
-constexpr std::uint8_t kPageUp = 0x9FU;
-
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
-    return key == kEnter || key == kSpace || key == kKeypadInsert;
+    return key == input::legacy_key::enter || key == input::legacy_key::space ||
+        key == input::legacy_key::keypad_insert;
 }
 
 template <typename Integer>
@@ -126,7 +117,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
     }
     if (screen_ == GameMenuScreen::quit_confirmation) {
         screen_ = GameMenuScreen::system;
-        if (translated_key == kY) {
+        if (translated_key == input::legacy_key::yes) {
             return {GameMenuCommand::exit_game, 0U, 0U};
         }
         return {};
@@ -152,7 +143,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         return {};
     }
 
-    if (translated_key == kDown) {
+    if (translated_key == input::legacy_key::down) {
         switch (screen_) {
         case GameMenuScreen::main: move_down(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_down(party_selection_, party_option_count_); break;
@@ -175,7 +166,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
         return {};
     }
-    if (translated_key == kUp) {
+    if (translated_key == input::legacy_key::up) {
         switch (screen_) {
         case GameMenuScreen::main: move_up(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_up(party_selection_, party_option_count_); break;
@@ -198,7 +189,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
         return {};
     }
-    if (translated_key == kEscape) {
+    if (translated_key == input::legacy_key::escape) {
         switch (screen_) {
         case GameMenuScreen::main: return {GameMenuCommand::resume, 0U, 0U};
         case GameMenuScreen::party_select:
@@ -227,21 +218,21 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
     }
     if (screen_ == GameMenuScreen::items) {
-        if (translated_key == kLeft) {
+        if (translated_key == input::legacy_key::left) {
             item_column_ = item_column_ == 0U ? 4U : static_cast<std::uint8_t>(item_column_ - 1U);
             return {};
         }
-        if (translated_key == kRight) {
+        if (translated_key == input::legacy_key::right) {
             item_column_ = item_column_ == 4U ? 0U : static_cast<std::uint8_t>(item_column_ + 1U);
             return {};
         }
-        if (translated_key == kPageDown) {
+        if (translated_key == input::legacy_key::page_down) {
             if (item_page_ < 35U) {
                 item_page_ = static_cast<std::uint8_t>(item_page_ + 3U);
             }
             return {};
         }
-        if (translated_key == kPageUp) {
+        if (translated_key == input::legacy_key::page_up) {
             if (item_page_ > 2U) {
                 item_page_ = static_cast<std::uint8_t>(item_page_ - 3U);
             }
@@ -249,7 +240,8 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
     }
     if (!confirms(translated_key) ||
-        (screen_ == GameMenuScreen::items && translated_key == kKeypadInsert)) {
+        (screen_ == GameMenuScreen::items &&
+         translated_key == input::legacy_key::keypad_insert)) {
         return {};
     }
 

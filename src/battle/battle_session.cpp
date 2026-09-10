@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/legacy_key.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
@@ -19,20 +20,10 @@
 namespace openlegend::battle {
 namespace {
 
+using namespace input::legacy_key;
 using namespace openlegend::text::game_strings;
 namespace palette_colors = render::legacy_color;
 namespace text_colors = render::legacy_color::text;
-
-constexpr std::uint8_t kEnter = 0x0DU;
-constexpr std::uint8_t kSpace = 0x20U;
-constexpr std::uint8_t kEscape = 0x1BU;
-constexpr std::uint8_t kKeypadInsert = 0x96U;
-constexpr std::uint8_t kDown = 0x98U;
-constexpr std::uint8_t kPageDown = 0x99U;
-constexpr std::uint8_t kLeft = 0x9AU;
-constexpr std::uint8_t kRight = 0x9CU;
-constexpr std::uint8_t kUp = 0x9EU;
-constexpr std::uint8_t kPageUp = 0x9FU;
 [[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == kEnter || key == kSpace || key == kKeypadInsert;
 }

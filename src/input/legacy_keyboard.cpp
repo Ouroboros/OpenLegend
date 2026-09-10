@@ -157,7 +157,7 @@ void LegacyKeyboard::consume_edge(const std::uint8_t translated_key) noexcept {
 }
 
 void LegacyKeyboard::clear_confirmation_states() noexcept {
-    for (const auto translated_key : kLegacyConfirmationKeys) {
+    for (const auto translated_key : legacy_key::confirmation) {
         clear_state(translated_key);
     }
 }
@@ -166,16 +166,16 @@ LegacyWorldDirectionInput LegacyKeyboard::world_direction() const noexcept {
     const auto any_down = [this](const auto& keys) {
         return down(keys[0]) || down(keys[1]);
     };
-    if (any_down(kLegacyWorldLeftKeys)) {
+    if (any_down(legacy_key::world_left)) {
         return LegacyWorldDirectionInput::left;
     }
-    if (any_down(kLegacyWorldUpKeys)) {
+    if (any_down(legacy_key::world_up)) {
         return LegacyWorldDirectionInput::up;
     }
-    if (any_down(kLegacyWorldDownKeys)) {
+    if (any_down(legacy_key::world_down)) {
         return LegacyWorldDirectionInput::down;
     }
-    if (any_down(kLegacyWorldRightKeys)) {
+    if (any_down(legacy_key::world_right)) {
         return LegacyWorldDirectionInput::right;
     }
     return LegacyWorldDirectionInput::none;
@@ -188,16 +188,16 @@ void LegacyKeyboard::consume_world_direction(const LegacyWorldDirectionInput dir
     };
     switch (direction) {
     case LegacyWorldDirectionInput::left:
-        clear_pair(kLegacyWorldLeftKeys);
+        clear_pair(legacy_key::world_left);
         break;
     case LegacyWorldDirectionInput::up:
-        clear_pair(kLegacyWorldUpKeys);
+        clear_pair(legacy_key::world_up);
         break;
     case LegacyWorldDirectionInput::down:
-        clear_pair(kLegacyWorldDownKeys);
+        clear_pair(legacy_key::world_down);
         break;
     case LegacyWorldDirectionInput::right:
-        clear_pair(kLegacyWorldRightKeys);
+        clear_pair(legacy_key::world_right);
         break;
     case LegacyWorldDirectionInput::none:
         break;
