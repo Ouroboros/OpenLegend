@@ -1,4 +1,13 @@
-add_executable(openlegend main.cpp sdl_audio_device.cpp sdl_runtime_platform.cpp)
+add_executable(
+    openlegend
+    frame_presenter.cpp
+    legacy_input_coordinator.cpp
+    legacy_runtime_loop.cpp
+    main.cpp
+    sdl_application.cpp
+    sdl_audio_device.cpp
+    sdl_runtime_platform.cpp
+)
 target_include_directories(openlegend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(
     openlegend
