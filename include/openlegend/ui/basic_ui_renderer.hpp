@@ -26,35 +26,49 @@ public:
     explicit BasicUiRenderer(const resource::DataRoot& data_root);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
 
     [[nodiscard]] bool render_name_entry(
         const TitleMenuRenderer& title,
         const NewGameNameEditor& editor,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_attributes(
         const TitleMenuRenderer& title,
         const model::RoleRecord& protagonist,
         std::span<const std::uint8_t> name,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_game_menu(
         const GameMenuController& menu,
         const model::RangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_game_menu_main(
         const GameMenuController& menu,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_save_list(
         SaveListMode mode,
         std::uint16_t selection,
         std::span<const SaveListEntry> entries,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_save_delete_confirmation(
         std::uint16_t selection,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_io_wait(render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_error(
         std::span<const std::uint8_t> legacy_message,
+        render::IndexedFramebuffer& framebuffer);
+
+    [[nodiscard]] bool render_location_status(
+        std::span<const std::uint8_t> legacy_name,
+        int location_x,
+        int location_y,
         render::IndexedFramebuffer& framebuffer);
 
 private:
@@ -64,34 +78,41 @@ private:
         int y,
         std::u8string_view text,
         render::TextColors colors = render::legacy_color::text::normal);
+
     [[nodiscard]] bool draw_text_mixed(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         const text::GameText& text,
         render::TextColors colors = render::legacy_color::text::normal);
+
     [[nodiscard]] bool draw_text_big5(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         text::Big5TextView text,
         render::TextColors colors = render::legacy_color::text::normal);
+
     [[nodiscard]] bool draw_box(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         std::uint16_t width,
         std::uint16_t height);
+
     [[nodiscard]] bool render_items(
         const GameMenuController& menu,
         const model::RangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool draw_item_icon(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t item_id,
         int x,
         int y) const;
+
     void update_panel_palette(const compat::LegacyPalette& palette) noexcept;
+
     [[nodiscard]] std::uint8_t blend_panel_pixel(
         std::uint8_t destination) const noexcept;
 

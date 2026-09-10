@@ -58,6 +58,7 @@ inline constexpr TextColors negative_value{0x14U, 0x10U};
 inline constexpr TextColors severe_injury{0x16U, 0x14U};
 inline constexpr TextColors death_detail{0x17U, 0x15U};
 inline constexpr TextColors normal{0x15U, 0x17U};
+inline constexpr TextColors location_status = notice;
 inline constexpr TextColors new_game_prompt_inactive = normal;
 inline constexpr TextColors attribute_normal = normal;
 inline constexpr TextColors candidate{0x19U, 0x17U};

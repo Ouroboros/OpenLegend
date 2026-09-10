@@ -476,32 +476,31 @@ SceneStepResult SceneSession::current_result(const SceneStepKind kind) const noe
     return result;
 }
 
+text::Big5TextView SceneSession::scene_name() const noexcept {
+    if (scene_id_ < 0 ||
+        static_cast<std::size_t>(scene_id_) >= snapshot_.ranger.scenes.size()) {
+        return text::Big5TextView{std::span<const std::uint8_t>{}};
+    }
+    const auto& bytes =
+        snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].bytes;
+    const auto source = std::span<const std::uint8_t>{bytes}.subspan(2U, 10U);
+    const auto end = std::find(source.begin(), source.end(), 0U);
+    return text::Big5TextView{
+        source.first(static_cast<std::size_t>(std::distance(source.begin(), end)))};
+}
+
 SceneStepResult SceneSession::show_scene_title() {
     pending_ = current_result(SceneStepKind::scene_title);
     pending_text_.clear();
     pending_encoded_text_.clear();
     pending_legacy_text_.clear();
     scene_title_base_framebuffer_.reset();
-    if (static_cast<std::size_t>(scene_id_) < snapshot_.ranger.scenes.size()) {
-        const auto& bytes = snapshot_.ranger.scenes[static_cast<std::size_t>(scene_id_)].bytes;
-        const auto begin = bytes.begin() + 2;
-        const auto end = std::find(begin, bytes.begin() + 12, 0U);
-        pending_legacy_text_.assign(begin, end);
-        pending_text_.append_legacy(text::Big5TextView{pending_legacy_text_});
-        static_cast<void>(text::encode_game_text(pending_text_, pending_encoded_text_));
-        pending_legacy_text_.push_back(0U);
-    }
-    scene_title_legacy_text_ = pending_legacy_text_;
-    scene_title_overlay_visible_ = true;
-    retain_scene_title_overlay_on_resume_ = false;
+    const auto name = scene_name().bytes();
+    pending_legacy_text_.assign(name.begin(), name.end());
+    pending_text_.append_legacy(text::Big5TextView{pending_legacy_text_});
+    static_cast<void>(text::encode_game_text(pending_text_, pending_encoded_text_));
+    pending_legacy_text_.push_back(0U);
     return pending_;
-}
-
-void SceneSession::hide_scene_title_overlay() noexcept {
-    scene_title_overlay_visible_ = false;
-    retain_scene_title_overlay_on_resume_ = false;
-    scene_title_legacy_text_.clear();
-    scene_title_base_framebuffer_.reset();
 }
 
 bool SceneSession::load_scene_sprites() {
@@ -747,14 +746,6 @@ bool SceneSession::prepare_event(
     return true;
 }
 
-SceneStepResult SceneSession::resume_scene_title_as_overlay() {
-    if (pending_.kind != SceneStepKind::scene_title) {
-        return pending_;
-    }
-    retain_scene_title_overlay_on_resume_ = true;
-    return resume(SceneResponse::acknowledge);
-}
-
 SceneStepResult SceneSession::resume(const SceneResponse response, const int value) {
     if (!valid()) {
         return current_result(SceneStepKind::stay);
@@ -802,10 +793,6 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         return show_scene_title();
     }
     if (previous_kind == SceneStepKind::scene_title) {
-        if (!retain_scene_title_overlay_on_resume_) {
-            hide_scene_title_overlay();
-        }
-        retain_scene_title_overlay_on_resume_ = false;
         continuation_ = PendingContinuation::scene_title;
         pending_ = current_result(SceneStepKind::present);
         return pending_;
@@ -3509,9 +3496,7 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     dialogue_base_framebuffer_.reset();
     item_notice_base_framebuffer_.reset();
-    if (!render_map(framebuffer) || !draw_overlay(framebuffer) ||
-        (scene_title_overlay_visible_ &&
-         !draw_scene_title_overlay(framebuffer))) {
+    if (!render_map(framebuffer) || !draw_overlay(framebuffer)) {
         return false;
     }
     if (palette_cycle_after_present()) {
@@ -3684,32 +3669,6 @@ bool SceneSession::draw_portrait(
     return true;
 }
 
-bool SceneSession::draw_scene_title_overlay(
-    render::IndexedFramebuffer& framebuffer) const {
-    const auto terminator = std::find(
-        scene_title_legacy_text_.begin(), scene_title_legacy_text_.end(), 0U);
-    const auto length = static_cast<int>(
-        std::distance(scene_title_legacy_text_.begin(), terminator));
-    const auto x = 150 - 4 * length;
-    constexpr int y = 10;
-    const auto width = 8 * length + 20;
-    if (!draw_panel(framebuffer, x, y, width, 27)) {
-        return false;
-    }
-    if (scene_title_legacy_text_.empty()) {
-        return true;
-    }
-    render::Big5GlyphCache cache{big5_font_};
-    return render::draw_text_big5(
-        framebuffer,
-        x + 10,
-        y + 5,
-        text::Big5TextView{scene_title_legacy_text_},
-        ascii_font_,
-        cache,
-        text_colors::notice);
-}
-
 bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
     if (pending_.kind == SceneStepKind::stay || pending_.kind == SceneStepKind::moved ||
         pending_.kind == SceneStepKind::present || pending_.kind == SceneStepKind::wait_key ||
@@ -3807,7 +3766,28 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
             text_colors::notice);
     }
     if (pending_.kind == SceneStepKind::scene_title) {
-        return draw_scene_title_overlay(framebuffer);
+        const auto terminator = std::find(
+            pending_legacy_text_.begin(), pending_legacy_text_.end(), 0U);
+        const auto length = static_cast<int>(
+            std::distance(pending_legacy_text_.begin(), terminator));
+        const auto x = 150 - 4 * length;
+        constexpr int y = 10;
+        const auto width = 8 * length + 20;
+        if (!draw_panel(framebuffer, x, y, width, 27)) {
+            return false;
+        }
+        if (pending_legacy_text_.empty()) {
+            return true;
+        }
+        render::Big5GlyphCache cache{big5_font_};
+        return render::draw_text_big5(
+            framebuffer,
+            x + 10,
+            y + 5,
+            text::Big5TextView{pending_legacy_text_},
+            ascii_font_,
+            cache,
+            text_colors::notice);
     }
     int x = 54;
     int y = 40;

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -38,12 +39,6 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.scene_session_ != nullptr
             ? runtime.scene_session_->pending().kind
             : scene::SceneStepKind::stay;
-    }
-
-    static bool scene_title_overlay_visible(
-        const LegacyGameRuntime& runtime) noexcept {
-        return runtime.scene_session_ != nullptr &&
-            runtime.scene_session_->scene_title_overlay_visible();
     }
 
     static std::int16_t scene_player_frame(
@@ -497,27 +492,16 @@ void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
         game.advance();
     }
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::scene);
+    OL_CHECK(
+        openlegend::app::LegacyGameRuntimeTestAccess::scene_pending_kind(game) !=
+        openlegend::scene::SceneStepKind::scene_title);
     OL_CHECK(!game.scene_loop_uses_key_states());
-    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
-                 scene_title_overlay_visible(game));
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(
         game.handle_key(0x0DU, false, false) ==
         openlegend::app::LegacyKeyStateReset::none);
-    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
-                 scene_title_overlay_visible(game));
     game.advance(100U);
-    OL_CHECK(game.scene_loop_uses_key_states());
-    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
-                 scene_title_overlay_visible(game));
-    game.advance(100U + openlegend::app::kSceneTitleDurationBiosTicks - 1U);
-    OL_CHECK(openlegend::app::LegacyGameRuntimeTestAccess::
-                 scene_title_overlay_visible(game));
-    game.advance(100U + openlegend::app::kSceneTitleDurationBiosTicks);
-    OL_CHECK(!openlegend::app::LegacyGameRuntimeTestAccess::
-                  scene_title_overlay_visible(game));
-    advance_rendered_frames(game, 1U);
     OL_CHECK(game.scene_loop_uses_key_states());
 }
 
@@ -3411,6 +3395,31 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     ui::BasicUiRenderer basic_renderer{resource::DataRoot{data_root}};
     OL_CHECK(basic_renderer.valid());
+
+    const std::array<std::uint8_t, 2> location_name{'A', 'B'};
+    framebuffer.clear(0U);
+    OL_CHECK(basic_renderer.render_location_status(
+        location_name, 12, 34, framebuffer));
+    std::size_t location_ink = 0U;
+    bool location_ink_outside_bounds = false;
+    for (int y = 0; y < render::IndexedFramebuffer::height; ++y) {
+        for (int x = 0; x < render::IndexedFramebuffer::width; ++x) {
+            if (framebuffer.row(y)[x] == 0U) {
+                continue;
+            }
+            ++location_ink;
+            location_ink_outside_bounds = location_ink_outside_bounds ||
+                x < 4 || y < render::IndexedFramebuffer::height - 20 ||
+                y >= render::IndexedFramebuffer::height - 4;
+        }
+    }
+    OL_CHECK(location_ink > 0U);
+    OL_CHECK(!location_ink_outside_bounds);
+    const auto scene_location_pixels = fnv1a64(framebuffer.pixels());
+    framebuffer.clear(0U);
+    OL_CHECK(basic_renderer.render_location_status(
+        std::span<const std::uint8_t>{}, 12, 34, framebuffer));
+    OL_CHECK(fnv1a64(framebuffer.pixels()) != scene_location_pixels);
 
     std::array<ui::SaveListEntry, ui::kSaveListPageSize> save_entries{};
     for (std::size_t row = 0U; row < save_entries.size(); ++row) {

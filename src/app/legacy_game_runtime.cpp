@@ -17,7 +17,6 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/text/game_strings.hpp"
-#include "openlegend/time/legacy_clock.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -25,13 +24,6 @@ namespace {
 constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
     1, 2, 9, 16, 17, 25, 28, 29, 35, 36, 37, 38, 44,
     45, 47, 48, 49, 51, 53, 54, 58, 59, 61, 63, 76};
-
-[[nodiscard]] std::uint32_t elapsed_bios_ticks(
-    const std::uint32_t start,
-    const std::uint32_t current) noexcept {
-    return current >= start ? current - start
-                            : timing::kBiosTicksPerDay - start + current;
-}
 
 void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     auto palette = framebuffer.palette();
@@ -423,7 +415,6 @@ bool LegacyGameRuntime::take_clear_battle_confirmation_states_request() noexcept
 }
 
 void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
-    update_scene_title_overlay(bios_tick);
     if (pending_io_ != PendingIo::none) {
         if (!pending_io_wait_presented_) {
             world_step_processed_ = false;
@@ -497,15 +488,6 @@ bool LegacyGameRuntime::needs_immediate_frame(const std::uint32_t bios_tick) con
 void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
     if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
         name_editor_->finish_presented_frame();
-    }
-    if (view_ == LegacyGameView::scene && scene_session_ != nullptr &&
-        scene_session_->scene_title_overlay_visible() &&
-        !scene_title_start_tick_.has_value()) {
-        scene_title_start_tick_ = bios_tick;
-        diagnostics::log_info(
-            "scene title overlay timer started scene=" +
-            std::to_string(scene_session_->scene_id()) +
-            " tick=" + std::to_string(bios_tick));
     }
     if (pending_name_accept_) {
         if (scene_effect_kind_ != SceneEffectKind::none) {
@@ -854,10 +836,9 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             scene_death_menu_presented_ = false;
             handle_scene_result(scene_session_->resume(
                 scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
-        } else if (pending_kind == scene::SceneStepKind::scene_title) {
-            key_state_reset = LegacyKeyStateReset::translated;
         } else if (pending_kind == scene::SceneStepKind::dialogue ||
                    pending_kind == scene::SceneStepKind::notice ||
+                   pending_kind == scene::SceneStepKind::scene_title ||
                    pending_kind == scene::SceneStepKind::wait_key) {
             handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));
         }
@@ -1095,7 +1076,12 @@ bool LegacyGameRuntime::render() {
         const auto freeze_leave_frame =
             world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_to_black;
         if (world_session_ == nullptr ||
-            (!freeze_leave_frame && !world_session_->render(framebuffer_))) {
+            (!freeze_leave_frame && !world_session_->render(framebuffer_)) ||
+            !basic_renderer_.render_location_status(
+                std::span<const std::uint8_t>{},
+                world_session_->world_x(),
+                world_session_->world_y(),
+                framebuffer_)) {
             return false;
         }
         if (world_menu_event_phase_ == WorldMenuEventPhase::running &&
@@ -1178,7 +1164,13 @@ bool LegacyGameRuntime::render() {
             scene_effect_kind_ == SceneEffectKind::present ||
             (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
              scene_effect_palettes_.empty());
-        if (render_scene && !scene_session_->render(framebuffer_)) {
+        if (render_scene &&
+            (!scene_session_->render(framebuffer_) ||
+             !basic_renderer_.render_location_status(
+                 scene_session_->scene_name().bytes(),
+                 scene_session_->scene_x(),
+                 scene_session_->scene_y(),
+                 framebuffer_))) {
             return false;
         }
         if (scene_leave_event_phase_ == SceneLeaveEventPhase::redraw_present) {
@@ -1874,9 +1866,9 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         scene_shop_presented_ = false;
         break;
     case scene::SceneStepKind::scene_title:
-        scene_title_start_tick_.reset();
         if (scene_session_ != nullptr) {
-            handle_scene_result(scene_session_->resume_scene_title_as_overlay());
+            handle_scene_result(
+                scene_session_->resume(scene::SceneResponse::acknowledge));
         }
         break;
     case scene::SceneStepKind::dialogue:
@@ -1885,27 +1877,6 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::notice:
         break;
     }
-}
-
-void LegacyGameRuntime::update_scene_title_overlay(
-    const std::uint32_t bios_tick) {
-    if (scene_session_ == nullptr ||
-        !scene_session_->scene_title_overlay_visible()) {
-        scene_title_start_tick_.reset();
-        return;
-    }
-    if (!scene_title_start_tick_.has_value() ||
-        elapsed_bios_ticks(*scene_title_start_tick_, bios_tick) <
-            kSceneTitleDurationBiosTicks) {
-        return;
-    }
-    diagnostics::log_info(
-        "scene title overlay timed out scene=" +
-        std::to_string(scene_session_->scene_id()) +
-        " elapsed_ticks=" + std::to_string(
-            elapsed_bios_ticks(*scene_title_start_tick_, bios_tick)));
-    scene_session_->hide_scene_title_overlay();
-    scene_title_start_tick_.reset();
 }
 
 bool LegacyGameRuntime::advance_scene_effect() {
