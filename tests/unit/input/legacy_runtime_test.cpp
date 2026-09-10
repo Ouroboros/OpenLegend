@@ -305,6 +305,34 @@ void run_key_repeat_tests() {
     movement.begin_frame();
     OL_CHECK(movement.take_movement_repeat(true, start + 500ms) == std::nullopt);
 
+    KeyRepeatController chord{100ms, 40ms};
+    chord.begin_frame();
+    OL_CHECK(chord.handle_key_down(HostKey::up, false, true, false, start));
+    chord.begin_frame();
+    OL_CHECK(chord.take_movement_repeat(true, start + 100ms) == HostKey::up);
+    OL_CHECK(chord.handle_key_down(
+        HostKey::left, false, true, false, start + 110ms));
+    chord.handle_key_up(HostKey::left);
+    OL_CHECK(chord.take_movement_repeat(true, start + 110ms) == std::nullopt);
+    chord.begin_frame();
+    OL_CHECK(chord.take_movement_repeat(true, start + 111ms) == HostKey::up);
+    chord.handle_key_up(HostKey::up);
+    chord.begin_frame();
+    OL_CHECK(chord.take_movement_repeat(true, start + 200ms) == std::nullopt);
+
+    KeyRepeatController retained_active{100ms, 40ms};
+    retained_active.begin_frame();
+    OL_CHECK(retained_active.handle_key_down(
+        HostKey::up, false, true, false, start));
+    OL_CHECK(retained_active.handle_key_down(
+        HostKey::left, false, true, false, start + 10ms));
+    retained_active.handle_key_up(HostKey::up);
+    retained_active.begin_frame();
+    OL_CHECK(
+        retained_active.take_movement_repeat(true, start + 109ms) == std::nullopt);
+    OL_CHECK(
+        retained_active.take_movement_repeat(true, start + 110ms) == HostKey::left);
+
     KeyRepeatController inactive{100ms, 40ms};
     inactive.begin_frame();
     OL_CHECK(inactive.handle_key_down(HostKey::left, true, false, false, start));
