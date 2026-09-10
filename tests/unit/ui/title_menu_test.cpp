@@ -3392,12 +3392,25 @@ void check_renderer(const std::filesystem::path& data_root) {
     }
     save_entries[0].state = ui::SaveListEntryState::ready;
     save_entries[0].protagonist_name = {'A'};
-    save_entries[0].level = 12;
+    save_entries[0].level = 1;
     save_entries[0].location.append_ascii("WORLD");
     save_entries[0].saved_at = "09-10 03:46";
     framebuffer.clear(0U);
     OL_CHECK(basic_renderer.render_save_list(
         ui::SaveListMode::load, 0U, save_entries, framebuffer));
+    constexpr int kSaveListLevelColumn = 119;
+    constexpr int kSaveListFirstRowY = 40;
+    bool level_starts_at_column = false;
+    for (int y = kSaveListFirstRowY; y < kSaveListFirstRowY + 16; ++y) {
+        for (int x = kSaveListLevelColumn; x < kSaveListLevelColumn + 8; ++x) {
+            const auto pixel = framebuffer.row(y)[x];
+            if (pixel == render::legacy_color::text::save_list_selected.foreground ||
+                pixel == render::legacy_color::text::save_list_selected.right_shadow) {
+                level_starts_at_column = true;
+            }
+        }
+    }
+    OL_CHECK(level_starts_at_column);
     const std::vector<std::uint8_t> first_save_selection{
         framebuffer.pixels().begin(), framebuffer.pixels().end()};
     framebuffer.clear(0U);

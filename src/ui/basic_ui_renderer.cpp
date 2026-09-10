@@ -634,7 +634,7 @@ bool BasicUiRenderer::render_save_list(
             continue;
         }
         std::u8string level;
-        append_number(level, entry.level, 2);
+        append_number(level, entry.level);
         const auto saved_at = text::utf8_from_ascii(entry.saved_at);
         if (!draw_text_big5(
                 framebuffer,
