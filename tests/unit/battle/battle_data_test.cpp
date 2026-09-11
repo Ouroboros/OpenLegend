@@ -131,8 +131,10 @@ void finish_player_menu_redraw(openlegend::battle::BattleSession& session) {
     OL_CHECK(session.render(frame));
     session.finish_presented_tick();
     if (session.phase() == BattleSessionPhase::player_action) {
+        OL_CHECK(session.needs_immediate_frame(0U));
         OL_CHECK(session.render(frame));
         session.finish_presented_tick();
+        OL_CHECK(!session.needs_immediate_frame(0U));
     }
 }
 
@@ -7697,6 +7699,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x909332be9671b27cULL);
     session.finish_presented_tick();
     OL_CHECK(session.player_magic_selection()->cursor == 1);
+    OL_CHECK(session.needs_immediate_frame(0U));
     OL_CHECK(session.take_clear_player_menu_direction_request() == 0x98U);
     OL_CHECK(session.take_clear_cursor_selection_key_request() == 0U);
     OL_CHECK(!session.take_clear_confirmation_states_request());

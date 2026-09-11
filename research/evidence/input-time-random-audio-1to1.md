@@ -157,6 +157,14 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 逐块对照`legacy_delay_tick_count`、`wait_for_tick_change`、`wait_for_next_tick`、`legacy_delay`及caller已独立关闭的Session tick continuation，未发现合法域产品差异。steady-clock BIOS频率模拟、相等时休眠到下一模拟tick边界和同步自旋到可恢复phase的搬运归类平台适配；宿主不再以`yield`忙轮询，全部caller仍忽略机器EAX残值。独立signed/tick trace SHA256为`fe6d0d5c3ea65501da444006026713f1392e9ebca73408770103e6fc6900e3f6`；测试补齐全部实际参数、INT32极值、nonpositive零读取、重复值/跳tick/跨日精确读取序列，并确认生产steady idle跨越一个tick。函数级完整证据见`research/evidence/functions/Z_DAT/0x3DB83.md`。
 
+### 3.2.1 主菜单与战斗选择循环不等待BIOS tick
+
+实机反馈触发的重新对照确认，`sub_212C0`世界/场景主菜单与`sub_32E59`玩家行动菜单都不经过`sub_3DB83`，也不在方向输入后等待外层BIOS tick。`sub_212C0:0x2131B..0x21353`每轮严格执行world/scene背景render、菜单render、`sub_3D6D1` present，再读取`byte_51B6B`；Down/Up在`0x2138B..0x213E3`清对应机器写集后直接跳回`0x21311`重绘。`sub_32E59:0x3315B..0x33250`重绘行动菜单并于`0x33248` present，随后读取`byte_51C05/byte_51C0B`；两方向分支在`0x33259/0x33280`清状态后直接跳回`0x3315B`。该函数冻结的32个direct-call target中不存在`0x3DB83`。
+
+两类菜单虽然分别读取last-key与方向state，但都由同一IRQ1 make/typematic流产生：首次make在state为0时同时写last-key与state，菜单消费后清last-key/方向state，后续typematic make再次生成可消费脉冲。`sub_28E40`世界行走也消费并清同一方向state，因此原版菜单与行走的长按节奏来自同一键盘脉冲源；菜单本身没有另加约18.2Hz的等待。
+
+`original` 宿主此前把非VGA菜单帧统一阻塞到下一BIOS tick；世界/场景主菜单因而在事件轮询前最多多等一tick，战斗状态菜单又在成功present后消费方向、再多等一tick才呈现新光标。修正后仅`game_menu`与`BattleSession::player_menu_uses_key_states()`对应的机器输入循环使用SDL事件可唤醒等待；无事件时仍休眠到原下一BIOS tick以避免忙轮询。战斗菜单在成功present后实际消费一个输入组时设置紧邻重绘请求，下一帧不经过BIOS tick；显式动画/AI `*_wait`、战斗伤害、武功、暗器和世界行走tick均不改变。`original` 继续直接消费SDL host repeat，不引入`main`的`KeyRepeatController`、移动repeat延迟或方向repeat调度。
+
 ### 3.3 opcode27图片动画的tick边界
 
 `sub_2F053 @ 0x2F053..0x2F107`为180字节、59条指令、14个CFG块、6次call、5个条件分支、4个无条件跳转、9项HIGHLOW重定位且无本地`RET`。raw/loaded SHA256分别为`7bfb0b81ff77dc3bc3544b6e692b4b177e21c58e7f5007367bb090a2b9675bdb`与`cc5c53f5a16319098f5bfa8813a847dc50a72dcda23eb377d54f792d7af5556d`；唯一物理caller为opcode27 dispatch，另有`0x55628`地址表引用。两个正常出口都跳入前一函数`0x2F04A..0x2F053`共享尾，其SHA256为`f7d57baaeaca8f29028fb0af30bc53418bee7a398b4188a9c960681e3dd7e2b5`。

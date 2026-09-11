@@ -335,6 +335,9 @@ void run_timing_tests() {
     OL_CHECK(no_delay.idle_count() == 0U);
 
     SteadyBiosTickSource steady;
+    OL_CHECK(steady.time_until_next_tick() > std::chrono::nanoseconds::zero());
+    OL_CHECK(
+        steady.time_until_next_tick() <= std::chrono::milliseconds{60});
     const auto captured_tick = steady.tick();
     steady.idle();
     OL_CHECK(steady.tick() != captured_tick);

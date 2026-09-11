@@ -552,6 +552,7 @@ private:
     compat::LegacyPalette selection_palette_{};
     bool selection_background_captured_{};
     bool frame_rendered_{};
+    bool player_menu_redraw_pending_{};
     bool grants_experience_{};
     std::string error_;
 };

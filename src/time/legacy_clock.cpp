@@ -17,7 +17,8 @@ std::uint32_t SteadyBiosTickSource::tick() const noexcept {
     return static_cast<std::uint32_t>(whole_ticks % kBiosTicksPerDay);
 }
 
-void SteadyBiosTickSource::idle() noexcept {
+std::chrono::steady_clock::time_point
+SteadyBiosTickSource::next_tick_deadline() const noexcept {
     const auto elapsed = std::chrono::duration<long double>(
         std::chrono::steady_clock::now() - origin_);
     const auto exact_ticks =
@@ -27,9 +28,21 @@ void SteadyBiosTickSource::idle() noexcept {
     const auto next_tick_offset = std::chrono::duration<long double>{
         next_tick * static_cast<long double>(kPitDivisor) /
         static_cast<long double>(kPitInputFrequency)};
-    const auto deadline = origin_ +
+    return origin_ +
         std::chrono::ceil<std::chrono::steady_clock::duration>(next_tick_offset);
-    std::this_thread::sleep_until(deadline);
+}
+
+std::chrono::nanoseconds SteadyBiosTickSource::time_until_next_tick() const noexcept {
+    const auto now = std::chrono::steady_clock::now();
+    const auto deadline = next_tick_deadline();
+    if (deadline <= now) {
+        return std::chrono::nanoseconds::zero();
+    }
+    return std::chrono::ceil<std::chrono::nanoseconds>(deadline - now);
+}
+
+void SteadyBiosTickSource::idle() noexcept {
+    std::this_thread::sleep_until(next_tick_deadline());
 }
 
 SteadyVgaRetraceSource::SteadyVgaRetraceSource() noexcept

@@ -25,9 +25,12 @@ public:
     SteadyBiosTickSource() noexcept;
 
     [[nodiscard]] std::uint32_t tick() const noexcept override;
+    [[nodiscard]] std::chrono::nanoseconds time_until_next_tick() const noexcept;
     void idle() noexcept override;
 
 private:
+    [[nodiscard]] std::chrono::steady_clock::time_point next_tick_deadline() const noexcept;
+
     std::chrono::steady_clock::time_point origin_;
 };
 

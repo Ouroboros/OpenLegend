@@ -493,6 +493,13 @@ int main(const int argc, const char* const* argv) {
             if (vga_frame) {
                 static_cast<void>(
                     timing::wait_for_tick_change(retrace_source, frame_retrace));
+            } else if (
+                game.view() == app::LegacyGameView::game_menu ||
+                game.battle_menu_uses_key_states()) {
+                const auto wait_timeout = tick_source.time_until_next_tick();
+                if (tick_source.tick() == frame_tick) {
+                    platform.wait_for_event_or_timeout(wait_timeout);
+                }
             } else {
                 static_cast<void>(timing::wait_for_tick_change(tick_source, frame_tick));
             }
