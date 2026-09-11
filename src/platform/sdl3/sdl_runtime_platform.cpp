@@ -212,6 +212,17 @@ bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
     return true;
 }
 
+void SdlRuntimePlatform::wait_for_event_or_timeout(
+    const std::chrono::nanoseconds timeout) noexcept {
+    const auto bounded = std::max(timeout, std::chrono::nanoseconds::zero());
+    if (bounded > std::chrono::nanoseconds::zero()) {
+        const auto timeout_ms =
+            std::chrono::ceil<std::chrono::milliseconds>(bounded);
+        static_cast<void>(SDL_WaitEventTimeout(
+            nullptr, static_cast<Sint32>(timeout_ms.count())));
+    }
+}
+
 bool SdlRuntimePlatform::ensure_modern_ui_texture(
     const int width, const int height) noexcept {
     if (modern_ui_texture_ != nullptr &&

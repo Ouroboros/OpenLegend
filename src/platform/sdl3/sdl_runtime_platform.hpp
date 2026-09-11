@@ -22,6 +22,7 @@ public:
         int& normal_width, int& normal_height, bool& maximized) const noexcept;
     [[nodiscard]] int presentation_scale() const noexcept;
     [[nodiscard]] bool poll_event(compat::HostEvent& event) override;
+    void wait_for_event_or_timeout(std::chrono::nanoseconds timeout) noexcept;
     [[nodiscard]] bool present(
         compat::RgbaFrameView frame,
         compat::RgbaFrameView modern_ui) override;

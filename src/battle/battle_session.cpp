@@ -394,6 +394,9 @@ bool BattleSession::needs_immediate_frame(const std::uint32_t bios_tick) const n
     if (!valid()) {
         return false;
     }
+    if (player_menu_redraw_pending_) {
+        return true;
+    }
     // A present is not a BIOS delay. Explicit animation/AI delays become *_wait
     // in finish_presented_tick; only those phases require a tick boundary.
     switch (phase_) {
@@ -578,6 +581,9 @@ bool BattleSession::render(
         }
     }
     frame_rendered_ = rendered;
+    if (rendered) {
+        player_menu_redraw_pending_ = false;
+    }
     if (!rendered) {
         diagnostics::log_error(
             "battle frame render failed id=" + std::to_string(battle_id()) +
@@ -592,37 +598,46 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     }
     frame_rendered_ = false;
     if (phase_ == BattleSessionPhase::party_selection) {
+        auto input_result = BattleSessionInputResult::ignored;
         if (player_menu_down_state_) {
             player_menu_down_state_ = false;
             clear_player_menu_direction_requested_ = kDown;
-            static_cast<void>(handle_key(kDown));
+            input_result = handle_key(kDown);
         } else if (player_menu_up_state_) {
             player_menu_up_state_ = false;
             clear_player_menu_direction_requested_ = kUp;
-            static_cast<void>(handle_key(kUp));
+            input_result = handle_key(kUp);
         } else if (confirmation_state_) {
             confirmation_state_ = false;
             clear_confirmation_states_requested_ = true;
-            static_cast<void>(handle_key(kEnter));
+            input_result = handle_key(kEnter);
         }
+        player_menu_redraw_pending_ =
+            input_result == BattleSessionInputResult::changed;
         return;
     }
     if (phase_ == BattleSessionPhase::player_action_initial_present) {
         phase_ = BattleSessionPhase::player_action;
+        player_menu_redraw_pending_ = true;
         return;
     }
     if (phase_ == BattleSessionPhase::player_action_return_present) {
-        static_cast<void>(finish_player_action_call(true));
+        player_menu_redraw_pending_ =
+            finish_player_action_call(true) &&
+            phase_ == BattleSessionPhase::player_action;
         return;
     }
     if (phase_ == BattleSessionPhase::player_action) {
+        auto input_result = BattleSessionInputResult::ignored;
         if (player_menu_down_state_) {
-            static_cast<void>(handle_player_action_key(kDown));
+            input_result = handle_player_action_key(kDown);
         } else if (player_menu_up_state_) {
-            static_cast<void>(handle_player_action_key(kUp));
+            input_result = handle_player_action_key(kUp);
         } else if (confirmation_state_) {
-            static_cast<void>(handle_player_action_key(kEnter));
+            input_result = handle_player_action_key(kEnter);
         }
+        player_menu_redraw_pending_ =
+            input_result != BattleSessionInputResult::ignored;
         return;
     }
     if (phase_ == BattleSessionPhase::player_magic_selection &&
@@ -633,23 +648,26 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
                 return;
             }
         }
+        auto input_result = BattleSessionInputResult::ignored;
         if (player_menu_down_state_) {
             player_menu_down_state_ = false;
             clear_player_menu_direction_requested_ = kDown;
-            static_cast<void>(handle_player_magic_selection_key(kDown));
+            input_result = handle_player_magic_selection_key(kDown);
         } else if (player_menu_up_state_) {
             player_menu_up_state_ = false;
             clear_player_menu_direction_requested_ = kUp;
-            static_cast<void>(handle_player_magic_selection_key(kUp));
+            input_result = handle_player_magic_selection_key(kUp);
         } else if (confirmation_state_) {
             confirmation_state_ = false;
             clear_confirmation_states_requested_ = true;
-            static_cast<void>(handle_player_magic_selection_key(kEnter));
+            input_result = handle_player_magic_selection_key(kEnter);
         } else if (cursor_escape_state_) {
             cursor_escape_state_ = false;
             clear_cursor_selection_key_requested_ = kEscape;
-            static_cast<void>(handle_player_magic_selection_key(kEscape));
+            input_result = handle_player_magic_selection_key(kEscape);
         }
+        player_menu_redraw_pending_ =
+            input_result != BattleSessionInputResult::ignored;
         return;
     }
     if (phase_ == BattleSessionPhase::player_item_selection &&

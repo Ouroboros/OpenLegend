@@ -14,9 +14,14 @@ namespace openlegend::platform::sdl3 {
 LegacyInputCoordinator::LegacyInputCoordinator(app::LegacyGameRuntime& game)
     : game_(game) {}
 
-bool LegacyInputCoordinator::accepts_movement_repeat() const noexcept {
+bool LegacyInputCoordinator::waits_for_menu_input() const noexcept {
+    return game_.view() == app::LegacyGameView::game_menu ||
+        game_.battle_menu_uses_key_states();
+}
+
+bool LegacyInputCoordinator::uses_shared_direction_repeat() const noexcept {
     return game_.view() == app::LegacyGameView::world ||
-        game_.scene_loop_uses_key_states();
+        game_.scene_loop_uses_key_states() || waits_for_menu_input();
 }
 
 void LegacyInputCoordinator::process_host_events(
@@ -34,7 +39,7 @@ void LegacyInputCoordinator::process_host_events(
             if (key_repeat.handle_key_down(
                     event.key,
                     event.repeat,
-                    accepts_movement_repeat(),
+                    uses_shared_direction_repeat(),
                     game_.save_list_active(),
                     input_now)) {
                 dispatch_key_down(event.key, event.repeat, frame_tick);
@@ -53,10 +58,16 @@ void LegacyInputCoordinator::process_host_events(
 void LegacyInputCoordinator::dispatch_repeats(
     input::KeyRepeatController& key_repeat,
     const std::uint32_t frame_tick) {
-    if (const auto repeated_key = key_repeat.take_movement_repeat(
-            accepts_movement_repeat(), std::chrono::steady_clock::now())) {
-        keyboard_.handle_host_key(*repeated_key, false);
-        dispatch_key_down(*repeated_key, true, frame_tick);
+    const bool direction_repeat_active = uses_shared_direction_repeat();
+    const auto repeated_direction = key_repeat.take_movement_repeat(
+        direction_repeat_active, std::chrono::steady_clock::now());
+    if (!direction_repeat_active) {
+        last_direction_repeat_tick_.reset();
+    } else if (repeated_direction.has_value() &&
+               last_direction_repeat_tick_ != frame_tick) {
+        last_direction_repeat_tick_ = frame_tick;
+        keyboard_.handle_host_key(*repeated_direction, false);
+        dispatch_key_down(*repeated_direction, true, frame_tick);
     }
     if (const auto repeated_key = key_repeat.take_save_list_page_repeat(
             game_.save_list_active(), std::chrono::steady_clock::now())) {

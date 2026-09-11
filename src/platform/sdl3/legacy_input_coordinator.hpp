@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <optional>
 
 #include "openlegend/compat/runtime_platform.hpp"
 #include "openlegend/input/key_repeat.hpp"
@@ -35,8 +36,10 @@ public:
 
     void after_present();
 
+    [[nodiscard]] bool waits_for_menu_input() const noexcept;
+
 private:
-    [[nodiscard]] bool accepts_movement_repeat() const noexcept;
+    [[nodiscard]] bool uses_shared_direction_repeat() const noexcept;
 
     void synchronize();
 
@@ -49,6 +52,7 @@ private:
 
     app::LegacyGameRuntime& game_;
     input::LegacyKeyboard keyboard_;
+    std::optional<std::uint32_t> last_direction_repeat_tick_;
 };
 
 }  // namespace openlegend::platform::sdl3
