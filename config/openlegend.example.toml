@@ -33,6 +33,16 @@ level = "info"
 
 movement_repeat_delay_ms = 500
 
+# Delay before menu navigation starts repeating, and the interval between repeats.
+# These values also apply to Page Up/Down in the SAVE LIST. Delays must be
+# non-negative, and the interval must be positive.
+
+# 菜单导航开始重复前的延迟，以及后续每次重复的间隔。
+# SAVE LIST 的 Page Up/Down 也使用这组参数。延迟必须非负，间隔必须为正数。
+
+menu_repeat_delay_ms = 500
+menu_repeat_interval_ms = 55
+
 [timing]
 
 # Delay between FI/FO palette frames. The default matches VGA mode 13h.

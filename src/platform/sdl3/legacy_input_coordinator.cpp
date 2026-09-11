@@ -15,67 +15,73 @@ LegacyInputCoordinator::LegacyInputCoordinator(app::LegacyGameRuntime& game)
     : game_(game) {}
 
 bool LegacyInputCoordinator::waits_for_menu_input() const noexcept {
-    return game_.view() == app::LegacyGameView::game_menu ||
+    if (game_.view() == app::LegacyGameView::title ||
+        game_.view() == app::LegacyGameView::game_menu ||
         game_.battle_menu_uses_key_states() ||
-        game_.death_menu_accepts_input();
-}
-
-bool LegacyInputCoordinator::uses_shared_direction_repeat() const noexcept {
-    return game_.view() == app::LegacyGameView::world ||
-        game_.scene_loop_uses_key_states() || waits_for_menu_input();
+        game_.death_menu_accepts_input()) {
+        return true;
+    }
+    const auto context = game_.direction_repeat_context();
+    return context == input::DirectionRepeatContext::menu ||
+        context == input::DirectionRepeatContext::save_list;
 }
 
 void LegacyInputCoordinator::process_host_events(
     SdlRuntimePlatform& platform,
     input::KeyRepeatController& key_repeat,
     const std::uint32_t frame_tick,
-    const std::chrono::steady_clock::time_point input_now,
     bool& running) {
     compat::HostEvent event{};
     while (platform.poll_event(event)) {
+        const auto input_now = std::chrono::steady_clock::now();
+        synchronize_repeat_context(key_repeat, input_now);
         if (event.type == compat::HostEventType::quit) {
             diagnostics::log_info("host quit event");
             running = false;
         } else if (event.type == compat::HostEventType::key_down) {
             if (key_repeat.handle_key_down(
-                    event.key,
-                    event.repeat,
-                    uses_shared_direction_repeat(),
-                    game_.save_list_active(),
-                    input_now)) {
+                    event.key, event.repeat, input_now)) {
                 dispatch_key_down(event.key, event.repeat, frame_tick);
             }
         } else if (event.type == compat::HostEventType::key_up) {
-            key_repeat.handle_key_up(event.key);
+            key_repeat.handle_key_up(event.key, input_now);
             keyboard_.handle_host_key(event.key, false);
             diagnostics::log_debug(
                 "host key_up key=" +
                 std::to_string(static_cast<int>(event.key)));
         }
         synchronize();
+        synchronize_repeat_context(
+            key_repeat, std::chrono::steady_clock::now());
     }
 }
 
 void LegacyInputCoordinator::dispatch_repeats(
     input::KeyRepeatController& key_repeat,
     const std::uint32_t frame_tick) {
-    const bool direction_repeat_active = uses_shared_direction_repeat();
-    const auto repeated_direction = key_repeat.take_movement_repeat(
-        direction_repeat_active, std::chrono::steady_clock::now());
-    if (!direction_repeat_active) {
-        last_direction_repeat_tick_.reset();
+    const auto input_now = std::chrono::steady_clock::now();
+    synchronize_repeat_context(key_repeat, input_now);
+    const auto repeated_direction =
+        key_repeat.take_movement_repeat(input_now);
+    const auto context = game_.direction_repeat_context();
+    const bool movement_repeat_active =
+        context == input::DirectionRepeatContext::movement ||
+        context == input::DirectionRepeatContext::battle_cursor;
+    if (!movement_repeat_active) {
+        last_movement_repeat_tick_.reset();
     } else if (repeated_direction.has_value() &&
-               last_direction_repeat_tick_ != frame_tick) {
-        last_direction_repeat_tick_ = frame_tick;
+               last_movement_repeat_tick_ != frame_tick) {
+        last_movement_repeat_tick_ = frame_tick;
         keyboard_.handle_host_key(*repeated_direction, false);
         dispatch_key_down(*repeated_direction, true, frame_tick);
     }
-    if (const auto repeated_key = key_repeat.take_save_list_page_repeat(
-            game_.save_list_active(), std::chrono::steady_clock::now())) {
+    if (const auto repeated_key = key_repeat.take_menu_repeat(input_now)) {
         keyboard_.handle_host_key(*repeated_key, false);
         dispatch_key_down(*repeated_key, true, frame_tick);
     }
     synchronize();
+    synchronize_repeat_context(
+        key_repeat, std::chrono::steady_clock::now());
 }
 
 void LegacyInputCoordinator::apply_game_input() {
@@ -105,10 +111,12 @@ void LegacyInputCoordinator::apply_game_input() {
 void LegacyInputCoordinator::after_advance(
     input::KeyRepeatController& key_repeat) {
     synchronize();
+    const auto input_now = std::chrono::steady_clock::now();
     if (game_.take_clear_scene_exit_key_states_request()) {
         keyboard_.clear_scene_exit_key_states();
-        key_repeat.defer_movement_repeat(std::chrono::steady_clock::now());
+        key_repeat.defer_movement_repeat(input_now);
     }
+    synchronize_repeat_context(key_repeat, input_now);
 }
 
 void LegacyInputCoordinator::after_present() {
@@ -117,6 +125,12 @@ void LegacyInputCoordinator::after_present() {
         keyboard_.clear_scene_exit_key_states();
     }
     sync_battle_confirmation();
+}
+
+void LegacyInputCoordinator::synchronize_repeat_context(
+    input::KeyRepeatController& key_repeat,
+    const std::chrono::steady_clock::time_point now) const noexcept {
+    key_repeat.set_context(game_.direction_repeat_context(), now);
 }
 
 void LegacyInputCoordinator::synchronize() {

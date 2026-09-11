@@ -153,6 +153,8 @@ void test_runtime_configuration_root() {
         "level = 'debug'\n"
         "\n[input]\n"
         "movement_repeat_delay_ms = 25\n"
+        "menu_repeat_delay_ms = 30\n"
+        "menu_repeat_interval_ms = 35\n"
         "\n[timing]\n"
         "fade_frame_delay_ms = 5.5\n"
         "\n[window]\n"
@@ -170,6 +172,8 @@ void test_runtime_configuration_root() {
             LogLevel::info,
             WindowSize{960, 600},
             std::chrono::milliseconds{500},
+            std::chrono::milliseconds{500},
+            std::chrono::milliseconds{55},
             std::chrono::milliseconds{14}});
 
     OL_CHECK(configuration.paths.data_directory.status == DataDirectoryStatus::ready);
@@ -188,11 +192,64 @@ void test_runtime_configuration_root() {
     OL_CHECK(configuration.logging.minimum_level == LogLevel::debug);
     OL_CHECK(configuration.input.status == InputConfigurationStatus::ready);
     OL_CHECK(configuration.input.movement_repeat_delay == std::chrono::milliseconds{25});
+    OL_CHECK(configuration.input.menu_repeat_delay == std::chrono::milliseconds{30});
+    OL_CHECK(configuration.input.menu_repeat_interval == std::chrono::milliseconds{35});
     OL_CHECK(configuration.timing.status == TimingConfigurationStatus::ready);
     OL_CHECK(configuration.timing.fade_frame_delay == std::chrono::microseconds{5500});
     OL_CHECK(configuration.window.status == WindowConfigurationStatus::ready);
     OL_CHECK((configuration.window.size == WindowSize{1280, 720}));
     OL_CHECK(configuration.window.maximized);
+}
+
+void test_input_configuration() {
+    using namespace openlegend::app;
+    using namespace std::chrono_literals;
+    const TemporaryTree tree;
+
+    const auto load = [&tree]() {
+        return load_input_configuration(
+            tree.configuration_path(), 400ms, 450ms, 60ms);
+    };
+
+    const auto missing = load();
+    OL_CHECK(missing.status == InputConfigurationStatus::read_failed);
+    OL_CHECK(missing.movement_repeat_delay == 400ms);
+    OL_CHECK(missing.menu_repeat_delay == 450ms);
+    OL_CHECK(missing.menu_repeat_interval == 60ms);
+
+    tree.write_configuration(
+        "[input]\n"
+        "movement_repeat_delay_ms = 25\n"
+        "menu_repeat_delay_ms = 30\n"
+        "menu_repeat_interval_ms = 35\n");
+    const auto configured = load();
+    OL_CHECK(configured.status == InputConfigurationStatus::ready);
+    OL_CHECK(configured.loaded_from_file);
+    OL_CHECK(configured.movement_repeat_delay == 25ms);
+    OL_CHECK(configured.menu_repeat_delay == 30ms);
+    OL_CHECK(configured.menu_repeat_interval == 35ms);
+
+    tree.write_configuration(
+        "[input]\n"
+        "movement_repeat_delay_ms = 0\n"
+        "menu_repeat_interval_ms = 1\n");
+    const auto partial = load();
+    OL_CHECK(partial.status == InputConfigurationStatus::ready);
+    OL_CHECK(partial.loaded_from_file);
+    OL_CHECK(partial.movement_repeat_delay == 0ms);
+    OL_CHECK(partial.menu_repeat_delay == 450ms);
+    OL_CHECK(partial.menu_repeat_interval == 1ms);
+
+    tree.write_configuration("input = 7\n");
+    OL_CHECK(load().status == InputConfigurationStatus::invalid_input_table);
+    tree.write_configuration("[input]\nmovement_repeat_delay_ms = -1\n");
+    OL_CHECK(load().status ==
+        InputConfigurationStatus::invalid_movement_repeat_delay);
+    tree.write_configuration("[input]\nmenu_repeat_delay_ms = -1\n");
+    OL_CHECK(load().status == InputConfigurationStatus::invalid_menu_repeat_delay);
+    tree.write_configuration("[input]\nmenu_repeat_interval_ms = 0\n");
+    OL_CHECK(load().status ==
+        InputConfigurationStatus::invalid_menu_repeat_interval);
 }
 
 void test_save_directory_configuration() {
@@ -210,6 +267,8 @@ void test_save_directory_configuration() {
                 LogLevel::info,
                 WindowSize{960, 600},
                 std::chrono::milliseconds{500},
+                std::chrono::milliseconds{500},
+                std::chrono::milliseconds{55},
                 std::chrono::milliseconds{14}});
     };
 
@@ -394,6 +453,10 @@ void test_window_errors_and_schema_writeback() {
     tree.write_configuration(
         "[future]\nkept = 42\n"
         "\n[window]\ncustom = 'preserved'\n"
+        "\n[input]\nmenu_repeat_interval_ms = 55\n"
+        "custom = 'discarded'\n"
+        "movement_repeat_delay_ms = 500\n"
+        "menu_repeat_delay_ms = 500\n"
         "\n[paths]\ndata_dir = '" + utf8_bytes(relative_data) + "'\n"
         "save_dir = '" + utf8_bytes(relative_save) + "'\n");
     std::string detail;
@@ -412,14 +475,26 @@ void test_window_errors_and_schema_writeback() {
     const std::string saved{
         std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     const auto paths_position = saved.find("[paths]");
+    const auto input_position = saved.find("[input]");
     const auto window_position = saved.find("[window]");
     OL_CHECK(paths_position != std::string::npos);
+    OL_CHECK(input_position != std::string::npos);
     OL_CHECK(window_position != std::string::npos);
-    OL_CHECK(paths_position < window_position);
+    OL_CHECK(paths_position < input_position);
+    OL_CHECK(input_position < window_position);
     const auto data_directory_position = saved.find("data_dir = ", paths_position);
     const auto save_directory_position = saved.find("save_dir = ", paths_position);
     OL_CHECK(data_directory_position < save_directory_position);
-    OL_CHECK(save_directory_position < window_position);
+    OL_CHECK(save_directory_position < input_position);
+    const auto movement_delay_position =
+        saved.find("movement_repeat_delay_ms = 500", input_position);
+    const auto menu_delay_position =
+        saved.find("menu_repeat_delay_ms = 500", input_position);
+    const auto menu_interval_position =
+        saved.find("menu_repeat_interval_ms = 55", input_position);
+    OL_CHECK(movement_delay_position < menu_delay_position);
+    OL_CHECK(menu_delay_position < menu_interval_position);
+    OL_CHECK(menu_interval_position < window_position);
     const auto width_position = saved.find("width = 1024", window_position);
     const auto height_position = saved.find("height = 640", window_position);
     const auto maximized_position = saved.find("maximized = true", window_position);
@@ -440,6 +515,7 @@ void run_runtime_configuration_tests() {
     test_missing_configuration_uses_launch_directory();
     test_configuration_paths_and_window();
     test_runtime_configuration_root();
+    test_input_configuration();
     test_save_directory_configuration();
     test_logging_configuration();
     test_command_line_overrides_configuration();

@@ -280,91 +280,164 @@ void run_keyboard_tests() {
 
 void run_key_repeat_tests() {
     using openlegend::compat::HostKey;
+    using openlegend::input::DirectionRepeatContext;
     using openlegend::input::KeyRepeatController;
     using namespace std::chrono_literals;
 
     const KeyRepeatController::TimePoint start{};
-    KeyRepeatController movement{100ms, 40ms};
+
+    KeyRepeatController movement{100ms, 80ms, 40ms};
+    movement.set_context(DirectionRepeatContext::movement, start);
     movement.begin_frame();
-    OL_CHECK(movement.handle_key_down(HostKey::left, false, true, false, start));
-    OL_CHECK(!movement.handle_key_down(HostKey::left, true, true, false, start + 50ms));
-    OL_CHECK(!movement.take_movement_repeat(true, start + 100ms).has_value());
+    OL_CHECK(movement.handle_key_down(HostKey::left, false, start));
+    OL_CHECK(!movement.handle_key_down(HostKey::left, true, start + 50ms));
+    OL_CHECK(movement.take_movement_repeat(start + 100ms) == std::nullopt);
+    movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(start + 99ms) == std::nullopt);
+    OL_CHECK(movement.take_movement_repeat(start + 100ms) == HostKey::left);
 
     movement.begin_frame();
-    OL_CHECK(movement.take_movement_repeat(true, start + 99ms) == std::nullopt);
-    OL_CHECK(movement.take_movement_repeat(true, start + 100ms) == HostKey::left);
+    OL_CHECK(movement.handle_key_down(HostKey::up, false, start + 110ms));
+    OL_CHECK(movement.take_movement_repeat(start + 110ms) == std::nullopt);
+    movement.begin_frame();
+    OL_CHECK(movement.take_movement_repeat(start + 111ms) == HostKey::up);
 
-    movement.begin_frame();
-    OL_CHECK(movement.take_movement_repeat(false, start + 150ms) == std::nullopt);
-    OL_CHECK(!movement.handle_key_down(
-        HostKey::left, true, false, false, start + 150ms));
-    movement.begin_frame();
-    OL_CHECK(movement.take_movement_repeat(false, start + 200ms) == std::nullopt);
-    movement.begin_frame();
-    OL_CHECK(movement.take_movement_repeat(true, start + 249ms) == std::nullopt);
-    OL_CHECK(movement.take_movement_repeat(true, start + 250ms) == HostKey::left);
-    movement.handle_key_up(HostKey::left);
-    movement.begin_frame();
-    OL_CHECK(movement.take_movement_repeat(true, start + 500ms) == std::nullopt);
+    KeyRepeatController early_turn{100ms, 80ms, 40ms};
+    early_turn.set_context(DirectionRepeatContext::movement, start);
+    early_turn.begin_frame();
+    OL_CHECK(early_turn.handle_key_down(HostKey::up, false, start));
+    early_turn.begin_frame();
+    OL_CHECK(early_turn.handle_key_down(HostKey::left, false, start + 50ms));
+    early_turn.begin_frame();
+    OL_CHECK(early_turn.take_movement_repeat(start + 99ms) == std::nullopt);
+    OL_CHECK(early_turn.take_movement_repeat(start + 100ms) == HostKey::left);
 
-    KeyRepeatController chord{100ms, 40ms};
+    KeyRepeatController chord{100ms, 80ms, 40ms};
+    chord.set_context(DirectionRepeatContext::movement, start);
     chord.begin_frame();
-    OL_CHECK(chord.handle_key_down(HostKey::up, false, true, false, start));
+    OL_CHECK(chord.handle_key_down(HostKey::up, false, start));
     chord.begin_frame();
-    OL_CHECK(chord.take_movement_repeat(true, start + 100ms) == HostKey::up);
-    OL_CHECK(chord.handle_key_down(
-        HostKey::left, false, true, false, start + 110ms));
-    chord.handle_key_up(HostKey::left);
-    OL_CHECK(chord.take_movement_repeat(true, start + 110ms) == std::nullopt);
+    OL_CHECK(chord.handle_key_down(HostKey::left, false, start + 10ms));
     chord.begin_frame();
-    OL_CHECK(chord.take_movement_repeat(true, start + 111ms) == HostKey::up);
-    chord.handle_key_up(HostKey::up);
+    chord.handle_key_up(HostKey::left, start + 20ms);
+    OL_CHECK(chord.take_movement_repeat(start + 20ms) == HostKey::up);
+    chord.handle_key_up(HostKey::up, start + 21ms);
     chord.begin_frame();
-    OL_CHECK(chord.take_movement_repeat(true, start + 200ms) == std::nullopt);
+    OL_CHECK(chord.take_movement_repeat(start + 200ms) == std::nullopt);
 
-    KeyRepeatController retained_active{100ms, 40ms};
-    retained_active.begin_frame();
-    OL_CHECK(retained_active.handle_key_down(
-        HostKey::up, false, true, false, start));
-    OL_CHECK(retained_active.handle_key_down(
-        HostKey::left, false, true, false, start + 10ms));
-    retained_active.handle_key_up(HostKey::up);
-    retained_active.begin_frame();
-    OL_CHECK(
-        retained_active.take_movement_repeat(true, start + 109ms) == std::nullopt);
-    OL_CHECK(
-        retained_active.take_movement_repeat(true, start + 110ms) == HostKey::left);
+    KeyRepeatController interrupted{100ms, 80ms, 40ms};
+    interrupted.set_context(DirectionRepeatContext::movement, start);
+    interrupted.begin_frame();
+    OL_CHECK(interrupted.handle_key_down(HostKey::left, false, start));
+    interrupted.set_context(DirectionRepeatContext::none, start + 150ms);
+    OL_CHECK(!interrupted.handle_key_down(HostKey::left, true, start + 175ms));
+    interrupted.set_context(DirectionRepeatContext::movement, start + 200ms);
+    interrupted.begin_frame();
+    OL_CHECK(interrupted.take_movement_repeat(start + 249ms) == std::nullopt);
+    OL_CHECK(interrupted.take_movement_repeat(start + 250ms) == HostKey::left);
 
-    KeyRepeatController inactive{100ms, 40ms};
-    inactive.begin_frame();
-    OL_CHECK(inactive.handle_key_down(HostKey::left, true, false, false, start));
-    OL_CHECK(inactive.handle_key_down(HostKey::a, true, true, false, start));
+    KeyRepeatController cross_context{100ms, 80ms, 40ms};
+    cross_context.set_context(DirectionRepeatContext::movement, start);
+    cross_context.begin_frame();
+    OL_CHECK(cross_context.handle_key_down(HostKey::left, false, start));
+    cross_context.set_context(DirectionRepeatContext::menu, start + 10ms);
+    OL_CHECK(!cross_context.handle_key_down(HostKey::left, true, start + 20ms));
+    OL_CHECK(!cross_context.handle_key_down(HostKey::left, false, start + 20ms));
+    cross_context.begin_frame();
+    OL_CHECK(cross_context.take_menu_repeat(start + 200ms) == std::nullopt);
+    cross_context.set_context(DirectionRepeatContext::movement, start + 210ms);
+    cross_context.begin_frame();
+    OL_CHECK(cross_context.take_movement_repeat(start + 500ms) == std::nullopt);
+    cross_context.handle_key_up(HostKey::left, start + 510ms);
+    cross_context.begin_frame();
+    OL_CHECK(cross_context.handle_key_down(HostKey::left, false, start + 520ms));
 
-    KeyRepeatController immediate{0ms, 40ms};
-    immediate.begin_frame();
-    OL_CHECK(immediate.handle_key_down(HostKey::down, false, true, false, start));
-    OL_CHECK(immediate.take_movement_repeat(true, start) == std::nullopt);
-    immediate.begin_frame();
-    OL_CHECK(immediate.take_movement_repeat(true, start) == HostKey::down);
+    KeyRepeatController menu{100ms, 80ms, 40ms};
+    menu.set_context(DirectionRepeatContext::menu, start);
+    menu.begin_frame();
+    OL_CHECK(menu.handle_key_down(HostKey::down, false, start));
+    OL_CHECK(!menu.handle_key_down(HostKey::down, true, start + 50ms));
+    OL_CHECK(menu.take_menu_repeat(start + 100ms) == std::nullopt);
+    OL_CHECK(menu.time_until_menu_repeat(start + 20ms) == 60ms);
+    menu.begin_frame();
+    OL_CHECK(menu.take_menu_repeat(start + 79ms) == std::nullopt);
+    OL_CHECK(menu.take_menu_repeat(start + 80ms) == HostKey::down);
+    OL_CHECK(menu.time_until_menu_repeat(start + 80ms) == 40ms);
+    menu.begin_frame();
+    OL_CHECK(menu.take_menu_repeat(start + 119ms) == std::nullopt);
+    OL_CHECK(menu.take_menu_repeat(start + 120ms) == HostKey::down);
 
-    KeyRepeatController save_list{100ms, 40ms};
-    save_list.begin_frame();
-    OL_CHECK(save_list.handle_key_down(
-        HostKey::page_down, false, false, true, start));
-    OL_CHECK(!save_list.handle_key_down(
-        HostKey::page_down, true, false, true, start + 50ms));
-    OL_CHECK(save_list.take_save_list_page_repeat(true, start + 100ms) == std::nullopt);
-    save_list.begin_frame();
-    OL_CHECK(save_list.take_save_list_page_repeat(true, start + 99ms) == std::nullopt);
+    menu.begin_frame();
+    OL_CHECK(menu.handle_key_down(HostKey::up, false, start + 130ms));
+    menu.begin_frame();
+    OL_CHECK(menu.take_menu_repeat(start + 209ms) == std::nullopt);
+    OL_CHECK(menu.take_menu_repeat(start + 210ms) == HostKey::up);
+    menu.begin_frame();
+    menu.handle_key_up(HostKey::up, start + 220ms);
+    OL_CHECK(menu.take_menu_repeat(start + 299ms) == std::nullopt);
+    OL_CHECK(menu.take_menu_repeat(start + 300ms) == HostKey::down);
+
+    KeyRepeatController menu_subcontexts{100ms, 80ms, 40ms};
+    menu_subcontexts.set_context(DirectionRepeatContext::menu, start);
+    menu_subcontexts.begin_frame();
+    OL_CHECK(menu_subcontexts.handle_key_down(HostKey::down, false, start));
+    menu_subcontexts.set_context(DirectionRepeatContext::save_list, start + 10ms);
+    menu_subcontexts.begin_frame();
+    OL_CHECK(menu_subcontexts.take_menu_repeat(start + 79ms) == std::nullopt);
+    OL_CHECK(menu_subcontexts.take_menu_repeat(start + 80ms) == HostKey::down);
+    menu_subcontexts.set_context(DirectionRepeatContext::menu, start + 90ms);
+    menu_subcontexts.begin_frame();
+    OL_CHECK(menu_subcontexts.take_menu_repeat(start + 119ms) == std::nullopt);
+    OL_CHECK(menu_subcontexts.take_menu_repeat(start + 120ms) == HostKey::down);
+
+    KeyRepeatController page_navigation{100ms, 80ms, 40ms};
+    page_navigation.set_context(DirectionRepeatContext::save_list, start);
+    page_navigation.begin_frame();
+    OL_CHECK(page_navigation.handle_key_down(HostKey::page_down, false, start));
+    OL_CHECK(!page_navigation.handle_key_down(
+        HostKey::page_down, true, start + 50ms));
+    page_navigation.begin_frame();
     OL_CHECK(
-        save_list.take_save_list_page_repeat(true, start + 100ms) == HostKey::page_down);
-    save_list.begin_frame();
-    OL_CHECK(save_list.take_save_list_page_repeat(true, start + 139ms) == std::nullopt);
-    OL_CHECK(
-        save_list.take_save_list_page_repeat(true, start + 140ms) == HostKey::page_down);
-    OL_CHECK(save_list.take_save_list_page_repeat(false, start + 150ms) == std::nullopt);
-    OL_CHECK(save_list.handle_key_down(
-        HostKey::page_down, true, false, false, start + 150ms));
+        page_navigation.take_menu_repeat(start + 80ms) == HostKey::page_down);
+    page_navigation.handle_key_up(HostKey::page_down, start + 90ms);
+    page_navigation.begin_frame();
+    OL_CHECK(page_navigation.handle_key_down(
+        HostKey::keypad_9, false, start + 100ms));
+    OL_CHECK(page_navigation.handle_key_down(
+        HostKey::home, false, start + 100ms));
+    OL_CHECK(!page_navigation.handle_key_down(
+        HostKey::home, true, start + 110ms));
+    OL_CHECK(page_navigation.handle_key_down(
+        HostKey::keypad_7, false, start + 120ms));
+    OL_CHECK(!page_navigation.handle_key_down(
+        HostKey::keypad_7, true, start + 130ms));
+
+    KeyRepeatController battle_cursor{100ms, 80ms, 40ms};
+    battle_cursor.set_context(DirectionRepeatContext::battle_cursor, start);
+    battle_cursor.begin_frame();
+    OL_CHECK(battle_cursor.handle_key_down(HostKey::right, false, start));
+    battle_cursor.begin_frame();
+    OL_CHECK(battle_cursor.take_movement_repeat(start + 100ms) == HostKey::right);
+    battle_cursor.begin_frame();
+    OL_CHECK(battle_cursor.handle_key_down(
+        HostKey::up, false, start + 110ms));
+    battle_cursor.begin_frame();
+    OL_CHECK(battle_cursor.take_movement_repeat(start + 111ms) == HostKey::right);
+    battle_cursor.handle_key_up(HostKey::up, start + 120ms);
+    battle_cursor.begin_frame();
+    OL_CHECK(battle_cursor.take_movement_repeat(start + 121ms) == HostKey::right);
+    OL_CHECK(battle_cursor.handle_key_down(
+        HostKey::up, false, start + 130ms));
+    battle_cursor.handle_key_up(HostKey::right, start + 140ms);
+    battle_cursor.begin_frame();
+    OL_CHECK(battle_cursor.take_movement_repeat(start + 140ms) == HostKey::up);
+
+    KeyRepeatController movement_keypad{100ms, 80ms, 40ms};
+    movement_keypad.set_context(DirectionRepeatContext::movement, start);
+    movement_keypad.begin_frame();
+    OL_CHECK(movement_keypad.handle_key_down(HostKey::keypad_1, false, start));
+    OL_CHECK(!movement_keypad.handle_key_down(
+        HostKey::keypad_1, true, start + 50ms));
 }
 
 void run_timing_tests() {

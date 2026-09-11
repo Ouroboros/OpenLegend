@@ -139,25 +139,37 @@ enum class InputConfigurationStatus {
     parse_failed,
     invalid_input_table,
     invalid_movement_repeat_delay,
+    invalid_menu_repeat_delay,
+    invalid_menu_repeat_interval,
 };
 
 struct InputConfigurationLoadResult {
     static constexpr std::string_view toml_table_name = "input";
     static constexpr std::string_view movement_repeat_delay_toml_key =
         "movement_repeat_delay_ms";
-    static constexpr std::array<std::string_view, 1U> toml_field_order{
+    static constexpr std::string_view menu_repeat_delay_toml_key =
+        "menu_repeat_delay_ms";
+    static constexpr std::string_view menu_repeat_interval_toml_key =
+        "menu_repeat_interval_ms";
+    static constexpr std::array<std::string_view, 3U> toml_field_order{
         movement_repeat_delay_toml_key,
+        menu_repeat_delay_toml_key,
+        menu_repeat_interval_toml_key,
     };
 
     InputConfigurationStatus status{InputConfigurationStatus::ready};
     std::chrono::milliseconds movement_repeat_delay{};
+    std::chrono::milliseconds menu_repeat_delay{};
+    std::chrono::milliseconds menu_repeat_interval{};
     bool loaded_from_file{};
     std::string detail;
 };
 
 [[nodiscard]] InputConfigurationLoadResult load_input_configuration(
     const std::filesystem::path& configuration_path,
-    std::chrono::milliseconds fallback_movement_repeat_delay);
+    std::chrono::milliseconds fallback_movement_repeat_delay,
+    std::chrono::milliseconds fallback_menu_repeat_delay,
+    std::chrono::milliseconds fallback_menu_repeat_interval);
 
 [[nodiscard]] std::string_view input_configuration_status_message(
     InputConfigurationStatus status) noexcept;
@@ -227,6 +239,8 @@ struct RuntimeConfigurationDefaults {
     diagnostics::LogLevel logging_level{diagnostics::LogLevel::info};
     WindowSize window_size;
     std::chrono::milliseconds movement_repeat_delay{};
+    std::chrono::milliseconds menu_repeat_delay{};
+    std::chrono::milliseconds menu_repeat_interval{};
     std::chrono::nanoseconds fade_frame_delay{};
 };
 

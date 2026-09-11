@@ -32,6 +32,10 @@
 #include "openlegend/ui/title_menu.hpp"
 #include "openlegend/world/world_map.hpp"
 
+namespace openlegend::input {
+enum class DirectionRepeatContext : std::uint8_t;
+}
+
 namespace openlegend::app {
 
 class LegacyStartupResources {
@@ -112,6 +116,7 @@ public:
         bool down,
         bool right,
         bool menu_requested = false);
+    [[nodiscard]] input::DirectionRepeatContext direction_repeat_context() const noexcept;
     [[nodiscard]] bool scene_loop_uses_key_states() const noexcept;
     void set_scene_input_states(
         bool interact_down, bool main_ui_edge, bool weather_disable_edge) noexcept;
@@ -217,6 +222,8 @@ private:
         fade_from_black,
     };
 
+    [[nodiscard]] bool translated_key_input_blocked() const noexcept;
+    [[nodiscard]] bool world_or_scene_input_active() const noexcept;
     void begin_new_game();
     void perform_pending_io();
     [[nodiscard]] bool activate_pending_load();

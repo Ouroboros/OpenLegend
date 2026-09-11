@@ -1,5 +1,6 @@
 #include "legacy_runtime_loop.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -25,8 +26,6 @@
 
 namespace openlegend::platform::sdl3 {
 namespace {
-
-constexpr std::chrono::milliseconds kSaveListPageRepeatInterval{100};
 
 void report_runtime_error(
     const std::string_view category,
@@ -142,7 +141,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         LegacyInputCoordinator input_coordinator{game};
         input::KeyRepeatController key_repeat{
             settings.movement_repeat_delay,
-            kSaveListPageRepeatInterval};
+            settings.menu_repeat_delay,
+            settings.menu_repeat_interval};
         FramePresenter frame_presenter;
         timing::SteadyBiosTickSource tick_source;
         timing::SteadyVgaRetraceSource retrace_source{
@@ -153,8 +153,10 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             const auto frame_retrace = retrace_source.tick();
             const auto input_now = std::chrono::steady_clock::now();
             key_repeat.begin_frame();
+            input_coordinator.synchronize_repeat_context(
+                key_repeat, input_now);
             input_coordinator.process_host_events(
-                platform, key_repeat, frame_tick, input_now, running);
+                platform, key_repeat, frame_tick, running);
             input_coordinator.dispatch_repeats(key_repeat, frame_tick);
             input_coordinator.apply_game_input();
 
@@ -190,8 +192,14 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                         retrace_source, frame_retrace));
                 } else if (!vga_frame) {
                     if (input_coordinator.waits_for_menu_input()) {
-                        const auto wait_timeout =
-                            tick_source.time_until_next_tick();
+                        const auto wait_now = std::chrono::steady_clock::now();
+                        input_coordinator.synchronize_repeat_context(
+                            key_repeat, wait_now);
+                        auto wait_timeout = tick_source.time_until_next_tick();
+                        if (const auto repeat_timeout =
+                                key_repeat.time_until_menu_repeat(wait_now)) {
+                            wait_timeout = std::min(wait_timeout, *repeat_timeout);
+                        }
                         if (tick_source.tick() == frame_tick) {
                             platform.wait_for_event_or_timeout(wait_timeout);
                         }

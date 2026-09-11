@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "openlegend/app/legacy_game_runtime.hpp"
+#include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/resource/binary_file.hpp"
@@ -1121,8 +1122,18 @@ void check_startup_resource_cache(const std::filesystem::path& data_root) {
         OL_CHECK(!error);
     }
     finish_title_startup(cached_slot);
+    OL_CHECK(cached_slot.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     cached_slot.handle_key(0x98U, false, false);
     cached_slot.handle_key(0x0DU, false, false);
+    OL_CHECK(cached_slot.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
+    cached_slot.handle_key(input::legacy_key::delete_save, false, false);
+    OL_CHECK(cached_slot.direction_repeat_context() ==
+        input::DirectionRepeatContext::none);
+    cached_slot.handle_key(input::legacy_key::escape, false, false);
+    OL_CHECK(cached_slot.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
     cached_slot.handle_key(0x0DU, false, false);
     finish_title_confirmation(cached_slot);
     OL_CHECK(cached_slot.render());
@@ -1139,6 +1150,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         app::LegacyGameRuntime title_exit{data_root, 0U};
         OL_CHECK(title_exit.valid());
         finish_title_startup(title_exit);
+        OL_CHECK(title_exit.direction_repeat_context() ==
+            input::DirectionRepeatContext::menu);
         OL_CHECK(!title_exit.fade_music_on_exit());
         OL_CHECK(
             title_exit.handle_key(0x9EU, false, false) ==
@@ -1162,6 +1175,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         intro_game.handle_key(0x0DU, false, false);
         finish_title_confirmation(intro_game);
         OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
+        OL_CHECK(intro_game.direction_repeat_context() ==
+            input::DirectionRepeatContext::none);
         OL_CHECK(intro_game.game_state().loaded());
         OL_CHECK(intro_game.render());
         intro_game.handle_key(0x20U, true, false);
@@ -1178,11 +1193,15 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         }
         intro_game.advance();
         OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
+        OL_CHECK(intro_game.direction_repeat_context() ==
+            input::DirectionRepeatContext::none);
         OL_CHECK(intro_game.render());
         intro_game.handle_key('Y', false, false);
         OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
         finish_new_game_scene_transition(intro_game);
         OL_CHECK(intro_game.view() == app::LegacyGameView::scene);
+        OL_CHECK(intro_game.direction_repeat_context() ==
+            input::DirectionRepeatContext::none);
         const auto* ranger = intro_game.game_state().ranger();
         OL_CHECK(ranger != nullptr);
         if (ranger != nullptr) {
@@ -1268,6 +1287,9 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             const bool down = !right && !up;
             OL_CHECK(walk.handle_world_input(false, up, down, right));
             walk.advance(701U + step);
+            OL_CHECK(!walk.scene_loop_uses_key_states());
+            OL_CHECK(walk.direction_repeat_context() ==
+                input::DirectionRepeatContext::movement);
             const auto* ranger = walk.game_state().ranger();
             OL_CHECK(ranger != nullptr);
             if (ranger != nullptr) {
@@ -1524,7 +1546,21 @@ void check_game_runtime(const std::filesystem::path& data_root) {
 
     OL_CHECK(new_game.handle_world_input(false, false, false, false, true));
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
+    OL_CHECK(new_game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     OL_CHECK(new_game.render());
+    new_game.handle_key(input::legacy_key::up, false, false);
+    new_game.handle_key(input::legacy_key::enter, false, false);
+    OL_CHECK(new_game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
+    new_game.handle_key(input::legacy_key::enter, false, false);
+    OL_CHECK(new_game.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
+    new_game.handle_key(input::legacy_key::escape, false, false);
+    OL_CHECK(new_game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
+    new_game.handle_key(input::legacy_key::escape, false, false);
+    new_game.handle_key(input::legacy_key::down, false, false);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x98U, false, false);
     new_game.handle_key(0x98U, false, false);
@@ -1553,6 +1589,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x9EU, false, false);
     new_game.handle_key(0x0DU, false, false);
     OL_CHECK(!app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+    OL_CHECK(new_game.direction_repeat_context() ==
+        input::DirectionRepeatContext::none);
     OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
     new_game.handle_key(0x98U, false, false);
     OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 0U);
@@ -1566,6 +1604,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(items_initial_hash == 0xD1E30FA5A50162AEULL);
     new_game.finish_presented_tick();
     OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_items_presented(new_game));
+    OL_CHECK(new_game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     new_game.handle_key(0x98U, false, false);
     OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu_item_selection(new_game) == 5U);
     new_game.handle_key(0x9EU, false, false);
@@ -2762,12 +2802,16 @@ void check_shop_input_present_gate(const std::filesystem::path& data_root) {
             LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
             scene::SceneStepKind::shop);
         OL_CHECK(!LegacyGameRuntimeTestAccess::scene_shop_presented(game));
+        OL_CHECK(game.direction_repeat_context() ==
+            input::DirectionRepeatContext::none);
     };
     const auto present_shop = [&game]() {
         OL_CHECK(game.render());
         OL_CHECK(!LegacyGameRuntimeTestAccess::scene_shop_presented(game));
         game.finish_presented_tick();
         OL_CHECK(LegacyGameRuntimeTestAccess::scene_shop_presented(game));
+        OL_CHECK(game.direction_repeat_context() ==
+            input::DirectionRepeatContext::menu);
     };
 
     open_shop();
@@ -2804,6 +2848,8 @@ void check_shop_input_present_gate(const std::filesystem::path& data_root) {
     OL_CHECK(
         LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
         scene::SceneStepKind::stay);
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::movement);
 
     auto* ranger = const_cast<model::GameState&>(game.game_state()).ranger();
     OL_CHECK(ranger != nullptr);
@@ -2886,6 +2932,8 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
         LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
         scene::SceneStepKind::death_menu);
     OL_CHECK(game.death_menu_accepts_input());
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
              ui::DeathMenuScreen::main);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
@@ -2894,6 +2942,8 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
     OL_CHECK(game.render());
     game.finish_presented_tick();
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     game.handle_key('A', false, false);
     game.handle_key(input::legacy_key::down, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
@@ -2916,6 +2966,8 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
              ui::DeathMenuScreen::load_slots);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 0U);
     OL_CHECK(game.save_list_active());
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
     game.handle_key(input::legacy_key::down, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 0U);
 
@@ -2923,21 +2975,31 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     OL_CHECK(game.render());
     OL_CHECK(game.render_modern_ui(modern_ui));
     game.finish_presented_tick();
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
     game.handle_key(input::legacy_key::down, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 1U);
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
     OL_CHECK(game.render());
     game.finish_presented_tick();
     game.handle_key(input::legacy_key::page_down, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 9U);
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::save_list);
     OL_CHECK(game.render());
     game.finish_presented_tick();
     game.handle_key(input::legacy_key::escape, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
              ui::DeathMenuScreen::main);
     OL_CHECK(!game.save_list_active());
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
 
     OL_CHECK(game.render());
     game.finish_presented_tick();
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     game.handle_key(input::legacy_key::down, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 1U);
     OL_CHECK(game.render());
@@ -2945,6 +3007,8 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     game.handle_key(input::legacy_key::space, false, false);
     OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
              ui::DeathMenuScreen::quit_confirmation);
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::none);
     game.handle_key(input::legacy_key::yes, false, false);
     OL_CHECK(game.view() == app::LegacyGameView::scene);
 
@@ -3004,6 +3068,8 @@ void check_battle_party_selection_input_timing(
     OL_CHECK(session->setup().party_prefix_length() == 1U);
     OL_CHECK(session->setup().cursor() == 0U);
     OL_CHECK(game.battle_menu_uses_key_states());
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
 
     game.set_battle_menu_direction_states(true, true);
     game.finish_presented_tick();
@@ -3170,11 +3236,15 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
     OL_CHECK(game.needs_immediate_frame(100U));
     OL_CHECK(!game.battle_menu_uses_key_states());
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::none);
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action_initial_present);
     OL_CHECK(game.needs_immediate_frame(100U));
     OL_CHECK(game.battle_menu_uses_key_states());
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::menu);
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action);
@@ -3207,6 +3277,8 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::battle_outcome);
+    OL_CHECK(game.direction_repeat_context() ==
+        input::DirectionRepeatContext::none);
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::battle_outcome_wait);

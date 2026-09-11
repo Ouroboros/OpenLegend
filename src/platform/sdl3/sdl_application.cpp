@@ -34,6 +34,8 @@ namespace {
 
 constexpr app::WindowSize kDefaultWindowSize{960, 600};
 constexpr std::chrono::milliseconds kDefaultMovementRepeatDelay{500};
+constexpr std::chrono::milliseconds kDefaultMenuRepeatDelay{500};
+constexpr std::chrono::milliseconds kDefaultMenuRepeatInterval{55};
 constexpr std::chrono::nanoseconds kDefaultFadeFrameDelay{14'268'123};
 
 [[nodiscard]] std::uint64_t current_process_id() noexcept {
@@ -273,6 +275,10 @@ void log_resolved_configuration(
     diagnostics::log_info(
         "input movement_repeat_delay_ms=" +
         std::to_string(configuration.input.movement_repeat_delay.count()) +
+        " menu_repeat_delay_ms=" +
+        std::to_string(configuration.input.menu_repeat_delay.count()) +
+        " menu_repeat_interval_ms=" +
+        std::to_string(configuration.input.menu_repeat_interval.count()) +
         " fade_frame_delay_us=" +
         std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
             configuration.timing.fade_frame_delay).count()));
@@ -349,6 +355,8 @@ int run_sdl_application(
             diagnostics::LogLevel::info,
             kDefaultWindowSize,
             kDefaultMovementRepeatDelay,
+            kDefaultMenuRepeatDelay,
+            kDefaultMenuRepeatInterval,
             kDefaultFadeFrameDelay});
     LoggingLifetime logging_lifetime;
     initialize_session_logging(
@@ -399,6 +407,8 @@ int run_sdl_application(
             LegacyRuntimeLoopSettings{
                 *save_directory,
                 configuration.input.movement_repeat_delay,
+                configuration.input.menu_repeat_delay,
+                configuration.input.menu_repeat_interval,
                 configuration.timing.fade_frame_delay,
                 smoke_test});
         if (loop_result.status != 0) {

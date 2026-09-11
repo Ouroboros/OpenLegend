@@ -3,11 +3,20 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 #include "openlegend/compat/runtime_platform.hpp"
 
 namespace openlegend::input {
+
+enum class DirectionRepeatContext : std::uint8_t {
+    none,
+    movement,
+    battle_cursor,
+    menu,
+    save_list,
+};
 
 class KeyRepeatController {
 public:
@@ -15,44 +24,50 @@ public:
     using TimePoint = Clock::time_point;
 
     KeyRepeatController(
-        std::chrono::milliseconds initial_delay,
-        std::chrono::milliseconds save_list_page_interval) noexcept;
+        std::chrono::milliseconds movement_initial_delay,
+        std::chrono::milliseconds menu_initial_delay,
+        std::chrono::milliseconds menu_interval) noexcept;
 
     void begin_frame() noexcept;
+    void set_context(DirectionRepeatContext context, TimePoint now) noexcept;
 
     [[nodiscard]] bool handle_key_down(
         compat::HostKey key,
         bool host_repeat,
-        bool movement_repeat_active,
-        bool save_list_page_repeat_active,
         TimePoint now) noexcept;
-    void handle_key_up(compat::HostKey key) noexcept;
+    void handle_key_up(compat::HostKey key, TimePoint now) noexcept;
 
     [[nodiscard]] std::optional<compat::HostKey> take_movement_repeat(
-        bool active,
         TimePoint now) noexcept;
-    [[nodiscard]] std::optional<compat::HostKey> take_save_list_page_repeat(
-        bool active,
+    [[nodiscard]] std::optional<compat::HostKey> take_menu_repeat(
         TimePoint now) noexcept;
+    [[nodiscard]] std::optional<std::chrono::nanoseconds> time_until_menu_repeat(
+        TimePoint now) const noexcept;
 
     void defer_movement_repeat(TimePoint now) noexcept;
 
 private:
-    [[nodiscard]] std::optional<compat::HostKey> active_movement_direction() const noexcept;
-    [[nodiscard]] bool movement_key_held(compat::HostKey key) const noexcept;
-    void remember_movement_key(compat::HostKey key) noexcept;
-    [[nodiscard]] bool forget_movement_key(compat::HostKey key) noexcept;
+    static constexpr std::size_t kHeldKeyCapacity = 16U;
+    static constexpr std::size_t kBlockedKeyCapacity = 32U;
 
-    std::chrono::milliseconds initial_delay_{};
-    std::chrono::milliseconds save_list_page_interval_{};
-    std::array<compat::HostKey, 8> held_movement_keys_{};
+    [[nodiscard]] bool controls_key(compat::HostKey key) const noexcept;
+    void block_movement_keys() noexcept;
+    void block_menu_keys() noexcept;
+
+    std::chrono::milliseconds movement_initial_delay_{};
+    std::chrono::milliseconds menu_initial_delay_{};
+    std::chrono::milliseconds menu_interval_{};
+    DirectionRepeatContext context_{DirectionRepeatContext::none};
+    std::array<compat::HostKey, kHeldKeyCapacity> held_movement_keys_{};
     std::size_t held_movement_key_count_{};
-    std::optional<compat::HostKey> held_save_list_page_key_;
+    std::array<compat::HostKey, kHeldKeyCapacity> held_menu_keys_{};
+    std::size_t held_menu_key_count_{};
+    std::array<compat::HostKey, kBlockedKeyCapacity> blocked_keys_{};
+    std::size_t blocked_key_count_{};
     TimePoint movement_repeat_at_{};
-    TimePoint save_list_page_repeat_at_{};
-    bool movement_direction_pressed_{};
-    bool movement_repeat_was_active_{};
-    bool save_list_page_key_pressed_{};
+    TimePoint menu_repeat_at_{};
+    bool movement_key_pressed_{};
+    bool menu_key_pressed_{};
 };
 
 }  // namespace openlegend::input

@@ -529,9 +529,13 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
 
 [[nodiscard]] InputConfigurationLoadResult input_configuration_from_document(
     const toml::table& document,
-    const std::chrono::milliseconds fallback_movement_repeat_delay) {
+    const std::chrono::milliseconds fallback_movement_repeat_delay,
+    const std::chrono::milliseconds fallback_menu_repeat_delay,
+    const std::chrono::milliseconds fallback_menu_repeat_interval) {
     InputConfigurationLoadResult result;
     result.movement_repeat_delay = fallback_movement_repeat_delay;
+    result.menu_repeat_delay = fallback_menu_repeat_delay;
+    result.menu_repeat_interval = fallback_menu_repeat_interval;
     const toml::node* input_node =
         document.get(InputConfigurationLoadResult::toml_table_name);
     if (input_node == nullptr) {
@@ -551,6 +555,26 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
             return result;
         }
         result.movement_repeat_delay = std::chrono::milliseconds{*delay};
+    }
+    if (const toml::node* delay_node =
+            input->get(InputConfigurationLoadResult::menu_repeat_delay_toml_key);
+        delay_node != nullptr) {
+        const auto delay = delay_node->value<std::int64_t>();
+        if (!delay.has_value() || *delay < 0) {
+            result.status = InputConfigurationStatus::invalid_menu_repeat_delay;
+            return result;
+        }
+        result.menu_repeat_delay = std::chrono::milliseconds{*delay};
+    }
+    if (const toml::node* interval_node =
+            input->get(InputConfigurationLoadResult::menu_repeat_interval_toml_key);
+        interval_node != nullptr) {
+        const auto interval = interval_node->value<std::int64_t>();
+        if (!interval.has_value() || *interval <= 0) {
+            result.status = InputConfigurationStatus::invalid_menu_repeat_interval;
+            return result;
+        }
+        result.menu_repeat_interval = std::chrono::milliseconds{*interval};
     }
     result.loaded_from_file = true;
     return result;
@@ -778,17 +802,24 @@ WindowConfigurationStatus save_window_configuration(
 
 InputConfigurationLoadResult load_input_configuration(
     const std::filesystem::path& configuration_path,
-    const std::chrono::milliseconds fallback_movement_repeat_delay) {
+    const std::chrono::milliseconds fallback_movement_repeat_delay,
+    const std::chrono::milliseconds fallback_menu_repeat_delay,
+    const std::chrono::milliseconds fallback_menu_repeat_interval) {
     const auto document = read_configuration_document(configuration_path);
     if (document.status != ConfigurationDocumentStatus::ready) {
         InputConfigurationLoadResult result;
         result.status = configuration_load_status<InputConfigurationStatus>(document.status);
         result.movement_repeat_delay = fallback_movement_repeat_delay;
+        result.menu_repeat_delay = fallback_menu_repeat_delay;
+        result.menu_repeat_interval = fallback_menu_repeat_interval;
         result.detail = document.detail;
         return result;
     }
     return input_configuration_from_document(
-        document.values, fallback_movement_repeat_delay);
+        document.values,
+        fallback_movement_repeat_delay,
+        fallback_menu_repeat_delay,
+        fallback_menu_repeat_interval);
 }
 
 TimingConfigurationLoadResult load_timing_configuration(
@@ -850,7 +881,10 @@ RuntimeConfiguration load_runtime_configuration(
             defaults.logging_path,
             defaults.logging_level);
         configuration.input = input_configuration_from_document(
-            document.values, defaults.movement_repeat_delay);
+            document.values,
+            defaults.movement_repeat_delay,
+            defaults.menu_repeat_delay,
+            defaults.menu_repeat_interval);
         configuration.timing = timing_configuration_from_document(
             document.values, defaults.fade_frame_delay);
         configuration.window =
@@ -871,6 +905,8 @@ RuntimeConfiguration load_runtime_configuration(
     configuration.input.status =
         configuration_load_status<InputConfigurationStatus>(document.status);
     configuration.input.movement_repeat_delay = defaults.movement_repeat_delay;
+    configuration.input.menu_repeat_delay = defaults.menu_repeat_delay;
+    configuration.input.menu_repeat_interval = defaults.menu_repeat_interval;
     configuration.input.detail = document.detail;
 
     configuration.timing.status =
@@ -956,6 +992,10 @@ std::string_view input_configuration_status_message(
         return "[input] must be a TOML table";
     case InputConfigurationStatus::invalid_movement_repeat_delay:
         return "[input] movement_repeat_delay_ms must be a non-negative integer";
+    case InputConfigurationStatus::invalid_menu_repeat_delay:
+        return "[input] menu_repeat_delay_ms must be a non-negative integer";
+    case InputConfigurationStatus::invalid_menu_repeat_interval:
+        return "[input] menu_repeat_interval_ms must be a positive integer";
     }
     return "unknown input configuration status";
 }

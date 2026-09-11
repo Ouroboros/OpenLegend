@@ -24,7 +24,6 @@ public:
         SdlRuntimePlatform& platform,
         input::KeyRepeatController& key_repeat,
         std::uint32_t frame_tick,
-        std::chrono::steady_clock::time_point input_now,
         bool& running);
 
     void dispatch_repeats(
@@ -36,11 +35,13 @@ public:
 
     void after_present();
 
+    void synchronize_repeat_context(
+        input::KeyRepeatController& key_repeat,
+        std::chrono::steady_clock::time_point now) const noexcept;
+
     [[nodiscard]] bool waits_for_menu_input() const noexcept;
 
 private:
-    [[nodiscard]] bool uses_shared_direction_repeat() const noexcept;
-
     void synchronize();
 
     void sync_battle_confirmation();
@@ -52,7 +53,7 @@ private:
 
     app::LegacyGameRuntime& game_;
     input::LegacyKeyboard keyboard_;
-    std::optional<std::uint32_t> last_direction_repeat_tick_;
+    std::optional<std::uint32_t> last_movement_repeat_tick_;
 };
 
 }  // namespace openlegend::platform::sdl3
