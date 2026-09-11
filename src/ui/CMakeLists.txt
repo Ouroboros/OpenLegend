@@ -2,6 +2,7 @@ add_library(
     openlegend_ui
     STATIC
         basic_ui_renderer.cpp
+        death_menu.cpp
         game_menu.cpp
         location_status_renderer.cpp
         modern_ui_renderer.cpp

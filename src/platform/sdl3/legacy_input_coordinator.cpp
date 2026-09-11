@@ -16,7 +16,8 @@ LegacyInputCoordinator::LegacyInputCoordinator(app::LegacyGameRuntime& game)
 
 bool LegacyInputCoordinator::waits_for_menu_input() const noexcept {
     return game_.view() == app::LegacyGameView::game_menu ||
-        game_.battle_menu_uses_key_states();
+        game_.battle_menu_uses_key_states() ||
+        game_.death_menu_accepts_input();
 }
 
 bool LegacyInputCoordinator::uses_shared_direction_repeat() const noexcept {

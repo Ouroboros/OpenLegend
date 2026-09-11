@@ -22,6 +22,7 @@
 #include "openlegend/resource/packed_archive.hpp"
 #include "openlegend/scene/scene.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
+#include "openlegend/ui/death_menu.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/location_status_renderer.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
@@ -123,6 +124,7 @@ public:
     void set_battle_cursor_input_states(
         bool down, bool right, bool left, bool up, bool escape) noexcept;
     [[nodiscard]] bool battle_menu_uses_key_states() const noexcept;
+    [[nodiscard]] bool death_menu_accepts_input() const noexcept;
     std::uint8_t take_clear_battle_menu_direction_request() noexcept;
     std::uint8_t take_clear_battle_cursor_key_request() noexcept;
     bool take_clear_battle_confirmation_states_request() noexcept;
@@ -139,7 +141,8 @@ public:
                 title_menu_.screen() == ui::TitleScreen::load_slots) ||
             (view_ == LegacyGameView::game_menu &&
              (game_menu_.screen() == ui::GameMenuScreen::load_slots ||
-              game_menu_.screen() == ui::GameMenuScreen::save_slots));
+              game_menu_.screen() == ui::GameMenuScreen::save_slots)) ||
+            (death_menu_accepts_input() && death_menu_.save_list_active());
     }
     [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
     [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
@@ -243,6 +246,7 @@ private:
         std::span<const std::uint8_t> message, LegacyGameView return_view);
     void handle_title_result(ui::TitleResult result);
     void handle_game_menu_result(ui::GameMenuResult result);
+    void handle_death_menu_result(ui::DeathMenuResult result);
     void handle_menu_item_result(ui::GameMenuResult result);
     void handle_menu_item_confirmation(std::uint8_t translated_key);
     [[nodiscard]] bool begin_world_menu_item_event(std::int16_t item_id);
@@ -264,6 +268,7 @@ private:
     ui::TitleMenuController title_menu_;
     std::unique_ptr<ui::TitleMenuRenderer> title_renderer_;
     ui::GameMenuController game_menu_;
+    ui::DeathMenuController death_menu_;
     std::array<ui::SaveListEntry, ui::kSaveListPageSize> save_list_entries_{};
     std::unique_ptr<battle::BattleRenderer> game_menu_status_renderer_;
     std::optional<ui::NewGameNameEditor> name_editor_;
@@ -331,6 +336,7 @@ private:
     bool scene_ui_requested_{};
     bool scene_idle_skip_requested_{};
     bool scene_question_presented_{};
+    bool scene_death_menu_active_{};
     bool scene_death_menu_presented_{};
     bool scene_shop_presented_{};
     scene::SceneInputReset scene_input_reset_request_{scene::SceneInputReset::none};

@@ -190,6 +190,10 @@ inline constexpr std::array<std::u8string_view, 4> progress_menu_items{
     u8"載入進度三",
     u8"離開睡覺去",
 };
+inline constexpr std::array<std::u8string_view, 2> death_menu_items{
+    u8"載入進度",
+    progress_menu_items[3],
+};
 inline constexpr std::u8string_view death_location = u8"在地球的某處";
 inline constexpr std::u8string_view death_missing = u8"當地人口的失蹤數";
 inline constexpr std::u8string_view death_another = u8"又多了一筆．．．";
@@ -311,6 +315,7 @@ inline constexpr auto kCraftedItemText = crafted_item;
 inline constexpr auto kLevelPrefix = level_prefix;
 inline constexpr auto kLevelSuffix = level_suffix;
 inline constexpr auto& kProgressMenuItems = progress_menu_items;
+inline constexpr auto& kDeathMenuItems = death_menu_items;
 inline constexpr auto kDeathLocationText = death_location;
 inline constexpr auto kDeathMissingText = death_missing;
 inline constexpr auto kDeathAnotherText = death_another;

@@ -14,6 +14,7 @@
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/packed_archive.hpp"
+#include "openlegend/ui/death_menu.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 #include "openlegend/ui/title_menu.hpp"
@@ -46,6 +47,10 @@ public:
 
     [[nodiscard]] bool render_game_menu_main(
         const GameMenuController& menu,
+        render::IndexedFramebuffer& framebuffer);
+
+    [[nodiscard]] bool render_death_menu(
+        const DeathMenuController& menu,
         render::IndexedFramebuffer& framebuffer);
 
     [[nodiscard]] bool render_error(

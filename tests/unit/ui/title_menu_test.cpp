@@ -13,7 +13,9 @@
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
+#include "openlegend/text/game_strings.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
+#include "openlegend/ui/death_menu.hpp"
 #include "openlegend/ui/game_menu.hpp"
 #include "openlegend/ui/location_status_renderer.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
@@ -98,10 +100,19 @@ struct LegacyGameRuntimeTestAccess {
             : -1;
     }
 
-    static bool scene_pending_death_confirm(
+    static ui::DeathMenuScreen death_menu_screen(
         const LegacyGameRuntime& runtime) noexcept {
-        return runtime.scene_session_ != nullptr &&
-               runtime.scene_session_->pending().death_confirm;
+        return runtime.death_menu_.screen();
+    }
+
+    static std::uint8_t death_menu_selection(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.death_menu_.main_selection();
+    }
+
+    static std::uint16_t death_menu_slot(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.death_menu_.slot_selection();
     }
 
     static bool begin_scene_walk(LegacyGameRuntime& runtime) {
@@ -591,6 +602,71 @@ void check_controller() {
     static_cast<void>(menu.handle_key(0x98U));
     result = menu.handle_key(0x0DU);
     OL_CHECK(result.command == TitleCommand::start_new_game);
+}
+
+void check_death_menu_controller() {
+    using namespace openlegend::ui;
+
+    OL_CHECK(openlegend::text::game_strings::kDeathMenuItems.size() == 2U);
+    OL_CHECK(
+        openlegend::text::game_strings::kDeathMenuItems[1] ==
+        openlegend::text::game_strings::kProgressMenuItems[3]);
+
+    DeathMenuController menu;
+    OL_CHECK(menu.screen() == DeathMenuScreen::main);
+    OL_CHECK(menu.main_selection() == 0U);
+    OL_CHECK(!menu.save_list_active());
+    static_cast<void>(menu.handle_key(input::legacy_key::down));
+    OL_CHECK(menu.main_selection() == 1U);
+    static_cast<void>(menu.handle_key(input::legacy_key::up));
+    OL_CHECK(menu.main_selection() == 0U);
+    static_cast<void>(menu.handle_key(input::legacy_key::enter));
+    OL_CHECK(menu.screen() == DeathMenuScreen::load_slots);
+    OL_CHECK(menu.slot_selection() == 0U);
+    OL_CHECK(menu.save_list_active());
+
+    static_cast<void>(menu.handle_key(input::legacy_key::up));
+    OL_CHECK(menu.slot_selection() == 998U);
+    static_cast<void>(menu.handle_key(input::legacy_key::down));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(input::legacy_key::page_down));
+    OL_CHECK(menu.slot_selection() == 8U);
+    static_cast<void>(menu.handle_key(input::legacy_key::page_up));
+    OL_CHECK(menu.slot_selection() == 0U);
+    static_cast<void>(menu.handle_key(input::legacy_key::end));
+    OL_CHECK(menu.slot_selection() == 998U);
+    static_cast<void>(menu.handle_key(input::legacy_key::home));
+    OL_CHECK(menu.slot_selection() == 0U);
+
+    static_cast<void>(menu.handle_key(input::legacy_key::delete_save));
+    OL_CHECK(menu.screen() == DeathMenuScreen::delete_confirmation);
+    static_cast<void>(menu.handle_key(input::legacy_key::no));
+    OL_CHECK(menu.screen() == DeathMenuScreen::load_slots);
+    static_cast<void>(menu.handle_key(input::legacy_key::delete_save));
+    auto result = menu.handle_key(input::legacy_key::yes);
+    OL_CHECK(result.command == DeathMenuCommand::delete_slot);
+    OL_CHECK(result.slot == 0U);
+    result = menu.handle_key(input::legacy_key::space);
+    OL_CHECK(result.command == DeathMenuCommand::load_slot);
+    OL_CHECK(result.slot == 0U);
+
+    static_cast<void>(menu.handle_key(input::legacy_key::escape));
+    OL_CHECK(menu.screen() == DeathMenuScreen::main);
+    OL_CHECK(menu.main_selection() == 0U);
+    static_cast<void>(menu.handle_key(input::legacy_key::down));
+    static_cast<void>(menu.handle_key(input::legacy_key::enter));
+    OL_CHECK(menu.screen() == DeathMenuScreen::quit_confirmation);
+    static_cast<void>(menu.handle_key(static_cast<std::uint8_t>('y')));
+    OL_CHECK(menu.screen() == DeathMenuScreen::main);
+    OL_CHECK(menu.main_selection() == 1U);
+    static_cast<void>(menu.handle_key(input::legacy_key::enter));
+    result = menu.handle_key(input::legacy_key::yes);
+    OL_CHECK(result.command == DeathMenuCommand::exit_game);
+
+    menu.reset();
+    OL_CHECK(menu.screen() == DeathMenuScreen::main);
+    OL_CHECK(menu.main_selection() == 0U);
+    OL_CHECK(menu.slot_selection() == 0U);
 }
 
 void check_game_menu_controller() {
@@ -2809,70 +2885,84 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     OL_CHECK(
         LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
         scene::SceneStepKind::death_menu);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    OL_CHECK(game.death_menu_accepts_input());
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
+             ui::DeathMenuScreen::main);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
 
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    game.handle_key(input::legacy_key::down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
     OL_CHECK(game.render());
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
     game.finish_presented_tick();
     game.handle_key('A', false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 0);
+    game.handle_key(input::legacy_key::down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
 
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 1);
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 1);
+    game.handle_key(input::legacy_key::down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 1U);
+    game.handle_key(input::legacy_key::up, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 1U);
 
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 2);
+    game.handle_key(input::legacy_key::up, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 0U);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key(0x98U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_menu_index(game) == 3);
-    game.handle_key(0x20U, false, false);
-    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_pending_death_confirm(game));
+    game.handle_key(input::legacy_key::enter, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
+             ui::DeathMenuScreen::load_slots);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 0U);
+    OL_CHECK(game.save_list_active());
+    game.handle_key(input::legacy_key::down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 0U);
+
+    render::RgbaFramebuffer modern_ui;
+    OL_CHECK(game.render());
+    OL_CHECK(game.render_modern_ui(modern_ui));
+    game.finish_presented_tick();
+    game.handle_key(input::legacy_key::down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 1U);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.handle_key(input::legacy_key::page_down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_slot(game) == 9U);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.handle_key(input::legacy_key::escape, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
+             ui::DeathMenuScreen::main);
+    OL_CHECK(!game.save_list_active());
 
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key(0x20U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_death_confirm(game));
-    game.handle_key('Y', false, false);
-    OL_CHECK(
-        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
-        scene::SceneStepKind::death_menu);
+    game.handle_key(input::legacy_key::down, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 1U);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.handle_key(input::legacy_key::space, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
+             ui::DeathMenuScreen::quit_confirmation);
+    game.handle_key(input::legacy_key::yes, false, false);
+    OL_CHECK(game.view() == app::LegacyGameView::scene);
 
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key('y', false, false);
-    OL_CHECK(
-        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
-        scene::SceneStepKind::death_menu);
-    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_pending_death_confirm(game));
-    game.handle_key(0x96U, false, false);
-    OL_CHECK(!LegacyGameRuntimeTestAccess::scene_pending_death_confirm(game));
-
+    game.handle_key(static_cast<std::uint8_t>('y'), false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
+             ui::DeathMenuScreen::main);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_selection(game) == 1U);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key(0x96U, false, false);
-    OL_CHECK(LegacyGameRuntimeTestAccess::scene_pending_death_confirm(game));
-    game.handle_key('Y', false, false);
-    OL_CHECK(
-        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
-        scene::SceneStepKind::death_menu);
+    game.handle_key(input::legacy_key::enter, false, false);
+    OL_CHECK(LegacyGameRuntimeTestAccess::death_menu_screen(game) ==
+             ui::DeathMenuScreen::quit_confirmation);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    game.handle_key('Y', false, false);
-    OL_CHECK(
-        LegacyGameRuntimeTestAccess::scene_pending_kind(game) ==
-        scene::SceneStepKind::quit);
+    game.handle_key(input::legacy_key::yes, false, false);
+    OL_CHECK(game.view() == app::LegacyGameView::exited);
 }
 
 void check_battle_party_selection_input_timing(
@@ -3810,6 +3900,7 @@ using UiCheck = void (*)(const std::filesystem::path&);
 
 void run_controller_check(const std::filesystem::path&) {
     check_controller();
+    check_death_menu_controller();
 }
 
 void run_game_menu_controller_check(const std::filesystem::path&) {

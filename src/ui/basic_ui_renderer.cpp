@@ -432,6 +432,48 @@ bool BasicUiRenderer::render_game_menu(
     return false;
 }
 
+bool BasicUiRenderer::render_death_menu(
+    const DeathMenuController& menu,
+    render::IndexedFramebuffer& framebuffer) {
+    constexpr int kPanelX = 205;
+    constexpr int kPanelY = 90;
+    constexpr std::uint16_t kClearWidth = 115U;
+    constexpr std::uint16_t kPanelWidth = 101U;
+    constexpr std::uint16_t kClearHeight = 90U;
+    constexpr std::uint16_t kPanelHeight = 50U;
+    if (!valid() || menu.main_selection() >= kDeathMenuItems.size() ||
+        !framebuffer.fill_rectangle(
+            kPanelX,
+            kPanelY,
+            kClearWidth,
+            kClearHeight,
+            palette_colors::black) ||
+        !draw_box(
+            framebuffer,
+            kPanelX,
+            kPanelY,
+            kPanelWidth,
+            kPanelHeight)) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < kDeathMenuItems.size(); ++index) {
+        if (!draw_text_utf8(
+                framebuffer,
+                215,
+                95 + static_cast<int>(index) * 20,
+                kDeathMenuItems[index],
+                index == menu.main_selection()
+                    ? text_colors::selected
+                    : text_colors::menu_normal)) {
+            return false;
+        }
+    }
+    return menu.screen() != DeathMenuScreen::quit_confirmation ||
+        (draw_box(framebuffer, 71, 180, 177U, 20U) &&
+         draw_text_utf8(
+             framebuffer, 75, 182, kExitPrompt, text_colors::notice));
+}
+
 bool BasicUiRenderer::render_error(
     const std::span<const std::uint8_t> legacy_message,
     render::IndexedFramebuffer& framebuffer) {

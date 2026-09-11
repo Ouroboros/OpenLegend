@@ -402,6 +402,15 @@ bool LegacyGameRuntime::battle_menu_uses_key_states() const noexcept {
          battle_session_->cursor_selection_uses_key_states());
 }
 
+bool LegacyGameRuntime::death_menu_accepts_input() const noexcept {
+    return view_ == LegacyGameView::scene && scene_death_menu_active_ &&
+        pending_io_ == PendingIo::none &&
+        load_transition_phase_ == LoadTransitionPhase::none &&
+        scene_effect_kind_ == SceneEffectKind::none &&
+        scene_session_ != nullptr &&
+        scene_session_->pending().kind == scene::SceneStepKind::death_menu;
+}
+
 std::uint8_t LegacyGameRuntime::take_clear_battle_menu_direction_request() noexcept {
     return battle_session_ != nullptr
         ? battle_session_->take_clear_player_menu_direction_request() : 0U;
@@ -835,10 +844,28 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             handle_scene_result(scene_session_->resume(
                 scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
         } else if (pending_kind == scene::SceneStepKind::death_menu &&
-                   scene_death_menu_presented_) {
+                   death_menu_accepts_input() && scene_death_menu_presented_) {
             scene_death_menu_presented_ = false;
-            handle_scene_result(scene_session_->resume(
-                scene::SceneResponse::acknowledge, static_cast<int>(translated_key)));
+            key_state_reset = menu_key_state_reset(translated_key);
+            const auto previous_screen = death_menu_.screen();
+            const auto previous_page =
+                ui::save_list_page(death_menu_.slot_selection());
+            const bool ignore_empty_delete =
+                previous_screen == ui::DeathMenuScreen::load_slots &&
+                translated_key == input::legacy_key::delete_save &&
+                !save_slot_deletable(
+                    save_list_entries_, death_menu_.slot_selection());
+            const auto result = ignore_empty_delete
+                ? ui::DeathMenuResult{}
+                : death_menu_.handle_key(translated_key);
+            if (death_menu_.screen() == ui::DeathMenuScreen::load_slots &&
+                (previous_screen != ui::DeathMenuScreen::load_slots ||
+                 previous_page !=
+                     ui::save_list_page(death_menu_.slot_selection()))) {
+                refresh_save_list(
+                    ui::save_list_page(death_menu_.slot_selection()));
+            }
+            handle_death_menu_result(result);
         } else if (pending_kind == scene::SceneStepKind::dialogue ||
                    pending_kind == scene::SceneStepKind::notice ||
                    pending_kind == scene::SceneStepKind::scene_title ||
@@ -1165,6 +1192,10 @@ bool LegacyGameRuntime::render() {
         if (render_scene && !scene_session_->render(framebuffer_)) {
             return false;
         }
+        if (render_scene && scene_death_menu_active_ &&
+            !basic_renderer_.render_death_menu(death_menu_, framebuffer_)) {
+            return false;
+        }
         if (scene_leave_event_phase_ == SceneLeaveEventPhase::redraw_present) {
             const auto black = render::legacy_fade_to_black(framebuffer_.palette());
             if (black.empty()) {
@@ -1332,7 +1363,9 @@ bool LegacyGameRuntime::render() {
                     (error_return_view_ == LegacyGameView::game_menu &&
                      menu_return_view_ == LegacyGameView::scene)) &&
                    scene_session_ != nullptr) {
-            base_rendered = scene_session_->render(framebuffer_);
+            base_rendered = scene_session_->render(framebuffer_) &&
+                (!scene_death_menu_active_ ||
+                 basic_renderer_.render_death_menu(death_menu_, framebuffer_));
         } else if (world_session_ != nullptr) {
             base_rendered = world_session_->render(framebuffer_);
         }
@@ -1361,6 +1394,32 @@ bool LegacyGameRuntime::render_modern_ui(
                 modern_ui_renderer_,
                 framebuffer);
     case LegacyGameView::scene:
+        if (scene_death_menu_active_) {
+            if (load_transition_phase_ != LoadTransitionPhase::none ||
+                !death_menu_.save_list_active()) {
+                return true;
+            }
+            const bool delete_confirmation =
+                death_menu_.screen() == ui::DeathMenuScreen::delete_confirmation;
+            if (!save_list_renderer_.render(
+                    ui::SaveListMode::load,
+                    death_menu_.slot_selection(),
+                    save_list_entries_,
+                    palette,
+                    modern_ui_renderer_,
+                    framebuffer) ||
+                (delete_confirmation &&
+                 !save_list_renderer_.render_delete_confirmation(
+                     death_menu_.slot_selection(),
+                     palette,
+                     modern_ui_renderer_,
+                     framebuffer))) {
+                return false;
+            }
+            return pending_io_ == PendingIo::none ||
+                save_list_renderer_.render_io_wait(
+                    palette, modern_ui_renderer_, framebuffer);
+        }
         return scene_session_ != nullptr &&
             location_status_renderer_.render(
                 scene_session_->scene_name().bytes(),
@@ -1599,6 +1658,9 @@ bool LegacyGameRuntime::activate_pending_load() {
 }
 
 bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
+    death_menu_.reset();
+    scene_death_menu_active_ = false;
+    scene_death_menu_presented_ = false;
     scene_request_.reset();
     battle_request_.reset();
     battle_transition_phase_ = BattleTransitionPhase::none;
@@ -1819,6 +1881,11 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
             scene_audio_commands_.end(),
             std::make_move_iterator(commands.begin()),
             std::make_move_iterator(commands.end()));
+        if (scene_session_->death_menu_active() && !scene_death_menu_active_) {
+            death_menu_.reset();
+            scene_death_menu_active_ = true;
+            scene_death_menu_presented_ = false;
+        }
     }
     switch (result.kind) {
     case scene::SceneStepKind::return_world: {
@@ -2349,6 +2416,42 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
     case ui::TitleCommand::exit_game:
         fade_music_on_exit_ = false;
         set_view(LegacyGameView::exited, "title exit");
+        break;
+    }
+}
+
+void LegacyGameRuntime::handle_death_menu_result(
+    const ui::DeathMenuResult result) {
+    switch (result.command) {
+    case ui::DeathMenuCommand::none:
+        break;
+    case ui::DeathMenuCommand::load_slot:
+        pending_slot_ = result.slot;
+        pending_io_ = PendingIo::load;
+        pending_io_wait_presented_ = false;
+        error_return_view_ = LegacyGameView::scene;
+        break;
+    case ui::DeathMenuCommand::delete_slot: {
+        const auto deleted = persistence::delete_numbered_slot(
+            save_root_path_, save_slot(result.slot));
+        if (!deleted) {
+            show_error(
+                std::string{persistence::persistence_status_message(deleted.status)},
+                LegacyGameView::scene);
+            break;
+        }
+        diagnostics::log_info(
+            "deleted death-menu save slot=" +
+            std::to_string(static_cast<unsigned int>(result.slot) + 1U));
+        refresh_save_list(ui::save_list_page(result.slot));
+        break;
+    }
+    case ui::DeathMenuCommand::exit_game:
+        clear_scene_exit_key_states_requested_ = true;
+        clear_scene_effect();
+        fade_music_on_exit_ = false;
+        scene_death_menu_active_ = false;
+        set_view(LegacyGameView::exited, "death menu exit");
         break;
     }
 }

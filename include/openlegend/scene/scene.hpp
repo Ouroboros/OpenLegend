@@ -216,6 +216,11 @@ public:
     [[nodiscard]] std::int16_t event_item_id() const noexcept { return event_item_id_; }
     void set_event_item_id(const std::int16_t item_id) noexcept { event_item_id_ = item_id; }
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
+
+    [[nodiscard]] bool death_menu_active() const noexcept {
+        return death_menu_state_.has_value();
+    }
+
     [[nodiscard]] bool exit_transition_pending() const noexcept;
     [[nodiscard]] bool loop_present_pending() const noexcept;
     [[nodiscard]] const text::GameText& pending_game_text() const noexcept {
