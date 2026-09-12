@@ -3696,7 +3696,7 @@ bool SceneSession::draw_sprite(
     }
     auto& frame = sprite_frames_[*index];
     if (!frame.has_value()) {
-        const auto entry = sprites_->entry(*index);
+        const auto entry = sprites_->legacy_pointer_entry(*index);
         if (entry.empty()) {
             return true;
         }

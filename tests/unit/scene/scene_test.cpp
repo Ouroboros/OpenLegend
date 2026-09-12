@@ -1182,7 +1182,7 @@ void check_event_state_write_helpers(const std::filesystem::path& root) {
     }
 }
 
-void check_expanded_scene_empty_sprite_frames(const std::filesystem::path& root) {
+void check_expanded_scene_aliased_sprite_frames(const std::filesystem::path& root) {
     using openlegend::model::SceneEventField;
     using openlegend::scene::SceneStepKind;
 
@@ -1196,8 +1196,19 @@ void check_expanded_scene_empty_sprite_frames(const std::filesystem::path& root)
     OL_CHECK(snapshot.event_value(58U, 17U, SceneEventField::begin_picture) == 5654);
     OL_CHECK(snapshot.event_value(58U, 18U, SceneEventField::begin_picture) == 5654);
 
-    openlegend::render::IndexedFramebuffer framebuffer{1280, 720};
-    OL_CHECK(session.render(framebuffer));
+    openlegend::render::IndexedFramebuffer aliased_framebuffer{1280, 720};
+    OL_CHECK(session.render(aliased_framebuffer));
+    OL_CHECK(snapshot.set_event_value(
+        58U, 17U, SceneEventField::begin_picture, 5656));
+    OL_CHECK(snapshot.set_event_value(
+        58U, 18U, SceneEventField::begin_picture, 5656));
+    openlegend::render::IndexedFramebuffer direct_framebuffer{1280, 720};
+    OL_CHECK(session.render(direct_framebuffer));
+    OL_CHECK(std::equal(
+        aliased_framebuffer.pixels().begin(),
+        aliased_framebuffer.pixels().end(),
+        direct_framebuffer.pixels().begin(),
+        direct_framebuffer.pixels().end()));
 }
 
 void check_scene_render_and_movement(const std::filesystem::path& root) {
@@ -6108,7 +6119,7 @@ int main(const int argc, char* argv[]) {
         check_new_game_entry,
         check_event_load_menu,
         check_event_state_write_helpers,
-        check_expanded_scene_empty_sprite_frames,
+        check_expanded_scene_aliased_sprite_frames,
         check_scene_render_and_movement,
         check_scene_sprite_cache_lifetime,
         check_scene_movement_guards,

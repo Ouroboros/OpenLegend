@@ -41,6 +41,8 @@ public:
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
     [[nodiscard]] std::size_t entry_count() const noexcept { return ranges_.size(); }
     [[nodiscard]] std::span<const std::uint8_t> entry(std::size_t index) const noexcept;
+    [[nodiscard]] std::span<const std::uint8_t> legacy_pointer_entry(
+        std::size_t index) const noexcept;
 
 private:
     std::vector<std::uint8_t> data_;
