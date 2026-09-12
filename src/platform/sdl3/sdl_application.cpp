@@ -24,6 +24,7 @@
 #include <SDL3/SDL.h>
 
 #include "legacy_runtime_loop.hpp"
+#include "openlegend/app/display_resolution.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/diagnostics/log.hpp"
@@ -190,7 +191,8 @@ void initialize_session_logging(
 }
 
 [[nodiscard]] int validate_runtime_configuration(
-    const app::RuntimeConfiguration& configuration) {
+    const app::RuntimeConfiguration& configuration,
+    const app::DisplayResolutionResult& display_resolution) {
     if (configuration.paths.data_directory.status !=
         app::DataDirectoryStatus::ready) {
         report_application_error(
@@ -215,10 +217,10 @@ void initialize_session_logging(
             app::window_configuration_status_message(configuration.window.status),
             configuration.window.detail);
     }
-    if (configuration.display.status != app::DisplayConfigurationStatus::ready) {
+    if (display_resolution.status != app::DisplayConfigurationStatus::ready) {
         report_application_error(
             "display configuration",
-            app::display_configuration_status_message(configuration.display.status),
+            app::display_configuration_status_message(display_resolution.status),
             configuration.display.detail);
         return 2;
     }
@@ -268,7 +270,8 @@ void initialize_session_logging(
 
 void log_resolved_configuration(
     const app::RuntimeConfiguration& configuration,
-    const std::filesystem::path& save_directory) {
+    const std::filesystem::path& save_directory,
+    const app::GameResolution game_resolution) {
     diagnostics::log_info(
         "resolved data_directory=" +
         path_utf8(configuration.paths.data_directory.directory) +
@@ -282,8 +285,8 @@ void log_resolved_configuration(
              : std::string{"data_directory"}));
     diagnostics::log_info(
         "display in_game_resolution=" +
-        std::to_string(configuration.display.resolution.width) + "x" +
-        std::to_string(configuration.display.resolution.height) +
+        std::to_string(game_resolution.width) + "x" +
+        std::to_string(game_resolution.height) +
         " input movement_repeat_delay_ms=" +
         std::to_string(configuration.input.movement_repeat_delay.count()) +
         " menu_repeat_delay_ms=" +
@@ -356,20 +359,23 @@ int run_sdl_application(
         smoke_test = smoke_test || argument == "--smoke-test";
     }
 
+    const app::RuntimeConfigurationDefaults configuration_defaults{
+        executable_root / "logs" / "openlegend.log",
+        diagnostics::LogLevel::info,
+        kDefaultWindowSize,
+        kDefaultMovementRepeatDelay,
+        kDefaultMenuRepeatDelay,
+        kDefaultMenuRepeatInterval,
+        kDefaultFadeFrameDelay,
+        kDefaultGameResolution};
     const auto configuration = app::load_runtime_configuration(
         arguments,
         configuration_path,
         executable_root,
         launch_directory,
-        app::RuntimeConfigurationDefaults{
-            executable_root / "logs" / "openlegend.log",
-            diagnostics::LogLevel::info,
-            kDefaultWindowSize,
-            kDefaultMovementRepeatDelay,
-            kDefaultMenuRepeatDelay,
-            kDefaultMenuRepeatInterval,
-            kDefaultFadeFrameDelay,
-            kDefaultGameResolution});
+        configuration_defaults);
+    const auto display_resolution = app::resolve_display_game_resolution(
+        configuration.display, configuration_defaults.game_resolution);
     LoggingLifetime logging_lifetime;
     initialize_session_logging(
         configuration,
@@ -377,16 +383,17 @@ int run_sdl_application(
         launch_directory,
         configuration_path);
     if (const auto validation_status =
-            validate_runtime_configuration(configuration);
+            validate_runtime_configuration(configuration, display_resolution);
         validation_status != 0) {
         return validation_status;
     }
 
+    const auto game_resolution = display_resolution.resolution;
     const auto save_directory = resolve_save_directory(configuration);
     if (!save_directory.has_value()) {
         return 3;
     }
-    log_resolved_configuration(configuration, *save_directory);
+    log_resolved_configuration(configuration, *save_directory, game_resolution);
     if (!app::activate_data_directory(
             configuration.paths.data_directory.directory, path_error)) {
         report_application_error(
@@ -400,8 +407,8 @@ int run_sdl_application(
             configuration.window.size.width,
             configuration.window.size.height,
             configuration.window.maximized,
-            configuration.display.resolution.width,
-            configuration.display.resolution.height};
+            game_resolution.width,
+            game_resolution.height};
         if (!platform.valid()) {
             report_application_error(
                 "SDL3 platform", "initialization failed", SDL_GetError());
@@ -424,7 +431,7 @@ int run_sdl_application(
                 configuration.input.menu_repeat_delay,
                 configuration.input.menu_repeat_interval,
                 configuration.timing.fade_frame_delay,
-                configuration.display.resolution,
+                game_resolution,
                 smoke_test});
         if (loop_result.status != 0) {
             return loop_result.status;

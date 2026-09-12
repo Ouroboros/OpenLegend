@@ -27,11 +27,12 @@ height = 1080
 maximized = false
 
 [display]
+scale = 1.5
 width = 640
 height = 360
 ```
 
-此时游戏实际绘制 `640×360`，再以比例 `3` 显示为 `1920×1080`。世界、场景和战斗中的素材尺寸不变，但可见范围扩大。
+`scale` 优先，因此游戏实际绘制 `round(320×1.5) × round(200×1.5) = 480×300`；这里的 `width/height` 候选仍被解析并保留，但不参与最终 IN-GAME RES 的选择。若删除 `scale`，则仍按原配置绘制 `640×360`。世界、场景和战斗中的素材尺寸不变，但可见范围扩大。
 
 ## 2. 兼容合同
 
@@ -44,7 +45,14 @@ height = 360
 
 ## 3. 配置合同
 
-新增：
+支持两种写法：
+
+```toml
+[display]
+scale = 1.5
+```
+
+或：
 
 ```toml
 [display]
@@ -54,13 +62,16 @@ height = 200
 
 规则：
 
-- `width >= 320`；
-- `height >= 200`；
-- 宽高比不受限制，允许 `640×360`、`640×400` 等任意合理尺寸；
-- 宽度上限为 `1280`，高度上限为 `800`，对应当前 Modern UI `64px` 字体上限并拒绝不受控分配；
-- `[display]` 缺失，或 `width` 与 `height` 同时省略时，使用 `320×200`；
-- `width` 与 `height` 必须同时提供或同时省略，仅提供其中一个属于配置错误；
-- `[window]` 仍只保存和恢复宿主窗口尺寸；
+- `scale` 接受整数或浮点数，范围为 `1.0..4.0`；
+- `scale` 以 `320×200` 为基准，分别使用 `round(320×scale)` 与 `round(200×scale)` 得到整数宽高；例如 `1.5 → 480×300`，`1.333 → 427×267`；
+- `scale` 与 `width/height` 可同时存在；配置加载层分别保留两组原始候选及各自的解析状态，`display_resolution` 再让 `scale` 候选优先决定 IN-GAME RES；
+- 无效 `scale` 不回退到 `width/height`，而是配置错误；有效 `scale` 存在时，`width/height` 候选即使无效或不成对也不参与最终选择；
+- 未配置 `scale` 时，`width >= 320`、`height >= 200`，宽度上限为 `1280`、高度上限为 `800`；
+- 未配置 `scale` 时宽高比不受限制，允许 `640×360`、`640×400` 等任意合理尺寸；
+- `[display]` 缺失，或 `scale`、`width` 与 `height` 全部省略时，使用 `320×200`；
+- 未配置 `scale` 时，`width` 与 `height` 必须同时提供或同时省略，仅提供其中一个属于配置错误；
+- `runtime_configuration` 只负责单次 TOML 解析、原始字段保留和候选解析状态；`display_resolution` 负责默认值、候选优先级、最终校验状态和整数分辨率换算；
+- `[window]` 仍只保存和恢复宿主窗口尺寸；窗口状态写回时 schema writer 必须原样保留已配置的 `display.scale` 与 `display.width/height`；
 - SDL 窗口最小尺寸随 IN-GAME RES 调整，保证最终等比缩放至少为 `1×`。
 
 ## 4. 动态画布

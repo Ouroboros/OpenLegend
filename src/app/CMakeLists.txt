@@ -1,6 +1,7 @@
 add_library(
     openlegend_app
     STATIC
+        display_resolution.cpp
         legacy_game_runtime.cpp
         mode_coordinator.cpp
         runtime_configuration.cpp

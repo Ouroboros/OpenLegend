@@ -9,6 +9,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/app/display_resolution.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "test_support.hpp"
 
@@ -162,6 +163,7 @@ void test_runtime_configuration_root() {
         "height = 720\n"
         "maximized = true\n"
         "\n[display]\n"
+        "scale = 1.5\n"
         "width = 640\n"
         "height = 360\n");
 
@@ -204,7 +206,13 @@ void test_runtime_configuration_root() {
     OL_CHECK((configuration.window.size == WindowSize{1280, 720}));
     OL_CHECK(configuration.window.maximized);
     OL_CHECK(configuration.display.status == DisplayConfigurationStatus::ready);
-    OL_CHECK((configuration.display.resolution == GameResolution{640, 360}));
+    OL_CHECK(configuration.display.scale == 1.5);
+    OL_CHECK(configuration.display.width == 640);
+    OL_CHECK(configuration.display.height == 360);
+    const auto display_resolution = resolve_display_game_resolution(
+        configuration.display, GameResolution{320, 200});
+    OL_CHECK(display_resolution.status == DisplayConfigurationStatus::ready);
+    OL_CHECK((display_resolution.resolution == GameResolution{480, 300}));
     OL_CHECK(configuration.display.loaded_from_file);
 }
 
@@ -213,25 +221,38 @@ void test_display_configuration() {
     const TemporaryTree tree;
     constexpr GameResolution fallback{320, 200};
     const auto load = [&tree]() {
-        return load_display_configuration(
-            tree.configuration_path(), GameResolution{320, 200});
+        return load_display_configuration(tree.configuration_path());
+    };
+    const auto resolve = [fallback](
+        const DisplayConfigurationLoadResult& configuration) {
+        return resolve_display_game_resolution(configuration, fallback);
     };
 
     const auto missing = load();
     OL_CHECK(missing.status == DisplayConfigurationStatus::read_failed);
-    OL_CHECK(missing.resolution == fallback);
+    OL_CHECK(!missing.scale.has_value());
+    OL_CHECK(!missing.width.has_value());
+    OL_CHECK(!missing.height.has_value());
+    OL_CHECK(resolve(missing).status == DisplayConfigurationStatus::read_failed);
+    OL_CHECK((resolve(missing).resolution == fallback));
     OL_CHECK(!missing.loaded_from_file);
 
     tree.write_configuration("[window]\nwidth = 960\nheight = 600\n");
     const auto absent = load();
     OL_CHECK(absent.status == DisplayConfigurationStatus::ready);
-    OL_CHECK(absent.resolution == fallback);
+    OL_CHECK(!absent.scale.has_value());
+    OL_CHECK(!absent.width.has_value());
+    OL_CHECK(!absent.height.has_value());
+    OL_CHECK(resolve(absent).status == DisplayConfigurationStatus::ready);
+    OL_CHECK((resolve(absent).resolution == fallback));
     OL_CHECK(!absent.loaded_from_file);
 
     tree.write_configuration("[display]\n");
     const auto empty = load();
     OL_CHECK(empty.status == DisplayConfigurationStatus::ready);
-    OL_CHECK(empty.resolution == fallback);
+    OL_CHECK(!empty.scale.has_value());
+    OL_CHECK(!empty.width.has_value());
+    OL_CHECK(!empty.height.has_value());
     OL_CHECK(!empty.loaded_from_file);
     tree.write_configuration(
         "[display]\n"
@@ -239,44 +260,107 @@ void test_display_configuration() {
         "# height = 720\n");
     const auto commented = load();
     OL_CHECK(commented.status == DisplayConfigurationStatus::ready);
-    OL_CHECK(commented.resolution == fallback);
+    OL_CHECK(!commented.scale.has_value());
+    OL_CHECK(!commented.width.has_value());
+    OL_CHECK(!commented.height.has_value());
     OL_CHECK(!commented.loaded_from_file);
 
     tree.write_configuration("[display]\nwidth = 320\nheight = 200\n");
-    OL_CHECK(load().status == DisplayConfigurationStatus::ready);
+    OL_CHECK(resolve(load()).status == DisplayConfigurationStatus::ready);
     tree.write_configuration("[display]\nwidth = 1280\nheight = 800\n");
-    OL_CHECK(load().status == DisplayConfigurationStatus::ready);
+    OL_CHECK(resolve(load()).status == DisplayConfigurationStatus::ready);
     tree.write_configuration("[display]\nwidth = 640\nheight = 360\n");
     const auto configured = load();
     OL_CHECK(configured.status == DisplayConfigurationStatus::ready);
-    OL_CHECK((configured.resolution == GameResolution{640, 360}));
+    OL_CHECK(!configured.scale.has_value());
+    OL_CHECK(configured.width == 640);
+    OL_CHECK(configured.height == 360);
+    OL_CHECK(resolve(configured).status == DisplayConfigurationStatus::ready);
+    OL_CHECK((resolve(configured).resolution == GameResolution{640, 360}));
     OL_CHECK(configured.loaded_from_file);
 
+    tree.write_configuration("[display]\nscale = 1.0\n");
+    const auto minimum_scale = load();
+    OL_CHECK(minimum_scale.status == DisplayConfigurationStatus::ready);
+    OL_CHECK(minimum_scale.scale == 1.0);
+    OL_CHECK(!minimum_scale.width.has_value());
+    OL_CHECK(!minimum_scale.height.has_value());
+    OL_CHECK(resolve(minimum_scale).status == DisplayConfigurationStatus::ready);
+    OL_CHECK((resolve(minimum_scale).resolution == GameResolution{320, 200}));
+    OL_CHECK(minimum_scale.loaded_from_file);
+    tree.write_configuration("[display]\nscale = 4\n");
+    const auto maximum_scale = load();
+    OL_CHECK(maximum_scale.scale == 4.0);
+    OL_CHECK((resolve(maximum_scale).resolution == GameResolution{1280, 800}));
+    tree.write_configuration("[display]\nscale = 1.333\n");
+    const auto rounded_scale = load();
+    OL_CHECK(rounded_scale.scale == 1.333);
+    OL_CHECK((resolve(rounded_scale).resolution == GameResolution{427, 267}));
+    tree.write_configuration(
+        "[display]\n"
+        "scale = 1.5\n"
+        "width = 1280\n"
+        "height = 800\n");
+    const auto scale_priority = load();
+    OL_CHECK(scale_priority.scale == 1.5);
+    OL_CHECK(scale_priority.width == 1280);
+    OL_CHECK(scale_priority.height == 800);
+    OL_CHECK(resolve(scale_priority).status == DisplayConfigurationStatus::ready);
+    OL_CHECK((resolve(scale_priority).resolution == GameResolution{480, 300}));
+    tree.write_configuration(
+        "[display]\n"
+        "scale = 1.5\n"
+        "width = 'ignored'\n");
+    const auto ignored_dimensions = load();
+    OL_CHECK(ignored_dimensions.status == DisplayConfigurationStatus::ready);
+    OL_CHECK(ignored_dimensions.resolution_status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
+    OL_CHECK(resolve(ignored_dimensions).status ==
+        DisplayConfigurationStatus::ready);
+    OL_CHECK((resolve(ignored_dimensions).resolution ==
+        GameResolution{480, 300}));
+
     tree.write_configuration("[display\n");
-    OL_CHECK(load().status == DisplayConfigurationStatus::parse_failed);
+    OL_CHECK(resolve(load()).status == DisplayConfigurationStatus::parse_failed);
     tree.write_configuration("display = 7\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_display_table);
+    tree.write_configuration("[display]\nscale = 0.999\n");
+    OL_CHECK(resolve(load()).status ==
+        DisplayConfigurationStatus::invalid_game_resolution_scale);
+    tree.write_configuration("[display]\nscale = 4.001\n");
+    OL_CHECK(resolve(load()).status ==
+        DisplayConfigurationStatus::invalid_game_resolution_scale);
+    tree.write_configuration("[display]\nscale = '1.5'\n");
+    OL_CHECK(resolve(load()).status ==
+        DisplayConfigurationStatus::invalid_game_resolution_scale);
+    tree.write_configuration(
+        "[display]\n"
+        "scale = 0.5\n"
+        "width = 640\n"
+        "height = 360\n");
+    OL_CHECK(resolve(load()).status ==
+        DisplayConfigurationStatus::invalid_game_resolution_scale);
     tree.write_configuration("[display]\nwidth = 640\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nheight = 360\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nwidth = 319\nheight = 200\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nwidth = 320\nheight = 199\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nwidth = 1281\nheight = 800\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nwidth = 1280\nheight = 801\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nwidth = '640'\nheight = 360\n");
-    OL_CHECK(load().status ==
+    OL_CHECK(resolve(load()).status ==
         DisplayConfigurationStatus::invalid_game_resolution);
 }
 
@@ -534,6 +618,7 @@ void test_window_errors_and_schema_writeback() {
         "[future]\nkept = 42\n"
         "\n[window]\ncustom = 'preserved'\n"
         "\n[display]\nheight = 360\n"
+        "scale = 1.5\n"
         "custom = 'discarded'\n"
         "width = 640\n"
         "\n[input]\nmenu_repeat_interval_ms = 55\n"
@@ -553,6 +638,11 @@ void test_window_errors_and_schema_writeback() {
     const auto paths = resolve_data_directory(
         {}, tree.executable_directory(), tree.launch_directory());
     OL_CHECK(paths.directory == std::filesystem::absolute(tree.configured_directory()));
+    const auto display = load_display_configuration(tree.configuration_path());
+    OL_CHECK(display.status == DisplayConfigurationStatus::ready);
+    OL_CHECK(display.scale == 1.5);
+    OL_CHECK(display.width == 640);
+    OL_CHECK(display.height == 360);
 
     std::ifstream input{tree.configuration_path(), std::ios::binary};
     const std::string saved{
@@ -586,10 +676,13 @@ void test_window_errors_and_schema_writeback() {
     const auto maximized_position = saved.find("maximized = true", window_position);
     OL_CHECK(width_position < height_position);
     OL_CHECK(height_position < maximized_position);
+    const auto display_scale_position =
+        saved.find("scale = 1.5", display_position);
     const auto display_width_position =
         saved.find("width = 640", display_position);
     const auto display_height_position =
         saved.find("height = 360", display_position);
+    OL_CHECK(display_scale_position < display_width_position);
     OL_CHECK(display_width_position < display_height_position);
     OL_CHECK(saved.find("custom = ") == std::string::npos);
     OL_CHECK(saved.find("[future]") == std::string::npos);

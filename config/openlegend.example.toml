@@ -69,12 +69,16 @@ maximized = false
 
 # The actual in-game logical resolution. Increasing it keeps map tiles, actors,
 # and objects at their original logical pixel size while showing more content.
-# Width must be 320..1280 and height must be 200..800. The two values must
-# either both be present or both be omitted; omitting both uses 320x200.
+# Set scale to 1.0..4.0 to derive width and height from 320x200, rounding each
+# dimension to the nearest integer. If scale is present, it takes precedence
+# over width and height. Without scale, width must be 320..1280 and height must
+# be 200..800; both values must be present or both omitted.
 
 # 游戏实际绘制的逻辑分辨率。增大该尺寸时，地图格、人物和物件保持原逻辑
-# 像素大小，同时显示更多内容。宽度范围为 320..1280，高度范围为 200..800。
-# width 与 height 必须同时提供或同时省略；同时省略时使用 320x200。
+# 像素大小，同时显示更多内容。scale 可设为 1.0..4.0，基于 320x200 分别
+# 四舍五入计算宽高；存在 scale 时优先于 width 和 height。未配置 scale 时，
+# 宽度范围为 320..1280，高度范围为 200..800，宽高必须同时提供或同时省略。
 
+# scale = 1.5
 width = 320
 height = 200

@@ -540,56 +540,74 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
 
 [[nodiscard]] DisplayConfigurationLoadResult display_load_error(
     const DisplayConfigurationStatus status,
-    const GameResolution fallback,
     std::string detail = {}) {
     DisplayConfigurationLoadResult result;
     result.status = status;
-    result.resolution = fallback;
     result.detail = std::move(detail);
     return result;
 }
 
 [[nodiscard]] DisplayConfigurationLoadResult display_configuration_from_document(
-    const toml::table& document,
-    const GameResolution fallback) {
+    const toml::table& document) {
+    DisplayConfigurationLoadResult result;
     const toml::node* display_node =
         document.get(DisplayConfigurationLoadResult::toml_table_name);
     if (display_node == nullptr) {
-        return DisplayConfigurationLoadResult{
-            DisplayConfigurationStatus::ready, fallback, false, {}};
+        return result;
     }
     const toml::table* display = display_node->as_table();
     if (display == nullptr) {
         return display_load_error(
-            DisplayConfigurationStatus::invalid_display_table, fallback);
+            DisplayConfigurationStatus::invalid_display_table);
     }
-    const auto* width_node =
+
+    const toml::node* scale_node =
+        display->get(DisplayConfigurationLoadResult::scale_toml_key);
+    if (scale_node != nullptr) {
+        std::optional<long double> scale;
+        if (const auto* integer = scale_node->as_integer(); integer != nullptr) {
+            scale = static_cast<long double>(integer->get());
+        } else if (const auto* floating = scale_node->as_floating_point();
+                   floating != nullptr) {
+            scale = static_cast<long double>(floating->get());
+        }
+        if (!scale.has_value() || !std::isfinite(*scale) ||
+            *scale < static_cast<long double>(kMinimumGameResolutionScale) ||
+            *scale > static_cast<long double>(kMaximumGameResolutionScale)) {
+            result.scale_status =
+                DisplayConfigurationStatus::invalid_game_resolution_scale;
+        } else {
+            result.scale = static_cast<double>(*scale);
+        }
+    }
+
+    const toml::node* width_node =
         display->get(DisplayConfigurationLoadResult::width_toml_key);
-    const auto* height_node =
+    const toml::node* height_node =
         display->get(DisplayConfigurationLoadResult::height_toml_key);
-    if (width_node == nullptr && height_node == nullptr) {
-        return DisplayConfigurationLoadResult{
-            DisplayConfigurationStatus::ready, fallback, false, {}};
+    if (width_node != nullptr || height_node != nullptr) {
+        if (width_node == nullptr || height_node == nullptr) {
+            result.resolution_status =
+                DisplayConfigurationStatus::invalid_game_resolution;
+        } else {
+            const auto width = width_node->value<std::int64_t>();
+            const auto height = height_node->value<std::int64_t>();
+            if (!width.has_value() || !height.has_value() ||
+                !valid_game_resolution_dimension(
+                    *width, kMinimumGameWidth, kMaximumGameWidth) ||
+                !valid_game_resolution_dimension(
+                    *height, kMinimumGameHeight, kMaximumGameHeight)) {
+                result.resolution_status =
+                    DisplayConfigurationStatus::invalid_game_resolution;
+            } else {
+                result.width = static_cast<int>(*width);
+                result.height = static_cast<int>(*height);
+            }
+        }
     }
-    if (width_node == nullptr || height_node == nullptr) {
-        return display_load_error(
-            DisplayConfigurationStatus::invalid_game_resolution, fallback);
-    }
-    const auto width = width_node->value<std::int64_t>();
-    const auto height = height_node->value<std::int64_t>();
-    if (!width.has_value() || !height.has_value() ||
-        !valid_game_resolution_dimension(
-            *width, kMinimumGameWidth, kMaximumGameWidth) ||
-        !valid_game_resolution_dimension(
-            *height, kMinimumGameHeight, kMaximumGameHeight)) {
-        return display_load_error(
-            DisplayConfigurationStatus::invalid_game_resolution, fallback);
-    }
-    return DisplayConfigurationLoadResult{
-        DisplayConfigurationStatus::ready,
-        GameResolution{static_cast<int>(*width), static_cast<int>(*height)},
-        true,
-        {}};
+    result.loaded_from_file =
+        scale_node != nullptr || width_node != nullptr || height_node != nullptr;
+    return result;
 }
 
 [[nodiscard]] InputConfigurationLoadResult input_configuration_from_document(
@@ -866,16 +884,14 @@ WindowConfigurationStatus save_window_configuration(
 }
 
 DisplayConfigurationLoadResult load_display_configuration(
-    const std::filesystem::path& configuration_path,
-    const GameResolution fallback) {
+    const std::filesystem::path& configuration_path) {
     const auto document = read_configuration_document(configuration_path);
     if (document.status != ConfigurationDocumentStatus::ready) {
         return display_load_error(
             configuration_load_status<DisplayConfigurationStatus>(document.status),
-            fallback,
             document.detail);
     }
-    return display_configuration_from_document(document.values, fallback);
+    return display_configuration_from_document(document.values);
 }
 
 InputConfigurationLoadResult load_input_configuration(
@@ -958,8 +974,8 @@ RuntimeConfiguration load_runtime_configuration(
             executable_directory,
             defaults.logging_path,
             defaults.logging_level);
-        configuration.display = display_configuration_from_document(
-            document.values, defaults.game_resolution);
+        configuration.display =
+            display_configuration_from_document(document.values);
         configuration.input = input_configuration_from_document(
             document.values,
             defaults.movement_repeat_delay,
@@ -984,7 +1000,6 @@ RuntimeConfiguration load_runtime_configuration(
 
     configuration.display = display_load_error(
         configuration_load_status<DisplayConfigurationStatus>(document.status),
-        defaults.game_resolution,
         document.detail);
 
     configuration.input.status =
@@ -1115,6 +1130,8 @@ std::string_view display_configuration_status_message(
         return "[display] must be a TOML table";
     case DisplayConfigurationStatus::invalid_game_resolution:
         return "[display] width must be 320..1280 and height must be 200..800";
+    case DisplayConfigurationStatus::invalid_game_resolution_scale:
+        return "[display] scale must be a number from 1.0 to 4.0";
     }
     return "unknown display configuration status";
 }

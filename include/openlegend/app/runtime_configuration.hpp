@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -137,6 +138,8 @@ inline constexpr int kMinimumGameWidth = 320;
 inline constexpr int kMinimumGameHeight = 200;
 inline constexpr int kMaximumGameWidth = 1280;
 inline constexpr int kMaximumGameHeight = 800;
+inline constexpr double kMinimumGameResolutionScale = 1.0;
+inline constexpr double kMaximumGameResolutionScale = 4.0;
 
 struct GameResolution {
     int width{kMinimumGameWidth};
@@ -151,26 +154,32 @@ enum class DisplayConfigurationStatus {
     parse_failed,
     invalid_display_table,
     invalid_game_resolution,
+    invalid_game_resolution_scale,
 };
 
 struct DisplayConfigurationLoadResult {
     static constexpr std::string_view toml_table_name = "display";
+    static constexpr std::string_view scale_toml_key = "scale";
     static constexpr std::string_view width_toml_key = "width";
     static constexpr std::string_view height_toml_key = "height";
-    static constexpr std::array<std::string_view, 2U> toml_field_order{
+    static constexpr std::array<std::string_view, 3U> toml_field_order{
+        scale_toml_key,
         width_toml_key,
         height_toml_key,
     };
 
     DisplayConfigurationStatus status{DisplayConfigurationStatus::ready};
-    GameResolution resolution;
+    DisplayConfigurationStatus scale_status{DisplayConfigurationStatus::ready};
+    DisplayConfigurationStatus resolution_status{DisplayConfigurationStatus::ready};
+    std::optional<double> scale;
+    std::optional<int> width;
+    std::optional<int> height;
     bool loaded_from_file{};
     std::string detail;
 };
 
 [[nodiscard]] DisplayConfigurationLoadResult load_display_configuration(
-    const std::filesystem::path& configuration_path,
-    GameResolution fallback);
+    const std::filesystem::path& configuration_path);
 
 [[nodiscard]] std::string_view display_configuration_status_message(
     DisplayConfigurationStatus status) noexcept;
