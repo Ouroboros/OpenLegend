@@ -183,9 +183,12 @@ bool TitleMenuRenderer::render_background(render::IndexedFramebuffer& framebuffe
     if (!valid()) {
         return false;
     }
-    std::ranges::copy(background_, framebuffer.pixels().begin());
+    framebuffer.clear(render::legacy_color::black);
     framebuffer.set_palette(palette_);
-    return true;
+    return framebuffer.blit(
+        background_,
+        render::IndexedFramebuffer::width,
+        render::IndexedFramebuffer::height);
 }
 
 bool TitleMenuRenderer::render_new_game_wait(

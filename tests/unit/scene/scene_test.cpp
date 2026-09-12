@@ -1210,6 +1210,21 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
                   << std::hex << frame_hash << std::dec << '\n';
     }
     OL_CHECK(frame_hash == 0x38FBAA07B733AD79ULL);
+
+    openlegend::render::IndexedFramebuffer expanded_framebuffer{640, 360};
+    OL_CHECK(session.render_map(expanded_framebuffer));
+    std::size_t expanded_only_pixels = 0U;
+    for (int y = 0; y < expanded_framebuffer.pixel_height(); ++y) {
+        for (int x = 0; x < expanded_framebuffer.pixel_width(); ++x) {
+            const bool inside_legacy_view =
+                x >= 160 && x < 480 && y >= 80 && y < 280;
+            if (!inside_legacy_view && expanded_framebuffer.row(y)[x] != 0U) {
+                ++expanded_only_pixels;
+            }
+        }
+    }
+    OL_CHECK(expanded_only_pixels > 0U);
+
     OL_CHECK(session.resume(openlegend::scene::SceneResponse::acknowledge).kind ==
              openlegend::scene::SceneStepKind::scene_title);
     auto title_framebuffer = framebuffer;

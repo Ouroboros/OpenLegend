@@ -160,7 +160,10 @@ void test_runtime_configuration_root() {
         "\n[window]\n"
         "width = 1280\n"
         "height = 720\n"
-        "maximized = true\n");
+        "maximized = true\n"
+        "\n[display]\n"
+        "width = 640\n"
+        "height = 360\n");
 
     const auto configuration = load_runtime_configuration(
         {},
@@ -174,7 +177,8 @@ void test_runtime_configuration_root() {
             std::chrono::milliseconds{500},
             std::chrono::milliseconds{500},
             std::chrono::milliseconds{55},
-            std::chrono::milliseconds{14}});
+            std::chrono::milliseconds{14},
+            GameResolution{320, 200}});
 
     OL_CHECK(configuration.paths.data_directory.status == DataDirectoryStatus::ready);
     OL_CHECK(configuration.paths.data_directory.source ==
@@ -199,6 +203,61 @@ void test_runtime_configuration_root() {
     OL_CHECK(configuration.window.status == WindowConfigurationStatus::ready);
     OL_CHECK((configuration.window.size == WindowSize{1280, 720}));
     OL_CHECK(configuration.window.maximized);
+    OL_CHECK(configuration.display.status == DisplayConfigurationStatus::ready);
+    OL_CHECK((configuration.display.resolution == GameResolution{640, 360}));
+    OL_CHECK(configuration.display.loaded_from_file);
+}
+
+void test_display_configuration() {
+    using namespace openlegend::app;
+    const TemporaryTree tree;
+    constexpr GameResolution fallback{320, 200};
+    const auto load = [&tree]() {
+        return load_display_configuration(
+            tree.configuration_path(), GameResolution{320, 200});
+    };
+
+    const auto missing = load();
+    OL_CHECK(missing.status == DisplayConfigurationStatus::read_failed);
+    OL_CHECK(missing.resolution == fallback);
+    OL_CHECK(!missing.loaded_from_file);
+
+    tree.write_configuration("[window]\nwidth = 960\nheight = 600\n");
+    const auto absent = load();
+    OL_CHECK(absent.status == DisplayConfigurationStatus::ready);
+    OL_CHECK(absent.resolution == fallback);
+    OL_CHECK(!absent.loaded_from_file);
+
+    tree.write_configuration("[display]\nwidth = 320\nheight = 200\n");
+    OL_CHECK(load().status == DisplayConfigurationStatus::ready);
+    tree.write_configuration("[display]\nwidth = 1280\nheight = 800\n");
+    OL_CHECK(load().status == DisplayConfigurationStatus::ready);
+    tree.write_configuration("[display]\nwidth = 640\nheight = 360\n");
+    const auto configured = load();
+    OL_CHECK(configured.status == DisplayConfigurationStatus::ready);
+    OL_CHECK((configured.resolution == GameResolution{640, 360}));
+    OL_CHECK(configured.loaded_from_file);
+
+    tree.write_configuration("[display\n");
+    OL_CHECK(load().status == DisplayConfigurationStatus::parse_failed);
+    tree.write_configuration("display = 7\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_display_table);
+    tree.write_configuration("[display]\nwidth = 319\nheight = 200\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
+    tree.write_configuration("[display]\nwidth = 320\nheight = 199\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
+    tree.write_configuration("[display]\nwidth = 1281\nheight = 800\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
+    tree.write_configuration("[display]\nwidth = 1280\nheight = 801\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
+    tree.write_configuration("[display]\nwidth = '640'\nheight = 360\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
 }
 
 void test_input_configuration() {
@@ -269,7 +328,8 @@ void test_save_directory_configuration() {
                 std::chrono::milliseconds{500},
                 std::chrono::milliseconds{500},
                 std::chrono::milliseconds{55},
-                std::chrono::milliseconds{14}});
+                std::chrono::milliseconds{14},
+                GameResolution{320, 200}});
     };
 
     const auto missing = load();
@@ -453,6 +513,9 @@ void test_window_errors_and_schema_writeback() {
     tree.write_configuration(
         "[future]\nkept = 42\n"
         "\n[window]\ncustom = 'preserved'\n"
+        "\n[display]\nheight = 360\n"
+        "custom = 'discarded'\n"
+        "width = 640\n"
         "\n[input]\nmenu_repeat_interval_ms = 55\n"
         "custom = 'discarded'\n"
         "movement_repeat_delay_ms = 500\n"
@@ -477,11 +540,14 @@ void test_window_errors_and_schema_writeback() {
     const auto paths_position = saved.find("[paths]");
     const auto input_position = saved.find("[input]");
     const auto window_position = saved.find("[window]");
+    const auto display_position = saved.find("[display]");
     OL_CHECK(paths_position != std::string::npos);
     OL_CHECK(input_position != std::string::npos);
     OL_CHECK(window_position != std::string::npos);
+    OL_CHECK(display_position != std::string::npos);
     OL_CHECK(paths_position < input_position);
     OL_CHECK(input_position < window_position);
+    OL_CHECK(window_position < display_position);
     const auto data_directory_position = saved.find("data_dir = ", paths_position);
     const auto save_directory_position = saved.find("save_dir = ", paths_position);
     OL_CHECK(data_directory_position < save_directory_position);
@@ -500,6 +566,11 @@ void test_window_errors_and_schema_writeback() {
     const auto maximized_position = saved.find("maximized = true", window_position);
     OL_CHECK(width_position < height_position);
     OL_CHECK(height_position < maximized_position);
+    const auto display_width_position =
+        saved.find("width = 640", display_position);
+    const auto display_height_position =
+        saved.find("height = 360", display_position);
+    OL_CHECK(display_width_position < display_height_position);
     OL_CHECK(saved.find("custom = ") == std::string::npos);
     OL_CHECK(saved.find("[future]") == std::string::npos);
     OL_CHECK(saved.find("kept = 42") == std::string::npos);
@@ -515,6 +586,7 @@ void run_runtime_configuration_tests() {
     test_missing_configuration_uses_launch_directory();
     test_configuration_paths_and_window();
     test_runtime_configuration_root();
+    test_display_configuration();
     test_input_configuration();
     test_save_directory_configuration();
     test_logging_configuration();

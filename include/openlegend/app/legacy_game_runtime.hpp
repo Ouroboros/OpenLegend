@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/persistence/save_slot.hpp"
@@ -103,6 +104,11 @@ public:
         std::filesystem::path data_root,
         std::filesystem::path save_root,
         std::uint32_t random_seed);
+    LegacyGameRuntime(
+        std::filesystem::path data_root,
+        std::filesystem::path save_root,
+        std::uint32_t random_seed,
+        GameResolution game_resolution);
 
     void advance(std::uint32_t bios_tick = 0U);
     LegacyKeyStateReset handle_key(

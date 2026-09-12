@@ -31,9 +31,18 @@ struct Rgb6 {
 struct IndexedFrameView {
     std::span<const std::uint8_t> pixels;
     std::span<const Rgb6> palette;
+    int width{static_cast<int>(kLegacyWidth)};
+    int height{static_cast<int>(kLegacyHeight)};
 
     [[nodiscard]] constexpr bool valid() const noexcept {
-        if (pixels.size() != kLegacyPixelCount || palette.size() != kLegacyPaletteSize) {
+        if (width <= 0 || height <= 0 || palette.size() != kLegacyPaletteSize) {
+            return false;
+        }
+        const auto unsigned_width = static_cast<std::size_t>(width);
+        const auto unsigned_height = static_cast<std::size_t>(height);
+        if (unsigned_height >
+            std::numeric_limits<std::size_t>::max() / unsigned_width ||
+            pixels.size() != unsigned_width * unsigned_height) {
             return false;
         }
         for (const auto color : palette) {
@@ -85,17 +94,29 @@ struct IntegerViewport {
 };
 
 [[nodiscard]] constexpr IntegerViewport integer_viewport(
-    const int output_width, const int output_height) noexcept {
-    if (output_width < static_cast<int>(kLegacyWidth) ||
-        output_height < static_cast<int>(kLegacyHeight)) {
+    const int output_width,
+    const int output_height,
+    const int source_width,
+    const int source_height) noexcept {
+    if (source_width <= 0 || source_height <= 0 ||
+        output_width < source_width || output_height < source_height) {
         return {};
     }
-    const auto scale_x = output_width / static_cast<int>(kLegacyWidth);
-    const auto scale_y = output_height / static_cast<int>(kLegacyHeight);
+    const auto scale_x = output_width / source_width;
+    const auto scale_y = output_height / source_height;
     const auto scale = scale_x < scale_y ? scale_x : scale_y;
-    const auto width = static_cast<int>(kLegacyWidth) * scale;
-    const auto height = static_cast<int>(kLegacyHeight) * scale;
+    const auto width = source_width * scale;
+    const auto height = source_height * scale;
     return {(output_width - width) / 2, (output_height - height) / 2, width, height, scale};
+}
+
+[[nodiscard]] constexpr IntegerViewport integer_viewport(
+    const int output_width, const int output_height) noexcept {
+    return integer_viewport(
+        output_width,
+        output_height,
+        static_cast<int>(kLegacyWidth),
+        static_cast<int>(kLegacyHeight));
 }
 
 using LegacyPixels = std::array<std::uint8_t, kLegacyPixelCount>;
@@ -104,7 +125,10 @@ using ModernRgbaPixels = std::array<std::uint8_t, kModernRgbaByteCount>;
 
 [[nodiscard]] inline bool convert_indexed_frame_to_rgba(
     const IndexedFrameView frame, std::span<std::uint8_t> rgba) noexcept {
-    if (!frame.valid() || rgba.size() != kModernRgbaByteCount) {
+    if (!frame.valid() ||
+        frame.pixels.size() >
+            std::numeric_limits<std::size_t>::max() / kModernRgbaBytesPerPixel ||
+        rgba.size() != frame.pixels.size() * kModernRgbaBytesPerPixel) {
         return false;
     }
     for (std::size_t index = 0U; index < frame.pixels.size(); ++index) {

@@ -11,7 +11,12 @@ namespace openlegend::platform::sdl3 {
 
 class SdlRuntimePlatform final : public compat::RuntimePlatform {
 public:
-    SdlRuntimePlatform(int window_width, int window_height, bool maximized);
+    SdlRuntimePlatform(
+        int window_width,
+        int window_height,
+        bool maximized,
+        int game_width,
+        int game_height);
     ~SdlRuntimePlatform() override;
 
     SdlRuntimePlatform(const SdlRuntimePlatform&) = delete;
@@ -29,14 +34,19 @@ public:
     void delay(std::chrono::milliseconds duration) override;
 
 private:
+    [[nodiscard]] bool ensure_frame_texture(int width, int height) noexcept;
     [[nodiscard]] bool ensure_modern_ui_texture(int width, int height) noexcept;
 
     SDL_Window* window_{};
     SDL_Renderer* renderer_{};
     SDL_Texture* texture_{};
     SDL_Texture* modern_ui_texture_{};
+    int texture_width_{};
+    int texture_height_{};
     int modern_ui_texture_width_{};
     int modern_ui_texture_height_{};
+    int game_width_{};
+    int game_height_{};
 };
 
 }  // namespace openlegend::platform::sdl3

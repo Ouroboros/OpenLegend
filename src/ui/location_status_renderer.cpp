@@ -82,15 +82,16 @@ bool LocationStatusRenderer::render(
         return false;
     }
 
-    const auto metrics = ui_renderer.font_metrics(kLocationStatusFontSize);
+    const auto metrics = ui_renderer.font_metrics(
+        framebuffer, kLocationStatusFontSize);
     const auto left = kLocationStatusLeftInset.resolve(
-        render::RgbaFramebuffer::width);
+        framebuffer.logical_width());
     const auto bottom = kLocationStatusBottomInset.resolve(
-        render::RgbaFramebuffer::height);
+        framebuffer.logical_height());
     return ui_renderer.draw_text_big5(
         framebuffer,
         left,
-        render::RgbaFramebuffer::height - bottom - metrics.line_height,
+        framebuffer.logical_height() - bottom - metrics.line_height,
         text::Big5TextView{std::span<const std::uint8_t>{status}.first(length)},
         text_colors::location_status,
         palette,

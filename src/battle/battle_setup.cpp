@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "openlegend/render/legacy_color.hpp"
+#include "openlegend/render/world_projection.hpp"
 
 namespace openlegend::battle {
 namespace {
@@ -5144,8 +5145,16 @@ std::optional<std::size_t> BattleSetup::defer_turn_to_end(const std::size_t acto
 std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
     const BattleRenderState& state,
     const std::span<const std::int16_t> path_values) const {
+    return battle_render_plan(state, path_values, 320, 200);
+}
+
+std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
+    const BattleRenderState& state,
+    const std::span<const std::int16_t> path_values,
+    const int viewport_width,
+    const int viewport_height) const {
     if (!valid() || state.view_x < 0 || state.view_x > 32 || state.view_y < 0 ||
-        state.view_y > 32 ||
+        state.view_y > 32 || viewport_width < 320 || viewport_height < 200 ||
         (state.path_limit > 0 && path_values.size() != kBattleOccupancyCells)) {
         return std::nullopt;
     }
@@ -5174,36 +5183,58 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
             value});
     };
 
+    const bool legacy_view = viewport_width == 320 && viewport_height == 200;
+    const auto begin_x = legacy_view ? state.view_x : std::int16_t{0};
+    const auto begin_y = legacy_view ? state.view_y : std::int16_t{0};
+    const auto end_x = legacy_view
+        ? static_cast<std::int16_t>(state.view_x + 32)
+        : static_cast<std::int16_t>(kBattleExtent);
+    const auto end_y = legacy_view
+        ? static_cast<std::int16_t>(state.view_y + 32)
+        : static_cast<std::int16_t>(kBattleExtent);
+    const auto camera_x = static_cast<std::int32_t>(state.view_x) + 11;
+    const auto camera_y = static_cast<std::int32_t>(state.view_y) + 11;
+    const auto anchor_x = viewport_width / 2 - 15;
+    const auto anchor_y = viewport_height / 2 + 17;
+    const auto project = [&](const std::int16_t map_x, const std::int16_t map_y) {
+        if (legacy_view) {
+            const auto local_x = static_cast<std::int32_t>(map_x - state.view_x);
+            const auto local_y = static_cast<std::int32_t>(map_y - state.view_y);
+            return render::ScreenPoint{
+                18 * local_x - 18 * local_y + 145,
+                9 * local_x + 9 * local_y - 81};
+        }
+        return render::project_isometric(
+            static_cast<std::int32_t>(map_x) - camera_x,
+            static_cast<std::int32_t>(map_y) - camera_y,
+            anchor_x,
+            anchor_y);
+    };
+
     const auto field = data_.battlefield();
-    for (std::int16_t local_x = 0; local_x < 32; ++local_x) {
-        for (std::int16_t local_y = 0; local_y < 32; ++local_y) {
-            const auto map_x = static_cast<std::int16_t>(local_x + state.view_x);
-            const auto map_y = static_cast<std::int16_t>(local_y + state.view_y);
+    for (auto map_x = begin_x; map_x < end_x; ++map_x) {
+        for (auto map_y = begin_y; map_y < end_y; ++map_y) {
             const auto cell = static_cast<std::size_t>(map_y) * kBattleExtent +
                 static_cast<std::size_t>(map_x);
+            const auto point = project(map_x, map_y);
             append_sprite(
                 BattleRenderCommandKind::legacy_sprite,
                 map_x,
                 map_y,
-                18 * static_cast<std::int32_t>(local_x) -
-                    18 * static_cast<std::int32_t>(local_y) + 145,
-                9 * static_cast<std::int32_t>(local_x) +
-                    9 * static_cast<std::int32_t>(local_y) - 81,
+                point.x,
+                point.y,
                 field[cell]);
         }
     }
 
-    for (std::int16_t local_x = 0; local_x < 32; ++local_x) {
-        for (std::int16_t local_y = 0; local_y < 32; ++local_y) {
-            const auto map_x = static_cast<std::int16_t>(local_x + state.view_x);
-            const auto map_y = static_cast<std::int16_t>(local_y + state.view_y);
+    for (auto map_x = begin_x; map_x < end_x; ++map_x) {
+        for (auto map_y = begin_y; map_y < end_y; ++map_y) {
             const auto cell = static_cast<std::size_t>(map_y) * kBattleExtent +
                 static_cast<std::size_t>(map_x);
-            const auto sprite_x = 18 * static_cast<std::int32_t>(local_x) -
-                18 * static_cast<std::int32_t>(local_y) + 145;
+            const auto point = project(map_x, map_y);
+            const auto sprite_x = point.x;
             const auto overlay_x = sprite_x - 18;
-            const auto screen_y = 9 * static_cast<std::int32_t>(local_x) +
-                9 * static_cast<std::int32_t>(local_y) - 81;
+            const auto screen_y = point.y;
 
             if (state.path_limit > 0) {
                 if (path_values[cell] > state.path_limit &&
@@ -5325,8 +5356,7 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                         map_x,
                         map_y,
                         overlay_x,
-                        9 * static_cast<std::int32_t>(local_x) +
-                            9 * static_cast<std::int32_t>(local_y) - 141 -
+                        screen_y - 60 -
                             2 * static_cast<std::int32_t>(state.damage_text_offset),
                         0,
                         kDamageSigns[static_cast<std::size_t>(state.damage_kind)],

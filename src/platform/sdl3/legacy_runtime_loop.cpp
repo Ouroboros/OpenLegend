@@ -123,7 +123,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         app::LegacyGameRuntime game{
             std::filesystem::current_path(),
             settings.save_directory,
-            random_seed};
+            random_seed,
+            settings.game_resolution};
         diagnostics::log_info(
             "runtime random_seed=" + std::to_string(random_seed));
         if (!game.valid()) {

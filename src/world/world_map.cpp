@@ -585,31 +585,82 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
     if (!valid()) {
         return false;
     }
+    const auto native_coordinates = framebuffer.use_native_coordinates();
     framebuffer.clear(render::legacy_color::black);
     framebuffer.set_palette(palette_);
-    const auto view_x = cache_x();
-    const auto view_y = cache_y();
-    for (int cache_tile_x = view_x - 11; cache_tile_x < view_x + 21; ++cache_tile_x) {
-        for (int cache_tile_y = view_y - 11; cache_tile_y < view_y + 21; ++cache_tile_y) {
-            const auto point = render::legacy_world_tile_screen(
-                cache_tile_x, cache_tile_y, view_x, view_y);
+    const bool legacy_view = framebuffer.legacy_size();
+    const WorldCache* drawing_cache = &cache_;
+    if (!legacy_view) {
+        const auto desired_origin_x = clamped_origin(world_x_);
+        const auto desired_origin_y = clamped_origin(world_y_);
+        if (!expanded_render_cache_.has_value()) {
+            expanded_render_cache_.emplace();
+            if (!expanded_render_cache_->reload(
+                    map_, desired_origin_x, desired_origin_y)) {
+                expanded_render_cache_.reset();
+                return false;
+            }
+        } else if (
+            expanded_render_cache_->origin_x() != desired_origin_x ||
+            expanded_render_cache_->origin_y() != desired_origin_y) {
+            if (!expanded_render_cache_->reload(
+                    map_, desired_origin_x, desired_origin_y)) {
+                return false;
+            }
+        }
+        drawing_cache = &*expanded_render_cache_;
+    }
+    const auto view_x = world_x_ - drawing_cache->origin_x();
+    const auto view_y = world_y_ - drawing_cache->origin_y();
+    const auto bounds = legacy_view
+        ? render::WorldCacheBounds{view_x - 11, view_y - 11, view_x + 21, view_y + 21}
+        : render::WorldCacheBounds{0, 0, kWorldCacheExtent, kWorldCacheExtent};
+    const auto anchor_x = framebuffer.pixel_width() / 2 - 15;
+    const auto anchor_y = framebuffer.pixel_height() / 2 + 17;
+    const auto projected = [&](const int cache_tile_x, const int cache_tile_y) {
+        return legacy_view
+            ? render::legacy_world_tile_screen(
+                  cache_tile_x, cache_tile_y, view_x, view_y)
+            : render::project_isometric(
+                  cache_tile_x - view_x,
+                  cache_tile_y - view_y,
+                  anchor_x,
+                  anchor_y);
+    };
+    const auto potentially_visible = [&](const render::ScreenPoint point) {
+        constexpr int kSpriteMargin = 768;
+        return legacy_view ||
+            (point.x >= -kSpriteMargin &&
+             point.x < framebuffer.pixel_width() + kSpriteMargin &&
+             point.y >= -kSpriteMargin &&
+             point.y < framebuffer.pixel_height() + kSpriteMargin);
+    };
+    for (int cache_tile_x = bounds.begin_x; cache_tile_x < bounds.end_x; ++cache_tile_x) {
+        for (int cache_tile_y = bounds.begin_y; cache_tile_y < bounds.end_y; ++cache_tile_y) {
+            const auto point = projected(cache_tile_x, cache_tile_y);
+            if (!potentially_visible(point)) {
+                continue;
+            }
             if (!draw_sprite(
                     framebuffer,
-                    cache_.at(WorldLayer::earth, cache_tile_x, cache_tile_y),
+                    drawing_cache->at(WorldLayer::earth, cache_tile_x, cache_tile_y),
                     point.x,
                     point.y)) {
                 return false;
             }
         }
     }
-    for (int cache_tile_x = view_x - 11; cache_tile_x < view_x + 21; ++cache_tile_x) {
-        for (int cache_tile_y = view_y - 11; cache_tile_y < view_y + 21; ++cache_tile_y) {
-            const auto sprite = cache_.at(WorldLayer::surface, cache_tile_x, cache_tile_y);
+    for (int cache_tile_x = bounds.begin_x; cache_tile_x < bounds.end_x; ++cache_tile_x) {
+        for (int cache_tile_y = bounds.begin_y; cache_tile_y < bounds.end_y; ++cache_tile_y) {
+            const auto sprite = drawing_cache->at(
+                WorldLayer::surface, cache_tile_x, cache_tile_y);
             if (sprite == 0) {
                 continue;
             }
-            const auto point = render::legacy_world_tile_screen(
-                cache_tile_x, cache_tile_y, view_x, view_y);
+            const auto point = projected(cache_tile_x, cache_tile_y);
+            if (!potentially_visible(point)) {
+                continue;
+            }
             if (!draw_sprite(framebuffer, sprite, point.x, point.y)) {
                 return false;
             }
@@ -617,22 +668,24 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
 
     const render::LegacyWorldDepthInput input{
-        cache_.layer(WorldLayer::build_x),
-        cache_.layer(WorldLayer::build_y),
-        cache_.layer(WorldLayer::building),
+        drawing_cache->layer(WorldLayer::build_x),
+        drawing_cache->layer(WorldLayer::build_y),
+        drawing_cache->layer(WorldLayer::building),
         view_x,
         view_y,
-        cache_.origin_x(),
-        cache_.origin_y(),
+        drawing_cache->origin_x(),
+        drawing_cache->origin_y(),
         {static_cast<std::int16_t>(world_x_), static_cast<std::int16_t>(world_y_), view_x,
          view_y, 5000},
         render::LegacyDepthActor{
             static_cast<std::int16_t>(ship_x_),
             static_cast<std::int16_t>(ship_y_),
-            ship_x_ - cache_.origin_x(),
-            ship_y_ - cache_.origin_y(),
+            ship_x_ - drawing_cache->origin_x(),
+            ship_y_ - drawing_cache->origin_y(),
             6000}};
-    const auto depth = render::build_legacy_world_depth_list(input);
+    const auto depth = legacy_view
+        ? render::build_legacy_world_depth_list(input)
+        : render::build_legacy_world_depth_list(input, bounds);
     if (!depth) {
         diagnostics::log_error(
             "world render depth list failed x=" + std::to_string(world_x_) +
@@ -646,7 +699,7 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
             if (!sprite.has_value()) {
                 continue;
             }
-            if (!draw_sprite(framebuffer, *sprite, 145, 117)) {
+            if (!draw_sprite(framebuffer, *sprite, anchor_x, anchor_y)) {
                 diagnostics::log_error(
                     "world player sprite draw failed sprite=" + std::to_string(*sprite) +
                     " x=" + std::to_string(world_x_) +
@@ -660,17 +713,25 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
             const auto sprite = static_cast<std::int16_t>(
                 kShipFrameBase[static_cast<std::size_t>(ship_direction_)] +
                 ship_frame_offset_);
-            if (!draw_sprite(framebuffer, sprite, 145, 117)) {
+            if (!draw_sprite(framebuffer, sprite, anchor_x, anchor_y)) {
                 return false;
             }
             player_drawn = true;
             continue;
         }
-        const auto relative_x = static_cast<int>(entry.world_x) - cache_.origin_x() -
-                                (view_x - 10);
-        const auto relative_y = static_cast<int>(entry.world_y) - cache_.origin_y() -
-                                (view_y - 10);
-        const auto point = render::project_isometric(relative_x, relative_y, 145, -63);
+        const auto point = legacy_view
+            ? render::project_isometric(
+                  static_cast<int>(entry.world_x) - drawing_cache->origin_x() -
+                      (view_x - 10),
+                  static_cast<int>(entry.world_y) - drawing_cache->origin_y() -
+                      (view_y - 10),
+                  145,
+                  -63)
+            : render::project_isometric(
+                  static_cast<int>(entry.world_x) - world_x_,
+                  static_cast<int>(entry.world_y) - world_y_,
+                  anchor_x,
+                  anchor_y);
         const auto sprite = entry.sprite_id == 6000
                                 ? static_cast<std::int16_t>(
                                       kShipFrameBase[static_cast<std::size_t>(ship_direction_)] +
@@ -682,8 +743,32 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
     }
     if (weather_active_) {
         for (const auto& particle : weather_) {
-            if (particle.y > -1000 && !draw_weather_particle(framebuffer, particle)) {
-                return false;
+            if (particle.y <= -1000) {
+                continue;
+            }
+            if (legacy_view) {
+                if (!draw_weather_particle(framebuffer, particle)) {
+                    return false;
+                }
+                continue;
+            }
+            const auto horizontal_tiles =
+                framebuffer.pixel_width() / render::IndexedFramebuffer::width + 3;
+            const auto vertical_tiles =
+                framebuffer.pixel_height() / render::IndexedFramebuffer::height + 3;
+            for (int tile_y = -1; tile_y < vertical_tiles; ++tile_y) {
+                for (int tile_x = -1; tile_x < horizontal_tiles; ++tile_x) {
+                    auto repeated = particle;
+                    repeated.x = static_cast<std::int16_t>(
+                        static_cast<int>(particle.x) +
+                        tile_x * render::IndexedFramebuffer::width);
+                    repeated.y = static_cast<std::int16_t>(
+                        static_cast<int>(particle.y) +
+                        tile_y * render::IndexedFramebuffer::height);
+                    if (!draw_weather_particle(framebuffer, repeated)) {
+                        return false;
+                    }
+                }
             }
         }
     }
@@ -694,8 +779,8 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
             " y=" + std::to_string(world_y_) +
             " frame=" + std::to_string(frame) +
             " entries=" + std::to_string(depth.entries.size()) +
-            " cache_origin=" + std::to_string(cache_.origin_x()) + "," +
-            std::to_string(cache_.origin_y()));
+            " cache_origin=" + std::to_string(drawing_cache->origin_x()) + "," +
+            std::to_string(drawing_cache->origin_y()));
     } else {
         diagnostics::log_trace(
             "world player rendered x=" + std::to_string(world_x_) +
@@ -905,8 +990,10 @@ bool WorldSession::draw_weather_particle(
         for (const auto& run : frame.rows()[row_index].runs) {
             destination_x += static_cast<int>(run.skip);
             for (const auto source_index : run.pixels) {
-                if (destination_y >= 0 && destination_y < render::IndexedFramebuffer::height &&
-                    destination_x >= 0 && destination_x < render::IndexedFramebuffer::width) {
+                if (destination_y >= 0 &&
+                    destination_y < framebuffer.pixel_height() &&
+                    destination_x >= 0 &&
+                    destination_x < framebuffer.pixel_width()) {
                     auto& destination_index = framebuffer.row(destination_y)[destination_x];
                     const auto source = palette_[source_index];
                     const auto destination = palette_[destination_index];

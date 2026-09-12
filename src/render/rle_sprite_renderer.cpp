@@ -21,9 +21,11 @@ void draw_rle_sprite(
         for (const auto& run : frame.rows()[row_index].runs) {
             destination_x += static_cast<int>(run.skip);
             for (const auto pixel : run.pixels) {
-                if (destination_y >= 0 && destination_y < IndexedFramebuffer::height &&
-                    destination_x >= 0 && destination_x < IndexedFramebuffer::width) {
-                    framebuffer.row(destination_y)[destination_x] = pixel;
+                if (destination_y >= 0 &&
+                    destination_y < framebuffer.coordinate_height() &&
+                    destination_x >= 0 &&
+                    destination_x < framebuffer.coordinate_width()) {
+                    framebuffer.draw_pixel(destination_x, destination_y, pixel);
                 }
                 ++destination_x;
             }

@@ -277,6 +277,14 @@ template <typename Status>
     return value > 0 && value <= static_cast<std::int64_t>(std::numeric_limits<int>::max());
 }
 
+[[nodiscard]] bool valid_game_resolution_dimension(
+    const std::int64_t value,
+    const int minimum,
+    const int maximum) noexcept {
+    return value >= static_cast<std::int64_t>(minimum) &&
+        value <= static_cast<std::int64_t>(maximum);
+}
+
 [[nodiscard]] std::optional<diagnostics::LogLevel> parse_log_level(
     const std::string_view value) noexcept {
     if (value == "trace") {
@@ -324,6 +332,9 @@ using ConfigurationKeyPath = std::vector<std::string>;
     }
     if (table_path.front() == WindowConfigurationLoadResult::toml_table_name) {
         return WindowConfigurationLoadResult::toml_field_order;
+    }
+    if (table_path.front() == DisplayConfigurationLoadResult::toml_table_name) {
+        return DisplayConfigurationLoadResult::toml_field_order;
     }
     return {};
 }
@@ -523,6 +534,52 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
         WindowConfigurationStatus::ready,
         WindowSize{static_cast<int>(*width), static_cast<int>(*height)},
         maximized,
+        true,
+        {}};
+}
+
+[[nodiscard]] DisplayConfigurationLoadResult display_load_error(
+    const DisplayConfigurationStatus status,
+    const GameResolution fallback,
+    std::string detail = {}) {
+    DisplayConfigurationLoadResult result;
+    result.status = status;
+    result.resolution = fallback;
+    result.detail = std::move(detail);
+    return result;
+}
+
+[[nodiscard]] DisplayConfigurationLoadResult display_configuration_from_document(
+    const toml::table& document,
+    const GameResolution fallback) {
+    const toml::node* display_node =
+        document.get(DisplayConfigurationLoadResult::toml_table_name);
+    if (display_node == nullptr) {
+        return DisplayConfigurationLoadResult{
+            DisplayConfigurationStatus::ready, fallback, false, {}};
+    }
+    const toml::table* display = display_node->as_table();
+    if (display == nullptr) {
+        return display_load_error(
+            DisplayConfigurationStatus::invalid_display_table, fallback);
+    }
+    const auto width =
+        (*display)[DisplayConfigurationLoadResult::width_toml_key]
+            .value<std::int64_t>();
+    const auto height =
+        (*display)[DisplayConfigurationLoadResult::height_toml_key]
+            .value<std::int64_t>();
+    if (!width.has_value() || !height.has_value() ||
+        !valid_game_resolution_dimension(
+            *width, kMinimumGameWidth, kMaximumGameWidth) ||
+        !valid_game_resolution_dimension(
+            *height, kMinimumGameHeight, kMaximumGameHeight)) {
+        return display_load_error(
+            DisplayConfigurationStatus::invalid_game_resolution, fallback);
+    }
+    return DisplayConfigurationLoadResult{
+        DisplayConfigurationStatus::ready,
+        GameResolution{static_cast<int>(*width), static_cast<int>(*height)},
         true,
         {}};
 }
@@ -800,6 +857,19 @@ WindowConfigurationStatus save_window_configuration(
     return WindowConfigurationStatus::ready;
 }
 
+DisplayConfigurationLoadResult load_display_configuration(
+    const std::filesystem::path& configuration_path,
+    const GameResolution fallback) {
+    const auto document = read_configuration_document(configuration_path);
+    if (document.status != ConfigurationDocumentStatus::ready) {
+        return display_load_error(
+            configuration_load_status<DisplayConfigurationStatus>(document.status),
+            fallback,
+            document.detail);
+    }
+    return display_configuration_from_document(document.values, fallback);
+}
+
 InputConfigurationLoadResult load_input_configuration(
     const std::filesystem::path& configuration_path,
     const std::chrono::milliseconds fallback_movement_repeat_delay,
@@ -880,6 +950,8 @@ RuntimeConfiguration load_runtime_configuration(
             executable_directory,
             defaults.logging_path,
             defaults.logging_level);
+        configuration.display = display_configuration_from_document(
+            document.values, defaults.game_resolution);
         configuration.input = input_configuration_from_document(
             document.values,
             defaults.movement_repeat_delay,
@@ -901,6 +973,11 @@ RuntimeConfiguration load_runtime_configuration(
     configuration.logging.path = defaults.logging_path;
     configuration.logging.minimum_level = defaults.logging_level;
     configuration.logging.detail = document.detail;
+
+    configuration.display = display_load_error(
+        configuration_load_status<DisplayConfigurationStatus>(document.status),
+        defaults.game_resolution,
+        document.detail);
 
     configuration.input.status =
         configuration_load_status<InputConfigurationStatus>(document.status);
@@ -1015,6 +1092,23 @@ std::string_view timing_configuration_status_message(
         return "[timing] fade_frame_delay_ms must be a non-negative number";
     }
     return "unknown timing configuration status";
+}
+
+std::string_view display_configuration_status_message(
+    const DisplayConfigurationStatus status) noexcept {
+    switch (status) {
+    case DisplayConfigurationStatus::ready:
+        return "ready";
+    case DisplayConfigurationStatus::read_failed:
+        return "cannot read openlegend.toml";
+    case DisplayConfigurationStatus::parse_failed:
+        return "cannot parse openlegend.toml";
+    case DisplayConfigurationStatus::invalid_display_table:
+        return "[display] must be a TOML table";
+    case DisplayConfigurationStatus::invalid_game_resolution:
+        return "[display] width must be 320..1280 and height must be 200..800";
+    }
+    return "unknown display configuration status";
 }
 
 std::string_view window_configuration_status_message(

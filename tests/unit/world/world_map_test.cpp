@@ -20,6 +20,19 @@
 #include "openlegend/world/world_map.hpp"
 #include "test_support.hpp"
 
+namespace openlegend::world {
+
+struct WorldSessionTestAccess {
+    static bool reload_gameplay_cache(
+        WorldSession& session,
+        const int origin_x,
+        const int origin_y) noexcept {
+        return session.cache_.reload(session.map_, origin_x, origin_y);
+    }
+};
+
+}  // namespace openlegend::world
+
 namespace {
 
 [[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
@@ -84,9 +97,9 @@ namespace {
             destination_x += static_cast<int>(run.skip);
             for (const auto source_pixel : run.pixels) {
                 if (destination_y >= 0 &&
-                    destination_y < openlegend::render::IndexedFramebuffer::height &&
+                    destination_y < framebuffer.pixel_height() &&
                     destination_x >= 0 &&
-                    destination_x < openlegend::render::IndexedFramebuffer::width &&
+                    destination_x < framebuffer.pixel_width() &&
                     framebuffer.row(destination_y)[destination_x] == source_pixel) {
                     return true;
                 }
@@ -243,11 +256,51 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(static_cast<bool>(depth));
     OL_CHECK(depth.entries.size() == 63U);
     OL_CHECK(fnv1a64_depth_entries(depth.entries) == 0x0F154DD75CAA172FULL);
+    const auto expanded_depth = openlegend::render::build_legacy_world_depth_list(
+        depth_input,
+        openlegend::render::WorldCacheBounds{
+            0, 0, kWorldCacheExtent, kWorldCacheExtent});
+    OL_CHECK(static_cast<bool>(expanded_depth));
+    OL_CHECK(expanded_depth.entries.size() > depth.entries.size());
 
     openlegend::render::IndexedFramebuffer framebuffer;
     OL_CHECK(session.render(framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x0604155353F95194ULL);
     OL_CHECK(sprite_has_visible_pixel(sprites, session.player_frame(), framebuffer, 145, 117));
+
+    openlegend::render::IndexedFramebuffer expanded_framebuffer{640, 360};
+    OL_CHECK(session.render(expanded_framebuffer));
+    OL_CHECK(sprite_has_visible_pixel(
+        sprites, session.player_frame(), expanded_framebuffer, 305, 197));
+    std::size_t expanded_only_pixels = 0U;
+    for (int y = 0; y < expanded_framebuffer.pixel_height(); ++y) {
+        for (int x = 0; x < expanded_framebuffer.pixel_width(); ++x) {
+            const bool inside_legacy_view =
+                x >= 160 && x < 480 && y >= 80 && y < 280;
+            if (!inside_legacy_view && expanded_framebuffer.row(y)[x] != 0U) {
+                ++expanded_only_pixels;
+            }
+        }
+    }
+    OL_CHECK(expanded_only_pixels > 0U);
+
+    const auto gameplay_cache_origin_x = session.cache().origin_x();
+    const auto gameplay_cache_origin_y = session.cache().origin_y();
+    OL_CHECK(openlegend::world::WorldSessionTestAccess::reload_gameplay_cache(
+        session,
+        gameplay_cache_origin_x,
+        session.world_y() - 11));
+    OL_CHECK(session.cache_y() == 11);
+    openlegend::render::IndexedFramebuffer stale_legacy_framebuffer;
+    OL_CHECK(session.render(stale_legacy_framebuffer));
+    OL_CHECK(fnv1a64(stale_legacy_framebuffer.pixels()) ==
+        0x0604155353F95194ULL);
+    openlegend::render::IndexedFramebuffer stale_expanded_framebuffer{640, 360};
+    OL_CHECK(session.render(stale_expanded_framebuffer));
+    OL_CHECK(std::ranges::equal(
+        stale_expanded_framebuffer.pixels(), expanded_framebuffer.pixels()));
+    OL_CHECK(openlegend::world::WorldSessionTestAccess::reload_gameplay_cache(
+        session, gameplay_cache_origin_x, gameplay_cache_origin_y));
 
     session.periodic_tick();
     OL_CHECK(random.state() == 0xAF1CF0FBU);

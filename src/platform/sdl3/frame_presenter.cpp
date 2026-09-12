@@ -45,8 +45,18 @@ int FramePresenter::present(
     }
 
     const auto& framebuffer = game.framebuffer();
+    const auto game_width = framebuffer.pixel_width();
+    const auto game_height = framebuffer.pixel_height();
+    if (!rgba_framebuffer_.set_dimensions(game_width, game_height, 1)) {
+        diagnostics::log_critical(
+            "legacy RGBA framebuffer resize failed size=" +
+            std::to_string(game_width) + "x" + std::to_string(game_height));
+        report_presentation_error(
+            "render", "unable to resize legacy RGBA framebuffer");
+        return 7;
+    }
     const compat::IndexedFrameView indexed_frame{
-        framebuffer.pixels(), framebuffer.palette()};
+        framebuffer.pixels(), framebuffer.palette(), game_width, game_height};
     if (!compat::convert_indexed_frame_to_rgba(
             indexed_frame, rgba_framebuffer_.pixels())) {
         diagnostics::log_critical("indexed framebuffer conversion failed");
@@ -56,10 +66,12 @@ int FramePresenter::present(
     }
 
     const auto presentation_scale = platform.presentation_scale();
-    if (!modern_ui_framebuffer_.set_scale(presentation_scale)) {
+    if (!modern_ui_framebuffer_.set_dimensions(
+            game_width, game_height, presentation_scale)) {
         diagnostics::log_critical(
-            "modern RGBA UI framebuffer resize failed scale=" +
-            std::to_string(presentation_scale));
+            "modern RGBA UI framebuffer resize failed size=" +
+            std::to_string(game_width) + "x" + std::to_string(game_height) +
+            " scale=" + std::to_string(presentation_scale));
         report_presentation_error(
             "render", "unable to resize modern RGBA UI framebuffer");
         return 7;
@@ -72,7 +84,8 @@ int FramePresenter::present(
         return 7;
     }
 
-    const compat::RgbaFrameView frame{rgba_framebuffer_.pixels()};
+    const compat::RgbaFrameView frame{
+        rgba_framebuffer_.pixels(), game_width, game_height};
     const compat::RgbaFrameView modern_ui{
         modern_ui_framebuffer_.pixels(),
         modern_ui_framebuffer_.pixel_width(),

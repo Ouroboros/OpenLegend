@@ -6,6 +6,7 @@
 #include <cstddef>
 
 #include "openlegend/render/legacy_color.hpp"
+#include "openlegend/render/reference_layout.hpp"
 #include "openlegend/text/big5.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/text/game_text.hpp"
@@ -90,13 +91,14 @@ void append_number(std::u8string& text, const std::int32_t value) {
 }
 
 [[nodiscard]] SaveListLayout save_list_layout(
+    const render::RgbaFramebuffer& framebuffer,
     const render::rgba::FontMetrics metrics) noexcept {
     constexpr int kReferenceWidth = 320;
     constexpr int kReferencePanelHeight = 198;
     constexpr std::array<int, 5> kColumnWeights{40, 72, 24, 87, 88};
     constexpr int kTotalColumnWeight = 311;
-    const int framebuffer_width = render::RgbaFramebuffer::width;
-    const int framebuffer_height = render::RgbaFramebuffer::height;
+    const int framebuffer_width = framebuffer.logical_width();
+    const int framebuffer_height = framebuffer.logical_height();
     const int outer_x = std::max(1, framebuffer_width / kReferenceWidth);
     const int outer_y = std::max(1, framebuffer_height / 200);
     const int inner_x = std::max(6, 6 * framebuffer_width / kReferenceWidth);
@@ -116,7 +118,7 @@ void append_number(std::u8string& text, const std::int32_t value) {
             content_x + content_width * accumulated_weight / kTotalColumnWeight;
         accumulated_weight += kColumnWeights[column];
     }
-    const auto scaled_y = [](const int reference_y) {
+    const auto scaled_y = [outer_y, panel_height](const int reference_y) {
         return outer_y + reference_y * panel_height / kReferencePanelHeight;
     };
     layout.title_y = scaled_y(3);
@@ -147,8 +149,8 @@ bool SaveListRenderer::render(
     const compat::LegacyPalette& palette,
     ModernUiRenderer& ui_renderer,
     render::RgbaFramebuffer& framebuffer) const {
-    const auto metrics = ui_renderer.font_metrics();
-    const auto layout = save_list_layout(metrics);
+    const auto metrics = ui_renderer.font_metrics(framebuffer);
+    const auto layout = save_list_layout(framebuffer, metrics);
     const auto column = [&layout](const SaveListColumn value) {
         return layout.column_x[static_cast<std::size_t>(value)];
     };
@@ -310,10 +312,22 @@ bool SaveListRenderer::render_delete_confirmation(
     const compat::LegacyPalette& palette,
     ModernUiRenderer& ui_renderer,
     render::RgbaFramebuffer& framebuffer) const {
-    constexpr std::uint16_t kBoxWidth = 196U;
-    constexpr std::uint16_t kBoxHeight = 31U;
-    const int x = (render::RgbaFramebuffer::width - kBoxWidth) / 2;
-    const int y = (render::RgbaFramebuffer::height - kBoxHeight) / 2;
+    constexpr int kReferenceBoxWidth = 196;
+    constexpr int kReferenceBoxHeight = 31;
+    const auto box_width = render::scale_legacy_reference_length(
+        kReferenceBoxWidth,
+        framebuffer.logical_width(),
+        framebuffer.logical_height());
+    const auto box_height = render::scale_legacy_reference_length(
+        kReferenceBoxHeight,
+        framebuffer.logical_width(),
+        framebuffer.logical_height());
+    const int x = (framebuffer.logical_width() - box_width) / 2;
+    const int y = (framebuffer.logical_height() - box_height) / 2;
+    const auto text_inset_x = render::scale_legacy_reference_length(
+        10, framebuffer.logical_width(), framebuffer.logical_height());
+    const auto text_inset_y = render::scale_legacy_reference_length(
+        7, framebuffer.logical_width(), framebuffer.logical_height());
     std::u8string prompt{kDeleteSavePrompt};
     prompt.push_back(u8' ');
     const auto slot = zero_padded_number(
@@ -321,11 +335,16 @@ bool SaveListRenderer::render_delete_confirmation(
     prompt.append(slot);
     prompt.append(kYesNoPrompt);
     return ui_renderer.draw_box(
-               framebuffer, x, y, kBoxWidth, kBoxHeight, palette) &&
+               framebuffer,
+               x,
+               y,
+               static_cast<std::uint16_t>(box_width),
+               static_cast<std::uint16_t>(box_height),
+               palette) &&
         ui_renderer.draw_text_utf8(
             framebuffer,
-            x + 10,
-            y + 7,
+            x + text_inset_x,
+            y + text_inset_y,
             prompt,
             text_colors::notice,
             palette);
@@ -335,11 +354,25 @@ bool SaveListRenderer::render_io_wait(
     const compat::LegacyPalette& palette,
     ModernUiRenderer& ui_renderer,
     render::RgbaFramebuffer& framebuffer) const {
-    return ui_renderer.draw_box(framebuffer, 154, 18, 68U, 31U, palette) &&
+    const auto viewport = render::fit_legacy_reference_viewport(
+        framebuffer.logical_width(), framebuffer.logical_height());
+    const auto scale = [&framebuffer](const int value) {
+        return render::scale_legacy_reference_length(
+            value, framebuffer.logical_width(), framebuffer.logical_height());
+    };
+    const auto x = viewport.x + scale(154);
+    const auto y = viewport.y + scale(18);
+    return ui_renderer.draw_box(
+               framebuffer,
+               x,
+               y,
+               static_cast<std::uint16_t>(scale(68)),
+               static_cast<std::uint16_t>(scale(31)),
+               palette) &&
         ui_renderer.draw_text_utf8(
             framebuffer,
-            158,
-            25,
+            viewport.x + scale(158),
+            viewport.y + scale(25),
             kIoWaitLabel,
             text_colors::notice,
             palette);

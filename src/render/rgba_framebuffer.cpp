@@ -10,13 +10,14 @@ namespace openlegend::render {
 namespace {
 
 [[nodiscard]] bool valid_rectangle(
+    const RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
     const std::uint16_t width,
     const std::uint16_t height) noexcept {
     return width > 0U && height > 0U && x >= 0 && y >= 0 &&
-        x <= RgbaFramebuffer::width - static_cast<int>(width) &&
-        y <= RgbaFramebuffer::height - static_cast<int>(height);
+        x <= framebuffer.logical_width() - static_cast<int>(width) &&
+        y <= framebuffer.logical_height() - static_cast<int>(height);
 }
 
 void write_color(std::uint8_t* destination, const compat::Rgba8 color) noexcept {
@@ -58,22 +59,36 @@ void blend_color(std::uint8_t* destination, const compat::Rgba8 color) noexcept 
 }  // namespace
 
 RgbaFramebuffer::RgbaFramebuffer()
-    : pixels_(compat::kModernRgbaByteCount, 0U) {}
+    : RgbaFramebuffer(width, height) {}
 
-bool RgbaFramebuffer::set_scale(const int scale) {
-    if (scale <= 0 || scale > maximum_scale ||
-        scale > std::numeric_limits<int>::max() / width ||
-        scale > std::numeric_limits<int>::max() / height) {
+RgbaFramebuffer::RgbaFramebuffer(
+    const int requested_width,
+    const int requested_height) {
+    if (!set_dimensions(requested_width, requested_height, 1)) {
+        throw std::bad_alloc{};
+    }
+}
+
+bool RgbaFramebuffer::set_dimensions(
+    const int requested_width,
+    const int requested_height,
+    const int requested_scale) {
+    if (requested_width <= 0 || requested_height <= 0 ||
+        requested_scale <= 0 || requested_scale > maximum_scale ||
+        requested_width > std::numeric_limits<int>::max() / requested_scale ||
+        requested_height > std::numeric_limits<int>::max() / requested_scale) {
         return false;
     }
-    if (scale == scale_) {
+    if (requested_width == logical_width_ &&
+        requested_height == logical_height_ && requested_scale == scale_ &&
+        !pixels_.empty()) {
         return true;
     }
 
-    const auto scaled_width = static_cast<std::size_t>(width) *
-        static_cast<std::size_t>(scale);
-    const auto scaled_height = static_cast<std::size_t>(height) *
-        static_cast<std::size_t>(scale);
+    const auto scaled_width = static_cast<std::size_t>(requested_width) *
+        static_cast<std::size_t>(requested_scale);
+    const auto scaled_height = static_cast<std::size_t>(requested_height) *
+        static_cast<std::size_t>(requested_scale);
     if (scaled_height > std::numeric_limits<std::size_t>::max() / scaled_width ||
         scaled_width * scaled_height >
             std::numeric_limits<std::size_t>::max() /
@@ -92,8 +107,14 @@ bool RgbaFramebuffer::set_scale(const int scale) {
     } catch (const std::bad_alloc&) {
         return false;
     }
-    scale_ = scale;
+    logical_width_ = requested_width;
+    logical_height_ = requested_height;
+    scale_ = requested_scale;
     return true;
+}
+
+bool RgbaFramebuffer::set_scale(const int requested_scale) {
+    return set_dimensions(logical_width_, logical_height_, requested_scale);
 }
 
 void RgbaFramebuffer::clear(const compat::Rgba8 color) noexcept {
@@ -110,7 +131,7 @@ bool RgbaFramebuffer::fill_rectangle(
     const std::uint16_t rectangle_width,
     const std::uint16_t rectangle_height,
     const compat::Rgba8 color) noexcept {
-    if (!valid_rectangle(x, y, rectangle_width, rectangle_height)) {
+    if (!valid_rectangle(*this, x, y, rectangle_width, rectangle_height)) {
         return false;
     }
 
@@ -140,7 +161,7 @@ bool RgbaFramebuffer::blend_rectangle(
     const std::uint16_t rectangle_width,
     const std::uint16_t rectangle_height,
     const compat::Rgba8 color) noexcept {
-    if (!valid_rectangle(x, y, rectangle_width, rectangle_height)) {
+    if (!valid_rectangle(*this, x, y, rectangle_width, rectangle_height)) {
         return false;
     }
 
@@ -170,7 +191,7 @@ bool RgbaFramebuffer::outline_rectangle(
     const std::uint16_t rectangle_width,
     const std::uint16_t rectangle_height,
     const compat::Rgba8 color) noexcept {
-    if (!valid_rectangle(x, y, rectangle_width, rectangle_height)) {
+    if (!valid_rectangle(*this, x, y, rectangle_width, rectangle_height)) {
         return false;
     }
     return fill_rectangle(x, y, rectangle_width, 1U, color) &&
@@ -193,7 +214,7 @@ bool RgbaFramebuffer::blend_pixel(
     const int x,
     const int y,
     const compat::Rgba8 color) noexcept {
-    if (x < 0 || y < 0 || x >= width || y >= height) {
+    if (x < 0 || y < 0 || x >= logical_width_ || y >= logical_height_) {
         return false;
     }
 

@@ -4195,10 +4195,18 @@ bool BattleSession::render_party_selection(
 
 bool BattleSession::render_battlefield(
     render::IndexedFramebuffer& framebuffer) {
+    const auto native_coordinates = framebuffer.use_native_coordinates();
+    if (!framebuffer.legacy_size()) {
+        framebuffer.clear(render::legacy_color::black);
+    }
     const auto path_values = player_cursor_selection_.has_value()
         ? std::span<const std::int16_t>{player_cursor_selection_->pathing.values()}
         : std::span<const std::int16_t>{};
-    const auto plan = setup_.battle_render_plan(render_state_, path_values);
+    const auto plan = setup_.battle_render_plan(
+        render_state_,
+        path_values,
+        framebuffer.pixel_width(),
+        framebuffer.pixel_height());
     return plan.has_value() && renderer_.render(*plan, framebuffer);
 }
 
@@ -4589,7 +4597,9 @@ bool BattleSession::render_player_action_menu(
         // Ordinary polling restores the last complete menu frame and only
         // overwrites labels. A nonzero, non-one action result instead keeps the
         // delegated callee's current frame, matching the skipped machine redraw.
-        framebuffer = *player_action_frame_;
+        if (!framebuffer.copy_from(*player_action_frame_)) {
+            return false;
+        }
     }
     std::size_t ordinal = 0U;
     for (std::size_t action = 0U; action < player_action_menu_.available.size(); ++action) {
@@ -4781,16 +4791,17 @@ bool BattleSession::render_post_battle_message(
 
 void BattleSession::capture_selection_background(
     const render::IndexedFramebuffer& framebuffer) noexcept {
-    std::copy(
-        framebuffer.pixels().begin(),
-        framebuffer.pixels().end(),
-        selection_background_.begin());
+    selection_background_.assign(
+        framebuffer.pixels().begin(), framebuffer.pixels().end());
     selection_palette_ = framebuffer.palette();
     selection_background_captured_ = true;
 }
 
 void BattleSession::restore_selection_background(
     render::IndexedFramebuffer& framebuffer) const noexcept {
+    if (selection_background_.size() != framebuffer.pixels().size()) {
+        return;
+    }
     std::copy(
         selection_background_.begin(),
         selection_background_.end(),

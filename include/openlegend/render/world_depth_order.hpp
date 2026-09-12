@@ -19,6 +19,19 @@ struct LegacyDepthActor {
     std::int16_t sprite_id{};
 };
 
+struct WorldCacheBounds {
+    int begin_x{};
+    int begin_y{};
+    int end_x{};
+    int end_y{};
+
+    [[nodiscard]] constexpr bool valid() const noexcept {
+        return begin_x >= 0 && begin_y >= 0 && end_x > begin_x &&
+            end_y > begin_y && end_x <= legacy_world_cache_extent &&
+            end_y <= legacy_world_cache_extent;
+    }
+};
+
 struct LegacyWorldDepthInput {
     std::span<const std::int16_t> owner_x;
     std::span<const std::int16_t> owner_y;
@@ -46,6 +59,11 @@ struct LegacyDepthResult {
     [[nodiscard]] explicit operator bool() const noexcept { return error.empty(); }
 };
 
-[[nodiscard]] LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& input);
+[[nodiscard]] LegacyDepthResult build_legacy_world_depth_list(
+    const LegacyWorldDepthInput& input);
+
+[[nodiscard]] LegacyDepthResult build_legacy_world_depth_list(
+    const LegacyWorldDepthInput& input,
+    WorldCacheBounds cache_bounds);
 
 }  // namespace openlegend::render

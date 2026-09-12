@@ -133,6 +133,48 @@ struct WindowConfigurationLoadResult {
 [[nodiscard]] std::string_view window_configuration_status_message(
     WindowConfigurationStatus status) noexcept;
 
+inline constexpr int kMinimumGameWidth = 320;
+inline constexpr int kMinimumGameHeight = 200;
+inline constexpr int kMaximumGameWidth = 1280;
+inline constexpr int kMaximumGameHeight = 800;
+
+struct GameResolution {
+    int width{kMinimumGameWidth};
+    int height{kMinimumGameHeight};
+
+    [[nodiscard]] bool operator==(const GameResolution&) const = default;
+};
+
+enum class DisplayConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_display_table,
+    invalid_game_resolution,
+};
+
+struct DisplayConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "display";
+    static constexpr std::string_view width_toml_key = "width";
+    static constexpr std::string_view height_toml_key = "height";
+    static constexpr std::array<std::string_view, 2U> toml_field_order{
+        width_toml_key,
+        height_toml_key,
+    };
+
+    DisplayConfigurationStatus status{DisplayConfigurationStatus::ready};
+    GameResolution resolution;
+    bool loaded_from_file{};
+    std::string detail;
+};
+
+[[nodiscard]] DisplayConfigurationLoadResult load_display_configuration(
+    const std::filesystem::path& configuration_path,
+    GameResolution fallback);
+
+[[nodiscard]] std::string_view display_configuration_status_message(
+    DisplayConfigurationStatus status) noexcept;
+
 enum class InputConfigurationStatus {
     ready,
     read_failed,
@@ -242,6 +284,7 @@ struct RuntimeConfigurationDefaults {
     std::chrono::milliseconds menu_repeat_delay{};
     std::chrono::milliseconds menu_repeat_interval{};
     std::chrono::nanoseconds fade_frame_delay{};
+    GameResolution game_resolution;
 };
 
 struct RuntimeConfiguration {
@@ -250,13 +293,15 @@ struct RuntimeConfiguration {
     InputConfigurationLoadResult input;
     TimingConfigurationLoadResult timing;
     WindowConfigurationLoadResult window;
+    DisplayConfigurationLoadResult display;
 
-    static constexpr std::array<std::string_view, 5U> toml_table_order{
+    static constexpr std::array<std::string_view, 6U> toml_table_order{
         PathsConfigurationLoadResult::toml_table_name,
         LoggingConfigurationLoadResult::toml_table_name,
         InputConfigurationLoadResult::toml_table_name,
         TimingConfigurationLoadResult::toml_table_name,
         WindowConfigurationLoadResult::toml_table_name,
+        DisplayConfigurationLoadResult::toml_table_name,
     };
 };
 

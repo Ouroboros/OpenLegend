@@ -144,6 +144,8 @@ public:
     [[nodiscard]] const WorldCache& cache() const noexcept { return cache_; }
 
 private:
+    friend struct WorldSessionTestAccess;
+
     WorldSession(
         const resource::DataRoot& data_root,
         const WorldMapData& map,
@@ -185,6 +187,7 @@ private:
     model::RangerState& ranger_;
     random::LegacyRandom& random_;
     WorldCache cache_;
+    mutable std::optional<WorldCache> expanded_render_cache_;
     // Cached pixel spans stay valid even when a WorldSession is copied.
     std::shared_ptr<const resource::PackedArchive> sprites_;
     mutable std::vector<std::optional<resource::SpriteFrameView>> sprite_frames_;

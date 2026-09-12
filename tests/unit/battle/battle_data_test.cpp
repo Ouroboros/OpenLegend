@@ -4174,6 +4174,31 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
         return command.kind == BattleRenderCommandKind::damage_text;
     }) == 1);
 
+    const auto expanded_plan = render_setup.battle_render_plan(
+        state, path_values, 640, 360);
+    OL_CHECK(expanded_plan.has_value());
+    OL_CHECK(expanded_plan->commands.size() > plan->commands.size());
+    OL_CHECK(static_cast<std::size_t>(std::ranges::count_if(
+        expanded_plan->commands,
+        [](const BattleRenderCommand& command) {
+            return command.kind == BattleRenderCommandKind::legacy_sprite;
+        })) >= kBattleOccupancyCells);
+    const auto expanded_target = std::ranges::find_if(
+        expanded_plan->commands,
+        [](const BattleRenderCommand& command) {
+            return command.map_x == 26 && command.map_y == 26 &&
+                command.kind == BattleRenderCommandKind::highlighted_sprite;
+        });
+    OL_CHECK(expanded_target != expanded_plan->commands.end());
+    if (expanded_target != expanded_plan->commands.end()) {
+        OL_CHECK(expanded_target->screen_x == 341);
+        OL_CHECK(expanded_target->screen_y == 179);
+    }
+    OL_CHECK(!render_setup.battle_render_plan(
+        state, path_values, 319, 200).has_value());
+    OL_CHECK(!render_setup.battle_render_plan(
+        state, path_values, 320, 199).has_value());
+
     std::vector<BattleRenderCommand> cursor_commands;
     std::ranges::copy_if(
         plan->commands,
@@ -4333,6 +4358,20 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(renderer.render(odd_highlight_plan, odd_highlight_framebuffer));
     OL_CHECK(fnv1a_bytes(even_highlight_framebuffer.pixels()) ==
         fnv1a_bytes(odd_highlight_framebuffer.pixels()));
+
+    openlegend::render::IndexedFramebuffer expanded_framebuffer{640, 360};
+    OL_CHECK(renderer.render(*expanded_plan, expanded_framebuffer));
+    std::size_t expanded_only_pixels = 0U;
+    for (int y = 0; y < expanded_framebuffer.pixel_height(); ++y) {
+        for (int x = 0; x < expanded_framebuffer.pixel_width(); ++x) {
+            const bool inside_legacy_view =
+                x >= 160 && x < 480 && y >= 80 && y < 280;
+            if (!inside_legacy_view && expanded_framebuffer.row(y)[x] != 0U) {
+                ++expanded_only_pixels;
+            }
+        }
+    }
+    OL_CHECK(expanded_only_pixels > 0U);
 
     OL_CHECK(renderer.render(*plan, framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0x5f87e9606f0c1502ULL);

@@ -55,12 +55,24 @@ fade_frame_delay_ms = 14.268
 
 [window]
 
-# OpenLegend always renders internally at 320x200. These values only control
-# the restored host window; game content keeps its original aspect ratio.
+# These values only control the restored host window. The completed game frame
+# is enlarged with an integer nearest-neighbor scale and centered with black bars.
 
-# OpenLegend 始终以 320x200 进行内部渲染。这些值只控制还原后的宿主窗口；
-# 游戏画面仍保持原始宽高比。
+# 这些值只控制还原后的宿主窗口。完成的游戏画面会以 nearest-neighbor
+# 整数倍率放大，比例不一致时居中留黑边。
 
 width = 960
 height = 600
 maximized = false
+
+[display]
+
+# The actual in-game logical resolution. Increasing it keeps map tiles, actors,
+# and objects at their original logical pixel size while showing more content.
+# Width must be 320..1280 and height must be 200..800.
+
+# 游戏实际绘制的逻辑分辨率。增大该尺寸时，地图格、人物和物件保持原逻辑
+# 像素大小，同时显示更多内容。宽度范围为 320..1280，高度范围为 200..800。
+
+width = 320
+height = 200

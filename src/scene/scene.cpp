@@ -17,6 +17,7 @@
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
+#include "openlegend/render/world_projection.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/text/game_strings.hpp"
@@ -137,6 +138,21 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return std::clamp(wrapping_add(value, delta), minimum, maximum);
 }
 
+[[nodiscard]] bool restore_framebuffer(
+    render::IndexedFramebuffer& destination,
+    const render::IndexedFramebuffer& source) noexcept {
+    if (destination.pixel_width() == source.pixel_width() &&
+        destination.pixel_height() == source.pixel_height()) {
+        return destination.copy_from(source);
+    }
+    destination.clear(palette_colors::black);
+    destination.set_palette(source.palette());
+    const auto legacy_ui_coordinates =
+        destination.use_legacy_ui_coordinates();
+    return destination.blit(
+        source.pixels(), source.pixel_width(), source.pixel_height());
+}
+
 [[nodiscard]] bool draw_dialogue_text(
     render::IndexedFramebuffer& framebuffer,
     int x,
@@ -152,23 +168,26 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
                                 const int glyph_x,
                                 const std::span<const std::uint8_t> glyph,
                                 const int glyph_width) {
-        auto pixels = framebuffer.pixels();
         for (int row = 0; row < 16; ++row) {
             for (int byte_index = 0; byte_index < glyph_width / 8; ++byte_index) {
-                const auto bits = glyph[static_cast<std::size_t>(row * glyph_width / 8 + byte_index)];
+                const auto bits = glyph[
+                    static_cast<std::size_t>(
+                        row * glyph_width / 8 + byte_index)];
                 for (int bit = 0; bit < 8; ++bit) {
                     if ((bits & static_cast<std::uint8_t>(0x80U >> bit)) == 0U) {
                         continue;
                     }
-                    const auto destination = static_cast<std::ptrdiff_t>(
-                        (y + row) * render::IndexedFramebuffer::width + glyph_x +
-                        byte_index * 8 + bit);
-                    if (destination < 0 ||
-                        static_cast<std::size_t>(destination + 1) >= pixels.size()) {
+                    const auto destination_x = glyph_x + byte_index * 8 + bit;
+                    const auto destination_y = y + row;
+                    if (destination_x < 0 || destination_y < 0 ||
+                        destination_x + 1 >= framebuffer.coordinate_width() ||
+                        destination_y >= framebuffer.coordinate_height()) {
                         return false;
                     }
-                    pixels[static_cast<std::size_t>(destination)] = colors.foreground;
-                    pixels[static_cast<std::size_t>(destination + 1)] = colors.right_shadow;
+                    framebuffer.draw_pixel(
+                        destination_x, destination_y, colors.foreground);
+                    framebuffer.draw_pixel(
+                        destination_x + 1, destination_y, colors.right_shadow);
                 }
             }
         }
@@ -2763,23 +2782,28 @@ void SceneSession::blend_panel_rectangle(
     const int height) const {
     const auto source = palette_[palette_colors::black];
     const auto begin_x = std::max(x, 0);
-    const auto end_x = std::min(x + width, render::IndexedFramebuffer::width);
+    const auto end_x = std::min(x + width, framebuffer.coordinate_width());
     const auto begin_y = std::max(y, 0);
-    const auto end_y = std::min(y + height, render::IndexedFramebuffer::height);
-    for (int destination_y = begin_y; destination_y < end_y; ++destination_y) {
-        for (int destination_x = begin_x; destination_x < end_x; ++destination_x) {
-            auto& destination_index = framebuffer.row(destination_y)[destination_x];
+    const auto end_y = std::min(y + height, framebuffer.coordinate_height());
+    if (begin_x >= end_x || begin_y >= end_y) {
+        return;
+    }
+    static_cast<void>(framebuffer.transform_rectangle(
+        begin_x,
+        begin_y,
+        end_x - begin_x,
+        end_y - begin_y,
+        [this, source](std::uint8_t& destination_index) {
             const auto destination = palette_[destination_index];
             const auto red = static_cast<int>(source.red) / 8 +
-                             static_cast<int>(destination.red) / 8;
+                static_cast<int>(destination.red) / 8;
             const auto green = static_cast<int>(source.green) / 8 +
-                               static_cast<int>(destination.green) / 8;
+                static_cast<int>(destination.green) / 8;
             const auto blue = static_cast<int>(source.blue) / 8 +
-                              static_cast<int>(destination.blue) / 8;
+                static_cast<int>(destination.blue) / 8;
             destination_index = rgb4_lookup_[static_cast<std::size_t>(
                 red * 256 + green * 16 + blue)];
-        }
-    }
+        }));
 }
 
 void SceneSession::blend_panel(
@@ -3345,17 +3369,44 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
     if (!valid()) {
         return false;
     }
+    const auto native_coordinates = framebuffer.use_native_coordinates();
+    const bool legacy_view = framebuffer.legacy_size();
+    if (!legacy_view) {
+        framebuffer.clear(palette_colors::black);
+    }
     framebuffer.set_palette(palette_);
     const auto player_sprite = player_frame();
+    const auto begin_x = legacy_view ? view_origin_x_ : 0;
+    const auto begin_y = legacy_view ? view_origin_y_ : 0;
+    const auto end_x = legacy_view
+        ? view_origin_x_ + kSceneViewExtent
+        : kSceneExtent;
+    const auto end_y = legacy_view
+        ? view_origin_y_ + kSceneViewExtent
+        : kSceneExtent;
+    const auto camera_x = view_origin_x_ + 11;
+    const auto camera_y = view_origin_y_ + 11;
+    const auto screen_anchor_x = framebuffer.pixel_width() / 2 - 15;
+    const auto screen_anchor_y = framebuffer.pixel_height() / 2 + 17;
+    const auto projected = [&](const int x, const int y) {
+        const auto local_x = x - view_origin_x_;
+        const auto local_y = y - view_origin_y_;
+        return legacy_view
+            ? render::ScreenPoint{
+                  18 * (local_x - local_y) + 145,
+                  9 * (local_x + local_y) - 81}
+            : render::project_isometric(
+                  x - camera_x,
+                  y - camera_y,
+                  screen_anchor_x,
+                  screen_anchor_y);
+    };
     bool player_drawn = false;
-    for (int local_x = 0; local_x < kSceneViewExtent; ++local_x) {
-        for (int local_y = 0; local_y < kSceneViewExtent; ++local_y) {
-            const auto x = local_x + view_origin_x_;
-            const auto y = local_y + view_origin_y_;
+    for (int x = begin_x; x < end_x; ++x) {
+        for (int y = begin_y; y < end_y; ++y) {
             if (scene_value(scene_id_, static_cast<std::int16_t>(model::SceneLayer::building_height),
                             static_cast<std::int16_t>(x), static_cast<std::int16_t>(y)) == 0) {
-                const auto anchor_x = 18 * (local_x - local_y) + 145;
-                const auto anchor_y = 9 * (local_x + local_y) - 81;
+                const auto [anchor_x, anchor_y] = projected(x, y);
                 if (!draw_sprite(framebuffer,
                                  scene_value(scene_id_, static_cast<std::int16_t>(model::SceneLayer::earth),
                                              static_cast<std::int16_t>(x), static_cast<std::int16_t>(y)),
@@ -3365,12 +3416,9 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
             }
         }
     }
-    for (int local_x = 0; local_x < kSceneViewExtent; ++local_x) {
-        for (int local_y = 0; local_y < kSceneViewExtent; ++local_y) {
-            const auto x = local_x + view_origin_x_;
-            const auto y = local_y + view_origin_y_;
-            const auto anchor_x = 18 * (local_x - local_y) + 145;
-            const auto anchor_y = 9 * (local_x + local_y) - 81;
+    for (int x = begin_x; x < end_x; ++x) {
+        for (int y = begin_y; y < end_y; ++y) {
+            const auto [anchor_x, anchor_y] = projected(x, y);
             const auto building_height = scene_value(
                 scene_id_, static_cast<std::int16_t>(model::SceneLayer::building_height),
                 static_cast<std::int16_t>(x), static_cast<std::int16_t>(y));
@@ -3457,16 +3505,13 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
 
 bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
     if (load_menu_state_.has_value()) {
-        framebuffer = load_menu_framebuffer_;
-        return true;
+        return restore_framebuffer(framebuffer, load_menu_framebuffer_);
     }
     if (death_menu_state_.has_value()) {
-        framebuffer = death_framebuffer_;
-        return true;
+        return restore_framebuffer(framebuffer, death_framebuffer_);
     }
     if (ending_state_.has_value()) {
-        framebuffer = ending_framebuffer_;
-        return true;
+        return restore_framebuffer(framebuffer, ending_framebuffer_);
     }
     if (pending_.kind == SceneStepKind::shop) {
         item_notice_base_framebuffer_.reset();
@@ -3476,7 +3521,9 @@ bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
         dialogue_base_framebuffer_.reset();
         item_notice_base_framebuffer_.reset();
         if (scene_title_base_framebuffer_.has_value()) {
-            framebuffer = *scene_title_base_framebuffer_;
+            if (!framebuffer.copy_from(*scene_title_base_framebuffer_)) {
+                return false;
+            }
         } else {
             scene_title_base_framebuffer_ = framebuffer;
         }
@@ -3541,7 +3588,9 @@ bool SceneSession::render_overlay(render::IndexedFramebuffer& framebuffer) const
 bool SceneSession::render_dialogue_overlay(
     render::IndexedFramebuffer& framebuffer) const {
     if (dialogue_base_framebuffer_.has_value()) {
-        framebuffer = *dialogue_base_framebuffer_;
+        if (!framebuffer.copy_from(*dialogue_base_framebuffer_)) {
+            return false;
+        }
     } else {
         if (dialogue_redraw_scene_before_ && !render_map(framebuffer)) {
             return false;
@@ -3554,7 +3603,9 @@ bool SceneSession::render_dialogue_overlay(
 bool SceneSession::render_item_notice_overlay(
     render::IndexedFramebuffer& framebuffer) const {
     if (item_notice_base_framebuffer_.has_value()) {
-        framebuffer = *item_notice_base_framebuffer_;
+        if (!framebuffer.copy_from(*item_notice_base_framebuffer_)) {
+            return false;
+        }
     } else {
         item_notice_base_framebuffer_ = framebuffer;
     }
@@ -3564,7 +3615,9 @@ bool SceneSession::render_item_notice_overlay(
 bool SceneSession::render_shop_overlay(
     render::IndexedFramebuffer& framebuffer) const {
     if (dialogue_base_framebuffer_.has_value()) {
-        framebuffer = *dialogue_base_framebuffer_;
+        if (!framebuffer.copy_from(*dialogue_base_framebuffer_)) {
+            return false;
+        }
     } else {
         dialogue_base_framebuffer_ = framebuffer;
     }

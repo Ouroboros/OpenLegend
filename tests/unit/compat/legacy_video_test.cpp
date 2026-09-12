@@ -1,6 +1,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "openlegend/compat/legacy_video.hpp"
 #include "test_support.hpp"
@@ -46,6 +47,16 @@ void run_legacy_video_tests() {
         std::span<const std::uint8_t>{rgba}.first(16U), 2, 3}.valid()));
     OL_CHECK(!convert_indexed_frame_to_rgba(frame, std::span<std::uint8_t>{rgba}.first(4U)));
 
+    std::vector<std::uint8_t> dynamic_pixels(640U * 360U, 7U);
+    std::vector<std::uint8_t> dynamic_rgba(
+        dynamic_pixels.size() * kModernRgbaBytesPerPixel);
+    const IndexedFrameView dynamic_frame{
+        dynamic_pixels, palette, 640, 360};
+    OL_CHECK(dynamic_frame.valid());
+    OL_CHECK(convert_indexed_frame_to_rgba(dynamic_frame, dynamic_rgba));
+    OL_CHECK(dynamic_rgba.front() == 255U);
+    OL_CHECK(dynamic_rgba.back() == 255U);
+
     LegacyPixels full_pixels{};
     LegacyPalette full_palette{};
     for (std::size_t index = 0U; index < full_palette.size(); ++index) {
@@ -78,4 +89,15 @@ void run_legacy_video_tests() {
     static_assert(bordered.x == 20 && bordered.y == 50);
     static_assert(bordered.width == 960 && bordered.height == 600 && bordered.scale == 3);
     static_assert(!integer_viewport(319, 200).valid());
+    constexpr auto widescreen = integer_viewport(1920, 1080, 640, 360);
+    static_assert(widescreen.x == 0 && widescreen.y == 0);
+    static_assert(
+        widescreen.width == 1920 && widescreen.height == 1080 &&
+        widescreen.scale == 3);
+    constexpr auto dynamic_bordered = integer_viewport(1000, 700, 640, 360);
+    static_assert(dynamic_bordered.x == 180 && dynamic_bordered.y == 170);
+    static_assert(
+        dynamic_bordered.width == 640 && dynamic_bordered.height == 360 &&
+        dynamic_bordered.scale == 1);
+    static_assert(!integer_viewport(639, 360, 640, 360).valid());
 }

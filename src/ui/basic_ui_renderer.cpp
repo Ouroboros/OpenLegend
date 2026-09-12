@@ -548,8 +548,8 @@ bool BasicUiRenderer::draw_box(
     const std::uint16_t width,
     const std::uint16_t height) {
     if (width <= 10U || height <= 10U || x < 0 || y < 0 ||
-        x + static_cast<int>(width) > render::IndexedFramebuffer::width ||
-        y + static_cast<int>(height) > render::IndexedFramebuffer::height) {
+        x + static_cast<int>(width) > framebuffer.coordinate_width() ||
+        y + static_cast<int>(height) > framebuffer.coordinate_height()) {
         return false;
     }
     update_panel_palette(framebuffer.palette());
@@ -558,26 +558,30 @@ bool BasicUiRenderer::draw_box(
                            const int top,
                            const int rectangle_width,
                            const int rectangle_height) {
-        for (int destination_y = top; destination_y < top + rectangle_height; ++destination_y) {
-            for (int destination_x = left; destination_x < left + rectangle_width; ++destination_x) {
-                auto& destination = framebuffer.row(destination_y)[destination_x];
+        return framebuffer.transform_rectangle(
+            left,
+            top,
+            rectangle_width,
+            rectangle_height,
+            [this](std::uint8_t& destination) {
                 destination = blend_panel_pixel(destination);
-            }
-        }
+            });
     };
     const auto w = static_cast<int>(width);
     const auto h = static_cast<int>(height);
-    blend(x + 5, y, w - 10, 1);
-    blend(x + 4, y + 1, w - 8, 1);
-    blend(x + 3, y + 2, w - 6, 1);
-    blend(x + 2, y + 3, w - 4, 1);
-    blend(x + 1, y + 4, w - 2, 1);
-    blend(x, y + 5, w, h - 10);
-    blend(x + 1, y + h - 5, w - 2, 1);
-    blend(x + 2, y + h - 4, w - 4, 1);
-    blend(x + 3, y + h - 3, w - 6, 1);
-    blend(x + 4, y + h - 2, w - 8, 1);
-    blend(x + 5, y + h - 1, w - 10, 1);
+    if (!blend(x + 5, y, w - 10, 1) ||
+        !blend(x + 4, y + 1, w - 8, 1) ||
+        !blend(x + 3, y + 2, w - 6, 1) ||
+        !blend(x + 2, y + 3, w - 4, 1) ||
+        !blend(x + 1, y + 4, w - 2, 1) ||
+        !blend(x, y + 5, w, h - 10) ||
+        !blend(x + 1, y + h - 5, w - 2, 1) ||
+        !blend(x + 2, y + h - 4, w - 4, 1) ||
+        !blend(x + 3, y + h - 3, w - 6, 1) ||
+        !blend(x + 4, y + h - 2, w - 8, 1) ||
+        !blend(x + 5, y + h - 1, w - 10, 1)) {
+        return false;
+    }
 
     const auto fill = [&framebuffer](
                           const int left,

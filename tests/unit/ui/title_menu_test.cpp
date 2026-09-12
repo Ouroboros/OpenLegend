@@ -3527,6 +3527,36 @@ void check_renderer(const std::filesystem::path& data_root) {
         return;
     }
 
+    render::IndexedFramebuffer reference_framebuffer;
+    OL_CHECK(renderer.render(menu, reference_framebuffer));
+    render::IndexedFramebuffer doubled_framebuffer{640, 400};
+    {
+        const auto ui_coordinates =
+            doubled_framebuffer.use_legacy_ui_coordinates();
+        OL_CHECK(renderer.render(menu, doubled_framebuffer));
+    }
+    for (int y = 0; y < reference_framebuffer.pixel_height(); ++y) {
+        for (int x = 0; x < reference_framebuffer.pixel_width(); ++x) {
+            const auto expected = reference_framebuffer.row(y)[x];
+            OL_CHECK(doubled_framebuffer.row(y * 2)[x * 2] == expected);
+            OL_CHECK(doubled_framebuffer.row(y * 2)[x * 2 + 1] == expected);
+            OL_CHECK(doubled_framebuffer.row(y * 2 + 1)[x * 2] == expected);
+            OL_CHECK(doubled_framebuffer.row(y * 2 + 1)[x * 2 + 1] == expected);
+        }
+    }
+    render::IndexedFramebuffer widescreen_framebuffer{640, 360};
+    {
+        const auto ui_coordinates =
+            widescreen_framebuffer.use_legacy_ui_coordinates();
+        OL_CHECK(renderer.render(menu, widescreen_framebuffer));
+    }
+    for (int y = 0; y < widescreen_framebuffer.pixel_height(); ++y) {
+        for (int x = 0; x < 32; ++x) {
+            OL_CHECK(widescreen_framebuffer.row(y)[x] == 0U);
+            OL_CHECK(widescreen_framebuffer.row(y)[639 - x] == 0U);
+        }
+    }
+
     render::IndexedFramebuffer framebuffer;
     constexpr std::uint64_t main_hashes[]{
         0x86690E3B3B68FE20ULL,
@@ -3618,6 +3648,37 @@ void check_renderer(const std::filesystem::path& data_root) {
         modern_renderer,
         rgba_framebuffer));
     OL_CHECK(fnv1a64(rgba_framebuffer.pixels()) != scene_location_pixels);
+
+    OL_CHECK(rgba_framebuffer.set_dimensions(640, 400, 1));
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(location_status_renderer.render(
+        location_name,
+        12,
+        34,
+        framebuffer.palette(),
+        modern_renderer,
+        rgba_framebuffer));
+    std::size_t doubled_location_ink = 0U;
+    bool doubled_location_ink_outside_bounds = false;
+    for (int y = 0; y < rgba_framebuffer.logical_height(); ++y) {
+        for (int x = 0; x < rgba_framebuffer.logical_width(); ++x) {
+            const auto* pixel = rgba_framebuffer.row(y) + 4 * x;
+            if (pixel[0] == kRgbaBackground.red &&
+                pixel[1] == kRgbaBackground.green &&
+                pixel[2] == kRgbaBackground.blue &&
+                pixel[3] == kRgbaBackground.alpha) {
+                continue;
+            }
+            ++doubled_location_ink;
+            doubled_location_ink_outside_bounds =
+                doubled_location_ink_outside_bounds ||
+                x < 8 || y < rgba_framebuffer.logical_height() - 28 ||
+                y >= rgba_framebuffer.logical_height() - 8;
+        }
+    }
+    OL_CHECK(doubled_location_ink > location_ink);
+    OL_CHECK(!doubled_location_ink_outside_bounds);
+    OL_CHECK(rgba_framebuffer.set_dimensions(320, 200, 1));
 
     rgba_framebuffer.clear(kRgbaBackground);
     OL_CHECK(modern_renderer.draw_text_utf8(

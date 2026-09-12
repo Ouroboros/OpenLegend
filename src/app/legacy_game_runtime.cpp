@@ -332,13 +332,25 @@ LegacyGameRuntime::LegacyGameRuntime(
     std::filesystem::path data_root,
     std::filesystem::path save_root,
     const std::uint32_t random_seed)
+    : LegacyGameRuntime(
+          std::move(data_root),
+          std::move(save_root),
+          random_seed,
+          GameResolution{}) {}
+
+LegacyGameRuntime::LegacyGameRuntime(
+    std::filesystem::path data_root,
+    std::filesystem::path save_root,
+    const std::uint32_t random_seed,
+    const GameResolution game_resolution)
     : data_root_path_(std::move(data_root)),
       save_root_path_(std::move(save_root)),
       data_root_(data_root_path_),
       basic_renderer_(data_root_),
       modern_ui_renderer_(data_root_),
       startup_resources_(data_root_),
-      random_(random_seed) {
+      random_(random_seed),
+      framebuffer_(game_resolution.width, game_resolution.height) {
     if (!basic_renderer_.valid()) {
         startup_error_ = basic_renderer_.error();
     } else if (!modern_ui_renderer_.valid()) {
@@ -359,8 +371,12 @@ LegacyGameRuntime::LegacyGameRuntime(
             startup_error_ = title_renderer_->error();
         }
     }
-    if (startup_error_.empty() && !title_renderer_->render_background(framebuffer_)) {
-        startup_error_ = "Unable to render title background";
+    if (startup_error_.empty()) {
+        const auto legacy_ui_coordinates =
+            framebuffer_.use_legacy_ui_coordinates();
+        if (!title_renderer_->render_background(framebuffer_)) {
+            startup_error_ = "Unable to render title background";
+        }
     }
     if (startup_error_.empty()) {
         framebuffer_.clear(render::legacy_color::black);
@@ -1095,6 +1111,8 @@ bool LegacyGameRuntime::render() {
     if (!valid()) {
         return false;
     }
+    const auto legacy_ui_coordinates =
+        framebuffer_.use_legacy_ui_coordinates();
     if (title_startup_phase_ == TitleStartupPhase::fade_to_black) {
         if (scene_effect_kind_ != SceneEffectKind::fade_to_black) {
             return false;

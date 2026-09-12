@@ -3,6 +3,8 @@
 #include <chrono>
 #include <filesystem>
 
+#include "openlegend/app/runtime_configuration.hpp"
+
 namespace openlegend::platform::sdl3 {
 
 class SdlRuntimePlatform;
@@ -13,6 +15,7 @@ struct LegacyRuntimeLoopSettings {
     std::chrono::milliseconds menu_repeat_delay{};
     std::chrono::milliseconds menu_repeat_interval{};
     std::chrono::nanoseconds fade_frame_delay{};
+    app::GameResolution game_resolution;
     bool smoke_test{};
 };
 

@@ -881,16 +881,22 @@ bool BattleRenderer::draw_box(
                            const int rectangle_height) {
         const auto begin_x = std::max(left, 0);
         const auto end_x = std::min(
-            left + rectangle_width, render::IndexedFramebuffer::width);
+            left + rectangle_width, framebuffer.coordinate_width());
         const auto begin_y = std::max(top, 0);
         const auto end_y = std::min(
-            top + rectangle_height, render::IndexedFramebuffer::height);
-        for (int destination_y = begin_y; destination_y < end_y; ++destination_y) {
-            for (int destination_x = begin_x; destination_x < end_x; ++destination_x) {
-                auto& destination = framebuffer.row(destination_y)[destination_x];
-                destination = blend_pixel(palette_colors::black, destination, 4);
-            }
+            top + rectangle_height, framebuffer.coordinate_height());
+        if (begin_x >= end_x || begin_y >= end_y) {
+            return;
         }
+        static_cast<void>(framebuffer.transform_rectangle(
+            begin_x,
+            begin_y,
+            end_x - begin_x,
+            end_y - begin_y,
+            [this](std::uint8_t& destination) {
+                destination = blend_pixel(
+                    palette_colors::black, destination, 4);
+            }));
     };
     const auto w = static_cast<int>(width);
     const auto h = static_cast<int>(height);
@@ -1129,9 +1135,9 @@ bool BattleRenderer::draw_tinted_fight_sprite(
         for (const auto& run : frame->rows()[row_index].runs) {
             x += static_cast<int>(run.skip);
             for ([[maybe_unused]] const auto pixel : run.pixels) {
-                if (y >= 0 && y < render::IndexedFramebuffer::height &&
-                    x >= 0 && x < render::IndexedFramebuffer::width) {
-                    framebuffer.row(y)[x] = color;
+                if (y >= 0 && y < framebuffer.coordinate_height() &&
+                    x >= 0 && x < framebuffer.coordinate_width()) {
+                    framebuffer.draw_pixel(x, y, color);
                 }
                 ++x;
             }
@@ -1162,10 +1168,17 @@ bool BattleRenderer::draw_cursor_overlay(
         for (const auto& run : frame->rows()[row_index].runs) {
             x += static_cast<int>(run.skip);
             for (const auto source : run.pixels) {
-                if (y >= 0 && y < render::IndexedFramebuffer::height &&
-                    x >= 0 && x < render::IndexedFramebuffer::width) {
-                    auto& destination = framebuffer.row(y)[x];
-                    destination = blend_pixel(source, destination, source_weight);
+                if (y >= 0 && y < framebuffer.coordinate_height() &&
+                    x >= 0 && x < framebuffer.coordinate_width()) {
+                    static_cast<void>(framebuffer.transform_rectangle(
+                        x,
+                        y,
+                        1,
+                        1,
+                        [this, source, source_weight](std::uint8_t& destination) {
+                            destination = blend_pixel(
+                                source, destination, source_weight);
+                        }));
                 }
                 ++x;
             }

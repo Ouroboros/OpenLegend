@@ -950,6 +950,13 @@ public:
     [[nodiscard]] std::optional<BattleRenderPlan> battle_render_plan(
         const BattleRenderState& state,
         std::span<const std::int16_t> path_values) const;
+
+    [[nodiscard]] std::optional<BattleRenderPlan> battle_render_plan(
+        const BattleRenderState& state,
+        std::span<const std::int16_t> path_values,
+        int viewport_width,
+        int viewport_height) const;
+
     void clear_attack_effects() noexcept;
     [[nodiscard]] std::span<const std::int16_t> attack_effects() const noexcept {
         return attack_effects_;

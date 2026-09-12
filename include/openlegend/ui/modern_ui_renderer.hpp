@@ -11,6 +11,7 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_font.hpp"
 #include "openlegend/render/rgba_font_renderer.hpp"
+#include "openlegend/render/reference_layout.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/text/game_text.hpp"
@@ -27,6 +28,22 @@ public:
     [[nodiscard]] static constexpr render::rgba::FontMetrics font_metrics(
         const render::rgba::FontSize size = {}) noexcept {
         return render::rgba::font_metrics(size);
+    }
+
+    [[nodiscard]] static constexpr render::rgba::FontSize scaled_font_size(
+        const render::RgbaFramebuffer& framebuffer,
+        const render::rgba::FontSize size = {}) noexcept {
+        return render::rgba::FontSize{static_cast<std::uint16_t>(
+            render::scale_legacy_reference_length(
+                size.pixel_height,
+                framebuffer.logical_width(),
+                framebuffer.logical_height()))};
+    }
+
+    [[nodiscard]] static constexpr render::rgba::FontMetrics font_metrics(
+        const render::RgbaFramebuffer& framebuffer,
+        const render::rgba::FontSize size = {}) noexcept {
+        return render::rgba::font_metrics(scaled_font_size(framebuffer, size));
     }
 
     [[nodiscard]] bool draw_text_utf8(

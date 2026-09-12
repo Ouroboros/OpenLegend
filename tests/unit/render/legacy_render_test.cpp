@@ -57,6 +57,53 @@ void run_framebuffer_tests() {
     copied_framebuffer.pixels().front() = 4U;
     OL_CHECK(framebuffer.pixels().front() == 3U);
     OL_CHECK(copied_framebuffer.pixels().front() == 4U);
+
+    IndexedFramebuffer dynamic_framebuffer{640, 360};
+    OL_CHECK(dynamic_framebuffer.pixel_width() == 640);
+    OL_CHECK(dynamic_framebuffer.pixel_height() == 360);
+    OL_CHECK(dynamic_framebuffer.pixels().size() == 640U * 360U);
+    OL_CHECK(dynamic_framebuffer.row(1) - dynamic_framebuffer.row(0) == 640);
+    dynamic_framebuffer.clear(1U);
+    {
+        const auto ui_coordinates =
+            dynamic_framebuffer.use_legacy_ui_coordinates();
+        const auto viewport = dynamic_framebuffer.legacy_ui_viewport();
+        OL_CHECK(viewport.x == 32 && viewport.y == 0);
+        OL_CHECK(viewport.width == 576 && viewport.height == 360);
+        OL_CHECK(dynamic_framebuffer.coordinate_width() == 320);
+        OL_CHECK(dynamic_framebuffer.coordinate_height() == 200);
+        OL_CHECK(dynamic_framebuffer.fill_rectangle(0, 0, 1U, 1U, 9U));
+        OL_CHECK(dynamic_framebuffer.fill_rectangle(319, 199, 1U, 1U, 10U));
+        OL_CHECK(dynamic_framebuffer.row(0)[31] == 1U);
+        OL_CHECK(dynamic_framebuffer.row(0)[32] == 9U);
+        OL_CHECK(dynamic_framebuffer.row(359)[607] == 10U);
+        OL_CHECK(dynamic_framebuffer.row(359)[608] == 1U);
+    }
+    OL_CHECK(dynamic_framebuffer.coordinate_width() == 640);
+    OL_CHECK(dynamic_framebuffer.coordinate_height() == 360);
+    OL_CHECK(dynamic_framebuffer.fill_rectangle(639, 359, 1U, 1U, 11U));
+    OL_CHECK(dynamic_framebuffer.row(359)[639] == 11U);
+
+    std::vector<std::uint8_t> legacy_source(320U * 200U, 4U);
+    legacy_source.front() = 12U;
+    legacy_source.back() = 13U;
+    dynamic_framebuffer.clear(0U);
+    {
+        const auto ui_coordinates =
+            dynamic_framebuffer.use_legacy_ui_coordinates();
+        OL_CHECK(dynamic_framebuffer.blit(legacy_source, 320, 200));
+    }
+    OL_CHECK(dynamic_framebuffer.row(0)[31] == 0U);
+    OL_CHECK(dynamic_framebuffer.row(0)[32] == 12U);
+    OL_CHECK(dynamic_framebuffer.row(359)[607] == 13U);
+    OL_CHECK(dynamic_framebuffer.row(359)[608] == 0U);
+    OL_CHECK(!dynamic_framebuffer.blit(legacy_source, 319, 200));
+    IndexedFramebuffer copied_dynamic_framebuffer{640, 360};
+    OL_CHECK(copied_dynamic_framebuffer.copy_from(dynamic_framebuffer));
+    OL_CHECK(std::ranges::equal(
+        copied_dynamic_framebuffer.pixels(), dynamic_framebuffer.pixels()));
+    OL_CHECK(!framebuffer.copy_from(dynamic_framebuffer));
+
     OL_CHECK(framebuffer.fill_rectangle(10, 20, 3U, 2U, 9U));
     OL_CHECK(framebuffer.row(20)[9] == 3U);
     OL_CHECK(framebuffer.row(20)[10] == 9U);
@@ -158,6 +205,16 @@ void run_framebuffer_tests() {
     OL_CHECK(!rgba_framebuffer.set_scale(
         openlegend::render::RgbaFramebuffer::maximum_scale + 1));
     OL_CHECK(rgba_framebuffer.set_scale(1));
+    OL_CHECK(rgba_framebuffer.set_dimensions(640, 360, 2));
+    OL_CHECK(rgba_framebuffer.logical_width() == 640);
+    OL_CHECK(rgba_framebuffer.logical_height() == 360);
+    OL_CHECK(rgba_framebuffer.pixel_width() == 1280);
+    OL_CHECK(rgba_framebuffer.pixel_height() == 720);
+    OL_CHECK(rgba_framebuffer.pixels().size() == 1280U * 720U * 4U);
+    OL_CHECK(rgba_framebuffer.fill_rectangle(
+        639, 359, 1U, 1U, {7U, 8U, 9U, 10U}));
+    OL_CHECK(!rgba_framebuffer.fill_rectangle(
+        640, 359, 1U, 1U, {7U, 8U, 9U, 10U}));
 
     using namespace openlegend::render::rgba;
     static_assert(kBaseFontSize.pixel_height == 16U);

@@ -62,14 +62,15 @@ constexpr std::uint16_t kSourceHeight = kBaseFontPixelHeight;
 }
 
 [[nodiscard]] bool glyph_fits(
+    const RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
     const std::uint16_t width,
     const FontMetrics metrics) noexcept {
     return x >= 0 && y >= 0 &&
         x + static_cast<int>(width) + metrics.shadow_offset_x <=
-            RgbaFramebuffer::width &&
-        y + metrics.pixel_height <= RgbaFramebuffer::height;
+            framebuffer.logical_width() &&
+        y + metrics.pixel_height <= framebuffer.logical_height();
 }
 
 void draw_source_glyph(
@@ -125,7 +126,8 @@ void draw_mask_layer(
     const TextColors colors) {
     const auto metrics = font_metrics(size);
     const auto width = target_width(kind, metrics);
-    if (!metrics.valid() || !glyph_fits(x, y, width, metrics)) {
+    if (!metrics.valid() ||
+        !glyph_fits(framebuffer, x, y, width, metrics)) {
         return false;
     }
     if (size == kBaseFontSize) {

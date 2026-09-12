@@ -72,7 +72,7 @@ bool ModernUiRenderer::draw_text_utf8(
         ascii_font_,
         *big5_cache_,
         glyph_mask_cache_,
-        size,
+        scaled_font_size(framebuffer, size),
         rgba_text_colors(palette, colors));
 }
 
@@ -95,7 +95,7 @@ bool ModernUiRenderer::draw_text_mixed(
         ascii_font_,
         *big5_cache_,
         glyph_mask_cache_,
-        size,
+        scaled_font_size(framebuffer, size),
         rgba_text_colors(palette, colors));
 }
 
@@ -118,7 +118,7 @@ bool ModernUiRenderer::draw_text_big5(
         ascii_font_,
         *big5_cache_,
         glyph_mask_cache_,
-        size,
+        scaled_font_size(framebuffer, size),
         rgba_text_colors(palette, colors));
 }
 
@@ -130,13 +130,48 @@ bool ModernUiRenderer::draw_box(
     const std::uint16_t height,
     const compat::LegacyPalette& palette) {
     if (width <= 10U || height <= 10U || x < 0 || y < 0 ||
-        x + static_cast<int>(width) > render::RgbaFramebuffer::width ||
-        y + static_cast<int>(height) > render::RgbaFramebuffer::height) {
+        x + static_cast<int>(width) > framebuffer.logical_width() ||
+        y + static_cast<int>(height) > framebuffer.logical_height()) {
         return false;
     }
     const auto w = static_cast<int>(width);
     const auto h = static_cast<int>(height);
     const auto panel = palette_color(palette, palette_colors::black, kPanelAlpha);
+    if (framebuffer.logical_width() != render::RgbaFramebuffer::width ||
+        framebuffer.logical_height() != render::RgbaFramebuffer::height) {
+        const auto border = render::scale_legacy_reference_length(
+            1, framebuffer.logical_width(), framebuffer.logical_height());
+        if (w <= 2 * border || h <= 2 * border ||
+            !framebuffer.blend_rectangle(x, y, width, height, panel)) {
+            return false;
+        }
+        const auto outline = palette_color(
+            palette, palette_colors::panel_outline);
+        return framebuffer.fill_rectangle(
+                   x,
+                   y,
+                   width,
+                   static_cast<std::uint16_t>(border),
+                   outline) &&
+            framebuffer.fill_rectangle(
+                x,
+                y + h - border,
+                width,
+                static_cast<std::uint16_t>(border),
+                outline) &&
+            framebuffer.fill_rectangle(
+                x,
+                y,
+                static_cast<std::uint16_t>(border),
+                height,
+                outline) &&
+            framebuffer.fill_rectangle(
+                x + w - border,
+                y,
+                static_cast<std::uint16_t>(border),
+                height,
+                outline);
+    }
     const auto blend = [&framebuffer, panel](
                            const int left,
                            const int top,

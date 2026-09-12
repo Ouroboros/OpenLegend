@@ -33,6 +33,7 @@ namespace openlegend::platform::sdl3 {
 namespace {
 
 constexpr app::WindowSize kDefaultWindowSize{960, 600};
+constexpr app::GameResolution kDefaultGameResolution{320, 200};
 constexpr std::chrono::milliseconds kDefaultMovementRepeatDelay{500};
 constexpr std::chrono::milliseconds kDefaultMenuRepeatDelay{500};
 constexpr std::chrono::milliseconds kDefaultMenuRepeatInterval{55};
@@ -214,6 +215,13 @@ void initialize_session_logging(
             app::window_configuration_status_message(configuration.window.status),
             configuration.window.detail);
     }
+    if (configuration.display.status != app::DisplayConfigurationStatus::ready) {
+        report_application_error(
+            "display configuration",
+            app::display_configuration_status_message(configuration.display.status),
+            configuration.display.detail);
+        return 2;
+    }
     if (configuration.input.status != app::InputConfigurationStatus::ready) {
         report_application_error(
             "input configuration",
@@ -273,7 +281,10 @@ void log_resolved_configuration(
              ? std::string{"configuration"}
              : std::string{"data_directory"}));
     diagnostics::log_info(
-        "input movement_repeat_delay_ms=" +
+        "display in_game_resolution=" +
+        std::to_string(configuration.display.resolution.width) + "x" +
+        std::to_string(configuration.display.resolution.height) +
+        " input movement_repeat_delay_ms=" +
         std::to_string(configuration.input.movement_repeat_delay.count()) +
         " menu_repeat_delay_ms=" +
         std::to_string(configuration.input.menu_repeat_delay.count()) +
@@ -357,7 +368,8 @@ int run_sdl_application(
             kDefaultMovementRepeatDelay,
             kDefaultMenuRepeatDelay,
             kDefaultMenuRepeatInterval,
-            kDefaultFadeFrameDelay});
+            kDefaultFadeFrameDelay,
+            kDefaultGameResolution});
     LoggingLifetime logging_lifetime;
     initialize_session_logging(
         configuration,
@@ -387,7 +399,9 @@ int run_sdl_application(
         SdlRuntimePlatform platform{
             configuration.window.size.width,
             configuration.window.size.height,
-            configuration.window.maximized};
+            configuration.window.maximized,
+            configuration.display.resolution.width,
+            configuration.display.resolution.height};
         if (!platform.valid()) {
             report_application_error(
                 "SDL3 platform", "initialization failed", SDL_GetError());
@@ -410,6 +424,7 @@ int run_sdl_application(
                 configuration.input.menu_repeat_delay,
                 configuration.input.menu_repeat_interval,
                 configuration.timing.fade_frame_delay,
+                configuration.display.resolution,
                 smoke_test});
         if (loop_result.status != 0) {
             return loop_result.status;

@@ -16,11 +16,16 @@ public:
     static constexpr int maximum_scale = 64;
 
     RgbaFramebuffer();
+    RgbaFramebuffer(int logical_width, int logical_height);
 
+    [[nodiscard]] bool set_dimensions(
+        int logical_width, int logical_height, int scale);
     [[nodiscard]] bool set_scale(int scale);
     [[nodiscard]] int scale() const noexcept { return scale_; }
-    [[nodiscard]] int pixel_width() const noexcept { return width * scale_; }
-    [[nodiscard]] int pixel_height() const noexcept { return height * scale_; }
+    [[nodiscard]] int logical_width() const noexcept { return logical_width_; }
+    [[nodiscard]] int logical_height() const noexcept { return logical_height_; }
+    [[nodiscard]] int pixel_width() const noexcept { return logical_width_ * scale_; }
+    [[nodiscard]] int pixel_height() const noexcept { return logical_height_ * scale_; }
 
     void clear(compat::Rgba8 color) noexcept;
 
@@ -60,6 +65,8 @@ public:
 
 private:
     std::vector<std::uint8_t> pixels_;
+    int logical_width_{width};
+    int logical_height_{height};
     int scale_{1};
 };
 

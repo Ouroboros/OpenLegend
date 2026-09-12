@@ -28,7 +28,12 @@ constexpr std::uint16_t maximum_legacy_sprite_id = 0x2064U;
 
 }  // namespace
 
-LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& input) {
+namespace {
+
+[[nodiscard]] LegacyDepthResult build_world_depth_list(
+    const LegacyWorldDepthInput& input,
+    const WorldCacheBounds bounds,
+    const bool skip_outside_owner) {
     LegacyDepthResult result;
     if (input.owner_x.size() < cache_cell_count || input.owner_y.size() < cache_cell_count ||
         input.building_sprite.size() < cache_cell_count) {
@@ -36,15 +41,16 @@ LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& inp
         return result;
     }
 
-    const auto start_x = input.view_cache_x - 11;
-    const auto start_y = input.view_cache_y - 11;
-    const auto end_x = input.view_cache_x + 21;
-    const auto end_y = input.view_cache_y + 21;
-    if (start_x < 0 || start_y < 0 || end_x > legacy_world_cache_extent ||
-        end_y > legacy_world_cache_extent) {
-        result.error = "legacy 32x32 view lies outside the 128x128 cache";
+    if (!bounds.valid()) {
+        result.error = skip_outside_owner
+            ? "world depth view lies outside the 128x128 cache"
+            : "legacy 32x32 view lies outside the 128x128 cache";
         return result;
     }
+    const auto start_x = bounds.begin_x;
+    const auto start_y = bounds.begin_y;
+    const auto end_x = bounds.end_x;
+    const auto end_y = bounds.end_y;
 
     auto owner_x = std::vector<std::int16_t>{input.owner_x.begin(), input.owner_x.end()};
     auto owner_y = std::vector<std::int16_t>{input.owner_y.begin(), input.owner_y.end()};
@@ -102,6 +108,9 @@ LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& inp
                 const auto local_owner_y = static_cast<int>(current_owner_y) - input.cache_origin_y;
                 if (local_owner_x < 0 || local_owner_x >= legacy_world_cache_extent ||
                     local_owner_y < 0 || local_owner_y >= legacy_world_cache_extent) {
+                    if (skip_outside_owner) {
+                        continue;
+                    }
                     result.error = "building owner lies outside the 128x128 cache";
                     return result;
                 }
@@ -140,6 +149,26 @@ LegacyDepthResult build_legacy_world_depth_list(const LegacyWorldDepthInput& inp
         }
     }
     return result;
+}
+
+}  // namespace
+
+LegacyDepthResult build_legacy_world_depth_list(
+    const LegacyWorldDepthInput& input) {
+    return build_world_depth_list(
+        input,
+        WorldCacheBounds{
+            input.view_cache_x - 11,
+            input.view_cache_y - 11,
+            input.view_cache_x + 21,
+            input.view_cache_y + 21},
+        false);
+}
+
+LegacyDepthResult build_legacy_world_depth_list(
+    const LegacyWorldDepthInput& input,
+    const WorldCacheBounds cache_bounds) {
+    return build_world_depth_list(input, cache_bounds, true);
 }
 
 }  // namespace openlegend::render

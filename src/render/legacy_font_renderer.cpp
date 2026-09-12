@@ -13,17 +13,19 @@ bool draw_ascii_glyph(
     const int y,
     const std::span<const std::uint8_t, 16> glyph,
     const TextColors colors) noexcept {
-    if (x < 0 || y < 0 || x + 8 >= IndexedFramebuffer::width || y + 16 > IndexedFramebuffer::height) {
+    if (x < 0 || y < 0 || x + 8 >= framebuffer.coordinate_width() ||
+        y + 16 > framebuffer.coordinate_height()) {
         return false;
     }
     for (int row_index = 0; row_index < 16; ++row_index) {
         const auto bits = glyph[static_cast<std::size_t>(row_index)];
         auto mask = std::uint8_t{0x80U};
-        auto* destination = framebuffer.row(y + row_index) + x;
         for (int column = 0; column < 8; ++column) {
             if ((bits & mask) != 0U) {
-                destination[column] = colors.foreground;
-                destination[column + 1] = colors.right_shadow;
+                framebuffer.draw_pixel(
+                    x + column, y + row_index, colors.foreground);
+                framebuffer.draw_pixel(
+                    x + column + 1, y + row_index, colors.right_shadow);
             }
             mask = static_cast<std::uint8_t>(mask >> 1U);
         }
@@ -37,19 +39,21 @@ bool draw_big5_glyph(
     const int y,
     const std::span<const std::uint8_t, 32> glyph,
     const TextColors colors) noexcept {
-    if (x < 0 || y < 0 || x + 16 >= IndexedFramebuffer::width || y + 16 > IndexedFramebuffer::height) {
+    if (x < 0 || y < 0 || x + 16 >= framebuffer.coordinate_width() ||
+        y + 16 > framebuffer.coordinate_height()) {
         return false;
     }
     for (int row_index = 0; row_index < 16; ++row_index) {
-        auto* destination = framebuffer.row(y + row_index) + x;
         for (int byte_index = 0; byte_index < 2; ++byte_index) {
             const auto bits = glyph[static_cast<std::size_t>(row_index * 2 + byte_index)];
             auto mask = std::uint8_t{0x80U};
             for (int bit_index = 0; bit_index < 8; ++bit_index) {
                 const auto column = byte_index * 8 + bit_index;
                 if ((bits & mask) != 0U) {
-                    destination[column] = colors.foreground;
-                    destination[column + 1] = colors.right_shadow;
+                    framebuffer.draw_pixel(
+                        x + column, y + row_index, colors.foreground);
+                    framebuffer.draw_pixel(
+                        x + column + 1, y + row_index, colors.right_shadow);
                 }
                 mask = static_cast<std::uint8_t>(mask >> 1U);
             }

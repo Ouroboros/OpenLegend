@@ -124,8 +124,15 @@ namespace {
 }  // namespace
 
 SdlRuntimePlatform::SdlRuntimePlatform(
-    const int window_width, const int window_height, const bool maximized) {
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+    const int window_width,
+    const int window_height,
+    const bool maximized,
+    const int game_width,
+    const int game_height)
+    : game_width_(game_width),
+      game_height_(game_height) {
+    if (game_width_ <= 0 || game_height_ <= 0 ||
+        !SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         return;
     }
 
@@ -133,28 +140,20 @@ SdlRuntimePlatform::SdlRuntimePlatform(
     if (maximized) {
         flags |= SDL_WINDOW_MAXIMIZED;
     }
-    window_ = SDL_CreateWindow("OpenLegend", window_width, window_height, flags);
+    window_ = SDL_CreateWindow(
+        "OpenLegend",
+        std::max(window_width, game_width_),
+        std::max(window_height, game_height_),
+        flags);
     if (window_ == nullptr ||
-        !SDL_SetWindowMinimumSize(
-            window_,
-            static_cast<int>(compat::kLegacyWidth),
-            static_cast<int>(compat::kLegacyHeight))) {
+        !SDL_SetWindowMinimumSize(window_, game_width_, game_height_)) {
         return;
     }
 
     renderer_ = SDL_CreateRenderer(window_, nullptr);
-    if (renderer_ == nullptr) {
+    if (renderer_ == nullptr ||
+        !ensure_frame_texture(game_width_, game_height_)) {
         return;
-    }
-
-    texture_ = SDL_CreateTexture(
-        renderer_,
-        SDL_PIXELFORMAT_RGBA32,
-        SDL_TEXTUREACCESS_STREAMING,
-        static_cast<int>(compat::kLegacyWidth),
-        static_cast<int>(compat::kLegacyHeight));
-    if (texture_ != nullptr) {
-        SDL_SetTextureScaleMode(texture_, SDL_SCALEMODE_NEAREST);
     }
 }
 
@@ -189,7 +188,8 @@ int SdlRuntimePlatform::presentation_scale() const noexcept {
             renderer_, &output_width, &output_height)) {
         return 0;
     }
-    return compat::integer_viewport(output_width, output_height).scale;
+    return compat::integer_viewport(
+        output_width, output_height, game_width_, game_height_).scale;
 }
 
 bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
@@ -221,6 +221,32 @@ void SdlRuntimePlatform::wait_for_event_or_timeout(
         static_cast<void>(SDL_WaitEventTimeout(
             nullptr, static_cast<Sint32>(timeout_ms.count())));
     }
+}
+
+bool SdlRuntimePlatform::ensure_frame_texture(
+    const int width, const int height) noexcept {
+    if (texture_ != nullptr && texture_width_ == width &&
+        texture_height_ == height) {
+        return true;
+    }
+
+    auto* replacement = SDL_CreateTexture(
+        renderer_,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        width,
+        height);
+    if (replacement == nullptr ||
+        !SDL_SetTextureScaleMode(replacement, SDL_SCALEMODE_NEAREST)) {
+        SDL_DestroyTexture(replacement);
+        return false;
+    }
+
+    SDL_DestroyTexture(texture_);
+    texture_ = replacement;
+    texture_width_ = width;
+    texture_height_ = height;
+    return true;
 }
 
 bool SdlRuntimePlatform::ensure_modern_ui_texture(
@@ -256,8 +282,8 @@ bool SdlRuntimePlatform::present(
     const compat::RgbaFrameView frame,
     const compat::RgbaFrameView modern_ui) {
     if (!valid() || !frame.valid() || !modern_ui.valid() ||
-        frame.width != static_cast<int>(compat::kLegacyWidth) ||
-        frame.height != static_cast<int>(compat::kLegacyHeight) ||
+        frame.width != game_width_ || frame.height != game_height_ ||
+        !ensure_frame_texture(frame.width, frame.height) ||
         !ensure_modern_ui_texture(modern_ui.width, modern_ui.height)) {
         return false;
     }
@@ -282,7 +308,8 @@ bool SdlRuntimePlatform::present(
         return false;
     }
 
-    const auto viewport = compat::integer_viewport(output_width, output_height);
+    const auto viewport = compat::integer_viewport(
+        output_width, output_height, frame.width, frame.height);
     if (!viewport.valid()) {
         return false;
     }
