@@ -55,6 +55,88 @@ void report_runtime_error(
     return random::LegacyRandom::dos_time_seed(second, hundredth);
 }
 
+[[nodiscard]] constexpr std::string_view game_view_name(
+    const app::LegacyGameView view) noexcept {
+    switch (view) {
+    case app::LegacyGameView::title: return "title";
+    case app::LegacyGameView::name_entry: return "name_entry";
+    case app::LegacyGameView::attributes: return "attributes";
+    case app::LegacyGameView::world: return "world";
+    case app::LegacyGameView::scene: return "scene";
+    case app::LegacyGameView::battle: return "battle";
+    case app::LegacyGameView::game_menu: return "game_menu";
+    case app::LegacyGameView::error: return "error";
+    case app::LegacyGameView::exited: return "exited";
+    }
+    return "unknown";
+}
+
+struct FadeTiming {
+    bool active{};
+    std::uint64_t sequence{};
+    app::LegacyGameView start_view{app::LegacyGameView::title};
+    std::chrono::steady_clock::time_point started_at{};
+    std::chrono::nanoseconds presentation_time{};
+    std::chrono::nanoseconds wait_time{};
+    std::chrono::nanoseconds configured_frame_delay{};
+    std::size_t presented_frames{};
+};
+
+void begin_fade_timing(
+    FadeTiming& timing,
+    const app::LegacyGameView view,
+    const std::chrono::nanoseconds configured_frame_delay) {
+    timing.active = true;
+    ++timing.sequence;
+    timing.start_view = view;
+    timing.started_at = std::chrono::steady_clock::now();
+    timing.presentation_time = std::chrono::nanoseconds::zero();
+    timing.wait_time = std::chrono::nanoseconds::zero();
+    timing.configured_frame_delay = configured_frame_delay;
+    timing.presented_frames = 0U;
+    diagnostics::log_info(
+        "fade timing started sequence=" + std::to_string(timing.sequence) +
+        " view=" + std::string{game_view_name(view)} +
+        " configured_frame_delay_us=" + std::to_string(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                configured_frame_delay).count()));
+}
+
+void finish_fade_timing(
+    FadeTiming& timing,
+    const app::LegacyGameView end_view) {
+    const auto total_time = std::chrono::steady_clock::now() - timing.started_at;
+    const auto accounted_time = timing.presentation_time + timing.wait_time;
+    const auto other_time = total_time > accounted_time
+        ? total_time - accounted_time
+        : std::chrono::steady_clock::duration::zero();
+    const auto total_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(total_time).count();
+    const auto presentation_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.presentation_time).count();
+    const auto wait_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.wait_time).count();
+    const auto other_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(other_time).count();
+    const auto average_presentation_us = timing.presented_frames == 0U
+        ? 0
+        : presentation_us / static_cast<std::int64_t>(timing.presented_frames);
+    diagnostics::log_info(
+        "fade timing completed sequence=" + std::to_string(timing.sequence) +
+        " start_view=" + std::string{game_view_name(timing.start_view)} +
+        " end_view=" + std::string{game_view_name(end_view)} +
+        " frames=" + std::to_string(timing.presented_frames) +
+        " total_us=" + std::to_string(total_us) +
+        " present_us=" + std::to_string(presentation_us) +
+        " wait_us=" + std::to_string(wait_us) +
+        " other_us=" + std::to_string(other_us) +
+        " average_present_us=" + std::to_string(average_presentation_us) +
+        " configured_frame_delay_us=" + std::to_string(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                timing.configured_frame_delay).count()));
+    timing.active = false;
+}
+
 void dispatch_audio_commands(
     app::LegacyGameRuntime& game,
     audio::LegacyAudioController& legacy_audio) {
@@ -146,12 +228,13 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             settings.menu_repeat_interval};
         FramePresenter frame_presenter;
         timing::SteadyBiosTickSource tick_source;
-        timing::SteadyVgaRetraceSource retrace_source{
+        timing::SteadyFadeFrameSource fade_frame_source{
             settings.fade_frame_delay};
+        FadeTiming fade_timing;
         bool running = true;
         while (running) {
             const auto frame_tick = tick_source.tick();
-            const auto frame_retrace = retrace_source.tick();
+            const auto fade_frame_tick = fade_frame_source.tick();
             const auto input_now = std::chrono::steady_clock::now();
             key_repeat.begin_frame();
             input_coordinator.synchronize_repeat_context(
@@ -162,14 +245,29 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             input_coordinator.apply_game_input();
 
             game.advance(frame_tick);
-            const bool vga_frame = game.uses_vga_retrace();
+            const bool fade_frame = game.uses_fade_frame_clock();
+            if (!settings.smoke_test) {
+                if (fade_frame && !fade_timing.active) {
+                    begin_fade_timing(
+                        fade_timing, game.view(), settings.fade_frame_delay);
+                } else if (!fade_frame && fade_timing.active) {
+                    finish_fade_timing(fade_timing, game.view());
+                }
+            }
             input_coordinator.after_advance(key_repeat);
             dispatch_audio_commands(game, legacy_audio);
 
             running = running && game.running();
             if (running) {
+                const auto presentation_started_at =
+                    std::chrono::steady_clock::now();
                 const auto presentation_status =
                     frame_presenter.present(game, platform);
+                if (fade_frame && fade_timing.active) {
+                    fade_timing.presentation_time +=
+                        std::chrono::steady_clock::now() - presentation_started_at;
+                    ++fade_timing.presented_frames;
+                }
                 if (presentation_status != 0) {
                     result.status = presentation_status;
                     return result;
@@ -186,12 +284,18 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 running = false;
             } else if (
                 running && !game.needs_immediate_frame(tick_source.tick())) {
-                if (vga_frame &&
+                if (fade_frame &&
                     settings.fade_frame_delay >
                         std::chrono::nanoseconds::zero()) {
+                    const auto wait_started_at =
+                        std::chrono::steady_clock::now();
                     static_cast<void>(timing::wait_for_tick_change(
-                        retrace_source, frame_retrace));
-                } else if (!vga_frame) {
+                        fade_frame_source, fade_frame_tick));
+                    if (fade_timing.active) {
+                        fade_timing.wait_time +=
+                            std::chrono::steady_clock::now() - wait_started_at;
+                    }
+                } else if (!fade_frame) {
                     if (input_coordinator.waits_for_menu_input()) {
                         const auto wait_now = std::chrono::steady_clock::now();
                         input_coordinator.synchronize_repeat_context(

@@ -31,6 +31,11 @@ public:
     [[nodiscard]] bool present(
         compat::RgbaFrameView frame,
         compat::RgbaFrameView modern_ui) override;
+    [[nodiscard]] bool present(
+        compat::RgbaFrameView frame,
+        compat::RgbaFrameView modern_ui,
+        bool refresh_textures,
+        std::uint8_t fade_alpha);
     void delay(std::chrono::milliseconds duration) override;
 
 private:
@@ -47,6 +52,7 @@ private:
     int modern_ui_texture_height_{};
     int game_width_{};
     int game_height_{};
+    bool textures_initialized_{};
 };
 
 }  // namespace openlegend::platform::sdl3

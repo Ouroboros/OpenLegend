@@ -11,8 +11,9 @@
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
-#include "openlegend/resource/binary_file.hpp"
+#include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
+#include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
@@ -388,29 +389,27 @@ void advance_rendered_frames(
 void finish_title_startup(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        const auto overlay = game.rgba_fade_overlay();
+        OL_CHECK(
+            overlay.alpha == openlegend::render::fade_to_black_alpha(frame));
+        OL_CHECK(overlay.refresh_base_frame == (frame == 0U));
         OL_CHECK(game.render());
         OL_CHECK(std::ranges::all_of(
             game.framebuffer().pixels(), [](const auto pixel) { return pixel == 0U; }));
         game.advance();
     }
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
+    OL_CHECK(game.rgba_fade_overlay().alpha == 255U);
     OL_CHECK(game.render());
     OL_CHECK(fnv1a64(game.framebuffer().pixels()) == 0x86690E3B3B68FE20ULL);
-    OL_CHECK(std::all_of(
-        game.framebuffer().palette().begin(),
-        game.framebuffer().palette().end(),
-        [](const auto& color) {
-            return color.red == 0U && color.green == 0U && color.blue == 0U;
-        }));
     game.advance();
+    OL_CHECK(game.rgba_fade_overlay().alpha == 255U);
     OL_CHECK(game.render());
-    const auto title_pixel = game.framebuffer().pixels().front();
-    const auto title_sentinel = static_cast<std::uint8_t>(title_pixel ^ 0xFFU);
-    game.framebuffer().pixels().front() = title_sentinel;
+    const auto title_pixels = fnv1a64(game.framebuffer().pixels());
     game.advance();
+    OL_CHECK(!game.rgba_fade_overlay().refresh_base_frame);
     OL_CHECK(game.render());
-    OL_CHECK(game.framebuffer().pixels().front() == title_sentinel);
-    game.framebuffer().pixels().front() = title_pixel;
+    OL_CHECK(fnv1a64(game.framebuffer().pixels()) == title_pixels);
     game.advance();
     advance_rendered_frames(game, 63U);
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
@@ -436,28 +435,16 @@ void finish_new_game_scene_transition(openlegend::app::LegacyGameRuntime& game) 
         LegacyKeyStateReset::none);
     OL_CHECK(game.view() == LegacyGameView::attributes);
     game.advance();
-    std::uint8_t wait_pixel{};
-    std::uint8_t wait_sentinel{};
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        const auto overlay = game.rgba_fade_overlay();
+        OL_CHECK(
+            overlay.alpha == openlegend::render::fade_to_black_alpha(frame));
+        OL_CHECK(overlay.refresh_base_frame == (frame == 0U));
         OL_CHECK(game.render());
-        if (frame == 1U) {
-            OL_CHECK(game.framebuffer().pixels().front() == wait_sentinel);
-            game.framebuffer().pixels().front() = wait_pixel;
-        }
         OL_CHECK(fnv1a64(game.framebuffer().pixels()) == wait_pixels);
-        if (frame == 0U) {
-            wait_pixel = game.framebuffer().pixels().front();
-            wait_sentinel = static_cast<std::uint8_t>(wait_pixel ^ 0xFFU);
-            game.framebuffer().pixels().front() = wait_sentinel;
-        }
         game.advance();
     }
-    OL_CHECK(std::all_of(
-        game.framebuffer().palette().begin(),
-        game.framebuffer().palette().end(),
-        [](const auto& color) {
-            return color.red == 0U && color.green == 0U && color.blue == 0U;
-        }));
+    OL_CHECK(game.rgba_fade_overlay().alpha == 255U);
     OL_CHECK(game.view() == LegacyGameView::scene);
 }
 
@@ -471,13 +458,8 @@ void finish_numbered_load_transition(
     std::uint64_t first_black_pixels = 0U;
     for (std::size_t present = 0U; present < 2U; ++present) {
         OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+        OL_CHECK(game.rgba_fade_overlay().alpha == 255U);
         OL_CHECK(game.render());
-        OL_CHECK(std::all_of(
-            game.framebuffer().palette().begin(),
-            game.framebuffer().palette().end(),
-            [](const auto& color) {
-                return color.red == 0U && color.green == 0U && color.blue == 0U;
-            }));
         const auto pixels = fnv1a64(game.framebuffer().pixels());
         if (present == 0U) {
             first_black_pixels = pixels;
@@ -489,6 +471,9 @@ void finish_numbered_load_transition(
 
     for (std::size_t frame = 0U; frame < 65U; ++frame) {
         OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+        OL_CHECK(
+            game.rgba_fade_overlay().alpha ==
+            openlegend::render::fade_from_black_alpha(frame));
         OL_CHECK(game.render());
         game.advance();
     }
@@ -499,18 +484,17 @@ void finish_world_scene_transition(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.render());
     game.finish_presented_tick();
     game.advance();
-    std::uint8_t world_pixel{};
-    std::uint8_t world_sentinel{};
+    std::uint64_t world_pixels{};
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        const auto overlay = game.rgba_fade_overlay();
+        OL_CHECK(
+            overlay.alpha == openlegend::render::fade_to_black_alpha(frame));
+        OL_CHECK(overlay.refresh_base_frame == (frame == 0U));
         OL_CHECK(game.render());
-        if (frame == 1U) {
-            OL_CHECK(game.framebuffer().pixels().front() == world_sentinel);
-            game.framebuffer().pixels().front() = world_pixel;
-        }
         if (frame == 0U) {
-            world_pixel = game.framebuffer().pixels().front();
-            world_sentinel = static_cast<std::uint8_t>(world_pixel ^ 0xFFU);
-            game.framebuffer().pixels().front() = world_sentinel;
+            world_pixels = fnv1a64(game.framebuffer().pixels());
+        } else {
+            OL_CHECK(fnv1a64(game.framebuffer().pixels()) == world_pixels);
         }
         game.finish_presented_tick();
         game.advance();
@@ -521,14 +505,14 @@ void finish_world_scene_transition(openlegend::app::LegacyGameRuntime& game) {
 void finish_scene_entry(openlegend::app::LegacyGameRuntime& game) {
     std::uint64_t initial_black_pixels{};
     for (std::size_t frame = 0U; frame < 66U; ++frame) {
+        const auto overlay = game.rgba_fade_overlay();
+        const auto alpha_frame = frame == 0U ? 0U : frame - 1U;
+        OL_CHECK(
+            overlay.alpha ==
+            openlegend::render::fade_from_black_alpha(alpha_frame));
+        OL_CHECK(overlay.refresh_base_frame == (frame == 0U));
         OL_CHECK(game.render());
         if (frame < 2U) {
-            OL_CHECK(std::all_of(
-                game.framebuffer().palette().begin(),
-                game.framebuffer().palette().end(),
-                [](const auto& color) {
-                    return color.red == 0U && color.green == 0U && color.blue == 0U;
-                }));
             const auto pixels = fnv1a64(game.framebuffer().pixels());
             if (frame == 0U) {
                 initial_black_pixels = pixels;
@@ -562,16 +546,14 @@ void advance_scene_idle_ticks(
 
 void finish_world_scene_return(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::world);
+    OL_CHECK(game.rgba_fade_overlay().alpha == 255U);
     OL_CHECK(game.render());
-    OL_CHECK(std::all_of(
-        game.framebuffer().palette().begin(),
-        game.framebuffer().palette().end(),
-        [](const auto& color) {
-            return color.red == 0U && color.green == 0U && color.blue == 0U;
-        }));
     game.finish_presented_tick();
     game.advance();
     for (std::size_t frame = 0U; frame < 65U; ++frame) {
+        OL_CHECK(
+            game.rgba_fade_overlay().alpha ==
+            openlegend::render::fade_from_black_alpha(frame));
         OL_CHECK(game.render());
         game.finish_presented_tick();
         game.advance();
@@ -1331,7 +1313,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             walk.finish_presented_tick(701U + step);
             OL_CHECK(walk.scene_loop_uses_key_states());
             OL_CHECK(!walk.needs_immediate_frame(701U + step));
-            OL_CHECK(!walk.uses_vga_retrace());
+            OL_CHECK(!walk.uses_fade_frame_clock());
         }
     }
     {
@@ -1720,15 +1702,9 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.finish_presented_tick();
     new_game.advance();
     advance_rendered_frames(new_game, 63U);
+    OL_CHECK(new_game.rgba_fade_overlay().alpha == 255U);
     OL_CHECK(new_game.render());
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) != leave_dialogue_pixels_hash);
-    auto leave_redraw_is_black = true;
-    for (const auto component : new_game.framebuffer().palette()) {
-        if (component.red != 0U || component.green != 0U || component.blue != 0U) {
-            leave_redraw_is_black = false;
-        }
-    }
-    OL_CHECK(leave_redraw_is_black);
     new_game.finish_presented_tick();
     new_game.advance();
     advance_rendered_frames(new_game, 65U);
@@ -3190,6 +3166,10 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     std::uint64_t frozen_scene_hash = 0U;
     for (std::size_t frame = 0U; frame < 66U; ++frame) {
         OL_CHECK(game.view() == app::LegacyGameView::scene);
+        const auto alpha_frame = frame == 0U ? 0U : frame - 1U;
+        OL_CHECK(
+            game.rgba_fade_overlay().alpha ==
+            render::fade_from_black_alpha(alpha_frame));
         OL_CHECK(game.render());
         if (frame == 65U) {
             frozen_scene_hash = fnv1a64(game.framebuffer().pixels());
@@ -3212,15 +3192,11 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
 
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
         OL_CHECK(game.view() == app::LegacyGameView::battle);
+        OL_CHECK(
+            game.rgba_fade_overlay().alpha ==
+            render::fade_to_black_alpha(frame));
         OL_CHECK(game.render());
         OL_CHECK(fnv1a64(game.framebuffer().pixels()) == frozen_scene_hash);
-        if (frame == 63U) {
-            OL_CHECK(std::ranges::all_of(
-                game.framebuffer().palette(),
-                [](const auto& color) {
-                    return color.red == 0U && color.green == 0U && color.blue == 0U;
-                }));
-        }
         game.advance(100U);
     }
     session = LegacyGameRuntimeTestAccess::battle_session(game);
@@ -3228,12 +3204,9 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(session != nullptr && session->phase() == BattleSessionPhase::initial_present);
     OL_CHECK(game.take_scene_audio_commands().empty());
 
+    OL_CHECK(game.rgba_fade_overlay().alpha == 255U);
+    OL_CHECK(game.rgba_fade_overlay().refresh_base_frame);
     OL_CHECK(game.render());
-    OL_CHECK(std::ranges::all_of(
-        game.framebuffer().palette(),
-        [](const auto& color) {
-            return color.red == 0U && color.green == 0U && color.blue == 0U;
-        }));
     game.finish_presented_tick(100U);
     const auto battle_music = game.take_scene_audio_commands();
     OL_CHECK((battle_music == std::vector<scene::SceneAudioCommand>{
@@ -3244,14 +3217,11 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     }
     OL_CHECK(session->fade_frame_count() == 66U);
     for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
+        const auto alpha_frame = frame == 0U ? 0U : frame - 1U;
+        const auto overlay = game.rgba_fade_overlay();
+        OL_CHECK(overlay.alpha == render::fade_from_black_alpha(alpha_frame));
+        OL_CHECK(!overlay.refresh_base_frame);
         OL_CHECK(game.render());
-        if (frame <= 1U) {
-            OL_CHECK(std::ranges::all_of(
-                game.framebuffer().palette(),
-                [](const auto& color) {
-                    return color.red == 0U && color.green == 0U && color.blue == 0U;
-                }));
-        }
         game.finish_presented_tick(100U);
     }
     OL_CHECK(session->phase() == BattleSessionPhase::round_start);
@@ -3342,16 +3312,12 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     const auto frozen_battle_hash = fnv1a64(game.framebuffer().pixels());
 
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        OL_CHECK(
+            game.rgba_fade_overlay().alpha ==
+            render::fade_to_black_alpha(frame));
         OL_CHECK(game.render());
         OL_CHECK(fnv1a64(game.framebuffer().pixels()) == frozen_battle_hash);
         OL_CHECK(game.battle_request().value_or(-1) == 4);
-        if (frame == 63U) {
-            OL_CHECK(std::ranges::all_of(
-                game.framebuffer().palette(),
-                [](const auto& color) {
-                    return color.red == 0U && color.green == 0U && color.blue == 0U;
-                }));
-        }
         game.advance(100U);
     }
     OL_CHECK(game.view() == app::LegacyGameView::scene);

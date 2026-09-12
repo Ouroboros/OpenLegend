@@ -13,7 +13,6 @@
 
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/legacy_key.hpp"
-#include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 
@@ -218,12 +217,6 @@ BattleSession::BattleSession(
             " reason=" + error_);
         return;
     }
-    fade_palettes_ = render::legacy_fade_from_black(renderer_.palette());
-    if (!fade_palettes_.empty()) {
-        // sub_3271E presents the sorted battlefield at black once, then sub_3CD17
-        // presents its 64 increasing palettes and the final source palette.
-        fade_palettes_.insert(fade_palettes_.begin(), fade_palettes_.front());
-    }
     diagnostics::log_info(
         "battle session initialized id=" + std::to_string(battle_id) +
         " battlefield=" + std::to_string(data_.battlefield_id()) +
@@ -381,6 +374,19 @@ bool BattleSession::finish_initial_fade_to_black() {
     return true;
 }
 
+std::optional<std::uint8_t> BattleSession::rgba_fade_alpha() const noexcept {
+    if (phase_ == BattleSessionPhase::initial_present) {
+        return std::uint8_t{255U};
+    }
+    if (phase_ != BattleSessionPhase::initial_fade) {
+        return std::nullopt;
+    }
+    if (fade_frame_ == 0U) {
+        return std::uint8_t{255U};
+    }
+    return render::fade_from_black_alpha(fade_frame_ - 1U);
+}
+
 std::vector<BattleAudioCommand> BattleSession::take_audio_commands() {
     if (!player_target_effect_) {
         return {};
@@ -524,12 +530,10 @@ bool BattleSession::render(
         return true;
     }
     if (phase_ == BattleSessionPhase::initial_fade) {
-        if (fade_frame_ >= fade_palettes_.size()) {
+        if (fade_frame_ >= fade_frame_count()) {
             frame_rendered_ = false;
             return false;
         }
-        // sub_3CD17 updates the DAC without redrawing indexed pixels.
-        framebuffer.set_palette(fade_palettes_[fade_frame_]);
         frame_rendered_ = true;
         return true;
     }
@@ -572,13 +576,6 @@ bool BattleSession::render(
         rendered = render_player_attack_level(framebuffer);
     } else {
         rendered = render_battlefield(framebuffer);
-        if (rendered && phase_ == BattleSessionPhase::initial_present &&
-            !fade_palettes_.empty()) {
-            framebuffer.set_palette(fade_palettes_.front());
-        } else if (rendered && phase_ == BattleSessionPhase::initial_fade &&
-                   fade_frame_ < fade_palettes_.size()) {
-            framebuffer.set_palette(fade_palettes_[fade_frame_]);
-        }
     }
     frame_rendered_ = rendered;
     if (rendered) {
@@ -722,22 +719,15 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     if (phase_ == BattleSessionPhase::initial_present) {
-        if (fade_palettes_.empty()) {
-            phase_ = BattleSessionPhase::round_start;
-            diagnostics::log_info(
-                "battle initial frame presented id=" + std::to_string(battle_id()) +
-                " fade_frames=0");
-        } else {
-            fade_frame_ = 0U;
-            phase_ = BattleSessionPhase::initial_fade;
-            diagnostics::log_info(
-                "battle initial frame presented id=" + std::to_string(battle_id()) +
-                " fade_frames=" + std::to_string(fade_palettes_.size()));
-        }
+        fade_frame_ = 0U;
+        phase_ = BattleSessionPhase::initial_fade;
+        diagnostics::log_info(
+            "battle initial frame presented id=" + std::to_string(battle_id()) +
+            " fade_frames=" + std::to_string(fade_frame_count()));
         return;
     }
     if (phase_ == BattleSessionPhase::initial_fade) {
-        if (fade_frame_ + 1U < fade_palettes_.size()) {
+        if (fade_frame_ + 1U < fade_frame_count()) {
             ++fade_frame_;
         } else {
             phase_ = BattleSessionPhase::round_start;

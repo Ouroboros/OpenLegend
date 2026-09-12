@@ -17,6 +17,7 @@
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
+#include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/text/game_strings.hpp"
 
 namespace openlegend::app {
@@ -613,11 +614,52 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
     world_step_processed_ = false;
 }
 
-bool LegacyGameRuntime::uses_vga_retrace() const noexcept {
+bool LegacyGameRuntime::uses_fade_frame_clock() const noexcept {
     return scene_effect_kind_ == SceneEffectKind::fade_to_black ||
         scene_effect_kind_ == SceneEffectKind::fade_from_black ||
         (view_ == LegacyGameView::battle && battle_session_ != nullptr &&
          battle_session_->phase() == battle::BattleSessionPhase::initial_fade);
+}
+
+RgbaFadeOverlay LegacyGameRuntime::rgba_fade_overlay() const noexcept {
+    if (scene_effect_kind_ == SceneEffectKind::fade_to_black) {
+        return {
+            render::fade_to_black_alpha(scene_effect_frame_),
+            scene_effect_frame_ == 0U};
+    }
+    if (scene_effect_kind_ == SceneEffectKind::fade_from_black) {
+        const auto repeated_black_frame =
+            scene_effect_repeat_initial_frame_ && scene_effect_frame_ == 0U;
+        const auto alpha_frame = scene_effect_repeat_initial_frame_ &&
+                scene_effect_frame_ != 0U
+            ? scene_effect_frame_ - 1U
+            : scene_effect_frame_;
+        return {
+            repeated_black_frame
+                ? std::uint8_t{255U}
+                : render::fade_from_black_alpha(alpha_frame),
+            scene_effect_frame_ == 0U};
+    }
+
+    const auto black_present =
+        title_startup_phase_ == TitleStartupPhase::black_menu_present ||
+        load_transition_phase_ == LoadTransitionPhase::first_black_present ||
+        load_transition_phase_ == LoadTransitionPhase::second_black_present ||
+        world_menu_event_phase_ == WorldMenuEventPhase::leave_post_redraw_present ||
+        scene_leave_event_phase_ == SceneLeaveEventPhase::redraw_present ||
+        (world_scene_return_pending_ && !world_scene_return_presented_);
+    if (black_present) {
+        return {255U, true};
+    }
+
+    if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
+        if (const auto alpha = battle_session_->rgba_fade_alpha()) {
+            return {
+                *alpha,
+                battle_session_->phase() == battle::BattleSessionPhase::initial_present};
+        }
+    }
+    return {};
 }
 
 bool LegacyGameRuntime::needs_immediate_frame(const std::uint32_t bios_tick) const noexcept {
@@ -1114,16 +1156,10 @@ bool LegacyGameRuntime::render() {
     const auto legacy_ui_coordinates =
         framebuffer_.use_legacy_ui_coordinates();
     if (title_startup_phase_ == TitleStartupPhase::fade_to_black) {
-        if (scene_effect_kind_ != SceneEffectKind::fade_to_black) {
+        if (scene_effect_kind_ != SceneEffectKind::fade_to_black ||
+            scene_effect_frame_ >= render::kFadeToBlackFrameCount) {
             return false;
         }
-        if (scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
-        }
-        if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
-            return false;
-        }
-        framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
         scene_effect_presented_ = true;
         return true;
     }
@@ -1131,39 +1167,23 @@ bool LegacyGameRuntime::render() {
         if (!render_title_view()) {
             return false;
         }
-        const auto black = render::legacy_fade_to_black(framebuffer_.palette());
-        if (black.empty()) {
-            return false;
-        }
-        framebuffer_.set_palette(black.back());
         scene_effect_presented_ = true;
         return true;
     }
     if (title_startup_phase_ == TitleStartupPhase::fade_from_black) {
-        if (scene_effect_palettes_.empty()) {
-            if (!render_title_view()) {
-                return false;
-            }
-            scene_effect_palettes_ = render::legacy_fade_from_black(framebuffer_.palette());
-        }
-        if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
+        if (scene_effect_kind_ != SceneEffectKind::fade_from_black ||
+            scene_effect_frame_ >= render::kFadeFromBlackFrameCount ||
+            (scene_effect_frame_ == 0U && !render_title_view())) {
             return false;
         }
-        framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
         scene_effect_presented_ = true;
         return true;
     }
     if (load_transition_phase_ == LoadTransitionPhase::fade_to_black) {
-        if (scene_effect_kind_ != SceneEffectKind::fade_to_black) {
+        if (scene_effect_kind_ != SceneEffectKind::fade_to_black ||
+            scene_effect_frame_ >= render::kFadeToBlackFrameCount) {
             return false;
         }
-        if (scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
-        }
-        if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
-            return false;
-        }
-        framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
         scene_effect_presented_ = true;
         return true;
     }
@@ -1178,33 +1198,20 @@ bool LegacyGameRuntime::render() {
     }
     if (pending_new_game_scene_start_) {
         if (view_ != LegacyGameView::attributes ||
-            scene_effect_kind_ != SceneEffectKind::fade_to_black) {
+            scene_effect_kind_ != SceneEffectKind::fade_to_black ||
+            scene_effect_frame_ >= render::kFadeToBlackFrameCount ||
+            (scene_effect_frame_ == 0U &&
+             !title_renderer_->render_new_game_wait(framebuffer_))) {
             return false;
         }
-        if (scene_effect_palettes_.empty()) {
-            if (!title_renderer_->render_new_game_wait(framebuffer_)) {
-                return false;
-            }
-            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
-        }
-        if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
-            return false;
-        }
-        framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
         scene_effect_presented_ = true;
         return true;
     }
     if (battle_transition_phase_ != BattleTransitionPhase::none) {
-        if (scene_effect_kind_ != SceneEffectKind::fade_to_black) {
+        if (scene_effect_kind_ != SceneEffectKind::fade_to_black ||
+            scene_effect_frame_ >= render::kFadeToBlackFrameCount) {
             return false;
         }
-        if (scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
-        }
-        if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
-            return false;
-        }
-        framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
         scene_effect_presented_ = true;
         return true;
     }
@@ -1239,7 +1246,7 @@ bool LegacyGameRuntime::render() {
             world_effect_presented &&
             (scene_effect_kind_ == SceneEffectKind::fade_to_black ||
              scene_effect_kind_ == SceneEffectKind::fade_from_black) &&
-            !scene_effect_palettes_.empty();
+            scene_effect_frame_ != 0U;
         if (world_session_ == nullptr ||
             (!freeze_leave_frame && !reuse_world_pixels &&
              !world_session_->render(framebuffer_))) {
@@ -1250,41 +1257,6 @@ bool LegacyGameRuntime::render() {
             (world_menu_event_session_ == nullptr ||
              !world_menu_event_session_->render_overlay(framebuffer_))) {
             return false;
-        }
-        if (world_menu_event_phase_ == WorldMenuEventPhase::leave_post_redraw_present) {
-            const auto black = render::legacy_fade_to_black(framebuffer_.palette());
-            if (black.empty()) {
-                return false;
-            }
-            framebuffer_.set_palette(black.back());
-        }
-        if (world_scene_return_pending_ && !world_scene_return_presented_) {
-            const auto black = render::legacy_fade_to_black(framebuffer_.palette());
-            if (black.empty()) {
-                return false;
-            }
-            framebuffer_.set_palette(black.back());
-        }
-        if (world_effect_presented &&
-            scene_effect_kind_ == SceneEffectKind::fade_to_black &&
-            scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
-        } else if (world_effect_presented &&
-                   scene_effect_kind_ == SceneEffectKind::fade_from_black &&
-                   scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_from_black(framebuffer_.palette());
-        }
-        if (world_effect_presented && !scene_effect_palettes_.empty() &&
-            scene_effect_frame_ < scene_effect_palettes_.size()) {
-            framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
-        }
-        if (load_transition_phase_ == LoadTransitionPhase::first_black_present ||
-            load_transition_phase_ == LoadTransitionPhase::second_black_present) {
-            const auto black = render::legacy_fade_to_black(framebuffer_.palette());
-            if (black.empty()) {
-                return false;
-            }
-            framebuffer_.set_palette(black.back());
         }
         if (world_effect_presented ||
             load_transition_phase_ == LoadTransitionPhase::first_black_present ||
@@ -1317,35 +1289,13 @@ bool LegacyGameRuntime::render() {
             scene_effect_kind_ == SceneEffectKind::none ||
             scene_effect_kind_ == SceneEffectKind::present ||
             (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
-             scene_effect_palettes_.empty());
+             scene_effect_frame_ == 0U);
         if (render_scene && !scene_session_->render(framebuffer_)) {
             return false;
         }
         if (render_scene && scene_death_menu_active_ &&
             !basic_renderer_.render_death_menu(death_menu_, framebuffer_)) {
             return false;
-        }
-        if (scene_leave_event_phase_ == SceneLeaveEventPhase::redraw_present) {
-            const auto black = render::legacy_fade_to_black(framebuffer_.palette());
-            if (black.empty()) {
-                return false;
-            }
-            framebuffer_.set_palette(black.back());
-        }
-        if (scene_effect_kind_ == SceneEffectKind::fade_from_black &&
-            scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_from_black(framebuffer_.palette());
-            if (scene_effect_repeat_initial_frame_ && !scene_effect_palettes_.empty()) {
-                scene_effect_palettes_.insert(
-                    scene_effect_palettes_.begin(), scene_effect_palettes_.front());
-            }
-        } else if (scene_effect_kind_ == SceneEffectKind::fade_to_black &&
-                   scene_effect_palettes_.empty()) {
-            scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
-        }
-        if (!scene_effect_palettes_.empty() &&
-            scene_effect_frame_ < scene_effect_palettes_.size()) {
-            framebuffer_.set_palette(scene_effect_palettes_[scene_effect_frame_]);
         }
         scene_effect_presented_ = scene_effect_kind_ != SceneEffectKind::none;
         return true;
@@ -2153,8 +2103,12 @@ bool LegacyGameRuntime::advance_scene_effect() {
         --scene_effect_wait_ticks_;
         return true;
     }
+    const auto fade_frame_count = scene_effect_kind_ == SceneEffectKind::fade_to_black
+        ? render::kFadeToBlackFrameCount
+        : render::kFadeFromBlackFrameCount +
+            (scene_effect_repeat_initial_frame_ ? 1U : 0U);
     if (scene_effect_kind_ != SceneEffectKind::present &&
-        scene_effect_frame_ + 1U < scene_effect_palettes_.size()) {
+        scene_effect_frame_ + 1U < fade_frame_count) {
         ++scene_effect_frame_;
         scene_effect_presented_ = false;
         return true;
@@ -2343,7 +2297,6 @@ void LegacyGameRuntime::begin_scene_effect(
     const std::uint16_t wait_ticks,
     const bool repeat_initial_fade_frame) {
     scene_effect_kind_ = kind;
-    scene_effect_palettes_.clear();
     scene_effect_frame_ = 0U;
     scene_effect_wait_ticks_ = std::max<std::uint16_t>(wait_ticks, 1U);
     scene_effect_presented_ = false;
@@ -2352,7 +2305,6 @@ void LegacyGameRuntime::begin_scene_effect(
 
 void LegacyGameRuntime::clear_scene_effect() noexcept {
     scene_effect_kind_ = SceneEffectKind::none;
-    scene_effect_palettes_.clear();
     scene_effect_frame_ = 0U;
     scene_effect_wait_ticks_ = 1U;
     scene_effect_presented_ = false;

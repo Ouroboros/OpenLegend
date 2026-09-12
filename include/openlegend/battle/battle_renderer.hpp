@@ -46,7 +46,6 @@ public:
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
-    [[nodiscard]] const compat::LegacyPalette& palette() const noexcept { return palette_; }
 
     [[nodiscard]] bool render(
         const BattleRenderPlan& plan,

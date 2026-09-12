@@ -15,6 +15,7 @@
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
 namespace openlegend::battle {
@@ -184,9 +185,10 @@ public:
         return post_battle_messages_.size();
     }
     [[nodiscard]] std::size_t fade_frame_count() const noexcept {
-        return fade_palettes_.size();
+        return render::kFadeFromBlackFrameCount + 1U;
     }
     [[nodiscard]] std::size_t fade_frame() const noexcept { return fade_frame_; }
+    [[nodiscard]] std::optional<std::uint8_t> rgba_fade_alpha() const noexcept;
     [[nodiscard]] bool frame_rendered() const noexcept { return frame_rendered_; }
     [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
     [[nodiscard]] const BattleRenderState& render_state() const noexcept {
@@ -488,7 +490,6 @@ private:
     BattleRenderer renderer_;
     BattleRenderState render_state_{};
     BattleSessionPhase phase_{BattleSessionPhase::party_selection};
-    std::vector<compat::LegacyPalette> fade_palettes_;
     std::size_t fade_frame_{};
     std::size_t current_actor_slot_{};
     std::int16_t legacy_ai_target_slot_{};

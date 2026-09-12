@@ -9,20 +9,6 @@
 namespace openlegend::render {
 namespace {
 
-void decrement_palette(openlegend::compat::LegacyPalette& palette) noexcept {
-    for (auto& color : palette) {
-        if (color.red != 0U) {
-            --color.red;
-        }
-        if (color.green != 0U) {
-            --color.green;
-        }
-        if (color.blue != 0U) {
-            --color.blue;
-        }
-    }
-}
-
 [[nodiscard]] bool apply_shadow_runs(
     const std::span<std::uint8_t> pixels,
     const std::span<const std::uint16_t> alternating_zero_skip_runs,
@@ -159,33 +145,6 @@ bool apply_legacy_shadow_mask(
         }
     }
     return true;
-}
-
-std::vector<openlegend::compat::LegacyPalette> legacy_fade_to_black(
-    const openlegend::compat::LegacyPalette& palette) {
-    std::vector<openlegend::compat::LegacyPalette> sequence;
-    sequence.reserve(64U);
-    auto current = palette;
-    for (int step = 0; step < 64; ++step) {
-        decrement_palette(current);
-        sequence.push_back(current);
-    }
-    return sequence;
-}
-
-std::vector<openlegend::compat::LegacyPalette> legacy_fade_from_black(
-    const openlegend::compat::LegacyPalette& palette) {
-    std::vector<openlegend::compat::LegacyPalette> sequence;
-    sequence.reserve(65U);
-    for (int decrement_count = 64; decrement_count > 0; --decrement_count) {
-        auto current = palette;
-        for (int step = 0; step < decrement_count; ++step) {
-            decrement_palette(current);
-        }
-        sequence.push_back(current);
-    }
-    sequence.push_back(palette);
-    return sequence;
 }
 
 }  // namespace openlegend::render

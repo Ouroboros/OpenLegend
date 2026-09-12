@@ -95,6 +95,11 @@ enum class LegacyGameView {
     exited,
 };
 
+struct RgbaFadeOverlay {
+    std::uint8_t alpha{};
+    bool refresh_base_frame{true};
+};
+
 class LegacyGameRuntime {
     friend struct LegacyGameRuntimeTestAccess;
 
@@ -129,7 +134,8 @@ public:
     [[nodiscard]] scene::SceneInputReset take_scene_input_reset_request() noexcept;
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
     [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
-    [[nodiscard]] bool uses_vga_retrace() const noexcept;
+    [[nodiscard]] bool uses_fade_frame_clock() const noexcept;
+    [[nodiscard]] RgbaFadeOverlay rgba_fade_overlay() const noexcept;
     void set_battle_confirmation_state(bool active) noexcept;
     void set_battle_menu_direction_states(bool down, bool up) noexcept;
     void set_battle_cursor_input_states(
@@ -319,7 +325,6 @@ private:
     bool game_menu_item_stage_presented_{};
     std::vector<scene::SceneAudioCommand> scene_audio_commands_;
     SceneEffectKind scene_effect_kind_{SceneEffectKind::none};
-    std::vector<compat::LegacyPalette> scene_effect_palettes_;
     std::size_t scene_effect_frame_{};
     std::uint16_t scene_effect_wait_ticks_{1U};
     std::int16_t periodic_counter_{};

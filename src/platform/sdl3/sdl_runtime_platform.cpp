@@ -249,6 +249,7 @@ bool SdlRuntimePlatform::ensure_frame_texture(
     texture_ = replacement;
     texture_width_ = width;
     texture_height_ = height;
+    textures_initialized_ = false;
     return true;
 }
 
@@ -278,12 +279,21 @@ bool SdlRuntimePlatform::ensure_modern_ui_texture(
     modern_ui_texture_ = replacement;
     modern_ui_texture_width_ = width;
     modern_ui_texture_height_ = height;
+    textures_initialized_ = false;
     return true;
 }
 
 bool SdlRuntimePlatform::present(
     const compat::RgbaFrameView frame,
     const compat::RgbaFrameView modern_ui) {
+    return present(frame, modern_ui, true, 0U);
+}
+
+bool SdlRuntimePlatform::present(
+    const compat::RgbaFrameView frame,
+    const compat::RgbaFrameView modern_ui,
+    const bool refresh_textures,
+    const std::uint8_t fade_alpha) {
     if (!valid() || !frame.valid() || !modern_ui.valid() ||
         frame.width != game_width_ || frame.height != game_height_ ||
         !ensure_frame_texture(frame.width, frame.height) ||
@@ -291,19 +301,21 @@ bool SdlRuntimePlatform::present(
         return false;
     }
 
-    if (!SDL_UpdateTexture(
-            texture_,
-            nullptr,
-            frame.pixels.data(),
-            frame.width * static_cast<int>(compat::kModernRgbaBytesPerPixel)) ||
-        !SDL_UpdateTexture(
-            modern_ui_texture_,
-            nullptr,
-            modern_ui.pixels.data(),
-            modern_ui.width *
-                static_cast<int>(compat::kModernRgbaBytesPerPixel))) {
+    if ((refresh_textures || !textures_initialized_) &&
+        (!SDL_UpdateTexture(
+             texture_,
+             nullptr,
+             frame.pixels.data(),
+             frame.width * static_cast<int>(compat::kModernRgbaBytesPerPixel)) ||
+         !SDL_UpdateTexture(
+             modern_ui_texture_,
+             nullptr,
+             modern_ui.pixels.data(),
+             modern_ui.width *
+                 static_cast<int>(compat::kModernRgbaBytesPerPixel)))) {
         return false;
     }
+    textures_initialized_ = true;
 
     int output_width = 0;
     int output_height = 0;
@@ -333,6 +345,12 @@ bool SdlRuntimePlatform::present(
         !SDL_RenderTexture(renderer_, texture_, nullptr, &destination) ||
         !SDL_RenderTexture(
             renderer_, modern_ui_texture_, nullptr, &destination)) {
+        return false;
+    }
+    if (fade_alpha != 0U &&
+        (!SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND) ||
+         !SDL_SetRenderDrawColor(renderer_, 0U, 0U, 0U, fade_alpha) ||
+         !SDL_RenderFillRect(renderer_, &destination))) {
         return false;
     }
     return SDL_RenderPresent(renderer_);

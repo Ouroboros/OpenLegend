@@ -18,6 +18,7 @@ public:
 private:
     render::RgbaFramebuffer rgba_framebuffer_;
     render::RgbaFramebuffer modern_ui_framebuffer_;
+    bool base_frame_ready_{};
 };
 
 }  // namespace openlegend::platform::sdl3

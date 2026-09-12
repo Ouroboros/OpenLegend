@@ -18,6 +18,7 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
+#include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/render/rgba_font_renderer.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
@@ -408,90 +409,17 @@ void run_effect_tests() {
     OL_CHECK(framebuffer.pixels()[63'998U] == 0U);
     OL_CHECK(framebuffer.pixels()[63'999U] == 0U);
 
-    openlegend::compat::LegacyPalette palette{};
-    palette[0] = openlegend::compat::Rgb6{63U, 1U, 0U};
-    const auto fade_out = legacy_fade_to_black(palette);
-    const auto fade_in = legacy_fade_from_black(palette);
-    OL_CHECK(fade_out.size() == 64U);
-    OL_CHECK(fade_in.size() == 65U);
-    OL_CHECK(fade_out[0][0].red == 62U);
-    OL_CHECK(fade_out[0][0].green == 0U);
-    OL_CHECK(fade_out.back()[0].red == 0U);
-    OL_CHECK(fade_in.front()[0].red == 0U);
-    OL_CHECK(fade_in[63][0].red == 62U);
-    OL_CHECK(fade_in.back()[0].red == 63U);
-    OL_CHECK(palette[0].red == 63U);
-    OL_CHECK(palette[0].green == 1U);
-    OL_CHECK(palette[0].blue == 0U);
-
-    openlegend::compat::LegacyPalette byte_domain_palette{};
-    for (std::size_t color = 0U; color < byte_domain_palette.size(); ++color) {
-        byte_domain_palette[color] = openlegend::compat::Rgb6{
-            static_cast<std::uint8_t>(color),
-            static_cast<std::uint8_t>(255U - color),
-            static_cast<std::uint8_t>((color * 73U + 19U) & 0xFFU),
-        };
-    }
-    const auto byte_domain_source = byte_domain_palette;
-    auto byte_domain_fade = legacy_fade_to_black(byte_domain_palette);
-    OL_CHECK(byte_domain_fade.size() == 64U);
-    for (std::size_t frame = 0U; frame < byte_domain_fade.size(); ++frame) {
-        const auto decrement = static_cast<std::uint16_t>(frame + 1U);
-        const auto expected = [decrement](const std::uint8_t value) {
-            return static_cast<std::uint8_t>(
-                value > decrement ? static_cast<std::uint16_t>(value) - decrement : 0U);
-        };
-        for (std::size_t color = 0U; color < byte_domain_palette.size(); ++color) {
-            OL_CHECK(byte_domain_fade[frame][color].red ==
-                     expected(byte_domain_source[color].red));
-            OL_CHECK(byte_domain_fade[frame][color].green ==
-                     expected(byte_domain_source[color].green));
-            OL_CHECK(byte_domain_fade[frame][color].blue ==
-                     expected(byte_domain_source[color].blue));
-            OL_CHECK(byte_domain_palette[color].red == byte_domain_source[color].red);
-            OL_CHECK(byte_domain_palette[color].green == byte_domain_source[color].green);
-            OL_CHECK(byte_domain_palette[color].blue == byte_domain_source[color].blue);
-        }
-    }
-    OL_CHECK(byte_domain_fade.back()[255U].red == 191U);
-    OL_CHECK(byte_domain_fade.back()[0U].green == 191U);
-    const auto second_frame_red = byte_domain_fade[1U][200U].red;
-    byte_domain_fade[0U][200U].red = 0U;
-    OL_CHECK(byte_domain_fade[1U][200U].red == second_frame_red);
-    OL_CHECK(byte_domain_palette[200U].red == byte_domain_source[200U].red);
-
-    auto byte_domain_fade_in = legacy_fade_from_black(byte_domain_palette);
-    OL_CHECK(byte_domain_fade_in.size() == 65U);
-    for (std::size_t frame = 0U; frame < byte_domain_fade_in.size(); ++frame) {
-        const auto decrement = static_cast<std::uint16_t>(
-            frame < 64U ? 64U - frame : 0U);
-        const auto expected = [decrement](const std::uint8_t value) {
-            return static_cast<std::uint8_t>(
-                value > decrement ? static_cast<std::uint16_t>(value) - decrement : 0U);
-        };
-        for (std::size_t color = 0U; color < byte_domain_palette.size(); ++color) {
-            OL_CHECK(byte_domain_fade_in[frame][color].red ==
-                     expected(byte_domain_source[color].red));
-            OL_CHECK(byte_domain_fade_in[frame][color].green ==
-                     expected(byte_domain_source[color].green));
-            OL_CHECK(byte_domain_fade_in[frame][color].blue ==
-                     expected(byte_domain_source[color].blue));
-            OL_CHECK(byte_domain_palette[color].red == byte_domain_source[color].red);
-            OL_CHECK(byte_domain_palette[color].green == byte_domain_source[color].green);
-            OL_CHECK(byte_domain_palette[color].blue == byte_domain_source[color].blue);
-        }
-    }
-    OL_CHECK(byte_domain_fade_in.front()[255U].red == 191U);
-    OL_CHECK(byte_domain_fade_in.front()[0U].green == 191U);
-    OL_CHECK(byte_domain_fade_in[1U][64U].red == 1U);
-    OL_CHECK(byte_domain_fade_in[63U][64U].red == 63U);
-    OL_CHECK(byte_domain_fade_in.back()[64U].red == 64U);
-    const auto fade_in_second_frame_red = byte_domain_fade_in[1U][200U].red;
-    const auto fade_in_final_red = byte_domain_fade_in.back()[200U].red;
-    byte_domain_fade_in[0U][200U].red = 0U;
-    OL_CHECK(byte_domain_fade_in[1U][200U].red == fade_in_second_frame_red);
-    OL_CHECK(byte_domain_fade_in.back()[200U].red == fade_in_final_red);
-    OL_CHECK(byte_domain_palette[200U].red == byte_domain_source[200U].red);
+    OL_CHECK(kFadeToBlackFrameCount == 64U);
+    OL_CHECK(kFadeFromBlackFrameCount == 65U);
+    OL_CHECK(fade_to_black_alpha(0U) == 4U);
+    OL_CHECK(fade_to_black_alpha(31U) == 128U);
+    OL_CHECK(fade_to_black_alpha(63U) == 255U);
+    OL_CHECK(fade_from_black_alpha(0U) == 255U);
+    OL_CHECK(fade_from_black_alpha(1U) == 251U);
+    OL_CHECK(fade_from_black_alpha(32U) == 128U);
+    OL_CHECK(fade_from_black_alpha(64U) == 0U);
+    OL_CHECK(fade_to_black_alpha(100U) == 255U);
+    OL_CHECK(fade_from_black_alpha(100U) == 0U);
 }
 
 void run_synthetic_sprite_tests() {
@@ -837,43 +765,6 @@ std::string three_digit_suffix(const int value) {
     return stream.str();
 }
 
-void run_real_palette_fade_golden() {
-    using namespace openlegend::render;
-    using namespace openlegend::resource;
-    const auto root = openlegend::test::game_data_root();
-    const auto palette_file = read_binary_file(root / "MMAP.COL");
-    OL_CHECK(static_cast<bool>(palette_file));
-    if (!palette_file) {
-        return;
-    }
-    const auto palette = parse_vga_palette(palette_file.bytes);
-    OL_CHECK(static_cast<bool>(palette));
-    if (!palette) {
-        return;
-    }
-
-    const auto fade_out = legacy_fade_to_black(palette.palette);
-    const auto fade_in = legacy_fade_from_black(palette.palette);
-    auto hash = std::uint64_t{0xCBF29CE484222325ULL};
-    const auto hash_sequence = [&](const auto& sequence) {
-        for (const auto& frame : sequence) {
-            for (const auto color : frame) {
-                for (const auto channel : {color.red, color.green, color.blue}) {
-                    hash ^= channel;
-                    hash *= 0x100000001B3ULL;
-                }
-            }
-        }
-    };
-    hash_sequence(fade_out);
-    hash_sequence(fade_in);
-    OL_CHECK(fade_out.size() + fade_in.size() == 129U);
-    if (hash != 0xA543BF4C501F4124ULL) {
-        std::cerr << "palette fade golden mismatch: 0x" << std::hex << hash << '\n';
-    }
-    OL_CHECK(hash == 0xA543BF4C501F4124ULL);
-}
-
 void run_all_glyph_golden() {
     using namespace openlegend::render;
     using openlegend::resource::read_binary_file;
@@ -998,7 +889,6 @@ int main() {
     run_glyph_write_tests();
     run_text_encoding_tests();
     run_real_asset_golden();
-    run_real_palette_fade_golden();
     run_all_glyph_golden();
     run_all_sprite_corner_golden();
     return openlegend::test::failures == 0 ? 0 : 1;

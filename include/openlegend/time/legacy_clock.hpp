@@ -34,10 +34,10 @@ private:
     std::chrono::steady_clock::time_point origin_;
 };
 
-class SteadyVgaRetraceSource final : public TickSource {
+class SteadyFadeFrameSource final : public TickSource {
 public:
-    SteadyVgaRetraceSource() noexcept;
-    explicit SteadyVgaRetraceSource(std::chrono::nanoseconds frame_period) noexcept;
+    SteadyFadeFrameSource() noexcept;
+    explicit SteadyFadeFrameSource(std::chrono::nanoseconds frame_period) noexcept;
 
     [[nodiscard]] std::uint32_t tick() const noexcept override;
     void idle() noexcept override;
