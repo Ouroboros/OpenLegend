@@ -70,7 +70,7 @@ inline constexpr std::u8string_view practice_castration_question =
     u8"你是否仍要修練（Ｙ／Ｎ）";
 inline constexpr std::u8string_view practice_unsuitable_notice =
     u8"此人不適合修練此物品";
-inline constexpr std::array<std::u8string_view, 12> attribute_labels{
+inline constexpr std::array<std::u8string_view, 17> random_attribute_labels{
     u8"內力：",
     u8"武力：",
     u8"輕功：",
@@ -83,6 +83,16 @@ inline constexpr std::array<std::u8string_view, 12> attribute_labels{
     u8"劍術：",
     u8"刀術：",
     u8"暗器：",
+    u8"內力門路：",
+    u8"生命成長：",
+    u8"資質：",
+    u8"抗毒能力：",
+    u8"特殊兵器：",
+};
+inline constexpr std::array<std::u8string_view, 3> mp_type_labels{
+    u8"陰",
+    u8"陽",
+    u8"陰陽合一",
 };
 
 inline constexpr std::u8string_view level_label = u8"等級 ";
@@ -121,7 +131,7 @@ inline constexpr std::u8string_view poison_level_label = u8"中毒程度";
 inline constexpr std::u8string_view use_item_prefix = u8"使用 ";
 inline constexpr std::u8string_view item_increase = u8"提升";
 inline constexpr std::u8string_view item_decrease = u8"減少";
-inline constexpr std::u8string_view item_mp_type_changed = u8"內力門路改為  陰陽合";
+inline constexpr std::u8string_view item_mp_type_changed = u8"內力門路改為  陰陽合一";
 inline constexpr std::array<std::u8string_view, 23> item_effect_labels{
     u8"生命值",
     u8"生命最大值",
@@ -251,7 +261,8 @@ inline constexpr auto kPracticeMagicFullNotice = practice_magic_full_notice;
 inline constexpr auto kPracticeCastrationNotice = practice_castration_notice;
 inline constexpr auto kPracticeCastrationQuestion = practice_castration_question;
 inline constexpr auto kPracticeUnsuitableNotice = practice_unsuitable_notice;
-inline constexpr auto& kAttributeLabels = attribute_labels;
+inline constexpr auto& kRandomAttributeLabels = random_attribute_labels;
+inline constexpr auto& kMpTypeLabels = mp_type_labels;
 inline constexpr auto kLevelLabel = level_label;
 inline constexpr auto kPowerLabel = power_label;
 inline constexpr auto kLifeLabel = life_label;

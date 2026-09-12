@@ -36,7 +36,6 @@ public:
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_attributes(
-        const TitleMenuRenderer& title,
         const model::RoleRecord& protagonist,
         std::span<const std::uint8_t> name,
         render::IndexedFramebuffer& framebuffer);

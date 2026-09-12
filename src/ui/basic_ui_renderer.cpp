@@ -18,7 +18,7 @@ using namespace openlegend::text::game_strings;
 namespace palette_colors = render::legacy_color;
 namespace text_colors = render::legacy_color::text;
 
-constexpr std::array<std::size_t, 12> kAttributeWords{
+constexpr std::array<std::size_t, 17> kRandomAttributeWords{
     model::role_word::maximum_mp,
     model::role_word::attack,
     model::role_word::speed,
@@ -31,7 +31,30 @@ constexpr std::array<std::size_t, 12> kAttributeWords{
     model::role_word::sword,
     model::role_word::knife,
     model::role_word::hidden_weapon,
+    model::role_word::mp_type,
+    model::role_word::increased_life,
+    model::role_word::iq,
+    model::role_word::anti_poison,
+    model::role_word::unusual,
 };
+
+NODISCARD bool random_attribute_highlighted(
+    const std::size_t word, const std::int16_t value) noexcept {
+    switch (word) {
+    case model::role_word::mp_type:
+        return value == 2;
+    case model::role_word::maximum_mp:
+        return value == 40;
+    case model::role_word::maximum_hp:
+        return value == 50;
+    case model::role_word::increased_life:
+        return value == 7 || value == 10;
+    case model::role_word::iq:
+        return value == 94 || value == 100;
+    default:
+        return value == 30;
+    }
+}
 
 void append_number(std::u8string& text, const std::int32_t value, const int width = 0) {
     std::array<char, 16> buffer{};
@@ -246,41 +269,46 @@ bool BasicUiRenderer::render_name_entry(
 }
 
 bool BasicUiRenderer::render_attributes(
-    const TitleMenuRenderer& title,
     const model::RoleRecord& protagonist,
     const std::span<const std::uint8_t> name,
     render::IndexedFramebuffer& framebuffer) {
-    if (!valid() || !title.render_background(framebuffer) ||
-        !framebuffer.fill_rectangle(
-            0, 135, 320U, 65U, palette_colors::menu_background)) {
+    if (!valid()) {
         return false;
     }
+    framebuffer.clear(palette_colors::menu_background);
     text::GameText question;
     question.append_legacy(text::Big5TextView{name});
     question.append_utf8(kAttributeQuestion);
-    if (!draw_text_mixed(framebuffer, 10, 135, question, text_colors::attribute_question)) {
+    if (!draw_text_mixed(framebuffer, 8, 8, question, text_colors::attribute_question)) {
         return false;
     }
-    for (std::size_t index = 0U; index < kAttributeWords.size(); ++index) {
-        std::u8string line{kAttributeLabels[index]};
-        append_number(line, protagonist.word(kAttributeWords[index]), 2);
-        const auto column = index % 4U;
-        const auto row = index / 4U;
-        const auto x = 10 + static_cast<int>(column) * 75;
-        const auto y = 152 + static_cast<int>(row) * 16;
-        const auto value = protagonist.word(kAttributeWords[index]);
-        const auto highlighted =
-            (kAttributeWords[index] == model::role_word::maximum_mp && value == 40) ||
-            (kAttributeWords[index] == model::role_word::maximum_hp && value == 50) ||
-            (kAttributeWords[index] != model::role_word::maximum_mp &&
-             kAttributeWords[index] != model::role_word::maximum_hp && value == 30);
-        if ((highlighted && !framebuffer.fill_rectangle(
-                x,
-                y + 1,
-                64U,
-                15U,
-                palette_colors::attribute_highlight_background)) ||
-            !draw_text_utf8(
+    for (std::size_t index = 0U; index < kRandomAttributeWords.size(); ++index) {
+        constexpr auto kOriginalColumnCount = 6U;
+        constexpr auto kOriginalAttributeCount = 12U;
+        const auto word = kRandomAttributeWords[index];
+        const auto value = protagonist.word(word);
+        const auto column = index < kOriginalAttributeCount
+            ? index / kOriginalColumnCount
+            : 2U;
+        const auto row = index < kOriginalAttributeCount
+            ? index % kOriginalColumnCount
+            : index - kOriginalAttributeCount;
+        constexpr std::array kColumnX{36, 112, 188};
+        constexpr auto kCombinedMpTypeOffset = -13;
+        const auto combined_mp_type =
+            protagonist.word(model::role_word::mp_type) == 2;
+        const auto x = kColumnX[column] +
+            (combined_mp_type ? kCombinedMpTypeOffset : 0);
+        const auto y = 32 + static_cast<int>(row) * 24;
+        const auto highlighted = random_attribute_highlighted(word, value);
+        std::u8string line{kRandomAttributeLabels[index]};
+        if (word == model::role_word::mp_type && value >= 0 &&
+            value < static_cast<std::int16_t>(kMpTypeLabels.size())) {
+            line.append(kMpTypeLabels[static_cast<std::size_t>(value)]);
+        } else {
+            append_number(line, value, 2);
+        }
+        if (!draw_text_utf8(
                 framebuffer,
                 x,
                 y,

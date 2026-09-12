@@ -1227,10 +1227,7 @@ bool LegacyGameRuntime::render() {
         const auto* ranger = game_state_.ranger();
         return ranger != nullptr && name_editor_.has_value() &&
                basic_renderer_.render_attributes(
-                   *title_renderer_,
-                   ranger->roles[0],
-                   name_editor_->name(),
-                   framebuffer_);
+                   ranger->roles[0], name_editor_->name(), framebuffer_);
     }
     case LegacyGameView::world: {
         const auto freeze_leave_frame =

@@ -12,6 +12,7 @@
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
@@ -3997,34 +3998,124 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     model::RoleRecord protagonist;
     constexpr std::array<std::uint8_t, 1> name{'A'};
-    OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));
+    OL_CHECK(basic_renderer.render_attributes(protagonist, name, framebuffer));
     const std::vector<std::uint8_t> normal_attributes{
         framebuffer.pixels().begin(), framebuffer.pixels().end()};
-    const auto check_highlight_cell = [&normal_attributes](
-                                          const std::span<const std::uint8_t> highlighted,
-                                          const int expected_x) {
+    bool title_background_absent = true;
+    for (std::size_t index = 0U;
+         title_background_absent && index < normal_attributes.size();
+         ++index) {
+        const auto x = static_cast<int>(index % 320U);
+        const auto y = static_cast<int>(index / 320U);
+        const auto in_question = y >= 8 && y < 24;
+        const auto in_attributes = x >= 36 && x < 285 && y >= 32 && y < 168;
+        title_background_absent = in_question || in_attributes ||
+            normal_attributes[index] == render::legacy_color::menu_background;
+    }
+    OL_CHECK(title_background_absent);
+
+    const auto check_attribute_cell = [&normal_attributes](
+                                          const std::span<const std::uint8_t> changed_pixels,
+                                          const int expected_x,
+                                          const int expected_y,
+                                          const int expected_width,
+                                          const std::size_t minimum_changed) {
         std::size_t changed = 0U;
-        bool confined = highlighted.size() == normal_attributes.size();
-        for (std::size_t index = 0U; confined && index < highlighted.size(); ++index) {
-            if (highlighted[index] == normal_attributes[index]) {
+        bool confined = changed_pixels.size() == normal_attributes.size();
+        for (std::size_t index = 0U; confined && index < changed_pixels.size(); ++index) {
+            if (changed_pixels[index] == normal_attributes[index]) {
                 continue;
             }
             ++changed;
             const auto x = static_cast<int>(index % 320U);
             const auto y = static_cast<int>(index / 320U);
-            confined = x >= expected_x && x < expected_x + 65 && y >= 152 && y < 168;
+            confined = x >= expected_x && x < expected_x + expected_width &&
+                y >= expected_y && y < expected_y + 16;
         }
         OL_CHECK(confined);
-        OL_CHECK(changed > 500U);
+        OL_CHECK(changed >= minimum_changed);
     };
 
-    protagonist.set_word(model::role_word::maximum_mp, 40);
-    OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));
-    check_highlight_cell(framebuffer.pixels(), 10);
-    protagonist.set_word(model::role_word::maximum_mp, 0);
-    protagonist.set_word(model::role_word::attack, 30);
-    OL_CHECK(basic_renderer.render_attributes(renderer, protagonist, name, framebuffer));
-    check_highlight_cell(framebuffer.pixels(), 85);
+    struct AttributeCellCase {
+        std::size_t word;
+        std::int16_t value;
+        int x;
+        int y;
+        int width;
+    };
+    static_assert(36 + 284 == 320);
+    static_assert(175 + 144 < 320);
+    constexpr std::array<AttributeCellCase, 17> kAttributeCells{{
+        {model::role_word::maximum_mp, 1, 36, 32, 73},
+        {model::role_word::attack, 1, 36, 56, 73},
+        {model::role_word::speed, 1, 36, 80, 73},
+        {model::role_word::defence, 1, 36, 104, 73},
+        {model::role_word::maximum_hp, 1, 36, 128, 73},
+        {model::role_word::medicine, 1, 36, 152, 73},
+        {model::role_word::use_poison, 1, 112, 32, 73},
+        {model::role_word::detoxification, 1, 112, 56, 73},
+        {model::role_word::fist, 1, 112, 80, 73},
+        {model::role_word::sword, 1, 112, 104, 73},
+        {model::role_word::knife, 1, 112, 128, 73},
+        {model::role_word::hidden_weapon, 1, 112, 152, 73},
+        {model::role_word::mp_type, 1, 188, 32, 132},
+        {model::role_word::increased_life, 1, 188, 56, 132},
+        {model::role_word::iq, 1, 188, 80, 132},
+        {model::role_word::anti_poison, 1, 188, 104, 132},
+        {model::role_word::unusual, 1, 188, 128, 132},
+    }};
+    for (const auto& attribute : kAttributeCells) {
+        auto changed = protagonist;
+        changed.set_word(attribute.word, attribute.value);
+        OL_CHECK(basic_renderer.render_attributes(changed, name, framebuffer));
+        check_attribute_cell(
+            framebuffer.pixels(), attribute.x, attribute.y, attribute.width, 1U);
+    }
+
+    constexpr std::array<AttributeCellCase, 6> kHighlightedAttributeCells{{
+        {model::role_word::maximum_mp, 40, 36, 32, 73},
+        {model::role_word::maximum_hp, 50, 36, 128, 73},
+        {model::role_word::increased_life, 7, 188, 56, 132},
+        {model::role_word::iq, 94, 188, 80, 132},
+        {model::role_word::attack, 30, 36, 56, 73},
+        {model::role_word::anti_poison, 30, 188, 104, 132},
+    }};
+    for (const auto& attribute : kHighlightedAttributeCells) {
+        auto highlighted = protagonist;
+        highlighted.set_word(attribute.word, attribute.value);
+        OL_CHECK(basic_renderer.render_attributes(highlighted, name, framebuffer));
+        check_attribute_cell(
+            framebuffer.pixels(), attribute.x, attribute.y, attribute.width, 1U);
+        bool has_highlight_text = false;
+        for (int y = attribute.y; y < attribute.y + 16; ++y) {
+            for (int x = attribute.x; x < attribute.x + attribute.width; ++x) {
+                const auto index = static_cast<std::size_t>(y * 320 + x);
+                has_highlight_text = has_highlight_text ||
+                    framebuffer.pixels()[index] ==
+                        render::legacy_color::text::attribute_highlight.foreground;
+            }
+        }
+        OL_CHECK(has_highlight_text);
+        const auto background_index = static_cast<std::size_t>(
+            (attribute.y + 8) * 320 + attribute.x + attribute.width - 2);
+        OL_CHECK(
+            framebuffer.pixels()[background_index] ==
+            render::legacy_color::menu_background);
+    }
+
+    auto combined_mp_type = protagonist;
+    combined_mp_type.set_word(model::role_word::mp_type, 2);
+    OL_CHECK(basic_renderer.render_attributes(combined_mp_type, name, framebuffer));
+    bool has_combined_mp_type_highlight = false;
+    for (int y = 32; y < 48; ++y) {
+        for (int x = 175; x < 320; ++x) {
+            const auto index = static_cast<std::size_t>(y * 320 + x);
+            has_combined_mp_type_highlight = has_combined_mp_type_highlight ||
+                framebuffer.pixels()[index] ==
+                    render::legacy_color::text::attribute_highlight.foreground;
+        }
+    }
+    OL_CHECK(has_combined_mp_type_highlight);
 }
 
 using UiCheck = void (*)(const std::filesystem::path&);
