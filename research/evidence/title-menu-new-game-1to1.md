@@ -113,7 +113,7 @@ wait   = 7333253ca7400de6
 
 候选态普通短按Enter/Backspace不执行命令；Space前进并在末页回第一页，Escape退出候选，数字1..8按`page*8+digit`生成1-based选择。退格在普通输入态按韵母→介音→初声优先清组合，否则按1/2-byte姓名单元删除。仅有一个ASCII时原机长度减0却不清首字节，画面保留残字；现代用独立display buffer保留该残影而保持逻辑姓名为空。
 
-非空姓名Enter先清`(158,141,50,17)`并重绘最终姓名、present，再阻塞30 ticks才进入属性生成；空姓名Enter无效。现代用present-gated continuation承接该顺序。详细入口终审见`0x27A26.md`、`0x2841A.md`、`0x287CA.md`、`0x28975.md`。
+非空姓名Enter先清`(158,141,50,17)`并重绘最终姓名、present，再调用`sub_3DB83(30)`；callee按`argument/40+1`只等待1次BIOS tick变化，随后立即进入属性生成。空姓名Enter无效。现代用present-gated continuation承接该顺序。详细入口终审见`0x27A26.md`、`0x2841A.md`、`0x287CA.md`、`0x28975.md`。
 
 ## 6. 状态与物品基础 UI
 

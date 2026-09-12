@@ -1202,10 +1202,6 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         intro_game.advance();
         OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
         intro_game.finish_presented_tick();
-        for (int tick = 0; tick < 29; ++tick) {
-            intro_game.advance();
-            OL_CHECK(intro_game.view() == app::LegacyGameView::name_entry);
-        }
         intro_game.advance();
         OL_CHECK(intro_game.view() == app::LegacyGameView::attributes);
         OL_CHECK(intro_game.direction_repeat_context() ==
@@ -2445,9 +2441,7 @@ void check_question_present_gate(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -2543,9 +2537,7 @@ void check_picture_animation_tick_gates(const std::filesystem::path& data_root) 
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -2630,9 +2622,7 @@ void check_three_statue_animation_tick_gates(
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -2724,9 +2714,7 @@ void check_ending_prelude_animation_tick_gates(
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -2792,9 +2780,7 @@ void check_shop_input_present_gate(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -2919,9 +2905,7 @@ void check_death_menu_present_gate(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -3143,9 +3127,7 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
@@ -3356,9 +3338,7 @@ void check_scene_load_runtime(const std::filesystem::path& data_root) {
     game.handle_key(0x0DU, false, false);
     OL_CHECK(game.render());
     game.finish_presented_tick();
-    for (int tick = 0; tick < 30; ++tick) {
-        game.advance();
-    }
+    game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::attributes);
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
