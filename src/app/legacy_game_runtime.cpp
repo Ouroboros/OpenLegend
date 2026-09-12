@@ -1140,10 +1140,10 @@ bool LegacyGameRuntime::render() {
         return true;
     }
     if (title_startup_phase_ == TitleStartupPhase::fade_from_black) {
-        if (!render_title_view()) {
-            return false;
-        }
         if (scene_effect_palettes_.empty()) {
+            if (!render_title_view()) {
+                return false;
+            }
             scene_effect_palettes_ = render::legacy_fade_from_black(framebuffer_.palette());
         }
         if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
@@ -1178,11 +1178,13 @@ bool LegacyGameRuntime::render() {
     }
     if (pending_new_game_scene_start_) {
         if (view_ != LegacyGameView::attributes ||
-            scene_effect_kind_ != SceneEffectKind::fade_to_black ||
-            !title_renderer_->render_new_game_wait(framebuffer_)) {
+            scene_effect_kind_ != SceneEffectKind::fade_to_black) {
             return false;
         }
         if (scene_effect_palettes_.empty()) {
+            if (!title_renderer_->render_new_game_wait(framebuffer_)) {
+                return false;
+            }
             scene_effect_palettes_ = render::legacy_fade_to_black(framebuffer_.palette());
         }
         if (scene_effect_frame_ >= scene_effect_palettes_.size()) {
@@ -1225,11 +1227,26 @@ bool LegacyGameRuntime::render() {
     case LegacyGameView::world: {
         const auto freeze_leave_frame =
             world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_to_black;
+        const auto world_effect_presented =
+            (world_scene_transition_pending_ && world_scene_transition_presented_) ||
+            (world_scene_return_pending_ && world_scene_return_presented_) ||
+            world_menu_event_phase_ == WorldMenuEventPhase::fade_to_black ||
+            world_menu_event_phase_ == WorldMenuEventPhase::fade_from_black ||
+            world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_to_black ||
+            world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_from_black ||
+            load_transition_phase_ == LoadTransitionPhase::fade_from_black;
+        const auto reuse_world_pixels =
+            world_effect_presented &&
+            (scene_effect_kind_ == SceneEffectKind::fade_to_black ||
+             scene_effect_kind_ == SceneEffectKind::fade_from_black) &&
+            !scene_effect_palettes_.empty();
         if (world_session_ == nullptr ||
-            (!freeze_leave_frame && !world_session_->render(framebuffer_))) {
+            (!freeze_leave_frame && !reuse_world_pixels &&
+             !world_session_->render(framebuffer_))) {
             return false;
         }
-        if (world_menu_event_phase_ == WorldMenuEventPhase::running &&
+        if (!reuse_world_pixels &&
+            world_menu_event_phase_ == WorldMenuEventPhase::running &&
             (world_menu_event_session_ == nullptr ||
              !world_menu_event_session_->render_overlay(framebuffer_))) {
             return false;
@@ -1248,14 +1265,6 @@ bool LegacyGameRuntime::render() {
             }
             framebuffer_.set_palette(black.back());
         }
-        const auto world_effect_presented =
-            (world_scene_transition_pending_ && world_scene_transition_presented_) ||
-            (world_scene_return_pending_ && world_scene_return_presented_) ||
-            world_menu_event_phase_ == WorldMenuEventPhase::fade_to_black ||
-            world_menu_event_phase_ == WorldMenuEventPhase::fade_from_black ||
-            world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_to_black ||
-            world_menu_event_phase_ == WorldMenuEventPhase::leave_post_fade_from_black ||
-            load_transition_phase_ == LoadTransitionPhase::fade_from_black;
         if (world_effect_presented &&
             scene_effect_kind_ == SceneEffectKind::fade_to_black &&
             scene_effect_palettes_.empty()) {

@@ -563,12 +563,20 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
         return display_load_error(
             DisplayConfigurationStatus::invalid_display_table, fallback);
     }
-    const auto width =
-        (*display)[DisplayConfigurationLoadResult::width_toml_key]
-            .value<std::int64_t>();
-    const auto height =
-        (*display)[DisplayConfigurationLoadResult::height_toml_key]
-            .value<std::int64_t>();
+    const auto* width_node =
+        display->get(DisplayConfigurationLoadResult::width_toml_key);
+    const auto* height_node =
+        display->get(DisplayConfigurationLoadResult::height_toml_key);
+    if (width_node == nullptr && height_node == nullptr) {
+        return DisplayConfigurationLoadResult{
+            DisplayConfigurationStatus::ready, fallback, false, {}};
+    }
+    if (width_node == nullptr || height_node == nullptr) {
+        return display_load_error(
+            DisplayConfigurationStatus::invalid_game_resolution, fallback);
+    }
+    const auto width = width_node->value<std::int64_t>();
+    const auto height = height_node->value<std::int64_t>();
     if (!width.has_value() || !height.has_value() ||
         !valid_game_resolution_dimension(
             *width, kMinimumGameWidth, kMaximumGameWidth) ||

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <span>
 
@@ -131,13 +133,26 @@ using ModernRgbaPixels = std::array<std::uint8_t, kModernRgbaByteCount>;
         rgba.size() != frame.pixels.size() * kModernRgbaBytesPerPixel) {
         return false;
     }
+    std::array<std::uint32_t, kLegacyPaletteSize> expanded_palette{};
+    for (std::size_t index = 0U; index < frame.palette.size(); ++index) {
+        const auto color = frame.palette[index];
+        const auto red = static_cast<std::uint32_t>(expand_rgb6(color.red));
+        const auto green = static_cast<std::uint32_t>(expand_rgb6(color.green));
+        const auto blue = static_cast<std::uint32_t>(expand_rgb6(color.blue));
+        if constexpr (std::endian::native == std::endian::little) {
+            expanded_palette[index] = red | (green << 8U) | (blue << 16U) |
+                (static_cast<std::uint32_t>(kOpaqueAlpha) << 24U);
+        } else {
+            expanded_palette[index] = (red << 24U) | (green << 16U) |
+                (blue << 8U) | static_cast<std::uint32_t>(kOpaqueAlpha);
+        }
+    }
     for (std::size_t index = 0U; index < frame.pixels.size(); ++index) {
-        const auto color = frame.palette[frame.pixels[index]];
-        const auto target = index * kModernRgbaBytesPerPixel;
-        rgba[target] = expand_rgb6(color.red);
-        rgba[target + 1U] = expand_rgb6(color.green);
-        rgba[target + 2U] = expand_rgb6(color.blue);
-        rgba[target + 3U] = kOpaqueAlpha;
+        const auto color = expanded_palette[frame.pixels[index]];
+        std::memcpy(
+            rgba.data() + index * kModernRgbaBytesPerPixel,
+            &color,
+            sizeof(color));
     }
     return true;
 }

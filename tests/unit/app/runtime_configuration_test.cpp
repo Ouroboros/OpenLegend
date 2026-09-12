@@ -228,6 +228,20 @@ void test_display_configuration() {
     OL_CHECK(absent.resolution == fallback);
     OL_CHECK(!absent.loaded_from_file);
 
+    tree.write_configuration("[display]\n");
+    const auto empty = load();
+    OL_CHECK(empty.status == DisplayConfigurationStatus::ready);
+    OL_CHECK(empty.resolution == fallback);
+    OL_CHECK(!empty.loaded_from_file);
+    tree.write_configuration(
+        "[display]\n"
+        "# width = 1280\n"
+        "# height = 720\n");
+    const auto commented = load();
+    OL_CHECK(commented.status == DisplayConfigurationStatus::ready);
+    OL_CHECK(commented.resolution == fallback);
+    OL_CHECK(!commented.loaded_from_file);
+
     tree.write_configuration("[display]\nwidth = 320\nheight = 200\n");
     OL_CHECK(load().status == DisplayConfigurationStatus::ready);
     tree.write_configuration("[display]\nwidth = 1280\nheight = 800\n");
@@ -243,6 +257,12 @@ void test_display_configuration() {
     tree.write_configuration("display = 7\n");
     OL_CHECK(load().status ==
         DisplayConfigurationStatus::invalid_display_table);
+    tree.write_configuration("[display]\nwidth = 640\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
+    tree.write_configuration("[display]\nheight = 360\n");
+    OL_CHECK(load().status ==
+        DisplayConfigurationStatus::invalid_game_resolution);
     tree.write_configuration("[display]\nwidth = 319\nheight = 200\n");
     OL_CHECK(load().status ==
         DisplayConfigurationStatus::invalid_game_resolution);

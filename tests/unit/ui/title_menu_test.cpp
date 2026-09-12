@@ -403,7 +403,16 @@ void finish_title_startup(openlegend::app::LegacyGameRuntime& game) {
             return color.red == 0U && color.green == 0U && color.blue == 0U;
         }));
     game.advance();
-    advance_rendered_frames(game, 65U);
+    OL_CHECK(game.render());
+    const auto title_pixel = game.framebuffer().pixels().front();
+    const auto title_sentinel = static_cast<std::uint8_t>(title_pixel ^ 0xFFU);
+    game.framebuffer().pixels().front() = title_sentinel;
+    game.advance();
+    OL_CHECK(game.render());
+    OL_CHECK(game.framebuffer().pixels().front() == title_sentinel);
+    game.framebuffer().pixels().front() = title_pixel;
+    game.advance();
+    advance_rendered_frames(game, 63U);
     OL_CHECK(game.view() == openlegend::app::LegacyGameView::title);
 }
 
@@ -427,9 +436,20 @@ void finish_new_game_scene_transition(openlegend::app::LegacyGameRuntime& game) 
         LegacyKeyStateReset::none);
     OL_CHECK(game.view() == LegacyGameView::attributes);
     game.advance();
+    std::uint8_t wait_pixel{};
+    std::uint8_t wait_sentinel{};
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
         OL_CHECK(game.render());
+        if (frame == 1U) {
+            OL_CHECK(game.framebuffer().pixels().front() == wait_sentinel);
+            game.framebuffer().pixels().front() = wait_pixel;
+        }
         OL_CHECK(fnv1a64(game.framebuffer().pixels()) == wait_pixels);
+        if (frame == 0U) {
+            wait_pixel = game.framebuffer().pixels().front();
+            wait_sentinel = static_cast<std::uint8_t>(wait_pixel ^ 0xFFU);
+            game.framebuffer().pixels().front() = wait_sentinel;
+        }
         game.advance();
     }
     OL_CHECK(std::all_of(
@@ -479,8 +499,19 @@ void finish_world_scene_transition(openlegend::app::LegacyGameRuntime& game) {
     OL_CHECK(game.render());
     game.finish_presented_tick();
     game.advance();
+    std::uint8_t world_pixel{};
+    std::uint8_t world_sentinel{};
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
         OL_CHECK(game.render());
+        if (frame == 1U) {
+            OL_CHECK(game.framebuffer().pixels().front() == world_sentinel);
+            game.framebuffer().pixels().front() = world_pixel;
+        }
+        if (frame == 0U) {
+            world_pixel = game.framebuffer().pixels().front();
+            world_sentinel = static_cast<std::uint8_t>(world_pixel ^ 0xFFU);
+            game.framebuffer().pixels().front() = world_sentinel;
+        }
         game.finish_presented_tick();
         game.advance();
     }
