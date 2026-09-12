@@ -460,6 +460,42 @@ void run_text_encoding_tests() {
     OL_CHECK(mapped.has_value());
     OL_CHECK(mapped.has_value() && std::ranges::equal(*mapped, expected_mapped));
 
+    const auto growth_label = encode_big5(u8"生命成長");
+    const std::array<std::uint8_t, 8> expected_growth_label{
+        0xA5U,
+        0xCDU,
+        0xA9U,
+        0x52U,
+        0xA6U,
+        0xA8U,
+        0xAAU,
+        0xF8U,
+    };
+    OL_CHECK(growth_label.has_value());
+    OL_CHECK(
+        growth_label.has_value() &&
+        std::ranges::equal(*growth_label, expected_growth_label));
+
+    const auto duplicate_mappings = encode_big5(u8"十卅═╞╡╪");
+    const std::array<std::uint8_t, 12> expected_duplicate_mappings{
+        0xA4U,
+        0x51U,
+        0xA4U,
+        0xCAU,
+        0xA2U,
+        0xA4U,
+        0xA2U,
+        0xA5U,
+        0xA2U,
+        0xA7U,
+        0xA2U,
+        0xA6U,
+    };
+    OL_CHECK(duplicate_mappings.has_value());
+    OL_CHECK(
+        duplicate_mappings.has_value() &&
+        std::ranges::equal(*duplicate_mappings, expected_duplicate_mappings));
+
     std::vector<std::uint8_t> rollback{'A'};
     const auto original = rollback;
     const std::array<char8_t, 2> invalid_utf8{
@@ -469,6 +505,8 @@ void run_text_encoding_tests() {
     OL_CHECK(!append_big5(
         rollback,
         std::u8string_view{invalid_utf8.data(), invalid_utf8.size()}));
+    OL_CHECK(rollback == original);
+    OL_CHECK(!append_big5(rollback, u8"🙂"));
     OL_CHECK(rollback == original);
 
     const std::array<std::uint8_t, 2> legacy_name{
