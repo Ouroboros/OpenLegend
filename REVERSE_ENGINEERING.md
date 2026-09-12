@@ -65,7 +65,6 @@ B0–B9 执行计划已经关闭。最终验收见 [`research/evidence/b9-final-
 - [场景、事件与对话合同](research/evidence/scene-event-dialogue-1to1.md)
 - [战斗合同](research/evidence/battle-1to1.md)
 - [原程序架构](research/architecture/program-architecture.md)
-- [现代实现架构](research/architecture/rewrite-architecture.md)
 - [函数 catalog 覆盖](research/evidence/function-catalog-coverage.md)
 - [研究资料总索引](research/README.md)
 

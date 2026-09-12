@@ -165,16 +165,6 @@ wait_count = trunc_toward_zero(argument / 40) + 1
 
 现代宿主此前把非VGA菜单帧统一阻塞到下一BIOS tick；世界/场景主菜单因而在事件轮询前最多多等一tick，战斗状态菜单又在成功present后消费方向、再多等一tick才呈现新光标。同时`KeyRepeatController`只接管行走，菜单仍依赖SDL宿主repeat，破坏了原版共享脉冲来源。修正后仅`game_menu`与`BattleSession::player_menu_uses_key_states()`对应的机器输入循环使用SDL事件可唤醒等待；无事件时仍休眠到原下一BIOS tick以避免忙轮询。方向长按统一进入现有行走repeat调度，并按BIOS tick最多发出一次；宿主repeat只负责唤醒而不改变节奏。战斗菜单在成功present后实际消费一个输入组时设置紧邻重绘请求，下一帧不经过BIOS tick；显式动画/AI `*_wait`、战斗伤害、武功、暗器和世界行走tick均不改变。
 
-### 3.2.2 `main` 的移动链与菜单repeat隔离
-
-实机继续验证发现，共享repeat deadline会把移动与离散菜单的现代手感策略错误耦合。旧`KeyRepeatController::handle_key_down()`对移动链中的每个新方向都重设首次deadline，因此持续移动时切向会再次等待完整首次delay；同一SAVE LIST又会因标题、游戏菜单或死亡菜单入口不同而分别依赖宿主repeat或项目repeat。该问题属于现代宿主策略，不改变上述机器码输入合同，也不传播到`original`。
-
-`main`现由`LegacyGameRuntime::direction_repeat_context()`唯一分类方向输入：世界/场景行走为`movement`，战斗空间光标为同属Movement域的`battle_cursor`子上下文；标题主菜单、商店、游戏菜单、死亡主菜单、战斗列表为`menu`；三处SAVE LIST为同属Menu域的`save_list`子上下文；确认框、对话、动画、过场及错误提示为`none`。Movement与Menu各有独立按键栈、deadline和进度；Movement与Menu之间切换时仍按住的键必须真实keyup后重新按下，防止跨界动作泄漏，`menu`与`save_list`切换则保留同一菜单链。死亡SAVE LIST逐键关闭的present门只限制业务层消费，不得改变`save_list`上下文或清除repeat进度。SDL宿主repeat在受管理域内全部抑制。
-
-Movement首方向立即动作并启动`movement_repeat_delay_ms`；同一移动链切向立即动作但不重设首次deadline，进入repeat后从下一BIOS tick继续，且每个BIOS tick最多一步。小地图每个稳定tick产生的`present -> after_scene_present`延续仍归Movement，不能在每走一步后短暂改成`none`并重设首次deadline。释放当前方向后回退到最近仍按住方向，不重新等待；全部方向释放才结束链。战斗空间光标使用Movement的delay与BIOS tick节奏，但离散方格的组合键保留既有长按方向作为repeat carrier：新方向keydown只立即移动一格并作为候补，旧方向下一tick继续；释放carrier后才提升最近仍按住的候补方向。Menu首次按键立即导航，每次切向或方向回退均重新等待`menu_repeat_delay_ms`，之后按`menu_repeat_interval_ms`的steady-clock deadline重复；Up/Down/Left/Right、数字键盘别名与Page Up/Down共用该调度，Home/End只接受首次keydown。
-
-菜单等待取下一BIOS tick与下一menu deadline的较小值，并继续允许SDL事件提前唤醒；只有真实BIOS tick才调用游戏`advance()`，menu deadline与SDL唤醒均不得推进动画、战斗或调色板时钟。新增CFG默认值为`movement_repeat_delay_ms=500`、`menu_repeat_delay_ms=500`、`menu_repeat_interval_ms=55`；两个delay允许零，interval必须为正。回归覆盖移动切向、组合方向回退、全部释放、inactive延后、跨域需重按、菜单切向、Page Up/Down、Home/End、数字键盘别名，以及runtime各present门与三类SAVE LIST输入域。
-
 ### 3.3 opcode27图片动画的tick边界
 
 `sub_2F053 @ 0x2F053..0x2F107`为180字节、59条指令、14个CFG块、6次call、5个条件分支、4个无条件跳转、9项HIGHLOW重定位且无本地`RET`。raw/loaded SHA256分别为`7bfb0b81ff77dc3bc3544b6e692b4b177e21c58e7f5007367bb090a2b9675bdb`与`cc5c53f5a16319098f5bfa8813a847dc50a72dcda23eb377d54f792d7af5556d`；唯一物理caller为opcode27 dispatch，另有`0x55628`地址表引用。两个正常出口都跳入前一函数`0x2F04A..0x2F053`共享尾，其SHA256为`f7d57baaeaca8f29028fb0af30bc53418bee7a398b4188a9c960681e3dd7e2b5`。

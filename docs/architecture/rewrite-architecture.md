@@ -153,7 +153,7 @@ IndexedFramebuffer
 4. `WorldRenderer` / `SceneRenderer`：产生有序绘制命令；
 5. `IndexedFramebuffer`：最终像素真值；
 6. `compat` 显示转换：对每个 index 读取 RGB6 palette 项，以位复制展开为 RGBA8；该纯转换必须有端点和任意 palette index 单测；
-7. `platform_sdl3`：上传 RGBA8 streaming texture，以 nearest-neighbor 居中最大等比缩放，输出尺寸不足 `320×200` 时拒绝呈现并由窗口最小尺寸约束阻止该状态。
+7. `platform_sdl3`：上传 RGBA8 streaming texture，以 nearest-neighbor 居中最大等比缩放；正常窗口最小尺寸约束保证最终 scale 不低于 `1×`。
 
 不得把 DOS framebuffer 的 index 字节直接当现代颜色提交，也不得先把原精灵解码为 RGBA 后再把 RGBA 当游戏真值；否则会破坏调色板动画、覆盖顺序和逐像素验证。现代显示转换是明确的兼容边界，不是对核心像素算法的改写。
 

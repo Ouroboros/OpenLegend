@@ -137,7 +137,7 @@ screenY =  9*dx +  9*dy - 81
   -> palette[index]
   -> RGB6 bit replication to RGBA8
   -> 320×200 streaming texture
-  -> nearest-neighbor centered maximum proportional viewport
+  -> nearest-neighbor centered integer viewport
   -> host window
 ```
 

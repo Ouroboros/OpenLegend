@@ -136,7 +136,7 @@ UI Order28独立冻结`sub_2A186 @ 0x2A186..0x2A74C`为1478 bytes、379条指令
 - `model::GameState` 是唯一游戏状态所有者；UI 仅保留选择、候选和模态状态；
 - persistence 只运输完整 snapshot，读失败不改变 `GameState`，写失败不报告成功；
 - 原始资产只读，所有测试写入 `build/.../tests/generated/<Config>/`；文件系统权限可写不构成写原资产授权；
-- SDL 只把宿主键和 indexed framebuffer 连接到核心；显示兼容层逐像素执行 `palette[index]` 与 RGB6→RGBA8 位扩展，再以保持宽高比的 nearest-neighbor 居中最大比例上传，禁止把 DOS 索引字节直接当现代颜色，也禁止缩放反写核心缓冲；UI 核心不出现 SDL 类型；
+- SDL 只把宿主键和 indexed framebuffer 连接到核心；显示兼容层逐像素执行 `palette[index]` 与 RGB6→RGBA8 位扩展，再以 nearest-neighbor 居中整数倍上传，禁止把 DOS 索引字节直接当现代颜色，也禁止缩放反写核心缓冲；UI 核心不出现 SDL 类型；
 - B5 完成条件是标题、新游戏默认状态、三槽读取/取消/错误、六项菜单、状态/物品基础 UI 及同步模态返回全部有 golden/单测和 Linux/Windows app 验证；世界移动与场景事件继续由 B6/B7 实现。
 
 ## 8. 现代实现与验证结果

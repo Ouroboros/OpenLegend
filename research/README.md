@@ -1,11 +1,12 @@
 # OpenLegend 调研索引
 
-当前状态：**B0–B6 已按汇编与真实资产完成；当前进入 B7 场景、事件与脚本。**
+本目录以当前 `Z.COM`、`Z.DAT` 机器码和原始资产确认的原版逻辑为事实主体。现代移植只能作为明确标注的映射或验证信息出现，不得把 `main` 增强功能写成原版行为；现代重写架构和增强设计文档必须放在 `docs/`。
+
+当前状态：**B0–B9 已按汇编、真实资产和阶段验收完成。**
 
 ## 架构主文档
 
 - [`architecture/program-architecture.md`](architecture/program-architecture.md)：原 DOS 程序模块、状态和运行时交互。
-- [`architecture/rewrite-architecture.md`](architecture/rewrite-architecture.md)：OpenLegend 模块、依赖、目录和测试组织。
 - [`../goal/execution-plan.md`](../goal/execution-plan.md)：阶段计划、开始/完成条件和当前停止线。
 
 ## 已完成阶段证据
@@ -16,11 +17,16 @@
 - [`evidence/input-time-random-audio-1to1.md`](evidence/input-time-random-audio-1to1.md)：B4 IRQ1 输入、BIOS tick、RNG 与 Miles 音频。
 - [`evidence/title-menu-new-game-1to1.md`](evidence/title-menu-new-game-1to1.md)：B5 标题、六项菜单、姓名输入、新游戏属性与三槽流程。
 - [`evidence/world-map-1to1.md`](evidence/world-map-1to1.md)：B6 五层世界、缓存、移动、船、入口、天气与绘制。
+- [`evidence/scene-event-dialogue-1to1.md`](evidence/scene-event-dialogue-1to1.md)：B7 场景、事件、脚本与对话。
+- [`evidence/battle-1to1.md`](evidence/battle-1to1.md)：B8 战斗入口、行动、AI、状态与结算。
+- [`evidence/b9-final-acceptance.md`](evidence/b9-final-acceptance.md)：B9 最终集成验收。
 
 ## 独立 golden
 
 - [`evidence/title-menu-new-game-goldens.json`](evidence/title-menu-new-game-goldens.json)：B5 标题 framebuffer 与初始属性 RNG。
 - [`evidence/world-map-goldens.json`](evidence/world-map-goldens.json)：B6 五层 cache、固定轨迹、初始/天气 framebuffer。
+- [`evidence/scene-goldens.json`](evidence/scene-goldens.json)：B7 场景、事件、脚本与对话 oracle。
+- [`evidence/battle-goldens.json`](evidence/battle-goldens.json)：B8 战斗 oracle。
 
 ## 定点机器码报告
 

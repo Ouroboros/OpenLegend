@@ -163,7 +163,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 产物：
 
 - `../research/architecture/program-architecture.md`
-- `../research/architecture/rewrite-architecture.md`
+- `../docs/architecture/rewrite-architecture.md`
 - `../research/ida/` 下的 headless 数据库、脚本、日志和报告
 
 完成条件：
