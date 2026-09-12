@@ -12,9 +12,11 @@ namespace openlegend::platform::sdl3 {
 class SdlAudioDevice final {
 public:
     explicit SdlAudioDevice(audio::AudioMixer& mixer);
+
     ~SdlAudioDevice();
 
     SdlAudioDevice(const SdlAudioDevice&) = delete;
+
     SdlAudioDevice& operator=(const SdlAudioDevice&) = delete;
 
     [[nodiscard]] bool valid() const noexcept { return stream_ != nullptr; }
@@ -22,6 +24,7 @@ public:
 private:
     static void SDLCALL feed(
         void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
+
     void feed(SDL_AudioStream* stream, int additional_amount);
 
     audio::AudioMixer& mixer_;

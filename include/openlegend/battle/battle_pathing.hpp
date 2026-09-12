@@ -32,19 +32,25 @@ public:
     explicit BattlePathing(const BattleData& data) : data_(data) {}
 
     void build(BattlePathCoord source, BattlePathMode mode);
+
     [[nodiscard]] std::int16_t value(BattlePathCoord coordinate) const noexcept;
+
     [[nodiscard]] std::span<const std::int16_t, kBattleOccupancyCells> values() const noexcept {
         return values_;
     }
+
     [[nodiscard]] bool mark_shortest_path(
         BattlePathCoord source, BattlePathCoord target) noexcept;
+
     [[nodiscard]] std::optional<BattlePathCoord> next_marked_step(
         BattlePathCoord source) const noexcept;
+
     void consume(BattlePathCoord coordinate) noexcept;
 
 private:
     [[nodiscard]] static std::optional<std::size_t> legacy_index(
         BattlePathCoord coordinate) noexcept;
+
     void initialize(BattlePathMode mode);
 
     const BattleData& data_;

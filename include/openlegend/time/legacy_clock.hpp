@@ -17,6 +17,7 @@ public:
     virtual ~TickSource() = default;
 
     [[nodiscard]] virtual std::uint32_t tick() const noexcept = 0;
+
     virtual void idle() noexcept = 0;
 };
 
@@ -25,7 +26,9 @@ public:
     SteadyBiosTickSource() noexcept;
 
     [[nodiscard]] std::uint32_t tick() const noexcept override;
+
     [[nodiscard]] std::chrono::nanoseconds time_until_next_tick() const noexcept;
+
     void idle() noexcept override;
 
 private:
@@ -37,9 +40,11 @@ private:
 class SteadyFadeFrameSource final : public TickSource {
 public:
     SteadyFadeFrameSource() noexcept;
+
     explicit SteadyFadeFrameSource(std::chrono::nanoseconds frame_period) noexcept;
 
     [[nodiscard]] std::uint32_t tick() const noexcept override;
+
     void idle() noexcept override;
 
 private:
@@ -48,9 +53,12 @@ private:
 };
 
 [[nodiscard]] std::int32_t legacy_delay_tick_count(std::int32_t argument) noexcept;
+
 [[nodiscard]] std::uint32_t wait_for_tick_change(
     TickSource& source, std::uint32_t captured_tick) noexcept;
+
 void wait_for_next_tick(TickSource& source) noexcept;
+
 void legacy_delay(TickSource& source, std::int32_t argument) noexcept;
 
 }  // namespace openlegend::timing

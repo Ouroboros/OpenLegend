@@ -42,8 +42,11 @@ public:
     explicit WorldMapData(const resource::DataRoot& data_root);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] std::int16_t at(WorldLayer layer, int x, int y) const noexcept;
+
     [[nodiscard]] std::span<const std::int16_t> layer(WorldLayer layer) const noexcept;
 
 private:
@@ -56,9 +59,13 @@ public:
     WorldCache();
 
     [[nodiscard]] bool reload(const WorldMapData& map, int origin_x, int origin_y) noexcept;
+
     [[nodiscard]] std::int16_t at(WorldLayer layer, int cache_x, int cache_y) const noexcept;
+
     [[nodiscard]] std::span<const std::int16_t> layer(WorldLayer layer) const noexcept;
+
     [[nodiscard]] int origin_x() const noexcept { return origin_x_; }
+
     [[nodiscard]] int origin_y() const noexcept { return origin_y_; }
 
 private:
@@ -106,6 +113,7 @@ public:
         const WorldMapData& map,
         model::RangerState& ranger,
         random::LegacyRandom& random);
+
     WorldSession(
         const resource::DataRoot& data_root,
         const WorldMapData& map,
@@ -115,32 +123,52 @@ public:
         const compat::LegacyPalette& startup_palette);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] WorldStepResult move(WorldDirection direction);
+
     void restore_direction_after_scene(WorldDirection direction) noexcept;
+
     [[nodiscard]] WorldStepResult resume_move_after_scene(
         const WorldMoveContinuation& continuation);
+
     void sync_persistent_state(bool include_direction) noexcept;
+
     void idle_tick();
+
     void periodic_tick();
+
     void idle_animation_tick();
+
     void cycle_palette();
+
     void prepare_game_menu_frame() noexcept;
+
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
 
     [[nodiscard]] std::int16_t physical_power_counter() const noexcept {
         return physical_power_counter_;
     }
+
     void set_physical_power_counter(const std::int16_t counter) noexcept {
         physical_power_counter_ = counter;
     }
+
     [[nodiscard]] int world_x() const noexcept { return world_x_; }
+
     [[nodiscard]] int world_y() const noexcept { return world_y_; }
+
     [[nodiscard]] int cache_x() const noexcept { return world_x_ - cache_.origin_x(); }
+
     [[nodiscard]] int cache_y() const noexcept { return world_y_ - cache_.origin_y(); }
+
     [[nodiscard]] WorldDirection direction() const noexcept { return direction_; }
+
     [[nodiscard]] std::int16_t player_frame() const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> rendered_player_frame() const noexcept;
+
     [[nodiscard]] const WorldCache& cache() const noexcept { return cache_; }
 
 private:
@@ -163,22 +191,29 @@ private:
 
     [[nodiscard]] bool target_is_walkable(
         int world_x, int world_y, int moved_coordinate) const noexcept;
+
     [[nodiscard]] bool target_is_ship_water(
         int world_x,
         int world_y,
         int moved_coordinate,
         int delta_x,
         int delta_y) const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> entrance_at(int world_x, int world_y) const noexcept;
+
     [[nodiscard]] WorldStepResult complete_move(
         WorldDirection direction, int target_x, int target_y);
+
     void reload_cache_if_needed(bool vertical_move);
+
     void update_weather();
+
     [[nodiscard]] bool draw_sprite(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t legacy_id,
         int anchor_x,
         int anchor_y) const;
+
     [[nodiscard]] bool draw_weather_particle(
         render::IndexedFramebuffer& framebuffer,
         const WeatherParticle& particle) const;

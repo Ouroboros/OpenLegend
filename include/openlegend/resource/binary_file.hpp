@@ -21,6 +21,7 @@ public:
     explicit DataRoot(std::filesystem::path root) : root_(std::move(root)) {}
 
     [[nodiscard]] const std::filesystem::path& path() const noexcept { return root_; }
+
     [[nodiscard]] BinaryFile read(const std::filesystem::path& relative) const;
 
 private:

@@ -165,43 +165,68 @@ public:
         std::int16_t* legacy_magic_slot = nullptr);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] BattleSessionPhase phase() const noexcept { return phase_; }
+
     [[nodiscard]] std::int16_t battle_id() const noexcept { return data_.battle_id(); }
+
     [[nodiscard]] bool grants_experience() const noexcept { return grants_experience_; }
+
     [[nodiscard]] std::int16_t view_x() const noexcept { return render_state_.view_x; }
+
     [[nodiscard]] std::int16_t view_y() const noexcept { return render_state_.view_y; }
+
     [[nodiscard]] std::size_t current_actor_slot() const noexcept { return current_actor_slot_; }
+
     [[nodiscard]] BattleOutcome outcome() const noexcept { return outcome_; }
+
     [[nodiscard]] BattleStepResult result() const noexcept { return result_; }
+
     [[nodiscard]] bool finished() const noexcept { return result_ != BattleStepResult::stay; }
+
     [[nodiscard]] const std::optional<BattlePostBattleResult>& post_battle_result() const noexcept {
         return post_battle_result_;
     }
+
     [[nodiscard]] std::size_t post_battle_message_index() const noexcept {
         return post_battle_message_index_;
     }
+
     [[nodiscard]] std::size_t post_battle_message_count() const noexcept {
         return post_battle_messages_.size();
     }
+
     [[nodiscard]] std::size_t fade_frame_count() const noexcept {
         return render::kFadeFromBlackFrameCount + 1U;
     }
+
     [[nodiscard]] std::size_t fade_frame() const noexcept { return fade_frame_; }
+
     [[nodiscard]] std::optional<std::uint8_t> rgba_fade_alpha() const noexcept;
+
     [[nodiscard]] bool frame_rendered() const noexcept { return frame_rendered_; }
+
     [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
+
     [[nodiscard]] const BattleRenderState& render_state() const noexcept {
         return render_state_;
     }
+
     [[nodiscard]] const BattleSetup& setup() const noexcept { return setup_; }
+
     [[nodiscard]] BattleSetup& setup() noexcept { return setup_; }
+
     [[nodiscard]] const BattleData& data() const noexcept { return data_; }
+
     void set_confirmation_state(bool active) noexcept { confirmation_state_ = active; }
+
     void set_player_menu_direction_states(bool down, bool up) noexcept {
         player_menu_down_state_ = down;
         player_menu_up_state_ = up;
     }
+
     void set_cursor_selection_input_states(
         bool down, bool right, bool left, bool up, bool escape) noexcept {
         cursor_down_state_ = down;
@@ -210,6 +235,7 @@ public:
         cursor_up_state_ = up;
         cursor_escape_state_ = escape;
     }
+
     [[nodiscard]] bool player_menu_uses_key_states() const noexcept {
         return phase_ == BattleSessionPhase::party_selection ||
             phase_ == BattleSessionPhase::player_action_initial_present ||
@@ -217,57 +243,76 @@ public:
             phase_ == BattleSessionPhase::player_action ||
             phase_ == BattleSessionPhase::player_magic_selection;
     }
+
     [[nodiscard]] bool cursor_selection_uses_key_states() const noexcept {
         return phase_ == BattleSessionPhase::player_attack_direction ||
             phase_ == BattleSessionPhase::player_movement_select ||
             phase_ == BattleSessionPhase::player_targeting_select;
     }
+
     std::uint8_t take_clear_player_menu_direction_request() noexcept {
         const auto key = clear_player_menu_direction_requested_;
         clear_player_menu_direction_requested_ = 0U;
         return key;
     }
+
     std::uint8_t take_clear_cursor_selection_key_request() noexcept {
         const auto key = clear_cursor_selection_key_requested_;
         clear_cursor_selection_key_requested_ = 0U;
         return key;
     }
+
     bool take_clear_confirmation_states_request() noexcept {
         const auto requested = clear_confirmation_states_requested_;
         clear_confirmation_states_requested_ = false;
         return requested;
     }
+
     [[nodiscard]] const BattlePlayerActionMenuState& player_action_menu() const noexcept {
         return player_action_menu_;
     }
+
     [[nodiscard]] const std::optional<BattleMagicSelectionState>&
     player_magic_selection() const noexcept {
         return player_magic_selection_;
     }
+
     [[nodiscard]] std::int16_t selected_magic_slot() const noexcept {
         return selected_magic_slot_;
     }
+
     [[nodiscard]] const BattleItemSelectionState* player_item_selection() const noexcept;
+
     [[nodiscard]] std::int16_t player_item_page() const noexcept;
+
     [[nodiscard]] std::int16_t player_item_row() const noexcept;
+
     [[nodiscard]] std::int16_t player_item_column() const noexcept;
+
     [[nodiscard]] std::uint8_t player_item_presentations_before_input() const noexcept {
         return player_item_ != nullptr ? player_item_presentations_before_input_ : 0U;
     }
+
     [[nodiscard]] std::size_t player_status_count() const noexcept;
+
     [[nodiscard]] std::size_t player_status_cursor() const noexcept;
+
     [[nodiscard]] std::int16_t player_status_role_id() const noexcept;
+
     [[nodiscard]] std::uint8_t player_status_page() const noexcept;
+
     [[nodiscard]] std::optional<BattlePathCoord> active_cursor() const noexcept {
         return player_cursor_selection_.has_value()
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
             : std::nullopt;
     }
+
     [[nodiscard]] std::uint8_t cursor_presentations_before_input() const noexcept {
         return player_cursor_selection_.has_value()
             ? cursor_presentations_before_input_
             : 0U;
     }
+
     [[nodiscard]] std::optional<BattlePathCoord> selected_player_target() const noexcept {
         return selected_player_target_;
     }
@@ -275,12 +320,17 @@ public:
     [[nodiscard]] BattleSessionInputResult handle_key(
         std::uint8_t translated_key,
         std::optional<std::uint32_t> bios_tick = std::nullopt);
+
     [[nodiscard]] bool finish_initial_fade_to_black();
+
     [[nodiscard]] std::vector<BattleAudioCommand> take_audio_commands();
+
     void advance(std::uint32_t bios_tick = 0U);
+
     [[nodiscard]] bool render(
         render::IndexedFramebuffer& framebuffer,
         bool party_selection_background_redrawn = false);
+
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
 
 private:
@@ -310,131 +360,223 @@ private:
     };
 
     [[nodiscard]] bool prepare_initial_fade_to_black();
+
     [[nodiscard]] bool begin_initial_battle();
+
     [[nodiscard]] bool begin_round(std::uint32_t bios_tick);
+
     [[nodiscard]] bool begin_ai_action();
+
     [[nodiscard]] bool advance_ai_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool dispatch_selected_ai_action();
+
     [[nodiscard]] bool begin_ai_attack_action();
+
     [[nodiscard]] bool begin_ai_attack_execution();
+
     [[nodiscard]] bool continue_ai_poison_plan();
+
     [[nodiscard]] bool begin_ai_poison_execution();
+
     [[nodiscard]] bool continue_ai_request_plan();
+
     [[nodiscard]] bool continue_ai_support_plan();
+
     [[nodiscard]] bool begin_ai_support_execution();
+
     [[nodiscard]] bool continue_ai_item_plan();
+
     [[nodiscard]] bool begin_ai_item_execution();
+
     [[nodiscard]] bool begin_ai_throwing_weapon_execution();
+
     [[nodiscard]] bool commit_ai_throwing_weapon_effect();
+
     [[nodiscard]] bool begin_ai_item_post_effect_wait();
+
     [[nodiscard]] bool advance_ai_item_post_effect_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool finish_ai_item_action();
+
     [[nodiscard]] bool begin_ai_movement_to(
         std::int16_t target_slot,
         BattlePathCoord target,
         std::int16_t mode,
         std::int16_t range,
         AiMovementContinuation continuation);
+
     [[nodiscard]] bool begin_ai_movement(
         BattleAiMovementPlan plan,
         AiMovementContinuation continuation);
+
     [[nodiscard]] bool advance_ai_movement_step();
+
     [[nodiscard]] bool advance_ai_movement_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool finish_ai_movement();
+
     [[nodiscard]] bool finish_ai_handler(BattlePlayerAction action, bool rest_first);
+
     [[nodiscard]] bool begin_player_action_menu();
+
     [[nodiscard]] bool begin_player_attack();
+
     [[nodiscard]] bool begin_player_attack_execution();
+
     [[nodiscard]] BattleSessionInputResult handle_player_magic_selection_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] BattleSessionInputResult handle_player_attack_direction_key(
         std::uint8_t translated_key);
+
     void poll_player_attack_direction_states();
+
     [[nodiscard]] bool begin_player_attack_iteration(
         std::optional<BattlePathCoord> target = std::nullopt);
+
     [[nodiscard]] bool advance_player_attack_commit_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool commit_player_attack_iteration();
+
     [[nodiscard]] bool advance_player_attack_level_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool finish_player_attack_iteration();
+
     [[nodiscard]] bool begin_player_movement();
+
     [[nodiscard]] bool begin_player_item_selection();
+
     [[nodiscard]] BattleSessionInputResult handle_player_item_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] bool continue_player_item_after_context_present();
+
     [[nodiscard]] bool begin_player_status_selection();
+
     [[nodiscard]] BattleSessionInputResult handle_player_status_selection_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] BattleSessionInputResult handle_player_status_page_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] bool begin_player_targeting(BattlePlayerAction action);
+
     [[nodiscard]] BattleSessionInputResult handle_player_movement_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] BattleSessionInputResult handle_player_targeting_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] bool begin_player_target_effect(
         BattlePlayerAction action, BattlePathCoord target);
+
     [[nodiscard]] bool commit_player_throwing_weapon_effect();
+
     [[nodiscard]] bool prepare_player_magic_frame();
+
     [[nodiscard]] bool advance_player_effect_prelude_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool prepare_player_effect_frame();
+
     [[nodiscard]] bool advance_player_magic_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool begin_player_damage_animation();
+
     [[nodiscard]] bool prepare_player_damage_frame();
+
     [[nodiscard]] bool advance_player_damage_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool finish_player_target_effect();
+
     [[nodiscard]] bool advance_player_movement_step();
+
     [[nodiscard]] bool advance_player_movement_wait(std::uint32_t bios_tick);
+
     [[nodiscard]] bool rebuild_player_menu_after_movement();
+
     [[nodiscard]] std::optional<std::size_t> action_for_ordinal(
         std::size_t ordinal) const noexcept;
+
     [[nodiscard]] BattleSessionInputResult handle_player_action_key(
         std::uint8_t translated_key);
+
     [[nodiscard]] bool dispatch_selected_player_action();
+
     [[nodiscard]] bool finish_player_action_call(bool redraw_completed = false);
+
     [[nodiscard]] bool finish_current_actor(BattlePlayerAction action);
+
     [[nodiscard]] bool begin_battle_outcome(BattleOutcome outcome);
+
     [[nodiscard]] bool finish_outcome_round();
+
     void consume_actor_confirmation_state() noexcept;
+
     [[nodiscard]] bool begin_actor_present();
+
     [[nodiscard]] bool begin_post_battle_settlement();
+
     [[nodiscard]] bool begin_post_battle_role();
+
     [[nodiscard]] bool continue_post_battle_level();
+
     [[nodiscard]] bool continue_post_battle_practice();
+
     [[nodiscard]] bool continue_post_battle_crafting();
+
     [[nodiscard]] bool finish_post_battle_role();
+
     [[nodiscard]] bool schedule_post_battle_message(PostBattleMessage message);
+
     [[nodiscard]] std::optional<BattleLevelUpResult> preview_post_battle_level(
         std::size_t role_id);
+
     [[nodiscard]] std::optional<BattlePracticeResult> preview_post_battle_practice(
         std::size_t role_id);
+
     [[nodiscard]] bool advance_post_battle_message();
+
     [[nodiscard]] bool render_party_selection(
         render::IndexedFramebuffer& framebuffer,
         bool background_redrawn);
+
     [[nodiscard]] bool render_battlefield(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_action_menu(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_magic_selection(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_item_selection(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_item_effect(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_status_selection(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_status_page(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_attack_direction(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_player_attack_level(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_battle_outcome(
         render::IndexedFramebuffer& framebuffer);
+
     [[nodiscard]] bool render_post_battle_message(
         render::IndexedFramebuffer& framebuffer);
+
     void capture_selection_background(
         const render::IndexedFramebuffer& framebuffer) noexcept;
+
     void restore_selection_background(
         render::IndexedFramebuffer& framebuffer) const noexcept;
 

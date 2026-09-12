@@ -44,22 +44,29 @@ public:
     explicit LegacyStartupResources(const resource::DataRoot& data_root);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] const resource::PackedArchive& weather_sprites() const noexcept {
         return weather_sprites_;
     }
+
     [[nodiscard]] const compat::LegacyPalette& palette() const noexcept {
         return palette_;
     }
+
     [[nodiscard]] std::span<const std::uint16_t> fixed_shadow_mask() const noexcept {
         return fixed_shadow_mask_;
     }
+
     [[nodiscard]] std::span<const std::uint16_t> shifted_shadow_mask() const noexcept {
         return shifted_shadow_mask_;
     }
+
     [[nodiscard]] const model::RangerState& ranger() const noexcept {
         return *ranger_.ranger;
     }
+
     [[nodiscard]] std::span<const std::uint8_t> ranger_index_bytes() const noexcept {
         return ranger_.index_bytes;
     }
@@ -105,10 +112,12 @@ class LegacyGameRuntime {
 
 public:
     LegacyGameRuntime(std::filesystem::path data_root, std::uint32_t random_seed);
+
     LegacyGameRuntime(
         std::filesystem::path data_root,
         std::filesystem::path save_root,
         std::uint32_t random_seed);
+
     LegacyGameRuntime(
         std::filesystem::path data_root,
         std::filesystem::path save_root,
@@ -116,43 +125,68 @@ public:
         GameResolution game_resolution);
 
     void advance(std::uint32_t bios_tick = 0U);
+
     LegacyKeyStateReset handle_key(
         std::uint8_t translated_key,
         bool control_down,
         bool shift_down,
         std::optional<std::uint32_t> bios_tick = std::nullopt);
+
     bool handle_world_input(
         bool left,
         bool up,
         bool down,
         bool right,
         bool menu_requested = false);
+
     [[nodiscard]] input::DirectionRepeatContext direction_repeat_context() const noexcept;
+
     [[nodiscard]] bool scene_loop_uses_key_states() const noexcept;
+
     void set_scene_input_states(
         bool interact_down, bool main_ui_edge, bool weather_disable_edge) noexcept;
+
     [[nodiscard]] scene::SceneInputReset take_scene_input_reset_request() noexcept;
+
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
+
     [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
+
     [[nodiscard]] bool uses_fade_frame_clock() const noexcept;
+
     [[nodiscard]] RgbaFadeOverlay rgba_fade_overlay() const noexcept;
+
     void set_battle_confirmation_state(bool active) noexcept;
+
     void set_battle_menu_direction_states(bool down, bool up) noexcept;
+
     void set_battle_cursor_input_states(
         bool down, bool right, bool left, bool up, bool escape) noexcept;
+
     [[nodiscard]] bool battle_menu_uses_key_states() const noexcept;
+
     [[nodiscard]] bool death_menu_accepts_input() const noexcept;
+
     std::uint8_t take_clear_battle_menu_direction_request() noexcept;
+
     std::uint8_t take_clear_battle_cursor_key_request() noexcept;
+
     bool take_clear_battle_confirmation_states_request() noexcept;
+
     [[nodiscard]] bool render();
+
     [[nodiscard]] bool render_modern_ui(render::RgbaFramebuffer& framebuffer);
 
     [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
+
     [[nodiscard]] bool running() const noexcept { return view_ != LegacyGameView::exited; }
+
     [[nodiscard]] bool ending_complete() const noexcept { return ending_complete_; }
+
     [[nodiscard]] bool fade_music_on_exit() const noexcept { return fade_music_on_exit_; }
+
     [[nodiscard]] LegacyGameView view() const noexcept { return view_; }
+
     [[nodiscard]] bool save_list_active() const noexcept {
         return (view_ == LegacyGameView::title &&
                 title_menu_.screen() == ui::TitleScreen::load_slots) ||
@@ -161,17 +195,25 @@ public:
               game_menu_.screen() == ui::GameMenuScreen::save_slots)) ||
             (death_menu_accepts_input() && death_menu_.save_list_active());
     }
+
     [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
+
     [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
+
     [[nodiscard]] const model::GameState& game_state() const noexcept { return game_state_; }
+
     [[nodiscard]] std::optional<std::int16_t> scene_request() const noexcept {
         return scene_request_;
     }
+
     [[nodiscard]] std::optional<std::int16_t> battle_request() const noexcept {
         return battle_request_;
     }
+
     [[nodiscard]] std::vector<scene::SceneAudioCommand> take_scene_audio_commands();
+
     [[nodiscard]] std::vector<battle::BattleAudioCommand> take_battle_audio_commands();
+
     bool take_clear_scene_exit_key_states_request() noexcept {
         const auto requested = clear_scene_exit_key_states_requested_;
         clear_scene_exit_key_states_requested_ = false;
@@ -235,41 +277,69 @@ private:
     };
 
     [[nodiscard]] bool translated_key_input_blocked() const noexcept;
+
     [[nodiscard]] bool world_or_scene_input_active() const noexcept;
+
     void begin_new_game();
+
     void perform_pending_io();
+
     [[nodiscard]] bool activate_pending_load();
+
     [[nodiscard]] bool start_world(LegacyGameView error_return_view);
+
     [[nodiscard]] bool start_scene(
         std::int16_t scene_id,
         LegacyGameView error_return_view,
         std::optional<scene::SceneEntryOverride> entry_override = std::nullopt);
+
     [[nodiscard]] bool start_battle(
         std::int16_t battle_id, bool grant_experience);
+
     void begin_battle_transition_if_ready();
+
     void finish_battle_if_ready();
+
     void complete_battle_after_fade();
+
     void handle_scene_result(const scene::SceneStepResult& result);
+
     [[nodiscard]] bool advance_scene_effect();
+
     void begin_scene_effect(
         SceneEffectKind kind,
         std::uint16_t wait_ticks = 1U,
         bool repeat_initial_fade_frame = false);
+
     void clear_scene_effect() noexcept;
+
     void update_menu_counts();
+
     void refresh_save_list(std::uint16_t page);
+
     [[nodiscard]] bool render_title_view();
+
     void set_view(LegacyGameView view, std::string_view reason);
+
     void show_error(std::string message, LegacyGameView return_view);
+
     void show_legacy_error(
         std::span<const std::uint8_t> message, LegacyGameView return_view);
+
     void handle_title_result(ui::TitleResult result);
+
     void handle_game_menu_result(ui::GameMenuResult result);
+
     void handle_death_menu_result(ui::DeathMenuResult result);
+
     void handle_menu_item_result(ui::GameMenuResult result);
+
     void handle_menu_item_confirmation(std::uint8_t translated_key);
+
     [[nodiscard]] bool begin_world_menu_item_event(std::int16_t item_id);
+
     [[nodiscard]] bool begin_world_leave_event(std::int16_t role_id);
+
     void handle_world_menu_event_result(const scene::SceneStepResult& result);
 
     std::filesystem::path data_root_path_;

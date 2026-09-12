@@ -31,6 +31,7 @@ public:
     }
 
     [[nodiscard]] std::size_t tick_count() const noexcept { return tick_count_; }
+
     [[nodiscard]] std::size_t idle_count() const noexcept { return idle_count_; }
 
 private:
@@ -54,6 +55,7 @@ public:
     void idle() noexcept override { ++idle_count_; }
 
     [[nodiscard]] std::size_t tick_count() const noexcept { return position_; }
+
     [[nodiscard]] std::size_t idle_count() const noexcept { return idle_count_; }
 
 private:

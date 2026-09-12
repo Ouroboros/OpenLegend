@@ -38,10 +38,15 @@ public:
     explicit SceneAssets(const resource::DataRoot& data_root);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] std::size_t talk_count() const noexcept { return talks_.entry_count(); }
+
     [[nodiscard]] std::size_t script_count() const noexcept { return scripts_.entry_count(); }
+
     [[nodiscard]] std::vector<std::uint8_t> talk(std::size_t talk_id) const;
+
     [[nodiscard]] std::vector<std::int16_t> script(std::size_t script_id) const;
 
 private:
@@ -171,28 +176,42 @@ public:
         std::span<const std::uint16_t> shifted_shadow_mask = {});
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] SceneStepResult tick(
         std::optional<SceneDirection> direction,
         bool interact_requested,
         bool ui_requested,
         bool skip_player_idle = false);
+
     [[nodiscard]] SceneStepResult move(SceneDirection direction);
+
     [[nodiscard]] SceneStepResult interact();
+
     [[nodiscard]] SceneStepResult use_item(std::int16_t item_id);
+
     [[nodiscard]] SceneStepResult use_menu_item(std::int16_t item_id);
+
     [[nodiscard]] SceneStepResult use_retained_menu_item(std::int16_t item_id);
+
     [[nodiscard]] SceneStepResult open_ui() noexcept;
+
     [[nodiscard]] SceneStepResult resume(SceneResponse response, int value = -1);
+
     [[nodiscard]] SceneStepResult begin_event(
         std::int16_t script_id,
         std::int16_t event_index = -1,
         std::int16_t event_x = -1,
         std::int16_t event_y = -1,
         std::int16_t item_id = -1);
+
     void idle_tick();
+
     [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render_map(render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render_overlay(render::IndexedFramebuffer& framebuffer) const;
 
     [[nodiscard]] std::int16_t scene_id() const noexcept { return scene_id_; }
@@ -200,21 +219,33 @@ public:
     [[nodiscard]] text::Big5TextView scene_name() const noexcept;
 
     [[nodiscard]] int scene_x() const noexcept { return scene_x_; }
+
     [[nodiscard]] int scene_y() const noexcept { return scene_y_; }
+
     [[nodiscard]] int view_origin_x() const noexcept { return view_origin_x_; }
+
     [[nodiscard]] int view_origin_y() const noexcept { return view_origin_y_; }
+
     [[nodiscard]] SceneDirection direction() const noexcept { return direction_; }
+
     [[nodiscard]] bool weather_enabled() const noexcept { return shadow_state_ > 0; }
+
     [[nodiscard]] std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
+
     [[nodiscard]] std::int16_t physical_power_counter() const noexcept {
         return physical_power_counter_;
     }
+
     void set_physical_power_counter(const std::int16_t counter) noexcept {
         physical_power_counter_ = counter;
     }
+
     [[nodiscard]] std::int16_t player_frame() const noexcept;
+
     [[nodiscard]] std::int16_t event_item_id() const noexcept { return event_item_id_; }
+
     void set_event_item_id(const std::int16_t item_id) noexcept { event_item_id_ = item_id; }
+
     [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
 
     [[nodiscard]] bool death_menu_active() const noexcept {
@@ -222,14 +253,19 @@ public:
     }
 
     [[nodiscard]] bool exit_transition_pending() const noexcept;
+
     [[nodiscard]] bool loop_present_pending() const noexcept;
+
     [[nodiscard]] const text::GameText& pending_game_text() const noexcept {
         return pending_text_;
     }
+
     [[nodiscard]] const std::vector<std::uint8_t>& pending_text() const noexcept {
         return pending_encoded_text_;
     }
+
     [[nodiscard]] std::vector<SceneAudioCommand> take_audio_commands();
+
     [[nodiscard]] SceneInputReset take_input_reset_request() noexcept;
 
 private:
@@ -380,118 +416,196 @@ private:
     };
 
     [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
+
     [[nodiscard]] SceneStepResult show_scene_title();
+
     [[nodiscard]] SceneStepResult run_event();
+
     [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
+
     [[nodiscard]] SceneStepResult finish_tick_after_action(SceneStepKind fallback);
+
     [[nodiscard]] SceneStepResult finish_tick_after_scene_present(SceneStepKind fallback);
+
     [[nodiscard]] SceneStepResult finish_tick_after_auto_event(SceneStepKind fallback);
+
     [[nodiscard]] bool palette_cycle_after_present() const noexcept;
+
     [[nodiscard]] SceneStepResult resolve_scene_transition(SceneStepKind fallback);
+
     [[nodiscard]] SceneStepResult complete_scene_jump();
+
     void queue_scene_music(std::size_t metadata_word);
+
     [[nodiscard]] bool load_scene_sprites();
+
     [[nodiscard]] bool draw_sprite(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t legacy_id,
         int anchor_x,
         int anchor_y) const;
+
     [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render_dialogue_overlay(
         render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render_item_notice_overlay(
         render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render_shop_overlay(
         render::IndexedFramebuffer& framebuffer) const;
+
     void cycle_palette();
+
     [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> item_event_at(int x, int y) const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> event_field(
         std::int16_t scene_id,
         std::int16_t event_index,
         model::SceneEventField field) const noexcept;
+
     void set_event_field(
         std::int16_t scene_id,
         std::int16_t event_index,
         model::SceneEventField field,
         std::int16_t value) noexcept;
+
     void modify_event(std::span<const std::int16_t, 13> arguments);
+
     void set_scene_value(
         std::int16_t scene_id,
         std::int16_t layer,
         std::int16_t x,
         std::int16_t y,
         std::int16_t value) noexcept;
+
     [[nodiscard]] std::int16_t scene_value(
         std::int16_t scene_id,
         std::int16_t layer,
         std::int16_t x,
         std::int16_t y) const noexcept;
+
     [[nodiscard]] bool party_contains(std::int16_t role_id) const noexcept;
+
     [[nodiscard]] bool inventory_contains_id(std::int16_t item_id) const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> first_inventory_count(
         std::int16_t item_id) const noexcept;
+
     [[nodiscard]] int inventory_count(std::int16_t item_id) const noexcept;
+
     void add_inventory(std::int16_t item_id, std::int16_t count);
+
     void change_first_inventory(std::int16_t item_id, std::int16_t count);
+
     void update_book_event_if_ready();
+
     void close_shop_events();
+
     void remove_team_role(std::int16_t role_id);
+
     void clear_role_personal_items(std::int16_t role_id);
+
     [[nodiscard]] std::optional<SceneStepResult> advance_join_role_items();
+
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
+
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
+
     void queue_notice_utf8(std::u8string_view text, std::int16_t style = 0);
+
     void queue_notice_mixed(text::GameText text, std::int16_t style = 0);
+
     void queue_item_notice(std::int16_t item_id);
+
     void queue_scene_present();
+
     [[nodiscard]] SceneStepResult emit_queued();
+
     [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
+
     [[nodiscard]] std::optional<SceneStepResult> advance_picture_animation_frame();
+
     [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
+
     [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
+
     [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
+
     [[nodiscard]] SceneStepResult start_load_menu();
+
     [[nodiscard]] SceneStepResult advance_load_menu(int translated_key);
+
     [[nodiscard]] bool render_load_menu();
+
     [[nodiscard]] SceneStepResult start_death_menu();
+
     [[nodiscard]] SceneStepResult advance_death_menu(int translated_key);
+
     [[nodiscard]] bool load_death_image();
+
     [[nodiscard]] bool render_death_menu();
+
     void blend_panel_rectangle(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+
     [[nodiscard]] bool draw_panel(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+
     void blend_panel(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+
     [[nodiscard]] bool draw_panel_border(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
+
     [[nodiscard]] bool draw_portrait(
         render::IndexedFramebuffer& framebuffer, std::int16_t head_id, int x, int y) const;
+
     [[nodiscard]] bool draw_death_panel(int x, int y, int width, int height);
+
     [[nodiscard]] SceneStepResult start_ending();
+
     [[nodiscard]] SceneStepResult advance_ending();
+
     [[nodiscard]] bool load_ending_assets();
+
     [[nodiscard]] bool load_ending_frames();
+
     [[nodiscard]] bool draw_ending_word(std::int16_t legacy_id, int x, int y);
+
     [[nodiscard]] bool set_ending_frame(std::size_t frame);
+
     [[nodiscard]] bool draw_ending_credits();
+
     [[nodiscard]] std::optional<SceneStepResult> advance_tournament_trial(
         SceneStepKind previous_kind, SceneResponse response);
+
     void apply_scripted_walk_step(bool horizontal, int step);
+
     void set_animated_picture(std::int16_t event_index, std::int16_t picture);
+
     void commit_header() noexcept;
+
     void update_view_origin() noexcept;
+
     [[nodiscard]] bool prepare_event(
         std::int16_t script_id,
         std::int16_t event_index,
         std::int16_t event_x,
         std::int16_t event_y,
         std::int16_t item_id);
+
     void clear_event() noexcept;
+
     void advance_event_pictures();
+
     void player_idle_tick();
+
     void cancel_player_idle_animation() noexcept;
 
     const resource::DataRoot& data_root_;

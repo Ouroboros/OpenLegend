@@ -23,6 +23,7 @@ public:
     explicit ModernUiRenderer(const resource::DataRoot& data_root);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
 
     [[nodiscard]] static constexpr render::rgba::FontMetrics font_metrics(

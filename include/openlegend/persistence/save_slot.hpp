@@ -38,7 +38,9 @@ struct SaveFileSet {
 };
 
 [[nodiscard]] SaveFileSet baseline_file_set(const std::filesystem::path& root);
+
 [[nodiscard]] SaveFileSet working_copy_file_set(const std::filesystem::path& root);
+
 [[nodiscard]] std::optional<SaveFileSet> numbered_file_set(
     const std::filesystem::path& root, SaveSlot slot);
 
@@ -92,17 +94,24 @@ struct SnapshotWriteResult {
 };
 
 [[nodiscard]] SnapshotLoadResult load_snapshot(const SaveFileSet& files);
+
 [[nodiscard]] RangerLoadResult load_baseline_ranger(const std::filesystem::path& root);
+
 [[nodiscard]] SnapshotLoadResult load_baseline_scenes(
     const std::filesystem::path& root, const model::RangerState& ranger);
+
 [[nodiscard]] SnapshotLoadResult load_baseline(const std::filesystem::path& root);
+
 [[nodiscard]] SnapshotLoadResult load_working_copy(const std::filesystem::path& root);
+
 [[nodiscard]] SnapshotLoadResult load_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot);
+
 [[nodiscard]] SnapshotLoadResult load_numbered_slot(
     const std::filesystem::path& root,
     SaveSlot slot,
     std::span<const std::uint8_t> ranger_index_bytes);
+
 [[nodiscard]] RangerLoadResult load_numbered_slot_ranger(
     const std::filesystem::path& root,
     SaveSlot slot,
@@ -110,12 +119,16 @@ struct SnapshotWriteResult {
 
 [[nodiscard]] SnapshotWriteResult write_snapshot(
     const SaveFileSet& files, const model::GameSnapshot& snapshot);
+
 [[nodiscard]] SnapshotWriteResult write_numbered_slot_scene_archives(
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
+
 [[nodiscard]] SnapshotWriteResult write_numbered_slot_ranger(
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
+
 [[nodiscard]] SnapshotWriteResult write_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
+
 [[nodiscard]] SnapshotWriteResult delete_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot);
 

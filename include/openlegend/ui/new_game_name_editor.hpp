@@ -31,32 +31,50 @@ public:
         std::uint8_t translated_key, bool control_down, bool shift_down);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] NameInputMode mode() const noexcept { return mode_; }
+
     [[nodiscard]] std::span<const std::uint8_t> name() const noexcept { return name_; }
+
     [[nodiscard]] std::span<const std::uint8_t> display_name() const noexcept {
         return display_name_;
     }
+
     [[nodiscard]] std::span<const std::array<std::uint8_t, 2>> candidates() const noexcept {
         return candidates_;
     }
+
     [[nodiscard]] std::int16_t candidate_page() const noexcept { return candidate_page_; }
+
     [[nodiscard]] std::size_t visible_candidate_count() const noexcept;
+
     [[nodiscard]] std::optional<std::array<std::uint8_t, 2>> visible_candidate(
         std::size_t visible_index) const noexcept;
+
     [[nodiscard]] bool has_previous_candidate_page() const noexcept;
+
     [[nodiscard]] bool has_next_candidate_page() const noexcept;
+
     [[nodiscard]] bool no_candidates() const noexcept { return no_candidates_; }
+
     [[nodiscard]] bool accepted() const noexcept { return accepted_; }
+
     [[nodiscard]] render::PaletteIndex cursor_color() const noexcept {
         return cursor_bright_
             ? render::legacy_color::name_cursor_bright
             : render::legacy_color::name_cursor_dim;
     }
+
     void finish_presented_frame() noexcept;
+
     [[nodiscard]] std::int16_t initial() const noexcept { return initial_; }
+
     [[nodiscard]] std::int16_t medial() const noexcept { return medial_; }
+
     [[nodiscard]] std::int16_t final() const noexcept { return final_; }
+
     [[nodiscard]] std::int16_t tone() const noexcept { return tone_; }
 
 private:
@@ -66,11 +84,17 @@ private:
     };
 
     [[nodiscard]] static ZhuyinKey zhuyin_key(std::uint8_t translated_key) noexcept;
+
     [[nodiscard]] bool has_composition() const noexcept;
+
     void clear_composition() noexcept;
+
     void erase_last() noexcept;
+
     void lookup_candidates();
+
     void commit_candidate(std::size_t visible_index);
+
     void sync_display_name();
 
     std::vector<std::uint8_t> cfont_;

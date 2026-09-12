@@ -273,9 +273,13 @@ struct LegacyRecord {
 
 struct RangerHeader : LegacyRecord<kRangerHeaderBytes> {
     [[nodiscard]] CharacterId team_member(std::size_t index) const noexcept;
+
     void set_team_member(std::size_t index, CharacterId role_id) noexcept;
+
     [[nodiscard]] ItemId inventory_item(std::size_t index) const noexcept;
+
     [[nodiscard]] std::int16_t inventory_count(std::size_t index) const noexcept;
+
     void set_inventory(std::size_t index, ItemId item_id, std::int16_t count) noexcept;
 };
 
@@ -313,6 +317,7 @@ struct RangerState {
     std::vector<ShopRecord> shops = std::vector<ShopRecord>(kShopCount);
 
     [[nodiscard]] bool valid() const noexcept;
+
     [[nodiscard]] bool operator==(const RangerState&) const = default;
 };
 
@@ -324,15 +329,19 @@ struct GameSnapshot {
     std::vector<std::uint8_t> scene_events;
 
     [[nodiscard]] bool valid() const noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> scene_value(
         std::size_t scene, SceneLayer layer, std::size_t linear_tile) const noexcept;
+
     [[nodiscard]] bool set_scene_value(
         std::size_t scene,
         SceneLayer layer,
         std::size_t linear_tile,
         std::int16_t value) noexcept;
+
     [[nodiscard]] std::optional<std::int16_t> event_value(
         std::size_t scene, std::size_t event, SceneEventField field) const noexcept;
+
     [[nodiscard]] bool set_event_value(
         std::size_t scene,
         std::size_t event,
@@ -345,11 +354,17 @@ struct GameSnapshot {
 class GameState {
 public:
     [[nodiscard]] bool import_snapshot(GameSnapshot snapshot);
+
     [[nodiscard]] bool loaded() const noexcept { return snapshot_.has_value(); }
+
     [[nodiscard]] const RangerState* ranger() const noexcept;
+
     [[nodiscard]] RangerState* ranger() noexcept;
+
     [[nodiscard]] const GameSnapshot* snapshot() const noexcept;
+
     [[nodiscard]] GameSnapshot* snapshot() noexcept;
+
     [[nodiscard]] std::optional<GameSnapshot> export_snapshot() const;
 
 private:

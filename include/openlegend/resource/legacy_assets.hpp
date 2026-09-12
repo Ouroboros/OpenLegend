@@ -21,8 +21,11 @@ struct PaletteResult {
 class Int16FileView {
 public:
     explicit Int16FileView(std::span<const std::uint8_t> bytes) : bytes_(bytes) {}
+
     [[nodiscard]] bool valid() const noexcept { return bytes_.size() % 2U == 0U; }
+
     [[nodiscard]] std::size_t size() const noexcept { return bytes_.size() / 2U; }
+
     [[nodiscard]] std::int16_t at(std::size_t index) const noexcept;
 
 private:
@@ -37,9 +40,11 @@ public:
     [[nodiscard]] bool valid() const noexcept {
         return glyph_size_ != 0U && bytes_.size() % glyph_size_ == 0U;
     }
+
     [[nodiscard]] std::size_t glyph_count() const noexcept {
         return valid() ? bytes_.size() / glyph_size_ : 0U;
     }
+
     [[nodiscard]] std::span<const std::uint8_t> glyph(std::size_t index) const noexcept;
 
 private:

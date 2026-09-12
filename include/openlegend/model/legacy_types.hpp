@@ -9,6 +9,7 @@ struct LegacyId {
     std::int16_t value{-1};
 
     [[nodiscard]] constexpr bool present() const noexcept { return value >= 0; }
+
     [[nodiscard]] constexpr bool operator==(const LegacyId&) const = default;
 };
 

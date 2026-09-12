@@ -9,7 +9,9 @@
 #include "test_support.hpp"
 
 void run_legacy_runtime_tests();
+
 void run_legacy_video_tests();
+
 void run_runtime_configuration_tests();
 
 namespace {

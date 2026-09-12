@@ -28,6 +28,7 @@ public:
     }
 
     ScopedTimeZone(const ScopedTimeZone&) = delete;
+
     ScopedTimeZone& operator=(const ScopedTimeZone&) = delete;
 
 private:

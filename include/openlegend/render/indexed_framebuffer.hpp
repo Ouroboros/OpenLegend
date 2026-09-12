@@ -35,39 +35,52 @@ public:
         int pixel_height = height);
 
     [[nodiscard]] bool resize(int pixel_width, int pixel_height);
+
     [[nodiscard]] int pixel_width() const noexcept { return pixel_width_; }
+
     [[nodiscard]] int pixel_height() const noexcept { return pixel_height_; }
+
     [[nodiscard]] int coordinate_width() const noexcept {
         return coordinate_space_.source_width;
     }
+
     [[nodiscard]] int coordinate_height() const noexcept {
         return coordinate_space_.source_height;
     }
+
     [[nodiscard]] bool legacy_size() const noexcept {
         return pixel_width_ == width && pixel_height_ == height;
     }
+
     [[nodiscard]] IndexedViewport legacy_ui_viewport() const noexcept;
+
     [[nodiscard]] CoordinateSpaceGuard use_native_coordinates() noexcept;
+
     [[nodiscard]] CoordinateSpaceGuard use_legacy_ui_coordinates() noexcept;
 
     void clear(std::uint8_t color) noexcept;
+
     [[nodiscard]] bool fill_rectangle(
         int x,
         int y,
         std::uint16_t rectangle_width,
         std::uint16_t rectangle_height,
         std::uint8_t color) noexcept;
+
     [[nodiscard]] bool outline_rectangle(
         int x,
         int y,
         std::uint16_t rectangle_width,
         std::uint16_t rectangle_height,
         std::uint8_t color) noexcept;
+
     void draw_pixel(int x, int y, std::uint8_t color) noexcept;
+
     [[nodiscard]] bool blit(
         std::span<const std::uint8_t> source,
         int source_width,
         int source_height) noexcept;
+
     [[nodiscard]] bool copy_from(
         const IndexedFramebuffer& source) noexcept;
 
@@ -99,9 +112,13 @@ public:
     void set_palette(const openlegend::compat::LegacyPalette& palette) noexcept;
 
     [[nodiscard]] std::uint8_t* row(int y) noexcept;
+
     [[nodiscard]] const std::uint8_t* row(int y) const noexcept;
+
     [[nodiscard]] std::span<std::uint8_t> pixels() noexcept { return pixels_; }
+
     [[nodiscard]] std::span<const std::uint8_t> pixels() const noexcept { return pixels_; }
+
     [[nodiscard]] const openlegend::compat::LegacyPalette& palette() const noexcept {
         return palette_;
     }
@@ -114,12 +131,15 @@ private:
     };
 
     [[nodiscard]] CoordinateSpace native_coordinate_space() const noexcept;
+
     [[nodiscard]] CoordinateSpace legacy_ui_coordinate_space() const noexcept;
+
     [[nodiscard]] IndexedViewport mapped_rectangle(
         int x,
         int y,
         int rectangle_width,
         int rectangle_height) const noexcept;
+
     void restore_coordinate_space(CoordinateSpace coordinate_space) noexcept {
         coordinate_space_ = coordinate_space;
     }
@@ -134,6 +154,7 @@ private:
 class IndexedFramebuffer::CoordinateSpaceGuard {
 public:
     CoordinateSpaceGuard(const CoordinateSpaceGuard&) = delete;
+
     CoordinateSpaceGuard& operator=(const CoordinateSpaceGuard&) = delete;
 
     CoordinateSpaceGuard(CoordinateSpaceGuard&& other) noexcept

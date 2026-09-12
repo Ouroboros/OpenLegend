@@ -45,6 +45,7 @@ struct ModeStepResult {
 class ModeDriver {
 public:
     virtual ~ModeDriver() = default;
+
     [[nodiscard]] virtual ModeStepResult step(AppMode mode) = 0;
 };
 
@@ -67,7 +68,9 @@ public:
         : mode_(initial_mode), running_(initial_mode != AppMode::exit) {}
 
     [[nodiscard]] TickResult run_tick(ModeDriver& driver, std::size_t transition_budget = 16U);
+
     [[nodiscard]] constexpr AppMode mode() const noexcept { return mode_; }
+
     [[nodiscard]] constexpr bool running() const noexcept { return running_; }
 
 private:

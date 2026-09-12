@@ -22,19 +22,27 @@ public:
     BattleData(const resource::DataRoot& data_root, std::int16_t battle_id);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] std::int16_t battle_id() const noexcept { return battle_id_; }
+
     [[nodiscard]] std::int16_t battlefield_id() const noexcept { return definition_[6U]; }
+
     [[nodiscard]] std::int16_t music_id() const noexcept { return definition_[8U]; }
+
     [[nodiscard]] std::span<const std::int16_t, kBattleDefinitionWords> definition() const noexcept {
         return definition_;
     }
+
     [[nodiscard]] std::span<const std::int16_t, kBattlefieldWords> battlefield() const noexcept {
         return battlefield_;
     }
+
     [[nodiscard]] std::span<const std::int16_t, kBattleOccupancyCells> occupancy() const noexcept {
         return occupancy_;
     }
+
     [[nodiscard]] std::span<std::int16_t, kBattleOccupancyCells> occupancy() noexcept {
         return occupancy_;
     }

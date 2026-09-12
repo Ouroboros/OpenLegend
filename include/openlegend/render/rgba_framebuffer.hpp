@@ -16,15 +16,22 @@ public:
     static constexpr int maximum_scale = 64;
 
     RgbaFramebuffer();
+
     RgbaFramebuffer(int logical_width, int logical_height);
 
     [[nodiscard]] bool set_dimensions(
         int logical_width, int logical_height, int scale);
+
     [[nodiscard]] bool set_scale(int scale);
+
     [[nodiscard]] int scale() const noexcept { return scale_; }
+
     [[nodiscard]] int logical_width() const noexcept { return logical_width_; }
+
     [[nodiscard]] int logical_height() const noexcept { return logical_height_; }
+
     [[nodiscard]] int pixel_width() const noexcept { return logical_width_ * scale_; }
+
     [[nodiscard]] int pixel_height() const noexcept { return logical_height_ * scale_; }
 
     void clear(compat::Rgba8 color) noexcept;
@@ -51,14 +58,18 @@ public:
         compat::Rgba8 color) noexcept;
 
     [[nodiscard]] bool blend_pixel(int x, int y, compat::Rgba8 color) noexcept;
+
     [[nodiscard]] bool blend_physical_pixel(
         int x, int y, compat::Rgba8 color) noexcept;
 
     [[nodiscard]] std::uint8_t* row(int y) noexcept;
+
     [[nodiscard]] const std::uint8_t* row(int y) const noexcept;
+
     [[nodiscard]] std::span<std::uint8_t> pixels() noexcept {
         return {pixels_.data(), pixels_.size()};
     }
+
     [[nodiscard]] std::span<const std::uint8_t> pixels() const noexcept {
         return {pixels_.data(), pixels_.size()};
     }

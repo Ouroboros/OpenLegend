@@ -42,6 +42,7 @@ public:
     }
 
     TemporaryTree(const TemporaryTree&) = delete;
+
     TemporaryTree& operator=(const TemporaryTree&) = delete;
 
     [[nodiscard]] const std::filesystem::path& executable_directory() const noexcept {

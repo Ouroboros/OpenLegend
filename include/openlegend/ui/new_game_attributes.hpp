@@ -19,6 +19,7 @@ public:
         model::RoleRecord& protagonist, random::LegacyRandom& random) noexcept;
 
     [[nodiscard]] AttributeRollStatus handle_key(std::uint8_t translated_key) noexcept;
+
     [[nodiscard]] bool cheat_active() const noexcept { return cheat_active_; }
 
 private:

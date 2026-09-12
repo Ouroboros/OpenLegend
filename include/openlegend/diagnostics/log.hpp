@@ -27,9 +27,13 @@ enum class LoggingInitializationStatus {
     std::source_location location = std::source_location::current()) noexcept;
 
 void shutdown_logging() noexcept;
+
 void set_minimum_log_level(LogLevel level) noexcept;
+
 [[nodiscard]] LogLevel minimum_log_level() noexcept;
+
 [[nodiscard]] bool logging_to_file() noexcept;
+
 [[nodiscard]] std::string_view log_level_name(LogLevel level) noexcept;
 
 void log_message(

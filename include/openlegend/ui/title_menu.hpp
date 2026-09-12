@@ -34,13 +34,17 @@ struct TitleResult {
 class TitleMenuController {
 public:
     [[nodiscard]] TitleResult handle_key(std::uint8_t translated_key) noexcept;
+
     void show_please_wait() noexcept { screen_ = TitleScreen::please_wait; }
+
     void show_main() noexcept { screen_ = TitleScreen::main; }
 
     [[nodiscard]] constexpr TitleScreen screen() const noexcept { return screen_; }
+
     [[nodiscard]] constexpr std::uint8_t main_selection() const noexcept {
         return main_selection_;
     }
+
     [[nodiscard]] constexpr std::uint16_t slot_selection() const noexcept {
         return slot_selection_;
     }
@@ -54,15 +58,20 @@ private:
 class TitleMenuRenderer {
 public:
     explicit TitleMenuRenderer(const resource::DataRoot& data_root);
+
     TitleMenuRenderer(
         const resource::DataRoot& data_root,
         const compat::LegacyPalette& startup_palette);
 
     [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+
     [[nodiscard]] const std::string& error() const noexcept { return error_; }
+
     [[nodiscard]] bool render_background(render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render_new_game_wait(
         render::IndexedFramebuffer& framebuffer) const;
+
     [[nodiscard]] bool render(
         const TitleMenuController& controller, render::IndexedFramebuffer& framebuffer) const;
 

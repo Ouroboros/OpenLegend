@@ -18,12 +18,17 @@ namespace openlegend::text {
 class GameText {
 public:
     void append_utf8(std::u8string_view text);
+
     void append_ascii(std::string_view text);
+
     void append_legacy(Big5TextView text);
 
     [[nodiscard]] bool empty() const noexcept { return segments_.empty(); }
+
     [[nodiscard]] std::optional<std::size_t> legacy_width_units() const noexcept;
+
     [[nodiscard]] std::size_t trailing_ascii_digit_count() const noexcept;
+
     void clear() noexcept { segments_.clear(); }
 
 private:
