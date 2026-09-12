@@ -1182,6 +1182,24 @@ void check_event_state_write_helpers(const std::filesystem::path& root) {
     }
 }
 
+void check_expanded_scene_empty_sprite_frames(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::scene::SceneStepKind;
+
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{data_root, snapshot, random, 58};
+    OL_CHECK(session.valid());
+    OL_CHECK(session.scene_x() == 48 && session.scene_y() == 54);
+    OL_CHECK(session.pending().kind == SceneStepKind::fade_from_black);
+    OL_CHECK(snapshot.event_value(58U, 17U, SceneEventField::begin_picture) == 5654);
+    OL_CHECK(snapshot.event_value(58U, 18U, SceneEventField::begin_picture) == 5654);
+
+    openlegend::render::IndexedFramebuffer framebuffer{1280, 720};
+    OL_CHECK(session.render(framebuffer));
+}
+
 void check_scene_render_and_movement(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     auto snapshot = load_baseline(root);
@@ -6084,12 +6102,13 @@ using SceneCheck = void (*)(const std::filesystem::path&);
 int main(const int argc, char* argv[]) {
     const auto shard = openlegend::test::test_shard(argc, argv);
     const auto root = openlegend::test::game_data_root();
-    const std::array<SceneCheck, 48> checks{
+    const std::array<SceneCheck, 49> checks{
         check_assets,
         check_event_dialogue_rendering,
         check_new_game_entry,
         check_event_load_menu,
         check_event_state_write_helpers,
+        check_expanded_scene_empty_sprite_frames,
         check_scene_render_and_movement,
         check_scene_sprite_cache_lifetime,
         check_scene_movement_guards,

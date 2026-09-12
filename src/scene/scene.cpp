@@ -3696,9 +3696,18 @@ bool SceneSession::draw_sprite(
     }
     auto& frame = sprite_frames_[*index];
     if (!frame.has_value()) {
-        frame.emplace(resource::SpriteFrameView::parse(sprites_->entry(*index)));
+        const auto entry = sprites_->entry(*index);
+        if (entry.empty()) {
+            return true;
+        }
+        frame.emplace(resource::SpriteFrameView::parse(entry));
     }
     if (!frame->valid()) {
+        diagnostics::log_error(
+            "scene sprite parse failed scene=" + std::to_string(scene_id_) +
+            " legacy_id=" + std::to_string(legacy_id) +
+            " index=" + std::to_string(*index) +
+            " error=" + frame->error());
         return false;
     }
     render::draw_rle_sprite(framebuffer, *frame, anchor_x, anchor_y);
