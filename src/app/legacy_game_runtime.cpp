@@ -13,6 +13,7 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/text/game_strings.hpp"
+#include "openlegend/time/legacy_clock.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -654,7 +655,10 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 break;
             }
             pending_name_accept_ = true;
-            begin_scene_effect(SceneEffectKind::present, 30U);
+            // sub_27A26 passes 30 to sub_3DB83, which waits 30 / 40 + 1 ticks.
+            begin_scene_effect(
+                SceneEffectKind::present,
+                static_cast<std::uint16_t>(timing::legacy_delay_tick_count(30)));
         }
         break;
     case LegacyGameView::attributes:
