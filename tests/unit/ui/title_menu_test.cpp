@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
@@ -178,7 +179,7 @@ namespace {
 
 namespace input = openlegend::input;
 
-[[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
+NODISCARD std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
     std::uint64_t result = 0xCBF29CE484222325ULL;
     for (const auto byte : bytes) {
         result ^= byte;
@@ -187,7 +188,7 @@ namespace input = openlegend::input;
     return result;
 }
 
-[[nodiscard]] bool prepare_runtime_fixture(
+NODISCARD bool prepare_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
     constexpr std::array<std::string_view, 33> files{
         "TITLE.IDX", "TITLE.GRP", "TITLE.BIG", "DEAD.BIG", "MMAP.COL", "MMAP.IDX",
@@ -216,7 +217,7 @@ namespace input = openlegend::input;
     return true;
 }
 
-[[nodiscard]] bool prepare_statue_runtime_fixture(
+NODISCARD bool prepare_statue_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
@@ -235,7 +236,7 @@ namespace input = openlegend::input;
     return true;
 }
 
-[[nodiscard]] bool prepare_ending_prelude_runtime_fixture(
+NODISCARD bool prepare_ending_prelude_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
@@ -256,7 +257,7 @@ namespace input = openlegend::input;
     return true;
 }
 
-[[nodiscard]] bool prepare_shop_runtime_fixture(
+NODISCARD bool prepare_shop_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
@@ -276,7 +277,7 @@ namespace input = openlegend::input;
     return true;
 }
 
-[[nodiscard]] bool prepare_battle_runtime_fixture(
+NODISCARD bool prepare_battle_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
@@ -298,7 +299,7 @@ namespace input = openlegend::input;
     return true;
 }
 
-[[nodiscard]] bool install_initial_script(
+NODISCARD bool install_initial_script(
     const std::filesystem::path& root,
     const std::span<const std::int16_t> initial_script) {
     std::vector<std::uint8_t> index;
@@ -335,22 +336,22 @@ namespace input = openlegend::input;
     return write(root / "KDEF.IDX", index) && write(root / "KDEF.GRP", group);
 }
 
-[[nodiscard]] bool install_opcode24_initial_script(const std::filesystem::path& root) {
+NODISCARD bool install_opcode24_initial_script(const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 2> script{24, -1};
     return install_initial_script(root, script);
 }
 
-[[nodiscard]] bool install_battle_initial_script(const std::filesystem::path& root) {
+NODISCARD bool install_battle_initial_script(const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 6> script{6, 4, 0, 0, 9, -1};
     return install_initial_script(root, script);
 }
 
-[[nodiscard]] bool install_question_initial_script(const std::filesystem::path& root) {
+NODISCARD bool install_question_initial_script(const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 10> script{5, 0, 0, 9, 0, 0, 11, 0, 0, -1};
     return install_initial_script(root, script);
 }
 
-[[nodiscard]] bool install_picture_animation_initial_script(
+NODISCARD bool install_picture_animation_initial_script(
     const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 12> script{
         27, -1, 5002, 5006,
@@ -360,20 +361,20 @@ namespace input = openlegend::input;
     return install_initial_script(root, script);
 }
 
-[[nodiscard]] bool install_statue_animation_initial_script(
+NODISCARD bool install_statue_animation_initial_script(
     const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 2> script{57, -1};
     return install_initial_script(root, script);
 }
 
-[[nodiscard]] bool install_ending_prelude_initial_script(
+NODISCARD bool install_ending_prelude_initial_script(
     const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 8> script{
         62, 0, 8054, 8128, 1, 8130, -30000, -1};
     return install_initial_script(root, script);
 }
 
-[[nodiscard]] bool install_death_menu_initial_script(const std::filesystem::path& root) {
+NODISCARD bool install_death_menu_initial_script(const std::filesystem::path& root) {
     constexpr std::array<std::int16_t, 3> script{15, 83, -1};
     return install_initial_script(root, script);
 }

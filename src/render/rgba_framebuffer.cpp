@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 
 #include <cstddef>
@@ -9,7 +10,7 @@
 namespace openlegend::render {
 namespace {
 
-[[nodiscard]] bool valid_rectangle(
+NODISCARD bool valid_rectangle(
     const RgbaFramebuffer& framebuffer,
     const int x,
     const int y,

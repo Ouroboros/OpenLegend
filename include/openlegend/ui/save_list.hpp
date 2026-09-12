@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/text/game_text.hpp"
 
@@ -36,7 +37,7 @@ struct SaveListEntry {
     std::string saved_at;
 };
 
-[[nodiscard]] constexpr std::uint16_t save_list_page(
+NODISCARD constexpr std::uint16_t save_list_page(
     const std::uint16_t selection) noexcept {
     return static_cast<std::uint16_t>(selection / kSaveListPageSize);
 }

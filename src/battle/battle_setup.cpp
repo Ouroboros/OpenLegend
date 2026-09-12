@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_setup.hpp"
 
 #include <algorithm>
@@ -57,18 +58,18 @@ constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuse
     {119, 68, 100},
 }};
 
-[[nodiscard]] constexpr std::int16_t wrapping_i16(const std::int32_t value) noexcept {
+NODISCARD constexpr std::int16_t wrapping_i16(const std::int32_t value) noexcept {
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
 }
 
-[[nodiscard]] constexpr std::int32_t wrapping_multiply_i32(
+NODISCARD constexpr std::int32_t wrapping_multiply_i32(
     const std::int32_t lhs,
     const std::int32_t rhs) noexcept {
     return std::bit_cast<std::int32_t>(
         static_cast<std::uint32_t>(lhs) * static_cast<std::uint32_t>(rhs));
 }
 
-[[nodiscard]] constexpr std::optional<std::size_t> legacy_cursor_index(
+NODISCARD constexpr std::optional<std::size_t> legacy_cursor_index(
     const BattlePathCoord coordinate) noexcept {
     const auto index = static_cast<std::int32_t>(coordinate.y) *
             static_cast<std::int32_t>(kBattleExtent) +

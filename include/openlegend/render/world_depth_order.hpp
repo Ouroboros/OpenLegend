@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::render {
 
 inline constexpr int legacy_world_cache_extent = 128;
@@ -25,7 +27,7 @@ struct WorldCacheBounds {
     int end_x{};
     int end_y{};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return begin_x >= 0 && begin_y >= 0 && end_x > begin_x &&
             end_y > begin_y && end_x <= legacy_world_cache_extent &&
             end_y <= legacy_world_cache_extent;
@@ -56,13 +58,13 @@ struct LegacyDepthResult {
     std::vector<LegacyDepthEntry> entries;
     std::string error;
 
-    [[nodiscard]] explicit operator bool() const noexcept { return error.empty(); }
+    NODISCARD explicit operator bool() const noexcept { return error.empty(); }
 };
 
-[[nodiscard]] LegacyDepthResult build_legacy_world_depth_list(
+NODISCARD LegacyDepthResult build_legacy_world_depth_list(
     const LegacyWorldDepthInput& input);
 
-[[nodiscard]] LegacyDepthResult build_legacy_world_depth_list(
+NODISCARD LegacyDepthResult build_legacy_world_depth_list(
     const LegacyWorldDepthInput& input,
     WorldCacheBounds cache_bounds);
 

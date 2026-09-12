@@ -7,6 +7,7 @@
 #include <span>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/model/legacy_types.hpp"
 
@@ -254,11 +255,11 @@ struct LegacyRecord {
 
     std::array<std::uint8_t, ByteCount> bytes{};
 
-    [[nodiscard]] std::int16_t word(const std::size_t index) const noexcept {
+    NODISCARD std::int16_t word(const std::size_t index) const noexcept {
         return compat::read_i16le(std::span<const std::uint8_t>{bytes}, index * 2U);
     }
 
-    [[nodiscard]] std::uint16_t unsigned_word(const std::size_t index) const noexcept {
+    NODISCARD std::uint16_t unsigned_word(const std::size_t index) const noexcept {
         return compat::read_u16le(std::span<const std::uint8_t>{bytes}, index * 2U);
     }
 
@@ -268,41 +269,41 @@ struct LegacyRecord {
         bytes[index * 2U + 1U] = static_cast<std::uint8_t>(bits >> 8U);
     }
 
-    [[nodiscard]] bool operator==(const LegacyRecord&) const = default;
+    NODISCARD bool operator==(const LegacyRecord&) const = default;
 };
 
 struct RangerHeader : LegacyRecord<kRangerHeaderBytes> {
-    [[nodiscard]] CharacterId team_member(std::size_t index) const noexcept;
+    NODISCARD CharacterId team_member(std::size_t index) const noexcept;
 
     void set_team_member(std::size_t index, CharacterId role_id) noexcept;
 
-    [[nodiscard]] ItemId inventory_item(std::size_t index) const noexcept;
+    NODISCARD ItemId inventory_item(std::size_t index) const noexcept;
 
-    [[nodiscard]] std::int16_t inventory_count(std::size_t index) const noexcept;
+    NODISCARD std::int16_t inventory_count(std::size_t index) const noexcept;
 
     void set_inventory(std::size_t index, ItemId item_id, std::int16_t count) noexcept;
 };
 
 struct RoleRecord : LegacyRecord<kRoleRecordBytes> {
-    [[nodiscard]] CharacterId id() const noexcept { return CharacterId{word(role_word::id)}; }
+    NODISCARD CharacterId id() const noexcept { return CharacterId{word(role_word::id)}; }
 };
 
 struct ItemRecord : LegacyRecord<kItemRecordBytes> {
-    [[nodiscard]] ItemId id() const noexcept { return ItemId{word(item_word::id)}; }
+    NODISCARD ItemId id() const noexcept { return ItemId{word(item_word::id)}; }
 };
 
 struct SceneMetadataRecord : LegacyRecord<kSceneMetadataRecordBytes> {
-    [[nodiscard]] SceneId id() const noexcept {
+    NODISCARD SceneId id() const noexcept {
         return SceneId{word(scene_metadata_word::id)};
     }
 };
 
 struct MagicRecord : LegacyRecord<kMagicRecordBytes> {
-    [[nodiscard]] MagicId id() const noexcept { return MagicId{word(magic_word::id)}; }
+    NODISCARD MagicId id() const noexcept { return MagicId{word(magic_word::id)}; }
 };
 
 struct ShopRecord : LegacyRecord<kShopRecordBytes> {
-    [[nodiscard]] ItemId item(std::size_t index) const noexcept {
+    NODISCARD ItemId item(std::size_t index) const noexcept {
         return ItemId{word(shop_word::item_id_begin + index)};
     }
 };
@@ -316,9 +317,9 @@ struct RangerState {
     std::vector<MagicRecord> magics = std::vector<MagicRecord>(kMagicCount);
     std::vector<ShopRecord> shops = std::vector<ShopRecord>(kShopCount);
 
-    [[nodiscard]] bool valid() const noexcept;
+    NODISCARD bool valid() const noexcept;
 
-    [[nodiscard]] bool operator==(const RangerState&) const = default;
+    NODISCARD bool operator==(const RangerState&) const = default;
 };
 
 struct GameSnapshot {
@@ -328,44 +329,44 @@ struct GameSnapshot {
     std::array<std::uint32_t, kSceneCount> scene_event_ends{};
     std::vector<std::uint8_t> scene_events;
 
-    [[nodiscard]] bool valid() const noexcept;
+    NODISCARD bool valid() const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> scene_value(
+    NODISCARD std::optional<std::int16_t> scene_value(
         std::size_t scene, SceneLayer layer, std::size_t linear_tile) const noexcept;
 
-    [[nodiscard]] bool set_scene_value(
+    NODISCARD bool set_scene_value(
         std::size_t scene,
         SceneLayer layer,
         std::size_t linear_tile,
         std::int16_t value) noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> event_value(
+    NODISCARD std::optional<std::int16_t> event_value(
         std::size_t scene, std::size_t event, SceneEventField field) const noexcept;
 
-    [[nodiscard]] bool set_event_value(
+    NODISCARD bool set_event_value(
         std::size_t scene,
         std::size_t event,
         SceneEventField field,
         std::int16_t value) noexcept;
 
-    [[nodiscard]] bool operator==(const GameSnapshot&) const = default;
+    NODISCARD bool operator==(const GameSnapshot&) const = default;
 };
 
 class GameState {
 public:
-    [[nodiscard]] bool import_snapshot(GameSnapshot snapshot);
+    NODISCARD bool import_snapshot(GameSnapshot snapshot);
 
-    [[nodiscard]] bool loaded() const noexcept { return snapshot_.has_value(); }
+    NODISCARD bool loaded() const noexcept { return snapshot_.has_value(); }
 
-    [[nodiscard]] const RangerState* ranger() const noexcept;
+    NODISCARD const RangerState* ranger() const noexcept;
 
-    [[nodiscard]] RangerState* ranger() noexcept;
+    NODISCARD RangerState* ranger() noexcept;
 
-    [[nodiscard]] const GameSnapshot* snapshot() const noexcept;
+    NODISCARD const GameSnapshot* snapshot() const noexcept;
 
-    [[nodiscard]] GameSnapshot* snapshot() noexcept;
+    NODISCARD GameSnapshot* snapshot() noexcept;
 
-    [[nodiscard]] std::optional<GameSnapshot> export_snapshot() const;
+    NODISCARD std::optional<GameSnapshot> export_snapshot() const;
 
 private:
     std::optional<GameSnapshot> snapshot_;

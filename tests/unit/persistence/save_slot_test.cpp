@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/persistence/save_slot.hpp"
@@ -31,7 +32,7 @@ static_assert(openlegend::model::MagicRecord::word_count == 68U);
 static_assert(openlegend::model::ShopRecord::word_count == 15U);
 static_assert(sizeof(openlegend::model::GameSnapshot) < 4'096U);
 
-[[nodiscard]] std::vector<std::uint8_t> read_bytes(const std::filesystem::path& path) {
+NODISCARD std::vector<std::uint8_t> read_bytes(const std::filesystem::path& path) {
     const auto file = openlegend::resource::read_binary_file(path);
     OL_CHECK(static_cast<bool>(file));
     return file.bytes;
@@ -46,7 +47,7 @@ void write_bytes(const std::filesystem::path& path, const std::span<const std::u
     OL_CHECK(static_cast<bool>(output));
 }
 
-[[nodiscard]] std::array<std::filesystem::path, 6> paths(const SaveFileSet& files) {
+NODISCARD std::array<std::filesystem::path, 6> paths(const SaveFileSet& files) {
     return {
         files.ranger_index,
         files.ranger_group,
@@ -56,7 +57,7 @@ void write_bytes(const std::filesystem::path& path, const std::span<const std::u
         files.scene_event_group};
 }
 
-[[nodiscard]] SaveFileSet corresponding_file_set(
+NODISCARD SaveFileSet corresponding_file_set(
     const SaveFileSet& source, const std::filesystem::path& root) {
     switch (source.kind) {
     case SaveFileSetKind::baseline:
@@ -165,7 +166,7 @@ void check_baseline_golden(const GameSnapshot& snapshot) {
     OL_CHECK(snapshot.event_value(99U, 199U, SceneEventField::y) == 0);
 }
 
-[[nodiscard]] bool only_offsets_changed(
+NODISCARD bool only_offsets_changed(
     const std::vector<std::uint8_t>& before,
     const std::vector<std::uint8_t>& after,
     const std::span<const std::size_t> allowed_offsets) {

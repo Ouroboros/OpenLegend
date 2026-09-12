@@ -4,12 +4,13 @@
 #include <cstdint>
 #include <optional>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 
 namespace openlegend::render {
 
-[[nodiscard]] constexpr std::optional<std::size_t> legacy_sprite_index(
+NODISCARD constexpr std::optional<std::size_t> legacy_sprite_index(
     const std::uint32_t legacy_id) noexcept {
     if (legacy_id > 0x7FFEU) {
         return std::nullopt;
@@ -17,7 +18,7 @@ namespace openlegend::render {
     return static_cast<std::size_t>(legacy_id / 2U);
 }
 
-[[nodiscard]] constexpr std::optional<std::size_t> legacy_item_sprite_index(
+NODISCARD constexpr std::optional<std::size_t> legacy_item_sprite_index(
     const std::int16_t item_id) noexcept {
     if (item_id < 0) {
         return std::nullopt;

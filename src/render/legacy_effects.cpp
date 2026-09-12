@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 
 #include <algorithm>
@@ -9,7 +10,7 @@
 namespace openlegend::render {
 namespace {
 
-[[nodiscard]] bool apply_shadow_runs(
+NODISCARD bool apply_shadow_runs(
     const std::span<std::uint8_t> pixels,
     const std::span<const std::uint16_t> alternating_zero_skip_runs,
     const int byte_offset) noexcept {
@@ -84,7 +85,7 @@ namespace {
     return true;
 }
 
-[[nodiscard]] int positive_remainder(
+NODISCARD int positive_remainder(
     const int value, const int divisor) noexcept {
     const auto remainder = value % divisor;
     return remainder < 0 ? remainder + divisor : remainder;

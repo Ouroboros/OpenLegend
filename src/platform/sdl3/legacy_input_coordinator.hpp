@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/runtime_platform.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_keyboard.hpp"
@@ -39,7 +40,7 @@ public:
         input::KeyRepeatController& key_repeat,
         std::chrono::steady_clock::time_point now) const noexcept;
 
-    [[nodiscard]] bool waits_for_menu_input() const noexcept;
+    NODISCARD bool waits_for_menu_input() const noexcept;
 
 private:
     void synchronize();

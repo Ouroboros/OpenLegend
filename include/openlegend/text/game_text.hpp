@@ -9,11 +9,12 @@
 #include <variant>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/text/big5.hpp"
 
 namespace openlegend::text {
 
-[[nodiscard]] std::u8string utf8_from_ascii(std::string_view text);
+NODISCARD std::u8string utf8_from_ascii(std::string_view text);
 
 class GameText {
 public:
@@ -23,11 +24,11 @@ public:
 
     void append_legacy(Big5TextView text);
 
-    [[nodiscard]] bool empty() const noexcept { return segments_.empty(); }
+    NODISCARD bool empty() const noexcept { return segments_.empty(); }
 
-    [[nodiscard]] std::optional<std::size_t> legacy_width_units() const noexcept;
+    NODISCARD std::optional<std::size_t> legacy_width_units() const noexcept;
 
-    [[nodiscard]] std::size_t trailing_ascii_digit_count() const noexcept;
+    NODISCARD std::size_t trailing_ascii_digit_count() const noexcept;
 
     void clear() noexcept { segments_.clear(); }
 
@@ -41,7 +42,7 @@ private:
         std::vector<std::uint8_t>& encoded);
 };
 
-[[nodiscard]] bool encode_game_text(
+NODISCARD bool encode_game_text(
     const GameText& text,
     std::vector<std::uint8_t>& encoded);
 

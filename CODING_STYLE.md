@@ -11,9 +11,9 @@
 头文件示例：
 
 ```cpp
-[[nodiscard]] bool valid() const noexcept;
+NODISCARD bool valid() const noexcept;
 
-[[nodiscard]] int scale() const noexcept;
+NODISCARD int scale() const noexcept;
 
 void clear();
 ```
@@ -32,11 +32,23 @@ void Renderer::clear() {
 
 禁止把相邻函数紧贴书写，也不使用两个或更多连续空行分隔函数。
 
-## 2. 按完整职责拆分代码
+## 2. 使用统一属性宏
+
+第一方 C++ 代码不得直接书写 `[[nodiscard]]`。需要要求调用方消费返回值时，必须直接包含 `openlegend/attributes.hpp` 并使用统一的 `NODISCARD` 宏：
+
+```cpp
+#include "openlegend/attributes.hpp"
+
+NODISCARD bool valid() const noexcept;
+```
+
+`NODISCARD` 只统一属性写法，不改变哪些返回值必须检查；已有可失败的 `bool` 渲染、绘制、加载和保存接口继续保留该语义。
+
+## 3. 按完整职责拆分代码
 
 代码必须围绕完整、可说明的职责组织，既不得过度集中，也不得过度分散。
 
-### 2.1 避免过度集中
+### 3.1 避免过度集中
 
 一个函数、类或文件不得同时承担多个可独立描述、具有各自状态或生命周期的职责。出现以下情况时应拆分：
 
@@ -46,7 +58,7 @@ void Renderer::clear() {
 
 拆分后，入口函数只负责创建依赖、连接模块和返回结果，不直接实现各子系统细节。
 
-### 2.2 避免过度分散
+### 3.2 避免过度分散
 
 不得仅为减少文件或函数行数而拆分代码。出现以下情况时应保留在所属模块内部：
 
@@ -56,7 +68,7 @@ void Renderer::clear() {
 
 私有策略、局部数据结构和模块专用 helper 优先保留在所属 `.cpp` 的私有实现中，不采用“一个 struct 一个文件”或“一个 helper 一个文件”的拆分方式。
 
-### 2.3 拆分判断
+### 3.3 拆分判断
 
 新增或重构代码时按以下顺序判断：
 

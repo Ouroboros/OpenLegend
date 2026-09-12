@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 
 namespace openlegend::compat {
@@ -135,9 +136,9 @@ class RuntimePlatform {
 public:
     virtual ~RuntimePlatform() = default;
 
-    [[nodiscard]] virtual bool poll_event(HostEvent& event) = 0;
+    NODISCARD virtual bool poll_event(HostEvent& event) = 0;
 
-    [[nodiscard]] virtual bool present(
+    NODISCARD virtual bool present(
         RgbaFrameView frame, RgbaFrameView modern_ui) = 0;
 
     virtual void delay(std::chrono::milliseconds duration) = 0;

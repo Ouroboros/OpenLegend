@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::ui {
 
 enum class DeathMenuScreen {
@@ -25,23 +27,23 @@ struct DeathMenuResult {
 
 class DeathMenuController {
 public:
-    [[nodiscard]] DeathMenuResult handle_key(std::uint8_t translated_key) noexcept;
+    NODISCARD DeathMenuResult handle_key(std::uint8_t translated_key) noexcept;
 
     void reset() noexcept;
 
-    [[nodiscard]] constexpr DeathMenuScreen screen() const noexcept {
+    NODISCARD constexpr DeathMenuScreen screen() const noexcept {
         return screen_;
     }
 
-    [[nodiscard]] constexpr std::uint8_t main_selection() const noexcept {
+    NODISCARD constexpr std::uint8_t main_selection() const noexcept {
         return main_selection_;
     }
 
-    [[nodiscard]] constexpr std::uint16_t slot_selection() const noexcept {
+    NODISCARD constexpr std::uint16_t slot_selection() const noexcept {
         return slot_selection_;
     }
 
-    [[nodiscard]] constexpr bool save_list_active() const noexcept {
+    NODISCARD constexpr bool save_list_active() const noexcept {
         return screen_ == DeathMenuScreen::load_slots ||
             screen_ == DeathMenuScreen::delete_confirmation;
     }

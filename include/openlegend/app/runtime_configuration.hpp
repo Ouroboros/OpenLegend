@@ -11,13 +11,14 @@
 #include <string_view>
 #include <system_error>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/diagnostics/log.hpp"
 
 namespace openlegend::app {
 
 inline constexpr std::string_view kConfigurationFilename = "openlegend.toml";
 
-[[nodiscard]] std::filesystem::path path_from_utf8(std::string_view value);
+NODISCARD std::filesystem::path path_from_utf8(std::string_view value);
 
 enum class DataDirectorySource {
     launch_directory,
@@ -74,24 +75,24 @@ struct PathsConfigurationLoadResult {
     SaveDirectoryConfigurationLoadResult save_directory;
 };
 
-[[nodiscard]] DataDirectoryResolution resolve_data_directory(
+NODISCARD DataDirectoryResolution resolve_data_directory(
     std::span<const std::string_view> arguments,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& launch_directory);
 
-[[nodiscard]] bool activate_data_directory(
+NODISCARD bool activate_data_directory(
     const std::filesystem::path& directory, std::error_code& error) noexcept;
 
-[[nodiscard]] std::string_view data_directory_status_message(DataDirectoryStatus status) noexcept;
+NODISCARD std::string_view data_directory_status_message(DataDirectoryStatus status) noexcept;
 
-[[nodiscard]] std::string_view save_directory_configuration_status_message(
+NODISCARD std::string_view save_directory_configuration_status_message(
     SaveDirectoryConfigurationStatus status) noexcept;
 
 struct WindowSize {
     int width{};
     int height{};
 
-    [[nodiscard]] bool operator==(const WindowSize&) const = default;
+    NODISCARD bool operator==(const WindowSize&) const = default;
 };
 
 enum class WindowConfigurationStatus {
@@ -122,16 +123,16 @@ struct WindowConfigurationLoadResult {
     std::string detail;
 };
 
-[[nodiscard]] WindowConfigurationLoadResult load_window_configuration(
+NODISCARD WindowConfigurationLoadResult load_window_configuration(
     const std::filesystem::path& configuration_path, WindowSize fallback);
 
-[[nodiscard]] WindowConfigurationStatus save_window_configuration(
+NODISCARD WindowConfigurationStatus save_window_configuration(
     const std::filesystem::path& configuration_path,
     WindowSize size,
     bool maximized,
     std::string& detail);
 
-[[nodiscard]] std::string_view window_configuration_status_message(
+NODISCARD std::string_view window_configuration_status_message(
     WindowConfigurationStatus status) noexcept;
 
 inline constexpr int kMinimumGameWidth = 320;
@@ -145,7 +146,7 @@ struct GameResolution {
     int width{kMinimumGameWidth};
     int height{kMinimumGameHeight};
 
-    [[nodiscard]] bool operator==(const GameResolution&) const = default;
+    NODISCARD bool operator==(const GameResolution&) const = default;
 };
 
 enum class DisplayConfigurationStatus {
@@ -178,10 +179,10 @@ struct DisplayConfigurationLoadResult {
     std::string detail;
 };
 
-[[nodiscard]] DisplayConfigurationLoadResult load_display_configuration(
+NODISCARD DisplayConfigurationLoadResult load_display_configuration(
     const std::filesystem::path& configuration_path);
 
-[[nodiscard]] std::string_view display_configuration_status_message(
+NODISCARD std::string_view display_configuration_status_message(
     DisplayConfigurationStatus status) noexcept;
 
 enum class InputConfigurationStatus {
@@ -216,13 +217,13 @@ struct InputConfigurationLoadResult {
     std::string detail;
 };
 
-[[nodiscard]] InputConfigurationLoadResult load_input_configuration(
+NODISCARD InputConfigurationLoadResult load_input_configuration(
     const std::filesystem::path& configuration_path,
     std::chrono::milliseconds fallback_movement_repeat_delay,
     std::chrono::milliseconds fallback_menu_repeat_delay,
     std::chrono::milliseconds fallback_menu_repeat_interval);
 
-[[nodiscard]] std::string_view input_configuration_status_message(
+NODISCARD std::string_view input_configuration_status_message(
     InputConfigurationStatus status) noexcept;
 
 enum class TimingConfigurationStatus {
@@ -247,11 +248,11 @@ struct TimingConfigurationLoadResult {
     std::string detail;
 };
 
-[[nodiscard]] TimingConfigurationLoadResult load_timing_configuration(
+NODISCARD TimingConfigurationLoadResult load_timing_configuration(
     const std::filesystem::path& configuration_path,
     std::chrono::nanoseconds fallback_fade_frame_delay);
 
-[[nodiscard]] std::string_view timing_configuration_status_message(
+NODISCARD std::string_view timing_configuration_status_message(
     TimingConfigurationStatus status) noexcept;
 
 enum class LoggingConfigurationStatus {
@@ -279,7 +280,7 @@ struct LoggingConfigurationLoadResult {
     std::string detail;
 };
 
-[[nodiscard]] LoggingConfigurationLoadResult load_logging_configuration(
+NODISCARD LoggingConfigurationLoadResult load_logging_configuration(
     const std::filesystem::path& configuration_path,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& fallback_path,
@@ -314,19 +315,19 @@ struct RuntimeConfiguration {
     };
 };
 
-[[nodiscard]] RuntimeConfiguration load_runtime_configuration(
+NODISCARD RuntimeConfiguration load_runtime_configuration(
     std::span<const std::string_view> arguments,
     const std::filesystem::path& configuration_path,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& launch_directory,
     const RuntimeConfigurationDefaults& defaults);
 
-[[nodiscard]] std::filesystem::path make_session_log_path(
+NODISCARD std::filesystem::path make_session_log_path(
     const std::filesystem::path& configured_path,
     std::chrono::system_clock::time_point launch_time,
     std::uint64_t process_id);
 
-[[nodiscard]] std::string_view logging_configuration_status_message(
+NODISCARD std::string_view logging_configuration_status_message(
     LoggingConfigurationStatus status) noexcept;
 
 }  // namespace openlegend::app

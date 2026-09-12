@@ -24,6 +24,7 @@
 #include <SDL3/SDL.h>
 
 #include "legacy_runtime_loop.hpp"
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/display_resolution.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
@@ -40,7 +41,7 @@ constexpr std::chrono::milliseconds kDefaultMenuRepeatDelay{500};
 constexpr std::chrono::milliseconds kDefaultMenuRepeatInterval{55};
 constexpr std::chrono::nanoseconds kDefaultFadeFrameDelay{14'268'123};
 
-[[nodiscard]] std::uint64_t current_process_id() noexcept {
+NODISCARD std::uint64_t current_process_id() noexcept {
 #if defined(_WIN32)
     return static_cast<std::uint64_t>(GetCurrentProcessId());
 #else
@@ -53,14 +54,14 @@ public:
     ~LoggingLifetime() { diagnostics::shutdown_logging(); }
 };
 
-[[nodiscard]] std::string path_utf8(const std::filesystem::path& path) {
+NODISCARD std::string path_utf8(const std::filesystem::path& path) {
     const auto value = path.generic_u8string();
     return {
         reinterpret_cast<const char*>(value.data()),
         reinterpret_cast<const char*>(value.data() + value.size())};
 }
 
-[[nodiscard]] std::string_view logging_initialization_status_message(
+NODISCARD std::string_view logging_initialization_status_message(
     const diagnostics::LoggingInitializationStatus status) noexcept {
     using diagnostics::LoggingInitializationStatus;
     switch (status) {
@@ -74,7 +75,7 @@ public:
 }
 
 #if defined(_WIN32)
-[[nodiscard]] std::optional<std::string> utf8_from_wide(const wchar_t* value) {
+NODISCARD std::optional<std::string> utf8_from_wide(const wchar_t* value) {
     if (value == nullptr) {
         return std::nullopt;
     }
@@ -100,7 +101,7 @@ public:
 }
 #endif
 
-[[nodiscard]] bool collect_command_arguments(
+NODISCARD bool collect_command_arguments(
     const int argument_count,
     const char* const* argument_values,
     std::vector<std::string>& storage,
@@ -190,7 +191,7 @@ void initialize_session_logging(
         " log=" + path_utf8(session_log_path));
 }
 
-[[nodiscard]] int validate_runtime_configuration(
+NODISCARD int validate_runtime_configuration(
     const app::RuntimeConfiguration& configuration,
     const app::DisplayResolutionResult& display_resolution) {
     if (configuration.paths.data_directory.status !=
@@ -239,7 +240,7 @@ void initialize_session_logging(
     return 0;
 }
 
-[[nodiscard]] std::optional<std::filesystem::path> resolve_save_directory(
+NODISCARD std::optional<std::filesystem::path> resolve_save_directory(
     const app::RuntimeConfiguration& configuration) {
     const auto& data_directory = configuration.paths.data_directory;
     const auto& save_configuration = configuration.paths.save_directory;

@@ -5,6 +5,7 @@
 #include <optional>
 #include <span>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/save_list.hpp"
 
 namespace openlegend::ui {
@@ -79,7 +80,7 @@ public:
     explicit GameMenuController(GameMenuContext context = GameMenuContext::world) noexcept
         : context_(context) {}
 
-    [[nodiscard]] GameMenuResult handle_key(std::uint8_t translated_key) noexcept;
+    NODISCARD GameMenuResult handle_key(std::uint8_t translated_key) noexcept;
 
     void set_context(GameMenuContext context) noexcept;
 
@@ -112,46 +113,46 @@ public:
 
     void show_notice(GameMenuNotice notice) noexcept;
 
-    [[nodiscard]] constexpr GameMenuContext context() const noexcept { return context_; }
+    NODISCARD constexpr GameMenuContext context() const noexcept { return context_; }
 
-    [[nodiscard]] constexpr GameMenuScreen screen() const noexcept { return screen_; }
+    NODISCARD constexpr GameMenuScreen screen() const noexcept { return screen_; }
 
-    [[nodiscard]] constexpr std::uint8_t selection() const noexcept { return selection_; }
+    NODISCARD constexpr std::uint8_t selection() const noexcept { return selection_; }
 
-    [[nodiscard]] constexpr std::uint8_t party_selection() const noexcept {
+    NODISCARD constexpr std::uint8_t party_selection() const noexcept {
         return party_selection_;
     }
 
-    [[nodiscard]] constexpr GameMenuCommand pending_party_command() const noexcept {
+    NODISCARD constexpr GameMenuCommand pending_party_command() const noexcept {
         return pending_party_command_;
     }
 
-    [[nodiscard]] constexpr GameMenuPartyStage party_stage() const noexcept {
+    NODISCARD constexpr GameMenuPartyStage party_stage() const noexcept {
         return party_stage_;
     }
 
-    [[nodiscard]] constexpr std::span<const std::uint8_t> party_options() const noexcept {
+    NODISCARD constexpr std::span<const std::uint8_t> party_options() const noexcept {
         return std::span<const std::uint8_t>{party_options_}.first(party_option_count_);
     }
 
-    [[nodiscard]] constexpr std::uint8_t selected_party_slot() const noexcept {
+    NODISCARD constexpr std::uint8_t selected_party_slot() const noexcept {
         return party_options_[party_selection_];
     }
 
-    [[nodiscard]] constexpr std::optional<std::int32_t> party_action_amount() const noexcept {
+    NODISCARD constexpr std::optional<std::int32_t> party_action_amount() const noexcept {
         return party_action_amount_;
     }
 
-    [[nodiscard]] constexpr std::uint16_t item_selection() const noexcept {
+    NODISCARD constexpr std::uint16_t item_selection() const noexcept {
         return static_cast<std::uint16_t>(
             5 * (item_page_ + item_row_) + item_column_);
     }
 
-    [[nodiscard]] constexpr std::span<const std::int16_t> inventory_slots() const noexcept {
+    NODISCARD constexpr std::span<const std::int16_t> inventory_slots() const noexcept {
         return std::span<const std::int16_t>{inventory_slots_}.first(inventory_count_);
     }
 
-    [[nodiscard]] constexpr std::optional<std::uint16_t>
+    NODISCARD constexpr std::optional<std::uint16_t>
         selected_inventory_slot() const noexcept {
         const auto selection = item_selection();
         if (selection >= inventory_count_ || inventory_slots_[selection] < 0) {
@@ -160,42 +161,42 @@ public:
         return static_cast<std::uint16_t>(inventory_slots_[selection]);
     }
 
-    [[nodiscard]] constexpr std::uint8_t item_page() const noexcept { return item_page_; }
+    NODISCARD constexpr std::uint8_t item_page() const noexcept { return item_page_; }
 
-    [[nodiscard]] constexpr std::uint8_t item_row() const noexcept { return item_row_; }
+    NODISCARD constexpr std::uint8_t item_row() const noexcept { return item_row_; }
 
-    [[nodiscard]] constexpr std::uint8_t item_column() const noexcept { return item_column_; }
+    NODISCARD constexpr std::uint8_t item_column() const noexcept { return item_column_; }
 
-    [[nodiscard]] constexpr GameMenuItemTargetKind item_target_kind() const noexcept {
+    NODISCARD constexpr GameMenuItemTargetKind item_target_kind() const noexcept {
         return item_target_kind_;
     }
 
-    [[nodiscard]] constexpr GameMenuItemConfirmation item_confirmation() const noexcept {
+    NODISCARD constexpr GameMenuItemConfirmation item_confirmation() const noexcept {
         return item_confirmation_;
     }
 
-    [[nodiscard]] constexpr GameMenuNotice notice() const noexcept { return notice_; }
+    NODISCARD constexpr GameMenuNotice notice() const noexcept { return notice_; }
 
-    [[nodiscard]] constexpr std::uint8_t status_page() const noexcept { return status_page_; }
+    NODISCARD constexpr std::uint8_t status_page() const noexcept { return status_page_; }
 
-    [[nodiscard]] constexpr std::uint8_t system_selection() const noexcept {
+    NODISCARD constexpr std::uint8_t system_selection() const noexcept {
         return system_selection_;
     }
 
-    [[nodiscard]] constexpr std::uint16_t slot_selection() const noexcept {
+    NODISCARD constexpr std::uint16_t slot_selection() const noexcept {
         return slot_selection_;
     }
 
-    [[nodiscard]] constexpr GameMenuScreen delete_return_screen() const noexcept {
+    NODISCARD constexpr GameMenuScreen delete_return_screen() const noexcept {
         return delete_return_screen_;
     }
 
-    [[nodiscard]] constexpr std::uint8_t visible_main_items() const noexcept {
+    NODISCARD constexpr std::uint8_t visible_main_items() const noexcept {
         return context_ == GameMenuContext::world ? 6U : 4U;
     }
 
 private:
-    [[nodiscard]] GameMenuResult confirm_main() noexcept;
+    NODISCARD GameMenuResult confirm_main() noexcept;
 
     void set_all_party_options() noexcept;
 

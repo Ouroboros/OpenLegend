@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 
 #include <algorithm>
@@ -40,11 +41,11 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     framebuffer.set_palette(palette);
 }
 
-[[nodiscard]] persistence::SaveSlot save_slot(const std::uint16_t slot) noexcept {
+NODISCARD persistence::SaveSlot save_slot(const std::uint16_t slot) noexcept {
     return static_cast<persistence::SaveSlot>(slot);
 }
 
-[[nodiscard]] std::vector<std::uint8_t> legacy_field(
+NODISCARD std::vector<std::uint8_t> legacy_field(
     const std::span<const std::uint8_t> bytes,
     const std::size_t begin,
     const std::size_t maximum) {
@@ -53,7 +54,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return std::vector<std::uint8_t>(field.begin(), end);
 }
 
-[[nodiscard]] text::GameText save_location(
+NODISCARD text::GameText save_location(
     const model::RangerState& ranger) {
     const auto world_x = ranger.header.word(model::header_word::main_map_x);
     const auto world_y = ranger.header.word(model::header_word::main_map_y);
@@ -98,7 +99,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return location;
 }
 
-[[nodiscard]] std::string save_timestamp(const std::filesystem::path& path) {
+NODISCARD std::string save_timestamp(const std::filesystem::path& path) {
     std::error_code error;
     const auto file_time = std::filesystem::last_write_time(path, error);
     if (error) {
@@ -125,7 +126,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return text.data();
 }
 
-[[nodiscard]] std::string_view view_name(const LegacyGameView view) noexcept {
+NODISCARD std::string_view view_name(const LegacyGameView view) noexcept {
     switch (view) {
     case LegacyGameView::title: return "title";
     case LegacyGameView::name_entry: return "name_entry";
@@ -140,7 +141,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return "unknown";
 }
 
-[[nodiscard]] std::string_view world_direction_name(
+NODISCARD std::string_view world_direction_name(
     const world::WorldDirection direction) noexcept {
     switch (direction) {
     case world::WorldDirection::up: return "up";
@@ -151,7 +152,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return "unknown";
 }
 
-[[nodiscard]] world::WorldDirection opposite_world_direction(
+NODISCARD world::WorldDirection opposite_world_direction(
     const world::WorldDirection direction) noexcept {
     switch (direction) {
     case world::WorldDirection::up: return world::WorldDirection::down;
@@ -162,7 +163,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return world::WorldDirection::down;
 }
 
-[[nodiscard]] std::string_view world_step_name(const world::WorldStepKind kind) noexcept {
+NODISCARD std::string_view world_step_name(const world::WorldStepKind kind) noexcept {
     switch (kind) {
     case world::WorldStepKind::stay: return "stay";
     case world::WorldStepKind::moved: return "moved";
@@ -172,7 +173,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return "unknown";
 }
 
-[[nodiscard]] std::string_view scene_step_name(const scene::SceneStepKind kind) noexcept {
+NODISCARD std::string_view scene_step_name(const scene::SceneStepKind kind) noexcept {
     switch (kind) {
     case scene::SceneStepKind::stay: return "stay";
     case scene::SceneStepKind::moved: return "moved";
@@ -196,7 +197,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return "unknown";
 }
 
-[[nodiscard]] std::vector<std::uint8_t> legacy_ascii(const std::string_view text) {
+NODISCARD std::vector<std::uint8_t> legacy_ascii(const std::string_view text) {
     std::vector<std::uint8_t> result;
     result.reserve(text.size());
     for (const auto character : text) {
@@ -206,7 +207,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return result;
 }
 
-[[nodiscard]] constexpr LegacyKeyStateReset menu_key_state_reset(
+NODISCARD constexpr LegacyKeyStateReset menu_key_state_reset(
     const std::uint8_t translated_key) noexcept {
     if (translated_key == input::legacy_key::enter ||
         translated_key == input::legacy_key::space ||
@@ -221,7 +222,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return LegacyKeyStateReset::none;
 }
 
-[[nodiscard]] constexpr LegacyKeyStateReset main_game_menu_key_state_reset(
+NODISCARD constexpr LegacyKeyStateReset main_game_menu_key_state_reset(
     const std::uint8_t translated_key) noexcept {
     if (translated_key == input::legacy_key::down ||
         translated_key == input::legacy_key::up) {
@@ -230,7 +231,7 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     return menu_key_state_reset(translated_key);
 }
 
-[[nodiscard]] constexpr bool is_item_page_navigation_key(
+NODISCARD constexpr bool is_item_page_navigation_key(
     const std::uint8_t translated_key) noexcept {
     return translated_key == input::legacy_key::down ||
         translated_key == input::legacy_key::page_down ||
@@ -240,13 +241,13 @@ void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
         translated_key == input::legacy_key::page_up;
 }
 
-[[nodiscard]] constexpr bool is_item_party_navigation_key(
+NODISCARD constexpr bool is_item_party_navigation_key(
     const std::uint8_t translated_key) noexcept {
     return translated_key == input::legacy_key::down ||
         translated_key == input::legacy_key::up;
 }
 
-[[nodiscard]] bool save_slot_deletable(
+NODISCARD bool save_slot_deletable(
     const std::span<const ui::SaveListEntry> entries,
     const std::uint16_t selection) noexcept {
     const auto row = static_cast<std::size_t>(selection % ui::kSaveListPageSize);

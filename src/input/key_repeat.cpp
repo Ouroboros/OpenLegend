@@ -1,9 +1,10 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/input/key_repeat.hpp"
 
 namespace openlegend::input {
 namespace {
 
-[[nodiscard]] bool is_cardinal_direction_key(const compat::HostKey key) noexcept {
+NODISCARD bool is_cardinal_direction_key(const compat::HostKey key) noexcept {
     using compat::HostKey;
     switch (key) {
     case HostKey::left:
@@ -20,24 +21,24 @@ namespace {
     }
 }
 
-[[nodiscard]] bool is_page_navigation_key(const compat::HostKey key) noexcept {
+NODISCARD bool is_page_navigation_key(const compat::HostKey key) noexcept {
     using compat::HostKey;
     return key == HostKey::page_up || key == HostKey::page_down ||
         key == HostKey::keypad_9 || key == HostKey::keypad_3;
 }
 
-[[nodiscard]] bool is_movement_direction_key(const compat::HostKey key) noexcept {
+NODISCARD bool is_movement_direction_key(const compat::HostKey key) noexcept {
     using compat::HostKey;
     return is_cardinal_direction_key(key) || is_page_navigation_key(key) ||
         key == HostKey::home || key == HostKey::end ||
         key == HostKey::keypad_7 || key == HostKey::keypad_1;
 }
 
-[[nodiscard]] bool is_menu_repeat_key(const compat::HostKey key) noexcept {
+NODISCARD bool is_menu_repeat_key(const compat::HostKey key) noexcept {
     return is_cardinal_direction_key(key) || is_page_navigation_key(key);
 }
 
-[[nodiscard]] bool is_save_list_single_press_key(
+NODISCARD bool is_save_list_single_press_key(
     const compat::HostKey key) noexcept {
     using compat::HostKey;
     return key == HostKey::home || key == HostKey::end ||
@@ -45,7 +46,7 @@ namespace {
 }
 
 template <std::size_t Capacity>
-[[nodiscard]] bool key_held(
+NODISCARD bool key_held(
     const std::array<compat::HostKey, Capacity>& keys,
     const std::size_t count,
     const compat::HostKey key) noexcept {
@@ -58,7 +59,7 @@ template <std::size_t Capacity>
 }
 
 template <std::size_t Capacity>
-[[nodiscard]] bool forget_key(
+NODISCARD bool forget_key(
     std::array<compat::HostKey, Capacity>& keys,
     std::size_t& count,
     const compat::HostKey key) noexcept {
@@ -118,7 +119,7 @@ void block_keys(
 }
 
 template <std::size_t Capacity>
-[[nodiscard]] std::optional<compat::HostKey> active_key(
+NODISCARD std::optional<compat::HostKey> active_key(
     const std::array<compat::HostKey, Capacity>& keys,
     const std::size_t count) noexcept {
     if (count == 0U) {
@@ -127,13 +128,13 @@ template <std::size_t Capacity>
     return keys[count - 1U];
 }
 
-[[nodiscard]] bool is_movement_context(
+NODISCARD bool is_movement_context(
     const DirectionRepeatContext context) noexcept {
     return context == DirectionRepeatContext::movement ||
         context == DirectionRepeatContext::battle_cursor;
 }
 
-[[nodiscard]] bool is_menu_context(const DirectionRepeatContext context) noexcept {
+NODISCARD bool is_menu_context(const DirectionRepeatContext context) noexcept {
     return context == DirectionRepeatContext::menu ||
         context == DirectionRepeatContext::save_list;
 }

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
@@ -32,9 +33,9 @@ struct AudioCall {
 
 class RecordingAudio final : public openlegend::audio::LegacyAudioPort {
 public:
-    [[nodiscard]] PlaybackStatus music_status() const noexcept override { return music; }
+    NODISCARD PlaybackStatus music_status() const noexcept override { return music; }
 
-    [[nodiscard]] bool start_music(
+    NODISCARD bool start_music(
         const std::span<const std::uint8_t> xmi,
         const int legacy_volume,
         const int legacy_loop_count) override {
@@ -61,11 +62,11 @@ public:
         music = PlaybackStatus::stopped;
     }
 
-    [[nodiscard]] PlaybackStatus sample_status(const std::size_t slot) const noexcept override {
+    NODISCARD PlaybackStatus sample_status(const std::size_t slot) const noexcept override {
         return slot < samples.size() ? samples[slot] : PlaybackStatus::stopped;
     }
 
-    [[nodiscard]] bool start_sample(
+    NODISCARD bool start_sample(
         const std::size_t slot,
         const std::span<const std::uint8_t> raw_unsigned_mono,
         const std::uint32_t playback_rate,
@@ -114,21 +115,21 @@ private:
     std::vector<AudioCall>& calls_;
 };
 
-[[nodiscard]] std::filesystem::path numbered_name(
+NODISCARD std::filesystem::path numbered_name(
     const char* pattern, const std::size_t index) {
     std::array<char, 20> buffer{};
     static_cast<void>(std::snprintf(buffer.data(), buffer.size(), pattern, index));
     return buffer.data();
 }
 
-[[nodiscard]] std::uint16_t little_u16(
+NODISCARD std::uint16_t little_u16(
     const std::span<const std::uint8_t> bytes, const std::size_t offset) {
     return static_cast<std::uint16_t>(
         static_cast<std::uint16_t>(bytes[offset]) |
         static_cast<std::uint16_t>(static_cast<std::uint16_t>(bytes[offset + 1U]) << 8U));
 }
 
-[[nodiscard]] std::uint32_t little_u32(
+NODISCARD std::uint32_t little_u32(
     const std::span<const std::uint8_t> bytes, const std::size_t offset) {
     return static_cast<std::uint32_t>(bytes[offset]) |
            (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U) |

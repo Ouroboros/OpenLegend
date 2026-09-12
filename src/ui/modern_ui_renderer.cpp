@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/modern_ui_renderer.hpp"
 
 #include <utility>
@@ -9,7 +10,7 @@ namespace palette_colors = render::legacy_color;
 
 constexpr std::uint8_t kPanelAlpha = 96U;
 
-[[nodiscard]] compat::Rgba8 palette_color(
+NODISCARD compat::Rgba8 palette_color(
     const compat::LegacyPalette& palette,
     const render::PaletteIndex index,
     const std::uint8_t alpha = compat::kOpaqueAlpha) noexcept {
@@ -22,7 +23,7 @@ constexpr std::uint8_t kPanelAlpha = 96U;
     };
 }
 
-[[nodiscard]] render::rgba::TextColors rgba_text_colors(
+NODISCARD render::rgba::TextColors rgba_text_colors(
     const compat::LegacyPalette& palette,
     const render::TextColors colors) noexcept {
     return {

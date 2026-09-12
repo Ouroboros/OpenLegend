@@ -3,6 +3,8 @@
 #include <array>
 #include <cstdint>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::render {
 
 using PaletteIndex = std::uint8_t;
@@ -11,7 +13,7 @@ struct TextColors {
     PaletteIndex right_shadow{};
     PaletteIndex foreground{};
 
-    [[nodiscard]] static constexpr TextColors from_legacy_packed(
+    NODISCARD static constexpr TextColors from_legacy_packed(
         const std::uint16_t packed) noexcept {
         return {
             static_cast<PaletteIndex>(packed & 0x00FFU),
@@ -19,7 +21,7 @@ struct TextColors {
         };
     }
 
-    [[nodiscard]] constexpr std::uint16_t legacy_packed() const noexcept {
+    NODISCARD constexpr std::uint16_t legacy_packed() const noexcept {
         return static_cast<std::uint16_t>(
             static_cast<std::uint16_t>(foreground) << 8U |
             static_cast<std::uint16_t>(right_shadow));

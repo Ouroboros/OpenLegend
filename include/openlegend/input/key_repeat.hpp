@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/runtime_platform.hpp"
 
 namespace openlegend::input {
@@ -32,20 +33,20 @@ public:
 
     void set_context(DirectionRepeatContext context, TimePoint now) noexcept;
 
-    [[nodiscard]] bool handle_key_down(
+    NODISCARD bool handle_key_down(
         compat::HostKey key,
         bool host_repeat,
         TimePoint now) noexcept;
 
     void handle_key_up(compat::HostKey key, TimePoint now) noexcept;
 
-    [[nodiscard]] std::optional<compat::HostKey> take_movement_repeat(
+    NODISCARD std::optional<compat::HostKey> take_movement_repeat(
         TimePoint now) noexcept;
 
-    [[nodiscard]] std::optional<compat::HostKey> take_menu_repeat(
+    NODISCARD std::optional<compat::HostKey> take_menu_repeat(
         TimePoint now) noexcept;
 
-    [[nodiscard]] std::optional<std::chrono::nanoseconds> time_until_menu_repeat(
+    NODISCARD std::optional<std::chrono::nanoseconds> time_until_menu_repeat(
         TimePoint now) const noexcept;
 
     void defer_movement_repeat(TimePoint now) noexcept;
@@ -54,7 +55,7 @@ private:
     static constexpr std::size_t kHeldKeyCapacity = 16U;
     static constexpr std::size_t kBlockedKeyCapacity = 32U;
 
-    [[nodiscard]] bool controls_key(compat::HostKey key) const noexcept;
+    NODISCARD bool controls_key(compat::HostKey key) const noexcept;
 
     void block_movement_keys() noexcept;
 

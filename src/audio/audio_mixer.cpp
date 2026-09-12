@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
 
 #include <algorithm>
@@ -21,18 +22,18 @@
 namespace openlegend::audio {
 namespace {
 
-[[nodiscard]] int clamp_volume(const int legacy_volume) noexcept {
+NODISCARD int clamp_volume(const int legacy_volume) noexcept {
     return std::clamp(legacy_volume, 0, kLegacyMaximumVolume);
 }
 
-[[nodiscard]] std::int16_t clamp_sample(const std::int32_t sample) noexcept {
+NODISCARD std::int16_t clamp_sample(const std::int32_t sample) noexcept {
     return static_cast<std::int16_t>(std::clamp(
         sample,
         static_cast<std::int32_t>(std::numeric_limits<std::int16_t>::min()),
         static_cast<std::int32_t>(std::numeric_limits<std::int16_t>::max())));
 }
 
-[[nodiscard]] std::string adl_detail(
+NODISCARD std::string adl_detail(
     ADL_MIDIPlayer* player, const char* fallback) {
     const char* detail = player == nullptr ? adl_errorString() : adl_errorInfo(player);
     return detail == nullptr || *detail == '\0' ? fallback : detail;

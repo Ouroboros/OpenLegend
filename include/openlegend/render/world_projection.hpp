@@ -1,5 +1,7 @@
 #pragma once
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::render {
 
 struct ScreenPoint {
@@ -9,7 +11,7 @@ struct ScreenPoint {
     friend bool operator==(const ScreenPoint&, const ScreenPoint&) = default;
 };
 
-[[nodiscard]] constexpr ScreenPoint project_isometric(
+NODISCARD constexpr ScreenPoint project_isometric(
     const int relative_x,
     const int relative_y,
     const int origin_x,
@@ -19,7 +21,7 @@ struct ScreenPoint {
         origin_y + (relative_x + relative_y) * 9};
 }
 
-[[nodiscard]] constexpr ScreenPoint legacy_world_tile_screen(
+NODISCARD constexpr ScreenPoint legacy_world_tile_screen(
     const int cache_x,
     const int cache_y,
     const int view_cache_x,

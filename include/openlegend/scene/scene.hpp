@@ -12,6 +12,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
@@ -30,24 +31,24 @@ inline constexpr int kSceneMaximumViewOrigin = 36;
 inline constexpr std::size_t kTalkCount = 2'977U;
 inline constexpr std::size_t kEventScriptCount = 1'018U;
 
-[[nodiscard]] std::vector<std::vector<std::uint8_t>> paginate_dialogue(
+NODISCARD std::vector<std::vector<std::uint8_t>> paginate_dialogue(
     std::span<const std::uint8_t> zero_terminated_text);
 
 class SceneAssets {
 public:
     explicit SceneAssets(const resource::DataRoot& data_root);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] std::size_t talk_count() const noexcept { return talks_.entry_count(); }
+    NODISCARD std::size_t talk_count() const noexcept { return talks_.entry_count(); }
 
-    [[nodiscard]] std::size_t script_count() const noexcept { return scripts_.entry_count(); }
+    NODISCARD std::size_t script_count() const noexcept { return scripts_.entry_count(); }
 
-    [[nodiscard]] std::vector<std::uint8_t> talk(std::size_t talk_id) const;
+    NODISCARD std::vector<std::uint8_t> talk(std::size_t talk_id) const;
 
-    [[nodiscard]] std::vector<std::int16_t> script(std::size_t script_id) const;
+    NODISCARD std::vector<std::int16_t> script(std::size_t script_id) const;
 
 private:
     resource::PackedArchive talks_;
@@ -175,31 +176,31 @@ public:
         std::span<const std::uint16_t> fixed_shadow_mask = {},
         std::span<const std::uint16_t> shifted_shadow_mask = {});
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] SceneStepResult tick(
+    NODISCARD SceneStepResult tick(
         std::optional<SceneDirection> direction,
         bool interact_requested,
         bool ui_requested,
         bool skip_player_idle = false);
 
-    [[nodiscard]] SceneStepResult move(SceneDirection direction);
+    NODISCARD SceneStepResult move(SceneDirection direction);
 
-    [[nodiscard]] SceneStepResult interact();
+    NODISCARD SceneStepResult interact();
 
-    [[nodiscard]] SceneStepResult use_item(std::int16_t item_id);
+    NODISCARD SceneStepResult use_item(std::int16_t item_id);
 
-    [[nodiscard]] SceneStepResult use_menu_item(std::int16_t item_id);
+    NODISCARD SceneStepResult use_menu_item(std::int16_t item_id);
 
-    [[nodiscard]] SceneStepResult use_retained_menu_item(std::int16_t item_id);
+    NODISCARD SceneStepResult use_retained_menu_item(std::int16_t item_id);
 
-    [[nodiscard]] SceneStepResult open_ui() noexcept;
+    NODISCARD SceneStepResult open_ui() noexcept;
 
-    [[nodiscard]] SceneStepResult resume(SceneResponse response, int value = -1);
+    NODISCARD SceneStepResult resume(SceneResponse response, int value = -1);
 
-    [[nodiscard]] SceneStepResult begin_event(
+    NODISCARD SceneStepResult begin_event(
         std::int16_t script_id,
         std::int16_t event_index = -1,
         std::int16_t event_x = -1,
@@ -208,31 +209,31 @@ public:
 
     void idle_tick();
 
-    [[nodiscard]] bool render(render::IndexedFramebuffer& framebuffer) const;
+    NODISCARD bool render(render::IndexedFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_map(render::IndexedFramebuffer& framebuffer) const;
+    NODISCARD bool render_map(render::IndexedFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_overlay(render::IndexedFramebuffer& framebuffer) const;
+    NODISCARD bool render_overlay(render::IndexedFramebuffer& framebuffer) const;
 
-    [[nodiscard]] std::int16_t scene_id() const noexcept { return scene_id_; }
+    NODISCARD std::int16_t scene_id() const noexcept { return scene_id_; }
 
-    [[nodiscard]] text::Big5TextView scene_name() const noexcept;
+    NODISCARD text::Big5TextView scene_name() const noexcept;
 
-    [[nodiscard]] int scene_x() const noexcept { return scene_x_; }
+    NODISCARD int scene_x() const noexcept { return scene_x_; }
 
-    [[nodiscard]] int scene_y() const noexcept { return scene_y_; }
+    NODISCARD int scene_y() const noexcept { return scene_y_; }
 
-    [[nodiscard]] int view_origin_x() const noexcept { return view_origin_x_; }
+    NODISCARD int view_origin_x() const noexcept { return view_origin_x_; }
 
-    [[nodiscard]] int view_origin_y() const noexcept { return view_origin_y_; }
+    NODISCARD int view_origin_y() const noexcept { return view_origin_y_; }
 
-    [[nodiscard]] SceneDirection direction() const noexcept { return direction_; }
+    NODISCARD SceneDirection direction() const noexcept { return direction_; }
 
-    [[nodiscard]] bool weather_enabled() const noexcept { return shadow_state_ > 0; }
+    NODISCARD bool weather_enabled() const noexcept { return shadow_state_ > 0; }
 
-    [[nodiscard]] std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
+    NODISCARD std::int16_t periodic_counter() const noexcept { return periodic_counter_; }
 
-    [[nodiscard]] std::int16_t physical_power_counter() const noexcept {
+    NODISCARD std::int16_t physical_power_counter() const noexcept {
         return physical_power_counter_;
     }
 
@@ -240,33 +241,33 @@ public:
         physical_power_counter_ = counter;
     }
 
-    [[nodiscard]] std::int16_t player_frame() const noexcept;
+    NODISCARD std::int16_t player_frame() const noexcept;
 
-    [[nodiscard]] std::int16_t event_item_id() const noexcept { return event_item_id_; }
+    NODISCARD std::int16_t event_item_id() const noexcept { return event_item_id_; }
 
     void set_event_item_id(const std::int16_t item_id) noexcept { event_item_id_ = item_id; }
 
-    [[nodiscard]] const SceneStepResult& pending() const noexcept { return pending_; }
+    NODISCARD const SceneStepResult& pending() const noexcept { return pending_; }
 
-    [[nodiscard]] bool death_menu_active() const noexcept {
+    NODISCARD bool death_menu_active() const noexcept {
         return death_menu_state_.has_value();
     }
 
-    [[nodiscard]] bool exit_transition_pending() const noexcept;
+    NODISCARD bool exit_transition_pending() const noexcept;
 
-    [[nodiscard]] bool loop_present_pending() const noexcept;
+    NODISCARD bool loop_present_pending() const noexcept;
 
-    [[nodiscard]] const text::GameText& pending_game_text() const noexcept {
+    NODISCARD const text::GameText& pending_game_text() const noexcept {
         return pending_text_;
     }
 
-    [[nodiscard]] const std::vector<std::uint8_t>& pending_text() const noexcept {
+    NODISCARD const std::vector<std::uint8_t>& pending_text() const noexcept {
         return pending_encoded_text_;
     }
 
-    [[nodiscard]] std::vector<SceneAudioCommand> take_audio_commands();
+    NODISCARD std::vector<SceneAudioCommand> take_audio_commands();
 
-    [[nodiscard]] SceneInputReset take_input_reset_request() noexcept;
+    NODISCARD SceneInputReset take_input_reset_request() noexcept;
 
 private:
     enum class PendingContinuation {
@@ -415,56 +416,56 @@ private:
         Phase phase{Phase::choose_opponent};
     };
 
-    [[nodiscard]] SceneStepResult current_result(SceneStepKind kind) const noexcept;
+    NODISCARD SceneStepResult current_result(SceneStepKind kind) const noexcept;
 
-    [[nodiscard]] SceneStepResult show_scene_title();
+    NODISCARD SceneStepResult show_scene_title();
 
-    [[nodiscard]] SceneStepResult run_event();
+    NODISCARD SceneStepResult run_event();
 
-    [[nodiscard]] SceneStepResult run_auto_event(SceneStepKind fallback);
+    NODISCARD SceneStepResult run_auto_event(SceneStepKind fallback);
 
-    [[nodiscard]] SceneStepResult finish_tick_after_action(SceneStepKind fallback);
+    NODISCARD SceneStepResult finish_tick_after_action(SceneStepKind fallback);
 
-    [[nodiscard]] SceneStepResult finish_tick_after_scene_present(SceneStepKind fallback);
+    NODISCARD SceneStepResult finish_tick_after_scene_present(SceneStepKind fallback);
 
-    [[nodiscard]] SceneStepResult finish_tick_after_auto_event(SceneStepKind fallback);
+    NODISCARD SceneStepResult finish_tick_after_auto_event(SceneStepKind fallback);
 
-    [[nodiscard]] bool palette_cycle_after_present() const noexcept;
+    NODISCARD bool palette_cycle_after_present() const noexcept;
 
-    [[nodiscard]] SceneStepResult resolve_scene_transition(SceneStepKind fallback);
+    NODISCARD SceneStepResult resolve_scene_transition(SceneStepKind fallback);
 
-    [[nodiscard]] SceneStepResult complete_scene_jump();
+    NODISCARD SceneStepResult complete_scene_jump();
 
     void queue_scene_music(std::size_t metadata_word);
 
-    [[nodiscard]] bool load_scene_sprites();
+    NODISCARD bool load_scene_sprites();
 
-    [[nodiscard]] bool draw_sprite(
+    NODISCARD bool draw_sprite(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t legacy_id,
         int anchor_x,
         int anchor_y) const;
 
-    [[nodiscard]] bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
+    NODISCARD bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_dialogue_overlay(
+    NODISCARD bool render_dialogue_overlay(
         render::IndexedFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_item_notice_overlay(
+    NODISCARD bool render_item_notice_overlay(
         render::IndexedFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_shop_overlay(
+    NODISCARD bool render_shop_overlay(
         render::IndexedFramebuffer& framebuffer) const;
 
     void cycle_palette();
 
-    [[nodiscard]] bool target_is_walkable(int x, int y) const noexcept;
+    NODISCARD bool target_is_walkable(int x, int y) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> event_at(int x, int y) const noexcept;
+    NODISCARD std::optional<std::int16_t> event_at(int x, int y) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> item_event_at(int x, int y) const noexcept;
+    NODISCARD std::optional<std::int16_t> item_event_at(int x, int y) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> event_field(
+    NODISCARD std::optional<std::int16_t> event_field(
         std::int16_t scene_id,
         std::int16_t event_index,
         model::SceneEventField field) const noexcept;
@@ -484,20 +485,20 @@ private:
         std::int16_t y,
         std::int16_t value) noexcept;
 
-    [[nodiscard]] std::int16_t scene_value(
+    NODISCARD std::int16_t scene_value(
         std::int16_t scene_id,
         std::int16_t layer,
         std::int16_t x,
         std::int16_t y) const noexcept;
 
-    [[nodiscard]] bool party_contains(std::int16_t role_id) const noexcept;
+    NODISCARD bool party_contains(std::int16_t role_id) const noexcept;
 
-    [[nodiscard]] bool inventory_contains_id(std::int16_t item_id) const noexcept;
+    NODISCARD bool inventory_contains_id(std::int16_t item_id) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> first_inventory_count(
+    NODISCARD std::optional<std::int16_t> first_inventory_count(
         std::int16_t item_id) const noexcept;
 
-    [[nodiscard]] int inventory_count(std::int16_t item_id) const noexcept;
+    NODISCARD int inventory_count(std::int16_t item_id) const noexcept;
 
     void add_inventory(std::int16_t item_id, std::int16_t count);
 
@@ -511,7 +512,7 @@ private:
 
     void clear_role_personal_items(std::int16_t role_id);
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_join_role_items();
+    NODISCARD std::optional<SceneStepResult> advance_join_role_items();
 
     void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
 
@@ -525,64 +526,64 @@ private:
 
     void queue_scene_present();
 
-    [[nodiscard]] SceneStepResult emit_queued();
+    NODISCARD SceneStepResult emit_queued();
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_pan_frame();
+    NODISCARD std::optional<SceneStepResult> advance_pan_frame();
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_picture_animation_frame();
+    NODISCARD std::optional<SceneStepResult> advance_picture_animation_frame();
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_scripted_walk_frame();
+    NODISCARD std::optional<SceneStepResult> advance_scripted_walk_frame();
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_dual_picture_animation_frame();
+    NODISCARD std::optional<SceneStepResult> advance_dual_picture_animation_frame();
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_three_statue_animation_frame();
+    NODISCARD std::optional<SceneStepResult> advance_three_statue_animation_frame();
 
-    [[nodiscard]] SceneStepResult start_load_menu();
+    NODISCARD SceneStepResult start_load_menu();
 
-    [[nodiscard]] SceneStepResult advance_load_menu(int translated_key);
+    NODISCARD SceneStepResult advance_load_menu(int translated_key);
 
-    [[nodiscard]] bool render_load_menu();
+    NODISCARD bool render_load_menu();
 
-    [[nodiscard]] SceneStepResult start_death_menu();
+    NODISCARD SceneStepResult start_death_menu();
 
-    [[nodiscard]] SceneStepResult advance_death_menu(int translated_key);
+    NODISCARD SceneStepResult advance_death_menu(int translated_key);
 
-    [[nodiscard]] bool load_death_image();
+    NODISCARD bool load_death_image();
 
-    [[nodiscard]] bool render_death_menu();
+    NODISCARD bool render_death_menu();
 
     void blend_panel_rectangle(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
 
-    [[nodiscard]] bool draw_panel(
+    NODISCARD bool draw_panel(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
 
     void blend_panel(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
 
-    [[nodiscard]] bool draw_panel_border(
+    NODISCARD bool draw_panel_border(
         render::IndexedFramebuffer& framebuffer, int x, int y, int width, int height) const;
 
-    [[nodiscard]] bool draw_portrait(
+    NODISCARD bool draw_portrait(
         render::IndexedFramebuffer& framebuffer, std::int16_t head_id, int x, int y) const;
 
-    [[nodiscard]] bool draw_death_panel(int x, int y, int width, int height);
+    NODISCARD bool draw_death_panel(int x, int y, int width, int height);
 
-    [[nodiscard]] SceneStepResult start_ending();
+    NODISCARD SceneStepResult start_ending();
 
-    [[nodiscard]] SceneStepResult advance_ending();
+    NODISCARD SceneStepResult advance_ending();
 
-    [[nodiscard]] bool load_ending_assets();
+    NODISCARD bool load_ending_assets();
 
-    [[nodiscard]] bool load_ending_frames();
+    NODISCARD bool load_ending_frames();
 
-    [[nodiscard]] bool draw_ending_word(std::int16_t legacy_id, int x, int y);
+    NODISCARD bool draw_ending_word(std::int16_t legacy_id, int x, int y);
 
-    [[nodiscard]] bool set_ending_frame(std::size_t frame);
+    NODISCARD bool set_ending_frame(std::size_t frame);
 
-    [[nodiscard]] bool draw_ending_credits();
+    NODISCARD bool draw_ending_credits();
 
-    [[nodiscard]] std::optional<SceneStepResult> advance_tournament_trial(
+    NODISCARD std::optional<SceneStepResult> advance_tournament_trial(
         SceneStepKind previous_kind, SceneResponse response);
 
     void apply_scripted_walk_step(bool horizontal, int step);
@@ -593,7 +594,7 @@ private:
 
     void update_view_origin() noexcept;
 
-    [[nodiscard]] bool prepare_event(
+    NODISCARD bool prepare_event(
         std::int16_t script_id,
         std::int16_t event_index,
         std::int16_t event_x,

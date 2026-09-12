@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/color.hpp"
 #include "openlegend/render/legacy_font.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
@@ -21,11 +22,11 @@ inline constexpr std::uint16_t kMaximumFontPixelHeight = 64U;
 struct FontSize {
     std::uint16_t pixel_height{kBaseFontPixelHeight};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return pixel_height > 0U && pixel_height <= kMaximumFontPixelHeight;
     }
 
-    [[nodiscard]] friend constexpr bool operator==(
+    NODISCARD friend constexpr bool operator==(
         FontSize, FontSize) noexcept = default;
 };
 
@@ -37,14 +38,14 @@ struct FontMetrics {
     std::uint16_t underscore_advance{};
     std::uint16_t shadow_offset_x{};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return pixel_height > 0U && line_height >= pixel_height &&
             ascii_width > 0U && big5_width > 0U &&
             underscore_advance > 0U && shadow_offset_x > 0U;
     }
 };
 
-[[nodiscard]] constexpr FontMetrics font_metrics(
+NODISCARD constexpr FontMetrics font_metrics(
     const FontSize size = {}) noexcept {
     if (!size.valid()) {
         return {};
@@ -84,7 +85,7 @@ struct GlyphMaskView {
     std::uint16_t width{};
     std::uint16_t height{};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return width > 0U && height > 0U &&
             alpha.size() == static_cast<std::size_t>(width) * height;
     }
@@ -92,14 +93,14 @@ struct GlyphMaskView {
 
 class GlyphMaskCache {
 public:
-    [[nodiscard]] std::optional<GlyphMaskView> resolve(
+    NODISCARD std::optional<GlyphMaskView> resolve(
         GlyphKind kind,
         std::uint16_t glyph_code,
         std::span<const std::uint8_t> packed_glyph,
         FontSize size,
         int render_scale);
 
-    [[nodiscard]] std::size_t next_replacement_slot() const noexcept {
+    NODISCARD std::size_t next_replacement_slot() const noexcept {
         return next_slot_;
     }
 
@@ -115,7 +116,7 @@ private:
         bool valid{};
     };
 
-    [[nodiscard]] bool generate_mask(
+    NODISCARD bool generate_mask(
         Entry& entry,
         GlyphKind kind,
         std::span<const std::uint8_t> packed_glyph,
@@ -128,7 +129,7 @@ private:
     std::size_t next_slot_{};
 };
 
-[[nodiscard]] bool draw_ascii_glyph(
+NODISCARD bool draw_ascii_glyph(
     RgbaFramebuffer& framebuffer,
     int x,
     int y,
@@ -138,7 +139,7 @@ private:
     FontSize size,
     TextColors colors);
 
-[[nodiscard]] bool draw_big5_glyph(
+NODISCARD bool draw_big5_glyph(
     RgbaFramebuffer& framebuffer,
     int x,
     int y,
@@ -148,7 +149,7 @@ private:
     FontSize size,
     TextColors colors);
 
-[[nodiscard]] bool draw_text_big5(
+NODISCARD bool draw_text_big5(
     RgbaFramebuffer& framebuffer,
     int x,
     int y,
@@ -159,7 +160,7 @@ private:
     FontSize size,
     TextColors colors);
 
-[[nodiscard]] bool draw_text_utf8(
+NODISCARD bool draw_text_utf8(
     RgbaFramebuffer& framebuffer,
     int x,
     int y,
@@ -170,7 +171,7 @@ private:
     FontSize size,
     TextColors colors);
 
-[[nodiscard]] bool draw_text_mixed(
+NODISCARD bool draw_text_mixed(
     RgbaFramebuffer& framebuffer,
     int x,
     int y,

@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
@@ -19,7 +20,7 @@
 
 namespace {
 
-[[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
+NODISCARD std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
     std::uint64_t result = 0xCBF29CE484222325ULL;
     for (const auto byte : bytes) {
         result ^= byte;
@@ -28,7 +29,7 @@ namespace {
     return result;
 }
 
-[[nodiscard]] openlegend::model::GameSnapshot load_baseline(
+NODISCARD openlegend::model::GameSnapshot load_baseline(
     const std::filesystem::path& root) {
     auto loaded = openlegend::persistence::load_baseline(root);
     OL_CHECK(loaded);
@@ -351,7 +352,7 @@ public:
         std::filesystem::remove_all(path_, error);
     }
 
-    [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
+    NODISCARD const std::filesystem::path& path() const noexcept { return path_; }
 
 private:
     static void append_i16(std::vector<std::uint8_t>& bytes, const std::int16_t value) {
@@ -379,7 +380,7 @@ private:
     std::filesystem::path path_;
 };
 
-[[nodiscard]] openlegend::scene::SceneStepResult finish_scene_title(
+NODISCARD openlegend::scene::SceneStepResult finish_scene_title(
     openlegend::scene::SceneSession& session) {
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
@@ -395,7 +396,7 @@ private:
     return session.resume(SceneResponse::acknowledge);
 }
 
-[[nodiscard]] int inventory_count(
+NODISCARD int inventory_count(
     const openlegend::model::RangerState& ranger,
     const std::int16_t item_id) {
     int total = 0;

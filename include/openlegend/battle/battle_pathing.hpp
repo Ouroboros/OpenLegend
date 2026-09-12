@@ -6,6 +6,7 @@
 #include <optional>
 #include <span>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_data.hpp"
 
 namespace openlegend::battle {
@@ -19,7 +20,7 @@ struct BattlePathCoord {
     std::int16_t x{};
     std::int16_t y{};
 
-    [[nodiscard]] constexpr bool operator==(const BattlePathCoord&) const = default;
+    NODISCARD constexpr bool operator==(const BattlePathCoord&) const = default;
 };
 
 enum class BattlePathMode {
@@ -33,22 +34,22 @@ public:
 
     void build(BattlePathCoord source, BattlePathMode mode);
 
-    [[nodiscard]] std::int16_t value(BattlePathCoord coordinate) const noexcept;
+    NODISCARD std::int16_t value(BattlePathCoord coordinate) const noexcept;
 
-    [[nodiscard]] std::span<const std::int16_t, kBattleOccupancyCells> values() const noexcept {
+    NODISCARD std::span<const std::int16_t, kBattleOccupancyCells> values() const noexcept {
         return values_;
     }
 
-    [[nodiscard]] bool mark_shortest_path(
+    NODISCARD bool mark_shortest_path(
         BattlePathCoord source, BattlePathCoord target) noexcept;
 
-    [[nodiscard]] std::optional<BattlePathCoord> next_marked_step(
+    NODISCARD std::optional<BattlePathCoord> next_marked_step(
         BattlePathCoord source) const noexcept;
 
     void consume(BattlePathCoord coordinate) noexcept;
 
 private:
-    [[nodiscard]] static std::optional<std::size_t> legacy_index(
+    NODISCARD static std::optional<std::size_t> legacy_index(
         BattlePathCoord coordinate) noexcept;
 
     void initialize(BattlePathMode mode);

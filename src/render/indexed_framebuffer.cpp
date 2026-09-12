@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 
 #include <algorithm>
@@ -10,7 +11,7 @@
 namespace openlegend::render {
 namespace {
 
-[[nodiscard]] bool valid_dimensions(
+NODISCARD bool valid_dimensions(
     const int width, const int height) noexcept {
     if (width <= 0 || height <= 0) {
         return false;
@@ -21,7 +22,7 @@ namespace {
         std::numeric_limits<std::size_t>::max() / unsigned_width;
 }
 
-[[nodiscard]] int mapped_edge(
+NODISCARD int mapped_edge(
     const int coordinate,
     const int source_extent,
     const int destination_begin,

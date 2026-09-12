@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/legacy_font.hpp"
 
 #include <algorithm>
@@ -6,7 +7,7 @@
 namespace openlegend::render {
 namespace {
 
-[[nodiscard]] std::optional<std::size_t> big5_glyph_index(
+NODISCARD std::optional<std::size_t> big5_glyph_index(
     const std::uint16_t code) noexcept {
     const auto lead = static_cast<std::uint8_t>(code >> 8U);
     const auto trail = static_cast<std::uint8_t>(code);

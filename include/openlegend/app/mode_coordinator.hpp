@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <optional>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::app {
 
 enum class AppMode {
@@ -25,19 +27,19 @@ struct ModeStepResult {
     StepControl control{StepControl::yield};
     std::optional<AppMode> next_mode{};
 
-    [[nodiscard]] static constexpr ModeStepResult stay() noexcept {
+    NODISCARD static constexpr ModeStepResult stay() noexcept {
         return {};
     }
 
-    [[nodiscard]] static constexpr ModeStepResult yield_to(const AppMode mode) noexcept {
+    NODISCARD static constexpr ModeStepResult yield_to(const AppMode mode) noexcept {
         return {StepControl::yield, mode};
     }
 
-    [[nodiscard]] static constexpr ModeStepResult continue_to(const AppMode mode) noexcept {
+    NODISCARD static constexpr ModeStepResult continue_to(const AppMode mode) noexcept {
         return {StepControl::continue_same_tick, mode};
     }
 
-    [[nodiscard]] static constexpr ModeStepResult quit() noexcept {
+    NODISCARD static constexpr ModeStepResult quit() noexcept {
         return {StepControl::exit, AppMode::exit};
     }
 };
@@ -46,7 +48,7 @@ class ModeDriver {
 public:
     virtual ~ModeDriver() = default;
 
-    [[nodiscard]] virtual ModeStepResult step(AppMode mode) = 0;
+    NODISCARD virtual ModeStepResult step(AppMode mode) = 0;
 };
 
 enum class TickStatus {
@@ -67,11 +69,11 @@ public:
     explicit constexpr ModeCoordinator(const AppMode initial_mode = AppMode::startup) noexcept
         : mode_(initial_mode), running_(initial_mode != AppMode::exit) {}
 
-    [[nodiscard]] TickResult run_tick(ModeDriver& driver, std::size_t transition_budget = 16U);
+    NODISCARD TickResult run_tick(ModeDriver& driver, std::size_t transition_budget = 16U);
 
-    [[nodiscard]] constexpr AppMode mode() const noexcept { return mode_; }
+    NODISCARD constexpr AppMode mode() const noexcept { return mode_; }
 
-    [[nodiscard]] constexpr bool running() const noexcept { return running_; }
+    NODISCARD constexpr bool running() const noexcept { return running_; }
 
 private:
     AppMode mode_;

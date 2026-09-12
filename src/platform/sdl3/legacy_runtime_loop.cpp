@@ -13,6 +13,7 @@
 
 #include "frame_presenter.hpp"
 #include "legacy_input_coordinator.hpp"
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
 #include "openlegend/battle/battle_session.hpp"
@@ -44,7 +45,7 @@ void report_runtime_error(
     }
 }
 
-[[nodiscard]] std::uint32_t make_random_seed() {
+NODISCARD std::uint32_t make_random_seed() {
     const auto wall_time = std::chrono::system_clock::now().time_since_epoch();
     const auto whole_seconds =
         std::chrono::duration_cast<std::chrono::seconds>(wall_time);
@@ -55,7 +56,7 @@ void report_runtime_error(
     return random::LegacyRandom::dos_time_seed(second, hundredth);
 }
 
-[[nodiscard]] constexpr std::string_view game_view_name(
+NODISCARD constexpr std::string_view game_view_name(
     const app::LegacyGameView view) noexcept {
     switch (view) {
     case app::LegacyGameView::title: return "title";

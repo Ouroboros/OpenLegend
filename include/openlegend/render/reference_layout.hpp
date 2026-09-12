@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 
 namespace openlegend::render {
@@ -13,12 +14,12 @@ struct ReferenceViewport {
     int width{};
     int height{};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return width > 0 && height > 0;
     }
 };
 
-[[nodiscard]] constexpr ReferenceViewport fit_legacy_reference_viewport(
+NODISCARD constexpr ReferenceViewport fit_legacy_reference_viewport(
     const int target_width,
     const int target_height) noexcept {
     constexpr auto reference_width = static_cast<int>(compat::kLegacyWidth);
@@ -49,7 +50,7 @@ struct ReferenceViewport {
         viewport_height};
 }
 
-[[nodiscard]] constexpr int scale_legacy_reference_length(
+NODISCARD constexpr int scale_legacy_reference_length(
     const int length,
     const int target_width,
     const int target_height) noexcept {

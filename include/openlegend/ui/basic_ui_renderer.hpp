@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/legacy_color.hpp"
@@ -25,73 +26,73 @@ class BasicUiRenderer {
 public:
     explicit BasicUiRenderer(const resource::DataRoot& data_root);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] bool render_name_entry(
+    NODISCARD bool render_name_entry(
         const TitleMenuRenderer& title,
         const NewGameNameEditor& editor,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool render_attributes(
+    NODISCARD bool render_attributes(
         const TitleMenuRenderer& title,
         const model::RoleRecord& protagonist,
         std::span<const std::uint8_t> name,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool render_game_menu(
+    NODISCARD bool render_game_menu(
         const GameMenuController& menu,
         const model::RangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool render_game_menu_main(
+    NODISCARD bool render_game_menu_main(
         const GameMenuController& menu,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool render_death_menu(
+    NODISCARD bool render_death_menu(
         const DeathMenuController& menu,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool render_error(
+    NODISCARD bool render_error(
         std::span<const std::uint8_t> legacy_message,
         render::IndexedFramebuffer& framebuffer);
 
 private:
-    [[nodiscard]] bool draw_text_utf8(
+    NODISCARD bool draw_text_utf8(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         std::u8string_view text,
         render::TextColors colors = render::legacy_color::text::normal);
 
-    [[nodiscard]] bool draw_text_mixed(
+    NODISCARD bool draw_text_mixed(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         const text::GameText& text,
         render::TextColors colors = render::legacy_color::text::normal);
 
-    [[nodiscard]] bool draw_text_big5(
+    NODISCARD bool draw_text_big5(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         text::Big5TextView text,
         render::TextColors colors = render::legacy_color::text::normal);
 
-    [[nodiscard]] bool draw_box(
+    NODISCARD bool draw_box(
         render::IndexedFramebuffer& framebuffer,
         int x,
         int y,
         std::uint16_t width,
         std::uint16_t height);
 
-    [[nodiscard]] bool render_items(
+    NODISCARD bool render_items(
         const GameMenuController& menu,
         const model::RangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
 
-    [[nodiscard]] bool draw_item_icon(
+    NODISCARD bool draw_item_icon(
         render::IndexedFramebuffer& framebuffer,
         std::int16_t item_id,
         int x,
@@ -99,7 +100,7 @@ private:
 
     void update_panel_palette(const compat::LegacyPalette& palette) noexcept;
 
-    [[nodiscard]] std::uint8_t blend_panel_pixel(
+    NODISCARD std::uint8_t blend_panel_pixel(
         std::uint8_t destination) const noexcept;
 
     resource::PackedArchive item_sprites_;

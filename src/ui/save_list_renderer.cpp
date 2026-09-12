@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/save_list_renderer.hpp"
 
 #include <algorithm>
@@ -50,7 +51,7 @@ void append_number(std::u8string& text, const std::int32_t value) {
     }
 }
 
-[[nodiscard]] std::u8string zero_padded_number(
+NODISCARD std::u8string zero_padded_number(
     const std::uint32_t value, const int width) {
     std::array<char, 16> buffer{};
     const auto converted = std::to_chars(
@@ -67,7 +68,7 @@ void append_number(std::u8string& text, const std::int32_t value) {
     return text;
 }
 
-[[nodiscard]] std::span<const std::uint8_t> legacy_text_prefix(
+NODISCARD std::span<const std::uint8_t> legacy_text_prefix(
     const std::span<const std::uint8_t> text,
     const int maximum_pixels,
     const render::rgba::FontMetrics metrics) noexcept {
@@ -90,7 +91,7 @@ void append_number(std::u8string& text, const std::int32_t value) {
     return text.first(bytes);
 }
 
-[[nodiscard]] SaveListLayout save_list_layout(
+NODISCARD SaveListLayout save_list_layout(
     const render::RgbaFramebuffer& framebuffer,
     const render::rgba::FontMetrics metrics) noexcept {
     constexpr int kReferenceWidth = 320;

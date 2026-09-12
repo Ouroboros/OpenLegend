@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_renderer.hpp"
 
 #include <algorithm>
@@ -24,7 +25,7 @@ constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
     2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
     18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000};
 
-[[nodiscard]] std::u8string decimal_text(
+NODISCARD std::u8string decimal_text(
     const std::int32_t value,
     const int width = 0) {
     std::array<char, 16> buffer{};
@@ -41,20 +42,20 @@ constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
     return result;
 }
 
-[[nodiscard]] std::span<const std::uint8_t> zero_terminated_prefix(
+NODISCARD std::span<const std::uint8_t> zero_terminated_prefix(
     const std::span<const std::uint8_t> bytes) {
     const auto end = std::find(bytes.begin(), bytes.end(), std::uint8_t{0U});
     return bytes.first(static_cast<std::size_t>(std::distance(bytes.begin(), end)));
 }
 
-[[nodiscard]] std::span<const std::uint8_t> fixed_text(
+NODISCARD std::span<const std::uint8_t> fixed_text(
     const std::span<const std::uint8_t> bytes,
     const std::size_t begin,
     const std::size_t maximum) {
     return zero_terminated_prefix(bytes.subspan(begin, maximum));
 }
 
-[[nodiscard]] std::optional<int> legacy_name_extent(
+NODISCARD std::optional<int> legacy_name_extent(
     const std::span<const std::uint8_t> name_bytes) noexcept {
     for (std::size_t offset = 1U; offset <= 6U && offset < name_bytes.size(); ++offset) {
         if (name_bytes[offset] == 0U) {

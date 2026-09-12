@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/diagnostics/log.hpp"
 #include "test_support.hpp"
 
@@ -42,11 +43,11 @@ public:
         std::filesystem::remove_all(root_, ignored);
     }
 
-    [[nodiscard]] std::filesystem::path path(const char* name) const {
+    NODISCARD std::filesystem::path path(const char* name) const {
         return root_ / name;
     }
 
-    [[nodiscard]] std::string read(const std::filesystem::path& path) const {
+    NODISCARD std::string read(const std::filesystem::path& path) const {
         std::ifstream input{path, std::ios::binary};
         return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     }
@@ -55,7 +56,7 @@ private:
     std::filesystem::path root_;
 };
 
-[[nodiscard]] std::string format_local_second(const std::time_t seconds) {
+NODISCARD std::string format_local_second(const std::time_t seconds) {
     std::tm local{};
 #if defined(_WIN32)
     const bool converted = ::localtime_s(&local, &seconds) == 0;

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <span>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/ui/save_list.hpp"
@@ -13,7 +14,7 @@ class ModernUiRenderer;
 
 class SaveListRenderer {
 public:
-    [[nodiscard]] bool render(
+    NODISCARD bool render(
         SaveListMode mode,
         std::uint16_t selection,
         std::span<const SaveListEntry> entries,
@@ -21,13 +22,13 @@ public:
         ModernUiRenderer& ui_renderer,
         render::RgbaFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_delete_confirmation(
+    NODISCARD bool render_delete_confirmation(
         std::uint16_t selection,
         const compat::LegacyPalette& palette,
         ModernUiRenderer& ui_renderer,
         render::RgbaFramebuffer& framebuffer) const;
 
-    [[nodiscard]] bool render_io_wait(
+    NODISCARD bool render_io_wait(
         const compat::LegacyPalette& palette,
         ModernUiRenderer& ui_renderer,
         render::RgbaFramebuffer& framebuffer) const;

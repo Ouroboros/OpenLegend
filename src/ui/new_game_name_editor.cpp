@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/new_game_name_editor.hpp"
 
 #include <algorithm>
@@ -13,7 +14,7 @@ constexpr std::size_t kCandidatesPerPage = 8U;
 constexpr std::size_t kCfontBytes = 29'674U;
 constexpr std::size_t kCfontBoundaryCount = 111U;
 
-[[nodiscard]] constexpr bool is_ascii_name_key(const std::uint8_t key) noexcept {
+NODISCARD constexpr bool is_ascii_name_key(const std::uint8_t key) noexcept {
     return (key >= '0' && key <= '9') || (key >= 'A' && key <= 'Z');
 }
 

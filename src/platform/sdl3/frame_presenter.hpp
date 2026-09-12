@@ -1,5 +1,6 @@
 #pragma once
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 
 namespace openlegend::app {
@@ -12,7 +13,7 @@ class SdlRuntimePlatform;
 
 class FramePresenter {
 public:
-    [[nodiscard]] int present(
+    NODISCARD int present(
         app::LegacyGameRuntime& game, SdlRuntimePlatform& platform);
 
 private:

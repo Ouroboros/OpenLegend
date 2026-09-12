@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/model/game_snapshot.hpp"
@@ -43,31 +44,31 @@ class LegacyStartupResources {
 public:
     explicit LegacyStartupResources(const resource::DataRoot& data_root);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] const resource::PackedArchive& weather_sprites() const noexcept {
+    NODISCARD const resource::PackedArchive& weather_sprites() const noexcept {
         return weather_sprites_;
     }
 
-    [[nodiscard]] const compat::LegacyPalette& palette() const noexcept {
+    NODISCARD const compat::LegacyPalette& palette() const noexcept {
         return palette_;
     }
 
-    [[nodiscard]] std::span<const std::uint16_t> fixed_shadow_mask() const noexcept {
+    NODISCARD std::span<const std::uint16_t> fixed_shadow_mask() const noexcept {
         return fixed_shadow_mask_;
     }
 
-    [[nodiscard]] std::span<const std::uint16_t> shifted_shadow_mask() const noexcept {
+    NODISCARD std::span<const std::uint16_t> shifted_shadow_mask() const noexcept {
         return shifted_shadow_mask_;
     }
 
-    [[nodiscard]] const model::RangerState& ranger() const noexcept {
+    NODISCARD const model::RangerState& ranger() const noexcept {
         return *ranger_.ranger;
     }
 
-    [[nodiscard]] std::span<const std::uint8_t> ranger_index_bytes() const noexcept {
+    NODISCARD std::span<const std::uint8_t> ranger_index_bytes() const noexcept {
         return ranger_.index_bytes;
     }
 
@@ -80,7 +81,7 @@ private:
     std::string error_;
 };
 
-[[nodiscard]] std::string_view ending_terminal_message() noexcept;
+NODISCARD std::string_view ending_terminal_message() noexcept;
 
 enum class LegacyKeyStateReset : std::uint8_t {
     none,
@@ -139,22 +140,22 @@ public:
         bool right,
         bool menu_requested = false);
 
-    [[nodiscard]] input::DirectionRepeatContext direction_repeat_context() const noexcept;
+    NODISCARD input::DirectionRepeatContext direction_repeat_context() const noexcept;
 
-    [[nodiscard]] bool scene_loop_uses_key_states() const noexcept;
+    NODISCARD bool scene_loop_uses_key_states() const noexcept;
 
     void set_scene_input_states(
         bool interact_down, bool main_ui_edge, bool weather_disable_edge) noexcept;
 
-    [[nodiscard]] scene::SceneInputReset take_scene_input_reset_request() noexcept;
+    NODISCARD scene::SceneInputReset take_scene_input_reset_request() noexcept;
 
     void finish_presented_tick(std::uint32_t bios_tick = 0U);
 
-    [[nodiscard]] bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
+    NODISCARD bool needs_immediate_frame(std::uint32_t bios_tick) const noexcept;
 
-    [[nodiscard]] bool uses_fade_frame_clock() const noexcept;
+    NODISCARD bool uses_fade_frame_clock() const noexcept;
 
-    [[nodiscard]] RgbaFadeOverlay rgba_fade_overlay() const noexcept;
+    NODISCARD RgbaFadeOverlay rgba_fade_overlay() const noexcept;
 
     void set_battle_confirmation_state(bool active) noexcept;
 
@@ -163,9 +164,9 @@ public:
     void set_battle_cursor_input_states(
         bool down, bool right, bool left, bool up, bool escape) noexcept;
 
-    [[nodiscard]] bool battle_menu_uses_key_states() const noexcept;
+    NODISCARD bool battle_menu_uses_key_states() const noexcept;
 
-    [[nodiscard]] bool death_menu_accepts_input() const noexcept;
+    NODISCARD bool death_menu_accepts_input() const noexcept;
 
     std::uint8_t take_clear_battle_menu_direction_request() noexcept;
 
@@ -173,21 +174,21 @@ public:
 
     bool take_clear_battle_confirmation_states_request() noexcept;
 
-    [[nodiscard]] bool render();
+    NODISCARD bool render();
 
-    [[nodiscard]] bool render_modern_ui(render::RgbaFramebuffer& framebuffer);
+    NODISCARD bool render_modern_ui(render::RgbaFramebuffer& framebuffer);
 
-    [[nodiscard]] bool valid() const noexcept { return startup_error_.empty(); }
+    NODISCARD bool valid() const noexcept { return startup_error_.empty(); }
 
-    [[nodiscard]] bool running() const noexcept { return view_ != LegacyGameView::exited; }
+    NODISCARD bool running() const noexcept { return view_ != LegacyGameView::exited; }
 
-    [[nodiscard]] bool ending_complete() const noexcept { return ending_complete_; }
+    NODISCARD bool ending_complete() const noexcept { return ending_complete_; }
 
-    [[nodiscard]] bool fade_music_on_exit() const noexcept { return fade_music_on_exit_; }
+    NODISCARD bool fade_music_on_exit() const noexcept { return fade_music_on_exit_; }
 
-    [[nodiscard]] LegacyGameView view() const noexcept { return view_; }
+    NODISCARD LegacyGameView view() const noexcept { return view_; }
 
-    [[nodiscard]] bool save_list_active() const noexcept {
+    NODISCARD bool save_list_active() const noexcept {
         return (view_ == LegacyGameView::title &&
                 title_menu_.screen() == ui::TitleScreen::load_slots) ||
             (view_ == LegacyGameView::game_menu &&
@@ -196,23 +197,23 @@ public:
             (death_menu_accepts_input() && death_menu_.save_list_active());
     }
 
-    [[nodiscard]] const std::string& error() const noexcept { return startup_error_; }
+    NODISCARD const std::string& error() const noexcept { return startup_error_; }
 
-    [[nodiscard]] render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
+    NODISCARD render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
 
-    [[nodiscard]] const model::GameState& game_state() const noexcept { return game_state_; }
+    NODISCARD const model::GameState& game_state() const noexcept { return game_state_; }
 
-    [[nodiscard]] std::optional<std::int16_t> scene_request() const noexcept {
+    NODISCARD std::optional<std::int16_t> scene_request() const noexcept {
         return scene_request_;
     }
 
-    [[nodiscard]] std::optional<std::int16_t> battle_request() const noexcept {
+    NODISCARD std::optional<std::int16_t> battle_request() const noexcept {
         return battle_request_;
     }
 
-    [[nodiscard]] std::vector<scene::SceneAudioCommand> take_scene_audio_commands();
+    NODISCARD std::vector<scene::SceneAudioCommand> take_scene_audio_commands();
 
-    [[nodiscard]] std::vector<battle::BattleAudioCommand> take_battle_audio_commands();
+    NODISCARD std::vector<battle::BattleAudioCommand> take_battle_audio_commands();
 
     bool take_clear_scene_exit_key_states_request() noexcept {
         const auto requested = clear_scene_exit_key_states_requested_;
@@ -276,24 +277,24 @@ private:
         fade_from_black,
     };
 
-    [[nodiscard]] bool translated_key_input_blocked() const noexcept;
+    NODISCARD bool translated_key_input_blocked() const noexcept;
 
-    [[nodiscard]] bool world_or_scene_input_active() const noexcept;
+    NODISCARD bool world_or_scene_input_active() const noexcept;
 
     void begin_new_game();
 
     void perform_pending_io();
 
-    [[nodiscard]] bool activate_pending_load();
+    NODISCARD bool activate_pending_load();
 
-    [[nodiscard]] bool start_world(LegacyGameView error_return_view);
+    NODISCARD bool start_world(LegacyGameView error_return_view);
 
-    [[nodiscard]] bool start_scene(
+    NODISCARD bool start_scene(
         std::int16_t scene_id,
         LegacyGameView error_return_view,
         std::optional<scene::SceneEntryOverride> entry_override = std::nullopt);
 
-    [[nodiscard]] bool start_battle(
+    NODISCARD bool start_battle(
         std::int16_t battle_id, bool grant_experience);
 
     void begin_battle_transition_if_ready();
@@ -304,7 +305,7 @@ private:
 
     void handle_scene_result(const scene::SceneStepResult& result);
 
-    [[nodiscard]] bool advance_scene_effect();
+    NODISCARD bool advance_scene_effect();
 
     void begin_scene_effect(
         SceneEffectKind kind,
@@ -317,7 +318,7 @@ private:
 
     void refresh_save_list(std::uint16_t page);
 
-    [[nodiscard]] bool render_title_view();
+    NODISCARD bool render_title_view();
 
     void set_view(LegacyGameView view, std::string_view reason);
 
@@ -336,9 +337,9 @@ private:
 
     void handle_menu_item_confirmation(std::uint8_t translated_key);
 
-    [[nodiscard]] bool begin_world_menu_item_event(std::int16_t item_id);
+    NODISCARD bool begin_world_menu_item_event(std::int16_t item_id);
 
-    [[nodiscard]] bool begin_world_leave_event(std::int16_t role_id);
+    NODISCARD bool begin_world_leave_event(std::int16_t role_id);
 
     void handle_world_menu_event_result(const scene::SceneStepResult& result);
 

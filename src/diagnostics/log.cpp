@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/diagnostics/log.hpp"
 
 #include <chrono>
@@ -24,22 +25,22 @@ struct LoggingState {
     LogLevel minimum_level{LogLevel::debug};
 };
 
-[[nodiscard]] LoggingState& logging_state() {
+NODISCARD LoggingState& logging_state() {
     static LoggingState* const state = new LoggingState;
     return *state;
 }
 
-[[nodiscard]] bool level_is_enabled(
+NODISCARD bool level_is_enabled(
     const LogLevel level, const LogLevel minimum_level) noexcept {
     return static_cast<int>(level) >= static_cast<int>(minimum_level);
 }
 
-[[nodiscard]] std::string_view source_filename(const std::string_view path) noexcept {
+NODISCARD std::string_view source_filename(const std::string_view path) noexcept {
     const auto separator = path.find_last_of("/\\");
     return separator == std::string_view::npos ? path : path.substr(separator + 1U);
 }
 
-[[nodiscard]] std::string local_timestamp() {
+NODISCARD std::string local_timestamp() {
     const auto now = std::chrono::system_clock::now();
     const auto whole_seconds = std::chrono::floor<std::chrono::seconds>(now);
     const auto milliseconds =
@@ -90,7 +91,7 @@ void append_escaped_message(std::string& output, const std::string_view message)
     }
 }
 
-[[nodiscard]] std::string format_log_line(
+NODISCARD std::string format_log_line(
     const LogLevel level,
     const std::string_view message,
     const std::source_location location) {

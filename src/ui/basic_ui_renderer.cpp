@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 
 #include <algorithm>
@@ -44,7 +45,7 @@ void append_number(std::u8string& text, const std::int32_t value, const int widt
     }
 }
 
-[[nodiscard]] int legacy_item_metric(const model::RangerState& ranger) noexcept {
+NODISCARD int legacy_item_metric(const model::RangerState& ranger) noexcept {
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
         if (ranger.header.inventory_item(slot).value == -1) {
             return static_cast<int>(slot + 1U);
@@ -53,7 +54,7 @@ void append_number(std::u8string& text, const std::int32_t value, const int widt
     return static_cast<int>(model::kInventoryCount);
 }
 
-[[nodiscard]] std::u8string coordinate_item_text(
+NODISCARD std::u8string coordinate_item_text(
     const model::RangerState& ranger,
     const GameMenuContext context) {
     const auto player_x = ranger.header.word(
@@ -76,7 +77,7 @@ void append_number(std::u8string& text, const std::int32_t value, const int widt
     return text;
 }
 
-[[nodiscard]] std::optional<std::array<std::uint8_t, 2>> zhuyin_label(
+NODISCARD std::optional<std::array<std::uint8_t, 2>> zhuyin_label(
     const int type,
     const std::int16_t value) noexcept {
     if (type == 1 && value >= 1 && value <= 21) {
@@ -101,7 +102,7 @@ void append_number(std::u8string& text, const std::int32_t value, const int widt
 }
 
 template <std::size_t ByteCount>
-[[nodiscard]] std::span<const std::uint8_t> fixed_text(
+NODISCARD std::span<const std::uint8_t> fixed_text(
     const std::array<std::uint8_t, ByteCount>& bytes,
     const std::size_t begin,
     const std::size_t maximum) {

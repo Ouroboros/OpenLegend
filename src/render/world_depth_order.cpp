@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/world_depth_order.hpp"
 
 #include <algorithm>
@@ -14,12 +15,12 @@ constexpr std::size_t cache_cell_count =
     static_cast<std::size_t>(legacy_world_cache_extent);
 constexpr std::uint16_t maximum_legacy_sprite_id = 0x2064U;
 
-[[nodiscard]] std::size_t cache_index(const int x, const int y) noexcept {
+NODISCARD std::size_t cache_index(const int x, const int y) noexcept {
     return static_cast<std::size_t>(y) * static_cast<std::size_t>(legacy_world_cache_extent) +
            static_cast<std::size_t>(x);
 }
 
-[[nodiscard]] bool same_owner(
+NODISCARD bool same_owner(
     const LegacyDepthEntry& entry,
     const std::int16_t owner_x,
     const std::int16_t owner_y) noexcept {
@@ -30,7 +31,7 @@ constexpr std::uint16_t maximum_legacy_sprite_id = 0x2064U;
 
 namespace {
 
-[[nodiscard]] LegacyDepthResult build_world_depth_list(
+NODISCARD LegacyDepthResult build_world_depth_list(
     const LegacyWorldDepthInput& input,
     const WorldCacheBounds bounds,
     const bool skip_outside_owner) {

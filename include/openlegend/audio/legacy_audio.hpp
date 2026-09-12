@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
 namespace openlegend::audio {
@@ -35,9 +36,9 @@ class LegacyAudioPort {
 public:
     virtual ~LegacyAudioPort() = default;
 
-    [[nodiscard]] virtual PlaybackStatus music_status() const noexcept = 0;
+    NODISCARD virtual PlaybackStatus music_status() const noexcept = 0;
 
-    [[nodiscard]] virtual bool start_music(
+    NODISCARD virtual bool start_music(
         std::span<const std::uint8_t> xmi,
         int legacy_volume,
         int legacy_loop_count) = 0;
@@ -46,9 +47,9 @@ public:
 
     virtual void end_music() noexcept = 0;
 
-    [[nodiscard]] virtual PlaybackStatus sample_status(std::size_t slot) const noexcept = 0;
+    NODISCARD virtual PlaybackStatus sample_status(std::size_t slot) const noexcept = 0;
 
-    [[nodiscard]] virtual bool start_sample(
+    NODISCARD virtual bool start_sample(
         std::size_t slot,
         std::span<const std::uint8_t> raw_unsigned_mono,
         std::uint32_t playback_rate,
@@ -75,7 +76,7 @@ public:
     LegacyAudioController(
         resource::DataRoot data_root, LegacyAudioPort& audio, AudioDelayPort& delay);
 
-    [[nodiscard]] bool play_music(std::size_t zero_based_index);
+    NODISCARD bool play_music(std::size_t zero_based_index);
 
     void fade_in_music() noexcept;
 
@@ -83,17 +84,17 @@ public:
 
     void end_music() noexcept;
 
-    [[nodiscard]] bool load_sample(SampleBank bank, std::size_t index);
+    NODISCARD bool load_sample(SampleBank bank, std::size_t index);
 
-    [[nodiscard]] bool start_loaded_sample(SampleBank bank, std::size_t size_index);
+    NODISCARD bool start_loaded_sample(SampleBank bank, std::size_t size_index);
 
-    [[nodiscard]] bool play_sample(SampleBank bank, std::size_t index);
+    NODISCARD bool play_sample(SampleBank bank, std::size_t index);
 
     void end_sample(SampleBank bank) noexcept;
 
-    [[nodiscard]] std::size_t current_music() const noexcept { return current_music_; }
+    NODISCARD std::size_t current_music() const noexcept { return current_music_; }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
 private:
     struct LoadedSample {
@@ -101,20 +102,20 @@ private:
         std::vector<std::uint16_t> sizes;
     };
 
-    [[nodiscard]] static std::size_t slot_for(SampleBank bank) noexcept;
+    NODISCARD static std::size_t slot_for(SampleBank bank) noexcept;
 
-    [[nodiscard]] static std::size_t count_for(SampleBank bank) noexcept;
+    NODISCARD static std::size_t count_for(SampleBank bank) noexcept;
 
-    [[nodiscard]] static int volume_for(SampleBank bank) noexcept;
+    NODISCARD static int volume_for(SampleBank bank) noexcept;
 
-    [[nodiscard]] static std::filesystem::path music_filename(std::size_t zero_based_index);
+    NODISCARD static std::filesystem::path music_filename(std::size_t zero_based_index);
 
-    [[nodiscard]] static std::filesystem::path sample_filename(
+    NODISCARD static std::filesystem::path sample_filename(
         SampleBank bank, std::size_t index);
 
-    [[nodiscard]] LoadedSample& loaded(SampleBank bank) noexcept;
+    NODISCARD LoadedSample& loaded(SampleBank bank) noexcept;
 
-    [[nodiscard]] const LoadedSample& loaded(SampleBank bank) const noexcept;
+    NODISCARD const LoadedSample& loaded(SampleBank bank) const noexcept;
 
     resource::DataRoot data_root_;
     LegacyAudioPort& audio_;
@@ -135,15 +136,15 @@ public:
 
     AudioMixer& operator=(const AudioMixer&) = delete;
 
-    [[nodiscard]] bool valid() const noexcept;
+    NODISCARD bool valid() const noexcept;
 
-    [[nodiscard]] const std::string& error() const noexcept;
+    NODISCARD const std::string& error() const noexcept;
 
-    [[nodiscard]] std::uint32_t output_rate() const noexcept;
+    NODISCARD std::uint32_t output_rate() const noexcept;
 
-    [[nodiscard]] PlaybackStatus music_status() const noexcept override;
+    NODISCARD PlaybackStatus music_status() const noexcept override;
 
-    [[nodiscard]] bool start_music(
+    NODISCARD bool start_music(
         std::span<const std::uint8_t> xmi,
         int legacy_volume,
         int legacy_loop_count) override;
@@ -152,9 +153,9 @@ public:
 
     void end_music() noexcept override;
 
-    [[nodiscard]] PlaybackStatus sample_status(std::size_t slot) const noexcept override;
+    NODISCARD PlaybackStatus sample_status(std::size_t slot) const noexcept override;
 
-    [[nodiscard]] bool start_sample(
+    NODISCARD bool start_sample(
         std::size_t slot,
         std::span<const std::uint8_t> raw_unsigned_mono,
         std::uint32_t playback_rate,

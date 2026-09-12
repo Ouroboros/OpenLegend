@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_keyboard.hpp"
 #include "openlegend/random/legacy_random.hpp"
@@ -18,7 +19,7 @@ class SequenceTickSource final : public openlegend::timing::TickSource {
 public:
     explicit SequenceTickSource(std::vector<std::uint32_t> values) : values_(std::move(values)) {}
 
-    [[nodiscard]] std::uint32_t tick() const noexcept override {
+    NODISCARD std::uint32_t tick() const noexcept override {
         ++tick_count_;
         return values_[position_];
     }
@@ -30,9 +31,9 @@ public:
         }
     }
 
-    [[nodiscard]] std::size_t tick_count() const noexcept { return tick_count_; }
+    NODISCARD std::size_t tick_count() const noexcept { return tick_count_; }
 
-    [[nodiscard]] std::size_t idle_count() const noexcept { return idle_count_; }
+    NODISCARD std::size_t idle_count() const noexcept { return idle_count_; }
 
 private:
     std::vector<std::uint32_t> values_;
@@ -46,7 +47,7 @@ public:
     explicit ReadSequenceTickSource(std::vector<std::uint32_t> values)
         : values_(std::move(values)) {}
 
-    [[nodiscard]] std::uint32_t tick() const noexcept override {
+    NODISCARD std::uint32_t tick() const noexcept override {
         const auto index = position_ < values_.size() ? position_ : values_.size() - 1U;
         ++position_;
         return values_[index];
@@ -54,9 +55,9 @@ public:
 
     void idle() noexcept override { ++idle_count_; }
 
-    [[nodiscard]] std::size_t tick_count() const noexcept { return position_; }
+    NODISCARD std::size_t tick_count() const noexcept { return position_; }
 
-    [[nodiscard]] std::size_t idle_count() const noexcept { return idle_count_; }
+    NODISCARD std::size_t idle_count() const noexcept { return idle_count_; }
 
 private:
     std::vector<std::uint32_t> values_;

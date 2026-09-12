@@ -4,6 +4,7 @@
 #include <span>
 #include <string_view>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_font.hpp"
@@ -11,21 +12,21 @@
 
 namespace openlegend::render {
 
-[[nodiscard]] bool draw_ascii_glyph(
+NODISCARD bool draw_ascii_glyph(
     IndexedFramebuffer& framebuffer,
     int x,
     int y,
     std::span<const std::uint8_t, 16> glyph,
     TextColors colors) noexcept;
 
-[[nodiscard]] bool draw_big5_glyph(
+NODISCARD bool draw_big5_glyph(
     IndexedFramebuffer& framebuffer,
     int x,
     int y,
     std::span<const std::uint8_t, 32> glyph,
     TextColors colors) noexcept;
 
-[[nodiscard]] bool draw_text_big5(
+NODISCARD bool draw_text_big5(
     IndexedFramebuffer& framebuffer,
     int x,
     int y,
@@ -34,7 +35,7 @@ namespace openlegend::render {
     Big5GlyphCache& big5_cache,
     TextColors colors) noexcept;
 
-[[nodiscard]] bool draw_text_utf8(
+NODISCARD bool draw_text_utf8(
     IndexedFramebuffer& framebuffer,
     int x,
     int y,
@@ -43,7 +44,7 @@ namespace openlegend::render {
     Big5GlyphCache& big5_cache,
     TextColors colors);
 
-[[nodiscard]] bool draw_text_mixed(
+NODISCARD bool draw_text_mixed(
     IndexedFramebuffer& framebuffer,
     int x,
     int y,

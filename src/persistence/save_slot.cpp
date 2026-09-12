@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 
 #include <algorithm>
@@ -24,7 +25,7 @@ struct LoadedBytes {
     std::string detail;
 };
 
-[[nodiscard]] LoadedBytes read_required(const std::filesystem::path& path) {
+NODISCARD LoadedBytes read_required(const std::filesystem::path& path) {
     const auto file = resource::read_binary_file(path);
     if (!file) {
         return LoadedBytes{PersistenceStatus::read_failed, {}, path, file.error};
@@ -32,7 +33,7 @@ struct LoadedBytes {
     return LoadedBytes{PersistenceStatus::ready, file.bytes, path, {}};
 }
 
-[[nodiscard]] SnapshotLoadResult load_error(
+NODISCARD SnapshotLoadResult load_error(
     const PersistenceStatus status, std::filesystem::path path, std::string detail = {}) {
     SnapshotLoadResult result;
     result.status = status;
@@ -41,7 +42,7 @@ struct LoadedBytes {
     return result;
 }
 
-[[nodiscard]] RangerLoadResult ranger_load_error(
+NODISCARD RangerLoadResult ranger_load_error(
     const PersistenceStatus status, std::filesystem::path path, std::string detail = {}) {
     RangerLoadResult result;
     result.status = status;
@@ -50,7 +51,7 @@ struct LoadedBytes {
     return result;
 }
 
-[[nodiscard]] SnapshotWriteResult write_error(
+NODISCARD SnapshotWriteResult write_error(
     const PersistenceStatus status, std::filesystem::path path, std::string detail = {}) {
     SnapshotWriteResult result;
     result.status = status;
@@ -59,7 +60,7 @@ struct LoadedBytes {
     return result;
 }
 
-[[nodiscard]] std::vector<std::uint8_t> encode_index(
+NODISCARD std::vector<std::uint8_t> encode_index(
     const std::span<const std::uint32_t> ends) {
     std::vector<std::uint8_t> bytes(ends.size() * 4U);
     for (std::size_t index = 0U; index < ends.size(); ++index) {
@@ -72,7 +73,7 @@ struct LoadedBytes {
     return bytes;
 }
 
-[[nodiscard]] bool decode_index(
+NODISCARD bool decode_index(
     const std::span<const std::uint8_t> bytes,
     const std::span<std::uint32_t> ends) noexcept {
     if (bytes.size() != ends.size() * 4U) {
@@ -84,7 +85,7 @@ struct LoadedBytes {
     return true;
 }
 
-[[nodiscard]] bool monotonic_nonzero(const std::span<const std::uint32_t> ends) noexcept {
+NODISCARD bool monotonic_nonzero(const std::span<const std::uint32_t> ends) noexcept {
     std::uint32_t previous = 0U;
     for (const std::uint32_t end : ends) {
         if (end <= previous) {
@@ -115,7 +116,7 @@ void encode_records(
     }
 }
 
-[[nodiscard]] SnapshotLoadResult decode_ranger(
+NODISCARD SnapshotLoadResult decode_ranger(
     const LoadedBytes& index_file,
     const LoadedBytes& group_file,
     model::GameSnapshot& snapshot) {
@@ -147,7 +148,7 @@ void encode_records(
     return SnapshotLoadResult{};
 }
 
-[[nodiscard]] SnapshotLoadResult decode_scene_archive(
+NODISCARD SnapshotLoadResult decode_scene_archive(
     const LoadedBytes& index_file,
     const LoadedBytes& group_file,
     const std::size_t bytes_per_scene,
@@ -172,7 +173,7 @@ void encode_records(
     return SnapshotLoadResult{};
 }
 
-[[nodiscard]] SnapshotLoadResult decode_fixed_scene_group(
+NODISCARD SnapshotLoadResult decode_fixed_scene_group(
     const LoadedBytes& group_file,
     const std::size_t bytes_per_scene,
     std::array<std::uint32_t, model::kSceneCount>& ends,
@@ -188,7 +189,7 @@ void encode_records(
     return SnapshotLoadResult{};
 }
 
-[[nodiscard]] SnapshotLoadResult decode_numbered_slot(
+NODISCARD SnapshotLoadResult decode_numbered_slot(
     const LoadedBytes& scene_map_group,
     const LoadedBytes& scene_event_group,
     const LoadedBytes& ranger_index,
@@ -220,7 +221,7 @@ void encode_records(
     return loaded;
 }
 
-[[nodiscard]] std::vector<std::uint8_t> encode_ranger(const model::RangerState& ranger) {
+NODISCARD std::vector<std::uint8_t> encode_ranger(const model::RangerState& ranger) {
     std::vector<std::uint8_t> bytes;
     bytes.reserve(model::kRangerCumulativeEnds.back());
     bytes.insert(bytes.end(), ranger.header.bytes.begin(), ranger.header.bytes.end());
@@ -232,7 +233,7 @@ void encode_records(
     return bytes;
 }
 
-[[nodiscard]] SnapshotWriteResult write_bytes(
+NODISCARD SnapshotWriteResult write_bytes(
     const std::filesystem::path& path, const std::span<const std::uint8_t> bytes) {
     std::ofstream output{path, std::ios::binary | std::ios::trunc};
     if (!output) {
@@ -247,7 +248,7 @@ void encode_records(
     return SnapshotWriteResult{};
 }
 
-[[nodiscard]] std::optional<unsigned int> slot_number(const SaveSlot slot) noexcept {
+NODISCARD std::optional<unsigned int> slot_number(const SaveSlot slot) noexcept {
     const auto index = static_cast<unsigned int>(slot);
     if (index >= kNumberedSaveSlotCount) {
         return std::nullopt;
@@ -255,7 +256,7 @@ void encode_records(
     return index + 1U;
 }
 
-[[nodiscard]] SaveFileSet make_file_set(
+NODISCARD SaveFileSet make_file_set(
     const std::filesystem::path& root,
     const SaveFileSetKind kind,
     std::optional<SaveSlot> slot,

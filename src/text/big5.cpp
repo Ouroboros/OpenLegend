@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/text/big5.hpp"
 
 #include <algorithm>
@@ -41,7 +42,7 @@ constexpr std::array<std::uint16_t, 238> kBig5Codes{
 
 static_assert(kUnicodeCharacters.size() == kBig5Codes.size());
 
-[[nodiscard]] constexpr bool continuation(const std::uint8_t value) noexcept {
+NODISCARD constexpr bool continuation(const std::uint8_t value) noexcept {
     return value >= 0x80U && value <= 0xBFU;
 }
 

@@ -4,6 +4,8 @@
 #include <source_location>
 #include <string_view>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::diagnostics {
 
 enum class LogLevel {
@@ -21,7 +23,7 @@ enum class LoggingInitializationStatus {
     file_open_failed,
 };
 
-[[nodiscard]] LoggingInitializationStatus initialize_logging(
+NODISCARD LoggingInitializationStatus initialize_logging(
     const std::filesystem::path& file_path,
     LogLevel minimum_level = LogLevel::debug,
     std::source_location location = std::source_location::current()) noexcept;
@@ -30,11 +32,11 @@ void shutdown_logging() noexcept;
 
 void set_minimum_log_level(LogLevel level) noexcept;
 
-[[nodiscard]] LogLevel minimum_log_level() noexcept;
+NODISCARD LogLevel minimum_log_level() noexcept;
 
-[[nodiscard]] bool logging_to_file() noexcept;
+NODISCARD bool logging_to_file() noexcept;
 
-[[nodiscard]] std::string_view log_level_name(LogLevel level) noexcept;
+NODISCARD std::string_view log_level_name(LogLevel level) noexcept;
 
 void log_message(
     LogLevel level,

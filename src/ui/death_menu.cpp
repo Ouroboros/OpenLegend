@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/death_menu.hpp"
 
 #include <algorithm>
@@ -8,7 +9,7 @@
 namespace openlegend::ui {
 namespace {
 
-[[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
+NODISCARD constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == input::legacy_key::enter || key == input::legacy_key::space ||
         key == input::legacy_key::keypad_insert;
 }

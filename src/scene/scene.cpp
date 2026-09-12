@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/scene/scene.hpp"
 
 #include <algorithm>
@@ -55,7 +56,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     3, 5, 4, 2, 5, 2, 2, 4, 3, 4, 7, 3, 3, 3, 3, 3, 8,
     1, 1, 1, 1, 5, 2, 1, 1, 1, 6, 3, 7, 3, 1, 1, 2, 2};
 
-[[nodiscard]] SceneDate current_local_date() noexcept {
+NODISCARD SceneDate current_local_date() noexcept {
     const auto now = std::time(nullptr);
     std::tm value{};
 #if defined(_WIN32)
@@ -70,16 +71,16 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return SceneDate{value.tm_year + 1900, value.tm_mon + 1, value.tm_mday};
 }
 
-[[nodiscard]] constexpr std::uint16_t legacy_delay_ticks(const int delay) noexcept {
+NODISCARD constexpr std::uint16_t legacy_delay_ticks(const int delay) noexcept {
     return static_cast<std::uint16_t>(delay / 40 + 1);
 }
 
-[[nodiscard]] constexpr std::size_t tile_index(const int x, const int y) noexcept {
+NODISCARD constexpr std::size_t tile_index(const int x, const int y) noexcept {
     return static_cast<std::size_t>(y) * model::kSceneCoordinateCount +
            static_cast<std::size_t>(x);
 }
 
-[[nodiscard]] constexpr std::string_view direction_name(
+NODISCARD constexpr std::string_view direction_name(
     const SceneDirection direction) noexcept {
     switch (direction) {
     case SceneDirection::up: return "up";
@@ -90,7 +91,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return "unknown";
 }
 
-[[nodiscard]] constexpr std::pair<int, int> direction_delta(
+NODISCARD constexpr std::pair<int, int> direction_delta(
     const SceneDirection direction) noexcept {
     switch (direction) {
     case SceneDirection::up: return {0, -1};
@@ -101,7 +102,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return {0, 0};
 }
 
-[[nodiscard]] bool blocked_earth(const std::int16_t value) noexcept {
+NODISCARD bool blocked_earth(const std::int16_t value) noexcept {
     for (std::size_t index = 0U; index < kBlockedEarthLow.size(); ++index) {
         if (value >= kBlockedEarthLow[index] && value <= kBlockedEarthHigh[index]) {
             return true;
@@ -110,7 +111,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return false;
 }
 
-[[nodiscard]] std::u8string status_notice_message(
+NODISCARD std::u8string status_notice_message(
     const bool fame,
     const std::int16_t value) {
     std::u8string result{fame ? kFameNoticePrefix : kMoralityNoticePrefix};
@@ -121,7 +122,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return result;
 }
 
-[[nodiscard]] std::int16_t wrapping_add(
+NODISCARD std::int16_t wrapping_add(
     const std::int16_t value,
     const std::int16_t delta) noexcept {
     const auto bits = static_cast<std::uint16_t>(
@@ -130,7 +131,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
         bits < 0x8000U ? static_cast<int>(bits) : static_cast<int>(bits) - 0x10000);
 }
 
-[[nodiscard]] std::int16_t clamped_add(
+NODISCARD std::int16_t clamped_add(
     const std::int16_t value,
     const std::int16_t delta,
     const std::int16_t minimum,
@@ -138,7 +139,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
     return std::clamp(wrapping_add(value, delta), minimum, maximum);
 }
 
-[[nodiscard]] bool restore_framebuffer(
+NODISCARD bool restore_framebuffer(
     render::IndexedFramebuffer& destination,
     const render::IndexedFramebuffer& source) noexcept {
     if (destination.pixel_width() == source.pixel_width() &&
@@ -153,7 +154,7 @@ constexpr std::array<std::size_t, 68> kInstructionWidths{
         source.pixels(), source.pixel_width(), source.pixel_height());
 }
 
-[[nodiscard]] bool draw_dialogue_text(
+NODISCARD bool draw_dialogue_text(
     render::IndexedFramebuffer& framebuffer,
     int x,
     const int y,

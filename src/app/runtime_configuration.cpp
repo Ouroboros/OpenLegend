@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 
 #include <toml++/toml.hpp>
@@ -41,7 +42,7 @@ struct ConfigurationDocument {
     std::string detail;
 };
 
-[[nodiscard]] DirectoryCandidate candidate_for_path(
+NODISCARD DirectoryCandidate candidate_for_path(
     const DataDirectorySource source,
     std::filesystem::path path,
     std::filesystem::path relative_base) {
@@ -52,7 +53,7 @@ struct ConfigurationDocument {
     return candidate;
 }
 
-[[nodiscard]] DirectoryCandidate candidate_error(
+NODISCARD DirectoryCandidate candidate_error(
     const DataDirectoryStatus status,
     const DataDirectorySource source,
     std::string detail = {}) {
@@ -63,7 +64,7 @@ struct ConfigurationDocument {
     return candidate;
 }
 
-[[nodiscard]] DirectoryCandidate command_line_candidate(
+NODISCARD DirectoryCandidate command_line_candidate(
     const std::span<const std::string_view> arguments,
     const std::filesystem::path& launch_directory) {
     for (std::size_t index = 0U; index < arguments.size(); ++index) {
@@ -99,7 +100,7 @@ struct ConfigurationDocument {
         DataDirectorySource::launch_directory, launch_directory, launch_directory);
 }
 
-[[nodiscard]] DirectoryCandidate configuration_candidate(
+NODISCARD DirectoryCandidate configuration_candidate(
     const ConfigurationDocument& document,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& launch_directory) {
@@ -152,7 +153,7 @@ struct ConfigurationDocument {
         executable_directory);
 }
 
-[[nodiscard]] SaveDirectoryConfigurationLoadResult save_directory_configuration_from_document(
+NODISCARD SaveDirectoryConfigurationLoadResult save_directory_configuration_from_document(
     const toml::table& document,
     const std::filesystem::path& executable_directory) {
     SaveDirectoryConfigurationLoadResult result;
@@ -192,7 +193,7 @@ struct ConfigurationDocument {
     return result;
 }
 
-[[nodiscard]] DataDirectoryResolution validate_candidate(DirectoryCandidate candidate) {
+NODISCARD DataDirectoryResolution validate_candidate(DirectoryCandidate candidate) {
     DataDirectoryResolution resolution;
     resolution.status = candidate.status;
     resolution.source = candidate.source;
@@ -231,7 +232,7 @@ struct ConfigurationDocument {
     return resolution;
 }
 
-[[nodiscard]] ConfigurationDocument read_configuration_document(
+NODISCARD ConfigurationDocument read_configuration_document(
     const std::filesystem::path& configuration_path) {
     ConfigurationDocument document;
     std::error_code error;
@@ -260,7 +261,7 @@ struct ConfigurationDocument {
 }
 
 template <typename Status>
-[[nodiscard]] Status configuration_load_status(
+NODISCARD Status configuration_load_status(
     const ConfigurationDocumentStatus status) noexcept {
     switch (status) {
     case ConfigurationDocumentStatus::ready:
@@ -273,11 +274,11 @@ template <typename Status>
     return Status::parse_failed;
 }
 
-[[nodiscard]] bool valid_dimension(const std::int64_t value) noexcept {
+NODISCARD bool valid_dimension(const std::int64_t value) noexcept {
     return value > 0 && value <= static_cast<std::int64_t>(std::numeric_limits<int>::max());
 }
 
-[[nodiscard]] bool valid_game_resolution_dimension(
+NODISCARD bool valid_game_resolution_dimension(
     const std::int64_t value,
     const int minimum,
     const int maximum) noexcept {
@@ -285,7 +286,7 @@ template <typename Status>
         value <= static_cast<std::int64_t>(maximum);
 }
 
-[[nodiscard]] std::optional<diagnostics::LogLevel> parse_log_level(
+NODISCARD std::optional<diagnostics::LogLevel> parse_log_level(
     const std::string_view value) noexcept {
     if (value == "trace") {
         return diagnostics::LogLevel::trace;
@@ -310,7 +311,7 @@ template <typename Status>
 
 using ConfigurationKeyPath = std::vector<std::string>;
 
-[[nodiscard]] std::span<const std::string_view> configuration_key_order(
+NODISCARD std::span<const std::string_view> configuration_key_order(
     const ConfigurationKeyPath& table_path) noexcept {
     if (table_path.empty()) {
         return RuntimeConfiguration::toml_table_order;
@@ -339,7 +340,7 @@ using ConfigurationKeyPath = std::vector<std::string>;
     return {};
 }
 
-[[nodiscard]] std::vector<std::string_view> ordered_keys(
+NODISCARD std::vector<std::string_view> ordered_keys(
     const toml::table& table, const ConfigurationKeyPath& table_path) {
     const auto key_order = configuration_key_order(table_path);
     std::vector<std::string_view> keys;
@@ -352,7 +353,7 @@ using ConfigurationKeyPath = std::vector<std::string>;
     return keys;
 }
 
-[[nodiscard]] bool is_bare_key(const std::string_view key) noexcept {
+NODISCARD bool is_bare_key(const std::string_view key) noexcept {
     if (key.empty()) {
         return false;
     }
@@ -417,12 +418,12 @@ void write_key_path(std::ostream& output, const ConfigurationKeyPath& key_path) 
     }
 }
 
-[[nodiscard]] bool is_child_table(const toml::node& node) noexcept {
+NODISCARD bool is_child_table(const toml::node& node) noexcept {
     const auto* table = node.as_table();
     return table != nullptr && !table->is_inline();
 }
 
-[[nodiscard]] bool is_table_array(const toml::node& node) noexcept {
+NODISCARD bool is_table_array(const toml::node& node) noexcept {
     const auto* array = node.as_array();
     if (array == nullptr || !array->is_array_of_tables() || array->empty()) {
         return false;
@@ -489,7 +490,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
     write_table_contents(output, document, {}, has_output);
 }
 
-[[nodiscard]] WindowConfigurationLoadResult window_load_error(
+NODISCARD WindowConfigurationLoadResult window_load_error(
     const WindowConfigurationStatus status,
     const WindowSize fallback,
     std::string detail = {}) {
@@ -500,7 +501,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
     return result;
 }
 
-[[nodiscard]] WindowConfigurationLoadResult window_configuration_from_document(
+NODISCARD WindowConfigurationLoadResult window_configuration_from_document(
     const toml::table& document, const WindowSize fallback) {
     const toml::node* window_node =
         document.get(WindowConfigurationLoadResult::toml_table_name);
@@ -538,7 +539,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
         {}};
 }
 
-[[nodiscard]] DisplayConfigurationLoadResult display_load_error(
+NODISCARD DisplayConfigurationLoadResult display_load_error(
     const DisplayConfigurationStatus status,
     std::string detail = {}) {
     DisplayConfigurationLoadResult result;
@@ -547,7 +548,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
     return result;
 }
 
-[[nodiscard]] DisplayConfigurationLoadResult display_configuration_from_document(
+NODISCARD DisplayConfigurationLoadResult display_configuration_from_document(
     const toml::table& document) {
     DisplayConfigurationLoadResult result;
     const toml::node* display_node =
@@ -610,7 +611,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
     return result;
 }
 
-[[nodiscard]] InputConfigurationLoadResult input_configuration_from_document(
+NODISCARD InputConfigurationLoadResult input_configuration_from_document(
     const toml::table& document,
     const std::chrono::milliseconds fallback_movement_repeat_delay,
     const std::chrono::milliseconds fallback_menu_repeat_delay,
@@ -663,7 +664,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
     return result;
 }
 
-[[nodiscard]] TimingConfigurationLoadResult timing_configuration_from_document(
+NODISCARD TimingConfigurationLoadResult timing_configuration_from_document(
     const toml::table& document,
     const std::chrono::nanoseconds fallback_fade_frame_delay) {
     TimingConfigurationLoadResult result;
@@ -702,7 +703,7 @@ void write_configuration_document(std::ostream& output, const toml::table& docum
     return result;
 }
 
-[[nodiscard]] LoggingConfigurationLoadResult logging_configuration_from_document(
+NODISCARD LoggingConfigurationLoadResult logging_configuration_from_document(
     const toml::table& document,
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& fallback_path,

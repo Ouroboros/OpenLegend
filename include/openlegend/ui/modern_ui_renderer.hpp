@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_font.hpp"
@@ -22,16 +23,16 @@ class ModernUiRenderer {
 public:
     explicit ModernUiRenderer(const resource::DataRoot& data_root);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] static constexpr render::rgba::FontMetrics font_metrics(
+    NODISCARD static constexpr render::rgba::FontMetrics font_metrics(
         const render::rgba::FontSize size = {}) noexcept {
         return render::rgba::font_metrics(size);
     }
 
-    [[nodiscard]] static constexpr render::rgba::FontSize scaled_font_size(
+    NODISCARD static constexpr render::rgba::FontSize scaled_font_size(
         const render::RgbaFramebuffer& framebuffer,
         const render::rgba::FontSize size = {}) noexcept {
         return render::rgba::FontSize{static_cast<std::uint16_t>(
@@ -41,13 +42,13 @@ public:
                 framebuffer.logical_height()))};
     }
 
-    [[nodiscard]] static constexpr render::rgba::FontMetrics font_metrics(
+    NODISCARD static constexpr render::rgba::FontMetrics font_metrics(
         const render::RgbaFramebuffer& framebuffer,
         const render::rgba::FontSize size = {}) noexcept {
         return render::rgba::font_metrics(scaled_font_size(framebuffer, size));
     }
 
-    [[nodiscard]] bool draw_text_utf8(
+    NODISCARD bool draw_text_utf8(
         render::RgbaFramebuffer& framebuffer,
         int x,
         int y,
@@ -56,7 +57,7 @@ public:
         const compat::LegacyPalette& palette,
         render::rgba::FontSize size = {});
 
-    [[nodiscard]] bool draw_text_mixed(
+    NODISCARD bool draw_text_mixed(
         render::RgbaFramebuffer& framebuffer,
         int x,
         int y,
@@ -65,7 +66,7 @@ public:
         const compat::LegacyPalette& palette,
         render::rgba::FontSize size = {});
 
-    [[nodiscard]] bool draw_text_big5(
+    NODISCARD bool draw_text_big5(
         render::RgbaFramebuffer& framebuffer,
         int x,
         int y,
@@ -74,7 +75,7 @@ public:
         const compat::LegacyPalette& palette,
         render::rgba::FontSize size = {});
 
-    [[nodiscard]] bool draw_box(
+    NODISCARD bool draw_box(
         render::RgbaFramebuffer& framebuffer,
         int x,
         int y,

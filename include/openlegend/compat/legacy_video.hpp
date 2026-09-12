@@ -8,6 +8,7 @@
 #include <limits>
 #include <span>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/color.hpp"
 
 namespace openlegend::compat {
@@ -25,7 +26,7 @@ struct Rgb6 {
     std::uint8_t green{};
     std::uint8_t blue{};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return red <= 63U && green <= 63U && blue <= 63U;
     }
 };
@@ -36,7 +37,7 @@ struct IndexedFrameView {
     int width{static_cast<int>(kLegacyWidth)};
     int height{static_cast<int>(kLegacyHeight)};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         if (width <= 0 || height <= 0 || palette.size() != kLegacyPaletteSize) {
             return false;
         }
@@ -61,7 +62,7 @@ struct RgbaFrameView {
     int width{static_cast<int>(kLegacyWidth)};
     int height{static_cast<int>(kLegacyHeight)};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         if (width <= 0 || height <= 0) {
             return false;
         }
@@ -78,7 +79,7 @@ struct RgbaFrameView {
     }
 };
 
-[[nodiscard]] constexpr std::uint8_t expand_rgb6(const std::uint8_t value) noexcept {
+NODISCARD constexpr std::uint8_t expand_rgb6(const std::uint8_t value) noexcept {
     const auto six_bit = static_cast<std::uint8_t>(value & 0x3FU);
     return static_cast<std::uint8_t>((six_bit << 2U) | (six_bit >> 4U));
 }
@@ -91,13 +92,13 @@ struct ProportionalViewport {
     float scale{};
     int presentation_scale{};
 
-    [[nodiscard]] constexpr bool valid() const noexcept {
+    NODISCARD constexpr bool valid() const noexcept {
         return width > 0.0F && height > 0.0F && scale > 0.0F &&
             presentation_scale > 0;
     }
 };
 
-[[nodiscard]] constexpr ProportionalViewport proportional_viewport(
+NODISCARD constexpr ProportionalViewport proportional_viewport(
     const int output_width,
     const int output_height,
     const int source_width,
@@ -124,7 +125,7 @@ struct ProportionalViewport {
         presentation_scale};
 }
 
-[[nodiscard]] constexpr ProportionalViewport proportional_viewport(
+NODISCARD constexpr ProportionalViewport proportional_viewport(
     const int output_width, const int output_height) noexcept {
     return proportional_viewport(
         output_width,
@@ -137,7 +138,7 @@ using LegacyPixels = std::array<std::uint8_t, kLegacyPixelCount>;
 using LegacyPalette = std::array<Rgb6, kLegacyPaletteSize>;
 using ModernRgbaPixels = std::array<std::uint8_t, kModernRgbaByteCount>;
 
-[[nodiscard]] inline bool convert_indexed_frame_to_rgba(
+NODISCARD inline bool convert_indexed_frame_to_rgba(
     const IndexedFrameView frame, std::span<std::uint8_t> rgba) noexcept {
     if (!frame.valid() ||
         frame.pixels.size() >

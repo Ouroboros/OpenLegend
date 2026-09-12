@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/ui/location_status_renderer.hpp"
 
 #include <algorithm>
@@ -20,7 +21,7 @@ struct RelativeInset {
     std::uint16_t numerator{};
     std::uint16_t denominator{1U};
 
-    [[nodiscard]] constexpr int resolve(const int extent) const noexcept {
+    NODISCARD constexpr int resolve(const int extent) const noexcept {
         if (extent <= 0 || numerator == 0U || denominator == 0U) {
             return 0;
         }

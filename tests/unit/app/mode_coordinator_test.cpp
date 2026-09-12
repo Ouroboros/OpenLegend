@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/app/mode_coordinator.hpp"
 #include "test_support.hpp"
@@ -22,7 +23,7 @@ public:
         std::function<openlegend::app::ModeStepResult(openlegend::app::AppMode)> callback)
         : callback_(std::move(callback)) {}
 
-    [[nodiscard]] openlegend::app::ModeStepResult step(const openlegend::app::AppMode mode) override {
+    NODISCARD openlegend::app::ModeStepResult step(const openlegend::app::AppMode mode) override {
         calls.push_back(mode);
         return callback_(mode);
     }

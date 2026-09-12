@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
 
 namespace openlegend::platform::sdl3 {
@@ -19,7 +20,7 @@ public:
 
     SdlAudioDevice& operator=(const SdlAudioDevice&) = delete;
 
-    [[nodiscard]] bool valid() const noexcept { return stream_ != nullptr; }
+    NODISCARD bool valid() const noexcept { return stream_ != nullptr; }
 
 private:
     static void SDLCALL feed(

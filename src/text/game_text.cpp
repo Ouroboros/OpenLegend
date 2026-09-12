@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/text/game_text.hpp"
 
 #include <type_traits>
@@ -5,7 +6,7 @@
 namespace openlegend::text {
 namespace {
 
-[[nodiscard]] std::optional<std::size_t> utf8_width_units(
+NODISCARD std::optional<std::size_t> utf8_width_units(
     const std::u8string_view text) noexcept {
     std::size_t width = 0U;
     for (std::size_t index = 0U; index < text.size();) {

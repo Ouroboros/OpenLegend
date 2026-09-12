@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <span>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 
@@ -12,7 +13,7 @@ class ModernUiRenderer;
 
 class LocationStatusRenderer {
 public:
-    [[nodiscard]] bool render(
+    NODISCARD bool render(
         std::span<const std::uint8_t> legacy_name,
         int location_x,
         int location_y,

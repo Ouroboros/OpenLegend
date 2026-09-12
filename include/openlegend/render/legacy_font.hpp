@@ -6,16 +6,18 @@
 #include <optional>
 #include <span>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::render {
 
 class Big5GlyphCache {
 public:
     explicit Big5GlyphCache(std::span<const std::uint8_t> font_bytes) noexcept;
 
-    [[nodiscard]] std::optional<std::span<const std::uint8_t, 32>> resolve(
+    NODISCARD std::optional<std::span<const std::uint8_t, 32>> resolve(
         std::uint16_t big5_code) noexcept;
 
-    [[nodiscard]] std::size_t next_replacement_slot() const noexcept {
+    NODISCARD std::size_t next_replacement_slot() const noexcept {
         return next_slot_;
     }
 

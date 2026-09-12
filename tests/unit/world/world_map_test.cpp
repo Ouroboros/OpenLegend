@@ -9,6 +9,7 @@
 #include <span>
 #include <utility>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
@@ -35,7 +36,7 @@ struct WorldSessionTestAccess {
 
 namespace {
 
-[[nodiscard]] std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
+NODISCARD std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
     std::uint64_t result = 0xCBF29CE484222325ULL;
     for (const auto byte : bytes) {
         result ^= byte;
@@ -44,7 +45,7 @@ namespace {
     return result;
 }
 
-[[nodiscard]] std::uint64_t fnv1a64_words(const std::span<const std::int16_t> words) {
+NODISCARD std::uint64_t fnv1a64_words(const std::span<const std::int16_t> words) {
     std::uint64_t result = 0xCBF29CE484222325ULL;
     for (const auto word : words) {
         const auto bits = static_cast<std::uint16_t>(word);
@@ -57,7 +58,7 @@ namespace {
     return result;
 }
 
-[[nodiscard]] std::uint64_t fnv1a64_depth_entries(
+NODISCARD std::uint64_t fnv1a64_depth_entries(
     const std::span<const openlegend::render::LegacyDepthEntry> entries) {
     std::uint64_t result = 0xCBF29CE484222325ULL;
     for (const auto& entry : entries) {
@@ -73,7 +74,7 @@ namespace {
     return result;
 }
 
-[[nodiscard]] bool sprite_has_visible_pixel(
+NODISCARD bool sprite_has_visible_pixel(
     const openlegend::resource::PackedArchive& sprites,
     const std::int16_t legacy_id,
     const openlegend::render::IndexedFramebuffer& framebuffer,
@@ -110,7 +111,7 @@ namespace {
     return false;
 }
 
-[[nodiscard]] openlegend::model::GameSnapshot load_baseline(
+NODISCARD openlegend::model::GameSnapshot load_baseline(
     const std::filesystem::path& root) {
     auto loaded = openlegend::persistence::load_baseline(root);
     OL_CHECK(loaded);

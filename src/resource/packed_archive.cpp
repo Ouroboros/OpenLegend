@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/resource/packed_archive.hpp"
 
 #include <utility>
@@ -8,7 +9,7 @@
 namespace openlegend::resource {
 namespace {
 
-[[nodiscard]] bool valid_index_size(const std::span<const std::uint8_t> index_bytes) {
+NODISCARD bool valid_index_size(const std::span<const std::uint8_t> index_bytes) {
     return !index_bytes.empty() && index_bytes.size() % 4U == 0U;
 }
 

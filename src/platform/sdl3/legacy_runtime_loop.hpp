@@ -3,6 +3,7 @@
 #include <chrono>
 #include <filesystem>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 
 namespace openlegend::platform::sdl3 {
@@ -24,7 +25,7 @@ struct LegacyRuntimeLoopResult {
     bool ending_completed{};
 };
 
-[[nodiscard]] LegacyRuntimeLoopResult run_legacy_runtime_loop(
+NODISCARD LegacyRuntimeLoopResult run_legacy_runtime_loop(
     SdlRuntimePlatform& platform,
     const LegacyRuntimeLoopSettings& settings);
 

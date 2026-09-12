@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/rgba_font_renderer.hpp"
 
 #include <algorithm>
@@ -16,16 +17,16 @@ constexpr std::uint16_t kAsciiSourceWidth = 8U;
 constexpr std::uint16_t kBig5SourceWidth = 16U;
 constexpr std::uint16_t kSourceHeight = kBaseFontPixelHeight;
 
-[[nodiscard]] std::uint16_t source_width(const GlyphKind kind) noexcept {
+NODISCARD std::uint16_t source_width(const GlyphKind kind) noexcept {
     return kind == GlyphKind::big5 ? kBig5SourceWidth : kAsciiSourceWidth;
 }
 
-[[nodiscard]] std::uint16_t target_width(
+NODISCARD std::uint16_t target_width(
     const GlyphKind kind, const FontMetrics metrics) noexcept {
     return kind == GlyphKind::big5 ? metrics.big5_width : metrics.ascii_width;
 }
 
-[[nodiscard]] bool packed_pixel(
+NODISCARD bool packed_pixel(
     const std::span<const std::uint8_t> glyph,
     const std::uint16_t width,
     const std::uint16_t x,
@@ -36,7 +37,7 @@ constexpr std::uint16_t kSourceHeight = kBaseFontPixelHeight;
     return (byte & mask) != 0U;
 }
 
-[[nodiscard]] double sinc(const double value) noexcept {
+NODISCARD double sinc(const double value) noexcept {
     constexpr double kPi = 3.14159265358979323846;
     if (std::abs(value) < 1.0e-12) {
         return 1.0;
@@ -45,7 +46,7 @@ constexpr std::uint16_t kSourceHeight = kBaseFontPixelHeight;
     return std::sin(radians) / radians;
 }
 
-[[nodiscard]] double lanczos3(
+NODISCARD double lanczos3(
     const double distance, const double filter_scale) noexcept {
     const auto value = distance * filter_scale;
     if (std::abs(value) >= 3.0) {
@@ -54,14 +55,14 @@ constexpr std::uint16_t kSourceHeight = kBaseFontPixelHeight;
     return sinc(value) * sinc(value / 3.0);
 }
 
-[[nodiscard]] compat::Rgba8 with_coverage(
+NODISCARD compat::Rgba8 with_coverage(
     compat::Rgba8 color, const std::uint8_t coverage) noexcept {
     color.alpha = static_cast<std::uint8_t>(
         (static_cast<std::uint32_t>(color.alpha) * coverage + 127U) / 255U);
     return color;
 }
 
-[[nodiscard]] bool glyph_fits(
+NODISCARD bool glyph_fits(
     const RgbaFramebuffer& framebuffer,
     const int x,
     const int y,
@@ -114,7 +115,7 @@ void draw_mask_layer(
     }
 }
 
-[[nodiscard]] bool draw_glyph(
+NODISCARD bool draw_glyph(
     RgbaFramebuffer& framebuffer,
     const int x,
     const int y,

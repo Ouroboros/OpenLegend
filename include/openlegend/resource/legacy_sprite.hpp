@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::resource {
 
 struct SpriteRun {
@@ -19,21 +21,21 @@ struct SpriteRow {
 
 class SpriteFrameView {
 public:
-    [[nodiscard]] static SpriteFrameView parse(std::span<const std::uint8_t> bytes);
+    NODISCARD static SpriteFrameView parse(std::span<const std::uint8_t> bytes);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] std::uint16_t width() const noexcept { return width_; }
+    NODISCARD std::uint16_t width() const noexcept { return width_; }
 
-    [[nodiscard]] std::uint16_t height() const noexcept { return height_; }
+    NODISCARD std::uint16_t height() const noexcept { return height_; }
 
-    [[nodiscard]] std::int16_t x_offset() const noexcept { return x_offset_; }
+    NODISCARD std::int16_t x_offset() const noexcept { return x_offset_; }
 
-    [[nodiscard]] std::int16_t y_offset() const noexcept { return y_offset_; }
+    NODISCARD std::int16_t y_offset() const noexcept { return y_offset_; }
 
-    [[nodiscard]] const std::vector<SpriteRow>& rows() const noexcept { return rows_; }
+    NODISCARD const std::vector<SpriteRow>& rows() const noexcept { return rows_; }
 
 private:
     std::uint16_t width_{};

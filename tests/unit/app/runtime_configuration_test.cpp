@@ -9,6 +9,7 @@
 #include <string_view>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/app/display_resolution.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "test_support.hpp"
@@ -45,27 +46,27 @@ public:
 
     TemporaryTree& operator=(const TemporaryTree&) = delete;
 
-    [[nodiscard]] const std::filesystem::path& executable_directory() const noexcept {
+    NODISCARD const std::filesystem::path& executable_directory() const noexcept {
         return executable_directory_;
     }
 
-    [[nodiscard]] const std::filesystem::path& launch_directory() const noexcept {
+    NODISCARD const std::filesystem::path& launch_directory() const noexcept {
         return launch_directory_;
     }
 
-    [[nodiscard]] const std::filesystem::path& configured_directory() const noexcept {
+    NODISCARD const std::filesystem::path& configured_directory() const noexcept {
         return configured_directory_;
     }
 
-    [[nodiscard]] const std::filesystem::path& command_directory() const noexcept {
+    NODISCARD const std::filesystem::path& command_directory() const noexcept {
         return command_directory_;
     }
 
-    [[nodiscard]] const std::filesystem::path& save_directory() const noexcept {
+    NODISCARD const std::filesystem::path& save_directory() const noexcept {
         return save_directory_;
     }
 
-    [[nodiscard]] std::filesystem::path configuration_path() const {
+    NODISCARD std::filesystem::path configuration_path() const {
         return executable_directory_ / openlegend::app::kConfigurationFilename;
     }
 
@@ -75,7 +76,7 @@ public:
     }
 
 private:
-    [[nodiscard]] static std::filesystem::path path_from_literal(const std::u8string_view text) {
+    NODISCARD static std::filesystem::path path_from_literal(const std::u8string_view text) {
         return std::filesystem::path{std::u8string{text}};
     }
 
@@ -87,7 +88,7 @@ private:
     std::filesystem::path save_directory_;
 };
 
-[[nodiscard]] std::string utf8_bytes(const std::filesystem::path& path) {
+NODISCARD std::string utf8_bytes(const std::filesystem::path& path) {
     const auto text = path.generic_u8string();
     return std::string{
         reinterpret_cast<const char*>(text.data()),

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/model/game_snapshot.hpp"
@@ -67,13 +68,13 @@ struct BattleAreaResult {
     std::optional<std::int16_t> effect_kind;
 };
 
-[[nodiscard]] std::optional<std::int16_t> apply_role_detox_value(
+NODISCARD std::optional<std::int16_t> apply_role_detox_value(
     model::RangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     random::LegacyRandom& random);
 
-[[nodiscard]] std::optional<std::int32_t> apply_role_medicine_value(
+NODISCARD std::optional<std::int32_t> apply_role_medicine_value(
     model::RangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
@@ -105,26 +106,26 @@ struct BattleItemEffectResult {
     bool item_consumed{};
 };
 
-[[nodiscard]] bool role_meets_item_requirements(
+NODISCARD bool role_meets_item_requirements(
     const model::RangerState& ranger,
     std::int16_t role_id,
     std::int16_t item_id) noexcept;
 
-[[nodiscard]] bool equip_role_item(
+NODISCARD bool equip_role_item(
     model::RangerState& ranger,
     std::int16_t role_id,
     std::int16_t item_id) noexcept;
 
-[[nodiscard]] bool assign_role_practice_item(
+NODISCARD bool assign_role_practice_item(
     model::RangerState& ranger,
     std::int16_t role_id,
     std::int16_t item_id) noexcept;
 
-[[nodiscard]] bool consume_inventory_item_slot(
+NODISCARD bool consume_inventory_item_slot(
     model::RangerState& ranger,
     std::size_t inventory_slot) noexcept;
 
-[[nodiscard]] std::optional<BattleItemEffectResult> apply_role_item_effect(
+NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     model::RangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
@@ -684,119 +685,119 @@ public:
         model::RangerState& ranger,
         std::int16_t* legacy_hp_cost_scale = nullptr);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] bool waiting_for_party_selection() const noexcept { return waiting_; }
+    NODISCARD bool waiting_for_party_selection() const noexcept { return waiting_; }
 
-    [[nodiscard]] std::size_t party_prefix_length() const noexcept { return party_prefix_length_; }
+    NODISCARD std::size_t party_prefix_length() const noexcept { return party_prefix_length_; }
 
-    [[nodiscard]] std::size_t cursor() const noexcept { return cursor_; }
+    NODISCARD std::size_t cursor() const noexcept { return cursor_; }
 
-    [[nodiscard]] std::int16_t combatant_count() const noexcept { return combatant_count_; }
+    NODISCARD std::int16_t combatant_count() const noexcept { return combatant_count_; }
 
-    [[nodiscard]] std::span<const std::int16_t, kBattlePartySlots> selection_states() const noexcept {
+    NODISCARD std::span<const std::int16_t, kBattlePartySlots> selection_states() const noexcept {
         return selection_states_;
     }
 
-    [[nodiscard]] std::span<const BattleCombatant, kBattleCombatantCount> combatants() const noexcept {
+    NODISCARD std::span<const BattleCombatant, kBattleCombatantCount> combatants() const noexcept {
         return combatants_;
     }
 
-    [[nodiscard]] std::span<BattleCombatant, kBattleCombatantCount> combatants() noexcept {
+    NODISCARD std::span<BattleCombatant, kBattleCombatantCount> combatants() noexcept {
         return combatants_;
     }
 
-    [[nodiscard]] PartySelectionResult apply(PartySelectionAction action);
+    NODISCARD PartySelectionResult apply(PartySelectionAction action);
 
-    [[nodiscard]] bool sort_by_effective_speed();
+    NODISCARD bool sort_by_effective_speed();
 
-    [[nodiscard]] bool prepare_round();
+    NODISCARD bool prepare_round();
 
-    [[nodiscard]] BattleOutcome evaluate_outcome();
+    NODISCARD BattleOutcome evaluate_outcome();
 
-    [[nodiscard]] std::optional<BattleLevelUpResult> apply_battle_level_up(
+    NODISCARD std::optional<BattleLevelUpResult> apply_battle_level_up(
         std::size_t role_id,
         bool suppress_message,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattlePracticeResult> apply_battle_practice(
+    NODISCARD std::optional<BattlePracticeResult> apply_battle_practice(
         std::size_t role_id,
         bool suppress_message);
 
-    [[nodiscard]] std::optional<BattleCraftResult> apply_battle_crafting(
+    NODISCARD std::optional<BattleCraftResult> apply_battle_crafting(
         std::size_t role_id,
         bool suppress_message,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattlePostBattleResult> prepare_battle_settlement(
+    NODISCARD std::optional<BattlePostBattleResult> prepare_battle_settlement(
         BattleOutcome outcome);
 
-    [[nodiscard]] std::optional<BattlePostBattleRoleResult>
+    NODISCARD std::optional<BattlePostBattleRoleResult>
         apply_post_battle_experience(
             std::size_t combatant_slot,
             BattleOutcome outcome,
             bool grant_experience);
 
-    [[nodiscard]] std::optional<BattleCraftResult> commit_battle_crafting(
+    NODISCARD std::optional<BattleCraftResult> commit_battle_crafting(
         const BattleCraftResult& prepared,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattlePostBattleResult> settle_battle(
+    NODISCARD std::optional<BattlePostBattleResult> settle_battle(
         BattleOutcome outcome,
         bool grant_experience,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleRoundStatusDamageResult> apply_round_status_damage();
+    NODISCARD std::optional<BattleRoundStatusDamageResult> apply_round_status_damage();
 
-    [[nodiscard]] std::optional<BattleAiTargetCleanupResult> clear_hidden_ai_targets();
+    NODISCARD std::optional<BattleAiTargetCleanupResult> clear_hidden_ai_targets();
 
-    [[nodiscard]] std::optional<BattlePlayerActionAvailability>
+    NODISCARD std::optional<BattlePlayerActionAvailability>
         player_action_availability(std::size_t combatant_slot) const noexcept;
 
-    [[nodiscard]] std::optional<BattleStatusPanelPlan> status_panel_plan(
+    NODISCARD std::optional<BattleStatusPanelPlan> status_panel_plan(
         std::size_t combatant_slot) const noexcept;
 
-    [[nodiscard]] std::optional<BattlePathCoord> move_one_marked_step(
+    NODISCARD std::optional<BattlePathCoord> move_one_marked_step(
         BattlePathing& pathing, std::size_t slot);
 
-    [[nodiscard]] bool movement_should_stop(
+    NODISCARD bool movement_should_stop(
         std::size_t slot,
         BattlePathCoord destination,
         std::size_t target_slot,
         BattleMovementStopRule rule,
         std::int16_t range) const noexcept;
 
-    [[nodiscard]] std::size_t learned_magic_count(std::size_t slot) const noexcept;
+    NODISCARD std::size_t learned_magic_count(std::size_t slot) const noexcept;
 
-    [[nodiscard]] std::int16_t automatic_magic_slot(
+    NODISCARD std::int16_t automatic_magic_slot(
         std::size_t slot, random::LegacyRandom& random) const noexcept;
 
-    [[nodiscard]] std::optional<BattleAttackProfile> attack_profile(
+    NODISCARD std::optional<BattleAttackProfile> attack_profile(
         std::size_t slot, std::int16_t magic_slot) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> attack_special_bonus(
+    NODISCARD std::optional<std::int16_t> attack_special_bonus(
         std::size_t slot, std::int16_t magic_slot) const noexcept;
 
-    [[nodiscard]] std::optional<BattleMagicSelectionState> begin_magic_selection(
+    NODISCARD std::optional<BattleMagicSelectionState> begin_magic_selection(
         std::size_t slot) const noexcept;
 
-    [[nodiscard]] static BattleMagicSelectionResult apply_magic_selection(
+    NODISCARD static BattleMagicSelectionResult apply_magic_selection(
         BattleMagicSelectionState& state,
         BattleMagicSelectionAction action) noexcept;
 
-    [[nodiscard]] bool commit_attack_iteration(
+    NODISCARD bool commit_attack_iteration(
         std::size_t slot,
         std::int16_t magic_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] bool commit_attack_mp_cost(
+    NODISCARD bool commit_attack_mp_cost(
         std::size_t slot,
         std::int16_t magic_slot,
         std::int16_t cost_scale);
 
-    [[nodiscard]] std::optional<BattleHpDamageResult> apply_hp_damage(
+    NODISCARD std::optional<BattleHpDamageResult> apply_hp_damage(
         std::size_t actor_slot,
         std::size_t target_slot,
         std::int16_t magic_slot,
@@ -804,100 +805,100 @@ public:
         std::int16_t special_attack_bonus,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<std::int32_t> apply_mp_damage(
+    NODISCARD std::optional<std::int32_t> apply_mp_damage(
         std::size_t actor_slot,
         std::size_t target_slot,
         std::int16_t magic_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<std::int16_t> poison_targeting_range(
+    NODISCARD std::optional<std::int16_t> poison_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> apply_poison_value(
+    NODISCARD std::optional<std::int16_t> apply_poison_value(
         std::size_t actor_slot,
         std::size_t target_slot);
 
-    [[nodiscard]] std::optional<BattleAreaResult> apply_poison_target(
+    NODISCARD std::optional<BattleAreaResult> apply_poison_target(
         std::size_t actor_slot,
         BattlePathCoord target);
 
-    [[nodiscard]] bool finish_poison_action(std::size_t actor_slot);
+    NODISCARD bool finish_poison_action(std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<std::int16_t> detox_targeting_range(
+    NODISCARD std::optional<std::int16_t> detox_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> apply_detox_value(
+    NODISCARD std::optional<std::int16_t> apply_detox_value(
         std::size_t actor_slot,
         std::size_t target_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAreaResult> apply_detox_target(
+    NODISCARD std::optional<BattleAreaResult> apply_detox_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         random::LegacyRandom& random);
 
-    [[nodiscard]] bool finish_detox_action(std::size_t actor_slot);
+    NODISCARD bool finish_detox_action(std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<std::int16_t> medicine_targeting_range(
+    NODISCARD std::optional<std::int16_t> medicine_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    [[nodiscard]] std::optional<std::int32_t> apply_medicine_value(
+    NODISCARD std::optional<std::int32_t> apply_medicine_value(
         std::size_t actor_slot,
         std::size_t target_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAreaResult> apply_medicine_target(
+    NODISCARD std::optional<BattleAreaResult> apply_medicine_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         random::LegacyRandom& random);
 
-    [[nodiscard]] bool finish_medicine_action(std::size_t actor_slot);
+    NODISCARD bool finish_medicine_action(std::size_t actor_slot);
 
-    [[nodiscard]] BattleItemSelectionState begin_item_selection() const noexcept;
+    NODISCARD BattleItemSelectionState begin_item_selection() const noexcept;
 
-    [[nodiscard]] bool consume_inventory_item_slot(std::size_t inventory_slot) noexcept;
+    NODISCARD bool consume_inventory_item_slot(std::size_t inventory_slot) noexcept;
 
-    [[nodiscard]] std::optional<BattleItemEffectResult> apply_player_item_effect(
+    NODISCARD std::optional<BattleItemEffectResult> apply_player_item_effect(
         std::size_t actor_slot,
         std::size_t inventory_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] bool finish_player_item_action(std::size_t actor_slot) noexcept;
+    NODISCARD bool finish_player_item_action(std::size_t actor_slot) noexcept;
 
-    [[nodiscard]] bool remove_carried_item_slot(
+    NODISCARD bool remove_carried_item_slot(
         std::size_t actor_slot,
         std::size_t item_slot) noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> throwing_weapon_targeting_range(
+    NODISCARD std::optional<std::int16_t> throwing_weapon_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    [[nodiscard]] std::optional<BattleThrownItemResult> prepare_throwing_weapon_target(
+    NODISCARD std::optional<BattleThrownItemResult> prepare_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         std::size_t inventory_slot);
 
-    [[nodiscard]] std::optional<BattleThrownItemResult> apply_throwing_weapon_payload(
+    NODISCARD std::optional<BattleThrownItemResult> apply_throwing_weapon_payload(
         std::size_t actor_slot,
         BattlePathCoord target,
         std::size_t inventory_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleThrownItemResult> apply_throwing_weapon_target(
+    NODISCARD std::optional<BattleThrownItemResult> apply_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         std::size_t inventory_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] bool finish_throwing_weapon_action(
+    NODISCARD bool finish_throwing_weapon_action(
         std::size_t actor_slot,
         std::size_t inventory_slot) noexcept;
 
-    [[nodiscard]] std::optional<std::int16_t> prepare_ai_throwing_weapon_target(
+    NODISCARD std::optional<std::int16_t> prepare_ai_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         const BattleAiChoice& choice);
 
-    [[nodiscard]] std::optional<BattleThrownItemResult> apply_ai_throwing_weapon_target(
+    NODISCARD std::optional<BattleThrownItemResult> apply_ai_throwing_weapon_target(
         std::size_t actor_slot,
         BattlePathCoord target,
         const BattleAiChoice& choice,
@@ -906,154 +907,154 @@ public:
         bool consume_item = true,
         bool target_prepared = false);
 
-    [[nodiscard]] std::optional<BattleItemEffectResult> apply_ai_item_effect(
+    NODISCARD std::optional<BattleItemEffectResult> apply_ai_item_effect(
         std::size_t actor_slot,
         const BattleAiChoice& choice,
         random::LegacyRandom& random,
         bool consume_item = true);
 
-    [[nodiscard]] bool consume_ai_item(
+    NODISCARD bool consume_ai_item(
         std::size_t actor_slot,
         const BattleAiChoice& choice) noexcept;
 
-    [[nodiscard]] std::optional<BattleRestResult> rest_actor(
+    NODISCARD std::optional<BattleRestResult> rest_actor(
         std::size_t actor_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_low_hp_action(std::size_t actor_slot);
+    NODISCARD std::optional<BattleAiChoice> choose_ai_low_hp_action(std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_poisoned_action(std::size_t actor_slot);
+    NODISCARD std::optional<BattleAiChoice> choose_ai_poisoned_action(std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_low_mp_action(std::size_t actor_slot);
+    NODISCARD std::optional<BattleAiChoice> choose_ai_low_mp_action(std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_medicine_target(
+    NODISCARD std::optional<BattleAiChoice> choose_ai_medicine_target(
         std::size_t actor_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_detox_target(
+    NODISCARD std::optional<BattleAiChoice> choose_ai_detox_target(
         std::size_t actor_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_offensive_action(
+    NODISCARD std::optional<BattleAiChoice> choose_ai_offensive_action(
         std::size_t actor_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiTurnPrelude> begin_ai_turn(
+    NODISCARD std::optional<BattleAiTurnPrelude> begin_ai_turn(
         std::size_t actor_slot) const noexcept;
 
-    [[nodiscard]] std::optional<BattleAiTurnDecision> choose_ai_turn_action(
+    NODISCARD std::optional<BattleAiTurnDecision> choose_ai_turn_action(
         std::size_t actor_slot,
         const BattleAiTurnPrelude& prelude,
         random::LegacyRandom& random);
 
-    [[nodiscard]] bool finish_ai_turn(std::size_t actor_slot) noexcept;
+    NODISCARD bool finish_ai_turn(std::size_t actor_slot) noexcept;
 
-    [[nodiscard]] std::optional<BattleAiEscapePlan> ai_escape_plan(
+    NODISCARD std::optional<BattleAiEscapePlan> ai_escape_plan(
         std::size_t actor_slot,
         bool rest_after_move) const;
 
-    [[nodiscard]] std::optional<BattleAiTargetSelection> choose_ai_attack_target(
+    NODISCARD std::optional<BattleAiTargetSelection> choose_ai_attack_target(
         std::size_t actor_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiAttackPlan> begin_ai_attack_plan(
+    NODISCARD std::optional<BattleAiAttackPlan> begin_ai_attack_plan(
         std::size_t actor_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiAttackPlan> resume_ai_attack_after_move(
+    NODISCARD std::optional<BattleAiAttackPlan> resume_ai_attack_after_move(
         std::size_t actor_slot,
         BattleAiAttackPlan plan);
 
-    [[nodiscard]] std::optional<BattleAiPoisonTargetSelection> choose_ai_poison_target(
+    NODISCARD std::optional<BattleAiPoisonTargetSelection> choose_ai_poison_target(
         std::size_t actor_slot,
         std::size_t stale_target_slot,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiPoisonPlan> begin_ai_poison_plan(
+    NODISCARD std::optional<BattleAiPoisonPlan> begin_ai_poison_plan(
         std::size_t actor_slot,
         std::size_t stale_target_slot,
         const BattleAiTurnPrelude& prelude,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiPoisonPlan> resume_ai_poison_after_move(
+    NODISCARD std::optional<BattleAiPoisonPlan> resume_ai_poison_after_move(
         std::size_t actor_slot,
         BattleAiPoisonPlan plan);
 
-    [[nodiscard]] std::optional<BattleAiItemPlan> begin_ai_item_plan(
+    NODISCARD std::optional<BattleAiItemPlan> begin_ai_item_plan(
         std::size_t actor_slot,
         const BattleAiChoice& choice) const;
 
-    [[nodiscard]] std::optional<BattleAiItemPlan> resume_ai_item_after_relocation(
+    NODISCARD std::optional<BattleAiItemPlan> resume_ai_item_after_relocation(
         std::size_t actor_slot,
         BattleAiItemPlan plan) const noexcept;
 
-    [[nodiscard]] std::optional<BattleAiItemPlan> begin_ai_throwing_weapon_plan(
+    NODISCARD std::optional<BattleAiItemPlan> begin_ai_throwing_weapon_plan(
         std::size_t actor_slot,
         const BattleAiChoice& choice,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<BattleAiItemPlan> resume_ai_throwing_weapon_after_move(
+    NODISCARD std::optional<BattleAiItemPlan> resume_ai_throwing_weapon_after_move(
         std::size_t actor_slot,
         BattleAiItemPlan plan);
 
-    [[nodiscard]] std::optional<BattleAiRequestPlan> begin_ai_request_plan(
+    NODISCARD std::optional<BattleAiRequestPlan> begin_ai_request_plan(
         std::size_t actor_slot,
         const BattleAiChoice& choice) const noexcept;
 
-    [[nodiscard]] std::optional<BattleAiRequestPlan> resume_ai_request_after_move(
+    NODISCARD std::optional<BattleAiRequestPlan> resume_ai_request_after_move(
         std::size_t actor_slot,
         BattleAiRequestPlan plan) const noexcept;
 
-    [[nodiscard]] std::optional<BattleAiSupportPlan> begin_ai_support_plan(
+    NODISCARD std::optional<BattleAiSupportPlan> begin_ai_support_plan(
         std::size_t actor_slot,
         const BattleAiChoice& choice,
         const BattleAiTurnPrelude& prelude);
 
-    [[nodiscard]] std::optional<BattleAiSupportPlan> resume_ai_support_after_move(
+    NODISCARD std::optional<BattleAiSupportPlan> resume_ai_support_after_move(
         std::size_t actor_slot,
         BattleAiSupportPlan plan);
 
-    [[nodiscard]] std::optional<BattleCursorSelectionState> begin_cursor_selection(
+    NODISCARD std::optional<BattleCursorSelectionState> begin_cursor_selection(
         std::size_t actor_slot,
         std::int16_t path_limit,
         BattleCursorSelectionMode mode) const;
 
-    [[nodiscard]] BattleCursorSelectionResult apply_cursor_selection(
+    NODISCARD BattleCursorSelectionResult apply_cursor_selection(
         BattleCursorSelectionState& state,
         BattleCursorSelectionAction action) const noexcept;
 
-    [[nodiscard]] std::optional<BattleCursorSelectionState> begin_player_movement_selection(
+    NODISCARD std::optional<BattleCursorSelectionState> begin_player_movement_selection(
         std::size_t actor_slot) const;
 
-    [[nodiscard]] std::optional<BattlePlayerMovementPlan> finish_player_movement_selection(
+    NODISCARD std::optional<BattlePlayerMovementPlan> finish_player_movement_selection(
         const BattleCursorSelectionState& state) const;
 
-    [[nodiscard]] std::optional<BattleAiMovementStep> advance_player_movement(
+    NODISCARD std::optional<BattleAiMovementStep> advance_player_movement(
         BattlePlayerMovementPlan& plan);
 
-    [[nodiscard]] std::optional<BattleAiMovementPlan> begin_ai_movement_plan(
+    NODISCARD std::optional<BattleAiMovementPlan> begin_ai_movement_plan(
         std::size_t actor_slot,
         std::int16_t target_slot,
         BattlePathCoord requested_target,
         std::int16_t mode,
         std::int16_t range) const;
 
-    [[nodiscard]] std::optional<BattleAiMovementStep> advance_ai_movement(
+    NODISCARD std::optional<BattleAiMovementStep> advance_ai_movement(
         BattleAiMovementPlan& plan);
 
-    [[nodiscard]] std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
+    NODISCARD std::optional<std::size_t> defer_turn_to_end(std::size_t actor_slot);
 
     void enable_automatic_mode() noexcept { automatic_enabled_ = true; }
 
     void disable_automatic_mode() noexcept { automatic_enabled_ = false; }
 
-    [[nodiscard]] bool automatic_enabled() const noexcept { return automatic_enabled_; }
+    NODISCARD bool automatic_enabled() const noexcept { return automatic_enabled_; }
 
-    [[nodiscard]] std::optional<BattleRenderPlan> battle_render_plan(
+    NODISCARD std::optional<BattleRenderPlan> battle_render_plan(
         const BattleRenderState& state,
         std::span<const std::int16_t> path_values) const;
 
-    [[nodiscard]] std::optional<BattleRenderPlan> battle_render_plan(
+    NODISCARD std::optional<BattleRenderPlan> battle_render_plan(
         const BattleRenderState& state,
         std::span<const std::int16_t> path_values,
         int viewport_width,
@@ -1061,17 +1062,17 @@ public:
 
     void clear_attack_effects() noexcept;
 
-    [[nodiscard]] std::span<const std::int16_t> attack_effects() const noexcept {
+    NODISCARD std::span<const std::int16_t> attack_effects() const noexcept {
         return attack_effects_;
     }
 
-    [[nodiscard]] std::int16_t last_hp_cost_scale() const noexcept {
+    NODISCARD std::int16_t last_hp_cost_scale() const noexcept {
         return legacy_hp_cost_scale_ != nullptr
             ? *legacy_hp_cost_scale_
             : last_hp_cost_scale_;
     }
 
-    [[nodiscard]] std::optional<BattleAreaResult> apply_attack_area(
+    NODISCARD std::optional<BattleAreaResult> apply_attack_area(
         std::size_t actor_slot,
         std::int16_t magic_slot,
         BattlePathCoord target,
@@ -1079,7 +1080,7 @@ public:
         random::LegacyRandom& random,
         const BattleAttackProfile* cached_area_profile = nullptr);
 
-    [[nodiscard]] std::optional<BattleAreaResult> apply_line_attack_area(
+    NODISCARD std::optional<BattleAreaResult> apply_line_attack_area(
         std::size_t actor_slot,
         std::int16_t magic_slot,
         std::int16_t direction,
@@ -1087,52 +1088,52 @@ public:
         random::LegacyRandom& random,
         const BattleAttackProfile* cached_area_profile = nullptr);
 
-    [[nodiscard]] std::optional<BattleMagicAnimationPlan> magic_animation_plan(
+    NODISCARD std::optional<BattleMagicAnimationPlan> magic_animation_plan(
         std::size_t actor_slot,
         std::int16_t magic_slot,
         std::int16_t fight_pointer_base) const;
 
-    [[nodiscard]] std::optional<BattleMagicAnimationPlan> magic_animation_plan(
+    NODISCARD std::optional<BattleMagicAnimationPlan> magic_animation_plan(
         std::size_t actor_slot,
         std::int16_t magic_slot,
         std::int16_t magic_type,
         std::int16_t effect_id,
         std::int16_t fight_pointer_base) const;
 
-    [[nodiscard]] static std::optional<BattleEffectAnimationPlan> effect_animation_plan(
+    NODISCARD static std::optional<BattleEffectAnimationPlan> effect_animation_plan(
         std::int16_t effect_id);
 
-    [[nodiscard]] static std::array<BattleDamageAnimationFrame, 10>
+    NODISCARD static std::array<BattleDamageAnimationFrame, 10>
     damage_animation_frames(bool suppress_flash) noexcept;
 
-    [[nodiscard]] bool refresh_combatant_sprites() noexcept;
+    NODISCARD bool refresh_combatant_sprites() noexcept;
 
-    [[nodiscard]] bool finish_attack(std::size_t slot);
+    NODISCARD bool finish_attack(std::size_t slot);
 
 private:
     void initialize_combatants();
 
     void initialize_party();
 
-    [[nodiscard]] bool append_combatant(
+    NODISCARD bool append_combatant(
         std::int16_t role_id,
         std::int16_t side,
         std::int16_t x,
         std::int16_t y,
         std::int16_t initial_mode);
 
-    [[nodiscard]] bool append_enemies();
+    NODISCARD bool append_enemies();
 
-    [[nodiscard]] std::int16_t sprite_word(
+    NODISCARD std::int16_t sprite_word(
         std::int16_t role_id, std::int16_t initial_mode) const noexcept;
 
-    [[nodiscard]] std::int16_t effective_speed(std::size_t slot);
+    NODISCARD std::int16_t effective_speed(std::size_t slot);
 
     void swap_combatants(std::size_t first, std::size_t second);
 
     void update_occupancy(std::size_t slot);
 
-    [[nodiscard]] BattleAiChoice commit_ai_choice(
+    NODISCARD BattleAiChoice commit_ai_choice(
         std::size_t actor_slot,
         BattleAiAction action,
         std::int16_t target_slot,
@@ -1140,57 +1141,57 @@ private:
         std::int16_t item_slot = -1,
         bool write_action_code = true) noexcept;
 
-    [[nodiscard]] std::optional<BattleAiChoice> choose_ai_offensive_action(
+    NODISCARD std::optional<BattleAiChoice> choose_ai_offensive_action(
         std::size_t actor_slot,
         const BattleAiTurnPrelude& prelude,
         random::LegacyRandom& random);
 
-    [[nodiscard]] std::optional<bool> choose_ai_strongest_attack_target(
+    NODISCARD std::optional<bool> choose_ai_strongest_attack_target(
         std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<bool> choose_ai_weakest_attack_target(
+    NODISCARD std::optional<bool> choose_ai_weakest_attack_target(
         std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<bool> choose_ai_specialist_target(std::size_t actor_slot);
+    NODISCARD std::optional<bool> choose_ai_specialist_target(std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<bool> choose_ai_nearest_target(std::size_t actor_slot);
+    NODISCARD std::optional<bool> choose_ai_nearest_target(std::size_t actor_slot);
 
-    [[nodiscard]] bool update_ai_attack_target_range(
+    NODISCARD bool update_ai_attack_target_range(
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiAttackPlan& plan) const;
 
-    [[nodiscard]] std::optional<bool> choose_ai_strongest_poison_target(
+    NODISCARD std::optional<bool> choose_ai_strongest_poison_target(
         std::size_t actor_slot);
 
-    [[nodiscard]] std::optional<bool> choose_ai_first_poison_target(
+    NODISCARD std::optional<bool> choose_ai_first_poison_target(
         std::size_t actor_slot,
         std::size_t stale_target_slot,
         std::int16_t& stale_target_distance);
 
-    [[nodiscard]] bool update_ai_poison_target_range(
+    NODISCARD bool update_ai_poison_target_range(
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiPoisonPlan& plan) const;
 
-    [[nodiscard]] bool update_ai_poison_fallback(
+    NODISCARD bool update_ai_poison_fallback(
         std::size_t actor_slot,
         BattleAiPoisonPlan& plan);
 
-    [[nodiscard]] bool update_ai_support_target_range(
+    NODISCARD bool update_ai_support_target_range(
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiSupportPlan& plan) const;
 
-    [[nodiscard]] bool update_ai_support_fallback(
+    NODISCARD bool update_ai_support_fallback(
         std::size_t actor_slot,
         BattleAiSupportPlan& plan);
 
-    [[nodiscard]] std::optional<std::int16_t> ai_item_id(
+    NODISCARD std::optional<std::int16_t> ai_item_id(
         std::size_t actor_slot,
         const BattleAiChoice& choice) const noexcept;
 
-    [[nodiscard]] bool update_ai_throwing_weapon_target_range(
+    NODISCARD bool update_ai_throwing_weapon_target_range(
         std::size_t actor_slot,
         std::size_t target_slot,
         BattleAiItemPlan& plan) const;

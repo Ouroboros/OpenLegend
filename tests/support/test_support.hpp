@@ -12,6 +12,8 @@
 #include <string>
 #include <string_view>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::test {
 
 inline int failures = 0;
@@ -32,7 +34,7 @@ public:
     ScopedTimeZone& operator=(const ScopedTimeZone&) = delete;
 
 private:
-    [[nodiscard]] static std::optional<std::string> read() {
+    NODISCARD static std::optional<std::string> read() {
 #if defined(_WIN32)
         char* raw_value = nullptr;
         std::size_t value_size = 0U;
@@ -70,7 +72,7 @@ struct TestShard {
     std::size_t index = 0U;
     std::size_t count = 1U;
 
-    [[nodiscard]] bool includes(const std::size_t check_index) const noexcept {
+    NODISCARD bool includes(const std::size_t check_index) const noexcept {
         return check_index % count == index;
     }
 };

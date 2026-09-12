@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
 
 #include <algorithm>
@@ -20,7 +21,7 @@ constexpr std::array<std::int16_t, 9> kBlockedTileBegin{
 constexpr std::array<std::int16_t, 9> kBlockedTileEnd{
     0x016A, 0x017C, 0x01D0, 0x0262, 0x0338, 0x0346, 0x03A8, 0x03FE, 0x0544};
 
-[[nodiscard]] bool blocked_ground(const std::int16_t tile) noexcept {
+NODISCARD bool blocked_ground(const std::int16_t tile) noexcept {
     for (std::size_t index = 0U; index < kBlockedTileBegin.size(); ++index) {
         if (tile >= kBlockedTileBegin[index] && tile <= kBlockedTileEnd[index]) {
             return true;
@@ -29,7 +30,7 @@ constexpr std::array<std::int16_t, 9> kBlockedTileEnd{
     return false;
 }
 
-[[nodiscard]] constexpr std::int16_t increment_mod(
+NODISCARD constexpr std::int16_t increment_mod(
     const std::int16_t value, const std::int16_t modulus) noexcept {
     return static_cast<std::int16_t>((static_cast<std::int32_t>(value) + 1) % modulus);
 }

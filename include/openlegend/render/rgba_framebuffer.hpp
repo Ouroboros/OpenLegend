@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/color.hpp"
 #include "openlegend/compat/legacy_video.hpp"
 
@@ -19,58 +20,58 @@ public:
 
     RgbaFramebuffer(int logical_width, int logical_height);
 
-    [[nodiscard]] bool set_dimensions(
+    NODISCARD bool set_dimensions(
         int logical_width, int logical_height, int scale);
 
-    [[nodiscard]] bool set_scale(int scale);
+    NODISCARD bool set_scale(int scale);
 
-    [[nodiscard]] int scale() const noexcept { return scale_; }
+    NODISCARD int scale() const noexcept { return scale_; }
 
-    [[nodiscard]] int logical_width() const noexcept { return logical_width_; }
+    NODISCARD int logical_width() const noexcept { return logical_width_; }
 
-    [[nodiscard]] int logical_height() const noexcept { return logical_height_; }
+    NODISCARD int logical_height() const noexcept { return logical_height_; }
 
-    [[nodiscard]] int pixel_width() const noexcept { return logical_width_ * scale_; }
+    NODISCARD int pixel_width() const noexcept { return logical_width_ * scale_; }
 
-    [[nodiscard]] int pixel_height() const noexcept { return logical_height_ * scale_; }
+    NODISCARD int pixel_height() const noexcept { return logical_height_ * scale_; }
 
     void clear(compat::Rgba8 color) noexcept;
 
-    [[nodiscard]] bool fill_rectangle(
+    NODISCARD bool fill_rectangle(
         int x,
         int y,
         std::uint16_t rectangle_width,
         std::uint16_t rectangle_height,
         compat::Rgba8 color) noexcept;
 
-    [[nodiscard]] bool blend_rectangle(
+    NODISCARD bool blend_rectangle(
         int x,
         int y,
         std::uint16_t rectangle_width,
         std::uint16_t rectangle_height,
         compat::Rgba8 color) noexcept;
 
-    [[nodiscard]] bool outline_rectangle(
+    NODISCARD bool outline_rectangle(
         int x,
         int y,
         std::uint16_t rectangle_width,
         std::uint16_t rectangle_height,
         compat::Rgba8 color) noexcept;
 
-    [[nodiscard]] bool blend_pixel(int x, int y, compat::Rgba8 color) noexcept;
+    NODISCARD bool blend_pixel(int x, int y, compat::Rgba8 color) noexcept;
 
-    [[nodiscard]] bool blend_physical_pixel(
+    NODISCARD bool blend_physical_pixel(
         int x, int y, compat::Rgba8 color) noexcept;
 
-    [[nodiscard]] std::uint8_t* row(int y) noexcept;
+    NODISCARD std::uint8_t* row(int y) noexcept;
 
-    [[nodiscard]] const std::uint8_t* row(int y) const noexcept;
+    NODISCARD const std::uint8_t* row(int y) const noexcept;
 
-    [[nodiscard]] std::span<std::uint8_t> pixels() noexcept {
+    NODISCARD std::span<std::uint8_t> pixels() noexcept {
         return {pixels_.data(), pixels_.size()};
     }
 
-    [[nodiscard]] std::span<const std::uint8_t> pixels() const noexcept {
+    NODISCARD std::span<const std::uint8_t> pixels() const noexcept {
         return {pixels_.data(), pixels_.size()};
     }
 

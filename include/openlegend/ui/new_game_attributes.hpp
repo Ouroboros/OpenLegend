@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/model/new_game.hpp"
 
 namespace openlegend::ui {
@@ -18,9 +19,9 @@ public:
     NewGameAttributeController(
         model::RoleRecord& protagonist, random::LegacyRandom& random) noexcept;
 
-    [[nodiscard]] AttributeRollStatus handle_key(std::uint8_t translated_key) noexcept;
+    NODISCARD AttributeRollStatus handle_key(std::uint8_t translated_key) noexcept;
 
-    [[nodiscard]] bool cheat_active() const noexcept { return cheat_active_; }
+    NODISCARD bool cheat_active() const noexcept { return cheat_active_; }
 
 private:
     void reroll() noexcept;

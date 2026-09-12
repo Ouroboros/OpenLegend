@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_session.hpp"
 
 #include <algorithm>
@@ -23,11 +24,11 @@ using namespace input::legacy_key;
 using namespace openlegend::text::game_strings;
 namespace palette_colors = render::legacy_color;
 namespace text_colors = render::legacy_color::text;
-[[nodiscard]] constexpr bool confirms(const std::uint8_t key) noexcept {
+NODISCARD constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == kEnter || key == kSpace || key == kKeypadInsert;
 }
 
-[[nodiscard]] constexpr std::string_view phase_name(
+NODISCARD constexpr std::string_view phase_name(
     const BattleSessionPhase phase) noexcept {
     switch (phase) {
     case BattleSessionPhase::party_selection: return "party_selection";
@@ -106,7 +107,7 @@ namespace text_colors = render::legacy_color::text;
     return "unknown";
 }
 
-[[nodiscard]] std::optional<int> centered_name_x(
+NODISCARD std::optional<int> centered_name_x(
     const std::span<const std::uint8_t> name) noexcept {
     for (std::size_t byte = 1U; byte <= 6U && byte < name.size(); ++byte) {
         if (name[byte] == 0U) {
@@ -116,13 +117,13 @@ namespace text_colors = render::legacy_color::text;
     return std::nullopt;
 }
 
-[[nodiscard]] std::span<const std::uint8_t> terminated_name(
+NODISCARD std::span<const std::uint8_t> terminated_name(
     const std::span<const std::uint8_t> name) noexcept {
     const auto end = std::find(name.begin(), name.end(), std::uint8_t{0U});
     return name.first(static_cast<std::size_t>(std::distance(name.begin(), end)));
 }
 
-[[nodiscard]] int centered_magic_name_x(
+NODISCARD int centered_magic_name_x(
     const std::span<const std::uint8_t> name) noexcept {
     for (std::size_t byte = 2U; byte <= name.size(); byte += 2U) {
         if (byte == name.size() || name[byte] == 0U) {
@@ -132,7 +133,7 @@ namespace text_colors = render::legacy_color::text;
     return 25;
 }
 
-[[nodiscard]] std::u8string decimal_text(
+NODISCARD std::u8string decimal_text(
     const std::int32_t value,
     const int width = 0) {
     std::array<char, 16> buffer{};
@@ -149,7 +150,7 @@ namespace text_colors = render::legacy_color::text;
     return text;
 }
 
-[[nodiscard]] int legacy_item_metric(const model::RangerState& ranger) noexcept {
+NODISCARD int legacy_item_metric(const model::RangerState& ranger) noexcept {
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
         if (ranger.header.inventory_item(slot).value == -1) {
             return static_cast<int>(slot + 1U);
@@ -158,7 +159,7 @@ namespace text_colors = render::legacy_color::text;
     return static_cast<int>(model::kInventoryCount);
 }
 
-[[nodiscard]] std::u8string coordinate_item_text(
+NODISCARD std::u8string coordinate_item_text(
     const model::RangerState& ranger) {
     const auto in_sub_map = ranger.header.word(model::header_word::in_sub_map) != 0;
     const auto player_x = ranger.header.word(

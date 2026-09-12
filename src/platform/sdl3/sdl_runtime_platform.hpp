@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/runtime_platform.hpp"
 
 namespace openlegend::platform::sdl3 {
@@ -24,22 +25,22 @@ public:
 
     SdlRuntimePlatform& operator=(const SdlRuntimePlatform&) = delete;
 
-    [[nodiscard]] bool valid() const noexcept;
+    NODISCARD bool valid() const noexcept;
 
-    [[nodiscard]] bool query_window_state(
+    NODISCARD bool query_window_state(
         int& normal_width, int& normal_height, bool& maximized) const noexcept;
 
-    [[nodiscard]] int presentation_scale() const noexcept;
+    NODISCARD int presentation_scale() const noexcept;
 
-    [[nodiscard]] bool poll_event(compat::HostEvent& event) override;
+    NODISCARD bool poll_event(compat::HostEvent& event) override;
 
     void wait_for_event_or_timeout(std::chrono::nanoseconds timeout) noexcept;
 
-    [[nodiscard]] bool present(
+    NODISCARD bool present(
         compat::RgbaFrameView frame,
         compat::RgbaFrameView modern_ui) override;
 
-    [[nodiscard]] bool present(
+    NODISCARD bool present(
         compat::RgbaFrameView frame,
         compat::RgbaFrameView modern_ui,
         bool refresh_textures,
@@ -48,9 +49,9 @@ public:
     void delay(std::chrono::milliseconds duration) override;
 
 private:
-    [[nodiscard]] bool ensure_frame_texture(int width, int height) noexcept;
+    NODISCARD bool ensure_frame_texture(int width, int height) noexcept;
 
-    [[nodiscard]] bool ensure_modern_ui_texture(int width, int height) noexcept;
+    NODISCARD bool ensure_modern_ui_texture(int width, int height) noexcept;
 
     SDL_Window* window_{};
     SDL_Renderer* renderer_{};

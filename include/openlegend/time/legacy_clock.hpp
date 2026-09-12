@@ -3,6 +3,8 @@
 #include <chrono>
 #include <cstdint>
 
+#include "openlegend/attributes.hpp"
+
 namespace openlegend::timing {
 
 inline constexpr std::uint32_t kPitInputFrequency = 1'193'182U;
@@ -16,7 +18,7 @@ class TickSource {
 public:
     virtual ~TickSource() = default;
 
-    [[nodiscard]] virtual std::uint32_t tick() const noexcept = 0;
+    NODISCARD virtual std::uint32_t tick() const noexcept = 0;
 
     virtual void idle() noexcept = 0;
 };
@@ -25,14 +27,14 @@ class SteadyBiosTickSource final : public TickSource {
 public:
     SteadyBiosTickSource() noexcept;
 
-    [[nodiscard]] std::uint32_t tick() const noexcept override;
+    NODISCARD std::uint32_t tick() const noexcept override;
 
-    [[nodiscard]] std::chrono::nanoseconds time_until_next_tick() const noexcept;
+    NODISCARD std::chrono::nanoseconds time_until_next_tick() const noexcept;
 
     void idle() noexcept override;
 
 private:
-    [[nodiscard]] std::chrono::steady_clock::time_point next_tick_deadline() const noexcept;
+    NODISCARD std::chrono::steady_clock::time_point next_tick_deadline() const noexcept;
 
     std::chrono::steady_clock::time_point origin_;
 };
@@ -43,7 +45,7 @@ public:
 
     explicit SteadyFadeFrameSource(std::chrono::nanoseconds frame_period) noexcept;
 
-    [[nodiscard]] std::uint32_t tick() const noexcept override;
+    NODISCARD std::uint32_t tick() const noexcept override;
 
     void idle() noexcept override;
 
@@ -52,9 +54,9 @@ private:
     std::chrono::nanoseconds frame_period_;
 };
 
-[[nodiscard]] std::int32_t legacy_delay_tick_count(std::int32_t argument) noexcept;
+NODISCARD std::int32_t legacy_delay_tick_count(std::int32_t argument) noexcept;
 
-[[nodiscard]] std::uint32_t wait_for_tick_change(
+NODISCARD std::uint32_t wait_for_tick_change(
     TickSource& source, std::uint32_t captured_tick) noexcept;
 
 void wait_for_next_tick(TickSource& source) noexcept;

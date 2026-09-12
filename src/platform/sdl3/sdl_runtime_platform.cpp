@@ -2,12 +2,13 @@
 
 #include <algorithm>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/compat/color.hpp"
 
 namespace openlegend::platform::sdl3 {
 namespace {
 
-[[nodiscard]] compat::HostKey host_key_from_scancode(const SDL_Scancode scancode) noexcept {
+NODISCARD compat::HostKey host_key_from_scancode(const SDL_Scancode scancode) noexcept {
     using enum compat::HostKey;
     switch (scancode) {
     case SDL_SCANCODE_ESCAPE: return escape;

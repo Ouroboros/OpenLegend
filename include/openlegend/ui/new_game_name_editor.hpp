@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "openlegend/attributes.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
@@ -27,41 +28,41 @@ class NewGameNameEditor {
 public:
     explicit NewGameNameEditor(const resource::DataRoot& data_root);
 
-    [[nodiscard]] NameEditStatus handle_key(
+    NODISCARD NameEditStatus handle_key(
         std::uint8_t translated_key, bool control_down, bool shift_down);
 
-    [[nodiscard]] bool valid() const noexcept { return error_.empty(); }
+    NODISCARD bool valid() const noexcept { return error_.empty(); }
 
-    [[nodiscard]] const std::string& error() const noexcept { return error_; }
+    NODISCARD const std::string& error() const noexcept { return error_; }
 
-    [[nodiscard]] NameInputMode mode() const noexcept { return mode_; }
+    NODISCARD NameInputMode mode() const noexcept { return mode_; }
 
-    [[nodiscard]] std::span<const std::uint8_t> name() const noexcept { return name_; }
+    NODISCARD std::span<const std::uint8_t> name() const noexcept { return name_; }
 
-    [[nodiscard]] std::span<const std::uint8_t> display_name() const noexcept {
+    NODISCARD std::span<const std::uint8_t> display_name() const noexcept {
         return display_name_;
     }
 
-    [[nodiscard]] std::span<const std::array<std::uint8_t, 2>> candidates() const noexcept {
+    NODISCARD std::span<const std::array<std::uint8_t, 2>> candidates() const noexcept {
         return candidates_;
     }
 
-    [[nodiscard]] std::int16_t candidate_page() const noexcept { return candidate_page_; }
+    NODISCARD std::int16_t candidate_page() const noexcept { return candidate_page_; }
 
-    [[nodiscard]] std::size_t visible_candidate_count() const noexcept;
+    NODISCARD std::size_t visible_candidate_count() const noexcept;
 
-    [[nodiscard]] std::optional<std::array<std::uint8_t, 2>> visible_candidate(
+    NODISCARD std::optional<std::array<std::uint8_t, 2>> visible_candidate(
         std::size_t visible_index) const noexcept;
 
-    [[nodiscard]] bool has_previous_candidate_page() const noexcept;
+    NODISCARD bool has_previous_candidate_page() const noexcept;
 
-    [[nodiscard]] bool has_next_candidate_page() const noexcept;
+    NODISCARD bool has_next_candidate_page() const noexcept;
 
-    [[nodiscard]] bool no_candidates() const noexcept { return no_candidates_; }
+    NODISCARD bool no_candidates() const noexcept { return no_candidates_; }
 
-    [[nodiscard]] bool accepted() const noexcept { return accepted_; }
+    NODISCARD bool accepted() const noexcept { return accepted_; }
 
-    [[nodiscard]] render::PaletteIndex cursor_color() const noexcept {
+    NODISCARD render::PaletteIndex cursor_color() const noexcept {
         return cursor_bright_
             ? render::legacy_color::name_cursor_bright
             : render::legacy_color::name_cursor_dim;
@@ -69,13 +70,13 @@ public:
 
     void finish_presented_frame() noexcept;
 
-    [[nodiscard]] std::int16_t initial() const noexcept { return initial_; }
+    NODISCARD std::int16_t initial() const noexcept { return initial_; }
 
-    [[nodiscard]] std::int16_t medial() const noexcept { return medial_; }
+    NODISCARD std::int16_t medial() const noexcept { return medial_; }
 
-    [[nodiscard]] std::int16_t final() const noexcept { return final_; }
+    NODISCARD std::int16_t final() const noexcept { return final_; }
 
-    [[nodiscard]] std::int16_t tone() const noexcept { return tone_; }
+    NODISCARD std::int16_t tone() const noexcept { return tone_; }
 
 private:
     struct ZhuyinKey {
@@ -83,9 +84,9 @@ private:
         std::int16_t value{};
     };
 
-    [[nodiscard]] static ZhuyinKey zhuyin_key(std::uint8_t translated_key) noexcept;
+    NODISCARD static ZhuyinKey zhuyin_key(std::uint8_t translated_key) noexcept;
 
-    [[nodiscard]] bool has_composition() const noexcept;
+    NODISCARD bool has_composition() const noexcept;
 
     void clear_composition() noexcept;
 

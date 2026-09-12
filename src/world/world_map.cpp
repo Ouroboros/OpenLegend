@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/world/world_map.hpp"
 
 #include <algorithm>
@@ -37,25 +38,25 @@ constexpr std::array<std::int16_t, 12> kLandRanges{
 constexpr std::array<std::int16_t, 12> kShipCoastRanges{
     358, 362, 374, 380, 458, 464, 458, 464, 506, 610, 1016, 1022};
 
-[[nodiscard]] constexpr std::size_t layer_index(const WorldLayer layer) noexcept {
+NODISCARD constexpr std::size_t layer_index(const WorldLayer layer) noexcept {
     return static_cast<std::size_t>(layer);
 }
 
-[[nodiscard]] constexpr std::size_t world_index(const int x, const int y) noexcept {
+NODISCARD constexpr std::size_t world_index(const int x, const int y) noexcept {
     return static_cast<std::size_t>(y) * static_cast<std::size_t>(kWorldExtent) +
            static_cast<std::size_t>(x);
 }
 
-[[nodiscard]] constexpr std::size_t cache_index(const int x, const int y) noexcept {
+NODISCARD constexpr std::size_t cache_index(const int x, const int y) noexcept {
     return static_cast<std::size_t>(y) * static_cast<std::size_t>(kWorldCacheExtent) +
            static_cast<std::size_t>(x);
 }
 
-[[nodiscard]] constexpr int clamped_origin(const int coordinate) noexcept {
+NODISCARD constexpr int clamped_origin(const int coordinate) noexcept {
     return std::clamp(coordinate - 64, 0, kWorldCacheMaximumOrigin);
 }
 
-[[nodiscard]] bool in_ranges(
+NODISCARD bool in_ranges(
     const std::int16_t value, const std::span<const std::int16_t> pairs) noexcept {
     for (std::size_t index = 0U; index + 1U < pairs.size(); index += 2U) {
         if (value >= pairs[index] && value <= pairs[index + 1U]) {
@@ -65,7 +66,7 @@ constexpr std::array<std::int16_t, 12> kShipCoastRanges{
     return false;
 }
 
-[[nodiscard]] constexpr std::string_view direction_name(
+NODISCARD constexpr std::string_view direction_name(
     const WorldDirection direction) noexcept {
     switch (direction) {
     case WorldDirection::up: return "up";
@@ -76,7 +77,7 @@ constexpr std::array<std::int16_t, 12> kShipCoastRanges{
     return "unknown";
 }
 
-[[nodiscard]] constexpr std::pair<int, int> direction_delta(
+NODISCARD constexpr std::pair<int, int> direction_delta(
     const WorldDirection direction) noexcept {
     switch (direction) {
     case WorldDirection::up: return {0, -1};

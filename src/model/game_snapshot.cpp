@@ -1,3 +1,4 @@
+#include "openlegend/attributes.hpp"
 #include "openlegend/model/game_snapshot.hpp"
 
 #include <utility>
@@ -13,7 +14,7 @@ void write_i16le(
     bytes[offset + 1U] = static_cast<std::uint8_t>(bits >> 8U);
 }
 
-[[nodiscard]] bool valid_ends(
+NODISCARD bool valid_ends(
     const std::array<std::uint32_t, kSceneCount>& ends,
     const std::size_t record_bytes,
     const std::size_t total_bytes) noexcept {
