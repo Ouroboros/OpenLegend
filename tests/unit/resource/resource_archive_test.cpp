@@ -53,6 +53,23 @@ void run_synthetic_archive_tests() {
     OL_CHECK(sentinel.entry(2U).size() == 2U);
 
     index.clear();
+    append_u32le(index, 2U);
+    append_u32le(index, 2U);
+    append_u32le(index, 5U);
+    append_u32le(index, 0U);
+    sentinel = SentinelArchive::parse(index, {1U, 2U, 3U, 4U, 5U, 6U, 7U});
+    OL_CHECK(sentinel.valid());
+    OL_CHECK(sentinel.entry_count() == 4U);
+    OL_CHECK(sentinel.entry(1U).empty());
+    const auto aliased_entry = sentinel.legacy_pointer_entry(1U);
+    const auto direct_entry = sentinel.legacy_pointer_entry(2U);
+    OL_CHECK(aliased_entry.size() == 3U);
+    OL_CHECK(aliased_entry.data() == direct_entry.data());
+    OL_CHECK(aliased_entry.size() == direct_entry.size());
+    OL_CHECK(aliased_entry[0U] == 3U && aliased_entry[2U] == 5U);
+    OL_CHECK(sentinel.legacy_pointer_entry(4U).empty());
+
+    index.clear();
     append_u32le(index, 4U);
     append_u32le(index, 3U);
     archive = PackedArchive::parse(index, {1U, 2U, 3U, 4U});
@@ -255,6 +272,27 @@ void run_real_asset_tests() {
         validate_sentinel_sprite_pair(root / ("WDX" + suffix), root / ("WMP" + suffix), sentinel_frames);
     }
     OL_CHECK(sentinel_frames == 65'087U);
+
+    const auto scene58_index = read_binary_file(root / "SDX058");
+    auto scene58_group = read_binary_file(root / "SMP058");
+    OL_CHECK(static_cast<bool>(scene58_index));
+    OL_CHECK(static_cast<bool>(scene58_group));
+    if (scene58_index && scene58_group) {
+        const auto scene58_archive =
+            SentinelArchive::parse(scene58_index.bytes, std::move(scene58_group.bytes));
+        constexpr std::size_t frame5654_index = 5'654U / 2U;
+        OL_CHECK(scene58_archive.valid());
+        OL_CHECK(scene58_archive.entry(frame5654_index).empty());
+        const auto frame5654 = scene58_archive.legacy_pointer_entry(frame5654_index);
+        const auto frame5656 = scene58_archive.legacy_pointer_entry(frame5654_index + 1U);
+        OL_CHECK(frame5654.size() == 2'500U);
+        OL_CHECK(frame5654.data() == frame5656.data());
+        OL_CHECK(frame5654.size() == frame5656.size());
+        const auto sprite5654 = SpriteFrameView::parse(frame5654);
+        OL_CHECK(sprite5654.valid());
+        OL_CHECK(sprite5654.width() == 94U && sprite5654.height() == 134U);
+        OL_CHECK(sprite5654.x_offset() == 7 && sprite5654.y_offset() == 140);
+    }
 
     const auto palette_file = read_binary_file(root / "MMAP.COL");
     OL_CHECK(static_cast<bool>(palette_file));

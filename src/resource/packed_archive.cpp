@@ -124,4 +124,17 @@ std::span<const std::uint8_t> SentinelArchive::entry(const std::size_t index) co
     return std::span<const std::uint8_t>{data_}.subspan(begin, end - begin);
 }
 
+std::span<const std::uint8_t> SentinelArchive::legacy_pointer_entry(
+    const std::size_t index) const noexcept {
+    if (index >= ranges_.size()) {
+        return {};
+    }
+    auto [begin, end] = ranges_[index];
+    auto alias_index = index;
+    while (end == begin && ++alias_index < ranges_.size()) {
+        end = ranges_[alias_index].second;
+    }
+    return std::span<const std::uint8_t>{data_}.subspan(begin, end - begin);
+}
+
 }  // namespace openlegend::resource

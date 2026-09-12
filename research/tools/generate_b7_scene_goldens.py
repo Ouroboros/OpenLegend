@@ -80,13 +80,18 @@ def packed(index: bytes, group: bytes) -> list[bytes]:
 def sentinel(index: bytes, group: bytes) -> list[bytes]:
     ends = struct.unpack(f"<{len(index) // 4}I", index)
     assert ends[-1] == 0
+    starts = (0, *ends[:-1])
+    assert all(begin <= end <= len(group) for begin, end in zip(starts, starts[1:]))
     result: list[bytes] = []
-    begin = 0
-    for end in ends[:-1]:
-        assert begin <= end <= len(group)
-        result.append(group[begin:end])
-        begin = end
-    result.append(group[begin:])
+    run_begin = 0
+    while run_begin < len(starts):
+        run_end = run_begin + 1
+        while run_end < len(starts) and starts[run_end] == starts[run_begin]:
+            run_end += 1
+        end = starts[run_end] if run_end < len(starts) else len(group)
+        frame = group[starts[run_begin]:end]
+        result.extend([frame] * (run_end - run_begin))
+        run_begin = run_end
     return result
 
 

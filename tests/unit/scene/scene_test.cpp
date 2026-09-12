@@ -1182,6 +1182,53 @@ void check_event_state_write_helpers(const std::filesystem::path& root) {
     }
 }
 
+void check_scene_aliased_sprite_frames(const std::filesystem::path& root) {
+    using openlegend::model::SceneEventField;
+    using openlegend::model::SceneLayer;
+
+    constexpr std::size_t scene = 58U;
+    constexpr std::size_t event = 17U;
+    constexpr int event_x = 52;
+    constexpr int event_y = 58;
+    constexpr std::size_t cell = event_y * 64U + event_x;
+    const openlegend::resource::DataRoot data_root{root};
+    auto snapshot = load_baseline(root);
+    OL_CHECK(snapshot.set_scene_value(scene, SceneLayer::building, cell, 0));
+    OL_CHECK(snapshot.set_scene_value(scene, SceneLayer::decoration, cell, 0));
+    OL_CHECK(snapshot.set_scene_value(scene, SceneLayer::building_height, cell, 0));
+    OL_CHECK(snapshot.set_scene_value(
+        scene, SceneLayer::event_index, cell, static_cast<std::int16_t>(event)));
+    OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::current_picture, 5654));
+    OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::begin_picture, 5654));
+    OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::x, event_x));
+    OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::y, event_y));
+
+    openlegend::random::LegacyRandom random{1U};
+    openlegend::scene::SceneSession session{
+        data_root, snapshot, random, static_cast<std::int16_t>(scene)};
+    OL_CHECK(session.valid());
+    openlegend::render::IndexedFramebuffer aliased_framebuffer;
+    OL_CHECK(session.render_map(aliased_framebuffer));
+
+    OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::begin_picture, 5656));
+    openlegend::render::IndexedFramebuffer direct_framebuffer;
+    OL_CHECK(session.render_map(direct_framebuffer));
+    OL_CHECK(std::equal(
+        aliased_framebuffer.pixels().begin(),
+        aliased_framebuffer.pixels().end(),
+        direct_framebuffer.pixels().begin(),
+        direct_framebuffer.pixels().end()));
+
+    OL_CHECK(snapshot.set_event_value(scene, event, SceneEventField::current_picture, 0));
+    openlegend::render::IndexedFramebuffer no_event_framebuffer;
+    OL_CHECK(session.render_map(no_event_framebuffer));
+    OL_CHECK(!std::equal(
+        direct_framebuffer.pixels().begin(),
+        direct_framebuffer.pixels().end(),
+        no_event_framebuffer.pixels().begin(),
+        no_event_framebuffer.pixels().end()));
+}
+
 void check_scene_render_and_movement(const std::filesystem::path& root) {
     const openlegend::resource::DataRoot data_root{root};
     auto snapshot = load_baseline(root);
@@ -6069,12 +6116,13 @@ using SceneCheck = void (*)(const std::filesystem::path&);
 int main(const int argc, char* argv[]) {
     const auto shard = openlegend::test::test_shard(argc, argv);
     const auto root = openlegend::test::game_data_root();
-    const std::array<SceneCheck, 48> checks{
+    const std::array<SceneCheck, 49> checks{
         check_assets,
         check_event_dialogue_rendering,
         check_new_game_entry,
         check_event_load_menu,
         check_event_state_write_helpers,
+        check_scene_aliased_sprite_frames,
         check_scene_render_and_movement,
         check_scene_sprite_cache_lifetime,
         check_scene_movement_guards,

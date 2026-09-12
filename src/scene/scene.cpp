@@ -3634,7 +3634,8 @@ bool SceneSession::draw_sprite(
     }
     auto& frame = sprite_frames_[*index];
     if (!frame.has_value()) {
-        frame.emplace(resource::SpriteFrameView::parse(sprites_->entry(*index)));
+        frame.emplace(resource::SpriteFrameView::parse(
+            sprites_->legacy_pointer_entry(*index)));
     }
     if (!frame->valid()) {
         return false;
