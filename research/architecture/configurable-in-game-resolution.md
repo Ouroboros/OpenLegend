@@ -4,7 +4,7 @@
 
 `main` 支持彼此独立的两层分辨率：
 
-- **WIN SIZE**：SDL 宿主窗口尺寸。它只把已经完成的游戏画面按比例、nearest-neighbor、整数倍放大；只修改 WIN SIZE 时，可见游戏内容不变。
+- **WIN SIZE**：SDL 宿主窗口尺寸。它只把已经完成的游戏画面保持宽高比并尽量放大到窗口可用区域；只修改 WIN SIZE 时，可见游戏内容不变。
 - **IN-GAME RES**：游戏实际绘制的逻辑画布。地图图块、人物和物件保持原逻辑像素尺寸；增大 IN-GAME RES 时，镜头显示更多地图内容。
 
 渲染管线为：
@@ -14,8 +14,8 @@
 → 按 IN-GAME RES 绘制动态逻辑画布
 → Legacy Indexed 转 RGBA
 → Modern UI RGBA 合成
-→ 按 WIN SIZE 计算整数倍率 viewport
-→ nearest-neighbor 提交到 SDL 窗口
+→ 按 WIN SIZE 计算最大等比 viewport
+→ 提交到 SDL 窗口
 ```
 
 例如：
@@ -31,7 +31,7 @@ width = 640
 height = 360
 ```
 
-此时游戏实际绘制 `640×360`，再以整数倍率 `3` 显示为 `1920×1080`。世界、场景和战斗中的素材尺寸不变，但可见范围扩大。
+此时游戏实际绘制 `640×360`，再以比例 `3` 显示为 `1920×1080`。世界、场景和战斗中的素材尺寸不变，但可见范围扩大。
 
 ## 2. 兼容合同
 
@@ -40,7 +40,7 @@ height = 360
 3. 可配置 IN-GAME RES 仅属于 `main`；`original` 不读取或消费该配置。
 4. 不修改游戏状态坐标、碰撞、事件触发、脚本执行、随机调用、战斗 AI、寻路、存档格式或资产格式。
 5. 扩展分辨率只增加已存在地图数据的可见范围。场景和战斗地图仍受其 `64×64` 数据边界限制，世界地图仍受其 `480×480` 数据边界限制。
-6. WIN SIZE 使用保持宽高比的整数倍 nearest-neighbor 缩放；比例不一致时居中留黑边，不拉伸变形。
+6. WIN SIZE 使用保持宽高比的最大比例缩放；画面占满窗口的一边，另一边在比例不一致时居中留黑边，不拉伸变形。
 
 ## 3. 配置合同
 
@@ -80,7 +80,7 @@ Legacy UI viewport 使用 `320:200` 比例完整容纳于 IN-GAME RES：
 ui_scale = min(game_width / 320, game_height / 200)
 ```
 
-映射允许在逻辑画布内部使用非整数比例，以支持 `640×360` 等任意宽高比；最终 WIN SIZE 缩放仍严格使用整数倍率。
+映射允许在逻辑画布内部使用非整数比例，以支持 `640×360` 等任意宽高比；最终 WIN SIZE 同样按最大等比 viewport 连续缩放。
 
 地图渲染函数进入 Native 坐标空间；菜单、对话框、标题、属性页、死亡画面和结局画面默认使用 Legacy UI 坐标空间。这样地图素材不放大，而 UI 随 IN-GAME RES 按比例放大。
 
@@ -90,7 +90,7 @@ Legacy RGBA 转换缓冲和 Modern UI RGBA 缓冲都按动态 IN-GAME RES 创建
 
 - Legacy RGBA：`game_width × game_height`；
 - Modern UI RGBA：`game_width × presentation_scale` 乘 `game_height × presentation_scale`；
-- Modern UI 在最终物理采样倍率绘制，继续避免字体被第二次非预期缩放。
+- `presentation_scale` 取最接近最终显示比例的正整数，用于生成足够清晰的 Modern UI 字形，不再决定 SDL 目标矩形尺寸。
 
 ### 4.3 SDL 提交
 
@@ -98,9 +98,11 @@ Legacy 纹理与 Modern UI 纹理都允许按输入尺寸重建。SDL viewport �
 
 ```text
 scale = min(output_width / game_width, output_height / game_height)
+viewport_width = game_width * scale
+viewport_height = game_height * scale
 ```
 
-`scale` 必须至少为 `1`。目标矩形按完整 IN-GAME RES 居中。
+窗口最小尺寸继续保证 `scale >= 1`。Legacy 与 Modern UI 使用同一个浮点目标矩形和 nearest-neighbor 采样；目标矩形占满窗口的一边，并在另一边居中留黑边。
 
 ### 4.4 调色板淡变失效边界
 
@@ -180,7 +182,7 @@ anchor_y = game_height / 2 + 17
 ## 8. 验证策略
 
 1. 配置测试：缺失、合法任意宽高、低于最小值、异常大值、错误类型、稳定写回和未知字段丢弃。
-2. viewport 测试：不同 WIN SIZE 与 IN-GAME RES 的整数倍率、居中和黑边。
+2. viewport 测试：不同 WIN SIZE 与 IN-GAME RES 的最大等比缩放、居中和黑边。
 3. framebuffer 测试：动态宽高、stride、裁剪、Legacy UI 坐标映射和完整画面缩放。
 4. 世界测试：默认 golden 不变；扩展画布四周存在新增地图像素；玩家投影位置正确。
 5. 场景测试：默认 golden 不变；扩展模式访问完整 `64×64` 合法范围；边界不越界；场景 58 在 `1280×720` 下可呈现入场动画产生的透明占位帧。

@@ -126,7 +126,7 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 - **完整机器指令、原始文件字节和可重复原程序输出是行为真值。** IDA 伪码、现有开源端口、玩法常识和当前 C++ 测试都不能单独证明 1:1。
 - C++20、CMake、模块静态库；B0 已固定 GCC/Clang/MSVC 可构建边界。
 - SDL3 只用于宿主窗口、事件、音频设备和最终纹理上传，不拥有游戏语义；BIOS tick 量化属于核心。
-- 核心像素真值为 `320×200×8-bit indexed framebuffer + 256×RGB6 palette`；现代显示层必须逐像素展开为宿主 RGBA 纹理并做 nearest-neighbor 整数缩放，不能把 DOS 索引字节直接交给现代窗口系统，也不能反向污染核心像素真值。
+- 核心像素真值为 `320×200×8-bit indexed framebuffer + 256×RGB6 palette`；现代显示层必须逐像素展开为宿主 RGBA 纹理并做保持宽高比的 nearest-neighbor 最大缩放，不能把 DOS 索引字节直接交给现代窗口系统，也不能反向污染核心像素真值。
 - 原始游戏数据保持只读；测试生成物只写入 OpenLegend 构建/测试目录。
 - 资源解析采用显式小端读取；合法原始数据必须逐字节等价，新增边界保护不得改变合法输入行为。
 - 原 Big5、legacy ID、16/32 位整数、整数除法、溢出、异常行为和原 BUG 必须显式表示。
@@ -216,10 +216,10 @@ OpenLegend <模块或阶段>：<功能或工作包>已完成。
 
 - 320×200 indexed framebuffer；
 - RLE 精灵裁剪、矩形、清屏、ASCII/Big5 字体和调色板；
-- SDL3 通过受测兼容转换层执行 indexed/RGB6 → RGBA8 展开和 nearest-neighbor 整数缩放；
+- SDL3 通过受测兼容转换层执行 indexed/RGB6 → RGBA8 展开和保持宽高比的 nearest-neighbor 最大缩放；
 - 固定资源的 framebuffer/palette golden hash。
 
-验收：所有绘制原语、四向裁剪、全部当前资产帧、ASCII/Big5 字形、地图深度顺序和调色板更新逐像素符合原算法；RGB6 端点和任意 palette index 的 RGBA8 展开有 golden，任意窗口视口仅采用居中整数倍 nearest-neighbor 缩放，平台转换不得改变核心缓冲。
+验收：所有绘制原语、四向裁剪、全部当前资产帧、ASCII/Big5 字形、地图深度顺序和调色板更新逐像素符合原算法；RGB6 端点和任意 palette index 的 RGBA8 展开有 golden，任意窗口视口仅采用保持宽高比的居中最大 nearest-neighbor 缩放，平台转换不得改变核心缓冲。
 
 ### B3 · 游戏模型与物理存档
 

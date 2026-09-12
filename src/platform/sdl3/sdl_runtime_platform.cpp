@@ -188,8 +188,11 @@ int SdlRuntimePlatform::presentation_scale() const noexcept {
             renderer_, &output_width, &output_height)) {
         return 0;
     }
-    return compat::integer_viewport(
-        output_width, output_height, game_width_, game_height_).scale;
+    return compat::proportional_viewport(
+        output_width,
+        output_height,
+        game_width_,
+        game_height_).presentation_scale;
 }
 
 bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
@@ -308,16 +311,16 @@ bool SdlRuntimePlatform::present(
         return false;
     }
 
-    const auto viewport = compat::integer_viewport(
+    const auto viewport = compat::proportional_viewport(
         output_width, output_height, frame.width, frame.height);
     if (!viewport.valid()) {
         return false;
     }
     const SDL_FRect destination{
-        static_cast<float>(viewport.x),
-        static_cast<float>(viewport.y),
-        static_cast<float>(viewport.width),
-        static_cast<float>(viewport.height)};
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height};
 
     constexpr auto clear_color = compat::kRuntimeClearColor;
     if (!SDL_SetRenderDrawColor(

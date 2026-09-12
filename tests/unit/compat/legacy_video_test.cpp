@@ -82,22 +82,41 @@ void run_legacy_video_tests() {
         OL_CHECK(full_rgba[target + 3U] == 0xFFU);
     }
 
-    constexpr auto exact = integer_viewport(960, 600);
-    static_assert(exact.x == 0 && exact.y == 0);
-    static_assert(exact.width == 960 && exact.height == 600 && exact.scale == 3);
-    constexpr auto bordered = integer_viewport(1000, 700);
-    static_assert(bordered.x == 20 && bordered.y == 50);
-    static_assert(bordered.width == 960 && bordered.height == 600 && bordered.scale == 3);
-    static_assert(!integer_viewport(319, 200).valid());
-    constexpr auto widescreen = integer_viewport(1920, 1080, 640, 360);
-    static_assert(widescreen.x == 0 && widescreen.y == 0);
+    constexpr auto exact = proportional_viewport(960, 600);
+    static_assert(exact.x == 0.0F && exact.y == 0.0F);
     static_assert(
-        widescreen.width == 1920 && widescreen.height == 1080 &&
-        widescreen.scale == 3);
-    constexpr auto dynamic_bordered = integer_viewport(1000, 700, 640, 360);
-    static_assert(dynamic_bordered.x == 180 && dynamic_bordered.y == 170);
+        exact.width == 960.0F && exact.height == 600.0F &&
+        exact.scale == 3.0F && exact.presentation_scale == 3);
+    constexpr auto bordered = proportional_viewport(1000, 700);
+    static_assert(bordered.x == 0.0F && bordered.y == 37.5F);
     static_assert(
-        dynamic_bordered.width == 640 && dynamic_bordered.height == 360 &&
-        dynamic_bordered.scale == 1);
-    static_assert(!integer_viewport(639, 360, 640, 360).valid());
+        bordered.width == 1000.0F && bordered.height == 625.0F &&
+        bordered.scale == 3.125F && bordered.presentation_scale == 3);
+    constexpr auto downscaled = proportional_viewport(319, 200);
+    static_assert(downscaled.valid());
+    static_assert(
+        downscaled.width == 319.0F && downscaled.height < 200.0F &&
+        downscaled.presentation_scale == 1);
+    static_assert(!proportional_viewport(0, 200).valid());
+    constexpr auto widescreen = proportional_viewport(1920, 1080, 640, 360);
+    static_assert(widescreen.x == 0.0F && widescreen.y == 0.0F);
+    static_assert(
+        widescreen.width == 1920.0F && widescreen.height == 1080.0F &&
+        widescreen.scale == 3.0F && widescreen.presentation_scale == 3);
+    constexpr auto dynamic_bordered =
+        proportional_viewport(1000, 700, 640, 360);
+    static_assert(dynamic_bordered.x == 0.0F && dynamic_bordered.y == 68.75F);
+    static_assert(
+        dynamic_bordered.width == 1000.0F &&
+        dynamic_bordered.height == 562.5F &&
+        dynamic_bordered.scale == 1.5625F &&
+        dynamic_bordered.presentation_scale == 2);
+    constexpr auto maximized_4k =
+        proportional_viewport(3840, 2034, 1280, 720);
+    static_assert(maximized_4k.x > 111.9F && maximized_4k.x < 112.1F);
+    static_assert(maximized_4k.y == 0.0F);
+    static_assert(
+        maximized_4k.width > 3615.9F && maximized_4k.width < 3616.1F &&
+        maximized_4k.height == 2034.0F &&
+        maximized_4k.presentation_scale == 3);
 }

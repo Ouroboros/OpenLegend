@@ -11,7 +11,7 @@
 3. 每份可变状态只有一个所有者。跨模块修改通过窄接口、同步请求/结果或显式快照完成。
 4. 原程序同一调用栈、同一 tick 内生效的请求，现代实现也同步消费；不引入异步事件总线。
 5. SDL3 和宿主 OS 类型只存在于平台后端；游戏核心不包含 VGA、DOS 中断或 SDL 类型。
-6. 保留 `320×200` indexed framebuffer、原调色板、原资源 ID 和整数行为；DOS 索引字节在最终显示边界经受测兼容层逐像素转换为现代 RGBA8，窗口只做 nearest-neighbor 居中整数倍缩放，二者都不得反写核心缓冲。
+6. 保留 `320×200` indexed framebuffer、原调色板、原资源 ID 和整数行为；DOS 索引字节在最终显示边界经受测兼容层逐像素转换为现代 RGBA8，窗口只做保持宽高比的 nearest-neighbor 居中最大缩放，二者都不得反写核心缓冲。
 7. 不提前设计 ECS、脚本框架、通用服务定位器或大规模继承层次。
 8. 不按每个反编译函数创建一个生产文件；按业务职责组织，地址只出现在研究证据和测试说明中。
 
@@ -153,7 +153,7 @@ IndexedFramebuffer
 4. `WorldRenderer` / `SceneRenderer`：产生有序绘制命令；
 5. `IndexedFramebuffer`：最终像素真值；
 6. `compat` 显示转换：对每个 index 读取 RGB6 palette 项，以位复制展开为 RGBA8；该纯转换必须有端点和任意 palette index 单测；
-7. `platform_sdl3`：上传 RGBA8 streaming texture，以 nearest-neighbor 居中整数倍缩放，输出尺寸不足 `320×200` 时拒绝呈现并由窗口最小尺寸约束阻止该状态。
+7. `platform_sdl3`：上传 RGBA8 streaming texture，以 nearest-neighbor 居中最大等比缩放，输出尺寸不足 `320×200` 时拒绝呈现并由窗口最小尺寸约束阻止该状态。
 
 不得把 DOS framebuffer 的 index 字节直接当现代颜色提交，也不得先把原精灵解码为 RGBA 后再把 RGBA 当游戏真值；否则会破坏调色板动画、覆盖顺序和逐像素验证。现代显示转换是明确的兼容边界，不是对核心像素算法的改写。
 

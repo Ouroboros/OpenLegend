@@ -83,38 +83,50 @@ struct RgbaFrameView {
     return static_cast<std::uint8_t>((six_bit << 2U) | (six_bit >> 4U));
 }
 
-struct IntegerViewport {
-    int x{};
-    int y{};
-    int width{};
-    int height{};
-    int scale{};
+struct ProportionalViewport {
+    float x{};
+    float y{};
+    float width{};
+    float height{};
+    float scale{};
+    int presentation_scale{};
 
     [[nodiscard]] constexpr bool valid() const noexcept {
-        return width > 0 && height > 0 && scale > 0;
+        return width > 0.0F && height > 0.0F && scale > 0.0F &&
+            presentation_scale > 0;
     }
 };
 
-[[nodiscard]] constexpr IntegerViewport integer_viewport(
+[[nodiscard]] constexpr ProportionalViewport proportional_viewport(
     const int output_width,
     const int output_height,
     const int source_width,
     const int source_height) noexcept {
     if (source_width <= 0 || source_height <= 0 ||
-        output_width < source_width || output_height < source_height) {
+        output_width <= 0 || output_height <= 0) {
         return {};
     }
-    const auto scale_x = output_width / source_width;
-    const auto scale_y = output_height / source_height;
+    const auto scale_x = static_cast<float>(output_width) /
+        static_cast<float>(source_width);
+    const auto scale_y = static_cast<float>(output_height) /
+        static_cast<float>(source_height);
     const auto scale = scale_x < scale_y ? scale_x : scale_y;
-    const auto width = source_width * scale;
-    const auto height = source_height * scale;
-    return {(output_width - width) / 2, (output_height - height) / 2, width, height, scale};
+    const auto width = static_cast<float>(source_width) * scale;
+    const auto height = static_cast<float>(source_height) * scale;
+    const auto rounded_scale = static_cast<int>(scale + 0.5F);
+    const auto presentation_scale = rounded_scale > 0 ? rounded_scale : 1;
+    return {
+        (static_cast<float>(output_width) - width) / 2.0F,
+        (static_cast<float>(output_height) - height) / 2.0F,
+        width,
+        height,
+        scale,
+        presentation_scale};
 }
 
-[[nodiscard]] constexpr IntegerViewport integer_viewport(
+[[nodiscard]] constexpr ProportionalViewport proportional_viewport(
     const int output_width, const int output_height) noexcept {
-    return integer_viewport(
+    return proportional_viewport(
         output_width,
         output_height,
         static_cast<int>(kLegacyWidth),

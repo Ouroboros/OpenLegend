@@ -56,10 +56,10 @@ fade_frame_delay_ms = 14.268
 [window]
 
 # These values only control the restored host window. The completed game frame
-# is enlarged with an integer nearest-neighbor scale and centered with black bars.
+# is enlarged proportionally to fill the window as much as possible and centered with black bars.
 
-# 这些值只控制还原后的宿主窗口。完成的游戏画面会以 nearest-neighbor
-# 整数倍率放大，比例不一致时居中留黑边。
+# 这些值只控制还原后的宿主窗口。完成的游戏画面会保持宽高比，尽量填满窗口，
+# 比例不一致时居中留黑边。
 
 width = 960
 height = 600
