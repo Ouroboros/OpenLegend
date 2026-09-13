@@ -1,4 +1,3 @@
-#include "openlegend/attributes.hpp"
 #include "openlegend/text/big5.hpp"
 
 #include <algorithm>
@@ -12,7 +11,7 @@ constexpr std::array<std::uint32_t, 13'493U> kUnicodeToBig5{
 #include "big5_mapping.inc"
 };
 
-NODISCARD constexpr bool continuation(const std::uint8_t value) noexcept {
+[[nodiscard]] constexpr bool continuation(const std::uint8_t value) noexcept {
     return value >= 0x80U && value <= 0xBFU;
 }
 
