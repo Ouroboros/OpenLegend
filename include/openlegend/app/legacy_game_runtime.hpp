@@ -162,6 +162,9 @@ public:
 
     void advance_motion(std::chrono::nanoseconds elapsed);
 
+    NODISCARD bool resume_motion_after_endpoint_presented(
+        std::chrono::nanoseconds presentation_elapsed);
+
     NODISCARD NativeMotionPresentation motion_presentation() const;
 
     NODISCARD bool render_motion_layers(
@@ -377,6 +380,8 @@ private:
     NODISCARD bool start_scripted_scene_motion();
 
     void complete_authoritative_motion();
+
+    void finish_completed_motion_tick();
 
     NODISCARD bool apply_deferred_motion_input();
 

@@ -295,7 +295,7 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 advanced_tick_known = true;
                 logic_advanced = true;
             }
-            const bool motion_active = game.motion_active();
+            bool motion_active = game.motion_active();
             const auto motion_sequence = game.motion_sequence();
             if (motion_active && motion_sequence != timed_motion_sequence) {
                 timed_motion_sequence = motion_sequence;
@@ -422,10 +422,28 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                     result.status = presentation_status;
                     return result;
                 }
+                bool presented_tick_finished = false;
                 if ((!motion_active &&
                      (!weather_active || logic_advanced)) ||
                     game.world_motion_endpoint_present_pending()) {
                     game.finish_presented_tick(tick_source.tick());
+                    presented_tick_finished = true;
+                }
+                if (presented_tick_finished && motion_completed_this_frame) {
+                    const auto resumed_at = std::chrono::steady_clock::now();
+                    if (game.resume_motion_after_endpoint_presented(
+                            resumed_at - motion_time)) {
+                        motion_active = true;
+                        timed_motion_sequence = game.motion_sequence();
+                        previous_motion_time = resumed_at;
+                        motion_frame_deadline =
+                            resumed_at + settings.motion_frame_interval;
+                        if (motion_vsync_available &&
+                            !platform.vsync_enabled()) {
+                            motion_vsync_available =
+                                platform.set_vsync_enabled(true);
+                        }
+                    }
                 }
                 input_coordinator.after_present();
                 diagnostics::log_trace(
