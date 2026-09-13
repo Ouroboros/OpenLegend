@@ -5,6 +5,7 @@
 #include <array>
 #include <charconv>
 
+#include "openlegend/input/name_input_method.hpp"
 #include "openlegend/model/new_game.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -176,25 +177,36 @@ bool BasicUiRenderer::render_name_entry(
             0, 140, 320U, 60U, palette_colors::menu_background)) {
         return false;
     }
-    const auto has_candidates = !editor.candidates().empty();
-    if (!draw_text_utf8(framebuffer, 48, 141, kNamePrompt) ||
+    const auto modern_input =
+        editor.input_method() == input::NameInputMethod::modern;
+    const auto has_candidates = !modern_input && !editor.candidates().empty();
+    const auto input_prompt = modern_input
+        ? kModernNameInputPrompt
+        : (editor.mode() == NameInputMode::zhuyin ? kZhuyinPrompt : kAlnumPrompt);
+    if (!draw_text_utf8(framebuffer, 3, 141, kNamePrompt) ||
         !draw_text_utf8(
             framebuffer,
             3,
             161,
-            editor.mode() == NameInputMode::zhuyin ? kZhuyinPrompt : kAlnumPrompt,
+            input_prompt,
             has_candidates ? text_colors::candidate : text_colors::new_game_prompt_inactive) ||
         !draw_text_big5(
             framebuffer,
-            158,
+            113,
             141,
             text::Big5TextView{editor.display_name()},
-            text_colors::name_value)) {
+            text_colors::name_value) ||
+        !draw_text_utf8(
+            framebuffer,
+            215,
+            141,
+            kNameInputMethodHint,
+            text_colors::new_game_prompt_inactive)) {
         return false;
     }
     if (!editor.accepted() && editor.name().size() < model::kNewGameNameMaximumBytes &&
         !framebuffer.fill_rectangle(
-            158 + static_cast<int>(editor.name().size()) * 8,
+            113 + static_cast<int>(editor.name().size()) * 8,
             156,
             8U,
             1U,

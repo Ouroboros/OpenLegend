@@ -18,6 +18,14 @@ Menu 首次按键立即导航，每次切向或方向回退均重新等待 `menu
 
 菜单等待取下一 BIOS tick 与下一 menu deadline 的较小值，并允许 SDL 事件提前唤醒；只有真实 BIOS tick 才调用游戏 `advance()`，menu deadline 与 SDL 唤醒均不得推进动画、战斗或淡变时钟。配置默认值为 `movement_repeat_delay_ms=500`、`menu_repeat_delay_ms=500`、`menu_repeat_interval_ms=55`；两个 delay 允许零，interval 必须为正。
 
+## 现代姓名输入法
+
+现代姓名输入法只属于 `main` 宿主增强，`original` 继续使用原版内建注音／英数状态机。`[input].name_entry` 接受 `legacy` 或 `modern`，省略时默认为 `legacy`；姓名页可按 F12 在当前会话内即时切换，不写回配置。
+
+`modern` 模式由 SDL text input 接收系统输入法已经提交的 UTF-8 文本，不自行实现或绘制候选状态。宿主启用 text input，并把系统候选窗定位到经过 Legacy Reference Layout、IN-GAME RES 与最终等比 viewport 变换后的姓名框；离开姓名页、确认姓名或切回 `legacy` 时立即停用。姓名页把 `請輸入姓名` 与“注音／英數／現代輸入”分别放在 `(3,141)` 与 `(3,161)`，保持左对齐；姓名内容、光标和 SDL IME 区域从原机 `x=158` 同步左移到 `x=113`，保持标签后的 6px 间距。legacy 与 modern 两种模式都在姓名行最右侧 `(215,141)` 固定显示 `F12：切換輸入`，与最长 6-byte 姓名之间保留 53px，且完整保留第三行原版候选布局。
+
+现代输入仍逐字符确定性转换为 CP950/Big5，并受原存档字段最多 6 字节的限制；只追加完整字符，遇到无效 UTF-8、不可映射字符或下一个字符越界时停止。切换模式保留已输入姓名，但清除原版注音组合与候选状态。现代模式忽略可打印 KeyDown，避免与 `SDL_EVENT_TEXT_INPUT` 重复；无系统组合文字时，Enter 与 Backspace 复用姓名编辑器的确认和按字符删除语义；收到非空 `SDL_EVENT_TEXT_EDITING` 后则优先保留给系统输入法，直至组合提交或取消。
+
 ## 新游戏属性附加显示
 
 属性确认页仍保留机器 `sub_2711A` 的 17 项随机写入与 RNG 消费，不把固定字段并入随机或最高值比较。`main` 在第三列第六行额外显示角色记录 `sexual` 字段为 `性別：男／女`；已知值 `0/1` 映射为男／女，其他值显示原始数字。该显示不修改角色记录、重掷逻辑或 `original`。

@@ -3,9 +3,11 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/name_input_method.hpp"
 #include "openlegend/scene/scene.hpp"
 #include "sdl_runtime_platform.hpp"
 
@@ -31,6 +33,7 @@ void LegacyInputCoordinator::process_host_events(
     input::KeyRepeatController& key_repeat,
     const std::uint32_t frame_tick,
     bool& running) {
+    synchronize_name_text_input(platform);
     compat::HostEvent event{};
     while (platform.poll_event(event)) {
         const auto input_now = std::chrono::steady_clock::now();
@@ -49,11 +52,21 @@ void LegacyInputCoordinator::process_host_events(
             diagnostics::log_debug(
                 "host key_up key=" +
                 std::to_string(static_cast<int>(event.key)));
+        } else if (event.type == compat::HostEventType::text_editing) {
+            game_.handle_text_editing(std::u8string_view{
+                reinterpret_cast<const char8_t*>(event.text.data()),
+                event.text.size()});
+        } else if (event.type == compat::HostEventType::text_input) {
+            game_.handle_text_input(std::u8string_view{
+                reinterpret_cast<const char8_t*>(event.text.data()),
+                event.text.size()});
         }
         synchronize();
+        synchronize_name_text_input(platform);
         synchronize_repeat_context(
             key_repeat, std::chrono::steady_clock::now());
     }
+    synchronize_name_text_input(platform);
 }
 
 void LegacyInputCoordinator::dispatch_repeats(
@@ -196,10 +209,46 @@ void LegacyInputCoordinator::sync_scene_input_reset() {
     }
 }
 
+void LegacyInputCoordinator::synchronize_name_text_input(
+    SdlRuntimePlatform& platform) {
+    const auto enabled = game_.wants_text_input();
+    if (platform.synchronize_name_text_input(
+            enabled, game_.name_input_cursor_bytes())) {
+        text_input_failure_reported_ = false;
+        return;
+    }
+
+    if (!text_input_failure_reported_) {
+        diagnostics::log_warning(
+            std::string{"SDL text input synchronization failed: "} +
+            SDL_GetError());
+        text_input_failure_reported_ = true;
+    }
+    if (enabled) {
+        game_.set_name_input_method(input::NameInputMethod::legacy);
+        static_cast<void>(platform.synchronize_name_text_input(false, 0U));
+    }
+}
+
 void LegacyInputCoordinator::dispatch_key_down(
     const compat::HostKey key,
     const bool repeat,
     const std::uint32_t frame_tick) {
+    // F12 is outside the original 84-entry translation table and therefore
+    // translates to zero. Handle this main-only host shortcut first without
+    // changing the legacy keyboard table or state machine.
+    if (!repeat && key == compat::HostKey::f12 &&
+        game_.view() == app::LegacyGameView::name_entry) {
+        game_.toggle_name_input_method();
+        diagnostics::log_info(
+            "name input method=" +
+            std::string{
+                game_.name_input_method() == input::NameInputMethod::modern
+                    ? "modern"
+                    : "legacy"});
+        return;
+    }
+
     keyboard_.handle_host_key(key, true);
     sync_battle_confirmation();
     const auto translated_key = keyboard_.last_key();

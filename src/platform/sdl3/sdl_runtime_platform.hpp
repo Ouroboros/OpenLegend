@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 
 #include <SDL3/SDL.h>
@@ -33,6 +34,9 @@ public:
     NODISCARD int presentation_scale() const noexcept;
 
     NODISCARD bool poll_event(compat::HostEvent& event) override;
+
+    NODISCARD bool synchronize_name_text_input(
+        bool enabled, std::size_t cursor_bytes) noexcept;
 
     void wait_for_event_or_timeout(std::chrono::nanoseconds timeout) noexcept;
 

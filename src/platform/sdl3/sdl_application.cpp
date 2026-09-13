@@ -29,6 +29,7 @@
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/input/name_input_method.hpp"
 #include "sdl_runtime_platform.hpp"
 
 namespace openlegend::platform::sdl3 {
@@ -288,7 +289,12 @@ void log_resolved_configuration(
         "display in_game_resolution=" +
         std::to_string(game_resolution.width) + "x" +
         std::to_string(game_resolution.height) +
-        " input movement_repeat_delay_ms=" +
+        " input name_entry=" +
+        std::string{
+            configuration.input.name_input_method == input::NameInputMethod::modern
+                ? "modern"
+                : "legacy"} +
+        " movement_repeat_delay_ms=" +
         std::to_string(configuration.input.movement_repeat_delay.count()) +
         " menu_repeat_delay_ms=" +
         std::to_string(configuration.input.menu_repeat_delay.count()) +
@@ -428,6 +434,7 @@ int run_sdl_application(
             platform,
             LegacyRuntimeLoopSettings{
                 *save_directory,
+                configuration.input.name_input_method,
                 configuration.input.movement_repeat_delay,
                 configuration.input.menu_repeat_delay,
                 configuration.input.menu_repeat_interval,

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <string>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
@@ -13,6 +14,8 @@ enum class HostEventType {
     quit,
     key_down,
     key_up,
+    text_editing,
+    text_input,
 };
 
 enum class HostKey : std::uint8_t {
@@ -130,6 +133,7 @@ struct HostEvent {
     HostEventType type{HostEventType::none};
     HostKey key{HostKey::unknown};
     bool repeat{};
+    std::string text;
 };
 
 class RuntimePlatform {

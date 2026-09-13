@@ -25,6 +25,15 @@ level = "info"
 
 [input]
 
+# Name entry uses the original built-in Zhuyin keyboard by default. Set this to
+# "modern" to use SDL/system text input and the host IME. On the name screen,
+# F12 switches between both modes for the current session.
+#
+# 姓名输入默认使用原版内建注音键盘。设为 "modern" 可改用 SDL／系统文字输入
+# 与宿主输入法。姓名画面中可按 F12 在两种模式间切换，仅影响当前会话。
+
+name_entry = "legacy"
+
 # Delay after the first movement before a held direction starts repeating.
 # Use 0 for immediate continuous movement.
 

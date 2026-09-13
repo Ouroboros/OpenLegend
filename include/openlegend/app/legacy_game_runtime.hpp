@@ -123,7 +123,8 @@ public:
         std::filesystem::path data_root,
         std::filesystem::path save_root,
         std::uint32_t random_seed,
-        GameResolution game_resolution);
+        GameResolution game_resolution,
+        input::NameInputMethod name_input_method = input::NameInputMethod::legacy);
 
     void advance(std::uint32_t bios_tick = 0U);
 
@@ -132,6 +133,20 @@ public:
         bool control_down,
         bool shift_down,
         std::optional<std::uint32_t> bios_tick = std::nullopt);
+
+    void handle_text_input(std::u8string_view utf8_text);
+
+    void handle_text_editing(std::u8string_view composition) noexcept;
+
+    void set_name_input_method(input::NameInputMethod input_method) noexcept;
+
+    void toggle_name_input_method() noexcept;
+
+    NODISCARD input::NameInputMethod name_input_method() const noexcept;
+
+    NODISCARD bool wants_text_input() const noexcept;
+
+    NODISCARD std::size_t name_input_cursor_bytes() const noexcept;
 
     bool handle_world_input(
         bool left,
@@ -346,6 +361,7 @@ private:
     std::filesystem::path data_root_path_;
     std::filesystem::path save_root_path_;
     resource::DataRoot data_root_;
+    input::NameInputMethod default_name_input_method_{input::NameInputMethod::legacy};
     ui::BasicUiRenderer basic_renderer_;
     ui::ModernUiRenderer modern_ui_renderer_;
     ui::LocationStatusRenderer location_status_renderer_;

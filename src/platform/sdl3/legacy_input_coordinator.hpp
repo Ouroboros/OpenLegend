@@ -45,6 +45,8 @@ public:
 private:
     void synchronize();
 
+    void synchronize_name_text_input(SdlRuntimePlatform& platform);
+
     void sync_battle_confirmation();
 
     void sync_scene_input_reset();
@@ -55,6 +57,7 @@ private:
     app::LegacyGameRuntime& game_;
     input::LegacyKeyboard keyboard_;
     std::optional<std::uint32_t> last_movement_repeat_tick_;
+    bool text_input_failure_reported_{};
 };
 
 }  // namespace openlegend::platform::sdl3

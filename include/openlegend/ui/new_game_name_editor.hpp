@@ -6,9 +6,11 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
+#include "openlegend/input/name_input_method.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
@@ -26,16 +28,30 @@ enum class NameEditStatus {
 
 class NewGameNameEditor {
 public:
-    explicit NewGameNameEditor(const resource::DataRoot& data_root);
+    explicit NewGameNameEditor(
+        const resource::DataRoot& data_root,
+        input::NameInputMethod input_method = input::NameInputMethod::legacy);
 
     NODISCARD NameEditStatus handle_key(
         std::uint8_t translated_key, bool control_down, bool shift_down);
+
+    void handle_text_input(std::u8string_view utf8_text);
+
+    void handle_text_editing(std::u8string_view composition) noexcept;
+
+    void set_input_method(input::NameInputMethod input_method) noexcept;
+
+    void toggle_input_method() noexcept;
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
     NODISCARD const std::string& error() const noexcept { return error_; }
 
     NODISCARD NameInputMode mode() const noexcept { return mode_; }
+
+    NODISCARD input::NameInputMethod input_method() const noexcept {
+        return input_method_;
+    }
 
     NODISCARD std::span<const std::uint8_t> name() const noexcept { return name_; }
 
@@ -90,7 +106,7 @@ private:
 
     void clear_composition() noexcept;
 
-    void erase_last() noexcept;
+    void erase_last(bool retain_single_ascii_display) noexcept;
 
     void lookup_candidates();
 
@@ -105,6 +121,7 @@ private:
     std::vector<std::array<std::uint8_t, 2>> candidates_;
     std::string error_;
     NameInputMode mode_{NameInputMode::zhuyin};
+    input::NameInputMethod input_method_{input::NameInputMethod::legacy};
     std::int16_t candidate_page_{};
     std::size_t candidate_data_begin_{};
     std::int16_t initial_{};
@@ -114,6 +131,7 @@ private:
     bool no_candidates_{};
     bool accepted_{};
     bool cursor_bright_{};
+    bool modern_composition_active_{};
 };
 
 }  // namespace openlegend::ui

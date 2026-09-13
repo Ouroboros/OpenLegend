@@ -630,6 +630,23 @@ NODISCARD InputConfigurationLoadResult input_configuration_from_document(
         result.status = InputConfigurationStatus::invalid_input_table;
         return result;
     }
+    if (const toml::node* method_node =
+            input->get(InputConfigurationLoadResult::name_input_method_toml_key);
+        method_node != nullptr) {
+        const auto method = method_node->value<std::string>();
+        if (!method.has_value()) {
+            result.status = InputConfigurationStatus::invalid_name_input_method;
+            return result;
+        }
+        if (*method == "legacy") {
+            result.name_input_method = openlegend::input::NameInputMethod::legacy;
+        } else if (*method == "modern") {
+            result.name_input_method = openlegend::input::NameInputMethod::modern;
+        } else {
+            result.status = InputConfigurationStatus::invalid_name_input_method;
+            return result;
+        }
+    }
     if (const toml::node* delay_node =
             input->get(InputConfigurationLoadResult::movement_repeat_delay_toml_key);
         delay_node != nullptr) {
@@ -1091,6 +1108,8 @@ std::string_view input_configuration_status_message(
         return "cannot parse openlegend.toml";
     case InputConfigurationStatus::invalid_input_table:
         return "[input] must be a TOML table";
+    case InputConfigurationStatus::invalid_name_input_method:
+        return "[input] name_entry must be legacy or modern";
     case InputConfigurationStatus::invalid_movement_repeat_delay:
         return "[input] movement_repeat_delay_ms must be a non-negative integer";
     case InputConfigurationStatus::invalid_menu_repeat_delay:

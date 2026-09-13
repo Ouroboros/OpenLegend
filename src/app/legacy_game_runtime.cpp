@@ -345,10 +345,12 @@ LegacyGameRuntime::LegacyGameRuntime(
     std::filesystem::path data_root,
     std::filesystem::path save_root,
     const std::uint32_t random_seed,
-    const GameResolution game_resolution)
+    const GameResolution game_resolution,
+    const input::NameInputMethod name_input_method)
     : data_root_path_(std::move(data_root)),
       save_root_path_(std::move(save_root)),
       data_root_(data_root_path_),
+      default_name_input_method_(name_input_method),
       basic_renderer_(data_root_),
       modern_ui_renderer_(data_root_),
       startup_resources_(data_root_),
@@ -894,6 +896,49 @@ scene::SceneInputReset LegacyGameRuntime::take_scene_input_reset_request() noexc
     const auto result = scene_input_reset_request_;
     scene_input_reset_request_ = scene::SceneInputReset::none;
     return result;
+}
+
+void LegacyGameRuntime::handle_text_input(const std::u8string_view utf8_text) {
+    if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
+        name_editor_->handle_text_input(utf8_text);
+    }
+}
+
+void LegacyGameRuntime::handle_text_editing(
+    const std::u8string_view composition) noexcept {
+    if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
+        name_editor_->handle_text_editing(composition);
+    }
+}
+
+void LegacyGameRuntime::set_name_input_method(
+    const input::NameInputMethod input_method) noexcept {
+    if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
+        name_editor_->set_input_method(input_method);
+    }
+}
+
+void LegacyGameRuntime::toggle_name_input_method() noexcept {
+    if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
+        name_editor_->toggle_input_method();
+    }
+}
+
+input::NameInputMethod LegacyGameRuntime::name_input_method() const noexcept {
+    if (name_editor_.has_value()) {
+        return name_editor_->input_method();
+    }
+    return default_name_input_method_;
+}
+
+bool LegacyGameRuntime::wants_text_input() const noexcept {
+    return view_ == LegacyGameView::name_entry && name_editor_.has_value() &&
+        name_editor_->input_method() == input::NameInputMethod::modern &&
+        !name_editor_->accepted();
+}
+
+std::size_t LegacyGameRuntime::name_input_cursor_bytes() const noexcept {
+    return name_editor_.has_value() ? name_editor_->name().size() : 0U;
 }
 
 LegacyKeyStateReset LegacyGameRuntime::handle_key(
@@ -1615,7 +1660,7 @@ void LegacyGameRuntime::begin_new_game() {
         return;
     }
 
-    name_editor_.emplace(data_root_);
+    name_editor_.emplace(data_root_, default_name_input_method_);
     if (!name_editor_->valid()) {
         show_error(name_editor_->error(), LegacyGameView::title);
         return;

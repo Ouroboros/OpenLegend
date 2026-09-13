@@ -6,6 +6,7 @@
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/new_game.hpp"
+#include "openlegend/text/big5.hpp"
 
 namespace openlegend::ui {
 namespace {
@@ -20,7 +21,10 @@ NODISCARD constexpr bool is_ascii_name_key(const std::uint8_t key) noexcept {
 
 }  // namespace
 
-NewGameNameEditor::NewGameNameEditor(const resource::DataRoot& data_root) {
+NewGameNameEditor::NewGameNameEditor(
+    const resource::DataRoot& data_root,
+    const input::NameInputMethod input_method)
+    : input_method_(input_method) {
     auto cfont = data_root.read("CFONT");
     if (!cfont) {
         error_ = cfont.error;
@@ -58,6 +62,20 @@ NameEditStatus NewGameNameEditor::handle_key(
     if (accepted_) {
         return NameEditStatus::completed;
     }
+    if (input_method_ == input::NameInputMethod::modern) {
+        if (modern_composition_active_ &&
+            (translated_key == input::legacy_key::backspace ||
+             translated_key == input::legacy_key::enter)) {
+            return NameEditStatus::editing;
+        }
+        if (translated_key == input::legacy_key::backspace) {
+            erase_last(false);
+        } else if (translated_key == input::legacy_key::enter && !name_.empty()) {
+            accepted_ = true;
+            return NameEditStatus::completed;
+        }
+        return NameEditStatus::editing;
+    }
     if (no_candidates_) {
         clear_composition();
         return NameEditStatus::editing;
@@ -91,7 +109,7 @@ NameEditStatus NewGameNameEditor::handle_key(
         return NameEditStatus::editing;
     }
     if (translated_key == input::legacy_key::backspace) {
-        erase_last();
+        erase_last(true);
         return NameEditStatus::editing;
     }
     if (translated_key == input::legacy_key::enter) {
@@ -140,6 +158,65 @@ NameEditStatus NewGameNameEditor::handle_key(
     default: break;
     }
     return NameEditStatus::editing;
+}
+
+void NewGameNameEditor::handle_text_input(const std::u8string_view utf8_text) {
+    if (!valid() || accepted_ || input_method_ != input::NameInputMethod::modern) {
+        return;
+    }
+
+    clear_composition();
+    bool changed = false;
+    std::size_t offset = 0U;
+    while (offset < utf8_text.size()) {
+        const auto code_point = text::decode_next_utf8(utf8_text, offset);
+        if (!code_point.has_value()) {
+            break;
+        }
+        const auto code = text::big5_code_for_unicode(*code_point);
+        if (!code.has_value() || *code == 0U) {
+            break;
+        }
+        const auto unit_size = *code <= 0x7FU ? 1U : 2U;
+        if (name_.size() + unit_size > model::kNewGameNameMaximumBytes) {
+            break;
+        }
+        if (unit_size == 1U) {
+            name_.push_back(static_cast<std::uint8_t>(*code));
+        } else {
+            name_.push_back(static_cast<std::uint8_t>(*code >> 8U));
+            name_.push_back(static_cast<std::uint8_t>(*code));
+        }
+        unit_sizes_.push_back(static_cast<std::uint8_t>(unit_size));
+        changed = true;
+    }
+    if (changed) {
+        sync_display_name();
+    }
+}
+
+void NewGameNameEditor::handle_text_editing(
+    const std::u8string_view composition) noexcept {
+    if (!valid() || accepted_ || input_method_ != input::NameInputMethod::modern) {
+        return;
+    }
+    modern_composition_active_ = !composition.empty();
+}
+
+void NewGameNameEditor::set_input_method(
+    const input::NameInputMethod input_method) noexcept {
+    if (input_method_ == input_method) {
+        return;
+    }
+    input_method_ = input_method;
+    clear_composition();
+}
+
+void NewGameNameEditor::toggle_input_method() noexcept {
+    set_input_method(
+        input_method_ == input::NameInputMethod::legacy
+            ? input::NameInputMethod::modern
+            : input::NameInputMethod::legacy);
 }
 
 std::size_t NewGameNameEditor::visible_candidate_count() const noexcept {
@@ -265,6 +342,7 @@ bool NewGameNameEditor::has_composition() const noexcept {
 }
 
 void NewGameNameEditor::clear_composition() noexcept {
+    modern_composition_active_ = false;
     initial_ = 0;
     medial_ = 0;
     final_ = 0;
@@ -275,7 +353,7 @@ void NewGameNameEditor::clear_composition() noexcept {
     no_candidates_ = false;
 }
 
-void NewGameNameEditor::erase_last() noexcept {
+void NewGameNameEditor::erase_last(const bool retain_single_ascii_display) noexcept {
     if (has_composition()) {
         if (final_ != 0) {
             final_ = 0;
@@ -290,10 +368,11 @@ void NewGameNameEditor::erase_last() noexcept {
         return;
     }
     const auto byte_count = unit_sizes_.back();
-    const auto retain_single_ascii_display = unit_sizes_.size() == 1U && byte_count == 1U;
+    const auto retain_display =
+        retain_single_ascii_display && unit_sizes_.size() == 1U && byte_count == 1U;
     unit_sizes_.pop_back();
     name_.resize(name_.size() - byte_count);
-    if (!retain_single_ascii_display) {
+    if (!retain_display) {
         sync_display_name();
     }
 }

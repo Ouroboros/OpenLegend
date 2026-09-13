@@ -1,9 +1,11 @@
 #include "sdl_runtime_platform.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/compat/color.hpp"
+#include "openlegend/render/reference_layout.hpp"
 
 namespace openlegend::platform::sdl3 {
 namespace {
@@ -212,8 +214,78 @@ bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
             event.type = sdl_event.type == SDL_EVENT_KEY_DOWN ? compat::HostEventType::key_down
                                                              : compat::HostEventType::key_up;
         }
+    } else if (sdl_event.type == SDL_EVENT_TEXT_EDITING &&
+               sdl_event.edit.text != nullptr) {
+        event.type = compat::HostEventType::text_editing;
+        event.text = sdl_event.edit.text;
+    } else if (sdl_event.type == SDL_EVENT_TEXT_INPUT &&
+               sdl_event.text.text != nullptr) {
+        event.type = compat::HostEventType::text_input;
+        event.text = sdl_event.text.text;
     }
     return true;
+}
+
+bool SdlRuntimePlatform::synchronize_name_text_input(
+    const bool enabled, const std::size_t cursor_bytes) noexcept {
+    if (window_ == nullptr) {
+        return false;
+    }
+    if (!enabled) {
+        return !SDL_TextInputActive(window_) || SDL_StopTextInput(window_);
+    }
+    if (!SDL_TextInputActive(window_) && !SDL_StartTextInput(window_)) {
+        return false;
+    }
+
+    int window_width = 0;
+    int window_height = 0;
+    if (!SDL_GetWindowSize(window_, &window_width, &window_height)) {
+        return false;
+    }
+    const auto game_viewport = compat::proportional_viewport(
+        window_width, window_height, game_width_, game_height_);
+    const auto legacy_viewport =
+        render::fit_legacy_reference_viewport(game_width_, game_height_);
+    if (!game_viewport.valid() || !legacy_viewport.valid()) {
+        return false;
+    }
+
+    constexpr int name_x = 113;
+    constexpr int name_y = 141;
+    constexpr int name_width = 50;
+    constexpr int name_height = 17;
+    constexpr int glyph_width = 8;
+    const auto legacy_scale_x = static_cast<float>(legacy_viewport.width) /
+        static_cast<float>(compat::kLegacyWidth);
+    const auto legacy_scale_y = static_cast<float>(legacy_viewport.height) /
+        static_cast<float>(compat::kLegacyHeight);
+    const auto map_x = [&](const int reference_x) {
+        const auto game_x = static_cast<float>(legacy_viewport.x) +
+            static_cast<float>(reference_x) * legacy_scale_x;
+        return static_cast<int>(std::lround(
+            game_viewport.x + game_x * game_viewport.scale));
+    };
+    const auto map_y = [&](const int reference_y) {
+        const auto game_y = static_cast<float>(legacy_viewport.y) +
+            static_cast<float>(reference_y) * legacy_scale_y;
+        return static_cast<int>(std::lround(
+            game_viewport.y + game_y * game_viewport.scale));
+    };
+    const auto mapped_width = static_cast<int>(std::lround(
+        static_cast<float>(name_width) * legacy_scale_x * game_viewport.scale));
+    const auto mapped_height = static_cast<int>(std::lround(
+        static_cast<float>(name_height) * legacy_scale_y * game_viewport.scale));
+    const SDL_Rect text_area{
+        map_x(name_x),
+        map_y(name_y),
+        std::max(1, mapped_width),
+        std::max(1, mapped_height)};
+    const auto bounded_cursor = std::min(cursor_bytes, std::size_t{6U});
+    const auto cursor = static_cast<int>(std::lround(
+        static_cast<float>(bounded_cursor * std::size_t{glyph_width}) *
+        legacy_scale_x * game_viewport.scale));
+    return SDL_SetTextInputArea(window_, &text_area, cursor);
 }
 
 void SdlRuntimePlatform::wait_for_event_or_timeout(
