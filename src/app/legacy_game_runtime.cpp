@@ -31,14 +31,7 @@ constexpr std::array<std::int16_t, 25> kLeavePartyRoles{
 
 void preview_legacy_palette_cycle(render::IndexedFramebuffer& framebuffer) {
     auto palette = framebuffer.palette();
-    std::rotate(
-        palette.begin() + render::legacy_color::first_palette_cycle_begin,
-        palette.begin() + render::legacy_color::first_palette_cycle_pivot,
-        palette.begin() + render::legacy_color::first_palette_cycle_end);
-    std::rotate(
-        palette.begin() + render::legacy_color::second_palette_cycle_begin,
-        palette.begin() + render::legacy_color::second_palette_cycle_pivot,
-        palette.begin() + render::legacy_color::second_palette_cycle_end);
+    render::cycle_legacy_palette(palette);
     framebuffer.set_palette(palette);
 }
 
@@ -178,6 +171,7 @@ NODISCARD std::string_view scene_step_name(const scene::SceneStepKind kind) noex
     switch (kind) {
     case scene::SceneStepKind::stay: return "stay";
     case scene::SceneStepKind::moved: return "moved";
+    case scene::SceneStepKind::scripted_move: return "scripted_move";
     case scene::SceneStepKind::present: return "present";
     case scene::SceneStepKind::fade_from_black: return "fade_from_black";
     case scene::SceneStepKind::fade_to_black: return "fade_to_black";
@@ -346,11 +340,14 @@ LegacyGameRuntime::LegacyGameRuntime(
     std::filesystem::path save_root,
     const std::uint32_t random_seed,
     const GameResolution game_resolution,
-    const input::NameInputMethod name_input_method)
+    const input::NameInputMethod name_input_method,
+    const std::chrono::nanoseconds movement_step_duration)
     : data_root_path_(std::move(data_root)),
       save_root_path_(std::move(save_root)),
       data_root_(data_root_path_),
       default_name_input_method_(name_input_method),
+      movement_step_duration_(
+          std::max(movement_step_duration, std::chrono::nanoseconds::zero())),
       basic_renderer_(data_root_),
       modern_ui_renderer_(data_root_),
       startup_resources_(data_root_),
@@ -391,6 +388,362 @@ LegacyGameRuntime::LegacyGameRuntime(
     } else {
         diagnostics::log_error("LegacyGameRuntime initialization failed: " + startup_error_);
     }
+}
+
+void LegacyGameRuntime::advance_motion(
+    const std::chrono::nanoseconds elapsed) {
+    if (!authoritative_motion_.active() ||
+        elapsed <= std::chrono::nanoseconds::zero()) {
+        return;
+    }
+
+    auto remaining = elapsed;
+    while (authoritative_motion_.active() &&
+           remaining > std::chrono::nanoseconds::zero()) {
+        const auto advanced = authoritative_motion_.advance(remaining);
+        if (!advanced.reached_destination) {
+            return;
+        }
+        remaining = advanced.remaining;
+        complete_authoritative_motion();
+        if (!authoritative_motion_.active() || !scene_motion_scripted_) {
+            return;
+        }
+    }
+}
+
+bool LegacyGameRuntime::motion_destination_depth_phase() const noexcept {
+    if (!authoritative_motion_.active()) {
+        return false;
+    }
+    const auto elapsed = authoritative_motion_.elapsed();
+    return elapsed >= authoritative_motion_.duration() - elapsed;
+}
+
+NativeMotionPresentation LegacyGameRuntime::motion_presentation() const {
+    if (!authoritative_motion_.active()) {
+        return {};
+    }
+
+    const auto to_fixed = [](const motion::GridPosition grid) {
+        return motion::FixedPosition{
+            static_cast<std::int64_t>(grid.x) *
+                motion::kFixedUnitsPerGridUnit,
+            static_cast<std::int64_t>(grid.y) *
+                motion::kFixedUnitsPerGridUnit,
+            static_cast<std::int64_t>(grid.height) *
+                motion::kFixedUnitsPerGridUnit};
+    };
+    const auto position = authoritative_motion_.position();
+    const auto source = to_fixed(authoritative_motion_.source());
+    const auto destination = to_fixed(authoritative_motion_.destination());
+    if (motion_domain_ == NativeMotionDomain::world &&
+        world_session_ != nullptr) {
+        return NativeMotionPresentation{
+            motion_domain_,
+            native_motion_sequence_,
+            world_session_->palette_revision(),
+            world_motion_endpoint_present_pending_ &&
+                static_cast<std::int16_t>((periodic_counter_ + 1) % 5) == 1,
+            motion_destination_depth_phase(),
+            position,
+            source,
+            destination,
+            world_session_->rendered_player_sprite(),
+            &world_session_->palette()};
+    }
+    if (motion_domain_ == NativeMotionDomain::scene &&
+        scene_session_ != nullptr) {
+        return NativeMotionPresentation{
+            motion_domain_,
+            native_motion_sequence_,
+            scene_session_->palette_revision(),
+            false,
+            motion_destination_depth_phase(),
+            position,
+            source,
+            destination,
+            scene_session_->rendered_player_sprite(),
+            &scene_session_->palette()};
+    }
+    return NativeMotionPresentation{
+        motion_domain_,
+        native_motion_sequence_,
+        0U,
+        false,
+        false,
+        position,
+        source,
+        destination};
+}
+
+bool LegacyGameRuntime::render_motion_layers(
+    render::IndexedFramebuffer& underlay,
+    render::IndexedLayer& overlay,
+    render::IndexedLayer& screen_effect) const {
+    if (!authoritative_motion_.active()) {
+        return false;
+    }
+    const auto actor = motion_destination_depth_phase()
+        ? authoritative_motion_.destination()
+        : authoritative_motion_.source();
+    if (motion_domain_ == NativeMotionDomain::world &&
+        world_session_ != nullptr) {
+        return world_session_->render_motion_layers(
+            underlay, overlay, screen_effect, actor.x, actor.y);
+    }
+    if (motion_domain_ == NativeMotionDomain::scene &&
+        scene_session_ != nullptr) {
+        return scene_session_->render_motion_layers(
+            underlay, overlay, screen_effect, actor.x, actor.y);
+    }
+    return false;
+}
+
+bool LegacyGameRuntime::render_motion_weather(
+    render::RgbaFramebuffer& screen_effect,
+    const compat::LegacyPalette& palette) const {
+    if (world_session_ != nullptr &&
+        (motion_domain_ == NativeMotionDomain::world ||
+         weather_presentation_active())) {
+        return world_session_->render_motion_weather(screen_effect, palette);
+    }
+    return authoritative_motion_.active() &&
+        motion_domain_ == NativeMotionDomain::scene &&
+        scene_session_ != nullptr;
+}
+
+bool LegacyGameRuntime::weather_presentation_active() const noexcept {
+    return movement_step_duration_ > std::chrono::nanoseconds::zero() &&
+        view_ == LegacyGameView::world && world_session_ != nullptr &&
+        world_session_->weather_active() && world_or_scene_input_active() &&
+        scene_effect_kind_ == SceneEffectKind::none;
+}
+
+std::uint64_t LegacyGameRuntime::weather_revision() const noexcept {
+    return world_session_ != nullptr ? world_session_->weather_revision() : 0U;
+}
+
+std::uint64_t LegacyGameRuntime::weather_position_revision() const noexcept {
+    return world_session_ != nullptr
+        ? world_session_->weather_position_revision()
+        : 0U;
+}
+
+bool LegacyGameRuntime::motion_layers_available() const noexcept {
+    if (!authoritative_motion_.active()) {
+        return false;
+    }
+    if (motion_domain_ == NativeMotionDomain::world &&
+        world_session_ != nullptr) {
+        return world_session_->motion_layers_available();
+    }
+    if (motion_domain_ == NativeMotionDomain::scene &&
+        scene_session_ != nullptr) {
+        return scene_session_->motion_layers_available();
+    }
+    return false;
+}
+
+std::optional<std::chrono::nanoseconds>
+LegacyGameRuntime::time_until_motion_completion() const noexcept {
+    if (!authoritative_motion_.active()) {
+        return std::nullopt;
+    }
+    return authoritative_motion_.duration() - authoritative_motion_.elapsed();
+}
+
+bool LegacyGameRuntime::start_world_motion(
+    const world::WorldDirection direction) {
+    if (world_session_ == nullptr) {
+        return false;
+    }
+
+    world_step_processed_ = true;
+    const auto plan = world_session_->start_move(direction);
+    if (!plan.valid) {
+        return true;
+    }
+    const bool changes_position =
+        plan.source_x != plan.target_x || plan.source_y != plan.target_y;
+    if (plan.kind == world::WorldStepKind::moved && changes_position &&
+        movement_step_duration_ > std::chrono::nanoseconds::zero() &&
+        authoritative_motion_.begin(
+            motion::GridPosition{plan.source_x, plan.source_y, 0},
+            motion::GridPosition{plan.target_x, plan.target_y, 0},
+            movement_step_duration_)) {
+        ++native_motion_sequence_;
+        world_motion_plan_ = plan;
+        scene_motion_plan_.reset();
+        scene_motion_scripted_ = false;
+        scene_motion_endpoint_waiting_ = false;
+        motion_domain_ = NativeMotionDomain::world;
+        return true;
+    }
+
+    handle_world_step_result(direction, world_session_->commit_move(plan));
+    return true;
+}
+
+void LegacyGameRuntime::start_scene_motion(
+    const scene::SceneDirection direction) {
+    if (scene_session_ == nullptr) {
+        return;
+    }
+
+    const auto plan = scene_session_->start_tick_move(direction);
+    if (!plan.valid) {
+        return;
+    }
+    const bool changes_position =
+        plan.source_x != plan.target_x || plan.source_y != plan.target_y ||
+        plan.source_height != plan.target_height;
+    if (plan.can_move && changes_position &&
+        movement_step_duration_ > std::chrono::nanoseconds::zero() &&
+        authoritative_motion_.begin(
+            motion::GridPosition{
+                plan.source_x, plan.source_y, plan.source_height},
+            motion::GridPosition{
+                plan.target_x, plan.target_y, plan.target_height},
+            movement_step_duration_)) {
+        ++native_motion_sequence_;
+        scene_motion_plan_ = plan;
+        scene_motion_scripted_ = false;
+        scene_motion_endpoint_waiting_ = false;
+        world_motion_plan_.reset();
+        motion_domain_ = NativeMotionDomain::scene;
+        return;
+    }
+
+    handle_scene_result(scene_session_->finish_tick_move(plan));
+}
+
+bool LegacyGameRuntime::start_scripted_scene_motion() {
+    if (scene_session_ == nullptr) {
+        return false;
+    }
+    const auto plan = scene_session_->pending_scripted_move();
+    if (!plan.has_value() || !plan->valid || !plan->can_move) {
+        return false;
+    }
+    const bool changes_position =
+        plan->source_x != plan->target_x || plan->source_y != plan->target_y ||
+        plan->source_height != plan->target_height;
+    const auto duration = timing::kBiosTickDuration * 3;
+    if (!changes_position ||
+        !authoritative_motion_.begin(
+            motion::GridPosition{
+                plan->source_x, plan->source_y, plan->source_height},
+            motion::GridPosition{
+                plan->target_x, plan->target_y, plan->target_height},
+            duration)) {
+        return false;
+    }
+
+    ++native_motion_sequence_;
+    scene_motion_plan_ = *plan;
+    scene_motion_scripted_ = true;
+    scene_motion_endpoint_waiting_ = false;
+    world_motion_plan_.reset();
+    motion_domain_ = NativeMotionDomain::scene;
+    motion_tick_completed_ = false;
+    return true;
+}
+
+void LegacyGameRuntime::complete_authoritative_motion() {
+    const auto completed_domain = motion_domain_;
+    const bool completed_scripted_scene_motion = scene_motion_scripted_;
+    motion_domain_ = NativeMotionDomain::none;
+    scene_motion_scripted_ = false;
+    authoritative_motion_.clear();
+    motion_tick_completed_ = true;
+
+    if (completed_domain == NativeMotionDomain::world &&
+        world_session_ != nullptr && world_motion_plan_.has_value()) {
+        const auto plan = *world_motion_plan_;
+        world_motion_plan_.reset();
+        const auto result = world_session_->commit_move(plan);
+        world_session_->periodic_tick();
+        world_session_->idle_animation_tick();
+        world_motion_endpoint_present_pending_ = true;
+        handle_world_step_result(plan.direction, result);
+        return;
+    }
+    if (completed_domain == NativeMotionDomain::scene &&
+        scene_session_ != nullptr && scene_motion_plan_.has_value()) {
+        const auto plan = *scene_motion_plan_;
+        scene_motion_plan_.reset();
+        if (completed_scripted_scene_motion) {
+            handle_scene_result(scene_session_->finish_scripted_move(plan));
+        } else {
+            scene_motion_endpoint_waiting_ = true;
+            handle_scene_result(scene_session_->finish_tick_move(plan));
+        }
+    }
+}
+
+bool LegacyGameRuntime::apply_deferred_motion_input() {
+    const auto command = std::exchange(
+        deferred_motion_command_, DeferredMotionCommand::none);
+    scene_interact_requested_ = false;
+    scene_ui_requested_ = false;
+    scene_idle_skip_requested_ = false;
+    switch (command) {
+    case DeferredMotionCommand::none:
+        return false;
+    case DeferredMotionCommand::world_menu:
+        if (view_ == LegacyGameView::world) {
+            open_world_menu();
+        }
+        return true;
+    case DeferredMotionCommand::scene_interact:
+        if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+            handle_scene_result(scene_session_->tick(
+                std::nullopt, true, false, false));
+        }
+        return true;
+    case DeferredMotionCommand::scene_ui:
+        if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+            handle_scene_result(scene_session_->tick(
+                std::nullopt, false, true, false));
+        }
+        return true;
+    case DeferredMotionCommand::scene_weather_disable:
+        if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+            handle_scene_result(scene_session_->tick(
+                std::nullopt, false, false, true));
+        }
+        return true;
+    }
+    return false;
+}
+
+void LegacyGameRuntime::handle_world_step_result(
+    const world::WorldDirection direction,
+    const world::WorldStepResult& result) {
+    diagnostics::log_info(
+        "world input direction=" + std::string{world_direction_name(direction)} +
+        " result=" + std::string{world_step_name(result.kind)} +
+        " x=" + std::to_string(result.world_x) +
+        " y=" + std::to_string(result.world_y) +
+        " frame=" + std::to_string(world_session_->player_frame()));
+    if (result.kind == world::WorldStepKind::enter_scene) {
+        scene_request_ = result.scene_id;
+        world_move_continuation_ = result.continuation;
+        world_scene_transition_pending_ = true;
+        world_scene_transition_presented_ = false;
+        clear_scene_effect();
+    }
+}
+
+void LegacyGameRuntime::open_world_menu() {
+    world_step_processed_ = true;
+    world_session_->prepare_game_menu_frame();
+    update_menu_counts();
+    game_menu_.set_context(ui::GameMenuContext::world);
+    game_menu_.show_main();
+    menu_return_view_ = LegacyGameView::world;
+    set_view(LegacyGameView::game_menu, "open world menu");
 }
 
 void LegacyGameRuntime::set_battle_confirmation_state(const bool active) noexcept {
@@ -563,6 +916,48 @@ bool LegacyGameRuntime::take_clear_battle_confirmation_states_request() noexcept
 }
 
 void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
+    if (motion_tick_completed_) {
+        if (scene_motion_endpoint_waiting_) {
+            if (view_ != LegacyGameView::scene || scene_session_ == nullptr) {
+                scene_motion_endpoint_waiting_ = false;
+                deferred_motion_command_ = DeferredMotionCommand::none;
+                queued_motion_direction_.reset();
+            } else if (scene_effect_kind_ != SceneEffectKind::none) {
+                static_cast<void>(advance_scene_effect());
+                world_step_processed_ = false;
+                return;
+            } else if (
+                scene_session_->pending().kind != scene::SceneStepKind::stay ||
+                !world_or_scene_input_active()) {
+                world_step_processed_ = false;
+                return;
+            } else {
+                scene_motion_endpoint_waiting_ = false;
+            }
+        }
+        motion_tick_completed_ = false;
+        world_step_processed_ = false;
+        if (apply_deferred_motion_input()) {
+            queued_motion_direction_.reset();
+            return;
+        }
+
+        const auto queued_direction = queued_motion_direction_;
+        queued_motion_direction_.reset();
+        if (queued_direction.has_value() && world_or_scene_input_active()) {
+            if (view_ == LegacyGameView::world) {
+                static_cast<void>(start_world_motion(*queued_direction));
+            } else if (view_ == LegacyGameView::scene) {
+                start_scene_motion(static_cast<scene::SceneDirection>(
+                    static_cast<std::int16_t>(*queued_direction)));
+            }
+        }
+        return;
+    }
+    if (authoritative_motion_.active()) {
+        world_step_processed_ = false;
+        return;
+    }
     if (pending_io_ != PendingIo::none) {
         if (!pending_io_wait_presented_) {
             world_step_processed_ = false;
@@ -610,8 +1005,13 @@ void LegacyGameRuntime::advance(const std::uint32_t bios_tick) {
         scene_interact_requested_ = false;
         scene_ui_requested_ = false;
         scene_idle_skip_requested_ = false;
-        handle_scene_result(scene_session_->tick(
-            direction, interact_requested, ui_requested, skip_player_idle));
+        if (direction.has_value() &&
+            movement_step_duration_ > std::chrono::nanoseconds::zero()) {
+            start_scene_motion(*direction);
+        } else {
+            handle_scene_result(scene_session_->tick(
+                direction, interact_requested, ui_requested, skip_player_idle));
+        }
     } else {
         scene_direction_input_.reset();
     }
@@ -675,6 +1075,17 @@ bool LegacyGameRuntime::needs_immediate_frame(const std::uint32_t bios_tick) con
 }
 
 void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
+    const bool world_motion_endpoint_presented =
+        std::exchange(world_motion_endpoint_present_pending_, false) &&
+        world_session_ != nullptr;
+    if (world_motion_endpoint_presented) {
+        periodic_counter_ = static_cast<std::int16_t>(
+            (periodic_counter_ + 1) % 5);
+        if (periodic_counter_ == 1) {
+            world_session_->cycle_palette();
+        }
+    }
+
     if (view_ == LegacyGameView::name_entry && name_editor_.has_value()) {
         name_editor_->finish_presented_frame();
     }
@@ -796,9 +1207,12 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
         }
         return;
     }
-    periodic_counter_ = static_cast<std::int16_t>((periodic_counter_ + 1) % 5);
-    if (periodic_counter_ == 1) {
-        world_session_->cycle_palette();
+    if (!world_motion_endpoint_presented) {
+        periodic_counter_ = static_cast<std::int16_t>(
+            (periodic_counter_ + 1) % 5);
+        if (periodic_counter_ == 1) {
+            world_session_->cycle_palette();
+        }
     }
     if (pending_world_exit_) {
         pending_world_exit_ = false;
@@ -827,17 +1241,32 @@ bool LegacyGameRuntime::handle_world_input(
     }
     if (!direction.has_value()) {
         if (menu_requested && view_ == LegacyGameView::world) {
-            world_step_processed_ = true;
-            world_session_->prepare_game_menu_frame();
-            update_menu_counts();
-            game_menu_.set_context(ui::GameMenuContext::world);
-            game_menu_.show_main();
-            menu_return_view_ = LegacyGameView::world;
-            set_view(LegacyGameView::game_menu, "open world menu");
+            if (authoritative_motion_.active()) {
+                deferred_motion_command_ = DeferredMotionCommand::world_menu;
+                queued_motion_direction_.reset();
+            } else {
+                open_world_menu();
+            }
             return true;
         }
         return false;
     }
+    if (authoritative_motion_.active()) {
+        queued_motion_direction_ = *direction;
+        return true;
+    }
+    if (motion_tick_completed_ && view_ == LegacyGameView::scene) {
+        if (deferred_motion_command_ == DeferredMotionCommand::none) {
+            queued_motion_direction_ = *direction;
+        }
+        return true;
+    }
+    if (motion_tick_completed_ &&
+        deferred_motion_command_ != DeferredMotionCommand::none) {
+        return true;
+    }
+    queued_motion_direction_.reset();
+
     world_step_processed_ = true;
     if (view_ == LegacyGameView::scene) {
         if (scene_session_->pending().kind == scene::SceneStepKind::stay) {
@@ -851,20 +1280,12 @@ bool LegacyGameRuntime::handle_world_input(
         scene_direction_input_.reset();
         return false;
     }
-    const auto result = world_session_->move(*direction);
-    diagnostics::log_info(
-        "world input direction=" + std::string{world_direction_name(*direction)} +
-        " result=" + std::string{world_step_name(result.kind)} +
-        " x=" + std::to_string(result.world_x) +
-        " y=" + std::to_string(result.world_y) +
-        " frame=" + std::to_string(world_session_->player_frame()));
-    if (result.kind == world::WorldStepKind::enter_scene) {
-        scene_request_ = result.scene_id;
-        world_move_continuation_ = result.continuation;
-        world_scene_transition_pending_ = true;
-        world_scene_transition_presented_ = false;
-        clear_scene_effect();
+    if (movement_step_duration_ > std::chrono::nanoseconds::zero()) {
+        return start_world_motion(*direction);
     }
+
+    const auto result = world_session_->move(*direction);
+    handle_world_step_result(*direction, result);
     return true;
 }
 
@@ -880,6 +1301,23 @@ void LegacyGameRuntime::set_scene_input_states(
     scene_interact_requested_ = false;
     scene_ui_requested_ = false;
     scene_idle_skip_requested_ = false;
+    if (view_ == LegacyGameView::scene &&
+        ((authoritative_motion_.active() &&
+          motion_domain_ == NativeMotionDomain::scene) ||
+         motion_tick_completed_)) {
+        if (interact_down) {
+            deferred_motion_command_ = DeferredMotionCommand::scene_interact;
+        } else if (main_ui_edge) {
+            deferred_motion_command_ = DeferredMotionCommand::scene_ui;
+        } else if (weather_disable_edge) {
+            deferred_motion_command_ =
+                DeferredMotionCommand::scene_weather_disable;
+        }
+        if (deferred_motion_command_ != DeferredMotionCommand::none) {
+            queued_motion_direction_.reset();
+        }
+        return;
+    }
     if (!scene_loop_uses_key_states() || scene_direction_input_.has_value()) {
         return;
     }
@@ -1296,7 +1734,8 @@ bool LegacyGameRuntime::render() {
             scene_effect_frame_ != 0U;
         if (world_session_ == nullptr ||
             (!freeze_leave_frame && !reuse_world_pixels &&
-             !world_session_->render(framebuffer_))) {
+             !world_session_->render(
+                 framebuffer_, !weather_presentation_active()))) {
             return false;
         }
         if (!reuse_world_pixels &&
@@ -1364,6 +1803,11 @@ bool LegacyGameRuntime::render() {
                                        : world_session_ != nullptr && world_session_->render(framebuffer_);
         if (ranger == nullptr || !base_rendered) {
             return false;
+        }
+        if (menu_return_view_ == LegacyGameView::world &&
+            world_motion_endpoint_present_pending_ &&
+            static_cast<std::int16_t>((periodic_counter_ + 1) % 5) == 1) {
+            preview_legacy_palette_cycle(framebuffer_);
         }
         if (pending_menu_item_dispatch_.has_value()) {
             return true;
@@ -1869,7 +2313,8 @@ bool LegacyGameRuntime::start_scene(
         entry_override,
         scene::SceneSessionContext::scene,
         startup_resources_.fixed_shadow_mask(),
-        startup_resources_.shifted_shadow_mask());
+        startup_resources_.shifted_shadow_mask(),
+        movement_step_duration_ > std::chrono::nanoseconds::zero());
     if (!scene_session_->valid()) {
         show_error(scene_session_->error(), error_return_view);
         scene_session_.reset();
@@ -2075,6 +2520,13 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
     case scene::SceneStepKind::battle:
         battle_request_ = result.battle_id;
         static_cast<void>(start_battle(result.battle_id, result.battle_get_exp == 1));
+        break;
+    case scene::SceneStepKind::scripted_move:
+        if (!start_scripted_scene_motion()) {
+            show_error(
+                "Unable to start deferred scripted scene movement",
+                LegacyGameView::scene);
+        }
         break;
     case scene::SceneStepKind::present:
         begin_scene_effect(SceneEffectKind::present, result.wait_ticks);
@@ -2496,6 +2948,17 @@ void LegacyGameRuntime::set_view(
     diagnostics::log_info(
         "view " + std::string{view_name(view_)} + " -> " + std::string{view_name(view)} +
         " reason=" + std::string{reason});
+    if (view != LegacyGameView::world && view != LegacyGameView::scene) {
+        authoritative_motion_.clear();
+        motion_domain_ = NativeMotionDomain::none;
+        world_motion_plan_.reset();
+        scene_motion_plan_.reset();
+        scene_motion_scripted_ = false;
+        scene_motion_endpoint_waiting_ = false;
+        queued_motion_direction_.reset();
+        deferred_motion_command_ = DeferredMotionCommand::none;
+        motion_tick_completed_ = false;
+    }
     view_ = view;
 }
 
@@ -2848,7 +3311,8 @@ bool LegacyGameRuntime::begin_world_menu_item_event(const std::int16_t item_id) 
         std::nullopt,
         scene::SceneSessionContext::retained_scene_event,
         startup_resources_.fixed_shadow_mask(),
-        startup_resources_.shifted_shadow_mask());
+        startup_resources_.shifted_shadow_mask(),
+        movement_step_duration_ > std::chrono::nanoseconds::zero());
     if (!scene_session_->valid()) {
         scene_session_.reset();
         return false;

@@ -246,6 +246,47 @@ bool RgbaFramebuffer::blend_physical_pixel(
     return true;
 }
 
+bool RgbaFramebuffer::source_over_pixel(
+    const int x,
+    const int y,
+    const compat::Rgba8 color) noexcept {
+    if (x < 0 || y < 0 || x >= pixel_width() || y >= pixel_height()) {
+        return false;
+    }
+    auto* destination = row(y) +
+        static_cast<std::size_t>(x) * compat::kModernRgbaBytesPerPixel;
+    if (color.alpha == 0U) {
+        return true;
+    }
+    if (color.alpha == compat::kOpaqueAlpha || destination[3] == 0U) {
+        write_color(destination, color);
+        return true;
+    }
+
+    const auto source_alpha = static_cast<std::uint32_t>(color.alpha);
+    const auto destination_alpha = static_cast<std::uint32_t>(destination[3]);
+    const auto inverse_source_alpha = 255U - source_alpha;
+    const auto output_alpha_numerator =
+        source_alpha * 255U +
+        destination_alpha * inverse_source_alpha;
+    const auto blend_channel = [&](
+        const std::uint8_t source, const std::uint8_t target) {
+        const auto numerator =
+            static_cast<std::uint32_t>(source) * source_alpha * 255U +
+            static_cast<std::uint32_t>(target) * destination_alpha *
+                inverse_source_alpha;
+        return static_cast<std::uint8_t>(
+            (numerator + output_alpha_numerator / 2U) /
+            output_alpha_numerator);
+    };
+    destination[0] = blend_channel(color.red, destination[0]);
+    destination[1] = blend_channel(color.green, destination[1]);
+    destination[2] = blend_channel(color.blue, destination[2]);
+    destination[3] = static_cast<std::uint8_t>(
+        (output_alpha_numerator + 127U) / 255U);
+    return true;
+}
+
 std::uint8_t* RgbaFramebuffer::row(const int y) noexcept {
     return pixels_.data() +
         static_cast<std::size_t>(y) * static_cast<std::size_t>(pixel_width()) *

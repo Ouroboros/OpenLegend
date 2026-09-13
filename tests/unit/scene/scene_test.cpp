@@ -1241,6 +1241,45 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     }
     OL_CHECK(frame_hash == 0x38FBAA07B733AD79ULL);
 
+    auto motion_snapshot = snapshot;
+    openlegend::random::LegacyRandom motion_random{1U};
+    openlegend::scene::SceneSession motion_session{
+        data_root, motion_snapshot, motion_random, 70};
+    OL_CHECK(motion_session.valid());
+    const auto motion_plan = motion_session.start_move(
+        openlegend::scene::SceneDirection::right);
+    OL_CHECK(motion_plan.valid);
+    openlegend::render::IndexedFramebuffer expected_motion_frame;
+    OL_CHECK(motion_session.render_map(expected_motion_frame));
+    openlegend::render::IndexedFramebuffer layered_motion_frame;
+    openlegend::render::IndexedLayer motion_overlay;
+    openlegend::render::IndexedLayer motion_effect;
+    OL_CHECK(motion_overlay.set_dimensions(320, 200));
+    OL_CHECK(motion_effect.set_dimensions(320, 200));
+    OL_CHECK(motion_session.motion_layers_available());
+    OL_CHECK(motion_session.render_motion_layers(
+        layered_motion_frame, motion_overlay, motion_effect));
+    const auto* actor_sprite = motion_session.rendered_player_sprite();
+    OL_CHECK(actor_sprite != nullptr);
+    const auto local_x = motion_plan.source_x - motion_session.view_origin_x();
+    const auto local_y = motion_plan.source_y - motion_session.view_origin_y();
+    const auto actor_anchor_x = 18 * (local_x - local_y) + 145;
+    const auto actor_anchor_y =
+        9 * (local_x + local_y) - 81 - motion_plan.source_height;
+    if (actor_sprite != nullptr) {
+        OL_CHECK(openlegend::render::composite_indexed_sprite(
+            layered_motion_frame,
+            *actor_sprite,
+            actor_anchor_x,
+            actor_anchor_y));
+    }
+    OL_CHECK(openlegend::render::composite_indexed_layer(
+        layered_motion_frame, motion_overlay));
+    OL_CHECK(openlegend::render::composite_indexed_layer(
+        layered_motion_frame, motion_effect));
+    OL_CHECK(std::ranges::equal(
+        layered_motion_frame.pixels(), expected_motion_frame.pixels()));
+
     openlegend::render::IndexedFramebuffer expanded_framebuffer{640, 360};
     OL_CHECK(session.render_map(expanded_framebuffer));
     std::size_t expanded_only_pixels = 0U;
@@ -1266,13 +1305,25 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
 
     OL_CHECK(finish_scene_title(session).kind ==
              openlegend::scene::SceneStepKind::stay);
-    const auto right = session.move(openlegend::scene::SceneDirection::right);
+    const auto right_plan =
+        session.start_move(openlegend::scene::SceneDirection::right);
+    OL_CHECK(right_plan.valid);
+    OL_CHECK(right_plan.can_move);
+    OL_CHECK(session.scene_x() == right_plan.source_x);
+    OL_CHECK(session.scene_y() == right_plan.source_y);
+    const auto right = session.commit_move(right_plan);
     OL_CHECK(right.kind == openlegend::scene::SceneStepKind::moved);
     OL_CHECK(right.scene_x == 45 && right.scene_y == 29);
     const auto up = session.move(openlegend::scene::SceneDirection::up);
     OL_CHECK(up.kind == openlegend::scene::SceneStepKind::moved);
     OL_CHECK(up.scene_x == 45 && up.scene_y == 28);
-    const auto left = session.move(openlegend::scene::SceneDirection::left);
+    const auto left_plan =
+        session.start_move(openlegend::scene::SceneDirection::left);
+    OL_CHECK(left_plan.valid);
+    OL_CHECK(!left_plan.can_move);
+    OL_CHECK(session.scene_x() == left_plan.source_x);
+    OL_CHECK(session.scene_y() == left_plan.source_y);
+    const auto left = session.commit_move(left_plan);
     OL_CHECK(left.kind == openlegend::scene::SceneStepKind::stay);
     OL_CHECK(left.scene_x == 45 && left.scene_y == 28);
     const auto down = session.move(openlegend::scene::SceneDirection::down);
@@ -2418,6 +2469,60 @@ void check_event_scripted_walk(const std::filesystem::path& root) {
     OL_CHECK(session.player_frame() == 5002);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_x) == 28);
     OL_CHECK(snapshot.ranger.header.word(openlegend::model::header_word::sub_map_y) == 19);
+
+    auto deferred_snapshot = load_baseline(root);
+    auto& deferred_metadata = deferred_snapshot.ranger.scenes[39];
+    deferred_metadata.set_word(
+        openlegend::model::scene_metadata_word::entrance_x, 28);
+    deferred_metadata.set_word(
+        openlegend::model::scene_metadata_word::entrance_y, 24);
+    openlegend::random::LegacyRandom deferred_random{1U};
+    openlegend::scene::SceneSession deferred{
+        data_root,
+        deferred_snapshot,
+        deferred_random,
+        39,
+        false,
+        std::nullopt,
+        0,
+        std::nullopt,
+        openlegend::scene::SceneSessionContext::scene,
+        {},
+        {},
+        true};
+    auto deferred_result = deferred.begin_event(343, 12, 28, 24);
+    for (int step = 0;
+         step < 64 && deferred_result.kind != SceneStepKind::scripted_move;
+         ++step) {
+        const auto resumable =
+            deferred_result.kind == SceneStepKind::present ||
+            deferred_result.kind == SceneStepKind::dialogue ||
+            deferred_result.kind == SceneStepKind::fade_from_black ||
+            deferred_result.kind == SceneStepKind::fade_to_black;
+        OL_CHECK(resumable);
+        if (!resumable) {
+            break;
+        }
+        deferred_result = deferred.resume(SceneResponse::acknowledge);
+    }
+    for (const auto expected : expected_y) {
+        OL_CHECK(deferred_result.kind == SceneStepKind::scripted_move);
+        const auto plan = deferred.pending_scripted_move();
+        OL_CHECK(plan.has_value());
+        if (!plan.has_value()) {
+            break;
+        }
+        OL_CHECK(deferred.scene_y() == plan->source_y);
+        OL_CHECK(plan->target_y == expected);
+        deferred_result = deferred.finish_scripted_move(*plan);
+        OL_CHECK(deferred.scene_y() == expected);
+    }
+    OL_CHECK(deferred_result.kind == SceneStepKind::present);
+    OL_CHECK(deferred_result.wait_ticks == 1U);
+    OL_CHECK(deferred.player_frame() == 5002);
+    deferred_result = deferred.resume(SceneResponse::acknowledge);
+    OL_CHECK(deferred_result.kind == SceneStepKind::dialogue);
+    OL_CHECK(deferred_result.talk_id == 1248);
 
     auto blocked_snapshot = load_baseline(root);
     auto& blocked_metadata = blocked_snapshot.ranger.scenes[39];

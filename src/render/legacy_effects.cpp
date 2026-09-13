@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/render/legacy_color.hpp"
 
 namespace openlegend::render {
 namespace {
@@ -93,6 +94,17 @@ NODISCARD int positive_remainder(
 
 }  // namespace
 
+void cycle_legacy_palette(compat::LegacyPalette& palette) noexcept {
+    std::rotate(
+        palette.begin() + legacy_color::first_palette_cycle_begin,
+        palette.begin() + legacy_color::first_palette_cycle_pivot,
+        palette.begin() + legacy_color::first_palette_cycle_end);
+    std::rotate(
+        palette.begin() + legacy_color::second_palette_cycle_begin,
+        palette.begin() + legacy_color::second_palette_cycle_pivot,
+        palette.begin() + legacy_color::second_palette_cycle_end);
+}
+
 std::optional<std::vector<std::uint16_t>> parse_legacy_shadow_mask(
     const std::span<const std::uint8_t> bytes) {
     if (bytes.empty() || bytes.size() % 2U != 0U) {
@@ -142,6 +154,43 @@ bool apply_legacy_shadow_mask(
                 static_cast<std::size_t>(source_x);
             if (mask[source_index] == 0U) {
                 destination[x] = 0U;
+            }
+        }
+    }
+    return true;
+}
+
+bool render_legacy_shadow_layer(
+    IndexedLayer& layer,
+    const std::span<const std::uint16_t> alternating_zero_skip_runs,
+    const int byte_offset) noexcept {
+    if (!layer.valid()) {
+        return false;
+    }
+
+    openlegend::compat::LegacyPixels mask{};
+    std::ranges::fill(mask, std::uint8_t{1U});
+    if (!apply_shadow_runs(mask, alternating_zero_skip_runs, byte_offset)) {
+        return false;
+    }
+
+    layer.clear();
+    const auto origin_x =
+        (layer.width() - IndexedFramebuffer::width) / 2;
+    const auto origin_y =
+        (layer.height() - IndexedFramebuffer::height) / 2;
+    for (int y = 0; y < layer.height(); ++y) {
+        const auto source_y = positive_remainder(
+            y - origin_y, IndexedFramebuffer::height);
+        for (int x = 0; x < layer.width(); ++x) {
+            const auto source_x = positive_remainder(
+                x - origin_x, IndexedFramebuffer::width);
+            const auto source_index =
+                static_cast<std::size_t>(source_y) *
+                    openlegend::compat::kLegacyWidth +
+                static_cast<std::size_t>(source_x);
+            if (mask[source_index] == 0U) {
+                layer.draw_pixel(x, y, 0U);
             }
         }
     }

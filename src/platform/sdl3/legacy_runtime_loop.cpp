@@ -18,6 +18,7 @@
 #include "openlegend/audio/legacy_audio.hpp"
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/motion/authoritative_motion.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/scene/scene.hpp"
@@ -208,7 +209,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             settings.save_directory,
             random_seed,
             settings.game_resolution,
-            settings.name_input_method};
+            settings.name_input_method,
+            settings.movement_step_duration};
         diagnostics::log_info(
             "runtime random_seed=" + std::to_string(random_seed));
         if (!game.valid()) {
@@ -218,6 +220,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             result.status = 5;
             return result;
         }
+        const bool native_motion_enabled =
+            settings.movement_step_duration > std::chrono::nanoseconds::zero();
         if (!legacy_audio.play_music(16U)) {
             diagnostics::log_warning(
                 "title music unavailable: " + legacy_audio.error());
@@ -233,8 +237,40 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         timing::SteadyFadeFrameSource fade_frame_source{
             settings.fade_frame_delay};
         FadeTiming fade_timing;
+        auto previous_motion_time = std::chrono::steady_clock::now();
+        auto motion_frame_deadline = previous_motion_time;
+        auto weather_frame_deadline = previous_motion_time;
+        auto previous_weather_presentation_time = previous_motion_time;
+        std::uint64_t timed_motion_sequence = 0U;
+        std::uint64_t observed_weather_revision = game.weather_revision();
+        std::uint64_t observed_weather_position_revision =
+            game.weather_position_revision();
+        std::int64_t weather_offset_x{};
+        std::int64_t weather_subpixel_numerator{};
+        std::uint32_t last_advanced_tick{};
+        bool advanced_tick_known = false;
+        bool motion_was_active = false;
+        bool weather_was_active = false;
+        bool motion_vsync_available = native_motion_enabled;
+        bool motion_vsync_status_logged = false;
+        bool vsync_disable_warning_logged = false;
         bool running = true;
         while (running) {
+            const auto motion_time = std::chrono::steady_clock::now();
+            const auto active_motion_sequence = game.motion_sequence();
+            const bool motion_active_at_frame_start =
+                active_motion_sequence != 0U;
+            if (active_motion_sequence == 0U) {
+                previous_motion_time = motion_time;
+                timed_motion_sequence = 0U;
+            } else if (active_motion_sequence != timed_motion_sequence) {
+                previous_motion_time = motion_time;
+                timed_motion_sequence = active_motion_sequence;
+            } else {
+                game.advance_motion(motion_time - previous_motion_time);
+                previous_motion_time = std::chrono::steady_clock::now();
+                timed_motion_sequence = game.motion_sequence();
+            }
             const auto frame_tick = tick_source.tick();
             const auto fade_frame_tick = fade_frame_source.tick();
             const auto input_now = std::chrono::steady_clock::now();
@@ -246,7 +282,116 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             input_coordinator.dispatch_repeats(key_repeat, frame_tick);
             input_coordinator.apply_game_input();
 
-            game.advance(frame_tick);
+            const bool motion_completed_this_frame =
+                motion_active_at_frame_start && !game.motion_active();
+            const bool repeated_weather_frame =
+                game.weather_presentation_active() && advanced_tick_known &&
+                frame_tick == last_advanced_tick &&
+                !motion_completed_this_frame;
+            bool logic_advanced = false;
+            if (!game.motion_active() && !repeated_weather_frame) {
+                game.advance(frame_tick);
+                last_advanced_tick = frame_tick;
+                advanced_tick_known = true;
+                logic_advanced = true;
+            }
+            const bool motion_active = game.motion_active();
+            const auto motion_sequence = game.motion_sequence();
+            if (motion_active && motion_sequence != timed_motion_sequence) {
+                timed_motion_sequence = motion_sequence;
+                previous_motion_time = std::chrono::steady_clock::now();
+            }
+            if (motion_active && !motion_was_active && motion_vsync_available) {
+                motion_vsync_available = platform.set_vsync_enabled(true);
+                if (!motion_vsync_status_logged) {
+                    diagnostics::log_info(
+                        motion_vsync_available
+                            ? "native motion presentation uses renderer VSync"
+                            : "native motion presentation uses independent deadline");
+                    motion_vsync_status_logged = true;
+                }
+            } else if (!motion_active && platform.vsync_enabled()) {
+                if (platform.set_vsync_enabled(false)) {
+                    vsync_disable_warning_logged = false;
+                } else if (!vsync_disable_warning_logged) {
+                    diagnostics::log_warning(
+                        "unable to disable renderer VSync after native motion; retrying");
+                    vsync_disable_warning_logged = true;
+                }
+            }
+            const bool weather_active = game.weather_presentation_active();
+            const auto weather_revision = game.weather_revision();
+            const auto weather_position_revision =
+                game.weather_position_revision();
+            const auto presentation_time = std::chrono::steady_clock::now();
+            const auto revision_delta =
+                weather_revision - observed_weather_revision;
+            const auto position_revision_delta =
+                weather_position_revision - observed_weather_position_revision;
+            const bool weather_content_changed =
+                revision_delta != position_revision_delta;
+            const auto weather_offset_before = weather_offset_x;
+            if (!weather_active) {
+                weather_offset_x = 0;
+                weather_subpixel_numerator = 0;
+            } else if (!weather_was_active || weather_content_changed) {
+                weather_offset_x = 0;
+                weather_subpixel_numerator = 0;
+            } else {
+                const auto elapsed = std::clamp(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        presentation_time - previous_weather_presentation_time),
+                    std::chrono::nanoseconds::zero(),
+                    timing::kBiosTickDuration);
+                const auto duration_count = timing::kBiosTickDuration.count();
+                weather_subpixel_numerator +=
+                    motion::kFixedUnitsPerGridUnit * elapsed.count();
+                weather_offset_x +=
+                    weather_subpixel_numerator / duration_count;
+                weather_subpixel_numerator %= duration_count;
+                weather_offset_x -= static_cast<std::int64_t>(
+                    position_revision_delta) *
+                    motion::kFixedUnitsPerGridUnit;
+            }
+            if (revision_delta != 0U ||
+                weather_active != weather_was_active) {
+                std::string record{
+                    "weather_phase active=" +
+                    std::to_string(static_cast<int>(weather_active)) +
+                    " was_active=" +
+                    std::to_string(static_cast<int>(weather_was_active)) +
+                    " revision=" + std::to_string(weather_revision) +
+                    " revision_delta=" + std::to_string(revision_delta) +
+                    " position_revision=" +
+                    std::to_string(weather_position_revision) +
+                    " position_delta=" +
+                    std::to_string(position_revision_delta) +
+                    " content_changed=" +
+                    std::to_string(static_cast<int>(weather_content_changed)) +
+                    " offset_before=" +
+                    std::to_string(weather_offset_before) +
+                    " offset_after=" + std::to_string(weather_offset_x) +
+                    " motion_active=" +
+                    std::to_string(static_cast<int>(motion_active)) +
+                    " motion_sequence=" + std::to_string(motion_sequence)};
+                if (motion_active) {
+                    const auto presentation = game.motion_presentation();
+                    record +=
+                        " motion_domain=" + std::to_string(
+                            static_cast<int>(presentation.domain)) +
+                        " motion_position=" +
+                        std::to_string(presentation.position.x) + "," +
+                        std::to_string(presentation.position.y) + "," +
+                        std::to_string(presentation.position.height) +
+                        " destination_phase=" + std::to_string(
+                            static_cast<int>(
+                                presentation.destination_depth_phase));
+                }
+                diagnostics::log_debug(record);
+            }
+            observed_weather_revision = weather_revision;
+            observed_weather_position_revision = weather_position_revision;
+            previous_weather_presentation_time = presentation_time;
             const bool fade_frame = game.uses_fade_frame_clock();
             if (!settings.smoke_test) {
                 if (fade_frame && !fade_timing.active) {
@@ -263,8 +408,11 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             if (running) {
                 const auto presentation_started_at =
                     std::chrono::steady_clock::now();
-                const auto presentation_status =
-                    frame_presenter.present(game, platform);
+                const auto presentation_status = frame_presenter.present(
+                    game,
+                    platform,
+                    !weather_active || logic_advanced,
+                    weather_offset_x);
                 if (fade_frame && fade_timing.active) {
                     fade_timing.presentation_time +=
                         std::chrono::steady_clock::now() - presentation_started_at;
@@ -274,7 +422,11 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                     result.status = presentation_status;
                     return result;
                 }
-                game.finish_presented_tick(tick_source.tick());
+                if ((!motion_active &&
+                     (!weather_active || logic_advanced)) ||
+                    game.world_motion_endpoint_present_pending()) {
+                    game.finish_presented_tick(tick_source.tick());
+                }
                 input_coordinator.after_present();
                 diagnostics::log_trace(
                     "frame presented tick=" + std::to_string(frame_tick) +
@@ -286,7 +438,46 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 running = false;
             } else if (
                 running && !game.needs_immediate_frame(tick_source.tick())) {
-                if (fade_frame &&
+                if (motion_active) {
+                    const auto now = std::chrono::steady_clock::now();
+                    if (!motion_was_active) {
+                        motion_frame_deadline =
+                            now + settings.motion_frame_interval;
+                    }
+                    if (!platform.vsync_enabled() &&
+                        settings.motion_frame_interval >
+                            std::chrono::nanoseconds::zero()) {
+                        if (motion_frame_deadline > now) {
+                            platform.wait_for_event_or_timeout(
+                                motion_frame_deadline - now);
+                        }
+                        const auto after_wait = std::chrono::steady_clock::now();
+                        motion_frame_deadline += settings.motion_frame_interval;
+                        if (motion_frame_deadline <= after_wait) {
+                            motion_frame_deadline =
+                                after_wait + settings.motion_frame_interval;
+                        }
+                    }
+                } else if (weather_active) {
+                    const auto now = std::chrono::steady_clock::now();
+                    if (!weather_was_active || motion_was_active) {
+                        weather_frame_deadline =
+                            now + settings.motion_frame_interval;
+                    }
+                    if (settings.motion_frame_interval >
+                        std::chrono::nanoseconds::zero()) {
+                        if (weather_frame_deadline > now) {
+                            platform.wait_for_event_or_timeout(
+                                weather_frame_deadline - now);
+                        }
+                        const auto after_wait = std::chrono::steady_clock::now();
+                        weather_frame_deadline += settings.motion_frame_interval;
+                        if (weather_frame_deadline <= after_wait) {
+                            weather_frame_deadline =
+                                after_wait + settings.motion_frame_interval;
+                        }
+                    }
+                } else if (fade_frame &&
                     settings.fade_frame_delay >
                         std::chrono::nanoseconds::zero()) {
                     const auto wait_started_at =
@@ -316,6 +507,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                     }
                 }
             }
+            motion_was_active = motion_active;
+            weather_was_active = weather_active;
         }
 
         result.ending_completed = game.ending_complete();

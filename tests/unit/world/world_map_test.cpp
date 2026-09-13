@@ -269,6 +269,27 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x0604155353F95194ULL);
     OL_CHECK(sprite_has_visible_pixel(sprites, session.player_frame(), framebuffer, 145, 117));
 
+    openlegend::render::IndexedFramebuffer motion_framebuffer;
+    openlegend::render::IndexedLayer motion_overlay;
+    openlegend::render::IndexedLayer motion_effect;
+    OL_CHECK(motion_overlay.set_dimensions(320, 200));
+    OL_CHECK(motion_effect.set_dimensions(320, 200));
+    OL_CHECK(session.motion_layers_available());
+    OL_CHECK(session.render_motion_layers(
+        motion_framebuffer, motion_overlay, motion_effect));
+    const auto* actor_sprite = session.rendered_player_sprite();
+    OL_CHECK(actor_sprite != nullptr);
+    if (actor_sprite != nullptr) {
+        OL_CHECK(openlegend::render::composite_indexed_sprite(
+            motion_framebuffer, *actor_sprite, 145, 117));
+    }
+    OL_CHECK(openlegend::render::composite_indexed_layer(
+        motion_framebuffer, motion_overlay));
+    OL_CHECK(openlegend::render::composite_indexed_layer(
+        motion_framebuffer, motion_effect));
+    OL_CHECK(std::ranges::equal(
+        motion_framebuffer.pixels(), framebuffer.pixels()));
+
     openlegend::render::IndexedFramebuffer expanded_framebuffer{640, 360};
     OL_CHECK(session.render(expanded_framebuffer));
     OL_CHECK(sprite_has_visible_pixel(
@@ -321,7 +342,12 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
         0x0A5AAD5E5C8A4E5CULL,
         0x70661C7A58C58790ULL};
     for (std::size_t index = 0U; index < directions.size(); ++index) {
-        const auto result = session.move(directions[index]);
+        const auto plan = session.start_move(directions[index]);
+        OL_CHECK(plan.valid);
+        OL_CHECK(plan.kind == WorldStepKind::moved);
+        OL_CHECK(session.world_x() == plan.source_x);
+        OL_CHECK(session.world_y() == plan.source_y);
+        const auto result = session.commit_move(plan);
         OL_CHECK(result.kind == WorldStepKind::moved);
         OL_CHECK(result.scene_id == -1);
         OL_CHECK(result.world_x == positions[index][0]);
@@ -345,7 +371,13 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     auto entrance_snapshot = load_baseline(root);
     openlegend::random::LegacyRandom entrance_random{1U};
     WorldSession entrance{data_root, map, entrance_snapshot.ranger, entrance_random};
-    const auto entrance_result = entrance.move(WorldDirection::left);
+    const auto entrance_plan = entrance.start_move(WorldDirection::left);
+    OL_CHECK(entrance_plan.valid);
+    OL_CHECK(entrance_plan.kind == WorldStepKind::enter_scene);
+    OL_CHECK(entrance_plan.scene_id == 70);
+    OL_CHECK(entrance.world_x() == entrance_plan.source_x);
+    OL_CHECK(entrance.world_y() == entrance_plan.source_y);
+    const auto entrance_result = entrance.commit_move(entrance_plan);
     OL_CHECK(entrance_result.kind == WorldStepKind::enter_scene);
     OL_CHECK(entrance_result.scene_id == 70);
     OL_CHECK(entrance_result.world_x == 357);
@@ -370,7 +402,12 @@ void check_initial_render_and_trace(const std::filesystem::path& root) {
     }
     openlegend::random::LegacyRandom blocked_random{1U};
     WorldSession blocked{data_root, map, blocked_snapshot.ranger, blocked_random};
-    const auto blocked_result = blocked.move(WorldDirection::left);
+    const auto blocked_plan = blocked.start_move(WorldDirection::left);
+    OL_CHECK(blocked_plan.valid);
+    OL_CHECK(blocked_plan.kind == WorldStepKind::stay);
+    OL_CHECK(blocked.world_x() == blocked_plan.source_x);
+    OL_CHECK(blocked.world_y() == blocked_plan.source_y);
+    const auto blocked_result = blocked.commit_move(blocked_plan);
     OL_CHECK(blocked_result.kind == WorldStepKind::stay);
     OL_CHECK(blocked_result.world_x == 357);
     OL_CHECK(blocked_result.world_y == 235);
@@ -905,7 +942,9 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     openlegend::render::IndexedFramebuffer palette_frame;
     OL_CHECK(session.render(palette_frame));
     const auto palette_before = palette_frame.palette();
+    OL_CHECK(session.palette_revision() == 0U);
     session.cycle_palette();
+    OL_CHECK(session.palette_revision() == 1U);
     OL_CHECK(session.render(palette_frame));
     const auto palette_after = palette_frame.palette();
     const auto same_color = [](const auto& left, const auto& right) {
@@ -924,6 +963,7 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     }
     OL_CHECK(same_color(palette_after[253], palette_before[253]));
     session.cycle_palette();
+    OL_CHECK(session.palette_revision() == 2U);
     OL_CHECK(session.render(palette_frame));
     const auto palette_after_six = palette_frame.palette();
     OL_CHECK(same_color(palette_after_six[224], palette_after[231]));

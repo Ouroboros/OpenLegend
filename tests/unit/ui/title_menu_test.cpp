@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -43,6 +44,28 @@ struct LegacyGameRuntimeTestAccess {
             runtime.scene_interact_requested_,
             runtime.scene_ui_requested_,
             runtime.scene_idle_skip_requested_};
+    }
+
+    static int world_x(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.world_session_ != nullptr
+            ? runtime.world_session_->world_x()
+            : -1;
+    }
+
+    static int world_y(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.world_session_ != nullptr
+            ? runtime.world_session_->world_y()
+            : -1;
+    }
+
+    static std::int16_t periodic_counter(
+        const LegacyGameRuntime& runtime) noexcept {
+        return runtime.periodic_counter_;
+    }
+
+    static void set_periodic_counter(
+        LegacyGameRuntime& runtime, const std::int16_t value) noexcept {
+        runtime.periodic_counter_ = value;
     }
 
     static scene::SceneStepKind scene_pending_kind(
@@ -3446,6 +3469,125 @@ void check_scene_load_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(game.game_state().ranger()->roles[0U].word(model::role_word::morality) == 77);
 }
 
+void check_authoritative_runtime_motion(
+    const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    using namespace std::chrono_literals;
+
+    const auto output_root =
+        test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "native-motion-runtime";
+    OL_CHECK(prepare_runtime_fixture(data_root, output_root));
+    const auto baseline = persistence::load_baseline(data_root);
+    OL_CHECK(static_cast<bool>(baseline));
+    if (!baseline.snapshot.has_value()) {
+        return;
+    }
+    OL_CHECK(persistence::write_numbered_slot(
+        output_root, persistence::SaveSlot::one, *baseline.snapshot));
+
+    app::LegacyGameRuntime game{
+        output_root,
+        output_root,
+        0U,
+        app::GameResolution{},
+        input::NameInputMethod::legacy,
+        100ns};
+    OL_CHECK(game.valid());
+    finish_title_startup(game);
+    game.handle_key(0x98U, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    finish_numbered_load_transition(game, app::LegacyGameView::world);
+
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == 357);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_y(game) == 235);
+    app::LegacyGameRuntimeTestAccess::set_periodic_counter(game, 0);
+    const auto periodic_before_motion =
+        app::LegacyGameRuntimeTestAccess::periodic_counter(game);
+    OL_CHECK(game.handle_world_input(false, false, false, true));
+    OL_CHECK(game.motion_active());
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == 357);
+    auto presentation = game.motion_presentation();
+    OL_CHECK(presentation.domain == app::NativeMotionDomain::world);
+    OL_CHECK(presentation.sequence == 1U);
+    OL_CHECK(!presentation.destination_depth_phase);
+    OL_CHECK(presentation.renderable());
+    if (presentation.actor_sprite != nullptr) {
+        OL_CHECK(presentation.actor_sprite->valid());
+    }
+    OL_CHECK(
+        presentation.position.x ==
+        357 * motion::kFixedUnitsPerGridUnit);
+    OL_CHECK(
+        presentation.source.x ==
+        357 * motion::kFixedUnitsPerGridUnit);
+    OL_CHECK(
+        presentation.destination.x ==
+        358 * motion::kFixedUnitsPerGridUnit);
+
+    game.advance_motion(50ns);
+    presentation = game.motion_presentation();
+    OL_CHECK(presentation.destination_depth_phase);
+    OL_CHECK(
+        presentation.position.x ==
+        357 * motion::kFixedUnitsPerGridUnit +
+            motion::kFixedUnitsPerGridUnit / 2);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == 357);
+
+    OL_CHECK(game.handle_world_input(false, true, false, false));
+    game.advance_motion(60ns);
+    OL_CHECK(!game.motion_active());
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == 358);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_y(game) == 235);
+    game.advance();
+    OL_CHECK(game.motion_active());
+    OL_CHECK(game.world_motion_endpoint_present_pending());
+    const auto endpoint_presentation = game.motion_presentation();
+    OL_CHECK(endpoint_presentation.preview_palette_cycle);
+    const auto endpoint_palette_revision =
+        endpoint_presentation.palette_revision;
+    game.finish_presented_tick();
+    OL_CHECK(!game.world_motion_endpoint_present_pending());
+    OL_CHECK(
+        app::LegacyGameRuntimeTestAccess::periodic_counter(game) ==
+        static_cast<std::int16_t>((periodic_before_motion + 1) % 5));
+    presentation = game.motion_presentation();
+    OL_CHECK(presentation.sequence == 2U);
+    OL_CHECK(!presentation.preview_palette_cycle);
+    OL_CHECK(
+        presentation.palette_revision == endpoint_palette_revision + 1U);
+    OL_CHECK(
+        presentation.position.y ==
+        235 * motion::kFixedUnitsPerGridUnit);
+    OL_CHECK(
+        presentation.source.x ==
+        358 * motion::kFixedUnitsPerGridUnit);
+    OL_CHECK(
+        presentation.source.y ==
+        235 * motion::kFixedUnitsPerGridUnit);
+    OL_CHECK(
+        presentation.destination.y ==
+        234 * motion::kFixedUnitsPerGridUnit);
+
+    OL_CHECK(game.handle_world_input(false, false, false, false, true));
+    game.advance_motion(100ns);
+    OL_CHECK(!game.motion_active());
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == 358);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_y(game) == 234);
+    game.advance();
+    OL_CHECK(game.view() == app::LegacyGameView::game_menu);
+    OL_CHECK(game.world_motion_endpoint_present_pending());
+    game.finish_presented_tick();
+    OL_CHECK(!game.world_motion_endpoint_present_pending());
+    OL_CHECK(
+        app::LegacyGameRuntimeTestAccess::periodic_counter(game) ==
+        static_cast<std::int16_t>((periodic_before_motion + 2) % 5));
+}
+
 void check_runtime_persistence(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
@@ -4245,7 +4387,7 @@ void run_attribute_controller_check(const std::filesystem::path&) {
 int main(const int argc, char* argv[]) {
     const auto shard = openlegend::test::test_shard(argc, argv);
     const auto data_root = openlegend::test::game_data_root();
-    const std::array<UiCheck, 17> checks{
+    const std::array<UiCheck, 18> checks{
         run_controller_check,
         run_game_menu_controller_check,
         run_attribute_controller_check,
@@ -4261,6 +4403,7 @@ int main(const int argc, char* argv[]) {
         check_battle_party_selection_input_timing,
         check_battle_runtime_transitions,
         check_scene_load_runtime,
+        check_authoritative_runtime_motion,
         check_runtime_persistence,
         check_renderer,
     };

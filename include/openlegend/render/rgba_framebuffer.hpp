@@ -63,6 +63,9 @@ public:
     NODISCARD bool blend_physical_pixel(
         int x, int y, compat::Rgba8 color) noexcept;
 
+    NODISCARD bool source_over_pixel(
+        int x, int y, compat::Rgba8 color) noexcept;
+
     NODISCARD std::uint8_t* row(int y) noexcept;
 
     NODISCARD const std::uint8_t* row(int y) const noexcept;

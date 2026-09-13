@@ -41,6 +41,14 @@ target_include_directories(openlegend_model_tests PRIVATE ${CMAKE_CURRENT_SOURCE
 target_link_libraries(openlegend_model_tests PRIVATE openlegend_model)
 add_test(NAME openlegend.model COMMAND openlegend_model_tests)
 
+add_executable(
+    openlegend_motion_tests
+    unit/motion/authoritative_motion_test.cpp
+)
+target_include_directories(openlegend_motion_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_motion_tests PRIVATE openlegend_motion)
+add_test(NAME openlegend.motion COMMAND openlegend_motion_tests)
+
 add_executable(openlegend_resource_tests unit/resource/resource_archive_test.cpp)
 target_include_directories(openlegend_resource_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_resource_tests PRIVATE openlegend_resource)
@@ -53,7 +61,7 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_ui_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_ui_tests PRIVATE openlegend_app openlegend_ui)
-add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 17)
+add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 18)
 
 add_executable(openlegend_audio_tests unit/audio/legacy_audio_test.cpp)
 target_include_directories(openlegend_audio_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
@@ -64,6 +72,45 @@ add_executable(openlegend_render_tests unit/render/legacy_render_test.cpp)
 target_include_directories(openlegend_render_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_render_tests PRIVATE openlegend_render)
 add_test(NAME openlegend.render COMMAND openlegend_render_tests)
+
+add_executable(
+    openlegend_indexed_sprite_tests
+    unit/render/indexed_sprite_image_test.cpp
+)
+target_include_directories(
+    openlegend_indexed_sprite_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support
+)
+target_link_libraries(openlegend_indexed_sprite_tests PRIVATE openlegend_render)
+add_test(NAME openlegend.indexed_sprite COMMAND openlegend_indexed_sprite_tests)
+
+add_executable(
+    openlegend_indexed_layer_tests
+    unit/render/indexed_layer_test.cpp
+)
+target_include_directories(
+    openlegend_indexed_layer_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support
+)
+target_link_libraries(openlegend_indexed_layer_tests PRIVATE openlegend_render)
+add_test(NAME openlegend.indexed_layer COMMAND openlegend_indexed_layer_tests)
+
+add_executable(
+    openlegend_native_motion_projection_tests
+    unit/render/native_motion_projection_test.cpp
+)
+target_include_directories(
+    openlegend_native_motion_projection_tests
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support
+)
+target_link_libraries(
+    openlegend_native_motion_projection_tests
+    PRIVATE openlegend_render
+)
+add_test(
+    NAME openlegend.native_motion_projection
+    COMMAND openlegend_native_motion_projection_tests
+)
 
 add_executable(openlegend_world_tests unit/world/world_map_test.cpp)
 target_include_directories(openlegend_world_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)

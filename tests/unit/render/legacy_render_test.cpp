@@ -190,6 +190,15 @@ void run_framebuffer_tests() {
     OL_CHECK(rgba_framebuffer.row(3)[11] == 4U);
     OL_CHECK(!rgba_framebuffer.blend_pixel(-1, 0, {}));
     OL_CHECK(!rgba_framebuffer.fill_rectangle(319, 199, 2U, 1U, {}));
+    rgba_framebuffer.clear({0U, 0U, 0U, 0U});
+    OL_CHECK(rgba_framebuffer.source_over_pixel(
+        0, 0, {255U, 0U, 0U, 128U}));
+    OL_CHECK(rgba_framebuffer.source_over_pixel(
+        0, 0, {0U, 0U, 255U, 128U}));
+    OL_CHECK(rgba_framebuffer.row(0)[0] == 85U);
+    OL_CHECK(rgba_framebuffer.row(0)[1] == 0U);
+    OL_CHECK(rgba_framebuffer.row(0)[2] == 170U);
+    OL_CHECK(rgba_framebuffer.row(0)[3] == 192U);
     OL_CHECK(rgba_framebuffer.set_scale(2));
     OL_CHECK(rgba_framebuffer.scale() == 2);
     OL_CHECK(rgba_framebuffer.pixel_width() == 640);

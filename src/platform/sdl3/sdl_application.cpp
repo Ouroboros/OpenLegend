@@ -30,6 +30,7 @@
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/name_input_method.hpp"
+#include "openlegend/time/legacy_clock.hpp"
 #include "sdl_runtime_platform.hpp"
 
 namespace openlegend::platform::sdl3 {
@@ -440,7 +441,8 @@ int run_sdl_application(
                 configuration.input.menu_repeat_interval,
                 configuration.timing.fade_frame_delay,
                 game_resolution,
-                smoke_test});
+                smoke_test,
+                timing::kBiosTickDuration});
         if (loop_result.status != 0) {
             return loop_result.status;
         }

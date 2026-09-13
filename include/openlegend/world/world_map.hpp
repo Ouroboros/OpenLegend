@@ -14,6 +14,9 @@
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/indexed_layer.hpp"
+#include "openlegend/render/rgba_framebuffer.hpp"
+#include "openlegend/render/indexed_sprite_image.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 #include "openlegend/resource/packed_archive.hpp"
@@ -97,6 +100,22 @@ struct WorldMoveContinuation {
     friend bool operator==(const WorldMoveContinuation&, const WorldMoveContinuation&) = default;
 };
 
+struct WorldMovePlan {
+    WorldStepKind kind{WorldStepKind::stay};
+    WorldDirection direction{WorldDirection::up};
+    std::int16_t source_x{};
+    std::int16_t source_y{};
+    std::int16_t target_x{};
+    std::int16_t target_y{};
+    std::int16_t scene_id{-1};
+    bool source_in_ship{};
+    bool boarded_ship{};
+    bool disembarked_ship{};
+    bool valid{};
+
+    friend bool operator==(const WorldMovePlan&, const WorldMovePlan&) = default;
+};
+
 struct WorldStepResult {
     WorldStepKind kind{WorldStepKind::stay};
     std::int16_t scene_id{-1};
@@ -129,6 +148,10 @@ public:
 
     NODISCARD WorldStepResult move(WorldDirection direction);
 
+    NODISCARD WorldMovePlan start_move(WorldDirection direction);
+
+    NODISCARD WorldStepResult commit_move(const WorldMovePlan& plan);
+
     void restore_direction_after_scene(WorldDirection direction) noexcept;
 
     NODISCARD WorldStepResult resume_move_after_scene(
@@ -146,7 +169,37 @@ public:
 
     void prepare_game_menu_frame() noexcept;
 
-    NODISCARD bool render(render::IndexedFramebuffer& framebuffer) const;
+    NODISCARD bool render(
+        render::IndexedFramebuffer& framebuffer,
+        bool include_weather = true) const;
+
+    NODISCARD bool render_motion_layers(
+        render::IndexedFramebuffer& underlay,
+        render::IndexedLayer& overlay,
+        render::IndexedLayer& screen_effect) const;
+
+    NODISCARD bool render_motion_layers(
+        render::IndexedFramebuffer& underlay,
+        render::IndexedLayer& overlay,
+        render::IndexedLayer& screen_effect,
+        int actor_world_x,
+        int actor_world_y) const;
+
+    NODISCARD bool motion_layers_available() const noexcept { return valid(); }
+
+    NODISCARD bool weather_active() const noexcept { return weather_active_; }
+
+    NODISCARD std::uint64_t weather_revision() const noexcept {
+        return weather_revision_;
+    }
+
+    NODISCARD std::uint64_t weather_position_revision() const noexcept {
+        return weather_position_revision_;
+    }
+
+    NODISCARD bool render_motion_weather(
+        render::RgbaFramebuffer& screen_effect,
+        const compat::LegacyPalette& palette) const;
 
     NODISCARD std::int16_t physical_power_counter() const noexcept {
         return physical_power_counter_;
@@ -169,6 +222,16 @@ public:
     NODISCARD std::int16_t player_frame() const noexcept;
 
     NODISCARD std::optional<std::int16_t> rendered_player_frame() const noexcept;
+
+    NODISCARD const render::IndexedSpriteImage* rendered_player_sprite() const;
+
+    NODISCARD const compat::LegacyPalette& palette() const noexcept {
+        return palette_;
+    }
+
+    NODISCARD std::uint64_t palette_revision() const noexcept {
+        return palette_revision_;
+    }
 
     NODISCARD const WorldCache& cache() const noexcept { return cache_; }
 
@@ -202,6 +265,9 @@ private:
 
     NODISCARD std::optional<std::int16_t> entrance_at(int world_x, int world_y) const noexcept;
 
+    NODISCARD WorldMovePlan probe_move(
+        WorldDirection direction, int target_x, int target_y) const;
+
     NODISCARD WorldStepResult complete_move(
         WorldDirection direction, int target_x, int target_y);
 
@@ -215,9 +281,22 @@ private:
         int anchor_x,
         int anchor_y) const;
 
+    NODISCARD bool draw_sprite(
+        render::IndexedLayer& layer,
+        std::int16_t legacy_id,
+        int anchor_x,
+        int anchor_y) const;
+
     NODISCARD bool draw_weather_particle(
         render::IndexedFramebuffer& framebuffer,
         const WeatherParticle& particle) const;
+
+    NODISCARD bool draw_weather_particle(
+        render::RgbaFramebuffer& layer,
+        const compat::LegacyPalette& palette,
+        const WeatherParticle& particle,
+        int offset_x,
+        int offset_y) const;
 
     const WorldMapData& map_;
     model::RangerState& ranger_;
@@ -227,8 +306,11 @@ private:
     // Cached pixel spans stay valid even when a WorldSession is copied.
     std::shared_ptr<const resource::PackedArchive> sprites_;
     mutable std::vector<std::optional<resource::SpriteFrameView>> sprite_frames_;
+    mutable std::vector<std::optional<render::IndexedSpriteImage>>
+        indexed_sprite_images_;
     resource::PackedArchive weather_sprites_;
     compat::LegacyPalette palette_{};
+    std::uint64_t palette_revision_{};
     std::array<std::uint8_t, 4096> rgb4_lookup_{};
     int world_x_{};
     int world_y_{};
@@ -250,6 +332,8 @@ private:
     bool idle_animation_{};
     std::int16_t in_ship_{};
     bool weather_active_{};
+    std::uint64_t weather_revision_{};
+    std::uint64_t weather_position_revision_{};
     std::array<WeatherParticle, 3> weather_{};
     std::string error_;
 };

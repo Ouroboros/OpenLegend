@@ -2,9 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/compat/color.hpp"
+#include "openlegend/diagnostics/log.hpp"
+#include "openlegend/render/native_motion_projection.hpp"
 #include "openlegend/render/reference_layout.hpp"
 
 namespace openlegend::platform::sdl3 {
@@ -161,6 +165,9 @@ SdlRuntimePlatform::SdlRuntimePlatform(
 }
 
 SdlRuntimePlatform::~SdlRuntimePlatform() {
+    for (auto& layer : native_layer_textures_) {
+        SDL_DestroyTexture(layer.texture);
+    }
     SDL_DestroyTexture(modern_ui_texture_);
     SDL_DestroyTexture(texture_);
     SDL_DestroyRenderer(renderer_);
@@ -196,6 +203,17 @@ int SdlRuntimePlatform::presentation_scale() const noexcept {
         output_height,
         game_width_,
         game_height_).presentation_scale;
+}
+
+bool SdlRuntimePlatform::set_vsync_enabled(const bool enabled) noexcept {
+    if (renderer_ == nullptr ||
+        !SDL_SetRenderVSync(
+            renderer_,
+            enabled ? 1 : SDL_RENDERER_VSYNC_DISABLED)) {
+        return false;
+    }
+    vsync_enabled_ = enabled;
+    return true;
 }
 
 bool SdlRuntimePlatform::poll_event(compat::HostEvent& event) {
@@ -353,6 +371,42 @@ bool SdlRuntimePlatform::ensure_modern_ui_texture(
     modern_ui_texture_width_ = width;
     modern_ui_texture_height_ = height;
     textures_initialized_ = false;
+    modern_ui_texture_initialized_ = false;
+    return true;
+}
+
+bool SdlRuntimePlatform::ensure_native_layer_texture(
+    const NativeLayerSlot slot,
+    const int width,
+    const int height) noexcept {
+    const auto index = static_cast<std::size_t>(slot);
+    if (index >= native_layer_textures_.size() || width <= 0 || height <= 0) {
+        return false;
+    }
+    auto& layer = native_layer_textures_[index];
+    if (layer.texture != nullptr && layer.width == width &&
+        layer.height == height) {
+        return true;
+    }
+
+    auto* replacement = SDL_CreateTexture(
+        renderer_,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        width,
+        height);
+    if (replacement == nullptr ||
+        !SDL_SetTextureBlendMode(replacement, SDL_BLENDMODE_BLEND) ||
+        !SDL_SetTextureScaleMode(replacement, SDL_SCALEMODE_NEAREST)) {
+        SDL_DestroyTexture(replacement);
+        return false;
+    }
+
+    SDL_DestroyTexture(layer.texture);
+    layer.texture = replacement;
+    layer.width = width;
+    layer.height = height;
+    layer.initialized = false;
     return true;
 }
 
@@ -374,7 +428,8 @@ bool SdlRuntimePlatform::present(
         return false;
     }
 
-    if ((refresh_textures || !textures_initialized_) &&
+    if ((refresh_textures || !textures_initialized_ ||
+         !modern_ui_texture_initialized_) &&
         (!SDL_UpdateTexture(
              texture_,
              nullptr,
@@ -389,6 +444,7 @@ bool SdlRuntimePlatform::present(
         return false;
     }
     textures_initialized_ = true;
+    modern_ui_texture_initialized_ = true;
 
     int output_width = 0;
     int output_height = 0;
@@ -424,6 +480,149 @@ bool SdlRuntimePlatform::present(
         (!SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND) ||
          !SDL_SetRenderDrawColor(renderer_, 0U, 0U, 0U, fade_alpha) ||
          !SDL_RenderFillRect(renderer_, &destination))) {
+        return false;
+    }
+    return SDL_RenderPresent(renderer_);
+}
+
+bool SdlRuntimePlatform::present_native_layers(
+    const std::span<const NativeRgbaLayer> layers,
+    const compat::RgbaFrameView modern_ui,
+    const bool refresh_modern_ui,
+    const std::uint8_t fade_alpha) {
+    if (!valid() || layers.empty() || !modern_ui.valid() ||
+        !ensure_modern_ui_texture(modern_ui.width, modern_ui.height)) {
+        return false;
+    }
+    if ((refresh_modern_ui || !modern_ui_texture_initialized_) &&
+        !SDL_UpdateTexture(
+            modern_ui_texture_,
+            nullptr,
+            modern_ui.pixels.data(),
+            modern_ui.width *
+                static_cast<int>(compat::kModernRgbaBytesPerPixel))) {
+        return false;
+    }
+    modern_ui_texture_initialized_ = true;
+
+    int output_width = 0;
+    int output_height = 0;
+    if (!SDL_GetCurrentRenderOutputSize(
+            renderer_, &output_width, &output_height)) {
+        return false;
+    }
+    const auto viewport = compat::proportional_viewport(
+        output_width, output_height, game_width_, game_height_);
+    if (!viewport.valid()) {
+        return false;
+    }
+    const auto viewport_width = static_cast<int>(std::lround(viewport.width));
+    const auto viewport_height = static_cast<int>(std::lround(viewport.height));
+    const auto clip_left = std::clamp(
+        static_cast<int>(std::floor(viewport.x)), 0, output_width);
+    const auto clip_top = std::clamp(
+        static_cast<int>(std::floor(viewport.y)), 0, output_height);
+    const auto clip_right = std::clamp(
+        static_cast<int>(std::ceil(viewport.x + viewport.width)),
+        clip_left,
+        output_width);
+    const auto clip_bottom = std::clamp(
+        static_cast<int>(std::ceil(viewport.y + viewport.height)),
+        clip_top,
+        output_height);
+    const SDL_Rect viewport_clip{
+        clip_left,
+        clip_top,
+        clip_right - clip_left,
+        clip_bottom - clip_top};
+    if (viewport_clip.w <= 0 || viewport_clip.h <= 0) {
+        return false;
+    }
+
+    constexpr auto clear_color = compat::kRuntimeClearColor;
+    if (!SDL_SetRenderDrawColor(
+            renderer_,
+            clear_color.red,
+            clear_color.green,
+            clear_color.blue,
+            clear_color.alpha) ||
+        !SDL_RenderClear(renderer_) ||
+        !SDL_SetRenderClipRect(renderer_, &viewport_clip)) {
+        return false;
+    }
+    const auto fail_with_clip_reset = [&]() {
+        static_cast<void>(SDL_SetRenderClipRect(renderer_, nullptr));
+        return false;
+    };
+
+    for (const auto& layer : layers) {
+        if (!layer.frame.valid() ||
+            !ensure_native_layer_texture(
+                layer.slot, layer.frame.width, layer.frame.height)) {
+            return fail_with_clip_reset();
+        }
+        auto& texture = native_layer_textures_[static_cast<std::size_t>(layer.slot)];
+        if ((layer.refresh_texture || !texture.initialized) &&
+            !SDL_UpdateTexture(
+                texture.texture,
+                nullptr,
+                layer.frame.pixels.data(),
+                layer.frame.width *
+                    static_cast<int>(compat::kModernRgbaBytesPerPixel))) {
+            return fail_with_clip_reset();
+        }
+        texture.initialized = true;
+
+        const auto output_x = render::quantize_output_delta(
+            layer.logical_x, viewport_width, game_width_);
+        const auto output_y = render::quantize_output_delta(
+            layer.logical_y, viewport_height, game_height_);
+        const SDL_FRect destination{
+            viewport.x + static_cast<float>(output_x),
+            viewport.y + static_cast<float>(output_y),
+            static_cast<float>(layer.frame.width) * viewport.scale,
+            static_cast<float>(layer.frame.height) * viewport.scale,
+        };
+        if (layer.slot == NativeLayerSlot::screen_effect &&
+            layer.refresh_texture) {
+            diagnostics::log_debug(
+                "weather_sdl_layer logical=" +
+                std::to_string(layer.logical_x) + "," +
+                std::to_string(layer.logical_y) +
+                " output_delta=" + std::to_string(output_x) + "," +
+                std::to_string(output_y) +
+                " destination=" + std::to_string(destination.x) + "," +
+                std::to_string(destination.y) + "," +
+                std::to_string(destination.w) + "," +
+                std::to_string(destination.h) +
+                " viewport=" + std::to_string(viewport.x) + "," +
+                std::to_string(viewport.y) + "," +
+                std::to_string(viewport.width) + "," +
+                std::to_string(viewport.height));
+        }
+        if (!SDL_RenderTexture(
+                renderer_, texture.texture, nullptr, &destination)) {
+            return fail_with_clip_reset();
+        }
+    }
+
+    const SDL_FRect viewport_destination{
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height,
+    };
+    if (!SDL_RenderTexture(
+            renderer_, modern_ui_texture_, nullptr, &viewport_destination)) {
+        return fail_with_clip_reset();
+    }
+    if (fade_alpha != 0U &&
+        (!SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND) ||
+         !SDL_SetRenderDrawColor(renderer_, 0U, 0U, 0U, fade_alpha) ||
+         !SDL_RenderFillRect(renderer_, &viewport_destination))) {
+        return fail_with_clip_reset();
+    }
+    if (!SDL_SetRenderClipRect(renderer_, nullptr)) {
         return false;
     }
     return SDL_RenderPresent(renderer_);

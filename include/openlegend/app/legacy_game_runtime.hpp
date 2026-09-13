@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -15,9 +16,12 @@
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/motion/authoritative_motion.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/indexed_layer.hpp"
+#include "openlegend/render/indexed_sprite_image.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
@@ -108,6 +112,33 @@ struct RgbaFadeOverlay {
     bool refresh_base_frame{true};
 };
 
+enum class NativeMotionDomain : std::uint8_t {
+    none,
+    world,
+    scene,
+};
+
+struct NativeMotionPresentation {
+    NativeMotionDomain domain{NativeMotionDomain::none};
+    std::uint64_t sequence{};
+    std::uint64_t palette_revision{};
+    bool preview_palette_cycle{};
+    bool destination_depth_phase{};
+    motion::FixedPosition position;
+    motion::FixedPosition source;
+    motion::FixedPosition destination;
+    const render::IndexedSpriteImage* actor_sprite{};
+    const compat::LegacyPalette* palette{};
+
+    NODISCARD bool active() const noexcept {
+        return domain != NativeMotionDomain::none;
+    }
+
+    NODISCARD bool renderable() const noexcept {
+        return active() && actor_sprite != nullptr && palette != nullptr;
+    }
+};
+
 class LegacyGameRuntime {
     friend struct LegacyGameRuntimeTestAccess;
 
@@ -124,9 +155,46 @@ public:
         std::filesystem::path save_root,
         std::uint32_t random_seed,
         GameResolution game_resolution,
-        input::NameInputMethod name_input_method = input::NameInputMethod::legacy);
+        input::NameInputMethod name_input_method = input::NameInputMethod::legacy,
+        std::chrono::nanoseconds movement_step_duration = {});
 
     void advance(std::uint32_t bios_tick = 0U);
+
+    void advance_motion(std::chrono::nanoseconds elapsed);
+
+    NODISCARD NativeMotionPresentation motion_presentation() const;
+
+    NODISCARD bool render_motion_layers(
+        render::IndexedFramebuffer& underlay,
+        render::IndexedLayer& overlay,
+        render::IndexedLayer& screen_effect) const;
+
+    NODISCARD bool motion_layers_available() const noexcept;
+
+    NODISCARD bool render_motion_weather(
+        render::RgbaFramebuffer& screen_effect,
+        const compat::LegacyPalette& palette) const;
+
+    NODISCARD bool weather_presentation_active() const noexcept;
+
+    NODISCARD std::uint64_t weather_revision() const noexcept;
+
+    NODISCARD std::uint64_t weather_position_revision() const noexcept;
+
+    NODISCARD bool motion_destination_depth_phase() const noexcept;
+
+    NODISCARD bool motion_active() const noexcept { return authoritative_motion_.active(); }
+
+    NODISCARD std::uint64_t motion_sequence() const noexcept {
+        return authoritative_motion_.active() ? native_motion_sequence_ : 0U;
+    }
+
+    NODISCARD bool world_motion_endpoint_present_pending() const noexcept {
+        return world_motion_endpoint_present_pending_;
+    }
+
+    NODISCARD std::optional<std::chrono::nanoseconds>
+    time_until_motion_completion() const noexcept;
 
     LegacyKeyStateReset handle_key(
         std::uint8_t translated_key,
@@ -292,7 +360,31 @@ private:
         fade_from_black,
     };
 
+    enum class DeferredMotionCommand : std::uint8_t {
+        none,
+        world_menu,
+        scene_interact,
+        scene_ui,
+        scene_weather_disable,
+    };
+
     NODISCARD bool translated_key_input_blocked() const noexcept;
+
+    NODISCARD bool start_world_motion(world::WorldDirection direction);
+
+    void start_scene_motion(scene::SceneDirection direction);
+
+    NODISCARD bool start_scripted_scene_motion();
+
+    void complete_authoritative_motion();
+
+    NODISCARD bool apply_deferred_motion_input();
+
+    void handle_world_step_result(
+        world::WorldDirection direction,
+        const world::WorldStepResult& result);
+
+    void open_world_menu();
 
     NODISCARD bool world_or_scene_input_active() const noexcept;
 
@@ -362,6 +454,18 @@ private:
     std::filesystem::path save_root_path_;
     resource::DataRoot data_root_;
     input::NameInputMethod default_name_input_method_{input::NameInputMethod::legacy};
+    std::chrono::nanoseconds movement_step_duration_{};
+    motion::AuthoritativeMotion authoritative_motion_;
+    NativeMotionDomain motion_domain_{NativeMotionDomain::none};
+    std::uint64_t native_motion_sequence_{};
+    std::optional<world::WorldMovePlan> world_motion_plan_;
+    std::optional<scene::SceneMovePlan> scene_motion_plan_;
+    bool scene_motion_scripted_{};
+    bool scene_motion_endpoint_waiting_{};
+    std::optional<world::WorldDirection> queued_motion_direction_;
+    DeferredMotionCommand deferred_motion_command_{DeferredMotionCommand::none};
+    bool motion_tick_completed_{};
+    bool world_motion_endpoint_present_pending_{};
     ui::BasicUiRenderer basic_renderer_;
     ui::ModernUiRenderer modern_ui_renderer_;
     ui::LocationStatusRenderer location_status_renderer_;

@@ -17,6 +17,8 @@
 #include "openlegend/model/game_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/indexed_layer.hpp"
+#include "openlegend/render/indexed_sprite_image.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/text/game_text.hpp"
 #include "openlegend/resource/binary_file.hpp"
@@ -74,6 +76,7 @@ enum class SceneDirection : std::uint8_t {
 enum class SceneStepKind {
     stay,
     moved,
+    scripted_move,
     present,
     fade_from_black,
     fade_to_black,
@@ -155,6 +158,20 @@ struct SceneEntryOverride {
     friend bool operator==(const SceneEntryOverride&, const SceneEntryOverride&) = default;
 };
 
+struct SceneMovePlan {
+    SceneDirection direction{SceneDirection::up};
+    std::int16_t source_x{};
+    std::int16_t source_y{};
+    std::int16_t target_x{};
+    std::int16_t target_y{};
+    std::int16_t source_height{};
+    std::int16_t target_height{};
+    bool can_move{};
+    bool valid{};
+
+    friend bool operator==(const SceneMovePlan&, const SceneMovePlan&) = default;
+};
+
 enum class SceneSessionContext {
     scene,
     world_event_overlay,
@@ -174,7 +191,8 @@ public:
         std::optional<SceneEntryOverride> entry_override = std::nullopt,
         SceneSessionContext context = SceneSessionContext::scene,
         std::span<const std::uint16_t> fixed_shadow_mask = {},
-        std::span<const std::uint16_t> shifted_shadow_mask = {});
+        std::span<const std::uint16_t> shifted_shadow_mask = {},
+        bool defer_scripted_walk_steps = false);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
@@ -187,6 +205,20 @@ public:
         bool skip_player_idle = false);
 
     NODISCARD SceneStepResult move(SceneDirection direction);
+
+    NODISCARD SceneMovePlan start_move(SceneDirection direction);
+
+    NODISCARD SceneStepResult commit_move(const SceneMovePlan& plan);
+
+    NODISCARD SceneMovePlan start_tick_move(SceneDirection direction);
+
+    NODISCARD SceneStepResult finish_tick_move(const SceneMovePlan& plan);
+
+    NODISCARD std::optional<SceneMovePlan> pending_scripted_move() const noexcept {
+        return pending_scripted_move_plan_;
+    }
+
+    NODISCARD SceneStepResult finish_scripted_move(const SceneMovePlan& plan);
 
     NODISCARD SceneStepResult interact();
 
@@ -212,6 +244,20 @@ public:
     NODISCARD bool render(render::IndexedFramebuffer& framebuffer) const;
 
     NODISCARD bool render_map(render::IndexedFramebuffer& framebuffer) const;
+
+    NODISCARD bool render_motion_layers(
+        render::IndexedFramebuffer& underlay,
+        render::IndexedLayer& overlay,
+        render::IndexedLayer& screen_effect) const;
+
+    NODISCARD bool render_motion_layers(
+        render::IndexedFramebuffer& underlay,
+        render::IndexedLayer& overlay,
+        render::IndexedLayer& screen_effect,
+        int actor_x,
+        int actor_y) const;
+
+    NODISCARD bool motion_layers_available() const noexcept { return true; }
 
     NODISCARD bool render_overlay(render::IndexedFramebuffer& framebuffer) const;
 
@@ -242,6 +288,16 @@ public:
     }
 
     NODISCARD std::int16_t player_frame() const noexcept;
+
+    NODISCARD const render::IndexedSpriteImage* rendered_player_sprite() const;
+
+    NODISCARD const compat::LegacyPalette& palette() const noexcept {
+        return palette_;
+    }
+
+    NODISCARD std::uint64_t palette_revision() const noexcept {
+        return palette_revision_;
+    }
 
     NODISCARD std::int16_t event_item_id() const noexcept { return event_item_id_; }
 
@@ -446,6 +502,12 @@ private:
         int anchor_x,
         int anchor_y) const;
 
+    NODISCARD bool draw_sprite(
+        render::IndexedLayer& layer,
+        std::int16_t legacy_id,
+        int anchor_x,
+        int anchor_y) const;
+
     NODISCARD bool draw_overlay(render::IndexedFramebuffer& framebuffer) const;
 
     NODISCARD bool render_dialogue_overlay(
@@ -586,7 +648,10 @@ private:
     NODISCARD std::optional<SceneStepResult> advance_tournament_trial(
         SceneStepKind previous_kind, SceneResponse response);
 
-    void apply_scripted_walk_step(bool horizontal, int step);
+    NODISCARD SceneMovePlan prepare_scripted_walk_step(
+        bool horizontal, int step);
+
+    void commit_scripted_walk_step(const SceneMovePlan& plan);
 
     void set_animated_picture(std::int16_t event_index, std::int16_t picture);
 
@@ -618,9 +683,12 @@ private:
     // Cached pixel spans stay valid when a SceneSession is copied.
     std::shared_ptr<const resource::SentinelArchive> sprites_;
     mutable std::vector<std::optional<resource::SpriteFrameView>> sprite_frames_;
+    mutable std::vector<std::optional<render::IndexedSpriteImage>>
+        indexed_sprite_images_;
     resource::PackedArchive ending_words_;
     resource::PackedArchive ending_frames_;
     compat::LegacyPalette palette_{};
+    std::uint64_t palette_revision_{};
     compat::LegacyPalette ending_palette_{};
     std::vector<std::uint16_t> fixed_shadow_mask_;
     std::vector<std::uint16_t> shifted_shadow_mask_;
@@ -648,6 +716,7 @@ private:
     std::int16_t periodic_counter_{};
     bool idle_animation_{};
     std::int16_t shadow_state_{};
+    mutable int last_shadow_offset_{};
     std::int16_t event_item_id_{};
     EventContext event_context_{};
     std::vector<std::int16_t> script_;
@@ -679,6 +748,7 @@ private:
     std::optional<PanState> pan_state_;
     std::optional<PictureAnimationState> picture_animation_state_;
     std::optional<ScriptedWalkState> scripted_walk_state_;
+    std::optional<SceneMovePlan> pending_scripted_move_plan_;
     std::optional<DualPictureAnimationState> dual_picture_animation_state_;
     std::optional<ThreeStatueAnimationState> three_statue_animation_state_;
     std::optional<LoadMenuState> load_menu_state_;
@@ -686,6 +756,7 @@ private:
     std::optional<DeathMenuState> death_menu_state_;
     std::optional<ShopState> shop_state_;
     std::optional<EndingState> ending_state_;
+    bool defer_scripted_walk_steps_{};
     std::optional<TournamentTrialState> tournament_trial_state_;
     std::deque<QueuedOutput> queued_outputs_;
     std::vector<SceneAudioCommand> audio_commands_;

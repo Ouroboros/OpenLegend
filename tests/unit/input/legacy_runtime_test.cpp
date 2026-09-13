@@ -501,6 +501,8 @@ void run_timing_tests() {
     OL_CHECK(no_delay.tick_count() == 0U);
     OL_CHECK(no_delay.idle_count() == 0U);
 
+    OL_CHECK(kBiosTickDuration == std::chrono::nanoseconds{54'925'401});
+
     SteadyBiosTickSource steady;
     OL_CHECK(steady.time_until_next_tick() > std::chrono::nanoseconds::zero());
     OL_CHECK(

@@ -5,10 +5,13 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
+#include <utility>
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/render/native_motion_projection.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/render/world_depth_order.hpp"
@@ -212,6 +215,7 @@ WorldSession::WorldSession(
         return;
     }
     sprite_frames_.resize(sprites_->entry_count());
+    indexed_sprite_images_.resize(sprites_->entry_count());
     if (!weather_sprites_.valid()) {
         error_ = weather_sprites_.error();
         return;
@@ -274,6 +278,11 @@ WorldSession::WorldSession(
 }
 
 WorldStepResult WorldSession::move(const WorldDirection direction) {
+    const auto plan = start_move(direction);
+    return plan.valid ? commit_move(plan) : WorldStepResult{};
+}
+
+WorldMovePlan WorldSession::start_move(const WorldDirection direction) {
     if (!valid()) {
         diagnostics::log_error("world move rejected: invalid session");
         return {};
@@ -325,23 +334,21 @@ WorldStepResult WorldSession::move(const WorldDirection direction) {
     const auto target_x = std::clamp(world_x_ + delta_x, 0, kWorldExtent - 1);
     const auto target_y = std::clamp(world_y_ + delta_y, 0, kWorldExtent - 1);
     if (const auto scene = entrance_at(target_x, target_y); scene.has_value()) {
-        diagnostics::log_info(
-            "world entrance direction=" + std::string{direction_name(direction)} +
-            " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
-            " target=" + std::to_string(target_x) + "," + std::to_string(target_y) +
-            " scene=" + std::to_string(*scene) +
-            " frame=" + std::to_string(player_frame()));
-        return {
+        return WorldMovePlan{
             WorldStepKind::enter_scene,
+            direction,
+            static_cast<std::int16_t>(source_x),
+            static_cast<std::int16_t>(source_y),
+            static_cast<std::int16_t>(target_x),
+            static_cast<std::int16_t>(target_y),
             *scene,
-            static_cast<std::int16_t>(world_x_),
-            static_cast<std::int16_t>(world_y_),
-            WorldMoveContinuation{
-                direction,
-                static_cast<std::int16_t>(target_x),
-                static_cast<std::int16_t>(target_y)}};
+            in_ship_ != 0,
+            false,
+            false,
+            true,
+        };
     }
-    return complete_move(direction, target_x, target_y);
+    return probe_move(direction, target_x, target_y);
 }
 
 void WorldSession::restore_direction_after_scene(const WorldDirection direction) noexcept {
@@ -356,7 +363,8 @@ WorldStepResult WorldSession::resume_move_after_scene(
         diagnostics::log_error("world move continuation rejected: invalid session");
         return {};
     }
-    return complete_move(continuation.direction, continuation.target_x, continuation.target_y);
+    return commit_move(probe_move(
+        continuation.direction, continuation.target_x, continuation.target_y));
 }
 
 void WorldSession::sync_persistent_state(const bool include_direction) noexcept {
@@ -373,6 +381,89 @@ void WorldSession::sync_persistent_state(const bool include_direction) noexcept 
     ranger_.header.set_word(model::header_word::ship_y_1, static_cast<std::int16_t>(ship_next_y_));
     ranger_.header.set_word(
         model::header_word::encode, static_cast<std::int16_t>(ship_direction_));
+}
+
+WorldMovePlan WorldSession::probe_move(
+    const WorldDirection direction, const int target_x, const int target_y) const {
+    const auto [delta_x, delta_y] = direction_delta(direction);
+    const auto moved_coordinate = delta_x != 0 ? target_x : target_y;
+    const auto cache_target_x = target_x - cache_.origin_x();
+    const auto cache_target_y = target_y - cache_.origin_y();
+    const bool source_in_ship = in_ship_ != 0;
+
+    bool can_move = false;
+    bool boarded_ship = false;
+    bool disembarked_ship = false;
+    if (!source_in_ship) {
+        boarded_ship =
+            (target_x == ship_x_ && target_y == ship_y_) ||
+            (target_x == ship_next_x_ && target_y == ship_next_y_);
+        can_move = boarded_ship ||
+            target_is_walkable(target_x, target_y, moved_coordinate);
+    } else {
+        const auto target_clear =
+            cache_.at(WorldLayer::building, cache_target_x, cache_target_y) == 0 &&
+            cache_.at(WorldLayer::build_x, cache_target_x, cache_target_y) == 0 &&
+            cache_.at(WorldLayer::build_y, cache_target_x, cache_target_y) == 0;
+        if (target_is_ship_water(
+                target_x, target_y, moved_coordinate, delta_x, delta_y)) {
+            can_move = true;
+        } else if (target_clear && moved_coordinate > 10 && moved_coordinate < 459 &&
+                   in_ranges(
+                       cache_.at(WorldLayer::earth, cache_target_x, cache_target_y),
+                       kLandRanges) &&
+                   cache_.at(WorldLayer::surface, cache_target_x, cache_target_y) == 0) {
+            can_move = true;
+            disembarked_ship = true;
+        }
+    }
+
+    return WorldMovePlan{
+        can_move ? WorldStepKind::moved : WorldStepKind::stay,
+        direction,
+        static_cast<std::int16_t>(world_x_),
+        static_cast<std::int16_t>(world_y_),
+        static_cast<std::int16_t>(target_x),
+        static_cast<std::int16_t>(target_y),
+        -1,
+        source_in_ship,
+        boarded_ship,
+        disembarked_ship,
+        true,
+    };
+}
+
+WorldStepResult WorldSession::commit_move(const WorldMovePlan& plan) {
+    if (!valid() || !plan.valid || plan.source_x != world_x_ ||
+        plan.source_y != world_y_ || plan.source_in_ship != (in_ship_ != 0)) {
+        diagnostics::log_error("world move commit rejected: stale or invalid plan");
+        return {
+            WorldStepKind::stay,
+            -1,
+            static_cast<std::int16_t>(world_x_),
+            static_cast<std::int16_t>(world_y_),
+            std::nullopt,
+        };
+    }
+    if (plan.kind != WorldStepKind::enter_scene) {
+        return complete_move(plan.direction, plan.target_x, plan.target_y);
+    }
+
+    diagnostics::log_info(
+        "world entrance direction=" + std::string{direction_name(plan.direction)} +
+        " from=" + std::to_string(plan.source_x) + "," +
+        std::to_string(plan.source_y) +
+        " target=" + std::to_string(plan.target_x) + "," +
+        std::to_string(plan.target_y) +
+        " scene=" + std::to_string(plan.scene_id) +
+        " frame=" + std::to_string(player_frame()));
+    return {
+        WorldStepKind::enter_scene,
+        plan.scene_id,
+        plan.source_x,
+        plan.source_y,
+        WorldMoveContinuation{plan.direction, plan.target_x, plan.target_y},
+    };
 }
 
 WorldStepResult WorldSession::complete_move(
@@ -568,6 +659,7 @@ void WorldSession::cycle_palette() {
     if (!valid()) {
         return;
     }
+    ++palette_revision_;
     std::rotate(
         palette_.begin() + render::legacy_color::first_palette_cycle_begin,
         palette_.begin() + render::legacy_color::first_palette_cycle_pivot,
@@ -582,7 +674,9 @@ void WorldSession::prepare_game_menu_frame() noexcept {
     player_frame_override_ = kPlayerFrameBase[static_cast<std::size_t>(direction_)];
 }
 
-bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
+bool WorldSession::render(
+    render::IndexedFramebuffer& framebuffer,
+    const bool include_weather) const {
     if (!valid()) {
         return false;
     }
@@ -742,7 +836,7 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
             return false;
         }
     }
-    if (weather_active_) {
+    if (include_weather && weather_active_) {
         for (const auto& particle : weather_) {
             if (particle.y <= -1000) {
                 continue;
@@ -792,6 +886,257 @@ bool WorldSession::render(render::IndexedFramebuffer& framebuffer) const {
     return true;
 }
 
+bool WorldSession::render_motion_layers(
+    render::IndexedFramebuffer& underlay,
+    render::IndexedLayer& overlay,
+    render::IndexedLayer& screen_effect) const {
+    return render_motion_layers(
+        underlay, overlay, screen_effect, world_x_, world_y_);
+}
+
+bool WorldSession::render_motion_layers(
+    render::IndexedFramebuffer& underlay,
+    render::IndexedLayer& overlay,
+    render::IndexedLayer& screen_effect,
+    const int actor_world_x,
+    const int actor_world_y) const {
+    if (!valid() || !motion_layers_available() || !overlay.valid() ||
+        !screen_effect.valid() ||
+        underlay.pixel_width() != overlay.width() ||
+        underlay.pixel_height() != overlay.height() ||
+        underlay.pixel_width() != screen_effect.width() ||
+        underlay.pixel_height() != screen_effect.height()) {
+        return false;
+    }
+
+    const auto native_coordinates = underlay.use_native_coordinates();
+    underlay.clear(render::legacy_color::black);
+    underlay.set_palette(palette_);
+    overlay.clear();
+    overlay.set_palette(palette_);
+    screen_effect.clear();
+    screen_effect.set_palette(palette_);
+    const bool legacy_view = underlay.legacy_size();
+    const WorldCache* drawing_cache = &cache_;
+    if (!legacy_view) {
+        const auto desired_origin_x = clamped_origin(world_x_);
+        const auto desired_origin_y = clamped_origin(world_y_);
+        if (!expanded_render_cache_.has_value()) {
+            expanded_render_cache_.emplace();
+            if (!expanded_render_cache_->reload(
+                    map_, desired_origin_x, desired_origin_y)) {
+                expanded_render_cache_.reset();
+                return false;
+            }
+        } else if (
+            expanded_render_cache_->origin_x() != desired_origin_x ||
+            expanded_render_cache_->origin_y() != desired_origin_y) {
+            if (!expanded_render_cache_->reload(
+                    map_, desired_origin_x, desired_origin_y)) {
+                return false;
+            }
+        }
+        drawing_cache = &*expanded_render_cache_;
+    }
+
+    const auto view_x = world_x_ - drawing_cache->origin_x();
+    const auto view_y = world_y_ - drawing_cache->origin_y();
+    const auto bounds = legacy_view
+        ? render::WorldCacheBounds{
+              view_x - 11, view_y - 11, view_x + 21, view_y + 21}
+        : render::WorldCacheBounds{0, 0, kWorldCacheExtent, kWorldCacheExtent};
+    const auto anchor_x = underlay.pixel_width() / 2 - 15;
+    const auto anchor_y = underlay.pixel_height() / 2 + 17;
+    const auto projected = [&](const int cache_tile_x, const int cache_tile_y) {
+        return legacy_view
+            ? render::legacy_world_tile_screen(
+                  cache_tile_x, cache_tile_y, view_x, view_y)
+            : render::project_isometric(
+                  cache_tile_x - view_x,
+                  cache_tile_y - view_y,
+                  anchor_x,
+                  anchor_y);
+    };
+    const auto potentially_visible = [&](const render::ScreenPoint point) {
+        constexpr int kSpriteMargin = 768;
+        return legacy_view ||
+            (point.x >= -kSpriteMargin &&
+             point.x < underlay.pixel_width() + kSpriteMargin &&
+             point.y >= -kSpriteMargin &&
+             point.y < underlay.pixel_height() + kSpriteMargin);
+    };
+
+    for (int cache_tile_x = bounds.begin_x;
+         cache_tile_x < bounds.end_x;
+         ++cache_tile_x) {
+        for (int cache_tile_y = bounds.begin_y;
+             cache_tile_y < bounds.end_y;
+             ++cache_tile_y) {
+            const auto point = projected(cache_tile_x, cache_tile_y);
+            if (potentially_visible(point) &&
+                !draw_sprite(
+                    underlay,
+                    drawing_cache->at(
+                        WorldLayer::earth, cache_tile_x, cache_tile_y),
+                    point.x,
+                    point.y)) {
+                return false;
+            }
+        }
+    }
+    for (int cache_tile_x = bounds.begin_x;
+         cache_tile_x < bounds.end_x;
+         ++cache_tile_x) {
+        for (int cache_tile_y = bounds.begin_y;
+             cache_tile_y < bounds.end_y;
+             ++cache_tile_y) {
+            const auto sprite = drawing_cache->at(
+                WorldLayer::surface, cache_tile_x, cache_tile_y);
+            if (sprite == 0) {
+                continue;
+            }
+            const auto point = projected(cache_tile_x, cache_tile_y);
+            if (potentially_visible(point) &&
+                !draw_sprite(underlay, sprite, point.x, point.y)) {
+                return false;
+            }
+        }
+    }
+
+    const render::LegacyWorldDepthInput input{
+        drawing_cache->layer(WorldLayer::build_x),
+        drawing_cache->layer(WorldLayer::build_y),
+        drawing_cache->layer(WorldLayer::building),
+        view_x,
+        view_y,
+        drawing_cache->origin_x(),
+        drawing_cache->origin_y(),
+        {static_cast<std::int16_t>(actor_world_x),
+         static_cast<std::int16_t>(actor_world_y),
+         actor_world_x - drawing_cache->origin_x(),
+         actor_world_y - drawing_cache->origin_y(),
+         5000},
+        render::LegacyDepthActor{
+            static_cast<std::int16_t>(ship_x_),
+            static_cast<std::int16_t>(ship_y_),
+            ship_x_ - drawing_cache->origin_x(),
+            ship_y_ - drawing_cache->origin_y(),
+            6000}};
+    const auto depth = legacy_view
+        ? render::build_legacy_world_depth_list(input)
+        : render::build_legacy_world_depth_list(input, bounds);
+    if (!depth) {
+        return false;
+    }
+
+    bool actor_found = false;
+    bool after_actor = false;
+    for (const auto& entry : depth.entries) {
+        if (entry.sprite_id == 5000 ||
+            (entry.sprite_id == 6000 && in_ship_ == 1)) {
+            actor_found = true;
+            after_actor = true;
+            continue;
+        }
+        const auto point = legacy_view
+            ? render::project_isometric(
+                  static_cast<int>(entry.world_x) - drawing_cache->origin_x() -
+                      (view_x - 10),
+                  static_cast<int>(entry.world_y) - drawing_cache->origin_y() -
+                      (view_y - 10),
+                  145,
+                  -63)
+            : render::project_isometric(
+                  static_cast<int>(entry.world_x) - world_x_,
+                  static_cast<int>(entry.world_y) - world_y_,
+                  anchor_x,
+                  anchor_y);
+        const auto sprite = entry.sprite_id == 6000
+            ? static_cast<std::int16_t>(
+                  kShipFrameBase[static_cast<std::size_t>(ship_direction_)] +
+                  ship_frame_offset_)
+            : entry.sprite_id;
+        if (sprite == 0) {
+            continue;
+        }
+        const bool drawn = after_actor
+            ? draw_sprite(overlay, sprite, point.x, point.y)
+            : draw_sprite(underlay, sprite, point.x, point.y);
+        if (!drawn) {
+            return false;
+        }
+    }
+    return actor_found;
+}
+
+bool WorldSession::render_motion_weather(
+    render::RgbaFramebuffer& screen_effect,
+    const compat::LegacyPalette& palette) const {
+    if (!valid() || screen_effect.scale() != 1) {
+        return false;
+    }
+    if (!weather_active_) {
+        return true;
+    }
+
+    const auto viewport_width = screen_effect.logical_width() -
+        2 * render::native_motion_overscan_x;
+    const auto viewport_height = screen_effect.logical_height() -
+        2 * render::native_motion_overscan_y;
+    if (viewport_width <= 0 || viewport_height <= 0) {
+        return false;
+    }
+    const auto horizontal_tiles =
+        viewport_width / render::IndexedFramebuffer::width + 3;
+    const auto vertical_tiles =
+        viewport_height / render::IndexedFramebuffer::height + 3;
+    std::string record{
+        "weather_texture_build revision=" +
+        std::to_string(weather_revision_) +
+        " position_revision=" +
+        std::to_string(weather_position_revision_) +
+        " layer=" + std::to_string(screen_effect.logical_width()) + "x" +
+        std::to_string(screen_effect.logical_height()) +
+        " viewport=" + std::to_string(viewport_width) + "x" +
+        std::to_string(viewport_height)};
+    for (std::size_t index = 0U; index < weather_.size(); ++index) {
+        const auto& particle = weather_[index];
+        record +=
+            " p" + std::to_string(index) + "=" +
+            std::to_string(particle.kind) + "," +
+            std::to_string(particle.x) + "," +
+            std::to_string(particle.y) + "," +
+            std::to_string(particle.speed);
+    }
+    diagnostics::log_debug(record);
+
+    for (const auto& particle : weather_) {
+        if (particle.y <= -1000) {
+            continue;
+        }
+        for (int tile_y = -1; tile_y < vertical_tiles; ++tile_y) {
+            for (int tile_x = -1; tile_x < horizontal_tiles; ++tile_x) {
+                auto repeated = particle;
+                repeated.x = static_cast<std::int16_t>(
+                    static_cast<int>(particle.x) +
+                    tile_x * render::IndexedFramebuffer::width);
+                repeated.y = static_cast<std::int16_t>(
+                    static_cast<int>(particle.y) +
+                    tile_y * render::IndexedFramebuffer::height);
+                if (!draw_weather_particle(
+                        screen_effect,
+                        palette,
+                        repeated,
+                        render::native_motion_overscan_x,
+                        render::native_motion_overscan_y)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 std::int16_t WorldSession::player_frame() const noexcept {
     if (player_frame_override_.has_value()) {
         return *player_frame_override_;
@@ -814,6 +1159,36 @@ std::optional<std::int16_t> WorldSession::rendered_player_frame() const noexcept
             kShipFrameBase[static_cast<std::size_t>(ship_direction_)] + ship_frame_offset_);
     }
     return std::nullopt;
+}
+
+const render::IndexedSpriteImage* WorldSession::rendered_player_sprite() const {
+    const auto legacy_id = rendered_player_frame();
+    if (!legacy_id.has_value() || *legacy_id < 0) {
+        return nullptr;
+    }
+    const auto index = render::legacy_sprite_index(
+        static_cast<std::uint16_t>(*legacy_id));
+    if (!index.has_value() || *index >= sprites_->entry_count()) {
+        return nullptr;
+    }
+
+    auto& frame = sprite_frames_[*index];
+    if (!frame.has_value()) {
+        frame.emplace(resource::SpriteFrameView::parse(sprites_->entry(*index)));
+    }
+    if (!frame->valid()) {
+        return nullptr;
+    }
+
+    auto& image = indexed_sprite_images_[*index];
+    if (!image.has_value()) {
+        auto decoded = render::decode_indexed_sprite(*frame);
+        if (!decoded) {
+            return nullptr;
+        }
+        image.emplace(std::move(decoded.image));
+    }
+    return &*image;
 }
 
 bool WorldSession::target_is_walkable(
@@ -910,7 +1285,29 @@ void WorldSession::reload_cache_if_needed(const bool vertical_move) {
 }
 
 void WorldSession::update_weather() {
+    const auto log_weather_state = [&](const std::string_view event) {
+        std::string record{
+            "weather_authority event=" + std::string{event} +
+            " active=" +
+            std::to_string(static_cast<int>(weather_active_)) +
+            " revision=" + std::to_string(weather_revision_) +
+            " position_revision=" +
+            std::to_string(weather_position_revision_)};
+        for (std::size_t index = 0U; index < weather_.size(); ++index) {
+            const auto& particle = weather_[index];
+            record +=
+                " p" + std::to_string(index) + "=" +
+                std::to_string(particle.kind) + "," +
+                std::to_string(particle.x) + "," +
+                std::to_string(particle.y) + "," +
+                std::to_string(particle.speed);
+        }
+        diagnostics::log_debug(record);
+    };
+
     if (weather_active_) {
+        ++weather_revision_;
+        ++weather_position_revision_;
         bool all_done = true;
         for (auto& particle : weather_) {
             particle.x = static_cast<std::int16_t>(particle.x + 1);
@@ -918,15 +1315,18 @@ void WorldSession::update_weather() {
                 all_done = false;
             }
         }
+        log_weather_state("advance");
         if (!all_done) {
             return;
         }
         weather_active_ = false;
+        log_weather_state("complete");
     }
     if (random_.bounded(1) != 0) {
         return;
     }
     weather_active_ = true;
+    ++weather_revision_;
     for (auto& particle : weather_) {
         particle.kind = static_cast<std::int16_t>(random_.bounded(4));
     }
@@ -945,6 +1345,7 @@ void WorldSession::update_weather() {
                 random_.bounded(50) + static_cast<std::int32_t>(index) * 75);
         }
     }
+    log_weather_state("spawn");
 }
 
 bool WorldSession::draw_sprite(
@@ -967,6 +1368,30 @@ bool WorldSession::draw_sprite(
         return false;
     }
     render::draw_rle_sprite(framebuffer, *frame, anchor_x, anchor_y);
+    return true;
+}
+
+bool WorldSession::draw_sprite(
+    render::IndexedLayer& layer,
+    const std::int16_t legacy_id,
+    const int anchor_x,
+    const int anchor_y) const {
+    if (legacy_id < 0) {
+        return false;
+    }
+    const auto index = render::legacy_sprite_index(
+        static_cast<std::uint16_t>(legacy_id));
+    if (!index.has_value() || *index >= sprites_->entry_count()) {
+        return false;
+    }
+    auto& frame = sprite_frames_[*index];
+    if (!frame.has_value()) {
+        frame.emplace(resource::SpriteFrameView::parse(sprites_->entry(*index)));
+    }
+    if (!frame->valid()) {
+        return false;
+    }
+    render::draw_rle_sprite(layer, *frame, anchor_x, anchor_y);
     return true;
 }
 
@@ -1006,6 +1431,64 @@ bool WorldSession::draw_weather_particle(
                                       (static_cast<int>(destination.blue) * destination_weight) / 32;
                     const auto lookup_index = static_cast<std::size_t>(red * 256 + green * 16 + blue);
                     destination_index = rgb4_lookup_[lookup_index];
+                }
+                ++destination_x;
+            }
+        }
+    }
+    return true;
+}
+
+bool WorldSession::draw_weather_particle(
+    render::RgbaFramebuffer& layer,
+    const compat::LegacyPalette& palette,
+    const WeatherParticle& particle,
+    const int offset_x,
+    const int offset_y) const {
+    if (particle.kind < 0 ||
+        static_cast<std::size_t>(particle.kind) >=
+            weather_sprites_.entry_count() ||
+        particle.speed < 0 || particle.speed > 8) {
+        return false;
+    }
+    const auto frame = resource::SpriteFrameView::parse(
+        weather_sprites_.entry(static_cast<std::size_t>(particle.kind)));
+    if (!frame.valid()) {
+        return false;
+    }
+
+    const auto coverage = static_cast<std::uint8_t>(
+        (static_cast<int>(particle.speed) * 255 + 4) / 8);
+    if (coverage == 0U) {
+        return true;
+    }
+    const auto left = offset_x + static_cast<int>(particle.x) -
+        static_cast<int>(frame.x_offset());
+    const auto top = offset_y + static_cast<int>(particle.y) -
+        static_cast<int>(frame.y_offset());
+    for (std::size_t row_index = 0U;
+         row_index < frame.rows().size();
+         ++row_index) {
+        const auto destination_y = top + static_cast<int>(row_index);
+        auto destination_x = left;
+        for (const auto& run : frame.rows()[row_index].runs) {
+            destination_x += static_cast<int>(run.skip);
+            for (const auto source_index : run.pixels) {
+                if (destination_x >= 0 &&
+                    destination_x < layer.logical_width() &&
+                    destination_y >= 0 &&
+                    destination_y < layer.logical_height()) {
+                    const auto source = palette[source_index];
+                    if (!layer.source_over_pixel(
+                            destination_x,
+                            destination_y,
+                            compat::Rgba8{
+                                compat::expand_rgb6(source.red),
+                                compat::expand_rgb6(source.green),
+                                compat::expand_rgb6(source.blue),
+                                coverage})) {
+                        return false;
+                    }
                 }
                 ++destination_x;
             }

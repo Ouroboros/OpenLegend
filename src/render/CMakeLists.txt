@@ -2,8 +2,11 @@ add_library(
     openlegend_render
     STATIC
         indexed_framebuffer.cpp
+        indexed_layer.cpp
+        indexed_sprite_image.cpp
         legacy_effects.cpp
         legacy_font.cpp
+        native_motion_projection.cpp
         legacy_font_renderer.cpp
         rgba_font_renderer.cpp
         rgba_framebuffer.cpp
@@ -20,6 +23,7 @@ target_link_libraries(
     openlegend_render
     PUBLIC
         openlegend_compat
+        openlegend_motion
         openlegend_resource
         openlegend_text
         openlegend_project_options

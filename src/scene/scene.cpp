@@ -320,7 +320,8 @@ SceneSession::SceneSession(
     const std::optional<SceneEntryOverride> entry_override,
     const SceneSessionContext context,
     const std::span<const std::uint16_t> fixed_shadow_mask,
-    const std::span<const std::uint16_t> shifted_shadow_mask)
+    const std::span<const std::uint16_t> shifted_shadow_mask,
+    const bool defer_scripted_walk_steps)
     : data_root_(data_root),
       snapshot_(snapshot),
       random_(random),
@@ -330,7 +331,8 @@ SceneSession::SceneSession(
           data_root.path() / "HDGRP.IDX", data_root.path() / "HDGRP.GRP")),
       scene_id_(scene_id),
       context_(context),
-      periodic_counter_(periodic_counter) {
+      periodic_counter_(periodic_counter),
+      defer_scripted_walk_steps_(defer_scripted_walk_steps) {
     if (!snapshot_.valid()) {
         error_ = "scene session requires a valid game snapshot";
         return;
@@ -547,6 +549,8 @@ bool SceneSession::load_scene_sprites() {
     sprites_ = std::move(sprites);
     sprite_frames_.clear();
     sprite_frames_.resize(sprites_->entry_count());
+    indexed_sprite_images_.clear();
+    indexed_sprite_images_.resize(sprites_->entry_count());
     return true;
 }
 
@@ -584,11 +588,16 @@ SceneStepResult SceneSession::tick(
 }
 
 SceneStepResult SceneSession::move(const SceneDirection direction) {
+    const auto plan = start_move(direction);
+    return plan.valid ? commit_move(plan) : pending_;
+}
+
+SceneMovePlan SceneSession::start_move(const SceneDirection direction) {
     if (!valid() || pending_.kind != SceneStepKind::stay) {
         diagnostics::log_debug(
             "scene move ignored scene=" + std::to_string(scene_id_) +
             " pending=" + std::to_string(static_cast<int>(pending_.kind)));
-        return pending_;
+        return {};
     }
     const auto source_x = scene_x_;
     const auto source_y = scene_y_;
@@ -602,7 +611,14 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
     const auto [delta_x, delta_y] = direction_delta(direction);
     const auto target_x = std::clamp(scene_x_ + delta_x, 0, kSceneExtent - 1);
     const auto target_y = std::clamp(scene_y_ + delta_y, 0, kSceneExtent - 1);
-    if (!target_is_walkable(target_x, target_y)) {
+    const auto source_height = scene_value(
+        scene_id_, static_cast<std::int16_t>(model::SceneLayer::building_height),
+        static_cast<std::int16_t>(source_x), static_cast<std::int16_t>(source_y));
+    const auto target_height = scene_value(
+        scene_id_, static_cast<std::int16_t>(model::SceneLayer::building_height),
+        static_cast<std::int16_t>(target_x), static_cast<std::int16_t>(target_y));
+    const bool can_move = target_is_walkable(target_x, target_y);
+    if (!can_move) {
         diagnostics::log_info(
             "scene blocked scene=" + std::to_string(scene_id_) +
             " direction=" + std::string{direction_name(direction)} +
@@ -615,26 +631,70 @@ SceneStepResult SceneSession::move(const SceneDirection direction) {
             " building=" + std::to_string(scene_value(
                 scene_id_, static_cast<std::int16_t>(model::SceneLayer::building),
                 static_cast<std::int16_t>(target_x), static_cast<std::int16_t>(target_y))) +
-            " height=" + std::to_string(scene_value(
-                scene_id_, static_cast<std::int16_t>(model::SceneLayer::building_height),
-                static_cast<std::int16_t>(target_x), static_cast<std::int16_t>(target_y))));
+            " height=" + std::to_string(target_height));
+    }
+    return SceneMovePlan{
+        direction,
+        static_cast<std::int16_t>(source_x),
+        static_cast<std::int16_t>(source_y),
+        static_cast<std::int16_t>(target_x),
+        static_cast<std::int16_t>(target_y),
+        source_height,
+        target_height,
+        can_move,
+        true,
+    };
+}
+
+SceneStepResult SceneSession::commit_move(const SceneMovePlan& plan) {
+    if (!valid() || pending_.kind != SceneStepKind::stay || !plan.valid ||
+        plan.source_x != scene_x_ || plan.source_y != scene_y_) {
+        diagnostics::log_error("scene move commit rejected: stale or invalid plan");
+        return pending_;
+    }
+    if (!plan.can_move) {
         commit_header();
         return current_result(SceneStepKind::stay);
     }
-    scene_x_ = target_x;
-    scene_y_ = target_y;
+
+    scene_x_ = plan.target_x;
+    scene_y_ = plan.target_y;
     update_view_origin();
     commit_header();
     diagnostics::log_info(
         "scene moved scene=" + std::to_string(scene_id_) +
-        " direction=" + std::string{direction_name(direction)} +
-        " from=" + std::to_string(source_x) + "," + std::to_string(source_y) +
+        " direction=" + std::string{direction_name(plan.direction)} +
+        " from=" + std::to_string(plan.source_x) + "," +
+        std::to_string(plan.source_y) +
         " to=" + std::to_string(scene_x_) + "," + std::to_string(scene_y_) +
         " frame=" + std::to_string(player_frame()) +
         " view_origin=" + std::to_string(view_origin_x_) + "," +
         std::to_string(view_origin_y_));
 
     return current_result(SceneStepKind::moved);
+}
+
+SceneMovePlan SceneSession::start_tick_move(const SceneDirection direction) {
+    if (!valid() || pending_.kind != SceneStepKind::stay) {
+        return start_move(direction);
+    }
+    idle_tick();
+    input_reset_after_action_ = SceneInputReset::none;
+    return start_move(direction);
+}
+
+SceneStepResult SceneSession::finish_tick_move(const SceneMovePlan& plan) {
+    if (!plan.valid) {
+        return pending_;
+    }
+    const auto result = commit_move(plan);
+    if (result.kind != SceneStepKind::stay &&
+        result.kind != SceneStepKind::moved) {
+        tick_continuation_ = TickContinuation::after_action;
+        tick_fallback_ = SceneStepKind::stay;
+        return result;
+    }
+    return finish_tick_after_action(result.kind);
 }
 
 SceneStepResult SceneSession::interact() {
@@ -754,6 +814,7 @@ bool SceneSession::prepare_event(
     pan_state_.reset();
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
+    pending_scripted_move_plan_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
     load_menu_state_.reset();
@@ -1267,6 +1328,7 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 30:
+            pending_scripted_move_plan_.reset();
             scripted_walk_state_ = ScriptedWalkState{
                 argument(1),
                 argument(2),
@@ -1883,6 +1945,7 @@ void SceneSession::queue_scene_music(const std::size_t metadata_word) {
 }
 
 void SceneSession::cycle_palette() {
+    ++palette_revision_;
     std::rotate(
         palette_.begin() + palette_colors::first_palette_cycle_begin,
         palette_.begin() + palette_colors::first_palette_cycle_pivot,
@@ -2508,24 +2571,72 @@ std::optional<SceneStepResult> SceneSession::advance_scripted_walk_frame() {
     if (!scripted_walk_state_.has_value()) {
         return std::nullopt;
     }
-    if (scripted_walk_state_->x != scripted_walk_state_->target_x) {
-        apply_scripted_walk_step(true, scripted_walk_state_->step_x);
-        scripted_walk_state_->x += scripted_walk_state_->step_x;
-    } else if (scripted_walk_state_->y != scripted_walk_state_->target_y) {
-        apply_scripted_walk_step(false, scripted_walk_state_->step_y);
-        scripted_walk_state_->y += scripted_walk_state_->step_y;
-    } else {
+    if (scripted_walk_state_->x == scripted_walk_state_->target_x &&
+        scripted_walk_state_->y == scripted_walk_state_->target_y) {
         walk_frame_offset_ = 0;
         player_idle_counter_ = 0;
         player_frame_override_.reset();
         commit_header();
         scripted_walk_state_.reset();
+        pending_scripted_move_plan_.reset();
         pending_ = current_result(SceneStepKind::present);
         return pending_;
+    }
+
+    const bool horizontal =
+        scripted_walk_state_->x != scripted_walk_state_->target_x;
+    const auto step = horizontal
+        ? scripted_walk_state_->step_x
+        : scripted_walk_state_->step_y;
+    const auto plan = prepare_scripted_walk_step(horizontal, step);
+    const bool changes_position =
+        plan.source_x != plan.target_x || plan.source_y != plan.target_y ||
+        plan.source_height != plan.target_height;
+    if (defer_scripted_walk_steps_ && plan.can_move && changes_position) {
+        pending_scripted_move_plan_ = plan;
+        pending_ = current_result(SceneStepKind::scripted_move);
+        pending_.wait_ticks = 3U;
+        return pending_;
+    }
+
+    commit_scripted_walk_step(plan);
+    if (horizontal) {
+        scripted_walk_state_->x += scripted_walk_state_->step_x;
+    } else {
+        scripted_walk_state_->y += scripted_walk_state_->step_y;
     }
     pending_ = current_result(SceneStepKind::present);
     pending_.wait_ticks = 3U;
     return pending_;
+}
+
+SceneStepResult SceneSession::finish_scripted_move(
+    const SceneMovePlan& plan) {
+    if (!scripted_walk_state_.has_value() ||
+        !pending_scripted_move_plan_.has_value() ||
+        *pending_scripted_move_plan_ != plan ||
+        plan.source_x != scene_x_ || plan.source_y != scene_y_) {
+        diagnostics::log_error(
+            "scripted scene move commit rejected: stale or invalid plan");
+        return pending_;
+    }
+
+    commit_scripted_walk_step(plan);
+    switch (plan.direction) {
+    case SceneDirection::left:
+    case SceneDirection::right:
+        scripted_walk_state_->x += scripted_walk_state_->step_x;
+        break;
+    case SceneDirection::up:
+    case SceneDirection::down:
+        scripted_walk_state_->y += scripted_walk_state_->step_y;
+        break;
+    }
+    pending_scripted_move_plan_.reset();
+    if (auto next = advance_scripted_walk_frame(); next.has_value()) {
+        return *next;
+    }
+    return current_result(SceneStepKind::stay);
 }
 
 std::optional<SceneStepResult> SceneSession::advance_dual_picture_animation_frame() {
@@ -3291,7 +3402,8 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
     return std::nullopt;
 }
 
-void SceneSession::apply_scripted_walk_step(const bool horizontal, const int step) {
+SceneMovePlan SceneSession::prepare_scripted_walk_step(
+    const bool horizontal, const int step) {
     player_frame_override_.reset();
     cancel_player_idle_animation();
     walk_frame_offset_ = static_cast<std::int16_t>(walk_frame_offset_ + 2);
@@ -3299,13 +3411,38 @@ void SceneSession::apply_scripted_walk_step(const bool horizontal, const int ste
         walk_frame_offset_ = 2;
     }
     direction_ = horizontal
-                     ? (step < 0 ? SceneDirection::left : SceneDirection::right)
-                     : (step < 0 ? SceneDirection::up : SceneDirection::down);
-    const auto target_x = std::clamp(scene_x_ + (horizontal ? step : 0), 0, kSceneExtent - 1);
-    const auto target_y = std::clamp(scene_y_ + (horizontal ? 0 : step), 0, kSceneExtent - 1);
-    if (target_is_walkable(target_x, target_y)) {
-        scene_x_ = target_x;
-        scene_y_ = target_y;
+        ? (step < 0 ? SceneDirection::left : SceneDirection::right)
+        : (step < 0 ? SceneDirection::up : SceneDirection::down);
+    const auto target_x = std::clamp(
+        scene_x_ + (horizontal ? step : 0), 0, kSceneExtent - 1);
+    const auto target_y = std::clamp(
+        scene_y_ + (horizontal ? 0 : step), 0, kSceneExtent - 1);
+    const auto source_height = scene_value(
+        scene_id_,
+        static_cast<std::int16_t>(model::SceneLayer::building_height),
+        static_cast<std::int16_t>(scene_x_),
+        static_cast<std::int16_t>(scene_y_));
+    const auto target_height = scene_value(
+        scene_id_,
+        static_cast<std::int16_t>(model::SceneLayer::building_height),
+        static_cast<std::int16_t>(target_x),
+        static_cast<std::int16_t>(target_y));
+    return SceneMovePlan{
+        direction_,
+        static_cast<std::int16_t>(scene_x_),
+        static_cast<std::int16_t>(scene_y_),
+        static_cast<std::int16_t>(target_x),
+        static_cast<std::int16_t>(target_y),
+        source_height,
+        target_height,
+        target_is_walkable(target_x, target_y),
+        true};
+}
+
+void SceneSession::commit_scripted_walk_step(const SceneMovePlan& plan) {
+    if (plan.can_move) {
+        scene_x_ = plan.target_x;
+        scene_y_ = plan.target_y;
         update_view_origin();
     }
     commit_header();
@@ -3345,6 +3482,7 @@ void SceneSession::clear_event() noexcept {
     pan_state_.reset();
     picture_animation_state_.reset();
     scripted_walk_state_.reset();
+    pending_scripted_move_plan_.reset();
     dual_picture_animation_state_.reset();
     three_statue_animation_state_.reset();
     tournament_trial_state_.reset();
@@ -3364,6 +3502,40 @@ std::int16_t SceneSession::player_frame() const noexcept {
     }
     return static_cast<std::int16_t>(
         kPlayerFrameBase[static_cast<std::size_t>(direction_)] + walk_frame_offset_);
+}
+
+const render::IndexedSpriteImage* SceneSession::rendered_player_sprite() const {
+    const auto legacy_id = player_frame();
+    if (legacy_id == 0 || legacy_id == -86 || legacy_id < 0) {
+        return nullptr;
+    }
+    const auto index = render::legacy_sprite_index(
+        static_cast<std::uint16_t>(legacy_id));
+    if (!index.has_value() || *index >= sprites_->entry_count()) {
+        return nullptr;
+    }
+
+    const auto bytes = sprites_->legacy_pointer_entry(*index);
+    if (bytes.empty()) {
+        return nullptr;
+    }
+    auto& frame = sprite_frames_[*index];
+    if (!frame.has_value()) {
+        frame.emplace(resource::SpriteFrameView::parse(bytes));
+    }
+    if (!frame->valid()) {
+        return nullptr;
+    }
+
+    auto& image = indexed_sprite_images_[*index];
+    if (!image.has_value()) {
+        auto decoded = render::decode_indexed_sprite(*frame);
+        if (!decoded) {
+            return nullptr;
+        }
+        image.emplace(std::move(decoded.image));
+    }
+    return &*image;
 }
 
 bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
@@ -3475,7 +3647,9 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
         }
     }
     if (shadow_state_ > 0) {
-        const auto offset = 320 * (random_.bounded(7) - 3) + (random_.bounded(7) - 3);
+        const auto offset =
+            320 * (random_.bounded(7) - 3) + (random_.bounded(7) - 3);
+        last_shadow_offset_ = offset;
         if (shadow_state_ == 1 &&
             !render::apply_legacy_shadow_mask(framebuffer, fixed_shadow_mask_, 0)) {
             return false;
@@ -3502,6 +3676,183 @@ bool SceneSession::render_map(render::IndexedFramebuffer& framebuffer) const {
             " drawn=" + (player_drawn ? std::string{"true"} : std::string{"false"}));
     }
     return true;
+}
+
+bool SceneSession::render_motion_layers(
+    render::IndexedFramebuffer& underlay,
+    render::IndexedLayer& overlay,
+    render::IndexedLayer& screen_effect) const {
+    return render_motion_layers(
+        underlay, overlay, screen_effect, scene_x_, scene_y_);
+}
+
+bool SceneSession::render_motion_layers(
+    render::IndexedFramebuffer& underlay,
+    render::IndexedLayer& overlay,
+    render::IndexedLayer& screen_effect,
+    const int actor_x,
+    const int actor_y) const {
+    const auto player_sprite = player_frame();
+    if (!valid() || !motion_layers_available() ||
+        player_sprite == 0 || player_sprite == -86 ||
+        !overlay.valid() || !screen_effect.valid() ||
+        underlay.pixel_width() != overlay.width() ||
+        underlay.pixel_height() != overlay.height() ||
+        underlay.pixel_width() != screen_effect.width() ||
+        underlay.pixel_height() != screen_effect.height()) {
+        return false;
+    }
+
+    const auto native_coordinates = underlay.use_native_coordinates();
+    const bool legacy_view = underlay.legacy_size();
+    underlay.clear(palette_colors::black);
+    underlay.set_palette(palette_);
+    overlay.clear();
+    overlay.set_palette(palette_);
+    screen_effect.clear();
+    screen_effect.set_palette(palette_);
+    const auto begin_x = legacy_view ? view_origin_x_ : 0;
+    const auto begin_y = legacy_view ? view_origin_y_ : 0;
+    const auto end_x = legacy_view
+        ? view_origin_x_ + kSceneViewExtent
+        : kSceneExtent;
+    const auto end_y = legacy_view
+        ? view_origin_y_ + kSceneViewExtent
+        : kSceneExtent;
+    const auto camera_x = view_origin_x_ + 11;
+    const auto camera_y = view_origin_y_ + 11;
+    const auto screen_anchor_x = underlay.pixel_width() / 2 - 15;
+    const auto screen_anchor_y = underlay.pixel_height() / 2 + 17;
+    const auto projected = [&](const int x, const int y) {
+        const auto local_x = x - view_origin_x_;
+        const auto local_y = y - view_origin_y_;
+        return legacy_view
+            ? render::ScreenPoint{
+                  18 * (local_x - local_y) + 145,
+                  9 * (local_x + local_y) - 81}
+            : render::project_isometric(
+                  x - camera_x,
+                  y - camera_y,
+                  screen_anchor_x,
+                  screen_anchor_y);
+    };
+
+    for (int x = begin_x; x < end_x; ++x) {
+        for (int y = begin_y; y < end_y; ++y) {
+            if (scene_value(
+                    scene_id_,
+                    static_cast<std::int16_t>(
+                        model::SceneLayer::building_height),
+                    static_cast<std::int16_t>(x),
+                    static_cast<std::int16_t>(y)) == 0) {
+                const auto [anchor_x, anchor_y] = projected(x, y);
+                if (!draw_sprite(
+                        underlay,
+                        scene_value(
+                            scene_id_,
+                            static_cast<std::int16_t>(model::SceneLayer::earth),
+                            static_cast<std::int16_t>(x),
+                            static_cast<std::int16_t>(y)),
+                        anchor_x,
+                        anchor_y)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    bool actor_found = false;
+    bool after_actor = false;
+    const auto draw_ordered = [&](
+        const std::int16_t sprite,
+        const int anchor_x,
+        const int anchor_y) {
+        return after_actor
+            ? draw_sprite(overlay, sprite, anchor_x, anchor_y)
+            : draw_sprite(underlay, sprite, anchor_x, anchor_y);
+    };
+    for (int x = begin_x; x < end_x; ++x) {
+        for (int y = begin_y; y < end_y; ++y) {
+            const auto [anchor_x, anchor_y] = projected(x, y);
+            const auto building_height = scene_value(
+                scene_id_,
+                static_cast<std::int16_t>(model::SceneLayer::building_height),
+                static_cast<std::int16_t>(x),
+                static_cast<std::int16_t>(y));
+            if (building_height != 0 &&
+                !draw_ordered(
+                    scene_value(
+                        scene_id_,
+                        static_cast<std::int16_t>(model::SceneLayer::earth),
+                        static_cast<std::int16_t>(x),
+                        static_cast<std::int16_t>(y)),
+                    anchor_x,
+                    anchor_y)) {
+                return false;
+            }
+            const auto building = scene_value(
+                scene_id_,
+                static_cast<std::int16_t>(model::SceneLayer::building),
+                static_cast<std::int16_t>(x),
+                static_cast<std::int16_t>(y));
+            if (building != 0 && building != 15000 &&
+                !draw_ordered(
+                    building, anchor_x, anchor_y - building_height)) {
+                return false;
+            }
+            const auto event = event_at(x, y);
+            if (event.has_value()) {
+                const auto first_picture = event_field(
+                    scene_id_,
+                    *event,
+                    model::SceneEventField::current_picture).value_or(0);
+                if (first_picture > 0) {
+                    const auto picture = event_field(
+                        scene_id_,
+                        *event,
+                        model::SceneEventField::begin_picture).value_or(0);
+                    if (!draw_ordered(
+                            picture,
+                            anchor_x,
+                            anchor_y - building_height)) {
+                        return false;
+                    }
+                }
+            }
+            if (x == actor_x && y == actor_y) {
+                actor_found = true;
+                after_actor = true;
+            }
+            const auto decoration = scene_value(
+                scene_id_,
+                static_cast<std::int16_t>(model::SceneLayer::decoration),
+                static_cast<std::int16_t>(x),
+                static_cast<std::int16_t>(y));
+            if (decoration != 0) {
+                const auto height = scene_value(
+                    scene_id_,
+                    static_cast<std::int16_t>(
+                        model::SceneLayer::decoration_height),
+                    static_cast<std::int16_t>(x),
+                    static_cast<std::int16_t>(y));
+                if (!draw_ordered(
+                        decoration, anchor_x, anchor_y - height)) {
+                    return false;
+                }
+            }
+        }
+    }
+    if (shadow_state_ == 1 &&
+        !render::render_legacy_shadow_layer(
+            screen_effect, fixed_shadow_mask_, 0)) {
+        return false;
+    }
+    if (shadow_state_ == 2 &&
+        !render::render_legacy_shadow_layer(
+            screen_effect, shifted_shadow_mask_, last_shadow_offset_)) {
+        return false;
+    }
+    return actor_found;
 }
 
 bool SceneSession::render(render::IndexedFramebuffer& framebuffer) const {
@@ -3712,6 +4063,39 @@ bool SceneSession::draw_sprite(
         return false;
     }
     render::draw_rle_sprite(framebuffer, *frame, anchor_x, anchor_y);
+    return true;
+}
+
+bool SceneSession::draw_sprite(
+    render::IndexedLayer& layer,
+    const std::int16_t legacy_id,
+    const int anchor_x,
+    const int anchor_y) const {
+    if (legacy_id < 0 || !sprites_) {
+        return false;
+    }
+    const auto index = render::legacy_sprite_index(
+        static_cast<std::uint16_t>(legacy_id));
+    if (!index.has_value() || *index >= sprites_->entry_count()) {
+        return false;
+    }
+    auto& frame = sprite_frames_[*index];
+    if (!frame.has_value()) {
+        const auto entry = sprites_->legacy_pointer_entry(*index);
+        if (entry.empty()) {
+            return true;
+        }
+        frame.emplace(resource::SpriteFrameView::parse(entry));
+    }
+    if (!frame->valid()) {
+        diagnostics::log_error(
+            "scene sprite parse failed scene=" + std::to_string(scene_id_) +
+            " legacy_id=" + std::to_string(legacy_id) +
+            " index=" + std::to_string(*index) +
+            " error=" + frame->error());
+        return false;
+    }
+    render::draw_rle_sprite(layer, *frame, anchor_x, anchor_y);
     return true;
 }
 

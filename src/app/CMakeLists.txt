@@ -19,6 +19,7 @@ target_link_libraries(
         openlegend_compat
         openlegend_diagnostics
         openlegend_model
+        openlegend_motion
         openlegend_persistence
         openlegend_random
         openlegend_render

@@ -10,6 +10,10 @@ namespace openlegend::timing {
 inline constexpr std::uint32_t kPitInputFrequency = 1'193'182U;
 inline constexpr std::uint32_t kPitDivisor = 65'536U;
 inline constexpr std::uint32_t kBiosTicksPerDay = 0x1800B0U;
+inline constexpr auto kBiosTickDuration = std::chrono::nanoseconds{
+    (1'000'000'000LL * static_cast<std::int64_t>(kPitDivisor) +
+     static_cast<std::int64_t>(kPitInputFrequency) / 2) /
+    static_cast<std::int64_t>(kPitInputFrequency)};
 // Nominal VGA mode 13h timing; independent of the PIT/BIOS clock.
 inline constexpr std::uint32_t kVgaPixelClock = 25'175'000U;
 inline constexpr std::uint32_t kVgaClocksPerFrame = 800U * 449U;

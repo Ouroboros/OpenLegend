@@ -20,6 +20,9 @@ struct LegacyRuntimeLoopSettings {
     std::chrono::nanoseconds fade_frame_delay{};
     app::GameResolution game_resolution;
     bool smoke_test{};
+    std::chrono::nanoseconds movement_step_duration{};
+    std::chrono::nanoseconds motion_frame_interval{
+        std::chrono::nanoseconds{1'000'000'000} / 240};
 };
 
 struct LegacyRuntimeLoopResult {

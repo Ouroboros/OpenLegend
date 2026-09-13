@@ -6,6 +6,7 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/indexed_layer.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 
 namespace openlegend::render {
@@ -30,6 +31,12 @@ NODISCARD constexpr std::optional<std::size_t> legacy_item_sprite_index(
 
 void draw_rle_sprite(
     IndexedFramebuffer& framebuffer,
+    const openlegend::resource::SpriteFrameView& frame,
+    int anchor_x,
+    int anchor_y) noexcept;
+
+void draw_rle_sprite(
+    IndexedLayer& layer,
     const openlegend::resource::SpriteFrameView& frame,
     int anchor_x,
     int anchor_y) noexcept;
