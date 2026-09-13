@@ -317,7 +317,26 @@ bool BasicUiRenderer::render_attributes(
             return false;
         }
     }
-    return true;
+
+    const auto sexual = protagonist.word(model::role_word::sexual);
+    std::u8string sexual_line{kSexualAttributeLabel};
+    if (sexual >= 0 &&
+        sexual < static_cast<std::int16_t>(kSexualLabels.size())) {
+        sexual_line.append(kSexualLabels[static_cast<std::size_t>(sexual)]);
+    } else {
+        append_number(sexual_line, sexual, 2);
+    }
+    constexpr auto kSexualColumnX = 188;
+    constexpr auto kSexualRowY = 152;
+    constexpr auto kCombinedMpTypeOffset = -13;
+    const auto combined_mp_type =
+        protagonist.word(model::role_word::mp_type) == 2;
+    return draw_text_utf8(
+        framebuffer,
+        kSexualColumnX + (combined_mp_type ? kCombinedMpTypeOffset : 0),
+        kSexualRowY,
+        sexual_line,
+        text_colors::attribute_normal);
 }
 
 bool BasicUiRenderer::render_game_menu_main(

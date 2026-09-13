@@ -94,6 +94,11 @@ inline constexpr std::array<std::u8string_view, 3> mp_type_labels{
     u8"陽",
     u8"陰陽合一",
 };
+inline constexpr std::u8string_view sexual_attribute_label = u8"性別：";
+inline constexpr std::array<std::u8string_view, 2> sexual_labels{
+    u8"男",
+    u8"女",
+};
 
 inline constexpr std::u8string_view level_label = u8"等級 ";
 inline constexpr std::u8string_view power_label = u8"体力 ";
@@ -263,6 +268,8 @@ inline constexpr auto kPracticeCastrationQuestion = practice_castration_question
 inline constexpr auto kPracticeUnsuitableNotice = practice_unsuitable_notice;
 inline constexpr auto& kRandomAttributeLabels = random_attribute_labels;
 inline constexpr auto& kMpTypeLabels = mp_type_labels;
+inline constexpr auto kSexualAttributeLabel = sexual_attribute_label;
+inline constexpr auto& kSexualLabels = sexual_labels;
 inline constexpr auto kLevelLabel = level_label;
 inline constexpr auto kPowerLabel = power_label;
 inline constexpr auto kLifeLabel = life_label;

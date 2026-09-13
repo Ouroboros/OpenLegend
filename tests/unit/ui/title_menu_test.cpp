@@ -4025,7 +4025,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     };
     static_assert(36 + 284 == 320);
     static_assert(175 + 144 < 320);
-    constexpr std::array<AttributeCellCase, 17> kAttributeCells{{
+    constexpr std::array<AttributeCellCase, 18> kAttributeCells{{
         {model::role_word::maximum_mp, 1, 36, 32, 73},
         {model::role_word::attack, 1, 36, 56, 73},
         {model::role_word::speed, 1, 36, 80, 73},
@@ -4043,6 +4043,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         {model::role_word::iq, 1, 188, 80, 132},
         {model::role_word::anti_poison, 1, 188, 104, 132},
         {model::role_word::unusual, 1, 188, 128, 132},
+        {model::role_word::sexual, 1, 188, 152, 132},
     }};
     for (const auto& attribute : kAttributeCells) {
         auto changed = protagonist;
@@ -4096,6 +4097,20 @@ void check_renderer(const std::filesystem::path& data_root) {
         }
     }
     OL_CHECK(has_combined_mp_type_highlight);
+
+    auto female = protagonist;
+    female.set_word(model::role_word::sexual, 1);
+    OL_CHECK(basic_renderer.render_attributes(female, name, framebuffer));
+    bool sexual_is_not_highlighted = true;
+    for (int y = 152; y < 168; ++y) {
+        for (int x = 188; x < 320; ++x) {
+            const auto index = static_cast<std::size_t>(y * 320 + x);
+            sexual_is_not_highlighted = sexual_is_not_highlighted &&
+                framebuffer.pixels()[index] !=
+                    render::legacy_color::text::attribute_highlight.foreground;
+        }
+    }
+    OL_CHECK(sexual_is_not_highlighted);
 }
 
 using UiCheck = void (*)(const std::filesystem::path&);

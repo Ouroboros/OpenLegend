@@ -18,6 +18,10 @@ Menu 首次按键立即导航，每次切向或方向回退均重新等待 `menu
 
 菜单等待取下一 BIOS tick 与下一 menu deadline 的较小值，并允许 SDL 事件提前唤醒；只有真实 BIOS tick 才调用游戏 `advance()`，menu deadline 与 SDL 唤醒均不得推进动画、战斗或淡变时钟。配置默认值为 `movement_repeat_delay_ms=500`、`menu_repeat_delay_ms=500`、`menu_repeat_interval_ms=55`；两个 delay 允许零，interval 必须为正。
 
+## 新游戏属性附加显示
+
+属性确认页仍保留机器 `sub_2711A` 的 17 项随机写入与 RNG 消费，不把固定字段并入随机或最高值比较。`main` 在第三列第六行额外显示角色记录 `sexual` 字段为 `性別：男／女`；已知值 `0/1` 映射为男／女，其他值显示原始数字。该显示不修改角色记录、重掷逻辑或 `original`。
+
 ## 扩展死亡存档列表
 
 `main` 保留原死亡菜单三槽状态机作为 `original` 基线，但在 `LegacyGameRuntime` 检测到死亡菜单后改由 `DeathMenuController` 接管宿主输入。底层画面覆盖为“載入進度／離開睡覺去”两项：前者进入 `001–999` SAVE LIST，后者继续使用原文确认及仅大写 `Y` 退出。该分流不写入 `SceneSession` 的机器选择状态，也不改变 `original`。
