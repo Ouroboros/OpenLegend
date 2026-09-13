@@ -800,6 +800,16 @@ void LegacyGameRuntime::handle_world_step_result(
         " y=" + std::to_string(result.world_y) +
         " frame=" + std::to_string(world_session_->player_frame()));
     if (result.kind == world::WorldStepKind::enter_scene) {
+        if (const auto* ranger = game_state_.ranger();
+            ranger != nullptr && result.scene_id >= 0 &&
+            static_cast<std::size_t>(result.scene_id) < ranger->scenes.size()) {
+            const auto music = ranger->scenes[static_cast<std::size_t>(
+                result.scene_id)].word(model::scene_metadata_word::entrance_music);
+            if (music >= 0) {
+                scene_audio_commands_.push_back(scene::SceneAudioCommand{
+                    scene::SceneAudioCommand::Kind::prepare_music, music});
+            }
+        }
         scene_request_ = result.scene_id;
         world_move_continuation_ = result.continuation;
         world_scene_transition_pending_ = true;
@@ -1157,7 +1167,7 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
             battle_session_->frame_rendered();
         if (start_music) {
             scene_audio_commands_.push_back(scene::SceneAudioCommand{
-                scene::SceneAudioCommand::Kind::music,
+                scene::SceneAudioCommand::Kind::transition_music,
                 battle_session_->data().music_id()});
         }
         battle_session_->finish_presented_tick(bios_tick);
@@ -2397,6 +2407,9 @@ bool LegacyGameRuntime::start_battle(
         battle_session_.reset();
         return false;
     }
+    scene_audio_commands_.push_back(scene::SceneAudioCommand{
+        scene::SceneAudioCommand::Kind::prepare_music,
+        battle_session_->data().music_id()});
     set_view(LegacyGameView::battle, "battle session started");
     begin_battle_transition_if_ready();
     diagnostics::log_info(
@@ -2427,6 +2440,21 @@ void LegacyGameRuntime::finish_battle_if_ready() {
         battle_session_ == nullptr || !battle_session_->finished()) {
         return;
     }
+    std::int16_t restore_music = 0;
+    if (const auto* ranger = game_state_.ranger();
+        ranger != nullptr && scene_session_ != nullptr &&
+        scene_session_->scene_id() >= 0 &&
+        static_cast<std::size_t>(scene_session_->scene_id()) <
+            ranger->scenes.size()) {
+        restore_music = ranger->scenes[static_cast<std::size_t>(
+            scene_session_->scene_id())].word(
+                model::scene_metadata_word::entrance_music);
+        if (restore_music < 0) {
+            restore_music = 0;
+        }
+    }
+    scene_audio_commands_.push_back(scene::SceneAudioCommand{
+        scene::SceneAudioCommand::Kind::prepare_music, restore_music});
     battle_transition_phase_ = BattleTransitionPhase::fade_to_black_after_complete;
     begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
     diagnostics::log_info(
@@ -2458,7 +2486,7 @@ void LegacyGameRuntime::complete_battle_after_fade() {
     battle_session_.reset();
     battle_request_.reset();
     scene_audio_commands_.push_back(scene::SceneAudioCommand{
-        scene::SceneAudioCommand::Kind::music, restore_music});
+        scene::SceneAudioCommand::Kind::transition_music, restore_music});
     if (scene_session_ == nullptr) {
         show_error("No scene session is available after battle", LegacyGameView::world);
         return;

@@ -141,7 +141,12 @@ struct SceneStepResult {
 };
 
 struct SceneAudioCommand {
-    enum class Kind { music, wave } kind{Kind::music};
+    enum class Kind {
+        music,
+        prepare_music,
+        transition_music,
+        wave,
+    } kind{Kind::music};
     std::int16_t id{};
     bool force{};
 
@@ -492,7 +497,9 @@ private:
 
     NODISCARD SceneStepResult complete_scene_jump();
 
-    void queue_scene_music(std::size_t metadata_word);
+    void queue_scene_music(
+        std::size_t metadata_word,
+        SceneAudioCommand::Kind kind = SceneAudioCommand::Kind::transition_music);
 
     NODISCARD bool load_scene_sprites();
 

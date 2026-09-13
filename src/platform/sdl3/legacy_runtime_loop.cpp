@@ -16,6 +16,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
+#include "openlegend/audio/legacy_audio_worker.hpp"
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/motion/authoritative_motion.hpp"
@@ -78,7 +79,13 @@ struct FadeTiming {
     std::uint64_t sequence{};
     app::LegacyGameView start_view{app::LegacyGameView::title};
     std::chrono::steady_clock::time_point started_at{};
+    std::chrono::nanoseconds motion_time{};
+    std::chrono::nanoseconds input_time{};
+    std::chrono::nanoseconds logic_time{};
+    std::chrono::nanoseconds vsync_time{};
+    std::chrono::nanoseconds prepare_time{};
     std::chrono::nanoseconds presentation_time{};
+    std::chrono::nanoseconds post_present_time{};
     std::chrono::nanoseconds wait_time{};
     std::chrono::nanoseconds configured_frame_delay{};
     std::size_t presented_frames{};
@@ -92,7 +99,13 @@ void begin_fade_timing(
     ++timing.sequence;
     timing.start_view = view;
     timing.started_at = std::chrono::steady_clock::now();
+    timing.motion_time = std::chrono::nanoseconds::zero();
+    timing.input_time = std::chrono::nanoseconds::zero();
+    timing.logic_time = std::chrono::nanoseconds::zero();
+    timing.vsync_time = std::chrono::nanoseconds::zero();
+    timing.prepare_time = std::chrono::nanoseconds::zero();
     timing.presentation_time = std::chrono::nanoseconds::zero();
+    timing.post_present_time = std::chrono::nanoseconds::zero();
     timing.wait_time = std::chrono::nanoseconds::zero();
     timing.configured_frame_delay = configured_frame_delay;
     timing.presented_frames = 0U;
@@ -108,14 +121,30 @@ void finish_fade_timing(
     FadeTiming& timing,
     const app::LegacyGameView end_view) {
     const auto total_time = std::chrono::steady_clock::now() - timing.started_at;
-    const auto accounted_time = timing.presentation_time + timing.wait_time;
+    const auto accounted_time =
+        timing.motion_time + timing.input_time + timing.logic_time +
+        timing.vsync_time + timing.prepare_time + timing.presentation_time +
+        timing.post_present_time + timing.wait_time;
     const auto other_time = total_time > accounted_time
         ? total_time - accounted_time
         : std::chrono::steady_clock::duration::zero();
     const auto total_us =
         std::chrono::duration_cast<std::chrono::microseconds>(total_time).count();
+    const auto motion_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.motion_time).count();
+    const auto input_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.input_time).count();
+    const auto logic_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.logic_time).count();
+    const auto vsync_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.vsync_time).count();
+    const auto prepare_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.prepare_time).count();
     const auto presentation_us = std::chrono::duration_cast<std::chrono::microseconds>(
         timing.presentation_time).count();
+    const auto post_present_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            timing.post_present_time).count();
     const auto wait_us = std::chrono::duration_cast<std::chrono::microseconds>(
         timing.wait_time).count();
     const auto other_us =
@@ -129,7 +158,13 @@ void finish_fade_timing(
         " end_view=" + std::string{game_view_name(end_view)} +
         " frames=" + std::to_string(timing.presented_frames) +
         " total_us=" + std::to_string(total_us) +
+        " motion_us=" + std::to_string(motion_us) +
+        " input_us=" + std::to_string(input_us) +
+        " logic_us=" + std::to_string(logic_us) +
+        " vsync_us=" + std::to_string(vsync_us) +
+        " prepare_us=" + std::to_string(prepare_us) +
         " present_us=" + std::to_string(presentation_us) +
+        " post_present_us=" + std::to_string(post_present_us) +
         " wait_us=" + std::to_string(wait_us) +
         " other_us=" + std::to_string(other_us) +
         " average_present_us=" + std::to_string(average_presentation_us) +
@@ -141,20 +176,25 @@ void finish_fade_timing(
 
 void dispatch_audio_commands(
     app::LegacyGameRuntime& game,
-    audio::LegacyAudioController& legacy_audio) {
+    audio::LegacyAudioWorker& audio_worker) {
     for (const auto& command : game.take_scene_audio_commands()) {
         if (command.id < 0) {
             continue;
         }
-        if (command.kind == scene::SceneAudioCommand::Kind::music) {
-            const auto music_id = static_cast<std::size_t>(command.id);
-            if (command.force || legacy_audio.current_music() != music_id) {
-                static_cast<void>(legacy_audio.play_music(music_id));
-            }
-        } else {
-            static_cast<void>(legacy_audio.play_sample(
-                audio::SampleBank::effect,
-                static_cast<std::size_t>(command.id)));
+        const auto id = static_cast<std::size_t>(command.id);
+        switch (command.kind) {
+        case scene::SceneAudioCommand::Kind::music:
+            audio_worker.play_music(id, command.force);
+            break;
+        case scene::SceneAudioCommand::Kind::prepare_music:
+            audio_worker.prepare_music(id, command.force);
+            break;
+        case scene::SceneAudioCommand::Kind::transition_music:
+            audio_worker.switch_music(id, command.force);
+            break;
+        case scene::SceneAudioCommand::Kind::wave:
+            audio_worker.play_sample(audio::SampleBank::effect, id);
+            break;
         }
     }
     for (const auto& command : game.take_battle_audio_commands()) {
@@ -166,13 +206,19 @@ void dispatch_audio_commands(
             : audio::SampleBank::effect;
         const auto sample_id = static_cast<std::size_t>(command.sample_id);
         if (command.action == battle::BattleAudioAction::load) {
-            static_cast<void>(legacy_audio.load_sample(bank, sample_id));
+            audio_worker.load_sample(bank, sample_id);
         } else if (
             command.action == battle::BattleAudioAction::start_loaded) {
-            static_cast<void>(legacy_audio.start_loaded_sample(bank, sample_id));
+            audio_worker.start_loaded_sample(bank, sample_id);
         } else {
-            static_cast<void>(legacy_audio.play_sample(bank, sample_id));
+            audio_worker.play_sample(bank, sample_id);
         }
+    }
+}
+
+void report_audio_errors(audio::LegacyAudioWorker& audio_worker) {
+    for (const auto& error : audio_worker.take_errors()) {
+        diagnostics::log_warning("audio command failed: " + error);
     }
 }
 
@@ -182,12 +228,12 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
     SdlRuntimePlatform& platform,
     const LegacyRuntimeLoopSettings& settings) {
     audio::AudioMixer audio_mixer;
+    SdlAudioDevice audio_device{audio_mixer};
     audio::SystemAudioDelay audio_delay;
-    audio::LegacyAudioController legacy_audio{
+    audio::LegacyAudioWorker audio_worker{
         resource::DataRoot{std::filesystem::current_path()},
         audio_mixer,
         audio_delay};
-    SdlAudioDevice audio_device{audio_mixer};
     if (!audio_mixer.valid()) {
         diagnostics::log_warning(
             "XMI synthesizer unavailable; audio disabled: " +
@@ -222,10 +268,7 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         }
         const bool native_motion_enabled =
             settings.movement_step_duration > std::chrono::nanoseconds::zero();
-        if (!legacy_audio.play_music(16U)) {
-            diagnostics::log_warning(
-                "title music unavailable: " + legacy_audio.error());
-        }
+        audio_worker.switch_music(16U);
 
         LegacyInputCoordinator input_coordinator{game};
         input::KeyRepeatController key_repeat{
@@ -256,6 +299,7 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         bool vsync_disable_warning_logged = false;
         bool running = true;
         while (running) {
+            const bool measure_fade_iteration = fade_timing.active;
             const auto motion_time = std::chrono::steady_clock::now();
             const auto active_motion_sequence = game.motion_sequence();
             const bool motion_active_at_frame_start =
@@ -271,6 +315,10 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 previous_motion_time = std::chrono::steady_clock::now();
                 timed_motion_sequence = game.motion_sequence();
             }
+            const auto motion_finished_at = std::chrono::steady_clock::now();
+            if (measure_fade_iteration) {
+                fade_timing.motion_time += motion_finished_at - motion_time;
+            }
             const auto frame_tick = tick_source.tick();
             const auto fade_frame_tick = fade_frame_source.tick();
             const auto input_now = std::chrono::steady_clock::now();
@@ -281,6 +329,10 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 platform, key_repeat, frame_tick, running);
             input_coordinator.dispatch_repeats(key_repeat, frame_tick);
             input_coordinator.apply_game_input();
+            const auto input_finished_at = std::chrono::steady_clock::now();
+            if (measure_fade_iteration) {
+                fade_timing.input_time += input_finished_at - motion_finished_at;
+            }
 
             const bool motion_completed_this_frame =
                 motion_active_at_frame_start && !game.motion_active();
@@ -301,6 +353,10 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 timed_motion_sequence = motion_sequence;
                 previous_motion_time = std::chrono::steady_clock::now();
             }
+            const auto logic_finished_at = std::chrono::steady_clock::now();
+            if (measure_fade_iteration) {
+                fade_timing.logic_time += logic_finished_at - input_finished_at;
+            }
             if (motion_active && !motion_was_active && motion_vsync_available) {
                 motion_vsync_available = platform.set_vsync_enabled(true);
                 if (!motion_vsync_status_logged) {
@@ -318,6 +374,10 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                         "unable to disable renderer VSync after native motion; retrying");
                     vsync_disable_warning_logged = true;
                 }
+            }
+            const auto vsync_finished_at = std::chrono::steady_clock::now();
+            if (measure_fade_iteration) {
+                fade_timing.vsync_time += vsync_finished_at - logic_finished_at;
             }
             const bool weather_active = game.weather_presentation_active();
             const auto weather_revision = game.weather_revision();
@@ -402,7 +462,13 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                 }
             }
             input_coordinator.after_advance(key_repeat);
-            dispatch_audio_commands(game, legacy_audio);
+            dispatch_audio_commands(game, audio_worker);
+            report_audio_errors(audio_worker);
+            const auto prepare_finished_at = std::chrono::steady_clock::now();
+            if (measure_fade_iteration) {
+                fade_timing.prepare_time +=
+                    prepare_finished_at - vsync_finished_at;
+            }
 
             running = running && game.running();
             if (running) {
@@ -413,9 +479,11 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                     platform,
                     !weather_active || logic_advanced,
                     weather_offset_x);
+                const auto presentation_finished_at =
+                    std::chrono::steady_clock::now();
                 if (fade_frame && fade_timing.active) {
                     fade_timing.presentation_time +=
-                        std::chrono::steady_clock::now() - presentation_started_at;
+                        presentation_finished_at - presentation_started_at;
                     ++fade_timing.presented_frames;
                 }
                 if (presentation_status != 0) {
@@ -450,6 +518,11 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                     "frame presented tick=" + std::to_string(frame_tick) +
                     " view=" +
                     std::to_string(static_cast<int>(game.view())));
+                if (measure_fade_iteration && fade_timing.active) {
+                    fade_timing.post_present_time +=
+                        std::chrono::steady_clock::now() -
+                        presentation_finished_at;
+                }
             }
 
             if (settings.smoke_test) {
@@ -538,7 +611,7 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
     }
 
     if (fade_music_on_exit) {
-        legacy_audio.fade_out_music();
+        audio_worker.fade_out_music();
     }
     return result;
 }

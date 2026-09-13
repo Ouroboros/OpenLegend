@@ -13,6 +13,7 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/audio/legacy_audio.hpp"
+#include "openlegend/audio/legacy_audio_worker.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
 
@@ -165,6 +166,15 @@ void run_controller_tests(const openlegend::resource::DataRoot& root) {
     OL_CHECK(port.calls.size() == before_invalid);
 
     port.calls.clear();
+    controller.begin_music_fade_out();
+    OL_CHECK(controller.switch_music(1U));
+    OL_CHECK(port.calls.size() == 3U);
+    OL_CHECK(port.calls[0].operation == "fade_music");
+    OL_CHECK(port.calls[1].operation == "end_music");
+    OL_CHECK(port.calls[2].operation == "start_music");
+    OL_CHECK(controller.current_music() == 1U);
+
+    port.calls.clear();
     OL_CHECK(controller.load_sample(SampleBank::attack, 0U));
     OL_CHECK(port.calls.size() == 1U);
     OL_CHECK(port.calls[0].operation == "end_sample");
@@ -192,6 +202,55 @@ void run_controller_tests(const openlegend::resource::DataRoot& root) {
     OL_CHECK(port.calls[1].slot == 2U);
     OL_CHECK(port.calls[1].bytes == 11158U);
     OL_CHECK(port.calls[1].volume == 400);
+}
+
+void run_worker_tests(const openlegend::resource::DataRoot& root) {
+    using namespace openlegend::audio;
+
+    RecordingAudio port;
+    RecordingDelay delay{port.calls};
+    LegacyAudioWorker worker{root, port, delay};
+
+    worker.play_music(0U);
+    worker.play_music(0U);
+    worker.play_sample(SampleBank::effect, 20U);
+    worker.wait_until_idle();
+
+    OL_CHECK(port.calls.size() == 6U);
+    OL_CHECK(port.calls[0].operation == "fade_music");
+    OL_CHECK(port.calls[1].operation == "delay");
+    OL_CHECK(port.calls[2].operation == "end_music");
+    OL_CHECK(port.calls[3].operation == "start_music");
+    OL_CHECK(port.calls[4].operation == "end_sample");
+    OL_CHECK(port.calls[5].operation == "start_sample");
+    OL_CHECK(worker.take_errors().empty());
+
+    port.calls.clear();
+    worker.play_music(0U, true);
+    worker.wait_until_idle();
+    OL_CHECK(port.calls.size() == 4U);
+
+    port.calls.clear();
+    worker.prepare_music(1U);
+    worker.switch_music(1U);
+    worker.wait_until_idle();
+    OL_CHECK(port.calls.size() == 3U);
+    OL_CHECK(port.calls[0].operation == "fade_music");
+    OL_CHECK(port.calls[1].operation == "end_music");
+    OL_CHECK(port.calls[2].operation == "start_music");
+
+    port.calls.clear();
+    worker.prepare_music(1U);
+    worker.switch_music(1U);
+    worker.wait_until_idle();
+    OL_CHECK(port.calls.empty());
+
+    worker.play_music(kLegacyMusicCount);
+    worker.wait_until_idle();
+    OL_CHECK(port.calls.empty());
+    const auto errors = worker.take_errors();
+    OL_CHECK(errors.size() == 1U);
+    OL_CHECK(errors.front().find("music 24") != std::string::npos);
 }
 
 void run_asset_tests(const openlegend::resource::DataRoot& root) {
@@ -294,6 +353,7 @@ int main() {
     const openlegend::resource::DataRoot root{
         openlegend::test::game_data_root()};
     run_controller_tests(root);
+    run_worker_tests(root);
     run_asset_tests(root);
     run_mixer_tests();
     return openlegend::test::failures == 0 ? 0 : 1;

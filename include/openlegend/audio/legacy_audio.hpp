@@ -78,7 +78,11 @@ public:
 
     NODISCARD bool play_music(std::size_t zero_based_index);
 
+    NODISCARD bool switch_music(std::size_t zero_based_index);
+
     void fade_in_music() noexcept;
+
+    void begin_music_fade_out() noexcept;
 
     void fade_out_music() noexcept;
 

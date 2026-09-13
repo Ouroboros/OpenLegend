@@ -26,8 +26,17 @@ bool LegacyAudioController::play_music(const std::size_t zero_based_index) {
     }
 
     fade_out_music();
-    audio_.end_music();
+    return switch_music(zero_based_index);
+}
 
+bool LegacyAudioController::switch_music(const std::size_t zero_based_index) {
+    error_.clear();
+    if (zero_based_index >= kLegacyMusicCount) {
+        error_ = "music index is outside GAME01.XMI..GAME24.XMI";
+        return false;
+    }
+
+    audio_.end_music();
     auto file = data_root_.read(music_filename(zero_based_index));
     if (!file) {
         error_ = std::move(file.error);
@@ -45,8 +54,12 @@ void LegacyAudioController::fade_in_music() noexcept {
     audio_.fade_music(kLegacyMaximumVolume, std::chrono::milliseconds{2000});
 }
 
-void LegacyAudioController::fade_out_music() noexcept {
+void LegacyAudioController::begin_music_fade_out() noexcept {
     audio_.fade_music(0, std::chrono::milliseconds{2000});
+}
+
+void LegacyAudioController::fade_out_music() noexcept {
+    begin_music_fade_out();
     delay_.delay(std::chrono::milliseconds{1000});
 }
 

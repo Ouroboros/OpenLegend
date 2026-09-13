@@ -1943,7 +1943,8 @@ void check_scene_loop_transitions(const std::filesystem::path& root) {
     OL_CHECK(exit_snapshot.ranger.header.word(openlegend::model::header_word::in_sub_map) == 0);
     const auto exit_audio = exit_session.take_audio_commands();
     const std::vector<SceneAudioCommand> expected_exit_audio{
-        {SceneAudioCommand::Kind::music, 10}};
+        {SceneAudioCommand::Kind::prepare_music, 10},
+        {SceneAudioCommand::Kind::transition_music, 10}};
     OL_CHECK(exit_audio == expected_exit_audio);
 
     auto jump_snapshot = load_baseline(root);
@@ -2019,7 +2020,8 @@ void check_scene_exit_music_override(const std::filesystem::path& root) {
     OL_CHECK(result.kind == SceneStepKind::fade_to_black);
     OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::return_world);
     const std::vector<SceneAudioCommand> expected{
-        {SceneAudioCommand::Kind::music, 3, true}};
+        {SceneAudioCommand::Kind::prepare_music, 3, true},
+        {SceneAudioCommand::Kind::transition_music, 3, true}};
     OL_CHECK(session.take_audio_commands() == expected);
 }
 
@@ -3088,7 +3090,7 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     openlegend::scene::SceneSession wave_session{
         data_root, wave_snapshot, wave_random, 7};
     const std::vector<openlegend::scene::SceneAudioCommand> expected_entrance_audio{
-        {openlegend::scene::SceneAudioCommand::Kind::music, 12}};
+        {openlegend::scene::SceneAudioCommand::Kind::transition_music, 12}};
     OL_CHECK(wave_session.take_audio_commands() == expected_entrance_audio);
     const auto wave_result = wave_session.begin_event(389, 0, 25, 48);
     OL_CHECK(wave_result.kind == SceneStepKind::dialogue);

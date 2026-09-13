@@ -849,7 +849,9 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
         snapshot_.ranger.header.set_word(model::header_word::in_sub_map, 0);
         if (exit_music_override_ >= 0) {
             audio_commands_.push_back(SceneAudioCommand{
-                SceneAudioCommand::Kind::music, exit_music_override_, true});
+                SceneAudioCommand::Kind::transition_music,
+                exit_music_override_,
+                true});
         } else {
             queue_scene_music(model::scene_metadata_word::exit_music);
         }
@@ -1856,6 +1858,16 @@ SceneStepResult SceneSession::resolve_scene_transition(const SceneStepKind fallb
                 "scene exit scene=" + std::to_string(scene_id_) +
                 " x=" + std::to_string(scene_x_) +
                 " y=" + std::to_string(scene_y_));
+            if (exit_music_override_ >= 0) {
+                audio_commands_.push_back(SceneAudioCommand{
+                    SceneAudioCommand::Kind::prepare_music,
+                    exit_music_override_,
+                    true});
+            } else {
+                queue_scene_music(
+                    model::scene_metadata_word::exit_music,
+                    SceneAudioCommand::Kind::prepare_music);
+            }
             continuation_ = PendingContinuation::scene_exit;
             pending_ = current_result(SceneStepKind::fade_to_black);
             return pending_;
@@ -1874,6 +1886,13 @@ SceneStepResult SceneSession::resolve_scene_transition(const SceneStepKind fallb
     const auto use_jump_entrance =
         metadata.word(model::scene_metadata_word::main_entrance_x_1) == 0 &&
         metadata.word(model::scene_metadata_word::main_entrance_y_1) == 0;
+    const auto jump_music =
+        snapshot_.ranger.scenes[static_cast<std::size_t>(jump_scene)].word(
+            model::scene_metadata_word::entrance_music);
+    if (jump_music >= 0) {
+        audio_commands_.push_back(SceneAudioCommand{
+            SceneAudioCommand::Kind::prepare_music, jump_music});
+    }
     pending_jump_ = PendingJump{jump_scene, use_jump_entrance};
     continuation_ = PendingContinuation::scene_jump;
     pending_ = current_result(SceneStepKind::fade_to_black);
@@ -1932,7 +1951,8 @@ SceneStepResult SceneSession::complete_scene_jump() {
     return pending_;
 }
 
-void SceneSession::queue_scene_music(const std::size_t metadata_word) {
+void SceneSession::queue_scene_music(
+    const std::size_t metadata_word, const SceneAudioCommand::Kind kind) {
     if (static_cast<std::size_t>(scene_id_) >= snapshot_.ranger.scenes.size()) {
         return;
     }
@@ -1941,7 +1961,7 @@ void SceneSession::queue_scene_music(const std::size_t metadata_word) {
     if (music < 0) {
         return;
     }
-    audio_commands_.push_back(SceneAudioCommand{SceneAudioCommand::Kind::music, music});
+    audio_commands_.push_back(SceneAudioCommand{kind, music});
 }
 
 void SceneSession::cycle_palette() {

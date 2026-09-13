@@ -3272,6 +3272,9 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(session != nullptr && !session->grants_experience());
     OL_CHECK(session != nullptr &&
              session->phase() == BattleSessionPhase::initial_fade_to_black);
+    OL_CHECK((game.take_scene_audio_commands() ==
+              std::vector<scene::SceneAudioCommand>{
+                  {scene::SceneAudioCommand::Kind::prepare_music, 7, false}}));
     OL_CHECK(game.handle_key(0x0DU, false, false) == app::LegacyKeyStateReset::none);
 
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
@@ -3294,7 +3297,7 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     game.finish_presented_tick(100U);
     const auto battle_music = game.take_scene_audio_commands();
     OL_CHECK((battle_music == std::vector<scene::SceneAudioCommand>{
-        {scene::SceneAudioCommand::Kind::music, 7, false}}));
+        {scene::SceneAudioCommand::Kind::transition_music, 7, false}}));
     OL_CHECK(session != nullptr && session->phase() == BattleSessionPhase::initial_fade);
     if (session == nullptr) {
         return;
@@ -3392,7 +3395,11 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     session = LegacyGameRuntimeTestAccess::battle_session(game);
     OL_CHECK(session != nullptr && session->finished());
     OL_CHECK(game.view() == app::LegacyGameView::battle);
-    OL_CHECK(game.take_scene_audio_commands().empty());
+    OL_CHECK((game.take_scene_audio_commands() ==
+              std::vector<scene::SceneAudioCommand>{
+                  {scene::SceneAudioCommand::Kind::prepare_music,
+                   scene_music,
+                   false}}));
     const auto frozen_battle_hash = fnv1a64(game.framebuffer().pixels());
 
     for (std::size_t frame = 0U; frame < 64U; ++frame) {
@@ -3408,7 +3415,7 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(!game.battle_request().has_value());
     OL_CHECK(LegacyGameRuntimeTestAccess::battle_session(game) == nullptr);
     OL_CHECK((game.take_scene_audio_commands() == std::vector<scene::SceneAudioCommand>{
-        {scene::SceneAudioCommand::Kind::music, scene_music, false}}));
+        {scene::SceneAudioCommand::Kind::transition_music, scene_music, false}}));
 }
 
 void check_scene_load_runtime(const std::filesystem::path& data_root) {
