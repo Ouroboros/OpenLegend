@@ -348,6 +348,8 @@ LegacyGameRuntime::LegacyGameRuntime(
       default_name_input_method_(name_input_method),
       movement_step_duration_(
           std::max(movement_step_duration, std::chrono::nanoseconds::zero())),
+      weather_presentation_enabled_(
+          movement_step_duration_ > std::chrono::nanoseconds::zero()),
       basic_renderer_(data_root_),
       modern_ui_renderer_(data_root_),
       startup_resources_(data_root_),
@@ -546,8 +548,13 @@ bool LegacyGameRuntime::render_motion_weather(
         scene_session_ != nullptr;
 }
 
+void LegacyGameRuntime::set_weather_presentation_enabled(
+    const bool enabled) noexcept {
+    weather_presentation_enabled_ = enabled;
+}
+
 bool LegacyGameRuntime::weather_presentation_active() const noexcept {
-    return movement_step_duration_ > std::chrono::nanoseconds::zero() &&
+    return weather_presentation_enabled_ &&
         view_ == LegacyGameView::world && world_session_ != nullptr &&
         world_session_->weather_active() && world_or_scene_input_active() &&
         scene_effect_kind_ == SceneEffectKind::none;

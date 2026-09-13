@@ -266,6 +266,7 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             result.status = 5;
             return result;
         }
+        game.set_weather_presentation_enabled(true);
         const bool native_motion_enabled =
             settings.movement_step_duration > std::chrono::nanoseconds::zero();
         audio_worker.switch_music(16U);

@@ -178,6 +178,8 @@ public:
         render::RgbaFramebuffer& screen_effect,
         const compat::LegacyPalette& palette) const;
 
+    void set_weather_presentation_enabled(bool enabled) noexcept;
+
     NODISCARD bool weather_presentation_active() const noexcept;
 
     NODISCARD std::uint64_t weather_revision() const noexcept;
@@ -460,6 +462,7 @@ private:
     resource::DataRoot data_root_;
     input::NameInputMethod default_name_input_method_{input::NameInputMethod::legacy};
     std::chrono::nanoseconds movement_step_duration_{};
+    bool weather_presentation_enabled_{};
     motion::AuthoritativeMotion authoritative_motion_;
     NativeMotionDomain motion_domain_{NativeMotionDomain::none};
     std::uint64_t native_motion_sequence_{};

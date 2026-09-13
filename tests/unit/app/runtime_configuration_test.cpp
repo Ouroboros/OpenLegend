@@ -156,6 +156,7 @@ void test_runtime_configuration_root() {
         "level = 'debug'\n"
         "\n[input]\n"
         "name_entry = 'modern'\n"
+        "smooth_movement = false\n"
         "movement_repeat_delay_ms = 25\n"
         "menu_repeat_delay_ms = 30\n"
         "menu_repeat_interval_ms = 35\n"
@@ -202,6 +203,7 @@ void test_runtime_configuration_root() {
     OL_CHECK(configuration.input.status == InputConfigurationStatus::ready);
     OL_CHECK(configuration.input.name_input_method ==
         openlegend::input::NameInputMethod::modern);
+    OL_CHECK(!configuration.input.smooth_movement);
     OL_CHECK(configuration.input.movement_repeat_delay == std::chrono::milliseconds{25});
     OL_CHECK(configuration.input.menu_repeat_delay == std::chrono::milliseconds{30});
     OL_CHECK(configuration.input.menu_repeat_interval == std::chrono::milliseconds{35});
@@ -382,6 +384,7 @@ void test_input_configuration() {
     const auto missing = load();
     OL_CHECK(missing.status == InputConfigurationStatus::read_failed);
     OL_CHECK(missing.name_input_method == openlegend::input::NameInputMethod::legacy);
+    OL_CHECK(missing.smooth_movement);
     OL_CHECK(missing.movement_repeat_delay == 400ms);
     OL_CHECK(missing.menu_repeat_delay == 450ms);
     OL_CHECK(missing.menu_repeat_interval == 60ms);
@@ -389,6 +392,7 @@ void test_input_configuration() {
     tree.write_configuration(
         "[input]\n"
         "name_entry = 'modern'\n"
+        "smooth_movement = false\n"
         "movement_repeat_delay_ms = 25\n"
         "menu_repeat_delay_ms = 30\n"
         "menu_repeat_interval_ms = 35\n");
@@ -396,6 +400,7 @@ void test_input_configuration() {
     OL_CHECK(configured.status == InputConfigurationStatus::ready);
     OL_CHECK(configured.loaded_from_file);
     OL_CHECK(configured.name_input_method == openlegend::input::NameInputMethod::modern);
+    OL_CHECK(!configured.smooth_movement);
     OL_CHECK(configured.movement_repeat_delay == 25ms);
     OL_CHECK(configured.menu_repeat_delay == 30ms);
     OL_CHECK(configured.menu_repeat_interval == 35ms);
@@ -405,6 +410,7 @@ void test_input_configuration() {
     OL_CHECK(method_only.status == InputConfigurationStatus::ready);
     OL_CHECK(method_only.loaded_from_file);
     OL_CHECK(method_only.name_input_method == openlegend::input::NameInputMethod::modern);
+    OL_CHECK(method_only.smooth_movement);
     OL_CHECK(method_only.movement_repeat_delay == 400ms);
     OL_CHECK(method_only.menu_repeat_delay == 450ms);
     OL_CHECK(method_only.menu_repeat_interval == 60ms);
@@ -417,6 +423,7 @@ void test_input_configuration() {
     OL_CHECK(partial.status == InputConfigurationStatus::ready);
     OL_CHECK(partial.loaded_from_file);
     OL_CHECK(partial.name_input_method == openlegend::input::NameInputMethod::legacy);
+    OL_CHECK(partial.smooth_movement);
     OL_CHECK(partial.movement_repeat_delay == 0ms);
     OL_CHECK(partial.menu_repeat_delay == 450ms);
     OL_CHECK(partial.menu_repeat_interval == 1ms);
@@ -427,6 +434,11 @@ void test_input_configuration() {
     OL_CHECK(load().status == InputConfigurationStatus::invalid_name_input_method);
     tree.write_configuration("[input]\nname_entry = 7\n");
     OL_CHECK(load().status == InputConfigurationStatus::invalid_name_input_method);
+    tree.write_configuration("[input]\nsmooth_movement = false\n");
+    OL_CHECK(load().status == InputConfigurationStatus::ready);
+    OL_CHECK(!load().smooth_movement);
+    tree.write_configuration("[input]\nsmooth_movement = 'false'\n");
+    OL_CHECK(load().status == InputConfigurationStatus::invalid_smooth_movement);
     tree.write_configuration("[input]\nmovement_repeat_delay_ms = -1\n");
     OL_CHECK(load().status ==
         InputConfigurationStatus::invalid_movement_repeat_delay);
@@ -646,6 +658,7 @@ void test_window_errors_and_schema_writeback() {
         "\n[input]\nmenu_repeat_interval_ms = 55\n"
         "custom = 'discarded'\n"
         "name_entry = 'modern'\n"
+        "smooth_movement = true\n"
         "movement_repeat_delay_ms = 500\n"
         "menu_repeat_delay_ms = 500\n"
         "\n[paths]\ndata_dir = '" + utf8_bytes(relative_data) + "'\n"
@@ -687,13 +700,16 @@ void test_window_errors_and_schema_writeback() {
     OL_CHECK(save_directory_position < input_position);
     const auto name_input_position =
         saved.find("name_entry = \"modern\"", input_position);
+    const auto smooth_movement_position =
+        saved.find("smooth_movement = true", input_position);
     const auto movement_delay_position =
         saved.find("movement_repeat_delay_ms = 500", input_position);
     const auto menu_delay_position =
         saved.find("menu_repeat_delay_ms = 500", input_position);
     const auto menu_interval_position =
         saved.find("menu_repeat_interval_ms = 55", input_position);
-    OL_CHECK(name_input_position < movement_delay_position);
+    OL_CHECK(name_input_position < smooth_movement_position);
+    OL_CHECK(smooth_movement_position < movement_delay_position);
     OL_CHECK(movement_delay_position < menu_delay_position);
     OL_CHECK(menu_delay_position < menu_interval_position);
     OL_CHECK(menu_interval_position < window_position);

@@ -18,6 +18,12 @@ Menu 首次按键立即导航，每次切向或方向回退均重新等待 `menu
 
 菜单等待取下一 BIOS tick 与下一 menu deadline 的较小值，并允许 SDL 事件提前唤醒；只有真实 BIOS tick 才调用游戏 `advance()`，menu deadline 与 SDL 唤醒均不得推进动画、战斗或淡变时钟。配置默认值为 `movement_repeat_delay_ms=500`、`menu_repeat_delay_ms=500`、`menu_repeat_interval_ms=55`；两个 delay 允许零，interval 必须为正。
 
+## 原生平滑移动开关
+
+`[input].smooth_movement` 接受 TOML boolean，省略时默认为 `true`。启用时 SDL 宿主把一个 BIOS tick 作为手动移动段时长传入 `LegacyGameRuntime`，世界与场景使用 Q16.16 权威连续位置及 Native Presentation；移动速度、端点提交、事件、碰撞、脚本步行、存档格式与输入 repeat 均保持既有合同。
+
+设为 `false` 时宿主传入零移动段时长，停用 Native motion、恢复 Legacy 逐格移动和原端点呈现路径；该值只在启动时读取，不改变 CFG 的 `movement_repeat_delay_ms`，也不写入存档。天气 Presentation 使用独立时钟，不受此移动开关影响。
+
 ## 现代姓名输入法
 
 现代姓名输入法只属于 `main` 宿主增强，`original` 继续使用原版内建注音／英数状态机。`[input].name_entry` 接受 `legacy` 或 `modern`，省略时默认为 `legacy`；姓名页可按 F12 在当前会话内即时切换，不写回配置。

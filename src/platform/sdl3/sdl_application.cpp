@@ -295,6 +295,10 @@ void log_resolved_configuration(
             configuration.input.name_input_method == input::NameInputMethod::modern
                 ? "modern"
                 : "legacy"} +
+        " smooth_movement=" +
+        (configuration.input.smooth_movement
+             ? std::string{"true"}
+             : std::string{"false"}) +
         " movement_repeat_delay_ms=" +
         std::to_string(configuration.input.movement_repeat_delay.count()) +
         " menu_repeat_delay_ms=" +
@@ -442,7 +446,9 @@ int run_sdl_application(
                 configuration.timing.fade_frame_delay,
                 game_resolution,
                 smoke_test,
-                timing::kBiosTickDuration});
+                configuration.input.smooth_movement
+                    ? timing::kBiosTickDuration
+                    : std::chrono::nanoseconds::zero()});
         if (loop_result.status != 0) {
             return loop_result.status;
         }

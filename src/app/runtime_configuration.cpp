@@ -647,6 +647,16 @@ NODISCARD InputConfigurationLoadResult input_configuration_from_document(
             return result;
         }
     }
+    if (const toml::node* smooth_node =
+            input->get(InputConfigurationLoadResult::smooth_movement_toml_key);
+        smooth_node != nullptr) {
+        const auto smooth_movement = smooth_node->value<bool>();
+        if (!smooth_movement.has_value()) {
+            result.status = InputConfigurationStatus::invalid_smooth_movement;
+            return result;
+        }
+        result.smooth_movement = *smooth_movement;
+    }
     if (const toml::node* delay_node =
             input->get(InputConfigurationLoadResult::movement_repeat_delay_toml_key);
         delay_node != nullptr) {
@@ -1110,6 +1120,8 @@ std::string_view input_configuration_status_message(
         return "[input] must be a TOML table";
     case InputConfigurationStatus::invalid_name_input_method:
         return "[input] name_entry must be legacy or modern";
+    case InputConfigurationStatus::invalid_smooth_movement:
+        return "[input] smooth_movement must be a boolean";
     case InputConfigurationStatus::invalid_movement_repeat_delay:
         return "[input] movement_repeat_delay_ms must be a non-negative integer";
     case InputConfigurationStatus::invalid_menu_repeat_delay:

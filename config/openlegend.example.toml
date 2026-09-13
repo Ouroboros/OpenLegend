@@ -34,6 +34,13 @@ level = "info"
 
 name_entry = "legacy"
 
+# Native smooth movement is enabled by default. Set this to false to restore
+# legacy tile-by-tile movement. This does not change movement speed or saves.
+#
+# 原生平滑移动默认开启。设为 false 可恢复原版逐格移动；不会改变移动速度或存档。
+
+smooth_movement = true
+
 # Delay after the first movement before a held direction starts repeating.
 # Use 0 for immediate continuous movement.
 
