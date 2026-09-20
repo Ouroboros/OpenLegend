@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenLegend New Game+ 设计文档</title>
+  <style>
+    :root { color-scheme: light dark; --line:#8a8a8a55; --panel:#8881; --accent:#2f6feb; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior:auto; }
+    body { margin:0; font:16px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
+    main { max-width:1600px; margin:auto; padding:32px 24px 64px; display:grid; grid-template-columns:240px minmax(0,1fr); gap:0 32px; }
+    header { grid-column:1 / -1; }
+    nav { grid-column:1; grid-row:2 / span 20; position:sticky; top:16px; align-self:start; max-height:calc(100vh - 32px); overflow:auto; padding-right:12px; }
+    section,footer { grid-column:2; min-width:0; }
+    h1,h2,h3 { line-height:1.25; }
+    h2 { margin-top:2.2rem; padding-bottom:.35rem; border-bottom:1px solid var(--line); }
+    h3 { margin-top:1.6rem; }
+    code,pre { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    pre { padding:14px 16px; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    table { width:100%; border-collapse:collapse; margin:14px 0 24px; }
+    th,td { padding:8px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:var(--panel); }
+    td:not(:nth-child(2)), th:not(:nth-child(2)) { white-space:nowrap; }
+    .meta,.notice { padding:12px 16px; border-left:4px solid var(--accent); background:var(--panel); margin:16px 0; }
+    .plain { padding:10px 14px; border-left:4px solid #2da44e; background:var(--panel); }
+    .small { font-size:.9rem; opacity:.8; }
+    .status { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+    .status > div { padding:10px 12px; border:1px solid var(--line); border-radius:6px; }
+    nav ul { margin:0; padding:0; list-style:none; }
+    nav li { margin:.35rem 0; }
+    nav a { display:block; text-decoration:none; }
+    @media (max-width:800px) {
+      main { display:block; padding:20px 12px 48px; }
+      nav { position:static; max-height:none; padding-right:0; }
+      table { display:block; overflow:auto; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>OpenLegend New Game+ 设计文档</h1>
+    <p>本文件是正式的NG+设计文档。当前版本只纳入已经讨论并确认的<strong>人物等级经验、战斗经验奖励和秘笈修炼经验</strong>；尚未确认的其他NG+系统不写入本文。</p>
+    <div class="notice"><strong>实现原则：</strong>公式中的游戏数值必须来自当前资产、角色状态、存档、CFG或规则参数；除百分比基数100、零值和取整语义外，不得把原版当前数值直接写进运行时公式。本文列出的具体数值只用于标注原版数据和复算结果，禁止作为代码常量写死。</div>
+    <div class="status">
+      <div><strong>文件版本</strong><br>v2</div>
+      <div><strong>规则状态</strong><br>数值方案已确定；尚未实现</div>
+      <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
+      <div><strong>主要核对范围</strong><br>NG2～NG5</div>
+    </div>
+  </header>
+
+  <nav>
+    <h2>目录</h2>
+    <ul>
+      <li><a href="#facts">1. 数据事实与术语</a></li>
+      <li><a href="#level-cost">2. 人物升级需求</a></li>
+      <li><a href="#battle-reward">3. 战斗经验倍率</a></li>
+      <li><a href="#battle-table">4. 实际战斗练满场数</a></li>
+      <li><a href="#manual-rule">5. 秘笈修炼规则</a></li>
+      <li><a href="#manual-tables">6. 秘笈练满场数</a></li>
+      <li><a href="#persistence">7. 隐藏次数与持久化</a></li>
+      <li><a href="#boundaries">8. 边界与实现要求</a></li>
+    </ul>
+  </nav>
+
+  <section id="facts">
+    <h2>1. 数据事实与术语</h2>
+    <ul>
+      <li><code>WAR.STA</code>中的经验是<strong>整场战斗总经验</strong>，不是单个敌人的经验。</li>
+      <li>战斗结束后先按原规则确定胜负、存活资格和人数，再得到每名角色的原始个人奖励<code>e0</code>。</li>
+      <li>下文所有“战斗所需场数”均使用整场总经验且<strong>不做队伍分配</strong>；多人存活时，每人的实际经验还要先按原规则分配。</li>
+      <li>原版当前数据中，战斗99由5名番僧组成、整场经验450且可以重复触发，因此用作低收益可重复战斗样本；程序仍按战斗定义读取。</li>
+      <li>秘笈修炼经验指<code>item_experience</code>；它与战斗中使用武功获得的1／2点熟练度不是同一个系统。</li>
+    </ul>
+    <table>
+      <thead><tr><th>符号</th><th>运行时来源</th><th>原版当前值／默认配置</th></tr></thead>
+      <tbody>
+        <tr><td><code>n</code>、<code>Nmax</code></td><td>当前存档周目、CFG允许的最大周目</td><td>核对范围NG1～NG999</td></tr>
+        <tr><td><code>L0</code>、<code>E0(L)</code></td><td>原始人物经验门槛定义</td><td><code>L0=30</code>，<code>E0(30)=52000</code></td></tr>
+        <tr><td><code>role_level_step</code></td><td>NG+ CFG</td><td>30级／周目</td></tr>
+        <tr><td><code>WAR(w)</code></td><td><code>WAR.STA</code>战斗<code>w</code>的整场经验字段</td><td>例如战斗99为450</td></tr>
+        <tr><td><code>Bbase</code>、<code>B2</code>、<code>Bstep</code></td><td>原版一周目基准与NG+ CFG的人物战斗经验百分比</td><td>100%、150%、100个百分点／后续周目</td></tr>
+        <tr><td><code>Pr</code></td><td>当前规则集中的原版秘笈修炼奖励比例</td><td>80%</td></tr>
+        <tr><td><code>iq</code></td><td>当前角色资质字段</td><td>原版字段域0～100</td></tr>
+        <tr><td><code>A0</code>、<code>IqStep</code></td><td>当前规则集中的原版资质费用参数</td><td>7、15</td></tr>
+        <tr><td><code>M0</code>、<code>martial_level_step</code></td><td>原始武功等级上限、NG+ CFG</td><td>10、10级／周目</td></tr>
+        <tr><td><code>need(i)</code>、<code>magic(i)</code>、<code>effects(i)</code></td><td><code>RANGER.GRP</code>物品<code>i</code>的需求、关联武功和永久效果字段</td><td>第6节列出六个原版样本</td></tr>
+        <tr><td><code>H0</code></td><td>当前规则集中的原版无关联武功秘笈首次费用阶级</td><td>2</td></tr>
+        <tr><td><code>ItemCount</code>、<code>RetainedRoles</code></td><td>当前物品定义数量、NG+可控角色继承集合</td><td>200项、27名角色</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="level-cost">
+    <h2>2. 人物升级需求</h2>
+    <p>原始等级与经验门槛从游戏定义读取；原版当前数据中的30级、52000、4350、4200和150只用于说明与核对，不是运行时代码常量。</p>
+    <pre>L0 = 原始经验门槛表支持的最高等级
+E0(L) = 原始门槛表中等级L的累计经验
+Dlast = E0(L0)－E0(L0－1)                # 原始最后一级费用
+Dprev = E0(L0－1)－E0(L0－2)            # 原始倒数第二级费用
+Sbase = Dlast－Dprev                     # 原始末段每级增量
+
+本周等级上限：
+Lcap(n) = L0＋(n－1)×role_level_step
+
+L≥L0时：
+实际升级费用 D(L) = Dlast＋(L－L0＋1)×Sbase
+累计门槛 E(L＋1) = E(L)＋D(L)
+
+第n周目从起始等级练到上限的需求：
+C(n) = Σ D(L)，L=Lcap(n－1)…Lcap(n)－1</pre>
+    <p class="plain">程序先从原始门槛表拿到最后两级各自需要多少经验，再用它们的差值继续延伸后续等级。周目等级上限和每周新增等级数来自原始上限与CFG。下面的200250、335250等数字只是把默认门槛和默认每周增加30级代入公式后的结果；换游戏数据或等级步长时，程序必须重新计算。</p>
+    <pre>原版当前数据核对值（仅用于说明，不得硬编码）：
+L0=30，E0(30)=52000，Dlast=4350，Dprev=4200，Sbase=150
+role_level_step=30
+
+代入后才可化简为：
+D(L)=150L
+C(n)=135000n－69750，n≥2</pre>
+    <p><strong>原版当前数据下的派生校验：</strong></p>
+    <table>
+      <thead><tr><th>周目</th><th>战斗经验倍率 B(n)</th><th>等级区间</th><th>第一档费用</th><th>最后一档费用</th><th>本周练满所需经验</th></tr></thead>
+      <tbody>
+        <tr><td>NG2</td><td>150%</td><td>30→60</td><td>4500</td><td>8850</td><td>200250</td></tr>
+        <tr><td>NG3</td><td>250%</td><td>60→90</td><td>9000</td><td>13350</td><td>335250</td></tr>
+        <tr><td>NG4</td><td>350%</td><td>90→120</td><td>13500</td><td>17850</td><td>470250</td></tr>
+        <tr><td>NG5</td><td>450%</td><td>120→150</td><td>18000</td><td>22350</td><td>605250</td></tr>
+      </tbody>
+    </table>
+
+    <details>
+      <summary><strong>展开：原版当前数据下的NG2完整30→60派生费用</strong></summary>
+      <table>
+        <thead><tr><th>升级</th><th>本级费用</th><th>从30级开始累计</th></tr></thead>
+        <tbody>
+          <tr><td>30→31</td><td>4500</td><td>4500</td></tr><tr><td>31→32</td><td>4650</td><td>9150</td></tr>
+          <tr><td>32→33</td><td>4800</td><td>13950</td></tr><tr><td>33→34</td><td>4950</td><td>18900</td></tr>
+          <tr><td>34→35</td><td>5100</td><td>24000</td></tr><tr><td>35→36</td><td>5250</td><td>29250</td></tr>
+          <tr><td>36→37</td><td>5400</td><td>34650</td></tr><tr><td>37→38</td><td>5550</td><td>40200</td></tr>
+          <tr><td>38→39</td><td>5700</td><td>45900</td></tr><tr><td>39→40</td><td>5850</td><td>51750</td></tr>
+          <tr><td>40→41</td><td>6000</td><td>57750</td></tr><tr><td>41→42</td><td>6150</td><td>63900</td></tr>
+          <tr><td>42→43</td><td>6300</td><td>70200</td></tr><tr><td>43→44</td><td>6450</td><td>76650</td></tr>
+          <tr><td>44→45</td><td>6600</td><td>83250</td></tr><tr><td>45→46</td><td>6750</td><td>90000</td></tr>
+          <tr><td>46→47</td><td>6900</td><td>96900</td></tr><tr><td>47→48</td><td>7050</td><td>103950</td></tr>
+          <tr><td>48→49</td><td>7200</td><td>111150</td></tr><tr><td>49→50</td><td>7350</td><td>118500</td></tr>
+          <tr><td>50→51</td><td>7500</td><td>126000</td></tr><tr><td>51→52</td><td>7650</td><td>133650</td></tr>
+          <tr><td>52→53</td><td>7800</td><td>141450</td></tr><tr><td>53→54</td><td>7950</td><td>149400</td></tr>
+          <tr><td>54→55</td><td>8100</td><td>157500</td></tr><tr><td>55→56</td><td>8250</td><td>165750</td></tr>
+          <tr><td>56→57</td><td>8400</td><td>174150</td></tr><tr><td>57→58</td><td>8550</td><td>182700</td></tr>
+          <tr><td>58→59</td><td>8700</td><td>191400</td></tr><tr><td>59→60</td><td>8850</td><td>200250</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  <section id="battle-reward">
+    <h2>3. 战斗经验倍率</h2>
+    <pre>Bbase = 原版一周目百分比基准
+B2 = battle_experience_ng2_percent
+Bstep = battle_experience_later_step_percent
+
+B(1) = Bbase
+B(n) = B2＋(n－2)×Bstep，n≥2
+
+人物战斗经验 X = floor(e0×B(n)÷100)</pre>
+    <p>原版当前值与默认CFG：<code>Bbase=100%</code>、<code>B2=150%</code>、<code>Bstep=100个百分点</code>。代入后，<code>n≥2</code>时才可化简为<code>B(n)=100n－50%</code>。</p>
+    <table>
+      <thead><tr><th>默认配置周目</th><th>倍率</th><th>相比上一周</th></tr></thead>
+      <tbody>
+        <tr><td>NG1</td><td>100%</td><td>—</td></tr>
+        <tr><td>NG2</td><td>150%</td><td>＋50个百分点</td></tr>
+        <tr><td>NG3</td><td>250%</td><td>＋100个百分点</td></tr>
+        <tr><td>NG4</td><td>350%</td><td>＋100个百分点</td></tr>
+        <tr><td>NG5</td><td>450%</td><td>＋100个百分点</td></tr>
+      </tbody>
+    </table>
+    <p class="plain">使用原版当前值与默认CFG时，一周目发原经验，二周目发150%，三周目发250%，四周目发350%，之后每周再加100个百分点。它不是“上一周再乘1.5”。<code>e0</code>必须来自当前游戏定义中的整场经验和原分配规则，<code>B2</code>与<code>Bstep</code>必须来自CFG；程序不能按战斗ID或周目写死结果。</p>
+  </section>
+
+  <section id="battle-table">
+    <h2>4. 实际战斗练满场数</h2>
+    <pre>WAR(w) = 从当前WAR.STA定义读取的战斗w整场经验
+R(w,n) = floor(WAR(w)×B(n)÷100)
+N(w,n) = ceil(C(n)÷R(w,n))</pre>
+    <p class="plain">先把这场战斗的原经验乘本周倍率，再用“本周练满总需求”除以单场经验并向上取整。下表每格左边是这一整场给多少经验，右边是只重复这场战斗时需要打多少场；多人存活时还要先按原规则分经验。</p>
+    <p>单元格格式：<strong>该周整场经验／从本周起始等级练到上限所需场数</strong>。所有原经验均从<code>WAR.STA</code>读取；列头百分比来自默认CFG，本表只验证原版当前资产与默认配置。</p>
+    <table>
+      <thead><tr><th>ID</th><th>战斗</th><th>原经验</th><th>NG2：150%</th><th>NG3：250%</th><th>NG4：350%</th><th>NG5：450%</th></tr></thead>
+      <tbody>
+        <tr><td>7</td><td>胡斐单挑战</td><td>50</td><td>75／2670场</td><td>125／2682场</td><td>175／2688场</td><td>225／2690场</td></tr>
+        <tr><td>97</td><td>五毒教徒战</td><td>350</td><td>525／382场</td><td>875／384场</td><td>1225／384场</td><td>1575／385场</td></tr>
+        <tr><td><strong>99</strong></td><td><strong>5名番僧战（可重复）</strong></td><td><strong>450</strong></td><td><strong>675／297场</strong></td><td><strong>1125／298场</strong></td><td><strong>1575／299场</strong></td><td><strong>2025／299场</strong></td></tr>
+        <tr><td>46</td><td>黄钟公单挑战</td><td>600</td><td>900／223场</td><td>1500／224场</td><td>2100／224场</td><td>2700／225场</td></tr>
+        <tr><td>100</td><td>金轮法王与番僧战</td><td>1250</td><td>1875／107场</td><td>3125／108场</td><td>4375／108场</td><td>5625／108场</td></tr>
+        <tr><td>67</td><td>周伯通单挑战</td><td>1500</td><td>2250／89场</td><td>3750／90场</td><td>5250／90场</td><td>6750／90场</td></tr>
+        <tr><td>56</td><td>五岳掌门与五派弟子战</td><td>2500</td><td>3750／54场</td><td>6250／54场</td><td>8750／54场</td><td>11250／54场</td></tr>
+        <tr><td>124</td><td>玄慈单挑战</td><td>2600</td><td>3900／52场</td><td>6500／52场</td><td>9100／52场</td><td>11700／52场</td></tr>
+        <tr><td>131</td><td>洪七公单挑战</td><td>3300</td><td>4950／41场</td><td>8250／41场</td><td>11550／41场</td><td>14850／41场</td></tr>
+        <tr><td>54</td><td>东方不败、梅庄四友与日月教徒战</td><td>5000</td><td>7500／27场</td><td>12500／27场</td><td>17500／27场</td><td>22500／27场</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="manual-rule">
+    <h2>5. 秘笈修炼规则</h2>
+    <pre>Pr = 原版秘笈修炼奖励比例规则
+A0 = 原版资质费用基础系数
+IqStep = 原版资质分档宽度
+M0 = 原始武功等级上限
+
+本场秘笈修炼经验 T = floor(实际人物战斗经验 X×Pr÷100)
+资质系数 A(iq) = A0－floor(iq÷IqStep)
+本周武功／隐藏阶级上限 Lcur(n) = M0＋(n－1)×martial_level_step</pre>
+    <p class="plain">程序读取角色本场实际人物经验、角色资质、原版修炼规则参数、原始武功上限和NG+等级步长后再计算。原版当前<code>Pr=80%</code>、<code>A0=7</code>、<code>IqStep=15</code>、<code>M0=10</code>，默认<code>martial_level_step=10</code>；这些数值用于说明和复算，不直接嵌入通用公式，也不另设秘笈周目倍率。</p>
+    <p><strong>原版当前资质参数下的结果：</strong></p>
+    <table>
+      <thead><tr><th>资质</th><th>A</th></tr></thead>
+      <tbody>
+        <tr><td>0～14</td><td>7</td></tr><tr><td>15～29</td><td>6</td></tr><tr><td>30～44</td><td>5</td></tr>
+        <tr><td>45～59</td><td>4</td></tr><tr><td>60～74</td><td>3</td></tr><tr><td>75～89</td><td>2</td></tr><tr><td>90～100</td><td>1</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5.1 有关联武功的秘笈</h3>
+    <pre>Lfirst = 原版未学会武功参与费用计算时的起始显示等级
+L = 当前显示等级；未学会时取Lfirst
+C = need(i)×A(iq)×L
+L≥Lcur(n)时不能继续完成</pre>
+    <p class="plain">程序从物品定义读取<code>need(i)</code>，从角色读取资质与当前显示等级。原版当前<code>Lfirst=1</code>；原始上限为10时，10→11使用系数10，之后依次使用11、12……。</p>
+    <ul>
+      <li>10→11使用显示等级10，之后依次使用11、12……。</li>
+      <li>等级、熟练度和永久效果不会因为开放新上限而自动获得。</li>
+    </ul>
+
+    <h3>5.2 无关联武功的秘笈</h3>
+    <pre>c = 按角色ID＋物品ID读取的隐藏成功次数，初始为0
+H0 = 原版无关联武功秘笈首次费用阶级
+H = c＋H0
+C = need(i)×A(iq)×H
+H≥Lcur(n)时不能继续完成
+成功后 c = c＋1</pre>
+    <p class="plain">无关联武功秘笈使用持久化隐藏阶级。程序从物品定义读取<code>need(i)</code>，从角色与物品组合读取<code>c</code>。原版当前<code>H0=2</code>，所以第一次用2、第二次用3、再下一次用4；换书或换周目都不能重置。</p>
+    <ul>
+      <li>第一次使用<code>H0</code>，成功后依次使用<code>H0＋1</code>、<code>H0＋2</code>……；原版当前值对应2、3、4、5……。</li>
+      <li>隐藏次数按角色与物品ID分别保存。换书、丢失、重新取得、物品归属重置和跨周都不清零。</li>
+      <li>隐藏阶级与武功等级使用同一<code>Lcur(n)</code>。原版当前<code>H0=2</code>、<code>M0=10</code>，所以NG1最多成功8次；后续每周新增档数读取<code>martial_level_step</code>，默认10档。</li>
+      <li>永久属性每次成功只应用原物品字段一次，不随周目放大，并限制到对应玩家字段的本周上限。</li>
+    </ul>
+
+    <h3>5.3 统一结算顺序</h3>
+    <pre>I' = I＋T
+
+若 I'＜C：保存 I'，本场不完成
+若 I'≥C：本场完成一次，执行一次对应效果，然后令 I=0
+同一场战斗不得再次检查下一档</pre>
+    <p class="plain">本场修炼经验先加进当前进度。不够就留下以后继续攒；够了就只成功一次、执行一次升级或永久属性效果，然后把进度清零。即使多出来很多经验，也不会同一场连升多级，多余部分仍然丢掉。</p>
+    <ol>
+      <li>人物经验按存活和人数规则分配并乘人物周目倍率。</li>
+      <li>秘笈修炼经验按<code>Pr</code>取实际人物经验的比例；原版当前为80%。</li>
+      <li>累计经验不足下一档费用时保留。</li>
+      <li>达到费用时，本场最多完成一档。</li>
+      <li>执行一次原学习／升级／永久属性效果。</li>
+      <li>当前<code>item_experience</code>清零，超过费用的部分丢弃。</li>
+    </ol>
+    <p>不设置独立修炼周目倍率；旧方案的222%和<code>Mn</code>不使用。<code>need_experience</code>、<code>magic_id</code>和永久效果字段必须从当前物品定义读取，不能针对表中六本秘笈写死数值或效果。</p>
+  </section>
+
+  <section id="manual-tables">
+    <h2>6. 秘笈练满场数</h2>
+    <p>由于每完成一档都会清零，场数必须逐档计算，不能直接用总费用除以单场奖励。</p>
+    <pre>以下计算用于n≥2且上一周已经达到阶级上限的角色：
+Kstart(n) = Lcur(n－1)
+Kend(n) = Lcur(n)－1
+Ck = 物品i、角色iq和阶级k代入对应费用公式后的结果
+Tw(n) = 战斗w代入人物与秘笈奖励公式后的单场秘笈经验
+
+本周总修炼需求 S(i,n) = Σ Ck，k=Kstart(n)…Kend(n)
+本周所需场数 F(i,w,n) = Σ ceil(Ck÷Tw(n))
+
+注意：F通常不等于ceil(S÷Tw(n))</pre>
+    <p class="plain">每个新增阶级都要单独攒够，完成后剩余经验会被清掉，所以逐档计算再求和；新增多少档读取<code>martial_level_step</code>，不是固定写成十档。原版当前资产与默认配置下，战斗99单人领取时，NG2～NG5人物经验为675、1125、1575、2025，对应秘笈经验为540、900、1260、1620。</p>
+    <table>
+      <thead><tr><th>物品ID</th><th>秘笈</th><th>基础需求</th><th>类型与原效果</th></tr></thead>
+      <tbody>
+        <tr><td>67</td><td>松风剑谱</td><td>30</td><td>关联武功低需求代表</td></tr>
+        <tr><td>58</td><td>太极拳经</td><td>120</td><td>关联武功中需求代表</td></tr>
+        <tr><td>62</td><td>降龙十八掌</td><td>200</td><td>关联武功高需求代表</td></tr>
+        <tr><td>95</td><td>九阳真经</td><td>300</td><td>关联武功；HP+10、MP+50、攻击+5、防御+10</td></tr>
+        <tr><td>93</td><td>葵花宝典</td><td>500</td><td>无关联武功；HP+30、MP+30、攻击+10、速度+10、防御+10</td></tr>
+        <tr><td>94</td><td>九阴真经</td><td>500</td><td>无关联武功；HP+10、MP+20、攻击+20、速度+5、防御+5</td></tr>
+      </tbody>
+    </table>
+    <p>单元格格式：<strong>练满本周新增阶级所需修炼经验／战斗99所需场数</strong>。严格按“每档清零、一场最多完成一档”计算；只有上一周已经达到上限时，下一周才从表列区间起点开始。秘笈基础需求与效果来自<code>RANGER.GRP</code>，这些行只作为默认资产样本。</p>
+
+    <table>
+      <thead><tr><th>高资质90～100（A=1）</th><th>NG2：10→20</th><th>NG3：20→30</th><th>NG4：30→40</th><th>NG5：40→50</th></tr></thead>
+      <tbody>
+        <tr><td>松风剑谱</td><td>4350／11场</td><td>7350／10场</td><td>10350／10场</td><td>13350／10场</td></tr>
+        <tr><td>太极拳经</td><td>17400／37场</td><td>29400／37场</td><td>41400／38场</td><td>53400／39场</td></tr>
+        <tr><td>降龙十八掌</td><td>29000／59场</td><td>49000／59场</td><td>69000／60场</td><td>89000／60场</td></tr>
+        <tr><td>九阳真经</td><td>43500／85场</td><td>73500／85场</td><td>103500／88场</td><td>133500／87场</td></tr>
+        <tr><td>葵花宝典</td><td>72500／139场</td><td>122500／141场</td><td>172500／142场</td><td>222500／142场</td></tr>
+        <tr><td>九阴真经</td><td>72500／139场</td><td>122500／141场</td><td>172500／142场</td><td>222500／142场</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>中等资质60～74（A=3）</th><th>NG2：10→20</th><th>NG3：20→30</th><th>NG4：30→40</th><th>NG5：40→50</th></tr></thead>
+      <tbody>
+        <tr><td>松风剑谱</td><td>13050／28场</td><td>22050／29场</td><td>31050／30场</td><td>40050／30场</td></tr>
+        <tr><td>太极拳经</td><td>52200／100场</td><td>88200／102场</td><td>124200／103场</td><td>160200／103场</td></tr>
+        <tr><td>降龙十八掌</td><td>87000／166场</td><td>147000／167场</td><td>207000／170场</td><td>267000／170场</td></tr>
+        <tr><td>九阳真经</td><td>130500／245场</td><td>220500／245场</td><td>310500／251场</td><td>400500／252场</td></tr>
+        <tr><td>葵花宝典</td><td>217500／407场</td><td>367500／412场</td><td>517500／416场</td><td>667500／416场</td></tr>
+        <tr><td>九阴真经</td><td>217500／407场</td><td>367500／412场</td><td>517500／416场</td><td>667500／416场</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>低资质0～14（A=7）</th><th>NG2：10→20</th><th>NG3：20→30</th><th>NG4：30→40</th><th>NG5：40→50</th></tr></thead>
+      <tbody>
+        <tr><td>松风剑谱</td><td>30450／61场</td><td>51450／62场</td><td>72450／62场</td><td>93450／63场</td></tr>
+        <tr><td>太极拳经</td><td>121800／230场</td><td>205800／235场</td><td>289800／233场</td><td>373800／235场</td></tr>
+        <tr><td>降龙十八掌</td><td>203000／381场</td><td>343000／386场</td><td>483000／388场</td><td>623000／390场</td></tr>
+        <tr><td>九阳真经</td><td>304500／568场</td><td>514500／575场</td><td>724500／578场</td><td>934500／582场</td></tr>
+        <tr><td>葵花宝典</td><td>507500／945场</td><td>857500／957场</td><td>1207500／963场</td><td>1557500／966场</td></tr>
+        <tr><td>九阴真经</td><td>507500／945场</td><td>857500／957场</td><td>1207500／963场</td><td>1557500／966场</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="persistence">
+    <h2>7. 隐藏次数与持久化</h2>
+    <pre>ItemCount = 当前物品定义数量
+H0 = 原版无关联武功秘笈首次费用阶级
+count[role_id][item_id] ∈ [0, Lcur(n)－H0]
+item_id ∈ [0, ItemCount－1]
+仅当 magic(item_id)=-1 且 need(item_id)&gt;0 时允许count非0
+NG+转换：role_id∈RetainedRoles时原样继承；否则count=0</pre>
+    <p class="plain">隐藏次数不是“当前装备这本书的临时值”，而是角色对每一本无关联秘笈各自的长期记录。角色把书丢掉、换成别的书、下一周目重新取得，原次数仍然存在，因此不能靠换书把费用刷回第一次。</p>
+    <ul>
+      <li>新增<code>unassociated_manual_success_counts[ItemCount]</code>，按角色保存、按物品ID索引；原版当前<code>ItemCount=200</code>。</li>
+      <li>是否使用计数由当前物品定义中的<code>magic_id</code>与<code>need_experience</code>判断；其他位置必须为0。</li>
+      <li><code>RetainedRoles</code>来自NG+可控角色继承集合；原版当前为27名，其余角色创建下一周目时归零。</li>
+      <li><code>practice_item</code>和当前<code>item_experience</code>仍按周目转换规则清空，但历史成功次数不清空。</li>
+      <li>隐藏次数最大为<code>Lcur(n)－H0</code>；原版当前参数与默认NG999配置下为9988。</li>
+      <li>修炼经验累计值使用64位逻辑字段，不允许16位回绕。</li>
+      <li>由于新增必需字段，NG+ TOML使用<code>format_version=2</code>、<code>ruleset_version=3</code>，不自动迁移旧格式。</li>
+    </ul>
+  </section>
+
+  <section id="boundaries">
+    <h2>8. 边界与实现要求</h2>
+    <pre>Nmax = CFG允许的最大周目
+Lmax = M0＋(Nmax－1)×martial_level_step
+HcountMax = Lmax－H0
+PaidTierMax = Lmax－1
+Amax = max(A(iq))，iq取当前角色字段允许域
+NeedAssocMax = max(need(i))，magic(i)≥0
+NeedUnassocMax = max(need(i))，magic(i)=-1且need(i)&gt;0
+WARmax = max(WAR(w))，w取当前战斗定义
+Bmax = B(Nmax)
+
+关联武功单档最大费用 = NeedAssocMax×Amax×PaidTierMax
+无关联武功单档最大费用 = NeedUnassocMax×Amax×PaidTierMax
+最大整场人物战斗经验 = floor(WARmax×Bmax÷100)
+最大单场秘笈修炼经验 = floor(最大整场人物战斗经验×Pr÷100)
+
+原版当前资产与默认配置核对：
+Nmax=999，M0=10，martial_level_step=10，H0=2，Amax=7
+NeedAssocMax=300，NeedUnassocMax=800，WARmax=5000
+B2=150%，Bstep=100个百分点，Pr=80%
+Lmax=9990，HcountMax=9988，PaidTierMax=9989
+关联武功单档最大费用=20,976,900
+无关联武功单档最大费用=55,938,400
+最大整场人物战斗经验=4,992,500
+最大单场秘笈修炼经验=3,994,000</pre>
+    <p class="plain">下列上界只是默认资产与已确定周目倍率的安全性核对。程序仍应先读取当前数据、使用64位中间值并检查溢出，不能假设所有资产都等于表中默认值。新周目只开放更多成长空间，不会自动给等级、修炼成功次数或永久属性。</p>
+    <ul>
+      <li>NG1关联武功秘笈保持原行为；无关联武功第一次使用<code>H0</code>，原版当前值为2；成功后逐档涨价是明确的新规则。</li>
+      <li>默认NG999武功／隐藏阶级上限为9990，隐藏成功次数上限9988。</li>
+      <li>默认NG999关联武功单档最大费用为20,976,900；无关联武功单档最大费用为55,938,400。</li>
+      <li>默认NG999最大整场人物战斗经验为4,992,500；对应单场秘笈修炼经验为3,994,000。</li>
+      <li>所有费用和奖励先用64位整数计算，再进行上限检查。</li>
+      <li>人物经验、秘笈经验和永久属性增长都不能自动填满新开放的等级或属性上限。</li>
+    </ul>
+    <div class="notice"><strong>实现状态：</strong>本文是数值与结算规格，当前尚未修改游戏代码、CFG、资产或存档实现。</div>
+  </section>
+
+  <footer class="small">
+    <p>数据依据：<code>src/battle/battle_setup.cpp</code>、<code>WAR.STA</code>、<code>RANGER.GRP</code>。本文不替代原始数据；运行时必须按正文的数据来源与公式动态计算。</p>
+  </footer>
+</main>
+</body>
+</html>
