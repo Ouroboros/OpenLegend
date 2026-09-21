@@ -13,9 +13,10 @@
     header { grid-column:1 / -1; }
     nav { grid-column:1; grid-row:2 / span 20; position:sticky; top:16px; align-self:start; max-height:calc(100vh - 32px); overflow:auto; padding-right:12px; }
     section,footer { grid-column:2; min-width:0; }
-    h1,h2,h3 { line-height:1.25; }
-    h2 { margin-top:2.2rem; padding-bottom:.35rem; border-bottom:1px solid var(--line); }
-    h3 { margin-top:1.6rem; }
+    h1,h2,h3,h4 { line-height:1.25; }
+    h2 { margin-top:2.6rem; padding:.55rem 0; border-bottom:2px solid var(--accent); }
+    h3 { margin-top:2rem; padding-bottom:.35rem; border-bottom:1px solid var(--line); }
+    h4 { margin-top:1.6rem; }
     code,pre { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
     pre { padding:14px 16px; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
     table { width:100%; border-collapse:collapse; margin:14px 0 24px; }
@@ -27,8 +28,12 @@
     .small { font-size:.9rem; opacity:.8; }
     .status { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
     .status > div { padding:10px 12px; border:1px solid var(--line); border-radius:6px; }
+    .toc-title { margin:1rem 0 .75rem; font-size:1.35rem; font-weight:700; }
     nav ul { margin:0; padding:0; list-style:none; }
-    nav li { margin:.35rem 0; }
+    nav > ul > li { margin:0 0 .9rem; font-weight:700; }
+    nav ul ul { margin:.3rem 0 0; padding-left:1rem; }
+    nav ul ul li { margin:.3rem 0; font-weight:400; }
+    nav ul ul ul { padding-left:1rem; }
     nav a { display:block; text-decoration:none; }
     @media (max-width:800px) {
       main { display:block; padding:20px 12px 48px; }
@@ -44,29 +49,50 @@
     <p>本文件是正式的NG+设计文档。当前版本只纳入已经讨论并确认的<strong>人物等级经验、战斗经验奖励和秘笈修炼经验</strong>；尚未确认的其他NG+系统不写入本文。</p>
     <div class="notice"><strong>实现原则：</strong>公式中的游戏数值必须来自当前资产、角色状态、存档、CFG或规则参数；除百分比基数100、零值和取整语义外，不得把原版当前数值直接写进运行时公式。本文列出的具体数值只用于标注原版数据和复算结果，禁止作为代码常量写死。</div>
     <div class="status">
-      <div><strong>文件版本</strong><br>v2</div>
+      <div><strong>文件版本</strong><br>v4</div>
       <div><strong>规则状态</strong><br>数值方案已确定；尚未实现</div>
       <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
       <div><strong>主要核对范围</strong><br>NG2～NG5</div>
     </div>
   </header>
 
-  <nav>
-    <h2>目录</h2>
+  <nav aria-label="文档目录">
+    <div class="toc-title">目录</div>
     <ul>
-      <li><a href="#facts">1. 数据事实与术语</a></li>
-      <li><a href="#level-cost">2. 人物升级需求</a></li>
-      <li><a href="#battle-reward">3. 战斗经验倍率</a></li>
-      <li><a href="#battle-table">4. 实际战斗练满场数</a></li>
-      <li><a href="#manual-rule">5. 秘笈修炼规则</a></li>
-      <li><a href="#manual-tables">6. 秘笈练满场数</a></li>
-      <li><a href="#persistence">7. 隐藏次数与持久化</a></li>
-      <li><a href="#boundaries">8. 边界与实现要求</a></li>
+      <li><a href="#category-character">1. 人物与战斗经验</a>
+        <ul>
+          <li><a href="#facts">1.1 数据事实与术语</a></li>
+          <li><a href="#level-cost">1.2 人物升级需求</a></li>
+          <li><a href="#battle-reward">1.3 战斗经验倍率</a></li>
+          <li><a href="#battle-table">1.4 实际战斗练满场数</a></li>
+        </ul>
+      </li>
+      <li><a href="#category-manual">2. 秘笈修炼</a>
+        <ul>
+          <li><a href="#manual-rule">2.1 秘笈修炼规则</a>
+            <ul>
+              <li><a href="#manual-associated">2.1.1 有关联武功的秘笈</a></li>
+              <li><a href="#manual-unassociated">2.1.2 无关联武功的秘笈</a></li>
+              <li><a href="#manual-settlement">2.1.3 统一结算顺序</a></li>
+            </ul>
+          </li>
+          <li><a href="#manual-tables">2.2 秘笈练满场数</a></li>
+        </ul>
+      </li>
+      <li><a href="#category-implementation">3. 持久化与实现约束</a>
+        <ul>
+          <li><a href="#persistence">3.1 隐藏次数与持久化</a></li>
+          <li><a href="#boundaries">3.2 边界与实现要求</a></li>
+        </ul>
+      </li>
     </ul>
   </nav>
 
+  <section class="category">
+    <h2 id="category-character">1. 人物与战斗经验</h2>
+
   <section id="facts">
-    <h2>1. 数据事实与术语</h2>
+    <h3>1.1 数据事实与术语</h3>
     <ul>
       <li><code>WAR.STA</code>中的经验是<strong>整场战斗总经验</strong>，不是单个敌人的经验。</li>
       <li>战斗结束后先按原规则确定胜负、存活资格和人数，再得到每名角色的原始个人奖励<code>e0</code>。</li>
@@ -86,7 +112,7 @@
         <tr><td><code>iq</code></td><td>当前角色资质字段</td><td>原版字段域0～100</td></tr>
         <tr><td><code>A0</code>、<code>IqStep</code></td><td>当前规则集中的原版资质费用参数</td><td>7、15</td></tr>
         <tr><td><code>M0</code>、<code>martial_level_step</code></td><td>原始武功等级上限、NG+ CFG</td><td>10、10级／周目</td></tr>
-        <tr><td><code>need(i)</code>、<code>magic(i)</code>、<code>effects(i)</code></td><td><code>RANGER.GRP</code>物品<code>i</code>的需求、关联武功和永久效果字段</td><td>第6节列出六个原版样本</td></tr>
+        <tr><td><code>need(i)</code>、<code>magic(i)</code>、<code>effects(i)</code></td><td><code>RANGER.GRP</code>物品<code>i</code>的需求、关联武功和永久效果字段</td><td>第2.2节列出六个原版样本</td></tr>
         <tr><td><code>H0</code></td><td>当前规则集中的原版无关联武功秘笈首次费用阶级</td><td>2</td></tr>
         <tr><td><code>ItemCount</code>、<code>RetainedRoles</code></td><td>当前物品定义数量、NG+可控角色继承集合</td><td>200项、27名角色</td></tr>
       </tbody>
@@ -94,7 +120,7 @@
   </section>
 
   <section id="level-cost">
-    <h2>2. 人物升级需求</h2>
+    <h3>1.2 人物升级需求</h3>
     <p>原始等级与经验门槛从游戏定义读取；原版当前数据中的30级、52000、4350、4200和150只用于说明与核对，不是运行时代码常量。</p>
     <pre>L0 = 原始经验门槛表支持的最高等级
 E0(L) = 原始门槛表中等级L的累计经验
@@ -156,7 +182,7 @@ C(n)=135000n－69750，n≥2</pre>
   </section>
 
   <section id="battle-reward">
-    <h2>3. 战斗经验倍率</h2>
+    <h3>1.3 战斗经验倍率</h3>
     <pre>Bbase = 原版一周目百分比基准
 B2 = battle_experience_ng2_percent
 Bstep = battle_experience_later_step_percent
@@ -180,7 +206,7 @@ B(n) = B2＋(n－2)×Bstep，n≥2
   </section>
 
   <section id="battle-table">
-    <h2>4. 实际战斗练满场数</h2>
+    <h3>1.4 实际战斗练满场数</h3>
     <pre>WAR(w) = 从当前WAR.STA定义读取的战斗w整场经验
 R(w,n) = floor(WAR(w)×B(n)÷100)
 N(w,n) = ceil(C(n)÷R(w,n))</pre>
@@ -202,9 +228,13 @@ N(w,n) = ceil(C(n)÷R(w,n))</pre>
       </tbody>
     </table>
   </section>
+  </section>
+
+  <section class="category">
+    <h2 id="category-manual">2. 秘笈修炼</h2>
 
   <section id="manual-rule">
-    <h2>5. 秘笈修炼规则</h2>
+    <h3>2.1 秘笈修炼规则</h3>
     <pre>Pr = 原版秘笈修炼奖励比例规则
 A0 = 原版资质费用基础系数
 IqStep = 原版资质分档宽度
@@ -223,7 +253,7 @@ M0 = 原始武功等级上限
       </tbody>
     </table>
 
-    <h3>5.1 有关联武功的秘笈</h3>
+    <h4 id="manual-associated">2.1.1 有关联武功的秘笈</h4>
     <pre>Lfirst = 原版未学会武功参与费用计算时的起始显示等级
 L = 当前显示等级；未学会时取Lfirst
 C = need(i)×A(iq)×L
@@ -234,7 +264,7 @@ L≥Lcur(n)时不能继续完成</pre>
       <li>等级、熟练度和永久效果不会因为开放新上限而自动获得。</li>
     </ul>
 
-    <h3>5.2 无关联武功的秘笈</h3>
+    <h4 id="manual-unassociated">2.1.2 无关联武功的秘笈</h4>
     <pre>c = 按角色ID＋物品ID读取的隐藏成功次数，初始为0
 H0 = 原版无关联武功秘笈首次费用阶级
 H = c＋H0
@@ -249,7 +279,7 @@ H≥Lcur(n)时不能继续完成
       <li>永久属性每次成功只应用原物品字段一次，不随周目放大，并限制到对应玩家字段的本周上限。</li>
     </ul>
 
-    <h3>5.3 统一结算顺序</h3>
+    <h4 id="manual-settlement">2.1.3 统一结算顺序</h4>
     <pre>I' = I＋T
 
 若 I'＜C：保存 I'，本场不完成
@@ -268,7 +298,7 @@ H≥Lcur(n)时不能继续完成
   </section>
 
   <section id="manual-tables">
-    <h2>6. 秘笈练满场数</h2>
+    <h3>2.2 秘笈练满场数</h3>
     <p>由于每完成一档都会清零，场数必须逐档计算，不能直接用总费用除以单场奖励。</p>
     <pre>以下计算用于n≥2且上一周已经达到阶级上限的角色：
 Kstart(n) = Lcur(n－1)
@@ -328,9 +358,13 @@ Tw(n) = 战斗w代入人物与秘笈奖励公式后的单场秘笈经验
       </tbody>
     </table>
   </section>
+  </section>
+
+  <section class="category">
+    <h2 id="category-implementation">3. 持久化与实现约束</h2>
 
   <section id="persistence">
-    <h2>7. 隐藏次数与持久化</h2>
+    <h3>3.1 隐藏次数与持久化</h3>
     <pre>ItemCount = 当前物品定义数量
 H0 = 原版无关联武功秘笈首次费用阶级
 count[role_id][item_id] ∈ [0, Lcur(n)－H0]
@@ -350,7 +384,7 @@ NG+转换：role_id∈RetainedRoles时原样继承；否则count=0</pre>
   </section>
 
   <section id="boundaries">
-    <h2>8. 边界与实现要求</h2>
+    <h3>3.2 边界与实现要求</h3>
     <pre>Nmax = CFG允许的最大周目
 Lmax = M0＋(Nmax－1)×martial_level_step
 HcountMax = Lmax－H0
@@ -385,6 +419,7 @@ Lmax=9990，HcountMax=9988，PaidTierMax=9989
       <li>人物经验、秘笈经验和永久属性增长都不能自动填满新开放的等级或属性上限。</li>
     </ul>
     <div class="notice"><strong>实现状态：</strong>本文是数值与结算规格，当前尚未修改游戏代码、CFG、资产或存档实现。</div>
+  </section>
   </section>
 
   <footer class="small">
