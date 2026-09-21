@@ -23,6 +23,8 @@
     th,td { padding:8px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
     th { background:var(--panel); }
     td:not(:nth-child(2)), th:not(:nth-child(2)) { white-space:nowrap; }
+    .field-transfer td:nth-child(2), .field-transfer th:nth-child(2) { min-width:9em; white-space:nowrap; }
+    .field-transfer td:nth-child(4), .field-transfer th:nth-child(4) { white-space:normal; }
     .meta,.notice { padding:12px 16px; border-left:4px solid var(--accent); background:var(--panel); margin:16px 0; }
     .plain { padding:10px 14px; border-left:4px solid #2da44e; background:var(--panel); }
     .small { font-size:.9rem; opacity:.8; }
@@ -46,10 +48,10 @@
 <main>
   <header>
     <h1>OpenLegend New Game+ 设计文档</h1>
-    <p>本文件是正式的NG+设计文档。当前版本只纳入已经讨论并确认的<strong>人物等级经验、战斗经验奖励和秘笈修炼经验</strong>；尚未确认的其他NG+系统不写入本文。</p>
+    <p>本文件是正式的NG+设计文档。当前版本只纳入已经讨论并确认的<strong>人物数值继承、物品继承、人物等级经验、战斗经验奖励和秘笈修炼经验</strong>；尚未确认的其他NG+系统不写入本文。</p>
     <div class="notice"><strong>实现原则：</strong>公式中的游戏数值必须来自当前资产、角色状态、存档、CFG或规则参数；除百分比基数100、零值和取整语义外，不得把原版当前数值直接写进运行时公式。本文列出的具体数值只用于标注原版数据和复算结果，禁止作为代码常量写死。</div>
     <div class="status">
-      <div><strong>文件版本</strong><br>v4</div>
+      <div><strong>文件版本</strong><br>v13</div>
       <div><strong>规则状态</strong><br>数值方案已确定；尚未实现</div>
       <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
       <div><strong>主要核对范围</strong><br>NG2～NG5</div>
@@ -59,12 +61,20 @@
   <nav aria-label="文档目录">
     <div class="toc-title">目录</div>
     <ul>
-      <li><a href="#category-character">1. 人物与战斗经验</a>
+      <li><a href="#category-character">1. 人物、物品与战斗经验</a>
         <ul>
           <li><a href="#facts">1.1 数据事实与术语</a></li>
-          <li><a href="#level-cost">1.2 人物升级需求</a></li>
-          <li><a href="#battle-reward">1.3 战斗经验倍率</a></li>
-          <li><a href="#battle-table">1.4 实际战斗练满场数</a></li>
+          <li><a href="#role-inheritance">1.2 人物数值继承</a>
+            <ul>
+              <li><a href="#inheritance-scope">1.2.1 范围与通用公式</a></li>
+              <li><a href="#inheritance-fields">1.2.2 原版字段转移表</a></li>
+              <li><a href="#inheritance-order">1.2.3 转换顺序与示例</a></li>
+            </ul>
+          </li>
+          <li><a href="#item-inheritance">1.3 物品继承</a></li>
+          <li><a href="#level-cost">1.4 人物升级需求</a></li>
+          <li><a href="#battle-reward">1.5 战斗经验倍率</a></li>
+          <li><a href="#battle-table">1.6 实际战斗练满场数</a></li>
         </ul>
       </li>
       <li><a href="#category-manual">2. 秘笈修炼</a>
@@ -89,7 +99,7 @@
   </nav>
 
   <section class="category">
-    <h2 id="category-character">1. 人物与战斗经验</h2>
+    <h2 id="category-character">1. 人物、物品与战斗经验</h2>
 
   <section id="facts">
     <h3>1.1 数据事实与术语</h3>
@@ -114,13 +124,156 @@
         <tr><td><code>M0</code>、<code>martial_level_step</code></td><td>原始武功等级上限、NG+ CFG</td><td>10、10级／周目</td></tr>
         <tr><td><code>need(i)</code>、<code>magic(i)</code>、<code>effects(i)</code></td><td><code>RANGER.GRP</code>物品<code>i</code>的需求、关联武功和永久效果字段</td><td>第2.2节列出六个原版样本</td></tr>
         <tr><td><code>H0</code></td><td>当前规则集中的原版无关联武功秘笈首次费用阶级</td><td>2</td></tr>
-        <tr><td><code>ItemCount</code>、<code>RetainedRoles</code></td><td>当前物品定义数量、NG+可控角色继承集合</td><td>200项、27名角色</td></tr>
+        <tr><td><code>ItemCount</code>、<code>EverJoinedRoles</code></td><td>当前物品定义数量、历代周目曾经实际入队的角色集合</td><td>原版当前物品定义为200项；角色集合由存档历史读取</td></tr>
+        <tr><td><code>Type(i)</code>、<code>PrevCount(i)</code>、<code>MoneyId</code></td><td>当前物品定义中的类型、前一周目库存数量、规则集指定的金钱物品ID</td><td>原版当前Type 3为药品、Type 4为暗器；<code>MoneyId=174</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="role-inheritance">
+    <h3>1.2 人物数值继承</h3>
+    <p>本节处理原版角色记录中已经存在的字段，并额外包含已经明确批准的<code>unassociated_manual_success_counts[ItemCount]</code>。除该字段外，其他NG+新增字段、装备物品自身记录、库存、队伍、剧情状态和其他系统设计不属于本节。</p>
+
+    <h4 id="inheritance-scope">1.2.1 范围与通用公式</h4>
+    <pre>Prev(r,f) = 源通关存档中角色r的原版字段f
+Base(r,f) = 当前原版RANGER角色定义中的字段f
+Cap(f,n) = 字段f在第n周目的合法上限
+EverJoined(r) = 角色r是否曾在任一周目实际加入过队伍
+RoleId(r) = r                                  # 固定身份不变量
+HeadId(r) = Base(r,head_id)                     # 固定头像定义
+
+若存档中的角色ID与记录位置r不一致：拒绝转换
+若存档中的head_id与当前原版角色定义不一致：拒绝转换
+
+不参与继承且不受EverJoined范围限制的原版字段集合：
+FreshFields = { sexual, taking_items[4], taking_counts[4] }
+对于所有角色r和f∈FreshFields：
+Next(r,f) = Base(r,f)
+
+其中角色携带物的恢复必须逐角色读取当前原版数据：
+Next(r,taking_items[0..3]) = Base(r,taking_items[0..3])
+Next(r,taking_counts[0..3]) = Base(r,taking_counts[0..3])
+不得硬编码任何角色ID、物品ID或数量
+不得在NG+转换阶段调用、重放或模拟KDEF剧情脚本
+
+对于FreshFields以外的字段，若 EverJoined(r)=false：
+Next(r,f) = Prev(r,f)
+
+对于FreshFields以外的字段，若 EverJoined(r)=true且字段采用直接继承：
+Next(r,f) = clamp(Prev(r,f), Min(f), Cap(f,n))
+
+对于FreshFields以外的字段，若 EverJoined(r)=true且字段恢复原版基线：
+Next(r,f) = Base(r,f)
+
+名称、资源引用和数组槽位不使用数值clamp；它们原样复制后执行合法性验证。</pre>
+    <p class="plain">角色ID与头像ID都属于固定角色定义，不参与继承、重置或clamp；与记录位置或当前原版角色定义不一致时表示存档损坏。性别与角色原版携带物不受历史入队范围限制：所有角色进入新周目时都从当前原版角色定义恢复这些字段，不继承上一周目的变化。这样敌人重新取得原版战斗携带物，可入队角色也能按原流程在每个周目转交一次原版物品。除这些字段外，只有曾经真正加入过队伍的角色才执行下面的逐字段转换；其他角色记录保持上一周目的值。直接继承不是把数值补到新上限，而是先复制实际值，再防止非法越界。</p>
+
+    <h4 id="inheritance-fields">1.2.2 原版字段转移表</h4>
+    <table class="field-transfer">
+      <thead><tr><th>原版字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>increased_life</code></td><td>生命成长</td><td>直接继承并clamp</td><td>不按周目放大；原版当前合法范围为1～10。</td></tr>
+        <tr><td><code>unused</code></td><td>未知／未使用字段</td><td>直接继承原值</td><td>不解释、不重算未知语义。</td></tr>
+        <tr><td><code>name</code></td><td>姓名</td><td>直接继承并验证</td><td>保持合法Legacy Big5字节和长度。</td></tr>
+        <tr><td><code>nickname</code></td><td>外号／称号</td><td>直接继承并验证</td><td>保持合法Legacy Big5字节和长度。</td></tr>
+        <tr><td><code>sexual</code></td><td>性别状态</td><td>不继承；恢复原版基线</td><td>对所有角色执行，不受<code>EverJoinedRoles</code>限制；从当前原版角色定义读取，原版女性仍为女性，自宫等运行期变化不跨周目。</td></tr>
+        <tr><td><code>level</code></td><td>等级</td><td>直接继承并clamp</td><td>上限读取本周<code>Lcap(n)</code>。</td></tr>
+        <tr><td><code>experience</code></td><td>人物经验</td><td>直接继承并clamp</td><td>上限读取本周等级上限对应的累计门槛。</td></tr>
+        <tr><td><code>maximum_hp</code></td><td>最大生命</td><td>直接继承并clamp</td><td>本周硬上限为999n；不会自动提高到999n。</td></tr>
+        <tr><td><code>hp</code></td><td>当前生命</td><td>设为处理后的<code>maximum_hp</code></td><td>进入新周目时恢复生命。</td></tr>
+        <tr><td><code>maximum_mp</code></td><td>最大内力</td><td>直接继承并clamp</td><td>本周硬上限为999n；不会自动提高到999n。</td></tr>
+        <tr><td><code>mp</code></td><td>当前内力</td><td>设为处理后的<code>maximum_mp</code></td><td>进入新周目时恢复内力。</td></tr>
+        <tr><td><code>hurt</code></td><td>伤势</td><td>0</td><td>当前伤势清零。</td></tr>
+        <tr><td><code>poison</code></td><td>中毒程度</td><td>0</td><td>当前中毒清零。</td></tr>
+        <tr><td><code>physical_power</code></td><td>体力值</td><td>设为本周允许上限</td><td>进入新周目时恢复体力。</td></tr>
+        <tr><td><code>make_item_experience</code></td><td>制作物品经验</td><td>直接继承并clamp</td><td>保留制作进度。</td></tr>
+        <tr><td><code>equipment[2]</code></td><td>装备物品ID</td><td><code>[-1,-1]</code></td><td>两个装备槽清空。</td></tr>
+        <tr><td><code>frames[15]</code></td><td>战斗动作帧定义</td><td>恢复原版基线</td><td>从当前原版角色定义重新读取动作帧。</td></tr>
+        <tr><td><code>mp_type</code></td><td>内力门路</td><td>直接继承并clamp</td><td>原版当前枚举域为0～2。</td></tr>
+        <tr><td><code>attack</code></td><td>武力／攻击力</td><td>直接继承并clamp</td><td>使用本周字段上限<code>Cap(attack,n)</code>。</td></tr>
+        <tr><td><code>speed</code></td><td>轻功</td><td>直接继承并clamp</td><td>上限随周目扩展，具体步长由字段上限规则定义。</td></tr>
+        <tr><td><code>defence</code></td><td>防御力</td><td>直接继承并clamp</td><td>使用本周字段上限<code>Cap(defence,n)</code>。</td></tr>
+        <tr><td><code>medicine</code></td><td>医疗能力</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>use_poison</code></td><td>用毒能力</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>detoxification</code></td><td>解毒能力</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>anti_poison</code></td><td>抗毒能力</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>fist</code></td><td>拳掌功夫</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>sword</code></td><td>御剑能力</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>knife</code></td><td>耍刀技巧</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>unusual</code></td><td>特殊兵器</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>hidden_weapon</code></td><td>暗器技巧</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>knowledge</code></td><td>武学常识</td><td>直接继承并clamp</td><td>使用本周对应字段范围。</td></tr>
+        <tr><td><code>morality</code></td><td>道德</td><td>恢复原版基线</td><td>从当前原版角色定义读取。</td></tr>
+        <tr><td><code>attack_with_poison</code></td><td>武功带毒</td><td>直接继承并clamp</td><td>使用本周对应字段上限。</td></tr>
+        <tr><td><code>attack_twice</code></td><td>左右互搏／攻击两次</td><td>恢复原版基线</td><td>不继承上一周目取得的左右互搏状态。</td></tr>
+        <tr><td><code>fame</code></td><td>个人声望</td><td>恢复原版基线</td><td>从当前原版角色定义读取。</td></tr>
+        <tr><td><code>iq</code></td><td>资质</td><td>直接继承并clamp</td><td>使用本周对应字段范围。</td></tr>
+        <tr><td><code>practice_item</code></td><td>当前修炼秘笈ID</td><td>-1</td><td>清空当前修炼秘笈。</td></tr>
+        <tr><td><code>item_experience</code></td><td>秘笈修炼经验</td><td>0</td><td>清空当前秘笈修炼经验。</td></tr>
+        <tr><td><code>unassociated_manual_success_counts[ItemCount]</code></td><td>无关联秘笈历史成功次数</td><td>完整继承并clamp</td><td>按物品ID保存无关联武功秘笈历史成功次数；上限为<code>Lcur(n)－H0</code>，换书、丢失、重新取得或换周目均不清零。</td></tr>
+        <tr><td><code>magic_ids[10]</code></td><td>已学武功ID</td><td>完整继承并验证</td><td>逐槽验证武功ID或空槽值。</td></tr>
+        <tr><td><code>magic_levels[10]</code></td><td>武功熟练度</td><td>完整继承并clamp</td><td>逐槽限制到本周武功熟练度上限。</td></tr>
+        <tr><td><code>taking_items[4]</code></td><td>角色携带物品ID</td><td>不继承；恢复原版基线</td><td>对所有角色执行；恢复四个角色携带物品ID槽，供敌方战斗AI使用或在角色入队时按原规则转入全局库存。</td></tr>
+        <tr><td><code>taking_counts[4]</code></td><td>角色携带物品数量</td><td>不继承；恢复原版基线</td><td>与原版携带物品ID逐槽配对恢复；转入库存或战斗消耗后仍按原规则减少、清空。</td></tr>
+      </tbody>
+    </table>
+
+    <h4 id="inheritance-order">1.2.3 转换顺序与示例</h4>
+    <ol>
+      <li>从当前原版<code>RANGER.GRP</code>读取角色基线与字段合法域。</li>
+      <li>判断角色是否属于“曾在任一周目实际加入过队伍”的名单。</li>
+      <li>所有角色先恢复<code>FreshFields</code>；对其他字段，不在名单中的角色保持源存档值，在名单中的角色按第1.2.2节逐字段处理。</li>
+      <li>先处理<code>level</code>、<code>maximum_hp</code>、<code>maximum_mp</code>等上限依赖字段，再恢复<code>hp</code>、<code>mp</code>和<code>physical_power</code>。</li>
+      <li>继承并验证每名适用角色的<code>unassociated_manual_success_counts[ItemCount]</code>；它不随当前<code>practice_item</code>清空。</li>
+      <li>最后验证全部ID、字符串、数组槽位和数值范围；失败时拒绝转换，不静默修复损坏存档。</li>
+    </ol>
+    <pre>数值示意（不是代码常量）：
+上一周目 maximum_hp=845、hp=213 → 下一周目 maximum_hp=845、hp=845
+上一周目 maximum_mp=620、mp=75  → 下一周目 maximum_mp=620、mp=620
+上一周目 hurt=40、poison=25      → 下一周目 hurt=0、poison=0
+任一角色上一周目 sexual发生变化 → 下一周目不继承，统一取Base(r,sexual)；主角原版数据结果为0（男）
+任一角色上一周目携带槽已清空      → 下一周目taking_items/counts恢复为Base(r,f)
+上一周目 attack=138              → 下一周目 clamp(138, Min(attack), Cap(attack,n))</pre>
+    <p class="plain">角色已经练出的等级、上限和能力不会因为换周目消失；新周目也不会自动赠送任何新增上限。只有明确指定为恢复、清零或清空的原版字段会发生变化。</p>
+  </section>
+
+  <section id="item-inheritance">
+    <h3>1.3 物品继承</h3>
+    <p>物品继承只读取前一周目结束时的全局库存。角色的<code>equipment[2]</code>和<code>practice_item</code>及其关联状态不属于库存来源，继续按第1.2节清空；<code>taking_items[4]</code>与<code>taking_counts[4]</code>也不属于库存来源，但会按第1.2节为所有角色恢复原版基线。</p>
+    <pre>Type(i) = 从当前RANGER.GRP物品定义读取的item_type
+MoneyId = 当前规则集指定的金钱物品ID
+PrevCount(i) = 前一周目全局库存中物品i的合法数量
+
+Keep(i) = (Type(i)=3) 或 (Type(i)=4) 或 (i=MoneyId)
+
+InheritedCount(i) = PrevCount(i)，若 Keep(i)=true
+InheritedCount(i) = 0，若 Keep(i)=false</pre>
+    <p class="plain">下一周目只从旧库存带入药品、暗器和金钱；其他旧库存物品全部丢弃。物品类型必须从当前物品定义读取，金钱则使用规则集指定的物品ID。库存继承步骤只复制旧库存已有数量，不增加数量、不按周目放大，也不会从角色装备、携带槽或修炼栏直接回收物品。角色携带槽另行恢复原版基线，之后只有在角色入队或敌方战斗消耗时才按原规则发生转移或减少。</p>
+    <ul>
+      <li>Type 3药品全部继承，数量保持前一周目库存值。</li>
+      <li>Type 4暗器全部继承，数量保持前一周目库存值。</li>
+      <li>金钱物品按<code>MoneyId</code>额外进入白名单；原版当前规则值为ID 174“银两”，其原版<code>item_type</code>为0。</li>
+      <li>所有其他物品一律不继承，包括其他Type 0物品、Type 1装备和Type 2秘笈。</li>
+      <li>转换前验证库存物品ID和数量；发现非法值时拒绝转换，不静默修复。保留条目按源库存槽位顺序写入，删除其他条目并清空剩余槽位。</li>
+      <li>本节只定义从前一周目转入的库存；库存继承步骤本身不自动产生任何旧库存中不存在的物品。角色原版携带物属于角色基线恢复，不属于库存继承。</li>
+      <li>恢复角色携带物时，从当前原版<code>RANGER.GRP</code>逐角色复制<code>taking_items[4]</code>与<code>taking_counts[4]</code>；不得硬编码角色、物品或数量，也不得为了恢复携带物而预先执行任何剧情脚本。</li>
+      <li>剧情脚本对携带物的追加仍只在本周目正常运行到对应事件时发生。原版opcode 41等脚本效果不属于NG+转换输入，不能在开局提前重放。</li>
+      <li>原版样本：胡斐的角色携带槽包含闯王军刀、胡家刀法、小还丹和人参；每个新周目从<code>RANGER.GRP</code>恢复后，首次按原剧情入队时会再次转入全局库存并清空携带槽。装备与秘笈虽然可在本周重新取得，但因Type 1与Type 2不在库存继承白名单，不会跨周目累积。</li>
+    </ul>
+    <table>
+      <thead><tr><th>原版物品样本</th><th>原版类型</th><th>是否继承</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td>ID 0 康倍特</td><td>Type 3</td><td>是</td><td>药品白名单</td></tr>
+        <tr><td>ID 96 飞蝗石</td><td>Type 4</td><td>是</td><td>暗器白名单</td></tr>
+        <tr><td>ID 174 银两</td><td>Type 0</td><td>是</td><td>命中<code>MoneyId</code></td></tr>
+        <tr><td>ID 67 松风剑谱</td><td>Type 2</td><td>否</td><td>不在白名单</td></tr>
+        <tr><td>ID 106 玄铁剑</td><td>Type 1</td><td>否</td><td>不在白名单</td></tr>
       </tbody>
     </table>
   </section>
 
   <section id="level-cost">
-    <h3>1.2 人物升级需求</h3>
+    <h3>1.4 人物升级需求</h3>
     <p>原始等级与经验门槛从游戏定义读取；原版当前数据中的30级、52000、4350、4200和150只用于说明与核对，不是运行时代码常量。</p>
     <pre>L0 = 原始经验门槛表支持的最高等级
 E0(L) = 原始门槛表中等级L的累计经验
@@ -182,7 +335,7 @@ C(n)=135000n－69750，n≥2</pre>
   </section>
 
   <section id="battle-reward">
-    <h3>1.3 战斗经验倍率</h3>
+    <h3>1.5 战斗经验倍率</h3>
     <pre>Bbase = 原版一周目百分比基准
 B2 = battle_experience_ng2_percent
 Bstep = battle_experience_later_step_percent
@@ -206,7 +359,7 @@ B(n) = B2＋(n－2)×Bstep，n≥2
   </section>
 
   <section id="battle-table">
-    <h3>1.4 实际战斗练满场数</h3>
+    <h3>1.6 实际战斗练满场数</h3>
     <pre>WAR(w) = 从当前WAR.STA定义读取的战斗w整场经验
 R(w,n) = floor(WAR(w)×B(n)÷100)
 N(w,n) = ceil(C(n)÷R(w,n))</pre>
@@ -370,12 +523,12 @@ H0 = 原版无关联武功秘笈首次费用阶级
 count[role_id][item_id] ∈ [0, Lcur(n)－H0]
 item_id ∈ [0, ItemCount－1]
 仅当 magic(item_id)=-1 且 need(item_id)&gt;0 时允许count非0
-NG+转换：role_id∈RetainedRoles时原样继承；否则count=0</pre>
+NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色保持源存档中的count</pre>
     <p class="plain">隐藏次数不是“当前装备这本书的临时值”，而是角色对每一本无关联秘笈各自的长期记录。角色把书丢掉、换成别的书、下一周目重新取得，原次数仍然存在，因此不能靠换书把费用刷回第一次。</p>
     <ul>
       <li>新增<code>unassociated_manual_success_counts[ItemCount]</code>，按角色保存、按物品ID索引；原版当前<code>ItemCount=200</code>。</li>
       <li>是否使用计数由当前物品定义中的<code>magic_id</code>与<code>need_experience</code>判断；其他位置必须为0。</li>
-      <li><code>RetainedRoles</code>来自NG+可控角色继承集合；原版当前为27名，其余角色创建下一周目时归零。</li>
+      <li><code>EverJoinedRoles</code>来自存档中的历代实际入队记录；其中角色的隐藏次数完整继承，其他角色保持源存档值。</li>
       <li><code>practice_item</code>和当前<code>item_experience</code>仍按周目转换规则清空，但历史成功次数不清空。</li>
       <li>隐藏次数最大为<code>Lcur(n)－H0</code>；原版当前参数与默认NG999配置下为9988。</li>
       <li>修炼经验累计值使用64位逻辑字段，不允许16位回绕。</li>
