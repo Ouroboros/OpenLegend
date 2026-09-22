@@ -25,6 +25,8 @@
     td:not(:nth-child(2)), th:not(:nth-child(2)) { white-space:nowrap; }
     .field-transfer td:nth-child(2), .field-transfer th:nth-child(2) { min-width:9em; white-space:nowrap; }
     .field-transfer td:nth-child(4), .field-transfer th:nth-child(4) { white-space:normal; }
+    .medical-poison-fields td:nth-child(4), .medical-poison-fields th:nth-child(4) { white-space:nowrap; }
+    .medical-poison-fields td:nth-child(5), .medical-poison-fields th:nth-child(5) { white-space:normal; }
     .meta,.notice { padding:12px 16px; border-left:4px solid var(--accent); background:var(--panel); margin:16px 0; }
     .plain { padding:10px 14px; border-left:4px solid #2da44e; background:var(--panel); }
     .small { font-size:.9rem; opacity:.8; }
@@ -48,11 +50,11 @@
 <main>
   <header>
     <h1>OpenLegend New Game+ 设计文档</h1>
-    <p>本文件是正式的NG+设计文档。当前版本只纳入已经讨论并确认的<strong>人物数值继承、物品继承、人物等级经验、战斗经验奖励和秘笈修炼经验</strong>；尚未确认的其他NG+系统不写入本文。</p>
+    <p>本文件是正式的NG+设计文档。第1～3章纳入已经讨论并确认的<strong>人物数值继承、物品继承、人物等级经验、战斗经验奖励、秘笈修炼经验和NG+存档格式</strong>；第4章只记录已经核对的原版医疗／伤势／中毒事实与尚未决定的问题，不构成已批准NG+规则或实现授权。</p>
     <div class="notice"><strong>实现原则：</strong>公式中的游戏数值必须来自当前资产、角色状态、存档、CFG或规则参数；除百分比基数100、零值和取整语义外，不得把原版当前数值直接写进运行时公式。本文列出的具体数值只用于标注原版数据和复算结果，禁止作为代码常量写死。</div>
     <div class="status">
-      <div><strong>文件版本</strong><br>v13</div>
-      <div><strong>规则状态</strong><br>数值方案已确定；尚未实现</div>
+      <div><strong>文件版本</strong><br>v31</div>
+      <div><strong>规则状态</strong><br>第1～3章已确认；第4章待讨论；尚未实现</div>
       <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
       <div><strong>主要核对范围</strong><br>NG2～NG5</div>
     </div>
@@ -91,8 +93,27 @@
       </li>
       <li><a href="#category-implementation">3. 持久化与实现约束</a>
         <ul>
-          <li><a href="#persistence">3.1 隐藏次数与持久化</a></li>
-          <li><a href="#boundaries">3.2 边界与实现要求</a></li>
+          <li><a href="#save-format">3.1 NG+ All-in-One TOML存档</a>
+            <ul>
+              <li><a href="#save-format-routing">3.1.1 格式分流与用途</a></li>
+              <li><a href="#save-format-root">3.1.2 根字段与版本</a></li>
+              <li><a href="#save-format-tables">3.1.3 原版审计与分类型持久化</a></li>
+              <li><a href="#save-format-values">3.1.4 字段表示与数值宽度</a></li>
+              <li><a href="#save-format-validation">3.1.5 严格加载验证</a></li>
+              <li><a href="#save-format-atomic">3.1.6 原子写入与槽位</a></li>
+            </ul>
+          </li>
+          <li><a href="#persistence">3.2 隐藏次数与持久化</a></li>
+          <li><a href="#boundaries">3.3 边界与实现要求</a></li>
+        </ul>
+      </li>
+      <li><a href="#category-medical-poison-discussion">4. 临时讨论：医疗、伤势与中毒体系</a>
+        <ul>
+          <li><a href="#medical-poison-domains">4.1 字段分组与原版范围</a></li>
+          <li><a href="#medical-poison-growth">4.2 初始值与成长来源</a></li>
+          <li><a href="#medicine-hurt-mechanics">4.3 医疗与伤势机制</a></li>
+          <li><a href="#poison-mechanics">4.4 施毒、抗毒与解毒机制</a></li>
+          <li><a href="#medical-poison-open-questions">4.5 NG+待讨论问题</a></li>
         </ul>
       </li>
     </ul>
@@ -135,15 +156,15 @@
     <p>本节处理原版角色记录中已经存在的字段，并额外包含已经明确批准的<code>unassociated_manual_success_counts[ItemCount]</code>。除该字段外，其他NG+新增字段、装备物品自身记录、库存、队伍、剧情状态和其他系统设计不属于本节。</p>
 
     <h4 id="inheritance-scope">1.2.1 范围与通用公式</h4>
-    <pre>Prev(r,f) = 源通关存档中角色r的原版字段f
+    <pre>Prev(r,f) = 源通关TOML的[[roles]]中角色r的完整逻辑字段f
 Base(r,f) = 当前原版RANGER角色定义中的字段f
 Cap(f,n) = 字段f在第n周目的合法上限
 EverJoined(r) = 角色r是否曾在任一周目实际加入过队伍
 RoleId(r) = r                                  # 固定身份不变量
-HeadId(r) = Base(r,head_id)                     # 固定头像定义
+HeadId(r) = Base(r,head_id)                     # 固定头像定义，不写入TOML
 
-若存档中的角色ID与记录位置r不一致：拒绝转换
-若存档中的head_id与当前原版角色定义不一致：拒绝转换
+TOML中的角色ID重复、越界或顺序错误：拒绝转换
+Legacy源存档中的角色ID或head_id与当前原版角色定义不一致：拒绝转换
 
 不参与继承且不受EverJoined范围限制的原版字段集合：
 FreshFields = { sexual, taking_items[4], taking_counts[4] }
@@ -157,7 +178,7 @@ Next(r,taking_counts[0..3]) = Base(r,taking_counts[0..3])
 不得在NG+转换阶段调用、重放或模拟KDEF剧情脚本
 
 对于FreshFields以外的字段，若 EverJoined(r)=false：
-Next(r,f) = Prev(r,f)
+Next(r,f) = Base(r,f)
 
 对于FreshFields以外的字段，若 EverJoined(r)=true且字段采用直接继承：
 Next(r,f) = clamp(Prev(r,f), Min(f), Cap(f,n))
@@ -165,8 +186,9 @@ Next(r,f) = clamp(Prev(r,f), Min(f), Cap(f,n))
 对于FreshFields以外的字段，若 EverJoined(r)=true且字段恢复原版基线：
 Next(r,f) = Base(r,f)
 
-名称、资源引用和数组槽位不使用数值clamp；它们原样复制后执行合法性验证。</pre>
-    <p class="plain">角色ID与头像ID都属于固定角色定义，不参与继承、重置或clamp；与记录位置或当前原版角色定义不一致时表示存档损坏。性别与角色原版携带物不受历史入队范围限制：所有角色进入新周目时都从当前原版角色定义恢复这些字段，不继承上一周目的变化。这样敌人重新取得原版战斗携带物，可入队角色也能按原流程在每个周目转交一次原版物品。除这些字段外，只有曾经真正加入过队伍的角色才执行下面的逐字段转换；其他角色记录保持上一周目的值。直接继承不是把数值补到新上限，而是先复制实际值，再防止非法越界。</p>
+name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
+资源引用和数组槽位不使用数值clamp，复制后执行合法性验证。</pre>
+    <p class="plain">角色ID与头像ID都属于固定角色定义，不参与继承、重置或clamp；TOML只保存角色ID，头像ID始终从当前原版角色定义读取。性别与角色原版携带物不受历史入队范围限制：所有角色进入新周目时都从当前原版角色定义恢复这些字段，不继承上一周目的变化。这样敌人重新取得原版战斗携带物，可入队角色也能按原流程在每个周目转交一次原版物品。除这些字段外，只有曾经真正加入过队伍的角色才执行下面的逐字段转换；未入队角色不写入TOML，新周目直接使用当前RANGER角色基线。直接继承不是把数值补到新上限，而是先复制实际值，再防止非法越界。</p>
 
     <h4 id="inheritance-fields">1.2.2 原版字段转移表</h4>
     <table class="field-transfer">
@@ -174,8 +196,8 @@ Next(r,f) = Base(r,f)
       <tbody>
         <tr><td><code>increased_life</code></td><td>生命成长</td><td>直接继承并clamp</td><td>不按周目放大；原版当前合法范围为1～10。</td></tr>
         <tr><td><code>unused</code></td><td>未知／未使用字段</td><td>直接继承原值</td><td>不解释、不重算未知语义。</td></tr>
-        <tr><td><code>name</code></td><td>姓名</td><td>直接继承并验证</td><td>保持合法Legacy Big5字节和长度。</td></tr>
-        <tr><td><code>nickname</code></td><td>外号／称号</td><td>直接继承并验证</td><td>保持合法Legacy Big5字节和长度。</td></tr>
+        <tr><td><code>name</code></td><td>姓名</td><td>直接继承并验证</td><td>TOML保存UTF-8逻辑字符串；加载Legacy运行时前编码为最多10 bytes的Big5。</td></tr>
+        <tr><td><code>nickname</code></td><td>外号／称号</td><td>直接继承并验证</td><td>TOML保存UTF-8逻辑字符串；加载Legacy运行时前编码为最多10 bytes的Big5。</td></tr>
         <tr><td><code>sexual</code></td><td>性别状态</td><td>不继承；恢复原版基线</td><td>对所有角色执行，不受<code>EverJoinedRoles</code>限制；从当前原版角色定义读取，原版女性仍为女性，自宫等运行期变化不跨周目。</td></tr>
         <tr><td><code>level</code></td><td>等级</td><td>直接继承并clamp</td><td>上限读取本周<code>Lcap(n)</code>。</td></tr>
         <tr><td><code>experience</code></td><td>人物经验</td><td>直接继承并clamp</td><td>上限读取本周等级上限对应的累计门槛。</td></tr>
@@ -222,7 +244,7 @@ Next(r,f) = Base(r,f)
     <ol>
       <li>从当前原版<code>RANGER.GRP</code>读取角色基线与字段合法域。</li>
       <li>判断角色是否属于“曾在任一周目实际加入过队伍”的名单。</li>
-      <li>所有角色先恢复<code>FreshFields</code>；对其他字段，不在名单中的角色保持源存档值，在名单中的角色按第1.2.2节逐字段处理。</li>
+      <li>所有角色先从当前RANGER建立基线并恢复<code>FreshFields</code>；对其他字段，不在名单中的角色保持当前RANGER基线，在名单中的角色按第1.2.2节逐字段处理。</li>
       <li>先处理<code>level</code>、<code>maximum_hp</code>、<code>maximum_mp</code>等上限依赖字段，再恢复<code>hp</code>、<code>mp</code>和<code>physical_power</code>。</li>
       <li>继承并验证每名适用角色的<code>unassociated_manual_success_counts[ItemCount]</code>；它不随当前<code>practice_item</code>清空。</li>
       <li>最后验证全部ID、字符串、数组槽位和数值范围；失败时拒绝转换，不静默修复损坏存档。</li>
@@ -516,28 +538,238 @@ Tw(n) = 战斗w代入人物与秘笈奖励公式后的单场秘笈经验
   <section class="category">
     <h2 id="category-implementation">3. 持久化与实现约束</h2>
 
+  <section id="save-format">
+    <h3>3.1 NG+ All-in-One TOML存档</h3>
+    <p class="plain">启用NG+后，从一周目开始，普通存档和通关存档都以一个UTF-8 TOML文件保存恢复游戏所需的状态。加载时先从指纹匹配的当前GAME DATA建立静态定义，再按数据性质恢复：权威运行状态完整保存，静态定义只引用GAME DATA，S／D世界状态分别保存为完整bytes，经Zstandard压缩后编码为Base64。All-in-One表示这些状态与NG+扩展都在同一个TOML中，不使用sidecar。</p>
+
+    <h4 id="save-format-routing">3.1.1 格式分流与用途</h4>
+    <pre>[new_game_plus]
+enabled = false  # 是否启用NG+存档格式与加载优先级</pre>
+    <table>
+      <thead><tr><th>条件与用途</th><th>保存格式</th><th>路径</th></tr></thead>
+      <tbody>
+        <tr><td><code>enabled=false</code>的普通存档</td><td>现有Legacy D／R／S，字节布局不扩充</td><td>存档根目录中的<code>R1.GRP／S1.GRP／D1.GRP … R999.GRP／S999.GRP／D999.GRP</code>；继续共享原版<code>RANGER.IDX</code></td></tr>
+        <tr><td><code>enabled=true</code>的全部周目普通存档</td><td>GAME DATA静态基线＋分类持久化状态的All-in-One TOML；一周目起即使用</td><td><code>ngplus/001.toml … ngplus/999.toml</code></td></tr>
+        <tr><td><code>enabled=true</code>的一周目起通关存档</td><td>相同结构、只用于创建下一周目的All-in-One TOML</td><td><code>completed/001.toml … completed/999.toml</code></td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>普通读档固定使用以下优先级；<code>&gt;</code>表示同一槽位中左侧格式优先：
+        <pre>若 enabled=true：TOML &gt; Legacy D／R／S
+若 enabled=false：只读取 Legacy D／R／S</pre>
+      </li>
+      <li><code>enabled=true</code>时，同槽位存在普通TOML就只验证并加载TOML；只有不存在TOML时才读取Legacy D／R／S。TOML存在但损坏或不兼容时必须报告错误，不得静默回退到可能较旧的Legacy状态。</li>
+      <li><code>enabled=false</code>时，普通读档扫描、列表和加载都只处理Legacy D／R／S，完全忽略普通TOML和通关TOML；磁盘上的TOML保持不变。</li>
+      <li>Legacy读档路径始终保留：关闭NG+时它是唯一读档格式；开启NG+时它是同槽位不存在TOML时的后备格式。关闭NG+时普通保存继续写Legacy；开启NG+时无论当前是第几周目，普通保存都写All-in-One TOML。</li>
+      <li>开启NG+后加载Legacy存档时，本次加载仍按Legacy格式完整读取；其后执行普通保存时写入新的TOML，不覆盖或扩写原Legacy文件。此后同槽位读档由TOML优先。</li>
+      <li>Legacy没有NG+专属历史字段。转换时，每名角色的<code>ever_joined</code>统一初始化为<code>false</code>（逻辑值0），全部<code>unassociated_manual_success_counts[ItemCount]</code>统一初始化为0；不得根据当前队伍、剧情状态、人物属性或物品状态反推旧历史。转换后的正常入队与无关联秘笈成功事件再从这些初始值开始记录。</li>
+      <li>两类TOML都不使用sidecar，不混合读取同槽位D／R／S，也不能导出为Legacy格式。不得用一种统一的“全存”或“全差量”策略处理全部数据；各类状态必须严格使用第3.1.3节规定的完整状态、静态引用或完整压缩bytes表示。</li>
+      <li>普通TOML可从存读档界面直接恢复游戏；通关TOML只能由标题菜单的“New Game+”入口读取，不能作为普通存档加载。</li>
+      <li>一周目通关TOML也使用本节定义的完整结构；从通关TOML创建下一周目时，才执行第1章规定的人物、物品、故事状态和新周目初始状态转换。</li>
+      <li>同一编号的Legacy与普通TOML可以同时存在于磁盘，但普通读档界面把它们视为同一个逻辑槽位并按上述优先级选择来源。通关TOML位于独立目录，只出现在启用NG+后的“New Game+”来源页面。</li>
+    </ul>
+
+    <h4 id="save-format-root">3.1.2 根字段与版本</h4>
+    <pre>format          = "openlegend-ngplus"     # 普通存档格式标识；通关存档固定使用openlegend-ngplus-completion
+format_version  = 2                       # TOML结构版本
+ruleset_version = 3                       # NG+规则语义版本
+slot            = 1                       # 逻辑槽号；必须与三位补零文件名一致
+timestamp_utc   = "2026-09-14T08:00:00Z"  # 保存时间；RFC3339 UTC格式示例
+playthrough     = 1                       # 当前周目；普通与通关存档均为1…Nmax
+
+[assets]
+ranger_idx_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"  # RANGER六段累计索引文件指纹
+ranger_grp_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"  # 角色、物品、场景、武功和商店定义文件指纹
+allsin_idx_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"  # 场景地图索引文件指纹
+allsin_grp_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"  # 初始场景地图数据文件指纹
+alldef_idx_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"  # 场景事件索引文件指纹
+alldef_grp_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"  # 初始场景事件数据文件指纹
+kdef_idx_sha256   = "0000000000000000000000000000000000000000000000000000000000000000"  # 剧情脚本索引文件指纹
+kdef_grp_sha256   = "0000000000000000000000000000000000000000000000000000000000000000"  # 剧情脚本数据文件指纹
+war_sta_sha256    = "0000000000000000000000000000000000000000000000000000000000000000"  # 战斗定义与整场经验数据文件指纹</pre>
+    <ul>
+      <li><code>timestamp_utc</code>记录实际保存时间，固定使用精确到秒的RFC3339 UTC格式<code>YYYY-MM-DDTHH:MM:SSZ</code>；它只用于显示与诊断，不改变排序或游戏状态。</li>
+      <li>资产指纹根据创建存档时实际使用的数据根目录计算。加载时任一指纹不一致即拒绝并报告“资源版本不兼容”，不得猜测ID映射。</li>
+      <li>普通与通关TOML都必须精确匹配<code>format_version=2</code>和<code>ruleset_version=3</code>；未知版本直接拒绝，不自动迁移、静默clamp或猜测缺失字段。</li>
+      <li>截至本文版本，NG+ TOML尚未实现，也不存在需要兼容的已发布TOML存档；本节是<code>format_version=2</code>的唯一正式定义。首个实现完成后，任何不向后兼容的结构变化必须提升格式版本；只改变规则语义时必须提升规则版本。</li>
+      <li><code>format_version</code>描述TOML结构；<code>ruleset_version</code>描述生成和解释存档所用的NG+规则。</li>
+      <li>当前正式格式不包含任何已经删除的旧版生命／内力参考字段。历史评审文档中的此类字段不构成兼容输入；TOML出现相应未知键时按严格验证规则拒绝。</li>
+    </ul>
+
+    <h4 id="save-format-tables">3.1.3 原版审计与分类型持久化</h4>
+    <p>原版为了直接保存运行时内存，把RANGER六段与完整S／D写入存档。<code>R#.GRP</code>固定为114,242 bytes，<code>RANGER.IDX</code>六个累计尾为<code>[836,59076,97076,101444,114092,114242]</code>；<code>S#.GRP</code>为4,915,200 bytes，<code>D#.GRP</code>为440,000 bytes。当前Legacy加载也会把这六段固定记录和S／D字节整体复制进临时快照，通过长度与结构验证后整份提交，不会逐字段与当前GAME DATA合并。</p>
+    <p>现代TOML按数据性质选择表示，不采用统一差量策略：属于权威运行状态的数据完整保存；静态定义从指纹匹配的GAME DATA读取；体积巨大的S／D地图与事件状态也保存完整当前bytes，并按<code>format_version=2</code>的Zstandard合同压缩后编码为RFC 4648 Base64。</p>
+    <table>
+      <thead><tr><th>原版存档内容</th><th>已核对的运行时变化</th><th>现代TOML处理</th></tr></thead>
+      <tbody>
+        <tr><td>header／team／inventory：836 bytes</td><td>世界位置、场景位置、方向、船状态、队伍和库存都会变化。</td><td><code>[header]</code>完整保存12个头字段、6个队员及有序<code>inventory = [{item_id,count},…]</code>；数组下标就是原库存槽位，不另存<code>slot</code>。</td></tr>
+        <tr><td>roles：320×182 bytes</td><td>人物字段被新游戏、战斗、物品、修炼和剧情广泛修改。</td><td><code>[[roles]]</code>只保存当前队伍与<code>EverJoinedRoles</code>中的角色；每个入选角色保存全部逻辑字段和NG+历史，不做字段级差量。未入队角色不写入并从RANGER基线恢复。</td></tr>
+        <tr><td>items：200×190 bytes</td><td>全局库存只需要有序<code>item_id,count</code>；物品记录中当前已核对运行时写点只修改<code>user</code>。</td><td>物品名称、说明、属性、需求和配方不保存；库存已在<code>[header]</code>保存，<code>[item_state].users</code>完整保存当前200个<code>user</code>值。</td></tr>
+        <tr><td>scene metadata：84×52 bytes</td><td>当前已核对运行时写点只修改<code>entrance_condition</code>。</td><td>场景静态定义不保存；<code>[scene_state].entrance_conditions</code>完整保存当前84个入口条件。</td></tr>
+        <tr><td>magics：93×136 bytes</td><td>当前实现与已核对脚本没有运行时写点。</td><td>完全不保存；始终从指纹匹配的RANGER武功定义读取。</td></tr>
+        <tr><td>shops：5×30 bytes</td><td>购买只修改各槽<code>total</code>；商品ID和价格不变。</td><td>商品ID与价格不保存；<code>[shop_state].totals</code>完整保存当前5×5个库存值。</td></tr>
+        <tr><td>S：100×6×64×64 words</td><td>六层分别为地面、建筑、装饰、事件索引、建筑高度和装饰高度；剧情可修改地图格。</td><td>完整保存当前4,915,200 bytes；按<code>format_version=2</code>固定的Zstandard合同压缩后，以一个Base64字符串写入<code>scene_archives.s_compressed_base64</code>。</td></tr>
+        <tr><td>D：100×200×11 words</td><td>每个事件保存不可行走、索引、三个事件、当前／结束／起始图片、图片延迟、X和Y；剧情用它保持门、宝箱、NPC和事件变化。</td><td>完整保存当前440,000 bytes；使用相同Zstandard合同压缩后，以一个Base64字符串写入<code>scene_archives.d_compressed_base64</code>。</td></tr>
+      </tbody>
+    </table>
+    <pre>State = 从指纹匹配的RANGER建立静态定义与未入队角色基线
+State.header／team／inventory = TOML保存的完整当前值
+用[[roles]]完整替换入选角色的逻辑状态
+State.item_users = item_state.users
+State.scene_entrance_conditions = scene_state.entrance_conditions
+State.shop_totals = shop_state.totals
+严格按RFC 4648解码Base64，并按Zstandard合同解压scene_archives中的完整S／D bytes
+完成全部验证后，State一次性替换当前游戏状态</pre>
+    <p>键名只允许下列ASCII <code>snake_case</code>名称。下列代码块是逐字段结构说明：<code>integer</code>、<code>boolean</code>、<code>integer_array(N)</code>、<code>integer_matrix(R,C)</code>和<code>string</code>表示TOML值类型与固定长度，不是字面量。每个字段单独一行，行尾中文注释说明用途。完整状态数组必须具有规定长度；S／D字段必须各自解码为一个完整、连续且长度精确匹配的byte数组。</p>
+    <pre>[header]
+in_ship                            = integer                              # 当前乘船状态；0为步行，非0为乘船
+in_sub_map                         = integer                              # 当前地图模式；0为世界地图，1为内部场景
+main_map_x                         = integer                              # 玩家世界地图X坐标
+main_map_y                         = integer                              # 玩家世界地图Y坐标
+sub_map_x                          = integer                              # 玩家内部场景X坐标
+sub_map_y                          = integer                              # 玩家内部场景Y坐标
+face_towards                       = integer                              # 玩家当前朝向，合法值0…3
+ship_x                             = integer                              # 船只第一个世界地图位置X坐标
+ship_y                             = integer                              # 船只第一个世界地图位置Y坐标
+ship_x_1                           = integer                              # 船只配对位置X坐标
+ship_y_1                           = integer                              # 船只配对位置Y坐标
+ship_direction                     = integer                              # 船只当前朝向，合法值0…3；对应Legacy encode
+team_members                       = integer_array(6)                     # 六个有序队伍槽中的角色ID
+inventory                          = [                                    # 有序全局库存；数组下标就是库存槽位
+  { item_id = 174, count = 500 },
+  { item_id = 67, count = 1 },
+]
+
+[[roles]]
+id                                 = integer                              # 角色ID；条目按此值严格升序
+increased_life                     = integer                              # 生命成长
+unused                             = integer                              # 未知／未使用字段；原值保存
+name                               = string                               # 姓名；TOML UTF-8字符串，读档时转为Legacy Big5
+nickname                           = string                               # 外号／称号；TOML UTF-8字符串，读档时转为Legacy Big5
+sexual                             = integer                              # 性别状态
+level                              = integer                              # 当前等级
+experience                         = integer                              # 人物累计经验
+hp                                 = integer                              # 当前生命
+maximum_hp                         = integer                              # 最大生命
+hurt                               = integer                              # 当前伤势
+poison                             = integer                              # 当前中毒程度
+physical_power                     = integer                              # 当前体力值
+make_item_experience               = integer                              # 制作物品经验
+equipment                          = integer_array(2)                     # 两个装备槽的物品ID
+frames                             = integer_array(15)                    # 十五个战斗动作帧定义
+mp_type                            = integer                              # 内力门路
+mp                                 = integer                              # 当前内力
+maximum_mp                         = integer                              # 最大内力
+attack                             = integer                              # 武力／攻击力
+speed                              = integer                              # 轻功
+defence                            = integer                              # 防御力
+medicine                           = integer                              # 医疗能力
+use_poison                         = integer                              # 用毒能力
+detoxification                     = integer                              # 解毒能力
+anti_poison                        = integer                              # 抗毒能力
+fist                               = integer                              # 拳掌功夫
+sword                              = integer                              # 御剑能力
+knife                              = integer                              # 耍刀技巧
+unusual                            = integer                              # 特殊兵器
+hidden_weapon                      = integer                              # 暗器技巧
+knowledge                          = integer                              # 武学常识
+morality                           = integer                              # 道德
+attack_with_poison                 = integer                              # 武功带毒
+attack_twice                       = integer                              # 左右互搏／攻击两次
+fame                               = integer                              # 个人声望
+iq                                 = integer                              # 资质
+practice_item                      = integer                              # 当前修炼秘笈ID
+item_experience                    = integer                              # 当前秘笈修炼经验
+magic_ids                          = integer_array(10)                    # 十个已学武功ID槽
+magic_levels                       = integer_array(10)                    # 十个武功熟练度槽
+taking_items                       = integer_array(4)                     # 四个角色携带物品ID槽
+taking_counts                      = integer_array(4)                     # 四个角色携带物品数量槽
+ever_joined                        = boolean                              # 是否曾在任一周目实际入队
+unassociated_manual_success_counts = integer_array(ItemCount)             # 按物品ID保存无关联秘笈历史成功次数
+
+[item_state]
+users                              = integer_array(ItemCount)             # 每个物品当前item.user占用角色ID
+
+[scene_state]
+entrance_conditions                = integer_array(SceneDefinitionCount)  # 每个场景当前入口开放条件
+
+[shop_state]
+totals                             = integer_matrix(ShopCount, 5)         # 每个商店五个商品槽的当前剩余库存
+
+[scene_archives]
+s_compressed_base64                = string                               # 完整S bytes经Zstandard压缩后的Base64
+d_compressed_base64                = string                               # 完整D bytes经Zstandard压缩后的Base64</pre>
+    <ul>
+      <li><code>[[roles]]</code>严格按角色ID升序输出。入选集合为当前<code>team_members</code>中的有效角色与<code>EverJoinedRoles</code>的并集；同一角色只出现一次。每个条目的全部字段都是必需键，固定<code>head_id</code>不保存并由当前RANGER基线提供。</li>
+      <li>没有进入上述集合的角色不保存；加载后保持当前RANGER基线。即使运行时脚本曾修改未入队角色记录，该记录也不跨普通存档保存。</li>
+      <li><code>inventory</code>是有序内联表数组；数组第<code>i</code>项恢复到原库存槽<code>i</code>。合法库存始终为连续非空前缀加空尾部：添加物品使用第一个空槽，删除整项会把后续槽左移。数组长度必须在<code>0…ItemCount</code>内，未列出的尾部槽统一恢复为<code>{item_id=-1,count=0}</code>。Legacy转换若发现中间空槽之后仍有非空项，视为非规范库存并拒绝转换。</li>
+      <li><code>item_state.users</code>完整保存全部<code>ItemCount</code>个当前<code>item.user</code>，不从角色装备／修炼槽反推；当前原版基线已存在角色槽引用与<code>item.user</code>不完全一致的记录。</li>
+      <li><code>scene_state.entrance_conditions</code>和<code>shop_state.totals</code>属于小型状态，完整保存，不与基线计算差量。</li>
+      <li>现代键<code>ship_direction</code>对应Legacy header第11个word；历史名称<code>encode</code>不得出现在TOML中。加载Legacy时读取<code>encode</code>位置，写入现代<code>ship_direction</code>状态。</li>
+      <li><code>scene_archives</code>完整保存当前S／D bytes，不使用ALLSIN／ALLDEF差量。<code>format_version=2</code>固定使用单个Zstandard frame：压缩等级3、不使用字典、写入content size并启用frame checksum；随后使用RFC 4648标准Base64字母表和<code>=</code>padding编码。存档内不另设压缩算法或版本字段。写入器在TOML多行字符串中按每行76个Base64字符换行；解析后只允许移除CR／LF，其他空白、URL-safe字符、非法字符、错误padding、frame checksum失败、尾随数据、多个frame或解压后长度不等于4,915,200／440,000 bytes时，整个读档失败。</li>
+      <li>不允许<code>[[items]]</code>、<code>[[scenes]]</code>、<code>[[magics]]</code>或完整<code>[[shops]]</code>定义表；物品名称、效果、武功数值、场景定义、商店商品与价格都由当前GAME DATA提供。</li>
+    </ul>
+
+    <p><strong>Legacy转换：</strong>先完整读取D／R／S，再将旧R存档中不可变部分与当前基线比较：物品除<code>user</code>外的字段、场景元数据除<code>entrance_condition</code>外的字段、全部武功定义、商店商品ID与价格、角色<code>id</code>与<code>head_id</code>必须一致；不一致即拒绝转换。通过后完整保存当前队伍角色；Legacy无法证明已经离队的历史成员，故不保存其他角色。全部已保存角色的<code>ever_joined</code>统一为<code>false</code>，全部无关联秘笈成功次数统一为0；不得反推旧历史。<code>item_state.users</code>、入口条件和商店库存从Legacy R完整取得，S／D原始bytes按<code>format_version=2</code>的Zstandard合同压缩并编码为RFC 4648 Base64。</p>
+
+    <h4 id="save-format-values">3.1.4 字段表示与数值宽度</h4>
+    <ul>
+      <li>所有TOML整数token先解析为signed 64位，再在写入临时状态前验证字段域、周目上限和跨字段不变量；验证前不得窄化。</li>
+      <li>原版<code>RANGER.GRP</code>、Legacy存档和原版运行时记录使用signed 16位word，只用于定义Legacy输入、静态基线和NG1兼容行为。NG+逻辑角色状态不得把这些word作为已扩展字段的权威值。</li>
+      <li>NG+可成长角色字段的权威运行时表示至少使用signed 32位；人物累计经验及其他可能超过signed 32位的字段使用signed 64位。乘法、比例、经验门槛和周目增长一律使用signed 64位中间值并在运算前检查溢出。</li>
+      <li>每个入选角色直接保存全部实际逻辑整数，不截断为16位。<code>item_state.users</code>、入口条件、商店库存及尚未批准扩宽的Legacy状态字段仍按原始signed 16位域验证；S／D在解压后按原始little-endian signed 16位word解释。</li>
+      <li>每个已保存角色的<code>name</code>／<code>nickname</code>均为必需的TOML UTF-8字符串。保存时把当前Legacy Big5字段从开头解码到第一个NUL或10-byte末尾；读档时再编码为Legacy Big5。字符串不得包含NUL，无法编码为Big5或编码后超过10 bytes时拒绝读档；不足10 bytes的尾部统一以NUL补齐。物品、场景和武功名称不属于存档字段。</li>
+      <li>装备名称等根据当前周目动态生成的显示后缀不持久化。加载后仍以基础ID、当前周目和当前规则生成。</li>
+    </ul>
+
+    <h4 id="save-format-validation">3.1.5 严格加载验证</h4>
+    <ol>
+      <li>加载前拒绝超过64 MiB的文件；只接受普通文件，不跟随最终路径的符号链接。</li>
+      <li>解析失败、重复键、未知键、别名、类型错误、缺少必需键、数组长度错误、索引重复、排序错误、数值越界、Base64错误、解压失败、解压长度错误或跨字段不变量失败时，拒绝整个存档。</li>
+      <li>验证<code>format</code>与目录／用途一致，版本精确匹配，<code>slot</code>与三位补零文件名一致，<code>playthrough</code>在CFG允许的<code>1…Nmax</code>范围内，全部资产指纹一致。</li>
+      <li>指纹通过后，从当前RANGER构造角色、物品、场景、武功与商店静态定义及未入队角色基线；普通读档的S／D当前状态只来自<code>scene_archives</code>解压结果，不用ALLSIN／ALLDEF补齐。ALLSIN／ALLDEF只用于资产版本验证以及创建新周目时的原始世界基线。</li>
+      <li><code>[[roles]]</code>的ID必须严格递增且不重复；每个当前队伍角色必须存在。<code>ever_joined=false</code>的角色只有在当前队伍中才允许存在；<code>ever_joined=true</code>的已保存角色即属于<code>EverJoinedRoles</code>。每个角色必须包含完整字段、固定长度数组和完整<code>unassociated_manual_success_counts[ItemCount]</code>。</li>
+      <li><code>item_state.users</code>长度必须等于<code>ItemCount</code>，入口条件长度必须等于<code>SceneDefinitionCount</code>，商店库存必须精确为<code>ShopCount×5</code>；所有ID与引用必须处于当前资产域。</li>
+      <li><code>scene_archives</code>的两个字符串必须符合上述严格Base64与Zstandard合同；解压前分别设置4,915,200和440,000 bytes固定输出上限，解压后长度必须恰好匹配，并拒绝尾随数据和多个frame。成功后整块装入临时S／D存储。</li>
+      <li>库存严格按<code>inventory</code>数组顺序恢复到从0开始的连续槽位；第1.3节的物品继承白名单只在从通关存档创建下一周目时执行，不能用于普通读档。</li>
+      <li>全部状态写入临时快照后，再验证生命／内力当前值、武功槽与熟练度、装备、修炼物、携带物、库存引用、物品<code>user</code>、隐藏成功次数及全部ID的正文合法域和引用关系。</li>
+      <li>加载普通TOML时，只有临时状态通过全部验证后才一次性替换当前游戏状态。通关TOML不得直接替换游戏状态，只能生成下一周目的临时状态；任何失败都不得部分修改当前状态、GAME DATA或源存档。</li>
+    </ol>
+
+    <h4 id="save-format-atomic">3.1.6 原子写入与槽位</h4>
+    <ol>
+      <li>先在内存中完成序列化，再重新解析并按本节完整验证；回读验证失败时不得修改目标文件。</li>
+      <li>在目标目录以原文件名加<code>.tmp</code>排他创建普通文件，写入完整UTF-8 TOML并确认不超过64 MiB；刷新文件内容成功后才关闭。</li>
+      <li>Windows使用<code>ReplaceFileW</code>；目标不存在时使用带<code>MOVEFILE_WRITE_THROUGH</code>的<code>MoveFileExW</code>。POSIX使用同文件系统<code>rename</code>并<code>fsync</code>目录。成功后目标只能是完整旧文件或完整新文件。</li>
+      <li>任一步骤失败时删除本次创建的临时文件并保留原目标。启动扫描忽略遗留<code>.tmp</code>，不得把它显示或加载为存档。</li>
+      <li>普通读档页面按槽号升序，每个编号最多显示一个逻辑槽位。<code>enabled=true</code>时优先显示普通TOML，没有TOML才显示Legacy；<code>enabled=false</code>时只显示Legacy。通关存档只在启用NG+后的“New Game+”来源页面显示。普通TOML和通关TOML文件名固定为三位补零<code>001…999</code>。</li>
+      <li>删除普通槽位时只删除当前优先级实际选中的格式：启用NG+且存在TOML时只删除该TOML，若同号Legacy仍存在，它随后成为可见后备；否则删除Legacy D／R／S。关闭NG+时只允许删除Legacy。删除成功后才刷新列表，且不得连带删除同号的另一格式。</li>
+      <li>关闭NG+时不创建、扫描、显示或加载TOML；磁盘上已有TOML不得自动删除或改写，重新开启NG+后恢复按TOML优先级处理。</li>
+    </ol>
+  </section>
+
   <section id="persistence">
-    <h3>3.1 隐藏次数与持久化</h3>
+    <h3>3.2 隐藏次数与持久化</h3>
     <pre>ItemCount = 当前物品定义数量
 H0 = 原版无关联武功秘笈首次费用阶级
 count[role_id][item_id] ∈ [0, Lcur(n)－H0]
 item_id ∈ [0, ItemCount－1]
 仅当 magic(item_id)=-1 且 need(item_id)&gt;0 时允许count非0
-NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色保持源存档中的count</pre>
+NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色的count保持基线值0</pre>
     <p class="plain">隐藏次数不是“当前装备这本书的临时值”，而是角色对每一本无关联秘笈各自的长期记录。角色把书丢掉、换成别的书、下一周目重新取得，原次数仍然存在，因此不能靠换书把费用刷回第一次。</p>
     <ul>
       <li>新增<code>unassociated_manual_success_counts[ItemCount]</code>，按角色保存、按物品ID索引；原版当前<code>ItemCount=200</code>。</li>
       <li>是否使用计数由当前物品定义中的<code>magic_id</code>与<code>need_experience</code>判断；其他位置必须为0。</li>
-      <li><code>EverJoinedRoles</code>来自存档中的历代实际入队记录；其中角色的隐藏次数完整继承，其他角色保持源存档值。</li>
+      <li><code>EverJoinedRoles</code>来自存档中的历代实际入队记录；其中角色的隐藏次数完整继承，未入队角色不写入TOML且隐藏次数保持基线值0。</li>
       <li><code>practice_item</code>和当前<code>item_experience</code>仍按周目转换规则清空，但历史成功次数不清空。</li>
       <li>隐藏次数最大为<code>Lcur(n)－H0</code>；原版当前参数与默认NG999配置下为9988。</li>
       <li>修炼经验累计值使用64位逻辑字段，不允许16位回绕。</li>
-      <li>由于新增必需字段，NG+ TOML使用<code>format_version=2</code>、<code>ruleset_version=3</code>，不自动迁移旧格式。</li>
+      <li>该字段按第3.1节写入All-in-One TOML；当前格式使用<code>format_version=2</code>、<code>ruleset_version=3</code>，不自动迁移旧格式。</li>
     </ul>
   </section>
 
   <section id="boundaries">
-    <h3>3.2 边界与实现要求</h3>
+    <h3>3.3 边界与实现要求</h3>
     <pre>Nmax = CFG允许的最大周目
 Lmax = M0＋(Nmax－1)×martial_level_step
 HcountMax = Lmax－H0
@@ -575,8 +807,125 @@ Lmax=9990，HcountMax=9988，PaidTierMax=9989
   </section>
   </section>
 
+  <section class="category">
+    <h2 id="category-medical-poison-discussion">4. 临时讨论：医疗、伤势与中毒体系</h2>
+    <div class="notice"><strong>临时讨论区：</strong>本章只整理原版事实与尚未批准的问题，不改变前文已经确定的NG+规则，也不能直接作为实现参数。后续结论确认后，应移入对应正式章节并删除或改写本章。</div>
+
+    <section id="medical-poison-domains">
+      <h3>4.1 字段分组与原版范围</h3>
+      <p>这七个字段属于同一个医疗、伤势与中毒体系，但分为永久能力和当前状态。下表同时列出正常玩法使用的有效域，以及当前原版<code>RANGER.GRP</code>中320名角色定义的实际最小值与最大值；两者不能混为一谈。</p>
+      <table class="field-transfer medical-poison-fields">
+        <thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead>
+        <tbody>
+          <tr><td><code>medicine</code></td><td>医疗能力</td><td>永久能力</td><td>通常为0～100</td><td>0～81；最高为角色16胡青牛的81。</td></tr>
+          <tr><td><code>use_poison</code></td><td>用毒能力</td><td>永久能力</td><td>通常为0～100</td><td>0～86；最高为角色2程灵素的86。</td></tr>
+          <tr><td><code>detoxification</code></td><td>解毒能力</td><td>永久能力</td><td>通常为0～100</td><td>0～84；最高为角色2程灵素的84。</td></tr>
+          <tr><td><code>anti_poison</code></td><td>抗毒能力</td><td>永久能力</td><td>通常为0～100</td><td>0～100；最高为角色48游坦之的100。</td></tr>
+          <tr><td><code>attack_with_poison</code></td><td>武功带毒</td><td>永久能力</td><td>通常为0～100</td><td>0～100；最高为角色78蟒牯朱蛤的100。</td></tr>
+          <tr><td><code>hurt</code></td><td>伤势</td><td>当前状态</td><td>0～99</td><td>320名角色的原版初始值全部为0。</td></tr>
+          <tr><td><code>poison</code></td><td>中毒程度</td><td>当前状态</td><td>通常为0～99</td><td>320名角色的原版初始值全部为0；武功附毒分支存在恰好100的边界例外。</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">所有这些字段在原始记录中都是signed 16位整数，原始存储域为−32768～32767；这只是二进制容器范围，不是正常游戏数值范围。原版多数成长路径把永久能力夹到0～100，把伤势和中毒夹到0～99，但并非所有写入路径都执行同一套clamp。</p>
+      <ul>
+        <li><code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>、<code>anti_poison</code>和<code>attack_with_poison</code>是角色长期能力。</li>
+        <li><code>hurt</code>和<code>poison</code>是战斗与物品产生的当前状态；原版升级会把两者清零，当前NG+设计也在换周目时清零。</li>
+        <li>普通物品效果对上述永久能力执行16位加法而不统一clamp；剧情opcode 23还可以直接写入<code>use_poison</code>。因此100是正常玩法的通用能力上限语义，不是所有原版写入路径都绝对保证的存储不变量。</li>
+      </ul>
+    </section>
+
+    <section id="medical-poison-growth">
+      <h3>4.2 初始值与成长来源</h3>
+      <table>
+        <thead><tr><th>来源</th><th>原版行为</th></tr></thead>
+        <tbody>
+          <tr><td>主角开局随机</td><td><code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>和<code>anti_poison</code>分别独立取得<code>RNG.bounded(10)+21</code>，即21～30；<code>attack_with_poison</code>不在该随机列表中。</td></tr>
+          <tr><td>人物升级</td><td><code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>仅在升级前数值大于20时各增加<code>RNG.bounded(3)</code>，即0～2，并在升级结算后封顶100；<code>anti_poison</code>和<code>attack_with_poison</code>不随等级自动增长。</td></tr>
+          <tr><td>秘笈修炼成功</td><td>按秘笈永久效果增加能力，然后夹到0～100。当前原版秘笈数据包含：医疗+3／+4／+5，用毒+3／+5／+7，解毒+1／+3／+5／+7，武功带毒+2／+5。</td></tr>
+          <tr><td>普通物品效果</td><td>直接执行signed 16位加法，不统一夹到0～100。当前原版物品中，通犀地龙丸的<code>add_anti_poison=100</code>；若目标原本已有抗毒，结果可以超过100。</td></tr>
+          <tr><td>剧情脚本</td><td>opcode 23可把指定角色的<code>use_poison</code>直接设为脚本参数，不执行0～100 clamp。</td></tr>
+        </tbody>
+      </table>
+      <p>当前原版解毒药的<code>add_poison</code>为−20～−100；有毒暗器的<code>add_poison</code>为40～80。前者直接降低当前<code>poison</code>，后者通过暗器结算增加当前<code>poison</code>，它们不是永久的<code>use_poison</code>或<code>attack_with_poison</code>成长。</p>
+    </section>
+
+    <section id="medicine-hurt-mechanics">
+      <h3>4.3 医疗与伤势机制</h3>
+      <pre>医疗／解毒／用毒的目标距离：
+Range(s) = trunc(s ÷ 15) + 1
+
+医疗基础值：
+m = max(medicine, 0)
+
+hurt ≤ 25：BaseHeal = trunc(4m ÷ 5)
+26 ≤ hurt ≤ 50：BaseHeal = trunc(3m ÷ 4)
+51 ≤ hurt ≤ 75：BaseHeal = trunc(2m ÷ 3)
+hurt > 75：BaseHeal = trunc(m ÷ 2)
+
+Heal = BaseHeal + RNG.bounded(5)       # 随机量0～4
+若 hurt > medicine + 20：Heal = 0，且本次不降低伤势
+否则：
+  hp = min(maximum_hp, hp + Heal)
+  hurt = max(0, hurt - m)</pre>
+      <p class="plain">医疗同时做两件事：恢复生命并按完整医疗能力降低伤势。即使生命已经加满，只要没有触发“伤势高于医疗能力20点以上”的失败条件，仍然可以降低伤势。</p>
+      <ul>
+        <li>战斗菜单要求<code>physical_power&gt;50</code>且<code>medicine≥20</code>才显示医疗可用；核心医疗计算本身在体力低于50时直接失败。</li>
+        <li>医疗核心计算消耗2点体力，战斗共享行动尾部再消耗2点，因此一次战斗医疗通常共消耗4点体力；非战斗队伍菜单只调用核心计算时消耗2点。</li>
+        <li>武功造成HP伤害后，目标增加<code>trunc(damage÷10)</code>点伤势并封顶99。</li>
+        <li>目标已有伤势会使本次武功伤害额外增加<code>trunc(hurt÷20)</code>，形成伤势越高、后续受伤越重的正反馈。</li>
+        <li>每轮行动值还会扣除<code>trunc(hurt÷40)</code>，所以40点和80点附近分别出现新的速度惩罚档。</li>
+        <li>回合状态结算会扣除<code>trunc(hurt÷20)</code>点HP；伤势0～19时该项为0，伤势99时为4。</li>
+        <li>治疗物品和伤害型暗器也会按各自公式降低或增加<code>hurt</code>；最终仍按0～99处理。</li>
+      </ul>
+    </section>
+
+    <section id="poison-mechanics">
+      <h3>4.4 施毒、抗毒与解毒机制</h3>
+      <pre>主动用毒：
+ActivePoison = trunc((use_poison - target.anti_poison) ÷ 4)
+ActivePoison = clamp(ActivePoison, 0, 99 - target.poison)
+target.poison += ActivePoison
+
+武功附毒：
+PoisonPower = attack_with_poison + MagicAttack(current_magic, current_level)
+若 PoisonPower > target.anti_poison 且 target.anti_poison < 90：
+  target.poison += trunc((PoisonPower - target.anti_poison) ÷ 15)
+
+解毒：
+DetoxBase = trunc(detoxification ÷ 3)
+DetoxAmount = clamp(DetoxBase + RNG.bounded(10) - RNG.bounded(10), 0, 99)
+若 target.poison > detoxification + 20：DetoxAmount = 0
+DetoxAmount = min(DetoxAmount, target.poison)
+target.poison -= DetoxAmount</pre>
+      <ul>
+        <li>主动用毒在战斗菜单中的条件为<code>physical_power&gt;10</code>且<code>use_poison≥20</code>，只能对敌方生效，完成行动消耗2点体力。</li>
+        <li>战斗解毒的条件为<code>physical_power&gt;50</code>且<code>detoxification≥20</code>，只对友方生效，完成行动消耗2点体力。</li>
+        <li><code>anti_poison</code>在主动用毒公式中直接抵消<code>use_poison</code>；只要抗毒不低于用毒，本次主动施毒量就是0。</li>
+        <li>武功附毒使用另一条规则：目标抗毒达到90时直接阻止该分支，不再比较更高的<code>PoisonPower</code>。因此90是武功附毒的硬免疫门槛。</li>
+        <li>有毒暗器使用物品毒性、暗器能力和目标抗毒的另一组公式；对应路径在<code>anti_poison≥100</code>时阻止增加中毒。解毒药的负<code>add_poison</code>不受抗毒能力抵消。</li>
+        <li>回合状态结算会扣除<code>trunc(poison÷10)</code>点HP；中毒0～9时为0，中毒99时为9。原版随后只在HP小于0时改成1，因此恰好减到0仍保留0，减成负数反而回到1，这是原版边界行为。</li>
+      </ul>
+      <div class="notice"><strong>原版边界例外：</strong>主动用毒与大多数物品路径把中毒封顶99；武功附毒路径却只在结果<strong>大于100</strong>时改为99，所以结果恰好等于100时会保留100。解毒路径同样只在结果大于100时改为99。是否保留这个边界异常，尚未形成NG+决定。</div>
+    </section>
+
+    <section id="medical-poison-open-questions">
+      <h3>4.5 NG+待讨论问题</h3>
+      <table>
+        <thead><tr><th>问题</th><th>必须共同考虑的原因</th><th>当前状态</th></tr></thead>
+        <tbody>
+          <tr><td>五项永久能力是否共用同一周目上限公式</td><td>医疗、用毒和解毒是绝对效果量；抗毒含90／100硬门槛；武功带毒还与武功攻击值相加，语义不同。</td><td>未决定</td></tr>
+          <tr><td><code>hurt</code>和<code>poison</code>是否继续固定0～99</td><td>若永久能力持续增长而状态域固定，高周目可能很快变成一次治满、一次解清、完全免疫或瞬间满毒。</td><td>未决定；NG1必须保持原版行为</td></tr>
+          <tr><td>能力与状态一起扩展时，20点失败差、15点距离档、90／100免疫门槛是否扩展</td><td>这些常量共同决定治疗失败、解毒失败、攻击距离和抗毒免疫，不能只改字段上限。</td><td>未决定</td></tr>
+          <tr><td>如何处理原版未统一clamp与中毒100例外</td><td>直接修正会改变NG1兼容性；完全保留又可能让扩大后的数值域继续出现不一致。</td><td>未决定</td></tr>
+          <tr><td>敌人与玩家是否使用完全相同的扩展规则</td><td>同一字段同时存在于玩家、队友和敌人角色记录中，且敌方AI会使用医疗、解毒、暗器和携带物品。</td><td>未决定</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">在上述问题逐项确认前，本章不新增<code>Cap(field,n)</code>数值、不修改第1.2.2节的转移规则，也不授权任何运行时代码实现。</p>
+    </section>
+  </section>
+
   <footer class="small">
-    <p>数据依据：<code>src/battle/battle_setup.cpp</code>、<code>WAR.STA</code>、<code>RANGER.GRP</code>。本文不替代原始数据；运行时必须按正文的数据来源与公式动态计算。</p>
+    <p>数据依据：<code>src/battle/battle_setup.cpp</code>、<code>src/model/new_game.cpp</code>、<code>WAR.STA</code>、<code>RANGER.GRP</code>。本文不替代原始数据；运行时必须按正文的数据来源与公式动态计算。</p>
   </footer>
 </main>
 </body>
