@@ -28,6 +28,12 @@
     .field-transfer.cap-register td, .field-transfer.cap-register th { white-space:normal; overflow-wrap:anywhere; }
     .medical-poison-fields td:nth-child(4), .medical-poison-fields th:nth-child(4) { white-space:nowrap; }
     .medical-poison-fields td:nth-child(5), .medical-poison-fields th:nth-child(5) { white-space:normal; }
+    .impact-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:16px 0 24px; }
+    .impact-grid > div { padding:14px 16px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+    .impact-grid strong { display:block; color:var(--accent); }
+    .impact-table th,.impact-table td { white-space:normal; overflow-wrap:anywhere; }
+    .impact-table td:first-child { width:18%; font-weight:600; }
+    .impact-table td:last-child { width:19%; }
     .meta,.notice { padding:12px 16px; border-left:4px solid var(--accent); background:var(--panel); margin:16px 0; }
     .plain { padding:10px 14px; border-left:4px solid #2da44e; background:var(--panel); }
     .small { font-size:.9rem; opacity:.8; }
@@ -54,7 +60,7 @@
     <p>本文件是正式的NG+设计文档。第1～3章记录已确认的人物、物品、经验、秘笈与存档规则；第4章记录医疗／内伤、中毒扣血、角色解毒的已确认规则、原版施毒路径事实，以及玩家投掷带毒暗器全周目改号规则。第5章仍是临时讨论区：共用字段与成长的原版审计、NG2+尚未决定的施毒写回及其他参数；原版事实与已确认的新规则分别标注。</p>
     <div class="notice"><strong>实现原则：</strong>公式中的游戏数值必须来自当前资产、角色状态、存档、CFG或规则参数；除百分比基数100、零值和取整语义外，不得把原版当前数值直接写进运行时公式。<strong>原版NG1基值、随文提供的一套NG+默认CFG、运行时实际读取的用户CFG是三个不同层次</strong>；提供的默认配置不等于游戏固有或不可覆盖的上限。</div>
     <div class="status">
-      <div><strong>文件版本</strong><br>v48</div>
+      <div><strong>文件版本</strong><br>v49</div>
       <div><strong>规则状态</strong><br>第1.2.2节登记四项技巧固定100、暗器技巧CFG增量默认+100；第3.1.4节规定角色与战斗结算数值统一用64位，旧存档写出逐字段校验16位；第4.1.1节医疗／内伤、第4.2节中毒／解毒及第4.4节投掷带毒暗器全周目改号已确认；第5章保留其余未决项；尚未实现</div>
       <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
       <div><strong>主要核对范围</strong><br>NG2～NG5</div>
@@ -124,6 +130,7 @@
           <li><a href="#medical-poison-domains">5.1 原版字段范围</a></li>
           <li><a href="#medical-poison-growth">5.2 原版初始值与成长来源</a></li>
           <li><a href="#medical-poison-open-questions">5.3 NG+未决问题</a></li>
+          <li><a href="#hurt-cap-impact-audit">5.4 提高内伤上限的关联影响</a></li>
         </ul>
       </li>
     </ul>
@@ -1168,6 +1175,48 @@ x = trunc((V + W) / 2) − A  # 原版机器在W前是减号；全周目均改�
         </tbody>
       </table>
       <p class="plain">字段上限及默认CFG统一见第1.2.2节；医疗与解毒机制分别见第4.1.1节及第4.2节：医疗距离使用NG1正常医疗能力100封顶；NG2+医疗容差及治内伤保底读取当前医疗能力；中毒每满10点扣1点HP，角色解毒容差读取当前解毒能力，单次解毒量上限读取本周CFG中毒上限。NG1除第4.4节玩家投掷带毒暗器改号和第3.1.4节64位内存表示外，正常域与原版结算一致，原版中毒100例外仍如第4.2节所述。本章只留尚未批准的医疗倍率、高NG其他永久能力上限、伤势生成／惩罚扩展、NG2+施毒扩容写回及用毒／解毒距离等问题；抗毒条件不在未决范围。未决参数补齐前，不修改第1.2.2节转移规则，也不授权运行时代码实现。</p>
+    </section>
+
+    <section id="hurt-cap-impact-audit">
+      <h3>5.4 提高内伤上限的关联影响（审计清单，非新增规则）</h3>
+      <div class="notice"><strong>范围与状态：</strong>以下逐项列出原版机器证据与现有移植代码可核对的内伤读写入口，并说明<strong>若扩大合法内伤值但沿用旧阈值</strong>会发生什么；这不是已经批准的NG2+伤势生成、惩罚或物品写回规则。正常上限按<a href="#field-cap-register">第1.2.2节的运行期CFG</a>计算，默认配置仅用于算例；已确认的NG2+医疗准入仍以<a href="#medicine-hurt-current-proposal">第4.1.1节</a>为准。</div>
+      <div class="impact-grid" aria-label="内伤影响速览">
+        <div><strong>地图：内伤 &gt; 50</strong>每50次世界移动尝试，符合条件的队员生命、内力、体力各减1；不会走路自愈。</div>
+        <div><strong>剧情休息：内伤 ≥ 33</strong>场景脚本的整队恢复跳过该角色；试炼轮间对主角另用内伤 ≥ 50。</div>
+        <div><strong>条件算例：内伤 199</strong>如沿用原版除数，每次回合状态扣9点生命，每轮行动值减4；不是NG2+已定惩罚。</div>
+      </div>
+
+      <h4>战斗外：行走、休息、队伍菜单与显示</h4>
+      <table class="impact-table">
+        <thead><tr><th>入口</th><th>已核对的原版行为及扩大数值时的影响</th><th>机器证据</th></tr></thead>
+        <tbody>
+          <tr><td>世界地图行走</td><td>每50次移动尝试（含受阻及进入场景）扫描队伍：实际队员内伤<code>&gt;50</code>或<strong>按队伍槽号误索引</strong>的中毒<code>&gt;50</code>时，生命、内力、体力各减1，各项只在原值<code>&gt;1</code>时扣减。内伤不因此降低；提高上限不会改变50点门槛或扣减频率。</td><td><a href="../research/evidence/functions/Z_DAT/0x26A92.md">0x26A92</a></td></tr>
+          <tr><td>剧情整队休息</td><td>场景脚本opcode 12仅恢复连续队伍前缀中内伤<code>&lt;33</code>且中毒恰为0的角色：清内伤、体力写100，生命和内力各补满；内伤达到33就四项全部跳过，即使生命不足也不会补。</td><td><a href="../research/evidence/functions/Z_DAT/0x2E1E8.md">0x2E1E8</a></td></tr>
+          <tr><td>十五场试炼轮间</td><td>前四组轮间只检查主角：内伤<code>&lt;50</code>且中毒为0才清伤并恢复体力、生命和内力；内伤达到50就跳过，其他队员不在此恢复路径内。</td><td><a href="../research/evidence/functions/Z_DAT/0x30510.md">0x30510</a></td></tr>
+          <tr><td>队伍菜单医疗</td><td>原版医疗在目标内伤<code>H&gt;M＋20</code>（施术者当前医疗能力为<code>M</code>）时无法回血或治伤；<code>H&gt;75</code>的治疗基础回血落入约<code>M/2</code>一档。体力满足核心门槛而仅因内伤过高失败时，核心仍扣2点体力。NG2+改用第4.1.1节已确定的能力相关容差，不能将原版<code>＋20</code>无条件延伸到高能力。</td><td><a href="../research/evidence/functions/Z_DAT/0x3A10C.md">0x3A10C</a></td></tr>
+          <tr><td>普通物品与状态页</td><td>菜单消耗品与战斗共用物品效果：正回血物品读取<code>物品回血值－H/2＋随机数</code>，负回血物品的伤害基数也减<code>H/2</code>；物品不走角色医疗的能力门槛。队伍医疗选择及人物状态页仅按内伤<code>≤33／34～66／≥67</code>给当前生命分色，扩容后没有新增严重程度颜色。</td><td><a href="../research/evidence/functions/Z_DAT/0x2B483.md">0x2B483</a>、<a href="../research/evidence/functions/Z_DAT/0x22090.md">0x22090</a>、<a href="../research/evidence/functions/Z_DAT/0x22A59.md">0x22A59</a></td></tr>
+        </tbody>
+      </table>
+
+      <h4>战斗内：行动、伤害、AI及结算</h4>
+      <table class="impact-table">
+        <thead><tr><th>入口</th><th>已核对的原版行为及扩大数值时的影响</th><th>机器证据</th></tr></thead>
+        <tbody>
+          <tr><td>行动值与移动</td><td>每轮行动值为<code>max(trunc(有效速度/15)－trunc(H/40), 0)</code>；战场移动读取该值，归零后玩家移动选项不可用，AI移动路径也受影响。按旧除数，内伤99最多扣2点，199则扣4点；这不是按本周内伤上限等比例缩放。</td><td><a href="../research/evidence/functions/Z_DAT/0x3271E.md">0x3271E</a></td></tr>
+          <tr><td>武功伤害与新伤势</td><td>符合条件的武功生命伤害分支额外加<code>trunc(目标H/20)</code>；命中后目标内伤增加<code>trunc(伤害/10)</code>，原版再按99封顶。增伤可能进一步改变击倒与战果计数，但是否扩展产伤与封顶尚未决定。</td><td><a href="../research/evidence/functions/Z_DAT/0x39188.md">0x39188</a></td></tr>
+          <tr><td>回合状态结算</td><td>符合结算条件时，先按<code>trunc(H/20)</code>扣生命，再按当前中毒<code>trunc(P/10)</code>扣生命；<code>H&gt;0</code>会直接取得结算资格，绕过原本针对中毒的生命、体力和隐藏状态门禁。若照搬旧除数，内伤199／299／499分别每次扣9／14／24点；不会只影响战斗中的一次受击。</td><td><a href="../research/evidence/functions/Z_DAT/0x3C563.md">0x3C563</a></td></tr>
+          <tr><td>玩家与AI投掷暗器</td><td>生命变化按目标内伤<code>0／1～33／34～66／&gt;66</code>四档折算，66以上不再新增档位；投掷后的内伤写回仍有原版99封顶。这里仅指生命和内伤路径，不改写第4.4节已确认的玩家带毒暗器技巧项新规则。</td><td><a href="../research/evidence/functions/Z_DAT/0x3A30B.md">0x3A30B</a>、<a href="../research/evidence/functions/Z_DAT/0x3598C.md">0x3598C</a></td></tr>
+          <tr><td>敌方AI与战斗显示</td><td>AI自身内伤<code>&gt;50</code>即进入低生命行动判定，即使当前生命充足；队友内伤<code>&gt;40</code>可使其成为医疗目标，但还要通过<code>医疗能力 &gt; 目标内伤－30</code>的筛选。战斗生命颜色在内伤<code>≥67</code>后也保持同一档；AI决策短路可能改变后续随机数调用。</td><td><a href="../research/evidence/functions/Z_DAT/0x33599.md">0x33599</a>、<a href="../research/evidence/functions/Z_DAT/0x3C6D3.md">0x3C6D3</a></td></tr>
+        </tbody>
+      </table>
+
+      <h4>扩容前须逐路径决定的边界</h4>
+      <ul>
+        <li><strong>旧99封顶会抵消新上限：</strong>原版武功、普通物品及玩家／AI暗器写回内伤时仍可夹到99；只改字段上限，正常产伤路径未必能达到更高内伤。反之，若其他新路径已产生199点内伤，沿用这些写回可能在再次受伤或用物品时反而把内伤压回99。<a href="../research/evidence/functions/Z_DAT/0x39188.md">武功</a>、<a href="../research/evidence/functions/Z_DAT/0x2B483.md">物品</a>、<a href="../research/evidence/functions/Z_DAT/0x3A30B.md">玩家暗器</a>、<a href="../research/evidence/functions/Z_DAT/0x3598C.md">AI暗器</a>须分别处理。</li>
+        <li><strong>AI筛选与新医疗门槛可能错位：</strong>原版AI自行医疗要求<code>M &gt; H－30</code>，角色医疗原版实际失败线却是<code>H &gt; M＋20</code>；如沿用AI判定及相应失败消耗，<code>M=100、H=125</code>会选中但治不了。NG2+已确定的容差是<code>max(20, floor(M×20%))</code>，高能力下又可能出现反方向的漏选；AI目标筛选、随机数与治疗结果须一起核对。</li>
+        <li><strong>重置与数值表示不是惩罚扩展：</strong>原版人物升级会清内伤，战后敌方结算会清内伤；本设计换周目时也将内伤置0。第3.1.4节已规定运行时使用有符号64位，新TOML允许合法64位值，写Legacy时仅在字段不能无损编码时拒绝整次保存；不能以16位回绕或保存格式代替扩容规则。<a href="../research/evidence/functions/Z_DAT/0x3B6BE.md">升级证据</a>、<a href="../research/evidence/functions/Z_DAT/0x3B387.md">战后证据</a>。</li>
+      </ul>
+      <p class="plain"><strong>未决边界：</strong>原版的地图、场景恢复、治疗物品、行动值、战斗增伤、回合扣血、AI及显示均有独立内伤阈值；不得仅凭新的<code>HurtCap(n)</code>给它们套同一个比例。NG2+具体产伤量与写回、各项惩罚阈值、普通物品及暗器的跨上限处理、AI与医疗门槛的衔接仍未批准；已确认的医疗距离、准入及10%治内伤保底不因本清单而改变。此处记录审计影响与待定决策，不授权实现。</p>
     </section>
   </section>
 
