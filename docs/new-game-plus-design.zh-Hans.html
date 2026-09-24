@@ -50,11 +50,11 @@
 <main>
   <header>
     <h1>OpenLegend New Game+ 设计文档</h1>
-    <p>本文件是正式的NG+设计文档。第1～3章纳入已经讨论并确认的<strong>人物数值继承、物品继承、人物等级经验、战斗经验奖励、秘笈修炼经验和NG+存档格式</strong>；第4章只记录已经核对的原版医疗／伤势／中毒事实与尚未决定的问题，不构成已批准NG+规则或实现授权。</p>
+    <p>本文件是正式的NG+设计文档。第1～3章记录已确认的人物、物品、经验、秘笈与存档规则；第4章记录医疗／内伤、中毒扣血、角色解毒的已确认规则及原版施毒路径事实。第5章仍是临时讨论区：共用字段与成长的原版审计、NG2+各施毒路径的抗毒门槛／增毒量／写回细节及其他未决参数，不因中毒与解毒的核心规则获确认而转为正式规则。</p>
     <div class="notice"><strong>实现原则：</strong>公式中的游戏数值必须来自当前资产、角色状态、存档、CFG或规则参数；除百分比基数100、零值和取整语义外，不得把原版当前数值直接写进运行时公式。本文列出的具体数值只用于标注原版数据和复算结果，禁止作为代码常量写死。</div>
     <div class="status">
-      <div><strong>文件版本</strong><br>v31</div>
-      <div><strong>规则状态</strong><br>第1～3章已确认；第4章待讨论；尚未实现</div>
+      <div><strong>文件版本</strong><br>v42</div>
+      <div><strong>规则状态</strong><br>第1～3章已确认；第4.1.1节医疗原则与第4.2节中毒扣血／角色解毒原则已确认；第5章保持临时讨论；尚未实现</div>
       <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
       <div><strong>主要核对范围</strong><br>NG2～NG5</div>
     </div>
@@ -107,13 +107,20 @@
           <li><a href="#boundaries">3.3 边界与实现要求</a></li>
         </ul>
       </li>
-      <li><a href="#category-medical-poison-discussion">4. 临时讨论：医疗、伤势与中毒体系</a>
+      <li><a href="#category-medical">4. 医疗、内伤、中毒与解毒规则及原版依据</a>
         <ul>
-          <li><a href="#medical-poison-domains">4.1 字段分组与原版范围</a></li>
-          <li><a href="#medical-poison-growth">4.2 初始值与成长来源</a></li>
-          <li><a href="#medicine-hurt-mechanics">4.3 医疗与伤势机制</a></li>
-          <li><a href="#poison-mechanics">4.4 施毒、抗毒与解毒机制</a></li>
-          <li><a href="#medical-poison-open-questions">4.5 NG+待讨论问题</a></li>
+          <li><a href="#medicine-hurt-mechanics">4.1 原版医疗与伤势机制</a>
+            <ul><li><a href="#medicine-hurt-current-proposal">4.1.1 医疗距离、准入与治内伤规则</a></li></ul>
+          </li>
+          <li><a href="#poison-detox-rules">4.2 中毒扣血与角色解毒规则</a></li>
+          <li><a href="#poison-mechanics">4.3 原版施毒与抗毒路径</a></li>
+        </ul>
+      </li>
+      <li><a href="#category-medical-poison-discussion">5. 临时讨论：字段、成长与未决问题</a>
+        <ul>
+          <li><a href="#medical-poison-domains">5.1 原版字段范围</a></li>
+          <li><a href="#medical-poison-growth">5.2 原版初始值与成长来源</a></li>
+          <li><a href="#medical-poison-open-questions">5.3 NG+未决问题</a></li>
         </ul>
       </li>
     </ul>
@@ -808,12 +815,259 @@ Lmax=9990，HcountMax=9988，PaidTierMax=9989
   </section>
 
   <section class="category">
-    <h2 id="category-medical-poison-discussion">4. 临时讨论：医疗、伤势与中毒体系</h2>
-    <div class="notice"><strong>临时讨论区：</strong>本章只整理原版事实与尚未批准的问题，不改变前文已经确定的NG+规则，也不能直接作为实现参数。后续结论确认后，应移入对应正式章节并删除或改写本章。</div>
+    <h2 id="category-medical">4. 医疗、内伤、中毒与解毒规则及原版依据</h2>
+    <div class="notice"><strong>正式规则范围：</strong>第4.1节记录原版医疗与伤势依据，第4.1.1节确定医疗距离、NG2+准入及治内伤原则；第4.2节确定各周目中毒扣血和角色解毒共同规则，第4.3节只收录原版施毒与抗毒路径的机器事实。NG1原版施毒路径及中毒100例外不因此改写；NG2+各途径的增毒量、抗毒门槛、距离与写回细节仍留在第5章，不得从中毒上限和解毒准入公式倒推。</div>
+
+    <section id="medicine-hurt-mechanics">
+      <h3>4.1 原版医疗与伤势机制</h3>
+      <p class="plain">本节的<code>actor</code>是执行医疗的角色，<code>target</code>是接受医疗的角色；<code>trunc</code>表示向零取整，<code>RNG.bounded(k)</code>会取得0到<code>k−1</code>。以下至第4.1.1节之前均为原版行为说明，不代表伤势上限或医疗能力在NG+中已经决定扩展。</p>
+
+      <p><strong>原版医疗作用距离</strong></p>
+      <pre>医疗目标距离 = trunc(actor.medicine ÷ 15) + 1</pre>
+      <p class="plain">医疗能力每完整增加15点，目标距离才增加1级；0～14得到1，15～29得到2，30～44得到3。能力没有跨过下一个15点门槛时，不会提前增加距离。这是原版函数本身的算式；NG+规定的跨周目医疗距离上限见第4.1.1节。角色解毒的原版距离见第4.2节，主动用毒的原版距离见第4.3节；不能由医疗距离自动推定它们的NG2+距离。</p>
+
+      <p><strong>医疗基础恢复量</strong></p>
+      <pre>m = max(actor.medicine, 0)
+
+若 target.hurt ≤ 25：BaseHeal = trunc(4m ÷ 5)
+若 26 ≤ target.hurt ≤ 50：BaseHeal = trunc(3m ÷ 4)
+若 51 ≤ target.hurt ≤ 75：BaseHeal = trunc(2m ÷ 3)
+若 target.hurt > 75：BaseHeal = trunc(m ÷ 2)</pre>
+      <p class="plain">伤势越重，同一医疗能力能够恢复的HP比例越低。四档依次只取医疗能力的80%、75%、约66.7%和50%；这一步只计算HP恢复量，不决定伤势减少量。例如医疗能力为60时，目标伤势50会得到45点基础恢复，伤势51则立即降为40点基础恢复。</p>
+
+      <p><strong>成功判定与最终结果</strong></p>
+      <pre>Heal = BaseHeal + RNG.bounded(5)       # 在基础值上增加0～4
+
+若 target.hurt > actor.medicine + 20：
+  Heal = 0
+  本次不降低伤势
+否则：
+  target.hp = min(target.maximum_hp, target.hp + Heal)
+  target.hurt = max(0, target.hurt - m)</pre>
+      <p class="plain">医疗先按伤势档位计算恢复量，再增加0～4点随机值。随后才检查医疗能力是否足以处理当前伤势：目标伤势比医疗能力高21点或更多时，恢复HP和降低伤势都会失败；恰好只高20点仍然成功。成功时，HP最多补到生命上限，但伤势直接减去完整的医疗能力，而不是减去折算后的<code>BaseHeal</code>。</p>
+      <p class="plain">例如<code>medicine=60</code>、<code>hurt=50</code>时，理论HP恢复为45～49，伤势会从50降到0；如果目标只缺20点HP，实际只补20点，但伤势仍会降到0。若同一角色面对<code>hurt=81</code>，因为81大于60＋20，本次医疗完全失败；<code>hurt=80</code>则仍可成功。</p>
+
+      <ul>
+        <li>战斗菜单要求<code>physical_power&gt;50</code>且<code>medicine≥20</code>才显示医疗可用；核心医疗计算本身在体力低于50时直接失败。也就是说，菜单条件与底层函数对体力50这个边界并不完全相同。</li>
+        <li>医疗核心计算消耗2点体力，战斗共享行动尾部再消耗2点，因此一次战斗医疗通常共消耗4点体力；非战斗队伍菜单只调用核心计算时消耗2点。</li>
+        <li>武功造成HP伤害后，目标增加<code>trunc(damage÷10)</code>点伤势并封顶99。受到39点伤害会增加3点伤势，受到40点伤害会增加4点。</li>
+        <li>目标已有伤势会使本次武功伤害额外增加<code>trunc(hurt÷20)</code>。伤势40会让每次武功伤害再增加2点，伤势80会增加4点，因此伤势会放大后续损失。</li>
+        <li>每轮行动值还会扣除<code>trunc(hurt÷40)</code>，所以伤势0～39没有该项惩罚，40～79扣1，80～99扣2。</li>
+        <li>回合状态结算会扣除<code>trunc(hurt÷20)</code>点HP；伤势0～19时不扣HP，40点每轮扣2点，99点每轮扣4点。</li>
+        <li>治疗物品和伤害型暗器走各自独立的物品公式，也能降低或增加<code>hurt</code>，最终仍限制在0～99；它们不调用上述角色医疗成功判定。</li>
+      </ul>
+      <p class="plain">因此伤势不是单纯的显示数值：它同时降低角色医疗的HP恢复效率、提高后续武功伤害、降低行动值，并在回合结算时继续扣HP。角色医疗成功后则会同时处理HP和伤势，两种结果使用不同的计算量。</p>
+
+      <h4 id="medicine-hurt-current-proposal">4.1.1 医疗距离、准入与治内伤规则（已确认部分）</h4>
+      <div class="notice"><strong>适用边界：</strong>NG1保留上文已核对的原版角色医疗效果、失败判定、随机数及体力／伤势结算；各周目的医疗<strong>目标距离</strong>另统一受NG1正常医疗能力上限约束。NG2+失败容差只随<strong>当前医疗能力</strong>增长，不随NG序号或伤势上限增长；成功后的回血与治内伤共用动态治疗量，治内伤最低为医疗能力的10%。具体回血倍率、高NG能力／伤势上限和其他伤势效果仍待确定，因此本节不是可立即实现的完整医疗规格。</div>
+      <p><strong>各周目医疗目标距离（已确定）</strong></p>
+      <pre>NG1MedicineRangeCap = NG1规则集的正常医疗能力上限  # 当前原版为100；跨周目固定
+DistanceMedicine = min(max(actor.medicine, 0), NG1MedicineRangeCap)
+MedicalRange = trunc(DistanceMedicine ÷ 15) + 1
+MedicalRangeMax = trunc(NG1MedicineRangeCap ÷ 15) + 1  # 当前为7</pre>
+      <p class="plain">NG1～NG999均按NG1正常医疗能力上限计算医疗距离，不随NG+医疗能力上限增加。目前医疗能力89时距离为6，90～100时距离为7；即使当前医疗能力为1000，也先按100计算距离，最大仍为7。<strong>仅距离计算使用截断后的<code>DistanceMedicine</code></strong>；医疗失败容差、理论治疗量与成功后的10%治内伤保底仍读取当前真实医疗能力，不把100当作治疗能力上限。原版正常NG1范围内与上文距离算式一致；超出正常范围的医疗能力在本设计中也执行距离封顶。</p>
+      <p><strong>NG2+失败判定</strong></p>
+      <pre>M = max(actor.medicine, 0)               # 当前执行者医疗能力
+H = target.hurt                          # 当前目标伤势
+OriginalTolerance = 20                  # NG1原版失败差，作为规则集基准参数
+ToleranceGrowthPercent = 20             # 当前确认的医疗能力增长比例
+Tolerance(M) = max(OriginalTolerance,
+                   floor(M × ToleranceGrowthPercent / 100))
+
+若核心体力门槛失败，或 H &gt; M + Tolerance(M)：治疗失败
+否则：通过医疗能力与伤势门槛；等于门槛仍可治疗</pre>
+      <p class="plain">两项20分别表示原版失败差20点、NG2+随医疗能力增长的20%；它们是有来源的规则参数，<strong>不是</strong>按本周目伤势上限计算的<code>floor((HurtCap+1)×20%)</code>。在正常NG1医疗能力0～100内，<code>Tolerance(M)=20</code>；NG1实际仍走上文完整原版算法。NG2+医疗能力100、165、166、200、400时，容差分别为20、33、33、40、80；相同医疗能力跨周目保持同一绝对治疗门槛。保留原版核心体力低于50失败、战斗菜单体力严格大于50且医疗能力至少20的行动条件；治疗资格不代表一次能把伤势清零。</p>
+      <p><strong>成功治疗后的共同治疗量与治内伤保底</strong></p>
+      <pre>T = 本次由医疗能力和伤势动态算出的理论治疗量   # 具体回血倍率尚未定稿
+CureFloorPercent = 10                    # 规则集参数，医疗能力的10%
+
+实际回血 = min(max(target.maximum_hp - target.hp, 0), T)
+实际消除伤势 = min(H, max(T, ceil(M × CureFloorPercent / 100)))
+治疗失败时：实际回血 = 0，实际消除伤势 = 0</pre>
+      <p class="plain"><code>T</code>是同一次治疗用于回血和治内伤的共同动态计算值，不是把固定预算分成两份。10%只为<strong>成功后的治内伤</strong>提供保底，不增加回血，也不能跨过医疗失败门槛；它不是固定治10点，更不存在伤势达到90点便固定治10点的分支。医疗能力20、40、60、80、100时，保底分别为2、4、6、8、10点；实际回血受生命缺口限制，实际治内伤不超过现有伤势。完整的<code>T</code>倍率曲线、成功但回血为0时的行动反馈以及NG2+随机数与体力结算顺序仍需明确，不能将此前拼接的平方尾段试算直接当成正式函数。</p>
+      <p><strong>医疗失败门槛复算</strong></p>
+      <table>
+        <thead><tr><th>假设伤势上限</th><th>当前医疗能力M</th><th>容差(M)</th><th>最多可治疗的伤势</th><th>满伤可治疗</th></tr></thead>
+        <tbody>
+          <tr><td>NG1原版99</td><td>79</td><td>20</td><td>99</td><td>是；NG1原版门槛</td></tr>
+          <tr><td>NG2假设199</td><td>100</td><td>20</td><td>120</td><td>否</td></tr>
+          <tr><td>NG2假设199</td><td>165</td><td>33</td><td>198</td><td>否</td></tr>
+          <tr><td>NG2假设199</td><td>166</td><td>33</td><td>199</td><td>是</td></tr>
+          <tr><td>NG3假设299</td><td>100</td><td>20</td><td>120</td><td>否</td></tr>
+          <tr><td>NG3假设299</td><td>249</td><td>49</td><td>298</td><td>否</td></tr>
+          <tr><td>NG3假设299</td><td>250</td><td>50</td><td>299</td><td>是</td></tr>
+          <tr><td>NG5假设499</td><td>100</td><td>20</td><td>120</td><td>否</td></tr>
+          <tr><td>NG5假设499</td><td>400</td><td>80</td><td>480</td><td>否</td></tr>
+          <tr><td>NG5假设499</td><td>415</td><td>83</td><td>498</td><td>否</td></tr>
+          <tr><td>NG5假设499</td><td>416</td><td>83</td><td>499</td><td>是</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">表中199／299／499都<strong>只是假设的伤势上限</strong>，未批准为高NG上限公式。医疗能力保持100时，NG2和NG5的绝对治疗门槛同为120；只有医疗能力实际提高，治疗资格才提高。表格只核对失败准入，不推断尚未定稿的回血或实际治内伤数值。</p>
+    </section>
+
+    <section id="poison-detox-rules">
+      <h3>4.2 中毒扣血与角色解毒规则（已确认部分）</h3>
+      <div class="notice"><strong>适用边界：</strong>NG1保留原版各施毒路径和中毒100例外；各周目中毒回合扣血统一读取当前中毒值，角色解毒统一读取当前真实解毒能力。正常中毒上限由本周CFG提供，并作为本次角色解毒量的上限。第4.3节收录不同原版施毒路径；NG2+如何扩展各路径的抗毒门槛、增毒量、距离和写回边界，仍属第5.3节未决细则。</div>
+      <p><strong>本周中毒上限与跨周目回合毒伤（已确定）</strong></p>
+      <pre>PoisonCap(n) = 本周规则集从CFG取得的正常中毒上限
+P = target.poison  # 本次回合状态结算读取的实际非负中毒值
+PoisonHp = trunc(P ÷ 10)</pre>
+      <p class="plain">中毒不是各来源分别挂上的独立回合伤害；不同施毒途径改变同一当前<code>poison</code>字段，符合回合状态结算资格时按<strong>现有中毒每满10点扣1点HP</strong>。0～9扣0、50～59扣5、99扣9、100扣10；若示例配置允许中毒达到199，则扣19。抗毒只在相应施毒路径中参与计算，不在每轮扣血时再次抵减。<code>PoisonCap(n)</code>由CFG按本周数值域确定，NG1正常上限为99，但原版武功附毒路径存在恰好100的例外；解毒公式不能把NG1的100例外预先改写为99。如果示例配置把NG2的正常中毒上限比NG1提高100，则<code>PoisonCap(2)=199</code>；这是配置复算样本，不是已批准的固定增长步长。NG2+中毒状态写回如何统一各施毒途径仍见第5.3节。</p>
+      <p><strong>原版回合状态结算资格、顺序与HP边界</strong></p>
+      <pre>进入状态扣血分支：hurt > 0
+  或 (poison > 0 且 hp > 0 且 physical_power > 0 且角色非隐藏)
+HurtHp = trunc(hurt ÷ 20)
+PoisonHp = trunc(poison ÷ 10)
+HP1 = signed16(hp − HurtHp)
+HP2 = signed16(HP1 − PoisonHp)
+最终HP = (HP2 &lt; 0) ? 1 : HP2  # 恰好0仍为0</pre>
+      <p class="plain">原版每次进入回合状态结算时，先按内伤、再按中毒从HP扣除；每次写回保留有符号16位结果。有正内伤会直接进入，即使生命、体力或隐藏条件不满足；仅由正中毒触发时，须同时满足生命与体力大于0且角色未隐藏。原版最终HP恰好0保留0，负数反而写1。以上分支条件、16位写回及HP异常是<strong>原版事实</strong>；除已确定的跨周目毒伤<code>trunc(P÷10)</code>之外，不据此决定NG2+的HP边界处理。</p>
+      <table>
+        <thead><tr><th>原有HP</th><th>内伤／中毒</th><th>内伤扣血／中毒扣血</th><th>原版本次最终HP</th></tr></thead>
+        <tbody>
+          <tr><td>100</td><td>0／9</td><td>0／0</td><td>100</td></tr>
+          <tr><td>100</td><td>0／10</td><td>0／1</td><td>99</td></tr>
+          <tr><td>100</td><td>40／50</td><td>2／5</td><td>93</td></tr>
+          <tr><td>100</td><td>0／99</td><td>0／9</td><td>91</td></tr>
+          <tr><td>100</td><td>0／100</td><td>0／10</td><td>90</td></tr>
+          <tr><td>10</td><td>0／100</td><td>0／10</td><td>0（恰好0保留）</td></tr>
+          <tr><td>9</td><td>0／100</td><td>0／10</td><td>1（先算−1，再改为1）</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">原版机器依据：<a href="../research/evidence/functions/Z_DAT/0x3C563.md">回合状态扣血<code>sub_3C563</code></a>；附毒中毒值的100边界见<a href="../research/evidence/functions/Z_DAT/0x39188.md">武功HP伤害<code>sub_39188</code></a>。</p>
+      <p><strong>角色解毒的跨周目统一公式（已确定）</strong></p>
+      <pre>M = max(actor.detoxification, 0)  # 当前真实解毒能力，不是CFG能力上限
+P = target.poison                  # 目标当前非负中毒值
+C = PoisonCap(n)                  # 本周CFG中毒上限；NG1正常为99
+R1 = RNG.bounded(10)              # 0～9
+R2 = RNG.bounded(10)              # 0～9，第二次调用
+Tolerance(M) = max(20, floor(M × 20 / 100))
+Theory = clamp(trunc(M ÷ 3) + R1 − R2, 0, C)
+
+若 P > M + Tolerance(M)：实际解毒量 = 0
+否则：实际解毒量 = min(Theory, P)
+target.poison = P − 实际解毒量</pre>
+      <p class="plain">原版两次随机数先于失败门槛取得；正常能力域的解毒基础量为当前解毒能力的三分之一，随机差范围−9～＋9。NG1能力通常为0～100，容差恒为20，正常单次上限<code>C=99</code>；此时理论量最大为<code>trunc(100÷3)+9=42</code>，因此NG1正常域按统一公式结算与原版一致，恰好100的现有中毒也不预先截断。NG2+的20%容差只随<strong>当前解毒能力</strong>增长，不读取本周能力上限或中毒上限，也不向上凑整百；失败阈值的等号可解。成功后的解毒量最多等于目标现有中毒，不借用医疗的回血生命缺口限制或治内伤10%保底；单次理论解毒量上限始终等于本周中毒上限，不再固定为99。</p>
+      <table>
+        <thead><tr><th>规则集／示例中毒上限C</th><th>当前M／P</th><th>R1／R2</th><th>容差／是否通过</th><th>理论量／实际消除／剩余P</th></tr></thead>
+        <tbody>
+          <tr><td>NG1／99</td><td>20／1</td><td>9／0</td><td>20／是</td><td>15／1／0</td></tr>
+          <tr><td>NG1／99</td><td>20／5</td><td>0／9</td><td>20／是</td><td>0／0／5</td></tr>
+          <tr><td>NG1／99</td><td>20／40</td><td>4／4</td><td>20／是，恰好等于门槛</td><td>6／6／34</td></tr>
+          <tr><td>NG1／99</td><td>20／41</td><td>4／4</td><td>20／否，超过门槛1点</td><td>6／0／41</td></tr>
+          <tr><td>NG1／99（原版100例外）</td><td>80／100</td><td>4／4</td><td>20／是，恰好等于门槛</td><td>26／26／74</td></tr>
+          <tr><td>NG2示例／199</td><td>100／120</td><td>4／4</td><td>20／是，恰好等于门槛</td><td>33／33／87</td></tr>
+          <tr><td>NG2示例／199</td><td>100／121</td><td>4／4</td><td>20／否，超过门槛1点</td><td>33／0／121</td></tr>
+          <tr><td>NG2示例／199</td><td>165／199</td><td>4／4</td><td>33／否，门槛198</td><td>55／0／199</td></tr>
+          <tr><td>NG2示例／199</td><td>166／199</td><td>4／4</td><td>33／是，门槛199</td><td>55／55／144</td></tr>
+          <tr><td>NG3示例／299</td><td>300／199</td><td>4／4</td><td>60／是</td><td>100／100／99</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">NG2、NG3行均以示例CFG上限和允许的解毒能力为前提，不是默认配置；最后一行展示高周目单次消除量可以超过原版99。NG1菜单与战斗共用原版解毒核心；战斗解毒菜单要求<code>physical_power&gt;50</code>且<code>detoxification≥20</code>、仅对友方生效，完成行动消耗2点体力；原版目标距离为<code>trunc(actor.detoxification÷15)+1</code>。NG2+用毒／解毒距离是否随能力增长仍属第5.3节未决，不得从第4.1.1节已定的医疗距离封顶直接推定。<a href="../research/evidence/functions/Z_DAT/0x39DA3.md">原版解毒机器依据：<code>sub_39DA3</code></a>。</p>
+      <div class="notice"><strong>原版中毒封顶的非单调异常与意图推断：</strong>主动用毒及大多数物品／暗器路径封顶99；武功附毒路径只在结果<strong>大于100</strong>时写99，恰好100保留；原版解毒路径也只在结果大于100时写99。若原有中毒99，武功附毒理论增加1得到100，下次回合毒扣10 HP；理论增加2先得到101却改写为99，下次毒扣9 HP。<strong>事实</strong>是原版比较条件和写回值如此；<strong>推断</strong>是它可能属于边界笔误，作者意图未经证实：目标封99应在<code>≥100</code>时写99，目标封100则在<code>&gt;100</code>时写100。其他主要施毒路径封顶99使前者较符合现有规则，但不是已证实结论。NG1保留原版例外；NG2+施毒各路径如何接入CFG正常上限并处理该异常，仍属第5.3节未决。</div>
+    </section>
+
+    <section id="poison-mechanics">
+      <h3>4.3 原版施毒与抗毒路径（仅原版／NG1事实）</h3>
+      <p class="plain">以下只审计NG1不同来源的<strong>施毒增量与抗毒门槛</strong>：主动用毒、武功附毒、普通物品与玩家／AI投掷各走独立路径，不能把原版硬门槛和封顶99直接当成NG2+已批准的施毒公式。原版主动用毒目标距离为<code>trunc(actor.use_poison÷15)+1</code>；角色解毒与中毒回合扣血的正式规则见第4.2节。</p>
+
+      <p><strong>主动用毒</strong></p>
+      <pre>ActivePoison = trunc((actor.use_poison - target.anti_poison) ÷ 4)
+ActivePoison = clamp(ActivePoison, 0, 99 - target.poison)
+target.poison += ActivePoison</pre>
+      <p class="plain">主动用毒先用施毒者的<code>use_poison</code>减去目标的<code>anti_poison</code>，每剩余4点差值才增加1点中毒。抗毒等于或高于用毒时结果为0；目标已经接近99时，只补到99，不会溢出。例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，理论增加10点；若目标已经有95点中毒，实际只增加4点。</p>
+
+      <p><strong>武功附毒（原版HP伤害分支）</strong></p>
+      <p class="plain"><code>attack_with_poison</code>是角色的永久属性：物品效果标签称「功夫帶毒」，本稿称「武功带毒」；不是主动用毒的<code>use_poison</code>，也不是目标的当前<code>poison</code>。原版两页人物状态均不显示其数值。当前原版物品定义中，成功修炼神木王鼎（ID 65，关联武功ID 27）每次增加5，含沙射影（ID 90，无关联武功）每次增加2，修炼成功后夹到0～100。NG1关联武功达到10级后神木王鼎不能再完成修炼：正常未学且空槽熟练度为0时，首次成功学会武功也增加5，此后最多再成功9次，因此仅靠它从0最多增加到50；已有足够初值且满足修炼条件时才可能到100。</p>
+      <pre>NG1正常域：level_index = unsigned16(角色对应武功熟练度) ÷ 100  # 0～9
+MagicAttack = 当前武功定义的 attack[level_index]
+C = actor.attack_with_poison
+A = target.anti_poison
+P = target.poison
+PoisonPower = C + MagicAttack
+
+若 A &lt; 90 且 PoisonPower > A：
+  Δ = trunc((PoisonPower − A) ÷ 15)  # 本次理论增加量，不是最终中毒值
+  P' = signed16(P + Δ)
+  若 P' > 100：P' = 99
+  若 P' &lt; 0：P' = 0
+  target.poison = P'
+否则：Δ = 0，target.poison 保持P</pre>
+      <p class="plain">武功附毒在原版武功HP伤害、内伤写回后结算，不为附毒额外取随机数。这里的<code>MagicAttack</code>取角色已学武功的<strong>熟练度等级</strong>在武功定义中的攻击值，不是本次实际HP伤害、总攻击力、物品<code>add_poison</code>，也不随本次内力不足导致的<strong>HP伤害威力降档</strong>改变。原版这条分支不要求<code>C</code>大于0，也不检查武功定义是否另标“有毒”；<code>A≥90</code>直接阻止附毒，<code>A&lt;90</code>时差值每满15点才增加1点。只有通过门槛时才按有符号16位写回并依次处理<strong>超过100→99、负值→0</strong>；恰好100保留，门槛不通过则原有中毒保持不变。</p>
+      <p class="plain">下表选取九种不同武功，其等级与定义攻击值来自当前原版<code>RANGER.GRP</code>；<code>C／A／P</code>是为了复算而明确设定的角色／目标状态，<strong>不是指定NPC的固定初始值</strong>。样本覆盖差值未满15、角色武功带毒加成、原有中毒叠加、恰好100／超过100的写回差异，以及抗毒89／90的硬门槛。</p>
+      <table>
+        <thead><tr><th>武功／等级</th><th>定义攻击值</th><th>C／A／原有P</th><th>总毒力／理论Δ</th><th>结算后P</th></tr></thead>
+        <tbody>
+          <tr><td>武当剑法1级</td><td>20</td><td>0／20／50</td><td>20／0（毒力未超过抗毒）</td><td>50</td></tr>
+          <tr><td>神王毒掌1级</td><td>15</td><td>0／1／0</td><td>15／0（差值14不足15）</td><td>0</td></tr>
+          <tr><td>罗汉拳1级</td><td>30</td><td>0／15／99</td><td>30／1</td><td>100（恰好100保留）</td></tr>
+          <tr><td>金蛇剑法5级</td><td>220</td><td>0／20／0</td><td>220／13</td><td>13</td></tr>
+          <tr><td>辟邪剑法1级</td><td>100</td><td>0／60／0</td><td>100／2</td><td>2</td></tr>
+          <tr><td>辟邪剑法1级</td><td>100</td><td>40／60／0</td><td>140／5</td><td>5</td></tr>
+          <tr><td>毒龙鞭法10级</td><td>200</td><td>0／60／70</td><td>200／9</td><td>79</td></tr>
+          <tr><td>武当长拳10级、内力0</td><td>400</td><td>0／60／0</td><td>400／22</td><td>22</td></tr>
+          <tr><td>降龙十八掌10级</td><td>900</td><td>0／89／0</td><td>900／54</td><td>54</td></tr>
+          <tr><td>降龙十八掌10级</td><td>900</td><td>0／90／0</td><td>900／0（抗毒硬门槛）</td><td>0</td></tr>
+          <tr><td>野球拳10级</td><td>2000</td><td>0／60／0</td><td>2000／129</td><td>99（理论超出上限）</td></tr>
+          <tr><td>野球拳10级</td><td>2000</td><td>0／60／95</td><td>2000／129</td><td>99（实际只增加4）</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">同为辟邪剑法1级、<code>A=60</code>，角色<code>C=0</code>时理论增加2点，<code>C=40</code>时增加5点；<code>C</code>只改变毒力，不改变武功定义攻击值。降龙十八掌10级对抗毒89的目标增加54点，抗毒90则直接增加0。野球拳10级即使<code>C=0</code>，对抗毒60仍算出理论增加129点，原有中毒0会写成99，原有中毒95时实际只增加4。武当长拳一行以已进入HP伤害结算为前提：10级且当前内力0时HP伤害使用的武功定义攻击值回退到1级的10，但<strong>附毒仍读取熟练度10级的400</strong>，所以<code>trunc((400−60)÷15)=22</code>。<a href="../research/evidence/functions/Z_DAT/0x39188.md">原版机器证据：<code>sub_39188</code></a>；状态页未显示此字段的依据见<a href="../research/evidence/functions/Z_DAT/0x22A59.md"><code>sub_22A59</code></a>。以上仅解释原版／NG1；NG2+的附毒数值域与硬门槛是否保留，仍属第5.3节未决问题。</p>
+
+      <p><strong>物品与暗器的三条独立中毒路径（原版事实）</strong></p>
+      <p class="plain">设<code>V=item.add_poison</code>、<code>W=actor.hidden_weapon</code>、<code>A=target.anti_poison</code>、<code>P=target.poison</code>。<code>trunc</code>始终向零取整，负值不能改用向下取整；<code>R1</code>、<code>R2</code>是中毒分支先后取得的两个<code>RNG.bounded(5)</code>（各0～4），<code>signed16</code>表示取低16位再按有符号数解释。下列简式用于正常合法数值域；写回时仍按原版16位回绕与路径专属clamp处理，不得外推为NG+数值域。</p>
+      <pre>普通物品效果（战斗使用物品／非战斗物品／AI普通物品）：
+  V > 0：x = trunc((W + V) / 2) − A
+         Δ = (A ≥ 100 或 x &lt; 0) ? 0 : trunc(x / 2)
+  V &lt; 0：Δ = trunc(V / 2) + R1 − R2
+  V = 0：跳过中毒字段和中毒分支RNG；P不变
+
+玩家战斗投掷暗器：
+  V > 0：x = signed16(trunc((V − W) / 2) − A)
+         Δ = (A ≥ 100 或 x &lt; 0) ? 0 : trunc(x / 2)
+  V ≤ 0：Δ = trunc(V / 2) + R1 − R2  # V恰为0仍取两次RNG
+
+AI战斗投掷暗器：
+  V ≥ 0：Δ = V
+  V &lt; 0：Δ = signed16(trunc((V − W) / 2))
+  # 这条路径既不读取A，也不为中毒变化额外取得R1／R2
+
+以上进入中毒写回的分支：P' = clamp(signed16(P + Δ), 0, 99)</pre>
+      <p class="plain">正毒普通物品先将<code>W</code>与<code>V</code>相加；玩家投掷却从<code>V</code>减去<code>W</code>，两者在中间值为负或<code>A≥100</code>时归零，再向零除以2。负毒普通物品与玩家投掷不读抗毒，随机差范围−4～＋4；玩家投掷的<code>V=0</code>也会进入这一随机分支，普通物品的<code>V=0</code>则跳过整个中毒结算。AI投掷正毒直接把<code>V</code>加到中毒，<strong>即使抗毒达到100也不被该能力阻止</strong>；负毒按<code>(V−W)/2</code>向零取整且不追加中毒随机数。这里说的是中毒分支自身的RNG，不排除同一暗器动作另有伤害随机数。</p>
+      <p class="plain">队伍侧AI投掷还存在已核对的原版陈旧槽异常：动画和库存消耗使用当前选定物品，实际HP／伤势／中毒载荷却从最近一次有效玩家物品确认槽读取；敌方AI仍从当前来源槽读取。因此AI公式中的<code>V</code>是<strong>实际载荷物品</strong>的<code>add_poison</code>，不一定是本次显示或消耗的物品值。现阶段只记录原版事实，不把三条路径合并，也不据此批准NG+用毒扩展。</p>
+      <table>
+        <thead><tr><th>路径</th><th>V／W／A／原有P</th><th>中毒随机R1／R2</th><th>理论Δ</th><th>结算后P</th></tr></thead>
+        <tbody>
+          <tr><td>普通物品正毒</td><td>80／40／10／0</td><td>不取</td><td>25</td><td>25</td></tr>
+          <tr><td>普通物品正毒封顶</td><td>80／40／0／90</td><td>不取</td><td>30</td><td>99</td></tr>
+          <tr><td>普通物品抗毒100</td><td>80／40／100／50</td><td>不取</td><td>0</td><td>50</td></tr>
+          <tr><td>普通物品负毒</td><td>−40／20／100／50</td><td>0／4</td><td>−24</td><td>26</td></tr>
+          <tr><td>普通物品负毒</td><td>−40／20／100／50</td><td>4／0</td><td>−16</td><td>34</td></tr>
+          <tr><td>普通物品零毒</td><td>0／40／100／50</td><td>不取</td><td>跳过</td><td>50</td></tr>
+          <tr><td>玩家投掷正毒</td><td>80／20／5／0</td><td>不取</td><td>12</td><td>12</td></tr>
+          <tr><td>玩家投掷正毒被抵消</td><td>80／60／10／50</td><td>不取</td><td>0</td><td>50</td></tr>
+          <tr><td>玩家投掷零毒随机</td><td>0／40／100／50</td><td>4／0</td><td>4</td><td>54</td></tr>
+          <tr><td>AI投掷正毒且抗毒100</td><td>80／20／100／10</td><td>不取</td><td>80</td><td>90</td></tr>
+          <tr><td>AI投掷正毒封顶</td><td>80／20／100／50</td><td>不取</td><td>80</td><td>99</td></tr>
+          <tr><td>AI投掷负毒</td><td>−40／20／100／50</td><td>不取</td><td>−30</td><td>20</td></tr>
+        </tbody>
+      </table>
+      <p class="plain">上表仅对正常域中毒结算取样：理论<code>Δ</code>不等于封顶后实际变化量；<code>V／W／A／原有P</code>依序对应前述四个字段。原版机器依据分别为<a href="../research/evidence/functions/Z_DAT/0x2B483.md">普通物品<code>sub_2B483</code></a>、<a href="../research/evidence/functions/Z_DAT/0x3A30B.md">玩家投掷<code>sub_3A30B</code></a>、<a href="../research/evidence/functions/Z_DAT/0x3598C.md">AI投掷<code>sub_3598C</code></a>；角色解毒与回合毒伤见第4.2节，不套用这些物品路径。</p>
+
+      <ul>
+        <li>主动用毒在战斗菜单中的条件为<code>physical_power&gt;10</code>且<code>use_poison≥20</code>，只能对敌方生效，完成行动消耗2点体力。</li>
+      </ul>
+      <p class="plain">本节公式和样本仅是原版各施毒来源的事实，不是NG2+把99／100写回值、抗毒硬门槛或用毒作用距离原样继承的决定；已确认的中毒扣血、正常中毒上限来源及角色解毒结算统一放在第4.2节。</p>
+    </section>
+  </section>
+
+  <section class="category">
+    <h2 id="category-medical-poison-discussion"><span id="category-poison-open"></span>5. 临时讨论：字段、成长与未决问题</h2>
+    <div class="notice"><strong>临时讨论范围：</strong>本章只保留原版共用字段与成长审计，以及尚未确认的高NG能力／状态上限具体配置、回血倍率、其他伤势效果和施毒路径扩展。第4.1.1节已确定医疗原则，第4.2节已确定各周目中毒扣血和角色解毒公式，第4.3节已记录原版各施毒路径；不能把第4.3节的原版抗毒90／100门槛、99写回或用毒作用距离自动视作NG2+规则。</div>
 
     <section id="medical-poison-domains">
-      <h3>4.1 字段分组与原版范围</h3>
-      <p>这七个字段属于同一个医疗、伤势与中毒体系，但分为永久能力和当前状态。下表同时列出正常玩法使用的有效域，以及当前原版<code>RANGER.GRP</code>中320名角色定义的实际最小值与最大值；两者不能混为一谈。</p>
+      <h3>5.1 原版字段范围</h3>
+      <p>这七个字段属于同一个医疗、伤势与中毒体系，但分为永久能力和当前状态。下表<strong>仅列原版正常玩法的有效域</strong>，以及当前原版<code>RANGER.GRP</code>中320名角色定义的实际最小值与最大值；两者不能混为一谈，更不能把原版<code>medicine</code>与<code>hurt</code>的数值上限当作已批准的NG2+上限。</p>
       <table class="field-transfer medical-poison-fields">
         <thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead>
         <tbody>
@@ -826,6 +1080,7 @@ Lmax=9990，HcountMax=9988，PaidTierMax=9989
           <tr><td><code>poison</code></td><td>中毒程度</td><td>当前状态</td><td>通常为0～99</td><td>320名角色的原版初始值全部为0；武功附毒分支存在恰好100的边界例外。</td></tr>
         </tbody>
       </table>
+      <p class="plain"><strong>医疗／内伤规则同步：</strong>无论周目，医疗作用距离只按<code>min(max(actor.medicine,0), NG1MedicineRangeCap)</code>计算；NG1正常医疗上限当前为100，故医疗能力达到90后距离最大为7，即使医疗能力为1000也不增距。此封顶只作用于距离，不截断实际医疗能力。NG1其余角色医疗结算沿用原版；NG2+以当前非负医疗能力<code>M</code>计算<code>Tolerance(M)=max(20, floor(M×20%))</code>，伤势<code>H</code>超过<code>M+Tolerance(M)</code>才因能力不足而失败，容差不随NG序号或伤势上限提高。成功后回血和治内伤共用同一次动态理论量<code>T</code>，治内伤量为<code>min(H, max(T, ceil(M×10%)))</code>；10%不改变失败判定。具体<code>T</code>倍率及NG2+的<code>medicine</code>、<code>hurt</code>数值上限尚未定稿，正式规则见第4.1.1节。</p>
       <p class="plain">所有这些字段在原始记录中都是signed 16位整数，原始存储域为−32768～32767；这只是二进制容器范围，不是正常游戏数值范围。原版多数成长路径把永久能力夹到0～100，把伤势和中毒夹到0～99，但并非所有写入路径都执行同一套clamp。</p>
       <ul>
         <li><code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>、<code>anti_poison</code>和<code>attack_with_poison</code>是角色长期能力。</li>
@@ -835,7 +1090,7 @@ Lmax=9990，HcountMax=9988，PaidTierMax=9989
     </section>
 
     <section id="medical-poison-growth">
-      <h3>4.2 初始值与成长来源</h3>
+      <h3>5.2 原版初始值与成长来源</h3>
       <table>
         <thead><tr><th>来源</th><th>原版行为</th></tr></thead>
         <tbody>
@@ -846,81 +1101,26 @@ Lmax=9990，HcountMax=9988，PaidTierMax=9989
           <tr><td>剧情脚本</td><td>opcode 23可把指定角色的<code>use_poison</code>直接设为脚本参数，不执行0～100 clamp。</td></tr>
         </tbody>
       </table>
-      <p>当前原版解毒药的<code>add_poison</code>为−20～−100；有毒暗器的<code>add_poison</code>为40～80。前者直接降低当前<code>poison</code>，后者通过暗器结算增加当前<code>poison</code>，它们不是永久的<code>use_poison</code>或<code>attack_with_poison</code>成长。</p>
-    </section>
-
-    <section id="medicine-hurt-mechanics">
-      <h3>4.3 医疗与伤势机制</h3>
-      <pre>医疗／解毒／用毒的目标距离：
-Range(s) = trunc(s ÷ 15) + 1
-
-医疗基础值：
-m = max(medicine, 0)
-
-hurt ≤ 25：BaseHeal = trunc(4m ÷ 5)
-26 ≤ hurt ≤ 50：BaseHeal = trunc(3m ÷ 4)
-51 ≤ hurt ≤ 75：BaseHeal = trunc(2m ÷ 3)
-hurt > 75：BaseHeal = trunc(m ÷ 2)
-
-Heal = BaseHeal + RNG.bounded(5)       # 随机量0～4
-若 hurt > medicine + 20：Heal = 0，且本次不降低伤势
-否则：
-  hp = min(maximum_hp, hp + Heal)
-  hurt = max(0, hurt - m)</pre>
-      <p class="plain">医疗同时做两件事：恢复生命并按完整医疗能力降低伤势。即使生命已经加满，只要没有触发“伤势高于医疗能力20点以上”的失败条件，仍然可以降低伤势。</p>
-      <ul>
-        <li>战斗菜单要求<code>physical_power&gt;50</code>且<code>medicine≥20</code>才显示医疗可用；核心医疗计算本身在体力低于50时直接失败。</li>
-        <li>医疗核心计算消耗2点体力，战斗共享行动尾部再消耗2点，因此一次战斗医疗通常共消耗4点体力；非战斗队伍菜单只调用核心计算时消耗2点。</li>
-        <li>武功造成HP伤害后，目标增加<code>trunc(damage÷10)</code>点伤势并封顶99。</li>
-        <li>目标已有伤势会使本次武功伤害额外增加<code>trunc(hurt÷20)</code>，形成伤势越高、后续受伤越重的正反馈。</li>
-        <li>每轮行动值还会扣除<code>trunc(hurt÷40)</code>，所以40点和80点附近分别出现新的速度惩罚档。</li>
-        <li>回合状态结算会扣除<code>trunc(hurt÷20)</code>点HP；伤势0～19时该项为0，伤势99时为4。</li>
-        <li>治疗物品和伤害型暗器也会按各自公式降低或增加<code>hurt</code>；最终仍按0～99处理。</li>
-      </ul>
-    </section>
-
-    <section id="poison-mechanics">
-      <h3>4.4 施毒、抗毒与解毒机制</h3>
-      <pre>主动用毒：
-ActivePoison = trunc((use_poison - target.anti_poison) ÷ 4)
-ActivePoison = clamp(ActivePoison, 0, 99 - target.poison)
-target.poison += ActivePoison
-
-武功附毒：
-PoisonPower = attack_with_poison + MagicAttack(current_magic, current_level)
-若 PoisonPower > target.anti_poison 且 target.anti_poison < 90：
-  target.poison += trunc((PoisonPower - target.anti_poison) ÷ 15)
-
-解毒：
-DetoxBase = trunc(detoxification ÷ 3)
-DetoxAmount = clamp(DetoxBase + RNG.bounded(10) - RNG.bounded(10), 0, 99)
-若 target.poison > detoxification + 20：DetoxAmount = 0
-DetoxAmount = min(DetoxAmount, target.poison)
-target.poison -= DetoxAmount</pre>
-      <ul>
-        <li>主动用毒在战斗菜单中的条件为<code>physical_power&gt;10</code>且<code>use_poison≥20</code>，只能对敌方生效，完成行动消耗2点体力。</li>
-        <li>战斗解毒的条件为<code>physical_power&gt;50</code>且<code>detoxification≥20</code>，只对友方生效，完成行动消耗2点体力。</li>
-        <li><code>anti_poison</code>在主动用毒公式中直接抵消<code>use_poison</code>；只要抗毒不低于用毒，本次主动施毒量就是0。</li>
-        <li>武功附毒使用另一条规则：目标抗毒达到90时直接阻止该分支，不再比较更高的<code>PoisonPower</code>。因此90是武功附毒的硬免疫门槛。</li>
-        <li>有毒暗器使用物品毒性、暗器能力和目标抗毒的另一组公式；对应路径在<code>anti_poison≥100</code>时阻止增加中毒。解毒药的负<code>add_poison</code>不受抗毒能力抵消。</li>
-        <li>回合状态结算会扣除<code>trunc(poison÷10)</code>点HP；中毒0～9时为0，中毒99时为9。原版随后只在HP小于0时改成1，因此恰好减到0仍保留0，减成负数反而回到1，这是原版边界行为。</li>
-      </ul>
-      <div class="notice"><strong>原版边界例外：</strong>主动用毒与大多数物品路径把中毒封顶99；武功附毒路径却只在结果<strong>大于100</strong>时改为99，所以结果恰好等于100时会保留100。解毒路径同样只在结果大于100时改为99。是否保留这个边界异常，尚未形成NG+决定。</div>
+      <p class="plain">本表的开局与成长数值都只是原版行为：原版升级和秘笈路径对<code>medicine</code>的100点封顶，不能直接推定NG2+的医疗成长上限；上限另议。NG1的正常医疗上限100仅作为各周目<strong>医疗作用距离</strong>的固定封顶基准。已经确定的NG2+失败容差仍读取<strong>当前真实医疗能力</strong>，成功后治内伤的10%保底也按该能力计算，而非按距离用的100点或本周目伤势上限计算。</p>
+      <p>当前原版解毒药的<code>add_poison</code>为−20～−100；有毒暗器的<code>add_poison</code>为40～80。这些是物品输入值，不是永久的<code>use_poison</code>或<code>attack_with_poison</code>成长；实际中毒变化还取决于第4.3节所列的普通物品、玩家投掷与AI投掷的不同结算路径。</p>
     </section>
 
     <section id="medical-poison-open-questions">
-      <h3>4.5 NG+待讨论问题</h3>
+      <h3>5.3 NG+未决问题</h3>
       <table>
         <thead><tr><th>问题</th><th>必须共同考虑的原因</th><th>当前状态</th></tr></thead>
         <tbody>
-          <tr><td>五项永久能力是否共用同一周目上限公式</td><td>医疗、用毒和解毒是绝对效果量；抗毒含90／100硬门槛；武功带毒还与武功攻击值相加，语义不同。</td><td>未决定</td></tr>
-          <tr><td><code>hurt</code>和<code>poison</code>是否继续固定0～99</td><td>若永久能力持续增长而状态域固定，高周目可能很快变成一次治满、一次解清、完全免疫或瞬间满毒。</td><td>未决定；NG1必须保持原版行为</td></tr>
-          <tr><td>能力与状态一起扩展时，20点失败差、15点距离档、90／100免疫门槛是否扩展</td><td>这些常量共同决定治疗失败、解毒失败、攻击距离和抗毒免疫，不能只改字段上限。</td><td>未决定</td></tr>
-          <tr><td>如何处理原版未统一clamp与中毒100例外</td><td>直接修正会改变NG1兼容性；完全保留又可能让扩大后的数值域继续出现不一致。</td><td>未决定</td></tr>
+          <tr><td>五项永久能力是否共用同一周目上限公式</td><td>医疗、用毒和解毒是绝对效果量；抗毒含90／100硬门槛；武功带毒还与武功攻击值相加，语义不同。医疗与解毒的失败判定均读取各自当前真实能力，不从本周能力上限反推。</td><td>各能力CFG上限的具体值／步长未决定；医疗及角色解毒准入已定</td></tr>
+          <tr><td>NG2+的<code>hurt</code>合法上限</td><td>原版正常伤势上限99不能代替高NG上限；已定医疗失败容差只由当前医疗能力计算，不因伤势上限提高而免费扩大。</td><td>伤势上限未决定；第4.1.1节医疗准入与治内伤规则已定</td></tr>
+          <tr><td>NG2+的<code>poison</code>上限具体配置</td><td>第4.2节已确定本周正常中毒上限从CFG取得，且同一上限用于本次角色解毒量；NG2提高100只是复算样本，不能自动把原版各施毒路径的99写回或100例外推广到高周目。</td><td>上限来源及解毒量上限已定；具体配置和施毒写回未定</td></tr>
+          <tr><td>NG2+动态治疗量<code>T</code>的回血倍率与结算顺序</td><td>第4.1.1节已确定成功后回血与治内伤共用同一<code>T</code>，以及治内伤的医疗能力10%保底；具体倍率、失败时RNG和体力消耗顺序仍不能从旧试算推定。</td><td>共同治疗量与10%保底已定；倍率、RNG／体力顺序未定</td></tr>
+          <tr><td>NG2+伤势生成和惩罚阈值是否扩展</td><td>原版按伤害生成伤势，并用绝对伤势触发伤害、行动与回合惩罚；高NG扩大伤势域时不能从医疗失败容差公式倒推这些效果。</td><td>其他伤势效果未决定；不改变已定医疗准入</td></tr>
+          <tr><td>用毒／解毒目标距离与抗毒硬门槛如何扩展</td><td>第4.2节已确定角色解毒失败容差按当前解毒能力增长，且中毒每满10点扣1点HP；第4.1.1节仅对医疗距离设NG1正常能力100的封顶，不能未经批准套到用毒、解毒距离或原版抗毒90／100门槛。</td><td>解毒准入及毒伤已定；距离、抗毒门槛未定</td></tr>
+          <tr><td>如何处理原版未统一clamp与中毒100例外</td><td>NG1保留原版写回与武功附毒恰好100；NG2+已确定CFG正常中毒上限，但各施毒路径的写回、跨上限与异常修正方式尚需逐项明确。</td><td>NG1原版例外已确认；NG2+施毒路径未定</td></tr>
           <tr><td>敌人与玩家是否使用完全相同的扩展规则</td><td>同一字段同时存在于玩家、队友和敌人角色记录中，且敌方AI会使用医疗、解毒、暗器和携带物品。</td><td>未决定</td></tr>
         </tbody>
       </table>
-      <p class="plain">在上述问题逐项确认前，本章不新增<code>Cap(field,n)</code>数值、不修改第1.2.2节的转移规则，也不授权任何运行时代码实现。</p>
+      <p class="plain">已定规则见第4.1.1节及第4.2节：医疗距离使用NG1正常医疗能力100封顶；NG2+医疗容差及治内伤保底读取当前医疗能力；中毒每满10点扣1点HP，角色解毒容差读取当前解毒能力，单次解毒量上限读取本周CFG中毒上限。NG1正常域与原版结算一致，原版中毒100例外仍如第4.2节所述。本章只留尚未批准的医疗倍率、高NG能力／状态上限的具体CFG值、施毒路径写回及抗毒／距离门槛等问题；未决参数补齐前，不修改第1.2.2节转移规则，也不授权运行时代码实现。</p>
     </section>
   </section>
 
