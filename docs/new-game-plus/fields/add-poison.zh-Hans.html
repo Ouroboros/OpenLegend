@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 add_poison · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 add_poison</h1></header>
+<main>
+<section id="field-definition"><h2>字段定义</h2>
+<p><code>add_poison</code>：物品施毒／解毒值。</p>
+<p>取值来源：当前RANGER.GRP物品定义。</p>
+<p>换周目处理：静态物品定义不从旧库存数量推算。</p>
+<p>该值是物品提供的毒性载荷，不等于角色<code>use_poison</code>或当前中毒状态。</p>
+<p>本字段的普通物品、玩家投掷与AI投掷原版分支统一列在下方；NG1+玩家正毒技巧项改号仍归暗器技巧字段页。</p>
+<p>玩家带毒暗器从NG1起的正毒分支技巧项改号，见
+<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧字段页</a>。</p>
+<p>物品跨周目数量筛选另见
+<a href="inventory-count.zh-Hans.html#item-inheritance">库存数量字段页</a>。</p>
+</section>
+<section id="add-poison-mechanics">
+<h2>物品毒值：普通物品与玩家／AI暗器路径</h2>
+      <p><strong>物品与暗器的三条独立中毒路径（原版事实）</strong></p>
+      <div class="plain">
+        <p>设<code>V=item.add_poison</code>、<code>W=actor.hidden_weapon</code>、<code>A=target.anti_poison</code>、<code>P=target.poison</code>。</p>
+        <p><code>trunc</code>始终向零取整，负值不能改用向下取整；<code>R1</code>、<code>R2</code>是中毒分支先后取得的两个<code>RNG.bounded(5)</code>（各0～4），
+          <code>signed16</code>表示取低16位再按有符号数解释。</p>
+        <p>下列简式用于正常合法数值域；写回时仍按原版16位回绕与路径专属clamp处理，不得外推为NG+数值域。</p>
+      </div>
+      <pre>普通物品效果（战斗使用物品／非战斗物品／AI普通物品）：
+  V > 0：x = trunc((W + V) / 2) − A
+         Δ = (A ≥ 100 或 x &lt; 0) ? 0 : trunc(x / 2)
+  V &lt; 0：Δ = trunc(V / 2) + R1 − R2
+  V = 0：跳过中毒字段和中毒分支RNG；P不变
+
+玩家战斗投掷暗器：
+  V > 0：x = signed16(trunc((V − W) / 2) − A)
+         Δ = (A ≥ 100 或 x &lt; 0) ? 0 : trunc(x / 2)
+  V ≤ 0：Δ = trunc(V / 2) + R1 − R2  # V恰为0仍取两次RNG
+
+AI战斗投掷暗器：
+  V ≥ 0：Δ = V
+  V &lt; 0：Δ = signed16(trunc((V − W) / 2))
+  # 这条路径既不读取A，也不为中毒变化额外取得R1／R2
+
+以上进入中毒写回的分支：P' = clamp(signed16(P + Δ), 0, 99)</pre>
+      <div class="plain">
+        <p>原版正毒普通物品先将<code>W</code>与<code>V</code>相加；原版玩家投掷却从<code>V</code>减去<code>W</code>，后者从NG1起按第4.4节改为加号。</p>
+        <p>两条原版正毒路径在中间值为负或<code>A≥100</code>时归零，再向零除以2。负毒普通物品与玩家投掷不读抗毒，随机差范围−4～＋4；玩家投掷的<code>V=0</code>也会进入这一随机分支，
+          普通物品的<code>V=0</code>则跳过整个中毒结算。</p>
+        <p>AI投掷正毒直接把<code>V</code>加到中毒，<strong>即使抗毒达到100也不被该能力阻止</strong>；负毒按<code>(V−W)/2</code>向零取整且不追加中毒随机数。</p>
+        <p>这里说的是中毒分支自身的RNG，不排除同一暗器动作另有伤害随机数。</p>
+      </div>
+      <div class="plain">
+        <p>队伍侧AI投掷还存在已核对的原版陈旧槽异常：动画和库存消耗使用当前选定物品，实际HP／伤势／中毒载荷却从最近一次有效玩家物品确认槽读取；</p>
+        <p>敌方AI仍从当前来源槽读取。因此AI公式中的<code>V</code>是<strong>实际载荷物品</strong>的<code>add_poison</code>，不一定是本次显示或消耗的物品值。</p>
+        <p>现阶段只记录原版事实，不把三条路径合并，也不据此批准NG+用毒扩展。</p>
+      </div>
+      <table>
+        <thead><tr>
+            <th>路径</th>
+            <th>V／W／A／原有P</th>
+            <th>中毒随机R1／R2</th>
+            <th>理论Δ</th>
+            <th>结算后P</th>
+          </tr></thead>
+        <tbody>
+          <tr>
+            <td>普通物品正毒</td>
+            <td>80／40／10／0</td>
+            <td>不取</td>
+            <td>25</td>
+            <td>25</td>
+          </tr>
+          <tr>
+            <td>普通物品正毒封顶</td>
+            <td>80／40／0／90</td>
+            <td>不取</td>
+            <td>30</td>
+            <td>99</td>
+          </tr>
+          <tr>
+            <td>普通物品抗毒100</td>
+            <td>80／40／100／50</td>
+            <td>不取</td>
+            <td>0</td>
+            <td>50</td>
+          </tr>
+          <tr>
+            <td>普通物品负毒</td>
+            <td>−40／20／100／50</td>
+            <td>0／4</td>
+            <td>−24</td>
+            <td>26</td>
+          </tr>
+          <tr>
+            <td>普通物品负毒</td>
+            <td>−40／20／100／50</td>
+            <td>4／0</td>
+            <td>−16</td>
+            <td>34</td>
+          </tr>
+          <tr>
+            <td>普通物品零毒</td>
+            <td>0／40／100／50</td>
+            <td>不取</td>
+            <td>跳过</td>
+            <td>50</td>
+          </tr>
+          <tr>
+            <td>原版玩家投掷带毒暗器</td>
+            <td>80／20／5／0</td>
+            <td>不取</td>
+            <td>12</td>
+            <td>12</td>
+          </tr>
+          <tr>
+            <td>原版玩家投掷带毒暗器被抵消</td>
+            <td>80／60／10／50</td>
+            <td>不取</td>
+            <td>0</td>
+            <td>50</td>
+          </tr>
+          <tr>
+            <td>玩家投掷零毒随机</td>
+            <td>0／40／100／50</td>
+            <td>4／0</td>
+            <td>4</td>
+            <td>54</td>
+          </tr>
+          <tr>
+            <td>AI投掷正毒且抗毒100</td>
+            <td>80／20／100／10</td>
+            <td>不取</td>
+            <td>80</td>
+            <td>90</td>
+          </tr>
+          <tr>
+            <td>AI投掷正毒封顶</td>
+            <td>80／20／100／50</td>
+            <td>不取</td>
+            <td>80</td>
+            <td>99</td>
+          </tr>
+          <tr>
+            <td>AI投掷负毒</td>
+            <td>−40／20／100／50</td>
+            <td>不取</td>
+            <td>−30</td>
+            <td>20</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="plain">
+        <p>上表仅对<strong>原版机器</strong>正常域中毒结算取样：理论<code>Δ</code>不等于封顶后实际变化量；<code>V／W／A／原有P</code>依序对应前述四个字段。</p>
+        <p>其中两行原版玩家投掷带毒暗器示例不是第4.4节的新规则结果。原版机器依据分别为<a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">普通物品
+          <code>sub_2B483</code></a>、<a href="../../../research/evidence/functions/Z_DAT/0x3A30B.md">玩家投掷<code>sub_3A30B</code></a>、
+          <a href="../../../research/evidence/functions/Z_DAT/0x3598C.md">AI投掷<code>sub_3598C</code></a>；</p>
+        <p>角色解毒与回合毒伤见第4.2节，不套用这些物品路径。</p>
+      </div>
+
+</section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

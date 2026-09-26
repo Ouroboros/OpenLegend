@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 medicine · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 medicine</h1></header>
+<main>
+<section id="field-definition">
+<h2>字段定义</h2>
+<p><code>medicine</code>：医疗能力。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>medicine</code></td>
+          <td>医疗能力</td>
+          <td>直接继承并clamp</td>
+          <td>使用本周对应字段上限。</td>
+        </tr></tbody></table>
+<p>共享上限表归属字段 <a href="attack.zh-Hans.html#field-definition"><code>attack</code></a>；本字段的独立转移记录见上表。</p>
+<h3>原版字段域</h3>
+<table><thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead><tbody>
+<tr>
+            <td><code>medicine</code></td>
+            <td>医疗能力</td>
+            <td>永久能力</td>
+            <td>通常为0～100</td>
+            <td>0～81；最高为角色16胡青牛的81。</td>
+          </tr>
+</tbody></table>
+<h3 id="ng2-medicine-hurt-tiers">NG2+医疗伤势百分比分档</h3>
+<p>下方原版25／50／75点档只属于NG1原版证据。NG2+以
+<a href="hurt.zh-Hans.html#hurt-cap-impact-audit">伤势字段页</a>的<code>B(n)</code>
+为比例基数；各档按整数比较，不使用原版固定点数。</p>
+<pre>H = 目标当前伤势；B(n) = 本周内伤百分比基数
+第一档：100H ≤ 25B(n)
+第二档：25B(n) &lt; 100H ≤ 50B(n)
+第三档：50B(n) &lt; 100H ≤ 75B(n)
+第四档：100H &gt; 75B(n)</pre>
+<p>提供的默认CFG下，NG2的分界为伤势50／100／150，NG3为75／150／225。这里只定义严重度分档；共同理论治疗量<code>T</code>的倍率尚未定稿，不能自动沿用NG1的<code>BaseHeal</code>倍率。</p>
+<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+</section>
+<section id="medicine-hurt-mechanics">
+      <h3>4.1 原版医疗与伤势机制</h3>
+      <div class="plain">
+        <p>本节的<code>actor</code>是执行医疗的角色，<code>target</code>是接受医疗的角色；<code>trunc</code>表示向零取整，
+          <code>RNG.bounded(k)</code>会取得0到<code>k−1</code>。</p>
+        <p>以下至第4.1.1节之前均为原版行为说明，不代表伤势上限或医疗能力在NG+中已经决定扩展。</p>
+      </div>
+
+      <p><strong>原版医疗作用距离</strong></p>
+      <pre>医疗目标距离 = trunc(actor.medicine ÷ 15) + 1</pre>
+      <div class="plain">
+        <p>医疗能力每完整增加15点，目标距离才增加1级；0～14得到1，15～29得到2，30～44得到3。</p>
+        <p>能力没有跨过下一个15点门槛时，不会提前增加距离。这是原版函数本身的算式；NG+规定的跨周目医疗距离上限见第4.1.1节。</p>
+        <p>角色解毒的原版距离见第4.2节，主动用毒的原版距离见第4.3节；不能由医疗距离自动推定它们的NG2+距离。</p>
+      </div>
+
+      <p><strong>医疗基础恢复量</strong></p>
+      <pre>m = max(actor.medicine, 0)
+
+若 target.hurt ≤ 25：BaseHeal = trunc(4m ÷ 5)
+若 26 ≤ target.hurt ≤ 50：BaseHeal = trunc(3m ÷ 4)
+若 51 ≤ target.hurt ≤ 75：BaseHeal = trunc(2m ÷ 3)
+若 target.hurt > 75：BaseHeal = trunc(m ÷ 2)</pre>
+      <div class="plain">
+        <p>伤势越重，同一医疗能力能够恢复的HP比例越低。四档依次只取医疗能力的80%、75%、约66.7%和50%；这一步只计算HP恢复量，不决定伤势减少量。</p>
+        <p>例如医疗能力为60时，目标伤势50会得到45点基础恢复，伤势51则立即降为40点基础恢复。</p>
+      </div>
+
+      <p><strong>成功判定与最终结果</strong></p>
+      <pre>Heal = BaseHeal + RNG.bounded(5)       # 在基础值上增加0～4
+
+若 target.hurt > actor.medicine + 20：
+  Heal = 0
+  本次不降低伤势
+否则：
+  target.hp = min(target.maximum_hp, target.hp + Heal)
+  target.hurt = max(0, target.hurt - m)</pre>
+      <div class="plain">
+        <p>医疗先按伤势档位计算恢复量，再增加0～4点随机值。随后才检查医疗能力是否足以处理当前伤势：目标伤势比医疗能力高21点或更多时，恢复HP和降低伤势都会失败；</p>
+        <p>恰好只高20点仍然成功。成功时，HP最多补到生命上限，但伤势直接减去完整的医疗能力，而不是减去折算后的<code>BaseHeal</code>。</p>
+        <p>原版目标HP即使已经加满，只要未触发伤势过高的失败条件，本次仍按完整医疗能力降低伤势。</p>
+        <p>这条原版说明曾见于<code>c910dfa</code>；它不决定NG2+尚未定稿的理论治疗量<code>T</code>。</p>
+      </div>
+      <div class="plain">
+        <p>例如<code>medicine=60</code>、<code>hurt=50</code>时，理论HP恢复为45～49，伤势会从50降到0；如果目标只缺20点HP，实际只补20点，但伤势仍会降到0。</p>
+        <p>若同一角色面对<code>hurt=81</code>，因为81大于60＋20，本次医疗完全失败；<code>hurt=80</code>则仍可成功。</p>
+      </div>
+
+      <ul>
+        <li>战斗菜单要求<code>physical_power&gt;50</code>且<code>medicine≥20</code>才显示医疗可用；核心医疗计算本身在体力低于50时直接失败。也就是说，菜单条件与底层函数对体力50这个边界并不完全相同。</li>
+        <li>医疗核心计算消耗2点体力，战斗共享行动尾部再消耗2点，因此一次战斗医疗通常共消耗4点体力；非战斗队伍菜单只调用核心计算时消耗2点。</li>
+        <li>武功造成HP伤害后，目标增加<code>trunc(damage÷10)</code>点伤势并封顶99。受到39点伤害会增加3点伤势，受到40点伤害会增加4点。</li>
+        <li>目标已有伤势会使本次武功伤害额外增加<code>trunc(hurt÷20)</code>。伤势40会让每次武功伤害再增加2点，伤势80会增加4点，因此伤势会放大后续损失。</li>
+        <li>每轮行动值还会扣除<code>trunc(hurt÷40)</code>，所以伤势0～39没有该项惩罚，40～79扣1，80～99扣2。</li>
+        <li>回合状态结算会扣除<code>trunc(hurt÷20)</code>点HP；伤势0～19时不扣HP，40点每轮扣2点，99点每轮扣4点。</li>
+        <li>治疗物品和伤害型暗器走各自独立的物品公式，也能降低或增加<code>hurt</code>，最终仍限制在0～99；它们不调用上述角色医疗成功判定。</li>
+      </ul>
+      <p class="plain">因此伤势不是单纯的显示数值：它同时降低角色医疗的HP恢复效率、提高后续武功伤害、降低行动值，并在回合结算时继续扣HP。角色医疗成功后则会同时处理HP和伤势，两种结果使用不同的计算量。</p>
+
+      <h4 id="medicine-hurt-current-proposal">4.1.1 医疗距离、准入与治内伤规则（已确认部分）</h4>
+      <div class="notice">
+        <p><strong>适用边界：</strong>NG1保留上文已核对的原版角色医疗效果、失败判定、随机数及体力／伤势结算；NG2+正常伤势上限统一读取第1.2.2节登记的<code>HurtCap(n)</code>。</p>
+        <p>各周目的医疗<strong>目标距离</strong>另统一受NG1正常医疗能力上限约束。NG2+失败容差只随<strong>当前医疗能力</strong>增长，不随NG序号或伤势上限增长；成功后的回血与治内伤共用动态治疗量，治内伤最低为医疗能力的10%。</p>
+        <p>具体回血倍率和高NG医疗能力上限仍待确定；其他已确认的内伤关联规则见第5.4节，因此本节不是可立即实现的完整医疗规格。</p>
+      </div>
+      <div class="plain">
+        <p>伤势上限的原版基值、NG+公式与默认CFG见<a href="hurt.zh-Hans.html#field-definition">伤势字段页</a>。</p>
+        <p>下方医疗失败门槛的算例，使用该字段页列出的默认CFG数值。</p>
+        <p>伤势产生、恢复和状态合法域使用本周<code>HurtCap(n)</code>；当前原版武功造成伤势时封顶99是NG1事实，NG2+武功产伤、回合扣血、行动值和其他内伤门槛按第5.4节已确认规则处理。</p>
+        <p>医疗准入和治内伤保底只读当前真实医疗能力及当前伤势，不因CFG上限提高而自动通过判定。</p>
+      </div>
+      <p><strong>各周目医疗目标距离（已确定）</strong></p>
+      <pre>NG1MedicineRangeCap = NG1规则集的正常医疗能力上限  # 当前原版为100；跨周目固定
+DistanceMedicine = min(max(actor.medicine, 0), NG1MedicineRangeCap)
+MedicalRange = trunc(DistanceMedicine ÷ 15) + 1
+MedicalRangeMax = trunc(NG1MedicineRangeCap ÷ 15) + 1  # 当前为7</pre>
+      <div class="plain">
+        <p>NG1～NG999均按NG1正常医疗能力上限计算医疗距离，不随NG+医疗能力上限增加。</p>
+        <p>目前医疗能力89时距离为6，90～100时距离为7；即使当前医疗能力为1000，也先按100计算距离，最大仍为7。</p>
+        <p><strong>仅距离计算使用截断后的<code>DistanceMedicine</code></strong>；医疗失败容差、理论治疗量与成功后的10%治内伤保底仍读取当前真实医疗能力，不把100当作治疗能力上限。</p>
+        <p>原版正常NG1范围内与上文距离算式一致；超出正常范围的医疗能力在本设计中也执行距离封顶。</p>
+      </div>
+      <p><strong>NG2+失败判定</strong></p>
+      <pre>M = max(actor.medicine, 0)               # 当前执行者医疗能力
+H = target.hurt                          # 当前目标伤势
+OriginalTolerance = 20                  # NG1原版失败差，作为规则集基准参数
+ToleranceGrowthPercent = 20             # 当前确认的医疗能力增长比例
+Tolerance(M) = max(OriginalTolerance,
+                   floor(M × ToleranceGrowthPercent / 100))
+
+若核心体力门槛失败，或 H &gt; M + Tolerance(M)：治疗失败
+否则：通过医疗能力与伤势门槛；等于门槛仍可治疗</pre>
+      <div class="plain">
+        <p>两项20分别表示原版失败差20点、NG2+随医疗能力增长的20%；它们是有来源的规则参数，<strong>不是</strong>按本周目伤势上限计算的<code>floor((HurtCap+1)×20%)</code>。</p>
+        <p>在正常NG1医疗能力0～100内，<code>Tolerance(M)=20</code>；NG1实际仍走上文完整原版算法。</p>
+        <p>NG2+医疗能力100、165、166、200、400时，容差分别为20、33、33、40、80；相同医疗能力跨周目保持同一绝对治疗门槛。</p>
+        <p>保留原版核心体力低于50失败、战斗菜单体力严格大于50且医疗能力至少20的行动条件；治疗资格不代表一次能把伤势清零。</p>
+      </div>
+      <p><strong>成功治疗后的共同治疗量与治内伤保底</strong></p>
+      <pre>T = 本次由医疗能力和伤势动态算出的理论治疗量   # 具体回血倍率尚未定稿
+CureFloorPercent = 10                    # 规则集参数，医疗能力的10%
+
+实际回血 = min(max(target.maximum_hp - target.hp, 0), T)
+实际消除伤势 = min(H, max(T, ceil(M × CureFloorPercent / 100)))
+治疗失败时：实际回血 = 0，实际消除伤势 = 0</pre>
+      <div class="plain">
+        <p><code>T</code>是同一次治疗用于回血和治内伤的共同动态计算值，不是把固定预算分成两份。</p>
+        <p>10%只为<strong>成功后的治内伤</strong>提供保底，不增加回血，也不能跨过医疗失败门槛；它不是固定治10点，更不存在伤势达到90点便固定治10点的分支。</p>
+        <p>医疗能力20、40、60、80、100时，保底分别为2、4、6、8、10点；实际回血受生命缺口限制，实际治内伤不超过现有伤势。</p>
+        <p>完整的<code>T</code>倍率曲线、成功但回血为0时的行动反馈以及NG2+随机数与体力结算顺序仍需明确，不能将此前拼接的平方尾段试算直接当成正式函数。</p>
+      </div>
+      <p><strong>医疗失败门槛复算</strong></p>
+      <table>
+        <thead><tr>
+            <th>所提供的默认CFG伤势上限</th>
+            <th>当前医疗能力M</th>
+            <th>容差(M)</th>
+            <th>最多可治疗的伤势</th>
+            <th>满伤可治疗</th>
+          </tr></thead>
+        <tbody>
+          <tr>
+            <td>NG1原版99</td>
+            <td>79</td>
+            <td>20</td>
+            <td>99</td>
+            <td>是；NG1原版门槛</td>
+          </tr>
+          <tr>
+            <td>NG2默认CFG 199</td>
+            <td>100</td>
+            <td>20</td>
+            <td>120</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG2默认CFG 199</td>
+            <td>165</td>
+            <td>33</td>
+            <td>198</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG2默认CFG 199</td>
+            <td>166</td>
+            <td>33</td>
+            <td>199</td>
+            <td>是</td>
+          </tr>
+          <tr>
+            <td>NG3默认CFG 299</td>
+            <td>100</td>
+            <td>20</td>
+            <td>120</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG3默认CFG 299</td>
+            <td>249</td>
+            <td>49</td>
+            <td>298</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG3默认CFG 299</td>
+            <td>250</td>
+            <td>50</td>
+            <td>299</td>
+            <td>是</td>
+          </tr>
+          <tr>
+            <td>NG5默认CFG 499</td>
+            <td>100</td>
+            <td>20</td>
+            <td>120</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG5默认CFG 499</td>
+            <td>400</td>
+            <td>80</td>
+            <td>480</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG5默认CFG 499</td>
+            <td>415</td>
+            <td>83</td>
+            <td>498</td>
+            <td>否</td>
+          </tr>
+          <tr>
+            <td>NG5默认CFG 499</td>
+            <td>416</td>
+            <td>83</td>
+            <td>499</td>
+            <td>是</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="plain">
+        <p>199／299／499只在随文提供的默认CFG下成立；更改<code>hurt_cap_step</code>后须重新按实际配置计算。</p>
+        <p>医疗能力保持100时，NG2和NG5的绝对治疗门槛同为120；只有医疗能力实际提高，治疗资格才提高。</p>
+        <p>表格只核对失败准入，不推断尚未定稿的回血或实际治内伤数值。</p>
+      </div>
+    </section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

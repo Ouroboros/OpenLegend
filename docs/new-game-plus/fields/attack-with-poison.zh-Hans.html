@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 attack_with_poison · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 attack_with_poison</h1></header>
+<main>
+<section id="field-definition">
+<h2>字段定义</h2>
+<p><code>attack_with_poison</code>：武功带毒。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>attack_with_poison</code></td>
+          <td>武功带毒</td>
+          <td>直接继承并clamp</td>
+          <td>使用本周对应字段上限。</td>
+        </tr></tbody></table>
+<p>共享上限表归属字段 <a href="attack.zh-Hans.html#field-definition"><code>attack</code></a>；本字段的独立转移记录见上表。</p>
+<h3>原版字段域</h3>
+<table><thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead><tbody>
+<tr>
+            <td><code>attack_with_poison</code></td>
+            <td>武功带毒</td>
+            <td>永久能力</td>
+            <td>通常为0～100</td>
+            <td>0～100；最高为角色78蟒牯朱蛤的100。</td>
+          </tr>
+</tbody></table>
+<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+</section>
+<section id="attack-with-poison-mechanics">
+<h2>武功带毒：原版结算路径</h2>
+      <p><strong>武功附毒（原版HP伤害分支）</strong></p>
+      <div class="plain">
+        <p><code>attack_with_poison</code>是角色的永久属性：物品效果标签称「功夫帶毒」，本稿称「武功带毒」；不是主动用毒的<code>use_poison</code>，也不是目标的当前<code>poison</code>。</p>
+        <p>原版两页人物状态均不显示其数值。当前原版物品定义中，成功修炼神木王鼎（ID 65，关联武功ID 27）每次增加5，含沙射影（ID 90，无关联武功）每次增加2，修炼成功后夹到0～100。</p>
+        <p>NG1关联武功达到10级后神木王鼎不能再完成修炼：正常未学且空槽熟练度为0时，首次成功学会武功也增加5，此后最多再成功9次，因此仅靠它从0最多增加到50；已有足够初值且满足修炼条件时才可能到100。</p>
+      </div>
+      <pre>NG1正常域：level_index = unsigned16(角色对应武功熟练度) ÷ 100  # 0～9
+MagicAttack = 当前武功定义的 attack[level_index]
+C = actor.attack_with_poison
+A = target.anti_poison
+P = target.poison
+PoisonPower = C + MagicAttack
+
+若 A &lt; 90 且 PoisonPower > A：
+  Δ = trunc((PoisonPower − A) ÷ 15)  # 本次理论增加量，不是最终中毒值
+  P' = signed16(P + Δ)
+  若 P' > 100：P' = 99
+  若 P' &lt; 0：P' = 0
+  target.poison = P'
+否则：Δ = 0，target.poison 保持P</pre>
+      <div class="plain">
+        <p>武功附毒在原版武功HP伤害、内伤写回后结算，不为附毒额外取随机数。这里的<code>MagicAttack</code>取角色已学武功的<strong>熟练度等级</strong>在武功定义中的攻击值，
+          不是本次实际HP伤害、总攻击力、物品<code>add_poison</code>，也不随本次内力不足导致的<strong>HP伤害威力降档</strong>改变。</p>
+        <p>原版这条分支不要求<code>C</code>大于0，也不检查武功定义是否另标“有毒”；<code>A≥90</code>直接阻止附毒，<code>A&lt;90</code>时差值每满15点才增加1点。</p>
+        <p>只有通过门槛时才按有符号16位写回并依次处理<strong>超过100→99、负值→0</strong>；恰好100保留，门槛不通过则原有中毒保持不变。</p>
+      </div>
+      <div class="plain">
+        <p>下表选取九种不同武功，其等级与定义攻击值来自当前原版<code>RANGER.GRP</code>；<code>C／A／P</code>是为了复算而明确设定的角色／目标状态，<strong>不是指定NPC的固定初始值</strong>。</p>
+        <p>样本覆盖差值未满15、角色武功带毒加成、原有中毒叠加、恰好100／超过100的写回差异，以及抗毒89／90的硬门槛。</p>
+      </div>
+      <table>
+        <thead><tr>
+            <th>武功／等级</th>
+            <th>定义攻击值</th>
+            <th>C／A／原有P</th>
+            <th>总毒力／理论Δ</th>
+            <th>结算后P</th>
+          </tr></thead>
+        <tbody>
+          <tr>
+            <td>武当剑法1级</td>
+            <td>20</td>
+            <td>0／20／50</td>
+            <td>20／0（毒力未超过抗毒）</td>
+            <td>50</td>
+          </tr>
+          <tr>
+            <td>神王毒掌1级</td>
+            <td>15</td>
+            <td>0／1／0</td>
+            <td>15／0（差值14不足15）</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td>罗汉拳1级</td>
+            <td>30</td>
+            <td>0／15／99</td>
+            <td>30／1</td>
+            <td>100（恰好100保留）</td>
+          </tr>
+          <tr>
+            <td>金蛇剑法5级</td>
+            <td>220</td>
+            <td>0／20／0</td>
+            <td>220／13</td>
+            <td>13</td>
+          </tr>
+          <tr>
+            <td>辟邪剑法1级</td>
+            <td>100</td>
+            <td>0／60／0</td>
+            <td>100／2</td>
+            <td>2</td>
+          </tr>
+          <tr>
+            <td>辟邪剑法1级</td>
+            <td>100</td>
+            <td>40／60／0</td>
+            <td>140／5</td>
+            <td>5</td>
+          </tr>
+          <tr>
+            <td>毒龙鞭法10级</td>
+            <td>200</td>
+            <td>0／60／70</td>
+            <td>200／9</td>
+            <td>79</td>
+          </tr>
+          <tr>
+            <td>武当长拳10级、内力0</td>
+            <td>400</td>
+            <td>0／60／0</td>
+            <td>400／22</td>
+            <td>22</td>
+          </tr>
+          <tr>
+            <td>降龙十八掌10级</td>
+            <td>900</td>
+            <td>0／89／0</td>
+            <td>900／54</td>
+            <td>54</td>
+          </tr>
+          <tr>
+            <td>降龙十八掌10级</td>
+            <td>900</td>
+            <td>0／90／0</td>
+            <td>900／0（抗毒硬门槛）</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td>野球拳10级</td>
+            <td>2000</td>
+            <td>0／60／0</td>
+            <td>2000／129</td>
+            <td>99（理论超出上限）</td>
+          </tr>
+          <tr>
+            <td>野球拳10级</td>
+            <td>2000</td>
+            <td>0／60／95</td>
+            <td>2000／129</td>
+            <td>99（实际只增加4）</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="plain">
+        <p>同为辟邪剑法1级、<code>A=60</code>，角色<code>C=0</code>时理论增加2点，<code>C=40</code>时增加5点；<code>C</code>只改变毒力，不改变武功定义攻击值。</p>
+        <p>降龙十八掌10级对抗毒89的目标增加54点，抗毒90则直接增加0。野球拳10级即使<code>C=0</code>，对抗毒60仍算出理论增加129点，原有中毒0会写成99，原有中毒95时实际只增加4。</p>
+        <p>武当长拳一行以已进入HP伤害结算为前提：10级且当前内力0时HP伤害使用的武功定义攻击值回退到1级的10，但<strong>附毒仍读取熟练度10级的400</strong>，所以<code>trunc((400−60)÷15)=22</code>。</p>
+        <p><a href="../../../research/evidence/functions/Z_DAT/0x39188.md">原版机器证据：<code>sub_39188</code></a>；
+          状态页未显示此字段的依据见<a href="../../../research/evidence/functions/Z_DAT/0x22A59.md"><code>sub_22A59</code></a>。</p>
+        <p>以上仅解释原版／NG1；NG2+附毒数值域及写回仍未定；抗毒条件按已确认规则保留原版路径。 </p>
+      </div>
+
+</section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

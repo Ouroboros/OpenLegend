@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>跨字段依据：legacy-audit · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>跨字段依据：legacy-audit</h1></header>
+<main>
+<section id="medical-poison-domains">
+      <h3>5.1 原版字段范围</h3>
+      <p>这七个字段属于同一个医疗、伤势与中毒体系，但分为永久能力和当前状态。下表<strong>仅列原版正常玩法的有效域</strong>，以及当前原版<code>RANGER.GRP</code>中320名角色定义的实际最小值与最大值；</p>
+      <p>两者不能混为一谈。NG2+伤势与中毒正常上限按第1.2.2节的统一登记读取CFG增长，不能直接沿用本表的NG1数值；医疗能力等永久能力的具体上限仍与状态上限分开处理。</p>
+      <p>原版医疗、施毒、抗毒和伤势字段的逐字段域已迁入各字段页面。</p>
+      <div class="plain">
+        <p><strong>医疗／内伤规则同步：</strong>无论周目，医疗作用距离只按<code>min(max(actor.medicine,0), NG1MedicineRangeCap)</code>计算；</p>
+        <p>NG1正常医疗上限当前为100，故医疗能力达到90后距离最大为7，即使医疗能力为1000也不增距。</p>
+        <p>此封顶只作用于距离，不截断实际医疗能力。NG1其余角色医疗结算沿用原版；NG2+以当前非负医疗能力<code>M</code>计算<code>Tolerance(M)=max(20, floor(M×20%))</code>，
+          伤势<code>H</code>超过<code>M+Tolerance(M)</code>才因能力不足而失败，</p>
+        <p>容差不随NG序号或伤势上限提高。成功后回血和治内伤共用同一次动态理论量<code>T</code>，治内伤量为<code>min(H, max(T, ceil(M×10%)))</code>；</p>
+        <p>10%不改变失败判定。具体<code>T</code>倍率及NG2+的<code>medicine</code>能力上限尚未定稿；<code>hurt</code>状态上限按第1.2.2节已定CFG公式与所提供的默认配置增长，不能混为同一未决项。</p>
+      </div>
+      <div class="plain">
+        <p>所有这些字段在原始记录中都是signed 16位整数，原始存储域为−32768～32767；这只是二进制容器范围，不是正常游戏数值范围。</p>
+        <p>原版多数成长路径把永久能力夹到0～100，把伤势和中毒夹到0～99，但并非所有写入路径都执行同一套clamp。</p>
+      </div>
+      <ul>
+        <li>
+          <code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>、<code>anti_poison</code>和<code>attack_with_poison</code>是角色长期能力。
+        </li>
+        <li><code>hurt</code>和<code>poison</code>是战斗与物品产生的当前状态；原版升级会把两者清零，当前NG+设计也在换周目时清零。</li>
+        <li>普通物品效果对上述永久能力执行16位加法而不统一clamp；剧情opcode 23还可以直接写入<code>use_poison</code>。因此100是正常玩法的通用能力上限语义，不是所有原版写入路径都绝对保证的存储不变量。</li>
+      </ul>
+    </section>
+
+<section id="medical-poison-growth">
+      <h3>5.2 原版初始值与成长来源</h3>
+      <table>
+        <thead><tr>
+            <th>来源</th>
+            <th>原版行为</th>
+          </tr></thead>
+        <tbody>
+          <tr>
+            <td>主角开局随机</td>
+            <td>
+              <p><code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>和<code>anti_poison</code>分别独立取得
+                <code>RNG.bounded(10)+21</code>，即21～30；</p>
+              <p><code>attack_with_poison</code>不在该随机列表中。</p>
+            </td>
+          </tr>
+          <tr>
+            <td>人物升级</td>
+            <td>
+              <p><code>medicine</code>、<code>use_poison</code>、<code>detoxification</code>仅在升级前数值大于20时各增加<code>RNG.bounded(3)</code>，即0～2，
+                并在升级结算后封顶100；</p>
+              <p><code>anti_poison</code>和<code>attack_with_poison</code>不随等级自动增长。</p>
+            </td>
+          </tr>
+          <tr>
+            <td>秘笈修炼成功</td>
+            <td>按秘笈永久效果增加能力，然后夹到0～100。当前原版秘笈数据包含：医疗+3／+4／+5，用毒+3／+5／+7，解毒+1／+3／+5／+7，武功带毒+2／+5。</td>
+          </tr>
+          <tr>
+            <td>普通物品效果</td>
+            <td>直接执行signed 16位加法，不统一夹到0～100。当前原版物品中，通犀地龙丸的<code>add_anti_poison=100</code>；若目标原本已有抗毒，结果可以超过100。</td>
+          </tr>
+          <tr>
+            <td>剧情脚本</td>
+            <td>opcode 23可把指定角色的<code>use_poison</code>直接设为脚本参数，不执行0～100 clamp。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="plain">
+        <p>本表的开局与成长数值都只是原版行为：原版升级和秘笈路径对<code>medicine</code>的100点封顶，不能直接推定NG2+的医疗成长上限；上限另议。</p>
+        <p>NG1的正常医疗上限100仅作为各周目<strong>医疗作用距离</strong>的固定封顶基准。已经确定的NG2+失败容差仍读取<strong>当前真实医疗能力</strong>，成功后治内伤的10%保底也按该能力计算，
+          而非按距离用的100点或本周目伤势上限计算。</p>
+      </div>
+      <p>当前原版解毒药的<code>add_poison</code>为−20～−100；有毒暗器的<code>add_poison</code>为40～80。</p>
+      <p>这些是物品输入值，不是永久的<code>use_poison</code>或<code>attack_with_poison</code>成长；实际中毒变化还取决于第4.3节所列的普通物品、玩家投掷与AI投掷的不同结算路径。</p>
+    </section>
+
+<section id="medical-poison-open-questions">
+      <h3>5.3 NG+未决问题与已解决事项</h3>
+      <table>
+        <thead><tr>
+            <th>问题</th>
+            <th>必须共同考虑的原因</th>
+            <th>当前状态</th>
+          </tr></thead>
+        <tbody>
+          <tr>
+            <td>五项永久能力是否共用同一周目上限公式</td>
+            <td>医疗、用毒和解毒是绝对效果量；抗毒含90／100硬门槛；武功带毒还与武功攻击值相加，语义不同。医疗与解毒的失败判定均读取各自当前真实能力，不从本周能力上限反推。</td>
+            <td>各能力CFG上限的具体值／步长未决定；医疗及角色解毒准入已定</td>
+          </tr>
+          <tr>
+            <td>NG2+动态治疗量<code>T</code>的回血倍率与结算顺序</td>
+            <td>第4.1.1节已确定成功后回血与治内伤共用同一<code>T</code>，以及治内伤的医疗能力10%保底；具体倍率、失败时RNG和体力消耗顺序仍不能从旧试算推定。</td>
+            <td>共同治疗量与10%保底已定；倍率、RNG／体力顺序未定</td>
+          </tr>
+          <tr>
+            <td>NG2+内伤生成和惩罚阈值（已解决）</td>
+            <td>第5.4节按原版证据逐项区分：武功产伤仍按伤害÷10，回合扣血与武功增伤仍按每20点内伤增加1点；行动值和内伤比较门槛按本周伤势上限的百分比折算。所有原版99写回点使用同一个本周<code>HurtMax</code>，不从医疗容差推导。</td>
+            <td>已确定；见第5.4节。医疗准入仍按第4.1.1节。</td>
+          </tr>
+          <tr>
+            <td>用毒／解毒目标距离如何扩展</td>
+            <td>第4.2节已确定角色解毒失败容差按当前解毒能力增长，且中毒每满10点扣1点HP；第4.1.1节仅对医疗距离设NG1正常能力100的封顶，不能未经批准套到用毒、解毒距离。原版各路径抗毒条件已确定不变，见第4.3、4.4节。</td>
+            <td>解毒准入、毒伤与抗毒条件已定；用毒／解毒距离未定</td>
+          </tr>
+          <tr>
+            <td>如何处理原版未统一clamp与中毒100例外</td>
+            <td>NG1除玩家投掷带毒暗器按第4.4节改号外，仍保留原版写回与武功附毒恰好100；NG2+已确定CFG正常中毒上限和全周目改号，但其余施毒路径的写回、跨上限与异常修正方式尚需逐项明确。</td>
+            <td>NG1改号与原版100例外已确认；NG2+扩容写回未定</td>
+          </tr>
+          <tr>
+            <td>敌人与玩家是否使用完全相同的扩展规则</td>
+            <td>同一字段同时存在于玩家、队友和敌人角色记录中，且敌方AI会使用医疗、解毒、暗器和携带物品。</td>
+            <td>未决定</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="plain">
+        <p>字段上限及默认CFG统一见第1.2.2节；医疗与解毒机制分别见第4.1.1节及第4.2节：医疗距离使用NG1正常医疗能力100封顶；</p>
+        <p>NG2+医疗容差及治内伤保底读取当前医疗能力；中毒每满10点扣1点HP，角色解毒容差读取当前解毒能力，单次解毒量上限读取本周CFG中毒上限。</p>
+        <p>NG1除第4.4节玩家投掷带毒暗器改号和第3.1.4节64位内存表示外，正常域与原版结算一致，原版中毒100例外仍如第4.2节所述。</p>
+        <p>第5.4节已确定内伤扩容的共用上限、武功产伤和各项关联结算；本章其余未决项仍包括医疗倍率、高NG其他永久能力上限、NG2+施毒扩容写回及用毒／解毒距离等问题；</p>
+        <p>抗毒条件不在未决范围。未决参数补齐前，不修改第1.2.2节转移规则，也不授权运行时代码实现。</p>
+      </div>
+    </section>
+</main>
+</body>
+</html>

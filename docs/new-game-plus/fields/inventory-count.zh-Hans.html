@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 inventory_count · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 inventory_count</h1></header>
+<main>
+<section id="field-definition"><h2>字段定义</h2>
+<p><code>inventory_count</code>：全局库存数量。</p>
+<p>取值来源：前一周目有序全局库存。</p>
+<p>换周目处理：Type 3、Type 4和MoneyId按源数量继承，其余清零。</p>
+<p>详细数据依据与跨字段规则见<a href="../support/inventory.zh-Hans.html">库存继承</a>。</p>
+</section>
+<section id="item-inheritance">
+    <h3>1.3 物品继承</h3>
+    <p>物品继承只读取前一周目结束时的全局库存。角色的<code>equipment[2]</code>和<code>practice_item</code>及其关联状态不属于库存来源，继续按第1.2节清空；</p>
+    <p><code>taking_items[4]</code>与<code>taking_counts[4]</code>也不属于库存来源，但会按第1.2节为所有角色恢复原版基线。</p>
+    <pre>PrevCount(i) = 前一周目全局库存中物品i的合法数量
+
+Keep(i) = (Type(i)=3) 或 (Type(i)=4) 或 (i=MoneyId)
+
+InheritedCount(i) = PrevCount(i)，若 Keep(i)=true
+InheritedCount(i) = 0，若 Keep(i)=false</pre>
+    <div class="plain">
+      <p>下一周目只从旧库存带入药品、暗器和金钱；其他旧库存物品全部丢弃。物品类型必须从当前物品定义读取，金钱则使用规则集指定的物品ID。</p>
+      <p>库存继承步骤只复制旧库存已有数量，不增加数量、不按周目放大，也不会从角色装备、携带槽或修炼栏直接回收物品。</p>
+      <p>角色携带槽另行恢复原版基线，之后只有在角色入队或敌方战斗消耗时才按原规则发生转移或减少。</p>
+    </div>
+    <ul>
+      <li>Type 3药品全部继承，数量保持前一周目库存值。</li>
+      <li>Type 4暗器全部继承，数量保持前一周目库存值。</li>
+      <li>金钱物品按<code>MoneyId</code>额外进入白名单；原版当前规则值为ID 174“银两”，其原版<code>item_type</code>为0。</li>
+      <li>所有其他物品一律不继承，包括其他Type 0物品、Type 1装备和Type 2秘笈。</li>
+      <li>转换前验证库存物品ID和数量；发现非法值时拒绝转换，不静默修复。保留条目按源库存槽位顺序写入，删除其他条目并清空剩余槽位。</li>
+      <li>本节只定义从前一周目转入的库存；库存继承步骤本身不自动产生任何旧库存中不存在的物品。角色原版携带物属于角色基线恢复，不属于库存继承。</li>
+      <li>
+        恢复角色携带物时，从当前原版<code>RANGER.GRP</code>逐角色复制<code>taking_items[4]</code>与<code>taking_counts[4]</code>；不得硬编码角色、物品或数量，
+        也不得为了恢复携带物而预先执行任何剧情脚本。
+      </li>
+      <li>剧情脚本对携带物的追加仍只在本周目正常运行到对应事件时发生。原版opcode 41等脚本效果不属于NG+转换输入，不能在开局提前重放。</li>
+      <li>
+        <p>原版样本：胡斐的角色携带槽包含闯王军刀、胡家刀法、小还丹和人参；每个新周目从<code>RANGER.GRP</code>恢复后，首次按原剧情入队时会再次转入全局库存并清空携带槽。</p>
+        <p>装备与秘笈虽然可在本周重新取得，但因Type 1与Type 2不在库存继承白名单，不会跨周目累积。</p>
+      </li>
+    </ul>
+    <table>
+      <thead><tr>
+          <th>原版物品样本</th>
+          <th>原版类型</th>
+          <th>是否继承</th>
+          <th>原因</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>ID 0 康倍特</td>
+          <td>Type 3</td>
+          <td>是</td>
+          <td>药品白名单</td>
+        </tr>
+        <tr>
+          <td>ID 96 飞蝗石</td>
+          <td>Type 4</td>
+          <td>是</td>
+          <td>暗器白名单</td>
+        </tr>
+        <tr>
+          <td>ID 174 银两</td>
+          <td>Type 0</td>
+          <td>是</td>
+          <td>命中<code>MoneyId</code></td>
+        </tr>
+        <tr>
+          <td>ID 67 松风剑谱</td>
+          <td>Type 2</td>
+          <td>否</td>
+          <td>不在白名单</td>
+        </tr>
+        <tr>
+          <td>ID 106 玄铁剑</td>
+          <td>Type 1</td>
+          <td>否</td>
+          <td>不在白名单</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

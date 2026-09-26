@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 item_experience · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 item_experience</h1></header>
+<main>
+<section id="field-definition">
+<h2>字段定义</h2>
+<p><code>item_experience</code>：秘笈修炼经验。取值来源：换周目规则直接赋值。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>item_experience</code></td>
+          <td>秘笈修炼经验</td>
+          <td>0</td>
+          <td>清空当前秘笈修炼经验。</td>
+        </tr></tbody></table>
+<p>共享上限表归属字段 <a href="morality.zh-Hans.html#field-definition"><code>morality</code></a>；本字段的独立转移记录见上表。</p>
+<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+</section>
+<section id="manual-rule">
+    <h3>2.1 秘笈修炼规则</h3>
+    <pre>Pr = 原版秘笈修炼奖励比例规则
+A0 = 原版资质费用基础系数
+IqStep = 原版资质分档宽度
+M0 = 原始武功等级上限
+
+本场秘笈修炼经验 T = floor(实际人物战斗经验 X×Pr÷100)
+资质系数 A(iq) = A0－floor(iq÷IqStep)
+本周武功／隐藏阶级上限 Lcur(n) 按第1.2.2节统一字段上限登记求得</pre>
+    <div class="plain">
+      <p>程序读取角色本场实际人物经验、角色资质、原版修炼规则参数、原始武功上限和NG+等级步长后再计算。</p>
+      <p>原版当前<code>Pr=80%</code>、<code>A0=7</code>、<code>IqStep=15</code>、<code>M0=10</code>，默认<code>martial_level_step=10</code>；
+        这些数值用于说明和复算，不直接嵌入通用公式，也不另设秘笈周目倍率。</p>
+    </div>
+    <p><strong>原版当前资质参数下的结果：</strong></p>
+    <table>
+      <thead><tr>
+          <th>资质</th>
+          <th>A</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>0～14</td>
+          <td>7</td>
+        </tr><tr>
+          <td>15～29</td>
+          <td>6</td>
+        </tr><tr>
+          <td>30～44</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>45～59</td>
+          <td>4</td>
+        </tr><tr>
+          <td>60～74</td>
+          <td>3</td>
+        </tr><tr>
+          <td>75～89</td>
+          <td>2</td>
+        </tr><tr>
+          <td>90～100</td>
+          <td>1</td>
+        </tr>
+      </tbody>
+    </table>
+
+<p>关联武功的等级与费用见
+<a href="magic-levels.zh-Hans.html#manual-associated">武功熟练度字段页</a>；
+无关联秘笈的历史成功次数与费用见
+<a href="unassociated-manual-success-counts.zh-Hans.html#manual-unassociated">隐藏成功次数字段页</a>。</p>
+    <h4 id="manual-settlement">2.1.3 统一结算顺序</h4>
+    <pre>I' = I＋T
+
+若 I'＜C：保存 I'，本场不完成
+若 I'≥C：本场完成一次，执行一次对应效果，然后令 I=0
+同一场战斗不得再次检查下一档</pre>
+    <p class="plain">本场修炼经验先加进当前进度。不够就留下以后继续攒；够了就只成功一次、执行一次升级或永久属性效果，然后把进度清零。即使多出来很多经验，也不会同一场连升多级，多余部分仍然丢掉。</p>
+    <ol>
+      <li>人物经验按存活和人数规则分配并乘人物周目倍率。</li>
+      <li>秘笈修炼经验按<code>Pr</code>取实际人物经验的比例；原版当前为80%。</li>
+      <li>累计经验不足下一档费用时保留。</li>
+      <li>达到费用时，本场最多完成一档。</li>
+      <li>执行一次原学习／升级／永久属性效果。</li>
+      <li>当前<code>item_experience</code>清零，超过费用的部分丢弃。</li>
+    </ol>
+    <p>不设置独立修炼周目倍率；旧方案的222%和<code>Mn</code>不使用。<code>need_experience</code>、<code>magic_id</code>和永久效果字段必须从当前物品定义读取，不能针对表中六本秘笈写死数值或效果。</p>
+  </section>
+<section id="manual-tables">
+    <h3>2.2 秘笈练满场数</h3>
+    <p>由于每完成一档都会清零，场数必须逐档计算，不能直接用总费用除以单场奖励。</p>
+    <pre>以下计算用于n≥2且上一周已经达到阶级上限的角色：
+Kstart(n) = Lcur(n－1)
+Kend(n) = Lcur(n)－1
+Ck = 物品i、角色iq和阶级k代入对应费用公式后的结果
+Tw(n) = 战斗w代入人物与秘笈奖励公式后的单场秘笈经验
+
+本周总修炼需求 S(i,n) = Σ Ck，k=Kstart(n)…Kend(n)
+本周所需场数 F(i,w,n) = Σ ceil(Ck÷Tw(n))
+
+注意：F通常不等于ceil(S÷Tw(n))</pre>
+    <div class="plain">
+      <p>每个新增阶级都要单独攒够，完成后剩余经验会被清掉，所以逐档计算再求和；新增多少档读取<code>martial_level_step</code>，不是固定写成十档。</p>
+      <p>原版当前资产与默认配置下，战斗99单人领取时，NG2～NG5人物经验为675、1125、1575、2025，对应秘笈经验为540、900、1260、1620。</p>
+    </div>
+    <table>
+      <thead><tr>
+          <th>物品ID</th>
+          <th>秘笈</th>
+          <th>基础需求</th>
+          <th>类型与原效果</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>67</td>
+          <td>松风剑谱</td>
+          <td>30</td>
+          <td>关联武功低需求代表</td>
+        </tr>
+        <tr>
+          <td>58</td>
+          <td>太极拳经</td>
+          <td>120</td>
+          <td>关联武功中需求代表</td>
+        </tr>
+        <tr>
+          <td>62</td>
+          <td>降龙十八掌</td>
+          <td>200</td>
+          <td>关联武功高需求代表</td>
+        </tr>
+        <tr>
+          <td>95</td>
+          <td>九阳真经</td>
+          <td>300</td>
+          <td>关联武功；HP+10、MP+50、攻击+5、防御+10</td>
+        </tr>
+        <tr>
+          <td>93</td>
+          <td>葵花宝典</td>
+          <td>500</td>
+          <td>无关联武功；HP+30、MP+30、攻击+10、速度+10、防御+10</td>
+        </tr>
+        <tr>
+          <td>94</td>
+          <td>九阴真经</td>
+          <td>500</td>
+          <td>无关联武功；HP+10、MP+20、攻击+20、速度+5、防御+5</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>单元格格式：<strong>练满本周新增阶级所需修炼经验／战斗99所需场数</strong>。严格按“每档清零、一场最多完成一档”计算；只有上一周已经达到上限时，下一周才从表列区间起点开始。</p>
+    <p>秘笈基础需求与效果来自<code>RANGER.GRP</code>，这些行只作为默认资产样本。</p>
+
+    <table>
+      <thead><tr>
+          <th>高资质90～100（A=1）</th>
+          <th>NG2：10→20</th>
+          <th>NG3：20→30</th>
+          <th>NG4：30→40</th>
+          <th>NG5：40→50</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>松风剑谱</td>
+          <td>4350／11场</td>
+          <td>7350／10场</td>
+          <td>10350／10场</td>
+          <td>13350／10场</td>
+        </tr>
+        <tr>
+          <td>太极拳经</td>
+          <td>17400／37场</td>
+          <td>29400／37场</td>
+          <td>41400／38场</td>
+          <td>53400／39场</td>
+        </tr>
+        <tr>
+          <td>降龙十八掌</td>
+          <td>29000／59场</td>
+          <td>49000／59场</td>
+          <td>69000／60场</td>
+          <td>89000／60场</td>
+        </tr>
+        <tr>
+          <td>九阳真经</td>
+          <td>43500／85场</td>
+          <td>73500／85场</td>
+          <td>103500／88场</td>
+          <td>133500／87场</td>
+        </tr>
+        <tr>
+          <td>葵花宝典</td>
+          <td>72500／139场</td>
+          <td>122500／141场</td>
+          <td>172500／142场</td>
+          <td>222500／142场</td>
+        </tr>
+        <tr>
+          <td>九阴真经</td>
+          <td>72500／139场</td>
+          <td>122500／141场</td>
+          <td>172500／142场</td>
+          <td>222500／142场</td>
+        </tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr>
+          <th>中等资质60～74（A=3）</th>
+          <th>NG2：10→20</th>
+          <th>NG3：20→30</th>
+          <th>NG4：30→40</th>
+          <th>NG5：40→50</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>松风剑谱</td>
+          <td>13050／28场</td>
+          <td>22050／29场</td>
+          <td>31050／30场</td>
+          <td>40050／30场</td>
+        </tr>
+        <tr>
+          <td>太极拳经</td>
+          <td>52200／100场</td>
+          <td>88200／102场</td>
+          <td>124200／103场</td>
+          <td>160200／103场</td>
+        </tr>
+        <tr>
+          <td>降龙十八掌</td>
+          <td>87000／166场</td>
+          <td>147000／167场</td>
+          <td>207000／170场</td>
+          <td>267000／170场</td>
+        </tr>
+        <tr>
+          <td>九阳真经</td>
+          <td>130500／245场</td>
+          <td>220500／245场</td>
+          <td>310500／251场</td>
+          <td>400500／252场</td>
+        </tr>
+        <tr>
+          <td>葵花宝典</td>
+          <td>217500／407场</td>
+          <td>367500／412场</td>
+          <td>517500／416场</td>
+          <td>667500／416场</td>
+        </tr>
+        <tr>
+          <td>九阴真经</td>
+          <td>217500／407场</td>
+          <td>367500／412场</td>
+          <td>517500／416场</td>
+          <td>667500／416场</td>
+        </tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr>
+          <th>低资质0～14（A=7）</th>
+          <th>NG2：10→20</th>
+          <th>NG3：20→30</th>
+          <th>NG4：30→40</th>
+          <th>NG5：40→50</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>松风剑谱</td>
+          <td>30450／61场</td>
+          <td>51450／62场</td>
+          <td>72450／62场</td>
+          <td>93450／63场</td>
+        </tr>
+        <tr>
+          <td>太极拳经</td>
+          <td>121800／230场</td>
+          <td>205800／235场</td>
+          <td>289800／233场</td>
+          <td>373800／235场</td>
+        </tr>
+        <tr>
+          <td>降龙十八掌</td>
+          <td>203000／381场</td>
+          <td>343000／386场</td>
+          <td>483000／388场</td>
+          <td>623000／390场</td>
+        </tr>
+        <tr>
+          <td>九阳真经</td>
+          <td>304500／568场</td>
+          <td>514500／575场</td>
+          <td>724500／578场</td>
+          <td>934500／582场</td>
+        </tr>
+        <tr>
+          <td>葵花宝典</td>
+          <td>507500／945场</td>
+          <td>857500／957场</td>
+          <td>1207500／963场</td>
+          <td>1557500／966场</td>
+        </tr>
+        <tr>
+          <td>九阴真经</td>
+          <td>507500／945场</td>
+          <td>857500／957场</td>
+          <td>1207500／963场</td>
+          <td>1557500／966场</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 anti_poison · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 anti_poison</h1></header>
+<main>
+<section id="field-definition">
+<h2>字段定义</h2>
+<p><code>anti_poison</code>：抗毒能力。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>anti_poison</code></td>
+          <td>抗毒能力</td>
+          <td>直接继承并clamp</td>
+          <td>使用本周对应字段上限。</td>
+        </tr></tbody></table>
+<h3>原版范围与本周上限</h3>
+<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
+<tr>
+          <td><code>anti_poison</code></td>
+          <td>原版通常为0～100；普通物品直接增加抗毒时可超过100，见第5.2节。</td>
+          <td>抗毒能力不随周目增长；各施毒路径保留原版的抗毒比较与硬门槛，见第4.3、4.4节。换周目仍按上方转移表继承并clamp，不能据此改写原版物品效果。</td>
+          <td>不配置抗毒增长STEP；100不是所有原版写入路径的统一硬截断值。</td>
+        </tr>
+</tbody></table>
+<h3>原版字段域</h3>
+<table><thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead><tbody>
+<tr>
+            <td><code>anti_poison</code></td>
+            <td>抗毒能力</td>
+            <td>永久能力</td>
+            <td>通常为0～100</td>
+            <td>0～100；最高为角色48游坦之的100。</td>
+          </tr>
+</tbody></table>
+<p>原版物品36、38的抗毒效果可各增加100点；普通物品写入不统一封顶100。
+<a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">物品效果机器证据</a>。</p>
+<p>原版各路径抗毒条件分别见
+<a href="use-poison.zh-Hans.html#poison-mechanics">主动用毒</a>、
+<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>与
+<a href="add-poison.zh-Hans.html#add-poison-mechanics">普通物品／玩家及AI投掷</a>。</p>
+<p>带毒暗器从NG1起的技巧项改号见
+<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧字段页</a>。</p>
+<p>本字段的换周目值、上限与原版物品越界写入不可互相替代。</p>
+</section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

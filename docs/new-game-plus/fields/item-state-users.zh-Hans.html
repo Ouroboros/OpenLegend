@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 item_state.users · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 item_state.users</h1></header>
+<main>
+<section id="field-definition"><h2>字段定义</h2>
+<p><code>item_state.users</code>：物品user状态。</p>
+<p>取值来源：物品状态及TOML item_state.users。</p>
+<p>换周目处理：当前设计未明确规定是否继承到下一周目；同周目TOML保存当前状态。</p>
+<p>同周目NG+存档的<code>[item_state].users</code>完整保存当前物品定义中的
+<code>user</code>状态；当前原版物品定义有200项。</p>
+<p>物品静态名称、属性、需求和配方不随此字段保存。</p>
+<p>字段表示和严格校验见
+<a href="../support/persistence.zh-Hans.html#save-format-tables">存档合同</a>。</p>
+</section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>

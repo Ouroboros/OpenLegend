@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字段 experience · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 experience</h1></header>
+<main>
+<section id="field-definition">
+<h2>字段定义</h2>
+<p><code>experience</code>：人物经验。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>experience</code></td>
+          <td>人物经验</td>
+          <td>直接继承并clamp</td>
+          <td>上限读取本周等级上限对应的累计门槛。</td>
+        </tr></tbody></table>
+<p>共享上限表归属字段 <a href="level.zh-Hans.html#field-definition"><code>level</code></a>；本字段的独立转移记录见上表。</p>
+<h3>本周经验合法上限</h3>
+<pre>经验上限 = E(Lcap(n))</pre>
+<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+</section>
+<section id="level-cost">
+    <h3>1.4 人物升级需求</h3>
+    <p>原始等级与经验门槛从游戏定义读取；原版当前数据中的30级、52000、4350、4200和150只用于说明与核对，不是运行时代码常量。</p>
+    <pre>L0 = 原始经验门槛表支持的最高等级
+E0(L) = 原始门槛表中等级L的累计经验
+Dlast = E0(L0)－E0(L0－1)                # 原始最后一级费用
+Dprev = E0(L0－1)－E0(L0－2)            # 原始倒数第二级费用
+Sbase = Dlast－Dprev                     # 原始末段每级增量
+
+本周等级上限 Lcap(n) 按第1.2.2节统一字段上限登记求得
+
+L≥L0时：
+实际升级费用 D(L) = Dlast＋(L－L0＋1)×Sbase
+累计门槛 E(L＋1) = E(L)＋D(L)
+
+第n周目从起始等级练到上限的需求：
+C(n) = Σ D(L)，L=Lcap(n－1)…Lcap(n)－1</pre>
+    <div class="plain">
+      <p>程序先从原始门槛表拿到最后两级各自需要多少经验，再用它们的差值继续延伸后续等级。</p>
+      <p>周目等级上限和每周新增等级数来自原始上限与CFG。下面的200250、335250等数字只是把默认门槛和默认每周增加30级代入公式后的结果；换游戏数据或等级步长时，程序必须重新计算。</p>
+    </div>
+    <pre>原版当前数据核对值（仅用于说明，不得硬编码）：
+L0=30，E0(30)=52000，Dlast=4350，Dprev=4200，Sbase=150
+role_level_step=30
+
+代入后才可化简为：
+D(L)=150L
+C(n)=135000n－69750，n≥2</pre>
+    <p><strong>原版当前数据下的派生校验：</strong></p>
+    <table>
+      <thead><tr>
+          <th>周目</th>
+          <th>战斗经验倍率 B(n)</th>
+          <th>等级区间</th>
+          <th>第一档费用</th>
+          <th>最后一档费用</th>
+          <th>本周练满所需经验</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>NG2</td>
+          <td>150%</td>
+          <td>30→60</td>
+          <td>4500</td>
+          <td>8850</td>
+          <td>200250</td>
+        </tr>
+        <tr>
+          <td>NG3</td>
+          <td>250%</td>
+          <td>60→90</td>
+          <td>9000</td>
+          <td>13350</td>
+          <td>335250</td>
+        </tr>
+        <tr>
+          <td>NG4</td>
+          <td>350%</td>
+          <td>90→120</td>
+          <td>13500</td>
+          <td>17850</td>
+          <td>470250</td>
+        </tr>
+        <tr>
+          <td>NG5</td>
+          <td>450%</td>
+          <td>120→150</td>
+          <td>18000</td>
+          <td>22350</td>
+          <td>605250</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <details>
+      <summary><strong>展开：原版当前数据下的NG2完整30→60派生费用</strong></summary>
+      <table>
+        <thead><tr>
+            <th>升级</th>
+            <th>本级费用</th>
+            <th>从30级开始累计</th>
+          </tr></thead>
+        <tbody>
+          <tr>
+            <td>30→31</td>
+            <td>4500</td>
+            <td>4500</td>
+          </tr><tr>
+            <td>31→32</td>
+            <td>4650</td>
+            <td>9150</td>
+          </tr>
+          <tr>
+            <td>32→33</td>
+            <td>4800</td>
+            <td>13950</td>
+          </tr><tr>
+            <td>33→34</td>
+            <td>4950</td>
+            <td>18900</td>
+          </tr>
+          <tr>
+            <td>34→35</td>
+            <td>5100</td>
+            <td>24000</td>
+          </tr><tr>
+            <td>35→36</td>
+            <td>5250</td>
+            <td>29250</td>
+          </tr>
+          <tr>
+            <td>36→37</td>
+            <td>5400</td>
+            <td>34650</td>
+          </tr><tr>
+            <td>37→38</td>
+            <td>5550</td>
+            <td>40200</td>
+          </tr>
+          <tr>
+            <td>38→39</td>
+            <td>5700</td>
+            <td>45900</td>
+          </tr><tr>
+            <td>39→40</td>
+            <td>5850</td>
+            <td>51750</td>
+          </tr>
+          <tr>
+            <td>40→41</td>
+            <td>6000</td>
+            <td>57750</td>
+          </tr><tr>
+            <td>41→42</td>
+            <td>6150</td>
+            <td>63900</td>
+          </tr>
+          <tr>
+            <td>42→43</td>
+            <td>6300</td>
+            <td>70200</td>
+          </tr><tr>
+            <td>43→44</td>
+            <td>6450</td>
+            <td>76650</td>
+          </tr>
+          <tr>
+            <td>44→45</td>
+            <td>6600</td>
+            <td>83250</td>
+          </tr><tr>
+            <td>45→46</td>
+            <td>6750</td>
+            <td>90000</td>
+          </tr>
+          <tr>
+            <td>46→47</td>
+            <td>6900</td>
+            <td>96900</td>
+          </tr><tr>
+            <td>47→48</td>
+            <td>7050</td>
+            <td>103950</td>
+          </tr>
+          <tr>
+            <td>48→49</td>
+            <td>7200</td>
+            <td>111150</td>
+          </tr><tr>
+            <td>49→50</td>
+            <td>7350</td>
+            <td>118500</td>
+          </tr>
+          <tr>
+            <td>50→51</td>
+            <td>7500</td>
+            <td>126000</td>
+          </tr><tr>
+            <td>51→52</td>
+            <td>7650</td>
+            <td>133650</td>
+          </tr>
+          <tr>
+            <td>52→53</td>
+            <td>7800</td>
+            <td>141450</td>
+          </tr><tr>
+            <td>53→54</td>
+            <td>7950</td>
+            <td>149400</td>
+          </tr>
+          <tr>
+            <td>54→55</td>
+            <td>8100</td>
+            <td>157500</td>
+          </tr><tr>
+            <td>55→56</td>
+            <td>8250</td>
+            <td>165750</td>
+          </tr>
+          <tr>
+            <td>56→57</td>
+            <td>8400</td>
+            <td>174150</td>
+          </tr><tr>
+            <td>57→58</td>
+            <td>8550</td>
+            <td>182700</td>
+          </tr>
+          <tr>
+            <td>58→59</td>
+            <td>8700</td>
+            <td>191400</td>
+          </tr><tr>
+            <td>59→60</td>
+            <td>8850</td>
+            <td>200250</td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+<section id="battle-reward">
+    <h3>1.5 战斗经验倍率</h3>
+    <pre>Bbase = 原版一周目百分比基准
+B2 = battle_experience_ng2_percent
+Bstep = battle_experience_later_step_percent
+
+B(1) = Bbase
+B(n) = B2＋(n－2)×Bstep，n≥2
+
+人物战斗经验 X = floor(e0×B(n)÷100)</pre>
+    <p>原版当前值与默认CFG：<code>Bbase=100%</code>、<code>B2=150%</code>、<code>Bstep=100个百分点</code>。</p>
+    <p>代入后，<code>n≥2</code>时才可化简为<code>B(n)=100n－50%</code>。</p>
+    <table>
+      <thead><tr>
+          <th>默认配置周目</th>
+          <th>倍率</th>
+          <th>相比上一周</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>NG1</td>
+          <td>100%</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>NG2</td>
+          <td>150%</td>
+          <td>＋50个百分点</td>
+        </tr>
+        <tr>
+          <td>NG3</td>
+          <td>250%</td>
+          <td>＋100个百分点</td>
+        </tr>
+        <tr>
+          <td>NG4</td>
+          <td>350%</td>
+          <td>＋100个百分点</td>
+        </tr>
+        <tr>
+          <td>NG5</td>
+          <td>450%</td>
+          <td>＋100个百分点</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="plain">
+      <p>使用原版当前值与默认CFG时，一周目发原经验，二周目发150%，三周目发250%，四周目发350%，之后每周再加100个百分点。</p>
+      <p>它不是“上一周再乘1.5”。<code>e0</code>必须来自当前游戏定义中的整场经验和原分配规则，<code>B2</code>与<code>Bstep</code>必须来自CFG；程序不能按战斗ID或周目写死结果。</p>
+    </div>
+  </section>
+<section id="battle-table">
+    <h3>1.6 实际战斗练满场数</h3>
+    <pre>WAR(w) = 从当前WAR.STA定义读取的战斗w整场经验
+R(w,n) = floor(WAR(w)×B(n)÷100)
+N(w,n) = ceil(C(n)÷R(w,n))</pre>
+    <p class="plain">先把这场战斗的原经验乘本周倍率，再用“本周练满总需求”除以单场经验并向上取整。下表每格左边是这一整场给多少经验，右边是只重复这场战斗时需要打多少场；多人存活时还要先按原规则分经验。</p>
+    <p>单元格格式：<strong>该周整场经验／从本周起始等级练到上限所需场数</strong>。所有原经验均从<code>WAR.STA</code>读取；列头百分比来自默认CFG，本表只验证原版当前资产与默认配置。</p>
+    <table>
+      <thead><tr>
+          <th>ID</th>
+          <th>战斗</th>
+          <th>原经验</th>
+          <th>NG2：150%</th>
+          <th>NG3：250%</th>
+          <th>NG4：350%</th>
+          <th>NG5：450%</th>
+        </tr></thead>
+      <tbody>
+        <tr>
+          <td>7</td>
+          <td>胡斐单挑战</td>
+          <td>50</td>
+          <td>75／2670场</td>
+          <td>125／2682场</td>
+          <td>175／2688场</td>
+          <td>225／2690场</td>
+        </tr>
+        <tr>
+          <td>97</td>
+          <td>五毒教徒战</td>
+          <td>350</td>
+          <td>525／382场</td>
+          <td>875／384场</td>
+          <td>1225／384场</td>
+          <td>1575／385场</td>
+        </tr>
+        <tr>
+          <td><strong>99</strong></td>
+          <td><strong>5名番僧战（可重复）</strong></td>
+          <td><strong>450</strong></td>
+          <td><strong>675／297场</strong></td>
+          <td><strong>1125／298场</strong></td>
+          <td><strong>1575／299场</strong></td>
+          <td><strong>2025／299场</strong></td>
+        </tr>
+        <tr>
+          <td>46</td>
+          <td>黄钟公单挑战</td>
+          <td>600</td>
+          <td>900／223场</td>
+          <td>1500／224场</td>
+          <td>2100／224场</td>
+          <td>2700／225场</td>
+        </tr>
+        <tr>
+          <td>100</td>
+          <td>金轮法王与番僧战</td>
+          <td>1250</td>
+          <td>1875／107场</td>
+          <td>3125／108场</td>
+          <td>4375／108场</td>
+          <td>5625／108场</td>
+        </tr>
+        <tr>
+          <td>67</td>
+          <td>周伯通单挑战</td>
+          <td>1500</td>
+          <td>2250／89场</td>
+          <td>3750／90场</td>
+          <td>5250／90场</td>
+          <td>6750／90场</td>
+        </tr>
+        <tr>
+          <td>56</td>
+          <td>五岳掌门与五派弟子战</td>
+          <td>2500</td>
+          <td>3750／54场</td>
+          <td>6250／54场</td>
+          <td>8750／54场</td>
+          <td>11250／54场</td>
+        </tr>
+        <tr>
+          <td>124</td>
+          <td>玄慈单挑战</td>
+          <td>2600</td>
+          <td>3900／52场</td>
+          <td>6500／52场</td>
+          <td>9100／52场</td>
+          <td>11700／52场</td>
+        </tr>
+        <tr>
+          <td>131</td>
+          <td>洪七公单挑战</td>
+          <td>3300</td>
+          <td>4950／41场</td>
+          <td>8250／41场</td>
+          <td>11550／41场</td>
+          <td>14850／41场</td>
+        </tr>
+        <tr>
+          <td>54</td>
+          <td>东方不败、梅庄四友与日月教徒战</td>
+          <td>5000</td>
+          <td>7500／27场</td>
+          <td>12500／27场</td>
+          <td>17500／27场</td>
+          <td>22500／27场</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</body>
+</html>
