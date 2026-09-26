@@ -50,7 +50,8 @@
             <td>320名角色的原版初始值全部为0。</td>
           </tr>
 </tbody></table>
-<p>NG2+医疗伤势比较的25%／50%／75%档详见<a href="medicine.zh-Hans.html#ng2-medicine-hurt-tiers">医疗能力字段页</a>；理论治疗量T的倍率尚未定稿。</p>
+<p>医疗资格与加HP／治内伤结算见<a href="medicine.zh-Hans.html#medicine-formula">医疗能力字段页</a>；
+  本页的内伤百分比门槛不能自动当成医疗恢复量的分档。</p>
 <h3>本周合法上限公式</h3>
 <pre>HurtCap(n) = NG1正常伤势上限 + (n − 1) × hurt_cap_step</pre>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
@@ -120,7 +121,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)
             <td>
               <p><strong>原版：</strong>目标内伤<code>H&gt;M＋20</code>时无法回血或治伤；<code>H&gt;75</code>的基础回血落入约<code>M/2</code>一档，失败时的核心体力结算另按原版。</p>
               <p><strong>NG+：</strong>医疗准入、共同治疗量与治内伤保底以<a href="medicine.zh-Hans.html#medicine-hurt-current-proposal">第4.1.1节</a>为准；
-                这里的原版分档不是对NG2+尚未定稿的理论量<code>T</code>作自动百分比替换。</p>
+                这里的原版分档不能自动按NG+伤势上限百分比化，当成现行治疗量公式。</p>
             </td>
             <td><a href="../../../research/evidence/functions/Z_DAT/0x3A10C.md">0x3A10C</a></td>
           </tr>
@@ -232,7 +233,8 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)
       <div class="plain">
         <p><strong>已确认边界：</strong>同一个角色内伤上限同时适用于以上玩家、AI与普通物品写回；NG+的伤势字段及相关结算使用第3.1.4节的signed 64位合同。</p>
         <p>原版升级清伤、战后敌方清伤及本设计换周目清0均不变（<a href="../../../research/evidence/functions/Z_DAT/0x3B6BE.md">升级</a>、
-          <a href="../../../research/evidence/functions/Z_DAT/0x3B387.md">战后</a>）。医疗的已确认准入和10%治伤保底仍只按第4.1.1节执行；该节尚未定稿的共同治疗量<code>T</code>不由普通物品的MAX HP增幅推定。</p>
+          <a href="../../../research/evidence/functions/Z_DAT/0x3B387.md">战后</a>）。医疗的已确认准入、从NG1起的共同治疗量<code>T</code>与10%治伤保底仍只按第4.1.1节执行；
+          <code>T</code>不由普通物品的MAX HP增幅推定。</p>
         <p>本文只更新设计文档，不表示运行时代码已完成改造。</p>
       </div>
     </section>
