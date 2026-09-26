@@ -33,6 +33,10 @@
     td p { margin:.25em 0; }
     pre { padding:14px; overflow:auto; background:#8882; }
     .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    .symbol-key { margin:1rem 0; padding:10px 14px; border-left:4px solid #2f6feb; background:#2f6feb22; }
+    .symbol-key > div { display:block; }
+    .symbol-key > div + div { margin-top:.25em; }
+    .symbol-key code { font-weight:700; background:#2f6feb22; padding:0 .2em; }
     .formula-figure { margin:1.25rem 0; padding:12px; border:1px solid #8888; }
     .formula-figure figcaption { margin-bottom:8px; }
     .formula-chart { display:block; width:100%; height:auto; }
@@ -64,11 +68,22 @@
   <pre>HurtCap(n) = 99 + (n − 1) × hurt_cap_step
 HurtMax(n, CFG) = HurtCap(n)
 B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
-  <p>本周上限来自CFG；默认<code>hurt_cap_step=100</code>，NG1／NG2／NG3／NG5的<code>HurtMax</code>为99／199／299／499，百分比分母<code>B</code>为100／200／300／500。百分比门槛用<code>B</code>，<a href="#medicine-formula">医疗疗效</a>用实际<code>HurtMax</code>，两者不可互换。</p>
+  <div class="symbol-key" role="group" aria-label="内伤符号定义">
+    <div><code>H</code>：角色当前实际内伤。</div>
+    <div><code>P</code>：目标当前实际中毒值。</div>
+    <div><code>M</code>：施救者当前非负医疗能力。</div>
+    <div><code>T</code>：医疗公式的保底前治疗量。</div>
+    <div><code>HurtMax(n, CFG)</code>：本周运行期内伤上限。</div>
+    <div><code>B(n)</code>：内伤百分比判定的分母。</div>
+    <div><code>p</code>：待比较的内伤百分比门槛。</div>
+    <div><code>n</code>：当前周目序号，NG1为1。</div>
+    <div><code>CFG</code>：本周生效配置。</div>
+  </div>
+  <p>默认<code>hurt_cap_step=100</code>，NG1／NG2／NG3／NG5的<code>HurtMax</code>为99／199／299／499，对应<code>B</code>为100／200／300／500。百分比门槛用<code>B</code>，<a href="#medicine-formula">医疗疗效</a>用实际<code>HurtMax</code>，两者不可互换。</p>
 </section>
 <section id="hurt-cap-impact-audit">
   <h3>原版影响与NG+规则</h3>
-  <p><code>H</code>为当前实际内伤。从NG1起，只有以内伤为输入的门槛及指定惩罚项按本周量程折算；地图移动计数、中毒条件与<a href="#medicine-hurt-current-proposal">医疗准入</a>各用自身规则。以下是设计规则，尚未实现到运行时代码。</p>
+  <p>从NG1起，只有以内伤为输入的门槛及指定惩罚项按本周伤势量程折算；地图移动计数、中毒条件与<a href="#medicine-hurt-current-proposal">医疗准入</a>各用自身规则。以下是设计规则，尚未实现到运行时代码。</p>
   <pre>内伤 H &gt; p%：100H &gt; pB(n)；内伤 H &lt; p%：100H &lt; pB(n)
 每轮内伤扣HP = trunc(H / 20)；武功对伤者的增伤 = trunc(目标H / 20)
 武功新增内伤 = trunc(本次计算出的伤害 / 10)
@@ -108,15 +123,20 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
   <h3>字段与上限</h3>
   <p><code>poison</code>为当前中毒状态，换周目清0；320名原版角色初值均为0，正常范围0～99。原版武功附毒可恰好写出100，这是机器事实，不是NG+正常上限。</p>
   <pre>PoisonCap(n) = 99 + (n − 1) × poison_cap_step</pre>
+  <div class="symbol-key" role="group" aria-label="中毒符号定义">
+    <div><code>P</code>：目标当前实际非负中毒值<code>target.poison</code>；扣血不区分施毒来源。</div>
+    <div><code>C</code>：本周正常中毒上限，即<code>PoisonCap(n)</code>。</div>
+    <div><code>P'</code>：武功附毒计算后、封顶前的中毒候选值。</div>
+    <div><code>n</code>：当前周目序号，NG1为1。</div>
+  </div>
   <p>本周正常上限来自CFG，不再固定为99；默认<code>poison_cap_step=100</code>，NG1／NG2／NG3／NG5依次为99／199／299／499。</p>
 </section>
 <section id="poison-detox-rules">
   <h3>回合毒伤与写回边界</h3>
-  <pre>P = target.poison  # 实际非负中毒值，不按来源分开计算
-PoisonHp = trunc(P ÷ 10)</pre>
+  <pre>PoisonHp = trunc(P ÷ 10)</pre>
   <p>符合回合结算资格时，每满10点中毒扣1点HP：P为0～9、50～59、99、100、199时，分别扣0、5、9、10、19点。抗毒只参与施毒，不在扣血时再次抵减；本式只读取实际P，不在扣血阶段改写原版100。</p>
   <p><strong>原版边界BUG／NG+修复（武功附毒写回）：</strong>原版<code>P'&gt;100</code>才写99，恰好100错误地保留。
-    NG1起该路径改按本周<code>C=PoisonCap(n)</code>封顶：<code>P'&gt;C</code>时写<code>C</code>。
+    NG1起该路径改按本周<code>C</code>封顶：<code>P'&gt;C</code>时写<code>C</code>。
     默认NG1的<code>C=99</code>，等价于<code>P'≥100</code>写99；NG2的<code>C=199</code>，则<code>P'≥200</code>写199。此为设计规则，运行时代码尚未实现。</p>
   <p>NG1玩家投掷带毒暗器另按已定技巧项改号；
     <a href="use-poison.zh-Hans.html#poison-mechanics">主动用毒</a>、
@@ -162,12 +182,14 @@ HP2 = signed16(HP1 − PoisonHp)
   </section>
   <section id="detoxification-rules">
     <h4>解毒公式（NG1起）</h4>
-    <pre>M = max(actor.detoxification, 0)  # 当前真实解毒能力
-P = target.poison                  # 当前实际非负中毒值
-C = PoisonCap(n)                  # 本周正常中毒上限；NG1为99
-R1 = RNG.bounded(10)              # 0～9
-R2 = RNG.bounded(10)              # 0～9，第二次调用
-Tolerance(M) = max(20, floor(M × 20 / 100))
+    <div class="symbol-key" role="group" aria-label="解毒符号定义">
+      <div><code>M</code>：施救者当前非负解毒能力，即<code>max(actor.detoxification, 0)</code>。</div>
+      <div><code>P</code>：目标当前实际非负中毒值<code>target.poison</code>。</div>
+      <div><code>C</code>：本周正常中毒上限，即<code>PoisonCap(n)</code>。</div>
+      <div><code>R1</code>：第一次调用<code>RNG.bounded(10)</code>，取值0～9。</div>
+      <div><code>R2</code>：第二次调用<code>RNG.bounded(10)</code>，取值0～9。</div>
+    </div>
+    <pre>Tolerance(M) = max(20, floor(M × 20 / 100))
 Theory = clamp(trunc(M ÷ 3) + R1 − R2, 0, C)
 若 P &gt; M + Tolerance(M)：实际解毒量 = 0
 否则：实际解毒量 = min(Theory, P)
@@ -197,6 +219,16 @@ target.poison = P − 实际解毒量</pre>
 <section id="medicine">
 <h2>医疗</h2>
 <p>角色医疗补HP并治内伤，不解毒或提高HP上限。</p>
+<div class="symbol-key" role="group" aria-label="医疗符号定义">
+  <div><code>H</code>：目标治疗前的实际内伤。</div>
+  <div><code>M</code>：施救者当前非负医疗能力。</div>
+  <div><code>Hmax</code>：本周实际内伤上限，即<code>HurtMax(n, CFG)</code>。</div>
+  <div><code>s</code>：实际内伤与<code>Hmax</code>之比；<code>Hmax=0</code>时取0。</div>
+  <div><code>f(s)</code>：随伤势比例变化的疗效倍率。</div>
+  <div><code>R</code>：同一次治疗抽取的整数0～4。</div>
+  <div><code>T</code>：倍率计算出的治疗量，未应用10%保底。</div>
+  <div><code>Q</code>：回血与治内伤共用的治疗量，已应用10%保底。</div>
+</div>
 <section id="medicine-hurt-mechanics">
   <h3>使用条件</h3>
   <p>战斗菜单要求体力&gt;50、医疗能力≥20；医疗核心要求体力≥50，非战斗只调用核心。
@@ -205,17 +237,16 @@ target.poison = P − 实际解毒量</pre>
 
   <h3 id="medicine-hurt-current-proposal">成功条件</h3>
   <pre>H ≤ M＋max(20, 向下取整(M÷5))</pre>
-  <p><code>H</code>为目标治疗前内伤，<code>M</code>为施救者当前非负医疗能力；等于门槛可治，各周目共用。</p>
+  <p>等于门槛可治，各周目共用。</p>
 
   <h3>失败条件</h3>
   <p>核心体力不足或<code>H</code>超出门槛：加HP和治内伤均为0。原版失败前仍抽取一次随机0～4。</p>
 
   <h3 id="medicine-formula">医疗公式</h3>
-  <p>NG1起统一使用本式；<code>Hmax=HurtMax(n, CFG)</code>为本周上限（默认NG1／NG2／NG3为99／199／299）。</p>
+  <p>NG1起统一使用本式；默认NG1／NG2／NG3的<code>Hmax</code>为99／199／299。</p>
   <pre>若 Hmax &gt; 0：s = H÷Hmax              # 0 ≤ H ≤ Hmax
 若 Hmax = 0：s = 0                   # 此时唯一合法内伤H=0
 倍率 f(s) = 80% − [(80%−10%)÷2] × s² × (1＋s)
-R = 同一次治疗抽取的整数0～4
 T = 向下取整(M × f(s))＋R
 Q = max(T, 向上取整(M÷10))              # 回HP和治内伤共用10%保底
 实际加HP＝min(max(目标HP上限−目标当前HP, 0), Q)
