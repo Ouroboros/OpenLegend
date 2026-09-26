@@ -66,6 +66,10 @@ PoisonPower = C + MagicAttack
   若 P' &lt; 0：P' = 0
   target.poison = P'
 否则：Δ = 0，target.poison 保持P</pre>
+      <p class="notice"><strong>原版边界BUG／NG+修复：</strong>上式原版写回仅在<code>P'&gt;100</code>时改为99，恰好100被保留。
+        从NG1起，本路径写回上限读取<a href="hurt-poison-medicine.zh-Hans.html#poison-field-definition"><code>PoisonCap(n)</code></a>：
+        <code>P'&gt;PoisonCap(n)</code>时写<code>PoisonCap(n)</code>，不再固定写99。默认NG1的上限99时即<code>P'≥100</code>写99；
+        默认NG2的上限199时即<code>P'≥200</code>写199。原版公式和下表仅用于历史对照；新写回规则尚未实现到运行时代码。</p>
       <div class="plain">
         <p>武功附毒在原版武功HP伤害、内伤写回后结算，不为附毒额外取随机数。这里的<code>MagicAttack</code>取角色已学武功的<strong>熟练度等级</strong>在武功定义中的攻击值，
           不是本次实际HP伤害、总攻击力、物品<code>add_poison</code>，也不随本次内力不足导致的<strong>HP伤害威力降档</strong>改变。</p>
@@ -177,7 +181,7 @@ PoisonPower = C + MagicAttack
         <p>武当长拳一行以已进入HP伤害结算为前提：10级且当前内力0时HP伤害使用的武功定义攻击值回退到1级的10，但<strong>附毒仍读取熟练度10级的400</strong>，所以<code>trunc((400−60)÷15)=22</code>。</p>
         <p><a href="../../../research/evidence/functions/Z_DAT/0x39188.md">原版机器证据：<code>sub_39188</code></a>；
           状态页未显示此字段的依据见<a href="../../../research/evidence/functions/Z_DAT/0x22A59.md"><code>sub_22A59</code></a>。</p>
-        <p>以上仅解释原版／NG1；NG2+附毒数值域及写回仍未定；抗毒条件按已确认规则保留原版路径。 </p>
+        <p>上表只复算原版机器行为；NG1起武功附毒写回上限已定为本周<code>PoisonCap(n)</code>，NG2+施毒量与数值域仍未定；抗毒条件保留原版路径。</p>
       </div>
 
 </section>
