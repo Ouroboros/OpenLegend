@@ -279,276 +279,90 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)
 <section id="poison">
 <h2>中毒</h2>
 <section id="poison-field-definition">
-<h3>字段定义</h3>
-<p><code>poison</code>：中毒程度。取值来源：换周目规则直接赋值。</p>
-<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
-<tbody><tr>
-          <td><code>poison</code></td>
-          <td>中毒程度</td>
-          <td>0</td>
-          <td>只在换周目时清零；运行期正常上限为下方的<code>PoisonCap(n)</code>，并非0；NG1原版100例外保留。</td>
-        </tr></tbody></table>
-<h4>原版范围与本周上限</h4>
-<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
-<tr>
-          <td><code>poison</code></td>
-          <td>正常中毒上限99；原版武功附毒恰好100例外。</td>
-          <td>运行期正常上限<code>PoisonCap(n)</code>来自本周CFG；换周目值另为0。</td>
-          <td><code>poison_cap_step=100</code>，NG2／NG3／NG5上限199／299／499；默认配置已确认，NG2+各施毒路径的写回仍未定。</td>
-        </tr>
-</tbody></table>
-<h4>原版字段域</h4>
-<table><thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead><tbody>
-<tr>
-            <td><code>poison</code></td>
-            <td>中毒程度</td>
-            <td>当前状态</td>
-            <td>通常为0～99</td>
-            <td>320名角色的原版初始值全部为0；武功附毒分支存在恰好100的边界例外。</td>
-          </tr>
-</tbody></table>
-<h4>本周合法上限公式</h4>
-<pre>PoisonCap(n) = NG1正常中毒上限 + (n − 1) × poison_cap_step</pre>
-<p>现有中毒NG1原版100例外不改写为正常上限99</p>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+  <h3>字段与上限</h3>
+  <p><code>poison</code>为当前中毒状态，换周目清0；320名原版角色初值均为0，NG1正常范围0～99，武功附毒可恰好到100。</p>
+  <pre>PoisonCap(n) = 99 + (n − 1) × poison_cap_step</pre>
+  <p>本周正常上限来自CFG；默认<code>poison_cap_step=100</code>，NG2／NG3／NG5依次为199／299／499。NG1的100是原版例外，不改变正常上限。</p>
 </section>
 <section id="poison-detox-rules">
-      <h3>4.2 中毒扣血与角色解毒规则（已确认部分）</h3>
-      <div class="notice">
-        <p><strong>适用边界：</strong>NG1除玩家投掷带毒暗器按第4.4节改号外，其余施毒路径及中毒100例外保留原版；各周目中毒回合扣血统一读取当前中毒值，角色解毒统一读取当前真实解毒能力。</p>
-        <p>正常中毒上限由本周CFG提供，并作为本次角色解毒量的上限。</p>
-        <p>原版机器事实分列在
-          <a href="use-poison.zh-Hans.html#poison-mechanics">主动用毒</a>、
-          <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>和
-          <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品／投掷</a>字段页。</p>
-        <p>各路径抗毒条件不变；NG2+其余施毒量、距离、数值域及写回边界仍未定。</p>
-      </div>
-      <p><strong>本周中毒上限与跨周目回合毒伤（已确定）</strong></p>
-      <div class="plain">
-        <p>正常中毒上限<code>PoisonCap(n)</code>的基值、CFG公式与默认配置见<a href="#poison-field-definition">本字段定义</a>。</p>
-        <p>本节只规定按目标当前中毒值结算回合扣血与角色解毒，不把NG1原版100例外改写为99，也不预先决定NG2+施毒路径的写回方式。</p>
-      </div>
-      <pre>P = target.poison  # 本次回合状态结算读取的实际非负中毒值
+  <h3>回合毒伤</h3>
+  <pre>P = target.poison  # 实际非负中毒值，不按来源分开计算
 PoisonHp = trunc(P ÷ 10)</pre>
-      <div class="plain">
-        <p>中毒不是各来源分别挂上的独立回合伤害；不同施毒途径改变同一当前<code>poison</code>字段，符合回合状态结算资格时按<strong>现有中毒每满10点扣1点HP</strong>。</p>
-        <p>0～9扣0、50～59扣5、99扣9、100扣10；登记的默认CFG下若NG2中毒达到199，则扣19。</p>
-        <p>抗毒只在相应施毒路径中参与计算，不在每轮扣血时再次抵减。NG1原版武功附毒路径可恰好到100，解毒公式不预先把此例外改写成99。</p>
-        <p>NG2+各施毒路径如何应用本周上限及处理原版异常仍见第5.3节。</p>
-      </div>
-      <p><strong>原版回合状态结算资格、顺序与HP边界</strong></p>
-      <pre>进入状态扣血分支：hurt > 0
-  或 (poison > 0 且 hp > 0 且 physical_power > 0 且角色非隐藏)
+  <p>符合回合结算资格时，每满10点中毒扣1点HP：P为0～9、50～59、99、100、199时，分别扣0、5、9、10、19点。抗毒只参与施毒，不在扣血时再次抵减；原版100例外不预先截成99。</p>
+  <p>NG1除玩家投掷带毒暗器按已定技巧项改号外，其他施毒路径保留原版；
+    <a href="use-poison.zh-Hans.html#poison-mechanics">主动用毒</a>、
+    <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>、
+    <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品／投掷</a>的机器依据各见对应字段页。
+    NG2+施毒量、距离、数值域及写回边界仍未定，不从已定的毒伤与上限公式推定。</p>
+  <details>
+    <summary>原版回合扣血顺序、HP边界与中毒100例外</summary>
+    <pre>进入状态扣血分支：hurt &gt; 0
+  或 (poison &gt; 0 且 hp &gt; 0 且 physical_power &gt; 0 且角色非隐藏)
 HurtHp = trunc(hurt ÷ 20)
 PoisonHp = trunc(poison ÷ 10)
 HP1 = signed16(hp − HurtHp)
 HP2 = signed16(HP1 − PoisonHp)
 最终HP = (HP2 &lt; 0) ? 1 : HP2  # 恰好0仍为0</pre>
-      <div class="plain">
-        <p>原版每次进入回合状态结算时，先按内伤、再按中毒从HP扣除；每次写回保留有符号16位结果。</p>
-        <p>有正内伤会直接进入，即使生命、体力或隐藏条件不满足；仅由正中毒触发时，须同时满足生命与体力大于0且角色未隐藏。</p>
-        <p>原版最终HP恰好0保留0，负数反而写1。以上分支条件、16位写回及HP异常是<strong>原版事实</strong>；除已确定的跨周目毒伤<code>trunc(P÷10)</code>之外，不据此决定NG2+的HP边界处理。</p>
-      </div>
-      <table>
-        <thead><tr>
-            <th>原有HP</th>
-            <th>内伤／中毒</th>
-            <th>内伤扣血／中毒扣血</th>
-            <th>原版本次最终HP</th>
-          </tr></thead>
-        <tbody>
-          <tr>
-            <td>100</td>
-            <td>0／9</td>
-            <td>0／0</td>
-            <td>100</td>
-          </tr>
-          <tr>
-            <td>100</td>
-            <td>0／10</td>
-            <td>0／1</td>
-            <td>99</td>
-          </tr>
-          <tr>
-            <td>100</td>
-            <td>40／50</td>
-            <td>2／5</td>
-            <td>93</td>
-          </tr>
-          <tr>
-            <td>100</td>
-            <td>0／99</td>
-            <td>0／9</td>
-            <td>91</td>
-          </tr>
-          <tr>
-            <td>100</td>
-            <td>0／100</td>
-            <td>0／10</td>
-            <td>90</td>
-          </tr>
-          <tr>
-            <td>10</td>
-            <td>0／100</td>
-            <td>0／10</td>
-            <td>0（恰好0保留）</td>
-          </tr>
-          <tr>
-            <td>9</td>
-            <td>0／100</td>
-            <td>0／10</td>
-            <td>1（先算−1，再改为1）</td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="plain">
-        原版机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">回合状态扣血<code>sub_3C563</code></a>；
-        附毒中毒值的100边界见<a href="../../../research/evidence/functions/Z_DAT/0x39188.md">武功HP伤害<code>sub_39188</code></a>。
-      </p>
-      <p>解毒能力的原版结算、NG2+公式、随机数与算例见<a href="#detoxification-rules">下方解毒规则</a>。</p>
-      <div class="notice">
-        <p><strong>原版中毒封顶的非单调异常与意图推断：</strong>主动用毒及大多数物品／暗器路径封顶99；武功附毒路径只在结果<strong>大于100</strong>时写99，恰好100保留；</p>
-        <p>原版解毒路径也只在结果大于100时写99。若原有中毒99，武功附毒理论增加1得到100，下次回合毒扣10 HP；理论增加2先得到101却改写为99，下次毒扣9 HP。</p>
-        <p><strong>事实</strong>是原版比较条件和写回值如此；<strong>推断</strong>是它可能属于边界笔误，作者意图未经证实：目标封99应在<code>≥100</code>时写99，
-          目标封100则在<code>&gt;100</code>时写100。</p>
-        <p>其他主要施毒路径封顶99使前者较符合现有规则，但不是已证实结论。NG1保留原版例外；NG2+施毒各路径如何接入CFG正常上限并处理该异常，仍属第5.3节未决。</p>
-      </div>
-    </section>
-<section id="detoxification">
-<h3>解毒</h3>
-<section id="detoxification-field-definition">
-<h4>字段定义</h4>
-<p><code>detoxification</code>：解毒能力。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
-<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
-<tbody><tr>
-          <td><code>detoxification</code></td>
-          <td>解毒能力</td>
-          <td>直接继承并clamp</td>
-          <td>使用本周对应字段上限。</td>
-        </tr></tbody></table>
-<p>共享上限表归属字段 <a href="attack.zh-Hans.html#field-definition"><code>attack</code></a>；本字段的独立转移记录见上表。</p>
-<h5>原版字段域</h5>
-<table><thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead><tbody>
-<tr>
-            <td><code>detoxification</code></td>
-            <td>解毒能力</td>
-            <td>永久能力</td>
-            <td>通常为0～100</td>
-            <td>0～84；最高为角色2程灵素的84。</td>
-          </tr>
-</tbody></table>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+    <p>有正内伤即进入；仅有正中毒时还需HP、体力大于0且角色非隐藏。原版先扣内伤再扣中毒，每次按signed16写回；最终HP恰好0保留0，负数改为1。这些原版HP边界不自动确定NG2+写回规则。</p>
+    <table>
+      <thead><tr><th>原有HP</th><th>内伤／中毒</th><th>内伤／中毒扣HP</th><th>原版最终HP</th></tr></thead>
+      <tbody>
+        <tr><td>100</td><td>0／9</td><td>0／0</td><td>100</td></tr>
+        <tr><td>100</td><td>0／10</td><td>0／1</td><td>99</td></tr>
+        <tr><td>100</td><td>40／50</td><td>2／5</td><td>93</td></tr>
+        <tr><td>100</td><td>0／99</td><td>0／9</td><td>91</td></tr>
+        <tr><td>100</td><td>0／100</td><td>0／10</td><td>90</td></tr>
+        <tr><td>10</td><td>0／100</td><td>0／10</td><td>0（恰好0保留）</td></tr>
+        <tr><td>9</td><td>0／100</td><td>0／10</td><td>1（负数改为1）</td></tr>
+      </tbody>
+    </table>
+    <p>主动用毒及多数物品／暗器路径封顶99；原版武功附毒和解毒路径仅在结果<strong>大于100</strong>时写99，恰好100保留。因此中毒99增加1可到100、每轮扣10；增加2得到101却写回99、每轮只扣9。此处只记机器事实，不推定原作者意图或NG2+施毒写回。</p>
+    <p>机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">回合状态扣血</a>、
+      <a href="../../../research/evidence/functions/Z_DAT/0x39188.md">武功附毒的100边界</a>。</p>
+  </details>
+  <p>角色解毒的公式与算例见<a href="#detoxification-rules">下方解毒规则</a>。</p>
 </section>
-<section id="detoxification-rules">
-<h4>角色解毒：原版依据与NG2+结算</h4>
-<p>中毒状态上限和回合扣血见<a href="#poison-detox-rules">本页中毒规则</a>。</p>
-      <p><strong>角色解毒的跨周目统一公式（已确定）</strong></p>
-      <pre>M = max(actor.detoxification, 0)  # 当前真实解毒能力，不是CFG能力上限
-P = target.poison                  # 目标当前非负中毒值
-C = PoisonCap(n)                  # 本周CFG中毒上限；NG1正常为99
+<section id="detoxification">
+  <h3>解毒</h3>
+  <section id="detoxification-field-definition">
+    <details>
+      <summary>解毒能力字段来源与原版范围</summary>
+      <p><code>detoxification</code>为永久能力：通关TOML直接继承、未入队角色读当前RANGER基线，换周目按本周字段上限clamp；共用上限表见<a href="attack.zh-Hans.html#field-definition">攻击字段页</a>。</p>
+      <p>原版正常域0～100，当前资产实值0～84，最高为角色2程灵素的84。</p>
+    </details>
+  </section>
+  <section id="detoxification-rules">
+    <h4>解毒公式（NG1起）</h4>
+    <pre>M = max(actor.detoxification, 0)  # 当前真实解毒能力
+P = target.poison                  # 当前实际非负中毒值
+C = PoisonCap(n)                  # 本周正常中毒上限；NG1为99
 R1 = RNG.bounded(10)              # 0～9
 R2 = RNG.bounded(10)              # 0～9，第二次调用
 Tolerance(M) = max(20, floor(M × 20 / 100))
 Theory = clamp(trunc(M ÷ 3) + R1 − R2, 0, C)
-
-若 P > M + Tolerance(M)：实际解毒量 = 0
+若 P &gt; M + Tolerance(M)：实际解毒量 = 0
 否则：实际解毒量 = min(Theory, P)
 target.poison = P − 实际解毒量</pre>
-      <div class="plain">
-        <p>原版两次随机数先于失败门槛取得；正常能力域的解毒基础量为当前解毒能力的三分之一，随机差范围−9～＋9。</p>
-        <p>NG1能力通常为0～100，容差恒为20，正常单次上限<code>C=99</code>；此时理论量最大为<code>trunc(100÷3)+9=42</code>，因此NG1正常域按统一公式结算与原版一致，恰好100的现有中毒也不预先截断。</p>
-        <p>NG2+的20%容差只随<strong>当前解毒能力</strong>增长，不读取本周能力上限或中毒上限，也不向上凑整百；失败阈值的等号可解。</p>
-        <p>成功后的解毒量最多等于目标现有中毒，不借用医疗的回血生命缺口限制或治内伤10%保底；单次理论解毒量上限始终等于本周中毒上限，不再固定为99。</p>
-      </div>
-      <table>
-        <thead><tr>
-            <th>周目／所提供的默认CFG中毒上限C</th>
-            <th>当前M／P</th>
-            <th>R1／R2</th>
-            <th>容差／是否通过</th>
-            <th>理论量／实际消除／剩余P</th>
-          </tr></thead>
-        <tbody>
-          <tr>
-            <td>NG1／99</td>
-            <td>20／1</td>
-            <td>9／0</td>
-            <td>20／是</td>
-            <td>15／1／0</td>
-          </tr>
-          <tr>
-            <td>NG1／99</td>
-            <td>20／5</td>
-            <td>0／9</td>
-            <td>20／是</td>
-            <td>0／0／5</td>
-          </tr>
-          <tr>
-            <td>NG1／99</td>
-            <td>20／40</td>
-            <td>4／4</td>
-            <td>20／是，恰好等于门槛</td>
-            <td>6／6／34</td>
-          </tr>
-          <tr>
-            <td>NG1／99</td>
-            <td>20／41</td>
-            <td>4／4</td>
-            <td>20／否，超过门槛1点</td>
-            <td>6／0／41</td>
-          </tr>
-          <tr>
-            <td>NG1／99（原版100例外）</td>
-            <td>80／100</td>
-            <td>4／4</td>
-            <td>20／是，恰好等于门槛</td>
-            <td>26／26／74</td>
-          </tr>
-          <tr>
-            <td>NG2默认CFG／199</td>
-            <td>100／120</td>
-            <td>4／4</td>
-            <td>20／是，恰好等于门槛</td>
-            <td>33／33／87</td>
-          </tr>
-          <tr>
-            <td>NG2默认CFG／199</td>
-            <td>100／121</td>
-            <td>4／4</td>
-            <td>20／否，超过门槛1点</td>
-            <td>33／0／121</td>
-          </tr>
-          <tr>
-            <td>NG2默认CFG／199</td>
-            <td>165／199</td>
-            <td>4／4</td>
-            <td>33／否，门槛198</td>
-            <td>55／0／199</td>
-          </tr>
-          <tr>
-            <td>NG2默认CFG／199</td>
-            <td>166／199</td>
-            <td>4／4</td>
-            <td>33／是，门槛199</td>
-            <td>55／55／144</td>
-          </tr>
-          <tr>
-            <td>NG3默认CFG／299</td>
-            <td>300／199</td>
-            <td>4／4</td>
-            <td>60／是</td>
-            <td>100／100／99</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="plain">
-        <p>NG2、NG3行的199／299来自随文提供的默认CFG，而例子中的解毒能力仍以对应周目实际允许值为前提；最后一行展示高周目单次消除量可以超过原版99。</p>
-        <p>NG1菜单与战斗共用原版解毒核心；战斗解毒菜单要求<code>physical_power&gt;50</code>且<code>detoxification≥20</code>、仅对友方生效，完成行动消耗2点体力；</p>
-        <p>原版目标距离为<code>trunc(actor.detoxification÷15)+1</code>。</p>
-        <p>NG2+用毒／解毒距离是否随能力增长仍属第5.3节未决，不得从第4.1.1节已定的医疗距离封顶直接推定。
-          <a href="../../../research/evidence/functions/Z_DAT/0x39DA3.md">原版解毒机器依据：<code>sub_39DA3</code></a>。</p>
-      </div>
-</section>
+    <p>两次随机取值先于原版失败门槛；等于门槛可解。容差只随当前<code>M</code>增长，不随中毒上限增长；理论量最多为本周<code>C</code>，实际量不超过<code>P</code>。NG1正常能力域与原版相同，目标已有中毒100时不预先截成99；不套用医疗的HP缺口或治伤保底。</p>
+    <p>战斗菜单要求体力&gt;50、解毒能力≥20且仅对友方生效，完成行动另耗2点体力；NG1菜单与战斗共用原版解毒核心。原版距离＝<code>trunc(actor.detoxification÷15)+1</code>；NG2+用毒／解毒距离是否增长仍未定。</p>
+    <p>以下默认CFG的中毒上限NG1／NG2／NG3分别为99／199／299；高周目能力值仅为符合本周能力上限时的算例。</p>
+    <table>
+      <thead><tr><th>周目／C</th><th>M／P</th><th>R1／R2</th><th>容差／资格</th><th>理论／实消／剩余P</th></tr></thead>
+      <tbody>
+        <tr><td>NG1／99</td><td>20／1</td><td>9／0</td><td>20／是</td><td>15／1／0</td></tr>
+        <tr><td>NG1／99</td><td>20／5</td><td>0／9</td><td>20／是</td><td>0／0／5</td></tr>
+        <tr><td>NG1／99</td><td>20／40</td><td>4／4</td><td>20／是（门槛）</td><td>6／6／34</td></tr>
+        <tr><td>NG1／99</td><td>20／41</td><td>4／4</td><td>20／否</td><td>6／0／41</td></tr>
+        <tr><td>NG1／99（100例外）</td><td>80／100</td><td>4／4</td><td>20／是（门槛）</td><td>26／26／74</td></tr>
+        <tr><td>NG2／199</td><td>100／120</td><td>4／4</td><td>20／是（门槛）</td><td>33／33／87</td></tr>
+        <tr><td>NG2／199</td><td>100／121</td><td>4／4</td><td>20／否</td><td>33／0／121</td></tr>
+        <tr><td>NG2／199</td><td>165／199</td><td>4／4</td><td>33／否</td><td>55／0／199</td></tr>
+        <tr><td>NG2／199</td><td>166／199</td><td>4／4</td><td>33／是（门槛）</td><td>55／55／144</td></tr>
+        <tr><td>NG3／299</td><td>300／199</td><td>4／4</td><td>60／是</td><td>100／100／99</td></tr>
+      </tbody>
+    </table>
+    <p>原版机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x39DA3.md">角色解毒函数</a>。</p>
+  </section>
 </section>
 </section>
 <section id="medicine">
