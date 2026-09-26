@@ -2038,6 +2038,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
             static_cast<std::int32_t>(target.word(model::role_word::poison)) +
             (poison_power - anti_poison) / 15);
         target.set_word(model::role_word::poison, poison);
+        // 原版武功附毒只在结果大于100时写99：恰好100保留，101则回写99。
         if (poison > 100) {
             target.set_word(model::role_word::poison, 99);
         }
