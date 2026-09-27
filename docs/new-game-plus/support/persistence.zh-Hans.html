@@ -73,7 +73,7 @@ enabled = false  # 是否启用NG+存档格式与加载优先级</pre>
       <li>开启NG+后加载Legacy存档时，本次加载仍按Legacy格式完整读取；其后执行普通保存时写入新的TOML，不覆盖或扩写原Legacy文件。此后同槽位读档由TOML优先。</li>
       <li>
         <p>Legacy没有NG+专属历史字段。转换时，每名角色的<code>ever_joined</code>统一初始化为<code>false</code>（逻辑值0），
-          全部<code>unassociated_manual_success_counts[ItemCount]</code>统一初始化为0；</p>
+          全部<code>manual_completions[ItemCount]</code>统一初始化为0；</p>
         <p>不得根据当前队伍、剧情状态、人物属性或物品状态反推旧历史。转换后的正常入队与无关联秘笈成功事件再从这些初始值开始记录。</p>
       </li>
       <li>两类TOML都不使用sidecar，不混合读取同槽位D／R／S，也不能导出为Legacy格式。不得用一种统一的“全存”或“全差量”策略处理全部数据；各类状态必须严格使用第3.1.3节规定的完整状态、静态引用或完整压缩bytes表示。</li>
@@ -245,7 +245,7 @@ magic_levels                       = integer_array(10)                    # 十�
 taking_items                       = integer_array(4)                     # 四个角色携带物品ID槽
 taking_counts                      = integer_array(4)                     # 四个角色携带物品数量槽
 ever_joined                        = boolean                              # 是否曾在任一周目实际入队
-unassociated_manual_success_counts = integer_array(ItemCount)             # 按物品ID保存无关联秘笈历史成功次数
+manual_completions                 = integer_array(ItemCount)             # 按物品ID保存无对应武功秘笈的累计完成次数
 
 [item_state]
 users                              = integer_array(ItemCount)             # 每个物品当前item.user占用角色ID
@@ -347,7 +347,7 @@ d_compressed_base64                = string                               # 完�
       <li>
         <p><code>[[roles]]</code>的ID必须严格递增且不重复；每个当前队伍角色必须存在。</p>
         <p><code>ever_joined=false</code>的角色只有在当前队伍中才允许存在；<code>ever_joined=true</code>的已保存角色即属于<code>EverJoinedRoles</code>。</p>
-        <p>每个角色必须包含完整字段、固定长度数组和完整<code>unassociated_manual_success_counts[ItemCount]</code>。</p>
+        <p>每个角色必须包含完整字段、固定长度数组和完整<code>manual_completions[ItemCount]</code>。</p>
       </li>
       <li>
         <code>item_state.users</code>长度必须等于<code>ItemCount</code>，入口条件长度必须等于<code>SceneDefinitionCount</code>，
@@ -391,7 +391,7 @@ item_id ∈ [0, ItemCount－1]
 NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色的count保持基线值0</pre>
     <p class="plain">隐藏次数不是“当前装备这本书的临时值”，而是角色对每一本无关联秘笈各自的长期记录。角色把书丢掉、换成别的书、下一周目重新取得，原次数仍然存在，因此不能靠换书把费用刷回第一次。</p>
     <ul>
-      <li>新增<code>unassociated_manual_success_counts[ItemCount]</code>，按角色保存、按物品ID索引；原版当前<code>ItemCount=200</code>。</li>
+      <li>新增<code>manual_completions[ItemCount]</code>，按角色保存、按物品ID索引；原版当前<code>ItemCount=200</code>。</li>
       <li>是否使用计数由当前物品定义中的<code>magic_id</code>与<code>need_experience</code>判断；其他位置必须为0。</li>
       <li><code>EverJoinedRoles</code>来自存档中的历代实际入队记录；其中角色的隐藏次数完整继承，未入队角色不写入TOML且隐藏次数保持基线值0。</li>
       <li><code>practice_item</code>和当前<code>item_experience</code>仍按周目转换规则清空，但历史成功次数不清空。</li>

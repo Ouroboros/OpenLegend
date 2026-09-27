@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>字段 unassociated_manual_success_counts[ItemCount] · OpenLegend NG+</title>
+  <title>字段 manual_completions[ItemCount] · OpenLegend NG+</title>
   <style>
     body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
     h1,h2,h3,h4 { line-height:1.3; }
@@ -19,25 +19,25 @@
   </style>
 </head>
 <body>
-<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>字段 unassociated_manual_success_counts[ItemCount]</h1></header>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p><h1>秘笈完成次数</h1></header>
 <main>
 <section id="field-definition">
 <h2>字段定义</h2>
-<p><code>unassociated_manual_success_counts[ItemCount]</code>：无关联秘笈历史成功次数。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
+<p><code>manual_completions[ItemCount]</code>：秘笈完成次数。NG+新增字段，按角色和秘笈物品ID记录无对应武功秘笈的累计成功修炼次数；通关TOML中的历史记录跨周继承，未记录的角色初始为0。</p>
 <table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
 <tbody><tr>
-          <td><code>unassociated_manual_success_counts[ItemCount]</code></td>
-          <td>无关联秘笈历史成功次数</td>
-          <td>完整继承并clamp</td>
-          <td>按物品ID保存无关联武功秘笈历史成功次数；上限为<code>Lcur(n)－H0</code>，换书、丢失、重新取得或换周目均不清零。</td>
+          <td><code>manual_completions[ItemCount]</code></td>
+          <td>秘笈完成次数</td>
+          <td>按秘笈物品ID完整继承并限制到本周上限</td>
+          <td>仅物品定义满足<code>magic_id=-1</code>、<code>need_experience&gt;0</code>的秘笈对应位置可非零；每成功完成修炼一次加1，其他物品位置保持0。上限为<code>Lcur(n)－H0</code>；换书、丢失、重新取得或换周目均不清零。</td>
         </tr></tbody></table>
 <p>共享上限表归属字段 <a href="magic-levels.zh-Hans.html#field-definition"><code>magic_levels[10]</code></a>；本字段的独立转移记录见上表。</p>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
 <section id="manual-unassociated-field">
-<h2>无关联秘笈的历史成功次数与费用</h2>
+<h2>无对应武功秘笈的完成次数与费用</h2>
     <h4 id="manual-unassociated">2.1.2 无关联武功的秘笈</h4>
-    <pre>c = 按角色ID＋物品ID读取的隐藏成功次数，初始为0
+    <pre>c = 本角色的 manual_completions[item_id]，即该秘笈历史完成次数，初始为0
 H0 = 原版无关联武功秘笈首次费用阶级
 H = c＋H0
 C = need(i)×A(iq)×H

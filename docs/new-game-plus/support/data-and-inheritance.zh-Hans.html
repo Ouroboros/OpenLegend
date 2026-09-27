@@ -194,7 +194,7 @@
 
 <section id="role-inheritance">
     <h3>1.2 人物数值继承</h3>
-    <p>本节处理原版角色记录中已经存在的字段，并额外包含已经明确批准的<code>unassociated_manual_success_counts[ItemCount]</code>。</p>
+    <p>本节处理原版角色记录中已经存在的字段，并额外包含已经明确批准的<code>manual_completions[ItemCount]</code>。</p>
     <p>除该字段外，其他NG+新增字段、装备物品自身记录、库存、队伍、剧情状态和其他系统设计不属于本节。</p>
 
     <h4 id="inheritance-scope">1.2.1 范围与通用公式</h4>
@@ -263,7 +263,7 @@ name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
         先处理<code>level</code>、<code>maximum_hp</code>、<code>maximum_mp</code>等上限依赖字段，
         再恢复<code>hp</code>、<code>mp</code>和<code>physical_power</code>。
       </li>
-      <li>继承并验证每名适用角色的<code>unassociated_manual_success_counts[ItemCount]</code>；它不随当前<code>practice_item</code>清空。</li>
+      <li>继承并验证每名适用角色的<code>manual_completions[ItemCount]</code>；它不随当前<code>practice_item</code>清空。</li>
       <li>最后验证全部ID、字符串、数组槽位和数值范围；失败时拒绝转换，不静默修复损坏存档。</li>
     </ol>
     <pre>数值示意（不是代码常量）：
