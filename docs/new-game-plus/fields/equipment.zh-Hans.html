@@ -33,6 +33,31 @@
         </tr></tbody></table>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
+<section id="equipment-effective-attributes">
+<h2>NG+装备生效属性</h2>
+<p>以下是设计规则，尚未实现到运行时代码。装备槽仍在换周目时清空；本周重新取得并装备的Type 1物品继续使用原始物品ID及静态基础值，不复制或改写物品定义。<code>n</code>为当前周目，NG1取1。</p>
+<pre>单件装备攻击加成 = n × base_add_attack
+单件装备防御加成 = n × base_add_defence
+单件装备速度加成 = base_add_speed
+两件装备分别计算，再将对应加成相加。</pre>
+<table><thead><tr><th>生效属性</th><th>物品字段</th><th>当前原版20件装备中非零数量</th><th>NG+处理</th></tr></thead><tbody>
+<tr><td>攻击</td><td><code>add_attack</code></td><td>16件</td><td>正值、负值均按<code>n</code>倍计算。</td></tr>
+<tr><td>防御</td><td><code>add_defence</code></td><td>13件</td><td>正值、负值均按<code>n</code>倍计算。</td></tr>
+<tr><td>速度／轻功加成</td><td><code>add_speed</code></td><td>5件</td><td>使用基础值，不乘周目数。</td></tr>
+</tbody></table>
+<p>当前原版装备的其余物品效果字段均为0，不凭空新增装备效果。角色自身的<a href="speed.zh-Hans.html#field-definition"><code>speed</code>字段</a>各周目上限固定100；装备速度是另加的生效值，不能据此提高角色字段上限，也不将装备后生效速度强制夹到100。NG2玄鐵劍（基础攻击+15、防御+15、速度−20）的三项装备加成为+30／+30／−20；君子劍（+8／−5／+10）则为+16／−10／+10。</p>
+<h3>武器与武功的固定搭配加成</h3>
+<p>下表只在武器槽（<code>equipment[0]</code>）与本次使用的武功ID同时匹配时，另加一次对应攻击值；这不是物品的<code>add_attack</code>，不乘周目数，也不重复计入装备攻防倍率。</p>
+<table><thead><tr><th>武器ID</th><th>武功ID</th><th>固定攻击加成</th></tr></thead><tbody>
+<tr><td>106</td><td>57</td><td>100</td></tr>
+<tr><td>107</td><td>49</td><td>50</td></tr>
+<tr><td>108</td><td>49</td><td>50</td></tr>
+<tr><td>110</td><td>54</td><td>80</td></tr>
+<tr><td>115</td><td>63</td><td>50</td></tr>
+<tr><td>116</td><td>67</td><td>70</td></tr>
+<tr><td>119</td><td>68</td><td>100</td></tr>
+</tbody></table>
+</section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
 <a href="../support/inventory.zh-Hans.html">库存规则</a>、

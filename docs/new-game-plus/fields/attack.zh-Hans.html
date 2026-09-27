@@ -35,7 +35,7 @@
 <table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
 <tr>
           <td>
-            <p><code>attack</code>、<code>speed</code>、<code>defence</code>、<code>medicine</code>、<code>use_poison</code>、
+            <p><code>attack</code>、<code>defence</code>、<code>medicine</code>、<code>use_poison</code>、
               <code>detoxification</code>、<code>attack_with_poison</code>、<code>knowledge</code>、<code>iq</code>、<code>make_item_experience</code>、
               <code>physical_power</code></p>
           </td>
@@ -43,6 +43,12 @@
           <td>各自的<code>Cap(f,n)</code>按对应规则集／CFG确定；体力换周目时填到本周允许上限，其余字段按上方转移表处理。</td>
           <td>不为这组字段统一指定+100或+999；医疗上限按CFG医疗STEP增长，
             其他字段具体步长仍须逐项核对。医疗／解毒准入不从上限直接反推。</td>
+        </tr>
+<tr>
+          <td><a href="speed.zh-Hans.html#field-definition"><code>speed</code>（轻功）</a></td>
+          <td>NG1正常上限100。</td>
+          <td>各周目角色自身字段上限固定100；换周目继承实际值并限制在0～100。</td>
+          <td>不设NG+轻功上限步长；装备速度加成另算且不乘周目数。</td>
         </tr>
 </tbody></table>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>

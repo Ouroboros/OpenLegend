@@ -27,7 +27,7 @@
 <tr><td>人物继承</td><td>没消失</td><td><a href="new-game-plus/support/data-and-inheritance.zh-Hans.html#role-inheritance">数据与人物继承</a></td></tr>
 <tr><td>物品库存继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">库存继承白名单与数量</a></td></tr>
 <tr><td>装备不继承</td><td>没消失</td><td><a href="new-game-plus/fields/equipment.zh-Hans.html#field-definition">装备槽清空规则</a></td></tr>
-<tr><td>装备属性随周目变化</td><td>未进入已提交文档</td><td>攻防乘周目数、速度不乘等规则仅在本地未跟踪评审稿第6章。</td></tr>
+<tr><td>装备属性随周目变化</td><td>已收录</td><td><a href="new-game-plus/fields/equipment.zh-Hans.html#equipment-effective-attributes">装备生效属性规则</a>：攻防乘周目数，速度和固定武功搭配加成不乘。</td></tr>
 <tr><td>药品数量继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">药品库存继承</a></td></tr>
 <tr><td>药品使用效果</td><td>部分有</td><td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#hurt-cap-impact-audit">普通物品的内伤折算及正向理论回血增幅</a>已有；完整逐分支NG+公式未进入已提交文档。</td></tr>
 <tr><td>升级、战斗经验</td><td>没消失</td><td><a href="new-game-plus/fields/experience.zh-Hans.html#level-cost">人物升级与战斗经验</a></td></tr>
@@ -40,13 +40,15 @@
 </tbody></table>
 </section>
 <section id="category-character"><h2>人物字段</h2>
-<table><thead><tr><th>字段</th><th>名称</th><th>取值来源</th><th>换周目处理</th><th>路由</th></tr></thead><tbody>
+<p>REVIEWED：仅在用户明确要求勾选指定字段时才标为☑；其他字段均为☐。</p>
+<table><thead><tr><th>字段</th><th>名称</th><th>取值来源</th><th>换周目处理</th><th>路由</th><th>REVIEWED</th></tr></thead><tbody>
 <tr>
 <td><code>increased_life</code></td>
 <td>生命成长</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/increased-life.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>unused</code></td>
@@ -54,6 +56,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承原值</td>
 <td><a href="new-game-plus/fields/unused.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>name</code></td>
@@ -61,6 +64,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并验证</td>
 <td><a href="new-game-plus/fields/name.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>nickname</code></td>
@@ -68,6 +72,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并验证</td>
 <td><a href="new-game-plus/fields/nickname.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>sexual</code></td>
@@ -75,6 +80,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>不继承；恢复原版基线</td>
 <td><a href="new-game-plus/fields/sexual.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>level</code></td>
@@ -82,6 +88,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/level.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>experience</code></td>
@@ -89,6 +96,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/experience.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>maximum_hp</code></td>
@@ -96,6 +104,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/maximum-hp.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>hp</code></td>
@@ -103,6 +112,7 @@
 <td>处理后的maximum_hp</td>
 <td>设为处理后的<code>maximum_hp</code></td>
 <td><a href="new-game-plus/fields/hp.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>maximum_mp</code></td>
@@ -110,6 +120,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/maximum-mp.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>mp</code></td>
@@ -117,6 +128,7 @@
 <td>处理后的maximum_mp</td>
 <td>设为处理后的<code>maximum_mp</code></td>
 <td><a href="new-game-plus/fields/mp.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>hurt</code></td>
@@ -124,6 +136,7 @@
 <td>换周目规则直接赋值</td>
 <td>0</td>
 <td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#hurt">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>poison</code></td>
@@ -131,6 +144,7 @@
 <td>换周目规则直接赋值</td>
 <td>0</td>
 <td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#poison">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>physical_power</code></td>
@@ -138,6 +152,7 @@
 <td>本周规则集／运行时CFG</td>
 <td>设为本周允许上限</td>
 <td><a href="new-game-plus/fields/physical-power.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>make_item_experience</code></td>
@@ -145,6 +160,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/make-item-experience.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>equipment[2]</code></td>
@@ -152,6 +168,7 @@
 <td>换周目规则直接赋值</td>
 <td><code>[-1,-1]</code></td>
 <td><a href="new-game-plus/fields/equipment.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>frames[15]</code></td>
@@ -159,6 +176,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>恢复原版基线</td>
 <td><a href="new-game-plus/fields/frames.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>mp_type</code></td>
@@ -166,6 +184,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/mp-type.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>attack</code></td>
@@ -173,13 +192,15 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/attack.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>speed</code></td>
 <td>轻功</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承并限制在0～100；上限不随周目增长</td>
 <td><a href="new-game-plus/fields/speed.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>defence</code></td>
@@ -187,6 +208,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/defence.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>medicine</code></td>
@@ -194,6 +216,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#medicine">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>use_poison</code></td>
@@ -201,6 +224,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/use-poison.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>detoxification</code></td>
@@ -208,6 +232,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#detoxification">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>anti_poison</code></td>
@@ -215,6 +240,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/anti-poison.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>fist</code></td>
@@ -222,6 +248,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/fist.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>sword</code></td>
@@ -229,6 +256,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/sword.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>knife</code></td>
@@ -236,6 +264,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/knife.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>unusual</code></td>
@@ -243,6 +272,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/unusual.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>hidden_weapon</code></td>
@@ -250,6 +280,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/hidden-weapon.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>knowledge</code></td>
@@ -257,6 +288,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/knowledge.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>morality</code></td>
@@ -264,6 +296,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>恢复原版基线</td>
 <td><a href="new-game-plus/fields/morality.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>attack_with_poison</code></td>
@@ -271,6 +304,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/attack-with-poison.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>attack_twice</code></td>
@@ -278,6 +312,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>恢复原版基线</td>
 <td><a href="new-game-plus/fields/attack-twice.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>fame</code></td>
@@ -285,6 +320,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>恢复原版基线</td>
 <td><a href="new-game-plus/fields/fame.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>iq</code></td>
@@ -292,6 +328,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>直接继承并clamp</td>
 <td><a href="new-game-plus/fields/iq.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>practice_item</code></td>
@@ -299,6 +336,7 @@
 <td>换周目规则直接赋值</td>
 <td>-1</td>
 <td><a href="new-game-plus/fields/practice-item.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>item_experience</code></td>
@@ -306,6 +344,7 @@
 <td>换周目规则直接赋值</td>
 <td>0</td>
 <td><a href="new-game-plus/fields/item-experience.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>unassociated_manual_success_counts[ItemCount]</code></td>
@@ -313,6 +352,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>完整继承并clamp</td>
 <td><a href="new-game-plus/fields/unassociated-manual-success-counts.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>magic_ids[10]</code></td>
@@ -320,6 +360,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>完整继承并验证</td>
 <td><a href="new-game-plus/fields/magic-ids.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>magic_levels[10]</code></td>
@@ -327,6 +368,7 @@
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
 <td>完整继承并clamp</td>
 <td><a href="new-game-plus/fields/magic-levels.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>taking_items[4]</code></td>
@@ -334,6 +376,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>不继承；恢复原版基线</td>
 <td><a href="new-game-plus/fields/taking-items.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 <tr>
 <td><code>taking_counts[4]</code></td>
@@ -341,6 +384,7 @@
 <td>当前原版RANGER.GRP角色定义</td>
 <td>不继承；恢复原版基线</td>
 <td><a href="new-game-plus/fields/taking-counts.zh-Hans.html">字段详情</a></td>
+<td>☐</td>
 </tr>
 </tbody></table></section>
 <section id="category-item"><h2>物品与配置字段</h2>
