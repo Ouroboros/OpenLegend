@@ -21,6 +21,24 @@
 <body>
 <header><h1>OpenLegend NG+ 字段索引</h1></header>
 <main>
+<section id="rules-location"><h2>NG+规则去向与缺口</h2>
+<p>下表区分已提交文档中的规则与仅见于本地未跟踪评审稿的内容；后者不是已提交的现行规则。“未发现整章失踪”只表示逐章找到了迁移位置，不代表逐句核对无遗漏。</p>
+<table><thead><tr><th>内容</th><th>结论</th><th>去向或缺口</th></tr></thead><tbody>
+<tr><td>人物继承</td><td>没消失</td><td><a href="new-game-plus/support/data-and-inheritance.zh-Hans.html#role-inheritance">数据与人物继承</a></td></tr>
+<tr><td>物品库存继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">库存继承白名单与数量</a></td></tr>
+<tr><td>装备不继承</td><td>没消失</td><td><a href="new-game-plus/fields/equipment.zh-Hans.html#field-definition">装备槽清空规则</a></td></tr>
+<tr><td>装备属性随周目变化</td><td>未进入已提交文档</td><td>攻防乘周目数、速度不乘等规则仅在本地未跟踪评审稿第6章。</td></tr>
+<tr><td>药品数量继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">药品库存继承</a></td></tr>
+<tr><td>药品使用效果</td><td>部分有</td><td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#hurt-cap-impact-audit">普通物品的内伤折算及正向理论回血增幅</a>已有；完整逐分支NG+公式未进入已提交文档。</td></tr>
+<tr><td>升级、战斗经验</td><td>没消失</td><td><a href="new-game-plus/fields/experience.zh-Hans.html#level-cost">人物升级与战斗经验</a></td></tr>
+<tr><td>秘笈修炼</td><td>没消失</td><td><a href="new-game-plus/fields/item-experience.zh-Hans.html#manual-rule">秘笈经验与修炼规则</a>等字段页</td></tr>
+<tr><td>11级后武功实际效果</td><td>未进入已提交文档</td><td><a href="new-game-plus/fields/magic-levels.zh-Hans.html#field-definition">现行页面</a>规定熟练度继承、等级上限和修炼费用；实际效果公式仅在本地未跟踪评审稿第7章。</td></tr>
+<tr><td>存档规则</td><td>没消失</td><td><a href="new-game-plus/support/persistence.zh-Hans.html#save-format">TOML存档与持久化</a></td></tr>
+<tr><td>伤毒、解毒、角色医疗</td><td>没消失</td><td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html">四章合并页</a></td></tr>
+<tr><td>敌人生成、完整伤害公式</td><td>未进入已提交文档</td><td>仅在本地未跟踪评审稿第10章；现行页面只有相关的局部规则。</td></tr>
+<tr><td>旧主稿已有的整章规则</td><td>未发现拆分后整章失踪</td><td>已逐章找到迁移位置，未逐句核对。</td></tr>
+</tbody></table>
+</section>
 <section id="category-character"><h2>人物字段</h2>
 <table><thead><tr><th>字段</th><th>名称</th><th>取值来源</th><th>换周目处理</th><th>路由</th></tr></thead><tbody>
 <tr>
