@@ -33,9 +33,7 @@
         </tr></tbody></table>
 <h3>原版范围与本周上限</h3>
 <pre>Cap(speed, n) = NG1正常轻功上限 = 100，n ≥ 1</pre>
-<p>轻功是角色自身的<code>speed</code>字段，换周目只继承并限制实际值，不因进入高周目自动提高属性或上限，也不设置NG+轻功上限步长。
-装备的<code>add_speed</code>是计算生效速度时另加的属性，不改写角色字段；各周目均使用装备基础加成，不乘周目数。<a href="equipment.zh-Hans.html#equipment-effective-attributes">装备生效属性规则</a>另述。</p>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；角色自身上限与装备后的生效速度须分别计算，不将装备加成夹回字段上限。</p>
+<p>装备<code>add_speed</code>另计，不乘周目数、不回写角色<code>speed</code>；装备后的生效速度不夹到100。详见<a href="equipment.zh-Hans.html#equipment-effective-attributes">装备生效属性规则</a>。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

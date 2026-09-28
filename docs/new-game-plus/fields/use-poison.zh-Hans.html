@@ -29,48 +29,24 @@
           <td><code>use_poison</code></td>
           <td>用毒能力</td>
           <td>直接继承并clamp</td>
-          <td>使用本周对应字段上限。</td>
+          <td>使用本周字段上限<code>Cap(use_poison,n)</code>。</td>
         </tr></tbody></table>
-<p>共享上限表归属字段 <a href="attack.zh-Hans.html#field-definition"><code>attack</code></a>；本字段的独立转移记录见上表。</p>
-<h3>原版字段域</h3>
-<table><thead><tr><th>原版字段</th><th>中文名称</th><th>性质</th><th>原版正常有效域</th><th>当前原版资产实值</th></tr></thead><tbody>
-<tr>
-            <td><code>use_poison</code></td>
-            <td>用毒能力</td>
-            <td>永久能力</td>
-            <td>通常为0～100</td>
-            <td>0～86；最高为角色2程灵素的86。</td>
-          </tr>
-</tbody></table>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+<h3 id="use-poison-cap">本周角色用毒能力上限</h3>
+<pre>Cap(use_poison,n) = 100 + (n − 1) × use_poison_cap_step  （n≥1）</pre>
+<p>100为NG1用毒能力的正常上限；<code>use_poison_cap_step</code>是运行时CFG中每新增周目的上限增量，提供的默认值为100。按此默认值，NG1／NG2／NG3上限分别为100／200／300；配置其他步长时以公式为准。</p>
+<p>曾入队角色换周目时继承自己的实际<code>use_poison</code>并限制在0～<code>Cap(use_poison,n)</code>，上限扩大不自动增加实际值；未入队角色读取当前RANGER基线，不因上限扩大而改写。此上限不替代主动用毒的施毒公式或目标的中毒上限。</p>
+<p>现有运行时代码中升级、秘笈修炼仍将用毒值封顶100；上述NG+上限尚未实现。</p>
 </section>
 <section id="poison-mechanics">
-      <h3>4.3 原版施毒与抗毒路径（机器事实）</h3>
-      <div class="plain">
-        <p>以下只审计原版不同来源的<strong>施毒增量与抗毒门槛</strong>：主动用毒、武功附毒、普通物品与玩家／AI投掷各走独立路径。</p>
-        <p>玩家投掷带毒暗器时技巧项的原版减号仅是机器事实，NG1起的正式改号规则见第4.4节；各路径抗毒条件保留，不把原版封顶99直接当成NG2+已批准的写回公式。</p>
-        <p>原版主动用毒目标距离为<code>trunc(actor.use_poison÷15)+1</code>；角色解毒与中毒回合扣血的正式规则见第4.2节。</p>
-      </div>
-
-      <p><strong>主动用毒</strong></p>
-      <pre>ActivePoison = trunc((actor.use_poison - target.anti_poison) ÷ 4)
-ActivePoison = clamp(ActivePoison, 0, 99 - target.poison)
+<h3>主动用毒</h3>
+<p>战斗菜单要求<code>physical_power&gt;10</code>且<code>use_poison≥20</code>；只能对敌方施毒，行动消耗2点体力。<code>U_NG1</code>指上文NG1用毒能力上限；<code>U</code>取实际用毒与该上限的较小值，仅用于计算距离，不改写角色属性。</p>
+<pre>U = min(actor.use_poison, U_NG1)
+PoisonRange = trunc(U ÷ 15) + 1</pre>
+<pre>ActivePoison = trunc((actor.use_poison - target.anti_poison) ÷ 4)
+ActivePoison = clamp(ActivePoison, 0, PoisonCap(n) - target.poison)
 target.poison += ActivePoison</pre>
-      <div class="plain">
-        <p>主动用毒先用施毒者的<code>use_poison</code>减去目标的<code>anti_poison</code>，每剩余4点差值才增加1点中毒。</p>
-        <p>抗毒等于或高于用毒时结果为0；目标已经接近99时，只补到99，不会溢出。</p>
-        <p>例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，理论增加10点；若目标已经有95点中毒，实际只增加4点。</p>
-      </div>
-
-      <p>武功附毒的字段来源、毒力、抗毒比较与原版算例见
-        <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>。</p>
-      <p>普通物品与玩家／AI暗器各自的毒性载荷和抗毒条件见
-        <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品毒值字段页</a>。</p>
-      <ul>
-        <li>主动用毒在战斗菜单中的条件为<code>physical_power&gt;10</code>且<code>use_poison≥20</code>，只能对敌方生效，完成行动消耗2点体力。</li>
-      </ul>
-      <p class="plain">本页保留主动用毒的原版公式；其他施毒路径见对应字段页。各路径抗毒条件保持原版，玩家投掷正毒的技巧项从NG1起另按第4.4节改号。NG2+其他施毒量、距离和写回细节并未据此确定；已确认的中毒扣血、正常中毒上限来源及角色解毒结算见第4.2节。</p>
-    </section>
+<p><code>PoisonCap(n)</code>为本周中毒上限；例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，未触及上限前新增10点。</p>
+</section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
 <a href="../support/inventory.zh-Hans.html">库存规则</a>、

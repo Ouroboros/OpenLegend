@@ -153,7 +153,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
     <a href="use-poison.zh-Hans.html#poison-mechanics">主动用毒</a>、
     <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>、
     <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品／投掷</a>的原版机器依据见对应字段页。
-    NG2+其他施毒路径的施毒量、距离、数值域及写回边界仍未定；本次只确定武功附毒路径的上限边界。</p>
+    NG2+主动用毒按本周中毒上限写回，距离按NG1用毒能力上限封顶；物品／投掷等其他施毒路径的施毒量、距离、数值域及写回边界仍未定。</p>
   <details>
     <summary>原版回合扣血顺序、HP边界与中毒100例外</summary>
     <pre>进入状态扣血分支：hurt &gt; 0
@@ -187,7 +187,7 @@ HP2 = signed16(HP1 − PoisonHp)
   <section id="detoxification-field-definition">
     <details>
       <summary>解毒能力字段来源与原版范围</summary>
-      <p><code>detoxification</code>为永久能力：通关TOML直接继承、未入队角色读当前RANGER基线，换周目按本周字段上限clamp；共用上限表见<a href="attack.zh-Hans.html#field-definition">攻击字段页</a>。</p>
+      <p><code>detoxification</code>为永久能力：通关TOML直接继承、未入队角色读当前RANGER基线，换周目按本周字段上限clamp。</p>
       <p>原版正常域0～100，当前资产实值0～84，最高为角色2程灵素的84。</p>
     </details>
   </section>
@@ -206,7 +206,7 @@ Theory = clamp(trunc(M / 3) + R1 − R2, 0, C)
 否则：实际解毒量 = min(Theory, P)
 target.poison = P − 实际解毒量</pre>
     <p>两次随机取值先于原版失败门槛；等于门槛可解。容差只随当前<code>M</code>增长，不随中毒上限增长；理论量最多为本周<code>C</code>，实际量不超过<code>P</code>。NG1正常能力域与原版相同；若输入原版遗留的中毒100，仍按实际<code>P=100</code>解毒，不表示NG+武功附毒仍可产生100；不套用医疗的HP缺口或治伤保底。</p>
-    <p>战斗菜单要求体力&gt;50、解毒能力≥20且仅对友方生效，完成行动另耗2点体力；NG1菜单与战斗共用原版解毒核心。原版距离＝<code>trunc(actor.detoxification / 15) + 1</code>；NG2+用毒／解毒距离是否增长仍未定。</p>
+    <p>战斗菜单要求体力&gt;50、解毒能力≥20且仅对友方生效，完成行动另耗2点体力；NG1菜单与战斗共用原版解毒核心。原版距离＝<code>trunc(actor.detoxification / 15) + 1</code>；NG2+解毒距离是否增长仍未定；主动用毒各周目的目标距离均按NG1用毒能力上限封顶。</p>
     <p>以下默认CFG的中毒上限NG1／NG2／NG3分别为99／199／299；高周目能力值仅为符合本周能力上限时的算例。</p>
     <table>
       <thead><tr><th>周目／C</th><th>M／P</th><th>R1／R2</th><th>容差／资格</th><th>理论／实消／剩余P</th></tr></thead>
@@ -332,7 +332,7 @@ Q = max(T, ceil(M / 10))               # 回HP和治内伤共用10%保底
   <details>
     <summary>字段来源、原版取值与研究依据</summary>
     <p>通关TOML中的角色实际值直接继承；未入队角色读取当前RANGER基线。
-      换周目时按本周字段上限夹值，参见<a href="attack.zh-Hans.html#field-definition">共用上限表</a>。</p>
+      换周目时按本周字段上限夹值。</p>
     <table>
       <thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
       <tbody><tr>

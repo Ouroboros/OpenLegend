@@ -47,15 +47,15 @@
 </tbody></table>
 <p>当前原版装备的其余物品效果字段均为0，不凭空新增装备效果。角色自身的<a href="speed.zh-Hans.html#field-definition"><code>speed</code>字段</a>各周目上限固定100；装备速度是另加的生效值，不能据此提高角色字段上限，也不将装备后生效速度强制夹到100。NG2玄鐵劍（基础攻击+15、防御+15、速度−20）的三项装备加成为+30／+30／−20；君子劍（+8／−5／+10）则为+16／−10／+10。</p>
 <h3>武器与武功的固定搭配加成</h3>
-<p>下表只在武器槽（<code>equipment[0]</code>）与本次使用的武功ID同时匹配时，另加一次对应攻击值；这不是物品的<code>add_attack</code>，不乘周目数，也不重复计入装备攻防倍率。</p>
-<table><thead><tr><th>武器ID</th><th>武功ID</th><th>固定攻击加成</th></tr></thead><tbody>
-<tr><td>106</td><td>57</td><td>100</td></tr>
-<tr><td>107</td><td>49</td><td>50</td></tr>
-<tr><td>108</td><td>49</td><td>50</td></tr>
-<tr><td>110</td><td>54</td><td>80</td></tr>
-<tr><td>115</td><td>63</td><td>50</td></tr>
-<tr><td>116</td><td>67</td><td>70</td></tr>
-<tr><td>119</td><td>68</td><td>100</td></tr>
+<p>下表列出原版武器—武功搭配的基础攻击加成。仅当武器槽（<code>equipment[0]</code>）与本次使用的武功ID同时匹配时，第<code>n</code>周目另加一次<code>n × 基础搭配攻击加成</code>；不匹配则为0。该项与物品的<code>add_attack</code>分别结算，不重复计入装备攻防倍率，也不对武功自身威力另乘周目数。</p>
+<table><thead><tr><th>武器ID</th><th>武器名称</th><th>武功ID</th><th>武功名称</th><th>原版搭配攻击加成（基础值）</th></tr></thead><tbody>
+<tr><td>106</td><td>玄鐵劍</td><td>57</td><td>玄鐵劍法</td><td>100</td></tr>
+<tr><td>107</td><td>君子劍</td><td>49</td><td>玉女素心劍</td><td>50</td></tr>
+<tr><td>108</td><td>淑女劍</td><td>49</td><td>玉女素心劍</td><td>50</td></tr>
+<tr><td>110</td><td>金蛇劍</td><td>54</td><td>金蛇劍法</td><td>80</td></tr>
+<tr><td>115</td><td>血刀</td><td>63</td><td>血刀大法</td><td>50</td></tr>
+<tr><td>116</td><td>冷月寶刀</td><td>67</td><td>胡家刀法</td><td>70</td></tr>
+<tr><td>119</td><td>霹靂狂刀</td><td>68</td><td>霹靂刀法</td><td>100</td></tr>
 </tbody></table>
 </section>
 <p>通用合同：

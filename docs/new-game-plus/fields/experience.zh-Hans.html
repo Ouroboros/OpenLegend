@@ -33,6 +33,7 @@
         </tr></tbody></table>
 <p>共享上限表归属字段 <a href="level.zh-Hans.html#field-definition"><code>level</code></a>；本字段的独立转移记录见上表。</p>
 <h3>本周经验合法上限</h3>
+<p><code>n</code>为当前周目（NG1为1），<code>Lcap(n)</code>为本周等级上限，<code>E(L)</code>为等级<code>L</code>对应的累计经验门槛；原版范围内读取原始表，高于原版最高等级时按下文递推。</p>
 <pre>经验上限 = E(Lcap(n))</pre>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
@@ -41,6 +42,7 @@
     <p>原始等级与经验门槛从游戏定义读取；原版当前数据中的30级、52000、4350、4200和150只用于说明与核对，不是运行时代码常量。</p>
     <pre>L0 = 原始经验门槛表支持的最高等级
 E0(L) = 原始门槛表中等级L的累计经验
+E(L) = E0(L)，L在原始门槛表定义域内
 Dlast = E0(L0)－E0(L0－1)                # 原始最后一级费用
 Dprev = E0(L0－1)－E0(L0－2)            # 原始倒数第二级费用
 Sbase = Dlast－Dprev                     # 原始末段每级增量
@@ -51,7 +53,7 @@ L≥L0时：
 实际升级费用 D(L) = Dlast＋(L－L0＋1)×Sbase
 累计门槛 E(L＋1) = E(L)＋D(L)
 
-第n周目从起始等级练到上限的需求：
+第n周目（n≥2）从上一周等级上限练到本周上限的需求：
 C(n) = Σ D(L)，L=Lcap(n－1)…Lcap(n)－1</pre>
     <div class="plain">
       <p>程序先从原始门槛表拿到最后两级各自需要多少经验，再用它们的差值继续延伸后续等级。</p>
@@ -260,16 +262,17 @@ C(n)=135000n－69750，n≥2</pre>
   </section>
 <section id="battle-reward">
     <h3>1.5 战斗经验倍率</h3>
-    <pre>Bbase = 原版一周目百分比基准
+    <pre>Bbase = 原版一周目倍率的百分数数值（100表示100%）
 B2 = battle_experience_ng2_percent
 Bstep = battle_experience_later_step_percent
 
+e0 = 原版按分配规则计算的该人物本场经验
 B(1) = Bbase
 B(n) = B2＋(n－2)×Bstep，n≥2
 
 人物战斗经验 X = floor(e0×B(n)÷100)</pre>
-    <p>原版当前值与默认CFG：<code>Bbase=100%</code>、<code>B2=150%</code>、<code>Bstep=100个百分点</code>。</p>
-    <p>代入后，<code>n≥2</code>时才可化简为<code>B(n)=100n－50%</code>。</p>
+    <p>原版当前值与默认CFG：<code>Bbase=100</code>（100%）、<code>B2=150</code>（150%）、<code>Bstep=100</code>（后续每周增加100个百分点）。</p>
+    <p>代入后，<code>n≥2</code>时才可化简为<code>B(n)=100n－50</code>（百分数数值；表中以百分比展示）。</p>
     <table>
       <thead><tr>
           <th>默认配置周目</th>

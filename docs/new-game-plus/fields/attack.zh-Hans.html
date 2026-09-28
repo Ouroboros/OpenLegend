@@ -31,27 +31,10 @@
           <td>直接继承并clamp</td>
           <td>使用本周字段上限<code>Cap(attack,n)</code>。</td>
         </tr></tbody></table>
-<h3>原版范围与本周上限</h3>
-<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
-<tr>
-          <td>
-            <p><code>attack</code>、<code>defence</code>、<code>medicine</code>、<code>use_poison</code>、
-              <code>detoxification</code>、<code>attack_with_poison</code>、<code>knowledge</code>、<code>iq</code>、<code>make_item_experience</code>、
-              <code>physical_power</code></p>
-          </td>
-          <td>按原版字段与当前资产读取；医疗、用毒、解毒、武功带毒的原版正常域见第5.1节。</td>
-          <td>各自的<code>Cap(f,n)</code>按对应规则集／CFG确定；体力换周目时填到本周允许上限，其余字段按上方转移表处理。</td>
-          <td>不为这组字段统一指定+100或+999；医疗上限按CFG医疗STEP增长，
-            其他字段具体步长仍须逐项核对。医疗／解毒准入不从上限直接反推。</td>
-        </tr>
-<tr>
-          <td><a href="speed.zh-Hans.html#field-definition"><code>speed</code>（轻功）</a></td>
-          <td>NG1正常上限100。</td>
-          <td>各周目角色自身字段上限固定100；换周目继承实际值并限制在0～100。</td>
-          <td>不设NG+轻功上限步长；装备速度加成另算且不乘周目数。</td>
-        </tr>
-</tbody></table>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+<h3 id="attack-cap">本周角色武力上限</h3>
+<pre>Cap(attack,n) = 100 + (n − 1) × attack_cap_step  （n≥1）</pre>
+<p>100为NG1角色武力的正常上限；<code>attack_cap_step</code>是运行时CFG中每新增周目的上限增量，提供的默认值为100。按此默认值，NG1／NG2／NG3上限分别为100／200／300；只有步长为100时才可简写为<code>100n</code>。</p>
+<p>曾入队角色换周目时继承自己的实际<code>attack</code>并限制在0～<code>Cap(attack,n)</code>，上限扩大不自动补满；未入队角色读取当前RANGER基线，不因本上限改写。装备攻击加成另行结算，不写回角色的<code>attack</code>字段。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
