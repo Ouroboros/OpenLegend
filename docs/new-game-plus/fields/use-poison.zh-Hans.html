@@ -46,6 +46,11 @@ PoisonRange = trunc(U ÷ 15) + 1</pre>
 ActivePoison = clamp(ActivePoison, 0, PoisonCap(n) - target.poison)
 target.poison += ActivePoison</pre>
 <p><code>PoisonCap(n)</code>为本周中毒上限；例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，未触及上限前新增10点。</p>
+<h3 id="ai-poison-target">AI选择主动用毒目标</h3>
+<p>原版两种选目标路径都在目标中毒达到95时跳过，并要求目标实际抗毒小于施术者实际用毒。从NG1起，两种路径统一将中毒跳过门槛改为<a href="poison.zh-Hans.html#field-definition">本周中毒上限</a>的95%；抗毒与用毒仍比较实际数值。</p>
+<pre>抗毒条件：目标实际抗毒 &lt; 施术者实际用毒
+中毒跳过条件：100 × 目标实际中毒 ≥ 95 × 本周中毒上限</pre>
+<p>使用整数比例直接比较，不先对95%门槛取整，不用浮点，运算须检查溢出。NG1正常中毒上限99，整数中毒达到95时跳过，与原版一致；默认NG2上限199，达到190时跳过。这里不使用抗毒上限，也不为NG1单设固定门槛。此选目标规则不改变主动用毒的施毒量与写回公式；现有运行时代码尚未实现。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

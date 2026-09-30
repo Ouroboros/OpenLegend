@@ -61,17 +61,18 @@
         <p>减目标抗毒的减号及其他步骤不变。原版汇编事实见
 <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品毒值字段页</a>；
 不能把本节新规则反称为原版行为或笔误修复。</p>
-        <p>普通物品、AI投掷和玩家投掷<code>V≤0</code>的中毒分支不改。</p>
+        <p>普通物品的暗器技巧项不随玩家投掷改号，但其正毒抗毒门槛也按本周<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒上限</a>判定；AI投掷和玩家投掷<code>V≤0</code>的分支不改。</p>
       </div>
       <pre>V = item.add_poison &gt; 0，W = actor.hidden_weapon，A = target.anti_poison
+C = Cap(anti_poison,n)  # 本周抗毒能力上限，见抗毒字段页
 x = trunc((V + W) / 2) − A  # 原版机器在W前是减号；全周目均改为加号
-Δ = (A ≥ 100 或 x &lt; 0) ? 0 : trunc(x / 2)
+Δ = (A ≥ C 或 x &lt; 0) ? 0 : trunc(x / 2)
 # x、Δ与后续中毒状态结算一律使用检查溢出的signed 64位逻辑数值</pre>
       <div class="plain">
-        <p>保留第一次除以2、减目标抗毒、<code>A≥100</code>直接阻止新增中毒、负中间值归零及最后再次除以2的顺序；<strong>不是</strong><code>V + trunc(W/2) − A</code>，也不取消原版抗毒硬门槛。</p>
+        <p>保留第一次除以2、减目标实际抗毒、达到本周抗毒上限时阻止新增中毒、负中间值归零及最后再次除以2的顺序；<strong>不是</strong><code>V + trunc(W/2) − A</code>。<code>C</code>的公式及所有抗毒写入按本周上限夹值的规则见<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒字段页</a>。</p>
         <p>暗器技巧<code>W</code>读取当前角色64位值，其本周上限按第1.2.2节的运行时CFG增量计算。</p>
-        <p>例：<code>V=80</code>、<code>W=100</code>、<code>A=0</code>、原有中毒0时，原版机器理论增量0，新规则为45，NG1按正常上限写回45；<code>A=100</code>时仍增加0。</p>
-        <p>NG1投掷中毒的正常上限仍为99，但不在运行期保留原版16位回绕；NG2+使用同一64位加号公式和原版抗毒条件，本周中毒上限的具体写回方式仍须另定。</p>
+        <p>例：<code>V=80</code>、<code>W=100</code>、<code>A=0</code>、原有中毒0时，原版机器理论增量0，新规则为45，NG1按正常上限写回45；NG1的<code>C=100</code>，<code>A=100</code>时仍增加0。</p>
+        <p>NG1投掷中毒的正常上限仍为99，但不在运行期保留原版16位回绕；NG2+使用同一64位加号公式并按本周<code>C</code>判定抗毒，本周中毒上限的具体写回方式仍须另定。</p>
         <p>只有保存到Legacy时才验证待编码角色数值的16位范围；新TOML保留合法64位值。</p>
       </div>
     </section>
