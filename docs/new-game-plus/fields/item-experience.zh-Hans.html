@@ -31,8 +31,6 @@
           <td>0</td>
           <td>清空当前秘笈修炼经验。</td>
         </tr></tbody></table>
-<p>共享上限表归属字段 <a href="morality.zh-Hans.html#field-definition"><code>morality</code></a>；本字段的独立转移记录见上表。</p>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
 <section id="manual-rule">
     <h3>2.1 秘笈修炼规则</h3>
@@ -43,11 +41,11 @@ M0 = 原始武功等级上限
 
 本场秘笈修炼经验 T = floor(实际人物战斗经验 X×Pr÷100)
 资质系数 A(iq) = A0－floor(iq÷IqStep)
-本周武功／隐藏阶级上限 Lcur(n) 按第1.2.2节统一字段上限登记求得</pre>
+本周武功／隐藏阶级上限 Lcur(n) 由本周武功等级上限确定</pre>
     <div class="plain">
       <p>程序读取角色本场实际人物经验、角色资质、原版修炼规则参数、原始武功上限和NG+等级步长后再计算。</p>
       <p>原版当前<code>Pr=80%</code>、<code>A0=7</code>、<code>IqStep=15</code>、<code>M0=10</code>，默认<code>martial_level_step=10</code>；
-        这些数值用于说明和复算，不直接嵌入通用公式，也不另设秘笈周目倍率。</p>
+        这些数值用于说明和复算，不直接嵌入通用公式，也不另设秘笈周目倍率。本周等级上限的计算见<a href="magic-levels.zh-Hans.html#field-definition">武功熟练度字段定义</a>。</p>
     </div>
     <p><strong>原版当前资质参数下的结果：</strong></p>
     <table>
@@ -82,24 +80,33 @@ M0 = 原始武功等级上限
       </tbody>
     </table>
 
-<p>关联武功的等级与费用见
-<a href="magic-levels.zh-Hans.html#manual-associated">武功熟练度字段页</a>；
-无对应武功秘笈的成功次数与费用见
-<a href="no-magic-count.zh-Hans.html#manual-unassociated">无关联秘笈成功次数字段页</a>。</p>
+    <h4 id="manual-associated">2.1.1 有关联武功的秘笈：费用与熟练度</h4>
+    <pre>已学武功显示等级 = floor(对应武功槽熟练度÷100)＋1
+Lfirst = 原版未学会武功参与费用计算时的起始显示等级
+L = 已学武功显示等级；未学会时取Lfirst
+C = need(i)×A(iq)×L
+L≥Lcur(n)时不能继续完成</pre>
+    <p class="plain">程序从当前秘笈物品定义读取<code>need(i)</code>，从角色读取资质与对应武功槽的熟练度。原版当前<code>Lfirst=1</code>；原始上限为10时，10→11使用系数10，之后依次使用11、12……。开放新等级上限不自动赠送等级、熟练度或永久效果。</p>
+    <p><strong>经验与熟练度：</strong><code>item_experience</code>是完成秘笈修炼的累计进度，不按比例转换成熟练度。战斗使用和秘笈成功写入同一武功槽熟练度，不是两份独立数值。</p>
+    <pre>原版正常域，每次攻击结算：本槽熟练度 ← min(999, 本槽熟练度＋k)，k∈{1,2}
+战后秘笈达标，已学同ID且该槽熟练度＜899：本槽熟练度 ← 本槽熟练度＋100</pre>
+    <p><strong>原版写入顺序：</strong>先逐次结算战斗攻击；战后若达到本档修炼费用，先提交秘笈属性效果并清零修炼经验，再按上式逐槽处理已学的同ID武功。首次学会则只向空槽写入武功ID，保留该槽原有熟练度，不额外加100。原版机器依据见<a href="../../../research/evidence/battle-1to1.md">攻击结算核查</a>与<a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">秘笈修炼核查</a>。</p>
+    <p>NG+设计沿用攻击结算每次1或2点、秘笈成功提升熟练度的原始增量，不按周目放大；本周允许提升的等级与边界按<a href="magic-levels.zh-Hans.html#field-definition">武功熟练度字段定义</a>判断，不把原版的999和899固定门槛照搬到更高等级。运行时代码尚未实现这项扩展。</p>
+    <p>无对应武功秘笈的成功次数与费用见<a href="no-magic-count.zh-Hans.html#manual-unassociated">无关联秘笈成功次数字段页</a>。</p>
     <h4 id="manual-settlement">2.1.3 统一结算顺序</h4>
     <pre>I' = I＋T
 
 若 I'＜C：保存 I'，本场不完成
-若 I'≥C：本场完成一次，执行一次对应效果，然后令 I=0
+若 I'≥C：本场完成一次，先执行秘笈属性效果并令 I=0，再处理关联武功槽（若有）
 同一场战斗不得再次检查下一档</pre>
-    <p class="plain">本场修炼经验先加进当前进度。不够就留下以后继续攒；够了就只成功一次、执行一次升级或永久属性效果，然后把进度清零。即使多出来很多经验，也不会同一场连升多级，多余部分仍然丢掉。</p>
+    <p class="plain">本场修炼经验先加进当前进度。不够就留下以后继续攒；够了就只成功一次，先应用秘笈属性并清零进度，再按上文处理关联武功的学习或升级。即使多出来很多经验，也不会同一场连升多级，多余部分仍然丢掉。</p>
     <ol>
       <li>人物经验按存活和人数规则分配并乘人物周目倍率。</li>
       <li>秘笈修炼经验按<code>Pr</code>取实际人物经验的比例；原版当前为80%。</li>
       <li>累计经验不足下一档费用时保留。</li>
       <li>达到费用时，本场最多完成一档。</li>
-      <li>执行一次原学习／升级／永久属性效果。</li>
-      <li>当前<code>item_experience</code>清零，超过费用的部分丢弃。</li>
+      <li>执行一次原秘笈属性效果，当前<code>item_experience</code>清零，多余经验丢弃。</li>
+      <li>若关联武功，再按上文规则处理已有武功槽或首次学习。</li>
     </ol>
     <p>不设置独立修炼周目倍率；旧方案的222%和<code>Mn</code>不使用。<code>need_experience</code>、<code>magic_id</code>和永久效果字段必须从当前物品定义读取，不能针对表中六本秘笈写死数值或效果。</p>
   </section>

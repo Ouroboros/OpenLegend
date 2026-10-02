@@ -11,6 +11,7 @@
     p,li { max-width:90ch; }
     table { width:100%; border-collapse:collapse; margin:1rem 0; }
     th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    #field-definition th:first-child, #field-definition td:first-child { width:1%; white-space:nowrap; }
     td p { margin:.25em 0; }
     pre { padding:14px; overflow:auto; background:#8882; }
     .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
@@ -24,31 +25,13 @@
 <section id="field-definition">
 <h2>字段定义</h2>
 <p><code>hidden_weapon</code>：暗器技巧。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
-<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
-<tbody><tr>
-          <td><code>hidden_weapon</code></td>
-          <td>暗器技巧</td>
-          <td>直接继承并clamp</td>
-          <td>本周正常上限<code>Cap(hidden_weapon,n)</code>按NG1基值与运行时CFG的<code>hidden_weapon_cap_step</code>计算。</td>
-        </tr></tbody></table>
-<h3>原版范围与本周上限</h3>
-<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
-<tr>
-          <td><code>hidden_weapon</code></td>
-          <td>
-            <p>NG1正常上限100；原版升级与秘笈修炼封顶100；<a href="../../../research/evidence/functions/Z_DAT/0x3B6BE.md">升级证据</a>、
-              <a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">修炼证据</a>。不据此否定原版个别写入路径的越界值。</p>
-          </td>
-          <td>
-            <p><code>Cap(hidden_weapon,n)</code>由NG1正常上限加上<code>(n－1)×hidden_weapon_cap_step</code>求得；步长从运行时CFG读取，不把最终上限直接当配置项。</p>
-            <p>NG2+继承、升级和秘笈修炼中暗器技巧的正常封顶均读取该本周上限，不再固定用原版100。</p>
-          </td>
-          <td>提供的默认CFG：<code>hidden_weapon_cap_step=100</code>点／新增周目；NG1为100、NG2为200、NG3为300。<code>100n</code>仅是采用这套默认CFG时的计算结果。</td>
-        </tr>
+<table><thead><tr><th>项目</th><th>规则与说明</th></tr></thead><tbody>
+<tr><td>下一周目值</td><td>直接继承并clamp。</td></tr>
+<tr><td>原版正常上限</td><td>100；原版升级与秘笈修炼封顶100。不据此否定原版个别写入路径的越界值。依据：<a href="../../../research/evidence/functions/Z_DAT/0x3B6BE.md">升级证据</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">修炼证据</a>。</td></tr>
+<tr><td>本周正常上限</td><td><code>本周暗器技巧上限 = 100 + (周目序号 − 1) × hidden_weapon_cap_step</code>；周目序号从NG1的1开始。</td></tr>
+<tr><td>CFG与默认样例</td><td>运行时CFG提供每新增周目的增量<code>hidden_weapon_cap_step</code>，而不是最终上限。提供的默认值为100点／新增周目；采用该默认值时，NG1／NG2／NG3上限为100／200／300；其他配置按上方公式计算。</td></tr>
+<tr><td>上限适用路径</td><td>NG2+继承、升级和秘笈修炼中暗器技巧的正常封顶均读取本周上限，不再固定用原版100。</td></tr>
 </tbody></table>
-<h3>本周合法上限公式</h3>
-<pre>Cap(hidden_weapon,n) = NG1正常上限(hidden_weapon) + (n − 1) × hidden_weapon_cap_step</pre>
-<p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
 <section id="poison-throw-all-ng">
       <h3>4.4 玩家投掷带毒暗器时技巧项的全周目改号规则（已确认）</h3>
