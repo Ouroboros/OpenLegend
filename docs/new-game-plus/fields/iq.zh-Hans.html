@@ -28,8 +28,8 @@
 <tbody><tr>
           <td><code>iq</code></td>
           <td>资质</td>
-          <td>直接继承并clamp</td>
-          <td>使用本周对应字段范围。</td>
+          <td>直接继承并验证固定域，不clamp</td>
+          <td>资质仍在与<code>A(iq)=7−floor(iq÷15)</code>对应的固定0～100域内；越界拒绝，不按周目夹值。</td>
         </tr></tbody></table>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>

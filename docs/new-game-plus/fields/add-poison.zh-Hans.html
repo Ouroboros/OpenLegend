@@ -175,9 +175,9 @@ AI战斗投掷暗器：
 
 </section>
 <section id="add-poison-ng-threshold">
-<h3>正向施毒的抗毒门槛（NG1起各周目）</h3>
-<p>上文的固定100和样本只记录原版机器。设<code>A</code>为目标实际抗毒，<code>C</code>为本周<a href="anti-poison.zh-Hans.html#anti-poison-cap"><code>Cap(anti_poison,n)</code></a>；从NG1起，普通物品及玩家投掷的正毒分支统一在<code>A≥C</code>或原有中间值为负时不新增中毒。NG1代入<code>C=100</code>得到原版100门槛，默认NG2代入<code>C=200</code>得到200；NG+物品增加抗毒时也按本周<code>C</code>夹值，不沿用原版可超过100的写入方式。</p>
-<p>玩家正毒投掷从NG1起仍按<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">已确定的技巧项加号规则</a>计算；负毒及零值分支、AI投掷均不读取抗毒。这里只确定抗毒门槛，其他未定的NG2+施毒量与写回细节不由此推定。</p>
+<h3>正向施毒的实际毒力比较（NG1起各周目）</h3>
+<p>上文的固定100和样本只记录原版机器。设<code>A</code>为目标实际抗毒；NG+普通物品正毒计算<code>x=trunc((actor.hidden_weapon＋item.add_poison)÷2)−A</code>，玩家正毒投掷计算<code>x=trunc((item.add_poison＋actor.hidden_weapon)÷2)−A</code>。从NG1起，只有<code>x&gt;0</code>才可能新增中毒；不再检查抗毒是否达到本周100%或原版固定100。抗毒写入也不按周目夹值；中毒字段自己的周目上限仍保留。</p>
+<p>玩家正毒投掷仍按<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">已确定的技巧项加号规则</a>计算；负毒及零值分支、AI投掷均不读取抗毒。这里只确定抗毒比较，其他未定的NG2+施毒量与写回细节不由此推定。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

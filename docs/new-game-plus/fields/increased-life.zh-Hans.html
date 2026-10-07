@@ -28,8 +28,8 @@
 <tbody><tr>
           <td><code>increased_life</code></td>
           <td>生命成长</td>
-          <td>直接继承并clamp</td>
-          <td>不按周目放大；原版当前合法范围为1～10。</td>
+          <td>直接继承并验证固定域，不clamp</td>
+          <td>不按周目放大；原版当前合法范围仍为1～10，越界拒绝而非夹值。</td>
         </tr></tbody></table>
 <h3>原版范围与本周上限</h3>
 <table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>

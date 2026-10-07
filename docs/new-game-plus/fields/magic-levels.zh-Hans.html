@@ -32,20 +32,21 @@
 <tbody><tr>
           <td><code>magic_levels[10]</code></td>
           <td>武功熟练度</td>
-          <td>完整继承并clamp</td>
-          <td>逐槽限制到本周武功熟练度上限。</td>
+          <td>逐槽完整继承，不按周目夹值</td>
+          <td>熟练度与显示等级不受逐周目硬上限限制；逐槽校验存储位宽。</td>
         </tr></tbody></table>
-<h3>原版范围与本周上限</h3>
-<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
+<h3>原版范围与周目对照节点</h3>
+<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>NG+规则</th><th>既有默认配置的对照节点</th></tr></thead><tbody>
 <tr>
           <td><code>magic_levels[10]</code></td>
-          <td>NG1武功显示等级上限为<code>M0=10</code>。</td>
-          <td>本周武功显示等级不超过<code>Lcur(n)</code>；修炼费用与熟练度换算见<a href="item-experience.zh-Hans.html#manual-associated">秘笈修炼经验页</a>。</td>
-          <td><code>martial_level_step=10</code>，默认NG2武功显示等级上限为20。</td>
+          <td>原版武功显示等级上限<code>M0=10</code>。</td>
+          <td>武功熟练度和显示等级不受周目节点限制；修炼费用与换算见<a href="item-experience.zh-Hans.html#manual-associated">秘笈修炼经验页</a>。</td>
+          <td><code>martial_level_step=10</code>时，NG2对照节点为20级，不是NG2上限。</td>
         </tr>
 </tbody></table>
-<h3>本周合法上限公式</h3>
-<pre>Lcur(n) = M0 + (n − 1) × martial_level_step</pre>
+<h3>仅用于比较的周目节点</h3>
+<pre>Mref(n) = M0 + (n − 1) × martial_level_step</pre>
+<p>既有表格按相邻节点比较费用和效果；<code>martial_level_step</code>仍供既有敌方武功等级周目增长公式使用。节点不是玩家修炼成功条件，也不作为继承或敌方战斗增长的封顶值。</p>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
 <section id="martial-effect-growth">
@@ -55,7 +56,7 @@
 <ul>
 <li>1～10级直接读取当前GAME DATA中的原始效果数组，不修改原值；本节只计算11级及以后的扩展效果。</li>
 <li>输入是该武功原始十级的威力、削减／恢复内力、射程、半径、形状和基础耗内。名称和ID只用于识别、查找，不参与成长系数，不设置特例武功。</li>
-<li>已学武功的显示等级按<a href="item-experience.zh-Hans.html#manual-associated">秘笈修炼经验页的熟练度换算规则</a>确定。进入新周目只开放本周等级上限，不自动增加熟练度或威力；继承与clamp仍按上方字段定义。</li>
+<li>已学武功的显示等级按<a href="item-experience.zh-Hans.html#manual-associated">秘笈修炼经验页的熟练度换算规则</a>确定。换周目不自动增加熟练度或威力，也不夹到周目对照节点；继承按上方字段定义。</li>
 <li>11级及以后，射程、半径和形状固定使用该武功原10级状态。评价原始十级强度时，仍读取每一级各自的几何数据。</li>
 <li>周目号不进入效果公式。同一武功、相同实际出招等级、相同GAME DATA，在不同周目得到相同武功效果。</li>
 </ul>
@@ -246,7 +247,7 @@
 </ul>
 <h3 id="martial-formula-check">数值原型核查范围</h3>
 <p>已用当前原版RANGER逐项复核93个武功ID、旧稿744项等级表值；1～10级原始效果保持不变。对84种攻击型和3种内力型正效果原型，覆盖11～9990级的868260项计算，未出现倒退、停滞或最终signed 64位溢出，阶段连接及零效果保留检查通过。</p>
-<p>9990只是当前默认STEP=10下的核查终点，不是本算法新增的玩法上限。上述核查只验证数值模型，不证明运行时代码已经实现、实际战斗时长、AI策略或胜率；等级能否继续提升及修炼费用见<a href="item-experience.zh-Hans.html#manual-associated">秘笈修炼经验页</a>。</p>
+<p>9990只是默认STEP=10下NG999的对照节点，不是玩法上限；武功等级也不受NG999节点封顶。上述核查只验证该节点内的数值模型，不证明运行时代码已经实现、实际战斗时长、AI策略或胜率；继续提升时仍按同一效果算法及<a href="item-experience.zh-Hans.html#manual-associated">秘笈修炼费用</a>计算，并检查数值溢出。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

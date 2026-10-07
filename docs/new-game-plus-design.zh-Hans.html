@@ -25,6 +25,7 @@
 <main>
 <section id="rules-location"><h2>NG+规则去向与缺口</h2>
 <p>下表区分已进入正式字段页的规则与仅见于本地未跟踪评审稿的内容；后者不作为正式字段规则。文档收录不代表运行时代码已实现。“未发现整章失踪”只表示逐章找到了迁移位置，不代表逐句核对无遗漏。</p>
+<p class="notice">NG+不再按周目封顶人物等级、经验、武功熟练度、秘笈成功次数及其他永久能力，换周目不对实际数值作周目夹值；<strong>内伤与中毒仍保留各自周目上限</strong>。体力固定100；资质、枚举等固定域及角色当前HP／MP不超过实际最大值的约束不属于逐周目硬上限。既有对照表的周目节点不是停止条件；敌方仍按已有规则随周目增长。</p>
 <table><thead><tr><th>内容</th><th>结论</th><th>去向或缺口</th></tr></thead><tbody>
 <tr><td>人物继承</td><td>没消失</td><td><a href="new-game-plus/support/data-and-inheritance.zh-Hans.html#role-inheritance">数据与人物继承</a></td></tr>
 <tr><td>物品库存继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">库存继承白名单与数量</a></td></tr>
@@ -48,7 +49,7 @@
 <td><code>increased_life</code></td>
 <td>生命成长</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承并验证固定域，不clamp</td>
 <td><a href="new-game-plus/fields/increased-life.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -88,7 +89,7 @@
 <td><code>level</code></td>
 <td>等级</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承实际等级，不按周目夹值</td>
 <td><a href="new-game-plus/fields/level.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -96,7 +97,7 @@
 <td><code>experience</code></td>
 <td>人物经验</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承实际经验，不按周目夹值</td>
 <td><a href="new-game-plus/fields/experience.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -104,7 +105,7 @@
 <td><code>maximum_hp</code></td>
 <td>最大生命</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承实际最大生命，不按周目夹值</td>
 <td><a href="new-game-plus/fields/maximum-hp.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -120,7 +121,7 @@
 <td><code>maximum_mp</code></td>
 <td>最大内力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承实际最大内力，不按周目夹值</td>
 <td><a href="new-game-plus/fields/maximum-mp.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -151,8 +152,8 @@
 <tr>
 <td><code>physical_power</code></td>
 <td>体力值</td>
-<td>本周规则集／运行时CFG</td>
-<td>设为本周允许上限</td>
+<td>固定满体力值100（各周目相同）</td>
+<td>恢复固定体力100</td>
 <td><a href="new-game-plus/fields/physical-power.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -184,7 +185,7 @@
 <td><code>mp_type</code></td>
 <td>内力门路</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承并验证枚举，不clamp</td>
 <td><a href="new-game-plus/fields/mp-type.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -192,7 +193,7 @@
 <td><code>attack</code></td>
 <td>武力／攻击力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际值，不按周目夹值</td>
 <td><a href="new-game-plus/fields/attack.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -200,7 +201,7 @@
 <td><code>speed</code></td>
 <td>轻功</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并限制在0～100；上限不随周目增长</td>
+<td>直接继承并验证固定0～100域，不clamp</td>
 <td><a href="new-game-plus/fields/speed.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -208,7 +209,7 @@
 <td><code>defence</code></td>
 <td>防御力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际值，不按周目夹值</td>
 <td><a href="new-game-plus/fields/defence.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -216,7 +217,7 @@
 <td><code>medicine</code></td>
 <td>医疗能力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际医疗能力，不按周目夹值</td>
 <td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#medicine">详情</a></td>
 <td>✅</td>
 </tr>
@@ -224,7 +225,7 @@
 <td><code>use_poison</code></td>
 <td>用毒能力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际用毒能力，不按周目夹值</td>
 <td><a href="new-game-plus/fields/use-poison.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -232,7 +233,7 @@
 <td><code>detoxification</code></td>
 <td>解毒能力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际解毒能力，不按周目夹值</td>
 <td><a href="new-game-plus/fields/hurt-poison-medicine.zh-Hans.html#detoxification">详情</a></td>
 <td>✅</td>
 </tr>
@@ -240,7 +241,7 @@
 <td><code>anti_poison</code></td>
 <td>抗毒能力</td>
 <td>我方曾入队角色取通关TOML实际值、未入队角色取RANGER基线；敌方取当前GAME DATA基线</td>
-<td>我方继承并clamp；敌方按基线占NG1上限的比例换算并clamp</td>
+<td>我方完整继承；敌方按原有周目增长系数由基线换算，双方均不按抗毒周目上限夹值</td>
 <td><a href="new-game-plus/fields/anti-poison.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -248,7 +249,7 @@
 <td><code>fist</code></td>
 <td>拳掌功夫</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际值，不clamp；原版升级／秘笈的固定100写回不变</td>
 <td><a href="new-game-plus/fields/fist.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -256,7 +257,7 @@
 <td><code>sword</code></td>
 <td>御剑能力</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际值，不clamp；原版升级／秘笈的固定100写回不变</td>
 <td><a href="new-game-plus/fields/sword.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -264,7 +265,7 @@
 <td><code>knife</code></td>
 <td>耍刀技巧</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际值，不clamp；原版升级／秘笈的固定100写回不变</td>
 <td><a href="new-game-plus/fields/knife.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -272,7 +273,7 @@
 <td><code>unusual</code></td>
 <td>特殊兵器</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际值，不clamp；原版秘笈的固定100写回不变</td>
 <td><a href="new-game-plus/fields/unusual.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -280,7 +281,7 @@
 <td><code>hidden_weapon</code></td>
 <td>暗器技巧</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际暗器技巧，不按周目夹值</td>
 <td><a href="new-game-plus/fields/hidden-weapon.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -288,7 +289,7 @@
 <td><code>knowledge</code></td>
 <td>武学常识</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际知识，不按周目夹值</td>
 <td><a href="new-game-plus/fields/knowledge.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -304,7 +305,7 @@
 <td><code>attack_with_poison</code></td>
 <td>武功带毒</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>完整继承实际武功带毒，不按周目夹值</td>
 <td><a href="new-game-plus/fields/attack-with-poison.zh-Hans.html">详情</a></td>
 <td></td>
 </tr>
@@ -328,7 +329,7 @@
 <td><code>iq</code></td>
 <td>资质</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>直接继承并clamp</td>
+<td>直接继承并验证固定0～100域，不clamp</td>
 <td><a href="new-game-plus/fields/iq.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -352,7 +353,7 @@
 <td><code>no_magic_count[ItemCount]</code></td>
 <td>无关联秘笈成功次数</td>
 <td>通关TOML中的角色历史记录；未记录的角色初始为0</td>
-<td>按秘笈物品ID完整继承并限制到本周上限</td>
+<td>按秘笈物品ID完整继承，不设周目成功次数上限</td>
 <td><a href="new-game-plus/fields/no-magic-count.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -368,7 +369,7 @@
 <td><code>magic_levels[10]</code></td>
 <td>武功熟练度</td>
 <td>通关TOML中的角色实际值；未入队角色读取当前RANGER基线</td>
-<td>完整继承并clamp</td>
+<td>逐槽完整继承熟练度，不按周目夹值</td>
 <td><a href="new-game-plus/fields/magic-levels.zh-Hans.html">详情</a></td>
 <td>✅</td>
 </tr>
@@ -449,63 +450,63 @@
 </tr>
 <tr>
 <td><code>hp_cap_step</code></td>
-<td>每新增周目最大生命上限增量</td>
+<td>仍供敌方最大生命按周目增长的STEP；不再封顶玩家</td>
 <td>运行时CFG；提供的默认值999</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/hp-cap-step.zh-Hans.html">详情</a></td>
 </tr>
 <tr>
 <td><code>mp_cap_step</code></td>
-<td>每新增周目最大内力上限增量</td>
+<td>仍供敌方最大内力按周目增长的STEP；不再封顶玩家</td>
 <td>运行时CFG；提供的默认值999</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/mp-cap-step.zh-Hans.html">详情</a></td>
 </tr>
 <tr>
 <td><code>attack_cap_step</code></td>
-<td>每新增周目角色武力上限增量</td>
+<td>仍供敌方攻击按周目增长的STEP；不再封顶玩家</td>
 <td>运行时CFG；提供的默认值100</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/attack.zh-Hans.html#attack-cap">详情</a></td>
 </tr>
 <tr>
 <td><code>defence_cap_step</code></td>
-<td>每新增周目角色防御上限增量</td>
+<td>仍供敌方防御按周目增长的STEP；不再封顶玩家</td>
 <td>运行时CFG；提供的默认值100</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/defence.zh-Hans.html#defence-cap">详情</a></td>
 </tr>
 <tr>
 <td><code>use_poison_cap_step</code></td>
-<td>每新增周目角色用毒能力上限增量</td>
+<td>旧方案角色用毒上限增量；不再封顶</td>
 <td>运行时CFG；提供的默认值100</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/use-poison.zh-Hans.html#use-poison-cap">详情</a></td>
 </tr>
 <tr>
 <td><code>anti_poison_cap_step</code></td>
-<td>每新增周目角色抗毒能力上限增量</td>
+<td>敌方抗毒周目增长系数的既有增量；不再封顶抗毒</td>
 <td>独立运行时CFG；提供的默认值100</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/anti-poison.zh-Hans.html#anti-poison-cap">详情</a></td>
 </tr>
 <tr>
 <td><code>hidden_weapon_cap_step</code></td>
-<td>每新增周目暗器技巧上限增量</td>
+<td>旧方案暗器技巧上限增量；不再封顶</td>
 <td>运行时CFG；提供的默认值100</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/hidden-weapon-cap-step.zh-Hans.html">详情</a></td>
 </tr>
 <tr>
 <td><code>role_level_step</code></td>
-<td>每新增周目等级上限增量</td>
+<td>等级对照间距及敌方等级增长STEP；不限制玩家等级</td>
 <td>运行时CFG；提供的默认值30</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/role-level-step.zh-Hans.html">详情</a></td>
 </tr>
 <tr>
 <td><code>martial_level_step</code></td>
-<td>每新增周目武功熟练度上限增量</td>
+<td>武功对照间距及敌方武功增长STEP；不限制玩家熟练度</td>
 <td>运行时CFG；提供的默认值10</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/martial-level-step.zh-Hans.html">详情</a></td>

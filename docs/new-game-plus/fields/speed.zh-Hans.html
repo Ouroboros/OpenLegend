@@ -28,11 +28,11 @@
 <tbody><tr>
           <td><code>speed</code></td>
           <td>轻功</td>
-          <td>直接继承并clamp</td>
-          <td>继承实际值并限制在0～100；上限始终与NG1相同，不随周目扩展。</td>
+          <td>直接继承并验证固定域，不clamp</td>
+          <td>固定合法域0～100不随周目扩展；越界拒绝而非按周目夹值。</td>
         </tr></tbody></table>
-<h3>原版范围与本周上限</h3>
-<pre>Cap(speed, n) = NG1正常轻功上限 = 100，n ≥ 1</pre>
+<h3>固定范围（非逐周目上限）</h3>
+<pre>速度固定域：0～100  # 与n无关；不对跨周目继承作clamp</pre>
 <p>装备<code>add_speed</code>另计，不乘周目数、不回写角色<code>speed</code>；装备后的生效速度不夹到100。详见<a href="equipment.zh-Hans.html#equipment-effective-attributes">装备生效属性规则</a>。</p>
 </section>
 <p>通用合同：

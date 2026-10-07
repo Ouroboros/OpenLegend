@@ -28,20 +28,19 @@
 <tbody><tr>
           <td><code>maximum_hp</code></td>
           <td>最大生命</td>
-          <td>直接继承并clamp</td>
-          <td>运行期字段上限为下方统一登记的<code>HpCap(n)</code>；角色不会自动补满。</td>
+          <td>直接继承实际最大生命，不按周目夹值</td>
+          <td>不设逐周目最大生命上限；换周目不自动增加最大生命。</td>
         </tr></tbody></table>
-<h3>原版范围与本周上限</h3>
-<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
+<h3>原版范围与角色实际生命</h3>
+<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>NG+规则</th><th>既有默认配置</th></tr></thead><tbody>
 <tr>
           <td><code>maximum_hp</code>／<code>hp</code></td>
-          <td>当前原版最大生命上限999；当前生命不超过实际最大生命。</td>
-          <td><code>HpCap(n)</code>来自本周CFG；<code>hp</code>仍以角色实际<code>maximum_hp</code>为上限。</td>
-          <td><code>hp_cap_step=999</code>，NG2上限1998，代入时等于<code>999n</code>；仅为提供的CFG，不自动补满最大生命。</td>
+          <td>原版最大生命正常上限999；当前生命不超过实际最大生命。</td>
+          <td>最大生命不按周目封顶；<code>hp</code>仍不超过角色实际<code>maximum_hp</code>，换周目设为实际最大生命。</td>
+          <td><code>hp_cap_step=999</code>；旧NG2玩家上限1998不再限制实际值，STEP仍保留给既有敌方周目增长。</td>
         </tr>
 </tbody></table>
-<h3>本周合法上限公式</h3>
-<pre>HpCap(n) = NG1最大生命上限 + (n − 1) × hp_cap_step</pre>
+<p>旧方案<code>HpCap(n) = 999 + (n − 1) × hp_cap_step</code>不再作为玩家最大生命的写回、存档或继承上限；<code>hp_cap_step</code>的数值仍可作为既有敌方周目增长公式的STEP输入，敌方不按旧玩家上限截断。</p>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
 <p>通用合同：

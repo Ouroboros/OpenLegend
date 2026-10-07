@@ -67,10 +67,10 @@ enabled = false  # 是否启用NG+存档格式与加载优先级</pre>
       <li>
         <p>保存格式不决定运行时属性宽度：角色数值属性及伤害、医疗、内伤、中毒、解毒等战斗结算数值在内存中统一为signed 64位。</p>
         <p>向Legacy D／R／S写出时，须在任何16位编码之前逐字段检查原版对应的有符号／无符号16位可表示范围及字段合法域；关闭NG+的Legacy模式仍允许原版普通物品把抗毒合法加到100以上。任一值不能无损表示即拒绝整次保存，保留原存档，不截断、夹值或回绕。</p>
-        <p>写入新TOML时，这些逻辑整数直接使用signed 64位，不因Legacy格式另加16位限制；设有上限的字段按本周CFG上限校验，抗毒须在0～本周<a href="../fields/anti-poison.zh-Hans.html#anti-poison-cap"><code>Cap(anti_poison,n)</code></a>内。超界的TOML状态拒绝保存或读回，不以原版物品写入为例外；各字段另按自身不变量校验。</p>
+        <p>写入新TOML时，这些逻辑整数直接使用signed 64位，不因Legacy格式另加16位限制；内伤与中毒仍按各自本周CFG上限校验，其他永久能力（包括<a href="../fields/anti-poison.zh-Hans.html#anti-poison-cap">抗毒</a>）不按周目上限拒绝或夹值。固定枚举与字段不变量仍须校验；非法状态拒绝保存或读回。</p>
         <p>只对实际写入存档的字段做编码检查，战斗临时伤害量不会因此变成Legacy存档字段。详细边界见第3.1.4节。</p>
       </li>
-      <li>开启NG+后加载Legacy存档时，先按Legacy格式完整解码，再把抗毒限制到本周<code>Cap(anti_poison,n)</code>后纳入NG+权威状态；这是显式的格式转换，不回写原Legacy文件。其后执行普通保存时写入新的TOML，此后同槽位读档由TOML优先。</li>
+      <li>开启NG+后加载Legacy存档时，先按Legacy格式完整解码，再无损扩宽合法抗毒等数值并纳入NG+权威状态，不按目标周目上限夹值，也不回写原Legacy文件。其后执行普通保存时写入新的TOML，此后同槽位读档由TOML优先。</li>
       <li>
         <p>Legacy没有NG+专属历史字段。转换时，每名角色的<code>ever_joined</code>统一初始化为<code>false</code>（逻辑值0），
           全部<code>no_magic_count[ItemCount]</code>统一初始化为0；</p>
@@ -314,12 +314,12 @@ d_compressed_base64                = string                               # 完�
         <p>写新TOML时按合法64位值保存，不以原版16位经验容器设上限；写Legacy时才按各经验字段原版编码语义逐项验证16位可表示性，越界则拒绝保存，不回绕。</p>
       </li>
       <li>
-        <p><strong>Legacy输入与输出：</strong><code>RANGER.GRP</code>及Legacy D／R／S中原有字段保持原始16位布局；加载时先按各字段原版的有符号或无符号解释完整解码，再提升到signed 64位。启用NG+时，旧存档的抗毒在进入权威状态前按本周抗毒上限夹值；关闭NG+时保留原版物品可越过100的行为，不改写旧文件。</p>
+        <p><strong>Legacy输入与输出：</strong><code>RANGER.GRP</code>及Legacy D／R／S中原有字段保持原始16位布局；加载时先按各字段原版的有符号或无符号解释完整解码，再提升到signed 64位。启用NG+时，旧存档的抗毒完整保留合法解码值，不按周目夹值；关闭NG+时保留原版物品可越过100的行为，不改写旧文件。</p>
         <p>向Legacy保存时仅在序列化边界逐字段验证其可无损编码的16位范围与原有合法域，然后编码；有符号字段须在−32768～32767内，无符号字段须在0～65535内，例如原版人物<code>experience=52000</code>是无符号16位值，</p>
         <p>不能错误地用有符号上界32767拒绝。任一值越界时整次保存失败，旧文件保持原状；不得为适配旧格式而降低运行时属性、截断、夹值或回绕。</p>
       </li>
       <li>
-        <p><strong>新TOML输出与读回：</strong>直接写出这些权威逻辑整数的signed 64位值，不强加Legacy的16位上界；写前仍检查signed 64位范围、适用字段的本周CFG上限及跨字段不变量，
+        <p><strong>新TOML输出与读回：</strong>直接写出这些权威逻辑整数的signed 64位值，不强加Legacy的16位上界；写前检查signed 64位范围、内伤／中毒的本周CFG上限及各字段不变量，不按其他数值的周目比较节点限幅；
           读档时先解析全部整数token为signed 64位并通过同样的游戏规则校验后再提交临时状态。</p>
         <p>TOML整数能够承载64位不等于可以跳过游戏数值合法域验证。每个入选角色完整保存实际逻辑整数，不转为Legacy<code>word</code>；战斗中未持久化的临时数值不凭空写入存档。</p>
       </li>
@@ -385,7 +385,7 @@ d_compressed_base64                = string                               # 完�
     <h3>3.2 隐藏次数与持久化</h3>
     <pre>ItemCount = 当前物品定义数量
 H0 = 原版无关联武功秘笈首次费用阶级
-no_magic_count[role_id][item_id] ∈ [0, Lcur(n)－H0]
+no_magic_count[role_id][item_id] ≥ 0，须可用signed 64位表示  # 不以周目节点封顶
 item_id ∈ [0, ItemCount－1]
 仅当 magic(item_id)=-1 且 need(item_id)&gt;0 时允许no_magic_count非0
 NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色的no_magic_count保持基线值0</pre>
@@ -395,7 +395,7 @@ NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色的no_magic_c
       <li>是否使用计数由当前物品定义中的<code>magic_id</code>与<code>need_experience</code>判断；其他位置必须为0。</li>
       <li><code>EverJoinedRoles</code>来自存档中的历代实际入队记录；其中角色的隐藏次数完整继承，未入队角色不写入TOML且隐藏次数保持基线值0。</li>
       <li><code>practice_item</code>和当前<code>item_experience</code>仍按周目转换规则清空，但历史成功次数不清空。</li>
-      <li>隐藏次数最大为<code>Lcur(n)－H0</code>；原版当前参数与默认NG999配置下为9988。</li>
+      <li>隐藏次数不再有随周目确定的最大值；默认NG999节点换算所得的旧9988仅是比较位置，不限制NG1或NG999的实际次数。每次增长仍检查64位溢出。</li>
       <li>修炼经验累计值使用64位逻辑字段，不允许16位回绕。</li>
       <li>该字段按第3.1节写入All-in-One TOML；当前格式使用<code>format_version=2</code>、<code>ruleset_version=3</code>，不自动迁移旧格式。</li>
     </ul>
@@ -403,18 +403,18 @@ NG+转换：role_id∈EverJoinedRoles时原样继承；其他角色的no_magic_c
 
 <section id="boundaries">
     <h3>3.3 边界与实现要求</h3>
-    <pre>Nmax = CFG允许的最大周目
-Lmax = M0＋(Nmax－1)×martial_level_step
-HcountMax = Lmax－H0
-PaidTierMax = Lmax－1
+    <pre>Nmax = CFG允许的最大周目  # 限制周目序号，不限制该周目能练到的等级或次数
+Mref(Nmax) = M0＋(Nmax－1)×martial_level_step  # 仅供旧表比较
+CountRef = Mref(Nmax)－H0  # 旧方案的隐藏次数节点，不是最大次数
+PaidTierRef = Mref(Nmax)－1  # 节点前一档，不是最高费用档
 Amax = max(A(iq))，iq取当前角色字段允许域
 NeedAssocMax = max(need(i))，magic(i)≥0
 NeedUnassocMax = max(need(i))，magic(i)=-1且need(i)&gt;0
 WARmax = max(WAR(w))，w取当前战斗定义
 Bmax = B(Nmax)
 
-关联武功单档最大费用 = NeedAssocMax×Amax×PaidTierMax
-无关联武功单档最大费用 = NeedUnassocMax×Amax×PaidTierMax
+关联武功在该对照档的费用 = NeedAssocMax×Amax×PaidTierRef
+无关联武功在该对照档的费用 = NeedUnassocMax×Amax×PaidTierRef
 最大整场人物战斗经验 = floor(WARmax×Bmax÷100)
 最大单场秘笈修炼经验 = floor(最大整场人物战斗经验×Pr÷100)
 
@@ -422,19 +422,19 @@ Bmax = B(Nmax)
 Nmax=999，M0=10，martial_level_step=10，H0=2，Amax=7
 NeedAssocMax=300，NeedUnassocMax=800，WARmax=5000
 B2=150%，Bstep=100个百分点，Pr=80%
-Lmax=9990，HcountMax=9988，PaidTierMax=9989
-关联武功单档最大费用=20,976,900
-无关联武功单档最大费用=55,938,400
+Mref(Nmax)=9990，CountRef=9988，PaidTierRef=9989
+关联武功在该对照档的费用=20,976,900
+无关联武功在该对照档的费用=55,938,400
 最大整场人物战斗经验=4,992,500
 最大单场秘笈修炼经验=3,994,000</pre>
-    <p class="plain">下列上界只是默认资产与已确定周目倍率的安全性核对。程序仍应先读取当前数据、使用64位中间值并检查溢出，不能假设所有资产都等于表中默认值。新周目只开放更多成长空间，不会自动给等级、修炼成功次数或永久属性。</p>
+    <p class="plain">既有NG999样本中，战斗经验可因<code>Nmax</code>和资产定义而得到上界；武功等级、秘笈成功次数及其费用却不再有由<code>Nmax</code>推得的最大值。上方旧费用数值只是NG999对照档的核算结果，超出该档继续按同一费用公式增长；程序始终读取实际资产，使用经检查的64位中间量，不得拿对照值作为溢出安全证明。</p>
     <ul>
-      <li>NG1关联武功秘笈保持原行为；无关联武功第一次使用<code>H0</code>，原版当前值为2；成功后逐档涨价是明确的新规则。</li>
-      <li>默认NG999武功／隐藏阶级上限为9990，隐藏成功次数上限9988。</li>
-      <li>默认NG999关联武功单档最大费用为20,976,900；无关联武功单档最大费用为55,938,400。</li>
+      <li>NG+关联武功保持既定基础费用和熟练度增量，不以原版十级或周目节点阻止成功；无关联武功第一次使用<code>H0</code>，原版当前值为2，此后逐次涨价。</li>
+      <li>默认NG999的9990级与9988次仅是比较节点；NG1至NG999均可继续超出各自节点修炼。</li>
+      <li>默认NG999关联武功在对照档的费用为20,976,900，无关联武功为55,938,400；不是最大单档费用。</li>
       <li>默认NG999最大整场人物战斗经验为4,992,500；对应单场秘笈修炼经验为3,994,000。</li>
       <li>人物费用、奖励，以及伤害、治疗、内伤、中毒与解毒结算全链路均按第3.1.4节使用signed 64位权威值和经检查的中间量；只有写出Legacy存档时才按字段原版16位编码校验，不把Legacy字宽带回运行期。</li>
-      <li>人物经验、秘笈经验和永久属性增长都不能自动填满新开放的等级或属性上限。</li>
+      <li>换周目不自动增加任何已继承的人物经验、武功熟练度、秘笈成功次数或永久属性；内伤、中毒换周目清0但保留各自周目上限。</li>
     </ul>
     <div class="notice">
       <p><strong>实现状态：</strong>本文是数值与结算规格，当前尚未修改游戏代码、CFG、资产或存档实现。</p>

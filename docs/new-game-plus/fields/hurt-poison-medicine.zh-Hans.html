@@ -187,7 +187,7 @@ HP2 = signed16(HP1 − PoisonHp)
   <section id="detoxification-field-definition">
     <details>
       <summary>解毒能力字段来源与原版范围</summary>
-      <p><code>detoxification</code>为永久能力：通关TOML直接继承、未入队角色读当前RANGER基线，换周目按本周字段上限clamp。</p>
+      <p><code>detoxification</code>为永久能力：通关TOML完整继承、未入队角色读当前RANGER基线；能力本身不按周目上限夹值，中毒状态仍有独立周目上限。</p>
       <p>原版正常域0～100，当前资产实值0～84，最高为角色2程灵素的84。</p>
     </details>
   </section>
@@ -244,7 +244,7 @@ target.poison = P − 实际解毒量</pre>
   <h3>使用条件</h3>
   <p>战斗菜单要求体力&gt;50、医疗能力≥20；医疗核心要求体力≥50，非战斗只调用核心。
     原版核心消耗2点体力，战斗行动完成段另消耗2点。</p>
-  <p>距离＝<code>trunc(min(max(M, 0), 100) / 15) + 1</code>，最大7。NG1医疗能力上限100；高周目能力上限由本周CFG医疗STEP决定，不增加距离。</p>
+  <p>距离＝<code>trunc(min(max(M, 0), 100) / 15) + 1</code>，最大7。距离分档固定读取100，不限制NG+实际医疗能力；不按周目能力上限夹值。</p>
 
   <h3 id="medicine-hurt-current-proposal">成功条件</h3>
   <pre>H ≤ M + max(20, trunc(M / 5))</pre>
@@ -331,13 +331,12 @@ Q = max(T, ceil(M / 10))               # 回HP和治内伤共用10%保底
 <section id="medicine-field-definition">
   <details>
     <summary>字段来源、原版取值与研究依据</summary>
-    <p>通关TOML中的角色实际值直接继承；未入队角色读取当前RANGER基线。
-      换周目时按本周字段上限夹值。</p>
+    <p>通关TOML中的角色实际医疗能力直接继承；未入队角色读取当前RANGER基线。换周目与运行期不按周目上限夹值。</p>
     <table>
       <thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
       <tbody><tr>
         <td><code>medicine</code></td><td>医疗能力</td>
-        <td>直接继承并clamp</td><td>使用本周对应字段上限。</td>
+        <td>完整继承实际值</td><td>不设逐周目医疗能力上限；数值仍受存储合同约束。</td>
       </tr></tbody>
     </table>
     <table>

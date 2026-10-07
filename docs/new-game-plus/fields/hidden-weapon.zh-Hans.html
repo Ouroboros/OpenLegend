@@ -26,11 +26,11 @@
 <h2>字段定义</h2>
 <p><code>hidden_weapon</code>：暗器技巧。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
 <table><thead><tr><th>项目</th><th>规则与说明</th></tr></thead><tbody>
-<tr><td>下一周目值</td><td>直接继承并clamp。</td></tr>
+<tr><td>下一周目值</td><td>完整继承实际暗器技巧，不按周目夹值。</td></tr>
 <tr><td>原版正常上限</td><td>100；原版升级与秘笈修炼封顶100。不据此否定原版个别写入路径的越界值。依据：<a href="../../../research/evidence/functions/Z_DAT/0x3B6BE.md">升级证据</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">修炼证据</a>。</td></tr>
-<tr><td>本周正常上限</td><td><code>本周暗器技巧上限 = 100 + (周目序号 − 1) × hidden_weapon_cap_step</code>；周目序号从NG1的1开始。</td></tr>
-<tr><td>CFG与默认样例</td><td>运行时CFG提供每新增周目的增量<code>hidden_weapon_cap_step</code>，而不是最终上限。提供的默认值为100点／新增周目；采用该默认值时，NG1／NG2／NG3上限为100／200／300；其他配置按上方公式计算。</td></tr>
-<tr><td>上限适用路径</td><td>NG2+继承、升级和秘笈修炼中暗器技巧的正常封顶均读取本周上限，不再固定用原版100。</td></tr>
+<tr><td>NG+数值</td><td>暗器技巧增长与跨周继承均不设逐周目硬上限；不将原版100或旧方案的增长节点用作夹值。</td></tr>
+<tr><td>既有CFG与默认样例</td><td><code>hidden_weapon_cap_step</code>默认100；旧方案以<code>100 + (n − 1) × hidden_weapon_cap_step</code>计算NG1／NG2／NG3的100／200／300。现在这些数值只作历史配置对照，不限制技巧实际值。</td></tr>
+<tr><td>写入路径</td><td>NG+的继承、升级与秘笈修炼保留原有增长量，不按周目封顶；溢出仍依64位存储合同拒绝。</td></tr>
 </tbody></table>
 </section>
 <section id="poison-throw-all-ng">
@@ -44,18 +44,17 @@
         <p>减目标抗毒的减号及其他步骤不变。原版汇编事实见
 <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品毒值字段页</a>；
 不能把本节新规则反称为原版行为或笔误修复。</p>
-        <p>普通物品的暗器技巧项不随玩家投掷改号，但其正毒抗毒门槛也按本周<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒上限</a>判定；AI投掷和玩家投掷<code>V≤0</code>的分支不改。</p>
+        <p>普通物品的暗器技巧项不随玩家投掷改号；两条正毒路径都只比较实际毒力与目标实际抗毒，不再读取<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒周目上限</a>。AI投掷和玩家投掷<code>V≤0</code>的分支不改。</p>
       </div>
       <pre>V = item.add_poison &gt; 0，W = actor.hidden_weapon，A = target.anti_poison
-C = Cap(anti_poison,n)  # 本周抗毒能力上限，见抗毒字段页
 x = trunc((V + W) / 2) − A  # 原版机器在W前是减号；全周目均改为加号
-Δ = (A ≥ C 或 x &lt; 0) ? 0 : trunc(x / 2)
+Δ = (x &gt; 0) ? trunc(x / 2) : 0
 # x、Δ与后续中毒状态结算一律使用检查溢出的signed 64位逻辑数值</pre>
       <div class="plain">
-        <p>保留第一次除以2、减目标实际抗毒、达到本周抗毒上限时阻止新增中毒、负中间值归零及最后再次除以2的顺序；<strong>不是</strong><code>V + trunc(W/2) − A</code>。<code>C</code>的公式及所有抗毒写入按本周上限夹值的规则见<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒字段页</a>。</p>
-        <p>暗器技巧<code>W</code>读取当前角色64位值，其本周上限按第1.2.2节的运行时CFG增量计算。</p>
-        <p>例：<code>V=80</code>、<code>W=100</code>、<code>A=0</code>、原有中毒0时，原版机器理论增量0，新规则为45，NG1按正常上限写回45；NG1的<code>C=100</code>，<code>A=100</code>时仍增加0。</p>
-        <p>NG1投掷中毒的正常上限仍为99，但不在运行期保留原版16位回绕；NG2+使用同一64位加号公式并按本周<code>C</code>判定抗毒，本周中毒上限的具体写回方式仍须另定。</p>
+        <p>保留第一次除以2、减目标实际抗毒、非正中间值归零及最后再次除以2的顺序；<strong>不是</strong><code>V + trunc(W/2) − A</code>。<code>x&gt;0</code>只保证通过抗毒比较，若<code>x=1</code>则末次除以2后的理论增量仍为0；抗毒能力不按周目封顶，见<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒字段页</a>。</p>
+        <p>暗器技巧<code>W</code>读取当前角色64位值，不按周目夹值。</p>
+        <p>例：<code>V=80</code>、<code>W=100</code>、<code>A=0</code>、原有中毒0时，原版机器理论增量0，新规则为45，NG1按仍保留的中毒上限写回45；<code>A=100</code>时<code>x=-10</code>，理论增量0。</p>
+        <p>NG1投掷中毒的正常上限仍为99，但不在运行期保留原版16位回绕；NG2+使用同一64位加号公式，是否产生正毒只比较<code>x</code>，本周中毒上限的具体写回方式仍须另定。</p>
         <p>只有保存到Legacy时才验证待编码角色数值的16位范围；新TOML保留合法64位值。</p>
       </div>
     </section>

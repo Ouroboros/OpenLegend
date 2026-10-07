@@ -28,21 +28,22 @@
 <tbody><tr>
           <td><code>level</code></td>
           <td>等级</td>
-          <td>直接继承并clamp</td>
-          <td>上限读取本周<code>Lcap(n)</code>。</td>
+          <td>直接继承实际等级，不按周目夹值</td>
+          <td>不设逐周目等级上限；升级费用仍按实际等级读取或递推。</td>
         </tr></tbody></table>
-<h3>原版范围与本周上限</h3>
-<p>符号：<code>n</code>为当前周目（NG1为1）；<code>L0</code>为原版经验门槛表支持的最高等级；<code>E0(L)</code>为该表中等级<code>L</code>对应的累计经验门槛；<code>role_level_step</code>为每增加一周目的等级上限增量。延伸后的<code>E(L)</code>同样表示等级<code>L</code>的累计经验门槛，具体计算见<a href="experience.zh-Hans.html">经验字段页</a>。</p>
-<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>本周NG+上限来源</th><th>默认CFG与状态</th></tr></thead><tbody>
+<h3>原版门槛与周目对照节点</h3>
+<p>符号：<code>n</code>为当前周目（NG1为1）；<code>L0</code>为原版经验门槛表支持的最高等级；<code>E0(L)</code>为该表中等级<code>L</code>对应的累计经验门槛。延伸后的<code>E(L)</code>仍表示等级<code>L</code>的累计经验门槛，计算见<a href="experience.zh-Hans.html">经验字段页</a>。</p>
+<table><thead><tr><th>字段</th><th>NG1原版基值／有效域</th><th>NG+规则</th><th>既有默认配置的对照节点</th></tr></thead><tbody>
 <tr>
           <td><code>level</code>、<code>experience</code></td>
           <td>当前<code>L0=30</code>，<code>E0(30)=52000</code></td>
-          <td><code>Lcap(n)</code>、由原始门槛延伸的<code>E(Lcap(n))</code>；费用算法见第1.4节。</td>
-          <td><code>role_level_step=30</code>，NG2等级上限60；已确认配置示例。</td>
+          <td>等级和累计经验均不以周目节点封顶；升级仍按<code>E(L)</code>计算。</td>
+          <td><code>role_level_step=30</code>时，NG2对照节点为60级；不是NG2等级上限。</td>
         </tr>
 </tbody></table>
-<h3>本周合法上限公式</h3>
-<pre>Lcap(n) = L0 + (n − 1) × role_level_step</pre>
+<h3>仅用于对照的周目节点</h3>
+<pre>Lref(n) = L0 + (n − 1) × role_level_step</pre>
+<p><code>role_level_step</code>保留原默认值30，用于既有经验对照表，也仍供既有敌方等级周目增长公式使用；<code>Lref(n)</code>不是玩家等级或经验的硬上限，也不参与继承夹值。</p>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
 <p>通用合同：

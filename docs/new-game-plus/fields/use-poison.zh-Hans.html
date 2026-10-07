@@ -28,18 +28,17 @@
 <tbody><tr>
           <td><code>use_poison</code></td>
           <td>用毒能力</td>
-          <td>直接继承并clamp</td>
-          <td>使用本周字段上限<code>Cap(use_poison,n)</code>。</td>
+          <td>直接继承实际值，不按周目夹值</td>
+          <td>用毒能力不设逐周目硬上限；中毒状态另有独立周目上限。</td>
         </tr></tbody></table>
-<h3 id="use-poison-cap">本周角色用毒能力上限</h3>
-<pre>Cap(use_poison,n) = 100 + (n − 1) × use_poison_cap_step  （n≥1）</pre>
-<p>100为NG1用毒能力的正常上限；<code>use_poison_cap_step</code>是运行时CFG中每新增周目的上限增量，提供的默认值为100。按此默认值，NG1／NG2／NG3上限分别为100／200／300；配置其他步长时以公式为准。</p>
-<p>曾入队角色换周目时继承自己的实际<code>use_poison</code>并限制在0～<code>Cap(use_poison,n)</code>，上限扩大不自动增加实际值；未入队角色读取当前RANGER基线，不因上限扩大而改写。此上限不替代主动用毒的施毒公式或目标的中毒上限。</p>
-<p>现有运行时代码中升级、秘笈修炼仍将用毒值封顶100；上述NG+上限尚未实现。</p>
+<h3 id="use-poison-cap">用毒能力与固定作用距离</h3>
+<p>原版用毒能力正常上限为100；旧方案的<code>100 + (n − 1) × use_poison_cap_step</code>（默认步长100）不再作为NG+角色用毒能力的周目上限，也不用于继承或增长夹值。</p>
+<p>曾入队角色换周目时完整继承自己的实际<code>use_poison</code>；未入队角色读取当前RANGER基线。用毒实际能力进入施毒量公式；作用距离仍沿用独立的原版100点封顶，不将距离封顶反写到角色用毒值。目标的中毒状态仍受本周中毒上限约束。</p>
+<p>现有运行时代码中升级、秘笈修炼仍将用毒值封顶100；本页是尚未实现的NG+设计，不把代码现状当成新规则。</p>
 </section>
 <section id="poison-mechanics">
 <h3>主动用毒</h3>
-<p>战斗菜单要求<code>physical_power&gt;10</code>且<code>use_poison≥20</code>；只能对敌方施毒，行动消耗2点体力。<code>U_NG1</code>指上文NG1用毒能力上限；<code>U</code>取实际用毒与该上限的较小值，仅用于计算距离，不改写角色属性。</p>
+<p>战斗菜单要求<code>physical_power&gt;10</code>且<code>use_poison≥20</code>；只能对敌方施毒，行动消耗2点体力。<code>U_NG1=100</code>仅作原版距离分档的固定基值；<code>U</code>取实际用毒与100的较小值，仅用于计算距离，不改写角色属性。</p>
 <pre>U = min(actor.use_poison, U_NG1)
 PoisonRange = trunc(U ÷ 15) + 1</pre>
 <pre>ActivePoison = trunc((actor.use_poison - target.anti_poison) ÷ 4)
@@ -47,10 +46,10 @@ ActivePoison = clamp(ActivePoison, 0, PoisonCap(n) - target.poison)
 target.poison += ActivePoison</pre>
 <p><code>PoisonCap(n)</code>为本周中毒上限；例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，未触及上限前新增10点。</p>
 <h3 id="ai-poison-target">AI选择主动用毒目标</h3>
-<p>原版两种选目标路径都在目标中毒达到95时跳过，并要求目标实际抗毒小于施术者实际用毒。从NG1起，两种路径统一将中毒跳过门槛改为<a href="poison.zh-Hans.html#field-definition">本周中毒上限</a>的95%；抗毒与用毒仍比较实际数值。</p>
-<pre>抗毒条件：目标实际抗毒 &lt; 施术者实际用毒
-中毒跳过条件：100 × 目标实际中毒 ≥ 95 × 本周中毒上限</pre>
-<p>使用整数比例直接比较，不先对95%门槛取整，不用浮点，运算须检查溢出。NG1正常中毒上限99，整数中毒达到95时跳过，与原版一致；默认NG2上限199，达到190时跳过。这里不使用抗毒上限，也不为NG1单设固定门槛。此选目标规则不改变主动用毒的施毒量与写回公式；现有运行时代码尚未实现。</p>
+<p>原版两种选目标路径在目标中毒达到固定95时跳过，并要求目标实际抗毒小于施术者实际用毒。从NG1起，两种路径都只比较实际抗毒和实际用毒，移除目标中毒量的选目标跳过条件。</p>
+<pre>选目标的用毒条件：目标实际抗毒 &lt; 施术者实际用毒
+不按目标当前中毒量跳过</pre>
+<p>即使目标中毒已达保留的本周中毒上限，AI选目标也不因此跳过；随后主动用毒实际写入仍须按<code>PoisonCap(n)</code>封顶，可能增加0点。原版固定95仅作历史机器事实。此变更不修改施毒量与写回公式；现有运行时代码尚未实现。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

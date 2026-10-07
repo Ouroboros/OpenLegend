@@ -28,13 +28,12 @@
 <tbody><tr>
           <td><code>attack</code></td>
           <td>武力／攻击力</td>
-          <td>直接继承并clamp</td>
-          <td>使用本周字段上限<code>Cap(attack,n)</code>。</td>
+          <td>直接继承实际值，不按周目夹值</td>
+          <td>运行期增长与换周目均不设置逐周目数值上限；数值须符合存储合同。</td>
         </tr></tbody></table>
-<h3 id="attack-cap">本周角色武力上限</h3>
-<pre>Cap(attack,n) = 100 + (n − 1) × attack_cap_step  （n≥1）</pre>
-<p>100为NG1角色武力的正常上限；<code>attack_cap_step</code>是运行时CFG中每新增周目的上限增量，提供的默认值为100。按此默认值，NG1／NG2／NG3上限分别为100／200／300；只有步长为100时才可简写为<code>100n</code>。</p>
-<p>曾入队角色换周目时继承自己的实际<code>attack</code>并限制在0～<code>Cap(attack,n)</code>，上限扩大不自动补满；未入队角色读取当前RANGER基线，不因本上限改写。装备攻击加成另行结算，不写回角色的<code>attack</code>字段。</p>
+<h3 id="attack-cap">原版范围与NG+数值</h3>
+<p>原版武力正常上限为100。旧方案曾以<code>100 + (n − 1) × attack_cap_step</code>作为本周上限；<code>attack_cap_step</code>提供的默认值为100。此式不再限制NG+玩家武力的继承或增长，不用于夹值；STEP默认值仍供既有敌方攻击周目增长公式使用。</p>
+<p>曾入队角色换周目时完整继承自己的实际<code>attack</code>；未入队角色读取当前RANGER基线。装备攻击加成另行结算，不写回角色的<code>attack</code>字段。敌方既有周目增长规则不因取消玩家字段上限而删除。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
