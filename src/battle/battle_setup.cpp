@@ -2030,8 +2030,8 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
 
     const auto poison_power = static_cast<std::int32_t>(
                                   actor.word(model::role_word::attack_with_poison)) +
-        magic.word(
-            model::magic_word::attack_begin + static_cast<std::size_t>(profile->level_index));
+        static_cast<std::int32_t>(magic.word(model::magic_word::with_poison)) *
+            (static_cast<std::int32_t>(profile->level_index) + 1);
     const auto anti_poison = target.word(model::role_word::anti_poison);
     if (poison_power > anti_poison && anti_poison < 90) {
         auto poison = wrapping_i16(

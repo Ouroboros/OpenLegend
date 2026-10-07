@@ -10573,6 +10573,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     target.set_word(openlegend::model::role_word::anti_poison, 0);
     auto& magic = ranger.magics[5U];
     magic.set_word(openlegend::model::magic_word::need_mp, 4);
+    magic.set_word(openlegend::model::magic_word::with_poison, 7);
     magic.set_word(openlegend::model::magic_word::attack_begin + 2U, 30);
     magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 20);
     magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 15);
@@ -10588,7 +10589,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(hp_random.state() == 2'524'885'223U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 3);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 4);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 3);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 6);
 
     target.set_word(openlegend::model::role_word::hp, 29);
@@ -10644,6 +10645,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
         target.set_word(openlegend::model::role_word::equipment_begin, -1);
         target.set_word(openlegend::model::role_word::equipment_begin + 1U, -1);
         magic.set_word(openlegend::model::magic_word::need_mp, 10);
+        magic.set_word(openlegend::model::magic_word::with_poison, 4);
         for (std::size_t level = 0U;
              level < openlegend::model::magic_word::level_value_count;
              ++level) {
@@ -10663,12 +10665,15 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
 
     reset_hp_edge_case();
     actor.set_word(openlegend::model::role_word::mp, 0);
+    actor.set_word(openlegend::model::role_word::attack_with_poison, 5);
+    target.set_word(openlegend::model::role_word::anti_poison, 0);
     hp_random.seed(1U);
     const auto zero_mp_level = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
     OL_CHECK(zero_mp_level.has_value());
     OL_CHECK(zero_mp_level->damage == 30);
     OL_CHECK(zero_mp_level->cost_scale == 1);
     OL_CHECK(setup.last_hp_cost_scale() == 1);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 3);
 
     reset_hp_edge_case();
     actor.set_word(openlegend::model::role_word::knowledge, 81);
@@ -10723,7 +10728,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 99);
 
     reset_hp_edge_case();
-    actor.set_word(openlegend::model::role_word::attack_with_poison, 1470);
+    actor.set_word(openlegend::model::role_word::attack_with_poison, 1460);
     target.set_word(openlegend::model::role_word::anti_poison, 0);
     hp_random.seed(1U);
     const auto exact_poison_cap = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
@@ -10731,7 +10736,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 100);
 
     reset_hp_edge_case();
-    actor.set_word(openlegend::model::role_word::attack_with_poison, 1485);
+    actor.set_word(openlegend::model::role_word::attack_with_poison, 1475);
     target.set_word(openlegend::model::role_word::anti_poison, 0);
     hp_random.seed(1U);
     const auto exceeded_poison_cap = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);

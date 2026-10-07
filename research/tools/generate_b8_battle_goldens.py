@@ -5665,6 +5665,7 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
         target_poison: int = 0,
         anti_poison: int = 30,
         attack_with_poison: int = 60,
+        magic_with_poison: int = 7,
         target_level: int = 4,
         actor_counter: int = 0,
         attacker_equipment: tuple[int, int] = (0, 0),
@@ -5764,7 +5765,7 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
 
         poison_power = (
             wrapping_i16(attack_with_poison) +
-            wrapping_i16(attacks[(proficiency & 0xFFFF) // 100])
+            wrapping_i16(magic_with_poison) * ((proficiency & 0xFFFF) // 100 + 1)
         )
         poison = wrapping_i16(target_poison)
         if poison_power > wrapping_i16(anti_poison) and wrapping_i16(anti_poison) < 90:
@@ -5799,6 +5800,13 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
     affordability = {
         "mp_49": simulate(attacker_mp=49, proficiency=999),
         "mp_0": simulate(attacker_mp=0, proficiency=999),
+        "mp_0_poison_level": simulate(
+            attacker_mp=0,
+            proficiency=999,
+            anti_poison=0,
+            attack_with_poison=5,
+            magic_with_poison=4,
+        ),
     }
     fallback_far = simulate(
         target_hp=100,
@@ -5837,10 +5845,18 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
     edge_caps = {
         "hurt": simulate(target_hp=100, target_hurt=98, anti_poison=100),
         "poison_exact_100": simulate(
-            target_hp=100, attack_with_poison=1470, anti_poison=0
+            target_hp=100,
+            proficiency=999,
+            attack_with_poison=1460,
+            magic_with_poison=4,
+            anti_poison=0,
         ),
         "poison_over_100": simulate(
-            target_hp=100, attack_with_poison=1485, anti_poison=0
+            target_hp=100,
+            proficiency=999,
+            attack_with_poison=1475,
+            magic_with_poison=4,
+            anti_poison=0,
         ),
         "counter_wrap": simulate(target_hp=100, actor_counter=0x7FFF),
     }
@@ -5852,6 +5868,10 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
         affordability["mp_0"]["cost_scale"] != 1
     ):
         raise ValueError("HP-damage MP affordability descent changed")
+    if survival["target_poison"] != 3 or (
+        affordability["mp_0_poison_level"]["target_poison"] != 3
+    ):
+        raise ValueError("HP-damage magic poison scaling changed")
     if fallback_far["damage"] != 14 or fallback_far["rng_state"] != 3295386429:
         raise ValueError("HP-damage positive fallback or distance scaling changed")
     if negative_fallback["damage"] != 1 or not negative_fallback["skipped_modifiers"]:
@@ -5928,8 +5948,10 @@ def battle_hp_damage_contract(z_dat_bytes: bytes) -> dict[str, object]:
         ),
         "writes": (
             "actor counter += damage/5; target HP -= damage; only signed HP<0 clamps zero "
-            "and adds level*10; hurt += damage/10 capped when >99; poison changes only when "
-            "power>anti and anti<90, >100 becomes99, negative becomes0"
+            "and adds level*10; hurt += damage/10 capped when >99; poison power is "
+            "role.attack_with_poison+magic.with_poison*(unsigned proficiency/100+1) and "
+            "ignores cost scale; poison changes only when power>anti and anti<90 by "
+            "(power-anti)/15, >100 becomes99, negative becomes0"
         ),
         "rng_order": [20, 20, "conditional 4", "conditional 4"],
         "caller_contract": (
@@ -16033,7 +16055,9 @@ def build(data_root: Path) -> dict[str, object]:
                     "underkill_level": 4,
                     "underkill_attack_counter": 46,
                     "hurt_after": 3,
-                    "poison_after": 4,
+                    "attack_with_poison": 30,
+                    "magic_with_poison": 7,
+                    "poison_after": 3,
                     "fallback_vector": {
                         "allied_knowledge": 162,
                         "enemy_knowledge": 164,

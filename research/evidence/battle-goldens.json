@@ -8152,7 +8152,7 @@
     "cost_scale": "start unsigned proficiency/100 and descend until signed MP >= need_mp*((level+1)/2); publish selected level+1",
     "damage_formula": "attack=(3*role.attack+magic.attack[cost_scale-1])/2+equipment+special+allied knowledge; defence=role.defence+equipment+opposing knowledge; primary=2*(attack-3*defence)/3+bounded(20)-bounded(20); signed low16 <=0 uses attack/10+bounded(4)-bounded(4)",
     "post_formula": "negative fallback becomes zero and skips physical/hurt/distance; otherwise add physical/15+hurt/20, apply <=10 distance factor (100-3*(d-1))/100 or >10 factor 2/3 by unsigned division, then signed minimum one",
-    "writes": "actor counter += damage/5; target HP -= damage; only signed HP<0 clamps zero and adds level*10; hurt += damage/10 capped when >99; poison changes only when power>anti and anti<90, >100 becomes99, negative becomes0",
+    "writes": "actor counter += damage/5; target HP -= damage; only signed HP<0 clamps zero and adds level*10; hurt += damage/10 capped when >99; poison power is role.attack_with_poison+magic.with_poison*(unsigned proficiency/100+1) and ignores cost scale; poison changes only when power>anti and anti<90 by (power-anti)/15, >100 becomes99, negative becomes0",
     "rng_order": [
       20,
       20,
@@ -8184,7 +8184,7 @@
         "actor_counter": 6,
         "target_hp": 10,
         "target_hurt": 3,
-        "target_poison": 4,
+        "target_poison": 3,
         "kill_reward": 0
       },
       "exact_zero": {
@@ -8210,7 +8210,7 @@
         "actor_counter": 6,
         "target_hp": 0,
         "target_hurt": 3,
-        "target_poison": 4,
+        "target_poison": 3,
         "kill_reward": 0
       },
       "underkill": {
@@ -8236,7 +8236,7 @@
         "actor_counter": 46,
         "target_hp": 0,
         "target_hurt": 3,
-        "target_poison": 4,
+        "target_poison": 3,
         "kill_reward": 40
       },
       "affordability": {
@@ -8263,7 +8263,7 @@
           "actor_counter": 6,
           "target_hp": 10,
           "target_hurt": 3,
-          "target_poison": 4,
+          "target_poison": 6,
           "kill_reward": 0
         },
         "mp_0": {
@@ -8289,7 +8289,33 @@
           "actor_counter": 6,
           "target_hp": 10,
           "target_hurt": 3,
-          "target_poison": 4,
+          "target_poison": 6,
+          "kill_reward": 0
+        },
+        "mp_0_poison_level": {
+          "damage": 30,
+          "cost_scale": 1,
+          "allied_knowledge": 0,
+          "opposing_knowledge": 0,
+          "attack_total": 60,
+          "defence_total": 5,
+          "used_fallback": false,
+          "skipped_modifiers": false,
+          "rng_calls": [
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "rng_state": 2524885223,
+          "actor_counter": 6,
+          "target_hp": 10,
+          "target_hurt": 3,
+          "target_poison": 3,
           "kill_reward": 0
         }
       },
@@ -8385,7 +8411,7 @@
           "actor_counter": 6,
           "target_hp": 10,
           "target_hurt": 3,
-          "target_poison": 4,
+          "target_poison": 3,
           "kill_reward": 0
         },
         "active": {
@@ -8452,7 +8478,7 @@
         },
         "poison_exact_100": {
           "damage": 30,
-          "cost_scale": 3,
+          "cost_scale": 10,
           "allied_knowledge": 0,
           "opposing_knowledge": 0,
           "attack_total": 60,
@@ -8478,7 +8504,7 @@
         },
         "poison_over_100": {
           "damage": 30,
-          "cost_scale": 3,
+          "cost_scale": 10,
           "allied_knowledge": 0,
           "opposing_knowledge": 0,
           "attack_total": 60,
@@ -8525,12 +8551,12 @@
           "actor_counter": -32763,
           "target_hp": 70,
           "target_hurt": 3,
-          "target_poison": 4,
+          "target_poison": 3,
           "kill_reward": 0
         }
       }
     },
-    "vector_sha256": "5c8739cab30cfae8a5c7f1ccddd32bb47da435e1bd24b9e49d0590d009582da0",
+    "vector_sha256": "65512e91222f700e9fb6e9d1f80f5e8d397b37bfc8f05d3bd4ed2b6c77a5c90f",
     "platform_adaptation_boundary": "modern code may reject invalid combatant, role, magic, equipment, level and other malformed indices that make the machine access outside loaded records",
     "closure_boundary": "stack probe, RNG helper, square/cross/line callers, shared cost-scale consumer and shared-tail owner remain independent"
   },
@@ -22966,7 +22992,9 @@
         "underkill_level": 4,
         "underkill_attack_counter": 46,
         "hurt_after": 3,
-        "poison_after": 4,
+        "attack_with_poison": 30,
+        "magic_with_poison": 7,
+        "poison_after": 3,
         "fallback_vector": {
           "allied_knowledge": 162,
           "enemy_knowledge": 164,
