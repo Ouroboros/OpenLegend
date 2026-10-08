@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -114,11 +115,11 @@ NODISCARD bool blocked_earth(const std::int16_t value) noexcept {
 
 NODISCARD std::u8string status_notice_message(
     const bool fame,
-    const std::int16_t value) {
+    const std::int64_t value) {
     std::u8string result{fame ? kFameNoticePrefix : kMoralityNoticePrefix};
-    std::array<char, 16> formatted{};
+    std::array<char, 32> formatted{};
     std::snprintf(
-        formatted.data(), formatted.size(), fame ? "%4d" : "%5d", static_cast<int>(value));
+        formatted.data(), formatted.size(), fame ? "%4" PRId64 : "%5" PRId64, value);
     result.append(text::utf8_from_ascii(formatted.data()));
     return result;
 }

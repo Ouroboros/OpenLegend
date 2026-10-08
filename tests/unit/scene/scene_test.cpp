@@ -6126,6 +6126,32 @@ void check_event_status_notices(const std::filesystem::path& root) {
     check_notice(
         828, openlegend::model::role_word::fame, 32767, 53, fame_maximum_text,
         0xa6cd419bd1ed49dbULL, true);
+
+    struct WideFameCase {
+        std::int64_t value;
+        std::string_view digits;
+    };
+    constexpr std::array<WideFameCase, 3> wide_cases{
+        WideFameCase{32'768, "32768"},
+        WideFameCase{5'000'000'000, "5000000000"},
+        WideFameCase{9'223'372'036'854'775'807, "9223372036854775807"},
+    };
+    for (const auto& wide_case : wide_cases) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.roles[0].set_word(
+            openlegend::model::role_word::fame, wide_case.value);
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        std::vector<std::uint8_t> expected_text{
+            fame_text.begin(), fame_text.begin() + 20};
+        expected_text.insert(
+            expected_text.end(), wide_case.digits.begin(), wide_case.digits.end());
+        expected_text.push_back(0U);
+        OL_CHECK(session.begin_event(828, 0, 44, 29).kind == SceneStepKind::notice);
+        OL_CHECK(std::ranges::equal(session.pending_text(), expected_text));
+        OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::fame) ==
+            wide_case.value);
+    }
 }
 
 void check_event_map_replace_and_random_talk(const std::filesystem::path& root) {
