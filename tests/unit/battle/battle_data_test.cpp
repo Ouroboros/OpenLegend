@@ -17,6 +17,7 @@
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/model/runtime_snapshot.hpp"
+#include "openlegend/model/experience.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
 
@@ -2548,16 +2549,16 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(skill_random.state() == 3'210'001'534U);
 
         reset_level_role(90);
-        role.set_word(role_word::increased_life, -32768);
+        role.set_word(role_word::increased_life, 10);
         role.set_word(role_word::maximum_hp, 32767);
         role.set_word(role_word::maximum_mp, 32767);
         role.set_word(role_word::attack, 100);
         role.set_word(role_word::speed, 32767);
-        role.set_word(role_word::defence, -32768);
+        role.set_word(role_word::defence, 32768);
         role.set_word(role_word::use_poison, 21);
         role.set_word(role_word::detoxification, 100);
         role.set_word(role_word::fist, 32767);
-        role.set_word(role_word::sword, -1);
+        role.set_word(role_word::sword, 0);
         role.set_word(role_word::knife, 21);
         role.set_word(role_word::hidden_weapon, 100);
         openlegend::random::LegacyRandom wrapping_random{0xFFFFFFFFU};
@@ -2565,21 +2566,51 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
             0U, false, wrapping_random);
         OL_CHECK(wrapping.has_value());
         OL_CHECK(wrapping->growth_roll == 6);
-        OL_CHECK(role.word(role_word::maximum_hp) == 5);
-        OL_CHECK(role.word(role_word::maximum_mp) == -32757);
-        OL_CHECK(role.word(role_word::attack) == 100);
-        OL_CHECK(role.word(role_word::speed) == -32763);
-        OL_CHECK(role.word(role_word::defence) == -32762);
+        OL_CHECK(role.word(role_word::maximum_hp) == 32803);
+        OL_CHECK(role.word(role_word::maximum_mp) == 32779);
+        OL_CHECK(role.word(role_word::attack) == 106);
+        OL_CHECK(role.word(role_word::speed) == 32773);
+        OL_CHECK(role.word(role_word::defence) == 32774);
         OL_CHECK(role.word(role_word::medicine) == 20);
         OL_CHECK(role.word(role_word::use_poison) == 22);
         OL_CHECK(role.word(role_word::detoxification) == 100);
-        OL_CHECK(role.word(role_word::fist) == -32768);
-        OL_CHECK(role.word(role_word::sword) == -1);
+        OL_CHECK(role.word(role_word::fist) == 32768);
+        OL_CHECK(role.word(role_word::sword) == 0);
         OL_CHECK(role.word(role_word::knife) == 23);
-        OL_CHECK(role.word(role_word::hidden_weapon) == 100);
+        OL_CHECK(role.word(role_word::hidden_weapon) == 102);
         OL_CHECK(role.word(role_word::anti_poison) == 77);
         OL_CHECK(role.word(role_word::unusual) == 66);
         OL_CHECK(wrapping_random.state() == 2'742'554'614U);
+
+        for (const std::int64_t target_level : {31, 60, 9991, 10020}) {
+            reset_level_role(90);
+            role.level = 30;
+            role.experience = level_experience_requirement(
+                data.experience_thresholds(), target_level).value();
+            role.maximum_hp = 5'000'000'000;
+            role.maximum_mp = 6'000'000'000;
+            openlegend::random::LegacyRandom wide_random{1U};
+            const auto result = setup.apply_battle_level_up(0U, false, wide_random);
+            OL_CHECK(result.has_value());
+            OL_CHECK(result->changed);
+            OL_CHECK(result->new_level == target_level);
+            OL_CHECK(role.level == target_level);
+            OL_CHECK(role.maximum_hp == 5'000'000'000 + 9 * (target_level - 30));
+            OL_CHECK(role.maximum_mp == 6'000'000'000 + 24 * (target_level - 30));
+            OL_CHECK(role.hp == role.maximum_hp);
+            OL_CHECK(role.mp == role.maximum_mp);
+            OL_CHECK(wide_random.state() == 662'824'084U);
+        }
+        for (const auto field : {&RoleState::maximum_hp, &RoleState::attack}) {
+            reset_level_role(90);
+            role.*field = std::numeric_limits<std::int64_t>::max();
+            BattleSetup overflow_setup{data, ranger};
+            const auto before = role;
+            openlegend::random::LegacyRandom overflow_random{1U};
+            OL_CHECK(!overflow_setup.apply_battle_level_up(0U, false, overflow_random).has_value());
+            OL_CHECK(role == before);
+            OL_CHECK(overflow_random.state() == 1U);
+        }
 
         reset_level_role(90);
         role.set_word(role_word::experience, 150);

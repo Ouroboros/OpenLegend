@@ -3949,17 +3949,15 @@ bool BattleSession::continue_post_battle_level() {
     }
     auto& role_result = post_battle_result_->roles[post_battle_role_index_];
     const auto role_id = static_cast<std::size_t>(role_result.role_id);
-    if (ranger_.roles[role_id].word(model::role_word::level) < 30) {
-        const auto preview = preview_post_battle_level(role_id);
-        if (!preview.has_value()) {
-            error_ = setup_.error();
-            return false;
-        }
-        role_result.level_up = *preview;
-        if (preview->message_required) {
-            return schedule_post_battle_message(
-                {PostBattleMessageKind::level_up, post_battle_role_index_});
-        }
+    const auto preview = preview_post_battle_level(role_id);
+    if (!preview.has_value()) {
+        error_ = setup_.error();
+        return false;
+    }
+    role_result.level_up = *preview;
+    if (preview->message_required) {
+        return schedule_post_battle_message(
+            {PostBattleMessageKind::level_up, post_battle_role_index_});
     }
     return continue_post_battle_practice();
 }

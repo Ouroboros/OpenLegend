@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "openlegend/model/checked_arithmetic.hpp"
+#include "openlegend/model/experience.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/world_projection.hpp"
 
@@ -826,105 +827,80 @@ std::optional<BattleLevelUpResult> BattleSetup::apply_battle_level_up(
         .old_level = role.word(model::role_word::level),
         .new_level = role.word(model::role_word::level),
     };
-    const auto thresholds = data_.experience_thresholds();
-    if (result.old_level < 0 || result.old_level >= static_cast<std::int64_t>(thresholds.size())) {
+    if (result.old_level < 0) {
         return result;
     }
-
-    const auto experience = role.unsigned_word(model::role_word::experience);
-    if (experience < thresholds[static_cast<std::size_t>(result.old_level)]) {
-        return result;
+    const auto new_level = model::level_for_experience(
+        data_.experience_thresholds(), std::max<std::int64_t>(result.old_level, 1),
+        role.experience);
+    if (!new_level.has_value()) {
+        error_ = "battle level experience is invalid";
+        return std::nullopt;
     }
-    auto new_level = result.old_level;
-    for (std::int64_t level = result.old_level;
-         level < static_cast<std::int64_t>(thresholds.size()); ++level) {
-        if (experience >= thresholds[static_cast<std::size_t>(level)]) {
-            new_level = static_cast<std::int16_t>(level + 1);
-        }
-    }
-    const auto levels_gained = static_cast<std::int16_t>(new_level - result.old_level);
+    const auto levels_gained = *new_level - result.old_level;
     if (levels_gained <= 0) {
         return result;
     }
 
-    const auto iq = role.word(model::role_word::iq);
+    auto candidate = role;
+    auto candidate_random = random;
+    const auto add_gain = [&candidate](
+                              std::int64_t model::RoleState::*field,
+                              const std::int64_t per_level,
+                              const std::int64_t levels) {
+        const auto gain = model::checked_multiply(per_level, levels);
+        if (!gain.has_value()) {
+            return false;
+        }
+        const auto changed = model::checked_add(candidate.*field, *gain);
+        if (!changed.has_value() || *changed < 0) {
+            return false;
+        }
+        candidate.*field = *changed;
+        return true;
+    };
+    const auto iq = role.iq;
     const auto growth_bound = iq < 30 ? 2 : iq < 50 ? 3 : iq < 70 ? 4 : iq < 90 ? 5 : 6;
-    const auto growth_roll = static_cast<std::int16_t>(random.bounded(growth_bound) + 1);
-    role.set_word(
-        model::role_word::level,
-        wrapping_i16(static_cast<std::int32_t>(role.word(model::role_word::level)) +
-                     levels_gained));
-
-    auto maximum_hp = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) +
-        (random.bounded(3) + role.word(model::role_word::increased_life)) * 3 *
-            levels_gained);
-    if (maximum_hp > 999) {
-        maximum_hp = 999;
+    const std::int64_t growth_roll = candidate_random.bounded(growth_bound) + 1;
+    const auto hp_growth = model::checked_add(role.increased_life, candidate_random.bounded(3));
+    const auto hp_per_level = hp_growth.has_value()
+        ? model::checked_multiply(*hp_growth, 3) : std::nullopt;
+    if (!hp_per_level.has_value() ||
+        !add_gain(&model::RoleState::maximum_hp, *hp_per_level, levels_gained) ||
+        !add_gain(&model::RoleState::maximum_mp, (9 - growth_roll) * 4, levels_gained)) {
+        error_ = "battle level HP or MP growth overflow or invalid result";
+        return std::nullopt;
     }
-    role.set_word(model::role_word::maximum_hp, maximum_hp);
-    role.set_word(model::role_word::hp, maximum_hp);
-    role.set_word(model::role_word::hurt, 0);
-    role.set_word(model::role_word::poison, 0);
-    role.set_word(model::role_word::physical_power, 100);
-
-    auto maximum_mp = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::maximum_mp)) +
-        (9 - growth_roll) * 4 * levels_gained);
-    if (maximum_mp > 999) {
-        maximum_mp = 999;
-    }
-    role.set_word(model::role_word::maximum_mp, maximum_mp);
-    role.set_word(model::role_word::mp, maximum_mp);
-
-    const auto primary_gain = static_cast<std::int32_t>(growth_roll) * levels_gained;
-    for (const auto word : {
-             model::role_word::attack,
-             model::role_word::speed,
-             model::role_word::defence,
-         }) {
-        role.set_word(
-            word,
-            wrapping_i16(static_cast<std::int32_t>(role.word(word)) + primary_gain));
-    }
-    for (const auto word : {
-             model::role_word::medicine,
-             model::role_word::use_poison,
-             model::role_word::detoxification,
-             model::role_word::fist,
-             model::role_word::sword,
-             model::role_word::knife,
-         }) {
-        if (role.word(word) > 20) {
-            role.set_word(
-                word,
-                wrapping_i16(
-                    static_cast<std::int32_t>(role.word(word)) + random.bounded(3)));
+    for (const auto field : {
+             &model::RoleState::attack, &model::RoleState::speed, &model::RoleState::defence}) {
+        if (!add_gain(field, growth_roll, levels_gained)) {
+            error_ = "battle level primary ability growth overflow or invalid result";
+            return std::nullopt;
         }
     }
-    role.set_word(
-        model::role_word::hidden_weapon,
-        wrapping_i16(
-            static_cast<std::int32_t>(role.word(model::role_word::hidden_weapon)) +
-            random.bounded(3)));
-    for (const auto word : {
-             model::role_word::attack,
-             model::role_word::speed,
-             model::role_word::defence,
-             model::role_word::medicine,
-             model::role_word::use_poison,
-             model::role_word::detoxification,
-             model::role_word::hidden_weapon,
-             model::role_word::fist,
-             model::role_word::sword,
-             model::role_word::knife,
-         }) {
-        if (role.word(word) > 100) {
-            role.set_word(word, 100);
+    for (const auto field : {
+             &model::RoleState::medicine, &model::RoleState::use_poison,
+             &model::RoleState::detoxification, &model::RoleState::fist,
+             &model::RoleState::sword, &model::RoleState::knife}) {
+        if (candidate.*field > 20 && !add_gain(field, candidate_random.bounded(3), 1)) {
+            error_ = "battle level skill growth overflow";
+            return std::nullopt;
         }
     }
+    if (!add_gain(&model::RoleState::hidden_weapon, candidate_random.bounded(3), 1)) {
+        error_ = "battle level hidden weapon growth overflow or invalid result";
+        return std::nullopt;
+    }
+    candidate.level = *new_level;
+    candidate.hp = candidate.maximum_hp;
+    candidate.mp = candidate.maximum_mp;
+    candidate.hurt = 0;
+    candidate.poison = 0;
+    candidate.physical_power = 100;
+    role = std::move(candidate);
+    random = candidate_random;
 
-    result.new_level = role.word(model::role_word::level);
+    result.new_level = role.level;
     result.levels_gained = levels_gained;
     result.growth_roll = growth_roll;
     result.maximum_hp = role.word(model::role_word::maximum_hp);
@@ -1387,14 +1363,12 @@ std::optional<BattlePostBattleResult> BattleSetup::settle_battle(
             result->present_required = true;
             result->wait_for_input = true;
             auto& role = ranger_.roles[static_cast<std::size_t>(role_result.role_id)];
-            if (role.word(model::role_word::level) < 30) {
-                const auto level_up = apply_battle_level_up(
-                    static_cast<std::size_t>(role_result.role_id), false, random);
-                if (!level_up) {
-                    return std::nullopt;
-                }
-                role_result.level_up = *level_up;
+            const auto level_up = apply_battle_level_up(
+                static_cast<std::size_t>(role_result.role_id), false, random);
+            if (!level_up) {
+                return std::nullopt;
             }
+            role_result.level_up = *level_up;
             if (role.word(model::role_word::practice_item) != -1) {
                 const auto practice = apply_battle_practice(
                     static_cast<std::size_t>(role_result.role_id), false);
