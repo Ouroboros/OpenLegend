@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "openlegend/attributes.hpp"
+#include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/text/big5.hpp"
 
 namespace openlegend::model {
@@ -221,6 +222,62 @@ void RuntimeRangerHeader::set_inventory(
     if (index < inventory_.size()) {
         inventory_[index] = InventoryEntry{item_id, count};
     }
+}
+
+bool RuntimeRangerHeader::add_inventory(
+    const ItemId item_id, const std::int64_t count) noexcept {
+    auto candidate = inventory_;
+    bool found = false;
+    for (auto& entry : candidate) {
+        if (entry.item_id != item_id) {
+            continue;
+        }
+        const auto changed = checked_add(entry.count, count);
+        if (!changed.has_value()) {
+            return false;
+        }
+        entry.count = *changed;
+        found = true;
+    }
+    if (!found) {
+        for (auto& entry : candidate) {
+            if (entry.item_id.value != -1) {
+                continue;
+            }
+            const auto changed = checked_add(entry.count, count);
+            if (!changed.has_value()) {
+                return false;
+            }
+            entry = InventoryEntry{item_id, *changed};
+            break;
+        }
+    }
+    inventory_ = candidate;
+    return true;
+}
+
+bool RuntimeRangerHeader::change_first_inventory(
+    const ItemId item_id, const std::int64_t delta) noexcept {
+    for (std::size_t slot = 0U; slot < inventory_.size(); ++slot) {
+        auto& entry = inventory_[slot];
+        if (entry.item_id != item_id) {
+            continue;
+        }
+        const auto changed = checked_add(entry.count, delta);
+        if (!changed.has_value()) {
+            return false;
+        }
+        if (*changed > 0) {
+            entry.count = *changed;
+        } else {
+            for (std::size_t source = slot + 1U; source < inventory_.size(); ++source) {
+                inventory_[source - 1U] = inventory_[source];
+            }
+            inventory_.back() = InventoryEntry{};
+        }
+        return true;
+    }
+    return true;
 }
 
 RuntimeRangerHeader decode_legacy_header(const RangerHeader& header) {

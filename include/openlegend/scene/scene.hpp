@@ -564,14 +564,12 @@ private:
 
     NODISCARD bool inventory_contains_id(std::int16_t item_id) const noexcept;
 
-    NODISCARD std::optional<std::int16_t> first_inventory_count(
+    NODISCARD std::optional<std::int64_t> first_inventory_count(
         std::int16_t item_id) const noexcept;
 
-    NODISCARD int inventory_count(std::int16_t item_id) const noexcept;
+    NODISCARD bool add_inventory(std::int16_t item_id, std::int64_t count);
 
-    void add_inventory(std::int16_t item_id, std::int16_t count);
-
-    void change_first_inventory(std::int16_t item_id, std::int16_t count);
+    NODISCARD bool change_first_inventory(std::int16_t item_id, std::int64_t count);
 
     void update_book_event_if_ready();
 

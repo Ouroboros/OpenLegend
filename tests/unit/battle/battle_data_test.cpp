@@ -3373,7 +3373,7 @@ void run_battle_crafting_review_test(
         OL_CHECK(result->material_count_removed == -2);
         OL_CHECK(result->product_count_added == 2);
         OL_CHECK(ranger.header.inventory_count(0U) == 1);
-        OL_CHECK(ranger.header.inventory_count(1U) == -32767);
+        OL_CHECK(ranger.header.inventory_count(1U) == 32769);
         OL_CHECK(role.word(role_word::make_item_experience) == 0);
         OL_CHECK(random.state() == 4'182'499'122U);
     }
@@ -3396,6 +3396,40 @@ void run_battle_crafting_review_test(
         OL_CHECK(!result->crafted);
         OL_CHECK(role.word(role_word::make_item_experience) == -1);
         OL_CHECK(random.state() == 1U);
+    }
+
+    for (const auto product_count : std::array<std::int64_t, 2>{
+             5'000'000'000, std::numeric_limits<std::int64_t>::max()}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        ranger.header.set_inventory(0U, ItemId{10}, 6'000'000'000);
+        ranger.header.set_inventory(1U, ItemId{20}, product_count);
+        openlegend::random::LegacyRandom random{1U};
+        const auto before = ranger;
+        const auto result = setup.apply_battle_crafting(0U, false, random);
+        if (product_count == std::numeric_limits<std::int64_t>::max()) {
+            OL_CHECK(!result.has_value());
+            OL_CHECK(ranger == before);
+            OL_CHECK(random.state() == 1U);
+        } else {
+            OL_CHECK(result.has_value());
+            OL_CHECK(result->crafted);
+            OL_CHECK(ranger.header.inventory_count(0U) == 5'999'999'998);
+            OL_CHECK(ranger.header.inventory_count(1U) == 5'000'000'002);
+            OL_CHECK(random.state() == 4'182'499'122U);
+        }
+    }
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        ranger.header.set_inventory(0U, ItemId{10}, 5'000'000'000);
+        OL_CHECK(consume_inventory_item_slot(ranger, 0U));
+        OL_CHECK(ranger.header.inventory_count(0U) == 4'999'999'999);
+        ranger.header.set_inventory(0U, ItemId{10}, std::numeric_limits<std::int64_t>::min());
+        const auto before = ranger;
+        OL_CHECK(!consume_inventory_item_slot(ranger, 0U));
+        OL_CHECK(ranger == before);
     }
 }
 
@@ -11158,6 +11192,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
 void run_party_selection_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    ranger.header.set_inventory(155U, openlegend::model::ItemId{0}, 0);
     BattleData data{data_root, 0};
     BattleSetup setup{data, ranger};
     OL_CHECK(setup.valid());

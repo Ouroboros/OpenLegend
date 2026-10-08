@@ -128,6 +128,29 @@ void check_inventory_width_and_legacy_boundary() {
     OL_CHECK(model::encode_legacy_header(widened) == legacy_header);
 }
 
+void check_inventory_operation_transactions() {
+    using namespace openlegend::model;
+
+    RuntimeRangerHeader header;
+    const ItemId item{174};
+    header.set_inventory(0U, item, 5'000'000'000);
+    header.set_inventory(1U, item, std::numeric_limits<std::int64_t>::max());
+    const auto before_overflow = header;
+    OL_CHECK(!header.add_inventory(item, 1));
+    OL_CHECK(header == before_overflow);
+    OL_CHECK(header.change_first_inventory(item, -1));
+    OL_CHECK(header.inventory_count(0U) == 4'999'999'999);
+    OL_CHECK(header.inventory_count(1U) == std::numeric_limits<std::int64_t>::max());
+    header.set_inventory(0U, item, std::numeric_limits<std::int64_t>::min());
+    const auto before_underflow = header;
+    OL_CHECK(!header.change_first_inventory(item, -1));
+    OL_CHECK(header == before_underflow);
+    OL_CHECK(header.change_first_inventory(item, 1));
+    OL_CHECK(header.inventory_count(0U) == std::numeric_limits<std::int64_t>::max());
+    OL_CHECK(header.inventory_item(1U).value == -1);
+    OL_CHECK(header.inventory_count(1U) == 0);
+}
+
 void check_numeric_domains_and_references() {
     using namespace openlegend;
 
@@ -334,6 +357,7 @@ void check_save_format_boundaries() {
 int main() {
     check_complete_legacy_conversion();
     check_inventory_width_and_legacy_boundary();
+    check_inventory_operation_transactions();
     check_numeric_domains_and_references();
     check_static_definitions();
     check_save_format_boundaries();

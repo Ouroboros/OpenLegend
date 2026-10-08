@@ -1024,11 +1024,17 @@ SceneStepResult SceneSession::resume(const SceneResponse response, const int val
             const auto price = shop.word(model::shop_word::price_begin + slot);
             const auto money = first_inventory_count(174);
             if (money.has_value() && *money >= price) {
+                auto inventory = snapshot_.ranger.header;
+                if (!inventory.change_first_inventory(model::ItemId{174}, -std::int64_t{price}) ||
+                    !inventory.add_inventory(model::ItemId{item_id}, 1)) {
+                    error_ = "shop inventory quantity overflow";
+                    pending_ = current_result(SceneStepKind::stay);
+                    return pending_;
+                }
                 shop.set_word(
                     model::shop_word::total_begin + slot,
                     static_cast<std::int16_t>(stock - 1));
-                change_first_inventory(174, static_cast<std::int16_t>(-price));
-                add_inventory(item_id, 1);
+                snapshot_.ranger.header = std::move(inventory);
                 queue_scene_present();
                 queue_dialogue(2976, 111, 0);
             } else {
@@ -1126,8 +1132,11 @@ SceneStepResult SceneSession::run_event() {
             queue_dialogue(argument(1), argument(2), argument(3));
             return emit_queued();
         case 2:
+            if (!add_inventory(argument(1), argument(2))) {
+                pending_ = current_result(SceneStepKind::stay);
+                return pending_;
+            }
             program_counter_ += 3;
-            add_inventory(argument(1), argument(2));
             update_book_event_if_ready();
             queue_item_notice(argument(1));
             queue_scene_present();
@@ -1354,7 +1363,10 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 32:
-            change_first_inventory(argument(1), argument(2));
+            if (!change_first_inventory(argument(1), argument(2))) {
+                pending_ = current_result(SceneStepKind::stay);
+                return pending_;
+            }
             program_counter_ += 3;
             break;
         case 33: {
@@ -2229,7 +2241,7 @@ bool SceneSession::inventory_contains_id(const std::int16_t item_id) const noexc
     return found;
 }
 
-std::optional<std::int16_t> SceneSession::first_inventory_count(
+std::optional<std::int64_t> SceneSession::first_inventory_count(
     const std::int16_t item_id) const noexcept {
     for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
         if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
@@ -2239,62 +2251,22 @@ std::optional<std::int16_t> SceneSession::first_inventory_count(
     return std::nullopt;
 }
 
-int SceneSession::inventory_count(const std::int16_t item_id) const noexcept {
-    int total = 0;
-    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
-        if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
-            total += snapshot_.ranger.header.inventory_count(index);
-        }
+bool SceneSession::add_inventory(const std::int16_t item_id, const std::int64_t count) {
+    if (!snapshot_.ranger.header.add_inventory(model::ItemId{item_id}, count)) {
+        error_ = "inventory quantity overflow";
+        return false;
     }
-    return total;
+    return true;
 }
 
-void SceneSession::add_inventory(const std::int16_t item_id, const std::int16_t count) {
-    bool found = false;
-    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
-        if (snapshot_.ranger.header.inventory_item(index).value == item_id) {
-            snapshot_.ranger.header.set_inventory(
-                index, model::ItemId{item_id},
-                wrapping_add(snapshot_.ranger.header.inventory_count(index), count));
-            found = true;
-        }
-    }
-    if (found) {
-        return;
-    }
-    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
-        if (snapshot_.ranger.header.inventory_item(index).value == -1) {
-            snapshot_.ranger.header.set_inventory(
-                index, model::ItemId{item_id},
-                wrapping_add(snapshot_.ranger.header.inventory_count(index), count));
-            return;
-        }
-    }
-}
-
-void SceneSession::change_first_inventory(
+bool SceneSession::change_first_inventory(
     const std::int16_t item_id,
-    const std::int16_t count) {
-    for (std::size_t index = 0U; index < model::kInventoryCount; ++index) {
-        if (snapshot_.ranger.header.inventory_item(index).value != item_id) {
-            continue;
-        }
-        const auto changed = wrapping_add(
-            snapshot_.ranger.header.inventory_count(index), count);
-        if (changed > 0) {
-            snapshot_.ranger.header.set_inventory(index, model::ItemId{item_id}, changed);
-            return;
-        }
-        for (std::size_t source = index + 1U; source < model::kInventoryCount; ++source) {
-            snapshot_.ranger.header.set_inventory(
-                source - 1U,
-                snapshot_.ranger.header.inventory_item(source),
-                snapshot_.ranger.header.inventory_count(source));
-        }
-        snapshot_.ranger.header.set_inventory(
-            model::kInventoryCount - 1U, model::ItemId{-1}, 0);
-        return;
+    const std::int64_t count) {
+    if (!snapshot_.ranger.header.change_first_inventory(model::ItemId{item_id}, count)) {
+        error_ = "inventory quantity overflow";
+        return false;
     }
+    return true;
 }
 
 void SceneSession::update_book_event_if_ready() {
@@ -2391,7 +2363,10 @@ std::optional<SceneStepResult> SceneSession::advance_join_role_items() {
             continue;
         }
         const auto count = role.word(model::role_word::taking_item_count_begin + state.slot);
-        add_inventory(item_id, count);
+        if (!add_inventory(item_id, count)) {
+            pending_ = current_result(SceneStepKind::stay);
+            return pending_;
+        }
         queue_item_notice(item_id);
         queue_scene_present();
         state.awaiting_clear = true;
@@ -3398,7 +3373,10 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
             tournament_trial_state_->phase = TournamentTrialState::Phase::finale_finish;
             return emit_queued();
         case TournamentTrialState::Phase::finale_finish:
-            add_inventory(143, 1);
+            if (!add_inventory(143, 1)) {
+                pending_ = current_result(SceneStepKind::stay);
+                return pending_;
+            }
             update_book_event_if_ready();
             queue_item_notice(143);
             queue_scene_present();

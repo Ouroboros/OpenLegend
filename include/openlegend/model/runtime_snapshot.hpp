@@ -36,6 +36,10 @@ public:
 
     void set_inventory(std::size_t index, ItemId item_id, std::int64_t count) noexcept;
 
+    NODISCARD bool add_inventory(ItemId item_id, std::int64_t count) noexcept;
+
+    NODISCARD bool change_first_inventory(ItemId item_id, std::int64_t delta) noexcept;
+
     NODISCARD bool operator==(const RuntimeRangerHeader&) const = default;
 
 private:

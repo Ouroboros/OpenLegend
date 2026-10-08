@@ -11,6 +11,7 @@
 #include <limits>
 #include <utility>
 
+#include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/world_projection.hpp"
 
@@ -319,10 +320,13 @@ bool consume_inventory_item_slot(
     if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
         return false;
     }
-    const auto remaining = wrapping_i16(
-        static_cast<std::int32_t>(ranger.header.inventory_count(inventory_slot)) - 1);
-    ranger.header.set_inventory(inventory_slot, model::ItemId{item_id}, remaining);
-    if (remaining > 0) {
+    const auto remaining = model::checked_subtract(
+        ranger.header.inventory_count(inventory_slot), 1);
+    if (!remaining.has_value()) {
+        return false;
+    }
+    ranger.header.set_inventory(inventory_slot, model::ItemId{item_id}, *remaining);
+    if (*remaining > 0) {
         return true;
     }
     for (std::size_t source = inventory_slot + 1U; source < model::kInventoryCount; ++source) {
@@ -1144,18 +1148,24 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
         return result;
     }
     result.recipe_available = true;
+    auto candidate_random = random;
     std::size_t recipe = 0U;
     do {
-        recipe = static_cast<std::size_t>(random.bounded(5));
+        recipe = static_cast<std::size_t>(candidate_random.bounded(5));
     } while (!eligible[recipe]);
     result.recipe_slot = static_cast<std::int16_t>(recipe);
     result.product_item_id = item.word(model::item_word::make_item_begin + recipe);
     result.material_count_removed = item.word(
         model::item_word::make_item_count_begin + recipe);
     if (suppress_message) {
+        random = candidate_random;
         return result;
     }
-    return commit_battle_crafting(result, random);
+    const auto committed = commit_battle_crafting(result, candidate_random);
+    if (committed.has_value()) {
+        random = candidate_random;
+    }
+    return committed;
 }
 
 std::optional<BattleCraftResult> BattleSetup::commit_battle_crafting(
@@ -1194,25 +1204,16 @@ std::optional<BattleCraftResult> BattleSetup::commit_battle_crafting(
             break;
         }
     }
+    auto candidate_header = ranger_.header;
+    auto candidate_random = random;
     if (product_slot) {
-        result.product_count_added = static_cast<std::int16_t>(random.bounded(3) + 1);
-        ranger_.header.set_inventory(
-            *product_slot,
-            model::ItemId{result.product_item_id},
-            wrapping_i16(
-                static_cast<std::int32_t>(ranger_.header.inventory_count(*product_slot)) +
-                result.product_count_added));
+        result.product_count_added = static_cast<std::int16_t>(candidate_random.bounded(3) + 1);
     } else {
         for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
             if (ranger_.header.inventory_item(slot).value == -1) {
                 product_slot = slot;
                 result.product_count_added = 1;
                 result.created_inventory_slot = true;
-                ranger_.header.set_inventory(
-                    slot,
-                    model::ItemId{result.product_item_id},
-                    wrapping_i16(
-                        static_cast<std::int32_t>(ranger_.header.inventory_count(slot)) + 1));
                 break;
             }
         }
@@ -1222,14 +1223,25 @@ std::optional<BattleCraftResult> BattleSetup::commit_battle_crafting(
         }
     }
 
-    const auto remaining_material = wrapping_i16(
-        static_cast<std::int32_t>(ranger_.header.inventory_count(*material_slot)) -
-        result.material_count_removed);
-    ranger_.header.set_inventory(
-        *material_slot,
-        model::ItemId{result.material_item_id},
-        remaining_material);
-    if (remaining_material <= 0) {
+    const auto product_count = model::checked_add(
+        candidate_header.inventory_count(*product_slot), result.product_count_added);
+    if (!product_count.has_value()) {
+        error_ = "battle crafted product quantity overflow";
+        return std::nullopt;
+    }
+    candidate_header.set_inventory(
+        *product_slot, model::ItemId{result.product_item_id}, *product_count);
+    const auto remaining_material = model::checked_subtract(
+        candidate_header.inventory_count(*material_slot), result.material_count_removed);
+    if (!remaining_material.has_value()) {
+        error_ = "battle crafted material quantity overflow";
+        return std::nullopt;
+    }
+    candidate_header.set_inventory(
+        *material_slot, model::ItemId{result.material_item_id}, *remaining_material);
+    ranger_.header = std::move(candidate_header);
+    random = candidate_random;
+    if (*remaining_material <= 0) {
         remove_inventory_slot(*material_slot);
     }
     ranger_.roles[static_cast<std::size_t>(result.role_id)].set_word(

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -3342,7 +3343,7 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
     OL_CHECK(purchase_snapshot.ranger.header.inventory_item(0U).value == 174);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_count(0U) == 3);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_item(1U).value == 42);
-    OL_CHECK(purchase_snapshot.ranger.header.inventory_count(1U) == -32768);
+    OL_CHECK(purchase_snapshot.ranger.header.inventory_count(1U) == 32768);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_item(
                  openlegend::model::kInventoryCount - 1U).value == 42);
     OL_CHECK(purchase_snapshot.ranger.header.inventory_count(
@@ -3351,6 +3352,40 @@ void check_event_shop_helpers(const std::filesystem::path& root) {
                  3U, 15U, openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
     OL_CHECK(purchase_snapshot.event_value(
                  3U, 16U, openlegend::model::SceneEventField::event_3).value_or(-1) == 939);
+
+    for (const auto quantity : std::array<std::int64_t, 2>{
+             5'000'000'000, std::numeric_limits<std::int64_t>::max()}) {
+        auto wide_snapshot = load_baseline(root);
+        auto& wide_shop = wide_snapshot.ranger.shops[1];
+        for (std::size_t slot = 0U; slot < openlegend::model::shop_word::item_count; ++slot) {
+            wide_shop.set_word(openlegend::model::shop_word::total_begin + slot, 0);
+        }
+        wide_shop.set_word(openlegend::model::shop_word::item_id_begin, 42);
+        wide_shop.set_word(openlegend::model::shop_word::total_begin, 1);
+        wide_shop.set_word(openlegend::model::shop_word::price_begin, 7);
+        for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
+            wide_snapshot.ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
+        }
+        wide_snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{174}, 6'000'000'000);
+        wide_snapshot.ranger.header.set_inventory(1U, openlegend::model::ItemId{42}, quantity);
+        openlegend::random::LegacyRandom wide_random{1U};
+        openlegend::scene::SceneSession wide_session{
+            data_root, wide_snapshot, wide_random, 3};
+        OL_CHECK(open_shop(wide_session).kind == SceneStepKind::shop);
+        const auto before = wide_snapshot;
+        const auto result = wide_session.resume(SceneResponse::acknowledge, 0x0D);
+        if (quantity == std::numeric_limits<std::int64_t>::max()) {
+            OL_CHECK(result.kind == SceneStepKind::stay);
+            OL_CHECK(!wide_session.valid());
+            OL_CHECK(wide_session.error() == "shop inventory quantity overflow");
+            OL_CHECK(wide_snapshot == before);
+        } else {
+            OL_CHECK(result.kind == SceneStepKind::present);
+            OL_CHECK(wide_snapshot.ranger.header.inventory_count(0U) == 5'999'999'993);
+            OL_CHECK(wide_snapshot.ranger.header.inventory_count(1U) == 5'000'000'001);
+            OL_CHECK(wide_shop.word(openlegend::model::shop_word::total_begin) == 0);
+        }
+    }
 
     auto split_money_snapshot = load_baseline(root);
     auto& split_money_shop = split_money_snapshot.ranger.shops[1];
@@ -3790,10 +3825,10 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     openlegend::scene::SceneSession wrapping_change_session{
         synthetic_data_root, wrapping_change_snapshot, wrapping_change_random, 70};
     OL_CHECK(wrapping_change_session.begin_event(34, 0, 0, 0).kind == SceneStepKind::stay);
-    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_item(0U).value == 88);
-    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_count(0U) == 4);
-    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_item(1U).value == -1);
-    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_count(1U) == 0);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_item(0U).value == 109);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_count(0U) == 32768);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_item(1U).value == 88);
+    OL_CHECK(wrapping_change_snapshot.ranger.header.inventory_count(1U) == 4);
 
     auto negative_wrap_snapshot = load_baseline(root);
     clear_inventory(negative_wrap_snapshot);
@@ -3806,8 +3841,9 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
         synthetic_data_root, negative_wrap_snapshot, negative_wrap_random, 70};
     OL_CHECK(negative_wrap_session.begin_event(35, 0, 0, 0).kind == SceneStepKind::stay);
     OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_item(0U).value == 109);
-    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_count(0U) == 32767);
-    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_count(1U) == 7);
+    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_count(0U) == 7);
+    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_item(1U).value == -1);
+    OL_CHECK(negative_wrap_snapshot.ranger.header.inventory_count(1U) == 0);
 
     auto tail_change_snapshot = load_baseline(root);
     clear_inventory(tail_change_snapshot);
@@ -3875,8 +3911,30 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     openlegend::scene::SceneSession wrapping_session{
         data_root, wrapping_snapshot, wrapping_random, 70};
     OL_CHECK(wrapping_session.begin_event(149, 0, 0, 0).kind == SceneStepKind::notice);
-    OL_CHECK(wrapping_snapshot.ranger.header.inventory_count(0U) == -32768);
+    OL_CHECK(wrapping_snapshot.ranger.header.inventory_count(0U) == 32768);
     OL_CHECK(wrapping_snapshot.ranger.header.inventory_count(1U) == -32767);
+
+    for (const auto count : std::array<std::int64_t, 2>{
+             5'000'000'000, std::numeric_limits<std::int64_t>::max()}) {
+        auto wide_snapshot = load_baseline(root);
+        clear_inventory(wide_snapshot);
+        wide_snapshot.ranger.header.set_inventory(0U, openlegend::model::ItemId{109}, count);
+        openlegend::random::LegacyRandom wide_random{1U};
+        openlegend::scene::SceneSession wide_session{
+            data_root, wide_snapshot, wide_random, 70};
+        const auto before = wide_snapshot;
+        const auto result = wide_session.begin_event(149, 0, 0, 0);
+        if (count == std::numeric_limits<std::int64_t>::max()) {
+            OL_CHECK(result.kind == SceneStepKind::stay);
+            OL_CHECK(!wide_session.valid());
+            OL_CHECK(wide_session.error() == "inventory quantity overflow");
+            OL_CHECK(wide_snapshot == before);
+        } else {
+            OL_CHECK(result.kind == SceneStepKind::notice);
+            OL_CHECK(wide_snapshot.ranger.header.inventory_count(0U) == 5'000'000'001);
+        }
+        OL_CHECK(wide_random.state() == 1U);
+    }
 
     auto residual_snapshot = load_baseline(root);
     for (std::size_t index = 0U; index < 5U; ++index) {
