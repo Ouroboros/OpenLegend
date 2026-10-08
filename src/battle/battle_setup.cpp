@@ -41,10 +41,6 @@ constexpr std::array<std::int16_t, 53> kBattleEffectFrameCounts{
     10, 14, 17, 9,  13, 17, 17, 17, 18, 19, 19, 15, 13, 10, 10, 15, 21, 16,
     9,  11, 8,  9,  8,  8,  7,  8,  8,  9,  12, 19, 11, 14, 12, 17, 8,  11,
     9,  13, 10, 19, 14, 17, 19, 14, 21, 16, 13, 18, 14, 17, 17, 16, 7};
-constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
-    0,     50,    150,   300,   500,   750,   1050,  1400,  1800,  2250,
-    2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
-    18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000};
 struct BattleAiSpecialAttackBonus {
     std::int16_t weapon_id{};
     std::int16_t magic_id{};
@@ -830,17 +826,19 @@ std::optional<BattleLevelUpResult> BattleSetup::apply_battle_level_up(
         .old_level = role.word(model::role_word::level),
         .new_level = role.word(model::role_word::level),
     };
-    if (result.old_level < 0 || result.old_level >= 30) {
+    const auto thresholds = data_.experience_thresholds();
+    if (result.old_level < 0 || result.old_level >= static_cast<std::int64_t>(thresholds.size())) {
         return result;
     }
 
     const auto experience = role.unsigned_word(model::role_word::experience);
-    if (experience < kLevelExperienceThresholds[static_cast<std::size_t>(result.old_level)]) {
+    if (experience < thresholds[static_cast<std::size_t>(result.old_level)]) {
         return result;
     }
     auto new_level = result.old_level;
-    for (std::int16_t level = result.old_level; level < 30; ++level) {
-        if (experience >= kLevelExperienceThresholds[static_cast<std::size_t>(level)]) {
+    for (std::int64_t level = result.old_level;
+         level < static_cast<std::int64_t>(thresholds.size()); ++level) {
+        if (experience >= thresholds[static_cast<std::size_t>(level)]) {
             new_level = static_cast<std::int16_t>(level + 1);
         }
     }

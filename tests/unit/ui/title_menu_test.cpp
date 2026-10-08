@@ -310,8 +310,8 @@ NODISCARD bool prepare_battle_runtime_fixture(
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
     }
-    constexpr std::array<std::string_view, 9> files{
-        "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX000", "WMP000",
+    constexpr std::array<std::string_view, 10> files{
+        "Z.DAT", "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX000", "WMP000",
         "WDX002", "WMP002", "EFT.IDX", "EFT.GRP"};
     std::error_code error;
     for (const auto file : files) {

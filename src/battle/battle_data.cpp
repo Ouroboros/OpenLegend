@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/model/experience.hpp"
 #include "openlegend/resource/packed_archive.hpp"
 
 namespace openlegend::battle {
@@ -52,6 +53,24 @@ BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t b
     }
     for (std::size_t word = 0U; word < battlefield_.size(); ++word) {
         battlefield_[word] = compat::read_i16le(field, word * 2U);
+    }
+    constexpr std::size_t experience_table_offset = 0x4DF8EU;
+    const auto executable = data_root.read("Z.DAT");
+    if (!executable) {
+        error_ = executable.error;
+        return;
+    }
+    if (executable.bytes.size() < experience_table_offset + experience_thresholds_.size() * 2U) {
+        error_ = "Z.DAT is shorter than the original experience table";
+        return;
+    }
+    for (std::size_t index = 0U; index < experience_thresholds_.size(); ++index) {
+        experience_thresholds_[index] = compat::read_u16le(
+            executable.bytes, experience_table_offset + index * 2U);
+    }
+    if (!model::experience_thresholds_valid(experience_thresholds_)) {
+        error_ = "Z.DAT experience thresholds are invalid";
+        return;
     }
     occupancy_.fill(-1);
 }

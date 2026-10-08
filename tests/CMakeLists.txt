@@ -46,6 +46,11 @@ target_include_directories(openlegend_checked_arithmetic_tests PRIVATE ${CMAKE_C
 target_link_libraries(openlegend_checked_arithmetic_tests PRIVATE openlegend_model)
 add_test(NAME openlegend.checked_arithmetic COMMAND openlegend_checked_arithmetic_tests)
 
+add_executable(openlegend_experience_tests unit/model/experience_test.cpp)
+target_include_directories(openlegend_experience_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_experience_tests PRIVATE openlegend_battle)
+add_test(NAME openlegend.experience COMMAND openlegend_experience_tests)
+
 add_executable(openlegend_role_state_tests unit/model/role_state_test.cpp)
 target_include_directories(openlegend_role_state_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_role_state_tests PRIVATE openlegend_model openlegend_persistence)
@@ -62,7 +67,7 @@ target_link_libraries(openlegend_ngplus_configuration_tests PRIVATE openlegend_a
 add_test(NAME openlegend.ngplus_configuration COMMAND openlegend_ngplus_configuration_tests)
 
 set_tests_properties(
-    openlegend.role_state openlegend.runtime_snapshot PROPERTIES
+    openlegend.role_state openlegend.runtime_snapshot openlegend.experience PROPERTIES
     ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
 

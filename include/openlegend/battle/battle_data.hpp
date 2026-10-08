@@ -17,6 +17,7 @@ inline constexpr std::size_t kBattlefieldWords = 8'192U;
 inline constexpr std::size_t kBattlefieldBytes = kBattlefieldWords * 2U;
 inline constexpr std::size_t kBattleExtent = 64U;
 inline constexpr std::size_t kBattleOccupancyCells = kBattleExtent * kBattleExtent;
+inline constexpr std::size_t kOriginalLevelCount = 30U;
 
 class BattleData {
 public:
@@ -31,6 +32,10 @@ public:
     NODISCARD std::int16_t battlefield_id() const noexcept { return definition_[6U]; }
 
     NODISCARD std::int16_t music_id() const noexcept { return definition_[8U]; }
+
+    NODISCARD std::span<const std::uint16_t, kOriginalLevelCount> experience_thresholds() const noexcept {
+        return experience_thresholds_;
+    }
 
     NODISCARD std::span<const std::int16_t, kBattleDefinitionWords> definition() const noexcept {
         return definition_;
@@ -49,6 +54,7 @@ public:
     }
 
 private:
+    std::array<std::uint16_t, kOriginalLevelCount> experience_thresholds_{};
     std::array<std::int16_t, kBattleDefinitionWords> definition_{};
     std::array<std::int16_t, kBattlefieldWords> battlefield_{};
     std::array<std::int16_t, kBattleOccupancyCells> occupancy_{};
