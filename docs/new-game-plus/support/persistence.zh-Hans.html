@@ -67,7 +67,7 @@ enabled = false  # 是否启用NG+存档格式与加载优先级</pre>
       <li>
         <p>保存格式不决定运行时属性宽度：角色数值属性及伤害、医疗、内伤、中毒、解毒等战斗结算数值在内存中统一为signed 64位。</p>
         <p>向Legacy D／R／S写出时，须在任何16位编码之前逐字段检查原版对应的有符号／无符号16位可表示范围及字段合法域；关闭NG+的Legacy模式仍允许原版普通物品把抗毒合法加到100以上。任一值不能无损表示即拒绝整次保存，保留原存档，不截断、夹值或回绕。</p>
-        <p>写入新TOML时，这些逻辑整数直接使用signed 64位，不因Legacy格式另加16位限制；内伤与中毒仍按各自本周CFG上限校验，其他永久能力（包括<a href="../fields/anti-poison.zh-Hans.html#anti-poison-cap">抗毒</a>）不按周目上限拒绝或夹值。固定枚举与字段不变量仍须校验；非法状态拒绝保存或读回。</p>
+        <p>写入新TOML时，这些逻辑整数直接使用signed 64位，不因Legacy格式另加16位限制；内伤按存档周目与当前CFG算出的<a href="../fields/hurt-medicine.zh-Hans.html#hurt-field-definition"><code>HurtMax(n, CFG)</code></a>校验，中毒量按固定<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-field-definition">0～99</a>校验，其他永久能力（包括<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-cap">抗毒</a>）不按周目上限拒绝或夹值。固定枚举与字段不变量仍须校验；非法状态拒绝保存或读回。</p>
         <p>只对实际写入存档的字段做编码检查，战斗临时伤害量不会因此变成Legacy存档字段。详细边界见第3.1.4节。</p>
       </li>
       <li>开启NG+后加载Legacy存档时，先按Legacy格式完整解码，再无损扩宽合法抗毒等数值并纳入NG+权威状态，不按目标周目上限夹值，也不回写原Legacy文件。其后执行普通保存时写入新的TOML，此后同槽位读档由TOML优先。</li>
@@ -319,7 +319,7 @@ d_compressed_base64                = string                               # 完�
         <p>不能错误地用有符号上界32767拒绝。任一值越界时整次保存失败，旧文件保持原状；不得为适配旧格式而降低运行时属性、截断、夹值或回绕。</p>
       </li>
       <li>
-        <p><strong>新TOML输出与读回：</strong>直接写出这些权威逻辑整数的signed 64位值，不强加Legacy的16位上界；写前检查signed 64位范围、内伤／中毒的本周CFG上限及各字段不变量，不按其他数值的周目比较节点限幅；
+        <p><strong>新TOML输出与读回：</strong>直接写出这些权威逻辑整数的signed 64位值，不强加Legacy的16位上界；写前检查signed 64位范围、内伤的<code>HurtMax(n, CFG)</code>、中毒量的0～99及各字段不变量，不按其他数值的周目比较节点限幅；
           读档时先解析全部整数token为signed 64位并通过同样的游戏规则校验后再提交临时状态。</p>
         <p>TOML整数能够承载64位不等于可以跳过游戏数值合法域验证。每个入选角色完整保存实际逻辑整数，不转为Legacy<code>word</code>；战斗中未持久化的临时数值不凭空写入存档。</p>
       </li>
@@ -434,7 +434,7 @@ Mref(Nmax)=9990，CountRef=9988，PaidTierRef=9989
       <li>默认NG999关联武功在对照档的费用为20,976,900，无关联武功为55,938,400；不是最大单档费用。</li>
       <li>默认NG999最大整场人物战斗经验为4,992,500；对应单场秘笈修炼经验为3,994,000。</li>
       <li>人物费用、奖励，以及伤害、治疗、内伤、中毒与解毒结算全链路均按第3.1.4节使用signed 64位权威值和经检查的中间量；只有写出Legacy存档时才按字段原版16位编码校验，不把Legacy字宽带回运行期。</li>
-      <li>换周目不自动增加任何已继承的人物经验、武功熟练度、秘笈成功次数或永久属性；内伤、中毒换周目清0但保留各自周目上限。</li>
+      <li>换周目不自动增加任何已继承的人物经验、武功熟练度、秘笈成功次数或永久属性；内伤、中毒换周目清0；内伤保留周目上限<code>HurtMax(n, CFG)</code>，中毒量正常范围固定为0～99。</li>
     </ul>
     <div class="notice">
       <p><strong>实现状态：</strong>本文是数值与结算规格，当前尚未修改游戏代码、CFG、资产或存档实现。</p>

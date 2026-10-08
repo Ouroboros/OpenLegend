@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>中毒、用毒、抗毒与解毒 · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1320px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3,h4,h5 { line-height:1.3; }
+    .page-layout { display:grid; grid-template-columns:160px minmax(0,1fr); gap:32px; }
+    .page-toc { position:sticky; top:24px; align-self:start; display:flex; flex-direction:column; gap:8px; }
+    .page-layout main { min-width:0; }
+    @media (max-width:720px) {
+      .page-layout { display:block; }
+      .page-toc { position:static; flex-direction:row; flex-wrap:wrap; margin-bottom:24px; }
+    }
+    section { margin:1.5rem 0 2rem; }
+    main > section {
+      margin:3.5rem 0 4rem;
+      padding-top:1.75rem;
+      border-top:6px solid #2f6feb;
+      scroll-margin-top:1rem;
+    }
+    main > section > h2 {
+      margin:0 0 1.5rem;
+      padding:.65rem .9rem;
+      background:#2f6feb22;
+      font-size:1.65rem;
+    }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    td p { margin:.25em 0; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice,.plain { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    .symbol-key { margin:1rem 0; padding:10px 14px; border-left:4px solid #2f6feb; background:#2f6feb22; }
+    .symbol-key > div { display:block; }
+    .symbol-key > div + div { margin-top:.25em; }
+    .symbol-key code { font-weight:700; background:#2f6feb22; padding:0 .2em; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header>
+  <p><a href="../../new-game-plus-design.zh-Hans.html">字段索引</a></p>
+  <h1>中毒、用毒、抗毒与解毒</h1>
+</header>
+<div class="page-layout">
+<nav class="page-toc" aria-label="本页目录">
+  <a href="#poison">中毒</a>
+  <a href="#use-poison">用毒</a>
+  <a href="#anti-poison">抗毒</a>
+  <a href="#detoxification">解毒</a>
+</nav>
+<main>
+<div class="symbol-key" role="group" aria-label="本页取整记号">
+  <div><code>trunc(x)</code>：向零截断；输入非负时等同向下取整，负的小数与向下取整不同。</div>
+</div>
+<section id="poison">
+<h2>中毒</h2>
+<section id="poison-field-definition">
+  <h3>字段与范围</h3>
+  <p><code>poison</code>为当前中毒量，表示毒入几成；换周目清0，320名原版角色初值均为0。</p>
+  <p>从NG1起各周目的正常范围固定为0～99；取消<code>poison_cap_step</code>，中毒上限不随周目增加。原版武功附毒可恰好写出100，这是机器事实；NG+各施毒路径以“最深”封顶，最深不超过99，不再写出100。</p>
+  <p>施毒规则（毒力、最深、理论每次、溢出当场伤血）及原版数据算例统一见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>；本章只写毒发与解毒。本章是设计规则，运行时代码尚未实现。</p>
+</section>
+<section id="poison-detox-rules">
+  <h3>回合毒伤</h3>
+  <pre>每轮毒伤 = max(trunc(中毒量 / 10), trunc(最大生命 × 中毒量 / 1000))</pre>
+  <p>符合回合结算资格时结算；资格条件与“先内伤后中毒”的顺序沿用原版。最大生命不超过100时与原版每满10点扣1点相同；超过100后按比例计算，满毒每轮约扣10%最大生命。例如中毒99时，最大生命32的主角扣9，最大生命716的欧阳锋扣70。扣血按最大生命计算，与剩余生命无关；抗毒只参与施毒，不在扣血时再次抵减。</p>
+  <p>原版武功附毒“恰好100保留”的边界由新施毒规则自然消除。毒发后生命为负时是否仍改为1（即能否毒死目标）尚未确定，见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>第7节。</p>
+  <p>NG1玩家投掷带毒暗器另按已定技巧项改号；
+    <a href="#poison-mechanics">主动用毒</a>、
+    <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>、
+    <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品／投掷</a>的原版机器依据见对应字段页。
+    主动用毒距离按NG1用毒能力基值100封顶；AI投掷暗器是否改用新公式尚未确定。</p>
+  <details>
+    <summary>原版回合扣血顺序、HP边界与中毒100例外</summary>
+    <pre>进入状态扣血分支：hurt &gt; 0
+  或 (poison &gt; 0 且 hp &gt; 0 且 physical_power &gt; 0 且角色非隐藏)
+HurtHp = trunc(hurt / 20)
+PoisonHp = trunc(poison / 10)
+HP1 = signed16(hp − HurtHp)
+HP2 = signed16(HP1 − PoisonHp)
+最终HP = (HP2 &lt; 0) ? 1 : HP2  # 恰好0仍为0</pre>
+    <p>有正内伤即进入；仅有正中毒时还需HP、体力大于0且角色非隐藏。原版先扣内伤再扣中毒，每次按signed16写回；最终HP恰好0保留0，负数改为1。这些原版HP边界不自动确定NG2+写回规则。</p>
+    <table>
+      <thead><tr><th>原有HP</th><th>内伤／中毒</th><th>内伤／中毒扣HP</th><th>原版最终HP</th></tr></thead>
+      <tbody>
+        <tr><td>100</td><td>0／9</td><td>0／0</td><td>100</td></tr>
+        <tr><td>100</td><td>0／10</td><td>0／1</td><td>99</td></tr>
+        <tr><td>100</td><td>40／50</td><td>2／5</td><td>93</td></tr>
+        <tr><td>100</td><td>0／99</td><td>0／9</td><td>91</td></tr>
+        <tr><td>100</td><td>0／100</td><td>0／10</td><td>90</td></tr>
+        <tr><td>10</td><td>0／100</td><td>0／10</td><td>0（恰好0保留）</td></tr>
+        <tr><td>9</td><td>0／100</td><td>0／10</td><td>1（负数改为1）</td></tr>
+      </tbody>
+    </table>
+    <p>主动用毒及多数物品／暗器路径在原版封顶99；原版武功附毒和解毒路径仅在结果<strong>大于100</strong>时写99，恰好100保留。因此中毒99增加1可到100、每轮扣10；增加2得到101却写回99、每轮只扣9。这是原版事实；不据此推定作者原意或其他NG+施毒路径。</p>
+    <p>机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">回合状态扣血</a>、
+      <a href="../../../research/evidence/functions/Z_DAT/0x39188.md">武功附毒的100边界</a>。</p>
+  </details>
+  <p>角色解毒的公式与算例见<a href="#detoxification-rules">下方解毒规则</a>。</p>
+</section>
+</section>
+<section id="use-poison">
+<h2>用毒</h2>
+<section id="use-poison-field-definition">
+<h3>字段定义</h3>
+<p><code>use_poison</code>：用毒能力。取值来源：通关TOML中的角色实际值；未入队角色读取当前RANGER基线。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>use_poison</code></td>
+          <td>用毒能力</td>
+          <td>直接继承实际值，不按周目夹值</td>
+          <td>用毒能力不设逐周目硬上限；中毒量正常范围固定为0～99。</td>
+        </tr></tbody></table>
+<h3 id="use-poison-cap">用毒能力与固定作用距离</h3>
+<p>原版用毒能力正常上限为100；旧方案的<code>100 + (n − 1) × use_poison_cap_step</code>（默认步长100）不再作为NG+角色用毒能力的周目上限，也不用于继承或增长夹值。</p>
+<p>曾入队角色换周目时完整继承自己的实际<code>use_poison</code>；未入队角色读取当前RANGER基线。用毒实际能力进入施毒量公式；作用距离仍沿用独立的原版100点封顶，不将距离封顶反写到角色用毒值。目标的中毒量以本次施毒的“最深”封顶，最深不超过99。</p>
+<p>现有运行时代码中升级、秘笈修炼仍将用毒值封顶100；本页是尚未实现的NG+设计，不把代码现状当成新规则。</p>
+</section>
+<section id="poison-mechanics">
+<h3>主动用毒</h3>
+<p>战斗菜单要求<code>physical_power&gt;10</code>且<code>use_poison≥20</code>；只能对敌方施毒，行动消耗2点体力。<code>U_NG1=100</code>仅作原版距离分档的固定基值；<code>U</code>取实际用毒与100的较小值，仅用于计算距离，不改写角色属性。</p>
+<pre>U = min(actor.use_poison, U_NG1)
+PoisonRange = trunc(U ÷ 15) + 1</pre>
+<pre>毒力 = actor.use_poison
+毒力 ≤ target.anti_poison：不中毒
+最深     = trunc(99 × (毒力 − target.anti_poison) ÷ 毒力)
+理论每次 = trunc((毒力 − target.anti_poison) ÷ 4)
+实际毒入 = max(0, min(理论每次, 最深 − target.poison))
+target.poison += 实际毒入
+溢出 = 理论每次 − 实际毒入，按武功带毒字段页第3节当场伤血</pre>
+<p>理论每次沿用原版“差值÷4”；最深与溢出伤血的完整规则及原版角色算例见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功带毒字段页</a>。例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，最深49、理论每次10，前4次各新增10，第5次新增9并溢出1。</p>
+<h3 id="ai-poison-target">AI选择主动用毒目标</h3>
+<p>原版两种选目标路径在目标中毒达到固定95时跳过，并要求目标实际抗毒小于施术者实际用毒。从NG1起，两种路径都只比较实际抗毒和实际用毒，移除目标中毒量的选目标跳过条件。</p>
+<pre>选目标的用毒条件：目标实际抗毒 &lt; 施术者实际用毒
+不按目标当前中毒量跳过</pre>
+<p>即使目标中毒已达本次施毒的最深，AI选目标也不因此跳过；随后实际毒入为0，理论每次全部计为溢出并当场伤血。原版固定95仅作历史机器事实。现有运行时代码尚未实现。</p>
+</section>
+</section>
+<section id="anti-poison">
+<h2>抗毒</h2>
+<section id="anti-poison-field-definition">
+<h3>字段定义</h3>
+<p><code>anti_poison</code>：抗毒能力。我方曾入队角色取通关TOML实际值，未入队角色取当前RANGER基线；敌方按当前GAME DATA中的角色抗毒基线与原有周目增长系数换算，不继承我方数值。</p>
+<table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
+<tbody><tr>
+          <td><code>anti_poison</code></td>
+          <td>抗毒能力</td>
+          <td>我方直接继承实际值，不按周目夹值；敌方按基线比例换算</td>
+          <td>抗毒增长、物品写入与继承均不设逐周目上限；敌方仍按既有周目系数增长。</td>
+        </tr></tbody></table>
+<h3 id="anti-poison-cap">无周目抗毒硬上限；保留敌方增长系数</h3>
+<p>周目序号<code>n</code>从NG1的1开始；旧方案的<code>anti_poison_cap_step</code>提供默认值100。本次取消该字段的逐周目上限，但敌方仍需按既有公式随周目增长，因此原式仅作为敌方增长系数，绝不作为我方或敌方抗毒夹值。</p>
+<pre>EnemyAntiScale(n) = 100 + (n − 1) × anti_poison_cap_step</pre>
+<p>按默认步长，NG1／NG2／NG3的增长系数分别为100／200／300（对应100%／200%／300%）；我方实际抗毒不因周目增长而自动增加。曾入队角色直接继承实际值；未入队角色读取当前RANGER基线。NG+的抗毒增加不按该系数封顶。</p>
+<h3 id="anti-poison-enemy">敌方抗毒按既有周目系数同比例增长</h3>
+<p>每次生成敌方时，以当前GAME DATA中该角色的NG1抗毒值为基准计算，不继承上一周目的敌方实际值，也不套用我方继承规则。“向上取整”指有小数部分时取不小于结果的最小整数。</p>
+<pre>敌方实际抗毒 = ceil(敌方NG1抗毒值 × EnemyAntiScale(n) ÷ 100)
+不按 EnemyAntiScale(n) 对敌方实际抗毒夹值</pre>
+<p>NG1系数100得到原有基准值；例如敌方NG1抗毒值33、当周系数150时，49.5向上取整为50。敌方其他数值仍按既有周目增长规则；整数取整可能带来不足1点的误差。</p>
+<p>当前RANGER.GRP资产中的秘笈没有抗毒加值。原版练功结算会把抗毒夹到0～100；NG+练功仅应用物品实际抗毒加值，不按周目夹值，当前原版秘笈因此不会凭空提高抗毒。<a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">原版练功汇编证据</a>。</p>
+<table><thead><tr><th>物品ID</th><th>名称</th><th>抗毒加值</th></tr></thead><tbody>
+<tr><td>36</td><td>通犀地龍丸</td><td>+100</td></tr>
+<tr><td>38</td><td>莽牯朱蛤</td><td>+100</td></tr>
+</tbody></table>
+<p>原版普通物品按16位加法写入抗毒，不以100封顶；NG+物品保留实际加值，也不按周目夹值，但运行期使用经检查的64位数，不允许原版16位回绕。<a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">原版物品汇编证据</a>。</p>
+<h3 id="anti-poison-threshold">抗毒使用路径总表（NG1起各周目）</h3>
+<p>下表直接使用字段含义。“向零取整”指舍去小数部分；敌方基线换算使用周目增长系数，施毒路径只比较实际能力与毒力，不再使用抗毒上限的90%或100%门槛。各正毒路径一律按<a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功带毒字段页</a>第2节计算最深与实际毒入：最深 ＝ 向零取整(99 × (毒力 − 目标抗毒) ÷ 毒力)，毒力不大于抗毒时不中毒；<code>poison</code>正常范围固定为0～99。</p>
+<table><thead><tr><th>路径</th><th>抗毒如何参与</th><th>数值／百分比</th></tr></thead><tbody>
+<tr><td>我方换周目</td><td>曾入队角色完整继承实际抗毒，未入队角色取RANGER基线；不按周目增长系数补值或夹值。</td><td>实际数值</td></tr>
+<tr><td>敌方生成</td><td>敌方NG1抗毒值 × EnemyAntiScale(n) ÷ 100，向上取整，不按该系数夹值；不继承上一周目敌方值。</td><td>基线百分比增长</td></tr>
+<tr><td>NG1主角生成</td><td>原版随机属性或特殊初始赋值写入抗毒；NG+不按周目夹值。</td><td>实际数值</td></tr>
+<tr><td>普通物品增加抗毒</td><td>原有抗毒加物品抗毒加值，不按周目夹值；上方物品表列出原版加值。</td><td>数值加法</td></tr>
+<tr><td>练功结算</td><td>抗毒加秘笈对应加值，不按周目夹值；当前原版秘笈的抗毒加值均为0。</td><td>数值加法</td></tr>
+<tr><td>升级</td><td>不读写抗毒。</td><td>不参与</td></tr>
+<tr><td><a href="#poison-mechanics">主动用毒</a></td><td>毒力为施术者实际用毒；理论每次为（毒力−目标实际抗毒）÷4向零取整，实际毒入以最深封顶，超出部分当场伤血。</td><td>实际数值差</td></tr>
+<tr><td><a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功附毒</a></td><td>武功毒力＝角色武功带毒＋武功带毒字段×武功等级，须大于目标实际抗毒；理论每次为差值除以15后向零取整，实际毒入以最深封顶，超出部分当场伤血。</td><td>实际毒力与抗毒比较</td></tr>
+<tr><td><a href="add-poison.zh-Hans.html#add-poison-ng-threshold">普通物品正毒</a></td><td>毒力为（施术者暗器技巧＋物品附毒值）÷2向零取整，再减目标实际抗毒；差值不大于0时不新增中毒，否则理论每次为差值÷2，按暗器规则以最深封顶。</td><td>实际毒力与抗毒比较</td></tr>
+<tr><td><a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">玩家投掷正毒</a></td><td>从NG1起先将（物品附毒值＋施术者暗器技巧）÷2向零取整，再减目标实际抗毒；差值不大于0时不新增中毒，否则理论每次为差值÷2，以最深封顶。原版机器的暗器技巧项是减号，不是本设计。</td><td>实际毒力与抗毒比较</td></tr>
+<tr><td><a href="#ai-poison-target">AI选择主动用毒目标</a></td><td>两种路径只要求目标实际抗毒小于施术者实际用毒，不按目标当前中毒量跳过。目标已达最深时，理论每次全部计为溢出。</td><td>实际抗毒与用毒比较</td></tr>
+<tr><td>普通物品负毒及零毒</td><td>负毒分支不读取抗毒；零毒跳过普通物品的中毒结算。</td><td>不读取抗毒</td></tr>
+<tr><td>玩家投掷非正毒</td><td>物品附毒值小于或等于0的分支不读取抗毒。</td><td>不读取抗毒</td></tr>
+<tr><td>AI投掷暗器</td><td>原版正、负及零毒分支均不读取目标抗毒；是否改用暗器规则尚未确定。</td><td>不读取抗毒</td></tr>
+<tr><td>回合中毒扣血</td><td>只按目标当前中毒量和最大生命结算，不再次用抗毒抵减。</td><td>不读取抗毒</td></tr>
+<tr><td>显示与存档</td><td>显示实际抗毒；新TOML校验数值可表示性而不按周目抗毒系数拒绝或夹值，旧Legacy另按自身16位范围处理。敌方仍从GAME DATA基线按周目增长。</td><td>实际数值</td></tr>
+</tbody></table>
+<p>原版固定90、100门槛只作机器事实对照，不再套用到NG+。NG+施毒仅按各路径的实际数值计算，抗毒决定毒性被抵消的比例；抗毒达到或超过毒力时不中毒。现有运行时代码尚未实现这些扩展。</p>
+</section>
+</section>
+<section id="detoxification">
+<h2>解毒</h2>
+  <section id="detoxification-field-definition">
+    <details>
+      <summary>解毒能力字段来源与原版范围</summary>
+      <p><code>detoxification</code>为永久能力：通关TOML完整继承、未入队角色读当前RANGER基线；能力本身不按周目上限夹值，中毒量的正常范围固定为0～99。</p>
+      <p>原版正常域0～100，当前资产实值0～84，最高为角色2程灵素的84。</p>
+    </details>
+  </section>
+  <section id="detoxification-rules">
+    <h4>解毒公式（NG1起）</h4>
+    <pre>解毒能力 = max(actor.detoxification, 0)
+理论解毒量 = clamp(trunc(解毒能力 / 3) + 随机数1 − 随机数2, 0, 99)   # 两个随机数依次为RNG.bounded(10)，各0～9
+实际解毒量 = min(理论解毒量, 目标中毒量)
+目标中毒量 = 目标中毒量 − 实际解毒量</pre>
+    <p>从NG1起取消原版准入门槛（中毒量超过“解毒能力＋max(20, trunc(解毒能力 × 20 / 100))”时解毒量为0）；能力低时只是解得慢。两次随机取值的顺序不变，实际解毒量不超过目标现有中毒，不套用医疗的HP缺口或治伤保底。中毒量最多99，解毒能力约297起可保证一次清满毒，此后能力增长不再提高效果。药品解毒沿用原版普通物品负毒分支，与使用者无关，见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>。</p>
+    <p>战斗菜单要求体力&gt;50、解毒能力≥20且仅对友方生效，完成行动另耗2点体力；NG1菜单与战斗共用原版解毒核心。原版距离＝<code>trunc(actor.detoxification / 15) + 1</code>；NG2+解毒距离是否增长仍未定；主动用毒各周目的目标距离均按NG1用毒能力上限封顶。</p>
+    <p>列说明：<strong>原版门槛／原版结果</strong>为原版准入门槛及当次是否可解；<strong>理论／实解／剩余</strong>为本规则下的理论解毒量、实际解毒量和剩余中毒量。中毒94为欧阳锋蛤蟆功10级对主角的最深。</p>
+    <table>
+      <thead><tr><th>解毒能力／目标中毒量</th><th>随机数1／随机数2</th><th>原版门槛／原版结果</th><th>理论／实解／剩余</th></tr></thead>
+      <tbody>
+        <tr><td>20／1</td><td>9／0</td><td>40／可解</td><td>15／1／0</td></tr>
+        <tr><td>20／5</td><td>0／9</td><td>40／可解</td><td>0／0／5</td></tr>
+        <tr><td>20／40</td><td>4／4</td><td>40／可解（等于门槛）</td><td>6／6／34</td></tr>
+        <tr><td>20／41</td><td>4／4</td><td>40／失败</td><td>6／6／35</td></tr>
+        <tr><td>22（主角）／94</td><td>4／4</td><td>42／失败</td><td>7／7／87</td></tr>
+        <tr><td>84（程灵素）／94</td><td>4／4</td><td>104／可解</td><td>28／28／66</td></tr>
+        <tr><td>300／99</td><td>4／4</td><td>360／可解</td><td>99／99／0</td></tr>
+      </tbody>
+    </table>
+    <p>原版机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x39DA3.md">角色解毒函数</a>。</p>
+  </section>
+</section>
+<p>通用合同：
+<a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
+<a href="../support/inventory.zh-Hans.html">库存规则</a>、
+<a href="../support/persistence.zh-Hans.html">存档约束</a>、
+<a href="../support/legacy-audit.zh-Hans.html">原版审计与未决项</a>。</p>
+</main>
+</div>
+</body>
+</html>

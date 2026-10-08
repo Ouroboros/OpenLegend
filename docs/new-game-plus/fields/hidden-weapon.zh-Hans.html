@@ -44,17 +44,17 @@
         <p>减目标抗毒的减号及其他步骤不变。原版汇编事实见
 <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品毒值字段页</a>；
 不能把本节新规则反称为原版行为或笔误修复。</p>
-        <p>普通物品的暗器技巧项不随玩家投掷改号；两条正毒路径都只比较实际毒力与目标实际抗毒，不再读取<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒周目上限</a>。AI投掷和玩家投掷<code>V≤0</code>的分支不改。</p>
+        <p>普通物品的暗器技巧项不随玩家投掷改号；两条正毒路径都只比较实际毒力与目标实际抗毒，不再读取<a href="use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-cap">抗毒周目上限</a>。AI投掷和玩家投掷<code>V≤0</code>的分支不改。</p>
       </div>
       <pre>V = item.add_poison &gt; 0，W = actor.hidden_weapon，A = target.anti_poison
 x = trunc((V + W) / 2) − A  # 原版机器在W前是减号；全周目均改为加号
 Δ = (x &gt; 0) ? trunc(x / 2) : 0
 # x、Δ与后续中毒状态结算一律使用检查溢出的signed 64位逻辑数值</pre>
       <div class="plain">
-        <p>保留第一次除以2、减目标实际抗毒、非正中间值归零及最后再次除以2的顺序；<strong>不是</strong><code>V + trunc(W/2) − A</code>。<code>x&gt;0</code>只保证通过抗毒比较，若<code>x=1</code>则末次除以2后的理论增量仍为0；抗毒能力不按周目封顶，见<a href="anti-poison.zh-Hans.html#anti-poison-cap">抗毒字段页</a>。</p>
+        <p>保留第一次除以2、减目标实际抗毒、非正中间值归零及最后再次除以2的顺序；<strong>不是</strong><code>V + trunc(W/2) − A</code>。<code>x&gt;0</code>只保证通过抗毒比较，若<code>x=1</code>则末次除以2后的理论增量仍为0；抗毒能力不按周目封顶，见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-cap">抗毒章</a>。</p>
         <p>暗器技巧<code>W</code>读取当前角色64位值，不按周目夹值。</p>
-        <p>例：<code>V=80</code>、<code>W=100</code>、<code>A=0</code>、原有中毒0时，原版机器理论增量0，新规则为45，NG1按仍保留的中毒上限写回45；<code>A=100</code>时<code>x=-10</code>，理论增量0。</p>
-        <p>NG1投掷中毒的正常上限仍为99，但不在运行期保留原版16位回绕；NG2+使用同一64位加号公式，是否产生正毒只比较<code>x</code>，本周中毒上限的具体写回方式仍须另定。</p>
+        <p>例：<code>V=80</code>、<code>W=100</code>、<code>A=0</code>、原有中毒0时，原版机器理论增量0，新规则毒力90、最深99、理论每次45，写入45；<code>A=100</code>时<code>x=-10</code>，理论增量0。</p>
+        <p>各周目使用同一64位加号公式，不在运行期保留原版16位回绕；是否产生正毒只比较<code>x</code>。写入时以最深<code>trunc(99 × x ÷ trunc((V + W) / 2))</code>封顶，超出部分当场伤血，中毒量正常范围固定为0～99；见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功带毒字段页</a>。</p>
         <p>只有保存到Legacy时才验证待编码角色数值的16位范围；新TOML保留合法64位值。</p>
       </div>
     </section>
