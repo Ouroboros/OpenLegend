@@ -2404,7 +2404,8 @@ bool LegacyGameRuntime::start_scene(
 bool LegacyGameRuntime::start_battle(
     const std::int16_t battle_id, const bool grant_experience) {
     auto* ranger = game_state_.ranger();
-    if (ranger == nullptr || scene_session_ == nullptr) {
+    const auto* snapshot = game_state_.snapshot();
+    if (ranger == nullptr || snapshot == nullptr || scene_session_ == nullptr) {
         show_error("No game state is available for battle", LegacyGameView::scene);
         return false;
     }
@@ -2419,7 +2420,9 @@ bool LegacyGameRuntime::start_battle(
         retained_battle_render_state_,
         &legacy_player_item_slot_,
         &legacy_battle_hp_cost_scale_,
-        &legacy_battle_magic_slot_);
+        &legacy_battle_magic_slot_,
+        snapshot->configuration,
+        snapshot->playthrough);
     if (!battle_session_->valid()) {
         show_error(battle_session_->error(), LegacyGameView::scene);
         battle_session_.reset();

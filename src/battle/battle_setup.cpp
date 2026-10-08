@@ -22,7 +22,7 @@ namespace {
 namespace text_colors = render::legacy_color::text;
 
 constexpr std::array<std::int16_t, kBattleCombatantWords> kInitialCombatantWords{
-    -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, 0, -1, -1, 0};
+    -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, 0, -1, -1};
 constexpr std::array<BattlePathCoord, 4> kLegacyPathDirections{{
     {0, -1},
     {1, 0},
@@ -538,10 +538,18 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
 BattleSetup::BattleSetup(
     BattleData& data,
     model::RuntimeRangerState& ranger,
-    std::int16_t* const legacy_hp_cost_scale)
+    std::int16_t* const legacy_hp_cost_scale,
+    const model::NewGamePlusConfiguration& configuration,
+    const std::int64_t playthrough)
     : data_(data),
       ranger_(ranger),
       legacy_hp_cost_scale_(legacy_hp_cost_scale) {
+    const auto limits = model::calculate_playthrough_limits(configuration, playthrough);
+    if (!limits.has_value() || (!configuration.enabled && playthrough != 1)) {
+        error_ = "battle playthrough configuration is invalid";
+        return;
+    }
+    limits_ = *limits;
     initialize_combatants();
     if (!data_.valid()) {
         error_ = data_.error();
@@ -562,6 +570,7 @@ void BattleSetup::initialize_combatants() {
     for (auto& combatant : combatants_) {
         combatant.words = kInitialCombatantWords;
         combatant.words[combatant_word::sprite] = empty_sprite;
+        combatant.reward_experience = 0;
     }
 }
 
@@ -716,6 +725,7 @@ void BattleSetup::update_occupancy(const std::size_t slot) {
 }
 
 void BattleSetup::swap_combatants(const std::size_t first, const std::size_t second) {
+    std::swap(combatants_[first].reward_experience, combatants_[second].reward_experience);
     const auto saved = combatants_[first].words;
     for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
         if (word != combatant_word::sprite) {
@@ -1237,14 +1247,16 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
         }
     }
 
+    auto candidate_roles = ranger_.roles;
+    auto candidate_combatants = combatants_;
     BattlePostBattleResult result{
         .outcome = outcome,
         .total_experience = data_.definition()[7U],
         .roles = {},
     };
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto& words = combatants_[slot].words;
-        auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+        const auto& words = candidate_combatants[slot].words;
+        auto& role = candidate_roles[static_cast<std::size_t>(words[combatant_word::role_id])];
         if (words[combatant_word::side] == 1) {
             role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
             role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
@@ -1252,37 +1264,36 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
             role.set_word(model::role_word::hurt, 0);
             role.set_word(model::role_word::poison, 0);
         } else if (role.word(model::role_word::hp) > 0) {
-            result.living_party_count = wrapping_i16(
-                static_cast<std::int32_t>(result.living_party_count) + 1);
+            ++result.living_party_count;
         }
     }
     if (outcome == BattleOutcome::victory) {
         if (result.living_party_count == 0) {
             result.living_party_count = 1;
         }
-        result.shared_experience = static_cast<std::int16_t>(
-            result.total_experience / result.living_party_count);
+        result.shared_experience = result.total_experience / result.living_party_count;
         for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-            auto& words = combatants_[slot].words;
-            const auto& role = ranger_.roles[static_cast<std::size_t>(
-                words[combatant_word::role_id])];
-            if (words[combatant_word::side] == 0 &&
-                role.word(model::role_word::hp) > 0) {
-                words[combatant_word::reward_experience] = wrapping_i16(
-                    static_cast<std::int32_t>(
-                        words[combatant_word::reward_experience]) +
-                    result.shared_experience);
+            auto& combatant = candidate_combatants[slot];
+            const auto& role = candidate_roles[static_cast<std::size_t>(
+                combatant.words[combatant_word::role_id])];
+            if (combatant.words[combatant_word::side] == 0 && role.hp > 0) {
+                const auto reward = model::checked_add(
+                    combatant.reward_experience, result.shared_experience);
+                if (!reward.has_value()) {
+                    error_ = "battle shared experience overflow";
+                    return std::nullopt;
+                }
+                combatant.reward_experience = *reward;
             }
         }
     }
 
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto& words = combatants_[slot].words;
+        const auto& words = candidate_combatants[slot].words;
         if (words[combatant_word::side] == 0) {
-            auto& role = ranger_.roles[static_cast<std::size_t>(
+            auto& role = candidate_roles[static_cast<std::size_t>(
                 words[combatant_word::role_id])];
-            const auto floor_hp = static_cast<std::int16_t>(
-                role.word(model::role_word::maximum_hp) / 5);
+            const auto floor_hp = role.maximum_hp / 5;
             if (role.word(model::role_word::hp) > 0) {
                 if (role.word(model::role_word::hp) < floor_hp) {
                     role.set_word(model::role_word::hp, floor_hp);
@@ -1297,9 +1308,11 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
         result.roles.push_back(BattlePostBattleRoleResult{
             .combatant_slot = slot,
             .role_id = words[combatant_word::role_id],
-            .experience_gained = words[combatant_word::reward_experience],
+            .experience_gained = candidate_combatants[slot].reward_experience,
         });
     }
+    ranger_.roles = std::move(candidate_roles);
+    combatants_ = std::move(candidate_combatants);
     return result;
 }
 
@@ -1318,23 +1331,31 @@ std::optional<BattlePostBattleRoleResult> BattleSetup::apply_post_battle_experie
         return std::nullopt;
     }
     auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-    const auto add_capped_experience = [](model::RoleState& target,
-                                          const std::size_t word,
-                                          const std::uint16_t amount) {
-        auto changed = static_cast<std::uint16_t>(target.unsigned_word(word) + amount);
-        if (changed > 60'000U) {
-            changed = 60'000U;
-        }
-        target.set_word(word, changed);
-    };
-    const auto reward = words[combatant_word::reward_experience];
-    add_capped_experience(
-        role, model::role_word::experience, static_cast<std::uint16_t>(reward));
-    const auto scaled_reward = static_cast<std::uint32_t>(
-        static_cast<std::int32_t>(reward) * 8);
-    const auto training_reward = static_cast<std::uint16_t>(scaled_reward / 10U);
-    add_capped_experience(role, model::role_word::item_experience, training_reward);
-    add_capped_experience(role, model::role_word::make_item_experience, training_reward);
+    const auto base_reward = combatants_[combatant_slot].reward_experience;
+    const auto scaled_reward = model::checked_multiply(
+        base_reward, limits_.battle_experience_percent);
+    if (base_reward < 0 || !scaled_reward.has_value()) {
+        error_ = "battle experience reward overflow or invalid counter";
+        return std::nullopt;
+    }
+    const auto reward = *scaled_reward / 100;
+    const auto training_scaled = model::checked_multiply(reward, 8);
+    if (!training_scaled.has_value()) {
+        error_ = "battle training experience reward overflow";
+        return std::nullopt;
+    }
+    const auto training_reward = *training_scaled / 10;
+    const auto experience = model::checked_add(role.experience, reward);
+    const auto item_experience = model::checked_add(role.item_experience, training_reward);
+    const auto make_item_experience = model::checked_add(role.make_item_experience, training_reward);
+    if (!experience.has_value() || !item_experience.has_value() ||
+        !make_item_experience.has_value()) {
+        error_ = "battle accumulated experience overflow";
+        return std::nullopt;
+    }
+    role.experience = *experience;
+    role.item_experience = *item_experience;
+    role.make_item_experience = *make_item_experience;
     return BattlePostBattleRoleResult{
         .combatant_slot = combatant_slot,
         .role_id = role_id,
@@ -1828,10 +1849,14 @@ bool BattleSetup::commit_attack_iteration(
         error_ = "battle attack profile is outside ranger records";
         return false;
     }
+    const auto counter = model::checked_add(combatants_[slot].reward_experience, 2);
+    if (!counter.has_value()) {
+        error_ = "battle attack experience counter overflow";
+        return false;
+    }
     auto& words = combatants_[slot].words;
     words[combatant_word::action_done] = 1;
-    words[combatant_word::attack_counter] = wrapping_i16(
-        static_cast<std::int32_t>(words[combatant_word::attack_counter]) + 2);
+    combatants_[slot].reward_experience = *counter;
 
     auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
     const auto experience_word = model::role_word::magic_level_begin +
@@ -1921,11 +1946,6 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
             break;
         }
     }
-    last_hp_cost_scale_ = cost_scale;
-    if (legacy_hp_cost_scale_ != nullptr) {
-        *legacy_hp_cost_scale_ = cost_scale;
-    }
-
     const auto equipment_bonus = [this](
                                      const model::RoleState& role,
                                      const std::size_t item_word)
@@ -1961,16 +1981,17 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         static_cast<std::int32_t>(target.word(model::role_word::defence)) +
         *defence_equipment + enemy_knowledge);
 
-    const auto first_attack_variance = random.bounded(20);
-    const auto second_attack_variance = random.bounded(20);
+    auto candidate_random = random;
+    const auto first_attack_variance = candidate_random.bounded(20);
+    const auto second_attack_variance = candidate_random.bounded(20);
     auto damage = wrapping_i16(
         2 * (static_cast<std::int32_t>(attack_total) -
              3 * static_cast<std::int32_t>(defence_total)) /
             3 +
         first_attack_variance - second_attack_variance);
     if (damage <= 0) {
-        const auto first_fallback_variance = random.bounded(4);
-        const auto second_fallback_variance = random.bounded(4);
+        const auto first_fallback_variance = candidate_random.bounded(4);
+        const auto second_fallback_variance = candidate_random.bounded(4);
         damage = wrapping_i16(
             static_cast<std::int32_t>(attack_total) / 10 + first_fallback_variance -
             second_fallback_variance);
@@ -1994,18 +2015,20 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         damage = 1;
     }
 
-    auto& actor_counter = combatants_[actor_slot].words[combatant_word::attack_counter];
-    actor_counter = wrapping_i16(
-        static_cast<std::int32_t>(actor_counter) + damage / 5);
-    auto target_hp = wrapping_i16(
+    const auto target_hp = wrapping_i16(
         static_cast<std::int32_t>(target.word(model::role_word::hp)) - damage);
-    target.set_word(model::role_word::hp, target_hp);
-    if (target_hp < 0) {
-        target.set_word(model::role_word::hp, 0);
-        actor_counter = wrapping_i16(
-            static_cast<std::int32_t>(actor_counter) +
-            10 * static_cast<std::int32_t>(target.word(model::role_word::level)));
+    auto counter = model::checked_add(combatants_[actor_slot].reward_experience, damage / 5);
+    if (counter.has_value() && target_hp < 0) {
+        const auto defeat_bonus = model::checked_multiply(10, target.level);
+        counter = defeat_bonus.has_value()
+            ? model::checked_add(*counter, *defeat_bonus) : std::nullopt;
     }
+    if (!counter.has_value()) {
+        error_ = "battle damage experience counter overflow";
+        return std::nullopt;
+    }
+    combatants_[actor_slot].reward_experience = *counter;
+    target.set_word(model::role_word::hp, std::max<std::int16_t>(target_hp, 0));
 
     auto hurt = wrapping_i16(
         static_cast<std::int32_t>(target.word(model::role_word::hurt)) + damage / 10);
@@ -2032,6 +2055,11 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
             target.set_word(model::role_word::poison, 0);
         }
     }
+    last_hp_cost_scale_ = cost_scale;
+    if (legacy_hp_cost_scale_ != nullptr) {
+        *legacy_hp_cost_scale_ = cost_scale;
+    }
+    random = candidate_random;
     return BattleHpDamageResult{damage, cost_scale};
 }
 
@@ -2208,6 +2236,11 @@ bool BattleSetup::finish_poison_action(const std::size_t actor_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return false;
     }
+    const auto counter = model::checked_add(combatants_[actor_slot].reward_experience, 1);
+    if (!counter.has_value()) {
+        error_ = "battle action experience counter overflow";
+        return false;
+    }
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto role_id = combatants_[slot].words[combatant_word::role_id];
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
@@ -2219,8 +2252,7 @@ bool BattleSetup::finish_poison_action(const std::size_t actor_slot) {
     }
     auto& actor_words = combatants_[actor_slot].words;
     actor_words[combatant_word::action_done] = 1;
-    actor_words[combatant_word::attack_counter] = wrapping_i16(
-        static_cast<std::int32_t>(actor_words[combatant_word::attack_counter]) + 1);
+    combatants_[actor_slot].reward_experience = *counter;
     const auto role_id = actor_words[combatant_word::role_id];
     auto& actor = ranger_.roles[static_cast<std::size_t>(role_id)];
     auto physical_power = wrapping_i16(

@@ -494,7 +494,7 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin + 2U) == 300);
     OL_CHECK(role.word(openlegend::model::role_word::mp) == 3);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 2);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 2);
     OL_CHECK(setup.commit_attack_mp_cost(0U, 2, 3));
     OL_CHECK(role.word(openlegend::model::role_word::mp) == 0);
 
@@ -505,7 +505,7 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(role.word(openlegend::model::role_word::mp) == 10);
     OL_CHECK(setup.commit_attack_mp_cost(0U, 2, 2));
     OL_CHECK(role.word(openlegend::model::role_word::mp) == 6);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 4);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 4);
     OL_CHECK(setup.finish_attack(0U));
     OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 0);
 
@@ -731,7 +731,7 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
     OL_CHECK(setup.finish_poison_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 1);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 1);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 0);
 
     actor.set_word(openlegend::model::role_word::use_poison, 10);
@@ -855,11 +855,11 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     setup.combatants()[0U].words[combatant_word::sprite] = -1;
     setup.combatants()[1U].words[combatant_word::sprite] = -1;
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 32767;
+    setup.combatants()[0U].reward_experience = 32767;
     actor.set_word(openlegend::model::role_word::physical_power, -32768);
     OL_CHECK(setup.finish_poison_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == -32768);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 32768);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
@@ -961,18 +961,18 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 64);
     OL_CHECK(setup.finish_detox_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 1);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 1);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 0);
 
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         setup.combatants()[slot].words[combatant_word::sprite] = -1;
     }
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 32767;
+    setup.combatants()[0U].reward_experience = 32767;
     actor.set_word(openlegend::model::role_word::physical_power, -32768);
     OL_CHECK(setup.finish_detox_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == -32768);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 32768);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
@@ -1161,18 +1161,18 @@ void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
     OL_CHECK(setup.finish_medicine_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 1);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 1);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 47);
 
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         setup.combatants()[slot].words[combatant_word::sprite] = -1;
     }
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 32767;
+    setup.combatants()[0U].reward_experience = 32767;
     actor.set_word(openlegend::model::role_word::physical_power, -32768);
     OL_CHECK(setup.finish_medicine_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == -32768);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 32768);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
@@ -1409,7 +1409,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 12);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 21);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 0);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 0);
     OL_CHECK(ranger.header.inventory_item(0U).value == 102);
     OL_CHECK(ranger.header.inventory_count(0U) == 1);
     OL_CHECK(setup.finish_throwing_weapon_action(0U, 0U));
@@ -2315,9 +2315,103 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     actor[combatant_word::role_id] = saved_actor_role;
 }
 
+void run_scaled_experience_tests(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+    NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    configuration.battle_experience_percent_ng2 = 175;
+    configuration.battle_experience_percent_step = 25;
+    constexpr std::array<std::pair<std::int64_t, std::int64_t>, 4> cases{{
+        {1, 100}, {2, 175}, {3, 200}, {999, 25100}}};
+    for (const auto& [playthrough, percent] : cases) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+        OL_CHECK(setup.valid());
+        OL_CHECK(setup.combatant_count() == 2);
+        for (std::size_t slot = 0U; slot < 2U; ++slot) {
+            auto& combatant = setup.combatants()[slot];
+            combatant.words[combatant_word::side] = 0;
+            combatant.reward_experience = static_cast<std::int64_t>(slot) + 5;
+            auto& role = ranger.roles[static_cast<std::size_t>(combatant.words[combatant_word::role_id])];
+            role.hp = 100;
+            role.maximum_hp = 5'000'000'000;
+            role.experience = 7'000'000'000;
+            role.item_experience = 8'000'000'000;
+            role.make_item_experience = 9'000'000'000;
+        }
+        const auto prepared = setup.prepare_battle_settlement(BattleOutcome::victory);
+        OL_CHECK(prepared.has_value());
+        OL_CHECK(prepared->living_party_count == 2);
+        for (std::size_t slot = 0U; slot < 2U; ++slot) {
+            const auto base = data.definition()[7U] / 2 + static_cast<std::int64_t>(slot) + 5;
+            const auto expected = base * percent / 100;
+            const auto applied = setup.apply_post_battle_experience(slot, BattleOutcome::victory, false);
+            OL_CHECK(applied.has_value());
+            OL_CHECK(applied->experience_gained == expected);
+            const auto& role = ranger.roles[static_cast<std::size_t>(applied->role_id)];
+            OL_CHECK(role.experience == 7'000'000'000 + expected);
+            OL_CHECK(role.item_experience == 8'000'000'000 + expected * 8 / 10);
+            OL_CHECK(role.make_item_experience == 9'000'000'000 + expected * 8 / 10);
+            OL_CHECK(role.hp == 1'000'000'000);
+        }
+    }
+    for (const auto field : {&RoleState::experience, &RoleState::item_experience,
+                             &RoleState::make_item_experience}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, 2};
+        auto& combatant = setup.combatants()[0U];
+        combatant.reward_experience = 10;
+        auto& role = ranger.roles[static_cast<std::size_t>(combatant.words[combatant_word::role_id])];
+        role.*field = std::numeric_limits<std::int64_t>::max();
+        const auto before = role;
+        OL_CHECK(!setup.apply_post_battle_experience(0U, BattleOutcome::victory, true).has_value());
+        OL_CHECK(role == before);
+        OL_CHECK(combatant.reward_experience == 10);
+    }
+    for (const auto counter : std::array<std::int64_t, 2>{
+             -1, std::numeric_limits<std::int64_t>::max()}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, 2};
+        setup.combatants()[0U].reward_experience = counter;
+        const auto before = ranger.roles;
+        OL_CHECK(!setup.apply_post_battle_experience(0U, BattleOutcome::victory, true).has_value());
+        OL_CHECK(ranger.roles == before);
+    }
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        setup.combatants()[0U].reward_experience = std::numeric_limits<std::int64_t>::max();
+        const auto before = setup.combatants()[0U];
+        const auto before_roles = ranger.roles;
+        OL_CHECK(!setup.finish_poison_action(0U));
+        OL_CHECK(setup.combatants()[0U] == before);
+        OL_CHECK(ranger.roles == before_roles);
+    }
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(data.definition()[7U] > 0);
+        const auto role_id = static_cast<std::size_t>(setup.combatants()[0U].words[combatant_word::role_id]);
+        ranger.roles[role_id].hp = 1;
+        setup.combatants()[0U].reward_experience = std::numeric_limits<std::int64_t>::max();
+        const auto before_roles = ranger.roles;
+        const auto before = setup.combatants()[0U];
+        OL_CHECK(!setup.prepare_battle_settlement(BattleOutcome::victory).has_value());
+        OL_CHECK(ranger.roles == before_roles);
+        OL_CHECK(setup.combatants()[0U] == before);
+    }
+}
+
 void run_post_battle_progression_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     using namespace openlegend::model;
+    run_scaled_experience_tests(data_root);
 
     {
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -2653,16 +2747,16 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
             role.set_word(role_word::experience, 0);
             role.set_word(role_word::item_experience, 0);
             role.set_word(role_word::make_item_experience, 0);
-            words[combatant_word::reward_experience] = 0;
+            setup.combatants()[slot].reward_experience = 0;
             if (words[combatant_word::side] == 0) {
                 if (!first_party) {
                     first_party = slot;
                     role.set_word(role_word::hp, 100);
-                    words[combatant_word::reward_experience] = 5;
+                    setup.combatants()[slot].reward_experience = 5;
                 } else {
                     if (!dead_party) {
                         dead_party = slot;
-                        words[combatant_word::reward_experience] = 7;
+                        setup.combatants()[slot].reward_experience = 7;
                     }
                     role.set_word(role_word::hp, 0);
                     role.set_word(role_word::physical_power, 0);
@@ -2734,16 +2828,16 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         non_enemy_role.set_word(role_word::physical_power, 7);
         non_enemy_role.set_word(role_word::hurt, 8);
         non_enemy_role.set_word(role_word::poison, 9);
-        party[combatant_word::reward_experience] = 5;
-        non_enemy[combatant_word::reward_experience] = 7;
+        setup.combatants()[0U].reward_experience = 5;
+        setup.combatants()[1U].reward_experience = 7;
         const auto prepared = setup.prepare_battle_settlement(BattleOutcome::victory);
         OL_CHECK(prepared.has_value());
         OL_CHECK(prepared->living_party_count == 2);
         OL_CHECK(prepared->shared_experience ==
                  static_cast<std::int16_t>(data.definition()[7U] / 2));
-        OL_CHECK(party[combatant_word::reward_experience] ==
+        OL_CHECK(setup.combatants()[0U].reward_experience ==
                  static_cast<std::int16_t>(5 + prepared->shared_experience));
-        OL_CHECK(non_enemy[combatant_word::reward_experience] == 7);
+        OL_CHECK(setup.combatants()[1U].reward_experience == 7);
         OL_CHECK(non_enemy_role.word(role_word::hp) == 11);
         OL_CHECK(non_enemy_role.word(role_word::mp) == 3);
         OL_CHECK(non_enemy_role.word(role_word::physical_power) == 7);
@@ -2760,31 +2854,31 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         auto& role = ranger.roles[static_cast<std::size_t>(
             words[combatant_word::role_id])];
         words[combatant_word::side] = 0;
-        words[combatant_word::reward_experience] = -1;
+        setup.combatants()[0U].reward_experience = 5'000'000'000;
         role.set_word(role_word::experience, 0);
         role.set_word(role_word::item_experience, 0);
         role.set_word(role_word::make_item_experience, 0);
         auto applied = setup.apply_post_battle_experience(
             0U, BattleOutcome::defeat, false);
         OL_CHECK(applied.has_value());
-        OL_CHECK(applied->experience_gained == -1);
+        OL_CHECK(applied->experience_gained == 5'000'000'000);
         OL_CHECK(!applied->experience_message_required);
-        OL_CHECK(role.unsigned_word(role_word::experience) == 60'000U);
-        OL_CHECK(role.unsigned_word(role_word::item_experience) == 39'320U);
-        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 39'320U);
+        OL_CHECK(role.experience == 5'000'000'000);
+        OL_CHECK(role.item_experience == 4'000'000'000);
+        OL_CHECK(role.make_item_experience == 4'000'000'000);
 
-        words[combatant_word::reward_experience] = 1'000;
+        setup.combatants()[0U].reward_experience = 1'000;
         role.set_word(role_word::experience, 65'000);
         role.set_word(role_word::item_experience, 65'000);
         role.set_word(role_word::make_item_experience, 65'000);
         applied = setup.apply_post_battle_experience(
             0U, BattleOutcome::defeat, false);
         OL_CHECK(applied.has_value());
-        OL_CHECK(role.unsigned_word(role_word::experience) == 464U);
-        OL_CHECK(role.unsigned_word(role_word::item_experience) == 264U);
-        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 264U);
+        OL_CHECK(role.experience == 66'000);
+        OL_CHECK(role.item_experience == 65'800);
+        OL_CHECK(role.make_item_experience == 65'800);
 
-        words[combatant_word::reward_experience] = 2'000;
+        setup.combatants()[0U].reward_experience = 2'000;
         role.set_word(role_word::experience, 59'000);
         role.set_word(role_word::item_experience, 59'000);
         role.set_word(role_word::make_item_experience, 59'000);
@@ -2792,12 +2886,12 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
             0U, BattleOutcome::defeat, true);
         OL_CHECK(applied.has_value());
         OL_CHECK(applied->experience_message_required);
-        OL_CHECK(role.unsigned_word(role_word::experience) == 60'000U);
-        OL_CHECK(role.unsigned_word(role_word::item_experience) == 60'000U);
-        OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 60'000U);
+        OL_CHECK(role.experience == 61'000);
+        OL_CHECK(role.item_experience == 60'600);
+        OL_CHECK(role.make_item_experience == 60'600);
 
         words[combatant_word::side] = 1;
-        words[combatant_word::reward_experience] = 9;
+        setup.combatants()[0U].reward_experience = 9;
         role.set_word(role_word::experience, 0);
         role.set_word(role_word::item_experience, 0);
         role.set_word(role_word::make_item_experience, 0);
@@ -4693,7 +4787,7 @@ void run_player_support_session_test(
         check_damage_complete_state(*session);
         OL_CHECK(session->current_actor_slot() == 1U);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 1);
-        OL_CHECK(session->setup().combatants()[0U].words[combatant_word::attack_counter] == 1);
+        OL_CHECK(session->setup().combatants()[0U].reward_experience == 1);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::sprite] <
                  2 * kBattleEffectPointerBase);
     };
@@ -5688,7 +5782,7 @@ void run_player_attack_session_test(
         OL_CHECK(session->setup().combatants()[0U]
                      .words[combatant_word::action_done] == 1);
         OL_CHECK(session->setup().combatants()[0U]
-                     .words[combatant_word::attack_counter] >=
+                     .reward_experience >=
                  static_cast<std::int16_t>(2U * expected_iterations));
     };
 
@@ -5916,7 +6010,7 @@ void run_ai_attack_session_test(
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
     const auto initial_attack_counter = session->setup().combatants()[0U]
-                                            .words[combatant_word::attack_counter];
+                                            .reward_experience;
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'200U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_action);
@@ -5984,7 +6078,7 @@ void run_ai_attack_session_test(
     }
     OL_CHECK(damage_frames == 10U);
     const auto attack_counter_after_damage = session->setup().combatants()[0U]
-                                                 .words[combatant_word::attack_counter];
+                                                 .reward_experience;
     OL_CHECK(attack_counter_after_damage > initial_attack_counter);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_attack_commit_present);
     OL_CHECK(session->render(*framebuffer));
@@ -6021,7 +6115,7 @@ void run_ai_attack_session_test(
     OL_CHECK(session->setup().combatants()[0U]
                  .words[combatant_word::action_done] == 1);
     const auto final_attack_counter = session->setup().combatants()[0U]
-                                          .words[combatant_word::attack_counter];
+                                          .reward_experience;
     OL_CHECK(final_attack_counter == attack_counter_after_damage + 2);
     OL_CHECK(random.state() == 3'655'513'600U);
     OL_CHECK(ai_prelude_hash == 0x1f8dba4c5c9b1391ULL);
@@ -6250,7 +6344,7 @@ void run_ai_poison_session_test(
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
     const auto initial_attack_counter = session->setup().combatants()[0U]
-                                            .words[combatant_word::attack_counter];
+                                            .reward_experience;
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'400U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_action);
@@ -6314,7 +6408,7 @@ void run_ai_poison_session_test(
     OL_CHECK(session->setup().combatants()[0U]
                  .words[combatant_word::action_done] == 1);
     OL_CHECK(session->setup().combatants()[0U]
-                 .words[combatant_word::attack_counter] ==
+                 .reward_experience ==
              initial_attack_counter + 1);
     OL_CHECK(first_magic_hash == 0x47286fa4af30fce4ULL);
     OL_CHECK(first_damage_hash == 0x0867daa53f3f34edULL);
@@ -7086,7 +7180,7 @@ void run_ai_support_session_test(
         OL_CHECK(session->setup().combatants()[0U]
                      .words[combatant_word::role_id] == 1);
         const auto initial_attack_counter = session->setup().combatants()[0U]
-                                                .words[combatant_word::attack_counter];
+                                                .reward_experience;
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(initial_tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_action);
@@ -7152,7 +7246,7 @@ void run_ai_support_session_test(
         OL_CHECK(session->setup().combatants()[0U]
                      .words[combatant_word::action_done] == 1);
         OL_CHECK(session->setup().combatants()[0U]
-                     .words[combatant_word::attack_counter] ==
+                     .reward_experience ==
                  initial_attack_counter + 1);
         result.random_state = random.state();
         result.hp = actor.word(role_word::hp);
@@ -7325,7 +7419,7 @@ void run_ai_support_movement_session_test(
     OL_CHECK(session->current_actor_slot() == 0U);
     OL_CHECK(combatants[0U].words[combatant_word::round_value] > 0);
     const auto initial_attack_counter =
-        combatants[0U].words[combatant_word::attack_counter];
+        combatants[0U].reward_experience;
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'900U);
     session->advance(1'900U);
@@ -7392,7 +7486,7 @@ void run_ai_support_movement_session_test(
     OL_CHECK(session->current_actor_slot() == 1U);
     OL_CHECK(actor.word(role_word::physical_power) == 96);
     OL_CHECK(combatants[0U].words[combatant_word::action_done] == 1);
-    OL_CHECK(combatants[0U].words[combatant_word::attack_counter] ==
+    OL_CHECK(combatants[0U].reward_experience ==
              initial_attack_counter + 1);
     OL_CHECK(helper_distance == 6);
     OL_CHECK(movement_steps == 4U);
@@ -10647,18 +10741,18 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 3);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 3);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 6);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 6);
 
     target.set_word(openlegend::model::role_word::hp, 29);
     target.set_word(openlegend::model::role_word::hurt, 0);
     target.set_word(openlegend::model::role_word::poison, 0);
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    setup.combatants()[0U].reward_experience = 0;
     hp_random.seed(1U);
     const auto underkill = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
     OL_CHECK(underkill.has_value());
     OL_CHECK(underkill->damage == 30);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 46);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 46);
 
     actor.set_word(openlegend::model::role_word::knowledge, 81);
     actor.set_word(openlegend::model::role_word::hp, 1);
@@ -10672,7 +10766,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     target.set_word(openlegend::model::role_word::hurt, 0);
     target.set_word(openlegend::model::role_word::poison, 0);
     target.set_word(openlegend::model::role_word::anti_poison, 100);
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    setup.combatants()[0U].reward_experience = 0;
     hp_random.seed(1U);
     const auto fallback = setup.apply_hp_damage(0U, 1U, 2, 11, 3, hp_random);
     OL_CHECK(fallback.has_value());
@@ -10680,7 +10774,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(hp_random.state() == 3'295'386'429U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 86);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == 2);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 2);
 
     const auto reset_hp_edge_case = [&] {
         actor.set_word(openlegend::model::role_word::magic_level_begin + 2U, 999);
@@ -10709,7 +10803,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
             magic.set_word(openlegend::model::magic_word::attack_begin + level, 30);
         }
         setup.combatants()[0U].words[combatant_word::occupancy_hidden] = 0;
-        setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+        setup.combatants()[0U].reward_experience = 0;
     };
 
     reset_hp_edge_case();
@@ -10801,12 +10895,12 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
 
     reset_hp_edge_case();
-    setup.combatants()[0U].words[combatant_word::attack_counter] =
+    setup.combatants()[0U].reward_experience =
         std::numeric_limits<std::int16_t>::max();
     hp_random.seed(1U);
     const auto wrapped_counter = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
     OL_CHECK(wrapped_counter.has_value());
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::attack_counter] == -32763);
+    OL_CHECK(setup.combatants()[0U].reward_experience == 32773);
 
     actor.set_word(openlegend::model::role_word::magic_level_begin + 2U, 200);
     actor.set_word(openlegend::model::role_word::mp, 10);
@@ -11008,7 +11102,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     target.set_word(openlegend::model::role_word::hp, 100);
     target.set_word(openlegend::model::role_word::hurt, 0);
     setup.combatants()[0U].words[combatant_word::initial_mode] = 2;
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    setup.combatants()[0U].reward_experience = 0;
     data.occupancy()[25U * 64U + 26U] = 0;
     setup.clear_attack_effects();
     random.seed(1U);
@@ -11051,7 +11145,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     target.set_word(openlegend::model::role_word::hp, 100);
     target.set_word(openlegend::model::role_word::hurt, 0);
     setup.combatants()[0U].words[combatant_word::initial_mode] = 1;
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    setup.combatants()[0U].reward_experience = 0;
     data.occupancy()[25U * 64U + 26U] = -1;
     setup.clear_attack_effects();
     random.seed(1U);
@@ -11068,7 +11162,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
 
     target.set_word(openlegend::model::role_word::hp, 100);
     target.set_word(openlegend::model::role_word::hurt, 0);
-    setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+    setup.combatants()[0U].reward_experience = 0;
     data.occupancy()[25U * 64U + 26U] = 0;
     setup.clear_attack_effects();
     random.seed(1U);
@@ -11139,7 +11233,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
         }
         target.set_word(openlegend::model::role_word::hp, 100);
         target.set_word(openlegend::model::role_word::hurt, 0);
-        setup.combatants()[0U].words[combatant_word::attack_counter] = 0;
+        setup.combatants()[0U].reward_experience = 0;
         setup.clear_attack_effects();
         random.seed(1U);
         const auto directional = setup.apply_line_attack_area(
@@ -11436,10 +11530,12 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 1);
     setup.combatants()[1U].words[combatant_word::y] = 24;
-    for (const auto word : {7U, 9U, 10U, 11U, 12U, 13U}) {
+    for (const auto word : {7U, 9U, 10U, 11U, 12U}) {
         setup.combatants()[0U].words[word] = static_cast<std::int16_t>(100U + word);
         setup.combatants()[1U].words[word] = static_cast<std::int16_t>(200U + word);
     }
+    setup.combatants()[0U].reward_experience = 5'000'000'113;
+    setup.combatants()[1U].reward_experience = 6'000'000'213;
     setup.combatants()[0U].words[combatant_word::sprite] = -123;
     setup.combatants()[1U].words[combatant_word::sprite] = -456;
     const auto before_first = setup.combatants()[0U].words;
@@ -11451,6 +11547,8 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
             OL_CHECK(setup.combatants()[1U].words[word] == before_first[word]);
         }
     }
+    OL_CHECK(setup.combatants()[0U].reward_experience == 6'000'000'213);
+    OL_CHECK(setup.combatants()[1U].reward_experience == 5'000'000'113);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5132);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5118);
     OL_CHECK(data.occupancy()[24U * 64U + 26U] == 1);

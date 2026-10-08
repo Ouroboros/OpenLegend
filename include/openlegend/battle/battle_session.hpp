@@ -163,7 +163,9 @@ public:
         BattleRenderState initial_render_state = {},
         std::int16_t* legacy_player_item_slot = nullptr,
         std::int16_t* legacy_hp_cost_scale = nullptr,
-        std::int16_t* legacy_magic_slot = nullptr);
+        std::int16_t* legacy_magic_slot = nullptr,
+        const model::NewGamePlusConfiguration& configuration = {},
+        std::int64_t playthrough = 1);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 

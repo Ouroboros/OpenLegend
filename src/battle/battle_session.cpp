@@ -135,9 +135,9 @@ NODISCARD int centered_magic_name_x(
 }
 
 NODISCARD std::u8string decimal_text(
-    const std::int32_t value,
+    const std::int64_t value,
     const int width = 0) {
-    std::array<char, 16> buffer{};
+    std::array<char, 32> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
     const auto count = static_cast<int>(converted.ptr - buffer.data());
     std::u8string text;
@@ -190,11 +190,13 @@ BattleSession::BattleSession(
     const BattleRenderState initial_render_state,
     std::int16_t* const legacy_player_item_slot,
     std::int16_t* const legacy_hp_cost_scale,
-    std::int16_t* const legacy_magic_slot)
+    std::int16_t* const legacy_magic_slot,
+    const model::NewGamePlusConfiguration& configuration,
+    const std::int64_t playthrough)
     : ranger_(ranger),
       random_(random),
       data_(data_root, battle_id),
-      setup_(data_, ranger_, legacy_hp_cost_scale),
+      setup_(data_, ranger_, legacy_hp_cost_scale, configuration, playthrough),
       pathing_(data_),
       renderer_(data_root, data_.battlefield_id()),
       render_state_(initial_render_state),

@@ -18,7 +18,7 @@
 namespace openlegend::battle {
 
 inline constexpr std::size_t kBattleCombatantCount = 26U;
-inline constexpr std::size_t kBattleCombatantWords = 14U;
+inline constexpr std::size_t kBattleCombatantWords = 13U;
 inline constexpr std::size_t kBattlePartySlots = 6U;
 inline constexpr std::size_t kBattleEnemySlots = 20U;
 inline constexpr std::int16_t kBattleEffectPointerBase = 6'500;
@@ -38,12 +38,13 @@ inline constexpr std::size_t damage_value = 9U;
 inline constexpr std::size_t ai_action = 10U;
 inline constexpr std::size_t ai_target = 11U;
 inline constexpr std::size_t ai_poison_target = 12U;
-inline constexpr std::size_t attack_counter = 13U;
-inline constexpr std::size_t reward_experience = 13U;
 }  // namespace combatant_word
 
 struct BattleCombatant {
     std::array<std::int16_t, kBattleCombatantWords> words{};
+    std::int64_t reward_experience{};
+
+    NODISCARD bool operator==(const BattleCombatant&) const = default;
 };
 
 struct BattleAttackProfile {
@@ -591,7 +592,7 @@ struct BattleCraftResult {
 struct BattlePostBattleRoleResult {
     std::size_t combatant_slot{};
     std::int16_t role_id{-1};
-    std::int16_t experience_gained{};
+    std::int64_t experience_gained{};
     bool experience_message_required{};
     BattleLevelUpResult level_up{};
     BattlePracticeResult practice{};
@@ -600,9 +601,9 @@ struct BattlePostBattleRoleResult {
 
 struct BattlePostBattleResult {
     BattleOutcome outcome{BattleOutcome::ongoing};
-    std::int16_t total_experience{};
+    std::int64_t total_experience{};
     std::int16_t living_party_count{};
-    std::int16_t shared_experience{};
+    std::int64_t shared_experience{};
     std::vector<BattlePostBattleRoleResult> roles;
     bool render_required{};
     bool present_required{};
@@ -683,7 +684,9 @@ public:
     BattleSetup(
         BattleData& data,
         model::RuntimeRangerState& ranger,
-        std::int16_t* legacy_hp_cost_scale = nullptr);
+        std::int16_t* legacy_hp_cost_scale = nullptr,
+        const model::NewGamePlusConfiguration& configuration = {},
+        std::int64_t playthrough = 1);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
@@ -1200,6 +1203,7 @@ private:
 
     BattleData& data_;
     model::RuntimeRangerState& ranger_;
+    model::PlaythroughLimits limits_{};
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};
     std::array<std::int16_t, kBattlePartySlots> selection_states_{};
     std::array<std::int16_t, kBattleOccupancyCells> attack_effects_{};

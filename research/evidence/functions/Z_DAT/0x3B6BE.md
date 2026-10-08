@@ -1,6 +1,6 @@
 # 函数证据：`sub_3B6BE` `0x3B6BE..0x3BA85`
 
-状态：`platform_adapted / converged_no_new_differences`
+状态：原版对照的历史结论为`platform_adapted / converged_no_new_differences`；当前实现包含第5节列出的正式NG+替换。第3、4节描述原版对照阶段，不是当前实现无差异的证明。
 
 映射：`BattleSetup::apply_battle_level_up`与`BattleSession`战后升级消息preview/present/input/commit continuation。
 
@@ -39,3 +39,9 @@
 - 两次临时生成逐字节一致，历史69个顶层键逐值不变；第三次正式生成一致。70键正式Golden SHA256：`d08d6315e3f10e808d5b8ece0a06b45b1896cc7baf16c314616f885cd8ce9d17`。
 - Linux `./build.sh app --config Debug`退出码0，14/14 tests passed。
 - 原程序动态执行仍登记`blocked_runtime_oracle`；独立资产oracle不冒充原程序运行输出。
+
+## 5. 正式NG+替换与当前验证
+
+- 依据[人物经验规则](../../../../docs/new-game-plus/fields/experience.zh-Hans.html)，从当前Z.DAT文件偏移`0x4DF8E`读取原始门槛，表外由末两级费用差递推；实际升级及界面不在30级停止。
+- `c320748`接入资产表和64位门槛计算，`5fd022a`在角色与RNG副本上应用成长并移除升级时999／100封顶，`dc46dae`同步下一等级经验显示。保留第2节的资质分档、技能严格大于20条件、RNG顺序及先显示消息再提交时机。
+- 当前测试覆盖原范围数值及随机消费、31／60／9991／10020级、64位HP／MP及成长溢出时角色与RNG不变。原版机器Golden未修改；130项完整Debug回归通过，日志`tmp/ngplus-next-level-display-full-regression.log`。
