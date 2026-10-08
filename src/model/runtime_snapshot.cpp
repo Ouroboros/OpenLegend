@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <stdexcept>
 #include <utility>
 
 #include "openlegend/attributes.hpp"
@@ -183,6 +184,73 @@ NODISCARD bool persistent_values_valid(
 
 }
 
+std::int16_t RuntimeRangerHeader::word(const std::size_t index) const {
+    return words_.at(index);
+}
+
+void RuntimeRangerHeader::set_word(const std::size_t index, const std::int64_t value) {
+    if (value < std::numeric_limits<std::int16_t>::min() ||
+        value > std::numeric_limits<std::int16_t>::max()) {
+        throw std::out_of_range("native header field");
+    }
+    words_.at(index) = static_cast<std::int16_t>(value);
+}
+
+CharacterId RuntimeRangerHeader::team_member(const std::size_t index) const noexcept {
+    return index < kTeamMemberCount
+        ? CharacterId{words_[header_word::team_begin + index]} : CharacterId{};
+}
+
+void RuntimeRangerHeader::set_team_member(
+    const std::size_t index, const CharacterId role_id) noexcept {
+    if (index < kTeamMemberCount) {
+        words_[header_word::team_begin + index] = role_id.value;
+    }
+}
+
+ItemId RuntimeRangerHeader::inventory_item(const std::size_t index) const noexcept {
+    return index < inventory_.size() ? inventory_[index].item_id : ItemId{};
+}
+
+std::int64_t RuntimeRangerHeader::inventory_count(const std::size_t index) const noexcept {
+    return index < inventory_.size() ? inventory_[index].count : 0;
+}
+
+void RuntimeRangerHeader::set_inventory(
+    const std::size_t index, const ItemId item_id, const std::int64_t count) noexcept {
+    if (index < inventory_.size()) {
+        inventory_[index] = InventoryEntry{item_id, count};
+    }
+}
+
+RuntimeRangerHeader decode_legacy_header(const RangerHeader& header) {
+    RuntimeRangerHeader result;
+    for (std::size_t index = 0U; index < header_word::inventory_begin; ++index) {
+        result.set_word(index, header.word(index));
+    }
+    for (std::size_t slot = 0U; slot < kInventoryCount; ++slot) {
+        result.set_inventory(slot, header.inventory_item(slot), header.inventory_count(slot));
+    }
+    return result;
+}
+
+std::optional<RangerHeader> encode_legacy_header(const RuntimeRangerHeader& header) {
+    RangerHeader result;
+    for (std::size_t index = 0U; index < header_word::inventory_begin; ++index) {
+        result.set_word(index, header.word(index));
+    }
+    for (std::size_t slot = 0U; slot < kInventoryCount; ++slot) {
+        const auto count = header.inventory_count(slot);
+        if (count < std::numeric_limits<std::int16_t>::min() ||
+            count > std::numeric_limits<std::int16_t>::max()) {
+            return std::nullopt;
+        }
+        result.set_inventory(
+            slot, header.inventory_item(slot), static_cast<std::int16_t>(count));
+    }
+    return result;
+}
+
 bool RuntimeRangerState::valid() const {
     return roles.size() == kRoleCount && items.size() == kItemCount &&
         scenes.size() == kSceneMetadataCount && magics.size() == kMagicCount &&
@@ -268,7 +336,7 @@ std::optional<RuntimeRangerState> decode_legacy_ranger(RangerState ranger) {
         }
         result.roles[index] = std::move(*role);
     }
-    result.header = ranger.header;
+    result.header = decode_legacy_header(ranger.header);
     result.items = std::move(ranger.items);
     result.scenes = std::move(ranger.scenes);
     result.magics = std::move(ranger.magics);
@@ -302,6 +370,10 @@ std::optional<GameSnapshot> encode_legacy_snapshot(const RuntimeGameSnapshot& sn
         snapshot.configuration.enabled || snapshot.playthrough != 1) {
         return std::nullopt;
     }
+    const auto header = encode_legacy_header(snapshot.ranger.header);
+    if (!header.has_value()) {
+        return std::nullopt;
+    }
     GameSnapshot result;
     for (std::size_t index = 0U; index < snapshot.ranger.roles.size(); ++index) {
         auto record = encode_legacy_role(snapshot.ranger.roles[index]);
@@ -310,7 +382,7 @@ std::optional<GameSnapshot> encode_legacy_snapshot(const RuntimeGameSnapshot& sn
         }
         result.ranger.roles[index] = std::move(*record);
     }
-    result.ranger.header = snapshot.ranger.header;
+    result.ranger.header = *header;
     result.ranger.items = snapshot.ranger.items;
     result.ranger.scenes = snapshot.ranger.scenes;
     result.ranger.magics = snapshot.ranger.magics;

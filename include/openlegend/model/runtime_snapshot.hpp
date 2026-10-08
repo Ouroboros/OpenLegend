@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -11,8 +13,42 @@
 
 namespace openlegend::model {
 
+struct InventoryEntry {
+    ItemId item_id;
+    std::int64_t count{};
+
+    NODISCARD bool operator==(const InventoryEntry&) const = default;
+};
+
+class RuntimeRangerHeader {
+public:
+    NODISCARD std::int16_t word(std::size_t index) const;
+
+    void set_word(std::size_t index, std::int64_t value);
+
+    NODISCARD CharacterId team_member(std::size_t index) const noexcept;
+
+    void set_team_member(std::size_t index, CharacterId role_id) noexcept;
+
+    NODISCARD ItemId inventory_item(std::size_t index) const noexcept;
+
+    NODISCARD std::int64_t inventory_count(std::size_t index) const noexcept;
+
+    void set_inventory(std::size_t index, ItemId item_id, std::int64_t count) noexcept;
+
+    NODISCARD bool operator==(const RuntimeRangerHeader&) const = default;
+
+private:
+    std::array<std::int16_t, header_word::inventory_begin> words_{};
+    std::array<InventoryEntry, kInventoryCount> inventory_{};
+};
+
+NODISCARD RuntimeRangerHeader decode_legacy_header(const RangerHeader& header);
+
+NODISCARD std::optional<RangerHeader> encode_legacy_header(const RuntimeRangerHeader& header);
+
 struct RuntimeRangerState {
-    RangerHeader header;
+    RuntimeRangerHeader header;
     std::vector<RoleState> roles = std::vector<RoleState>(kRoleCount);
     std::vector<ItemRecord> items = std::vector<ItemRecord>(kItemCount);
     std::vector<SceneMetadataRecord> scenes =

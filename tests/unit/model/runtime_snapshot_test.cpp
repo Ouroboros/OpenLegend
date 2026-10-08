@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <utility>
 
 #include "openlegend/model/runtime_snapshot.hpp"
@@ -26,7 +27,7 @@ void check_complete_legacy_conversion() {
     OL_CHECK(runtime->playthrough == 1);
     OL_CHECK(runtime->scene_maps == loaded.snapshot->scene_maps);
     OL_CHECK(runtime->scene_events == loaded.snapshot->scene_events);
-    OL_CHECK(runtime->ranger.header == loaded.snapshot->ranger.header);
+    OL_CHECK(model::encode_legacy_header(runtime->ranger.header) == loaded.snapshot->ranger.header);
     OL_CHECK(runtime->ranger.items == loaded.snapshot->ranger.items);
     OL_CHECK(runtime->ranger.scenes == loaded.snapshot->ranger.scenes);
     OL_CHECK(runtime->ranger.magics == loaded.snapshot->ranger.magics);
@@ -85,6 +86,46 @@ void check_complete_legacy_conversion() {
     malformed.ranger.roles[0].bytes[model::role_word::name_byte] = 0xFFU;
     OL_CHECK(!state.import_snapshot(std::move(malformed)));
     OL_CHECK(state.export_snapshot() == saved);
+}
+
+void check_inventory_width_and_legacy_boundary() {
+    using namespace openlegend;
+
+    const auto loaded = persistence::load_baseline(test::game_data_root());
+    OL_CHECK(static_cast<bool>(loaded));
+    if (!loaded) {
+        return;
+    }
+    auto snapshot = model::decode_legacy_snapshot(*loaded.snapshot);
+    OL_CHECK(snapshot.has_value());
+    if (!snapshot.has_value()) {
+        return;
+    }
+    const auto item_id = snapshot->ranger.header.inventory_item(0U);
+    constexpr std::array<std::int64_t, 4> counts{
+        32'767, 32'768, 5'000'000'000, std::numeric_limits<std::int64_t>::max()};
+    for (const auto count : counts) {
+        snapshot->ranger.header.set_inventory(0U, item_id, count);
+        OL_CHECK(snapshot->valid_for_persistence());
+        model::RuntimeGameState state;
+        OL_CHECK(state.import_snapshot(*snapshot));
+        OL_CHECK(state.export_snapshot() == snapshot);
+        OL_CHECK(state.ranger()->header.inventory_count(0U) == count);
+        const auto encoded = model::encode_legacy_snapshot(*snapshot);
+        OL_CHECK(encoded.has_value() == (count <= 32'767));
+        if (encoded.has_value()) {
+            OL_CHECK(encoded->ranger.header.inventory_count(0U) == count);
+        }
+    }
+    snapshot->ranger.header.set_inventory(0U, item_id, -1);
+    OL_CHECK(!snapshot->valid_for_persistence());
+    snapshot->ranger.header.set_inventory(0U, model::ItemId{-1}, 1);
+    OL_CHECK(!snapshot->valid_for_persistence());
+    auto legacy_header = loaded.snapshot->ranger.header;
+    legacy_header.set_inventory(0U, item_id, -32'768);
+    const auto widened = model::decode_legacy_header(legacy_header);
+    OL_CHECK(widened.inventory_count(0U) == -32'768);
+    OL_CHECK(model::encode_legacy_header(widened) == legacy_header);
 }
 
 void check_numeric_domains_and_references() {
@@ -292,6 +333,7 @@ void check_save_format_boundaries() {
 
 int main() {
     check_complete_legacy_conversion();
+    check_inventory_width_and_legacy_boundary();
     check_numeric_domains_and_references();
     check_static_definitions();
     check_save_format_boundaries();
