@@ -128,12 +128,13 @@ BattleRenderer::BattleRenderer(
         error_ = "battle renderer fonts have unexpected sizes";
         return;
     }
-    const auto experience_data = load_level_experience_data(data_root);
+    const auto experience_data = load_progression_data(data_root);
     if (!experience_data.error.empty()) {
         error_ = experience_data.error;
         return;
     }
     experience_thresholds_ = experience_data.thresholds;
+    practice_rules_ = experience_data.practice_rules;
     ascii_font_ = std::move(ascii.bytes);
     big5_font_ = std::move(big5.bytes);
     big5_cache_.emplace(big5_font_);
@@ -745,36 +746,13 @@ bool BattleRenderer::render_character_status(
             !draw_text_utf8(framebuffer, 100, 175, kSlash, text_colors::selected)) {
             return false;
         }
-        const auto experience_factor =
-            7 - role.word(model::role_word::iq) / 15;
-        const auto practice_magic = item.word(model::item_word::magic_id);
-        std::int32_t required_experience{};
-        bool maximum_magic_level{};
-        if (practice_magic == -1) {
-            required_experience = 2 * experience_factor *
-                static_cast<std::int32_t>(item.word(model::item_word::need_experience));
-        } else {
-            std::uint16_t level_index{};
-            for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
-                if (role.word(model::role_word::magic_id_begin + slot) == practice_magic) {
-                    level_index = static_cast<std::uint16_t>(
-                        role.unsigned_word(model::role_word::magic_level_begin + slot) / 100U);
-                    break;
-                }
-            }
-            if (level_index >= 9U) {
-                maximum_magic_level = true;
-            } else {
-                required_experience = experience_factor *
-                    static_cast<std::int32_t>(level_index + 1U) *
-                    static_cast<std::int32_t>(item.word(model::item_word::need_experience));
-            }
+        const auto cost = model::manual_experience_requirement(
+            role, item, static_cast<std::size_t>(practice_item_id), practice_rules_);
+        if (!cost.has_value()) {
+            error_ = "character practice experience requirement is invalid or overflows";
+            return false;
         }
-        if (maximum_magic_level) {
-            if (!draw_text_utf8(framebuffer, 107, 175, kMaximumPractice, text_colors::menu_normal)) {
-                return false;
-            }
-        } else if (!draw_number(108, 175, required_experience, 5, text_colors::menu_normal)) {
+        if (!draw_number(108, 175, cost->experience, 5, text_colors::menu_normal)) {
             return false;
         }
     }

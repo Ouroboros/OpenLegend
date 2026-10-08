@@ -560,9 +560,8 @@ struct BattlePracticeResult {
     std::int16_t magic_slot{-1};
     std::array<std::int16_t, model::role_word::magic_count> increased_magic_slots{};
     std::size_t increased_magic_slot_count{};
-    std::int32_t required_experience{};
+    std::int64_t required_experience{};
     bool practiced{};
-    bool maximum_magic_level{};
     bool learned_magic{};
     bool increased_magic_level{};
     bool practice_message_required{};
@@ -579,7 +578,7 @@ struct BattleCraftResult {
     std::int16_t recipe_slot{-1};
     std::int16_t product_count_added{};
     std::int16_t material_count_removed{};
-    std::int32_t required_experience{};
+    std::int64_t required_experience{};
     bool recipe_available{};
     bool message_required{};
     bool crafted{};

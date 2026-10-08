@@ -61,13 +61,6 @@ NODISCARD constexpr std::int16_t wrapping_i16(const std::int32_t value) noexcept
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
 }
 
-NODISCARD constexpr std::int32_t wrapping_multiply_i32(
-    const std::int32_t lhs,
-    const std::int32_t rhs) noexcept {
-    return std::bit_cast<std::int32_t>(
-        static_cast<std::uint32_t>(lhs) * static_cast<std::uint32_t>(rhs));
-}
-
 NODISCARD constexpr std::optional<std::size_t> legacy_cursor_index(
     const BattlePathCoord coordinate) noexcept {
     const auto index = static_cast<std::int32_t>(coordinate.y) *
@@ -928,7 +921,8 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
     if (!valid() || role_id >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    auto& role = ranger_.roles[role_id];
+    auto& stored_role = ranger_.roles[role_id];
+    auto role = stored_role;
     const auto item_id = role.practice_item.value;
     BattlePracticeResult result{
         .role_id = static_cast<std::int16_t>(role_id),
@@ -944,83 +938,66 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
     const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
     const auto magic_id = item.word(model::item_word::magic_id);
     result.magic_id = magic_id;
-    std::int16_t magic_slot = -1;
-    std::uint16_t magic_rank = 0;
-    if (magic_id != -1) {
-        for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
-            if (role.word(model::role_word::magic_id_begin + slot) == magic_id) {
-                magic_slot = static_cast<std::int16_t>(slot);
-                magic_rank = static_cast<std::uint16_t>(
-                    role.unsigned_word(model::role_word::magic_level_begin + slot) / 100U);
-                break;
-            }
-        }
+    const auto cost = model::manual_experience_requirement(
+        role, item, static_cast<std::size_t>(item_id), data_.practice_rules());
+    if (!cost.has_value()) {
+        error_ = "battle practice experience requirement is invalid or overflows";
+        return std::nullopt;
     }
-    result.magic_slot = magic_slot;
-    const auto factor = 7 - role.word(model::role_word::iq) / 15;
-    const auto factored_experience = wrapping_multiply_i32(
-        item.word(model::item_word::need_experience), factor);
-    result.required_experience = wrapping_multiply_i32(
-        factored_experience,
-        magic_id == -1 ? 2 : static_cast<std::int32_t>(magic_rank) + 1);
-    if (magic_rank >= 9U) {
-        result.maximum_magic_level = true;
-        return result;
-    }
-    if (static_cast<std::int32_t>(role.unsigned_word(model::role_word::item_experience)) <
-        result.required_experience) {
+    result.magic_slot = cost->magic_slot;
+    result.required_experience = cost->experience;
+    if (role.item_experience < result.required_experience) {
         return result;
     }
 
-    auto maximum_hp = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) +
-        item.word(model::item_word::add_maximum_hp));
-    if (maximum_hp > 999) {
-        maximum_hp = 999;
+    const auto maximum_hp = model::checked_add(
+        role.maximum_hp, item.word(model::item_word::add_maximum_hp));
+    const auto maximum_mp = model::checked_add(
+        role.maximum_mp, item.word(model::item_word::add_maximum_mp));
+    if (!maximum_hp.has_value() || !maximum_mp.has_value() ||
+        *maximum_hp < 0 || *maximum_mp < 0) {
+        error_ = "battle practice HP or MP overflow or invalid result";
+        return std::nullopt;
     }
-    role.set_word(model::role_word::maximum_hp, maximum_hp);
+    role.maximum_hp = *maximum_hp;
+    role.maximum_mp = *maximum_mp;
+    role.hp = std::min(role.hp, role.maximum_hp);
+    role.mp = std::min(role.mp, role.maximum_mp);
     if (item.word(model::item_word::change_mp_type) == 2) {
-        role.set_word(model::role_word::mp_type, 2);
+        role.mp_type = 2;
     }
-    auto maximum_mp = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::maximum_mp)) +
-        item.word(model::item_word::add_maximum_mp));
-    if (maximum_mp > 999) {
-        maximum_mp = 999;
-    }
-    role.set_word(model::role_word::maximum_mp, maximum_mp);
 
     for (std::size_t offset = 0U; offset <=
             model::item_word::add_morality - model::item_word::add_attack;
          ++offset) {
         const auto role_word = model::role_word::attack + offset;
-        auto changed = wrapping_i16(
-            static_cast<std::int32_t>(role.word(role_word)) +
-            item.word(model::item_word::add_attack + offset));
-        if (changed >= 100) {
-            changed = 100;
+        const auto changed = model::checked_add(
+            role.word(role_word), item.word(model::item_word::add_attack + offset));
+        if (!changed.has_value()) {
+            error_ = "battle practice ability growth overflow";
+            return std::nullopt;
         }
-        if (changed <= 0) {
-            changed = 0;
+        role.set_word(role_word, std::max<std::int64_t>(*changed, 0));
+    }
+    if (role.attack_twice == 0) {
+        role.attack_twice = item.word(model::item_word::add_attack_twice);
+    }
+    const auto attack_with_poison = model::checked_add(
+        role.attack_with_poison, item.word(model::item_word::add_attack_with_poison));
+    if (!attack_with_poison.has_value() || role.attack_twice < 0 || role.attack_twice > 1) {
+        error_ = "battle practice poison growth overflow or invalid attack-twice value";
+        return std::nullopt;
+    }
+    role.attack_with_poison = std::max<std::int64_t>(*attack_with_poison, 0);
+    role.item_experience = 0;
+    if (magic_id == -1 && item.word(model::item_word::need_experience) > 0) {
+        const auto count = model::checked_add(role.no_magic_count[static_cast<std::size_t>(item_id)], 1);
+        if (!count.has_value()) {
+            error_ = "battle practice completion history overflow";
+            return std::nullopt;
         }
-        role.set_word(role_word, changed);
+        role.no_magic_count[static_cast<std::size_t>(item_id)] = *count;
     }
-    if (role.word(model::role_word::attack_twice) == 0) {
-        role.set_word(
-            model::role_word::attack_twice,
-            item.word(model::item_word::add_attack_twice));
-    }
-    auto attack_with_poison = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::attack_with_poison)) +
-        item.word(model::item_word::add_attack_with_poison));
-    if (attack_with_poison >= 100) {
-        attack_with_poison = 100;
-    }
-    if (attack_with_poison <= 0) {
-        attack_with_poison = 0;
-    }
-    role.set_word(model::role_word::attack_with_poison, attack_with_poison);
-    role.set_word(model::role_word::item_experience, 0);
 
     result.practiced = true;
     result.practice_message_required = !suppress_message;
@@ -1034,12 +1011,12 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
             }
             found_magic = true;
             const auto word = model::role_word::magic_level_begin + slot;
-            if (role.unsigned_word(word) >= 899U) {
-                continue;
+            const auto proficiency = model::checked_add(role.word(word), 100);
+            if (!proficiency.has_value()) {
+                error_ = "battle practice proficiency growth overflow";
+                return std::nullopt;
             }
-            role.set_word(
-                word,
-                wrapping_i16(static_cast<std::int32_t>(role.word(word)) + 100));
+            role.set_word(word, *proficiency);
             result.increased_magic_slots[result.increased_magic_slot_count] =
                 static_cast<std::int16_t>(slot);
             ++result.increased_magic_slot_count;
@@ -1061,6 +1038,7 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
             }
         }
     }
+    stored_role = std::move(role);
     return result;
 }
 
@@ -1095,13 +1073,18 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
         return result;
     }
     const auto& item = ranger_.items[static_cast<std::size_t>(practice_item_id)];
-    const auto factor = 7 - role.word(model::role_word::iq) / 15;
     const auto need_experience = item.word(model::item_word::need_make_item_experience);
-    result.required_experience = static_cast<std::int32_t>(need_experience) * factor;
-    if (need_experience <= 0 ||
-        static_cast<std::int32_t>(
-            role.unsigned_word(model::role_word::make_item_experience)) <
-            result.required_experience) {
+    if (need_experience <= 0) {
+        return result;
+    }
+    const auto cost = model::practice_experience_requirement(
+        need_experience, role.iq, 1, data_.practice_rules());
+    if (!cost.has_value()) {
+        error_ = "battle crafting experience requirement is invalid or overflows";
+        return std::nullopt;
+    }
+    result.required_experience = *cost;
+    if (role.make_item_experience < result.required_experience) {
         return result;
     }
 
@@ -1339,12 +1322,12 @@ std::optional<BattlePostBattleRoleResult> BattleSetup::apply_post_battle_experie
         return std::nullopt;
     }
     const auto reward = *scaled_reward / 100;
-    const auto training_scaled = model::checked_multiply(reward, 8);
-    if (!training_scaled.has_value()) {
+    const auto training = model::training_experience_reward(reward, data_.practice_rules());
+    if (!training.has_value()) {
         error_ = "battle training experience reward overflow";
         return std::nullopt;
     }
-    const auto training_reward = *training_scaled / 10;
+    const auto training_reward = *training;
     const auto experience = model::checked_add(role.experience, reward);
     const auto item_experience = model::checked_add(role.item_experience, training_reward);
     const auto make_item_experience = model::checked_add(role.make_item_experience, training_reward);

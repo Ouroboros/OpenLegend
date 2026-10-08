@@ -7,6 +7,7 @@
 #include <string>
 
 #include "openlegend/attributes.hpp"
+#include "openlegend/model/practice.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
 namespace openlegend::battle {
@@ -19,12 +20,13 @@ inline constexpr std::size_t kBattleExtent = 64U;
 inline constexpr std::size_t kBattleOccupancyCells = kBattleExtent * kBattleExtent;
 inline constexpr std::size_t kOriginalLevelCount = 30U;
 
-struct LevelExperienceData {
+struct ProgressionData {
     std::array<std::uint16_t, kOriginalLevelCount> thresholds{};
+    model::PracticeRules practice_rules{};
     std::string error;
 };
 
-NODISCARD LevelExperienceData load_level_experience_data(const resource::DataRoot& data_root);
+NODISCARD ProgressionData load_progression_data(const resource::DataRoot& data_root);
 
 class BattleData {
 public:
@@ -44,6 +46,8 @@ public:
         return experience_thresholds_;
     }
 
+    NODISCARD const model::PracticeRules& practice_rules() const noexcept { return practice_rules_; }
+
     NODISCARD std::span<const std::int16_t, kBattleDefinitionWords> definition() const noexcept {
         return definition_;
     }
@@ -62,6 +66,7 @@ public:
 
 private:
     std::array<std::uint16_t, kOriginalLevelCount> experience_thresholds_{};
+    model::PracticeRules practice_rules_{};
     std::array<std::int16_t, kBattleDefinitionWords> definition_{};
     std::array<std::int16_t, kBattlefieldWords> battlefield_{};
     std::array<std::int16_t, kBattleOccupancyCells> occupancy_{};

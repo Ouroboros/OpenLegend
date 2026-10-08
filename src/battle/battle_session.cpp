@@ -15,6 +15,7 @@
 
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/legacy_key.hpp"
+#include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 
@@ -4079,10 +4080,12 @@ bool BattleSession::advance_post_battle_message() {
             }
             const auto word = model::role_word::magic_level_begin +
                 static_cast<std::size_t>(slot);
-            ranger_.roles[role_id].set_word(
-                word,
-                static_cast<std::int16_t>(
-                    static_cast<std::int32_t>(ranger_.roles[role_id].word(word)) + 100));
+            const auto proficiency = model::checked_add(ranger_.roles[role_id].word(word), 100);
+            if (!proficiency.has_value()) {
+                error_ = "battle post-battle practice proficiency overflow";
+                return false;
+            }
+            ranger_.roles[role_id].set_word(word, *proficiency);
             return schedule_post_battle_message({
                 PostBattleMessageKind::magic_level,
                 post_battle_role_index_,
@@ -4726,12 +4729,7 @@ bool BattleSession::render_post_battle_message(
             std::span<const std::uint8_t>{
                 ranger_.magics[static_cast<std::size_t>(magic_id)].bytes}.subspan(
                     model::magic_word::name_byte, model::magic_word::name_bytes));
-        const auto level = static_cast<std::int32_t>(
-            role.unsigned_word(
-                model::role_word::magic_level_begin +
-                static_cast<std::size_t>(magic_slot)) /
-                100U +
-            1U);
+        const auto level = role.magic_levels[static_cast<std::size_t>(magic_slot)] / 100 + 1;
         display_text.append_legacy(text::Big5TextView{magic_name});
         display_text.append_utf8(kMagicLevelPrefix);
         display_text.append_utf8(decimal_text(level, 2));

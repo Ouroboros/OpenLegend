@@ -182,6 +182,7 @@ private:
 
     resource::DataRoot data_root_;
     std::array<std::uint16_t, kOriginalLevelCount> experience_thresholds_{};
+    model::PracticeRules practice_rules_{};
     std::int16_t battlefield_id_{};
     bool battlefield_assets_loaded_{};
     bool effect_assets_loaded_{};

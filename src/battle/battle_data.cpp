@@ -1,5 +1,6 @@
 #include "openlegend/battle/battle_data.hpp"
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 
@@ -9,8 +10,8 @@
 
 namespace openlegend::battle {
 
-LevelExperienceData load_level_experience_data(const resource::DataRoot& data_root) {
-    LevelExperienceData result;
+ProgressionData load_progression_data(const resource::DataRoot& data_root) {
+    ProgressionData result;
     constexpr std::size_t experience_table_offset = 0x4DF8EU;
     const auto executable = data_root.read("Z.DAT");
     if (!executable) {
@@ -27,6 +28,30 @@ LevelExperienceData load_level_experience_data(const resource::DataRoot& data_ro
     }
     if (!model::experience_thresholds_valid(result.thresholds)) {
         result.error = "Z.DAT experience thresholds are invalid";
+        return result;
+    }
+    const auto& bytes = executable.bytes;
+    if (bytes[0x35521U] != 0xBBU || bytes[0x35531U] != 0xBAU ||
+        bytes[0x35556U] != 0xBBU || bytes[0x35566U] != 0xBAU ||
+        bytes[0x3553BU] != 0x8DU || bytes[0x3553CU] != 0x56U ||
+        bytes[0x35570U] != 0x01U || bytes[0x35571U] != 0xD2U ||
+        bytes[0x34F1AU] != 0xC1U || bytes[0x34F1BU] != 0xE0U ||
+        bytes[0x34F1DU] != 0xBDU || bytes[0x34F1CU] >= 31U ||
+        compat::read_u32le(bytes, 0x35522U) != compat::read_u32le(bytes, 0x35557U) ||
+        compat::read_u32le(bytes, 0x35532U) != compat::read_u32le(bytes, 0x35567U)) {
+        result.error = "Z.DAT practice rule instruction layout is invalid";
+        return result;
+    }
+    result.practice_rules = {
+        .aptitude_base = std::bit_cast<std::int32_t>(compat::read_u32le(bytes, 0x35532U)),
+        .aptitude_step = std::bit_cast<std::int32_t>(compat::read_u32le(bytes, 0x35522U)),
+        .unlearned_level = std::bit_cast<std::int8_t>(bytes[0x3553DU]),
+        .unassociated_first_level = 2,
+        .reward_numerator = std::int64_t{1} << bytes[0x34F1CU],
+        .reward_denominator = std::bit_cast<std::int32_t>(compat::read_u32le(bytes, 0x34F1EU)),
+    };
+    if (!model::practice_rules_valid(result.practice_rules)) {
+        result.error = "Z.DAT practice rule parameters are invalid";
     }
     return result;
 }
@@ -76,12 +101,13 @@ BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t b
     for (std::size_t word = 0U; word < battlefield_.size(); ++word) {
         battlefield_[word] = compat::read_i16le(field, word * 2U);
     }
-    const auto experience_data = load_level_experience_data(data_root);
+    const auto experience_data = load_progression_data(data_root);
     if (!experience_data.error.empty()) {
         error_ = experience_data.error;
         return;
     }
     experience_thresholds_ = experience_data.thresholds;
+    practice_rules_ = experience_data.practice_rules;
     occupancy_.fill(-1);
 }
 
