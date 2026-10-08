@@ -24,7 +24,7 @@
 <section id="field-definition"><h2>字段定义</h2>
 <p><code>item_state.users</code>：物品user状态。</p>
 <p>取值来源：物品状态及TOML item_state.users。</p>
-<p>换周目处理：当前设计未明确规定是否继承到下一周目；同周目TOML保存当前状态。</p>
+<p>换周目处理：全部物品的<code>user</code>恢复为新游戏值，逐项读取当前<code>RANGER.GRP</code>物品基线；同周目TOML保存当前状态。</p>
 <p>同周目NG+存档的<code>[item_state].users</code>完整保存当前物品定义中的
 <code>user</code>状态；当前原版物品定义有200项。</p>
 <p>物品静态名称、属性、需求和配方不随此字段保存。</p>

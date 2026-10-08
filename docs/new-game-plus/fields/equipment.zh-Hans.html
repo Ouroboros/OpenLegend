@@ -45,7 +45,7 @@
 <tr><td>防御</td><td><code>add_defence</code></td><td>13件</td><td>正值、负值均按<code>n</code>倍计算。</td></tr>
 <tr><td>速度／轻功加成</td><td><code>add_speed</code></td><td>5件</td><td>使用基础值，不乘周目数。</td></tr>
 </tbody></table>
-<p>当前原版装备的其余物品效果字段均为0，不凭空新增装备效果。角色自身的<a href="speed.zh-Hans.html#field-definition"><code>speed</code>字段</a>各周目上限固定100；装备速度是另加的生效值，不能据此提高角色字段上限，也不将装备后生效速度强制夹到100。NG2玄鐵劍（基础攻击+15、防御+15、速度−20）的三项装备加成为+30／+30／−20；君子劍（+8／−5／+10）则为+16／−10／+10。</p>
+<p>当前原版装备的其余物品效果字段均为0，不凭空新增装备效果。角色自身的<a href="speed.zh-Hans.html#field-definition"><code>speed</code>字段</a>按轻功字段页继承和增长；装备速度是另加的生效值，装备后生效速度不强制夹到100。NG2玄鐵劍（基础攻击+15、防御+15、速度−20）的三项装备加成为+30／+30／−20；君子劍（+8／−5／+10）则为+16／−10／+10。</p>
 <h3>武器与武功的固定搭配加成</h3>
 <p>下表列出原版武器—武功搭配的基础攻击加成。仅当武器槽（<code>equipment[0]</code>）与本次使用的武功ID同时匹配时，第<code>n</code>周目另加一次<code>n × 基础搭配攻击加成</code>；不匹配则为0。该项与物品的<code>add_attack</code>分别结算，不重复计入装备攻防倍率，也不对武功自身威力另乘周目数。</p>
 <table><thead><tr><th>武器ID</th><th>武器名称</th><th>武功ID</th><th>武功名称</th><th>原版搭配攻击加成（基础值）</th></tr></thead><tbody>

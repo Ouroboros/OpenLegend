@@ -177,8 +177,8 @@ AI战斗投掷暗器：
 <section id="add-poison-ng-threshold">
 <h3>正向施毒的实际毒力比较（NG1起各周目）</h3>
 <p>上文的固定100和样本只记录原版机器。设<code>A</code>为目标实际抗毒；NG+普通物品正毒计算<code>x=trunc((actor.hidden_weapon＋item.add_poison)÷2)−A</code>，玩家正毒投掷计算<code>x=trunc((item.add_poison＋actor.hidden_weapon)÷2)−A</code>。从NG1起，只有<code>x&gt;0</code>才可能新增中毒；不再检查抗毒是否达到本周100%或原版固定100。抗毒写入也不按周目夹值。</p>
-<p>两条正毒路径之后按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>结算，除数为2。</p>
-<p>玩家正毒投掷仍按<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">已确定的技巧项加号规则</a>计算；负毒及零值分支不读取抗毒，普通物品负毒（解毒药）沿用上文原版公式。AI投掷原版不读取抗毒，是否改用上述规则尚未确定。</p>
+<p>普通物品、玩家投掷和AI投掷的正毒路径均按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>结算，除数为2。</p>
+<p>玩家正毒投掷仍按<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">已确定的技巧项加号规则</a>计算；负毒及零值分支不读取抗毒，普通物品负毒（解毒药）沿用上文原版公式。AI投掷正毒暗器采用上述统一规则。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

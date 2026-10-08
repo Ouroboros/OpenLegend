@@ -73,7 +73,7 @@
     <tbody>
       <tr><td><a href="#poison-mechanics">主动用毒</a></td><td><code>actor.use_poison</code></td><td>4</td><td>菜单条件、距离与体力消耗见用毒章。</td></tr>
       <tr><td><a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a></td><td>角色武功带毒 ＋ 武功带毒字段 × 武功等级</td><td>15</td><td>仅武功HP伤害命中后结算，每个命中目标各一次。</td></tr>
-      <tr><td><a href="add-poison.zh-Hans.html#add-poison-ng-threshold">暗器正毒</a></td><td><code>trunc((物品毒值 + 暗器技巧) ÷ 2)</code></td><td>2</td><td>普通物品与玩家投掷，物品毒值大于0时适用；玩家投掷的暗器技巧改号见<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧字段页</a>。AI投掷是否适用尚未确定。</td></tr>
+      <tr><td><a href="add-poison.zh-Hans.html#add-poison-ng-threshold">暗器正毒</a></td><td><code>trunc((物品毒值 + 暗器技巧) ÷ 2)</code></td><td>2</td><td>普通物品、玩家投掷与AI投掷在物品毒值大于0时均适用；玩家投掷的暗器技巧改号见<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧字段页</a>。</td></tr>
     </tbody>
   </table>
   <pre>毒力 ≤ target.anti_poison：不中毒
@@ -84,19 +84,22 @@ target.poison += 实际毒入
 溢出     = 理论每次 − 实际毒入
 溢出伤血 = max(trunc(溢出 ÷ 10), trunc(target.maximum_hp × 溢出 ÷ 1000))
 伤血上限 = max(trunc(最深 ÷ 10), trunc(target.maximum_hp × 最深 ÷ 1000))
-target.hp −= min(溢出伤血, 伤血上限)</pre>
+当场伤血 = min(溢出伤血, 伤血上限)
+target.hp = max(0, target.hp − 当场伤血)</pre>
+  <p>上毒溢出可以致死；生命降至0时按游戏死亡流程处理。上限按最大生命计算，不保证剩余生命足以承受。</p>
   <p>理论每次沿用原版各路径的差值公式；最深表示抗毒抵消后还剩几成毒性，不超过99。中毒量已达最深时实际毒入为0，原有中毒量不降低，理论每次全部计为溢出，当场伤血不超过该毒停在最深时毒发一轮的伤害。取消原版抗毒90、100的固定门槛，只比较实际毒力与实际抗毒。</p>
 </section>
 <section id="poison-detox-rules">
   <h3>回合毒伤</h3>
-  <pre>每轮毒伤 = max(trunc(中毒量 / 10), trunc(最大生命 × 中毒量 / 1000))</pre>
+  <pre>每轮毒伤 = max(trunc(中毒量 / 10), trunc(最大生命 × 中毒量 / 1000))
+target.hp = max(0, target.hp − 每轮毒伤)</pre>
   <p>符合回合结算资格时结算；资格条件与“先内伤后中毒”的顺序沿用原版。最大生命不超过100时与原版每满10点扣1点相同；超过100后按比例计算，满毒每轮约扣10%最大生命。例如中毒99时，最大生命32的主角扣9，最大生命716的欧阳锋扣70。扣血按最大生命计算，与剩余生命无关；抗毒只参与施毒，不在扣血时再次抵减。</p>
-  <p>原版武功附毒“恰好100保留”的边界由新施毒规则自然消除。毒发后生命为负时是否仍改为1（即能否毒死目标）尚未确定。</p>
+  <p>毒发可以致死；生命降至0时按游戏死亡流程处理。原版武功附毒“恰好100保留”的边界由新施毒规则自然消除。</p>
   <p>NG1玩家投掷带毒暗器另按已定技巧项改号；
     <a href="#poison-mechanics">主动用毒</a>、
     <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>、
     <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品／投掷</a>的原版机器依据见对应字段页。
-    主动用毒距离按NG1用毒能力基值100封顶；AI投掷暗器是否改用新公式尚未确定。</p>
+    主动用毒距离按NG1用毒能力基值100封顶；AI投掷正毒暗器采用上方统一上毒公式。</p>
   <details>
     <summary>原版回合扣血顺序、HP边界与中毒100例外</summary>
     <pre>进入状态扣血分支：hurt &gt; 0
@@ -166,23 +169,20 @@ PoisonRange = trunc(U ÷ 15) + 1</pre>
 <h2>抗毒</h2>
 <section id="anti-poison-field-definition">
 <h3>字段定义</h3>
-<p><code>anti_poison</code>：抗毒能力。我方曾入队角色取通关TOML实际值，未入队角色取当前RANGER基线；敌方按当前GAME DATA中的角色抗毒基线与原有周目增长系数换算，不继承我方数值。</p>
+<p><code>anti_poison</code>：抗毒能力。我方曾入队角色取通关TOML实际值，未入队角色取当前RANGER基线；敌方从当前GAME DATA中的角色BASE抗毒累加每周目STEP。</p>
 <table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
 <tbody><tr>
           <td><code>anti_poison</code></td>
           <td>抗毒能力</td>
-          <td>我方直接继承实际值，不按周目夹值；敌方按基线比例换算</td>
-          <td>抗毒增长、物品写入与继承均不设逐周目上限；敌方仍按既有周目系数增长。</td>
+          <td>我方直接继承实际值，不按周目夹值；敌方从基线累加STEP</td>
+          <td>抗毒增长、物品写入与继承均不设逐周目上限；敌方每增加一个周目增加一次STEP。</td>
         </tr></tbody></table>
-<h3 id="anti-poison-cap">无周目抗毒硬上限；保留敌方增长系数</h3>
-<p>周目序号<code>n</code>从NG1的1开始；旧方案的<code>anti_poison_cap_step</code>提供默认值100。本次取消该字段的逐周目上限，但敌方仍需按既有公式随周目增长，因此原式仅作为敌方增长系数，绝不作为我方或敌方抗毒夹值。</p>
-<pre>EnemyAntiScale(n) = 100 + (n − 1) × anti_poison_cap_step</pre>
-<p>按默认步长，NG1／NG2／NG3的增长系数分别为100／200／300（对应100%／200%／300%）；我方实际抗毒不因周目增长而自动增加。曾入队角色直接继承实际值；未入队角色读取当前RANGER基线。NG+的抗毒增加不按该系数封顶。</p>
-<h3 id="anti-poison-enemy">敌方抗毒按既有周目系数同比例增长</h3>
-<p>每次生成敌方时，以当前GAME DATA中该角色的NG1抗毒值为基准计算，不继承上一周目的敌方实际值，也不套用我方继承规则。“向上取整”指有小数部分时取不小于结果的最小整数。</p>
-<pre>敌方实际抗毒 = ceil(敌方NG1抗毒值 × EnemyAntiScale(n) ÷ 100)
-不按 EnemyAntiScale(n) 对敌方实际抗毒夹值</pre>
-<p>NG1系数100得到原有基准值；例如敌方NG1抗毒值33、当周系数150时，49.5向上取整为50。敌方其他数值仍按既有周目增长规则；整数取整可能带来不足1点的误差。</p>
+<h3 id="anti-poison-cap">无周目抗毒硬上限；敌方从基线累加STEP</h3>
+<p>周目序号<code>n</code>从NG1的1开始；<code>anti_poison_cap_step</code>默认值100，单位为抗毒点数。我方实际抗毒不因周目增长而自动增加；曾入队角色直接继承实际值，未入队角色读取当前RANGER基线。</p>
+<h3 id="anti-poison-enemy">敌方抗毒每周目增加一次STEP</h3>
+<p>每次生成敌方时，以当前GAME DATA中该角色的NG1抗毒值为BASE，按下式计算：</p>
+<pre>敌方实际抗毒 = BASE抗毒 + (n − 1) × anti_poison_cap_step</pre>
+<p>例如BASE抗毒33、STEP=100，NG1／NG2／NG3分别为33／133／233；检查64位运算及字段合法域，不按周目夹值。敌方其他有STEP的字段见<a href="../support/battle-calculation.zh-Hans.html#enemy-growth">敌方成长总表</a>。</p>
 <p>当前RANGER.GRP资产中的秘笈没有抗毒加值。原版练功结算会把抗毒夹到0～100；NG+练功仅应用物品实际抗毒加值，不按周目夹值，当前原版秘笈因此不会凭空提高抗毒。<a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">原版练功汇编证据</a>。</p>
 <table><thead><tr><th>物品ID</th><th>名称</th><th>抗毒加值</th></tr></thead><tbody>
 <tr><td>36</td><td>通犀地龍丸</td><td>+100</td></tr>
@@ -190,10 +190,10 @@ PoisonRange = trunc(U ÷ 15) + 1</pre>
 </tbody></table>
 <p>原版普通物品按16位加法写入抗毒，不以100封顶；NG+物品保留实际加值，也不按周目夹值，但运行期使用经检查的64位数，不允许原版16位回绕。<a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">原版物品汇编证据</a>。</p>
 <h3 id="anti-poison-threshold">抗毒使用路径总表（NG1起各周目）</h3>
-<p>下表直接使用字段含义。“向零取整”指舍去小数部分；敌方基线换算使用周目增长系数，施毒路径只比较实际能力与毒力，不再使用抗毒上限的90%或100%门槛。各正毒路径按<a href="#poison-application">上毒</a>结算。</p>
+<p>下表直接使用字段含义。“向零取整”指舍去小数部分；敌方从基线累加对应STEP，施毒路径只比较实际能力与毒力，不再使用抗毒上限的90%或100%门槛。各正毒路径按<a href="#poison-application">上毒</a>结算。</p>
 <table><thead><tr><th>路径</th><th>抗毒如何参与</th><th>数值／百分比</th></tr></thead><tbody>
-<tr><td>我方换周目</td><td>曾入队角色完整继承实际抗毒，未入队角色取RANGER基线；不按周目增长系数补值或夹值。</td><td>实际数值</td></tr>
-<tr><td>敌方生成</td><td>敌方NG1抗毒值 × EnemyAntiScale(n) ÷ 100，向上取整，不按该系数夹值；不继承上一周目敌方值。</td><td>基线百分比增长</td></tr>
+<tr><td>我方换周目</td><td>曾入队角色完整继承实际抗毒，未入队角色取RANGER基线；不按敌方STEP补值或夹值。</td><td>实际数值</td></tr>
+<tr><td>敌方生成</td><td>BASE抗毒 + (n − 1) × anti_poison_cap_step；不继承上一周目敌方值。</td><td>基线累加STEP</td></tr>
 <tr><td>NG1主角生成</td><td>原版随机属性或特殊初始赋值写入抗毒；NG+不按周目夹值。</td><td>实际数值</td></tr>
 <tr><td>普通物品增加抗毒</td><td>原有抗毒加物品抗毒加值，不按周目夹值；上方物品表列出原版加值。</td><td>数值加法</td></tr>
 <tr><td>练功结算</td><td>抗毒加秘笈对应加值，不按周目夹值；当前原版秘笈的抗毒加值均为0。</td><td>数值加法</td></tr>
@@ -205,9 +205,9 @@ PoisonRange = trunc(U ÷ 15) + 1</pre>
 <tr><td><a href="#ai-poison-target">AI选择主动用毒目标</a></td><td>两种路径只要求目标实际抗毒小于施术者实际用毒，不按目标当前中毒量跳过。</td><td>实际抗毒与用毒比较</td></tr>
 <tr><td>普通物品负毒及零毒</td><td>负毒分支不读取抗毒；零毒跳过普通物品的中毒结算。</td><td>不读取抗毒</td></tr>
 <tr><td>玩家投掷非正毒</td><td>物品附毒值小于或等于0的分支不读取抗毒。</td><td>不读取抗毒</td></tr>
-<tr><td>AI投掷暗器</td><td>原版正、负及零毒分支均不读取目标抗毒；是否改用暗器规则尚未确定。</td><td>不读取抗毒</td></tr>
+<tr><td>AI投掷暗器</td><td>正毒分支采用统一上毒公式，毒力与目标实际抗毒比较；负毒及零毒分支不读取目标抗毒。</td><td>正毒比较实际毒力与抗毒</td></tr>
 <tr><td>回合中毒扣血</td><td>只按目标当前中毒量和最大生命结算，不再次用抗毒抵减。</td><td>不读取抗毒</td></tr>
-<tr><td>显示与存档</td><td>显示实际抗毒；新TOML校验数值可表示性而不按周目抗毒系数拒绝或夹值，旧Legacy另按自身16位范围处理。敌方仍从GAME DATA基线按周目增长。</td><td>实际数值</td></tr>
+<tr><td>显示与存档</td><td>显示实际抗毒；新TOML校验数值可表示性而不按敌方抗毒STEP拒绝或夹值，旧Legacy另按自身16位范围处理。敌方仍从GAME DATA基线按周目增长。</td><td>实际数值</td></tr>
 </tbody></table>
 <p>原版固定90、100门槛只作机器事实对照，不再套用到NG+。NG+施毒仅按各路径的实际数值计算，抗毒决定毒性被抵消的比例；抗毒达到或超过毒力时不中毒。现有运行时代码尚未实现这些扩展。</p>
 </section>

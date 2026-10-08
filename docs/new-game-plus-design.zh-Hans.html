@@ -25,7 +25,7 @@
 <main>
 <section id="rules-location"><h2>NG+规则去向与缺口</h2>
 <p>下表区分已进入正式字段页的规则与仅见于本地未跟踪评审稿的内容；后者不作为正式字段规则。文档收录不代表运行时代码已实现。“未发现整章失踪”只表示逐章找到了迁移位置，不代表逐句核对无遗漏。</p>
-<p class="notice">NG+不再按周目封顶人物等级、经验、武功熟练度、秘笈成功次数及其他永久能力，换周目不对实际数值作周目夹值；<strong>内伤仍保留周目上限，中毒量正常范围固定为0～99</strong>。体力固定100；资质、枚举等固定域及角色当前HP／MP不超过实际最大值的约束不属于逐周目硬上限。既有对照表的周目节点不是停止条件；敌方仍按已有规则随周目增长。</p>
+<p class="notice">NG+不再按周目封顶人物等级、经验、武功熟练度、秘笈成功次数及其他永久能力，换周目不对实际数值作周目夹值；<strong>内伤仍保留周目上限，中毒量正常范围固定为0～99</strong>。体力固定100；资质、枚举等固定域及角色当前HP／MP不超过实际最大值的约束不属于逐周目硬上限。既有对照表的周目节点不是停止条件；敌方按<a href="new-game-plus/support/battle-calculation.zh-Hans.html#enemy-growth">BASE逐周目累加STEP</a>增长。</p>
 <table><thead><tr><th>内容</th><th>结论</th><th>去向或缺口</th></tr></thead><tbody>
 <tr><td>人物继承</td><td>没消失</td><td><a href="new-game-plus/support/data-and-inheritance.zh-Hans.html#role-inheritance">数据与人物继承</a></td></tr>
 <tr><td>物品库存继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">库存继承白名单与数量</a></td></tr>
@@ -38,7 +38,7 @@
 <tr><td>11级后武功实际效果</td><td>已收录</td><td><a href="new-game-plus/fields/magic-levels.zh-Hans.html#martial-effect-growth">武功效果成长算法</a>：十级综合强度、耗内补偿、连续成长与末级范围冻结；仅完成设计，尚未实现。</td></tr>
 <tr><td>存档规则</td><td>没消失</td><td><a href="new-game-plus/support/persistence.zh-Hans.html#save-format">TOML存档与持久化</a></td></tr>
 <tr><td>伤毒、解毒、角色医疗</td><td>没消失</td><td><a href="new-game-plus/fields/hurt-medicine.zh-Hans.html">内伤医疗页</a>、<a href="new-game-plus/fields/use-poison-anti-poison-detoxification.zh-Hans.html">中毒、用毒、抗毒与解毒页</a></td></tr>
-<tr><td>敌人生成、完整伤害公式</td><td>未进入已提交文档</td><td>仅在本地未跟踪评审稿第10章；现行页面只有相关的局部规则。</td></tr>
+<tr><td>敌人生成、完整伤害公式</td><td>已收录设计，尚未实现</td><td><a href="new-game-plus/support/battle-calculation.zh-Hans.html#enemy-growth">敌方从BASE累加STEP</a>；<a href="new-game-plus/support/battle-calculation.zh-Hans.html#calculation-order">战斗结算顺序</a>串联原版主干、武功、装备、内伤及附毒。</td></tr>
 <tr><td>旧主稿已有的整章规则</td><td>未发现拆分后整章失踪</td><td>已逐章找到迁移位置，未逐句核对。</td></tr>
 </tbody></table>
 </section>
@@ -241,7 +241,7 @@
 <td><code>anti_poison</code></td>
 <td>抗毒能力</td>
 <td>我方曾入队角色取通关TOML实际值、未入队角色取RANGER基线；敌方取当前GAME DATA基线</td>
-<td>我方完整继承；敌方按原有周目增长系数由基线换算，双方均不按抗毒周目上限夹值</td>
+<td>我方完整继承；敌方从BASE每增加一个周目累加一次抗毒STEP，双方均不按抗毒周目上限夹值</td>
 <td><a href="new-game-plus/fields/use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison">详情</a></td>
 <td>✅</td>
 </tr>
@@ -485,7 +485,7 @@
 </tr>
 <tr>
 <td><code>anti_poison_cap_step</code></td>
-<td>敌方抗毒周目增长系数的既有增量；不再封顶抗毒</td>
+<td>敌方抗毒每周目累加的STEP；不再封顶抗毒</td>
 <td>独立运行时CFG；提供的默认值100</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-cap">详情</a></td>

@@ -60,7 +60,7 @@
     <div class="notice">
       <p><strong>正式规则去向：</strong>本章原有各节已迁出。内伤与医疗见<a href="../fields/hurt-medicine.zh-Hans.html#hurt">内伤医疗页内伤章</a>与<a href="../fields/hurt-medicine.zh-Hans.html#medicine">医疗章</a>；毒发与解毒见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison">中毒章</a>与<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#detoxification">解毒章</a>；上毒公式见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>，武功附毒见<a href="../fields/attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒页</a>；玩家投掷带毒暗器的改号规则见<a href="../fields/hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧页</a>。</p>
       <p>原版16位回绕仅属机器事实；本设计各周目的角色与战斗数值统一采用第3.1.4节的64位内存合同。</p>
-      <p>原版固定90、100抗毒门槛与中毒100例外仅供历史对照。从NG1起的施毒规则见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>；用毒、抗毒能力及物品抗毒写入均不按周目封顶。敌方抗毒仍以原有<code>anti_poison_cap_step</code>的数值作为增长系数计算，而不作夹值。主动用毒距离仍按固定NG1基值100封顶。</p>
+      <p>原版固定90、100抗毒门槛与中毒100例外仅供历史对照。从NG1起的施毒规则见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>；用毒、抗毒能力及物品抗毒写入均不按周目封顶。敌方抗毒从当前RANGER基线按周目累加<code>anti_poison_cap_step</code>，完整敌方成长与伤害顺序见<a href="battle-calculation.zh-Hans.html">战斗结算</a>。主动用毒距离仍按固定NG1基值100封顶。</p>
     </div>
 
     
@@ -257,7 +257,7 @@ name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
       <p>性别与角色原版携带物不受历史入队范围限制：所有角色进入新周目时都从当前原版角色定义恢复这些字段，不继承上一周目的变化。</p>
       <p>这样敌人重新取得原版战斗携带物，可入队角色也能按原流程在每个周目转交一次原版物品。</p>
       <p>除上述恢复字段及统一清零的<code>make_item_experience</code>外，只有曾经真正加入过队伍的角色才执行下面的逐字段转换；未入队角色不写入TOML，新周目其他字段使用当前RANGER角色基线。</p>
-      <p>敌方出战抗毒从当前GAME DATA角色的NG1基线按既有周目增长系数换算，不继承我方抗毒、不按增长系数夹值；其他敌方数值仍依各自已有的周目增长规则。详见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-enemy">抗毒章</a>。</p>
+      <p>敌方出战抗毒从当前GAME DATA角色的BASE累加每周目STEP；其他有STEP的敌方字段按<a href="battle-calculation.zh-Hans.html#enemy-growth">敌方成长总表</a>计算。详见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-enemy">抗毒章</a>。</p>
       <p>直接继承完整复制实际值，不按目标周目数值节点补值或夹值；固定枚举、资源引用及存储可表示性依各自字段验证，不静默修复损坏存档。</p>
     </div>
 
@@ -267,7 +267,7 @@ name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
     <h5 id="field-cap-register">数值边界登记（原版基值、保留上限与既有CFG）</h5>
     <div class="plain">
       <p>原版NG1基值、默认CFG及用户实际CFG分开读取。仅<code>hurt</code>保留随周目增长的状态上限<code>HurtMax(n, CFG)</code>，<code>poison</code>正常范围固定为0～99；体力固定100，资质、枚举、角色当前HP／MP与其实际最大值的关系仍按各自规则验证。</p>
-      <p>其他数值的旧周目增量不再用于继承或写回限幅；抗毒原增量仍参与敌方抗毒增长系数；等级、武功、生命、内力、武力、防御的既有STEP仍分别供敌方周目增长，等级和武功STEP也用于对照表节点。状态字段换周目清0不等于状态上限为0。</p>
+      <p>其他数值的旧周目增量不再用于继承或写回限幅；抗毒STEP用于敌方逐周目累加；等级、武功、生命、内力、武力、防御的既有STEP仍分别供敌方周目增长，等级和武功STEP也用于对照表节点。状态字段换周目清0不等于状态上限为0。</p>
       <p>只对已有依据的参数保留默认数值，不互相借用增量。</p>
     </div>
     <p>各字段页分别保留原版范围、既有CFG数值与当前规则；不得把历史上限示例当成现行硬上限。</p>

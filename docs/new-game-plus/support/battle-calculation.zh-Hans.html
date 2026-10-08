@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>敌方成长与战斗结算 · OpenLegend NG+</title>
+  <style>
+    body { margin:auto; max-width:1080px; padding:24px; font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif; }
+    h1,h2,h3 { line-height:1.3; }
+    section { margin:1.5rem 0 2rem; }
+    p,li { max-width:90ch; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid #8888; padding:8px 10px; text-align:left; vertical-align:top; }
+    pre { padding:14px; overflow:auto; background:#8882; }
+    .notice { padding:10px 14px; border-left:4px solid #2f6feb; background:#8882; }
+    code,pre { font-family:ui-monospace,Consolas,monospace; }
+    a { color:inherit; text-decoration:underline; }
+  </style>
+</head>
+<body>
+<header><p><a href="../../new-game-plus-design.zh-Hans.html">NG+主设计</a></p><h1>敌方成长与战斗结算</h1></header>
+<main>
+<p class="notice">本页串联正式字段规则与原版结算顺序。已确定的NG+规则替换对应步骤，未改变的公式、分支及随机调用顺序沿用原版；角色与战斗数值使用经检查的signed64运算。文档收录不代表运行时代码已经实现。</p>
+<section id="enemy-growth">
+<h2>敌方从基线累加STEP</h2>
+<p><code>n</code>为当前周目，NG1取1；BASE为当前GAME DATA的RANGER角色基值。每次生成敌方均从BASE计算，NG2增加一次STEP，NG3增加两次STEP。</p>
+<pre>敌方字段(n) = BASE字段 + (n − 1) × 对应STEP</pre>
+<table><thead><tr><th>敌方字段</th><th>读取的CFG</th><th>STEP单位</th></tr></thead><tbody>
+<tr><td>maximum_hp</td><td>hp_cap_step</td><td>最大生命点数</td></tr>
+<tr><td>maximum_mp</td><td>mp_cap_step</td><td>最大内力点数</td></tr>
+<tr><td>attack</td><td>attack_cap_step</td><td>武力点数</td></tr>
+<tr><td>defence</td><td>defence_cap_step</td><td>防御点数</td></tr>
+<tr><td>use_poison</td><td>use_poison_cap_step</td><td>用毒点数</td></tr>
+<tr><td>anti_poison</td><td>anti_poison_cap_step</td><td>抗毒点数；字段说明见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-enemy">抗毒章</a></td></tr>
+<tr><td>hidden_weapon</td><td>hidden_weapon_cap_step</td><td>暗器技巧点数</td></tr>
+<tr><td>level</td><td>role_level_step</td><td>人物等级</td></tr>
+<tr><td>已学武功槽的magic_levels</td><td>martial_level_step</td><td>武功等级；每级对应100熟练度</td></tr>
+</tbody></table>
+<p>武功等级换算仍按<a href="../fields/item-experience.zh-Hans.html#manual-rule">秘笈修炼规则</a>，保留BASE熟练度的余数：</p>
+<pre>敌方已学武功熟练度(n) = BASE熟练度 + 100 × (n − 1) × martial_level_step</pre>
+<p>无对应STEP的字段及其他战斗准备步骤沿用原版；空武功槽保持空槽。上述生成直接计算字段值，不触发人物升级随机成长。敌方不继承上一周目的战斗剩余状态，不套用我方曾入队角色继承值；我方按<a href="data-and-inheritance.zh-Hans.html#role-inheritance">人物继承</a>处理。</p>
+<p>例如BASE最大生命600、hp_cap_step=999，NG1／NG2／NG3分别为600／1599／2598；BASE抗毒33、anti_poison_cap_step=100，分别为33／133／233。字段不按周目参考节点封顶；生成时检查signed64范围及字段合法域，非法结果拒绝。</p>
+</section>
+<section id="calculation-order">
+<h2>一次出招的完整顺序</h2>
+<ol>
+<li>取得参战角色的实际字段、当前武功熟练度和周目装备加成。</li>
+<li>HP型武功按当前内力选择实际出招等级，再计算该等级的武功威力。</li>
+<li>对每个命中目标计算攻防总量、主伤害及低伤害分支。</li>
+<li>按原版顺序加入体力和目标内伤修正，再应用距离衰减与最少1点伤害。</li>
+<li>记录攻击计数，扣HP，以计算伤害增加内伤，再结算武功附毒及毒溢出。</li>
+<li>武功熟练度增长、耗内、体力和攻击次数按原版动作提交时机处理；各项已定NG+数值规则仍适用。</li>
+</ol>
+<p>内力型武功走下方独立MP分支。武功威力或合并效果是伤害公式的输入；几何权重、耗内补偿与等级成长只在<a href="../fields/magic-levels.zh-Hans.html#martial-effect-growth">武功效果成长</a>中计算一次。</p>
+</section>
+<section id="attack-level">
+<h2>HP型武功的出招等级与威力</h2>
+<pre>熟练等级 = trunc(实际熟练度 / 100) + 1
+等级耗内(候选等级) = trunc(候选等级 / 2) × 武功基础耗内</pre>
+<p>从熟练等级向下选择当前MP能够承担的最高等级；1级耗内为0。1～10级威力读取对应原始数组；11级及以后用<a href="../fields/magic-levels.zh-Hans.html#martial-effect-growth">已定扩展效果</a>得到攻击威力，射程、半径和形状使用原10级状态。效果公式不读取周目号，不在最终扣血时再乘武功成长倍率。</p>
+<p>选目标的射程、半径和形状沿用原版选格流程读取的熟练等级，11级以后冻结为原10级状态；HP计算中的内力降档只改变威力与耗内，不重新选格。原版选档和耗内关系见<a href="../../../research/evidence/functions/Z_DAT/0x39188.md">sub_39188</a>。武功附毒使用降档前的熟练等级。</p>
+</section>
+<section id="hp-damage">
+<h2>HP伤害主干</h2>
+<h3>攻防总量</h3>
+<p>每件装备的攻击、防御加成及固定武器—武功搭配加成按<a href="../fields/equipment.zh-Hans.html#equipment-effective-attributes">装备页</a>计算。符合原版资格的参战者贡献2倍武学常识：knowledge严格大于80、HP大于0且非隐藏；同方计入攻方常识，对方计入防方常识。</p>
+<pre>攻方总量 = trunc((3 × 攻击者实际attack + 本次武功攻击威力) / 2)
+           + 攻击者两件装备攻击加成
+           + 本次武器—武功搭配攻击加成
+           + 同方常识贡献
+防方总量 = 目标实际defence
+           + 目标两件装备防御加成
+           + 对方常识贡献</pre>
+<h3>主伤害与低伤害分支</h3>
+<pre>基础伤害 = trunc(2 × (攻方总量 − 3 × 防方总量) / 3)
+           + bounded(20) − bounded(20)
+若基础伤害 ≤ 0：
+  基础伤害 = trunc(攻方总量 / 10) + bounded(4) − bounded(4)</pre>
+<p>两个bounded(20)始终按顺序调用；只有主伤害非正才调用两个bounded(4)。bounded沿用原版随机函数的边界与状态消费规则。trunc为向零取整，不能把多个除法合并后统一舍入。</p>
+<h3>体力、内伤与距离</h3>
+<pre>若低伤害分支计算后仍为负：
+  计算伤害 = 1
+否则：
+  修正伤害 = 基础伤害
+             + trunc(攻击者physical_power / 15)
+             + trunc(目标hurt / 20)
+  若距离 ≤ 10：
+    距离后伤害 = trunc(修正伤害 × (100 − 3 × (距离 − 1)) / 100)
+  否则：
+    距离后伤害 = trunc(修正伤害 × 2 / 3)
+  计算伤害 = max(距离后伤害, 1)</pre>
+<p>负的低伤害结果跳过体力、内伤和距离修正；恰好0仍进入这些修正。目标内伤增伤按实际hurt除20，依<a href="../fields/hurt-medicine.zh-Hans.html#hurt-cap-impact-audit">内伤页</a>，此处不换算为伤势百分比。原版完整分支、四次随机调用条件与写回顺序见<a href="../../../research/evidence/functions/Z_DAT/0x39188.md">机器合同</a>。</p>
+<h3>扣血、产伤及攻击计数</h3>
+<pre>攻击计数 += trunc(计算伤害 / 5)
+扣血后值 = 目标扣血前HP − 计算伤害
+目标HP = max(扣血后值, 0)
+若扣血后值 &lt; 0：攻击计数 += 10 × 目标实际level
+目标hurt = min(本周HurtMax, 目标旧hurt + trunc(计算伤害 / 10))</pre>
+<p>计算伤害用于攻击计数及产伤，不能先按目标剩余HP截短。沿用原版严格边界：扣血后恰好0也死亡，但不触发这次额外击倒计数；严格低于0才增加10倍目标等级。本周HurtMax由实际CFG计算，见<a href="../fields/hurt-medicine.zh-Hans.html#hurt">内伤章</a>。</p>
+<h3>随后结算武功附毒</h3>
+<p>毒力使用角色实际武功带毒与武功带毒字段乘降档前熟练等级，除数15；统一按<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">上毒公式</a>计算最深、实际毒入、溢出与即时扣HP。附毒不再次应用攻防、距离或武功攻击威力倍率。溢出和每轮毒伤均可致死。</p>
+</section>
+<section id="mp-damage">
+<h2>内力型武功</h2>
+<p>沿用<a href="../../../research/evidence/functions/Z_DAT/0x395EC.md">sub_395EC</a>的MP结算分支：读取实际熟练等级对应的削减／恢复量；11级以后两项由<a href="../fields/magic-levels.zh-Hans.html#martial-effect-growth">武功效果成长</a>计算。原版此分支不使用HP型的耗内降档、攻防、距离、体力或内伤增伤。</p>
+<ol>
+<li>保存目标MP旧值，按顺序抽取两个bounded(3)，得到攻击者随机差。</li>
+<li>攻击者当前MP增加该级恢复量；再调用bounded(trunc(恢复量 / 2))增加最大MP。</li>
+<li>攻击者当前MP加先前随机差，按已定MP合法域限制在0至实际最大MP之间；最大MP不按999或周目参考节点封顶。</li>
+<li>按顺序抽取两个bounded(3)，得到目标随机差；目标当前MP减该级削减量再减随机差，结果不大于0时写0，并遵守当前MP不超过实际最大MP的字段约束。</li>
+<li>返回目标旧MP减目标最终MP；攻击者与目标为同一角色时，仍按原版先恢复后削减的顺序。</li>
+</ol>
+<p>五次随机调用及其条件消费规则沿用原版；原版16位回绕、最大MP的999封顶由已经确定的64位与永久能力合同替换。</p>
+</section>
+<section id="round-status">
+<h2>回合状态扣血</h2>
+<p>状态结算资格与先内伤后中毒的顺序沿用原版。内伤扣血使用实际hurt除20；中毒扣血使用<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">已定回合毒伤</a>，按最大生命计算，并允许HP降至0。内伤上限、行动值中的伤势折算和医疗疗效分别读取各自正式公式，不能把行动值的比例折算套到武功增伤上。</p>
+</section>
+<section id="implementation-status">
+<h2>实现与验证状态</h2>
+<p>本页完成规则串联。当前游戏角色字段及接口已迁移到逻辑快照，但战斗仍有Legacy窄类型、回绕、原10级数组限制和旧伤毒结算；上述完整NG+战斗链尚未实现，也尚未经过运行验证。</p>
+</section>
+</main>
+</body>
+</html>
