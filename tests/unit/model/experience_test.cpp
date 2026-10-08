@@ -1,8 +1,12 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <string_view>
+#include <utility>
 
 #include "openlegend/battle/battle_data.hpp"
+#include "openlegend/battle/battle_renderer.hpp"
 #include "openlegend/model/experience.hpp"
 #include "test_support.hpp"
 
@@ -53,6 +57,34 @@ void check_original_table_and_extension() {
     }
 }
 
+void check_next_level_display() {
+    using namespace openlegend;
+    battle::BattleRenderer renderer{resource::DataRoot{test::game_data_root()}, 0};
+    OL_CHECK(renderer.valid());
+    if (!renderer.valid()) {
+        return;
+    }
+    auto ranger = std::make_unique<model::RuntimeRangerState>();
+    constexpr std::array<std::pair<std::int64_t, std::u8string_view>, 4> cases{{
+        {29, u8" 52000"}, {30, u8" 56500"}, {59, u8"252250"}, {89, u8"587500"}}};
+    for (const auto& [level, text] : cases) {
+        ranger->roles[0U].level = level;
+        render::IndexedFramebuffer actual;
+        render::IndexedFramebuffer expected;
+        actual.clear(0);
+        expected.clear(0);
+        OL_CHECK(renderer.render_character_status(*ranger, 0, 0U, actual));
+        OL_CHECK(renderer.draw_box(expected, 55, 0, 210U, 200U));
+        OL_CHECK(renderer.draw_text_utf8(expected, 97, 175, text));
+        for (std::size_t row = 175U; row < 191U; ++row) {
+            for (std::size_t column = 97U; column < 145U; ++column) {
+                const auto offset = row * render::IndexedFramebuffer::width + column;
+                OL_CHECK(actual.pixels()[offset] == expected.pixels()[offset]);
+            }
+        }
+    }
+}
+
 void check_derived_rules_and_invalid_inputs() {
     using namespace openlegend::model;
     constexpr std::array<std::uint16_t, 3> different{0, 10, 30};
@@ -78,5 +110,6 @@ void check_derived_rules_and_invalid_inputs() {
 int main() {
     check_original_table_and_extension();
     check_derived_rules_and_invalid_inputs();
+    check_next_level_display();
     return openlegend::test::failures == 0 ? 0 : 1;
 }

@@ -218,13 +218,13 @@ NODISCARD std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
 
 NODISCARD bool prepare_runtime_fixture(
     const std::filesystem::path& source, const std::filesystem::path& destination) {
-    constexpr std::array<std::string_view, 33> files{
+    constexpr std::array<std::string_view, 34> files{
         "TITLE.IDX", "TITLE.GRP", "TITLE.BIG", "DEAD.BIG", "MMAP.COL", "MMAP.IDX",
         "MMAP.GRP", "CLOUD.IDX", "CLOUD.GRP", "3_shadow.msk", "4_shadow.msk", "EARTH.002",
         "SURFACE.002", "BUILDING.002", "BUILDX.002", "BUILDY.002", "FONT3.E16", "FONT3.C16",
         "CFONT", "RANGER.IDX", "RANGER.GRP", "ALLSIN.IDX", "ALLSIN.GRP", "ALLDEF.IDX",
         "ALLDEF.GRP", "TALK.IDX", "TALK.GRP", "KDEF.IDX", "KDEF.GRP", "HDGRP.IDX",
-        "HDGRP.GRP", "SDX070", "SMP070"};
+        "HDGRP.GRP", "SDX070", "SMP070", "Z.DAT"};
     std::error_code error;
     std::filesystem::remove_all(destination, error);
     error.clear();
@@ -310,8 +310,8 @@ NODISCARD bool prepare_battle_runtime_fixture(
     if (!prepare_runtime_fixture(source, destination)) {
         return false;
     }
-    constexpr std::array<std::string_view, 10> files{
-        "Z.DAT", "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX000", "WMP000",
+    constexpr std::array<std::string_view, 9> files{
+        "WAR.STA", "WARFLD.IDX", "WARFLD.GRP", "WDX000", "WMP000",
         "WDX002", "WMP002", "EFT.IDX", "EFT.GRP"};
     std::error_code error;
     for (const auto file : files) {

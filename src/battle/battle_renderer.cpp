@@ -11,6 +11,7 @@
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/model/checked_arithmetic.hpp"
+#include "openlegend/model/experience.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -22,10 +23,6 @@ namespace {
 using namespace openlegend::text::game_strings;
 namespace palette_colors = render::legacy_color;
 namespace text_colors = render::legacy_color::text;
-constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
-    0,     50,    150,   300,   500,   750,   1050,  1400,  1800,  2250,
-    2750,  3850,  5050,  6350,  7750,  9250,  10850, 12550, 14350, 16750,
-    18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000};
 
 NODISCARD std::u8string decimal_text(
     const std::int64_t value,
@@ -131,6 +128,12 @@ BattleRenderer::BattleRenderer(
         error_ = "battle renderer fonts have unexpected sizes";
         return;
     }
+    const auto experience_data = load_level_experience_data(data_root);
+    if (!experience_data.error.empty()) {
+        error_ = experience_data.error;
+        return;
+    }
+    experience_thresholds_ = experience_data.thresholds;
     ascii_font_ = std::move(ascii.bytes);
     big5_font_ = std::move(big5.bytes);
     big5_cache_.emplace(big5_font_);
@@ -635,17 +638,19 @@ bool BattleRenderer::render_character_status(
             !draw_text_utf8(framebuffer, 60, 175, kUpgradeLabel, text_colors::menu_normal)) {
             return false;
         }
-        const auto level = role.word(model::role_word::level);
-        if (level >= 30) {
-            if (!draw_text_utf8(framebuffer, 97, 175, kMaximumLevel, text_colors::notice)) {
+        const auto level = role.level;
+        if (level < 0) {
+            return false;
+        }
+        const auto next_level = model::checked_add(level, 1);
+        const auto next_experience = next_level.has_value()
+            ? model::level_experience_requirement(experience_thresholds_, *next_level)
+            : std::nullopt;
+        if (next_experience.has_value()) {
+            if (!draw_number(97, 175, *next_experience, 6)) {
                 return false;
             }
-        } else if (level < 0 ||
-                   !draw_number(
-                       97,
-                       175,
-                       kLevelExperienceThresholds[static_cast<std::size_t>(level)],
-                       6)) {
+        } else if (!draw_text_utf8(framebuffer, 97, 175, kMaximumLevel, text_colors::notice)) {
             return false;
         }
 

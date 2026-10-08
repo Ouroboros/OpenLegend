@@ -19,6 +19,13 @@ inline constexpr std::size_t kBattleExtent = 64U;
 inline constexpr std::size_t kBattleOccupancyCells = kBattleExtent * kBattleExtent;
 inline constexpr std::size_t kOriginalLevelCount = 30U;
 
+struct LevelExperienceData {
+    std::array<std::uint16_t, kOriginalLevelCount> thresholds{};
+    std::string error;
+};
+
+NODISCARD LevelExperienceData load_level_experience_data(const resource::DataRoot& data_root);
+
 class BattleData {
 public:
     BattleData(const resource::DataRoot& data_root, std::int16_t battle_id);

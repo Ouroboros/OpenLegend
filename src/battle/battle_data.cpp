@@ -9,6 +9,28 @@
 
 namespace openlegend::battle {
 
+LevelExperienceData load_level_experience_data(const resource::DataRoot& data_root) {
+    LevelExperienceData result;
+    constexpr std::size_t experience_table_offset = 0x4DF8EU;
+    const auto executable = data_root.read("Z.DAT");
+    if (!executable) {
+        result.error = executable.error;
+        return result;
+    }
+    if (executable.bytes.size() < experience_table_offset + result.thresholds.size() * 2U) {
+        result.error = "Z.DAT is shorter than the original experience table";
+        return result;
+    }
+    for (std::size_t index = 0U; index < result.thresholds.size(); ++index) {
+        result.thresholds[index] = compat::read_u16le(
+            executable.bytes, experience_table_offset + index * 2U);
+    }
+    if (!model::experience_thresholds_valid(result.thresholds)) {
+        result.error = "Z.DAT experience thresholds are invalid";
+    }
+    return result;
+}
+
 BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t battle_id)
     : battle_id_(battle_id) {
     const auto war = data_root.read("WAR.STA");
@@ -54,24 +76,12 @@ BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t b
     for (std::size_t word = 0U; word < battlefield_.size(); ++word) {
         battlefield_[word] = compat::read_i16le(field, word * 2U);
     }
-    constexpr std::size_t experience_table_offset = 0x4DF8EU;
-    const auto executable = data_root.read("Z.DAT");
-    if (!executable) {
-        error_ = executable.error;
+    const auto experience_data = load_level_experience_data(data_root);
+    if (!experience_data.error.empty()) {
+        error_ = experience_data.error;
         return;
     }
-    if (executable.bytes.size() < experience_table_offset + experience_thresholds_.size() * 2U) {
-        error_ = "Z.DAT is shorter than the original experience table";
-        return;
-    }
-    for (std::size_t index = 0U; index < experience_thresholds_.size(); ++index) {
-        experience_thresholds_[index] = compat::read_u16le(
-            executable.bytes, experience_table_offset + index * 2U);
-    }
-    if (!model::experience_thresholds_valid(experience_thresholds_)) {
-        error_ = "Z.DAT experience thresholds are invalid";
-        return;
-    }
+    experience_thresholds_ = experience_data.thresholds;
     occupancy_.fill(-1);
 }
 
