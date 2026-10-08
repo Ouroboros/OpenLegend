@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_setup.hpp"
 
@@ -83,7 +84,7 @@ NODISCARD constexpr std::optional<std::size_t> legacy_cursor_index(
 }  // namespace
 
 std::optional<std::int16_t> apply_role_detox_value(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
     random::LegacyRandom& random) {
@@ -125,7 +126,7 @@ std::optional<std::int16_t> apply_role_detox_value(
 }
 
 std::optional<std::int32_t> apply_role_medicine_value(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
     random::LegacyRandom& random) {
@@ -185,7 +186,7 @@ std::optional<std::int32_t> apply_role_medicine_value(
 }
 
 bool role_meets_item_requirements(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const std::int16_t role_id,
     const std::int16_t item_id) noexcept {
     if (role_id < 0 || item_id < 0 ||
@@ -244,7 +245,7 @@ bool role_meets_item_requirements(
 }
 
 bool equip_role_item(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     const std::int16_t role_id,
     const std::int16_t item_id) noexcept {
     if (role_id < 0 || item_id < 0 ||
@@ -274,7 +275,7 @@ bool equip_role_item(
 }
 
 bool assign_role_practice_item(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     const std::int16_t role_id,
     const std::int16_t item_id) noexcept {
     if (role_id < 0 || item_id < 0 ||
@@ -309,7 +310,7 @@ bool assign_role_practice_item(
 }
 
 bool consume_inventory_item_slot(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     const std::size_t inventory_slot) noexcept {
     if (inventory_slot >= model::kInventoryCount) {
         return false;
@@ -335,7 +336,7 @@ bool consume_inventory_item_slot(
 }
 
 std::optional<BattleItemEffectResult> apply_role_item_effect(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
     const std::int16_t item_id,
@@ -535,7 +536,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
 
 BattleSetup::BattleSetup(
     BattleData& data,
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::int16_t* const legacy_hp_cost_scale)
     : data_(data),
       ranger_(ranger),
@@ -940,7 +941,7 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
         return std::nullopt;
     }
     auto& role = ranger_.roles[role_id];
-    const auto item_id = role.word(model::role_word::practice_item);
+    const auto item_id = role.practice_item.value;
     BattlePracticeResult result{
         .role_id = static_cast<std::int16_t>(role_id),
         .item_id = item_id,
@@ -1096,7 +1097,7 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
         return std::nullopt;
     }
     auto& role = ranger_.roles[role_id];
-    const auto practice_item_id = role.word(model::role_word::practice_item);
+    const auto practice_item_id = role.practice_item.value;
     BattleCraftResult result{
         .role_id = static_cast<std::int16_t>(role_id),
         .practice_item_id = practice_item_id,
@@ -1331,14 +1332,14 @@ std::optional<BattlePostBattleRoleResult> BattleSetup::apply_post_battle_experie
         return std::nullopt;
     }
     auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-    const auto add_capped_experience = [](model::RoleRecord& target,
+    const auto add_capped_experience = [](model::RoleState& target,
                                           const std::size_t word,
                                           const std::uint16_t amount) {
         auto changed = static_cast<std::uint16_t>(target.unsigned_word(word) + amount);
         if (changed > 60'000U) {
             changed = 60'000U;
         }
-        target.set_word(word, std::bit_cast<std::int16_t>(changed));
+        target.set_word(word, changed);
     };
     const auto reward = words[combatant_word::reward_experience];
     add_capped_experience(
@@ -1530,7 +1531,7 @@ std::optional<BattlePlayerActionAvailability> BattleSetup::player_action_availab
 }
 
 std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
-    const std::size_t combatant_slot) const noexcept {
+    const std::size_t combatant_slot) const {
     if (!valid() || combatant_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
@@ -1545,7 +1546,7 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
         .role_id = role_id,
         .side_offset = static_cast<std::int16_t>(
             words[combatant_word::side] == 0 ? 0 : 220),
-        .portrait_id = role.word(model::role_word::head_id),
+        .portrait_id = role.head_id,
         .name_x = std::nullopt,
         .physical_power = role.word(model::role_word::physical_power),
         .hp = role.word(model::role_word::hp),
@@ -1555,10 +1556,8 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
     };
     plan.panel_x = static_cast<std::int16_t>(220 - plan.side_offset);
     plan.portrait_x = static_cast<std::int16_t>(242 - plan.side_offset);
-    std::copy_n(
-        role.bytes.begin() + static_cast<std::ptrdiff_t>(model::role_word::name_byte),
-        model::role_word::name_bytes,
-        plan.name_bytes.begin());
+    const auto name = role.legacy_name();
+    std::copy(name.begin(), name.end(), plan.name_bytes.begin());
     for (std::size_t byte = 1U; byte <= 8U; ++byte) {
         if (plan.name_bytes[byte] == 0U) {
             plan.name_x = static_cast<std::int16_t>(
@@ -1722,12 +1721,15 @@ std::optional<BattleAttackProfile> BattleSetup::attack_profile(
     }
     const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
     const auto slot_index = static_cast<std::size_t>(magic_slot);
-    const auto magic_id = role.word(model::role_word::magic_id_begin + slot_index);
+    const auto magic_id = role.magic_ids[slot_index].value;
     if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
         return std::nullopt;
     }
-    const auto level_index = static_cast<std::size_t>(
-        role.unsigned_word(model::role_word::magic_level_begin + slot_index) / 100U);
+    const auto proficiency = role.magic_levels[slot_index];
+    if (proficiency < 0) {
+        return std::nullopt;
+    }
+    const auto level_index = static_cast<std::size_t>(proficiency / 100);
     if (level_index >= model::magic_word::level_value_count) {
         return std::nullopt;
     }
@@ -1941,7 +1943,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
     }
 
     const auto equipment_bonus = [this](
-                                     const model::RoleRecord& role,
+                                     const model::RoleState& role,
                                      const std::size_t item_word)
         -> std::optional<std::int16_t> {
         std::int32_t bonus = 0;
@@ -5649,7 +5651,7 @@ std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
     }
 
     BattleMagicAnimationPlan plan{
-        role.word(model::role_word::head_id),
+        role.head_id,
         magic.word(model::magic_word::sound_id),
         effect_id,
         true,

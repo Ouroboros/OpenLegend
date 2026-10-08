@@ -68,6 +68,13 @@ void check_wide_values_and_history_initialization() {
     OL_CHECK(state->hp == 5'000'000'000);
     OL_CHECK(state->maximum_hp == 5'000'000'000);
     OL_CHECK(record.unsigned_word(role_word::experience) == 52'000U);
+    OL_CHECK(state->word(role_word::hp) == 5'000'000'000);
+    OL_CHECK(state->unsigned_word(role_word::experience) == 1'000'000'000'000);
+    state->set_word(role_word::anti_poison, 2'000'000'000'000);
+    state->set_word(role_word::magic_level_begin, 3'000'000'000'000);
+    OL_CHECK(state->anti_poison == 2'000'000'000'000);
+    OL_CHECK(state->magic_levels[0] == 3'000'000'000'000);
+    OL_CHECK(state->legacy_name()[0] == 0xB1U);
 }
 
 void check_legacy_encoding_boundaries() {

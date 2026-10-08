@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/attributes.hpp"
 #include "openlegend/scene/scene.hpp"
 
@@ -311,7 +312,7 @@ std::vector<std::int16_t> SceneAssets::script(const std::size_t script_id) const
 
 SceneSession::SceneSession(
     const resource::DataRoot& data_root,
-    model::GameSnapshot& snapshot,
+    model::RuntimeGameSnapshot& snapshot,
     random::LegacyRandom& random,
     const std::int16_t scene_id,
     const bool use_jump_entrance,
@@ -1384,9 +1385,8 @@ SceneStepResult SceneSession::run_event() {
                         std::span<const std::uint8_t>{begin, end}});
                 };
                 if (role_is_valid) {
-                    append_name(
-                        snapshot_.ranger.roles[static_cast<std::size_t>(role_id)].bytes,
-                        model::role_word::name_byte);
+                    display_text.append_utf8(
+                        snapshot_.ranger.roles[static_cast<std::size_t>(role_id)].name);
                 }
                 display_text.append_utf8(kLearnMagicNoticeInfix);
                 if (magic_id >= 0 &&
@@ -1415,12 +1415,7 @@ SceneStepResult SceneSession::run_event() {
                 role.set_word(field, after);
                 if (after > before) {
                     text::GameText display_text;
-                    const auto name_begin =
-                        role.bytes.begin() +
-                        static_cast<std::ptrdiff_t>(model::role_word::name_byte);
-                    const auto name_end = std::find(name_begin, role.bytes.end(), 0U);
-                    display_text.append_legacy(text::Big5TextView{
-                        std::span<const std::uint8_t>{name_begin, name_end}});
+                    display_text.append_utf8(role.name);
                     auto infix = kRoleAttackNoticeInfix;
                     if (opcode == 34) {
                         infix = kRoleIqNoticeInfix;
@@ -1457,12 +1452,7 @@ SceneStepResult SceneSession::run_event() {
                 const auto gain = static_cast<int>(maximum) - static_cast<int>(before);
                 if (gain > 0 && (opcode == 46 || party_contains(role_id))) {
                     text::GameText display_text;
-                    const auto name_begin =
-                        role.bytes.begin() +
-                        static_cast<std::ptrdiff_t>(model::role_word::name_byte);
-                    const auto name_end = std::find(name_begin, role.bytes.end(), 0U);
-                    display_text.append_legacy(text::Big5TextView{
-                        std::span<const std::uint8_t>{name_begin, name_end}});
+                    display_text.append_utf8(role.name);
                     display_text.append_utf8(
                         opcode == 46 ? kRoleMpNoticeInfix : kRoleHpNoticeInfix);
                     display_text.append_ascii(std::to_string(gain));
@@ -3039,10 +3029,7 @@ bool SceneSession::render_death_menu() {
             cache,
             colors);
     };
-    const auto& protagonist = snapshot_.ranger.roles[0].bytes;
-    const auto name = std::span<const std::uint8_t>{protagonist}.subspan(
-        model::role_word::name_byte,
-        model::role_word::name_bytes);
+    const auto name = snapshot_.ranger.roles[0].legacy_name();
     std::array<char, 32> date_buffer{};
     std::snprintf(
         date_buffer.data(), date_buffer.size(), "  %4d/%2d/%2d  ",

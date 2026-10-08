@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #pragma once
 
 #include <array>
@@ -61,19 +62,19 @@ public:
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_character_selection(
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         std::size_t cursor,
         PartySelectionKind kind,
         render::IndexedFramebuffer& framebuffer,
         std::optional<std::int16_t> item_id = std::nullopt);
 
     NODISCARD bool render_character_status_selection(
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         std::size_t cursor,
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_party_ability_selection(
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         std::span<const std::uint8_t> party_slots,
         std::size_t cursor,
         PartyAbilityKind kind,
@@ -85,13 +86,13 @@ public:
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_character_status(
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         std::int16_t role_id,
         std::uint8_t page,
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_item_effect(
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         std::int16_t item_id,
         const BattleItemEffectResult& effect,
         render::IndexedFramebuffer& framebuffer);

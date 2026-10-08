@@ -15,7 +15,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/battle/battle_session.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/motion/authoritative_motion.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
@@ -156,7 +156,8 @@ public:
         std::uint32_t random_seed,
         GameResolution game_resolution,
         input::NameInputMethod name_input_method = input::NameInputMethod::legacy,
-        std::chrono::nanoseconds movement_step_duration = {});
+        std::chrono::nanoseconds movement_step_duration = {},
+        model::NewGamePlusConfiguration new_game_plus_configuration = {});
 
     void advance(std::uint32_t bios_tick = 0U);
 
@@ -289,7 +290,7 @@ public:
 
     NODISCARD render::IndexedFramebuffer& framebuffer() noexcept { return framebuffer_; }
 
-    NODISCARD const model::GameState& game_state() const noexcept { return game_state_; }
+    NODISCARD const model::RuntimeGameState& game_state() const noexcept { return game_state_; }
 
     NODISCARD std::optional<std::int16_t> scene_request() const noexcept {
         return scene_request_;
@@ -460,6 +461,7 @@ private:
     std::filesystem::path data_root_path_;
     std::filesystem::path save_root_path_;
     resource::DataRoot data_root_;
+    model::NewGamePlusConfiguration new_game_plus_configuration_;
     input::NameInputMethod default_name_input_method_{input::NameInputMethod::legacy};
     std::chrono::nanoseconds movement_step_duration_{};
     bool weather_presentation_enabled_{};
@@ -481,7 +483,7 @@ private:
     LegacyStartupResources startup_resources_;
     std::unique_ptr<world::WorldMapData> world_map_;
     random::LegacyRandom random_;
-    model::GameState game_state_;
+    model::RuntimeGameState game_state_;
     render::IndexedFramebuffer framebuffer_;
     ui::TitleMenuController title_menu_;
     std::unique_ptr<ui::TitleMenuRenderer> title_renderer_;

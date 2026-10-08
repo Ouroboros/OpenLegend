@@ -1,10 +1,13 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <vector>
 
@@ -938,7 +941,7 @@ void check_game_menu_controller() {
 void check_attribute_controller() {
     using namespace openlegend;
 
-    model::RoleRecord protagonist;
+    model::RoleState protagonist;
     protagonist.set_word(model::role_word::level, 1);
     random::LegacyRandom random{0U};
     ui::NewGameAttributeController controller{protagonist, random};
@@ -946,7 +949,7 @@ void check_attribute_controller() {
     OL_CHECK(controller.handle_key('N') == ui::AttributeRollStatus::choosing);
     OL_CHECK(protagonist.word(model::role_word::maximum_mp) != 29);
 
-    model::RoleRecord cheat_protagonist;
+    model::RoleState cheat_protagonist;
     cheat_protagonist.set_word(model::role_word::level, 1);
     random::LegacyRandom cheat_random{0U};
     ui::NewGameAttributeController cheat{cheat_protagonist, cheat_random};
@@ -964,6 +967,28 @@ void check_attribute_controller() {
         static_cast<void>(expected.next());
     }
     OL_CHECK(cheat_random.next() == expected.next());
+
+    protagonist.level = std::numeric_limits<std::int64_t>::max();
+    const auto before = protagonist;
+    const auto before_random = random.state();
+    auto rejected = false;
+    try {
+        static_cast<void>(controller.handle_key('N'));
+    } catch (const std::overflow_error&) {
+        rejected = true;
+    }
+    OL_CHECK(rejected);
+    OL_CHECK(protagonist == before);
+    OL_CHECK(random.state() == before_random);
+    rejected = false;
+    try {
+        ui::NewGameAttributeController invalid{protagonist, random};
+    } catch (const std::overflow_error&) {
+        rejected = true;
+    }
+    OL_CHECK(rejected);
+    OL_CHECK(protagonist == before);
+    OL_CHECK(random.state() == before_random);
 }
 
 void check_name_editor(const std::filesystem::path& data_root) {
@@ -1177,6 +1202,29 @@ void check_startup_resource_cache(const std::filesystem::path& data_root) {
     OL_CHECK(cached_new_game.view() == app::LegacyGameView::name_entry);
     OL_CHECK(cached_new_game.game_state().loaded());
 
+    model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    configuration.hurt_cap_step = 250;
+    app::LegacyGameRuntime configured_new_game{
+        data_root, data_root, 0U, app::GameResolution{},
+        input::NameInputMethod::legacy, {}, configuration};
+    OL_CHECK(configured_new_game.valid());
+    finish_title_startup(configured_new_game);
+    configured_new_game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(configured_new_game);
+    const auto* configured_snapshot = configured_new_game.game_state().snapshot();
+    OL_CHECK(configured_snapshot != nullptr);
+    if (configured_snapshot != nullptr) {
+        OL_CHECK(configured_snapshot->configuration == configuration);
+        OL_CHECK(configured_snapshot->playthrough == 1);
+    }
+    configuration.maximum_playthroughs = 0;
+    app::LegacyGameRuntime invalid_configuration{
+        data_root, data_root, 0U, app::GameResolution{},
+        input::NameInputMethod::legacy, {}, configuration};
+    OL_CHECK(!invalid_configuration.valid());
+    OL_CHECK(invalid_configuration.error() == "Invalid new game plus configuration");
+
     const auto cached_slot_root =
         test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "b5-startup-cached-slot";
     OL_CHECK(prepare_runtime_fixture(data_root, cached_slot_root));
@@ -1279,7 +1327,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(!modern_intro.wants_text_input());
     }
 
-    std::optional<model::GameSnapshot> accepted_new_game;
+    std::optional<model::RuntimeGameSnapshot> accepted_new_game;
     {
         app::LegacyGameRuntime intro_game{data_root, 0U};
         OL_CHECK(intro_game.valid());
@@ -1316,8 +1364,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         const auto* ranger = intro_game.game_state().ranger();
         OL_CHECK(ranger != nullptr);
         if (ranger != nullptr) {
-            OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte] == 'A');
-            OL_CHECK(ranger->roles[0].bytes[model::role_word::name_byte + 1U] == 0U);
+            OL_CHECK(ranger->roles[0].name == u8"A");
+            OL_CHECK(ranger->roles[0].legacy_name()[1U] == 0U);
             OL_CHECK(ranger->header.word(model::header_word::in_sub_map) == 1);
             OL_CHECK(ranger->header.word(model::header_word::sub_map_x) == 19);
             OL_CHECK(ranger->header.word(model::header_word::sub_map_y) == 20);
@@ -1427,7 +1475,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         idle_counter.advance();
         finish_numbered_load_transition(idle_counter, app::LegacyGameView::world);
         auto* idle_ranger =
-            const_cast<model::GameState&>(idle_counter.game_state()).ranger();
+            const_cast<model::RuntimeGameState&>(idle_counter.game_state()).ranger();
         OL_CHECK(idle_ranger != nullptr);
         if (idle_ranger != nullptr) {
             OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
@@ -1455,7 +1503,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         advance_scene_idle_ticks(idle_counter, 60U);
 
         auto* idle_scene_snapshot =
-            const_cast<model::GameState&>(idle_counter.game_state()).snapshot();
+            const_cast<model::RuntimeGameState&>(idle_counter.game_state()).snapshot();
         OL_CHECK(idle_scene_snapshot != nullptr);
         if (idle_scene_snapshot != nullptr) {
             OL_CHECK(idle_scene_snapshot->set_scene_value(
@@ -1493,7 +1541,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         idle_counter.finish_presented_tick();
         idle_counter.advance();
         finish_numbered_load_transition(idle_counter, app::LegacyGameView::game_menu);
-        idle_ranger = const_cast<model::GameState&>(idle_counter.game_state()).ranger();
+        idle_ranger = const_cast<model::RuntimeGameState&>(idle_counter.game_state()).ranger();
         OL_CHECK(idle_ranger != nullptr);
         if (idle_ranger != nullptr) {
             OL_CHECK(idle_ranger->roles[0U].word(model::role_word::physical_power) == 50);
@@ -1637,7 +1685,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.game_state().ranger()->header.word(model::header_word::main_map_y) == 235);
 
     auto* sparse_inventory_ranger =
-        const_cast<model::GameState&>(new_game.game_state()).ranger();
+        const_cast<model::RuntimeGameState&>(new_game.game_state()).ranger();
     OL_CHECK(sparse_inventory_ranger != nullptr);
     const auto saved_sparse_inventory_header = sparse_inventory_ranger->header;
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
@@ -1733,7 +1781,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.finish_presented_tick();
     OL_CHECK(!app::LegacyGameRuntimeTestAccess::game_menu_item_dispatch_pending(new_game));
     auto* leave_prefix_ranger =
-        const_cast<model::GameState&>(new_game.game_state()).ranger();
+        const_cast<model::RuntimeGameState&>(new_game.game_state()).ranger();
     OL_CHECK(leave_prefix_ranger != nullptr);
     if (leave_prefix_ranger != nullptr) {
         leave_prefix_ranger->header.set_team_member(1U, model::CharacterId{0});
@@ -1758,7 +1806,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(new_game.view() == app::LegacyGameView::game_menu);
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
-    auto* leave_snapshot = const_cast<model::GameState&>(new_game.game_state()).snapshot();
+    auto* leave_snapshot = const_cast<model::RuntimeGameState&>(new_game.game_state()).snapshot();
     OL_CHECK(leave_snapshot != nullptr);
     if (leave_snapshot != nullptr) {
         leave_snapshot->ranger.header.set_team_member(1U, model::CharacterId{1});
@@ -1810,7 +1858,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
 
-    auto* item_ranger = const_cast<model::GameState&>(new_game.game_state()).ranger();
+    auto* item_ranger = const_cast<model::RuntimeGameState&>(new_game.game_state()).ranger();
     OL_CHECK(item_ranger != nullptr);
     if (item_ranger != nullptr) {
         const auto prepare_item = [&](const std::int16_t item_id, const std::int16_t item_type) {
@@ -2130,7 +2178,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     }
     OL_CHECK(second_page_preserved_scene_background);
     new_game.handle_key('A', false, false);
-    auto* scene_menu_ranger = const_cast<model::GameState&>(new_game.game_state()).ranger();
+    auto* scene_menu_ranger = const_cast<model::RuntimeGameState&>(new_game.game_state()).ranger();
     OL_CHECK(scene_menu_ranger != nullptr);
     if (scene_menu_ranger != nullptr) {
         scene_menu_ranger->roles[0U].set_word(model::role_word::medicine, 80);
@@ -2187,7 +2235,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == scene_medicine_user_hash);
     new_game.handle_key(0x1BU, false, false);
     auto* scene_snapshot =
-        const_cast<model::GameState&>(new_game.game_state()).snapshot();
+        const_cast<model::RuntimeGameState&>(new_game.game_state()).snapshot();
     OL_CHECK(scene_snapshot != nullptr);
     if (scene_snapshot != nullptr) {
         OL_CHECK(scene_snapshot->ranger.header.word(model::header_word::sub_map_x) == 44);
@@ -2246,7 +2294,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(world_palette_preserved);
 
     auto* world_item_snapshot =
-        const_cast<model::GameState&>(new_game.game_state()).snapshot();
+        const_cast<model::RuntimeGameState&>(new_game.game_state()).snapshot();
     OL_CHECK(world_item_snapshot != nullptr);
     std::optional<std::size_t> world_item_target;
     if (world_item_snapshot != nullptr) {
@@ -2320,7 +2368,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     new_game.handle_key(0x1BU, false, false);
     OL_CHECK(new_game.view() == app::LegacyGameView::world);
 
-    auto* menu_ranger = const_cast<model::GameState&>(new_game.game_state()).ranger();
+    auto* menu_ranger = const_cast<model::RuntimeGameState&>(new_game.game_state()).ranger();
     OL_CHECK(menu_ranger != nullptr);
     if (menu_ranger != nullptr) {
         auto& role = menu_ranger->roles[0U];
@@ -2470,7 +2518,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     OL_CHECK(load_game.render());
 
     auto* continuation_ranger =
-        const_cast<model::GameState&>(load_game.game_state()).ranger();
+        const_cast<model::RuntimeGameState&>(load_game.game_state()).ranger();
     OL_CHECK(continuation_ranger != nullptr);
     if (continuation_ranger != nullptr) {
         auto& role = continuation_ranger->roles[0U];
@@ -2493,7 +2541,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
     finish_world_scene_transition(load_game);
     finish_scene_entry(load_game);
     auto* continuation_snapshot =
-        const_cast<model::GameState&>(load_game.game_state()).snapshot();
+        const_cast<model::RuntimeGameState&>(load_game.game_state()).snapshot();
     OL_CHECK(continuation_snapshot != nullptr);
     if (continuation_snapshot != nullptr) {
         OL_CHECK(continuation_snapshot->set_scene_value(
@@ -2946,7 +2994,7 @@ void check_shop_input_present_gate(const std::filesystem::path& data_root) {
     OL_CHECK(game.direction_repeat_context() ==
         input::DirectionRepeatContext::movement);
 
-    auto* ranger = const_cast<model::GameState&>(game.game_state()).ranger();
+    auto* ranger = const_cast<model::RuntimeGameState&>(game.game_state()).ranger();
     OL_CHECK(ranger != nullptr);
     if (ranger == nullptr) {
         return;
@@ -3140,7 +3188,7 @@ void check_battle_party_selection_input_timing(
     if (!baseline) {
         return;
     }
-    auto& game_state = const_cast<model::GameState&>(game.game_state());
+    auto& game_state = const_cast<model::RuntimeGameState&>(game.game_state());
     OL_CHECK(game_state.import_snapshot(*baseline.snapshot));
     auto* ranger = game_state.ranger();
     OL_CHECK(ranger != nullptr);
@@ -3232,7 +3280,7 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     game.handle_key('Y', false, false);
     finish_new_game_scene_transition(game);
 
-    auto* ranger = const_cast<model::GameState&>(game.game_state()).ranger();
+    auto* ranger = const_cast<model::RuntimeGameState&>(game.game_state()).ranger();
     OL_CHECK(ranger != nullptr);
     if (ranger == nullptr) {
         return;
@@ -3628,7 +3676,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::world);
     OL_CHECK(game.game_state().ranger()->header.word(model::header_word::main_map_x) == 357);
-    auto* mutable_ranger = const_cast<model::GameState&>(game.game_state()).ranger();
+    auto* mutable_ranger = const_cast<model::RuntimeGameState&>(game.game_state()).ranger();
     OL_CHECK(mutable_ranger != nullptr);
     if (mutable_ranger != nullptr) {
         mutable_ranger->roles[0].set_word(
@@ -3652,7 +3700,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
         persistence::load_numbered_slot(save_root, persistence::SaveSlot::one);
     OL_CHECK(static_cast<bool>(before_wait_present));
     if (before_save.has_value() && before_wait_present.snapshot.has_value()) {
-        OL_CHECK(*before_save != *before_wait_present.snapshot);
+        OL_CHECK(*before_save != model::decode_legacy_snapshot(*before_wait_present.snapshot).value());
     }
     OL_CHECK(game.render());
     game.finish_presented_tick();
@@ -3668,8 +3716,8 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     const auto after_save = game.game_state().export_snapshot();
     OL_CHECK(after_save.has_value());
     if (before_save.has_value() && saved.snapshot.has_value() && after_save.has_value()) {
-        OL_CHECK(*before_save != *saved.snapshot);
-        OL_CHECK(*after_save == *saved.snapshot);
+        OL_CHECK(*before_save != model::decode_legacy_snapshot(*saved.snapshot).value());
+        OL_CHECK(*after_save == model::decode_legacy_snapshot(*saved.snapshot).value());
         OL_CHECK(saved.snapshot->ranger.header.word(model::header_word::main_map_x) == 358);
         OL_CHECK(saved.snapshot->ranger.header.word(model::header_word::main_map_y) == 235);
         OL_CHECK(saved.snapshot->ranger.header.word(model::header_word::face_towards) ==
@@ -3691,7 +3739,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     const auto loaded_behind_menu = game.game_state().export_snapshot();
     OL_CHECK(loaded_behind_menu.has_value() && saved.snapshot.has_value());
     if (loaded_behind_menu.has_value() && saved.snapshot.has_value()) {
-        OL_CHECK(*loaded_behind_menu == *saved.snapshot);
+        OL_CHECK(*loaded_behind_menu == model::decode_legacy_snapshot(*saved.snapshot).value());
     }
 
     game.handle_key(0x0DU, false, false);
@@ -4068,6 +4116,7 @@ void check_renderer(const std::filesystem::path& data_root) {
 
     app::LegacyStartupResources item_draw_resources{resource::DataRoot{data_root}};
     OL_CHECK(item_draw_resources.valid());
+    const auto item_draw_ranger = model::decode_legacy_ranger(item_draw_resources.ranger()).value();
     framebuffer.set_palette(item_draw_resources.palette());
 
     const auto rectangle_matches = [](
@@ -4099,7 +4148,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         framebuffer.pixels().begin(), framebuffer.pixels().end()};
     fill_menu_oracle_background();
     OL_CHECK(basic_renderer.render_game_menu(
-        layered_menu, item_draw_resources.ranger(), framebuffer));
+        layered_menu, item_draw_ranger, framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x3F70C56F2E0DEB41ULL);
     OL_CHECK(rectangle_matches(main_menu_layer, framebuffer.pixels(), 20, 18, 42, 132));
     const std::vector<std::uint8_t> system_menu_layer{
@@ -4108,12 +4157,12 @@ void check_renderer(const std::filesystem::path& data_root) {
     OL_CHECK(layered_menu.screen() == ui::GameMenuScreen::save_slots);
     fill_menu_oracle_background();
     OL_CHECK(basic_renderer.render_game_menu(
-        layered_menu, item_draw_resources.ranger(), framebuffer));
+        layered_menu, item_draw_ranger, framebuffer));
     OL_CHECK(fnv1a64(framebuffer.pixels()) == 0x169E23F2C8C26A14ULL);
     OL_CHECK(rectangle_matches(system_menu_layer, framebuffer.pixels(), 20, 18, 42, 132));
     OL_CHECK(rectangle_matches(system_menu_layer, framebuffer.pixels(), 70, 18, 50, 72));
 
-    const auto clear_item_draw_inventory = [](model::RangerState& ranger) {
+    const auto clear_item_draw_inventory = [](model::RuntimeRangerState& ranger) {
         for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
             ranger.header.set_inventory(slot, model::ItemId{-1}, 0);
         }
@@ -4126,7 +4175,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         std::ranges::copy(value, destination.begin());
     };
     const auto render_item_draw_vector = [&](
-                                             const model::RangerState& ranger,
+                                             const model::RuntimeRangerState& ranger,
                                              const std::span<const std::int16_t> slots,
                                              const std::uint64_t expected,
                                              const std::string_view label) {
@@ -4142,7 +4191,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         OL_CHECK(actual == expected);
     };
 
-    auto fifteen_item_ranger = item_draw_resources.ranger();
+    auto fifteen_item_ranger = item_draw_ranger;
     clear_item_draw_inventory(fifteen_item_ranger);
     constexpr std::array<std::int16_t, 4U> kDrawItemIds{0, 2, 10, 21};
     std::array<std::int16_t, 15U> fifteen_item_slots{};
@@ -4157,7 +4206,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         0x0084912FCC7C682BULL,
         "item_draw_fifteen_hash");
 
-    auto coordinate_item_ranger = item_draw_resources.ranger();
+    auto coordinate_item_ranger = item_draw_ranger;
     clear_item_draw_inventory(coordinate_item_ranger);
     coordinate_item_ranger.header.set_inventory(0U, model::ItemId{182}, 2);
     coordinate_item_ranger.header.set_word(model::header_word::main_map_x, -7);
@@ -4171,7 +4220,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         0xFED9235C929DFA92ULL,
         "item_draw_coordinate_hash");
 
-    auto alternate_item_ranger = item_draw_resources.ranger();
+    auto alternate_item_ranger = item_draw_ranger;
     clear_item_draw_inventory(alternate_item_ranger);
     alternate_item_ranger.header.set_inventory(0U, model::ItemId{0}, 1);
     auto& alternate_item = alternate_item_ranger.items[0U];
@@ -4197,10 +4246,7 @@ void check_renderer(const std::filesystem::path& data_root) {
     alternate_item.set_word(model::item_word::user, 1);
     alternate_item.set_word(model::item_word::show_introduction, 1);
     alternate_item.set_word(model::item_word::item_type, 1);
-    set_fixed_string(
-        std::span<std::uint8_t>{alternate_item_ranger.roles[1U].bytes}.subspan(
-            model::role_word::name_byte, model::role_word::name_bytes),
-        kRoleR);
+    alternate_item_ranger.roles[1U].name = text::decode_big5(text::Big5TextView{kRoleR}).value();
     render_item_draw_vector(
         alternate_item_ranger,
         kFirstInventorySlot,
@@ -4212,17 +4258,14 @@ void check_renderer(const std::filesystem::path& data_root) {
     strict_user_item.set_word(model::item_word::user, 0);
     strict_user_item.set_word(model::item_word::show_introduction, 0);
     constexpr std::array<std::uint8_t, 1U> kRoleQ{'Q'};
-    set_fixed_string(
-        std::span<std::uint8_t>{strict_user_item_ranger.roles[0U].bytes}.subspan(
-            model::role_word::name_byte, model::role_word::name_bytes),
-        kRoleQ);
+    strict_user_item_ranger.roles[0U].name = text::decode_big5(text::Big5TextView{kRoleQ}).value();
     render_item_draw_vector(
         strict_user_item_ranger,
         kFirstInventorySlot,
         0xBD9633F5CFDC8430ULL,
         "item_draw_strict_user_hash");
 
-    auto empty_item_ranger = item_draw_resources.ranger();
+    auto empty_item_ranger = item_draw_ranger;
     clear_item_draw_inventory(empty_item_ranger);
     constexpr std::array<std::int16_t, 0U> kNoInventorySlots{};
     render_item_draw_vector(
@@ -4231,7 +4274,7 @@ void check_renderer(const std::filesystem::path& data_root) {
         0x464ACC170A231D46ULL,
         "item_draw_empty_hash");
 
-    model::RoleRecord protagonist;
+    model::RoleState protagonist;
     constexpr std::array<std::uint8_t, 1> name{'A'};
     OL_CHECK(basic_renderer.render_attributes(protagonist, name, framebuffer));
     const std::vector<std::uint8_t> normal_attributes{

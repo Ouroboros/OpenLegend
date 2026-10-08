@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/attributes.hpp"
 #include "openlegend/world/world_map.hpp"
 
@@ -170,14 +171,14 @@ std::span<const std::int16_t> WorldCache::layer(const WorldLayer layer) const no
 WorldSession::WorldSession(
     const resource::DataRoot& data_root,
     const WorldMapData& map,
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     random::LegacyRandom& random)
     : WorldSession(data_root, map, ranger, random, nullptr, nullptr) {}
 
 WorldSession::WorldSession(
     const resource::DataRoot& data_root,
     const WorldMapData& map,
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     random::LegacyRandom& random,
     const resource::PackedArchive& startup_weather_sprites,
     const compat::LegacyPalette& startup_palette)
@@ -192,7 +193,7 @@ WorldSession::WorldSession(
 WorldSession::WorldSession(
     const resource::DataRoot& data_root,
     const WorldMapData& map,
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     random::LegacyRandom& random,
     const resource::PackedArchive* startup_weather_sprites,
     const compat::LegacyPalette* startup_palette)

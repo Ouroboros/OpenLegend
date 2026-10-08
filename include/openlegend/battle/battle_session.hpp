@@ -13,7 +13,7 @@
 #include "openlegend/battle/battle_pathing.hpp"
 #include "openlegend/battle/battle_renderer.hpp"
 #include "openlegend/battle/battle_setup.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/rgba_fade.hpp"
@@ -156,7 +156,7 @@ class BattleSession {
 public:
     BattleSession(
         const resource::DataRoot& data_root,
-        model::RangerState& ranger,
+        model::RuntimeRangerState& ranger,
         random::LegacyRandom& random,
         std::int16_t battle_id,
         bool grant_experience,
@@ -625,7 +625,7 @@ private:
         std::vector<BattleAudioCommand> audio_commands;
     };
 
-    model::RangerState& ranger_;
+    model::RuntimeRangerState& ranger_;
     random::LegacyRandom& random_;
     BattleData data_;
     BattleSetup setup_;

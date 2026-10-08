@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_renderer.hpp"
 
@@ -9,6 +10,7 @@
 #include <iterator>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -26,9 +28,9 @@ constexpr std::array<std::uint16_t, 30> kLevelExperienceThresholds{
     18250, 21400, 24700, 28150, 31750, 35500, 39400, 43450, 47650, 52000};
 
 NODISCARD std::u8string decimal_text(
-    const std::int32_t value,
+    const std::int64_t value,
     const int width = 0) {
-    std::array<char, 16> buffer{};
+    std::array<char, 32> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
     std::u8string result;
     const auto count = static_cast<int>(converted.ptr - buffer.data());
@@ -345,7 +347,7 @@ bool BattleRenderer::render_status_panel(
 }
 
 bool BattleRenderer::render_character_selection(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const std::size_t cursor,
     const PartySelectionKind kind,
     render::IndexedFramebuffer& framebuffer,
@@ -418,8 +420,7 @@ bool BattleRenderer::render_character_selection(
             return false;
         }
         const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-        const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
-            model::role_word::name_byte, model::role_word::name_bytes);
+        const auto name_storage = role.legacy_name();
         const auto selected = slot == cursor;
         const auto color = selected ? text_colors::selected : text_colors::menu_normal;
         const auto y = (has_details ? 72 : 52) + 20 * static_cast<int>(slot);
@@ -469,7 +470,7 @@ bool BattleRenderer::render_character_selection(
 }
 
 bool BattleRenderer::render_character_status_selection(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const std::size_t cursor,
     render::IndexedFramebuffer& framebuffer) {
     return render_character_selection(
@@ -477,7 +478,7 @@ bool BattleRenderer::render_character_status_selection(
 }
 
 bool BattleRenderer::render_party_ability_selection(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const std::span<const std::uint8_t> party_slots,
     const std::size_t cursor,
     const PartyAbilityKind kind,
@@ -513,8 +514,7 @@ bool BattleRenderer::render_party_ability_selection(
             return false;
         }
         const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-        const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
-            model::role_word::name_byte, model::role_word::name_bytes);
+        const auto name_storage = role.legacy_name();
         const auto color = index == cursor
             ? text_colors::selected
             : text_colors::menu_normal;
@@ -558,7 +558,7 @@ bool BattleRenderer::render_party_action_notice(
 }
 
 bool BattleRenderer::render_character_status(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const std::int16_t role_id,
     const std::uint8_t page,
     render::IndexedFramebuffer& framebuffer) {
@@ -567,8 +567,7 @@ bool BattleRenderer::render_character_status(
         return false;
     }
     const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-    const auto name_storage = std::span<const std::uint8_t>{role.bytes}.subspan(
-        model::role_word::name_byte, model::role_word::name_bytes);
+    const auto name_storage = role.legacy_name();
     if (!draw_box(framebuffer, 55, 0, 210U, 200U) ||
         !draw_portrait(
             framebuffer,
@@ -591,7 +590,7 @@ bool BattleRenderer::render_character_status(
     const auto draw_number = [this, &framebuffer](
                                  const int x,
                                  const int y,
-                                 const std::int32_t value,
+                                 const std::int64_t value,
                                  const int width,
                                  const render::TextColors color = text_colors::notice) {
         return draw_text_utf8(framebuffer, x, y, decimal_text(value, width), color);
@@ -653,18 +652,22 @@ bool BattleRenderer::render_character_status(
         const auto effective_with_equipment = [&](
                                                 const std::size_t role_field,
                                                 const std::size_t item_field) {
-            auto value = static_cast<std::int32_t>(role.word(role_field));
+            std::optional<std::int64_t> value = role.word(role_field);
             for (std::size_t slot = 0U; slot < model::role_word::equipment_count; ++slot) {
-                const auto item_id = role.word(model::role_word::equipment_begin + slot);
+                const auto item_id = role.equipment[slot].value;
                 if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger.items.size()) {
-                    value += ranger.items[static_cast<std::size_t>(item_id)].word(item_field);
+                    value = model::checked_add(
+                        *value, ranger.items[static_cast<std::size_t>(item_id)].word(item_field));
+                    if (!value.has_value()) {
+                        return value;
+                    }
                 }
             }
             return value;
         };
         struct RightField {
             std::u8string_view label;
-            std::int32_t value;
+            std::optional<std::int64_t> value;
         };
         const std::array<RightField, 11> fields{{
             {kAttackLabel, effective_with_equipment(
@@ -684,8 +687,9 @@ bool BattleRenderer::render_character_status(
         }};
         for (std::size_t index = 0U; index < fields.size(); ++index) {
             const auto y = 5 + 17 * static_cast<int>(index);
-            if (!draw_text_utf8(framebuffer, 160, y, fields[index].label, text_colors::selected) ||
-                !draw_number(230, y, fields[index].value, 3)) {
+            if (!fields[index].value.has_value() ||
+                !draw_text_utf8(framebuffer, 160, y, fields[index].label, text_colors::selected) ||
+                !draw_number(230, y, *fields[index].value, 3)) {
                 return false;
             }
         }
@@ -801,7 +805,7 @@ bool BattleRenderer::render_character_status(
 }
 
 bool BattleRenderer::render_item_effect(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const std::int16_t item_id,
     const BattleItemEffectResult& effect,
     render::IndexedFramebuffer& framebuffer) {

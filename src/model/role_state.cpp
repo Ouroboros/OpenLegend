@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <limits>
 #include <span>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include "openlegend/attributes.hpp"
@@ -53,6 +55,56 @@ constexpr auto scalar_fields = std::to_array<ScalarField>({
     {role_word::item_experience, &RoleState::item_experience, true},
 });
 
+template <typename State>
+NODISCARD auto native_field(State& state, const std::size_t index)
+    -> std::conditional_t<std::is_const_v<State>, const std::int16_t*, std::int16_t*> {
+    if (index == role_word::id) {
+        return &state.id.value;
+    }
+    if (index == role_word::head_id) {
+        return &state.head_id;
+    }
+    if (index == role_word::practice_item) {
+        return &state.practice_item.value;
+    }
+    if (index >= role_word::equipment_begin &&
+        index < role_word::equipment_begin + state.equipment.size()) {
+        return &state.equipment[index - role_word::equipment_begin].value;
+    }
+    if (index >= role_word::frame_begin &&
+        index < role_word::frame_begin + state.frames.size()) {
+        return &state.frames[index - role_word::frame_begin];
+    }
+    if (index >= role_word::magic_id_begin &&
+        index < role_word::magic_id_begin + state.magic_ids.size()) {
+        return &state.magic_ids[index - role_word::magic_id_begin].value;
+    }
+    if (index >= role_word::taking_item_begin &&
+        index < role_word::taking_item_begin + state.taking_items.size()) {
+        return &state.taking_items[index - role_word::taking_item_begin].value;
+    }
+    return nullptr;
+}
+
+template <typename State>
+NODISCARD auto wide_field(State& state, const std::size_t index)
+    -> std::conditional_t<std::is_const_v<State>, const std::int64_t*, std::int64_t*> {
+    for (const auto& field : scalar_fields) {
+        if (field.legacy_index == index) {
+            return &(state.*field.value);
+        }
+    }
+    if (index >= role_word::magic_level_begin &&
+        index < role_word::magic_level_begin + state.magic_levels.size()) {
+        return &state.magic_levels[index - role_word::magic_level_begin];
+    }
+    if (index >= role_word::taking_item_count_begin &&
+        index < role_word::taking_item_count_begin + state.taking_counts.size()) {
+        return &state.taking_counts[index - role_word::taking_item_count_begin];
+    }
+    return nullptr;
+}
+
 NODISCARD std::optional<std::u8string> decode_name(
     const RoleRecord& record, const std::size_t byte_offset) {
     const auto bytes = std::span<const std::uint8_t>{record.bytes}.subspan(
@@ -93,6 +145,46 @@ NODISCARD bool encode_value(
     return true;
 }
 
+}
+
+std::int64_t RoleState::word(const std::size_t index) const {
+    if (const auto* field = wide_field(*this, index); field != nullptr) {
+        return *field;
+    }
+    if (const auto* field = native_field(*this, index); field != nullptr) {
+        return *field;
+    }
+    throw std::out_of_range("role attribute index");
+}
+
+std::int64_t RoleState::unsigned_word(const std::size_t index) const {
+    return word(index);
+}
+
+void RoleState::set_word(const std::size_t index, const std::int64_t value) {
+    if (auto* field = wide_field(*this, index); field != nullptr) {
+        *field = value;
+        return;
+    }
+    if (auto* field = native_field(*this, index); field != nullptr) {
+        if (value < std::numeric_limits<std::int16_t>::min() ||
+            value > std::numeric_limits<std::int16_t>::max()) {
+            throw std::out_of_range("role reference representation");
+        }
+        *field = static_cast<std::int16_t>(value);
+        return;
+    }
+    throw std::out_of_range("role attribute index");
+}
+
+std::array<std::uint8_t, role_word::name_bytes> RoleState::legacy_name() const {
+    const auto encoded = text::encode_big5(name);
+    if (!encoded.has_value() || encoded->size() > role_word::name_bytes) {
+        throw std::invalid_argument("role name cannot be represented in the Big5 name field");
+    }
+    std::array<std::uint8_t, role_word::name_bytes> result{};
+    std::copy(encoded->begin(), encoded->end(), result.begin());
+    return result;
 }
 
 std::optional<RoleState> decode_legacy_role(

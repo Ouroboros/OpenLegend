@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -29,11 +30,16 @@ NODISCARD std::uint64_t fnv1a64(const std::span<const std::uint8_t> bytes) {
     return result;
 }
 
-NODISCARD openlegend::model::GameSnapshot load_baseline(
+NODISCARD openlegend::model::RuntimeGameSnapshot load_baseline(
     const std::filesystem::path& root) {
     auto loaded = openlegend::persistence::load_baseline(root);
     OL_CHECK(loaded);
-    return loaded ? std::move(*loaded.snapshot) : openlegend::model::GameSnapshot{};
+    if (!loaded) {
+        return {};
+    }
+    auto decoded = openlegend::model::decode_legacy_snapshot(std::move(*loaded.snapshot));
+    OL_CHECK(decoded.has_value());
+    return decoded.has_value() ? std::move(*decoded) : openlegend::model::RuntimeGameSnapshot{};
 }
 
 class SyntheticKdefDataRoot {
@@ -397,7 +403,7 @@ NODISCARD openlegend::scene::SceneStepResult finish_scene_title(
 }
 
 NODISCARD int inventory_count(
-    const openlegend::model::RangerState& ranger,
+    const openlegend::model::RuntimeRangerState& ranger,
     const std::int16_t item_id) {
     int total = 0;
     for (std::size_t index = 0U; index < openlegend::model::kInventoryCount; ++index) {
@@ -3042,7 +3048,7 @@ void check_event_role_sexual_and_audio(const std::filesystem::path& root) {
     using openlegend::scene::SceneStepKind;
 
     const openlegend::resource::DataRoot data_root{root};
-    const auto run_role_script = [&data_root](openlegend::model::GameSnapshot& snapshot) {
+    const auto run_role_script = [&data_root](openlegend::model::RuntimeGameSnapshot& snapshot) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 53};
         auto result = session.begin_event(289, 0, 0, 0);
@@ -3700,7 +3706,7 @@ void check_event_inventory_condition_edge_cases(const std::filesystem::path& roo
     OL_CHECK(money_snapshot.ranger.header.inventory_item(0U).value == 174);
     OL_CHECK(money_snapshot.ranger.header.inventory_count(0U) == 20);
 
-    const auto clear_inventory = [](openlegend::model::GameSnapshot& snapshot) {
+    const auto clear_inventory = [](openlegend::model::RuntimeGameSnapshot& snapshot) {
         for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
             snapshot.ranger.header.set_inventory(
                 slot, openlegend::model::ItemId{-1}, 0);
@@ -3940,7 +3946,7 @@ void check_event_learn_magic(const std::filesystem::path& root) {
 
     const SyntheticKdefDataRoot synthetic{root};
     const openlegend::resource::DataRoot data_root{synthetic.path()};
-    const auto fill_magic_slots = [](openlegend::model::RoleRecord& role) {
+    const auto fill_magic_slots = [](openlegend::model::RoleState& role) {
         for (std::size_t slot = 0U; slot < openlegend::model::role_word::magic_count; ++slot) {
             role.set_word(
                 openlegend::model::role_word::magic_id_begin + slot,
@@ -4777,7 +4783,7 @@ void check_event_magic_slot_write(const std::filesystem::path& root) {
 
     const SyntheticKdefDataRoot synthetic{root};
     const openlegend::resource::DataRoot data_root{synthetic.path()};
-    const auto fill_slots = [](openlegend::model::RoleRecord& role) {
+    const auto fill_slots = [](openlegend::model::RoleState& role) {
         for (std::size_t slot = 0U; slot < openlegend::model::role_word::magic_count; ++slot) {
             role.set_word(
                 openlegend::model::role_word::magic_id_begin + slot,
@@ -4786,7 +4792,7 @@ void check_event_magic_slot_write(const std::filesystem::path& root) {
         }
     };
     const auto run = [&data_root](
-                         openlegend::model::GameSnapshot& snapshot,
+                         openlegend::model::RuntimeGameSnapshot& snapshot,
                          const std::int16_t script) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
@@ -4832,9 +4838,9 @@ void check_event_magic_slot_write(const std::filesystem::path& root) {
         auto guarded_snapshot = load_baseline(root);
         auto& guarded_role = guarded_snapshot.ranger.roles[0];
         fill_slots(guarded_role);
-        const auto before = guarded_role.bytes;
+        const auto before = guarded_role;
         OL_CHECK(run(guarded_snapshot, script) == SceneStepKind::stay);
-        OL_CHECK(guarded_role.bytes == before);
+        OL_CHECK(guarded_role == before);
     }
 }
 
@@ -5435,13 +5441,13 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
 
     const auto run_item_script = [&synthetic_root](
-                                     openlegend::model::GameSnapshot& snapshot,
+                                     openlegend::model::RuntimeGameSnapshot& snapshot,
                                      const std::int16_t script) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         return session.begin_event(script, 0, 0, 0).kind;
     };
-    const auto set_role_items = [](openlegend::model::RoleRecord& role,
+    const auto set_role_items = [](openlegend::model::RoleState& role,
                                    const std::array<std::int16_t, 4>& ids,
                                    const std::array<std::int16_t, 4>& counts) {
         for (std::size_t index = 0U; index < ids.size(); ++index) {
@@ -5498,13 +5504,13 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
     {
         auto snapshot = load_baseline(root);
-        const auto before = snapshot.ranger.roles[0].bytes;
+        const auto before = snapshot.ranger.roles[0];
         OL_CHECK(run_item_script(snapshot, 72) == SceneStepKind::stay);
-        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+        OL_CHECK(snapshot.ranger.roles[0] == before);
     }
 
     const auto run_female_condition = [&synthetic_root](
-                                          openlegend::model::GameSnapshot& snapshot) {
+                                          openlegend::model::RuntimeGameSnapshot& snapshot) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         return session.begin_event(75, 0, 0, 0);
@@ -5542,7 +5548,7 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
 
     const auto run_inventory_condition = [&synthetic_root](
-                                             openlegend::model::GameSnapshot& snapshot,
+                                             openlegend::model::RuntimeGameSnapshot& snapshot,
                                              const std::int16_t script) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
@@ -5647,11 +5653,11 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
     {
         auto snapshot = load_baseline(root);
-        const auto before = snapshot.ranger.roles[0].bytes;
+        const auto before = snapshot.ranger.roles[0];
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(85, 0, 0, 0).kind == SceneStepKind::stay);
-        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+        OL_CHECK(snapshot.ranger.roles[0] == before);
     }
 
     for (const auto& [script, before_maximum, before_current, after, notice, frame_hash] :
@@ -5686,11 +5692,11 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
     {
         auto snapshot = load_baseline(root);
-        const auto before = snapshot.ranger.roles[0].bytes;
+        const auto before = snapshot.ranger.roles[0];
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(90, 0, 0, 0).kind == SceneStepKind::stay);
-        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+        OL_CHECK(snapshot.ranger.roles[0] == before);
     }
 
     for (const auto& [script, before, after, notice, frame_hash] :
@@ -5721,11 +5727,11 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
     {
         auto snapshot = load_baseline(root);
-        const auto before = snapshot.ranger.roles[0].bytes;
+        const auto before = snapshot.ranger.roles[0];
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(94, 0, 0, 0).kind == SceneStepKind::stay);
-        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+        OL_CHECK(snapshot.ranger.roles[0] == before);
     }
 
     for (const auto& [script, before_maximum, before_current, after, in_party, notice,
@@ -5769,11 +5775,11 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
     {
         auto snapshot = load_baseline(root);
-        const auto before = snapshot.ranger.roles[0].bytes;
+        const auto before = snapshot.ranger.roles[0];
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(100, 0, 0, 0).kind == SceneStepKind::stay);
-        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+        OL_CHECK(snapshot.ranger.roles[0] == before);
     }
 
     for (const auto [script, value] :
@@ -5788,15 +5794,15 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     }
     {
         auto snapshot = load_baseline(root);
-        const auto before = snapshot.ranger.roles[0].bytes;
+        const auto before = snapshot.ranger.roles[0];
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};
         OL_CHECK(session.begin_event(104, 0, 0, 0).kind == SceneStepKind::stay);
-        OL_CHECK(snapshot.ranger.roles[0].bytes == before);
+        OL_CHECK(snapshot.ranger.roles[0] == before);
     }
 
     const auto run_five_item_condition = [&synthetic_root](
-                                             openlegend::model::GameSnapshot& snapshot,
+                                             openlegend::model::RuntimeGameSnapshot& snapshot,
                                              const std::int16_t script) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{synthetic_root, snapshot, random, 70};

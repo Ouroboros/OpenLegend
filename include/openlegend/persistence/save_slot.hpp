@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "openlegend/attributes.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 
 namespace openlegend::persistence {
 
@@ -129,6 +129,15 @@ NODISCARD SnapshotWriteResult write_numbered_slot_ranger(
 
 NODISCARD SnapshotWriteResult write_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot, const model::GameSnapshot& snapshot);
+
+NODISCARD SnapshotWriteResult write_numbered_slot_scene_archives(
+    const std::filesystem::path& root, SaveSlot slot, const model::RuntimeGameSnapshot& snapshot);
+
+NODISCARD SnapshotWriteResult write_numbered_slot_ranger(
+    const std::filesystem::path& root, SaveSlot slot, const model::RuntimeGameSnapshot& snapshot);
+
+NODISCARD SnapshotWriteResult write_numbered_slot(
+    const std::filesystem::path& root, SaveSlot slot, const model::RuntimeGameSnapshot& snapshot);
 
 NODISCARD SnapshotWriteResult delete_numbered_slot(
     const std::filesystem::path& root, SaveSlot slot);

@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_session.hpp"
 
@@ -150,7 +151,7 @@ NODISCARD std::u8string decimal_text(
     return text;
 }
 
-NODISCARD int legacy_item_metric(const model::RangerState& ranger) noexcept {
+NODISCARD int legacy_item_metric(const model::RuntimeRangerState& ranger) noexcept {
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
         if (ranger.header.inventory_item(slot).value == -1) {
             return static_cast<int>(slot + 1U);
@@ -160,7 +161,7 @@ NODISCARD int legacy_item_metric(const model::RangerState& ranger) noexcept {
 }
 
 NODISCARD std::u8string coordinate_item_text(
-    const model::RangerState& ranger) {
+    const model::RuntimeRangerState& ranger) {
     const auto in_sub_map = ranger.header.word(model::header_word::in_sub_map) != 0;
     const auto player_x = ranger.header.word(
         in_sub_map ? model::header_word::sub_map_x : model::header_word::main_map_x);
@@ -182,7 +183,7 @@ NODISCARD std::u8string coordinate_item_text(
 
 BattleSession::BattleSession(
     const resource::DataRoot& data_root,
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     random::LegacyRandom& random,
     const std::int16_t battle_id,
     const bool grant_experience,
@@ -4153,8 +4154,7 @@ bool BattleSession::render_party_selection(
             return false;
         }
         const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        const auto name = std::span<const std::uint8_t>{role.bytes}.subspan(
-            model::role_word::name_byte, model::role_word::name_bytes);
+        const auto name = role.legacy_name();
         const auto name_x = centered_name_x(name);
         const auto y = 55 + static_cast<int>(20U * index);
         if (name_x.has_value() &&
@@ -4449,11 +4449,8 @@ bool BattleSession::render_player_item_selection(
         if (static_cast<std::size_t>(user) >= ranger_.roles.size()) {
             return false;
         }
-        const auto role_bytes = std::span<const std::uint8_t>{
-            ranger_.roles[static_cast<std::size_t>(user)].bytes};
-        const auto role_name = terminated_name(role_bytes.subspan(
-            model::role_word::name_byte,
-            model::role_word::name_bytes));
+        const auto role_storage = ranger_.roles[static_cast<std::size_t>(user)].legacy_name();
+        const auto role_name = terminated_name(role_storage);
         text::GameText user_text;
         user_text.append_utf8(kOpenParenthesis);
         user_text.append_legacy(text::Big5TextView{role_name});
@@ -4661,9 +4658,8 @@ bool BattleSession::render_post_battle_message(
         return false;
     }
     const auto& role = ranger_.roles[static_cast<std::size_t>(role_result.role_id)];
-    const auto role_name = terminated_name(
-        std::span<const std::uint8_t>{role.bytes}.subspan(
-            model::role_word::name_byte, model::role_word::name_bytes));
+    const auto role_storage = role.legacy_name();
+    const auto role_name = terminated_name(role_storage);
     text::GameText display_text;
 
     switch (message.kind) {

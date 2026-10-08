@@ -51,13 +51,18 @@ target_include_directories(openlegend_role_state_tests PRIVATE ${CMAKE_CURRENT_S
 target_link_libraries(openlegend_role_state_tests PRIVATE openlegend_model openlegend_persistence)
 add_test(NAME openlegend.role_state COMMAND openlegend_role_state_tests)
 
+add_executable(openlegend_runtime_snapshot_tests unit/model/runtime_snapshot_test.cpp)
+target_include_directories(openlegend_runtime_snapshot_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_runtime_snapshot_tests PRIVATE openlegend_model openlegend_persistence)
+add_test(NAME openlegend.runtime_snapshot COMMAND openlegend_runtime_snapshot_tests)
+
 add_executable(openlegend_ngplus_configuration_tests unit/app/new_game_plus_configuration_test.cpp)
 target_include_directories(openlegend_ngplus_configuration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_ngplus_configuration_tests PRIVATE openlegend_app)
 add_test(NAME openlegend.ngplus_configuration COMMAND openlegend_ngplus_configuration_tests)
 
 set_tests_properties(
-    openlegend.role_state PROPERTIES
+    openlegend.role_state openlegend.runtime_snapshot PROPERTIES
     ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
 

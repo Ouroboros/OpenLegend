@@ -227,6 +227,13 @@ NODISCARD int validate_runtime_configuration(
             configuration.display.detail);
         return 2;
     }
+    if (configuration.new_game_plus.status != app::NewGamePlusConfigurationStatus::ready) {
+        report_application_error(
+            "new game plus configuration",
+            app::new_game_plus_configuration_status_message(configuration.new_game_plus.status),
+            configuration.new_game_plus.detail);
+        return 2;
+    }
     if (configuration.input.status != app::InputConfigurationStatus::ready) {
         report_application_error(
             "input configuration",
@@ -435,20 +442,20 @@ int run_sdl_application(
                  ? std::string{"true"}
                  : std::string{"false"}));
 
-        loop_result = run_legacy_runtime_loop(
-            platform,
-            LegacyRuntimeLoopSettings{
-                *save_directory,
-                configuration.input.name_input_method,
-                configuration.input.movement_repeat_delay,
-                configuration.input.menu_repeat_delay,
-                configuration.input.menu_repeat_interval,
-                configuration.timing.fade_frame_delay,
-                game_resolution,
-                smoke_test,
-                configuration.input.smooth_movement
-                    ? timing::kBiosTickDuration
-                    : std::chrono::nanoseconds::zero()});
+        LegacyRuntimeLoopSettings loop_settings{
+            *save_directory,
+            configuration.input.name_input_method,
+            configuration.input.movement_repeat_delay,
+            configuration.input.menu_repeat_delay,
+            configuration.input.menu_repeat_interval,
+            configuration.timing.fade_frame_delay,
+            game_resolution,
+            smoke_test,
+            configuration.input.smooth_movement
+                ? timing::kBiosTickDuration
+                : std::chrono::nanoseconds::zero()};
+        loop_settings.new_game_plus_configuration = configuration.new_game_plus.values;
+        loop_result = run_legacy_runtime_loop(platform, loop_settings);
         if (loop_result.status != 0) {
             return loop_result.status;
         }

@@ -59,13 +59,16 @@ bool RangerState::valid() const noexcept {
         shops.size() == kShopCount;
 }
 
-bool GameSnapshot::valid() const noexcept {
-    return ranger.valid() &&
-        valid_ends(scene_map_ends, kSceneMapBytesPerScene, scene_maps.size()) &&
+bool SceneArchives::valid() const noexcept {
+    return valid_ends(scene_map_ends, kSceneMapBytesPerScene, scene_maps.size()) &&
         valid_ends(scene_event_ends, kSceneEventBytesPerScene, scene_events.size());
 }
 
-std::optional<std::int16_t> GameSnapshot::scene_value(
+bool GameSnapshot::valid() const noexcept {
+    return ranger.valid() && SceneArchives::valid();
+}
+
+std::optional<std::int16_t> SceneArchives::scene_value(
     const std::size_t scene,
     const SceneLayer layer,
     const std::size_t linear_tile) const noexcept {
@@ -80,7 +83,7 @@ std::optional<std::int16_t> GameSnapshot::scene_value(
         std::span<const std::uint8_t>{scene_maps}, word_index * 2U);
 }
 
-bool GameSnapshot::set_scene_value(
+bool SceneArchives::set_scene_value(
     const std::size_t scene,
     const SceneLayer layer,
     const std::size_t linear_tile,
@@ -96,7 +99,7 @@ bool GameSnapshot::set_scene_value(
     return true;
 }
 
-std::optional<std::int16_t> GameSnapshot::event_value(
+std::optional<std::int16_t> SceneArchives::event_value(
     const std::size_t scene,
     const std::size_t event,
     const SceneEventField field) const noexcept {
@@ -112,7 +115,7 @@ std::optional<std::int16_t> GameSnapshot::event_value(
         std::span<const std::uint8_t>{scene_events}, word_index * 2U);
 }
 
-bool GameSnapshot::set_event_value(
+bool SceneArchives::set_event_value(
     const std::size_t scene,
     const std::size_t event,
     const SceneEventField field,

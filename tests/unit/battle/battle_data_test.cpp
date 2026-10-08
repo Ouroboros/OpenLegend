@@ -16,7 +16,7 @@
 #include "openlegend/battle/battle_session.hpp"
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/diagnostics/log.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
 
@@ -362,9 +362,11 @@ void run_pathing_tests(const openlegend::resource::DataRoot& data_root) {
 }
 
 void initialize_ranger(
-    openlegend::model::RangerState& ranger,
+    openlegend::model::RuntimeRangerState& ranger,
     const std::array<std::int16_t, openlegend::model::kTeamMemberCount>& party) {
     for (std::size_t role = 0U; role < ranger.roles.size(); ++role) {
+        ranger.roles[role] = openlegend::model::decode_legacy_role(
+            openlegend::model::RoleRecord{}, ranger.items.size()).value();
         ranger.roles[role].set_word(
             openlegend::model::role_word::head_id,
             static_cast<std::int16_t>(role % 17U));
@@ -380,9 +382,9 @@ void initialize_ranger(
     }
 }
 
-openlegend::model::RangerState make_ranger(
+openlegend::model::RuntimeRangerState make_ranger(
     const std::array<std::int16_t, openlegend::model::kTeamMemberCount>& party) {
-    openlegend::model::RangerState ranger;
+    openlegend::model::RuntimeRangerState ranger;
     initialize_ranger(ranger, party);
     return ranger;
 }
@@ -2440,7 +2442,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(setup.valid());
         auto& role = ranger.roles[0U];
         const auto reset_level_role = [&role](const std::int16_t iq) {
-            role.bytes.fill(0U);
+            role = decode_legacy_role(RoleRecord{}, kItemCount).value();
             role.set_word(role_word::level, 1);
             role.set_word(role_word::experience, 50);
             role.set_word(role_word::increased_life, 2);
@@ -2495,9 +2497,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
 
         reset_level_role(29);
         role.set_word(role_word::level, 29);
-        role.set_word(
-            role_word::experience,
-            static_cast<std::int16_t>(static_cast<std::uint16_t>(52'000U)));
+        role.set_word(role_word::experience, 52'000);
         openlegend::random::LegacyRandom maximum_level_random{3U};
         const auto maximum_level = setup.apply_battle_level_up(
             0U, false, maximum_level_random);
@@ -2743,9 +2743,9 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 39'320U);
 
         words[combatant_word::reward_experience] = 1'000;
-        role.set_word(role_word::experience, -536);
-        role.set_word(role_word::item_experience, -536);
-        role.set_word(role_word::make_item_experience, -536);
+        role.set_word(role_word::experience, 65'000);
+        role.set_word(role_word::item_experience, 65'000);
+        role.set_word(role_word::make_item_experience, 65'000);
         applied = setup.apply_post_battle_experience(
             0U, BattleOutcome::defeat, false);
         OL_CHECK(applied.has_value());
@@ -2754,9 +2754,9 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(role.unsigned_word(role_word::make_item_experience) == 264U);
 
         words[combatant_word::reward_experience] = 2'000;
-        role.set_word(role_word::experience, -6'536);
-        role.set_word(role_word::item_experience, -6'536);
-        role.set_word(role_word::make_item_experience, -6'536);
+        role.set_word(role_word::experience, 59'000);
+        role.set_word(role_word::item_experience, 59'000);
+        role.set_word(role_word::make_item_experience, 59'000);
         applied = setup.apply_post_battle_experience(
             0U, BattleOutcome::defeat, true);
         OL_CHECK(applied.has_value());
@@ -2837,12 +2837,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(inactive_cleanup->attack_targets_cleared == 1);
         OL_CHECK(first[combatant_word::ai_target] == -1);
 
-        std::fill_n(
-            first_role.bytes.begin() + static_cast<std::ptrdiff_t>(role_word::name_byte),
-            role_word::name_bytes,
-            static_cast<std::uint8_t>(0));
-        first_role.bytes[role_word::name_byte] = 'A';
-        first_role.bytes[role_word::name_byte + 1U] = 'B';
+        first_role.name = u8"AB";
         first_role.set_word(role_word::head_id, 123);
         first_role.set_word(role_word::physical_power, 77);
         first_role.set_word(role_word::hp, 55);
@@ -2903,11 +2898,10 @@ void run_battle_status_panel_review_test(
     }
     party_words[combatant_word::side] = 0;
 
-    const auto set_name = [](RoleRecord& role, const std::array<std::uint8_t, 10>& name) {
-        std::copy(
-            name.begin(),
-            name.end(),
-            role.bytes.begin() + static_cast<std::ptrdiff_t>(role_word::name_byte));
+    const auto set_name = [](RoleState& role, const std::array<std::uint8_t, 10>& name) {
+        const auto end = std::find(name.begin(), name.end(), 0U);
+        role.name = openlegend::text::decode_big5(openlegend::text::Big5TextView{
+            std::span<const std::uint8_t>{name.begin(), end}}).value();
     };
     for (std::size_t null_index = 1U; null_index <= 8U; ++null_index) {
         std::array<std::uint8_t, 10> name{
@@ -3034,7 +3028,7 @@ void run_battle_practice_review_test(
 
     BattleData data{data_root, 4};
     OL_CHECK(data.valid());
-    const auto configure = [](openlegend::model::RangerState& ranger) {
+    const auto configure = [](openlegend::model::RuntimeRangerState& ranger) {
         auto& role = ranger.roles[0U];
         auto& item = ranger.items[5U];
         role.set_word(role_word::practice_item, 5);
@@ -3103,15 +3097,15 @@ void run_battle_practice_review_test(
         auto& role = ranger.roles[0U];
         auto& item = ranger.items[5U];
         role.set_word(role_word::iq, -32768);
-        role.set_word(role_word::item_experience, -1);
-        role.set_word(role_word::magic_level_begin, -1);
+        role.set_word(role_word::item_experience, 65'535);
+        role.set_word(role_word::magic_level_begin, 65'535);
         item.set_word(item_word::need_experience, 32767);
         const auto result = setup.apply_battle_practice(0U, false);
         OL_CHECK(result.has_value());
         OL_CHECK(result->required_experience == -148'762'224);
         OL_CHECK(result->maximum_magic_level);
         OL_CHECK(!result->practiced);
-        OL_CHECK(role.word(role_word::item_experience) == -1);
+        OL_CHECK(role.word(role_word::item_experience) == 65'535);
     }
 
     {
@@ -3233,7 +3227,7 @@ void run_battle_crafting_review_test(
 
     BattleData data{data_root, 4};
     OL_CHECK(data.valid());
-    const auto configure = [](openlegend::model::RangerState& ranger) {
+    const auto configure = [](openlegend::model::RuntimeRangerState& ranger) {
         auto& role = ranger.roles[0U];
         auto& item = ranger.items[5U];
         role.set_word(role_word::practice_item, 5);
@@ -4502,7 +4496,7 @@ void run_player_support_session_test(
                  log_path, openlegend::diagnostics::LogLevel::debug) ==
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     auto& actor = ranger->roles[1U];
@@ -4738,7 +4732,7 @@ void run_player_item_session_test(
         finish_player_menu_redraw(session);
         OL_CHECK(session.phase() == BattleSessionPhase::player_action);
     };
-    const auto clear_inventory = [](openlegend::model::RangerState& ranger) {
+    const auto clear_inventory = [](openlegend::model::RuntimeRangerState& ranger) {
         for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
             ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
         }
@@ -4760,7 +4754,7 @@ void run_player_item_session_test(
     std::uint64_t throwing_effect_hash = 0U;
     std::uint64_t throwing_damage_hash = 0U;
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         auto& actor = ranger->roles[1U];
@@ -4886,7 +4880,7 @@ void run_player_item_session_test(
     }
 
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         auto& actor = ranger->roles[1U];
@@ -4926,7 +4920,7 @@ void run_player_item_session_test(
     }
 
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         auto& actor = ranger->roles[1U];
@@ -4961,7 +4955,7 @@ void run_player_item_session_test(
     }
 
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         auto& actor = ranger->roles[1U];
@@ -5174,15 +5168,17 @@ void run_player_status_session_test(
                  log_path, openlegend::diagnostics::LogLevel::debug) ==
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {1, 2, -1, -1, -1, -1});
     auto& actor = ranger->roles[1U];
     auto& status_role = ranger->roles[2U];
     constexpr std::array<std::uint8_t, 5U> kActorName{0xA4U, 0x40U, 0xA4U, 0x42U, 0U};
     constexpr std::array<std::uint8_t, 7U> kStatusName{
         0xA4U, 0x44U, 0xA4U, 0x46U, 0xA4U, 0x48U, 0U};
-    std::ranges::copy(kActorName, actor.bytes.begin() + role_word::name_byte);
-    std::ranges::copy(kStatusName, status_role.bytes.begin() + role_word::name_byte);
+    actor.name = openlegend::text::decode_big5(openlegend::text::Big5TextView{
+        std::span<const std::uint8_t>{kActorName}.first(kActorName.size() - 1U)}).value();
+    status_role.name = openlegend::text::decode_big5(openlegend::text::Big5TextView{
+        std::span<const std::uint8_t>{kStatusName}.first(kStatusName.size() - 1U)}).value();
     actor.set_word(role_word::physical_power, 0);
     actor.set_word(role_word::mp, 0);
     actor.set_word(role_word::use_poison, 0);
@@ -5249,8 +5245,8 @@ void run_player_status_session_test(
         kMagicName,
         ranger->magics[5U].bytes.begin() + magic_word::name_byte);
 
-    status_role.set_word(role_word::experience, -32'767);
-    status_role.set_word(role_word::item_experience, -1);
+    status_role.set_word(role_word::experience, 32'769);
+    status_role.set_word(role_word::item_experience, 65'535);
     BattleRenderer unsigned_status_renderer{data_root, 0};
     openlegend::render::IndexedFramebuffer unsigned_status_page_0;
     openlegend::render::IndexedFramebuffer unsigned_status_page_1;
@@ -5273,7 +5269,7 @@ void run_player_status_session_test(
     OL_CHECK(unsigned_status_page_1_hash == 0x7DB20CE65A040D95ULL);
     status_role.set_word(role_word::experience, 1'234);
     status_role.set_word(role_word::item_experience, 15);
-    const auto status_role_before = status_role.bytes;
+    const auto status_role_before = status_role;
 
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     openlegend::random::LegacyRandom random{1U};
@@ -5358,7 +5354,7 @@ void run_player_status_session_test(
         OL_CHECK(session->player_action_menu().cursor == 2U);
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 0);
     }
-    OL_CHECK(status_role.bytes == status_role_before);
+    OL_CHECK(status_role == status_role_before);
     OL_CHECK(random.state() == 1U);
 
     const auto hash_path =
@@ -5415,7 +5411,7 @@ void run_player_attack_session_test(
                               const std::int16_t expected_direction,
                               const std::uint8_t expected_clear_key,
                               const bool finish_attack) {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         auto& actor = ranger->roles[1U];
         auto& enemy = ranger->roles[3U];
@@ -5639,7 +5635,7 @@ void run_player_attack_session_test(
     run_case(2, 1'000U, true, 299, {}, -1, 0U, true);
     run_case(3, 1'100U, false, 250, {}, -1, 0U, true);
 
-    auto delayed_ranger = std::make_unique<openlegend::model::RangerState>();
+    auto delayed_ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*delayed_ranger, {0, 2, 3, -1, -1, -1});
     auto& delayed_actor = delayed_ranger->roles[1U];
     auto& delayed_enemy = delayed_ranger->roles[3U];
@@ -5724,7 +5720,7 @@ void run_player_attack_session_test(
                   7,
                   BattleAudioAction::start_loaded}}));
 
-    auto cancel_ranger = std::make_unique<openlegend::model::RangerState>();
+    auto cancel_ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*cancel_ranger, {0, 2, 3, -1, -1, -1});
     auto& cancel_actor = cancel_ranger->roles[1U];
     cancel_actor.set_word(role_word::hp, 100);
@@ -5806,7 +5802,7 @@ void run_ai_attack_session_test(
                  log_path, openlegend::diagnostics::LogLevel::debug) ==
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
     auto& actor = ranger->roles[1U];
     auto& enemy = ranger->roles[3U];
@@ -5969,7 +5965,7 @@ void run_ai_attack_session_test(
     OL_CHECK(commit_hash == 0xdbee20f394fd7219ULL);
     OL_CHECK(level_hash == 0xe40df81b7c10678cULL);
 
-    auto movement_ranger = std::make_unique<openlegend::model::RangerState>();
+    auto movement_ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*movement_ranger, {0, 2, 3, -1, -1, -1});
     auto& movement_actor = movement_ranger->roles[1U];
     auto& movement_enemy = movement_ranger->roles[3U];
@@ -6134,7 +6130,7 @@ void run_ai_poison_session_test(
                  log_path, openlegend::diagnostics::LogLevel::debug) ==
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
     auto& actor = ranger->roles[1U];
     auto& enemy = ranger->roles[3U];
@@ -6259,7 +6255,7 @@ void run_ai_poison_session_test(
     OL_CHECK(first_damage_hash == 0x0867daa53f3f34edULL);
     OL_CHECK(random.state() == 2'993'822'286U);
 
-    auto fallback_ranger = std::make_unique<openlegend::model::RangerState>();
+    auto fallback_ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*fallback_ranger, {0, 2, 3, -1, -1, -1});
     auto& fallback_actor = fallback_ranger->roles[1U];
     auto& fallback_enemy = fallback_ranger->roles[3U];
@@ -6383,12 +6379,12 @@ void run_ai_item_session_test(
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
-    const auto clear_inventory = [](openlegend::model::RangerState& ranger) {
+    const auto clear_inventory = [](openlegend::model::RuntimeRangerState& ranger) {
         for (std::size_t slot = 0U; slot < openlegend::model::kInventoryCount; ++slot) {
             ranger.header.set_inventory(slot, openlegend::model::ItemId{-1}, 0);
         }
     };
-    const auto prepare_actor = [](openlegend::model::RangerState& ranger) {
+    const auto prepare_actor = [](openlegend::model::RuntimeRangerState& ranger) {
         auto& actor = ranger.roles[1U];
         actor.set_word(role_word::hp, 500);
         actor.set_word(role_word::maximum_hp, 500);
@@ -6493,7 +6489,7 @@ void run_ai_item_session_test(
     std::uint64_t item_effect_hash = 0U;
     std::uint32_t item_random_state = 0U;
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         prepare_actor(*ranger);
@@ -6573,7 +6569,7 @@ void run_ai_item_session_test(
     std::uint64_t throwing_damage_hash = 0U;
     std::uint32_t throwing_random_state = 0U;
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         prepare_actor(*ranger);
@@ -6689,7 +6685,7 @@ void run_ai_item_session_test(
 
     std::uint64_t moved_throwing_effect_hash = 0U;
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         prepare_actor(*ranger);
@@ -6810,7 +6806,7 @@ void run_ai_item_session_test(
     }
 
     {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         clear_inventory(*ranger);
         prepare_actor(*ranger);
@@ -6968,7 +6964,7 @@ void run_ai_support_session_test(
         std::size_t damage_frames{};
     };
     auto run_case = [&](const bool medicine, const std::uint32_t initial_tick) {
-        auto ranger = std::make_unique<openlegend::model::RangerState>();
+        auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         auto& actor = ranger->roles[1U];
         auto& enemy = ranger->roles[3U];
@@ -7162,7 +7158,7 @@ void run_ai_support_movement_session_test(
                  log_path, openlegend::diagnostics::LogLevel::debug) ==
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {0, 2, -1, -1, -1, -1});
     openlegend::random::LegacyRandom random{12U};
     auto session = std::make_unique<BattleSession>(
@@ -7378,7 +7374,7 @@ void run_ai_request_session_test(
                  log_path, openlegend::diagnostics::LogLevel::debug) ==
              openlegend::diagnostics::LoggingInitializationStatus::initialized);
 
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {0, 2, -1, -1, -1, -1});
     openlegend::random::LegacyRandom random{1U};
     auto session = std::make_unique<BattleSession>(
@@ -7582,11 +7578,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     auto ranger = make_ranger({0, 2, -1, -1, -1, -1});
     for (const auto role_id : {0U, 2U}) {
         auto& role = ranger.roles[role_id];
-        auto name = std::span<std::uint8_t>{role.bytes}.subspan(
-            openlegend::model::role_word::name_byte,
-            openlegend::model::role_word::name_bytes);
-        std::ranges::fill(name, std::uint8_t{0U});
-        name[0U] = static_cast<std::uint8_t>('A' + role_id);
+        role.name = std::u8string{static_cast<char8_t>('A' + role_id)};
     }
     openlegend::random::LegacyRandom random{1U};
     BattleSession session{data_root, ranger, random, 2, true};
@@ -11273,7 +11265,7 @@ void run_fixed_and_duplicate_tests(const openlegend::resource::DataRoot& data_ro
 void run_initial_presentation_order_test(
     const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
-    auto ranger = std::make_unique<openlegend::model::RangerState>();
+    auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
     ranger->roles[1U].set_word(openlegend::model::role_word::speed, 1);
     ranger->roles[3U].set_word(openlegend::model::role_word::speed, 30'000);
@@ -11648,12 +11640,10 @@ void run_battle_outcome_session_test(
         OL_CHECK(visible_count() == visible_before_wait);
         finish_player_menu_redraw(session);
     };
-    const auto set_names = [](openlegend::model::RangerState& ranger) {
+    const auto set_names = [](openlegend::model::RuntimeRangerState& ranger) {
         for (std::size_t role_id = 0U; role_id < ranger.roles.size(); ++role_id) {
-            auto name = std::span<std::uint8_t>{ranger.roles[role_id].bytes}.subspan(
-                role_word::name_byte, role_word::name_bytes);
-            std::ranges::fill(name, std::uint8_t{0U});
-            name[0U] = static_cast<std::uint8_t>('A' + role_id % 26U);
+            ranger.roles[role_id].name = std::u8string{
+                static_cast<char8_t>('A' + role_id % 26U)};
         }
     };
 

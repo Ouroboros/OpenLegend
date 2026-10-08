@@ -11,7 +11,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/legacy_color.hpp"
 
@@ -69,13 +69,13 @@ struct BattleAreaResult {
 };
 
 NODISCARD std::optional<std::int16_t> apply_role_detox_value(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     random::LegacyRandom& random);
 
 NODISCARD std::optional<std::int32_t> apply_role_medicine_value(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     random::LegacyRandom& random);
@@ -107,35 +107,35 @@ struct BattleItemEffectResult {
 };
 
 NODISCARD bool role_meets_item_requirements(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     std::int16_t role_id,
     std::int16_t item_id) noexcept;
 
 NODISCARD bool equip_role_item(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::int16_t role_id,
     std::int16_t item_id) noexcept;
 
 NODISCARD bool assign_role_practice_item(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::int16_t role_id,
     std::int16_t item_id) noexcept;
 
 NODISCARD bool consume_inventory_item_slot(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::size_t inventory_slot) noexcept;
 
 NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
-    model::RangerState& ranger,
+    model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     std::int16_t item_id,
     random::LegacyRandom& random);
 
 struct BattleRestResult {
-    std::int16_t physical_power{};
-    std::int16_t hp{};
-    std::int16_t mp{};
+    std::int64_t physical_power{};
+    std::int64_t hp{};
+    std::int64_t mp{};
 };
 
 enum class BattleAiAction : std::int16_t {
@@ -372,7 +372,7 @@ struct BattleAiMovementStep {
     BattlePathCoord from{};
     BattlePathCoord to{};
     std::int16_t remaining_round_value{};
-    std::int16_t physical_power{};
+    std::int64_t physical_power{};
     std::int16_t view_center_x{};
     std::int16_t view_center_y{};
     std::int16_t view_x{};
@@ -540,12 +540,12 @@ enum class BattleOutcome {
 
 struct BattleLevelUpResult {
     std::int16_t role_id{-1};
-    std::int16_t old_level{};
-    std::int16_t new_level{};
-    std::int16_t levels_gained{};
-    std::int16_t growth_roll{};
-    std::int16_t maximum_hp{};
-    std::int16_t maximum_mp{};
+    std::int64_t old_level{};
+    std::int64_t new_level{};
+    std::int64_t levels_gained{};
+    std::int64_t growth_roll{};
+    std::int64_t maximum_hp{};
+    std::int64_t maximum_mp{};
     bool changed{};
     bool message_required{};
     bool present_required{};
@@ -612,10 +612,10 @@ struct BattlePostBattleResult {
 struct BattleRoundStatusDamageEntry {
     std::size_t combatant_slot{};
     std::int16_t role_id{};
-    std::int16_t hp_before{};
-    std::int16_t hp_after{};
-    std::int16_t hurt_damage{};
-    std::int16_t poison_damage{};
+    std::int64_t hp_before{};
+    std::int64_t hp_after{};
+    std::int64_t hurt_damage{};
+    std::int64_t poison_damage{};
     bool physical_power_floored{};
     bool hp_floored{};
 };
@@ -648,11 +648,11 @@ struct BattleStatusPanelPlan {
     std::array<std::uint8_t, model::role_word::name_bytes> name_bytes{};
     std::optional<std::int16_t> name_x;
     std::int16_t name_y{84};
-    std::int16_t physical_power{};
-    std::int16_t hp{};
-    std::int16_t maximum_hp{};
-    std::int16_t mp{};
-    std::int16_t maximum_mp{};
+    std::int64_t physical_power{};
+    std::int64_t hp{};
+    std::int64_t maximum_hp{};
+    std::int64_t mp{};
+    std::int64_t maximum_mp{};
     render::TextColors hurt_color{};
     render::TextColors poison_color{};
     render::TextColors mp_color{};
@@ -682,7 +682,7 @@ class BattleSetup {
 public:
     BattleSetup(
         BattleData& data,
-        model::RangerState& ranger,
+        model::RuntimeRangerState& ranger,
         std::int16_t* legacy_hp_cost_scale = nullptr);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
@@ -757,7 +757,7 @@ public:
         player_action_availability(std::size_t combatant_slot) const noexcept;
 
     NODISCARD std::optional<BattleStatusPanelPlan> status_panel_plan(
-        std::size_t combatant_slot) const noexcept;
+        std::size_t combatant_slot) const;
 
     NODISCARD std::optional<BattlePathCoord> move_one_marked_step(
         BattlePathing& pathing, std::size_t slot);
@@ -1199,7 +1199,7 @@ private:
     void remove_inventory_slot(std::size_t slot) noexcept;
 
     BattleData& data_;
-    model::RangerState& ranger_;
+    model::RuntimeRangerState& ranger_;
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};
     std::array<std::int16_t, kBattlePartySlots> selection_states_{};
     std::array<std::int16_t, kBattleOccupancyCells> attack_effects_{};

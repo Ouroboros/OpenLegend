@@ -6,6 +6,7 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/model/new_game.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 
 namespace openlegend::ui {
 
@@ -17,16 +18,16 @@ enum class AttributeRollStatus {
 class NewGameAttributeController {
 public:
     NewGameAttributeController(
-        model::RoleRecord& protagonist, random::LegacyRandom& random) noexcept;
+        model::RoleState& protagonist, random::LegacyRandom& random);
 
-    NODISCARD AttributeRollStatus handle_key(std::uint8_t translated_key) noexcept;
+    NODISCARD AttributeRollStatus handle_key(std::uint8_t translated_key);
 
     NODISCARD bool cheat_active() const noexcept { return cheat_active_; }
 
 private:
-    void reroll() noexcept;
+    void reroll();
 
-    model::RoleRecord& protagonist_;
+    model::RoleState& protagonist_;
     random::LegacyRandom& random_;
     std::array<std::uint8_t, 8> key_history_{};
     bool cheat_active_{};

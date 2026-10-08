@@ -14,7 +14,7 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/compat/legacy_video.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/indexed_layer.hpp"
@@ -187,7 +187,7 @@ class SceneSession {
 public:
     SceneSession(
         const resource::DataRoot& data_root,
-        model::GameSnapshot& snapshot,
+        model::RuntimeGameSnapshot& snapshot,
         random::LegacyRandom& random,
         std::int16_t scene_id,
         bool use_jump_entrance = false,
@@ -682,7 +682,7 @@ private:
     void cancel_player_idle_animation() noexcept;
 
     const resource::DataRoot& data_root_;
-    model::GameSnapshot& snapshot_;
+    model::RuntimeGameSnapshot& snapshot_;
     random::LegacyRandom& random_;
     std::optional<SceneDate> death_date_override_;
     SceneAssets assets_;

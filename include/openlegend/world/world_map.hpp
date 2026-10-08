@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "openlegend/attributes.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/indexed_layer.hpp"
@@ -131,13 +131,13 @@ public:
     WorldSession(
         const resource::DataRoot& data_root,
         const WorldMapData& map,
-        model::RangerState& ranger,
+        model::RuntimeRangerState& ranger,
         random::LegacyRandom& random);
 
     WorldSession(
         const resource::DataRoot& data_root,
         const WorldMapData& map,
-        model::RangerState& ranger,
+        model::RuntimeRangerState& ranger,
         random::LegacyRandom& random,
         const resource::PackedArchive& startup_weather_sprites,
         const compat::LegacyPalette& startup_palette);
@@ -241,7 +241,7 @@ private:
     WorldSession(
         const resource::DataRoot& data_root,
         const WorldMapData& map,
-        model::RangerState& ranger,
+        model::RuntimeRangerState& ranger,
         random::LegacyRandom& random,
         const resource::PackedArchive* startup_weather_sprites,
         const compat::LegacyPalette* startup_palette);
@@ -299,7 +299,7 @@ private:
         int offset_y) const;
 
     const WorldMapData& map_;
-    model::RangerState& ranger_;
+    model::RuntimeRangerState& ranger_;
     random::LegacyRandom& random_;
     WorldCache cache_;
     mutable std::optional<WorldCache> expanded_render_cache_;

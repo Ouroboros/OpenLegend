@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/ui/new_game_attributes.hpp"
 
 #include <algorithm>
@@ -10,13 +11,13 @@ constexpr std::array<std::uint8_t, 8> kBabeRuth{'B', 'A', 'B', 'E', 'R', 'U', 'T
 }  // namespace
 
 NewGameAttributeController::NewGameAttributeController(
-    model::RoleRecord& protagonist, random::LegacyRandom& random) noexcept
+    model::RoleState& protagonist, random::LegacyRandom& random)
     : protagonist_(protagonist), random_(random) {
     reroll();
 }
 
 AttributeRollStatus NewGameAttributeController::handle_key(
-    const std::uint8_t translated_key) noexcept {
+    const std::uint8_t translated_key) {
     if (translated_key == 'Y') {
         return AttributeRollStatus::accepted;
     }
@@ -32,7 +33,7 @@ AttributeRollStatus NewGameAttributeController::handle_key(
     return AttributeRollStatus::choosing;
 }
 
-void NewGameAttributeController::reroll() noexcept {
+void NewGameAttributeController::reroll() {
     model::roll_protagonist_attributes(protagonist_, random_);
     cheat_active_ = false;
 }

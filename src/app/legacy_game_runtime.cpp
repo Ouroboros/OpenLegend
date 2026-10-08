@@ -341,10 +341,12 @@ LegacyGameRuntime::LegacyGameRuntime(
     const std::uint32_t random_seed,
     const GameResolution game_resolution,
     const input::NameInputMethod name_input_method,
-    const std::chrono::nanoseconds movement_step_duration)
+    const std::chrono::nanoseconds movement_step_duration,
+    const model::NewGamePlusConfiguration new_game_plus_configuration)
     : data_root_path_(std::move(data_root)),
       save_root_path_(std::move(save_root)),
       data_root_(data_root_path_),
+      new_game_plus_configuration_(new_game_plus_configuration),
       default_name_input_method_(name_input_method),
       movement_step_duration_(
           std::max(movement_step_duration, std::chrono::nanoseconds::zero())),
@@ -355,7 +357,12 @@ LegacyGameRuntime::LegacyGameRuntime(
       startup_resources_(data_root_),
       random_(random_seed),
       framebuffer_(game_resolution.width, game_resolution.height) {
-    if (!basic_renderer_.valid()) {
+    if (!model::calculate_playthrough_limits(new_game_plus_configuration_, 1).has_value() ||
+        !model::calculate_playthrough_limits(
+            new_game_plus_configuration_,
+            new_game_plus_configuration_.maximum_playthroughs).has_value()) {
+        startup_error_ = "Invalid new game plus configuration";
+    } else if (!basic_renderer_.valid()) {
         startup_error_ = basic_renderer_.error();
     } else if (!modern_ui_renderer_.valid()) {
         startup_error_ = modern_ui_renderer_.error();
@@ -2154,7 +2161,9 @@ void LegacyGameRuntime::begin_new_game() {
             LegacyGameView::title);
         return;
     }
-    if (!game_state_.import_snapshot(std::move(*loaded.snapshot))) {
+    if (!game_state_.import_snapshot(
+            std::move(*loaded.snapshot), new_game_plus_configuration_,
+            new_game_plus_configuration_.enabled ? &startup_resources_.ranger() : nullptr)) {
         show_error("Baseline snapshot import failed", LegacyGameView::title);
         return;
     }
@@ -2264,7 +2273,9 @@ bool LegacyGameRuntime::activate_pending_load() {
     scene_leave_event_script_id_.reset();
     leave_protagonist_notice_pending_ = false;
     scene_audio_commands_.clear();
-    if (!game_state_.import_snapshot(std::move(loaded_snapshot))) {
+    if (!game_state_.import_snapshot(
+            std::move(loaded_snapshot), new_game_plus_configuration_,
+            new_game_plus_configuration_.enabled ? &startup_resources_.ranger() : nullptr)) {
         load_transition_phase_ = LoadTransitionPhase::none;
         show_error("Save snapshot import failed", load_return_view_);
         return false;

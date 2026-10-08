@@ -6,6 +6,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 #include "openlegend/input/name_input_method.hpp"
+#include "openlegend/model/new_game_plus_configuration.hpp"
 
 namespace openlegend::platform::sdl3 {
 
@@ -23,6 +24,7 @@ struct LegacyRuntimeLoopSettings {
     std::chrono::nanoseconds movement_step_duration{};
     std::chrono::nanoseconds motion_frame_interval{
         std::chrono::nanoseconds{1'000'000'000} / 240};
+    model::NewGamePlusConfiguration new_game_plus_configuration;
 };
 
 struct LegacyRuntimeLoopResult {

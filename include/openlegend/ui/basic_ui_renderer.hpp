@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "openlegend/attributes.hpp"
-#include "openlegend/model/game_snapshot.hpp"
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
@@ -36,13 +36,13 @@ public:
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_attributes(
-        const model::RoleRecord& protagonist,
+        const model::RoleState& protagonist,
         std::span<const std::uint8_t> name,
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_game_menu(
         const GameMenuController& menu,
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_game_menu_main(
@@ -88,7 +88,7 @@ private:
 
     NODISCARD bool render_items(
         const GameMenuController& menu,
-        const model::RangerState& ranger,
+        const model::RuntimeRangerState& ranger,
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool draw_item_icon(

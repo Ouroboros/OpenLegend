@@ -322,8 +322,7 @@ struct RangerState {
     NODISCARD bool operator==(const RangerState&) const = default;
 };
 
-struct GameSnapshot {
-    RangerState ranger;
+struct SceneArchives {
     std::array<std::uint32_t, kSceneCount> scene_map_ends{};
     std::vector<std::uint8_t> scene_maps;
     std::array<std::uint32_t, kSceneCount> scene_event_ends{};
@@ -348,6 +347,14 @@ struct GameSnapshot {
         std::size_t event,
         SceneEventField field,
         std::int16_t value) noexcept;
+
+    NODISCARD bool operator==(const SceneArchives&) const = default;
+};
+
+struct GameSnapshot : SceneArchives {
+    RangerState ranger;
+
+    NODISCARD bool valid() const noexcept;
 
     NODISCARD bool operator==(const GameSnapshot&) const = default;
 };

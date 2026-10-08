@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/attributes.hpp"
 #include "openlegend/ui/basic_ui_renderer.hpp"
 
@@ -57,8 +58,8 @@ NODISCARD bool random_attribute_highlighted(
     }
 }
 
-void append_number(std::u8string& text, const std::int32_t value, const int width = 0) {
-    std::array<char, 16> buffer{};
+void append_number(std::u8string& text, const std::int64_t value, const int width = 0) {
+    std::array<char, 32> buffer{};
     const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
     const auto count = static_cast<int>(converted.ptr - buffer.data());
     for (int index = count; index < width; ++index) {
@@ -69,7 +70,7 @@ void append_number(std::u8string& text, const std::int32_t value, const int widt
     }
 }
 
-NODISCARD int legacy_item_metric(const model::RangerState& ranger) noexcept {
+NODISCARD int legacy_item_metric(const model::RuntimeRangerState& ranger) noexcept {
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
         if (ranger.header.inventory_item(slot).value == -1) {
             return static_cast<int>(slot + 1U);
@@ -79,7 +80,7 @@ NODISCARD int legacy_item_metric(const model::RangerState& ranger) noexcept {
 }
 
 NODISCARD std::u8string coordinate_item_text(
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     const GameMenuContext context) {
     const auto player_x = ranger.header.word(
         context == GameMenuContext::scene
@@ -281,7 +282,7 @@ bool BasicUiRenderer::render_name_entry(
 }
 
 bool BasicUiRenderer::render_attributes(
-    const model::RoleRecord& protagonist,
+    const model::RoleState& protagonist,
     const std::span<const std::uint8_t> name,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid()) {
@@ -377,7 +378,7 @@ bool BasicUiRenderer::render_game_menu_main(
 
 bool BasicUiRenderer::render_game_menu(
     const GameMenuController& menu,
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
     const auto render_system_menu = [&]() {
         if (!draw_box(framebuffer, 70, 18, 42U, 72U)) {
@@ -413,10 +414,7 @@ bool BasicUiRenderer::render_game_menu(
                     framebuffer,
                     74,
                     25 + static_cast<int>(index) * 20,
-                    text::Big5TextView{fixed_text(
-                        role.bytes,
-                        model::role_word::name_byte,
-                        model::role_word::name_bytes)},
+                    text::Big5TextView{role.legacy_name()},
                     index == menu.party_selection() ? text_colors::selected : text_colors::menu_normal)) {
                 return false;
             }
@@ -716,7 +714,7 @@ std::uint8_t BasicUiRenderer::blend_panel_pixel(
 
 bool BasicUiRenderer::render_items(
     const GameMenuController& menu,
-    const model::RangerState& ranger,
+    const model::RuntimeRangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
     if (!draw_box(framebuffer, 45, 2, 230U, 23U) ||
         !draw_box(framebuffer, 45, 27, 230U, 23U) ||
@@ -841,13 +839,11 @@ bool BasicUiRenderer::render_items(
         if (static_cast<std::size_t>(user) >= ranger.roles.size()) {
             return false;
         }
-        const auto role_name = fixed_text(
-            ranger.roles[static_cast<std::size_t>(user)].bytes,
-            model::role_word::name_byte,
-            model::role_word::name_bytes);
+        const auto role_name = ranger.roles[static_cast<std::size_t>(user)].legacy_name();
         text::GameText user_text;
         user_text.append_utf8(kOpenParenthesis);
-        user_text.append_legacy(text::Big5TextView{role_name});
+        user_text.append_legacy(text::Big5TextView{
+            fixed_text(role_name, 0U, role_name.size())});
         user_text.append_utf8(kCloseParenthesis);
         if (!draw_text_mixed(framebuffer, 205, 5, user_text, text_colors::menu_normal)) {
             return false;

@@ -58,7 +58,15 @@ struct RoleState {
     std::array<ItemId, role_word::taking_item_count> taking_items;
     std::array<std::int64_t, role_word::taking_item_count> taking_counts{};
     bool ever_joined{};
-    std::vector<std::int64_t> no_magic_count;
+    std::vector<std::int64_t> no_magic_count = std::vector<std::int64_t>(kItemCount);
+
+    NODISCARD std::int64_t word(std::size_t index) const;
+
+    NODISCARD std::int64_t unsigned_word(std::size_t index) const;
+
+    void set_word(std::size_t index, std::int64_t value);
+
+    NODISCARD std::array<std::uint8_t, role_word::name_bytes> legacy_name() const;
 
     NODISCARD bool operator==(const RoleState&) const = default;
 };

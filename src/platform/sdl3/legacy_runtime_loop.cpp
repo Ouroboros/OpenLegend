@@ -256,7 +256,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             random_seed,
             settings.game_resolution,
             settings.name_input_method,
-            settings.movement_step_duration};
+            settings.movement_step_duration,
+            settings.new_game_plus_configuration};
         diagnostics::log_info(
             "runtime random_seed=" + std::to_string(random_seed));
         if (!game.valid()) {

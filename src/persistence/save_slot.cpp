@@ -687,4 +687,40 @@ std::string_view persistence_status_message(const PersistenceStatus status) noex
     return "unknown persistence status";
 }
 
+SnapshotWriteResult write_numbered_slot_scene_archives(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const model::RuntimeGameSnapshot& snapshot) {
+    const auto encoded = model::encode_legacy_snapshot(snapshot);
+    if (!encoded.has_value()) {
+        return write_error(PersistenceStatus::invalid_snapshot, root,
+            "logical snapshot cannot be represented as Legacy");
+    }
+    return write_numbered_slot_scene_archives(root, slot, *encoded);
+}
+
+SnapshotWriteResult write_numbered_slot_ranger(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const model::RuntimeGameSnapshot& snapshot) {
+    const auto encoded = model::encode_legacy_snapshot(snapshot);
+    if (!encoded.has_value()) {
+        return write_error(PersistenceStatus::invalid_snapshot, root,
+            "logical snapshot cannot be represented as Legacy");
+    }
+    return write_numbered_slot_ranger(root, slot, *encoded);
+}
+
+SnapshotWriteResult write_numbered_slot(
+    const std::filesystem::path& root,
+    const SaveSlot slot,
+    const model::RuntimeGameSnapshot& snapshot) {
+    const auto encoded = model::encode_legacy_snapshot(snapshot);
+    if (!encoded.has_value()) {
+        return write_error(PersistenceStatus::invalid_snapshot, root,
+            "logical snapshot cannot be represented as Legacy");
+    }
+    return write_numbered_slot(root, slot, *encoded);
+}
+
 }  // namespace openlegend::persistence

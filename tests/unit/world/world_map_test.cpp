@@ -1,3 +1,4 @@
+#include "openlegend/model/runtime_snapshot.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -111,14 +112,16 @@ NODISCARD bool sprite_has_visible_pixel(
     return false;
 }
 
-NODISCARD openlegend::model::GameSnapshot load_baseline(
+NODISCARD openlegend::model::RuntimeGameSnapshot load_baseline(
     const std::filesystem::path& root) {
     auto loaded = openlegend::persistence::load_baseline(root);
     OL_CHECK(loaded);
     if (!loaded) {
         return {};
     }
-    return std::move(*loaded.snapshot);
+    auto decoded = openlegend::model::decode_legacy_snapshot(std::move(*loaded.snapshot));
+    OL_CHECK(decoded.has_value());
+    return decoded.has_value() ? std::move(*decoded) : openlegend::model::RuntimeGameSnapshot{};
 }
 
 void check_layers_and_cache(const std::filesystem::path& root) {
