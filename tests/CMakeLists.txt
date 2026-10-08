@@ -41,6 +41,11 @@ target_include_directories(openlegend_model_tests PRIVATE ${CMAKE_CURRENT_SOURCE
 target_link_libraries(openlegend_model_tests PRIVATE openlegend_model)
 add_test(NAME openlegend.model COMMAND openlegend_model_tests)
 
+add_executable(openlegend_checked_arithmetic_tests unit/model/checked_arithmetic_test.cpp)
+target_include_directories(openlegend_checked_arithmetic_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_checked_arithmetic_tests PRIVATE openlegend_model)
+add_test(NAME openlegend.checked_arithmetic COMMAND openlegend_checked_arithmetic_tests)
+
 add_executable(
     openlegend_motion_tests
     unit/motion/authoritative_motion_test.cpp

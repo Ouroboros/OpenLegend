@@ -137,8 +137,17 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         help="skip CTest after the build (default)",
     )
     parser.set_defaults(skip_tests=True)
+    parser.add_argument(
+        "--test-regex",
+        metavar="PATTERN",
+        help="run only CTest names matching PATTERN; requires --tests",
+    )
     parser.add_argument("--sanitizers", action="store_true")
     result = parser.parse_args(arguments)
+    if result.test_regex is not None and (result.skip_tests or result.configure_only):
+        parser.error("--test-regex requires --tests and cannot be used with --configure-only")
+    if result.test_regex is not None and not result.test_regex:
+        parser.error("--test-regex must not be empty")
     if result.config is None:
         result.config = "Release" if result.sanitizers else "Debug"
     return result
@@ -556,20 +565,19 @@ def main() -> int:
             f"[OpenLegend] Test: {args.config} (parallel jobs: {args.test_jobs})",
             flush=True,
         )
-        run(
-            [
-                str(ctest),
-                "--test-dir",
-                str(build_dir),
-                "-C",
-                args.config,
-                "--parallel",
-                str(args.test_jobs),
-                "--output-on-failure",
-            ],
-            process_cwd,
-            test_environment,
-        )
+        test_command = [
+            str(ctest),
+            "--test-dir",
+            str(build_dir),
+            "-C",
+            args.config,
+            "--parallel",
+            str(args.test_jobs),
+            "--output-on-failure",
+        ]
+        if args.test_regex is not None:
+            test_command.extend(["--tests-regex", args.test_regex, "--no-tests=error"])
+        run(test_command, process_cwd, test_environment)
 
     if target == "app":
         outputs = application_outputs(build_dir, args.config)
