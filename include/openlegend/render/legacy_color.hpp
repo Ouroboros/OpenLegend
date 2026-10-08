@@ -67,6 +67,7 @@ inline constexpr TextColors candidate{0x19U, 0x17U};
 inline constexpr TextColors attribute_question{0x06U, 0x08U};
 inline constexpr TextColors attribute_highlight{0x1DU, 0x1FU};
 inline constexpr TextColors menu_normal{0x21U, 0x23U};
+inline constexpr TextColors shop_selected{0x05U, 0x07U};
 inline constexpr TextColors hp_separator{0x22U, 0x23U};
 inline constexpr TextColors poison{0x32U, 0x30U};
 inline constexpr TextColors severe_poison{0x37U, 0x35U};

@@ -2523,6 +2523,8 @@ SceneStepResult SceneSession::emit_queued() {
     pending_encoded_text_.clear();
     if (!text::encode_game_text(pending_text_, pending_encoded_text_)) {
         error_ = "Unable to encode queued scene text as Big5";
+    } else if (!pending_encoded_text_.empty() && pending_encoded_text_.back() != 0U) {
+        pending_encoded_text_.push_back(0U);
     }
     pending_legacy_text_ = std::move(output.legacy_text);
     dialogue_base_framebuffer_.reset();
@@ -4016,7 +4018,7 @@ bool SceneSession::render_shop_overlay(
             formatted_price.data(), formatted_price.size(), "%3d", static_cast<int>(price));
         const auto price_text = text::utf8_from_ascii(formatted_price.data());
         const auto colors = index == state.selection
-            ? text_colors::selected
+            ? text_colors::shop_selected
             : text_colors::menu_normal;
         const auto y = 90 + static_cast<int>(index) * 20;
         if (!render::draw_text_big5(

@@ -225,8 +225,8 @@ inline constexpr std::u8string_view role_speed_notice_infix = u8" 輕功增加 "
 inline constexpr std::u8string_view role_mp_notice_infix = u8" 內力增加 ";
 inline constexpr std::u8string_view role_attack_notice_infix = u8" 武力增加 ";
 inline constexpr std::u8string_view role_hp_notice_infix = u8" 生命增加 ";
-inline constexpr std::u8string_view morality_notice_prefix = u8"目前你的道德指數為";
-inline constexpr std::u8string_view fame_notice_prefix = u8"目前你的個人聲望指數為";
+inline constexpr std::u8string_view morality_notice_prefix = u8"你現在的品德指數為";
+inline constexpr std::u8string_view fame_notice_prefix = u8"你現在個人聲望指數為";
 
 inline constexpr auto kUnknown = unknown;
 inline constexpr auto kPersonOpen = person_open;

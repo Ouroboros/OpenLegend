@@ -1252,6 +1252,7 @@ void check_scene_render_and_movement(const std::filesystem::path& root) {
     openlegend::scene::SceneSession motion_session{
         data_root, motion_snapshot, motion_random, 70};
     OL_CHECK(motion_session.valid());
+    OL_CHECK(finish_scene_title(motion_session).kind == openlegend::scene::SceneStepKind::stay);
     const auto motion_plan = motion_session.start_move(
         openlegend::scene::SceneDirection::right);
     OL_CHECK(motion_plan.valid);
