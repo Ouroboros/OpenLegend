@@ -111,7 +111,7 @@ build.bat app --config Release --data-dir "E:\Game\OpenLegend\data"
 build.bat app --config Release --sanitizers --data-dir "E:\Game\OpenLegend\data"
 ```
 
-日常 BUILD 默认只编译；需要运行 CTest 时显式添加 `--tests`。逐任务验证可使用 `./build.sh core --tests --test-regex '^openlegend[.](checked_arithmetic|model)$' --data-dir ../data`，仍由统一 BUILD 执行编译、数据验证和测试；该选项不能与 `--skip-tests` 或 `--configure-only` 同用。Windows Sanitizer 只支持 Release；`--config Debug --sanitizers` 会被 BUILD 明确拒绝。Sanitizer BUILD 会把 LLVM 23 的 `clang_rt.asan_dynamic-x86_64.dll` 部署到应用和每个测试 EXE 旁。普通 Debug/Release 使用静态 CRT，不携带 ASan DLL。
+日常 BUILD 默认只编译；需要运行 CTest 时显式添加 `--tests`。测试的 `TMPDIR`、`TMP` 和 `TEMP` 统一指向仓库 `tmp/`，测试自建的临时数据保留在仓库边界内。逐任务验证可使用 `./build.sh core --tests --test-regex '^openlegend[.](checked_arithmetic|model)$' --data-dir ../data`，仍由统一 BUILD 执行编译、数据验证和测试；该选项不能与 `--skip-tests` 或 `--configure-only` 同用。Windows Sanitizer 只支持 Release；`--config Debug --sanitizers` 会被 BUILD 明确拒绝。Sanitizer BUILD 会把 LLVM 23 的 `clang_rt.asan_dynamic-x86_64.dll` 部署到应用和每个测试 EXE 旁。普通 Debug/Release 使用静态 CRT，不携带 ASan DLL。
 
 ## 完整验收矩阵
 

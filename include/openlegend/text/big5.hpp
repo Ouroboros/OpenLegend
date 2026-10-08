@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -45,5 +46,7 @@ NODISCARD bool append_big5(
 
 NODISCARD std::optional<std::vector<std::uint8_t>> encode_big5(
     std::u8string_view utf8_text);
+
+NODISCARD std::optional<std::u8string> decode_big5(Big5TextView value);
 
 }  // namespace openlegend::text

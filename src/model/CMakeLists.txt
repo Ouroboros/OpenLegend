@@ -1,4 +1,7 @@
-add_library(openlegend_model STATIC checked_arithmetic.cpp game_snapshot.cpp new_game.cpp)
+add_library(
+    openlegend_model
+    STATIC checked_arithmetic.cpp game_snapshot.cpp new_game.cpp new_game_plus_configuration.cpp role_state.cpp
+)
 target_include_directories(
     openlegend_model
     PUBLIC
@@ -10,6 +13,7 @@ target_link_libraries(
     PUBLIC
         openlegend_compat
         openlegend_random
+        openlegend_text
         openlegend_project_options
         openlegend_project_warnings
 )

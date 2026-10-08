@@ -4,6 +4,7 @@ add_library(
         display_resolution.cpp
         legacy_game_runtime.cpp
         mode_coordinator.cpp
+        new_game_plus_configuration.cpp
         runtime_configuration.cpp
 )
 target_include_directories(

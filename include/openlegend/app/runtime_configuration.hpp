@@ -14,6 +14,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/name_input_method.hpp"
+#include "openlegend/model/new_game_plus_configuration.hpp"
 
 namespace openlegend::app {
 
@@ -296,6 +297,47 @@ NODISCARD LoggingConfigurationLoadResult load_logging_configuration(
     const std::filesystem::path& fallback_path,
     diagnostics::LogLevel fallback_level);
 
+enum class NewGamePlusConfigurationStatus {
+    ready,
+    read_failed,
+    parse_failed,
+    invalid_table,
+    invalid_value,
+    invalid_limits,
+    unknown_key,
+};
+
+struct NewGamePlusConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "new_game_plus";
+    static constexpr std::array<std::string_view, 14U> toml_field_order{
+        "enabled",
+        "maximum_playthroughs",
+        "hurt_cap_step",
+        "hp_cap_step",
+        "mp_cap_step",
+        "attack_cap_step",
+        "defence_cap_step",
+        "use_poison_cap_step",
+        "anti_poison_cap_step",
+        "hidden_weapon_cap_step",
+        "role_level_step",
+        "martial_level_step",
+        "battle_experience_percent_ng2",
+        "battle_experience_percent_step",
+    };
+
+    NewGamePlusConfigurationStatus status{NewGamePlusConfigurationStatus::ready};
+    model::NewGamePlusConfiguration values;
+    bool loaded_from_file{};
+    std::string detail;
+};
+
+NODISCARD NewGamePlusConfigurationLoadResult load_new_game_plus_configuration(
+    const std::filesystem::path& configuration_path);
+
+NODISCARD std::string_view new_game_plus_configuration_status_message(
+    NewGamePlusConfigurationStatus status) noexcept;
+
 struct RuntimeConfigurationDefaults {
     std::filesystem::path logging_path;
     diagnostics::LogLevel logging_level{diagnostics::LogLevel::info};
@@ -314,14 +356,16 @@ struct RuntimeConfiguration {
     TimingConfigurationLoadResult timing;
     WindowConfigurationLoadResult window;
     DisplayConfigurationLoadResult display;
+    NewGamePlusConfigurationLoadResult new_game_plus;
 
-    static constexpr std::array<std::string_view, 6U> toml_table_order{
+    static constexpr std::array<std::string_view, 7U> toml_table_order{
         PathsConfigurationLoadResult::toml_table_name,
         LoggingConfigurationLoadResult::toml_table_name,
         InputConfigurationLoadResult::toml_table_name,
         TimingConfigurationLoadResult::toml_table_name,
         WindowConfigurationLoadResult::toml_table_name,
         DisplayConfigurationLoadResult::toml_table_name,
+        NewGamePlusConfigurationLoadResult::toml_table_name,
     };
 };
 

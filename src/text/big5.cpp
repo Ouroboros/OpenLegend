@@ -12,6 +12,26 @@ constexpr std::array<std::uint32_t, 13'493U> kUnicodeToBig5{
 #include "big5_mapping.inc"
 };
 
+constexpr std::array<std::uint32_t, 10U> kBig5DecodeAliases{
+    0x2550F9F9U, 0x255EF9E9U, 0x2561F9EBU, 0x256AF9EAU, 0x256DF9FAU,
+    0x256EF9FBU, 0x256FF9FDU, 0x2570F9FCU, 0x5341A2CCU, 0x5345A2CEU,
+};
+
+NODISCARD std::optional<char32_t> unicode_for_big5(const std::uint16_t code) noexcept {
+    const auto matches = [code](const std::uint32_t entry) {
+        return (entry & 0xFFFFU) == code;
+    };
+    const auto canonical = std::find_if(kUnicodeToBig5.begin(), kUnicodeToBig5.end(), matches);
+    if (canonical != kUnicodeToBig5.end()) {
+        return static_cast<char32_t>(*canonical >> 16U);
+    }
+    const auto alias = std::find_if(kBig5DecodeAliases.begin(), kBig5DecodeAliases.end(), matches);
+    if (alias == kBig5DecodeAliases.end()) {
+        return std::nullopt;
+    }
+    return static_cast<char32_t>(*alias >> 16U);
+}
+
 NODISCARD constexpr bool continuation(const std::uint8_t value) noexcept {
     return value >= 0x80U && value <= 0xBFU;
 }
@@ -122,6 +142,40 @@ std::optional<std::vector<std::uint8_t>> encode_big5(
     std::vector<std::uint8_t> result;
     if (!append_big5(result, utf8_text)) {
         return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<std::u8string> decode_big5(const Big5TextView value) {
+    std::u8string result;
+    const auto bytes = value.bytes();
+    for (std::size_t offset = 0U; offset < bytes.size(); ++offset) {
+        const auto first = bytes[offset];
+        if (first == 0U) {
+            return std::nullopt;
+        }
+        if (first <= 0x7FU) {
+            result.push_back(static_cast<char8_t>(first));
+            continue;
+        }
+        if (offset + 1U >= bytes.size()) {
+            return std::nullopt;
+        }
+        const auto code = static_cast<std::uint16_t>(
+            static_cast<std::uint16_t>(first) << 8U | bytes[++offset]);
+        const auto decoded = unicode_for_big5(code);
+        if (!decoded.has_value()) {
+            return std::nullopt;
+        }
+        const auto point = static_cast<std::uint32_t>(*decoded);
+        if (point <= 0x7FFU) {
+            result.push_back(static_cast<char8_t>(0xC0U | (point >> 6U)));
+            result.push_back(static_cast<char8_t>(0x80U | (point & 0x3FU)));
+        } else {
+            result.push_back(static_cast<char8_t>(0xE0U | (point >> 12U)));
+            result.push_back(static_cast<char8_t>(0x80U | ((point >> 6U) & 0x3FU)));
+            result.push_back(static_cast<char8_t>(0x80U | (point & 0x3FU)));
+        }
     }
     return result;
 }

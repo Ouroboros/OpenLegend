@@ -46,6 +46,21 @@ target_include_directories(openlegend_checked_arithmetic_tests PRIVATE ${CMAKE_C
 target_link_libraries(openlegend_checked_arithmetic_tests PRIVATE openlegend_model)
 add_test(NAME openlegend.checked_arithmetic COMMAND openlegend_checked_arithmetic_tests)
 
+add_executable(openlegend_role_state_tests unit/model/role_state_test.cpp)
+target_include_directories(openlegend_role_state_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_role_state_tests PRIVATE openlegend_model openlegend_persistence)
+add_test(NAME openlegend.role_state COMMAND openlegend_role_state_tests)
+
+add_executable(openlegend_ngplus_configuration_tests unit/app/new_game_plus_configuration_test.cpp)
+target_include_directories(openlegend_ngplus_configuration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_ngplus_configuration_tests PRIVATE openlegend_app)
+add_test(NAME openlegend.ngplus_configuration COMMAND openlegend_ngplus_configuration_tests)
+
+set_tests_properties(
+    openlegend.role_state PROPERTIES
+    ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
+)
+
 add_executable(
     openlegend_motion_tests
     unit/motion/authoritative_motion_test.cpp

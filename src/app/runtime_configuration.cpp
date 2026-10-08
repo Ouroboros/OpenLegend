@@ -1,6 +1,8 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 
+#include "new_game_plus_configuration.hpp"
+
 #include <toml++/toml.hpp>
 
 #include <algorithm>
@@ -336,6 +338,9 @@ NODISCARD std::span<const std::string_view> configuration_key_order(
     }
     if (table_path.front() == DisplayConfigurationLoadResult::toml_table_name) {
         return DisplayConfigurationLoadResult::toml_field_order;
+    }
+    if (table_path.front() == NewGamePlusConfigurationLoadResult::toml_table_name) {
+        return NewGamePlusConfigurationLoadResult::toml_field_order;
     }
     return {};
 }
@@ -976,6 +981,18 @@ LoggingConfigurationLoadResult load_logging_configuration(
         document.values, executable_directory, fallback_path, fallback_level);
 }
 
+NewGamePlusConfigurationLoadResult load_new_game_plus_configuration(
+    const std::filesystem::path& configuration_path) {
+    const auto document = read_configuration_document(configuration_path);
+    if (document.status != ConfigurationDocumentStatus::ready) {
+        NewGamePlusConfigurationLoadResult result;
+        result.status = configuration_load_status<NewGamePlusConfigurationStatus>(document.status);
+        result.detail = document.detail;
+        return result;
+    }
+    return detail::new_game_plus_configuration_from_document(document.values);
+}
+
 RuntimeConfiguration load_runtime_configuration(
     const std::span<const std::string_view> arguments,
     const std::filesystem::path& configuration_path,
@@ -1013,6 +1030,8 @@ RuntimeConfiguration load_runtime_configuration(
             document.values, defaults.fade_frame_delay);
         configuration.window =
             window_configuration_from_document(document.values, defaults.window_size);
+        configuration.new_game_plus =
+            detail::new_game_plus_configuration_from_document(document.values);
         return configuration;
     }
 
@@ -1046,6 +1065,9 @@ RuntimeConfiguration load_runtime_configuration(
         configuration_load_status<WindowConfigurationStatus>(document.status),
         defaults.window_size,
         document.detail);
+    configuration.new_game_plus.status =
+        configuration_load_status<NewGamePlusConfigurationStatus>(document.status);
+    configuration.new_game_plus.detail = document.detail;
     return configuration;
 }
 

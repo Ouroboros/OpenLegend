@@ -561,6 +561,12 @@ def main() -> int:
                 flush=True,
             )
     if not args.skip_tests:
+        test_temporary_directory = project_root / "tmp"
+        test_temporary_directory.mkdir(parents=True, exist_ok=True)
+        if test_environment is None:
+            test_environment = dict(os.environ)
+        for variable in ("TMPDIR", "TMP", "TEMP"):
+            test_environment[variable] = str(test_temporary_directory)
         print(
             f"[OpenLegend] Test: {args.config} (parallel jobs: {args.test_jobs})",
             flush=True,
