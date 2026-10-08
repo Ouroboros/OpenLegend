@@ -11308,11 +11308,7 @@ void run_initial_presentation_order_test(
 
     auto framebuffer = std::make_unique<openlegend::render::IndexedFramebuffer>();
     OL_CHECK(session->render(*framebuffer));
-    OL_CHECK(std::ranges::all_of(
-        framebuffer->palette(),
-        [](const auto& color) {
-            return color.red == 0U && color.green == 0U && color.blue == 0U;
-        }));
+    OL_CHECK(session->rgba_fade_alpha() == std::uint8_t{255U});
     OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 3);
     session->finish_presented_tick(10U);
     OL_CHECK(session->phase() == BattleSessionPhase::initial_fade);

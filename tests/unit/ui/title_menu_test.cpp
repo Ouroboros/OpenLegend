@@ -3384,11 +3384,12 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action);
-    OL_CHECK(!game.needs_immediate_frame(100U));
+    OL_CHECK(game.needs_immediate_frame(100U));
     OL_CHECK(game.battle_menu_uses_key_states());
     OL_CHECK(game.render());
     game.finish_presented_tick(100U);
     OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+    OL_CHECK(!game.needs_immediate_frame(100U));
     std::size_t wait_ordinal = 0U;
     for (std::size_t action = 0U;
          action < static_cast<std::size_t>(BattlePlayerAction::wait);
@@ -3654,6 +3655,8 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     error.clear();
     std::filesystem::create_directories(save_root, error);
     OL_CHECK(!error);
+    const auto ranger_index = resource::read_binary_file(data_root / "RANGER.IDX");
+    OL_CHECK(static_cast<bool>(ranger_index));
     const auto baseline = persistence::load_baseline(data_root);
     OL_CHECK(static_cast<bool>(baseline));
     if (!baseline.snapshot.has_value()) {
@@ -3696,8 +3699,8 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
         OL_CHECK(before_save->ranger.header.word(model::header_word::main_map_x) == 357);
     }
     game.advance();
-    const auto before_wait_present =
-        persistence::load_numbered_slot(save_root, persistence::SaveSlot::one);
+    const auto before_wait_present = persistence::load_numbered_slot(
+        save_root, persistence::SaveSlot::one, ranger_index.bytes);
     OL_CHECK(static_cast<bool>(before_wait_present));
     if (before_save.has_value() && before_wait_present.snapshot.has_value()) {
         OL_CHECK(*before_save != model::decode_legacy_snapshot(*before_wait_present.snapshot).value());
@@ -3706,8 +3709,8 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.finish_presented_tick();
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::game_menu);
-    const auto saved =
-        persistence::load_numbered_slot(save_root, persistence::SaveSlot::one);
+    const auto saved = persistence::load_numbered_slot(
+        save_root, persistence::SaveSlot::one, ranger_index.bytes);
     OL_CHECK(static_cast<bool>(saved));
     OL_CHECK(saved.snapshot.has_value());
     OL_CHECK(!std::filesystem::exists(output_root / "R1.GRP"));
