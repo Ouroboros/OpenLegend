@@ -12,7 +12,7 @@
 namespace {
 
 openlegend::resource::SpriteFrameView sample_frame() {
-    constexpr std::array<std::uint8_t, 18> encoded{
+    static constexpr std::array<std::uint8_t, 18> encoded{
         3, 0,
         2, 0,
         1, 0,
