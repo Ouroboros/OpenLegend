@@ -37,7 +37,7 @@
       <div>
         <strong>规则状态</strong><br>
         <p>四项技巧保留原版升级、修炼的100写回边界，暗器技巧不设逐周目上限；第3.1.4节规定角色与战斗结算数值统一用64位，旧存档写出逐字段校验16位；</p>
-        <p>内伤与医疗规则已迁入<a href="../fields/hurt-medicine.zh-Hans.html">内伤医疗页</a>，中毒、用毒、抗毒与解毒规则见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html">中毒、用毒、抗毒与解毒页</a>，施毒规则见<a href="../fields/attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒页</a>，投掷带毒暗器全周目改号见<a href="../fields/hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧页</a>；尚未实现</p>
+        <p>内伤与医疗规则已迁入<a href="../fields/hurt-medicine.zh-Hans.html">内伤医疗页</a>，中毒、用毒、抗毒与解毒规则见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html">中毒、用毒、抗毒与解毒页</a>，投掷带毒暗器全周目改号见<a href="../fields/hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧页</a>；尚未实现</p>
       </div>
       <div><strong>覆盖周目</strong><br>默认配置NG1～NG999</div>
       <div><strong>主要核对范围</strong><br>NG2～NG5</div>
@@ -58,9 +58,9 @@
 
     <h2 >4. 医疗、内伤、中毒与解毒规则及原版依据</h2>
     <div class="notice">
-      <p><strong>正式规则去向：</strong>本章原有各节已迁出。内伤与医疗见<a href="../fields/hurt-medicine.zh-Hans.html#hurt">内伤医疗页内伤章</a>与<a href="../fields/hurt-medicine.zh-Hans.html#medicine">医疗章</a>；毒发与解毒见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison">中毒章</a>与<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#detoxification">解毒章</a>；施毒及原版施毒机器事实见<a href="../fields/attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒页</a>；玩家投掷带毒暗器的改号规则见<a href="../fields/hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧页</a>。</p>
+      <p><strong>正式规则去向：</strong>本章原有各节已迁出。内伤与医疗见<a href="../fields/hurt-medicine.zh-Hans.html#hurt">内伤医疗页内伤章</a>与<a href="../fields/hurt-medicine.zh-Hans.html#medicine">医疗章</a>；毒发与解毒见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison">中毒章</a>与<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#detoxification">解毒章</a>；上毒公式见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>，武功附毒见<a href="../fields/attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒页</a>；玩家投掷带毒暗器的改号规则见<a href="../fields/hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧页</a>。</p>
       <p>原版16位回绕仅属机器事实；本设计各周目的角色与战斗数值统一采用第3.1.4节的64位内存合同。</p>
-      <p>原版固定90、100抗毒门槛与中毒100例外仅供历史对照。从NG1起，各正毒路径只比较实际毒力与目标实际抗毒，中毒量以本次施毒的最深封顶（最多99），超出部分当场伤血；用毒、抗毒能力及物品抗毒写入均不按周目封顶。敌方抗毒仍以原有<code>anti_poison_cap_step</code>的数值作为增长系数计算，而不作夹值。主动用毒距离仍按固定NG1基值100封顶。</p>
+      <p>原版固定90、100抗毒门槛与中毒100例外仅供历史对照。从NG1起的施毒规则见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>；用毒、抗毒能力及物品抗毒写入均不按周目封顶。敌方抗毒仍以原有<code>anti_poison_cap_step</code>的数值作为增长系数计算，而不作夹值。主动用毒距离仍按固定NG1基值100封顶。</p>
     </div>
 
     
@@ -70,7 +70,7 @@
       <p><strong>临时讨论范围：</strong>本章原有的共用字段与成长审计、内伤扩容关联规则已迁入<a href="../fields/hurt-medicine.zh-Hans.html#hurt-cap-impact-audit">内伤医疗页“原版影响与NG+规则”</a>；
         医疗能力不按周目封顶，已有各周目医疗公式不变。</p>
       <p>第1.2.2节登记伤势的CFG增量；<code>poison_cap_step</code>已取消，暗器技巧不设逐周目上限，四项技巧仅保留原版100写回边界。</p>
-      <p>各正毒路径只比较实际毒力与抗毒，不再套用原版90、100或周目90%、100%抗毒门槛。AI主动用毒选目标只比较实际用毒与抗毒，不再检查目标中毒量。AI投掷暗器是否读取抗毒、解毒距离等未决项见<a href="../fields/attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒页</a>第7节。</p>
+      <p>施毒、AI选择用毒目标及尚未确定的事项见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html">中毒、用毒、抗毒与解毒页</a>。</p>
     </div>
 
     
@@ -273,7 +273,7 @@ name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
     <p>各字段页分别保留原版范围、既有CFG数值与当前规则；不得把历史上限示例当成现行硬上限。</p>
     <div class="plain">
       <p>内伤的周目上限按<a href="../fields/hurt-medicine.zh-Hans.html#hurt-field-definition">内伤医疗页</a>使用当前CFG计算，中毒量按固定0～99验证；其他字段只执行自己的固定有效域、角色实际最大HP／MP及存储合同，不以周目节点拒绝合法值。</p>
-      <p>原版中毒100是特定写入路径的机器事实；NG+各施毒路径以最深封顶，不再写出100。医疗距离、解毒量和施毒规则分别见对应字段页。</p>
+      <p>原版中毒100是特定写入路径的机器事实；NG+施毒见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>。医疗距离、解毒量和施毒规则分别见对应字段页。</p>
     </div>
 
     <h4 id="inheritance-order">1.2.3 转换顺序与示例</h4>

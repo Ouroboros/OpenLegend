@@ -63,13 +63,35 @@
   <h3>字段与范围</h3>
   <p><code>poison</code>为当前中毒量，表示毒入几成；换周目清0，320名原版角色初值均为0。</p>
   <p>从NG1起各周目的正常范围固定为0～99；取消<code>poison_cap_step</code>，中毒上限不随周目增加。原版武功附毒可恰好写出100，这是机器事实；NG+各施毒路径以“最深”封顶，最深不超过99，不再写出100。</p>
-  <p>施毒规则（毒力、最深、理论每次、溢出当场伤血）及原版数据算例统一见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>；本章只写毒发与解毒。本章是设计规则，运行时代码尚未实现。</p>
+  <p>上毒公式见下方<a href="#poison-application">上毒</a>，毒发见<a href="#poison-detox-rules">回合毒伤</a>，解毒见<a href="#detoxification">解毒章</a>。本章是设计规则，运行时代码尚未实现。</p>
+</section>
+<section id="poison-application">
+  <h3>上毒</h3>
+  <p>各施毒路径只在毒力来源和除数上不同，其余按同一套公式结算。</p>
+  <table>
+    <thead><tr><th>路径</th><th>毒力</th><th>除数</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#poison-mechanics">主动用毒</a></td><td><code>actor.use_poison</code></td><td>4</td><td>菜单条件、距离与体力消耗见用毒章。</td></tr>
+      <tr><td><a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a></td><td>角色武功带毒 ＋ 武功带毒字段 × 武功等级</td><td>15</td><td>仅武功HP伤害命中后结算，每个命中目标各一次。</td></tr>
+      <tr><td><a href="add-poison.zh-Hans.html#add-poison-ng-threshold">暗器正毒</a></td><td><code>trunc((物品毒值 + 暗器技巧) ÷ 2)</code></td><td>2</td><td>普通物品与玩家投掷，物品毒值大于0时适用；玩家投掷的暗器技巧改号见<a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">暗器技巧字段页</a>。AI投掷是否适用尚未确定。</td></tr>
+    </tbody>
+  </table>
+  <pre>毒力 ≤ target.anti_poison：不中毒
+最深     = trunc(99 × (毒力 − target.anti_poison) ÷ 毒力)
+理论每次 = trunc((毒力 − target.anti_poison) ÷ 除数)
+实际毒入 = max(0, min(理论每次, 最深 − target.poison))
+target.poison += 实际毒入
+溢出     = 理论每次 − 实际毒入
+溢出伤血 = max(trunc(溢出 ÷ 10), trunc(target.maximum_hp × 溢出 ÷ 1000))
+伤血上限 = max(trunc(最深 ÷ 10), trunc(target.maximum_hp × 最深 ÷ 1000))
+target.hp −= min(溢出伤血, 伤血上限)</pre>
+  <p>理论每次沿用原版各路径的差值公式；最深表示抗毒抵消后还剩几成毒性，不超过99。中毒量已达最深时实际毒入为0，原有中毒量不降低，理论每次全部计为溢出，当场伤血不超过该毒停在最深时毒发一轮的伤害。取消原版抗毒90、100的固定门槛，只比较实际毒力与实际抗毒。</p>
 </section>
 <section id="poison-detox-rules">
   <h3>回合毒伤</h3>
   <pre>每轮毒伤 = max(trunc(中毒量 / 10), trunc(最大生命 × 中毒量 / 1000))</pre>
   <p>符合回合结算资格时结算；资格条件与“先内伤后中毒”的顺序沿用原版。最大生命不超过100时与原版每满10点扣1点相同；超过100后按比例计算，满毒每轮约扣10%最大生命。例如中毒99时，最大生命32的主角扣9，最大生命716的欧阳锋扣70。扣血按最大生命计算，与剩余生命无关；抗毒只参与施毒，不在扣血时再次抵减。</p>
-  <p>原版武功附毒“恰好100保留”的边界由新施毒规则自然消除。毒发后生命为负时是否仍改为1（即能否毒死目标）尚未确定，见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>第7节。</p>
+  <p>原版武功附毒“恰好100保留”的边界由新施毒规则自然消除。毒发后生命为负时是否仍改为1（即能否毒死目标）尚未确定。</p>
   <p>NG1玩家投掷带毒暗器另按已定技巧项改号；
     <a href="#poison-mechanics">主动用毒</a>、
     <a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功附毒</a>、
@@ -118,7 +140,7 @@ HP2 = signed16(HP1 − PoisonHp)
         </tr></tbody></table>
 <h3 id="use-poison-cap">用毒能力与固定作用距离</h3>
 <p>原版用毒能力正常上限为100；旧方案的<code>100 + (n − 1) × use_poison_cap_step</code>（默认步长100）不再作为NG+角色用毒能力的周目上限，也不用于继承或增长夹值。</p>
-<p>曾入队角色换周目时完整继承自己的实际<code>use_poison</code>；未入队角色读取当前RANGER基线。用毒实际能力进入施毒量公式；作用距离仍沿用独立的原版100点封顶，不将距离封顶反写到角色用毒值。目标的中毒量以本次施毒的“最深”封顶，最深不超过99。</p>
+<p>曾入队角色换周目时完整继承自己的实际<code>use_poison</code>；未入队角色读取当前RANGER基线。用毒实际能力即主动用毒的毒力，按<a href="#poison-application">上毒</a>结算；作用距离仍沿用独立的原版100点封顶，不将距离封顶反写到角色用毒值。</p>
 <p>现有运行时代码中升级、秘笈修炼仍将用毒值封顶100；本页是尚未实现的NG+设计，不把代码现状当成新规则。</p>
 </section>
 <section id="poison-mechanics">
@@ -126,19 +148,18 @@ HP2 = signed16(HP1 − PoisonHp)
 <p>战斗菜单要求<code>physical_power&gt;10</code>且<code>use_poison≥20</code>；只能对敌方施毒，行动消耗2点体力。<code>U_NG1=100</code>仅作原版距离分档的固定基值；<code>U</code>取实际用毒与100的较小值，仅用于计算距离，不改写角色属性。</p>
 <pre>U = min(actor.use_poison, U_NG1)
 PoisonRange = trunc(U ÷ 15) + 1</pre>
-<pre>毒力 = actor.use_poison
-毒力 ≤ target.anti_poison：不中毒
-最深     = trunc(99 × (毒力 − target.anti_poison) ÷ 毒力)
-理论每次 = trunc((毒力 − target.anti_poison) ÷ 4)
-实际毒入 = max(0, min(理论每次, 最深 − target.poison))
-target.poison += 实际毒入
-溢出 = 理论每次 − 实际毒入，按武功带毒字段页第3节当场伤血</pre>
-<p>理论每次沿用原版“差值÷4”；最深与溢出伤血的完整规则及原版角色算例见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功带毒字段页</a>。例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，最深49、理论每次10，前4次各新增10，第5次新增9并溢出1。</p>
+<p>毒力为<code>actor.use_poison</code>，除数为4，按<a href="#poison-application">上毒</a>结算。</p>
+<p>例如<code>use_poison=80</code>、目标<code>anti_poison=40</code>时，最深49、理论每次10，前4次各新增10，第5次新增9并溢出1。</p>
+<details>
+  <summary>原版对照（机器事实，不是NG+规则）</summary>
+  <pre>主动用毒（sub_39A45）：新增中毒 = trunc((用毒 − 抗毒) ÷ 4)，先夹到0～99，再限制为 99 − 当前中毒量</pre>
+  <p>机器证据：<a href="../../../research/evidence/functions/Z_DAT/0x39A45.md">sub_39A45</a>。</p>
+</details>
 <h3 id="ai-poison-target">AI选择主动用毒目标</h3>
 <p>原版两种选目标路径在目标中毒达到固定95时跳过，并要求目标实际抗毒小于施术者实际用毒。从NG1起，两种路径都只比较实际抗毒和实际用毒，移除目标中毒量的选目标跳过条件。</p>
 <pre>选目标的用毒条件：目标实际抗毒 &lt; 施术者实际用毒
 不按目标当前中毒量跳过</pre>
-<p>即使目标中毒已达本次施毒的最深，AI选目标也不因此跳过；随后实际毒入为0，理论每次全部计为溢出并当场伤血。原版固定95仅作历史机器事实。现有运行时代码尚未实现。</p>
+<p>即使目标中毒已达本次施毒的最深，AI选目标也不因此跳过，随后照常按<a href="#poison-application">上毒</a>结算。原版固定95仅作历史机器事实。现有运行时代码尚未实现。</p>
 </section>
 </section>
 <section id="anti-poison">
@@ -169,7 +190,7 @@ target.poison += 实际毒入
 </tbody></table>
 <p>原版普通物品按16位加法写入抗毒，不以100封顶；NG+物品保留实际加值，也不按周目夹值，但运行期使用经检查的64位数，不允许原版16位回绕。<a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">原版物品汇编证据</a>。</p>
 <h3 id="anti-poison-threshold">抗毒使用路径总表（NG1起各周目）</h3>
-<p>下表直接使用字段含义。“向零取整”指舍去小数部分；敌方基线换算使用周目增长系数，施毒路径只比较实际能力与毒力，不再使用抗毒上限的90%或100%门槛。各正毒路径一律按<a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功带毒字段页</a>第2节计算最深与实际毒入：最深 ＝ 向零取整(99 × (毒力 − 目标抗毒) ÷ 毒力)，毒力不大于抗毒时不中毒；<code>poison</code>正常范围固定为0～99。</p>
+<p>下表直接使用字段含义。“向零取整”指舍去小数部分；敌方基线换算使用周目增长系数，施毒路径只比较实际能力与毒力，不再使用抗毒上限的90%或100%门槛。各正毒路径按<a href="#poison-application">上毒</a>结算。</p>
 <table><thead><tr><th>路径</th><th>抗毒如何参与</th><th>数值／百分比</th></tr></thead><tbody>
 <tr><td>我方换周目</td><td>曾入队角色完整继承实际抗毒，未入队角色取RANGER基线；不按周目增长系数补值或夹值。</td><td>实际数值</td></tr>
 <tr><td>敌方生成</td><td>敌方NG1抗毒值 × EnemyAntiScale(n) ÷ 100，向上取整，不按该系数夹值；不继承上一周目敌方值。</td><td>基线百分比增长</td></tr>
@@ -177,11 +198,11 @@ target.poison += 实际毒入
 <tr><td>普通物品增加抗毒</td><td>原有抗毒加物品抗毒加值，不按周目夹值；上方物品表列出原版加值。</td><td>数值加法</td></tr>
 <tr><td>练功结算</td><td>抗毒加秘笈对应加值，不按周目夹值；当前原版秘笈的抗毒加值均为0。</td><td>数值加法</td></tr>
 <tr><td>升级</td><td>不读写抗毒。</td><td>不参与</td></tr>
-<tr><td><a href="#poison-mechanics">主动用毒</a></td><td>毒力为施术者实际用毒；理论每次为（毒力−目标实际抗毒）÷4向零取整，实际毒入以最深封顶，超出部分当场伤血。</td><td>实际数值差</td></tr>
-<tr><td><a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功附毒</a></td><td>武功毒力＝角色武功带毒＋武功带毒字段×武功等级，须大于目标实际抗毒；理论每次为差值除以15后向零取整，实际毒入以最深封顶，超出部分当场伤血。</td><td>实际毒力与抗毒比较</td></tr>
-<tr><td><a href="add-poison.zh-Hans.html#add-poison-ng-threshold">普通物品正毒</a></td><td>毒力为（施术者暗器技巧＋物品附毒值）÷2向零取整，再减目标实际抗毒；差值不大于0时不新增中毒，否则理论每次为差值÷2，按暗器规则以最深封顶。</td><td>实际毒力与抗毒比较</td></tr>
-<tr><td><a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">玩家投掷正毒</a></td><td>从NG1起先将（物品附毒值＋施术者暗器技巧）÷2向零取整，再减目标实际抗毒；差值不大于0时不新增中毒，否则理论每次为差值÷2，以最深封顶。原版机器的暗器技巧项是减号，不是本设计。</td><td>实际毒力与抗毒比较</td></tr>
-<tr><td><a href="#ai-poison-target">AI选择主动用毒目标</a></td><td>两种路径只要求目标实际抗毒小于施术者实际用毒，不按目标当前中毒量跳过。目标已达最深时，理论每次全部计为溢出。</td><td>实际抗毒与用毒比较</td></tr>
+<tr><td><a href="#poison-mechanics">主动用毒</a></td><td>毒力为施术者实际用毒，与目标实际抗毒比较，按<a href="#poison-application">上毒</a>结算。</td><td>实际数值差</td></tr>
+<tr><td><a href="attack-with-poison.zh-Hans.html#attack-with-poison-ng-threshold">武功附毒</a></td><td>武功毒力与目标实际抗毒比较，按<a href="#poison-application">上毒</a>结算。</td><td>实际毒力与抗毒比较</td></tr>
+<tr><td><a href="add-poison.zh-Hans.html#add-poison-ng-threshold">普通物品正毒</a></td><td>暗器正毒毒力与目标实际抗毒比较，按<a href="#poison-application">上毒</a>结算。</td><td>实际毒力与抗毒比较</td></tr>
+<tr><td><a href="hidden-weapon.zh-Hans.html#poison-throw-all-ng">玩家投掷正毒</a></td><td>暗器正毒毒力与目标实际抗毒比较，按<a href="#poison-application">上毒</a>结算；从NG1起暗器技巧项为加号，原版机器是减号。</td><td>实际毒力与抗毒比较</td></tr>
+<tr><td><a href="#ai-poison-target">AI选择主动用毒目标</a></td><td>两种路径只要求目标实际抗毒小于施术者实际用毒，不按目标当前中毒量跳过。</td><td>实际抗毒与用毒比较</td></tr>
 <tr><td>普通物品负毒及零毒</td><td>负毒分支不读取抗毒；零毒跳过普通物品的中毒结算。</td><td>不读取抗毒</td></tr>
 <tr><td>玩家投掷非正毒</td><td>物品附毒值小于或等于0的分支不读取抗毒。</td><td>不读取抗毒</td></tr>
 <tr><td>AI投掷暗器</td><td>原版正、负及零毒分支均不读取目标抗毒；是否改用暗器规则尚未确定。</td><td>不读取抗毒</td></tr>
@@ -204,9 +225,11 @@ target.poison += 实际毒入
     <h4>解毒公式（NG1起）</h4>
     <pre>解毒能力 = max(actor.detoxification, 0)
 理论解毒量 = clamp(trunc(解毒能力 / 3) + 随机数1 − 随机数2, 0, 99)   # 两个随机数依次为RNG.bounded(10)，各0～9
-实际解毒量 = min(理论解毒量, 目标中毒量)
+单次上限   = trunc(99 × 解毒能力 / (解毒能力 + 100))
+实际解毒量 = min(理论解毒量, 单次上限, 目标中毒量)
 目标中毒量 = 目标中毒量 − 实际解毒量</pre>
-    <p>从NG1起取消原版准入门槛（中毒量超过“解毒能力＋max(20, trunc(解毒能力 × 20 / 100))”时解毒量为0）；能力低时只是解得慢。两次随机取值的顺序不变，实际解毒量不超过目标现有中毒，不套用医疗的HP缺口或治伤保底。中毒量最多99，解毒能力约297起可保证一次清满毒，此后能力增长不再提高效果。药品解毒沿用原版普通物品负毒分支，与使用者无关，见<a href="attack-with-poison.zh-Hans.html#attack-with-poison-mechanics">武功带毒字段页</a>。</p>
+    <p>从NG1起取消原版准入门槛（中毒量超过“解毒能力＋max(20, trunc(解毒能力 × 20 / 100))”时解毒量为0）；能力低时只是解得慢。两次随机取值的顺序不变，实际解毒量不超过目标现有中毒，不套用医疗的HP缺口或治伤保底。</p>
+    <p>单次上限与用毒的“最深”写法对称：能力越高越接近99，但不会达到99，所以满毒99至少要解两次；能力继续增长仍能一次解完更深的中毒。解毒能力不超过197时，理论解毒量本来就不超过单次上限，结果与不设上限相同，原版人物不受影响。药品解毒沿用原版普通物品负毒分支，与使用者无关，见<a href="add-poison.zh-Hans.html#add-poison-mechanics">物品毒值字段页</a>。</p>
     <p>战斗菜单要求体力&gt;50、解毒能力≥20且仅对友方生效，完成行动另耗2点体力；NG1菜单与战斗共用原版解毒核心。原版距离＝<code>trunc(actor.detoxification / 15) + 1</code>；NG2+解毒距离是否增长仍未定；主动用毒各周目的目标距离均按NG1用毒能力上限封顶。</p>
     <p>列说明：<strong>原版门槛／原版结果</strong>为原版准入门槛及当次是否可解；<strong>理论／实解／剩余</strong>为本规则下的理论解毒量、实际解毒量和剩余中毒量。中毒94为欧阳锋蛤蟆功10级对主角的最深。</p>
     <table>
@@ -218,9 +241,30 @@ target.poison += 实际毒入
         <tr><td>20／41</td><td>4／4</td><td>40／失败</td><td>6／6／35</td></tr>
         <tr><td>22（主角）／94</td><td>4／4</td><td>42／失败</td><td>7／7／87</td></tr>
         <tr><td>84（程灵素）／94</td><td>4／4</td><td>104／可解</td><td>28／28／66</td></tr>
-        <tr><td>300／99</td><td>4／4</td><td>360／可解</td><td>99／99／0</td></tr>
+        <tr><td>300／99</td><td>4／4</td><td>360／可解</td><td>99／74（单次上限）／25</td></tr>
+        <tr><td>1000／99</td><td>4／4</td><td>1200／可解</td><td>99／90（单次上限）／9</td></tr>
       </tbody>
     </table>
+    <h4 id="detoxification-uses">解完所需次数</h4>
+    <p>列说明：格内为“平均（最少～最多）”。平均是期望次数：每次解毒的两个随机数共100种组合、各占1%，穷举所有组合算出“第n次解完”的概率，再按次数加权求和；最少、最多分别是每次随机差都取＋9、都取−9时的次数。“原版失败”表示原版因准入门槛无法解毒。中毒量28为蟒牯朱蛤对程灵素、55为星宿门人用毒对主角、72为王难姑用毒对主角、87为丁春秋冰蚕毒掌对主角、94为欧阳锋蛤蟆功对主角、99为任何毒对抗毒0目标的最深。</p>
+    <table>
+      <thead><tr><th>解毒者</th><th>解毒能力</th><th>单次上限</th><th>中毒28</th><th>中毒55</th><th>中毒72</th><th>中毒87</th><th>中毒94</th><th>中毒99</th></tr></thead>
+      <tbody>
+        <tr><td>程灵素（2）</td><td>84</td><td>45</td><td>1.45（1～2）</td><td>2.40（2～3）</td><td>3.04（2～4）</td><td>3.64（3～5）</td><td>3.92（3～5）</td><td>4.03（3～6）</td></tr>
+        <tr><td>王难姑（17）</td><td>77</td><td>43</td><td>1.72（1～2）</td><td>2.78（2～4）</td><td>3.31（3～5）</td><td>4.00（3～6）</td><td>4.21（3～6）</td><td>4.43（3～7）原版失败</td></tr>
+        <tr><td>胡青牛（16）</td><td>62</td><td>37</td><td>1.98（1～3）</td><td>3.22（2～5）</td><td>4.10（3～7）</td><td>4.85（3～8）原版失败</td><td>5.19（4～9）原版失败</td><td>5.44（4～9）原版失败</td></tr>
+        <tr><td>薛慕华（45）</td><td>56</td><td>35</td><td>2.07（2～4）</td><td>3.54（3～7）</td><td>4.49（3～8）</td><td>5.33（4～10）原版失败</td><td>5.72（4～11）原版失败</td><td>6.00（4～11）原版失败</td></tr>
+        <tr><td>五毒教徒（223）</td><td>52</td><td>33</td><td>2.13（2～4）</td><td>3.74（3～7）</td><td>4.73（3～9）</td><td>5.62（4～11）原版失败</td><td>6.03（4～12）原版失败</td><td>6.32（4～13）原版失败</td></tr>
+        <tr><td>张无忌（9）</td><td>48</td><td>32</td><td>2.22（2～4）</td><td>3.94（3～8）</td><td>5.00（3～11）原版失败</td><td>5.94（4～13）原版失败</td><td>6.38（4～14）原版失败</td><td>6.69（4～15）原版失败</td></tr>
+        <tr><td>主角（0）</td><td>22</td><td>17</td><td>4.57（2～∞）</td><td>8.40（4～∞）原版失败</td><td>10.82（5～∞）原版失败</td><td>12.95（6～∞）原版失败</td><td>13.94（6～∞）原版失败</td><td>14.65（7～∞）原版失败</td></tr>
+        <tr><td>假设</td><td>150</td><td>59</td><td>—</td><td>1.85（1～2）</td><td>2.00（2～2）</td><td>2.01（2～3）</td><td>2.13（2～3）</td><td>2.40（2～3）</td></tr>
+        <tr><td>假设</td><td>200</td><td>66</td><td>—</td><td>1.00（1～1）</td><td>2.00（2～2）</td><td>2.00（2～2）</td><td>2.00（2～2）</td><td>2.00（2～2）</td></tr>
+        <tr><td>假设</td><td>300</td><td>74</td><td>—</td><td>1.00（1～1）</td><td>1.00（1～1）</td><td>2.00（2～2）</td><td>2.00（2～2）</td><td>2.00（2～2）</td></tr>
+        <tr><td>假设</td><td>1000</td><td>90</td><td>—</td><td>1.00（1～1）</td><td>1.00（1～1）</td><td>1.00（1～1）</td><td>2.00（2～2）</td><td>2.00（2～2）</td></tr>
+        <tr><td>假设</td><td>3000</td><td>95</td><td>—</td><td>1.00（1～1）</td><td>1.00（1～1）</td><td>1.00（1～1）</td><td>1.00（1～1）</td><td>2.00（2～2）</td></tr>
+      </tbody>
+    </table>
+    <p>主角每次基础解毒量为7，随机差为−7及以下时解0点，单次概率6%，所以最多次数没有上限；平均次数仍是有限值。</p>
     <p>原版机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x39DA3.md">角色解毒函数</a>。</p>
   </section>
 </section>
