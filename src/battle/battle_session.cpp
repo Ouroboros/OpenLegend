@@ -1111,7 +1111,7 @@ bool BattleSession::begin_round(const std::uint32_t bios_tick) {
         " slot=" + std::to_string(current_actor_slot_) +
         " role=" + std::to_string(actor[combatant_word::role_id]) +
         " side=" + std::to_string(actor[combatant_word::side]) +
-        " round_value=" + std::to_string(actor[combatant_word::round_value]) +
+        " round_value=" + std::to_string(setup_.combatants()[current_actor_slot_].round_value) +
         " view=" + std::to_string(render_state_.view_x) + "," +
         std::to_string(render_state_.view_y));
     return true;
@@ -3630,7 +3630,7 @@ bool BattleSession::rebuild_player_menu_after_movement() {
     const auto new_movement = static_cast<std::int16_t>(
         ranger_.roles[static_cast<std::size_t>(role_id)]
                 .word(model::role_word::physical_power) > 5 &&
-            words[combatant_word::round_value] > 0 ? 1 : 0);
+            setup_.combatants()[current_actor_slot_].round_value > 0 ? 1 : 0);
     player_action_menu_.available[0U] = new_movement;
     if (new_movement == 0) {
         --player_action_menu_.available_count;
@@ -4122,7 +4122,7 @@ bool BattleSession::begin_actor_present() {
         " slot=" + std::to_string(current_actor_slot_) +
         " role=" + std::to_string(actor[combatant_word::role_id]) +
         " side=" + std::to_string(actor[combatant_word::side]) +
-        " round_value=" + std::to_string(actor[combatant_word::round_value]) +
+        " round_value=" + std::to_string(setup_.combatants()[current_actor_slot_].round_value) +
         " view=" + std::to_string(render_state_.view_x) + "," +
         std::to_string(render_state_.view_y));
     return true;

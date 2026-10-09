@@ -451,7 +451,7 @@ void run_movement_step_test(const openlegend::resource::DataRoot& data_root) {
     auto& actor = setup.combatants()[0U].words;
     actor[combatant_word::initial_mode] = 3;
     actor[combatant_word::sprite] = 5112;
-    actor[combatant_word::round_value] = 5;
+    setup.combatants()[0U].round_value = 5;
     BattlePathing pathing{data};
     const BattlePathCoord source{32, 20};
     const BattlePathCoord target{21, 23};
@@ -466,7 +466,7 @@ void run_movement_step_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(actor[combatant_word::y] == 20);
     OL_CHECK(actor[combatant_word::initial_mode] == 2);
     OL_CHECK(actor[combatant_word::sprite] == 5110);
-    OL_CHECK(actor[combatant_word::round_value] == 4);
+    OL_CHECK(setup.combatants()[0U].round_value == 4);
     OL_CHECK(ranger.roles[0U].word(openlegend::model::role_word::physical_power) == 0);
     OL_CHECK(setup.movement_should_stop(
         0U, BattlePathCoord{31, 20}, 1U, BattleMovementStopRule::destination, 0));
@@ -481,9 +481,9 @@ void run_movement_step_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(pathing.value(BattlePathCoord{31, 20}) == kBattlePathConsumed);
     OL_CHECK(data.occupancy()[20U * 64U + 31U] == -1);
     OL_CHECK(data.occupancy()[20U * 64U + 30U] == 0);
-    OL_CHECK(actor[combatant_word::round_value] == 3);
+    OL_CHECK(setup.combatants()[0U].round_value == 3);
     OL_CHECK(ranger.roles[0U].word(openlegend::model::role_word::physical_power) == 0);
-    actor[combatant_word::round_value] = 0;
+    setup.combatants()[0U].round_value = 0;
     OL_CHECK(setup.movement_should_stop(
         0U, target, 1U, BattleMovementStopRule::aligned_in_range, 0));
 }
@@ -2298,7 +2298,7 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     BattleData data{data_root, 4};
     BattleSetup setup{data, ranger};
     OL_CHECK(setup.valid());
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
     const BattleAiChoice medicine_request{
         .action = BattleAiAction::request_medicine,
@@ -2333,7 +2333,7 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(resumed->target.y != medicine_plan->target.y);
     OL_CHECK(!setup.resume_ai_request_after_move(0U, *resumed).has_value());
 
-    setup.combatants()[0U].words[combatant_word::round_value] = 0;
+    setup.combatants()[0U].round_value = 0;
     const auto zero_medicine_plan = setup.begin_ai_request_plan(0U, medicine_request);
     OL_CHECK(zero_medicine_plan.has_value());
     OL_CHECK(zero_medicine_plan->request_action == BattleAiAction::request_medicine);
@@ -2341,7 +2341,7 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(zero_medicine_plan->movement_mode == 0);
     OL_CHECK(zero_medicine_plan->movement_value == 0);
 
-    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    setup.combatants()[0U].round_value = -1;
     const auto negative_medicine_plan = setup.begin_ai_request_plan(0U, medicine_request);
     OL_CHECK(negative_medicine_plan.has_value());
     OL_CHECK(negative_medicine_plan->request_action == BattleAiAction::request_medicine);
@@ -2349,7 +2349,7 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(negative_medicine_plan->movement_mode == 0);
     OL_CHECK(negative_medicine_plan->movement_value == 0);
 
-    setup.combatants()[0U].words[combatant_word::round_value] = 0;
+    setup.combatants()[0U].round_value = 0;
     const BattleAiChoice detox_request{
         .action = BattleAiAction::request_detox,
         .target_slot = 1,
@@ -2362,7 +2362,7 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(detox_plan->movement_mode == 0);
     OL_CHECK(detox_plan->movement_value == 0);
 
-    setup.combatants()[0U].words[combatant_word::round_value] = 2;
+    setup.combatants()[0U].round_value = 2;
     const auto moving_detox_plan = setup.begin_ai_request_plan(0U, detox_request);
     OL_CHECK(moving_detox_plan.has_value());
     OL_CHECK(moving_detox_plan->request_action == BattleAiAction::request_detox);
@@ -2385,7 +2385,7 @@ void run_ai_request_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(resumed_detox->target.x != moving_detox_plan->target.x);
     OL_CHECK(resumed_detox->target.y != moving_detox_plan->target.y);
 
-    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    setup.combatants()[0U].round_value = -1;
     const auto negative_detox_plan = setup.begin_ai_request_plan(0U, detox_request);
     OL_CHECK(negative_detox_plan.has_value());
     OL_CHECK(negative_detox_plan->request_action == BattleAiAction::request_detox);
@@ -2446,7 +2446,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[actor_role_id].set_word(role_word::detoxification, 0);
     target[combatant_word::x] = adjacent->x;
     target[combatant_word::y] = adjacent->y;
-    actor[combatant_word::round_value] = 3;
+    setup.combatants()[actor_slot].round_value = 3;
     actor[combatant_word::action_done] = 0;
     const BattleAiChoice medicine_choice{
         .action = BattleAiAction::medicine,
@@ -2497,7 +2497,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[actor_role_id].set_word(role_word::attack, 300);
     target[combatant_word::x] = distant->x;
     target[combatant_word::y] = distant->y;
-    actor[combatant_word::round_value] = 3;
+    setup.combatants()[actor_slot].round_value = 3;
     plan = begin_support_plan(medicine_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->target_distance >= 5);
@@ -2537,7 +2537,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[target_role_id].set_word(role_word::attack, 0);
     ranger.roles[target_role_id].set_word(role_word::hp, 0);
     ranger.roles[actor_role_id].set_word(role_word::attack, 0);
-    actor[combatant_word::round_value] = 0;
+    setup.combatants()[actor_slot].round_value = 0;
     plan = begin_support_plan(medicine_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->range_check_count == 2);
@@ -2545,7 +2545,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(plan->doubled_actor_attack == 0);
     OL_CHECK(plan->doubled_allied_average == 0);
     OL_CHECK(actor[combatant_word::action_done] == 0);
-    actor[combatant_word::round_value] = -1;
+    setup.combatants()[actor_slot].round_value = -1;
     plan = begin_support_plan(medicine_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->range_check_count == 2);
@@ -2565,7 +2565,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
 
     ranger.roles[actor_role_id].set_word(role_word::medicine, -30);
-    actor[combatant_word::round_value] = 0;
+    setup.combatants()[actor_slot].round_value = 0;
     plan = begin_support_plan(medicine_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->targeting_range == 1);
@@ -2596,7 +2596,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[target_role_id].set_word(role_word::hp, 0);
     target[combatant_word::x] = distant->x;
     target[combatant_word::y] = distant->y;
-    actor[combatant_word::round_value] = 3;
+    setup.combatants()[actor_slot].round_value = 3;
     plan = begin_support_plan(detox_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->support_action == BattleAiAction::detox);
@@ -2632,12 +2632,12 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[target_role_id].set_word(role_word::attack, 0);
     ranger.roles[target_role_id].set_word(role_word::hp, 0);
     ranger.roles[actor_role_id].set_word(role_word::attack, 0);
-    actor[combatant_word::round_value] = 0;
+    setup.combatants()[actor_slot].round_value = 0;
     plan = begin_support_plan(detox_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->range_check_count == 2);
     OL_CHECK(plan->next_step == BattleAiSupportNextStep::rest);
-    actor[combatant_word::round_value] = -1;
+    setup.combatants()[actor_slot].round_value = -1;
     plan = begin_support_plan(detox_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->range_check_count == 2);
@@ -2656,7 +2656,7 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
 
     ranger.roles[actor_role_id].set_word(role_word::detoxification, -30);
-    actor[combatant_word::round_value] = 0;
+    setup.combatants()[actor_slot].round_value = 0;
     plan = begin_support_plan(detox_choice);
     OL_CHECK(plan.has_value());
     OL_CHECK(plan->targeting_range == -1);
@@ -4355,7 +4355,7 @@ void run_player_movement_selection_test(const openlegend::resource::DataRoot& da
     auto& actor = setup.combatants()[0U].words;
     const auto& occupied_target = setup.combatants()[1U].words;
     const auto role_id = static_cast<std::size_t>(actor[combatant_word::role_id]);
-    actor[combatant_word::round_value] = 2;
+    setup.combatants()[0U].round_value = 2;
     ranger.roles[role_id].set_word(role_word::speed, 20);
     ranger.roles[role_id].set_word(role_word::physical_power, 10);
 
@@ -4438,7 +4438,7 @@ void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& dat
         auto& actor = setup.combatants()[0U].words;
         const auto& target = setup.combatants()[1U].words;
         const auto role_id = static_cast<std::size_t>(actor[combatant_word::role_id]);
-        actor[combatant_word::round_value] = 8;
+        setup.combatants()[0U].round_value = 8;
         ranger.roles[role_id].set_word(role_word::speed, 80);
         ranger.roles[role_id].set_word(role_word::physical_power, 10);
         const BattlePathCoord requested_target{
@@ -4496,9 +4496,8 @@ void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& dat
         BattleData data{data_root, 4};
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.valid());
-        auto& actor = setup.combatants()[0U].words;
         const auto& target = setup.combatants()[1U].words;
-        actor[combatant_word::round_value] = 20;
+        setup.combatants()[0U].round_value = 20;
         const BattlePathCoord requested_target{
             target[combatant_word::x],
             target[combatant_word::y],
@@ -4524,7 +4523,7 @@ void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& dat
         OL_CHECK(radial->second_reachability_passed);
         OL_CHECK(radial->path_marked);
 
-        actor[combatant_word::round_value] = 1;
+        setup.combatants()[0U].round_value = 1;
         const auto outside_turn =
             setup.begin_ai_movement_plan(0U, 1, requested_target, 2, 0);
         OL_CHECK(outside_turn.has_value());
@@ -4539,7 +4538,7 @@ void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& dat
         OL_CHECK(outside_turn->second_reachability_passed);
         OL_CHECK(outside_turn->path_marked);
 
-        actor[combatant_word::round_value] = 8;
+        setup.combatants()[0U].round_value = 8;
         const auto second_pass = setup.begin_ai_movement_plan(
             0U, -1, BattlePathCoord{28, 26}, 0, 0);
         OL_CHECK(second_pass.has_value());
@@ -4604,9 +4603,8 @@ void run_ai_movement_continuation_test(const openlegend::resource::DataRoot& dat
         BattleData data{data_root, 4};
         BattleSetup setup{data, ranger};
         OL_CHECK(setup.valid());
-        auto& actor = setup.combatants()[0U].words;
         const auto& target = setup.combatants()[1U].words;
-        actor[combatant_word::round_value] = 1;
+        setup.combatants()[0U].round_value = 1;
         const BattlePathCoord requested_target{
             target[combatant_word::x],
             target[combatant_word::y],
@@ -4638,7 +4636,7 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     BattleData data{data_root, 4};
     BattleSetup setup{data, ranger};
     OL_CHECK(setup.valid());
-    setup.combatants()[0U].words[combatant_word::round_value] = 6;
+    setup.combatants()[0U].round_value = 6;
     openlegend::random::LegacyRandom random{1U};
     const auto rested = setup.rest_actor(0U, random);
     OL_CHECK(rested.has_value());
@@ -4651,7 +4649,7 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::physical_power, 25);
     actor.set_word(openlegend::model::role_word::hp, 95);
     actor.set_word(openlegend::model::role_word::mp, 48);
-    setup.combatants()[0U].words[combatant_word::round_value] = 5;
+    setup.combatants()[0U].round_value = 5;
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
     random.seed(1U);
     const auto tired = setup.rest_actor(0U, random);
@@ -4668,7 +4666,7 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::maximum_hp, 100);
     actor.set_word(openlegend::model::role_word::mp, 20);
     actor.set_word(openlegend::model::role_word::maximum_mp, 100);
-    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    setup.combatants()[0U].round_value = -1;
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
     random.seed(1U);
     const auto threshold = setup.rest_actor(0U, random);
@@ -4685,7 +4683,7 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::maximum_hp, 100);
     actor.set_word(openlegend::model::role_word::mp, 20);
     actor.set_word(openlegend::model::role_word::maximum_mp, 100);
-    setup.combatants()[0U].words[combatant_word::round_value] = 5;
+    setup.combatants()[0U].round_value = 5;
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
     random.seed(1U);
     const auto wrapped_physical_power = setup.rest_actor(0U, random);
@@ -4700,7 +4698,7 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::maximum_hp, 100);
     actor.set_word(openlegend::model::role_word::mp, 32'766);
     actor.set_word(openlegend::model::role_word::maximum_mp, 100);
-    setup.combatants()[0U].words[combatant_word::round_value] = 6;
+    setup.combatants()[0U].round_value = 6;
     random.seed(1U);
     const auto wrapped_recovery = setup.rest_actor(0U, random);
     OL_CHECK(wrapped_recovery.has_value());
@@ -4714,7 +4712,7 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::mp, 20);
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
     setup.combatants()[1U].words[combatant_word::role_id] = 1;
-    setup.combatants()[1U].words[combatant_word::round_value] = 5;
+    setup.combatants()[1U].round_value = 5;
     setup.combatants()[1U].words[combatant_word::action_done] = 0;
     random.seed(1U);
     const auto shared_role = setup.rest_actor(1U, random);
@@ -5130,10 +5128,9 @@ void run_player_action_availability_test(
     BattleData data{data_root, 4};
     BattleSetup setup{data, ranger};
     OL_CHECK(setup.valid());
-    auto& actor = setup.combatants()[0U].words;
 
     role.set_word(role_word::physical_power, 5);
-    actor[combatant_word::round_value] = 0;
+    setup.combatants()[0U].round_value = 0;
     auto availability = setup.player_action_availability(0U);
     OL_CHECK(availability.has_value());
     OL_CHECK((availability->available ==
@@ -5141,7 +5138,7 @@ void run_player_action_availability_test(
     OL_CHECK(availability->available_count == 5);
 
     role.set_word(role_word::physical_power, 6);
-    actor[combatant_word::round_value] = 1;
+    setup.combatants()[0U].round_value = 1;
     availability = setup.player_action_availability(0U);
     OL_CHECK(availability.has_value());
     OL_CHECK(availability->available[0U] == 1);
@@ -6727,7 +6724,7 @@ void run_ai_attack_session_test(
     movement_session->advance(1'300U);
     OL_CHECK(movement_session->phase() == BattleSessionPhase::actor_present);
     OL_CHECK(movement_session->setup().combatants()[0U]
-                 .words[combatant_word::round_value] == 2);
+                 .round_value == 2);
     OL_CHECK(movement_session->render(*framebuffer));
     movement_session->finish_presented_tick(1'300U);
     movement_session->advance(1'300U);
@@ -6766,7 +6763,7 @@ void run_ai_attack_session_test(
     OL_CHECK(movement_session->setup().combatants()[0U]
                  .words[combatant_word::initial_mode] == 3);
     OL_CHECK(movement_session->setup().combatants()[0U]
-                 .words[combatant_word::round_value] == 1);
+                 .round_value == 1);
     OL_CHECK(movement_actor.word(role_word::physical_power) == 100);
     OL_CHECK(movement_enemy.word(role_word::hp) < 5'000);
     OL_CHECK(movement_session->take_audio_commands() ==
@@ -7144,9 +7141,8 @@ void run_ai_item_session_test(
                                          const std::size_t steps) {
         auto& setup = session.setup();
         for (std::size_t step = 0U; step < steps; ++step) {
-            auto& actor_words = setup.combatants()[actor_slot].words;
             const auto& opponent_words = setup.combatants()[opponent_slot].words;
-            actor_words[combatant_word::round_value] = 1;
+            setup.combatants()[actor_slot].round_value = 1;
             auto selection = setup.begin_player_movement_selection(actor_slot);
             if (!selection) {
                 return false;
@@ -7224,7 +7220,7 @@ void run_ai_item_session_test(
                       session->setup().combatants()[0U].words[combatant_word::y]} ==
                   BattlePathCoord{26, 23}));
         OL_CHECK(session->setup().combatants()[0U]
-                     .words[combatant_word::round_value] == -1);
+                     .round_value == -1);
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_movement_wait);
@@ -7434,7 +7430,7 @@ void run_ai_item_session_test(
                          target_words[combatant_word::y]) ==
                  2);
         OL_CHECK(session->setup().combatants()[0U]
-                     .words[combatant_word::round_value] == 0);
+                     .round_value == 0);
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(tick);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_movement_wait);
@@ -7568,7 +7564,7 @@ void run_ai_item_session_test(
                       session->setup().combatants()[0U].words[combatant_word::y]} !=
                   BattlePathCoord{26, 24}));
         OL_CHECK(session->setup().combatants()[0U]
-                     .words[combatant_word::round_value] == 0);
+                     .round_value == 0);
         OL_CHECK(session->render(*framebuffer));
         session->finish_presented_tick(tick);
         session->advance(++tick);
@@ -7962,7 +7958,7 @@ void run_ai_support_movement_session_test(
     session->advance(1'900U);
     OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
     OL_CHECK(session->current_actor_slot() == 0U);
-    OL_CHECK(combatants[0U].words[combatant_word::round_value] > 0);
+    OL_CHECK(combatants[0U].round_value > 0);
     const auto initial_attack_counter =
         combatants[0U].reward_experience;
     OL_CHECK(session->render(*framebuffer));
@@ -8183,7 +8179,7 @@ void run_ai_request_session_test(
     OL_CHECK(session->phase() == BattleSessionPhase::ai_movement_step_present);
     OL_CHECK(combatants[0U].words[combatant_word::ai_action] ==
              static_cast<std::int16_t>(BattleAiAction::request_medicine));
-    OL_CHECK(combatants[0U].words[combatant_word::round_value] == 0);
+    OL_CHECK(combatants[0U].round_value == 0);
     OL_CHECK(session->render(*framebuffer));
     session->finish_presented_tick(1'808U);
     OL_CHECK(session->phase() == BattleSessionPhase::ai_movement_wait);
@@ -8681,7 +8677,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         data_root, movement_ranger, movement_random, 4, false};
     reach_player_action(movement_session);
     OL_CHECK(
-        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 2);
+        movement_session.setup().combatants()[0U].round_value == 2);
     OL_CHECK(movement_session.handle_key(0x0DU) == BattleSessionInputResult::action_selected);
     OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_select);
     OL_CHECK((movement_session.active_cursor() == BattlePathCoord{26, 24}));
@@ -8701,7 +8697,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
                   movement_session.setup().combatants()[0U].words[combatant_word::y]} ==
               BattlePathCoord{26, 24}));
     OL_CHECK(
-        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 2);
+        movement_session.setup().combatants()[0U].round_value == 2);
     OL_CHECK(movement_ranger.roles[1U].word(role_word::physical_power) == 10);
     finish_player_menu_redraw(movement_session);
     OL_CHECK(movement_session.phase() == BattleSessionPhase::player_action);
@@ -8725,7 +8721,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::x] == 26);
     OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::y] == 25);
     OL_CHECK(
-        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 1);
+        movement_session.setup().combatants()[0U].round_value == 1);
     OL_CHECK(movement_session.render(framebuffer));
     movement_session.finish_presented_tick(200U);
     OL_CHECK(movement_session.phase() == BattleSessionPhase::player_movement_wait);
@@ -8749,7 +8745,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::x] == 25);
     OL_CHECK(movement_session.setup().combatants()[0U].words[combatant_word::y] == 25);
     OL_CHECK(
-        movement_session.setup().combatants()[0U].words[combatant_word::round_value] == 0);
+        movement_session.setup().combatants()[0U].round_value == 0);
     OL_CHECK(movement_ranger.roles[1U].word(role_word::physical_power) == 10);
     OL_CHECK(movement_session.render(framebuffer));
     movement_session.finish_presented_tick(202U);
@@ -9164,7 +9160,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(escape_session.current_actor_slot() == 0U);
     OL_CHECK(escape_session.setup().combatants()[0U].words[combatant_word::role_id] == 0);
     OL_CHECK(
-        escape_session.setup().combatants()[0U].words[combatant_word::round_value] == 3);
+        escape_session.setup().combatants()[0U].round_value == 3);
     const BattlePathCoord escape_source{
         escape_session.setup().combatants()[0U].words[combatant_word::x],
         escape_session.setup().combatants()[0U].words[combatant_word::y]};
@@ -9187,7 +9183,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
                   escape_session.setup().combatants()[0U].words[combatant_word::y]} !=
               escape_source));
     OL_CHECK(
-        escape_session.setup().combatants()[0U].words[combatant_word::round_value] == 2);
+        escape_session.setup().combatants()[0U].round_value == 2);
     std::uint32_t movement_tick = 308U;
     std::size_t movement_steps = 0U;
     while (escape_session.phase() == BattleSessionPhase::ai_movement_step_present &&
@@ -9207,7 +9203,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK((BattlePathCoord{
                   escaped_actor[combatant_word::x], escaped_actor[combatant_word::y]} ==
               BattlePathCoord{31, 22}));
-    OL_CHECK(escaped_actor[combatant_word::round_value] == 0);
+    OL_CHECK(escape_session.setup().combatants()[0U].round_value == 0);
     OL_CHECK(escape_ranger.roles[0U].word(role_word::physical_power) == 100);
     OL_CHECK(escaped_actor[combatant_word::ai_action] == 0);
     OL_CHECK(escaped_actor[combatant_word::action_done] == 1);
@@ -9292,7 +9288,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
             combatant[combatant_word::x] = static_cast<std::int16_t>(10 + role);
             combatant[combatant_word::y] = static_cast<std::int16_t>(20 + role);
             combatant[combatant_word::occupancy_hidden] = 0;
-            combatant[combatant_word::round_value] = 0;
+            setup.combatants()[role].round_value = 0;
             combatant[combatant_word::action_done] = 0;
             combatant[combatant_word::ai_action] = -1;
             combatant[combatant_word::ai_target] = -1;
@@ -10297,7 +10293,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
             static_cast<std::size_t>(combatant[combatant_word::x]);
         data.occupancy()[index] = static_cast<std::int16_t>(slot);
     }
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     const auto escape_plan = setup.ai_escape_plan(0U, true);
     OL_CHECK(escape_plan.has_value());
     OL_CHECK(escape_plan->destination.has_value());
@@ -10315,7 +10311,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     const auto tie_source_index = static_cast<std::size_t>(tie_actor[combatant_word::y]) * 64U +
         static_cast<std::size_t>(tie_actor[combatant_word::x]);
     data.occupancy()[tie_source_index] = 0;
-    tie_actor[combatant_word::round_value] = 1;
+    setup.combatants()[0U].round_value = 1;
     setup.combatants()[1U].words[combatant_word::side] = 0;
     setup.combatants()[2U].words[combatant_word::side] = 0;
     setup.combatants()[3U].words[combatant_word::side] = 1;
@@ -10343,7 +10339,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
         static_cast<std::size_t>(zero_round_actor[combatant_word::y]) * 64U +
         static_cast<std::size_t>(zero_round_actor[combatant_word::x]);
     data.occupancy()[zero_round_source_index] = 0;
-    zero_round_actor[combatant_word::round_value] = 0;
+    setup.combatants()[0U].round_value = 0;
     const auto zero_round_plan = setup.ai_escape_plan(0U, false);
     OL_CHECK(zero_round_plan.has_value());
     OL_CHECK((zero_round_plan->destination == BattlePathCoord{10, 20}));
@@ -10718,7 +10714,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[4U].set_word(role_word::attack, 50);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 8);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom ordered_attack_random{9U};
     auto attack_plan = setup.begin_ai_attack_plan(0U, ordered_attack_random);
     OL_CHECK(attack_plan.has_value());
@@ -10738,7 +10734,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::magic_id_begin, 57);
     ranger.magics[57U].set_word(magic_word::select_distance_begin, 6);
     ranger.magics[57U].set_word(magic_word::attack_area_type, 0);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom bonus_random{1U};
     attack_plan = setup.begin_ai_attack_plan(0U, bonus_random);
     OL_CHECK(attack_plan.has_value());
@@ -10754,7 +10750,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 6);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 1);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom aligned_random{1U};
     attack_plan = setup.begin_ai_attack_plan(0U, aligned_random);
     OL_CHECK(attack_plan.has_value());
@@ -10775,7 +10771,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 6);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 2);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom cross_random{1U};
     attack_plan = setup.begin_ai_attack_plan(0U, cross_random);
     OL_CHECK(attack_plan.has_value());
@@ -10786,7 +10782,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 6);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 3);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom square_random{1U};
     attack_plan = setup.begin_ai_attack_plan(0U, square_random);
     OL_CHECK(attack_plan.has_value());
@@ -10797,7 +10793,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 100);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 4);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom unsupported_random{1U};
     attack_plan = setup.begin_ai_attack_plan(0U, unsupported_random);
     OL_CHECK(attack_plan.has_value());
@@ -10821,7 +10817,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[4U].set_word(role_word::attack, 50);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 1);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     setup.combatants()[3U].words[combatant_word::x] = 11;
     setup.combatants()[3U].words[combatant_word::y] = 20;
     openlegend::random::LegacyRandom reselect_random{9U};
@@ -10844,7 +10840,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[4U].set_word(role_word::attack, 50);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 1);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom rest_random{9U};
     attack_plan = setup.begin_ai_attack_plan(0U, rest_random);
     OL_CHECK(attack_plan.has_value());
@@ -10859,7 +10855,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::magic_id_begin, 1);
     ranger.magics[1U].set_word(magic_word::select_distance_begin, 1);
     ranger.magics[1U].set_word(magic_word::attack_area_type, 0);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom stale_after_move_random{1U};
     attack_plan = setup.begin_ai_attack_plan(0U, stale_after_move_random);
     OL_CHECK(attack_plan.has_value());
@@ -11059,7 +11055,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
 
     reset();
     ranger.roles[0U].set_word(role_word::use_poison, 80);
-    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    setup.combatants()[0U].round_value = -1;
     openlegend::random::LegacyRandom negative_round_poison_random{1U};
     poison_plan = setup.begin_ai_poison_plan(
         0U, 4U, *prelude, negative_round_poison_random);
@@ -11086,7 +11082,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
 
     reset();
     ranger.roles[0U].set_word(role_word::use_poison, 80);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom poison_move_random{1U};
     poison_plan = setup.begin_ai_poison_plan(
         0U, 4U, *prelude, poison_move_random);
@@ -11104,7 +11100,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::iq, 61);
     ranger.roles[3U].set_word(role_word::attack, 30);
     ranger.roles[4U].set_word(role_word::attack, 50);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom poison_rest_random{9U};
     poison_plan = setup.begin_ai_poison_plan(
         0U, 3U, *prelude, poison_rest_random);
@@ -11127,7 +11123,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::attack, 160);
     ranger.roles[3U].set_word(role_word::attack, 30);
     ranger.roles[4U].set_word(role_word::attack, 50);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     const auto poison_equal_prelude = setup.begin_ai_turn(0U);
     OL_CHECK(poison_equal_prelude.has_value());
     openlegend::random::LegacyRandom poison_equal_random{9U};
@@ -11148,7 +11144,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::attack, 200);
     ranger.roles[3U].set_word(role_word::attack, 30);
     ranger.roles[4U].set_word(role_word::attack, 50);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     const auto poison_attack_prelude = setup.begin_ai_turn(0U);
     OL_CHECK(poison_attack_prelude.has_value());
     openlegend::random::LegacyRandom poison_attack_random{9U};
@@ -11171,7 +11167,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
             static_cast<std::size_t>(combatant[combatant_word::x]);
         data.occupancy()[index] = static_cast<std::int16_t>(slot);
     }
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     ranger.header.set_inventory(2U, openlegend::model::ItemId{5}, 0);
     const BattleAiChoice item_choice{
         .action = BattleAiAction::item,
@@ -11240,7 +11236,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[0U].set_word(role_word::morality, 75);
     ranger.roles[3U].set_word(role_word::attack, 30);
     ranger.roles[4U].set_word(role_word::attack, 50);
-    setup.combatants()[0U].words[combatant_word::round_value] = 3;
+    setup.combatants()[0U].round_value = 3;
     openlegend::random::LegacyRandom moving_throwing_random{9U};
     throwing_plan = setup.begin_ai_throwing_weapon_plan(
         0U, throwing_choice, moving_throwing_random);
@@ -11284,7 +11280,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     reset();
     ranger.header.set_inventory(4U, openlegend::model::ItemId{5}, 0);
     ranger.roles[0U].set_word(role_word::hidden_weapon, -16);
-    setup.combatants()[0U].words[combatant_word::round_value] = -1;
+    setup.combatants()[0U].round_value = -1;
     openlegend::random::LegacyRandom negative_range_throwing_random{1U};
     throwing_plan = setup.begin_ai_throwing_weapon_plan(
         0U, throwing_choice, negative_range_throwing_random);
@@ -12404,25 +12400,26 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.sort_by_effective_speed());
     OL_CHECK(setup.prepare_round());
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::round_value] == 2);
+    OL_CHECK(setup.combatants()[0U].round_value == 2);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5118);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::role_id] == 3);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 0);
+    OL_CHECK(setup.combatants()[1U].round_value == 0);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5132);
     OL_CHECK(data.occupancy()[24U * 64U + 26U] == 0);
     OL_CHECK(data.occupancy()[26U * 64U + 26U] == -1);
 
-    // Computing word6 is separate from sorting and must not change slot order.
     ranger.roles[3U].set_word(openlegend::model::role_word::speed, 100);
     OL_CHECK(setup.prepare_round());
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 1);
+    OL_CHECK(setup.combatants()[1U].round_value == 1);
     setup.combatants()[1U].words[combatant_word::y] = 24;
     for (const auto word : {combatant_word::action_done, combatant_word::ai_action,
                             combatant_word::ai_target, combatant_word::ai_poison_target}) {
         setup.combatants()[0U].words[word] = static_cast<std::int16_t>(100U + word);
         setup.combatants()[1U].words[word] = static_cast<std::int16_t>(200U + word);
     }
+    setup.combatants()[0U].round_value = 5'000'000'001;
+    setup.combatants()[1U].round_value = 6'000'000'002;
     setup.combatants()[0U].reward_experience = 5'000'000'113;
     setup.combatants()[1U].reward_experience = 6'000'000'213;
     setup.combatants()[0U].damage_value = 5'000'000'109;
@@ -12438,6 +12435,8 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
             OL_CHECK(setup.combatants()[1U].words[word] == before_first[word]);
         }
     }
+    OL_CHECK(setup.combatants()[0U].round_value == 6'000'000'002);
+    OL_CHECK(setup.combatants()[1U].round_value == 5'000'000'001);
     OL_CHECK(setup.combatants()[0U].reward_experience == 6'000'000'213);
     OL_CHECK(setup.combatants()[1U].reward_experience == 5'000'000'113);
     OL_CHECK(setup.combatants()[0U].damage_value == -6'000'000'209);
@@ -12448,11 +12447,13 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     ranger.roles[1U].set_word(openlegend::model::role_word::speed, 200);
     OL_CHECK(setup.sort_by_effective_speed());
     OL_CHECK(data.occupancy()[24U * 64U + 26U] == -1);
-    ranger.roles[1U].set_word(openlegend::model::role_word::speed, 32760);
-    OL_CHECK(setup.sort_by_effective_speed()); // 32760 + 30 wraps negative.
-    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 3);
+    ranger.roles[1U].set_word(openlegend::model::role_word::speed, 100);
+    ranger.items[5U].set_word(openlegend::model::item_word::add_speed, 32760);
+    OL_CHECK(setup.sort_by_effective_speed());
+    OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
     OL_CHECK(setup.prepare_round());
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 0);
+    OL_CHECK(setup.combatants()[0U].round_value == 2189);
+    OL_CHECK(setup.combatants()[1U].round_value == 1);
 
     auto hidden_ranger = make_ranger({0, 2, 3, -1, -1, -1});
     openlegend::random::LegacyRandom hidden_random{1U};
@@ -13636,6 +13637,205 @@ void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_r
     }
 }
 
+void run_ngplus_round_value_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    using namespace openlegend::model;
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    struct Case {
+        std::int64_t playthrough;
+        std::int64_t hurt_step;
+        std::int64_t hurt;
+        std::int16_t first_speed;
+        std::int16_t second_speed;
+        std::int64_t expected;
+    };
+    constexpr std::array cases{
+        Case{1, 100, 39, 0, 0, 4}, Case{1, 100, 40, 0, 0, 3},
+        Case{1, 100, 79, 0, 0, 3}, Case{1, 100, 80, 0, 0, 2},
+        Case{2, 100, 79, 0, 0, 4}, Case{2, 100, 80, 0, 0, 3},
+        Case{2, 100, 159, 0, 0, 3}, Case{2, 100, 160, 0, 0, 2},
+        Case{2, 100, 199, 0, 0, 2}, Case{3, 100, 299, 0, 0, 2},
+        Case{2, 2, 43, 0, 0, 4}, Case{2, 2, 44, 0, 0, 3},
+        Case{2, 2, 88, 0, 0, 2}, Case{2, -99, 0, 0, 0, 4},
+        Case{2, 4'999'999'999'901, 2'000'000'000'000, 0, 0, 3},
+        Case{2, 4'999'999'999'901, 4'999'999'999'999, 0, 0, 2},
+        Case{1, 100, 0, 30, 30, 8}, Case{2, 100, 199, 30, 30, 6},
+        Case{2, 100, 199, 32767, 32767, 4370},
+        Case{2, 100, 199, -32768, -32768, 0},
+    };
+    for (const auto& entry : cases) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        NewGamePlusConfiguration configuration;
+        configuration.enabled = true;
+        configuration.maximum_playthroughs = std::max<std::int64_t>(entry.playthrough, 2);
+        configuration.hurt_cap_step = entry.hurt_step;
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, entry.playthrough};
+        OL_CHECK(setup.valid());
+        auto& actor = ranger.roles[1U];
+        actor.speed = 60;
+        actor.hurt = entry.hurt;
+        actor.set_word(role_word::equipment_begin, 5);
+        actor.set_word(role_word::equipment_begin + 1U, 6);
+        ranger.items[5U].set_word(item_word::add_speed, entry.first_speed);
+        ranger.items[6U].set_word(item_word::add_speed, entry.second_speed);
+        setup.combatants()[0U].words[combatant_word::occupancy_hidden] = 1;
+        const auto roles_before = ranger.roles;
+        OL_CHECK(setup.prepare_round());
+        OL_CHECK(setup.combatants()[0U].round_value == entry.expected);
+        OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
+        OL_CHECK(ranger.roles == roles_before);
+    }
+    for (const auto invalid_hurt : {std::int64_t{-1}, maximum}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        setup.combatants()[0U].round_value = 5'000'000'000'000;
+        setup.combatants()[1U].round_value = 6'000'000'000'000;
+        ranger.roles[3U].hurt = invalid_hurt;
+        const auto before = std::vector(setup.combatants().begin(), setup.combatants().end());
+        const auto roles_before = ranger.roles;
+        OL_CHECK(!setup.prepare_round());
+        OL_CHECK(setup.error() == "battle round hurt penalty is invalid or overflows");
+        OL_CHECK(std::ranges::equal(setup.combatants(), before));
+        OL_CHECK(ranger.roles == roles_before);
+    }
+    for (const auto failure : {0, 1, 2}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 51};
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.combatant_count() >= 3);
+        const auto count = static_cast<std::size_t>(setup.combatant_count());
+        for (std::size_t slot = 0; slot < count; ++slot) {
+            auto& combatant = setup.combatants()[slot];
+            combatant.words[combatant_word::role_id] = static_cast<std::int16_t>(slot);
+            combatant.round_value = 5'000'000'000'000 + static_cast<std::int64_t>(slot);
+            auto& role = ranger.roles[slot];
+            role.speed = static_cast<std::int64_t>(slot % 4U) * 10;
+            role.set_word(role_word::equipment_begin, -1);
+            role.set_word(role_word::equipment_begin + 1U, -1);
+        }
+        auto& last_role = ranger.roles[count - 1U];
+        last_role.set_word(role_word::equipment_begin, failure == 0 ? 200 : 5);
+        if (failure != 0) {
+            last_role.speed = failure == 1 ? maximum : minimum;
+            ranger.items[5U].set_word(item_word::add_speed, failure == 1 ? 1 : -1);
+        }
+        const auto before = std::vector(setup.combatants().begin(), setup.combatants().end());
+        const auto occupancy_before = std::vector(data.occupancy().begin(), data.occupancy().end());
+        const auto roles_before = ranger.roles;
+        OL_CHECK(!setup.sort_by_effective_speed());
+        OL_CHECK(setup.error() == (failure == 0
+            ? "battle equipment id is outside ranger item records"
+            : "battle effective speed overflows"));
+        OL_CHECK(std::ranges::equal(setup.combatants(), before));
+        OL_CHECK(std::ranges::equal(data.occupancy(), occupancy_before));
+        OL_CHECK(ranger.roles == roles_before);
+    }
+    for (const auto value : std::array<std::int64_t, 4>{6, 65536, 5'000'000'000'000, maximum}) {
+        for (const auto player : {true, false}) {
+            auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            BattleData data{data_root, 4};
+            BattleSetup setup{data, ranger};
+            ranger.roles[1U].speed = 60;
+            ranger.roles[1U].physical_power = 77;
+            setup.combatants()[0U].round_value = value;
+            const auto availability = setup.player_action_availability(0U);
+            OL_CHECK(availability.has_value());
+            OL_CHECK(availability->available[0U] == 1);
+            auto selection = setup.begin_player_movement_selection(0U);
+            OL_CHECK(selection.has_value());
+            OL_CHECK(selection->path_limit == value);
+            std::optional<BattlePathCoord> adjacent;
+            for (std::int16_t y = 0; y < 64 && !adjacent.has_value(); ++y) {
+                for (std::int16_t x = 0; x < 64; ++x) {
+                    if (selection->pathing.value({x, y}) == 1) {
+                        adjacent = BattlePathCoord{x, y};
+                        break;
+                    }
+                }
+            }
+            OL_CHECK(adjacent.has_value());
+            if (!adjacent.has_value()) {
+                continue;
+            }
+            if (value > 1000) {
+                BattleRenderState state;
+                state.path_limit = value;
+                const auto plan = setup.battle_render_plan(state, selection->pathing.values());
+                state.path_limit = 1000;
+                const auto reference = setup.battle_render_plan(state, selection->pathing.values());
+                OL_CHECK(plan.has_value());
+                OL_CHECK(reference.has_value());
+                OL_CHECK(fnv1a_render_plan(*plan) == fnv1a_render_plan(*reference));
+            }
+            std::optional<BattleAiMovementStep> step;
+            if (player) {
+                selection->cursor = *adjacent;
+                OL_CHECK(setup.apply_cursor_selection(*selection, BattleCursorSelectionAction::activate) ==
+                         BattleCursorSelectionResult::selected);
+                auto plan = setup.finish_player_movement_selection(*selection);
+                OL_CHECK(plan.has_value());
+                step = setup.advance_player_movement(*plan);
+            } else {
+                auto plan = setup.begin_ai_movement_plan(0U, -1, *adjacent, 3, 0);
+                OL_CHECK(plan.has_value());
+                OL_CHECK(plan->preliminary_within_turn_range);
+                step = setup.advance_ai_movement(*plan);
+            }
+            OL_CHECK(step.has_value());
+            OL_CHECK(step->remaining_round_value == value - 1);
+            OL_CHECK(setup.combatants()[0U].round_value == value - 1);
+            OL_CHECK(step->physical_power == (value == 6 ? 76 : 77));
+            OL_CHECK(setup.combatants()[0U].words[combatant_word::x] == adjacent->x);
+            OL_CHECK(setup.combatants()[0U].words[combatant_word::y] == adjacent->y);
+        }
+    }
+    for (const auto physical_failure : {false, true}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        auto& actor = setup.combatants()[0U];
+        actor.round_value = physical_failure ? 6 : minimum;
+        ranger.roles[1U].speed = 60;
+        ranger.roles[1U].physical_power = physical_failure ? minimum : 77;
+        const BattlePathCoord source{actor.words[combatant_word::x], actor.words[combatant_word::y]};
+        BattlePathing pathing{data};
+        pathing.build(source, BattlePathMode::movement);
+        std::optional<BattlePathCoord> adjacent;
+        for (std::int16_t y = 0; y < 64 && !adjacent.has_value(); ++y) {
+            for (std::int16_t x = 0; x < 64; ++x) {
+                if (pathing.value({x, y}) == 1) {
+                    adjacent = BattlePathCoord{x, y};
+                    break;
+                }
+            }
+        }
+        OL_CHECK(adjacent.has_value());
+        if (!adjacent.has_value()) {
+            continue;
+        }
+        if (!physical_failure) {
+            OL_CHECK(!setup.begin_ai_movement_plan(0U, -1, *adjacent, 0, 0).has_value());
+        }
+        OL_CHECK(pathing.mark_shortest_path(source, *adjacent));
+        const auto before = std::vector(setup.combatants().begin(), setup.combatants().end());
+        const auto occupancy_before = std::vector(data.occupancy().begin(), data.occupancy().end());
+        const auto path_before = std::vector(pathing.values().begin(), pathing.values().end());
+        const auto roles_before = ranger.roles;
+        OL_CHECK(!setup.move_one_marked_step(pathing, 0U).has_value());
+        OL_CHECK(setup.error() == (physical_failure
+            ? "battle movement physical power overflows"
+            : "battle movement round value overflows"));
+        OL_CHECK(std::ranges::equal(setup.combatants(), before));
+        OL_CHECK(std::ranges::equal(data.occupancy(), occupancy_before));
+        OL_CHECK(std::ranges::equal(pathing.values(), path_before));
+        OL_CHECK(ranger.roles == roles_before);
+    }
+}
+
 void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
@@ -13685,7 +13885,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 50> checks{
+    const std::array<BattleCheck, 51> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -13736,6 +13936,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_item_effect_test,
         run_ngplus_medicine_test,
         run_ngplus_hurt_threshold_test,
+        run_ngplus_round_value_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

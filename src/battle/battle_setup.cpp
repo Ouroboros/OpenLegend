@@ -27,7 +27,7 @@ namespace {
 namespace text_colors = render::legacy_color::text;
 
 constexpr std::array<std::int16_t, kBattleCombatantWords> kInitialCombatantWords{
-    -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, -1, -1};
+    -1, -1, 0, 0, 0, 0, 0, 5098, 0, -1, -1};
 constexpr std::array<BattlePathCoord, 4> kLegacyPathDirections{{
     {0, -1},
     {1, 0},
@@ -610,6 +610,7 @@ void BattleSetup::initialize_combatants() {
     for (auto& combatant : combatants_) {
         combatant.words = kInitialCombatantWords;
         combatant.words[combatant_word::sprite] = empty_sprite;
+        combatant.round_value = 0;
         combatant.reward_experience = 0;
     }
 }
@@ -731,7 +732,7 @@ std::int16_t BattleSetup::sprite_word(
         2 * static_cast<std::int32_t>(initial_mode));
 }
 
-std::int16_t BattleSetup::effective_speed(const std::size_t slot) {
+std::int64_t BattleSetup::effective_speed(const std::size_t slot) {
     const auto role_id = combatants_[slot].words[combatant_word::role_id];
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         error_ = "battle combatant role id is outside ranger records";
@@ -748,9 +749,14 @@ std::int16_t BattleSetup::effective_speed(const std::size_t slot) {
             error_ = "battle equipment id is outside ranger item records";
             return 0;
         }
-        speed = wrapping_i16(
-            static_cast<std::int32_t>(speed) +
+        const auto increased_speed = model::checked_add(
+            speed,
             ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::add_speed));
+        if (!increased_speed.has_value()) {
+            error_ = "battle effective speed overflows";
+            return 0;
+        }
+        speed = *increased_speed;
     }
     return speed;
 }
@@ -765,6 +771,7 @@ void BattleSetup::update_occupancy(const std::size_t slot) {
 }
 
 void BattleSetup::swap_combatants(const std::size_t first, const std::size_t second) {
+    std::swap(combatants_[first].round_value, combatants_[second].round_value);
     std::swap(combatants_[first].reward_experience, combatants_[second].reward_experience);
     std::swap(combatants_[first].damage_value, combatants_[second].damage_value);
     std::swap(combatants_[first].poison_overflow_damage, combatants_[second].poison_overflow_damage);
@@ -794,18 +801,18 @@ bool BattleSetup::sort_by_effective_speed() {
         return false;
     }
     const auto count = static_cast<std::size_t>(combatant_count_);
+    std::array<std::int64_t, kBattleCombatantCount> speeds{};
+    for (std::size_t slot = 0U; slot < count; ++slot) {
+        speeds[slot] = effective_speed(slot);
+        if (!valid()) {
+            return false;
+        }
+    }
     for (std::size_t first = 0U; first + 1U < count; ++first) {
         for (std::size_t second = first + 1U; second < count; ++second) {
-            const auto first_speed = effective_speed(first);
-            if (!valid()) {
-                return false;
-            }
-            const auto second_speed = effective_speed(second);
-            if (!valid()) {
-                return false;
-            }
-            if (first_speed < second_speed) {
+            if (speeds[first] < speeds[second]) {
                 swap_combatants(first, second);
+                std::swap(speeds[first], speeds[second]);
             }
         }
     }
@@ -816,15 +823,29 @@ bool BattleSetup::prepare_round() {
     if (!valid()) {
         return false;
     }
-    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+    const auto count = static_cast<std::size_t>(combatant_count_);
+    std::array<std::int64_t, kBattleCombatantCount> values{};
+    for (std::size_t slot = 0U; slot < count; ++slot) {
         const auto speed = effective_speed(slot);
         if (!valid()) {
             return false;
         }
         const auto role_id = combatants_[slot].words[combatant_word::role_id];
         const auto hurt = ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hurt);
-        const auto value = static_cast<std::int16_t>(speed / 15 - hurt / 40);
-        combatants_[slot].words[combatant_word::round_value] = std::max<std::int16_t>(value, 0);
+        const auto penalty = model::hurt_action_penalty(hurt, limits_.hurt_ratio_denominator);
+        if (!penalty.has_value()) {
+            error_ = "battle round hurt penalty is invalid or overflows";
+            return false;
+        }
+        const auto value = model::checked_subtract(speed / 15, *penalty);
+        if (!value.has_value()) {
+            error_ = "battle round value overflows";
+            return false;
+        }
+        values[slot] = std::max<std::int64_t>(*value, 0);
+    }
+    for (std::size_t slot = 0U; slot < count; ++slot) {
+        combatants_[slot].round_value = values[slot];
     }
     return true;
 }
@@ -1543,7 +1564,7 @@ std::optional<BattlePlayerActionAvailability> BattleSetup::player_action_availab
     BattlePlayerActionAvailability result{};
     const auto physical_power = role.word(model::role_word::physical_power);
     result.available[0U] = static_cast<std::int16_t>(
-        physical_power > 5 && words[combatant_word::round_value] > 0 ? 1 : 0);
+        physical_power > 5 && combatants_[combatant_slot].round_value > 0 ? 1 : 0);
 
     std::int16_t minimum_magic_cost = 1'000;
     if (physical_power > 10) {
@@ -1653,6 +1674,28 @@ std::optional<BattlePathCoord> BattleSetup::move_one_marked_step(
         return std::nullopt;
     }
 
+    const auto role_id = words[combatant_word::role_id];
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        error_ = "battle movement role id is outside ranger records";
+        return std::nullopt;
+    }
+    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto remaining_value = model::checked_subtract(combatants_[slot].round_value, 1);
+    auto physical_power = role.physical_power;
+    const auto speed_step = role.speed / 10;
+    if (combatants_[slot].round_value == speed_step) {
+        const auto remaining_power = model::checked_subtract(physical_power, 1);
+        if (!remaining_power.has_value()) {
+            error_ = "battle movement physical power overflows";
+            return std::nullopt;
+        }
+        physical_power = std::max<std::int64_t>(*remaining_power, 0);
+    }
+    if (!remaining_value.has_value()) {
+        error_ = "battle movement round value overflows";
+        return std::nullopt;
+    }
+
     pathing.consume(current);
     const auto current_index = static_cast<std::size_t>(current.y) * kBattleExtent +
         static_cast<std::size_t>(current.x);
@@ -1672,25 +1715,9 @@ std::optional<BattlePathCoord> BattleSetup::move_one_marked_step(
         direction = 2;
     }
     words[combatant_word::initial_mode] = direction;
-
-    const auto role_id = words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-        error_ = "battle movement role id is outside ranger records";
-        return std::nullopt;
-    }
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
     words[combatant_word::sprite] = sprite_word(role_id, direction);
-    const auto speed_step = static_cast<std::int16_t>(role.word(model::role_word::speed) / 10);
-    if (words[combatant_word::round_value] == speed_step) {
-        auto physical_power = wrapping_i16(
-            static_cast<std::int32_t>(role.word(model::role_word::physical_power)) - 1);
-        if (physical_power < 0) {
-            physical_power = 0;
-        }
-        role.set_word(model::role_word::physical_power, physical_power);
-    }
-    words[combatant_word::round_value] = wrapping_i16(
-        static_cast<std::int32_t>(words[combatant_word::round_value]) - 1);
+    role.physical_power = physical_power;
+    combatants_[slot].round_value = *remaining_value;
     return next;
 }
 
@@ -1711,7 +1738,7 @@ bool BattleSetup::movement_should_stop(
     if (rule == BattleMovementStopRule::destination) {
         return false;
     }
-    if (actor[combatant_word::round_value] <= 0 ||
+    if (combatants_[slot].round_value <= 0 ||
         target_slot >= static_cast<std::size_t>(combatant_count_)) {
         return true;
     }
@@ -3094,9 +3121,9 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
     }
     words[combatant_word::action_done] = 1;
     auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-    const auto speed_tenth = static_cast<std::int32_t>(role.word(model::role_word::speed)) / 10;
+    const auto speed_tenth = role.speed / 10;
     const auto physical_gain = random.bounded(3) +
-        (words[combatant_word::round_value] == speed_tenth ? 3 : 2);
+        (combatants_[actor_slot].round_value == speed_tenth ? 3 : 2);
     auto physical_power = wrapping_i16(
         static_cast<std::int32_t>(role.word(model::role_word::physical_power)) + physical_gain);
     if (physical_power > 100) {
@@ -3993,7 +4020,7 @@ std::optional<BattleAiEscapePlan> BattleSetup::ai_escape_plan(
     for (std::int16_t x = 0; x < static_cast<std::int16_t>(kBattleExtent); ++x) {
         for (std::int16_t y = 0; y < static_cast<std::int16_t>(kBattleExtent); ++y) {
             const BattlePathCoord coordinate{x, y};
-            if (pathing.value(coordinate) != actor[combatant_word::round_value]) {
+            if (pathing.value(coordinate) != combatants_[actor_slot].round_value) {
                 continue;
             }
             std::int32_t score = 0;
@@ -4279,7 +4306,7 @@ std::optional<BattleAiAttackPlan> BattleSetup::begin_ai_attack_plan(
     if (update_ai_attack_target_range(
             actor_slot, static_cast<std::size_t>(target->target_slot), plan)) {
         plan.next_step = BattleAiAttackNextStep::attack;
-    } else if (combatants_[actor_slot].words[combatant_word::round_value] > 0) {
+    } else if (combatants_[actor_slot].round_value > 0) {
         plan.next_step = BattleAiAttackNextStep::move;
     }
     return plan;
@@ -4508,7 +4535,7 @@ std::optional<BattleAiPoisonPlan> BattleSetup::begin_ai_poison_plan(
     plan.targeting_range = *range;
     const auto target_slot = static_cast<std::size_t>(selection->target_slot);
     const auto in_range = update_ai_poison_target_range(actor_slot, target_slot, plan);
-    const auto round_value = combatants_[actor_slot].words[combatant_word::round_value];
+    const auto round_value = combatants_[actor_slot].round_value;
     if (in_range && round_value == 0) {
         plan.next_step = BattleAiPoisonNextStep::poison;
     } else if (round_value > 0) {
@@ -4655,7 +4682,7 @@ std::optional<BattleAiItemPlan> BattleSetup::begin_ai_throwing_weapon_plan(
     const auto target_slot = static_cast<std::size_t>(target->target_slot);
     if (update_ai_throwing_weapon_target_range(actor_slot, target_slot, plan)) {
         plan.next_step = BattleAiItemNextStep::use_item;
-    } else if (combatants_[actor_slot].words[combatant_word::round_value] > 0) {
+    } else if (combatants_[actor_slot].round_value > 0) {
         plan.next_step = BattleAiItemNextStep::move;
     } else if (update_ai_throwing_weapon_target_range(actor_slot, target_slot, plan)) {
         plan.next_step = BattleAiItemNextStep::use_item;
@@ -4699,7 +4726,7 @@ std::optional<BattleAiRequestPlan> BattleSetup::begin_ai_request_plan(
     };
     plan.movement_mode = 0;
     plan.movement_value = 0;
-    plan.next_step = combatants_[actor_slot].words[combatant_word::round_value] > 0
+    plan.next_step = combatants_[actor_slot].round_value > 0
         ? BattleAiRequestNextStep::move
         : BattleAiRequestNextStep::automatic_attack;
     return plan;
@@ -4791,7 +4818,7 @@ std::optional<BattleAiSupportPlan> BattleSetup::begin_ai_support_plan(
         plan.next_step = BattleAiSupportNextStep::apply_support;
         return plan;
     }
-    if (combatants_[actor_slot].words[combatant_word::round_value] > 0) {
+    if (combatants_[actor_slot].round_value > 0) {
         plan.next_step = BattleAiSupportNextStep::move;
         return plan;
     }
@@ -4824,7 +4851,7 @@ std::optional<BattleAiSupportPlan> BattleSetup::resume_ai_support_after_move(
 
 std::optional<BattleCursorSelectionState> BattleSetup::begin_cursor_selection(
     const std::size_t actor_slot,
-    const std::int16_t path_limit,
+    const std::int64_t path_limit,
     const BattleCursorSelectionMode mode) const {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
         (mode != BattleCursorSelectionMode::movement &&
@@ -4923,7 +4950,7 @@ std::optional<BattleCursorSelectionState> BattleSetup::begin_player_movement_sel
     }
     return begin_cursor_selection(
         actor_slot,
-        combatants_[actor_slot].words[combatant_word::round_value],
+        combatants_[actor_slot].round_value,
         BattleCursorSelectionMode::movement);
 }
 
@@ -4967,7 +4994,7 @@ std::optional<BattleAiMovementStep> BattleSetup::advance_player_movement(
         return std::nullopt;
     }
     plan.step_count = wrapping_i16(static_cast<std::int32_t>(plan.step_count) + 1);
-    plan.complete = *moved == plan.destination || actor[combatant_word::round_value] <= 0;
+    plan.complete = *moved == plan.destination || combatants_[plan.actor_slot].round_value <= 0;
 
     const auto role_id = actor[combatant_word::role_id];
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
@@ -4976,7 +5003,7 @@ std::optional<BattleAiMovementStep> BattleSetup::advance_player_movement(
     return BattleAiMovementStep{
         .from = from,
         .to = *moved,
-        .remaining_round_value = actor[combatant_word::round_value],
+        .remaining_round_value = combatants_[plan.actor_slot].round_value,
         .physical_power = ranger_.roles[static_cast<std::size_t>(role_id)].word(
             model::role_word::physical_power),
         .view_center_x = moved->x,
@@ -5026,10 +5053,12 @@ std::optional<BattleAiMovementPlan> BattleSetup::begin_ai_movement_plan(
 
     plan.pathing.build(requested_target, BattlePathMode::targeting);
     plan.preliminary_target_distance = plan.pathing.value(source);
-    plan.preliminary_within_turn_range =
-        static_cast<std::int32_t>(plan.preliminary_target_distance) -
-            actor[combatant_word::round_value] <=
-        range;
+    const auto remaining_distance = model::checked_subtract(
+        plan.preliminary_target_distance, combatants_[actor_slot].round_value);
+    if (!remaining_distance.has_value()) {
+        return std::nullopt;
+    }
+    plan.preliminary_within_turn_range = *remaining_distance <= range;
 
     const auto select_range_layer = [&](const bool require_alignment) {
         plan.pathing.build(requested_target, BattlePathMode::movement);
@@ -5184,7 +5213,7 @@ std::optional<BattleAiMovementStep> BattleSetup::advance_ai_movement(
     plan.step_count = wrapping_i16(static_cast<std::int32_t>(plan.step_count) + 1);
 
     auto complete = *moved == plan.destination ||
-        actor[combatant_word::round_value] <= 0;
+        combatants_[plan.actor_slot].round_value <= 0;
     if (!complete && (plan.mode == 1 || plan.mode == 2)) {
         if (plan.target_slot < 0 || plan.target_slot >= combatant_count_) {
             plan.complete = true;
@@ -5211,7 +5240,7 @@ std::optional<BattleAiMovementStep> BattleSetup::advance_ai_movement(
     return BattleAiMovementStep{
         .from = from,
         .to = *moved,
-        .remaining_round_value = actor[combatant_word::round_value],
+        .remaining_round_value = combatants_[plan.actor_slot].round_value,
         .physical_power = ranger_.roles[static_cast<std::size_t>(role_id)].word(
             model::role_word::physical_power),
         .view_center_x = moved->x,

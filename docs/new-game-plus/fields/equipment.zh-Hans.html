@@ -35,7 +35,7 @@
 </section>
 <section id="equipment-effective-attributes">
 <h2>NG+装备生效属性</h2>
-<p>以下是设计规则，尚未实现到运行时代码。装备槽仍在换周目时清空；本周重新取得并装备的Type 1物品继续使用原始物品ID及静态基础值，不复制或改写物品定义。<code>n</code>为当前周目，NG1取1。</p>
+<p>以下是正式设计规则。装备速度已按基础值进行64位求和；攻击、防御及固定搭配的周目倍率仍待接入，换周清空仍待继承流程实现。装备槽仍在换周目时清空；本周重新取得并装备的Type 1物品继续使用原始物品ID及静态基础值，不复制或改写物品定义。<code>n</code>为当前周目，NG1取1。</p>
 <pre>单件装备攻击加成 = n × base_add_attack
 单件装备防御加成 = n × base_add_defence
 单件装备速度加成 = base_add_speed

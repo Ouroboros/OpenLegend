@@ -35,4 +35,20 @@ std::optional<HurtBand> hurt_band(
     return *upper > 0 ? HurtBand::severe : *lower > 0 ? HurtBand::moderate : HurtBand::low;
 }
 
+std::optional<std::int64_t> hurt_action_penalty(
+    const std::int64_t hurt, const std::int64_t denominator) noexcept {
+    if (hurt < 0 || denominator < 0) {
+        return std::nullopt;
+    }
+    if (denominator == 0) {
+        return hurt == 0 ? std::optional<std::int64_t>{0} : std::nullopt;
+    }
+    const auto scaled_hurt = checked_multiply(100, hurt);
+    const auto scaled_denominator = checked_multiply(40, denominator);
+    if (!scaled_hurt.has_value() || !scaled_denominator.has_value()) {
+        return std::nullopt;
+    }
+    return checked_divide(*scaled_hurt, *scaled_denominator);
+}
+
 }

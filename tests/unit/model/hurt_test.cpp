@@ -79,10 +79,40 @@ void check_color_bands() {
     OL_CHECK(!hurt_band(1, 0).has_value());
 }
 
+void check_action_penalty() {
+    using namespace openlegend::model;
+    struct Case {
+        std::int64_t hurt;
+        std::int64_t denominator;
+        std::int64_t penalty;
+    };
+    constexpr std::array cases{
+        Case{0, 100, 0}, Case{39, 100, 0}, Case{40, 100, 1},
+        Case{79, 100, 1}, Case{80, 100, 2}, Case{99, 100, 2},
+        Case{79, 200, 0}, Case{80, 200, 1}, Case{159, 200, 1},
+        Case{160, 200, 2}, Case{199, 200, 2}, Case{299, 300, 2},
+        Case{499, 500, 2}, Case{43, 110, 0}, Case{44, 110, 1},
+        Case{87, 110, 1}, Case{88, 110, 2}, Case{0, 0, 0},
+        Case{1'999'999'999'999, 5'000'000'000'000, 0},
+        Case{2'000'000'000'000, 5'000'000'000'000, 1},
+        Case{4'999'999'999'999, 5'000'000'000'000, 2},
+    };
+    for (const auto& entry : cases) {
+        OL_CHECK(hurt_action_penalty(entry.hurt, entry.denominator) == entry.penalty);
+    }
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    OL_CHECK(!hurt_action_penalty(-1, 100).has_value());
+    OL_CHECK(!hurt_action_penalty(0, -1).has_value());
+    OL_CHECK(!hurt_action_penalty(1, 0).has_value());
+    OL_CHECK(!hurt_action_penalty(maximum / 100 + 1, 100).has_value());
+    OL_CHECK(!hurt_action_penalty(0, maximum / 40 + 1).has_value());
+}
+
 }
 
 int main() {
     check_percentage_boundaries();
     check_color_bands();
+    check_action_penalty();
     return openlegend::test::failures == 0 ? 0 : 1;
 }

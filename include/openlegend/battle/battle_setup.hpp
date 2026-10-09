@@ -19,7 +19,7 @@
 namespace openlegend::battle {
 
 inline constexpr std::size_t kBattleCombatantCount = 26U;
-inline constexpr std::size_t kBattleCombatantWords = 12U;
+inline constexpr std::size_t kBattleCombatantWords = 11U;
 inline constexpr std::size_t kBattlePartySlots = 6U;
 inline constexpr std::size_t kBattleEnemySlots = 20U;
 inline constexpr std::int16_t kBattleEffectPointerBase = 6'500;
@@ -32,16 +32,16 @@ inline constexpr std::size_t x = 2U;
 inline constexpr std::size_t y = 3U;
 inline constexpr std::size_t initial_mode = 4U;
 inline constexpr std::size_t occupancy_hidden = 5U;
-inline constexpr std::size_t round_value = 6U;
-inline constexpr std::size_t action_done = 7U;
-inline constexpr std::size_t sprite = 8U;
-inline constexpr std::size_t ai_action = 9U;
-inline constexpr std::size_t ai_target = 10U;
-inline constexpr std::size_t ai_poison_target = 11U;
+inline constexpr std::size_t action_done = 6U;
+inline constexpr std::size_t sprite = 7U;
+inline constexpr std::size_t ai_action = 8U;
+inline constexpr std::size_t ai_target = 9U;
+inline constexpr std::size_t ai_poison_target = 10U;
 }  // namespace combatant_word
 
 struct BattleCombatant {
     std::array<std::int16_t, kBattleCombatantWords> words{};
+    std::int64_t round_value{};
     std::int64_t reward_experience{};
     std::int64_t damage_value{};
     std::int64_t poison_overflow_damage{};
@@ -380,7 +380,7 @@ struct BattleAiMovementPlan {
 struct BattleAiMovementStep {
     BattlePathCoord from{};
     BattlePathCoord to{};
-    std::int16_t remaining_round_value{};
+    std::int64_t remaining_round_value{};
     std::int64_t physical_power{};
     std::int16_t view_center_x{};
     std::int16_t view_center_y{};
@@ -422,7 +422,7 @@ struct BattleCursorSelectionState {
     std::size_t actor_slot{};
     BattlePathCoord source{};
     BattlePathCoord cursor{};
-    std::int16_t path_limit{};
+    std::int64_t path_limit{};
     BattleCursorSelectionMode mode{BattleCursorSelectionMode::movement};
     bool cancelled{};
     bool selected{};
@@ -466,7 +466,7 @@ struct BattleRenderCommand {
 struct BattleRenderState {
     std::int16_t view_x{};
     std::int16_t view_y{};
-    std::int16_t path_limit{};
+    std::int64_t path_limit{};
     BattlePathCoord primary_cursor{};
     bool primary_cursor_alternate{};
     bool secondary_cursor_visible{};
@@ -1028,7 +1028,7 @@ public:
 
     NODISCARD std::optional<BattleCursorSelectionState> begin_cursor_selection(
         std::size_t actor_slot,
-        std::int16_t path_limit,
+        std::int64_t path_limit,
         BattleCursorSelectionMode mode) const;
 
     NODISCARD BattleCursorSelectionResult apply_cursor_selection(
@@ -1139,7 +1139,7 @@ private:
     NODISCARD std::int16_t sprite_word(
         std::int16_t role_id, std::int16_t initial_mode) const noexcept;
 
-    NODISCARD std::int16_t effective_speed(std::size_t slot);
+    NODISCARD std::int64_t effective_speed(std::size_t slot);
 
     void swap_combatants(std::size_t first, std::size_t second);
 

@@ -16,4 +16,7 @@ NODISCARD std::optional<std::strong_ordering> compare_hurt_percentage(
 NODISCARD std::optional<HurtBand> hurt_band(
     std::int64_t hurt, std::int64_t denominator) noexcept;
 
+NODISCARD std::optional<std::int64_t> hurt_action_penalty(
+    std::int64_t hurt, std::int64_t denominator) noexcept;
+
 }
