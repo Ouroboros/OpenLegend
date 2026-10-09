@@ -67,6 +67,7 @@
 - 当前资产毒算例复核：角色78的武功84熟练度100／等级2，角色带毒100、武功带毒0；对角色2抗毒76的最深为23，已修正原28算例及7名解毒者的对应次数列。以100种随机数组合的概率、精确有理数状态递推计算期望，其他55／72／87／94／99列一致；日志`tmp/ngplus-poison-examples-current-asset-audit.log`。完整读取主动毒／解毒／回合状态的当前机器码，SHA256与证据一致；`0x39E1C`明确为能力加20，已修正旧说明及300／1000能力的原版门槛对照。
 - 主动用毒／回合毒伤／共享解毒接入：主动用毒读取实际64位能力，距离单独按100封顶；比例最深、叠毒和溢出共用毒模型，溢出可致死、不额外产伤，并保留原施毒数字和独立伤血。两条AI毒目标路径取消95门槛，攻击比较不窄化。菜单和战斗共用解毒公式，取消旧准入、加入单次上限，合法调用保留两次随机顺序，失败保留角色及RNG。
 - 回合伤毒保留资格和先伤后毒顺序，使用检查过的64位减法和比例毒伤，最终HP最低0；全部角色副本成功后提交HP／体力，重复角色槽依次累积。轮末等待结束后、下一角色行动前进行存活检查，毒发可正常进入胜负流程。完整Debug回归134/134通过，日志`tmp/ngplus-active-poison-round-detox-final-regression.log`，覆盖5万亿能力／HP／内伤、非法毒域和中间量溢出回滚、解毒别名和随机状态、满毒AI选择、Session中我方／敌方分别毒发死亡和等待期间不重复结算。原版机器及画面Golden未改；旧中毒100 fixture改为合法99，AI无目标fixture改为抗毒足够的目标。
+- 战斗状态面板：超过三位的HP／MP改为当前值和最大值分行，面板按最长数字展开并保持原左右侧，完整显示signed64而不截断；头像、名称随面板居中，颜色不变。三位party整帧Golden保持；旧enemy异常大数重叠布局改为独立文字像素比较，原Golden资产和生成器未改。左右两侧1000、5万亿、signed64两端均逐像素验证；原最大HP1000导致AI prelude失败的Session用例已恢复为1000并通过。统一BUILD应用Debug和134/134 CTest通过，日志`tmp/ngplus-battle-status-wide-final-regression.log`。
 - 上述结果不证明全部结算已扩宽或全部NG+规则已实现；其他战斗结算、完整字段域、跨字段不变量及整体保存事务仍需继续实现与验证。
 
 ## 已发现的未决项与缺口
@@ -78,5 +79,4 @@
 | 毒发及溢出致死规则已明确 | [中毒章](fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules) | 武功与主动用毒溢出、回合毒发已接入；正毒物品／暗器仍待接入 |
 | AI正毒暗器规则已明确 | [统一上毒](fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application) | AI与玩家采用统一上毒公式，等待实现 |
 | 所有周目解毒距离已明确 | [解毒章](fields/use-poison-anti-poison-detoxification.zh-Hans.html#detoxification-rules) | 距离和读取实际能力的共享疗效均已接入并验证 |
-| 战斗状态面板大数布局 | `BattleRenderer::render_status_panel`；日志`tmp/ngplus-active-poison-round-detox-regression-2.log` | 最大HP为1000时AI状态帧渲染失败；数字仍用三位固定坐标，等待修正，伤害飘字的大数验证不能替代此项 |
 | 原版审计页含过时NG+规则且仍受保护 | [原版审计](support/legacy-audit.zh-Hans.html) | 只使用已核对的原版证据，不能以旧NG+叙述覆盖正式字段页 |

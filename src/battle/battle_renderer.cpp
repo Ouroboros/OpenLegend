@@ -281,33 +281,58 @@ bool BattleRenderer::render(
 bool BattleRenderer::render_status_panel(
     const BattleStatusPanelPlan& plan,
     render::IndexedFramebuffer& framebuffer) {
+    const auto power = decimal_text(plan.physical_power, 3);
+    const auto hp = decimal_text(plan.hp, 3);
+    const auto maximum_hp = decimal_text(plan.maximum_hp, 3);
+    const auto mp = decimal_text(plan.mp, 3);
+    const auto maximum_mp = decimal_text(plan.maximum_mp, 3);
+    const auto expanded = std::max({power.size(), hp.size(), maximum_hp.size(),
+                                    mp.size(), maximum_mp.size()}) > 3U;
+    const auto number_width = 8 * static_cast<int>(std::max({
+        power.size() + 4U, hp.size(), maximum_hp.size(), mp.size(), maximum_mp.size()}));
+    const auto panel_width = expanded ? std::max<int>(plan.panel_width, 47 + number_width)
+                                     : plan.panel_width;
+    const auto panel_x = expanded && plan.side_offset == 0
+        ? plan.panel_x + plan.panel_width - panel_width : plan.panel_x;
+    const auto center_shift = panel_x - plan.panel_x + (panel_width - plan.panel_width) / 2;
     if (!valid() || !draw_box(
             framebuffer,
-            plan.panel_x,
+            panel_x,
             plan.panel_y,
-            static_cast<std::uint16_t>(plan.panel_width),
-            static_cast<std::uint16_t>(plan.panel_height)) ||
+            static_cast<std::uint16_t>(panel_width),
+            static_cast<std::uint16_t>(expanded ? 176 : plan.panel_height)) ||
         !draw_portrait(
             framebuffer,
             plan.portrait_id,
-            plan.portrait_x,
+            plan.portrait_x + center_shift,
             plan.portrait_y)) {
         return false;
     }
     if (plan.name_x.has_value() &&
         !draw_text_big5(
             framebuffer,
-            *plan.name_x,
+            *plan.name_x + center_shift,
             plan.name_y,
             text::Big5TextView{zero_terminated_prefix(plan.name_bytes)},
             text_colors::notice)) {
         return false;
     }
-    const auto power = decimal_text(plan.physical_power, 3);
-    const auto hp = decimal_text(plan.hp, 3);
-    const auto maximum_hp = decimal_text(plan.maximum_hp, 3);
-    const auto mp = decimal_text(plan.mp, 3);
-    const auto maximum_mp = decimal_text(plan.maximum_mp, 3);
+    if (expanded) {
+        const auto value_x = panel_x + 42;
+        const auto power_end = value_x + 8 * static_cast<int>(power.size());
+        return draw_text_utf8(framebuffer, panel_x + 5, 101, kPowerLabel, text_colors::menu_normal) &&
+            draw_text_utf8(framebuffer, value_x, 101, power, text_colors::notice) &&
+            draw_text_utf8(framebuffer, power_end, 101, kSlash, text_colors::selected) &&
+            draw_text_utf8(framebuffer, power_end + 8, 101, kHundred, text_colors::menu_normal) &&
+            draw_text_utf8(framebuffer, panel_x + 5, 118, kLifeLabel, text_colors::menu_normal) &&
+            draw_text_utf8(framebuffer, value_x, 118, hp, plan.hurt_color) &&
+            draw_text_utf8(framebuffer, value_x - 8, 135, kSlash, text_colors::selected) &&
+            draw_text_utf8(framebuffer, value_x, 135, maximum_hp, plan.poison_color) &&
+            draw_text_utf8(framebuffer, panel_x + 5, 152, kMpLabel, text_colors::menu_normal) &&
+            draw_text_utf8(framebuffer, value_x, 152, mp, plan.mp_color) &&
+            draw_text_utf8(framebuffer, value_x - 8, 169, kSlash, plan.mp_color) &&
+            draw_text_utf8(framebuffer, value_x, 169, maximum_mp, plan.mp_color);
+    }
     const auto x = [offset = plan.side_offset](const int value) {
         return value - offset;
     };

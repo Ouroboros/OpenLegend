@@ -18,6 +18,7 @@
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/model/experience.hpp"
+#include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "test_support.hpp"
 
@@ -3260,9 +3261,87 @@ void run_battle_status_panel_review_test(
     OL_CHECK(enemy_plan->mp == -1'234);
     OL_CHECK(enemy_plan->maximum_mp == 32'767);
     openlegend::render::IndexedFramebuffer enemy_framebuffer;
-    fill_pattern(enemy_framebuffer);
+    enemy_framebuffer.clear(0);
     OL_CHECK(renderer.render_status_panel(*enemy_plan, enemy_framebuffer));
-    OL_CHECK(fnv1a_bytes(enemy_framebuffer.pixels()) == 0xebce8d4d6d8c1f14ULL);
+    const auto ascii = data_root.read("FONT3.E16");
+    const auto big5 = data_root.read("FONT3.C16");
+    OL_CHECK(ascii);
+    OL_CHECK(big5);
+    openlegend::render::Big5GlyphCache glyph_cache{big5.bytes};
+    const auto check_number = [&](const openlegend::render::IndexedFramebuffer& actual,
+                                  const int panel_x, const int value_x, const int value_y,
+                                  const std::u8string_view value,
+                                  const openlegend::render::TextColors colors,
+                                  const std::optional<openlegend::render::TextColors> slash) {
+        openlegend::render::IndexedFramebuffer expected;
+        expected.clear(actual.pixels()[static_cast<std::size_t>(value_y * 320 + panel_x + 3)]);
+        if (slash.has_value()) {
+            OL_CHECK(openlegend::render::draw_text_utf8(
+                expected, value_x - 8, value_y, u8"/", ascii.bytes, glyph_cache, *slash));
+        }
+        OL_CHECK(openlegend::render::draw_text_utf8(
+            expected, value_x, value_y, value, ascii.bytes, glyph_cache, colors));
+        if (value_y == 101) {
+            OL_CHECK(openlegend::render::draw_text_utf8(
+                expected, value_x + 8 * static_cast<int>(value.size()), value_y,
+                u8"/", ascii.bytes, glyph_cache, openlegend::render::legacy_color::text::selected));
+        }
+        const auto start_x = slash.has_value() ? value_x - 8 : value_x;
+        const auto end_x = value_x + 8 * static_cast<int>(value.size()) + 1;
+        for (int pixel_y = value_y; pixel_y < value_y + 16; ++pixel_y) {
+            for (int pixel_x = start_x; pixel_x < end_x; ++pixel_x) {
+                const auto index = static_cast<std::size_t>(pixel_y * 320 + pixel_x);
+                OL_CHECK(actual.pixels()[index] == expected.pixels()[index]);
+            }
+        }
+    };
+    namespace text_colors = openlegend::render::legacy_color::text;
+    check_number(enemy_framebuffer, 0, 42, 101, u8"-32768", text_colors::notice, std::nullopt);
+    check_number(enemy_framebuffer, 0, 42, 118, u8"32767", enemy_plan->hurt_color, std::nullopt);
+    check_number(enemy_framebuffer, 0, 42, 135, u8" -1", enemy_plan->poison_color, text_colors::selected);
+    check_number(enemy_framebuffer, 0, 42, 152, u8"-1234", enemy_plan->mp_color, std::nullopt);
+    check_number(enemy_framebuffer, 0, 42, 169, u8"32767", enemy_plan->mp_color, enemy_plan->mp_color);
+    struct WidePanelCase {
+        std::int64_t current;
+        std::int64_t maximum;
+        std::u8string_view current_text;
+        std::u8string_view maximum_text;
+        int width;
+    };
+    for (const auto& example : std::array{
+             WidePanelCase{1000, 1001, u8"1000", u8"1001", 103},
+             WidePanelCase{4'000'000'000'000, 5'000'000'000'000,
+                           u8"4000000000000", u8"5000000000000", 151},
+             WidePanelCase{std::numeric_limits<std::int64_t>::max() - 1,
+                           std::numeric_limits<std::int64_t>::max(),
+                           u8"9223372036854775806", u8"9223372036854775807", 199},
+             WidePanelCase{std::numeric_limits<std::int64_t>::min(),
+                           std::numeric_limits<std::int64_t>::max(),
+                           u8"-9223372036854775808", u8"9223372036854775807", 207}}) {
+        for (const auto side : {0, 1}) {
+            party_words[combatant_word::side] = static_cast<std::int16_t>(side);
+            party_role.physical_power = 77;
+            party_role.hp = example.current;
+            party_role.maximum_hp = example.maximum;
+            party_role.mp = example.current;
+            party_role.maximum_mp = example.maximum;
+            const auto wide_plan = setup.status_panel_plan(0U);
+            OL_CHECK(wide_plan.has_value());
+            openlegend::render::IndexedFramebuffer wide_framebuffer;
+            wide_framebuffer.clear(0);
+            OL_CHECK(renderer.render_status_panel(*wide_plan, wide_framebuffer));
+            const auto panel_x = side == 0 ? 320 - example.width : 0;
+            const auto value_x = panel_x + 42;
+            check_number(wide_framebuffer, panel_x, value_x, 118, example.current_text,
+                         wide_plan->hurt_color, std::nullopt);
+            check_number(wide_framebuffer, panel_x, value_x, 135, example.maximum_text,
+                         wide_plan->poison_color, text_colors::selected);
+            check_number(wide_framebuffer, panel_x, value_x, 152, example.current_text,
+                         wide_plan->mp_color, std::nullopt);
+            check_number(wide_framebuffer, panel_x, value_x, 169, example.maximum_text,
+                         wide_plan->mp_color, wide_plan->mp_color);
+        }
+    }
 }
 
 void run_battle_practice_review_test(
@@ -8739,7 +8818,7 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
         auto poisoned_ranger = make_ranger({0, 2, 3, -1, -1, -1});
         for (const auto role_id : {1U, 3U}) {
             poisoned_ranger.roles[role_id].hp = 100;
-            poisoned_ranger.roles[role_id].maximum_hp = 716;
+            poisoned_ranger.roles[role_id].maximum_hp = 1000;
             poisoned_ranger.roles[role_id].physical_power = 0;
         }
         auto& poisoned_role = poisoned_ranger.roles[poisoned_role_id];
