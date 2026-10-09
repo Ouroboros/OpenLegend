@@ -51,6 +51,11 @@ target_include_directories(openlegend_experience_tests PRIVATE ${CMAKE_CURRENT_S
 target_link_libraries(openlegend_experience_tests PRIVATE openlegend_battle)
 add_test(NAME openlegend.experience COMMAND openlegend_experience_tests)
 
+add_executable(openlegend_enemy_growth_tests unit/model/enemy_growth_test.cpp)
+target_include_directories(openlegend_enemy_growth_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_enemy_growth_tests PRIVATE openlegend_model)
+add_test(NAME openlegend.enemy_growth COMMAND openlegend_enemy_growth_tests)
+
 add_executable(openlegend_magic_progression_tests unit/model/magic_progression_test.cpp)
 target_include_directories(openlegend_magic_progression_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_magic_progression_tests PRIVATE openlegend_model openlegend_persistence)
