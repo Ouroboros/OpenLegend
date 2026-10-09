@@ -235,7 +235,7 @@ enum class BattleAiAttackNextStep : std::int16_t {
 struct BattleAiAttackPlan {
     std::int16_t magic_slot{};
     std::int16_t magic_id{};
-    std::int16_t special_attack_bonus{};
+    std::int64_t special_attack_bonus{};
     std::int16_t select_distance{};
     std::int16_t area_type{};
     std::int16_t target_slot{-1};
@@ -789,7 +789,7 @@ public:
     NODISCARD std::optional<BattleAttackProfile> attack_profile(
         std::size_t slot, std::int16_t magic_slot) const noexcept;
 
-    NODISCARD std::optional<std::int16_t> attack_special_bonus(
+    NODISCARD std::optional<std::int64_t> attack_special_bonus(
         std::size_t slot, std::int16_t magic_slot) const noexcept;
 
     NODISCARD std::optional<BattleMagicSelectionState> begin_magic_selection(
@@ -814,7 +814,7 @@ public:
         std::size_t target_slot,
         std::int16_t magic_slot,
         std::int16_t distance,
-        std::int16_t special_attack_bonus,
+        std::int64_t special_attack_bonus,
         random::LegacyRandom& random);
 
     NODISCARD std::optional<std::int64_t> apply_mp_damage(
@@ -1088,7 +1088,7 @@ public:
         std::size_t actor_slot,
         std::int16_t magic_slot,
         BattlePathCoord target,
-        std::int16_t special_attack_bonus,
+        std::int64_t special_attack_bonus,
         random::LegacyRandom& random,
         const BattleAttackProfile* cached_area_profile = nullptr);
 
@@ -1096,7 +1096,7 @@ public:
         std::size_t actor_slot,
         std::int16_t magic_slot,
         std::int16_t direction,
-        std::int16_t special_attack_bonus,
+        std::int64_t special_attack_bonus,
         random::LegacyRandom& random,
         const BattleAttackProfile* cached_area_profile = nullptr);
 
@@ -1215,6 +1215,7 @@ private:
 
     BattleData& data_;
     model::RuntimeRangerState& ranger_;
+    std::int64_t playthrough_{1};
     model::PlaythroughLimits limits_{};
     std::optional<model::MagicProgression> magic_progression_;
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};

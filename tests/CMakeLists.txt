@@ -190,7 +190,7 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
-add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 51)
+add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 52)
 
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
 target_compile_definitions(

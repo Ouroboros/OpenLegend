@@ -583,6 +583,7 @@ BattleSetup::BattleSetup(
     const std::int64_t playthrough)
     : data_(data),
       ranger_(ranger),
+      playthrough_(playthrough),
       legacy_hp_cost_scale_(legacy_hp_cost_scale) {
     const auto limits = model::calculate_playthrough_limits(configuration, playthrough);
     if (!limits.has_value() || (!configuration.enabled && playthrough != 1)) {
@@ -1851,7 +1852,7 @@ std::optional<BattleAttackProfile> BattleSetup::attack_profile(
     };
 }
 
-std::optional<std::int16_t> BattleSetup::attack_special_bonus(
+std::optional<std::int64_t> BattleSetup::attack_special_bonus(
     const std::size_t slot, const std::int16_t magic_slot) const noexcept {
     const auto profile = attack_profile(slot, magic_slot);
     if (!profile) {
@@ -1869,7 +1870,7 @@ std::optional<std::int16_t> BattleSetup::attack_special_bonus(
             bonus = entry.bonus;
         }
     }
-    return bonus;
+    return model::checked_multiply(bonus, playthrough_);
 }
 
 std::optional<BattleMagicSelectionState> BattleSetup::begin_magic_selection(
@@ -1996,7 +1997,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
     const std::size_t target_slot,
     const std::int16_t magic_slot,
     const std::int16_t distance,
-    const std::int16_t special_attack_bonus,
+    const std::int64_t special_attack_bonus,
     random::LegacyRandom& random) {
     const auto profile = attack_profile(actor_slot, magic_slot);
     if (!profile || target_slot >= static_cast<std::size_t>(combatant_count_)) {
@@ -2058,8 +2059,10 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
             if (static_cast<std::size_t>(item_id.value) >= ranger_.items.size()) {
                 return std::nullopt;
             }
-            const auto total = model::checked_add(
-                bonus, ranger_.items[static_cast<std::size_t>(item_id.value)].word(item_word));
+            const auto scaled = model::checked_multiply(
+                ranger_.items[static_cast<std::size_t>(item_id.value)].word(item_word), playthrough_);
+            const auto total = scaled.has_value()
+                ? model::checked_add(bonus, *scaled) : std::nullopt;
             if (!total.has_value()) {
                 return std::nullopt;
             }
@@ -5520,7 +5523,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
     const std::size_t actor_slot,
     const std::int16_t magic_slot,
     const BattlePathCoord target,
-    const std::int16_t special_attack_bonus,
+    const std::int64_t special_attack_bonus,
     random::LegacyRandom& random,
     const BattleAttackProfile* const cached_area_profile) {
     const auto current_profile = attack_profile(actor_slot, magic_slot);
@@ -5653,7 +5656,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
     const std::size_t actor_slot,
     const std::int16_t magic_slot,
     const std::int16_t direction,
-    const std::int16_t special_attack_bonus,
+    const std::int64_t special_attack_bonus,
     random::LegacyRandom& random,
     const BattleAttackProfile* const cached_area_profile) {
     const auto current_profile = attack_profile(actor_slot, magic_slot);

@@ -585,7 +585,7 @@ private:
 
     struct PlayerAttackState {
         BattleAttackProfile profile;
-        std::int16_t special_attack_bonus{};
+        std::int64_t special_attack_bonus{};
         std::int16_t iteration{};
         bool ai_controlled{};
         std::optional<BattlePathCoord> target;

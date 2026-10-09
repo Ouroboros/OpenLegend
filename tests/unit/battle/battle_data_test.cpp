@@ -11322,6 +11322,219 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(invalid_stale_target_random.state() == 1'341'714'958U);
 }
 
+void run_ngplus_equipment_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    constexpr std::array<std::array<std::int16_t, 3>, 7> combinations{{
+        {106, 57, 100}, {107, 49, 50}, {108, 49, 50}, {110, 54, 80},
+        {115, 63, 50}, {116, 67, 70}, {119, 68, 100},
+    }};
+    for (const auto playthrough : {1, 2, 999}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+        OL_CHECK(setup.valid());
+        auto& actor = ranger.roles[1U];
+        for (const auto& combination : combinations) {
+            actor.equipment[0U] = model::ItemId{combination[0U]};
+            actor.magic_ids[0U] = model::MagicId{combination[1U]};
+            const auto bonus = setup.attack_special_bonus(0U, 0);
+            OL_CHECK(bonus == static_cast<std::int64_t>(playthrough) * combination[2U]);
+        }
+        actor.equipment[0U] = model::ItemId{-1};
+        actor.equipment[1U] = model::ItemId{106};
+        actor.magic_ids[0U] = model::MagicId{57};
+        OL_CHECK(setup.attack_special_bonus(0U, 0) == 0);
+        actor.equipment[0U] = model::ItemId{106};
+        actor.magic_ids[0U] = model::MagicId{58};
+        OL_CHECK(setup.attack_special_bonus(0U, 0) == 0);
+    }
+    const auto make_equipment_ranger = [] {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        auto& actor = ranger.roles[1U];
+        actor.hp = actor.maximum_hp = 10'000'000;
+        actor.mp = actor.maximum_mp = 100;
+        actor.attack = 1000;
+        actor.speed = 60;
+        actor.equipment = {model::ItemId{106}, model::ItemId{120}};
+        actor.magic_ids[0U] = model::MagicId{57};
+        auto& target = ranger.roles[3U];
+        target.hp = target.maximum_hp = 10'000'000;
+        target.defence = 100;
+        target.equipment = {model::ItemId{106}, model::ItemId{120}};
+        auto& weapon = ranger.items[106U];
+        weapon.set_word(model::item_word::add_attack, 15);
+        weapon.set_word(model::item_word::add_defence, 15);
+        weapon.set_word(model::item_word::add_speed, -20);
+        auto& armour = ranger.items[120U];
+        armour.set_word(model::item_word::add_attack, 8);
+        armour.set_word(model::item_word::add_defence, -5);
+        armour.set_word(model::item_word::add_speed, 10);
+        ranger.magics[57U].set_word(model::magic_word::select_distance_begin, 2);
+        return ranger;
+    };
+    struct DamageCase {
+        std::int64_t playthrough;
+        std::int16_t armour_attack;
+        bool equipped;
+        std::int64_t damage;
+    };
+    constexpr std::array cases{
+        DamageCase{1, 8, true, 862},
+        DamageCase{2, 8, true, 924},
+        DamageCase{999, 8, true, 62'738},
+        DamageCase{1, -5, true, 853},
+        DamageCase{2, -5, true, 906},
+        DamageCase{999, -5, true, 54'080},
+        DamageCase{1, 8, false, 800},
+        DamageCase{999, 8, false, 800},
+    };
+    for (const auto& fixture : cases) {
+        auto ranger = make_equipment_ranger();
+        ranger.items[120U].set_word(model::item_word::add_attack, fixture.armour_attack);
+        if (!fixture.equipped) {
+            ranger.roles[1U].equipment = {model::ItemId{-1}, model::ItemId{-1}};
+            ranger.roles[3U].equipment = {model::ItemId{-1}, model::ItemId{-1}};
+        }
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, fixture.playthrough};
+        const auto items_before = ranger.items;
+        const auto actor_before = ranger.roles[1U];
+        const auto bonus = setup.attack_special_bonus(0U, 0);
+        OL_CHECK(bonus.has_value());
+        if (!bonus) {
+            continue;
+        }
+        random::LegacyRandom random{1U};
+        const auto damage = setup.apply_hp_damage(0U, 1U, 0, 1, *bonus, random);
+        OL_CHECK(damage.has_value());
+        if (damage) {
+            OL_CHECK(damage->damage == fixture.damage);
+            OL_CHECK(damage->cost_scale == 1);
+            OL_CHECK(damage->poison_overflow_damage == 0);
+        }
+        OL_CHECK(ranger.roles[3U].hp == 10'000'000 - fixture.damage);
+        OL_CHECK(setup.combatants()[0U].reward_experience == fixture.damage / 5);
+        OL_CHECK(random.state() == 2'524'885'223U);
+        OL_CHECK(ranger.items == items_before);
+        OL_CHECK(ranger.roles[1U] == actor_before);
+        OL_CHECK(setup.prepare_round());
+        OL_CHECK(setup.valid());
+        OL_CHECK(setup.combatants()[0U].round_value == (fixture.equipped ? 3 : 4));
+    }
+    for (std::int16_t shape = 0; shape < 4; ++shape) {
+        auto ranger = make_equipment_ranger();
+        ranger.magics[57U].set_word(model::magic_word::attack_area_type, shape);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, 999};
+        random::LegacyRandom planning_random{1U};
+        const auto plan = setup.begin_ai_attack_plan(0U, planning_random);
+        OL_CHECK(plan.has_value());
+        if (!plan) {
+            continue;
+        }
+        OL_CHECK(plan->special_attack_bonus == 99'900);
+        OL_CHECK(plan->next_step == BattleAiAttackNextStep::attack);
+        random::LegacyRandom random{1U};
+        const auto result = shape == 1
+            ? setup.apply_line_attack_area(0U, 0, 3, plan->special_attack_bonus, random)
+            : setup.apply_attack_area(0U, 0, {26, 26}, plan->special_attack_bonus, random);
+        OL_CHECK(result.has_value());
+        if (result) {
+            OL_CHECK(result->hit_count == 1);
+            OL_CHECK(result->effect_kind == 1);
+        }
+        OL_CHECK(setup.combatants()[1U].damage_value == 60'855);
+        OL_CHECK(ranger.roles[3U].hp == 9'939'145);
+        OL_CHECK(random.state() == 2'524'885'223U);
+    }
+    for (const auto automatic : {false, true}) {
+        auto ranger = make_equipment_ranger();
+        auto& actor = ranger.roles[1U];
+        actor.speed = 0;
+        actor.physical_power = 100;
+        actor.set_word(model::role_word::frame_begin, 2);
+        actor.set_word(model::role_word::frame_begin + 5U, 1);
+        actor.set_word(model::role_word::frame_begin + 10U, 1);
+        random::LegacyRandom random{1U};
+        auto session = std::make_unique<BattleSession>(
+            data_root, ranger, random, 4, false, BattleRenderState{},
+            nullptr, nullptr, nullptr, configuration, 999);
+        auto framebuffer = std::make_unique<render::IndexedFramebuffer>();
+        OL_CHECK(session->valid());
+        finish_battle_entry_fade(*session);
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(1200U);
+        for (std::size_t frame = 0U; frame < session->fade_frame_count(); ++frame) {
+            OL_CHECK(session->render(*framebuffer));
+            session->finish_presented_tick(1200U);
+        }
+        if (automatic) {
+            session->setup().enable_automatic_mode();
+        }
+        session->advance(1200U);
+        OL_CHECK(session->phase() == BattleSessionPhase::actor_present);
+        OL_CHECK(session->setup().combatants()[0U].words[combatant_word::role_id] == 1);
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(1200U);
+        if (automatic) {
+            OL_CHECK(session->phase() == BattleSessionPhase::ai_action);
+            session->advance(1200U);
+            OL_CHECK(session->phase() == BattleSessionPhase::ai_prelude_present);
+            OL_CHECK(session->render(*framebuffer));
+            session->finish_presented_tick(1200U);
+            for (std::uint32_t tick = 1201U; tick <= 1208U; ++tick) {
+                session->advance(tick);
+            }
+            OL_CHECK(session->phase() == BattleSessionPhase::ai_magic_frame_present);
+        } else {
+            finish_player_menu_redraw(*session);
+            OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+            OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::action_selected);
+            OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
+            finish_cursor_presentations(*session);
+            OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
+            finish_cursor_presentations(*session);
+            OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::cursor_changed);
+            finish_cursor_presentations(*session);
+            OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::cursor_selected);
+            OL_CHECK(session->phase() == BattleSessionPhase::player_magic_frame_present);
+        }
+        OL_CHECK(session->valid());
+        const auto damage = session->setup().combatants()[1U].damage_value;
+        OL_CHECK(damage >= 60'843 && damage <= 60'880);
+        if (!automatic) {
+            OL_CHECK(damage == 60'861);
+        }
+        OL_CHECK(ranger.roles[3U].hp == 10'000'000 - damage);
+    }
+    for (const auto invalid_equipment : {false, true}) {
+        auto ranger = make_equipment_ranger();
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger, nullptr, configuration, 999};
+        OL_CHECK(setup.valid());
+        if (invalid_equipment) {
+            ranger.roles[3U].equipment[1U] = model::ItemId{200};
+        }
+        const auto roles_before = ranger.roles;
+        const auto actors_before = std::vector<BattleCombatant>(
+            setup.combatants().begin(), setup.combatants().end());
+        random::LegacyRandom random{1U};
+        OL_CHECK(!setup.apply_hp_damage(
+            0U, 1U, 0, 1,
+            invalid_equipment ? 99'900 : std::numeric_limits<std::int64_t>::max(), random));
+        OL_CHECK(setup.error() == (invalid_equipment
+            ? "battle HP damage equipment is invalid or overflows"
+            : "battle HP attack or defence arithmetic overflow"));
+        OL_CHECK(ranger.roles == roles_before);
+        OL_CHECK(std::ranges::equal(setup.combatants(), actors_before));
+        OL_CHECK(random.state() == 1U);
+        OL_CHECK(setup.last_hp_cost_scale() == 0);
+    }
+}
+
 void run_ngplus_damage_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend;
     using namespace openlegend::battle;
@@ -13885,7 +14098,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 51> checks{
+    const std::array<BattleCheck, 52> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -13937,6 +14150,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_medicine_test,
         run_ngplus_hurt_threshold_test,
         run_ngplus_round_value_test,
+        run_ngplus_equipment_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {
