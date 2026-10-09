@@ -7,11 +7,11 @@ std::uint16_t LegacyRandom::next() noexcept {
     return static_cast<std::uint16_t>((state_ >> 16U) & 0x7FFFU);
 }
 
-std::int32_t LegacyRandom::bounded(const std::int32_t upper_bound) noexcept {
+std::int32_t LegacyRandom::bounded(const std::int64_t upper_bound) noexcept {
     if (upper_bound <= 1 || upper_bound > 30'000) {
         return 0;
     }
-    return static_cast<std::int32_t>(next()) % upper_bound;
+    return static_cast<std::int32_t>(next()) % static_cast<std::int32_t>(upper_bound);
 }
 
 }  // namespace openlegend::random

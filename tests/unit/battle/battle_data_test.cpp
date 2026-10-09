@@ -502,8 +502,8 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
 
     role.set_word(openlegend::model::role_word::magic_level_begin + 2U, 999);
     role.set_word(openlegend::model::role_word::mp, 10);
-    OL_CHECK(!setup.commit_attack_iteration(0U, 2, random));
-    OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin + 2U) == 999);
+    OL_CHECK(setup.commit_attack_iteration(0U, 2, random));
+    OL_CHECK(role.word(openlegend::model::role_word::magic_level_begin + 2U) == 1000);
     OL_CHECK(role.word(openlegend::model::role_word::mp) == 10);
     OL_CHECK(setup.commit_attack_mp_cost(0U, 2, 2));
     OL_CHECK(role.word(openlegend::model::role_word::mp) == 6);
@@ -10784,6 +10784,260 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(invalid_stale_target_random.state() == 1'341'714'958U);
 }
 
+void run_ngplus_damage_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    const auto make_damage_ranger = [] {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        auto& actor = ranger.roles[1U];
+        actor.magic_ids[2U] = model::MagicId{5};
+        actor.magic_levels[2U] = 1900;
+        actor.hp = actor.maximum_hp = 10'000;
+        actor.mp = actor.maximum_mp = 1000;
+        actor.attack = 30;
+        auto& target = ranger.roles[3U];
+        target.hp = target.maximum_hp = 10'000;
+        target.mp = target.maximum_mp = 50;
+        target.defence = 5;
+        target.anti_poison = 100;
+        auto& magic = ranger.magics[5U];
+        magic.set_word(model::magic_word::need_mp, 4);
+        for (std::size_t index = 0U; index < model::magic_word::level_value_count; ++index) {
+            magic.set_word(model::magic_word::attack_begin + index, 100);
+            magic.set_word(model::magic_word::select_distance_begin + index, static_cast<std::int16_t>(index + 1U));
+            magic.set_word(model::magic_word::attack_distance_begin + index, static_cast<std::int16_t>(index / 3U));
+        }
+        return ranger;
+    };
+    struct GrowthCase {
+        std::int64_t level;
+        std::int64_t damage;
+    };
+    constexpr std::array growth_cases{GrowthCase{10, 53}, GrowthCase{11, 54}, GrowthCase{20, 97}};
+    for (std::int16_t shape = 0; shape < 4; ++shape) {
+        for (const auto& growth : growth_cases) {
+            auto ranger = make_damage_ranger();
+            ranger.roles[1U].magic_levels[2U] = (growth.level - 1) * 100;
+            ranger.magics[5U].set_word(model::magic_word::attack_area_type, shape);
+            BattleData data{data_root, 4};
+            BattleSetup setup{data, ranger};
+            const auto profile = setup.attack_profile(0U, 2);
+            OL_CHECK(profile.has_value());
+            if (!profile) {
+                continue;
+            }
+            OL_CHECK(profile->level_index == growth.level - 1);
+            OL_CHECK(profile->select_distance == 10 && profile->attack_distance == 3);
+            OL_CHECK(profile->area_type == shape);
+            random::LegacyRandom random{1U};
+            const auto damage = setup.apply_hp_damage(0U, 1U, 2, 1, 0, random);
+            OL_CHECK(damage.has_value());
+            if (damage) {
+                OL_CHECK(damage->damage == growth.damage);
+                OL_CHECK(damage->cost_scale == growth.level);
+                OL_CHECK(ranger.roles[3U].hp == 10'000 - growth.damage);
+            }
+            OL_CHECK(random.state() == 2'524'885'223U);
+        }
+    }
+    {
+        auto ranger = make_damage_ranger();
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        random::LegacyRandom random{1U};
+        const auto original = setup.apply_hp_damage(0U, 1U, 2, 1, 0, random);
+        OL_CHECK(original.has_value() && original->damage == 97);
+        for (std::size_t index = 0U; index < model::magic_word::level_value_count; ++index) {
+            ranger.magics[5U].set_word(model::magic_word::attack_begin + index, 400);
+        }
+        ranger.roles[3U].hurt = 0;
+        random.seed(1U);
+        const auto changed = setup.apply_hp_damage(0U, 1U, 2, 1, 0, random);
+        OL_CHECK(changed.has_value() && changed->damage == 330);
+    }
+    {
+        auto ranger = make_damage_ranger();
+        ranger.roles[1U].mp = 0;
+        ranger.magics[5U].set_word(model::magic_word::with_poison, 15);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        const auto profile = setup.attack_profile(0U, 2);
+        OL_CHECK(profile.has_value());
+        if (!profile) {
+            return;
+        }
+        random::LegacyRandom random{1U};
+        const auto area = setup.apply_attack_area(0U, 2, {26, 26}, 0, random, &*profile);
+        OL_CHECK(area.has_value() && area->hit_count == 1);
+        OL_CHECK(std::ranges::count(setup.attack_effects(), static_cast<std::int16_t>(1)) == 48);
+        OL_CHECK(setup.combatants()[1U].damage_value == 51);
+        OL_CHECK(setup.last_hp_cost_scale() == 1);
+        OL_CHECK(ranger.roles[1U].magic_levels[2U] == 1900);
+        OL_CHECK(ranger.roles[3U].poison == 13);
+    }
+    {
+        auto ranger = make_damage_ranger();
+        ranger.roles[1U].magic_levels[2U] = 200;
+        ranger.roles[1U].attack_with_poison = 1500;
+        auto& target = ranger.roles[3U];
+        target.hp = 100;
+        target.maximum_hp = 1000;
+        target.poison = 99;
+        target.anti_poison = 0;
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        random::LegacyRandom random{1U};
+        const auto area = setup.apply_attack_area(0U, 2, {26, 26}, 0, random);
+        OL_CHECK(area.has_value() && area->effect_kind == 1);
+        OL_CHECK(setup.combatants()[1U].damage_value == 51);
+        OL_CHECK(setup.combatants()[1U].poison_overflow_damage == 99);
+        OL_CHECK(target.hp == 0 && target.hurt == 5 && target.poison == 99);
+        OL_CHECK(setup.combatants()[0U].reward_experience == 10);
+        BattleRenderState state;
+        state.view_x = 26;
+        state.view_y = 26;
+        state.damage_kind = 1;
+        state.damage_text_offset = 7;
+        const auto plan = setup.battle_render_plan(state, {});
+        OL_CHECK(plan.has_value());
+        std::vector<BattleRenderCommand> text_commands;
+        if (plan) {
+            for (const auto& command : plan->commands) {
+                if (command.kind == BattleRenderCommandKind::damage_text) {
+                    text_commands.push_back(command);
+                }
+            }
+        }
+        OL_CHECK(text_commands.size() == 2U);
+        if (text_commands.size() == 2U) {
+            OL_CHECK(text_commands[0U].value == 51 && text_commands[1U].value == 99);
+            OL_CHECK(text_commands[1U].screen_y == text_commands[0U].screen_y + 20);
+            OL_CHECK(text_commands[1U].overlay_variant == -1);
+            OL_CHECK(text_commands[1U].style == text_commands[0U].style);
+        }
+        setup.clear_attack_effects();
+        OL_CHECK(setup.combatants()[1U].poison_overflow_damage == 0);
+    }
+    {
+        auto ranger = make_damage_ranger();
+        ranger.roles[1U].attack = 5'000'000'000'000;
+        ranger.roles[1U].magic_levels[2U] = 200;
+        ranger.roles[3U].hp = ranger.roles[3U].maximum_hp = 50'000'000'000'000;
+        BattleData data{data_root, 4};
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = true;
+        BattleSetup setup{data, ranger, nullptr, configuration, 2};
+        OL_CHECK(setup.valid());
+        random::LegacyRandom random{1U};
+        const auto damage = setup.apply_hp_damage(0U, 1U, 2, 1, 0, random);
+        OL_CHECK(damage.has_value() && damage->damage == 5'000'000'000'023);
+        OL_CHECK(ranger.roles[3U].hp == 44'999'999'999'977);
+        OL_CHECK(ranger.roles[3U].hurt == 199);
+        OL_CHECK(setup.combatants()[0U].reward_experience == 1'000'000'000'004);
+    }
+    {
+        auto ranger = make_damage_ranger();
+        auto& actor = ranger.roles[1U];
+        auto& target = ranger.roles[3U];
+        actor.mp = 10;
+        auto& magic = ranger.magics[5U];
+        magic.set_word(model::magic_word::hurt_type, 1);
+        for (std::size_t index = 0U; index < model::magic_word::level_value_count; ++index) {
+            magic.set_word(model::magic_word::add_mp_begin + index, 20);
+            magic.set_word(model::magic_word::hurt_mp_begin + index, 15);
+        }
+        BattleData data{data_root, 4};
+        std::int64_t retained_scale = 77;
+        BattleSetup setup{data, ranger, &retained_scale};
+        random::LegacyRandom random{1U};
+        OL_CHECK(setup.apply_mp_damage(0U, 1U, 2, random) == 34);
+        OL_CHECK(actor.mp == 57 && actor.maximum_mp == 1016 && target.mp == 16);
+        OL_CHECK(random.state() == 4'182'499'122U);
+        OL_CHECK(retained_scale == 77 && setup.last_hp_cost_scale() == 77);
+        actor.magic_levels[2U] = 5'000'000'000'000;
+        actor.mp = 10;
+        actor.maximum_mp = target.mp = target.maximum_mp = 5'000'000'000'000;
+        const model::MagicProgression reference{ranger.magics};
+        const auto effects = reference.effects(5U, 50'000'000'001);
+        OL_CHECK(effects.has_value());
+        if (!effects) {
+            return;
+        }
+        OL_CHECK(effects->add_mp / 2 > std::numeric_limits<std::int32_t>::max());
+        random.seed(1U);
+        OL_CHECK(setup.apply_mp_damage(0U, 1U, 2, random) == effects->hurt_mp - 1);
+        OL_CHECK(actor.mp == effects->add_mp + 11);
+        OL_CHECK(actor.maximum_mp == 5'000'000'000'000);
+        OL_CHECK(random.state() == 3'295'386'429U);
+        OL_CHECK(retained_scale == 77 && setup.last_hp_cost_scale() == 77);
+    }
+    for (int failure_case = 0; failure_case < 7; ++failure_case) {
+        auto ranger = make_damage_ranger();
+        ranger.roles[1U].magic_levels[2U] = 200;
+        constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+        switch (failure_case) {
+        case 0: ranger.roles[1U].attack = maximum; break;
+        case 1: ranger.roles[1U].knowledge = maximum; break;
+        case 2: ranger.roles[3U].defence = maximum; break;
+        case 3: ranger.roles[3U].hurt = maximum; break;
+        case 4:
+            ranger.roles[1U].attack_with_poison = maximum;
+            ranger.magics[5U].set_word(model::magic_word::with_poison, 1);
+            break;
+        case 5:
+            ranger.roles[1U].attack_with_poison = 1500;
+            ranger.roles[3U].maximum_hp = maximum;
+            ranger.roles[3U].poison = 99;
+            ranger.roles[3U].anti_poison = 0;
+            break;
+        }
+        BattleData data{data_root, 4};
+        std::int64_t retained_scale = 77;
+        BattleSetup setup{data, ranger, &retained_scale};
+        setup.combatants()[0U].reward_experience = failure_case == 6 ? maximum : 3;
+        const auto roles_before = ranger.roles;
+        const auto combatant_before = setup.combatants()[0U];
+        random::LegacyRandom random{1U};
+        OL_CHECK(!setup.apply_hp_damage(0U, 1U, 2, 1, 0, random).has_value());
+        OL_CHECK(ranger.roles == roles_before);
+        OL_CHECK(setup.combatants()[0U] == combatant_before);
+        OL_CHECK(retained_scale == 77 && setup.last_hp_cost_scale() == 77);
+        OL_CHECK(random.state() == 1U);
+    }
+    {
+        auto ranger = make_damage_ranger();
+        auto& actor = ranger.roles[1U];
+        actor.magic_levels[2U] = 5'000'000'000'099;
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        random::LegacyRandom random{1U};
+        OL_CHECK(setup.commit_attack_iteration(0U, 2, random));
+        OL_CHECK(actor.magic_levels[2U] == 5'000'000'000'100);
+        actor.magic_levels[2U] = std::numeric_limits<std::int64_t>::max();
+        const auto actor_before = actor;
+        const auto combatant_before = setup.combatants()[0U];
+        const auto random_before = random.state();
+        OL_CHECK(!setup.commit_attack_iteration(0U, 2, random));
+        OL_CHECK(actor == actor_before);
+        OL_CHECK(setup.combatants()[0U] == combatant_before);
+        OL_CHECK(random.state() == random_before);
+    }
+    for (const bool maximum_mp_failure : {false, true}) {
+        auto ranger = make_damage_ranger();
+        auto& actor = ranger.roles[1U];
+        actor.magic_levels[2U] = 200;
+        actor.maximum_mp = std::numeric_limits<std::int64_t>::max();
+        actor.mp = maximum_mp_failure ? 10 : actor.maximum_mp;
+        ranger.magics[5U].set_word(model::magic_word::add_mp_begin + 2U, 20);
+        BattleData data{data_root, 4};
+        BattleSetup setup{data, ranger};
+        const auto roles_before = ranger.roles;
+        random::LegacyRandom random{1U};
+        OL_CHECK(!setup.apply_mp_damage(0U, 1U, 2, random).has_value());
+        OL_CHECK(ranger.roles == roles_before && random.state() == 1U);
+    }
+}
+
 void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
@@ -10798,6 +11052,8 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::attack_with_poison, 30);
     target.set_word(openlegend::model::role_word::level, 4);
     target.set_word(openlegend::model::role_word::hp, 30);
+    target.maximum_hp = 1000;
+    target.maximum_mp = 50;
     target.set_word(openlegend::model::role_word::defence, 5);
     target.set_word(openlegend::model::role_word::hurt, 0);
     target.set_word(openlegend::model::role_word::poison, 0);
@@ -10964,7 +11220,10 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     hp_random.seed(1U);
     const auto exact_poison_cap = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
     OL_CHECK(exact_poison_cap.has_value());
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 100);
+    OL_CHECK(target.poison == 99);
+    OL_CHECK(exact_poison_cap->poison_overflow_damage == 1);
+    OL_CHECK(target.hp == 69);
+    OL_CHECK(target.hurt == 3);
 
     reset_hp_edge_case();
     actor.set_word(openlegend::model::role_word::attack_with_poison, 1475);
@@ -10972,7 +11231,10 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     hp_random.seed(1U);
     const auto exceeded_poison_cap = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
     OL_CHECK(exceeded_poison_cap.has_value());
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
+    OL_CHECK(target.poison == 99);
+    OL_CHECK(exceeded_poison_cap->poison_overflow_damage == 2);
+    OL_CHECK(target.hp == 68);
+    OL_CHECK(target.hurt == 3);
 
     reset_hp_edge_case();
     setup.combatants()[0U].reward_experience =
@@ -11000,6 +11262,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
         actor.set_word(openlegend::model::role_word::mp, 10);
         actor.set_word(openlegend::model::role_word::maximum_mp, 20);
         target.set_word(openlegend::model::role_word::mp, 50);
+        target.maximum_mp = 50;
         magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 20);
         magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 15);
         mp_random.seed(1U);
@@ -11044,7 +11307,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     const auto maximum_mp_cap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
     OL_CHECK(maximum_mp_cap == 15);
     OL_CHECK(actor.word(openlegend::model::role_word::mp) == 31);
-    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 999);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 1001);
 
     reset_mp_case();
     actor.set_word(openlegend::model::role_word::mp, std::numeric_limits<std::int16_t>::max());
@@ -11052,7 +11315,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 1);
     const auto current_mp_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
     OL_CHECK(current_mp_wrap == 14);
-    OL_CHECK(actor.word(openlegend::model::role_word::mp) == -32767);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 998);
     OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 998);
 
     reset_mp_case();
@@ -11061,8 +11324,8 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
         std::numeric_limits<std::int16_t>::max());
     const auto maximum_mp_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
     OL_CHECK(maximum_mp_wrap == 15);
-    OL_CHECK(actor.word(openlegend::model::role_word::mp) == -32766);
-    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == -32766);
+    OL_CHECK(actor.word(openlegend::model::role_word::mp) == 31);
+    OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 32770);
 
     reset_mp_case();
     target.set_word(openlegend::model::role_word::mp, 15);
@@ -11091,9 +11354,10 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     target.set_word(
         openlegend::model::role_word::mp,
         std::numeric_limits<std::int16_t>::max());
+    target.maximum_mp = 40'000;
     const auto positive_target_wrap = setup.apply_mp_damage(0U, 1U, 2, mp_random);
-    OL_CHECK(positive_target_wrap == std::numeric_limits<std::int16_t>::max());
-    OL_CHECK(target.word(openlegend::model::role_word::mp) == 0);
+    OL_CHECK(positive_target_wrap == -2);
+    OL_CHECK(target.word(openlegend::model::role_word::mp) == 32769);
 
     reset_mp_case();
     magic.set_word(openlegend::model::magic_word::add_mp_begin + 2U, 0);
@@ -11142,6 +11406,8 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::physical_power, 10);
     target.set_word(openlegend::model::role_word::hp, 100);
     target.set_word(openlegend::model::role_word::mp, 50);
+    target.maximum_hp = 100;
+    target.maximum_mp = 50;
     target.set_word(openlegend::model::role_word::defence, 5);
     target.set_word(openlegend::model::role_word::hurt, 0);
     target.set_word(openlegend::model::role_word::anti_poison, 100);
@@ -12256,7 +12522,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 45> checks{
+    const std::array<BattleCheck, 46> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -12302,6 +12568,7 @@ int main(const int argc, char* argv[]) {
         run_outcome_test,
         run_battle_outcome_session_test,
         run_all_definition_tests,
+        run_ngplus_damage_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

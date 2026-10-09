@@ -11,6 +11,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_pathing.hpp"
+#include "openlegend/model/magic_progression.hpp"
 #include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/legacy_color.hpp"
@@ -43,6 +44,7 @@ struct BattleCombatant {
     std::array<std::int16_t, kBattleCombatantWords> words{};
     std::int64_t reward_experience{};
     std::int64_t damage_value{};
+    std::int64_t poison_overflow_damage{};
 
     NODISCARD bool operator==(const BattleCombatant&) const = default;
 };
@@ -50,7 +52,7 @@ struct BattleCombatant {
 struct BattleAttackProfile {
     std::int16_t magic_slot{};
     std::int16_t magic_id{};
-    std::int16_t level_index{};
+    std::int64_t level_index{};
     std::int16_t select_distance{};
     std::int16_t attack_distance{};
     std::int16_t area_type{};
@@ -62,6 +64,7 @@ struct BattleAttackProfile {
 struct BattleHpDamageResult {
     std::int64_t damage{};
     std::int64_t cost_scale{};
+    std::int64_t poison_overflow_damage{};
 };
 
 struct BattleAreaResult {
@@ -807,7 +810,7 @@ public:
         std::int16_t special_attack_bonus,
         random::LegacyRandom& random);
 
-    NODISCARD std::optional<std::int32_t> apply_mp_damage(
+    NODISCARD std::optional<std::int64_t> apply_mp_damage(
         std::size_t actor_slot,
         std::size_t target_slot,
         std::int16_t magic_slot,
@@ -1200,9 +1203,13 @@ private:
 
     void remove_inventory_slot(std::size_t slot) noexcept;
 
+    NODISCARD std::optional<model::MagicEffects> magic_effects(
+        std::size_t magic_id, std::int64_t level);
+
     BattleData& data_;
     model::RuntimeRangerState& ranger_;
     model::PlaythroughLimits limits_{};
+    std::optional<model::MagicProgression> magic_progression_;
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};
     std::array<std::int16_t, kBattlePartySlots> selection_states_{};
     std::array<std::int16_t, kBattleOccupancyCells> attack_effects_{};

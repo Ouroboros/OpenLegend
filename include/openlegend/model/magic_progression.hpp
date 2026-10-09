@@ -39,6 +39,8 @@ public:
         return references_;
     }
 
+    NODISCARD bool definitions_match(std::span<const MagicRecord> magics) const noexcept;
+
     NODISCARD std::optional<MagicEffects> effects(
         std::size_t magic_id, std::int64_t level) const noexcept;
 

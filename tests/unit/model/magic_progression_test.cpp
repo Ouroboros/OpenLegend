@@ -30,12 +30,15 @@ void check_calibration_and_boundaries() {
     const MagicProgression distinct{std::span{magics}.first(2U)};
     const MagicProgression duplicated{magics};
     OL_CHECK(distinct.valid() && duplicated.valid());
+    OL_CHECK(duplicated.definitions_match(magics));
+    OL_CHECK(!distinct.definitions_match(magics));
     OL_CHECK(duplicated.references()[0U].prototype_count == 2U);
     OL_CHECK(duplicated.references()[0U].final_effect == 250.0L);
     OL_CHECK(duplicated.references()[1U].prototype_count == 0U);
     OL_CHECK(distinct.effects(0U, 20) == duplicated.effects(0U, 20));
     OL_CHECK(duplicated.effects(0U, 20) == duplicated.effects(2U, 20));
     magics[2U].set_word(magic_word::with_poison, 1);
+    OL_CHECK(!duplicated.definitions_match(magics));
     const MagicProgression different_poison{magics};
     OL_CHECK(different_poison.references()[0U].prototype_count == 3U);
     magics[2U].set_word(magic_word::with_poison, 0);

@@ -3500,12 +3500,7 @@ bool BattleSession::commit_player_attack_iteration() {
     level_text.clear();
     level_text.append_legacy(text::Big5TextView{visible_name});
     level_text.append_utf8(kLevelPrefix);
-    const auto rank = static_cast<std::uint16_t>(
-        role.unsigned_word(
-            model::role_word::magic_level_begin +
-            static_cast<std::size_t>(selected_magic_slot_)) /
-            100U +
-        1U);
+    const auto rank = role.magic_levels[static_cast<std::size_t>(selected_magic_slot_)] / 100 + 1;
     level_text.append_utf8(decimal_text(rank, 2));
     level_text.append_utf8(kLevelSuffix);
     phase_ = player_attack_->ai_controlled

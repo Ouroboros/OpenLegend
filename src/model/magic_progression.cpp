@@ -155,6 +155,10 @@ MagicProgression::MagicProgression(const std::span<const MagicRecord> magics)
     }
 }
 
+bool MagicProgression::definitions_match(const std::span<const MagicRecord> magics) const noexcept {
+    return std::ranges::equal(magics_, magics);
+}
+
 std::optional<MagicEffects> MagicProgression::effects(
     const std::size_t magic_id, const std::int64_t level) const noexcept {
     if (!valid() || magic_id >= magics_.size() || level < 1) {

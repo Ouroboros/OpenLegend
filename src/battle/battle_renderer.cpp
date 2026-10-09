@@ -777,8 +777,7 @@ bool BattleRenderer::render_character_status(
             !draw_number(
                 242,
                 y,
-                static_cast<std::int32_t>(
-                    role.unsigned_word(model::role_word::magic_level_begin + slot) / 100U + 1U),
+                role.magic_levels[slot] / 100 + 1,
                 2,
                 text_colors::selected)) {
             return false;

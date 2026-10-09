@@ -8,12 +8,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <initializer_list>
 #include <limits>
 #include <utility>
 
 #include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/experience.hpp"
 #include "openlegend/model/magic_progression.hpp"
+#include "openlegend/model/poison.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/world_projection.hpp"
 
@@ -60,6 +62,19 @@ constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuse
 
 NODISCARD constexpr std::int16_t wrapping_i16(const std::int32_t value) noexcept {
     return std::bit_cast<std::int16_t>(static_cast<std::uint16_t>(value));
+}
+
+NODISCARD std::optional<std::int64_t> checked_battle_sum(
+    const std::initializer_list<std::int64_t> values) noexcept {
+    std::int64_t total = 0;
+    for (const auto value : values) {
+        const auto next = model::checked_add(total, value);
+        if (!next.has_value()) {
+            return std::nullopt;
+        }
+        total = *next;
+    }
+    return total;
 }
 
 NODISCARD constexpr std::optional<std::size_t> legacy_cursor_index(
@@ -721,6 +736,7 @@ void BattleSetup::update_occupancy(const std::size_t slot) {
 void BattleSetup::swap_combatants(const std::size_t first, const std::size_t second) {
     std::swap(combatants_[first].reward_experience, combatants_[second].reward_experience);
     std::swap(combatants_[first].damage_value, combatants_[second].damage_value);
+    std::swap(combatants_[first].poison_overflow_damage, combatants_[second].poison_overflow_damage);
     const auto saved = combatants_[first].words;
     for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
         if (word != combatant_word::sprite) {
@@ -1699,6 +1715,35 @@ std::int16_t BattleSetup::automatic_magic_slot(
         random.bounded(static_cast<std::int32_t>(learned_magic_count(slot))));
 }
 
+std::optional<model::MagicEffects> BattleSetup::magic_effects(
+    const std::size_t magic_id, const std::int64_t level) {
+    if (magic_id >= ranger_.magics.size() || level < 1) {
+        error_ = "battle magic effect arguments are invalid";
+        return std::nullopt;
+    }
+    if (level <= static_cast<std::int64_t>(model::magic_word::level_value_count)) {
+        const auto& magic = ranger_.magics[magic_id];
+        const auto index = static_cast<std::size_t>(level - 1);
+        return model::MagicEffects{
+            magic.word(model::magic_word::attack_begin + index),
+            magic.word(model::magic_word::hurt_mp_begin + index),
+            magic.word(model::magic_word::add_mp_begin + index),
+        };
+    }
+    if (!magic_progression_.has_value() || !magic_progression_->definitions_match(ranger_.magics)) {
+        magic_progression_.emplace(ranger_.magics);
+    }
+    if (!magic_progression_->valid()) {
+        error_ = magic_progression_->error();
+        return std::nullopt;
+    }
+    const auto effects = magic_progression_->effects(magic_id, level);
+    if (!effects.has_value()) {
+        error_ = "battle magic effects overflow";
+    }
+    return effects;
+}
+
 std::optional<BattleAttackProfile> BattleSetup::attack_profile(
     const std::size_t slot, const std::int16_t magic_slot) const noexcept {
     if (!valid() || slot >= static_cast<std::size_t>(combatant_count_) || magic_slot < 0 ||
@@ -1719,17 +1764,16 @@ std::optional<BattleAttackProfile> BattleSetup::attack_profile(
     if (proficiency < 0) {
         return std::nullopt;
     }
-    const auto level_index = static_cast<std::size_t>(proficiency / 100);
-    if (level_index >= model::magic_word::level_value_count) {
-        return std::nullopt;
-    }
+    const auto level_index = proficiency / 100;
+    const auto area_index = static_cast<std::size_t>(std::min<std::int64_t>(
+        level_index, model::magic_word::level_value_count - 1U));
     const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
     return BattleAttackProfile{
         magic_slot,
         magic_id,
-        static_cast<std::int16_t>(level_index),
-        magic.word(model::magic_word::select_distance_begin + level_index),
-        magic.word(model::magic_word::attack_distance_begin + level_index),
+        level_index,
+        magic.word(model::magic_word::select_distance_begin + area_index),
+        magic.word(model::magic_word::attack_distance_begin + area_index),
         magic.word(model::magic_word::attack_area_type),
         magic.word(model::magic_word::hurt_type),
         static_cast<std::int16_t>(
@@ -1840,21 +1884,20 @@ bool BattleSetup::commit_attack_iteration(
         return false;
     }
     auto& words = combatants_[slot].words;
+    auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+    const auto slot_index = static_cast<std::size_t>(magic_slot);
+    auto candidate_random = random;
+    const auto proficiency = model::checked_add(
+        role.magic_levels[slot_index], candidate_random.bounded(2) + 1);
+    if (!proficiency.has_value()) {
+        error_ = "battle attack proficiency overflow";
+        return false;
+    }
     words[combatant_word::action_done] = 1;
     combatants_[slot].reward_experience = *counter;
-
-    auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
-    const auto experience_word = model::role_word::magic_level_begin +
-        static_cast<std::size_t>(magic_slot);
-    const auto previous_rank = role.unsigned_word(experience_word) / 100U + 1U;
-    auto experience = static_cast<std::uint16_t>(
-        role.unsigned_word(experience_word) + random.bounded(2) + 1);
-    if (experience > 999U) {
-        experience = 999U;
-    }
-    role.set_word(experience_word, static_cast<std::int16_t>(experience));
-    const auto current_rank = experience / 100U + 1U;
-    return current_rank > previous_rank;
+    role.magic_levels[slot_index] = *proficiency;
+    random = candidate_random;
+    return *proficiency / 100 > profile->level_index;
 }
 
 bool BattleSetup::commit_attack_mp_cost(
@@ -1897,12 +1940,22 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         error_ = "battle HP damage target role is outside ranger records";
         return std::nullopt;
     }
-    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
     const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
+    const auto cost_scale = model::affordable_magic_level(
+        profile->level_index + 1, actor.mp, profile->need_mp);
+    if (!cost_scale.has_value()) {
+        error_ = "battle HP damage MP or learned level is invalid";
+        return std::nullopt;
+    }
+    const auto effects = magic_effects(static_cast<std::size_t>(profile->magic_id), *cost_scale);
+    if (!effects.has_value()) {
+        return std::nullopt;
+    }
 
-    std::int32_t allied_knowledge = 0;
-    std::int32_t enemy_knowledge = 0;
+    std::int64_t allied_knowledge = 0;
+    std::int64_t enemy_knowledge = 0;
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto role_id = combatants_[slot].words[combatant_word::role_id];
@@ -1911,145 +1964,134 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
             return std::nullopt;
         }
         const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        const auto knowledge = role.word(model::role_word::knowledge);
-        if (knowledge <= 80 || role.word(model::role_word::hp) <= 0 ||
+        if (role.knowledge <= 80 || role.hp <= 0 ||
             combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
             continue;
         }
-        if (combatants_[slot].words[combatant_word::side] == actor_side) {
-            allied_knowledge += 2 * static_cast<std::int32_t>(knowledge);
-        } else {
-            enemy_knowledge += 2 * static_cast<std::int32_t>(knowledge);
+        auto& total = combatants_[slot].words[combatant_word::side] == actor_side
+            ? allied_knowledge : enemy_knowledge;
+        const auto contribution = model::checked_multiply(role.knowledge, 2);
+        const auto accumulated = contribution.has_value()
+            ? model::checked_add(total, *contribution) : std::nullopt;
+        if (!accumulated.has_value()) {
+            error_ = "battle HP damage knowledge overflow";
+            return std::nullopt;
         }
-    }
-
-    std::int16_t cost_scale = 0;
-    for (std::int16_t level = profile->level_index; level >= 0; --level) {
-        const auto required_mp = static_cast<std::int32_t>(profile->need_mp) *
-            static_cast<std::int32_t>((level + 1) / 2);
-        if (actor.word(model::role_word::mp) >= required_mp) {
-            cost_scale = static_cast<std::int16_t>(level + 1);
-            break;
-        }
+        total = *accumulated;
     }
     const auto equipment_bonus = [this](
-                                     const model::RoleState& role,
-                                     const std::size_t item_word)
-        -> std::optional<std::int16_t> {
-        std::int32_t bonus = 0;
-        for (std::size_t index = 0U; index < model::role_word::equipment_count; ++index) {
-            const auto item_id = role.word(model::role_word::equipment_begin + index);
-            if (item_id < 0) {
+        const model::RoleState& role, const std::size_t item_word) -> std::optional<std::int64_t> {
+        std::int64_t bonus = 0;
+        for (const auto item_id : role.equipment) {
+            if (item_id.value < 0) {
                 continue;
             }
-            if (static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            if (static_cast<std::size_t>(item_id.value) >= ranger_.items.size()) {
                 return std::nullopt;
             }
-            bonus += ranger_.items[static_cast<std::size_t>(item_id)].word(item_word);
+            const auto total = model::checked_add(
+                bonus, ranger_.items[static_cast<std::size_t>(item_id.value)].word(item_word));
+            if (!total.has_value()) {
+                return std::nullopt;
+            }
+            bonus = *total;
         }
-        return wrapping_i16(bonus);
+        return bonus;
     };
     const auto attack_equipment = equipment_bonus(actor, model::item_word::add_attack);
     const auto defence_equipment = equipment_bonus(target, model::item_word::add_defence);
-    if (!attack_equipment || !defence_equipment) {
-        error_ = "battle HP damage equipment id is outside ranger records";
+    if (!attack_equipment.has_value() || !defence_equipment.has_value()) {
+        error_ = "battle HP damage equipment is invalid or overflows";
         return std::nullopt;
     }
-
-    auto attack_total = wrapping_i16(
-        (3 * static_cast<std::int32_t>(actor.word(model::role_word::attack)) +
-         magic.word(model::magic_word::with_poison + static_cast<std::size_t>(cost_scale))) /
-        2);
-    attack_total = wrapping_i16(
-        static_cast<std::int32_t>(attack_total) + *attack_equipment + special_attack_bonus +
-        allied_knowledge);
-    auto defence_total = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::defence)) +
-        *defence_equipment + enemy_knowledge);
-
+    const auto triple_attack = model::checked_multiply(actor.attack, 3);
+    const auto attack_base = triple_attack.has_value()
+        ? model::checked_add(*triple_attack, effects->attack) : std::nullopt;
+    const auto attack_total = attack_base.has_value()
+        ? checked_battle_sum({*attack_base / 2, *attack_equipment, special_attack_bonus, allied_knowledge})
+        : std::nullopt;
+    const auto defence_total = checked_battle_sum({target.defence, *defence_equipment, enemy_knowledge});
+    const auto triple_defence = defence_total.has_value()
+        ? model::checked_multiply(*defence_total, 3) : std::nullopt;
+    const auto difference = attack_total.has_value() && triple_defence.has_value()
+        ? model::checked_subtract(*attack_total, *triple_defence) : std::nullopt;
+    const auto scaled_damage = difference.has_value()
+        ? model::checked_multiply(*difference, 2) : std::nullopt;
+    if (!scaled_damage.has_value()) {
+        error_ = "battle HP attack or defence arithmetic overflow";
+        return std::nullopt;
+    }
     auto candidate_random = random;
     const auto first_attack_variance = candidate_random.bounded(20);
     const auto second_attack_variance = candidate_random.bounded(20);
-    auto damage = wrapping_i16(
-        2 * (static_cast<std::int32_t>(attack_total) -
-             3 * static_cast<std::int32_t>(defence_total)) /
-            3 +
-        first_attack_variance - second_attack_variance);
-    if (damage <= 0) {
+    auto damage = checked_battle_sum({*scaled_damage / 3, first_attack_variance, -second_attack_variance});
+    if (!damage.has_value()) {
+        error_ = "battle HP attack variance overflow";
+        return std::nullopt;
+    }
+    if (*damage <= 0) {
         const auto first_fallback_variance = candidate_random.bounded(4);
         const auto second_fallback_variance = candidate_random.bounded(4);
-        damage = wrapping_i16(
-            static_cast<std::int32_t>(attack_total) / 10 + first_fallback_variance -
-            second_fallback_variance);
+        damage = checked_battle_sum({*attack_total / 10, first_fallback_variance, -second_fallback_variance});
+        if (!damage.has_value()) {
+            error_ = "battle HP fallback damage overflow";
+            return std::nullopt;
+        }
     }
-    if (damage < 0) {
-        damage = 0;
-    } else {
-        damage = wrapping_i16(
-            static_cast<std::int32_t>(damage) +
-            actor.word(model::role_word::physical_power) / 15 +
-            target.word(model::role_word::hurt) / 20);
-        const auto factor = distance > 10
-            ? 2
-            : 100 - 3 * (static_cast<std::int32_t>(distance) - 1);
-        const auto divisor = distance > 10 ? 3U : 100U;
-        const auto product = static_cast<std::uint32_t>(
-            static_cast<std::int32_t>(damage) * factor);
-        damage = wrapping_i16(static_cast<std::int32_t>(product / divisor));
-    }
-    if (damage < 1) {
+    if (*damage < 0) {
         damage = 1;
+    } else {
+        damage = checked_battle_sum({*damage, actor.physical_power / 15, target.hurt / 20});
+        const auto factor = distance > 10 ? 2 : 100 - 3 * (static_cast<std::int32_t>(distance) - 1);
+        const auto product = damage.has_value() ? model::checked_multiply(*damage, factor) : std::nullopt;
+        if (!product.has_value()) {
+            error_ = "battle HP injury or distance arithmetic overflow";
+            return std::nullopt;
+        }
+        damage = std::max<std::int64_t>(*product / (distance > 10 ? 3 : 100), 1);
     }
-
-    const auto target_hp = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::hp)) - damage);
-    auto counter = model::checked_add(combatants_[actor_slot].reward_experience, damage / 5);
-    if (counter.has_value() && target_hp < 0) {
+    const auto target_hp = model::checked_subtract(target.hp, *damage);
+    auto counter = model::checked_add(combatants_[actor_slot].reward_experience, *damage / 5);
+    if (counter.has_value() && target_hp.has_value() && *target_hp < 0) {
         const auto defeat_bonus = model::checked_multiply(10, target.level);
         counter = defeat_bonus.has_value()
             ? model::checked_add(*counter, *defeat_bonus) : std::nullopt;
     }
-    if (!counter.has_value()) {
-        error_ = "battle damage experience counter overflow";
+    const auto hurt = model::checked_add(target.hurt, *damage / 10);
+    if (!target_hp.has_value() || !counter.has_value() || !hurt.has_value()) {
+        error_ = "battle HP result, injury or experience overflow";
         return std::nullopt;
     }
+    const auto magic_poison = model::checked_multiply(
+        magic.word(model::magic_word::with_poison), profile->level_index + 1);
+    const auto poison_power = magic_poison.has_value()
+        ? model::checked_add(actor.attack_with_poison, *magic_poison) : std::nullopt;
+    const auto poison = poison_power.has_value()
+        ? model::poison_application(*poison_power, target.anti_poison, 15, target.poison, target.maximum_hp)
+        : std::nullopt;
+    if (!poison.has_value()) {
+        error_ = "battle magic poison is invalid or overflows";
+        return std::nullopt;
+    }
+    const auto final_hp = model::checked_subtract(std::max<std::int64_t>(*target_hp, 0), poison->hp_damage);
+    if (!final_hp.has_value()) {
+        error_ = "battle poison HP damage overflow";
+        return std::nullopt;
+    }
+    target.hp = std::max<std::int64_t>(*final_hp, 0);
+    target.hurt = std::min(*hurt, limits_.hurt_maximum);
+    target.poison += poison->applied_amount;
+    ranger_.roles[static_cast<std::size_t>(target_role_id)] = std::move(target);
     combatants_[actor_slot].reward_experience = *counter;
-    target.set_word(model::role_word::hp, std::max<std::int16_t>(target_hp, 0));
-
-    auto hurt = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::hurt)) + damage / 10);
-    target.set_word(model::role_word::hurt, hurt);
-    if (hurt > 99) {
-        target.set_word(model::role_word::hurt, 99);
-    }
-
-    const auto poison_power = static_cast<std::int32_t>(
-                                  actor.word(model::role_word::attack_with_poison)) +
-        static_cast<std::int32_t>(magic.word(model::magic_word::with_poison)) *
-            (static_cast<std::int32_t>(profile->level_index) + 1);
-    const auto anti_poison = target.word(model::role_word::anti_poison);
-    if (poison_power > anti_poison && anti_poison < 90) {
-        auto poison = wrapping_i16(
-            static_cast<std::int32_t>(target.word(model::role_word::poison)) +
-            (poison_power - anti_poison) / 15);
-        target.set_word(model::role_word::poison, poison);
-        // 原版武功附毒只在结果大于100时写99：恰好100保留，101则回写99。
-        if (poison > 100) {
-            target.set_word(model::role_word::poison, 99);
-        }
-        if (target.word(model::role_word::poison) < 0) {
-            target.set_word(model::role_word::poison, 0);
-        }
-    }
-    last_hp_cost_scale_ = cost_scale;
+    last_hp_cost_scale_ = *cost_scale;
     if (legacy_hp_cost_scale_ != nullptr) {
-        *legacy_hp_cost_scale_ = cost_scale;
+        *legacy_hp_cost_scale_ = *cost_scale;
     }
     random = candidate_random;
-    return BattleHpDamageResult{damage, cost_scale};
+    return BattleHpDamageResult{*damage, *cost_scale, poison->hp_damage};
 }
 
-std::optional<std::int32_t> BattleSetup::apply_mp_damage(
+std::optional<std::int64_t> BattleSetup::apply_mp_damage(
     const std::size_t actor_slot,
     const std::size_t target_slot,
     const std::int16_t magic_slot,
@@ -2065,44 +2107,59 @@ std::optional<std::int32_t> BattleSetup::apply_mp_damage(
         error_ = "battle MP damage target role is outside ranger records";
         return std::nullopt;
     }
-    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
-    const auto level = static_cast<std::size_t>(profile->level_index);
-    const auto target_mp_before = target.word(model::role_word::mp);
+    auto actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    auto separate_target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    auto& target = actor_role_id == target_role_id ? actor : separate_target;
+    if (actor.maximum_mp < 0 || target.maximum_mp < 0) {
+        error_ = "battle MP damage maximum MP is negative";
+        return std::nullopt;
+    }
+    const auto effects = magic_effects(
+        static_cast<std::size_t>(profile->magic_id), profile->level_index + 1);
+    if (!effects.has_value()) {
+        return std::nullopt;
+    }
+    const auto target_mp_before = target.mp;
+    auto candidate_random = random;
+    const auto first_actor_variance = candidate_random.bounded(3);
+    const auto second_actor_variance = candidate_random.bounded(3);
+    const auto added_mp = model::checked_add(actor.mp, effects->add_mp);
+    if (!added_mp.has_value()) {
+        error_ = "battle MP recovery overflow";
+        return std::nullopt;
+    }
+    const auto maximum_mp = model::checked_add(
+        actor.maximum_mp, candidate_random.bounded(effects->add_mp / 2));
+    const auto actor_mp = model::checked_add(*added_mp, first_actor_variance - second_actor_variance);
+    if (!maximum_mp.has_value() || !actor_mp.has_value()) {
+        error_ = "battle MP growth or recovery variance overflow";
+        return std::nullopt;
+    }
+    actor.maximum_mp = *maximum_mp;
+    actor.mp = std::clamp<std::int64_t>(*actor_mp, 0, actor.maximum_mp);
 
-    const auto first_actor_variance = random.bounded(3);
-    const auto second_actor_variance = random.bounded(3);
-    const auto actor_variance = first_actor_variance - second_actor_variance;
-    const auto add_mp = magic.word(model::magic_word::add_mp_begin + level);
-    actor.set_word(
-        model::role_word::mp,
-        wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::mp)) + add_mp));
-    auto maximum_mp = wrapping_i16(
-        static_cast<std::int32_t>(actor.word(model::role_word::maximum_mp)) +
-        random.bounded(add_mp / 2));
-    if (maximum_mp >= 999) {
-        maximum_mp = 999;
+    const auto first_target_variance = candidate_random.bounded(3);
+    const auto second_target_variance = candidate_random.bounded(3);
+    const auto reduced_mp = model::checked_subtract(target.mp, effects->hurt_mp);
+    const auto target_mp = reduced_mp.has_value()
+        ? model::checked_subtract(*reduced_mp, first_target_variance - second_target_variance)
+        : std::nullopt;
+    if (!target_mp.has_value()) {
+        error_ = "battle MP damage overflow";
+        return std::nullopt;
     }
-    actor.set_word(model::role_word::maximum_mp, maximum_mp);
-    auto actor_mp = wrapping_i16(
-        static_cast<std::int32_t>(actor.word(model::role_word::mp)) + actor_variance);
-    if (actor_mp >= maximum_mp) {
-        actor_mp = maximum_mp;
+    target.mp = std::clamp<std::int64_t>(*target_mp, 0, target.maximum_mp);
+    const auto damage = model::checked_subtract(target_mp_before, target.mp);
+    if (!damage.has_value()) {
+        error_ = "battle MP damage result overflow";
+        return std::nullopt;
     }
-    actor.set_word(model::role_word::mp, actor_mp);
-
-    const auto first_target_variance = random.bounded(3);
-    const auto second_target_variance = random.bounded(3);
-    const auto target_variance = first_target_variance - second_target_variance;
-    auto target_mp = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::mp)) -
-        magic.word(model::magic_word::hurt_mp_begin + level) - target_variance);
-    if (target_mp <= 0) {
-        target_mp = 0;
+    ranger_.roles[static_cast<std::size_t>(actor_role_id)] = std::move(actor);
+    if (actor_role_id != target_role_id) {
+        ranger_.roles[static_cast<std::size_t>(target_role_id)] = std::move(separate_target);
     }
-    target.set_word(model::role_word::mp, target_mp);
-    return static_cast<std::int32_t>(target_mp_before) - target_mp;
+    random = candidate_random;
+    return damage;
 }
 
 std::optional<std::int16_t> BattleSetup::poison_targeting_range(
@@ -5372,6 +5429,18 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                                 static_cast<std::size_t>(state.damage_kind)]
                                 .legacy_packed()),
                         combatants_[combatant].damage_value);
+                    if (combatants_[combatant].poison_overflow_damage > 0) {
+                        append_sprite(
+                            BattleRenderCommandKind::damage_text,
+                            map_x,
+                            map_y,
+                            overlay_x,
+                            screen_y - 40 - 2 * static_cast<std::int32_t>(state.damage_text_offset),
+                            0,
+                            -1,
+                            wrapping_i16(render::legacy_color::text::battle_damage_numbers[1U].legacy_packed()),
+                            combatants_[combatant].poison_overflow_damage);
+                    }
                 }
             }
         }
@@ -5381,6 +5450,9 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
 
 void BattleSetup::clear_attack_effects() noexcept {
     std::ranges::fill(attack_effects_, static_cast<std::int16_t>(0));
+    for (auto& combatant : combatants_) {
+        combatant.poison_overflow_damage = 0;
+    }
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
@@ -5457,6 +5529,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
                 return false;
             }
             combatants_[target_index].damage_value = damage->damage;
+            combatants_[target_index].poison_overflow_damage = damage->poison_overflow_damage;
             result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
             result.effect_kind = 1;
         } else if (hurt_type == 1) {
@@ -5465,6 +5538,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
                 return false;
             }
             combatants_[target_index].damage_value = *damage;
+            combatants_[target_index].poison_overflow_damage = 0;
             result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
             result.effect_kind = 3;
         }
@@ -5580,6 +5654,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
             return std::nullopt;
         }
         combatants_[target_index].damage_value = damage->damage;
+        combatants_[target_index].poison_overflow_damage = damage->poison_overflow_damage;
         result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
         result.effect_kind = 1;
     }

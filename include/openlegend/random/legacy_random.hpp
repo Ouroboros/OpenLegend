@@ -16,7 +16,7 @@ public:
 
     NODISCARD std::uint16_t next() noexcept;
 
-    NODISCARD std::int32_t bounded(std::int32_t upper_bound) noexcept;
+    NODISCARD std::int32_t bounded(std::int64_t upper_bound) noexcept;
 
     NODISCARD static constexpr std::uint32_t dos_time_seed(
         const std::uint8_t second, const std::uint8_t hundredth) noexcept {

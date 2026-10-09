@@ -63,7 +63,7 @@
   <h3>字段与范围</h3>
   <p><code>poison</code>为当前中毒量，表示毒入几成；换周目清0，320名原版角色初值均为0。</p>
   <p>从NG1起各周目的正常范围固定为0～99；取消<code>poison_cap_step</code>，中毒上限不随周目增加。原版武功附毒可恰好写出100，这是机器事实；NG+各施毒路径以“最深”封顶，最深不超过99，不再写出100。</p>
-  <p>上毒公式见下方<a href="#poison-application">上毒</a>，毒发见<a href="#poison-detox-rules">回合毒伤</a>，解毒见<a href="#detoxification">解毒章</a>。本章是设计规则，运行时代码尚未实现。</p>
+  <p>上毒公式见下方<a href="#poison-application">上毒</a>，毒发见<a href="#poison-detox-rules">回合毒伤</a>，解毒见<a href="#detoxification">解毒章</a>。武功附毒已接入共用毒模型，武功溢出可致死、不额外增加内伤，并单独追加伤血飘字。主动施毒、正毒物品／暗器、回合毒发及解毒疗效仍待接入。</p>
 </section>
 <section id="poison-application">
   <h3>上毒</h3>
@@ -144,7 +144,7 @@ HP2 = signed16(HP1 − PoisonHp)
 <h3 id="use-poison-cap">用毒能力与固定作用距离</h3>
 <p>原版用毒能力正常上限为100；旧方案的<code>100 + (n − 1) × use_poison_cap_step</code>（默认步长100）不再作为NG+角色用毒能力的周目上限，也不用于继承或增长夹值。</p>
 <p>曾入队角色换周目时完整继承自己的实际<code>use_poison</code>；未入队角色读取当前RANGER基线。用毒实际能力即主动用毒的毒力，按<a href="#poison-application">上毒</a>结算；作用距离仍沿用独立的原版100点封顶，不将距离封顶反写到角色用毒值。</p>
-<p>现有运行时代码中升级、秘笈修炼仍将用毒值封顶100；本页是尚未实现的NG+设计，不把代码现状当成新规则。</p>
+<p>升级与秘笈修炼已取消用毒值的100封顶；主动施毒等入口仍待接入共用毒模型。</p>
 </section>
 <section id="poison-mechanics">
 <h3>主动用毒</h3>
@@ -209,7 +209,7 @@ PoisonRange = trunc(U ÷ 15) + 1</pre>
 <tr><td>回合中毒扣血</td><td>只按目标当前中毒量和最大生命结算，不再次用抗毒抵减。</td><td>不读取抗毒</td></tr>
 <tr><td>显示与存档</td><td>显示实际抗毒；新TOML校验数值可表示性而不按敌方抗毒STEP拒绝或夹值，旧Legacy另按自身16位范围处理。敌方仍从GAME DATA基线按周目增长。</td><td>实际数值</td></tr>
 </tbody></table>
-<p>原版固定90、100门槛只作机器事实对照，不再套用到NG+。NG+施毒仅按各路径的实际数值计算，抗毒决定毒性被抵消的比例；抗毒达到或超过毒力时不中毒。现有运行时代码尚未实现这些扩展。</p>
+<p>原版固定90、100门槛只作机器事实对照，不再套用到NG+。NG+施毒仅按各路径的实际数值计算，抗毒决定毒性被抵消的比例；抗毒达到或超过毒力时不中毒。武功附毒已接入这些规则；主动施毒、普通正毒物品及玩家／AI正毒暗器仍待接入。</p>
 </section>
 </section>
 <section id="detoxification">
