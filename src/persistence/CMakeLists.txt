@@ -4,6 +4,9 @@ add_library(
     scene_archive_codec.cpp
     asset_fingerprints.cpp
     toml_snapshot.cpp
+    save_file.cpp
+    native_save_file.cpp
+    toml_slot.cpp
 )
 target_include_directories(
     openlegend_persistence

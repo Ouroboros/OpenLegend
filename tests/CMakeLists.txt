@@ -233,6 +233,26 @@ target_include_directories(openlegend_toml_snapshot_tests PRIVATE ${CMAKE_CURREN
 target_link_libraries(openlegend_toml_snapshot_tests PRIVATE openlegend_persistence tomlplusplus::tomlplusplus)
 add_test(NAME openlegend.persistence.toml_snapshots COMMAND openlegend_toml_snapshot_tests)
 
+string(SHA256 OPENLEGEND_PERSISTENCE_TEST_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+add_executable(openlegend_save_file_tests unit/persistence/save_file_test.cpp)
+target_compile_definitions(
+    openlegend_save_file_tests
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${PROJECT_SOURCE_DIR}/tmp/persistence-tests/${OPENLEGEND_PERSISTENCE_TEST_DIRECTORY}/$<CONFIG>"
+)
+target_include_directories(openlegend_save_file_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/support ${PROJECT_SOURCE_DIR}/src/persistence)
+target_link_libraries(openlegend_save_file_tests PRIVATE openlegend_persistence)
+add_test(NAME openlegend.persistence.save_files COMMAND openlegend_save_file_tests)
+
+add_executable(openlegend_toml_slot_tests unit/persistence/toml_slot_test.cpp)
+target_compile_definitions(
+    openlegend_toml_slot_tests
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${PROJECT_SOURCE_DIR}/tmp/persistence-tests/${OPENLEGEND_PERSISTENCE_TEST_DIRECTORY}/$<CONFIG>"
+)
+target_include_directories(openlegend_toml_slot_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_toml_slot_tests PRIVATE openlegend_persistence)
+add_test(NAME openlegend.persistence.toml_slots COMMAND openlegend_toml_slot_tests)
+
 set_tests_properties(
     openlegend.resource
     openlegend.audio
@@ -242,6 +262,7 @@ set_tests_properties(
     openlegend.persistence.scene_archives
     openlegend.persistence.asset_fingerprints
     openlegend.persistence.toml_snapshots
+    openlegend.persistence.toml_slots
     openlegend.battle.enemy_roles
     PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
