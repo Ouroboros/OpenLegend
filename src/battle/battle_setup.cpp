@@ -2479,25 +2479,31 @@ bool BattleSetup::finish_poison_action(const std::size_t actor_slot) {
         error_ = "battle action experience counter overflow";
         return false;
     }
+    auto* actor = combatant_role(actor_slot);
+    if (actor == nullptr) {
+        error_ = "battle poison sprite role is outside ranger records";
+        return false;
+    }
+    const auto physical_power = model::checked_subtract(actor->physical_power, 2);
+    if (!physical_power.has_value()) {
+        error_ = "battle action physical power overflows";
+        return false;
+    }
+    std::array<std::int16_t, kBattleCombatantCount> sprites{};
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto* role = combatant_role(slot);
         if (role == nullptr) {
             error_ = "battle poison sprite role is outside ranger records";
             return false;
         }
-        combatants_[slot].words[combatant_word::sprite] = sprite_word(
-            *role, combatants_[slot].words[combatant_word::initial_mode]);
+        sprites[slot] = sprite_word(*role, combatants_[slot].words[combatant_word::initial_mode]);
     }
-    auto& actor_words = combatants_[actor_slot].words;
-    actor_words[combatant_word::action_done] = 1;
+    for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
+        combatants_[slot].words[combatant_word::sprite] = sprites[slot];
+    }
+    combatants_[actor_slot].words[combatant_word::action_done] = 1;
     combatants_[actor_slot].reward_experience = *counter;
-    auto& actor = *combatant_role(actor_slot);
-    auto physical_power = wrapping_i16(
-        static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2);
-    if (physical_power < 0) {
-        physical_power = 0;
-    }
-    actor.set_word(model::role_word::physical_power, physical_power);
+    actor->physical_power = std::max<std::int64_t>(*physical_power, 0);
     return true;
 }
 

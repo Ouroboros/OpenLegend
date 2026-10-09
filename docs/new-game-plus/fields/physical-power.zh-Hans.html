@@ -33,6 +33,12 @@
         </tr></tbody></table>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
 </section>
+<section id="support-action-finish">
+<h2>用毒、解毒与医疗的行动收尾</h2>
+<p>三种动作保留原版在效果及数字动画完成后统一收尾的时机，未命中目标也不免除收尾：奖励计数加1，体力减2后最低为0，不按周目倍乘。医疗核心自身的体力消耗仍属于此前独立结算；这里是战斗行动完成时另扣的2点。</p>
+<p>奖励加算与体力减法使用检查过的signed64，不经过word或int32回绕，也不先用下界夹值掩盖溢出。先检查两项运算及全部参战角色引用，计算全部待恢复精灵，成功后才一并写精灵、行动完成标记、奖励和体力；失败保留本次收尾前的角色及参战状态，不回滚此前已生效的毒、治疗或动画。收尾自身不消费随机数。</p>
+<p>原版<a href="../../../research/evidence/functions/Z_DAT/0x397E5.md">用毒</a>在<code>0x399FE..0x39A44</code>提交；<a href="../../../research/evidence/functions/Z_DAT/0x39B8E.md">解毒</a>和<a href="../../../research/evidence/functions/Z_DAT/0x39EF7.md">医疗</a>分别从<code>0x39D9E</code>和<code>0x3A107</code>跳入该共享尾。原机器的16位回绕属于历史合同，当前实现明确替换。固定体力域0～100及保存检查保持；大数和负数测试只验证执行层宽度与失败边界，不表示这些输入可持久化。</p>
+</section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
 <a href="../support/inventory.zh-Hans.html">库存规则</a>、

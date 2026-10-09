@@ -917,7 +917,7 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.finish_poison_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
     OL_CHECK(setup.combatants()[0U].reward_experience == 32768);
-    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 0);
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
         const auto head_id = ranger.roles[static_cast<std::size_t>(role_id)].word(
@@ -1105,7 +1105,7 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.finish_detox_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
     OL_CHECK(setup.combatants()[0U].reward_experience == 32768);
-    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 0);
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
         const auto head_id = ranger.roles[static_cast<std::size_t>(role_id)].word(
@@ -1331,7 +1331,7 @@ void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.finish_medicine_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
     OL_CHECK(setup.combatants()[0U].reward_experience == 32768);
-    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 32766);
+    OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 0);
     for (std::size_t slot = 0U; slot < 2U; ++slot) {
         const auto role_id = setup.combatants()[slot].words[combatant_word::role_id];
         const auto head_id = ranger.roles[static_cast<std::size_t>(role_id)].word(
@@ -14533,6 +14533,95 @@ void run_ngplus_speed_domain_test(const openlegend::resource::DataRoot& data_roo
     }
 }
 
+void run_ngplus_support_finish_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend::battle;
+    constexpr auto wide = std::int64_t{5'000'000'000'000};
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    struct FinishCase {
+        std::int64_t physical_power;
+        std::int64_t reward;
+        std::optional<std::int64_t> expected_power;
+        std::int16_t invalid_role_slot{-1};
+        bool invalid_actor_slot{};
+    };
+    const std::array cases{
+        FinishCase{0, wide, 0},
+        FinishCase{1, wide, 0},
+        FinishCase{2, wide, 0},
+        FinishCase{3, wide, 1},
+        FinishCase{100, wide, 98},
+        FinishCase{32767, wide, 32765},
+        FinishCase{32768, wide, 32766},
+        FinishCase{wide, wide, wide - 2},
+        FinishCase{maximum, maximum - 1, maximum - 2},
+        FinishCase{-32768, wide, 0},
+        FinishCase{minimum + 2, wide, 0},
+        FinishCase{minimum, wide, std::nullopt},
+        FinishCase{minimum + 1, wide, std::nullopt},
+        FinishCase{100, maximum, std::nullopt},
+        FinishCase{100, wide, std::nullopt, 0},
+        FinishCase{100, wide, std::nullopt, 1},
+        FinishCase{100, wide, std::nullopt, -1, true},
+    };
+    const std::array finish_actions{
+        &BattleSetup::finish_poison_action,
+        &BattleSetup::finish_detox_action,
+        &BattleSetup::finish_medicine_action,
+    };
+    for (const bool enabled : {false, true}) {
+        openlegend::model::NewGamePlusConfiguration configuration;
+        configuration.enabled = enabled;
+        for (const std::int64_t playthrough : {1, 2, 999}) {
+            if (!enabled && playthrough != 1) {
+                continue;
+            }
+            for (const auto finish_action : finish_actions) {
+                for (const auto& test_case : cases) {
+                    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                    BattleData data{data_root, 4};
+                    BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                    OL_CHECK(setup.valid());
+                    OL_CHECK(setup.combatant_count() == 2);
+                    if (!setup.valid() || setup.combatant_count() != 2) {
+                        return;
+                    }
+                    const auto actor_role = static_cast<std::size_t>(
+                        setup.combatants()[0U].words[combatant_word::role_id]);
+                    ranger.roles[actor_role].physical_power = test_case.physical_power;
+                    setup.combatants()[0U].reward_experience = test_case.reward;
+                    if (test_case.invalid_role_slot >= 0) {
+                        setup.combatants()[static_cast<std::size_t>(test_case.invalid_role_slot)]
+                            .words[combatant_word::role_id] = -1;
+                    }
+                    auto expected_roles = ranger.roles;
+                    std::vector<BattleCombatant> expected_combatants{
+                        setup.combatants().begin(), setup.combatants().end()};
+                    for (std::size_t slot = 0U; slot < 2U; ++slot) {
+                        setup.combatants()[slot].words[combatant_word::sprite] = -123;
+                    }
+                    if (test_case.expected_power.has_value()) {
+                        expected_roles[actor_role].physical_power = *test_case.expected_power;
+                        expected_combatants[0U].words[combatant_word::action_done] = 1;
+                        expected_combatants[0U].reward_experience = test_case.reward + 1;
+                    } else {
+                        std::ranges::copy(setup.combatants(), expected_combatants.begin());
+                    }
+                    const auto actor_slot = test_case.invalid_actor_slot ? 2U : 0U;
+                    OL_CHECK((setup.*finish_action)(actor_slot) ==
+                        test_case.expected_power.has_value());
+                    OL_CHECK(ranger.roles == expected_roles);
+                    OL_CHECK(std::ranges::equal(setup.combatants(), expected_combatants));
+                    if (!test_case.expected_power.has_value() && !test_case.invalid_actor_slot) {
+                        OL_CHECK(!setup.valid());
+                        OL_CHECK(!setup.error().empty());
+                    }
+                }
+            }
+        }
+    }
+}
+
 using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
 
 [[gnu::noinline]] void run_battle_check(
@@ -14548,7 +14637,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 54> checks{
+    const std::array<BattleCheck, 55> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14603,6 +14692,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_equipment_test,
         run_ngplus_ai_arithmetic_test,
         run_ngplus_speed_domain_test,
+        run_ngplus_support_finish_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {
