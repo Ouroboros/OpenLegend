@@ -13,6 +13,7 @@
 
 #include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/experience.hpp"
+#include "openlegend/model/magic_progression.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/world_projection.hpp"
 
@@ -22,7 +23,7 @@ namespace {
 namespace text_colors = render::legacy_color::text;
 
 constexpr std::array<std::int16_t, kBattleCombatantWords> kInitialCombatantWords{
-    -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, 0, -1, -1};
+    -1, -1, 0, 0, 0, 0, 0, 0, 5098, 0, -1, -1};
 constexpr std::array<BattlePathCoord, 4> kLegacyPathDirections{{
     {0, -1},
     {1, 0},
@@ -531,7 +532,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
 BattleSetup::BattleSetup(
     BattleData& data,
     model::RuntimeRangerState& ranger,
-    std::int16_t* const legacy_hp_cost_scale,
+    std::int64_t* const legacy_hp_cost_scale,
     const model::NewGamePlusConfiguration& configuration,
     const std::int64_t playthrough)
     : data_(data),
@@ -719,6 +720,7 @@ void BattleSetup::update_occupancy(const std::size_t slot) {
 
 void BattleSetup::swap_combatants(const std::size_t first, const std::size_t second) {
     std::swap(combatants_[first].reward_experience, combatants_[second].reward_experience);
+    std::swap(combatants_[first].damage_value, combatants_[second].damage_value);
     const auto saved = combatants_[first].words;
     for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
         if (word != combatant_word::sprite) {
@@ -1858,7 +1860,7 @@ bool BattleSetup::commit_attack_iteration(
 bool BattleSetup::commit_attack_mp_cost(
     const std::size_t slot,
     const std::int16_t magic_slot,
-    const std::int16_t cost_scale) {
+    const std::int64_t cost_scale) {
     const auto profile = attack_profile(slot, magic_slot);
     if (!profile) {
         error_ = "battle attack MP cost profile is outside ranger records";
@@ -1866,13 +1868,14 @@ bool BattleSetup::commit_attack_mp_cost(
     }
     const auto role_id = combatants_[slot].words[combatant_word::role_id];
     auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-    const auto cost =
-        static_cast<std::int32_t>(cost_scale / 2) * profile->need_mp;
-    auto mp = wrapping_i16(static_cast<std::int32_t>(role.word(model::role_word::mp)) - cost);
-    if (mp < 0) {
-        mp = 0;
+    const auto cost = cost_scale < 0 ? std::nullopt
+        : model::magic_mp_cost(std::max<std::int64_t>(cost_scale, 1), profile->need_mp);
+    const auto mp = cost.has_value() ? model::checked_subtract(role.mp, *cost) : std::nullopt;
+    if (!mp.has_value()) {
+        error_ = "battle attack MP cost overflow or invalid scale";
+        return false;
     }
-    role.set_word(model::role_word::mp, mp);
+    role.mp = std::max<std::int64_t>(*mp, 0);
     return true;
 }
 
@@ -2209,7 +2212,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_poison_target(
     if (!amount) {
         return std::nullopt;
     }
-    combatants_[target_index].words[combatant_word::damage_value] = *amount;
+    combatants_[target_index].damage_value = *amount;
     result.hit_count = 1;
     result.effect_kind = 2;
     return result;
@@ -2332,7 +2335,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_detox_target(
     if (!amount) {
         return std::nullopt;
     }
-    combatants_[target_index].words[combatant_word::damage_value] = *amount;
+    combatants_[target_index].damage_value = *amount;
     result.hit_count = 1;
     result.effect_kind = 3;
     return result;
@@ -2427,7 +2430,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_medicine_target(
     if (!amount) {
         return std::nullopt;
     }
-    combatants_[target_index].words[combatant_word::damage_value] = wrapping_i16(*amount);
+    combatants_[target_index].damage_value = *amount;
     result.hit_count = 1;
     result.effect_kind = 4;
     return result;
@@ -2710,7 +2713,7 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_payload
     target_role.set_word(model::role_word::hp, changed_hp);
     const auto damage = wrapping_i16(std::abs(
         static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp)));
-    target_words[combatant_word::damage_value] = damage;
+    combatants_[target_index].damage_value = damage;
 
     const auto item_poison = item.word(model::item_word::add_poison);
     std::int16_t poison_delta = 0;
@@ -2935,7 +2938,7 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
     target_role.set_word(model::role_word::hp, changed_hp);
     const auto damage = wrapping_i16(std::abs(
         static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp)));
-    target_words[combatant_word::damage_value] = damage;
+    combatants_[target_index].damage_value = damage;
 
     const auto item_poison = item.word(model::item_word::add_poison);
     const auto poison_delta = item_poison < 0
@@ -5173,7 +5176,7 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                                    const std::int32_t sprite_id,
                                    const std::int16_t overlay_variant = 0,
                                    const std::int16_t style = 0,
-                                   const std::int16_t value = 0) {
+                                   const std::int64_t value = 0) {
         plan.commands.push_back(BattleRenderCommand{
             kind,
             map_x,
@@ -5367,7 +5370,7 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                             render::legacy_color::text::battle_damage_numbers[
                                 static_cast<std::size_t>(state.damage_kind)]
                                 .legacy_packed()),
-                        combatants_[combatant].words[combatant_word::damage_value]);
+                        combatants_[combatant].damage_value);
                 }
             }
         }
@@ -5452,7 +5455,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
             if (!damage) {
                 return false;
             }
-            combatants_[target_index].words[combatant_word::damage_value] = damage->damage;
+            combatants_[target_index].damage_value = damage->damage;
             result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
             result.effect_kind = 1;
         } else if (hurt_type == 1) {
@@ -5460,8 +5463,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_attack_area(
             if (!damage) {
                 return false;
             }
-            combatants_[target_index].words[combatant_word::damage_value] =
-                wrapping_i16(*damage);
+            combatants_[target_index].damage_value = *damage;
             result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
             result.effect_kind = 3;
         }
@@ -5576,7 +5578,7 @@ std::optional<BattleAreaResult> BattleSetup::apply_line_attack_area(
         if (!damage) {
             return std::nullopt;
         }
-        combatants_[target_index].words[combatant_word::damage_value] = damage->damage;
+        combatants_[target_index].damage_value = damage->damage;
         result.hit_count = wrapping_i16(static_cast<std::int32_t>(result.hit_count) + 1);
         result.effect_kind = 1;
     }

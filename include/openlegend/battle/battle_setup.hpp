@@ -18,7 +18,7 @@
 namespace openlegend::battle {
 
 inline constexpr std::size_t kBattleCombatantCount = 26U;
-inline constexpr std::size_t kBattleCombatantWords = 13U;
+inline constexpr std::size_t kBattleCombatantWords = 12U;
 inline constexpr std::size_t kBattlePartySlots = 6U;
 inline constexpr std::size_t kBattleEnemySlots = 20U;
 inline constexpr std::int16_t kBattleEffectPointerBase = 6'500;
@@ -34,15 +34,15 @@ inline constexpr std::size_t occupancy_hidden = 5U;
 inline constexpr std::size_t round_value = 6U;
 inline constexpr std::size_t action_done = 7U;
 inline constexpr std::size_t sprite = 8U;
-inline constexpr std::size_t damage_value = 9U;
-inline constexpr std::size_t ai_action = 10U;
-inline constexpr std::size_t ai_target = 11U;
-inline constexpr std::size_t ai_poison_target = 12U;
+inline constexpr std::size_t ai_action = 9U;
+inline constexpr std::size_t ai_target = 10U;
+inline constexpr std::size_t ai_poison_target = 11U;
 }  // namespace combatant_word
 
 struct BattleCombatant {
     std::array<std::int16_t, kBattleCombatantWords> words{};
     std::int64_t reward_experience{};
+    std::int64_t damage_value{};
 
     NODISCARD bool operator==(const BattleCombatant&) const = default;
 };
@@ -60,8 +60,8 @@ struct BattleAttackProfile {
 };
 
 struct BattleHpDamageResult {
-    std::int16_t damage{};
-    std::int16_t cost_scale{};
+    std::int64_t damage{};
+    std::int64_t cost_scale{};
 };
 
 struct BattleAreaResult {
@@ -452,7 +452,7 @@ struct BattleRenderCommand {
     std::int32_t sprite_id{};
     std::int16_t overlay_variant{};
     std::int16_t style{};
-    std::int16_t value{};
+    std::int64_t value{};
 };
 
 struct BattleRenderState {
@@ -683,7 +683,7 @@ public:
     BattleSetup(
         BattleData& data,
         model::RuntimeRangerState& ranger,
-        std::int16_t* legacy_hp_cost_scale = nullptr,
+        std::int64_t* legacy_hp_cost_scale = nullptr,
         const model::NewGamePlusConfiguration& configuration = {},
         std::int64_t playthrough = 1);
 
@@ -797,7 +797,7 @@ public:
     NODISCARD bool commit_attack_mp_cost(
         std::size_t slot,
         std::int16_t magic_slot,
-        std::int16_t cost_scale);
+        std::int64_t cost_scale);
 
     NODISCARD std::optional<BattleHpDamageResult> apply_hp_damage(
         std::size_t actor_slot,
@@ -1068,7 +1068,7 @@ public:
         return attack_effects_;
     }
 
-    NODISCARD std::int16_t last_hp_cost_scale() const noexcept {
+    NODISCARD std::int64_t last_hp_cost_scale() const noexcept {
         return legacy_hp_cost_scale_ != nullptr
             ? *legacy_hp_cost_scale_
             : last_hp_cost_scale_;
@@ -1207,8 +1207,8 @@ private:
     std::array<std::int16_t, kBattlePartySlots> selection_states_{};
     std::array<std::int16_t, kBattleOccupancyCells> attack_effects_{};
     std::int16_t combatant_count_{};
-    std::int16_t last_hp_cost_scale_{};
-    std::int16_t* legacy_hp_cost_scale_{};
+    std::int64_t last_hp_cost_scale_{};
+    std::int64_t* legacy_hp_cost_scale_{};
     std::size_t party_prefix_length_{kBattlePartySlots};
     std::size_t cursor_{};
     bool waiting_{};

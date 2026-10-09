@@ -190,7 +190,7 @@ BattleSession::BattleSession(
     const bool grant_experience,
     const BattleRenderState initial_render_state,
     std::int16_t* const legacy_player_item_slot,
-    std::int16_t* const legacy_hp_cost_scale,
+    std::int64_t* const legacy_hp_cost_scale,
     std::int16_t* const legacy_magic_slot,
     const model::NewGamePlusConfiguration& configuration,
     const std::int64_t playthrough)

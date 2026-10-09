@@ -105,6 +105,8 @@ std::uint64_t fnv1a_render_plan(const openlegend::battle::BattleRenderPlan& plan
     std::vector<std::int16_t> words;
     words.reserve(plan.commands.size() * 9U);
     for (const auto& command : plan.commands) {
+        OL_CHECK(command.value >= std::numeric_limits<std::int16_t>::min());
+        OL_CHECK(command.value <= std::numeric_limits<std::int16_t>::max());
         words.insert(
             words.end(),
             {
@@ -116,7 +118,7 @@ std::uint64_t fnv1a_render_plan(const openlegend::battle::BattleRenderPlan& plan
                 static_cast<std::int16_t>(command.sprite_id),
                 command.overlay_variant,
                 command.style,
-                command.value,
+                static_cast<std::int16_t>(command.value),
             });
     }
     return fnv1a_words(words);
@@ -552,6 +554,21 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
                  *cancelled, BattleMagicSelectionAction::cancel) ==
              BattleMagicSelectionResult::cancelled);
     OL_CHECK(cancelled->cancelled);
+
+    role.mp = 20'000'000'000;
+    role.maximum_mp = role.mp;
+    std::int64_t retained_scale = 5'000'000'001;
+    BattleSetup wide_cost_setup{data, ranger, &retained_scale};
+    OL_CHECK(wide_cost_setup.last_hp_cost_scale() == retained_scale);
+    OL_CHECK(wide_cost_setup.commit_attack_mp_cost(0U, 2, retained_scale));
+    OL_CHECK(role.mp == 10'000'000'000);
+    OL_CHECK(wide_cost_setup.commit_attack_mp_cost(0U, 2, 0));
+    OL_CHECK(role.mp == 10'000'000'000);
+    const auto before_overflow = role;
+    OL_CHECK(!wide_cost_setup.commit_attack_mp_cost(
+        0U, 2, std::numeric_limits<std::int64_t>::max()));
+    OL_CHECK(role == before_overflow);
+    OL_CHECK(retained_scale == 5'000'000'001);
 }
 
 void run_attack_animation_test(const openlegend::resource::DataRoot& data_root) {
@@ -727,7 +744,7 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(result->effect_kind == 2);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 9);
+    OL_CHECK(setup.combatants()[1U].damage_value == 9);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
     OL_CHECK(setup.finish_poison_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
@@ -847,7 +864,7 @@ void run_poison_action_test(const openlegend::resource::DataRoot& data_root) {
     const auto negative_amount = setup.apply_poison_target(0U, BattlePathCoord{26, 26});
     OL_CHECK(negative_amount.has_value());
     OL_CHECK(negative_amount->hit_count == 1);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == -1);
+    OL_CHECK(setup.combatants()[1U].damage_value == -1);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 99);
 
     setup.combatants()[0U].words[combatant_word::initial_mode] = 3;
@@ -957,7 +974,7 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(random.state() == 2'524'885'223U);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 26);
+    OL_CHECK(setup.combatants()[1U].damage_value == 26);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 64);
     OL_CHECK(setup.finish_detox_action(0U));
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 1);
@@ -1155,7 +1172,7 @@ void run_medicine_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(random.state() == 1'103'527'590U);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 63);
+    OL_CHECK(setup.combatants()[1U].damage_value == 63);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 163);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 0);
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 49);
@@ -1407,7 +1424,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 12);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 21);
+    OL_CHECK(setup.combatants()[1U].damage_value == 21);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(setup.combatants()[0U].reward_experience == 0);
     OL_CHECK(ranger.header.inventory_item(0U).value == 102);
@@ -4300,7 +4317,7 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     const auto marked = render_setup.apply_poison_target(0U, BattlePathCoord{26, 26});
     OL_CHECK(marked.has_value());
     OL_CHECK(marked->hit_count == 1);
-    render_setup.combatants()[1U].words[combatant_word::damage_value] = 17;
+    render_setup.combatants()[1U].damage_value = 17;
 
     std::array<std::int16_t, kBattleOccupancyCells> path_values{};
     path_values[25U * 64U + 25U] = 10;
@@ -4543,6 +4560,44 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     OL_CHECK(status_panel.has_value());
     OL_CHECK(renderer.render_status_panel(*status_panel, framebuffer));
     OL_CHECK(fnv1a_bytes(framebuffer.pixels()) == 0xf3fb3a77fd749067ULL);
+
+    struct DamageExample {
+        std::int64_t value;
+        std::u8string_view text;
+    };
+    constexpr std::array damage_examples{
+        DamageExample{5'000'000'000, u8"+5000000000"},
+        DamageExample{std::numeric_limits<std::int64_t>::max(), u8"+9223372036854775807"},
+        DamageExample{std::numeric_limits<std::int64_t>::min(), u8"+-9223372036854775808"},
+    };
+    for (const auto& example : damage_examples) {
+        render_setup.combatants()[1U].damage_value = example.value;
+        const auto wide_plan = render_setup.battle_render_plan(state, path_values);
+        OL_CHECK(wide_plan.has_value());
+        const auto damage = std::ranges::find_if(wide_plan->commands, [](const auto& command) {
+            return command.kind == BattleRenderCommandKind::damage_text;
+        });
+        OL_CHECK(damage != wide_plan->commands.end());
+        if (damage == wide_plan->commands.end()) {
+            continue;
+        }
+        OL_CHECK(damage->value == example.value);
+        auto command = *damage;
+        command.screen_x = 8;
+        command.screen_y = 8;
+        BattleRenderPlan text_plan;
+        text_plan.commands.push_back(command);
+        openlegend::render::IndexedFramebuffer actual;
+        openlegend::render::IndexedFramebuffer expected;
+        actual.clear(0);
+        expected.clear(0);
+        OL_CHECK(renderer.render(text_plan, actual));
+        OL_CHECK(renderer.draw_text_utf8(expected, 8, 8, example.text,
+            openlegend::render::TextColors::from_legacy_packed(
+                std::bit_cast<std::uint16_t>(command.style))));
+        OL_CHECK(std::ranges::equal(actual.pixels(), expected.pixels()));
+    }
+    render_setup.combatants()[1U].damage_value = 17;
 
     auto no_range_state = state;
     no_range_state.path_limit = 0;
@@ -5253,7 +5308,7 @@ void run_player_item_session_test(
         OL_CHECK(target.word(role_word::hurt) == 45);
         OL_CHECK(target.word(role_word::poison) == 12);
         OL_CHECK(random.state() == 1'103'527'590U);
-        OL_CHECK(session->setup().combatants()[1U].words[combatant_word::damage_value] == 21);
+        OL_CHECK(session->setup().combatants()[1U].damage_value == 21);
 
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::player_damage_frame_present &&
@@ -11087,7 +11142,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     magic.set_word(openlegend::model::magic_word::hurt_mp_begin + 2U, 15);
 
     BattleData data{data_root, 4};
-    std::int16_t legacy_hp_cost_scale = 0;
+    std::int64_t legacy_hp_cost_scale = 0;
     BattleSetup setup{data, ranger, &legacy_hp_cost_scale};
     OL_CHECK(setup.valid());
     data.occupancy()[25U * 64U + 25U] = 0;
@@ -11101,7 +11156,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xe5f47b0a810ce2bdULL);
     OL_CHECK(setup.attack_effects()[25U * 64U + 25U] == 0);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 29);
+    OL_CHECK(setup.combatants()[1U].damage_value == 29);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 2);
     OL_CHECK(setup.last_hp_cost_scale() == 3);
@@ -11125,7 +11180,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0x3144c415023d9464ULL);
     OL_CHECK(setup.attack_effects()[25U * 64U + 26U] == 0);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 2);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 29);
+    OL_CHECK(setup.combatants()[1U].damage_value == 29);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
     OL_CHECK(target.word(openlegend::model::role_word::mp) == 50);
     OL_CHECK(random.state() == 2'524'885'223U);
@@ -11143,7 +11198,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(mp_square->effect_kind == 3);
     OL_CHECK(std::ranges::count(setup.attack_effects(), static_cast<std::int16_t>(1)) == 1);
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 15);
+    OL_CHECK(setup.combatants()[1U].damage_value == 15);
     OL_CHECK(actor.word(openlegend::model::role_word::mp) == 23);
     OL_CHECK(actor.word(openlegend::model::role_word::maximum_mp) == 23);
     OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
@@ -11166,7 +11221,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(line->effect_kind == 1);
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xae7c1e4e161ac125ULL);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 1);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] == 29);
+    OL_CHECK(setup.combatants()[1U].damage_value == 29);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
     OL_CHECK(target.word(openlegend::model::role_word::mp) == 35);
     OL_CHECK(random.state() == 2'524'885'223U);
@@ -11256,7 +11311,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
                      setup.attack_effects(), static_cast<std::int16_t>(1)) == 2);
         OL_CHECK(fnv1a_words(setup.attack_effects()) == line_effect_hashes[direction]);
         OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 7);
-        OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] > 0);
+        OL_CHECK(setup.combatants()[1U].damage_value > 0);
         OL_CHECK(random.state() != 1U);
     }
 
@@ -11287,7 +11342,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(hidden_dead->hit_count == 1);
     OL_CHECK(hidden_dead->effect_kind == 1);
     OL_CHECK(setup.attack_effects()[10U * 64U + 11U] == 1);
-    OL_CHECK(setup.combatants()[1U].words[combatant_word::damage_value] > 0);
+    OL_CHECK(setup.combatants()[1U].damage_value > 0);
     OL_CHECK(random.state() != 1U);
 
     setup.combatants()[1U].words[combatant_word::occupancy_hidden] = 0;
@@ -11541,12 +11596,15 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::role_id] == 1);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::round_value] == 1);
     setup.combatants()[1U].words[combatant_word::y] = 24;
-    for (const auto word : {7U, 9U, 10U, 11U, 12U}) {
+    for (const auto word : {combatant_word::action_done, combatant_word::ai_action,
+                            combatant_word::ai_target, combatant_word::ai_poison_target}) {
         setup.combatants()[0U].words[word] = static_cast<std::int16_t>(100U + word);
         setup.combatants()[1U].words[word] = static_cast<std::int16_t>(200U + word);
     }
     setup.combatants()[0U].reward_experience = 5'000'000'113;
     setup.combatants()[1U].reward_experience = 6'000'000'213;
+    setup.combatants()[0U].damage_value = 5'000'000'109;
+    setup.combatants()[1U].damage_value = -6'000'000'209;
     setup.combatants()[0U].words[combatant_word::sprite] = -123;
     setup.combatants()[1U].words[combatant_word::sprite] = -456;
     const auto before_first = setup.combatants()[0U].words;
@@ -11560,6 +11618,8 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
     }
     OL_CHECK(setup.combatants()[0U].reward_experience == 6'000'000'213);
     OL_CHECK(setup.combatants()[1U].reward_experience == 5'000'000'113);
+    OL_CHECK(setup.combatants()[0U].damage_value == -6'000'000'209);
+    OL_CHECK(setup.combatants()[1U].damage_value == 5'000'000'109);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::sprite] == 5132);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::sprite] == 5118);
     OL_CHECK(data.occupancy()[24U * 64U + 26U] == 1);
