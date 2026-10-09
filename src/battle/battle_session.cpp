@@ -491,7 +491,12 @@ void BattleSession::advance(const std::uint32_t bios_tick) {
                 " result=" + std::to_string(static_cast<int>(result_)) +
                 " messages=" + std::to_string(post_battle_messages_.size()));
         } else {
-            static_cast<void>(begin_round(bios_tick));
+            const auto outcome = setup_.evaluate_outcome();
+            if (outcome == BattleOutcome::ongoing) {
+                static_cast<void>(begin_round(bios_tick));
+            } else {
+                static_cast<void>(begin_battle_outcome(outcome));
+            }
         }
     }
 }

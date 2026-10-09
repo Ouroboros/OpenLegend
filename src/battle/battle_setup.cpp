@@ -102,34 +102,13 @@ std::optional<std::int16_t> apply_role_detox_value(
     }
     const auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
     auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
-    const auto first_variance = random.bounded(10);
-    const auto second_variance = random.bounded(10);
-    auto amount = wrapping_i16(
-        static_cast<std::int32_t>(actor.word(model::role_word::detoxification)) / 3 +
-        first_variance - second_variance);
-    if (amount > 99) {
-        amount = 99;
+    const auto amount = model::detoxification_amount(
+        actor.detoxification, target.poison, random);
+    if (!amount.has_value()) {
+        return std::nullopt;
     }
-    if (amount < 0) {
-        amount = 0;
-    }
-    if (target.word(model::role_word::poison) >
-        static_cast<std::int32_t>(actor.word(model::role_word::detoxification)) + 20) {
-        amount = 0;
-    }
-    if (amount > target.word(model::role_word::poison)) {
-        amount = target.word(model::role_word::poison);
-    }
-    const auto poison = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::poison)) - amount);
-    target.set_word(model::role_word::poison, poison);
-    if (target.word(model::role_word::poison) < 0) {
-        target.set_word(model::role_word::poison, 0);
-    }
-    if (target.word(model::role_word::poison) > 100) {
-        target.set_word(model::role_word::poison, 99);
-    }
-    return amount;
+    target.poison -= *amount;
+    return static_cast<std::int16_t>(*amount);
 }
 
 std::optional<std::int32_t> apply_role_medicine_value(
@@ -1416,6 +1395,7 @@ std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_dam
         return std::nullopt;
     }
     BattleRoundStatusDamageResult result{};
+    auto candidate_roles = ranger_.roles;
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& words = combatants_[slot].words;
         const auto role_id = words[combatant_word::role_id];
@@ -1423,9 +1403,9 @@ std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_dam
             error_ = "round-status combatant role is outside ranger records";
             return std::nullopt;
         }
-        auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        const auto hurt = role.word(model::role_word::hurt);
-        const auto poison = role.word(model::role_word::poison);
+        auto& role = candidate_roles[static_cast<std::size_t>(role_id)];
+        const auto hurt = role.hurt;
+        const auto poison = role.poison;
         if (!(hurt > 0 ||
               (poison > 0 && role.word(model::role_word::hp) > 0 &&
                role.word(model::role_word::physical_power) > 0 &&
@@ -1437,24 +1417,31 @@ std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_dam
             .combatant_slot = slot,
             .role_id = role_id,
             .hp_before = role.word(model::role_word::hp),
-            .hurt_damage = static_cast<std::int16_t>(hurt / 20),
-            .poison_damage = static_cast<std::int16_t>(poison / 10),
+            .hurt_damage = hurt / 20,
         };
-        auto hp = wrapping_i16(
-            static_cast<std::int32_t>(role.word(model::role_word::hp)) -
-            entry.hurt_damage);
-        hp = wrapping_i16(static_cast<std::int32_t>(hp) - entry.poison_damage);
-        role.set_word(model::role_word::hp, hp);
+        const auto poison_damage = model::poison_round_damage(poison, role.maximum_hp);
+        const auto after_hurt = model::checked_subtract(role.hp, entry.hurt_damage);
+        const auto after_poison = poison_damage.has_value() && after_hurt.has_value()
+            ? model::checked_subtract(*after_hurt, *poison_damage)
+            : std::nullopt;
+        if (!after_poison.has_value()) {
+            error_ = "round-status damage is invalid or overflows";
+            return std::nullopt;
+        }
+        entry.poison_damage = *poison_damage;
+        entry.hp_floored = *after_poison < 0;
+        role.hp = std::max<std::int64_t>(*after_poison, 0);
         if (role.word(model::role_word::physical_power) < 0) {
             role.set_word(model::role_word::physical_power, 1);
             entry.physical_power_floored = true;
         }
-        if (role.word(model::role_word::hp) < 0) {
-            role.set_word(model::role_word::hp, 1);
-            entry.hp_floored = true;
-        }
-        entry.hp_after = role.word(model::role_word::hp);
+        entry.hp_after = role.hp;
         result.entries.push_back(entry);
+    }
+    for (const auto& entry : result.entries) {
+        const auto role_index = static_cast<std::size_t>(entry.role_id);
+        ranger_.roles[role_index].hp = candidate_roles[role_index].hp;
+        ranger_.roles[role_index].physical_power = candidate_roles[role_index].physical_power;
     }
     return result;
 }
@@ -2171,11 +2158,12 @@ std::optional<std::int16_t> BattleSetup::poison_targeting_range(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    return wrapping_i16(
-        static_cast<std::int32_t>(
-            ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::use_poison)) /
-            15 +
-        1);
+    const auto ability = ranger_.roles[static_cast<std::size_t>(role_id)].use_poison;
+    const auto range = std::min<std::int64_t>(ability, 100) / 15 + 1;
+    if (range < std::numeric_limits<std::int16_t>::min()) {
+        return std::nullopt;
+    }
+    return static_cast<std::int16_t>(range);
 }
 
 std::optional<std::int16_t> BattleSetup::apply_poison_value(
@@ -2196,30 +2184,19 @@ std::optional<std::int16_t> BattleSetup::apply_poison_value(
     }
     const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
     auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    auto amount = wrapping_i16(
-        (static_cast<std::int32_t>(actor.word(model::role_word::use_poison)) -
-         target.word(model::role_word::anti_poison)) /
-        4);
-    if (amount > 99) {
-        amount = 99;
+    const auto poison = model::poison_application(
+        actor.use_poison, target.anti_poison, 4, target.poison, target.maximum_hp);
+    const auto hp = poison.has_value()
+        ? model::checked_subtract(target.hp, poison->hp_damage)
+        : std::nullopt;
+    if (!hp.has_value()) {
+        error_ = "battle active poison is invalid or overflows";
+        return std::nullopt;
     }
-    if (amount < 0) {
-        amount = 0;
-    }
-    if (static_cast<std::int32_t>(amount) + target.word(model::role_word::poison) > 99) {
-        amount = wrapping_i16(
-            99 - static_cast<std::int32_t>(target.word(model::role_word::poison)));
-    }
-    auto poison = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::poison)) + amount);
-    target.set_word(model::role_word::poison, poison);
-    if (poison > 99) {
-        target.set_word(model::role_word::poison, 99);
-    }
-    if (target.word(model::role_word::poison) < 0) {
-        target.set_word(model::role_word::poison, 0);
-    }
-    return amount;
+    target.poison += poison->applied_amount;
+    target.hp = std::max<std::int64_t>(*hp, 0);
+    combatants_[target_slot].poison_overflow_damage = poison->hp_damage;
+    return static_cast<std::int16_t>(poison->applied_amount);
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_poison_target(
@@ -2341,8 +2318,12 @@ std::optional<std::int16_t> BattleSetup::apply_detox_value(
         error_ = "battle detox role is outside ranger records";
         return std::nullopt;
     }
-    return apply_role_detox_value(
+    const auto amount = apply_role_detox_value(
         ranger_, actor_role_id, target_role_id, random);
+    if (!amount.has_value()) {
+        error_ = "battle detox amount is invalid or overflows";
+    }
+    return amount;
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_detox_target(
@@ -4298,7 +4279,7 @@ std::optional<bool> BattleSetup::choose_ai_strongest_poison_target(
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
     const auto actor_use_poison = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
         model::role_word::use_poison);
-    std::int16_t best_attack = 0;
+    std::int64_t best_attack = 0;
     bool written = false;
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& combatant = combatants_[slot].words;
@@ -4311,8 +4292,7 @@ std::optional<bool> BattleSetup::choose_ai_strongest_poison_target(
             return std::nullopt;
         }
         const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        if (role.word(model::role_word::poison) >= 95 ||
-            role.word(model::role_word::anti_poison) >= actor_use_poison) {
+        if (role.anti_poison >= actor_use_poison) {
             continue;
         }
         const auto attack = role.word(model::role_word::attack);
@@ -4350,8 +4330,7 @@ std::optional<bool> BattleSetup::choose_ai_first_poison_target(
             return std::nullopt;
         }
         const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        if (role.word(model::role_word::poison) >= 95 ||
-            role.word(model::role_word::anti_poison) >= actor_use_poison) {
+        if (role.anti_poison >= actor_use_poison) {
             continue;
         }
         if (stale_target_slot >= static_cast<std::size_t>(combatant_count_)) {
