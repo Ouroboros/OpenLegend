@@ -12,6 +12,7 @@
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/experience.hpp"
+#include "openlegend/model/hurt.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -380,6 +381,7 @@ bool BattleRenderer::render_character_selection(
     const std::size_t cursor,
     const PartySelectionKind kind,
     render::IndexedFramebuffer& framebuffer,
+    const model::PlaythroughLimits& limits,
     const std::optional<std::int16_t> item_id) {
     std::size_t party_count = model::kTeamMemberCount;
     for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
@@ -464,11 +466,14 @@ bool BattleRenderer::render_character_selection(
             return false;
         }
         if (kind == PartySelectionKind::medicine_target) {
-            const auto hurt = role.word(model::role_word::hurt);
+            const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
+            if (!hurt.has_value()) {
+                return false;
+            }
             const auto hp_color = selected ? text_colors::selected
-                : hurt > 66 ? text_colors::severe_injury
-                : hurt > 33 ? text_colors::moderate_injury
-                            : text_colors::notice;
+                : *hurt == model::HurtBand::severe ? text_colors::severe_injury
+                : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury
+                                                   : text_colors::notice;
             if (!draw_text_utf8(
                     framebuffer,
                     127,
@@ -501,9 +506,10 @@ bool BattleRenderer::render_character_selection(
 bool BattleRenderer::render_character_status_selection(
     const model::RuntimeRangerState& ranger,
     const std::size_t cursor,
-    render::IndexedFramebuffer& framebuffer) {
+    render::IndexedFramebuffer& framebuffer,
+    const model::PlaythroughLimits& limits) {
     return render_character_selection(
-        ranger, cursor, PartySelectionKind::status, framebuffer);
+        ranger, cursor, PartySelectionKind::status, framebuffer, limits);
 }
 
 bool BattleRenderer::render_party_ability_selection(
@@ -607,7 +613,8 @@ bool BattleRenderer::render_character_status(
     const model::RuntimeRangerState& ranger,
     const std::int16_t role_id,
     const std::uint8_t page,
-    render::IndexedFramebuffer& framebuffer) {
+    render::IndexedFramebuffer& framebuffer,
+    const model::PlaythroughLimits& limits) {
     if (!valid() || role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size() ||
         page > 1U) {
         return false;
@@ -642,10 +649,13 @@ bool BattleRenderer::render_character_status(
         return draw_text_utf8(framebuffer, x, y, decimal_text(value, width), color);
     };
     if (page == 0U) {
-        const auto hurt = role.word(model::role_word::hurt);
-        const auto hurt_color = hurt > 66 ? text_colors::severe_injury
-            : hurt > 33 ? text_colors::moderate_injury
-                        : text_colors::notice;
+        const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
+        if (!hurt.has_value()) {
+            return false;
+        }
+        const auto hurt_color = *hurt == model::HurtBand::severe ? text_colors::severe_injury
+            : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury
+                                               : text_colors::notice;
         const auto poison = role.word(model::role_word::poison);
         const auto poison_color = poison == 0 ? text_colors::menu_normal
             : poison >= 50 ? text_colors::severe_poison

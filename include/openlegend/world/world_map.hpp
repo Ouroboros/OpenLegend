@@ -12,6 +12,7 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/model/runtime_snapshot.hpp"
+#include "openlegend/model/new_game_plus_configuration.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/indexed_layer.hpp"
@@ -132,7 +133,9 @@ public:
         const resource::DataRoot& data_root,
         const WorldMapData& map,
         model::RuntimeRangerState& ranger,
-        random::LegacyRandom& random);
+        random::LegacyRandom& random,
+        const model::NewGamePlusConfiguration& configuration = {},
+        std::int64_t playthrough = 1);
 
     WorldSession(
         const resource::DataRoot& data_root,
@@ -140,7 +143,9 @@ public:
         model::RuntimeRangerState& ranger,
         random::LegacyRandom& random,
         const resource::PackedArchive& startup_weather_sprites,
-        const compat::LegacyPalette& startup_palette);
+        const compat::LegacyPalette& startup_palette,
+        const model::NewGamePlusConfiguration& configuration = {},
+        std::int64_t playthrough = 1);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
@@ -244,7 +249,9 @@ private:
         model::RuntimeRangerState& ranger,
         random::LegacyRandom& random,
         const resource::PackedArchive* startup_weather_sprites,
-        const compat::LegacyPalette* startup_palette);
+        const compat::LegacyPalette* startup_palette,
+        const model::NewGamePlusConfiguration& configuration,
+        std::int64_t playthrough);
 
     struct WeatherParticle {
         std::int16_t x{};
@@ -301,6 +308,7 @@ private:
     const WorldMapData& map_;
     model::RuntimeRangerState& ranger_;
     random::LegacyRandom& random_;
+    model::PlaythroughLimits limits_{};
     WorldCache cache_;
     mutable std::optional<WorldCache> expanded_render_cache_;
     // Cached pixel spans stay valid even when a WorldSession is copied.

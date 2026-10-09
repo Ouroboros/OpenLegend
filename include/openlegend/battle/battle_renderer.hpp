@@ -66,12 +66,14 @@ public:
         std::size_t cursor,
         PartySelectionKind kind,
         render::IndexedFramebuffer& framebuffer,
+        const model::PlaythroughLimits& limits,
         std::optional<std::int16_t> item_id = std::nullopt);
 
     NODISCARD bool render_character_status_selection(
         const model::RuntimeRangerState& ranger,
         std::size_t cursor,
-        render::IndexedFramebuffer& framebuffer);
+        render::IndexedFramebuffer& framebuffer,
+        const model::PlaythroughLimits& limits);
 
     NODISCARD bool render_party_ability_selection(
         const model::RuntimeRangerState& ranger,
@@ -89,7 +91,8 @@ public:
         const model::RuntimeRangerState& ranger,
         std::int16_t role_id,
         std::uint8_t page,
-        render::IndexedFramebuffer& framebuffer);
+        render::IndexedFramebuffer& framebuffer,
+        const model::PlaythroughLimits& limits);
 
     NODISCARD bool render_item_effect(
         const model::RuntimeRangerState& ranger,

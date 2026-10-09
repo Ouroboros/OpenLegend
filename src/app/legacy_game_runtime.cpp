@@ -1891,6 +1891,15 @@ bool LegacyGameRuntime::render() {
             game_menu_.screen() == ui::GameMenuScreen::item_effect;
         if (exact_party_selection || exact_party_notice || exact_status_page ||
             exact_item_effect) {
+            const auto* snapshot = game_state_.snapshot();
+            if (snapshot == nullptr) {
+                return false;
+            }
+            const auto limits = model::calculate_playthrough_limits(
+                snapshot->configuration, snapshot->playthrough);
+            if (!limits.has_value()) {
+                return false;
+            }
             if (game_menu_status_renderer_ == nullptr) {
                 game_menu_status_renderer_ =
                     std::make_unique<battle::BattleRenderer>(data_root_, 0);
@@ -1939,6 +1948,7 @@ bool LegacyGameRuntime::render() {
                         game_menu_.party_selection(),
                         kind,
                         framebuffer_,
+                        *limits,
                         command == ui::GameMenuCommand::items
                             ? pending_menu_item_id_
                             : std::nullopt)) {
@@ -1975,7 +1985,8 @@ bool LegacyGameRuntime::render() {
                         *ranger,
                         role_id,
                         game_menu_.status_page(),
-                        framebuffer_)) {
+                        framebuffer_,
+                        *limits)) {
                     return false;
                 }
             }
@@ -2320,7 +2331,8 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
     scene_ui_requested_ = false;
     scene_idle_skip_requested_ = false;
     auto* ranger = game_state_.ranger();
-    if (ranger == nullptr) {
+    const auto* snapshot = game_state_.snapshot();
+    if (ranger == nullptr || snapshot == nullptr) {
         show_error("No game state is available for the world map", error_return_view);
         return false;
     }
@@ -2334,7 +2346,9 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
         *ranger,
         random_,
         startup_resources_.weather_sprites(),
-        startup_resources_.palette());
+        startup_resources_.palette(),
+        snapshot->configuration,
+        snapshot->playthrough);
     if (!world_session_->valid()) {
         show_error(world_session_->error(), error_return_view);
         world_session_.reset();

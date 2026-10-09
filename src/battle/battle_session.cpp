@@ -4494,7 +4494,7 @@ bool BattleSession::render_player_status_selection(
     render::IndexedFramebuffer& framebuffer) {
     return player_status_.has_value() && render_battlefield(framebuffer) &&
         renderer_.render_character_status_selection(
-            ranger_, player_status_->cursor, framebuffer);
+            ranger_, player_status_->cursor, framebuffer, setup_.playthrough_limits());
 }
 
 bool BattleSession::render_player_status_page(
@@ -4502,7 +4502,8 @@ bool BattleSession::render_player_status_page(
     return player_status_.has_value() && player_status_->role_id >= 0 &&
         render_battlefield(framebuffer) &&
         renderer_.render_character_status(
-            ranger_, player_status_->role_id, player_status_->page, framebuffer);
+            ranger_, player_status_->role_id, player_status_->page, framebuffer,
+            setup_.playthrough_limits());
 }
 
 bool BattleSession::render_player_action_menu(

@@ -12,6 +12,7 @@
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/model/hurt.hpp"
 #include "openlegend/render/native_motion_projection.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
@@ -172,8 +173,10 @@ WorldSession::WorldSession(
     const resource::DataRoot& data_root,
     const WorldMapData& map,
     model::RuntimeRangerState& ranger,
-    random::LegacyRandom& random)
-    : WorldSession(data_root, map, ranger, random, nullptr, nullptr) {}
+    random::LegacyRandom& random,
+    const model::NewGamePlusConfiguration& configuration,
+    const std::int64_t playthrough)
+    : WorldSession(data_root, map, ranger, random, nullptr, nullptr, configuration, playthrough) {}
 
 WorldSession::WorldSession(
     const resource::DataRoot& data_root,
@@ -181,14 +184,18 @@ WorldSession::WorldSession(
     model::RuntimeRangerState& ranger,
     random::LegacyRandom& random,
     const resource::PackedArchive& startup_weather_sprites,
-    const compat::LegacyPalette& startup_palette)
+    const compat::LegacyPalette& startup_palette,
+    const model::NewGamePlusConfiguration& configuration,
+    const std::int64_t playthrough)
     : WorldSession(
           data_root,
           map,
           ranger,
           random,
           &startup_weather_sprites,
-          &startup_palette) {}
+          &startup_palette,
+          configuration,
+          playthrough) {}
 
 WorldSession::WorldSession(
     const resource::DataRoot& data_root,
@@ -196,7 +203,9 @@ WorldSession::WorldSession(
     model::RuntimeRangerState& ranger,
     random::LegacyRandom& random,
     const resource::PackedArchive* startup_weather_sprites,
-    const compat::LegacyPalette* startup_palette)
+    const compat::LegacyPalette* startup_palette,
+    const model::NewGamePlusConfiguration& configuration,
+    const std::int64_t playthrough)
     : map_(map),
       ranger_(ranger),
       random_(random),
@@ -207,6 +216,12 @@ WorldSession::WorldSession(
               ? *startup_weather_sprites
               : resource::PackedArchive::open(
                     data_root.path() / "CLOUD.IDX", data_root.path() / "CLOUD.GRP")) {
+    const auto limits = model::calculate_playthrough_limits(configuration, playthrough);
+    if (!limits.has_value() || (!configuration.enabled && playthrough != 1)) {
+        error_ = "world playthrough configuration is invalid";
+        return;
+    }
+    limits_ = *limits;
     if (!map_.valid()) {
         error_ = map_.error();
         return;
@@ -289,24 +304,40 @@ WorldMovePlan WorldSession::start_move(const WorldDirection direction) {
         return {};
     }
 
-    player_frame_override_.reset();
-    ++role_recovery_counter_;
-    if (role_recovery_counter_ == 50) {
+    std::array<std::int16_t, model::kTeamMemberCount> affected_roles{};
+    affected_roles.fill(-1);
+    if (role_recovery_counter_ == 49) {
         for (std::size_t index = 0U; index < model::kTeamMemberCount; ++index) {
             const auto role_id = ranger_.header.team_member(index).value;
             if ((index != 0U && role_id <= 0) || role_id < 0 ||
                 static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
                 continue;
             }
-            auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-            const auto bug_compatible_poison = ranger_.roles[index].word(model::role_word::poison);
-            if (role.word(model::role_word::hurt) <= 50 && bug_compatible_poison <= 50) {
+            const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+            const auto hurt = model::compare_hurt_percentage(
+                role.hurt, limits_.hurt_ratio_denominator, 50);
+            if (!hurt.has_value()) {
+                error_ = "world status hurt ratio is invalid or overflows";
+                return {};
+            }
+            const auto bug_compatible_poison = ranger_.roles[index].poison;
+            if (*hurt > 0 || bug_compatible_poison > 50) {
+                affected_roles[index] = role_id;
+            }
+        }
+    }
+    player_frame_override_.reset();
+    ++role_recovery_counter_;
+    if (role_recovery_counter_ == 50) {
+        for (const auto role_id : affected_roles) {
+            if (role_id < 0) {
                 continue;
             }
+            auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
             for (const auto word : {model::role_word::hp, model::role_word::mp,
                                     model::role_word::physical_power}) {
                 if (role.word(word) > 1) {
-                    role.set_word(word, static_cast<std::int16_t>(role.word(word) - 1));
+                    role.set_word(word, role.word(word) - 1);
                 }
             }
         }

@@ -699,6 +699,8 @@ public:
 
     NODISCARD const std::string& error() const noexcept { return error_; }
 
+    NODISCARD const model::PlaythroughLimits& playthrough_limits() const noexcept { return limits_; }
+
     NODISCARD bool waiting_for_party_selection() const noexcept { return waiting_; }
 
     NODISCARD std::size_t party_prefix_length() const noexcept { return party_prefix_length_; }

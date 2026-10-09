@@ -3407,9 +3407,10 @@ void run_battle_status_panel_review_test(
     OL_CHECK(plan.has_value());
     OL_CHECK(!plan->name_x.has_value());
 
-    for (const auto [hurt, expected] : std::array<std::pair<std::int16_t, std::int16_t>, 6>{
-             std::pair<std::int16_t, std::int16_t>{-32'768, 1'797},
-             {33, 1'797},
+    party_role.hurt = -32'768;
+    OL_CHECK(!setup.status_panel_plan(0U).has_value());
+    for (const auto [hurt, expected] : std::array<std::pair<std::int16_t, std::int16_t>, 5>{
+             std::pair<std::int16_t, std::int16_t>{33, 1'797},
              {34, 3'600},
              {66, 3'600},
              {67, 5'142},
@@ -5953,9 +5954,11 @@ void run_player_status_session_test(
     openlegend::render::IndexedFramebuffer unsigned_status_page_1;
     OL_CHECK(unsigned_status_renderer.valid());
     OL_CHECK(unsigned_status_renderer.render_character_status(
-        *ranger, 2, 0U, unsigned_status_page_0));
+        *ranger, 2, 0U, unsigned_status_page_0,
+        *openlegend::model::calculate_playthrough_limits({}, 1)));
     OL_CHECK(unsigned_status_renderer.render_character_status(
-        *ranger, 2, 1U, unsigned_status_page_1));
+        *ranger, 2, 1U, unsigned_status_page_1,
+        *openlegend::model::calculate_playthrough_limits({}, 1)));
     const auto unsigned_status_page_0_hash = fnv1a_bytes(unsigned_status_page_0.pixels());
     const auto unsigned_status_page_1_hash = fnv1a_bytes(unsigned_status_page_1.pixels());
     if (unsigned_status_page_0_hash != 0xCD9EA20E60D4413EULL) {
@@ -13472,6 +13475,167 @@ void run_ngplus_medicine_test(const openlegend::resource::DataRoot& data_root) {
     }
 }
 
+void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    namespace colors = render::legacy_color::text;
+    struct ColorCase {
+        std::int64_t playthrough;
+        std::int64_t step;
+        std::int64_t hurt;
+        render::TextColors color;
+    };
+    BattleData data{data_root, 4};
+    BattleRenderer renderer{data_root, data.battlefield_id()};
+    const auto ascii = data_root.read("FONT3.E16");
+    const auto big5 = data_root.read("FONT3.C16");
+    OL_CHECK(ascii && big5);
+    render::Big5GlyphCache glyph_cache{big5.bytes};
+    for (const auto& entry : std::array{
+             ColorCase{1, 100, 33, colors::notice},
+             ColorCase{1, 100, 34, colors::moderate_injury},
+             ColorCase{1, 100, 66, colors::moderate_injury},
+             ColorCase{1, 100, 67, colors::severe_injury},
+             ColorCase{2, 100, 66, colors::notice},
+             ColorCase{2, 100, 67, colors::moderate_injury},
+             ColorCase{2, 100, 132, colors::moderate_injury},
+             ColorCase{2, 100, 133, colors::severe_injury},
+             ColorCase{3, 100, 198, colors::moderate_injury},
+             ColorCase{3, 100, 199, colors::severe_injury},
+             ColorCase{2, 2, 36, colors::notice},
+             ColorCase{2, 2, 37, colors::moderate_injury},
+             ColorCase{2, 2, 73, colors::severe_injury},
+             ColorCase{2, -99, 0, colors::notice},
+             ColorCase{2, 4'999'999'999'901, 3'300'000'000'001, colors::severe_injury}}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = true;
+        configuration.maximum_playthroughs = entry.step < 0 ? 2 : 3;
+        configuration.hurt_cap_step = entry.step;
+        BattleSetup setup{data, ranger, nullptr, configuration, entry.playthrough};
+        OL_CHECK(setup.valid());
+        const auto role_id = setup.combatants()[0U].words[combatant_word::role_id];
+        auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+        role.hurt = entry.hurt;
+        role.hp = 111;
+        role.maximum_hp = 200;
+        ranger.header.set_team_member(0U, model::CharacterId{role_id});
+        ranger.header.set_team_member(1U, model::CharacterId{3});
+        ranger.header.set_team_member(2U, model::CharacterId{-1});
+        const auto panel = setup.status_panel_plan(0U);
+        OL_CHECK(panel.has_value());
+        if (panel.has_value()) {
+            OL_CHECK(panel->hurt_color == entry.color);
+        }
+        for (const auto page : {false, true}) {
+            render::IndexedFramebuffer actual;
+            actual.clear(0);
+            const auto& limits = setup.playthrough_limits();
+            OL_CHECK(page ? renderer.render_character_status(ranger, role_id, 0U, actual, limits)
+                : renderer.render_character_selection(
+                    ranger, 1U, PartySelectionKind::medicine_target, actual, limits));
+            const auto value_x = page ? 97 : 127;
+            const auto value_y = page ? 107 : 72;
+            render::IndexedFramebuffer expected;
+            expected.clear(actual.row(value_y)[value_x - 1]);
+            OL_CHECK(render::draw_text_utf8(
+                expected, value_x, value_y, u8"111", ascii.bytes, glyph_cache, entry.color));
+            for (int pixel_y = value_y; pixel_y < value_y + 17; ++pixel_y) {
+                for (int pixel_x = value_x; pixel_x < value_x + 22; ++pixel_x) {
+                    OL_CHECK(actual.row(pixel_y)[pixel_x] == expected.row(pixel_y)[pixel_x]);
+                }
+            }
+        }
+    }
+    struct AiCase {
+        std::int64_t playthrough;
+        std::int64_t step;
+        std::int64_t hurt;
+        bool chooses_medicine;
+    };
+    for (const auto& entry : std::array{
+             AiCase{2, 100, 80, false}, AiCase{2, 100, 81, true},
+             AiCase{3, 100, 120, false}, AiCase{3, 100, 121, true},
+             AiCase{2, 2, 44, false}, AiCase{2, 2, 45, true},
+             AiCase{2, -99, 0, false}}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = true;
+        configuration.maximum_playthroughs = entry.step < 0 ? 2 : 3;
+        configuration.hurt_cap_step = entry.step;
+        BattleSetup setup{data, ranger, nullptr, configuration, entry.playthrough};
+        const auto actor_id = setup.combatants()[0U].words[combatant_word::role_id];
+        const auto target_id = setup.combatants()[1U].words[combatant_word::role_id];
+        ranger.roles[static_cast<std::size_t>(actor_id)].medicine = 5'000'000'000'000;
+        auto& target = ranger.roles[static_cast<std::size_t>(target_id)];
+        target.hurt = entry.hurt;
+        target.hp = 200;
+        target.maximum_hp = 200;
+        setup.combatants()[1U].words[combatant_word::side] =
+            setup.combatants()[0U].words[combatant_word::side];
+        random::LegacyRandom random{1U};
+        const auto choice = setup.choose_ai_medicine_target(0U, random);
+        OL_CHECK(choice.has_value());
+        if (choice.has_value()) {
+            OL_CHECK(choice->action == (entry.chooses_medicine
+                ? BattleAiAction::medicine : BattleAiAction::none));
+        }
+        OL_CHECK(random.state() == 1U);
+    }
+    for (const auto hurt : {100, 101}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = true;
+        BattleSetup setup{data, ranger, nullptr, configuration, 2};
+        const auto actor_id = setup.combatants()[0U].words[combatant_word::role_id];
+        auto& actor = ranger.roles[static_cast<std::size_t>(actor_id)];
+        actor.hp = actor.maximum_hp = actor.mp = actor.maximum_mp = 200;
+        actor.hurt = hurt;
+        actor.poison = 0;
+        actor.physical_power = 60;
+        actor.medicine = 200;
+        for (std::size_t slot = 1U; slot < static_cast<std::size_t>(setup.combatant_count()); ++slot) {
+            setup.combatants()[slot].words[combatant_word::occupancy_hidden] = 1;
+        }
+        random::LegacyRandom random{1U};
+        const auto prelude = setup.begin_ai_turn(0U);
+        OL_CHECK(prelude.has_value());
+        if (prelude.has_value()) {
+            const auto decision = setup.choose_ai_turn_action(0U, *prelude, random);
+            OL_CHECK(decision.has_value());
+            if (decision.has_value()) {
+                OL_CHECK((decision->choice.action == BattleAiAction::medicine) == (hurt == 101));
+                OL_CHECK((random.state() == 1U) == (hurt == 101));
+            }
+        }
+    }
+    for (const auto invalid_hurt : std::array<std::int64_t, 2>{
+             -1, std::numeric_limits<std::int64_t>::max()}) {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        const auto actor_id = setup.combatants()[0U].words[combatant_word::role_id];
+        auto& actor = ranger.roles[static_cast<std::size_t>(actor_id)];
+        actor.hp = actor.maximum_hp = 200;
+        actor.hurt = invalid_hurt;
+        const auto before = ranger.roles;
+        const auto words_before = std::vector(setup.combatants().begin(), setup.combatants().end());
+        OL_CHECK(!setup.status_panel_plan(0U).has_value());
+        render::IndexedFramebuffer actual;
+        OL_CHECK(!renderer.render_character_status(
+            ranger, actor_id, 0U, actual, setup.playthrough_limits()));
+        random::LegacyRandom random{1U};
+        const auto prelude = setup.begin_ai_turn(0U);
+        OL_CHECK(prelude.has_value());
+        if (prelude.has_value()) {
+            OL_CHECK(!setup.choose_ai_turn_action(0U, *prelude, random).has_value());
+            OL_CHECK(setup.error() == "battle AI low HP hurt ratio is invalid or overflows");
+        }
+        OL_CHECK(ranger.roles == before);
+        OL_CHECK(std::ranges::equal(setup.combatants(), words_before));
+        OL_CHECK(random.state() == 1U);
+    }
+}
+
 void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
@@ -13521,7 +13685,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 49> checks{
+    const std::array<BattleCheck, 50> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -13571,6 +13735,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_throwing_weapon_test,
         run_ngplus_item_effect_test,
         run_ngplus_medicine_test,
+        run_ngplus_hurt_threshold_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

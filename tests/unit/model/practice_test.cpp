@@ -137,7 +137,8 @@ void check_cost_display(const openlegend::resource::DataRoot& data_root) {
     render::IndexedFramebuffer expected;
     actual.clear(0);
     expected.clear(0);
-    OL_CHECK(renderer.render_character_status(*ranger, 0, 1U, actual));
+    OL_CHECK(renderer.render_character_status(
+        *ranger, 0, 1U, actual, *model::calculate_playthrough_limits({}, 1)));
     OL_CHECK(renderer.draw_box(expected, 55, 0, 210U, 200U));
     OL_CHECK(renderer.draw_text_utf8(expected, 108, 175, u8"  150", render::legacy_color::text::menu_normal));
     for (std::size_t row = 175U; row < 191U; ++row) {

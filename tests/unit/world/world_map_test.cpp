@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <span>
 #include <utility>
@@ -1146,6 +1147,84 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     OL_CHECK(indexed_party_role.word(openlegend::model::role_word::mp) == 19);
     OL_CHECK(indexed_party_role.word(openlegend::model::role_word::physical_power) == 29);
     OL_CHECK(poison_gate_role.word(openlegend::model::role_word::poison) == 51);
+
+    for (const auto playthrough : {0, 2}) {
+        auto snapshot = load_baseline(root);
+        snapshot.configuration.enabled = false;
+        openlegend::random::LegacyRandom random{1U};
+        const auto before = snapshot.ranger.roles;
+        WorldSession session{
+            data_root, map, snapshot.ranger, random, snapshot.configuration, playthrough};
+        OL_CHECK(!session.valid());
+        OL_CHECK(session.error() == "world playthrough configuration is invalid");
+        OL_CHECK(snapshot.ranger.roles == before);
+        OL_CHECK(random.state() == 1U);
+    }
+    struct HurtCase {
+        std::int64_t playthrough;
+        std::int64_t step;
+        std::int64_t hurt;
+        bool damages;
+    };
+    for (const auto& entry : std::array{
+             HurtCase{2, 100, 100, false}, HurtCase{2, 100, 101, true},
+             HurtCase{3, 100, 150, false}, HurtCase{3, 100, 151, true},
+             HurtCase{2, 2, 55, false}, HurtCase{2, 2, 56, true},
+             HurtCase{2, -99, 0, false},
+             HurtCase{2, 4'999'999'999'901, 2'500'000'000'000, false},
+             HurtCase{2, 4'999'999'999'901, 2'500'000'000'001, true}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.configuration.enabled = true;
+        snapshot.configuration.maximum_playthroughs = 3;
+        if (entry.step < 0) {
+            snapshot.configuration.maximum_playthroughs = 2;
+        }
+        snapshot.configuration.hurt_cap_step = entry.step;
+        auto& role = snapshot.ranger.roles[0U];
+        role.hurt = entry.hurt;
+        role.poison = 0;
+        role.hp = std::numeric_limits<std::int64_t>::max();
+        role.mp = 5'000'000'000'000;
+        role.physical_power = 2;
+        openlegend::random::LegacyRandom random{1U};
+        WorldSession session{
+            data_root, map, snapshot.ranger, random, snapshot.configuration, entry.playthrough};
+        OL_CHECK(session.valid());
+        for (int attempt = 0; attempt < 49; ++attempt) {
+            static_cast<void>(session.move(WorldDirection::left));
+        }
+        OL_CHECK(role.hp == std::numeric_limits<std::int64_t>::max());
+        OL_CHECK(role.mp == 5'000'000'000'000);
+        static_cast<void>(session.move(WorldDirection::left));
+        OL_CHECK(session.valid());
+        OL_CHECK(role.hp == std::numeric_limits<std::int64_t>::max() - (entry.damages ? 1 : 0));
+        OL_CHECK(role.mp == 5'000'000'000'000 - (entry.damages ? 1 : 0));
+        OL_CHECK(role.physical_power == (entry.damages ? 1 : 2));
+        OL_CHECK(role.hurt == entry.hurt);
+    }
+    for (const auto invalid_hurt : std::array<std::int64_t, 2>{
+             -1, std::numeric_limits<std::int64_t>::max()}) {
+        auto snapshot = load_baseline(root);
+        snapshot.configuration.enabled = true;
+        snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{2});
+        snapshot.ranger.roles[0U].hurt = 101;
+        snapshot.ranger.roles[2U].hurt = invalid_hurt;
+        openlegend::random::LegacyRandom random{1U};
+        WorldSession session{data_root, map, snapshot.ranger, random, snapshot.configuration, 2};
+        for (int attempt = 0; attempt < 49; ++attempt) {
+            static_cast<void>(session.move(WorldDirection::left));
+        }
+        const auto before = snapshot.ranger.roles;
+        const auto random_before = random.state();
+        const auto x_before = session.world_x();
+        const auto y_before = session.world_y();
+        static_cast<void>(session.start_move(WorldDirection::right));
+        OL_CHECK(!session.valid());
+        OL_CHECK(session.error() == "world status hurt ratio is invalid or overflows");
+        OL_CHECK(snapshot.ranger.roles == before);
+        OL_CHECK(random.state() == random_before);
+        OL_CHECK(session.world_x() == x_before && session.world_y() == y_before);
+    }
 
     auto power_snapshot = load_baseline(root);
     power_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::physical_power, 99);

@@ -17,6 +17,7 @@
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/model/hurt.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
@@ -1208,6 +1209,12 @@ SceneStepResult SceneSession::run_event() {
             break;
         }
         case 12: {
+            const auto limits = model::calculate_playthrough_limits(
+                snapshot_.configuration, snapshot_.playthrough);
+            if (!limits.has_value()) {
+                error_ = "scene rest playthrough configuration is invalid";
+                return current_result(SceneStepKind::stay);
+            }
             auto party_end = model::kTeamMemberCount;
             for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
                 if (snapshot_.ranger.header.team_member(slot).value <= 0) {
@@ -1215,19 +1222,33 @@ SceneStepResult SceneSession::run_event() {
                     break;
                 }
             }
+            std::array<std::int16_t, model::kTeamMemberCount> recovering_roles{};
+            recovering_roles.fill(-1);
             for (std::size_t slot = 0U; slot < party_end; ++slot) {
                 const auto role_id = snapshot_.ranger.header.team_member(slot).value;
                 if (role_id < 0 || static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
                     continue;
                 }
-                auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
-                if (role.word(model::role_word::hurt) < 33 &&
-                    role.word(model::role_word::poison) == 0) {
-                    role.set_word(model::role_word::hurt, 0);
-                    role.set_word(model::role_word::physical_power, 100);
-                    role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
-                    role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
+                const auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+                const auto hurt = model::compare_hurt_percentage(
+                    role.hurt, limits->hurt_ratio_denominator, 33);
+                if (!hurt.has_value()) {
+                    error_ = "scene rest hurt ratio is invalid or overflows";
+                    return current_result(SceneStepKind::stay);
                 }
+                if (*hurt < 0 && role.poison == 0) {
+                    recovering_roles[slot] = role_id;
+                }
+            }
+            for (const auto role_id : recovering_roles) {
+                if (role_id < 0) {
+                    continue;
+                }
+                auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+                role.hurt = 0;
+                role.physical_power = 100;
+                role.mp = role.maximum_mp;
+                role.hp = role.maximum_hp;
             }
             program_counter_ += 1;
             break;
@@ -3341,12 +3362,23 @@ std::optional<SceneStepResult> SceneSession::advance_tournament_trial(
         case TournamentTrialState::Phase::interround_fade: {
             if (!snapshot_.ranger.roles.empty()) {
                 auto& role = snapshot_.ranger.roles[0];
-                if (role.word(model::role_word::hurt) < 50 &&
-                    role.word(model::role_word::poison) == 0) {
-                    role.set_word(model::role_word::hurt, 0);
-                    role.set_word(model::role_word::physical_power, 100);
-                    role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
-                    role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
+                const auto limits = model::calculate_playthrough_limits(
+                    snapshot_.configuration, snapshot_.playthrough);
+                if (!limits.has_value()) {
+                    error_ = "trial rest playthrough configuration is invalid";
+                    return current_result(SceneStepKind::stay);
+                }
+                const auto hurt = model::compare_hurt_percentage(
+                    role.hurt, limits->hurt_ratio_denominator, 50);
+                if (!hurt.has_value()) {
+                    error_ = "trial rest hurt ratio is invalid or overflows";
+                    return current_result(SceneStepKind::stay);
+                }
+                if (*hurt < 0 && role.poison == 0) {
+                    role.hurt = 0;
+                    role.physical_power = 100;
+                    role.mp = role.maximum_mp;
+                    role.hp = role.maximum_hp;
                 }
             }
             queue_step(SceneStepKind::fade_from_black);

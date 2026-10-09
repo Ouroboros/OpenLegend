@@ -73,7 +73,8 @@ void check_next_level_display() {
         render::IndexedFramebuffer expected;
         actual.clear(0);
         expected.clear(0);
-        OL_CHECK(renderer.render_character_status(*ranger, 0, 0U, actual));
+        OL_CHECK(renderer.render_character_status(
+            *ranger, 0, 0U, actual, *model::calculate_playthrough_limits({}, 1)));
         OL_CHECK(renderer.draw_box(expected, 55, 0, 210U, 200U));
         OL_CHECK(renderer.draw_text_utf8(expected, 97, 175, text));
         for (std::size_t row = 175U; row < 191U; ++row) {

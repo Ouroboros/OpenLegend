@@ -14,6 +14,7 @@
 
 #include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/experience.hpp"
+#include "openlegend/model/hurt.hpp"
 #include "openlegend/model/magic_progression.hpp"
 #include "openlegend/model/medicine.hpp"
 #include "openlegend/model/poison.hpp"
@@ -1609,10 +1610,13 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
             break;
         }
     }
-    const auto hurt = role.word(model::role_word::hurt);
-    plan.hurt_color = hurt > 66 ? text_colors::severe_injury
-                                : hurt > 33 ? text_colors::moderate_injury
-                                            : text_colors::notice;
+    const auto hurt = model::hurt_band(role.hurt, limits_.hurt_ratio_denominator);
+    if (!hurt.has_value()) {
+        return std::nullopt;
+    }
+    plan.hurt_color = *hurt == model::HurtBand::severe ? text_colors::severe_injury
+        : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury
+                                           : text_colors::notice;
     const auto poison = role.word(model::role_word::poison);
     plan.poison_color = poison == 0 ? text_colors::menu_normal
                                     : poison >= 50 ? text_colors::severe_poison
@@ -3407,7 +3411,8 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_mp_action(
 
 std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
     const std::size_t actor_slot,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random_source) {
+    auto random = random_source;
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
@@ -3438,7 +3443,16 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
         }
         auto selected = combatants_[slot].words[combatant_word::ai_action] ==
                 static_cast<std::int16_t>(BattleAiAction::request_medicine) ||
-            role.word(model::role_word::hp) < 20 || role.word(model::role_word::hurt) > 40;
+            role.word(model::role_word::hp) < 20;
+        if (!selected) {
+            const auto hurt = model::compare_hurt_percentage(
+                role.hurt, limits_.hurt_ratio_denominator, 40);
+            if (!hurt.has_value()) {
+                error_ = "battle AI medicine hurt ratio is invalid or overflows";
+                return std::nullopt;
+            }
+            selected = *hurt > 0;
+        }
         if (!selected && role.word(model::role_word::hp) <
                 role.word(model::role_word::maximum_hp) / 2) {
             selected = random.bounded(10) < 7;
@@ -3456,12 +3470,14 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
             selected = true;
         }
         if (selected) {
+            random_source = random;
             return commit_ai_choice(
                 actor_slot,
                 BattleAiAction::medicine,
                 static_cast<std::int16_t>(slot));
         }
     }
+    random_source = random;
     return commit_ai_choice(
         actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
 }
@@ -3750,7 +3766,8 @@ std::optional<BattleAiTurnPrelude> BattleSetup::begin_ai_turn(
 std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
     const std::size_t actor_slot,
     const BattleAiTurnPrelude& prelude,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random_source) {
+    auto random = random_source;
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
@@ -3764,8 +3781,16 @@ std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
         choice.action = BattleAiAction::wait;
     }
 
-    auto choose_low_hp = actor_role.word(model::role_word::hp) < 20 ||
-        actor_role.word(model::role_word::hurt) > 50;
+    auto choose_low_hp = actor_role.word(model::role_word::hp) < 20;
+    if (!choose_low_hp) {
+        const auto hurt = model::compare_hurt_percentage(
+            actor_role.hurt, limits_.hurt_ratio_denominator, 50);
+        if (!hurt.has_value()) {
+            error_ = "battle AI low HP hurt ratio is invalid or overflows";
+            return std::nullopt;
+        }
+        choose_low_hp = *hurt > 0;
+    }
     if (!choose_low_hp && actor_role.word(model::role_word::hp) <
             actor_role.word(model::role_word::maximum_hp) / 2) {
         choose_low_hp = random.bounded(10) < 3;
@@ -3937,6 +3962,7 @@ std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
         handler = BattleAiHandler::escape;
         break;
     }
+    random_source = random;
     return BattleAiTurnDecision{choice, handler};
 }
 

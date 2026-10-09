@@ -1016,6 +1016,75 @@ void check_event_load_menu(const std::filesystem::path& root) {
         OL_CHECK(role.word(openlegend::model::role_word::hurt) == 0);
         OL_CHECK(role.word(openlegend::model::role_word::physical_power) == 100);
     }
+
+    struct HurtRestCase {
+        std::int64_t playthrough;
+        std::int64_t step;
+        std::int64_t hurt;
+        bool restores;
+    };
+    for (const auto& entry : std::array{
+             HurtRestCase{2, 100, 65, true}, HurtRestCase{2, 100, 66, false},
+             HurtRestCase{3, 100, 98, true}, HurtRestCase{3, 100, 99, false},
+             HurtRestCase{2, 2, 36, true}, HurtRestCase{2, 2, 37, false},
+             HurtRestCase{2, -99, 0, true},
+             HurtRestCase{2, 4'999'999'999'901, 1'649'999'999'999, true},
+             HurtRestCase{2, 4'999'999'999'901, 1'650'000'000'000, false}}) {
+        auto snapshot = load_baseline(root);
+        snapshot.configuration.enabled = true;
+        snapshot.configuration.maximum_playthroughs = entry.step < 0 ? 2 : 3;
+        snapshot.configuration.hurt_cap_step = entry.step;
+        snapshot.playthrough = entry.playthrough;
+        snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+        for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+            snapshot.ranger.header.set_team_member(
+                slot, openlegend::model::CharacterId{static_cast<std::int16_t>(slot)});
+            auto& role = snapshot.ranger.roles[slot];
+            role.hurt = entry.hurt;
+            role.poison = 0;
+            role.hp = 10;
+            role.maximum_hp = 5'000'000'000'000;
+            role.mp = 20;
+            role.maximum_mp = std::numeric_limits<std::int64_t>::max();
+            role.physical_power = 30;
+        }
+        snapshot.ranger.header.set_team_member(3U, openlegend::model::CharacterId{-1});
+        snapshot.ranger.roles[1U].poison = 1;
+        snapshot.ranger.roles[2U].hurt = 0;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        const auto random_before = random.state();
+        OL_CHECK(session.begin_event(19, 0, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(session.valid());
+        for (std::size_t role_id = 0U; role_id < 6U; ++role_id) {
+            const auto& role = snapshot.ranger.roles[role_id];
+            const auto restores = role_id == 2U || (role_id == 0U && entry.restores);
+            OL_CHECK(role.hp == (restores ? role.maximum_hp : 10));
+            OL_CHECK(role.mp == (restores ? role.maximum_mp : 20));
+            OL_CHECK(role.physical_power == (restores ? 100 : 30));
+            OL_CHECK(role.hurt == (restores ? 0 : entry.hurt));
+        }
+        OL_CHECK(random.state() == random_before);
+    }
+    for (const auto invalid_hurt : std::array<std::int64_t, 2>{
+             -1, std::numeric_limits<std::int64_t>::max()}) {
+        auto snapshot = load_baseline(root);
+        snapshot.ranger.header.set_team_member(1U, openlegend::model::CharacterId{2});
+        snapshot.ranger.roles[0U].hurt = 0;
+        snapshot.ranger.roles[0U].poison = 0;
+        snapshot.ranger.roles[2U].hurt = invalid_hurt;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        const auto before = snapshot.ranger.roles;
+        const auto random_before = random.state();
+        OL_CHECK(session.begin_event(19, 0, 44, 29).kind == SceneStepKind::stay);
+        OL_CHECK(!session.valid());
+        OL_CHECK(session.error() == "scene rest hurt ratio is invalid or overflows");
+        OL_CHECK(snapshot.ranger.roles == before);
+        OL_CHECK(random.state() == random_before);
+    }
 }
 
 void check_event_state_write_helpers(const std::filesystem::path& root) {
@@ -4510,10 +4579,18 @@ void check_event_tournament_interround_restore(const std::filesystem::path& root
     using openlegend::scene::SceneStepKind;
 
     const openlegend::resource::DataRoot data_root{root};
-    const auto check_restore = [&](const std::int16_t hurt,
+    const auto check_restore = [&](const std::int64_t hurt,
                                    const std::int16_t poison,
-                                   const bool restores) {
+                                   const bool restores,
+                                   const std::int64_t playthrough = 1,
+                                   const std::int64_t hurt_step = 100,
+                                   const bool accepts = true) {
         auto snapshot = load_baseline(root);
+        snapshot.configuration.enabled = true;
+        snapshot.configuration.maximum_playthroughs = hurt_step < 0 ? 2 : 3;
+        snapshot.configuration.hurt_cap_step = hurt_step;
+        snapshot.playthrough = playthrough;
+        snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
         snapshot.ranger.scenes[25].set_word(
             openlegend::model::scene_metadata_word::entrance_x, 33);
         snapshot.ranger.scenes[25].set_word(
@@ -4522,9 +4599,9 @@ void check_event_tournament_interround_restore(const std::filesystem::path& root
         role.set_word(openlegend::model::role_word::hurt, hurt);
         role.set_word(openlegend::model::role_word::poison, poison);
         role.set_word(openlegend::model::role_word::hp, 111);
-        role.set_word(openlegend::model::role_word::maximum_hp, -123);
+        role.maximum_hp = playthrough == 1 ? -123 : 5'000'000'000'000;
         role.set_word(openlegend::model::role_word::mp, 222);
-        role.set_word(openlegend::model::role_word::maximum_mp, -32768);
+        role.maximum_mp = playthrough == 1 ? -32768 : std::numeric_limits<std::int64_t>::max();
         role.set_word(openlegend::model::role_word::physical_power, 7);
         auto& other = snapshot.ranger.roles[1];
         other.set_word(openlegend::model::role_word::hurt, 12);
@@ -4555,11 +4632,15 @@ void check_event_tournament_interround_restore(const std::filesystem::path& root
             }
         }
         OL_CHECK(reached_interround);
-        OL_CHECK(result.kind == SceneStepKind::fade_from_black);
+        OL_CHECK(result.kind == (accepts ? SceneStepKind::fade_from_black : SceneStepKind::stay));
+        OL_CHECK(session.valid() == accepts);
+        if (!accepts) {
+            OL_CHECK(session.error() == "trial rest hurt ratio is invalid or overflows");
+        }
         OL_CHECK(role.word(openlegend::model::role_word::hurt) == (restores ? 0 : hurt));
         OL_CHECK(role.word(openlegend::model::role_word::poison) == poison);
-        OL_CHECK(role.word(openlegend::model::role_word::hp) == (restores ? -123 : 111));
-        OL_CHECK(role.word(openlegend::model::role_word::mp) == (restores ? -32768 : 222));
+        OL_CHECK(role.hp == (restores ? role.maximum_hp : 111));
+        OL_CHECK(role.mp == (restores ? role.maximum_mp : 222));
         OL_CHECK(role.word(openlegend::model::role_word::physical_power) ==
                  (restores ? 100 : 7));
         OL_CHECK(other.word(openlegend::model::role_word::hurt) == 12);
@@ -4569,10 +4650,20 @@ void check_event_tournament_interround_restore(const std::filesystem::path& root
         OL_CHECK(other.word(openlegend::model::role_word::physical_power) == 16);
     };
 
-    check_restore(-32768, 0, true);
+    check_restore(-32768, 0, false, 1, 100, false);
     check_restore(49, 0, true);
     check_restore(50, 0, false);
-    check_restore(-32768, -1, false);
+    check_restore(-32768, -1, false, 1, 100, false);
+    check_restore(99, 0, true, 2);
+    check_restore(100, 0, false, 2);
+    check_restore(99, 1, false, 2);
+    check_restore(149, 0, true, 3);
+    check_restore(150, 0, false, 3);
+    check_restore(54, 0, true, 2, 2);
+    check_restore(55, 0, false, 2, 2);
+    check_restore(0, 0, true, 2, -99);
+    check_restore(1, 0, false, 2, -99, false);
+    check_restore(std::numeric_limits<std::int64_t>::max(), 0, false, 2, 100, false);
 }
 
 void check_event_finale_party_cleanup(const std::filesystem::path& root) {
