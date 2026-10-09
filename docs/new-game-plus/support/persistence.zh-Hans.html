@@ -285,6 +285,7 @@ d_compressed_base64                = string                               # 完�
         <p>随后使用RFC 4648标准Base64字母表和<code>=</code>padding编码。</p>
         <p>存档内不另设压缩算法或版本字段。写入器在TOML多行字符串中按每行76个Base64字符换行；解析后只允许移除CR／LF，
           其他空白、URL-safe字符、非法字符、错误padding、frame checksum失败、尾随数据、多个frame或解压后长度不等于4,915,200／440,000 bytes时，整个读档失败。</p>
+        <p id="scene-archive-codec">实现已加入独立S／D编解码入口，使用固定Zstandard 1.5.7静态库及其<a href="https://github.com/facebook/zstd/blob/v1.5.7/lib/zstd.h">官方API</a>。先严格解码Base64，再检查普通单帧、content size、checksum标记与无字典，按固定输出容量解压并核对实际长度；不改变输入状态。此入口目前尚未接入完整TOML快照与文件事务，验证进度见实现清单。</p>
       </li>
       <li>
         不允许<code>[[items]]</code>、<code>[[scenes]]</code>、<code>[[magics]]</code>或完整<code>[[shops]]</code>定义表；
@@ -438,7 +439,7 @@ Mref(Nmax)=9990，CountRef=9988，PaidTierRef=9989
       <li>换周目不自动增加任何已继承的人物经验、武功熟练度、秘笈成功次数或永久属性；内伤、中毒换周目清0；内伤保留周目上限<code>HurtMax(n, CFG)</code>，中毒量正常范围固定为0～99。</li>
     </ul>
     <div class="notice">
-      <p><strong>实现状态：</strong>共用64位运算、角色逻辑类型、Legacy角色字段转换和CFG解析已加入，并通过专项测试；完整逻辑快照、TOML存读档和游戏运行入口迁移尚未完成。阶段记录见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
+      <p><strong>实现状态：</strong>共用64位运算、角色逻辑类型、Legacy角色字段转换、CFG解析及游戏持有的完整逻辑快照已加入，并通过相应专项测试；S／D压缩编解码已通过真实资产往返、畸形输入及统一BUILD应用Debug的154项回归；完整TOML存读档、文件事务与通关继承尚未完成。阶段记录见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
     </div>
   </section>
 </main>

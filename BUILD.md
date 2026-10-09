@@ -27,7 +27,8 @@
 
 - Python 3；
 - Clang 23 C/C++20 工具链；
-- 首次 BUILD 可访问 Python package index，以及 toml++、libADLMIDI、SDL GitHub release 压缩包；
+- 首次 BUILD 可访问 Python package index，以及 toml++、Zstandard、libADLMIDI、SDL GitHub release 压缩包；
+- 场景存档编码使用固定Zstandard 1.5.7静态库；未找到相同版本的已安装静态库时，由BUILD按固定SHA256取得源码；`OPENLEGEND_FETCH_ZSTD=OFF`时缺少依赖会明确失败；
 - 完整 `app` 测试所需的原版数据，至少应确认目录中存在 `Z.COM` 和 `Z.DAT`。
 
 BUILD 会把固定版本的 CMake 3.31.10 与 Ninja 1.13.0 安装到仓库内已忽略的 `.tools/`，不会修改系统工具链。首次成功后会复用本地工具和 Ninja cache。

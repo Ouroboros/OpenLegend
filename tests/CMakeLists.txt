@@ -214,12 +214,18 @@ target_link_libraries(
 )
 add_test(NAME openlegend.persistence COMMAND openlegend_persistence_tests)
 
+add_executable(openlegend_scene_archive_codec_tests unit/persistence/scene_archive_codec_test.cpp)
+target_include_directories(openlegend_scene_archive_codec_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_scene_archive_codec_tests PRIVATE openlegend_persistence zstd::libzstd_static)
+add_test(NAME openlegend.persistence.scene_archives COMMAND openlegend_scene_archive_codec_tests)
+
 set_tests_properties(
     openlegend.resource
     openlegend.audio
     openlegend.render
     openlegend.world
     openlegend.persistence
+    openlegend.persistence.scene_archives
     openlegend.battle.enemy_roles
     PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )

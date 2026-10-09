@@ -1,4 +1,4 @@
-add_library(openlegend_persistence STATIC save_slot.cpp)
+add_library(openlegend_persistence STATIC save_slot.cpp scene_archive_codec.cpp)
 target_include_directories(
     openlegend_persistence
     PUBLIC
@@ -13,4 +13,6 @@ target_link_libraries(
         openlegend_resource
         openlegend_project_options
         openlegend_project_warnings
+    PRIVATE
+        zstd::libzstd_static
 )

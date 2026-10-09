@@ -11,6 +11,7 @@ option(
     ON
 )
 option(OPENLEGEND_FETCH_ADLMIDI "Fetch the pinned libADLMIDI XMI synthesizer" ON)
+option(OPENLEGEND_FETCH_ZSTD "Fetch the pinned Zstandard scene archive codec" ON)
 set(
     OPENLEGEND_GAME_DATA_ROOT
     "${PROJECT_SOURCE_DIR}/.."
@@ -38,6 +39,31 @@ if(NOT TARGET tomlplusplus::tomlplusplus)
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     FetchContent_MakeAvailable(tomlplusplus)
+endif()
+
+find_package(zstd 1.5.7 EXACT CONFIG QUIET)
+if(NOT TARGET zstd::libzstd_static)
+    if(NOT OPENLEGEND_FETCH_ZSTD)
+        message(FATAL_ERROR "Zstandard 1.5.7 static library was not found and fetching is disabled")
+    endif()
+    include(FetchContent)
+    set(ZSTD_BUILD_STATIC ON CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "" FORCE)
+    if(WIN32)
+        set(ZSTD_USE_STATIC_RUNTIME ON CACHE BOOL "" FORCE)
+    endif()
+    FetchContent_Declare(
+        zstd
+        URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+        URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+        SOURCE_SUBDIR build/cmake
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(zstd)
+    add_library(zstd::libzstd_static ALIAS libzstd_static)
 endif()
 
 if(NOT OPENLEGEND_FETCH_ADLMIDI)
