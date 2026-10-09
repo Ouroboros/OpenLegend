@@ -1,6 +1,6 @@
 add_library(
     openlegend_model
-    STATIC checked_arithmetic.cpp experience.cpp game_snapshot.cpp new_game.cpp new_game_plus_configuration.cpp practice.cpp role_state.cpp runtime_snapshot.cpp
+    STATIC checked_arithmetic.cpp experience.cpp game_snapshot.cpp magic_progression.cpp new_game.cpp new_game_plus_configuration.cpp practice.cpp role_state.cpp runtime_snapshot.cpp
 )
 target_include_directories(
     openlegend_model

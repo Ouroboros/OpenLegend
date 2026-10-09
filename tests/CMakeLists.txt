@@ -51,6 +51,11 @@ target_include_directories(openlegend_experience_tests PRIVATE ${CMAKE_CURRENT_S
 target_link_libraries(openlegend_experience_tests PRIVATE openlegend_battle)
 add_test(NAME openlegend.experience COMMAND openlegend_experience_tests)
 
+add_executable(openlegend_magic_progression_tests unit/model/magic_progression_test.cpp)
+target_include_directories(openlegend_magic_progression_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_magic_progression_tests PRIVATE openlegend_model openlegend_persistence)
+add_test(NAME openlegend.magic_progression COMMAND openlegend_magic_progression_tests)
+
 add_executable(openlegend_practice_tests unit/model/practice_test.cpp)
 target_include_directories(openlegend_practice_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_practice_tests PRIVATE openlegend_battle)
@@ -72,7 +77,7 @@ target_link_libraries(openlegend_ngplus_configuration_tests PRIVATE openlegend_a
 add_test(NAME openlegend.ngplus_configuration COMMAND openlegend_ngplus_configuration_tests)
 
 set_tests_properties(
-    openlegend.role_state openlegend.runtime_snapshot openlegend.experience openlegend.practice PROPERTIES
+    openlegend.role_state openlegend.runtime_snapshot openlegend.experience openlegend.practice openlegend.magic_progression PROPERTIES
     ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
 
