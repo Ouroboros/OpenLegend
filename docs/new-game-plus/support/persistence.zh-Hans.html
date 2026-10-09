@@ -103,6 +103,7 @@ war_sta_sha256    = "00000000000000000000000000000000000000000000000000000000000
     <ul>
       <li><code>timestamp_utc</code>记录实际保存时间，固定使用精确到秒的RFC3339 UTC格式<code>YYYY-MM-DDTHH:MM:SSZ</code>；它只用于显示与诊断，不改变排序或游戏状态。</li>
       <li>资产指纹根据创建存档时实际使用的数据根目录计算。加载时任一指纹不一致即拒绝并报告“资源版本不兼容”，不得猜测ID映射。</li>
+      <li id="asset-fingerprint-implementation">当前已加入九个固定资产的完整文件SHA256计算，算法依据<a href="https://www.rfc-editor.org/rfc/rfc6234.html#section-6.2">RFC 6234的SHA-256定义</a>。从调用者指定的数据根目录只读计算，每个摘要输出64个小写十六进制字符；任何文件读取失败均返回具体路径和错误，不返回部分指纹。此入口只证明文件内容身份，不替代资产结构验证；TOML指纹比较与读档提交尚未接入，验证进度见实现清单。</li>
       <li>普通与通关TOML都必须精确匹配<code>format_version=2</code>和<code>ruleset_version=3</code>；未知版本直接拒绝，不自动迁移、静默clamp或猜测缺失字段。</li>
       <li>截至本文版本，NG+ TOML尚未实现，也不存在需要兼容的已发布TOML存档；本节是<code>format_version=2</code>的唯一正式定义。首个实现完成后，任何不向后兼容的结构变化必须提升格式版本；只改变规则语义时必须提升规则版本。</li>
       <li><code>format_version</code>描述TOML结构；<code>ruleset_version</code>描述生成和解释存档所用的NG+规则。</li>

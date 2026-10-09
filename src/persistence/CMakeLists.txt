@@ -1,4 +1,9 @@
-add_library(openlegend_persistence STATIC save_slot.cpp scene_archive_codec.cpp)
+add_library(
+    openlegend_persistence STATIC
+    save_slot.cpp
+    scene_archive_codec.cpp
+    asset_fingerprints.cpp
+)
 target_include_directories(
     openlegend_persistence
     PUBLIC

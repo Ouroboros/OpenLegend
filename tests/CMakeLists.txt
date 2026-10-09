@@ -219,6 +219,15 @@ target_include_directories(openlegend_scene_archive_codec_tests PRIVATE ${CMAKE_
 target_link_libraries(openlegend_scene_archive_codec_tests PRIVATE openlegend_persistence zstd::libzstd_static)
 add_test(NAME openlegend.persistence.scene_archives COMMAND openlegend_scene_archive_codec_tests)
 
+add_executable(openlegend_asset_fingerprint_tests unit/persistence/asset_fingerprints_test.cpp)
+target_compile_definitions(
+    openlegend_asset_fingerprint_tests
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+)
+target_include_directories(openlegend_asset_fingerprint_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_asset_fingerprint_tests PRIVATE openlegend_persistence)
+add_test(NAME openlegend.persistence.asset_fingerprints COMMAND openlegend_asset_fingerprint_tests)
+
 set_tests_properties(
     openlegend.resource
     openlegend.audio
@@ -226,6 +235,7 @@ set_tests_properties(
     openlegend.world
     openlegend.persistence
     openlegend.persistence.scene_archives
+    openlegend.persistence.asset_fingerprints
     openlegend.battle.enemy_roles
     PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
