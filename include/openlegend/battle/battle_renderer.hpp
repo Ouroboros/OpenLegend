@@ -82,7 +82,7 @@ public:
 
     NODISCARD bool render_party_action_notice(
         PartyAbilityKind kind,
-        std::optional<std::int32_t> amount,
+        std::optional<std::int64_t> amount,
         render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool render_character_status(

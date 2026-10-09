@@ -15,6 +15,7 @@
 #include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/experience.hpp"
 #include "openlegend/model/magic_progression.hpp"
+#include "openlegend/model/medicine.hpp"
 #include "openlegend/model/poison.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/world_projection.hpp"
@@ -166,11 +167,12 @@ std::optional<std::int16_t> apply_role_detox_value(
     return static_cast<std::int16_t>(*amount);
 }
 
-std::optional<std::int32_t> apply_role_medicine_value(
+std::optional<std::int64_t> apply_role_medicine_value(
     model::RuntimeRangerState& ranger,
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits) {
     if (actor_role_id < 0 || target_role_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size()) {
@@ -178,51 +180,30 @@ std::optional<std::int32_t> apply_role_medicine_value(
     }
     auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
     auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
-    if (actor.word(model::role_word::physical_power) < 50) {
+    if (actor.physical_power < 50) {
         return 0;
     }
-
-    auto medicine = static_cast<std::int32_t>(actor.word(model::role_word::medicine));
-    if (medicine < 0) {
-        medicine = 0;
+    if (target.hp < 0 || target.maximum_hp < 0) {
+        return std::nullopt;
     }
-    const auto hurt = target.word(model::role_word::hurt);
-    std::int32_t base = 0;
-    if (hurt <= 25) {
-        base = (4 * medicine) / 5;
-    } else if (hurt <= 50) {
-        base = (3 * medicine) / 4;
-    } else if (hurt <= 75) {
-        base = (2 * medicine) / 3;
-    } else {
-        base = medicine / 2;
+    auto candidate_random = random;
+    const auto treatment = model::medicine_amount(
+        actor.medicine, target.hurt, limits.hurt_maximum, candidate_random);
+    const auto missing_hp = model::checked_subtract(target.maximum_hp, target.hp);
+    const auto physical_power = model::checked_subtract(actor.physical_power, 2);
+    if (!treatment.has_value() || !missing_hp.has_value() || !physical_power.has_value()) {
+        return std::nullopt;
     }
-    auto amount = base + random.bounded(5);
-    if (hurt > static_cast<std::int32_t>(actor.word(model::role_word::medicine)) + 20) {
-        amount = 0;
-        medicine = 0;
+    const auto amount = std::min(std::max(*missing_hp, std::int64_t{0}), *treatment);
+    const auto hp = model::checked_add(target.hp, amount);
+    const auto hurt = model::checked_subtract(target.hurt, std::min(target.hurt, *treatment));
+    if (!hp.has_value() || !hurt.has_value()) {
+        return std::nullopt;
     }
-
-    const auto hp = static_cast<std::int32_t>(target.word(model::role_word::hp));
-    const auto maximum_hp = static_cast<std::int32_t>(target.word(model::role_word::maximum_hp));
-    if (hp + amount > maximum_hp) {
-        amount = maximum_hp - hp;
-    }
-    target.set_word(model::role_word::hp, wrapping_i16(hp + wrapping_i16(amount)));
-    if (target.word(model::role_word::hp) > target.word(model::role_word::maximum_hp)) {
-        target.set_word(model::role_word::hp, target.word(model::role_word::maximum_hp));
-    }
-
-    auto target_hurt = wrapping_i16(
-        static_cast<std::int32_t>(target.word(model::role_word::hurt)) -
-        wrapping_i16(medicine));
-    if (target_hurt < 0) {
-        target_hurt = 0;
-    }
-    target.set_word(model::role_word::hurt, target_hurt);
-    actor.set_word(
-        model::role_word::physical_power,
-        wrapping_i16(static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2));
+    target.hp = *hp;
+    target.hurt = *hurt;
+    actor.physical_power = *physical_power;
+    random = candidate_random;
     return amount;
 }
 
@@ -2463,14 +2444,11 @@ std::optional<std::int16_t> BattleSetup::medicine_targeting_range(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    return wrapping_i16(
-        static_cast<std::int32_t>(
-            ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::medicine)) /
-            15 +
-        1);
+    const auto ability = ranger_.roles[static_cast<std::size_t>(role_id)].medicine;
+    return static_cast<std::int16_t>(std::clamp(ability, std::int64_t{0}, std::int64_t{100}) / 15 + 1);
 }
 
-std::optional<std::int32_t> BattleSetup::apply_medicine_value(
+std::optional<std::int64_t> BattleSetup::apply_medicine_value(
     const std::size_t actor_slot,
     const std::size_t target_slot,
     random::LegacyRandom& random) {
@@ -2487,8 +2465,12 @@ std::optional<std::int32_t> BattleSetup::apply_medicine_value(
         error_ = "battle medicine role is outside ranger records";
         return std::nullopt;
     }
-    return apply_role_medicine_value(
-        ranger_, actor_role_id, target_role_id, random);
+    const auto amount = apply_role_medicine_value(
+        ranger_, actor_role_id, target_role_id, random, limits_);
+    if (!amount.has_value()) {
+        error_ = "battle medicine amount is invalid or overflows";
+    }
+    return amount;
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_medicine_target(
@@ -2500,48 +2482,49 @@ std::optional<BattleAreaResult> BattleSetup::apply_medicine_target(
         return std::nullopt;
     }
     auto& actor_words = combatants_[actor_slot].words;
-    const auto delta_x = static_cast<std::int32_t>(target.x) -
-        actor_words[combatant_word::x];
-    const auto delta_y = static_cast<std::int32_t>(target.y) -
-        actor_words[combatant_word::y];
-    if (delta_x != 0 || delta_y != 0) {
-        if (std::abs(delta_y) > std::abs(delta_x)) {
-            actor_words[combatant_word::initial_mode] = delta_y <= 0 ? 0 : 3;
-        } else {
-            actor_words[combatant_word::initial_mode] = delta_x <= 0 ? 2 : 1;
-        }
-    }
-    clear_attack_effects();
-    BattleAreaResult result{};
-    if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
-        target.y >= static_cast<std::int16_t>(kBattleExtent)) {
-        return result;
-    }
-    const auto index = static_cast<std::size_t>(target.y) * kBattleExtent +
-        static_cast<std::size_t>(target.x);
-    const auto target_slot = data_.occupancy()[index];
-    if (target_slot != -1) {
-        if (target_slot < 0 || target_slot >= combatant_count_) {
+    std::optional<std::size_t> cell;
+    std::int16_t target_slot = -1;
+    std::int64_t amount = 0;
+    if (target.x >= 0 && target.x < static_cast<std::int16_t>(kBattleExtent) &&
+        target.y >= 0 && target.y < static_cast<std::int16_t>(kBattleExtent)) {
+        cell = static_cast<std::size_t>(target.y) * kBattleExtent +
+            static_cast<std::size_t>(target.x);
+        target_slot = data_.occupancy()[*cell];
+        if (target_slot < -1 || target_slot >= combatant_count_) {
             error_ = "battle medicine occupancy is outside combatant slots";
             return std::nullopt;
         }
-        if (combatants_[static_cast<std::size_t>(target_slot)].words[combatant_word::side] !=
-            actor_words[combatant_word::side]) {
-            return result;
+        if (target_slot != -1) {
+            const auto target_index = static_cast<std::size_t>(target_slot);
+            if (combatants_[target_index].words[combatant_word::side] ==
+                actor_words[combatant_word::side]) {
+                const auto treatment = apply_medicine_value(actor_slot, target_index, random);
+                if (!treatment.has_value()) {
+                    return std::nullopt;
+                }
+                amount = *treatment;
+            } else {
+                cell.reset();
+                target_slot = -1;
+            }
         }
     }
-    attack_effects_[index] = 1;
-    if (target_slot == -1) {
-        return result;
+    const auto delta_x = static_cast<std::int32_t>(target.x) - actor_words[combatant_word::x];
+    const auto delta_y = static_cast<std::int32_t>(target.y) - actor_words[combatant_word::y];
+    if (delta_x != 0 || delta_y != 0) {
+        actor_words[combatant_word::initial_mode] = std::abs(delta_y) > std::abs(delta_x)
+            ? (delta_y <= 0 ? 0 : 3) : (delta_x <= 0 ? 2 : 1);
     }
-    const auto target_index = static_cast<std::size_t>(target_slot);
-    const auto amount = apply_medicine_value(actor_slot, target_index, random);
-    if (!amount) {
-        return std::nullopt;
+    clear_attack_effects();
+    if (cell.has_value()) {
+        attack_effects_[*cell] = 1;
     }
-    combatants_[target_index].damage_value = *amount;
-    result.hit_count = 1;
-    result.effect_kind = 4;
+    BattleAreaResult result{};
+    if (target_slot != -1) {
+        combatants_[static_cast<std::size_t>(target_slot)].damage_value = amount;
+        result.hit_count = 1;
+        result.effect_kind = 4;
+    }
     return result;
 }
 
@@ -3174,14 +3157,18 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_hp_action(
         return std::nullopt;
     }
     const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    if (actor_role.word(model::role_word::medicine) >= 20 &&
-        actor_role.word(model::role_word::physical_power) >= 50 &&
-        actor_role.word(model::role_word::medicine) >
-            static_cast<std::int32_t>(actor_role.word(model::role_word::hurt)) - 30) {
-        return commit_ai_choice(
-            actor_slot,
-            BattleAiAction::medicine,
-            static_cast<std::int16_t>(actor_slot));
+    if (actor_role.medicine >= 20 && actor_role.physical_power >= 50) {
+        const auto allowed = model::medicine_allowed(actor_role.medicine, actor_role.hurt);
+        if (!allowed.has_value()) {
+            error_ = "battle AI medicine threshold is invalid or overflows";
+            return std::nullopt;
+        }
+        if (*allowed) {
+            return commit_ai_choice(
+                actor_slot,
+                BattleAiAction::medicine,
+                static_cast<std::int16_t>(actor_slot));
+        }
     }
 
     const auto side = combatants_[actor_slot].words[combatant_word::side];
@@ -3244,12 +3231,18 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_hp_action(
         }
         const auto medicine = ranger_.roles[static_cast<std::size_t>(role_id)].word(
             model::role_word::medicine);
-        if (medicine > 20 && medicine >
-                static_cast<std::int32_t>(actor_role.word(model::role_word::hurt)) - 30) {
-            return commit_ai_choice(
-                actor_slot,
-                BattleAiAction::request_medicine,
-                static_cast<std::int16_t>(slot));
+        if (medicine > 20) {
+            const auto allowed = model::medicine_allowed(medicine, actor_role.hurt);
+            if (!allowed.has_value()) {
+                error_ = "battle AI medicine threshold is invalid or overflows";
+                return std::nullopt;
+            }
+            if (*allowed) {
+                return commit_ai_choice(
+                    actor_slot,
+                    BattleAiAction::request_medicine,
+                    static_cast<std::int16_t>(slot));
+            }
         }
     }
     return commit_ai_choice(
@@ -3435,7 +3428,12 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
             return std::nullopt;
         }
         const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
-        if (medicine <= static_cast<std::int32_t>(role.word(model::role_word::hurt)) - 30) {
+        const auto allowed = model::medicine_allowed(medicine, role.hurt);
+        if (!allowed.has_value()) {
+            error_ = "battle AI medicine threshold is invalid or overflows";
+            return std::nullopt;
+        }
+        if (!*allowed) {
             continue;
         }
         auto selected = combatants_[slot].words[combatant_word::ai_action] ==
@@ -4062,7 +4060,7 @@ std::optional<bool> BattleSetup::choose_ai_specialist_target(const std::size_t a
         }
     }
 
-    std::int16_t best_value = 0;
+    std::int64_t best_value = 0;
     bool detox_target_at_least_20 = false;
     bool medicine_target_at_least_20 = false;
     bool written = false;

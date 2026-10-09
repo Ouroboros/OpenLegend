@@ -151,7 +151,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
   <p>等于门槛可治，各周目共用。</p>
 
   <h3>失败条件</h3>
-  <p>核心体力不足或<code>H</code>超出门槛：加HP和治内伤均为0。原版失败前仍抽取一次随机0～4。</p>
+  <p>核心体力不足或<code>H</code>超出门槛：加HP和治内伤均为0。体力不足按原版直接返回，不消费随机数或核心体力；通过体力门槛后，内伤超出医疗准入仍抽取一次随机0～4并消耗核心2点体力。</p>
 
   <h3 id="medicine-formula">医疗公式</h3>
   <p>NG1起统一使用本式；默认NG1／NG2／NG3的<code>Hmax</code>为99／199／299。</p>
@@ -164,7 +164,7 @@ Q = max(T, ceil(M / 10))               # 回HP和治内伤共用10%保底
 实际消除内伤＝min(H, Q)
 治疗后内伤＝H−实际消除内伤</pre>
   <p>两项共用<code>Q</code>；HP满仍可治内伤。分母用实际<code>Hmax</code>，
-    不用<a href="#hurt-cap-impact-audit"><code>B(n)</code></a>或<code>Hmax＋1</code>。本页是设计，运行时代码尚未实现。</p>
+    不用<a href="#hurt-cap-impact-audit"><code>B(n)</code></a>或<code>Hmax＋1</code>。菜单、玩家和AI已接入共享疗效与64位返回通道，验证状态见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
   <details>
     <summary>原版公式（仅供历史对照）</summary>
     <pre>原版内伤0～25：基础回血＝trunc(4 × M / 5)

@@ -87,8 +87,8 @@ public:
     void set_party_count(std::uint8_t count) noexcept;
 
     void set_party_abilities(
-        const std::array<std::int16_t, 6U>& medicine,
-        const std::array<std::int16_t, 6U>& detoxification) noexcept;
+        const std::array<std::int64_t, 6U>& medicine,
+        const std::array<std::int64_t, 6U>& detoxification) noexcept;
 
     void set_inventory_count(std::uint16_t count) noexcept;
 
@@ -99,7 +99,7 @@ public:
         selection_ = 0U;
     }
 
-    void complete_party_action(std::int32_t amount) noexcept;
+    void complete_party_action(std::int64_t amount) noexcept;
 
     void complete_slot_operation() noexcept;
 
@@ -139,7 +139,7 @@ public:
         return party_options_[party_selection_];
     }
 
-    NODISCARD constexpr std::optional<std::int32_t> party_action_amount() const noexcept {
+    NODISCARD constexpr std::optional<std::int64_t> party_action_amount() const noexcept {
         return party_action_amount_;
     }
 
@@ -213,9 +213,9 @@ private:
     std::uint8_t source_party_selection_{};
     std::uint8_t source_party_slot_{};
     std::array<std::uint8_t, 6U> party_options_{0U, 1U, 2U, 3U, 4U, 5U};
-    std::array<std::int16_t, 6U> medicine_abilities_{};
-    std::array<std::int16_t, 6U> detoxification_abilities_{};
-    std::optional<std::int32_t> party_action_amount_;
+    std::array<std::int64_t, 6U> medicine_abilities_{};
+    std::array<std::int64_t, 6U> detoxification_abilities_{};
+    std::optional<std::int64_t> party_action_amount_;
     GameMenuItemTargetKind item_target_kind_{GameMenuItemTargetKind::equipment};
     GameMenuItemConfirmation item_confirmation_{GameMenuItemConfirmation::practice_reassign};
     GameMenuNotice notice_{GameMenuNotice::leave_protagonist};

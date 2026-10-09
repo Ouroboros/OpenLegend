@@ -17,6 +17,7 @@
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/render/legacy_color.hpp"
+#include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 #include "openlegend/resource/binary_file.hpp"
@@ -39,6 +40,10 @@ namespace openlegend::app {
 struct LegacyGameRuntimeTestAccess {
     static random::LegacyRandom& random(LegacyGameRuntime& runtime) noexcept {
         return runtime.random_;
+    }
+
+    static std::string visible_error(const LegacyGameRuntime& runtime) {
+        return {runtime.visible_error_.begin(), runtime.visible_error_.end()};
     }
 
     static battle::BattleSession* battle_session(LegacyGameRuntime& runtime) noexcept {
@@ -2143,6 +2148,77 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             new_game.handle_key(0x1BU, false, false);
             OL_CHECK(new_game.view() == app::LegacyGameView::world);
         }
+        struct MedicineCase {
+            std::int64_t playthrough;
+            std::int64_t ability;
+            std::int64_t hurt;
+            std::int64_t hp;
+            std::int64_t maximum_hp;
+            std::int64_t physical_power;
+            std::int64_t expected_hp;
+            std::int64_t expected_hurt;
+        };
+        for (const auto example : std::array{
+                 MedicineCase{1, 100, 99, 100, 100, 60, 100, 86},
+                 MedicineCase{2, 100, 120, 0, 1000, 60, 62, 58},
+                 MedicineCase{2, 100, 121, 0, 1000, 60, 0, 121},
+                 MedicineCase{2, 200, 199, 100, 100, 60, 100, 176},
+                 MedicineCase{2, 5'000'000'000'000, 100, 0, 10'000'000'000'000,
+                              60, 3'336'027'629'374, 0},
+                 MedicineCase{1, 32768, 0, 0, 100000, 60, 26217, 0},
+                 MedicineCase{2, 100, 120, 0, 1000, 50, 62, 58},
+                 MedicineCase{2, 100, 120, 0, 1000, 49, 0, 120}}) {
+            snapshot->configuration.enabled = true;
+            snapshot->playthrough = example.playthrough;
+            auto& role = item_ranger->roles[0U];
+            role.medicine = example.ability;
+            role.hurt = example.hurt;
+            role.hp = example.hp;
+            role.maximum_hp = example.maximum_hp;
+            role.physical_power = example.physical_power;
+            app::LegacyGameRuntimeTestAccess::random(new_game).seed(1U);
+            new_game.handle_key(0x1BU, false, false);
+            new_game.handle_key(0x0DU, false, false);
+            OL_CHECK(new_game.render());
+            new_game.finish_presented_tick();
+            new_game.handle_key(0x0DU, false, false);
+            OL_CHECK(new_game.render());
+            new_game.finish_presented_tick();
+            new_game.handle_key(0x0DU, false, false);
+            OL_CHECK(new_game.render());
+            new_game.finish_presented_tick();
+            OL_CHECK(role.hp == example.expected_hp);
+            OL_CHECK(role.hurt == example.expected_hurt);
+            OL_CHECK(role.physical_power ==
+                     (example.physical_power >= 50 ? example.physical_power - 2 : example.physical_power));
+            OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() ==
+                     (example.physical_power >= 50 ? 1'103'527'590U : 1U));
+            new_game.handle_key('A', false, false);
+            new_game.handle_key(0x1BU, false, false);
+            OL_CHECK(new_game.view() == app::LegacyGameView::world);
+        }
+        auto& invalid_medicine_role = item_ranger->roles[0U];
+        invalid_medicine_role.medicine = std::numeric_limits<std::int64_t>::max();
+        invalid_medicine_role.hp = 100;
+        invalid_medicine_role.maximum_hp = 1000;
+        invalid_medicine_role.hurt = 50;
+        invalid_medicine_role.physical_power = 60;
+        const auto before_invalid_medicine = invalid_medicine_role;
+        app::LegacyGameRuntimeTestAccess::random(new_game).seed(1U);
+        new_game.handle_key(0x1BU, false, false);
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::error);
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::visible_error(new_game) ==
+                 "menu party treatment is invalid or overflows");
+        OL_CHECK(invalid_medicine_role == before_invalid_medicine);
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() == 1U);
+        new_game.handle_key('A', false, false);
+        new_game.handle_key(0x1BU, false, false);
+        OL_CHECK(new_game.view() == app::LegacyGameView::world);
         snapshot->configuration = saved_configuration;
         snapshot->playthrough = saved_playthrough;
         item_ranger->roles[0U] = saved_role;
@@ -2470,17 +2546,27 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         new_game.handle_key(0x0DU, false, false) ==
         app::LegacyKeyStateReset::confirmation_group);
     OL_CHECK(new_game.render());
-    const auto medicine_result_hash = fnv1a64(new_game.framebuffer().pixels());
-    if (medicine_result_hash != 0xD33F69F1F38262D3ULL) {
-        std::cerr << "medicine_result_hash=0x" << std::hex << medicine_result_hash << std::dec << '\n';
+    const auto medicine_ascii = resource::DataRoot{data_root}.read("FONT3.E16");
+    const auto medicine_big5 = resource::DataRoot{data_root}.read("FONT3.C16");
+    OL_CHECK(medicine_ascii && medicine_big5);
+    render::Big5GlyphCache medicine_glyphs{medicine_big5.bytes};
+    render::IndexedFramebuffer medicine_expected;
+    medicine_expected.clear(0);
+    OL_CHECK(render::draw_text_utf8(medicine_expected, 117, 51, u8"恢復生命",
+        medicine_ascii.bytes, medicine_glyphs, render::legacy_color::text::selected));
+    OL_CHECK(render::draw_text_utf8(medicine_expected, 181, 51, u8" 57",
+        medicine_ascii.bytes, medicine_glyphs, render::legacy_color::text::notice));
+    for (int pixel_y = 51; pixel_y < 67; ++pixel_y) {
+        for (int pixel_x = 117; pixel_x < 206; ++pixel_x) {
+            const auto pixel = medicine_expected.row(pixel_y)[pixel_x];
+            if (pixel != 0) {
+                OL_CHECK(new_game.framebuffer().row(pixel_y)[pixel_x] == pixel);
+            }
+        }
     }
-    OL_CHECK(medicine_result_hash == 0xD33F69F1F38262D3ULL);
     if (menu_ranger != nullptr) {
         const auto& role = menu_ranger->roles[0U];
-        if (role.word(model::role_word::hp) != 80) {
-            std::cerr << "medicine_hp=" << role.word(model::role_word::hp) << '\n';
-        }
-        OL_CHECK(role.word(model::role_word::hp) == 80);
+        OL_CHECK(role.word(model::role_word::hp) == 77);
         OL_CHECK(role.word(model::role_word::hurt) == 0);
         OL_CHECK(role.word(model::role_word::physical_power) == 98);
     }

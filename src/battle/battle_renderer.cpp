@@ -521,14 +521,28 @@ bool BattleRenderer::render_party_ability_selection(
     const auto ability_word = kind == PartyAbilityKind::medicine
         ? model::role_word::medicine
         : model::role_word::detoxification;
-    if (!valid() || party_slots.empty() || cursor >= party_slots.size() ||
-        !draw_box(framebuffer, 70, 18, 108U, 26U) ||
+    if (!valid() || party_slots.empty() || cursor >= party_slots.size()) {
+        return false;
+    }
+    std::size_t number_width = 3U;
+    for (const auto party_slot : party_slots) {
+        if (party_slot >= model::kTeamMemberCount) {
+            return false;
+        }
+        const auto role_id = ranger.header.team_member(party_slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
+            return false;
+        }
+        number_width = std::max(number_width,
+            decimal_text(ranger.roles[static_cast<std::size_t>(role_id)].word(ability_word), 2).size());
+    }
+    if (!draw_box(framebuffer, 70, 18, 108U, 26U) ||
         !draw_text_utf8(framebuffer, 75, 22, title, text_colors::notice) ||
         !draw_box(
             framebuffer,
             70,
             45,
-            90U,
+            static_cast<std::uint16_t>(66U + 8U * number_width),
             static_cast<std::uint16_t>(20U * party_slots.size() + 30U)) ||
         !draw_text_utf8(framebuffer, 75, 52, subtitle, text_colors::notice)) {
         return false;
@@ -566,7 +580,7 @@ bool BattleRenderer::render_party_ability_selection(
 
 bool BattleRenderer::render_party_action_notice(
     const PartyAbilityKind kind,
-    const std::optional<std::int32_t> amount,
+    const std::optional<std::int64_t> amount,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid()) {
         return false;
@@ -581,9 +595,12 @@ bool BattleRenderer::render_party_action_notice(
     const auto label = kind == PartyAbilityKind::medicine
         ? kMedicineResultLabel
         : kDetoxificationResultLabel;
-    return draw_box(framebuffer, 112, 47, 96U, 26U) &&
-        draw_text_utf8(framebuffer, 117, 51, label, text_colors::selected) &&
-        draw_text_utf8(framebuffer, 181, 51, decimal_text(*amount, 3), text_colors::notice);
+    const auto number = decimal_text(*amount, 3);
+    const auto width = static_cast<std::uint16_t>(72U + 8U * number.size());
+    const auto left = 112 - (static_cast<int>(width) - 96) / 2;
+    return draw_box(framebuffer, left, 47, width, 26U) &&
+        draw_text_utf8(framebuffer, left + 5, 51, label, text_colors::selected) &&
+        draw_text_utf8(framebuffer, left + 69, 51, number, text_colors::notice);
 }
 
 bool BattleRenderer::render_character_status(

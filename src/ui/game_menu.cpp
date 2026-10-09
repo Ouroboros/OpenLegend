@@ -65,8 +65,8 @@ void GameMenuController::set_party_count(const std::uint8_t count) noexcept {
 }
 
 void GameMenuController::set_party_abilities(
-    const std::array<std::int16_t, 6U>& medicine,
-    const std::array<std::int16_t, 6U>& detoxification) noexcept {
+    const std::array<std::int64_t, 6U>& medicine,
+    const std::array<std::int64_t, 6U>& detoxification) noexcept {
     medicine_abilities_ = medicine;
     detoxification_abilities_ = detoxification;
 }
@@ -87,7 +87,7 @@ void GameMenuController::set_inventory_slots(
     std::ranges::copy(slots.first(inventory_count_), inventory_slots_.begin());
 }
 
-void GameMenuController::complete_party_action(const std::int32_t amount) noexcept {
+void GameMenuController::complete_party_action(const std::int64_t amount) noexcept {
     if (screen_ == GameMenuScreen::party_notice &&
         (pending_party_command_ == GameMenuCommand::medicine ||
          pending_party_command_ == GameMenuCommand::detoxification)) {

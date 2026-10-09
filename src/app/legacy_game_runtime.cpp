@@ -2927,8 +2927,8 @@ void LegacyGameRuntime::update_menu_counts() {
         ++party_count;
     }
     game_menu_.set_party_count(party_count);
-    std::array<std::int16_t, 6U> medicine_abilities{};
-    std::array<std::int16_t, 6U> detoxification_abilities{};
+    std::array<std::int64_t, 6U> medicine_abilities{};
+    std::array<std::int64_t, 6U> detoxification_abilities{};
     for (std::uint8_t slot = 0U; slot < party_count; ++slot) {
         const auto role_id = ranger->header.team_member(slot).value;
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger->roles.size()) {
@@ -3163,14 +3163,29 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         }
         const auto actor_role_id = ranger->header.team_member(result.slot).value;
         const auto target_role_id = ranger->header.team_member(result.index).value;
-        const auto amount = result.command == ui::GameMenuCommand::medicine
-            ? battle::apply_role_medicine_value(
-                  *ranger, actor_role_id, target_role_id, random_)
-            : std::optional<std::int32_t>{battle::apply_role_detox_value(
-                  *ranger, actor_role_id, target_role_id, random_)};
-        if (amount.has_value()) {
-            game_menu_.complete_party_action(*amount);
+        std::optional<std::int64_t> amount;
+        if (result.command == ui::GameMenuCommand::medicine) {
+            const auto* snapshot = game_state_.snapshot();
+            const auto limits = snapshot == nullptr
+                ? std::nullopt
+                : model::calculate_playthrough_limits(snapshot->configuration, snapshot->playthrough);
+            if (!limits.has_value()) {
+                game_menu_.show_main();
+                show_error("menu medicine playthrough configuration is invalid", LegacyGameView::game_menu);
+                break;
+            }
+            amount = battle::apply_role_medicine_value(
+                *ranger, actor_role_id, target_role_id, random_, *limits);
+        } else {
+            amount = battle::apply_role_detox_value(
+                *ranger, actor_role_id, target_role_id, random_);
         }
+        if (!amount.has_value()) {
+            game_menu_.show_main();
+            show_error("menu party treatment is invalid or overflows", LegacyGameView::game_menu);
+            break;
+        }
+        game_menu_.complete_party_action(*amount);
         break;
     }
     case ui::GameMenuCommand::items:

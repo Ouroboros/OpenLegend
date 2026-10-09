@@ -78,11 +78,12 @@ NODISCARD std::optional<std::int16_t> apply_role_detox_value(
     std::int16_t target_role_id,
     random::LegacyRandom& random);
 
-NODISCARD std::optional<std::int32_t> apply_role_medicine_value(
+NODISCARD std::optional<std::int64_t> apply_role_medicine_value(
     model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
-    random::LegacyRandom& random);
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits);
 
 struct BattleItemSelectionState {
     std::array<std::int16_t, model::kInventoryCount> inventory_slots{};
@@ -851,7 +852,7 @@ public:
     NODISCARD std::optional<std::int16_t> medicine_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    NODISCARD std::optional<std::int32_t> apply_medicine_value(
+    NODISCARD std::optional<std::int64_t> apply_medicine_value(
         std::size_t actor_slot,
         std::size_t target_slot,
         random::LegacyRandom& random);

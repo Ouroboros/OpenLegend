@@ -56,6 +56,11 @@ target_include_directories(openlegend_magic_progression_tests PRIVATE ${CMAKE_CU
 target_link_libraries(openlegend_magic_progression_tests PRIVATE openlegend_model openlegend_persistence)
 add_test(NAME openlegend.magic_progression COMMAND openlegend_magic_progression_tests)
 
+add_executable(openlegend_medicine_tests unit/model/medicine_test.cpp)
+target_include_directories(openlegend_medicine_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_medicine_tests PRIVATE openlegend_model)
+add_test(NAME openlegend.medicine COMMAND openlegend_medicine_tests)
+
 add_executable(openlegend_poison_tests unit/model/poison_test.cpp)
 target_include_directories(openlegend_poison_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_poison_tests PRIVATE openlegend_model)
@@ -180,7 +185,7 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
-add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 48)
+add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 49)
 
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
 target_compile_definitions(
