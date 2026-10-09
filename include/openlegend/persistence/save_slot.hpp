@@ -58,6 +58,8 @@ enum class PersistenceStatus {
     invalid_scene_group_size,
     invalid_snapshot,
     write_failed,
+    cleanup_failed,
+    rollback_failed,
     delete_failed,
 };
 
@@ -88,6 +90,7 @@ struct SnapshotWriteResult {
     PersistenceStatus status{PersistenceStatus::ready};
     std::filesystem::path path;
     std::string detail;
+    std::vector<std::filesystem::path> recovery_paths;
 
     NODISCARD explicit operator bool() const noexcept {
         return status == PersistenceStatus::ready;

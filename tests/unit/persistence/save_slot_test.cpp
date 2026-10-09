@@ -353,6 +353,35 @@ void check_runtime_slot_contract(
     OL_CHECK(static_cast<bool>(reloaded));
     OL_CHECK(*source.snapshot == *reloaded.snapshot);
 
+    auto changed = *source.snapshot;
+    changed.scene_maps[0] ^= 1U;
+    changed.scene_events[0] ^= 1U;
+    changed.ranger.header.set_inventory(0U, openlegend::model::ItemId{174}, 123);
+    auto collision = slot_files.ranger_group;
+    collision += ".tmp";
+    write_bytes(collision, sentinel);
+    OL_CHECK(!openlegend::persistence::write_numbered_slot(root, SaveSlot::one, changed));
+    reloaded = openlegend::persistence::load_numbered_slot(root, SaveSlot::one);
+    OL_CHECK(!reloaded && reloaded.path == collision);
+    OL_CHECK(!openlegend::persistence::load_numbered_slot(root, SaveSlot::one, ranger_index));
+    OL_CHECK(!openlegend::persistence::load_numbered_slot_ranger(root, SaveSlot::one, ranger_index));
+    OL_CHECK(read_bytes(collision) == std::vector<std::uint8_t>(sentinel.begin(), sentinel.end()));
+    std::filesystem::remove(collision);
+    reloaded = openlegend::persistence::load_numbered_slot(root, SaveSlot::one);
+    OL_CHECK(reloaded && reloaded.snapshot == source.snapshot);
+    OL_CHECK(openlegend::persistence::write_numbered_slot(root, SaveSlot::one, changed));
+    reloaded = openlegend::persistence::load_numbered_slot(root, SaveSlot::one);
+    OL_CHECK(reloaded && reloaded.snapshot == changed);
+    auto wide = openlegend::model::decode_legacy_snapshot(*source.snapshot);
+    OL_CHECK(wide.has_value());
+    if (wide) {
+        wide->ranger.roles[0].hp = 4'000'000'000;
+        OL_CHECK(openlegend::persistence::write_numbered_slot(root, SaveSlot::one, *wide).status ==
+            openlegend::persistence::PersistenceStatus::invalid_snapshot);
+        reloaded = openlegend::persistence::load_numbered_slot(root, SaveSlot::one);
+        OL_CHECK(reloaded && reloaded.snapshot == changed);
+    }
+    OL_CHECK(openlegend::persistence::write_numbered_slot(root, SaveSlot::one, *source.snapshot));
     auto shared_index = read_bytes(root / "RANGER.IDX");
     shared_index.pop_back();
     write_bytes(root / "RANGER.IDX", shared_index);

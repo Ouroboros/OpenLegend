@@ -286,7 +286,7 @@ d_compressed_base64                = string                               # 完�
         <p>随后使用RFC 4648标准Base64字母表和<code>=</code>padding编码。</p>
         <p>存档内不另设压缩算法或版本字段。写入器在TOML多行字符串中按每行76个Base64字符换行；解析后只允许移除CR／LF，
           其他空白、URL-safe字符、非法字符、错误padding、frame checksum失败、尾随数据、多个frame或解压后长度不等于4,915,200／440,000 bytes时，整个读档失败。</p>
-        <p id="scene-archive-codec">实现已加入独立S／D编解码入口，使用固定Zstandard 1.5.7静态库及其<a href="https://github.com/facebook/zstd/blob/v1.5.7/lib/zstd.h">官方API</a>。先严格解码Base64，再检查普通单帧、content size、checksum标记与无字典，按固定输出容量解压并核对实际长度；不改变输入状态。此入口已由完整TOML内存快照与单文件读写调用，Legacy多文件事务尚未接入，验证进度见实现清单。</p>
+        <p id="scene-archive-codec">实现已加入独立S／D编解码入口，使用固定Zstandard 1.5.7静态库及其<a href="https://github.com/facebook/zstd/blob/v1.5.7/lib/zstd.h">官方API</a>。先严格解码Base64，再检查普通单帧、content size、checksum标记与无字典，按固定输出容量解压并核对实际长度；不改变输入状态。此入口已由完整TOML内存快照与单文件读写调用，Legacy三文件事务已接入游戏保存，验证进度见实现清单。</p>
       </li>
       <li>
         不允许<code>[[items]]</code>、<code>[[scenes]]</code>、<code>[[magics]]</code>或完整<code>[[shops]]</code>定义表；
@@ -385,6 +385,7 @@ d_compressed_base64                = string                               # 完�
       <li>关闭NG+时不创建、扫描、显示或加载TOML；磁盘上已有TOML不得自动删除或改写，重新开启NG+后恢复按TOML优先级处理。</li>
     </ol>
     <p id="toml-file-storage"><strong>单文件实现：</strong>已加入普通／通关槽位的安全读取与写入接口，验证全部001…999路径；读取通过原生句柄拒绝最终符号链接及非普通文件，分配前检查64 MiB限制，完整读取并拒绝提前EOF与长度变化。写入先完成内存回读验证，再排他创建<code>.tmp</code>，完整写入、刷新并关闭后调用本节的平台替换接口；新建目录同步其父目录。读取旧目标前排他建立<code>.rollback.tmp</code>占用，有旧档则写入并刷新其副本，无旧档则保持空占用；它持续保护重命名后的提交及回滚，避免第二个写入进入该窗口，以覆盖<a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew#return-value">ReplaceFileW部分失败会改变旧文件名的情况</a>以及替换后的目录刷新失败。原目标未变时不重复覆盖，已经改变时恢复旧副本；成功与可恢复失败均清理本次临时文件，不删除其他写入者或先前遗留的同名文件。若恢复或清理操作本身再次失败，接口明确返回错误和遗留路径，并保留旧副本，不把它报告为保存成功；此时未证明原目标路径已恢复，仍需上层处理。Linux完整158项回归通过；补入同槽位重入保护后，Linux与Windows两项原生文件／TOML槽位专项均通过；这不证明断电恢复、Legacy多文件事务、游戏界面接入或完整游戏链路已经完成。</p>
+    <p id="legacy-slot-transaction"><strong>Legacy三文件事务：</strong>游戏保存先同步当前坐标并导出一次完整逻辑快照，完整检查Legacy可表示范围、生成R字节后，才准备S／D／R的排他临时文件与旧档副本；全部写入、刷新和关闭后，依次替换S／D／R并同步目录。提交前任何可恢复失败均逆序恢复已尝试替换的文件，原先不存在的文件撤销新建；恢复一项失败仍继续恢复其余文件，并保留失败项的副本或占用及全部恢复路径。整组替换与目录同步成功后才进入清理；此时若清理失败，明确报告“新档已写入但临时文件清理失败”，不回滚已提交的新档，也不宣称旧档已恢复。游戏错误处理记录恢复路径；Legacy完整加载与列表预览遇到该槽位的事务遗留文件时拒绝读取。已有临时文件不由新事务删除。该实现不承诺三次重命名对其他进程同时可见，不证明断电恢复；跨平台验证进度见实现清单。</p>
   </section>
 
 <section id="persistence">
@@ -443,7 +444,7 @@ Mref(Nmax)=9990，CountRef=9988，PaidTierRef=9989
       <li>换周目不自动增加任何已继承的人物经验、武功熟练度、秘笈成功次数或永久属性；内伤、中毒换周目清0；内伤保留周目上限<code>HurtMax(n, CFG)</code>，中毒量正常范围固定为0～99。</li>
     </ul>
     <div class="notice">
-      <p><strong>实现状态：</strong>共用64位运算、角色逻辑类型、Legacy角色字段转换、CFG解析及游戏持有的完整逻辑快照已加入。S／D压缩、九资产SHA256、普通／通关TOML内存与单文件读写、完整回读比较已通过专项与统一BUILD应用Debug的Linux158项回归及Windows两项文件专项；Legacy多文件事务、存读档界面接入与通关继承尚未完成。阶段记录见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
+      <p><strong>实现状态：</strong>共用64位运算、角色逻辑类型、Legacy角色字段转换、CFG解析及游戏持有的完整逻辑快照已加入。S／D压缩、九资产SHA256、普通／通关TOML内存与单文件读写、完整回读比较已通过专项与统一BUILD应用Debug的Linux158项回归及Windows两项文件专项；Legacy三文件事务已接入现有游戏保存；TOML存读档界面接入与通关继承尚未完成。阶段记录见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
     </div>
   </section>
 </main>

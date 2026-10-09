@@ -5,6 +5,7 @@ add_library(
     asset_fingerprints.cpp
     toml_snapshot.cpp
     save_file.cpp
+    save_file_group.cpp
     native_save_file.cpp
     toml_slot.cpp
 )

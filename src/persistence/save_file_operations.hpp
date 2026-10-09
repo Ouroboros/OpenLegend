@@ -57,6 +57,9 @@ NODISCARD SaveFileReadResult read_save_file(
     SaveFileOperations& operations, const std::filesystem::path& path,
     std::size_t maximum_bytes);
 
+NODISCARD SaveFileGroupWriteResult replace_save_files(
+    SaveFileOperations& operations, std::span<const SaveFileReplacement> files);
+
 NODISCARD SaveFileWriteResult replace_save_file(
     SaveFileOperations& operations, const std::filesystem::path& path,
     std::span<const std::uint8_t> bytes, std::size_t maximum_bytes);

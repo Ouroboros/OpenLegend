@@ -8,10 +8,12 @@
 #include <fstream>
 #include <span>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
 #include "openlegend/compat/byte_reader.hpp"
+#include "openlegend/persistence/save_file.hpp"
 #include "openlegend/resource/binary_file.hpp"
 
 namespace openlegend::persistence {
@@ -40,6 +42,25 @@ NODISCARD SnapshotLoadResult load_error(
     result.path = std::move(path);
     result.detail = std::move(detail);
     return result;
+}
+
+NODISCARD SnapshotLoadResult check_numbered_transaction(const SaveFileSet& files) {
+    for (const auto& target : {files.scene_map_group, files.scene_event_group, files.ranger_group}) {
+        for (const auto suffix : {".tmp", ".rollback.tmp"}) {
+            auto path = target;
+            path += suffix;
+            std::error_code error;
+            const auto status = std::filesystem::symlink_status(path, error);
+            if (error && error != std::errc::no_such_file_or_directory) {
+                return load_error(PersistenceStatus::read_failed, path, error.message());
+            }
+            if (std::filesystem::exists(status)) {
+                return load_error(PersistenceStatus::read_failed, path,
+                    "save slot has unfinished file transaction artifacts");
+            }
+        }
+    }
+    return {};
 }
 
 NODISCARD RangerLoadResult ranger_load_error(
@@ -459,6 +480,10 @@ SnapshotLoadResult load_numbered_slot(
     if (!files.has_value()) {
         return load_error(PersistenceStatus::invalid_slot, root);
     }
+    const auto transaction = check_numbered_transaction(*files);
+    if (transaction.status != PersistenceStatus::ready) {
+        return transaction;
+    }
 
     const auto scene_map_group = read_required(files->scene_map_group);
     if (scene_map_group.status != PersistenceStatus::ready) {
@@ -487,6 +512,10 @@ SnapshotLoadResult load_numbered_slot(
     const auto files = numbered_file_set(root, slot);
     if (!files.has_value()) {
         return load_error(PersistenceStatus::invalid_slot, root);
+    }
+    const auto transaction = check_numbered_transaction(*files);
+    if (transaction.status != PersistenceStatus::ready) {
+        return transaction;
     }
 
     const auto scene_map_group = read_required(files->scene_map_group);
@@ -518,6 +547,10 @@ RangerLoadResult load_numbered_slot_ranger(
     const auto files = numbered_file_set(root, slot);
     if (!files.has_value()) {
         return ranger_load_error(PersistenceStatus::invalid_slot, root);
+    }
+    const auto transaction = check_numbered_transaction(*files);
+    if (transaction.status != PersistenceStatus::ready) {
+        return ranger_load_error(transaction.status, transaction.path, transaction.detail);
     }
     const auto ranger_group = read_required(files->ranger_group);
     if (ranger_group.status != PersistenceStatus::ready) {
@@ -618,11 +651,28 @@ SnapshotWriteResult write_numbered_slot(
     const std::filesystem::path& root,
     const SaveSlot slot,
     const model::GameSnapshot& snapshot) {
-    auto result = write_numbered_slot_scene_archives(root, slot, snapshot);
-    if (!result) {
-        return result;
+    const auto files = numbered_file_set(root, slot);
+    if (!files.has_value()) {
+        return write_error(PersistenceStatus::invalid_slot, root);
     }
-    return write_numbered_slot_ranger(root, slot, snapshot);
+    if (!snapshot.valid()) {
+        return write_error(PersistenceStatus::invalid_snapshot, root);
+    }
+    const auto ranger_group = encode_ranger(snapshot.ranger);
+    const std::array<SaveFileReplacement, 3> replacements{{
+        {files->scene_map_group, snapshot.scene_maps, snapshot.scene_maps.size()},
+        {files->scene_event_group, snapshot.scene_events, snapshot.scene_events.size()},
+        {files->ranger_group, ranger_group, ranger_group.size()},
+    }};
+    auto written = replace_save_files(replacements);
+    if (written) {
+        return {};
+    }
+    auto result = write_error(written.committed ? PersistenceStatus::cleanup_failed
+        : written.status == SaveFileStatus::rollback_failed ? PersistenceStatus::rollback_failed
+        : PersistenceStatus::write_failed, std::move(written.path), std::move(written.detail));
+    result.recovery_paths = std::move(written.recovery_paths);
+    return result;
 }
 
 SnapshotWriteResult delete_numbered_slot(
@@ -681,6 +731,10 @@ std::string_view persistence_status_message(const PersistenceStatus status) noex
         return "game snapshot has invalid scene storage";
     case PersistenceStatus::write_failed:
         return "cannot write save file";
+    case PersistenceStatus::cleanup_failed:
+        return "save was written but temporary file cleanup failed";
+    case PersistenceStatus::rollback_failed:
+        return "save failed and previous files could not be fully restored";
     case PersistenceStatus::delete_failed:
         return "cannot delete save file";
     }

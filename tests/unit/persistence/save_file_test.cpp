@@ -112,7 +112,8 @@ public:
 
     void publish(const std::filesystem::path& temporary,
         const std::filesystem::path& target, const bool replacing) override {
-        if (faults.remove_before_publish_failure) {
+        if (faults.remove_before_publish_failure &&
+            faults.calls["publish"] + 1 == faults.occurrence) {
             native_.remove(target);
         }
         if (faults.protect_temporary_before_publish_failure) {
@@ -393,6 +394,182 @@ void check_overlapping_writes(const std::filesystem::path& root) {
     }
 }
 
+void check_file_groups(const std::filesystem::path& root) {
+    const std::array<std::vector<std::uint8_t>, 3> originals{{{1U, 2U}, {3U, 4U, 5U}, {6U}}};
+    const std::array<std::vector<std::uint8_t>, 3> replacements{{{11U}, {12U, 13U}, {14U, 15U, 16U}}};
+    const std::array<SaveFileReplacement, 3> files{{
+        {root / "S9.GRP", replacements[0], kLimit},
+        {root / "D9.GRP", replacements[1], kLimit},
+        {root / "R9.GRP", replacements[2], kLimit},
+    }};
+    const auto prepare = [&](const unsigned int mask) {
+        for (std::size_t index = 0U; index < files.size(); ++index) {
+            std::filesystem::remove(files[index].path);
+            std::filesystem::remove(suffixed(files[index].path, ".tmp"));
+            std::filesystem::remove(suffixed(files[index].path, ".rollback.tmp"));
+            if ((mask & (1U << index)) != 0U) {
+                put(files[index].path, originals[index]);
+            }
+        }
+    };
+    const auto expect_originals = [&](const unsigned int mask) {
+        for (std::size_t index = 0U; index < files.size(); ++index) {
+            if ((mask & (1U << index)) != 0U) {
+                expect_bytes(files[index].path, originals[index]);
+            } else {
+                OL_CHECK(!std::filesystem::exists(files[index].path));
+            }
+        }
+    };
+    const auto expect_clean = [&] {
+        for (const auto& file : files) {
+            OL_CHECK(!std::filesystem::exists(suffixed(file.path, ".tmp")));
+            OL_CHECK(!std::filesystem::exists(suffixed(file.path, ".rollback.tmp")));
+        }
+    };
+    std::size_t failure_cases{};
+    for (unsigned int mask = 0U; mask < 8U; ++mask) {
+        prepare(mask);
+        ObservedOperations successful;
+        const auto saved = io::replace_save_files(successful, files);
+        OL_CHECK(saved && saved.committed && saved.recovery_paths.empty());
+        for (std::size_t index = 0U; index < files.size(); ++index) {
+            expect_bytes(files[index].path, replacements[index]);
+        }
+        expect_clean();
+        for (const auto& [operation, count] : successful.faults.calls) {
+            for (int occurrence = 1; occurrence <= count; ++occurrence) {
+                prepare(mask);
+                ObservedOperations failing;
+                failing.faults.operation = operation;
+                failing.faults.occurrence = occurrence;
+                const auto result = io::replace_save_files(failing, files);
+                OL_CHECK(!result && !result.detail.empty());
+                OL_CHECK(failing.faults.calls[operation] >= occurrence);
+                if (operation == "remove") {
+                    OL_CHECK(result.committed && result.recovery_paths.size() == 1U);
+                    for (std::size_t index = 0U; index < files.size(); ++index) {
+                        expect_bytes(files[index].path, replacements[index]);
+                    }
+                    if (!result.recovery_paths.empty()) {
+                        OL_CHECK(result.recovery_paths[0] == suffixed(files[occurrence - 1].path, ".rollback.tmp"));
+                        std::filesystem::remove(result.recovery_paths[0]);
+                    }
+                } else {
+                    OL_CHECK(!result.committed && result.status != SaveFileStatus::rollback_failed);
+                    expect_originals(mask);
+                    ++failure_cases;
+                }
+                expect_clean();
+            }
+        }
+        for (const bool fail_commit : {false, true}) {
+            prepare(mask);
+            ObservedOperations overlapping;
+            bool entered{};
+            overlapping.faults.before_commit_flush = [&] {
+                entered = true;
+                const auto second = replace_save_files(files);
+                OL_CHECK(!second && !second.committed);
+            };
+            if (fail_commit) {
+                overlapping.faults.operation = "sync_directory";
+                overlapping.faults.occurrence = 2;
+            }
+            const auto result = io::replace_save_files(overlapping, files);
+            OL_CHECK(entered && static_cast<bool>(result) == !fail_commit);
+            if (fail_commit) {
+                expect_originals(mask);
+            } else {
+                for (std::size_t index = 0U; index < files.size(); ++index) {
+                    expect_bytes(files[index].path, replacements[index]);
+                }
+            }
+            expect_clean();
+        }
+    }
+    for (int occurrence = 1; occurrence <= 3; ++occurrence) {
+        prepare(7U);
+        ObservedOperations partial_publish;
+        partial_publish.faults.operation = "publish";
+        partial_publish.faults.occurrence = occurrence;
+        partial_publish.faults.remove_before_publish_failure = true;
+        OL_CHECK(!io::replace_save_files(partial_publish, files));
+        expect_originals(7U);
+        expect_clean();
+    }
+    prepare(7U);
+    ObservedOperations failed_restore;
+    failed_restore.faults.operation = "sync_directory";
+    failed_restore.faults.occurrence = 2;
+    failed_restore.faults.fail_restore = true;
+    const auto unrestored = io::replace_save_files(failed_restore, files);
+    OL_CHECK(!unrestored && !unrestored.committed);
+    OL_CHECK(unrestored.status == SaveFileStatus::rollback_failed && unrestored.recovery_paths.size() == 3U);
+    for (std::size_t index = 0U; index < files.size(); ++index) {
+        expect_bytes(suffixed(files[index].path, ".rollback.tmp"), originals[index]);
+        expect_bytes(files[index].path, replacements[index]);
+    }
+    prepare(7U);
+    ObservedOperations committed_cleanup;
+    committed_cleanup.faults.fail_cleanup = true;
+    const auto committed = io::replace_save_files(committed_cleanup, files);
+    OL_CHECK(!committed && committed.committed && committed.recovery_paths.size() == 3U);
+    for (std::size_t index = 0U; index < files.size(); ++index) {
+        expect_bytes(files[index].path, replacements[index]);
+        expect_bytes(suffixed(files[index].path, ".rollback.tmp"), originals[index]);
+    }
+    prepare(7U);
+    ObservedOperations partial_transfer;
+    partial_transfer.faults.transfer_limit = 1U;
+    OL_CHECK(io::replace_save_files(partial_transfer, files));
+    for (std::size_t index = 0U; index < files.size(); ++index) {
+        expect_bytes(files[index].path, replacements[index]);
+    }
+    prepare(7U);
+    ObservedOperations zero_transfer;
+    zero_transfer.faults.transfer_limit = 0U;
+    OL_CHECK(!io::replace_save_files(zero_transfer, files));
+    expect_originals(7U);
+    expect_clean();
+    prepare(7U);
+    ObservedOperations failed_cleanup;
+    failed_cleanup.faults.operation = "temporary.flush";
+    failed_cleanup.faults.fail_cleanup = true;
+    const auto unclean = io::replace_save_files(failed_cleanup, files);
+    OL_CHECK(!unclean && !unclean.committed && unclean.recovery_paths.size() == 6U);
+    expect_originals(7U);
+    prepare(0U);
+    ObservedOperations failed_removal;
+    failed_removal.faults.operation = "sync_directory";
+    failed_removal.faults.occurrence = 2;
+    failed_removal.faults.fail_cleanup = true;
+    const auto unremoved = io::replace_save_files(failed_removal, files);
+    OL_CHECK(!unremoved && !unremoved.committed && unremoved.status == SaveFileStatus::rollback_failed);
+    OL_CHECK(unremoved.recovery_paths.size() == 6U);
+    for (std::size_t index = 0U; index < files.size(); ++index) {
+        expect_bytes(files[index].path, replacements[index]);
+        expect_bytes(suffixed(files[index].path, ".rollback.tmp"), {});
+    }
+    prepare(7U);
+    auto invalid = files;
+    invalid[2].maximum_bytes = 0U;
+    ObservedOperations preflight;
+    OL_CHECK(!io::replace_save_files(preflight, invalid));
+    OL_CHECK(preflight.faults.calls.empty());
+    invalid = files;
+    invalid[2].path += ".TMP";
+    OL_CHECK(!io::replace_save_files(preflight, invalid));
+    OL_CHECK(preflight.faults.calls.empty());
+    invalid = files;
+    invalid[2].path = files[0].path;
+    OL_CHECK(!io::replace_save_files(preflight, invalid));
+    expect_originals(7U);
+    expect_clean();
+    OL_CHECK(!replace_save_files({}));
+    std::cout << "Recoverable group write failure cases: " << failure_cases + 3U << '\n';
+}
+
 }
 
 int main() {
@@ -404,6 +581,7 @@ int main() {
         check_read_failures(root);
         check_write_failures(root);
         check_overlapping_writes(root);
+        check_file_groups(root);
         std::filesystem::remove_all(root);
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

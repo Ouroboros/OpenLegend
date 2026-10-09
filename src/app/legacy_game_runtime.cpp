@@ -2206,6 +2206,9 @@ void LegacyGameRuntime::perform_pending_io() {
             save_slot(pending_slot_),
             startup_resources_.ranger_index_bytes());
         if (!loaded) {
+            const auto failed_path = loaded.path.u8string();
+            diagnostics::log_error("Save load rejected: " + loaded.detail + " [" +
+                std::string{reinterpret_cast<const char*>(failed_path.data()), failed_path.size()} + "]");
             if (error_return_view_ == LegacyGameView::scene && scene_session_ != nullptr &&
                 scene_session_->pending().kind == scene::SceneStepKind::load_slot) {
                 handle_scene_result(scene_session_->resume(scene::SceneResponse::cancel));
@@ -2222,19 +2225,6 @@ void LegacyGameRuntime::perform_pending_io() {
         return;
     }
 
-    const auto scene_snapshot = game_state_.export_snapshot();
-    if (!scene_snapshot.has_value()) {
-        show_error("No game state is available to save", LegacyGameView::game_menu);
-        return;
-    }
-    auto written = persistence::write_numbered_slot_scene_archives(
-        save_root_path_, save_slot(pending_slot_), *scene_snapshot);
-    if (!written) {
-        show_error(
-            std::string{persistence::persistence_status_message(written.status)},
-            LegacyGameView::game_menu);
-        return;
-    }
     if (world_session_ != nullptr) {
         world_session_->sync_persistent_state(menu_return_view_ == LegacyGameView::world);
     }
@@ -2243,9 +2233,15 @@ void LegacyGameRuntime::perform_pending_io() {
         show_error("No game state is available to save", LegacyGameView::game_menu);
         return;
     }
-    written = persistence::write_numbered_slot_ranger(
+    const auto written = persistence::write_numbered_slot(
         save_root_path_, save_slot(pending_slot_), *ranger_snapshot);
     if (!written) {
+        diagnostics::log_error("Save failed: " + written.detail);
+        for (const auto& path : written.recovery_paths) {
+            const auto utf8 = path.u8string();
+            diagnostics::log_error("Save recovery path: " +
+                std::string{reinterpret_cast<const char*>(utf8.data()), utf8.size()});
+        }
         show_error(
             std::string{persistence::persistence_status_message(written.status)},
             LegacyGameView::game_menu);

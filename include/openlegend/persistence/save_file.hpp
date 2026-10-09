@@ -41,6 +41,27 @@ struct SaveFileWriteResult {
     }
 };
 
+struct SaveFileReplacement {
+    std::filesystem::path path;
+    std::span<const std::uint8_t> bytes;
+    std::size_t maximum_bytes{};
+};
+
+struct SaveFileGroupWriteResult {
+    SaveFileStatus status{SaveFileStatus::ready};
+    bool committed{};
+    std::filesystem::path path;
+    std::vector<std::filesystem::path> recovery_paths;
+    std::string detail;
+
+    NODISCARD explicit operator bool() const noexcept {
+        return status == SaveFileStatus::ready && committed;
+    }
+};
+
+NODISCARD SaveFileGroupWriteResult replace_save_files(
+    std::span<const SaveFileReplacement> files);
+
 NODISCARD SaveFileReadResult read_save_file(
     const std::filesystem::path& path, std::size_t maximum_bytes);
 
