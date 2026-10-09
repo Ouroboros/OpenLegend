@@ -68,6 +68,7 @@
 - 主动用毒／回合毒伤／共享解毒接入：主动用毒读取实际64位能力，距离单独按100封顶；比例最深、叠毒和溢出共用毒模型，溢出可致死、不额外产伤，并保留原施毒数字和独立伤血。两条AI毒目标路径取消95门槛，攻击比较不窄化。菜单和战斗共用解毒公式，取消旧准入、加入单次上限，合法调用保留两次随机顺序，失败保留角色及RNG。
 - 回合伤毒保留资格和先伤后毒顺序，使用检查过的64位减法和比例毒伤，最终HP最低0；全部角色副本成功后提交HP／体力，重复角色槽依次累积。轮末等待结束后、下一角色行动前进行存活检查，毒发可正常进入胜负流程。完整Debug回归134/134通过，日志`tmp/ngplus-active-poison-round-detox-final-regression.log`，覆盖5万亿能力／HP／内伤、非法毒域和中间量溢出回滚、解毒别名和随机状态、满毒AI选择、Session中我方／敌方分别毒发死亡和等待期间不重复结算。原版机器及画面Golden未改；旧中毒100 fixture改为合法99，AI无目标fixture改为抗毒足够的目标。
 - 战斗状态面板：超过三位的HP／MP改为当前值和最大值分行，面板按最长数字展开并保持原左右侧，完整显示signed64而不截断；头像、名称随面板居中，颜色不变。三位party整帧Golden保持；旧enemy异常大数重叠布局改为独立文字像素比较，原Golden资产和生成器未改。左右两侧1000、5万亿、signed64两端均逐像素验证；原最大HP1000导致AI prelude失败的Session用例已恢复为1000并通过。统一BUILD应用Debug和134/134 CTest通过，日志`tmp/ngplus-battle-status-wide-final-regression.log`。
+- 玩家／队伍AI／敌方AI暗器：实际HP变化、伤害数字及内伤均用检查过的64位运算；内伤按本周B的33%／66%分档、按HurtMax写回。正毒统一为(V＋W)/2毒力及除数2，溢出可致死、不额外产伤，独立追加伤血数字；零／负毒保留各路径公式及RNG顺序。射程读取实际技巧，正向超界仅在原signed16选择器表示边界收束，有限路径距离的比较结果不变；携带数量按64位扣减。载荷失败保留角色／RNG／伤害计数，同角色目标保留已扣来源数量。两段当前机器码1433／1959字节和完整汇编均复核，SHA256与历史一致。统一BUILD应用Debug及135/135 CTest通过，日志`tmp/ngplus-throwing-poison-regression.log`；新增NG2精确分档、5万亿数值、3万亿以上伤害、抗毒100以上、已有深毒、溢出致死、零／负毒、零内伤上限、别名及七类失败回滚。原Golden未改，原EFT后结算／伤害动画后消费及AI陈旧槽时序继续通过。
 - 上述结果不证明全部结算已扩宽或全部NG+规则已实现；其他战斗结算、完整字段域、跨字段不变量及整体保存事务仍需继续实现与验证。
 
 ## 已发现的未决项与缺口
@@ -76,7 +77,7 @@
 |---|---|---|
 | 敌方成长及完整伤害顺序已明确 | [战斗结算](support/battle-calculation.zh-Hans.html) | 敌方按BASE累加每周目STEP；最终伤害串联原版主干和正式武功、装备、内伤与附毒规则，等待实现 |
 | 物品user跨周目规则已明确 | [物品user字段](fields/item-state-users.zh-Hans.html) | 全部恢复当前RANGER的新游戏基线，等待实现 |
-| 毒发及溢出致死规则已明确 | [中毒章](fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules) | 武功与主动用毒溢出、回合毒发已接入；正毒物品／暗器仍待接入 |
-| AI正毒暗器规则已明确 | [统一上毒](fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application) | AI与玩家采用统一上毒公式，等待实现 |
+| 毒发及溢出致死规则已明确 | [中毒章](fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules) | 武功、主动用毒和玩家／AI暗器溢出、回合毒发已接入；普通正毒物品仍待接入 |
+| AI正毒暗器规则已明确 | [统一上毒](fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application) | AI与玩家正毒暗器已采用统一上毒公式并通过135项回归；零／负毒保留各自分支 |
 | 所有周目解毒距离已明确 | [解毒章](fields/use-poison-anti-poison-detoxification.zh-Hans.html#detoxification-rules) | 距离和读取实际能力的共享疗效均已接入并验证 |
 | 原版审计页含过时NG+规则且仍受保护 | [原版审计](support/legacy-audit.zh-Hans.html) | 只使用已核对的原版证据，不能以旧NG+叙述覆盖正式字段页 |

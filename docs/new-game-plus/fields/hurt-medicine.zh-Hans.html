@@ -87,7 +87,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
 </section>
 <section id="hurt-cap-impact-audit">
   <h3>原版影响与NG+规则</h3>
-  <p>从NG1起，只有以内伤为输入的门槛及指定惩罚项按本周伤势量程折算；地图移动计数、中毒条件与<a href="#medicine-hurt-current-proposal">医疗准入</a>各用自身规则。以下是设计规则，尚未实现到运行时代码。</p>
+  <p>从NG1起，只有以内伤为输入的门槛及指定惩罚项按本周伤势量程折算；地图移动计数、中毒条件与<a href="#medicine-hurt-current-proposal">医疗准入</a>各用自身规则。以下是设计规则；逐项实现与验证状态见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
   <pre>伤势比例 = H / B(n)  # B(n) > 0；只用于比较，不先取整
 内伤高于 p%：伤势比例 &gt; p / 100；低于 p%：伤势比例 &lt; p / 100
 每轮内伤扣HP = trunc(H / 20)；武功对伤者的增伤 = trunc(目标H / 20)
@@ -110,7 +110,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
       <tr><td>战场行动值</td><td>内伤惩罚改为<code>trunc(100 × H / (40 × B(n)))</code>；原速度项、零下限及玩家／AI对最终行动值的使用不变。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3271E.md">0x3271E</a></td></tr>
       <tr><td>武功伤害与产伤</td><td>增伤<code>trunc(目标H / 20)</code>、命中产伤<code>trunc(计算伤害 / 10)</code>不变；新增内伤写回上限改为<code>HurtMax</code>，伤害变化可能影响击倒和战果。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x39188.md">0x39188</a></td></tr>
       <tr><td>回合状态结算</td><td>先扣<code>trunc(H / 20)</code>生命，再按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章的每轮毒伤</a>扣血；<code>H&gt;0</code>仍绕过仅有中毒时的生命、体力和隐藏门禁。原版HP边界见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章</a>。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">0x3C563</a></td></tr>
-      <tr><td>玩家／AI投掷</td><td><code>H=0</code>的<code>add_hp</code>用/4；正内伤按<code>0&lt;伤势比例≤33%</code>用/3、<code>33%&lt;伤势比例≤66%</code>用/2、<code>伤势比例&gt;66%</code>用/1。沿各自HP变化公式增减内伤，写回上限改为<code>HurtMax</code>；投掷中毒规则不变。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3A30B.md">0x3A30B</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3598C.md">0x3598C</a></td></tr>
+      <tr><td>玩家／AI投掷</td><td><code>H=0</code>的<code>add_hp</code>用/4；正内伤按<code>0&lt;伤势比例≤33%</code>用/3、<code>33%&lt;伤势比例≤66%</code>用/2、<code>伤势比例&gt;66%</code>用/1。沿各自HP变化公式增减内伤，写回上限改为<code>HurtMax</code>；正毒投掷另按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">统一上毒规则</a>，毒溢出不额外产生内伤。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3A30B.md">0x3A30B</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3598C.md">0x3598C</a></td></tr>
       <tr><td>敌方AI与战斗显示</td><td>自身<code>伤势比例&gt;50%</code>进入低生命决策；队友<code>伤势比例&gt;40%</code>成为医疗候选，执行仍须满足<a href="#medicine-hurt-current-proposal">新准入</a>。战斗生命颜色沿用33%／66%新档位；门槛变化可能改变随机数短路顺序。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x33599.md">0x33599</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3C6D3.md">0x3C6D3</a></td></tr>
     </tbody>
   </table>

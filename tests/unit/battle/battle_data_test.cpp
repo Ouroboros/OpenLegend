@@ -1526,7 +1526,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 12);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 22);
     OL_CHECK(setup.combatants()[1U].damage_value == 21);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(setup.combatants()[0U].reward_experience == 0);
@@ -1624,9 +1624,9 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     const auto wrapped_result =
         setup.apply_throwing_weapon_target(0U, BattlePathCoord{26, 26}, 0U, random);
     OL_CHECK(wrapped_result.has_value());
-    OL_CHECK(wrapped_result->damage == 10'921);
-    OL_CHECK(target.word(openlegend::model::role_word::hp) == 11'021);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 0);
+    OL_CHECK(wrapped_result->damage == 100);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 99);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
     OL_CHECK(random.state() == 1'103'527'590U);
 
@@ -1659,7 +1659,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(random.state() == 1'103'527'590U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 50);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 22);
     OL_CHECK(ranger.header.inventory_item(0U).value == 97);
     OL_CHECK(ranger.header.inventory_count(0U) == 2);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 1);
@@ -1713,10 +1713,10 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
         0U, BattlePathCoord{26, 26}, party_throwing_choice, random, 1, false);
     OL_CHECK(wrapping_payload_result.has_value());
     OL_CHECK(wrapping_payload_result->effect_id == 30);
-    OL_CHECK(wrapping_payload_result->damage == 10'921);
+    OL_CHECK(wrapping_payload_result->damage == 100);
     OL_CHECK(random.state() == 1'103'527'590U);
-    OL_CHECK(target.word(openlegend::model::role_word::hp) == 11'021);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 0);
+    OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 99);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
 
     actor.set_word(openlegend::model::role_word::hidden_weapon, 20);
@@ -1741,12 +1741,220 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(ai_carried_result.has_value());
     OL_CHECK(ai_carried_result->damage == 21);
     OL_CHECK(random.state() == 1'103'527'590U);
-    OL_CHECK(target.word(openlegend::model::role_word::poison) == 50);
+    OL_CHECK(target.word(openlegend::model::role_word::poison) == 22);
     OL_CHECK(actor.word(openlegend::model::role_word::taking_item_begin) == 97);
     OL_CHECK(actor.word(openlegend::model::role_word::taking_item_count_begin) == 2);
     OL_CHECK(actor.word(openlegend::model::role_word::taking_item_begin + 3U) == -1);
     OL_CHECK(actor.word(openlegend::model::role_word::taking_item_count_begin + 3U) == 0);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
+}
+
+void run_ngplus_throwing_weapon_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    struct ThrowingCase {
+        std::int64_t technique;
+        std::int64_t hurt;
+        std::int64_t poison;
+        std::int64_t maximum_hp;
+        std::int64_t hp;
+        std::int64_t resistance;
+        std::int16_t item_hp;
+        std::int16_t item_poison;
+        std::int64_t expected_hp;
+        std::int64_t expected_hurt;
+        std::int64_t player_poison;
+        std::int64_t ai_poison;
+        std::int64_t damage;
+        std::int64_t overflow_damage;
+    };
+    const std::array cases{
+        ThrowingCase{0, 0, 0, 1000, 1000, 0, -120, 1, 989, 2, 0, 0, 11, 0},
+        ThrowingCase{0, 66, 0, 1000, 1000, 0, -120, 1, 986, 69, 0, 0, 14, 0},
+        ThrowingCase{0, 67, 0, 1000, 1000, 0, -120, 1, 979, 72, 0, 0, 21, 0},
+        ThrowingCase{0, 132, 0, 1000, 1000, 0, -120, 1, 979, 137, 0, 0, 21, 0},
+        ThrowingCase{0, 133, 0, 1000, 1000, 0, -120, 1, 959, 143, 0, 0, 41, 0},
+        ThrowingCase{0, 199, 0, 1000, 1000, 0, -120, 1, 959, 199, 0, 0, 41, 0},
+        ThrowingCase{800, 60, 99, 1000, 600, 0, 0, 800, 0, 193, 99, 99, 534, 99},
+        ThrowingCase{0, 60, 99, 1000, 1000, 0, 18, 800, 901, 60, 99, 99, 0, 99},
+        ThrowingCase{220, 0, 0, 1000, 1000, 100, 0, 80, 853, 36, 25, 25, 147, 0},
+        ThrowingCase{220, 0, 70, 1000, 1000, 100, 0, 80, 828, 36, 70, 70, 147, 25},
+        ThrowingCase{5'000'000'000'000, 0, 0, 1000, 1000, 0, 0, 80,
+                     0, 199, 99, 99, 1000, 99},
+        ThrowingCase{20, 0, 0, 5'000'000'000'000, 5'000'000'000'000, 0, 0, 80,
+                     4'999'999'999'986, 3, 25, 25, 14, 0},
+        ThrowingCase{5'000'000'000'000, 0, 50, 5'000'000'000'000, 5'000'000'000'000, 0, 0, 0,
+                     1'666'666'666'666, 199, 50, 50, 3'333'333'333'334, 0},
+        ThrowingCase{20, 0, 50, 1000, 1000, 999, 0, -40, 986, 3, 30, 20, 14, 0},
+        ThrowingCase{5'000'000'000'000, 0, 99, 5'000'000'000'000, 5'000'000'000'000, 999, 0, -40,
+                     1'666'666'666'666, 199, 79, 0, 3'333'333'333'334, 0},
+    };
+    model::NewGamePlusConfiguration configuration{};
+    configuration.enabled = true;
+    for (const auto& example : cases) {
+        for (const auto mode : {0, 1, 2}) {
+            auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            auto& actor = ranger.roles[1U];
+            auto& target = ranger.roles[3U];
+            actor.hidden_weapon = example.technique;
+            actor.taking_items[0U] = model::ItemId{102};
+            actor.taking_counts[0U] = 5'000'000'000'000;
+            target.hp = example.hp;
+            target.maximum_hp = example.maximum_hp;
+            target.hurt = example.hurt;
+            target.poison = example.poison;
+            target.anti_poison = example.resistance;
+            auto& item = ranger.items[102U];
+            item.set_word(model::item_word::item_type, 4);
+            item.set_word(model::item_word::hidden_weapon_effect_id, 30);
+            item.set_word(model::item_word::add_hp, example.item_hp);
+            item.set_word(model::item_word::add_poison, example.item_poison);
+            ranger.header.set_inventory(0U, model::ItemId{102}, 5'000'000'000'000);
+            BattleData data{data_root, 4};
+            BattleSetup setup{data, ranger, nullptr, configuration, 2};
+            OL_CHECK(setup.valid());
+            setup.combatants()[0U].words[combatant_word::side] = mode == 2 ? 1 : 0;
+            setup.combatants()[1U].words[combatant_word::side] = mode == 2 ? 0 : 1;
+            const BattleAiChoice choice{
+                .action = BattleAiAction::throwing_weapon,
+                .item_source = mode == 2 ? BattleAiItemSource::carried : BattleAiItemSource::inventory,
+                .item_slot = 0,
+            };
+            random::LegacyRandom random{1U};
+            const auto result = mode == 0
+                ? setup.apply_throwing_weapon_target(0U, {26, 26}, 0U, random)
+                : setup.apply_ai_throwing_weapon_target(0U, {26, 26}, choice, random, 0, false);
+            OL_CHECK(result.has_value());
+            if (!result.has_value()) {
+                continue;
+            }
+            OL_CHECK(result->damage == example.damage);
+            OL_CHECK(result->poison_overflow_damage == example.overflow_damage);
+            OL_CHECK(target.hp == example.expected_hp);
+            OL_CHECK(target.hurt == example.expected_hurt);
+            OL_CHECK(target.poison == (mode == 0 ? example.player_poison : example.ai_poison));
+            OL_CHECK(actor.hidden_weapon == example.technique);
+            OL_CHECK(random.state() == (mode == 0 && example.item_poison <= 0
+                ? 662'824'084U : 1'103'527'590U));
+            OL_CHECK(setup.combatants()[1U].damage_value == example.damage);
+            OL_CHECK(setup.combatants()[1U].poison_overflow_damage == example.overflow_damage);
+            OL_CHECK(setup.combatants()[0U].reward_experience == 0);
+            OL_CHECK(ranger.header.inventory_count(0U) == 5'000'000'000'000);
+            OL_CHECK(actor.taking_counts[0U] == 5'000'000'000'000);
+            if (example.overflow_damage > 0) {
+                BattleRenderState render_state{};
+                render_state.view_x = 26;
+                render_state.view_y = 26;
+                render_state.damage_kind = 1;
+                const auto plan = setup.battle_render_plan(render_state, {});
+                OL_CHECK(plan.has_value());
+                OL_CHECK(std::ranges::any_of(plan->commands, [&](const auto& command) {
+                    return command.kind == BattleRenderCommandKind::damage_text &&
+                        command.value == example.overflow_damage && command.overlay_variant == -1;
+                }));
+            }
+            if (example.technique == 5'000'000'000'000) {
+                OL_CHECK(setup.throwing_weapon_targeting_range(0U) == 32'767);
+                const auto selection = setup.begin_cursor_selection(
+                    0U, *setup.throwing_weapon_targeting_range(0U), BattleCursorSelectionMode::targeting);
+                OL_CHECK(selection.has_value());
+                OL_CHECK(selection->path_limit == 32'767);
+            }
+            if (mode == 2) {
+                OL_CHECK(setup.consume_ai_item(0U, choice));
+                OL_CHECK(actor.taking_counts[0U] == 4'999'999'999'999);
+            }
+        }
+    }
+    for (const auto ai : {false, true}) {
+        for (const auto failure : {0, 1, 2, 3, 4, 5, 6}) {
+            auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            auto& actor = ranger.roles[1U];
+            auto& target = ranger.roles[3U];
+            actor.hidden_weapon = 20;
+            target.hp = 1000;
+            target.maximum_hp = 1000;
+            target.hurt = 40;
+            target.poison = 10;
+            target.anti_poison = 0;
+            ranger.items[102U].set_word(model::item_word::add_hp, -40);
+            ranger.items[102U].set_word(model::item_word::add_poison, 40);
+            ranger.header.set_inventory(0U, model::ItemId{102}, 2);
+            if (failure == 0) {
+                actor.hidden_weapon = std::numeric_limits<std::int64_t>::max();
+            } else if (failure == 1) {
+                target.hurt = std::numeric_limits<std::int64_t>::max();
+            } else if (failure == 2) {
+                target.maximum_hp = std::numeric_limits<std::int64_t>::max();
+            } else if (failure == 3) {
+                target.hp = std::numeric_limits<std::int64_t>::min();
+            } else if (failure == 4) {
+                target.hp = std::numeric_limits<std::int64_t>::max();
+                target.maximum_hp = target.hp;
+                actor.hidden_weapon = 0;
+                ranger.items[102U].set_word(model::item_word::add_hp, 120);
+            } else if (failure == 5) {
+                target.poison = 100;
+            } else {
+                target.anti_poison = -1;
+            }
+            BattleData data{data_root, 4};
+            BattleSetup setup{data, ranger, nullptr, configuration, 2};
+            setup.combatants()[0U].words[combatant_word::side] = 0;
+            setup.combatants()[1U].damage_value = 71;
+            setup.combatants()[1U].poison_overflow_damage = 81;
+            const auto old_roles = ranger.roles;
+            const auto old_header = ranger.header;
+            const auto old_combatant = setup.combatants()[1U];
+            const BattleAiChoice choice{
+                .action = BattleAiAction::throwing_weapon,
+                .item_source = BattleAiItemSource::inventory,
+                .item_slot = 0,
+            };
+            random::LegacyRandom random{1U};
+            const auto result = ai
+                ? setup.apply_ai_throwing_weapon_target(0U, {26, 26}, choice, random, 0, true, true)
+                : setup.apply_throwing_weapon_payload(0U, {26, 26}, 0U, random);
+            OL_CHECK(!result.has_value());
+            OL_CHECK(ranger.roles == old_roles);
+            OL_CHECK(ranger.header == old_header);
+            OL_CHECK(setup.combatants()[1U] == old_combatant);
+            OL_CHECK(random.state() == 1U);
+        }
+    }
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& actor = ranger.roles[1U];
+    actor.hp = 1000;
+    actor.maximum_hp = 1000;
+    actor.hurt = 0;
+    actor.poison = 50;
+    actor.hidden_weapon = 20;
+    actor.taking_items[0U] = model::ItemId{102};
+    actor.taking_counts[0U] = 2;
+    ranger.items[102U].set_word(model::item_word::add_hp, 0);
+    ranger.items[102U].set_word(model::item_word::add_poison, -40);
+    configuration.hurt_cap_step = -99;
+    configuration.maximum_playthroughs = 2;
+    BattleData data{data_root, 4};
+    BattleSetup setup{data, ranger, nullptr, configuration, 2};
+    OL_CHECK(setup.valid());
+    setup.combatants()[0U].words[combatant_word::side] = 1;
+    setup.combatants()[1U].words[combatant_word::role_id] = 1;
+    const BattleAiChoice choice{
+        .action = BattleAiAction::throwing_weapon,
+        .item_source = BattleAiItemSource::carried,
+        .item_slot = 0,
+    };
+    random::LegacyRandom random{1U};
+    const auto result = setup.apply_ai_throwing_weapon_target(0U, {26, 26}, choice, random, -1);
+    OL_CHECK(result.has_value());
+    OL_CHECK(actor.hp == 986);
+    OL_CHECK(actor.hurt == 0);
+    OL_CHECK(actor.poison == 20);
+    OL_CHECK(actor.taking_counts[0U] == 1);
+    OL_CHECK(random.state() == 1'103'527'590U);
+    actor.hidden_weapon = std::numeric_limits<std::int64_t>::min();
+    OL_CHECK(!setup.throwing_weapon_targeting_range(0U).has_value());
 }
 
 void run_shared_menu_item_helper_test() {
@@ -5537,7 +5745,7 @@ void run_player_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::player_damage_frame_present);
         OL_CHECK(target.word(role_word::hp) == 79);
         OL_CHECK(target.word(role_word::hurt) == 45);
-        OL_CHECK(target.word(role_word::poison) == 12);
+        OL_CHECK(target.word(role_word::poison) == 22);
         OL_CHECK(random.state() == 1'103'527'590U);
         OL_CHECK(session->setup().combatants()[1U].damage_value == 21);
 
@@ -7105,7 +7313,7 @@ void run_ai_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
         OL_CHECK(target.word(role_word::hp) == 80);
         OL_CHECK(target.word(role_word::hurt) == 45);
-        OL_CHECK(target.word(role_word::poison) == 50);
+        OL_CHECK(target.word(role_word::poison) == 22);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
 
@@ -7235,7 +7443,7 @@ void run_ai_item_session_test(
         OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
         OL_CHECK(target.word(role_word::hp) == 80);
         OL_CHECK(target.word(role_word::hurt) == 45);
-        OL_CHECK(target.word(role_word::poison) == 50);
+        OL_CHECK(target.word(role_word::poison) == 22);
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_damage_frame_present &&
                damage_frames < 20U) {
@@ -12805,7 +13013,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 46> checks{
+    const std::array<BattleCheck, 47> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -12852,6 +13060,7 @@ int main(const int argc, char* argv[]) {
         run_battle_outcome_session_test,
         run_all_definition_tests,
         run_ngplus_damage_test,
+        run_ngplus_throwing_weapon_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

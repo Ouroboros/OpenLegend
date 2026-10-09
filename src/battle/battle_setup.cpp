@@ -77,6 +77,61 @@ NODISCARD std::optional<std::int64_t> checked_battle_sum(
     return total;
 }
 
+struct ThrowingWeaponHpResult {
+    std::int64_t hp{};
+    std::int64_t hurt{};
+    std::int64_t damage{};
+};
+
+NODISCARD std::optional<ThrowingWeaponHpResult> throwing_weapon_hp_result(
+    const model::RoleState& actor,
+    const model::RoleState& target,
+    const model::ItemRecord& item,
+    const model::PlaythroughLimits& limits,
+    random::LegacyRandom& random) {
+    if (target.hurt < 0 || target.maximum_hp < 0) {
+        return std::nullopt;
+    }
+    std::int64_t divisor = 4;
+    if (target.hurt > 0) {
+        const auto scaled_hurt = model::checked_multiply(target.hurt, 100);
+        const auto lower_threshold = model::checked_multiply(limits.hurt_ratio_denominator, 33);
+        const auto upper_threshold = model::checked_multiply(limits.hurt_ratio_denominator, 66);
+        if (limits.hurt_ratio_denominator <= 0 || !scaled_hurt.has_value() ||
+            !lower_threshold.has_value() || !upper_threshold.has_value()) {
+            return std::nullopt;
+        }
+        divisor = *scaled_hurt <= *lower_threshold ? 3
+            : *scaled_hurt <= *upper_threshold ? 2 : 1;
+    }
+    const auto randomized_base = model::checked_subtract(
+        item.word(model::item_word::add_hp) / divisor, random.bounded(5));
+    const auto technique = model::checked_multiply(actor.hidden_weapon, 2);
+    const auto numerator = randomized_base.has_value() && technique.has_value()
+        ? model::checked_subtract(*randomized_base, *technique) : std::nullopt;
+    if (!numerator.has_value()) {
+        return std::nullopt;
+    }
+    const auto hp_delta = *numerator / 3;
+    const auto changed_hurt = model::checked_subtract(target.hurt, hp_delta / 4);
+    const auto changed_hp = model::checked_add(target.hp, hp_delta);
+    if (!changed_hurt.has_value() || !changed_hp.has_value()) {
+        return std::nullopt;
+    }
+    const auto hp = std::clamp(*changed_hp, std::int64_t{0}, target.maximum_hp);
+    const auto difference = model::checked_subtract(hp, target.hp);
+    if (!difference.has_value()) {
+        return std::nullopt;
+    }
+    const auto damage = *difference < 0
+        ? model::checked_subtract(0, *difference) : difference;
+    if (!damage.has_value()) {
+        return std::nullopt;
+    }
+    return ThrowingWeaponHpResult{
+        hp, std::clamp(*changed_hurt, std::int64_t{0}, limits.hurt_maximum), *damage};
+}
+
 NODISCARD constexpr std::optional<std::size_t> legacy_cursor_index(
     const BattlePathCoord coordinate) noexcept {
     const auto index = static_cast<std::int32_t>(coordinate.y) *
@@ -2579,12 +2634,12 @@ std::optional<std::int16_t> BattleSetup::throwing_weapon_targeting_range(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    return wrapping_i16(
-        static_cast<std::int32_t>(
-            ranger_.roles[static_cast<std::size_t>(role_id)].word(
-                model::role_word::hidden_weapon)) /
-            15 +
-        1);
+    const auto range = ranger_.roles[static_cast<std::size_t>(role_id)].hidden_weapon / 15 + 1;
+    if (range < std::numeric_limits<std::int16_t>::min()) {
+        return std::nullopt;
+    }
+    return static_cast<std::int16_t>(std::min<std::int64_t>(
+        range, std::numeric_limits<std::int16_t>::max()));
 }
 
 std::optional<BattleThrownItemResult> BattleSetup::prepare_throwing_weapon_target(
@@ -2706,84 +2761,55 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_payload
         error_ = "battle throwing-weapon target role is outside ranger records";
         return std::nullopt;
     }
-    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
     auto& target_role = ranger_.roles[static_cast<std::size_t>(target_role_id)];
     const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
-    const auto hurt = target_role.word(model::role_word::hurt);
-    if (hurt < 0) {
-        error_ = "battle throwing-weapon target hurt is outside legacy domain";
+    auto candidate_random = random;
+    auto hp_result = throwing_weapon_hp_result(actor, target_role, item, limits_, candidate_random);
+    if (!hp_result.has_value()) {
+        error_ = "battle throwing-weapon HP or hurt is invalid or overflows";
         return std::nullopt;
     }
-
-    std::int32_t divisor = 1;
-    if (hurt == 0) {
-        divisor = 4;
-    } else if (hurt <= 33) {
-        divisor = 3;
-    } else if (hurt <= 66) {
-        divisor = 2;
-    }
-    const auto randomized_base = wrapping_i16(
-        static_cast<std::int32_t>(item.word(model::item_word::add_hp)) / divisor -
-        random.bounded(5));
-    const auto hp_delta = wrapping_i16(
-        (static_cast<std::int32_t>(randomized_base) -
-         2 * static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon))) /
-        3);
-
-    auto changed_hurt = wrapping_i16(
-        static_cast<std::int32_t>(target_role.word(model::role_word::hurt)) - hp_delta / 4);
-    if (changed_hurt > 99) {
-        changed_hurt = 99;
-    }
-    if (changed_hurt < 0) {
-        changed_hurt = 0;
-    }
-    target_role.set_word(model::role_word::hurt, changed_hurt);
-
-    const auto old_hp = target_role.word(model::role_word::hp);
-    auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
-    if (changed_hp >= target_role.word(model::role_word::maximum_hp)) {
-        changed_hp = target_role.word(model::role_word::maximum_hp);
-    }
-    if (changed_hp <= 0) {
-        changed_hp = 0;
-    }
-    target_role.set_word(model::role_word::hp, changed_hp);
-    const auto damage = wrapping_i16(std::abs(
-        static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp)));
-    combatants_[target_index].damage_value = damage;
-
+    auto changed_poison = target_role.poison;
+    std::int64_t overflow_damage = 0;
     const auto item_poison = item.word(model::item_word::add_poison);
-    std::int16_t poison_delta = 0;
     if (item_poison > 0) {
-        poison_delta = wrapping_i16(
-            (static_cast<std::int32_t>(item_poison) -
-             actor.word(model::role_word::hidden_weapon)) /
-                2 -
-            target_role.word(model::role_word::anti_poison));
-        if (target_role.word(model::role_word::anti_poison) >= 100 || poison_delta < 0) {
-            poison_delta = 0;
+        const auto power = model::checked_add(item_poison, actor.hidden_weapon);
+        const auto poison = power.has_value()
+            ? model::poison_application(*power / 2, target_role.anti_poison, 2,
+                                        target_role.poison, target_role.maximum_hp)
+            : std::nullopt;
+        const auto after_poison = poison.has_value()
+            ? model::checked_subtract(hp_result->hp, poison->hp_damage) : std::nullopt;
+        if (!after_poison.has_value()) {
+            error_ = "battle throwing-weapon poison is invalid or overflows";
+            return std::nullopt;
         }
-        poison_delta = wrapping_i16(static_cast<std::int32_t>(poison_delta) / 2);
+        changed_poison += poison->applied_amount;
+        overflow_damage = poison->hp_damage;
+        hp_result->hp = std::max(*after_poison, std::int64_t{0});
     } else {
-        poison_delta = wrapping_i16(
-            static_cast<std::int32_t>(item_poison) / 2 + random.bounded(5) - random.bounded(5));
+        const auto first = candidate_random.bounded(5);
+        const auto second = candidate_random.bounded(5);
+        const auto changed = model::checked_add(target_role.poison, item_poison / 2 + first - second);
+        if (!changed.has_value()) {
+            error_ = "battle throwing-weapon poison delta overflows";
+            return std::nullopt;
+        }
+        changed_poison = std::clamp(*changed, std::int64_t{0}, std::int64_t{99});
     }
-    auto changed_poison = wrapping_i16(
-        static_cast<std::int32_t>(target_role.word(model::role_word::poison)) + poison_delta);
-    if (changed_poison >= 99) {
-        changed_poison = 99;
-    }
-    if (changed_poison <= 0) {
-        changed_poison = 0;
-    }
-    target_role.set_word(model::role_word::poison, changed_poison);
+    target_role.hp = hp_result->hp;
+    target_role.hurt = hp_result->hurt;
+    target_role.poison = changed_poison;
+    combatants_[target_index].damage_value = hp_result->damage;
+    combatants_[target_index].poison_overflow_damage = overflow_damage;
+    random = candidate_random;
 
     BattleThrownItemResult result{};
     result.hit_count = 1;
     result.effect_id = item.word(model::item_word::hidden_weapon_effect_id);
-    result.damage = damage;
+    result.damage = hp_result->damage;
+    result.poison_overflow_damage = overflow_damage;
     result.inventory_consumed = false;
     return result;
 }
@@ -2833,12 +2859,13 @@ bool BattleSetup::consume_ai_item(
         return false;
     }
     auto& actor = ranger_.roles[static_cast<std::size_t>(role_id)];
-    const auto remaining = wrapping_i16(
-        static_cast<std::int32_t>(
-            actor.word(model::role_word::taking_item_count_begin + slot)) -
-        1);
-    actor.set_word(model::role_word::taking_item_count_begin + slot, remaining);
-    return remaining > 0 || remove_carried_item_slot(actor_slot, slot);
+    const auto remaining = model::checked_subtract(
+        actor.word(model::role_word::taking_item_count_begin + slot), 1);
+    if (!remaining.has_value()) {
+        return false;
+    }
+    actor.set_word(model::role_word::taking_item_count_begin + slot, *remaining);
+    return *remaining > 0 || remove_carried_item_slot(actor_slot, slot);
 }
 
 std::optional<std::int16_t> BattleSetup::prepare_ai_throwing_weapon_target(
@@ -2935,76 +2962,60 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
         }
     }
     const auto& item = ranger_.items[static_cast<std::size_t>(payload_item_id)];
-    const auto hurt = target_role.word(model::role_word::hurt);
-    if (hurt < 0) {
-        error_ = "battle AI throwing-weapon target hurt is outside legacy domain";
+    auto candidate_random = random;
+    auto hp_result = throwing_weapon_hp_result(actor, target_role, item, limits_, candidate_random);
+    if (!hp_result.has_value()) {
+        error_ = "battle AI throwing-weapon HP or hurt is invalid or overflows";
         return std::nullopt;
     }
-    std::int32_t divisor = 1;
-    if (hurt == 0) {
-        divisor = 4;
-    } else if (hurt <= 33) {
-        divisor = 3;
-    } else if (hurt <= 66) {
-        divisor = 2;
-    }
-    const auto randomized_base = wrapping_i16(
-        static_cast<std::int32_t>(item.word(model::item_word::add_hp)) / divisor -
-        random.bounded(5));
-    const auto hp_delta = wrapping_i16(
-        (static_cast<std::int32_t>(randomized_base) -
-         2 * static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon))) /
-        3);
-
-    auto changed_hurt = wrapping_i16(
-        static_cast<std::int32_t>(target_role.word(model::role_word::hurt)) - hp_delta / 4);
-    if (changed_hurt > 99) {
-        changed_hurt = 99;
-    }
-    if (changed_hurt < 0) {
-        changed_hurt = 0;
-    }
-    target_role.set_word(model::role_word::hurt, changed_hurt);
-
-    const auto old_hp = target_role.word(model::role_word::hp);
-    auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
-    if (changed_hp >= target_role.word(model::role_word::maximum_hp)) {
-        changed_hp = target_role.word(model::role_word::maximum_hp);
-    }
-    if (changed_hp <= 0) {
-        changed_hp = 0;
-    }
-    target_role.set_word(model::role_word::hp, changed_hp);
-    const auto damage = wrapping_i16(std::abs(
-        static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp)));
-    combatants_[target_index].damage_value = damage;
-
+    auto changed_poison = target_role.poison;
+    std::int64_t overflow_damage = 0;
     const auto item_poison = item.word(model::item_word::add_poison);
-    const auto poison_delta = item_poison < 0
-        ? wrapping_i16(
-              (static_cast<std::int32_t>(item_poison) -
-               actor.word(model::role_word::hidden_weapon)) /
-              2)
-        : item_poison;
-    auto changed_poison = wrapping_i16(
-        static_cast<std::int32_t>(target_role.word(model::role_word::poison)) + poison_delta);
-    if (changed_poison >= 99) {
-        changed_poison = 99;
+    if (item_poison > 0) {
+        const auto power = model::checked_add(item_poison, actor.hidden_weapon);
+        const auto poison = power.has_value()
+            ? model::poison_application(*power / 2, target_role.anti_poison, 2,
+                                        target_role.poison, target_role.maximum_hp)
+            : std::nullopt;
+        const auto after_poison = poison.has_value()
+            ? model::checked_subtract(hp_result->hp, poison->hp_damage) : std::nullopt;
+        if (!after_poison.has_value()) {
+            error_ = "battle AI throwing-weapon poison is invalid or overflows";
+            return std::nullopt;
+        }
+        changed_poison += poison->applied_amount;
+        overflow_damage = poison->hp_damage;
+        hp_result->hp = std::max(*after_poison, std::int64_t{0});
+    } else {
+        const auto difference = item_poison < 0
+            ? model::checked_subtract(item_poison, actor.hidden_weapon)
+            : std::optional<std::int64_t>{0};
+        const auto changed = difference.has_value()
+            ? model::checked_add(target_role.poison, *difference / 2) : std::nullopt;
+        if (!changed.has_value()) {
+            error_ = "battle AI throwing-weapon poison delta overflows";
+            return std::nullopt;
+        }
+        changed_poison = std::clamp(*changed, std::int64_t{0}, std::int64_t{99});
     }
-    if (changed_poison <= 0) {
-        changed_poison = 0;
-    }
-    target_role.set_word(model::role_word::poison, changed_poison);
 
     if (consume_item && !consume_ai_item(actor_slot, choice)) {
+        error_ = "battle AI throwing-weapon item consumption failed";
         return std::nullopt;
     }
+    target_role.hp = hp_result->hp;
+    target_role.hurt = hp_result->hurt;
+    target_role.poison = changed_poison;
+    combatants_[target_index].damage_value = hp_result->damage;
+    combatants_[target_index].poison_overflow_damage = overflow_damage;
+    random = candidate_random;
 
     BattleThrownItemResult result{};
     result.hit_count = 1;
     result.effect_id = ranger_.items[static_cast<std::size_t>(*source_item_id)].word(
         model::item_word::hidden_weapon_effect_id);
-    result.damage = damage;
+    result.damage = hp_result->damage;
+    result.poison_overflow_damage = overflow_damage;
     result.inventory_consumed = consume_item;
     return result;
 }

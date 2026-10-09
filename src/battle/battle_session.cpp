@@ -1797,7 +1797,7 @@ bool BattleSession::commit_ai_throwing_weapon_effect() {
         return false;
     }
     player_target_effect_->damage_kind = static_cast<std::int16_t>(
-        thrown->damage == 0 ? 0 : 1);
+        thrown->damage == 0 && thrown->poison_overflow_damage == 0 ? 0 : 1);
     diagnostics::log_info(
         "battle AI throwing-weapon state committed id=" +
         std::to_string(battle_id()) +
@@ -3238,7 +3238,7 @@ bool BattleSession::commit_player_throwing_weapon_effect() {
         return false;
     }
     player_target_effect_->damage_kind = static_cast<std::int16_t>(
-        thrown->damage == 0 ? 0 : 1);
+        thrown->damage == 0 && thrown->poison_overflow_damage == 0 ? 0 : 1);
     diagnostics::log_info(
         "battle player throwing-weapon state committed id=" +
         std::to_string(battle_id()) +

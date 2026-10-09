@@ -44,7 +44,7 @@
         <p>减目标抗毒的减号及其他步骤不变。原版汇编事实见
 <a href="add-poison.zh-Hans.html#add-poison-mechanics">物品毒值字段页</a>；
 不能把本节新规则反称为原版行为或笔误修复。</p>
-        <p>普通物品的暗器技巧项不随玩家投掷改号；两条正毒路径都只比较实际毒力与目标实际抗毒，不再读取<a href="use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-cap">抗毒周目上限</a>。AI投掷和玩家投掷<code>V≤0</code>的分支不改。</p>
+        <p>普通物品的暗器技巧项不随玩家投掷改号；两条正毒路径都只比较实际毒力与目标实际抗毒，不再读取<a href="use-poison-anti-poison-detoxification.zh-Hans.html#anti-poison-cap">抗毒周目上限</a>。玩家与AI投掷<code>V≤0</code>时保留各自公式和随机顺序；AI正毒投掷按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">统一上毒规则</a>结算。</p>
       </div>
       <pre>V = item.add_poison &gt; 0，W = actor.hidden_weapon，A = target.anti_poison
 x = trunc((V + W) / 2) − A  # 原版机器在W前是减号；全周目均改为加号

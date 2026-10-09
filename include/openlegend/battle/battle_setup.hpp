@@ -92,7 +92,8 @@ struct BattleItemSelectionState {
 struct BattleThrownItemResult {
     std::int16_t hit_count{};
     std::optional<std::int16_t> effect_id;
-    std::int16_t damage{};
+    std::int64_t damage{};
+    std::int64_t poison_overflow_damage{};
     bool inventory_consumed{};
 };
 
