@@ -18,6 +18,7 @@
 #include "openlegend/model/runtime_snapshot.hpp"
 #include "openlegend/motion/authoritative_motion.hpp"
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/persistence/ordinary_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
 #include "openlegend/render/indexed_layer.hpp"
@@ -401,11 +402,14 @@ private:
 
     void begin_new_game();
 
+    NODISCARD persistence::OrdinarySlotContext ordinary_slot_context() const;
+
     void perform_pending_io();
 
     NODISCARD bool activate_pending_load();
 
-    NODISCARD bool start_world(LegacyGameView error_return_view);
+    NODISCARD bool start_world(LegacyGameView error_return_view,
+        std::unique_ptr<world::WorldSession> prepared = {});
 
     NODISCARD bool start_scene(
         std::int16_t scene_id,
@@ -465,6 +469,7 @@ private:
     std::filesystem::path save_root_path_;
     resource::DataRoot data_root_;
     model::NewGamePlusConfiguration new_game_plus_configuration_;
+    std::optional<persistence::AssetFingerprints> save_asset_fingerprints_;
     input::NameInputMethod default_name_input_method_{input::NameInputMethod::legacy};
     std::chrono::nanoseconds movement_step_duration_{};
     bool weather_presentation_enabled_{};
@@ -513,7 +518,7 @@ private:
     TitleStartupPhase title_startup_phase_{TitleStartupPhase::none};
     BattleTransitionPhase battle_transition_phase_{BattleTransitionPhase::none};
     LegacyGameView load_return_view_{LegacyGameView::title};
-    std::optional<model::GameSnapshot> pending_loaded_snapshot_;
+    std::optional<model::RuntimeGameSnapshot> pending_loaded_snapshot_;
     std::optional<ui::TitleResult> pending_title_result_;
     bool pending_name_accept_{};
     bool pending_new_game_wait_present_{};

@@ -48,8 +48,8 @@ NODISCARD std::vector<std::uint8_t> legacy_field(
     return std::vector<std::uint8_t>(field.begin(), end);
 }
 
-NODISCARD text::GameText save_location(
-    const model::RangerState& ranger) {
+template<class Ranger>
+NODISCARD text::GameText save_location(const Ranger& ranger) {
     const auto world_x = ranger.header.word(model::header_word::main_map_x);
     const auto world_y = ranger.header.word(model::header_word::main_map_y);
     const model::SceneMetadataRecord* closest_scene = nullptr;
@@ -116,6 +116,25 @@ NODISCARD std::string save_timestamp(const std::filesystem::path& path) {
     std::array<char, 16> text{};
     if (std::strftime(text.data(), text.size(), "%m-%d %H:%M", &local) == 0U) {
         return "--";
+    }
+    return text.data();
+}
+
+NODISCARD std::string current_save_timestamp() {
+    const auto value = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::tm utc{};
+#ifdef _WIN32
+    if (gmtime_s(&utc, &value) != 0) {
+        return {};
+    }
+#else
+    if (gmtime_r(&value, &utc) == nullptr) {
+        return {};
+    }
+#endif
+    std::array<char, 21> text{};
+    if (std::strftime(text.data(), text.size(), "%Y-%m-%dT%H:%M:%SZ", &utc) == 0U) {
+        return {};
     }
     return text.data();
 }
@@ -375,6 +394,14 @@ LegacyGameRuntime::LegacyGameRuntime(
         startup_error_ = modern_ui_renderer_.error();
     } else if (!startup_resources_.valid()) {
         startup_error_ = startup_resources_.error();
+    }
+    if (startup_error_.empty() && new_game_plus_configuration_.enabled) {
+        auto fingerprints = persistence::fingerprint_new_game_plus_assets(data_root_path_);
+        if (!fingerprints) {
+            startup_error_ = "Unable to fingerprint NG+ game assets: " + fingerprints.error;
+        } else {
+            save_asset_fingerprints_ = std::move(fingerprints.fingerprints);
+        }
     }
     if (startup_error_.empty()) {
         world_map_ = std::make_unique<world::WorldMapData>(data_root_);
@@ -2194,6 +2221,11 @@ void LegacyGameRuntime::begin_new_game() {
     set_view(LegacyGameView::name_entry, "new game baseline loaded");
 }
 
+persistence::OrdinarySlotContext LegacyGameRuntime::ordinary_slot_context() const {
+    return {startup_resources_.ranger(), startup_resources_.ranger_index_bytes(),
+        new_game_plus_configuration_, save_asset_fingerprints_ ? &*save_asset_fingerprints_ : nullptr};
+}
+
 void LegacyGameRuntime::perform_pending_io() {
     const auto operation = pending_io_;
     pending_io_ = PendingIo::none;
@@ -2201,10 +2233,8 @@ void LegacyGameRuntime::perform_pending_io() {
     game_menu_.complete_slot_operation();
     if (operation == PendingIo::load) {
         attribute_controller_.reset();
-        auto loaded = persistence::load_numbered_slot(
-            save_root_path_,
-            save_slot(pending_slot_),
-            startup_resources_.ranger_index_bytes());
+        auto loaded = persistence::load_ordinary_slot(
+            save_root_path_, save_slot(pending_slot_), ordinary_slot_context());
         if (!loaded) {
             const auto failed_path = loaded.path.u8string();
             diagnostics::log_error("Save load rejected: " + loaded.detail + " [" +
@@ -2233,8 +2263,9 @@ void LegacyGameRuntime::perform_pending_io() {
         show_error("No game state is available to save", LegacyGameView::game_menu);
         return;
     }
-    const auto written = persistence::write_numbered_slot(
-        save_root_path_, save_slot(pending_slot_), *ranger_snapshot);
+    const auto written = persistence::write_ordinary_slot(
+        save_root_path_, save_slot(pending_slot_), *ranger_snapshot, ordinary_slot_context(),
+        new_game_plus_configuration_.enabled ? current_save_timestamp() : std::string{});
     if (!written) {
         diagnostics::log_error("Save failed: " + written.detail);
         for (const auto& path : written.recovery_paths) {
@@ -2255,8 +2286,22 @@ bool LegacyGameRuntime::activate_pending_load() {
         return false;
     }
 
-    auto loaded_snapshot = std::move(*pending_loaded_snapshot_);
+    model::RuntimeGameState candidate;
+    const bool imported = candidate.import_snapshot(std::move(*pending_loaded_snapshot_));
     pending_loaded_snapshot_.reset();
+    if (!imported || world_map_ == nullptr || !world_map_->valid()) {
+        load_transition_phase_ = LoadTransitionPhase::none;
+        show_error("Save snapshot or world resources are invalid", load_return_view_);
+        return false;
+    }
+    auto prepared = std::make_unique<world::WorldSession>(data_root_, *world_map_, *candidate.ranger(),
+        random_, startup_resources_.weather_sprites(), startup_resources_.palette(),
+        candidate.snapshot()->configuration, candidate.snapshot()->playthrough);
+    if (!prepared->valid()) {
+        load_transition_phase_ = LoadTransitionPhase::none;
+        show_error(prepared->error(), load_return_view_);
+        return false;
+    }
     pending_new_game_wait_present_ = false;
     pending_new_game_scene_start_ = false;
     const auto replacing_scene = scene_session_ != nullptr;
@@ -2287,15 +2332,9 @@ bool LegacyGameRuntime::activate_pending_load() {
     scene_leave_event_script_id_.reset();
     leave_protagonist_notice_pending_ = false;
     scene_audio_commands_.clear();
-    if (!game_state_.import_snapshot(
-            std::move(loaded_snapshot), new_game_plus_configuration_,
-            new_game_plus_configuration_.enabled ? &startup_resources_.ranger() : nullptr)) {
-        load_transition_phase_ = LoadTransitionPhase::none;
-        show_error("Save snapshot import failed", load_return_view_);
-        return false;
-    }
+    game_state_.swap(candidate);
     update_menu_counts();
-    if (!start_world(load_return_view_)) {
+    if (!start_world(load_return_view_, std::move(prepared))) {
         load_transition_phase_ = LoadTransitionPhase::none;
         return false;
     }
@@ -2307,7 +2346,8 @@ bool LegacyGameRuntime::activate_pending_load() {
     return true;
 }
 
-bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
+bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view,
+    std::unique_ptr<world::WorldSession> prepared) {
     death_menu_.reset();
     scene_death_menu_active_ = false;
     scene_death_menu_presented_ = false;
@@ -2336,7 +2376,7 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view) {
         show_error("World map startup resources are unavailable", error_return_view);
         return false;
     }
-    world_session_ = std::make_unique<world::WorldSession>(
+    world_session_ = prepared ? std::move(prepared) : std::make_unique<world::WorldSession>(
         data_root_,
         *world_map_,
         *ranger,
@@ -2978,6 +3018,30 @@ void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {
             entry.state = ui::SaveListEntryState::hidden;
             continue;
         }
+        const auto selected = persistence::select_ordinary_slot(
+            save_root_path_, save_slot(entry.slot), new_game_plus_configuration_.enabled);
+        if (!selected) {
+            entry.state = ui::SaveListEntryState::damaged;
+            continue;
+        }
+        if (selected.format == persistence::OrdinarySaveFormat::toml) {
+            const auto loaded = persistence::load_ordinary_slot(
+                save_root_path_, save_slot(entry.slot), ordinary_slot_context());
+            if (!loaded || !loaded.metadata || loaded.snapshot->ranger.roles.empty()) {
+                entry.state = ui::SaveListEntryState::damaged;
+                continue;
+            }
+            const auto& protagonist = loaded.snapshot->ranger.roles.front();
+            const auto name = protagonist.legacy_name();
+            entry.state = ui::SaveListEntryState::ready;
+            entry.protagonist_name = legacy_field(name, 0U, name.size());
+            entry.level = protagonist.level;
+            entry.location = save_location(loaded.snapshot->ranger);
+            entry.saved_at = loaded.metadata->timestamp_utc.substr(5U, 11U);
+            entry.saved_at[5U] = ' ';
+            entry.saved_at += 'Z';
+            continue;
+        }
         const auto files = persistence::numbered_file_set(
             save_root_path_, save_slot(entry.slot));
         if (!files.has_value()) {
@@ -3095,8 +3159,8 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
         begin_scene_effect(SceneEffectKind::present, 1U);
         break;
     case ui::TitleCommand::delete_slot: {
-        const auto deleted = persistence::delete_numbered_slot(
-            save_root_path_, save_slot(result.slot));
+        const auto deleted = persistence::delete_ordinary_slot(
+            save_root_path_, save_slot(result.slot), new_game_plus_configuration_.enabled);
         if (!deleted) {
             show_error(
                 std::string{persistence::persistence_status_message(deleted.status)},
@@ -3128,8 +3192,8 @@ void LegacyGameRuntime::handle_death_menu_result(
         error_return_view_ = LegacyGameView::scene;
         break;
     case ui::DeathMenuCommand::delete_slot: {
-        const auto deleted = persistence::delete_numbered_slot(
-            save_root_path_, save_slot(result.slot));
+        const auto deleted = persistence::delete_ordinary_slot(
+            save_root_path_, save_slot(result.slot), new_game_plus_configuration_.enabled);
         if (!deleted) {
             show_error(
                 std::string{persistence::persistence_status_message(deleted.status)},
@@ -3253,8 +3317,8 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         error_return_view_ = LegacyGameView::game_menu;
         break;
     case ui::GameMenuCommand::delete_slot: {
-        const auto deleted = persistence::delete_numbered_slot(
-            save_root_path_, save_slot(result.slot));
+        const auto deleted = persistence::delete_ordinary_slot(
+            save_root_path_, save_slot(result.slot), new_game_plus_configuration_.enabled);
         if (!deleted) {
             show_error(
                 std::string{persistence::persistence_status_message(deleted.status)},

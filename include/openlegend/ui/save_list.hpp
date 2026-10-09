@@ -32,7 +32,7 @@ struct SaveListEntry {
     std::uint16_t slot{};
     SaveListEntryState state{SaveListEntryState::empty};
     std::vector<std::uint8_t> protagonist_name;
-    std::int16_t level{};
+    std::int64_t level{};
     text::GameText location;
     std::string saved_at;
 };

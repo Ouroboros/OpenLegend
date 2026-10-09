@@ -450,6 +450,21 @@ std::optional<GameSnapshot> encode_legacy_snapshot(const RuntimeGameSnapshot& sn
     return result;
 }
 
+RuntimeGameState::RuntimeGameState(const RuntimeGameState& other)
+    : snapshot_(other.snapshot_ ? std::make_unique<RuntimeGameSnapshot>(*other.snapshot_) : nullptr) {}
+
+RuntimeGameState& RuntimeGameState::operator=(const RuntimeGameState& other) {
+    if (this != &other) {
+        RuntimeGameState replacement{other};
+        swap(replacement);
+    }
+    return *this;
+}
+
+void RuntimeGameState::swap(RuntimeGameState& other) noexcept {
+    snapshot_.swap(other.snapshot_);
+}
+
 bool RuntimeGameState::import_snapshot(
     GameSnapshot snapshot, const NewGamePlusConfiguration& configuration,
     const RangerState* const baseline) {
@@ -457,7 +472,7 @@ bool RuntimeGameState::import_snapshot(
     if (!decoded.has_value()) {
         return false;
     }
-    snapshot_ = std::move(*decoded);
+    snapshot_ = std::make_unique<RuntimeGameSnapshot>(std::move(*decoded));
     return true;
 }
 
@@ -465,28 +480,28 @@ bool RuntimeGameState::import_snapshot(RuntimeGameSnapshot snapshot) {
     if (!snapshot.valid_for_persistence()) {
         return false;
     }
-    snapshot_ = std::move(snapshot);
+    snapshot_ = std::make_unique<RuntimeGameSnapshot>(std::move(snapshot));
     return true;
 }
 
 const RuntimeRangerState* RuntimeGameState::ranger() const noexcept {
-    return snapshot_.has_value() ? &snapshot_->ranger : nullptr;
+    return snapshot_ ? &snapshot_->ranger : nullptr;
 }
 
 RuntimeRangerState* RuntimeGameState::ranger() noexcept {
-    return snapshot_.has_value() ? &snapshot_->ranger : nullptr;
+    return snapshot_ ? &snapshot_->ranger : nullptr;
 }
 
 const RuntimeGameSnapshot* RuntimeGameState::snapshot() const noexcept {
-    return snapshot_.has_value() ? &*snapshot_ : nullptr;
+    return snapshot_.get();
 }
 
 RuntimeGameSnapshot* RuntimeGameState::snapshot() noexcept {
-    return snapshot_.has_value() ? &*snapshot_ : nullptr;
+    return snapshot_.get();
 }
 
 std::optional<RuntimeGameSnapshot> RuntimeGameState::export_snapshot() const {
-    return snapshot_;
+    return snapshot_ ? std::optional<RuntimeGameSnapshot>{*snapshot_} : std::nullopt;
 }
 
 }

@@ -114,10 +114,12 @@ target_include_directories(openlegend_resource_tests PRIVATE ${CMAKE_CURRENT_SOU
 target_link_libraries(openlegend_resource_tests PRIVATE openlegend_resource)
 add_test(NAME openlegend.resource COMMAND openlegend_resource_tests)
 
+string(SHA256 OPENLEGEND_PERSISTENCE_TEST_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 add_executable(openlegend_ui_tests unit/ui/title_menu_test.cpp)
 target_compile_definitions(
     openlegend_ui_tests
     PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>"
+    OPENLEGEND_NGPLUS_TEST_OUTPUT_ROOT="${PROJECT_SOURCE_DIR}/tmp/ngplus-runtime-tests/${OPENLEGEND_PERSISTENCE_TEST_DIRECTORY}/$<CONFIG>"
 )
 target_include_directories(openlegend_ui_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_ui_tests PRIVATE openlegend_app openlegend_ui)
@@ -233,7 +235,6 @@ target_include_directories(openlegend_toml_snapshot_tests PRIVATE ${CMAKE_CURREN
 target_link_libraries(openlegend_toml_snapshot_tests PRIVATE openlegend_persistence tomlplusplus::tomlplusplus)
 add_test(NAME openlegend.persistence.toml_snapshots COMMAND openlegend_toml_snapshot_tests)
 
-string(SHA256 OPENLEGEND_PERSISTENCE_TEST_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 add_executable(openlegend_save_file_tests unit/persistence/save_file_test.cpp)
 target_compile_definitions(
     openlegend_save_file_tests

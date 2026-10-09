@@ -8,6 +8,7 @@ add_library(
     save_file_group.cpp
     native_save_file.cpp
     toml_slot.cpp
+    ordinary_slot.cpp
 )
 target_include_directories(
     openlegend_persistence

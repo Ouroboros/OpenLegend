@@ -729,6 +729,10 @@ std::string_view persistence_status_message(const PersistenceStatus status) noex
         return "scene group size does not match its index";
     case PersistenceStatus::invalid_snapshot:
         return "game snapshot has invalid scene storage";
+    case PersistenceStatus::invalid_toml:
+        return "NG+ save is damaged or incompatible; Legacy fallback was not used";
+    case PersistenceStatus::incompatible_assets:
+        return "save assets are incompatible with current game data";
     case PersistenceStatus::write_failed:
         return "cannot write save file";
     case PersistenceStatus::cleanup_failed:

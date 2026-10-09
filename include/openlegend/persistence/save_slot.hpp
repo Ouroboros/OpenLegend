@@ -57,6 +57,8 @@ enum class PersistenceStatus {
     invalid_scene_index_layout,
     invalid_scene_group_size,
     invalid_snapshot,
+    invalid_toml,
+    incompatible_assets,
     write_failed,
     cleanup_failed,
     rollback_failed,

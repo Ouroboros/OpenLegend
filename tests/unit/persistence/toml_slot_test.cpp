@@ -11,6 +11,7 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/persistence/toml_slot.hpp"
+#include "openlegend/persistence/ordinary_slot.hpp"
 #include "test_support.hpp"
 
 namespace {
@@ -194,6 +195,82 @@ void check_rejections(const std::filesystem::path& root,
     OL_CHECK(!directory && !directory.save && directory.file_status == SaveFileStatus::not_regular);
 }
 
+void check_ordinary_routing(const std::filesystem::path& root,
+    const model::RuntimeGameSnapshot& source, const TomlSnapshotContext& context) {
+    std::filesystem::create_directories(root);
+    const auto index = read_save_file(test::game_data_root() / "RANGER.IDX", 24U);
+    OL_CHECK(index);
+    if (!index) {
+        return;
+    }
+    const model::NewGamePlusConfiguration disabled;
+    const OrdinarySlotContext legacy_context{context.baseline, *index.bytes, disabled, nullptr};
+    const OrdinarySlotContext enabled_context{
+        context.baseline, *index.bytes, context.configuration, &context.fingerprints};
+    auto legacy = source;
+    legacy.configuration = disabled;
+    legacy.origin = model::SnapshotOrigin::legacy;
+    for (std::size_t role = 0U; role < 2U; ++role) {
+        auto& actor = legacy.ranger.roles[role];
+        actor.hp = 999;
+        actor.maximum_hp = 999;
+        actor.mp = 999;
+        actor.maximum_mp = 999;
+        actor.attack = 100;
+        actor.magic_levels[0U] = 998;
+        actor.ever_joined = false;
+        std::ranges::fill(actor.no_magic_count, 0);
+    }
+    legacy.ranger.header.set_inventory(0U, model::ItemId{174}, 500);
+    OL_CHECK(legacy.valid_for_persistence());
+    OL_CHECK(write_ordinary_slot(root, SaveSlot::one, legacy, legacy_context, {}));
+    OL_CHECK(!std::filesystem::exists(root / "ngplus"));
+    const auto legacy_loaded = load_ordinary_slot(root, SaveSlot::one, legacy_context);
+    OL_CHECK(legacy_loaded && legacy_loaded.snapshot == legacy && !legacy_loaded.metadata);
+    const auto fallback = load_ordinary_slot(root, SaveSlot::one, enabled_context);
+    OL_CHECK(fallback && fallback.format == OrdinarySaveFormat::legacy);
+    if (fallback) {
+        OL_CHECK(write_ordinary_slot(root, SaveSlot::one, *fallback.snapshot,
+            enabled_context, "2026-09-14T08:00:00Z"));
+    }
+    const auto toml_path = *toml_slot_path(root, TomlSaveKind::ordinary, SaveSlot::one);
+    OL_CHECK(std::filesystem::exists(toml_path));
+    auto wide = source;
+    wide.ranger.roles[0U].level = std::numeric_limits<std::int64_t>::max();
+    OL_CHECK(write_ordinary_slot(root, SaveSlot::one, wide, enabled_context, "2026-09-14T08:00:00Z"));
+    const auto selected = select_ordinary_slot(root, SaveSlot::one, true);
+    OL_CHECK(selected && selected.format == OrdinarySaveFormat::toml && selected.path == toml_path);
+    const auto loaded = load_ordinary_slot(root, SaveSlot::one, enabled_context);
+    OL_CHECK(loaded && loaded.snapshot == wide && loaded.metadata);
+    OL_CHECK(load_ordinary_slot(root, SaveSlot::one, legacy_context).snapshot == legacy);
+    const TomlSaveMetadata completion{TomlSaveKind::completion, SaveSlot::one, "2026-09-14T08:00:00Z"};
+    OL_CHECK(write_toml_slot(root, wide, completion, context));
+    const auto completion_path = *toml_slot_path(root, TomlSaveKind::completion, SaveSlot::one);
+    auto wrong_fingerprints = context.fingerprints;
+    wrong_fingerprints.sha256[0U][0U] = wrong_fingerprints.sha256[0U][0U] == '0' ? '1' : '0';
+    const OrdinarySlotContext incompatible{context.baseline, *index.bytes, context.configuration, &wrong_fingerprints};
+    OL_CHECK(load_ordinary_slot(root, SaveSlot::one, incompatible).status == PersistenceStatus::incompatible_assets);
+    const std::vector<std::uint8_t> malformed{'b', 'a', 'd', '=', '['};
+    OL_CHECK(replace_save_file(toml_path, malformed, kMaximumTomlSaveBytes));
+    const auto damaged = load_ordinary_slot(root, SaveSlot::one, enabled_context);
+    OL_CHECK(!damaged && !damaged.snapshot && damaged.status == PersistenceStatus::invalid_toml);
+    OL_CHECK(write_ordinary_slot(root, SaveSlot::one, legacy, legacy_context, {}));
+    OL_CHECK(read_save_file(toml_path, kMaximumTomlSaveBytes).bytes == malformed);
+    OL_CHECK(delete_ordinary_slot(root, SaveSlot::one, true));
+    OL_CHECK(load_ordinary_slot(root, SaveSlot::one, enabled_context).format == OrdinarySaveFormat::legacy);
+    OL_CHECK(load_ordinary_slot(root, SaveSlot::one, legacy_context).snapshot == legacy);
+    OL_CHECK(std::filesystem::exists(completion_path));
+    OL_CHECK(write_ordinary_slot(root, SaveSlot::one, wide, enabled_context, "2026-09-14T08:00:00Z"));
+    OL_CHECK(delete_ordinary_slot(root, SaveSlot::one, false));
+    OL_CHECK(std::filesystem::exists(toml_path));
+    OL_CHECK(!load_ordinary_slot(root, SaveSlot::one, legacy_context));
+    OL_CHECK(load_ordinary_slot(root, SaveSlot::one, enabled_context).snapshot == wide);
+    OL_CHECK(delete_ordinary_slot(root, SaveSlot::one, true));
+    OL_CHECK(!load_ordinary_slot(root, SaveSlot::one, enabled_context));
+    OL_CHECK(std::filesystem::exists(completion_path));
+    OL_CHECK(!select_ordinary_slot(root, static_cast<SaveSlot>(999U), true));
+}
+
 }
 
 int main() {
@@ -219,6 +296,7 @@ int main() {
         check_paths(root);
         check_round_trips(root, *snapshot, context);
         check_rejections(root, *snapshot, context);
+        check_ordinary_routing(root / "routing", *snapshot, context);
         OL_CHECK(*snapshot == original);
         std::filesystem::remove_all(root);
     } catch (const std::exception& error) {

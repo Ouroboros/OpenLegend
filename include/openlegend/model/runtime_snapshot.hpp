@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <memory>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -96,13 +97,25 @@ NODISCARD std::optional<GameSnapshot> encode_legacy_snapshot(
 
 class RuntimeGameState {
 public:
+    RuntimeGameState() = default;
+
+    RuntimeGameState(const RuntimeGameState& other);
+
+    RuntimeGameState& operator=(const RuntimeGameState& other);
+
+    RuntimeGameState(RuntimeGameState&&) noexcept = default;
+
+    RuntimeGameState& operator=(RuntimeGameState&&) noexcept = default;
+
+    void swap(RuntimeGameState& other) noexcept;
+
     NODISCARD bool import_snapshot(
         GameSnapshot snapshot, const NewGamePlusConfiguration& configuration = {},
         const RangerState* baseline = nullptr);
 
     NODISCARD bool import_snapshot(RuntimeGameSnapshot snapshot);
 
-    NODISCARD bool loaded() const noexcept { return snapshot_.has_value(); }
+    NODISCARD bool loaded() const noexcept { return snapshot_ != nullptr; }
 
     NODISCARD const RuntimeRangerState* ranger() const noexcept;
 
@@ -115,7 +128,7 @@ public:
     NODISCARD std::optional<RuntimeGameSnapshot> export_snapshot() const;
 
 private:
-    std::optional<RuntimeGameSnapshot> snapshot_;
+    std::unique_ptr<RuntimeGameSnapshot> snapshot_;
 };
 
 }

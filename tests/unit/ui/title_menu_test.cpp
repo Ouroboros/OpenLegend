@@ -42,6 +42,21 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.random_;
     }
 
+    static bool activate_with_missing_resources(LegacyGameRuntime& runtime,
+        model::RuntimeGameSnapshot snapshot, const std::filesystem::path& missing_root) {
+        runtime.pending_loaded_snapshot_ = std::move(snapshot);
+        runtime.load_return_view_ = LegacyGameView::world;
+        runtime.data_root_ = resource::DataRoot{missing_root};
+        const auto activated = runtime.activate_pending_load();
+        runtime.data_root_ = resource::DataRoot{runtime.data_root_path_};
+        return activated;
+    }
+
+    static ui::SaveListEntry save_entry(LegacyGameRuntime& runtime, const std::uint16_t slot) {
+        runtime.refresh_save_list(ui::save_list_page(slot));
+        return runtime.save_list_entries_[slot % ui::kSaveListPageSize];
+    }
+
     static std::string visible_error(const LegacyGameRuntime& runtime) {
         return {runtime.visible_error_.begin(), runtime.visible_error_.end()};
     }
@@ -3832,6 +3847,124 @@ void check_authoritative_runtime_motion(
         static_cast<std::int16_t>((periodic_before_motion + 2) % 5));
 }
 
+void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    const auto root = test::utf8_path(OPENLEGEND_NGPLUS_TEST_OUTPUT_ROOT) / "ngplus-runtime-save";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    const auto baseline = persistence::load_baseline(data_root);
+    const auto fingerprints = persistence::fingerprint_new_game_plus_assets(data_root);
+    const auto index = resource::read_binary_file(data_root / "RANGER.IDX");
+    OL_CHECK(baseline && fingerprints && index);
+    if (!baseline || !fingerprints || !index) {
+        return;
+    }
+    model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    auto source = model::decode_legacy_snapshot(*baseline.snapshot, configuration, &baseline.snapshot->ranger);
+    OL_CHECK(source.has_value());
+    if (!source) {
+        return;
+    }
+    model::RoleState actor;
+    actor.id = model::CharacterId{0};
+    actor.head_id = baseline.snapshot->ranger.roles[0U].word(model::role_word::head_id);
+    actor.name = u8"繼承";
+    actor.level = 1000;
+    actor.increased_life = 6;
+    actor.hp = actor.maximum_hp = 5'000'000'000'000;
+    actor.mp = actor.maximum_mp = 999;
+    actor.physical_power = 100;
+    actor.attack = 4'000'000'000'000;
+    actor.equipment.fill(model::ItemId{-1});
+    actor.taking_items.fill(model::ItemId{-1});
+    actor.magic_ids.fill(model::MagicId{0});
+    actor.practice_item = model::ItemId{-1};
+    actor.ever_joined = true;
+    source->ranger.roles[0U] = actor;
+    source->origin = model::SnapshotOrigin::new_game_plus;
+    for (std::size_t slot = 0U; slot < model::kTeamMemberCount; ++slot) {
+        source->ranger.header.set_team_member(slot, model::CharacterId{-1});
+    }
+    source->ranger.header.set_team_member(0U, model::CharacterId{0});
+    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+        source->ranger.header.set_inventory(slot, model::ItemId{-1}, 0);
+    }
+    OL_CHECK(source->valid_for_persistence());
+    const persistence::TomlSnapshotContext context{
+        baseline.snapshot->ranger, *fingerprints.fingerprints, configuration};
+    OL_CHECK(persistence::write_numbered_slot(root, persistence::SaveSlot::one, *baseline.snapshot));
+    OL_CHECK(persistence::write_toml_slot(root, *source,
+        {persistence::TomlSaveKind::ordinary, persistence::SaveSlot::one, "2026-09-14T08:00:00Z"}, context));
+    app::LegacyGameRuntime game{data_root, root, 0U, app::GameResolution{},
+        input::NameInputMethod::legacy, {}, configuration};
+    OL_CHECK(game.valid());
+    if (!game.valid()) {
+        return;
+    }
+    const auto entry = app::LegacyGameRuntimeTestAccess::save_entry(game, 0U);
+    OL_CHECK(entry.state == ui::SaveListEntryState::ready && entry.level == actor.level);
+    OL_CHECK(entry.saved_at == "09-14 08:00Z");
+    finish_title_startup(game);
+    game.handle_key(0x98U, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    finish_title_confirmation(game);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    finish_numbered_load_transition(game, app::LegacyGameView::world);
+    OL_CHECK(game.game_state().export_snapshot() == source);
+    auto* ranger = const_cast<model::RuntimeGameState&>(game.game_state()).ranger();
+    OL_CHECK(ranger != nullptr);
+    if (ranger == nullptr) {
+        return;
+    }
+    ranger->roles[0U].hp -= 7;
+    game.handle_key(0x1BU, false, false);
+    game.handle_key(0x9EU, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x98U, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    const auto saved = persistence::load_toml_slot(
+        root, persistence::TomlSaveKind::ordinary, persistence::SaveSlot::one, context);
+    OL_CHECK(saved);
+    if (saved) {
+        OL_CHECK(game.game_state().export_snapshot() == saved.save->snapshot);
+        OL_CHECK(saved.save->snapshot.ranger.roles[0U].hp == actor.hp - 7);
+        OL_CHECK(saved.save->metadata.timestamp_utc.size() == 20U);
+    }
+    const auto untouched = persistence::load_numbered_slot(root, persistence::SaveSlot::one, index.bytes);
+    OL_CHECK(untouched && untouched.snapshot == baseline.snapshot);
+    const std::vector<std::uint8_t> malformed{'b', 'a', 'd', '=', '['};
+    OL_CHECK(persistence::replace_save_file(root / "ngplus" / "001.toml", malformed,
+        persistence::kMaximumTomlSaveBytes));
+    const auto before = game.game_state().export_snapshot();
+    game.handle_key(0x9EU, false, false);
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    OL_CHECK(game.view() == app::LegacyGameView::error);
+    OL_CHECK(game.game_state().export_snapshot() == before);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::save_entry(game, 0U).state == ui::SaveListEntryState::damaged);
+    const auto* original_address = game.game_state().snapshot();
+    const auto world_x = app::LegacyGameRuntimeTestAccess::world_x(game);
+    const auto random_state = app::LegacyGameRuntimeTestAccess::random(game).state();
+    source->ranger.roles[0U].hp -= 123;
+    OL_CHECK(!app::LegacyGameRuntimeTestAccess::activate_with_missing_resources(
+        game, *source, root / "missing-assets"));
+    OL_CHECK(game.game_state().snapshot() == original_address);
+    OL_CHECK(game.game_state().export_snapshot() == before);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == world_x);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::random(game).state() == random_state);
+}
+
 void check_runtime_persistence(const std::filesystem::path& data_root) {
     using namespace openlegend;
 
@@ -3959,6 +4092,7 @@ void check_runtime_persistence(const std::filesystem::path& data_root) {
     game.finish_presented_tick();
     game.advance();
     OL_CHECK(game.view() == app::LegacyGameView::error);
+    check_ngplus_runtime_persistence(data_root);
 }
 
 void check_renderer(const std::filesystem::path& data_root) {
@@ -4205,6 +4339,24 @@ void check_renderer(const std::filesystem::path& data_root) {
         modern_renderer,
         rgba_framebuffer));
     OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));
+    save_entries[0].level = std::numeric_limits<std::int64_t>::max();
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(save_list_renderer.render(ui::SaveListMode::load, 0U, save_entries,
+        framebuffer.palette(), modern_renderer, rgba_framebuffer));
+    render::RgbaFramebuffer expected_wide_level;
+    expected_wide_level.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.draw_box(expected_wide_level, 1, 1, 318, 198, framebuffer.palette()));
+    OL_CHECK(modern_renderer.draw_text_utf8(expected_wide_level, 95, 40, u8"9223372036854775807",
+        render::legacy_color::text::save_list_selected, framebuffer.palette(), render::rgba::FontSize{10U}));
+    for (int pixel_y = 40; pixel_y < 50; ++pixel_y) {
+        for (int pixel_x = 95; pixel_x < 195; ++pixel_x) {
+            const auto pixel = static_cast<std::size_t>((pixel_y * 320 + pixel_x) * 4);
+            for (std::size_t channel = 0U; channel < 4U; ++channel) {
+                OL_CHECK(rgba_framebuffer.pixels()[pixel + channel] == expected_wide_level.pixels()[pixel + channel]);
+            }
+        }
+    }
+    save_entries[0].level = 1;
     OL_CHECK(save_list_renderer.render_delete_confirmation(
         1U, framebuffer.palette(), modern_renderer, rgba_framebuffer));
     OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));

@@ -42,8 +42,8 @@ struct SaveListLayout {
     std::array<int, static_cast<std::size_t>(SaveListColumn::count)> column_x{};
 };
 
-void append_number(std::u8string& text, const std::int32_t value) {
-    std::array<char, 16> buffer{};
+void append_number(std::u8string& text, const std::int64_t value) {
+    std::array<char, 32> buffer{};
     const auto converted = std::to_chars(
         buffer.data(), buffer.data() + buffer.size(), value);
     for (const auto* cursor = buffer.data(); cursor != converted.ptr; ++cursor) {
@@ -93,7 +93,8 @@ NODISCARD std::span<const std::uint8_t> legacy_text_prefix(
 
 NODISCARD SaveListLayout save_list_layout(
     const render::RgbaFramebuffer& framebuffer,
-    const render::rgba::FontMetrics metrics) noexcept {
+    const render::rgba::FontMetrics metrics,
+    const std::span<const SaveListEntry> entries) noexcept {
     constexpr int kReferenceWidth = 320;
     constexpr int kReferencePanelHeight = 198;
     constexpr std::array<int, 5> kColumnWeights{40, 72, 24, 87, 88};
@@ -107,6 +108,28 @@ NODISCARD SaveListLayout save_list_layout(
     const int panel_height = framebuffer_height - 2 * outer_y;
     const int content_x = outer_x + inner_x;
     const int content_width = panel_width - inner_x - outer_x;
+    auto column_weights = kColumnWeights;
+    int level_pixels{};
+    for (const auto& entry : entries) {
+        if (entry.state != SaveListEntryState::ready) {
+            continue;
+        }
+        std::array<char, 32> number{};
+        const auto converted = std::to_chars(number.data(), number.data() + number.size(), entry.level);
+        level_pixels = std::max(level_pixels,
+            static_cast<int>(converted.ptr - number.data()) * static_cast<int>(metrics.ascii_width));
+    }
+    if (content_width <= 0) {
+        return {};
+    }
+    if (level_pixels > content_width * kColumnWeights[2] / kTotalColumnWeight) {
+        const auto level_weight = ((level_pixels + metrics.ascii_width) * kTotalColumnWeight +
+            content_width - 1) / content_width;
+        if (level_weight > 109) {
+            return {};
+        }
+        column_weights = {24, 64, level_weight, 159 - level_weight, 64};
+    }
 
     SaveListLayout layout;
     layout.panel_x = outer_x;
@@ -117,7 +140,7 @@ NODISCARD SaveListLayout save_list_layout(
     for (std::size_t column = 0U; column < layout.column_x.size(); ++column) {
         layout.column_x[column] =
             content_x + content_width * accumulated_weight / kTotalColumnWeight;
-        accumulated_weight += kColumnWeights[column];
+        accumulated_weight += column_weights[column];
     }
     const auto scaled_y = [outer_y, panel_height](const int reference_y) {
         return outer_y + reference_y * panel_height / kReferencePanelHeight;
@@ -150,8 +173,12 @@ bool SaveListRenderer::render(
     const compat::LegacyPalette& palette,
     ModernUiRenderer& ui_renderer,
     render::RgbaFramebuffer& framebuffer) const {
-    const auto metrics = ui_renderer.font_metrics(framebuffer);
-    const auto layout = save_list_layout(framebuffer, metrics);
+    const bool wide_level = std::any_of(entries.begin(), entries.end(), [](const auto& entry) {
+        return entry.state == SaveListEntryState::ready && (entry.level >= 1000 || entry.level <= -100);
+    });
+    const auto font_size = wide_level ? render::rgba::FontSize{10U} : render::rgba::FontSize{};
+    const auto metrics = ui_renderer.font_metrics(framebuffer, font_size);
+    const auto layout = save_list_layout(framebuffer, metrics, entries);
     const auto column = [&layout](const SaveListColumn value) {
         return layout.column_x[static_cast<std::size_t>(value)];
     };
@@ -178,49 +205,49 @@ bool SaveListRenderer::render(
             layout.title_y,
             title,
             text_colors::notice,
-            palette) ||
+            palette, font_size) ||
         !ui_renderer.draw_text_utf8(
             framebuffer,
             layout.page_x,
             layout.title_y,
             page,
             text_colors::notice,
-            palette) ||
+            palette, font_size) ||
         !ui_renderer.draw_text_utf8(
             framebuffer,
             column(SaveListColumn::slot),
             layout.header_y,
             kSlotNumberHeader,
             text_colors::normal,
-            palette) ||
+            palette, font_size) ||
         !ui_renderer.draw_text_utf8(
             framebuffer,
             column(SaveListColumn::name),
             layout.header_y,
             kNameHeader,
             text_colors::normal,
-            palette) ||
+            palette, font_size) ||
         !ui_renderer.draw_text_utf8(
             framebuffer,
             column(SaveListColumn::level),
             layout.header_y,
             kLevelHeader,
             text_colors::normal,
-            palette) ||
+            palette, font_size) ||
         !ui_renderer.draw_text_utf8(
             framebuffer,
             column(SaveListColumn::location),
             layout.header_y,
             kLocationHeader,
             text_colors::normal,
-            palette) ||
+            palette, font_size) ||
         !ui_renderer.draw_text_utf8(
             framebuffer,
             column(SaveListColumn::saved_at),
             layout.header_y,
             kSavedAtHeader,
             text_colors::normal,
-            palette)) {
+            palette, font_size)) {
         return false;
     }
 
@@ -241,7 +268,7 @@ bool SaveListRenderer::render(
                 y,
                 slot,
                 colors,
-                palette)) {
+                palette, font_size)) {
             return false;
         }
         if (entry.state == SaveListEntryState::empty) {
@@ -251,7 +278,7 @@ bool SaveListRenderer::render(
                     y,
                     kEmptySaveLabel,
                     colors,
-                    palette)) {
+                    palette, font_size)) {
                 return false;
             }
             continue;
@@ -263,7 +290,7 @@ bool SaveListRenderer::render(
                     y,
                     kDamagedSaveLabel,
                     colors,
-                    palette)) {
+                    palette, font_size)) {
                 return false;
             }
             continue;
@@ -280,28 +307,28 @@ bool SaveListRenderer::render(
                     layout.name_text_pixels,
                     metrics)},
                 colors,
-                palette) ||
+                palette, font_size) ||
             !ui_renderer.draw_text_utf8(
                 framebuffer,
                 column(SaveListColumn::level),
                 y,
                 level,
                 colors,
-                palette) ||
+                palette, font_size) ||
             !ui_renderer.draw_text_mixed(
                 framebuffer,
                 column(SaveListColumn::location),
                 y,
                 entry.location,
                 colors,
-                palette) ||
+                palette, font_size) ||
             !ui_renderer.draw_text_utf8(
                 framebuffer,
                 column(SaveListColumn::saved_at),
                 y,
                 saved_at,
                 colors,
-                palette)) {
+                palette, font_size)) {
             return false;
         }
     }
