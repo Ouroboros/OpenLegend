@@ -103,9 +103,9 @@ war_sta_sha256    = "00000000000000000000000000000000000000000000000000000000000
     <ul>
       <li><code>timestamp_utc</code>记录实际保存时间，固定使用精确到秒的RFC3339 UTC格式<code>YYYY-MM-DDTHH:MM:SSZ</code>；它只用于显示与诊断，不改变排序或游戏状态。</li>
       <li>资产指纹根据创建存档时实际使用的数据根目录计算。加载时任一指纹不一致即拒绝并报告“资源版本不兼容”，不得猜测ID映射。</li>
-      <li id="asset-fingerprint-implementation">当前已加入九个固定资产的完整文件SHA256计算，算法依据<a href="https://www.rfc-editor.org/rfc/rfc6234.html#section-6.2">RFC 6234的SHA-256定义</a>。从调用者指定的数据根目录只读计算，每个摘要输出64个小写十六进制字符；任何文件读取失败均返回具体路径和错误，不返回部分指纹。此入口只证明文件内容身份，不替代资产结构验证；TOML指纹比较与读档提交尚未接入，验证进度见实现清单。</li>
+      <li id="asset-fingerprint-implementation">当前已加入九个固定资产的完整文件SHA256计算，算法依据<a href="https://www.rfc-editor.org/rfc/rfc6234.html#section-6.2">RFC 6234的SHA-256定义</a>。从调用者指定的数据根目录只读计算，每个摘要输出64个小写十六进制字符；任何文件读取失败均返回具体路径和错误，不返回部分指纹。此入口只证明文件内容身份，不替代资产结构验证；九项指纹已接入TOML内存解析，磁盘读取与当前游戏状态替换尚未接入，验证进度见实现清单。</li>
       <li>普通与通关TOML都必须精确匹配<code>format_version=2</code>和<code>ruleset_version=3</code>；未知版本直接拒绝，不自动迁移、静默clamp或猜测缺失字段。</li>
-      <li>截至本文版本，NG+ TOML尚未实现，也不存在需要兼容的已发布TOML存档；本节是<code>format_version=2</code>的唯一正式定义。首个实现完成后，任何不向后兼容的结构变化必须提升格式版本；只改变规则语义时必须提升规则版本。</li>
+      <li>当前已加入NG+ TOML内存编解码，磁盘文件读写与游戏入口尚未接入；本节是<code>format_version=2</code>的唯一正式定义。首个完整存读档实现完成后，任何不向后兼容的结构变化必须提升格式版本；只改变规则语义时必须提升规则版本。</li>
       <li><code>format_version</code>描述TOML结构；<code>ruleset_version</code>描述生成和解释存档所用的NG+规则。</li>
       <li>当前正式格式不包含任何已经删除的旧版生命／内力参考字段。历史评审文档中的此类字段不构成兼容输入；TOML出现相应未知键时按严格验证规则拒绝。</li>
     </ul>
@@ -286,7 +286,7 @@ d_compressed_base64                = string                               # 完�
         <p>随后使用RFC 4648标准Base64字母表和<code>=</code>padding编码。</p>
         <p>存档内不另设压缩算法或版本字段。写入器在TOML多行字符串中按每行76个Base64字符换行；解析后只允许移除CR／LF，
           其他空白、URL-safe字符、非法字符、错误padding、frame checksum失败、尾随数据、多个frame或解压后长度不等于4,915,200／440,000 bytes时，整个读档失败。</p>
-        <p id="scene-archive-codec">实现已加入独立S／D编解码入口，使用固定Zstandard 1.5.7静态库及其<a href="https://github.com/facebook/zstd/blob/v1.5.7/lib/zstd.h">官方API</a>。先严格解码Base64，再检查普通单帧、content size、checksum标记与无字典，按固定输出容量解压并核对实际长度；不改变输入状态。此入口目前尚未接入完整TOML快照与文件事务，验证进度见实现清单。</p>
+        <p id="scene-archive-codec">实现已加入独立S／D编解码入口，使用固定Zstandard 1.5.7静态库及其<a href="https://github.com/facebook/zstd/blob/v1.5.7/lib/zstd.h">官方API</a>。先严格解码Base64，再检查普通单帧、content size、checksum标记与无字典，按固定输出容量解压并核对实际长度；不改变输入状态。此入口已由完整TOML内存快照调用，文件事务尚未接入，验证进度见实现清单。</p>
       </li>
       <li>
         不允许<code>[[items]]</code>、<code>[[scenes]]</code>、<code>[[magics]]</code>或完整<code>[[shops]]</code>定义表；
@@ -337,6 +337,8 @@ d_compressed_base64                = string                               # 完�
       </li>
       <li>装备名称等根据当前周目动态生成的显示后缀不持久化。加载后仍以基础ID、当前周目和当前规则生成。</li>
     </ul>
+
+    <p id="toml-snapshot-codec"><strong>内存编解码实现：</strong>已按本节固定结构写出与解析普通／通关TOML：13个根键、九个资产指纹、14个header键及每名入选角色的45个键均完整验证。指纹匹配后从RANGER建立候选，只覆盖队伍与曾入队角色、动态小状态和存档内完整S／D；编码后重新解析并逐值比较，失败不返回文本或候选。普通与通关用途、槽号、周目、UTC时间格式、signed64及原生字段域、Big5姓名、引用和角色集合均有检查。此层只处理内存，不执行文件替换、普通读档提交或下一周目转换；文件安全读取与原子事务仍须按下两节接入。</p>
 
     <h4 id="save-format-validation">3.1.5 严格加载验证</h4>
     <ol>
@@ -440,7 +442,7 @@ Mref(Nmax)=9990，CountRef=9988，PaidTierRef=9989
       <li>换周目不自动增加任何已继承的人物经验、武功熟练度、秘笈成功次数或永久属性；内伤、中毒换周目清0；内伤保留周目上限<code>HurtMax(n, CFG)</code>，中毒量正常范围固定为0～99。</li>
     </ul>
     <div class="notice">
-      <p><strong>实现状态：</strong>共用64位运算、角色逻辑类型、Legacy角色字段转换、CFG解析及游戏持有的完整逻辑快照已加入，并通过相应专项测试；S／D压缩编解码已通过真实资产往返、畸形输入及统一BUILD应用Debug的154项回归；完整TOML存读档、文件事务与通关继承尚未完成。阶段记录见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
+      <p><strong>实现状态：</strong>共用64位运算、角色逻辑类型、Legacy角色字段转换、CFG解析及游戏持有的完整逻辑快照已加入。S／D压缩、九资产SHA256、普通／通关TOML内存编解码及完整回读比较已通过专项与统一BUILD应用Debug的156项回归；磁盘文件事务、存读档界面接入与通关继承尚未完成。阶段记录见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
     </div>
   </section>
 </main>

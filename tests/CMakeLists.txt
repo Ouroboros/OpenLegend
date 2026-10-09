@@ -228,6 +228,11 @@ target_include_directories(openlegend_asset_fingerprint_tests PRIVATE ${CMAKE_CU
 target_link_libraries(openlegend_asset_fingerprint_tests PRIVATE openlegend_persistence)
 add_test(NAME openlegend.persistence.asset_fingerprints COMMAND openlegend_asset_fingerprint_tests)
 
+add_executable(openlegend_toml_snapshot_tests unit/persistence/toml_snapshot_test.cpp)
+target_include_directories(openlegend_toml_snapshot_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_toml_snapshot_tests PRIVATE openlegend_persistence tomlplusplus::tomlplusplus)
+add_test(NAME openlegend.persistence.toml_snapshots COMMAND openlegend_toml_snapshot_tests)
+
 set_tests_properties(
     openlegend.resource
     openlegend.audio
@@ -236,6 +241,7 @@ set_tests_properties(
     openlegend.persistence
     openlegend.persistence.scene_archives
     openlegend.persistence.asset_fingerprints
+    openlegend.persistence.toml_snapshots
     openlegend.battle.enemy_roles
     PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )

@@ -3,6 +3,7 @@ add_library(
     save_slot.cpp
     scene_archive_codec.cpp
     asset_fingerprints.cpp
+    toml_snapshot.cpp
 )
 target_include_directories(
     openlegend_persistence
@@ -20,4 +21,5 @@ target_link_libraries(
         openlegend_project_warnings
     PRIVATE
         zstd::libzstd_static
+        tomlplusplus::tomlplusplus
 )
