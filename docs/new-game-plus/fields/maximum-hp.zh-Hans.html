@@ -42,6 +42,9 @@
 </tbody></table>
 <p>旧方案<code>HpCap(n) = 999 + (n − 1) × hp_cap_step</code>不再作为玩家最大生命的写回、存档或继承上限；<code>hp_cap_step</code>的数值仍可作为既有敌方周目增长公式的STEP输入，敌方不按旧玩家上限截断。</p>
 <p>原表所列的取值、继承及状态以本页为唯一字段定义；跨字段计算见本页下方原文或相关字段页，不在主页重复公式。</p>
+<h3 id="scene-growth">剧情成长接入</h3>
+<p>剧情指令48按原脚本增量，以受检signed64加法计算新最大生命，再把当前生命恢复到这个新值。新最大值为负、加法或相对旧当前生命的差值溢出时，该指令不提交两项生命、不推进脚本，也不产生新提示。</p>
+<p>仍仅在实际生命增加且角色属于六槽队伍时提示；非队员照常更新生命，零增量也可恢复当前生命。大数字沿用<a href="attack.zh-Hans.html#scene-growth">属性提示的分行显示</a>。实现及验证进度见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

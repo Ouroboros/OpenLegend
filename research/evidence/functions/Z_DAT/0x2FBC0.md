@@ -1,6 +1,13 @@
 # 函数证据：`sub_2FBC0` `0x2FBC0..0x2FC9D`
 
-状态：`platform_adapted`；最终 REVIEW：`converged_no_new_differences`
+历史原版状态：`platform_adapted`；当时最终 REVIEW：`converged_no_new_differences`。以下1～6节记录原版合同，不表示现代NG+仍执行word回绕。
+
+## 当前NG+实现
+
+- 按[最大内力字段](../../../../docs/new-game-plus/fields/maximum-mp.zh-Hans.html#scene-growth)与signed64运行合同，opcode46先检查最大内力加法、结果非负及相对旧当前内力的gain，再一起提交最大／当前内力。失败不提交角色、不推进该指令PC、不抽取随机值，不承诺回滚此前已执行的剧情指令。
+- 保留把当前内力恢复到新最大值、零增量也可恢复、不要求队伍成员、gain严格大于0才提示、确认后裸场景present和PC+3。提示完整显示64位数字，超过六位时分行；取消低16位回绕，不增加999上限。
+- 本批重新读取当前Z.DAT的221字节，raw SHA256仍为`e259d06002c9fd180dd662c19cfc1484da5d916e29e77aa5002da13f5d5b0436`；完整61条指令复核，导出在`tmp/ngplus-scene-growth-mp-current-machine.asm`。这是静态机器身份与汇编核对，原程序动态oracle仍不可用。
+- 统一BUILD应用Debug及148/148 CTest通过，日志`tmp/ngplus-scene-growth-final-full-regression.log`；NG1／NG2／NG999大数、溢出保状态及长数字显示的验证范围见[实现清单](../../../../docs/new-game-plus/implementation-tasks.zh-Hans.md)。原机器和画面Golden及生成器保持；历史回绕的边界断言由现代宽值／非法结果拒绝断言取代，不宣称为原版等价。
 
 来源：当前 `Z.DAT` 机器码与原始文件字节；headless IDA完整导出；当前 `KDEF.IDX/GRP`、`RANGER.GRP`；`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`。
 

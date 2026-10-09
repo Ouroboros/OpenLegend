@@ -372,7 +372,7 @@ class BuildToolTest(unittest.TestCase):
             "add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 18)", cmake
         )
         self.assertIn(
-            "add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 47)",
+            "add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 50)",
             cmake,
         )
         self.assertIn(

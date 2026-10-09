@@ -34,6 +34,9 @@
 <h3 id="attack-cap">原版范围与NG+数值</h3>
 <p>原版武力正常上限为100。旧方案曾以<code>100 + (n − 1) × attack_cap_step</code>作为本周上限；<code>attack_cap_step</code>提供的默认值为100。此式不再限制NG+玩家武力的继承或增长，不用于夹值；STEP默认值仍供既有敌方攻击周目增长公式使用。</p>
 <p>曾入队角色换周目时完整继承自己的实际<code>attack</code>；未入队角色读取当前RANGER基线。装备攻击加成另行结算，不写回角色的<code>attack</code>字段。敌方既有周目增长规则不因取消玩家字段上限而删除。</p>
+<h3 id="scene-growth">剧情成长接入</h3>
+<p>剧情指令47按原脚本增量执行受检signed64加法，保留武力最低0，取消100封顶；提示显示实际增加值。加法或实际差值溢出时，该指令不提交角色或推进脚本，不产生新提示。资质和轻功的固定域不随此项取消。</p>
+<p>属性提示超过六位数字时，名称与说明、完整数字分两行显示；小数字保持原布局。原版字句、只在实际增长时提示、确认后呈现裸场景的顺序保持。当前实现及验证进度见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

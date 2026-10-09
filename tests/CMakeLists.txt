@@ -186,7 +186,7 @@ target_link_libraries(
     openlegend_scene_tests
     PRIVATE openlegend_persistence openlegend_resource openlegend_scene
 )
-add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 47)
+add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 50)
 
 add_executable(openlegend_battle_tests unit/battle/battle_data_test.cpp)
 target_compile_definitions(

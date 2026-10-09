@@ -5303,7 +5303,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
         0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x31U, 0x31U, 0x30U, 0x30U, 0x00U};
     constexpr std::array<std::uint8_t, 17> expected_attack_notice{
         0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xAAU, 0x5AU, 0xA4U, 0x4FU,
-        0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x31U, 0x30U, 0x00U};
+        0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x33U, 0x30U, 0x00U};
     constexpr std::array<std::uint8_t, 19> unexpected_hp_notice{
         0xB5U, 0xEAU, 0xA6U, 0xCBU, 0x20U, 0xA5U, 0xCDU, 0xA9U, 0x52U,
         0xBCU, 0x57U, 0xA5U, 0x5BU, 0x20U, 0x31U, 0x30U, 0x30U, 0x30U, 0x00U};
@@ -5415,7 +5415,7 @@ void check_event_state_side_effects(const std::filesystem::path& root) {
     OL_CHECK(joining_role.word(openlegend::model::role_word::mp) == 1200);
     OL_CHECK(joining_role.word(openlegend::model::role_word::maximum_hp) == 1100);
     OL_CHECK(joining_role.word(openlegend::model::role_word::hp) == 1100);
-    OL_CHECK(joining_role.word(openlegend::model::role_word::attack) == 100);
+    OL_CHECK(joining_role.word(openlegend::model::role_word::attack) == 120);
     OL_CHECK(joining_role.word(openlegend::model::role_word::speed) == 100);
     OL_CHECK(joining_role.word(openlegend::model::role_word::mp_type) == 2);
     OL_CHECK(joining_role.word(openlegend::model::role_word::magic_id_begin) == 15);
@@ -5812,12 +5812,12 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
 
     for (const auto& [script, before_maximum, before_current, after, notice, frame_hash] :
          std::array<std::tuple<
-             std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
+             std::int16_t, std::int64_t, std::int64_t, std::int64_t, bool, std::uint64_t>,
              4>{
              std::tuple<
-                 std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool,
-                 std::uint64_t>{86, 32767, -32768, -32768, false, 0},
-             {87, -32768, -32768, 32767, true, 0xb98021ea433f1e4dULL},
+                 std::int16_t, std::int64_t, std::int64_t, std::int64_t, bool,
+                 std::uint64_t>{86, 32767, -32768, 32768, true, 0},
+             {87, -32768, -32768, -32768, false, 0},
              {88, 100, 0, 100, true, 0x7da5a3d67eae1b43ULL},
              {89, 100, 100, 90, false, 0}}) {
         auto snapshot = load_baseline(root);
@@ -5832,12 +5832,18 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         const auto result = session.begin_event(script, 0, 0, 0);
         OL_CHECK(role.word(openlegend::model::role_word::maximum_mp) == after);
         OL_CHECK(role.word(openlegend::model::role_word::mp) == after);
+        OL_CHECK(session.error().empty() == (script != 87));
         OL_CHECK(result.kind ==
                  (notice ? SceneStepKind::notice : SceneStepKind::stay));
         if (notice) {
             OL_CHECK(result.style == -3);
+            const auto digits = std::to_string(after - before_current);
+            OL_CHECK(session.pending_text().size() > digits.size() &&
+                     std::equal(digits.rbegin(), digits.rend(), session.pending_text().rbegin() + 1));
             OL_CHECK(session.render(framebuffer));
-            OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+            if (frame_hash != 0U) {
+                OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+            }
         }
     }
     {
@@ -5851,12 +5857,12 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
 
     for (const auto& [script, before, after, notice, frame_hash] :
          std::array<
-             std::tuple<std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>,
+             std::tuple<std::int16_t, std::int64_t, std::int64_t, bool, std::uint64_t>,
              3>{
              std::tuple<
-                 std::int16_t, std::int16_t, std::int16_t, bool, std::uint64_t>{
-                 91, 32767, 0, false, 0},
-             {92, -32768, 100, true, 0xcce679be34f564efULL},
+                 std::int16_t, std::int64_t, std::int64_t, bool, std::uint64_t>{
+                 91, 32767, 32768, true, 0},
+             {92, -32768, 0, true, 0},
              {93, -1, 0, true, 0x583a21a959063fffULL}}) {
         auto snapshot = load_baseline(root);
         snapshot.ranger.roles[0].set_word(openlegend::model::role_word::attack, before);
@@ -5867,12 +5873,18 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         OL_CHECK(session.render(framebuffer));
         const auto result = session.begin_event(script, 0, 0, 0);
         OL_CHECK(snapshot.ranger.roles[0].word(openlegend::model::role_word::attack) == after);
+        OL_CHECK(session.error().empty());
         OL_CHECK(result.kind ==
                  (notice ? SceneStepKind::notice : SceneStepKind::stay));
         if (notice) {
             OL_CHECK(result.style == -3);
+            const auto digits = std::to_string(after - before);
+            OL_CHECK(session.pending_text().size() > digits.size() &&
+                     std::equal(digits.rbegin(), digits.rend(), session.pending_text().rbegin() + 1));
             OL_CHECK(session.render(framebuffer));
-            OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+            if (frame_hash != 0U) {
+                OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+            }
         }
     }
     {
@@ -5887,13 +5899,13 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
     for (const auto& [script, before_maximum, before_current, after, in_party, notice,
                       frame_hash] :
          std::array<std::tuple<
-             std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool, bool,
+             std::int16_t, std::int64_t, std::int64_t, std::int64_t, bool, bool,
              std::uint64_t>,
              5>{
              std::tuple<
-                 std::int16_t, std::int16_t, std::int16_t, std::int16_t, bool, bool,
-                 std::uint64_t>{95, 32767, -32768, -32768, true, false, 0},
-             {96, -32768, -32768, 32767, true, true, 0xd3055444f1d62c70ULL},
+                 std::int16_t, std::int64_t, std::int64_t, std::int64_t, bool, bool,
+                 std::uint64_t>{95, 32767, -32768, 32768, true, true, 0},
+             {96, -32768, -32768, -32768, true, false, 0},
              {97, 100, 0, 100, true, true, 0x895b1ee4e06e66aeULL},
              {98, 100, 100, 90, true, false, 0},
              {99, 100, 0, 101, false, false, 0}}) {
@@ -5915,12 +5927,18 @@ void check_event_basic_role_and_scene_helpers(const std::filesystem::path& root)
         const auto result = session.begin_event(script, 0, 0, 0);
         OL_CHECK(role.word(openlegend::model::role_word::maximum_hp) == after);
         OL_CHECK(role.word(openlegend::model::role_word::hp) == after);
+        OL_CHECK(session.error().empty() == (script != 96));
         OL_CHECK(result.kind ==
                  (notice ? SceneStepKind::notice : SceneStepKind::stay));
         if (notice) {
             OL_CHECK(result.style == -3);
+            const auto digits = std::to_string(after - before_current);
+            OL_CHECK(session.pending_text().size() > digits.size() &&
+                     std::equal(digits.rbegin(), digits.rend(), session.pending_text().rbegin() + 1));
             OL_CHECK(session.render(framebuffer));
-            OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+            if (frame_hash != 0U) {
+                OL_CHECK(fnv1a64(framebuffer.pixels()) == frame_hash);
+            }
         }
     }
     {
@@ -6390,6 +6408,139 @@ void check_event_execution(const std::filesystem::path& root) {
     }
 }
 
+void check_ngplus_scene_role_growth(const std::filesystem::path& root) {
+    using openlegend::scene::SceneResponse;
+    using openlegend::scene::SceneStepKind;
+    namespace role_word = openlegend::model::role_word;
+
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    constexpr std::int64_t wide = 5'000'000'000'000;
+    struct GrowthOperation {
+        std::size_t current_field;
+        std::size_t maximum_field;
+        std::int16_t increase_script;
+        std::int16_t decrease_script;
+        std::int16_t unchanged_script;
+        std::u8string_view infix;
+    };
+    constexpr std::array<GrowthOperation, 3> operations{{
+        {role_word::attack, role_word::attack, 91, 92, 93, u8" 武力增加 "},
+        {role_word::mp, role_word::maximum_mp, 86, 87, 88, u8" 內力增加 "},
+        {role_word::hp, role_word::maximum_hp, 95, 96, 97, u8" 生命增加 "},
+    }};
+    const SyntheticKdefDataRoot synthetic{root};
+    const openlegend::resource::DataRoot data_root{synthetic.path()};
+    const auto verify = [&root, &data_root](
+                            const GrowthOperation& operation,
+                            const std::int64_t playthrough,
+                            const std::int16_t script,
+                            const std::int64_t before_maximum,
+                            const std::int64_t before_current,
+                            const std::optional<std::int64_t> expected,
+                            const bool in_party,
+                            const std::u8string_view name = u8"五字角色名") {
+        auto snapshot = load_baseline(root);
+        snapshot.configuration.enabled = true;
+        snapshot.playthrough = playthrough;
+        snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+        auto& role = snapshot.ranger.roles[0];
+        role.name = name;
+        role.set_word(operation.maximum_field, before_maximum);
+        role.set_word(operation.current_field, before_current);
+        if (!in_party) {
+            for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
+                snapshot.ranger.header.set_team_member(slot, openlegend::model::CharacterId{-1});
+            }
+        }
+        const auto before = snapshot.ranger.roles;
+        openlegend::random::LegacyRandom random{1U};
+        openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+        OL_CHECK(session.valid());
+        OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+        openlegend::render::IndexedFramebuffer framebuffer;
+        OL_CHECK(session.render(framebuffer));
+        const auto random_before = random.state();
+        const auto result = session.begin_event(script, 0, 0, 0);
+        OL_CHECK(random.state() == random_before);
+        if (!expected.has_value()) {
+            OL_CHECK(result.kind == SceneStepKind::stay);
+            OL_CHECK(!session.error().empty());
+            OL_CHECK(session.pending_text().empty());
+            OL_CHECK(snapshot.ranger.roles == before);
+            return;
+        }
+        auto expected_roles = before;
+        expected_roles[0].set_word(operation.maximum_field, *expected);
+        expected_roles[0].set_word(operation.current_field, *expected);
+        OL_CHECK(snapshot.ranger.roles == expected_roles);
+        OL_CHECK(session.error().empty());
+        const auto gain = *expected - before_current;
+        const auto show_notice = gain > 0 && (operation.current_field != role_word::hp || in_party);
+        OL_CHECK(result.kind == (show_notice ? SceneStepKind::notice : SceneStepKind::stay));
+        if (!show_notice) {
+            OL_CHECK(session.pending_text().empty());
+            return;
+        }
+        openlegend::text::GameText expected_text;
+        expected_text.append_utf8(role.name);
+        expected_text.append_utf8(operation.infix);
+        expected_text.append_ascii(std::to_string(gain));
+        std::vector<std::uint8_t> encoded;
+        OL_CHECK(openlegend::text::encode_game_text(expected_text, encoded));
+        encoded.push_back(0U);
+        OL_CHECK(session.pending_text() == encoded);
+        OL_CHECK(result.style == -3);
+        OL_CHECK(session.render(framebuffer));
+        if (gain == std::numeric_limits<std::int64_t>::max()) {
+            for (int digit = 0; digit < 19; ++digit) {
+                bool visible = false;
+                for (int pixel_y = 65; pixel_y < 81; ++pixel_y) {
+                    for (int pixel_x = 84 + 8 * digit; pixel_x < 92 + 8 * digit; ++pixel_x) {
+                        visible = visible || framebuffer.row(pixel_y)[pixel_x] == 7U;
+                    }
+                }
+                OL_CHECK(visible);
+            }
+        }
+        const auto first_frame = fnv1a64(framebuffer.pixels());
+        OL_CHECK(session.render(framebuffer));
+        OL_CHECK(fnv1a64(framebuffer.pixels()) == first_frame);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+        OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+        OL_CHECK(snapshot.ranger.roles == expected_roles);
+        OL_CHECK(random.state() == random_before);
+    };
+    for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+        for (const auto& operation : operations) {
+            const auto is_attack = operation.current_field == role_word::attack;
+            for (const auto initial : std::array<std::int64_t, 4>{100, 32767, wide, maximum - 1}) {
+                verify(operation, playthrough, operation.increase_script,
+                       initial, is_attack ? initial : 0, initial + 1, true);
+            }
+            verify(operation, playthrough, operation.decrease_script, wide, wide, wide - 1, true);
+            verify(operation, playthrough, operation.decrease_script,
+                   0, 0, is_attack ? std::optional<std::int64_t>{0} : std::nullopt, true);
+            verify(operation, playthrough, operation.increase_script,
+                   maximum, maximum, std::nullopt, true);
+            verify(operation, playthrough, operation.decrease_script,
+                   minimum, minimum, std::nullopt, true);
+            verify(operation, playthrough, operation.unchanged_script,
+                   is_attack ? minimum : maximum, is_attack ? minimum : -1, std::nullopt, true);
+            if (!is_attack) {
+                verify(operation, playthrough, operation.unchanged_script,
+                       maximum, 0, maximum, false);
+                verify(operation, playthrough, operation.increase_script,
+                       0, 5, 1, true);
+                for (const auto name : std::array<std::u8string_view, 2>{u8"", u8"A"}) {
+                    verify(operation, playthrough, operation.unchanged_script,
+                           maximum, 0, maximum, true, name);
+                }
+            }
+        }
+    }
+}
+
 using SceneCheck = void (*)(const std::filesystem::path&);
 
 [[gnu::noinline]] void run_scene_check(
@@ -6403,7 +6554,7 @@ using SceneCheck = void (*)(const std::filesystem::path&);
 int main(const int argc, char* argv[]) {
     const auto shard = openlegend::test::test_shard(argc, argv);
     const auto root = openlegend::test::game_data_root();
-    const std::array<SceneCheck, 49> checks{
+    const std::array<SceneCheck, 50> checks{
         check_assets,
         check_event_dialogue_rendering,
         check_new_game_entry,
@@ -6453,6 +6604,7 @@ int main(const int argc, char* argv[]) {
         check_event_status_notices,
         check_event_map_replace_and_random_talk,
         check_event_execution,
+        check_ngplus_scene_role_growth,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

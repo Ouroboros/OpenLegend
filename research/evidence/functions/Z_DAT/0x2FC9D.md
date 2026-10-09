@@ -1,6 +1,13 @@
 # 函数证据：`sub_2FC9D` `0x2FC9D..0x2FDA6`
 
-状态：`platform_adapted`；最终 REVIEW：`converged_no_new_differences`
+历史原版状态：`platform_adapted`；当时最终 REVIEW：`converged_no_new_differences`。以下1～6节记录原版合同，不表示现代NG+仍执行word回绕或100封顶。
+
+## 当前NG+实现
+
+- 按[武力字段](../../../../docs/new-game-plus/fields/attack.zh-Hans.html#scene-growth)与signed64运行合同，opcode47改为受检加法、最低0、不设100上限；实际gain也先检查减法，再提交角色并决定是否提示。失败不提交角色、不推进该指令PC、不抽取随机值，不承诺回滚此前已执行的剧情指令。
+- 原姓名、`武力增加`、实际gain严格大于0、确认后裸场景present和PC+3保持；超过六位的数字分行，面板保证数字宽度。真实script581的武力90加30现在为120并提示30，历史的100／10不再适用。
+- 本批重新读取当前Z.DAT的265字节，raw SHA256仍为`cd3061643121bec910e991ff357d2c857ff29587c846fd5f061f1d3b373f19f8`；完整67条指令复核，导出在`tmp/ngplus-scene-growth-attack-current-machine.asm`。这是静态机器身份与汇编核对，原程序动态oracle仍不可用。
+- 统一BUILD应用Debug及148/148 CTest通过，日志`tmp/ngplus-scene-growth-final-full-regression.log`；NG1／NG2／NG999大数、溢出保状态及长数字显示的验证范围见[实现清单](../../../../docs/new-game-plus/implementation-tasks.zh-Hans.md)。原机器和画面Golden及生成器保持，现代无封顶与溢出拒绝不宣称为原版等价。
 
 来源：当前 `Z.DAT` 机器码与原始文件字节；headless IDA完整导出；当前 `KDEF.IDX/GRP`、`RANGER.GRP`；`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`。
 

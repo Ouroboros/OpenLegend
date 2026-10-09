@@ -17,6 +17,7 @@
 
 #include "openlegend/compat/byte_reader.hpp"
 #include "openlegend/diagnostics/log.hpp"
+#include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/hurt.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
@@ -1445,9 +1446,24 @@ SceneStepResult SceneSession::run_event() {
                                   : opcode == 45 ? model::role_word::speed
                                                  : model::role_word::attack;
                 const auto before = role.word(field);
-                const auto after = clamped_add(before, argument(2), 0, 100);
+                std::int64_t after{};
+                if (opcode == 47) {
+                    const auto increased = model::checked_add(before, argument(2));
+                    if (!increased.has_value()) {
+                        error_ = "scene attack increase overflows";
+                        return current_result(SceneStepKind::stay);
+                    }
+                    after = std::max(*increased, std::int64_t{0});
+                } else {
+                    after = clamped_add(before, argument(2), 0, 100);
+                }
+                const auto gain = model::checked_subtract(after, before);
+                if (!gain.has_value()) {
+                    error_ = "scene attribute gain overflows";
+                    return current_result(SceneStepKind::stay);
+                }
                 role.set_word(field, after);
-                if (after > before) {
+                if (*gain > 0) {
                     text::GameText display_text;
                     display_text.append_utf8(role.name);
                     auto infix = kRoleAttackNoticeInfix;
@@ -1457,8 +1473,7 @@ SceneStepResult SceneSession::run_event() {
                         infix = kRoleSpeedNoticeInfix;
                     }
                     display_text.append_utf8(infix);
-                    display_text.append_ascii(std::to_string(
-                        static_cast<int>(after) - static_cast<int>(before)));
+                    display_text.append_ascii(std::to_string(*gain));
                     queue_notice_mixed(std::move(display_text), kRoleIqNoticeStyle);
                     queue_scene_present();
                 }
@@ -1479,17 +1494,24 @@ SceneStepResult SceneSession::run_event() {
                 const auto current_field = opcode == 46 ? model::role_word::mp
                                                         : model::role_word::hp;
                 const auto before = role.word(current_field);
-                const auto maximum = static_cast<std::int16_t>(
-                    role.word(maximum_field) + argument(2));
-                role.set_word(maximum_field, maximum);
-                role.set_word(current_field, maximum);
-                const auto gain = static_cast<int>(maximum) - static_cast<int>(before);
-                if (gain > 0 && (opcode == 46 || party_contains(role_id))) {
+                const auto maximum = model::checked_add(role.word(maximum_field), argument(2));
+                if (!maximum.has_value() || *maximum < 0) {
+                    error_ = "scene maximum HP or MP is invalid or overflows";
+                    return current_result(SceneStepKind::stay);
+                }
+                const auto gain = model::checked_subtract(*maximum, before);
+                if (!gain.has_value()) {
+                    error_ = "scene HP or MP gain overflows";
+                    return current_result(SceneStepKind::stay);
+                }
+                role.set_word(maximum_field, *maximum);
+                role.set_word(current_field, *maximum);
+                if (*gain > 0 && (opcode == 46 || party_contains(role_id))) {
                     text::GameText display_text;
                     display_text.append_utf8(role.name);
                     display_text.append_utf8(
                         opcode == 46 ? kRoleMpNoticeInfix : kRoleHpNoticeInfix);
-                    display_text.append_ascii(std::to_string(gain));
+                    display_text.append_ascii(std::to_string(*gain));
                     queue_notice_mixed(std::move(display_text), kRoleIqNoticeStyle);
                     queue_scene_present();
                 }
@@ -4169,15 +4191,40 @@ bool SceneSession::draw_overlay(render::IndexedFramebuffer& framebuffer) const {
         if (!total_width.has_value()) {
             return false;
         }
-        const auto layout_length = static_cast<int>(
-            *total_width - pending_text_.trailing_ascii_digit_count());
-        const auto x = 150 - (4 * layout_length + 24);
+        const auto digit_count = pending_text_.trailing_ascii_digit_count();
+        const auto layout_length = static_cast<int>(*total_width - digit_count);
+        const auto width = std::max(
+            8 * layout_length + 68, 8 * static_cast<int>(digit_count) + 20);
+        const auto x = 160 - width / 2;
         constexpr int y = 40;
-        const auto width = 8 * layout_length + 68;
-        if (!draw_panel(framebuffer, x, y, width, 27)) {
+        const auto separate_number = digit_count > 6U;
+        if (!draw_panel(framebuffer, x, y, width, separate_number ? 47 : 27)) {
             return false;
         }
         render::Big5GlyphCache cache{big5_font_};
+        if (separate_number) {
+            if (pending_encoded_text_.size() <= digit_count) {
+                return false;
+            }
+            const auto encoded = std::span<const std::uint8_t>{pending_encoded_text_};
+            const auto prefix_length = encoded.size() - digit_count - 1U;
+            return render::draw_text_big5(
+                       framebuffer,
+                       x + (width - 8 * layout_length) / 2,
+                       y + 5,
+                       text::Big5TextView{encoded.first(prefix_length)},
+                       ascii_font_,
+                       cache,
+                       text_colors::notice) &&
+                   render::draw_text_big5(
+                       framebuffer,
+                       x + (width - 8 * static_cast<int>(digit_count)) / 2,
+                       y + 25,
+                       text::Big5TextView{encoded.subspan(prefix_length, digit_count)},
+                       ascii_font_,
+                       cache,
+                       text_colors::notice);
+        }
         return render::draw_text_mixed(
             framebuffer,
             x + 10,
