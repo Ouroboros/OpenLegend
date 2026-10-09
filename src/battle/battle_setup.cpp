@@ -3765,7 +3765,8 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
 std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
     const std::size_t actor_slot,
     const BattleAiTurnPrelude& prelude,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random_source) {
+    auto random = random_source;
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
@@ -3779,21 +3780,31 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
     }
     const auto& actor_role = *stored_actor;
     const auto side = combatants_[actor_slot].words[combatant_word::side];
-    if (prelude.opponent_count == 0) {
+    if (prelude.opponent_count <= 0) {
+        error_ = "battle AI opponent count is invalid";
         return std::nullopt;
     }
 
     const auto allied_total = prelude.allied_total;
     const auto opponent_total = prelude.opponent_total;
     const auto opponent_count = prelude.opponent_count;
-
-    const auto opponent_average_half =
-        (static_cast<std::int32_t>(opponent_total) / opponent_count) / 2;
-    const auto actor_power = static_cast<std::int32_t>(actor_role.word(model::role_word::attack)) +
-        actor_role.word(model::role_word::hp);
-    if (opponent_average_half > actor_power &&
-        static_cast<std::int32_t>(allied_total) > 2 * static_cast<std::int32_t>(opponent_total)) {
-        std::int16_t best_value = 0;
+    const auto actor_power = model::checked_add(actor_role.attack, actor_role.hp);
+    if (!actor_power.has_value()) {
+        error_ = "battle AI actor power overflows";
+        return std::nullopt;
+    }
+    const auto opponent_average_half = (opponent_total / opponent_count) / 2;
+    bool choose_aid = false;
+    if (opponent_average_half > *actor_power) {
+        const auto doubled_opponent_total = model::checked_multiply(opponent_total, 2);
+        if (!doubled_opponent_total.has_value()) {
+            error_ = "battle AI opponent power overflows";
+            return std::nullopt;
+        }
+        choose_aid = allied_total > *doubled_opponent_total;
+    }
+    if (choose_aid) {
+        std::int64_t best_value = 0;
         std::int16_t best_slot = 0;
         BattleAiAction aid_action = BattleAiAction::none;
         if (actor_role.word(model::role_word::medicine) >= 20 &&
@@ -3809,11 +3820,13 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                 }
                 const auto& role = *stored_role;
                 if (role.word(model::role_word::hp) < role.word(model::role_word::maximum_hp)) {
-                    const auto missing =
-                        static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) -
-                        role.word(model::role_word::hp);
-                    if (missing > best_value) {
-                        best_value = wrapping_i16(missing);
+                    const auto missing = model::checked_subtract(role.maximum_hp, role.hp);
+                    if (!missing.has_value()) {
+                        error_ = "battle AI missing HP overflows";
+                        return std::nullopt;
+                    }
+                    if (*missing > best_value) {
+                        best_value = *missing;
                         best_slot = static_cast<std::int16_t>(slot);
                         aid_action = BattleAiAction::medicine;
                     }
@@ -3839,23 +3852,26 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
             }
         }
         if (best_value != 0) {
+            random_source = random;
             return commit_ai_choice(actor_slot, aid_action, best_slot);
         }
     }
 
-    const auto poison_advantage =
-        static_cast<std::int32_t>(actor_role.word(model::role_word::use_poison)) -
-        actor_role.word(model::role_word::attack);
+    const auto poison_advantage = model::checked_subtract(actor_role.use_poison, actor_role.attack);
+    if (!poison_advantage.has_value()) {
+        error_ = "battle AI poison advantage overflows";
+        return std::nullopt;
+    }
     const auto poison_gate = random.bounded(50);
-    if (poison_advantage > poison_gate) {
+    if (*poison_advantage > poison_gate) {
         const auto poison_roll = random.bounded(150);
         if (poison_roll < actor_role.word(model::role_word::use_poison)) {
+            random_source = random;
             return commit_ai_choice(actor_slot, BattleAiAction::use_poison, -1);
         }
     }
 
-    const auto attack = static_cast<std::int32_t>(actor_role.word(model::role_word::attack));
-    const auto party_threshold = (3 * attack) / 2;
+    const auto attack = actor_role.attack;
     const auto select_throwing_item = [&](const std::int16_t item_id,
                                           const BattleAiItemSource source,
                                           const std::int16_t item_slot)
@@ -3868,10 +3884,20 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
         }
         const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
         const auto add_hp = static_cast<std::int32_t>(item.word(model::item_word::add_hp));
+        const auto add_poison = item.word(model::item_word::add_poison);
+        auto threshold = attack;
+        if (source == BattleAiItemSource::inventory && (add_hp < 0 || add_poison > 0)) {
+            const auto triple_attack = model::checked_multiply(attack, 3);
+            if (!triple_attack.has_value()) {
+                error_ = "battle AI throwing threshold overflows";
+                return std::nullopt;
+            }
+            threshold = *triple_attack / 2;
+        }
         if (add_hp < 0) {
             const auto magnitude = -add_hp;
             if (source == BattleAiItemSource::inventory) {
-                if (magnitude > party_threshold) {
+                if (magnitude > threshold) {
                     const auto roll = random.bounded(
                         actor_role.word(model::role_word::hidden_weapon));
                     if (roll > 20) {
@@ -3895,11 +3921,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                 }
             }
         }
-        const auto add_poison = static_cast<std::int32_t>(
-            item.word(model::item_word::add_poison));
-        const auto poison_threshold = source == BattleAiItemSource::inventory ? party_threshold :
-                                                                                 attack;
-        if (add_poison > 0 && add_poison > poison_threshold) {
+        if (add_poison > 0 && add_poison > threshold) {
             const auto roll = random.bounded(10);
             if (roll < 3) {
                 return commit_ai_choice(
@@ -3922,6 +3944,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                 return std::nullopt;
             }
             if (selected->action != BattleAiAction::none) {
+                random_source = random;
                 return selected;
             }
         }
@@ -3935,12 +3958,14 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                 return std::nullopt;
             }
             if (selected->action != BattleAiAction::none) {
+                random_source = random;
                 return selected;
             }
         }
     }
 
     if (actor_role.word(model::role_word::physical_power) <= 10) {
+        random_source = random;
         return commit_ai_choice(
             actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
     }
@@ -3959,6 +3984,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
             minimum_mp = need_mp;
         }
     }
+    random_source = random;
     if (actor_role.word(model::role_word::mp) < minimum_mp) {
         return commit_ai_choice(
             actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
@@ -3988,9 +4014,16 @@ std::optional<BattleAiTurnPrelude> BattleSetup::begin_ai_turn(
             prelude.allied_total : prelude.opponent_total;
         auto& count = combatants_[slot].words[combatant_word::side] == actor_side ?
             prelude.allied_count : prelude.opponent_count;
-        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::attack));
-        total = wrapping_i16(static_cast<std::int32_t>(total) + role.word(model::role_word::hp));
-        count = wrapping_i16(static_cast<std::int32_t>(count) + 1);
+        const auto with_attack = model::checked_add(total, role.attack);
+        if (!with_attack.has_value()) {
+            return std::nullopt;
+        }
+        const auto with_hp = model::checked_add(*with_attack, role.hp);
+        if (!with_hp.has_value()) {
+            return std::nullopt;
+        }
+        total = *with_hp;
+        ++count;
     }
     return prelude;
 }
@@ -4253,7 +4286,7 @@ std::optional<BattleAiEscapePlan> BattleSetup::ai_escape_plan(
 std::optional<bool> BattleSetup::choose_ai_strongest_attack_target(
     const std::size_t actor_slot) {
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
-    std::int16_t best_attack = 0;
+    std::int64_t best_attack = 0;
     bool written = false;
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& combatant = combatants_[slot].words;
@@ -4283,7 +4316,7 @@ std::optional<bool> BattleSetup::choose_ai_strongest_attack_target(
 std::optional<bool> BattleSetup::choose_ai_weakest_attack_target(
     const std::size_t actor_slot) {
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
-    std::int16_t best_attack = 1'000;
+    std::int64_t best_attack = 1'000;
     bool written = false;
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& combatant = combatants_[slot].words;
@@ -4742,7 +4775,7 @@ bool BattleSetup::update_ai_poison_fallback(
     const std::size_t actor_slot,
     BattleAiPoisonPlan& plan) {
     const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (plan.allied_count == 0 || actor_role_id < 0 ||
+    if (plan.allied_count <= 0 || actor_role_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         error_ = "battle AI poison fallback state is invalid";
         return false;
@@ -4752,9 +4785,14 @@ bool BattleSetup::update_ai_poison_fallback(
         error_ = "battle AI poison fallback role is outside combatant records";
         return false;
     }
-    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(actor->attack);
-    plan.doubled_allied_average =
-        2 * static_cast<std::int32_t>(plan.allied_total) / plan.allied_count;
+    const auto doubled_attack = model::checked_multiply(actor->attack, 2);
+    const auto doubled_total = model::checked_multiply(plan.allied_total, 2);
+    if (!doubled_attack.has_value() || !doubled_total.has_value()) {
+        error_ = "battle AI poison fallback power overflows";
+        return false;
+    }
+    plan.doubled_actor_attack = *doubled_attack;
+    plan.doubled_allied_average = *doubled_total / plan.allied_count;
     plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
         ? BattleAiPoisonNextStep::attack_fallback
         : BattleAiPoisonNextStep::rest;
@@ -5028,7 +5066,7 @@ bool BattleSetup::update_ai_support_fallback(
     const std::size_t actor_slot,
     BattleAiSupportPlan& plan) {
     const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (plan.allied_count == 0 || actor_role_id < 0 ||
+    if (plan.allied_count <= 0 || actor_role_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         error_ = "battle AI support fallback state is invalid";
         return false;
@@ -5038,9 +5076,14 @@ bool BattleSetup::update_ai_support_fallback(
         error_ = "battle AI support fallback role is outside combatant records";
         return false;
     }
-    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(actor->attack);
-    plan.doubled_allied_average =
-        2 * static_cast<std::int32_t>(plan.allied_total) / plan.allied_count;
+    const auto doubled_attack = model::checked_multiply(actor->attack, 2);
+    const auto doubled_total = model::checked_multiply(plan.allied_total, 2);
+    if (!doubled_attack.has_value() || !doubled_total.has_value()) {
+        error_ = "battle AI support fallback power overflows";
+        return false;
+    }
+    plan.doubled_actor_attack = *doubled_attack;
+    plan.doubled_allied_average = *doubled_total / plan.allied_count;
     plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
         ? BattleAiSupportNextStep::automatic_attack
         : BattleAiSupportNextStep::rest;

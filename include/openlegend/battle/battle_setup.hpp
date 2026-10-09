@@ -211,8 +211,8 @@ enum class BattleAiHandler : std::int16_t {
 };
 
 struct BattleAiTurnPrelude {
-    std::int16_t allied_total{};
-    std::int16_t opponent_total{};
+    std::int64_t allied_total{};
+    std::int64_t opponent_total{};
     std::int16_t allied_count{};
     std::int16_t opponent_count{};
     std::int16_t wait_ticks{300};
@@ -293,10 +293,10 @@ struct BattleAiPoisonPlan {
     std::int16_t target_distance{};
     std::int16_t range_check_count{};
     std::int16_t movement_mode{3};
-    std::int16_t allied_total{};
+    std::int64_t allied_total{};
     std::int16_t allied_count{};
-    std::int32_t doubled_actor_attack{};
-    std::int32_t doubled_allied_average{};
+    std::int64_t doubled_actor_attack{};
+    std::int64_t doubled_allied_average{};
     BattleAiPoisonTargetStrategy target_strategy{BattleAiPoisonTargetStrategy::none};
     BattleAiPoisonNextStep next_step{BattleAiPoisonNextStep::attack_fallback};
     bool outer_marks_action_done_after_handler{true};
@@ -358,10 +358,10 @@ struct BattleAiSupportPlan {
     std::int16_t range_check_count{};
     std::int16_t movement_mode{1};
     std::int16_t movement_value{};
-    std::int16_t allied_total{};
+    std::int64_t allied_total{};
     std::int16_t allied_count{};
-    std::int32_t doubled_actor_attack{};
-    std::int32_t doubled_allied_average{};
+    std::int64_t doubled_actor_attack{};
+    std::int64_t doubled_allied_average{};
     BattleAiSupportNextStep next_step{BattleAiSupportNextStep::apply_support};
     bool restore_target_after_move{true};
     bool outer_marks_action_done_after_handler{true};

@@ -2558,11 +2558,11 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[target_role_id].set_word(role_word::hp, 10'000);
     plan = begin_support_plan(medicine_choice);
     OL_CHECK(plan.has_value());
-    OL_CHECK(plan->allied_total == 14'464);
+    OL_CHECK(plan->allied_total == 80'000);
     OL_CHECK(plan->allied_count == 2);
     OL_CHECK(plan->doubled_actor_attack == 60'000);
-    OL_CHECK(plan->doubled_allied_average == 14'464);
-    OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
+    OL_CHECK(plan->doubled_allied_average == 80'000);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::rest);
 
     ranger.roles[actor_role_id].set_word(role_word::medicine, -30);
     setup.combatants()[actor_slot].round_value = 0;
@@ -2649,11 +2649,11 @@ void run_ai_support_handler_test(const openlegend::resource::DataRoot& data_root
     ranger.roles[target_role_id].set_word(role_word::hp, 10'000);
     plan = begin_support_plan(detox_choice);
     OL_CHECK(plan.has_value());
-    OL_CHECK(plan->allied_total == 14'464);
+    OL_CHECK(plan->allied_total == 80'000);
     OL_CHECK(plan->allied_count == 2);
     OL_CHECK(plan->doubled_actor_attack == 60'000);
-    OL_CHECK(plan->doubled_allied_average == 14'464);
-    OL_CHECK(plan->next_step == BattleAiSupportNextStep::automatic_attack);
+    OL_CHECK(plan->doubled_allied_average == 80'000);
+    OL_CHECK(plan->next_step == BattleAiSupportNextStep::rest);
 
     ranger.roles[actor_role_id].set_word(role_word::detoxification, -30);
     setup.combatants()[actor_slot].round_value = 0;
@@ -9296,6 +9296,249 @@ void run_battle_session_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(presented_count == 3U);
 }
 
+void run_ngplus_ai_arithmetic_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    constexpr auto kMaximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto kMinimum = std::numeric_limits<std::int64_t>::min();
+    constexpr std::int64_t kWide = 5'000'000'000'000;
+    struct Fixture {
+        model::RuntimeRangerState ranger;
+        model::NewGamePlusConfiguration configuration{.enabled = true};
+        BattleData data;
+        BattleSetup setup;
+
+        explicit Fixture(const resource::DataRoot& root, const std::int64_t playthrough = 1)
+            : ranger(make_ranger({0, 2, 3, -1, -1, -1})),
+              data(root, 3),
+              setup(data, ranger, nullptr, configuration, playthrough) {
+            OL_CHECK(setup.valid());
+            OL_CHECK(setup.apply(PartySelectionAction::previous) == PartySelectionResult::changed);
+            OL_CHECK(setup.apply(PartySelectionAction::activate) == PartySelectionResult::complete);
+            OL_CHECK(setup.combatant_count() == 5);
+            for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
+                ranger.header.set_inventory(slot, model::ItemId{-1}, 0);
+            }
+            for (std::size_t slot = 0U; slot < 5U; ++slot) {
+                auto& role = ranger.roles[slot];
+                role.hp = role.maximum_hp = 100;
+                role.mp = role.maximum_mp = 1000;
+                role.physical_power = 100;
+                role.attack = 10;
+                role.hurt = role.poison = 0;
+                role.medicine = role.detoxification = role.use_poison = 0;
+                role.magic_ids.fill(model::MagicId{0});
+                role.taking_items.fill(model::ItemId{-1});
+                auto& combatant = setup.combatants()[slot];
+                combatant.words[combatant_word::role_id] = static_cast<std::int16_t>(slot);
+                combatant.words[combatant_word::side] = slot < 3U ? 0 : 1;
+                combatant.words[combatant_word::occupancy_hidden] = 0;
+                combatant.words[combatant_word::x] = static_cast<std::int16_t>(10 + slot);
+                combatant.words[combatant_word::y] = static_cast<std::int16_t>(20 + slot);
+                combatant.words[combatant_word::ai_action] = 77;
+                combatant.words[combatant_word::ai_target] = -1;
+                combatant.round_value = 0;
+            }
+        }
+    };
+
+    for (const auto playthrough : {1, 2, 999}) {
+        Fixture fixture{data_root, playthrough};
+        for (std::size_t slot = 0U; slot < 5U; ++slot) {
+            fixture.ranger.roles[slot].attack = kWide;
+            fixture.ranger.roles[slot].hp = kWide;
+        }
+        fixture.ranger.roles[2U].hp = 0;
+        fixture.setup.combatants()[2U].words[combatant_word::occupancy_hidden] = 1;
+        fixture.setup.combatants()[4U].words[combatant_word::occupancy_hidden] = 1;
+        const auto prelude = fixture.setup.begin_ai_turn(0U);
+        OL_CHECK(prelude.has_value());
+        OL_CHECK(prelude->allied_total == 5 * kWide);
+        OL_CHECK(prelude->opponent_total == 4 * kWide);
+        OL_CHECK(prelude->allied_count == 3 && prelude->opponent_count == 2);
+    }
+    for (const auto base : {kMinimum, kMaximum}) {
+        for (const bool overflow : {false, true}) {
+            Fixture fixture{data_root};
+            for (std::size_t slot = 0U; slot < 5U; ++slot) {
+                fixture.ranger.roles[slot].attack = fixture.ranger.roles[slot].hp = 0;
+            }
+            fixture.ranger.roles[0U].attack = base;
+            fixture.ranger.roles[1U].attack = overflow ? (base < 0 ? -1 : 1) : 0;
+            const auto before = fixture.ranger;
+            const auto prelude = fixture.setup.begin_ai_turn(0U);
+            OL_CHECK(prelude.has_value() == !overflow);
+            if (prelude) {
+                OL_CHECK(prelude->allied_total == base);
+            }
+            OL_CHECK(fixture.ranger == before);
+        }
+    }
+    {
+        Fixture fixture{data_root};
+        fixture.ranger.roles[0U].attack = kMaximum;
+        OL_CHECK(!fixture.setup.begin_ai_turn(0U).has_value());
+    }
+    for (const auto best : {std::int64_t{50'000}, kWide, kMaximum}) {
+        Fixture fixture{data_root};
+        fixture.ranger.roles[0U].morality = 80;
+        fixture.ranger.roles[3U].attack = best;
+        fixture.ranger.roles[4U].attack = best - 1;
+        random::LegacyRandom random{10U};
+        const auto target = fixture.setup.choose_ai_attack_target(0U, random);
+        OL_CHECK(target.has_value());
+        OL_CHECK(target->strategy == BattleAiTargetStrategy::strongest_attack);
+        OL_CHECK(target->target_slot == 3);
+    }
+    {
+        Fixture fixture{data_root};
+        fixture.ranger.roles[0U].morality = 0;
+        fixture.ranger.roles[3U].attack = 1000;
+        fixture.ranger.roles[4U].attack = kWide;
+        fixture.setup.combatants()[0U].words[combatant_word::ai_target] = 4;
+        random::LegacyRandom random{10U};
+        const auto target = fixture.setup.choose_ai_attack_target(0U, random);
+        OL_CHECK(target.has_value());
+        OL_CHECK(target->strategy == BattleAiTargetStrategy::weakest_attack);
+        OL_CHECK(!target->target_written && target->target_slot == 4);
+    }
+    {
+        Fixture fixture{data_root};
+        auto& roles = fixture.ranger.roles;
+        roles[0U].attack = roles[0U].hp = 1;
+        roles[0U].medicine = 20;
+        roles[1U].attack = roles[2U].attack = 0;
+        roles[1U].hp = roles[2U].hp = kWide;
+        roles[1U].maximum_hp = 2 * kWide;
+        roles[2U].maximum_hp = kWide + 1;
+        random::LegacyRandom random{1U};
+        const auto choice = fixture.setup.choose_ai_offensive_action(0U, random);
+        OL_CHECK(choice.has_value());
+        OL_CHECK(choice->action == BattleAiAction::medicine && choice->target_slot == 1);
+        OL_CHECK(random.state() == 1U);
+    }
+    for (const auto advantage : {38, 39}) {
+        Fixture fixture{data_root};
+        fixture.ranger.roles[0U].attack = kWide;
+        fixture.ranger.roles[0U].use_poison = kWide + advantage;
+        random::LegacyRandom random{1U};
+        const auto choice = fixture.setup.choose_ai_offensive_action(0U, random);
+        OL_CHECK(choice.has_value());
+        OL_CHECK(choice->action == (advantage == 38 ? BattleAiAction::attack : BattleAiAction::use_poison));
+        OL_CHECK(random.state() == (advantage == 38 ? 1'103'527'590U : 2'524'885'223U));
+    }
+    for (std::size_t case_index = 0U; case_index < 5U; ++case_index) {
+        Fixture fixture{data_root};
+        auto& roles = fixture.ranger.roles;
+        std::size_t actor_slot = 0U;
+        if (case_index == 0U) {
+            for (std::size_t slot = 0U; slot < 5U; ++slot) {
+                roles[slot].attack = roles[slot].hp = 0;
+            }
+            roles[0U].attack = -1;
+            roles[1U].attack = kMaximum;
+            roles[1U].hp = 1;
+            actor_slot = 1U;
+        } else if (case_index == 1U) {
+            roles[3U].attack = kMaximum;
+            roles[3U].hp = roles[4U].attack = roles[4U].hp = 0;
+        } else if (case_index == 2U) {
+            roles[0U].hp = roles[0U].attack = 1;
+            roles[0U].medicine = 20;
+            roles[1U].hp = -1;
+            roles[1U].maximum_hp = kMaximum;
+            roles[1U].attack = roles[2U].attack = 0;
+            roles[2U].hp = roles[2U].maximum_hp = 1000;
+        } else if (case_index == 3U) {
+            roles[0U].attack = -1;
+            roles[0U].use_poison = kMaximum;
+        } else {
+            roles[0U].attack = kMaximum / 3 + 1;
+            fixture.ranger.header.set_inventory(0U, model::ItemId{0}, 1);
+            fixture.ranger.items[0U].set_word(model::item_word::add_hp, -1);
+        }
+        OL_CHECK(fixture.setup.begin_ai_turn(actor_slot).has_value());
+        const auto before = fixture.ranger;
+        const std::vector<BattleCombatant> combatants_before{
+            fixture.setup.combatants().begin(), fixture.setup.combatants().end()};
+        random::LegacyRandom random{1U};
+        OL_CHECK(!fixture.setup.choose_ai_offensive_action(actor_slot, random).has_value());
+        OL_CHECK(!fixture.setup.error().empty());
+        OL_CHECK(fixture.ranger == before);
+        OL_CHECK(std::ranges::equal(fixture.setup.combatants(), combatants_before));
+        OL_CHECK(random.state() == 1U);
+    }
+    for (const bool carried : {false, true}) {
+        Fixture fixture{data_root};
+        fixture.ranger.roles[0U].attack = kMaximum / 3 + 1;
+        if (carried) {
+            fixture.setup.combatants()[0U].words[combatant_word::side] = 1;
+            fixture.ranger.roles[0U].taking_items[0U] = model::ItemId{0};
+            fixture.ranger.items[0U].set_word(model::item_word::add_hp, -1);
+        }
+        random::LegacyRandom random{1U};
+        const auto choice = fixture.setup.choose_ai_offensive_action(0U, random);
+        OL_CHECK(choice.has_value());
+        OL_CHECK(choice->action == BattleAiAction::attack);
+        OL_CHECK(random.state() == 1'103'527'590U);
+    }
+    for (const auto action : {BattleAiAction::use_poison, BattleAiAction::medicine, BattleAiAction::detox}) {
+        for (std::size_t case_index = 0U; case_index < 6U; ++case_index) {
+            Fixture fixture{data_root};
+            auto& actor = fixture.ranger.roles[0U];
+            actor.attack = case_index == 1U ? kWide : 2 * kWide;
+            auto total = 3 * kWide;
+            std::int16_t count = 3;
+            if (case_index == 2U) {
+                actor.attack = kMaximum;
+            } else if (case_index == 3U) {
+                total = kMaximum;
+            } else if (case_index >= 4U) {
+                count = case_index == 4U ? 0 : -1;
+            }
+            const auto before = fixture.ranger;
+            const std::vector<BattleCombatant> combatants_before{
+                fixture.setup.combatants().begin(), fixture.setup.combatants().end()};
+            if (action == BattleAiAction::use_poison) {
+                BattleAiPoisonPlan plan;
+                plan.target_slot = 1;
+                plan.targeting_range = 0;
+                plan.allied_total = total;
+                plan.allied_count = count;
+                plan.next_step = BattleAiPoisonNextStep::move;
+                const auto result = fixture.setup.resume_ai_poison_after_move(0U, plan);
+                OL_CHECK(result.has_value() == (case_index < 2U));
+                if (result) {
+                    OL_CHECK(result->allied_total == total);
+                    OL_CHECK(result->doubled_actor_attack == 2 * actor.attack);
+                    OL_CHECK(result->doubled_allied_average == 2 * kWide);
+                    OL_CHECK(result->next_step == (case_index == 0U
+                        ? BattleAiPoisonNextStep::attack_fallback : BattleAiPoisonNextStep::rest));
+                }
+            } else {
+                BattleAiSupportPlan plan;
+                plan.support_action = action;
+                plan.target_slot = 1;
+                plan.targeting_range = 0;
+                plan.allied_total = total;
+                plan.allied_count = count;
+                plan.next_step = BattleAiSupportNextStep::move;
+                const auto result = fixture.setup.resume_ai_support_after_move(0U, plan);
+                OL_CHECK(result.has_value() == (case_index < 2U));
+                if (result) {
+                    OL_CHECK(result->allied_total == total);
+                    OL_CHECK(result->doubled_actor_attack == 2 * actor.attack);
+                    OL_CHECK(result->doubled_allied_average == 2 * kWide);
+                    OL_CHECK(result->next_step == (case_index == 0U
+                        ? BattleAiSupportNextStep::automatic_attack : BattleAiSupportNextStep::rest));
+                }
+            }
+            OL_CHECK(fixture.ranger == before);
+            OL_CHECK(std::ranges::equal(fixture.setup.combatants(), combatants_before));
+        }
+    }
+}
+
 void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
 
@@ -9949,7 +10192,7 @@ void run_ai_selector_test(const openlegend::resource::DataRoot& data_root) {
     choice = setup.choose_ai_offensive_action(0U, aid_missing_wrap_replace_random);
     OL_CHECK(choice.has_value());
     OL_CHECK(choice->action == BattleAiAction::medicine);
-    OL_CHECK(choice->target_slot == 2);
+    OL_CHECK(choice->target_slot == 1);
     OL_CHECK(aid_missing_wrap_replace_random.state() == 1U);
 
     reset();
@@ -14160,7 +14403,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 52> checks{
+    const std::array<BattleCheck, 53> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14213,6 +14456,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_hurt_threshold_test,
         run_ngplus_round_value_test,
         run_ngplus_equipment_test,
+        run_ngplus_ai_arithmetic_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {
