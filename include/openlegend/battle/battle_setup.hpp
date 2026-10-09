@@ -98,7 +98,8 @@ struct BattleThrownItemResult {
 };
 
 struct BattleItemEffectResult {
-    std::array<std::int16_t, 23U> deltas{};
+    std::array<std::int64_t, 23U> deltas{};
+    std::int64_t poison_overflow_damage{};
     std::int16_t effect_count{};
     std::int16_t panel_x{70};
     std::int16_t panel_y{18};
@@ -135,7 +136,9 @@ NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     std::int16_t item_id,
-    random::LegacyRandom& random);
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits,
+    std::int64_t original_maximum_hp);
 
 struct BattleRestResult {
     std::int64_t physical_power{};

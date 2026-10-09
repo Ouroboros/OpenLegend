@@ -72,6 +72,8 @@ public:
         return *ranger_.ranger;
     }
 
+    NODISCARD std::int64_t original_maximum_hp() const noexcept { return original_maximum_hp_; }
+
     NODISCARD std::span<const std::uint8_t> ranger_index_bytes() const noexcept {
         return ranger_.index_bytes;
     }
@@ -82,6 +84,7 @@ private:
     std::vector<std::uint16_t> fixed_shadow_mask_;
     std::vector<std::uint16_t> shifted_shadow_mask_;
     persistence::RangerLoadResult ranger_;
+    std::int64_t original_maximum_hp_{};
     std::string error_;
 };
 

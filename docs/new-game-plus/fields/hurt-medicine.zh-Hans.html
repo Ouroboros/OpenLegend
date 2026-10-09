@@ -106,7 +106,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
       <tr><td>剧情整队休息</td><td>连续队伍前缀中<code>伤势比例&lt;33%</code>且中毒0者清伤、体力写100、生命／内力补满。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2E1E8.md">0x2E1E8</a></td></tr>
       <tr><td>十五场试炼轮间</td><td>前四组轮间仅主角在<code>伤势比例&lt;50%</code>且中毒0时清伤、恢复体力并补满生命／内力。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x30510.md">0x30510</a></td></tr>
       <tr><td>队伍菜单医疗</td><td>资格、共同治疗量与治内伤保底只按<a href="#medicine-hurt-current-proposal">医疗规则</a>，不把原版回血分档百分比化。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3A10C.md">0x3A10C</a></td></tr>
-      <tr><td>普通物品与状态页</td><td>正／负回血都用<code>trunc(50 × H / B(n))</code>折算；正向理论回血另按目标当前MAX HP／同角色NG1 MAX HP比例增幅，最多补到HP缺口，负向仍是伤害。生命分色按<code>伤势比例≤33%</code>／<code>33%&lt;伤势比例≤66%</code>／<code>伤势比例&gt;66%</code>连续分档，不新增颜色。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">0x2B483</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22090.md">0x22090</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22A59.md">0x22A59</a></td></tr>
+      <tr><td>普通物品与状态页</td><td>正／负回血都用<code>trunc(50 × H / B(n))</code>折算；正向理论回血另乘以目标当前MAX HP／原版NG1可达到的最大生命上限（当前999），向零取整后最多补到HP缺口，负向仍是伤害。生命分色按<code>伤势比例≤33%</code>／<code>33%&lt;伤势比例≤66%</code>／<code>伤势比例&gt;66%</code>连续分档，不新增颜色。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">0x2B483</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22090.md">0x22090</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22A59.md">0x22A59</a></td></tr>
       <tr><td>战场行动值</td><td>内伤惩罚改为<code>trunc(100 × H / (40 × B(n)))</code>；原速度项、零下限及玩家／AI对最终行动值的使用不变。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3271E.md">0x3271E</a></td></tr>
       <tr><td>武功伤害与产伤</td><td>增伤<code>trunc(目标H / 20)</code>、命中产伤<code>trunc(计算伤害 / 10)</code>不变；新增内伤写回上限改为<code>HurtMax</code>，伤害变化可能影响击倒和战果。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x39188.md">0x39188</a></td></tr>
       <tr><td>回合状态结算</td><td>先扣<code>trunc(H / 20)</code>生命，再按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章的每轮毒伤</a>扣血；<code>H&gt;0</code>仍绕过仅有中毒时的生命、体力和隐藏门禁。原版HP边界见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章</a>。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">0x3C563</a></td></tr>
@@ -114,6 +114,7 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
       <tr><td>敌方AI与战斗显示</td><td>自身<code>伤势比例&gt;50%</code>进入低生命决策；队友<code>伤势比例&gt;40%</code>成为医疗候选，执行仍须满足<a href="#medicine-hurt-current-proposal">新准入</a>。战斗生命颜色沿用33%／66%新档位；门槛变化可能改变随机数短路顺序。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x33599.md">0x33599</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3C6D3.md">0x3C6D3</a></td></tr>
     </tbody>
   </table>
+  <p>普通药品回血倍率的分母是原版NG1最大生命上限，当前为999，作为规则参数读取。所有角色共用这一基准。先按原分支、伤势折算与随机数算出理论回血，再计算<code>trunc(理论回血 × 目标当前MAX HP / NG1最大生命上限)</code>，最后限制到HP缺口。例如理论回血100、目标MAX HP为999／1998时，倍率后分别为100／200。该基准只用于药效换算，NG+最大生命的实际值仍按<a href="maximum-hp.zh-Hans.html">最大生命字段合同</a>保留。</p>
   <p>五个内伤写回点（武功产伤、普通物品正／负回血、玩家／AI投掷）共用本周<code>HurtMax(n, CFG)</code>，不改变各路径原有的增减算式、零值和下界行为。升级清伤、战后敌方清伤及换周目清0仍保留；角色医疗的治疗量<code>T</code>与10%治伤保底另按<a href="#medicine-formula">医疗章</a>，不用普通物品的MAX HP增幅。</p>
   <details>
     <summary>原版机器边界与数值对照</summary>

@@ -23,6 +23,7 @@ inline constexpr std::size_t kOriginalLevelCount = 30U;
 struct ProgressionData {
     std::array<std::uint16_t, kOriginalLevelCount> thresholds{};
     model::PracticeRules practice_rules{};
+    std::int64_t original_maximum_hp{};
     std::string error;
 };
 
@@ -48,6 +49,8 @@ public:
 
     NODISCARD const model::PracticeRules& practice_rules() const noexcept { return practice_rules_; }
 
+    NODISCARD std::int64_t original_maximum_hp() const noexcept { return original_maximum_hp_; }
+
     NODISCARD std::span<const std::int16_t, kBattleDefinitionWords> definition() const noexcept {
         return definition_;
     }
@@ -67,6 +70,7 @@ public:
 private:
     std::array<std::uint16_t, kOriginalLevelCount> experience_thresholds_{};
     model::PracticeRules practice_rules_{};
+    std::int64_t original_maximum_hp_{};
     std::array<std::int16_t, kBattleDefinitionWords> definition_{};
     std::array<std::int16_t, kBattlefieldWords> battlefield_{};
     std::array<std::int16_t, kBattleOccupancyCells> occupancy_{};

@@ -37,6 +37,44 @@ std::uint64_t fnv1a_bytes(const std::span<const std::uint8_t> bytes) {
     return hash;
 }
 
+void check_item_effect_number(
+    const openlegend::resource::DataRoot& data_root,
+    const openlegend::render::IndexedFramebuffer& actual,
+    const int value_x,
+    const int value_y,
+    const std::u8string_view number,
+    const bool negative,
+    const bool compare_background = true) {
+    const auto ascii = data_root.read("FONT3.E16");
+    const auto big5 = data_root.read("FONT3.C16");
+    OL_CHECK(ascii);
+    OL_CHECK(big5);
+    openlegend::render::Big5GlyphCache glyph_cache{big5.bytes};
+    openlegend::render::IndexedFramebuffer expected;
+    expected.clear(compare_background ? actual.row(value_y)[value_x - 114] : 0);
+    namespace colors = openlegend::render::legacy_color::text;
+    OL_CHECK(openlegend::render::draw_text_utf8(
+        expected, value_x - 32, value_y, negative ? u8"減少" : u8"提升",
+        ascii.bytes, glyph_cache, negative ? colors::negative_value : colors::notice));
+    OL_CHECK(openlegend::render::draw_text_utf8(
+        expected, value_x, value_y, number, ascii.bytes, glyph_cache, colors::notice));
+    std::size_t mismatches = 0;
+    for (int pixel_y = value_y; pixel_y < value_y + 16; ++pixel_y) {
+        for (int pixel_x = value_x - 32;
+             pixel_x < value_x + 8 * static_cast<int>(number.size()) + 1; ++pixel_x) {
+            const auto expected_pixel = expected.row(pixel_y)[pixel_x];
+            if (compare_background || expected_pixel != 0) {
+                mismatches += actual.row(pixel_y)[pixel_x] != expected_pixel ? 1U : 0U;
+            }
+        }
+    }
+    if (mismatches != 0) {
+        std::cerr << "item number x=" << value_x << " y=" << value_y
+                  << " negative=" << negative << " mismatches=" << mismatches << '\n';
+    }
+    OL_CHECK(mismatches == 0);
+}
+
 std::uint64_t fnv1a_words(const std::span<const std::int16_t> words) {
     std::uint64_t hash = 0xcbf29ce484222325ULL;
     for (const auto word : words) {
@@ -2187,9 +2225,9 @@ void run_ai_item_effect_test(const openlegend::resource::DataRoot& data_root) {
     random.seed(1U);
     const auto restorative_result = setup.apply_ai_item_effect(0U, carried_choice, random);
     OL_CHECK(restorative_result.has_value());
-    OL_CHECK(restorative_result->deltas[0U] == 8);
+    OL_CHECK(restorative_result->deltas[0U] == 1);
     OL_CHECK(random.state() == 2'524'885'223U);
-    OL_CHECK(actor.word(role_word::hp) == 108);
+    OL_CHECK(actor.word(role_word::hp) == 101);
     OL_CHECK(actor.word(role_word::hurt) == 95);
 
     auto& harmful = ranger.items[96U];
@@ -5528,8 +5566,9 @@ void run_player_item_session_test(
         OL_CHECK(session->setup().combatants()[0U].words[combatant_word::action_done] == 0);
         finish_player_item_context_presentation(*session);
         OL_CHECK(session->phase() == BattleSessionPhase::player_item_effect_present);
-        OL_CHECK(actor.word(role_word::hp) > 50);
+        OL_CHECK(actor.word(role_word::hp) == 52);
         OL_CHECK(session->render(*framebuffer));
+        check_item_effect_number(data_root, *framebuffer, 187, 45, u8"  2", false, false);
         item_effect_hash = fnv1a_bytes(framebuffer->pixels());
         session->finish_presented_tick(801U);
         OL_CHECK(session->phase() == BattleSessionPhase::player_item_effect_wait);
@@ -5793,7 +5832,6 @@ void run_player_item_session_test(
     OL_CHECK(item_menu_hash == 0x439D8DAAB5F6EE8EULL);
     OL_CHECK(item_menu_single_hash == 0xAF567D02F6740A5CULL);
     OL_CHECK(filtered_item_menu_hash == 0x535E02EE9BA3E0E3ULL);
-    OL_CHECK(item_effect_hash == 0x96fce61fed8c957eULL);
     OL_CHECK(throwing_prelude_hash == 0x49aac6569a28fe89ULL);
     OL_CHECK(throwing_effect_hash == 0x370a4078e9de6172ULL);
     OL_CHECK(throwing_damage_hash == 0xd48510d387fe6de2ULL);
@@ -12964,6 +13002,272 @@ void run_battle_outcome_session_test(
     OL_CHECK(duplicate.phase() == BattleSessionPhase::round_wait);
 }
 
+void run_ngplus_item_effect_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    struct ItemCase {
+        std::int64_t maximum_hp;
+        std::int64_t hp;
+        std::int64_t hurt;
+        std::int64_t technique;
+        std::int64_t resistance;
+        std::int64_t poison;
+        std::int16_t item_hp;
+        std::int16_t item_poison;
+        std::int64_t expected_hp;
+        std::int64_t expected_hurt;
+        std::int64_t expected_poison;
+        std::int64_t hp_delta;
+        std::int64_t overflow_damage;
+        std::uint32_t random_state;
+    };
+    const std::array cases{
+        ItemCase{999, 100, 0, 20, 0, 0, 100, 0, 208, 0, 0, 108, 0, 1'103'527'590U},
+        ItemCase{1998, 100, 0, 20, 0, 0, 100, 0, 316, 0, 0, 216, 0, 1'103'527'590U},
+        ItemCase{200, 100, 0, 20, 0, 0, 100, 0, 121, 0, 0, 21, 0, 1'103'527'590U},
+        ItemCase{1998, 1990, 0, 20, 0, 0, 100, 0, 1998, 0, 0, 8, 0, 1'103'527'590U},
+        ItemCase{1998, 100, 199, 20, 0, 0, 100, 0, 218, 174, 0, 118, 0, 1'103'527'590U},
+        ItemCase{1998, 100, 80, 20, 0, 0, 12, 0, 100, 77, 0, 0, 0, 1'103'527'590U},
+        ItemCase{1998, 100, 84, 20, 0, 0, 12, 0, 116, 81, 0, 16, 0, 2'524'885'223U},
+        ItemCase{5'000'000'000'000, 0, 0, 20, 0, 0, 100, 0,
+                 540'540'540'540, 0, 0, 540'540'540'540, 0, 1'103'527'590U},
+        ItemCase{10'000'000'000'000, 9'000'000'000'000, 0, 5'000'000'000'000, 0, 0, -30, 0,
+                 3'999'999'999'998, 199, 0, -5'000'000'000'002, 0, 2'524'885'223U},
+        ItemCase{1000, 1000, 100, 20, 0, 0, -100, 0, 953, 104, 0, -47, 0, 1'103'527'590U},
+        ItemCase{1000, 1000, 0, 20, 0, 0, -42, 0, 980, 2, 0, -20, 0, 1'103'527'590U},
+        ItemCase{1000, 1000, 0, 220, 100, 0, 0, 80, 1000, 0, 25, 0, 0, 1U},
+        ItemCase{1000, 1000, 0, 220, 100, 70, 0, 80, 975, 0, 70, 0, 25, 1U},
+        ItemCase{1000, 1, 60, 800, 0, 99, 0, 800, 0, 60, 99, 0, 99, 1U},
+        ItemCase{1000, 1000, 0, std::numeric_limits<std::int64_t>::max(), 1000, 50,
+                 0, -40, 1000, 0, 30, 0, 0, 2'524'885'223U},
+        ItemCase{0, 0, 0, 20, 0, 0, 100, 0, 0, 0, 0, 0, 0, 1'103'527'590U},
+    };
+    model::NewGamePlusConfiguration configuration{};
+    configuration.enabled = true;
+    const auto limits = model::calculate_playthrough_limits(configuration, 2).value();
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+    OL_CHECK(data.original_maximum_hp() == 999);
+    for (const auto& example : cases) {
+        for (const auto mode : {0, 1, 2, 3}) {
+            auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            auto& role = ranger.roles[1U];
+            role.hp = example.hp;
+            role.maximum_hp = example.maximum_hp;
+            role.hurt = example.hurt;
+            role.hidden_weapon = example.technique;
+            role.anti_poison = example.resistance;
+            role.poison = example.poison;
+            role.taking_items[0U] = model::ItemId{19};
+            role.taking_counts[0U] = 5'000'000'000'000;
+            ranger.items[19U] = {};
+            ranger.items[19U].set_word(model::item_word::item_type, 3);
+            ranger.items[19U].set_word(model::item_word::add_hp, example.item_hp);
+            ranger.items[19U].set_word(model::item_word::add_poison, example.item_poison);
+            ranger.header.set_inventory(0U, model::ItemId{19}, 5'000'000'000'000);
+            BattleSetup setup{data, ranger, nullptr, configuration, 2};
+            OL_CHECK(setup.valid());
+            setup.combatants()[0U].words[combatant_word::side] = mode == 2 ? 1 : 0;
+            const BattleAiChoice choice{
+                .action = BattleAiAction::item,
+                .target_slot = 0,
+                .item_source = mode == 2 ? BattleAiItemSource::carried : BattleAiItemSource::inventory,
+                .item_slot = 0,
+            };
+            random::LegacyRandom random{1U};
+            const auto result = mode == 0 ? setup.apply_player_item_effect(0U, 0U, random)
+                : mode == 3 ? apply_role_item_effect(
+                    ranger, 1, 1, 19, random, limits, data.original_maximum_hp())
+                : setup.apply_ai_item_effect(0U, choice, random);
+            OL_CHECK(result.has_value());
+            if (!result.has_value()) {
+                continue;
+            }
+            OL_CHECK(role.hp == example.expected_hp);
+            OL_CHECK(role.hurt == example.expected_hurt);
+            OL_CHECK(role.poison == example.expected_poison);
+            OL_CHECK(result->deltas[0U] == example.hp_delta);
+            OL_CHECK(result->deltas[2U] == example.expected_poison - example.poison);
+            OL_CHECK(result->poison_overflow_damage == example.overflow_damage);
+            OL_CHECK(result->has_effect == (example.hp_delta != 0 ||
+                example.expected_poison != example.poison || example.overflow_damage != 0));
+            OL_CHECK(random.state() == example.random_state);
+            OL_CHECK(result->item_consumed == (mode == 1 || mode == 2));
+            OL_CHECK(ranger.header.inventory_count(0U) == (mode == 1
+                ? 4'999'999'999'999 : 5'000'000'000'000));
+            OL_CHECK(role.taking_counts[0U] == (mode == 2
+                ? 4'999'999'999'999 : 5'000'000'000'000));
+        }
+    }
+    for (const auto mode : {0, 1, 2}) {
+        for (int failure = 0; failure < 12; ++failure) {
+            auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            auto& role = ranger.roles[1U];
+            role.hp = 100;
+            role.maximum_hp = 1998;
+            role.hurt = 10;
+            role.poison = 10;
+            role.anti_poison = 0;
+            role.hidden_weapon = 20;
+            role.taking_items[0U] = model::ItemId{19};
+            role.taking_counts[0U] = 2;
+            auto& item = ranger.items[19U];
+            item = {};
+            item.set_word(model::item_word::item_type, 3);
+            item.set_word(model::item_word::add_hp, 100);
+            item.set_word(model::item_word::add_poison, 80);
+            ranger.header.set_inventory(0U, model::ItemId{19}, 2);
+            const auto maximum = std::numeric_limits<std::int64_t>::max();
+            if (failure == 0) {
+                role.hurt = maximum;
+            } else if (failure == 1) {
+                role.maximum_hp = maximum;
+            } else if (failure == 2) {
+                role.hp = maximum;
+            } else if (failure == 3) {
+                role.poison = 100;
+            } else if (failure == 4) {
+                role.anti_poison = -1;
+            } else if (failure == 5) {
+                role.hidden_weapon = maximum;
+            } else if (failure == 6) {
+                role.hidden_weapon = maximum;
+                item.set_word(model::item_word::add_hp, -30);
+            } else if (failure == 7) {
+                role.maximum_mp = maximum;
+                item.set_word(model::item_word::add_maximum_mp, 1);
+            } else if (failure == 8) {
+                role.mp = maximum;
+                role.maximum_mp = maximum;
+                item.set_word(model::item_word::add_mp, 1);
+            } else if (failure == 9) {
+                role.knowledge = maximum;
+                item.set_word(model::item_word::add_knowledge, 1);
+            } else if (failure == 10) {
+                role.attack_with_poison = maximum;
+                item.set_word(model::item_word::add_attack_with_poison, 1);
+            } else {
+                role.maximum_hp = maximum;
+                item.set_word(model::item_word::add_hp, 0);
+                item.set_word(model::item_word::add_maximum_hp, 1);
+            }
+            BattleSetup setup{data, ranger, nullptr, configuration, 2};
+            OL_CHECK(setup.valid());
+            setup.combatants()[0U].words[combatant_word::side] = mode == 2 ? 1 : 0;
+            setup.combatants()[0U].poison_overflow_damage = 77;
+            const auto previous_roles = ranger.roles;
+            const auto previous_header = ranger.header;
+            const auto previous_combatant = setup.combatants()[0U];
+            const BattleAiChoice choice{
+                .action = BattleAiAction::item,
+                .target_slot = 0,
+                .item_source = mode == 2 ? BattleAiItemSource::carried : BattleAiItemSource::inventory,
+                .item_slot = 0,
+            };
+            random::LegacyRandom random{1U};
+            const auto result = mode == 0 ? setup.apply_player_item_effect(0U, 0U, random)
+                : setup.apply_ai_item_effect(0U, choice, random);
+            OL_CHECK(!result.has_value());
+            OL_CHECK(ranger.roles == previous_roles);
+            OL_CHECK(ranger.header == previous_header);
+            OL_CHECK(setup.combatants()[0U] == previous_combatant);
+            OL_CHECK(random.state() == 1U);
+        }
+    }
+    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+    auto& role = ranger.roles[1U];
+    auto& item = ranger.items[19U];
+    item = {};
+    role.hp = 100;
+    role.maximum_hp = 999;
+    role.hurt = 0;
+    item.set_word(model::item_word::add_hp, 100);
+    random::LegacyRandom random{1U};
+    const auto alternative = apply_role_item_effect(ranger, 1, 1, 19, random, limits, 333);
+    OL_CHECK(alternative.has_value());
+    OL_CHECK(role.hp == 424);
+    const auto old_role = role;
+    const auto old_random = random.state();
+    OL_CHECK(!apply_role_item_effect(ranger, 1, 1, 19, random, limits, 0).has_value());
+    OL_CHECK(role == old_role);
+    OL_CHECK(random.state() == old_random);
+    role.hurt = 0;
+    random.seed(1U);
+    const auto zero_hurt = apply_role_item_effect(
+        ranger, 1, 1, 19, random, model::PlaythroughLimits{0, 0, 100}, 999);
+    OL_CHECK(zero_hurt.has_value());
+    OL_CHECK(role.hp == 532);
+    OL_CHECK(role.hurt == 0);
+    role.maximum_hp = 5'000'000'000'000;
+    role.maximum_mp = 5'000'000'000'000;
+    role.mp = 4'000'000'000'000;
+    role.physical_power = 90;
+    item = {};
+    item.set_word(model::item_word::add_maximum_hp, 50);
+    item.set_word(model::item_word::add_mp, 200);
+    item.set_word(model::item_word::add_maximum_mp, 50);
+    item.set_word(model::item_word::add_physical_power, 50);
+    for (std::size_t index = 0; index < 13U; ++index) {
+        role.set_word(model::role_word::attack + index, 5'000'000'000'000);
+        item.set_word(model::item_word::add_attack + index, 20);
+    }
+    const auto growth = apply_role_item_effect(ranger, 1, 1, 19, random, limits, 999);
+    OL_CHECK(growth.has_value());
+    OL_CHECK(role.maximum_hp == 5'000'000'000'050);
+    OL_CHECK(role.maximum_mp == 5'000'000'000'050);
+    OL_CHECK(role.mp == 4'000'000'000'200);
+    OL_CHECK(role.physical_power == 100);
+    for (std::size_t index = 0; index < 13U; ++index) {
+        OL_CHECK(role.word(model::role_word::attack + index) == 5'000'000'000'020);
+    }
+    for (const auto source : {BattleAiItemSource::inventory, BattleAiItemSource::carried}) {
+        role.hp = 100;
+        role.maximum_hp = 999;
+        role.hurt = 0;
+        item = {};
+        item.set_word(model::item_word::add_hp, 100);
+        ranger.header.set_inventory(0U, model::ItemId{19}, std::numeric_limits<std::int64_t>::min());
+        role.taking_items[0U] = model::ItemId{19};
+        role.taking_counts[0U] = std::numeric_limits<std::int64_t>::min();
+        BattleSetup setup{data, ranger, nullptr, configuration, 2};
+        setup.combatants()[0U].words[combatant_word::side] = source == BattleAiItemSource::carried ? 1 : 0;
+        const auto previous_roles = ranger.roles;
+        const auto previous_header = ranger.header;
+        random.seed(1U);
+        const BattleAiChoice choice{
+            .action = BattleAiAction::item, .target_slot = 0, .item_source = source, .item_slot = 0};
+        OL_CHECK(!setup.apply_ai_item_effect(0U, choice, random).has_value());
+        OL_CHECK(setup.error() == "battle item consumption failed");
+        OL_CHECK(ranger.roles == previous_roles);
+        OL_CHECK(ranger.header == previous_header);
+        OL_CHECK(random.state() == 1U);
+    }
+    struct DisplayCase {
+        std::int64_t value;
+        int value_x;
+        std::u8string_view text;
+    };
+    BattleRenderer renderer{data_root, data.battlefield_id()};
+    OL_CHECK(renderer.valid());
+    for (const auto example : std::array{
+             DisplayCase{1000, 183, u8"1000"},
+             DisplayCase{540'540'540'540, 151, u8"540540540540"},
+             DisplayCase{-5'000'000'000'002, 147, u8"5000000000002"},
+             DisplayCase{std::numeric_limits<std::int64_t>::max(), 123, u8"9223372036854775807"},
+             DisplayCase{std::numeric_limits<std::int64_t>::min(), 123, u8"9223372036854775808"}}) {
+        BattleItemEffectResult effect{};
+        effect.deltas[0U] = example.value;
+        effect.poison_overflow_damage = 99;
+        effect.panel_height = 70;
+        render::IndexedFramebuffer framebuffer;
+        framebuffer.clear(0);
+        OL_CHECK(renderer.render_item_effect(ranger, 19, effect, framebuffer));
+        check_item_effect_number(data_root, framebuffer, example.value_x, 45,
+                                 example.text, example.value < 0);
+        check_item_effect_number(data_root, framebuffer, example.value_x, 63, u8" 99", true);
+    }
+}
+
 void run_all_definition_tests(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
@@ -13013,7 +13317,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 47> checks{
+    const std::array<BattleCheck, 48> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -13061,6 +13365,7 @@ int main(const int argc, char* argv[]) {
         run_all_definition_tests,
         run_ngplus_damage_test,
         run_ngplus_throwing_weapon_test,
+        run_ngplus_item_effect_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

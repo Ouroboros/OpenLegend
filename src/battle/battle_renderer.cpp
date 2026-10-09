@@ -817,11 +817,28 @@ bool BattleRenderer::render_item_effect(
     const BattleItemEffectResult& effect,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid() || item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size() ||
-        !draw_box(
-            framebuffer,
-            effect.panel_x,
-            effect.panel_y,
-            static_cast<std::uint16_t>(effect.panel_width),
+        effect.poison_overflow_damage < 0) {
+        return false;
+    }
+    std::vector<std::int64_t> values{effect.deltas.begin(), effect.deltas.end()};
+    values.push_back(-effect.poison_overflow_damage);
+    std::vector<std::u8string> numbers;
+    numbers.reserve(values.size());
+    auto width = static_cast<int>(effect.panel_width);
+    for (const auto delta : values) {
+        auto number = decimal_text(delta);
+        if (delta < 0) {
+            number.erase(number.begin());
+        }
+        if (number.size() < 3U) {
+            number.insert(0U, 3U - number.size(), u8' ');
+        }
+        width = std::max(width, 124 + static_cast<int>(number.size()) * 8);
+        numbers.push_back(std::move(number));
+    }
+    const auto left = effect.panel_x - (width - effect.panel_width) / 2;
+    if (!draw_box(
+            framebuffer, left, effect.panel_y, static_cast<std::uint16_t>(width),
             static_cast<std::uint16_t>(effect.panel_height))) {
         return false;
     }
@@ -833,42 +850,40 @@ bool BattleRenderer::render_item_effect(
     text::GameText header;
     header.append_utf8(kUseItemPrefix);
     header.append_legacy(text::Big5TextView{name});
-    if (!draw_text_mixed(framebuffer, 75, 25, header, text_colors::selected)) {
+    if (!draw_text_mixed(
+            framebuffer, left + 5, effect.panel_y + 7, header, text_colors::selected)) {
         return false;
     }
     std::int16_t visible_row = 0;
-    for (std::size_t index = 0U; index < effect.deltas.size(); ++index) {
-        const auto delta = effect.deltas[index];
+    for (std::size_t index = 0U; index < values.size(); ++index) {
+        const auto delta = values[index];
         if (delta == 0) {
             continue;
         }
-        const auto y = 45 + 18 * visible_row;
+        const auto y = effect.panel_y + 27 + 18 * visible_row;
         if (!draw_text_utf8(
                 framebuffer,
-                75,
+                left + 5,
                 y,
-                kItemEffectLabels[index],
+                kItemEffectLabels[index < effect.deltas.size() ? index : 0U],
                 text_colors::notice)) {
             return false;
         }
         if (index == 4U) {
-            if (!draw_text_utf8(framebuffer, 155, y, kItemMpTypeChanged, text_colors::notice)) {
+            if (!draw_text_utf8(framebuffer, left + 85, y, kItemMpTypeChanged, text_colors::notice)) {
                 return false;
             }
         } else {
             if (!draw_text_utf8(
                     framebuffer,
-                    155,
+                    left + 85,
                     y,
                     delta > 0 ? kItemIncrease : kItemDecrease,
                     delta > 0 ? text_colors::notice : text_colors::negative_value)) {
                 return false;
             }
-            const auto magnitude = delta < 0
-                ? -static_cast<std::int32_t>(delta)
-                : static_cast<std::int32_t>(delta);
             if (!draw_text_utf8(
-                    framebuffer, 187, y, decimal_text(magnitude, 3), text_colors::notice)) {
+                    framebuffer, left + 117, y, numbers[index], text_colors::notice)) {
                 return false;
             }
         }

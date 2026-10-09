@@ -37,6 +37,10 @@
 namespace openlegend::app {
 
 struct LegacyGameRuntimeTestAccess {
+    static random::LegacyRandom& random(LegacyGameRuntime& runtime) noexcept {
+        return runtime.random_;
+    }
+
     static battle::BattleSession* battle_session(LegacyGameRuntime& runtime) noexcept {
         return runtime.battle_session_.get();
     }
@@ -2097,6 +2101,53 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         new_game.handle_key('A', false, false);
         new_game.handle_key(0x1BU, false, false);
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
+
+        auto* snapshot = const_cast<model::RuntimeGameState&>(new_game.game_state()).snapshot();
+        const auto saved_configuration = snapshot->configuration;
+        const auto saved_playthrough = snapshot->playthrough;
+        const auto saved_role = item_ranger->roles[0U];
+        const auto saved_header = item_ranger->header;
+        const auto saved_random = app::LegacyGameRuntimeTestAccess::random(new_game);
+        struct HealingCase {
+            std::int64_t playthrough;
+            std::int64_t maximum_hp;
+            std::int64_t expected_hp;
+        };
+        for (const auto example : std::array{
+                 HealingCase{1, 999, 108}, HealingCase{2, 999, 128},
+                 HealingCase{2, 1998, 156}, HealingCase{2, 5'000'000'000'000, 140'140'140'240}}) {
+            snapshot->configuration.enabled = true;
+            snapshot->playthrough = example.playthrough;
+            item_ranger->roles[0U].hp = 100;
+            item_ranger->roles[0U].maximum_hp = example.maximum_hp;
+            item_ranger->roles[0U].hurt = 80;
+            item_ranger->items[199U].set_word(model::item_word::add_physical_power, 0);
+            item_ranger->items[199U].set_word(model::item_word::add_hp, 40);
+            item_ranger->header.set_inventory(0U, model::ItemId{199}, 2);
+            app::LegacyGameRuntimeTestAccess::random(new_game).seed(1U);
+            enter_items();
+            new_game.handle_key(0x0DU, false, false);
+            finish_item_context();
+            finish_item_stage();
+            new_game.handle_key(0x0DU, false, false);
+            OL_CHECK(item_ranger->roles[0U].hp == example.expected_hp);
+            OL_CHECK(item_ranger->roles[0U].hurt == 70);
+            OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() == 1'103'527'590U);
+            OL_CHECK(item_ranger->header.inventory_count(0U) == 2);
+            new_game.handle_key('A', false, false);
+            OL_CHECK(item_ranger->header.inventory_count(0U) == 2);
+            OL_CHECK(new_game.render());
+            new_game.finish_presented_tick();
+            OL_CHECK(item_ranger->header.inventory_count(0U) == 1);
+            new_game.handle_key('A', false, false);
+            new_game.handle_key(0x1BU, false, false);
+            OL_CHECK(new_game.view() == app::LegacyGameView::world);
+        }
+        snapshot->configuration = saved_configuration;
+        snapshot->playthrough = saved_playthrough;
+        item_ranger->roles[0U] = saved_role;
+        item_ranger->header = saved_header;
+        app::LegacyGameRuntimeTestAccess::random(new_game) = saved_random;
     }
     OL_CHECK(new_game.render());
     const auto world_palette_before_scene = new_game.framebuffer().palette();

@@ -384,132 +384,149 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
     const std::int16_t item_id,
-    random::LegacyRandom& random) {
-    if (actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits,
+    const std::int64_t original_maximum_hp) {
+    if (original_maximum_hp <= 0 || limits.hurt_maximum < 0 ||
+        limits.hurt_ratio_denominator < 0 || actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(item_id) >= ranger.items.size()) {
         return std::nullopt;
     }
-    auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
+    auto target = ranger.roles[static_cast<std::size_t>(target_role_id)];
     const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    if (target.hurt < 0 || target.maximum_hp < 0 || target.maximum_mp < 0) {
+        return std::nullopt;
+    }
+    auto candidate_random = random;
     BattleItemEffectResult result{};
 
     const auto item_hp = item.word(model::item_word::add_hp);
     if (item_hp != 0) {
-        const auto old_hp = target.word(model::role_word::hp);
-        std::int32_t hp_delta = 0;
+        const auto scaled_hurt = model::checked_multiply(50, target.hurt);
+        if (!scaled_hurt.has_value() ||
+            (limits.hurt_ratio_denominator == 0 && target.hurt != 0)) {
+            return std::nullopt;
+        }
+        const auto hurt_penalty = limits.hurt_ratio_denominator == 0
+            ? 0 : *scaled_hurt / limits.hurt_ratio_denominator;
+        std::int64_t hp_delta{};
+        std::optional<std::int64_t> changed_hurt;
         if (item_hp > 0) {
-            hp_delta = static_cast<std::int32_t>(item_hp) -
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) / 2 +
-                random.bounded(10);
-            if (hp_delta < 0) {
-                hp_delta = random.bounded(5) + 5;
+            const auto base = model::checked_subtract(item_hp, hurt_penalty);
+            if (!base.has_value()) {
+                return std::nullopt;
             }
-            auto changed_hurt = wrapping_i16(
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) - item_hp / 4);
-            if (changed_hurt < 0) {
-                changed_hurt = 0;
+            auto theoretical = model::checked_add(*base, candidate_random.bounded(10));
+            if (!theoretical.has_value()) {
+                return std::nullopt;
             }
-            if (changed_hurt > 99) {
-                changed_hurt = 99;
+            if (*theoretical < 0) {
+                theoretical = candidate_random.bounded(5) + 5;
             }
-            target.set_word(model::role_word::hurt, changed_hurt);
+            const auto scaled = model::checked_multiply(*theoretical, target.maximum_hp);
+            if (!scaled.has_value()) {
+                return std::nullopt;
+            }
+            hp_delta = *scaled / original_maximum_hp;
+            changed_hurt = model::checked_subtract(target.hurt, item_hp / 4);
         } else {
-            auto damage_base = static_cast<std::int32_t>(item_hp) + 50 -
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) / 2 -
-                random.bounded(10);
-            if (damage_base > 0) {
-                damage_base = -5 - random.bounded(5);
+            const auto base = model::checked_subtract(
+                static_cast<std::int64_t>(item_hp) + 50, hurt_penalty);
+            if (!base.has_value()) {
+                return std::nullopt;
             }
-            hp_delta = (damage_base -
-                        3 * static_cast<std::int32_t>(
-                                actor.word(model::role_word::hidden_weapon))) /
-                3;
-            auto changed_hurt = wrapping_i16(
-                static_cast<std::int32_t>(target.word(model::role_word::hurt)) - hp_delta / 10);
-            if (changed_hurt > 99) {
-                changed_hurt = 99;
+            auto damage_base = model::checked_subtract(*base, candidate_random.bounded(10));
+            if (!damage_base.has_value()) {
+                return std::nullopt;
             }
-            if (changed_hurt < 0) {
-                changed_hurt = 0;
+            if (*damage_base > 0) {
+                damage_base = -5 - candidate_random.bounded(5);
             }
-            target.set_word(model::role_word::hurt, changed_hurt);
+            const auto technique = model::checked_multiply(3, actor.hidden_weapon);
+            if (!technique.has_value()) {
+                return std::nullopt;
+            }
+            const auto damage = model::checked_subtract(*damage_base, *technique);
+            if (!damage.has_value()) {
+                return std::nullopt;
+            }
+            hp_delta = *damage / 3;
+            changed_hurt = model::checked_subtract(target.hurt, hp_delta / 10);
         }
-        auto changed_hp = wrapping_i16(static_cast<std::int32_t>(old_hp) + hp_delta);
-        if (changed_hp >= target.word(model::role_word::maximum_hp)) {
-            changed_hp = target.word(model::role_word::maximum_hp);
+        const auto changed_hp = model::checked_add(target.hp, hp_delta);
+        if (!changed_hp.has_value() || !changed_hurt.has_value()) {
+            return std::nullopt;
         }
-        if (changed_hp <= 0) {
-            changed_hp = 0;
+        const auto hp = std::clamp(*changed_hp, std::int64_t{0}, target.maximum_hp);
+        const auto actual_delta = model::checked_subtract(hp, target.hp);
+        if (!actual_delta.has_value()) {
+            return std::nullopt;
         }
-        target.set_word(model::role_word::hp, changed_hp);
-        result.deltas[0U] = wrapping_i16(
-            static_cast<std::int32_t>(changed_hp) - static_cast<std::int32_t>(old_hp));
+        target.hp = hp;
+        target.hurt = std::clamp(*changed_hurt, std::int64_t{0}, limits.hurt_maximum);
+        result.deltas[0U] = *actual_delta;
     }
 
     const auto add_maximum_hp = item.word(model::item_word::add_maximum_hp);
     if (add_maximum_hp != 0) {
-        auto changed = wrapping_i16(
-            static_cast<std::int32_t>(target.word(model::role_word::maximum_hp)) +
-            add_maximum_hp);
-        if (changed <= 0) {
-            changed = 0;
+        const auto changed = model::checked_add(target.maximum_hp, add_maximum_hp);
+        if (!changed.has_value()) {
+            return std::nullopt;
         }
-        if (changed >= 999) {
-            changed = 999;
-        }
-        target.set_word(model::role_word::maximum_hp, changed);
-        if (target.word(model::role_word::hp) >= changed) {
-            target.set_word(model::role_word::hp, changed);
-        }
+        target.maximum_hp = std::max(*changed, std::int64_t{0});
+        target.hp = std::min(target.hp, target.maximum_hp);
         result.deltas[1U] = add_maximum_hp;
     }
 
     const auto item_poison = item.word(model::item_word::add_poison);
     if (item_poison != 0) {
-        const auto old_poison = target.word(model::role_word::poison);
-        std::int32_t poison_delta = 0;
+        if (target.poison < 0 || target.poison > 99) {
+            return std::nullopt;
+        }
         if (item_poison > 0) {
-            poison_delta =
-                (static_cast<std::int32_t>(actor.word(model::role_word::hidden_weapon)) +
-                 item_poison) /
-                    2 -
-                target.word(model::role_word::anti_poison);
-            if (target.word(model::role_word::anti_poison) >= 100 || poison_delta < 0) {
-                poison_delta = 0;
+            const auto power = model::checked_add(actor.hidden_weapon, item_poison);
+            if (!power.has_value()) {
+                return std::nullopt;
             }
-            poison_delta /= 2;
+            const auto poison = model::poison_application(
+                *power / 2, target.anti_poison, 2, target.poison, target.maximum_hp);
+            if (!poison.has_value()) {
+                return std::nullopt;
+            }
+            const auto hp = model::checked_subtract(target.hp, poison->hp_damage);
+            if (!hp.has_value()) {
+                return std::nullopt;
+            }
+            target.poison += poison->applied_amount;
+            target.hp = std::max(*hp, std::int64_t{0});
+            result.deltas[2U] = poison->applied_amount;
+            result.poison_overflow_damage = poison->hp_damage;
         } else {
-            poison_delta = static_cast<std::int32_t>(item_poison) / 2 + random.bounded(5) -
-                random.bounded(5);
+            const auto first = candidate_random.bounded(5);
+            const auto second = candidate_random.bounded(5);
+            const auto changed = std::clamp(
+                target.poison + item_poison / 2 + first - second, std::int64_t{0}, std::int64_t{99});
+            result.deltas[2U] = changed - target.poison;
+            target.poison = changed;
         }
-        auto changed = wrapping_i16(static_cast<std::int32_t>(old_poison) + poison_delta);
-        if (changed >= 99) {
-            changed = 99;
-        }
-        if (changed <= 0) {
-            changed = 0;
-        }
-        target.set_word(model::role_word::poison, changed);
-        result.deltas[2U] = wrapping_i16(
-            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_poison));
     }
 
     const auto add_physical_power = item.word(model::item_word::add_physical_power);
     if (add_physical_power != 0) {
-        const auto old_value = target.word(model::role_word::physical_power);
-        auto changed = wrapping_i16(static_cast<std::int32_t>(old_value) + add_physical_power);
-        if (changed >= 100) {
-            changed = 100;
+        const auto changed = model::checked_add(target.physical_power, add_physical_power);
+        if (!changed.has_value()) {
+            return std::nullopt;
         }
-        if (changed <= 0) {
-            changed = 0;
+        const auto power = std::clamp(*changed, std::int64_t{0}, std::int64_t{100});
+        const auto delta = model::checked_subtract(power, target.physical_power);
+        if (!delta.has_value()) {
+            return std::nullopt;
         }
-        target.set_word(model::role_word::physical_power, changed);
-        result.deltas[3U] = wrapping_i16(
-            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_value));
+        target.physical_power = power;
+        result.deltas[3U] = *delta;
     }
 
     const auto change_mp_type = item.word(model::item_word::change_mp_type);
@@ -520,61 +537,59 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
 
     const auto add_mp = item.word(model::item_word::add_mp);
     if (add_mp != 0) {
-        const auto old_value = target.word(model::role_word::mp);
-        auto changed = wrapping_i16(static_cast<std::int32_t>(old_value) + add_mp);
-        if (changed >= target.word(model::role_word::maximum_mp)) {
-            changed = target.word(model::role_word::maximum_mp);
+        const auto changed = model::checked_add(target.mp, add_mp);
+        if (!changed.has_value()) {
+            return std::nullopt;
         }
-        if (changed <= 0) {
-            changed = 0;
+        const auto mp = std::clamp(*changed, std::int64_t{0}, target.maximum_mp);
+        const auto delta = model::checked_subtract(mp, target.mp);
+        if (!delta.has_value()) {
+            return std::nullopt;
         }
-        target.set_word(model::role_word::mp, changed);
-        result.deltas[5U] = wrapping_i16(
-            static_cast<std::int32_t>(changed) - static_cast<std::int32_t>(old_value));
+        target.mp = mp;
+        result.deltas[5U] = *delta;
     }
 
     const auto add_maximum_mp = item.word(model::item_word::add_maximum_mp);
     if (add_maximum_mp != 0) {
-        auto changed = wrapping_i16(
-            static_cast<std::int32_t>(target.word(model::role_word::maximum_mp)) +
-            add_maximum_mp);
-        if (changed <= 0) {
-            changed = 0;
+        const auto changed = model::checked_add(target.maximum_mp, add_maximum_mp);
+        if (!changed.has_value()) {
+            return std::nullopt;
         }
-        if (changed >= 999) {
-            changed = 999;
-        }
-        target.set_word(model::role_word::maximum_mp, changed);
-        if (target.word(model::role_word::mp) >= changed) {
-            target.set_word(model::role_word::mp, changed);
-        }
+        target.maximum_mp = std::max(*changed, std::int64_t{0});
+        target.mp = std::min(target.mp, target.maximum_mp);
         result.deltas[6U] = add_maximum_mp;
     }
 
     for (std::size_t index = 0U; index < 13U; ++index) {
         const auto delta = item.word(model::item_word::add_attack + index);
         const auto role_word_index = model::role_word::attack + index;
-        target.set_word(
-            role_word_index,
-            wrapping_i16(static_cast<std::int32_t>(target.word(role_word_index)) + delta));
+        const auto changed = model::checked_add(target.word(role_word_index), delta);
+        if (!changed.has_value()) {
+            return std::nullopt;
+        }
+        target.set_word(role_word_index, *changed);
         result.deltas[7U + index] = delta;
     }
     result.deltas[20U] = item.word(model::item_word::add_morality);
     result.deltas[21U] = item.word(model::item_word::add_attack_twice);
     const auto add_attack_with_poison = item.word(model::item_word::add_attack_with_poison);
-    target.set_word(
-        model::role_word::attack_with_poison,
-        wrapping_i16(
-            static_cast<std::int32_t>(target.word(model::role_word::attack_with_poison)) +
-            add_attack_with_poison));
+    const auto attack_poison = model::checked_add(target.attack_with_poison, add_attack_with_poison);
+    if (!attack_poison.has_value()) {
+        return std::nullopt;
+    }
+    target.attack_with_poison = *attack_poison;
     result.deltas[22U] = add_attack_with_poison;
 
     result.effect_count = static_cast<std::int16_t>(std::ranges::count_if(
-        result.deltas, [](const std::int16_t value) { return value != 0; }));
+        result.deltas, [](const std::int64_t value) { return value != 0; }) +
+        (result.poison_overflow_damage > 0 ? 1 : 0));
     result.has_effect = result.effect_count > 0;
     result.panel_height = static_cast<std::int16_t>(20 * result.effect_count + 30);
     result.battle_redraw_required = result.has_effect;
     result.wait_for_input = result.has_effect;
+    ranger.roles[static_cast<std::size_t>(target_role_id)] = std::move(target);
+    random = candidate_random;
     return result;
 }
 
@@ -3055,22 +3070,25 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
         error_ = "battle AI item target coordinate is outside battlefield";
         return std::nullopt;
     }
+    const auto previous_target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto previous_random = random;
+    auto result = openlegend::battle::apply_role_item_effect(
+        ranger_, actor_role_id, target_role_id, *item_id, random, limits_,
+        data_.original_maximum_hp());
+    if (!result.has_value()) {
+        error_ = "battle item effect is invalid or overflows";
+        return std::nullopt;
+    }
+    if (consume_item && !consume_ai_item(actor_slot, choice)) {
+        ranger_.roles[static_cast<std::size_t>(target_role_id)] = previous_target;
+        random = previous_random;
+        error_ = "battle item consumption failed";
+        return std::nullopt;
+    }
     clear_attack_effects();
     attack_effects_[static_cast<std::size_t>(y) * kBattleExtent +
                     static_cast<std::size_t>(x)] = 1;
-
-    auto result = openlegend::battle::apply_role_item_effect(
-        ranger_, actor_role_id, target_role_id, *item_id, random);
-    if (!result.has_value()) {
-        return std::nullopt;
-    }
-    if (!consume_item) {
-        return result;
-    }
-    if (!consume_ai_item(actor_slot, choice)) {
-        return std::nullopt;
-    }
-    result->item_consumed = true;
+    result->item_consumed = consume_item;
     return result;
 }
 

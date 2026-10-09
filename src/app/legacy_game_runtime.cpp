@@ -309,6 +309,13 @@ LegacyStartupResources::LegacyStartupResources(const resource::DataRoot& data_ro
     }
     palette_ = palette.palette;
 
+    const auto progression = battle::load_progression_data(data_root);
+    if (!progression.error.empty()) {
+        error_ = progression.error;
+        return;
+    }
+    original_maximum_hp_ = progression.original_maximum_hp;
+
     ranger_ = persistence::load_baseline_ranger(data_root.path());
     if (!ranger_) {
         error_ = ranger_.detail.empty()
@@ -3367,8 +3374,25 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         return;
     }
     if (item_type == 3) {
+        const auto* snapshot = game_state_.snapshot();
+        const auto limits = snapshot == nullptr
+            ? std::nullopt
+            : model::calculate_playthrough_limits(snapshot->configuration, snapshot->playthrough);
+        if (!limits.has_value()) {
+            clear_pending();
+            game_menu_.show_main();
+            show_error("menu item playthrough configuration is invalid", LegacyGameView::game_menu);
+            return;
+        }
         auto effect = battle::apply_role_item_effect(
-            *ranger, role_id, role_id, item_id, random_);
+            *ranger, role_id, role_id, item_id, random_, *limits,
+            startup_resources_.original_maximum_hp());
+        if (!effect.has_value()) {
+            clear_pending();
+            game_menu_.show_main();
+            show_error("menu item effect is invalid or overflows", LegacyGameView::game_menu);
+            return;
+        }
         if (effect.has_value() && effect->has_effect) {
             pending_menu_item_effect_ = *effect;
             game_menu_.show_item_effect();

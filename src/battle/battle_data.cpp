@@ -31,6 +31,19 @@ ProgressionData load_progression_data(const resource::DataRoot& data_root) {
         return result;
     }
     const auto& bytes = executable.bytes;
+    if (bytes[0x250EFU] != 0x66U || bytes[0x250F0U] != 0x81U ||
+        bytes[0x250F1U] != 0xB8U || compat::read_u32le(bytes, 0x250F2U) != 0x70170U ||
+        bytes[0x250FAU] != 0x66U || bytes[0x250FBU] != 0xC7U ||
+        bytes[0x250FCU] != 0x80U || compat::read_u32le(bytes, 0x250FDU) != 0x70170U ||
+        compat::read_i16le(bytes, 0x250F6U) != compat::read_i16le(bytes, 0x25101U)) {
+        result.error = "Z.DAT maximum HP rule instruction layout is invalid";
+        return result;
+    }
+    result.original_maximum_hp = compat::read_i16le(bytes, 0x250F6U);
+    if (result.original_maximum_hp <= 0) {
+        result.error = "Z.DAT original maximum HP is not positive";
+        return result;
+    }
     if (bytes[0x35521U] != 0xBBU || bytes[0x35531U] != 0xBAU ||
         bytes[0x35556U] != 0xBBU || bytes[0x35566U] != 0xBAU ||
         bytes[0x3553BU] != 0x8DU || bytes[0x3553CU] != 0x56U ||
@@ -108,6 +121,7 @@ BattleData::BattleData(const resource::DataRoot& data_root, const std::int16_t b
     }
     experience_thresholds_ = experience_data.thresholds;
     practice_rules_ = experience_data.practice_rules;
+    original_maximum_hp_ = experience_data.original_maximum_hp;
     occupancy_.fill(-1);
 }
 

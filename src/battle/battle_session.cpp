@@ -4486,70 +4486,8 @@ bool BattleSession::render_player_item_effect(
         !render_battlefield(framebuffer)) {
         return false;
     }
-    const auto& effect = *player_item_->effect_result;
-    if (!renderer_.draw_box(
-            framebuffer,
-            effect.panel_x,
-            effect.panel_y,
-            static_cast<std::uint16_t>(effect.panel_width),
-            static_cast<std::uint16_t>(effect.panel_height))) {
-        return false;
-    }
-    const auto& item = ranger_.items[static_cast<std::size_t>(player_item_->selected_item_id)];
-    const auto name = terminated_name(std::span<const std::uint8_t>{item.bytes}.subspan(
-        2U * model::item_word::secondary_name_begin,
-        2U * model::item_word::secondary_name_count));
-    text::GameText header;
-    header.append_utf8(kUseItemPrefix);
-    header.append_legacy(text::Big5TextView{name});
-    if (!renderer_.draw_text_mixed(
-            framebuffer, 75, 25, header, text_colors::selected)) {
-        return false;
-    }
-    std::int16_t visible_row = 0;
-    for (std::size_t index = 0U; index < effect.deltas.size(); ++index) {
-        const auto delta = effect.deltas[index];
-        if (delta == 0) {
-            continue;
-        }
-        const auto y = 45 + 18 * visible_row;
-        if (!renderer_.draw_text_utf8(
-                framebuffer,
-                75,
-                y,
-                kItemEffectLabels[index],
-                text_colors::notice)) {
-            return false;
-        }
-        if (index == 4U) {
-            if (!renderer_.draw_text_utf8(
-                    framebuffer, 155, y, kItemMpTypeChanged, text_colors::notice)) {
-                return false;
-            }
-        } else {
-            if (!renderer_.draw_text_utf8(
-                    framebuffer,
-                    155,
-                    y,
-                    delta > 0 ? kItemIncrease : kItemDecrease,
-                    delta > 0 ? text_colors::notice : text_colors::negative_value)) {
-                return false;
-            }
-            const auto magnitude = delta < 0
-                ? -static_cast<std::int32_t>(delta)
-                : static_cast<std::int32_t>(delta);
-            if (!renderer_.draw_text_utf8(
-                    framebuffer,
-                    187,
-                    y,
-                    decimal_text(magnitude, 3),
-                    text_colors::notice)) {
-                return false;
-            }
-        }
-        ++visible_row;
-    }
-    return true;
+    return renderer_.render_item_effect(
+        ranger_, player_item_->selected_item_id, *player_item_->effect_result, framebuffer);
 }
 
 bool BattleSession::render_player_status_selection(
