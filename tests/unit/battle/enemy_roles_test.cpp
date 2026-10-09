@@ -366,6 +366,20 @@ void check_enemy_actions_and_settlement(
     if (detox) {
         OL_CHECK(*detox > 0 && enemy->poison == 50 - *detox);
     }
+    enemy->physical_power = 100;
+    enemy->hp = 5'000'000'000'000;
+    enemy->maximum_hp = enemy->hp + 20;
+    enemy->mp = 4'000'000'000'000;
+    enemy->maximum_mp = enemy->mp + 20;
+    random.seed(1U);
+    const auto rest = treatment.rest_actor(1U, random);
+    OL_CHECK(rest.has_value());
+    OL_CHECK(enemy->hp == 5'000'000'000'009);
+    OL_CHECK(enemy->mp == 4'000'000'000'004);
+    OL_CHECK(enemy->physical_power == 100);
+    OL_CHECK(random.state() == 662'824'084U);
+    OL_CHECK(ranger.roles[3U] == inherited);
+
     enemy->experience = 50;
     treatment.combatants()[1U].reward_experience = 77;
     OL_CHECK(treatment.prepare_battle_settlement(battle::BattleOutcome::victory).has_value());

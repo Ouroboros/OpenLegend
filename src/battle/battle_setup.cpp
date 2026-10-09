@@ -3272,38 +3272,45 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
         error_ = "battle rest actor role is outside combatant records";
         return std::nullopt;
     }
-    words[combatant_word::action_done] = 1;
-    auto& role = *stored_role;
+    const auto& role = *stored_role;
+    if (role.physical_power < 0 || role.hp < 0 || role.maximum_hp < 0 ||
+        role.mp < 0 || role.maximum_mp < 0) {
+        error_ = "battle rest HP, MP or physical power is invalid";
+        return std::nullopt;
+    }
+    auto candidate_random = random;
     const auto speed_tenth = role.speed / 10;
-    const auto physical_gain = random.bounded(3) +
+    const auto physical_gain = candidate_random.bounded(3) +
         (combatants_[actor_slot].round_value == speed_tenth ? 3 : 2);
-    auto physical_power = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::physical_power)) + physical_gain);
-    if (physical_power > 100) {
-        physical_power = 100;
+    const auto physical_power = model::checked_add(role.physical_power, physical_gain);
+    if (!physical_power.has_value()) {
+        error_ = "battle rest physical power overflows";
+        return std::nullopt;
     }
-    role.set_word(model::role_word::physical_power, physical_power);
-
-    if (physical_power >= 30) {
-        const auto bound = static_cast<std::int32_t>(physical_power) / 10 - 2;
-        auto hp = wrapping_i16(
-            static_cast<std::int32_t>(role.word(model::role_word::hp)) + random.bounded(bound) + 3);
-        if (hp > role.word(model::role_word::maximum_hp)) {
-            hp = role.word(model::role_word::maximum_hp);
+    BattleRestResult result{
+        std::min<std::int64_t>(*physical_power, 100), role.hp, role.mp};
+    if (result.physical_power >= 30) {
+        const auto bound = result.physical_power / 10 - 2;
+        const auto hp = model::checked_add(role.hp, candidate_random.bounded(bound) + 3);
+        if (!hp.has_value()) {
+            error_ = "battle rest HP overflows";
+            return std::nullopt;
         }
-        role.set_word(model::role_word::hp, hp);
+        result.hp = std::min(*hp, role.maximum_hp);
 
-        auto mp = wrapping_i16(
-            static_cast<std::int32_t>(role.word(model::role_word::mp)) + random.bounded(bound) + 3);
-        if (mp > role.word(model::role_word::maximum_mp)) {
-            mp = role.word(model::role_word::maximum_mp);
+        const auto mp = model::checked_add(role.mp, candidate_random.bounded(bound) + 3);
+        if (!mp.has_value()) {
+            error_ = "battle rest MP overflows";
+            return std::nullopt;
         }
-        role.set_word(model::role_word::mp, mp);
+        result.mp = std::min(*mp, role.maximum_mp);
     }
-    return BattleRestResult{
-        role.word(model::role_word::physical_power),
-        role.word(model::role_word::hp),
-        role.word(model::role_word::mp)};
+    stored_role->physical_power = result.physical_power;
+    stored_role->hp = result.hp;
+    stored_role->mp = result.mp;
+    words[combatant_word::action_done] = 1;
+    random = candidate_random;
+    return result;
 }
 
 BattleAiChoice BattleSetup::commit_ai_choice(

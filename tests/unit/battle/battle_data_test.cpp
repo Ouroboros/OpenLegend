@@ -4686,12 +4686,12 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     setup.combatants()[0U].round_value = 5;
     setup.combatants()[0U].words[combatant_word::action_done] = 0;
     random.seed(1U);
-    const auto wrapped_physical_power = setup.rest_actor(0U, random);
-    OL_CHECK(wrapped_physical_power.has_value());
-    OL_CHECK(wrapped_physical_power->physical_power == -32'765);
-    OL_CHECK(wrapped_physical_power->hp == 10);
-    OL_CHECK(wrapped_physical_power->mp == 20);
-    OL_CHECK(random.state() == 1'103'527'590U);
+    const auto capped_physical_power = setup.rest_actor(0U, random);
+    OL_CHECK(capped_physical_power.has_value());
+    OL_CHECK(capped_physical_power->physical_power == 100);
+    OL_CHECK(capped_physical_power->hp == 19);
+    OL_CHECK(capped_physical_power->mp == 24);
+    OL_CHECK(random.state() == 662'824'084U);
 
     actor.set_word(openlegend::model::role_word::physical_power, 100);
     actor.set_word(openlegend::model::role_word::hp, 32'767);
@@ -4700,11 +4700,11 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     actor.set_word(openlegend::model::role_word::maximum_mp, 100);
     setup.combatants()[0U].round_value = 6;
     random.seed(1U);
-    const auto wrapped_recovery = setup.rest_actor(0U, random);
-    OL_CHECK(wrapped_recovery.has_value());
-    OL_CHECK(wrapped_recovery->physical_power == 100);
-    OL_CHECK(wrapped_recovery->hp == -32'760);
-    OL_CHECK(wrapped_recovery->mp == -32'766);
+    const auto capped_recovery = setup.rest_actor(0U, random);
+    OL_CHECK(capped_recovery.has_value());
+    OL_CHECK(capped_recovery->physical_power == 100);
+    OL_CHECK(capped_recovery->hp == 100);
+    OL_CHECK(capped_recovery->mp == 100);
     OL_CHECK(random.state() == 662'824'084U);
 
     actor.set_word(openlegend::model::role_word::physical_power, 25);
@@ -4721,6 +4721,68 @@ void run_rest_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(actor.word(openlegend::model::role_word::physical_power) == 29);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
     OL_CHECK(setup.combatants()[1U].words[combatant_word::action_done] == 1);
+
+    constexpr auto kMaximum = std::numeric_limits<std::int64_t>::max();
+    for (const auto playthrough : {1, 2, 999}) {
+        for (const auto initial_hp : std::array<std::int64_t, 3>{
+                 32'767, 5'000'000'000'000, kMaximum - 9}) {
+            auto wide_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            auto& wide_actor = wide_ranger.roles[1U];
+            wide_actor.speed = 5'000'000'000'000;
+            wide_actor.physical_power = 100;
+            wide_actor.hp = initial_hp;
+            wide_actor.maximum_hp = kMaximum;
+            wide_actor.mp = initial_hp + 5;
+            wide_actor.maximum_mp = kMaximum;
+            openlegend::model::NewGamePlusConfiguration configuration;
+            configuration.enabled = true;
+            BattleData wide_data{data_root, 4};
+            BattleSetup wide_setup{wide_data, wide_ranger, nullptr, configuration, playthrough};
+            OL_CHECK(wide_setup.valid());
+            wide_setup.combatants()[0U].round_value = wide_actor.speed / 10;
+            openlegend::random::LegacyRandom wide_random{1U};
+            const auto result = wide_setup.rest_actor(0U, wide_random);
+            OL_CHECK(result.has_value());
+            OL_CHECK(result->physical_power == 100);
+            OL_CHECK(result->hp == initial_hp + 9);
+            OL_CHECK(result->mp == initial_hp + 9);
+            OL_CHECK(wide_actor.hp == result->hp);
+            OL_CHECK(wide_actor.mp == result->mp);
+            OL_CHECK(wide_setup.combatants()[0U].words[combatant_word::action_done] == 1);
+            OL_CHECK(wide_random.state() == 662'824'084U);
+        }
+    }
+
+    using RoleState = openlegend::model::RoleState;
+    constexpr std::array<std::int64_t RoleState::*, 8> kRejectedFields{
+        &RoleState::physical_power, &RoleState::hp, &RoleState::mp,
+        &RoleState::physical_power, &RoleState::hp, &RoleState::maximum_hp,
+        &RoleState::mp, &RoleState::maximum_mp};
+    constexpr std::array<std::int64_t, 8> kRejectedValues{
+        kMaximum, kMaximum, kMaximum, -1, -1, -1, -1, -1};
+    for (std::size_t case_index = 0U; case_index < kRejectedFields.size(); ++case_index) {
+        auto rejected_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        auto& rejected_actor = rejected_ranger.roles[1U];
+        rejected_actor.physical_power = 50;
+        rejected_actor.hp = 95;
+        rejected_actor.maximum_hp = kMaximum;
+        rejected_actor.mp = 48;
+        rejected_actor.maximum_mp = kMaximum;
+        rejected_actor.*kRejectedFields[case_index] = kRejectedValues[case_index];
+        BattleData rejected_data{data_root, 4};
+        BattleSetup rejected_setup{rejected_data, rejected_ranger};
+        OL_CHECK(rejected_setup.valid());
+        rejected_setup.combatants()[0U].words[combatant_word::action_done] = 0;
+        const auto roles_before = rejected_ranger.roles;
+        const std::vector<BattleCombatant> combatants_before{
+            rejected_setup.combatants().begin(), rejected_setup.combatants().end()};
+        openlegend::random::LegacyRandom rejected_random{1U};
+        OL_CHECK(!rejected_setup.rest_actor(0U, rejected_random).has_value());
+        OL_CHECK(!rejected_setup.error().empty());
+        OL_CHECK(rejected_ranger.roles == roles_before);
+        OL_CHECK(std::ranges::equal(rejected_setup.combatants(), combatants_before));
+        OL_CHECK(rejected_random.state() == 1U);
+    }
 
     random.seed(1U);
     const auto invalid_actor = setup.rest_actor(
