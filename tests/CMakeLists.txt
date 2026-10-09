@@ -56,6 +56,11 @@ target_include_directories(openlegend_magic_progression_tests PRIVATE ${CMAKE_CU
 target_link_libraries(openlegend_magic_progression_tests PRIVATE openlegend_model openlegend_persistence)
 add_test(NAME openlegend.magic_progression COMMAND openlegend_magic_progression_tests)
 
+add_executable(openlegend_poison_tests unit/model/poison_test.cpp)
+target_include_directories(openlegend_poison_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_poison_tests PRIVATE openlegend_model)
+add_test(NAME openlegend.poison COMMAND openlegend_poison_tests)
+
 add_executable(openlegend_practice_tests unit/model/practice_test.cpp)
 target_include_directories(openlegend_practice_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_practice_tests PRIVATE openlegend_battle)
