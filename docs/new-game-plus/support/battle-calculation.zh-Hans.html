@@ -98,7 +98,7 @@
 目标hurt = min(本周HurtMax, 目标旧hurt + trunc(计算伤害 / 10))</pre>
 <p>计算伤害用于攻击计数及产伤，不能先按目标剩余HP截短。沿用原版严格边界：扣血后恰好0也死亡，但不触发这次额外击倒计数；严格低于0才增加10倍目标等级。本周HurtMax由实际CFG计算，见<a href="../fields/hurt-medicine.zh-Hans.html#hurt">内伤章</a>。</p>
 <h3>随后结算武功附毒</h3>
-<p>毒力使用角色实际武功带毒与武功带毒字段乘降档前熟练等级，除数15；统一按<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">上毒公式</a>计算最深、实际毒入、溢出与即时扣HP。附毒不再次应用攻防、距离或武功攻击威力倍率。溢出和每轮毒伤均可致死。</p>
+<p>毒力使用角色实际武功带毒与武功带毒字段乘降档前熟练等级，除数15；统一按<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">上毒公式</a>计算最深、实际毒入、溢出与即时扣HP。附毒不再次应用攻防、距离或武功攻击威力倍率。溢出和每轮毒伤均可致死。溢出伤血不额外增加内伤；当场伤血大于0时单独追加伤血飘字。</p>
 </section>
 <section id="mp-damage">
 <h2>内力型武功</h2>

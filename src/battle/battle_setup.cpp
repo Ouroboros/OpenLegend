@@ -2259,11 +2259,12 @@ std::optional<std::int16_t> BattleSetup::detox_targeting_range(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    return wrapping_i16(
-        static_cast<std::int32_t>(ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::detoxification)) /
-            15 +
-        1);
+    const auto ability = ranger_.roles[static_cast<std::size_t>(role_id)].detoxification;
+    const auto range = std::min<std::int64_t>(ability, 100) / 15 + 1;
+    if (range < std::numeric_limits<std::int16_t>::min()) {
+        return std::nullopt;
+    }
+    return static_cast<std::int16_t>(range);
 }
 
 std::optional<std::int16_t> BattleSetup::apply_detox_value(

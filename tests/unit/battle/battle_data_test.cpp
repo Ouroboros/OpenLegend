@@ -921,7 +921,7 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.valid());
     setup.combatants()[1U].words[combatant_word::side] =
         setup.combatants()[0U].words[combatant_word::side];
-    constexpr std::array<std::pair<std::int16_t, std::int16_t>, 9>
+    constexpr std::array<std::pair<std::int64_t, std::int16_t>, 14>
         kDetoxTargetingRanges{{
             {-32768, -2183},
             {-15, 0},
@@ -931,12 +931,26 @@ void run_detox_action_test(const openlegend::resource::DataRoot& data_root) {
             {15, 2},
             {89, 6},
             {90, 7},
-            {32767, 2185},
+            {100, 7},
+            {101, 7},
+            {300, 7},
+            {32767, 7},
+            {5'000'000'000, 7},
+            {std::numeric_limits<std::int64_t>::max(), 7},
         }};
-    for (const auto [detoxification, expected_range] : kDetoxTargetingRanges) {
-        actor.set_word(openlegend::model::role_word::detoxification, detoxification);
-        OL_CHECK(setup.detox_targeting_range(0U) == expected_range);
+    openlegend::model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    for (const auto playthrough : {1, 2, 999}) {
+        BattleSetup configured_setup{data, ranger, nullptr, configuration, playthrough};
+        OL_CHECK(configured_setup.valid());
+        for (const auto [detoxification, expected_range] : kDetoxTargetingRanges) {
+            actor.detoxification = detoxification;
+            OL_CHECK(configured_setup.detox_targeting_range(0U) == expected_range);
+            OL_CHECK(actor.detoxification == detoxification);
+        }
     }
+    actor.detoxification = std::numeric_limits<std::int64_t>::min();
+    OL_CHECK(!setup.detox_targeting_range(0U).has_value());
     actor.set_word(openlegend::model::role_word::detoxification, 80);
     OL_CHECK(setup.detox_targeting_range(0U) == 6);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::x] == 26);
