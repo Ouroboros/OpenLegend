@@ -31,6 +31,7 @@
           <td>恢复原版基线</td>
           <td>从当前原版角色定义读取。</td>
         </tr></tbody></table>
+<p id="scene-arithmetic">剧情声望增减使用受检signed64加法；成功后才按完整声望比较200门槛，并保留原十四本天书与书信ID检查，不读取库存数量。溢出时保留声望及事件状态、不推进当前指令。运行时负结果仍遵循原指令语义，持久化另检查非负域。实现记录见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

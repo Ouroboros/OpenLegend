@@ -384,7 +384,8 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     const std::int16_t item_id,
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
-    const std::int64_t original_maximum_hp) {
+    const std::int64_t original_maximum_hp,
+    const bool new_game_plus_enabled) {
     if (actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size() ||
@@ -394,7 +395,8 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     return apply_role_item_effect(
         ranger.roles[static_cast<std::size_t>(actor_role_id)],
         ranger.roles[static_cast<std::size_t>(target_role_id)],
-        ranger.items[static_cast<std::size_t>(item_id)], random, limits, original_maximum_hp);
+        ranger.items[static_cast<std::size_t>(item_id)], random, limits, original_maximum_hp,
+        new_game_plus_enabled);
 }
 
 std::optional<BattleItemEffectResult> apply_role_item_effect(
@@ -403,7 +405,8 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     const model::ItemRecord& item,
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
-    const std::int64_t original_maximum_hp) {
+    const std::int64_t original_maximum_hp,
+    const bool new_game_plus_enabled) {
     if (original_maximum_hp <= 0 || limits.hurt_maximum < 0 || limits.hurt_ratio_denominator < 0) {
         return std::nullopt;
     }
@@ -576,7 +579,9 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         const auto delta = item.word(model::item_word::add_attack + index);
         const auto role_word_index = model::role_word::attack + index;
         const auto changed = model::checked_add(target.word(role_word_index), delta);
-        if (!changed.has_value()) {
+        if (!changed.has_value() ||
+            (new_game_plus_enabled && role_word_index == model::role_word::speed &&
+             (*changed < 0 || *changed > 100))) {
             return std::nullopt;
         }
         target.set_word(role_word_index, *changed);
@@ -614,6 +619,7 @@ BattleSetup::BattleSetup(
     : data_(data),
       ranger_(ranger),
       playthrough_(playthrough),
+      new_game_plus_enabled_(configuration.enabled),
       legacy_hp_cost_scale_(legacy_hp_cost_scale) {
     const auto limits = model::calculate_playthrough_limits(configuration, playthrough);
     if (!limits.has_value() || (!configuration.enabled && playthrough != 1)) {
@@ -1080,6 +1086,7 @@ std::optional<BattleLevelUpResult> BattleSetup::apply_battle_level_up(
         error_ = "battle level hidden weapon growth overflow or invalid result";
         return std::nullopt;
     }
+    candidate.speed = std::min(candidate.speed, std::int64_t{100});
     candidate.level = *new_level;
     candidate.hp = candidate.maximum_hp;
     candidate.mp = candidate.maximum_mp;
@@ -1163,7 +1170,9 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
             error_ = "battle practice ability growth overflow";
             return std::nullopt;
         }
-        role.set_word(role_word, std::max<std::int64_t>(*changed, 0));
+        role.set_word(role_word, role_word == model::role_word::speed
+            ? std::clamp(*changed, std::int64_t{0}, std::int64_t{100})
+            : std::max<std::int64_t>(*changed, 0));
     }
     if (role.attack_twice == 0) {
         role.attack_twice = item.word(model::item_word::add_attack_twice);
@@ -3236,7 +3245,7 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
     const auto previous_random = random;
     auto result = openlegend::battle::apply_role_item_effect(
         *actor, *target, ranger_.items[static_cast<std::size_t>(*item_id)], random, limits_,
-        data_.original_maximum_hp());
+        data_.original_maximum_hp(), new_game_plus_enabled_);
     if (!result.has_value()) {
         error_ = "battle item effect is invalid or overflows";
         return std::nullopt;

@@ -186,7 +186,7 @@ target_link_libraries(
     openlegend_scene_tests
     PRIVATE openlegend_persistence openlegend_resource openlegend_scene
 )
-add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 50)
+add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 53)
 
 add_executable(openlegend_battle_tests unit/battle/battle_data_test.cpp)
 target_compile_definitions(
@@ -195,7 +195,7 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
-add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 53)
+add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 54)
 
 add_executable(openlegend_battle_enemy_roles_tests unit/battle/enemy_roles_test.cpp)
 target_include_directories(openlegend_battle_enemy_roles_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)

@@ -135,12 +135,16 @@ NODISCARD std::int16_t wrapping_add(
         bits < 0x8000U ? static_cast<int>(bits) : static_cast<int>(bits) - 0x10000);
 }
 
-NODISCARD std::int16_t clamped_add(
-    const std::int16_t value,
-    const std::int16_t delta,
-    const std::int16_t minimum,
-    const std::int16_t maximum) noexcept {
-    return std::clamp(wrapping_add(value, delta), minimum, maximum);
+NODISCARD std::optional<std::int64_t> clamped_add(
+    const std::int64_t value,
+    const std::int64_t delta,
+    const std::int64_t minimum,
+    const std::int64_t maximum) noexcept {
+    const auto sum = model::checked_add(value, delta);
+    if (!sum.has_value()) {
+        return std::nullopt;
+    }
+    return std::clamp(*sum, minimum, maximum);
 }
 
 NODISCARD bool restore_framebuffer(
@@ -1455,7 +1459,12 @@ SceneStepResult SceneSession::run_event() {
                     }
                     after = std::max(*increased, std::int64_t{0});
                 } else {
-                    after = clamped_add(before, argument(2), 0, 100);
+                    const auto increased = clamped_add(before, argument(2), 0, 100);
+                    if (!increased.has_value()) {
+                        error_ = "scene fixed attribute increase overflows";
+                        return current_result(SceneStepKind::stay);
+                    }
+                    after = *increased;
                 }
                 const auto gain = model::checked_subtract(after, before);
                 if (!gain.has_value()) {
@@ -1557,7 +1566,12 @@ SceneStepResult SceneSession::run_event() {
         case 37:
             if (!snapshot_.ranger.roles.empty()) {
                 auto& role = snapshot_.ranger.roles[0];
-                role.set_word(model::role_word::morality, clamped_add(role.word(model::role_word::morality), argument(1), 0, 100));
+                const auto morality = clamped_add(role.morality, argument(1), 0, 100);
+                if (!morality.has_value()) {
+                    error_ = "scene morality change overflows";
+                    return current_result(SceneStepKind::stay);
+                }
+                role.morality = *morality;
             }
             program_counter_ += 2;
             break;
@@ -1587,7 +1601,9 @@ SceneStepResult SceneSession::run_event() {
             program_counter_ += 2;
             break;
         case 41:
-            add_role_item(argument(1), argument(2), argument(3));
+            if (!add_role_item(argument(1), argument(2), argument(3))) {
+                return current_result(SceneStepKind::stay);
+            }
             program_counter_ += 4;
             break;
         case 42: {
@@ -1670,9 +1686,12 @@ SceneStepResult SceneSession::run_event() {
         case 56:
             if (!snapshot_.ranger.roles.empty()) {
                 auto& role = snapshot_.ranger.roles[0];
-                role.set_word(
-                    model::role_word::fame,
-                    wrapping_add(role.word(model::role_word::fame), argument(1)));
+                const auto fame = model::checked_add(role.fame, argument(1));
+                if (!fame.has_value()) {
+                    error_ = "scene fame change overflows";
+                    return current_result(SceneStepKind::stay);
+                }
+                role.fame = *fame;
                 update_book_event_if_ready();
             }
             program_counter_ += 2;
@@ -2424,12 +2443,12 @@ std::optional<SceneStepResult> SceneSession::advance_join_role_items() {
     return std::nullopt;
 }
 
-void SceneSession::add_role_item(
+bool SceneSession::add_role_item(
     const std::int16_t role_id,
     const std::int16_t item_id,
     const std::int16_t count) {
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= snapshot_.ranger.roles.size()) {
-        return;
+        return true;
     }
     auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
     int slot = -1;
@@ -2448,17 +2467,20 @@ void SceneSession::add_role_item(
         }
     }
     if (slot < 0) {
-        return;
+        return true;
     }
     const auto index = static_cast<std::size_t>(slot);
     const auto existing = role.word(model::role_word::taking_item_begin + index) == item_id;
-    role.set_word(model::role_word::taking_item_begin + index, item_id);
-    role.set_word(
-        model::role_word::taking_item_count_begin + index,
-        existing
-            ? wrapping_add(
-                  role.word(model::role_word::taking_item_count_begin + index), count)
-            : count);
+    const auto quantity = existing
+        ? model::checked_add(role.taking_counts[index], count)
+        : std::optional<std::int64_t>{count};
+    if (!quantity.has_value()) {
+        error_ = "scene carried item quantity overflows";
+        return false;
+    }
+    role.taking_items[index] = model::ItemId{item_id};
+    role.taking_counts[index] = *quantity;
+    return true;
 }
 
 void SceneSession::queue_dialogue(

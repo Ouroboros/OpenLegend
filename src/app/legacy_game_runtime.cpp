@@ -3416,7 +3416,7 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         }
         auto effect = battle::apply_role_item_effect(
             *ranger, role_id, role_id, item_id, random_, *limits,
-            startup_resources_.original_maximum_hp());
+            startup_resources_.original_maximum_hp(), snapshot->configuration.enabled);
         if (!effect.has_value()) {
             clear_pending();
             game_menu_.show_main();

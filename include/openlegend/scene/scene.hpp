@@ -581,7 +581,7 @@ private:
 
     NODISCARD std::optional<SceneStepResult> advance_join_role_items();
 
-    void add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
+    NODISCARD bool add_role_item(std::int16_t role_id, std::int16_t item_id, std::int16_t count);
 
     void queue_dialogue(std::int16_t talk_id, std::int16_t head_id, std::int16_t style);
 

@@ -150,7 +150,8 @@ NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     std::int16_t item_id,
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
-    std::int64_t original_maximum_hp);
+    std::int64_t original_maximum_hp,
+    bool new_game_plus_enabled);
 
 NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     const model::RoleState& actor,
@@ -158,7 +159,8 @@ NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     const model::ItemRecord& item,
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
-    std::int64_t original_maximum_hp);
+    std::int64_t original_maximum_hp,
+    bool new_game_plus_enabled);
 
 struct BattleRestResult {
     std::int64_t physical_power{};
@@ -1248,6 +1250,7 @@ private:
     model::RuntimeRangerState& ranger_;
     std::vector<std::optional<model::RoleState>> enemy_roles_;
     std::int64_t playthrough_{1};
+    bool new_game_plus_enabled_{};
     model::PlaythroughLimits limits_{};
     std::optional<model::MagicProgression> magic_progression_;
     std::array<BattleCombatant, kBattleCombatantCount> combatants_{};

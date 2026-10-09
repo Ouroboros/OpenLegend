@@ -31,6 +31,7 @@
           <td>恢复原版基线</td>
           <td>从当前原版角色定义读取。</td>
         </tr></tbody></table>
+<p id="scene-arithmetic">剧情道德增减先检查signed64加法，再保留原0～100限制和无提示行为；溢出时不写角色或推进当前指令，不发生16位回绕。实现记录见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
 </section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、

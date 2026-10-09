@@ -305,6 +305,7 @@ d_compressed_base64                = string                               # 完�
         <p>不能只把角色字段扩宽，却把<code>poison_delta</code>、伤害值或写回前中间量保留为16位。</p>
         <p>每步运算在溢出前检查signed 64位边界，并按该字段独立的游戏规则检查合法域；不得在运行期用<code>wrapping_i16</code>、隐式窄化或Legacy记录的<code>word</code>读写作为这些数值的权威结算。</p>
         <p>旧机器的16位回绕只作为原版事实保留，不是本设计的数值存储策略。</p>
+        <p id="scene-carried-arithmetic">剧情携带物数量用受检signed64增减，保留原首个同ID槽、首个−1空槽、满槽无动作和不删除零／负数量槽的执行语义；溢出时ID与数量均不提交。运行指令可留下的负数量或空ID非零数量不等于可保存状态，保存仍按非负数量、空槽−1／0与引用有效性检查。实现记录见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
       </li>
       <li>
         <p><strong>经验链路：</strong>人物累计经验<code>experience</code>、当前秘笈修炼经验<code>item_experience</code>和制作物品经验

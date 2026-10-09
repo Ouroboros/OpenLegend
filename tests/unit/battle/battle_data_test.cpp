@@ -3028,7 +3028,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(role.word(role_word::maximum_hp) == 32803);
         OL_CHECK(role.word(role_word::maximum_mp) == 32779);
         OL_CHECK(role.word(role_word::attack) == 106);
-        OL_CHECK(role.word(role_word::speed) == 32773);
+        OL_CHECK(role.word(role_word::speed) == 100);
         OL_CHECK(role.word(role_word::defence) == 32774);
         OL_CHECK(role.word(role_word::medicine) == 20);
         OL_CHECK(role.word(role_word::use_poison) == 22);
@@ -13609,7 +13609,7 @@ void run_ngplus_item_effect_test(const openlegend::resource::DataRoot& data_root
             random::LegacyRandom random{1U};
             const auto result = mode == 0 ? setup.apply_player_item_effect(0U, 0U, random)
                 : mode == 3 ? apply_role_item_effect(
-                    ranger, 1, 1, 19, random, limits, data.original_maximum_hp())
+                    ranger, 1, 1, 19, random, limits, data.original_maximum_hp(), true)
                 : setup.apply_ai_item_effect(0U, choice, random);
             OL_CHECK(result.has_value());
             if (!result.has_value()) {
@@ -13715,18 +13715,18 @@ void run_ngplus_item_effect_test(const openlegend::resource::DataRoot& data_root
     role.hurt = 0;
     item.set_word(model::item_word::add_hp, 100);
     random::LegacyRandom random{1U};
-    const auto alternative = apply_role_item_effect(ranger, 1, 1, 19, random, limits, 333);
+    const auto alternative = apply_role_item_effect(ranger, 1, 1, 19, random, limits, 333, true);
     OL_CHECK(alternative.has_value());
     OL_CHECK(role.hp == 424);
     const auto old_role = role;
     const auto old_random = random.state();
-    OL_CHECK(!apply_role_item_effect(ranger, 1, 1, 19, random, limits, 0).has_value());
+    OL_CHECK(!apply_role_item_effect(ranger, 1, 1, 19, random, limits, 0, true).has_value());
     OL_CHECK(role == old_role);
     OL_CHECK(random.state() == old_random);
     role.hurt = 0;
     random.seed(1U);
     const auto zero_hurt = apply_role_item_effect(
-        ranger, 1, 1, 19, random, model::PlaythroughLimits{0, 0, 100}, 999);
+        ranger, 1, 1, 19, random, model::PlaythroughLimits{0, 0, 100}, 999, true);
     OL_CHECK(zero_hurt.has_value());
     OL_CHECK(role.hp == 532);
     OL_CHECK(role.hurt == 0);
@@ -13743,14 +13743,16 @@ void run_ngplus_item_effect_test(const openlegend::resource::DataRoot& data_root
         role.set_word(model::role_word::attack + index, 5'000'000'000'000);
         item.set_word(model::item_word::add_attack + index, 20);
     }
-    const auto growth = apply_role_item_effect(ranger, 1, 1, 19, random, limits, 999);
+    role.speed = 80;
+    const auto growth = apply_role_item_effect(ranger, 1, 1, 19, random, limits, 999, true);
     OL_CHECK(growth.has_value());
     OL_CHECK(role.maximum_hp == 5'000'000'000'050);
     OL_CHECK(role.maximum_mp == 5'000'000'000'050);
     OL_CHECK(role.mp == 4'000'000'000'200);
     OL_CHECK(role.physical_power == 100);
     for (std::size_t index = 0; index < 13U; ++index) {
-        OL_CHECK(role.word(model::role_word::attack + index) == 5'000'000'000'020);
+        const auto field = model::role_word::attack + index;
+        OL_CHECK(role.word(field) == (field == model::role_word::speed ? 100 : 5'000'000'000'020));
     }
     for (const auto source : {BattleAiItemSource::inventory, BattleAiItemSource::carried}) {
         role.hp = 100;
@@ -14388,6 +14390,149 @@ void run_shared_menu_item_helper_check(const openlegend::resource::DataRoot&) {
     run_shared_menu_item_helper_test();
 }
 
+void run_ngplus_speed_domain_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    constexpr std::int64_t wide = 5'000'000'000'000;
+    struct SpeedCase {
+        std::int64_t before;
+        std::int16_t delta;
+        std::optional<std::int64_t> after;
+    };
+    constexpr std::array<SpeedCase, 8> cases{{
+        {95, 5, 100}, {100, 1, 101}, {0, -1, -1}, {0, 0, 0},
+        {wide, 1, wide + 1}, {maximum - 1, 1, maximum},
+        {maximum, 1, std::nullopt}, {minimum, -1, std::nullopt},
+    }};
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+    for (const auto enabled : {false, true}) {
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = enabled;
+        for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+            if (!enabled && playthrough != 1) {
+                continue;
+            }
+            const auto limits = model::calculate_playthrough_limits(configuration, playthrough).value();
+            for (const auto& test : cases) {
+                for (const auto mode : {0, 1, 2, 3}) {
+                    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                    auto& role = ranger.roles[1U];
+                    role.speed = test.before;
+                    role.hp = 100;
+                    role.maximum_hp = 999;
+                    role.hurt = 0;
+                    role.attack = 300;
+                    role.taking_items[0U] = model::ItemId{19};
+                    role.taking_counts[0U] = 2;
+                    ranger.header.set_inventory(0U, model::ItemId{19}, 2);
+                    auto& item = ranger.items[19U];
+                    item = {};
+                    item.set_word(model::item_word::item_type, 3);
+                    item.set_word(model::item_word::add_hp, 100);
+                    item.set_word(model::item_word::add_attack, 10);
+                    item.set_word(model::item_word::add_speed, test.delta);
+                    BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                    OL_CHECK(setup.valid());
+                    setup.combatants()[0U].words[combatant_word::side] = mode == 2 ? 1 : 0;
+                    const auto roles_before = ranger.roles;
+                    const auto header_before = ranger.header;
+                    const auto combatant_before = setup.combatants()[0U];
+                    const BattleAiChoice choice{
+                        .action = BattleAiAction::item, .target_slot = 0,
+                        .item_source = mode == 2 ? BattleAiItemSource::carried : BattleAiItemSource::inventory,
+                        .item_slot = 0};
+                    random::LegacyRandom random{1U};
+                    const auto result = mode == 0 ? setup.apply_player_item_effect(0U, 0U, random)
+                        : mode == 3 ? apply_role_item_effect(
+                            ranger, 1, 1, 19, random, limits, data.original_maximum_hp(), enabled)
+                        : setup.apply_ai_item_effect(0U, choice, random);
+                    const auto accepted = test.after.has_value() &&
+                        (!enabled || (*test.after >= 0 && *test.after <= 100));
+                    OL_CHECK(result.has_value() == accepted);
+                    if (!accepted) {
+                        OL_CHECK(ranger.roles == roles_before);
+                        OL_CHECK(ranger.header == header_before);
+                        OL_CHECK(setup.combatants()[0U] == combatant_before);
+                        OL_CHECK(random.state() == 1U);
+                    } else {
+                        OL_CHECK(role.speed == *test.after);
+                        OL_CHECK(role.hp == 208);
+                        OL_CHECK(role.attack == 310);
+                        OL_CHECK(random.state() == 1'103'527'590U);
+                        OL_CHECK(ranger.header.inventory_count(0U) == (mode == 1 ? 1 : 2));
+                        OL_CHECK(role.taking_counts[0U] == (mode == 2 ? 1 : 2));
+                    }
+                }
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& role = ranger.roles[1U];
+                role.iq = 0;
+                role.speed = test.before;
+                role.attack = 100;
+                role.practice_item = model::ItemId{0};
+                role.item_experience = 14;
+                auto& item = ranger.items[0U];
+                item = {};
+                item.set_word(model::item_word::item_type, 2);
+                item.set_word(model::item_word::magic_id, -1);
+                item.set_word(model::item_word::need_experience, 1);
+                item.set_word(model::item_word::add_attack, 5);
+                item.set_word(model::item_word::add_speed, test.delta);
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto before = ranger.roles;
+                const auto result = setup.apply_battle_practice(1U, true);
+                OL_CHECK(result.has_value() == test.after.has_value());
+                if (test.after.has_value() && result.has_value()) {
+                    OL_CHECK(result->practiced);
+                    OL_CHECK(role.speed == std::clamp(*test.after, std::int64_t{0}, std::int64_t{100}));
+                    OL_CHECK(role.attack == 105);
+                    OL_CHECK(role.item_experience == 0);
+                    OL_CHECK(role.no_magic_count[0U] == 1);
+                } else {
+                    OL_CHECK(ranger.roles == before);
+                }
+            }
+            for (const auto speed : std::array<std::int64_t, 5>{0, 99, 100, maximum - 1, maximum}) {
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& role = ranger.roles[1U];
+                role.iq = 0;
+                role.level = 1;
+                role.experience = 50;
+                role.speed = speed;
+                role.attack = 100;
+                role.defence = 100;
+                role.medicine = 0;
+                role.use_poison = 0;
+                role.detoxification = 0;
+                role.fist = 0;
+                role.sword = 0;
+                role.knife = 0;
+                role.hidden_weapon = 0;
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto before = ranger.roles;
+                random::LegacyRandom random{1U};
+                const auto result = setup.apply_battle_level_up(1U, true, random);
+                OL_CHECK(result.has_value() == (speed != maximum));
+                if (speed == maximum) {
+                    OL_CHECK(ranger.roles == before);
+                    OL_CHECK(random.state() == 1U);
+                } else if (result.has_value()) {
+                    OL_CHECK(result->changed);
+                    OL_CHECK(result->growth_roll == 1);
+                    OL_CHECK(role.level == 2);
+                    OL_CHECK(role.speed == (speed == 0 ? 1 : 100));
+                    OL_CHECK(role.attack == 101 && role.defence == 101);
+                    OL_CHECK(random.state() == 662'824'084U);
+                }
+            }
+        }
+    }
+}
+
 using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
 
 [[gnu::noinline]] void run_battle_check(
@@ -14403,7 +14548,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 53> checks{
+    const std::array<BattleCheck, 54> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14457,6 +14602,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_round_value_test,
         run_ngplus_equipment_test,
         run_ngplus_ai_arithmetic_test,
+        run_ngplus_speed_domain_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

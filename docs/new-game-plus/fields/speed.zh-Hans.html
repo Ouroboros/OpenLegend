@@ -33,6 +33,7 @@
         </tr></tbody></table>
 <h3>固定范围（非逐周目上限）</h3>
 <pre>速度固定域：0～100  # 与n无关；不对跨周目继承作clamp</pre>
+<p id="speed-writes">剧情、升级与秘笈增长保留原轻功固定范围，先用signed64检查中间量，再限制到0～100；溢出不能被后续限制掩盖。启用NG+后，普通物品的轻功结果越出0～100时拒绝整次效果并保留角色、随机状态和物品；菜单、玩家与AI共用这一检查。关闭NG+时保留原版物品能力可超过100的行为。保存与导入的轻功上界检查只在启用NG+时生效，越界拒绝而不改值；Legacy输出另按原字段16位表示范围验证。</p>
 <p>装备<code>add_speed</code>另计，不乘周目数、不回写角色<code>speed</code>；装备后的生效速度不夹到100。详见<a href="equipment.zh-Hans.html#equipment-effective-attributes">装备生效属性规则</a>。</p>
 <p>当前战斗已按受检signed64求和得到生效速度，用于排序及<a href="hurt-medicine.zh-Hans.html#hurt-cap-impact-audit">轮首行动值</a>。排序保留原跨槽严格比较与交换顺序，速度计算失败时不交换参战者或改写占位；不会把生效速度回写为角色轻功。实现与验收记录见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
 </section>

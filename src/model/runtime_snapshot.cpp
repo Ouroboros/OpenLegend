@@ -64,7 +64,7 @@ NODISCARD bool header_valid(const RuntimeRangerState& ranger) noexcept {
 
 NODISCARD bool role_values_valid(
     const RoleState& role, const std::int64_t hurt_maximum,
-    const std::int64_t poison_maximum) noexcept {
+    const std::int64_t poison_maximum, const bool new_game_plus_enabled) noexcept {
     constexpr auto nonnegative_fields = std::array{
         &RoleState::experience, &RoleState::hp, &RoleState::maximum_hp,
         &RoleState::hurt, &RoleState::poison, &RoleState::physical_power,
@@ -86,6 +86,7 @@ NODISCARD bool role_values_valid(
         role.mp_type >= 0 && role.mp_type <= 2 &&
         role.attack_twice >= 0 && role.attack_twice <= 1 &&
         role.physical_power <= 100 && role.iq >= 0 && role.iq <= 100 &&
+        (!new_game_plus_enabled || role.speed <= 100) &&
         role.hp <= role.maximum_hp && role.mp <= role.maximum_mp &&
         role.hurt <= hurt_maximum && role.poison <= poison_maximum &&
         std::ranges::all_of(role.magic_levels, [](const auto value) { return value >= 0; }) &&
@@ -158,7 +159,7 @@ NODISCARD bool definitions_match_except_word(
 
 NODISCARD bool persistent_values_valid(
     const RuntimeRangerState& ranger, const PlaythroughLimits& limits,
-    const std::int64_t poison_maximum) noexcept {
+    const bool new_game_plus_enabled) noexcept {
     if (!header_valid(ranger)) {
         return false;
     }
@@ -173,7 +174,8 @@ NODISCARD bool persistent_values_valid(
             return false;
         }();
         if ((role.ever_joined || in_party) &&
-            (!role_values_valid(role, limits.hurt_maximum, poison_maximum) ||
+            (!role_values_valid(role, limits.hurt_maximum,
+                                new_game_plus_enabled ? 99 : 100, new_game_plus_enabled) ||
              !role_references_valid(role, ranger))) {
             return false;
         }
@@ -378,7 +380,7 @@ bool RuntimeGameSnapshot::valid_for_persistence() const {
     }
     const auto limits = calculate_playthrough_limits(configuration, playthrough);
     return limits.has_value() && persistent_values_valid(
-        ranger, *limits, configuration.enabled ? 99 : 100);
+        ranger, *limits, configuration.enabled);
 }
 
 std::optional<RuntimeRangerState> decode_legacy_ranger(RangerState ranger) {

@@ -231,6 +231,34 @@ void check_numeric_domains_and_references() {
     wide.configuration.enabled = true;
     wide.origin = model::SnapshotOrigin::new_game_plus;
     wide.playthrough = 2;
+    for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+        wide.playthrough = playthrough;
+        for (const auto speed : std::array<std::int64_t, 6>{
+                 -1, 0, 100, 101, 5'000'000'000, std::numeric_limits<std::int64_t>::max()}) {
+            wide.ranger.roles[0].speed = speed;
+            OL_CHECK(wide.valid());
+            const auto speed_valid = speed >= 0 && speed <= 100;
+            OL_CHECK(wide.valid_for_persistence() == speed_valid);
+            if (!speed_valid) {
+                reject(wide);
+            }
+        }
+    }
+    for (const auto speed : std::array<std::int64_t, 2>{101, 32767}) {
+        auto legacy = *baseline;
+        legacy.ranger.roles[0].speed = speed;
+        OL_CHECK(legacy.valid_for_persistence());
+        const auto encoded = model::encode_legacy_snapshot(legacy);
+        OL_CHECK(encoded.has_value());
+        if (encoded.has_value()) {
+            OL_CHECK(model::decode_legacy_snapshot(*encoded) == legacy);
+            model::NewGamePlusConfiguration configuration;
+            configuration.enabled = true;
+            OL_CHECK(!model::decode_legacy_snapshot(*encoded, configuration).has_value());
+        }
+    }
+    wide.playthrough = 2;
+    wide.ranger.roles[0].speed = 100;
     wide.ranger.roles[0].attack = 5'000'000'000;
     wide.ranger.roles[0].knowledge = 6'000'000'000;
     wide.ranger.roles[0].hurt = 199;

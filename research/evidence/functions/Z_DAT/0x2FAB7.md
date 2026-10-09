@@ -1,6 +1,12 @@
 # 函数证据：`sub_2FAB7` `0x2FAB7..0x2FBC0`
 
-状态：`platform_adapted`；最终 REVIEW：`converged_no_new_differences`
+历史原版对照状态：`platform_adapted / converged_no_new_differences`。后文编号章节保留历史机器与测试结论；当前数值差异如下。
+
+## 当前NG+轻功加算
+
+- 当前265字节与下述raw SHA256一致，67条完整指令已复核；重新线性解码1,018个KDEF脚本仍有3处opcode45，增量为20／30。
+- 依据[轻功固定域](../../../../docs/new-game-plus/fields/speed.zh-Hans.html#speed-writes)，现代加法和实际提示差值均检查signed64，再保留0～100限制及正增长提示。溢出保留角色、RNG和当前PC，不用限幅掩盖溢出。
+- 保存与导入启用NG+时拒绝超100轻功；关闭NG+保留原物品可超过100的状态，Legacy仍按原16位编码边界检查。新测试覆盖NG1／2／999、两端溢出、提示及非法导入保旧状态；当前回归结果见[实现清单](../../../../docs/new-game-plus/implementation-tasks.zh-Hans.md)。原Golden与生成器保持；动态oracle仍不可用。
 
 来源：当前 `Z.DAT` 机器码与原始文件字节；headless IDA完整导出；当前 `KDEF.IDX/GRP`、`RANGER.GRP`；`research/ida/reports/Z_DAT.b7_scene_xrefs.txt`。
 
