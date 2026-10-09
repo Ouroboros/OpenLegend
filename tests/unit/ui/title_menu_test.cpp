@@ -3389,6 +3389,36 @@ void check_battle_party_selection_input_timing(
     game.finish_presented_tick();
     OL_CHECK(game.take_clear_battle_confirmation_states_request());
     OL_CHECK(session->phase() == BattleSessionPhase::initial_fade_to_black);
+    auto* snapshot = game_state.snapshot();
+    OL_CHECK(snapshot != nullptr);
+    if (snapshot == nullptr) {
+        return;
+    }
+    snapshot->configuration.enabled = true;
+    snapshot->origin = model::SnapshotOrigin::new_game_plus;
+    ranger->roles[3U].hp = ranger->roles[3U].maximum_hp = 5'000'000'000'000;
+    ranger->roles[3U].attack = 4'000'000'000'000;
+    ranger->roles[3U].ever_joined = true;
+    const auto inherited = ranger->roles[3U];
+    for (const std::int64_t playthrough : {2, 999}) {
+        snapshot->playthrough = playthrough;
+        OL_CHECK(LegacyGameRuntimeTestAccess::begin_battle_in_scene(game, 4));
+        session = LegacyGameRuntimeTestAccess::battle_session(game);
+        OL_CHECK(session != nullptr);
+        if (session == nullptr) {
+            return;
+        }
+        const auto* enemy = session->setup().combatant_role(1U);
+        OL_CHECK(enemy != nullptr && enemy != &ranger->roles[3U]);
+        if (enemy == nullptr) {
+            return;
+        }
+        const auto& source = baseline.snapshot->ranger.roles[3U];
+        OL_CHECK(enemy->hp == source.word(model::role_word::hp));
+        OL_CHECK(enemy->maximum_hp == source.word(model::role_word::maximum_hp) + (playthrough - 1) * 999);
+        OL_CHECK(enemy->attack == source.word(model::role_word::attack) + (playthrough - 1) * 100);
+        OL_CHECK(ranger->roles[3U] == inherited);
+    }
 }
 
 void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
@@ -3428,6 +3458,12 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     ranger->roles[3U].set_word(model::role_word::hp, 0);
     ranger->roles[3U].set_word(model::role_word::maximum_hp, 100);
     ranger->roles[3U].set_word(model::role_word::speed, 0);
+    const auto inherited_enemy = ranger->roles[3U];
+    const auto enemy_baseline = persistence::load_baseline_ranger(output_root);
+    OL_CHECK(static_cast<bool>(enemy_baseline));
+    if (!enemy_baseline) {
+        return;
+    }
     const auto scene_music = std::max<std::int16_t>(
         ranger->scenes[70U].word(model::scene_metadata_word::entrance_music), 0);
     static_cast<void>(game.take_scene_audio_commands());
@@ -3457,6 +3493,20 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(session != nullptr && !session->grants_experience());
     OL_CHECK(session != nullptr &&
              session->phase() == BattleSessionPhase::initial_fade_to_black);
+    if (session == nullptr) {
+        return;
+    }
+    auto* enemy = session->setup().combatant_role(1U);
+    OL_CHECK(enemy != nullptr && enemy != &ranger->roles[3U]);
+    if (enemy == nullptr) {
+        return;
+    }
+    OL_CHECK(enemy->id.value == 3);
+    OL_CHECK(enemy->hp == enemy_baseline.ranger->roles[3U].word(model::role_word::hp));
+    OL_CHECK(enemy->maximum_hp == enemy_baseline.ranger->roles[3U].word(model::role_word::maximum_hp));
+    enemy->hp = 0;
+    enemy->maximum_hp = 100;
+    enemy->speed = 0;
     OL_CHECK((game.take_scene_audio_commands() ==
               std::vector<scene::SceneAudioCommand>{
                   {scene::SceneAudioCommand::Kind::prepare_music, 7, false}}));
@@ -3602,6 +3652,7 @@ void check_battle_runtime_transitions(const std::filesystem::path& data_root) {
     OL_CHECK(LegacyGameRuntimeTestAccess::battle_session(game) == nullptr);
     OL_CHECK((game.take_scene_audio_commands() == std::vector<scene::SceneAudioCommand>{
         {scene::SceneAudioCommand::Kind::transition_music, scene_music, false}}));
+    OL_CHECK(ranger->roles[3U] == inherited_enemy);
 }
 
 void check_scene_load_runtime(const std::filesystem::path& data_root) {

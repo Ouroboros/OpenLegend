@@ -2443,7 +2443,8 @@ bool LegacyGameRuntime::start_battle(
         &legacy_battle_hp_cost_scale_,
         &legacy_battle_magic_slot_,
         snapshot->configuration,
-        snapshot->playthrough);
+        snapshot->playthrough,
+        &startup_resources_.ranger());
     if (!battle_session_->valid()) {
         show_error(battle_session_->error(), LegacyGameView::scene);
         battle_session_.reset();

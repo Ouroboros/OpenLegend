@@ -165,7 +165,8 @@ public:
         std::int64_t* legacy_hp_cost_scale = nullptr,
         std::int16_t* legacy_magic_slot = nullptr,
         const model::NewGamePlusConfiguration& configuration = {},
-        std::int64_t playthrough = 1);
+        std::int64_t playthrough = 1,
+        const model::RangerState* enemy_baseline = nullptr);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 

@@ -193,11 +193,12 @@ BattleSession::BattleSession(
     std::int64_t* const legacy_hp_cost_scale,
     std::int16_t* const legacy_magic_slot,
     const model::NewGamePlusConfiguration& configuration,
-    const std::int64_t playthrough)
+    const std::int64_t playthrough,
+    const model::RangerState* const enemy_baseline)
     : ranger_(ranger),
       random_(random),
       data_(data_root, battle_id),
-      setup_(data_, ranger_, legacy_hp_cost_scale, configuration, playthrough),
+      setup_(data_, ranger_, legacy_hp_cost_scale, configuration, playthrough, enemy_baseline),
       pathing_(data_),
       renderer_(data_root, data_.battlefield_id()),
       render_state_(initial_render_state),
@@ -3490,7 +3491,12 @@ bool BattleSession::commit_player_attack_iteration() {
         error_ = "battle player attack level role is outside ranger records";
         return false;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto* stored_role = setup_.combatant_role(current_actor_slot_);
+    if (stored_role == nullptr) {
+        error_ = "battle attack level role is outside combatant records";
+        return false;
+    }
+    const auto& role = *stored_role;
     const auto magic_id = role.word(
         model::role_word::magic_id_begin + static_cast<std::size_t>(selected_magic_slot_));
     if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
@@ -3627,9 +3633,13 @@ bool BattleSession::rebuild_player_menu_after_movement() {
         error_ = "battle player movement role id is outside RANGER records";
         return false;
     }
+    const auto* role = setup_.combatant_role(current_actor_slot_);
+    if (role == nullptr) {
+        error_ = "battle player movement role is outside combatant records";
+        return false;
+    }
     const auto new_movement = static_cast<std::int16_t>(
-        ranger_.roles[static_cast<std::size_t>(role_id)]
-                .word(model::role_word::physical_power) > 5 &&
+        role->physical_power > 5 &&
             setup_.combatants()[current_actor_slot_].round_value > 0 ? 1 : 0);
     player_action_menu_.available[0U] = new_movement;
     if (new_movement == 0) {
@@ -4254,7 +4264,11 @@ bool BattleSession::render_player_magic_selection(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return false;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto* stored_role = setup_.combatant_role(current_actor_slot_);
+    if (stored_role == nullptr) {
+        return false;
+    }
+    const auto& role = *stored_role;
     const auto draw_magic_name = [this, &framebuffer, &role](
                                      const std::int16_t magic_slot,
                                      const int y,

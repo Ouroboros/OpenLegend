@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "openlegend/model/checked_arithmetic.hpp"
+#include "openlegend/model/enemy_growth.hpp"
 #include "openlegend/model/experience.hpp"
 #include "openlegend/model/hurt.hpp"
 #include "openlegend/model/magic_progression.hpp"
@@ -157,8 +158,15 @@ std::optional<std::int16_t> apply_role_detox_value(
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
+    return apply_role_detox_value(
+        ranger.roles[static_cast<std::size_t>(actor_role_id)],
+        ranger.roles[static_cast<std::size_t>(target_role_id)], random);
+}
+
+std::optional<std::int16_t> apply_role_detox_value(
+    const model::RoleState& actor,
+    model::RoleState& target,
+    random::LegacyRandom& random) {
     const auto amount = model::detoxification_amount(
         actor.detoxification, target.poison, random);
     if (!amount.has_value()) {
@@ -179,8 +187,16 @@ std::optional<std::int64_t> apply_role_medicine_value(
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size()) {
         return std::nullopt;
     }
-    auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger.roles[static_cast<std::size_t>(target_role_id)];
+    return apply_role_medicine_value(
+        ranger.roles[static_cast<std::size_t>(actor_role_id)],
+        ranger.roles[static_cast<std::size_t>(target_role_id)], random, limits);
+}
+
+std::optional<std::int64_t> apply_role_medicine_value(
+    model::RoleState& actor,
+    model::RoleState& target,
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits) {
     if (actor.physical_power < 50) {
         return 0;
     }
@@ -369,16 +385,29 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
     const std::int64_t original_maximum_hp) {
-    if (original_maximum_hp <= 0 || limits.hurt_maximum < 0 ||
-        limits.hurt_ratio_denominator < 0 || actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
+    if (actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(item_id) >= ranger.items.size()) {
         return std::nullopt;
     }
-    const auto& actor = ranger.roles[static_cast<std::size_t>(actor_role_id)];
-    auto target = ranger.roles[static_cast<std::size_t>(target_role_id)];
-    const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
+    return apply_role_item_effect(
+        ranger.roles[static_cast<std::size_t>(actor_role_id)],
+        ranger.roles[static_cast<std::size_t>(target_role_id)],
+        ranger.items[static_cast<std::size_t>(item_id)], random, limits, original_maximum_hp);
+}
+
+std::optional<BattleItemEffectResult> apply_role_item_effect(
+    const model::RoleState& actor,
+    model::RoleState& stored_target,
+    const model::ItemRecord& item,
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits,
+    const std::int64_t original_maximum_hp) {
+    if (original_maximum_hp <= 0 || limits.hurt_maximum < 0 || limits.hurt_ratio_denominator < 0) {
+        return std::nullopt;
+    }
+    auto target = stored_target;
     if (target.hurt < 0 || target.maximum_hp < 0 || target.maximum_mp < 0) {
         return std::nullopt;
     }
@@ -570,7 +599,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     result.panel_height = static_cast<std::int16_t>(20 * result.effect_count + 30);
     result.battle_redraw_required = result.has_effect;
     result.wait_for_input = result.has_effect;
-    ranger.roles[static_cast<std::size_t>(target_role_id)] = std::move(target);
+    stored_target = std::move(target);
     random = candidate_random;
     return result;
 }
@@ -580,7 +609,8 @@ BattleSetup::BattleSetup(
     model::RuntimeRangerState& ranger,
     std::int64_t* const legacy_hp_cost_scale,
     const model::NewGamePlusConfiguration& configuration,
-    const std::int64_t playthrough)
+    const std::int64_t playthrough,
+    const model::RangerState* const enemy_baseline)
     : data_(data),
       ranger_(ranger),
       playthrough_(playthrough),
@@ -600,7 +630,88 @@ BattleSetup::BattleSetup(
         error_ = "battle setup requires a complete ranger state";
         return;
     }
+    if (enemy_baseline != nullptr && !initialize_enemy_roles(*enemy_baseline, configuration)) {
+        return;
+    }
     initialize_party();
+}
+
+const model::RoleState* BattleSetup::role_state(
+    const std::int16_t role_id, const std::int16_t side) const noexcept {
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        return nullptr;
+    }
+    const auto index = static_cast<std::size_t>(role_id);
+    if (side != 1 || enemy_roles_.empty()) {
+        return &ranger_.roles[index];
+    }
+    if (index >= enemy_roles_.size() || !enemy_roles_[index].has_value()) {
+        return nullptr;
+    }
+    return &*enemy_roles_[index];
+}
+
+model::RoleState* BattleSetup::combatant_role(const std::size_t slot) noexcept {
+    return const_cast<model::RoleState*>(std::as_const(*this).combatant_role(slot));
+}
+
+const model::RoleState* BattleSetup::combatant_role(const std::size_t slot) const noexcept {
+    if (combatant_count_ < 0 || slot >= static_cast<std::size_t>(combatant_count_) ||
+        slot >= combatants_.size()) {
+        return nullptr;
+    }
+    const auto& words = combatants_[slot].words;
+    return role_state(words[combatant_word::role_id], words[combatant_word::side]);
+}
+
+bool BattleSetup::initialize_enemy_roles(
+    const model::RangerState& baseline,
+    const model::NewGamePlusConfiguration& configuration) {
+    if (!baseline.valid() || baseline.roles.size() != ranger_.roles.size()) {
+        error_ = "battle enemy baseline requires a complete ranger state";
+        return false;
+    }
+    std::vector<std::optional<model::RoleState>> candidates(baseline.roles.size());
+    for (const auto role_id : data_.definition().subspan<kEnemyBegin, kBattleEnemySlots>()) {
+        if (role_id == -1) {
+            continue;
+        }
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= baseline.roles.size()) {
+            error_ = "battle enemy role is outside baseline records";
+            return false;
+        }
+        const auto index = static_cast<std::size_t>(role_id);
+        if (candidates[index].has_value()) {
+            continue;
+        }
+        auto role = model::decode_legacy_role(baseline.roles[index], baseline.items.size());
+        if (!role.has_value() || role->id.value != role_id) {
+            error_ = "battle enemy baseline role is invalid";
+            return false;
+        }
+        const auto attributes = model::calculate_enemy_attributes(*role, configuration, playthrough_);
+        if (!attributes.has_value()) {
+            error_ = "battle enemy attributes are invalid or overflow";
+            return false;
+        }
+        if ((attributes->maximum_hp < role->maximum_hp && role->hp > attributes->maximum_hp) ||
+            (attributes->maximum_mp < role->maximum_mp && role->mp > attributes->maximum_mp)) {
+            error_ = "battle enemy current HP or MP exceeds the reduced maximum";
+            return false;
+        }
+        role->maximum_hp = attributes->maximum_hp;
+        role->maximum_mp = attributes->maximum_mp;
+        role->attack = attributes->attack;
+        role->defence = attributes->defence;
+        role->use_poison = attributes->use_poison;
+        role->anti_poison = attributes->anti_poison;
+        role->hidden_weapon = attributes->hidden_weapon;
+        role->level = attributes->level;
+        role->magic_levels = attributes->magic_levels;
+        candidates[index] = std::move(*role);
+    }
+    enemy_roles_ = std::move(candidates);
+    return true;
 }
 
 void BattleSetup::initialize_combatants() {
@@ -681,7 +792,8 @@ bool BattleSetup::append_combatant(
         error_ = "battle setup exceeds 26 combatant slots";
         return false;
     }
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* role = role_state(role_id, side);
+    if (role == nullptr) {
         error_ = "battle setup role id is outside ranger records";
         return false;
     }
@@ -698,7 +810,7 @@ bool BattleSetup::append_combatant(
     words[combatant_word::x] = x;
     words[combatant_word::y] = y;
     words[combatant_word::initial_mode] = initial_mode;
-    words[combatant_word::sprite] = sprite_word(role_id, initial_mode);
+    words[combatant_word::sprite] = sprite_word(*role, initial_mode);
     const auto occupancy_index = static_cast<std::size_t>(y) * kBattleExtent +
         static_cast<std::size_t>(x);
     data_.occupancy()[occupancy_index] = combatant_count_;
@@ -726,20 +838,20 @@ bool BattleSetup::append_enemies() {
 }
 
 std::int16_t BattleSetup::sprite_word(
-    const std::int16_t role_id, const std::int16_t initial_mode) const noexcept {
-    const auto head_id = ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::head_id);
+    const model::RoleState& role, const std::int16_t initial_mode) const noexcept {
+    const auto head_id = role.head_id;
     return wrapping_i16(
         8 * static_cast<std::int32_t>(head_id) + kBattleSpriteBase +
         2 * static_cast<std::int32_t>(initial_mode));
 }
 
 std::int64_t BattleSetup::effective_speed(const std::size_t slot) {
-    const auto role_id = combatants_[slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
         error_ = "battle combatant role id is outside ranger records";
         return 0;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     auto speed = role.word(model::role_word::speed);
     for (std::size_t equipment = 0U; equipment < model::role_word::equipment_count; ++equipment) {
         const auto item_id = role.word(model::role_word::equipment_begin + equipment);
@@ -792,9 +904,9 @@ void BattleSetup::swap_combatants(const std::size_t first, const std::size_t sec
     auto& first_words = combatants_[first].words;
     auto& second_words = combatants_[second].words;
     first_words[combatant_word::sprite] = sprite_word(
-        first_words[combatant_word::role_id], first_words[combatant_word::initial_mode]);
+        *combatant_role(first), first_words[combatant_word::initial_mode]);
     second_words[combatant_word::sprite] = sprite_word(
-        second_words[combatant_word::role_id], second_words[combatant_word::initial_mode]);
+        *combatant_role(second), second_words[combatant_word::initial_mode]);
 }
 
 bool BattleSetup::sort_by_effective_speed() {
@@ -831,8 +943,7 @@ bool BattleSetup::prepare_round() {
         if (!valid()) {
             return false;
         }
-        const auto role_id = combatants_[slot].words[combatant_word::role_id];
-        const auto hurt = ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hurt);
+        const auto hurt = combatant_role(slot)->hurt;
         const auto penalty = model::hurt_action_penalty(hurt, limits_.hurt_ratio_denominator);
         if (!penalty.has_value()) {
             error_ = "battle round hurt penalty is invalid or overflows";
@@ -854,8 +965,12 @@ bool BattleSetup::prepare_round() {
 BattleOutcome BattleSetup::evaluate_outcome() {
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         auto& words = combatants_[slot].words;
-        const auto role_id = words[combatant_word::role_id];
-        if (ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hp) <= 0 &&
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
+            error_ = "battle outcome role is outside ranger records";
+            return BattleOutcome::ongoing;
+        }
+        if (role->hp <= 0 &&
             words[combatant_word::occupancy_hidden] == 0) {
             const auto occupancy_index = static_cast<std::size_t>(words[combatant_word::y]) *
                     kBattleExtent +
@@ -1294,14 +1409,19 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
         return std::nullopt;
     }
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto role_id = combatants_[slot].words[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        if (combatant_role(slot) == nullptr) {
             error_ = "post-battle combatant role is outside ranger records";
             return std::nullopt;
         }
     }
 
     auto candidate_roles = ranger_.roles;
+    auto candidate_enemies = enemy_roles_;
+    const auto candidate_role = [&](const BattleCombatant& combatant) -> model::RoleState& {
+        const auto index = static_cast<std::size_t>(combatant.words[combatant_word::role_id]);
+        return combatant.words[combatant_word::side] == 1 && !candidate_enemies.empty()
+            ? *candidate_enemies[index] : candidate_roles[index];
+    };
     auto candidate_combatants = combatants_;
     BattlePostBattleResult result{
         .outcome = outcome,
@@ -1310,7 +1430,7 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
     };
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& words = candidate_combatants[slot].words;
-        auto& role = candidate_roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+        auto& role = candidate_role(candidate_combatants[slot]);
         if (words[combatant_word::side] == 1) {
             role.set_word(model::role_word::hp, role.word(model::role_word::maximum_hp));
             role.set_word(model::role_word::mp, role.word(model::role_word::maximum_mp));
@@ -1328,8 +1448,7 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
         result.shared_experience = result.total_experience / result.living_party_count;
         for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
             auto& combatant = candidate_combatants[slot];
-            const auto& role = candidate_roles[static_cast<std::size_t>(
-                combatant.words[combatant_word::role_id])];
+            const auto& role = candidate_role(combatant);
             if (combatant.words[combatant_word::side] == 0 && role.hp > 0) {
                 const auto reward = model::checked_add(
                     combatant.reward_experience, result.shared_experience);
@@ -1345,8 +1464,7 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& words = candidate_combatants[slot].words;
         if (words[combatant_word::side] == 0) {
-            auto& role = candidate_roles[static_cast<std::size_t>(
-                words[combatant_word::role_id])];
+            auto& role = candidate_role(candidate_combatants[slot]);
             const auto floor_hp = role.maximum_hp / 5;
             if (role.word(model::role_word::hp) > 0) {
                 if (role.word(model::role_word::hp) < floor_hp) {
@@ -1366,6 +1484,7 @@ std::optional<BattlePostBattleResult> BattleSetup::prepare_battle_settlement(
         });
     }
     ranger_.roles = std::move(candidate_roles);
+    enemy_roles_ = std::move(candidate_enemies);
     combatants_ = std::move(candidate_combatants);
     return result;
 }
@@ -1380,11 +1499,12 @@ std::optional<BattlePostBattleRoleResult> BattleSetup::apply_post_battle_experie
     }
     auto& words = combatants_[combatant_slot].words;
     const auto role_id = words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    auto* stored_role = combatant_role(combatant_slot);
+    if (stored_role == nullptr) {
         error_ = "post-battle experience role is outside ranger records";
         return std::nullopt;
     }
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto& role = *stored_role;
     const auto base_reward = combatants_[combatant_slot].reward_experience;
     const auto scaled_reward = model::checked_multiply(
         base_reward, limits_.battle_experience_percent);
@@ -1470,14 +1590,21 @@ std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_dam
     }
     BattleRoundStatusDamageResult result{};
     auto candidate_roles = ranger_.roles;
+    auto candidate_enemies = enemy_roles_;
+    const auto candidate_role = [&](const std::size_t slot) -> model::RoleState& {
+        const auto& words = combatants_[slot].words;
+        const auto index = static_cast<std::size_t>(words[combatant_word::role_id]);
+        return words[combatant_word::side] == 1 && !candidate_enemies.empty()
+            ? *candidate_enemies[index] : candidate_roles[index];
+    };
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         const auto& words = combatants_[slot].words;
         const auto role_id = words[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        if (combatant_role(slot) == nullptr) {
             error_ = "round-status combatant role is outside ranger records";
             return std::nullopt;
         }
-        auto& role = candidate_roles[static_cast<std::size_t>(role_id)];
+        auto& role = candidate_role(slot);
         const auto hurt = role.hurt;
         const auto poison = role.poison;
         if (!(hurt > 0 ||
@@ -1513,9 +1640,10 @@ std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_dam
         result.entries.push_back(entry);
     }
     for (const auto& entry : result.entries) {
-        const auto role_index = static_cast<std::size_t>(entry.role_id);
-        ranger_.roles[role_index].hp = candidate_roles[role_index].hp;
-        ranger_.roles[role_index].physical_power = candidate_roles[role_index].physical_power;
+        auto& role = *combatant_role(entry.combatant_slot);
+        const auto& candidate = candidate_role(entry.combatant_slot);
+        role.hp = candidate.hp;
+        role.physical_power = candidate.physical_power;
     }
     return result;
 }
@@ -1556,12 +1684,11 @@ std::optional<BattlePlayerActionAvailability> BattleSetup::player_action_availab
     if (!valid() || combatant_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
-    const auto& words = combatants_[combatant_slot].words;
-    const auto role_id = words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(combatant_slot);
+    if (stored_role == nullptr) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     BattlePlayerActionAvailability result{};
     const auto physical_power = role.word(model::role_word::physical_power);
     result.available[0U] = static_cast<std::int16_t>(
@@ -1604,10 +1731,11 @@ std::optional<BattleStatusPanelPlan> BattleSetup::status_panel_plan(
     }
     const auto& words = combatants_[combatant_slot].words;
     const auto role_id = words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(combatant_slot);
+    if (stored_role == nullptr) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     BattleStatusPanelPlan plan{
         .combatant_slot = combatant_slot,
         .role_id = role_id,
@@ -1675,12 +1803,12 @@ std::optional<BattlePathCoord> BattleSetup::move_one_marked_step(
         return std::nullopt;
     }
 
-    const auto role_id = words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
         error_ = "battle movement role id is outside ranger records";
         return std::nullopt;
     }
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto& role = *stored_role;
     const auto remaining_value = model::checked_subtract(combatants_[slot].round_value, 1);
     auto physical_power = role.physical_power;
     const auto speed_step = role.speed / 10;
@@ -1716,7 +1844,7 @@ std::optional<BattlePathCoord> BattleSetup::move_one_marked_step(
         direction = 2;
     }
     words[combatant_word::initial_mode] = direction;
-    words[combatant_word::sprite] = sprite_word(role_id, direction);
+    words[combatant_word::sprite] = sprite_word(role, direction);
     role.physical_power = physical_power;
     combatants_[slot].round_value = *remaining_value;
     return next;
@@ -1765,11 +1893,11 @@ std::size_t BattleSetup::learned_magic_count(const std::size_t slot) const noexc
     if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
         return 0U;
     }
-    const auto role_id = combatants_[slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
         return 0U;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     std::size_t count = 0U;
     for (std::size_t magic = 0U; magic < model::role_word::magic_count; ++magic) {
         if (role.word(model::role_word::magic_id_begin + magic) > 0) {
@@ -1820,11 +1948,11 @@ std::optional<BattleAttackProfile> BattleSetup::attack_profile(
         static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
         return std::nullopt;
     }
-    const auto role_id = combatants_[slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     const auto slot_index = static_cast<std::size_t>(magic_slot);
     const auto magic_id = role.magic_ids[slot_index].value;
     if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
@@ -1858,11 +1986,11 @@ std::optional<std::int64_t> BattleSetup::attack_special_bonus(
     if (!profile) {
         return std::nullopt;
     }
-    const auto role_id = combatants_[slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     std::int16_t bonus = 0;
     for (const auto entry : kBattleAiSpecialAttackBonuses) {
         if (entry.weapon_id == role.word(model::role_word::equipment_begin) &&
@@ -1878,11 +2006,11 @@ std::optional<BattleMagicSelectionState> BattleSetup::begin_magic_selection(
     if (!valid() || slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
-    const auto role_id = combatants_[slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto& role = *stored_role;
     BattleMagicSelectionState state{};
     std::ranges::fill(state.available_slots, static_cast<std::int16_t>(-1));
     for (std::size_t magic_slot = 0U; magic_slot < model::role_word::magic_count; ++magic_slot) {
@@ -1954,7 +2082,7 @@ bool BattleSetup::commit_attack_iteration(
         return false;
     }
     auto& words = combatants_[slot].words;
-    auto& role = ranger_.roles[static_cast<std::size_t>(words[combatant_word::role_id])];
+    auto& role = *combatant_role(slot);
     const auto slot_index = static_cast<std::size_t>(magic_slot);
     auto candidate_random = random;
     const auto proficiency = model::checked_add(
@@ -1979,8 +2107,7 @@ bool BattleSetup::commit_attack_mp_cost(
         error_ = "battle attack MP cost profile is outside ranger records";
         return false;
     }
-    const auto role_id = combatants_[slot].words[combatant_word::role_id];
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto& role = *combatant_role(slot);
     const auto cost = cost_scale < 0 ? std::nullopt
         : model::magic_mp_cost(std::max<std::int64_t>(cost_scale, 1), profile->need_mp);
     const auto mp = cost.has_value() ? model::checked_subtract(role.mp, *cost) : std::nullopt;
@@ -2004,14 +2131,13 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         error_ = "battle HP damage arguments are outside battle records";
         return std::nullopt;
     }
-    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
-    if (target_role_id < 0 || static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+    auto* stored_target = combatant_role(target_slot);
+    if (stored_target == nullptr) {
         error_ = "battle HP damage target role is outside ranger records";
         return std::nullopt;
     }
-    const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& actor = *combatant_role(actor_slot);
+    auto target = *stored_target;
     const auto& magic = ranger_.magics[static_cast<std::size_t>(profile->magic_id)];
     const auto cost_scale = model::affordable_magic_level(
         profile->level_index + 1, actor.mp, profile->need_mp);
@@ -2028,12 +2154,12 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
     std::int64_t enemy_knowledge = 0;
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto role_id = combatants_[slot].words[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        const auto* stored_role = combatant_role(slot);
+        if (stored_role == nullptr) {
             error_ = "battle HP damage combatant role is outside ranger records";
             return std::nullopt;
         }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto& role = *stored_role;
         if (role.knowledge <= 80 || role.hp <= 0 ||
             combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
             continue;
@@ -2153,7 +2279,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
     target.hp = std::max<std::int64_t>(*final_hp, 0);
     target.hurt = std::min(*hurt, limits_.hurt_maximum);
     target.poison += poison->applied_amount;
-    ranger_.roles[static_cast<std::size_t>(target_role_id)] = std::move(target);
+    *stored_target = std::move(target);
     combatants_[actor_slot].reward_experience = *counter;
     last_hp_cost_scale_ = *cost_scale;
     if (legacy_hp_cost_scale_ != nullptr) {
@@ -2173,15 +2299,15 @@ std::optional<std::int64_t> BattleSetup::apply_mp_damage(
         error_ = "battle MP damage arguments are outside battle records";
         return std::nullopt;
     }
-    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
-    if (target_role_id < 0 || static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+    auto* stored_actor = combatant_role(actor_slot);
+    auto* stored_target = combatant_role(target_slot);
+    if (stored_target == nullptr) {
         error_ = "battle MP damage target role is outside ranger records";
         return std::nullopt;
     }
-    auto actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto separate_target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
-    auto& target = actor_role_id == target_role_id ? actor : separate_target;
+    auto actor = *stored_actor;
+    auto separate_target = *stored_target;
+    auto& target = stored_actor == stored_target ? actor : separate_target;
     if (actor.maximum_mp < 0 || target.maximum_mp < 0) {
         error_ = "battle MP damage maximum MP is negative";
         return std::nullopt;
@@ -2226,9 +2352,9 @@ std::optional<std::int64_t> BattleSetup::apply_mp_damage(
         error_ = "battle MP damage result overflow";
         return std::nullopt;
     }
-    ranger_.roles[static_cast<std::size_t>(actor_role_id)] = std::move(actor);
-    if (actor_role_id != target_role_id) {
-        ranger_.roles[static_cast<std::size_t>(target_role_id)] = std::move(separate_target);
+    *stored_actor = std::move(actor);
+    if (stored_actor != stored_target) {
+        *stored_target = std::move(separate_target);
     }
     random = candidate_random;
     return damage;
@@ -2239,11 +2365,11 @@ std::optional<std::int16_t> BattleSetup::poison_targeting_range(
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
-    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* role = combatant_role(actor_slot);
+    if (role == nullptr) {
         return std::nullopt;
     }
-    const auto ability = ranger_.roles[static_cast<std::size_t>(role_id)].use_poison;
+    const auto ability = role->use_poison;
     const auto range = std::min<std::int64_t>(ability, 100) / 15 + 1;
     if (range < std::numeric_limits<std::int16_t>::min()) {
         return std::nullopt;
@@ -2259,16 +2385,14 @@ std::optional<std::int16_t> BattleSetup::apply_poison_value(
         error_ = "battle poison actors are outside combatant slots";
         return std::nullopt;
     }
-    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
-    if (actor_role_id < 0 || target_role_id < 0 ||
-        static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size() ||
-        static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+    const auto* stored_actor = combatant_role(actor_slot);
+    auto* stored_target = combatant_role(target_slot);
+    if (stored_actor == nullptr || stored_target == nullptr) {
         error_ = "battle poison role is outside ranger records";
         return std::nullopt;
     }
-    const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto& actor = *stored_actor;
+    auto& target = *stored_target;
     const auto poison = model::poison_application(
         actor.use_poison, target.anti_poison, 4, target.poison, target.maximum_hp);
     const auto hp = poison.has_value()
@@ -2347,19 +2471,18 @@ bool BattleSetup::finish_poison_action(const std::size_t actor_slot) {
         return false;
     }
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
-        const auto role_id = combatants_[slot].words[combatant_word::role_id];
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
             error_ = "battle poison sprite role is outside ranger records";
             return false;
         }
         combatants_[slot].words[combatant_word::sprite] = sprite_word(
-            role_id, combatants_[slot].words[combatant_word::initial_mode]);
+            *role, combatants_[slot].words[combatant_word::initial_mode]);
     }
     auto& actor_words = combatants_[actor_slot].words;
     actor_words[combatant_word::action_done] = 1;
     combatants_[actor_slot].reward_experience = *counter;
-    const auto role_id = actor_words[combatant_word::role_id];
-    auto& actor = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto& actor = *combatant_role(actor_slot);
     auto physical_power = wrapping_i16(
         static_cast<std::int32_t>(actor.word(model::role_word::physical_power)) - 2);
     if (physical_power < 0) {
@@ -2374,11 +2497,11 @@ std::optional<std::int16_t> BattleSetup::detox_targeting_range(
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
-    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* role = combatant_role(actor_slot);
+    if (role == nullptr) {
         return std::nullopt;
     }
-    const auto ability = ranger_.roles[static_cast<std::size_t>(role_id)].detoxification;
+    const auto ability = role->detoxification;
     const auto range = std::min<std::int64_t>(ability, 100) / 15 + 1;
     if (range < std::numeric_limits<std::int16_t>::min()) {
         return std::nullopt;
@@ -2395,16 +2518,13 @@ std::optional<std::int16_t> BattleSetup::apply_detox_value(
         error_ = "battle detox actors are outside combatant slots";
         return std::nullopt;
     }
-    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
-    if (actor_role_id < 0 || target_role_id < 0 ||
-        static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size() ||
-        static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+    const auto* actor = combatant_role(actor_slot);
+    auto* target = combatant_role(target_slot);
+    if (actor == nullptr || target == nullptr) {
         error_ = "battle detox role is outside ranger records";
         return std::nullopt;
     }
-    const auto amount = apply_role_detox_value(
-        ranger_, actor_role_id, target_role_id, random);
+    const auto amount = apply_role_detox_value(*actor, *target, random);
     if (!amount.has_value()) {
         error_ = "battle detox amount is invalid or overflows";
     }
@@ -2474,11 +2594,11 @@ std::optional<std::int16_t> BattleSetup::medicine_targeting_range(
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
-    const auto role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* role = combatant_role(actor_slot);
+    if (role == nullptr) {
         return std::nullopt;
     }
-    const auto ability = ranger_.roles[static_cast<std::size_t>(role_id)].medicine;
+    const auto ability = role->medicine;
     return static_cast<std::int16_t>(std::clamp(ability, std::int64_t{0}, std::int64_t{100}) / 15 + 1);
 }
 
@@ -2491,16 +2611,13 @@ std::optional<std::int64_t> BattleSetup::apply_medicine_value(
         error_ = "battle medicine actors are outside combatant slots";
         return std::nullopt;
     }
-    const auto actor_role_id = combatants_[actor_slot].words[combatant_word::role_id];
-    const auto target_role_id = combatants_[target_slot].words[combatant_word::role_id];
-    if (actor_role_id < 0 || target_role_id < 0 ||
-        static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size() ||
-        static_cast<std::size_t>(target_role_id) >= ranger_.roles.size()) {
+    auto* actor = combatant_role(actor_slot);
+    auto* target = combatant_role(target_slot);
+    if (actor == nullptr || target == nullptr) {
         error_ = "battle medicine role is outside ranger records";
         return std::nullopt;
     }
-    const auto amount = apply_role_medicine_value(
-        ranger_, actor_role_id, target_role_id, random, limits_);
+    const auto amount = apply_role_medicine_value(*actor, *target, random, limits_);
     if (!amount.has_value()) {
         error_ = "battle medicine amount is invalid or overflows";
     }
@@ -2637,7 +2754,11 @@ bool BattleSetup::remove_carried_item_slot(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return false;
     }
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto* stored_role = combatant_role(actor_slot);
+    if (stored_role == nullptr) {
+        return false;
+    }
+    auto& role = *stored_role;
     for (std::size_t source = item_slot + 1U;
          source < model::role_word::taking_item_count;
          ++source) {
@@ -2666,7 +2787,11 @@ std::optional<std::int16_t> BattleSetup::throwing_weapon_targeting_range(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto range = ranger_.roles[static_cast<std::size_t>(role_id)].hidden_weapon / 15 + 1;
+    const auto* role = combatant_role(actor_slot);
+    if (role == nullptr) {
+        return std::nullopt;
+    }
+    const auto range = role->hidden_weapon / 15 + 1;
     if (range < std::numeric_limits<std::int16_t>::min()) {
         return std::nullopt;
     }
@@ -2688,14 +2813,6 @@ std::optional<BattleThrownItemResult> BattleSetup::prepare_throwing_weapon_targe
         error_ = "battle throwing-weapon actor role is outside ranger records";
         return std::nullopt;
     }
-    const auto refresh_sprites = [this]() {
-        for (std::int16_t slot = 0; slot < combatant_count_; ++slot) {
-            auto& words = combatants_[static_cast<std::size_t>(slot)].words;
-            words[combatant_word::sprite] =
-                sprite_word(words[combatant_word::role_id], words[combatant_word::initial_mode]);
-        }
-    };
-
     const auto delta_x = static_cast<std::int32_t>(target.x) - actor_words[combatant_word::x];
     const auto delta_y = static_cast<std::int32_t>(target.y) - actor_words[combatant_word::y];
     if (std::abs(delta_y) > std::abs(delta_x)) {
@@ -2707,7 +2824,9 @@ std::optional<BattleThrownItemResult> BattleSetup::prepare_throwing_weapon_targe
     BattleThrownItemResult result{};
     if (target.x < 0 || target.x >= static_cast<std::int16_t>(kBattleExtent) || target.y < 0 ||
         target.y >= static_cast<std::int16_t>(kBattleExtent)) {
-        refresh_sprites();
+        if (!refresh_combatant_sprites()) {
+            return std::nullopt;
+        }
         return result;
     }
     const auto cell = static_cast<std::size_t>(target.y) * kBattleExtent +
@@ -2720,14 +2839,18 @@ std::optional<BattleThrownItemResult> BattleSetup::prepare_throwing_weapon_targe
         }
         if (combatants_[static_cast<std::size_t>(checked_target_slot)]
                 .words[combatant_word::side] == actor_words[combatant_word::side]) {
-            refresh_sprites();
+            if (!refresh_combatant_sprites()) {
+                return std::nullopt;
+            }
             return result;
         }
     }
     attack_effects_[cell] = 1;
     const auto target_slot = data_.occupancy()[cell];
     if (target_slot == -1) {
-        refresh_sprites();
+        if (!refresh_combatant_sprites()) {
+            return std::nullopt;
+        }
         return result;
     }
     if (target_slot < 0 || target_slot >= combatant_count_) {
@@ -2793,8 +2916,14 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_payload
         error_ = "battle throwing-weapon target role is outside ranger records";
         return std::nullopt;
     }
-    const auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target_role = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    auto* stored_target = combatant_role(target_index);
+    if (stored_actor == nullptr || stored_target == nullptr) {
+        error_ = "battle throwing-weapon role is outside combatant records";
+        return std::nullopt;
+    }
+    const auto& actor = *stored_actor;
+    auto& target_role = *stored_target;
     const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
     auto candidate_random = random;
     auto hp_result = throwing_weapon_hp_result(actor, target_role, item, limits_, candidate_random);
@@ -2890,7 +3019,11 @@ bool BattleSetup::consume_ai_item(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return false;
     }
-    auto& actor = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return false;
+    }
+    auto& actor = *stored_actor;
     const auto remaining = model::checked_subtract(
         actor.word(model::role_word::taking_item_count_begin + slot), 1);
     if (!remaining.has_value()) {
@@ -2976,8 +3109,14 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
         return std::nullopt;
     }
 
-    auto& actor = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
-    auto& target_role = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    auto* stored_actor = combatant_role(actor_slot);
+    auto* stored_target = combatant_role(target_index);
+    if (stored_actor == nullptr || stored_target == nullptr) {
+        error_ = "battle AI throwing-weapon role is outside combatant records";
+        return std::nullopt;
+    }
+    auto& actor = *stored_actor;
+    auto& target_role = *stored_target;
     auto payload_item_id = *source_item_id;
     if (actor_words[combatant_word::side] == 0) {
         if (legacy_party_item_slot < 0 ||
@@ -3087,17 +3226,23 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
         error_ = "battle AI item target coordinate is outside battlefield";
         return std::nullopt;
     }
-    const auto previous_target = ranger_.roles[static_cast<std::size_t>(target_role_id)];
+    const auto* actor = combatant_role(actor_slot);
+    auto* target = combatant_role(static_cast<std::size_t>(choice.target_slot));
+    if (actor == nullptr || target == nullptr) {
+        error_ = "battle AI item actor or target role is outside combatant records";
+        return std::nullopt;
+    }
+    const auto previous_target = *target;
     const auto previous_random = random;
     auto result = openlegend::battle::apply_role_item_effect(
-        ranger_, actor_role_id, target_role_id, *item_id, random, limits_,
+        *actor, *target, ranger_.items[static_cast<std::size_t>(*item_id)], random, limits_,
         data_.original_maximum_hp());
     if (!result.has_value()) {
         error_ = "battle item effect is invalid or overflows";
         return std::nullopt;
     }
     if (consume_item && !consume_ai_item(actor_slot, choice)) {
-        ranger_.roles[static_cast<std::size_t>(target_role_id)] = previous_target;
+        *target = previous_target;
         random = previous_random;
         error_ = "battle item consumption failed";
         return std::nullopt;
@@ -3122,8 +3267,13 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
         error_ = "battle rest actor role is outside ranger records";
         return std::nullopt;
     }
+    auto* stored_role = combatant_role(actor_slot);
+    if (stored_role == nullptr) {
+        error_ = "battle rest actor role is outside combatant records";
+        return std::nullopt;
+    }
     words[combatant_word::action_done] = 1;
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto& role = *stored_role;
     const auto speed_tenth = role.speed / 10;
     const auto physical_gain = random.bounded(3) +
         (combatants_[actor_slot].round_value == speed_tenth ? 3 : 2);
@@ -3190,7 +3340,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_hp_action(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto& actor_role = *stored_actor;
     if (actor_role.medicine >= 20 && actor_role.physical_power >= 50) {
         const auto allowed = model::medicine_allowed(actor_role.medicine, actor_role.hurt);
         if (!allowed.has_value()) {
@@ -3263,8 +3417,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_hp_action(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto medicine = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::medicine);
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
+            return std::nullopt;
+        }
+        const auto medicine = role->medicine;
         if (medicine > 20) {
             const auto allowed = model::medicine_allowed(medicine, actor_role.hurt);
             if (!allowed.has_value()) {
@@ -3292,7 +3449,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_poisoned_action(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto& actor_role = *stored_actor;
     if (actor_role.word(model::role_word::detoxification) > 20 &&
         actor_role.word(model::role_word::detoxification) >
             static_cast<std::int32_t>(actor_role.word(model::role_word::poison)) - 30 &&
@@ -3363,8 +3524,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_poisoned_action(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto detoxification = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::detoxification);
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
+            return std::nullopt;
+        }
+        const auto detoxification = role->detoxification;
         if (detoxification > 20 && detoxification >
                 static_cast<std::int32_t>(actor_role.word(model::role_word::poison)) - 30) {
             return commit_ai_choice(
@@ -3386,7 +3550,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_mp_action(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto& actor_role = *stored_actor;
     const auto side = combatants_[actor_slot].words[combatant_word::side];
     const auto select_item = [&](const std::int16_t item_id,
                                  const BattleAiItemSource source,
@@ -3450,8 +3618,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto medicine = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
-        model::role_word::medicine);
+    const auto* actor = combatant_role(actor_slot);
+    if (actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto medicine = actor->medicine;
     const auto side = combatants_[actor_slot].words[combatant_word::side];
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
@@ -3462,7 +3633,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto* stored_role = combatant_role(slot);
+        if (stored_role == nullptr) {
+            return std::nullopt;
+        }
+        const auto& role = *stored_role;
         const auto allowed = model::medicine_allowed(medicine, role.hurt);
         if (!allowed.has_value()) {
             error_ = "battle AI medicine threshold is invalid or overflows";
@@ -3522,8 +3697,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto detoxification = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
-        model::role_word::detoxification);
+    const auto* actor = combatant_role(actor_slot);
+    if (actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto detoxification = actor->detoxification;
     const auto side = combatants_[actor_slot].words[combatant_word::side];
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
         if (slot == actor_slot || combatants_[slot].words[combatant_word::side] != side ||
@@ -3534,7 +3712,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto* stored_role = combatant_role(slot);
+        if (stored_role == nullptr) {
+            return std::nullopt;
+        }
+        const auto& role = *stored_role;
         if (detoxification <= static_cast<std::int32_t>(role.word(model::role_word::poison)) - 30) {
             continue;
         }
@@ -3584,7 +3766,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto& actor_role = *stored_actor;
     const auto side = combatants_[actor_slot].words[combatant_word::side];
     if (prelude.opponent_count == 0) {
         return std::nullopt;
@@ -3610,8 +3796,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                     combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
                     continue;
                 }
-                const auto role_id = combatants_[slot].words[combatant_word::role_id];
-                const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+                const auto* stored_role = combatant_role(slot);
+                if (stored_role == nullptr) {
+                    return std::nullopt;
+                }
+                const auto& role = *stored_role;
                 if (role.word(model::role_word::hp) < role.word(model::role_word::maximum_hp)) {
                     const auto missing =
                         static_cast<std::int32_t>(role.word(model::role_word::maximum_hp)) -
@@ -3630,9 +3819,11 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
                     combatants_[slot].words[combatant_word::occupancy_hidden] != 0) {
                     continue;
                 }
-                const auto role_id = combatants_[slot].words[combatant_word::role_id];
-                const auto poison = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-                    model::role_word::poison);
+                const auto* role = combatant_role(slot);
+                if (role == nullptr) {
+                    return std::nullopt;
+                }
+                const auto poison = role->poison;
                 if (poison > best_value) {
                     best_value = poison;
                     best_slot = static_cast<std::int16_t>(slot);
@@ -3781,7 +3972,11 @@ std::optional<BattleAiTurnPrelude> BattleSetup::begin_ai_turn(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto* stored_role = combatant_role(slot);
+        if (stored_role == nullptr) {
+            return std::nullopt;
+        }
+        const auto& role = *stored_role;
         auto& total = combatants_[slot].words[combatant_word::side] == actor_side ?
             prelude.allied_total : prelude.opponent_total;
         auto& count = combatants_[slot].words[combatant_word::side] == actor_side ?
@@ -3805,7 +4000,11 @@ std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto& actor_role = *stored_actor;
     BattleAiChoice choice{};
     if (actor_role.word(model::role_word::physical_power) < 10) {
         choice.action = BattleAiAction::wait;
@@ -4059,8 +4258,11 @@ std::optional<bool> BattleSetup::choose_ai_strongest_attack_target(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto attack = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::attack);
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
+            return std::nullopt;
+        }
+        const auto attack = role->attack;
         if (attack > best_attack) {
             best_attack = attack;
             combatants_[actor_slot].words[combatant_word::ai_target] =
@@ -4086,8 +4288,11 @@ std::optional<bool> BattleSetup::choose_ai_weakest_attack_target(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto attack = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::attack);
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
+            return std::nullopt;
+        }
+        const auto attack = role->attack;
         if (attack < best_attack) {
             best_attack = attack;
             combatants_[actor_slot].words[combatant_word::ai_target] =
@@ -4110,8 +4315,11 @@ std::optional<bool> BattleSetup::choose_ai_specialist_target(const std::size_t a
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        if (ranger_.roles[static_cast<std::size_t>(role_id)].word(
-                model::role_word::use_poison) > 20) {
+        const auto* role = combatant_role(slot);
+        if (role == nullptr) {
+            return std::nullopt;
+        }
+        if (role->use_poison > 20) {
             ally_can_poison = true;
         }
     }
@@ -4131,8 +4339,11 @@ std::optional<bool> BattleSetup::choose_ai_specialist_target(const std::size_t a
             if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
                 return std::nullopt;
             }
-            const auto detoxification = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-                model::role_word::detoxification);
+            const auto* role = combatant_role(slot);
+            if (role == nullptr) {
+                return std::nullopt;
+            }
+            const auto detoxification = role->detoxification;
             if (detoxification > best_value) {
                 best_value = detoxification;
                 combatants_[actor_slot].words[combatant_word::ai_target] =
@@ -4156,8 +4367,11 @@ std::optional<bool> BattleSetup::choose_ai_specialist_target(const std::size_t a
             if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
                 return std::nullopt;
             }
-            const auto medicine = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-                model::role_word::medicine);
+            const auto* role = combatant_role(slot);
+            if (role == nullptr) {
+                return std::nullopt;
+            }
+            const auto medicine = role->medicine;
             if (medicine > best_value) {
                 best_value = medicine;
                 combatants_[actor_slot].words[combatant_word::ai_target] =
@@ -4212,7 +4426,11 @@ std::optional<BattleAiTargetSelection> BattleSetup::choose_ai_attack_target(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto* stored_role = combatant_role(actor_slot);
+    if (stored_role == nullptr) {
+        return std::nullopt;
+    }
+    const auto& role = *stored_role;
     const auto selection = [&](const BattleAiTargetStrategy strategy,
                                const std::optional<bool> written)
         -> std::optional<BattleAiTargetSelection> {
@@ -4360,8 +4578,11 @@ std::optional<bool> BattleSetup::choose_ai_strongest_poison_target(
         return std::nullopt;
     }
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
-    const auto actor_use_poison = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
-        model::role_word::use_poison);
+    const auto* actor = combatant_role(actor_slot);
+    if (actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto actor_use_poison = actor->use_poison;
     std::int64_t best_attack = 0;
     bool written = false;
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
@@ -4374,7 +4595,11 @@ std::optional<bool> BattleSetup::choose_ai_strongest_poison_target(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto* stored_role = combatant_role(slot);
+        if (stored_role == nullptr) {
+            return std::nullopt;
+        }
+        const auto& role = *stored_role;
         if (role.anti_poison >= actor_use_poison) {
             continue;
         }
@@ -4398,8 +4623,11 @@ std::optional<bool> BattleSetup::choose_ai_first_poison_target(
         return std::nullopt;
     }
     const auto actor_side = combatants_[actor_slot].words[combatant_word::side];
-    const auto actor_use_poison = ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(
-        model::role_word::use_poison);
+    const auto* actor_role = combatant_role(actor_slot);
+    if (actor_role == nullptr) {
+        return std::nullopt;
+    }
+    const auto actor_use_poison = actor_role->use_poison;
     std::int16_t best_distance = 1'000;
     bool written = false;
     for (std::size_t slot = 0U; slot < static_cast<std::size_t>(combatant_count_); ++slot) {
@@ -4412,7 +4640,11 @@ std::optional<bool> BattleSetup::choose_ai_first_poison_target(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+        const auto* stored_role = combatant_role(slot);
+        if (stored_role == nullptr) {
+            return std::nullopt;
+        }
+        const auto& role = *stored_role;
         if (role.anti_poison >= actor_use_poison) {
             continue;
         }
@@ -4448,7 +4680,11 @@ std::optional<BattleAiPoisonTargetSelection> BattleSetup::choose_ai_poison_targe
     if (actor_role_id < 0 || static_cast<std::size_t>(actor_role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& actor_role = ranger_.roles[static_cast<std::size_t>(actor_role_id)];
+    const auto* stored_actor = combatant_role(actor_slot);
+    if (stored_actor == nullptr) {
+        return std::nullopt;
+    }
+    const auto& actor_role = *stored_actor;
     if (actor_role.word(model::role_word::iq) > 60 && random.bounded(10) < 7) {
         const auto written = choose_ai_strongest_poison_target(actor_slot);
         if (!written) {
@@ -4504,8 +4740,12 @@ bool BattleSetup::update_ai_poison_fallback(
         error_ = "battle AI poison fallback state is invalid";
         return false;
     }
-    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(
-        ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(model::role_word::attack));
+    const auto* actor = combatant_role(actor_slot);
+    if (actor == nullptr) {
+        error_ = "battle AI poison fallback role is outside combatant records";
+        return false;
+    }
+    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(actor->attack);
     plan.doubled_allied_average =
         2 * static_cast<std::int32_t>(plan.allied_total) / plan.allied_count;
     plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
@@ -4593,8 +4833,11 @@ std::optional<std::int16_t> BattleSetup::ai_item_id(
         if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
             return std::nullopt;
         }
-        item_id = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::taking_item_begin + static_cast<std::size_t>(choice.item_slot));
+        const auto* role = combatant_role(actor_slot);
+        if (role == nullptr) {
+            return std::nullopt;
+        }
+        item_id = role->taking_items[static_cast<std::size_t>(choice.item_slot)].value;
     }
     if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
         return std::nullopt;
@@ -4783,8 +5026,12 @@ bool BattleSetup::update_ai_support_fallback(
         error_ = "battle AI support fallback state is invalid";
         return false;
     }
-    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(
-        ranger_.roles[static_cast<std::size_t>(actor_role_id)].word(model::role_word::attack));
+    const auto* actor = combatant_role(actor_slot);
+    if (actor == nullptr) {
+        error_ = "battle AI support fallback role is outside combatant records";
+        return false;
+    }
+    plan.doubled_actor_attack = 2 * static_cast<std::int32_t>(actor->attack);
     plan.doubled_allied_average =
         2 * static_cast<std::int32_t>(plan.allied_total) / plan.allied_count;
     plan.next_step = plan.doubled_actor_attack > plan.doubled_allied_average
@@ -4999,16 +5246,15 @@ std::optional<BattleAiMovementStep> BattleSetup::advance_player_movement(
     plan.step_count = wrapping_i16(static_cast<std::int32_t>(plan.step_count) + 1);
     plan.complete = *moved == plan.destination || combatants_[plan.actor_slot].round_value <= 0;
 
-    const auto role_id = actor[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* role = combatant_role(plan.actor_slot);
+    if (role == nullptr) {
         return std::nullopt;
     }
     return BattleAiMovementStep{
         .from = from,
         .to = *moved,
         .remaining_round_value = combatants_[plan.actor_slot].round_value,
-        .physical_power = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::physical_power),
+        .physical_power = role->physical_power,
         .view_center_x = moved->x,
         .view_center_y = moved->y,
         .view_x = static_cast<std::int16_t>(std::clamp<std::int32_t>(moved->x - 11, 0, 32)),
@@ -5236,16 +5482,15 @@ std::optional<BattleAiMovementStep> BattleSetup::advance_ai_movement(
     }
     plan.complete = complete;
 
-    const auto role_id = actor[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+    const auto* role = combatant_role(plan.actor_slot);
+    if (role == nullptr) {
         return std::nullopt;
     }
     return BattleAiMovementStep{
         .from = from,
         .to = *moved,
         .remaining_round_value = combatants_[plan.actor_slot].round_value,
-        .physical_power = ranger_.roles[static_cast<std::size_t>(role_id)].word(
-            model::role_word::physical_power),
+        .physical_power = role->physical_power,
         .view_center_x = moved->x,
         .view_center_y = moved->y,
         .view_x = static_cast<std::int16_t>(std::clamp<std::int32_t>(moved->x - 11, 0, 32)),
@@ -5424,8 +5669,12 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                 if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
                     return std::nullopt;
                 }
+                const auto* role = combatant_role(combatant);
+                if (role == nullptr) {
+                    return std::nullopt;
+                }
                 const auto highlighted = state.highlight_enabled && attack_effects_[cell] == 1 &&
-                    ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::hp) >= 0;
+                    role->hp >= 0;
                 if (highlighted) {
                     std::optional<render::PaletteIndex> color;
                     if (state.highlight_mode == 1) {
@@ -5759,7 +6008,11 @@ std::optional<BattleMagicAnimationPlan> BattleSetup::magic_animation_plan(
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return std::nullopt;
     }
-    const auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    const auto* stored_role = combatant_role(actor_slot);
+    if (stored_role == nullptr) {
+        return std::nullopt;
+    }
+    const auto& role = *stored_role;
     const auto magic_id = role.word(
         model::role_word::magic_id_begin + static_cast<std::size_t>(magic_slot));
     if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
@@ -5887,9 +6140,14 @@ bool BattleSetup::refresh_combatant_sprites() noexcept {
         return false;
     }
     for (std::int16_t slot = 0; slot < combatant_count_; ++slot) {
-        auto& words = combatants_[static_cast<std::size_t>(slot)].words;
-        words[combatant_word::sprite] =
-            sprite_word(words[combatant_word::role_id], words[combatant_word::initial_mode]);
+        const auto index = static_cast<std::size_t>(slot);
+        const auto* role = combatant_role(index);
+        if (role == nullptr) {
+            error_ = "battle sprite role is outside ranger records";
+            return false;
+        }
+        auto& words = combatants_[index].words;
+        words[combatant_word::sprite] = sprite_word(*role, words[combatant_word::initial_mode]);
     }
     return true;
 }
@@ -5902,7 +6160,11 @@ bool BattleSetup::finish_attack(const std::size_t slot) {
     if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
         return false;
     }
-    auto& role = ranger_.roles[static_cast<std::size_t>(role_id)];
+    auto* stored_role = combatant_role(slot);
+    if (stored_role == nullptr) {
+        return false;
+    }
+    auto& role = *stored_role;
     auto physical_power = wrapping_i16(
         static_cast<std::int32_t>(role.word(model::role_word::physical_power)) - 3);
     if (physical_power < 0) {

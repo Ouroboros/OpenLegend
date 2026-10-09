@@ -197,6 +197,11 @@ target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURC
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
 add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 52)
 
+add_executable(openlegend_battle_enemy_roles_tests unit/battle/enemy_roles_test.cpp)
+target_include_directories(openlegend_battle_enemy_roles_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_battle_enemy_roles_tests PRIVATE openlegend_battle openlegend_persistence)
+add_test(NAME openlegend.battle.enemy_roles COMMAND openlegend_battle_enemy_roles_tests)
+
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
 target_compile_definitions(
     openlegend_persistence_tests
@@ -215,6 +220,7 @@ set_tests_properties(
     openlegend.render
     openlegend.world
     openlegend.persistence
+    openlegend.battle.enemy_roles
     PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
 

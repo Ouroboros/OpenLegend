@@ -78,10 +78,21 @@ NODISCARD std::optional<std::int16_t> apply_role_detox_value(
     std::int16_t target_role_id,
     random::LegacyRandom& random);
 
+NODISCARD std::optional<std::int16_t> apply_role_detox_value(
+    const model::RoleState& actor,
+    model::RoleState& target,
+    random::LegacyRandom& random);
+
 NODISCARD std::optional<std::int64_t> apply_role_medicine_value(
     model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits);
+
+NODISCARD std::optional<std::int64_t> apply_role_medicine_value(
+    model::RoleState& actor,
+    model::RoleState& target,
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits);
 
@@ -137,6 +148,14 @@ NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     std::int16_t item_id,
+    random::LegacyRandom& random,
+    const model::PlaythroughLimits& limits,
+    std::int64_t original_maximum_hp);
+
+NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
+    const model::RoleState& actor,
+    model::RoleState& target,
+    const model::ItemRecord& item,
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
     std::int64_t original_maximum_hp);
@@ -693,13 +712,18 @@ public:
         model::RuntimeRangerState& ranger,
         std::int64_t* legacy_hp_cost_scale = nullptr,
         const model::NewGamePlusConfiguration& configuration = {},
-        std::int64_t playthrough = 1);
+        std::int64_t playthrough = 1,
+        const model::RangerState* enemy_baseline = nullptr);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
     NODISCARD const std::string& error() const noexcept { return error_; }
 
     NODISCARD const model::PlaythroughLimits& playthrough_limits() const noexcept { return limits_; }
+
+    NODISCARD model::RoleState* combatant_role(std::size_t slot) noexcept;
+
+    NODISCARD const model::RoleState* combatant_role(std::size_t slot) const noexcept;
 
     NODISCARD bool waiting_for_party_selection() const noexcept { return waiting_; }
 
@@ -1127,6 +1151,13 @@ private:
 
     void initialize_party();
 
+    NODISCARD bool initialize_enemy_roles(
+        const model::RangerState& baseline,
+        const model::NewGamePlusConfiguration& configuration);
+
+    NODISCARD const model::RoleState* role_state(
+        std::int16_t role_id, std::int16_t side) const noexcept;
+
     NODISCARD bool append_combatant(
         std::int16_t role_id,
         std::int16_t side,
@@ -1137,7 +1168,7 @@ private:
     NODISCARD bool append_enemies();
 
     NODISCARD std::int16_t sprite_word(
-        std::int16_t role_id, std::int16_t initial_mode) const noexcept;
+        const model::RoleState& role, std::int16_t initial_mode) const noexcept;
 
     NODISCARD std::int64_t effective_speed(std::size_t slot);
 
@@ -1215,6 +1246,7 @@ private:
 
     BattleData& data_;
     model::RuntimeRangerState& ranger_;
+    std::vector<std::optional<model::RoleState>> enemy_roles_;
     std::int64_t playthrough_{1};
     model::PlaythroughLimits limits_{};
     std::optional<model::MagicProgression> magic_progression_;
