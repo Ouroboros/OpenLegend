@@ -144,6 +144,10 @@ public:
         int y) const;
 
 private:
+    NODISCARD bool render_wide_medicine_selection(
+        const model::RuntimeRangerState& ranger, std::size_t cursor, std::size_t party_count,
+        render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits);
+
     NODISCARD bool render_wide_character_status(
         const model::RuntimeRangerState& ranger, std::int16_t role_id, std::uint8_t page,
         render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits);

@@ -406,6 +406,45 @@ bool BattleRenderer::render_status_panel(
             plan.mp_color);
 }
 
+bool BattleRenderer::render_wide_medicine_selection(
+    const model::RuntimeRangerState& ranger, const std::size_t cursor, const std::size_t party_count,
+    render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits) {
+    const auto page = cursor / 3U;
+    const auto begin = page * 3U;
+    const auto pages = (party_count + 2U) / 3U;
+    if (!draw_box(framebuffer, 0, 0, 320U, 26U) ||
+        !draw_text_utf8(framebuffer, 8, 5, kMedicineTargetTitle, text_colors::notice) ||
+        !draw_text_utf8(framebuffer, 286, 5,
+            decimal_text(static_cast<std::int64_t>(page + 1U)) + u8"/" +
+                decimal_text(static_cast<std::int64_t>(pages)), text_colors::menu_normal) ||
+        !draw_box(framebuffer, 0, 27, 320U, 173U)) {
+        return false;
+    }
+    for (std::size_t slot = begin; slot < std::min(begin + 3U, party_count); ++slot) {
+        const auto role_id = ranger.header.team_member(slot).value;
+        const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+        const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
+        if (!hurt) {
+            return false;
+        }
+        const auto selected = slot == cursor;
+        const auto color = selected ? text_colors::selected : text_colors::menu_normal;
+        const auto hp_color = selected ? text_colors::selected
+            : *hurt == model::HurtBand::severe ? text_colors::severe_injury
+            : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
+        const auto row = 34 + 51 * static_cast<int>(slot - begin);
+        const auto name = role.legacy_name();
+        if (!draw_text_big5(framebuffer, 8, row, text::Big5TextView{zero_terminated_prefix(name)}, color) ||
+            !draw_text_utf8(framebuffer, 8, row + 17, kLifeLabel, color) ||
+            !draw_text_utf8(framebuffer, 152, row + 17, decimal_text(role.hp), hp_color) ||
+            !draw_text_utf8(framebuffer, 8, row + 34, u8"生命上限", color) ||
+            !draw_text_utf8(framebuffer, 152, row + 34, decimal_text(role.maximum_hp), color)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool BattleRenderer::render_character_selection(
     const model::RuntimeRangerState& ranger,
     const std::size_t cursor,
@@ -418,6 +457,23 @@ bool BattleRenderer::render_character_selection(
         if (ranger.header.team_member(slot).value <= 0) {
             party_count = slot;
             break;
+        }
+    }
+    if (!valid() || cursor >= party_count) {
+        return false;
+    }
+    if (kind == PartySelectionKind::medicine_target) {
+        bool wide = false;
+        for (std::size_t slot = 0U; slot < party_count; ++slot) {
+            const auto role_id = ranger.header.team_member(slot).value;
+            if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
+                return false;
+            }
+            const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+            wide = wide || decimal_text(role.hp).size() > 3U || decimal_text(role.maximum_hp).size() > 3U;
+        }
+        if (wide) {
+            return render_wide_medicine_selection(ranger, cursor, party_count, framebuffer, limits);
         }
     }
     std::u8string_view title;

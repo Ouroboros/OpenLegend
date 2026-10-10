@@ -14741,6 +14741,61 @@ void run_wide_character_status_test(const openlegend::resource::DataRoot& data_r
     OL_CHECK(role == before);
 }
 
+void run_wide_medicine_selection_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    namespace colors = render::legacy_color::text;
+    auto ranger = make_ranger({0, 1, 2, 3, 4, 5});
+    constexpr std::array<std::int64_t, 6> health{9223372036854775807LL, 5000000000000LL, 1000, 1, 999, 4000000000000LL};
+    constexpr std::array<std::u8string_view, 6> health_text{
+        u8"9223372036854775807", u8"5000000000000", u8"1000", u8"1", u8"999", u8"4000000000000"};
+    for (std::size_t slot = 0U; slot < health.size(); ++slot) {
+        ranger.roles[slot].hp = health[slot];
+        ranger.roles[slot].maximum_hp = std::numeric_limits<std::int64_t>::max();
+        ranger.roles[slot].hurt = 0;
+    }
+    const auto limits = *model::calculate_playthrough_limits({}, 1);
+    ranger.roles[1U].hurt = limits.hurt_ratio_denominator;
+    const auto before = ranger.roles;
+    battle::BattleRenderer renderer{data_root, 0};
+    OL_CHECK(renderer.valid());
+    render::IndexedFramebuffer actual;
+    const auto matches_number = [&](const int row, const std::u8string_view text, const render::TextColors color) {
+        render::IndexedFramebuffer expected;
+        OL_CHECK(renderer.draw_box(expected, 0, 27, 320U, 173U));
+        OL_CHECK(renderer.draw_text_utf8(expected, 152, row, text, color));
+        for (int offset = 0; offset < 16; ++offset) {
+            if (!std::equal(actual.row(row + offset) + 152, actual.row(row + offset) + 305,
+                    expected.row(row + offset) + 152)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    for (std::size_t count = 1U; count <= health.size(); ++count) {
+        for (std::size_t slot = 0U; slot < health.size(); ++slot) {
+            ranger.header.set_team_member(slot, model::CharacterId{
+                static_cast<std::int16_t>(slot < count ? static_cast<int>(slot) : -1)});
+        }
+        for (std::size_t cursor = 0U; cursor < count; ++cursor) {
+            actual.clear(0);
+            OL_CHECK(renderer.render_character_selection(
+                ranger, cursor, battle::PartySelectionKind::medicine_target, actual, limits));
+            const auto begin = cursor / 3U * 3U;
+            for (std::size_t slot = begin; slot < std::min(begin + 3U, count); ++slot) {
+                const auto row = 34 + 51 * static_cast<int>(slot - begin);
+                OL_CHECK(matches_number(row + 17, health_text[slot],
+                    slot == cursor ? colors::selected
+                        : slot == 1U ? colors::severe_injury : colors::notice));
+                OL_CHECK(matches_number(row + 34, u8"9223372036854775807",
+                    slot == cursor ? colors::selected : colors::menu_normal));
+            }
+        }
+    }
+    OL_CHECK(!renderer.render_character_selection(
+        ranger, 6U, battle::PartySelectionKind::medicine_target, actual, limits));
+    OL_CHECK(ranger.roles == before);
+}
+
 using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
 
 [[gnu::noinline]] void run_battle_check(
@@ -14756,7 +14811,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 56> checks{
+    const std::array<BattleCheck, 57> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14813,6 +14868,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_speed_domain_test,
         run_ngplus_support_finish_test,
         run_wide_character_status_test,
+        run_wide_medicine_selection_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

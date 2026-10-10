@@ -873,6 +873,21 @@ void check_game_menu_controller() {
     static_cast<void>(medicine.handle_key('A'));
     OL_CHECK(medicine.screen() == GameMenuScreen::main);
 
+    medicine.set_party_count(6U);
+    static_cast<void>(medicine.handle_key(0x0DU));
+    static_cast<void>(medicine.handle_key(0x0DU));
+    for (std::size_t slot = 0U; slot < 6U; ++slot) {
+        OL_CHECK(medicine.selected_party_slot() == slot);
+        static_cast<void>(medicine.handle_key(0x98U));
+    }
+    OL_CHECK(medicine.selected_party_slot() == 0U);
+    static_cast<void>(medicine.handle_key(0x9EU));
+    OL_CHECK(medicine.selected_party_slot() == 5U);
+    result = medicine.handle_key(0x0DU);
+    OL_CHECK(result.command == GameMenuCommand::medicine);
+    OL_CHECK(result.slot == 1U);
+    OL_CHECK(result.index == 5U);
+
     GameMenuController no_medicine;
     static_cast<void>(no_medicine.handle_key(0x0DU));
     OL_CHECK(no_medicine.screen() == GameMenuScreen::party_notice);
@@ -2580,6 +2595,20 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         std::cerr << "medicine_target_hash=0x" << std::hex << medicine_target_hash << std::dec << '\n';
     }
     OL_CHECK(medicine_target_hash == 0x4B54FD702A1F4713ULL);
+    if (menu_ranger != nullptr) {
+        auto& target = menu_ranger->roles[0U];
+        const auto original = target;
+        const auto random_before = app::LegacyGameRuntimeTestAccess::random(new_game).state();
+        target.hp = 4'000'000'000'000;
+        target.maximum_hp = 5'000'000'000'000;
+        const auto wide_before = target;
+        OL_CHECK(new_game.render());
+        OL_CHECK(target == wide_before);
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() == random_before);
+        target = original;
+        OL_CHECK(new_game.render());
+        OL_CHECK(fnv1a64(new_game.framebuffer().pixels()) == medicine_target_hash);
+    }
     OL_CHECK(
         new_game.handle_key(0x1BU, false, false) ==
         app::LegacyKeyStateReset::translated);
