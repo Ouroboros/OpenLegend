@@ -265,6 +265,7 @@ PoisonRange = trunc(U ÷ 15) + 1</pre>
       </tbody>
     </table>
     <p>主角每次基础解毒量为7，随机差为−7及以下时解0点，单次概率6%，所以最多次数没有上限；平均次数仍是有限值。</p>
+    <p>当前菜单共用解毒入口及战斗用毒／解毒入口以signed64返回实际增减量，与模型结果和战斗伤害值字段保持同一宽度，遵循<a href="../support/persistence.zh-Hans.html#save-format-values">数值位宽合同</a>。实际中毒仍固定为0～99，解毒量不超过目标现有中毒；此次统一结果类型不扩大毒域，不改变公式、随机序列、固定角色编号或作用距离。</p>
     <p>原版机器依据：<a href="../../../research/evidence/functions/Z_DAT/0x39DA3.md">角色解毒函数</a>。</p>
   </section>
 </section>

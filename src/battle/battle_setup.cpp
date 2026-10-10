@@ -148,7 +148,7 @@ NODISCARD constexpr std::optional<std::size_t> legacy_cursor_index(
 
 }  // namespace
 
-std::optional<std::int16_t> apply_role_detox_value(
+std::optional<std::int64_t> apply_role_detox_value(
     model::RuntimeRangerState& ranger,
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
@@ -163,7 +163,7 @@ std::optional<std::int16_t> apply_role_detox_value(
         ranger.roles[static_cast<std::size_t>(target_role_id)], random);
 }
 
-std::optional<std::int16_t> apply_role_detox_value(
+std::optional<std::int64_t> apply_role_detox_value(
     const model::RoleState& actor,
     model::RoleState& target,
     random::LegacyRandom& random) {
@@ -173,7 +173,7 @@ std::optional<std::int16_t> apply_role_detox_value(
         return std::nullopt;
     }
     target.poison -= *amount;
-    return static_cast<std::int16_t>(*amount);
+    return amount;
 }
 
 std::optional<std::int64_t> apply_role_medicine_value(
@@ -2391,7 +2391,7 @@ std::optional<std::int16_t> BattleSetup::poison_targeting_range(
     return static_cast<std::int16_t>(range);
 }
 
-std::optional<std::int16_t> BattleSetup::apply_poison_value(
+std::optional<std::int64_t> BattleSetup::apply_poison_value(
     const std::size_t actor_slot,
     const std::size_t target_slot) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
@@ -2419,7 +2419,7 @@ std::optional<std::int16_t> BattleSetup::apply_poison_value(
     target.poison += poison->applied_amount;
     target.hp = std::max<std::int64_t>(*hp, 0);
     combatants_[target_slot].poison_overflow_damage = poison->hp_damage;
-    return static_cast<std::int16_t>(poison->applied_amount);
+    return poison->applied_amount;
 }
 
 std::optional<BattleAreaResult> BattleSetup::apply_poison_target(
@@ -2529,7 +2529,7 @@ std::optional<std::int16_t> BattleSetup::detox_targeting_range(
     return static_cast<std::int16_t>(range);
 }
 
-std::optional<std::int16_t> BattleSetup::apply_detox_value(
+std::optional<std::int64_t> BattleSetup::apply_detox_value(
     const std::size_t actor_slot,
     const std::size_t target_slot,
     random::LegacyRandom& random) {

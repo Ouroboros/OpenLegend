@@ -72,13 +72,13 @@ struct BattleAreaResult {
     std::optional<std::int16_t> effect_kind;
 };
 
-NODISCARD std::optional<std::int16_t> apply_role_detox_value(
+NODISCARD std::optional<std::int64_t> apply_role_detox_value(
     model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     random::LegacyRandom& random);
 
-NODISCARD std::optional<std::int16_t> apply_role_detox_value(
+NODISCARD std::optional<std::int64_t> apply_role_detox_value(
     const model::RoleState& actor,
     model::RoleState& target,
     random::LegacyRandom& random);
@@ -852,7 +852,7 @@ public:
     NODISCARD std::optional<std::int16_t> poison_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    NODISCARD std::optional<std::int16_t> apply_poison_value(
+    NODISCARD std::optional<std::int64_t> apply_poison_value(
         std::size_t actor_slot,
         std::size_t target_slot);
 
@@ -865,7 +865,7 @@ public:
     NODISCARD std::optional<std::int16_t> detox_targeting_range(
         std::size_t actor_slot) const noexcept;
 
-    NODISCARD std::optional<std::int16_t> apply_detox_value(
+    NODISCARD std::optional<std::int64_t> apply_detox_value(
         std::size_t actor_slot,
         std::size_t target_slot,
         random::LegacyRandom& random);
