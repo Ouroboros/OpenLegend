@@ -35,10 +35,10 @@
 <tr><td>药品使用效果</td><td>部分有</td><td><a href="new-game-plus/fields/hurt-medicine.zh-Hans.html#hurt-cap-impact-audit">普通物品的内伤折算及正向理论回血增幅</a>、<a href="new-game-plus/fields/use-poison-anti-poison-detoxification.zh-Hans.html#detoxification-rules">药品解毒</a>已有；回血分母已明确为原版NG1最大生命上限（当前999）。已接入的物品顺序与显示见<a href="new-game-plus/support/battle-calculation.zh-Hans.html#ordinary-items">普通物品结算</a>；其余分支的完整NG+公式未进入已提交文档。</td></tr>
 <tr><td>升级、战斗经验</td><td>没消失</td><td><a href="new-game-plus/fields/experience.zh-Hans.html#level-cost">人物升级与战斗经验</a></td></tr>
 <tr><td>秘笈修炼</td><td>没消失</td><td><a href="new-game-plus/fields/item-experience.zh-Hans.html#manual-rule">秘笈经验与修炼规则</a>等字段页</td></tr>
-<tr><td>11级后武功实际效果</td><td>已收录</td><td><a href="new-game-plus/fields/magic-levels.zh-Hans.html#martial-effect-growth">武功效果成长算法</a>：十级综合强度、耗内补偿、连续成长与末级范围冻结；仅完成设计，尚未实现。</td></tr>
+<tr><td>11级后武功实际效果</td><td>已接入并通过相关回归</td><td><a href="new-game-plus/fields/magic-levels.zh-Hans.html#martial-effect-growth">武功效果成长算法</a>已用于实际HP／MP攻击；原十级效果、连续成长与末级范围冻结已验证，完整游玩及平衡仍待验收。</td></tr>
 <tr><td>存档规则</td><td>没消失</td><td><a href="new-game-plus/support/persistence.zh-Hans.html#save-format">TOML存档与持久化</a></td></tr>
 <tr><td>伤毒、解毒、角色医疗</td><td>没消失</td><td><a href="new-game-plus/fields/hurt-medicine.zh-Hans.html">内伤医疗页</a>、<a href="new-game-plus/fields/use-poison-anti-poison-detoxification.zh-Hans.html">中毒、用毒、抗毒与解毒页</a></td></tr>
-<tr><td>敌人生成、完整伤害公式</td><td>已收录设计，尚未实现</td><td><a href="new-game-plus/support/battle-calculation.zh-Hans.html#enemy-growth">敌方从BASE累加STEP</a>；<a href="new-game-plus/support/battle-calculation.zh-Hans.html#calculation-order">战斗结算顺序</a>串联原版主干、武功、装备、内伤及附毒。</td></tr>
+<tr><td>敌人生成、完整伤害公式</td><td>相关入口已接入，完整验收未完成</td><td><a href="new-game-plus/support/battle-calculation.zh-Hans.html#enemy-growth">敌方从BASE累加STEP</a>已用于独立参战角色；<a href="new-game-plus/support/battle-calculation.zh-Hans.html#calculation-order">战斗结算顺序</a>的武功、装备、内伤及附毒入口已通过相关回归，全部结算写点与完整游戏链仍需核对。</td></tr>
 <tr><td>旧主稿已有的整章规则</td><td>未发现拆分后整章失踪</td><td>已逐章找到迁移位置，未逐句核对。</td></tr>
 </tbody></table>
 </section>

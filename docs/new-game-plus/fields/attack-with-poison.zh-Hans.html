@@ -41,7 +41,7 @@
   <p><code>attack_with_poison</code>是角色的永久属性：物品效果标签称「功夫帶毒」，本稿称「武功带毒」；不是主动用毒的<code>use_poison</code>，也不是目标的当前<code>poison</code>。原版两页人物状态均不显示其数值。</p>
   <p>当前原版物品定义中，成功修炼神木王鼎（ID 65，关联武功ID 27）每次增加5，含沙射影（ID 90，无关联武功）每次增加2；原版修炼成功后夹到0～100，神木王鼎在关联武功达到10级后不能再完成修炼。NG+不再按本周武功等级停止，也不按逐周目上限夹值。</p>
 </div>
-<p class="notice">本节是NG+设计，所有周目通用，运行时代码尚未实现。上毒公式见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>，本页只写武功毒力和原版数据举例；中毒量的毒发与解毒见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison">中毒、用毒、抗毒与解毒页</a>。</p>
+<p class="notice">本节是所有周目通用的NG+规则；实际HP攻击已接入角色及武功毒力、深毒与溢出伤血，并通过相关回归，完整游玩及平衡仍待验收。实现范围见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。上毒公式见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>，本页只写武功毒力和原版数据举例；中毒量的毒发与解毒见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison">中毒、用毒、抗毒与解毒页</a>。</p>
 
 <h3>1. 武功毒力</h3>
 <pre>武功毒力 = actor.attack_with_poison + magic.with_poison × 武功等级

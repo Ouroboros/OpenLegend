@@ -91,7 +91,7 @@ C = need(i)×A(iq)×L
     <pre>原版正常域，每次攻击结算：本槽熟练度 ← min(999, 本槽熟练度＋k)，k∈{1,2}
 战后秘笈达标，已学同ID且该槽熟练度＜899：本槽熟练度 ← 本槽熟练度＋100</pre>
     <p><strong>原版写入顺序：</strong>先逐次结算战斗攻击；战后若达到本档修炼费用，先提交秘笈属性效果并清零修炼经验，再按上式逐槽处理已学的同ID武功。首次学会则只向空槽写入武功ID，保留该槽原有熟练度，不额外加100。原版机器依据见<a href="../../../research/evidence/battle-1to1.md">攻击结算核查</a>与<a href="../../../research/evidence/functions/Z_DAT/0x3BA85.md">秘笈修炼核查</a>。</p>
-    <p>NG+设计沿用攻击结算每次1或2点、秘笈成功提升熟练度的原始增量，不按周目放大；达到当前周目比较节点后仍可继续增长，不把原版的999和899固定门槛照搬到更高等级。换周目不夹熟练度；效果算法见<a href="magic-levels.zh-Hans.html#martial-effect-growth">武功效果页</a>。运行时代码尚未实现这项扩展。</p>
+    <p>NG+设计沿用攻击结算每次1或2点、秘笈成功提升熟练度的原始增量，不按周目放大；达到当前周目比较节点后仍可继续增长，不把原版的999和899固定门槛照搬到更高等级。换周目不夹熟练度；效果算法见<a href="magic-levels.zh-Hans.html#martial-effect-growth">武功效果页</a>。攻击使用及秘笈成功的熟练度增长、费用、逐槽提示和跨周继承已接入并通过相关回归；完整游玩仍待验收，范围见<a href="../implementation-tasks.zh-Hans.md">实现任务清单</a>。</p>
     <p>无对应武功秘笈的成功次数与费用见<a href="no-magic-count.zh-Hans.html#manual-unassociated">无关联秘笈成功次数字段页</a>。</p>
     <h4 id="manual-settlement">2.1.3 统一结算顺序</h4>
     <pre>I' = I＋T
