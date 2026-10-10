@@ -42,7 +42,7 @@
 
 ## 5. 正式NG+替换与当前验证
 
-- 轻功固定域补齐：当前967字节与既有raw SHA256一致，完整201条指令重新核对。原`0x3B8A3`加速度，`0x3B9A1..0x3B9AB`限制到100；现代在所有受检成长成功后保留该轻功限制，其他已取消上限的属性不恢复100封顶。signed64加法溢出仍拒绝，不能用最终100掩盖溢出。依据[轻功写入规则](../../../../docs/new-game-plus/fields/speed.zh-Hans.html#speed-writes)；最新验证见[实现清单](../../../../docs/new-game-plus/implementation-tasks.zh-Hans.md)，下列旧批次记录不证明固定域在当时已经完整。
+- 固定写回边界：当前967字节与既有raw SHA256一致，201条导出指令逐条匹配当前Z.DAT字节；轻功及拳／剑／刀相关分支已核对。原`0x3B8A3`加速度，`0x3B9A1..0x3B9AB`限制到100；拳／剑／刀分别在`0x3B914/0x3B935/0x3B956`以严格大于20决定一次bounded(3)，最后在`0x3BA37..0x3BA77`按大于100写100。零随机增量也经过最后的封顶；完整函数不读写特殊兵器。现代在候选角色中完成全部受检成长后保留这四项固定写回上界，其他属性按正式字段规则处理；signed64加法溢出仍拒绝，不能用最终100掩盖溢出。依据[轻功写入规则](../../../../docs/new-game-plus/fields/speed.zh-Hans.html#speed-writes)、[拳掌](../../../../docs/new-game-plus/fields/fist.zh-Hans.html)、[御剑](../../../../docs/new-game-plus/fields/sword.zh-Hans.html)及[耍刀](../../../../docs/new-game-plus/fields/knife.zh-Hans.html)。静态核对日志`tmp/ngplus-fixed-technique-machine-contract-audit.log`；最新运行验证见[实现清单](../../../../docs/new-game-plus/implementation-tasks.zh-Hans.md)。这不是原程序动态oracle，下列旧批次记录不证明固定边界在当时已经完整。
 
 - 依据[人物经验规则](../../../../docs/new-game-plus/fields/experience.zh-Hans.html)，从当前Z.DAT文件偏移`0x4DF8E`读取原始门槛，表外由末两级费用差递推；实际升级及界面不在30级停止。
 - `c320748`接入资产表和64位门槛计算，`5fd022a`在角色与RNG副本上应用成长并移除升级时999／100封顶，`dc46dae`同步下一等级经验显示。保留第2节的资质分档、技能严格大于20条件、RNG顺序及先显示消息再提交时机。

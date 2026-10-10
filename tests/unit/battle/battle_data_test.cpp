@@ -3033,7 +3033,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(role.word(role_word::medicine) == 20);
         OL_CHECK(role.word(role_word::use_poison) == 22);
         OL_CHECK(role.word(role_word::detoxification) == 100);
-        OL_CHECK(role.word(role_word::fist) == 32768);
+        OL_CHECK(role.word(role_word::fist) == 100);
         OL_CHECK(role.word(role_word::sword) == 0);
         OL_CHECK(role.word(role_word::knife) == 23);
         OL_CHECK(role.word(role_word::hidden_weapon) == 102);
@@ -14632,6 +14632,211 @@ void run_ngplus_speed_domain_test(const openlegend::resource::DataRoot& data_roo
     }
 }
 
+void run_ngplus_fixed_technique_writes_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    constexpr std::int64_t wide = 5'000'000'000'000;
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    struct LevelCase {
+        std::int64_t before;
+        std::array<std::int64_t, 3> after;
+        std::uint32_t random_state;
+    };
+    constexpr std::array<LevelCase, 6> level_cases{{
+        {0, {0, 0, 0}, 662'824'084U},
+        {20, {20, 20, 20}, 662'824'084U},
+        {21, {21, 22, 22}, 2'516'284'547U},
+        {99, {99, 100, 100}, 2'516'284'547U},
+        {100, {100, 100, 100}, 2'516'284'547U},
+        {wide, {100, 100, 100}, 2'516'284'547U},
+    }};
+    struct PracticeCase {
+        std::int64_t before;
+        std::int16_t delta;
+        std::optional<std::int64_t> after;
+    };
+    constexpr std::array<PracticeCase, 12> practice_cases{{
+        {0, -1, 0}, {0, 0, 0}, {20, 1, 21}, {99, 1, 100},
+        {99, 2, 100}, {100, 1, 100}, {101, -1, 100}, {101, 0, 100},
+        {wide, 0, 100}, {maximum, 0, 100},
+        {maximum, 1, std::nullopt}, {minimum, -1, std::nullopt},
+    }};
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+    for (const auto enabled : {false, true}) {
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = enabled;
+        for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+            if (!enabled && playthrough != 1) {
+                continue;
+            }
+            {
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& role = ranger.roles[1U];
+                role.iq = 0;
+                role.level = 1;
+                role.experience = 49;
+                role.fist = wide;
+                role.sword = wide;
+                role.knife = wide;
+                role.unusual = maximum;
+                role.practice_item = model::ItemId{0};
+                role.item_experience = 13;
+                auto& item = ranger.items[0U];
+                item = {};
+                item.set_word(item_word::item_type, 2);
+                item.set_word(item_word::magic_id, -1);
+                item.set_word(item_word::need_experience, 1);
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto before = ranger.roles;
+                random::LegacyRandom random{1U};
+                const auto level = setup.apply_battle_level_up(1U, true, random);
+                OL_CHECK(level && !level->changed);
+                OL_CHECK(ranger.roles == before);
+                OL_CHECK(random.state() == 1U);
+                const auto practice = setup.apply_battle_practice(1U, true);
+                OL_CHECK(practice && !practice->practiced);
+                OL_CHECK(ranger.roles == before);
+            }
+            for (const auto target_level : std::array<std::int64_t, 2>{2, 60}) {
+                for (const auto& test : level_cases) {
+                    auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                    auto& role = ranger.roles[1U];
+                    role.iq = 0;
+                    role.level = 1;
+                    role.experience = model::level_experience_requirement(
+                        data.experience_thresholds(), target_level).value();
+                    role.medicine = 0;
+                    role.use_poison = 0;
+                    role.detoxification = 0;
+                    role.fist = test.before;
+                    role.sword = test.before;
+                    role.knife = test.before;
+                    role.unusual = maximum;
+                    role.hidden_weapon = wide;
+                    role.attack = wide;
+                    role.defence = wide;
+                    BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                    OL_CHECK(setup.valid());
+                    const auto role_before = role;
+                    random::LegacyRandom random{1U};
+                    const auto result = setup.apply_battle_level_up(1U, true, random);
+                    OL_CHECK(result && result->changed && result->new_level == target_level);
+                    OL_CHECK(role.fist == test.after[0U]);
+                    OL_CHECK(role.sword == test.after[1U]);
+                    OL_CHECK(role.knife == test.after[2U]);
+                    OL_CHECK(role.unusual == maximum);
+                    OL_CHECK(role.attack == wide + target_level - 1);
+                    OL_CHECK(role.defence == wide + target_level - 1);
+                    OL_CHECK(role.hidden_weapon == wide + (test.before > 20 ? 2 : 0));
+                    OL_CHECK(random.state() == test.random_state);
+                    const auto after = role;
+                    const auto no_change = setup.apply_battle_level_up(1U, true, random);
+                    OL_CHECK(no_change && !no_change->changed);
+                    OL_CHECK(role == after);
+                    OL_CHECK(random.state() == test.random_state);
+                    OL_CHECK(role.unusual == role_before.unusual);
+                }
+            }
+            for (const auto field : {&model::RoleState::fist,
+                     &model::RoleState::sword, &model::RoleState::knife}) {
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& role = ranger.roles[1U];
+                role.iq = 0;
+                role.level = 1;
+                role.experience = 50;
+                role.medicine = 0;
+                role.use_poison = 0;
+                role.detoxification = 0;
+                role.fist = 0;
+                role.sword = 0;
+                role.knife = 0;
+                role.*field = maximum;
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto before = ranger.roles;
+                random::LegacyRandom random{0xFFFFFFFFU};
+                OL_CHECK(!setup.apply_battle_level_up(1U, true, random));
+                OL_CHECK(ranger.roles == before);
+                OL_CHECK(random.state() == 0xFFFFFFFFU);
+            }
+            for (const auto word : {role_word::fist, role_word::sword, role_word::knife, role_word::unusual}) {
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& role = ranger.roles[1U];
+                role.iq = 0;
+                role.practice_item = model::ItemId{0};
+                role.item_experience = 14;
+                role.fist = 99;
+                role.sword = 99;
+                role.knife = 99;
+                role.unusual = 99;
+                role.set_word(word, maximum);
+                auto& item = ranger.items[0U];
+                item = {};
+                item.set_word(item_word::item_type, 2);
+                item.set_word(item_word::magic_id, -1);
+                item.set_word(item_word::need_experience, 1);
+                item.set_word(item_word::add_fist, 1);
+                item.set_word(item_word::add_sword, 1);
+                item.set_word(item_word::add_knife, 1);
+                item.set_word(item_word::add_unusual, 1);
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto before = ranger.roles;
+                OL_CHECK(!setup.apply_battle_practice(1U, true));
+                OL_CHECK(ranger.roles == before);
+            }
+            for (const auto& test : practice_cases) {
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& role = ranger.roles[1U];
+                role.iq = 0;
+                role.practice_item = model::ItemId{0};
+                role.item_experience = 14;
+                role.fist = test.before;
+                role.sword = test.before;
+                role.knife = test.before;
+                role.unusual = test.before;
+                role.attack = wide;
+                role.hidden_weapon = wide;
+                role.attack_with_poison = wide;
+                auto& item = ranger.items[0U];
+                item = {};
+                item.set_word(item_word::item_type, 2);
+                item.set_word(item_word::magic_id, -1);
+                item.set_word(item_word::need_experience, 1);
+                item.set_word(item_word::add_fist, test.delta);
+                item.set_word(item_word::add_sword, test.delta);
+                item.set_word(item_word::add_knife, test.delta);
+                item.set_word(item_word::add_unusual, test.delta);
+                item.set_word(item_word::add_attack, 5);
+                item.set_word(item_word::add_hidden_weapon, 7);
+                item.set_word(item_word::add_attack_with_poison, 9);
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto before = ranger.roles;
+                const auto result = setup.apply_battle_practice(1U, true);
+                OL_CHECK(result.has_value() == test.after.has_value());
+                if (result && test.after) {
+                    OL_CHECK(result->practiced);
+                    OL_CHECK(role.fist == *test.after);
+                    OL_CHECK(role.sword == *test.after);
+                    OL_CHECK(role.knife == *test.after);
+                    OL_CHECK(role.unusual == *test.after);
+                    OL_CHECK(role.attack == wide + 5);
+                    OL_CHECK(role.hidden_weapon == wide + 7);
+                    OL_CHECK(role.attack_with_poison == wide + 9);
+                    OL_CHECK(role.item_experience == 0);
+                    OL_CHECK(role.no_magic_count[0U] == (enabled ? 1 : 0));
+                } else {
+                    OL_CHECK(ranger.roles == before);
+                }
+            }
+        }
+    }
+}
+
 void run_ngplus_support_finish_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend::battle;
     constexpr auto wide = std::int64_t{5'000'000'000'000};
@@ -14915,7 +15120,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 58> checks{
+    const std::array<BattleCheck, 59> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14974,6 +15179,7 @@ int main(const int argc, char* argv[]) {
         run_wide_character_status_test,
         run_wide_medicine_selection_test,
         run_wide_damage_text_test,
+        run_ngplus_fixed_technique_writes_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

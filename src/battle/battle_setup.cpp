@@ -1087,6 +1087,9 @@ std::optional<BattleLevelUpResult> BattleSetup::apply_battle_level_up(
         return std::nullopt;
     }
     candidate.speed = std::min(candidate.speed, std::int64_t{100});
+    candidate.fist = std::min(candidate.fist, std::int64_t{100});
+    candidate.sword = std::min(candidate.sword, std::int64_t{100});
+    candidate.knife = std::min(candidate.knife, std::int64_t{100});
     candidate.level = *new_level;
     candidate.hp = candidate.maximum_hp;
     candidate.mp = candidate.maximum_mp;
@@ -1170,7 +1173,9 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
             error_ = "battle practice ability growth overflow";
             return std::nullopt;
         }
-        role.set_word(role_word, role_word == model::role_word::speed
+        const auto fixed_boundary = role_word == model::role_word::speed ||
+            (role_word >= model::role_word::fist && role_word <= model::role_word::unusual);
+        role.set_word(role_word, fixed_boundary
             ? std::clamp(*changed, std::int64_t{0}, std::int64_t{100})
             : std::max<std::int64_t>(*changed, 0));
     }

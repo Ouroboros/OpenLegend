@@ -33,6 +33,10 @@ int main() {
     actor.hp = 13;
     actor.mp = 17;
     actor.attack = 3'000'000'000'000;
+    actor.fist = 101;
+    actor.sword = 5'000'000'000'000;
+    actor.knife = std::numeric_limits<std::int64_t>::max();
+    actor.unusual = 5'000'000'000'001;
     actor.hurt = 31;
     actor.poison = 29;
     actor.physical_power = 7;
@@ -93,6 +97,8 @@ int main() {
         OL_CHECK(next.playthrough == 2 && next.origin == model::SnapshotOrigin::new_game_plus);
         OL_CHECK(next.configuration == configuration && next.valid_for_persistence());
         OL_CHECK(inherited.name == actor.name && inherited.level == actor.level && inherited.attack == actor.attack);
+        OL_CHECK(inherited.fist == actor.fist && inherited.sword == actor.sword);
+        OL_CHECK(inherited.knife == actor.knife && inherited.unusual == actor.unusual);
         OL_CHECK(inherited.hp == actor.maximum_hp && inherited.maximum_hp == actor.maximum_hp);
         OL_CHECK(inherited.mp == actor.maximum_mp && inherited.maximum_mp == actor.maximum_mp);
         OL_CHECK(inherited.hurt == 0 && inherited.poison == 0 && inherited.physical_power == 100);
@@ -125,6 +131,11 @@ int main() {
         last_source.playthrough = 998;
         const auto last = model::prepare_next_playthrough(last_source, baseline, configuration);
         OL_CHECK(last && last.snapshot->playthrough == 999);
+        if (last) {
+            const auto& last_actor = last.snapshot->ranger.roles[0U];
+            OL_CHECK(last_actor.fist == actor.fist && last_actor.sword == actor.sword);
+            OL_CHECK(last_actor.knife == actor.knife && last_actor.unusual == actor.unusual);
+        }
         last_source.playthrough = 999;
         OL_CHECK(!model::prepare_next_playthrough(last_source, baseline, configuration));
     }

@@ -376,7 +376,7 @@ class BuildToolTest(unittest.TestCase):
             cmake,
         )
         self.assertIn(
-            "add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 58)",
+            "add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 59)",
             cmake,
         )
         self.assertIn("TMP=${TEST_TEMP_ROOT}", cmake)
