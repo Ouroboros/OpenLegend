@@ -3861,6 +3861,29 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     }
     model::NewGamePlusConfiguration configuration;
     configuration.enabled = true;
+    {
+        app::LegacyGameRuntime new_game{data_root, root, 0U, app::GameResolution{},
+            input::NameInputMethod::modern, {}, configuration};
+        OL_CHECK(new_game.valid());
+        finish_title_startup(new_game);
+        new_game.handle_key(0x0DU, false, false);
+        finish_title_confirmation(new_game);
+        OL_CHECK(new_game.view() == app::LegacyGameView::name_entry);
+        OL_CHECK(!new_game.game_state().ranger()->roles[0U].ever_joined);
+        new_game.handle_text_input(u8"A");
+        new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        new_game.finish_presented_tick();
+        new_game.advance();
+        OL_CHECK(new_game.view() == app::LegacyGameView::attributes);
+        new_game.handle_key('Y', false, false);
+        finish_new_game_scene_transition(new_game);
+        OL_CHECK(new_game.view() == app::LegacyGameView::scene);
+        OL_CHECK(new_game.game_state().ranger()->roles[0U].ever_joined);
+        OL_CHECK(new_game.game_state().snapshot()->origin == model::SnapshotOrigin::new_game_plus);
+        const auto& roles = new_game.game_state().ranger()->roles;
+        OL_CHECK(std::all_of(roles.begin() + 1, roles.end(), [](const auto& role) { return !role.ever_joined; }));
+    }
     auto source = model::decode_legacy_snapshot(*baseline.snapshot, configuration, &baseline.snapshot->ranger);
     OL_CHECK(source.has_value());
     if (!source) {

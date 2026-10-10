@@ -344,6 +344,9 @@ public:
                      std::array<std::int16_t, 8>{1, 1574, 0, 0, 1, 1575, 0, 0}) {
                     append_i16(group, word);
                 }
+            } else if (script == 112U || script == 113U) {
+                append_i16(group, script == 112U ? 10 : 21);
+                append_i16(group, 49);
             } else if (script == 108U) {
                 append_i16(group, 59);
             } else if (script >= 109U && script <= 111U) {
@@ -5078,7 +5081,40 @@ void check_event_clear_party_mp(const std::filesystem::path& root) {
     OL_CHECK(snapshot.ranger.roles[2].word(openlegend::model::role_word::mp) == 0);
 }
 
+void check_actual_join_history(const std::filesystem::path& root) {
+    using namespace openlegend;
+    const SyntheticKdefDataRoot synthetic{root};
+    const resource::DataRoot data_root{synthetic.path()};
+    for (const bool enabled : {false, true}) {
+        for (const bool full : {false, true}) {
+            auto snapshot = load_baseline(root);
+            snapshot.configuration.enabled = enabled;
+            for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
+                snapshot.ranger.header.set_team_member(slot,
+                    model::CharacterId{full ? static_cast<std::int16_t>(slot) : std::int16_t{-1}});
+            }
+            auto& actor = snapshot.ranger.roles[49U];
+            actor.taking_items.fill(model::ItemId{-1});
+            actor.taking_counts.fill(0);
+            random::LegacyRandom random{1U};
+            scene::SceneSession session{data_root, snapshot, random, 70};
+            OL_CHECK(finish_scene_title(session).kind == scene::SceneStepKind::stay);
+            OL_CHECK(!actor.ever_joined);
+            OL_CHECK(session.begin_event(112, 0, 0, 0).kind == scene::SceneStepKind::stay);
+            OL_CHECK(actor.ever_joined == (enabled && !full));
+            OL_CHECK(snapshot.ranger.header.team_member(1U).value == (full ? 1 : 49));
+            OL_CHECK(session.begin_event(113, 0, 0, 0).kind == scene::SceneStepKind::stay);
+            OL_CHECK(actor.ever_joined == (enabled && !full));
+            OL_CHECK(snapshot.ranger.header.team_member(1U).value == (full ? 1 : -1));
+            OL_CHECK(session.begin_event(112, 0, 0, 0).kind == scene::SceneStepKind::stay);
+            OL_CHECK(actor.ever_joined == (enabled && !full));
+            OL_CHECK(!snapshot.ranger.roles[50U].ever_joined);
+        }
+    }
+}
+
 void check_event_join_helper(const std::filesystem::path& root) {
+    check_actual_join_history(root);
     using openlegend::scene::SceneResponse;
     using openlegend::scene::SceneStepKind;
 

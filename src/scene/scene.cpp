@@ -1202,6 +1202,10 @@ SceneStepResult SceneSession::run_event() {
                     continue;
                 }
                 snapshot_.ranger.header.set_team_member(index, model::CharacterId{role_id});
+                if (snapshot_.configuration.enabled && role_id >= 0 &&
+                    static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
+                    snapshot_.ranger.roles[static_cast<std::size_t>(role_id)].ever_joined = true;
+                }
                 break;
             }
             if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {

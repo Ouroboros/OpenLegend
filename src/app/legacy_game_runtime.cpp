@@ -2796,11 +2796,15 @@ bool LegacyGameRuntime::advance_scene_effect() {
         pending_new_game_scene_start_ = false;
         attribute_controller_.reset();
         update_menu_counts();
-        static_cast<void>(start_scene(
+        const bool started = start_scene(
             70,
             LegacyGameView::title,
             scene::SceneEntryOverride{
-                19, 20, scene::SceneDirection::right, 6890, 691}));
+                19, 20, scene::SceneDirection::right, 6890, 691});
+        if (started && new_game_plus_configuration_.enabled) {
+            game_state_.ranger()->roles[0U].ever_joined = true;
+            game_state_.snapshot()->origin = model::SnapshotOrigin::new_game_plus;
+        }
     } else if (title_startup_phase_ == TitleStartupPhase::fade_to_black) {
         title_startup_phase_ = TitleStartupPhase::black_menu_present;
         begin_scene_effect(SceneEffectKind::present, 1U);
