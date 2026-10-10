@@ -91,13 +91,18 @@ target_include_directories(openlegend_runtime_snapshot_tests PRIVATE ${CMAKE_CUR
 target_link_libraries(openlegend_runtime_snapshot_tests PRIVATE openlegend_model openlegend_persistence)
 add_test(NAME openlegend.runtime_snapshot COMMAND openlegend_runtime_snapshot_tests)
 
+add_executable(openlegend_playthrough_transition_tests unit/model/playthrough_transition_test.cpp)
+target_include_directories(openlegend_playthrough_transition_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_playthrough_transition_tests PRIVATE openlegend_model openlegend_persistence)
+add_test(NAME openlegend.playthrough_transition COMMAND openlegend_playthrough_transition_tests)
+
 add_executable(openlegend_ngplus_configuration_tests unit/app/new_game_plus_configuration_test.cpp)
 target_include_directories(openlegend_ngplus_configuration_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_ngplus_configuration_tests PRIVATE openlegend_app)
 add_test(NAME openlegend.ngplus_configuration COMMAND openlegend_ngplus_configuration_tests)
 
 set_tests_properties(
-    openlegend.role_state openlegend.runtime_snapshot openlegend.experience openlegend.practice openlegend.magic_progression PROPERTIES
+    openlegend.role_state openlegend.runtime_snapshot openlegend.playthrough_transition openlegend.experience openlegend.practice openlegend.magic_progression PROPERTIES
     ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
 

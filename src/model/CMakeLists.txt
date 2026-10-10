@@ -1,6 +1,6 @@
 add_library(
     openlegend_model
-    STATIC checked_arithmetic.cpp enemy_growth.cpp experience.cpp game_snapshot.cpp hurt.cpp magic_progression.cpp medicine.cpp new_game.cpp new_game_plus_configuration.cpp poison.cpp practice.cpp role_state.cpp runtime_snapshot.cpp
+    STATIC checked_arithmetic.cpp enemy_growth.cpp experience.cpp game_snapshot.cpp hurt.cpp magic_progression.cpp medicine.cpp new_game.cpp new_game_plus_configuration.cpp playthrough_transition.cpp poison.cpp practice.cpp role_state.cpp runtime_snapshot.cpp
 )
 target_include_directories(
     openlegend_model
