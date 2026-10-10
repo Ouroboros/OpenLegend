@@ -1185,7 +1185,7 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
     }
     role.attack_with_poison = std::max<std::int64_t>(*attack_with_poison, 0);
     role.item_experience = 0;
-    if (magic_id == -1 && item.word(model::item_word::need_experience) > 0) {
+    if (new_game_plus_enabled_ && magic_id == -1 && item.word(model::item_word::need_experience) > 0) {
         const auto count = model::checked_add(role.no_magic_count[static_cast<std::size_t>(item_id)], 1);
         if (!count.has_value()) {
             error_ = "battle practice completion history overflow";

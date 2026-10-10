@@ -13,6 +13,9 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/legacy_game_runtime.hpp"
+#include "openlegend/battle/battle_data.hpp"
+#include "openlegend/battle/battle_setup.hpp"
+#include "openlegend/model/practice.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/persistence/save_slot.hpp"
@@ -3914,6 +3917,7 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     actor.mp = actor.maximum_mp = 999;
     actor.physical_power = 100;
     actor.attack = 4'000'000'000'000;
+    actor.medicine = 100;
     actor.equipment.fill(model::ItemId{-1});
     actor.taking_items.fill(model::ItemId{-1});
     actor.magic_ids.fill(model::MagicId{0});
@@ -3959,6 +3963,41 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
         return;
     }
     ranger->roles[0U].hp -= 7;
+    battle::BattleData practice_data{resource::DataRoot{data_root}, 0};
+    OL_CHECK(practice_data.valid());
+    std::size_t manual_index = ranger->items.size();
+    for (std::size_t index = 0U; index < ranger->items.size(); ++index) {
+        const auto& item = ranger->items[index];
+        if (item.word(model::item_word::item_type) == 2 && item.word(model::item_word::magic_id) == -1 &&
+            item.word(model::item_word::user) == -1 && item.word(model::item_word::need_experience) > 0 &&
+            battle::role_meets_item_requirements(*ranger, 0, static_cast<std::int16_t>(index))) {
+            manual_index = index;
+            break;
+        }
+    }
+    OL_CHECK(manual_index < ranger->items.size());
+    if (manual_index >= ranger->items.size()) {
+        return;
+    }
+    const auto manual_id = static_cast<std::int16_t>(manual_index);
+    ranger->header.set_inventory(0U, model::ItemId{manual_id}, 1);
+    OL_CHECK(battle::assign_role_practice_item(*ranger, 0, manual_id));
+    const auto first_cost = model::manual_experience_requirement(
+        ranger->roles[0U], ranger->items[manual_index], manual_index, practice_data.practice_rules());
+    OL_CHECK(first_cost.has_value());
+    if (!first_cost) {
+        return;
+    }
+    ranger->roles[0U].item_experience = first_cost->experience + 1;
+    {
+        battle::BattleSetup practice{practice_data, *ranger, nullptr, configuration, 1, &baseline.snapshot->ranger};
+        OL_CHECK(practice.valid());
+        const auto practiced = practice.apply_battle_practice(0U, true);
+        OL_CHECK(practiced && practiced->practiced);
+        OL_CHECK(ranger->roles[0U].no_magic_count[manual_index] == 1);
+        OL_CHECK(ranger->roles[0U].item_experience == 0);
+    }
+    const auto practiced_actor = ranger->roles[0U];
     game.handle_key(0x1BU, false, false);
     game.handle_key(0x9EU, false, false);
     game.handle_key(0x0DU, false, false);
@@ -3973,8 +4012,30 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     OL_CHECK(saved);
     if (saved) {
         OL_CHECK(game.game_state().export_snapshot() == saved.save->snapshot);
-        OL_CHECK(saved.save->snapshot.ranger.roles[0U].hp == actor.hp - 7);
+        OL_CHECK(saved.save->snapshot.ranger.roles[0U] == practiced_actor);
+        OL_CHECK(saved.save->snapshot.ranger.roles[0U].no_magic_count[manual_index] == 1);
         OL_CHECK(saved.save->metadata.timestamp_utc.size() == 20U);
+    }
+    {
+        app::LegacyGameRuntime reloaded{data_root, root, 0U, app::GameResolution{},
+            input::NameInputMethod::legacy, {}, configuration};
+        finish_title_startup(reloaded);
+        reloaded.handle_key(0x98U, false, false);
+        reloaded.handle_key(0x0DU, false, false);
+        reloaded.handle_key(0x0DU, false, false);
+        finish_title_confirmation(reloaded);
+        OL_CHECK(reloaded.render());
+        reloaded.finish_presented_tick();
+        reloaded.advance();
+        finish_numbered_load_transition(reloaded, app::LegacyGameView::world);
+        const auto* restored = reloaded.game_state().ranger();
+        OL_CHECK(restored != nullptr);
+        if (restored != nullptr) {
+            OL_CHECK(restored->roles[0U] == practiced_actor);
+            const auto repeated_cost = model::manual_experience_requirement(restored->roles[0U],
+                restored->items[manual_index], manual_index, practice_data.practice_rules());
+            OL_CHECK(repeated_cost && repeated_cost->experience > first_cost->experience);
+        }
     }
     const auto untouched = persistence::load_numbered_slot(root, persistence::SaveSlot::one, index.bytes);
     OL_CHECK(untouched && untouched.snapshot == baseline.snapshot);
@@ -4069,9 +4130,17 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
         OL_CHECK(next_snapshot->playthrough == 2);
         OL_CHECK(next_snapshot->ranger.roles[0U].name == actor.name);
         OL_CHECK(next_snapshot->ranger.roles[0U].level == actor.level);
-        OL_CHECK(next_snapshot->ranger.roles[0U].hp == actor.maximum_hp);
-        OL_CHECK(next_snapshot->ranger.roles[0U].attack == actor.attack);
-        OL_CHECK(next_snapshot->ranger.roles[0U].ever_joined);
+        const auto& inherited_actor = next_snapshot->ranger.roles[0U];
+        OL_CHECK(inherited_actor.hp == practiced_actor.maximum_hp);
+        OL_CHECK(inherited_actor.attack == practiced_actor.attack);
+        OL_CHECK(inherited_actor.medicine == practiced_actor.medicine);
+        OL_CHECK(inherited_actor.ever_joined);
+        OL_CHECK(inherited_actor.no_magic_count[manual_index] == 1);
+        OL_CHECK(inherited_actor.practice_item.value == -1 && inherited_actor.item_experience == 0);
+        OL_CHECK(next_snapshot->ranger.header.inventory_item(0U).value == -1);
+        const auto repeated_cost = model::manual_experience_requirement(inherited_actor,
+            next_snapshot->ranger.items[manual_index], manual_index, practice_data.practice_rules());
+        OL_CHECK(repeated_cost && repeated_cost->experience > first_cost->experience);
     }
     const auto preserved = persistence::load_toml_slot(root, persistence::TomlSaveKind::completion,
         persistence::SaveSlot::one, context);

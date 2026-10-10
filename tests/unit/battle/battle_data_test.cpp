@@ -3203,11 +3203,13 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(setup.combatants()[0U].reward_experience ==
                  static_cast<std::int16_t>(5 + prepared->shared_experience));
         OL_CHECK(setup.combatants()[1U].reward_experience == 7);
-        OL_CHECK(non_enemy_role.word(role_word::hp) == 11);
-        OL_CHECK(non_enemy_role.word(role_word::mp) == 3);
-        OL_CHECK(non_enemy_role.word(role_word::physical_power) == 7);
-        OL_CHECK(non_enemy_role.word(role_word::hurt) == 8);
-        OL_CHECK(non_enemy_role.word(role_word::poison) == 9);
+        const auto& settled_non_enemy_role = ranger.roles[static_cast<std::size_t>(
+            non_enemy[combatant_word::role_id])];
+        OL_CHECK(settled_non_enemy_role.word(role_word::hp) == 11);
+        OL_CHECK(settled_non_enemy_role.word(role_word::mp) == 3);
+        OL_CHECK(settled_non_enemy_role.word(role_word::physical_power) == 7);
+        OL_CHECK(settled_non_enemy_role.word(role_word::hurt) == 8);
+        OL_CHECK(settled_non_enemy_role.word(role_word::poison) == 9);
     }
 
     {
@@ -3639,6 +3641,24 @@ void run_battle_practice_review_test(
         OL_CHECK(setup.valid());
         configure(ranger);
         auto& role = ranger.roles[0U];
+        ranger.items[5U].set_word(item_word::magic_id, -1);
+        OL_CHECK(encode_legacy_role(role).has_value());
+        for (std::size_t completion = 0U; completion < 2U; ++completion) {
+            role.item_experience = 600;
+            const auto result = setup.apply_battle_practice(0U, true);
+            OL_CHECK(result && result->practiced && result->required_experience == 60);
+            OL_CHECK(role.no_magic_count[5U] == 0);
+            OL_CHECK(role.item_experience == 0);
+            OL_CHECK(encode_legacy_role(role).has_value());
+        }
+    }
+
+    {
+        auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+        BattleSetup setup{data, ranger};
+        OL_CHECK(setup.valid());
+        configure(ranger);
+        auto& role = ranger.roles[0U];
         role.set_word(role_word::magic_id_begin + 1U, 2);
         role.set_word(role_word::magic_level_begin + 1U, 899);
         role.set_word(role_word::magic_id_begin + 2U, 2);
@@ -3772,7 +3792,7 @@ void run_battle_practice_review_test(
         OL_CHECK(role.word(role_word::defence) == 0);
         OL_CHECK(role.word(role_word::attack_twice) == 1);
         OL_CHECK(role.word(role_word::attack_with_poison) == 101);
-        OL_CHECK(role.no_magic_count[5U] == 1);
+        OL_CHECK(role.no_magic_count[5U] == 0);
         OL_CHECK(role.word(role_word::item_experience) == 0);
     }
 
@@ -14490,7 +14510,7 @@ void run_ngplus_speed_domain_test(const openlegend::resource::DataRoot& data_roo
                     OL_CHECK(role.speed == std::clamp(*test.after, std::int64_t{0}, std::int64_t{100}));
                     OL_CHECK(role.attack == 105);
                     OL_CHECK(role.item_experience == 0);
-                    OL_CHECK(role.no_magic_count[0U] == 1);
+                    OL_CHECK(role.no_magic_count[0U] == (configuration.enabled ? 1 : 0));
                 } else {
                     OL_CHECK(ranger.roles == before);
                 }

@@ -7,6 +7,7 @@
 #include "openlegend/battle/battle_renderer.hpp"
 #include "openlegend/battle/battle_setup.hpp"
 #include "openlegend/model/practice.hpp"
+#include "openlegend/model/new_game_plus_configuration.hpp"
 #include "test_support.hpp"
 
 namespace {
@@ -55,6 +56,8 @@ void check_rules_and_costs(const openlegend::battle::BattleData& data) {
 
 void check_manual_transactions(openlegend::battle::BattleData& data) {
     using namespace openlegend;
+    model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
     auto ranger = std::make_unique<model::RuntimeRangerState>();
     auto& role = ranger->roles[0U];
     auto& item = ranger->items[5U];
@@ -72,7 +75,7 @@ void check_manual_transactions(openlegend::battle::BattleData& data) {
         role.no_magic_count[5U] = count;
         const auto expected_cost = 30 * (count + 2);
         role.item_experience = expected_cost - 1;
-        battle::BattleSetup setup{data, *ranger};
+        battle::BattleSetup setup{data, *ranger, nullptr, configuration};
         OL_CHECK(setup.valid());
         const auto before = role;
         const auto pending = setup.apply_battle_practice(0U, false);
@@ -97,7 +100,7 @@ void check_manual_transactions(openlegend::battle::BattleData& data) {
     role.magic_levels[0U] = 1'000'099;
     role.item_experience = 300'030;
     const auto history = role.no_magic_count;
-    battle::BattleSetup high_setup{data, *ranger};
+    battle::BattleSetup high_setup{data, *ranger, nullptr, configuration};
     const auto high = high_setup.apply_battle_practice(0U, false);
     OL_CHECK(high.has_value());
     OL_CHECK(high->practiced);
@@ -111,14 +114,14 @@ void check_manual_transactions(openlegend::battle::BattleData& data) {
         candidate->roles[0U].item_experience = std::numeric_limits<std::int64_t>::max();
         candidate->items[5U].set_word(model::item_word::add_attack_with_poison, 1);
         const auto before = candidate->roles[0U];
-        battle::BattleSetup setup{data, *candidate};
+        battle::BattleSetup setup{data, *candidate, nullptr, configuration};
         OL_CHECK(!setup.apply_battle_practice(0U, false).has_value());
         OL_CHECK(candidate->roles[0U] == before);
     }
     role.magic_levels[0U] = std::numeric_limits<std::int64_t>::max();
     role.item_experience = std::numeric_limits<std::int64_t>::max();
     const auto before = role;
-    battle::BattleSetup overflow_setup{data, *ranger};
+    battle::BattleSetup overflow_setup{data, *ranger, nullptr, configuration};
     OL_CHECK(!overflow_setup.apply_battle_practice(0U, false).has_value());
     OL_CHECK(role == before);
 }
