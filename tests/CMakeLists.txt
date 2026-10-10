@@ -209,6 +209,15 @@ target_include_directories(openlegend_battle_enemy_roles_tests PRIVATE ${CMAKE_C
 target_link_libraries(openlegend_battle_enemy_roles_tests PRIVATE openlegend_battle openlegend_persistence)
 add_test(NAME openlegend.battle.enemy_roles COMMAND openlegend_battle_enemy_roles_tests)
 
+add_executable(openlegend_ngplus_session_tests unit/battle/ngplus_session_test.cpp)
+target_compile_definitions(
+    openlegend_ngplus_session_tests
+    PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${PROJECT_SOURCE_DIR}/tmp/ngplus-battle-sessions/${OPENLEGEND_PERSISTENCE_TEST_DIRECTORY}/$<CONFIG>"
+)
+target_include_directories(openlegend_ngplus_session_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+target_link_libraries(openlegend_ngplus_session_tests PRIVATE openlegend_battle openlegend_persistence)
+add_test(NAME openlegend.battle.ngplus_session COMMAND openlegend_ngplus_session_tests)
+
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)
 target_compile_definitions(
     openlegend_persistence_tests
@@ -270,6 +279,7 @@ set_tests_properties(
     openlegend.persistence.toml_snapshots
     openlegend.persistence.toml_slots
     openlegend.battle.enemy_roles
+    openlegend.battle.ngplus_session
     PROPERTIES ENVIRONMENT "OPENLEGEND_GAME_DATA_ROOT=${OPENLEGEND_GAME_DATA_ROOT}"
 )
 
