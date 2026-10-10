@@ -42,9 +42,18 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.random_;
     }
 
+    static void complete_ending(LegacyGameRuntime& runtime) {
+        scene::SceneStepResult result;
+        result.kind = scene::SceneStepKind::quit;
+        result.ending_complete = true;
+        runtime.handle_scene_result(result);
+    }
+
     static bool activate_with_missing_resources(LegacyGameRuntime& runtime,
-        model::RuntimeGameSnapshot snapshot, const std::filesystem::path& missing_root) {
+        model::RuntimeGameSnapshot snapshot, const std::filesystem::path& missing_root,
+        const bool next_playthrough = false) {
         runtime.pending_loaded_snapshot_ = std::move(snapshot);
+        runtime.pending_loaded_next_playthrough_ = next_playthrough;
         runtime.load_return_view_ = LegacyGameView::world;
         runtime.data_root_ = resource::DataRoot{missing_root};
         const auto activated = runtime.activate_pending_load();
@@ -1234,6 +1243,8 @@ void check_startup_resource_cache(const std::filesystem::path& data_root) {
         input::NameInputMethod::legacy, {}, configuration};
     OL_CHECK(configured_new_game.valid());
     finish_title_startup(configured_new_game);
+    configured_new_game.handle_key(0x0DU, false, false);
+    OL_CHECK(configured_new_game.render());
     configured_new_game.handle_key(0x0DU, false, false);
     finish_title_confirmation(configured_new_game);
     const auto* configured_snapshot = configured_new_game.game_state().snapshot();
@@ -3867,6 +3878,10 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
         OL_CHECK(new_game.valid());
         finish_title_startup(new_game);
         new_game.handle_key(0x0DU, false, false);
+        OL_CHECK(new_game.render());
+        render::RgbaFramebuffer options;
+        OL_CHECK(new_game.render_modern_ui(options));
+        new_game.handle_key(0x0DU, false, false);
         finish_title_confirmation(new_game);
         OL_CHECK(new_game.view() == app::LegacyGameView::name_entry);
         OL_CHECK(!new_game.game_state().ranger()->roles[0U].ever_joined);
@@ -3986,6 +4001,102 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     OL_CHECK(game.game_state().export_snapshot() == before);
     OL_CHECK(app::LegacyGameRuntimeTestAccess::world_x(game) == world_x);
     OL_CHECK(app::LegacyGameRuntimeTestAccess::random(game).state() == random_state);
+    auto failed_next = *source;
+    failed_next.playthrough = 2;
+    OL_CHECK(!app::LegacyGameRuntimeTestAccess::activate_with_missing_resources(
+        game, failed_next, root / "missing-assets", true));
+    OL_CHECK(game.game_state().snapshot() == original_address);
+    OL_CHECK(game.game_state().export_snapshot() == before);
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::random(game).state() == random_state);
+    ui::TitleMenuController completion_controller;
+    completion_controller.enable_new_game_plus(true);
+    OL_CHECK(completion_controller.handle_key(0x0DU).command == ui::TitleCommand::none);
+    OL_CHECK(completion_controller.screen() == ui::TitleScreen::new_game_options);
+    OL_CHECK(completion_controller.handle_key(0x1BU).command == ui::TitleCommand::none);
+    OL_CHECK(completion_controller.screen() == ui::TitleScreen::main);
+    completion_controller.show_completion_save_slots();
+    OL_CHECK(completion_controller.handle_key(0x1BU).command == ui::TitleCommand::finish_ending);
+    app::LegacyGameRuntimeTestAccess::complete_ending(game);
+    OL_CHECK(game.view() == app::LegacyGameView::title && game.ending_complete());
+    OL_CHECK(game.render());
+    render::RgbaFramebuffer completion_menu;
+    OL_CHECK(game.render_modern_ui(completion_menu));
+    std::filesystem::create_directories(root / "completed");
+    const auto occupied = root / "completed" / "001.toml.tmp";
+    {
+        std::ofstream marker{occupied, std::ios::binary};
+        marker << "occupied";
+    }
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    OL_CHECK(game.view() == app::LegacyGameView::error);
+    OL_CHECK(game.game_state().export_snapshot() == before);
+    OL_CHECK(std::filesystem::exists(occupied));
+    OL_CHECK(!std::filesystem::exists(root / "completed" / "001.toml"));
+    std::filesystem::remove(occupied);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.view() == app::LegacyGameView::title);
+    game.handle_key(0x0DU, false, false);
+    OL_CHECK(game.render());
+    game.finish_presented_tick();
+    game.advance();
+    OL_CHECK(game.view() == app::LegacyGameView::exited);
+    const auto completed = persistence::load_toml_slot(
+        root, persistence::TomlSaveKind::completion, persistence::SaveSlot::one, context);
+    OL_CHECK(completed && completed.save->snapshot == *before);
+    OL_CHECK(persistence::read_save_file(root / "ngplus" / "001.toml",
+        persistence::kMaximumTomlSaveBytes).bytes == malformed);
+    app::LegacyGameRuntime inherited_game{data_root, root, 0U, app::GameResolution{},
+        input::NameInputMethod::legacy, {}, configuration};
+    OL_CHECK(inherited_game.valid());
+    finish_title_startup(inherited_game);
+    inherited_game.handle_key(0x0DU, false, false);
+    inherited_game.handle_key(0x98U, false, false);
+    inherited_game.handle_key(0x0DU, false, false);
+    OL_CHECK(inherited_game.render());
+    OL_CHECK(inherited_game.render_modern_ui(completion_menu));
+    inherited_game.handle_key(0x0DU, false, false);
+    OL_CHECK(inherited_game.render());
+    inherited_game.finish_presented_tick();
+    inherited_game.advance();
+    advance_rendered_frames(inherited_game, 64U);
+    OL_CHECK(inherited_game.view() == app::LegacyGameView::scene);
+    const auto* next_snapshot = inherited_game.game_state().snapshot();
+    OL_CHECK(next_snapshot != nullptr);
+    if (next_snapshot != nullptr) {
+        OL_CHECK(next_snapshot->playthrough == 2);
+        OL_CHECK(next_snapshot->ranger.roles[0U].name == actor.name);
+        OL_CHECK(next_snapshot->ranger.roles[0U].level == actor.level);
+        OL_CHECK(next_snapshot->ranger.roles[0U].hp == actor.maximum_hp);
+        OL_CHECK(next_snapshot->ranger.roles[0U].attack == actor.attack);
+        OL_CHECK(next_snapshot->ranger.roles[0U].ever_joined);
+    }
+    const auto preserved = persistence::load_toml_slot(root, persistence::TomlSaveKind::completion,
+        persistence::SaveSlot::one, context);
+    OL_CHECK(completed && preserved && preserved.save->snapshot == completed.save->snapshot &&
+        preserved.save->metadata == completed.save->metadata);
+    OL_CHECK(persistence::write_toml_slot(root, *before,
+        {persistence::TomlSaveKind::ordinary, persistence::SaveSlot::one, "2026-09-14T08:00:00Z"}, context));
+    std::filesystem::copy_file(root / "ngplus" / "001.toml", root / "completed" / "001.toml",
+        std::filesystem::copy_options::overwrite_existing);
+    app::LegacyGameRuntime rejected_game{data_root, root, 0U, app::GameResolution{},
+        input::NameInputMethod::legacy, {}, configuration};
+    finish_title_startup(rejected_game);
+    rejected_game.handle_key(0x0DU, false, false);
+    rejected_game.handle_key(0x98U, false, false);
+    rejected_game.handle_key(0x0DU, false, false);
+    rejected_game.handle_key(0x0DU, false, false);
+    OL_CHECK(rejected_game.render());
+    rejected_game.finish_presented_tick();
+    rejected_game.advance();
+    OL_CHECK(rejected_game.view() == app::LegacyGameView::error);
+    OL_CHECK(!rejected_game.game_state().loaded());
+    rejected_game.handle_key(0x1BU, false, false);
+    OL_CHECK(rejected_game.direction_repeat_context() == input::DirectionRepeatContext::save_list);
+    rejected_game.handle_key(0x1BU, false, false);
+    OL_CHECK(rejected_game.direction_repeat_context() == input::DirectionRepeatContext::menu);
 }
 
 void check_runtime_persistence(const std::filesystem::path& data_root) {

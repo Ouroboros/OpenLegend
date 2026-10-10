@@ -19,6 +19,8 @@ inline constexpr std::uint16_t kSaveListPageCount =
 enum class SaveListMode {
     load,
     save,
+    inherit,
+    save_completion,
 };
 
 enum class SaveListEntryState {

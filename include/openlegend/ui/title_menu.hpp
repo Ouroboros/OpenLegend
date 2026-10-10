@@ -9,11 +9,15 @@
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/packed_archive.hpp"
 #include "openlegend/ui/save_list.hpp"
+#include "openlegend/ui/modern_ui_renderer.hpp"
 
 namespace openlegend::ui {
 
 enum class TitleScreen {
     main,
+    new_game_options,
+    inheritance_slots,
+    completion_save_slots,
     load_slots,
     delete_confirmation,
     please_wait,
@@ -22,6 +26,9 @@ enum class TitleScreen {
 enum class TitleCommand {
     none,
     start_new_game,
+    inherit_slot,
+    save_completion,
+    finish_ending,
     load_slot,
     delete_slot,
     exit_game,
@@ -40,6 +47,14 @@ public:
 
     void show_main() noexcept { screen_ = TitleScreen::main; }
 
+    void enable_new_game_plus(bool enabled) noexcept { new_game_plus_enabled_ = enabled; }
+
+    void show_inheritance_slots() noexcept { screen_ = TitleScreen::inheritance_slots; }
+
+    void show_completion_save_slots() noexcept { screen_ = TitleScreen::completion_save_slots; }
+
+    NODISCARD std::uint8_t new_game_selection() const noexcept { return new_game_selection_; }
+
     NODISCARD constexpr TitleScreen screen() const noexcept { return screen_; }
 
     NODISCARD constexpr std::uint8_t main_selection() const noexcept {
@@ -53,7 +68,9 @@ public:
 private:
     TitleScreen screen_{TitleScreen::main};
     std::uint8_t main_selection_{};
+    std::uint8_t new_game_selection_{};
     std::uint16_t slot_selection_{};
+    bool new_game_plus_enabled_{};
 };
 
 class TitleMenuRenderer {
@@ -75,6 +92,10 @@ public:
 
     NODISCARD bool render(
         const TitleMenuController& controller, render::IndexedFramebuffer& framebuffer) const;
+
+    NODISCARD bool render_new_game_options(const TitleMenuController& controller,
+        const compat::LegacyPalette& palette, ModernUiRenderer& ui_renderer,
+        render::RgbaFramebuffer& framebuffer) const;
 
 private:
     TitleMenuRenderer(

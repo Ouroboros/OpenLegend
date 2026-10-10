@@ -2,6 +2,8 @@
 #include "openlegend/ui/title_menu.hpp"
 
 #include <algorithm>
+#include <array>
+#include <string_view>
 
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/render/legacy_color.hpp"
@@ -56,6 +58,26 @@ TitleResult TitleMenuController::handle_key(const std::uint8_t translated_key) n
     if (screen_ == TitleScreen::please_wait) {
         return {};
     }
+    if (screen_ == TitleScreen::new_game_options) {
+        if (translated_key == input::legacy_key::down) {
+            move_down(new_game_selection_);
+        } else if (translated_key == input::legacy_key::up) {
+            move_up(new_game_selection_);
+        } else if (translated_key == input::legacy_key::escape) {
+            screen_ = TitleScreen::main;
+        } else if (confirms(translated_key)) {
+            if (new_game_selection_ == 0U) {
+                return {TitleCommand::start_new_game, 0U};
+            }
+            if (new_game_selection_ == 1U) {
+                screen_ = TitleScreen::inheritance_slots;
+                slot_selection_ = 0U;
+            } else {
+                screen_ = TitleScreen::main;
+            }
+        }
+        return {};
+    }
     if (screen_ == TitleScreen::delete_confirmation) {
         if (translated_key == input::legacy_key::yes) {
             screen_ = TitleScreen::load_slots;
@@ -102,11 +124,18 @@ TitleResult TitleMenuController::handle_key(const std::uint8_t translated_key) n
             move_slot_page_up(slot_selection_);
             return {};
         }
-        if (translated_key == input::legacy_key::delete_save) {
+        if (translated_key == input::legacy_key::delete_save && screen_ == TitleScreen::load_slots) {
             screen_ = TitleScreen::delete_confirmation;
             return {};
         }
         if (translated_key == input::legacy_key::escape) {
+            if (screen_ == TitleScreen::completion_save_slots) {
+                return {TitleCommand::finish_ending, 0U};
+            }
+            if (screen_ == TitleScreen::inheritance_slots) {
+                screen_ = TitleScreen::new_game_options;
+                return {};
+            }
             screen_ = TitleScreen::main;
             main_selection_ = 1U;
             return {};
@@ -119,7 +148,18 @@ TitleResult TitleMenuController::handle_key(const std::uint8_t translated_key) n
     if (screen_ == TitleScreen::load_slots) {
         return {TitleCommand::load_slot, slot_selection_};
     }
+    if (screen_ == TitleScreen::inheritance_slots) {
+        return {TitleCommand::inherit_slot, slot_selection_};
+    }
+    if (screen_ == TitleScreen::completion_save_slots) {
+        return {TitleCommand::save_completion, slot_selection_};
+    }
     if (main_selection_ == 0U) {
+        if (new_game_plus_enabled_) {
+            screen_ = TitleScreen::new_game_options;
+            new_game_selection_ = 0U;
+            return {};
+        }
         return {TitleCommand::start_new_game, 0U};
     }
     if (main_selection_ == 1U) {
@@ -227,6 +267,10 @@ bool TitleMenuRenderer::render(
         return draw_legacy_id(
             framebuffer, 10U + slot * 2U, 117, 137 + static_cast<int>(slot) * 20);
     }
+    case TitleScreen::new_game_options:
+    case TitleScreen::inheritance_slots:
+    case TitleScreen::completion_save_slots:
+        return true;
     case TitleScreen::please_wait:
         if (!framebuffer.fill_rectangle(
                 115, 135, 135U, 65U, render::legacy_color::menu_background)) {
@@ -235,6 +279,31 @@ bool TitleMenuRenderer::render(
         return draw_legacy_id(framebuffer, 16U, 120, 160);
     }
     return false;
+}
+
+bool TitleMenuRenderer::render_new_game_options(const TitleMenuController& controller,
+    const compat::LegacyPalette& palette, ModernUiRenderer& ui_renderer,
+    render::RgbaFramebuffer& framebuffer) const {
+    const auto metrics = ui_renderer.font_metrics(framebuffer);
+    const int padding = static_cast<int>(metrics.ascii_width);
+    const int row_height = static_cast<int>(metrics.line_height) + padding / 2;
+    const int width = 12 * padding;
+    const int height = 3 * row_height + 2 * padding;
+    const int left = (framebuffer.width - width) / 2;
+    const int top = (framebuffer.height - height) / 2;
+    if (!ui_renderer.draw_box(framebuffer, left, top, width, height, palette)) {
+        return false;
+    }
+    constexpr std::array<std::u8string_view, 3> options{u8"全新遊戲", u8"New Game+", u8"取消"};
+    for (std::size_t index = 0U; index < options.size(); ++index) {
+        const auto colors = index == controller.new_game_selection()
+            ? render::legacy_color::text::selected : render::legacy_color::text::menu_normal;
+        if (!ui_renderer.draw_text_utf8(framebuffer, left + 2 * padding,
+                top + padding + static_cast<int>(index) * row_height, options[index], colors, palette)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool TitleMenuRenderer::draw_legacy_id(

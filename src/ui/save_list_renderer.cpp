@@ -194,7 +194,9 @@ bool SaveListRenderer::render(
         return false;
     }
 
-    const auto& title = mode == SaveListMode::load ? kLoadListTitle : kSaveListTitle;
+    const std::u8string_view title = mode == SaveListMode::inherit ? u8"繼承通關進度"
+        : mode == SaveListMode::save_completion ? u8"儲存通關進度"
+        : mode == SaveListMode::load ? kLoadListTitle : kSaveListTitle;
     auto page = zero_padded_number(save_list_page(selection) + 1U, 3);
     page.push_back(u8'/');
     const auto page_count = zero_padded_number(kSaveListPageCount, 3);
@@ -238,7 +240,7 @@ bool SaveListRenderer::render(
             framebuffer,
             column(SaveListColumn::location),
             layout.header_y,
-            kLocationHeader,
+            mode == SaveListMode::inherit || mode == SaveListMode::save_completion ? u8"周目" : kLocationHeader,
             text_colors::normal,
             palette, font_size) ||
         !ui_renderer.draw_text_utf8(

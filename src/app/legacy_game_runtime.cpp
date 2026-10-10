@@ -15,6 +15,7 @@
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/new_game.hpp"
+#include "openlegend/model/playthrough_transition.hpp"
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
@@ -395,6 +396,7 @@ LegacyGameRuntime::LegacyGameRuntime(
     } else if (!startup_resources_.valid()) {
         startup_error_ = startup_resources_.error();
     }
+    title_menu_.enable_new_game_plus(new_game_plus_configuration_.enabled);
     if (startup_error_.empty() && new_game_plus_configuration_.enabled) {
         auto fingerprints = persistence::fingerprint_new_game_plus_assets(data_root_path_);
         if (!fingerprints) {
@@ -952,10 +954,12 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
         }
     }
     if (view_ == LegacyGameView::title) {
-        if (title_menu_.screen() == ui::TitleScreen::main) {
+        const auto screen = title_menu_.screen();
+        if (screen == ui::TitleScreen::main || screen == ui::TitleScreen::new_game_options) {
             return DirectionRepeatContext::menu;
         }
-        if (title_menu_.screen() == ui::TitleScreen::load_slots) {
+        if (screen == ui::TitleScreen::load_slots || screen == ui::TitleScreen::inheritance_slots ||
+            screen == ui::TitleScreen::completion_save_slots) {
             return DirectionRepeatContext::save_list;
         }
         return DirectionRepeatContext::none;
@@ -1511,6 +1515,11 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             (previous_screen != ui::TitleScreen::load_slots ||
              previous_page != ui::save_list_page(title_menu_.slot_selection()))) {
             refresh_save_list(ui::save_list_page(title_menu_.slot_selection()));
+        }
+        const auto screen = title_menu_.screen();
+        if ((screen == ui::TitleScreen::inheritance_slots || screen == ui::TitleScreen::completion_save_slots) &&
+            (screen != previous_screen || previous_page != ui::save_list_page(title_menu_.slot_selection()))) {
+            refresh_completion_list(ui::save_list_page(title_menu_.slot_selection()));
         }
         handle_title_result(result);
         break;
@@ -2109,11 +2118,17 @@ bool LegacyGameRuntime::render_modern_ui(
         const auto screen = title_menu_.screen();
         const bool delete_confirmation =
             screen == ui::TitleScreen::delete_confirmation;
-        if (screen != ui::TitleScreen::load_slots && !delete_confirmation) {
+        if (screen == ui::TitleScreen::new_game_options) {
+            return title_renderer_->render_new_game_options(title_menu_, palette, modern_ui_renderer_, framebuffer);
+        }
+        const bool inheritance = screen == ui::TitleScreen::inheritance_slots;
+        const bool completion = screen == ui::TitleScreen::completion_save_slots;
+        if (screen != ui::TitleScreen::load_slots && !delete_confirmation && !inheritance && !completion) {
             return true;
         }
         return save_list_renderer_.render(
-                   ui::SaveListMode::load,
+                   inheritance ? ui::SaveListMode::inherit : completion ? ui::SaveListMode::save_completion
+                       : ui::SaveListMode::load,
                    title_menu_.slot_selection(),
                    save_list_entries_,
                    palette,
@@ -2231,6 +2246,14 @@ void LegacyGameRuntime::perform_pending_io() {
     pending_io_ = PendingIo::none;
     pending_io_wait_presented_ = false;
     game_menu_.complete_slot_operation();
+    if (operation == PendingIo::inherit) {
+        load_pending_inheritance();
+        return;
+    }
+    if (operation == PendingIo::save_completion) {
+        save_pending_completion();
+        return;
+    }
     if (operation == PendingIo::load) {
         attribute_controller_.reset();
         auto loaded = persistence::load_ordinary_slot(
@@ -2250,6 +2273,7 @@ void LegacyGameRuntime::perform_pending_io() {
         }
         load_return_view_ = error_return_view_;
         pending_loaded_snapshot_ = std::move(*loaded.snapshot);
+        pending_loaded_next_playthrough_ = false;
         load_transition_phase_ = LoadTransitionPhase::fade_to_black;
         begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
         return;
@@ -2279,6 +2303,64 @@ void LegacyGameRuntime::perform_pending_io() {
     }
 }
 
+void LegacyGameRuntime::load_pending_inheritance() {
+    title_menu_.show_inheritance_slots();
+    if (!new_game_plus_configuration_.enabled || !save_asset_fingerprints_) {
+        show_error("NG+ inheritance is unavailable", LegacyGameView::title);
+        return;
+    }
+    const persistence::TomlSnapshotContext context{
+        startup_resources_.ranger(), *save_asset_fingerprints_, new_game_plus_configuration_};
+    auto loaded = persistence::load_toml_slot(
+        save_root_path_, persistence::TomlSaveKind::completion, save_slot(pending_slot_), context);
+    if (!loaded) {
+        diagnostics::log_error("Completion load rejected: " + loaded.detail);
+        show_error(loaded.detail, LegacyGameView::title);
+        return;
+    }
+    const auto baseline = persistence::load_baseline_scenes(data_root_path_, startup_resources_.ranger());
+    if (!baseline) {
+        show_error("New playthrough baseline could not be loaded", LegacyGameView::title);
+        return;
+    }
+    auto next = model::prepare_next_playthrough(
+        loaded.save->snapshot, *baseline.snapshot, new_game_plus_configuration_);
+    if (!next) {
+        show_error(next.error, LegacyGameView::title);
+        return;
+    }
+    pending_loaded_snapshot_ = std::move(next.snapshot);
+    pending_loaded_next_playthrough_ = true;
+    load_return_view_ = LegacyGameView::title;
+    load_transition_phase_ = LoadTransitionPhase::fade_to_black;
+    begin_scene_effect(SceneEffectKind::fade_to_black, 1U);
+}
+
+void LegacyGameRuntime::save_pending_completion() {
+    title_menu_.show_completion_save_slots();
+    const auto snapshot = game_state_.export_snapshot();
+    if (!ending_complete_ || !new_game_plus_configuration_.enabled || !save_asset_fingerprints_ || !snapshot) {
+        show_error("No completed NG+ playthrough is available", LegacyGameView::title);
+        return;
+    }
+    const persistence::TomlSnapshotContext context{
+        startup_resources_.ranger(), *save_asset_fingerprints_, new_game_plus_configuration_};
+    const auto written = persistence::write_toml_slot(save_root_path_, *snapshot,
+        {persistence::TomlSaveKind::completion, save_slot(pending_slot_), current_save_timestamp()}, context);
+    if (!written) {
+        diagnostics::log_error("Completion save failed: " + written.detail);
+        if (!written.recovery_path.empty()) {
+            const auto path = written.recovery_path.u8string();
+            diagnostics::log_error("Completion recovery path: " +
+                std::string{reinterpret_cast<const char*>(path.data()), path.size()});
+        }
+        refresh_completion_list(ui::save_list_page(pending_slot_));
+        show_error(written.detail, LegacyGameView::title);
+        return;
+    }
+    set_view(LegacyGameView::exited, "completed playthrough saved");
+}
+
 bool LegacyGameRuntime::activate_pending_load() {
     if (!pending_loaded_snapshot_.has_value()) {
         load_transition_phase_ = LoadTransitionPhase::none;
@@ -2286,6 +2368,7 @@ bool LegacyGameRuntime::activate_pending_load() {
         return false;
     }
 
+    const bool next_playthrough = std::exchange(pending_loaded_next_playthrough_, false);
     model::RuntimeGameState candidate;
     const bool imported = candidate.import_snapshot(std::move(*pending_loaded_snapshot_));
     pending_loaded_snapshot_.reset();
@@ -2294,14 +2377,34 @@ bool LegacyGameRuntime::activate_pending_load() {
         show_error("Save snapshot or world resources are invalid", load_return_view_);
         return false;
     }
-    auto prepared = std::make_unique<world::WorldSession>(data_root_, *world_map_, *candidate.ranger(),
-        random_, startup_resources_.weather_sprites(), startup_resources_.palette(),
-        candidate.snapshot()->configuration, candidate.snapshot()->playthrough);
-    if (!prepared->valid()) {
-        load_transition_phase_ = LoadTransitionPhase::none;
-        show_error(prepared->error(), load_return_view_);
-        return false;
+    std::unique_ptr<world::WorldSession> prepared;
+    std::unique_ptr<scene::SceneSession> prepared_scene;
+    if (next_playthrough) {
+        const auto saved_random = random_;
+        prepared_scene = std::make_unique<scene::SceneSession>(data_root_, *candidate.snapshot(),
+            random_, 70, false, std::nullopt, periodic_counter_,
+            scene::SceneEntryOverride{19, 20, scene::SceneDirection::right, 6890, 691},
+            scene::SceneSessionContext::scene, startup_resources_.fixed_shadow_mask(),
+            startup_resources_.shifted_shadow_mask(), movement_step_duration_ > std::chrono::nanoseconds::zero());
+        if (!prepared_scene->valid()) {
+            random_ = saved_random;
+            load_transition_phase_ = LoadTransitionPhase::none;
+            show_error(prepared_scene->error(), load_return_view_);
+            return false;
+        }
+    } else {
+        prepared = std::make_unique<world::WorldSession>(data_root_, *world_map_, *candidate.ranger(),
+            random_, startup_resources_.weather_sprites(), startup_resources_.palette(),
+            candidate.snapshot()->configuration, candidate.snapshot()->playthrough);
+        if (!prepared->valid()) {
+            load_transition_phase_ = LoadTransitionPhase::none;
+            show_error(prepared->error(), load_return_view_);
+            return false;
+        }
     }
+    attribute_controller_.reset();
+    name_editor_.reset();
+    pending_name_accept_ = false;
     pending_new_game_wait_present_ = false;
     pending_new_game_scene_start_ = false;
     const auto replacing_scene = scene_session_ != nullptr;
@@ -2334,6 +2437,19 @@ bool LegacyGameRuntime::activate_pending_load() {
     scene_audio_commands_.clear();
     game_state_.swap(candidate);
     update_menu_counts();
+    if (next_playthrough) {
+        world_motion_plan_.reset();
+        world_move_continuation_.reset();
+        load_transition_phase_ = LoadTransitionPhase::none;
+        const bool started = start_scene(70, load_return_view_, std::nullopt, std::move(prepared_scene));
+        if (started) {
+            game_state_.ranger()->roles[0U].ever_joined = true;
+        }
+        if (replacing_scene) {
+            clear_scene_exit_key_states_requested_ = true;
+        }
+        return started;
+    }
     if (!start_world(load_return_view_, std::move(prepared))) {
         load_transition_phase_ = LoadTransitionPhase::none;
         return false;
@@ -2404,7 +2520,8 @@ bool LegacyGameRuntime::start_world(const LegacyGameView error_return_view,
 bool LegacyGameRuntime::start_scene(
     const std::int16_t scene_id,
     const LegacyGameView error_return_view,
-    const std::optional<scene::SceneEntryOverride> entry_override) {
+    const std::optional<scene::SceneEntryOverride> entry_override,
+    std::unique_ptr<scene::SceneSession> prepared) {
     auto* snapshot = game_state_.snapshot();
     if (snapshot == nullptr) {
         show_error("No game state is available for the scene", error_return_view);
@@ -2425,7 +2542,7 @@ bool LegacyGameRuntime::start_scene(
     scene_interact_requested_ = false;
     scene_ui_requested_ = false;
     scene_idle_skip_requested_ = false;
-    scene_session_ = std::make_unique<scene::SceneSession>(
+    scene_session_ = prepared ? std::move(prepared) : std::make_unique<scene::SceneSession>(
         data_root_,
         *snapshot,
         random_,
@@ -2651,7 +2768,13 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         clear_scene_effect();
         ending_complete_ = result.ending_complete;
         fade_music_on_exit_ = result.ending_complete;
-        set_view(LegacyGameView::exited, "scene requested quit");
+        if (result.ending_complete && new_game_plus_configuration_.enabled) {
+            title_menu_.show_completion_save_slots();
+            refresh_completion_list(ui::save_list_page(title_menu_.slot_selection()));
+            set_view(LegacyGameView::title, "choose completed playthrough save slot");
+        } else {
+            set_view(LegacyGameView::exited, "scene requested quit");
+        }
         break;
     case scene::SceneStepKind::load_slot:
         if (result.save_slot >= 0 && result.save_slot <= 2) {
@@ -3104,6 +3227,41 @@ void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {
     }
 }
 
+void LegacyGameRuntime::refresh_completion_list(const std::uint16_t page) {
+    if (page >= ui::kSaveListPageCount || !new_game_plus_configuration_.enabled || !save_asset_fingerprints_) {
+        return;
+    }
+    const persistence::TomlSnapshotContext context{
+        startup_resources_.ranger(), *save_asset_fingerprints_, new_game_plus_configuration_};
+    const auto first_slot = static_cast<std::uint16_t>(page * ui::kSaveListPageSize);
+    for (std::size_t row = 0U; row < save_list_entries_.size(); ++row) {
+        auto& entry = save_list_entries_[row];
+        entry = {};
+        entry.slot = static_cast<std::uint16_t>(first_slot + row);
+        if (entry.slot >= ui::kSaveSlotCount) {
+            entry.state = ui::SaveListEntryState::hidden;
+            continue;
+        }
+        const auto loaded = persistence::load_toml_slot(
+            save_root_path_, persistence::TomlSaveKind::completion, save_slot(entry.slot), context);
+        if (!loaded) {
+            entry.state = loaded.file_status == persistence::SaveFileStatus::not_found
+                ? ui::SaveListEntryState::empty : ui::SaveListEntryState::damaged;
+            continue;
+        }
+        const auto& actor = loaded.save->snapshot.ranger.roles[0U];
+        const auto name = actor.legacy_name();
+        entry.state = ui::SaveListEntryState::ready;
+        entry.protagonist_name = legacy_field(name, 0U, name.size());
+        entry.level = actor.level;
+        const auto playthrough = std::to_string(loaded.save->snapshot.playthrough);
+        entry.location.append_utf8(std::u8string{playthrough.begin(), playthrough.end()});
+        entry.saved_at = loaded.save->metadata.timestamp_utc.substr(5U, 11U);
+        entry.saved_at[5U] = ' ';
+        entry.saved_at += 'Z';
+    }
+}
+
 bool LegacyGameRuntime::render_title_view() {
     const auto screen = title_menu_.screen();
     if (screen == ui::TitleScreen::load_slots ||
@@ -3147,7 +3305,11 @@ void LegacyGameRuntime::show_legacy_error(
     const std::span<const std::uint8_t> message,
     const LegacyGameView return_view) {
     if (return_view == LegacyGameView::title) {
-        title_menu_.show_main();
+        if (ending_complete_ && new_game_plus_configuration_.enabled) {
+            title_menu_.show_completion_save_slots();
+        } else if (title_menu_.screen() != ui::TitleScreen::inheritance_slots) {
+            title_menu_.show_main();
+        }
     }
     visible_error_.assign(message.begin(), message.end());
     error_return_view_ = return_view;
@@ -3161,6 +3323,17 @@ void LegacyGameRuntime::handle_title_result(const ui::TitleResult result) {
     case ui::TitleCommand::load_slot:
         pending_title_result_ = result;
         begin_scene_effect(SceneEffectKind::present, 1U);
+        break;
+    case ui::TitleCommand::inherit_slot:
+    case ui::TitleCommand::save_completion:
+        pending_slot_ = result.slot;
+        pending_io_ = result.command == ui::TitleCommand::inherit_slot ? PendingIo::inherit : PendingIo::save_completion;
+        pending_io_wait_presented_ = false;
+        error_return_view_ = LegacyGameView::title;
+        title_menu_.show_please_wait();
+        break;
+    case ui::TitleCommand::finish_ending:
+        set_view(LegacyGameView::exited, "completed playthrough save cancelled");
         break;
     case ui::TitleCommand::delete_slot: {
         const auto deleted = persistence::delete_ordinary_slot(

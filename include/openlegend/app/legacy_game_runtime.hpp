@@ -319,6 +319,8 @@ private:
         none,
         load,
         save,
+        inherit,
+        save_completion,
     };
 
     enum class SceneEffectKind {
@@ -406,6 +408,10 @@ private:
 
     void perform_pending_io();
 
+    void load_pending_inheritance();
+
+    void save_pending_completion();
+
     NODISCARD bool activate_pending_load();
 
     NODISCARD bool start_world(LegacyGameView error_return_view,
@@ -414,7 +420,8 @@ private:
     NODISCARD bool start_scene(
         std::int16_t scene_id,
         LegacyGameView error_return_view,
-        std::optional<scene::SceneEntryOverride> entry_override = std::nullopt);
+        std::optional<scene::SceneEntryOverride> entry_override = std::nullopt,
+        std::unique_ptr<scene::SceneSession> prepared = {});
 
     NODISCARD bool start_battle(
         std::int16_t battle_id, bool grant_experience);
@@ -439,6 +446,8 @@ private:
     void update_menu_counts();
 
     void refresh_save_list(std::uint16_t page);
+
+    void refresh_completion_list(std::uint16_t page);
 
     NODISCARD bool render_title_view();
 
@@ -519,6 +528,7 @@ private:
     BattleTransitionPhase battle_transition_phase_{BattleTransitionPhase::none};
     LegacyGameView load_return_view_{LegacyGameView::title};
     std::optional<model::RuntimeGameSnapshot> pending_loaded_snapshot_;
+    bool pending_loaded_next_playthrough_{};
     std::optional<ui::TitleResult> pending_title_result_;
     bool pending_name_accept_{};
     bool pending_new_game_wait_present_{};
