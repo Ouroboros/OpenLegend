@@ -14632,6 +14632,73 @@ void run_ngplus_speed_domain_test(const openlegend::resource::DataRoot& data_roo
     }
 }
 
+void run_ngplus_attack_finish_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    using namespace openlegend::battle;
+    constexpr std::int64_t wide = 5'000'000'000'000;
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    struct FinishCase {
+        std::int64_t before;
+        std::optional<std::int64_t> after;
+    };
+    constexpr std::array<FinishCase, 15> cases{{
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 1}, {100, 97},
+        {32768, 32765}, {65536, 65533}, {wide, wide - 3}, {maximum, maximum - 3},
+        {-32768, 0}, {std::numeric_limits<std::int32_t>::min(), 0}, {minimum + 3, 0},
+        {minimum + 2, std::nullopt}, {minimum, std::nullopt},
+    }};
+    BattleData data{data_root, 4};
+    OL_CHECK(data.valid());
+    for (const auto enabled : {false, true}) {
+        model::NewGamePlusConfiguration configuration;
+        configuration.enabled = enabled;
+        for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+            if (!enabled && playthrough != 1) {
+                continue;
+            }
+            for (const auto& test : cases) {
+                auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+                OL_CHECK(setup.valid());
+                const auto role_id = static_cast<std::size_t>(
+                    setup.combatants()[0U].words[combatant_word::role_id]);
+                auto& role = ranger.roles[role_id];
+                role.physical_power = test.before;
+                const auto before = ranger.roles;
+                const auto actor_before = setup.combatants()[0U];
+                OL_CHECK(setup.finish_attack(0U) == test.after.has_value());
+                if (test.after) {
+                    auto expected = before;
+                    expected[role_id].physical_power = *test.after;
+                    OL_CHECK(ranger.roles == expected);
+                } else {
+                    OL_CHECK(ranger.roles == before);
+                }
+                OL_CHECK(setup.combatants()[0U] == actor_before);
+            }
+            auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            BattleSetup setup{data, ranger, nullptr, configuration, playthrough};
+            OL_CHECK(setup.valid());
+            const auto before = ranger.roles;
+            const auto actor_before = setup.combatants()[0U];
+            for (const auto slot : {setup.combatants().size(), std::numeric_limits<std::size_t>::max()}) {
+                OL_CHECK(!setup.finish_attack(slot));
+                OL_CHECK(ranger.roles == before);
+                OL_CHECK(setup.combatants()[0U] == actor_before);
+            }
+            for (const auto invalid_id : std::array<std::int16_t, 2>{
+                     -1, static_cast<std::int16_t>(ranger.roles.size())}) {
+                setup.combatants()[0U].words[combatant_word::role_id] = invalid_id;
+                const auto invalid_actor = setup.combatants()[0U];
+                OL_CHECK(!setup.finish_attack(0U));
+                OL_CHECK(ranger.roles == before);
+                OL_CHECK(setup.combatants()[0U] == invalid_actor);
+            }
+        }
+    }
+}
+
 void run_ngplus_fixed_technique_writes_test(const openlegend::resource::DataRoot& data_root) {
     using namespace openlegend;
     using namespace openlegend::battle;
@@ -15120,7 +15187,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 59> checks{
+    const std::array<BattleCheck, 60> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -15180,6 +15247,7 @@ int main(const int argc, char* argv[]) {
         run_wide_medicine_selection_test,
         run_wide_damage_text_test,
         run_ngplus_fixed_technique_writes_test,
+        run_ngplus_attack_finish_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

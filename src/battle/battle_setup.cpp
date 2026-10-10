@@ -6235,12 +6235,12 @@ bool BattleSetup::finish_attack(const std::size_t slot) {
         return false;
     }
     auto& role = *stored_role;
-    auto physical_power = wrapping_i16(
-        static_cast<std::int32_t>(role.word(model::role_word::physical_power)) - 3);
-    if (physical_power < 0) {
-        physical_power = 0;
+    const auto physical_power = model::checked_subtract(role.physical_power, 3);
+    if (!physical_power.has_value()) {
+        error_ = "battle attack physical power subtraction overflow";
+        return false;
     }
-    role.set_word(model::role_word::physical_power, physical_power);
+    role.physical_power = std::max(*physical_power, std::int64_t{0});
     return true;
 }
 
