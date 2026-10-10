@@ -100,6 +100,11 @@ InheritedCount(i) = 0，若 Keep(i)=false</pre>
       </tbody>
     </table>
   </section>
+<section id="crafting-quantity-width">
+<h2>战后制作数量的运行类型</h2>
+<p>制作结果中的新增物品数量、材料扣减量及库存候选运算统一使用signed64，遵循<a href="../support/persistence.zh-Hans.html#save-format-values">数值位宽合同</a>。配方的物品编号与槽位仍使用原固定类型；已有物品每次随机新增1～3件，新建物品槽新增1件，材料需求仍读取当前原版配方定义，数值规则不变。</p>
+<p>制作提交先受检计算产物库存加法和材料库存减法，全部成功后提交候选库存与本次候选随机状态，再按原顺序移除数量≤0的材料槽、清空制作经验。失败保留本次提交前的库存、角色及随机状态；已完成的配方准备和消息阶段保留原独立边界，不扩大为整场战斗回滚。</p>
+</section>
 <p>通用合同：
 <a href="../support/data-and-inheritance.zh-Hans.html">数据与继承</a>、
 <a href="../support/inventory.zh-Hans.html">库存规则</a>、

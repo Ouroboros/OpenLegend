@@ -605,8 +605,8 @@ struct BattleCraftResult {
     std::int16_t material_item_id{-1};
     std::int16_t product_item_id{-1};
     std::int16_t recipe_slot{-1};
-    std::int16_t product_count_added{};
-    std::int16_t material_count_removed{};
+    std::int64_t product_count_added{};
+    std::int64_t material_count_removed{};
     std::int64_t required_experience{};
     bool recipe_available{};
     bool message_required{};

@@ -1374,7 +1374,7 @@ std::optional<BattleCraftResult> BattleSetup::commit_battle_crafting(
     auto candidate_header = ranger_.header;
     auto candidate_random = random;
     if (product_slot) {
-        result.product_count_added = static_cast<std::int16_t>(candidate_random.bounded(3) + 1);
+        result.product_count_added = std::int64_t{candidate_random.bounded(3)} + 1;
     } else {
         for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
             if (ranger_.header.inventory_item(slot).value == -1) {
