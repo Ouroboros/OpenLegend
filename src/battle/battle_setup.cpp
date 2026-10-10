@@ -309,7 +309,7 @@ bool equip_role_item(
             model::item_word::user, -1);
     }
     role.set_word(field, item.word(model::item_word::id));
-    item.set_word(model::item_word::user, role.word(model::role_word::id));
+    item.set_word(model::item_word::user, role.id.value);
     return true;
 }
 
@@ -341,7 +341,7 @@ bool assign_role_practice_item(
         ranger.items[static_cast<std::size_t>(previous_item)].set_word(
             model::item_word::user, -1);
     }
-    item.set_word(model::item_word::user, role.word(model::role_word::id));
+    item.set_word(model::item_word::user, role.id.value);
     role.set_word(model::role_word::practice_item, item.word(model::item_word::id));
     role.set_word(model::role_word::item_experience, 0);
     role.set_word(model::role_word::make_item_experience, 0);
@@ -3423,7 +3423,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_hp_action(
     } else {
         for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
             const auto selected = select_item(
-                actor_role.word(model::role_word::taking_item_begin + slot),
+                actor_role.taking_items[slot].value,
                 BattleAiItemSource::carried,
                 static_cast<std::int16_t>(slot));
             if (!selected) {
@@ -3530,7 +3530,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_poisoned_action(
     } else {
         for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
             const auto selected = select_item(
-                actor_role.word(model::role_word::taking_item_begin + slot),
+                actor_role.taking_items[slot].value,
                 BattleAiItemSource::carried,
                 static_cast<std::int16_t>(slot));
             if (!selected) {
@@ -3619,7 +3619,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_low_mp_action(
     } else {
         for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
             const auto selected = select_item(
-                actor_role.word(model::role_word::taking_item_begin + slot),
+                actor_role.taking_items[slot].value,
                 BattleAiItemSource::carried,
                 static_cast<std::int16_t>(slot));
             if (!selected) {
@@ -3971,7 +3971,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
     } else {
         for (std::size_t slot = 0U; slot < model::role_word::taking_item_count; ++slot) {
             const auto selected = select_throwing_item(
-                actor_role.word(model::role_word::taking_item_begin + slot),
+                actor_role.taking_items[slot].value,
                 BattleAiItemSource::carried,
                 static_cast<std::int16_t>(slot));
             if (!selected) {

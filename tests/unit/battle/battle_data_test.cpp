@@ -7787,19 +7787,24 @@ void run_ai_support_session_test(
         std::uint64_t first_magic_hash{};
         std::uint64_t first_damage_hash{};
         std::uint32_t random_state{};
-        std::int16_t hp{};
-        std::int16_t poison{};
-        std::int16_t physical_power{};
+        std::int64_t hp{};
+        std::int64_t poison{};
+        std::int64_t physical_power{};
         std::size_t magic_frames{};
         std::size_t damage_frames{};
     };
-    auto run_case = [&](const bool medicine, const std::uint32_t initial_tick) {
+    constexpr std::int64_t wide_hp = 5'000'000'000'000;
+    auto run_case = [&](
+        const bool medicine,
+        const std::uint32_t initial_tick,
+        const bool wide_values = false) {
+        const auto hp_offset = wide_values ? wide_hp : 0;
         auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         auto& actor = ranger->roles[1U];
         auto& enemy = ranger->roles[3U];
-        actor.set_word(role_word::hp, medicine ? 10 : 500);
-        actor.set_word(role_word::maximum_hp, 500);
+        actor.set_word(role_word::hp, hp_offset + (medicine ? 10 : 500));
+        actor.set_word(role_word::maximum_hp, (medicine ? hp_offset * 50 : hp_offset) + 500);
         actor.set_word(role_word::hurt, 0);
         actor.set_word(role_word::poison, medicine ? 0 : 99);
         actor.set_word(role_word::mp, 0);
@@ -7815,8 +7820,9 @@ void run_ai_support_session_test(
         actor.set_word(role_word::frame_begin, 2);
         actor.set_word(role_word::frame_begin + 5U, 1);
         actor.set_word(role_word::frame_begin + 10U, 1);
-        enemy.set_word(role_word::hp, 5'000);
-        enemy.set_word(role_word::maximum_hp, 5'000);
+        const auto enemy_hp = hp_offset * (medicine ? 500 : 10) + 5'000;
+        enemy.set_word(role_word::hp, enemy_hp);
+        enemy.set_word(role_word::maximum_hp, enemy_hp);
         auto& magic = ranger->magics[5U];
         magic.set_word(magic_word::sound_id, 7);
         ranger->magics[6U].set_word(magic_word::sound_id, 8);
@@ -7876,7 +7882,7 @@ void run_ai_support_session_test(
                      8, static_cast<std::int16_t>(medicine ? 0 : 36)));
         OL_CHECK(legacy_magic_slot == 2);
         if (medicine) {
-            OL_CHECK(actor.word(role_word::hp) == 93);
+            OL_CHECK(actor.word(role_word::hp) == hp_offset + (wide_values ? 90 : 93));
             OL_CHECK(actor.word(role_word::physical_power) == 98);
         } else {
             OL_CHECK(actor.word(role_word::poison) == 61);
@@ -7923,8 +7929,10 @@ void run_ai_support_session_test(
         result.hp = actor.word(role_word::hp);
         result.poison = actor.word(role_word::poison);
         result.physical_power = actor.word(role_word::physical_power);
-        OL_CHECK(result.random_state ==
-                 (medicine ? 1'103'527'590U : 662'824'084U));
+        const auto expected_random_state = medicine
+            ? (wide_values ? 3'295'386'429U : 1'103'527'590U)
+            : 662'824'084U;
+        OL_CHECK(result.random_state == expected_random_state);
         OL_CHECK(result.physical_power == (medicine ? 96 : 98));
         return result;
     };
@@ -7939,6 +7947,12 @@ void run_ai_support_session_test(
     OL_CHECK(medicine.first_damage_hash == 0x7158ba584993d9edULL);
     OL_CHECK(detox.first_magic_hash == 0xae0f13fbbc4c8083ULL);
     OL_CHECK(detox.first_damage_hash == 0x5766abef87fd6557ULL);
+    const auto wide_medicine = run_case(true, 1'800U, true);
+    const auto wide_detox = run_case(false, 1'900U, true);
+    OL_CHECK(wide_medicine.hp == wide_hp + 90);
+    OL_CHECK(wide_medicine.poison == 0);
+    OL_CHECK(wide_detox.hp == wide_hp + 500);
+    OL_CHECK(wide_detox.poison == 61);
 
     const auto hash_path = log_path.parent_path() / "b8-battle-ai-support.hash";
     std::ofstream hash_file{hash_path, std::ios::binary | std::ios::trunc};
