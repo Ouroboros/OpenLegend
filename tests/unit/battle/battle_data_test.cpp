@@ -6139,6 +6139,22 @@ void run_player_status_session_test(
     }
     OL_CHECK(status_role == status_role_before);
     OL_CHECK(random.state() == 1U);
+    status_role.hp = status_role.maximum_hp = 5'000'000'000'000;
+    const auto wide_status_before = status_role;
+    OL_CHECK(session->handle_key(0x20U) == BattleSessionInputResult::action_selected);
+    OL_CHECK(session->handle_key(0x98U) == BattleSessionInputResult::status_changed);
+    OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::status_selected);
+    for (std::uint8_t page = 0U; page < 4U; ++page) {
+        OL_CHECK(session->player_status_page() == page);
+        OL_CHECK(session->render(*framebuffer));
+        session->finish_presented_tick(status_tick++);
+        OL_CHECK(session->handle_key('A') == (page < 3U
+            ? BattleSessionInputResult::status_page_advanced : BattleSessionInputResult::status_closed));
+    }
+    finish_player_menu_redraw(*session);
+    OL_CHECK(session->phase() == BattleSessionPhase::player_action);
+    OL_CHECK(status_role == wide_status_before);
+    OL_CHECK(random.state() == 1U);
 
     const auto hash_path =
         openlegend::test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) /
@@ -14642,6 +14658,89 @@ void run_ngplus_support_finish_test(const openlegend::resource::DataRoot& data_r
     }
 }
 
+void run_wide_character_status_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    namespace colors = render::legacy_color::text;
+    auto ranger = make_ranger({0, -1, -1, -1, -1, -1});
+    auto& role = ranger.roles[0U];
+    role = model::RoleState{};
+    role.level = 1;
+    role.hp = role.maximum_hp = 100;
+    role.mp = role.maximum_mp = 100;
+    role.physical_power = 100;
+    role.equipment.fill(model::ItemId{-1});
+    role.practice_item = model::ItemId{-1};
+    const auto ordinary = role;
+    battle::BattleRenderer renderer{data_root, 0};
+    OL_CHECK(renderer.valid());
+    OL_CHECK(renderer.character_status_page_count(ranger, 0) == 2U);
+    role.medicine = 999;
+    OL_CHECK(renderer.character_status_page_count(ranger, 0) == 2U);
+    role.medicine = 1000;
+    OL_CHECK(renderer.character_status_page_count(ranger, 0) == 4U);
+    role = ordinary;
+    role.attack = 999;
+    role.equipment[0U] = model::ItemId{1};
+    ranger.items[1U].set_word(model::item_word::add_attack, 1);
+    OL_CHECK(renderer.character_status_page_count(ranger, 0) == 4U);
+    role = ordinary;
+    role.magic_ids[0U] = model::MagicId{1};
+    role.magic_levels[0U] = 9900;
+    OL_CHECK(renderer.character_status_page_count(ranger, 0) == 4U);
+    role = ordinary;
+    role.practice_item = model::ItemId{5};
+    auto& manual = ranger.items[5U];
+    manual.set_word(model::item_word::magic_id, -1);
+    manual.set_word(model::item_word::need_experience, 10000);
+    OL_CHECK(renderer.character_status_page_count(ranger, 0) == 4U);
+    const auto maximum = std::numeric_limits<std::int64_t>::max();
+    role.level = role.hp = role.maximum_hp = role.mp = role.maximum_mp = maximum;
+    role.experience = role.item_experience = maximum;
+    role.attack = role.defence = role.medicine = role.use_poison = role.detoxification = maximum;
+    role.fist = role.sword = role.knife = role.unusual = role.hidden_weapon = maximum;
+    role.speed = 100;
+    role.magic_ids[0U] = model::MagicId{1};
+    role.magic_levels[0U] = maximum;
+    role.no_magic_count[5U] = maximum / 7 - 2;
+    manual.set_word(model::item_word::need_experience, 1);
+    const auto before = role;
+    const auto limits = *model::calculate_playthrough_limits({}, 1);
+    render::IndexedFramebuffer actual;
+    const auto check_number = [&](const int row, const std::u8string_view text, const render::TextColors color) {
+        render::IndexedFramebuffer expected;
+        OL_CHECK(renderer.draw_box(expected, 0, 0, 320U, 200U));
+        OL_CHECK(renderer.draw_text_utf8(expected, 152, row, text, color));
+        bool matches = true;
+        for (int offset = 0; offset < 16; ++offset) {
+            matches = matches && std::equal(actual.row(row + offset) + 152,
+                actual.row(row + offset) + 305, expected.row(row + offset) + 152);
+        }
+        OL_CHECK(matches);
+    };
+    constexpr auto maximum_text = u8"9223372036854775807";
+    OL_CHECK(renderer.render_character_status(ranger, 0, 0U, actual, limits));
+    check_number(90, maximum_text, colors::notice);
+    check_number(107, maximum_text, colors::notice);
+    check_number(124, maximum_text, colors::menu_normal);
+    check_number(141, maximum_text, colors::yin_mp);
+    check_number(158, maximum_text, colors::yin_mp);
+    actual.clear(0);
+    OL_CHECK(renderer.render_character_status(ranger, 0, 1U, actual, limits));
+    for (int index = 0; index < 11; ++index) {
+        check_number(20 + 16 * index, index == 2 ? u8"100" : maximum_text, colors::notice);
+    }
+    actual.clear(0);
+    OL_CHECK(renderer.render_character_status(ranger, 0, 2U, actual, limits));
+    check_number(24, maximum_text, colors::notice);
+    check_number(126, maximum_text, colors::notice);
+    check_number(143, maximum_text, colors::notice);
+    actual.clear(0);
+    OL_CHECK(renderer.render_character_status(ranger, 0, 3U, actual, limits));
+    check_number(20, u8"92233720368547759", colors::selected);
+    OL_CHECK(!renderer.render_character_status(ranger, 0, 4U, actual, limits));
+    OL_CHECK(role == before);
+}
+
 using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
 
 [[gnu::noinline]] void run_battle_check(
@@ -14657,7 +14756,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 55> checks{
+    const std::array<BattleCheck, 56> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14713,6 +14812,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_ai_arithmetic_test,
         run_ngplus_speed_domain_test,
         run_ngplus_support_finish_test,
+        run_wide_character_status_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

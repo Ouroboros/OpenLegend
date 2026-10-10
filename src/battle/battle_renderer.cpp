@@ -65,6 +65,36 @@ NODISCARD std::optional<int> legacy_name_extent(
     return std::nullopt;
 }
 
+struct CharacterStatusField {
+    std::u8string_view label;
+    std::optional<std::int64_t> value;
+};
+
+NODISCARD std::array<CharacterStatusField, 11> character_status_fields(
+    const model::RuntimeRangerState& ranger, const model::RoleState& role) {
+    const auto effective = [&](const std::size_t role_field, const std::size_t item_field) {
+        std::optional<std::int64_t> value = role.word(role_field);
+        for (const auto equipment : role.equipment) {
+            if (equipment.value >= 0 && static_cast<std::size_t>(equipment.value) < ranger.items.size()) {
+                value = model::checked_add(*value,
+                    ranger.items[static_cast<std::size_t>(equipment.value)].word(item_field));
+                if (!value) {
+                    return value;
+                }
+            }
+        }
+        return value;
+    };
+    return {{
+        {kAttackLabel, effective(model::role_word::attack, model::item_word::add_attack)},
+        {kDefenceLabel, effective(model::role_word::defence, model::item_word::add_defence)},
+        {kSpeedLabel, effective(model::role_word::speed, model::item_word::add_speed)},
+        {kMedicineLabel, role.medicine}, {kUsePoisonLabel, role.use_poison},
+        {kDetoxLabel, role.detoxification}, {kFistLabel, role.fist}, {kSwordLabel, role.sword},
+        {kKnifeLabel, role.knife}, {kUnusualLabel, role.unusual}, {kHiddenLabel, role.hidden_weapon},
+    }};
+}
+
 }  // namespace
 
 BattleRenderer::BattleRenderer(
@@ -609,6 +639,159 @@ bool BattleRenderer::render_party_action_notice(
         draw_text_utf8(framebuffer, left + 69, 51, number, text_colors::notice);
 }
 
+std::uint8_t BattleRenderer::character_status_page_count(
+    const model::RuntimeRangerState& ranger, const std::int16_t role_id) const {
+    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
+        return 2U;
+    }
+    const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+    for (const auto value : {role.level, role.hp, role.maximum_hp, role.mp, role.maximum_mp, role.physical_power}) {
+        if (decimal_text(value).size() > 3U) {
+            return 4U;
+        }
+    }
+    const auto fields = character_status_fields(ranger, role);
+    if (std::ranges::any_of(fields, [](const auto& field) {
+            return !field.value || decimal_text(*field.value).size() > 3U;
+        }) || decimal_text(role.experience).size() > 6U) {
+        return 4U;
+    }
+    const auto next_level = model::checked_add(role.level, 1);
+    const auto next_experience = next_level
+        ? model::level_experience_requirement(experience_thresholds_, *next_level) : std::nullopt;
+    if (next_experience && decimal_text(*next_experience).size() > 6U) {
+        return 4U;
+    }
+    for (std::size_t slot = 0U; slot < role.magic_ids.size(); ++slot) {
+        if (role.magic_ids[slot].value > 0 && decimal_text(role.magic_levels[slot] / 100 + 1).size() > 2U) {
+            return 4U;
+        }
+    }
+    const auto practice_id = role.practice_item.value;
+    if (practice_id >= 0 && static_cast<std::size_t>(practice_id) < ranger.items.size()) {
+        const auto item_index = static_cast<std::size_t>(practice_id);
+        const auto cost = model::manual_experience_requirement(role, ranger.items[item_index], item_index, practice_rules_);
+        if (!cost || decimal_text(role.item_experience).size() > 5U || decimal_text(cost->experience).size() > 5U) {
+            return 4U;
+        }
+    }
+    return 2U;
+}
+
+bool BattleRenderer::render_wide_character_status(
+    const model::RuntimeRangerState& ranger, const std::int16_t role_id, const std::uint8_t page,
+    render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits) {
+    const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
+    if (!draw_box(framebuffer, 0, 0, 320U, 200U) ||
+        !draw_text_utf8(framebuffer, 286, 3, decimal_text(page + 1) + u8"/4", text_colors::menu_normal)) {
+        return false;
+    }
+    const auto draw_value = [&](const std::u8string_view label, const std::int64_t value, const int row,
+                                const render::TextColors colors = text_colors::notice,
+                                const render::TextColors label_colors = text_colors::menu_normal) {
+        return draw_text_utf8(framebuffer, 8, row, label, label_colors) &&
+            draw_text_utf8(framebuffer, 152, row, decimal_text(value), colors);
+    };
+    if (page == 0U) {
+        const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
+        if (!hurt) {
+            return false;
+        }
+        const auto hurt_color = *hurt == model::HurtBand::severe ? text_colors::severe_injury
+            : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
+        const auto poison_color = role.poison == 0 ? text_colors::menu_normal
+            : role.poison >= 50 ? text_colors::severe_poison : text_colors::poison;
+        const auto mp_color = role.mp_type == 0 ? text_colors::yin_mp
+            : role.mp_type == 1 ? text_colors::notice : role.mp_type == 2 ? text_colors::selected : poison_color;
+        const auto name = role.legacy_name();
+        const auto power_end = 152 + static_cast<int>(decimal_text(role.physical_power).size()) * 8;
+        return draw_portrait(framebuffer, role.head_id, 78, 68) &&
+            draw_text_big5(framebuffer, 64, 70, text::Big5TextView{zero_terminated_prefix(name)}, text_colors::selected) &&
+            draw_value(kLevelLabel, role.level, 90) &&
+            draw_value(kLifeLabel, role.hp, 107, hurt_color) &&
+            draw_value(u8"生命上限", role.maximum_hp, 124, poison_color) &&
+            draw_value(kMpLabel, role.mp, 141, mp_color) &&
+            draw_value(u8"內力上限", role.maximum_mp, 158, mp_color) &&
+            draw_value(kPowerLabel, role.physical_power, 175) &&
+            draw_text_utf8(framebuffer, power_end, 175, kSlash, text_colors::selected) &&
+            draw_text_utf8(framebuffer, power_end + 8, 175, kHundred, text_colors::menu_normal);
+    }
+    if (page == 1U) {
+        if (!draw_text_utf8(framebuffer, 8, 3, u8"能力", text_colors::selected)) {
+            return false;
+        }
+        const auto fields = character_status_fields(ranger, role);
+        for (std::size_t index = 0U; index < fields.size(); ++index) {
+            if (!fields[index].value || !draw_value(fields[index].label, *fields[index].value,
+                    20 + 16 * static_cast<int>(index), text_colors::notice, text_colors::selected)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (page == 2U) {
+        if (!draw_text_utf8(framebuffer, 8, 3, u8"經驗與裝備", text_colors::selected) ||
+            !draw_value(kExperienceLabel, role.experience, 24) ||
+            !draw_text_utf8(framebuffer, 8, 41, kUpgradeLabel, text_colors::menu_normal)) {
+            return false;
+        }
+        const auto next_level = model::checked_add(role.level, 1);
+        const auto next_experience = next_level
+            ? model::level_experience_requirement(experience_thresholds_, *next_level) : std::nullopt;
+        if (!draw_text_utf8(framebuffer, 152, 41,
+                next_experience ? decimal_text(*next_experience) : std::u8string{kMaximumLevel}, text_colors::notice) ||
+            !draw_text_utf8(framebuffer, 8, 58, kEquipmentLabel, text_colors::menu_normal)) {
+            return false;
+        }
+        for (std::size_t slot = 0U; slot < role.equipment.size(); ++slot) {
+            const auto item_id = role.equipment[slot].value;
+            if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger.items.size() &&
+                !draw_text_big5(framebuffer, 8, 75 + 17 * static_cast<int>(slot),
+                    text::Big5TextView{fixed_text(ranger.items[static_cast<std::size_t>(item_id)].bytes,
+                        model::item_word::secondary_name_begin * 2U, model::item_word::secondary_name_count * 2U)},
+                    text_colors::notice)) {
+                return false;
+            }
+        }
+        if (!draw_text_utf8(framebuffer, 8, 109, kPracticeLabel, text_colors::menu_normal)) {
+            return false;
+        }
+        const auto practice_id = role.practice_item.value;
+        if (practice_id >= 0 && static_cast<std::size_t>(practice_id) < ranger.items.size()) {
+            const auto item_index = static_cast<std::size_t>(practice_id);
+            const auto& item = ranger.items[item_index];
+            const auto cost = model::manual_experience_requirement(role, item, item_index, practice_rules_);
+            if (!cost) {
+                error_ = "character practice experience requirement is invalid or overflows";
+                return false;
+            }
+            return draw_text_big5(framebuffer, 104, 109,
+                       text::Big5TextView{fixed_text(item.bytes, model::item_word::secondary_name_begin * 2U,
+                           model::item_word::secondary_name_count * 2U)}, text_colors::notice) &&
+                draw_value(u8"修練經驗", role.item_experience, 126) &&
+                draw_value(u8"所需經驗", cost->experience, 143);
+        }
+        return true;
+    }
+    if (!draw_text_utf8(framebuffer, 8, 3, kMagicLabel, text_colors::menu_normal)) {
+        return false;
+    }
+    for (std::size_t slot = 0U; slot < role.magic_ids.size(); ++slot) {
+        const auto magic_id = role.magic_ids[slot].value;
+        if (magic_id <= 0 || static_cast<std::size_t>(magic_id) >= ranger.magics.size()) {
+            continue;
+        }
+        const auto row = 20 + 16 * static_cast<int>(slot);
+        if (!draw_text_big5(framebuffer, 8, row,
+                text::Big5TextView{fixed_text(ranger.magics[static_cast<std::size_t>(magic_id)].bytes,
+                    model::magic_word::name_byte, model::magic_word::name_bytes)}, text_colors::notice) ||
+            !draw_text_utf8(framebuffer, 152, row, decimal_text(role.magic_levels[slot] / 100 + 1), text_colors::selected)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool BattleRenderer::render_character_status(
     const model::RuntimeRangerState& ranger,
     const std::int16_t role_id,
@@ -616,8 +799,11 @@ bool BattleRenderer::render_character_status(
     render::IndexedFramebuffer& framebuffer,
     const model::PlaythroughLimits& limits) {
     if (!valid() || role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size() ||
-        page > 1U) {
+        page >= character_status_page_count(ranger, role_id)) {
         return false;
+    }
+    if (character_status_page_count(ranger, role_id) == 4U) {
+        return render_wide_character_status(ranger, role_id, page, framebuffer, limits);
     }
     const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
     const auto name_storage = role.legacy_name();
@@ -707,42 +893,7 @@ bool BattleRenderer::render_character_status(
             return false;
         }
 
-        const auto effective_with_equipment = [&](
-                                                const std::size_t role_field,
-                                                const std::size_t item_field) {
-            std::optional<std::int64_t> value = role.word(role_field);
-            for (std::size_t slot = 0U; slot < model::role_word::equipment_count; ++slot) {
-                const auto item_id = role.equipment[slot].value;
-                if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger.items.size()) {
-                    value = model::checked_add(
-                        *value, ranger.items[static_cast<std::size_t>(item_id)].word(item_field));
-                    if (!value.has_value()) {
-                        return value;
-                    }
-                }
-            }
-            return value;
-        };
-        struct RightField {
-            std::u8string_view label;
-            std::optional<std::int64_t> value;
-        };
-        const std::array<RightField, 11> fields{{
-            {kAttackLabel, effective_with_equipment(
-                               model::role_word::attack, model::item_word::add_attack)},
-            {kDefenceLabel, effective_with_equipment(
-                                model::role_word::defence, model::item_word::add_defence)},
-            {kSpeedLabel, effective_with_equipment(
-                              model::role_word::speed, model::item_word::add_speed)},
-            {kMedicineLabel, role.word(model::role_word::medicine)},
-            {kUsePoisonLabel, role.word(model::role_word::use_poison)},
-            {kDetoxLabel, role.word(model::role_word::detoxification)},
-            {kFistLabel, role.word(model::role_word::fist)},
-            {kSwordLabel, role.word(model::role_word::sword)},
-            {kKnifeLabel, role.word(model::role_word::knife)},
-            {kUnusualLabel, role.word(model::role_word::unusual)},
-            {kHiddenLabel, role.word(model::role_word::hidden_weapon)},
-        }};
+        const auto fields = character_status_fields(ranger, role);
         for (std::size_t index = 0U; index < fields.size(); ++index) {
             const auto y = 5 + 17 * static_cast<int>(index);
             if (!fields[index].value.has_value() ||

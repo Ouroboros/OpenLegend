@@ -202,7 +202,7 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_battle_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_battle_tests PRIVATE openlegend_battle)
-add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 55)
+add_openlegend_test_shards(openlegend.battle openlegend_battle_tests 56)
 
 add_executable(openlegend_battle_enemy_roles_tests unit/battle/enemy_roles_test.cpp)
 target_include_directories(openlegend_battle_enemy_roles_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)

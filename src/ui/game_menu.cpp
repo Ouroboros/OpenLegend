@@ -150,8 +150,8 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
     }
     if (screen_ == GameMenuScreen::status_panel) {
         if (translated_key != 0U) {
-            if (status_page_ == 0U) {
-                status_page_ = 1U;
+            if (status_page_ + 1U < status_page_count_) {
+                ++status_page_;
             } else {
                 screen_ = GameMenuScreen::main;
                 status_page_ = 0U;

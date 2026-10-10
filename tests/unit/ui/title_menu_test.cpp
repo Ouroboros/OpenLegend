@@ -45,6 +45,10 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.random_;
     }
 
+    static const ui::GameMenuController& game_menu(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.game_menu_;
+    }
+
     static void complete_ending(LegacyGameRuntime& runtime) {
         scene::SceneStepResult result;
         result.kind = scene::SceneStepKind::quit;
@@ -814,6 +818,17 @@ void check_game_menu_controller() {
     OL_CHECK(menu.status_page() == 1U);
     static_cast<void>(menu.handle_key(0x0DU));
     OL_CHECK(menu.screen() == GameMenuScreen::main);
+
+    static_cast<void>(menu.handle_key(0x0DU));
+    static_cast<void>(menu.handle_key(0x0DU));
+    menu.set_status_page_count(4U);
+    for (std::uint8_t page = 0U; page < 4U; ++page) {
+        OL_CHECK(menu.screen() == GameMenuScreen::status_panel);
+        OL_CHECK(menu.status_page() == page);
+        static_cast<void>(menu.handle_key(0x0DU));
+    }
+    OL_CHECK(menu.screen() == GameMenuScreen::main);
+    menu.set_status_page_count(2U);
 
     menu.set_context(GameMenuContext::world);
     menu.show_main();
@@ -3962,6 +3977,21 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     if (ranger == nullptr) {
         return;
     }
+    game.handle_key(0x1BU, false, false);
+    for (std::size_t selection = 0U; selection < 3U; ++selection) {
+        game.handle_key(0x98U, false, false);
+    }
+    game.handle_key(0x0DU, false, false);
+    game.handle_key(0x0DU, false, false);
+    for (std::uint8_t page = 0U; page < 4U; ++page) {
+        OL_CHECK(game.render());
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu(game).screen() == ui::GameMenuScreen::status_panel);
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu(game).status_page() == page);
+        game.handle_key(0x0DU, false, false);
+    }
+    OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu(game).screen() == ui::GameMenuScreen::main);
+    game.handle_key(0x1BU, false, false);
+    OL_CHECK(game.view() == app::LegacyGameView::world);
     ranger->roles[0U].hp -= 7;
     battle::BattleData practice_data{resource::DataRoot{data_root}, 0};
     OL_CHECK(practice_data.valid());

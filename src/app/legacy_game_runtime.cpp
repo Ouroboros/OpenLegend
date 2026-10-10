@@ -2017,6 +2017,8 @@ bool LegacyGameRuntime::render() {
             } else {
                 const auto role_id = ranger->header.team_member(
                     game_menu_.selected_party_slot()).value;
+                game_menu_.set_status_page_count(
+                    game_menu_status_renderer_->character_status_page_count(*ranger, role_id));
                 if (!game_menu_status_renderer_->render_character_status(
                         *ranger,
                         role_id,

@@ -768,7 +768,8 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
         return;
     }
     if (phase_ == BattleSessionPhase::player_status_page_present) {
-        if (!player_status_.has_value() || player_status_->page > 1U) {
+        if (!player_status_.has_value() || player_status_->page >=
+                renderer_.character_status_page_count(ranger_, player_status_->role_id)) {
             error_ = "battle player status page continuation is absent";
             return;
         }
@@ -2734,8 +2735,8 @@ BattleSessionInputResult BattleSession::handle_player_status_page_key(
     if (!player_status_.has_value() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
     }
-    if (player_status_->page == 0U) {
-        player_status_->page = 1U;
+    if (player_status_->page + 1U < renderer_.character_status_page_count(ranger_, player_status_->role_id)) {
+        ++player_status_->page;
         phase_ = BattleSessionPhase::player_status_page_present;
         diagnostics::log_info(
             "battle player status page advanced id=" + std::to_string(battle_id()) +

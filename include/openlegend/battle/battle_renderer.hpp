@@ -87,6 +87,9 @@ public:
         std::optional<std::int64_t> amount,
         render::IndexedFramebuffer& framebuffer);
 
+    NODISCARD std::uint8_t character_status_page_count(
+        const model::RuntimeRangerState& ranger, std::int16_t role_id) const;
+
     NODISCARD bool render_character_status(
         const model::RuntimeRangerState& ranger,
         std::int16_t role_id,
@@ -141,6 +144,10 @@ public:
         int y) const;
 
 private:
+    NODISCARD bool render_wide_character_status(
+        const model::RuntimeRangerState& ranger, std::int16_t role_id, std::uint8_t page,
+        render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits);
+
     NODISCARD std::span<const std::uint8_t> fight_entry(
         std::int32_t legacy_id) const;
 

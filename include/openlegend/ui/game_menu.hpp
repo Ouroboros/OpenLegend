@@ -179,6 +179,8 @@ public:
 
     NODISCARD constexpr std::uint8_t status_page() const noexcept { return status_page_; }
 
+    void set_status_page_count(std::uint8_t count) noexcept { status_page_count_ = count; }
+
     NODISCARD constexpr std::uint8_t system_selection() const noexcept {
         return system_selection_;
     }
@@ -220,6 +222,7 @@ private:
     GameMenuItemConfirmation item_confirmation_{GameMenuItemConfirmation::practice_reassign};
     GameMenuNotice notice_{GameMenuNotice::leave_protagonist};
     std::uint8_t status_page_{};
+    std::uint8_t status_page_count_{2U};
     std::uint8_t system_selection_{};
     std::uint16_t slot_selection_{};
     GameMenuScreen delete_return_screen_{GameMenuScreen::load_slots};
