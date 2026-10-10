@@ -24,7 +24,7 @@ struct LegacyRuntimeLoopSettings {
     std::chrono::nanoseconds movement_step_duration{};
     std::chrono::nanoseconds motion_frame_interval{
         std::chrono::nanoseconds{1'000'000'000} / 240};
-    model::NewGamePlusConfiguration new_game_plus_configuration;
+    model::NewGamePlusConfiguration new_game_plus_configuration{};
 };
 
 struct LegacyRuntimeLoopResult {

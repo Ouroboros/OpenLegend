@@ -866,7 +866,7 @@ bool BattleRenderer::render_character_status(
     if (!draw_box(framebuffer, 55, 0, 210U, 200U) ||
         !draw_portrait(
             framebuffer,
-            role.word(model::role_word::head_id),
+            role.head_id,
             78,
             68)) {
         return false;
