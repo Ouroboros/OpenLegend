@@ -16,6 +16,8 @@
 #include "openlegend/persistence/save_slot.hpp"
 #include "openlegend/random/legacy_random.hpp"
 #include "openlegend/render/indexed_framebuffer.hpp"
+#include "openlegend/render/legacy_color.hpp"
+#include "openlegend/render/legacy_font_renderer.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/scene/scene.hpp"
 #include "test_support.hpp"
@@ -6543,17 +6545,34 @@ void check_ngplus_scene_role_growth(const std::filesystem::path& root) {
         OL_CHECK(session.pending_text() == encoded);
         OL_CHECK(result.style == -3);
         OL_CHECK(session.render(framebuffer));
-        if (gain == std::numeric_limits<std::int64_t>::max()) {
-            for (int digit = 0; digit < 19; ++digit) {
-                bool visible = false;
-                for (int pixel_y = 65; pixel_y < 81; ++pixel_y) {
-                    for (int pixel_x = 84 + 8 * digit; pixel_x < 92 + 8 * digit; ++pixel_x) {
-                        visible = visible || framebuffer.row(pixel_y)[pixel_x] == 7U;
-                    }
+        const auto ascii = data_root.read("FONT3.E16");
+        const auto big5 = data_root.read("FONT3.C16");
+        OL_CHECK(ascii && big5);
+        if (!ascii || !big5) {
+            return;
+        }
+        openlegend::render::Big5GlyphCache glyphs{big5.bytes};
+        const auto digits = std::to_string(gain);
+        const std::u8string number{digits.begin(), digits.end()};
+        const auto prefix_units = static_cast<int>(encoded.size() - digits.size() - 1U);
+        const auto separate_number = digits.size() > 6U;
+        const auto number_x = separate_number ? 160 - 4 * static_cast<int>(digits.size())
+            : 136 + 4 * prefix_units;
+        const auto number_y = separate_number ? 65 : 45;
+        openlegend::render::IndexedFramebuffer expected_number;
+        expected_number.clear(255U);
+        OL_CHECK(openlegend::render::draw_text_utf8(expected_number, number_x, number_y, number,
+            ascii.bytes, glyphs, openlegend::render::legacy_color::text::notice));
+        bool matches = true;
+        for (int pixel_y = number_y; pixel_y < number_y + 17; ++pixel_y) {
+            for (int pixel_x = number_x;
+                 pixel_x < number_x + 8 * static_cast<int>(digits.size()) + 1; ++pixel_x) {
+                if (expected_number.row(pixel_y)[pixel_x] != 255U) {
+                    matches = matches && framebuffer.row(pixel_y)[pixel_x] == expected_number.row(pixel_y)[pixel_x];
                 }
-                OL_CHECK(visible);
             }
         }
+        OL_CHECK(matches);
         const auto first_frame = fnv1a64(framebuffer.pixels());
         OL_CHECK(session.render(framebuffer));
         OL_CHECK(fnv1a64(framebuffer.pixels()) == first_frame);
@@ -6565,7 +6584,7 @@ void check_ngplus_scene_role_growth(const std::filesystem::path& root) {
     for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
         for (const auto& operation : operations) {
             const auto is_attack = operation.current_field == role_word::attack;
-            for (const auto initial : std::array<std::int64_t, 4>{100, 32767, wide, maximum - 1}) {
+            for (const auto initial : std::array<std::int64_t, 6>{100, 32767, 999998, 999999, wide, maximum - 1}) {
                 verify(operation, playthrough, operation.increase_script,
                        initial, is_attack ? initial : 0, initial + 1, true);
             }
