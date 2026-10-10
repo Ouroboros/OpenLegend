@@ -1454,9 +1454,15 @@ bool BattleRenderer::draw_damage_text(
     std::u8string text;
     text.push_back(command.overlay_variant < 0 ? u8'-' : u8'+');
     text.append(decimal_text(command.value, 3));
+    auto left = command.screen_x;
+    if (text.size() > 4U && left >= 0 && left < framebuffer.coordinate_width() - 8) {
+        const auto maximum_left = std::max(0,
+            framebuffer.coordinate_width() - static_cast<int>(text.size()) * 8 - 1);
+        left = std::min(left, maximum_left);
+    }
     return draw_text_utf8(
         framebuffer,
-        command.screen_x,
+        left,
         command.screen_y,
         text,
         render::TextColors::from_legacy_packed(

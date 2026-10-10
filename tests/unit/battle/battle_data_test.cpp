@@ -14796,6 +14796,47 @@ void run_wide_medicine_selection_test(const openlegend::resource::DataRoot& data
     OL_CHECK(ranger.roles == before);
 }
 
+void run_wide_damage_text_test(const openlegend::resource::DataRoot& data_root) {
+    using namespace openlegend;
+    battle::BattleRenderer renderer{data_root, 0};
+    OL_CHECK(renderer.valid());
+    OL_CHECK(renderer.load_battle_assets());
+    struct PositionCase {
+        int width;
+        int source;
+        int expected;
+    };
+    constexpr std::array positions{
+        PositionCase{320, 0, 0}, PositionCase{320, 127, 127}, PositionCase{320, 200, 159},
+        PositionCase{320, 311, 159}, PositionCase{640, 480, 479}, PositionCase{640, 631, 479},
+        PositionCase{320, -16, -16}, PositionCase{320, 312, 312}, PositionCase{320, 320, 320}};
+    for (const auto& position : positions) {
+        for (const auto sign : {std::int16_t{-1}, std::int16_t{1}}) {
+            render::IndexedFramebuffer actual{position.width, 200};
+            render::IndexedFramebuffer expected{position.width, 200};
+            const auto actual_coordinates = actual.use_native_coordinates();
+            const auto expected_coordinates = expected.use_native_coordinates();
+            const auto colors = render::legacy_color::text::battle_damage_numbers[sign < 0 ? 1U : 4U];
+            battle::BattleRenderPlan plan;
+            plan.commands.push_back({.kind = battle::BattleRenderCommandKind::damage_text,
+                .screen_x = position.source, .screen_y = 50, .overlay_variant = sign,
+                .style = std::bit_cast<std::int16_t>(colors.legacy_packed()),
+                .value = std::numeric_limits<std::int64_t>::max()});
+            OL_CHECK(renderer.render(plan, actual));
+            static_cast<void>(renderer.draw_text_utf8(expected, position.expected, 50,
+                sign < 0 ? u8"-9223372036854775807" : u8"+9223372036854775807", colors));
+            OL_CHECK(std::ranges::equal(actual.pixels(), expected.pixels()));
+            actual.clear(0);
+            expected.clear(0);
+            plan.commands[0U].value = 123;
+            OL_CHECK(renderer.render(plan, actual));
+            static_cast<void>(renderer.draw_text_utf8(expected, position.source, 50,
+                sign < 0 ? u8"-123" : u8"+123", colors));
+            OL_CHECK(std::ranges::equal(actual.pixels(), expected.pixels()));
+        }
+    }
+}
+
 using BattleCheck = void (*)(const openlegend::resource::DataRoot&);
 
 [[gnu::noinline]] void run_battle_check(
@@ -14811,7 +14852,7 @@ int main(const int argc, char* argv[]) {
     const auto root = openlegend::test::game_data_root();
     OL_CHECK(std::filesystem::is_directory(root));
     const openlegend::resource::DataRoot data_root{root};
-    const std::array<BattleCheck, 57> checks{
+    const std::array<BattleCheck, 58> checks{
         run_real_asset_fixtures,
         run_pathing_tests,
         run_movement_step_test,
@@ -14869,6 +14910,7 @@ int main(const int argc, char* argv[]) {
         run_ngplus_support_finish_test,
         run_wide_character_status_test,
         run_wide_medicine_selection_test,
+        run_wide_damage_text_test,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {
