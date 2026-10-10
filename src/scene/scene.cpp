@@ -2420,7 +2420,7 @@ std::optional<SceneStepResult> SceneSession::advance_join_role_items() {
         state.awaiting_clear = false;
     }
     while (state.slot < model::role_word::taking_item_count) {
-        const auto item_id = role.word(model::role_word::taking_item_begin + state.slot);
+        const auto item_id = role.taking_items[state.slot].value;
         if (item_id == -1) {
             ++state.slot;
             continue;
