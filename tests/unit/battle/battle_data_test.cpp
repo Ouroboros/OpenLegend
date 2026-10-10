@@ -5625,6 +5625,38 @@ void run_player_item_session_test(
         ranger->header.set_inventory(0U, openlegend::model::ItemId{10}, 1);
         OL_CHECK(session->render(*framebuffer));
         item_menu_single_hash = fnv1a_bytes(framebuffer->pixels());
+        const auto ordinary_grid = *framebuffer;
+        const auto ascii = data_root.read("FONT3.E16");
+        const auto big5 = data_root.read("FONT3.C16");
+        OL_CHECK(ascii && big5);
+        openlegend::render::Big5GlyphCache glyphs{big5.bytes};
+        for (const auto count : {std::int64_t{10000}, std::numeric_limits<std::int64_t>::max()}) {
+            ranger->header.set_inventory(0U, openlegend::model::ItemId{10}, count);
+            const auto before = *ranger;
+            const auto random_before = random.state();
+            OL_CHECK(session->render(*framebuffer));
+            openlegend::render::IndexedFramebuffer expected;
+            expected.clear(255U);
+            const auto text = count == 10000 ? u8"10000" : u8"9223372036854775807";
+            OL_CHECK(openlegend::render::draw_text_utf8(expected, 152, 20, text,
+                ascii.bytes, glyphs, openlegend::render::legacy_color::text::selected));
+            bool matches = true;
+            for (int row = 20; row < 37; ++row) {
+                for (int column = 152; column < 305; ++column) {
+                    if (expected.row(row)[column] != 255U) {
+                        matches = matches && framebuffer->row(row)[column] == expected.row(row)[column];
+                    }
+                }
+            }
+            OL_CHECK(matches);
+            bool grid_unchanged = true;
+            for (int row = 62; row < 197; ++row) {
+                grid_unchanged = grid_unchanged && std::equal(framebuffer->row(row) + 45,
+                    framebuffer->row(row) + 275, ordinary_grid.row(row) + 45);
+            }
+            OL_CHECK(grid_unchanged);
+            OL_CHECK(*ranger == before && random.state() == random_before);
+        }
         ranger->header.set_inventory(0U, openlegend::model::ItemId{10}, 2);
         session->finish_presented_tick(800U);
 

@@ -369,7 +369,7 @@ class BuildToolTest(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn(
-            "add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 18)", cmake
+            "add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 19)", cmake
         )
         self.assertIn(
             "add_openlegend_test_shards(openlegend.scene openlegend_scene_tests 53)",

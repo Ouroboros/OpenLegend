@@ -4329,10 +4329,27 @@ bool BattleSession::render_player_magic_selection(
 
 bool BattleSession::render_player_item_selection(
     render::IndexedFramebuffer& framebuffer) {
-    if (!player_item_ || !render_battlefield(framebuffer) ||
-        !renderer_.draw_box(framebuffer, 45, 2, 230U, 23U) ||
-        !renderer_.draw_box(framebuffer, 45, 27, 230U, 23U) ||
-        !renderer_.draw_box(framebuffer, 45, 52, 230U, 145U)) {
+    if (!player_item_ || !render_battlefield(framebuffer)) {
+        return false;
+    }
+    const auto list_index = static_cast<std::int32_t>(
+        5 * (player_item_->page + player_item_->row) + player_item_->column);
+    const auto inventory_slot = list_index >= 0 && list_index < static_cast<std::int32_t>(model::kInventoryCount)
+        ? player_item_->selection.inventory_slots[static_cast<std::size_t>(list_index)]
+        : std::int16_t{-1};
+    const auto inventory_count = inventory_slot >= 0 &&
+        static_cast<std::size_t>(inventory_slot) < model::kInventoryCount
+        ? ranger_.header.inventory_count(static_cast<std::size_t>(inventory_slot)) : 0;
+    const auto count_text = inventory_count > 1 ? decimal_text(inventory_count, 2U) : std::u8string{};
+    const auto wide_count = count_text.size() > 4U;
+    if (wide_count) {
+        if (!renderer_.draw_box(framebuffer, 0, 0, 320U, 57U) ||
+            !renderer_.draw_box(framebuffer, 45, 57, 230U, 140U)) {
+            return false;
+        }
+    } else if (!renderer_.draw_box(framebuffer, 45, 2, 230U, 23U) ||
+               !renderer_.draw_box(framebuffer, 45, 27, 230U, 23U) ||
+               !renderer_.draw_box(framebuffer, 45, 52, 230U, 145U)) {
         return false;
     }
     const auto draw_scroll_line = [&framebuffer](
@@ -4404,13 +4421,9 @@ bool BattleSession::render_player_item_selection(
         return false;
     }
 
-    const auto list_index = static_cast<std::int32_t>(
-        5 * (player_item_->page + player_item_->row) + player_item_->column);
     if (list_index < 0 || list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
         return true;
     }
-    const auto inventory_slot = player_item_->selection.inventory_slots[
-        static_cast<std::size_t>(list_index)];
     if (inventory_slot < 0 ||
         static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
         return true;
@@ -4435,8 +4448,8 @@ bool BattleSession::render_player_item_selection(
         (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
     if (!renderer_.draw_text_big5(
             framebuffer,
-            name_center - 4 * static_cast<int>(name.size()),
-            5,
+            wide_count ? 8 : name_center - 4 * static_cast<int>(name.size()),
+            wide_count ? 3 : 5,
             text::Big5TextView{name},
             text_colors::notice)) {
         return false;
@@ -4445,7 +4458,7 @@ bool BattleSession::render_player_item_selection(
         if (!renderer_.draw_text_utf8(
                 framebuffer,
                 48,
-                30,
+                wide_count ? 37 : 30,
                 coordinate_item_text(ranger_),
                 text_colors::menu_normal)) {
             return false;
@@ -4457,7 +4470,7 @@ bool BattleSession::render_player_item_selection(
         if (!renderer_.draw_text_big5(
                 framebuffer,
                 160 - 4 * static_cast<int>(introduction.size()),
-                30,
+                wide_count ? 37 : 30,
                 text::Big5TextView{introduction},
                 text_colors::menu_normal)) {
             return false;
@@ -4474,22 +4487,21 @@ bool BattleSession::render_player_item_selection(
         user_text.append_legacy(text::Big5TextView{role_name});
         user_text.append_utf8(kCloseParenthesis);
         if (!renderer_.draw_text_mixed(
-                framebuffer, 205, 5, user_text, text_colors::menu_normal)) {
+                framebuffer, 205, wide_count ? 3 : 5, user_text, text_colors::menu_normal)) {
             return false;
         }
     }
-    const auto inventory_count = ranger_.header.inventory_count(
-        static_cast<std::size_t>(inventory_slot));
-    if (inventory_count <= 1) {
+    if (count_text.empty()) {
         return true;
     }
     return renderer_.draw_text_utf8(
-               framebuffer, 215, 5, kCountMarker, text_colors::menu_normal) &&
+               framebuffer, wide_count ? 134 : 215, wide_count ? 20 : 5,
+               kCountMarker, text_colors::menu_normal) &&
         renderer_.draw_text_utf8(
             framebuffer,
-            235,
-            5,
-            decimal_text(inventory_count, 2U),
+            wide_count ? 152 : 235,
+            wide_count ? 20 : 5,
+            count_text,
             text_colors::selected);
 }
 

@@ -5016,6 +5016,70 @@ void check_renderer(const std::filesystem::path& data_root) {
     OL_CHECK(sexual_is_not_highlighted);
 }
 
+void check_wide_inventory_count(const std::filesystem::path& data_root) {
+    using namespace openlegend;
+    const resource::DataRoot resources{data_root};
+    const auto loaded = persistence::load_baseline_ranger(data_root);
+    OL_CHECK(static_cast<bool>(loaded));
+    if (!loaded) {
+        return;
+    }
+    auto decoded = model::decode_legacy_ranger(*loaded.ranger);
+    OL_CHECK(decoded.has_value());
+    if (!decoded) {
+        return;
+    }
+    auto& ranger = *decoded;
+    ui::BasicUiRenderer renderer{resources};
+    OL_CHECK(renderer.valid());
+    ui::GameMenuController menu;
+    menu.set_inventory_count(1U);
+    menu.show_items();
+    const auto ascii = resources.read("FONT3.E16");
+    const auto big5 = resources.read("FONT3.C16");
+    OL_CHECK(ascii && big5);
+    render::Big5GlyphCache glyphs{big5.bytes};
+    struct CountCase {
+        std::int64_t count;
+        std::u8string_view text;
+        int value_x;
+        int value_y;
+    };
+    constexpr std::array cases{
+        CountCase{2, u8" 2", 235, 5}, CountCase{9999, u8"9999", 235, 5},
+        CountCase{10000, u8"10000", 152, 20},
+        CountCase{5000000000000LL, u8"5000000000000", 152, 20},
+        CountCase{9223372036854775807LL, u8"9223372036854775807", 152, 20}};
+    render::IndexedFramebuffer reference_grid;
+    for (const auto& entry : cases) {
+        ranger.header.set_inventory(0U, model::ItemId{174}, entry.count);
+        const auto before = ranger;
+        render::IndexedFramebuffer actual;
+        render::IndexedFramebuffer expected;
+        OL_CHECK(renderer.render_game_menu(menu, ranger, actual));
+        OL_CHECK(render::draw_text_utf8(expected, entry.value_x, entry.value_y, entry.text,
+            ascii.bytes, glyphs, render::legacy_color::text::selected));
+        const auto end = entry.value_x + static_cast<int>(entry.text.size()) * 8 + 1;
+        bool matches = true;
+        for (int row = entry.value_y; row < entry.value_y + 16; ++row) {
+            matches = matches && std::equal(actual.row(row) + entry.value_x,
+                actual.row(row) + end, expected.row(row) + entry.value_x);
+        }
+        OL_CHECK(matches);
+        if (entry.count == 2) {
+            reference_grid = actual;
+        } else {
+            bool grid_unchanged = true;
+            for (int row = 62; row < 197; ++row) {
+                grid_unchanged = grid_unchanged && std::equal(actual.row(row) + 45,
+                    actual.row(row) + 275, reference_grid.row(row) + 45);
+            }
+            OL_CHECK(grid_unchanged);
+        }
+        OL_CHECK(ranger == before);
+    }
+}
+
 using UiCheck = void (*)(const std::filesystem::path&);
 
 void run_controller_check(const std::filesystem::path&) {
@@ -5042,7 +5106,7 @@ void run_attribute_controller_check(const std::filesystem::path&) {
 int main(const int argc, char* argv[]) {
     const auto shard = openlegend::test::test_shard(argc, argv);
     const auto data_root = openlegend::test::game_data_root();
-    const std::array<UiCheck, 18> checks{
+    const std::array<UiCheck, 19> checks{
         run_controller_check,
         run_game_menu_controller_check,
         run_attribute_controller_check,
@@ -5061,6 +5125,7 @@ int main(const int argc, char* argv[]) {
         check_authoritative_runtime_motion,
         check_runtime_persistence,
         check_renderer,
+        check_wide_inventory_count,
     };
     for (std::size_t index = 0U; index < checks.size(); ++index) {
         if (shard.includes(index)) {

@@ -716,9 +716,25 @@ bool BasicUiRenderer::render_items(
     const GameMenuController& menu,
     const model::RuntimeRangerState& ranger,
     render::IndexedFramebuffer& framebuffer) {
-    if (!draw_box(framebuffer, 45, 2, 230U, 23U) ||
-        !draw_box(framebuffer, 45, 27, 230U, 23U) ||
-        !draw_box(framebuffer, 45, 52, 230U, 145U)) {
+    const auto inventory_slots = menu.inventory_slots();
+    const auto selection = static_cast<std::size_t>(menu.item_selection());
+    std::u8string count_text;
+    if (selection < inventory_slots.size() && inventory_slots[selection] >= 0 &&
+        static_cast<std::size_t>(inventory_slots[selection]) < model::kInventoryCount) {
+        const auto count = ranger.header.inventory_count(static_cast<std::size_t>(inventory_slots[selection]));
+        if (count > 1) {
+            append_number(count_text, count, 2);
+        }
+    }
+    const auto wide_count = count_text.size() > 4U;
+    if (wide_count) {
+        if (!draw_box(framebuffer, 0, 0, 320U, 57U) ||
+            !draw_box(framebuffer, 45, 57, 230U, 140U)) {
+            return false;
+        }
+    } else if (!draw_box(framebuffer, 45, 2, 230U, 23U) ||
+               !draw_box(framebuffer, 45, 27, 230U, 23U) ||
+               !draw_box(framebuffer, 45, 52, 230U, 145U)) {
         return false;
     }
     const auto draw_scroll_line = [&framebuffer](
@@ -754,7 +770,6 @@ bool BasicUiRenderer::render_items(
         }
     }
 
-    const auto inventory_slots = menu.inventory_slots();
     for (int row = 0; row < 3; ++row) {
         for (int column = 0; column < 5; ++column) {
             const auto x = 55 + 42 * column;
@@ -785,7 +800,6 @@ bool BasicUiRenderer::render_items(
             palette_colors::inventory_selection_outline)) {
         return false;
     }
-    const auto selection = static_cast<std::size_t>(menu.item_selection());
     if (selection >= inventory_slots.size() || inventory_slots[selection] < 0 ||
         static_cast<std::size_t>(inventory_slots[selection]) >= model::kInventoryCount) {
         return true;
@@ -808,8 +822,8 @@ bool BasicUiRenderer::render_items(
         (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
     if (!draw_text_big5(
             framebuffer,
-            name_center - 4 * static_cast<int>(name.size()),
-            5,
+            wide_count ? 8 : name_center - 4 * static_cast<int>(name.size()),
+            wide_count ? 3 : 5,
             text::Big5TextView{name},
             text_colors::notice)) {
         return false;
@@ -817,7 +831,7 @@ bool BasicUiRenderer::render_items(
 
     if (item.word(model::item_word::id) == 0x00B6) {
         const auto text = coordinate_item_text(ranger, menu.context());
-        if (!draw_text_utf8(framebuffer, 48, 30, text, text_colors::menu_normal)) {
+        if (!draw_text_utf8(framebuffer, 48, wide_count ? 37 : 30, text, text_colors::menu_normal)) {
             return false;
         }
     } else {
@@ -828,7 +842,7 @@ bool BasicUiRenderer::render_items(
         if (!draw_text_big5(
                 framebuffer,
                 160 - 4 * static_cast<int>(introduction.size()),
-                30,
+                wide_count ? 37 : 30,
                 text::Big5TextView{introduction},
                 text_colors::menu_normal)) {
             return false;
@@ -845,17 +859,16 @@ bool BasicUiRenderer::render_items(
         user_text.append_legacy(text::Big5TextView{
             fixed_text(role_name, 0U, role_name.size())});
         user_text.append_utf8(kCloseParenthesis);
-        if (!draw_text_mixed(framebuffer, 205, 5, user_text, text_colors::menu_normal)) {
+        if (!draw_text_mixed(framebuffer, 205, wide_count ? 3 : 5, user_text, text_colors::menu_normal)) {
             return false;
         }
     }
 
-    const auto count = ranger.header.inventory_count(inventory_slot);
-    if (count > 1) {
-        std::u8string count_text;
-        append_number(count_text, count, 2);
-        if (!draw_text_utf8(framebuffer, 215, 5, kCountMarker, text_colors::menu_normal) ||
-            !draw_text_utf8(framebuffer, 235, 5, count_text, text_colors::selected)) {
+    if (!count_text.empty()) {
+        if (!draw_text_utf8(framebuffer, wide_count ? 134 : 215, wide_count ? 20 : 5,
+                kCountMarker, text_colors::menu_normal) ||
+            !draw_text_utf8(framebuffer, wide_count ? 152 : 235, wide_count ? 20 : 5,
+                count_text, text_colors::selected)) {
             return false;
         }
     }

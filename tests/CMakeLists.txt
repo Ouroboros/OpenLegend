@@ -128,7 +128,7 @@ target_compile_definitions(
 )
 target_include_directories(openlegend_ui_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 target_link_libraries(openlegend_ui_tests PRIVATE openlegend_app openlegend_ui)
-add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 18)
+add_openlegend_test_shards(openlegend.ui openlegend_ui_tests 19)
 
 add_executable(openlegend_audio_tests unit/audio/legacy_audio_test.cpp)
 target_include_directories(openlegend_audio_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
