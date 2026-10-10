@@ -10,15 +10,25 @@
 #include "openlegend/model/playthrough_transition.hpp"
 #include "openlegend/model/practice.hpp"
 #include "openlegend/persistence/toml_slot.hpp"
+#include "openlegend/render/legacy_font_renderer.hpp"
 #include "test_support.hpp"
 
 namespace {
 
 NODISCARD bool finish_automatic_battle(
     openlegend::battle::BattleSession& session,
+    const openlegend::resource::DataRoot& data_root,
     const openlegend::battle::BattleStepResult expected = openlegend::battle::BattleStepResult::victory) {
     using namespace openlegend;
     render::IndexedFramebuffer framebuffer;
+    const auto ascii = data_root.read("FONT3.E16");
+    const auto big5 = data_root.read("FONT3.C16");
+    OL_CHECK(ascii && big5);
+    if (!ascii || !big5) {
+        return false;
+    }
+    render::Big5GlyphCache glyphs{big5.bytes};
+    bool wide_experience_presented = false;
     bool damage_presented = false;
     bool settlement_presented = false;
     std::int64_t maximum_damage = 0;
@@ -35,8 +45,35 @@ NODISCARD bool finish_automatic_battle(
             maximum_damage = std::max(maximum_damage, combatant.damage_value);
         }
         if (!session.render(framebuffer)) {
-            std::cerr << "battle render failed: " << session.error() << '\n';
+            std::cerr << "battle render failed: phase=" << static_cast<int>(session.phase())
+                      << " message=" << session.post_battle_message_index()
+                      << " error=" << session.error() << '\n';
             return false;
+        }
+        if (phase == battle::BattleSessionPhase::post_battle_message_present &&
+            session.post_battle_message_index() == 0U && session.post_battle_result()) {
+            for (const auto& role : session.post_battle_result()->roles) {
+                if (!role.experience_message_required || role.experience_gained <= 99999) {
+                    continue;
+                }
+                const auto digits = std::to_string(role.experience_gained);
+                const std::u8string number{digits.begin(), digits.end()};
+                render::IndexedFramebuffer expected_number;
+                expected_number.clear(255U);
+                OL_CHECK(render::draw_text_utf8(expected_number, 152, 52, number,
+                    ascii.bytes, glyphs, render::legacy_color::text::notice));
+                bool matches = true;
+                for (int row = 52; row < 69; ++row) {
+                    for (int column = 152; column < 305; ++column) {
+                        if (expected_number.row(row)[column] != 255U) {
+                            matches = matches && framebuffer.row(row)[column] == expected_number.row(row)[column];
+                        }
+                    }
+                }
+                OL_CHECK(matches);
+                wide_experience_presented = true;
+                break;
+            }
         }
         const auto tick = step * 300U;
         session.finish_presented_tick(tick);
@@ -55,6 +92,7 @@ NODISCARD bool finish_automatic_battle(
     }
     OL_CHECK(damage_presented);
     OL_CHECK(settlement_presented == (expected == battle::BattleStepResult::victory));
+    OL_CHECK(wide_experience_presented == (expected == battle::BattleStepResult::victory));
     OL_CHECK(maximum_damage > std::numeric_limits<std::int32_t>::max());
     return session.valid() && session.finished() && session.result() == expected;
 }
@@ -63,10 +101,14 @@ void check_session_and_persistence(
     const openlegend::resource::DataRoot& data_root,
     const openlegend::model::GameSnapshot& baseline,
     const openlegend::persistence::AssetFingerprints& fingerprints,
-    const std::int64_t playthrough) {
+    const std::int64_t playthrough,
+    const bool wide_messages = false) {
     using namespace openlegend;
     model::NewGamePlusConfiguration configuration;
     configuration.enabled = true;
+    if (wide_messages) {
+        configuration.battle_experience_percent_ng2 = 10'000'000;
+    }
     auto decoded = model::decode_legacy_snapshot(baseline, configuration, &baseline.ranger);
     OL_CHECK(decoded.has_value());
     if (!decoded) {
@@ -84,7 +126,10 @@ void check_session_and_persistence(
     ranger.roles[0U].ever_joined = true;
     auto& actor = ranger.roles[1U];
     actor.ever_joined = true;
-    actor.level = 1'000'000;
+    if (wide_messages) {
+        actor.name = u8"一二三四五";
+    }
+    actor.level = wide_messages ? 1'000'000'000 : 1'000'000;
     actor.experience = 0;
     actor.hp = actor.maximum_hp = 5'000'000'000'000;
     actor.mp = actor.maximum_mp = 4'000'000'000'000;
@@ -116,7 +161,7 @@ void check_session_and_persistence(
     battle::BattleSession session{data_root, ranger, random, 4, true, {}, nullptr, nullptr, nullptr,
         configuration, playthrough, &baseline.ranger};
     OL_CHECK(session.valid());
-    if (!session.valid() || !finish_automatic_battle(session)) {
+    if (!session.valid() || !finish_automatic_battle(session, data_root)) {
         OL_CHECK(false);
         return;
     }
@@ -124,6 +169,9 @@ void check_session_and_persistence(
     OL_CHECK(ranger.roles[3U] == enemy_before);
     const auto& settled_actor = ranger.roles[1U];
     OL_CHECK(settled_actor.experience > std::numeric_limits<std::int32_t>::max());
+    if (wide_messages) {
+        OL_CHECK(settled_actor.experience >= 10'000'000'000'000'000);
+    }
     OL_CHECK(settled_actor.no_magic_count[manual_index] == 1);
     OL_CHECK(settled_actor.item_experience == 0);
     OL_CHECK(settled_actor.hp > std::numeric_limits<std::int32_t>::max());
@@ -207,7 +255,7 @@ void check_defeat(
     battle::BattleSession session{data_root, ranger, random, 4, false, {}, nullptr, nullptr, nullptr,
         configuration, 2, &baseline.ranger};
     OL_CHECK(session.valid());
-    if (!session.valid() || !finish_automatic_battle(session, battle::BattleStepResult::defeat)) {
+    if (!session.valid() || !finish_automatic_battle(session, data_root, battle::BattleStepResult::defeat)) {
         OL_CHECK(false);
         return;
     }
@@ -250,6 +298,7 @@ int main() {
     for (const std::int64_t playthrough : {1, 2, 999}) {
         check_session_and_persistence(data_root, *baseline.snapshot, *fingerprints.fingerprints, playthrough);
     }
+    check_session_and_persistence(data_root, *baseline.snapshot, *fingerprints.fingerprints, 2, true);
     check_defeat(data_root, *baseline.snapshot, *fingerprints.fingerprints);
     return test::failures == 0 ? 0 : 1;
 }

@@ -13393,6 +13393,37 @@ void run_battle_outcome_session_test(
         }
         OL_CHECK(victory.render(framebuffer));
         post_battle_hashes.push_back(fnv1a_bytes(framebuffer.pixels()));
+        if (message == 3U) {
+            const auto original_level = victory_ranger.roles[progress_role_id].magic_levels[0U];
+            const auto original_name = std::vector<std::uint8_t>{magic_name.begin(), magic_name.end()};
+            victory_ranger.roles[progress_role_id].magic_levels[0U] = std::numeric_limits<std::int64_t>::max();
+            constexpr std::array<std::uint8_t, 10> wide_name{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
+            std::ranges::copy(wide_name, magic_name.begin());
+            const auto before = victory_ranger;
+            const auto random_before = victory_random.state();
+            OL_CHECK(victory.render(framebuffer));
+            const auto ascii = data_root.read("FONT3.E16");
+            const auto big5 = data_root.read("FONT3.C16");
+            OL_CHECK(ascii && big5);
+            openlegend::render::Big5GlyphCache glyphs{big5.bytes};
+            openlegend::render::IndexedFramebuffer expected;
+            expected.clear(255U);
+            OL_CHECK(openlegend::render::draw_text_utf8(expected, 144, 102, u8"92233720368547759 級",
+                ascii.bytes, glyphs, openlegend::render::legacy_color::text::notice));
+            bool matches = true;
+            for (int row = 102; row < 119; ++row) {
+                for (int column = 144; column < 305; ++column) {
+                    if (expected.row(row)[column] != 255U) {
+                        matches = matches && framebuffer.row(row)[column] == expected.row(row)[column];
+                    }
+                }
+            }
+            OL_CHECK(matches);
+            OL_CHECK(victory_ranger == before && victory_random.state() == random_before);
+            victory_ranger.roles[progress_role_id].magic_levels[0U] = original_level;
+            std::ranges::copy(original_name, magic_name.begin());
+            OL_CHECK(victory.render(framebuffer));
+        }
         victory.finish_presented_tick();
         OL_CHECK(victory.phase() == BattleSessionPhase::post_battle_message_wait);
         if (message == 1U) {

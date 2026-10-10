@@ -4635,7 +4635,13 @@ bool BattleSession::render_post_battle_message(
     case PostBattleMessageKind::experience: {
         display_text.append_legacy(text::Big5TextView{role_name});
         display_text.append_utf8(kExperienceGainedText);
-        display_text.append_utf8(decimal_text(role_result.experience_gained, 5));
+        const auto experience_text = decimal_text(role_result.experience_gained, 5);
+        if (experience_text.size() > 5U) {
+            return renderer_.draw_box(framebuffer, 0, 30, 320U, 46U) &&
+                renderer_.draw_text_mixed(framebuffer, 8, 35, display_text, text_colors::notice) &&
+                renderer_.draw_text_utf8(framebuffer, 152, 52, experience_text, text_colors::notice);
+        }
+        display_text.append_utf8(experience_text);
         return renderer_.draw_box(framebuffer, 60, 30, 200U, 27U) &&
             renderer_.draw_text_mixed(
                 framebuffer, 63, 35, display_text, text_colors::notice);
@@ -4698,13 +4704,21 @@ bool BattleSession::render_post_battle_message(
         const auto level = role.magic_levels[static_cast<std::size_t>(magic_slot)] / 100 + 1;
         display_text.append_legacy(text::Big5TextView{magic_name});
         display_text.append_utf8(kMagicLevelPrefix);
-        display_text.append_utf8(decimal_text(level, 2));
-        display_text.append_utf8(kMagicLevelSuffix);
+        const auto level_text = decimal_text(level, 2) + std::u8string{kMagicLevelSuffix};
+        display_text.append_utf8(level_text);
         const auto width = display_text.legacy_width_units();
         if (!width.has_value()) {
             return false;
         }
         const auto width_units = static_cast<int>(*width);
+        if (width_units > 37) {
+            text::GameText heading;
+            heading.append_legacy(text::Big5TextView{magic_name});
+            heading.append_utf8(kMagicLevelPrefix);
+            return renderer_.draw_box(framebuffer, 0, 80, 320U, 46U) &&
+                renderer_.draw_text_mixed(framebuffer, 8, 85, heading, text_colors::notice) &&
+                renderer_.draw_text_utf8(framebuffer, 144, 102, level_text, text_colors::notice);
+        }
         return renderer_.draw_box(
                    framebuffer,
                    150 - width_units * 4,
