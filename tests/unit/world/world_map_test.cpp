@@ -1226,15 +1226,66 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
         OL_CHECK(session.world_x() == x_before && session.world_y() == y_before);
     }
 
-    auto power_snapshot = load_baseline(root);
-    power_snapshot.ranger.roles[0].set_word(openlegend::model::role_word::physical_power, 99);
-    openlegend::random::LegacyRandom power_random{1U};
-    WorldSession power{data_root, map, power_snapshot.ranger, power_random};
-    for (int tick = 0; tick < 200; ++tick) {
-        power.idle_tick();
+    struct PowerRecoveryCase {
+        std::array<std::int16_t, 6> party;
+        std::array<std::int64_t, 6> initial;
+        std::array<std::int64_t, 6> expected;
+    };
+    constexpr std::int64_t wide_power = 5'000'000'000'000;
+    constexpr std::array<PowerRecoveryCase, 3> power_cases{
+        PowerRecoveryCase{
+            {0, 1, 2, 3, 4, 5},
+            {0, 98, 99, 100, 101, wide_power},
+            {1, 99, 100, 100, 101, wide_power}},
+        PowerRecoveryCase{
+            {0, 1, 2, 3, 4, 5},
+            {-1, -32769, -wide_power, std::numeric_limits<std::int64_t>::min(),
+             -2'147'483'648LL, std::numeric_limits<std::int64_t>::max()},
+            {0, -32768, -wide_power + 1, std::numeric_limits<std::int64_t>::min() + 1,
+             -2'147'483'647LL, std::numeric_limits<std::int64_t>::max()}},
+        PowerRecoveryCase{
+            {2, 2, 2, -1, 0, 3},
+            {20, 50, 97, 50, 99, 100},
+            {20, 50, 100, 51, 99, 100}},
+    };
+    for (const auto playthrough : std::array<std::int64_t, 4>{0, 1, 2, 999}) {
+        for (const auto& entry : power_cases) {
+            auto power_snapshot = load_baseline(root);
+            power_snapshot.configuration.enabled = playthrough != 0;
+            power_snapshot.playthrough = playthrough == 0 ? 1 : playthrough;
+            if (power_snapshot.configuration.enabled) {
+                power_snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+            }
+            openlegend::random::LegacyRandom power_random{1U};
+            WorldSession power{
+                data_root, map, power_snapshot.ranger, power_random,
+                power_snapshot.configuration, power_snapshot.playthrough};
+            OL_CHECK(power.valid());
+            for (std::size_t slot = 0; slot < entry.party.size(); ++slot) {
+                power_snapshot.ranger.header.set_team_member(
+                    slot, openlegend::model::CharacterId{entry.party[slot]});
+                power_snapshot.ranger.roles[slot].physical_power = entry.initial[slot];
+            }
+            const auto before = power_snapshot.ranger.roles;
+            auto expected = before;
+            for (std::size_t role_index = 0; role_index < entry.expected.size(); ++role_index) {
+                expected[role_index].physical_power = entry.expected[role_index];
+            }
+            power.set_physical_power_counter(198);
+            const auto random_before = power_random.state();
+            power.idle_tick();
+            OL_CHECK(power.physical_power_counter() == 199);
+            OL_CHECK(power_snapshot.ranger.roles == before);
+            power.idle_tick();
+            OL_CHECK(power.physical_power_counter() == 0);
+            for (std::size_t role_index = 0; role_index < entry.expected.size(); ++role_index) {
+                OL_CHECK(power_snapshot.ranger.roles[role_index].physical_power ==
+                         entry.expected[role_index]);
+            }
+            OL_CHECK(power_snapshot.ranger.roles == expected);
+            OL_CHECK(power_random.state() == random_before);
+        }
     }
-    OL_CHECK(power_snapshot.ranger.roles[0].word(openlegend::model::role_word::physical_power) ==
-             100);
 }
 
 }  // namespace

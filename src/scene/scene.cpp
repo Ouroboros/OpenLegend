@@ -2124,11 +2124,8 @@ void SceneSession::player_idle_tick() {
             continue;
         }
         auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
-        if (role.word(model::role_word::physical_power) < 100) {
-            role.set_word(
-                model::role_word::physical_power,
-                static_cast<std::int16_t>(
-                    role.word(model::role_word::physical_power) + 1));
+        if (role.physical_power < 100) {
+            role.physical_power += 1;
         }
     }
     physical_power_counter_ = 0;

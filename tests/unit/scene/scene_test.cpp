@@ -694,6 +694,77 @@ void check_new_game_entry(const std::filesystem::path& root) {
     OL_CHECK(idle_session.player_frame() == reset_player_frame);
     OL_CHECK(idle_snapshot.ranger.roles[0U].word(
                  openlegend::model::role_word::physical_power) == 51);
+
+    struct PowerRecoveryCase {
+        std::array<std::int16_t, 6> party;
+        std::array<std::int64_t, 6> initial;
+        std::array<std::int64_t, 6> expected;
+    };
+    constexpr std::int64_t wide_power = 5'000'000'000'000;
+    constexpr std::array<PowerRecoveryCase, 3> power_cases{
+        PowerRecoveryCase{
+            {0, 1, 2, 3, 4, 5},
+            {0, 98, 99, 100, 101, wide_power},
+            {1, 99, 100, 100, 101, wide_power}},
+        PowerRecoveryCase{
+            {0, 1, 2, 3, 4, 5},
+            {-1, -32769, -wide_power, std::numeric_limits<std::int64_t>::min(),
+             -2'147'483'648LL, std::numeric_limits<std::int64_t>::max()},
+            {0, -32768, -wide_power + 1, std::numeric_limits<std::int64_t>::min() + 1,
+             -2'147'483'647LL, std::numeric_limits<std::int64_t>::max()}},
+        PowerRecoveryCase{
+            {2, 2, 2, -1, 0, 3},
+            {20, 50, 97, 50, 99, 100},
+            {20, 50, 100, 51, 99, 100}},
+    };
+    for (const auto playthrough : std::array<std::int64_t, 4>{0, 1, 2, 999}) {
+        for (const auto& entry : power_cases) {
+            auto power_snapshot = load_baseline(root);
+            power_snapshot.configuration.enabled = playthrough != 0;
+            power_snapshot.playthrough = playthrough == 0 ? 1 : playthrough;
+            if (power_snapshot.configuration.enabled) {
+                power_snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+            }
+            openlegend::random::LegacyRandom power_random{1U};
+            openlegend::scene::SceneSession power{
+                data_root, power_snapshot, power_random, 70, false, std::nullopt, 0,
+                openlegend::scene::SceneEntryOverride{
+                    44, 29, openlegend::scene::SceneDirection::right, 6890, 0}};
+            OL_CHECK(finish_scene_title(power).kind == SceneStepKind::stay);
+            for (std::size_t slot = 0; slot < entry.party.size(); ++slot) {
+                power_snapshot.ranger.header.set_team_member(
+                    slot, openlegend::model::CharacterId{entry.party[slot]});
+                power_snapshot.ranger.roles[slot].physical_power = entry.initial[slot];
+            }
+            const auto before = power_snapshot.ranger.roles;
+            auto expected = before;
+            for (std::size_t role_index = 0; role_index < entry.expected.size(); ++role_index) {
+                expected[role_index].physical_power = entry.expected[role_index];
+            }
+            power.set_physical_power_counter(198);
+            constexpr std::array<bool, 3> skip_idle{false, true, false};
+            constexpr std::array<std::int16_t, 3> expected_counters{199, 199, 0};
+            for (std::size_t step_index = 0; step_index < skip_idle.size(); ++step_index) {
+                OL_CHECK(power.tick(
+                             std::nullopt, false, false, skip_idle[step_index]).kind ==
+                         SceneStepKind::present);
+                OL_CHECK(power.take_input_reset_request() ==
+                         (skip_idle[step_index] ? SceneInputReset::weather_disable_edge
+                                               : SceneInputReset::none));
+                OL_CHECK(power.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+                OL_CHECK(power.physical_power_counter() == expected_counters[step_index]);
+                if (expected_counters[step_index] == 199) {
+                    OL_CHECK(power_snapshot.ranger.roles == before);
+                }
+            }
+            OL_CHECK(power.physical_power_counter() == 0);
+            for (std::size_t role_index = 0; role_index < entry.expected.size(); ++role_index) {
+                OL_CHECK(power_snapshot.ranger.roles[role_index].physical_power ==
+                         entry.expected[role_index]);
+            }
+            OL_CHECK(power_snapshot.ranger.roles == expected);
+        }
+    }
 }
 
 void check_event_load_menu(const std::filesystem::path& root) {
