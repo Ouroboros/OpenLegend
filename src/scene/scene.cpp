@@ -1408,7 +1408,9 @@ SceneStepResult SceneSession::run_event() {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
                 std::size_t destination = 0U;
                 for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
-                    if (role.word(model::role_word::magic_id_begin + slot) == 0) {
+                    const auto existing_magic_id = role.magic_ids[slot].value;
+                    if (existing_magic_id == 0 ||
+                        (snapshot_.configuration.enabled && existing_magic_id == -1)) {
                         destination = slot;
                         break;
                     }
@@ -1543,7 +1545,9 @@ SceneStepResult SceneSession::run_event() {
                 if (destination == -1) {
                     destination = 0;
                     for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
-                        if (role.word(model::role_word::magic_id_begin + slot) == 0) {
+                        const auto existing_magic_id = role.magic_ids[slot].value;
+                        if (existing_magic_id == 0 ||
+                            (snapshot_.configuration.enabled && existing_magic_id == -1)) {
                             destination = static_cast<std::int16_t>(slot);
                             break;
                         }

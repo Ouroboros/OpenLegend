@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <memory>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -15,6 +16,7 @@
 #include "openlegend/app/legacy_game_runtime.hpp"
 #include "openlegend/battle/battle_data.hpp"
 #include "openlegend/battle/battle_setup.hpp"
+#include "openlegend/model/experience.hpp"
 #include "openlegend/model/practice.hpp"
 #include "openlegend/input/key_repeat.hpp"
 #include "openlegend/input/legacy_key.hpp"
@@ -99,6 +101,10 @@ struct LegacyGameRuntimeTestAccess {
         return runtime.world_session_ != nullptr
             ? runtime.world_session_->world_y()
             : -1;
+    }
+
+    static world::WorldDirection world_direction(const LegacyGameRuntime& runtime) noexcept {
+        return runtime.world_session_->direction();
     }
 
     static std::int16_t periodic_counter(
@@ -208,16 +214,26 @@ struct LegacyGameRuntimeTestAccess {
     }
 
     static bool begin_battle_in_scene(
-        LegacyGameRuntime& runtime, const std::int16_t battle_id) {
-        if (!runtime.start_scene(
-                70,
-                LegacyGameView::scene,
-                scene::SceneEntryOverride{
-                    32, 15, scene::SceneDirection::right, -1, -1})) {
+        LegacyGameRuntime& runtime, const std::int16_t battle_id,
+        const bool grants_experience = false, const bool start_at_exit = false) {
+        scene::SceneEntryOverride entry{32, 15, scene::SceneDirection::right, -1, -1};
+        if (start_at_exit) {
+            const auto* snapshot = runtime.game_state_.snapshot();
+            if (snapshot == nullptr) {
+                return false;
+            }
+            const auto& metadata = snapshot->ranger.scenes[70U];
+            entry.x = metadata.word(model::scene_metadata_word::exit_x_begin);
+            entry.y = metadata.word(model::scene_metadata_word::exit_y_begin);
+            if (entry.x < 0 || entry.y < 0) {
+                return false;
+            }
+        }
+        if (!runtime.start_scene(70, LegacyGameView::scene, entry)) {
             return false;
         }
         runtime.clear_scene_effect();
-        return runtime.start_battle(battle_id, false);
+        return runtime.start_battle(battle_id, grants_experience);
     }
 
     static bool begin_scene_event(
@@ -2090,6 +2106,63 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         new_game.handle_key(0x1BU, false, false);
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
 
+        auto* capacity_snapshot = const_cast<model::RuntimeGameState&>(new_game.game_state()).snapshot();
+        const auto capacity_configuration = capacity_snapshot->configuration;
+        const auto capacity_playthrough = capacity_snapshot->playthrough;
+        const auto capacity_origin = capacity_snapshot->origin;
+        const auto capacity_role = item_ranger->roles[0U];
+        const auto capacity_items = item_ranger->items;
+        struct ManualCapacityCase {
+            std::int16_t slot_id;
+            bool should_assign;
+        };
+        for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+            for (const auto example : std::array{
+                     ManualCapacityCase{-1, true}, ManualCapacityCase{0, true},
+                     ManualCapacityCase{3, false}}) {
+                std::ranges::copy(capacity_items, item_ranger->items.begin());
+                item_ranger->roles[0U] = capacity_role;
+                auto& role = item_ranger->roles[0U];
+                for (std::size_t slot = 0U; slot < role.magic_ids.size(); ++slot) {
+                    role.magic_ids[slot] = model::MagicId{static_cast<std::int16_t>(slot + 1U)};
+                    role.magic_levels[slot] = 100;
+                }
+                role.magic_ids[2U] = model::MagicId{example.slot_id};
+                role.magic_levels[2U] = example.should_assign ? 0 : 100;
+                role.ever_joined = true;
+                capacity_snapshot->configuration.enabled = true;
+                capacity_snapshot->origin = model::SnapshotOrigin::new_game_plus;
+                capacity_snapshot->playthrough = playthrough;
+                OL_CHECK(capacity_snapshot->valid_for_persistence());
+                OL_CHECK(battle::role_meets_item_requirements(*item_ranger, 0, 195));
+                const auto magic_ids_before = role.magic_ids;
+                const auto magic_levels_before = role.magic_levels;
+                enter_items();
+                new_game.handle_key(0x0DU, false, false);
+                finish_item_context();
+                finish_item_stage();
+                const auto random_before = app::LegacyGameRuntimeTestAccess::random(new_game).state();
+                new_game.handle_key(0x0DU, false, false);
+                OL_CHECK(role.practice_item.value ==
+                    (example.should_assign ? 195 : capacity_role.practice_item.value));
+                OL_CHECK(item_ranger->items[195U].word(model::item_word::user) ==
+                    (example.should_assign ? 0 : -1));
+                OL_CHECK(role.magic_ids == magic_ids_before && role.magic_levels == magic_levels_before);
+                OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() == random_before);
+                OL_CHECK(capacity_snapshot->valid_for_persistence());
+                OL_CHECK(new_game.render());
+                new_game.finish_presented_tick();
+                new_game.handle_key('A', false, false);
+                new_game.handle_key(0x1BU, false, false);
+                OL_CHECK(new_game.view() == app::LegacyGameView::world);
+            }
+        }
+        std::ranges::copy(capacity_items, item_ranger->items.begin());
+        item_ranger->roles[0U] = capacity_role;
+        capacity_snapshot->configuration = capacity_configuration;
+        capacity_snapshot->playthrough = capacity_playthrough;
+        capacity_snapshot->origin = capacity_origin;
+
         prepare_item(194, 1);
         item_ranger->items[194U].set_word(model::item_word::only_suitable_role, 1);
         item_ranger->header.set_inventory(0U, model::ItemId{194}, 1);
@@ -2169,9 +2242,11 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         auto* snapshot = const_cast<model::RuntimeGameState&>(new_game.game_state()).snapshot();
         const auto saved_configuration = snapshot->configuration;
         const auto saved_playthrough = snapshot->playthrough;
+        const auto saved_origin = snapshot->origin;
         const auto saved_role = item_ranger->roles[0U];
         const auto saved_header = item_ranger->header;
         const auto saved_random = app::LegacyGameRuntimeTestAccess::random(new_game);
+        snapshot->origin = model::SnapshotOrigin::new_game_plus;
         struct HealingCase {
             std::int64_t playthrough;
             std::int64_t maximum_hp;
@@ -2226,9 +2301,13 @@ void check_game_runtime(const std::filesystem::path& data_root) {
                               60, 3'336'027'629'374, 0},
                  MedicineCase{1, 32768, 0, 0, 100000, 60, 26217, 0},
                  MedicineCase{2, 100, 120, 0, 1000, 50, 62, 58},
-                 MedicineCase{2, 100, 120, 0, 1000, 49, 0, 120}}) {
+                 MedicineCase{2, 100, 120, 0, 1000, 49, 0, 120},
+                 MedicineCase{999, 7'000'000'000'000'000'000, 0, 0,
+                              7'000'000'000'000'000'000, 60,
+                              5'600'000'000'000'000'003, 0}}) {
             snapshot->configuration.enabled = true;
             snapshot->playthrough = example.playthrough;
+            OL_CHECK(snapshot->valid());
             auto& role = item_ranger->roles[0U];
             role.medicine = example.ability;
             role.hurt = example.hurt;
@@ -2252,9 +2331,76 @@ void check_game_runtime(const std::filesystem::path& data_root) {
                      (example.physical_power >= 50 ? example.physical_power - 2 : example.physical_power));
             OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() ==
                      (example.physical_power >= 50 ? 1'103'527'590U : 1U));
+            OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu(new_game).party_action_amount() ==
+                     example.expected_hp - example.hp);
+            if (example.playthrough == 999) {
+                const auto ascii = resource::DataRoot{data_root}.read("FONT3.E16");
+                const auto big5 = resource::DataRoot{data_root}.read("FONT3.C16");
+                OL_CHECK(ascii && big5);
+                if (ascii && big5) {
+                    render::Big5GlyphCache glyphs{big5.bytes};
+                    render::IndexedFramebuffer expected;
+                    expected.clear(255U);
+                    OL_CHECK(render::draw_text_utf8(expected, 117, 51,
+                        u8"5600000000000000003", ascii.bytes, glyphs,
+                        render::legacy_color::text::notice));
+                    for (int pixel_y = 51; pixel_y < 68; ++pixel_y) {
+                        for (int pixel_x = 117; pixel_x < 270; ++pixel_x) {
+                            if (expected.row(pixel_y)[pixel_x] != 255U) {
+                                OL_CHECK(new_game.framebuffer().row(pixel_y)[pixel_x] ==
+                                         expected.row(pixel_y)[pixel_x]);
+                            }
+                        }
+                    }
+                }
+            }
             new_game.handle_key('A', false, false);
             new_game.handle_key(0x1BU, false, false);
             OL_CHECK(new_game.view() == app::LegacyGameView::world);
+        }
+        struct DetoxificationCase {
+            std::int64_t ability;
+            std::int64_t poison;
+            std::int64_t expected_poison;
+        };
+        for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+            snapshot->playthrough = playthrough;
+            OL_CHECK(snapshot->valid());
+            for (const auto example : std::array{
+                     DetoxificationCase{32768, 99, 1},
+                     DetoxificationCase{5'000'000'000'000, 99, 1},
+                     DetoxificationCase{10, 0, 0}}) {
+                auto& role = item_ranger->roles[0U];
+                role = saved_role;
+                role.detoxification = example.ability;
+                role.poison = example.poison;
+                role.hp = 5'000'000'000'000;
+                role.maximum_hp = 10'000'000'000'000;
+                const auto before = role;
+                app::LegacyGameRuntimeTestAccess::random(new_game).seed(1U);
+                new_game.handle_key(0x1BU, false, false);
+                new_game.handle_key(0x98U, false, false);
+                new_game.handle_key(0x0DU, false, false);
+                OL_CHECK(new_game.render());
+                new_game.finish_presented_tick();
+                new_game.handle_key(0x0DU, false, false);
+                OL_CHECK(new_game.render());
+                new_game.finish_presented_tick();
+                new_game.handle_key(0x0DU, false, false);
+                OL_CHECK(new_game.render());
+                new_game.finish_presented_tick();
+                auto expected = before;
+                expected.poison = example.expected_poison;
+                OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu(new_game).screen() ==
+                         ui::GameMenuScreen::party_notice);
+                OL_CHECK(role == expected);
+                OL_CHECK(app::LegacyGameRuntimeTestAccess::game_menu(new_game).party_action_amount() ==
+                         example.poison - example.expected_poison);
+                OL_CHECK(app::LegacyGameRuntimeTestAccess::random(new_game).state() == 2'524'885'223U);
+                new_game.handle_key('A', false, false);
+                new_game.handle_key(0x1BU, false, false);
+                OL_CHECK(new_game.view() == app::LegacyGameView::world);
+            }
         }
         auto& invalid_medicine_role = item_ranger->roles[0U];
         invalid_medicine_role.medicine = std::numeric_limits<std::int64_t>::max();
@@ -2280,6 +2426,7 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         OL_CHECK(new_game.view() == app::LegacyGameView::world);
         snapshot->configuration = saved_configuration;
         snapshot->playthrough = saved_playthrough;
+        snapshot->origin = saved_origin;
         item_ranger->roles[0U] = saved_role;
         item_ranger->header = saved_header;
         app::LegacyGameRuntimeTestAccess::random(new_game) = saved_random;
@@ -3905,6 +4052,12 @@ void check_authoritative_runtime_motion(
         static_cast<std::int16_t>((periodic_before_motion + 2) % 5));
 }
 
+void check_ngplus_continuous_runtime(
+    const std::filesystem::path& data_root,
+    const std::filesystem::path& root,
+    const openlegend::model::RuntimeGameSnapshot& source,
+    const openlegend::persistence::TomlSnapshotContext& context);
+
 void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     using namespace openlegend;
     const auto root = test::utf8_path(OPENLEGEND_NGPLUS_TEST_OUTPUT_ROOT) / "ngplus-runtime-save";
@@ -3962,9 +4115,11 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     actor.physical_power = 100;
     actor.attack = 4'000'000'000'000;
     actor.medicine = 100;
+    actor.speed = 100;
     actor.equipment.fill(model::ItemId{-1});
     actor.taking_items.fill(model::ItemId{-1});
-    actor.magic_ids.fill(model::MagicId{0});
+    actor.magic_ids = source->ranger.roles[0U].magic_ids;
+    actor.magic_levels = source->ranger.roles[0U].magic_levels;
     actor.practice_item = model::ItemId{-1};
     actor.ever_joined = true;
     source->ranger.roles[0U] = actor;
@@ -4225,6 +4380,264 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     OL_CHECK(rejected_game.direction_repeat_context() == input::DirectionRepeatContext::save_list);
     rejected_game.handle_key(0x1BU, false, false);
     OL_CHECK(rejected_game.direction_repeat_context() == input::DirectionRepeatContext::menu);
+    check_ngplus_continuous_runtime(data_root, root, *before, context);
+    auto ordinary = *before;
+    auto& ordinary_actor = ordinary.ranger.roles[0U];
+    const auto progression = battle::load_progression_data(resource::DataRoot{data_root});
+    OL_CHECK(progression.error.empty());
+    if (!progression.error.empty()) {
+        return;
+    }
+    const auto experience = model::level_experience_requirement(progression.thresholds, 30);
+    OL_CHECK(experience.has_value());
+    if (!experience) {
+        return;
+    }
+    ordinary_actor.level = 30;
+    ordinary_actor.experience = *experience;
+    ordinary_actor.hp = ordinary_actor.maximum_hp = 999;
+    ordinary_actor.mp = ordinary_actor.maximum_mp = 999;
+    ordinary_actor.attack = ordinary_actor.defence = ordinary_actor.speed = ordinary_actor.iq = 100;
+    ordinary_actor.hurt = ordinary_actor.poison = 0;
+    ordinary_actor.physical_power = 100;
+    ordinary_actor.magic_ids.fill(model::MagicId{-1});
+    ordinary_actor.magic_levels.fill(0);
+    ordinary_actor.magic_ids[0U] = model::MagicId{1};
+    ordinary_actor.magic_levels[0U] = 900;
+    OL_CHECK(ordinary.valid_for_persistence());
+    if (ordinary.valid_for_persistence()) {
+        check_ngplus_continuous_runtime(data_root, root, ordinary, context);
+    }
+}
+
+void check_ngplus_continuous_runtime(
+    const std::filesystem::path& data_root,
+    const std::filesystem::path& root,
+    const openlegend::model::RuntimeGameSnapshot& source,
+    const openlegend::persistence::TomlSnapshotContext& context) {
+    using namespace openlegend;
+    const auto& configuration = source.configuration;
+    render::RgbaFramebuffer completion_menu;
+    OL_CHECK(persistence::write_toml_slot(root, source,
+        {persistence::TomlSaveKind::ordinary, persistence::SaveSlot::one,
+         "2026-09-14T08:00:00Z"}, context));
+    app::LegacyGameRuntime actual_ending{data_root, root, 0U, app::GameResolution{},
+        input::NameInputMethod::legacy, {}, configuration};
+    OL_CHECK(actual_ending.valid());
+    if (!actual_ending.valid()) {
+        return;
+    }
+    finish_title_startup(actual_ending);
+    actual_ending.handle_key(0x98U, false, false);
+    actual_ending.handle_key(0x0DU, false, false);
+    actual_ending.handle_key(0x0DU, false, false);
+    finish_title_confirmation(actual_ending);
+    OL_CHECK(actual_ending.render());
+    actual_ending.finish_presented_tick();
+    actual_ending.advance();
+    finish_numbered_load_transition(actual_ending, app::LegacyGameView::world);
+    if (actual_ending.view() != app::LegacyGameView::world) {
+        return;
+    }
+    std::unique_ptr<app::LegacyGameRuntime> current;
+    auto* playing = &actual_ending;
+    for (std::int64_t playthrough = 1; playthrough <= 4; ++playthrough) {
+        OL_CHECK(playing->game_state().snapshot()->playthrough == playthrough);
+        const auto previous_experience = playing->game_state().ranger()->roles[0U].experience;
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::begin_battle_in_scene(*playing, 0, true, true));
+        for (std::size_t entry_frame = 0U;
+             playing->view() == app::LegacyGameView::scene && entry_frame < 128U;
+             ++entry_frame) {
+            OL_CHECK(playing->render());
+            playing->finish_presented_tick();
+            playing->advance();
+        }
+        OL_CHECK(playing->view() == app::LegacyGameView::battle);
+        if (playing->view() != app::LegacyGameView::battle) {
+            return;
+        }
+        bool battle_victory = false;
+        std::uint32_t battle_steps = 0U;
+        while (playing->view() == app::LegacyGameView::battle && battle_steps < 2000U) {
+            const auto tick = battle_steps * 300U;
+            OL_CHECK(playing->render());
+            playing->finish_presented_tick(tick);
+            auto* session = app::LegacyGameRuntimeTestAccess::battle_session(*playing);
+            OL_CHECK(session != nullptr && session->valid());
+            if (session == nullptr || !session->valid()) {
+                return;
+            }
+            OL_CHECK(session->grants_experience());
+            const auto* battle_actor = session->setup().combatant_role(0U);
+            OL_CHECK(battle_actor != nullptr && battle_actor->id.value == 0);
+            if (session->phase() == battle::BattleSessionPhase::player_action) {
+                static_cast<void>(session->handle_key(0x9EU));
+                OL_CHECK(session->handle_key(0x0DU) == battle::BattleSessionInputResult::action_selected);
+            } else if (session->phase() == battle::BattleSessionPhase::party_selection) {
+                if (session->setup().cursor() != session->setup().party_prefix_length()) {
+                    static_cast<void>(session->handle_key(0x98U));
+                } else {
+                    static_cast<void>(session->handle_key(0x0DU));
+                }
+            } else if (session->phase() == battle::BattleSessionPhase::battle_outcome_wait ||
+                       session->phase() == battle::BattleSessionPhase::post_battle_message_wait) {
+                static_cast<void>(session->handle_key(0x0DU));
+            }
+            battle_victory = battle_victory ||
+                (session->finished() && session->result() == battle::BattleStepResult::victory);
+            playing->advance(tick);
+            ++battle_steps;
+        }
+        OL_CHECK(battle_steps < 2000U && battle_victory);
+        OL_CHECK(playing->view() == app::LegacyGameView::scene ||
+                 playing->view() == app::LegacyGameView::world);
+        if (!battle_victory) {
+            return;
+        }
+        for (std::uint32_t return_frame = 0U;
+             playing->view() != app::LegacyGameView::world && return_frame < 512U;
+             ++return_frame) {
+            const auto tick = (battle_steps + return_frame) * 300U;
+            OL_CHECK(playing->render());
+            playing->finish_presented_tick(tick);
+            playing->advance(tick);
+        }
+        OL_CHECK(playing->view() == app::LegacyGameView::world);
+        if (playing->view() != app::LegacyGameView::world) {
+            return;
+        }
+        finish_world_scene_return(*playing);
+        auto settled = playing->game_state().export_snapshot();
+        OL_CHECK(settled && settled->valid_for_persistence());
+        if (!settled) {
+            return;
+        }
+        OL_CHECK(settled->ranger.roles[0U].experience > previous_experience);
+        settled->ranger.header.set_word(model::header_word::face_towards,
+            static_cast<std::int16_t>(
+                app::LegacyGameRuntimeTestAccess::world_direction(*playing)));
+        playing->handle_key(0x1BU, false, false);
+        playing->handle_key(0x9EU, false, false);
+        playing->handle_key(0x0DU, false, false);
+        playing->handle_key(0x98U, false, false);
+        playing->handle_key(0x0DU, false, false);
+        OL_CHECK(playing->save_list_active());
+        playing->handle_key(0x0DU, false, false);
+        OL_CHECK(playing->render());
+        playing->finish_presented_tick();
+        playing->advance();
+        const auto settled_load = persistence::load_toml_slot(
+            root, persistence::TomlSaveKind::ordinary, persistence::SaveSlot::one, context);
+        OL_CHECK(settled_load && settled_load.save->snapshot == *settled);
+        OL_CHECK(playing->game_state().export_snapshot() == settled);
+        if (!settled_load || settled_load.save->snapshot != *settled) {
+            return;
+        }
+        auto ordinary_loaded = std::make_unique<app::LegacyGameRuntime>(data_root, root, 0U,
+            app::GameResolution{}, input::NameInputMethod::legacy,
+            std::chrono::nanoseconds{}, configuration);
+        OL_CHECK(ordinary_loaded->valid());
+        if (!ordinary_loaded->valid()) {
+            return;
+        }
+        finish_title_startup(*ordinary_loaded);
+        ordinary_loaded->handle_key(0x98U, false, false);
+        ordinary_loaded->handle_key(0x0DU, false, false);
+        ordinary_loaded->handle_key(0x0DU, false, false);
+        finish_title_confirmation(*ordinary_loaded);
+        OL_CHECK(ordinary_loaded->render());
+        ordinary_loaded->finish_presented_tick();
+        ordinary_loaded->advance();
+        finish_numbered_load_transition(*ordinary_loaded, app::LegacyGameView::world);
+        OL_CHECK(ordinary_loaded->game_state().export_snapshot() == settled);
+        if (ordinary_loaded->view() != app::LegacyGameView::world) {
+            return;
+        }
+        current = std::move(ordinary_loaded);
+        playing = current.get();
+        const auto actor_before = playing->game_state().ranger()->roles[0U];
+        OL_CHECK(app::LegacyGameRuntimeTestAccess::begin_scene_event(
+            *playing, 83, 1017, 1, 23, 41));
+        std::size_t ending_frames = 0U;
+        std::size_t acknowledgements = 0U;
+        while (playing->view() == app::LegacyGameView::scene && ending_frames < 20'000U) {
+            OL_CHECK(playing->render());
+            playing->finish_presented_tick();
+            const auto pending = app::LegacyGameRuntimeTestAccess::scene_pending_kind(*playing);
+            if (pending == scene::SceneStepKind::dialogue ||
+                pending == scene::SceneStepKind::wait_key) {
+                playing->handle_key('A', false, false);
+                ++acknowledgements;
+            }
+            playing->advance();
+            ++ending_frames;
+        }
+        OL_CHECK(ending_frames > 3'244U && ending_frames < 20'000U);
+        OL_CHECK(acknowledgements >= 2U);
+        OL_CHECK(playing->view() == app::LegacyGameView::title && playing->ending_complete());
+        OL_CHECK(playing->game_state().ranger()->roles[0U] == actor_before);
+        if (playing->view() != app::LegacyGameView::title || !playing->ending_complete()) {
+            return;
+        }
+        OL_CHECK(playing->render());
+        OL_CHECK(playing->render_modern_ui(completion_menu));
+        playing->handle_key(0x0DU, false, false);
+        OL_CHECK(playing->render());
+        playing->finish_presented_tick();
+        playing->advance();
+        OL_CHECK(playing->view() == app::LegacyGameView::exited);
+        const auto actual_completion = persistence::load_toml_slot(
+            root, persistence::TomlSaveKind::completion, persistence::SaveSlot::one, context);
+        OL_CHECK(actual_completion);
+        if (!actual_completion) {
+            return;
+        }
+        OL_CHECK(actual_completion.save->snapshot.playthrough == playthrough);
+        OL_CHECK(actual_completion.save->snapshot.ranger.roles[0U] == actor_before);
+        auto next = std::make_unique<app::LegacyGameRuntime>(data_root, root, 0U,
+            app::GameResolution{}, input::NameInputMethod::legacy,
+            std::chrono::nanoseconds{}, configuration);
+        OL_CHECK(next->valid());
+        if (!next->valid()) {
+            return;
+        }
+        finish_title_startup(*next);
+        next->handle_key(0x0DU, false, false);
+        next->handle_key(0x98U, false, false);
+        next->handle_key(0x0DU, false, false);
+        OL_CHECK(next->render());
+        next->handle_key(0x0DU, false, false);
+        OL_CHECK(next->render());
+        next->finish_presented_tick();
+        next->advance();
+        advance_rendered_frames(*next, 64U);
+        OL_CHECK(next->view() == app::LegacyGameView::scene);
+        const auto* next_snapshot = next->game_state().snapshot();
+        OL_CHECK(next_snapshot != nullptr);
+        if (next_snapshot == nullptr) {
+            return;
+        }
+        OL_CHECK(next_snapshot->playthrough == playthrough + 1);
+        const auto& next_actor = next_snapshot->ranger.roles[0U];
+        OL_CHECK(next_actor.name == actor_before.name);
+        OL_CHECK(next_actor.level == actor_before.level);
+        OL_CHECK(next_actor.experience == actor_before.experience);
+        OL_CHECK(next_actor.attack == actor_before.attack);
+        OL_CHECK(next_actor.magic_ids == actor_before.magic_ids);
+        OL_CHECK(next_actor.magic_levels == actor_before.magic_levels);
+        OL_CHECK(next_actor.maximum_hp == actor_before.maximum_hp);
+        OL_CHECK(next_actor.hp == actor_before.maximum_hp);
+        OL_CHECK(next_actor.no_magic_count == actor_before.no_magic_count);
+        OL_CHECK(next_actor.practice_item.value == -1);
+        OL_CHECK(next_snapshot->valid_for_persistence());
+        const auto original_completion = persistence::load_toml_slot(
+            root, persistence::TomlSaveKind::completion, persistence::SaveSlot::one, context);
+        OL_CHECK(original_completion &&
+                 original_completion.save->snapshot == actual_completion.save->snapshot &&
+                 original_completion.save->metadata == actual_completion.save->metadata);
+        current = std::move(next);
+        playing = current.get();
+    }
 }
 
 void check_runtime_persistence(const std::filesystem::path& data_root) {
@@ -4618,7 +5031,39 @@ void check_renderer(const std::filesystem::path& data_root) {
             }
         }
     }
+    save_entries[0].level = 30;
+    save_entries[0].saved_at = "09-10 03:46Z";
+    for (const auto width : {320, 640}) {
+        OL_CHECK(rgba_framebuffer.set_dimensions(width, width * 5 / 8, 1));
+        for (const auto mode : {ui::SaveListMode::load, ui::SaveListMode::save,
+                 ui::SaveListMode::inherit, ui::SaveListMode::save_completion}) {
+            rgba_framebuffer.clear(kRgbaBackground);
+            OL_CHECK(save_list_renderer.render(mode, 0U, save_entries,
+                framebuffer.palette(), modern_renderer, rgba_framebuffer));
+        }
+    }
+    OL_CHECK(rgba_framebuffer.set_dimensions(320, 200, 1));
+    save_entries[0].location = {};
+    save_entries[0].location.append_ascii("1234567890");
+    rgba_framebuffer.clear(kRgbaBackground);
+    OL_CHECK(save_list_renderer.render(ui::SaveListMode::load, 0U, save_entries,
+        framebuffer.palette(), modern_renderer, rgba_framebuffer));
+    render::RgbaFramebuffer expected_utc_row;
+    expected_utc_row.clear(kRgbaBackground);
+    OL_CHECK(modern_renderer.draw_box(expected_utc_row, 1, 1, 318, 198, framebuffer.palette()));
+    OL_CHECK(modern_renderer.draw_text_utf8(expected_utc_row, 134, 40, u8"1234567890",
+        render::legacy_color::text::save_list_selected, framebuffer.palette()));
+    OL_CHECK(modern_renderer.draw_text_utf8(expected_utc_row, 221, 40, u8"09-10 03:46Z",
+        render::legacy_color::text::save_list_selected, framebuffer.palette()));
+    bool utc_row_matches = true;
+    for (int row = 40; row < 56; ++row) {
+        utc_row_matches = utc_row_matches && std::equal(
+            rgba_framebuffer.row(row) + 4 * 134, rgba_framebuffer.row(row) + 4 * 319,
+            expected_utc_row.row(row) + 4 * 134);
+    }
+    OL_CHECK(utc_row_matches);
     save_entries[0].level = 1;
+    save_entries[0].saved_at = "09-10 03:46";
     OL_CHECK(save_list_renderer.render_delete_confirmation(
         1U, framebuffer.palette(), modern_renderer, rgba_framebuffer));
     OL_CHECK(!std::ranges::equal(first_save_selection, rgba_framebuffer.pixels()));

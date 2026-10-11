@@ -51,7 +51,7 @@ constexpr std::array<std::int16_t, 53> kBattleEffectFrameCounts{
 struct BattleAiSpecialAttackBonus {
     std::int16_t weapon_id{};
     std::int16_t magic_id{};
-    std::int16_t bonus{};
+    std::int64_t bonus{};
 };
 constexpr std::array<BattleAiSpecialAttackBonus, 7> kBattleAiSpecialAttackBonuses{{
     {106, 57, 100},
@@ -260,11 +260,9 @@ bool role_meets_item_requirements(
             suitable = false;
         }
     }
-    const auto need_iq = item.word(model::item_word::need_iq);
-    if ((need_iq >= 0 && role.word(model::role_word::iq) < need_iq) ||
-        (need_iq < 0 &&
-         static_cast<std::int32_t>(role.word(model::role_word::iq)) >
-             -static_cast<std::int32_t>(need_iq))) {
+    const std::int64_t need_iq = item.word(model::item_word::need_iq);
+    if ((need_iq >= 0 && role.iq < need_iq) ||
+        (need_iq < 0 && role.iq > -need_iq)) {
         suitable = false;
     }
     if (item.word(model::item_word::item_type) == 2) {
@@ -417,7 +415,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     auto candidate_random = random;
     BattleItemEffectResult result{};
 
-    const auto item_hp = item.word(model::item_word::add_hp);
+    const std::int64_t item_hp = item.word(model::item_word::add_hp);
     if (item_hp != 0) {
         const auto scaled_hurt = model::checked_multiply(50, target.hurt);
         if (!scaled_hurt.has_value() ||
@@ -438,7 +436,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
                 return std::nullopt;
             }
             if (*theoretical < 0) {
-                theoretical = candidate_random.bounded(5) + 5;
+                theoretical = std::int64_t{candidate_random.bounded(5)} + 5;
             }
             const auto scaled = model::checked_multiply(*theoretical, target.maximum_hp);
             if (!scaled.has_value()) {
@@ -448,7 +446,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
             changed_hurt = model::checked_subtract(target.hurt, item_hp / 4);
         } else {
             const auto base = model::checked_subtract(
-                static_cast<std::int64_t>(item_hp) + 50, hurt_penalty);
+                item_hp + 50, hurt_penalty);
             if (!base.has_value()) {
                 return std::nullopt;
             }
@@ -457,7 +455,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
                 return std::nullopt;
             }
             if (*damage_base > 0) {
-                damage_base = -5 - candidate_random.bounded(5);
+                damage_base = std::int64_t{-5} - candidate_random.bounded(5);
             }
             const auto technique = model::checked_multiply(3, actor.hidden_weapon);
             if (!technique.has_value()) {
@@ -484,7 +482,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         result.deltas[0U] = *actual_delta;
     }
 
-    const auto add_maximum_hp = item.word(model::item_word::add_maximum_hp);
+    const std::int64_t add_maximum_hp = item.word(model::item_word::add_maximum_hp);
     if (add_maximum_hp != 0) {
         const auto changed = model::checked_add(target.maximum_hp, add_maximum_hp);
         if (!changed.has_value()) {
@@ -495,7 +493,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         result.deltas[1U] = add_maximum_hp;
     }
 
-    const auto item_poison = item.word(model::item_word::add_poison);
+    const std::int64_t item_poison = item.word(model::item_word::add_poison);
     if (item_poison != 0) {
         if (target.poison < 0 || target.poison > 99) {
             return std::nullopt;
@@ -519,8 +517,8 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
             result.deltas[2U] = poison->applied_amount;
             result.poison_overflow_damage = poison->hp_damage;
         } else {
-            const auto first = candidate_random.bounded(5);
-            const auto second = candidate_random.bounded(5);
+            const std::int64_t first = candidate_random.bounded(5);
+            const std::int64_t second = candidate_random.bounded(5);
             const auto changed = std::clamp(
                 target.poison + item_poison / 2 + first - second, std::int64_t{0}, std::int64_t{99});
             result.deltas[2U] = changed - target.poison;
@@ -528,7 +526,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         }
     }
 
-    const auto add_physical_power = item.word(model::item_word::add_physical_power);
+    const std::int64_t add_physical_power = item.word(model::item_word::add_physical_power);
     if (add_physical_power != 0) {
         const auto changed = model::checked_add(target.physical_power, add_physical_power);
         if (!changed.has_value()) {
@@ -549,7 +547,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         result.deltas[4U] = 2;
     }
 
-    const auto add_mp = item.word(model::item_word::add_mp);
+    const std::int64_t add_mp = item.word(model::item_word::add_mp);
     if (add_mp != 0) {
         const auto changed = model::checked_add(target.mp, add_mp);
         if (!changed.has_value()) {
@@ -564,7 +562,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         result.deltas[5U] = *delta;
     }
 
-    const auto add_maximum_mp = item.word(model::item_word::add_maximum_mp);
+    const std::int64_t add_maximum_mp = item.word(model::item_word::add_maximum_mp);
     if (add_maximum_mp != 0) {
         const auto changed = model::checked_add(target.maximum_mp, add_maximum_mp);
         if (!changed.has_value()) {
@@ -576,7 +574,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     }
 
     for (std::size_t index = 0U; index < 13U; ++index) {
-        const auto delta = item.word(model::item_word::add_attack + index);
+        const std::int64_t delta = item.word(model::item_word::add_attack + index);
         const auto role_word_index = model::role_word::attack + index;
         const auto changed = model::checked_add(target.word(role_word_index), delta);
         if (!changed.has_value() ||
@@ -589,7 +587,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     }
     result.deltas[20U] = item.word(model::item_word::add_morality);
     result.deltas[21U] = item.word(model::item_word::add_attack_twice);
-    const auto add_attack_with_poison = item.word(model::item_word::add_attack_with_poison);
+    const std::int64_t add_attack_with_poison = item.word(model::item_word::add_attack_with_poison);
     const auto attack_poison = model::checked_add(target.attack_with_poison, add_attack_with_poison);
     if (!attack_poison.has_value()) {
         return std::nullopt;
@@ -1056,7 +1054,7 @@ std::optional<BattleLevelUpResult> BattleSetup::apply_battle_level_up(
     };
     const auto iq = role.iq;
     const auto growth_bound = iq < 30 ? 2 : iq < 50 ? 3 : iq < 70 ? 4 : iq < 90 ? 5 : 6;
-    const std::int64_t growth_roll = candidate_random.bounded(growth_bound) + 1;
+    const std::int64_t growth_roll = std::int64_t{candidate_random.bounded(growth_bound)} + 1;
     const auto hp_growth = model::checked_add(role.increased_life, candidate_random.bounded(3));
     const auto hp_per_level = hp_growth.has_value()
         ? model::checked_multiply(*hp_growth, 3) : std::nullopt;
@@ -1273,7 +1271,7 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
         return result;
     }
     const auto& item = ranger_.items[static_cast<std::size_t>(practice_item_id)];
-    const auto need_experience = item.word(model::item_word::need_make_item_experience);
+    const std::int64_t need_experience = item.word(model::item_word::need_make_item_experience);
     if (need_experience <= 0) {
         return result;
     }
@@ -1304,7 +1302,7 @@ std::optional<BattleCraftResult> BattleSetup::apply_battle_crafting(
     auto eligible_count = 0U;
     for (std::size_t recipe = 0U; recipe < eligible.size(); ++recipe) {
         const auto product = item.word(model::item_word::make_item_begin + recipe);
-        const auto material_count = item.word(
+        const std::int64_t material_count = item.word(
             model::item_word::make_item_count_begin + recipe);
         if (product != -1 && ranger_.header.inventory_count(*material_slot) >= material_count) {
             eligible[recipe] = true;
@@ -1708,23 +1706,23 @@ std::optional<BattlePlayerActionAvailability> BattleSetup::player_action_availab
     result.available[0U] = static_cast<std::int16_t>(
         physical_power > 5 && combatants_[combatant_slot].round_value > 0 ? 1 : 0);
 
-    std::int16_t minimum_magic_cost = 1'000;
+    std::int64_t minimum_magic_cost = 1'000;
     if (physical_power > 10) {
         for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
-            const auto magic_id = role.word(model::role_word::magic_id_begin + slot);
-            if (magic_id == 0) {
+            const auto magic_id = role.magic_ids[slot].value;
+            if (magic_id == -1 || magic_id == 0) {
                 continue;
             }
             if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
                 return std::nullopt;
             }
-            minimum_magic_cost = std::min(
-                minimum_magic_cost,
-                ranger_.magics[static_cast<std::size_t>(magic_id)]
-                    .word(model::magic_word::need_mp));
+            const std::int64_t need_mp = ranger_.magics[static_cast<std::size_t>(magic_id)]
+                .word(model::magic_word::need_mp);
+            minimum_magic_cost = std::min(minimum_magic_cost, need_mp);
         }
         result.available[1U] = static_cast<std::int16_t>(
-            minimum_magic_cost <= role.word(model::role_word::mp) ? 1 : 0);
+            minimum_magic_cost <= role.mp &&
+                (!new_game_plus_enabled_ || learned_magic_count(combatant_slot) > 0U) ? 1 : 0);
     }
     result.available[2U] = static_cast<std::int16_t>(
         physical_power > 10 && role.word(model::role_word::use_poison) >= 20 ? 1 : 0);
@@ -1923,8 +1921,20 @@ std::size_t BattleSetup::learned_magic_count(const std::size_t slot) const noexc
 
 std::int16_t BattleSetup::automatic_magic_slot(
     const std::size_t slot, random::LegacyRandom& random) const noexcept {
-    return static_cast<std::int16_t>(
-        random.bounded(static_cast<std::int32_t>(learned_magic_count(slot))));
+    auto selected = random.bounded(static_cast<std::int32_t>(learned_magic_count(slot)));
+    if (!new_game_plus_enabled_) {
+        return static_cast<std::int16_t>(selected);
+    }
+    const auto* role = combatant_role(slot);
+    if (role == nullptr) {
+        return -1;
+    }
+    for (std::size_t magic_slot = 0U; magic_slot < role->magic_ids.size(); ++magic_slot) {
+        if (role->magic_ids[magic_slot].value > 0 && selected-- == 0) {
+            return static_cast<std::int16_t>(magic_slot);
+        }
+    }
+    return -1;
 }
 
 std::optional<model::MagicEffects> BattleSetup::magic_effects(
@@ -2005,7 +2015,7 @@ std::optional<std::int64_t> BattleSetup::attack_special_bonus(
         return std::nullopt;
     }
     const auto& role = *stored_role;
-    std::int16_t bonus = 0;
+    std::int64_t bonus = 0;
     for (const auto entry : kBattleAiSpecialAttackBonuses) {
         if (entry.weapon_id == role.word(model::role_word::equipment_begin) &&
             entry.magic_id == profile->magic_id) {
@@ -2100,7 +2110,7 @@ bool BattleSetup::commit_attack_iteration(
     const auto slot_index = static_cast<std::size_t>(magic_slot);
     auto candidate_random = random;
     const auto proficiency = model::checked_add(
-        role.magic_levels[slot_index], candidate_random.bounded(2) + 1);
+        role.magic_levels[slot_index], std::int64_t{candidate_random.bounded(2)} + 1);
     if (!proficiency.has_value()) {
         error_ = "battle attack proficiency overflow";
         return false;
@@ -2234,16 +2244,16 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         return std::nullopt;
     }
     auto candidate_random = random;
-    const auto first_attack_variance = candidate_random.bounded(20);
-    const auto second_attack_variance = candidate_random.bounded(20);
+    const std::int64_t first_attack_variance = candidate_random.bounded(20);
+    const std::int64_t second_attack_variance = candidate_random.bounded(20);
     auto damage = checked_battle_sum({*scaled_damage / 3, first_attack_variance, -second_attack_variance});
     if (!damage.has_value()) {
         error_ = "battle HP attack variance overflow";
         return std::nullopt;
     }
     if (*damage <= 0) {
-        const auto first_fallback_variance = candidate_random.bounded(4);
-        const auto second_fallback_variance = candidate_random.bounded(4);
+        const std::int64_t first_fallback_variance = candidate_random.bounded(4);
+        const std::int64_t second_fallback_variance = candidate_random.bounded(4);
         damage = checked_battle_sum({*attack_total / 10, first_fallback_variance, -second_fallback_variance});
         if (!damage.has_value()) {
             error_ = "battle HP fallback damage overflow";
@@ -2254,7 +2264,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         damage = 1;
     } else {
         damage = checked_battle_sum({*damage, actor.physical_power / 15, target.hurt / 20});
-        const auto factor = distance > 10 ? 2 : 100 - 3 * (static_cast<std::int32_t>(distance) - 1);
+        const std::int64_t factor = distance > 10 ? 2 : 100 - 3 * (std::int64_t{distance} - 1);
         const auto product = damage.has_value() ? model::checked_multiply(*damage, factor) : std::nullopt;
         if (!product.has_value()) {
             error_ = "battle HP injury or distance arithmetic overflow";
@@ -2333,8 +2343,8 @@ std::optional<std::int64_t> BattleSetup::apply_mp_damage(
     }
     const auto target_mp_before = target.mp;
     auto candidate_random = random;
-    const auto first_actor_variance = candidate_random.bounded(3);
-    const auto second_actor_variance = candidate_random.bounded(3);
+    const std::int64_t first_actor_variance = candidate_random.bounded(3);
+    const std::int64_t second_actor_variance = candidate_random.bounded(3);
     const auto added_mp = model::checked_add(actor.mp, effects->add_mp);
     if (!added_mp.has_value()) {
         error_ = "battle MP recovery overflow";
@@ -2350,8 +2360,8 @@ std::optional<std::int64_t> BattleSetup::apply_mp_damage(
     actor.maximum_mp = *maximum_mp;
     actor.mp = std::clamp<std::int64_t>(*actor_mp, 0, actor.maximum_mp);
 
-    const auto first_target_variance = candidate_random.bounded(3);
-    const auto second_target_variance = candidate_random.bounded(3);
+    const std::int64_t first_target_variance = candidate_random.bounded(3);
+    const std::int64_t second_target_variance = candidate_random.bounded(3);
     const auto reduced_mp = model::checked_subtract(target.mp, effects->hurt_mp);
     const auto target_mp = reduced_mp.has_value()
         ? model::checked_subtract(*reduced_mp, first_target_variance - second_target_variance)
@@ -2953,7 +2963,7 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_payload
     }
     auto changed_poison = target_role.poison;
     std::int64_t overflow_damage = 0;
-    const auto item_poison = item.word(model::item_word::add_poison);
+    const std::int64_t item_poison = item.word(model::item_word::add_poison);
     if (item_poison > 0) {
         const auto power = model::checked_add(item_poison, actor.hidden_weapon);
         const auto poison = power.has_value()
@@ -2970,8 +2980,8 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_throwing_weapon_payload
         overflow_damage = poison->hp_damage;
         hp_result->hp = std::max(*after_poison, std::int64_t{0});
     } else {
-        const auto first = candidate_random.bounded(5);
-        const auto second = candidate_random.bounded(5);
+        const std::int64_t first = candidate_random.bounded(5);
+        const std::int64_t second = candidate_random.bounded(5);
         const auto changed = model::checked_add(target_role.poison, item_poison / 2 + first - second);
         if (!changed.has_value()) {
             error_ = "battle throwing-weapon poison delta overflows";
@@ -3161,7 +3171,7 @@ std::optional<BattleThrownItemResult> BattleSetup::apply_ai_throwing_weapon_targ
     }
     auto changed_poison = target_role.poison;
     std::int64_t overflow_damage = 0;
-    const auto item_poison = item.word(model::item_word::add_poison);
+    const std::int64_t item_poison = item.word(model::item_word::add_poison);
     if (item_poison > 0) {
         const auto power = model::checked_add(item_poison, actor.hidden_weapon);
         const auto poison = power.has_value()
@@ -3300,7 +3310,7 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
     }
     auto candidate_random = random;
     const auto speed_tenth = role.speed / 10;
-    const auto physical_gain = candidate_random.bounded(3) +
+    const auto physical_gain = std::int64_t{candidate_random.bounded(3)} +
         (combatants_[actor_slot].round_value == speed_tenth ? 3 : 2);
     const auto physical_power = model::checked_add(role.physical_power, physical_gain);
     if (!physical_power.has_value()) {
@@ -3311,14 +3321,14 @@ std::optional<BattleRestResult> BattleSetup::rest_actor(
         std::min<std::int64_t>(*physical_power, 100), role.hp, role.mp};
     if (result.physical_power >= 30) {
         const auto bound = result.physical_power / 10 - 2;
-        const auto hp = model::checked_add(role.hp, candidate_random.bounded(bound) + 3);
+        const auto hp = model::checked_add(role.hp, std::int64_t{candidate_random.bounded(bound)} + 3);
         if (!hp.has_value()) {
             error_ = "battle rest HP overflows";
             return std::nullopt;
         }
         result.hp = std::min(*hp, role.maximum_hp);
 
-        const auto mp = model::checked_add(role.mp, candidate_random.bounded(bound) + 3);
+        const auto mp = model::checked_add(role.mp, std::int64_t{candidate_random.bounded(bound)} + 3);
         if (!mp.has_value()) {
             error_ = "battle rest MP overflows";
             return std::nullopt;
@@ -3481,9 +3491,13 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_poisoned_action(
         return std::nullopt;
     }
     const auto& actor_role = *stored_actor;
+    const auto detox_threshold = model::checked_subtract(actor_role.poison, 30);
+    if (!detox_threshold.has_value()) {
+        error_ = "battle AI detox threshold overflows";
+        return std::nullopt;
+    }
     if (actor_role.word(model::role_word::detoxification) > 20 &&
-        actor_role.word(model::role_word::detoxification) >
-            static_cast<std::int32_t>(actor_role.word(model::role_word::poison)) - 30 &&
+        actor_role.word(model::role_word::detoxification) > *detox_threshold &&
         actor_role.word(model::role_word::physical_power) > 50) {
         return commit_ai_choice(
             actor_slot,
@@ -3556,8 +3570,7 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_poisoned_action(
             return std::nullopt;
         }
         const auto detoxification = role->detoxification;
-        if (detoxification > 20 && detoxification >
-                static_cast<std::int32_t>(actor_role.word(model::role_word::poison)) - 30) {
+        if (detoxification > 20 && detoxification > *detox_threshold) {
             return commit_ai_choice(
                 actor_slot,
                 BattleAiAction::request_detox,
@@ -3716,7 +3729,8 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_medicine_target(
 
 std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
     const std::size_t actor_slot,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random_source) {
+    auto random = random_source;
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_)) {
         return std::nullopt;
     }
@@ -3744,7 +3758,12 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
             return std::nullopt;
         }
         const auto& role = *stored_role;
-        if (detoxification <= static_cast<std::int32_t>(role.word(model::role_word::poison)) - 30) {
+        const auto detox_threshold = model::checked_subtract(role.poison, 30);
+        if (!detox_threshold.has_value()) {
+            error_ = "battle AI detox threshold overflows";
+            return std::nullopt;
+        }
+        if (detoxification <= *detox_threshold) {
             continue;
         }
         auto selected = combatants_[slot].words[combatant_word::ai_action] ==
@@ -3762,12 +3781,14 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_detox_target(
             selected = true;
         }
         if (selected) {
+            random_source = random;
             return commit_ai_choice(
                 actor_slot,
                 BattleAiAction::detox,
                 static_cast<std::int16_t>(slot));
         }
     }
+    random_source = random;
     return commit_ai_choice(
         actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
 }
@@ -3882,9 +3903,9 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
         error_ = "battle AI poison advantage overflows";
         return std::nullopt;
     }
-    const auto poison_gate = random.bounded(50);
+    const std::int64_t poison_gate = random.bounded(50);
     if (*poison_advantage > poison_gate) {
-        const auto poison_roll = random.bounded(150);
+        const std::int64_t poison_roll = random.bounded(150);
         if (poison_roll < actor_role.word(model::role_word::use_poison)) {
             random_source = random;
             return commit_ai_choice(actor_slot, BattleAiAction::use_poison, -1);
@@ -3903,8 +3924,8 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
             return std::nullopt;
         }
         const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
-        const auto add_hp = static_cast<std::int32_t>(item.word(model::item_word::add_hp));
-        const auto add_poison = item.word(model::item_word::add_poison);
+        const std::int64_t add_hp = item.word(model::item_word::add_hp);
+        const std::int64_t add_poison = item.word(model::item_word::add_poison);
         auto threshold = attack;
         if (source == BattleAiItemSource::inventory && (add_hp < 0 || add_poison > 0)) {
             const auto triple_attack = model::checked_multiply(attack, 3);
@@ -3989,23 +4010,24 @@ std::optional<BattleAiChoice> BattleSetup::choose_ai_offensive_action(
         return commit_ai_choice(
             actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
     }
-    std::int16_t minimum_mp = 1'000;
+    std::int64_t minimum_mp = 1'000;
     for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
-        const auto magic_id = actor_role.word(model::role_word::magic_id_begin + slot);
-        if (magic_id == 0) {
+        const auto magic_id = actor_role.magic_ids[slot].value;
+        if (magic_id == -1 || magic_id == 0) {
             continue;
         }
         if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
             return std::nullopt;
         }
-        const auto need_mp = ranger_.magics[static_cast<std::size_t>(magic_id)].word(
+        const std::int64_t need_mp = ranger_.magics[static_cast<std::size_t>(magic_id)].word(
             model::magic_word::need_mp);
         if (minimum_mp > need_mp) {
             minimum_mp = need_mp;
         }
     }
     random_source = random;
-    if (actor_role.word(model::role_word::mp) < minimum_mp) {
+    if (actor_role.mp < minimum_mp ||
+        (new_game_plus_enabled_ && learned_magic_count(actor_slot) == 0U)) {
         return commit_ai_choice(
             actor_slot, BattleAiAction::none, -1, BattleAiItemSource::none, -1, false);
     }
@@ -4105,8 +4127,7 @@ std::optional<BattleAiTurnDecision> BattleSetup::choose_ai_turn_action(
     }
 
     if (choice.action == BattleAiAction::none) {
-        const auto poison_gate = static_cast<std::int32_t>(
-            actor_role.word(model::role_word::poison)) / 10;
+        const auto poison_gate = actor_role.poison / 10;
         if (random.bounded(10) < poison_gate) {
             const auto selected = choose_ai_poisoned_action(actor_slot);
             if (!selected) {

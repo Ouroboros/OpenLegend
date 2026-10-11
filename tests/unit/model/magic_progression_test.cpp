@@ -7,6 +7,7 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/model/magic_progression.hpp"
 #include "openlegend/persistence/save_slot.hpp"
+#include "magic_growth_reference.hpp"
 #include "test_support.hpp"
 
 namespace {
@@ -129,21 +130,22 @@ void check_original_data() {
             previous = *current;
         }
     }
-    struct AttackExample {
-        std::size_t magic_id;
-        std::array<std::int64_t, 8> attacks;
-    };
-    constexpr std::array examples{
-        AttackExample{25U, {900, 2944, 5133, 7394, 9697, 12025, 14370, 16728}},
-        AttackExample{60U, {1200, 3030, 4990, 7014, 9076, 11160, 13260, 15371}},
-        AttackExample{22U, {770, 2149, 3625, 5151, 6704, 8274, 9857, 11447}},
-        AttackExample{92U, {700, 1868, 3119, 4411, 5727, 7057, 8397, 9744}},
-        AttackExample{51U, {350, 712, 1101, 1502, 1911, 2324, 2741, 3159}},
-    };
-    for (const auto& example : examples) {
-        for (std::size_t stage = 0U; stage < example.attacks.size(); ++stage) {
+    for (const auto& example : test::magic_growth_references) {
+        for (std::size_t stage = 0U; stage < example.primary.size(); ++stage) {
             const auto level = static_cast<std::int64_t>((stage + 1U) * 10U);
-            OL_CHECK(progression.effects(example.magic_id, level)->attack == example.attacks[stage]);
+            const auto effects = progression.effects(example.magic_id, level);
+            OL_CHECK(effects.has_value());
+            if (!effects) {
+                return;
+            }
+            OL_CHECK(magics[example.magic_id].word(model::magic_word::hurt_type) ==
+                     (example.inner ? 1 : 0));
+            if (example.inner) {
+                OL_CHECK(effects->hurt_mp == example.primary[stage]);
+                OL_CHECK(effects->add_mp == example.secondary[stage]);
+            } else {
+                OL_CHECK(effects->attack == example.primary[stage]);
+            }
         }
     }
     OL_CHECK(progression.effects(29U, 20)->hurt_mp == 200);

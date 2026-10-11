@@ -215,7 +215,7 @@ target_compile_definitions(
     PRIVATE OPENLEGEND_TEST_OUTPUT_ROOT="${PROJECT_SOURCE_DIR}/tmp/ngplus-battle-sessions/${OPENLEGEND_PERSISTENCE_TEST_DIRECTORY}/$<CONFIG>"
 )
 target_include_directories(openlegend_ngplus_session_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
-target_link_libraries(openlegend_ngplus_session_tests PRIVATE openlegend_battle openlegend_persistence)
+target_link_libraries(openlegend_ngplus_session_tests PRIVATE openlegend_battle openlegend_persistence openlegend_scene)
 add_test(NAME openlegend.battle.ngplus_session COMMAND openlegend_ngplus_session_tests)
 
 add_executable(openlegend_persistence_tests unit/persistence/save_slot_test.cpp)

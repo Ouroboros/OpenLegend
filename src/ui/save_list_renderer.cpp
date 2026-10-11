@@ -110,6 +110,7 @@ NODISCARD SaveListLayout save_list_layout(
     const int content_width = panel_width - inner_x - outer_x;
     auto column_weights = kColumnWeights;
     int level_pixels{};
+    int saved_at_pixels{};
     for (const auto& entry : entries) {
         if (entry.state != SaveListEntryState::ready) {
             continue;
@@ -118,6 +119,8 @@ NODISCARD SaveListLayout save_list_layout(
         const auto converted = std::to_chars(number.data(), number.data() + number.size(), entry.level);
         level_pixels = std::max(level_pixels,
             static_cast<int>(converted.ptr - number.data()) * static_cast<int>(metrics.ascii_width));
+        saved_at_pixels = std::max(saved_at_pixels,
+            static_cast<int>(entry.saved_at.size()) * static_cast<int>(metrics.ascii_width));
     }
     if (content_width <= 0) {
         return {};
@@ -129,6 +132,16 @@ NODISCARD SaveListLayout save_list_layout(
             return {};
         }
         column_weights = {24, 64, level_weight, 159 - level_weight, 64};
+    }
+    if (saved_at_pixels > content_width * column_weights[4] / kTotalColumnWeight) {
+        const auto saved_at_weight = ((saved_at_pixels + metrics.shadow_offset_x) * kTotalColumnWeight +
+            content_width - 1) / content_width;
+        const auto added_weight = saved_at_weight - column_weights[4];
+        if (added_weight >= column_weights[1]) {
+            return {};
+        }
+        column_weights[1] -= added_weight;
+        column_weights[4] = saved_at_weight;
     }
 
     SaveListLayout layout;

@@ -197,6 +197,7 @@ BattleSession::BattleSession(
     const model::RangerState* const enemy_baseline)
     : ranger_(ranger),
       random_(random),
+      new_game_plus_enabled_(configuration.enabled),
       data_(data_root, battle_id),
       setup_(data_, ranger_, legacy_hp_cost_scale, configuration, playthrough, enemy_baseline),
       pathing_(data_),
@@ -2205,7 +2206,10 @@ bool BattleSession::begin_player_attack() {
         *legacy_magic_slot_ = selected_magic_slot_;
     }
     const auto learned_count = setup_.learned_magic_count(current_actor_slot_);
-    if (learned_count == 1U) {
+    const auto single_profile = learned_count == 1U
+        ? setup_.attack_profile(current_actor_slot_, selected_magic_slot_)
+        : std::optional<BattleAttackProfile>{};
+    if (single_profile && (!new_game_plus_enabled_ || single_profile->magic_id > 0)) {
         diagnostics::log_info(
             "battle player single magic selected id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +

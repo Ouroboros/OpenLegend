@@ -4232,6 +4232,41 @@ void check_event_learn_magic(const std::filesystem::path& root) {
         OL_CHECK(silent != 0);
         OL_CHECK(silent_session.pending_text().empty());
     }
+
+    for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+        for (const auto later_zero_empty : std::array<bool, 2>{false, true}) {
+            auto snapshot = load_baseline(root);
+            snapshot.configuration.enabled = true;
+            snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+            snapshot.playthrough = playthrough;
+            auto& role = snapshot.ranger.roles[49U];
+            fill_magic_slots(role);
+            role.ever_joined = true;
+            role.magic_ids[2U] = openlegend::model::MagicId{-1};
+            role.magic_levels[2U] = 0;
+            if (later_zero_empty) {
+                role.magic_ids[4U] = openlegend::model::MagicId{0};
+                role.magic_levels[4U] = 0;
+            }
+            OL_CHECK(snapshot.valid_for_persistence());
+            auto expected_role = role;
+            expected_role.magic_ids[2U] = openlegend::model::MagicId{15};
+            expected_role.magic_levels[2U] = 0;
+            openlegend::random::LegacyRandom random{1U};
+            openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
+            OL_CHECK(finish_scene_title(session).kind == SceneStepKind::stay);
+            const auto random_before = random.state();
+            const auto result = session.begin_event(36, 0, 0, 0);
+            OL_CHECK(result.kind == SceneStepKind::notice);
+            OL_CHECK(role == expected_role);
+            openlegend::render::IndexedFramebuffer framebuffer;
+            OL_CHECK(session.render(framebuffer));
+            OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::present);
+            OL_CHECK(session.resume(SceneResponse::acknowledge).kind == SceneStepKind::stay);
+            OL_CHECK(random.state() == random_before);
+            OL_CHECK(snapshot.valid_for_persistence());
+        }
+    }
 }
 
 void check_event_all_book_pictures_condition(const std::filesystem::path& root) {
@@ -5031,7 +5066,10 @@ void check_event_magic_slot_write(const std::filesystem::path& root) {
                          const std::int16_t script) {
         openlegend::random::LegacyRandom random{1U};
         openlegend::scene::SceneSession session{data_root, snapshot, random, 70};
-        return session.begin_event(script, 0, 0, 0).kind;
+        const auto random_before = random.state();
+        const auto result = session.begin_event(script, 0, 0, 0).kind;
+        OL_CHECK(random.state() == random_before);
+        return result;
     };
 
     auto explicit_snapshot = load_baseline(root);
@@ -5076,6 +5114,31 @@ void check_event_magic_slot_write(const std::filesystem::path& root) {
         const auto before = guarded_role;
         OL_CHECK(run(guarded_snapshot, script) == SceneStepKind::stay);
         OL_CHECK(guarded_role == before);
+    }
+
+    for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+        for (const auto later_zero_empty : std::array<bool, 2>{false, true}) {
+            auto snapshot = load_baseline(root);
+            snapshot.configuration.enabled = true;
+            snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+            snapshot.playthrough = playthrough;
+            auto& role = snapshot.ranger.roles[0U];
+            fill_slots(role);
+            role.ever_joined = true;
+            role.magic_ids[2U] = openlegend::model::MagicId{-1};
+            role.magic_levels[2U] = 0;
+            if (later_zero_empty) {
+                role.magic_ids[4U] = openlegend::model::MagicId{0};
+                role.magic_levels[4U] = 0;
+            }
+            OL_CHECK(snapshot.valid_for_persistence());
+            auto expected_role = role;
+            expected_role.magic_ids[2U] = openlegend::model::MagicId{60};
+            expected_role.magic_levels[2U] = 100;
+            OL_CHECK(run(snapshot, 45) == SceneStepKind::stay);
+            OL_CHECK(role == expected_role);
+            OL_CHECK(snapshot.valid_for_persistence());
+        }
     }
 }
 

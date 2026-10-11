@@ -7,10 +7,12 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/battle/battle_session.hpp"
+#include "openlegend/model/experience.hpp"
 #include "openlegend/model/playthrough_transition.hpp"
 #include "openlegend/model/practice.hpp"
 #include "openlegend/persistence/toml_slot.hpp"
 #include "openlegend/render/legacy_font_renderer.hpp"
+#include "openlegend/scene/scene.hpp"
 #include "test_support.hpp"
 
 namespace {
@@ -18,7 +20,8 @@ namespace {
 NODISCARD bool finish_automatic_battle(
     openlegend::battle::BattleSession& session,
     const openlegend::resource::DataRoot& data_root,
-    const openlegend::battle::BattleStepResult expected = openlegend::battle::BattleStepResult::victory) {
+    const openlegend::battle::BattleStepResult expected = openlegend::battle::BattleStepResult::victory,
+    const bool wide_values = true) {
     using namespace openlegend;
     render::IndexedFramebuffer framebuffer;
     const auto ascii = data_root.read("FONT3.E16");
@@ -80,6 +83,12 @@ NODISCARD bool finish_automatic_battle(
         if (session.phase() == battle::BattleSessionPhase::player_action) {
             static_cast<void>(session.handle_key(0x9EU));
             OL_CHECK(session.handle_key(0x0DU) == battle::BattleSessionInputResult::action_selected);
+        } else if (session.phase() == battle::BattleSessionPhase::party_selection) {
+            if (session.setup().cursor() != session.setup().party_prefix_length()) {
+                static_cast<void>(session.handle_key(0x98U));
+            } else {
+                static_cast<void>(session.handle_key(0x0DU));
+            }
         } else if (session.phase() == battle::BattleSessionPhase::battle_outcome_wait ||
                    session.phase() == battle::BattleSessionPhase::post_battle_message_wait) {
             static_cast<void>(session.handle_key(0x0DU));
@@ -92,8 +101,12 @@ NODISCARD bool finish_automatic_battle(
     }
     OL_CHECK(damage_presented);
     OL_CHECK(settlement_presented == (expected == battle::BattleStepResult::victory));
-    OL_CHECK(wide_experience_presented == (expected == battle::BattleStepResult::victory));
-    OL_CHECK(maximum_damage > std::numeric_limits<std::int32_t>::max());
+    OL_CHECK(wide_experience_presented ==
+        (wide_values && expected == battle::BattleStepResult::victory));
+    OL_CHECK(maximum_damage > 0);
+    if (wide_values) {
+        OL_CHECK(maximum_damage > std::numeric_limits<std::int32_t>::max());
+    }
     return session.valid() && session.finished() && session.result() == expected;
 }
 
@@ -224,6 +237,121 @@ void check_session_and_persistence(
     OL_CHECK(!error);
 }
 
+void check_ordinary_progression(
+    const openlegend::resource::DataRoot& data_root,
+    const openlegend::model::GameSnapshot& baseline,
+    const openlegend::persistence::AssetFingerprints& fingerprints) {
+    using namespace openlegend;
+    model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    auto decoded = model::decode_legacy_snapshot(baseline, configuration, &baseline.ranger);
+    const auto progression = battle::load_progression_data(data_root);
+    OL_CHECK(decoded && progression.error.empty());
+    if (!decoded || !progression.error.empty()) {
+        return;
+    }
+    auto snapshot = std::move(*decoded);
+    snapshot.origin = model::SnapshotOrigin::new_game_plus;
+    snapshot.ranger.header.set_team_member(0U, model::CharacterId{0});
+    for (std::size_t slot = 1U; slot < model::kTeamMemberCount; ++slot) {
+        snapshot.ranger.header.set_team_member(slot, model::CharacterId{-1});
+    }
+    auto& initial = snapshot.ranger.roles[0U];
+    initial.ever_joined = true;
+    initial.level = 30;
+    const auto initial_experience = model::level_experience_requirement(progression.thresholds, initial.level);
+    OL_CHECK(initial_experience.has_value());
+    if (!initial_experience) {
+        return;
+    }
+    initial.experience = *initial_experience;
+    initial.hp = initial.maximum_hp = 999;
+    initial.mp = initial.maximum_mp = 999;
+    initial.attack = initial.defence = initial.speed = initial.iq = 100;
+    initial.hurt = initial.poison = 0;
+    initial.physical_power = 100;
+    initial.magic_ids.fill(model::MagicId{-1});
+    initial.magic_levels.fill(0);
+    initial.magic_ids[0U] = model::MagicId{1};
+    initial.magic_levels[0U] = 900;
+    OL_CHECK(snapshot.valid_for_persistence());
+    if (!snapshot.valid_for_persistence()) {
+        return;
+    }
+    random::LegacyRandom random{1U};
+    const persistence::TomlSnapshotContext context{baseline.ranger, fingerprints, configuration};
+    const auto directory = test::utf8_path(OPENLEGEND_TEST_OUTPUT_ROOT) / "ordinary-growth";
+    const persistence::TomlSaveMetadata metadata{persistence::TomlSaveKind::ordinary,
+        persistence::SaveSlot::one, "2026-01-01T00:00:00Z"};
+    for (const std::int64_t playthrough : {2, 3, 4, 5}) {
+        auto inherited = model::prepare_next_playthrough(snapshot, baseline, configuration);
+        OL_CHECK(inherited);
+        if (!inherited) {
+            std::cerr << "ordinary growth inheritance failed: " << inherited.error << '\n';
+            return;
+        }
+        snapshot = std::move(*inherited.snapshot);
+        OL_CHECK(snapshot.playthrough == playthrough);
+        OL_CHECK(snapshot.ranger.header.add_inventory(model::ItemId{93}, 1));
+        OL_CHECK(battle::assign_role_practice_item(snapshot.ranger, 0, 93));
+        const auto actor_before = snapshot.ranger.roles[0U];
+        const auto enemy_before = snapshot.ranger.roles[1U];
+        if (playthrough == 2) {
+            OL_CHECK(persistence::write_toml_slot(directory, snapshot, metadata, context));
+            const auto preflight = persistence::load_toml_slot(
+                directory, metadata.kind, metadata.slot, context);
+            OL_CHECK(preflight && preflight.save->snapshot == snapshot);
+        }
+        scene::SceneSession resting{data_root, snapshot, random, 70};
+        OL_CHECK(resting.valid());
+        if (!resting.valid()) {
+            return;
+        }
+        render::IndexedFramebuffer framebuffer;
+        for (std::size_t battle_index = 0U; battle_index < 32U; ++battle_index) {
+            auto step = resting.begin_event(931);
+            for (std::size_t rest_step = 0U; step.kind != scene::SceneStepKind::stay && rest_step < 128U;
+                 ++rest_step) {
+                OL_CHECK(resting.render(framebuffer));
+                step = resting.resume(step.kind == scene::SceneStepKind::question
+                    ? scene::SceneResponse::yes : scene::SceneResponse::acknowledge);
+            }
+            OL_CHECK(resting.valid() && step.kind == scene::SceneStepKind::stay);
+            battle::BattleSession session{data_root, snapshot.ranger, random, 0, true, {},
+                nullptr, nullptr, nullptr, configuration, playthrough, &baseline.ranger};
+            OL_CHECK(session.valid());
+            if (!session.valid() || !finish_automatic_battle(session, data_root,
+                    battle::BattleStepResult::victory, false)) {
+                std::cerr << "ordinary growth battle failed: NG" << playthrough
+                          << " battle=" << battle_index << " error=" << session.error() << '\n';
+                OL_CHECK(false);
+                return;
+            }
+            OL_CHECK(snapshot.ranger.roles[1U] == enemy_before);
+        }
+        const auto& actor = snapshot.ranger.roles[0U];
+        OL_CHECK(actor.experience > actor_before.experience && actor.level > actor_before.level);
+        OL_CHECK(actor.magic_levels[0U] > actor_before.magic_levels[0U]);
+        OL_CHECK(actor.no_magic_count[93U] > actor_before.no_magic_count[93U]);
+        OL_CHECK(actor.attack > actor_before.attack && actor.maximum_hp > actor_before.maximum_hp);
+        OL_CHECK(snapshot.valid_for_persistence());
+        std::cout << "ordinary growth NG" << playthrough << ": battles=32 level=" << actor.level
+                  << " experience=" << actor.experience << " attack=" << actor.attack
+                  << " max_hp=" << actor.maximum_hp << " proficiency=" << actor.magic_levels[0U]
+                  << " manual_completions=" << actor.no_magic_count[93U] << '\n';
+        OL_CHECK(persistence::write_toml_slot(directory, snapshot, metadata, context));
+        auto loaded = persistence::load_toml_slot(directory, metadata.kind, metadata.slot, context);
+        OL_CHECK(loaded && loaded.save->snapshot == snapshot);
+        if (!loaded) {
+            return;
+        }
+        snapshot = std::move(loaded.save->snapshot);
+    }
+    std::error_code error;
+    std::filesystem::remove_all(directory, error);
+    OL_CHECK(!error);
+}
+
 void check_defeat(
     const openlegend::resource::DataRoot& data_root,
     const openlegend::model::GameSnapshot& baseline,
@@ -295,10 +423,11 @@ int main() {
     if (!baseline || !fingerprints) {
         return 1;
     }
-    for (const std::int64_t playthrough : {1, 2, 999}) {
+    for (const std::int64_t playthrough : {1, 2, 3, 4, 5, 999}) {
         check_session_and_persistence(data_root, *baseline.snapshot, *fingerprints.fingerprints, playthrough);
     }
     check_session_and_persistence(data_root, *baseline.snapshot, *fingerprints.fingerprints, 2, true);
     check_defeat(data_root, *baseline.snapshot, *fingerprints.fingerprints);
+    check_ordinary_progression(data_root, *baseline.snapshot, *fingerprints.fingerprints);
     return test::failures == 0 ? 0 : 1;
 }

@@ -112,11 +112,11 @@ void roll_protagonist_attributes(RoleState& protagonist, random::LegacyRandom& r
     auto rolled = protagonist;
     auto rolled_random = random;
     rolled.mp_type = rolled_random.bounded(2);
-    rolled.maximum_mp = rolled_random.bounded(20) + 21;
+    rolled.maximum_mp = std::int64_t{rolled_random.bounded(20)} + 21;
     for (const auto index : kRolledAbilityWords) {
-        rolled.set_word(index, rolled_random.bounded(10) + 21);
+        rolled.set_word(index, std::int64_t{rolled_random.bounded(10)} + 21);
     }
-    rolled.increased_life = rolled_random.bounded(5) + 3;
+    rolled.increased_life = std::int64_t{rolled_random.bounded(5)} + 3;
     const auto growth = checked_multiply(rolled.increased_life, 3);
     const auto total = growth.has_value() ? checked_multiply(*growth, rolled.level) : std::nullopt;
     const auto hp = total.has_value() ? checked_add(*total, 29) : std::nullopt;
@@ -126,11 +126,11 @@ void roll_protagonist_attributes(RoleState& protagonist, random::LegacyRandom& r
     rolled.maximum_hp = *hp;
     const auto bucket = rolled_random.bounded(10);
     if (bucket <= 1) {
-        rolled.iq = rolled_random.bounded(35) + 30;
+        rolled.iq = std::int64_t{rolled_random.bounded(35)} + 30;
     } else if (bucket <= 7) {
-        rolled.iq = rolled_random.bounded(20) + 60;
+        rolled.iq = std::int64_t{rolled_random.bounded(20)} + 60;
     } else {
-        rolled.iq = rolled_random.bounded(20) + 75;
+        rolled.iq = std::int64_t{rolled_random.bounded(20)} + 75;
     }
     rolled.hp = rolled.maximum_hp;
     rolled.mp = rolled.maximum_mp;

@@ -630,6 +630,7 @@ private:
 
     model::RuntimeRangerState& ranger_;
     random::LegacyRandom& random_;
+    bool new_game_plus_enabled_{};
     BattleData data_;
     BattleSetup setup_;
     BattlePathing pathing_;

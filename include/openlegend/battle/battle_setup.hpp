@@ -58,7 +58,7 @@ struct BattleAttackProfile {
     std::int16_t area_type{};
     std::int16_t hurt_type{};
     std::int16_t attack_count{};
-    std::int16_t need_mp{};
+    std::int64_t need_mp{};
 };
 
 struct BattleHpDamageResult {

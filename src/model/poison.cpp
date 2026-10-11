@@ -60,8 +60,8 @@ std::optional<std::int64_t> detoxification_amount(
         return std::nullopt;
     }
     auto candidate_random = random;
-    const auto first_roll = candidate_random.bounded(10);
-    const auto second_roll = candidate_random.bounded(10);
+    const std::int64_t first_roll = candidate_random.bounded(10);
+    const std::int64_t second_roll = candidate_random.bounded(10);
     const auto theoretical = std::clamp<std::int64_t>(
         nonnegative_ability / 3 + first_roll - second_roll, 0, 99);
     const auto result = std::min({theoretical, *scaled_limit / *denominator, poison});

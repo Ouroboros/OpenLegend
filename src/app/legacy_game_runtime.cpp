@@ -3620,9 +3620,12 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
                 known_magic = true;
             }
         }
-        if (magic_id != -1 &&
-            role.word(model::role_word::magic_id_begin + model::role_word::magic_count - 1U) > 0 &&
-            !known_magic) {
+        const auto magic_full = game_state_.snapshot()->configuration.enabled
+            ? std::ranges::all_of(role.magic_ids, [](const model::MagicId learned_magic) {
+                return learned_magic.value > 0;
+            })
+            : role.magic_ids.back().value > 0;
+        if (magic_id != -1 && magic_full && !known_magic) {
             game_menu_.show_notice(ui::GameMenuNotice::practice_magic_full);
             return;
         }

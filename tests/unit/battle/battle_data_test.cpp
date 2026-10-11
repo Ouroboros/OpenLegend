@@ -608,6 +608,63 @@ void run_attack_profile_test(const openlegend::resource::DataRoot& data_root) {
         0U, 2, std::numeric_limits<std::int64_t>::max()));
     OL_CHECK(role == before_overflow);
     OL_CHECK(retained_scale == 5'000'000'001);
+
+    for (const std::int64_t playthrough : {1, 2, 999}) {
+        openlegend::model::NewGamePlusConfiguration configuration;
+        configuration.enabled = true;
+        for (const std::int16_t empty_id : std::array<std::int16_t, 2>{0, -1}) {
+            for (const std::size_t learned_slot : {2U, 9U}) {
+                auto sparse_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+                auto& sparse_role = sparse_ranger.roles[1U];
+                sparse_role.magic_ids.fill(openlegend::model::MagicId{empty_id});
+                sparse_role.magic_levels.fill(0);
+                sparse_role.magic_ids[learned_slot] = openlegend::model::MagicId{5};
+                sparse_role.magic_levels[learned_slot] = 299;
+                BattleData sparse_data{data_root, 4};
+                BattleSetup sparse_setup{
+                    sparse_data, sparse_ranger, nullptr, configuration, playthrough};
+                OL_CHECK(sparse_setup.valid());
+                OL_CHECK(sparse_setup.learned_magic_count(0U) == 1U);
+                const auto before = sparse_role;
+                openlegend::random::LegacyRandom selection_random{1U};
+                OL_CHECK(sparse_setup.automatic_magic_slot(0U, selection_random) ==
+                         static_cast<std::int16_t>(learned_slot));
+                OL_CHECK(selection_random.state() == 1U);
+                openlegend::random::LegacyRandom planning_random{1U};
+                const auto plan = sparse_setup.begin_ai_attack_plan(0U, planning_random);
+                OL_CHECK(plan.has_value());
+                if (plan) {
+                    OL_CHECK(plan->magic_slot == static_cast<std::int16_t>(learned_slot));
+                    OL_CHECK(plan->magic_id == 5);
+                }
+                OL_CHECK(sparse_role == before);
+            }
+
+            auto sparse_ranger = make_ranger({0, 2, 3, -1, -1, -1});
+            auto& sparse_role = sparse_ranger.roles[1U];
+            sparse_role.magic_ids.fill(openlegend::model::MagicId{empty_id});
+            sparse_role.magic_levels.fill(0);
+            sparse_role.magic_ids[2U] = openlegend::model::MagicId{5};
+            sparse_role.magic_ids[9U] = openlegend::model::MagicId{6};
+            BattleData sparse_data{data_root, 4};
+            BattleSetup sparse_setup{
+                sparse_data, sparse_ranger, nullptr, configuration, playthrough};
+            OL_CHECK(sparse_setup.valid());
+            const auto before = sparse_role;
+            std::array<bool, 2> seen{};
+            for (std::uint32_t seed = 1U; seed <= 8U; ++seed) {
+                openlegend::random::LegacyRandom expected_random{seed};
+                const auto rank = static_cast<std::size_t>(expected_random.bounded(2));
+                seen[rank] = true;
+                openlegend::random::LegacyRandom actual_random{seed};
+                OL_CHECK(sparse_setup.automatic_magic_slot(0U, actual_random) ==
+                         (rank == 0U ? 2 : 9));
+                OL_CHECK(actual_random.state() == expected_random.state());
+                OL_CHECK(sparse_role == before);
+            }
+            OL_CHECK(seen[0U] && seen[1U]);
+        }
+    }
 }
 
 void run_attack_animation_test(const openlegend::resource::DataRoot& data_root) {
@@ -5263,6 +5320,43 @@ void run_player_action_availability_test(
     availability = setup.player_action_availability(0U);
     OL_CHECK(availability.has_value());
     OL_CHECK(availability->available[1U] == 1);
+
+    openlegend::model::NewGamePlusConfiguration configuration;
+    configuration.enabled = true;
+    for (const auto playthrough : std::array<std::int64_t, 3>{1, 2, 999}) {
+        for (const auto empty_id : std::array<std::int16_t, 2>{0, -1}) {
+            for (const auto mp : std::array<std::int64_t, 3>{
+                     1'000, 5'000'000'000'000, std::numeric_limits<std::int64_t>::max()}) {
+                auto empty_ranger = make_ranger({1, -1, -1, -1, -1, -1});
+                auto& empty_role = empty_ranger.roles[1U];
+                empty_role.id = openlegend::model::CharacterId{1};
+                empty_role.increased_life = 3;
+                empty_role.level = 1;
+                empty_role.hp = empty_role.maximum_hp = 500;
+                empty_role.mp = empty_role.maximum_mp = mp;
+                empty_role.physical_power = 100;
+                empty_role.practice_item = openlegend::model::ItemId{-1};
+                empty_role.magic_ids.fill(openlegend::model::MagicId{empty_id});
+                empty_role.magic_levels.fill(0);
+                empty_ranger.roles[3U].hp = empty_ranger.roles[3U].maximum_hp = 500;
+                const auto role_before = empty_role;
+                BattleSetup empty_setup{data, empty_ranger, nullptr, configuration, playthrough};
+                OL_CHECK(empty_setup.valid());
+                const auto empty_availability = empty_setup.player_action_availability(0U);
+                OL_CHECK(empty_availability.has_value());
+                if (empty_availability) {
+                    OL_CHECK(empty_availability->available[1U] == 0);
+                }
+                openlegend::random::LegacyRandom random{1U};
+                const auto choice = empty_setup.choose_ai_offensive_action(0U, random);
+                OL_CHECK(choice.has_value());
+                if (choice) {
+                    OL_CHECK(choice->action != BattleAiAction::attack);
+                }
+                OL_CHECK(empty_role == role_before);
+            }
+        }
+    }
 }
 
 void run_player_support_session_test(
@@ -6241,7 +6335,9 @@ void run_player_attack_session_test(
                               const std::array<bool, 5>& direction_states,
                               const std::int16_t expected_direction,
                               const std::uint8_t expected_clear_key,
-                              const bool finish_attack) {
+                              const bool finish_attack,
+                              const std::size_t magic_slot = 0U,
+                              const std::int16_t first_empty_id = -1) {
         auto ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
         initialize_ranger(*ranger, {0, 2, 3, -1, -1, -1});
         auto& actor = ranger->roles[1U];
@@ -6253,8 +6349,11 @@ void run_player_attack_session_test(
         actor.set_word(role_word::physical_power, 100);
         actor.set_word(role_word::attack, 50);
         actor.set_word(role_word::speed, 0);
-        actor.set_word(role_word::magic_id_begin, 5);
-        actor.set_word(role_word::magic_level_begin, initial_experience);
+        if (magic_slot != 0U) {
+            actor.magic_ids[0U] = openlegend::model::MagicId{first_empty_id};
+        }
+        actor.set_word(role_word::magic_id_begin + magic_slot, 5);
+        actor.set_word(role_word::magic_level_begin + magic_slot, initial_experience);
         actor.set_word(role_word::attack_twice, attack_twice ? 1 : 0);
         actor.set_word(role_word::frame_begin, 2);
         actor.set_word(role_word::frame_begin + 5U, 1);
@@ -6275,9 +6374,12 @@ void run_player_attack_session_test(
         magic.set_word(magic_word::select_distance_begin + 2U, 2);
         magic.set_word(magic_word::attack_distance_begin + 2U, 0);
 
+        const openlegend::model::NewGamePlusConfiguration configuration{
+            .enabled = magic_slot != 0U};
         openlegend::random::LegacyRandom random{1U};
         auto session = std::make_unique<BattleSession>(
-            data_root, *ranger, random, 4, false);
+            data_root, *ranger, random, 4, false, BattleRenderState{},
+            nullptr, nullptr, nullptr, configuration);
         OL_CHECK(session->valid());
         finish_battle_entry_fade(*session);
         OL_CHECK(session->render(*framebuffer));
@@ -6298,10 +6400,24 @@ void run_player_attack_session_test(
         OL_CHECK(session->handle_key(0x0DU) ==
                  BattleSessionInputResult::action_selected);
 
+        if (magic_slot != 0U) {
+            OL_CHECK(session->phase() == BattleSessionPhase::player_magic_selection);
+            if (!session->valid() ||
+                session->phase() != BattleSessionPhase::player_magic_selection) {
+                return;
+            }
+            const auto selection_random_state = random.state();
+            OL_CHECK(session->render(*framebuffer));
+            session->finish_presented_tick(initial_tick);
+            OL_CHECK(session->handle_key(0x0DU) == BattleSessionInputResult::magic_selected);
+            OL_CHECK(session->selected_magic_slot() == static_cast<std::int16_t>(magic_slot));
+            OL_CHECK(random.state() == selection_random_state);
+        }
+
         if (area_type == 0 || area_type == 3) {
             OL_CHECK(session->phase() == BattleSessionPhase::player_targeting_select);
             finish_cursor_presentations(*session);
-            if (area_type == 0) {
+            if (area_type == 0 && magic_slot == 0U) {
                 OL_CHECK(session->handle_key(0x1BU) ==
                          BattleSessionInputResult::cursor_cancelled);
                 finish_player_menu_redraw(*session);
@@ -6446,11 +6562,15 @@ void run_player_attack_session_test(
             : static_cast<std::int16_t>(15);
         OL_CHECK(actor.word(role_word::mp) == expected_mp);
         OL_CHECK(actor.word(role_word::physical_power) == 97);
-        OL_CHECK(actor.word(role_word::magic_level_begin) >=
+        OL_CHECK(actor.word(role_word::magic_level_begin + magic_slot) >=
                  initial_experience + static_cast<std::int16_t>(expected_iterations));
-        OL_CHECK(actor.word(role_word::magic_level_begin) <=
+        OL_CHECK(actor.word(role_word::magic_level_begin + magic_slot) <=
                  initial_experience +
                      static_cast<std::int16_t>(2U * expected_iterations));
+        if (magic_slot != 0U) {
+            OL_CHECK(actor.magic_ids[0U].value == first_empty_id);
+            OL_CHECK(actor.magic_levels[0U] == 0);
+        }
         OL_CHECK(session->setup().combatants()[0U]
                      .words[combatant_word::action_done] == 1);
         OL_CHECK(session->setup().combatants()[0U]
@@ -6465,6 +6585,10 @@ void run_player_attack_session_test(
     run_case(1, 975U, false, 250, {false, false, false, true, true}, 0, 0x9EU, false);
     run_case(2, 1'000U, true, 299, {}, -1, 0U, true);
     run_case(3, 1'100U, false, 250, {}, -1, 0U, true);
+    run_case(0, 1'200U, false, 250, {}, -1, 0U, true, 2U);
+    run_case(0, 1'300U, false, 250, {}, -1, 0U, true, 9U);
+    run_case(0, 1'400U, false, 250, {}, -1, 0U, true, 2U, 0);
+    run_case(0, 1'500U, false, 250, {}, -1, 0U, true, 9U, 0);
 
     auto delayed_ranger = std::make_unique<openlegend::model::RuntimeRangerState>();
     initialize_ranger(*delayed_ranger, {0, 2, 3, -1, -1, -1});
@@ -9501,6 +9625,8 @@ void run_ngplus_ai_arithmetic_test(const openlegend::resource::DataRoot& data_ro
     }
     for (const auto advantage : {38, 39}) {
         Fixture fixture{data_root};
+        fixture.ranger.roles[0U].magic_ids[0U] = model::MagicId{1};
+        fixture.ranger.magics[1U].set_word(model::magic_word::need_mp, 1000);
         fixture.ranger.roles[0U].attack = kWide;
         fixture.ranger.roles[0U].use_poison = kWide + advantage;
         random::LegacyRandom random{1U};
@@ -9552,6 +9678,8 @@ void run_ngplus_ai_arithmetic_test(const openlegend::resource::DataRoot& data_ro
     }
     for (const bool carried : {false, true}) {
         Fixture fixture{data_root};
+        fixture.ranger.roles[0U].magic_ids[0U] = model::MagicId{1};
+        fixture.ranger.magics[1U].set_word(model::magic_word::need_mp, 1000);
         fixture.ranger.roles[0U].attack = kMaximum / 3 + 1;
         if (carried) {
             fixture.setup.combatants()[0U].words[combatant_word::side] = 1;
@@ -9617,6 +9745,90 @@ void run_ngplus_ai_arithmetic_test(const openlegend::resource::DataRoot& data_ro
             }
             OL_CHECK(fixture.ranger == before);
             OL_CHECK(std::ranges::equal(fixture.setup.combatants(), combatants_before));
+        }
+    }
+    struct DetoxChoiceCase {
+        std::int64_t poison;
+        std::int64_t ability;
+        BattleAiAction expected;
+    };
+    for (const auto playthrough : {1, 2, 999}) {
+        for (const auto example : std::array{
+                 DetoxChoiceCase{50, 21, BattleAiAction::detox},
+                 DetoxChoiceCase{51, 21, BattleAiAction::none},
+                 DetoxChoiceCase{99, 69, BattleAiAction::none},
+                 DetoxChoiceCase{99, 70, BattleAiAction::detox},
+                 DetoxChoiceCase{kMaximum, 70, BattleAiAction::none}}) {
+            Fixture fixture{data_root, playthrough};
+            fixture.ranger.roles[0U].poison = example.poison;
+            fixture.ranger.roles[0U].detoxification = example.ability;
+            const auto before = fixture.ranger;
+            const auto choice = fixture.setup.choose_ai_poisoned_action(0U);
+            OL_CHECK(choice.has_value());
+            if (choice) {
+                OL_CHECK(choice->action == example.expected);
+                OL_CHECK(choice->target_slot ==
+                         (example.expected == BattleAiAction::detox ? 0 : -1));
+            }
+            OL_CHECK(fixture.ranger == before);
+        }
+        {
+            Fixture fixture{data_root, playthrough};
+            fixture.ranger.roles[0U].poison = kMaximum;
+            fixture.ranger.roles[0U].detoxification = kMaximum;
+            const auto before = fixture.ranger;
+            random::LegacyRandom random{1U};
+            const auto prelude = fixture.setup.begin_ai_turn(0U);
+            OL_CHECK(prelude.has_value());
+            const auto decision = prelude.has_value()
+                ? fixture.setup.choose_ai_turn_action(0U, *prelude, random)
+                : std::nullopt;
+            OL_CHECK(decision.has_value());
+            if (decision) {
+                OL_CHECK(decision->choice.action == BattleAiAction::detox);
+                OL_CHECK(decision->choice.target_slot == 0);
+                OL_CHECK(decision->handler == BattleAiHandler::detox);
+            }
+            OL_CHECK(random.state() == 1'103'527'590U);
+            OL_CHECK(fixture.ranger == before);
+        }
+        for (const auto ability : {69, 70}) {
+            Fixture fixture{data_root, playthrough};
+            fixture.ranger.roles[0U].detoxification = ability;
+            fixture.ranger.roles[1U].poison = 99;
+            const auto before = fixture.ranger;
+            random::LegacyRandom random{1U};
+            const auto choice = fixture.setup.choose_ai_detox_target(0U, random);
+            OL_CHECK(choice.has_value());
+            if (choice) {
+                OL_CHECK(choice->action ==
+                         (ability == 70 ? BattleAiAction::detox : BattleAiAction::none));
+                OL_CHECK(choice->target_slot == (ability == 70 ? 1 : -1));
+            }
+            OL_CHECK(random.state() == (ability == 70 ? 662'824'084U : 1U));
+            OL_CHECK(fixture.ranger == before);
+        }
+        for (const bool peer : {false, true}) {
+            Fixture fixture{data_root, playthrough};
+            fixture.ranger.roles[0U].detoxification = 80;
+            if (peer) {
+                fixture.ranger.roles[1U].poison = 20;
+                fixture.ranger.roles[2U].poison = kMinimum;
+            } else {
+                fixture.ranger.roles[0U].poison = kMinimum;
+            }
+            const auto before = fixture.ranger;
+            const std::vector<BattleCombatant> combatants_before{
+                fixture.setup.combatants().begin(), fixture.setup.combatants().end()};
+            random::LegacyRandom random{1U};
+            const auto choice = peer
+                ? fixture.setup.choose_ai_detox_target(0U, random)
+                : fixture.setup.choose_ai_poisoned_action(0U);
+            OL_CHECK(!choice.has_value());
+            OL_CHECK(!fixture.setup.error().empty());
+            OL_CHECK(fixture.ranger == before);
+            OL_CHECK(std::ranges::equal(fixture.setup.combatants(), combatants_before));
+            OL_CHECK(random.state() == 1U);
         }
     }
 }
