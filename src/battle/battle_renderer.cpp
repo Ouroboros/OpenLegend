@@ -589,6 +589,32 @@ bool BattleRenderer::render_character_selection(
     return true;
 }
 
+bool BattleRenderer::render_status_side_selection(
+    const std::size_t cursor, render::IndexedFramebuffer& framebuffer) {
+    if (!valid() || cursor >= kStatusSideLabels.size()) {
+        return false;
+    }
+    const auto encoded_title = text::encode_big5(kStatusSideTitle);
+    if (!encoded_title.has_value()) {
+        return false;
+    }
+    const auto title_width = static_cast<std::uint16_t>(8U * encoded_title->size() + 12U);
+    if (!draw_box(framebuffer, 70, 18, title_width, 26U) ||
+        !draw_text_utf8(framebuffer, 75, 22, kStatusSideTitle, text_colors::notice) ||
+        !draw_box(framebuffer, 70, 45, 62U,
+            static_cast<std::uint16_t>(20U * kStatusSideLabels.size() + 10U))) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < kStatusSideLabels.size(); ++index) {
+        if (!draw_text_utf8(
+                framebuffer, 85, 52 + 20 * static_cast<int>(index), kStatusSideLabels[index],
+                index == cursor ? text_colors::selected : text_colors::menu_normal)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool BattleRenderer::render_character_status_selection(
     const model::RuntimeRangerState& ranger,
     const std::size_t cursor,
@@ -696,42 +722,9 @@ bool BattleRenderer::render_party_action_notice(
 }
 
 std::uint8_t BattleRenderer::character_status_page_count(
-    const model::RuntimeRangerState& ranger, const std::int16_t role_id) const {
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
-        return 2U;
-    }
-    const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-    for (const auto value : {role.level, role.hp, role.maximum_hp, role.mp, role.maximum_mp, role.physical_power}) {
-        if (decimal_text(value).size() > 3U) {
-            return 4U;
-        }
-    }
-    const auto fields = character_status_fields(ranger, role);
-    if (std::ranges::any_of(fields, [](const auto& field) {
-            return !field.value || decimal_text(*field.value).size() > 3U;
-        }) || decimal_text(role.experience).size() > 6U) {
-        return 4U;
-    }
-    const auto next_level = model::checked_add(role.level, 1);
-    const auto next_experience = next_level
-        ? model::level_experience_requirement(experience_thresholds_, *next_level) : std::nullopt;
-    if (next_experience && decimal_text(*next_experience).size() > 6U) {
-        return 4U;
-    }
-    for (std::size_t slot = 0U; slot < role.magic_ids.size(); ++slot) {
-        if (role.magic_ids[slot].value > 0 && decimal_text(role.magic_levels[slot] / 100 + 1).size() > 2U) {
-            return 4U;
-        }
-    }
-    const auto practice_id = role.practice_item.value;
-    if (practice_id >= 0 && static_cast<std::size_t>(practice_id) < ranger.items.size()) {
-        const auto item_index = static_cast<std::size_t>(practice_id);
-        const auto cost = model::manual_experience_requirement(role, ranger.items[item_index], item_index, practice_rules_);
-        if (!cost || decimal_text(role.item_experience).size() > 5U || decimal_text(cost->experience).size() > 5U) {
-            return 4U;
-        }
-    }
-    return 2U;
+    const model::RuntimeRangerState&, const std::int16_t) const {
+    // 与现代状态页的 狀態/能力/武功 三个标签页保持一致。
+    return 3U;
 }
 
 bool BattleRenderer::render_wide_character_status(

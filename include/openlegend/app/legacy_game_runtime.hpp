@@ -314,6 +314,7 @@ public:
         return requested;
     }
 
+
 private:
     enum class PendingIo {
         none,
@@ -451,7 +452,15 @@ private:
 
     NODISCARD bool render_title_view();
 
+    NODISCARD bool render_status_page_overlay(
+        std::span<const model::RoleState* const> roles,
+        std::size_t cursor,
+        std::uint8_t page,
+        render::RgbaFramebuffer& framebuffer);
+
     NODISCARD bool render_character_status_view(render::RgbaFramebuffer& framebuffer);
+
+    NODISCARD bool render_battle_character_status_view(render::RgbaFramebuffer& framebuffer);
 
     void set_view(LegacyGameView view, std::string_view reason);
 

@@ -14,14 +14,14 @@
 
 namespace openlegend::app {
 
-inline constexpr std::uint8_t kCharacterStatusPageCount = 4U;
+inline constexpr std::uint8_t kCharacterStatusPageCount = 3U;
 
 NODISCARD bool render_character_status_page(
     const battle::BattleRenderer& data,
     ui::ModernUiRenderer& ui_renderer,
     const compat::LegacyPalette& palette,
     const model::RuntimeRangerState& ranger,
-    std::span<const std::uint8_t> party_slots,
+    std::span<const model::RoleState* const> roles,
     std::size_t cursor,
     std::uint8_t page,
     const model::PlaythroughLimits& limits,

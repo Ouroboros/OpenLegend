@@ -268,6 +268,63 @@ std::uint8_t BattleSession::player_status_page() const noexcept {
     return player_status_.has_value() ? player_status_->page : 0U;
 }
 
+std::size_t BattleSession::player_status_party_count() const noexcept {
+    return player_status_.has_value() ? player_status_->party_count : 0U;
+}
+
+bool BattleSession::player_status_page_active() const noexcept {
+    return (phase_ == BattleSessionPhase::player_status_page_present ||
+            phase_ == BattleSessionPhase::player_status_page_wait) &&
+        player_status_.has_value() && player_status_->role_id >= 0;
+}
+
+std::vector<std::pair<std::int16_t, const model::RoleState*>>
+BattleSession::status_side_entries(const std::int16_t side) const {
+    std::vector<std::pair<std::int16_t, const model::RoleState*>> entries;
+    if (side == 0) {
+        for (std::size_t slot = 0U; slot < model::kTeamMemberCount; ++slot) {
+            const auto role_id = ranger_.header.team_member(slot).value;
+            if (slot > 0U && role_id <= 0) {
+                break;
+            }
+            if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
+                continue;
+            }
+            entries.emplace_back(role_id, &ranger_.roles[static_cast<std::size_t>(role_id)]);
+        }
+        return entries;
+    }
+    const auto combatants = setup_.combatants();
+    for (std::size_t slot = 0U; slot < combatants.size(); ++slot) {
+        const auto& words = combatants[slot].words;
+        if (words[combatant_word::side] != 1 || words[combatant_word::role_id] < 0) {
+            continue;
+        }
+        const auto* role = setup_.combatant_role(slot);
+        if (role == nullptr || role->hp <= 0) {
+            continue;
+        }
+        const auto role_id = words[combatant_word::role_id];
+        if (std::ranges::none_of(entries, [role_id](const auto& entry) {
+                return entry.first == role_id;
+            })) {
+            entries.emplace_back(role_id, role);
+        }
+    }
+    return entries;
+}
+
+std::vector<const model::RoleState*> BattleSession::player_status_role_states() const {
+    std::vector<const model::RoleState*> roles;
+    if (!player_status_.has_value()) {
+        return roles;
+    }
+    for (const auto& entry : status_side_entries(player_status_->side)) {
+        roles.push_back(entry.second);
+    }
+    return roles;
+}
+
 BattleSessionInputResult BattleSession::handle_key(
     const std::uint8_t translated_key,
     const std::optional<std::uint32_t>) {
@@ -2696,10 +2753,8 @@ BattleSessionInputResult BattleSession::handle_player_status_selection_key(
         return BattleSessionInputResult::ignored;
     }
     auto& status = *player_status_;
-    if (translated_key == kDown) {
-        status.cursor = status.cursor + 1U == status.party_count ? 0U : status.cursor + 1U;
-    } else if (translated_key == kUp) {
-        status.cursor = status.cursor == 0U ? status.party_count - 1U : status.cursor - 1U;
+    if (translated_key == kDown || translated_key == kUp) {
+        status.cursor = status.cursor == 0U ? 1U : 0U;
     } else if (translated_key == kEscape) {
         diagnostics::log_info(
             "battle player status selection cancelled id=" + std::to_string(battle_id()) +
@@ -2712,19 +2767,22 @@ BattleSessionInputResult BattleSession::handle_player_status_selection_key(
     } else if (!confirms(translated_key)) {
         return BattleSessionInputResult::ignored;
     } else {
-        const auto role_id = ranger_.header.team_member(status.cursor).value;
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-            error_ = "battle player status role id is outside RANGER records";
+        const auto side = static_cast<std::int16_t>(status.cursor);
+        const auto entries = status_side_entries(side);
+        if (entries.empty()) {
             return BattleSessionInputResult::ignored;
         }
-        status.role_id = role_id;
+        status.side = side;
+        status.party_count = entries.size();
+        status.cursor = 0U;
+        status.role_id = entries.front().first;
         status.page = 0U;
         phase_ = BattleSessionPhase::player_status_page_present;
         diagnostics::log_info(
             "battle player status selected id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
-            " party_slot=" + std::to_string(status.cursor) +
-            " role=" + std::to_string(role_id));
+            " side=" + std::to_string(status.side) +
+            " role=" + std::to_string(status.role_id));
         return BattleSessionInputResult::status_selected;
     }
     diagnostics::log_debug(
@@ -2739,24 +2797,41 @@ BattleSessionInputResult BattleSession::handle_player_status_page_key(
     if (!player_status_.has_value() || translated_key == 0U) {
         return BattleSessionInputResult::ignored;
     }
-    if (player_status_->page + 1U < renderer_.character_status_page_count(ranger_, player_status_->role_id)) {
-        ++player_status_->page;
-        phase_ = BattleSessionPhase::player_status_page_present;
+    auto& status = *player_status_;
+    const auto page_count =
+        renderer_.character_status_page_count(ranger_, status.role_id);
+    if (translated_key == kRight) {
+        status.page = static_cast<std::uint8_t>((status.page + 1U) % page_count);
+    } else if (translated_key == kLeft) {
+        status.page = status.page == 0U
+            ? static_cast<std::uint8_t>(page_count - 1U)
+            : static_cast<std::uint8_t>(status.page - 1U);
+    } else if (translated_key == kDown || translated_key == kUp) {
+        const auto entries = status_side_entries(status.side);
+        if (entries.empty()) {
+            return BattleSessionInputResult::ignored;
+        }
+        const auto count = entries.size();
+        status.party_count = count;
+        status.cursor = translated_key == kDown
+            ? (status.cursor + 1U) % count
+            : status.cursor == 0U ? count - 1U : status.cursor - 1U;
+        status.role_id = entries[status.cursor].first;
+    } else if (translated_key == kEscape || confirms(translated_key)) {
         diagnostics::log_info(
-            "battle player status page advanced id=" + std::to_string(battle_id()) +
+            "battle player status closed id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
-            " role=" + std::to_string(player_status_->role_id));
-        return BattleSessionInputResult::status_page_advanced;
-    }
-    diagnostics::log_info(
-        "battle player status closed id=" + std::to_string(battle_id()) +
-        " slot=" + std::to_string(current_actor_slot_) +
-        " role=" + std::to_string(player_status_->role_id));
-    player_status_.reset();
-    if (!finish_player_action_call()) {
+            " role=" + std::to_string(status.role_id));
+        player_status_.reset();
+        if (!finish_player_action_call()) {
+            return BattleSessionInputResult::ignored;
+        }
+        return BattleSessionInputResult::status_closed;
+    } else {
         return BattleSessionInputResult::ignored;
     }
-    return BattleSessionInputResult::status_closed;
+    phase_ = BattleSessionPhase::player_status_page_present;
+    return BattleSessionInputResult::status_page_advanced;
 }
 
 bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
@@ -4524,17 +4599,14 @@ bool BattleSession::render_player_item_effect(
 bool BattleSession::render_player_status_selection(
     render::IndexedFramebuffer& framebuffer) {
     return player_status_.has_value() && render_battlefield(framebuffer) &&
-        renderer_.render_character_status_selection(
-            ranger_, player_status_->cursor, framebuffer, setup_.playthrough_limits());
+        renderer_.render_status_side_selection(player_status_->cursor, framebuffer);
 }
 
 bool BattleSession::render_player_status_page(
     render::IndexedFramebuffer& framebuffer) {
+    // 状态页本体改由现代UI层绘制，这里只保留战场背景。
     return player_status_.has_value() && player_status_->role_id >= 0 &&
-        render_battlefield(framebuffer) &&
-        renderer_.render_character_status(
-            ranger_, player_status_->role_id, player_status_->page, framebuffer,
-            setup_.playthrough_limits());
+        render_battlefield(framebuffer);
 }
 
 bool BattleSession::render_player_action_menu(

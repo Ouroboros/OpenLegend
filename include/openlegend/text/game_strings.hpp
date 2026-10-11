@@ -129,16 +129,20 @@ inline constexpr std::u8string_view maximum_practice = u8" = ";
 inline constexpr std::u8string_view medicine_target_title = u8"要醫治誰";
 inline constexpr std::u8string_view detoxification_target_title = u8"替誰解毒";
 inline constexpr std::u8string_view status_selection_title = u8"要查閱誰的狀態";
+inline constexpr std::u8string_view status_side_title = u8"要查閱哪方的狀態";
+inline constexpr std::array<std::u8string_view, 2> status_side_labels{
+    u8"我方",
+    u8"敵方",
+};
 inline constexpr std::u8string_view equipment_target_title = u8"誰要配備";
 inline constexpr std::u8string_view practice_target_title = u8"誰要修練";
 inline constexpr std::u8string_view item_target_title = u8"誰要使用";
 inline constexpr std::u8string_view leave_party_title = u8"要求誰離隊";
 inline constexpr std::u8string_view life_points_label = u8"生命點數";
 inline constexpr std::u8string_view poison_level_label = u8"中毒程度";
-inline constexpr std::array<std::u8string_view, 4> status_tab_labels{
+inline constexpr std::array<std::u8string_view, 3> status_tab_labels{
     u8"狀態",
     u8"能力",
-    u8"裝備",
     u8"武功",
 };
 inline constexpr std::u8string_view hurt_status_label = u8"內傷";
@@ -149,15 +153,20 @@ inline constexpr std::u8string_view anti_poison_ability_label = u8"抗毒能力"
 inline constexpr std::u8string_view mp_type_ability_label = u8"內力門路";
 inline constexpr std::u8string_view increased_life_ability_label = u8"生命成長";
 inline constexpr std::u8string_view iq_ability_label = u8"資質";
+inline constexpr std::u8string_view sex_ability_label = u8"性別";
+inline constexpr std::u8string_view knowledge_ability_label = u8"武學常識";
+inline constexpr std::u8string_view status_level_suffix = u8"級";
 inline constexpr std::u8string_view practice_experience_label = u8"修練經驗";
 inline constexpr std::u8string_view practice_required_label = u8"所需經驗";
 inline constexpr std::u8string_view magic_name_header = u8"武功";
 inline constexpr std::u8string_view magic_level_header = u8"等級";
 inline constexpr std::u8string_view magic_proficiency_header = u8"熟練度";
-inline constexpr std::u8string_view hurt_band_light_suffix = u8"（輕傷）";
-inline constexpr std::u8string_view hurt_band_moderate_suffix = u8"（中傷）";
-inline constexpr std::u8string_view hurt_band_severe_suffix = u8"（重傷）";
+inline constexpr std::u8string_view hurt_band_light_suffix = u8"(輕傷)";
+inline constexpr std::u8string_view hurt_band_moderate_suffix = u8"(中傷)";
+inline constexpr std::u8string_view hurt_band_severe_suffix = u8"(重傷)";
 inline constexpr std::u8string_view unknown_value = u8"???";
+inline constexpr std::u8string_view protagonist_location_label = u8"人";
+inline constexpr std::u8string_view ship_location_label = u8"船";
 inline constexpr std::u8string_view use_item_prefix = u8"使用 ";
 inline constexpr std::u8string_view item_increase = u8"提升";
 inline constexpr std::u8string_view item_decrease = u8"減少";
@@ -324,6 +333,8 @@ inline constexpr auto kMaximumPractice = maximum_practice;
 inline constexpr auto kMedicineTargetTitle = medicine_target_title;
 inline constexpr auto kDetoxificationTargetTitle = detoxification_target_title;
 inline constexpr auto kStatusSelectionTitle = status_selection_title;
+inline constexpr auto kStatusSideTitle = status_side_title;
+inline constexpr auto& kStatusSideLabels = status_side_labels;
 inline constexpr auto kEquipmentTargetTitle = equipment_target_title;
 inline constexpr auto kPracticeTargetTitle = practice_target_title;
 inline constexpr auto kItemTargetTitle = item_target_title;
@@ -339,6 +350,9 @@ inline constexpr auto kAntiPoisonAbilityLabel = anti_poison_ability_label;
 inline constexpr auto kMpTypeAbilityLabel = mp_type_ability_label;
 inline constexpr auto kIncreasedLifeAbilityLabel = increased_life_ability_label;
 inline constexpr auto kIqAbilityLabel = iq_ability_label;
+inline constexpr auto kSexAbilityLabel = sex_ability_label;
+inline constexpr auto kKnowledgeAbilityLabel = knowledge_ability_label;
+inline constexpr auto kStatusLevelSuffix = status_level_suffix;
 inline constexpr auto kPracticeExperienceLabel = practice_experience_label;
 inline constexpr auto kPracticeRequiredLabel = practice_required_label;
 inline constexpr auto kMagicNameHeader = magic_name_header;
@@ -348,6 +362,8 @@ inline constexpr auto kHurtBandLightSuffix = hurt_band_light_suffix;
 inline constexpr auto kHurtBandModerateSuffix = hurt_band_moderate_suffix;
 inline constexpr auto kHurtBandSevereSuffix = hurt_band_severe_suffix;
 inline constexpr auto kUnknownValue = unknown_value;
+inline constexpr auto kProtagonistLocationLabel = protagonist_location_label;
+inline constexpr auto kShipLocationLabel = ship_location_label;
 inline constexpr auto kUseItemPrefix = use_item_prefix;
 inline constexpr auto kItemIncrease = item_increase;
 inline constexpr auto kItemDecrease = item_decrease;

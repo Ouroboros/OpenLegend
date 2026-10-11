@@ -94,17 +94,46 @@ public:
             static_cast<std::uint16_t>(width), static_cast<std::uint16_t>(height), palette_);
     }
 
+    // 超出画布的文本裁剪后绘制；字形越界不得让整页渲染失败。
     NODISCARD bool text(
         const int left, const int top, const std::u8string_view value, const render::TextColors colors) {
-        return ui_renderer_.draw_text_utf8(framebuffer_, left, top, value, colors, palette_, kStatusFont);
+        if (top < 0 || top + static_cast<int>(metrics_.line_height) > framebuffer_.logical_height()) {
+            return true;
+        }
+        auto clipped = value;
+        const auto limit = framebuffer_.logical_width();
+        while (!clipped.empty() && left + utf8_width(clipped) > limit) {
+            auto size = clipped.size();
+            while (size > 0U && (static_cast<unsigned char>(clipped[size - 1U]) & 0xC0U) == 0x80U) {
+                --size;
+            }
+            clipped = clipped.substr(0U, size > 0U ? size - 1U : 0U);
+        }
+        return clipped.empty() ||
+            ui_renderer_.draw_text_utf8(framebuffer_, left, top, clipped, colors, palette_, kStatusFont);
     }
 
     NODISCARD bool big5(
         const int left, const int top, const std::span<const std::uint8_t> value,
         const render::TextColors colors) {
-        return value.empty() ||
+        if (top < 0 || top + static_cast<int>(metrics_.line_height) > framebuffer_.logical_height()) {
+            return true;
+        }
+        const auto limit = framebuffer_.logical_width();
+        std::size_t fit = 0U;
+        int width = left;
+        while (fit < value.size() && value[fit] != 0U) {
+            const auto wide = value[fit] >= 0x80U && fit + 1U < value.size();
+            const auto advance = static_cast<int>(wide ? metrics_.big5_width : metrics_.ascii_width);
+            if (width + advance > limit) {
+                break;
+            }
+            width += advance;
+            fit += wide ? 2U : 1U;
+        }
+        return fit == 0U ||
             ui_renderer_.draw_text_big5(
-                framebuffer_, left, top, text::Big5TextView{value}, colors, palette_, kStatusFont);
+                framebuffer_, left, top, text::Big5TextView{value.first(fit)}, colors, palette_, kStatusFont);
     }
 
     NODISCARD bool portrait(const resource::SpriteFrameView& frame, const int left, const int top) {
@@ -166,28 +195,16 @@ NODISCARD bool draw_value_row(
     StatusLayout& layout, int left, int value_x, int top, std::u8string_view label,
     std::u8string_view value, render::TextColors value_colors);
 
-NODISCARD bool draw_centered_columns(
+// Column positions are fixed fractions of the frame so content width never
+// shifts the layout between characters.
+NODISCARD bool draw_two_columns(
     StatusLayout& layout, const ContentArea& area,
     const std::span<const ValueRow> first_column, const std::span<const ValueRow> second_column,
-    const int label_width_first, const int label_width_second) {
-    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(2);
+    const int label_width_first, const int label_width_second,
+    const int first_column_left, const int second_column_left) {
+    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(1);
     const auto gap = layout.length(8);
-    const auto value_width = [&layout](const std::span<const ValueRow> rows) {
-        int width = 0;
-        for (const auto& row : rows) {
-            width = std::max(width, layout.utf8_width(row.value));
-        }
-        return width;
-    };
-    const auto first_width = label_width_first + gap + value_width(first_column);
-    const auto second_width = second_column.empty()
-        ? 0 : label_width_second + gap + value_width(second_column);
-    const auto inter_gap = second_column.empty() ? 0 : layout.length(20);
-    const auto total_width = first_width + inter_gap + second_width;
-    const auto rows = std::max(first_column.size(), second_column.size());
-    const auto total_height = static_cast<int>(rows) * row_step - layout.length(2);
-    const auto left = area.left + std::max(0, (area.right - area.left - total_width) / 2);
-    const auto top = area.top + std::max(0, (area.bottom - area.top - total_height) / 2);
+    const auto top = area.top;
     const auto draw_column = [&](const std::span<const ValueRow> rows_in_column,
                                  const int column_left, const int label_width) {
         for (std::size_t index = 0U; index < rows_in_column.size(); ++index) {
@@ -199,9 +216,9 @@ NODISCARD bool draw_centered_columns(
         }
         return true;
     };
-    return draw_column(first_column, left, label_width_first) &&
+    return draw_column(first_column, first_column_left, label_width_first) &&
         (second_column.empty() ||
-         draw_column(second_column, left + first_width + inter_gap, label_width_second));
+         draw_column(second_column, second_column_left, label_width_second));
 }
 
 NODISCARD bool draw_value_row(
@@ -214,13 +231,11 @@ NODISCARD bool draw_value_row(
 
 NODISCARD bool draw_summary_page(
     const battle::BattleRenderer& data, StatusLayout& layout, const ContentArea& area,
-    const model::RoleState& role, const model::PlaythroughLimits& limits) {
+    const model::RuntimeRangerState& ranger, const model::RoleState& role,
+    const model::PlaythroughLimits& limits) {
     const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
-    if (!hurt.has_value()) {
-        return false;
-    }
-    const auto hurt_colors = *hurt == model::HurtBand::severe ? text_colors::severe_injury
-        : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
+    const auto hurt_colors = hurt == model::HurtBand::severe ? text_colors::severe_injury
+        : hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
     const auto poison_colors = role.poison == 0 ? text_colors::menu_normal
         : role.poison >= 50 ? text_colors::severe_poison : text_colors::poison;
     const auto mp_colors = role.mp_type == 0 ? text_colors::yin_mp
@@ -228,53 +243,114 @@ NODISCARD bool draw_summary_page(
         : role.mp_type == 2 ? text_colors::selected : poison_colors;
 
     const auto* frame = data.portrait_frame(role.head_id);
-    const auto portrait_width = frame != nullptr ? layout.scaled_width(frame->width()) : 0;
     const auto portrait_height = frame != nullptr ? layout.scaled_height(frame->height()) : 0;
     if (frame != nullptr && !layout.portrait(*frame, area.left, area.top)) {
         return false;
     }
-    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(2);
+    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(1);
     const auto big5 = static_cast<int>(layout.metrics().big5_width);
-    const auto gap = layout.length(8);
-    const auto side_left = area.left + portrait_width + layout.length(6);
-    const auto side_value_x = side_left + layout.utf8_width(kLevelLabel) + gap;
+    const auto frame_width = area.right - area.left;
+    const auto side_left = area.left + frame_width * 3 / 10;
     const auto name_storage = role.legacy_name();
-    if (!layout.big5(side_left, area.top, zero_terminated(name_storage), text_colors::selected) ||
-        !draw_value_row(layout, side_left, side_value_x, area.top + row_step, kLevelLabel,
-            decimal_text(role.level), text_colors::notice)) {
+    const auto name = zero_terminated(name_storage);
+    // 姓名与外号排在头像下方两行，数值列顶到页首。
+    const auto name_top = area.top + portrait_height + layout.length(4);
+    auto level_text = decimal_text(role.level);
+    level_text += kStatusLevelSuffix;
+    if (!layout.big5(area.left, name_top, name, text_colors::selected)) {
         return false;
+    }
+    if (!role.nickname.empty() &&
+        !layout.text(area.left, name_top + row_step, role.nickname, text_colors::menu_normal)) {
+        return false;
+    }
+    if (!layout.text(area.left, name_top + 2 * row_step, level_text, text_colors::notice)) {
+        return false;
+    }
+    // 修炼块与装备块同一高度并排：标题、秘笈名、当前/所需经验各一行。
+    const auto item_name = [&ranger](const std::int16_t item_id) {
+        return fixed_text(ranger.items[static_cast<std::size_t>(item_id)].bytes,
+            model::item_word::secondary_name_begin * 2U,
+            model::item_word::secondary_name_count * 2U);
+    };
+    const auto practice_top = area.top + 8 * row_step + layout.length(4);
+    if (!layout.text(side_left, practice_top, kPracticeLabel, text_colors::menu_normal)) {
+        return false;
+    }
+    const auto practice_id = role.practice_item.value;
+    if (practice_id >= 0 && static_cast<std::size_t>(practice_id) < ranger.items.size()) {
+        const auto item_index = static_cast<std::size_t>(practice_id);
+        const auto manual_name = item_name(practice_id);
+        if (!layout.big5(side_left, practice_top + row_step, manual_name, text_colors::notice)) {
+            return false;
+        }
+        // 修炼经验需求算不出来时只显示名字，不让整页失败。
+        const auto cost = model::manual_experience_requirement(
+            role, ranger.items[item_index], item_index, data.practice_rules());
+        if (cost.has_value() &&
+            !layout.text(side_left, practice_top + 2 * row_step,
+                decimal_text(role.item_experience) + std::u8string{kSlash} +
+                    decimal_text(cost->experience),
+                text_colors::notice)) {
+            return false;
+        }
     }
     const auto pair_text = [](const std::int64_t current, const std::u8string& maximum) {
         return decimal_text(current) + std::u8string{kSlash} + maximum;
     };
     const auto next_experience = data.next_level_experience(role.level);
-    const auto below = std::max(area.top + portrait_height, area.top + 2 * row_step) + layout.length(4);
-    const std::array<ValueRow, 5> first_column{{
+    const auto below = area.top;
+    const std::array<ValueRow, 4> first_column{{
         {kLifeLabel, pair_text(role.hp, decimal_text(role.maximum_hp)), hurt_colors},
         {kMpLabel, pair_text(role.mp, decimal_text(role.maximum_mp)), mp_colors},
         {kPowerLabel, pair_text(role.physical_power, std::u8string{kHundred})},
-        {kExperienceLabel, decimal_text(role.experience)},
-        {kUpgradeLabel,
-            next_experience ? decimal_text(*next_experience) : std::u8string{kMaximumLevel}},
+        {kExperienceLabel,
+            next_experience ? pair_text(role.experience, decimal_text(*next_experience))
+                            : decimal_text(role.experience)},
     }};
-    const auto hurt_text = *hurt == model::HurtBand::severe ? kHurtBandSevereSuffix
-        : *hurt == model::HurtBand::moderate ? kHurtBandModerateSuffix
-        : role.hurt > 0 ? kHurtBandLightSuffix : std::u8string_view{};
-    const std::array<ValueRow, 4> second_column{{
+    const auto hurt_text = hurt == model::HurtBand::severe ? kHurtBandSevereSuffix
+        : hurt == model::HurtBand::moderate ? kHurtBandModerateSuffix
+        : hurt.has_value() && role.hurt > 0 ? kHurtBandLightSuffix : std::u8string_view{};
+    // 单列八行：生命到經驗后紧跟内伤、中毒、道德、声望。
+    const std::array<ValueRow, 8> value_rows{{
+        first_column[0], first_column[1], first_column[2], first_column[3],
         {kHurtStatusLabel, decimal_text(role.hurt) + std::u8string{hurt_text}, hurt_colors},
         {kPoisonStatusLabel, decimal_text(role.poison), poison_colors},
         {kMoralityStatusLabel, decimal_text(role.morality)},
         {kFameStatusLabel, decimal_text(role.fame)},
     }};
-    return draw_centered_columns(layout,
-        ContentArea{area.left, area.right, below, area.bottom},
-        first_column, second_column, 2 * big5, 2 * big5);
+    if (!draw_two_columns(layout,
+            ContentArea{side_left, area.right, below, area.bottom},
+            value_rows, std::span<const ValueRow>{}, 2 * big5, 2 * big5,
+            side_left, side_left)) {
+        return false;
+    }
+
+    // 装备块排在左下（头像列），与修炼块同一高度。
+    auto row_y = below + 8 * row_step + layout.length(4);
+    if (!layout.text(area.left, row_y, kEquipmentLabel, text_colors::menu_normal)) {
+        return false;
+    }
+    // 每件装备占一行；空槽保留空行，行位固定。
+    for (std::size_t slot = 0U; slot < role.equipment.size(); ++slot) {
+        row_y += row_step;
+        const auto equipment = role.equipment[slot];
+        if (equipment.value < 0 ||
+            static_cast<std::size_t>(equipment.value) >= ranger.items.size()) {
+            continue;
+        }
+        if (!layout.big5(area.left, row_y,
+                item_name(equipment.value), text_colors::notice)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 NODISCARD bool draw_ability_page(
     const battle::BattleRenderer& data, StatusLayout& layout, const ContentArea& area,
     const model::RuntimeRangerState& ranger, const model::RoleState& role) {
-    std::array<ValueRow, 15> rows{};
+    std::array<ValueRow, 17> rows{};
     const auto abilities = data.character_status_abilities(ranger, role);
     for (std::size_t index = 0U; index < abilities.size(); ++index) {
         rows[index] = {abilities[index].first,
@@ -290,55 +366,18 @@ NODISCARD bool draw_ability_page(
         : ValueRow{kMpTypeAbilityLabel, decimal_text(role.mp_type)};
     rows[13] = {kIncreasedLifeAbilityLabel, decimal_text(role.increased_life)};
     rows[14] = {kIqAbilityLabel, decimal_text(role.iq)};
+    rows[15] = {kKnowledgeAbilityLabel, decimal_text(role.knowledge)};
+    rows[16] = role.sex >= 0 && role.sex < static_cast<std::int64_t>(kSexualLabels.size())
+        ? ValueRow{kSexAbilityLabel,
+              std::u8string{kSexualLabels[static_cast<std::size_t>(role.sex)]}}
+        : ValueRow{kSexAbilityLabel, decimal_text(role.sex)};
 
     const auto big5 = static_cast<int>(layout.metrics().big5_width);
-    return draw_centered_columns(layout, area,
-        std::span<const ValueRow>{rows}.first(8U), std::span<const ValueRow>{rows}.subspan(8U),
-        4 * big5, 4 * big5);
-}
-
-NODISCARD bool draw_equipment_page(
-    const battle::BattleRenderer& data, StatusLayout& layout, const ContentArea& area,
-    const model::RuntimeRangerState& ranger, const model::RoleState& role) {
-    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(2);
-    const auto indent = area.left + layout.length(12);
-    const auto item_name = [&](const std::int16_t item_id) {
-        return fixed_text(ranger.items[static_cast<std::size_t>(item_id)].bytes,
-            model::item_word::secondary_name_begin * 2U, model::item_word::secondary_name_count * 2U);
-    };
-    if (!layout.text(area.left, area.top, kEquipmentLabel, text_colors::menu_normal)) {
-        return false;
-    }
-    auto row = area.top + row_step;
-    for (const auto equipment : role.equipment) {
-        if (equipment.value >= 0 && static_cast<std::size_t>(equipment.value) < ranger.items.size() &&
-            !layout.big5(indent, row, item_name(equipment.value), text_colors::notice)) {
-            return false;
-        }
-        row += row_step;
-    }
-    row += layout.length(4);
-    if (!layout.text(area.left, row, kPracticeLabel, text_colors::menu_normal)) {
-        return false;
-    }
-    row += row_step;
-    const auto practice_id = role.practice_item.value;
-    if (practice_id < 0 || static_cast<std::size_t>(practice_id) >= ranger.items.size()) {
-        return true;
-    }
-    const auto item_index = static_cast<std::size_t>(practice_id);
-    const auto cost = model::manual_experience_requirement(
-        role, ranger.items[item_index], item_index, data.practice_rules());
-    if (!cost.has_value()) {
-        return false;
-    }
-    const auto value_x = area.left + 4 * static_cast<int>(layout.metrics().big5_width) +
-        layout.length(8);
-    return layout.big5(indent, row, item_name(practice_id), text_colors::notice) &&
-        draw_value_row(layout, area.left, value_x, row + row_step, kPracticeExperienceLabel,
-            decimal_text(role.item_experience), text_colors::notice) &&
-        draw_value_row(layout, area.left, value_x, row + 2 * row_step, kPracticeRequiredLabel,
-            decimal_text(cost->experience), text_colors::notice);
+    const auto frame_width = area.right - area.left;
+    return draw_two_columns(layout, area,
+        std::span<const ValueRow>{rows}.first(9U), std::span<const ValueRow>{rows}.subspan(9U),
+        4 * big5, 4 * big5,
+        area.left + frame_width * 3 / 16, area.left + frame_width * 9 / 16);
 }
 
 NODISCARD bool draw_magic_page(
@@ -368,21 +407,12 @@ NODISCARD bool draw_magic_page(
     constexpr auto kNameHeader = kMagicNameHeader;
     constexpr auto kLevelHeader = kMagicLevelHeader;
     constexpr auto kProficiencyHeader = kMagicProficiencyHeader;
-    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(2);
-    const auto gap = layout.length(12);
-    auto name_width = layout.utf8_width(kNameHeader);
-    auto level_width = layout.utf8_width(kLevelHeader);
-    auto proficiency_width = layout.utf8_width(kProficiencyHeader);
-    for (std::size_t index = 0U; index < count; ++index) {
-        name_width = std::max(name_width, layout.big5_width(rows[index].name));
-        level_width = std::max(level_width, layout.utf8_width(rows[index].level));
-        proficiency_width = std::max(proficiency_width, layout.utf8_width(rows[index].proficiency));
-    }
-    const auto total_width = name_width + gap + level_width + gap + proficiency_width;
-    const auto left = area.left + std::max(0, (area.right - area.left - total_width) / 2);
+    const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(1);
+    const auto width = area.right - area.left;
+    const auto left = area.left + width / 8;
+    const auto level_x = area.left + width * 5 / 12;
+    const auto proficiency_x = area.left + width * 7 / 12;
     const auto top = area.top;
-    const auto level_x = left + name_width + gap;
-    const auto proficiency_x = level_x + level_width + gap;
     if (!layout.text(left, top, kNameHeader, text_colors::menu_normal) ||
         !layout.text(level_x, top, kLevelHeader, text_colors::menu_normal) ||
         !layout.text(proficiency_x, top, kProficiencyHeader, text_colors::menu_normal)) {
@@ -406,14 +436,14 @@ bool render_character_status_page(
     ui::ModernUiRenderer& ui_renderer,
     const compat::LegacyPalette& palette,
     const model::RuntimeRangerState& ranger,
-    const std::span<const std::uint8_t> party_slots,
+    const std::span<const model::RoleState* const> roles,
     const std::size_t cursor,
     const std::uint8_t page,
     const model::PlaythroughLimits& limits,
     render::RgbaFramebuffer& framebuffer) {
     const auto viewport = render::fit_legacy_reference_viewport(
         framebuffer.logical_width(), framebuffer.logical_height());
-    if (!viewport.valid() || party_slots.empty() || cursor >= party_slots.size() ||
+    if (!viewport.valid() || roles.empty() || cursor >= roles.size() ||
         page >= kCharacterStatusPageCount) {
         return false;
     }
@@ -421,18 +451,12 @@ bool render_character_status_page(
     const auto line = static_cast<int>(layout.metrics().line_height);
     const auto padding = layout.length(6);
 
-    std::array<std::int16_t, model::kTeamMemberCount> role_ids{};
     int name_width = 3 * static_cast<int>(layout.metrics().big5_width);
-    for (std::size_t index = 0U; index < party_slots.size(); ++index) {
-        if (party_slots[index] >= model::kTeamMemberCount) {
+    for (const auto* candidate : roles) {
+        if (candidate == nullptr) {
             return false;
         }
-        const auto role_id = ranger.header.team_member(party_slots[index]).value;
-        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
-            return false;
-        }
-        role_ids[index] = role_id;
-        const auto name = ranger.roles[static_cast<std::size_t>(role_id)].legacy_name();
+        const auto name = candidate->legacy_name();
         name_width = std::max(name_width, layout.big5_width(zero_terminated(name)));
     }
 
@@ -440,12 +464,12 @@ bool render_character_status_page(
     const auto top = layout.y(2);
     const auto list_step = line + layout.length(4);
     const auto list_width = name_width + 2 * padding;
-    const auto list_height = static_cast<int>(party_slots.size()) * list_step - layout.length(4) + 2 * padding;
+    const auto list_height = static_cast<int>(roles.size()) * list_step - layout.length(4) + 2 * padding;
     if (!layout.box(list_left, top, list_width, list_height)) {
         return false;
     }
-    for (std::size_t index = 0U; index < party_slots.size(); ++index) {
-        const auto name = ranger.roles[static_cast<std::size_t>(role_ids[index])].legacy_name();
+    for (std::size_t index = 0U; index < roles.size(); ++index) {
+        const auto name = roles[index]->legacy_name();
         if (!layout.big5(list_left + padding, top + padding + static_cast<int>(index) * list_step,
                 zero_terminated(name), index == cursor ? text_colors::selected : text_colors::menu_normal)) {
             return false;
@@ -474,11 +498,10 @@ bool render_character_status_page(
 
     const ContentArea area{panel_left + padding, panel_right - padding,
         tab_top + tab_height + padding, panel_bottom - padding};
-    const auto& role = ranger.roles[static_cast<std::size_t>(role_ids[cursor])];
+    const auto& role = *roles[cursor];
     switch (page) {
-    case 0U: return draw_summary_page(data, layout, area, role, limits);
+    case 0U: return draw_summary_page(data, layout, area, ranger, role, limits);
     case 1U: return draw_ability_page(data, layout, area, ranger, role);
-    case 2U: return draw_equipment_page(data, layout, area, ranger, role);
     default: return draw_magic_page(layout, area, ranger, role);
     }
 }

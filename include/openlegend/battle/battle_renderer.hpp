@@ -70,6 +70,9 @@ public:
         const model::PlaythroughLimits& limits,
         std::optional<std::int16_t> item_id = std::nullopt);
 
+    NODISCARD bool render_status_side_selection(
+        std::size_t cursor, render::IndexedFramebuffer& framebuffer);
+
     NODISCARD bool render_character_status_selection(
         const model::RuntimeRangerState& ranger,
         std::size_t cursor,

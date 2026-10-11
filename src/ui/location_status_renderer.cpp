@@ -5,9 +5,11 @@
 #include <array>
 #include <charconv>
 #include <cstddef>
+#include <string>
 
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/text/big5.hpp"
+#include "openlegend/text/game_strings.hpp"
 #include "openlegend/ui/modern_ui_renderer.hpp"
 
 namespace openlegend::ui {
@@ -47,7 +49,8 @@ bool LocationStatusRenderer::render(
     const int location_y,
     const compat::LegacyPalette& palette,
     ModernUiRenderer& ui_renderer,
-    render::RgbaFramebuffer& framebuffer) const {
+    render::RgbaFramebuffer& framebuffer,
+    const std::optional<std::pair<int, int>> ship_position) const {
     if (!ui_renderer.valid()) {
         return false;
     }
@@ -89,10 +92,70 @@ bool LocationStatusRenderer::render(
         framebuffer.logical_width());
     const auto bottom = kLocationStatusBottomInset.resolve(
         framebuffer.logical_height());
+    const auto line_height = static_cast<int>(metrics.line_height);
+    const auto line_gap = std::max(1, line_height / 4);
+    auto line_top = framebuffer.logical_height() - bottom - line_height;
+    if (ship_position.has_value()) {
+        const auto labelled_line = [](const std::u8string_view label,
+                                      const int x,
+                                      const int y) -> std::optional<std::u8string> {
+            std::u8string line{label};
+            line += u8' ';
+            const auto append_value = [&line](const int value) {
+                std::array<char, 16> digits{};
+                const auto converted = std::to_chars(
+                    digits.data(), digits.data() + digits.size(), value);
+                if (converted.ec != std::errc{}) {
+                    return false;
+                }
+                for (const auto* cursor = digits.data(); cursor != converted.ptr; ++cursor) {
+                    line += static_cast<char8_t>(*cursor);
+                }
+                return true;
+            };
+            if (!append_value(x)) {
+                return std::nullopt;
+            }
+            line += u8',';
+            if (!append_value(y)) {
+                return std::nullopt;
+            }
+            return line;
+        };
+        const auto ship_line = labelled_line(
+            text::game_strings::kShipLocationLabel,
+            ship_position->first,
+            ship_position->second);
+        if (!ship_line.has_value() ||
+            !ui_renderer.draw_text_utf8(
+                framebuffer,
+                left,
+                line_top,
+                *ship_line,
+                text_colors::location_status,
+                palette,
+                kLocationStatusFontSize)) {
+            return false;
+        }
+        line_top -= line_height + line_gap;
+        if (legacy_name.empty()) {
+            const auto protagonist_line = labelled_line(
+                text::game_strings::kProtagonistLocationLabel, location_x, location_y);
+            return protagonist_line.has_value() &&
+                ui_renderer.draw_text_utf8(
+                    framebuffer,
+                    left,
+                    line_top,
+                    *protagonist_line,
+                    text_colors::location_status,
+                    palette,
+                    kLocationStatusFontSize);
+        }
+    }
     return ui_renderer.draw_text_big5(
         framebuffer,
         left,
-        framebuffer.logical_height() - bottom - metrics.line_height,
+        line_top,
         text::Big5TextView{std::span<const std::uint8_t>{status}.first(length)},
         text_colors::location_status,
         palette,

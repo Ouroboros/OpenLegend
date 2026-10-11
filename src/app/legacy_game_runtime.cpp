@@ -2120,15 +2120,23 @@ bool LegacyGameRuntime::render_modern_ui(
     }
     const auto& palette = framebuffer_.palette();
     switch (view_) {
-    case LegacyGameView::world:
-        return world_session_ != nullptr &&
-            location_status_renderer_.render(
-                std::span<const std::uint8_t>{},
-                world_session_->world_x(),
-                world_session_->world_y(),
-                palette,
-                modern_ui_renderer_,
-                framebuffer);
+    case LegacyGameView::world: {
+        if (world_session_ == nullptr) {
+            return false;
+        }
+        const auto ship_x = world_session_->ship_world_x();
+        const auto ship_y = world_session_->ship_world_y();
+        return location_status_renderer_.render(
+            std::span<const std::uint8_t>{},
+            world_session_->world_x(),
+            world_session_->world_y(),
+            palette,
+            modern_ui_renderer_,
+            framebuffer,
+            ship_x > 0 && ship_y > 0
+                ? std::optional{std::pair{ship_x, ship_y}}
+                : std::nullopt);
+    }
     case LegacyGameView::scene:
         if (scene_death_menu_active_) {
             if (load_transition_phase_ != LoadTransitionPhase::none ||
@@ -2227,9 +2235,13 @@ bool LegacyGameRuntime::render_modern_ui(
             save_list_renderer_.render_io_wait(
                 palette, modern_ui_renderer_, framebuffer);
     }
+    case LegacyGameView::battle:
+        if (battle_session_ != nullptr && battle_session_->player_status_page_active()) {
+            return render_battle_character_status_view(framebuffer);
+        }
+        return true;
     case LegacyGameView::name_entry:
     case LegacyGameView::attributes:
-    case LegacyGameView::battle:
     case LegacyGameView::error:
     case LegacyGameView::exited:
         return true;
@@ -3311,7 +3323,11 @@ void LegacyGameRuntime::refresh_completion_list(const std::uint16_t page) {
     }
 }
 
-bool LegacyGameRuntime::render_character_status_view(render::RgbaFramebuffer& framebuffer) {
+bool LegacyGameRuntime::render_status_page_overlay(
+    const std::span<const model::RoleState* const> roles,
+    const std::size_t cursor,
+    const std::uint8_t page,
+    render::RgbaFramebuffer& framebuffer) {
     const auto* ranger = game_state_.ranger();
     const auto* snapshot = game_state_.snapshot();
     if (ranger == nullptr || snapshot == nullptr) {
@@ -3328,16 +3344,59 @@ bool LegacyGameRuntime::render_character_status_view(render::RgbaFramebuffer& fr
     if (!game_menu_status_renderer_->valid()) {
         return false;
     }
+    if (!render_character_status_page(
+            *game_menu_status_renderer_,
+            modern_ui_renderer_,
+            framebuffer_.palette(),
+            *ranger,
+            roles,
+            cursor,
+            page,
+            *limits,
+            framebuffer)) {
+        // 状态页绘制失败只记录错误，不让渲染链把游戏杀掉。
+        diagnostics::log_error(
+            "character status page render failed cursor=" + std::to_string(cursor) +
+            " page=" + std::to_string(page));
+    }
+    return true;
+}
+
+bool LegacyGameRuntime::render_character_status_view(render::RgbaFramebuffer& framebuffer) {
+    const auto* ranger = game_state_.ranger();
+    if (ranger == nullptr) {
+        return false;
+    }
     game_menu_.set_status_page_count(kCharacterStatusPageCount);
-    return render_character_status_page(
-        *game_menu_status_renderer_,
-        modern_ui_renderer_,
-        framebuffer_.palette(),
-        *ranger,
-        game_menu_.party_options(),
+    std::array<const model::RoleState*, model::kTeamMemberCount> roles{};
+    std::size_t count = 0U;
+    for (const auto slot : game_menu_.party_options()) {
+        if (slot >= model::kTeamMemberCount) {
+            return false;
+        }
+        const auto role_id = ranger->header.team_member(slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger->roles.size()) {
+            return false;
+        }
+        roles[count++] = &ranger->roles[static_cast<std::size_t>(role_id)];
+    }
+    return render_status_page_overlay(
+        std::span<const model::RoleState* const>{roles}.first(count),
         game_menu_.party_selection(),
         game_menu_.status_page(),
-        *limits,
+        framebuffer);
+}
+
+bool LegacyGameRuntime::render_battle_character_status_view(
+    render::RgbaFramebuffer& framebuffer) {
+    if (battle_session_ == nullptr) {
+        return false;
+    }
+    const auto roles = battle_session_->player_status_role_states();
+    return render_status_page_overlay(
+        roles,
+        battle_session_->player_status_cursor(),
+        battle_session_->player_status_page(),
         framebuffer);
 }
 

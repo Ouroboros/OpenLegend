@@ -305,6 +305,12 @@ public:
 
     NODISCARD std::uint8_t player_status_page() const noexcept;
 
+    NODISCARD std::size_t player_status_party_count() const noexcept;
+
+    NODISCARD bool player_status_page_active() const noexcept;
+
+    NODISCARD std::vector<const model::RoleState*> player_status_role_states() const;
+
     NODISCARD std::optional<BattlePathCoord> active_cursor() const noexcept {
         return player_cursor_selection_.has_value()
             ? std::optional<BattlePathCoord>{player_cursor_selection_->cursor}
@@ -560,6 +566,9 @@ private:
     NODISCARD bool render_player_item_effect(
         render::IndexedFramebuffer& framebuffer);
 
+    NODISCARD std::vector<std::pair<std::int16_t, const model::RoleState*>>
+    status_side_entries(std::int16_t side) const;
+
     NODISCARD bool render_player_status_selection(
         render::IndexedFramebuffer& framebuffer);
 
@@ -608,6 +617,7 @@ private:
     struct PlayerStatusState {
         std::size_t party_count{};
         std::size_t cursor{};
+        std::int16_t side{0};
         std::int16_t role_id{-1};
         std::uint8_t page{};
     };

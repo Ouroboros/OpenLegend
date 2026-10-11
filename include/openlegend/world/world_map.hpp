@@ -218,6 +218,10 @@ public:
 
     NODISCARD int world_y() const noexcept { return world_y_; }
 
+    NODISCARD int ship_world_x() const noexcept { return ship_x_; }
+
+    NODISCARD int ship_world_y() const noexcept { return ship_y_; }
+
     NODISCARD int cache_x() const noexcept { return world_x_ - cache_.origin_x(); }
 
     NODISCARD int cache_y() const noexcept { return world_y_ - cache_.origin_y(); }
