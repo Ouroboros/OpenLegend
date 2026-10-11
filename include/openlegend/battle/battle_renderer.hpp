@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -96,6 +97,18 @@ public:
         std::uint8_t page,
         render::IndexedFramebuffer& framebuffer,
         const model::PlaythroughLimits& limits);
+
+    NODISCARD std::array<std::pair<std::u8string_view, std::optional<std::int64_t>>, 11>
+    character_status_abilities(
+        const model::RuntimeRangerState& ranger, const model::RoleState& role) const;
+
+    NODISCARD const resource::SpriteFrameView* portrait_frame(std::int16_t portrait_id) const;
+
+    NODISCARD std::optional<std::int64_t> next_level_experience(std::int64_t level) const;
+
+    NODISCARD const model::PracticeRules& practice_rules() const noexcept {
+        return practice_rules_;
+    }
 
     NODISCARD bool render_item_effect(
         const model::RuntimeRangerState& ranger,

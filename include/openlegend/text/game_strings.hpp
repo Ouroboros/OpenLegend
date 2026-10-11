@@ -135,6 +135,29 @@ inline constexpr std::u8string_view item_target_title = u8"誰要使用";
 inline constexpr std::u8string_view leave_party_title = u8"要求誰離隊";
 inline constexpr std::u8string_view life_points_label = u8"生命點數";
 inline constexpr std::u8string_view poison_level_label = u8"中毒程度";
+inline constexpr std::array<std::u8string_view, 4> status_tab_labels{
+    u8"狀態",
+    u8"能力",
+    u8"裝備",
+    u8"武功",
+};
+inline constexpr std::u8string_view hurt_status_label = u8"內傷";
+inline constexpr std::u8string_view poison_status_label = u8"中毒";
+inline constexpr std::u8string_view morality_status_label = u8"道德";
+inline constexpr std::u8string_view fame_status_label = u8"聲望";
+inline constexpr std::u8string_view anti_poison_ability_label = u8"抗毒能力";
+inline constexpr std::u8string_view mp_type_ability_label = u8"內力門路";
+inline constexpr std::u8string_view increased_life_ability_label = u8"生命成長";
+inline constexpr std::u8string_view iq_ability_label = u8"資質";
+inline constexpr std::u8string_view practice_experience_label = u8"修練經驗";
+inline constexpr std::u8string_view practice_required_label = u8"所需經驗";
+inline constexpr std::u8string_view magic_name_header = u8"武功";
+inline constexpr std::u8string_view magic_level_header = u8"等級";
+inline constexpr std::u8string_view magic_proficiency_header = u8"熟練度";
+inline constexpr std::u8string_view hurt_band_light_suffix = u8"（輕傷）";
+inline constexpr std::u8string_view hurt_band_moderate_suffix = u8"（中傷）";
+inline constexpr std::u8string_view hurt_band_severe_suffix = u8"（重傷）";
+inline constexpr std::u8string_view unknown_value = u8"???";
 inline constexpr std::u8string_view use_item_prefix = u8"使用 ";
 inline constexpr std::u8string_view item_increase = u8"提升";
 inline constexpr std::u8string_view item_decrease = u8"減少";
@@ -307,6 +330,24 @@ inline constexpr auto kItemTargetTitle = item_target_title;
 inline constexpr auto kLeavePartyTitle = leave_party_title;
 inline constexpr auto kLifePointsLabel = life_points_label;
 inline constexpr auto kPoisonLevelLabel = poison_level_label;
+inline constexpr auto& kStatusTabLabels = status_tab_labels;
+inline constexpr auto kHurtStatusLabel = hurt_status_label;
+inline constexpr auto kPoisonStatusLabel = poison_status_label;
+inline constexpr auto kMoralityStatusLabel = morality_status_label;
+inline constexpr auto kFameStatusLabel = fame_status_label;
+inline constexpr auto kAntiPoisonAbilityLabel = anti_poison_ability_label;
+inline constexpr auto kMpTypeAbilityLabel = mp_type_ability_label;
+inline constexpr auto kIncreasedLifeAbilityLabel = increased_life_ability_label;
+inline constexpr auto kIqAbilityLabel = iq_ability_label;
+inline constexpr auto kPracticeExperienceLabel = practice_experience_label;
+inline constexpr auto kPracticeRequiredLabel = practice_required_label;
+inline constexpr auto kMagicNameHeader = magic_name_header;
+inline constexpr auto kMagicLevelHeader = magic_level_header;
+inline constexpr auto kMagicProficiencyHeader = magic_proficiency_header;
+inline constexpr auto kHurtBandLightSuffix = hurt_band_light_suffix;
+inline constexpr auto kHurtBandModerateSuffix = hurt_band_moderate_suffix;
+inline constexpr auto kHurtBandSevereSuffix = hurt_band_severe_suffix;
+inline constexpr auto kUnknownValue = unknown_value;
 inline constexpr auto kUseItemPrefix = use_item_prefix;
 inline constexpr auto kItemIncrease = item_increase;
 inline constexpr auto kItemDecrease = item_decrease;

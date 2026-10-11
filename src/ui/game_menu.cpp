@@ -149,13 +149,19 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         return {};
     }
     if (screen_ == GameMenuScreen::status_panel) {
-        if (translated_key != 0U) {
-            if (status_page_ + 1U < status_page_count_) {
-                ++status_page_;
-            } else {
-                screen_ = GameMenuScreen::main;
-                status_page_ = 0U;
-            }
+        if (translated_key == input::legacy_key::down) {
+            move_down(party_selection_, party_option_count_);
+        } else if (translated_key == input::legacy_key::up) {
+            move_up(party_selection_, party_option_count_);
+        } else if (translated_key == input::legacy_key::right) {
+            status_page_ = static_cast<std::uint8_t>((status_page_ + 1U) % status_page_count_);
+        } else if (translated_key == input::legacy_key::left) {
+            status_page_ = status_page_ == 0U
+                ? static_cast<std::uint8_t>(status_page_count_ - 1U)
+                : static_cast<std::uint8_t>(status_page_ - 1U);
+        } else if (translated_key == input::legacy_key::escape || confirms(translated_key)) {
+            screen_ = GameMenuScreen::main;
+            status_page_ = 0U;
         }
         return {};
     }
@@ -400,7 +406,10 @@ GameMenuResult GameMenuController::confirm_main() noexcept {
         pending_party_command_ = GameMenuCommand::status;
         set_all_party_options();
         party_stage_ = GameMenuPartyStage::direct;
-        break;
+        party_selection_ = 0U;
+        status_page_ = 0U;
+        screen_ = GameMenuScreen::status_panel;
+        return {};
     case 4U:
         pending_party_command_ = GameMenuCommand::leave_party;
         set_all_party_options();

@@ -1251,6 +1251,33 @@ bool BattleRenderer::draw_text_big5(
         colors);
 }
 
+std::array<std::pair<std::u8string_view, std::optional<std::int64_t>>, 11>
+BattleRenderer::character_status_abilities(
+    const model::RuntimeRangerState& ranger, const model::RoleState& role) const {
+    const auto fields = character_status_fields(ranger, role);
+    std::array<std::pair<std::u8string_view, std::optional<std::int64_t>>, 11> result{};
+    for (std::size_t index = 0U; index < fields.size(); ++index) {
+        result[index] = {fields[index].label, fields[index].value};
+    }
+    return result;
+}
+
+const resource::SpriteFrameView* BattleRenderer::portrait_frame(
+    const std::int16_t portrait_id) const {
+    if (portrait_id < 0 || static_cast<std::size_t>(portrait_id) >= portraits_.entry_count()) {
+        return nullptr;
+    }
+    return archive_frame(
+        portraits_, portrait_frame_cache_, static_cast<std::size_t>(portrait_id));
+}
+
+std::optional<std::int64_t> BattleRenderer::next_level_experience(
+    const std::int64_t level) const {
+    const auto next_level = model::checked_add(level, 1);
+    return next_level
+        ? model::level_experience_requirement(experience_thresholds_, *next_level) : std::nullopt;
+}
+
 bool BattleRenderer::draw_portrait(
     render::IndexedFramebuffer& framebuffer,
     const std::int16_t portrait_id,

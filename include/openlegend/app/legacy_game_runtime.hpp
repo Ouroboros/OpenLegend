@@ -451,6 +451,8 @@ private:
 
     NODISCARD bool render_title_view();
 
+    NODISCARD bool render_character_status_view(render::RgbaFramebuffer& framebuffer);
+
     void set_view(LegacyGameView view, std::string_view reason);
 
     void show_error(std::string message, LegacyGameView return_view);

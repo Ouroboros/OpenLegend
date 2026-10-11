@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <ctime>
 #include <iterator>
 #include <limits>
@@ -22,6 +23,7 @@
 #include "openlegend/render/rgba_fade.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
+#include "character_status_page.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -47,6 +49,65 @@ NODISCARD std::vector<std::uint8_t> legacy_field(
     const auto field = bytes.subspan(begin, maximum);
     const auto end = std::find(field.begin(), field.end(), std::uint8_t{0U});
     return std::vector<std::uint8_t>(field.begin(), end);
+}
+
+NODISCARD std::string local_save_time(const std::string& timestamp_utc) {
+    const auto utc_fallback = [&timestamp_utc] {
+        auto text = timestamp_utc.size() >= 16U ? timestamp_utc.substr(5U, 11U) : timestamp_utc;
+        if (text.size() >= 6U) {
+            text[5U] = ' ';
+        }
+        return text + 'Z';
+    };
+    const auto field = [&timestamp_utc](const std::size_t begin, const std::size_t count) {
+        int value = 0;
+        for (std::size_t offset = 0U; offset < count; ++offset) {
+            const auto digit = timestamp_utc[begin + offset];
+            if (digit < '0' || digit > '9') {
+                return -1;
+            }
+            value = value * 10 + (digit - '0');
+        }
+        return value;
+    };
+    if (timestamp_utc.size() < 20U || timestamp_utc[4U] != '-' || timestamp_utc[7U] != '-' ||
+        timestamp_utc[10U] != 'T' || timestamp_utc[13U] != ':' || timestamp_utc[16U] != ':' ||
+        timestamp_utc[19U] != 'Z') {
+        return utc_fallback();
+    }
+    std::tm utc{};
+    utc.tm_year = field(0U, 4U) - 1900;
+    utc.tm_mon = field(5U, 2U) - 1;
+    utc.tm_mday = field(8U, 2U);
+    utc.tm_hour = field(11U, 2U);
+    utc.tm_min = field(14U, 2U);
+    utc.tm_sec = field(17U, 2U);
+    if (utc.tm_year < 0 || utc.tm_mon < 0 || utc.tm_mday <= 0 || utc.tm_hour < 0 ||
+        utc.tm_min < 0 || utc.tm_sec < 0) {
+        return utc_fallback();
+    }
+#if defined(_WIN32)
+    const auto stamp = _mkgmtime(&utc);
+#else
+    const auto stamp = timegm(&utc);
+#endif
+    if (stamp == static_cast<std::time_t>(-1)) {
+        return utc_fallback();
+    }
+    std::tm local{};
+#if defined(_WIN32)
+    if (localtime_s(&local, &stamp) != 0) {
+        return utc_fallback();
+    }
+#else
+    if (localtime_r(&stamp, &local) == nullptr) {
+        return utc_fallback();
+    }
+#endif
+    std::array<char, 16U> buffer{};
+    std::snprintf(buffer.data(), buffer.size(), "%02d-%02d %02d:%02d",
+        local.tm_mon + 1, local.tm_mday, local.tm_hour, local.tm_min);
+    return buffer.data();
 }
 
 template<class Ranger>
@@ -1015,6 +1076,7 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
         switch (screen) {
         case ui::GameMenuScreen::main:
         case ui::GameMenuScreen::party_select:
+        case ui::GameMenuScreen::status_panel:
         case ui::GameMenuScreen::items:
         case ui::GameMenuScreen::system:
             return DirectionRepeatContext::menu;
@@ -1022,7 +1084,6 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
         case ui::GameMenuScreen::save_slots:
             return DirectionRepeatContext::save_list;
         case ui::GameMenuScreen::party_notice:
-        case ui::GameMenuScreen::status_panel:
         case ui::GameMenuScreen::item_confirmation:
         case ui::GameMenuScreen::item_effect:
         case ui::GameMenuScreen::notice:
@@ -1921,12 +1982,12 @@ bool LegacyGameRuntime::render() {
             game_menu_.screen() == ui::GameMenuScreen::party_select;
         const auto exact_party_notice =
             game_menu_.screen() == ui::GameMenuScreen::party_notice;
-        const auto exact_status_page =
-            game_menu_.screen() == ui::GameMenuScreen::status_panel;
+        if (game_menu_.screen() == ui::GameMenuScreen::status_panel) {
+            return true;
+        }
         const auto exact_item_effect =
             game_menu_.screen() == ui::GameMenuScreen::item_effect;
-        if (exact_party_selection || exact_party_notice || exact_status_page ||
-            exact_item_effect) {
+        if (exact_party_selection || exact_party_notice || exact_item_effect) {
             const auto* snapshot = game_state_.snapshot();
             if (snapshot == nullptr) {
                 return false;
@@ -2012,19 +2073,6 @@ bool LegacyGameRuntime::render() {
                         *pending_menu_item_id_,
                         *pending_menu_item_effect_,
                         framebuffer_)) {
-                    return false;
-                }
-            } else {
-                const auto role_id = ranger->header.team_member(
-                    game_menu_.selected_party_slot()).value;
-                game_menu_.set_status_page_count(
-                    game_menu_status_renderer_->character_status_page_count(*ranger, role_id));
-                if (!game_menu_status_renderer_->render_character_status(
-                        *ranger,
-                        role_id,
-                        game_menu_.status_page(),
-                        framebuffer_,
-                        *limits)) {
                     return false;
                 }
             }
@@ -2145,6 +2193,9 @@ bool LegacyGameRuntime::render_modern_ui(
     }
     case LegacyGameView::game_menu: {
         const auto screen = game_menu_.screen();
+        if (screen == ui::GameMenuScreen::status_panel) {
+            return render_character_status_view(framebuffer);
+        }
         const bool delete_confirmation =
             screen == ui::GameMenuScreen::delete_confirmation;
         const bool save_list = screen == ui::GameMenuScreen::load_slots ||
@@ -3166,9 +3217,7 @@ void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {
             entry.protagonist_name = legacy_field(name, 0U, name.size());
             entry.level = protagonist.level;
             entry.location = save_location(loaded.snapshot->ranger);
-            entry.saved_at = loaded.metadata->timestamp_utc.substr(5U, 11U);
-            entry.saved_at[5U] = ' ';
-            entry.saved_at += 'Z';
+            entry.saved_at = local_save_time(loaded.metadata->timestamp_utc);
             continue;
         }
         const auto files = persistence::numbered_file_set(
@@ -3258,10 +3307,38 @@ void LegacyGameRuntime::refresh_completion_list(const std::uint16_t page) {
         entry.level = actor.level;
         const auto playthrough = std::to_string(loaded.save->snapshot.playthrough);
         entry.location.append_utf8(std::u8string{playthrough.begin(), playthrough.end()});
-        entry.saved_at = loaded.save->metadata.timestamp_utc.substr(5U, 11U);
-        entry.saved_at[5U] = ' ';
-        entry.saved_at += 'Z';
+        entry.saved_at = local_save_time(loaded.save->metadata.timestamp_utc);
     }
+}
+
+bool LegacyGameRuntime::render_character_status_view(render::RgbaFramebuffer& framebuffer) {
+    const auto* ranger = game_state_.ranger();
+    const auto* snapshot = game_state_.snapshot();
+    if (ranger == nullptr || snapshot == nullptr) {
+        return false;
+    }
+    const auto limits = model::calculate_playthrough_limits(
+        snapshot->configuration, snapshot->playthrough);
+    if (!limits.has_value()) {
+        return false;
+    }
+    if (game_menu_status_renderer_ == nullptr) {
+        game_menu_status_renderer_ = std::make_unique<battle::BattleRenderer>(data_root_, 0);
+    }
+    if (!game_menu_status_renderer_->valid()) {
+        return false;
+    }
+    game_menu_.set_status_page_count(kCharacterStatusPageCount);
+    return render_character_status_page(
+        *game_menu_status_renderer_,
+        modern_ui_renderer_,
+        framebuffer_.palette(),
+        *ranger,
+        game_menu_.party_options(),
+        game_menu_.party_selection(),
+        game_menu_.status_page(),
+        *limits,
+        framebuffer);
 }
 
 bool LegacyGameRuntime::render_title_view() {

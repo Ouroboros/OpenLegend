@@ -179,7 +179,12 @@ public:
 
     NODISCARD constexpr std::uint8_t status_page() const noexcept { return status_page_; }
 
-    void set_status_page_count(std::uint8_t count) noexcept { status_page_count_ = count; }
+    void set_status_page_count(std::uint8_t count) noexcept {
+        status_page_count_ = count == 0U ? std::uint8_t{1U} : count;
+        if (status_page_ >= status_page_count_) {
+            status_page_ = static_cast<std::uint8_t>(status_page_count_ - 1U);
+        }
+    }
 
     NODISCARD constexpr std::uint8_t system_selection() const noexcept {
         return system_selection_;
