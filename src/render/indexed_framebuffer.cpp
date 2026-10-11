@@ -233,6 +233,14 @@ IndexedFramebuffer::native_coordinate_space() const noexcept {
         IndexedViewport{0, 0, pixel_width_, pixel_height_}};
 }
 
+bool IndexedFramebuffer::native_coordinates_active() const noexcept {
+    const auto& destination = coordinate_space_.destination;
+    return coordinate_space_.source_width == pixel_width_ &&
+        coordinate_space_.source_height == pixel_height_ &&
+        destination.x == 0 && destination.y == 0 &&
+        destination.width == pixel_width_ && destination.height == pixel_height_;
+}
+
 IndexedFramebuffer::CoordinateSpace
 IndexedFramebuffer::legacy_ui_coordinate_space() const noexcept {
     return {width, height, legacy_ui_viewport()};

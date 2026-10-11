@@ -1,7 +1,10 @@
 #include "openlegend/render/indexed_layer.hpp"
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cstddef>
+#include <cstring>
 #include <limits>
 #include <new>
 
@@ -96,21 +99,29 @@ bool convert_indexed_layer_to_rgba(
             compat::kModernRgbaBytesPerPixel) {
         return false;
     }
-    for (const auto color : layer.palette()) {
+    std::array<std::uint32_t, compat::kLegacyPaletteSize> expanded_palette{};
+    for (std::size_t index = 0U; index < layer.palette().size(); ++index) {
+        const auto color = layer.palette()[index];
         if (!color.valid()) {
             return false;
         }
+        const auto red = static_cast<std::uint32_t>(compat::expand_rgb6(color.red));
+        const auto green = static_cast<std::uint32_t>(compat::expand_rgb6(color.green));
+        const auto blue = static_cast<std::uint32_t>(compat::expand_rgb6(color.blue));
+        expanded_palette[index] = std::endian::native == std::endian::little
+            ? red | (green << 8U) | (blue << 16U)
+            : (red << 24U) | (green << 16U) | (blue << 8U);
     }
 
-    const auto indices = layer.indices();
-    const auto coverage = layer.coverage();
-    for (std::size_t index = 0U; index < indices.size(); ++index) {
-        const auto color = layer.palette()[indices[index]];
-        const auto destination = index * compat::kModernRgbaBytesPerPixel;
-        rgba[destination] = compat::expand_rgb6(color.red);
-        rgba[destination + 1U] = compat::expand_rgb6(color.green);
-        rgba[destination + 2U] = compat::expand_rgb6(color.blue);
-        rgba[destination + 3U] = coverage[index];
+    const auto* indices = layer.indices().data();
+    const auto* coverage = layer.coverage().data();
+    auto* destination = rgba.data();
+    const auto pixel_count = layer.indices().size();
+    for (std::size_t index = 0U; index < pixel_count; ++index) {
+        const auto alpha = static_cast<std::uint32_t>(coverage[index]);
+        const auto pixel = expanded_palette[indices[index]] |
+            (std::endian::native == std::endian::little ? alpha << 24U : alpha);
+        std::memcpy(destination + index * compat::kModernRgbaBytesPerPixel, &pixel, sizeof(pixel));
     }
     return true;
 }

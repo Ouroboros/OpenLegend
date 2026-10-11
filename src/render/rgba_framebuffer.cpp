@@ -1,8 +1,10 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/render/rgba_framebuffer.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <new>
 #include <vector>
@@ -119,10 +121,15 @@ bool RgbaFramebuffer::set_scale(const int requested_scale) {
 }
 
 void RgbaFramebuffer::clear(const compat::Rgba8 color) noexcept {
-    const auto pixel_count = pixels_.size() / compat::kModernRgbaBytesPerPixel;
-    for (std::size_t pixel = 0U; pixel < pixel_count; ++pixel) {
-        write_color(
-            pixels_.data() + pixel * compat::kModernRgbaBytesPerPixel, color);
+    const auto byte_count = pixels_.size() - pixels_.size() % compat::kModernRgbaBytesPerPixel;
+    if (byte_count == 0U) {
+        return;
+    }
+    write_color(pixels_.data(), color);
+    for (std::size_t filled = compat::kModernRgbaBytesPerPixel; filled < byte_count;) {
+        const auto chunk = std::min(filled, byte_count - filled);
+        std::memcpy(pixels_.data() + filled, pixels_.data(), chunk);
+        filled += chunk;
     }
 }
 

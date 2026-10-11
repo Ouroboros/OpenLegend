@@ -294,6 +294,8 @@ private:
         int anchor_x,
         int anchor_y) const;
 
+    NODISCARD const resource::SpriteFrameView* weather_frame(std::int16_t kind) const;
+
     NODISCARD bool draw_weather_particle(
         render::IndexedFramebuffer& framebuffer,
         const WeatherParticle& particle) const;
@@ -317,6 +319,11 @@ private:
     mutable std::vector<std::optional<render::IndexedSpriteImage>>
         indexed_sprite_images_;
     resource::PackedArchive weather_sprites_;
+    struct WeatherFrameCache {
+        const std::uint8_t* source{};
+        std::optional<resource::SpriteFrameView> frame;
+    };
+    mutable std::vector<WeatherFrameCache> weather_frames_;
     compat::LegacyPalette palette_{};
     std::uint64_t palette_revision_{};
     std::array<std::uint8_t, 4096> rgb4_lookup_{};

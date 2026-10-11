@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 #include "openlegend/attributes.hpp"
@@ -54,6 +55,8 @@ private:
     render::RgbaFramebuffer motion_overlay_rgba_;
     render::RgbaFramebuffer motion_screen_effect_rgba_;
     render::RgbaFramebuffer motion_actor_rgba_;
+    std::int64_t modern_ui_refresh_us_{};
+    std::array<std::int64_t, 5> convert_stage_us_{};
     std::uint64_t motion_sequence_{};
     std::uint64_t motion_palette_revision_{};
     bool motion_palette_cycle_preview_{};

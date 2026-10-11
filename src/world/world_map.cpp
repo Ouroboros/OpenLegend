@@ -236,6 +236,7 @@ WorldSession::WorldSession(
         error_ = weather_sprites_.error();
         return;
     }
+    weather_frames_.resize(weather_sprites_.entry_count());
     if (startup_palette != nullptr) {
         palette_ = *startup_palette;
     } else {
@@ -1424,17 +1425,30 @@ bool WorldSession::draw_sprite(
     return true;
 }
 
+const resource::SpriteFrameView* WorldSession::weather_frame(const std::int16_t kind) const {
+    if (kind < 0 || static_cast<std::size_t>(kind) >= weather_sprites_.entry_count() ||
+        static_cast<std::size_t>(kind) >= weather_frames_.size()) {
+        return nullptr;
+    }
+    const auto bytes = weather_sprites_.entry(static_cast<std::size_t>(kind));
+    auto& cached = weather_frames_[static_cast<std::size_t>(kind)];
+    if (!cached.frame.has_value() || cached.source != bytes.data()) {
+        cached.frame.emplace(resource::SpriteFrameView::parse(bytes));
+        cached.source = bytes.data();
+    }
+    return cached.frame->valid() ? &*cached.frame : nullptr;
+}
+
 bool WorldSession::draw_weather_particle(
     render::IndexedFramebuffer& framebuffer, const WeatherParticle& particle) const {
-    if (particle.kind < 0 || static_cast<std::size_t>(particle.kind) >= weather_sprites_.entry_count() ||
-        particle.speed < 0 || particle.speed > 8) {
+    if (particle.speed < 0 || particle.speed > 8) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(
-        weather_sprites_.entry(static_cast<std::size_t>(particle.kind)));
-    if (!frame.valid()) {
+    const auto* cached_frame = weather_frame(particle.kind);
+    if (cached_frame == nullptr) {
         return false;
     }
+    const auto& frame = *cached_frame;
     const auto source_weight = static_cast<int>(particle.speed);
     const auto destination_weight = 8 - source_weight;
     const auto left = static_cast<int>(particle.x) - static_cast<int>(frame.x_offset());
@@ -1474,17 +1488,14 @@ bool WorldSession::draw_weather_particle(
     const WeatherParticle& particle,
     const int offset_x,
     const int offset_y) const {
-    if (particle.kind < 0 ||
-        static_cast<std::size_t>(particle.kind) >=
-            weather_sprites_.entry_count() ||
-        particle.speed < 0 || particle.speed > 8) {
+    if (particle.speed < 0 || particle.speed > 8) {
         return false;
     }
-    const auto frame = resource::SpriteFrameView::parse(
-        weather_sprites_.entry(static_cast<std::size_t>(particle.kind)));
-    if (!frame.valid()) {
+    const auto* cached_frame = weather_frame(particle.kind);
+    if (cached_frame == nullptr) {
         return false;
     }
+    const auto& frame = *cached_frame;
 
     const auto coverage = static_cast<std::uint8_t>(
         (static_cast<int>(particle.speed) * 255 + 4) / 8);
@@ -1495,10 +1506,18 @@ bool WorldSession::draw_weather_particle(
         static_cast<int>(frame.x_offset());
     const auto top = offset_y + static_cast<int>(particle.y) -
         static_cast<int>(frame.y_offset());
+    if (left >= layer.logical_width() || top >= layer.logical_height() ||
+        left + static_cast<int>(frame.width()) <= 0 ||
+        top + static_cast<int>(frame.height()) <= 0) {
+        return true;
+    }
     for (std::size_t row_index = 0U;
          row_index < frame.rows().size();
          ++row_index) {
         const auto destination_y = top + static_cast<int>(row_index);
+        if (destination_y < 0 || destination_y >= layer.logical_height()) {
+            continue;
+        }
         auto destination_x = left;
         for (const auto& run : frame.rows()[row_index].runs) {
             destination_x += static_cast<int>(run.skip);

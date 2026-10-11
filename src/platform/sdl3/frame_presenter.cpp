@@ -1,6 +1,7 @@
 #include "frame_presenter.hpp"
 
 #include <array>
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -18,6 +19,11 @@
 
 namespace openlegend::platform::sdl3 {
 namespace {
+
+NODISCARD std::int64_t elapsed_us(const std::chrono::steady_clock::time_point start) noexcept {
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - start).count();
+}
 
 void report_presentation_error(
     const std::string_view category,
@@ -60,10 +66,19 @@ int FramePresenter::present_native_motion(
         refresh_layers ||
         motion.palette_revision != motion_palette_revision_ ||
         motion.preview_palette_cycle != motion_palette_cycle_preview_;
+    const bool resize_layers =
+        motion_underlay_.pixel_width() != layer_width ||
+        motion_underlay_.pixel_height() != layer_height ||
+        motion_overlay_.width() != layer_width ||
+        motion_overlay_.height() != layer_height ||
+        motion_screen_effect_.width() != layer_width ||
+        motion_screen_effect_.height() != layer_height;
+    const auto layers_start = std::chrono::steady_clock::now();
     if (refresh_layers) {
-        if (!motion_underlay_.resize(layer_width, layer_height) ||
-            !motion_overlay_.set_dimensions(layer_width, layer_height) ||
-            !motion_screen_effect_.set_dimensions(layer_width, layer_height) ||
+        if ((resize_layers &&
+             (!motion_underlay_.resize(layer_width, layer_height) ||
+              !motion_overlay_.set_dimensions(layer_width, layer_height) ||
+              !motion_screen_effect_.set_dimensions(layer_width, layer_height))) ||
             !motion_underlay_rgba_.set_dimensions(layer_width, layer_height, 1) ||
             !motion_overlay_rgba_.set_dimensions(layer_width, layer_height, 1) ||
             !motion_screen_effect_rgba_.set_dimensions(
@@ -82,6 +97,8 @@ int FramePresenter::present_native_motion(
         motion_destination_depth_phase_ = motion.destination_depth_phase;
         motion_layers_ready_ = true;
     }
+    const auto layers_us = elapsed_us(layers_start);
+    const auto convert_start = std::chrono::steady_clock::now();
     if (refresh_palette) {
         auto palette = *motion.palette;
         if (motion.preview_palette_cycle) {
@@ -95,18 +112,27 @@ int FramePresenter::present_native_motion(
             motion_underlay_.palette(),
             layer_width,
             layer_height};
-        if (!compat::convert_indexed_frame_to_rgba(
-                underlay, motion_underlay_rgba_.pixels()) ||
-            !render::convert_indexed_layer_to_rgba(
-                motion_overlay_, motion_overlay_rgba_.pixels()) ||
-            !render::convert_indexed_layer_to_rgba(
-                motion_screen_effect_, motion_screen_effect_rgba_.pixels()) ||
-            !render::convert_indexed_sprite_to_rgba(
-                *motion.actor_sprite,
-                palette,
-                motion_actor_rgba_.pixels()) ||
-            !game.render_motion_weather(
-                motion_screen_effect_rgba_, palette)) {
+        auto stage_start = std::chrono::steady_clock::now();
+        const auto stage = [&stage_start, this](const std::size_t index) {
+            convert_stage_us_[index] = elapsed_us(stage_start);
+            stage_start = std::chrono::steady_clock::now();
+        };
+        bool converted = compat::convert_indexed_frame_to_rgba(
+            underlay, motion_underlay_rgba_.pixels());
+        stage(0U);
+        converted = converted && render::convert_indexed_layer_to_rgba(
+            motion_overlay_, motion_overlay_rgba_.pixels());
+        stage(1U);
+        converted = converted && render::convert_indexed_layer_to_rgba(
+            motion_screen_effect_, motion_screen_effect_rgba_.pixels());
+        stage(2U);
+        converted = converted && render::convert_indexed_sprite_to_rgba(
+            *motion.actor_sprite, palette, motion_actor_rgba_.pixels());
+        stage(3U);
+        converted = converted && game.render_motion_weather(
+            motion_screen_effect_rgba_, palette);
+        stage(4U);
+        if (!converted) {
             report_presentation_error(
                 "render", "unable to convert native motion layers to RGBA");
             return 7;
@@ -115,6 +141,7 @@ int FramePresenter::present_native_motion(
         motion_palette_cycle_preview_ = motion.preview_palette_cycle;
         weather_layer_ready_ = false;
     }
+    const auto convert_us = elapsed_us(convert_start);
 
     const auto camera_for = [&](const openlegend::motion::FixedPosition position) {
         return motion.domain == app::NativeMotionDomain::world
@@ -218,6 +245,7 @@ int FramePresenter::present_native_motion(
         modern_ui_framebuffer_.pixels(),
         modern_ui_framebuffer_.pixel_width(),
         modern_ui_framebuffer_.pixel_height()};
+    const auto present_start = std::chrono::steady_clock::now();
     if (!platform.present_native_layers(
             layers, modern_ui, refresh_modern_ui, fade_alpha)) {
         diagnostics::log_critical(
@@ -225,6 +253,22 @@ int FramePresenter::present_native_motion(
         report_presentation_error(
             "present", "unable to present native motion layers", SDL_GetError());
         return 7;
+    }
+    if (refresh_layers || refresh_modern_ui) {
+        diagnostics::log_debug(
+            "motion_frame_timing sequence=" + std::to_string(motion.sequence) +
+            " layers_us=" + std::to_string(layers_us) +
+            " convert_us=" + std::to_string(convert_us) +
+            " convert_stages_us=" + std::to_string(convert_stage_us_[0U]) + "," +
+            std::to_string(convert_stage_us_[1U]) + "," +
+            std::to_string(convert_stage_us_[2U]) + "," +
+            std::to_string(convert_stage_us_[3U]) + "," +
+            std::to_string(convert_stage_us_[4U]) +
+            " modern_ui_us=" + std::to_string(modern_ui_refresh_us_) +
+            " present_us=" + std::to_string(elapsed_us(present_start)) +
+            " layer=" + std::to_string(layer_width) + "x" + std::to_string(layer_height) +
+            " modern_ui=" + std::to_string(modern_ui_framebuffer_.pixel_width()) + "x" +
+            std::to_string(modern_ui_framebuffer_.pixel_height()));
     }
     return 0;
 }
@@ -365,6 +409,7 @@ int FramePresenter::present(
 
         base_frame_ready_ = true;
     }
+    const auto modern_ui_start = std::chrono::steady_clock::now();
     if (refresh_modern_ui) {
         if (!modern_ui_framebuffer_.set_dimensions(
                 game_width, game_height, presentation_scale)) {
@@ -384,6 +429,7 @@ int FramePresenter::present(
             return 7;
         }
     }
+    modern_ui_refresh_us_ = refresh_modern_ui ? elapsed_us(modern_ui_start) : 0;
 
     if (motion_active && game.motion_layers_available()) {
         const auto motion = game.motion_presentation();

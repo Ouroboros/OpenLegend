@@ -57,6 +57,8 @@ public:
 
     NODISCARD CoordinateSpaceGuard use_native_coordinates() noexcept;
 
+    NODISCARD bool native_coordinates_active() const noexcept;
+
     NODISCARD CoordinateSpaceGuard use_legacy_ui_coordinates() noexcept;
 
     void clear(std::uint8_t color) noexcept;
