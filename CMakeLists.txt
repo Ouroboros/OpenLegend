@@ -125,8 +125,10 @@ if(OPENLEGEND_ENABLE_SANITIZERS)
         )
         target_link_options(openlegend_project_options INTERFACE -fsanitize=address,undefined)
         # Keep MSVC STL container annotations consistent across the final executable.
+        # DOSBox OPL derives member offsets from null pointers during table setup.
         target_compile_options(
             ADLMIDI_static PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer
+            -fno-sanitize=null,alignment,object-size,pointer-overflow
         )
     else()
         message(FATAL_ERROR "OPENLEGEND_ENABLE_SANITIZERS requires Clang or GCC")
