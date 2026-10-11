@@ -274,21 +274,22 @@ NODISCARD bool draw_summary_page(
             model::item_word::secondary_name_count * 2U);
     };
     const auto practice_top = area.top + 8 * row_step + layout.length(4);
-    if (!layout.text(side_left, practice_top, kPracticeLabel, text_colors::menu_normal)) {
+    const auto practice_left = area.left + frame_width * 3 / 5;
+    if (!layout.text(practice_left, practice_top, kPracticeLabel, text_colors::menu_normal)) {
         return false;
     }
     const auto practice_id = role.practice_item.value;
     if (practice_id >= 0 && static_cast<std::size_t>(practice_id) < ranger.items.size()) {
         const auto item_index = static_cast<std::size_t>(practice_id);
         const auto manual_name = item_name(practice_id);
-        if (!layout.big5(side_left, practice_top + row_step, manual_name, text_colors::notice)) {
+        if (!layout.big5(practice_left, practice_top + row_step, manual_name, text_colors::notice)) {
             return false;
         }
         // 修炼经验需求算不出来时只显示名字，不让整页失败。
         const auto cost = model::manual_experience_requirement(
             role, ranger.items[item_index], item_index, data.practice_rules());
         if (cost.has_value() &&
-            !layout.text(side_left, practice_top + 2 * row_step,
+            !layout.text(practice_left, practice_top + 2 * row_step,
                 decimal_text(role.item_experience) + std::u8string{kSlash} +
                     decimal_text(cost->experience),
                 text_colors::notice)) {
@@ -326,9 +327,9 @@ NODISCARD bool draw_summary_page(
         return false;
     }
 
-    // 装备块排在左下（头像列），与修炼块同一高度。
+    // 装备块排在数值列起点，与修炼块同一高度并排。
     auto row_y = below + 8 * row_step + layout.length(4);
-    if (!layout.text(area.left, row_y, kEquipmentLabel, text_colors::menu_normal)) {
+    if (!layout.text(side_left, row_y, kEquipmentLabel, text_colors::menu_normal)) {
         return false;
     }
     // 每件装备占一行；空槽保留空行，行位固定。
@@ -339,7 +340,7 @@ NODISCARD bool draw_summary_page(
             static_cast<std::size_t>(equipment.value) >= ranger.items.size()) {
             continue;
         }
-        if (!layout.big5(area.left, row_y,
+        if (!layout.big5(side_left, row_y,
                 item_name(equipment.value), text_colors::notice)) {
             return false;
         }
