@@ -2582,25 +2582,98 @@ std::optional<SceneStepResult> SceneSession::advance_pan_frame() {
     if (!pan_state_.has_value()) {
         return std::nullopt;
     }
-    if (pan_state_->x != pan_state_->target_x) {
+    const bool pan_horizontal = pan_state_->x != pan_state_->target_x;
+    const bool pan_vertical =
+        !pan_horizontal && pan_state_->y != pan_state_->target_y;
+    if (!pan_horizontal && !pan_vertical) {
+        pan_state_.reset();
+        return std::nullopt;
+    }
+    if (defer_scripted_walk_steps_) {
+        // 平滑移动开启时把本步镜头交给运动管线做像素级插值；
+        // 图层以当前视口为基准，先把移动轴的视口对准本步起点。
+        if (pan_horizontal) {
+            view_origin_x_ = std::clamp(
+                static_cast<int>(wrapping_add(
+                    static_cast<std::int16_t>(pan_state_->x), -11)),
+                0, kSceneMaximumViewOrigin);
+        } else {
+            view_origin_y_ = std::clamp(
+                static_cast<int>(wrapping_add(
+                    static_cast<std::int16_t>(pan_state_->y), -11)),
+                0, kSceneMaximumViewOrigin);
+        }
+        SceneMovePlan plan{};
+        plan.direction = pan_horizontal
+            ? (pan_state_->step_x < 0 ? SceneDirection::left : SceneDirection::right)
+            : (pan_state_->step_y < 0 ? SceneDirection::up : SceneDirection::down);
+        plan.source_x = static_cast<std::int16_t>(
+            pan_horizontal ? pan_state_->x : view_origin_x_ + 11);
+        plan.source_y = static_cast<std::int16_t>(
+            pan_horizontal ? view_origin_y_ + 11 : pan_state_->y);
+        plan.target_x = static_cast<std::int16_t>(
+            pan_horizontal ? pan_state_->x + pan_state_->step_x : plan.source_x);
+        plan.target_y = static_cast<std::int16_t>(
+            pan_horizontal ? plan.source_y : pan_state_->y + pan_state_->step_y);
+        plan.can_move = true;
+        plan.valid = true;
+        pending_camera_pan_plan_ = plan;
+        pending_ = current_result(SceneStepKind::camera_pan);
+        pending_.wait_ticks = 2U;
+        return pending_;
+    }
+    if (pan_horizontal) {
         const auto origin = wrapping_add(
             static_cast<std::int16_t>(pan_state_->x), -11);
         view_origin_x_ = std::clamp(
             static_cast<int>(origin), 0, kSceneMaximumViewOrigin);
         pan_state_->x += pan_state_->step_x;
-    } else if (pan_state_->y != pan_state_->target_y) {
+    } else {
         const auto origin = wrapping_add(
             static_cast<std::int16_t>(pan_state_->y), -11);
         view_origin_y_ = std::clamp(
             static_cast<int>(origin), 0, kSceneMaximumViewOrigin);
         pan_state_->y += pan_state_->step_y;
-    } else {
-        pan_state_.reset();
-        return std::nullopt;
     }
     pending_ = current_result(SceneStepKind::present);
     pending_.wait_ticks = 2U;
     return pending_;
+}
+
+SceneStepResult SceneSession::finish_camera_pan(const SceneMovePlan& plan) {
+    if (!pan_state_.has_value() || !pending_camera_pan_plan_.has_value() ||
+        *pending_camera_pan_plan_ != plan) {
+        diagnostics::log_error("camera pan commit rejected: stale or invalid plan");
+        return pending_;
+    }
+    pending_camera_pan_plan_.reset();
+    if (plan.target_x != plan.source_x) {
+        pan_state_->x = plan.target_x;
+        view_origin_x_ = std::clamp(
+            static_cast<int>(wrapping_add(
+                static_cast<std::int16_t>(pan_state_->x), -11)),
+            0, kSceneMaximumViewOrigin);
+    } else {
+        pan_state_->y = plan.target_y;
+        view_origin_y_ = std::clamp(
+            static_cast<int>(wrapping_add(
+                static_cast<std::int16_t>(pan_state_->y), -11)),
+            0, kSceneMaximumViewOrigin);
+    }
+    if (auto next = advance_pan_frame(); next.has_value()) {
+        return *next;
+    }
+    pending_ = current_result(SceneStepKind::present);
+    pending_.wait_ticks = 2U;
+    return pending_;
+}
+
+int SceneSession::player_height() const {
+    return scene_value(
+        scene_id_,
+        static_cast<std::int16_t>(model::SceneLayer::building_height),
+        static_cast<std::int16_t>(scene_x_),
+        static_cast<std::int16_t>(scene_y_));
 }
 
 std::optional<SceneStepResult> SceneSession::advance_picture_animation_frame() {

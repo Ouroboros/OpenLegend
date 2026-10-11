@@ -77,6 +77,7 @@ enum class SceneStepKind {
     stay,
     moved,
     scripted_move,
+    camera_pan,
     present,
     fade_from_black,
     fade_to_black,
@@ -224,6 +225,14 @@ public:
     }
 
     NODISCARD SceneStepResult finish_scripted_move(const SceneMovePlan& plan);
+
+    NODISCARD std::optional<SceneMovePlan> pending_camera_pan() const noexcept {
+        return pending_camera_pan_plan_;
+    }
+
+    NODISCARD SceneStepResult finish_camera_pan(const SceneMovePlan& plan);
+
+    NODISCARD int player_height() const;
 
     NODISCARD SceneStepResult interact();
 
@@ -751,6 +760,7 @@ private:
     std::int16_t battle_get_exp_{};
     std::optional<std::int16_t> player_frame_override_;
     std::optional<PanState> pan_state_;
+    std::optional<SceneMovePlan> pending_camera_pan_plan_;
     std::optional<PictureAnimationState> picture_animation_state_;
     std::optional<ScriptedWalkState> scripted_walk_state_;
     std::optional<SceneMovePlan> pending_scripted_move_plan_;

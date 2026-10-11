@@ -131,6 +131,8 @@ struct NativeMotionPresentation {
     motion::FixedPosition position;
     motion::FixedPosition source;
     motion::FixedPosition destination;
+    // 演员精灵的世界位置；镜头平移时与插值相机位置（position）不同。
+    motion::FixedPosition actor_position;
     const render::IndexedSpriteImage* actor_sprite{};
     const compat::LegacyPalette* palette{};
 
@@ -392,6 +394,8 @@ private:
 
     NODISCARD bool start_scripted_scene_motion();
 
+    NODISCARD bool start_camera_pan_motion();
+
     void complete_authoritative_motion();
 
     void finish_completed_motion_tick();
@@ -510,6 +514,7 @@ private:
     std::optional<world::WorldMovePlan> world_motion_plan_;
     std::optional<scene::SceneMovePlan> scene_motion_plan_;
     bool scene_motion_scripted_{};
+    bool scene_motion_camera_pan_{};
     bool scene_motion_endpoint_waiting_{};
     std::optional<world::WorldDirection> queued_motion_direction_;
     DeferredMotionCommand deferred_motion_command_{DeferredMotionCommand::none};

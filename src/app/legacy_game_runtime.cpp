@@ -253,6 +253,7 @@ NODISCARD std::string_view scene_step_name(const scene::SceneStepKind kind) noex
     case scene::SceneStepKind::stay: return "stay";
     case scene::SceneStepKind::moved: return "moved";
     case scene::SceneStepKind::scripted_move: return "scripted_move";
+    case scene::SceneStepKind::camera_pan: return "camera_pan";
     case scene::SceneStepKind::present: return "present";
     case scene::SceneStepKind::fade_from_black: return "fade_from_black";
     case scene::SceneStepKind::fade_to_black: return "fade_to_black";
@@ -588,11 +589,22 @@ NativeMotionPresentation LegacyGameRuntime::motion_presentation() const {
             position,
             source,
             destination,
+            position,
             world_session_->rendered_player_sprite(),
             &world_session_->palette()};
     }
     if (motion_domain_ == NativeMotionDomain::scene &&
         scene_session_ != nullptr) {
+        // 镜头平移时玩家精灵固定在世界位置，只有相机随插值移动。
+        const auto actor_position = scene_motion_camera_pan_
+            ? motion::FixedPosition{
+                  static_cast<std::int64_t>(scene_session_->scene_x()) *
+                      motion::kFixedUnitsPerGridUnit,
+                  static_cast<std::int64_t>(scene_session_->scene_y()) *
+                      motion::kFixedUnitsPerGridUnit,
+                  static_cast<std::int64_t>(scene_session_->player_height()) *
+                      motion::kFixedUnitsPerGridUnit}
+            : position;
         return NativeMotionPresentation{
             motion_domain_,
             native_motion_sequence_,
@@ -602,6 +614,7 @@ NativeMotionPresentation LegacyGameRuntime::motion_presentation() const {
             position,
             source,
             destination,
+            actor_position,
             scene_session_->rendered_player_sprite(),
             &scene_session_->palette()};
     }
@@ -613,7 +626,8 @@ NativeMotionPresentation LegacyGameRuntime::motion_presentation() const {
         false,
         position,
         source,
-        destination};
+        destination,
+        position};
 }
 
 bool LegacyGameRuntime::render_motion_layers(
@@ -633,8 +647,11 @@ bool LegacyGameRuntime::render_motion_layers(
     }
     if (motion_domain_ == NativeMotionDomain::scene &&
         scene_session_ != nullptr) {
-        return scene_session_->render_motion_layers(
-            underlay, overlay, screen_effect, actor.x, actor.y);
+        // 镜头平移时图层以玩家实际位置做前后层分割。
+        return scene_motion_camera_pan_
+            ? scene_session_->render_motion_layers(underlay, overlay, screen_effect)
+            : scene_session_->render_motion_layers(
+                  underlay, overlay, screen_effect, actor.x, actor.y);
     }
     return false;
 }
@@ -783,6 +800,32 @@ void LegacyGameRuntime::start_scene_motion(
     handle_scene_result(scene_session_->finish_tick_move(plan));
 }
 
+bool LegacyGameRuntime::start_camera_pan_motion() {
+    if (scene_session_ == nullptr) {
+        return false;
+    }
+    const auto plan = scene_session_->pending_camera_pan();
+    if (!plan.has_value() || !plan->valid) {
+        return false;
+    }
+    const auto duration = timing::kBiosTickDuration * 2;
+    if (!authoritative_motion_.begin(
+            motion::GridPosition{plan->source_x, plan->source_y, 0},
+            motion::GridPosition{plan->target_x, plan->target_y, 0},
+            duration)) {
+        return false;
+    }
+    ++native_motion_sequence_;
+    scene_motion_plan_ = *plan;
+    scene_motion_scripted_ = false;
+    scene_motion_camera_pan_ = true;
+    scene_motion_endpoint_waiting_ = false;
+    world_motion_plan_.reset();
+    motion_domain_ = NativeMotionDomain::scene;
+    motion_tick_completed_ = false;
+    return true;
+}
+
 bool LegacyGameRuntime::start_scripted_scene_motion() {
     if (scene_session_ == nullptr) {
         return false;
@@ -818,8 +861,10 @@ bool LegacyGameRuntime::start_scripted_scene_motion() {
 void LegacyGameRuntime::complete_authoritative_motion() {
     const auto completed_domain = motion_domain_;
     const bool completed_scripted_scene_motion = scene_motion_scripted_;
+    const bool completed_camera_pan = scene_motion_camera_pan_;
     motion_domain_ = NativeMotionDomain::none;
     scene_motion_scripted_ = false;
+    scene_motion_camera_pan_ = false;
     authoritative_motion_.clear();
     motion_tick_completed_ = true;
 
@@ -838,7 +883,9 @@ void LegacyGameRuntime::complete_authoritative_motion() {
         scene_session_ != nullptr && scene_motion_plan_.has_value()) {
         const auto plan = *scene_motion_plan_;
         scene_motion_plan_.reset();
-        if (completed_scripted_scene_motion) {
+        if (completed_camera_pan) {
+            handle_scene_result(scene_session_->finish_camera_pan(plan));
+        } else if (completed_scripted_scene_motion) {
             handle_scene_result(scene_session_->finish_scripted_move(plan));
         } else {
             scene_motion_endpoint_waiting_ = true;
@@ -2896,6 +2943,13 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         if (!start_scripted_scene_motion()) {
             show_error(
                 "Unable to start deferred scripted scene movement",
+                LegacyGameView::scene);
+        }
+        break;
+    case scene::SceneStepKind::camera_pan:
+        if (!start_camera_pan_motion()) {
+            show_error(
+                "Unable to start deferred camera pan movement",
                 LegacyGameView::scene);
         }
         break;

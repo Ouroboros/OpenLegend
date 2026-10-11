@@ -159,9 +159,9 @@ int FramePresenter::present_native_motion(
         0);
     const auto actor_anchor = render::project_fixed_isometric(
         openlegend::motion::FixedPosition{
-            motion.position.x - current_camera.x,
-            motion.position.y - current_camera.y,
-            motion.position.height},
+            motion.actor_position.x - current_camera.x,
+            motion.actor_position.y - current_camera.y,
+            motion.actor_position.height},
         game_width / 2 - 15,
         game_height / 2 + 17);
     const auto actor_left = actor_anchor.x -
