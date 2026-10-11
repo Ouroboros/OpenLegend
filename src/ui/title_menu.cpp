@@ -310,7 +310,7 @@ bool TitleMenuRenderer::render_new_game_options(const TitleMenuController& contr
     }
     const auto metrics = ui_renderer.font_metrics(framebuffer);
     const int center_x = viewport.x + viewport.width / 2;
-    constexpr std::array<std::u8string_view, 3> options{u8"全新遊戲", u8"New Game+", u8"取消"};
+    constexpr std::array<std::u8string_view, 3> options{u8"全新遊戲", u8"繼承進度", u8"取消"};
     for (std::size_t index = 0U; index < options.size(); ++index) {
         const auto colors = index == controller.new_game_selection()
             ? kTitleOptionSelected : kTitleOptionNormal;
