@@ -248,6 +248,13 @@ NODISCARD std::string_view world_step_name(const world::WorldStepKind kind) noex
     return "unknown";
 }
 
+// 对话只接受空格、Esc与回车（小键盘回车翻译后同为回车）推进。
+NODISCARD bool dialogue_advance_key(const std::uint8_t translated_key) noexcept {
+    return translated_key == input::legacy_key::space ||
+        translated_key == input::legacy_key::escape ||
+        translated_key == input::legacy_key::enter;
+}
+
 NODISCARD std::string_view scene_step_name(const scene::SceneStepKind kind) noexcept {
     switch (kind) {
     case scene::SceneStepKind::stay: return "stay";
@@ -862,6 +869,7 @@ void LegacyGameRuntime::complete_authoritative_motion() {
     const auto completed_domain = motion_domain_;
     const bool completed_scripted_scene_motion = scene_motion_scripted_;
     const bool completed_camera_pan = scene_motion_camera_pan_;
+    scene_endpoint_present_fast_forwards_ = 0U;
     motion_domain_ = NativeMotionDomain::none;
     scene_motion_scripted_ = false;
     scene_motion_camera_pan_ = false;
@@ -900,6 +908,22 @@ void LegacyGameRuntime::finish_completed_motion_tick() {
             scene_motion_endpoint_waiting_ = false;
             deferred_motion_command_ = DeferredMotionCommand::none;
             queued_motion_direction_.reset();
+        } else if (scene_effect_kind_ == SceneEffectKind::present &&
+                   scene_effect_presented_ &&
+                   scene_endpoint_present_fast_forwards_ < 2U) {
+            // 平滑行走每帧都在真实渲染：端点的画面驻留最多快进两轮，
+            // 完成回调按原顺序消化场景挂起；更多驻留按原节奏等待，
+            // 保持场景动画速度。
+            ++scene_endpoint_present_fast_forwards_;
+            scene_effect_wait_ticks_ = 1U;
+            static_cast<void>(advance_scene_effect());
+            if (scene_effect_kind_ != SceneEffectKind::none ||
+                scene_session_->pending().kind != scene::SceneStepKind::stay ||
+                !world_or_scene_input_active()) {
+                world_step_processed_ = false;
+                return;
+            }
+            scene_motion_endpoint_waiting_ = false;
         } else if (scene_effect_kind_ != SceneEffectKind::none) {
             static_cast<void>(advance_scene_effect());
             world_step_processed_ = false;
@@ -1687,8 +1711,12 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         if (world_menu_event_phase_ == WorldMenuEventPhase::running &&
             world_menu_event_session_ != nullptr) {
             const auto pending_kind = world_menu_event_session_->pending().kind;
-            if (pending_kind == scene::SceneStepKind::dialogue ||
-                pending_kind == scene::SceneStepKind::notice ||
+            if (pending_kind == scene::SceneStepKind::dialogue) {
+                if (dialogue_advance_key(translated_key)) {
+                    handle_world_menu_event_result(
+                        world_menu_event_session_->resume(scene::SceneResponse::acknowledge));
+                }
+            } else if (pending_kind == scene::SceneStepKind::notice ||
                 pending_kind == scene::SceneStepKind::wait_key) {
                 handle_world_menu_event_result(
                     world_menu_event_session_->resume(scene::SceneResponse::acknowledge));
@@ -1758,8 +1786,12 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                     ui::save_list_page(death_menu_.slot_selection()));
             }
             handle_death_menu_result(result);
-        } else if (pending_kind == scene::SceneStepKind::dialogue ||
-                   pending_kind == scene::SceneStepKind::notice ||
+        } else if (pending_kind == scene::SceneStepKind::dialogue) {
+            if (dialogue_advance_key(translated_key)) {
+                handle_scene_result(
+                    scene_session_->resume(scene::SceneResponse::acknowledge));
+            }
+        } else if (pending_kind == scene::SceneStepKind::notice ||
                    pending_kind == scene::SceneStepKind::scene_title ||
                    pending_kind == scene::SceneStepKind::wait_key) {
             handle_scene_result(scene_session_->resume(scene::SceneResponse::acknowledge));

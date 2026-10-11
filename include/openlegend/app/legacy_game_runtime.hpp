@@ -515,6 +515,7 @@ private:
     std::optional<scene::SceneMovePlan> scene_motion_plan_;
     bool scene_motion_scripted_{};
     bool scene_motion_camera_pan_{};
+    std::uint8_t scene_endpoint_present_fast_forwards_{};
     bool scene_motion_endpoint_waiting_{};
     std::optional<world::WorldDirection> queued_motion_direction_;
     DeferredMotionCommand deferred_motion_command_{DeferredMotionCommand::none};

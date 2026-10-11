@@ -804,6 +804,7 @@ bool SceneSession::prepare_event(
         event_item_id_ = item_id;
     }
     event_context_ = EventContext{event_index, event_x, event_y, event_item_id_};
+    active_script_id_ = script_id;
     script_ = assets_.script(static_cast<std::size_t>(script_id));
     if (script_.empty()) {
         error_ = "KDEF script is empty or has odd byte length";
@@ -1117,6 +1118,20 @@ SceneStepResult SceneSession::run_event() {
         const auto argument = [this, base](const std::size_t index) {
             return script_[base + index];
         };
+        {
+            std::string op_arguments;
+            for (std::size_t index = 1U; index < width && index <= 6U; ++index) {
+                if (!op_arguments.empty()) {
+                    op_arguments += ",";
+                }
+                op_arguments += std::to_string(argument(index));
+            }
+            diagnostics::log_debug(
+                "kdef op script=" + std::to_string(active_script_id_) +
+                " pc=" + std::to_string(program_counter_) +
+                " op=" + std::to_string(opcode) +
+                " args=" + op_arguments);
+        }
         const auto conditional = [this](
                                      const bool value,
                                      const std::size_t instruction_width,

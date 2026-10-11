@@ -733,6 +733,7 @@ private:
     mutable int last_shadow_offset_{};
     std::int16_t event_item_id_{};
     EventContext event_context_{};
+    std::int16_t active_script_id_{-1};
     std::vector<std::int16_t> script_;
     std::ptrdiff_t program_counter_{};
     bool event_active_{};
