@@ -333,7 +333,8 @@ int FramePresenter::present(
         (!motion_active && refresh_legacy_frame &&
          fade_overlay.refresh_base_frame) ||
         !base_frame_ready_ || legacy_dimensions_changed;
-    const auto refresh_modern_ui = refresh_base_frame || ui_dimensions_changed;
+    const auto refresh_modern_ui = refresh_base_frame || ui_dimensions_changed ||
+        (motion_active && refresh_legacy_frame);
     if (((!motion_active && refresh_legacy_frame) || refresh_base_frame) &&
         !game.render()) {
         diagnostics::log_critical(
