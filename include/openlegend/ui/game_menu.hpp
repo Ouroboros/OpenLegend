@@ -20,6 +20,7 @@ enum class GameMenuScreen {
     party_select,
     party_notice,
     status_panel,
+    item_category,
     items,
     item_confirmation,
     item_effect,
@@ -30,6 +31,8 @@ enum class GameMenuScreen {
     delete_confirmation,
     quit_confirmation,
 };
+
+inline constexpr std::uint8_t kItemCategoryCount = 7U;
 
 enum class GameMenuItemTargetKind {
     equipment,
@@ -93,6 +96,12 @@ public:
     void set_inventory_count(std::uint16_t count) noexcept;
 
     void set_inventory_slots(std::span<const std::int16_t> slots) noexcept;
+
+    void set_inventory_categories(std::span<const std::uint8_t> categories) noexcept;
+
+    NODISCARD constexpr std::uint8_t item_category_selection() const noexcept {
+        return item_category_selection_;
+    }
 
     void show_main() noexcept {
         screen_ = GameMenuScreen::main;
@@ -235,8 +244,14 @@ private:
     std::uint8_t system_selection_{};
     std::uint16_t slot_selection_{};
     GameMenuScreen delete_return_screen_{GameMenuScreen::load_slots};
+    void apply_item_category() noexcept;
+
     std::array<std::int16_t, 200U> inventory_slots_{};
     std::uint16_t inventory_count_{};
+    std::array<std::int16_t, 200U> base_inventory_slots_{};
+    std::uint16_t base_inventory_count_{};
+    std::array<std::uint8_t, 200U> base_inventory_categories_{};
+    std::uint8_t item_category_selection_{};
     std::uint8_t item_page_{};
     std::uint8_t item_row_{};
     std::uint8_t item_column_{};

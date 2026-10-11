@@ -1169,6 +1169,7 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
         case ui::GameMenuScreen::main:
         case ui::GameMenuScreen::party_select:
         case ui::GameMenuScreen::status_panel:
+        case ui::GameMenuScreen::item_category:
         case ui::GameMenuScreen::items:
         case ui::GameMenuScreen::system:
             return DirectionRepeatContext::menu;
@@ -1828,6 +1829,7 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         if (screen == ui::GameMenuScreen::main) {
             key_state_reset = main_game_menu_key_state_reset(translated_key);
         } else if (screen == ui::GameMenuScreen::party_select ||
+                   screen == ui::GameMenuScreen::item_category ||
                    screen == ui::GameMenuScreen::system ||
                    screen == ui::GameMenuScreen::load_slots ||
                    screen == ui::GameMenuScreen::save_slots) {
@@ -3308,17 +3310,31 @@ void LegacyGameRuntime::update_menu_counts() {
     game_menu_.set_party_abilities(medicine_abilities, detoxification_abilities);
 
     std::array<std::int16_t, model::kInventoryCount> inventory_slots{};
+    std::array<std::uint8_t, model::kInventoryCount> inventory_categories{};
     std::size_t inventory_count = 0U;
     for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
         const auto item_id = ranger->header.inventory_item(slot).value;
         if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger->items.size()) {
             continue;
         }
+        const auto& item = ranger->items[static_cast<std::size_t>(item_id)];
+        const auto item_type = item.word(model::item_word::item_type);
+        const auto equipment_type = item.word(model::item_word::equipment_type);
+        // 分类编号与 kItemCategoryLabels 对齐：1藥品 2武器 3防具 4秘笈 5暗器 6其他。
+        inventory_categories[inventory_count] =
+            item_type == 3 ? std::uint8_t{1U}
+            : item_type == 1
+                ? (equipment_type == 1 ? std::uint8_t{3U} : std::uint8_t{2U})
+            : item_type == 2 ? std::uint8_t{4U}
+            : item_type == 4 ? std::uint8_t{5U}
+                             : std::uint8_t{6U};
         inventory_slots[inventory_count] = static_cast<std::int16_t>(slot);
         ++inventory_count;
     }
     game_menu_.set_inventory_slots(
         std::span<const std::int16_t>{inventory_slots}.first(inventory_count));
+    game_menu_.set_inventory_categories(
+        std::span<const std::uint8_t>{inventory_categories}.first(inventory_count));
 }
 
 void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {

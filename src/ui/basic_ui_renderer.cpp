@@ -461,6 +461,25 @@ bool BasicUiRenderer::render_game_menu(
                     framebuffer, 80, 25, kPracticeUnsuitableNotice, text_colors::notice);
         }
         return false;
+    case GameMenuScreen::item_category: {
+        if (!render_game_menu_main(menu, framebuffer) ||
+            !draw_box(framebuffer, 70, 18, 42U, 152U)) {
+            return false;
+        }
+        for (std::size_t index = 0U; index < kItemCategoryLabels.size(); ++index) {
+            if (!draw_text_utf8(
+                    framebuffer,
+                    74,
+                    25 + static_cast<int>(index) * 20,
+                    kItemCategoryLabels[index],
+                    index == menu.item_category_selection()
+                        ? text_colors::selected
+                        : text_colors::menu_normal)) {
+                return false;
+            }
+        }
+        return true;
+    }
     case GameMenuScreen::system:
         return render_game_menu_main(menu, framebuffer) && render_system_menu();
     case GameMenuScreen::load_slots:

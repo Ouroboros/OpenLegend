@@ -165,6 +165,15 @@ inline constexpr std::u8string_view hurt_band_light_suffix = u8"(輕傷)";
 inline constexpr std::u8string_view hurt_band_moderate_suffix = u8"(中傷)";
 inline constexpr std::u8string_view hurt_band_severe_suffix = u8"(重傷)";
 inline constexpr std::u8string_view unknown_value = u8"???";
+inline constexpr std::array<std::u8string_view, 7> item_category_labels{
+    u8"全部",
+    u8"藥品",
+    u8"武器",
+    u8"防具",
+    u8"秘笈",
+    u8"暗器",
+    u8"其他",
+};
 inline constexpr std::u8string_view protagonist_location_label = u8"人";
 inline constexpr std::u8string_view ship_location_label = u8"船";
 inline constexpr std::u8string_view use_item_prefix = u8"使用 ";
@@ -362,6 +371,7 @@ inline constexpr auto kHurtBandLightSuffix = hurt_band_light_suffix;
 inline constexpr auto kHurtBandModerateSuffix = hurt_band_moderate_suffix;
 inline constexpr auto kHurtBandSevereSuffix = hurt_band_severe_suffix;
 inline constexpr auto kUnknownValue = unknown_value;
+inline constexpr auto& kItemCategoryLabels = item_category_labels;
 inline constexpr auto kProtagonistLocationLabel = protagonist_location_label;
 inline constexpr auto kShipLocationLabel = ship_location_label;
 inline constexpr auto kUseItemPrefix = use_item_prefix;

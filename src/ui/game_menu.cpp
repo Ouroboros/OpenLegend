@@ -81,10 +81,35 @@ void GameMenuController::set_inventory_count(const std::uint16_t count) noexcept
 
 void GameMenuController::set_inventory_slots(
     const std::span<const std::int16_t> slots) noexcept {
-    inventory_count_ = static_cast<std::uint16_t>(
-        std::min<std::size_t>(slots.size(), inventory_slots_.size()));
+    base_inventory_count_ = static_cast<std::uint16_t>(
+        std::min<std::size_t>(slots.size(), base_inventory_slots_.size()));
+    std::ranges::fill(base_inventory_slots_, static_cast<std::int16_t>(-1));
+    std::ranges::copy(slots.first(base_inventory_count_), base_inventory_slots_.begin());
+    apply_item_category();
+}
+
+void GameMenuController::set_inventory_categories(
+    const std::span<const std::uint8_t> categories) noexcept {
+    std::ranges::fill(base_inventory_categories_, std::uint8_t{6U});
+    std::ranges::copy(
+        categories.first(std::min<std::size_t>(
+            categories.size(), base_inventory_categories_.size())),
+        base_inventory_categories_.begin());
+    apply_item_category();
+}
+
+void GameMenuController::apply_item_category() noexcept {
+    // 分类 0 为全部；其余按注入的槽位分类过滤。
     std::ranges::fill(inventory_slots_, static_cast<std::int16_t>(-1));
-    std::ranges::copy(slots.first(inventory_count_), inventory_slots_.begin());
+    std::uint16_t count = 0U;
+    for (std::uint16_t index = 0U; index < base_inventory_count_; ++index) {
+        if (item_category_selection_ != 0U &&
+            base_inventory_categories_[index] != item_category_selection_) {
+            continue;
+        }
+        inventory_slots_[count++] = base_inventory_slots_[index];
+    }
+    inventory_count_ = count;
 }
 
 void GameMenuController::complete_party_action(const std::int64_t amount) noexcept {
@@ -179,6 +204,9 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         switch (screen_) {
         case GameMenuScreen::main: move_down(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_down(party_selection_, party_option_count_); break;
+        case GameMenuScreen::item_category:
+            move_down(item_category_selection_, kItemCategoryCount);
+            break;
         case GameMenuScreen::items:
             if (item_row_ < 2U) {
                 ++item_row_;
@@ -203,6 +231,9 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         switch (screen_) {
         case GameMenuScreen::main: move_up(selection_, visible_main_items()); break;
         case GameMenuScreen::party_select: move_up(party_selection_, party_option_count_); break;
+        case GameMenuScreen::item_category:
+            move_up(item_category_selection_, kItemCategoryCount);
+            break;
         case GameMenuScreen::items:
             if (item_row_ > 0U) {
                 --item_row_;
@@ -235,9 +266,12 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
                 screen_ = GameMenuScreen::main;
             }
             return {};
-        case GameMenuScreen::items:
+        case GameMenuScreen::item_category:
         case GameMenuScreen::system:
             screen_ = GameMenuScreen::main;
+            return {};
+        case GameMenuScreen::items:
+            screen_ = GameMenuScreen::item_category;
             return {};
         case GameMenuScreen::load_slots:
         case GameMenuScreen::save_slots:
@@ -340,6 +374,13 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         }
         screen_ = GameMenuScreen::main;
         return {pending_party_command_, 0U, selected_party_slot()};
+    case GameMenuScreen::item_category:
+        apply_item_category();
+        screen_ = GameMenuScreen::items;
+        item_page_ = 0U;
+        item_row_ = 0U;
+        item_column_ = 0U;
+        return {};
     case GameMenuScreen::items:
         if (const auto inventory_slot = selected_inventory_slot();
             inventory_slot.has_value()) {
@@ -397,10 +438,7 @@ GameMenuResult GameMenuController::confirm_main() noexcept {
         }
         break;
     case 2U:
-        screen_ = GameMenuScreen::items;
-        item_page_ = 0U;
-        item_row_ = 0U;
-        item_column_ = 0U;
+        screen_ = GameMenuScreen::item_category;
         return {};
     case 3U:
         pending_party_command_ = GameMenuCommand::status;
