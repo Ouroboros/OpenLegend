@@ -35,7 +35,8 @@ constexpr std::array<std::int16_t, 9> kBlockedEarthLow{
     358, 374, 458, 506, 818, 838, 934, 1016, 1324};
 constexpr std::array<std::int16_t, 9> kBlockedEarthHigh{
     362, 380, 464, 610, 824, 838, 936, 1022, 1348};
-constexpr std::array<std::int16_t, 11> kWeatherSceneIds{5, 7, 10, 41, 42, 46, 65, 66, 67, 72, 79};
+[[maybe_unused]] constexpr std::array<std::int16_t, 11> kWeatherSceneIds{
+    5, 7, 10, 41, 42, 46, 65, 66, 67, 72, 79};
 constexpr std::array<std::int16_t, 30> kTournamentHeadIds{
     8, 21, 23, 31, 32, 43, 7, 11, 14, 20, 33, 34, 10, 12, 19,
     22, 56, 68, 13, 55, 62, 67, 70, 71, 26, 57, 60, 64, 3, 69};
@@ -420,11 +421,8 @@ SceneSession::SceneSession(
             }
         }
     }
-    shadow_state_ =
-        std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
-                kWeatherSceneIds.end()
-            ? 1
-            : 0;
+    // 黑暗场景进入时自动全亮，无需再按天气键。
+    shadow_state_ = 0;
     auto ascii = data_root_.read("FONT3.E16");
     auto big5 = data_root_.read("FONT3.C16");
     if (!ascii) {
@@ -1991,11 +1989,7 @@ SceneStepResult SceneSession::complete_scene_jump() {
     idle_animation_delay_ = 0;
     idle_animation_step_ = 0;
     player_idle_counter_ = 0;
-    shadow_state_ =
-        std::find(kWeatherSceneIds.begin(), kWeatherSceneIds.end(), scene_id_) !=
-                kWeatherSceneIds.end()
-            ? 1
-            : 0;
+    shadow_state_ = 0;
     if (!load_scene_sprites()) {
         return current_result(SceneStepKind::stay);
     }
