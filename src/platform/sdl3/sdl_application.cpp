@@ -103,6 +103,28 @@ NODISCARD std::optional<std::string> utf8_from_wide(const wchar_t* value) {
 }
 #endif
 
+NODISCARD std::filesystem::path default_log_filename() {
+    std::filesystem::path executable;
+#if defined(_WIN32)
+    std::wstring buffer(32768U, L'\0');
+    const auto length =
+        GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+    if (length > 0U && length < buffer.size()) {
+        buffer.resize(length);
+        executable = buffer;
+    }
+#else
+    std::error_code error;
+    executable = std::filesystem::read_symlink("/proc/self/exe", error);
+#endif
+    auto filename = executable.stem();
+    if (filename.empty()) {
+        filename = "openlegend";
+    }
+    filename += ".log";
+    return filename;
+}
+
 NODISCARD bool collect_command_arguments(
     const int argument_count,
     const char* const* argument_values,
@@ -379,7 +401,7 @@ int run_sdl_application(
     }
 
     const app::RuntimeConfigurationDefaults configuration_defaults{
-        executable_root / "logs" / "openlegend.log",
+        executable_root / "logs" / default_log_filename(),
         diagnostics::LogLevel::info,
         kDefaultWindowSize,
         kDefaultMovementRepeatDelay,

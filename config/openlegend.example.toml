@@ -61,8 +61,10 @@ battle_experience_percent_step = 100
 # 相对路径基于可执行文件目录解析。该路径提供文件名前缀和扩展名。每次启动
 # 都会在其旁边写入独立的 PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log 文件。
 # 每条记录都会立即刷新。级别：trace、debug、info、warning、error、critical。
+# 未配置 path 时，前缀取可执行文件名，例如 openlegend-release.exe 写入
+# logs/openlegend-release-YYYY-MM-DD_HH-MM-SS-{PID}.log。
 
-path = "logs/openlegend.log"
+# path = "logs/openlegend.log"
 level = "info"
 
 [input]
