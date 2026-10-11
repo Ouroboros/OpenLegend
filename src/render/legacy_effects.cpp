@@ -86,12 +86,6 @@ NODISCARD bool apply_shadow_runs(
     return true;
 }
 
-NODISCARD int positive_remainder(
-    const int value, const int divisor) noexcept {
-    const auto remainder = value % divisor;
-    return remainder < 0 ? remainder + divisor : remainder;
-}
-
 }  // namespace
 
 void cycle_legacy_palette(compat::LegacyPalette& palette) noexcept {
@@ -137,22 +131,25 @@ bool apply_legacy_shadow_mask(
         return false;
     }
 
+    // The hole around the player exists once; everything outside the centred
+    // legacy window stays dark instead of tiling the mask across the view.
     const auto origin_x =
         (framebuffer.pixel_width() - IndexedFramebuffer::width) / 2;
     const auto origin_y =
         (framebuffer.pixel_height() - IndexedFramebuffer::height) / 2;
     for (int y = 0; y < framebuffer.pixel_height(); ++y) {
         auto* destination = framebuffer.row(y);
-        const auto source_y = positive_remainder(
-            y - origin_y, IndexedFramebuffer::height);
+        const auto source_y = y - origin_y;
+        if (source_y < 0 || source_y >= IndexedFramebuffer::height) {
+            std::fill_n(destination, framebuffer.pixel_width(), std::uint8_t{0U});
+            continue;
+        }
         for (int x = 0; x < framebuffer.pixel_width(); ++x) {
-            const auto source_x = positive_remainder(
-                x - origin_x, IndexedFramebuffer::width);
-            const auto source_index =
-                static_cast<std::size_t>(source_y) *
-                    openlegend::compat::kLegacyWidth +
-                static_cast<std::size_t>(source_x);
-            if (mask[source_index] == 0U) {
+            const auto source_x = x - origin_x;
+            if (source_x < 0 || source_x >= IndexedFramebuffer::width ||
+                mask[static_cast<std::size_t>(source_y) *
+                        openlegend::compat::kLegacyWidth +
+                    static_cast<std::size_t>(source_x)] == 0U) {
                 destination[x] = 0U;
             }
         }
@@ -175,21 +172,22 @@ bool render_legacy_shadow_layer(
     }
 
     layer.clear();
+    // Same rule as the framebuffer path: no tiling outside the legacy window.
     const auto origin_x =
         (layer.width() - IndexedFramebuffer::width) / 2;
     const auto origin_y =
         (layer.height() - IndexedFramebuffer::height) / 2;
     for (int y = 0; y < layer.height(); ++y) {
-        const auto source_y = positive_remainder(
-            y - origin_y, IndexedFramebuffer::height);
+        const auto source_y = y - origin_y;
+        const auto row_outside =
+            source_y < 0 || source_y >= IndexedFramebuffer::height;
         for (int x = 0; x < layer.width(); ++x) {
-            const auto source_x = positive_remainder(
-                x - origin_x, IndexedFramebuffer::width);
-            const auto source_index =
-                static_cast<std::size_t>(source_y) *
-                    openlegend::compat::kLegacyWidth +
-                static_cast<std::size_t>(source_x);
-            if (mask[source_index] == 0U) {
+            const auto source_x = x - origin_x;
+            if (row_outside || source_x < 0 ||
+                source_x >= IndexedFramebuffer::width ||
+                mask[static_cast<std::size_t>(source_y) *
+                        openlegend::compat::kLegacyWidth +
+                    static_cast<std::size_t>(source_x)] == 0U) {
                 layer.draw_pixel(x, y, 0U);
             }
         }
