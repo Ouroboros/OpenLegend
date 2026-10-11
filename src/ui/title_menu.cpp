@@ -7,12 +7,31 @@
 
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/render/legacy_color.hpp"
+#include "openlegend/render/reference_layout.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
 
 namespace openlegend::ui {
 namespace {
+
+constexpr render::TextColors kTitleOptionNormal{0x1BU, 0x19U};
+constexpr render::TextColors kTitleOptionSelected{0x17U, 0x15U};
+constexpr int kTitleOptionFirstCenterY = 147;
+constexpr int kTitleOptionRowHeight = 20;
+
+NODISCARD int title_option_width(
+    const std::u8string_view text, const render::rgba::FontMetrics& metrics) noexcept {
+    int width = 0;
+    for (const auto unit : text) {
+        if (unit < 0x80U) {
+            width += metrics.ascii_width;
+        } else if ((unit & 0xC0U) != 0x80U) {
+            width += metrics.big5_width;
+        }
+    }
+    return width;
+}
 
 NODISCARD constexpr bool confirms(const std::uint8_t key) noexcept {
     return key == input::legacy_key::enter || key == input::legacy_key::space ||
@@ -284,22 +303,25 @@ bool TitleMenuRenderer::render(
 bool TitleMenuRenderer::render_new_game_options(const TitleMenuController& controller,
     const compat::LegacyPalette& palette, ModernUiRenderer& ui_renderer,
     render::RgbaFramebuffer& framebuffer) const {
-    const auto metrics = ui_renderer.font_metrics(framebuffer);
-    const int padding = static_cast<int>(metrics.ascii_width);
-    const int row_height = static_cast<int>(metrics.line_height) + padding / 2;
-    const int width = 12 * padding;
-    const int height = 3 * row_height + 2 * padding;
-    const int left = (framebuffer.width - width) / 2;
-    const int top = (framebuffer.height - height) / 2;
-    if (!ui_renderer.draw_box(framebuffer, left, top, width, height, palette)) {
+    const auto viewport = render::fit_legacy_reference_viewport(
+        framebuffer.logical_width(), framebuffer.logical_height());
+    if (!viewport.valid()) {
         return false;
     }
+    const auto metrics = ui_renderer.font_metrics(framebuffer);
+    const int center_x = viewport.x + viewport.width / 2;
     constexpr std::array<std::u8string_view, 3> options{u8"全新遊戲", u8"New Game+", u8"取消"};
     for (std::size_t index = 0U; index < options.size(); ++index) {
         const auto colors = index == controller.new_game_selection()
-            ? render::legacy_color::text::selected : render::legacy_color::text::menu_normal;
-        if (!ui_renderer.draw_text_utf8(framebuffer, left + 2 * padding,
-                top + padding + static_cast<int>(index) * row_height, options[index], colors, palette)) {
+            ? kTitleOptionSelected : kTitleOptionNormal;
+        const int reference_y =
+            kTitleOptionFirstCenterY + static_cast<int>(index) * kTitleOptionRowHeight;
+        const int center_y = viewport.y + reference_y * viewport.height /
+            static_cast<int>(compat::kLegacyHeight);
+        if (!ui_renderer.draw_text_utf8(framebuffer,
+                center_x - title_option_width(options[index], metrics) / 2,
+                center_y - static_cast<int>(metrics.line_height) / 2,
+                options[index], colors, palette)) {
             return false;
         }
     }
