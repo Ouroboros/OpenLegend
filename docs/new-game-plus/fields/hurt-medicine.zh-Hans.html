@@ -67,64 +67,79 @@
 <h2>内伤</h2>
 <section id="hurt-field-definition">
   <h3>字段与上限</h3>
-  <p><code>hurt</code>为当前内伤；320名原版角色初值均为0，NG1正常范围0～99；换周目清0，不等于运行期上限。</p>
-  <pre>HurtCap(n) = 99 + (n − 1) × hurt_cap_step
-HurtMax(n, CFG) = HurtCap(n)
-B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
+  <p><code>hurt</code>为当前内伤；320名原版角色初值均为0。所有周目的正常范围固定为0～99，与原版NG1相同，不随周目增长；换周目清0。旧设计的<a href="hurt-cap-step.zh-Hans.html"><code>hurt_cap_step</code></a>已取消。</p>
+  <pre>HurtMax = 99   # 内伤上限，所有周目相同
+B = 100        # 伤势百分比判定的分母</pre>
   <div class="symbol-key" role="group" aria-label="内伤符号定义">
-    <div><code>H</code>：角色当前实际内伤。</div>
-    <div><code>P</code>：目标当前实际中毒值。</div>
+    <div><code>H</code>：角色当前实际内伤，0～99。</div>
     <div><code>M</code>：施救者当前非负医疗能力。</div>
     <div><code>T</code>：医疗公式的保底前治疗量。</div>
-    <div><code>HurtMax(n, CFG)</code>：本周运行期内伤上限。</div>
-    <div><code>B(n)</code>：内伤百分比判定的分母。</div>
-    <div><code>伤势比例</code>：<code>H / B(n)</code>，比较前不取整。</div>
+    <div><code>伤势比例</code>：<code>H / B</code>，比较前不取整。</div>
     <div><code>p</code>：待比较的百分数，例如50表示50%。</div>
-    <div><code>n</code>：当前周目序号，NG1为1。</div>
-    <div><code>CFG</code>：本周生效配置。</div>
+    <div><code>容量</code>：目标当前最大生命与最大内力之和。</div>
+    <div><code>原路径除数</code>：原版该路径把伤害折成内伤时的除数。</div>
   </div>
-  <p>默认<code>hurt_cap_step=100</code>，NG1／NG2／NG3／NG5的<code>HurtMax</code>为99／199／299／499，对应<code>B</code>为100／200／300／500。百分比门槛用<code>B</code>，<a href="#medicine-formula">医疗疗效</a>用实际<code>HurtMax</code>，两者不可互换。</p>
+  <p>内伤与<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison">中毒</a>采用同一种做法：数值范围固定，按原版量程判断伤势轻重；最大生命和最大内力决定受伤后内伤增加多快，最大生命决定内伤每轮造成的生命损失。百分比门槛用<code>B</code>，<a href="#medicine-formula">医疗疗效</a>用<code>HurtMax</code>，两者不可互换。</p>
+</section>
+<section id="hurt-gain">
+  <h3>新增内伤</h3>
+  <pre>容量 = target.maximum_hp + target.maximum_mp
+新增内伤 = trunc(99 × 10 × 伤害 / (原路径除数 × 2 × 容量))
+target.hurt = min(target.hurt + 新增内伤, 99)</pre>
+  <p>原路径除数沿用原版：武功产伤与普通物品负回血为10，玩家／AI投掷为4。武功每次新增<code>trunc(99 × 伤害 / (2 × 容量))</code>；同样伤害下，投掷产生的内伤是武功的2.5倍。从零内伤起，累计约2倍容量的武功伤害才会满伤，逐次取整会使所需伤害略多。最大内力越高，同样伤害产生的内伤越少。</p>
+  <p>伤害取各路径原版用于产伤的值：武功为目标HP触底截断前的计算伤害；普通物品负回血与投掷为夹到0～最大生命之前的HP变化量绝对值。容量取目标本次结算时的实际最大生命与最大内力，敌方为周目成长后的值；容量为0时，正伤害直接满伤。实现按精确整数计算，不因中间量超出signed64而拒绝。</p>
+  <p>减少内伤的路径保持原算式：普通物品正回血减少<code>trunc(add_hp / 4)</code>，投掷正HP变化减少<code>trunc(HP变化 / 4)</code>；医疗、剧情休息、试炼轮间、升级及换周目清伤另按各自规则。</p>
+  <table>
+    <thead><tr><th>角色（原始资产）</th><th>最大生命</th><th>最大内力</th><th>受30%生命武功伤害</th><th>受50%生命武功伤害</th><th>满伤约需累计武功伤害</th></tr></thead>
+    <tbody>
+      <tr><td>王语嫣</td><td>29</td><td>8</td><td>+10</td><td>+18</td><td>74（2.6倍最大生命）</td></tr>
+      <tr><td>胡青牛</td><td>80</td><td>27</td><td>+11</td><td>+18</td><td>214（2.7倍）</td></tr>
+      <tr><td>令狐冲</td><td>104</td><td>65</td><td>+9</td><td>+15</td><td>338（3.3倍）</td></tr>
+      <tr><td>张无忌</td><td>56</td><td>217</td><td>+2</td><td>+5</td><td>546（9.8倍）</td></tr>
+      <tr><td>东方不败</td><td>992</td><td>999</td><td>+7</td><td>+12</td><td>3982（4.0倍）</td></tr>
+      <tr><td>东方不败NG5</td><td>4988</td><td>4995</td><td>+7</td><td>+12</td><td>19966（4.0倍）</td></tr>
+    </tbody>
+  </table>
+</section>
+<section id="hurt-hp-loss">
+  <h3>内伤造成的生命损失</h3>
+  <pre>内伤生命损失(角色) = trunc(角色最大生命 × 角色H / 2000)
+每轮内伤扣HP = 内伤生命损失(本角色)
+武功对伤者的增伤 = 内伤生命损失(目标)</pre>
+  <p>满伤99时约为最大生命的4.95%，与满毒每轮约10%对应原版<code>H / 20</code>与<code>中毒量 / 10</code>的关系。低生命角色因取整较少：最大生命29、满伤时每轮扣1；最大生命不超过20时满伤也不扣血。实现按精确整数计算，不因中间乘积超出signed64而拒绝。</p>
 </section>
 <section id="hurt-cap-impact-audit">
-  <h3>原版影响与NG+规则</h3>
-  <p>从NG1起，只有以内伤为输入的门槛及指定惩罚项按本周伤势量程折算；地图移动计数、中毒条件与<a href="#medicine-hurt-current-proposal">医疗准入</a>各用自身规则。以下是设计规则；逐项实现与验证状态见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
-  <pre>伤势比例 = H / B(n)  # B(n) > 0；只用于比较，不先取整
-内伤高于 p%：伤势比例 &gt; p / 100；低于 p%：伤势比例 &lt; p / 100
-每轮内伤扣HP = trunc(H / 20)；武功对伤者的增伤 = trunc(目标H / 20)
-武功新增内伤 = trunc(本次计算出的伤害 / 10)
-战场行动值 = max(trunc(有效速度 / 15) − trunc(100 × H / (40 × B(n))), 0)
-普通物品内伤折算项 = trunc(50 × H / B(n))</pre>
-  <p>严格大于／小于及<code>H=0</code>的原版特例分别保留。每轮扣血和武功增伤仍用绝对点数，不随上限百分比弱化。</p>
-  <p>配置使<code>HurtMax=0、B=0</code>时，唯一合法伤势为0：百分比门槛按零伤势判断，不触发高于正百分数的条件，满足低于正百分数的条件，显示低伤势色，行动值的伤势惩罚为0；不执行除零。非零伤势或计算中间量溢出拒绝该次操作。</p>
-  <details>
-    <summary>整数比较的等价写法（实现用）</summary>
-    <p>在<code>B(n)&gt;0</code>的合法非负伤势域用有符号64位整数比较：高于<code>p%</code>等价于<code>100 × H &gt; p × B(n)</code>，低于则为<code>100 × H &lt; p × B(n)</code>；等于门槛时两者都不成立。不先对<code>H / B(n)</code>取整，也不用浮点近似。</p>
-  </details>
+  <h3>伤势门槛与各入口</h3>
+  <p>内伤上限固定为99、比例分母为100，因此以伤势比例为输入的门槛、行动值惩罚和物品折算与原版NG1相同；改变的只有<a href="#hurt-gain">新增内伤</a>与<a href="#hurt-hp-loss">生命损失</a>两类算式。地图移动计数、中毒条件与<a href="#medicine-hurt-current-proposal">医疗准入</a>各用自身规则。逐项实现与验证状态见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
+  <pre>伤势比例 = H / B          # B = 100；只用于比较，不先取整
+内伤高于 p%：100 × H &gt; p × B；低于 p%：100 × H &lt; p × B
+战场行动值 = max(trunc(有效速度 / 15) − trunc(100 × H / (40 × B)), 0)
+普通物品内伤折算项 = trunc(50 × H / B)</pre>
+  <p>严格大于／小于及<code>H=0</code>的原版特例分别保留；等于门槛时“高于”与“低于”都不成立。B=100时，以上各式分别等于原版的<code>H &gt; p</code>、<code>H &lt; p</code>、<code>trunc(H / 40)</code>与<code>trunc(H / 2)</code>。</p>
   <table class="impact-table">
     <thead><tr><th>入口</th><th>NG+规则（原版边界见折叠区）</th><th>机器证据</th></tr></thead>
     <tbody>
-      <tr><td>世界地图</td><td>每50次移动尝试检查队伍；<code>伤势比例&gt;50%</code>触发内伤分支。中毒错位索引、三项各减1及原值&gt;1才扣均不变；不清伤。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x26A92.md">0x26A92</a></td></tr>
-      <tr><td>剧情整队休息</td><td>连续队伍前缀中<code>伤势比例&lt;33%</code>且中毒0者清伤、体力写100、生命／内力补满。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2E1E8.md">0x2E1E8</a></td></tr>
-      <tr><td>十五场试炼轮间</td><td>前四组轮间仅主角在<code>伤势比例&lt;50%</code>且中毒0时清伤、恢复体力并补满生命／内力。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x30510.md">0x30510</a></td></tr>
+      <tr><td>世界地图</td><td>每50次移动尝试检查队伍；<code>伤势比例&gt;50%</code>（即H&gt;50）触发内伤分支，与原版相同。中毒错位索引、三项各减1及原值&gt;1才扣均不变；不清伤。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x26A92.md">0x26A92</a></td></tr>
+      <tr><td>剧情整队休息</td><td>连续队伍前缀中<code>伤势比例&lt;33%</code>（即H≤32）且中毒0者清伤、体力写100、生命／内力补满，与原版相同。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2E1E8.md">0x2E1E8</a></td></tr>
+      <tr><td>十五场试炼轮间</td><td>前四组轮间仅主角在<code>伤势比例&lt;50%</code>（即H≤49）且中毒0时清伤、恢复体力并补满生命／内力，与原版相同。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x30510.md">0x30510</a></td></tr>
       <tr><td>队伍菜单医疗</td><td>资格、共同治疗量与治内伤保底只按<a href="#medicine-hurt-current-proposal">医疗规则</a>，不把原版回血分档百分比化。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3A10C.md">0x3A10C</a></td></tr>
-      <tr><td>普通物品与状态页</td><td>正／负回血都用<code>trunc(50 × H / B(n))</code>折算；正向理论回血另乘以目标当前MAX HP／原版NG1可达到的最大生命上限（当前999），向零取整后最多补到HP缺口，负向仍是伤害。生命分色按<code>伤势比例≤33%</code>／<code>33%&lt;伤势比例≤66%</code>／<code>伤势比例&gt;66%</code>连续分档，不新增颜色。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">0x2B483</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22090.md">0x22090</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22A59.md">0x22A59</a></td></tr>
-      <tr><td>战场行动值</td><td>内伤惩罚改为<code>trunc(100 × H / (40 × B(n)))</code>；原速度项、零下限及玩家／AI对最终行动值的使用不变。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3271E.md">0x3271E</a></td></tr>
-      <tr><td>武功伤害与产伤</td><td>增伤<code>trunc(目标H / 20)</code>、命中产伤<code>trunc(计算伤害 / 10)</code>不变；新增内伤写回上限改为<code>HurtMax</code>，伤害变化可能影响击倒和战果。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x39188.md">0x39188</a></td></tr>
-      <tr><td>回合状态结算</td><td>先扣<code>trunc(H / 20)</code>生命，再按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章的每轮毒伤</a>扣血；<code>H&gt;0</code>仍绕过仅有中毒时的生命、体力和隐藏门禁。原版HP边界见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章</a>。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">0x3C563</a></td></tr>
-      <tr><td>玩家／AI投掷</td><td><code>H=0</code>的<code>add_hp</code>用/4；正内伤按<code>0&lt;伤势比例≤33%</code>用/3、<code>33%&lt;伤势比例≤66%</code>用/2、<code>伤势比例&gt;66%</code>用/1。沿各自HP变化公式增减内伤，写回上限改为<code>HurtMax</code>；正毒投掷另按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">统一上毒规则</a>，毒溢出不额外产生内伤。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3A30B.md">0x3A30B</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3598C.md">0x3598C</a></td></tr>
-      <tr><td>敌方AI与战斗显示</td><td>自身<code>伤势比例&gt;50%</code>进入低生命决策；队友<code>伤势比例&gt;40%</code>成为医疗候选，执行仍须满足<a href="#medicine-hurt-current-proposal">新准入</a>。战斗生命颜色沿用33%／66%新档位；门槛变化可能改变随机数短路顺序。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x33599.md">0x33599</a>、<a href="../../../research/evidence/functions/Z_DAT/0x341F6.md">0x341F6</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3C6D3.md">0x3C6D3</a></td></tr>
+      <tr><td>普通物品与状态页</td><td>正／负回血都用<code>trunc(50 × H / B)</code>折算，与原版<code>trunc(H / 2)</code>相同；正向理论回血另乘以目标当前MAX HP／原版NG1可达到的最大生命上限（当前999），向零取整后最多补到HP缺口，负向仍是伤害。负回血按<a href="#hurt-gain">新增内伤</a>（原路径除数10）增加内伤，正回血仍减少<code>trunc(add_hp / 4)</code>。生命分色按<code>伤势比例≤33%</code>／<code>33%&lt;伤势比例≤66%</code>／<code>伤势比例&gt;66%</code>分档，与原版<code>≤33／34～66／≥67</code>相同。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x2B483.md">0x2B483</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22090.md">0x22090</a>、<a href="../../../research/evidence/functions/Z_DAT/0x22A59.md">0x22A59</a></td></tr>
+      <tr><td>战场行动值</td><td>内伤惩罚<code>trunc(100 × H / (40 × B))</code>，与原版<code>trunc(H / 40)</code>相同；原速度项、零下限及玩家／AI对最终行动值的使用不变。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3271E.md">0x3271E</a></td></tr>
+      <tr><td>武功伤害与产伤</td><td>增伤改为<a href="#hurt-hp-loss">目标的内伤生命损失</a>；命中产伤改为<a href="#hurt-gain">新增内伤</a>（原路径除数10），写回上限99。伤害变化可能影响击倒和战果。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x39188.md">0x39188</a></td></tr>
+      <tr><td>回合状态结算</td><td>先扣<a href="#hurt-hp-loss">本角色的内伤生命损失</a>，再按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章的每轮毒伤</a>扣血；<code>H&gt;0</code>仍绕过仅有中毒时的生命、体力和隐藏门禁。原版HP边界见<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-detox-rules">中毒章</a>。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3C563.md">0x3C563</a></td></tr>
+      <tr><td>玩家／AI投掷</td><td>暗器伤害按目标伤势分档：<code>H=0</code>取<code>add_hp</code>的1/4，<code>0&lt;伤势比例≤33%</code>取1/3、<code>33%&lt;伤势比例≤66%</code>取1/2、<code>伤势比例&gt;66%</code>取全额，与原版相同。HP变化为负时按<a href="#hurt-gain">新增内伤</a>（原路径除数4）增加内伤，为正时减少<code>trunc(HP变化 / 4)</code>，写回上限99；正毒投掷另按<a href="use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">统一上毒规则</a>，毒溢出不额外产生内伤。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x3A30B.md">0x3A30B</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3598C.md">0x3598C</a></td></tr>
+      <tr><td>敌方AI与战斗显示</td><td>自身<code>伤势比例&gt;50%</code>进入低生命决策；队友<code>伤势比例&gt;40%</code>成为医疗候选，执行仍须满足<a href="#medicine-hurt-current-proposal">新准入</a>。战斗生命颜色按33%／66%档位，与原版相同。</td><td><a href="../../../research/evidence/functions/Z_DAT/0x33599.md">0x33599</a>、<a href="../../../research/evidence/functions/Z_DAT/0x341F6.md">0x341F6</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3C6D3.md">0x3C6D3</a></td></tr>
     </tbody>
   </table>
   <p>普通药品回血倍率的分母是原版NG1最大生命上限，当前为999，作为规则参数读取。所有角色共用这一基准。先按原分支、伤势折算与随机数算出理论回血，再计算<code>trunc(理论回血 × 目标当前MAX HP / NG1最大生命上限)</code>，最后限制到HP缺口。例如理论回血100、目标MAX HP为999／1998时，倍率后分别为100／200。该基准只用于药效换算，NG+最大生命的实际值仍按<a href="maximum-hp.zh-Hans.html">最大生命字段合同</a>保留。</p>
-  <p>五个内伤写回点（武功产伤、普通物品正／负回血、玩家／AI投掷）共用本周<code>HurtMax(n, CFG)</code>，不改变各路径原有的增减算式、零值和下界行为。升级清伤、战后敌方清伤及换周目清0仍保留；角色医疗的治疗量<code>T</code>与10%治伤保底另按<a href="#medicine-formula">医疗章</a>，不用普通物品的MAX HP增幅。</p>
+  <p>五个内伤写回点（武功产伤、普通物品正／负回血、玩家／AI投掷）的写回上限均为99；增加内伤按<a href="#hurt-gain">新增内伤</a>，减少内伤及零值、下界行为保持原算式。升级清伤、战后敌方清伤及换周目清0仍保留；角色医疗的治疗量<code>T</code>与10%治伤保底另按<a href="#medicine-formula">医疗章</a>，不用普通物品的MAX HP增幅。</p>
   <details>
     <summary>原版机器边界与数值对照</summary>
     <p>原版世界地图每50次移动尝试（包括受阻与入场景）扫描队伍：内伤<code>H&gt;50</code>或误用队伍槽号索引的中毒&gt;50触发三项减1；剧情脚本opcode 12需<code>H&lt;33</code>、中毒0且处于连续队伍前缀；试炼轮间只在前四组、主角<code>H&lt;50</code>且中毒0时恢复。NG+只改变这些入口的内伤门槛。</p>
     <p>原版菜单<code>H&gt;M＋20</code>不能回血或治伤，<code>H&gt;75</code>的基础回血约为<code>trunc(M / 2)</code>，失败时的核心体力结算另按原版；物品正／负回血均读取<code>trunc(H / 2)</code>，队伍医疗选择与人物状态页的生命分色为<code>≤33／34～66／≥67</code>；行动值为<code>max(trunc(有效速度 / 15)−trunc(H / 40),0)</code>。这些固定阈值不直接当成NG+疗效。</p>
     <p>原版武功以目标<code>trunc(H / 20)</code>增伤，在目标HP触底截断前按<code>trunc(计算伤害 / 10)</code>产伤、封顶99；回合先按内伤再按中毒扣HP。投掷原版<code>H=0／1～33／34～66／&gt;66</code>对应<code>add_hp</code>的/4／/3／/2／/1（<code>add_hp=0</code>则本项不变）；玩家投掷按<code>H−trunc(HP变化 / 4)</code>后夹99，AI沿自身路径写回。敌方AI原版自身<code>H&gt;50</code>、队友<code>H&gt;40</code>触发对应分支，旧医疗候选筛选另有<code>M&gt;目标H−30</code>。</p>
-    <p>默认NG2的<code>HurtMax=199、B=200</code>：地图<code>伤势比例&gt;50%</code>从H=101起触发，剧情休息<code>伤势比例&lt;33%</code>仅接受H≤65，试炼轮间<code>伤势比例&lt;50%</code>仅接受H≤99；满伤199的行动惩罚为2，而旧<code>trunc(199 / 40)</code>为4。NG1／NG2／NG3满伤99／199／299的行动惩罚均为2。</p>
-    <p>每轮内伤扣HP及武功增伤不按比例折算：H=199／299／499分别为9／14／24。历史AI反例<code>M=100、H=125</code>满足旧<code>M&gt;H−30</code>选人条件，却因<code>H&gt;M＋20</code>无法通过原版医疗核心；旧筛选不是NG+医疗成功条件。</p>
-    <p>若只增大字段而保留五处旧99写回，H=199者再次受伤或使用物品可能被反夹到99；这是历史审计<code>1717d07</code>的反例，不是NG+设计结果。玩家与AI投掷不合并为统一公式。<a href="../../../research/evidence/functions/Z_DAT/0x3B6BE.md">升级清伤</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3B387.md">战后清伤</a>的机器依据仍独立。</p>
+    <p>旧设计曾以<code>99 + (n − 1) × hurt_cap_step</code>逐周目提高内伤上限，并保留按绝对点数产伤和扣血：数值成长后，高生命角色一次受击即可满伤，满伤扣血却只有数点；低生命角色要承受数十次满血伤害才会满伤。该方案已取消，改为本页按容量产伤、按最大生命扣血的规则。</p>
+    <p>历史AI医疗候选筛选<code>M&gt;目标H−30</code>不是NG+医疗成功条件，执行仍须满足医疗准入。玩家与AI投掷的伤害算式不合并。<a href="../../../research/evidence/functions/Z_DAT/0x3B6BE.md">升级清伤</a>、<a href="../../../research/evidence/functions/Z_DAT/0x3B387.md">战后清伤</a>的机器依据仍独立。</p>
   </details>
 </section>
 </section>
@@ -134,8 +149,8 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
 <div class="symbol-key" role="group" aria-label="医疗符号定义">
   <div><code>H</code>：目标治疗前的实际内伤。</div>
   <div><code>M</code>：施救者当前非负医疗能力。</div>
-  <div><code>Hmax</code>：本周实际内伤上限，即<code>HurtMax(n, CFG)</code>。</div>
-  <div><code>s</code>：实际内伤与<code>Hmax</code>之比；<code>Hmax=0</code>时取0。</div>
+  <div><code>Hmax</code>：内伤上限<code>HurtMax</code>，固定为99。</div>
+  <div><code>s</code>：实际内伤与<code>Hmax</code>之比。</div>
   <div><code>f(s)</code>：随伤势比例变化的疗效倍率。</div>
   <div><code>R</code>：同一次治疗抽取的整数0～4。</div>
   <div><code>T</code>：倍率计算出的治疗量，未应用10%保底。</div>
@@ -155,19 +170,18 @@ B(n) = 10 × ceil(HurtMax(n, CFG) / 10)</pre>
   <p>核心体力不足或<code>H</code>超出门槛：加HP和治内伤均为0。体力不足按原版直接返回，不消费随机数或核心体力；通过体力门槛后，内伤超出医疗准入仍抽取一次随机0～4并消耗核心2点体力。</p>
 
   <h3 id="medicine-formula">医疗公式</h3>
-  <p>NG1起统一使用本式；默认NG1／NG2／NG3的<code>Hmax</code>为99／199／299。</p>
-  <pre>若 Hmax &gt; 0：s = H / Hmax            # 0 ≤ H ≤ Hmax
-若 Hmax = 0：s = 0                   # 此时唯一合法内伤H=0
+  <p>NG1起各周目统一使用本式，<code>Hmax</code>固定为99。</p>
+  <pre>s = H / Hmax                       # 0 ≤ H ≤ Hmax
 倍率 f(s) = 80% − [(80% − 10%) / 2] × s² × (1 + s)
 T = trunc(M × f(s)) + R
 Q = max(T, ceil(M / 10))               # 回HP和治内伤共用10%保底
 实际加HP＝min(max(目标HP上限−目标当前HP, 0), Q)
 实际消除内伤＝min(H, Q)
 治疗后内伤＝H−实际消除内伤</pre>
-  <p>基础治疗量按整数分式精确取整，能力值不先转成浮点；比例系数以16位数位和signed64分片运算，完整保留分子／分母再除法。新增19位能力及MAX−7内伤上限病例已通过Linux／Sanitizer的五项关联验证，失败时随机候选仍不提交；详见实现清单。</p>
-  <p>实现按等价整数分式取整：<code>trunc(M × (16×Hmax³ − 7×H²×Hmax − 7×H³) / (20×Hmax³))</code>；零上限且零内伤时按<code>trunc(4×M/5)</code>计算。计算使用有界整数数位保留分式精度，避免19位能力转浮点后改变取整结果；随机值与10%保底仍按原公式应用。</p>
-  <p>两项共用<code>Q</code>；HP满仍可治内伤。分母用实际<code>Hmax</code>，
-    不用<a href="#hurt-cap-impact-audit"><code>B(n)</code></a>或<code>Hmax＋1</code>。菜单、玩家和AI已接入共享疗效与64位返回通道，验证状态见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
+  <p>基础治疗量按整数分式精确取整，能力值不先转成浮点；比例系数以16位数位和signed64分片运算，完整保留分子／分母再除法。新增19位能力病例已通过Linux／Sanitizer的五项关联验证，失败时随机候选仍不提交；详见实现清单。</p>
+  <p>实现按等价整数分式取整：<code>trunc(M × (16×Hmax³ − 7×H²×Hmax − 7×H³) / (20×Hmax³))</code>。计算使用有界整数数位保留分式精度，避免19位能力转浮点后改变取整结果；随机值与10%保底仍按原公式应用。</p>
+  <p>两项共用<code>Q</code>；HP满仍可治内伤。分母用<code>Hmax=99</code>，
+    不用<a href="#hurt-cap-impact-audit"><code>B=100</code></a>。菜单、玩家和AI已接入共享疗效与64位返回通道，验证状态见<a href="../implementation-tasks.zh-Hans.md">实现清单</a>。</p>
   <p>实际世界菜单验证在已启动会话中设置NG+来源、周目与能力，再用公开按键完成施救者、目标选择及结果呈现。既有NG1／NG2八组病例继续核对疗效、满血治伤、体力与随机状态；新增NG999病例以医疗能力和HP上限7000000000000000000、当前HP及内伤0计算出5600000000000000003点回血，结果通道、完整19位字形和阴影均通过检查。此固定执行夹具未经过自然成长；完整游玩与平衡仍待验收。</p>
   <details>
     <summary>原版公式（仅供历史对照）</summary>
@@ -181,56 +195,48 @@ Q = max(T, ceil(M / 10))               # 回HP和治内伤共用10%保底
   </details>
 
   <figure class="formula-figure" id="medicine-formula-chart">
-    <figcaption>原版NG1（灰）与新式NG1／NG2／NG3（绿／橙／蓝）。横轴为绝对内伤，默认上限99／199／299；
+    <figcaption>原版（灰）与新公式（绿）。横轴为内伤0～99，虚线为33／66档位；
       纵轴为取整前倍率，不含随机值、保底或HP缺口。</figcaption>
     <svg class="formula-chart" viewBox="0 0 860 430" role="img" aria-labelledby="medicine-chart-title medicine-chart-desc" xmlns="http://www.w3.org/2000/svg">
-      <title id="medicine-chart-title">原版四档与新公式NG1／NG2／NG3的医疗倍率曲线</title>
-      <desc id="medicine-chart-desc">原版NG1四档灰线在内伤99处结束；新式NG1、NG2、NG3分别在99、199、299处到10%。
-        横轴为绝对内伤，纵轴为取整前倍率。原版只供历史对照。</desc>
+      <title id="medicine-chart-title">原版四档与新公式的医疗倍率曲线</title>
+      <desc id="medicine-chart-desc">原版四档灰线与新公式绿线均在内伤99处结束，新公式在内伤99处到10%。
+        横轴为内伤，纵轴为取整前倍率。原版只供历史对照。</desc>
       <g class="grid">
         <path d="M75 40V320H795 M75 40H795 M75 110H795 M75 180H795 M75 250H795"/>
-        <path d="M313.39 40V320 M554.20 40V320" stroke-dasharray="4 5"/>
+        <path d="M315 40V320 M555 40V320" stroke-dasharray="4 5"/>
       </g>
       <g text-anchor="end">
         <text x="68" y="45">80%</text><text x="68" y="115">60%</text>
         <text x="68" y="185">40%</text><text x="68" y="255">20%</text><text x="68" y="325">0%</text>
       </g>
       <g text-anchor="middle">
-        <text x="75" y="340">0</text><text x="195.40" y="340">50</text><text x="315.80" y="340">100</text>
-        <text x="436.20" y="340">150</text><text x="556.61" y="340">200</text>
-        <text x="677.01" y="340">250</text><text x="795" y="340">299</text>
-        <text x="435" y="369">治疗前内伤 H（绝对点数）</text>
+        <text x="75" y="340">0</text><text x="256.82" y="340">25</text><text x="438.64" y="340">50</text>
+        <text x="620.45" y="340">75</text><text x="795" y="340">99</text>
+        <text x="435" y="369">治疗前内伤 H</text>
       </g>
-      <path class="line" stroke="#637184" d="M75 40H136.40V57.5H196.61V86.67H256.81V145H313.39"/>
-      <path class="line" stroke="#345dc0" stroke-dasharray="3 5" d="M75 40C315 40 555 80.833333 795 285"/>
-      <path class="line" stroke="#d66919" stroke-dasharray="8 4" d="M75 40C234.73 40 394.46 80.833333 554.20 285"/>
-      <path class="line" stroke="#218353" d="M75 40C154.46 40 233.93 80.833333 313.39 285"/>
+      <path class="line" stroke="#637184" d="M75 40H260.45V57.5H442.27V86.67H624.09V145H795"/>
+      <path class="line" stroke="#218353" d="M75 40C315 40 555 80.833333 795 285"/>
       <g>
-        <path class="line" stroke="#637184" d="M75 405h32"/><text x="115" y="410">原版（NG1）</text>
-        <path class="line" stroke="#218353" d="M265 405h32"/><text x="305" y="410">新公式NG1</text>
-        <path class="line" stroke="#d66919" stroke-dasharray="8 4" d="M455 405h32"/><text x="495" y="410">新公式NG2</text>
-        <path class="line" stroke="#345dc0" stroke-dasharray="3 5" d="M645 405h32"/><text x="685" y="410">新公式NG3</text>
+        <path class="line" stroke="#637184" d="M75 405h32"/><text x="115" y="410">原版</text>
+        <path class="line" stroke="#218353" d="M265 405h32"/><text x="305" y="410">新公式</text>
       </g>
     </svg>
   </figure>
 
   <h3>白话说明</h3>
-  <p>下表按默认内伤上限、随机0～4且HP缺口充足计算；医疗能力200／300仅为算例，非已定CFG默认值。</p>
+  <p>下表按内伤上限99、随机0～4且HP缺口充足计算，各周目相同；医疗能力200仅为算例。</p>
   <table>
-    <thead><tr><th>周目</th><th>医疗M</th><th>内伤H</th><th>加HP</th><th>治内伤</th><th>治疗后内伤</th></tr></thead>
+    <thead><tr><th>医疗M</th><th>内伤H</th><th>加HP</th><th>治内伤</th><th>治疗后内伤</th></tr></thead>
     <tbody>
-      <tr><td>NG1</td><td>20</td><td>40</td><td>14～18</td><td>14～18</td><td>22～26</td></tr>
-      <tr><td>NG1</td><td>100</td><td>90</td><td>24～28</td><td>24～28</td><td>62～66</td></tr>
-      <tr><td>NG1</td><td>100</td><td>95</td><td>16～20</td><td>16～20</td><td>75～79</td></tr>
-      <tr><td>NG1</td><td>100</td><td>99</td><td>10～14</td><td>10～14</td><td>85～89</td></tr>
-      <tr><td>NG1</td><td>81</td><td>99</td><td>9～12</td><td>9～12</td><td>87～90</td></tr>
-      <tr><td>NG2</td><td>100</td><td>120</td><td>59～63</td><td>59～63</td><td>57～61</td></tr>
-      <tr><td>NG2</td><td>100</td><td>121</td><td>0（失败）</td><td>0</td><td>121</td></tr>
-      <tr><td>NG2</td><td>200</td><td>199</td><td>20～24</td><td>20～24</td><td>175～179</td></tr>
-      <tr><td>NG3</td><td>300</td><td>299</td><td>30～34</td><td>30～34</td><td>265～269</td></tr>
+      <tr><td>20</td><td>40</td><td>14～18</td><td>14～18</td><td>22～26</td></tr>
+      <tr><td>100</td><td>90</td><td>24～28</td><td>24～28</td><td>62～66</td></tr>
+      <tr><td>100</td><td>95</td><td>16～20</td><td>16～20</td><td>75～79</td></tr>
+      <tr><td>100</td><td>99</td><td>10～14</td><td>10～14</td><td>85～89</td></tr>
+      <tr><td>81</td><td>99</td><td>9～12</td><td>9～12</td><td>87～90</td></tr>
+      <tr><td>200</td><td>99</td><td>20～24</td><td>20～24</td><td>75～79</td></tr>
     </tbody>
   </table>
-  <p>NG1的<code>M=81、H=99</code>：基础治疗量为8，随机值0或1时共同10%保底将两项提到9。</p>
+  <p><code>M=81、H=99</code>：基础治疗量为8，随机值0或1时共同10%保底将两项提到9。</p>
 </section>
 <section id="medicine-field-definition">
   <details>

@@ -1101,21 +1101,15 @@ void check_event_load_menu(const std::filesystem::path& root) {
 
     struct HurtRestCase {
         std::int64_t playthrough;
-        std::int64_t step;
         std::int64_t hurt;
         bool restores;
     };
     for (const auto& entry : std::array{
-             HurtRestCase{2, 100, 65, true}, HurtRestCase{2, 100, 66, false},
-             HurtRestCase{3, 100, 98, true}, HurtRestCase{3, 100, 99, false},
-             HurtRestCase{2, 2, 36, true}, HurtRestCase{2, 2, 37, false},
-             HurtRestCase{2, -99, 0, true},
-             HurtRestCase{2, 4'999'999'999'901, 1'649'999'999'999, true},
-             HurtRestCase{2, 4'999'999'999'901, 1'650'000'000'000, false}}) {
+             HurtRestCase{2, 32, true}, HurtRestCase{2, 33, false},
+             HurtRestCase{3, 0, true}, HurtRestCase{3, 99, false}}) {
         auto snapshot = load_baseline(root);
         snapshot.configuration.enabled = true;
-        snapshot.configuration.maximum_playthroughs = entry.step < 0 ? 2 : 3;
-        snapshot.configuration.hurt_cap_step = entry.step;
+        snapshot.configuration.maximum_playthroughs = 3;
         snapshot.playthrough = entry.playthrough;
         snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
         for (std::size_t slot = 0U; slot < openlegend::model::kTeamMemberCount; ++slot) {
@@ -4700,12 +4694,10 @@ void check_event_tournament_interround_restore(const std::filesystem::path& root
                                    const std::int16_t poison,
                                    const bool restores,
                                    const std::int64_t playthrough = 1,
-                                   const std::int64_t hurt_step = 100,
                                    const bool accepts = true) {
         auto snapshot = load_baseline(root);
         snapshot.configuration.enabled = true;
-        snapshot.configuration.maximum_playthroughs = hurt_step < 0 ? 2 : 3;
-        snapshot.configuration.hurt_cap_step = hurt_step;
+        snapshot.configuration.maximum_playthroughs = 3;
         snapshot.playthrough = playthrough;
         snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
         snapshot.ranger.scenes[25].set_word(
@@ -4767,20 +4759,16 @@ void check_event_tournament_interround_restore(const std::filesystem::path& root
         OL_CHECK(other.word(openlegend::model::role_word::physical_power) == 16);
     };
 
-    check_restore(-32768, 0, false, 1, 100, false);
+    check_restore(-32768, 0, false, 1, false);
     check_restore(49, 0, true);
     check_restore(50, 0, false);
-    check_restore(-32768, -1, false, 1, 100, false);
-    check_restore(99, 0, true, 2);
-    check_restore(100, 0, false, 2);
-    check_restore(99, 1, false, 2);
-    check_restore(149, 0, true, 3);
-    check_restore(150, 0, false, 3);
-    check_restore(54, 0, true, 2, 2);
-    check_restore(55, 0, false, 2, 2);
-    check_restore(0, 0, true, 2, -99);
-    check_restore(1, 0, false, 2, -99, false);
-    check_restore(std::numeric_limits<std::int64_t>::max(), 0, false, 2, 100, false);
+    check_restore(-32768, -1, false, 1, false);
+    check_restore(49, 0, true, 2);
+    check_restore(50, 0, false, 2);
+    check_restore(49, 1, false, 2);
+    check_restore(0, 0, true, 3);
+    check_restore(99, 0, false, 3);
+    check_restore(std::numeric_limits<std::int64_t>::max(), 0, false, 2, false);
 }
 
 void check_event_finale_party_cleanup(const std::filesystem::path& root) {

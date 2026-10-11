@@ -2,12 +2,11 @@
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/model/checked_arithmetic.hpp"
+#include "openlegend/model/hurt.hpp"
 
 namespace openlegend::model {
 namespace {
 
-constexpr std::int64_t original_hurt_maximum = 99;
-constexpr std::int64_t hurt_denominator_step = 10;
 constexpr std::int64_t original_experience_percent = 100;
 
 NODISCARD std::optional<std::int64_t> experience_percent(
@@ -34,26 +33,11 @@ std::optional<PlaythroughLimits> calculate_playthrough_limits(
     if (playthrough < 1 || playthrough > configuration.maximum_playthroughs) {
         return std::nullopt;
     }
-    const auto hurt_increase = checked_multiply(playthrough - 1, configuration.hurt_cap_step);
-    if (!hurt_increase.has_value()) {
-        return std::nullopt;
-    }
-    const auto hurt_maximum = checked_add(original_hurt_maximum, *hurt_increase);
-    if (!hurt_maximum.has_value() || *hurt_maximum < 0) {
-        return std::nullopt;
-    }
-    const auto denominator_blocks = checked_add(
-        *hurt_maximum / hurt_denominator_step,
-        *hurt_maximum % hurt_denominator_step == 0 ? 0 : 1);
-    if (!denominator_blocks.has_value()) {
-        return std::nullopt;
-    }
-    const auto denominator = checked_multiply(*denominator_blocks, hurt_denominator_step);
     const auto multiplier = experience_percent(configuration, playthrough);
-    if (!denominator.has_value() || !multiplier.has_value()) {
+    if (!multiplier.has_value()) {
         return std::nullopt;
     }
-    return PlaythroughLimits{*hurt_maximum, *denominator, *multiplier};
+    return PlaythroughLimits{kHurtMaximum, kHurtRatioDenominator, *multiplier};
 }
 
 }

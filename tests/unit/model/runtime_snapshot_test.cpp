@@ -279,7 +279,7 @@ void check_numeric_domains_and_references() {
     wide.ranger.roles[0].speed = 100;
     wide.ranger.roles[0].attack = 5'000'000'000;
     wide.ranger.roles[0].knowledge = 6'000'000'000;
-    wide.ranger.roles[0].hurt = 199;
+    wide.ranger.roles[0].hurt = 99;
     wide.ranger.roles[0].poison = 99;
     const auto manual = std::ranges::find_if(wide.ranger.items, [](const auto& item) {
         return item.word(model::item_word::item_type) == 2 &&
@@ -296,15 +296,10 @@ void check_numeric_domains_and_references() {
     OL_CHECK(wide.valid());
     OL_CHECK(!wide.valid_for_persistence());
     wide.ranger.roles[0].poison = 99;
-    wide.ranger.roles[0].hurt = 200;
+    wide.ranger.roles[0].hurt = 100;
     OL_CHECK(!wide.valid_for_persistence());
-    wide.ranger.roles[0].hurt = 199;
-    wide.configuration.hurt_cap_step = -99;
-    wide.configuration.maximum_playthroughs = 2;
-    wide.ranger.roles[0].hurt = 0;
+    wide.ranger.roles[0].hurt = 99;
     OL_CHECK(wide.valid_for_persistence());
-    wide.ranger.roles[0].hurt = 1;
-    OL_CHECK(!wide.valid_for_persistence());
 }
 
 void check_static_definitions() {
@@ -380,7 +375,7 @@ void check_save_format_boundaries() {
     OL_CHECK(!model::encode_legacy_snapshot(*runtime).has_value());
     model::NewGamePlusConfiguration configuration;
     configuration.enabled = true;
-    configuration.hurt_cap_step = 250;
+    configuration.hp_cap_step = 250;
     const auto configured = model::decode_legacy_snapshot(*loaded.snapshot, configuration);
     OL_CHECK(configured.has_value());
     if (configured.has_value()) {

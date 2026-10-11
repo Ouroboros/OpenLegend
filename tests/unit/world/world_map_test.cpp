@@ -1162,24 +1162,16 @@ void check_periodic_rng_and_recovery(const std::filesystem::path& root) {
     }
     struct HurtCase {
         std::int64_t playthrough;
-        std::int64_t step;
         std::int64_t hurt;
         bool damages;
     };
     for (const auto& entry : std::array{
-             HurtCase{2, 100, 100, false}, HurtCase{2, 100, 101, true},
-             HurtCase{3, 100, 150, false}, HurtCase{3, 100, 151, true},
-             HurtCase{2, 2, 55, false}, HurtCase{2, 2, 56, true},
-             HurtCase{2, -99, 0, false},
-             HurtCase{2, 4'999'999'999'901, 2'500'000'000'000, false},
-             HurtCase{2, 4'999'999'999'901, 2'500'000'000'001, true}}) {
+             HurtCase{1, 50, false}, HurtCase{1, 51, true},
+             HurtCase{2, 50, false}, HurtCase{2, 51, true},
+             HurtCase{3, 0, false}, HurtCase{3, 99, true}}) {
         auto snapshot = load_baseline(root);
         snapshot.configuration.enabled = true;
         snapshot.configuration.maximum_playthroughs = 3;
-        if (entry.step < 0) {
-            snapshot.configuration.maximum_playthroughs = 2;
-        }
-        snapshot.configuration.hurt_cap_step = entry.step;
         auto& role = snapshot.ranger.roles[0U];
         role.hurt = entry.hurt;
         role.poison = 0;

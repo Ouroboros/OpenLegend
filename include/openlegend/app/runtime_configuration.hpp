@@ -309,10 +309,9 @@ enum class NewGamePlusConfigurationStatus {
 
 struct NewGamePlusConfigurationLoadResult {
     static constexpr std::string_view toml_table_name = "new_game_plus";
-    static constexpr std::array<std::string_view, 14U> toml_field_order{
+    static constexpr std::array<std::string_view, 13U> toml_field_order{
         "enabled",
         "maximum_playthroughs",
-        "hurt_cap_step",
         "hp_cap_step",
         "mp_cap_step",
         "attack_cap_step",

@@ -169,7 +169,7 @@ void check_identity_and_aliases(
     enemy->poison = 10;
     enemy->physical_power = 60;
     OL_CHECK(setup.apply_round_status_damage().has_value());
-    OL_CHECK(enemy->hp == 978);
+    OL_CHECK(enemy->hp == 960);
     OL_CHECK(ranger.roles == saved_roles);
 }
 

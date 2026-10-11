@@ -388,8 +388,8 @@ void check_defeat(
         return;
     }
     OL_CHECK(session.post_battle_result().has_value());
-    OL_CHECK(ranger.roles[1U].hp == 9'999'999'991);
-    OL_CHECK(ranger.roles[1U].hurt == 199);
+    OL_CHECK(ranger.roles[1U].hp == 8'525'000'000);
+    OL_CHECK(ranger.roles[1U].hurt == 59);
     OL_CHECK(ranger.roles[1U].no_magic_count == history_before);
     OL_CHECK(ranger.roles[3U] == enemy_before);
     OL_CHECK(snapshot.valid_for_persistence());

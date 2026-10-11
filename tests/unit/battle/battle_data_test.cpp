@@ -1619,7 +1619,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(fnv1a_words(setup.attack_effects()) == 0xab559939923b4f74ULL);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 52);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 22);
     OL_CHECK(setup.combatants()[1U].damage_value == 21);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
@@ -1651,7 +1651,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(plain_result->damage == 16);
     OL_CHECK(random.state() == 2'818'548'041U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 84);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 4);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 9);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 8);
     OL_CHECK(ranger.header.inventory_count(0U) == 2);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
@@ -1752,7 +1752,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(ai_party_result->damage == 21);
     OL_CHECK(random.state() == 1'103'527'590U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 79);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 45);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 52);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 22);
     OL_CHECK(ranger.header.inventory_item(0U).value == 97);
     OL_CHECK(ranger.header.inventory_count(0U) == 2);
@@ -1770,7 +1770,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(ai_plain_result->damage == 16);
     OL_CHECK(random.state() == 2'207'042'835U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 84);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 4);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 9);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 
@@ -1788,7 +1788,7 @@ void run_throwing_weapon_action_test(const openlegend::resource::DataRoot& data_
     OL_CHECK(stale_payload_result->damage == 19);
     OL_CHECK(random.state() == 1'103'527'590U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 81);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 44);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 51);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 10);
     OL_CHECK(ranger.header.inventory_item(0U).value == 102);
     OL_CHECK(ranger.header.inventory_count(0U) == 1);
@@ -1863,25 +1863,25 @@ void run_ngplus_throwing_weapon_test(const openlegend::resource::DataRoot& data_
         std::int64_t overflow_damage;
     };
     const std::array cases{
-        ThrowingCase{0, 0, 0, 1000, 1000, 0, -120, 1, 989, 2, 0, 0, 11, 0},
-        ThrowingCase{0, 66, 0, 1000, 1000, 0, -120, 1, 986, 69, 0, 0, 14, 0},
-        ThrowingCase{0, 67, 0, 1000, 1000, 0, -120, 1, 979, 72, 0, 0, 21, 0},
-        ThrowingCase{0, 132, 0, 1000, 1000, 0, -120, 1, 979, 137, 0, 0, 21, 0},
-        ThrowingCase{0, 133, 0, 1000, 1000, 0, -120, 1, 959, 143, 0, 0, 41, 0},
-        ThrowingCase{0, 199, 0, 1000, 1000, 0, -120, 1, 959, 199, 0, 0, 41, 0},
-        ThrowingCase{800, 60, 99, 1000, 600, 0, 0, 800, 0, 193, 99, 99, 534, 99},
+        ThrowingCase{0, 0, 0, 1000, 1000, 0, -120, 1, 989, 1, 0, 0, 11, 0},
+        ThrowingCase{0, 33, 0, 1000, 1000, 0, -120, 1, 986, 34, 0, 0, 14, 0},
+        ThrowingCase{0, 34, 0, 1000, 1000, 0, -120, 1, 979, 36, 0, 0, 21, 0},
+        ThrowingCase{0, 66, 0, 1000, 1000, 0, -120, 1, 979, 68, 0, 0, 21, 0},
+        ThrowingCase{0, 67, 0, 1000, 1000, 0, -120, 1, 959, 72, 0, 0, 41, 0},
+        ThrowingCase{0, 99, 0, 1000, 1000, 0, -120, 1, 959, 99, 0, 0, 41, 0},
+        ThrowingCase{800, 60, 99, 1000, 600, 0, 0, 800, 0, 99, 99, 99, 534, 99},
         ThrowingCase{0, 60, 99, 1000, 1000, 0, 18, 800, 901, 60, 99, 99, 0, 99},
-        ThrowingCase{220, 0, 0, 1000, 1000, 100, 0, 80, 853, 36, 25, 25, 147, 0},
-        ThrowingCase{220, 0, 70, 1000, 1000, 100, 0, 80, 828, 36, 70, 70, 147, 25},
+        ThrowingCase{220, 0, 0, 1000, 1000, 100, 0, 80, 853, 18, 25, 25, 147, 0},
+        ThrowingCase{220, 0, 70, 1000, 1000, 100, 0, 80, 828, 18, 70, 70, 147, 25},
         ThrowingCase{5'000'000'000'000, 0, 0, 1000, 1000, 0, 0, 80,
-                     0, 199, 99, 99, 1000, 99},
+                     0, 99, 99, 99, 1000, 99},
         ThrowingCase{20, 0, 0, 5'000'000'000'000, 5'000'000'000'000, 0, 0, 80,
-                     4'999'999'999'986, 3, 25, 25, 14, 0},
+                     4'999'999'999'986, 0, 25, 25, 14, 0},
         ThrowingCase{5'000'000'000'000, 0, 50, 5'000'000'000'000, 5'000'000'000'000, 0, 0, 0,
-                     1'666'666'666'666, 199, 50, 50, 3'333'333'333'334, 0},
-        ThrowingCase{20, 0, 50, 1000, 1000, 999, 0, -40, 986, 3, 30, 20, 14, 0},
+                     1'666'666'666'666, 82, 50, 50, 3'333'333'333'334, 0},
+        ThrowingCase{20, 0, 50, 1000, 1000, 999, 0, -40, 986, 1, 30, 20, 14, 0},
         ThrowingCase{5'000'000'000'000, 0, 99, 5'000'000'000'000, 5'000'000'000'000, 999, 0, -40,
-                     1'666'666'666'666, 199, 79, 0, 3'333'333'333'334, 0},
+                     1'666'666'666'666, 82, 79, 0, 3'333'333'333'334, 0},
     };
     model::NewGamePlusConfiguration configuration{};
     configuration.enabled = true;
@@ -2027,7 +2027,7 @@ void run_ngplus_throwing_weapon_test(const openlegend::resource::DataRoot& data_
     actor.taking_counts[0U] = 2;
     ranger.items[102U].set_word(model::item_word::add_hp, 0);
     ranger.items[102U].set_word(model::item_word::add_poison, -40);
-    configuration.hurt_cap_step = -99;
+    actor.maximum_mp = 1000;
     configuration.maximum_playthroughs = 2;
     BattleData data{data_root, 4};
     BattleSetup setup{data, ranger, nullptr, configuration, 2};
@@ -2299,7 +2299,7 @@ void run_ai_item_effect_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(harmful_result->deltas[0U] == -22);
     OL_CHECK(random.state() == 2'524'885'223U);
     OL_CHECK(actor.word(role_word::hp) == 78);
-    OL_CHECK(actor.word(role_word::hurt) == 2);
+    OL_CHECK(actor.word(role_word::hurt) == 3);
     OL_CHECK(setup.combatants()[0U].words[combatant_word::action_done] == 0);
 
     auto& all_fields = ranger.items[153U];
@@ -3341,6 +3341,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         auto& second_role = ranger.roles[static_cast<std::size_t>(
             second[combatant_word::role_id])];
         first_role.set_word(role_word::hp, 0);
+        first_role.maximum_hp = 100;
         first_role.set_word(role_word::hurt, 20);
         first_role.set_word(role_word::poison, 0);
         first_role.set_word(role_word::physical_power, -1);
@@ -4109,6 +4110,7 @@ void run_battle_round_status_damage_review_test(
         auto& second_role = ranger.roles[static_cast<std::size_t>(
             second[combatant_word::role_id])];
         first_role.set_word(role_word::hp, 1);
+        first_role.maximum_hp = 100;
         first_role.set_word(role_word::hurt, 20);
         first_role.set_word(role_word::poison, 0);
         first_role.set_word(role_word::physical_power, 0);
@@ -4173,11 +4175,13 @@ void run_battle_round_status_damage_review_test(
         auto& second_role = ranger.roles[static_cast<std::size_t>(
             second[combatant_word::role_id])];
         first_role.set_word(role_word::hp, 100);
+        first_role.maximum_hp = 100;
         first_role.set_word(role_word::hurt, -20);
         first_role.set_word(role_word::poison, 10);
         first_role.set_word(role_word::physical_power, 1);
         first[combatant_word::occupancy_hidden] = 0;
         second_role.set_word(role_word::hp, 100);
+        second_role.maximum_hp = 100;
         second_role.set_word(role_word::hurt, 20);
         second_role.set_word(role_word::poison, 0);
         second_role.set_word(role_word::physical_power, -1);
@@ -4222,9 +4226,9 @@ void run_battle_round_status_damage_review_test(
         OL_CHECK(result.has_value());
         OL_CHECK(result->entries.size() == 2U);
         OL_CHECK(result->entries[0U].hp_before == 32768);
-        OL_CHECK(result->entries[0U].hp_after == 32767);
+        OL_CHECK(result->entries[0U].hp_after == 32441);
         OL_CHECK(!result->entries[0U].hp_floored);
-        OL_CHECK(first_role.word(role_word::hp) == 32767);
+        OL_CHECK(first_role.word(role_word::hp) == 32441);
         OL_CHECK(result->entries[1U].hp_before == 1);
         OL_CHECK(result->entries[1U].hurt_damage == 1);
         OL_CHECK(result->entries[1U].poison_damage == 1);
@@ -4245,6 +4249,7 @@ void run_battle_round_status_damage_review_test(
         auto& shared_role = ranger.roles[static_cast<std::size_t>(
             first[combatant_word::role_id])];
         shared_role.set_word(role_word::hp, 2);
+        shared_role.maximum_hp = 100;
         shared_role.set_word(role_word::hurt, 20);
         shared_role.set_word(role_word::poison, 0);
         shared_role.set_word(role_word::physical_power, 1);
@@ -4272,14 +4277,13 @@ void run_battle_round_status_damage_review_test(
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
         NewGamePlusConfiguration configuration;
         configuration.enabled = true;
-        configuration.hurt_cap_step = 5'000'000'000'000;
         BattleSetup setup{data, ranger, nullptr, configuration, 2};
         OL_CHECK(setup.valid());
         auto& role = ranger.roles[1U];
         role.maximum_hp = maximum_hp;
         role.hp = maximum_hp == 716 ? 70 : maximum_hp;
         role.poison = 99;
-        role.hurt = maximum_hp > 716 ? 5'000'000'000'000 : 0;
+        role.hurt = maximum_hp > 716 ? 99 : 0;
         role.physical_power = 100;
         setup.combatants()[0U].words[combatant_word::occupancy_hidden] = 0;
         ranger.roles[3U].hurt = 0;
@@ -4290,7 +4294,7 @@ void run_battle_round_status_damage_review_test(
         const auto expected_damage = maximum_hp == 32 ? 9LL
             : maximum_hp == 716 ? 70LL : 495'000'000'000LL;
         const auto expected_hp = maximum_hp == 32 ? 23LL
-            : maximum_hp == 716 ? 0LL : 4'255'000'000'000LL;
+            : maximum_hp == 716 ? 0LL : 4'257'500'000'000LL;
         OL_CHECK(result->entries[0U].poison_damage == expected_damage);
         OL_CHECK(role.hp == expected_hp);
         OL_CHECK(role.poison == 99);
@@ -5988,7 +5992,7 @@ void run_player_item_session_test(
         OL_CHECK(effect_frames == 11U);
         OL_CHECK(session->phase() == BattleSessionPhase::player_damage_frame_present);
         OL_CHECK(target.word(role_word::hp) == 79);
-        OL_CHECK(target.word(role_word::hurt) == 45);
+        OL_CHECK(target.word(role_word::hurt) == 52);
         OL_CHECK(target.word(role_word::poison) == 22);
         OL_CHECK(random.state() == 1'103'527'590U);
         OL_CHECK(session->setup().combatants()[1U].damage_value == 21);
@@ -7602,7 +7606,7 @@ void run_ai_item_session_test(
         OL_CHECK(effect_frames == 11U);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
         OL_CHECK(target.word(role_word::hp) == 80);
-        OL_CHECK(target.word(role_word::hurt) == 45);
+        OL_CHECK(target.word(role_word::hurt) == 52);
         OL_CHECK(target.word(role_word::poison) == 22);
         OL_CHECK(actor.word(role_word::taking_item_begin) == 102);
         OL_CHECK(actor.word(role_word::taking_item_count_begin) == 1);
@@ -7732,7 +7736,7 @@ void run_ai_item_session_test(
         OL_CHECK(effect_frames == 11U);
         OL_CHECK(session->phase() == BattleSessionPhase::ai_damage_frame_present);
         OL_CHECK(target.word(role_word::hp) == 80);
-        OL_CHECK(target.word(role_word::hurt) == 45);
+        OL_CHECK(target.word(role_word::hurt) == 52);
         OL_CHECK(target.word(role_word::poison) == 22);
         std::size_t damage_frames = 0U;
         while (session->phase() == BattleSessionPhase::ai_damage_frame_present &&
@@ -12241,7 +12245,7 @@ void run_ngplus_damage_test(const openlegend::resource::DataRoot& data_root) {
         OL_CHECK(area.has_value() && area->effect_kind == 1);
         OL_CHECK(setup.combatants()[1U].damage_value == 51);
         OL_CHECK(setup.combatants()[1U].poison_overflow_damage == 99);
-        OL_CHECK(target.hp == 0 && target.hurt == 5 && target.poison == 99);
+        OL_CHECK(target.hp == 0 && target.hurt == 2 && target.poison == 99);
         OL_CHECK(setup.combatants()[0U].reward_experience == 10);
         BattleRenderState state;
         state.view_x = 26;
@@ -12282,7 +12286,7 @@ void run_ngplus_damage_test(const openlegend::resource::DataRoot& data_root) {
         const auto damage = setup.apply_hp_damage(0U, 1U, 2, 1, 0, random);
         OL_CHECK(damage.has_value() && damage->damage == 5'000'000'000'023);
         OL_CHECK(ranger.roles[3U].hp == 44'999'999'999'977);
-        OL_CHECK(ranger.roles[3U].hurt == 199);
+        OL_CHECK(ranger.roles[3U].hurt == 4);
         OL_CHECK(setup.combatants()[0U].reward_experience == 1'000'000'000'004);
     }
     {
@@ -12425,7 +12429,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(exact->cost_scale == 3);
     OL_CHECK(hp_random.state() == 2'524'885'223U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 0);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 3);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 1);
     OL_CHECK(target.word(openlegend::model::role_word::poison) == 3);
     OL_CHECK(setup.combatants()[0U].reward_experience == 6);
 
@@ -12459,7 +12463,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(fallback->damage == 14);
     OL_CHECK(hp_random.state() == 3'295'386'429U);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 86);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 1);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 0);
     OL_CHECK(setup.combatants()[0U].reward_experience == 2);
 
     const auto reset_hp_edge_case = [&] {
@@ -12561,7 +12565,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     hp_random.seed(1U);
     const auto capped_hurt = setup.apply_hp_damage(0U, 1U, 2, 1, 0, hp_random);
     OL_CHECK(capped_hurt.has_value());
-    OL_CHECK(capped_hurt->damage == 34);
+    OL_CHECK(capped_hurt->damage == 79);
     OL_CHECK(target.word(openlegend::model::role_word::hurt) == 99);
 
     reset_hp_edge_case();
@@ -12573,7 +12577,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.poison == 99);
     OL_CHECK(exact_poison_cap->poison_overflow_damage == 1);
     OL_CHECK(target.hp == 69);
-    OL_CHECK(target.hurt == 3);
+    OL_CHECK(target.hurt == 1);
 
     reset_hp_edge_case();
     actor.set_word(openlegend::model::role_word::attack_with_poison, 1475);
@@ -12584,7 +12588,7 @@ void run_damage_formula_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(target.poison == 99);
     OL_CHECK(exceeded_poison_cap->poison_overflow_damage == 2);
     OL_CHECK(target.hp == 68);
-    OL_CHECK(target.hurt == 3);
+    OL_CHECK(target.hurt == 1);
 
     reset_hp_edge_case();
     setup.combatants()[0U].reward_experience =
@@ -12788,7 +12792,7 @@ void run_attack_area_test(const openlegend::resource::DataRoot& data_root) {
     OL_CHECK(setup.combatants()[0U].words[combatant_word::initial_mode] == 3);
     OL_CHECK(setup.combatants()[1U].damage_value == 29);
     OL_CHECK(target.word(openlegend::model::role_word::hp) == 71);
-    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 2);
+    OL_CHECK(target.word(openlegend::model::role_word::hurt) == 9);
     OL_CHECK(setup.last_hp_cost_scale() == 3);
     OL_CHECK(legacy_hp_cost_scale == 3);
     OL_CHECK(random.state() == 2'524'885'223U);
@@ -13356,6 +13360,7 @@ void run_turn_order_test(const openlegend::resource::DataRoot& data_root) {
         auto& role = hidden_ranger.roles[static_cast<std::size_t>(
             combatant.words[combatant_word::role_id])];
         role.set_word(openlegend::model::role_word::hp, 100);
+        role.maximum_hp = 100;
         role.set_word(openlegend::model::role_word::hurt, 20);
         role.set_word(openlegend::model::role_word::poison, 0);
         role.set_word(openlegend::model::role_word::level, 30);
@@ -13883,15 +13888,15 @@ void run_ngplus_item_effect_test(const openlegend::resource::DataRoot& data_root
         ItemCase{1998, 100, 0, 20, 0, 0, 100, 0, 316, 0, 0, 216, 0, 1'103'527'590U},
         ItemCase{200, 100, 0, 20, 0, 0, 100, 0, 121, 0, 0, 21, 0, 1'103'527'590U},
         ItemCase{1998, 1990, 0, 20, 0, 0, 100, 0, 1998, 0, 0, 8, 0, 1'103'527'590U},
-        ItemCase{1998, 100, 199, 20, 0, 0, 100, 0, 218, 174, 0, 118, 0, 1'103'527'590U},
-        ItemCase{1998, 100, 80, 20, 0, 0, 12, 0, 100, 77, 0, 0, 0, 1'103'527'590U},
-        ItemCase{1998, 100, 84, 20, 0, 0, 12, 0, 116, 81, 0, 16, 0, 2'524'885'223U},
+        ItemCase{1998, 100, 99, 20, 0, 0, 100, 0, 218, 74, 0, 118, 0, 1'103'527'590U},
+        ItemCase{1998, 100, 40, 20, 0, 0, 12, 0, 100, 37, 0, 0, 0, 1'103'527'590U},
+        ItemCase{1998, 100, 42, 20, 0, 0, 12, 0, 116, 39, 0, 16, 0, 2'524'885'223U},
         ItemCase{5'000'000'000'000, 0, 0, 20, 0, 0, 100, 0,
                  540'540'540'540, 0, 0, 540'540'540'540, 0, 1'103'527'590U},
         ItemCase{10'000'000'000'000, 9'000'000'000'000, 0, 5'000'000'000'000, 0, 0, -30, 0,
-                 3'999'999'999'998, 199, 0, -5'000'000'000'002, 0, 2'524'885'223U},
-        ItemCase{1000, 1000, 100, 20, 0, 0, -100, 0, 953, 104, 0, -47, 0, 1'103'527'590U},
-        ItemCase{1000, 1000, 0, 20, 0, 0, -42, 0, 980, 2, 0, -20, 0, 1'103'527'590U},
+                 3'999'999'999'998, 24, 0, -5'000'000'000'002, 0, 2'524'885'223U},
+        ItemCase{1000, 1000, 50, 20, 0, 0, -100, 0, 953, 52, 0, -47, 0, 1'103'527'590U},
+        ItemCase{1000, 1000, 0, 20, 0, 0, -42, 0, 980, 0, 0, -20, 0, 1'103'527'590U},
         ItemCase{1000, 1000, 0, 220, 100, 0, 0, 80, 1000, 0, 25, 0, 0, 1U},
         ItemCase{1000, 1000, 0, 220, 100, 70, 0, 80, 975, 0, 70, 0, 25, 1U},
         ItemCase{1000, 1, 60, 800, 0, 99, 0, 800, 0, 60, 99, 0, 99, 1U},
@@ -14145,14 +14150,15 @@ void run_ngplus_medicine_test(const openlegend::resource::DataRoot& data_root) {
         Case{1, 80, 40, 100, 200, 60, 160, 0},
         Case{1, 100, 99, 200, 200, 0, 200, 86},
         Case{1, 80, 40, 190, 200, 10, 200, 0},
-        Case{2, 100, 120, 100, 1000, 62, 162, 58},
-        Case{2, 100, 121, 100, 1000, 0, 100, 121},
-        Case{2, 200, 199, 100, 1000, 23, 123, 176},
-        Case{3, 300, 299, 100, 1000, 33, 133, 266},
-        Case{2, 5'000'000'000'000, 100, 0, 10'000'000'000'000,
-             3'336'027'629'374, 3'336'027'629'374, 0},
-        Case{2, 5'000'000'000'000, 100, 100, 100, 0, 100, 0},
-        Case{2, 5'000'000'000'000, 100, maximum - 7, maximum, 7, maximum, 0},
+        Case{2, 100, 50, 100, 1000, 69, 169, 0},
+        Case{2, 75, 95, 100, 1000, 15, 115, 80},
+        Case{2, 75, 96, 100, 1000, 0, 100, 96},
+        Case{2, 200, 99, 100, 1000, 23, 123, 76},
+        Case{3, 300, 99, 100, 1000, 33, 133, 66},
+        Case{2, 5'000'000'000'000, 99, 0, 10'000'000'000'000,
+             500'000'000'003, 500'000'000'003, 0},
+        Case{2, 5'000'000'000'000, 99, 100, 100, 0, 100, 0},
+        Case{2, 5'000'000'000'000, 99, maximum - 7, maximum, 7, maximum, 0},
     };
     model::NewGamePlusConfiguration configuration;
     configuration.enabled = true;
@@ -14327,7 +14333,6 @@ void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_r
     namespace colors = render::legacy_color::text;
     struct ColorCase {
         std::int64_t playthrough;
-        std::int64_t step;
         std::int64_t hurt;
         render::TextColors color;
     };
@@ -14338,26 +14343,20 @@ void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_r
     OL_CHECK(ascii && big5);
     render::Big5GlyphCache glyph_cache{big5.bytes};
     for (const auto& entry : std::array{
-             ColorCase{1, 100, 33, colors::notice},
-             ColorCase{1, 100, 34, colors::moderate_injury},
-             ColorCase{1, 100, 66, colors::moderate_injury},
-             ColorCase{1, 100, 67, colors::severe_injury},
-             ColorCase{2, 100, 66, colors::notice},
-             ColorCase{2, 100, 67, colors::moderate_injury},
-             ColorCase{2, 100, 132, colors::moderate_injury},
-             ColorCase{2, 100, 133, colors::severe_injury},
-             ColorCase{3, 100, 198, colors::moderate_injury},
-             ColorCase{3, 100, 199, colors::severe_injury},
-             ColorCase{2, 2, 36, colors::notice},
-             ColorCase{2, 2, 37, colors::moderate_injury},
-             ColorCase{2, 2, 73, colors::severe_injury},
-             ColorCase{2, -99, 0, colors::notice},
-             ColorCase{2, 4'999'999'999'901, 3'300'000'000'001, colors::severe_injury}}) {
+             ColorCase{1, 33, colors::notice},
+             ColorCase{1, 34, colors::moderate_injury},
+             ColorCase{1, 66, colors::moderate_injury},
+             ColorCase{1, 67, colors::severe_injury},
+             ColorCase{2, 33, colors::notice},
+             ColorCase{2, 34, colors::moderate_injury},
+             ColorCase{2, 66, colors::moderate_injury},
+             ColorCase{2, 67, colors::severe_injury},
+             ColorCase{3, 0, colors::notice},
+             ColorCase{3, 99, colors::severe_injury}}) {
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
         model::NewGamePlusConfiguration configuration;
         configuration.enabled = true;
-        configuration.maximum_playthroughs = entry.step < 0 ? 2 : 3;
-        configuration.hurt_cap_step = entry.step;
+        configuration.maximum_playthroughs = 3;
         BattleSetup setup{data, ranger, nullptr, configuration, entry.playthrough};
         OL_CHECK(setup.valid());
         const auto role_id = setup.combatants()[0U].words[combatant_word::role_id];
@@ -14395,20 +14394,17 @@ void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_r
     }
     struct AiCase {
         std::int64_t playthrough;
-        std::int64_t step;
         std::int64_t hurt;
         bool chooses_medicine;
     };
     for (const auto& entry : std::array{
-             AiCase{2, 100, 80, false}, AiCase{2, 100, 81, true},
-             AiCase{3, 100, 120, false}, AiCase{3, 100, 121, true},
-             AiCase{2, 2, 44, false}, AiCase{2, 2, 45, true},
-             AiCase{2, -99, 0, false}}) {
+             AiCase{1, 40, false}, AiCase{1, 41, true},
+             AiCase{2, 40, false}, AiCase{2, 41, true},
+             AiCase{3, 0, false}, AiCase{3, 99, true}}) {
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
         model::NewGamePlusConfiguration configuration;
         configuration.enabled = true;
-        configuration.maximum_playthroughs = entry.step < 0 ? 2 : 3;
-        configuration.hurt_cap_step = entry.step;
+        configuration.maximum_playthroughs = 3;
         BattleSetup setup{data, ranger, nullptr, configuration, entry.playthrough};
         const auto actor_id = setup.combatants()[0U].words[combatant_word::role_id];
         const auto target_id = setup.combatants()[1U].words[combatant_word::role_id];
@@ -14428,7 +14424,7 @@ void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_r
         }
         OL_CHECK(random.state() == 1U);
     }
-    for (const auto hurt : {100, 101}) {
+    for (const auto hurt : {50, 51}) {
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
         model::NewGamePlusConfiguration configuration;
         configuration.enabled = true;
@@ -14450,8 +14446,8 @@ void run_ngplus_hurt_threshold_test(const openlegend::resource::DataRoot& data_r
             const auto decision = setup.choose_ai_turn_action(0U, *prelude, random);
             OL_CHECK(decision.has_value());
             if (decision.has_value()) {
-                OL_CHECK((decision->choice.action == BattleAiAction::medicine) == (hurt == 101));
-                OL_CHECK((random.state() == 1U) == (hurt == 101));
+                OL_CHECK((decision->choice.action == BattleAiAction::medicine) == (hurt == 51));
+                OL_CHECK((random.state() == 1U) == (hurt == 51));
             }
         }
     }
@@ -14490,32 +14486,25 @@ void run_ngplus_round_value_test(const openlegend::resource::DataRoot& data_root
     constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
     struct Case {
         std::int64_t playthrough;
-        std::int64_t hurt_step;
         std::int64_t hurt;
         std::int16_t first_speed;
         std::int16_t second_speed;
         std::int64_t expected;
     };
     constexpr std::array cases{
-        Case{1, 100, 39, 0, 0, 4}, Case{1, 100, 40, 0, 0, 3},
-        Case{1, 100, 79, 0, 0, 3}, Case{1, 100, 80, 0, 0, 2},
-        Case{2, 100, 79, 0, 0, 4}, Case{2, 100, 80, 0, 0, 3},
-        Case{2, 100, 159, 0, 0, 3}, Case{2, 100, 160, 0, 0, 2},
-        Case{2, 100, 199, 0, 0, 2}, Case{3, 100, 299, 0, 0, 2},
-        Case{2, 2, 43, 0, 0, 4}, Case{2, 2, 44, 0, 0, 3},
-        Case{2, 2, 88, 0, 0, 2}, Case{2, -99, 0, 0, 0, 4},
-        Case{2, 4'999'999'999'901, 2'000'000'000'000, 0, 0, 3},
-        Case{2, 4'999'999'999'901, 4'999'999'999'999, 0, 0, 2},
-        Case{1, 100, 0, 30, 30, 8}, Case{2, 100, 199, 30, 30, 6},
-        Case{2, 100, 199, 32767, 32767, 4370},
-        Case{2, 100, 199, -32768, -32768, 0},
+        Case{1, 39, 0, 0, 4}, Case{1, 40, 0, 0, 3},
+        Case{1, 79, 0, 0, 3}, Case{1, 80, 0, 0, 2},
+        Case{2, 39, 0, 0, 4}, Case{2, 40, 0, 0, 3},
+        Case{2, 99, 0, 0, 2}, Case{3, 99, 0, 0, 2},
+        Case{1, 0, 30, 30, 8}, Case{2, 99, 30, 30, 6},
+        Case{2, 99, 32767, 32767, 4370},
+        Case{2, 99, -32768, -32768, 0},
     };
     for (const auto& entry : cases) {
         auto ranger = make_ranger({0, 2, 3, -1, -1, -1});
         NewGamePlusConfiguration configuration;
         configuration.enabled = true;
         configuration.maximum_playthroughs = std::max<std::int64_t>(entry.playthrough, 2);
-        configuration.hurt_cap_step = entry.hurt_step;
         BattleData data{data_root, 4};
         BattleSetup setup{data, ranger, nullptr, configuration, entry.playthrough};
         OL_CHECK(setup.valid());

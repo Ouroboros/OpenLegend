@@ -56,20 +56,18 @@ void check_default_and_custom_limits() {
 
     NewGamePlusConfiguration configuration;
     OL_CHECK(calculate_playthrough_limits(configuration, 1) == PlaythroughLimits(99, 100, 100));
-    OL_CHECK(calculate_playthrough_limits(configuration, 2) == PlaythroughLimits(199, 200, 150));
-    OL_CHECK(calculate_playthrough_limits(configuration, 3) == PlaythroughLimits(299, 300, 250));
-    OL_CHECK(calculate_playthrough_limits(configuration, 5) == PlaythroughLimits(499, 500, 450));
-    OL_CHECK(calculate_playthrough_limits(configuration, 999) == PlaythroughLimits(99'899, 99'900, 99'850));
+    OL_CHECK(calculate_playthrough_limits(configuration, 2) == PlaythroughLimits(99, 100, 150));
+    OL_CHECK(calculate_playthrough_limits(configuration, 3) == PlaythroughLimits(99, 100, 250));
+    OL_CHECK(calculate_playthrough_limits(configuration, 5) == PlaythroughLimits(99, 100, 450));
+    OL_CHECK(calculate_playthrough_limits(configuration, 999) == PlaythroughLimits(99, 100, 99'850));
     OL_CHECK(!calculate_playthrough_limits(configuration, 0).has_value());
     OL_CHECK(!calculate_playthrough_limits(configuration, 1000).has_value());
-    configuration.hurt_cap_step = 7;
     configuration.battle_experience_percent_ng2 = 123;
     configuration.battle_experience_percent_step = 456;
-    OL_CHECK(calculate_playthrough_limits(configuration, 2) == PlaythroughLimits(106, 110, 123));
-    OL_CHECK(calculate_playthrough_limits(configuration, 3) == PlaythroughLimits(113, 120, 579));
+    OL_CHECK(calculate_playthrough_limits(configuration, 2) == PlaythroughLimits(99, 100, 123));
+    OL_CHECK(calculate_playthrough_limits(configuration, 3) == PlaythroughLimits(99, 100, 579));
     configuration.maximum_playthroughs = 2;
-    configuration.hurt_cap_step = -99;
-    OL_CHECK(calculate_playthrough_limits(configuration, 2) == PlaythroughLimits(0, 0, 123));
+    OL_CHECK(calculate_playthrough_limits(configuration, 2) == PlaythroughLimits(99, 100, 123));
     OL_CHECK(!calculate_playthrough_limits(configuration, 3).has_value());
 }
 
@@ -78,17 +76,6 @@ void check_overflow_and_negative_limits() {
 
     constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
     NewGamePlusConfiguration configuration;
-    configuration.hurt_cap_step = maximum;
-    OL_CHECK(!calculate_playthrough_limits(configuration, 2).has_value());
-    configuration.hurt_cap_step = maximum - 99;
-    OL_CHECK(!calculate_playthrough_limits(configuration, 2).has_value());
-    configuration.hurt_cap_step = maximum - 106;
-    OL_CHECK(calculate_playthrough_limits(configuration, 2) ==
-        PlaythroughLimits(maximum - 7, maximum - 7, 150));
-    OL_CHECK(!calculate_playthrough_limits(configuration, 3).has_value());
-    configuration.hurt_cap_step = -100;
-    OL_CHECK(!calculate_playthrough_limits(configuration, 2).has_value());
-    configuration.hurt_cap_step = 100;
     configuration.battle_experience_percent_step = maximum;
     OL_CHECK(!calculate_playthrough_limits(configuration, 3).has_value());
     configuration.battle_experience_percent_step = 100;
@@ -109,7 +96,6 @@ void check_toml_loading_and_configuration_preservation() {
         "[new_game_plus]\n"
         "enabled = true\n"
         "maximum_playthroughs = 4\n"
-        "hurt_cap_step = 7\n"
         "hp_cap_step = 1001\n"
         "mp_cap_step = 1002\n"
         "attack_cap_step = 101\n"
@@ -126,7 +112,6 @@ void check_toml_loading_and_configuration_preservation() {
     OL_CHECK(loaded.loaded_from_file);
     OL_CHECK(loaded.values.enabled);
     OL_CHECK(loaded.values.maximum_playthroughs == 4);
-    OL_CHECK(loaded.values.hurt_cap_step == 7);
     OL_CHECK(loaded.values.hp_cap_step == 1001);
     OL_CHECK(loaded.values.mp_cap_step == 1002);
     OL_CHECK(loaded.values.attack_cap_step == 101);
@@ -172,19 +157,16 @@ void check_invalid_toml_and_values() {
     fixture.write("[new_game_plus]\nmaximum_playthroughs = 0\n");
     OL_CHECK(load_new_game_plus_configuration(fixture.path()).status ==
         NewGamePlusConfigurationStatus::invalid_value);
-    fixture.write("[new_game_plus]\nhurt_cap_step = 9223372036854775807\n");
+    fixture.write("[new_game_plus]\nhurt_cap_step = 100\n");
     OL_CHECK(load_new_game_plus_configuration(fixture.path()).status ==
-        NewGamePlusConfigurationStatus::invalid_limits);
-    fixture.write("[new_game_plus]\nmaximum_playthroughs = 2\nhurt_cap_step = -100\n");
-    OL_CHECK(load_new_game_plus_configuration(fixture.path()).status ==
-        NewGamePlusConfigurationStatus::invalid_limits);
+        NewGamePlusConfigurationStatus::unknown_key);
     fixture.write("[new_game_plus]\nbattle_experience_percent_ng2 = -1\n");
     OL_CHECK(load_new_game_plus_configuration(fixture.path()).status ==
         NewGamePlusConfigurationStatus::invalid_limits);
     fixture.write("[new_game_plus]\npoison_cap_step = 100\n");
     OL_CHECK(load_new_game_plus_configuration(fixture.path()).status ==
         NewGamePlusConfigurationStatus::unknown_key);
-    fixture.write("[new_game_plus]\nhurt_cap_step = 9223372036854775808\n");
+    fixture.write("[new_game_plus]\nhp_cap_step = 9223372036854775808\n");
     OL_CHECK(load_new_game_plus_configuration(fixture.path()).status ==
         NewGamePlusConfigurationStatus::parse_failed);
 }

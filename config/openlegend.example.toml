@@ -9,6 +9,56 @@
 # data_dir = './data'
 # save_dir = './save'
 
+[new_game_plus]
+
+# NG+ 默认关闭。只写 enabled = true 即可启用，其余字段省略时使用下列默认值。
+# 配置文件须命名为 openlegend.toml 并放在可执行文件同目录；修改后重启游戏。
+# 开启后从第一周目起保存为 TOML，通关后可保存通关进度，并在标题选择 New Game+。
+# 关闭时使用原版存档流程，不读取 NG+ TOML 存档。
+
+enabled = false
+
+# 最大允许周目序号，第一周目为 1；默认允许到第 999 周目。
+# 这是周目数量限制，不是人物等级或武功等级上限。
+maximum_playthroughs = 999
+
+# 内伤上限固定为 99，不随周目变化；受伤后的内伤增量按目标最大生命与最大内力计算。
+# 旧版 hurt_cap_step 已取消，写入该键会导致配置加载失败。
+
+# 敌方属性按原始资产基准值 + (当前周目 - 1) * 对应 STEP 计算。
+# 以下字段名虽然包含 cap，但不会按周目限制我方永久属性，
+# 也不会在继承时自动给我方增加属性。生命／内力 STEP 增加的是最大值。
+# 敌方当前生命／内力仍取原始基准值，不因最大值增长自动补满。
+
+# 敌方最大生命每周目增加量。
+hp_cap_step = 999
+# 敌方最大内力每周目增加量。
+mp_cap_step = 999
+# 敌方攻击每周目增加量。
+attack_cap_step = 100
+# 敌方防御每周目增加量。
+defence_cap_step = 100
+# 敌方用毒能力每周目增加量。
+use_poison_cap_step = 100
+# 敌方抗毒能力每周目增加量。
+anti_poison_cap_step = 100
+# 敌方暗器能力每周目增加量。
+hidden_weapon_cap_step = 100
+# 敌方人物等级每周目增加量；不限制我方可练到的等级。
+role_level_step = 30
+
+# 敌方已学武功每周目增加的等级单位，每单位对应 100 点熟练度。
+# 默认每周目在原始熟练度基础上累加 1000 点；不创建新武功，不限制我方武功等级。
+martial_level_step = 10
+
+# 战斗经验按百分比计算：第一周目固定为 100%，第二周目使用此值。
+battle_experience_percent_ng2 = 150
+# 从第三周目起，每周目增加的经验倍率百分点。
+# 默认第二／三／四周目分别为 150%／250%／350%，不是每次乘以 100%。
+battle_experience_percent_step = 100
+
+# 完整规则见 docs/new-game-plus-design.zh-Hans.html 及其引用的字段页。
+
 [logging]
 
 # Relative paths resolve from the executable directory. The path supplies the

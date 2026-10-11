@@ -67,9 +67,9 @@
 
     <h2 ><span ></span>5. 临时讨论：字段、成长与未决问题</h2>
     <div class="notice">
-      <p><strong>临时讨论范围：</strong>本章原有的共用字段与成长审计、内伤扩容关联规则已迁入<a href="../fields/hurt-medicine.zh-Hans.html#hurt-cap-impact-audit">内伤医疗页“原版影响与NG+规则”</a>；
+      <p><strong>临时讨论范围：</strong>本章原有的共用字段与成长审计、内伤规则已迁入<a href="../fields/hurt-medicine.zh-Hans.html#hurt-cap-impact-audit">内伤医疗页“伤势门槛与各入口”</a>；
         医疗能力不按周目封顶，已有各周目医疗公式不变。</p>
-      <p>第1.2.2节登记伤势的CFG增量；<code>poison_cap_step</code>已取消，暗器技巧不设逐周目上限，四项技巧仅保留原版100写回边界。</p>
+      <p><code>hurt_cap_step</code>与<code>poison_cap_step</code>均已取消，暗器技巧不设逐周目上限，四项技巧仅保留原版100写回边界。</p>
       <p>施毒、AI选择用毒目标及尚未确定的事项见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html">中毒、用毒、抗毒与解毒页</a>。</p>
     </div>
 
@@ -123,8 +123,8 @@
         </tr>
         <tr>
           <td><code>hurt_cap_step</code></td>
-          <td>NG+ CFG的伤势正常上限增量</td>
-          <td>默认100；计算式见<a href="../fields/hurt-medicine.zh-Hans.html#hurt-field-definition">内伤医疗页</a></td>
+          <td>旧方案的伤势上限增量，已取消；内伤正常范围固定为0～99</td>
+          <td>旧默认值100，现行规则不读取；产伤见<a href="../fields/hurt-medicine.zh-Hans.html#hurt-gain">内伤医疗页</a></td>
         </tr>
         <tr>
           <td><code>poison_cap_step</code></td>
@@ -218,8 +218,7 @@
     <h4 id="inheritance-scope">1.2.1 范围与通用公式</h4>
     <pre>Prev(r,f) = 源通关TOML的[[roles]]中角色r的完整逻辑字段f
 Base(r,f) = 当前原版RANGER角色定义中的字段f
-HurtMax(n, CFG) = 保留的第n周目内伤状态上限，定义见内伤医疗页内伤章
-中毒量正常范围固定为0～99；其他直接继承字段不以n限幅
+内伤与中毒量正常范围均固定为0～99；其他直接继承字段不以n限幅
 EverJoined(r) = 角色r是否曾在任一周目实际加入过队伍
 RoleId(r) = r                                  # 固定身份不变量
 HeadId(r) = Base(r,head_id)                     # 固定头像定义，不写入TOML
@@ -266,17 +265,17 @@ name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
     <p id="playthrough-transition-model"><strong>下一周目转换模型：</strong>已加入从完整BASE构造下一周目候选的接口：只有曾入队角色复制源逻辑值，再按各字段页恢复或清零；未入队角色保持BASE，全部角色制作经验清零。世界S／D、队伍及动态小状态从BASE重建，物品user逐项使用BASE；库存按白名单筛选，保留源顺序、重复槽与实际数量。转换不增加属性、经验或历史，不调用剧情脚本、不消耗随机数；非法源、定义不符、开关关闭或超过周目上限时不返回候选且不修改输入。调用方必须先按通关用途和资产指纹校验源TOML；模型本身不读取文件，也不替代该用途检查。Linux转换专项及Windows转换／快照／TOML三项通过；通关保存与标题New Game+界面已接入，完整游戏链路仍待验收。</p>
 
     <h4 id="inheritance-fields">1.2.2 原版字段转移与数值边界登记</h4>
-    <p class="plain">各字段页的“下一周目值”只表示换周目处理；内伤的运行期周目上限、中毒量的固定0～99范围与其他字段的固定域分别记载。其余人物数值不再有逐周目上限，不能把下文旧CFG增量对照当作硬上限。</p>
+    <p class="plain">各字段页的“下一周目值”只表示换周目处理；内伤与中毒量的固定0～99范围及其他字段的固定域分别记载。人物数值不再有逐周目上限，不能把下文旧CFG增量对照当作硬上限。</p>
     <p>逐字段转移表已迁入各字段的独立页面；由主页逐一进入。</p>
     <h5 id="field-cap-register">数值边界登记（原版基值、保留上限与既有CFG）</h5>
     <div class="plain">
-      <p>原版NG1基值、默认CFG及用户实际CFG分开读取。仅<code>hurt</code>保留随周目增长的状态上限<code>HurtMax(n, CFG)</code>，<code>poison</code>正常范围固定为0～99；体力固定100，资质、枚举、角色当前HP／MP与其实际最大值的关系仍按各自规则验证。</p>
+      <p>原版NG1基值、默认CFG及用户实际CFG分开读取。<code>hurt</code>与<code>poison</code>正常范围均固定为0～99，不随周目增长；体力固定100，资质、枚举、角色当前HP／MP与其实际最大值的关系仍按各自规则验证。</p>
       <p>其他数值的旧周目增量不再用于继承或写回限幅；抗毒STEP用于敌方逐周目累加；等级、武功、生命、内力、武力、防御的既有STEP仍分别供敌方周目增长，等级和武功STEP也用于对照表节点。状态字段换周目清0不等于状态上限为0。</p>
       <p>只对已有依据的参数保留默认数值，不互相借用增量。</p>
     </div>
     <p>各字段页分别保留原版范围、既有CFG数值与当前规则；不得把历史上限示例当成现行硬上限。</p>
     <div class="plain">
-      <p>内伤的周目上限按<a href="../fields/hurt-medicine.zh-Hans.html#hurt-field-definition">内伤医疗页</a>使用当前CFG计算，中毒量按固定0～99验证；其他字段只执行自己的固定有效域、角色实际最大HP／MP及存储合同，不以周目节点拒绝合法值。</p>
+      <p><a href="../fields/hurt-medicine.zh-Hans.html#hurt-field-definition">内伤</a>与中毒量均按固定0～99验证；其他字段只执行自己的固定有效域、角色实际最大HP／MP及存储合同，不以周目节点拒绝合法值。</p>
       <p>原版中毒100是特定写入路径的机器事实；NG+施毒见<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">中毒章“上毒”</a>。医疗距离、解毒量和施毒规则分别见对应字段页。</p>
     </div>
 
@@ -299,7 +298,7 @@ name与nickname继承逻辑字符串并执行UTF-8→Legacy Big5验证；
 任一角色上一周目 sex发生变化 → 下一周目不继承，统一取Base(r,sex)；主角原版数据结果为0（男）
 任一角色上一周目携带槽已清空      → 下一周目taking_items/counts恢复为Base(r,f)
 上一周目 attack=138              → 下一周目 attack=138（不按周目夹值）</pre>
-    <p class="plain">角色已经练出的等级、最大生命／内力及能力不会因换周目损失，也不会由周目增加自动赠送实际数值；仅明确指定恢复、清零或清空的字段另作处理。内伤与中毒换周目清0；运行期内伤仍使用本周上限<code>HurtMax(n, CFG)</code>，中毒量正常范围固定为0～99。</p>
+    <p class="plain">角色已经练出的等级、最大生命／内力及能力不会因换周目损失，也不会由周目增加自动赠送实际数值；仅明确指定恢复、清零或清空的字段另作处理。内伤与中毒换周目清0；运行期两者正常范围均固定为0～99。</p>
   </section>
 </main>
 </body>

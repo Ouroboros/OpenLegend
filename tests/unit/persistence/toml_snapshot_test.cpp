@@ -212,6 +212,18 @@ void check_round_trips(
                 OL_CHECK(decoded.save->snapshot.ranger.header.inventory_count(2U) == 0);
                 OL_CHECK(decoded.save->snapshot.ranger.roles[1U].ever_joined);
                 OL_CHECK(!decoded.save->snapshot.ranger.roles[3U].ever_joined);
+                const auto roles_begin = encoded.document->find("[[roles]]");
+                const auto hurt_field = encoded.document->find("\nhurt = 99\n", roles_begin);
+                OL_CHECK(roles_begin != std::string::npos && hurt_field != std::string::npos);
+                if (roles_begin != std::string::npos && hurt_field != std::string::npos) {
+                    auto legacy_hurt = *encoded.document;
+                    legacy_hurt.replace(hurt_field, 11U, "\nhurt = 299\n");
+                    const auto clamped = decode_toml_snapshot(legacy_hurt, kind, metadata.slot, context);
+                    OL_CHECK(clamped && clamped.save->snapshot == expected);
+                    auto negative_hurt = *encoded.document;
+                    negative_hurt.replace(hurt_field, 11U, "\nhurt = -1\n");
+                    OL_CHECK(!decode_toml_snapshot(negative_hurt, kind, metadata.slot, context));
+                }
             }
             const auto wrong_kind = kind == TomlSaveKind::ordinary ? TomlSaveKind::completion : TomlSaveKind::ordinary;
             OL_CHECK(!decode_toml_snapshot(*encoded.document, wrong_kind, metadata.slot, context));
@@ -353,7 +365,7 @@ void check_domains(const toml::table& source, const TomlSnapshotContext& context
     for (const auto& [key, value] : std::to_array<std::pair<std::string_view, std::int64_t>>({
             {"increased_life", 0},
             {"increased_life", 11}, {"sex", 32768}, {"level", 0}, {"experience", -1},
-            {"hp", kMaximum}, {"maximum_hp", -1}, {"hurt", 100}, {"poison", 100},
+            {"hp", kMaximum}, {"maximum_hp", -1}, {"hurt", -1}, {"poison", 100},
             {"physical_power", 101}, {"make_item_experience", -1}, {"mp_type", 3},
             {"mp", kMaximum}, {"maximum_mp", -1}, {"attack", -1}, {"speed", 101},
             {"defence", -1}, {"medicine", -1}, {"use_poison", -1}, {"detoxification", -1},

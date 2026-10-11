@@ -171,7 +171,7 @@ void check_boundaries() {
     OL_CHECK(!calculate_enemy_attributes(empty, configuration, 2));
     OL_CHECK(!calculate_enemy_attributes(baseline, configuration, 0));
     OL_CHECK(!calculate_enemy_attributes(baseline, configuration, 1000));
-    configuration.hurt_cap_step = -100;
+    configuration.battle_experience_percent_ng2 = -1;
     OL_CHECK(!calculate_enemy_attributes(baseline, configuration, 2));
 }
 

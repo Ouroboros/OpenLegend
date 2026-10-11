@@ -39,8 +39,8 @@
 | [hidden_weapon](fields/hidden-weapon.zh-Hans.html) | 实际值继承；暗器结算及有限选择器分开 | R／T／B；射程、宽伤害、伤势及附毒 |
 | [hp_cap_step](fields/hp-cap-step.zh-Hans.html) | 当前CFG供既有敌方最大HP增长；不夹玩家HP上限 | 配置模型／敌方模型／B；BASE、STEP、入场当前HP及失败 |
 | [hp](fields/hp.zh-Hans.html) | 进入下一周目回复到继承后的最大HP | R／T／B／U；治疗、伤害、休息、显示和恢复 |
-| [hurt_cap_step](fields/hurt-cap-step.zh-Hans.html) | 从CFG计算本周内伤量程，包含零量程 | 配置模型／R／B／P；内伤写回、百分比门槛及保存域 |
-| [hurt与medicine](fields/hurt-medicine.zh-Hans.html) | 内伤、医疗、药品及显示使用各自正式规则 | R／B／U；满HP治伤、超长回血、调用路径及RNG；19位能力浮点取整错误已复现并改为精确整数分式，Linux／Sanitizer关联各5/5 |
+| [hurt_cap_step](fields/hurt-cap-step.zh-Hans.html) | 已取消，配置中出现按未知键拒绝；内伤固定0～99 | 配置模型／P；未知键拒绝、旧TOML内伤超过99压值 |
+| [hurt与medicine](fields/hurt-medicine.zh-Hans.html) | 内伤按目标生命＋内力容量产生、按最大生命扣血与增伤；医疗、药品及显示使用各自正式规则 | R／B／U；满HP治伤、超长回血、调用路径及RNG；19位能力浮点取整错误已复现并改为精确整数分式，Linux／Sanitizer关联各5/5 |
 | [increased_life](fields/increased-life.zh-Hans.html) | 继承并验证1～10，不夹非法输入 | R／T／P；Legacy往返、固定域拒绝和成长 |
 | [inventory_count](fields/inventory-count.zh-Hans.html) | signed64数量；继承白名单并保源顺序与重复 | R／T／P／B／U；库存事务、MAX数量、消费和显示 |
 | [iq](fields/iq.zh-Hans.html) | 继承并验证0～100；用于资质条件与修炼费用 | R／T／P／B；负资质上界、费用及剧情写回 |

@@ -13,6 +13,7 @@
 #include <toml++/toml.hpp>
 
 #include "openlegend/attributes.hpp"
+#include "openlegend/model/hurt.hpp"
 #include "openlegend/persistence/scene_archive_codec.hpp"
 
 namespace openlegend::persistence {
@@ -258,6 +259,7 @@ void read_role(const toml::table& table, model::RoleState& role) {
     for (const auto& field : kRoleIntegers) {
         role.*field.member = integer_value(table.get(field.name), field.name);
     }
+    role.hurt = std::min(role.hurt, model::kHurtMaximum);
     const auto& name = string_value(table.get("name"), "roles.name");
     const auto& nickname = string_value(table.get("nickname"), "roles.nickname");
     require(name.find('\0') == std::string::npos && nickname.find('\0') == std::string::npos,

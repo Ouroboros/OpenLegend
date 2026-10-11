@@ -10,7 +10,6 @@ namespace openlegend::model {
 struct NewGamePlusConfiguration {
     bool enabled{};
     std::int64_t maximum_playthroughs{999};
-    std::int64_t hurt_cap_step{100};
     std::int64_t hp_cap_step{999};
     std::int64_t mp_cap_step{999};
     std::int64_t attack_cap_step{100};

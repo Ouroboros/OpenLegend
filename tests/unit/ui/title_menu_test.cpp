@@ -1286,7 +1286,7 @@ void check_startup_resource_cache(const std::filesystem::path& data_root) {
 
     model::NewGamePlusConfiguration configuration;
     configuration.enabled = true;
-    configuration.hurt_cap_step = 250;
+    configuration.hp_cap_step = 250;
     app::LegacyGameRuntime configured_new_game{
         data_root, data_root, 0U, app::GameResolution{},
         input::NameInputMethod::legacy, {}, configuration};
@@ -2253,8 +2253,8 @@ void check_game_runtime(const std::filesystem::path& data_root) {
             std::int64_t expected_hp;
         };
         for (const auto example : std::array{
-                 HealingCase{1, 999, 108}, HealingCase{2, 999, 128},
-                 HealingCase{2, 1998, 156}, HealingCase{2, 5'000'000'000'000, 140'140'140'240}}) {
+                 HealingCase{1, 999, 108}, HealingCase{2, 999, 108},
+                 HealingCase{2, 1998, 116}, HealingCase{2, 5'000'000'000'000, 40'040'040'140}}) {
             snapshot->configuration.enabled = true;
             snapshot->playthrough = example.playthrough;
             item_ranger->roles[0U].hp = 100;
@@ -2294,14 +2294,14 @@ void check_game_runtime(const std::filesystem::path& data_root) {
         };
         for (const auto example : std::array{
                  MedicineCase{1, 100, 99, 100, 100, 60, 100, 86},
-                 MedicineCase{2, 100, 120, 0, 1000, 60, 62, 58},
-                 MedicineCase{2, 100, 121, 0, 1000, 60, 0, 121},
-                 MedicineCase{2, 200, 199, 100, 100, 60, 100, 176},
-                 MedicineCase{2, 5'000'000'000'000, 100, 0, 10'000'000'000'000,
-                              60, 3'336'027'629'374, 0},
+                 MedicineCase{2, 100, 50, 0, 1000, 60, 69, 0},
+                 MedicineCase{2, 75, 96, 0, 1000, 60, 0, 96},
+                 MedicineCase{2, 200, 99, 100, 100, 60, 100, 76},
+                 MedicineCase{2, 5'000'000'000'000, 99, 0, 10'000'000'000'000,
+                              60, 500'000'000'003, 0},
                  MedicineCase{1, 32768, 0, 0, 100000, 60, 26217, 0},
-                 MedicineCase{2, 100, 120, 0, 1000, 50, 62, 58},
-                 MedicineCase{2, 100, 120, 0, 1000, 49, 0, 120},
+                 MedicineCase{2, 100, 50, 0, 1000, 50, 69, 0},
+                 MedicineCase{2, 100, 50, 0, 1000, 49, 0, 50},
                  MedicineCase{999, 7'000'000'000'000'000'000, 0, 0,
                               7'000'000'000'000'000'000, 60,
                               5'600'000'000'000'000'003, 0}}) {

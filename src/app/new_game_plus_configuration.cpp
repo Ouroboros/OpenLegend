@@ -18,7 +18,6 @@ struct IntegerField {
 
 constexpr auto integer_fields = std::to_array<IntegerField>({
     {"maximum_playthroughs", &model::NewGamePlusConfiguration::maximum_playthroughs},
-    {"hurt_cap_step", &model::NewGamePlusConfiguration::hurt_cap_step},
     {"hp_cap_step", &model::NewGamePlusConfiguration::hp_cap_step},
     {"mp_cap_step", &model::NewGamePlusConfiguration::mp_cap_step},
     {"attack_cap_step", &model::NewGamePlusConfiguration::attack_cap_step},

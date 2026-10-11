@@ -108,11 +108,58 @@ void check_action_penalty() {
     OL_CHECK(!hurt_action_penalty(0, maximum / 40 + 1).has_value());
 }
 
+void check_gain_and_hp_loss() {
+    using namespace openlegend::model;
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    struct GainCase {
+        std::int64_t damage;
+        std::int64_t maximum_hp;
+        std::int64_t maximum_mp;
+        std::int64_t divisor;
+        std::int64_t gain;
+    };
+    constexpr std::array gains{
+        GainCase{0, 29, 8, kMagicHurtDivisor, 0}, GainCase{8, 29, 8, kMagicHurtDivisor, 10},
+        GainCase{14, 29, 8, kMagicHurtDivisor, 18}, GainCase{1000, 29, 8, kMagicHurtDivisor, 99},
+        GainCase{8, 29, 8, kThrowingHurtDivisor, 26}, GainCase{100, 29, 8, kThrowingHurtDivisor, 99},
+        GainCase{14, 1000, 1000, kThrowingHurtDivisor, 0}, GainCase{100, 992, 999, kMagicHurtDivisor, 2},
+        GainCase{1, 0, 0, kMagicHurtDivisor, 99},
+        GainCase{2'500'000'000'000, 5'000'000'000'000, 5'000'000'000'000, kMagicHurtDivisor, 12},
+        GainCase{maximum, maximum / 2, maximum / 2, kMagicHurtDivisor, 49},
+        GainCase{maximum, maximum, maximum, kMagicHurtDivisor, 24},
+    };
+    for (const auto& entry : gains) {
+        OL_CHECK(hurt_gain(entry.damage, entry.maximum_hp, entry.maximum_mp, entry.divisor) == entry.gain);
+    }
+    OL_CHECK(!hurt_gain(-1, 29, 8, kMagicHurtDivisor).has_value());
+    OL_CHECK(!hurt_gain(1, -1, 8, kMagicHurtDivisor).has_value());
+    OL_CHECK(!hurt_gain(1, 29, -1, kMagicHurtDivisor).has_value());
+    OL_CHECK(!hurt_gain(1, 29, 8, 0).has_value());
+
+    struct LossCase {
+        std::int64_t maximum_hp;
+        std::int64_t hurt;
+        std::int64_t loss;
+    };
+    constexpr std::array losses{
+        LossCase{29, 99, 1}, LossCase{20, 99, 0}, LossCase{992, 99, 49},
+        LossCase{4988, 99, 246}, LossCase{5'000'000'000'000, 99, 247'500'000'000},
+        LossCase{maximum, 99, 456'556'915'824'311'402}, LossCase{0, 99, 0}, LossCase{992, 0, 0},
+        LossCase{100, -20, -1}, LossCase{0, -1, 0},
+    };
+    for (const auto& entry : losses) {
+        OL_CHECK(hurt_hp_loss(entry.maximum_hp, entry.hurt) == entry.loss);
+    }
+    OL_CHECK(!hurt_hp_loss(-1, 0).has_value());
+    OL_CHECK(!hurt_hp_loss(maximum, maximum).has_value());
+}
+
 }
 
 int main() {
     check_percentage_boundaries();
     check_color_bands();
     check_action_penalty();
+    check_gain_and_hp_loss();
     return openlegend::test::failures == 0 ? 0 : 1;
 }

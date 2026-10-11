@@ -25,7 +25,7 @@
 <main>
 <section id="rules-location"><h2>NG+规则去向与缺口</h2>
 <p>下表区分已进入正式字段页的规则与仅见于本地未跟踪评审稿的内容；后者不作为正式字段规则。文档收录不代表运行时代码已实现。“未发现整章失踪”只表示逐章找到了迁移位置，不代表逐句核对无遗漏。</p>
-<p class="notice">NG+不再按周目封顶人物等级、经验、武功熟练度、秘笈成功次数及其他永久能力，换周目不对实际数值作周目夹值；<strong>内伤仍保留周目上限，中毒量正常范围固定为0～99</strong>。体力固定100；资质、枚举等固定域及角色当前HP／MP不超过实际最大值的约束不属于逐周目硬上限。既有对照表的周目节点不是停止条件；敌方按<a href="new-game-plus/support/battle-calculation.zh-Hans.html#enemy-growth">BASE逐周目累加STEP</a>增长。</p>
+<p class="notice">NG+不再按周目封顶人物等级、经验、武功熟练度、秘笈成功次数及其他永久能力，换周目不对实际数值作周目夹值；<strong>内伤与中毒量的正常范围均固定为0～99</strong>。体力固定100；资质、枚举等固定域及角色当前HP／MP不超过实际最大值的约束不属于逐周目硬上限。既有对照表的周目节点不是停止条件；敌方按<a href="new-game-plus/support/battle-calculation.zh-Hans.html#enemy-growth">BASE逐周目累加STEP</a>增长。</p>
 <table><thead><tr><th>内容</th><th>结论</th><th>去向或缺口</th></tr></thead><tbody>
 <tr><td>人物继承</td><td>没消失</td><td><a href="new-game-plus/support/data-and-inheritance.zh-Hans.html#role-inheritance">数据与人物继承</a></td></tr>
 <tr><td>物品库存继承</td><td>没消失</td><td><a href="new-game-plus/fields/inventory-count.zh-Hans.html#item-inheritance">库存继承白名单与数量</a></td></tr>
@@ -436,8 +436,8 @@
 </tr>
 <tr>
 <td><code>hurt_cap_step</code></td>
-<td>每新增周目伤势上限增量</td>
-<td>运行时CFG；提供的默认值100</td>
+<td>旧方案伤势上限增量；已取消，内伤固定0～99</td>
+<td>旧方案运行时CFG；默认值100，现行规则不读取</td>
 <td>配置不从角色状态继承</td>
 <td><a href="new-game-plus/fields/hurt-cap-step.zh-Hans.html">详情</a></td>
 </tr>

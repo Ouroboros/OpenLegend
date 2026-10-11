@@ -116,7 +116,12 @@ NODISCARD std::optional<ThrowingWeaponHpResult> throwing_weapon_hp_result(
         return std::nullopt;
     }
     const auto hp_delta = *numerator / 3;
-    const auto changed_hurt = model::checked_subtract(target.hurt, hp_delta / 4);
+    const auto gained_hurt = hp_delta < 0
+        ? model::hurt_gain(-hp_delta, target.maximum_hp, target.maximum_mp, model::kThrowingHurtDivisor)
+        : std::optional<std::int64_t>{0};
+    const auto changed_hurt = !gained_hurt.has_value() ? std::nullopt
+        : hp_delta < 0 ? model::checked_add(target.hurt, *gained_hurt)
+                       : model::checked_subtract(target.hurt, hp_delta / 4);
     const auto changed_hp = model::checked_add(target.hp, hp_delta);
     if (!changed_hurt.has_value() || !changed_hp.has_value()) {
         return std::nullopt;
@@ -466,7 +471,14 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
                 return std::nullopt;
             }
             hp_delta = *damage / 3;
-            changed_hurt = model::checked_subtract(target.hurt, hp_delta / 10);
+            if (hp_delta < 0) {
+                const auto gained_hurt = model::hurt_gain(
+                    -hp_delta, target.maximum_hp, target.maximum_mp, model::kMagicHurtDivisor);
+                changed_hurt = gained_hurt.has_value()
+                    ? model::checked_add(target.hurt, *gained_hurt) : std::nullopt;
+            } else {
+                changed_hurt = model::checked_subtract(target.hurt, hp_delta / 10);
+            }
         }
         const auto changed_hp = model::checked_add(target.hp, hp_delta);
         if (!changed_hp.has_value() || !changed_hurt.has_value()) {
@@ -1626,11 +1638,16 @@ std::optional<BattleRoundStatusDamageResult> BattleSetup::apply_round_status_dam
             continue;
         }
 
+        const auto hurt_damage = model::hurt_hp_loss(role.maximum_hp, hurt);
+        if (!hurt_damage.has_value()) {
+            error_ = "round-status damage is invalid or overflows";
+            return std::nullopt;
+        }
         BattleRoundStatusDamageEntry entry{
             .combatant_slot = slot,
             .role_id = role_id,
             .hp_before = role.word(model::role_word::hp),
-            .hurt_damage = hurt / 20,
+            .hurt_damage = *hurt_damage,
         };
         const auto poison_damage = model::poison_round_damage(poison, role.maximum_hp);
         const auto after_hurt = model::checked_subtract(role.hp, entry.hurt_damage);
@@ -2263,7 +2280,9 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
     if (*damage < 0) {
         damage = 1;
     } else {
-        damage = checked_battle_sum({*damage, actor.physical_power / 15, target.hurt / 20});
+        const auto injury_bonus = model::hurt_hp_loss(target.maximum_hp, target.hurt);
+        damage = injury_bonus.has_value()
+            ? checked_battle_sum({*damage, actor.physical_power / 15, *injury_bonus}) : std::nullopt;
         const std::int64_t factor = distance > 10 ? 2 : 100 - 3 * (std::int64_t{distance} - 1);
         const auto product = damage.has_value() ? model::checked_multiply(*damage, factor) : std::nullopt;
         if (!product.has_value()) {
@@ -2279,7 +2298,10 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         counter = defeat_bonus.has_value()
             ? model::checked_add(*counter, *defeat_bonus) : std::nullopt;
     }
-    const auto hurt = model::checked_add(target.hurt, *damage / 10);
+    const auto gained_hurt = model::hurt_gain(
+        *damage, target.maximum_hp, target.maximum_mp, model::kMagicHurtDivisor);
+    const auto hurt = gained_hurt.has_value()
+        ? model::checked_add(target.hurt, *gained_hurt) : std::nullopt;
     if (!target_hp.has_value() || !counter.has_value() || !hurt.has_value()) {
         error_ = "battle HP result, injury or experience overflow";
         return std::nullopt;
