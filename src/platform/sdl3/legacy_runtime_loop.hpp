@@ -1,7 +1,9 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
+#include <optional>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
@@ -25,6 +27,8 @@ struct LegacyRuntimeLoopSettings {
     std::chrono::nanoseconds motion_frame_interval{
         std::chrono::nanoseconds{1'000'000'000} / 240};
     model::NewGamePlusConfiguration new_game_plus_configuration{};
+    std::optional<std::uint16_t> last_save_slot{};
+    std::filesystem::path configuration_path{};
 };
 
 struct LegacyRuntimeLoopResult {

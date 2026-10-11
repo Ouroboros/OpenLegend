@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "openlegend/attributes.hpp"
+#include "openlegend/ui/save_list.hpp"
 
 namespace openlegend::ui {
 
@@ -41,6 +42,10 @@ public:
 
     NODISCARD constexpr std::uint16_t slot_selection() const noexcept {
         return slot_selection_;
+    }
+
+    constexpr void set_slot_selection(const std::uint16_t selection) noexcept {
+        slot_selection_ = selection < kSaveSlotCount ? selection : std::uint16_t{0U};
     }
 
     NODISCARD constexpr bool save_list_active() const noexcept {

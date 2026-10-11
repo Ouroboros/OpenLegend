@@ -3,6 +3,8 @@
 
 #include "new_game_plus_configuration.hpp"
 
+#include "openlegend/persistence/save_slot.hpp"
+
 #include <toml++/toml.hpp>
 
 #include <algorithm>
@@ -338,6 +340,9 @@ NODISCARD std::span<const std::string_view> configuration_key_order(
     }
     if (table_path.front() == DisplayConfigurationLoadResult::toml_table_name) {
         return DisplayConfigurationLoadResult::toml_field_order;
+    }
+    if (table_path.front() == SavesConfigurationLoadResult::toml_table_name) {
+        return SavesConfigurationLoadResult::toml_field_order;
     }
     if (table_path.front() == NewGamePlusConfigurationLoadResult::toml_table_name) {
         return NewGamePlusConfigurationLoadResult::toml_field_order;
@@ -876,6 +881,65 @@ WindowConfigurationLoadResult load_window_configuration(
     return window_configuration_from_document(document.values, fallback);
 }
 
+NODISCARD SavesConfigurationLoadResult saves_configuration_from_document(
+    const toml::table& document) {
+    SavesConfigurationLoadResult result;
+    const toml::node* saves_node =
+        document.get(SavesConfigurationLoadResult::toml_table_name);
+    if (saves_node == nullptr) {
+        return result;
+    }
+    const toml::table* saves = saves_node->as_table();
+    if (saves == nullptr) {
+        return result;
+    }
+    // 记忆性数据宽松处理：类型或范围不对时当作没有记忆，不影响配置加载。
+    const auto slot =
+        (*saves)[SavesConfigurationLoadResult::last_slot_toml_key].value<std::int64_t>();
+    if (slot.has_value() && *slot >= 0 &&
+        *slot < static_cast<std::int64_t>(persistence::kNumberedSaveSlotCount)) {
+        result.last_slot = static_cast<std::uint16_t>(*slot);
+    }
+    return result;
+}
+
+bool save_last_save_slot(
+    const std::filesystem::path& configuration_path,
+    const std::uint16_t slot,
+    std::string& detail) {
+    detail.clear();
+    auto loaded_document = read_configuration_document(configuration_path);
+    if (loaded_document.status != ConfigurationDocumentStatus::ready) {
+        detail = loaded_document.detail.empty()
+            ? configuration_path.string()
+            : std::move(loaded_document.detail);
+        return false;
+    }
+    auto document = std::move(loaded_document.values);
+    toml::table* saves =
+        document[SavesConfigurationLoadResult::toml_table_name].as_table();
+    if (saves == nullptr) {
+        document.insert_or_assign(
+            SavesConfigurationLoadResult::toml_table_name, toml::table{});
+        saves = document[SavesConfigurationLoadResult::toml_table_name].as_table();
+    }
+    saves->insert_or_assign(
+        SavesConfigurationLoadResult::last_slot_toml_key,
+        static_cast<std::int64_t>(slot));
+
+    std::ofstream output{configuration_path, std::ios::binary | std::ios::trunc};
+    if (!output) {
+        detail = configuration_path.string();
+        return false;
+    }
+    write_configuration_document(output, document);
+    if (!output) {
+        detail = configuration_path.string();
+        return false;
+    }
+    return true;
+}
+
 WindowConfigurationStatus save_window_configuration(
     const std::filesystem::path& configuration_path,
     const WindowSize size,
@@ -1030,6 +1094,7 @@ RuntimeConfiguration load_runtime_configuration(
             document.values, defaults.fade_frame_delay);
         configuration.window =
             window_configuration_from_document(document.values, defaults.window_size);
+        configuration.saves = saves_configuration_from_document(document.values);
         configuration.new_game_plus =
             detail::new_game_plus_configuration_from_document(document.values);
         return configuration;

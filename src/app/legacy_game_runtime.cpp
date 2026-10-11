@@ -657,6 +657,27 @@ void LegacyGameRuntime::set_weather_presentation_enabled(
     weather_presentation_enabled_ = enabled;
 }
 
+void LegacyGameRuntime::set_save_slot_memory(
+    const std::optional<std::uint16_t> last_slot,
+    std::filesystem::path configuration_path) {
+    last_save_slot_ = last_slot;
+    save_slot_configuration_path_ = std::move(configuration_path);
+}
+
+void LegacyGameRuntime::remember_save_slot(const std::uint16_t slot) {
+    if (last_save_slot_ == slot) {
+        return;
+    }
+    last_save_slot_ = slot;
+    if (save_slot_configuration_path_.empty()) {
+        return;
+    }
+    std::string detail;
+    if (!save_last_save_slot(save_slot_configuration_path_, slot, detail)) {
+        diagnostics::log_warning("unable to remember save slot: " + detail);
+    }
+}
+
 bool LegacyGameRuntime::weather_presentation_active() const noexcept {
     return weather_presentation_enabled_ &&
         view_ == LegacyGameView::world && world_session_ != nullptr &&
@@ -1573,6 +1594,12 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             ? ui::TitleResult{}
             : title_menu_.handle_key(translated_key);
         if (title_menu_.screen() == ui::TitleScreen::load_slots &&
+            previous_screen != ui::TitleScreen::load_slots &&
+            previous_screen != ui::TitleScreen::delete_confirmation) {
+            // 打开读档列表时定位到最近存取过的槽位。
+            title_menu_.set_slot_selection(initial_save_slot_selection());
+        }
+        if (title_menu_.screen() == ui::TitleScreen::load_slots &&
             (previous_screen != ui::TitleScreen::load_slots ||
              previous_page != ui::save_list_page(title_menu_.slot_selection()))) {
             refresh_save_list(ui::save_list_page(title_menu_.slot_selection()));
@@ -1673,6 +1700,10 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 ? ui::DeathMenuResult{}
                 : death_menu_.handle_key(translated_key);
             if (death_menu_.screen() == ui::DeathMenuScreen::load_slots &&
+                previous_screen == ui::DeathMenuScreen::main) {
+                death_menu_.set_slot_selection(initial_save_slot_selection());
+            }
+            if (death_menu_.screen() == ui::DeathMenuScreen::load_slots &&
                 (previous_screen != ui::DeathMenuScreen::load_slots ||
                  previous_page !=
                      ui::save_list_page(death_menu_.slot_selection()))) {
@@ -1739,6 +1770,10 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
             const auto next_is_save_list =
                 next_screen == ui::GameMenuScreen::load_slots ||
                 next_screen == ui::GameMenuScreen::save_slots;
+            if (next_is_save_list && !save_list_screen &&
+                screen != ui::GameMenuScreen::delete_confirmation) {
+                game_menu_.set_slot_selection(initial_save_slot_selection());
+            }
             if (next_is_save_list &&
                 (screen != next_screen ||
                  previous_page != ui::save_list_page(game_menu_.slot_selection()))) {
@@ -2336,6 +2371,7 @@ void LegacyGameRuntime::perform_pending_io() {
                 error_return_view_);
             return;
         }
+        remember_save_slot(pending_slot_);
         load_return_view_ = error_return_view_;
         pending_loaded_snapshot_ = std::move(*loaded.snapshot);
         pending_loaded_next_playthrough_ = false;
@@ -2365,7 +2401,9 @@ void LegacyGameRuntime::perform_pending_io() {
         show_error(
             std::string{persistence::persistence_status_message(written.status)},
             LegacyGameView::game_menu);
+        return;
     }
+    remember_save_slot(pending_slot_);
 }
 
 void LegacyGameRuntime::load_pending_inheritance() {

@@ -268,6 +268,7 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             return result;
         }
         game.set_weather_presentation_enabled(true);
+        game.set_save_slot_memory(settings.last_save_slot, settings.configuration_path);
         const bool native_motion_enabled =
             settings.movement_step_duration > std::chrono::nanoseconds::zero();
         audio_worker.switch_music(16U);

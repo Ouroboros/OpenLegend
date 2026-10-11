@@ -194,6 +194,10 @@ public:
         return slot_selection_;
     }
 
+    constexpr void set_slot_selection(const std::uint16_t selection) noexcept {
+        slot_selection_ = selection < kSaveSlotCount ? selection : std::uint16_t{0U};
+    }
+
     NODISCARD constexpr GameMenuScreen delete_return_screen() const noexcept {
         return delete_return_screen_;
     }

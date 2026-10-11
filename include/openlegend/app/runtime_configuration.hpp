@@ -128,6 +128,12 @@ struct WindowConfigurationLoadResult {
 NODISCARD WindowConfigurationLoadResult load_window_configuration(
     const std::filesystem::path& configuration_path, WindowSize fallback);
 
+// 记忆最近一次存取的存档槽位；失败时返回 false 并在 detail 里给出原因。
+NODISCARD bool save_last_save_slot(
+    const std::filesystem::path& configuration_path,
+    std::uint16_t slot,
+    std::string& detail);
+
 NODISCARD WindowConfigurationStatus save_window_configuration(
     const std::filesystem::path& configuration_path,
     WindowSize size,
@@ -307,6 +313,16 @@ enum class NewGamePlusConfigurationStatus {
     unknown_key,
 };
 
+struct SavesConfigurationLoadResult {
+    static constexpr std::string_view toml_table_name = "saves";
+    static constexpr std::string_view last_slot_toml_key = "last_slot";
+    static constexpr std::array<std::string_view, 1U> toml_field_order{
+        last_slot_toml_key,
+    };
+
+    std::optional<std::uint16_t> last_slot;
+};
+
 struct NewGamePlusConfigurationLoadResult {
     static constexpr std::string_view toml_table_name = "new_game_plus";
     static constexpr std::array<std::string_view, 13U> toml_field_order{
@@ -355,15 +371,17 @@ struct RuntimeConfiguration {
     TimingConfigurationLoadResult timing;
     WindowConfigurationLoadResult window;
     DisplayConfigurationLoadResult display;
+    SavesConfigurationLoadResult saves;
     NewGamePlusConfigurationLoadResult new_game_plus;
 
-    static constexpr std::array<std::string_view, 7U> toml_table_order{
+    static constexpr std::array<std::string_view, 8U> toml_table_order{
         PathsConfigurationLoadResult::toml_table_name,
         LoggingConfigurationLoadResult::toml_table_name,
         InputConfigurationLoadResult::toml_table_name,
         TimingConfigurationLoadResult::toml_table_name,
         WindowConfigurationLoadResult::toml_table_name,
         DisplayConfigurationLoadResult::toml_table_name,
+        SavesConfigurationLoadResult::toml_table_name,
         NewGamePlusConfigurationLoadResult::toml_table_name,
     };
 };

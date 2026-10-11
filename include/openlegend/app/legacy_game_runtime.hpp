@@ -185,6 +185,9 @@ public:
 
     void set_weather_presentation_enabled(bool enabled) noexcept;
 
+    void set_save_slot_memory(
+        std::optional<std::uint16_t> last_slot, std::filesystem::path configuration_path);
+
     NODISCARD bool weather_presentation_active() const noexcept;
 
     NODISCARD std::uint64_t weather_revision() const noexcept;
@@ -448,6 +451,14 @@ private:
 
     void refresh_save_list(std::uint16_t page);
 
+    void remember_save_slot(std::uint16_t slot);
+
+    NODISCARD std::uint16_t initial_save_slot_selection() const noexcept {
+        return last_save_slot_.has_value() && *last_save_slot_ < ui::kSaveSlotCount
+            ? *last_save_slot_
+            : std::uint16_t{0U};
+    }
+
     void refresh_completion_list(std::uint16_t page);
 
     NODISCARD bool render_title_view();
@@ -589,6 +600,8 @@ private:
     bool scene_shop_presented_{};
     scene::SceneInputReset scene_input_reset_request_{scene::SceneInputReset::none};
     bool clear_scene_exit_key_states_requested_{};
+    std::optional<std::uint16_t> last_save_slot_;
+    std::filesystem::path save_slot_configuration_path_;
     bool ending_complete_{};
     bool fade_music_on_exit_{};
     std::vector<std::uint8_t> visible_error_;

@@ -65,6 +65,10 @@ public:
         return slot_selection_;
     }
 
+    constexpr void set_slot_selection(const std::uint16_t selection) noexcept {
+        slot_selection_ = selection < kSaveSlotCount ? selection : std::uint16_t{0U};
+    }
+
 private:
     TitleScreen screen_{TitleScreen::main};
     std::uint8_t main_selection_{};
