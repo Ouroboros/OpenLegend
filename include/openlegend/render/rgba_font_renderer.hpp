@@ -123,9 +123,11 @@ private:
         FontSize size,
         int render_scale);
 
-    static constexpr std::size_t capacity = 64U;
+    // 状态页等现代UI单帧可超过百个不重复字形；容量小于单帧用量会造成每帧全量重建。
+    static constexpr std::size_t capacity = 4096U;
 
-    std::array<Entry, capacity> entries_{};
+    // 条目数组放堆上，避免持有者作为栈对象时超出主线程栈。
+    std::vector<Entry> entries_ = std::vector<Entry>(capacity);
     std::size_t next_slot_{};
 };
 

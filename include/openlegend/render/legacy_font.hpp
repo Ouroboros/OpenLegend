@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <vector>
 
 #include "openlegend/attributes.hpp"
 
@@ -22,10 +23,15 @@ public:
     }
 
 private:
+    static constexpr std::size_t kCapacity = 4096U;
+
     std::span<const std::uint8_t> font_bytes_;
-    std::array<std::uint16_t, 64> codes_{};
-    std::array<bool, 64> valid_{};
-    std::array<std::array<std::uint8_t, 32>, 64> glyphs_{};
+    // 容量须覆盖现代UI单帧的不重复字形数，否则轮转替换会每帧抙6动；
+    // 数组放堆上，避免持有者作为栈对象时超出主线程栈。
+    std::vector<std::uint16_t> codes_ = std::vector<std::uint16_t>(kCapacity);
+    std::vector<std::uint8_t> valid_ = std::vector<std::uint8_t>(kCapacity);
+    std::vector<std::array<std::uint8_t, 32>> glyphs_ =
+        std::vector<std::array<std::uint8_t, 32>>(kCapacity);
     std::size_t next_slot_{0U};
 };
 

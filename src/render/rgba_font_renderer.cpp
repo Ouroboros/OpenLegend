@@ -2,6 +2,7 @@
 #include "openlegend/render/rgba_font_renderer.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -199,54 +200,65 @@ bool GlyphMaskCache::generate_mask(
     entry.alpha.assign(
         static_cast<std::size_t>(entry.width) * entry.height, 0U);
 
+    // Lanczos 权重只依赖目的列/目的行：先建表并按真实字形列聚合，
+    // 避免对每个目的像素重复调用 sin；放大域内同一字形行的水平重采样
+    // 结果相同，只按字形行计算一次。
     const auto horizontal_scale = static_cast<double>(entry.width) /
         static_cast<double>(source_pixel_width);
     const auto horizontal_filter_scale = std::min(1.0, horizontal_scale);
     const auto horizontal_radius = 3.0 / horizontal_filter_scale;
+    std::vector<double> column_weights(
+        static_cast<std::size_t>(entry.width) * width, 0.0);
+    std::vector<double> column_weight_sums(entry.width, 0.0);
+    for (std::uint16_t destination_x = 0U;
+         destination_x < entry.width;
+         ++destination_x) {
+        const auto source_position =
+            (static_cast<double>(destination_x) + 0.5) / horizontal_scale - 0.5;
+        const auto first_source_x = std::max(
+            0,
+            static_cast<int>(std::floor(source_position - horizontal_radius)));
+        const auto last_source_x = std::min(
+            static_cast<int>(source_pixel_width) - 1,
+            static_cast<int>(std::ceil(source_position + horizontal_radius)));
+        auto* buckets = column_weights.data() +
+            static_cast<std::size_t>(destination_x) * width;
+        double weight_sum = 0.0;
+        for (int source_x = first_source_x;
+             source_x <= last_source_x;
+             ++source_x) {
+            const auto weight = lanczos3(
+                source_position - static_cast<double>(source_x),
+                horizontal_filter_scale);
+            weight_sum += weight;
+            buckets[static_cast<std::size_t>(source_x) /
+                static_cast<std::size_t>(render_scale)] += weight;
+        }
+        if (std::abs(weight_sum) < 1.0e-12) {
+            return false;
+        }
+        column_weight_sums[destination_x] = weight_sum;
+    }
+
     std::vector<double> horizontal(
-        static_cast<std::size_t>(entry.width) * source_pixel_height, 0.0);
-    for (std::uint16_t source_y = 0U;
-         source_y < source_pixel_height;
-         ++source_y) {
-        const auto glyph_y = static_cast<std::uint16_t>(
-            source_y / render_scale);
+        static_cast<std::size_t>(kSourceHeight) * entry.width, 0.0);
+    for (std::uint16_t glyph_y = 0U; glyph_y < kSourceHeight; ++glyph_y) {
+        auto* row = horizontal.data() +
+            static_cast<std::size_t>(glyph_y) * entry.width;
         for (std::uint16_t destination_x = 0U;
              destination_x < entry.width;
              ++destination_x) {
-            const auto source_position =
-                (static_cast<double>(destination_x) + 0.5) /
-                    horizontal_scale -
-                0.5;
-            const auto first_source_x = std::max(
-                0,
-                static_cast<int>(std::floor(
-                    source_position - horizontal_radius)));
-            const auto last_source_x = std::min(
-                static_cast<int>(source_pixel_width) - 1,
-                static_cast<int>(std::ceil(
-                    source_position + horizontal_radius)));
+            const auto* buckets = column_weights.data() +
+                static_cast<std::size_t>(destination_x) * width;
             double weighted_value = 0.0;
-            double weight_sum = 0.0;
-            for (int source_x = first_source_x;
-                 source_x <= last_source_x;
-                 ++source_x) {
-                const auto weight = lanczos3(
-                    source_position - static_cast<double>(source_x),
-                    horizontal_filter_scale);
-                weight_sum += weight;
-                if (packed_pixel(
-                        packed_glyph,
-                        width,
-                        static_cast<std::uint16_t>(source_x / render_scale),
-                        glyph_y)) {
-                    weighted_value += weight;
+            for (std::uint16_t glyph_x = 0U; glyph_x < width; ++glyph_x) {
+                if (buckets[glyph_x] != 0.0 &&
+                    packed_pixel(packed_glyph, width, glyph_x, glyph_y)) {
+                    weighted_value += buckets[glyph_x];
                 }
             }
-            if (std::abs(weight_sum) < 1.0e-12) {
-                return false;
-            }
-            horizontal[static_cast<std::size_t>(source_y) * entry.width +
-                       destination_x] = weighted_value / weight_sum;
+            row[destination_x] =
+                weighted_value / column_weight_sums[destination_x];
         }
     }
 
@@ -265,24 +277,31 @@ bool GlyphMaskCache::generate_mask(
         const auto last_source_y = std::min(
             static_cast<int>(source_pixel_height) - 1,
             static_cast<int>(std::ceil(source_position + vertical_radius)));
+        std::array<double, kSourceHeight> row_weights{};
+        double weight_sum = 0.0;
+        for (int source_y = first_source_y;
+             source_y <= last_source_y;
+             ++source_y) {
+            const auto weight = lanczos3(
+                source_position - static_cast<double>(source_y),
+                vertical_filter_scale);
+            weight_sum += weight;
+            row_weights[static_cast<std::size_t>(source_y) /
+                static_cast<std::size_t>(render_scale)] += weight;
+        }
+        if (std::abs(weight_sum) < 1.0e-12) {
+            return false;
+        }
         for (std::uint16_t destination_x = 0U;
              destination_x < entry.width;
              ++destination_x) {
             double weighted_value = 0.0;
-            double weight_sum = 0.0;
-            for (int source_y = first_source_y;
-                 source_y <= last_source_y;
-                 ++source_y) {
-                const auto weight = lanczos3(
-                    source_position - static_cast<double>(source_y),
-                    vertical_filter_scale);
-                weight_sum += weight;
-                weighted_value += horizontal[
-                    static_cast<std::size_t>(source_y) * entry.width +
-                    destination_x] * weight;
-            }
-            if (std::abs(weight_sum) < 1.0e-12) {
-                return false;
+            for (std::uint16_t glyph_y = 0U; glyph_y < kSourceHeight; ++glyph_y) {
+                if (row_weights[glyph_y] != 0.0) {
+                    weighted_value += horizontal[
+                        static_cast<std::size_t>(glyph_y) * entry.width +
+                        destination_x] * row_weights[glyph_y];
+                }
             }
             entry.alpha[static_cast<std::size_t>(destination_y) * entry.width +
                         destination_x] = static_cast<std::uint8_t>(std::lround(
