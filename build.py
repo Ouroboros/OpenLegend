@@ -397,6 +397,29 @@ def compiler_path_changed(current: str | None, requested: str | None) -> bool:
     )
 
 
+def compiler_target_triple(compiler: str) -> str:
+    result = subprocess.run(
+        [compiler, "-print-effective-triple"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def remove_stale_precompiled_headers(build_dir: Path, compiler: str) -> list[Path]:
+    stamp = build_dir / ".openlegend-compiler-triple"
+    triple = compiler_target_triple(compiler)
+    previous = stamp.read_text(encoding="utf-8").strip() if stamp.is_file() else None
+    removed = []
+    if previous != triple:
+        for header in build_dir.rglob("*.pch"):
+            header.unlink()
+            removed.append(header)
+    stamp.write_text(triple + "\n", encoding="utf-8")
+    return sorted(removed)
+
+
 def cached_path_changed(current: str | None, requested: Path) -> bool:
     return current is None or os.path.normcase(str(Path(current).resolve())) != os.path.normcase(
         str(requested.resolve())
@@ -525,6 +548,14 @@ def main() -> int:
 
     if args.configure_only:
         return 0
+
+    removed_headers = remove_stale_precompiled_headers(build_dir, requested_cxx_compiler)
+    if removed_headers:
+        print(
+            f"[OpenLegend] Compiler target changed; removed {len(removed_headers)} "
+            "stale precompiled header(s)",
+            flush=True,
+        )
 
     print(
         f"[OpenLegend] Build: {build_label}-{args.config.lower()} "

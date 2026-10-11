@@ -334,6 +334,34 @@ class BuildToolTest(unittest.TestCase):
             )
             self.assertFalse((build_dir / "CMakeCache.txt").exists())
 
+    def test_removes_precompiled_headers_after_compiler_target_change(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            build_dir = Path(directory) / "windows-app"
+            header = build_dir / "_deps" / "Release" / "cmake_pch.h.pch"
+            header.parent.mkdir(parents=True)
+            header.write_bytes(b"")
+            stamp = build_dir / ".openlegend-compiler-triple"
+            stamp.write_text("x86_64-pc-windows-msvc19.44.35228\n", encoding="utf-8")
+            completed = mock.Mock(stdout="x86_64-pc-windows-msvc19.44.35229\n")
+            with mock.patch.object(build.subprocess, "run", return_value=completed) as runner:
+                self.assertEqual(
+                    build.remove_stale_precompiled_headers(build_dir, "clang++"), [header]
+                )
+                header.write_bytes(b"")
+                self.assertEqual(
+                    build.remove_stale_precompiled_headers(build_dir, "clang++"), []
+                )
+            self.assertTrue(header.exists())
+            self.assertEqual(
+                stamp.read_text(encoding="utf-8"), "x86_64-pc-windows-msvc19.44.35229\n"
+            )
+            runner.assert_called_with(
+                ["clang++", "-print-effective-triple"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
     def test_linux_shell_only_prepares_environment_and_forwards_arguments(self) -> None:
         shell = (PROJECT_ROOT / "build.sh").read_text(encoding="utf-8")
         self.assertIn('export CC="${CC:-clang-23}"', shell)
