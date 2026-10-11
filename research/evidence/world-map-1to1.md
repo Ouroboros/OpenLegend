@@ -34,7 +34,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 | `0x24D43..0x24F17` | EARTH/BUILDING/SURFACE/BUILDX/BUILDY 逐层 128 行读取 |
 | `0x24F8C` | 32×32 可视区深度列表重建 |
 | `0x2558B` | 地表→surface→建筑/角色/船→天气的像素覆盖顺序 |
-| `0x25911` | 前 84 场景的双入口、条件 0 与条件 2（队伍 IQ≥70） |
+| `0x25911` | 前 84 场景的双入口、条件 0 与条件 2（队伍轻功≥70，word44） |
 | `0x26A92` | 每 50 次移动尝试的 HP/MP/体力消耗，并保留 poison 索引原 BUG |
 | `0x206AD` / `0x20899` / `0x208A9` | 裁剪 RLE 和逐像素 8 级半透明混合 |
 | `0x3D34A` | RGB4 颜色立方到当前 RGB6 palette 的最近色表 |
@@ -61,7 +61,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 - 下船陆地区间严格为：`4..356, 364..372, 382..456, 672..954, 466..504, 1000..1014`；顺序保持机器码原顺序。
 - 船海岸区间严格为：`358..362, 374..380, 458..464, 458..464, 506..610, 1016..1022`，包括原版重复区间。
 - 固定轨迹 `right→up→left→down` 返回 `(357,235)`；初始向左命中场景 70，世界坐标不先提交。
-- 条件 2 的合成入口分别验证 IQ 69 不触发、IQ 70 触发；party只扫描slot0起的连续前缀，首个空槽后的高IQ角色不得触发。
+- 条件 2 的合成入口分别验证轻功 69 不触发、轻功 70 触发；party只扫描slot0起的连续前缀，首个空槽后的高轻功角色不得触发。
 - `sub_25911`在进入scene前先present更新朝向后的完整世界帧，再执行64级fade-to-black；scene返回后先反转朝向，以仍保留的world cache、weather、idle、50步计数和palette present世界帧并执行65级fade-from-black，fade结束后才继续原移动调用者的碰撞/坐标/cache/weather后半段。两侧fade期间均冻结输入和世界palette周期。真实scene70因目标建筑阻挡保持`(357,235)`，合成可行入口移动到`(358,235)`；已旋转palette及第49→50次移动计数均跨scene保持。
 - world移动仅修改原全局运行态；`sub_24278`不写RANGER header。`sub_265AB`保存槽时才复制world X/Y、方向、in_ship及船字段。现代`WorldSession::sync_persistent_state`只在保存导出边界调用；scene菜单保存不覆盖SceneSession维护的scene方向。
 - 固定船轨迹验证 `(108,100)` 上船、海岸格移动、在 `(107,100)` 下船以及 header 的 current/next 船坐标。`in_ship`保留raw 16位：移动对任意非零走乘船分支，但render只有值1绘中心船，其他非零跳过中心玩家节点；提交不归一化为bool。
@@ -99,7 +99,7 @@ oracle 不链接或调用 OpenLegend C++；它独立实现 int16le、五层缓�
 
 1. 五层尺寸、坐标值与五个 cache hash；
 2. 初始 framebuffer 独立 golden；
-3. 固定移动轨迹、阻挡、场景 70、IQ 条件 2；
+3. 固定移动轨迹、阻挡、场景 70、轻功条件 2；
 4. 11/98 cache reload；
 5. 上船、船移动、海岸过渡、下船、移动后header保持及保存边界同步；
 6. weather RNG 消费和 300 tick alpha framebuffer；

@@ -1289,7 +1289,7 @@ std::optional<std::int16_t> WorldSession::entrance_at(
                 if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
                     continue;
                 }
-                if (ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::iq) >=
+                if (ranger_.roles[static_cast<std::size_t>(role_id)].word(model::role_word::speed) >=
                     70) {
                     return static_cast<std::int16_t>(index);
                 }
