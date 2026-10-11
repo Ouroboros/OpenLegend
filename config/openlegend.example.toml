@@ -1,8 +1,5 @@
 [paths]
 
-# Relative paths resolve from the executable directory. If save_dir is omitted,
-# numbered saves remain in data_dir as before.
-
 # 相对路径以可执行文件目录为基准。未配置 save_dir 时，编号存档仍按原逻辑
 # 保存在 data_dir 中。
 
@@ -61,11 +58,6 @@ battle_experience_percent_step = 100
 
 [logging]
 
-# Relative paths resolve from the executable directory. The path supplies the
-# prefix and extension. Every launch writes a separate
-# PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log file beside it. Every record is flushed
-# immediately. Levels: trace, debug, info, warning, error, critical.
-
 # 相对路径基于可执行文件目录解析。该路径提供文件名前缀和扩展名。每次启动
 # 都会在其旁边写入独立的 PREFIX-YYYY-MM-DD_HH-MM-SS-{PID}.log 文件。
 # 每条记录都会立即刷新。级别：trace、debug、info、warning、error、critical。
@@ -75,44 +67,27 @@ level = "info"
 
 [input]
 
-# Name entry uses the original built-in Zhuyin keyboard by default. Set this to
-# "modern" to use SDL/system text input and the host IME. On the name screen,
-# F12 switches between both modes for the current session.
-#
 # 姓名输入默认使用原版内建注音键盘。设为 "modern" 可改用 SDL／系统文字输入
 # 与宿主输入法。姓名画面中可按 F12 在两种模式间切换，仅影响当前会话。
 
 name_entry = "legacy"
 
-# Native smooth movement is enabled by default. Set this to false to restore
-# legacy tile-by-tile movement. This does not change movement speed or saves.
-#
 # 原生平滑移动默认开启。设为 false 可恢复原版逐格移动；不会改变移动速度或存档。
 
 smooth_movement = true
-
-# Delay after the first movement before a held direction starts repeating.
-# Use 0 for immediate continuous movement.
 
 # 首次移动后，按住方向键开始连续移动前的延迟。
 # 设为 0 表示立即连续移动。
 
 movement_repeat_delay_ms = 500
 
-# Delay before menu navigation starts repeating, and the interval between repeats.
-# These values also apply to Page Up/Down in the SAVE LIST. Delays must be
-# non-negative, and the interval must be positive.
-
 # 菜单导航开始重复前的延迟，以及后续每次重复的间隔。
-# SAVE LIST 的 Page Up/Down 也使用这组参数。延迟必须非负，间隔必须为正数。
+# 存档列表的 Page Up/Down 也使用这组参数。延迟必须非负，间隔必须为正数。
 
 menu_repeat_delay_ms = 500
 menu_repeat_interval_ms = 55
 
 [timing]
-
-# Delay between FI/FO palette frames. The default matches VGA mode 13h.
-# Use 0 to present fade frames without waiting.
 
 # FI/FO 调色板帧之间的延迟。默认值匹配 VGA mode 13h。
 # 设为 0 表示淡变帧之间不等待。
@@ -120,9 +95,6 @@ menu_repeat_interval_ms = 55
 fade_frame_delay_ms = 14.268
 
 [window]
-
-# These values only control the restored host window. The completed game frame
-# is enlarged proportionally to fill the window as much as possible and centered with black bars.
 
 # 这些值只控制还原后的宿主窗口。完成的游戏画面会保持宽高比，尽量填满窗口，
 # 比例不一致时居中留黑边。
@@ -132,13 +104,6 @@ height = 600
 maximized = false
 
 [display]
-
-# The actual in-game logical resolution. Increasing it keeps map tiles, actors,
-# and objects at their original logical pixel size while showing more content.
-# Set scale to 1.0..4.0 to derive width and height from 320x200, rounding each
-# dimension to the nearest integer. If scale is present, it takes precedence
-# over width and height. Without scale, width must be 320..1280 and height must
-# be 200..800; both values must be present or both omitted.
 
 # 游戏实际绘制的逻辑分辨率。增大该尺寸时，地图格、人物和物件保持原逻辑
 # 像素大小，同时显示更多内容。scale 可设为 1.0..4.0，基于 320x200 分别
