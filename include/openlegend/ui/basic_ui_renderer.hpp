@@ -22,6 +22,12 @@
 
 namespace openlegend::ui {
 
+// 原版182号物品的说明栏改为显示人物与船只坐标。
+inline constexpr std::int16_t kCoordinateItemId = 0x00B6;
+
+NODISCARD std::u8string coordinate_item_text(
+    const model::RuntimeRangerState& ranger, GameMenuContext context);
+
 class BasicUiRenderer {
 public:
     explicit BasicUiRenderer(const resource::DataRoot& data_root);
@@ -85,11 +91,6 @@ private:
         int y,
         std::uint16_t width,
         std::uint16_t height);
-
-    NODISCARD bool render_items(
-        const GameMenuController& menu,
-        const model::RuntimeRangerState& ranger,
-        render::IndexedFramebuffer& framebuffer);
 
     NODISCARD bool draw_item_icon(
         render::IndexedFramebuffer& framebuffer,

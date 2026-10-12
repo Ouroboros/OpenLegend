@@ -20,7 +20,6 @@ enum class GameMenuScreen {
     party_select,
     party_notice,
     status_panel,
-    item_category,
     items,
     item_confirmation,
     item_effect,
@@ -33,6 +32,7 @@ enum class GameMenuScreen {
 };
 
 inline constexpr std::uint8_t kItemCategoryCount = 7U;
+inline constexpr std::uint16_t kItemListVisibleRows = 11U;
 
 enum class GameMenuItemTargetKind {
     equipment,
@@ -160,8 +160,7 @@ public:
     }
 
     NODISCARD constexpr std::uint16_t item_selection() const noexcept {
-        return static_cast<std::uint16_t>(
-            5 * (item_page_ + item_row_) + item_column_);
+        return item_cursor_;
     }
 
     NODISCARD constexpr std::span<const std::int16_t> inventory_slots() const noexcept {
@@ -177,11 +176,9 @@ public:
         return static_cast<std::uint16_t>(inventory_slots_[selection]);
     }
 
-    NODISCARD constexpr std::uint8_t item_page() const noexcept { return item_page_; }
+    NODISCARD constexpr std::uint16_t item_cursor() const noexcept { return item_cursor_; }
 
-    NODISCARD constexpr std::uint8_t item_row() const noexcept { return item_row_; }
-
-    NODISCARD constexpr std::uint8_t item_column() const noexcept { return item_column_; }
+    NODISCARD constexpr std::uint16_t item_scroll() const noexcept { return item_scroll_; }
 
     NODISCARD constexpr GameMenuItemTargetKind item_target_kind() const noexcept {
         return item_target_kind_;
@@ -254,15 +251,16 @@ private:
     GameMenuScreen delete_return_screen_{GameMenuScreen::load_slots};
     void apply_item_category() noexcept;
 
+    void move_item_cursor(int delta) noexcept;
+
     std::array<std::int16_t, 200U> inventory_slots_{};
     std::uint16_t inventory_count_{};
     std::array<std::int16_t, 200U> base_inventory_slots_{};
     std::uint16_t base_inventory_count_{};
     std::array<std::uint8_t, 200U> base_inventory_categories_{};
     std::uint8_t item_category_selection_{};
-    std::uint8_t item_page_{};
-    std::uint8_t item_row_{};
-    std::uint8_t item_column_{};
+    std::uint16_t item_cursor_{};
+    std::uint16_t item_scroll_{};
 };
 
 }  // namespace openlegend::ui

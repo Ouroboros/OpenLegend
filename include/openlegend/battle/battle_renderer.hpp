@@ -108,6 +108,8 @@ public:
 
     NODISCARD const resource::SpriteFrameView* portrait_frame(std::int16_t portrait_id) const;
 
+    NODISCARD const resource::SpriteFrameView* item_icon_frame(std::int16_t item_id) const;
+
     NODISCARD std::optional<std::int64_t> next_level_experience(std::int64_t level) const;
 
     NODISCARD const model::PracticeRules& practice_rules() const noexcept {

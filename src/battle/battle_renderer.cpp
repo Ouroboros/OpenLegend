@@ -1303,6 +1303,15 @@ bool BattleRenderer::draw_portrait(
     return true;
 }
 
+const resource::SpriteFrameView* BattleRenderer::item_icon_frame(
+    const std::int16_t item_id) const {
+    const auto sprite_index = render::legacy_item_sprite_index(item_id);
+    if (!sprite_index.has_value() || *sprite_index >= item_sprites_.entry_count()) {
+        return nullptr;
+    }
+    return archive_frame(item_sprites_, item_frame_cache_, *sprite_index);
+}
+
 bool BattleRenderer::draw_item_icon(
     render::IndexedFramebuffer& framebuffer,
     const std::int16_t item_id,

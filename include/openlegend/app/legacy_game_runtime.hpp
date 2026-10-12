@@ -478,11 +478,25 @@ private:
 
     NODISCARD bool render_character_status_view(render::RgbaFramebuffer& framebuffer);
 
+    NODISCARD bool render_item_page_overlay(
+        std::span<const std::int16_t> inventory_slots,
+        std::size_t cursor,
+        std::size_t scroll,
+        std::size_t visible_rows,
+        std::span<const std::uint8_t> tabs,
+        std::size_t active_tab,
+        std::u8string_view coordinate_text,
+        render::RgbaFramebuffer& framebuffer);
+
+    NODISCARD bool render_item_list_view(render::RgbaFramebuffer& framebuffer);
+
     NODISCARD bool render_modern_ui_view(render::RgbaFramebuffer& framebuffer);
 
     void collect_status_floats();
 
     NODISCARD bool render_status_floats(render::RgbaFramebuffer& framebuffer);
+
+    NODISCARD bool render_battle_item_list_view(render::RgbaFramebuffer& framebuffer);
 
     NODISCARD bool render_battle_character_status_view(render::RgbaFramebuffer& framebuffer);
 

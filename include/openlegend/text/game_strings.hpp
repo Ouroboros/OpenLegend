@@ -97,9 +97,10 @@ inline constexpr std::array<std::u8string_view, 3> mp_type_labels{
     u8"陰陽合一",
 };
 inline constexpr std::u8string_view sexual_attribute_label = u8"性別：";
-inline constexpr std::array<std::u8string_view, 2> sexual_labels{
+inline constexpr std::array<std::u8string_view, 3> sexual_labels{
     u8"男",
     u8"女",
+    u8"自宮",
 };
 
 inline constexpr std::u8string_view level_label = u8"等級 ";
@@ -153,6 +154,9 @@ inline constexpr std::u8string_view anti_poison_ability_label = u8"抗毒能力"
 inline constexpr std::u8string_view mp_type_ability_label = u8"內力門路";
 inline constexpr std::u8string_view increased_life_ability_label = u8"生命成長";
 inline constexpr std::u8string_view iq_ability_label = u8"資質";
+inline constexpr std::u8string_view attack_with_poison_ability_label = u8"功夫帶毒";
+inline constexpr std::u8string_view attack_twice_ability_label = u8"左右互搏";
+inline constexpr std::u8string_view ability_present_value = u8"有";
 inline constexpr std::u8string_view sex_ability_label = u8"性別";
 inline constexpr std::u8string_view knowledge_ability_label = u8"武學常識";
 inline constexpr std::u8string_view status_level_suffix = u8"級";
@@ -174,6 +178,18 @@ inline constexpr std::array<std::u8string_view, 7> item_category_labels{
     u8"暗器",
     u8"其他",
 };
+inline constexpr std::u8string_view item_count_prefix = u8"×";
+inline constexpr std::u8string_view item_detail_craft_label = u8"煉製";
+inline constexpr std::u8string_view item_detail_craft_experience_label = u8"煉製經驗";
+inline constexpr std::u8string_view item_detail_material_label = u8"材料";
+inline constexpr std::u8string_view item_detail_effect_label = u8"效果";
+inline constexpr std::u8string_view item_detail_requirement_label = u8"需求";
+inline constexpr std::u8string_view item_detail_learn_label = u8"習得";
+inline constexpr std::u8string_view item_detail_only_label = u8"限";
+inline constexpr std::u8string_view item_detail_none = u8"無";
+inline constexpr std::u8string_view item_detail_at_least_suffix = u8"以上";
+inline constexpr std::u8string_view item_detail_at_most_suffix = u8"以下";
+inline constexpr std::u8string_view item_list_empty = u8"沒有物品";
 inline constexpr std::u8string_view protagonist_location_label = u8"人";
 inline constexpr std::u8string_view ship_location_label = u8"船";
 inline constexpr std::u8string_view use_item_prefix = u8"使用 ";
@@ -360,6 +376,9 @@ inline constexpr auto kAntiPoisonAbilityLabel = anti_poison_ability_label;
 inline constexpr auto kMpTypeAbilityLabel = mp_type_ability_label;
 inline constexpr auto kIncreasedLifeAbilityLabel = increased_life_ability_label;
 inline constexpr auto kIqAbilityLabel = iq_ability_label;
+inline constexpr auto kAttackWithPoisonAbilityLabel = attack_with_poison_ability_label;
+inline constexpr auto kAttackTwiceAbilityLabel = attack_twice_ability_label;
+inline constexpr auto kAbilityPresentValue = ability_present_value;
 inline constexpr auto kSexAbilityLabel = sex_ability_label;
 inline constexpr auto kKnowledgeAbilityLabel = knowledge_ability_label;
 inline constexpr auto kStatusLevelSuffix = status_level_suffix;
@@ -373,6 +392,18 @@ inline constexpr auto kHurtBandModerateSuffix = hurt_band_moderate_suffix;
 inline constexpr auto kHurtBandSevereSuffix = hurt_band_severe_suffix;
 inline constexpr auto kUnknownValue = unknown_value;
 inline constexpr auto& kItemCategoryLabels = item_category_labels;
+inline constexpr auto kItemCountPrefix = item_count_prefix;
+inline constexpr auto kItemDetailCraftLabel = item_detail_craft_label;
+inline constexpr auto kItemDetailCraftExperienceLabel = item_detail_craft_experience_label;
+inline constexpr auto kItemDetailMaterialLabel = item_detail_material_label;
+inline constexpr auto kItemDetailEffectLabel = item_detail_effect_label;
+inline constexpr auto kItemDetailRequirementLabel = item_detail_requirement_label;
+inline constexpr auto kItemDetailLearnLabel = item_detail_learn_label;
+inline constexpr auto kItemDetailOnlyLabel = item_detail_only_label;
+inline constexpr auto kItemDetailNone = item_detail_none;
+inline constexpr auto kItemDetailAtLeastSuffix = item_detail_at_least_suffix;
+inline constexpr auto kItemDetailAtMostSuffix = item_detail_at_most_suffix;
+inline constexpr auto kItemListEmpty = item_list_empty;
 inline constexpr auto kProtagonistLocationLabel = protagonist_location_label;
 inline constexpr auto kShipLocationLabel = ship_location_label;
 inline constexpr auto kUseItemPrefix = use_item_prefix;

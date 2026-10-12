@@ -19,6 +19,14 @@
 
 namespace openlegend::ui {
 
+// 文字实际笔画的外接矩形，坐标相对绘制原点（逻辑像素，右、下边界不含）。
+struct TextInkBounds {
+    int left{};
+    int top{};
+    int right{};
+    int bottom{};
+};
+
 class ModernUiRenderer {
 public:
     explicit ModernUiRenderer(const resource::DataRoot& data_root);
@@ -82,6 +90,11 @@ public:
         std::uint16_t width,
         std::uint16_t height,
         const compat::LegacyPalette& palette);
+
+    NODISCARD std::optional<TextInkBounds> text_ink_bounds_utf8(
+        const render::RgbaFramebuffer& framebuffer,
+        std::u8string_view text,
+        render::rgba::FontSize size = {});
 
 private:
     std::vector<std::uint8_t> ascii_font_;

@@ -74,6 +74,7 @@ inline constexpr TextColors severe_poison{0x37U, 0x35U};
 inline constexpr TextColors yin_mp{0x4EU, 0x50U};
 inline constexpr TextColors alternate_mp{0x53U, 0x50U};
 inline constexpr TextColors selected{0x63U, 0x66U};
+inline constexpr TextColors disabled{0x68U, 0x6BU};
 inline constexpr TextColors scene_dialogue{0x00U, 0x64U};
 inline constexpr std::array<TextColors, 6> battle_damage_numbers{
     TextColors{0x00U, 0x00U},

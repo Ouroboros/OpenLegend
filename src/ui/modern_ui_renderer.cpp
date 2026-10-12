@@ -1,7 +1,10 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/ui/modern_ui_renderer.hpp"
 
+#include <algorithm>
 #include <utility>
+
+#include "openlegend/text/big5.hpp"
 
 namespace openlegend::ui {
 namespace {
@@ -98,6 +101,72 @@ bool ModernUiRenderer::draw_text_mixed(
         glyph_mask_cache_,
         scaled_font_size(framebuffer, size),
         rgba_text_colors(palette, colors));
+}
+
+std::optional<TextInkBounds> ModernUiRenderer::text_ink_bounds_utf8(
+    const render::RgbaFramebuffer& framebuffer,
+    const std::u8string_view text,
+    const render::rgba::FontSize size) {
+    const auto encoded = text::encode_big5(text);
+    if (!encoded.has_value() || !big5_cache_.has_value()) {
+        return std::nullopt;
+    }
+    const auto metrics = font_metrics(framebuffer, size);
+    constexpr int kSourceHeight = 16;
+    std::optional<TextInkBounds> bounds;
+    int pen = 0;
+    const auto include = [&](const int column, const int row, const int source_width,
+                             const int advance) {
+        const auto left = pen + column * advance / source_width;
+        const auto right = pen + (column + 1) * advance / source_width;
+        const auto top = row * static_cast<int>(metrics.pixel_height) / kSourceHeight;
+        const auto bottom = (row + 1) * static_cast<int>(metrics.pixel_height) / kSourceHeight;
+        if (!bounds.has_value()) {
+            bounds = TextInkBounds{left, top, right, bottom};
+            return;
+        }
+        bounds->left = std::min(bounds->left, left);
+        bounds->top = std::min(bounds->top, top);
+        bounds->right = std::max(bounds->right, right);
+        bounds->bottom = std::max(bounds->bottom, bottom);
+    };
+    const auto& bytes = *encoded;
+    for (std::size_t index = 0U; index < bytes.size();) {
+        const auto first = bytes[index++];
+        if (first > 0x7FU && index < bytes.size()) {
+            const auto code = static_cast<std::uint16_t>((first << 8U) | bytes[index++]);
+            const auto glyph = big5_cache_->resolve(code);
+            const auto advance = static_cast<int>(metrics.big5_width);
+            if (glyph.has_value()) {
+                for (int row = 0; row < kSourceHeight; ++row) {
+                    const auto bits = static_cast<unsigned>(
+                        ((*glyph)[static_cast<std::size_t>(2 * row)] << 8U) |
+                        (*glyph)[static_cast<std::size_t>(2 * row + 1)]);
+                    for (int column = 0; column < 16; ++column) {
+                        if ((bits & (0x8000U >> static_cast<unsigned>(column))) != 0U) {
+                            include(column, row, 16, advance);
+                        }
+                    }
+                }
+            }
+            pen += advance;
+            continue;
+        }
+        const auto advance = static_cast<int>(metrics.ascii_width);
+        const auto offset = static_cast<std::size_t>(first) * 16U;
+        if (offset + 16U <= ascii_font_.size()) {
+            for (int row = 0; row < kSourceHeight; ++row) {
+                const auto bits = ascii_font_[offset + static_cast<std::size_t>(row)];
+                for (int column = 0; column < 8; ++column) {
+                    if ((bits & (0x80U >> static_cast<unsigned>(column))) != 0U) {
+                        include(column, row, 8, advance);
+                    }
+                }
+            }
+        }
+        pen += advance;
+    }
+    return bounds;
 }
 
 bool ModernUiRenderer::draw_text_big5(

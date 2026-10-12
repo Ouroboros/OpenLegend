@@ -3,6 +3,7 @@ add_library(
     STATIC
         character_status_page.cpp
         display_resolution.cpp
+        item_list_page.cpp
         legacy_game_runtime.cpp
         mode_coordinator.cpp
         new_game_plus_configuration.cpp

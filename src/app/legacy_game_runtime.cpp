@@ -24,6 +24,7 @@
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 #include "character_status_page.hpp"
+#include "item_list_page.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -313,16 +314,6 @@ NODISCARD constexpr LegacyKeyStateReset main_game_menu_key_state_reset(
         return LegacyKeyStateReset::down_translated;
     }
     return menu_key_state_reset(translated_key);
-}
-
-NODISCARD constexpr bool is_item_page_navigation_key(
-    const std::uint8_t translated_key) noexcept {
-    return translated_key == input::legacy_key::down ||
-        translated_key == input::legacy_key::page_down ||
-        translated_key == input::legacy_key::left ||
-        translated_key == input::legacy_key::right ||
-        translated_key == input::legacy_key::up ||
-        translated_key == input::legacy_key::page_up;
 }
 
 NODISCARD constexpr bool is_item_party_navigation_key(
@@ -1169,7 +1160,6 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
         case ui::GameMenuScreen::main:
         case ui::GameMenuScreen::party_select:
         case ui::GameMenuScreen::status_panel:
-        case ui::GameMenuScreen::item_category:
         case ui::GameMenuScreen::items:
         case ui::GameMenuScreen::system:
             return DirectionRepeatContext::menu;
@@ -1829,7 +1819,6 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         if (screen == ui::GameMenuScreen::main) {
             key_state_reset = main_game_menu_key_state_reset(translated_key);
         } else if (screen == ui::GameMenuScreen::party_select ||
-                   screen == ui::GameMenuScreen::item_category ||
                    screen == ui::GameMenuScreen::system ||
                    screen == ui::GameMenuScreen::load_slots ||
                    screen == ui::GameMenuScreen::save_slots) {
@@ -1891,10 +1880,6 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         const auto next_screen = game_menu_.screen();
         if (screen != ui::GameMenuScreen::items &&
             next_screen == ui::GameMenuScreen::items) {
-            game_menu_items_presented_ = false;
-        } else if (screen == ui::GameMenuScreen::items &&
-                   next_screen == ui::GameMenuScreen::items &&
-                   is_item_page_navigation_key(translated_key)) {
             game_menu_items_presented_ = false;
         }
         const auto next_item_stage =
@@ -2098,7 +2083,8 @@ bool LegacyGameRuntime::render() {
             game_menu_.screen() == ui::GameMenuScreen::party_select;
         const auto exact_party_notice =
             game_menu_.screen() == ui::GameMenuScreen::party_notice;
-        if (game_menu_.screen() == ui::GameMenuScreen::status_panel) {
+        if (game_menu_.screen() == ui::GameMenuScreen::status_panel ||
+            game_menu_.screen() == ui::GameMenuScreen::items) {
             return true;
         }
         const auto exact_item_effect =
@@ -2387,6 +2373,9 @@ bool LegacyGameRuntime::render_modern_ui_view(
         if (screen == ui::GameMenuScreen::status_panel) {
             return render_character_status_view(framebuffer);
         }
+        if (screen == ui::GameMenuScreen::items) {
+            return render_item_list_view(framebuffer);
+        }
         const bool delete_confirmation =
             screen == ui::GameMenuScreen::delete_confirmation;
         const bool save_list = screen == ui::GameMenuScreen::load_slots ||
@@ -2421,6 +2410,9 @@ bool LegacyGameRuntime::render_modern_ui_view(
     case LegacyGameView::battle:
         if (battle_session_ != nullptr && battle_session_->player_status_page_active()) {
             return render_battle_character_status_view(framebuffer);
+        }
+        if (battle_session_ != nullptr && battle_session_->player_item_selection_active()) {
+            return render_battle_item_list_view(framebuffer);
         }
         return true;
     case LegacyGameView::name_entry:
@@ -3591,6 +3583,80 @@ bool LegacyGameRuntime::render_character_status_view(render::RgbaFramebuffer& fr
         std::span<const model::RoleState* const>{roles}.first(count),
         game_menu_.party_selection(),
         game_menu_.status_page(),
+        framebuffer);
+}
+
+bool LegacyGameRuntime::render_item_page_overlay(
+    const std::span<const std::int16_t> inventory_slots,
+    const std::size_t cursor,
+    const std::size_t scroll,
+    const std::size_t visible_rows,
+    const std::span<const std::uint8_t> tabs,
+    const std::size_t active_tab,
+    const std::u8string_view coordinate_text,
+    render::RgbaFramebuffer& framebuffer) {
+    const auto* ranger = game_state_.ranger();
+    if (ranger == nullptr) {
+        return false;
+    }
+    if (game_menu_status_renderer_ == nullptr) {
+        game_menu_status_renderer_ = std::make_unique<battle::BattleRenderer>(data_root_, 0);
+    }
+    if (!game_menu_status_renderer_->valid()) {
+        return false;
+    }
+    if (!render_item_list_page(
+            *game_menu_status_renderer_,
+            modern_ui_renderer_,
+            framebuffer_.palette(),
+            *ranger,
+            ItemListPageView{
+                inventory_slots,
+                cursor,
+                scroll,
+                visible_rows,
+                tabs,
+                active_tab,
+                coordinate_text},
+            framebuffer)) {
+        // 物品页绘制失败只记录错误，不让渲染链退出游戏。
+        diagnostics::log_error("item list page render failed cursor=" + std::to_string(cursor));
+    }
+    return true;
+}
+
+bool LegacyGameRuntime::render_item_list_view(render::RgbaFramebuffer& framebuffer) {
+    const auto* ranger = game_state_.ranger();
+    if (ranger == nullptr) {
+        return false;
+    }
+    static constexpr std::array<std::uint8_t, ui::kItemCategoryCount> kMenuItemTabs{
+        0U, 1U, 2U, 3U, 4U, 5U, 6U};
+    const auto coordinate_text = ui::coordinate_item_text(*ranger, game_menu_.context());
+    return render_item_page_overlay(
+        game_menu_.inventory_slots(),
+        game_menu_.item_cursor(),
+        game_menu_.item_scroll(),
+        ui::kItemListVisibleRows,
+        kMenuItemTabs,
+        game_menu_.item_category_selection(),
+        coordinate_text,
+        framebuffer);
+}
+
+bool LegacyGameRuntime::render_battle_item_list_view(render::RgbaFramebuffer& framebuffer) {
+    if (battle_session_ == nullptr) {
+        return false;
+    }
+    const auto slots = battle_session_->player_item_list();
+    return render_item_page_overlay(
+        slots,
+        battle_session_->player_item_cursor(),
+        battle_session_->player_item_scroll(),
+        battle::kBattleItemListVisibleRows,
+        battle::kBattleItemTabs,
+        battle_session_->player_item_tab(),
+        {},
         framebuffer);
 }
 

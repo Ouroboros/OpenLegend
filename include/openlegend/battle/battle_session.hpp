@@ -152,6 +152,11 @@ struct BattlePlayerActionMenuState {
     std::int16_t selected_action{-1};
 };
 
+inline constexpr std::size_t kBattleItemListVisibleRows = 11U;
+inline constexpr std::size_t kBattleItemTabCount = 3U;
+// 战斗物品页签对应的物品分类：全部、藥品、暗器。
+inline constexpr std::array<std::uint8_t, kBattleItemTabCount> kBattleItemTabs{0U, 1U, 5U};
+
 class BattleSession {
 public:
     BattleSession(
@@ -287,11 +292,16 @@ public:
 
     NODISCARD const BattleItemSelectionState* player_item_selection() const noexcept;
 
-    NODISCARD std::int16_t player_item_page() const noexcept;
+    NODISCARD std::size_t player_item_cursor() const noexcept;
 
-    NODISCARD std::int16_t player_item_row() const noexcept;
+    NODISCARD std::size_t player_item_scroll() const noexcept;
 
-    NODISCARD std::int16_t player_item_column() const noexcept;
+    NODISCARD std::size_t player_item_tab() const noexcept;
+
+    // 当前页签过滤后的背包槽位列表；未在选物品时为空。
+    NODISCARD std::vector<std::int16_t> player_item_list() const;
+
+    NODISCARD bool player_item_selection_active() const noexcept;
 
     NODISCARD std::uint8_t player_item_presentations_before_input() const noexcept {
         return player_item_ != nullptr ? player_item_presentations_before_input_ : 0U;
@@ -605,9 +615,9 @@ private:
 
     struct PlayerItemState {
         BattleItemSelectionState selection;
-        std::int16_t page{};
-        std::int16_t row{};
-        std::int16_t column{};
+        std::size_t cursor{};
+        std::size_t scroll{};
+        std::size_t tab{};
         std::optional<std::size_t> selected_inventory_slot;
         std::int16_t selected_item_id{-1};
         std::optional<BattleItemEffectResult> effect_result;

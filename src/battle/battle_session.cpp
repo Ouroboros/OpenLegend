@@ -152,34 +152,6 @@ NODISCARD std::u8string decimal_text(
     return text;
 }
 
-NODISCARD int legacy_item_metric(const model::RuntimeRangerState& ranger) noexcept {
-    for (std::size_t slot = 0U; slot < model::kInventoryCount; ++slot) {
-        if (ranger.header.inventory_item(slot).value == -1) {
-            return static_cast<int>(slot + 1U);
-        }
-    }
-    return static_cast<int>(model::kInventoryCount);
-}
-
-NODISCARD std::u8string coordinate_item_text(
-    const model::RuntimeRangerState& ranger) {
-    const auto in_sub_map = ranger.header.word(model::header_word::in_sub_map) != 0;
-    const auto player_x = ranger.header.word(
-        in_sub_map ? model::header_word::sub_map_x : model::header_word::main_map_x);
-    const auto player_y = ranger.header.word(
-        in_sub_map ? model::header_word::sub_map_y : model::header_word::main_map_y);
-    std::u8string text{kPersonOpen};
-    text.append(decimal_text(player_x, 3));
-    text.append(kComma);
-    text.append(decimal_text(player_y, 3));
-    text.append(kPersonCloseShipOpen);
-    text.append(decimal_text(ranger.header.word(model::header_word::ship_x), 3));
-    text.append(kComma);
-    text.append(decimal_text(ranger.header.word(model::header_word::ship_y), 3));
-    text.append(kClose);
-    return text;
-}
-
 }  // namespace
 
 BattleSession::BattleSession(
@@ -240,16 +212,46 @@ const BattleItemSelectionState* BattleSession::player_item_selection() const noe
     return player_item_ ? &player_item_->selection : nullptr;
 }
 
-std::int16_t BattleSession::player_item_page() const noexcept {
-    return player_item_ ? player_item_->page : 0;
+std::size_t BattleSession::player_item_cursor() const noexcept {
+    return player_item_ ? player_item_->cursor : 0U;
 }
 
-std::int16_t BattleSession::player_item_row() const noexcept {
-    return player_item_ ? player_item_->row : 0;
+std::size_t BattleSession::player_item_scroll() const noexcept {
+    return player_item_ ? player_item_->scroll : 0U;
 }
 
-std::int16_t BattleSession::player_item_column() const noexcept {
-    return player_item_ ? player_item_->column : 0;
+std::size_t BattleSession::player_item_tab() const noexcept {
+    return player_item_ ? player_item_->tab : 0U;
+}
+
+bool BattleSession::player_item_selection_active() const noexcept {
+    return player_item_ != nullptr && phase_ == BattleSessionPhase::player_item_selection;
+}
+
+std::vector<std::int16_t> BattleSession::player_item_list() const {
+    std::vector<std::int16_t> slots;
+    if (!player_item_) {
+        return slots;
+    }
+    // 页签：0 全部、1 藥品（类型3）、2 暗器（类型4）。
+    const auto tab = player_item_->tab;
+    const auto& selection = player_item_->selection;
+    for (std::int16_t index = 0; index < selection.count; ++index) {
+        const auto slot = selection.inventory_slots[static_cast<std::size_t>(index)];
+        if (slot < 0 || static_cast<std::size_t>(slot) >= model::kInventoryCount) {
+            continue;
+        }
+        const auto item_id = ranger_.header.inventory_item(static_cast<std::size_t>(slot)).value;
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
+            continue;
+        }
+        const auto item_type =
+            ranger_.items[static_cast<std::size_t>(item_id)].word(model::item_word::item_type);
+        if (tab == 0U || (tab == 1U && item_type == 3) || (tab == 2U && item_type == 4)) {
+            slots.push_back(slot);
+        }
+    }
+    return slots;
 }
 
 std::size_t BattleSession::player_status_count() const noexcept {
@@ -2572,9 +2574,9 @@ bool BattleSession::begin_player_movement() {
 bool BattleSession::begin_player_item_selection() {
     player_item_ = std::make_unique<PlayerItemState>(PlayerItemState{
         .selection = setup_.begin_item_selection(),
-        .page = 0,
-        .row = 0,
-        .column = 0,
+        .cursor = 0U,
+        .scroll = 0U,
+        .tab = 0U,
         .selected_inventory_slot = std::nullopt,
         .selected_item_id = -1,
         .effect_result = std::nullopt,
@@ -2595,30 +2597,40 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
         return BattleSessionInputResult::ignored;
     }
     auto& item = *player_item_;
-    if (translated_key == kRight) {
-        item.column = item.column == 4 ? 0 : static_cast<std::int16_t>(item.column + 1);
-    } else if (translated_key == kLeft) {
-        item.column = item.column == 0 ? 4 : static_cast<std::int16_t>(item.column - 1);
+    const auto list = player_item_list();
+    const auto move_cursor = [&item, &list](const std::ptrdiff_t delta) {
+        if (list.empty()) {
+            item.cursor = 0U;
+            item.scroll = 0U;
+            return;
+        }
+        const auto last = static_cast<std::ptrdiff_t>(list.size()) - 1;
+        const auto target = static_cast<std::ptrdiff_t>(item.cursor) + delta;
+        // 单步上下在首尾循环；翻页停在两端。
+        item.cursor = static_cast<std::size_t>(
+            delta == -1 && target < 0     ? last
+            : delta == 1 && target > last ? 0
+                                          : std::clamp(target, std::ptrdiff_t{0}, last));
+        if (item.cursor < item.scroll) {
+            item.scroll = item.cursor;
+        } else if (item.cursor >= item.scroll + kBattleItemListVisibleRows) {
+            item.scroll = item.cursor - kBattleItemListVisibleRows + 1U;
+        }
+    };
+    constexpr std::ptrdiff_t kPage = static_cast<std::ptrdiff_t>(kBattleItemListVisibleRows);
+    if (translated_key == kRight || translated_key == kLeft) {
+        item.tab = translated_key == kRight ? (item.tab + 1U) % kBattleItemTabCount
+                                            : (item.tab + kBattleItemTabCount - 1U) % kBattleItemTabCount;
+        item.cursor = 0U;
+        item.scroll = 0U;
     } else if (translated_key == kDown) {
-        if (item.row < 2) {
-            ++item.row;
-        } else if (item.page < 37) {
-            ++item.page;
-        }
+        move_cursor(1);
     } else if (translated_key == kUp) {
-        if (item.row > 0) {
-            --item.row;
-        } else if (item.page > 0) {
-            --item.page;
-        }
+        move_cursor(-1);
     } else if (translated_key == kPageDown) {
-        if (item.page < 35) {
-            item.page = static_cast<std::int16_t>(item.page + 3);
-        }
+        move_cursor(kPage);
     } else if (translated_key == kPageUp) {
-        if (item.page > 2) {
-            item.page = static_cast<std::int16_t>(item.page - 3);
-        }
+        move_cursor(-kPage);
     } else if (translated_key == kEscape) {
         diagnostics::log_info(
             "battle player item selection cancelled id=" + std::to_string(battle_id()) +
@@ -2629,13 +2641,10 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
     } else if (translated_key != kEnter && translated_key != kSpace) {
         return BattleSessionInputResult::ignored;
     } else {
-        const auto list_index = static_cast<std::int32_t>(
-            5 * (item.page + item.row) + item.column);
-        if (list_index < 0 || list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
+        if (item.cursor >= list.size()) {
             return BattleSessionInputResult::ignored;
         }
-        const auto inventory_slot = item.selection.inventory_slots[
-            static_cast<std::size_t>(list_index)];
+        const auto inventory_slot = list[item.cursor];
         if (inventory_slot < 0 ||
             static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
             return BattleSessionInputResult::ignored;
@@ -2668,9 +2677,8 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
     diagnostics::log_debug(
         "battle player item cursor id=" + std::to_string(battle_id()) +
         " slot=" + std::to_string(current_actor_slot_) +
-        " page=" + std::to_string(item.page) +
-        " row=" + std::to_string(item.row) +
-        " column=" + std::to_string(item.column));
+        " tab=" + std::to_string(item.tab) +
+        " cursor=" + std::to_string(item.cursor));
     return BattleSessionInputResult::item_changed;
 }
 
@@ -4408,180 +4416,8 @@ bool BattleSession::render_player_magic_selection(
 
 bool BattleSession::render_player_item_selection(
     render::IndexedFramebuffer& framebuffer) {
-    if (!player_item_ || !render_battlefield(framebuffer)) {
-        return false;
-    }
-    const auto list_index = static_cast<std::int32_t>(
-        5 * (player_item_->page + player_item_->row) + player_item_->column);
-    const auto inventory_slot = list_index >= 0 && list_index < static_cast<std::int32_t>(model::kInventoryCount)
-        ? player_item_->selection.inventory_slots[static_cast<std::size_t>(list_index)]
-        : std::int16_t{-1};
-    const auto inventory_count = inventory_slot >= 0 &&
-        static_cast<std::size_t>(inventory_slot) < model::kInventoryCount
-        ? ranger_.header.inventory_count(static_cast<std::size_t>(inventory_slot)) : 0;
-    const auto count_text = inventory_count > 1 ? decimal_text(inventory_count, 2U) : std::u8string{};
-    const auto wide_count = count_text.size() > 4U;
-    if (wide_count) {
-        if (!renderer_.draw_box(framebuffer, 0, 0, 320U, 57U) ||
-            !renderer_.draw_box(framebuffer, 45, 57, 230U, 140U)) {
-            return false;
-        }
-    } else if (!renderer_.draw_box(framebuffer, 45, 2, 230U, 23U) ||
-               !renderer_.draw_box(framebuffer, 45, 27, 230U, 23U) ||
-               !renderer_.draw_box(framebuffer, 45, 52, 230U, 145U)) {
-        return false;
-    }
-    const auto draw_scroll_line = [&framebuffer](
-                                      const int x,
-                                      const int y,
-                                      const int width,
-                                      const int height) {
-        return framebuffer.fill_rectangle(
-            x,
-            y,
-            static_cast<std::uint16_t>(width),
-            static_cast<std::uint16_t>(height),
-            palette_colors::scroll_indicator);
-    };
-    const auto item_metric = legacy_item_metric(ranger_);
-    if (item_metric > 5 * (player_item_->page + 3)) {
-        if (!draw_scroll_line(267, 175, 2, 1) ||
-            !draw_scroll_line(266, 174, 4, 1) ||
-            !draw_scroll_line(265, 173, 6, 1) ||
-            !draw_scroll_line(264, 172, 8, 1) ||
-            !draw_scroll_line(266, 161, 4, 11)) {
-            return false;
-        }
-    }
-    if (item_metric > 15 && player_item_->page > 0) {
-        if (!draw_scroll_line(267, 72, 2, 1) ||
-            !draw_scroll_line(266, 73, 4, 1) ||
-            !draw_scroll_line(265, 74, 6, 1) ||
-            !draw_scroll_line(264, 75, 8, 1) ||
-            !draw_scroll_line(266, 76, 4, 11)) {
-            return false;
-        }
-    }
-
-    for (std::int16_t row = 0; row < 3; ++row) {
-        for (std::int16_t column = 0; column < 5; ++column) {
-            const auto x = 55 + 42 * column;
-            const auto y = 62 + 42 * row;
-            if (!framebuffer.outline_rectangle(
-                    x, y, 40U, 40U, palette_colors::inventory_outline)) {
-                return false;
-            }
-            const auto list_index = static_cast<std::int32_t>(
-                5 * (player_item_->page + row) + column);
-            if (list_index < 0 ||
-                list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
-                continue;
-            }
-            const auto inventory_slot = player_item_->selection.inventory_slots[
-                static_cast<std::size_t>(list_index)];
-            if (inventory_slot < 0 ||
-                static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
-                continue;
-            }
-            const auto item_id = ranger_.header.inventory_item(
-                static_cast<std::size_t>(inventory_slot)).value;
-            if (item_id >= 0 && static_cast<std::size_t>(item_id) < ranger_.items.size() &&
-                !renderer_.draw_item_icon(framebuffer, item_id, x, y)) {
-                return false;
-            }
-        }
-    }
-    if (!framebuffer.outline_rectangle(
-            55 + 42 * player_item_->column,
-            62 + 42 * player_item_->row,
-            40U,
-            40U,
-            palette_colors::inventory_selection_outline)) {
-        return false;
-    }
-
-    if (list_index < 0 || list_index >= static_cast<std::int32_t>(model::kInventoryCount)) {
-        return true;
-    }
-    if (inventory_slot < 0 ||
-        static_cast<std::size_t>(inventory_slot) >= model::kInventoryCount) {
-        return true;
-    }
-    const auto item_id = ranger_.header.inventory_item(
-        static_cast<std::size_t>(inventory_slot)).value;
-    if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
-        return true;
-    }
-    const auto& item = ranger_.items[static_cast<std::size_t>(item_id)];
-    const auto item_bytes = std::span<const std::uint8_t>{item.bytes};
-    const auto name = item.word(model::item_word::show_introduction) == 0
-        ? terminated_name(item_bytes.subspan(
-              model::item_word::name_byte,
-              model::item_word::name_bytes))
-        : terminated_name(item_bytes.subspan(
-              2U * model::item_word::secondary_name_begin,
-              2U * model::item_word::secondary_name_count));
-    const auto item_type = item.word(model::item_word::item_type);
-    const auto user = item.word(model::item_word::user);
-    const auto name_center =
-        (item_type == 1 || item_type == 2) && user > 0 ? 140 : 160;
-    if (!renderer_.draw_text_big5(
-            framebuffer,
-            wide_count ? 8 : name_center - 4 * static_cast<int>(name.size()),
-            wide_count ? 3 : 5,
-            text::Big5TextView{name},
-            text_colors::notice)) {
-        return false;
-    }
-    if (item.word(model::item_word::id) == 0x00B6) {
-        if (!renderer_.draw_text_utf8(
-                framebuffer,
-                48,
-                wide_count ? 37 : 30,
-                coordinate_item_text(ranger_),
-                text_colors::menu_normal)) {
-            return false;
-        }
-    } else {
-        const auto introduction = terminated_name(item_bytes.subspan(
-            model::item_word::introduction_byte,
-            model::item_word::introduction_bytes));
-        if (!renderer_.draw_text_big5(
-                framebuffer,
-                160 - 4 * static_cast<int>(introduction.size()),
-                wide_count ? 37 : 30,
-                text::Big5TextView{introduction},
-                text_colors::menu_normal)) {
-            return false;
-        }
-    }
-    if (user >= 0) {
-        if (static_cast<std::size_t>(user) >= ranger_.roles.size()) {
-            return false;
-        }
-        const auto role_storage = ranger_.roles[static_cast<std::size_t>(user)].legacy_name();
-        const auto role_name = terminated_name(role_storage);
-        text::GameText user_text;
-        user_text.append_utf8(kOpenParenthesis);
-        user_text.append_legacy(text::Big5TextView{role_name});
-        user_text.append_utf8(kCloseParenthesis);
-        if (!renderer_.draw_text_mixed(
-                framebuffer, 205, wide_count ? 3 : 5, user_text, text_colors::menu_normal)) {
-            return false;
-        }
-    }
-    if (count_text.empty()) {
-        return true;
-    }
-    return renderer_.draw_text_utf8(
-               framebuffer, wide_count ? 134 : 215, wide_count ? 20 : 5,
-               kCountMarker, text_colors::menu_normal) &&
-        renderer_.draw_text_utf8(
-            framebuffer,
-            wide_count ? 152 : 235,
-            wide_count ? 20 : 5,
-            count_text,
-            text_colors::selected);
+    // 物品列表本体由现代UI层绘制，这里只保留战场背景。
+    return player_item_ != nullptr && render_battlefield(framebuffer);
 }
 
 bool BattleSession::render_player_item_effect(

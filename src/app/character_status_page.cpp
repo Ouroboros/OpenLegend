@@ -1,5 +1,7 @@
 #include "character_status_page.hpp"
 
+#include "modern_page_layout.hpp"
+
 #include <algorithm>
 #include <array>
 #include <string>
@@ -16,174 +18,11 @@ namespace openlegend::app {
 namespace {
 
 using namespace openlegend::text::game_strings;
+using namespace openlegend::app::page;
+using StatusLayout = PageLayout;
 namespace text_colors = render::legacy_color::text;
 
-constexpr render::rgba::FontSize kStatusFont{13};
 static_assert(kStatusTabLabels.size() == kCharacterStatusPageCount);
-
-NODISCARD std::u8string decimal_text(const std::int64_t value) {
-    const auto text = std::to_string(value);
-    return std::u8string{text.begin(), text.end()};
-}
-
-NODISCARD std::span<const std::uint8_t> zero_terminated(const std::span<const std::uint8_t> bytes) {
-    const auto end = std::find(bytes.begin(), bytes.end(), std::uint8_t{0U});
-    return bytes.first(static_cast<std::size_t>(end - bytes.begin()));
-}
-
-NODISCARD std::span<const std::uint8_t> fixed_text(
-    const std::span<const std::uint8_t> bytes, const std::size_t begin, const std::size_t count) {
-    return zero_terminated(bytes.subspan(begin, count));
-}
-
-class StatusLayout {
-public:
-    StatusLayout(
-        ui::ModernUiRenderer& ui_renderer,
-        const compat::LegacyPalette& palette,
-        render::RgbaFramebuffer& framebuffer,
-        const render::ReferenceViewport viewport)
-        : ui_renderer_(ui_renderer),
-          palette_(palette),
-          framebuffer_(framebuffer),
-          viewport_(viewport),
-          metrics_(ui_renderer.font_metrics(framebuffer, kStatusFont)) {}
-
-    NODISCARD int x(const int reference) const noexcept {
-        return viewport_.x + reference * viewport_.width / static_cast<int>(compat::kLegacyWidth);
-    }
-
-    NODISCARD int y(const int reference) const noexcept {
-        return viewport_.y + reference * viewport_.height / static_cast<int>(compat::kLegacyHeight);
-    }
-
-    NODISCARD int length(const int reference) const noexcept {
-        return render::scale_legacy_reference_length(
-            reference, framebuffer_.logical_width(), framebuffer_.logical_height());
-    }
-
-    NODISCARD const render::rgba::FontMetrics& metrics() const noexcept { return metrics_; }
-
-    NODISCARD int utf8_width(const std::u8string_view text) const noexcept {
-        int width = 0;
-        for (const auto unit : text) {
-            if (unit < 0x80U) {
-                width += metrics_.ascii_width;
-            } else if ((unit & 0xC0U) != 0x80U) {
-                width += metrics_.big5_width;
-            }
-        }
-        return width;
-    }
-
-    NODISCARD int big5_width(const std::span<const std::uint8_t> bytes) const noexcept {
-        int width = 0;
-        for (std::size_t index = 0U; index < bytes.size(); ++index) {
-            if (bytes[index] >= 0x80U && index + 1U < bytes.size()) {
-                width += metrics_.big5_width;
-                ++index;
-            } else {
-                width += metrics_.ascii_width;
-            }
-        }
-        return width;
-    }
-
-    NODISCARD bool box(const int left, const int top, const int width, const int height) {
-        return ui_renderer_.draw_box(framebuffer_, left, top,
-            static_cast<std::uint16_t>(width), static_cast<std::uint16_t>(height), palette_);
-    }
-
-    // 超出画布的文本裁剪后绘制；字形越界不得让整页渲染失败。
-    NODISCARD bool text(
-        const int left, const int top, const std::u8string_view value, const render::TextColors colors) {
-        if (top < 0 || top + static_cast<int>(metrics_.line_height) > framebuffer_.logical_height()) {
-            return true;
-        }
-        auto clipped = value;
-        const auto limit = framebuffer_.logical_width();
-        while (!clipped.empty() && left + utf8_width(clipped) > limit) {
-            auto size = clipped.size();
-            while (size > 0U && (static_cast<unsigned char>(clipped[size - 1U]) & 0xC0U) == 0x80U) {
-                --size;
-            }
-            clipped = clipped.substr(0U, size > 0U ? size - 1U : 0U);
-        }
-        return clipped.empty() ||
-            ui_renderer_.draw_text_utf8(framebuffer_, left, top, clipped, colors, palette_, kStatusFont);
-    }
-
-    NODISCARD bool big5(
-        const int left, const int top, const std::span<const std::uint8_t> value,
-        const render::TextColors colors) {
-        if (top < 0 || top + static_cast<int>(metrics_.line_height) > framebuffer_.logical_height()) {
-            return true;
-        }
-        const auto limit = framebuffer_.logical_width();
-        std::size_t fit = 0U;
-        int width = left;
-        while (fit < value.size() && value[fit] != 0U) {
-            const auto wide = value[fit] >= 0x80U && fit + 1U < value.size();
-            const auto advance = static_cast<int>(wide ? metrics_.big5_width : metrics_.ascii_width);
-            if (width + advance > limit) {
-                break;
-            }
-            width += advance;
-            fit += wide ? 2U : 1U;
-        }
-        return fit == 0U ||
-            ui_renderer_.draw_text_big5(
-                framebuffer_, left, top, text::Big5TextView{value.first(fit)}, colors, palette_, kStatusFont);
-    }
-
-    NODISCARD bool portrait(const resource::SpriteFrameView& frame, const int left, const int top) {
-        for (std::size_t row = 0U; row < frame.rows().size(); ++row) {
-            const auto row_top = top + scaled_height(static_cast<int>(row));
-            const auto row_bottom = top + scaled_height(static_cast<int>(row) + 1);
-            int column = 0;
-            for (const auto& run : frame.rows()[row].runs) {
-                column += static_cast<int>(run.skip);
-                for (const auto index : run.pixels) {
-                    const auto column_left = left + scaled_width(column);
-                    const auto column_right = left + scaled_width(column + 1);
-                    const auto color = palette_[index];
-                    if (column_right > column_left && row_bottom > row_top &&
-                        !framebuffer_.fill_rectangle(column_left, row_top,
-                            static_cast<std::uint16_t>(column_right - column_left),
-                            static_cast<std::uint16_t>(row_bottom - row_top),
-                            compat::Rgba8{compat::expand_rgb6(color.red), compat::expand_rgb6(color.green),
-                                compat::expand_rgb6(color.blue), compat::kOpaqueAlpha})) {
-                        return false;
-                    }
-                    ++column;
-                }
-            }
-        }
-        return true;
-    }
-
-    NODISCARD int scaled_width(const int reference) const noexcept {
-        return reference * viewport_.width / static_cast<int>(compat::kLegacyWidth);
-    }
-
-    NODISCARD int scaled_height(const int reference) const noexcept {
-        return reference * viewport_.height / static_cast<int>(compat::kLegacyHeight);
-    }
-
-private:
-    ui::ModernUiRenderer& ui_renderer_;
-    const compat::LegacyPalette& palette_;
-    render::RgbaFramebuffer& framebuffer_;
-    render::ReferenceViewport viewport_;
-    render::rgba::FontMetrics metrics_;
-};
-
-struct ContentArea {
-    int left{};
-    int right{};
-    int top{};
-    int bottom{};
-};
 
 struct ValueRow {
     std::u8string_view label;
@@ -285,6 +124,15 @@ NODISCARD bool draw_summary_page(
         if (!layout.big5(practice_left, practice_top + row_step, manual_name, text_colors::notice)) {
             return false;
         }
+        if (const auto completed = role.no_magic_count.find(static_cast<std::int16_t>(practice_id));
+            completed != role.no_magic_count.end() && completed->second > 0 &&
+            !layout.text(
+                practice_left + layout.big5_width(manual_name) + layout.length(4),
+                practice_top + row_step,
+                u8"+" + decimal_text(completed->second),
+                text_colors::selected)) {
+            return false;
+        }
         // 修炼经验需求算不出来时只显示名字，不让整页失败。
         const auto cost = model::manual_experience_requirement(
             role, ranger.items[item_index], item_index, data.practice_rules());
@@ -351,7 +199,7 @@ NODISCARD bool draw_summary_page(
 NODISCARD bool draw_ability_page(
     const battle::BattleRenderer& data, StatusLayout& layout, const ContentArea& area,
     const model::RuntimeRangerState& ranger, const model::RoleState& role) {
-    std::array<ValueRow, 17> rows{};
+    std::array<ValueRow, 19> rows{};
     const auto abilities = data.character_status_abilities(ranger, role);
     for (std::size_t index = 0U; index < abilities.size(); ++index) {
         rows[index] = {abilities[index].first,
@@ -372,11 +220,14 @@ NODISCARD bool draw_ability_page(
         ? ValueRow{kSexAbilityLabel,
               std::u8string{kSexualLabels[static_cast<std::size_t>(role.sex)]}}
         : ValueRow{kSexAbilityLabel, decimal_text(role.sex)};
+    rows[17] = {kAttackWithPoisonAbilityLabel, decimal_text(role.attack_with_poison)};
+    rows[18] = {kAttackTwiceAbilityLabel,
+        std::u8string{role.attack_twice > 0 ? kAbilityPresentValue : kItemDetailNone}};
 
     const auto big5 = static_cast<int>(layout.metrics().big5_width);
     const auto frame_width = area.right - area.left;
     return draw_two_columns(layout, area,
-        std::span<const ValueRow>{rows}.first(9U), std::span<const ValueRow>{rows}.subspan(9U),
+        std::span<const ValueRow>{rows}.first(10U), std::span<const ValueRow>{rows}.subspan(10U),
         4 * big5, 4 * big5,
         area.left + frame_width * 3 / 16, area.left + frame_width * 9 / 16);
 }
@@ -448,7 +299,7 @@ bool render_character_status_page(
         page >= kCharacterStatusPageCount) {
         return false;
     }
-    StatusLayout layout{ui_renderer, palette, framebuffer, viewport};
+    StatusLayout layout{ui_renderer, palette, framebuffer, viewport, kModernPageFont};
     const auto line = static_cast<int>(layout.metrics().line_height);
     const auto padding = layout.length(6);
 
@@ -491,7 +342,7 @@ bool render_character_status_page(
         const auto tab_left = panel_left + padding + static_cast<int>(index) * (tab_width + layout.length(3));
         const auto selected = index == page;
         if ((selected && !layout.box(tab_left, tab_top, tab_width, tab_height)) ||
-            !layout.text(tab_left + tab_inset, tab_top + layout.length(3), kStatusTabLabels[index],
+            !layout.centered_text(tab_left, tab_top, tab_width, tab_height, kStatusTabLabels[index],
                 selected ? text_colors::selected : text_colors::menu_normal)) {
             return false;
         }
