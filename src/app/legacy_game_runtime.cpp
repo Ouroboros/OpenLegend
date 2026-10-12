@@ -2229,7 +2229,74 @@ bool LegacyGameRuntime::render() {
     return false;
 }
 
-bool LegacyGameRuntime::render_modern_ui(
+bool LegacyGameRuntime::render_modern_ui(render::RgbaFramebuffer& framebuffer) {
+    if (!render_modern_ui_view(framebuffer)) {
+        return false;
+    }
+    collect_status_floats();
+    return render_status_floats(framebuffer);
+}
+
+void LegacyGameRuntime::collect_status_floats() {
+    const auto now = std::chrono::steady_clock::now();
+    for (auto* session : {scene_session_.get(), world_menu_event_session_.get()}) {
+        if (session == nullptr) {
+            continue;
+        }
+        for (const auto& change : session->take_status_changes()) {
+            status_floats_.push_back({change, now});
+        }
+    }
+}
+
+bool LegacyGameRuntime::render_status_floats(render::RgbaFramebuffer& framebuffer) {
+    static constexpr auto kFloatDuration = std::chrono::milliseconds{1500};
+    constexpr render::rgba::FontSize kFloatFont{13};
+    const auto now = std::chrono::steady_clock::now();
+    std::erase_if(status_floats_, [now](const StatusFloat& entry) {
+        return now - entry.start >= kFloatDuration;
+    });
+    if (status_floats_.empty()) {
+        return true;
+    }
+    const auto width = framebuffer.logical_width();
+    const auto height = framebuffer.logical_height();
+    // 场景中跟随主角头顶；其他界面放在画面中央偏上。
+    auto anchor = render::ScreenPoint{width / 2 - 15, height / 2 + 17};
+    if (view_ == LegacyGameView::scene && scene_session_ != nullptr) {
+        anchor = scene_session_->player_screen_anchor(width, height);
+    }
+    const auto metrics = modern_ui_renderer_.font_metrics(framebuffer, kFloatFont);
+    const auto line = static_cast<int>(metrics.line_height);
+    const auto rise = render::scale_legacy_reference_length(20, width, height);
+    const auto head = render::scale_legacy_reference_length(62, width, height);
+    for (std::size_t index = 0U; index < status_floats_.size(); ++index) {
+        const auto& entry = status_floats_[index];
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - entry.start).count();
+        const auto offset = static_cast<int>(rise * elapsed / kFloatDuration.count());
+        auto text = std::u8string{entry.change.kind == scene::SceneStatusChange::Kind::fame
+            ? text::game_strings::kFameStatusLabel
+            : text::game_strings::kMoralityStatusLabel};
+        const auto number = std::to_string(entry.change.delta);
+        text += entry.change.delta > 0 ? u8" +" : u8" ";
+        text.append(number.begin(), number.end());
+        const auto text_width = static_cast<int>(metrics.big5_width) * 2 +
+            static_cast<int>(metrics.ascii_width) * static_cast<int>(number.size() + 2U);
+        const auto x = anchor.x + 15 - text_width / 2;
+        const auto y = anchor.y - head - offset - static_cast<int>(index) * line;
+        if (x < 0 || y < 0 || x + text_width > width || y + line > height) {
+            continue;
+        }
+        static_cast<void>(modern_ui_renderer_.draw_text_utf8(framebuffer, x, y, text,
+            entry.change.delta > 0 ? render::legacy_color::text::notice
+                                   : render::legacy_color::text::severe_injury,
+            framebuffer_.palette(), kFloatFont));
+    }
+    return true;
+}
+
+bool LegacyGameRuntime::render_modern_ui_view(
     render::RgbaFramebuffer& framebuffer) {
     if (!valid() || !modern_ui_renderer_.valid()) {
         return false;

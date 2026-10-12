@@ -20,6 +20,7 @@
 #include "openlegend/render/indexed_layer.hpp"
 #include "openlegend/render/indexed_sprite_image.hpp"
 #include "openlegend/render/legacy_color.hpp"
+#include "openlegend/render/world_projection.hpp"
 #include "openlegend/text/game_text.hpp"
 #include "openlegend/resource/binary_file.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -164,6 +165,15 @@ struct SceneEntryOverride {
     friend bool operator==(const SceneEntryOverride&, const SceneEntryOverride&) = default;
 };
 
+struct SceneStatusChange {
+    enum class Kind : std::uint8_t {
+        morality,
+        fame,
+    };
+    Kind kind{Kind::morality};
+    std::int64_t delta{};
+};
+
 struct SceneMovePlan {
     SceneDirection direction{SceneDirection::up};
     std::int16_t source_x{};
@@ -233,6 +243,12 @@ public:
     NODISCARD SceneStepResult finish_camera_pan(const SceneMovePlan& plan);
 
     NODISCARD int player_height() const;
+
+    // 主角站立点在指定尺寸画面中的屏幕坐标（已扣除脚下建筑高度）。
+    NODISCARD render::ScreenPoint player_screen_anchor(int width, int height) const;
+
+    // 取出并清空事件脚本造成的主角道德、声望变化，用于头顶飘字。
+    NODISCARD std::vector<SceneStatusChange> take_status_changes();
 
     NODISCARD SceneStepResult interact();
 
@@ -734,6 +750,7 @@ private:
     std::int16_t event_item_id_{};
     EventContext event_context_{};
     std::int16_t active_script_id_{-1};
+    std::vector<SceneStatusChange> status_changes_;
     std::vector<std::int16_t> script_;
     std::ptrdiff_t program_counter_{};
     bool event_active_{};

@@ -276,6 +276,9 @@ public:
 
     NODISCARD bool render_modern_ui(render::RgbaFramebuffer& framebuffer);
 
+    // 头顶飘字动画进行中，需要每帧重画现代UI层。
+    NODISCARD bool modern_ui_animating() const noexcept { return !status_floats_.empty(); }
+
     NODISCARD bool valid() const noexcept { return startup_error_.empty(); }
 
     NODISCARD bool running() const noexcept { return view_ != LegacyGameView::exited; }
@@ -475,6 +478,12 @@ private:
 
     NODISCARD bool render_character_status_view(render::RgbaFramebuffer& framebuffer);
 
+    NODISCARD bool render_modern_ui_view(render::RgbaFramebuffer& framebuffer);
+
+    void collect_status_floats();
+
+    NODISCARD bool render_status_floats(render::RgbaFramebuffer& framebuffer);
+
     NODISCARD bool render_battle_character_status_view(render::RgbaFramebuffer& framebuffer);
 
     void set_view(LegacyGameView view, std::string_view reason);
@@ -541,6 +550,12 @@ private:
     std::unique_ptr<world::WorldSession> world_session_;
     std::unique_ptr<scene::SceneSession> scene_session_;
     std::unique_ptr<scene::SceneSession> world_menu_event_session_;
+
+    struct StatusFloat {
+        scene::SceneStatusChange change;
+        std::chrono::steady_clock::time_point start;
+    };
+    std::vector<StatusFloat> status_floats_;
     std::unique_ptr<battle::BattleSession> battle_session_;
     battle::BattleRenderState retained_battle_render_state_{};
     std::int64_t legacy_battle_hp_cost_scale_{};

@@ -1592,6 +1592,10 @@ SceneStepResult SceneSession::run_event() {
                     error_ = "scene morality change overflows";
                     return current_result(SceneStepKind::stay);
                 }
+                if (*morality != role.morality) {
+                    status_changes_.push_back(
+                        {SceneStatusChange::Kind::morality, *morality - role.morality});
+                }
                 role.morality = *morality;
             }
             program_counter_ += 2;
@@ -1711,6 +1715,9 @@ SceneStepResult SceneSession::run_event() {
                 if (!fame.has_value()) {
                     error_ = "scene fame change overflows";
                     return current_result(SceneStepKind::stay);
+                }
+                if (*fame != role.fame) {
+                    status_changes_.push_back({SceneStatusChange::Kind::fame, *fame - role.fame});
                 }
                 role.fame = *fame;
                 update_book_event_if_ready();
@@ -2681,6 +2688,26 @@ SceneStepResult SceneSession::finish_camera_pan(const SceneMovePlan& plan) {
     pending_ = current_result(SceneStepKind::present);
     pending_.wait_ticks = 2U;
     return pending_;
+}
+
+render::ScreenPoint SceneSession::player_screen_anchor(
+    const int width, const int height) const {
+    const auto legacy_view = width == static_cast<int>(compat::kLegacyWidth) &&
+        height == static_cast<int>(compat::kLegacyHeight);
+    const auto point = legacy_view
+        ? render::ScreenPoint{
+              18 * ((scene_x_ - view_origin_x_) - (scene_y_ - view_origin_y_)) + 145,
+              9 * ((scene_x_ - view_origin_x_) + (scene_y_ - view_origin_y_)) - 81}
+        : render::project_isometric(
+              scene_x_ - (view_origin_x_ + 11),
+              scene_y_ - (view_origin_y_ + 11),
+              width / 2 - 15,
+              height / 2 + 17);
+    return render::ScreenPoint{point.x, point.y - player_height()};
+}
+
+std::vector<SceneStatusChange> SceneSession::take_status_changes() {
+    return std::exchange(status_changes_, {});
 }
 
 int SceneSession::player_height() const {
