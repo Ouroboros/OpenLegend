@@ -120,6 +120,15 @@ NODISCARD std::optional<int> centered_name_x(
     return std::nullopt;
 }
 
+// 修正原版bug：解毒、医疗、用毒复用出招动画，原版按“最近选用的武功格”载入并播放
+// 武功音效，与动作无关。支援动作不播放武功音轨，只保留效果音。
+void silence_magic_sample(BattleMagicAnimationPlan& plan) noexcept {
+    plan.magic_sample_id = -1;
+    for (auto& frame : plan.frames) {
+        frame.dispatch_magic_sample = false;
+    }
+}
+
 NODISCARD std::span<const std::uint8_t> terminated_name(
     const std::span<const std::uint8_t> name) noexcept {
     const auto end = std::find(name.begin(), name.end(), std::uint8_t{0U});
@@ -450,6 +459,8 @@ std::vector<BattleAudioCommand> BattleSession::take_audio_commands() {
     }
     auto commands = std::move(player_target_effect_->audio_commands);
     player_target_effect_->audio_commands.clear();
+    // 无音效（编号为负，如支援动作的武功音轨）的命令不下发。
+    std::erase_if(commands, [](const BattleAudioCommand& command) { return command.sample_id < 0; });
     return commands;
 }
 
@@ -1476,6 +1487,7 @@ bool BattleSession::begin_ai_poison_execution() {
         error_ = "battle AI poison magic animation is invalid";
         return false;
     }
+    silence_magic_sample(*animation);
     if (!renderer_.load_fight_package(animation->fight_head_id)) {
         error_ = "battle AI poison FIGHT package load failed";
         return false;
@@ -1605,6 +1617,7 @@ bool BattleSession::begin_ai_support_execution() {
         error_ = "battle AI support magic animation is invalid";
         return false;
     }
+    silence_magic_sample(*animation);
     if (!renderer_.load_fight_package(animation->fight_head_id)) {
         error_ = "battle AI support FIGHT package load failed";
         return false;
@@ -3179,6 +3192,7 @@ bool BattleSession::begin_player_target_effect(
         error_ = "battle player target magic animation is invalid";
         return false;
     }
+    silence_magic_sample(*animation);
     if (!renderer_.load_fight_package(animation->fight_head_id)) {
         error_ = "battle player target FIGHT package load failed";
         return false;
