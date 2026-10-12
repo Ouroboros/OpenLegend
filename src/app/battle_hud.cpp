@@ -455,7 +455,8 @@ int render_turn_order(Hud& hud, const battle::BattleRenderer& data, const battle
         return 0;
     }
     const auto unit = hud.unit();
-    const auto padding = 3 * unit;
+    // 边距大于圆角半径，头像不压到框角。
+    const auto padding = kCardInset * unit;
     const auto portrait_height = std::max(12, hud.height() / 10);
     const auto label_width = hud.text_width(strings::kHudTurnOrderLabel);
     std::vector<std::pair<const battle::BattleHudCombatant*, int>> entries;
