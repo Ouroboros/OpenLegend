@@ -13,6 +13,7 @@
 #include "openlegend/model/checked_arithmetic.hpp"
 #include "openlegend/model/experience.hpp"
 #include "openlegend/model/hurt.hpp"
+#include "openlegend/render/reference_layout.hpp"
 #include "openlegend/render/rle_sprite_renderer.hpp"
 #include "openlegend/resource/legacy_assets.hpp"
 #include "openlegend/resource/legacy_sprite.hpp"
@@ -1531,13 +1532,14 @@ bool BattleRenderer::draw_damage_text(
     std::u8string text;
     text.push_back(command.overlay_variant < 0 ? u8'-' : u8'+');
     text.append(decimal_text(command.value, 3));
-    // 战场以原生坐标绘制；数字按原版界面相对画面的比例放大，使字号与原版一致。
-    // 320×200画面下比例为1，与原版逐像素相同。
-    const auto viewport = framebuffer.legacy_ui_viewport();
-    const auto scale_numerator = std::max(viewport.width, 1);
-    constexpr int kScaleDenominator = static_cast<int>(compat::kLegacyWidth);
-    const auto scaled = [scale_numerator](const int length) {
-        return length * scale_numerator / kScaleDenominator;
+    // 战场以原生坐标绘制；数字字高按画面换算为10个参考像素（比战斗面板字号大一号），
+    // 16行点阵按此比例缩放。
+    constexpr int kDamageReferenceHeight = 10;
+    constexpr int kGlyphRows = 16;
+    const auto glyph_height = std::max(render::scale_legacy_reference_length(
+        kDamageReferenceHeight, framebuffer.coordinate_width(), framebuffer.coordinate_height()), 1);
+    const auto scaled = [glyph_height](const int length) {
+        return length * glyph_height / kGlyphRows;
     };
     const auto glyph_count = static_cast<int>(text.size());
     const auto width = scaled(8 * glyph_count + 1);
