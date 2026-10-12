@@ -230,7 +230,7 @@ NODISCARD bool draw_ability_page(
     return draw_two_columns(layout, area,
         std::span<const ValueRow>{rows}.first(10U), std::span<const ValueRow>{rows}.subspan(10U),
         4 * big5, 4 * big5,
-        area.left + frame_width * 3 / 16, area.left + frame_width * 9 / 16);
+        area.left + frame_width * 1 / 16, area.left + frame_width * 8 / 16);
 }
 
 // 当前等级的武功威力：1~10级取原版定义表，NG+更高等级按武功成长模型推算，与战斗一致。
