@@ -31,7 +31,7 @@ enum class GameMenuScreen {
     quit_confirmation,
 };
 
-inline constexpr std::uint8_t kItemCategoryCount = 7U;
+inline constexpr std::uint8_t kItemCategoryCount = 8U;
 inline constexpr std::uint16_t kItemListVisibleRows = 11U;
 
 enum class GameMenuItemTargetKind {

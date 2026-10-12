@@ -187,7 +187,7 @@ inline constexpr std::u8string_view hurt_band_light_suffix = u8"(輕傷)";
 inline constexpr std::u8string_view hurt_band_moderate_suffix = u8"(中傷)";
 inline constexpr std::u8string_view hurt_band_severe_suffix = u8"(重傷)";
 inline constexpr std::u8string_view unknown_value = u8"???";
-inline constexpr std::array<std::u8string_view, 7> item_category_labels{
+inline constexpr std::array<std::u8string_view, 8> item_category_labels{
     u8"全部",
     u8"藥品",
     u8"武器",
@@ -195,6 +195,7 @@ inline constexpr std::array<std::u8string_view, 7> item_category_labels{
     u8"秘笈",
     u8"暗器",
     u8"其他",
+    u8"天書",
 };
 inline constexpr std::u8string_view item_count_prefix = u8"×";
 inline constexpr std::u8string_view item_detail_craft_label = u8"煉製";

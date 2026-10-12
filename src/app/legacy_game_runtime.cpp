@@ -3579,9 +3579,13 @@ void LegacyGameRuntime::update_menu_counts() {
         const auto& item = ranger->items[static_cast<std::size_t>(item_id)];
         const auto item_type = item.word(model::item_word::item_type);
         const auto equipment_type = item.word(model::item_word::equipment_type);
-        // 分类编号与 kItemCategoryLabels 对齐：1藥品 2武器 3防具 4秘笈 5暗器 6其他。
+        // 分类编号与 kItemCategoryLabels 对齐：1藥品 2武器 3防具 4秘笈 5暗器 6其他 7天書。
+        // 十四天书（物品144～157，原版为杂物）单独归入天書，不再列在其他。
+        constexpr std::int16_t kFirstHeavenlyBook = 144;
+        constexpr std::int16_t kLastHeavenlyBook = 157;
         inventory_categories[inventory_count] =
-            item_type == 3 ? std::uint8_t{1U}
+            item_id >= kFirstHeavenlyBook && item_id <= kLastHeavenlyBook ? std::uint8_t{7U}
+            : item_type == 3 ? std::uint8_t{1U}
             : item_type == 1
                 ? (equipment_type == 1 ? std::uint8_t{3U} : std::uint8_t{2U})
             : item_type == 2 ? std::uint8_t{4U}
@@ -3831,7 +3835,7 @@ bool LegacyGameRuntime::render_item_list_view(render::RgbaFramebuffer& framebuff
         return false;
     }
     static constexpr std::array<std::uint8_t, ui::kItemCategoryCount> kMenuItemTabs{
-        0U, 1U, 2U, 3U, 4U, 5U, 6U};
+        0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U};
     auto coordinate_text = ui::coordinate_item_text(*ranger, game_menu_.context());
     if (const auto* snapshot = game_state_.snapshot(); snapshot != nullptr) {
         if (const auto location = wei_xiaobao_location_text(*snapshot); location.has_value()) {
