@@ -198,7 +198,9 @@ bool ModernUiRenderer::draw_text_big5_pixels(
     const int y,
     const text::Big5TextView text,
     const render::rgba::TextColors colors,
-    const render::rgba::FontSize pixel_size) {
+    const render::rgba::FontSize pixel_size,
+    const int physical_offset_x,
+    const int physical_offset_y) {
     if (!big5_cache_.has_value() || !pixel_size.valid()) {
         return false;
     }
@@ -211,7 +213,9 @@ bool ModernUiRenderer::draw_text_big5_pixels(
         *big5_cache_,
         glyph_mask_cache_,
         pixel_size,
-        colors);
+        colors,
+        physical_offset_x,
+        physical_offset_y);
 }
 
 bool ModernUiRenderer::draw_text_utf8_pixels(

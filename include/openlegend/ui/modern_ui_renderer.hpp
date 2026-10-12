@@ -84,13 +84,16 @@ public:
         render::rgba::FontSize size = {});
 
     // 直接指定RGBA颜色，不经调色板；字号已是画面逻辑像素高度，可连续调整。
+    // physical_offset_x/y为在逻辑坐标之上再偏移的物理像素数，用于逐物理像素定位。
     NODISCARD bool draw_text_big5_pixels(
         render::RgbaFramebuffer& framebuffer,
         int x,
         int y,
         text::Big5TextView text,
         render::rgba::TextColors colors,
-        render::rgba::FontSize pixel_size);
+        render::rgba::FontSize pixel_size,
+        int physical_offset_x = 0,
+        int physical_offset_y = 0);
 
     // 直接指定RGBA颜色，不经调色板；字号已是画面逻辑像素高度。
     NODISCARD bool draw_text_utf8_pixels(

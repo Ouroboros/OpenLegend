@@ -131,6 +131,7 @@ private:
     std::size_t next_slot_{};
 };
 
+// physical_offset_x/y：在逻辑坐标换算出的物理像素位置上再偏移的物理像素数。
 NODISCARD bool draw_ascii_glyph(
     RgbaFramebuffer& framebuffer,
     int x,
@@ -139,7 +140,9 @@ NODISCARD bool draw_ascii_glyph(
     std::uint8_t glyph_code,
     GlyphMaskCache& glyph_mask_cache,
     FontSize size,
-    TextColors colors);
+    TextColors colors,
+    int physical_offset_x = 0,
+    int physical_offset_y = 0);
 
 NODISCARD bool draw_big5_glyph(
     RgbaFramebuffer& framebuffer,
@@ -149,7 +152,9 @@ NODISCARD bool draw_big5_glyph(
     std::uint16_t glyph_code,
     GlyphMaskCache& glyph_mask_cache,
     FontSize size,
-    TextColors colors);
+    TextColors colors,
+    int physical_offset_x = 0,
+    int physical_offset_y = 0);
 
 NODISCARD bool draw_text_big5(
     RgbaFramebuffer& framebuffer,
@@ -160,7 +165,9 @@ NODISCARD bool draw_text_big5(
     Big5GlyphCache& big5_cache,
     GlyphMaskCache& glyph_mask_cache,
     FontSize size,
-    TextColors colors);
+    TextColors colors,
+    int physical_offset_x = 0,
+    int physical_offset_y = 0);
 
 NODISCARD bool draw_text_utf8(
     RgbaFramebuffer& framebuffer,

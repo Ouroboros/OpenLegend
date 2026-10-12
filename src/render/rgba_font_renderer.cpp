@@ -125,14 +125,17 @@ NODISCARD bool draw_glyph(
     const std::uint16_t glyph_code,
     GlyphMaskCache& glyph_mask_cache,
     const FontSize size,
-    const TextColors colors) {
+    const TextColors colors,
+    const int physical_offset_x,
+    const int physical_offset_y) {
     const auto metrics = font_metrics(size);
     const auto width = target_width(kind, metrics);
     if (!metrics.valid() ||
         !glyph_fits(framebuffer, x, y, width, metrics)) {
         return false;
     }
-    if (size == kBaseFontSize) {
+    // 原尺寸直接拷贝只能落在逻辑像素上；带物理像素偏移时改用缩放字形。
+    if (size == kBaseFontSize && physical_offset_x == 0 && physical_offset_y == 0) {
         draw_source_glyph(
             framebuffer, x, y, glyph, source_width(kind), colors);
         return true;
@@ -144,8 +147,8 @@ NODISCARD bool draw_glyph(
     if (!mask.has_value() || !mask->valid()) {
         return false;
     }
-    const auto physical_x = x * render_scale;
-    const auto physical_y = y * render_scale;
+    const auto physical_x = x * render_scale + physical_offset_x;
+    const auto physical_y = y * render_scale + physical_offset_y;
     const auto physical_shadow_offset = std::max(
         1,
         static_cast<int>((
@@ -347,7 +350,9 @@ bool draw_ascii_glyph(
     const std::uint8_t glyph_code,
     GlyphMaskCache& glyph_mask_cache,
     const FontSize size,
-    const TextColors colors) {
+    const TextColors colors,
+    const int physical_offset_x,
+    const int physical_offset_y) {
     return draw_glyph(
         framebuffer,
         x,
@@ -357,7 +362,9 @@ bool draw_ascii_glyph(
         glyph_code,
         glyph_mask_cache,
         size,
-        colors);
+        colors,
+        physical_offset_x,
+        physical_offset_y);
 }
 
 bool draw_big5_glyph(
@@ -368,7 +375,9 @@ bool draw_big5_glyph(
     const std::uint16_t glyph_code,
     GlyphMaskCache& glyph_mask_cache,
     const FontSize size,
-    const TextColors colors) {
+    const TextColors colors,
+    const int physical_offset_x,
+    const int physical_offset_y) {
     return draw_glyph(
         framebuffer,
         x,
@@ -378,7 +387,9 @@ bool draw_big5_glyph(
         glyph_code,
         glyph_mask_cache,
         size,
-        colors);
+        colors,
+        physical_offset_x,
+        physical_offset_y);
 }
 
 bool draw_text_big5(
@@ -390,7 +401,9 @@ bool draw_text_big5(
     Big5GlyphCache& big5_cache,
     GlyphMaskCache& glyph_mask_cache,
     const FontSize size,
-    const TextColors colors) {
+    const TextColors colors,
+    const int physical_offset_x,
+    const int physical_offset_y) {
     const auto metrics = font_metrics(size);
     if (!metrics.valid() || ascii_font.size() < 128U * 16U) {
         return false;
@@ -420,7 +433,9 @@ bool draw_text_big5(
                     code,
                     glyph_mask_cache,
                     size,
-                    colors)) {
+                    colors,
+                    physical_offset_x,
+                    physical_offset_y)) {
                 return false;
             }
             x += metrics.big5_width;
@@ -441,7 +456,9 @@ bool draw_text_big5(
                 glyph_index,
                 glyph_mask_cache,
                 size,
-                colors)) {
+                colors,
+                physical_offset_x,
+                physical_offset_y)) {
             return false;
         }
         x += first == static_cast<std::uint8_t>('_')
