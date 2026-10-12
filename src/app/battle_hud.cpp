@@ -496,13 +496,19 @@ int render_turn_order(Hud& hud, const battle::BattleRenderer& data, const battle
     return unit + height;
 }
 
-// 光标所指角色的信息卡：画面右上角，头像、姓名等级、生命内力体力条与中毒内伤。
+// 光标所指角色或当前行动敌方的信息卡：画面右上角，头像、姓名等级、生命内力体力条与中毒内伤。
 void render_inspected(Hud& hud, const battle::BattleRenderer& data,
     const battle::BattleHudView& view, const int top) {
-    if (!view.inspected.has_value()) {
+    // 光标所指角色优先；否则轮到敌方行动时显示该敌方（我方行动者已在底部信息条）。
+    auto shown = view.inspected;
+    if (!shown.has_value() && view.current.has_value() &&
+        view.combatants[*view.current].side != 0) {
+        shown = view.current;
+    }
+    if (!shown.has_value()) {
         return;
     }
-    const auto& combatant = view.combatants[*view.inspected];
+    const auto& combatant = view.combatants[*shown];
     const auto unit = hud.unit();
     const auto padding = 3 * unit;
     const auto line = hud.line();
