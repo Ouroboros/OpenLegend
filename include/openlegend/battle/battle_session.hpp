@@ -195,7 +195,9 @@ struct BattleHudView {
     // 全部参战者，按本回合行动顺序（排序后的槽位）。
     std::vector<BattleHudCombatant> combatants;
     std::optional<std::size_t> current;
+    // 全部行动按固定位置排列，不可用的灰显；光标为行动编号。
     std::vector<std::u8string_view> action_labels;
+    std::vector<bool> action_available;
     std::size_t action_cursor{};
     std::vector<BattleHudMagic> magics;
     std::size_t magic_cursor{};
@@ -378,7 +380,8 @@ public:
 
     NODISCARD BattleHudView hud_view();
 
-    // 行动面板数字快捷键：选中第index项并在下一次呈现后执行，与移到该项再确认相同。
+    // 行动面板数字快捷键：选中第index个行动（固定位置）并在下一次呈现后执行，
+    // 与移到该项再确认相同；不可用的行动忽略。
     bool request_player_action_shortcut(std::size_t index) noexcept;
 
     // 行动面板或武功列表正在等待选择，数字快捷键可用。
@@ -590,6 +593,9 @@ private:
 
     NODISCARD std::optional<std::size_t> action_for_ordinal(
         std::size_t ordinal) const noexcept;
+
+
+    NODISCARD std::size_t ordinal_for_action(std::size_t action) const noexcept;
 
     NODISCARD BattleSessionInputResult handle_player_action_key(
         std::uint8_t translated_key);

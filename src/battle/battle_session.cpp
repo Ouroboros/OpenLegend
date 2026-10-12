@@ -3759,6 +3759,13 @@ std::optional<std::size_t> BattleSession::action_for_ordinal(
     return std::nullopt;
 }
 
+std::size_t BattleSession::ordinal_for_action(const std::size_t action) const noexcept {
+    return static_cast<std::size_t>(std::count(player_action_menu_.available.begin(),
+        player_action_menu_.available.begin() +
+            static_cast<std::ptrdiff_t>(std::min(action, player_action_menu_.available.size())),
+        std::int16_t{1}));
+}
+
 BattleSessionInputResult BattleSession::handle_player_action_key(
     const std::uint8_t translated_key) {
     if (player_action_menu_.available_count == 0U ||
@@ -3768,8 +3775,8 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
     }
     if (translated_key == kDown || translated_key == kUp ||
         translated_key == kLeft || translated_key == kRight) {
-        // 行动面板按行排列：左右键只在本行内移动，越过行首行尾绕到本行另一端；
-        // 上下键在同一列换行，越过该列首末行时绕到另一端。
+        // 行动面板固定排列全部行动：左右键在本行内移到下一个可用项，首尾相接；
+        // 上下键换到上下一行，优先同一列，不可用时取该行最近的可用项。
         if (translated_key == kDown) {
             player_menu_down_state_ = false;
         } else if (translated_key == kUp) {
@@ -3780,24 +3787,50 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
             player_menu_right_state_ = false;
         }
         clear_player_menu_direction_requested_ = translated_key;
-        const auto count = player_action_menu_.available_count;
-        const auto cursor = player_action_menu_.cursor;
-        const auto column = cursor % kBattleActionMenuColumns;
-        const auto last_row = (count - 1U - column) / kBattleActionMenuColumns;
-        const auto row = cursor / kBattleActionMenuColumns;
-        const auto row_begin = row * kBattleActionMenuColumns;
-        const auto row_end = std::min(row_begin + kBattleActionMenuColumns, count) - 1U;
-        if (translated_key == kRight) {
-            player_action_menu_.cursor = cursor >= row_end ? row_begin : cursor + 1U;
-        } else if (translated_key == kLeft) {
-            player_action_menu_.cursor = cursor <= row_begin ? row_end : cursor - 1U;
-        } else if (translated_key == kDown) {
-            player_action_menu_.cursor =
-                (row >= last_row ? 0U : row + 1U) * kBattleActionMenuColumns + column;
-        } else {
-            player_action_menu_.cursor =
-                (row == 0U ? last_row : row - 1U) * kBattleActionMenuColumns + column;
+        const auto current = action_for_ordinal(player_action_menu_.cursor);
+        if (!current.has_value()) {
+            return BattleSessionInputResult::ignored;
         }
+        const auto& available = player_action_menu_.available;
+        const auto total = available.size();
+        const auto row_count = (total + kBattleActionMenuColumns - 1U) / kBattleActionMenuColumns;
+        const auto row_length = [total](const std::size_t row) {
+            return std::min(kBattleActionMenuColumns, total - row * kBattleActionMenuColumns);
+        };
+        const auto row = *current / kBattleActionMenuColumns;
+        const auto column = *current % kBattleActionMenuColumns;
+        std::optional<std::size_t> target;
+        if (translated_key == kLeft || translated_key == kRight) {
+            const auto length = row_length(row);
+            for (std::size_t step = 1U; step < length && !target.has_value(); ++step) {
+                const auto next_column = translated_key == kRight
+                    ? (column + step) % length : (column + length - step) % length;
+                const auto action = row * kBattleActionMenuColumns + next_column;
+                if (available[action] == 1) {
+                    target = action;
+                }
+            }
+        } else {
+            for (std::size_t step = 1U; step < row_count && !target.has_value(); ++step) {
+                const auto next_row = translated_key == kDown
+                    ? (row + step) % row_count : (row + row_count - step) % row_count;
+                // 优先同一列；该格不可用时取本行最近的可用格。
+                std::optional<std::size_t> best_distance;
+                for (std::size_t cell = 0U; cell < row_length(next_row); ++cell) {
+                    const auto action = next_row * kBattleActionMenuColumns + cell;
+                    const auto distance = cell > column ? cell - column : column - cell;
+                    if (available[action] == 1 &&
+                        (!best_distance.has_value() || distance < *best_distance)) {
+                        best_distance = distance;
+                        target = action;
+                    }
+                }
+            }
+        }
+        if (!target.has_value()) {
+            return BattleSessionInputResult::ignored;
+        }
+        player_action_menu_.cursor = ordinal_for_action(*target);
         diagnostics::log_debug(
             "battle player action cursor id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
@@ -4499,10 +4532,11 @@ bool BattleSession::request_player_action_shortcut(const std::size_t index) noex
     if ((phase_ != BattleSessionPhase::player_action &&
          phase_ != BattleSessionPhase::player_action_initial_present &&
          phase_ != BattleSessionPhase::player_action_return_present) ||
-        index >= player_action_menu_.available_count || player_action_menu_.selected_action >= 0) {
+        index >= player_action_menu_.available.size() ||
+        player_action_menu_.available[index] != 1 || player_action_menu_.selected_action >= 0) {
         return false;
     }
-    player_action_menu_.cursor = index;
+    player_action_menu_.cursor = ordinal_for_action(index);
     player_action_shortcut_pending_ = true;
     player_menu_redraw_pending_ = true;
     return true;
@@ -4627,11 +4661,10 @@ BattleHudView BattleSession::hud_view() {
                phase_ == BattleSessionPhase::player_action_return_present ||
                phase_ == BattleSessionPhase::player_action) {
         for (std::size_t action = 0U; action < player_action_menu_.available.size(); ++action) {
-            if (player_action_menu_.available[action] == 1) {
-                view.action_labels.push_back(kPlayerActionLabels[action]);
-            }
+            view.action_labels.push_back(kPlayerActionLabels[action]);
+            view.action_available.push_back(player_action_menu_.available[action] == 1);
         }
-        view.action_cursor = player_action_menu_.cursor;
+        view.action_cursor = action_for_ordinal(player_action_menu_.cursor).value_or(0U);
     }
 
     if ((phase_ == BattleSessionPhase::player_movement_select ||

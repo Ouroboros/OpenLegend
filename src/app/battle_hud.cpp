@@ -23,10 +23,13 @@ using page::decimal_text;
 
 // 战斗界面字号（320×200参考像素），约为原版16像素字的一半。
 constexpr int kHudReferenceFont = 7;
+// 武功列表用较大字号与边距。
+constexpr int kMagicMenuReferenceFont = 9;
 
 constexpr compat::Rgba8 kShadow{0x00U, 0x00U, 0x00U, 0xFFU};
 constexpr compat::Rgba8 kWhite{0xF0U, 0xF0U, 0xF0U, 0xFFU};
 constexpr compat::Rgba8 kDim{0x90U, 0x90U, 0x90U, 0xFFU};
+constexpr compat::Rgba8 kDisabled{0x60U, 0x60U, 0x60U, 0xFFU};
 constexpr compat::Rgba8 kYellow{0xFFU, 0xE0U, 0x40U, 0xFFU};
 constexpr compat::Rgba8 kPoisonColor{0xC8U, 0x88U, 0xFFU, 0xFFU};
 constexpr compat::Rgba8 kHurtColor{0xFFU, 0x70U, 0x70U, 0xFFU};
@@ -372,18 +375,19 @@ void render_action_panel(Hud& hud, const battle::BattleRenderer& data,
         }
         const char8_t digit = index == 9U ? u8'0' : static_cast<char8_t>(u8'1' + index);
         hud.text(cell_x + padding, cell_y, std::u8string_view{&digit, 1U}, kDim);
+        const bool available = index < view.action_available.size() && view.action_available[index];
         hud.text(cell_x + padding + digit_width, cell_y, view.action_labels[index],
-            selected ? kYellow : kWhite);
+            !available ? kDisabled : selected ? kYellow : kWhite);
     }
 }
 
 // 武功菜单：战场中央，列出快捷数字、武功、等级、威力、耗内力。
-void render_magic_menu(Hud& hud, const battle::BattleHudView& view) {
+void render_magic_menu(Hud& hud, const battle::BattleHudView& view, const int center_y) {
     if (view.magics.empty()) {
         return;
     }
     const auto unit = hud.unit();
-    const auto padding = 3 * unit;
+    const auto padding = 6 * unit;
     const auto line = hud.line();
     std::vector<std::array<std::u8string, 3>> numbers;
     int name_width = hud.text_width(strings::kHudMagicHeader);
@@ -404,7 +408,7 @@ void render_magic_menu(Hud& hud, const battle::BattleHudView& view) {
         2 * padding + digit_width + name_width + widths[0] + widths[1] + widths[2] + 3 * gap;
     const auto height = 2 * padding + static_cast<int>(view.magics.size() + 1U) * line;
     const auto left = (hud.width() - width) / 2;
-    const auto top = std::max(unit, battlefield_center_y(hud) - height / 2);
+    const auto top = std::max(unit, center_y - height / 2);
     hud.box(left, top, width, height);
     std::array<int, 4> column_x{left + padding + digit_width, 0, 0, 0};
     column_x[1] = column_x[0] + name_width + gap;
@@ -545,7 +549,8 @@ bool render_battle_hud(
     render_inspected(hud, data, view, order_bottom + hud.unit());
     render_info_bar(hud, view);
     render_action_panel(hud, data, view);
-    render_magic_menu(hud, view);
+    Hud magic_hud{ui_renderer, palette, framebuffer, kMagicMenuReferenceFont};
+    render_magic_menu(magic_hud, view, battlefield_center_y(hud));
     return true;
 }
 
