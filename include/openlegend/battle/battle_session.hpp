@@ -229,7 +229,12 @@ public:
 
     NODISCARD const BattleData& data() const noexcept { return data_; }
 
-    void set_confirmation_state(bool active) noexcept { confirmation_state_ = active; }
+    void set_confirmation_state(bool active) noexcept {
+        confirmation_state_ = active;
+        if (active) {
+            cancel_automatic_mode_by_key();
+        }
+    }
 
     void set_player_menu_direction_states(bool down, bool up) noexcept {
         player_menu_down_state_ = down;
@@ -243,6 +248,9 @@ public:
         cursor_left_state_ = left;
         cursor_up_state_ = up;
         cursor_escape_state_ = escape;
+        if (escape) {
+            cancel_automatic_mode_by_key();
+        }
     }
 
     NODISCARD bool player_menu_uses_key_states() const noexcept {
@@ -532,6 +540,8 @@ private:
     NODISCARD bool finish_outcome_round();
 
     void consume_actor_confirmation_state() noexcept;
+
+    void cancel_automatic_mode_by_key() noexcept;
 
     NODISCARD bool begin_actor_present();
 

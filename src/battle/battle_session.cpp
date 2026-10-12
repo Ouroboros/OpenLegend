@@ -3890,6 +3890,24 @@ void BattleSession::consume_actor_confirmation_state() noexcept {
     }
 }
 
+// 自动战斗中按下空格、回车或Esc立即取消自动，并吞掉这次按键，
+// 下一位我方角色轮到行动时即显示行动菜单；战斗结束后不再拦截。
+void BattleSession::cancel_automatic_mode_by_key() noexcept {
+    if (!setup_.automatic_enabled() || outcome_ != BattleOutcome::ongoing ||
+        phase_ == BattleSessionPhase::battle_outcome) {
+        return;
+    }
+    setup_.disable_automatic_mode();
+    confirmation_state_ = false;
+    clear_confirmation_states_requested_ = true;
+    if (cursor_escape_state_) {
+        cursor_escape_state_ = false;
+        clear_cursor_selection_key_requested_ = kEscape;
+    }
+    diagnostics::log_info(
+        "battle automatic mode cancelled by key id=" + std::to_string(battle_id()));
+}
+
 bool BattleSession::begin_battle_outcome(const BattleOutcome outcome) {
     outcome_ = outcome;
     phase_ = BattleSessionPhase::battle_outcome;
