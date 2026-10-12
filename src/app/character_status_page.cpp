@@ -259,11 +259,11 @@ NODISCARD std::optional<std::int64_t> magic_attack_power(
 NODISCARD bool draw_magic_page(
     StatusLayout& layout, const ContentArea& area, const model::RuntimeRangerState& ranger,
     const model::RoleState& role) {
+    // 列：武功名、等级、熟练度、当前等级威力、武功带毒（武功定义字段）。
+    constexpr std::size_t kValueColumns = 4U;
     struct MagicRow {
         std::span<const std::uint8_t> name;
-        std::u8string level;
-        std::u8string proficiency;
-        std::u8string power;
+        std::array<std::u8string, kValueColumns> values;
     };
     std::array<MagicRow, model::role_word::magic_count> rows{};
     std::size_t count = 0U;
@@ -272,43 +272,62 @@ NODISCARD bool draw_magic_page(
         if (magic_id <= 0 || static_cast<std::size_t>(magic_id) >= ranger.magics.size()) {
             continue;
         }
+        const auto& magic = ranger.magics[static_cast<std::size_t>(magic_id)];
+        const auto power = magic_attack_power(
+            ranger, static_cast<std::size_t>(magic_id), role.magic_levels[slot]);
         rows[count++] = {
-            fixed_text(ranger.magics[static_cast<std::size_t>(magic_id)].bytes,
-                model::magic_word::name_byte, model::magic_word::name_bytes),
-            decimal_text(role.magic_levels[slot] / 100 + 1),
-            decimal_text(role.magic_levels[slot]),
-            [&] {
-                const auto power = magic_attack_power(
-                    ranger, static_cast<std::size_t>(magic_id), role.magic_levels[slot]);
-                return power.has_value() ? decimal_text(*power) : std::u8string{kUnknownValue};
-            }()};
+            fixed_text(magic.bytes, model::magic_word::name_byte, model::magic_word::name_bytes),
+            {decimal_text(role.magic_levels[slot] / 100 + 1),
+                decimal_text(role.magic_levels[slot]),
+                power.has_value() ? decimal_text(*power) : std::u8string{kUnknownValue},
+                decimal_text(magic.word(model::magic_word::with_poison))}};
     }
     if (count == 0U) {
         return true;
     }
-    constexpr auto kNameHeader = kMagicNameHeader;
-    constexpr auto kLevelHeader = kMagicLevelHeader;
-    constexpr auto kProficiencyHeader = kMagicProficiencyHeader;
+    constexpr std::array<std::u8string_view, kValueColumns> kHeaders{
+        kMagicLevelHeader, kMagicProficiencyHeader, kMagicPowerHeader, kMagicPoisonHeader};
+    constexpr std::array<render::TextColors, kValueColumns> kColors{
+        text_colors::selected, text_colors::notice, text_colors::selected, text_colors::notice};
+    // 列位置按各列最宽内容依次排开，列间留固定间距。
+    int name_width = layout.utf8_width(kMagicNameHeader);
+    std::array<int, kValueColumns> widths{};
+    for (std::size_t column = 0U; column < kValueColumns; ++column) {
+        widths[column] = layout.utf8_width(kHeaders[column]);
+    }
+    for (std::size_t index = 0U; index < count; ++index) {
+        name_width = std::max(name_width, layout.big5_width(rows[index].name));
+        for (std::size_t column = 0U; column < kValueColumns; ++column) {
+            widths[column] = std::max(widths[column], layout.utf8_width(rows[index].values[column]));
+        }
+    }
+    const auto gap = layout.length(12);
+    const auto left = area.left + layout.length(8);
+    std::array<int, kValueColumns> column_x{};
+    auto x = left + name_width + gap;
+    for (std::size_t column = 0U; column < kValueColumns; ++column) {
+        column_x[column] = x;
+        x += widths[column] + gap;
+    }
     const auto row_step = static_cast<int>(layout.metrics().line_height) + layout.length(1);
-    const auto width = area.right - area.left;
-    const auto left = area.left + width / 8;
-    const auto level_x = area.left + width * 5 / 12;
-    const auto proficiency_x = area.left + width * 7 / 12;
-    const auto power_x = area.left + width * 19 / 24;
     const auto top = area.top;
-    if (!layout.text(left, top, kNameHeader, text_colors::menu_normal) ||
-        !layout.text(level_x, top, kLevelHeader, text_colors::menu_normal) ||
-        !layout.text(proficiency_x, top, kProficiencyHeader, text_colors::menu_normal) ||
-        !layout.text(power_x, top, kMagicPowerHeader, text_colors::menu_normal)) {
+    if (!layout.text(left, top, kMagicNameHeader, text_colors::menu_normal)) {
         return false;
+    }
+    for (std::size_t column = 0U; column < kValueColumns; ++column) {
+        if (!layout.text(column_x[column], top, kHeaders[column], text_colors::menu_normal)) {
+            return false;
+        }
     }
     for (std::size_t index = 0U; index < count; ++index) {
         const auto row = top + static_cast<int>(index + 1U) * row_step;
-        if (!layout.big5(left, row, rows[index].name, text_colors::notice) ||
-            !layout.text(level_x, row, rows[index].level, text_colors::selected) ||
-            !layout.text(proficiency_x, row, rows[index].proficiency, text_colors::notice) ||
-            !layout.text(power_x, row, rows[index].power, text_colors::selected)) {
+        if (!layout.big5(left, row, rows[index].name, text_colors::notice)) {
             return false;
+        }
+        for (std::size_t column = 0U; column < kValueColumns; ++column) {
+            if (!layout.text(column_x[column], row, rows[index].values[column], kColors[column])) {
+                return false;
+            }
         }
     }
     return true;
