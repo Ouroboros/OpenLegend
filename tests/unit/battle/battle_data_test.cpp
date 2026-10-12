@@ -14290,7 +14290,8 @@ void run_ngplus_medicine_test(const openlegend::resource::DataRoot& data_root) {
              DisplayCase{std::numeric_limits<std::int64_t>::min(), 113, u8"-9223372036854775808"}}) {
         render::IndexedFramebuffer actual;
         actual.clear(0);
-        OL_CHECK(renderer.render_party_action_notice(PartyAbilityKind::medicine, entry.value, actual));
+        OL_CHECK(renderer.render_party_action_notice(
+            PartyAbilityKind::medicine, entry.value, std::nullopt, actual));
         render::IndexedFramebuffer expected;
         const auto background = actual.row(53)[entry.value_x - 66];
         expected.clear(background);

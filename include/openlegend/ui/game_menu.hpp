@@ -108,7 +108,14 @@ public:
         selection_ = 0U;
     }
 
-    void complete_party_action(std::int64_t amount) noexcept;
+    void complete_party_action(
+        std::int64_t amount,
+        std::optional<std::int64_t> hurt_amount = std::nullopt) noexcept;
+
+    NODISCARD constexpr std::optional<std::int64_t>
+        party_action_hurt_amount() const noexcept {
+        return party_action_hurt_amount_;
+    }
 
     void complete_slot_operation() noexcept;
 
@@ -236,6 +243,7 @@ private:
     std::array<std::int64_t, 6U> medicine_abilities_{};
     std::array<std::int64_t, 6U> detoxification_abilities_{};
     std::optional<std::int64_t> party_action_amount_;
+    std::optional<std::int64_t> party_action_hurt_amount_;
     GameMenuItemTargetKind item_target_kind_{GameMenuItemTargetKind::equipment};
     GameMenuItemConfirmation item_confirmation_{GameMenuItemConfirmation::practice_reassign};
     GameMenuNotice notice_{GameMenuNotice::leave_protagonist};

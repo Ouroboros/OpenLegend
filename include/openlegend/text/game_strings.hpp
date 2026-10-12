@@ -213,6 +213,7 @@ inline constexpr std::u8string_view no_detoxification_user = u8"隊員中無人�
 inline constexpr std::u8string_view detoxification_user_title = u8"誰要幫人解毒";
 inline constexpr std::u8string_view detoxification_ability_label = u8"解毒能力";
 inline constexpr std::u8string_view detoxification_result_label = u8"幫助解毒";
+inline constexpr std::u8string_view hurt_healed_result_label = u8"治癒內傷";
 
 inline constexpr std::u8string_view party_selection_title = u8"請選擇參與戰鬥之人物";
 inline constexpr std::u8string_view selected_marker = u8"*";
@@ -387,6 +388,7 @@ inline constexpr auto kNoDetoxificationUser = no_detoxification_user;
 inline constexpr auto kDetoxificationUserTitle = detoxification_user_title;
 inline constexpr auto kDetoxificationAbilityLabel = detoxification_ability_label;
 inline constexpr auto kDetoxificationResultLabel = detoxification_result_label;
+inline constexpr auto kHurtHealedResultLabel = hurt_healed_result_label;
 inline constexpr auto kPartySelectionTitle = party_selection_title;
 inline constexpr auto kSelectedMarker = selected_marker;
 inline constexpr auto kConfirmLabel = confirm_label;

@@ -44,6 +44,7 @@ struct BattleCombatant {
     std::int64_t round_value{};
     std::int64_t reward_experience{};
     std::int64_t damage_value{};
+    std::int64_t hurt_healed_value{};
     std::int64_t poison_overflow_damage{};
 
     NODISCARD bool operator==(const BattleCombatant&) const = default;
@@ -83,18 +84,21 @@ NODISCARD std::optional<std::int64_t> apply_role_detox_value(
     model::RoleState& target,
     random::LegacyRandom& random);
 
+// hurt_healed 非空时输出本次治疗减少的内伤量。
 NODISCARD std::optional<std::int64_t> apply_role_medicine_value(
     model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
     std::int16_t target_role_id,
     random::LegacyRandom& random,
-    const model::PlaythroughLimits& limits);
+    const model::PlaythroughLimits& limits,
+    std::int64_t* hurt_healed = nullptr);
 
 NODISCARD std::optional<std::int64_t> apply_role_medicine_value(
     model::RoleState& actor,
     model::RoleState& target,
     random::LegacyRandom& random,
-    const model::PlaythroughLimits& limits);
+    const model::PlaythroughLimits& limits,
+    std::int64_t* hurt_healed = nullptr);
 
 struct BattleItemSelectionState {
     std::array<std::int16_t, model::kInventoryCount> inventory_slots{};
@@ -883,7 +887,8 @@ public:
     NODISCARD std::optional<std::int64_t> apply_medicine_value(
         std::size_t actor_slot,
         std::size_t target_slot,
-        random::LegacyRandom& random);
+        random::LegacyRandom& random,
+        std::int64_t* hurt_healed = nullptr);
 
     NODISCARD std::optional<BattleAreaResult> apply_medicine_target(
         std::size_t actor_slot,

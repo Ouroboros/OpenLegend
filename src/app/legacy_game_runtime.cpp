@@ -2175,7 +2175,7 @@ bool LegacyGameRuntime::render() {
                 if ((!amount.has_value() &&
                      !basic_renderer_.render_game_menu_main(game_menu_, framebuffer_)) ||
                     !game_menu_status_renderer_->render_party_action_notice(
-                        kind, amount, framebuffer_)) {
+                        kind, amount, game_menu_.party_action_hurt_amount(), framebuffer_)) {
                     return false;
                 }
             } else if (exact_item_effect) {
@@ -3694,6 +3694,7 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
         const auto actor_role_id = ranger->header.team_member(result.slot).value;
         const auto target_role_id = ranger->header.team_member(result.index).value;
         std::optional<std::int64_t> amount;
+        std::optional<std::int64_t> hurt_healed;
         if (result.command == ui::GameMenuCommand::medicine) {
             const auto* snapshot = game_state_.snapshot();
             const auto limits = snapshot == nullptr
@@ -3704,8 +3705,10 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
                 show_error("menu medicine playthrough configuration is invalid", LegacyGameView::game_menu);
                 break;
             }
+            std::int64_t healed = 0;
             amount = battle::apply_role_medicine_value(
-                *ranger, actor_role_id, target_role_id, random_, *limits);
+                *ranger, actor_role_id, target_role_id, random_, *limits, &healed);
+            hurt_healed = healed;
         } else {
             amount = battle::apply_role_detox_value(
                 *ranger, actor_role_id, target_role_id, random_);
@@ -3715,7 +3718,7 @@ void LegacyGameRuntime::handle_game_menu_result(const ui::GameMenuResult result)
             show_error("menu party treatment is invalid or overflows", LegacyGameView::game_menu);
             break;
         }
-        game_menu_.complete_party_action(*amount);
+        game_menu_.complete_party_action(*amount, hurt_healed);
         break;
     }
     case ui::GameMenuCommand::items:

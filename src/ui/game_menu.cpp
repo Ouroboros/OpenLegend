@@ -112,11 +112,14 @@ void GameMenuController::apply_item_category() noexcept {
     inventory_count_ = count;
 }
 
-void GameMenuController::complete_party_action(const std::int64_t amount) noexcept {
+void GameMenuController::complete_party_action(
+    const std::int64_t amount,
+    const std::optional<std::int64_t> hurt_amount) noexcept {
     if (screen_ == GameMenuScreen::party_notice &&
         (pending_party_command_ == GameMenuCommand::medicine ||
          pending_party_command_ == GameMenuCommand::detoxification)) {
         party_action_amount_ = amount;
+        party_action_hurt_amount_ = hurt_amount;
     }
 }
 
@@ -152,6 +155,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         if (translated_key != 0U) {
             screen_ = GameMenuScreen::main;
             party_action_amount_.reset();
+            party_action_hurt_amount_.reset();
         }
         return {};
     }
@@ -356,6 +360,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             const auto target_slot = selected_party_slot();
             screen_ = GameMenuScreen::party_notice;
             party_action_amount_.reset();
+            party_action_hurt_amount_.reset();
             return {pending_party_command_, source_party_slot_, target_slot};
         }
         if (pending_party_command_ == GameMenuCommand::status) {
@@ -418,6 +423,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
 
 GameMenuResult GameMenuController::confirm_main() noexcept {
     party_action_amount_.reset();
+    party_action_hurt_amount_.reset();
     switch (selection_) {
     case 0U:
         pending_party_command_ = GameMenuCommand::medicine;

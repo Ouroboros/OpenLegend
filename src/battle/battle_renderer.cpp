@@ -699,6 +699,7 @@ bool BattleRenderer::render_party_ability_selection(
 bool BattleRenderer::render_party_action_notice(
     const PartyAbilityKind kind,
     const std::optional<std::int64_t> amount,
+    const std::optional<std::int64_t> hurt_amount,
     render::IndexedFramebuffer& framebuffer) {
     if (!valid()) {
         return false;
@@ -714,11 +715,25 @@ bool BattleRenderer::render_party_action_notice(
         ? kMedicineResultLabel
         : kDetoxificationResultLabel;
     const auto number = decimal_text(*amount, 3);
-    const auto width = static_cast<std::uint16_t>(72U + 8U * number.size());
+    const auto show_hurt =
+        kind == PartyAbilityKind::medicine && hurt_amount.has_value();
+    const auto hurt_number =
+        show_hurt ? decimal_text(*hurt_amount, 3) : std::u8string{};
+    const auto width = static_cast<std::uint16_t>(
+        72U + 8U * std::max(number.size(), hurt_number.size()));
+    const auto height = static_cast<std::uint16_t>(show_hurt ? 46U : 26U);
     const auto left = 112 - (static_cast<int>(width) - 96) / 2;
-    return draw_box(framebuffer, left, 47, width, 26U) &&
-        draw_text_utf8(framebuffer, left + 5, 51, label, text_colors::selected) &&
-        draw_text_utf8(framebuffer, left + 69, 51, number, text_colors::notice);
+    if (!draw_box(framebuffer, left, 47, width, height) ||
+        !draw_text_utf8(framebuffer, left + 5, 51, label, text_colors::selected) ||
+        !draw_text_utf8(framebuffer, left + 69, 51, number, text_colors::notice)) {
+        return false;
+    }
+    if (!show_hurt) {
+        return true;
+    }
+    return draw_text_utf8(
+               framebuffer, left + 5, 71, kHurtHealedResultLabel, text_colors::selected) &&
+        draw_text_utf8(framebuffer, left + 69, 71, hurt_number, text_colors::notice);
 }
 
 std::uint8_t BattleRenderer::character_status_page_count(

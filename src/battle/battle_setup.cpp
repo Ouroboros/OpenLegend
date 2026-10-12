@@ -186,7 +186,8 @@ std::optional<std::int64_t> apply_role_medicine_value(
     const std::int16_t actor_role_id,
     const std::int16_t target_role_id,
     random::LegacyRandom& random,
-    const model::PlaythroughLimits& limits) {
+    const model::PlaythroughLimits& limits,
+    std::int64_t* const hurt_healed) {
     if (actor_role_id < 0 || target_role_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size()) {
@@ -194,14 +195,19 @@ std::optional<std::int64_t> apply_role_medicine_value(
     }
     return apply_role_medicine_value(
         ranger.roles[static_cast<std::size_t>(actor_role_id)],
-        ranger.roles[static_cast<std::size_t>(target_role_id)], random, limits);
+        ranger.roles[static_cast<std::size_t>(target_role_id)], random, limits,
+        hurt_healed);
 }
 
 std::optional<std::int64_t> apply_role_medicine_value(
     model::RoleState& actor,
     model::RoleState& target,
     random::LegacyRandom& random,
-    const model::PlaythroughLimits& limits) {
+    const model::PlaythroughLimits& limits,
+    std::int64_t* const hurt_healed) {
+    if (hurt_healed != nullptr) {
+        *hurt_healed = 0;
+    }
     if (actor.physical_power < 50) {
         return 0;
     }
@@ -221,6 +227,9 @@ std::optional<std::int64_t> apply_role_medicine_value(
     const auto hurt = model::checked_subtract(target.hurt, std::min(target.hurt, *treatment));
     if (!hp.has_value() || !hurt.has_value()) {
         return std::nullopt;
+    }
+    if (hurt_healed != nullptr) {
+        *hurt_healed = std::min(target.hurt, *treatment);
     }
     target.hp = *hp;
     target.hurt = *hurt;
@@ -903,6 +912,7 @@ void BattleSetup::swap_combatants(const std::size_t first, const std::size_t sec
     std::swap(combatants_[first].round_value, combatants_[second].round_value);
     std::swap(combatants_[first].reward_experience, combatants_[second].reward_experience);
     std::swap(combatants_[first].damage_value, combatants_[second].damage_value);
+    std::swap(combatants_[first].hurt_healed_value, combatants_[second].hurt_healed_value);
     std::swap(combatants_[first].poison_overflow_damage, combatants_[second].poison_overflow_damage);
     const auto saved = combatants_[first].words;
     for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
@@ -2658,7 +2668,8 @@ std::optional<std::int16_t> BattleSetup::medicine_targeting_range(
 std::optional<std::int64_t> BattleSetup::apply_medicine_value(
     const std::size_t actor_slot,
     const std::size_t target_slot,
-    random::LegacyRandom& random) {
+    random::LegacyRandom& random,
+    std::int64_t* const hurt_healed) {
     if (!valid() || actor_slot >= static_cast<std::size_t>(combatant_count_) ||
         target_slot >= static_cast<std::size_t>(combatant_count_)) {
         error_ = "battle medicine actors are outside combatant slots";
@@ -2670,7 +2681,8 @@ std::optional<std::int64_t> BattleSetup::apply_medicine_value(
         error_ = "battle medicine role is outside ranger records";
         return std::nullopt;
     }
-    const auto amount = apply_role_medicine_value(*actor, *target, random, limits_);
+    const auto amount =
+        apply_role_medicine_value(*actor, *target, random, limits_, hurt_healed);
     if (!amount.has_value()) {
         error_ = "battle medicine amount is invalid or overflows";
     }
@@ -2702,11 +2714,14 @@ std::optional<BattleAreaResult> BattleSetup::apply_medicine_target(
             const auto target_index = static_cast<std::size_t>(target_slot);
             if (combatants_[target_index].words[combatant_word::side] ==
                 actor_words[combatant_word::side]) {
-                const auto treatment = apply_medicine_value(actor_slot, target_index, random);
+                std::int64_t hurt_healed = 0;
+                const auto treatment =
+                    apply_medicine_value(actor_slot, target_index, random, &hurt_healed);
                 if (!treatment.has_value()) {
                     return std::nullopt;
                 }
                 amount = *treatment;
+                combatants_[target_index].hurt_healed_value = hurt_healed;
             } else {
                 cell.reset();
                 target_slot = -1;
@@ -5867,6 +5882,22 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
                             -1,
                             wrapping_i16(render::legacy_color::text::battle_damage_numbers[1U].legacy_packed()),
                             combatants_[combatant].poison_overflow_damage);
+                    }
+                    // 医疗时在恢复数字下方再显示本次减少的内伤量。
+                    if (state.damage_kind == 4) {
+                        append_sprite(
+                            BattleRenderCommandKind::damage_text,
+                            map_x,
+                            map_y,
+                            overlay_x,
+                            screen_y - 40 - 2 * static_cast<std::int32_t>(state.damage_text_offset),
+                            0,
+                            -1,
+                            wrapping_i16(
+                                render::legacy_color::text::battle_damage_numbers[
+                                    static_cast<std::size_t>(state.damage_kind)]
+                                    .legacy_packed()),
+                            combatants_[combatant].hurt_healed_value);
                     }
                 }
             }
