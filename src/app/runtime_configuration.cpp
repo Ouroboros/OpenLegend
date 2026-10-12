@@ -8,6 +8,7 @@
 #include <toml++/toml.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -621,6 +622,33 @@ NODISCARD DisplayConfigurationLoadResult display_configuration_from_document(
     return result;
 }
 
+// 地图快捷键名称转原版键码：字母、数字、Tab、F1～F10。
+NODISCARD std::optional<std::uint8_t> world_map_key_code(std::string name) {
+    std::transform(name.begin(), name.end(), name.begin(), [](const unsigned char character) {
+        return static_cast<char>(std::toupper(character));
+    });
+    if (name.size() == 1U &&
+        ((name[0] >= 'A' && name[0] <= 'Z') || (name[0] >= '0' && name[0] <= '9'))) {
+        return static_cast<std::uint8_t>(name[0]);
+    }
+    if (name == "TAB") {
+        return std::uint8_t{0x09U};
+    }
+    if (name.size() >= 2U && name.size() <= 3U && name[0] == 'F') {
+        int number = 0;
+        for (std::size_t index = 1U; index < name.size(); ++index) {
+            if (name[index] < '0' || name[index] > '9') {
+                return std::nullopt;
+            }
+            number = number * 10 + (name[index] - '0');
+        }
+        if (number >= 1 && number <= 10) {
+            return static_cast<std::uint8_t>(0xC9 + number - 1);
+        }
+    }
+    return std::nullopt;
+}
+
 NODISCARD InputConfigurationLoadResult input_configuration_from_document(
     const toml::table& document,
     const std::chrono::milliseconds fallback_movement_repeat_delay,
@@ -696,6 +724,26 @@ NODISCARD InputConfigurationLoadResult input_configuration_from_document(
             return result;
         }
         result.menu_repeat_interval = std::chrono::milliseconds{*interval};
+    }
+    if (const toml::node* keys_node =
+            input->get(InputConfigurationLoadResult::world_map_keys_toml_key);
+        keys_node != nullptr) {
+        const auto* keys = keys_node->as_array();
+        if (keys == nullptr) {
+            result.status = InputConfigurationStatus::invalid_world_map_keys;
+            return result;
+        }
+        std::vector<std::uint8_t> codes;
+        for (const auto& key : *keys) {
+            const auto name = key.value<std::string>();
+            const auto code = name.has_value() ? world_map_key_code(*name) : std::nullopt;
+            if (!code.has_value()) {
+                result.status = InputConfigurationStatus::invalid_world_map_keys;
+                return result;
+            }
+            codes.push_back(*code);
+        }
+        result.world_map_keys = std::move(codes);
     }
     result.loaded_from_file = true;
     return result;
@@ -1215,6 +1263,8 @@ std::string_view input_configuration_status_message(
         return "[input] menu_repeat_delay_ms must be a non-negative integer";
     case InputConfigurationStatus::invalid_menu_repeat_interval:
         return "[input] menu_repeat_interval_ms must be a positive integer";
+    case InputConfigurationStatus::invalid_world_map_keys:
+        return "[input] world_map_keys must be an array of key names (A-Z, 0-9, Tab, F1-F10)";
     }
     return "unknown input configuration status";
 }

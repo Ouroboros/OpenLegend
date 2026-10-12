@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <vector>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
@@ -29,6 +30,7 @@ struct LegacyRuntimeLoopSettings {
     model::NewGamePlusConfiguration new_game_plus_configuration{};
     std::optional<std::uint16_t> last_save_slot{};
     std::filesystem::path configuration_path{};
+    std::vector<std::uint8_t> world_map_keys{static_cast<std::uint8_t>('M'), 0x09U};
 };
 
 struct LegacyRuntimeLoopResult {

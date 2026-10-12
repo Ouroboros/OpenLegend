@@ -8,6 +8,7 @@ add_library(
         mode_coordinator.cpp
         new_game_plus_configuration.cpp
         runtime_configuration.cpp
+        world_minimap.cpp
 )
 target_include_directories(
     openlegend_app
@@ -32,5 +33,5 @@ target_link_libraries(
         openlegend_world
         openlegend_project_options
         openlegend_project_warnings
-    PRIVATE tomlplusplus::tomlplusplus
+    PRIVATE tomlplusplus::tomlplusplus zstd::libzstd_static
 )

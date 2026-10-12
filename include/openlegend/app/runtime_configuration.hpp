@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <vector>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/diagnostics/log.hpp"
@@ -203,6 +204,7 @@ enum class InputConfigurationStatus {
     invalid_movement_repeat_delay,
     invalid_menu_repeat_delay,
     invalid_menu_repeat_interval,
+    invalid_world_map_keys,
 };
 
 struct InputConfigurationLoadResult {
@@ -216,12 +218,14 @@ struct InputConfigurationLoadResult {
         "menu_repeat_delay_ms";
     static constexpr std::string_view menu_repeat_interval_toml_key =
         "menu_repeat_interval_ms";
-    static constexpr std::array<std::string_view, 5U> toml_field_order{
+    static constexpr std::string_view world_map_keys_toml_key = "world_map_keys";
+    static constexpr std::array<std::string_view, 6U> toml_field_order{
         name_input_method_toml_key,
         smooth_movement_toml_key,
         movement_repeat_delay_toml_key,
         menu_repeat_delay_toml_key,
         menu_repeat_interval_toml_key,
+        world_map_keys_toml_key,
     };
 
     InputConfigurationStatus status{InputConfigurationStatus::ready};
@@ -230,6 +234,8 @@ struct InputConfigurationLoadResult {
     std::chrono::milliseconds movement_repeat_delay{};
     std::chrono::milliseconds menu_repeat_delay{};
     std::chrono::milliseconds menu_repeat_interval{};
+    // 打开世界地图的按键（原版键码）；默认 M 与 Tab。
+    std::vector<std::uint8_t> world_map_keys{static_cast<std::uint8_t>('M'), 0x09U};
     bool loaded_from_file{};
     std::string detail;
 };

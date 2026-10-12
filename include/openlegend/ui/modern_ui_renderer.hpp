@@ -83,6 +83,33 @@ public:
         const compat::LegacyPalette& palette,
         render::rgba::FontSize size = {});
 
+    // 直接指定RGBA颜色，不经调色板；字号已是画面逻辑像素高度，可连续调整。
+    NODISCARD bool draw_text_big5_pixels(
+        render::RgbaFramebuffer& framebuffer,
+        int x,
+        int y,
+        text::Big5TextView text,
+        render::rgba::TextColors colors,
+        render::rgba::FontSize pixel_size);
+
+    // 直接指定RGBA颜色，不经调色板；字号已是画面逻辑像素高度。
+    NODISCARD bool draw_text_utf8_pixels(
+        render::RgbaFramebuffer& framebuffer,
+        int x,
+        int y,
+        std::u8string_view text,
+        render::rgba::TextColors colors,
+        render::rgba::FontSize pixel_size);
+
+    // 直接指定RGBA颜色，不经调色板；字号按320×200参考尺寸换算。
+    NODISCARD bool draw_text_utf8_rgba(
+        render::RgbaFramebuffer& framebuffer,
+        int x,
+        int y,
+        std::u8string_view text,
+        render::rgba::TextColors colors,
+        render::rgba::FontSize size = {});
+
     NODISCARD bool draw_box(
         render::RgbaFramebuffer& framebuffer,
         int x,

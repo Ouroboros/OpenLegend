@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstddef>
@@ -44,6 +45,8 @@ enum class DirectionRepeatContext : std::uint8_t;
 }
 
 namespace openlegend::app {
+
+class WorldMinimap;
 
 class LegacyStartupResources {
 public:
@@ -276,8 +279,28 @@ public:
 
     NODISCARD bool render_modern_ui(render::RgbaFramebuffer& framebuffer);
 
-    // 头顶飘字动画进行中，需要每帧重画现代UI层。
-    NODISCARD bool modern_ui_animating() const noexcept { return !status_floats_.empty(); }
+    // 头顶飘字动画进行中或世界小地图刚开关，需要重画现代UI层。
+    NODISCARD bool modern_ui_animating() const noexcept {
+        return !status_floats_.empty() || world_minimap_refresh_frames_ > 0;
+    }
+
+    // 世界小地图打开中，或此刻可以打开（大地图或场景空闲时）。
+    NODISCARD bool world_minimap_accepts_key() const noexcept;
+
+    NODISCARD bool world_minimap_open() const noexcept { return world_minimap_open_; }
+
+    void toggle_world_minimap();
+
+    void set_world_minimap_keys(std::vector<std::uint8_t> keys) {
+        world_minimap_keys_ = std::move(keys);
+    }
+
+    NODISCARD bool is_world_minimap_key(const std::uint8_t translated_key) const noexcept {
+        return std::find(world_minimap_keys_.begin(), world_minimap_keys_.end(), translated_key) !=
+            world_minimap_keys_.end();
+    }
+
+    void handle_world_minimap_key(std::uint8_t translated_key);
 
     NODISCARD bool valid() const noexcept { return startup_error_.empty(); }
 
@@ -570,6 +593,10 @@ private:
         std::chrono::steady_clock::time_point start;
     };
     std::vector<StatusFloat> status_floats_;
+    std::shared_ptr<WorldMinimap> world_minimap_;
+    bool world_minimap_open_{};
+    std::vector<std::uint8_t> world_minimap_keys_{static_cast<std::uint8_t>('M'), 0x09U};
+    int world_minimap_refresh_frames_{};
     std::unique_ptr<battle::BattleSession> battle_session_;
     battle::BattleRenderState retained_battle_render_state_{};
     std::int64_t legacy_battle_hp_cost_scale_{};

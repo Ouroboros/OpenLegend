@@ -89,6 +89,11 @@ movement_repeat_delay_ms = 500
 menu_repeat_delay_ms = 500
 menu_repeat_interval_ms = 55
 
+# 打开／关闭世界地图的按键，可写多个。可用：A～Z、0～9、Tab、F1～F10。
+# 在大地图或场景中可用，战斗中无效。
+
+world_map_keys = ["M", "Tab"]
+
 [timing]
 
 # FI/FO 调色板帧之间的延迟。默认值匹配 VGA mode 13h。

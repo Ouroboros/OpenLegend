@@ -249,6 +249,13 @@ void LegacyInputCoordinator::dispatch_key_down(
         return;
     }
 
+    // 世界小地图打开时长按缩放键连续缩放：原版键盘只在由松开变按下时产生按键，
+    // 系统重复事件先按松开处理再重新按下。
+    if (repeat && game_.world_minimap_open() &&
+        (key == compat::HostKey::minus || key == compat::HostKey::equals ||
+         key == compat::HostKey::keypad_minus || key == compat::HostKey::keypad_plus)) {
+        keyboard_.handle_host_key(key, false);
+    }
     keyboard_.handle_host_key(key, true);
     sync_battle_confirmation();
     const auto translated_key = keyboard_.last_key();
@@ -257,6 +264,12 @@ void LegacyInputCoordinator::dispatch_key_down(
         " repeat=" + (repeat ? std::string{"true"} : std::string{"false"}) +
         " translated=" + std::to_string(translated_key));
     if (translated_key == 0U) {
+        return;
+    }
+    if (game_.is_world_minimap_key(translated_key) && game_.world_minimap_accepts_key()) {
+        if (!repeat) {
+            game_.toggle_world_minimap();
+        }
         return;
     }
 

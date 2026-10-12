@@ -479,6 +479,7 @@ int run_sdl_application(
         loop_settings.new_game_plus_configuration = configuration.new_game_plus.values;
         loop_settings.last_save_slot = configuration.saves.last_slot;
         loop_settings.configuration_path = configuration_path;
+        loop_settings.world_map_keys = configuration.input.world_map_keys;
         loop_result = run_legacy_runtime_loop(platform, loop_settings);
         if (loop_result.status != 0) {
             return loop_result.status;

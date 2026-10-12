@@ -192,6 +192,72 @@ bool ModernUiRenderer::draw_text_big5(
         rgba_text_colors(palette, colors));
 }
 
+bool ModernUiRenderer::draw_text_big5_pixels(
+    render::RgbaFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const text::Big5TextView text,
+    const render::rgba::TextColors colors,
+    const render::rgba::FontSize pixel_size) {
+    if (!big5_cache_.has_value() || !pixel_size.valid()) {
+        return false;
+    }
+    return render::rgba::draw_text_big5(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        glyph_mask_cache_,
+        pixel_size,
+        colors);
+}
+
+bool ModernUiRenderer::draw_text_utf8_pixels(
+    render::RgbaFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const std::u8string_view text,
+    const render::rgba::TextColors colors,
+    const render::rgba::FontSize pixel_size) {
+    if (!big5_cache_.has_value() || !pixel_size.valid()) {
+        return false;
+    }
+    return render::rgba::draw_text_utf8(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        glyph_mask_cache_,
+        pixel_size,
+        colors);
+}
+
+bool ModernUiRenderer::draw_text_utf8_rgba(
+    render::RgbaFramebuffer& framebuffer,
+    const int x,
+    const int y,
+    const std::u8string_view text,
+    const render::rgba::TextColors colors,
+    const render::rgba::FontSize size) {
+    if (!big5_cache_.has_value()) {
+        return false;
+    }
+    return render::rgba::draw_text_utf8(
+        framebuffer,
+        x,
+        y,
+        text,
+        ascii_font_,
+        *big5_cache_,
+        glyph_mask_cache_,
+        scaled_font_size(framebuffer, size),
+        colors);
+}
+
 bool ModernUiRenderer::draw_box(
     render::RgbaFramebuffer& framebuffer,
     const int x,

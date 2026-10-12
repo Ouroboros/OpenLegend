@@ -26,6 +26,7 @@
 #include "openlegend/time/legacy_clock.hpp"
 #include "character_status_page.hpp"
 #include "item_list_page.hpp"
+#include "world_minimap.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -1502,6 +1503,12 @@ bool LegacyGameRuntime::handle_world_input(
     const bool down,
     const bool right,
     const bool menu_requested) {
+    if (world_minimap_open_) {
+        if (menu_requested) {
+            toggle_world_minimap();
+        }
+        return true;
+    }
     if (!world_or_scene_input_active()) {
         return false;
     }
@@ -1577,6 +1584,9 @@ void LegacyGameRuntime::set_scene_input_states(
     scene_interact_requested_ = false;
     scene_ui_requested_ = false;
     scene_idle_skip_requested_ = false;
+    if (world_minimap_open_) {
+        return;
+    }
     if (view_ == LegacyGameView::scene &&
         ((authoritative_motion_.active() &&
           motion_domain_ == NativeMotionDomain::scene) ||
@@ -1671,6 +1681,10 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
     if (view_ == LegacyGameView::error) {
         visible_error_.clear();
         set_view(error_return_view_, "dismiss error");
+        return LegacyKeyStateReset::none;
+    }
+    if (world_minimap_open_) {
+        handle_world_minimap_key(translated_key);
         return LegacyKeyStateReset::none;
     }
 
@@ -2250,7 +2264,102 @@ bool LegacyGameRuntime::render() {
     return false;
 }
 
+bool LegacyGameRuntime::world_minimap_accepts_key() const noexcept {
+    if (world_minimap_open_) {
+        return true;
+    }
+    return world_map_ != nullptr && world_or_scene_input_active() &&
+        (view_ == LegacyGameView::world ||
+         (!scene_death_menu_active_ &&
+          scene_session_->pending().kind == scene::SceneStepKind::stay));
+}
+
+void LegacyGameRuntime::handle_world_minimap_key(const std::uint8_t translated_key) {
+    using namespace input::legacy_key;
+    const auto any_of = [translated_key](const auto& keys) {
+        return std::find(keys.begin(), keys.end(), translated_key) != keys.end();
+    };
+    if (translated_key == escape) {
+        toggle_world_minimap();
+        return;
+    }
+    if (world_minimap_ == nullptr) {
+        return;
+    }
+    if (translated_key == equals || translated_key == keypad_plus) {
+        world_minimap_->zoom_in();
+    } else if (translated_key == minus) {
+        world_minimap_->zoom_out();
+    } else if (any_of(world_left)) {
+        world_minimap_->pan(-1, 0);
+    } else if (any_of(world_right)) {
+        world_minimap_->pan(1, 0);
+    } else if (any_of(world_up)) {
+        world_minimap_->pan(0, -1);
+    } else if (any_of(world_down)) {
+        world_minimap_->pan(0, 1);
+    } else {
+        return;
+    }
+    world_minimap_refresh_frames_ = 2;
+}
+
+void LegacyGameRuntime::toggle_world_minimap() {
+    if (world_minimap_open_) {
+        world_minimap_open_ = false;
+        world_minimap_refresh_frames_ = 2;
+        diagnostics::log_info("world minimap closed");
+        return;
+    }
+    if (!world_minimap_accepts_key()) {
+        return;
+    }
+    if (world_minimap_ == nullptr) {
+        const auto save_parent = save_root_path_.parent_path();
+        auto minimap = std::make_shared<WorldMinimap>(data_root_, *world_map_,
+            (save_parent.empty() ? std::filesystem::path{"cache"} : save_parent / "cache") /
+                "world_minimap.bin");
+        if (!minimap->valid()) {
+            diagnostics::log_error("world minimap build failed: " + minimap->error());
+            return;
+        }
+        world_minimap_ = std::move(minimap);
+    }
+    if (world_session_ != nullptr) {
+        world_minimap_->center_on(world_session_->world_x(), world_session_->world_y());
+    } else if (const auto* ranger = game_state_.ranger(); ranger != nullptr) {
+        world_minimap_->center_on(ranger->header.word(model::header_word::main_map_x),
+            ranger->header.word(model::header_word::main_map_y));
+    }
+    world_minimap_open_ = true;
+    world_minimap_refresh_frames_ = 2;
+    queued_motion_direction_.reset();
+    diagnostics::log_info("world minimap opened view=" + std::string{view_name(view_)});
+}
+
 bool LegacyGameRuntime::render_modern_ui(render::RgbaFramebuffer& framebuffer) {
+    if (world_minimap_refresh_frames_ > 0) {
+        --world_minimap_refresh_frames_;
+    }
+    if (world_minimap_open_ && world_minimap_ != nullptr) {
+        if (const auto* ranger = game_state_.ranger(); ranger != nullptr) {
+            const auto person = world_session_ != nullptr
+                ? std::pair{world_session_->world_x(), world_session_->world_y()}
+                : std::pair<int, int>{
+                      ranger->header.word(model::header_word::main_map_x),
+                      ranger->header.word(model::header_word::main_map_y)};
+            const auto ship = world_session_ != nullptr
+                ? std::pair{world_session_->ship_world_x(), world_session_->ship_world_y()}
+                : std::pair<int, int>{
+                      ranger->header.word(model::header_word::ship_x),
+                      ranger->header.word(model::header_word::ship_y)};
+            if (world_minimap_->render(modern_ui_renderer_, *ranger,
+                    person, ship, framebuffer)) {
+                return true;
+            }
+            diagnostics::log_error("world minimap render failed");
+        }
+    }
     if (!render_modern_ui_view(framebuffer)) {
         return false;
     }
@@ -3732,6 +3841,10 @@ void LegacyGameRuntime::set_view(
         "view " + std::string{view_name(view_)} + " -> " + std::string{view_name(view)} +
         " reason=" + std::string{reason});
     if (view != LegacyGameView::world && view != LegacyGameView::scene) {
+        if (world_minimap_open_) {
+            world_minimap_open_ = false;
+            world_minimap_refresh_frames_ = 2;
+        }
         authoritative_motion_.clear();
         motion_domain_ = NativeMotionDomain::none;
         world_motion_plan_.reset();
