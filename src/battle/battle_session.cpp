@@ -3776,7 +3776,7 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
     if (translated_key == kDown || translated_key == kUp ||
         translated_key == kLeft || translated_key == kRight) {
         // 行动面板固定排列全部行动：左右键在本行内移到下一个可用项，首尾相接；
-        // 上下键换到上下一行，优先同一列，不可用时取该行最近的可用项。
+        // 上下键沿同一列移到下一个可用项，该列没有其他可用项时取下一行最近的可用项。
         if (translated_key == kDown) {
             player_menu_down_state_ = false;
         } else if (translated_key == kUp) {
@@ -3811,10 +3811,21 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
                 }
             }
         } else {
-            for (std::size_t step = 1U; step < row_count && !target.has_value(); ++step) {
-                const auto next_row = translated_key == kDown
+            const auto next_row_at = [&](const std::size_t step) {
+                return translated_key == kDown
                     ? (row + step) % row_count : (row + row_count - step) % row_count;
-                // 优先同一列；该格不可用时取本行最近的可用格。
+            };
+            // 先沿同一列找下一个可用项（跳过该列不可用的行）。
+            for (std::size_t step = 1U; step < row_count && !target.has_value(); ++step) {
+                const auto next_row = next_row_at(step);
+                if (column < row_length(next_row) &&
+                    available[next_row * kBattleActionMenuColumns + column] == 1) {
+                    target = next_row * kBattleActionMenuColumns + column;
+                }
+            }
+            // 同一列没有其他可用项时，取下一行离本列最近的可用项。
+            for (std::size_t step = 1U; step < row_count && !target.has_value(); ++step) {
+                const auto next_row = next_row_at(step);
                 std::optional<std::size_t> best_distance;
                 for (std::size_t cell = 0U; cell < row_length(next_row); ++cell) {
                     const auto action = next_row * kBattleActionMenuColumns + cell;
