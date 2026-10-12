@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <optional>
+#include <utility>
 #include <span>
 #include <string>
 #include <string_view>
@@ -66,6 +69,18 @@ public:
 
     NODISCARD const render::rgba::FontMetrics& metrics() const noexcept { return metrics_; }
 
+    // 测量模式：文字与头像不绘制，只记录内容的水平范围，用于先量后居中。
+    void begin_measure() noexcept {
+        measuring_ = true;
+        extent_left_ = std::numeric_limits<int>::max();
+        extent_right_ = std::numeric_limits<int>::min();
+    }
+
+    NODISCARD std::optional<std::pair<int, int>> measured_extent() const noexcept {
+        return extent_left_ <= extent_right_
+            ? std::optional{std::pair{extent_left_, extent_right_}} : std::nullopt;
+    }
+
     NODISCARD int utf8_width(const std::u8string_view text) const noexcept {
         int width = 0;
         for (const auto unit : text) {
@@ -99,6 +114,10 @@ public:
     // 超出画布的文本裁剪后绘制；字形越界不得让整页渲染失败。
     NODISCARD bool text(
         const int left, const int top, const std::u8string_view value, const render::TextColors colors) {
+        if (measuring_) {
+            measure(left, left + utf8_width(value));
+            return true;
+        }
         if (top < 0 || top + static_cast<int>(metrics_.line_height) > framebuffer_.logical_height()) {
             return true;
         }
@@ -132,6 +151,10 @@ public:
     NODISCARD bool big5(
         const int left, const int top, const std::span<const std::uint8_t> value,
         const render::TextColors colors) {
+        if (measuring_) {
+            measure(left, left + big5_width(zero_terminated(value)));
+            return true;
+        }
         if (top < 0 || top + static_cast<int>(metrics_.line_height) > framebuffer_.logical_height()) {
             return true;
         }
@@ -153,6 +176,10 @@ public:
     }
 
     NODISCARD bool portrait(const resource::SpriteFrameView& frame, const int left, const int top) {
+        if (measuring_) {
+            measure(left, left + scaled_width(static_cast<int>(frame.width())));
+            return true;
+        }
         for (std::size_t row = 0U; row < frame.rows().size(); ++row) {
             const auto row_top = top + scaled_height(static_cast<int>(row));
             const auto row_bottom = top + scaled_height(static_cast<int>(row) + 1);
@@ -187,6 +214,14 @@ public:
     }
 
 private:
+    void measure(const int left, const int right) noexcept {
+        extent_left_ = std::min(extent_left_, left);
+        extent_right_ = std::max(extent_right_, right);
+    }
+
+    bool measuring_{};
+    int extent_left_{std::numeric_limits<int>::max()};
+    int extent_right_{std::numeric_limits<int>::min()};
     ui::ModernUiRenderer& ui_renderer_;
     const compat::LegacyPalette& palette_;
     render::RgbaFramebuffer& framebuffer_;

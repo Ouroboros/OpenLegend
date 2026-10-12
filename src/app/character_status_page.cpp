@@ -21,6 +21,9 @@ namespace {
 using namespace openlegend::text::game_strings;
 using namespace openlegend::app::page;
 using StatusLayout = PageLayout;
+
+// 页签内容字号：页面字号13的80%。
+constexpr render::rgba::FontSize kStatusContentFont{10};
 namespace text_colors = render::legacy_color::text;
 
 static_assert(kStatusTabLabels.size() == kCharacterStatusPageCount);
@@ -432,11 +435,30 @@ bool render_character_status_page(
     const ContentArea area{panel_left + padding, panel_right - padding,
         tab_top + tab_height + padding, panel_bottom - padding};
     const auto& role = *roles[cursor];
-    switch (page) {
-    case 0U: return draw_summary_page(data, layout, area, ranger, role, limits);
-    case 1U: return draw_ability_page(data, layout, area, ranger, role);
-    default: return draw_magic_page(layout, area, ranger, role);
+    // 页签内容用页面字号的80%，人物列表与页签标题保持原字号。
+    const auto draw_page = [&](StatusLayout& page_layout, const ContentArea& page_area) {
+        switch (page) {
+        case 0U: return draw_summary_page(data, page_layout, page_area, ranger, role, limits);
+        case 1U: return draw_ability_page(data, page_layout, page_area, ranger, role);
+        default: return draw_magic_page(page_layout, page_area, ranger, role);
+        }
+    };
+    // 先测量内容的水平范围，再整体平移到框内水平居中。
+    StatusLayout measure_layout{ui_renderer, palette, framebuffer, viewport, kStatusContentFont};
+    measure_layout.begin_measure();
+    auto centered = area;
+    if (draw_page(measure_layout, area)) {
+        if (const auto extent = measure_layout.measured_extent()) {
+            const auto shift = (area.left + area.right) / 2 - (extent->first + extent->second) / 2;
+            const auto lowest = area.left - extent->first;
+            const auto highest = area.right - extent->second;
+            const auto offset = lowest <= highest ? std::clamp(shift, lowest, highest) : 0;
+            centered.left += offset;
+            centered.right += offset;
+        }
     }
+    StatusLayout content_layout{ui_renderer, palette, framebuffer, viewport, kStatusContentFont};
+    return draw_page(content_layout, centered);
 }
 
 }  // namespace openlegend::app
