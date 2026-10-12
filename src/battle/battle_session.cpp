@@ -4177,6 +4177,8 @@ std::optional<BattleLevelUpResult> BattleSession::preview_post_battle_level(
     const auto saved_role = ranger_.roles[role_id];
     auto preview_random = random_;
     const auto preview = setup_.apply_battle_level_up(role_id, false, preview_random);
+    level_up_before_ = saved_role;
+    level_up_after_ = ranger_.roles[role_id];
     ranger_.roles[role_id] = saved_role;
     return preview;
 }
@@ -4589,6 +4591,57 @@ bool BattleSession::request_player_magic_shortcut(const std::size_t index) noexc
     return true;
 }
 
+void BattleSession::fill_post_battle_notice(BattleHudView& view) const {
+    if (!post_battle_result_.has_value() ||
+        post_battle_message_index_ >= post_battle_messages_.size()) {
+        return;
+    }
+    const auto message = post_battle_messages_[post_battle_message_index_];
+    if (message.role_result_index >= post_battle_result_->roles.size()) {
+        return;
+    }
+    const auto& role_result = post_battle_result_->roles[message.role_result_index];
+    if (role_result.role_id < 0 ||
+        static_cast<std::size_t>(role_result.role_id) >= ranger_.roles.size()) {
+        return;
+    }
+    const auto& role = ranger_.roles[static_cast<std::size_t>(role_result.role_id)];
+    if (message.kind == PostBattleMessageKind::level_up &&
+        level_up_before_.id.value == role_result.role_id) {
+        const auto& before = level_up_before_;
+        const auto& after = level_up_after_;
+        const std::array<std::pair<std::int64_t, std::int64_t>, kLevelUpStatLabels.size()> values{{
+            {before.level, after.level},
+            {before.maximum_hp, after.maximum_hp},
+            {before.maximum_mp, after.maximum_mp},
+            {before.attack, after.attack},
+            {before.defence, after.defence},
+            {before.speed, after.speed},
+            {before.medicine, after.medicine},
+            {before.use_poison, after.use_poison},
+            {before.detoxification, after.detoxification},
+            {before.fist, after.fist},
+            {before.sword, after.sword},
+            {before.knife, after.knife},
+            {before.hidden_weapon, after.hidden_weapon},
+        }};
+        view.notice_name = role.legacy_name();
+        for (std::size_t index = 0U; index < values.size(); ++index) {
+            view.level_up.push_back(
+                {kLevelUpStatLabels[index], values[index].first, values[index].second});
+        }
+        return;
+    }
+    const auto magic_id = role_result.practice.magic_id;
+    if (message.kind == PostBattleMessageKind::practice && role_result.practice.learned_magic &&
+        magic_id >= 0 && static_cast<std::size_t>(magic_id) < ranger_.magics.size()) {
+        view.notice_name = role.legacy_name();
+        view.learned_magic_name = terminated_name(
+            std::span<const std::uint8_t>{ranger_.magics[static_cast<std::size_t>(magic_id)].bytes}
+                .subspan(model::magic_word::name_byte, model::magic_word::name_bytes));
+    }
+}
+
 BattleHudView BattleSession::hud_view() {
     BattleHudView view;
     if (!valid()) {
@@ -4641,10 +4694,12 @@ BattleHudView BattleSession::hud_view() {
     case BattleSessionPhase::player_status_selection:
     case BattleSessionPhase::player_status_page_present:
     case BattleSessionPhase::player_status_page_wait:
-    case BattleSessionPhase::battle_outcome:
-    case BattleSessionPhase::battle_outcome_wait:
     case BattleSessionPhase::post_battle_message_present:
     case BattleSessionPhase::post_battle_message_wait:
+        fill_post_battle_notice(view);
+        return view;
+    case BattleSessionPhase::battle_outcome:
+    case BattleSessionPhase::battle_outcome_wait:
     case BattleSessionPhase::complete:
         return view;
     default:
@@ -4777,12 +4832,13 @@ bool BattleSession::render_post_battle_message(
                 framebuffer, 63, 35, display_text, text_colors::notice);
     }
     case PostBattleMessageKind::level_up:
-        display_text.append_legacy(text::Big5TextView{role_name});
-        display_text.append_utf8(kLevelUpText);
-        return renderer_.draw_box(framebuffer, 100, 30, 120U, 27U) &&
-            renderer_.draw_text_mixed(
-                framebuffer, 107, 35, display_text, text_colors::notice);
+        // 升级面板由现代界面层绘制（hud_view）。
+        return true;
     case PostBattleMessageKind::practice: {
+        // 学到新武功的提示由现代界面层绘制（hud_view）。
+        if (role_result.practice.learned_magic) {
+            return true;
+        }
         const auto item_id = role_result.practice.item_id;
         if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger_.items.size()) {
             return false;

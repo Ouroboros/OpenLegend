@@ -2642,7 +2642,7 @@ bool LegacyGameRuntime::render_modern_ui_view(
         }
         if (battle_session_ != nullptr) {
             const auto hud = battle_session_->hud_view();
-            if (!hud.battlefield) {
+            if (!hud.battlefield && hud.level_up.empty() && hud.learned_magic_name.empty()) {
                 return true;
             }
             if (game_menu_status_renderer_ == nullptr) {

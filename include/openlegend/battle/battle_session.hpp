@@ -189,6 +189,13 @@ struct BattleHudMagic {
     std::optional<std::int64_t> mp_cost;
 };
 
+// 战后升级面板中的一项属性：升级前后的值。
+struct BattleHudStatChange {
+    std::u8string_view label;
+    std::int64_t before{};
+    std::int64_t after{};
+};
+
 struct BattleHudView {
     // 正在显示战场（信息条与行动顺序只在战场画面上显示）。
     bool battlefield{};
@@ -206,6 +213,10 @@ struct BattleHudView {
     // 正在施展的武功（我方与敌方）：名称与等级，选择阶段之外显示。
     std::span<const std::uint8_t> active_magic_name;
     std::int64_t active_magic_level{};
+    // 战后提示：升级时列出各项属性的变化，修炼学到新武功时给出武功名；两者均为空时不显示。
+    std::array<std::uint8_t, model::role_word::name_bytes> notice_name{};
+    std::vector<BattleHudStatChange> level_up;
+    std::span<const std::uint8_t> learned_magic_name;
 };
 
 class BattleSession {
@@ -645,6 +656,8 @@ private:
 
     NODISCARD bool advance_post_battle_message();
 
+    void fill_post_battle_notice(BattleHudView& view) const;
+
     NODISCARD bool render_party_selection(
         render::IndexedFramebuffer& framebuffer,
         bool background_redrawn);
@@ -772,6 +785,9 @@ private:
     BattleStepResult result_{BattleStepResult::stay};
     std::optional<BattlePostBattleResult> post_battle_result_;
     std::vector<PostBattleMessage> post_battle_messages_;
+    // 当前升级提示所预演的升级前后人物，供升级面板列出属性变化。
+    model::RoleState level_up_before_;
+    model::RoleState level_up_after_;
     std::size_t post_battle_message_index_{};
     std::size_t post_battle_role_index_{};
     std::optional<BattleAiTurnPrelude> ai_turn_prelude_;

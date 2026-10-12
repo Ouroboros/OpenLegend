@@ -272,6 +272,16 @@ inline constexpr std::u8string_view battle_defeat = u8"戰鬥失敗";
 inline constexpr std::u8string_view battle_victory = u8"戰鬥勝利";
 inline constexpr std::u8string_view experience_gained = u8" 獲得經驗點數";
 inline constexpr std::u8string_view level_up = u8" 升級了";
+// 战后升级面板逐项列出的属性（与升级会改动的字段一一对应）。
+inline constexpr std::array<std::u8string_view, 13> level_up_stat_labels{
+    u8"等級", u8"生命", u8"內力", u8"攻擊力", u8"防禦力", u8"輕功", u8"醫療能力",
+    u8"用毒能力", u8"解毒能力", u8"拳掌功夫", u8"御劍能力", u8"耍刀技巧", u8"暗器技巧",
+};
+inline constexpr std::u8string_view level_up_arrow = u8"==>";
+inline constexpr std::u8string_view level_up_colon = u8"：";
+inline constexpr std::u8string_view learned_magic_text = u8"學到新武功";
+inline constexpr std::u8string_view learned_magic_open = u8"【";
+inline constexpr std::u8string_view learned_magic_close = u8"】";
 inline constexpr std::u8string_view practice_prefix = u8" 修練 ";
 inline constexpr std::u8string_view practice_suffix = u8" 成功 ";
 inline constexpr std::u8string_view magic_level_prefix = u8" 升級了 ";
@@ -470,6 +480,12 @@ inline constexpr auto kBattleDefeatText = battle_defeat;
 inline constexpr auto kBattleVictoryText = battle_victory;
 inline constexpr auto kExperienceGainedText = experience_gained;
 inline constexpr auto kLevelUpText = level_up;
+inline constexpr auto kLevelUpStatLabels = level_up_stat_labels;
+inline constexpr auto kLevelUpArrow = level_up_arrow;
+inline constexpr auto kLevelUpColon = level_up_colon;
+inline constexpr auto kLearnedMagicText = learned_magic_text;
+inline constexpr auto kLearnedMagicOpen = learned_magic_open;
+inline constexpr auto kLearnedMagicClose = learned_magic_close;
 inline constexpr auto kPracticePrefix = practice_prefix;
 inline constexpr auto kPracticeSuffix = practice_suffix;
 inline constexpr auto kMagicLevelPrefix = magic_level_prefix;

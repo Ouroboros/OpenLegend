@@ -25,6 +25,8 @@ using page::decimal_text;
 constexpr int kHudReferenceFont = 7;
 // 行动面板与武功列表字号大一号。
 constexpr int kMenuReferenceFont = 9;
+// 战后升级与学到新武功面板的字号。
+constexpr int kNoticeReferenceFont = 10;
 
 constexpr compat::Rgba8 kShadow{0x00U, 0x00U, 0x00U, 0xFFU};
 constexpr compat::Rgba8 kWhite{0xF0U, 0xF0U, 0xF0U, 0xFFU};
@@ -567,6 +569,87 @@ void render_inspected(Hud& hud, const battle::BattleRenderer& data,
     }
 }
 
+// 人物名以0结尾的Big5字节。
+NODISCARD std::span<const std::uint8_t> terminated(
+    const std::span<const std::uint8_t> bytes) noexcept {
+    const auto end = std::find(bytes.begin(), bytes.end(), std::uint8_t{0});
+    return bytes.first(static_cast<std::size_t>(end - bytes.begin()));
+}
+
+// 升级面板：上方标题框为人物名，下方逐行“属性：旧值 ==> 新值”，未变化的只显示旧值。
+void render_level_up(Hud& hud, const battle::BattleHudView& view) {
+    const auto unit = hud.unit();
+    const auto padding = kCardInset * unit;
+    const auto name = terminated(view.notice_name);
+    int label_width = 0;
+    int value_width = 0;
+    for (const auto& row : view.level_up) {
+        label_width = std::max(label_width, hud.text_width(row.label));
+        value_width = std::max({value_width, hud.text_width(decimal_text(row.before)),
+            hud.text_width(decimal_text(row.after))});
+    }
+    const auto gap = hud.big5_advance() / 2;
+    const auto arrow_width = hud.text_width(strings::kLevelUpArrow);
+    const auto colon_width = hud.text_width(strings::kLevelUpColon);
+    const auto content_width =
+        label_width + colon_width + value_width + gap + arrow_width + gap + value_width;
+    const auto width = std::max(content_width, hud.big5_width(name)) + 2 * padding;
+    const auto row_step = hud.line() + unit;
+    const auto title_height = hud.line() + 2 * padding;
+    const auto body_height = static_cast<int>(view.level_up.size()) * row_step - unit + 2 * padding;
+    const auto total_height = title_height + unit + body_height;
+    const auto left = (hud.width() - width) / 2;
+    const auto top = std::max(unit, (hud.height() - total_height) / 2);
+    hud.box(left, top, width, title_height);
+    hud.big5(left + (width - hud.big5_width(name)) / 2, top + padding, name, kYellow);
+    const auto body_top = top + title_height + unit;
+    hud.box(left, body_top, width, body_height);
+    const auto content_left = left + (width - content_width) / 2;
+    const auto colon_x = content_left + label_width;
+    const auto before_right = colon_x + colon_width + value_width;
+    const auto arrow_x = before_right + gap;
+    const auto after_right = arrow_x + arrow_width + gap + value_width;
+    auto y = body_top + padding;
+    for (const auto& row : view.level_up) {
+        const auto before = decimal_text(row.before);
+        hud.text(content_left, y, row.label, kWhite);
+        hud.text(colon_x, y, strings::kLevelUpColon, kWhite);
+        hud.text(before_right - hud.text_width(before), y, before, kWhite);
+        if (row.after != row.before) {
+            const auto after = decimal_text(row.after);
+            hud.text(arrow_x, y, strings::kLevelUpArrow, kWhite);
+            hud.text(after_right - hud.text_width(after), y, after, kHurtColor);
+        }
+        y += row_step;
+    }
+}
+
+// 学到新武功：第一行“人物名學到新武功”，第二行红字【武功名】。
+void render_learned_magic(Hud& hud, const battle::BattleHudView& view) {
+    const auto unit = hud.unit();
+    const auto padding = kCardInset * unit;
+    const auto name = terminated(view.notice_name);
+    const auto first_width = hud.big5_width(name) + hud.text_width(strings::kLearnedMagicText);
+    const auto second_width = hud.text_width(strings::kLearnedMagicOpen) +
+        hud.big5_width(view.learned_magic_name) + hud.text_width(strings::kLearnedMagicClose);
+    const auto width = std::max(first_width, second_width) + 4 * padding;
+    const auto row_step = hud.line() + 2 * unit;
+    const auto height = row_step + hud.line() + 2 * padding;
+    const auto left = (hud.width() - width) / 2;
+    const auto top = (hud.height() - height) / 2;
+    hud.box(left, top, width, height);
+    auto x = left + 2 * padding;
+    const auto y = top + padding;
+    hud.big5(x, y, name, kWhite);
+    hud.text(x + hud.big5_width(name), y, strings::kLearnedMagicText, kWhite);
+    x = left + 2 * padding;
+    hud.text(x, y + row_step, strings::kLearnedMagicOpen, kHurtColor);
+    x += hud.text_width(strings::kLearnedMagicOpen);
+    hud.big5(x, y + row_step, view.learned_magic_name, kHurtColor);
+    x += hud.big5_width(view.learned_magic_name);
+    hud.text(x, y + row_step, strings::kLearnedMagicClose, kHurtColor);
+}
+
 }  // namespace
 
 bool render_battle_hud(
@@ -575,6 +658,15 @@ bool render_battle_hud(
     const compat::LegacyPalette& palette,
     const battle::BattleHudView& view,
     render::RgbaFramebuffer& framebuffer) {
+    if (!view.level_up.empty() || !view.learned_magic_name.empty()) {
+        Hud notice_hud{ui_renderer, palette, framebuffer, kNoticeReferenceFont};
+        if (!view.level_up.empty()) {
+            render_level_up(notice_hud, view);
+        } else {
+            render_learned_magic(notice_hud, view);
+        }
+        return true;
+    }
     if (!view.battlefield) {
         return true;
     }
