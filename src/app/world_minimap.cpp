@@ -232,8 +232,8 @@ bool WorldMinimap::load_cache(const std::filesystem::path& path, const std::uint
     image_height_ = height;
     anchor_left_ = anchor_left;
     anchor_top_ = anchor_top;
-    center_x_ = image_width_ / 2;
-    center_y_ = image_height_ / 2;
+    center_x_ = image_width_ / 2.0;
+    center_y_ = image_height_ / 2.0;
     return true;
 }
 
@@ -417,8 +417,8 @@ void WorldMinimap::build(const resource::DataRoot& data_root, const world::World
             }
         }
     }
-    center_x_ = image_width_ / 2;
-    center_y_ = image_height_ / 2;
+    center_x_ = image_width_ / 2.0;
+    center_y_ = image_height_ / 2.0;
     diagnostics::log_info("world minimap built size=" + std::to_string(image_width_) + "x" +
         std::to_string(image_height_) + " ms=" +
         std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -445,15 +445,15 @@ NODISCARD std::optional<std::pair<int, int>> named_entrance(const model::SceneMe
 std::optional<std::size_t> WorldMinimap::selected_scene(
     const model::RuntimeRangerState& ranger) const {
     std::optional<std::size_t> best;
-    std::int64_t best_distance = 0;
+    double best_distance = 0.0;
     for (std::size_t index = 0U; index < ranger.scenes.size(); ++index) {
         const auto entrance = named_entrance(ranger.scenes[index]);
         if (!entrance.has_value()) {
             continue;
         }
         const auto [x, y] = image_position(entrance->first, entrance->second);
-        const auto dx = static_cast<std::int64_t>(x) - center_x_;
-        const auto dy = static_cast<std::int64_t>(y) - center_y_;
+        const auto dx = static_cast<double>(x) - center_x_;
+        const auto dy = static_cast<double>(y) - center_y_;
         const auto distance = dx * dx + dy * dy;
         if (!best.has_value() || distance < best_distance) {
             best = index;
@@ -465,8 +465,8 @@ std::optional<std::size_t> WorldMinimap::selected_scene(
 
 void WorldMinimap::center_on(const int world_x, const int world_y) noexcept {
     const auto [x, y] = image_position(world_x, world_y);
-    center_x_ = x;
-    center_y_ = y;
+    center_x_ = static_cast<double>(x);
+    center_y_ = static_cast<double>(y);
     clamp_center();
 }
 
@@ -483,21 +483,15 @@ void WorldMinimap::zoom_out() noexcept {
 void WorldMinimap::pan(const double horizontal_views, const double vertical_views) noexcept {
     const auto view_height =
         static_cast<double>(image_height_) * kZoomFit / static_cast<double>(zoom_);
-    pan_remainder_x_ += horizontal_views * view_height;
-    pan_remainder_y_ += vertical_views * view_height;
-    const auto whole_x = static_cast<int>(pan_remainder_x_);
-    const auto whole_y = static_cast<int>(pan_remainder_y_);
-    pan_remainder_x_ -= whole_x;
-    pan_remainder_y_ -= whole_y;
-    center_x_ += whole_x;
-    center_y_ += whole_y;
+    center_x_ += horizontal_views * view_height;
+    center_y_ += vertical_views * view_height;
     clamp_center();
 }
 
 // 视野中心可到底图任意位置（含边缘），以便任何缩放下都能以人物为中心；底图外画黑色。
 void WorldMinimap::clamp_center() noexcept {
-    center_x_ = std::clamp(center_x_, 0, image_width_);
-    center_y_ = std::clamp(center_y_, 0, image_height_);
+    center_x_ = std::clamp(center_x_, 0.0, static_cast<double>(image_width_));
+    center_y_ = std::clamp(center_y_, 0.0, static_cast<double>(image_height_));
 }
 
 bool WorldMinimap::render(
@@ -535,16 +529,24 @@ bool WorldMinimap::render(
     }
     const auto left = (pixel_width - destination_width) / 2;
     const auto top = (header + margin) * scale + (available_height - destination_height) / 2;
-    // 可见源范围：缩放后的宽高，左上角由视野中心推得。
+    // 可见源范围：缩放后的宽高，左上角由视野中心（亚像素）推得；
+    // 每个屏幕像素按其在底图上的小数位置取样，视野移动不受底图像素粒度限制。
     const auto source_left = center_x_ -
-        static_cast<std::int64_t>(image_width_) * kZoomFit / (2 * zoom_);
+        static_cast<double>(image_width_) * kZoomFit / (2.0 * zoom_);
     const auto source_top = center_y_ -
-        static_cast<std::int64_t>(image_height_) * kZoomFit / (2 * zoom_);
-    const auto zoomed_width = static_cast<std::int64_t>(destination_width) * zoom_ / kZoomFit;
-    const auto zoomed_height = static_cast<std::int64_t>(destination_height) * zoom_ / kZoomFit;
+        static_cast<double>(image_height_) * kZoomFit / (2.0 * zoom_);
+    const auto zoomed_width = static_cast<double>(destination_width) * zoom_ / kZoomFit;
+    const auto zoomed_height = static_cast<double>(destination_height) * zoom_ / kZoomFit;
+    const auto column_step = static_cast<double>(image_width_) / zoomed_width;
+    const auto row_step = static_cast<double>(image_height_) / zoomed_height;
+    std::vector<std::int64_t> source_columns(static_cast<std::size_t>(destination_width));
+    for (int column = 0; column < destination_width; ++column) {
+        source_columns[static_cast<std::size_t>(column)] = static_cast<std::int64_t>(
+            std::floor(source_left + static_cast<double>(column) * column_step));
+    }
     for (int row = 0; row < destination_height; ++row) {
-        const auto source_row =
-            source_top + static_cast<std::int64_t>(row) * image_height_ / zoomed_height;
+        const auto source_row = static_cast<std::int64_t>(
+            std::floor(source_top + static_cast<double>(row) * row_step));
         auto* target = framebuffer.row(top + row) +
             static_cast<std::size_t>(left) * compat::kModernRgbaBytesPerPixel;
         const bool row_inside = source_row >= 0 && source_row < image_height_;
@@ -552,8 +554,7 @@ bool WorldMinimap::render(
             static_cast<std::size_t>(row_inside ? source_row : 0) *
                 static_cast<std::size_t>(image_width_);
         for (int column = 0; column < destination_width; ++column) {
-            const auto source_column = source_left +
-                static_cast<std::int64_t>(column) * image_width_ / zoomed_width;
+            const auto source_column = source_columns[static_cast<std::size_t>(column)];
             const auto color = row_inside && source_column >= 0 && source_column < image_width_
                 ? source[source_column] : kBackground;
             target[0] = color.red;
@@ -567,10 +568,10 @@ bool WorldMinimap::render(
     // 格(x,y)锚点投影到物理像素坐标；落在可见范围外时返回空。
     const auto project = [&](const int x, const int y) -> std::optional<std::pair<int, int>> {
         const auto [image_x, image_y] = image_position(x, y);
-        const auto screen_x = (static_cast<std::int64_t>(image_x) - source_left) * zoomed_width /
-            image_width_;
-        const auto screen_y = (static_cast<std::int64_t>(image_y) - source_top) * zoomed_height /
-            image_height_;
+        const auto screen_x = std::floor(
+            (static_cast<double>(image_x) - source_left) / column_step);
+        const auto screen_y = std::floor(
+            (static_cast<double>(image_y) - source_top) / row_step);
         if (screen_x < 0 || screen_y < 0 || screen_x >= destination_width ||
             screen_y >= destination_height) {
             return std::nullopt;
@@ -595,7 +596,8 @@ bool WorldMinimap::render(
         int y{};
         bool selected{};
     };
-    // 传送目标排在最前，地名优先占位并以黄色显示。
+    // 地名按场景编号的固定顺序避让，平移时各地名的位置不因传送目标变化而翻动；
+    // 传送目标以黄色显示。
     const auto selected = selected_scene(ranger);
     std::vector<Entrance> entrances;
     for (std::size_t index = 0U; index < ranger.scenes.size(); ++index) {
@@ -605,13 +607,8 @@ bool WorldMinimap::render(
         }
         if (const auto point = project(entrance->first, entrance->second)) {
             const bool is_selected = selected == index;
-            const Entrance item{scene_name(ranger.scenes[index]), point->first, point->second,
-                is_selected};
-            if (is_selected) {
-                entrances.insert(entrances.begin(), item);
-            } else {
-                entrances.push_back(item);
-            }
+            entrances.push_back(Entrance{scene_name(ranger.scenes[index]), point->first,
+                point->second, is_selected});
             draw_marker(framebuffer, point->first, point->second,
                 is_selected ? marker_size : std::max(1, marker_size / 2),
                 is_selected ? kSelectedColor : kEntranceColor);
@@ -630,7 +627,8 @@ bool WorldMinimap::render(
         }
     }
     // 地名避让：依次尝试入口点上、下、右、左四个位置，取第一个不与已放置地名重叠
-    // 且不超出地图区域的位置；都放不下则只保留入口点。
+    // 且不超出地图区域的位置；都放不下则只保留入口点。位置按物理像素计算并按物理像素
+    // 绘制，与底图同步逐像素移动。
     struct LabelBox {
         int left{};
         int top{};
@@ -638,17 +636,17 @@ bool WorldMinimap::render(
         int bottom{};
     };
     std::vector<LabelBox> placed;
-    const auto line_height = static_cast<int>(label_metrics.line_height);
-    const auto gap = std::max(1, marker_size / scale);
-    const auto area_left = (left + scale - 1) / scale;
-    const auto area_top = (top + scale - 1) / scale;
-    const auto area_right = (left + destination_width) / scale;
-    const auto area_bottom = (top + destination_height) / scale;
+    const auto line_height = static_cast<int>(label_metrics.line_height) * scale;
+    const auto gap = std::max(scale, marker_size);
+    const auto area_left = left;
+    const auto area_top = top;
+    const auto area_right = left + destination_width;
+    const auto area_bottom = top + destination_height;
     for (const auto& entrance : entrances) {
         const auto text_width = static_cast<int>(label_metrics.big5_width) *
-            static_cast<int>(entrance.name.size() / 2U);
-        const auto x = entrance.x / scale;
-        const auto y = entrance.y / scale;
+            static_cast<int>(entrance.name.size() / 2U) * scale;
+        const auto x = entrance.x;
+        const auto y = entrance.y;
         const std::array<std::pair<int, int>, 4> candidates{
             std::pair{x - text_width / 2, y - gap - line_height},
             std::pair{x - text_width / 2, y + gap},
@@ -665,9 +663,13 @@ bool WorldMinimap::render(
                 continue;
             }
             placed.push_back(box);
-            static_cast<void>(ui_renderer.draw_text_big5_pixels(framebuffer, text_x, text_y,
+            // 物理像素位置拆为逻辑坐标与不足一个逻辑像素的物理偏移。
+            const auto logical_x = text_x / scale;
+            const auto logical_y = text_y / scale;
+            static_cast<void>(ui_renderer.draw_text_big5_pixels(framebuffer, logical_x, logical_y,
                 text::Big5TextView{entrance.name},
-                entrance.selected ? kSelectedLabelText : kLabelText, label_font));
+                entrance.selected ? kSelectedLabelText : kLabelText, label_font,
+                text_x - logical_x * scale, text_y - logical_y * scale));
             break;
         }
     }

@@ -4,10 +4,12 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <ctime>
 #include <iterator>
 #include <limits>
+#include <numbers>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -1552,6 +1554,12 @@ void LegacyGameRuntime::finish_presented_tick(const std::uint32_t bios_tick) {
     }
 }
 
+void LegacyGameRuntime::set_world_minimap_pan_keys(
+    const bool left, const bool up, const bool down, const bool right) noexcept {
+    world_minimap_pan_x_ = (right ? 1 : 0) - (left ? 1 : 0);
+    world_minimap_pan_y_ = (down ? 1 : 0) - (up ? 1 : 0);
+}
+
 bool LegacyGameRuntime::handle_world_input(
     const bool left,
     const bool up,
@@ -1559,9 +1567,7 @@ bool LegacyGameRuntime::handle_world_input(
     const bool right,
     const bool menu_requested) {
     if (world_minimap_open_) {
-        // 方向键按住期间连续平移地图，由渲染按实际时间推进；只消耗Esc。
-        world_minimap_pan_x_ = left ? -1 : right ? 1 : 0;
-        world_minimap_pan_y_ = up ? -1 : down ? 1 : 0;
+        // 平移方向由set_world_minimap_pan_keys设定，渲染按实际时间推进；只消耗Esc。
         if (menu_requested) {
             toggle_world_minimap();
         }
@@ -2404,6 +2410,8 @@ void LegacyGameRuntime::toggle_world_minimap() {
     world_minimap_open_ = true;
     world_minimap_pan_x_ = 0;
     world_minimap_pan_y_ = 0;
+    world_minimap_velocity_x_ = 0.0;
+    world_minimap_velocity_y_ = 0.0;
     world_minimap_refresh_frames_ = 2;
     queued_motion_direction_.reset();
     diagnostics::log_info("world minimap opened view=" + std::string{view_name(view_)});
@@ -2414,14 +2422,38 @@ bool LegacyGameRuntime::render_modern_ui(render::RgbaFramebuffer& framebuffer) {
         --world_minimap_refresh_frames_;
     }
     if (world_minimap_open_ && world_minimap_ != nullptr) {
-        // 每秒平移1.5个可见高度；单帧间隔上限100毫秒，避免卡顿后跳太远。
+        // 满速每秒平移1.5个可见高度，斜向与直向同速。速度向目标逼近：加速时间常数0.15秒、
+        // 减速0.05秒，点按一次的位移约为匀速同时长的一半，长按仍达到满速。
+        // 单帧间隔上限100毫秒，避免卡顿后跳太远。
         constexpr double kPanViewsPerSecond = 1.5;
+        constexpr double kPanAccelerateSeconds = 0.15;
+        constexpr double kPanDecelerateSeconds = 0.05;
+        constexpr double kPanStopVelocity = 0.01;
         const auto now = std::chrono::steady_clock::now();
-        if (world_minimap_pan_x_ != 0 || world_minimap_pan_y_ != 0) {
-            const auto elapsed = std::min(
-                std::chrono::duration<double>(now - world_minimap_pan_time_).count(), 0.1);
-            world_minimap_->pan(world_minimap_pan_x_ * kPanViewsPerSecond * elapsed,
-                world_minimap_pan_y_ * kPanViewsPerSecond * elapsed);
+        const auto elapsed = std::min(
+            std::chrono::duration<double>(now - world_minimap_pan_time_).count(), 0.1);
+        auto target_x = static_cast<double>(world_minimap_pan_x_);
+        auto target_y = static_cast<double>(world_minimap_pan_y_);
+        if (target_x != 0.0 && target_y != 0.0) {
+            target_x *= std::numbers::sqrt2 / 2.0;
+            target_y *= std::numbers::sqrt2 / 2.0;
+        }
+        const auto approach = [elapsed](double& velocity, const double target) {
+            const auto accelerating = std::abs(target) > std::abs(velocity) &&
+                (target == 0.0 || velocity * target >= 0.0);
+            const auto response = accelerating ? kPanAccelerateSeconds : kPanDecelerateSeconds;
+            velocity += (target - velocity) * (1.0 - std::exp(-elapsed / response));
+        };
+        approach(world_minimap_velocity_x_, target_x);
+        approach(world_minimap_velocity_y_, target_y);
+        if (target_x == 0.0 && target_y == 0.0 &&
+            std::hypot(world_minimap_velocity_x_, world_minimap_velocity_y_) < kPanStopVelocity) {
+            world_minimap_velocity_x_ = 0.0;
+            world_minimap_velocity_y_ = 0.0;
+        }
+        if (world_minimap_velocity_x_ != 0.0 || world_minimap_velocity_y_ != 0.0) {
+            world_minimap_->pan(world_minimap_velocity_x_ * kPanViewsPerSecond * elapsed,
+                world_minimap_velocity_y_ * kPanViewsPerSecond * elapsed);
         }
         world_minimap_pan_time_ = now;
         if (const auto* ranger = game_state_.ranger(); ranger != nullptr) {

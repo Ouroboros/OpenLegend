@@ -118,6 +118,14 @@ void LegacyInputCoordinator::dispatch_repeats(
 }
 
 void LegacyInputCoordinator::apply_game_input() {
+    if (game_.world_minimap_open()) {
+        const auto any_down = [this](const auto& keys) {
+            return keyboard_.down(keys[0]) || keyboard_.down(keys[1]);
+        };
+        game_.set_world_minimap_pan_keys(any_down(input::legacy_key::world_left),
+            any_down(input::legacy_key::world_up), any_down(input::legacy_key::world_down),
+            any_down(input::legacy_key::world_right));
+    }
     const auto world_direction = keyboard_.world_direction();
     using input::LegacyWorldDirectionInput;
     const bool directional_input_consumed = game_.handle_world_input(

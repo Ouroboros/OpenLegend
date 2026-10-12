@@ -252,6 +252,9 @@ public:
         bool right,
         bool menu_requested = false);
 
+    // 世界小地图打开时四个方向键各自是否按住；可同时按两个方向斜向平移。
+    void set_world_minimap_pan_keys(bool left, bool up, bool down, bool right) noexcept;
+
     NODISCARD input::DirectionRepeatContext direction_repeat_context() const noexcept;
 
     NODISCARD bool scene_loop_uses_key_states() const noexcept;
@@ -302,7 +305,8 @@ public:
     // 头顶飘字动画进行中或世界小地图刚开关，需要重画现代UI层。
     NODISCARD bool modern_ui_animating() const noexcept {
         return !status_floats_.empty() || world_minimap_refresh_frames_ > 0 ||
-            (world_minimap_open_ && (world_minimap_pan_x_ != 0 || world_minimap_pan_y_ != 0));
+            (world_minimap_open_ && (world_minimap_pan_x_ != 0 || world_minimap_pan_y_ != 0 ||
+                world_minimap_velocity_x_ != 0.0 || world_minimap_velocity_y_ != 0.0));
     }
 
     // 世界小地图打开中，或此刻可以打开（大地图或场景空闲时）。
@@ -621,6 +625,9 @@ private:
     // 方向键按住时小地图连续平移的方向与上次推进时刻。
     int world_minimap_pan_x_{};
     int world_minimap_pan_y_{};
+    // 当前平移速度（可见高度／秒的比例，-1～1），向按键目标速度平滑逼近。
+    double world_minimap_velocity_x_{};
+    double world_minimap_velocity_y_{};
     std::chrono::steady_clock::time_point world_minimap_pan_time_{};
     int world_minimap_refresh_frames_{};
     std::unique_ptr<battle::BattleSession> battle_session_;

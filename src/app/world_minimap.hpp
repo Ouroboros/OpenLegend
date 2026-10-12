@@ -36,7 +36,7 @@ public:
     void zoom_out() noexcept;
 
     // 按屏幕方向连续平移，单位为可见高度的倍数，左右与上下按相同像素距离；
-    // 不足一个像素的部分累积到下次。
+    // 视野中心以小数记录，绘制时按亚像素位置取样，平移逐屏幕像素连续。
     void pan(double horizontal_views, double vertical_views) noexcept;
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
@@ -75,10 +75,8 @@ private:
     int anchor_left_{};
     int anchor_top_{};
     int zoom_{};
-    double pan_remainder_x_{};
-    double pan_remainder_y_{};
-    int center_x_{};
-    int center_y_{};
+    double center_x_{};
+    double center_y_{};
 };
 
 }  // namespace openlegend::app
