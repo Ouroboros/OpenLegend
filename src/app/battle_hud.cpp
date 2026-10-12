@@ -458,9 +458,8 @@ int render_turn_order(Hud& hud, const battle::BattleRenderer& data, const battle
     // 边距大于圆角半径，头像不压到框角。
     const auto padding = kCardInset * unit;
     const auto portrait_height = std::max(12, hud.height() / 10);
-    const auto label_width = hud.text_width(strings::kHudTurnOrderLabel);
     std::vector<std::pair<const battle::BattleHudCombatant*, int>> entries;
-    auto total = 2 * padding + label_width + padding;
+    auto total = 2 * padding;
     for (auto index = *view.current; index < view.combatants.size(); ++index) {
         const auto& combatant = view.combatants[index];
         if (combatant.hidden) {
@@ -482,8 +481,7 @@ int render_turn_order(Hud& hud, const battle::BattleRenderer& data, const battle
     const auto height = portrait_height + 2 * padding;
     const auto left = (hud.width() - total) / 2;
     hud.box(left, unit, total, height);
-    hud.text(left + padding, unit + (height - hud.line()) / 2, strings::kHudTurnOrderLabel, kDim);
-    auto x = left + padding + label_width + padding;
+    auto x = left + padding;
     const auto y = unit + padding;
     for (std::size_t index = 0U; index < entries.size(); ++index) {
         const auto& [combatant, portrait_width] = entries[index];
