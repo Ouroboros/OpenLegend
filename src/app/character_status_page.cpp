@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "openlegend/model/hurt.hpp"
+#include "openlegend/model/magic_progression.hpp"
 #include "openlegend/model/practice.hpp"
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/reference_layout.hpp"
@@ -232,6 +233,29 @@ NODISCARD bool draw_ability_page(
         area.left + frame_width * 3 / 16, area.left + frame_width * 9 / 16);
 }
 
+// 当前等级的武功威力：1~10级取原版定义表，NG+更高等级按武功成长模型推算，与战斗一致。
+NODISCARD std::optional<std::int64_t> magic_attack_power(
+    const model::RuntimeRangerState& ranger, const std::size_t magic_id,
+    const std::int64_t proficiency) {
+    const auto level = model::magic_level_from_proficiency(proficiency);
+    if (!level.has_value() || magic_id >= ranger.magics.size()) {
+        return std::nullopt;
+    }
+    if (*level <= static_cast<std::int64_t>(model::magic_word::level_value_count)) {
+        return ranger.magics[magic_id].word(
+            model::magic_word::attack_begin + static_cast<std::size_t>(*level - 1));
+    }
+    static std::optional<model::MagicProgression> progression;
+    if (!progression.has_value() || !progression->definitions_match(ranger.magics)) {
+        progression.emplace(ranger.magics);
+    }
+    if (!progression->valid()) {
+        return std::nullopt;
+    }
+    const auto effects = progression->effects(magic_id, *level);
+    return effects.has_value() ? std::optional<std::int64_t>{effects->attack} : std::nullopt;
+}
+
 NODISCARD bool draw_magic_page(
     StatusLayout& layout, const ContentArea& area, const model::RuntimeRangerState& ranger,
     const model::RoleState& role) {
@@ -239,6 +263,7 @@ NODISCARD bool draw_magic_page(
         std::span<const std::uint8_t> name;
         std::u8string level;
         std::u8string proficiency;
+        std::u8string power;
     };
     std::array<MagicRow, model::role_word::magic_count> rows{};
     std::size_t count = 0U;
@@ -251,7 +276,12 @@ NODISCARD bool draw_magic_page(
             fixed_text(ranger.magics[static_cast<std::size_t>(magic_id)].bytes,
                 model::magic_word::name_byte, model::magic_word::name_bytes),
             decimal_text(role.magic_levels[slot] / 100 + 1),
-            decimal_text(role.magic_levels[slot])};
+            decimal_text(role.magic_levels[slot]),
+            [&] {
+                const auto power = magic_attack_power(
+                    ranger, static_cast<std::size_t>(magic_id), role.magic_levels[slot]);
+                return power.has_value() ? decimal_text(*power) : std::u8string{kUnknownValue};
+            }()};
     }
     if (count == 0U) {
         return true;
@@ -264,17 +294,20 @@ NODISCARD bool draw_magic_page(
     const auto left = area.left + width / 8;
     const auto level_x = area.left + width * 5 / 12;
     const auto proficiency_x = area.left + width * 7 / 12;
+    const auto power_x = area.left + width * 19 / 24;
     const auto top = area.top;
     if (!layout.text(left, top, kNameHeader, text_colors::menu_normal) ||
         !layout.text(level_x, top, kLevelHeader, text_colors::menu_normal) ||
-        !layout.text(proficiency_x, top, kProficiencyHeader, text_colors::menu_normal)) {
+        !layout.text(proficiency_x, top, kProficiencyHeader, text_colors::menu_normal) ||
+        !layout.text(power_x, top, kMagicPowerHeader, text_colors::menu_normal)) {
         return false;
     }
     for (std::size_t index = 0U; index < count; ++index) {
         const auto row = top + static_cast<int>(index + 1U) * row_step;
         if (!layout.big5(left, row, rows[index].name, text_colors::notice) ||
             !layout.text(level_x, row, rows[index].level, text_colors::selected) ||
-            !layout.text(proficiency_x, row, rows[index].proficiency, text_colors::notice)) {
+            !layout.text(proficiency_x, row, rows[index].proficiency, text_colors::notice) ||
+            !layout.text(power_x, row, rows[index].power, text_colors::selected)) {
             return false;
         }
     }
