@@ -23,6 +23,7 @@ enum class SaveListColumn : std::size_t {
     slot,
     name,
     level,
+    playthrough,
     location,
     saved_at,
     count,
@@ -97,7 +98,7 @@ NODISCARD SaveListLayout save_list_layout(
     const std::span<const SaveListEntry> entries) noexcept {
     constexpr int kReferenceWidth = 320;
     constexpr int kReferencePanelHeight = 198;
-    constexpr std::array<int, 5> kColumnWeights{40, 72, 24, 87, 88};
+    constexpr std::array<int, 6> kColumnWeights{36, 64, 24, 32, 71, 84};
     constexpr int kTotalColumnWeight = 311;
     const int framebuffer_width = framebuffer.logical_width();
     const int framebuffer_height = framebuffer.logical_height();
@@ -131,17 +132,30 @@ NODISCARD SaveListLayout save_list_layout(
         if (level_weight > 109) {
             return {};
         }
-        column_weights = {24, 64, level_weight, 159 - level_weight, 64};
+        column_weights = {24, 64, level_weight, 32, 127 - level_weight, 64};
     }
-    if (saved_at_pixels > content_width * column_weights[4] / kTotalColumnWeight) {
+    // 周目列至少放得下列标题两字再加一字符间距，不足时从地点列补。
+    const auto playthrough_pixels = 2 * static_cast<int>(metrics.big5_width) +
+        static_cast<int>(metrics.ascii_width);
+    if (playthrough_pixels > content_width * column_weights[3] / kTotalColumnWeight) {
+        const auto playthrough_weight = (playthrough_pixels * kTotalColumnWeight +
+            content_width - 1) / content_width;
+        const auto added_weight = playthrough_weight - column_weights[3];
+        if (added_weight >= column_weights[4]) {
+            return {};
+        }
+        column_weights[4] -= added_weight;
+        column_weights[3] = playthrough_weight;
+    }
+    if (saved_at_pixels > content_width * column_weights[5] / kTotalColumnWeight) {
         const auto saved_at_weight = ((saved_at_pixels + metrics.shadow_offset_x) * kTotalColumnWeight +
             content_width - 1) / content_width;
-        const auto added_weight = saved_at_weight - column_weights[4];
+        const auto added_weight = saved_at_weight - column_weights[5];
         if (added_weight >= column_weights[1]) {
             return {};
         }
         column_weights[1] -= added_weight;
-        column_weights[4] = saved_at_weight;
+        column_weights[5] = saved_at_weight;
     }
 
     SaveListLayout layout;
@@ -189,7 +203,8 @@ bool SaveListRenderer::render(
     const bool wide_level = std::any_of(entries.begin(), entries.end(), [](const auto& entry) {
         return entry.state == SaveListEntryState::ready && (entry.level >= 1000 || entry.level <= -100);
     });
-    const auto font_size = wide_level ? render::rgba::FontSize{10U} : render::rgba::FontSize{};
+    // 字号为原基准的80%：常规16→13，等级过宽时10→8。
+    const auto font_size = wide_level ? render::rgba::FontSize{8U} : render::rgba::FontSize{13U};
     const auto metrics = ui_renderer.font_metrics(framebuffer, font_size);
     const auto layout = save_list_layout(framebuffer, metrics, entries);
     const auto column = [&layout](const SaveListColumn value) {
@@ -253,7 +268,14 @@ bool SaveListRenderer::render(
             framebuffer,
             column(SaveListColumn::location),
             layout.header_y,
-            mode == SaveListMode::inherit || mode == SaveListMode::save_completion ? u8"周目" : kLocationHeader,
+            kLocationHeader,
+            text_colors::normal,
+            palette, font_size) ||
+        !ui_renderer.draw_text_utf8(
+            framebuffer,
+            column(SaveListColumn::playthrough),
+            layout.header_y,
+            kPlaythroughHeader,
             text_colors::normal,
             palette, font_size) ||
         !ui_renderer.draw_text_utf8(
@@ -312,6 +334,8 @@ bool SaveListRenderer::render(
         }
         std::u8string level;
         append_number(level, entry.level);
+        std::u8string playthrough;
+        append_number(playthrough, entry.playthrough);
         const auto saved_at = text::utf8_from_ascii(entry.saved_at);
         if (!ui_renderer.draw_text_big5(
                 framebuffer,
@@ -328,6 +352,13 @@ bool SaveListRenderer::render(
                 column(SaveListColumn::level),
                 y,
                 level,
+                colors,
+                palette, font_size) ||
+            !ui_renderer.draw_text_utf8(
+                framebuffer,
+                column(SaveListColumn::playthrough),
+                y,
+                playthrough,
                 colors,
                 palette, font_size) ||
             !ui_renderer.draw_text_mixed(

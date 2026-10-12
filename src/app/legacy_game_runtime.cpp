@@ -3676,6 +3676,7 @@ void LegacyGameRuntime::refresh_save_list(const std::uint16_t page) {
             entry.state = ui::SaveListEntryState::ready;
             entry.protagonist_name = legacy_field(name, 0U, name.size());
             entry.level = protagonist.level;
+            entry.playthrough = loaded.snapshot->playthrough;
             entry.location = save_location(loaded.snapshot->ranger);
             entry.saved_at = local_save_time(loaded.metadata->timestamp_utc);
             continue;
@@ -3765,8 +3766,8 @@ void LegacyGameRuntime::refresh_completion_list(const std::uint16_t page) {
         entry.state = ui::SaveListEntryState::ready;
         entry.protagonist_name = legacy_field(name, 0U, name.size());
         entry.level = actor.level;
-        const auto playthrough = std::to_string(loaded.save->snapshot.playthrough);
-        entry.location.append_utf8(std::u8string{playthrough.begin(), playthrough.end()});
+        entry.playthrough = loaded.save->snapshot.playthrough;
+        entry.location = save_location(loaded.save->snapshot.ranger);
         entry.saved_at = local_save_time(loaded.save->metadata.timestamp_utc);
     }
 }

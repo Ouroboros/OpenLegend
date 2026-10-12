@@ -35,6 +35,8 @@ struct SaveListEntry {
     SaveListEntryState state{SaveListEntryState::empty};
     std::vector<std::uint8_t> protagonist_name;
     std::int64_t level{};
+    // 存档所在周目；原版格式存档为1。
+    std::int64_t playthrough{1};
     text::GameText location;
     std::string saved_at;
 };
