@@ -137,6 +137,8 @@ struct SceneStepResult {
     std::int16_t style{};
     std::int16_t battle_id{-1};
     std::int16_t battle_get_exp{};
+    // 并入本战的另一场战斗敌方（NG+最终战正邪合战），-1表示无。
+    std::int16_t merged_battle_id{-1};
     std::int16_t shop_id{-1};
     std::int16_t menu_index{-1};
     std::int16_t save_slot{-1};
@@ -195,6 +197,25 @@ struct SceneMovePlan {
     friend bool operator==(const SceneMovePlan&, const SceneMovePlan&) = default;
 };
 
+// 合战规则（由配置文件提供）：剧情开战battle时若条件成立，先插播dialogues，
+// 再把merge_battle的敌方并入本战。C++只实现机制，不含具体战斗或台词编号。
+struct BattleMergeDialogue {
+    std::int16_t talk_id{};
+    std::int16_t head_id{};
+    std::int16_t style{};
+};
+
+struct BattleMergeRule {
+    std::int16_t battle{-1};
+    std::int16_t merge_battle{-1};
+    bool new_game_plus_only{true};
+    // 条件：角色role的道德在[morality_min, morality_max]内。
+    std::int16_t role{0};
+    std::int64_t morality_min{0};
+    std::int64_t morality_max{100};
+    std::vector<BattleMergeDialogue> dialogues;
+};
+
 enum class SceneSessionContext {
     scene,
     world_event_overlay,
@@ -220,6 +241,10 @@ public:
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
     NODISCARD const std::string& error() const noexcept { return error_; }
+
+    void set_battle_merge_rules(std::shared_ptr<const std::vector<BattleMergeRule>> rules) noexcept {
+        battle_merge_rules_ = std::move(rules);
+    }
 
     NODISCARD SceneStepResult tick(
         std::optional<SceneDirection> direction,
@@ -783,6 +808,8 @@ private:
     std::int16_t true_offset_{};
     std::int16_t false_offset_{};
     std::int16_t battle_get_exp_{};
+    bool battle_merge_announced_{};
+    std::shared_ptr<const std::vector<BattleMergeRule>> battle_merge_rules_;
     std::optional<std::int16_t> player_frame_override_;
     std::optional<PanState> pan_state_;
     std::optional<SceneMovePlan> pending_camera_pan_plan_;

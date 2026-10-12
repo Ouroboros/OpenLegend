@@ -201,6 +201,9 @@ public:
     void set_save_slot_memory(
         std::optional<std::uint16_t> last_slot, std::filesystem::path configuration_path);
 
+    // 读取合战规则文件；文件不存在时无规则，出错时记录日志且规则不生效。
+    void load_battle_merge_rules(const std::filesystem::path& path);
+
     NODISCARD bool weather_presentation_active() const noexcept;
 
     NODISCARD std::uint64_t weather_revision() const noexcept;
@@ -476,7 +479,7 @@ private:
         std::unique_ptr<scene::SceneSession> prepared = {});
 
     NODISCARD bool start_battle(
-        std::int16_t battle_id, bool grant_experience);
+        std::int16_t battle_id, bool grant_experience, std::int16_t merged_battle_id = -1);
 
     void begin_battle_transition_if_ready();
 
@@ -612,6 +615,7 @@ private:
     };
     std::vector<StatusFloat> status_floats_;
     std::shared_ptr<WorldMinimap> world_minimap_;
+    std::shared_ptr<const std::vector<scene::BattleMergeRule>> battle_merge_rules_;
     bool world_minimap_open_{};
     std::vector<std::uint8_t> world_minimap_keys_{static_cast<std::uint8_t>('M'), 0x09U};
     // 方向键按住时小地图连续平移的方向与上次推进时刻。

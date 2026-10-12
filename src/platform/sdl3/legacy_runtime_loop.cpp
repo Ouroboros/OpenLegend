@@ -269,6 +269,8 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         }
         game.set_weather_presentation_enabled(true);
         game.set_save_slot_memory(settings.last_save_slot, settings.configuration_path);
+        game.load_battle_merge_rules(
+            settings.configuration_path.parent_path() / "battle_merges.toml");
         game.set_world_minimap_keys(settings.world_map_keys);
         const bool native_motion_enabled =
             settings.movement_step_duration > std::chrono::nanoseconds::zero();

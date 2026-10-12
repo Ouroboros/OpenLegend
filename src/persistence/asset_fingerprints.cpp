@@ -70,7 +70,9 @@ void apply_sha256_block(
     }
 }
 
-NODISCARD std::optional<std::string> sha256(const std::span<const std::uint8_t> bytes) {
+}
+
+std::optional<std::string> sha256_hex(const std::span<const std::uint8_t> bytes) {
     if (bytes.size() > std::numeric_limits<std::uint64_t>::max() / 8U) {
         return std::nullopt;
     }
@@ -106,8 +108,6 @@ NODISCARD std::optional<std::string> sha256(const std::span<const std::uint8_t> 
     return result;
 }
 
-}
-
 AssetFingerprintResult fingerprint_new_game_plus_assets(const std::filesystem::path& root) {
     AssetFingerprints fingerprints;
     for (std::size_t index = 0U; index < kNewGamePlusSaveAssets.size(); ++index) {
@@ -116,7 +116,7 @@ AssetFingerprintResult fingerprint_new_game_plus_assets(const std::filesystem::p
         if (!file) {
             return {std::nullopt, path, file.error};
         }
-        auto digest = sha256(file.bytes);
+        auto digest = sha256_hex(file.bytes);
         if (!digest.has_value()) {
             return {std::nullopt, path, "asset file exceeds the SHA-256 length domain"};
         }

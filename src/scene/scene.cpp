@@ -1190,7 +1190,33 @@ SceneStepResult SceneSession::run_event() {
             pending_legacy_text_.clear();
             return pending_;
         }
-        case 6:
+        case 6: {
+            // 配置的合战规则：第一条匹配的规则先插播对白（本指令随后重新执行），再开合战。
+            const BattleMergeRule* merge = nullptr;
+            if (battle_merge_rules_ != nullptr) {
+                for (const auto& rule : *battle_merge_rules_) {
+                    if (rule.battle != argument(1) ||
+                        (rule.new_game_plus_only && !snapshot_.configuration.enabled) ||
+                        rule.role < 0 ||
+                        static_cast<std::size_t>(rule.role) >= snapshot_.ranger.roles.size()) {
+                        continue;
+                    }
+                    const auto morality =
+                        snapshot_.ranger.roles[static_cast<std::size_t>(rule.role)].morality;
+                    if (morality >= rule.morality_min && morality <= rule.morality_max) {
+                        merge = &rule;
+                        break;
+                    }
+                }
+            }
+            if (merge != nullptr && !merge->dialogues.empty() && !battle_merge_announced_) {
+                battle_merge_announced_ = true;
+                for (const auto& line : merge->dialogues) {
+                    queue_dialogue(line.talk_id, line.head_id, line.style);
+                }
+                return emit_queued();
+            }
+            battle_merge_announced_ = false;
             true_offset_ = argument(2);
             false_offset_ = argument(3);
             battle_get_exp_ = argument(4);
@@ -1199,7 +1225,9 @@ SceneStepResult SceneSession::run_event() {
             pending_ = current_result(SceneStepKind::battle);
             pending_.battle_id = argument(1);
             pending_.battle_get_exp = battle_get_exp_;
+            pending_.merged_battle_id = merge != nullptr ? merge->merge_battle : std::int16_t{-1};
             return pending_;
+        }
         case 7:
             clear_event();
             return current_result(SceneStepKind::stay);

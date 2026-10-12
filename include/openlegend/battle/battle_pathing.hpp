@@ -11,6 +11,9 @@
 
 namespace openlegend::battle {
 
+// 战场地面贴图是否属于不可站立的阻挡类（原版移动寻路规则）。
+NODISCARD bool battle_ground_blocked(std::int16_t tile) noexcept;
+
 inline constexpr std::int16_t kBattlePathUnvisited = 254;
 inline constexpr std::int16_t kBattlePathMarked = 250;
 inline constexpr std::int16_t kBattlePathConsumed = 255;

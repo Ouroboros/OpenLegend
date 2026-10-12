@@ -3,6 +3,7 @@
 #include <array>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -42,6 +43,9 @@ struct AssetFingerprintResult {
         return fingerprints.has_value() && error.empty();
     }
 };
+
+// 小写十六进制SHA-256；长度超出算法定义域时为空。
+NODISCARD std::optional<std::string> sha256_hex(std::span<const std::uint8_t> bytes);
 
 NODISCARD AssetFingerprintResult fingerprint_new_game_plus_assets(
     const std::filesystem::path& root);

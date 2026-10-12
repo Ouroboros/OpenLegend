@@ -166,11 +166,12 @@ BattleSession::BattleSession(
     std::int16_t* const legacy_magic_slot,
     const model::NewGamePlusConfiguration& configuration,
     const std::int64_t playthrough,
-    const model::RangerState* const enemy_baseline)
+    const model::RangerState* const enemy_baseline,
+    const std::int16_t merged_battle_id)
     : ranger_(ranger),
       random_(random),
       new_game_plus_enabled_(configuration.enabled),
-      data_(data_root, battle_id),
+      data_(data_root, battle_id, merged_battle_id),
       setup_(data_, ranger_, legacy_hp_cost_scale, configuration, playthrough, enemy_baseline),
       pathing_(data_),
       renderer_(data_root, data_.battlefield_id()),

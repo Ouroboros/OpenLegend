@@ -222,7 +222,8 @@ public:
         std::int16_t* legacy_magic_slot = nullptr,
         const model::NewGamePlusConfiguration& configuration = {},
         std::int64_t playthrough = 1,
-        const model::RangerState* enemy_baseline = nullptr);
+        const model::RangerState* enemy_baseline = nullptr,
+        std::int16_t merged_battle_id = -1);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 

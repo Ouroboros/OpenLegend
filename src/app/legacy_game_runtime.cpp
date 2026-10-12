@@ -26,6 +26,7 @@
 #include "openlegend/time/legacy_clock.hpp"
 #include "character_status_page.hpp"
 #include "battle_hud.hpp"
+#include "battle_merge_rules.hpp"
 #include "item_list_page.hpp"
 #include "world_minimap.hpp"
 
@@ -730,6 +731,23 @@ void LegacyGameRuntime::set_save_slot_memory(
     std::filesystem::path configuration_path) {
     last_save_slot_ = last_slot;
     save_slot_configuration_path_ = std::move(configuration_path);
+}
+
+void LegacyGameRuntime::load_battle_merge_rules(const std::filesystem::path& path) {
+    auto loaded = app::load_battle_merge_rules(path, data_root_path_);
+    for (const auto& skipped : loaded.skipped) {
+        diagnostics::log_warning("battle merge rule disabled path=" + path.string() +
+            " reason=" + skipped);
+    }
+    if (!loaded.error.empty()) {
+        diagnostics::log_error("battle merge rules ignored path=" + path.string() +
+            " reason=" + loaded.error);
+    } else {
+        diagnostics::log_info("battle merge rules loaded path=" + path.string() +
+            " count=" + std::to_string(loaded.rules.size()));
+    }
+    battle_merge_rules_ =
+        std::make_shared<const std::vector<scene::BattleMergeRule>>(std::move(loaded.rules));
 }
 
 void LegacyGameRuntime::remember_save_slot(const std::uint16_t slot) {
@@ -3021,6 +3039,7 @@ bool LegacyGameRuntime::start_scene(
         startup_resources_.fixed_shadow_mask(),
         startup_resources_.shifted_shadow_mask(),
         movement_step_duration_ > std::chrono::nanoseconds::zero());
+    scene_session_->set_battle_merge_rules(battle_merge_rules_);
     if (!scene_session_->valid()) {
         show_error(scene_session_->error(), error_return_view);
         scene_session_.reset();
@@ -3042,7 +3061,8 @@ bool LegacyGameRuntime::start_scene(
 }
 
 bool LegacyGameRuntime::start_battle(
-    const std::int16_t battle_id, const bool grant_experience) {
+    const std::int16_t battle_id, const bool grant_experience,
+    const std::int16_t merged_battle_id) {
     auto* ranger = game_state_.ranger();
     const auto* snapshot = game_state_.snapshot();
     if (ranger == nullptr || snapshot == nullptr || scene_session_ == nullptr) {
@@ -3063,7 +3083,8 @@ bool LegacyGameRuntime::start_battle(
         &legacy_battle_magic_slot_,
         snapshot->configuration,
         snapshot->playthrough,
-        &startup_resources_.ranger());
+        &startup_resources_.ranger(),
+        merged_battle_id);
     if (!battle_session_->valid()) {
         show_error(battle_session_->error(), LegacyGameView::scene);
         battle_session_.reset();
@@ -3253,7 +3274,8 @@ void LegacyGameRuntime::handle_scene_result(const scene::SceneStepResult& result
         break;
     case scene::SceneStepKind::battle:
         battle_request_ = result.battle_id;
-        static_cast<void>(start_battle(result.battle_id, result.battle_get_exp == 1));
+        static_cast<void>(start_battle(
+            result.battle_id, result.battle_get_exp == 1, result.merged_battle_id));
         break;
     case scene::SceneStepKind::scripted_move:
         if (!start_scripted_scene_motion()) {
@@ -4345,6 +4367,7 @@ bool LegacyGameRuntime::begin_world_menu_item_event(const std::int16_t item_id) 
         startup_resources_.fixed_shadow_mask(),
         startup_resources_.shifted_shadow_mask(),
         movement_step_duration_ > std::chrono::nanoseconds::zero());
+    scene_session_->set_battle_merge_rules(battle_merge_rules_);
     if (!scene_session_->valid()) {
         scene_session_.reset();
         return false;
@@ -4413,6 +4436,7 @@ bool LegacyGameRuntime::begin_world_leave_event(const std::int16_t role_id) {
         scene::SceneSessionContext::world_event_overlay,
         startup_resources_.fixed_shadow_mask(),
         startup_resources_.shifted_shadow_mask());
+    world_menu_event_session_->set_battle_merge_rules(battle_merge_rules_);
     if (!world_menu_event_session_->valid()) {
         world_menu_event_session_.reset();
         world_menu_event_phase_ = WorldMenuEventPhase::none;

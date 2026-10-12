@@ -31,7 +31,10 @@ NODISCARD ProgressionData load_progression_data(const resource::DataRoot& data_r
 
 class BattleData {
 public:
-    BattleData(const resource::DataRoot& data_root, std::int16_t battle_id);
+    // merged_battle_id有效时，把该战斗的敌方并入本战空余的敌方槽位（就近另寻站位），
+    // 并合计整场经验；用于NG+最终战正邪合战。
+    BattleData(const resource::DataRoot& data_root, std::int16_t battle_id,
+        std::int16_t merged_battle_id = -1);
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
@@ -68,6 +71,8 @@ public:
     }
 
 private:
+    NODISCARD bool merge_enemies(std::span<const std::uint8_t> war, std::int16_t merged_battle_id);
+
     std::array<std::uint16_t, kOriginalLevelCount> experience_thresholds_{};
     model::PracticeRules practice_rules_{};
     std::int64_t original_maximum_hp_{};
