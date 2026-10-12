@@ -1531,19 +1531,60 @@ bool BattleRenderer::draw_damage_text(
     std::u8string text;
     text.push_back(command.overlay_variant < 0 ? u8'-' : u8'+');
     text.append(decimal_text(command.value, 3));
-    auto left = command.screen_x;
-    if (text.size() > 4U && left >= 0 && left < framebuffer.coordinate_width() - 8) {
-        const auto maximum_left = std::max(0,
-            framebuffer.coordinate_width() - static_cast<int>(text.size()) * 8 - 1);
-        left = std::min(left, maximum_left);
+    // 战场以原生坐标绘制；数字按原版界面相对画面的比例放大，使字号与原版一致。
+    // 320×200画面下比例为1，与原版逐像素相同。
+    const auto viewport = framebuffer.legacy_ui_viewport();
+    const auto scale_numerator = std::max(viewport.width, 1);
+    constexpr int kScaleDenominator = static_cast<int>(compat::kLegacyWidth);
+    const auto scaled = [scale_numerator](const int length) {
+        return length * scale_numerator / kScaleDenominator;
+    };
+    const auto glyph_count = static_cast<int>(text.size());
+    const auto width = scaled(8 * glyph_count + 1);
+    const auto height = scaled(16);
+    // 以原版位置的文字中心为中心。
+    auto left = command.screen_x + 4 * glyph_count - width / 2;
+    const auto top = command.screen_y + 8 - height / 2;
+    // 沿用原版右缘规则：超过4个字符且起点在画面内时，左移到不越出右边缘。
+    if (glyph_count > 4 && left >= 0 && left < framebuffer.coordinate_width() - scaled(8)) {
+        left = std::min(left, std::max(0, framebuffer.coordinate_width() - width));
     }
-    return draw_text_utf8(
-        framebuffer,
-        left,
-        command.screen_y,
-        text,
-        render::TextColors::from_legacy_packed(
-            std::bit_cast<std::uint16_t>(command.style)));
+    if (ascii_font_.size() < 128U * 16U) {
+        return false;
+    }
+    const auto colors = render::TextColors::from_legacy_packed(
+        std::bit_cast<std::uint16_t>(command.style));
+    const auto fill = [&framebuffer](const int x0, const int y0, const int x1, const int y1,
+                          const std::uint8_t color) {
+        const auto clipped_left = std::max(x0, 0);
+        const auto clipped_top = std::max(y0, 0);
+        const auto clipped_right = std::min(x1, framebuffer.coordinate_width());
+        const auto clipped_bottom = std::min(y1, framebuffer.coordinate_height());
+        if (clipped_right > clipped_left && clipped_bottom > clipped_top) {
+            static_cast<void>(framebuffer.fill_rectangle(clipped_left, clipped_top,
+                static_cast<std::uint16_t>(clipped_right - clipped_left),
+                static_cast<std::uint16_t>(clipped_bottom - clipped_top), color));
+        }
+    };
+    for (int glyph = 0; glyph < glyph_count; ++glyph) {
+        const auto character = static_cast<std::size_t>(text[static_cast<std::size_t>(glyph)]);
+        const auto* bitmap = ascii_font_.data() + character * 16U;
+        for (int row = 0; row < 16; ++row) {
+            auto mask = std::uint8_t{0x80U};
+            for (int column = 0; column < 8; ++column) {
+                if ((bitmap[row] & mask) != 0U) {
+                    // 与原版相同：前景像素右侧一格画阴影，后续前景可覆盖阴影。
+                    const auto cell = 8 * glyph + column;
+                    fill(left + scaled(cell), top + scaled(row), left + scaled(cell + 1),
+                        top + scaled(row + 1), colors.foreground);
+                    fill(left + scaled(cell + 1), top + scaled(row), left + scaled(cell + 2),
+                        top + scaled(row + 1), colors.right_shadow);
+                }
+                mask = static_cast<std::uint8_t>(mask >> 1U);
+            }
+        }
+    }
+    return true;
 }
 
 std::uint8_t BattleRenderer::blend_pixel(
