@@ -117,7 +117,7 @@ inline constexpr std::u8string_view sexual_attribute_label = u8"性別：";
 inline constexpr std::array<std::u8string_view, 3> sexual_labels{
     u8"男",
     u8"女",
-    u8"自宮",
+    u8"不男不女",
 };
 
 inline constexpr std::u8string_view level_label = u8"等級 ";
