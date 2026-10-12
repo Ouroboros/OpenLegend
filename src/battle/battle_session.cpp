@@ -4654,6 +4654,16 @@ BattleHudView BattleSession::hud_view() {
     }
     view.battlefield = true;
 
+    if (player_attack_ && phase_ != BattleSessionPhase::player_targeting_select &&
+        phase_ != BattleSessionPhase::player_attack_direction &&
+        player_attack_->profile.magic_id >= 0 &&
+        static_cast<std::size_t>(player_attack_->profile.magic_id) < ranger_.magics.size()) {
+        const auto& magic = ranger_.magics[static_cast<std::size_t>(player_attack_->profile.magic_id)];
+        view.active_magic_name = terminated_name(std::span<const std::uint8_t>{magic.bytes}
+            .subspan(model::magic_word::name_byte, model::magic_word::name_bytes));
+        view.active_magic_level = player_attack_->profile.level_index + 1;
+    }
+
     if (phase_ == BattleSessionPhase::player_magic_selection) {
         const auto* role = setup_.combatant_role(current_actor_slot_);
         if (!player_magic_selection_.has_value() || role == nullptr) {

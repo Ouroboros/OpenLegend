@@ -203,6 +203,9 @@ struct BattleHudView {
     std::size_t magic_cursor{};
     // 移动或选目标时光标所在格的参战者。
     std::optional<std::size_t> inspected;
+    // 正在施展的武功（我方与敌方）：名称与等级，选择阶段之外显示。
+    std::span<const std::uint8_t> active_magic_name;
+    std::int64_t active_magic_level{};
 };
 
 class BattleSession {

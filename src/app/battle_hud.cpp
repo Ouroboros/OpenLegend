@@ -449,51 +449,73 @@ void render_magic_menu(Hud& hud, const battle::BattleHudView& view, const int ce
     }
 }
 
-// 行动顺序条：画面顶部，本回合尚未行动的参战者头像，当前行动者在最前并加黄框。
-int render_turn_order(Hud& hud, const battle::BattleRenderer& data, const battle::BattleHudView& view) {
+// 行动顺序条：画面左侧纵向排列本回合尚未行动的参战者头像，当前行动者在最上并加黄框，
+// 我方蓝框、敌方红框；排到底部信息条上方为止。
+void render_turn_order(Hud& hud, const battle::BattleRenderer& data, const battle::BattleHudView& view) {
     if (!view.current.has_value()) {
-        return 0;
+        return;
     }
     const auto unit = hud.unit();
     // 边距大于圆角半径，头像不压到框角。
     const auto padding = kCardInset * unit;
-    const auto portrait_height = std::max(12, hud.height() / 10);
+    const auto portrait_height = std::max(12, hud.height() / 12);
+    const auto bottom_limit = hud.height() - info_bar_height(hud) - 2 * unit;
     std::vector<std::pair<const battle::BattleHudCombatant*, int>> entries;
     auto total = 2 * padding;
+    auto column_width = 0;
     for (auto index = *view.current; index < view.combatants.size(); ++index) {
         const auto& combatant = view.combatants[index];
         if (combatant.hidden) {
             continue;
         }
+        if (unit + total + portrait_height + 2 * unit > bottom_limit) {
+            break;
+        }
         const auto* frame = data.portrait_frame(combatant.portrait_id);
         const auto portrait_width = frame != nullptr && frame->height() > 0
             ? portrait_height * static_cast<int>(frame->width()) / static_cast<int>(frame->height())
             : portrait_height * 4 / 5;
-        if (total + portrait_width + 2 * unit > hud.width() - 2 * unit) {
-            break;
-        }
         entries.emplace_back(&combatant, portrait_width);
-        total += portrait_width + 2 * unit + unit;
+        column_width = std::max(column_width, portrait_width);
+        total += portrait_height + 3 * unit;
     }
     if (entries.empty()) {
-        return 0;
+        return;
     }
-    const auto height = portrait_height + 2 * padding;
-    const auto left = (hud.width() - total) / 2;
-    hud.box(left, unit, total, height);
-    auto x = left + padding;
-    const auto y = unit + padding;
+    const auto width = column_width + 2 * unit + 2 * padding;
+    hud.box(unit, unit, width, total);
+    auto y = unit + padding;
     for (std::size_t index = 0U; index < entries.size(); ++index) {
         const auto& [combatant, portrait_width] = entries[index];
+        const auto x = unit + padding + (column_width - portrait_width) / 2;
         const auto border = index == 0U ? kYellow : combatant->side == 0 ? kAllyColor : kEnemyColor;
-        hud.fill(x, y - unit, portrait_width + 2 * unit, portrait_height + 2 * unit, border);
-        hud.fill(x + unit, y, portrait_width, portrait_height, kBarBack);
+        hud.fill(x, y, portrait_width + 2 * unit, portrait_height + 2 * unit, border);
+        hud.fill(x + unit, y + unit, portrait_width, portrait_height, kBarBack);
         if (const auto* frame = data.portrait_frame(combatant->portrait_id)) {
-            hud.portrait(*frame, x + unit, y, portrait_width, portrait_height);
+            hud.portrait(*frame, x + unit, y + unit, portrait_width, portrait_height);
         }
-        x += portrait_width + 3 * unit;
+        y += portrait_height + 3 * unit;
     }
-    return unit + height;
+}
+
+// 正在施展的武功：画面顶部居中，“武功名 N級”。
+void render_active_magic(Hud& hud, const battle::BattleHudView& view, const int top) {
+    if (view.active_magic_name.empty()) {
+        return;
+    }
+    const auto unit = hud.unit();
+    const auto padding = kCardInset * unit;
+    const auto level = decimal_text(view.active_magic_level) + std::u8string{strings::kHudLevelSuffix};
+    const auto gap = hud.big5_advance() / 2;
+    const auto content_width = hud.big5_width(view.active_magic_name) + gap + hud.text_width(level);
+    const auto width = content_width + 2 * padding;
+    const auto height = hud.line() + 2 * padding;
+    const auto left = (hud.width() - width) / 2;
+    hud.box(left, top, width, height);
+    const auto x = left + padding;
+    const auto y = top + padding;
+    hud.big5(x, y, view.active_magic_name, kYellow);
+    hud.text(x + hud.big5_width(view.active_magic_name) + gap, y, level, kWhite);
 }
 
 // 光标所指角色或当前行动敌方的信息卡：画面右上角，头像、姓名等级、生命内力体力条与中毒内伤。
@@ -557,8 +579,10 @@ bool render_battle_hud(
         return true;
     }
     Hud hud{ui_renderer, palette, framebuffer, kHudReferenceFont};
-    const auto order_bottom = render_turn_order(hud, data, view);
-    render_inspected(hud, data, view, order_bottom + hud.unit());
+    render_turn_order(hud, data, view);
+    render_inspected(hud, data, view, hud.unit());
+    Hud magic_name_hud{ui_renderer, palette, framebuffer, kMenuReferenceFont};
+    render_active_magic(magic_name_hud, view, hud.unit());
     render_info_bar(hud, view);
     Hud menu_hud{ui_renderer, palette, framebuffer, kMenuReferenceFont};
     render_action_panel(menu_hud, data, view, battlefield_center_y(hud));
