@@ -348,17 +348,46 @@ bool render_character_status_page(
     const auto list_left = layout.x(2);
     const auto top = layout.y(2);
     const auto list_step = line + layout.length(4);
-    const auto list_width = name_width + 2 * padding;
-    const auto list_height = static_cast<int>(roles.size()) * list_step - layout.length(4) + 2 * padding;
+    // 人数超过画面可容纳的行数时（战斗中敌方可达十余人）改为滚动列表，
+    // 光标尽量保持在可见区中部，右侧细条指示位置。
+    const auto list_bottom = layout.y(198);
+    const auto visible_rows = static_cast<std::size_t>(std::max(1,
+        (list_bottom - top - 2 * padding + layout.length(4)) / list_step));
+    const auto scrolling = roles.size() > visible_rows;
+    const auto shown = std::min(roles.size(), visible_rows);
+    const auto first = scrolling
+        ? std::min(cursor > shown / 2U ? cursor - shown / 2U : 0U, roles.size() - shown) : 0U;
+    const auto scrollbar_width = scrolling ? layout.length(2) + layout.length(3) : 0;
+    const auto list_width = name_width + 2 * padding + scrollbar_width;
+    const auto list_height = static_cast<int>(shown) * list_step - layout.length(4) + 2 * padding;
     if (!layout.box(list_left, top, list_width, list_height)) {
         return false;
     }
-    for (std::size_t index = 0U; index < roles.size(); ++index) {
+    for (std::size_t row = 0U; row < shown; ++row) {
+        const auto index = first + row;
         const auto name = roles[index]->legacy_name();
-        if (!layout.big5(list_left + padding, top + padding + static_cast<int>(index) * list_step,
+        if (!layout.big5(list_left + padding, top + padding + static_cast<int>(row) * list_step,
                 zero_terminated(name), index == cursor ? text_colors::selected : text_colors::menu_normal)) {
             return false;
         }
+    }
+    if (scrolling) {
+        const auto track_left = list_left + list_width - padding - layout.length(2);
+        const auto track_top = top + padding;
+        const auto track_height = list_height - 2 * padding;
+        const auto thumb_top = track_top +
+            static_cast<int>(static_cast<std::int64_t>(track_height) * static_cast<std::int64_t>(first) /
+                static_cast<std::int64_t>(roles.size()));
+        const auto thumb_height = std::max(layout.length(4),
+            static_cast<int>(static_cast<std::int64_t>(track_height) * static_cast<std::int64_t>(shown) /
+                static_cast<std::int64_t>(roles.size())));
+        static_cast<void>(framebuffer.blend_rectangle(track_left, track_top,
+            static_cast<std::uint16_t>(layout.length(2)), static_cast<std::uint16_t>(track_height),
+            compat::Rgba8{0x80U, 0x80U, 0x80U, 0x60U}));
+        static_cast<void>(framebuffer.fill_rectangle(track_left, thumb_top,
+            static_cast<std::uint16_t>(layout.length(2)),
+            static_cast<std::uint16_t>(std::min(thumb_height, track_top + track_height - thumb_top)),
+            compat::Rgba8{0xE0U, 0xE0U, 0xE0U, 0xFFU}));
     }
 
     const auto panel_left = list_left + list_width + layout.length(4);

@@ -1182,7 +1182,9 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
             battle_session_->phase() ==
                 battle::BattleSessionPhase::player_item_selection ||
             battle_session_->phase() ==
-                battle::BattleSessionPhase::player_status_selection) {
+                battle::BattleSessionPhase::player_status_selection ||
+            battle_session_->player_status_page_active()) {
+            // 状态页长按上下连续切换人物（敌方可达十余人）。
             return DirectionRepeatContext::menu;
         }
         return DirectionRepeatContext::none;
