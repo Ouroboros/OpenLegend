@@ -476,6 +476,7 @@ enum class BattleRenderCommandKind : std::int16_t {
     cursor_overlay,
     highlighted_sprite,
     damage_text,
+    area_overlay,
 };
 
 struct BattleRenderCommand {
@@ -505,6 +506,8 @@ struct BattleRenderState {
     std::int16_t effect_frame_offset{};
     std::int16_t damage_kind{};
     std::int16_t damage_text_offset{};
+    // 选择施放位置时武功覆盖范围（64×64格，非0为覆盖）；为空时不显示。
+    std::span<const std::uint8_t> area_preview;
 };
 
 struct BattleRenderPlan {

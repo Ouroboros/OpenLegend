@@ -304,6 +304,9 @@ bool BattleRenderer::render(
         case BattleRenderCommandKind::damage_text:
             static_cast<void>(draw_damage_text(framebuffer, command));
             break;
+        case BattleRenderCommandKind::area_overlay:
+            static_cast<void>(draw_area_overlay(framebuffer, command.screen_x, command.screen_y));
+            break;
         }
     }
     return true;
@@ -1443,6 +1446,36 @@ bool BattleRenderer::draw_tinted_fight_sprite(
                 if (y >= 0 && y < framebuffer.coordinate_height() &&
                     x >= 0 && x < framebuffer.coordinate_width()) {
                     framebuffer.draw_pixel(x, y, color);
+                }
+                ++x;
+            }
+        }
+    }
+    return true;
+}
+
+bool BattleRenderer::draw_area_overlay(
+    render::IndexedFramebuffer& framebuffer, const int anchor_x, const int anchor_y) const {
+    constexpr std::uint8_t kAreaColor = render::legacy_color::text::severe_injury.foreground;
+    constexpr std::int16_t kAreaWeight = 2;
+    const auto* frame = archive_frame(cloud_sprites_, cloud_frame_cache_, 4U);
+    if (frame == nullptr) {
+        return false;
+    }
+    const auto left = anchor_x - static_cast<int>(frame->x_offset());
+    const auto top = anchor_y - static_cast<int>(frame->y_offset());
+    for (std::size_t row_index = 0U; row_index < frame->rows().size(); ++row_index) {
+        const auto y = top + static_cast<int>(row_index);
+        auto x = left;
+        for (const auto& run : frame->rows()[row_index].runs) {
+            x += static_cast<int>(run.skip);
+            for (std::size_t pixel = 0U; pixel < run.pixels.size(); ++pixel) {
+                if (y >= 0 && y < framebuffer.coordinate_height() &&
+                    x >= 0 && x < framebuffer.coordinate_width()) {
+                    static_cast<void>(framebuffer.transform_rectangle(
+                        x, y, 1, 1, [this](std::uint8_t& destination) {
+                            destination = blend_pixel(kAreaColor, destination, kAreaWeight);
+                        }));
                 }
                 ++x;
             }

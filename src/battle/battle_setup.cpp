@@ -5746,19 +5746,28 @@ std::optional<BattleRenderPlan> BattleSetup::battle_render_plan(
             const auto overlay_x = sprite_x - 18;
             const auto screen_y = point.y;
 
+            if (state.path_limit > 0 && path_values[cell] > state.path_limit &&
+                path_values[cell] != kBattlePathBlocked) {
+                append_sprite(
+                    BattleRenderCommandKind::cursor_overlay,
+                    map_x,
+                    map_y,
+                    overlay_x,
+                    screen_y,
+                    0,
+                    0,
+                    3);
+            }
+            if (cell < state.area_preview.size() && state.area_preview[cell] != 0U) {
+                append_sprite(
+                    BattleRenderCommandKind::area_overlay,
+                    map_x,
+                    map_y,
+                    overlay_x,
+                    screen_y,
+                    0);
+            }
             if (state.path_limit > 0) {
-                if (path_values[cell] > state.path_limit &&
-                    path_values[cell] != kBattlePathBlocked) {
-                    append_sprite(
-                        BattleRenderCommandKind::cursor_overlay,
-                        map_x,
-                        map_y,
-                        overlay_x,
-                        screen_y,
-                        0,
-                        0,
-                        3);
-                }
                 if (map_x == state.primary_cursor.x && map_y == state.primary_cursor.y) {
                     append_sprite(
                         BattleRenderCommandKind::cursor_overlay,

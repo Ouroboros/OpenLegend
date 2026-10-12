@@ -2843,6 +2843,7 @@ BattleSessionInputResult BattleSession::handle_player_status_page_key(
 }
 
 bool BattleSession::begin_player_targeting(const BattlePlayerAction action) {
+    targeting_action_ = action;
     std::optional<std::int16_t> path_limit;
     if (action == BattlePlayerAction::attack && player_attack_) {
         path_limit = player_attack_->profile.select_distance;
@@ -3921,6 +3922,57 @@ void BattleSession::cancel_automatic_mode_by_key() noexcept {
         "battle automatic mode cancelled by key id=" + std::to_string(battle_id()));
 }
 
+void BattleSession::update_area_preview() {
+    render_state_.area_preview = {};
+    if (!player_attack_ || player_attack_->ai_controlled) {
+        return;
+    }
+    const auto& profile = player_attack_->profile;
+    const bool targeting = phase_ == BattleSessionPhase::player_targeting_select &&
+        targeting_action_ == BattlePlayerAction::attack && player_cursor_selection_.has_value() &&
+        (profile.area_type == 0 || profile.area_type == 3);
+    const bool direction = phase_ == BattleSessionPhase::player_attack_direction &&
+        profile.area_type == 1;
+    if (!targeting && !direction) {
+        return;
+    }
+    area_preview_.assign(kBattleExtent * kBattleExtent, 0U);
+    const auto& actor = setup_.combatants()[current_actor_slot_].words;
+    const auto actor_side = actor[combatant_word::side];
+    // 与实际结算一致：越界格不计，己方占据的格不受影响。
+    const auto mark = [&](const std::int32_t x, const std::int32_t y) {
+        if (x < 0 || y < 0 || x >= static_cast<std::int32_t>(kBattleExtent) ||
+            y >= static_cast<std::int32_t>(kBattleExtent)) {
+            return;
+        }
+        const auto cell = static_cast<std::size_t>(y) * kBattleExtent + static_cast<std::size_t>(x);
+        const auto occupant = data_.occupancy()[cell];
+        if (occupant >= 0 && occupant < setup_.combatant_count() &&
+            setup_.combatants()[static_cast<std::size_t>(occupant)].words[combatant_word::side] ==
+                actor_side) {
+            return;
+        }
+        area_preview_[cell] = 1U;
+    };
+    if (targeting) {
+        const auto cursor = player_cursor_selection_->cursor;
+        const auto radius = std::max<std::int32_t>(profile.attack_distance, 0);
+        for (auto x = cursor.x - radius; x <= cursor.x + radius; ++x) {
+            for (auto y = cursor.y - radius; y <= cursor.y + radius; ++y) {
+                mark(x, y);
+            }
+        }
+    } else {
+        for (std::int32_t distance = 1; distance <= profile.select_distance; ++distance) {
+            mark(actor[combatant_word::x], actor[combatant_word::y] - distance);
+            mark(actor[combatant_word::x], actor[combatant_word::y] + distance);
+            mark(actor[combatant_word::x] - distance, actor[combatant_word::y]);
+            mark(actor[combatant_word::x] + distance, actor[combatant_word::y]);
+        }
+    }
+    render_state_.area_preview = area_preview_;
+}
+
 bool BattleSession::begin_battle_outcome(const BattleOutcome outcome) {
     outcome_ = outcome;
     phase_ = BattleSessionPhase::battle_outcome;
@@ -4322,6 +4374,7 @@ bool BattleSession::render_battlefield(
     if (!framebuffer.legacy_size()) {
         framebuffer.clear(render::legacy_color::black);
     }
+    update_area_preview();
     const auto path_values = player_cursor_selection_.has_value()
         ? std::span<const std::int16_t>{player_cursor_selection_->pathing.values()}
         : std::span<const std::int16_t>{};

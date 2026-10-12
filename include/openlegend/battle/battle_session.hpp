@@ -608,6 +608,9 @@ private:
 
     void cancel_automatic_mode_by_key() noexcept;
 
+    // 按当前阶段与光标计算武功覆盖范围，写入render_state_.area_preview。
+    void update_area_preview();
+
     NODISCARD bool begin_actor_present();
 
     NODISCARD bool begin_post_battle_settlement();
@@ -784,6 +787,9 @@ private:
     std::uint8_t cursor_presentations_before_input_{};
     std::optional<BattlePathCoord> selected_player_target_;
     std::unique_ptr<PlayerAttackState> player_attack_;
+    // 当前目标选择所属行动，用于判断是否显示武功覆盖范围。
+    BattlePlayerAction targeting_action_{};
+    std::vector<std::uint8_t> area_preview_;
     std::uint8_t player_attack_direction_presentations_before_input_{};
     std::unique_ptr<PlayerItemState> player_item_;
     std::uint8_t player_item_presentations_before_input_{};

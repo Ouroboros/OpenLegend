@@ -202,6 +202,10 @@ private:
         int anchor_y,
         std::int16_t source_weight) const;
 
+    // 以光标菱形为形状，在地面叠一层武功覆盖范围色。
+    NODISCARD bool draw_area_overlay(
+        render::IndexedFramebuffer& framebuffer, int anchor_x, int anchor_y) const;
+
     NODISCARD bool draw_damage_text(
         render::IndexedFramebuffer& framebuffer,
         const BattleRenderCommand& command);

@@ -4954,6 +4954,7 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
         .effect_frame_offset = 4,
         .damage_kind = 3,
         .damage_text_offset = 2,
+        .area_preview = {},
     };
     const auto plan = render_setup.battle_render_plan(state, path_values);
     OL_CHECK(plan.has_value());
@@ -5231,8 +5232,8 @@ void run_wait_auto_render_test(const openlegend::resource::DataRoot& data_root) 
     BattleSetup retention_setup{retention_data, retention_ranger};
     OL_CHECK(retention_setup.valid());
     std::ranges::fill(retention_data.occupancy(), static_cast<std::int16_t>(-1));
-    const BattleRenderState retention_source_state{.view_x = 15, .view_y = 16};
-    const BattleRenderState retention_target_state{.view_x = 16, .view_y = 16};
+    const BattleRenderState retention_source_state{.view_x = 15, .view_y = 16, .area_preview = {}};
+    const BattleRenderState retention_target_state{.view_x = 16, .view_y = 16, .area_preview = {}};
     const auto retention_source_plan =
         retention_setup.battle_render_plan(retention_source_state, {});
     const auto retention_target_plan =
