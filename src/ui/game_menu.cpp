@@ -106,6 +106,13 @@ void GameMenuController::move_item_cursor(const int delta) noexcept {
     }
     const auto last = static_cast<int>(inventory_count_) - 1;
     const auto target = static_cast<int>(item_cursor_) + delta;
+    const auto page = static_cast<int>(kItemListVisibleRows);
+    if (delta == page || delta == -page) {
+        // 翻页：可见区整体移动一页，光标保持在屏内同一行，两端停住。
+        const auto maximum_scroll = std::max(static_cast<int>(inventory_count_) - page, 0);
+        item_scroll_ = static_cast<std::uint16_t>(
+            std::clamp(static_cast<int>(item_scroll_) + delta, 0, maximum_scroll));
+    }
     // 单步上下在首尾循环；翻页与跳转停在两端。
     item_cursor_ = static_cast<std::uint16_t>(
         delta == -1 && target < 0     ? last

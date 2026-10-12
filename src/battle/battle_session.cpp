@@ -2606,6 +2606,14 @@ BattleSessionInputResult BattleSession::handle_player_item_key(
         }
         const auto last = static_cast<std::ptrdiff_t>(list.size()) - 1;
         const auto target = static_cast<std::ptrdiff_t>(item.cursor) + delta;
+        constexpr auto kRows = static_cast<std::ptrdiff_t>(kBattleItemListVisibleRows);
+        if (delta == kRows || delta == -kRows) {
+            // 翻页：可见区整体移动一页，光标保持在屏内同一行，两端停住。
+            const auto maximum_scroll =
+                std::max(static_cast<std::ptrdiff_t>(list.size()) - kRows, std::ptrdiff_t{0});
+            item.scroll = static_cast<std::size_t>(std::clamp(
+                static_cast<std::ptrdiff_t>(item.scroll) + delta, std::ptrdiff_t{0}, maximum_scroll));
+        }
         // 单步上下在首尾循环；翻页停在两端。
         item.cursor = static_cast<std::size_t>(
             delta == -1 && target < 0     ? last
