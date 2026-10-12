@@ -1,7 +1,10 @@
 #include "openlegend/model/experience.hpp"
 
+#include <cmath>
 #include <cstddef>
+#include <algorithm>
 #include <limits>
+#include <vector>
 
 #include "openlegend/attributes.hpp"
 #include "openlegend/model/checked_arithmetic.hpp"
@@ -9,44 +12,90 @@
 namespace openlegend::model {
 namespace {
 
-NODISCARD std::optional<std::int64_t> requirement(
-    const std::span<const std::uint16_t> thresholds,
-    const std::int64_t level) noexcept {
-    const auto original_levels = static_cast<std::int64_t>(thresholds.size());
-    if (level <= original_levels) {
-        return thresholds[static_cast<std::size_t>(level - 1)];
-    }
-    const auto last_index = thresholds.size() - 1U;
-    const auto last_cost = std::int64_t{thresholds[last_index]} - thresholds[last_index - 1U];
-    const auto previous_cost = std::int64_t{thresholds[last_index - 1U]} - thresholds[last_index - 2U];
-    const auto step = last_cost - previous_cost;
-    const auto extra_levels = level - original_levels;
-    const auto base_cost = checked_multiply(extra_levels, last_cost);
-    if (!base_cost.has_value()) {
+// 原版每级升级费用D(L)=E0(L+1)−E0(L)近似按固定倍率增长；对原表全部等级的ln D(L)
+// 与L做最小二乘，求出每级增长倍率r。超出原表的等级从原表末级费用起按r逐级增长，
+// 在原表末级处连续。
+NODISCARD std::optional<double> fitted_cost_ratio(
+    const std::span<const std::uint16_t> thresholds) noexcept {
+    const auto count = thresholds.size() - 1U;
+    if (count < 2U) {
         return std::nullopt;
     }
-    std::int64_t growing_cost = 0;
-    if (step != 0) {
-        auto left_factor = extra_levels;
-        auto right_factor = extra_levels + 1;
-        if (left_factor % 2 == 0) {
-            left_factor /= 2;
-        } else {
-            right_factor /= 2;
-        }
-        const auto triangular = checked_multiply(left_factor, right_factor);
-        if (!triangular.has_value()) {
-            return std::nullopt;
-        }
-        const auto scaled = checked_multiply(*triangular, step);
-        if (!scaled.has_value()) {
-            return std::nullopt;
-        }
-        growing_cost = *scaled;
+    double sum_x = 0.0;
+    double sum_y = 0.0;
+    for (std::size_t level = 1U; level <= count; ++level) {
+        sum_x += static_cast<double>(level);
+        sum_y += std::log(static_cast<double>(thresholds[level] - thresholds[level - 1U]));
     }
-    const auto extra_cost = checked_add(*base_cost, growing_cost);
-    return extra_cost.has_value()
-        ? checked_add(thresholds.back(), *extra_cost) : std::nullopt;
+    const auto mean_x = sum_x / static_cast<double>(count);
+    const auto mean_y = sum_y / static_cast<double>(count);
+    double covariance = 0.0;
+    double variance = 0.0;
+    for (std::size_t level = 1U; level <= count; ++level) {
+        const auto dx = static_cast<double>(level) - mean_x;
+        const auto cost = static_cast<double>(thresholds[level] - thresholds[level - 1U]);
+        covariance += dx * (std::log(cost) - mean_y);
+        variance += dx * dx;
+    }
+    const auto ratio = std::exp(covariance / variance);
+    // 倍率须大于1，才能保证每级费用随等级递增。
+    return std::isfinite(ratio) && ratio > 1.0 ? std::optional<double>{ratio} : std::nullopt;
+}
+
+// 由倍率推算的累计门槛；超出signed64可表示范围视为不可达。
+NODISCARD std::optional<std::int64_t> extended_requirement(
+    const std::span<const std::uint16_t> thresholds, const double ratio,
+    const std::int64_t level) noexcept {
+    // E(L)=E0(L0)+Dlast×r×(r^(L−L0)−1)/(r−1)，即L0起每级费用Dlast×r^(k−L0+1)之和。
+    const auto original_levels = static_cast<std::int64_t>(thresholds.size());
+    const auto last_cost =
+        static_cast<double>(thresholds.back() - thresholds[thresholds.size() - 2U]);
+    const auto extra_levels = static_cast<double>(level - original_levels);
+    const auto value = std::round(static_cast<double>(thresholds.back()) +
+        last_cost * ratio * (std::pow(ratio, extra_levels) - 1.0) / (ratio - 1.0));
+    if (!std::isfinite(value) || value >= 9.2e18) {
+        return std::nullopt;
+    }
+    return static_cast<std::int64_t>(value);
+}
+
+// 1～100级累计门槛与倍率按原表内容缓存，原表不变时直接查表。
+constexpr std::int64_t kCachedLevels = 100;
+
+struct RequirementCache {
+    std::vector<std::uint16_t> source;
+    std::optional<double> ratio;
+    std::vector<std::optional<std::int64_t>> levels;
+};
+
+NODISCARD const RequirementCache& requirement_cache(
+    const std::span<const std::uint16_t> thresholds) {
+    thread_local RequirementCache cache;
+    if (!std::ranges::equal(cache.source, thresholds)) {
+        cache.source.assign(thresholds.begin(), thresholds.end());
+        cache.ratio = fitted_cost_ratio(thresholds);
+        cache.levels.assign(static_cast<std::size_t>(kCachedLevels), std::nullopt);
+        for (std::int64_t level = 1; level <= kCachedLevels; ++level) {
+            auto& entry = cache.levels[static_cast<std::size_t>(level - 1)];
+            if (level <= static_cast<std::int64_t>(thresholds.size())) {
+                entry = thresholds[static_cast<std::size_t>(level - 1)];
+            } else if (cache.ratio.has_value()) {
+                entry = extended_requirement(thresholds, *cache.ratio, level);
+            }
+        }
+    }
+    return cache;
+}
+
+NODISCARD std::optional<std::int64_t> requirement(
+    const std::span<const std::uint16_t> thresholds,
+    const std::int64_t level) {
+    const auto& cache = requirement_cache(thresholds);
+    if (level <= kCachedLevels) {
+        return cache.levels[static_cast<std::size_t>(level - 1)];
+    }
+    return cache.ratio.has_value()
+        ? extended_requirement(thresholds, *cache.ratio, level) : std::nullopt;
 }
 
 }
@@ -60,10 +109,7 @@ bool experience_thresholds_valid(const std::span<const std::uint16_t> thresholds
             return false;
         }
     }
-    const auto last_index = thresholds.size() - 1U;
-    const auto last_cost = std::int64_t{thresholds[last_index]} - thresholds[last_index - 1U];
-    const auto previous_cost = std::int64_t{thresholds[last_index - 1U]} - thresholds[last_index - 2U];
-    return last_cost >= previous_cost;
+    return fitted_cost_ratio(thresholds).has_value();
 }
 
 std::optional<std::int64_t> level_experience_requirement(
