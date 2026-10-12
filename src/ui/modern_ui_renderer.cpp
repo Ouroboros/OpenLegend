@@ -199,50 +199,17 @@ bool ModernUiRenderer::draw_box(
     const std::uint16_t width,
     const std::uint16_t height,
     const compat::LegacyPalette& palette) {
-    if (width <= 10U || height <= 10U || x < 0 || y < 0 ||
-        x + static_cast<int>(width) > framebuffer.logical_width() ||
-        y + static_cast<int>(height) > framebuffer.logical_height()) {
-        return false;
-    }
+    // 原版圆角框：按画面相对320×200的比例放大圆角与描边，任何分辨率都保持原版形状。
+    const auto unit = render::scale_legacy_reference_length(
+        1, framebuffer.logical_width(), framebuffer.logical_height());
     const auto w = static_cast<int>(width);
     const auto h = static_cast<int>(height);
-    const auto panel = palette_color(palette, palette_colors::black, kPanelAlpha);
-    if (framebuffer.logical_width() != render::RgbaFramebuffer::width ||
-        framebuffer.logical_height() != render::RgbaFramebuffer::height) {
-        const auto border = render::scale_legacy_reference_length(
-            1, framebuffer.logical_width(), framebuffer.logical_height());
-        if (w <= 2 * border || h <= 2 * border ||
-            !framebuffer.blend_rectangle(x, y, width, height, panel)) {
-            return false;
-        }
-        const auto outline = palette_color(
-            palette, palette_colors::panel_outline);
-        return framebuffer.fill_rectangle(
-                   x,
-                   y,
-                   width,
-                   static_cast<std::uint16_t>(border),
-                   outline) &&
-            framebuffer.fill_rectangle(
-                x,
-                y + h - border,
-                width,
-                static_cast<std::uint16_t>(border),
-                outline) &&
-            framebuffer.fill_rectangle(
-                x,
-                y,
-                static_cast<std::uint16_t>(border),
-                height,
-                outline) &&
-            framebuffer.fill_rectangle(
-                x + w - border,
-                y,
-                static_cast<std::uint16_t>(border),
-                height,
-                outline);
+    if (w <= 10 * unit || h <= 10 * unit || x < 0 || y < 0 ||
+        x + w > framebuffer.logical_width() || y + h > framebuffer.logical_height()) {
+        return false;
     }
-    const auto blend = [&framebuffer, panel](
+    const auto panel = palette_color(palette, palette_colors::black, kPanelAlpha);
+    const auto blend = [&framebuffer, panel, unit](
                            const int left,
                            const int top,
                            const int rectangle_width,
@@ -251,25 +218,27 @@ bool ModernUiRenderer::draw_box(
             left,
             top,
             static_cast<std::uint16_t>(rectangle_width),
-            static_cast<std::uint16_t>(rectangle_height),
+            static_cast<std::uint16_t>(rectangle_height * unit),
             panel);
     };
-    if (!blend(x + 5, y, w - 10, 1) ||
-        !blend(x + 4, y + 1, w - 8, 1) ||
-        !blend(x + 3, y + 2, w - 6, 1) ||
-        !blend(x + 2, y + 3, w - 4, 1) ||
-        !blend(x + 1, y + 4, w - 2, 1) ||
-        !blend(x, y + 5, w, h - 10) ||
-        !blend(x + 1, y + h - 5, w - 2, 1) ||
-        !blend(x + 2, y + h - 4, w - 4, 1) ||
-        !blend(x + 3, y + h - 3, w - 6, 1) ||
-        !blend(x + 4, y + h - 2, w - 8, 1) ||
-        !blend(x + 5, y + h - 1, w - 10, 1)) {
+    const auto u = unit;
+    if (!blend(x + 5 * u, y, w - 10 * u, 1) ||
+        !blend(x + 4 * u, y + 1 * u, w - 8 * u, 1) ||
+        !blend(x + 3 * u, y + 2 * u, w - 6 * u, 1) ||
+        !blend(x + 2 * u, y + 3 * u, w - 4 * u, 1) ||
+        !blend(x + 1 * u, y + 4 * u, w - 2 * u, 1) ||
+        !framebuffer.blend_rectangle(x, y + 5 * u, width,
+            static_cast<std::uint16_t>(h - 10 * u), panel) ||
+        !blend(x + 1 * u, y + h - 5 * u, w - 2 * u, 1) ||
+        !blend(x + 2 * u, y + h - 4 * u, w - 4 * u, 1) ||
+        !blend(x + 3 * u, y + h - 3 * u, w - 6 * u, 1) ||
+        !blend(x + 4 * u, y + h - 2 * u, w - 8 * u, 1) ||
+        !blend(x + 5 * u, y + h - 1 * u, w - 10 * u, 1)) {
         return false;
     }
 
     const auto outline = palette_color(palette, palette_colors::panel_outline);
-    const auto fill = [&framebuffer, outline](
+    const auto fill = [&framebuffer, outline, u](
                           const int left,
                           const int top,
                           const int rectangle_width,
@@ -277,20 +246,24 @@ bool ModernUiRenderer::draw_box(
         return framebuffer.fill_rectangle(
             left,
             top,
-            static_cast<std::uint16_t>(rectangle_width),
-            static_cast<std::uint16_t>(rectangle_height),
+            static_cast<std::uint16_t>(rectangle_width * u),
+            static_cast<std::uint16_t>(rectangle_height * u),
             outline);
     };
-    return fill(x + 5, y + 1, w - 10, 1) &&
-        fill(x + 4, y + 2, 1, 2) && fill(x + w - 5, y + 2, 1, 2) &&
-        fill(x + 2, y + 4, 2, 1) && fill(x + w - 4, y + 4, 2, 1) &&
-        fill(x + 1, y + 5, 1, h - 10) &&
-        fill(x + w - 2, y + 5, 1, h - 10) &&
-        fill(x + 2, y + h - 5, 2, 1) &&
-        fill(x + w - 4, y + h - 5, 2, 1) &&
-        fill(x + 4, y + h - 4, 1, 2) &&
-        fill(x + w - 5, y + h - 4, 1, 2) &&
-        fill(x + 5, y + h - 2, w - 10, 1);
+    const auto right = [x, w, u](const int offset) { return x + w - offset * u; };
+    const auto bottom = [y, h, u](const int offset) { return y + h - offset * u; };
+    return framebuffer.fill_rectangle(x + 5 * u, y + 1 * u,
+               static_cast<std::uint16_t>(w - 10 * u), static_cast<std::uint16_t>(u), outline) &&
+        fill(x + 4 * u, y + 2 * u, 1, 2) && fill(right(5), y + 2 * u, 1, 2) &&
+        fill(x + 2 * u, y + 4 * u, 2, 1) && fill(right(4), y + 4 * u, 2, 1) &&
+        framebuffer.fill_rectangle(x + 1 * u, y + 5 * u, static_cast<std::uint16_t>(u),
+            static_cast<std::uint16_t>(h - 10 * u), outline) &&
+        framebuffer.fill_rectangle(right(2), y + 5 * u, static_cast<std::uint16_t>(u),
+            static_cast<std::uint16_t>(h - 10 * u), outline) &&
+        fill(x + 2 * u, bottom(5), 2, 1) && fill(right(4), bottom(5), 2, 1) &&
+        fill(x + 4 * u, bottom(4), 1, 2) && fill(right(5), bottom(4), 1, 2) &&
+        framebuffer.fill_rectangle(x + 5 * u, bottom(2),
+            static_cast<std::uint16_t>(w - 10 * u), static_cast<std::uint16_t>(u), outline);
 }
 
 }  // namespace openlegend::ui
