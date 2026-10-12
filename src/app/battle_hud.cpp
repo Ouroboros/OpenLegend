@@ -23,8 +23,8 @@ using page::decimal_text;
 
 // 战斗界面字号（320×200参考像素），约为原版16像素字的一半。
 constexpr int kHudReferenceFont = 7;
-// 武功列表用较大字号与边距。
-constexpr int kMagicMenuReferenceFont = 9;
+// 行动面板与武功列表字号大一号。
+constexpr int kMenuReferenceFont = 9;
 
 constexpr compat::Rgba8 kShadow{0x00U, 0x00U, 0x00U, 0xFFU};
 constexpr compat::Rgba8 kWhite{0xF0U, 0xF0U, 0xF0U, 0xFFU};
@@ -258,8 +258,11 @@ NODISCARD std::vector<std::pair<std::u8string, compat::Rgba8>> condition_tags(
     return tags;
 }
 
+// 卡片内容与卡片圆角框之间留出不小于圆角半径（5个参考像素）的边距。
+constexpr int kCardInset = 6;
+
 NODISCARD int info_bar_height(const Hud& hud) noexcept {
-    return 4 * hud.line() + 8 * hud.unit();
+    return 4 * hud.line() + (2 * kCardInset + 6) * hud.unit();
 }
 
 // 战场中央可用区域（信息条以上）的垂直中点，行动与武功菜单居中于此。
@@ -302,12 +305,15 @@ void render_info_bar(Hud& hud, const battle::BattleHudView& view) {
     for (std::size_t index = 0U; index < party.size(); ++index) {
         const auto& combatant = *party[index];
         const auto x = cards_left + static_cast<int>(index) * card_width;
-        const auto inner = card_width - 2 * padding;
-        const auto y = top + padding + unit;
+        const auto inset = kCardInset * unit;
+        const auto box_width = card_width - 2 * unit;
+        const auto inner = box_width - 2 * inset;
+        const auto box_top = top + 3 * unit;
+        const auto y = box_top + inset;
         if (current_slot == combatant.slot) {
-            hud.box(x - unit, top + unit, card_width, bar_height - 2 * unit);
+            hud.box(x, box_top, box_width, bar_height - 6 * unit);
         }
-        const auto content_x = x + padding / 2;
+        const auto content_x = x + inset;
         hud.big5(content_x, y, name_of(combatant), name_color(combatant));
         const auto level = level_text(combatant.level);
         hud.text(content_x + inner - hud.text_width(level), y, level, kDim);
@@ -330,7 +336,7 @@ void render_info_bar(Hud& hud, const battle::BattleHudView& view) {
 // 行动面板：轮到我方行动时在战场中央弹出，上方头像与姓名，下方行动选项按行排列；
 // 左右键在本行内移动，上下键在同一列换行。
 void render_action_panel(Hud& hud, const battle::BattleRenderer& data,
-    const battle::BattleHudView& view) {
+    const battle::BattleHudView& view, const int center_y) {
     if (view.action_labels.empty() || !view.current.has_value()) {
         return;
     }
@@ -355,7 +361,7 @@ void render_action_panel(Hud& hud, const battle::BattleRenderer& data,
     const auto width = 2 * padding + std::max(header_width, columns * cell_width);
     const auto height = 2 * padding + header_height + 2 * unit + rows * line;
     const auto left = (hud.width() - width) / 2;
-    const auto top = std::max(unit, battlefield_center_y(hud) - height / 2);
+    const auto top = std::max(unit, center_y - height / 2);
     hud.box(left, top, width, height);
     auto x = left + padding;
     if (frame != nullptr) {
@@ -387,7 +393,8 @@ void render_magic_menu(Hud& hud, const battle::BattleHudView& view, const int ce
         return;
     }
     const auto unit = hud.unit();
-    const auto padding = 6 * unit;
+    // 比其他面板略宽的边距，字号与行动面板一致。
+    const auto padding = 5 * unit;
     const auto line = hud.line();
     std::vector<std::array<std::u8string, 3>> numbers;
     int name_width = hud.text_width(strings::kHudMagicHeader);
@@ -548,9 +555,9 @@ bool render_battle_hud(
     const auto order_bottom = render_turn_order(hud, data, view);
     render_inspected(hud, data, view, order_bottom + hud.unit());
     render_info_bar(hud, view);
-    render_action_panel(hud, data, view);
-    Hud magic_hud{ui_renderer, palette, framebuffer, kMagicMenuReferenceFont};
-    render_magic_menu(magic_hud, view, battlefield_center_y(hud));
+    Hud menu_hud{ui_renderer, palette, framebuffer, kMenuReferenceFont};
+    render_action_panel(menu_hud, data, view, battlefield_center_y(hud));
+    render_magic_menu(menu_hud, view, battlefield_center_y(hud));
     return true;
 }
 
