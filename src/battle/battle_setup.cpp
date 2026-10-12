@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <initializer_list>
 #include <limits>
+#include <optional>
 #include <utility>
 
 #include "openlegend/model/checked_arithmetic.hpp"
@@ -724,6 +725,20 @@ bool BattleSetup::initialize_enemy_roles(
             error_ = "battle enemy current HP or MP exceeds the reduced maximum";
             return false;
         }
+        // 最大生命／内力增加时，当前值加上同样的量，保留原版基准中当前值与最大值的差额
+        // （含当前内力高于最大值的原值例外）；最大值不变或降低时当前值保持基准原值。
+        const auto grown_hp = attributes->maximum_hp > role->maximum_hp
+            ? model::checked_add(role->hp, attributes->maximum_hp - role->maximum_hp)
+            : std::optional<std::int64_t>{role->hp};
+        const auto grown_mp = attributes->maximum_mp > role->maximum_mp
+            ? model::checked_add(role->mp, attributes->maximum_mp - role->maximum_mp)
+            : std::optional<std::int64_t>{role->mp};
+        if (!grown_hp.has_value() || !grown_mp.has_value()) {
+            error_ = "battle enemy current HP or MP growth overflows";
+            return false;
+        }
+        role->hp = *grown_hp;
+        role->mp = *grown_mp;
         role->maximum_hp = attributes->maximum_hp;
         role->maximum_mp = attributes->maximum_mp;
         role->attack = attributes->attack;
