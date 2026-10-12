@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -34,18 +35,25 @@ public:
 
     void zoom_out() noexcept;
 
-    // 按屏幕方向平移，每步为可见高度的1/12，左右与上下距离相同。
-    void pan(int horizontal_steps, int vertical_steps) noexcept;
+    // 按屏幕方向连续平移，单位为可见高度的倍数，左右与上下按相同像素距离；
+    // 不足一个像素的部分累积到下次。
+    void pan(double horizontal_views, double vertical_views) noexcept;
 
     NODISCARD bool valid() const noexcept { return error_.empty(); }
 
     NODISCARD const std::string& error() const noexcept { return error_; }
 
+    // 传送目标：视野中心最近的有名字场景入口，返回场景编号。
+    NODISCARD std::optional<std::size_t> selected_scene(
+        const model::RuntimeRangerState& ranger) const;
+
+    // teleport_available为真时显示传送提示（仅大地图可传送）。
     NODISCARD bool render(
         ui::ModernUiRenderer& ui_renderer,
         const model::RuntimeRangerState& ranger,
         std::pair<int, int> person,
         std::optional<std::pair<int, int>> ship,
+        bool teleport_available,
         render::RgbaFramebuffer& framebuffer) const;
 
 private:
@@ -66,7 +74,9 @@ private:
     int image_height_{};
     int anchor_left_{};
     int anchor_top_{};
-    int zoom_{1000};
+    int zoom_{};
+    double pan_remainder_x_{};
+    double pan_remainder_y_{};
     int center_x_{};
     int center_y_{};
 };

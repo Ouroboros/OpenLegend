@@ -416,6 +416,59 @@ void WorldSession::sync_persistent_state(const bool include_direction) noexcept 
         model::header_word::encode, static_cast<std::int16_t>(ship_direction_));
 }
 
+bool WorldSession::teleport_near(const int entrance_x, const int entrance_y) {
+    if (!valid()) {
+        return false;
+    }
+    // 与步行判定一致：坐标在11～458内，无建筑占用，地面不属阻挡类，且不是任何场景入口。
+    const auto walkable = [this](const int x, const int y) {
+        if (x <= 10 || x >= 459 || y <= 10 || y >= 459 ||
+            map_.at(WorldLayer::building, x, y) != 0 || map_.at(WorldLayer::build_x, x, y) != 0 ||
+            map_.at(WorldLayer::build_y, x, y) != 0 || entrance_at(x, y).has_value()) {
+            return false;
+        }
+        const auto earth = map_.at(WorldLayer::earth, x, y);
+        return !in_ranges(earth, kBlockedWalkingRanges) &&
+            !in_ranges(earth, kBlockedWalkingRangesTail);
+    };
+    // 由近及远逐圈查找，同一圈内按上、右、左、下方向优先。
+    for (int radius = 1; radius <= 6; ++radius) {
+        for (int dy = -radius; dy <= radius; ++dy) {
+            for (int dx = -radius; dx <= radius; ++dx) {
+                if (std::abs(dx) + std::abs(dy) != radius) {
+                    continue;
+                }
+                const auto x = entrance_x + dx;
+                const auto y = entrance_y + dy;
+                if (!walkable(x, y)) {
+                    continue;
+                }
+                world_x_ = x;
+                world_y_ = y;
+                in_ship_ = 0;
+                // 面向入口：取位移较大的轴，与移动方向定义一致。
+                const auto to_x = entrance_x - x;
+                const auto to_y = entrance_y - y;
+                direction_ = std::abs(to_x) >= std::abs(to_y)
+                    ? (to_x > 0 ? WorldDirection::right : WorldDirection::left)
+                    : (to_y > 0 ? WorldDirection::down : WorldDirection::up);
+                walk_frame_offset_ = 0;
+                idle_counter_ = 0;
+                idle_animation_ = false;
+                player_frame_override_.reset();
+                static_cast<void>(cache_.reload(
+                    map_, clamped_origin(world_x_), clamped_origin(world_y_)));
+                sync_persistent_state(true);
+                diagnostics::log_info("world teleport entrance=" + std::to_string(entrance_x) +
+                    "," + std::to_string(entrance_y) + " to=" + std::to_string(x) + "," +
+                    std::to_string(y));
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 WorldMovePlan WorldSession::probe_move(
     const WorldDirection direction, const int target_x, const int target_y) const {
     const auto [delta_x, delta_y] = direction_delta(direction);

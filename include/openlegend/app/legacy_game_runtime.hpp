@@ -290,7 +290,8 @@ public:
 
     // 头顶飘字动画进行中或世界小地图刚开关，需要重画现代UI层。
     NODISCARD bool modern_ui_animating() const noexcept {
-        return !status_floats_.empty() || world_minimap_refresh_frames_ > 0;
+        return !status_floats_.empty() || world_minimap_refresh_frames_ > 0 ||
+            (world_minimap_open_ && (world_minimap_pan_x_ != 0 || world_minimap_pan_y_ != 0));
     }
 
     // 世界小地图打开中，或此刻可以打开（大地图或场景空闲时）。
@@ -605,6 +606,10 @@ private:
     std::shared_ptr<WorldMinimap> world_minimap_;
     bool world_minimap_open_{};
     std::vector<std::uint8_t> world_minimap_keys_{static_cast<std::uint8_t>('M'), 0x09U};
+    // 方向键按住时小地图连续平移的方向与上次推进时刻。
+    int world_minimap_pan_x_{};
+    int world_minimap_pan_y_{};
+    std::chrono::steady_clock::time_point world_minimap_pan_time_{};
     int world_minimap_refresh_frames_{};
     std::unique_ptr<battle::BattleSession> battle_session_;
     battle::BattleRenderState retained_battle_render_state_{};

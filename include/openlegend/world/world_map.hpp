@@ -164,6 +164,10 @@ public:
 
     void sync_persistent_state(bool include_direction) noexcept;
 
+    // 传送到(entrance_x, entrance_y)入口旁最近的可步行格并面向入口；下船，船留原处。
+    // 找不到可步行格时返回false，状态不变。
+    NODISCARD bool teleport_near(int entrance_x, int entrance_y);
+
     void idle_tick();
 
     void periodic_tick();

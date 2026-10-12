@@ -1518,10 +1518,13 @@ bool LegacyGameRuntime::handle_world_input(
     const bool right,
     const bool menu_requested) {
     if (world_minimap_open_) {
+        // 方向键按住期间连续平移地图，由渲染按实际时间推进；只消耗Esc。
+        world_minimap_pan_x_ = left ? -1 : right ? 1 : 0;
+        world_minimap_pan_y_ = up ? -1 : down ? 1 : 0;
         if (menu_requested) {
             toggle_world_minimap();
         }
-        return true;
+        return menu_requested;
     }
     if (!world_or_scene_input_active()) {
         return false;
@@ -2290,9 +2293,6 @@ bool LegacyGameRuntime::world_minimap_accepts_key() const noexcept {
 
 void LegacyGameRuntime::handle_world_minimap_key(const std::uint8_t translated_key) {
     using namespace input::legacy_key;
-    const auto any_of = [translated_key](const auto& keys) {
-        return std::find(keys.begin(), keys.end(), translated_key) != keys.end();
-    };
     if (translated_key == escape) {
         toggle_world_minimap();
         return;
@@ -2300,18 +2300,33 @@ void LegacyGameRuntime::handle_world_minimap_key(const std::uint8_t translated_k
     if (world_minimap_ == nullptr) {
         return;
     }
+    if (translated_key == enter || translated_key == space || translated_key == keypad_insert) {
+        // 传送只在大地图上进行：飞到视野中心最近的场景入口旁，然后关闭地图。
+        const auto* ranger = game_state_.ranger();
+        if (view_ != LegacyGameView::world || world_session_ == nullptr || ranger == nullptr ||
+            authoritative_motion_.active()) {
+            return;
+        }
+        const auto scene = world_minimap_->selected_scene(*ranger);
+        if (!scene.has_value()) {
+            return;
+        }
+        const auto& record = ranger->scenes[*scene];
+        if (!world_session_->teleport_near(
+                record.word(model::scene_metadata_word::main_entrance_x_1),
+                record.word(model::scene_metadata_word::main_entrance_y_1))) {
+            diagnostics::log_info("world minimap teleport found no walkable cell scene=" +
+                std::to_string(*scene));
+            return;
+        }
+        queued_motion_direction_.reset();
+        toggle_world_minimap();
+        return;
+    }
     if (translated_key == equals || translated_key == keypad_plus) {
         world_minimap_->zoom_in();
     } else if (translated_key == minus) {
         world_minimap_->zoom_out();
-    } else if (any_of(world_left)) {
-        world_minimap_->pan(-1, 0);
-    } else if (any_of(world_right)) {
-        world_minimap_->pan(1, 0);
-    } else if (any_of(world_up)) {
-        world_minimap_->pan(0, -1);
-    } else if (any_of(world_down)) {
-        world_minimap_->pan(0, 1);
     } else {
         return;
     }
@@ -2346,6 +2361,8 @@ void LegacyGameRuntime::toggle_world_minimap() {
             ranger->header.word(model::header_word::main_map_y));
     }
     world_minimap_open_ = true;
+    world_minimap_pan_x_ = 0;
+    world_minimap_pan_y_ = 0;
     world_minimap_refresh_frames_ = 2;
     queued_motion_direction_.reset();
     diagnostics::log_info("world minimap opened view=" + std::string{view_name(view_)});
@@ -2356,6 +2373,16 @@ bool LegacyGameRuntime::render_modern_ui(render::RgbaFramebuffer& framebuffer) {
         --world_minimap_refresh_frames_;
     }
     if (world_minimap_open_ && world_minimap_ != nullptr) {
+        // 每秒平移1.5个可见高度；单帧间隔上限100毫秒，避免卡顿后跳太远。
+        constexpr double kPanViewsPerSecond = 1.5;
+        const auto now = std::chrono::steady_clock::now();
+        if (world_minimap_pan_x_ != 0 || world_minimap_pan_y_ != 0) {
+            const auto elapsed = std::min(
+                std::chrono::duration<double>(now - world_minimap_pan_time_).count(), 0.1);
+            world_minimap_->pan(world_minimap_pan_x_ * kPanViewsPerSecond * elapsed,
+                world_minimap_pan_y_ * kPanViewsPerSecond * elapsed);
+        }
+        world_minimap_pan_time_ = now;
         if (const auto* ranger = game_state_.ranger(); ranger != nullptr) {
             const auto person = world_session_ != nullptr
                 ? std::pair{world_session_->world_x(), world_session_->world_y()}
@@ -2368,7 +2395,7 @@ bool LegacyGameRuntime::render_modern_ui(render::RgbaFramebuffer& framebuffer) {
                       ranger->header.word(model::header_word::ship_x),
                       ranger->header.word(model::header_word::ship_y)};
             if (world_minimap_->render(modern_ui_renderer_, *ranger,
-                    person, ship, framebuffer)) {
+                    person, ship, view_ == LegacyGameView::world, framebuffer)) {
                 return true;
             }
             diagnostics::log_error("world minimap render failed");

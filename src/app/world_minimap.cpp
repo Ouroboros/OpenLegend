@@ -43,14 +43,23 @@ constexpr compat::Rgba8 kTextShadow{0x00U, 0x00U, 0x00U, 0xFFU};
 constexpr render::rgba::TextColors kLabelText{kTextShadow, {0xFFU, 0xFFU, 0xFFU, 0xFFU}};
 constexpr render::rgba::TextColors kTitleText{kTextShadow, {0xFFU, 0xE0U, 0x40U, 0xFFU}};
 constexpr render::rgba::TextColors kHintText{kTextShadow, {0xE8U, 0xE8U, 0xE8U, 0xFFU}};
+constexpr render::rgba::TextColors kSelectedLabelText{kTextShadow, {0xFFU, 0xE0U, 0x40U, 0xFFU}};
+constexpr compat::Rgba8 kSelectedColor{0xFFU, 0xE0U, 0x40U, 0xFFU};
 constexpr render::rgba::FontSize kTitleFont{4};
 constexpr std::uint16_t kLabelReferenceFont = 3U;
 // 缩放以千分比表示：1000为整图，每次放大或缩小5%，最高8倍。
 constexpr int kZoomFit = 1000;
 constexpr int kMaximumZoom = 8000;
 constexpr int kZoomStepPercent = 105;
-// 每步平移可见高度的1/12，左右与上下按相同像素距离移动。
-constexpr int kPanStepsPerView = 12;
+// 首次打开的缩放：从整图连按20次放大。
+constexpr int kInitialZoomSteps = 20;
+NODISCARD constexpr int initial_zoom() noexcept {
+    int zoom = kZoomFit;
+    for (int step = 0; step < kInitialZoomSteps; ++step) {
+        zoom = std::min(std::max(zoom * kZoomStepPercent / 100, zoom + 1), kMaximumZoom);
+    }
+    return zoom;
+}
 // 缓存文件头：魔数、资源哈希、底图宽高与锚点边距，其后为RGB像素的zstd帧。
 constexpr std::array<std::uint8_t, 8> kCacheMagic{'O', 'L', 'W', 'M', 'A', 'P', '0', '1'};
 constexpr std::size_t kCacheHeaderBytes = 32U;
@@ -171,7 +180,8 @@ void draw_strip_sprite(
 }  // namespace
 
 WorldMinimap::WorldMinimap(const resource::DataRoot& data_root,
-    const world::WorldMapData& map, const std::filesystem::path& cache_path) {
+    const world::WorldMapData& map, const std::filesystem::path& cache_path)
+    : zoom_(initial_zoom()) {
     const auto key = source_key(data_root);
     if (key.has_value() && load_cache(cache_path, *key)) {
         diagnostics::log_info("world minimap loaded from cache path=" + cache_path.string());
@@ -421,6 +431,38 @@ std::pair<int, int> WorldMinimap::image_position(const int world_x, const int wo
         ((world_x + world_y) * kTileHalfHeight + anchor_top_) / kDownsample};
 }
 
+// 有名字且入口在地图内的场景入口坐标。
+NODISCARD std::optional<std::pair<int, int>> named_entrance(const model::SceneMetadataRecord& scene) {
+    const auto entrance_x = scene.word(model::scene_metadata_word::main_entrance_x_1);
+    const auto entrance_y = scene.word(model::scene_metadata_word::main_entrance_y_1);
+    if (scene_name(scene).empty() || entrance_x <= 0 || entrance_y <= 0 ||
+        entrance_x >= world::kWorldExtent || entrance_y >= world::kWorldExtent) {
+        return std::nullopt;
+    }
+    return std::pair<int, int>{entrance_x, entrance_y};
+}
+
+std::optional<std::size_t> WorldMinimap::selected_scene(
+    const model::RuntimeRangerState& ranger) const {
+    std::optional<std::size_t> best;
+    std::int64_t best_distance = 0;
+    for (std::size_t index = 0U; index < ranger.scenes.size(); ++index) {
+        const auto entrance = named_entrance(ranger.scenes[index]);
+        if (!entrance.has_value()) {
+            continue;
+        }
+        const auto [x, y] = image_position(entrance->first, entrance->second);
+        const auto dx = static_cast<std::int64_t>(x) - center_x_;
+        const auto dy = static_cast<std::int64_t>(y) - center_y_;
+        const auto distance = dx * dx + dy * dy;
+        if (!best.has_value() || distance < best_distance) {
+            best = index;
+            best_distance = distance;
+        }
+    }
+    return best;
+}
+
 void WorldMinimap::center_on(const int world_x, const int world_y) noexcept {
     const auto [x, y] = image_position(world_x, world_y);
     center_x_ = x;
@@ -438,21 +480,24 @@ void WorldMinimap::zoom_out() noexcept {
     clamp_center();
 }
 
-void WorldMinimap::pan(const int horizontal_steps, const int vertical_steps) noexcept {
-    center_x_ += static_cast<int>(static_cast<std::int64_t>(horizontal_steps) * image_height_ *
-        kZoomFit / (static_cast<std::int64_t>(zoom_) * kPanStepsPerView));
-    center_y_ += static_cast<int>(static_cast<std::int64_t>(vertical_steps) * image_height_ *
-        kZoomFit / (static_cast<std::int64_t>(zoom_) * kPanStepsPerView));
+void WorldMinimap::pan(const double horizontal_views, const double vertical_views) noexcept {
+    const auto view_height =
+        static_cast<double>(image_height_) * kZoomFit / static_cast<double>(zoom_);
+    pan_remainder_x_ += horizontal_views * view_height;
+    pan_remainder_y_ += vertical_views * view_height;
+    const auto whole_x = static_cast<int>(pan_remainder_x_);
+    const auto whole_y = static_cast<int>(pan_remainder_y_);
+    pan_remainder_x_ -= whole_x;
+    pan_remainder_y_ -= whole_y;
+    center_x_ += whole_x;
+    center_y_ += whole_y;
     clamp_center();
 }
 
+// 视野中心可到底图任意位置（含边缘），以便任何缩放下都能以人物为中心；底图外画黑色。
 void WorldMinimap::clamp_center() noexcept {
-    const auto half_width = static_cast<int>(
-        static_cast<std::int64_t>(image_width_) * kZoomFit / (2 * zoom_));
-    const auto half_height = static_cast<int>(
-        static_cast<std::int64_t>(image_height_) * kZoomFit / (2 * zoom_));
-    center_x_ = std::clamp(center_x_, half_width, image_width_ - half_width);
-    center_y_ = std::clamp(center_y_, half_height, image_height_ - half_height);
+    center_x_ = std::clamp(center_x_, 0, image_width_);
+    center_y_ = std::clamp(center_y_, 0, image_height_);
 }
 
 bool WorldMinimap::render(
@@ -460,6 +505,7 @@ bool WorldMinimap::render(
     const model::RuntimeRangerState& ranger,
     const std::pair<int, int> person,
     const std::optional<std::pair<int, int>> ship,
+    const bool teleport_available,
     render::RgbaFramebuffer& framebuffer) const {
     if (!valid() || image_width_ <= 0 || image_height_ <= 0) {
         return false;
@@ -497,16 +543,19 @@ bool WorldMinimap::render(
     const auto zoomed_width = static_cast<std::int64_t>(destination_width) * zoom_ / kZoomFit;
     const auto zoomed_height = static_cast<std::int64_t>(destination_height) * zoom_ / kZoomFit;
     for (int row = 0; row < destination_height; ++row) {
-        const auto source_row = std::min<std::int64_t>(image_height_ - 1,
-            source_top + static_cast<std::int64_t>(row) * image_height_ / zoomed_height);
+        const auto source_row =
+            source_top + static_cast<std::int64_t>(row) * image_height_ / zoomed_height;
         auto* target = framebuffer.row(top + row) +
             static_cast<std::size_t>(left) * compat::kModernRgbaBytesPerPixel;
-        const auto* source = image_.data() + static_cast<std::size_t>(source_row) *
-            static_cast<std::size_t>(image_width_);
+        const bool row_inside = source_row >= 0 && source_row < image_height_;
+        const auto* source = image_.data() +
+            static_cast<std::size_t>(row_inside ? source_row : 0) *
+                static_cast<std::size_t>(image_width_);
         for (int column = 0; column < destination_width; ++column) {
-            const auto source_column = std::min<std::int64_t>(image_width_ - 1, source_left +
-                static_cast<std::int64_t>(column) * image_width_ / zoomed_width);
-            const auto color = source[source_column];
+            const auto source_column = source_left +
+                static_cast<std::int64_t>(column) * image_width_ / zoomed_width;
+            const auto color = row_inside && source_column >= 0 && source_column < image_width_
+                ? source[source_column] : kBackground;
             target[0] = color.red;
             target[1] = color.green;
             target[2] = color.blue;
@@ -544,20 +593,40 @@ bool WorldMinimap::render(
         std::span<const std::uint8_t> name;
         int x{};
         int y{};
+        bool selected{};
     };
+    // 传送目标排在最前，地名优先占位并以黄色显示。
+    const auto selected = selected_scene(ranger);
     std::vector<Entrance> entrances;
-    for (const auto& scene : ranger.scenes) {
-        const auto name = scene_name(scene);
-        const auto entrance_x = scene.word(model::scene_metadata_word::main_entrance_x_1);
-        const auto entrance_y = scene.word(model::scene_metadata_word::main_entrance_y_1);
-        if (name.empty() || entrance_x <= 0 || entrance_y <= 0 ||
-            entrance_x >= world::kWorldExtent || entrance_y >= world::kWorldExtent) {
+    for (std::size_t index = 0U; index < ranger.scenes.size(); ++index) {
+        const auto entrance = named_entrance(ranger.scenes[index]);
+        if (!entrance.has_value()) {
             continue;
         }
-        if (const auto point = project(entrance_x, entrance_y)) {
-            entrances.push_back({name, point->first, point->second});
-            draw_marker(framebuffer, point->first, point->second, std::max(1, marker_size / 2),
-                kEntranceColor);
+        if (const auto point = project(entrance->first, entrance->second)) {
+            const bool is_selected = selected == index;
+            const Entrance item{scene_name(ranger.scenes[index]), point->first, point->second,
+                is_selected};
+            if (is_selected) {
+                entrances.insert(entrances.begin(), item);
+            } else {
+                entrances.push_back(item);
+            }
+            draw_marker(framebuffer, point->first, point->second,
+                is_selected ? marker_size : std::max(1, marker_size / 2),
+                is_selected ? kSelectedColor : kEntranceColor);
+        }
+    }
+    // 视野中心十字，指示传送目标的选取位置。
+    {
+        const auto center_x = left + destination_width / 2;
+        const auto center_y = top + destination_height / 2;
+        const auto arm = marker_size * 2;
+        for (int offset = -arm; offset <= arm; ++offset) {
+            if (std::abs(offset) > marker_size / 2) {
+                put_physical_pixel(framebuffer, center_x + offset, center_y, kSelectedColor);
+                put_physical_pixel(framebuffer, center_x, center_y + offset, kSelectedColor);
+            }
         }
     }
     // 地名避让：依次尝试入口点上、下、右、左四个位置，取第一个不与已放置地名重叠
@@ -597,7 +666,8 @@ bool WorldMinimap::render(
             }
             placed.push_back(box);
             static_cast<void>(ui_renderer.draw_text_big5_pixels(framebuffer, text_x, text_y,
-                text::Big5TextView{entrance.name}, kLabelText, label_font));
+                text::Big5TextView{entrance.name},
+                entrance.selected ? kSelectedLabelText : kLabelText, label_font));
             break;
         }
     }
@@ -628,6 +698,27 @@ bool WorldMinimap::render(
     }
     static_cast<void>(ui_renderer.draw_text_utf8_rgba(framebuffer, cursor + big5_width, margin,
         strings::kWorldMinimapCloseHint, kHintText, kTitleFont));
+    // 传送提示靠右：大地图上显示“Enter傳送：地名”，场景中说明仅限大地图。
+    if (selected.has_value()) {
+        std::u8string hint;
+        if (teleport_available) {
+            const auto name = text::decode_big5(text::Big5TextView{scene_name(ranger.scenes[*selected])});
+            hint = std::u8string{strings::kWorldMinimapTeleportPrefix} + name.value_or(u8"");
+        } else {
+            hint = std::u8string{strings::kWorldMinimapTeleportWorldOnly};
+        }
+        int hint_width = 0;
+        for (const auto unit : hint) {
+            if (unit < 0x80U) {
+                hint_width += title_metrics.ascii_width;
+            } else if ((unit & 0xC0U) != 0x80U) {
+                hint_width += title_metrics.big5_width;
+            }
+        }
+        static_cast<void>(ui_renderer.draw_text_utf8_rgba(framebuffer,
+            std::max(0, logical_width - margin - hint_width), margin, hint,
+            teleport_available ? kSelectedLabelText : kHintText, kTitleFont));
+    }
     return true;
 }
 
