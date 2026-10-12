@@ -505,9 +505,14 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
                     game.finish_presented_tick(tick_source.tick());
                     presented_tick_finished = true;
                 }
-                if (presented_tick_finished && motion_completed_this_frame) {
+                const bool endpoint_continued = !motion_completed_this_frame &&
+                    !motion_active && game.scene_endpoint_pending() &&
+                    game.continue_scene_endpoint_after_present();
+                if (endpoint_continued ||
+                    (presented_tick_finished && motion_completed_this_frame)) {
                     const auto resumed_at = std::chrono::steady_clock::now();
-                    if (game.resume_motion_after_endpoint_presented(
+                    if (endpoint_continued ||
+                        game.resume_motion_after_endpoint_presented(
                             resumed_at - motion_time)) {
                         motion_active = true;
                         timed_motion_sequence = game.motion_sequence();

@@ -584,6 +584,25 @@ bool LegacyGameRuntime::resume_motion_after_endpoint_presented(
     return authoritative_motion_.active();
 }
 
+bool LegacyGameRuntime::continue_scene_endpoint_after_present() {
+    if (!motion_tick_completed_ || !scene_motion_endpoint_waiting_ ||
+        view_ != LegacyGameView::scene || scene_session_ == nullptr) {
+        return false;
+    }
+    // 只快进每步一拍的终点重绘，或在场景回到空闲后接续行走；
+    // 多拍等待与淡变仍按tick推进，保持剧情节奏。
+    const bool single_tick_present = scene_effect_kind_ == SceneEffectKind::present &&
+        scene_effect_presented_ && scene_effect_wait_ticks_ == 1U &&
+        scene_endpoint_present_fast_forwards_ < 2U;
+    const bool idle = scene_effect_kind_ == SceneEffectKind::none &&
+        scene_session_->pending().kind == scene::SceneStepKind::stay;
+    if (!single_tick_present && !idle) {
+        return false;
+    }
+    finish_completed_motion_tick();
+    return authoritative_motion_.active();
+}
+
 bool LegacyGameRuntime::motion_destination_depth_phase() const noexcept {
     if (!authoritative_motion_.active()) {
         return false;
@@ -1138,9 +1157,11 @@ LegacyGameRuntime::direction_repeat_context() const noexcept {
         return DirectionRepeatContext::none;
     }
     if (world_or_scene_input_active()) {
+        // 行走终点的事件与重绘处理期间仍按移动重复，按住方向键时连续行走不中断。
         if (view_ == LegacyGameView::world ||
             scene_session_->pending().kind == scene::SceneStepKind::stay ||
-            scene_session_->loop_present_pending()) {
+            scene_session_->loop_present_pending() ||
+            (motion_tick_completed_ && scene_motion_endpoint_waiting_)) {
             return DirectionRepeatContext::movement;
         }
     }

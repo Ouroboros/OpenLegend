@@ -175,6 +175,14 @@ public:
     NODISCARD bool resume_motion_after_endpoint_presented(
         std::chrono::nanoseconds presentation_elapsed);
 
+    // 场景行走终点仍在处理（事件前重绘等）时，呈现后立即继续，不等下一个tick；
+    // 返回是否已开始下一步平滑移动。
+    NODISCARD bool continue_scene_endpoint_after_present();
+
+    NODISCARD bool scene_endpoint_pending() const noexcept {
+        return motion_tick_completed_ && scene_motion_endpoint_waiting_;
+    }
+
     NODISCARD NativeMotionPresentation motion_presentation() const;
 
     NODISCARD bool render_motion_layers(
