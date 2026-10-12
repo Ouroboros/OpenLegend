@@ -187,8 +187,7 @@ std::array<std::uint8_t, role_word::name_bytes> RoleState::legacy_name() const {
     return result;
 }
 
-std::optional<RoleState> decode_legacy_role(
-    const RoleRecord& record, const std::size_t item_count) {
+std::optional<RoleState> decode_legacy_role(const RoleRecord& record) {
     auto name = decode_name(record, role_word::name_byte);
     auto nickname = decode_name(record, role_word::nickname_byte);
     if (!name.has_value() || !nickname.has_value()) {
@@ -219,14 +218,14 @@ std::optional<RoleState> decode_legacy_role(
         state.taking_items[index] = ItemId{record.word(role_word::taking_item_begin + index)};
         state.taking_counts[index] = record.word(role_word::taking_item_count_begin + index);
     }
-    state.no_magic_count.assign(item_count, 0);
+    state.no_magic_count.clear();
     return state;
 }
 
 std::optional<RoleRecord> encode_legacy_role(const RoleState& state) {
     if (state.ever_joined || std::any_of(
             state.no_magic_count.begin(), state.no_magic_count.end(),
-            [](const std::int64_t count) { return count != 0; })) {
+            [](const auto& entry) { return entry.second != 0; })) {
         return std::nullopt;
     }
     RoleRecord record;

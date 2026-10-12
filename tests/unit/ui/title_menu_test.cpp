@@ -4208,7 +4208,7 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
         OL_CHECK(practice.valid());
         const auto practiced = practice.apply_battle_practice(0U, true);
         OL_CHECK(practiced && practiced->practiced);
-        OL_CHECK(ranger->roles[0U].no_magic_count[manual_index] == 1);
+        OL_CHECK(ranger->roles[0U].no_magic_count.at(static_cast<std::int16_t>(manual_index)) == 1);
         OL_CHECK(ranger->roles[0U].item_experience == 0);
     }
     const auto practiced_actor = ranger->roles[0U];
@@ -4227,7 +4227,7 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
     if (saved) {
         OL_CHECK(game.game_state().export_snapshot() == saved.save->snapshot);
         OL_CHECK(saved.save->snapshot.ranger.roles[0U] == practiced_actor);
-        OL_CHECK(saved.save->snapshot.ranger.roles[0U].no_magic_count[manual_index] == 1);
+        OL_CHECK(saved.save->snapshot.ranger.roles[0U].no_magic_count.at(static_cast<std::int16_t>(manual_index)) == 1);
         OL_CHECK(saved.save->metadata.timestamp_utc.size() == 20U);
     }
     {
@@ -4349,7 +4349,7 @@ void check_ngplus_runtime_persistence(const std::filesystem::path& data_root) {
         OL_CHECK(inherited_actor.attack == practiced_actor.attack);
         OL_CHECK(inherited_actor.medicine == practiced_actor.medicine);
         OL_CHECK(inherited_actor.ever_joined);
-        OL_CHECK(inherited_actor.no_magic_count[manual_index] == 1);
+        OL_CHECK(inherited_actor.no_magic_count.at(static_cast<std::int16_t>(manual_index)) == 1);
         OL_CHECK(inherited_actor.practice_item.value == -1 && inherited_actor.item_experience == 0);
         OL_CHECK(next_snapshot->ranger.header.inventory_item(0U).value == -1);
         const auto repeated_cost = model::manual_experience_requirement(inherited_actor,

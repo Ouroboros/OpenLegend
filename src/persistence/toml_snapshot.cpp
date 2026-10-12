@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
@@ -128,6 +130,39 @@ void read_integer_array(
         } else {
             destination[index].value = native_integer(value, field);
         }
+    }
+}
+
+// 无关联秘笈成功次数：新格式为物品ID到次数的表；兼容旧版按物品ID
+// 下标的全量整数数组，读入后下次保存自动改写为新格式。
+void read_no_magic_count(
+    const toml::node* node, std::map<std::int16_t, std::int64_t>& destination) {
+    require(node != nullptr, "no_magic_count is required");
+    destination.clear();
+    if (const auto* values = node->as_array(); values != nullptr) {
+        require(values->size() == model::kItemCount,
+            "no_magic_count array has an invalid length");
+        for (std::size_t item_id = 0U; item_id < values->size(); ++item_id) {
+            const auto value = integer_value(values->get(item_id), "no_magic_count");
+            if (value != 0) {
+                destination[static_cast<std::int16_t>(item_id)] = value;
+            }
+        }
+        return;
+    }
+    const auto* counts = node->as_table();
+    require(counts != nullptr, "no_magic_count must be a table or an array");
+    for (const auto& [key, value_node] : *counts) {
+        const std::string_view key_text{key.str()};
+        std::int64_t item_id{};
+        const auto [parse_end, parse_error] = std::from_chars(
+            key_text.data(), key_text.data() + key_text.size(), item_id);
+        require(parse_error == std::errc{} &&
+                parse_end == key_text.data() + key_text.size() &&
+                item_id >= 0 && item_id < static_cast<std::int64_t>(model::kItemCount),
+            "no_magic_count keys must be item identifiers");
+        destination[static_cast<std::int16_t>(item_id)] =
+            integer_value(&value_node, "no_magic_count");
     }
 }
 
@@ -274,7 +309,7 @@ void read_role(const toml::table& table, model::RoleState& role) {
     read_integer_array(table.get("magic_levels"), role.magic_levels, "magic_levels");
     read_integer_array(table.get("taking_items"), role.taking_items, "taking_items");
     read_integer_array(table.get("taking_counts"), role.taking_counts, "taking_counts");
-    read_integer_array(table.get("no_magic_count"), role.no_magic_count, "no_magic_count");
+    read_no_magic_count(table.get("no_magic_count"), role.no_magic_count);
     const auto* node = table.get("ever_joined");
     const auto* boolean = node == nullptr ? nullptr : node->as_boolean();
     require(boolean != nullptr, "ever_joined must be a boolean");
@@ -417,7 +452,13 @@ NODISCARD toml::table write_role(const model::RoleState& role) {
     result.insert("taking_items", integer_array(role.taking_items));
     result.insert("taking_counts", integer_array(role.taking_counts));
     result.insert("ever_joined", role.ever_joined);
-    result.insert("no_magic_count", integer_array(role.no_magic_count));
+    toml::table no_magic_count;
+    for (const auto& [item_id, count] : role.no_magic_count) {
+        if (count != 0) {
+            no_magic_count.insert(std::to_string(item_id), count);
+        }
+    }
+    result.insert("no_magic_count", std::move(no_magic_count));
     return result;
 }
 

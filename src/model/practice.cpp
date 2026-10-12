@@ -23,17 +23,21 @@ std::optional<std::int64_t> practice_experience_requirement(
 std::optional<PracticeCost> manual_experience_requirement(
     const RoleState& role, const ItemRecord& item, const std::size_t item_id,
     const PracticeRules& rules) noexcept {
-    if (item_id >= role.no_magic_count.size()) {
+    if (item_id >= kItemCount) {
         return std::nullopt;
     }
     const auto magic_id = item.word(item_word::magic_id);
     std::optional<std::int64_t> tier = rules.unlearned_level;
     std::int16_t magic_slot = -1;
     if (magic_id == -1) {
-        if (role.no_magic_count[item_id] < 0) {
+        const auto completed = role.no_magic_count.find(
+            static_cast<std::int16_t>(item_id));
+        const auto count =
+            completed == role.no_magic_count.end() ? std::int64_t{0} : completed->second;
+        if (count < 0) {
             return std::nullopt;
         }
-        tier = checked_add(role.no_magic_count[item_id], rules.unassociated_first_level);
+        tier = checked_add(count, rules.unassociated_first_level);
     } else {
         for (std::size_t slot = 0U; slot < role.magic_ids.size(); ++slot) {
             if (role.magic_ids[slot].value == magic_id) {

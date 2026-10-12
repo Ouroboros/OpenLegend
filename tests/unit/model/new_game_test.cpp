@@ -107,7 +107,7 @@ void check_logical_attribute_generation() {
     for (const auto seed : seeds) {
         model::RoleRecord record;
         record.set_word(model::role_word::level, 1);
-        auto role = model::decode_legacy_role(record, model::kItemCount).value();
+        auto role = model::decode_legacy_role(record).value();
         random::LegacyRandom legacy_random{seed};
         random::LegacyRandom logical_random{seed};
         model::roll_protagonist_attributes(record, legacy_random);

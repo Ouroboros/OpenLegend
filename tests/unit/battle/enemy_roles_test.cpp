@@ -17,7 +17,7 @@ void check_baseline_and_damage(
     using namespace openlegend;
     model::NewGamePlusConfiguration configuration;
     configuration.enabled = true;
-    const auto original_enemy = model::decode_legacy_role(baseline.roles[3U], model::kItemCount);
+    const auto original_enemy = model::decode_legacy_role(baseline.roles[3U]);
     OL_CHECK(original_enemy.has_value());
     if (!original_enemy) {
         return;

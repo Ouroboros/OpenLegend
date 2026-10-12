@@ -73,7 +73,7 @@ enabled = false  # 是否启用NG+存档格式与加载优先级</pre>
       <li>开启NG+后加载Legacy存档时，先按Legacy格式完整解码，再无损扩宽合法抗毒等数值并纳入NG+权威状态，不按目标周目上限夹值，也不回写原Legacy文件。其后执行普通保存时写入新的TOML，此后同槽位读档由TOML优先。</li>
       <li>
         <p>Legacy没有NG+专属历史字段。转换时，每名角色的<code>ever_joined</code>统一初始化为<code>false</code>（逻辑值0），
-          全部<code>no_magic_count[ItemCount]</code>统一初始化为0；</p>
+          <code>no_magic_count</code>映射表统一初始化为空；</p>
         <p>不得根据当前队伍、剧情状态、人物属性或物品状态反推旧历史。转换后的正常入队与无关联秘笈成功事件再从这些初始值开始记录。</p>
       </li>
       <li>两类TOML都不使用sidecar，不混合读取同槽位D／R／S，也不能导出为Legacy格式。不得用一种统一的“全存”或“全差量”策略处理全部数据；各类状态必须严格使用第3.1.3节规定的完整状态、静态引用或完整压缩bytes表示。</li>
@@ -246,7 +246,7 @@ magic_levels                       = integer_array(10)                    # 十�
 taking_items                       = integer_array(4)                     # 四个角色携带物品ID槽
 taking_counts                      = integer_array(4)                     # 四个角色携带物品数量槽
 ever_joined                        = boolean                              # 是否曾在任一周目实际入队
-no_magic_count                    = integer_array(ItemCount)             # 按物品ID保存无关联秘笈累计成功次数
+no_magic_count                    = { "物品ID" = 次数 }                   # 只保存非零的无关联秘笈累计成功次数；兼容读取旧版整数数组
 
 [item_state]
 users                              = integer_array(ItemCount)             # 每个物品当前item.user占用角色ID
@@ -352,7 +352,7 @@ d_compressed_base64                = string                               # 完�
       <li>
         <p><code>[[roles]]</code>的ID必须严格递增且不重复；每个当前队伍角色必须存在。</p>
         <p><code>ever_joined=false</code>的角色只有在当前队伍中才允许存在；<code>ever_joined=true</code>的已保存角色即属于<code>EverJoinedRoles</code>。</p>
-        <p>每个角色必须包含完整字段、固定长度数组和完整<code>no_magic_count[ItemCount]</code>。</p>
+        <p>每个角色必须包含完整字段与固定长度数组；<code>no_magic_count</code>为物品ID到次数的映射表（兼容旧版全量数组），键必须是合法物品ID。</p>
       </li>
       <li>
         <code>item_state.users</code>长度必须等于<code>ItemCount</code>，入口条件长度必须等于<code>SceneDefinitionCount</code>，

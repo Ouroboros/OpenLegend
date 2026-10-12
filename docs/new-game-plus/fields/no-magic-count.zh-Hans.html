@@ -23,7 +23,7 @@
 <main>
 <section id="field-definition">
 <h2>字段定义</h2>
-<p><code>no_magic_count[ItemCount]</code>：无关联秘笈成功次数。名称中的<code>no_magic</code>对应物品的<code>magic_id=-1</code>，表示该秘笈不关联武功；本字段按角色和秘笈物品ID累计成功修炼次数，并非已学武功数量或尝试次数。通关TOML中的历史记录跨周继承，未记录的角色初始为0。</p>
+<p><code>no_magic_count = { "物品ID" = 次数 }</code>：无关联秘笈成功次数映射，只保存非零条目（旧版全量数组存档兼容读取，保存时改写为映射）。名称中的<code>no_magic</code>对应物品的<code>magic_id=-1</code>，表示该秘笈不关联武功；本字段按角色和秘笈物品ID累计成功修炼次数，并非已学武功数量或尝试次数。通关TOML中的历史记录跨周继承，未记录的角色初始为0。</p>
 <table><thead><tr><th>字段</th><th>中文名称</th><th>下一周目值</th><th>边界与说明</th></tr></thead>
 <tbody><tr>
           <td><code>no_magic_count[ItemCount]</code></td>

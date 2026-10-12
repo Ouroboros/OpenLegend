@@ -219,7 +219,7 @@ void check_ordinary_routing(const std::filesystem::path& root,
         actor.attack = 100;
         actor.magic_levels[0U] = 998;
         actor.ever_joined = false;
-        std::ranges::fill(actor.no_magic_count, 0);
+        actor.no_magic_count.clear();
     }
     legacy.ranger.header.set_inventory(0U, model::ItemId{174}, 500);
     OL_CHECK(legacy.valid_for_persistence());

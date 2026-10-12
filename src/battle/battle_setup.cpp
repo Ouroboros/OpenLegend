@@ -700,7 +700,7 @@ bool BattleSetup::initialize_enemy_roles(
         if (candidates[index].has_value()) {
             continue;
         }
-        auto role = model::decode_legacy_role(baseline.roles[index], baseline.items.size());
+        auto role = model::decode_legacy_role(baseline.roles[index]);
         if (!role.has_value() || role->id.value != role_id) {
             error_ = "battle enemy baseline role is invalid";
             return false;
@@ -1201,12 +1201,13 @@ std::optional<BattlePracticeResult> BattleSetup::apply_battle_practice(
     role.attack_with_poison = std::max<std::int64_t>(*attack_with_poison, 0);
     role.item_experience = 0;
     if (new_game_plus_enabled_ && magic_id == -1 && item.word(model::item_word::need_experience) > 0) {
-        const auto count = model::checked_add(role.no_magic_count[static_cast<std::size_t>(item_id)], 1);
+        auto& completed = role.no_magic_count[static_cast<std::int16_t>(item_id)];
+        const auto count = model::checked_add(completed, 1);
         if (!count.has_value()) {
             error_ = "battle practice completion history overflow";
             return std::nullopt;
         }
-        role.no_magic_count[static_cast<std::size_t>(item_id)] = *count;
+        completed = *count;
     }
 
     result.practiced = true;

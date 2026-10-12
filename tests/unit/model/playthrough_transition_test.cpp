@@ -70,7 +70,7 @@ int main() {
     }
     actor.equipment[0U] = selected_items[2U];
     actor.practice_item = selected_items[3U];
-    actor.no_magic_count[static_cast<std::size_t>(selected_items[4U].value)] = 987'654'321;
+    actor.no_magic_count[selected_items[4U].value] = 987'654'321;
     source.ranger.roles[49U].ever_joined = true;
     source.ranger.roles[49U].attack = 7'000'000'000'000;
     source.ranger.roles[50U].attack = 8'000'000'000'000;

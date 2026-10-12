@@ -326,7 +326,7 @@ void check_required_fields(const toml::table& source, const TomlSnapshotContext&
 }
 
 void check_arrays_and_roles(const toml::table& source, const TomlSnapshotContext& context) {
-    for (const auto name : {"equipment", "frames", "magic_ids", "magic_levels", "taking_items", "taking_counts", "no_magic_count"}) {
+    for (const auto name : {"equipment", "frames", "magic_ids", "magic_levels", "taking_items", "taking_counts"}) {
         rejects(source, context, [&](auto& document) { role(document).get(name)->as_array()->pop_back(); });
         rejects(source, context, [&](auto& document) { role(document).get(name)->as_array()->push_back(0); });
         rejects(source, context, [&](auto& document) { replace_array_value(*role(document).get(name)->as_array(), 0U, "wrong type"); });
@@ -377,7 +377,7 @@ void check_domains(const toml::table& source, const TomlSnapshotContext& context
     }
     for (const auto& [field, value] : std::to_array<std::pair<std::string_view, std::int64_t>>({
             {"equipment", 200}, {"frames", 32768}, {"magic_ids", 93}, {"magic_levels", -1},
-            {"taking_items", 200}, {"taking_counts", -1}, {"no_magic_count", -1}})) {
+            {"taking_items", 200}, {"taking_counts", -1}})) {
         rejects(source, context, [&](auto& document) {
             replace_array_value(*role(document).get(field)->as_array(), 0U, value);
         });
@@ -389,7 +389,14 @@ void check_domains(const toml::table& source, const TomlSnapshotContext& context
     OL_CHECK(nonmanual != context.baseline.items.end());
     const auto nonmanual_index = static_cast<std::size_t>(nonmanual - context.baseline.items.begin());
     rejects(source, context, [&](auto& document) {
-        replace_array_value(*role(document).get("no_magic_count")->as_array(), nonmanual_index, 1);
+        role(document).get("no_magic_count")->as_table()->insert(
+            std::to_string(nonmanual_index), 1);
+    });
+    rejects(source, context, [](auto& document) {
+        role(document).get("no_magic_count")->as_table()->insert("bad-key", 1);
+    });
+    rejects(source, context, [](auto& document) {
+        role(document).get("no_magic_count")->as_table()->insert("200", 1);
     });
     rejects(source, context, [](auto& document) { replace_array_value(*role(document).get("magic_ids")->as_array(), 0U, 0); });
     rejects(source, context, [](auto& document) { replace_array_value(*role(document).get("taking_items")->as_array(), 0U, -1); });

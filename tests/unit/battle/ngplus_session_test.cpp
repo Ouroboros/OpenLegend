@@ -185,7 +185,8 @@ void check_session_and_persistence(
     if (wide_messages) {
         OL_CHECK(settled_actor.experience >= 10'000'000'000'000'000);
     }
-    OL_CHECK(settled_actor.no_magic_count[manual_index] == 1);
+    OL_CHECK(settled_actor.no_magic_count.contains(static_cast<std::int16_t>(manual_index)) &&
+        settled_actor.no_magic_count.at(static_cast<std::int16_t>(manual_index)) == 1);
     OL_CHECK(settled_actor.item_experience == 0);
     OL_CHECK(settled_actor.hp > std::numeric_limits<std::int32_t>::max());
     OL_CHECK(snapshot.valid_for_persistence());
@@ -332,13 +333,14 @@ void check_ordinary_progression(
         const auto& actor = snapshot.ranger.roles[0U];
         OL_CHECK(actor.experience > actor_before.experience && actor.level > actor_before.level);
         OL_CHECK(actor.magic_levels[0U] > actor_before.magic_levels[0U]);
-        OL_CHECK(actor.no_magic_count[93U] > actor_before.no_magic_count[93U]);
+        OL_CHECK(actor.no_magic_count.at(93) >
+            (actor_before.no_magic_count.contains(93) ? actor_before.no_magic_count.at(93) : 0));
         OL_CHECK(actor.attack > actor_before.attack && actor.maximum_hp > actor_before.maximum_hp);
         OL_CHECK(snapshot.valid_for_persistence());
         std::cout << "ordinary growth NG" << playthrough << ": battles=32 level=" << actor.level
                   << " experience=" << actor.experience << " attack=" << actor.attack
                   << " max_hp=" << actor.maximum_hp << " proficiency=" << actor.magic_levels[0U]
-                  << " manual_completions=" << actor.no_magic_count[93U] << '\n';
+                  << " manual_completions=" << actor.no_magic_count.at(93) << '\n';
         OL_CHECK(persistence::write_toml_slot(directory, snapshot, metadata, context));
         auto loaded = persistence::load_toml_slot(directory, metadata.kind, metadata.slot, context);
         OL_CHECK(loaded && loaded.save->snapshot == snapshot);

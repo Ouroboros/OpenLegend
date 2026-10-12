@@ -91,7 +91,7 @@ NODISCARD bool role_values_valid(
         role.hurt <= hurt_maximum && role.poison <= poison_maximum &&
         std::ranges::all_of(role.magic_levels, [](const auto value) { return value >= 0; }) &&
         std::ranges::all_of(role.taking_counts, [](const auto value) { return value >= 0; }) &&
-        std::ranges::all_of(role.no_magic_count, [](const auto value) { return value >= 0; });
+        std::ranges::all_of(role.no_magic_count, [](const auto& entry) { return entry.second >= 0; });
 }
 
 NODISCARD bool role_references_valid(
@@ -132,11 +132,14 @@ NODISCARD bool role_references_valid(
             return false;
         }
     }
-    for (std::size_t item_id = 0U; item_id < role.no_magic_count.size(); ++item_id) {
-        if (role.no_magic_count[item_id] == 0) {
+    for (const auto& [item_id, count] : role.no_magic_count) {
+        if (count == 0) {
             continue;
         }
-        const auto& item = ranger.items[item_id];
+        if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
+            return false;
+        }
+        const auto& item = ranger.items[static_cast<std::size_t>(item_id)];
         if (item.word(item_word::item_type) != 2 || item.word(item_word::magic_id) != -1 ||
             item.word(item_word::need_experience) <= 0) {
             return false;
@@ -317,8 +320,7 @@ bool RuntimeRangerState::valid() const {
             roles.begin(), roles.end(), [this](const RoleState& role) {
                 const auto name = text::encode_big5(role.name);
                 const auto nickname = text::encode_big5(role.nickname);
-                return role.no_magic_count.size() == items.size() &&
-                    name.has_value() && name->size() <= role_word::name_bytes &&
+                return name.has_value() && name->size() <= role_word::name_bytes &&
                     nickname.has_value() && nickname->size() <= role_word::name_bytes;
             });
 }
@@ -389,7 +391,7 @@ std::optional<RuntimeRangerState> decode_legacy_ranger(RangerState ranger) {
     }
     RuntimeRangerState result;
     for (std::size_t index = 0U; index < ranger.roles.size(); ++index) {
-        auto role = decode_legacy_role(ranger.roles[index], ranger.items.size());
+        auto role = decode_legacy_role(ranger.roles[index]);
         if (!role.has_value()) {
             return std::nullopt;
         }

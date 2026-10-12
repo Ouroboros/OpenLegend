@@ -81,7 +81,8 @@ void check_complete_legacy_conversion() {
     OL_CHECK(!state.import_snapshot(std::move(invalid)));
     OL_CHECK(state.export_snapshot() == saved);
     invalid = *saved;
-    invalid.ranger.roles[0].no_magic_count.pop_back();
+    invalid.ranger.roles[0].no_magic_count[
+        static_cast<std::int16_t>(openlegend::model::kItemCount)] = 1;
     OL_CHECK(!state.import_snapshot(std::move(invalid)));
     OL_CHECK(state.export_snapshot() == saved);
     invalid = *saved;
@@ -288,7 +289,7 @@ void check_numeric_domains_and_references() {
     });
     OL_CHECK(manual != wide.ranger.items.end());
     if (manual != wide.ranger.items.end()) {
-        wide.ranger.roles[0].no_magic_count[static_cast<std::size_t>(manual->id().value)] =
+        wide.ranger.roles[0].no_magic_count[manual->id().value] =
             7'000'000'000;
     }
     OL_CHECK(wide.valid_for_persistence());

@@ -42,7 +42,7 @@ void check_wide_values_and_history_initialization() {
     using namespace openlegend::model;
 
     const auto record = make_record();
-    auto state = decode_legacy_role(record, kItemCount);
+    auto state = decode_legacy_role(record);
     OL_CHECK(state.has_value());
     if (!state.has_value()) {
         return;
@@ -55,9 +55,7 @@ void check_wide_values_and_history_initialization() {
     OL_CHECK(state->name == u8"張無忌");
     OL_CHECK(state->nickname.empty());
     OL_CHECK(!state->ever_joined);
-    OL_CHECK(state->no_magic_count.size() == kItemCount);
-    OL_CHECK(std::all_of(state->no_magic_count.begin(), state->no_magic_count.end(),
-        [](const std::int64_t count) { return count == 0; }));
+    OL_CHECK(state->no_magic_count.empty());
     OL_CHECK(encode_legacy_role(*state) == record);
 
     state->experience = 1'000'000'000'000;
@@ -80,7 +78,7 @@ void check_wide_values_and_history_initialization() {
 void check_legacy_encoding_boundaries() {
     using namespace openlegend::model;
 
-    auto state = decode_legacy_role(make_record(), kItemCount);
+    auto state = decode_legacy_role(make_record());
     OL_CHECK(state.has_value());
     if (!state.has_value()) {
         return;
@@ -115,7 +113,7 @@ void check_legacy_encoding_boundaries() {
 void check_name_validation() {
     using namespace openlegend;
 
-    auto state = model::decode_legacy_role(make_record(), model::kItemCount);
+    auto state = model::decode_legacy_role(make_record());
     OL_CHECK(state.has_value());
     if (!state.has_value()) {
         return;
@@ -124,7 +122,7 @@ void check_name_validation() {
     const auto full_name = model::encode_legacy_role(*state);
     OL_CHECK(full_name.has_value());
     if (full_name.has_value()) {
-        const auto restored = model::decode_legacy_role(*full_name, model::kItemCount);
+        const auto restored = model::decode_legacy_role(*full_name);
         OL_CHECK(restored.has_value());
         if (restored.has_value()) {
             OL_CHECK(restored->name == state->name);
@@ -167,7 +165,7 @@ void check_big5_decode_aliases() {
     std::fill_n(name_begin, model::role_word::name_bytes, 0U);
     record.bytes[model::role_word::name_byte] = 0xA2U;
     record.bytes[model::role_word::name_byte + 1U] = 0xCCU;
-    const auto state = model::decode_legacy_role(record, model::kItemCount);
+    const auto state = model::decode_legacy_role(record);
     OL_CHECK(state.has_value());
     if (state.has_value()) {
         OL_CHECK(state->name == u8"十");
@@ -189,7 +187,7 @@ void check_current_asset_records() {
         return;
     }
     for (const auto& record : loaded.ranger->roles) {
-        const auto state = model::decode_legacy_role(record, loaded.ranger->items.size());
+        const auto state = model::decode_legacy_role(record);
         OL_CHECK(state.has_value());
         if (!state.has_value()) {
             continue;
@@ -207,7 +205,7 @@ void check_current_asset_records() {
             }
             OL_CHECK(encoded->word(index) == record.word(index));
         }
-        OL_CHECK(model::decode_legacy_role(*encoded, loaded.ranger->items.size()) == state);
+        OL_CHECK(model::decode_legacy_role(*encoded) == state);
     }
 }
 

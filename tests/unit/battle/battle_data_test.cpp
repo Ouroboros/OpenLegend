@@ -407,8 +407,7 @@ void initialize_ranger(
     openlegend::model::RuntimeRangerState& ranger,
     const std::array<std::int16_t, openlegend::model::kTeamMemberCount>& party) {
     for (std::size_t role = 0U; role < ranger.roles.size(); ++role) {
-        ranger.roles[role] = openlegend::model::decode_legacy_role(
-            openlegend::model::RoleRecord{}, ranger.items.size()).value();
+        ranger.roles[role] = openlegend::model::decode_legacy_role(openlegend::model::RoleRecord{}).value();
         ranger.roles[role].set_word(
             openlegend::model::role_word::head_id,
             static_cast<std::int16_t>(role % 17U));
@@ -2959,7 +2958,7 @@ void run_post_battle_progression_test(const openlegend::resource::DataRoot& data
         OL_CHECK(setup.valid());
         auto& role = ranger.roles[0U];
         const auto reset_level_role = [&role](const std::int16_t iq) {
-            role = decode_legacy_role(RoleRecord{}, kItemCount).value();
+            role = decode_legacy_role(RoleRecord{}).value();
             role.set_word(role_word::level, 1);
             role.set_word(role_word::experience, 50);
             role.set_word(role_word::increased_life, 2);
@@ -3705,7 +3704,7 @@ void run_battle_practice_review_test(
             role.item_experience = 600;
             const auto result = setup.apply_battle_practice(0U, true);
             OL_CHECK(result && result->practiced && result->required_experience == 60);
-            OL_CHECK(role.no_magic_count[5U] == 0);
+            OL_CHECK(!role.no_magic_count.contains(5));
             OL_CHECK(role.item_experience == 0);
             OL_CHECK(encode_legacy_role(role).has_value());
         }
@@ -3850,7 +3849,7 @@ void run_battle_practice_review_test(
         OL_CHECK(role.word(role_word::defence) == 0);
         OL_CHECK(role.word(role_word::attack_twice) == 1);
         OL_CHECK(role.word(role_word::attack_with_poison) == 101);
-        OL_CHECK(role.no_magic_count[5U] == 0);
+        OL_CHECK(!role.no_magic_count.contains(5));
         OL_CHECK(role.word(role_word::item_experience) == 0);
     }
 
@@ -14804,7 +14803,8 @@ void run_ngplus_speed_domain_test(const openlegend::resource::DataRoot& data_roo
                     OL_CHECK(role.speed == std::clamp(*test.after, std::int64_t{0}, std::int64_t{100}));
                     OL_CHECK(role.attack == 105);
                     OL_CHECK(role.item_experience == 0);
-                    OL_CHECK(role.no_magic_count[0U] == (configuration.enabled ? 1 : 0));
+                    OL_CHECK((configuration.enabled ? role.no_magic_count.at(0) == 1
+                                                    : !role.no_magic_count.contains(0)));
                 } else {
                     OL_CHECK(ranger.roles == before);
                 }
@@ -15110,7 +15110,8 @@ void run_ngplus_fixed_technique_writes_test(const openlegend::resource::DataRoot
                     OL_CHECK(role.hidden_weapon == wide + 7);
                     OL_CHECK(role.attack_with_poison == wide + 9);
                     OL_CHECK(role.item_experience == 0);
-                    OL_CHECK(role.no_magic_count[0U] == (enabled ? 1 : 0));
+                    OL_CHECK((enabled ? role.no_magic_count.at(0) == 1
+                              : !role.no_magic_count.contains(0)));
                 } else {
                     OL_CHECK(ranger.roles == before);
                 }

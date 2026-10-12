@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <map>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -58,7 +59,8 @@ struct RoleState {
     std::array<ItemId, role_word::taking_item_count> taking_items;
     std::array<std::int64_t, role_word::taking_item_count> taking_counts{};
     bool ever_joined{};
-    std::vector<std::int64_t> no_magic_count = std::vector<std::int64_t>(kItemCount);
+    // 无关联秘笈成功次数：键为物品ID，只保存非零条目。
+    std::map<std::int16_t, std::int64_t> no_magic_count;
 
     NODISCARD std::int64_t word(std::size_t index) const;
 
@@ -71,8 +73,7 @@ struct RoleState {
     NODISCARD bool operator==(const RoleState&) const = default;
 };
 
-NODISCARD std::optional<RoleState> decode_legacy_role(
-    const RoleRecord& record, std::size_t item_count);
+NODISCARD std::optional<RoleState> decode_legacy_role(const RoleRecord& record);
 
 NODISCARD std::optional<RoleRecord> encode_legacy_role(const RoleState& state);
 
