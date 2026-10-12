@@ -102,8 +102,7 @@ TitleResult TitleMenuController::handle_key(const std::uint8_t translated_key) n
             screen_ = TitleScreen::load_slots;
             return {TitleCommand::delete_slot, slot_selection_};
         }
-        if (translated_key == input::legacy_key::no ||
-            translated_key == input::legacy_key::escape) {
+        if (translated_key == input::legacy_key::no) {
             screen_ = TitleScreen::load_slots;
         }
         return {};

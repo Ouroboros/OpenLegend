@@ -2900,7 +2900,9 @@ SceneStepResult SceneSession::advance_load_menu(const int translated_key) {
             pending_ = current_result(SceneStepKind::quit);
             return pending_;
         }
-        state.phase = LoadMenuState::Phase::menu;
+        if (translated_key == static_cast<int>('N')) {
+            state.phase = LoadMenuState::Phase::menu;
+        }
     } else if (translated_key == 0x98) {
         state.selection = state.selection == 3 ? 0 : static_cast<std::int16_t>(state.selection + 1);
     } else if (translated_key == 0x9E) {
@@ -3009,7 +3011,9 @@ SceneStepResult SceneSession::advance_death_menu(const int translated_key) {
             pending_ = current_result(SceneStepKind::quit);
             return pending_;
         }
-        state.phase = DeathMenuState::Phase::menu;
+        if (translated_key == static_cast<int>('N')) {
+            state.phase = DeathMenuState::Phase::menu;
+        }
     } else if (translated_key == 0x98) {
         state.selection = state.selection == 3 ? 0 : static_cast<std::int16_t>(state.selection + 1);
     } else if (translated_key == 0x9E) {

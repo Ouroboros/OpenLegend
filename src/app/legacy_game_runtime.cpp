@@ -256,6 +256,11 @@ NODISCARD bool dialogue_advance_key(const std::uint8_t translated_key) noexcept 
         translated_key == input::legacy_key::enter;
 }
 
+// Y/N 确认界面只接受 Y 与 N，其余按键一律忽略。
+NODISCARD bool is_yes_no_key(const std::uint8_t translated_key) noexcept {
+    return translated_key == input::legacy_key::yes || translated_key == input::legacy_key::no;
+}
+
 NODISCARD std::string_view scene_step_name(const scene::SceneStepKind kind) noexcept {
     switch (kind) {
     case scene::SceneStepKind::stay: return "stay";
@@ -1712,7 +1717,7 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
                 handle_world_menu_event_result(
                     world_menu_event_session_->resume(scene::SceneResponse::acknowledge));
             } else if (pending_kind == scene::SceneStepKind::question &&
-                       scene_question_presented_) {
+                       scene_question_presented_ && is_yes_no_key(translated_key)) {
                 scene_question_presented_ = false;
                 handle_world_menu_event_result(world_menu_event_session_->resume(
                     translated_key == input::legacy_key::yes
@@ -1735,6 +1740,9 @@ LegacyKeyStateReset LegacyGameRuntime::handle_key(
         const auto pending_kind = scene_session_->pending().kind;
         if (pending_kind == scene::SceneStepKind::question &&
             scene_question_presented_) {
+            if (!is_yes_no_key(translated_key)) {
+                break;
+            }
             scene_question_presented_ = false;
             handle_scene_result(scene_session_->resume(
                 translated_key == input::legacy_key::yes
@@ -4122,6 +4130,9 @@ bool LegacyGameRuntime::begin_world_menu_item_event(const std::int16_t item_id) 
 
 void LegacyGameRuntime::handle_menu_item_confirmation(
     const std::uint8_t translated_key) {
+    if (!is_yes_no_key(translated_key)) {
+        return;
+    }
     const auto confirmation = game_menu_.item_confirmation();
     auto* ranger = game_state_.ranger();
     if (translated_key != input::legacy_key::yes || ranger == nullptr) {

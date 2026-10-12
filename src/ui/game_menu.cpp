@@ -181,9 +181,12 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         return {};
     }
     if (screen_ == GameMenuScreen::quit_confirmation) {
-        screen_ = GameMenuScreen::system;
         if (translated_key == input::legacy_key::yes) {
+            screen_ = GameMenuScreen::system;
             return {GameMenuCommand::exit_game, 0U, 0U};
+        }
+        if (translated_key == input::legacy_key::no) {
+            screen_ = GameMenuScreen::system;
         }
         return {};
     }
@@ -192,8 +195,7 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
             screen_ = delete_return_screen_;
             return {GameMenuCommand::delete_slot, slot_selection_, 0U};
         }
-        if (translated_key == input::legacy_key::no ||
-            translated_key == input::legacy_key::escape) {
+        if (translated_key == input::legacy_key::no) {
             screen_ = delete_return_screen_;
         }
         return {};
