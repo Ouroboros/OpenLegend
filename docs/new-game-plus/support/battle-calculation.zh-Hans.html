@@ -93,12 +93,14 @@
   计算伤害 = max(距离后伤害, 1)</pre>
 <p>负的低伤害结果跳过体力、内伤和距离修正；恰好0仍进入这些修正。目标内伤增伤为目标的<a href="../fields/hurt-medicine.zh-Hans.html#hurt-hp-loss">内伤生命损失</a>，按目标最大生命计算。原版完整分支、四次随机调用条件与写回顺序见<a href="../../../research/evidence/functions/Z_DAT/0x39188.md">机器合同</a>。</p>
 <h3>扣血、产伤及攻击计数</h3>
-<pre>攻击计数 += trunc(计算伤害 / 5)
+<pre>计入伤害 = clamp(min(计算伤害, 目标maximum_hp − 目标本场已计入伤害), 0, 计算伤害)
+攻击计数 += trunc(计入伤害 / 5)
+目标本场已计入伤害 += 计入伤害
 扣血后值 = 目标扣血前HP − 计算伤害
 目标HP = max(扣血后值, 0)
 若扣血后值 &lt; 0：攻击计数 += 10 × 目标实际level
 目标hurt = min(99, 目标旧hurt + trunc(99 × 计算伤害 / (2 × (目标maximum_hp + 目标maximum_mp))))</pre>
-<p>计算伤害用于攻击计数及产伤，不能先按目标剩余HP截短。沿用原版严格边界：扣血后恰好0也死亡，但不触发这次额外击倒计数；严格低于0才增加10倍目标等级。产伤公式见<a href="../fields/hurt-medicine.zh-Hans.html#hurt-gain">新增内伤</a>。</p>
+<p>计算伤害用于扣血与产伤，不按目标剩余HP截短。攻击计数只计入伤害：同一目标在一场战斗中累计计入攻击计数的伤害不超过其最大生命，超出部分不计经验，避免高伤害溢出使经验失控（原版直接按计算伤害计数）。沿用原版严格边界：扣血后恰好0也死亡，但不触发这次额外击倒计数；严格低于0才增加10倍目标等级。产伤公式见<a href="../fields/hurt-medicine.zh-Hans.html#hurt-gain">新增内伤</a>。</p>
 <h3>随后结算武功附毒</h3>
 <p>毒力使用角色实际武功带毒与武功带毒字段乘降档前熟练等级，除数15；统一按<a href="../fields/use-poison-anti-poison-detoxification.zh-Hans.html#poison-application">上毒公式</a>计算最深、实际毒入、溢出与即时扣HP。附毒不再次应用攻防、距离或武功攻击威力倍率。溢出和每轮毒伤均可致死。溢出伤血不额外增加内伤；当场伤血大于0时单独追加伤血飘字。</p>
 </section>

@@ -749,6 +749,7 @@ void BattleSetup::initialize_combatants() {
         combatant.words[combatant_word::sprite] = empty_sprite;
         combatant.round_value = 0;
         combatant.reward_experience = 0;
+        combatant.experience_damage_taken = 0;
     }
 }
 
@@ -914,6 +915,8 @@ void BattleSetup::swap_combatants(const std::size_t first, const std::size_t sec
     std::swap(combatants_[first].damage_value, combatants_[second].damage_value);
     std::swap(combatants_[first].hurt_healed_value, combatants_[second].hurt_healed_value);
     std::swap(combatants_[first].poison_overflow_damage, combatants_[second].poison_overflow_damage);
+    std::swap(combatants_[first].experience_damage_taken,
+        combatants_[second].experience_damage_taken);
     const auto saved = combatants_[first].words;
     for (std::size_t word = 0U; word < kBattleCombatantWords; ++word) {
         if (word != combatant_word::sprite) {
@@ -2303,7 +2306,11 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
         damage = std::max<std::int64_t>(*product / (distance > 10 ? 3 : 100), 1);
     }
     const auto target_hp = model::checked_subtract(target.hp, *damage);
-    auto counter = model::checked_add(combatants_[actor_slot].reward_experience, *damage / 5);
+    // 计入攻击经验的伤害：同一目标本场累计不超过其最大生命，溢出部分不计经验。
+    const auto counted_damage = std::clamp<std::int64_t>(
+        std::min(*damage, target.maximum_hp - combatants_[target_slot].experience_damage_taken),
+        0, *damage);
+    auto counter = model::checked_add(combatants_[actor_slot].reward_experience, counted_damage / 5);
     if (counter.has_value() && target_hp.has_value() && *target_hp < 0) {
         const auto defeat_bonus = model::checked_multiply(10, target.level);
         counter = defeat_bonus.has_value()
@@ -2338,6 +2345,7 @@ std::optional<BattleHpDamageResult> BattleSetup::apply_hp_damage(
     target.poison += poison->applied_amount;
     *stored_target = std::move(target);
     combatants_[actor_slot].reward_experience = *counter;
+    combatants_[target_slot].experience_damage_taken += counted_damage;
     last_hp_cost_scale_ = *cost_scale;
     if (legacy_hp_cost_scale_ != nullptr) {
         *legacy_hp_cost_scale_ = *cost_scale;

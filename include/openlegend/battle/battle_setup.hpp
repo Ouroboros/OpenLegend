@@ -46,6 +46,8 @@ struct BattleCombatant {
     std::int64_t damage_value{};
     std::int64_t hurt_healed_value{};
     std::int64_t poison_overflow_damage{};
+    // 本场已计入攻击经验的累计伤害；作为目标时累计不超过其最大生命。
+    std::int64_t experience_damage_taken{};
 
     NODISCARD bool operator==(const BattleCombatant&) const = default;
 };
