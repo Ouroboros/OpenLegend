@@ -163,7 +163,7 @@ public:
         int y) const;
 
 private:
-    NODISCARD bool render_wide_medicine_selection(
+    NODISCARD bool render_medicine_selection(
         const model::RuntimeRangerState& ranger, std::size_t cursor, std::size_t party_count,
         render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits);
 

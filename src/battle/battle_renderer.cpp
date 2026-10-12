@@ -410,39 +410,81 @@ bool BattleRenderer::render_status_panel(
             plan.mp_color);
 }
 
-bool BattleRenderer::render_wide_medicine_selection(
+bool BattleRenderer::render_medicine_selection(
     const model::RuntimeRangerState& ranger, const std::size_t cursor, const std::size_t party_count,
     render::IndexedFramebuffer& framebuffer, const model::PlaythroughLimits& limits) {
-    const auto page = cursor / 3U;
-    const auto begin = page * 3U;
-    const auto pages = (party_count + 2U) / 3U;
-    if (!draw_box(framebuffer, 0, 0, 320U, 26U) ||
-        !draw_text_utf8(framebuffer, 8, 5, kMedicineTargetTitle, text_colors::notice) ||
-        !draw_text_utf8(framebuffer, 286, 5,
-            decimal_text(static_cast<std::int64_t>(page + 1U)) + u8"/" +
-                decimal_text(static_cast<std::int64_t>(pages)), text_colors::menu_normal) ||
-        !draw_box(framebuffer, 0, 27, 320U, 173U)) {
-        return false;
-    }
-    for (std::size_t slot = begin; slot < std::min(begin + 3U, party_count); ++slot) {
+    // 紧凑列表：每行“名字 生命/上限 內傷N”，列宽按最长内容，框随内容收缩。
+    struct Row {
+        std::span<const std::uint8_t> name;
+        std::array<std::uint8_t, model::role_word::name_bytes> name_storage{};
+        std::u8string life;
+        std::u8string hurt;
+        render::TextColors hurt_color{};
+    };
+    std::vector<Row> rows(party_count);
+    int name_width = 0;
+    int life_width = 0;
+    int hurt_width = 0;
+    const auto utf8_width = [](const std::u8string_view text) {
+        int width = 0;
+        for (const auto unit : text) {
+            if (unit < 0x80U) {
+                width += 8;
+            } else if ((unit & 0xC0U) != 0x80U) {
+                width += 16;
+            }
+        }
+        return width;
+    };
+    for (std::size_t slot = 0U; slot < party_count; ++slot) {
         const auto role_id = ranger.header.team_member(slot).value;
+        if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
+            return false;
+        }
         const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
         const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
         if (!hurt) {
             return false;
         }
+        auto& row = rows[slot];
+        row.name_storage = role.legacy_name();
+        row.name = zero_terminated_prefix(row.name_storage);
+        row.life = decimal_text(role.hp) + std::u8string{kSlash} + decimal_text(role.maximum_hp);
+        row.hurt = std::u8string{kHurtStatusLabel} + u8" " + decimal_text(role.hurt);
+        row.hurt_color = *hurt == model::HurtBand::severe ? text_colors::severe_injury
+            : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
+        name_width = std::max(name_width, 8 * static_cast<int>(row.name.size()));
+        life_width = std::max(life_width, utf8_width(row.life));
+        hurt_width = std::max(hurt_width, utf8_width(row.hurt));
+    }
+    constexpr int kGap = 12;
+    constexpr int kPadding = 6;
+    const auto list_width = kPadding * 2 + name_width + kGap + life_width + kGap + hurt_width + 2;
+    // 内容过宽时整体左移，不越出画面。
+    const auto left = std::max(0, std::min(70, framebuffer.coordinate_width() - list_width));
+    const auto encoded_title = text::encode_big5(kMedicineTargetTitle);
+    if (!encoded_title.has_value()) {
+        return false;
+    }
+    const auto title_width = static_cast<std::uint16_t>(8U * encoded_title->size() + 12U);
+    if (!draw_box(framebuffer, left, 18, title_width, 26U) ||
+        !draw_text_utf8(framebuffer, left + 5, 22, kMedicineTargetTitle, text_colors::notice) ||
+        !draw_box(framebuffer, left, 45, static_cast<std::uint16_t>(list_width),
+            static_cast<std::uint16_t>(20U * party_count + 10U))) {
+        return false;
+    }
+    const auto life_x = left + kPadding + name_width + kGap;
+    const auto hurt_x = life_x + life_width + kGap;
+    for (std::size_t slot = 0U; slot < party_count; ++slot) {
+        const auto& row = rows[slot];
         const auto selected = slot == cursor;
         const auto color = selected ? text_colors::selected : text_colors::menu_normal;
-        const auto hp_color = selected ? text_colors::selected
-            : *hurt == model::HurtBand::severe ? text_colors::severe_injury
-            : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
-        const auto row = 34 + 51 * static_cast<int>(slot - begin);
-        const auto name = role.legacy_name();
-        if (!draw_text_big5(framebuffer, 8, row, text::Big5TextView{zero_terminated_prefix(name)}, color) ||
-            !draw_text_utf8(framebuffer, 8, row + 17, kLifeLabel, color) ||
-            !draw_text_utf8(framebuffer, 152, row + 17, decimal_text(role.hp), hp_color) ||
-            !draw_text_utf8(framebuffer, 8, row + 34, u8"生命上限", color) ||
-            !draw_text_utf8(framebuffer, 152, row + 34, decimal_text(role.maximum_hp), color)) {
+        const auto y = 52 + 20 * static_cast<int>(slot);
+        if (!draw_text_big5(framebuffer, left + kPadding, y, text::Big5TextView{row.name}, color) ||
+            !draw_text_utf8(framebuffer, life_x + life_width - utf8_width(row.life), y, row.life,
+                selected ? text_colors::selected : row.hurt_color) ||
+            !draw_text_utf8(framebuffer, hurt_x, y, row.hurt,
+                selected ? text_colors::selected : row.hurt_color)) {
             return false;
         }
     }
@@ -467,18 +509,7 @@ bool BattleRenderer::render_character_selection(
         return false;
     }
     if (kind == PartySelectionKind::medicine_target) {
-        bool wide = false;
-        for (std::size_t slot = 0U; slot < party_count; ++slot) {
-            const auto role_id = ranger.header.team_member(slot).value;
-            if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger.roles.size()) {
-                return false;
-            }
-            const auto& role = ranger.roles[static_cast<std::size_t>(role_id)];
-            wide = wide || decimal_text(role.hp).size() > 3U || decimal_text(role.maximum_hp).size() > 3U;
-        }
-        if (wide) {
-            return render_wide_medicine_selection(ranger, cursor, party_count, framebuffer, limits);
-        }
+        return render_medicine_selection(ranger, cursor, party_count, framebuffer, limits);
     }
     std::u8string_view title;
     std::u8string_view subtitle;
@@ -555,38 +586,13 @@ bool BattleRenderer::render_character_selection(
                 color)) {
             return false;
         }
-        if (kind == PartySelectionKind::medicine_target) {
-            const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
-            if (!hurt.has_value()) {
-                return false;
-            }
-            const auto hp_color = selected ? text_colors::selected
-                : *hurt == model::HurtBand::severe ? text_colors::severe_injury
-                : *hurt == model::HurtBand::moderate ? text_colors::moderate_injury
-                                                   : text_colors::notice;
-            if (!draw_text_utf8(
-                    framebuffer,
-                    127,
-                    y,
-                    decimal_text(role.word(model::role_word::hp), 3),
-                    hp_color) ||
-                !draw_text_utf8(
-                    framebuffer, 149, y, kSlash, selected ? text_colors::selected : text_colors::hp_separator) ||
-                !draw_text_utf8(
-                    framebuffer,
-                    155,
-                    y,
-                    decimal_text(role.word(model::role_word::maximum_hp), 3),
-                    color)) {
-                return false;
-            }
-        } else if (kind == PartySelectionKind::detoxification_target &&
-                   !draw_text_utf8(
-                       framebuffer,
-                       127,
-                       y,
-                       decimal_text(role.word(model::role_word::poison), 3),
-                       color)) {
+        if (kind == PartySelectionKind::detoxification_target &&
+            !draw_text_utf8(
+                framebuffer,
+                127,
+                y,
+                decimal_text(role.word(model::role_word::poison), 3),
+                color)) {
             return false;
         }
     }
