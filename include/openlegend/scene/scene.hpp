@@ -10,6 +10,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -31,6 +32,12 @@ namespace openlegend::scene {
 inline constexpr int kSceneExtent = 64;
 inline constexpr int kSceneViewExtent = 28;
 inline constexpr int kSceneMaximumViewOrigin = 36;
+// 韦小宝商店可出现的五家客栈（场景，事件）；指令65从中随机挑一家放置。
+inline constexpr std::array<std::pair<std::int16_t, std::int16_t>, 5> kWeiXiaobaoShopEvents{
+    std::pair<std::int16_t, std::int16_t>{1, 16}, {3, 14}, {40, 20}, {60, 16}, {61, 9}};
+// 初见对话脚本只挂在河洛客栈的事件上，对话后改挂商店脚本。
+inline constexpr std::int16_t kWeiXiaobaoGreetingScript = 937;
+inline constexpr std::int16_t kWeiXiaobaoShopScript = 938;
 inline constexpr std::size_t kTalkCount = 2'977U;
 inline constexpr std::size_t kEventScriptCount = 1'018U;
 

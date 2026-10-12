@@ -22,7 +22,7 @@ struct ItemListPageView {
     // 显示的页签（kItemCategoryLabels 下标）与当前页签在其中的位置。
     std::span<const std::uint8_t> tabs;
     std::size_t active_tab{};
-    // 坐标物品的说明栏替换文字。
+    // 坐标物品的说明栏替换文字，多行以换行符分隔。
     std::u8string_view coordinate_text;
 };
 

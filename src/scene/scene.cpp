@@ -1844,11 +1844,11 @@ SceneStepResult SceneSession::run_event() {
             } else if (scene_id_ == 61) {
                 hide(9); hide(10); hide(11); hide(12);
             }
-            constexpr std::array<std::pair<std::int16_t, std::int16_t>, 5> targets{
-                std::pair<std::int16_t, std::int16_t>{1, 16}, {3, 14}, {40, 20}, {60, 16}, {61, 9}};
-            const auto target = targets[static_cast<std::size_t>(random_.bounded(5))];
+            const auto target = kWeiXiaobaoShopEvents[static_cast<std::size_t>(
+                random_.bounded(static_cast<std::int64_t>(kWeiXiaobaoShopEvents.size())))];
             const std::array<std::int16_t, 13> event_change{
-                target.first, target.second, 1, 1, 938, -1, -1, 8256, 8256, 8256, -2, -2, -2};
+                target.first, target.second, 1, 1, kWeiXiaobaoShopScript,
+                -1, -1, 8256, 8256, 8256, -2, -2, -2};
             modify_event(event_change);
             program_counter_ += 1;
             break;

@@ -21,6 +21,7 @@
 #include "openlegend/render/legacy_color.hpp"
 #include "openlegend/render/legacy_effects.hpp"
 #include "openlegend/render/rgba_fade.hpp"
+#include "openlegend/text/big5.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 #include "character_status_page.hpp"
@@ -50,6 +51,32 @@ NODISCARD std::vector<std::uint8_t> legacy_field(
     const auto field = bytes.subspan(begin, maximum);
     const auto end = std::find(field.begin(), field.end(), std::uint8_t{0U});
     return std::vector<std::uint8_t>(field.begin(), end);
+}
+
+// 罗盘显示韦小宝当前所在客栈：五家客栈中挂着初见或商店脚本的那一家。
+NODISCARD std::optional<std::u8string> wei_xiaobao_location_text(
+    const model::RuntimeGameSnapshot& snapshot) {
+    for (const auto [scene_id, event_id] : scene::kWeiXiaobaoShopEvents) {
+        const auto script = snapshot.event_value(
+            static_cast<std::size_t>(scene_id), static_cast<std::size_t>(event_id),
+            model::SceneEventField::event_1);
+        if (!script.has_value() || (*script != scene::kWeiXiaobaoShopScript &&
+                                    *script != scene::kWeiXiaobaoGreetingScript)) {
+            continue;
+        }
+        if (static_cast<std::size_t>(scene_id) >= snapshot.ranger.scenes.size()) {
+            return std::nullopt;
+        }
+        const auto name = text::decode_big5(text::Big5TextView{legacy_field(
+            snapshot.ranger.scenes[static_cast<std::size_t>(scene_id)].bytes,
+            model::scene_metadata_word::name_byte,
+            model::scene_metadata_word::name_bytes)});
+        if (!name.has_value()) {
+            return std::nullopt;
+        }
+        return std::u8string{text::game_strings::kWeiXiaobaoLocationPrefix} + *name;
+    }
+    return std::nullopt;
 }
 
 NODISCARD std::string local_save_time(const std::string& timestamp_utc) {
@@ -3640,7 +3667,13 @@ bool LegacyGameRuntime::render_item_list_view(render::RgbaFramebuffer& framebuff
     }
     static constexpr std::array<std::uint8_t, ui::kItemCategoryCount> kMenuItemTabs{
         0U, 1U, 2U, 3U, 4U, 5U, 6U};
-    const auto coordinate_text = ui::coordinate_item_text(*ranger, game_menu_.context());
+    auto coordinate_text = ui::coordinate_item_text(*ranger, game_menu_.context());
+    if (const auto* snapshot = game_state_.snapshot(); snapshot != nullptr) {
+        if (const auto location = wei_xiaobao_location_text(*snapshot); location.has_value()) {
+            coordinate_text.push_back(u8'\n');
+            coordinate_text.append(*location);
+        }
+    }
     return render_item_page_overlay(
         game_menu_.inventory_slots(),
         game_menu_.item_cursor(),

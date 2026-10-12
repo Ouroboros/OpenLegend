@@ -171,10 +171,17 @@ NODISCARD bool draw_detail(
     }
     auto text_top = area.top + 2 * row_step;
     if (item.word(model::item_word::id) == ui::kCoordinateItemId && !coordinate_text.empty()) {
-        if (!layout.text(name_left, text_top, coordinate_text, text_colors::menu_normal)) {
-            return false;
+        auto remaining = coordinate_text;
+        while (!remaining.empty()) {
+            const auto line_end = remaining.find(u8'\n');
+            if (!layout.text(name_left, text_top, remaining.substr(0U, line_end),
+                    text_colors::menu_normal)) {
+                return false;
+            }
+            text_top += row_step;
+            remaining = line_end == std::u8string_view::npos
+                ? std::u8string_view{} : remaining.substr(line_end + 1U);
         }
-        text_top += row_step;
     } else {
         const auto description = fixed_text(
             item.bytes, model::item_word::introduction_byte, model::item_word::introduction_bytes);
